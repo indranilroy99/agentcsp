@@ -2,7 +2,7 @@
 
 The Agent Manifest is the SBOM equivalent for an AI agent deployment.
 
-It captures normalized agent-facing surfaces, authority signals, trust levels, data classes, findings, evidence, the Triage Summary, optional baseline comparison, and the Static Blast-Radius Summary.
+It captures normalized agent-facing surfaces, authority signals, trust levels, data classes, findings, evidence, the Triage Summary, optional baseline comparison, scan coverage, and the Static Blast-Radius Summary.
 
 Core sections:
 
@@ -26,6 +26,7 @@ Core sections:
 - `evidence`
 - `triage_summary`
 - `baseline_comparison`
+- `scan_coverage`
 - `static_blast_radius`
 
 The manifest is versioned and validated with Zod. JSON Schema exports live in `schemas/`.
@@ -184,6 +185,23 @@ The comparison includes:
 - stable resolved finding IDs
 
 Current findings include `baseline_status` set to `new` or `existing` when a baseline is loaded. Resolved findings are represented by ID in `baseline_comparison.resolved_finding_ids`; their previous raw content is not copied into the new manifest.
+
+## Scan Coverage
+
+`scan_coverage` records deterministic scan-scope counts so teams can review whether a scan was complete enough for CI, audit, or release decisions.
+
+The summary includes:
+
+- directories visited
+- files seen and indexed
+- files skipped because they exceeded `max_file_size_bytes`
+- files and directories skipped by default ignore rules or `.agentcspignore`
+- hidden directories skipped
+- log directories skipped
+- whether `max_files` was reached
+- configured `max_files` and `max_file_size_bytes`
+
+Coverage counts do not include raw file contents or skipped path lists.
 
 ## Relationships
 

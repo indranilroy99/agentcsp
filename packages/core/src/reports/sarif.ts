@@ -105,6 +105,7 @@ export function renderSarifReport(manifest: AgentManifest): Record<string, unkno
         properties: {
           agentcsp_triage_summary: manifest.triage_summary,
           agentcsp_baseline_comparison: manifest.baseline_comparison,
+          agentcsp_scan_coverage: manifest.scan_coverage,
           agentcsp_static_blast_radius: manifest.static_blast_radius,
           evidence_redacted: true,
           secret_values_collected: false

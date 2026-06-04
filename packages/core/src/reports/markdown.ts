@@ -31,6 +31,8 @@ export function renderMarkdownReport(manifest: AgentManifest): string {
     "",
     renderBaselineComparison(manifest),
     "",
+    renderScanCoverage(manifest),
+    "",
     "## Surface Inventory",
     "",
     ...counts.map(([label, count]) => `- ${label}: ${count}`),
@@ -89,6 +91,27 @@ function renderTriageSummary(manifest: AgentManifest): string {
     "### Top Active Risks",
     "",
     renderTopRiskTable(summary.top_active_risks)
+  ].join("\n");
+}
+
+function renderScanCoverage(manifest: AgentManifest): string {
+  const coverage = manifest.scan_coverage;
+  if (!coverage) return "## Scan Coverage\n\nNo scan coverage summary was generated.";
+
+  return [
+    "## Scan Coverage",
+    "",
+    `- Directories visited: ${coverage.directories_visited}`,
+    `- Files seen: ${coverage.files_seen}`,
+    `- Files indexed: ${coverage.files_indexed}`,
+    `- Files skipped for size: ${coverage.files_skipped_for_size}`,
+    `- Files skipped by ignore rules: ${coverage.files_skipped_by_ignore}`,
+    `- Directories skipped by ignore rules: ${coverage.directories_skipped_by_ignore}`,
+    `- Hidden directories skipped: ${coverage.directories_skipped_hidden}`,
+    `- Log directories skipped: ${coverage.directories_skipped_logs}`,
+    `- Max files reached: \`${coverage.max_files_reached}\``,
+    `- Max files: ${coverage.max_files}`,
+    `- Max file size bytes: ${coverage.max_file_size_bytes}`
   ].join("\n");
 }
 

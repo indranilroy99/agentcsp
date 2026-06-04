@@ -24,6 +24,7 @@ program
   .option("--no-hidden", "skip hidden AI/security folders")
   .option("--include-logs", "include log directories")
   .option("--max-file-size <bytes>", "maximum file size to inspect", parseInteger)
+  .option("--max-files <count>", "maximum number of files to index", parseInteger)
   .option("--quiet", "suppress non-error output")
   .action(async (targetPath: string, options: Record<string, unknown>) => {
     await runScanCommand(targetPath, options);

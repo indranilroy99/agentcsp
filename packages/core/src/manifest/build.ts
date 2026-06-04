@@ -8,6 +8,7 @@ import {
   type Finding,
   type GraphEdge,
   type ScanConfig,
+  type ScanCoverageSummary,
   type StaticBlastRadiusSummary,
   type SurfaceObject,
   type TriageSummary
@@ -24,6 +25,7 @@ export function buildManifest(input: {
   attackPaths?: AttackPath[];
   triageSummary?: TriageSummary;
   baselineComparison?: BaselineComparison;
+  scanCoverage?: ScanCoverageSummary;
   staticBlastRadius?: StaticBlastRadiusSummary;
 }): AgentManifest {
   const evidence = collectEvidence(input.surfaces, input.findings ?? []);
@@ -63,6 +65,7 @@ export function buildManifest(input: {
     evidence,
     triage_summary: input.triageSummary,
     baseline_comparison: input.baselineComparison,
+    scan_coverage: input.scanCoverage,
     static_blast_radius: input.staticBlastRadius
   });
 }

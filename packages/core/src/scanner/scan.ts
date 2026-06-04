@@ -5,7 +5,7 @@ import { buildManifest } from "../manifest/build.js";
 import { buildStaticGraph } from "../graph/build-graph.js";
 import { applyFindingSuppressions, applyRecommendedControls, applyTrustOverrides, loadPolicy } from "../policy/load-policy.js";
 import { detectSurfaces, type DetectedSurfaces } from "./detect.js";
-import { walkProject } from "./walk.js";
+import { walkProjectWithCoverage } from "./walk.js";
 import { loadRules, runRules } from "../rules/engine.js";
 import { buildStaticBlastRadiusSummary } from "../reports/blast-radius.js";
 import { renderMarkdownReport } from "../reports/markdown.js";
@@ -33,7 +33,8 @@ export async function scanProject(rawConfig: Partial<ScanConfig> & { root_path: 
   const rootPath = path.resolve(config.root_path);
   const outputPath = path.resolve(config.output_path);
 
-  const files = await walkProject(config);
+  const walkResult = await walkProjectWithCoverage(config);
+  const files = walkResult.files;
   const policy = await loadPolicy(rootPath, config.config_path);
   const detected = await detectSurfaces(files);
   const surfaces = applyPolicyToSurfaces(detected, policy);
@@ -63,6 +64,7 @@ export async function scanProject(rawConfig: Partial<ScanConfig> & { root_path: 
     attackPaths: graph.attackPaths,
     triageSummary,
     baselineComparison: baselineResult?.comparison,
+    scanCoverage: walkResult.coverage,
     staticBlastRadius
   });
   const reportMarkdown = renderMarkdownReport(manifest);

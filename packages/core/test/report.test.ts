@@ -19,6 +19,9 @@ describe("scanProject", () => {
     expect(result.manifest.metadata.config.secret_values_collected).toBe(false);
     expect(result.manifest.static_blast_radius?.title).toBe("Static Blast-Radius Summary");
     expect(result.manifest.static_blast_radius?.attack_paths).toBeGreaterThan(0);
+    expect(result.manifest.scan_coverage?.title).toBe("AgentCSP Scan Coverage");
+    expect(result.manifest.scan_coverage?.files_indexed).toBeGreaterThan(0);
+    expect(result.manifest.scan_coverage?.max_files_reached).toBe(false);
     expect(result.manifest.triage_summary?.title).toBe("AgentCSP Triage Summary");
     expect(result.manifest.triage_summary?.total_findings).toBe(result.findings.length);
     expect(result.manifest.triage_summary?.active_findings).toBeGreaterThan(0);
@@ -31,15 +34,24 @@ describe("scanProject", () => {
     expect(result.findings.length).toBeGreaterThan(0);
     expect(result.outputFiles.sarif).toBeDefined();
     const sarif = JSON.parse(await fs.readFile(result.outputFiles.sarif!, "utf8")) as {
-      runs: Array<{ properties?: { agentcsp_triage_summary?: { total_findings?: number } } }>;
+      runs: Array<{
+        properties?: {
+          agentcsp_triage_summary?: { total_findings?: number };
+          agentcsp_scan_coverage?: { files_indexed?: number };
+        };
+      }>;
     };
     expect(sarif.runs[0]?.properties?.agentcsp_triage_summary?.total_findings).toBe(result.findings.length);
+    expect(sarif.runs[0]?.properties?.agentcsp_scan_coverage?.files_indexed).toBe(
+      result.manifest.scan_coverage?.files_indexed
+    );
     expect(JSON.stringify(sarif.runs[0]?.properties?.agentcsp_triage_summary)).not.toContain("replace-me");
     expect(result.reportMarkdown).toContain("## Triage Summary");
     expect(result.reportMarkdown).toContain("### Active Findings by Severity");
     expect(result.reportMarkdown).toContain("### Top Active Rules");
     expect(result.reportMarkdown).toContain("### Top Active Risks");
     expect(result.reportMarkdown).toContain("| Severity | Confidence | Risk | Rule | Object | Path | Recommended control |");
+    expect(result.reportMarkdown).toContain("## Scan Coverage");
     expect(result.reportMarkdown).toContain("Recommended Controls");
     expect(result.reportMarkdown).toContain("Static Attack Paths");
     expect(result.reportMarkdown).toContain("| Severity | Confidence | Rule | Object | Recommended control | Policy | Risk factors |");

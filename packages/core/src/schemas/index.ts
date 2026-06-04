@@ -363,6 +363,21 @@ export const StaticBlastRadiusSummarySchema = z.object({
   recommended_controls: z.array(z.string()).default([])
 });
 
+export const ScanCoverageSummarySchema = z.object({
+  title: z.literal("AgentCSP Scan Coverage").default("AgentCSP Scan Coverage"),
+  directories_visited: z.number().int().nonnegative().default(0),
+  files_seen: z.number().int().nonnegative().default(0),
+  files_indexed: z.number().int().nonnegative().default(0),
+  files_skipped_for_size: z.number().int().nonnegative().default(0),
+  files_skipped_by_ignore: z.number().int().nonnegative().default(0),
+  directories_skipped_by_ignore: z.number().int().nonnegative().default(0),
+  directories_skipped_hidden: z.number().int().nonnegative().default(0),
+  directories_skipped_logs: z.number().int().nonnegative().default(0),
+  max_files_reached: z.boolean().default(false),
+  max_files: z.number().int().positive(),
+  max_file_size_bytes: z.number().int().positive()
+});
+
 export const ManifestMetadataSchema = z.object({
   schema_version: z.literal(ManifestSchemaVersion),
   generated_at: z.string(),
@@ -401,6 +416,7 @@ export const AgentManifestSchema = z.object({
   evidence: z.array(EvidenceSchema).default([]),
   triage_summary: TriageSummarySchema.optional(),
   baseline_comparison: BaselineComparisonSchema.optional(),
+  scan_coverage: ScanCoverageSummarySchema.optional(),
   static_blast_radius: StaticBlastRadiusSummarySchema.optional()
 });
 
@@ -467,6 +483,7 @@ export type SeverityCounts = z.infer<typeof SeverityCountsSchema>;
 export type ConfidenceCounts = z.infer<typeof ConfidenceCountsSchema>;
 export type TriageSummary = z.infer<typeof TriageSummarySchema>;
 export type BaselineComparison = z.infer<typeof BaselineComparisonSchema>;
+export type ScanCoverageSummary = z.infer<typeof ScanCoverageSummarySchema>;
 export type Rule = z.infer<typeof RuleSchema>;
 export type Policy = z.infer<typeof PolicySchema>;
 export type AgentManifest = z.infer<typeof AgentManifestSchema>;

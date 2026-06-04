@@ -19,6 +19,14 @@ The path defaults to the current directory. The output directory defaults to `.a
 
 `agent-manifest.json` includes `triage_summary`, a deterministic rollup of total findings, active findings, suppressions, severity, confidence, surface types, recommended controls, top rules, and top active risks. The Markdown report renders the same summary near the top for human triage.
 
+`scan_coverage` records files indexed, oversized files, ignored entries, skipped hidden/log directories, and whether `max_files` was reached. Use it to catch partial scans before treating a quiet report as clean.
+
+Tune traversal limits with:
+
+```bash
+agentcsp scan . --max-file-size 1048576 --max-files 5000
+```
+
 ## CI Behavior
 
 AgentCSP does not fail CI by default. A completed scan exits with code `0` even when findings are present.
@@ -77,7 +85,7 @@ The generated SARIF file is:
 .agentcsp/agentcsp.sarif
 ```
 
-SARIF run properties include `agentcsp_triage_summary`, `agentcsp_baseline_comparison`, and `agentcsp_static_blast_radius` so CI systems can consume scan-level context without parsing Markdown. When a baseline is provided, SARIF results include `baselineState` values for current findings.
+SARIF run properties include `agentcsp_triage_summary`, `agentcsp_baseline_comparison`, `agentcsp_scan_coverage`, and `agentcsp_static_blast_radius` so CI systems can consume scan-level context without parsing Markdown. When a baseline is provided, SARIF results include `baselineState` values for current findings.
 
 ## Scanner Safety
 

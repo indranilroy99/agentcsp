@@ -32,6 +32,7 @@ export async function runScanCommand(targetPath: string, options: Record<string,
     include_hidden: includeHidden,
     include_logs: includeLogs,
     max_file_size_bytes: typeof options.maxFileSize === "number" ? options.maxFileSize : 1024 * 1024,
+    max_files: typeof options.maxFiles === "number" ? options.maxFiles : 5000,
     quiet,
     fail_on: failOn,
     fail_on_confidence: failOnConfidence,
@@ -48,6 +49,11 @@ export async function runScanCommand(targetPath: string, options: Record<string,
     console.log(
       `Attack paths: ${result.manifest.attack_paths.length} (${result.manifest.static_blast_radius?.critical_attack_paths ?? 0} critical)`
     );
+    if (result.manifest.scan_coverage) {
+      console.log(
+        `Coverage: ${result.manifest.scan_coverage.files_indexed} indexed, ${result.manifest.scan_coverage.files_skipped_for_size} oversized, max files reached: ${result.manifest.scan_coverage.max_files_reached}`
+      );
+    }
     if (result.manifest.baseline_comparison) {
       console.log(
         `Baseline: ${result.manifest.baseline_comparison.new_findings} new, ${result.manifest.baseline_comparison.existing_findings} existing, ${result.manifest.baseline_comparison.resolved_findings} resolved`

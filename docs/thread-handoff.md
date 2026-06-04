@@ -277,6 +277,18 @@ The current iteration adds:
 - SARIF result `baselineState` and run-level `agentcsp_baseline_comparison`
 - regression coverage for manifest baselines, findings baselines, resolved findings, and new-only fail gates
 
+## Scan Coverage Pass
+
+The current iteration adds:
+
+- manifest-level `scan_coverage` for deterministic scan-scope auditing
+- coverage counts for directories visited, files seen/indexed, oversized files, ignore skips, hidden/log directory skips, max-file limits, and max-file-limit exhaustion
+- Markdown Scan Coverage section
+- SARIF run-level `agentcsp_scan_coverage`
+- CLI coverage summary in non-quiet output
+- walker and report regression coverage
+- note: default excluded directories were already applied through `IgnoreMatcher`; this pass makes scan scope visible rather than changing default ignore semantics
+
 ## Initial Build Recommendation
 
 Start with a CLI-first MVP before building the dashboard:

@@ -1062,6 +1062,73 @@
           ],
           "additionalProperties": false
         },
+        "scan_coverage": {
+          "type": "object",
+          "properties": {
+            "title": {
+              "type": "string",
+              "const": "AgentCSP Scan Coverage",
+              "default": "AgentCSP Scan Coverage"
+            },
+            "directories_visited": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            },
+            "files_seen": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            },
+            "files_indexed": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            },
+            "files_skipped_for_size": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            },
+            "files_skipped_by_ignore": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            },
+            "directories_skipped_by_ignore": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            },
+            "directories_skipped_hidden": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            },
+            "directories_skipped_logs": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            },
+            "max_files_reached": {
+              "type": "boolean",
+              "default": false
+            },
+            "max_files": {
+              "type": "integer",
+              "exclusiveMinimum": 0
+            },
+            "max_file_size_bytes": {
+              "type": "integer",
+              "exclusiveMinimum": 0
+            }
+          },
+          "required": [
+            "max_files",
+            "max_file_size_bytes"
+          ],
+          "additionalProperties": false
+        },
         "static_blast_radius": {
           "type": "object",
           "properties": {
