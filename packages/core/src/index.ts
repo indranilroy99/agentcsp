@@ -5,6 +5,7 @@ export * from "./manifest/build.js";
 export * from "./rules/engine.js";
 export * from "./graph/build-graph.js";
 export * from "./risk/score.js";
+export * from "./reports/baseline.js";
 export * from "./reports/blast-radius.js";
 export * from "./reports/triage.js";
 export * from "./reports/markdown.js";

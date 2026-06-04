@@ -43,4 +43,26 @@ describe("cli options", () => {
       })
     ).rejects.toThrow("--fail-on-confidence requires --fail-on");
   });
+
+  it("requires fail-on when fail-on-new is set", async () => {
+    await expect(
+      runScanCommand(".", {
+        baseline: "/private/tmp/agentcsp-baseline.json",
+        failOnNew: true,
+        format: "json",
+        quiet: true
+      })
+    ).rejects.toThrow("--fail-on-new requires --fail-on");
+  });
+
+  it("requires a baseline when fail-on-new is set", async () => {
+    await expect(
+      runScanCommand(".", {
+        failOn: "high",
+        failOnNew: true,
+        format: "json",
+        quiet: true
+      })
+    ).rejects.toThrow("--fail-on-new requires --baseline");
+  });
 });

@@ -388,6 +388,13 @@
           ],
           "additionalProperties": false
         },
+        "baseline_status": {
+          "type": "string",
+          "enum": [
+            "new",
+            "existing"
+          ]
+        },
         "evidence": {
           "type": "array",
           "items": {

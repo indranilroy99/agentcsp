@@ -43,6 +43,26 @@ Active suppressions in `agentcsp.yaml` are excluded from `--fail-on` gates. Expi
 
 Policy `recommended_controls` can change the recommended control shown in JSON, Markdown, and SARIF, but they do not suppress findings or change `--fail-on` behavior.
 
+## Baselines
+
+Use a previous `findings.json` or `agent-manifest.json` as a baseline when introducing AgentCSP to an existing project:
+
+```bash
+agentcsp scan . --baseline .agentcsp/agent-manifest.json --out .agentcsp
+```
+
+The manifest and Markdown report include a baseline comparison with new, existing, and resolved finding counts. Current findings receive `baseline_status: "new"` or `baseline_status: "existing"` when a baseline is provided.
+
+Use `--fail-on-new` with `--baseline` and `--fail-on` when CI should fail only on newly introduced risk:
+
+```bash
+agentcsp scan . \
+  --baseline .agentcsp/agent-manifest.json \
+  --fail-on high \
+  --fail-on-confidence high \
+  --fail-on-new
+```
+
 ## SARIF
 
 Use SARIF when integrating AgentCSP with CI systems or code-scanning platforms:
@@ -57,7 +77,7 @@ The generated SARIF file is:
 .agentcsp/agentcsp.sarif
 ```
 
-SARIF run properties include `agentcsp_triage_summary` and `agentcsp_static_blast_radius` so CI systems can consume scan-level context without parsing Markdown.
+SARIF run properties include `agentcsp_triage_summary`, `agentcsp_baseline_comparison`, and `agentcsp_static_blast_radius` so CI systems can consume scan-level context without parsing Markdown. When a baseline is provided, SARIF results include `baselineState` values for current findings.
 
 ## Scanner Safety
 

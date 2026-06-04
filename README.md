@@ -55,6 +55,7 @@ Runtime enforcement adapters, deeper graph traversal, and the dashboard are plan
 - **Explainable Risk Scoring**: severity includes contributing factors such as trust level, data class, reversibility, external reach, and secret exposure.
 - **Finding Confidence**: each finding includes confidence and rationale so teams can separate correlated evidence from weaker static signals.
 - **Triage Summary**: summarizes active findings by severity, confidence, surface type, category, recommended control, top rules, and top risk objects.
+- **Baseline Comparison**: compares current findings to previous scan output so teams can separate new risk from existing debt.
 - **Static Attack Paths**: connects context sources to privileged capabilities so teams can see provenance-to-authority paths instead of isolated alerts.
 - **Auditable Suppressions**: supports owned, reasoned, expiring accepted-risk records without deleting evidence.
 - **Open Rule Packs**: constrained YAML rules operate over normalized manifest objects. No custom JavaScript execution is allowed in rules.
@@ -124,6 +125,8 @@ agentcsp scan . \
   --format json,md,sarif \
   --fail-on critical \
   --fail-on-confidence high \
+  --baseline .agentcsp/previous-findings.json \
+  --fail-on-new \
   --no-hidden \
   --include-logs \
   --max-file-size 1048576 \
@@ -133,6 +136,8 @@ agentcsp scan . \
 AgentCSP exits with code `0` by default when a scan completes, even if findings exist. CI failure is opt-in through `--fail-on critical`, `--fail-on high`, `--fail-on medium`, or `--fail-on low`.
 
 Use `--fail-on-confidence high` or `--fail-on-confidence very_high` with `--fail-on` when CI should fail only on findings that meet both impact and confidence thresholds.
+
+Use `--baseline` with a previous `findings.json` or `agent-manifest.json` to distinguish new, existing, and resolved findings. Add `--fail-on-new` when CI should fail only on new findings that meet the configured severity and confidence thresholds.
 
 The terminal banner animates only in interactive terminals. It is suppressed by `--quiet`, disabled in CI and piped output, and can be turned off with `AGENTCSP_NO_ANIMATION=1`.
 
@@ -176,6 +181,7 @@ The Agent Manifest is the SBOM equivalent for AI agent deployments. Core section
 - `findings`
 - `evidence`
 - `triage_summary`
+- `baseline_comparison`
 - `static_blast_radius`
 
 Findings include severity, confidence, risk factors, redacted evidence, mappings, and recommended controls. The triage summary gives downstream CI and platform consumers stable counts for active risk, suppressions, confidence, surface types, control mix, top rules, and top active risks.

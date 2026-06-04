@@ -4,6 +4,7 @@ import {
   ManifestSchemaVersion,
   type AgentManifest,
   type AttackPath,
+  type BaselineComparison,
   type Finding,
   type GraphEdge,
   type ScanConfig,
@@ -22,6 +23,7 @@ export function buildManifest(input: {
   relationships?: GraphEdge[];
   attackPaths?: AttackPath[];
   triageSummary?: TriageSummary;
+  baselineComparison?: BaselineComparison;
   staticBlastRadius?: StaticBlastRadiusSummary;
 }): AgentManifest {
   const evidence = collectEvidence(input.surfaces, input.findings ?? []);
@@ -60,6 +62,7 @@ export function buildManifest(input: {
     findings: sortFindings(input.findings ?? []),
     evidence,
     triage_summary: input.triageSummary,
+    baseline_comparison: input.baselineComparison,
     static_blast_radius: input.staticBlastRadius
   });
 }

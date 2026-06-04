@@ -12,6 +12,14 @@ export async function runScanCommand(targetPath: string, options: Record<string,
   if (failOnConfidence && !failOn) {
     throw new Error("--fail-on-confidence requires --fail-on");
   }
+  const baselinePath = options.baseline ? path.resolve(String(options.baseline)) : undefined;
+  const failOnNew = Boolean(options.failOnNew);
+  if (failOnNew && !failOn) {
+    throw new Error("--fail-on-new requires --fail-on");
+  }
+  if (failOnNew && !baselinePath) {
+    throw new Error("--fail-on-new requires --baseline");
+  }
   const includeHidden = options.hidden !== false;
   const includeLogs = Boolean(options.includeLogs);
   const quiet = Boolean(options.quiet);
@@ -26,7 +34,9 @@ export async function runScanCommand(targetPath: string, options: Record<string,
     max_file_size_bytes: typeof options.maxFileSize === "number" ? options.maxFileSize : 1024 * 1024,
     quiet,
     fail_on: failOn,
-    fail_on_confidence: failOnConfidence
+    fail_on_confidence: failOnConfidence,
+    baseline_path: baselinePath,
+    fail_on_new: failOnNew
   });
 
   if (!quiet) {
@@ -38,6 +48,11 @@ export async function runScanCommand(targetPath: string, options: Record<string,
     console.log(
       `Attack paths: ${result.manifest.attack_paths.length} (${result.manifest.static_blast_radius?.critical_attack_paths ?? 0} critical)`
     );
+    if (result.manifest.baseline_comparison) {
+      console.log(
+        `Baseline: ${result.manifest.baseline_comparison.new_findings} new, ${result.manifest.baseline_comparison.existing_findings} existing, ${result.manifest.baseline_comparison.resolved_findings} resolved`
+      );
+    }
     if (result.outputFiles.manifest) console.log(`Manifest: ${result.outputFiles.manifest}`);
     if (result.outputFiles.findings) console.log(`Findings: ${result.outputFiles.findings}`);
     if (result.outputFiles.report) console.log(`Report: ${result.outputFiles.report}`);

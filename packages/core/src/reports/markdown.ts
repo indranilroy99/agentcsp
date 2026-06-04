@@ -29,6 +29,8 @@ export function renderMarkdownReport(manifest: AgentManifest): string {
     "",
     renderTriageSummary(manifest),
     "",
+    renderBaselineComparison(manifest),
+    "",
     "## Surface Inventory",
     "",
     ...counts.map(([label, count]) => `- ${label}: ${count}`),
@@ -87,6 +89,28 @@ function renderTriageSummary(manifest: AgentManifest): string {
     "### Top Active Risks",
     "",
     renderTopRiskTable(summary.top_active_risks)
+  ].join("\n");
+}
+
+function renderBaselineComparison(manifest: AgentManifest): string {
+  const comparison = manifest.baseline_comparison;
+  if (!comparison) return "## Baseline Comparison\n\nNo baseline file was provided.";
+
+  const newFindings = manifest.findings.filter((finding) => finding.baseline_status === "new");
+  return [
+    "## Baseline Comparison",
+    "",
+    `- Baseline: \`${comparison.baseline_path}\``,
+    `- Baseline format: \`${comparison.baseline_format}\``,
+    `- Current findings: ${comparison.current_findings}`,
+    `- Baseline findings: ${comparison.baseline_findings}`,
+    `- New findings: ${comparison.new_findings}`,
+    `- Existing findings: ${comparison.existing_findings}`,
+    `- Resolved findings: ${comparison.resolved_findings}`,
+    "",
+    "### New Findings",
+    "",
+    newFindings.length > 0 ? renderFindingTable(newFindings) : "No new findings were introduced."
   ].join("\n");
 }
 

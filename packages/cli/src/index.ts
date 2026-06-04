@@ -19,6 +19,8 @@ program
   .option("--format <formats>", "comma-separated output formats: json,md,sarif", "json,md")
   .option("--fail-on <severity>", "fail when findings meet severity: critical,high,medium,low")
   .option("--fail-on-confidence <confidence>", "with --fail-on, require minimum confidence: very_high,high,medium,low")
+  .option("--baseline <path>", "compare findings against a previous findings.json or agent-manifest.json")
+  .option("--fail-on-new", "with --baseline and --fail-on, fail only on new findings")
   .option("--no-hidden", "skip hidden AI/security folders")
   .option("--include-logs", "include log directories")
   .option("--max-file-size <bytes>", "maximum file size to inspect", parseInteger)

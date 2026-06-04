@@ -265,6 +265,18 @@ The current iteration adds:
 - regression coverage for severity-only, confidence-aware, and suppressed finding gates
 - lint script updated to type-check package projects directly under TypeScript 5.9
 
+## Baseline Comparison Pass
+
+The current iteration adds:
+
+- `--baseline <path>` for comparing current findings against previous `findings.json` or `agent-manifest.json`
+- `--fail-on-new` for failing CI only on newly introduced findings that meet severity/confidence thresholds
+- finding-level `baseline_status` for current findings
+- manifest-level `baseline_comparison` with new, existing, and resolved counts and stable IDs
+- Markdown Baseline Comparison section
+- SARIF result `baselineState` and run-level `agentcsp_baseline_comparison`
+- regression coverage for manifest baselines, findings baselines, resolved findings, and new-only fail gates
+
 ## Initial Build Recommendation
 
 Start with a CLI-first MVP before building the dashboard:

@@ -11,6 +11,7 @@ import { buildStaticBlastRadiusSummary } from "../reports/blast-radius.js";
 import { renderMarkdownReport } from "../reports/markdown.js";
 import { renderSarifReport } from "../reports/sarif.js";
 import { buildTriageSummary } from "../reports/triage.js";
+import { applyBaselineComparison } from "../reports/baseline.js";
 import { shouldFail } from "../risk/score.js";
 import { sortObjects } from "../utils/sort.js";
 
@@ -41,8 +42,15 @@ export async function scanProject(rawConfig: Partial<ScanConfig> & { root_path: 
   const fallbackRulesDirectory = path.resolve(process.cwd(), "rules");
   const rules = await loadRules(await firstExistingDirectory([rulesDirectory, fallbackRulesDirectory]));
   const policyControlledFindings = applyRecommendedControls(runRules(surfaces, rules), policy);
-  const findings = applyFindingSuppressions(policyControlledFindings, policy);
+  const suppressedFindings = applyFindingSuppressions(policyControlledFindings, policy);
+  const baselineResult = config.baseline_path
+    ? await applyBaselineComparison(suppressedFindings, config.baseline_path)
+    : undefined;
+  const findings = baselineResult?.findings ?? suppressedFindings;
   const activeFindings = findings.filter((finding) => finding.suppression?.status !== "active");
+  const failGateFindings = config.fail_on_new
+    ? findings.filter((finding) => finding.baseline_status === "new")
+    : findings;
   const graph = buildStaticGraph(surfaces, activeFindings);
   const staticBlastRadius = buildStaticBlastRadiusSummary(surfaces, findings, graph.relationships, graph.attackPaths);
   const triageSummary = buildTriageSummary(findings);
@@ -54,6 +62,7 @@ export async function scanProject(rawConfig: Partial<ScanConfig> & { root_path: 
     relationships: graph.relationships,
     attackPaths: graph.attackPaths,
     triageSummary,
+    baselineComparison: baselineResult?.comparison,
     staticBlastRadius
   });
   const reportMarkdown = renderMarkdownReport(manifest);
@@ -80,7 +89,7 @@ export async function scanProject(rawConfig: Partial<ScanConfig> & { root_path: 
     findings,
     reportMarkdown,
     outputFiles,
-    shouldFail: shouldFail(findings, config.fail_on, config.fail_on_confidence)
+    shouldFail: shouldFail(failGateFindings, config.fail_on, config.fail_on_confidence)
   };
 }
 

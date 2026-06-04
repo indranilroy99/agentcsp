@@ -50,6 +50,7 @@ export function renderSarifReport(manifest: AgentManifest): Record<string, unkno
         results: manifest.findings.map((finding) => ({
           ruleId: finding.rule_id,
           level: finding.suppression?.status === "active" ? "none" : sarifLevel(finding.severity),
+          baselineState: sarifBaselineState(finding.baseline_status),
           message: {
             text: `${finding.name}: ${finding.reason} Recommended control: ${finding.recommended_control.replaceAll("_", " ")}.`
           },
@@ -92,6 +93,7 @@ export function renderSarifReport(manifest: AgentManifest): Record<string, unkno
             risk_factors: finding.risk.rationale,
             confidence: finding.confidence,
             confidence_rationale: finding.confidence_rationale,
+            baseline_status: finding.baseline_status,
             policy_control: finding.policy_control,
             trust_level: finding.risk.trust_level,
             data_classes: finding.data_classes,
@@ -102,6 +104,7 @@ export function renderSarifReport(manifest: AgentManifest): Record<string, unkno
         })),
         properties: {
           agentcsp_triage_summary: manifest.triage_summary,
+          agentcsp_baseline_comparison: manifest.baseline_comparison,
           agentcsp_static_blast_radius: manifest.static_blast_radius,
           evidence_redacted: true,
           secret_values_collected: false
@@ -109,6 +112,12 @@ export function renderSarifReport(manifest: AgentManifest): Record<string, unkno
       }
     ]
   };
+}
+
+function sarifBaselineState(status: Finding["baseline_status"]): "new" | "unchanged" | undefined {
+  if (status === "new") return "new";
+  if (status === "existing") return "unchanged";
+  return undefined;
 }
 
 function sarifLevel(severity: Severity): SarifLevel {

@@ -45,6 +45,7 @@ export const ControlSchema = z.enum([
 export const SeveritySchema = z.enum(["info", "low", "medium", "high", "critical"]);
 export const ConfidenceSchema = z.enum(["low", "medium", "high", "very_high"]);
 export const SuppressionStatusSchema = z.enum(["active", "expired"]);
+export const FindingBaselineStatusSchema = z.enum(["new", "existing"]);
 
 export const SurfaceTypeSchema = z.enum([
   "agent",
@@ -174,6 +175,7 @@ export const FindingSchema = z.object({
     .default({ owasp: [], mitre_atlas: [], nist_ai_rmf: [] }),
   policy_control: FindingPolicyControlSchema.optional(),
   suppression: FindingSuppressionSchema.optional(),
+  baseline_status: FindingBaselineStatusSchema.optional(),
   evidence: z.array(EvidenceSchema).default([])
 });
 
@@ -244,6 +246,19 @@ export const TriageSummarySchema = z.object({
   active_by_recommended_control: z.array(TriageControlCountSchema).default([]),
   top_active_rules: z.array(TriageRuleSummarySchema).default([]),
   top_active_risks: z.array(TriageFindingSummarySchema).default([])
+});
+
+export const BaselineComparisonSchema = z.object({
+  title: z.literal("AgentCSP Baseline Comparison").default("AgentCSP Baseline Comparison"),
+  baseline_path: z.string(),
+  baseline_format: z.enum(["findings", "manifest"]),
+  current_findings: z.number().int().nonnegative().default(0),
+  baseline_findings: z.number().int().nonnegative().default(0),
+  new_findings: z.number().int().nonnegative().default(0),
+  existing_findings: z.number().int().nonnegative().default(0),
+  resolved_findings: z.number().int().nonnegative().default(0),
+  new_finding_ids: z.array(z.string()).default([]),
+  resolved_finding_ids: z.array(z.string()).default([])
 });
 
 export const AttackPathSchema = z.object({
@@ -385,6 +400,7 @@ export const AgentManifestSchema = z.object({
   findings: z.array(FindingSchema).default([]),
   evidence: z.array(EvidenceSchema).default([]),
   triage_summary: TriageSummarySchema.optional(),
+  baseline_comparison: BaselineComparisonSchema.optional(),
   static_blast_radius: StaticBlastRadiusSummarySchema.optional()
 });
 
@@ -400,7 +416,9 @@ export const ScanConfigSchema = z
     max_files: z.number().int().positive().default(5000),
     quiet: z.boolean().default(false),
     fail_on: SeveritySchema.optional(),
-    fail_on_confidence: ConfidenceSchema.optional()
+    fail_on_confidence: ConfidenceSchema.optional(),
+    baseline_path: z.string().optional(),
+    fail_on_new: z.boolean().default(false)
   })
   .superRefine((config, context) => {
     if (config.fail_on_confidence && !config.fail_on) {
@@ -408,6 +426,20 @@ export const ScanConfigSchema = z
         code: z.ZodIssueCode.custom,
         path: ["fail_on_confidence"],
         message: "fail_on_confidence requires fail_on"
+      });
+    }
+    if (config.fail_on_new && !config.fail_on) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["fail_on_new"],
+        message: "fail_on_new requires fail_on"
+      });
+    }
+    if (config.fail_on_new && !config.baseline_path) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["fail_on_new"],
+        message: "fail_on_new requires baseline_path"
       });
     }
   });
@@ -419,6 +451,7 @@ export type Control = z.infer<typeof ControlSchema>;
 export type Severity = z.infer<typeof SeveritySchema>;
 export type Confidence = z.infer<typeof ConfidenceSchema>;
 export type SuppressionStatus = z.infer<typeof SuppressionStatusSchema>;
+export type FindingBaselineStatus = z.infer<typeof FindingBaselineStatusSchema>;
 export type SurfaceType = z.infer<typeof SurfaceTypeSchema>;
 export type RiskFactors = z.infer<typeof RiskFactorsSchema>;
 export type Evidence = z.infer<typeof EvidenceSchema>;
@@ -433,6 +466,7 @@ export type Finding = z.infer<typeof FindingSchema>;
 export type SeverityCounts = z.infer<typeof SeverityCountsSchema>;
 export type ConfidenceCounts = z.infer<typeof ConfidenceCountsSchema>;
 export type TriageSummary = z.infer<typeof TriageSummarySchema>;
+export type BaselineComparison = z.infer<typeof BaselineComparisonSchema>;
 export type Rule = z.infer<typeof RuleSchema>;
 export type Policy = z.infer<typeof PolicySchema>;
 export type AgentManifest = z.infer<typeof AgentManifestSchema>;

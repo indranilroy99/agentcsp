@@ -692,6 +692,13 @@
                 ],
                 "additionalProperties": false
               },
+              "baseline_status": {
+                "type": "string",
+                "enum": [
+                  "new",
+                  "existing"
+                ]
+              },
               "evidence": {
                 "type": "array",
                 "items": {
@@ -989,6 +996,70 @@
               "default": []
             }
           },
+          "additionalProperties": false
+        },
+        "baseline_comparison": {
+          "type": "object",
+          "properties": {
+            "title": {
+              "type": "string",
+              "const": "AgentCSP Baseline Comparison",
+              "default": "AgentCSP Baseline Comparison"
+            },
+            "baseline_path": {
+              "type": "string"
+            },
+            "baseline_format": {
+              "type": "string",
+              "enum": [
+                "findings",
+                "manifest"
+              ]
+            },
+            "current_findings": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            },
+            "baseline_findings": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            },
+            "new_findings": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            },
+            "existing_findings": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            },
+            "resolved_findings": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            },
+            "new_finding_ids": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "default": []
+            },
+            "resolved_finding_ids": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "default": []
+            }
+          },
+          "required": [
+            "baseline_path",
+            "baseline_format"
+          ],
           "additionalProperties": false
         },
         "static_blast_radius": {

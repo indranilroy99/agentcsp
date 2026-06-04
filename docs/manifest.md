@@ -2,7 +2,7 @@
 
 The Agent Manifest is the SBOM equivalent for an AI agent deployment.
 
-It captures normalized agent-facing surfaces, authority signals, trust levels, data classes, findings, evidence, the Triage Summary, and the Static Blast-Radius Summary.
+It captures normalized agent-facing surfaces, authority signals, trust levels, data classes, findings, evidence, the Triage Summary, optional baseline comparison, and the Static Blast-Radius Summary.
 
 Core sections:
 
@@ -25,6 +25,7 @@ Core sections:
 - `findings`
 - `evidence`
 - `triage_summary`
+- `baseline_comparison`
 - `static_blast_radius`
 
 The manifest is versioned and validated with Zod. JSON Schema exports live in `schemas/`.
@@ -150,6 +151,7 @@ Each finding includes:
 - `maps_to`
 - `evidence`
 - optional `suppression`
+- optional `baseline_status`
 
 Confidence is separate from severity. Severity describes potential impact; confidence describes how strongly the normalized evidence supports the finding.
 
@@ -168,6 +170,20 @@ The summary includes:
 - top active risks with finding IDs, object IDs, paths, risk scores, and recommended controls
 
 The triage summary does not include raw file contents, evidence snippets, secret values, or unredacted tool/runtime configuration values.
+
+## Baseline Comparison
+
+`baseline_comparison` is present when the scan is run with a previous `findings.json` or `agent-manifest.json` baseline.
+
+The comparison includes:
+
+- baseline path and format
+- current and baseline finding counts
+- new, existing, and resolved finding counts
+- stable new finding IDs
+- stable resolved finding IDs
+
+Current findings include `baseline_status` set to `new` or `existing` when a baseline is loaded. Resolved findings are represented by ID in `baseline_comparison.resolved_finding_ids`; their previous raw content is not copied into the new manifest.
 
 ## Relationships
 

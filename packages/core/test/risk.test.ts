@@ -26,6 +26,23 @@ describe("risk gates", () => {
       })
     ).toThrow("fail_on_confidence requires fail_on");
   });
+
+  it("requires severity and baseline thresholds when new-only failure is configured", () => {
+    expect(() =>
+      ScanConfigSchema.parse({
+        root_path: ".",
+        fail_on_new: true
+      })
+    ).toThrow("fail_on_new requires fail_on");
+
+    expect(() =>
+      ScanConfigSchema.parse({
+        root_path: ".",
+        fail_on: "high",
+        fail_on_new: true
+      })
+    ).toThrow("fail_on_new requires baseline_path");
+  });
 });
 
 function finding(severity: Finding["severity"], confidence: Finding["confidence"], suppressed = false): Finding {
