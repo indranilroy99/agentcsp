@@ -16,7 +16,7 @@ program
   .argument("[path]", "project path to scan", ".")
   .option("--out <path>", "output directory", ".agentcsp")
   .option("--config <path>", "policy config path", "agentcsp.yaml")
-  .option("--format <formats>", "comma-separated output formats: json,md", "json,md")
+  .option("--format <formats>", "comma-separated output formats: json,md,sarif", "json,md")
   .option("--fail-on <severity>", "fail when findings meet severity: high,medium,low")
   .option("--no-hidden", "skip hidden AI/security folders")
   .option("--include-logs", "include log directories")

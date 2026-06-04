@@ -8,6 +8,7 @@ import { walkProject } from "./walk.js";
 import { loadRules, runRules } from "../rules/engine.js";
 import { buildStaticBlastRadiusSummary } from "../reports/blast-radius.js";
 import { renderMarkdownReport } from "../reports/markdown.js";
+import { renderSarifReport } from "../reports/sarif.js";
 import { shouldFail } from "../risk/score.js";
 import { sortObjects } from "../utils/sort.js";
 
@@ -19,6 +20,7 @@ export interface ScanResult {
     manifest?: string;
     findings?: string;
     report?: string;
+    sarif?: string;
   };
   shouldFail: boolean;
 }
@@ -58,6 +60,10 @@ export async function scanProject(rawConfig: Partial<ScanConfig> & { root_path: 
   if (config.formats.includes("md")) {
     outputFiles.report = path.join(outputPath, "report.md");
     await fs.writeFile(outputFiles.report, `${reportMarkdown}\n`, "utf8");
+  }
+  if (config.formats.includes("sarif")) {
+    outputFiles.sarif = path.join(outputPath, "agentcsp.sarif");
+    await fs.writeFile(outputFiles.sarif, `${JSON.stringify(renderSarifReport(manifest), null, 2)}\n`, "utf8");
   }
 
   return {

@@ -6,4 +6,5 @@ export * from "./rules/engine.js";
 export * from "./risk/score.js";
 export * from "./reports/blast-radius.js";
 export * from "./reports/markdown.js";
+export * from "./reports/sarif.js";
 export * from "./policy/load-policy.js";

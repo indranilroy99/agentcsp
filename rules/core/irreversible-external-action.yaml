@@ -1,0 +1,23 @@
+id: AGENTCSP-AUTH-001
+name: Irreversible or external publish authority discovered
+description: A tool or script can publish, release, deploy, delete, or otherwise affect external state, increasing blast radius if influenced by untrusted context.
+category: excessive_agency
+severity: high
+maps_to:
+  owasp:
+    - LLM06:2025 Excessive Agency
+  mitre_atlas:
+    - AML.T0054 Command and Scripting Interpreter
+    - AML.T0057 Exfiltration via Cyber Means
+  nist_ai_rmf:
+    - GOVERN 1.5
+    - MANAGE 2.3
+match:
+  object_type: tool
+  where:
+    - field: metadata.release_or_publish
+      op: equals
+      value: true
+recommendation:
+  control: require_approval
+  text: Require human approval and scoped credentials before agent-influenced workflows can publish, release, deploy, or push artifacts.

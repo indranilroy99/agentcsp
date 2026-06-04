@@ -1,0 +1,26 @@
+id: AGENTCSP-RAG-001
+name: RAG source has unknown provenance
+description: A retrieval source with unknown provenance may carry instructions or poisoned content into agent context.
+category: rag_poisoning
+severity: medium
+maps_to:
+  owasp:
+    - LLM01:2025 Prompt Injection
+    - LLM08:2025 Vector and Embedding Weaknesses
+  mitre_atlas:
+    - AML.T0051 LLM Prompt Injection
+  nist_ai_rmf:
+    - MAP 5.1
+    - MEASURE 2.9
+match:
+  object_type: rag_source
+  where:
+    - field: trust_level
+      op: in
+      value:
+        - unknown
+        - untrusted
+        - third_party
+recommendation:
+  control: quarantine
+  text: Track provenance for retrieval sources and quarantine untrusted documents before they can influence privileged tool use or memory writes.

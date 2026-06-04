@@ -138,6 +138,18 @@ Verified locally:
 - `pnpm lint`
 - `pnpm agentcsp scan examples/vulnerable-agent --out .agentcsp --quiet`
 
+## Production-Hardening Pass
+
+The next pass added:
+
+- SARIF output through `--format sarif`
+- GitHub Actions CI for install, TypeScript check, tests, build, audit, fixture scan, and SARIF validation
+- high-signal correlated rules for network-to-shell package scripts, secret-backed MCP authority, PR workflow write permissions with secrets, release/publish authority, and unknown-provenance RAG sources
+- scanner metadata for PR workflow triggers, write permissions, command signals, network-to-shell behavior, and publish/release authority
+- severity tuning so generic findings do not automatically escalate to critical
+- platform direction docs in `docs/platform.md`
+- production hardening docs in `docs/production-hardening.md`
+
 ## Initial Build Recommendation
 
 Start with a CLI-first MVP before building the dashboard:

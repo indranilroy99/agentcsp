@@ -13,4 +13,13 @@ describe("cli options", () => {
     ).rejects.toThrow("--fail-on must be one of high, medium, or low");
     spy.mockRestore();
   });
+
+  it("rejects unsupported output formats", async () => {
+    await expect(
+      runScanCommand(".", {
+        format: "json,xml",
+        quiet: true
+      })
+    ).rejects.toThrow("Expected json,md,sarif");
+  });
 });

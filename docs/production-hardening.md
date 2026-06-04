@@ -1,0 +1,56 @@
+# Production Hardening Plan
+
+AgentCSP should become useful to cybersecurity teams by producing high-confidence findings with evidence, not by maximizing alert volume.
+
+## Quality Bar
+
+A finding should be considered production-grade when it includes:
+
+- normalized object type
+- file path
+- trust level
+- data class
+- authority/action
+- side effect and reversibility
+- external reach
+- secret exposure signal
+- reason
+- recommended control
+- OWASP, MITRE ATLAS, and NIST AI RMF mappings where applicable
+- redacted evidence
+
+## High-Signal Rule Strategy
+
+Prefer correlated rules over keyword rules.
+
+Examples:
+
+- network retrieval plus shell execution
+- MCP server plus credential key names plus side effects
+- pull request workflow plus write permissions plus secrets
+- untrusted RAG source plus privileged tool path
+- memory write plus untrusted source provenance
+- package publish/release authority plus agent-influenced workflow
+
+## CI Expectations
+
+Every production change should pass:
+
+- dependency install from lockfile
+- TypeScript check
+- unit tests
+- build
+- high/critical dependency audit
+- fixture scan
+- SARIF validation
+
+## Near-Term Production Work
+
+- Add SARIF upload examples for adopters.
+- Add package dependency and lockfile inventory.
+- Add MCP schema parsing beyond config files.
+- Add graph edges between context sources, capabilities, data classes, and side effects.
+- Add suppression and waiver workflow with expiry.
+- Add confidence levels to findings.
+- Add multi-fixture regression tests for true positives and false positives.
+- Add benchmarking against known vulnerable agent patterns.

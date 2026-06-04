@@ -22,7 +22,12 @@ describe("rule engine", () => {
     const findings = runRules(surfaces, rules);
 
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-001")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-002")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-001")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-002")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-CICD-002")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RAG-001")).toBe(true);
+    expect(findings.some((finding) => finding.severity === "critical")).toBe(true);
     expect(findings.every((finding) => finding.evidence.every((item) => item.redacted))).toBe(true);
   });
 });

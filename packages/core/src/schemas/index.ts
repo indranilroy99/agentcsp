@@ -228,7 +228,7 @@ export const ScanConfigSchema = z.object({
   root_path: z.string(),
   output_path: z.string().default(".agentcsp"),
   config_path: z.string().optional(),
-  formats: z.array(z.enum(["json", "md"])).default(["json", "md"]),
+  formats: z.array(z.enum(["json", "md", "sarif"])).default(["json", "md"]),
   include_hidden: z.boolean().default(true),
   include_logs: z.boolean().default(false),
   max_file_size_bytes: z.number().int().positive().default(1024 * 1024),

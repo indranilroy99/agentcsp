@@ -365,6 +365,11 @@ function detectWorkflow(file: WalkedFile, text: string | undefined, surfaces: De
     metadata: {
       content_redacted: true,
       has_permissions_block: Boolean(permissions),
+      trigger_names: extractWorkflowTriggers(parsed.on),
+      pull_request_trigger: extractWorkflowTriggers(parsed.on).some((trigger) =>
+        ["pull_request", "pull_request_target"].includes(trigger)
+      ),
+      write_permissions: hasWritePermissions(permissions),
       mentions_secrets_context: /secrets\./i.test(content)
     }
   });
@@ -412,4 +417,21 @@ function extractMcpServers(value: unknown): Array<{ name: string; command?: stri
 
 function isEnvFile(basename: string): boolean {
   return basename === ".env" || basename.startsWith(".env.");
+}
+
+function extractWorkflowTriggers(value: unknown): string[] {
+  if (typeof value === "string") return [value];
+  if (Array.isArray(value)) {
+    return value.filter((item): item is string => typeof item === "string").sort((a, b) => a.localeCompare(b));
+  }
+  if (value && typeof value === "object") {
+    return Object.keys(value as Record<string, unknown>).sort((a, b) => a.localeCompare(b));
+  }
+  return [];
+}
+
+function hasWritePermissions(value: unknown): boolean {
+  if (typeof value === "string") return value === "write-all";
+  if (!value || typeof value !== "object") return false;
+  return Object.values(value as Record<string, unknown>).some((permission) => permission === "write");
 }

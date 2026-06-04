@@ -9,6 +9,9 @@ const SECRET_KEY_PATTERN =
 const EXTERNAL_PATTERN = /(https?:\/\/|curl\b|wget\b|fetch\(|axios|slack|github|api\.|webhook|smtp|s3:\/\/)/i;
 const EXECUTION_PATTERN = /(\bbash\b|\bsh\b|\bzsh\b|\bnode\b|\bpython\b|\bnpm\b|\bpnpm\b|\byarn\b|\bdocker\b|\bsudo\b|\brm\s+-rf\b)/i;
 const IRREVERSIBLE_PATTERN = /(\brm\s+-rf\b|\bdelete\b|\bdrop\b|\btruncate\b|\bforce\b|\bpublish\b|\brelease\b|\bdeploy\b)/i;
+const NETWORK_TO_SHELL_PATTERN = /\b(curl|wget)\b[\s\S]*(\|\s*(bash|sh|zsh)|bash\s+-c|sh\s+-c|zsh\s+-c)/i;
+const RELEASE_OR_PUBLISH_PATTERN = /\b(gh\s+release|npm\s+publish|pnpm\s+publish|yarn\s+npm\s+publish|docker\s+push|git\s+push)\b/i;
+const DESTRUCTIVE_COMMAND_PATTERN = /\b(rm\s+-rf|delete|drop|truncate)\b/i;
 
 export function createSurfaceObject(input: {
   type: SurfaceType;
@@ -138,7 +141,10 @@ export function redactedCommandSignals(command: string): Record<string, unknown>
   }
   return {
     command_redacted: true,
-    command_signals: [...tokens].sort((a, b) => a.localeCompare(b))
+    command_signals: [...tokens].sort((a, b) => a.localeCompare(b)),
+    network_to_shell: NETWORK_TO_SHELL_PATTERN.test(command),
+    release_or_publish: RELEASE_OR_PUBLISH_PATTERN.test(command),
+    destructive_command: DESTRUCTIVE_COMMAND_PATTERN.test(command)
   };
 }
 

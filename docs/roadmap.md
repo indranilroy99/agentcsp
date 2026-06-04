@@ -21,6 +21,8 @@
 - Build graph-based blast-radius analysis.
 - Add `agentcsp.yaml` policy files.
 - Support allow, deny, approval, redaction, and quarantine recommendations.
+- Add SARIF output and CI integrations for code-scanning workflows.
+- Add high-confidence correlated findings that combine provenance, data class, authority, and side effects.
 
 ## Phase 3: Red-Team Rule Exchange
 
@@ -47,3 +49,8 @@
 - Enforce policy before tool calls and sensitive memory writes.
 - Emit signed or tamper-evident evidence records.
 
+## Phase 7: AgentCSP Platform
+
+- Add a local-first platform deployment for teams that need a persistent manifest registry, policy governance, evidence history, and AI supply-chain inventory.
+- Support self-hosted deployment first, with optional cloud deployment for organizations that need centralized multi-repo visibility.
+- Keep CLI, schemas, rules, and scanner engine fully open and usable without the platform.

@@ -1,0 +1,50 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: Verify
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11.0.9
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: TypeScript check
+        run: pnpm lint
+
+      - name: Test
+        run: pnpm test
+
+      - name: Build
+        run: pnpm build
+
+      - name: Audit high and critical vulnerabilities
+        run: pnpm audit --audit-level high
+
+      - name: AgentCSP scan demo fixture
+        run: pnpm agentcsp scan examples/vulnerable-agent --out .agentcsp --format json,md,sarif --quiet
+
+      - name: Validate SARIF output
+        run: node -e "const fs=require('fs'); const s=JSON.parse(fs.readFileSync('.agentcsp/agentcsp.sarif','utf8')); if(s.version!=='2.1.0') process.exit(1); console.log('SARIF validated');"

@@ -109,7 +109,7 @@ Useful flags:
 ```bash
 agentcsp scan . \
   --config agentcsp.yaml \
-  --format json,md \
+  --format json,md,sarif \
   --fail-on high \
   --no-hidden \
   --include-logs \
@@ -120,6 +120,12 @@ agentcsp scan . \
 AgentCSP exits with code `0` by default when a scan completes, even if findings exist. CI failure is opt-in through `--fail-on high`, `--fail-on medium`, or `--fail-on low`.
 
 The terminal banner animates only in interactive terminals. It is suppressed by `--quiet`, disabled in CI and piped output, and can be turned off with `AGENTCSP_NO_ANIMATION=1`.
+
+SARIF output is available for CI and code-scanning integrations:
+
+```bash
+agentcsp scan . --format json,md,sarif --out .agentcsp
+```
 
 ## Repository Layout
 
@@ -196,6 +202,7 @@ Reports use "recommended controls" until runtime enforcement exists.
 - Graph-based blast-radius analysis
 - Red-team rule exchange
 - Secure RAG and memory lab
+- Local and cloud-hostable platform for manifest registry, policy governance, evidence, and AI supply-chain security
 - Runtime enforcement adapters
 - Evidence dashboard
 

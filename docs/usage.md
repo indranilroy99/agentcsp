@@ -14,6 +14,7 @@ The path defaults to the current directory. The output directory defaults to `.a
 .agentcsp/agent-manifest.json
 .agentcsp/findings.json
 .agentcsp/report.md
+.agentcsp/agentcsp.sarif
 ```
 
 ## CI Behavior
@@ -27,6 +28,20 @@ agentcsp scan . --fail-on high
 ```
 
 Supported values are `high`, `medium`, and `low`.
+
+## SARIF
+
+Use SARIF when integrating AgentCSP with CI systems or code-scanning platforms:
+
+```bash
+agentcsp scan . --format json,md,sarif --out .agentcsp
+```
+
+The generated SARIF file is:
+
+```text
+.agentcsp/agentcsp.sarif
+```
 
 ## Scanner Safety
 

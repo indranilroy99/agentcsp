@@ -4,6 +4,8 @@ AgentCSP rules are constrained YAML files. They are designed to be reviewable, p
 
 MVP rules operate on normalized manifest objects. They do not execute JavaScript or arbitrary code.
 
+The preferred rule style is correlated and evidence-backed. For example, a high-confidence rule should combine multiple signals such as external reach, shell execution, credential references, write permissions, untrusted provenance, or irreversible side effects.
+
 Required fields:
 
 - `id`

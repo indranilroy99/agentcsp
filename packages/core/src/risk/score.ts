@@ -8,6 +8,8 @@ const severityRank: Record<Severity, number> = {
   critical: 4
 };
 
+const severityByRank: Severity[] = ["info", "low", "medium", "high", "critical"];
+
 const severityFloor: Record<Severity, number> = {
   info: 0,
   low: 20,
@@ -91,7 +93,10 @@ export function scoreObjectRisk(object: SurfaceObject, rule?: Rule): RiskFactors
 export function severityFromScore(score: number, floor?: Severity): Severity {
   const calculated: Severity = score >= 85 ? "critical" : score >= 65 ? "high" : score >= 40 ? "medium" : score >= 20 ? "low" : "info";
   if (!floor) return calculated;
-  return severityRank[floor] > severityRank[calculated] ? floor : calculated;
+  const floorRank = severityRank[floor];
+  const calculatedRank = severityRank[calculated];
+  const cappedRank = Math.min(calculatedRank, floorRank + 1);
+  return severityByRank[Math.max(floorRank, cappedRank)] ?? floor;
 }
 
 export function shouldFail(findings: Finding[], failOn?: Severity): boolean {

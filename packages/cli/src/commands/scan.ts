@@ -2,7 +2,7 @@ import path from "node:path";
 import { scanProject, SeveritySchema, type Severity } from "@agentcsp/core";
 import { printBanner } from "../banner.js";
 
-const allowedFormats = new Set(["json", "md"]);
+const allowedFormats = new Set(["json", "md", "sarif"]);
 
 export async function runScanCommand(targetPath: string, options: Record<string, unknown>): Promise<void> {
   const rootPath = path.resolve(targetPath);
@@ -30,6 +30,7 @@ export async function runScanCommand(targetPath: string, options: Record<string,
     if (result.outputFiles.manifest) console.log(`Manifest: ${result.outputFiles.manifest}`);
     if (result.outputFiles.findings) console.log(`Findings: ${result.outputFiles.findings}`);
     if (result.outputFiles.report) console.log(`Report: ${result.outputFiles.report}`);
+    if (result.outputFiles.sarif) console.log(`SARIF: ${result.outputFiles.sarif}`);
   }
 
   if (result.shouldFail) {
@@ -37,17 +38,17 @@ export async function runScanCommand(targetPath: string, options: Record<string,
   }
 }
 
-function parseFormats(value: string): Array<"json" | "md"> {
+function parseFormats(value: string): Array<"json" | "md" | "sarif"> {
   const formats = value
     .split(",")
     .map((item) => item.trim())
     .filter(Boolean);
   for (const format of formats) {
     if (!allowedFormats.has(format)) {
-      throw new Error(`Unsupported format "${format}". Expected json,md.`);
+      throw new Error(`Unsupported format "${format}". Expected json,md,sarif.`);
     }
   }
-  return formats.length > 0 ? (formats as Array<"json" | "md">) : ["json", "md"];
+  return formats.length > 0 ? (formats as Array<"json" | "md" | "sarif">) : ["json", "md"];
 }
 
 function parseFailOn(value: unknown): Severity | undefined {

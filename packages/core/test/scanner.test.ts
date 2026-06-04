@@ -48,6 +48,11 @@ describe("scanner", () => {
     expect(surfaces.mcp_servers.length).toBeGreaterThanOrEqual(2);
     expect(surfaces.tools.some((surface) => surface.name === "package-script:sync:docs")).toBe(true);
     expect(surfaces.ci_cd.length).toBe(1);
+    expect(surfaces.ci_cd[0]?.metadata).toMatchObject({
+      pull_request_trigger: true,
+      write_permissions: true,
+      mentions_secrets_context: true
+    });
     expect(surfaces.rag_sources.length).toBeGreaterThanOrEqual(1);
     expect(surfaces.memory.length).toBeGreaterThanOrEqual(1);
   });
