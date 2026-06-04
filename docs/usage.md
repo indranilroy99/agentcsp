@@ -31,6 +31,14 @@ agentcsp scan . --fail-on high
 
 Supported values are `critical`, `high`, `medium`, and `low`.
 
+Use `--fail-on-confidence` with `--fail-on` when a CI gate should require both impact and confidence:
+
+```bash
+agentcsp scan . --fail-on high --fail-on-confidence high
+```
+
+Supported confidence values are `very_high`, `high`, `medium`, and `low`. If no confidence threshold is supplied, severity-only behavior is unchanged.
+
 Active suppressions in `agentcsp.yaml` are excluded from `--fail-on` gates. Expired suppressions are not excluded.
 
 Policy `recommended_controls` can change the recommended control shown in JSON, Markdown, and SARIF, but they do not suppress findings or change `--fail-on` behavior.

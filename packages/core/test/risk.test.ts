@@ -1,0 +1,47 @@
+import { describe, expect, it } from "vitest";
+import { shouldFail } from "../src/risk/score.js";
+import { ScanConfigSchema, type Finding } from "../src/schemas/index.js";
+
+describe("risk gates", () => {
+  it("keeps severity-only fail gates backward compatible", () => {
+    expect(shouldFail([finding("high", "low")], "high")).toBe(true);
+    expect(shouldFail([finding("medium", "very_high")], "high")).toBe(false);
+  });
+
+  it("supports optional confidence-aware fail gates", () => {
+    expect(shouldFail([finding("critical", "medium")], "critical", "high")).toBe(false);
+    expect(shouldFail([finding("critical", "high")], "critical", "high")).toBe(true);
+    expect(shouldFail([finding("critical", "very_high")], "critical", "high")).toBe(true);
+  });
+
+  it("does not fail on active suppressions even when severity and confidence match", () => {
+    expect(shouldFail([finding("critical", "very_high", true)], "critical", "very_high")).toBe(false);
+  });
+
+  it("requires a severity threshold when a confidence threshold is configured", () => {
+    expect(() =>
+      ScanConfigSchema.parse({
+        root_path: ".",
+        fail_on_confidence: "high"
+      })
+    ).toThrow("fail_on_confidence requires fail_on");
+  });
+});
+
+function finding(severity: Finding["severity"], confidence: Finding["confidence"], suppressed = false): Finding {
+  return {
+    severity,
+    confidence,
+    suppression: suppressed
+      ? {
+          id: "accepted-risk",
+          status: "active",
+          reason: "Accepted for regression test.",
+          owner: "security@example.com",
+          expires_at: "2999-12-31T23:59:59.000Z",
+          matched_on: ["severity"],
+          applied_at: "2026-01-01T00:00:00.000Z"
+        }
+      : undefined
+  } as Finding;
+}

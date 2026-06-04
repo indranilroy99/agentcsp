@@ -388,18 +388,29 @@ export const AgentManifestSchema = z.object({
   static_blast_radius: StaticBlastRadiusSummarySchema.optional()
 });
 
-export const ScanConfigSchema = z.object({
-  root_path: z.string(),
-  output_path: z.string().default(".agentcsp"),
-  config_path: z.string().optional(),
-  formats: z.array(z.enum(["json", "md", "sarif"])).default(["json", "md"]),
-  include_hidden: z.boolean().default(true),
-  include_logs: z.boolean().default(false),
-  max_file_size_bytes: z.number().int().positive().default(1024 * 1024),
-  max_files: z.number().int().positive().default(5000),
-  quiet: z.boolean().default(false),
-  fail_on: SeveritySchema.optional()
-});
+export const ScanConfigSchema = z
+  .object({
+    root_path: z.string(),
+    output_path: z.string().default(".agentcsp"),
+    config_path: z.string().optional(),
+    formats: z.array(z.enum(["json", "md", "sarif"])).default(["json", "md"]),
+    include_hidden: z.boolean().default(true),
+    include_logs: z.boolean().default(false),
+    max_file_size_bytes: z.number().int().positive().default(1024 * 1024),
+    max_files: z.number().int().positive().default(5000),
+    quiet: z.boolean().default(false),
+    fail_on: SeveritySchema.optional(),
+    fail_on_confidence: ConfidenceSchema.optional()
+  })
+  .superRefine((config, context) => {
+    if (config.fail_on_confidence && !config.fail_on) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["fail_on_confidence"],
+        message: "fail_on_confidence requires fail_on"
+      });
+    }
+  });
 
 export type TrustLevel = z.infer<typeof TrustLevelSchema>;
 export type DataClass = z.infer<typeof DataClassSchema>;

@@ -254,6 +254,17 @@ The current iteration adds:
 - SARIF run properties for `agentcsp_triage_summary` and `agentcsp_static_blast_radius`
 - regression coverage for vulnerable and safe fixtures
 
+## Confidence-Aware CI Gate Pass
+
+The current iteration adds:
+
+- `--fail-on-confidence very_high|high|medium|low` for precision-tuned CI gates
+- scan config `fail_on_confidence`
+- severity-only `--fail-on` behavior remains backward compatible
+- active suppressions remain excluded from fail gates
+- regression coverage for severity-only, confidence-aware, and suppressed finding gates
+- lint script updated to type-check package projects directly under TypeScript 5.9
+
 ## Initial Build Recommendation
 
 Start with a CLI-first MVP before building the dashboard:

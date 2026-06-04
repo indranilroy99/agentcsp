@@ -1,4 +1,4 @@
-import type { Finding, RiskFactors, Rule, Severity, SurfaceObject } from "../schemas/index.js";
+import type { Confidence, Finding, RiskFactors, Rule, Severity, SurfaceObject } from "../schemas/index.js";
 
 const severityRank: Record<Severity, number> = {
   info: 0,
@@ -9,6 +9,13 @@ const severityRank: Record<Severity, number> = {
 };
 
 const severityByRank: Severity[] = ["info", "low", "medium", "high", "critical"];
+
+const confidenceRank: Record<Confidence, number> = {
+  low: 0,
+  medium: 1,
+  high: 2,
+  very_high: 3
+};
 
 const severityFloor: Record<Severity, number> = {
   info: 0,
@@ -99,10 +106,16 @@ export function severityFromScore(score: number, floor?: Severity): Severity {
   return severityByRank[Math.max(floorRank, cappedRank)] ?? floor;
 }
 
-export function shouldFail(findings: Finding[], failOn?: Severity): boolean {
+export function shouldFail(findings: Finding[], failOn?: Severity, failOnConfidence?: Confidence): boolean {
   if (!failOn) return false;
   const threshold = severityRank[failOn];
-  return findings.some((finding) => finding.suppression?.status !== "active" && severityRank[finding.severity] >= threshold);
+  const confidenceThreshold = failOnConfidence ? confidenceRank[failOnConfidence] : undefined;
+  return findings.some((finding) => {
+    if (finding.suppression?.status === "active") return false;
+    if (severityRank[finding.severity] < threshold) return false;
+    if (confidenceThreshold === undefined) return true;
+    return confidenceRank[finding.confidence] >= confidenceThreshold;
+  });
 }
 
 export function highestSeverity(findings: Finding[]): Severity {

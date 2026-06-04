@@ -80,7 +80,7 @@ export async function scanProject(rawConfig: Partial<ScanConfig> & { root_path: 
     findings,
     reportMarkdown,
     outputFiles,
-    shouldFail: shouldFail(findings, config.fail_on)
+    shouldFail: shouldFail(findings, config.fail_on, config.fail_on_confidence)
   };
 }
 

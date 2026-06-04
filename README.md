@@ -123,6 +123,7 @@ agentcsp scan . \
   --config agentcsp.yaml \
   --format json,md,sarif \
   --fail-on critical \
+  --fail-on-confidence high \
   --no-hidden \
   --include-logs \
   --max-file-size 1048576 \
@@ -130,6 +131,8 @@ agentcsp scan . \
 ```
 
 AgentCSP exits with code `0` by default when a scan completes, even if findings exist. CI failure is opt-in through `--fail-on critical`, `--fail-on high`, `--fail-on medium`, or `--fail-on low`.
+
+Use `--fail-on-confidence high` or `--fail-on-confidence very_high` with `--fail-on` when CI should fail only on findings that meet both impact and confidence thresholds.
 
 The terminal banner animates only in interactive terminals. It is suppressed by `--quiet`, disabled in CI and piped output, and can be turned off with `AGENTCSP_NO_ANIMATION=1`.
 

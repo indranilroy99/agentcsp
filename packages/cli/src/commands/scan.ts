@@ -1,5 +1,5 @@
 import path from "node:path";
-import { scanProject, SeveritySchema, type Severity } from "@agentcsp/core";
+import { ConfidenceSchema, scanProject, SeveritySchema, type Confidence, type Severity } from "@agentcsp/core";
 import { printBanner } from "../banner.js";
 
 const allowedFormats = new Set(["json", "md", "sarif"]);
@@ -8,6 +8,10 @@ export async function runScanCommand(targetPath: string, options: Record<string,
   const rootPath = path.resolve(targetPath);
   const formats = parseFormats(String(options.format ?? "json,md"));
   const failOn = parseFailOn(options.failOn);
+  const failOnConfidence = parseFailOnConfidence(options.failOnConfidence);
+  if (failOnConfidence && !failOn) {
+    throw new Error("--fail-on-confidence requires --fail-on");
+  }
   const includeHidden = options.hidden !== false;
   const includeLogs = Boolean(options.includeLogs);
   const quiet = Boolean(options.quiet);
@@ -21,7 +25,8 @@ export async function runScanCommand(targetPath: string, options: Record<string,
     include_logs: includeLogs,
     max_file_size_bytes: typeof options.maxFileSize === "number" ? options.maxFileSize : 1024 * 1024,
     quiet,
-    fail_on: failOn
+    fail_on: failOn,
+    fail_on_confidence: failOnConfidence
   });
 
   if (!quiet) {
@@ -62,6 +67,15 @@ function parseFailOn(value: unknown): Severity | undefined {
   const parsed = SeveritySchema.safeParse(value);
   if (!parsed.success || parsed.data === "info") {
     throw new Error("--fail-on must be one of critical, high, medium, or low");
+  }
+  return parsed.data;
+}
+
+function parseFailOnConfidence(value: unknown): Confidence | undefined {
+  if (value === undefined || value === null || value === false) return undefined;
+  const parsed = ConfidenceSchema.safeParse(value);
+  if (!parsed.success) {
+    throw new Error("--fail-on-confidence must be one of very_high, high, medium, or low");
   }
   return parsed.data;
 }

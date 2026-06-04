@@ -22,4 +22,25 @@ describe("cli options", () => {
       })
     ).rejects.toThrow("Expected json,md,sarif");
   });
+
+  it("rejects unsupported fail-on confidence values", async () => {
+    await expect(
+      runScanCommand(".", {
+        failOn: "high",
+        failOnConfidence: "certain",
+        format: "json",
+        quiet: true
+      })
+    ).rejects.toThrow("--fail-on-confidence must be one of very_high, high, medium, or low");
+  });
+
+  it("requires fail-on when fail-on confidence is set", async () => {
+    await expect(
+      runScanCommand(".", {
+        failOnConfidence: "high",
+        format: "json",
+        quiet: true
+      })
+    ).rejects.toThrow("--fail-on-confidence requires --fail-on");
+  });
 });

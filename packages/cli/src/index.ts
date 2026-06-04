@@ -18,6 +18,7 @@ program
   .option("--config <path>", "policy config path", "agentcsp.yaml")
   .option("--format <formats>", "comma-separated output formats: json,md,sarif", "json,md")
   .option("--fail-on <severity>", "fail when findings meet severity: critical,high,medium,low")
+  .option("--fail-on-confidence <confidence>", "with --fail-on, require minimum confidence: very_high,high,medium,low")
   .option("--no-hidden", "skip hidden AI/security folders")
   .option("--include-logs", "include log directories")
   .option("--max-file-size <bytes>", "maximum file size to inspect", parseInteger)

@@ -11,7 +11,7 @@
     "build": "pnpm -r build",
     "clean": "pnpm -r clean",
     "generate:schemas": "tsx scripts/generate-schemas.ts",
-    "lint": "tsc -b --noEmit",
+    "lint": "tsc -p packages/core/tsconfig.json --noEmit && tsc -p packages/cli/tsconfig.json --noEmit",
     "test": "vitest run",
     "test:watch": "vitest"
   },

@@ -16,6 +16,7 @@ A finding should be considered production-grade when it includes:
 - secret exposure signal
 - reason
 - confidence and confidence rationale
+- confidence-aware CI failure gates
 - recommended control
 - OWASP, MITRE ATLAS, and NIST AI RMF mappings where applicable
 - redacted evidence
