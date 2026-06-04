@@ -86,6 +86,16 @@ export const EvidenceSchema = z.object({
   reason: z.string()
 });
 
+export const ScanDiagnosticSchema = z.object({
+  id: z.string(),
+  severity: z.enum(["info", "warning", "error"]),
+  code: z.string(),
+  file_path: z.string(),
+  parser: z.string(),
+  reason: z.string(),
+  content_redacted: z.literal(true).default(true)
+});
+
 export const SurfaceObjectSchema = z.object({
   id: z.string(),
   type: SurfaceTypeSchema,
@@ -414,6 +424,7 @@ export const AgentManifestSchema = z.object({
   attack_paths: z.array(AttackPathSchema).default([]),
   findings: z.array(FindingSchema).default([]),
   evidence: z.array(EvidenceSchema).default([]),
+  diagnostics: z.array(ScanDiagnosticSchema).default([]),
   triage_summary: TriageSummarySchema.optional(),
   baseline_comparison: BaselineComparisonSchema.optional(),
   scan_coverage: ScanCoverageSummarySchema.optional(),
@@ -471,6 +482,7 @@ export type FindingBaselineStatus = z.infer<typeof FindingBaselineStatusSchema>;
 export type SurfaceType = z.infer<typeof SurfaceTypeSchema>;
 export type RiskFactors = z.infer<typeof RiskFactorsSchema>;
 export type Evidence = z.infer<typeof EvidenceSchema>;
+export type ScanDiagnostic = z.infer<typeof ScanDiagnosticSchema>;
 export type SurfaceObject = z.infer<typeof SurfaceObjectSchema>;
 export type GraphNodeRef = z.infer<typeof GraphNodeRefSchema>;
 export type GraphRelation = z.infer<typeof GraphRelationSchema>;

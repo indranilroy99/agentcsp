@@ -289,6 +289,18 @@ The current iteration adds:
 - walker and report regression coverage
 - note: default excluded directories were already applied through `IgnoreMatcher`; this pass makes scan scope visible rather than changing default ignore semantics
 
+## Scan Diagnostics Pass
+
+The current iteration adds:
+
+- manifest-level `diagnostics` for redacted scan health warnings
+- parser diagnostics for malformed MCP configs, package manifests, GitHub workflows, runtime configs, and tool definition files
+- parse-error metadata on affected fallback surfaces
+- Markdown Scan Diagnostics section
+- SARIF run-level `agentcsp_diagnostics`
+- CLI diagnostics count in non-quiet output
+- regression coverage proving raw malformed content and secret-like values are not emitted
+
 ## Initial Build Recommendation
 
 Start with a CLI-first MVP before building the dashboard:

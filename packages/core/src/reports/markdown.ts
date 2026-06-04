@@ -33,6 +33,8 @@ export function renderMarkdownReport(manifest: AgentManifest): string {
     "",
     renderScanCoverage(manifest),
     "",
+    renderDiagnostics(manifest),
+    "",
     "## Surface Inventory",
     "",
     ...counts.map(([label, count]) => `- ${label}: ${count}`),
@@ -91,6 +93,20 @@ function renderTriageSummary(manifest: AgentManifest): string {
     "### Top Active Risks",
     "",
     renderTopRiskTable(summary.top_active_risks)
+  ].join("\n");
+}
+
+function renderDiagnostics(manifest: AgentManifest): string {
+  if (manifest.diagnostics.length === 0) return "## Scan Diagnostics\n\nNo scan diagnostics were generated.";
+  return [
+    "## Scan Diagnostics",
+    "",
+    "| Severity | Code | Parser | Path | Reason |",
+    "| --- | --- | --- | --- | --- |",
+    ...manifest.diagnostics.map(
+      (diagnostic) =>
+        `| ${diagnostic.severity} | ${diagnostic.code} | ${diagnostic.parser} | \`${escapeTable(diagnostic.file_path)}\` | ${escapeTable(diagnostic.reason)} |`
+    )
   ].join("\n");
 }
 

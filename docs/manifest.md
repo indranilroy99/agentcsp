@@ -2,7 +2,7 @@
 
 The Agent Manifest is the SBOM equivalent for an AI agent deployment.
 
-It captures normalized agent-facing surfaces, authority signals, trust levels, data classes, findings, evidence, the Triage Summary, optional baseline comparison, scan coverage, and the Static Blast-Radius Summary.
+It captures normalized agent-facing surfaces, authority signals, trust levels, data classes, findings, evidence, diagnostics, the Triage Summary, optional baseline comparison, scan coverage, and the Static Blast-Radius Summary.
 
 Core sections:
 
@@ -24,6 +24,7 @@ Core sections:
 - `attack_paths`
 - `findings`
 - `evidence`
+- `diagnostics`
 - `triage_summary`
 - `baseline_comparison`
 - `scan_coverage`
@@ -202,6 +203,22 @@ The summary includes:
 - configured `max_files` and `max_file_size_bytes`
 
 Coverage counts do not include raw file contents or skipped path lists.
+
+## Diagnostics
+
+`diagnostics` records scan health issues that may affect completeness, such as malformed MCP configs, runtime configs, package manifests, workflow files, or tool definition files.
+
+Each diagnostic includes:
+
+- stable diagnostic ID
+- severity
+- code
+- file path
+- parser
+- reason
+- `content_redacted: true`
+
+Diagnostics do not include raw parser stack traces, raw file contents, secret values, or evidence snippets.
 
 ## Relationships
 

@@ -63,6 +63,7 @@ export function buildManifest(input: {
     attack_paths: sortAttackPaths(input.attackPaths ?? []),
     findings: sortFindings(input.findings ?? []),
     evidence,
+    diagnostics: input.surfaces.diagnostics,
     triage_summary: input.triageSummary,
     baseline_comparison: input.baselineComparison,
     scan_coverage: input.scanCoverage,

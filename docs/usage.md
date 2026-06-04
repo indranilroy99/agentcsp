@@ -27,6 +27,8 @@ Tune traversal limits with:
 agentcsp scan . --max-file-size 1048576 --max-files 5000
 ```
 
+`diagnostics` records redacted scan health warnings, such as malformed MCP, runtime, workflow, package, or tool definition files. Treat diagnostics as evidence that a file may need syntax repair or manual review before relying on a quiet scan.
+
 ## CI Behavior
 
 AgentCSP does not fail CI by default. A completed scan exits with code `0` even when findings are present.
@@ -85,7 +87,7 @@ The generated SARIF file is:
 .agentcsp/agentcsp.sarif
 ```
 
-SARIF run properties include `agentcsp_triage_summary`, `agentcsp_baseline_comparison`, `agentcsp_scan_coverage`, and `agentcsp_static_blast_radius` so CI systems can consume scan-level context without parsing Markdown. When a baseline is provided, SARIF results include `baselineState` values for current findings.
+SARIF run properties include `agentcsp_triage_summary`, `agentcsp_baseline_comparison`, `agentcsp_scan_coverage`, `agentcsp_diagnostics`, and `agentcsp_static_blast_radius` so CI systems can consume scan-level context without parsing Markdown. When a baseline is provided, SARIF results include `baselineState` values for current findings.
 
 ## Scanner Safety
 

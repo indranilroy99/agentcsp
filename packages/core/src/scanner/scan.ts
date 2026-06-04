@@ -109,7 +109,8 @@ function applyPolicyToSurfaces(surfaces: DetectedSurfaces, policy: Awaited<Retur
     secrets: sortObjects(applyTrustOverrides(surfaces.secrets, policy)),
     runtime_config: sortObjects(applyTrustOverrides(surfaces.runtime_config, policy)),
     ci_cd: sortObjects(applyTrustOverrides(surfaces.ci_cd, policy)),
-    automations: sortObjects(applyTrustOverrides(surfaces.automations, policy))
+    automations: sortObjects(applyTrustOverrides(surfaces.automations, policy)),
+    diagnostics: [...surfaces.diagnostics].sort((a, b) => a.id.localeCompare(b.id))
   };
 }
 

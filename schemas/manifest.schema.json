@@ -733,6 +733,52 @@
           },
           "default": []
         },
+        "diagnostics": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "severity": {
+                "type": "string",
+                "enum": [
+                  "info",
+                  "warning",
+                  "error"
+                ]
+              },
+              "code": {
+                "type": "string"
+              },
+              "file_path": {
+                "type": "string"
+              },
+              "parser": {
+                "type": "string"
+              },
+              "reason": {
+                "type": "string"
+              },
+              "content_redacted": {
+                "type": "boolean",
+                "const": true,
+                "default": true
+              }
+            },
+            "required": [
+              "id",
+              "severity",
+              "code",
+              "file_path",
+              "parser",
+              "reason"
+            ],
+            "additionalProperties": false
+          },
+          "default": []
+        },
         "triage_summary": {
           "type": "object",
           "properties": {

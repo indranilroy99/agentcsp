@@ -57,6 +57,7 @@ Runtime enforcement adapters, deeper graph traversal, and the dashboard are plan
 - **Triage Summary**: summarizes active findings by severity, confidence, surface type, category, recommended control, top rules, and top risk objects.
 - **Baseline Comparison**: compares current findings to previous scan output so teams can separate new risk from existing debt.
 - **Scan Coverage Summary**: reports indexed files, oversized files, ignored paths, skipped hidden/log directories, and max-file limits.
+- **Scan Diagnostics**: emits redacted parser diagnostics when security-relevant configs cannot be parsed.
 - **Static Attack Paths**: connects context sources to privileged capabilities so teams can see provenance-to-authority paths instead of isolated alerts.
 - **Auditable Suppressions**: supports owned, reasoned, expiring accepted-risk records without deleting evidence.
 - **Open Rule Packs**: constrained YAML rules operate over normalized manifest objects. No custom JavaScript execution is allowed in rules.
@@ -182,6 +183,7 @@ The Agent Manifest is the SBOM equivalent for AI agent deployments. Core section
 - `attack_paths`
 - `findings`
 - `evidence`
+- `diagnostics`
 - `triage_summary`
 - `baseline_comparison`
 - `scan_coverage`

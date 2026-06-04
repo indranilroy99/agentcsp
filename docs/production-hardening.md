@@ -19,6 +19,7 @@ A finding should be considered production-grade when it includes:
 - confidence-aware CI failure gates
 - baseline comparison for new, existing, and resolved findings
 - scan coverage counts for skipped files, ignored paths, and traversal limits
+- redacted parser diagnostics for malformed security-relevant configuration
 - recommended control
 - OWASP, MITRE ATLAS, and NIST AI RMF mappings where applicable
 - redacted evidence

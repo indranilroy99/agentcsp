@@ -8,8 +8,9 @@ import {
   MEMORY_DIR_NAMES,
   RAG_DIR_NAMES
 } from "./defaults.js";
-import type { ActionType, SurfaceObject } from "../schemas/index.js";
+import type { ActionType, ScanDiagnostic, SurfaceObject } from "../schemas/index.js";
 import type { WalkedFile } from "./walk.js";
+import { stableId } from "../utils/ids.js";
 import { readTextFile } from "./read-safe.js";
 import {
   createSurfaceObject,
@@ -39,6 +40,7 @@ export interface DetectedSurfaces {
   runtime_config: SurfaceObject[];
   ci_cd: SurfaceObject[];
   automations: SurfaceObject[];
+  diagnostics: ScanDiagnostic[];
 }
 
 export function emptyDetectedSurfaces(): DetectedSurfaces {
@@ -55,7 +57,8 @@ export function emptyDetectedSurfaces(): DetectedSurfaces {
     secrets: [],
     runtime_config: [],
     ci_cd: [],
-    automations: []
+    automations: [],
+    diagnostics: []
   };
 }
 
@@ -376,13 +379,40 @@ function contextActions(signals: ContextContentSignals, type: "rag_source" | "me
   return [...actions].sort((a, b) => a.localeCompare(b));
 }
 
+function addDiagnostic(
+  surfaces: DetectedSurfaces,
+  file: WalkedFile,
+  diagnostic: Omit<ScanDiagnostic, "id" | "file_path" | "severity" | "content_redacted"> & {
+    severity?: ScanDiagnostic["severity"];
+  }
+): void {
+  surfaces.diagnostics.push({
+    id: stableId("diagnostic", [diagnostic.code, file.relativePath]),
+    severity: diagnostic.severity ?? "warning",
+    code: diagnostic.code,
+    file_path: file.relativePath,
+    parser: diagnostic.parser,
+    reason: diagnostic.reason,
+    content_redacted: true
+  });
+}
+
 async function detectMcpConfig(file: WalkedFile, text: string | undefined, surfaces: DetectedSurfaces): Promise<void> {
   const raw = text ?? "{}";
   let parsed: unknown;
+  let parseFailed = false;
   try {
     parsed = JSON.parse(raw);
   } catch {
+    parseFailed = raw.trim().length > 0;
     parsed = {};
+  }
+  if (parseFailed) {
+    addDiagnostic(surfaces, file, {
+      parser: "json",
+      code: "MCP_CONFIG_PARSE_FAILED",
+      reason: "MCP configuration could not be parsed as JSON. Raw content was redacted."
+    });
   }
   const servers = extractMcpServers(parsed);
   if (servers.length === 0) {
@@ -394,7 +424,7 @@ async function detectMcpConfig(file: WalkedFile, text: string | undefined, surfa
         actions: ["call"],
         side_effect: true,
         reason: "MCP configuration discovered.",
-        metadata: { content_redacted: true, server_count: 0 }
+        metadata: { content_redacted: true, server_count: 0, parse_error: parseFailed }
       })
     );
     return;
@@ -472,6 +502,11 @@ async function detectPackageScripts(file: WalkedFile, text: string | undefined, 
       });
     }
   } catch {
+    addDiagnostic(surfaces, file, {
+      parser: "json",
+      code: "PACKAGE_JSON_PARSE_FAILED",
+      reason: "package.json could not be parsed as JSON, so package script authority may be incomplete. Raw content was redacted."
+    });
     return;
   }
 }
@@ -479,10 +514,19 @@ async function detectPackageScripts(file: WalkedFile, text: string | undefined, 
 function detectWorkflow(file: WalkedFile, text: string | undefined, surfaces: DetectedSurfaces): void {
   const content = text ?? "";
   let parsed: Record<string, unknown> = {};
+  let parseFailed = false;
   try {
     parsed = (YAML.parse(content) ?? {}) as Record<string, unknown>;
   } catch {
+    parseFailed = content.trim().length > 0;
     parsed = {};
+  }
+  if (parseFailed) {
+    addDiagnostic(surfaces, file, {
+      parser: "yaml",
+      code: "WORKFLOW_PARSE_FAILED",
+      reason: "GitHub Actions workflow could not be parsed as YAML. Text heuristics still ran with raw content redacted."
+    });
   }
   const permissions = parsed.permissions;
   const actions = detectActions(content);
@@ -505,6 +549,7 @@ function detectWorkflow(file: WalkedFile, text: string | undefined, surfaces: De
       content_redacted: true,
       has_permissions_block: Boolean(permissions),
       trigger_names: triggerNames,
+      parse_error: parseFailed,
       pull_request_trigger: triggerNames.some((trigger) => ["pull_request", "pull_request_target"].includes(trigger)),
       write_permissions: writePermissions,
       mentions_secrets_context: mentionsSecretsContext
@@ -577,7 +622,15 @@ function detectWorkflowAutomation(
 
 function detectToolDefinition(file: WalkedFile, text: string | undefined, surfaces: DetectedSurfaces): void {
   const content = text ?? "";
-  const toolDefinitions = extractToolDefinitions(content);
+  const extraction = extractToolDefinitions(content);
+  const toolDefinitions = extraction.definitions;
+  if (extraction.parseFailed) {
+    addDiagnostic(surfaces, file, {
+      parser: "json_or_yaml",
+      code: "TOOL_DEFINITION_PARSE_FAILED",
+      reason: "Tool definition file could not be parsed as JSON or YAML. Text heuristics still ran with raw content redacted."
+    });
+  }
   if (toolDefinitions.length === 0) {
     const actions = detectActions(content);
     const object = createSurfaceObject({
@@ -591,7 +644,7 @@ function detectToolDefinition(file: WalkedFile, text: string | undefined, surfac
       secret_exposure: hasSecretExposure(content),
       reversible: isReversible(content),
       reason: "Tool definition file discovered as agent-callable capability metadata.",
-      metadata: { content_redacted: true, parsed_tool_schema: false }
+      metadata: { content_redacted: true, parsed_tool_schema: false, parse_error: extraction.parseFailed }
     });
     surfaces.tools.push({
       ...object,
@@ -638,8 +691,15 @@ function detectToolDefinition(file: WalkedFile, text: string | undefined, surfac
 }
 
 function detectRuntimeConfig(file: WalkedFile, text: string | undefined, surfaces: DetectedSurfaces): void {
-  const parsed = parseRuntimeConfig(text ?? "", file.relativePath);
-  if (!parsed) {
+  const parseResult = parseRuntimeConfig(text ?? "", file.relativePath);
+  if (parseResult.parseFailed) {
+    addDiagnostic(surfaces, file, {
+      parser: parseResult.parser ?? "runtime_config",
+      code: "RUNTIME_CONFIG_PARSE_FAILED",
+      reason: "Agent runtime configuration could not be parsed. Raw content was redacted."
+    });
+  }
+  if (!parseResult.value) {
     const object = createSurfaceObject({
       type: "runtime_config",
       name: path.basename(file.relativePath),
@@ -649,6 +709,7 @@ function detectRuntimeConfig(file: WalkedFile, text: string | undefined, surface
       metadata: {
         content_redacted: true,
         parsed_runtime_config: false,
+        parse_error: parseResult.parseFailed,
         skipped_for_size: file.skippedForSize
       }
     });
@@ -656,7 +717,7 @@ function detectRuntimeConfig(file: WalkedFile, text: string | undefined, surface
     return;
   }
 
-  const posture = classifyRuntimeConfig(parsed);
+  const posture = classifyRuntimeConfig(parseResult.value);
   const actions = new Set<"read" | "write" | "execute" | "publish" | "send" | "delete" | "remember" | "call">(["call"]);
   if (posture.privileged_tool_signals.some((signal) => ["shell", "terminal", "exec"].includes(signal))) actions.add("execute");
   if (posture.network_enabled) actions.add("send");
@@ -872,17 +933,24 @@ function isRuntimeConfigPath(relativePath: string, basename: string): boolean {
   return false;
 }
 
-function parseRuntimeConfig(content: string, filePath: string): unknown | undefined {
-  if (!content.trim()) return undefined;
+function parseRuntimeConfig(content: string, filePath: string): { value?: unknown; parseFailed: boolean; parser?: string } {
+  if (!content.trim()) return { parseFailed: false };
   const lowerPath = filePath.toLowerCase();
+  const parser = lowerPath.endsWith(".json")
+    ? "json"
+    : lowerPath.endsWith(".toml")
+      ? "toml"
+      : lowerPath.endsWith(".yaml") || lowerPath.endsWith(".yml")
+        ? "yaml"
+        : undefined;
   try {
-    if (lowerPath.endsWith(".json")) return JSON.parse(content);
-    if (lowerPath.endsWith(".toml")) return parseToml(content);
-    if (lowerPath.endsWith(".yaml") || lowerPath.endsWith(".yml")) return YAML.parse(content);
+    if (parser === "json") return { value: JSON.parse(content), parseFailed: false, parser };
+    if (parser === "toml") return { value: parseToml(content), parseFailed: false, parser };
+    if (parser === "yaml") return { value: YAML.parse(content), parseFailed: false, parser };
   } catch {
-    return undefined;
+    return { parseFailed: true, parser };
   }
-  return undefined;
+  return { parseFailed: false, parser };
 }
 
 function classifyRuntimeConfig(value: unknown): RuntimePosture {
@@ -1009,8 +1077,8 @@ interface ExtractedToolDefinition {
   openWorldSchema: boolean;
 }
 
-function extractToolDefinitions(content: string): ExtractedToolDefinition[] {
-  if (!content.trim()) return [];
+function extractToolDefinitions(content: string): { definitions: ExtractedToolDefinition[]; parseFailed: boolean } {
+  if (!content.trim()) return { definitions: [], parseFailed: false };
   let parsed: unknown;
   try {
     parsed = JSON.parse(content);
@@ -1018,14 +1086,17 @@ function extractToolDefinitions(content: string): ExtractedToolDefinition[] {
     try {
       parsed = YAML.parse(content);
     } catch {
-      return [];
+      return { definitions: [], parseFailed: true };
     }
   }
   const candidates = toolCandidates(parsed);
-  return candidates
-    .map((candidate) => normalizeToolDefinition(candidate))
-    .filter((candidate): candidate is ExtractedToolDefinition => Boolean(candidate))
-    .sort((a, b) => a.name.localeCompare(b.name));
+  return {
+    definitions: candidates
+      .map((candidate) => normalizeToolDefinition(candidate))
+      .filter((candidate): candidate is ExtractedToolDefinition => Boolean(candidate))
+      .sort((a, b) => a.name.localeCompare(b.name)),
+    parseFailed: false
+  };
 }
 
 function toolCandidates(value: unknown): unknown[] {

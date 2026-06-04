@@ -54,6 +54,7 @@ export async function runScanCommand(targetPath: string, options: Record<string,
         `Coverage: ${result.manifest.scan_coverage.files_indexed} indexed, ${result.manifest.scan_coverage.files_skipped_for_size} oversized, max files reached: ${result.manifest.scan_coverage.max_files_reached}`
       );
     }
+    console.log(`Diagnostics: ${result.manifest.diagnostics.length}`);
     if (result.manifest.baseline_comparison) {
       console.log(
         `Baseline: ${result.manifest.baseline_comparison.new_findings} new, ${result.manifest.baseline_comparison.existing_findings} existing, ${result.manifest.baseline_comparison.resolved_findings} resolved`
