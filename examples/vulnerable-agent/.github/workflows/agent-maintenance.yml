@@ -1,0 +1,20 @@
+name: Agent maintenance
+
+on:
+  workflow_dispatch:
+  pull_request:
+
+permissions:
+  contents: write
+  issues: write
+
+jobs:
+  maintain:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run agent maintenance
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        run: pnpm agent:run

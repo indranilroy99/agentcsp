@@ -1,0 +1,254 @@
+import { z } from "zod";
+
+export const ManifestSchemaVersion = "0.1.0";
+
+export const TrustLevelSchema = z.enum([
+  "trusted",
+  "project",
+  "workspace",
+  "third_party",
+  "untrusted",
+  "unknown"
+]);
+
+export const DataClassSchema = z.enum([
+  "public",
+  "internal",
+  "confidential",
+  "secret",
+  "credential",
+  "pii",
+  "unknown"
+]);
+
+export const ActionTypeSchema = z.enum([
+  "read",
+  "write",
+  "execute",
+  "publish",
+  "send",
+  "delete",
+  "approve",
+  "remember",
+  "call"
+]);
+
+export const ControlSchema = z.enum([
+  "allow",
+  "deny",
+  "require_approval",
+  "redact",
+  "quarantine",
+  "warn"
+]);
+
+export const SeveritySchema = z.enum(["info", "low", "medium", "high", "critical"]);
+
+export const SurfaceTypeSchema = z.enum([
+  "agent",
+  "instruction",
+  "skill",
+  "plugin",
+  "mcp_server",
+  "tool",
+  "prompt",
+  "rag_source",
+  "memory",
+  "secret",
+  "runtime_config",
+  "ci_cd",
+  "automation"
+]);
+
+export const RiskFactorsSchema = z.object({
+  trust_level: TrustLevelSchema,
+  data_classes: z.array(DataClassSchema).default([]),
+  actions: z.array(ActionTypeSchema).default([]),
+  side_effect: z.boolean().default(false),
+  reversible: z.boolean().default(true),
+  external_reach: z.boolean().default(false),
+  secret_exposure: z.boolean().default(false),
+  untrusted_to_privileged: z.boolean().default(false),
+  score: z.number().int().min(0).max(100).default(0),
+  rationale: z.array(z.string()).default([])
+});
+
+export const EvidenceSchema = z.object({
+  id: z.string(),
+  object_id: z.string(),
+  file_path: z.string(),
+  line: z.number().int().positive().optional(),
+  snippet: z.literal("[redacted by default]").default("[redacted by default]"),
+  redacted: z.literal(true).default(true),
+  reason: z.string()
+});
+
+export const SurfaceObjectSchema = z.object({
+  id: z.string(),
+  type: SurfaceTypeSchema,
+  name: z.string(),
+  path: z.string(),
+  trust_level: TrustLevelSchema.default("unknown"),
+  data_classes: z.array(DataClassSchema).default([]),
+  actions: z.array(ActionTypeSchema).default([]),
+  side_effect: z.boolean().default(false),
+  reversible: z.boolean().default(true),
+  external_reach: z.boolean().default(false),
+  secret_exposure: z.boolean().default(false),
+  untrusted_to_privileged: z.boolean().default(false),
+  evidence: z.array(EvidenceSchema).default([]),
+  metadata: z.record(z.unknown()).default({})
+});
+
+export const FindingSchema = z.object({
+  id: z.string(),
+  rule_id: z.string(),
+  name: z.string(),
+  category: z.string(),
+  severity: SeveritySchema,
+  matched_object: SurfaceObjectSchema,
+  file_path: z.string(),
+  reason: z.string(),
+  trust_boundary_crossed: z.boolean(),
+  data_classes: z.array(DataClassSchema),
+  recommended_control: ControlSchema,
+  risk: RiskFactorsSchema,
+  maps_to: z
+    .object({
+      owasp: z.array(z.string()).default([]),
+      mitre_atlas: z.array(z.string()).default([]),
+      nist_ai_rmf: z.array(z.string()).default([])
+    })
+    .default({ owasp: [], mitre_atlas: [], nist_ai_rmf: [] }),
+  evidence: z.array(EvidenceSchema).default([])
+});
+
+export const RuleConditionSchema = z.object({
+  field: z.string(),
+  op: z.enum(["equals", "not_equals", "includes", "contains_any", "exists", "in", "gt", "gte", "lt", "lte"]),
+  value: z.unknown().optional()
+});
+
+export const RuleSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  description: z.string(),
+  category: z.string(),
+  severity: SeveritySchema,
+  maps_to: z
+    .object({
+      owasp: z.array(z.string()).default([]),
+      mitre_atlas: z.array(z.string()).default([]),
+      nist_ai_rmf: z.array(z.string()).default([])
+    })
+    .default({ owasp: [], mitre_atlas: [], nist_ai_rmf: [] }),
+  match: z.object({
+    object_type: SurfaceTypeSchema.optional(),
+    where: z.array(RuleConditionSchema).default([])
+  }),
+  recommendation: z.object({
+    control: ControlSchema,
+    text: z.string()
+  })
+});
+
+export const PolicySchema = z.object({
+  schema_version: z.string().default("0.1"),
+  trust_overrides: z
+    .array(
+      z.object({
+        path: z.string(),
+        trust_level: TrustLevelSchema
+      })
+    )
+    .default([]),
+  recommended_controls: z
+    .array(
+      z.object({
+        match: z.record(z.unknown()),
+        control: ControlSchema,
+        reason: z.string()
+      })
+    )
+    .default([])
+});
+
+export const StaticBlastRadiusSummarySchema = z.object({
+  title: z.literal("Static Blast-Radius Summary").default("Static Blast-Radius Summary"),
+  read_paths: z.number().int().nonnegative().default(0),
+  write_paths: z.number().int().nonnegative().default(0),
+  execute_paths: z.number().int().nonnegative().default(0),
+  external_reach_paths: z.number().int().nonnegative().default(0),
+  secret_reference_paths: z.number().int().nonnegative().default(0),
+  memory_surfaces: z.number().int().nonnegative().default(0),
+  rag_surfaces: z.number().int().nonnegative().default(0),
+  highest_severity: SeveritySchema.default("info"),
+  high_risk_objects: z.array(SurfaceObjectSchema).default([]),
+  recommended_controls: z.array(z.string()).default([])
+});
+
+export const ManifestMetadataSchema = z.object({
+  schema_version: z.literal(ManifestSchemaVersion),
+  generated_at: z.string(),
+  root_path: z.string(),
+  scanner: z.object({
+    name: z.literal("agentcsp"),
+    version: z.string()
+  }),
+  config: z.object({
+    include_hidden: z.boolean(),
+    include_logs: z.boolean(),
+    max_file_size_bytes: z.number().int().positive(),
+    evidence_redacted: z.literal(true),
+    secret_values_collected: z.literal(false)
+  })
+});
+
+export const AgentManifestSchema = z.object({
+  metadata: ManifestMetadataSchema,
+  agents: z.array(SurfaceObjectSchema).default([]),
+  instructions: z.array(SurfaceObjectSchema).default([]),
+  skills: z.array(SurfaceObjectSchema).default([]),
+  plugins: z.array(SurfaceObjectSchema).default([]),
+  mcp_servers: z.array(SurfaceObjectSchema).default([]),
+  tools: z.array(SurfaceObjectSchema).default([]),
+  prompts: z.array(SurfaceObjectSchema).default([]),
+  rag_sources: z.array(SurfaceObjectSchema).default([]),
+  memory: z.array(SurfaceObjectSchema).default([]),
+  secrets: z.array(SurfaceObjectSchema).default([]),
+  runtime_config: z.array(SurfaceObjectSchema).default([]),
+  ci_cd: z.array(SurfaceObjectSchema).default([]),
+  automations: z.array(SurfaceObjectSchema).default([]),
+  findings: z.array(FindingSchema).default([]),
+  evidence: z.array(EvidenceSchema).default([]),
+  static_blast_radius: StaticBlastRadiusSummarySchema.optional()
+});
+
+export const ScanConfigSchema = z.object({
+  root_path: z.string(),
+  output_path: z.string().default(".agentcsp"),
+  config_path: z.string().optional(),
+  formats: z.array(z.enum(["json", "md"])).default(["json", "md"]),
+  include_hidden: z.boolean().default(true),
+  include_logs: z.boolean().default(false),
+  max_file_size_bytes: z.number().int().positive().default(1024 * 1024),
+  max_files: z.number().int().positive().default(5000),
+  quiet: z.boolean().default(false),
+  fail_on: SeveritySchema.optional()
+});
+
+export type TrustLevel = z.infer<typeof TrustLevelSchema>;
+export type DataClass = z.infer<typeof DataClassSchema>;
+export type ActionType = z.infer<typeof ActionTypeSchema>;
+export type Control = z.infer<typeof ControlSchema>;
+export type Severity = z.infer<typeof SeveritySchema>;
+export type SurfaceType = z.infer<typeof SurfaceTypeSchema>;
+export type RiskFactors = z.infer<typeof RiskFactorsSchema>;
+export type Evidence = z.infer<typeof EvidenceSchema>;
+export type SurfaceObject = z.infer<typeof SurfaceObjectSchema>;
+export type Finding = z.infer<typeof FindingSchema>;
+export type Rule = z.infer<typeof RuleSchema>;
+export type Policy = z.infer<typeof PolicySchema>;
+export type AgentManifest = z.infer<typeof AgentManifestSchema>;
+export type ScanConfig = z.infer<typeof ScanConfigSchema>;
+export type StaticBlastRadiusSummary = z.infer<typeof StaticBlastRadiusSummarySchema>;

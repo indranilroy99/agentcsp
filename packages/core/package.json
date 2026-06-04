@@ -1,0 +1,31 @@
+{
+  "name": "@agentcsp/core",
+  "version": "0.1.0",
+  "description": "Core scanner, manifest, policy, rule, risk, and reporting engine for AgentCSP.",
+  "license": "Apache-2.0",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./schemas": {
+      "types": "./dist/schemas/index.d.ts",
+      "import": "./dist/schemas/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "clean": "rimraf dist"
+  },
+  "dependencies": {
+    "minimatch": "^10.0.1",
+    "yaml": "^2.8.0",
+    "zod": "^3.25.28"
+  },
+  "devDependencies": {
+    "rimraf": "^6.0.1"
+  }
+}

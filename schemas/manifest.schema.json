@@ -1,0 +1,570 @@
+{
+  "$ref": "#/definitions/AgentCSP Agent Manifest",
+  "definitions": {
+    "AgentCSP Agent Manifest": {
+      "type": "object",
+      "properties": {
+        "metadata": {
+          "type": "object",
+          "properties": {
+            "schema_version": {
+              "type": "string",
+              "const": "0.1.0"
+            },
+            "generated_at": {
+              "type": "string"
+            },
+            "root_path": {
+              "type": "string"
+            },
+            "scanner": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string",
+                  "const": "agentcsp"
+                },
+                "version": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "name",
+                "version"
+              ],
+              "additionalProperties": false
+            },
+            "config": {
+              "type": "object",
+              "properties": {
+                "include_hidden": {
+                  "type": "boolean"
+                },
+                "include_logs": {
+                  "type": "boolean"
+                },
+                "max_file_size_bytes": {
+                  "type": "integer",
+                  "exclusiveMinimum": 0
+                },
+                "evidence_redacted": {
+                  "type": "boolean",
+                  "const": true
+                },
+                "secret_values_collected": {
+                  "type": "boolean",
+                  "const": false
+                }
+              },
+              "required": [
+                "include_hidden",
+                "include_logs",
+                "max_file_size_bytes",
+                "evidence_redacted",
+                "secret_values_collected"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "schema_version",
+            "generated_at",
+            "root_path",
+            "scanner",
+            "config"
+          ],
+          "additionalProperties": false
+        },
+        "agents": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "type": {
+                "type": "string",
+                "enum": [
+                  "agent",
+                  "instruction",
+                  "skill",
+                  "plugin",
+                  "mcp_server",
+                  "tool",
+                  "prompt",
+                  "rag_source",
+                  "memory",
+                  "secret",
+                  "runtime_config",
+                  "ci_cd",
+                  "automation"
+                ]
+              },
+              "name": {
+                "type": "string"
+              },
+              "path": {
+                "type": "string"
+              },
+              "trust_level": {
+                "type": "string",
+                "enum": [
+                  "trusted",
+                  "project",
+                  "workspace",
+                  "third_party",
+                  "untrusted",
+                  "unknown"
+                ],
+                "default": "unknown"
+              },
+              "data_classes": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "enum": [
+                    "public",
+                    "internal",
+                    "confidential",
+                    "secret",
+                    "credential",
+                    "pii",
+                    "unknown"
+                  ]
+                },
+                "default": []
+              },
+              "actions": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "enum": [
+                    "read",
+                    "write",
+                    "execute",
+                    "publish",
+                    "send",
+                    "delete",
+                    "approve",
+                    "remember",
+                    "call"
+                  ]
+                },
+                "default": []
+              },
+              "side_effect": {
+                "type": "boolean",
+                "default": false
+              },
+              "reversible": {
+                "type": "boolean",
+                "default": true
+              },
+              "external_reach": {
+                "type": "boolean",
+                "default": false
+              },
+              "secret_exposure": {
+                "type": "boolean",
+                "default": false
+              },
+              "untrusted_to_privileged": {
+                "type": "boolean",
+                "default": false
+              },
+              "evidence": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "object_id": {
+                      "type": "string"
+                    },
+                    "file_path": {
+                      "type": "string"
+                    },
+                    "line": {
+                      "type": "integer",
+                      "exclusiveMinimum": 0
+                    },
+                    "snippet": {
+                      "type": "string",
+                      "const": "[redacted by default]",
+                      "default": "[redacted by default]"
+                    },
+                    "redacted": {
+                      "type": "boolean",
+                      "const": true,
+                      "default": true
+                    },
+                    "reason": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "object_id",
+                    "file_path",
+                    "reason"
+                  ],
+                  "additionalProperties": false
+                },
+                "default": []
+              },
+              "metadata": {
+                "type": "object",
+                "additionalProperties": {},
+                "default": {}
+              }
+            },
+            "required": [
+              "id",
+              "type",
+              "name",
+              "path"
+            ],
+            "additionalProperties": false
+          },
+          "default": []
+        },
+        "instructions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/AgentCSP Agent Manifest/properties/agents/items"
+          },
+          "default": []
+        },
+        "skills": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/AgentCSP Agent Manifest/properties/agents/items"
+          },
+          "default": []
+        },
+        "plugins": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/AgentCSP Agent Manifest/properties/agents/items"
+          },
+          "default": []
+        },
+        "mcp_servers": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/AgentCSP Agent Manifest/properties/agents/items"
+          },
+          "default": []
+        },
+        "tools": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/AgentCSP Agent Manifest/properties/agents/items"
+          },
+          "default": []
+        },
+        "prompts": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/AgentCSP Agent Manifest/properties/agents/items"
+          },
+          "default": []
+        },
+        "rag_sources": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/AgentCSP Agent Manifest/properties/agents/items"
+          },
+          "default": []
+        },
+        "memory": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/AgentCSP Agent Manifest/properties/agents/items"
+          },
+          "default": []
+        },
+        "secrets": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/AgentCSP Agent Manifest/properties/agents/items"
+          },
+          "default": []
+        },
+        "runtime_config": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/AgentCSP Agent Manifest/properties/agents/items"
+          },
+          "default": []
+        },
+        "ci_cd": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/AgentCSP Agent Manifest/properties/agents/items"
+          },
+          "default": []
+        },
+        "automations": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/AgentCSP Agent Manifest/properties/agents/items"
+          },
+          "default": []
+        },
+        "findings": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "rule_id": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "category": {
+                "type": "string"
+              },
+              "severity": {
+                "type": "string",
+                "enum": [
+                  "info",
+                  "low",
+                  "medium",
+                  "high",
+                  "critical"
+                ]
+              },
+              "matched_object": {
+                "$ref": "#/definitions/AgentCSP Agent Manifest/properties/agents/items"
+              },
+              "file_path": {
+                "type": "string"
+              },
+              "reason": {
+                "type": "string"
+              },
+              "trust_boundary_crossed": {
+                "type": "boolean"
+              },
+              "data_classes": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/definitions/AgentCSP Agent Manifest/properties/agents/items/properties/data_classes/items"
+                }
+              },
+              "recommended_control": {
+                "type": "string",
+                "enum": [
+                  "allow",
+                  "deny",
+                  "require_approval",
+                  "redact",
+                  "quarantine",
+                  "warn"
+                ]
+              },
+              "risk": {
+                "type": "object",
+                "properties": {
+                  "trust_level": {
+                    "$ref": "#/definitions/AgentCSP Agent Manifest/properties/agents/items/properties/trust_level"
+                  },
+                  "data_classes": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/definitions/AgentCSP Agent Manifest/properties/agents/items/properties/data_classes/items"
+                    },
+                    "default": []
+                  },
+                  "actions": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/definitions/AgentCSP Agent Manifest/properties/agents/items/properties/actions/items"
+                    },
+                    "default": []
+                  },
+                  "side_effect": {
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "reversible": {
+                    "type": "boolean",
+                    "default": true
+                  },
+                  "external_reach": {
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "secret_exposure": {
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "untrusted_to_privileged": {
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "score": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 100,
+                    "default": 0
+                  },
+                  "rationale": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "default": []
+                  }
+                },
+                "required": [
+                  "trust_level"
+                ],
+                "additionalProperties": false
+              },
+              "maps_to": {
+                "type": "object",
+                "properties": {
+                  "owasp": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "default": []
+                  },
+                  "mitre_atlas": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "default": []
+                  },
+                  "nist_ai_rmf": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "default": []
+                  }
+                },
+                "additionalProperties": false,
+                "default": {
+                  "owasp": [],
+                  "mitre_atlas": [],
+                  "nist_ai_rmf": []
+                }
+              },
+              "evidence": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/definitions/AgentCSP Agent Manifest/properties/agents/items/properties/evidence/items"
+                },
+                "default": []
+              }
+            },
+            "required": [
+              "id",
+              "rule_id",
+              "name",
+              "category",
+              "severity",
+              "matched_object",
+              "file_path",
+              "reason",
+              "trust_boundary_crossed",
+              "data_classes",
+              "recommended_control",
+              "risk"
+            ],
+            "additionalProperties": false
+          },
+          "default": []
+        },
+        "evidence": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/AgentCSP Agent Manifest/properties/agents/items/properties/evidence/items"
+          },
+          "default": []
+        },
+        "static_blast_radius": {
+          "type": "object",
+          "properties": {
+            "title": {
+              "type": "string",
+              "const": "Static Blast-Radius Summary",
+              "default": "Static Blast-Radius Summary"
+            },
+            "read_paths": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            },
+            "write_paths": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            },
+            "execute_paths": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            },
+            "external_reach_paths": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            },
+            "secret_reference_paths": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            },
+            "memory_surfaces": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            },
+            "rag_surfaces": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            },
+            "highest_severity": {
+              "$ref": "#/definitions/AgentCSP Agent Manifest/properties/findings/items/properties/severity",
+              "default": "info"
+            },
+            "high_risk_objects": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/AgentCSP Agent Manifest/properties/agents/items"
+              },
+              "default": []
+            },
+            "recommended_controls": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "default": []
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "metadata"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "$schema": "http://json-schema.org/draft-07/schema#"
+}

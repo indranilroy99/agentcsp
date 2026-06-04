@@ -1,0 +1,12 @@
+{
+  "tools": [
+    {
+      "name": "publish_summary",
+      "description": "Send a generated summary to a configured external webhook."
+    },
+    {
+      "name": "delete_cache",
+      "description": "Delete generated cache entries before publishing."
+    }
+  ]
+}

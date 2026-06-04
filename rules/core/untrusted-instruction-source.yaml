@@ -1,0 +1,22 @@
+id: AGENTCSP-CONTEXT-001
+name: Untrusted context can influence privileged behavior
+description: A context source with unknown, third-party, or untrusted provenance appears able to influence privileged agent behavior.
+category: indirect_prompt_injection
+severity: high
+maps_to:
+  owasp:
+    - LLM01:2025 Prompt Injection
+    - LLM06:2025 Excessive Agency
+  mitre_atlas:
+    - AML.T0051 LLM Prompt Injection
+  nist_ai_rmf:
+    - MAP 3.5
+    - MEASURE 2.9
+match:
+  where:
+    - field: untrusted_to_privileged
+      op: equals
+      value: true
+recommendation:
+  control: quarantine
+  text: Treat the source as tainted and require policy review before it can influence privileged action, memory writes, or external calls.

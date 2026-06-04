@@ -1,0 +1,156 @@
+{
+  "$ref": "#/definitions/AgentCSP Rule",
+  "definitions": {
+    "AgentCSP Rule": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string"
+        },
+        "severity": {
+          "type": "string",
+          "enum": [
+            "info",
+            "low",
+            "medium",
+            "high",
+            "critical"
+          ]
+        },
+        "maps_to": {
+          "type": "object",
+          "properties": {
+            "owasp": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "default": []
+            },
+            "mitre_atlas": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "default": []
+            },
+            "nist_ai_rmf": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "default": []
+            }
+          },
+          "additionalProperties": false,
+          "default": {
+            "owasp": [],
+            "mitre_atlas": [],
+            "nist_ai_rmf": []
+          }
+        },
+        "match": {
+          "type": "object",
+          "properties": {
+            "object_type": {
+              "type": "string",
+              "enum": [
+                "agent",
+                "instruction",
+                "skill",
+                "plugin",
+                "mcp_server",
+                "tool",
+                "prompt",
+                "rag_source",
+                "memory",
+                "secret",
+                "runtime_config",
+                "ci_cd",
+                "automation"
+              ]
+            },
+            "where": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "field": {
+                    "type": "string"
+                  },
+                  "op": {
+                    "type": "string",
+                    "enum": [
+                      "equals",
+                      "not_equals",
+                      "includes",
+                      "contains_any",
+                      "exists",
+                      "in",
+                      "gt",
+                      "gte",
+                      "lt",
+                      "lte"
+                    ]
+                  },
+                  "value": {}
+                },
+                "required": [
+                  "field",
+                  "op"
+                ],
+                "additionalProperties": false
+              },
+              "default": []
+            }
+          },
+          "additionalProperties": false
+        },
+        "recommendation": {
+          "type": "object",
+          "properties": {
+            "control": {
+              "type": "string",
+              "enum": [
+                "allow",
+                "deny",
+                "require_approval",
+                "redact",
+                "quarantine",
+                "warn"
+              ]
+            },
+            "text": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "control",
+            "text"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "description",
+        "category",
+        "severity",
+        "match",
+        "recommendation"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "$schema": "http://json-schema.org/draft-07/schema#"
+}

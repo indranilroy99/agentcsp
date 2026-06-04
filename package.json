@@ -1,0 +1,30 @@
+{
+  "name": "@agentcsp/workspace",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Open-source control plane for discovering, testing, and enforcing context security policy across AI agents, tools, MCP servers, RAG, memory, and runtime actions.",
+  "license": "Apache-2.0",
+  "type": "module",
+  "packageManager": "pnpm@11.0.9",
+  "scripts": {
+    "agentcsp": "node packages/cli/dist/index.js",
+    "build": "pnpm -r build",
+    "clean": "pnpm -r clean",
+    "generate:schemas": "tsx scripts/generate-schemas.ts",
+    "lint": "tsc -b --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "tsx": "^4.19.4",
+    "typescript": "^5.8.3",
+    "vitest": "^3.1.4",
+    "zod-to-json-schema": "^3.24.5"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild"
+    ]
+  }
+}

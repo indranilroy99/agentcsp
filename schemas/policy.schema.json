@@ -1,0 +1,77 @@
+{
+  "$ref": "#/definitions/AgentCSP Policy",
+  "definitions": {
+    "AgentCSP Policy": {
+      "type": "object",
+      "properties": {
+        "schema_version": {
+          "type": "string",
+          "default": "0.1"
+        },
+        "trust_overrides": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "path": {
+                "type": "string"
+              },
+              "trust_level": {
+                "type": "string",
+                "enum": [
+                  "trusted",
+                  "project",
+                  "workspace",
+                  "third_party",
+                  "untrusted",
+                  "unknown"
+                ]
+              }
+            },
+            "required": [
+              "path",
+              "trust_level"
+            ],
+            "additionalProperties": false
+          },
+          "default": []
+        },
+        "recommended_controls": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "match": {
+                "type": "object",
+                "additionalProperties": {}
+              },
+              "control": {
+                "type": "string",
+                "enum": [
+                  "allow",
+                  "deny",
+                  "require_approval",
+                  "redact",
+                  "quarantine",
+                  "warn"
+                ]
+              },
+              "reason": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "match",
+              "control",
+              "reason"
+            ],
+            "additionalProperties": false
+          },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "$schema": "http://json-schema.org/draft-07/schema#"
+}

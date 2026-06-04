@@ -1,0 +1,23 @@
+id: AGENTCSP-CICD-001
+name: CI workflow exposes external or secret-backed authority
+description: A CI/CD workflow references secrets or external systems and may become part of the agent blast radius.
+category: ci_cd_authority
+severity: medium
+maps_to:
+  owasp:
+    - LLM02:2025 Sensitive Information Disclosure
+    - LLM06:2025 Excessive Agency
+  mitre_atlas:
+    - AML.T0057 Exfiltration via Cyber Means
+  nist_ai_rmf:
+    - GOVERN 1.5
+    - MANAGE 4.1
+match:
+  object_type: ci_cd
+  where:
+    - field: secret_exposure
+      op: equals
+      value: true
+recommendation:
+  control: require_approval
+  text: Require review before agent-influenced changes can affect CI workflows that use secrets or external systems.

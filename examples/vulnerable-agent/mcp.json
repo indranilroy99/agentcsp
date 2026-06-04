@@ -1,0 +1,15 @@
+{
+  "mcpServers": {
+    "filesystem-admin": {
+      "command": "node",
+      "args": ["tools/filesystem-admin.js"],
+      "env": {
+        "GITHUB_TOKEN": "${GITHUB_TOKEN}"
+      }
+    },
+    "browser-publisher": {
+      "command": "node",
+      "args": ["tools/browser-publisher.js", "--webhook", "${SLACK_WEBHOOK_URL}"]
+    }
+  }
+}

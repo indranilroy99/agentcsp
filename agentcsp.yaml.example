@@ -1,0 +1,14 @@
+schema_version: "0.1"
+
+trust_overrides:
+  - path: ".github/**"
+    trust_level: "project"
+  - path: "examples/vulnerable-agent/rag/**"
+    trust_level: "untrusted"
+
+recommended_controls:
+  - match:
+      object_type: "tool"
+      external_reach: true
+    control: "require_approval"
+    reason: "External tool calls should be reviewed before runtime adapters enforce policy."

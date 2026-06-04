@@ -1,0 +1,17 @@
+.DS_Store
+node_modules/
+dist/
+build/
+.env
+.env.*
+!.env.example
+coverage/
+*.log
+*.tsbuildinfo
+.agentcsp/
+.agentcsp*/
+!.agentcspignore
+agent-manifest.json
+findings.json
+agentcsp-report.json
+agentcsp-report.md

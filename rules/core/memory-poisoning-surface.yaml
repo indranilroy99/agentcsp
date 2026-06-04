@@ -1,0 +1,23 @@
+id: AGENTCSP-MEMORY-001
+name: Persistent memory surface may preserve injected context
+description: A memory or state surface could persist attacker-controlled instructions across runs or retrieval paths.
+category: memory_poisoning
+severity: medium
+maps_to:
+  owasp:
+    - LLM01:2025 Prompt Injection
+    - LLM08:2025 Vector and Embedding Weaknesses
+  mitre_atlas:
+    - AML.T0051 LLM Prompt Injection
+  nist_ai_rmf:
+    - MAP 5.1
+    - MANAGE 2.2
+match:
+  object_type: memory
+  where:
+    - field: actions
+      op: includes
+      value: remember
+recommendation:
+  control: quarantine
+  text: Quarantine memory writes from untrusted context until provenance and retention policy are explicit.
