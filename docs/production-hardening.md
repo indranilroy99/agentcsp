@@ -27,6 +27,8 @@ Examples:
 
 - network retrieval plus shell execution
 - MCP server plus credential key names plus side effects
+- runtime config with unsandboxed execution plus no approval gate
+- runtime config with network access plus secret env keys plus privileged tools
 - pull request workflow plus write permissions plus secrets
 - untrusted RAG source plus privileged tool path
 - memory write plus untrusted source provenance
@@ -48,7 +50,7 @@ Every production change should pass:
 
 - Add SARIF upload examples for adopters.
 - Add MCP and tool schema parsing beyond config files.
-- Add stronger runtime configuration inventory for sandbox, approval, network, and tool authority.
+- Expand runtime configuration inventory across more agent frameworks.
 - Add graph edges between context sources, capabilities, data classes, and side effects.
 - Add attack-path regression fixtures for common production AI architectures.
 - Add suppression and waiver workflow with expiry.

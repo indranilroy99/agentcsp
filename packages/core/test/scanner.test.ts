@@ -62,6 +62,20 @@ describe("scanner", () => {
       accepts_path_input: true
     });
     expect(readTool?.side_effect).toBe(false);
+    const runtimeConfig = surfaces.runtime_config.find((surface) => surface.path === ".codex/config.toml");
+    expect(runtimeConfig?.metadata).toMatchObject({
+      parsed_runtime_config: true,
+      sandbox_disabled: true,
+      approval_bypass: true,
+      network_enabled: true,
+      privileged_tools_allowed: true,
+      secret_env_exposure: true,
+      secret_values_collected: false
+    });
+    expect(runtimeConfig?.metadata.env_key_names).toEqual(["GITHUB_TOKEN", "SLACK_WEBHOOK_URL"]);
+    expect(runtimeConfig?.actions).toContain("execute");
+    expect(runtimeConfig?.actions).toContain("send");
+    expect(JSON.stringify(runtimeConfig)).not.toContain("${GITHUB_TOKEN}");
     expect(surfaces.ci_cd.length).toBe(1);
     expect(surfaces.ci_cd[0]?.metadata).toMatchObject({
       pull_request_trigger: true,

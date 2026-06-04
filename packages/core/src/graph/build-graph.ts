@@ -145,7 +145,7 @@ function isContextSource(object: SurfaceObject): boolean {
 
 function isHighRiskCapability(object: SurfaceObject): boolean {
   return (
-    ["tool", "mcp_server", "ci_cd", "plugin", "automation"].includes(object.type) &&
+    ["tool", "mcp_server", "runtime_config", "ci_cd", "plugin", "automation"].includes(object.type) &&
     (object.side_effect ||
       object.external_reach ||
       object.secret_exposure ||

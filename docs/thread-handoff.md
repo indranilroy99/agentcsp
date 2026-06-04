@@ -186,6 +186,16 @@ The current iteration adds:
 - high-signal rules for external writes with credential-like inputs and destructive filesystem tool schemas
 - fixture coverage for risky and read-only tools
 
+## Runtime Posture Pass
+
+The current iteration adds:
+
+- parsing of common JSON, YAML, and TOML runtime config files in `.codex`, `.agents`, and `.cursor`
+- runtime metadata for sandbox mode, approval policy, network access, privileged tool allowlists, and env key names
+- rules for unsandboxed runtime with approval bypass and networked privileged tools with secret env exposure
+- graph/report treatment of risky runtime config as agent authority
+- fixture coverage for a risky Codex-style runtime config
+
 ## Initial Build Recommendation
 
 Start with a CLI-first MVP before building the dashboard:

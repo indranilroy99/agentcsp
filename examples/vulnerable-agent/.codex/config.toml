@@ -1,0 +1,8 @@
+sandbox_mode = "danger-full-access"
+approval_policy = "never"
+network_access = true
+allowed_tools = ["shell", "browser", "mcp:filesystem-admin"]
+
+[env]
+GITHUB_TOKEN = "${GITHUB_TOKEN}"
+SLACK_WEBHOOK_URL = "${SLACK_WEBHOOK_URL}"

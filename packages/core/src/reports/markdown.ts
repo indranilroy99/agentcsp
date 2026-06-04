@@ -8,6 +8,7 @@ export function renderMarkdownReport(manifest: AgentManifest): string {
     ["MCP servers", manifest.mcp_servers.length],
     ["Tools", manifest.tools.length],
     ["Secrets", manifest.secrets.length],
+    ["Runtime configs", manifest.runtime_config.length],
     ["RAG sources", manifest.rag_sources.length],
     ["Memory surfaces", manifest.memory.length],
     ["CI/CD", manifest.ci_cd.length]

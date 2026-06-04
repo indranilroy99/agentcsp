@@ -1,0 +1,28 @@
+id: AGENTCSP-RUNTIME-001
+name: Runtime config disables sandbox and approval gates
+description: An agent runtime configuration allows unsandboxed authority without an approval gate, creating a high-impact path from agent context to local execution.
+category: runtime_posture
+severity: critical
+maps_to:
+  owasp:
+    - LLM06:2025 Excessive Agency
+  mitre_atlas:
+    - AML.T0054 Command and Scripting Interpreter
+  nist_ai_rmf:
+    - GOVERN 1.5
+    - MANAGE 2.3
+match:
+  object_type: runtime_config
+  where:
+    - field: metadata.parsed_runtime_config
+      op: equals
+      value: true
+    - field: metadata.sandbox_disabled
+      op: equals
+      value: true
+    - field: metadata.approval_bypass
+      op: equals
+      value: true
+recommendation:
+  control: require_approval
+  text: Enable sandboxing and require approval before agent runtime can exercise local execution or filesystem authority.

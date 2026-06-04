@@ -47,6 +47,7 @@ Runtime enforcement adapters, SARIF output, graph traversal, and the dashboard a
 - **Agent Manifest**: emits `agent-manifest.json`, an SBOM-style record for AI agent deployments.
 - **Authority Signals**: classifies actions such as read, write, execute, publish, send, delete, remember, and call.
 - **MCP and Tool Schema Authority**: extracts individual tool schemas and classifies external writes, destructive actions, credential-like inputs, filesystem paths, URL inputs, browser control, memory access, and shell authority.
+- **Runtime Posture Inventory**: parses agent runtime configs for sandbox mode, approval policy, network access, privileged tool allowlists, and env key exposure.
 - **Trust Boundary Analysis**: tracks trusted, project, workspace, third-party, untrusted, and unknown provenance.
 - **Explainable Risk Scoring**: severity includes contributing factors such as trust level, data class, reversibility, external reach, and secret exposure.
 - **Static Attack Paths**: connects context sources to privileged capabilities so teams can see provenance-to-authority paths instead of isolated alerts.

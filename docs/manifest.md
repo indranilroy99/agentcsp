@@ -49,6 +49,31 @@ Tool metadata may include:
 
 These fields let rules reason about concrete agent-callable authority without dumping raw tool descriptions or schemas into the manifest.
 
+## Runtime Configuration
+
+Runtime configuration files are normalized into `runtime_config` objects when AgentCSP can parse security-relevant JSON, YAML, or TOML config.
+
+Runtime metadata may include:
+
+- `parsed_runtime_config`
+- `runtime_fields`
+- `sandbox_mode`
+- `sandbox_disabled`
+- `workspace_write`
+- `approval_policy`
+- `approval_bypass`
+- `network_access`
+- `network_enabled`
+- `allowed_tools`
+- `disabled_tools`
+- `privileged_tools_allowed`
+- `privileged_tool_signals`
+- `env_key_names`
+- `secret_env_exposure`
+- `secret_values_collected`
+
+Secret or environment values are not emitted. AgentCSP records key names and posture signals so rules can detect risky authority without exposing credentials.
+
 ## Relationships
 
 `relationships` are static graph edges between normalized surfaces. They are intentionally bounded and evidence-backed.

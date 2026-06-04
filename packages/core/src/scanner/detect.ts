@@ -1,4 +1,5 @@
 import path from "node:path";
+import { parse as parseToml } from "smol-toml";
 import YAML from "yaml";
 import {
   DEFAULT_MCP_CONFIG_NAMES,
@@ -176,6 +177,11 @@ export async function detectSurfaces(files: WalkedFile[]): Promise<DetectedSurfa
 
     if (DEFAULT_MCP_CONFIG_NAMES.has(basename) || lowerPath.endsWith("/mcp.json")) {
       await detectMcpConfig(file, text, surfaces);
+      continue;
+    }
+
+    if (isRuntimeConfigPath(file.relativePath, basename)) {
+      detectRuntimeConfig(file, text, surfaces);
       continue;
     }
 
@@ -441,6 +447,72 @@ function detectToolDefinition(file: WalkedFile, text: string | undefined, surfac
   }
 }
 
+function detectRuntimeConfig(file: WalkedFile, text: string | undefined, surfaces: DetectedSurfaces): void {
+  const parsed = parseRuntimeConfig(text ?? "", file.relativePath);
+  if (!parsed) {
+    const object = createSurfaceObject({
+      type: "runtime_config",
+      name: path.basename(file.relativePath),
+      path: file.relativePath,
+      actions: ["call"],
+      reason: "Agent runtime configuration file discovered but not parsed.",
+      metadata: {
+        content_redacted: true,
+        parsed_runtime_config: false,
+        skipped_for_size: file.skippedForSize
+      }
+    });
+    surfaces.runtime_config.push(object);
+    return;
+  }
+
+  const posture = classifyRuntimeConfig(parsed);
+  const actions = new Set<"read" | "write" | "execute" | "publish" | "send" | "delete" | "remember" | "call">(["call"]);
+  if (posture.privileged_tool_signals.some((signal) => ["shell", "terminal", "exec"].includes(signal))) actions.add("execute");
+  if (posture.network_enabled) actions.add("send");
+  if (posture.sandbox_disabled || posture.workspace_write) actions.add("write");
+
+  const object = createSurfaceObject({
+    type: "runtime_config",
+    name: path.basename(file.relativePath),
+    path: file.relativePath,
+    data_classes: posture.secret_env_exposure ? ["credential"] : ["unknown"],
+    actions: [...actions].sort((a, b) => a.localeCompare(b)),
+    side_effect:
+      posture.sandbox_disabled ||
+      posture.approval_bypass ||
+      posture.network_enabled ||
+      posture.privileged_tools_allowed ||
+      posture.secret_env_exposure,
+    external_reach: posture.network_enabled || posture.privileged_tool_signals.some((signal) => ["browser", "github", "slack", "email"].includes(signal)),
+    secret_exposure: posture.secret_env_exposure,
+    reason: "Agent runtime configuration discovered as policy-relevant execution posture.",
+    metadata: {
+      content_redacted: true,
+      parsed_runtime_config: true,
+      runtime_fields: posture.runtime_fields,
+      sandbox_mode: posture.sandbox_mode,
+      sandbox_disabled: posture.sandbox_disabled,
+      workspace_write: posture.workspace_write,
+      approval_policy: posture.approval_policy,
+      approval_bypass: posture.approval_bypass,
+      network_access: posture.network_access,
+      network_enabled: posture.network_enabled,
+      allowed_tools: posture.allowed_tools,
+      disabled_tools: posture.disabled_tools,
+      privileged_tools_allowed: posture.privileged_tools_allowed,
+      privileged_tool_signals: posture.privileged_tool_signals,
+      env_key_names: posture.env_key_names,
+      secret_env_exposure: posture.secret_env_exposure,
+      secret_values_collected: false
+    }
+  });
+  surfaces.runtime_config.push({
+    ...object,
+    untrusted_to_privileged: isUntrustedToPrivileged(object)
+  });
+}
+
 function extractMcpServers(value: unknown): Array<{ name: string; command?: string; args?: string[]; envKeys?: string[] }> {
   if (!value || typeof value !== "object") return [];
   const root = value as Record<string, unknown>;
@@ -474,6 +546,201 @@ function hasWritePermissions(value: unknown): boolean {
   if (typeof value === "string") return value === "write-all";
   if (!value || typeof value !== "object") return false;
   return Object.values(value as Record<string, unknown>).some((permission) => permission === "write");
+}
+
+const RUNTIME_CONFIG_BASENAMES = new Set([
+  "config.json",
+  "config.yaml",
+  "config.yml",
+  "config.toml",
+  "settings.json",
+  "settings.yaml",
+  "settings.yml",
+  "settings.toml",
+  "runtime.json",
+  "runtime.yaml",
+  "runtime.yml",
+  "runtime.toml"
+]);
+
+const TOP_LEVEL_RUNTIME_CONFIG_NAMES = new Set([
+  "agent.config.json",
+  "agent.config.yaml",
+  "agent.config.yml",
+  "agent.config.toml",
+  "agents.config.json",
+  "agents.config.yaml",
+  "agents.config.yml",
+  "agents.config.toml",
+  "agent-runtime.json",
+  "agent-runtime.yaml",
+  "agent-runtime.yml",
+  "agent-runtime.toml",
+  "runtime.config.json",
+  "runtime.config.yaml",
+  "runtime.config.yml",
+  "runtime.config.toml",
+  "codex.toml",
+  "codex.json",
+  "codex.yaml",
+  "codex.yml"
+]);
+
+interface RuntimeField {
+  path: string;
+  value: unknown;
+}
+
+interface RuntimePosture {
+  runtime_fields: string[];
+  sandbox_mode?: string;
+  sandbox_disabled: boolean;
+  workspace_write: boolean;
+  approval_policy?: string;
+  approval_bypass: boolean;
+  network_access?: string;
+  network_enabled: boolean;
+  allowed_tools: string[];
+  disabled_tools: string[];
+  privileged_tools_allowed: boolean;
+  privileged_tool_signals: string[];
+  env_key_names: string[];
+  secret_env_exposure: boolean;
+}
+
+function isRuntimeConfigPath(relativePath: string, basename: string): boolean {
+  const normalized = relativePath.replaceAll("\\", "/").toLowerCase();
+  const lowerBase = basename.toLowerCase();
+  if (TOP_LEVEL_RUNTIME_CONFIG_NAMES.has(lowerBase) && !normalized.includes("/")) return true;
+  if (normalized.startsWith(".codex/") && RUNTIME_CONFIG_BASENAMES.has(lowerBase)) return true;
+  if (normalized.startsWith(".agents/") && RUNTIME_CONFIG_BASENAMES.has(lowerBase)) return true;
+  if (normalized.startsWith(".cursor/") && RUNTIME_CONFIG_BASENAMES.has(lowerBase)) return true;
+  return false;
+}
+
+function parseRuntimeConfig(content: string, filePath: string): unknown | undefined {
+  if (!content.trim()) return undefined;
+  const lowerPath = filePath.toLowerCase();
+  try {
+    if (lowerPath.endsWith(".json")) return JSON.parse(content);
+    if (lowerPath.endsWith(".toml")) return parseToml(content);
+    if (lowerPath.endsWith(".yaml") || lowerPath.endsWith(".yml")) return YAML.parse(content);
+  } catch {
+    return undefined;
+  }
+  return undefined;
+}
+
+function classifyRuntimeConfig(value: unknown): RuntimePosture {
+  const fields = flattenRuntimeFields(value);
+  const sandboxMode = normalizeRuntimeScalar(findFirstField(fields, /(^|\.)sandbox(_mode|mode)?$|isolation|container/iu)?.value);
+  const approvalPolicy = normalizeRuntimeScalar(
+    findFirstField(fields, /approval|require_approval|tool_approval|human_approval|confirmation|confirm/iu)?.value
+  );
+  const networkAccess = normalizeRuntimeScalar(findFirstField(fields, /network|internet|web_access|allow_network|net_access/iu)?.value);
+  const allowedTools = collectStringArrayFields(fields, /(^|\.)(allowed_tools|allow_tools|enabled_tools|tools_allowlist|tools)$/iu);
+  const disabledTools = collectStringArrayFields(fields, /(^|\.)(disabled_tools|deny_tools|blocked_tools|tools_denylist)$/iu);
+  const envKeys = collectEnvKeyNamesFromConfig(value);
+  const privilegedSignals = classifyPrivilegedToolSignals(allowedTools);
+
+  return {
+    runtime_fields: fields
+      .map((field) => field.path)
+      .filter((fieldPath) => isRuntimeSecurityField(fieldPath))
+      .sort((a, b) => a.localeCompare(b)),
+    sandbox_mode: sandboxMode,
+    sandbox_disabled: Boolean(sandboxMode && /danger|disable|none|off|false|unrestricted|full|host/iu.test(sandboxMode)),
+    workspace_write: Boolean(sandboxMode && /workspace.*write|write.*workspace|project.*write/iu.test(sandboxMode)),
+    approval_policy: approvalPolicy,
+    approval_bypass: Boolean(
+      approvalPolicy && /never|none|auto|always_allow|disabled|disable|off|false|unrestricted|no_approval|without/iu.test(approvalPolicy)
+    ),
+    network_access: networkAccess,
+    network_enabled: Boolean(networkAccess && /true|yes|enabled|enable|on|full|unrestricted|allow/iu.test(networkAccess)),
+    allowed_tools: allowedTools,
+    disabled_tools: disabledTools,
+    privileged_tools_allowed: privilegedSignals.length > 0,
+    privileged_tool_signals: privilegedSignals,
+    env_key_names: envKeys,
+    secret_env_exposure: envKeys.some((key) => /token|secret|key|password|credential|auth/iu.test(key))
+  };
+}
+
+function flattenRuntimeFields(value: unknown, prefix: string[] = []): RuntimeField[] {
+  if (Array.isArray(value)) {
+    const primitiveValues = value.filter((item) => ["string", "number", "boolean"].includes(typeof item));
+    const nestedValues = value.flatMap((item, index) =>
+      item && typeof item === "object" ? flattenRuntimeFields(item, [...prefix, String(index)]) : []
+    );
+    return primitiveValues.length > 0
+      ? [{ path: prefix.join("."), value: primitiveValues.map((item) => String(item)) }, ...nestedValues]
+      : nestedValues;
+  }
+  if (value && typeof value === "object") {
+    return Object.entries(value as Record<string, unknown>).flatMap(([key, item]) =>
+      flattenRuntimeFields(item, [...prefix, key])
+    );
+  }
+  if (prefix.length === 0) return [];
+  return [{ path: prefix.join("."), value }];
+}
+
+function findFirstField(fields: RuntimeField[], pathPattern: RegExp): RuntimeField | undefined {
+  return fields.find((field) => pathPattern.test(field.path));
+}
+
+function normalizeRuntimeScalar(value: unknown): string | undefined {
+  if (typeof value === "string") return value.toLowerCase();
+  if (typeof value === "boolean" || typeof value === "number") return String(value).toLowerCase();
+  if (Array.isArray(value)) return value.map((item) => String(item).toLowerCase()).join(",");
+  return undefined;
+}
+
+function collectStringArrayFields(fields: RuntimeField[], pathPattern: RegExp): string[] {
+  const values = new Set<string>();
+  for (const field of fields) {
+    if (!pathPattern.test(field.path)) continue;
+    if (Array.isArray(field.value)) {
+      for (const value of field.value) values.add(String(value));
+      continue;
+    }
+    if (typeof field.value === "string") values.add(field.value);
+  }
+  return [...values].sort((a, b) => a.localeCompare(b));
+}
+
+function collectEnvKeyNamesFromConfig(value: unknown, prefix: string[] = []): string[] {
+  const keys = new Set<string>();
+  if (!value || typeof value !== "object" || Array.isArray(value)) return [];
+  for (const [key, item] of Object.entries(value as Record<string, unknown>)) {
+    const nextPrefix = [...prefix, key];
+    const pathText = nextPrefix.join(".").toLowerCase();
+    if (item && typeof item === "object" && !Array.isArray(item)) {
+      if (/(^|\.)(env|environment|env_vars|secrets?)$/iu.test(pathText)) {
+        for (const envKey of Object.keys(item as Record<string, unknown>)) keys.add(envKey);
+      }
+      for (const nestedKey of collectEnvKeyNamesFromConfig(item, nextPrefix)) keys.add(nestedKey);
+      continue;
+    }
+    if (/token|secret|api[_-]?key|password|credential|auth/iu.test(key)) keys.add(key);
+  }
+  return [...keys].sort((a, b) => a.localeCompare(b));
+}
+
+function classifyPrivilegedToolSignals(tools: string[]): string[] {
+  const signals = new Set<string>();
+  const joined = tools.join(" ").toLowerCase();
+  if (/(^|\s|\*)\*(\s|$)|all_tools|all-tools|all tools/iu.test(joined)) signals.add("all_tools");
+  if (/shell|bash|zsh|terminal|command|exec|process/iu.test(joined)) signals.add("shell");
+  if (/browser|web|playwright|puppeteer/iu.test(joined)) signals.add("browser");
+  if (/filesystem|file|workspace|fs/iu.test(joined)) signals.add("filesystem");
+  if (/github|gitlab|repo|pull|issue/iu.test(joined)) signals.add("github");
+  if (/slack|email|smtp|webhook/iu.test(joined)) signals.add("external_messaging");
+  return [...signals].sort((a, b) => a.localeCompare(b));
+}
+
+function isRuntimeSecurityField(fieldPath: string): boolean {
+  return /sandbox|approval|confirm|network|internet|web_access|tool|env|environment|secret|token|credential/iu.test(fieldPath);
 }
 
 interface ExtractedToolDefinition {
