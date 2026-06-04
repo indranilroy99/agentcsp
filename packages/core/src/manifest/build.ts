@@ -8,7 +8,8 @@ import {
   type GraphEdge,
   type ScanConfig,
   type StaticBlastRadiusSummary,
-  type SurfaceObject
+  type SurfaceObject,
+  type TriageSummary
 } from "../schemas/index.js";
 import type { DetectedSurfaces } from "../scanner/detect.js";
 import { sortFindings, sortObjects } from "../utils/sort.js";
@@ -20,6 +21,7 @@ export function buildManifest(input: {
   findings?: Finding[];
   relationships?: GraphEdge[];
   attackPaths?: AttackPath[];
+  triageSummary?: TriageSummary;
   staticBlastRadius?: StaticBlastRadiusSummary;
 }): AgentManifest {
   const evidence = collectEvidence(input.surfaces, input.findings ?? []);
@@ -57,6 +59,7 @@ export function buildManifest(input: {
     attack_paths: sortAttackPaths(input.attackPaths ?? []),
     findings: sortFindings(input.findings ?? []),
     evidence,
+    triage_summary: input.triageSummary,
     static_blast_radius: input.staticBlastRadius
   });
 }

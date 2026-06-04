@@ -17,6 +17,8 @@ The path defaults to the current directory. The output directory defaults to `.a
 .agentcsp/agentcsp.sarif
 ```
 
+`agent-manifest.json` includes `triage_summary`, a deterministic rollup of total findings, active findings, suppressions, severity, confidence, surface types, recommended controls, top rules, and top active risks. The Markdown report renders the same summary near the top for human triage.
+
 ## CI Behavior
 
 AgentCSP does not fail CI by default. A completed scan exits with code `0` even when findings are present.
@@ -46,6 +48,8 @@ The generated SARIF file is:
 ```text
 .agentcsp/agentcsp.sarif
 ```
+
+SARIF run properties include `agentcsp_triage_summary` and `agentcsp_static_blast_radius` so CI systems can consume scan-level context without parsing Markdown.
 
 ## Scanner Safety
 

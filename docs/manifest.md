@@ -2,7 +2,7 @@
 
 The Agent Manifest is the SBOM equivalent for an AI agent deployment.
 
-It captures normalized agent-facing surfaces, authority signals, trust levels, data classes, findings, evidence, and the Static Blast-Radius Summary.
+It captures normalized agent-facing surfaces, authority signals, trust levels, data classes, findings, evidence, the Triage Summary, and the Static Blast-Radius Summary.
 
 Core sections:
 
@@ -24,6 +24,8 @@ Core sections:
 - `attack_paths`
 - `findings`
 - `evidence`
+- `triage_summary`
+- `static_blast_radius`
 
 The manifest is versioned and validated with Zod. JSON Schema exports live in `schemas/`.
 
@@ -150,6 +152,22 @@ Each finding includes:
 - optional `suppression`
 
 Confidence is separate from severity. Severity describes potential impact; confidence describes how strongly the normalized evidence supports the finding.
+
+## Triage Summary
+
+`triage_summary` is the stable operator-facing rollup for scan results. It is generated after policy controls and suppressions are applied, so active findings exclude accepted active suppressions while expired suppressions remain visible as risk.
+
+The summary includes:
+
+- total, active, suppressed, and expired-suppression counts
+- highest active severity
+- maximum active risk score
+- active findings by severity and confidence
+- active findings by surface type, category, and recommended control
+- top active rules
+- top active risks with finding IDs, object IDs, paths, risk scores, and recommended controls
+
+The triage summary does not include raw file contents, evidence snippets, secret values, or unredacted tool/runtime configuration values.
 
 ## Relationships
 

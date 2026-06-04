@@ -99,7 +99,13 @@ export function renderSarifReport(manifest: AgentManifest): Record<string, unkno
             trust_boundary_crossed: finding.trust_boundary_crossed,
             evidence_redacted: true
           }
-        }))
+        })),
+        properties: {
+          agentcsp_triage_summary: manifest.triage_summary,
+          agentcsp_static_blast_radius: manifest.static_blast_radius,
+          evidence_redacted: true,
+          secret_values_collected: false
+        }
       }
     ]
   };

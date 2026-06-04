@@ -27,6 +27,8 @@ export function renderMarkdownReport(manifest: AgentManifest): string {
     `- Secret values collected: \`${manifest.metadata.config.secret_values_collected}\``,
     `- Evidence redacted: \`${manifest.metadata.config.evidence_redacted}\``,
     "",
+    renderTriageSummary(manifest),
+    "",
     "## Surface Inventory",
     "",
     ...counts.map(([label, count]) => `- ${label}: ${count}`),
@@ -46,6 +48,45 @@ export function renderMarkdownReport(manifest: AgentManifest): string {
     "- Policy actions in this MVP are recommended controls, not runtime enforcement decisions.",
     "- The Static Blast-Radius Summary is based on discovered files and normalized metadata, not live graph traversal.",
     "- Use `.agentcspignore` to exclude project-specific generated or sensitive paths."
+  ].join("\n");
+}
+
+function renderTriageSummary(manifest: AgentManifest): string {
+  const summary = manifest.triage_summary;
+  if (!summary) return "## Triage Summary\n\nNo triage summary was generated.";
+
+  return [
+    "## Triage Summary",
+    "",
+    `- Active findings: ${summary.active_findings}`,
+    `- Suppressed findings: ${summary.suppressed_findings}`,
+    `- Expired suppressions: ${summary.expired_suppressions}`,
+    `- Highest active severity: \`${summary.highest_active_severity}\``,
+    `- Max active risk score: ${summary.max_active_risk_score}`,
+    "",
+    "### Active Findings by Severity",
+    "",
+    renderSeverityCounts(summary.active_by_severity),
+    "",
+    "### Active Findings by Confidence",
+    "",
+    renderConfidenceCounts(summary.active_by_confidence),
+    "",
+    "### Active Findings by Surface",
+    "",
+    renderSurfaceCounts(summary.active_by_surface_type),
+    "",
+    "### Top Active Rules",
+    "",
+    renderTopRuleTable(summary.top_active_rules),
+    "",
+    "### Recommended Control Mix",
+    "",
+    renderControlCounts(summary.active_by_recommended_control),
+    "",
+    "### Top Active Risks",
+    "",
+    renderTopRiskTable(summary.top_active_risks)
   ].join("\n");
 }
 
@@ -74,6 +115,72 @@ function renderBlastRadius(manifest: AgentManifest): string {
     summary.recommended_controls.length > 0
       ? summary.recommended_controls.map((control) => `- ${control}`).join("\n")
       : "- No recommended controls were generated."
+  ].join("\n");
+}
+
+function renderSeverityCounts(counts: NonNullable<AgentManifest["triage_summary"]>["active_by_severity"]): string {
+  return [
+    "| Critical | High | Medium | Low | Info |",
+    "| --- | --- | --- | --- | --- |",
+    `| ${counts.critical} | ${counts.high} | ${counts.medium} | ${counts.low} | ${counts.info} |`
+  ].join("\n");
+}
+
+function renderConfidenceCounts(counts: NonNullable<AgentManifest["triage_summary"]>["active_by_confidence"]): string {
+  return [
+    "| Very high | High | Medium | Low |",
+    "| --- | --- | --- | --- |",
+    `| ${counts.very_high} | ${counts.high} | ${counts.medium} | ${counts.low} |`
+  ].join("\n");
+}
+
+function renderSurfaceCounts(
+  counts: NonNullable<AgentManifest["triage_summary"]>["active_by_surface_type"]
+): string {
+  if (counts.length === 0) return "No active findings were generated.";
+  return [
+    "| Surface | Findings |",
+    "| --- | --- |",
+    ...counts.map((item) => `| ${item.surface_type} | ${item.count} |`)
+  ].join("\n");
+}
+
+function renderControlCounts(
+  counts: NonNullable<AgentManifest["triage_summary"]>["active_by_recommended_control"]
+): string {
+  if (counts.length === 0) return "No recommended controls were generated.";
+  return [
+    "| Recommended control | Findings |",
+    "| --- | --- |",
+    ...counts.map((item) => `| ${item.control.replaceAll("_", " ")} | ${item.count} |`)
+  ].join("\n");
+}
+
+function renderTopRuleTable(
+  rules: NonNullable<AgentManifest["triage_summary"]>["top_active_rules"]
+): string {
+  if (rules.length === 0) return "No active findings were generated.";
+  return [
+    "| Severity | Confidence | Rule | Category | Findings |",
+    "| --- | --- | --- | --- | --- |",
+    ...rules.map(
+      (rule) =>
+        `| ${rule.severity} | ${rule.confidence} | ${rule.rule_id} | ${escapeTable(rule.category)} | ${rule.count} |`
+    )
+  ].join("\n");
+}
+
+function renderTopRiskTable(
+  risks: NonNullable<AgentManifest["triage_summary"]>["top_active_risks"]
+): string {
+  if (risks.length === 0) return "No active findings were generated.";
+  return [
+    "| Severity | Confidence | Risk | Rule | Object | Path | Recommended control |",
+    "| --- | --- | --- | --- | --- | --- | --- |",
+    ...risks.map((risk) => {
+      const object = `${risk.object_type}:${risk.object_name}`;
+      return `| ${risk.severity} | ${risk.confidence} | ${risk.risk_score} | ${risk.rule_id} | \`${escapeTable(object)}\` | \`${escapeTable(risk.path)}\` | ${risk.recommended_control.replaceAll("_", " ")} |`;
+    })
   ].join("\n");
 }
 

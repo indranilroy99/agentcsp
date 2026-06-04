@@ -10,6 +10,7 @@ import { loadRules, runRules } from "../rules/engine.js";
 import { buildStaticBlastRadiusSummary } from "../reports/blast-radius.js";
 import { renderMarkdownReport } from "../reports/markdown.js";
 import { renderSarifReport } from "../reports/sarif.js";
+import { buildTriageSummary } from "../reports/triage.js";
 import { shouldFail } from "../risk/score.js";
 import { sortObjects } from "../utils/sort.js";
 
@@ -44,6 +45,7 @@ export async function scanProject(rawConfig: Partial<ScanConfig> & { root_path: 
   const activeFindings = findings.filter((finding) => finding.suppression?.status !== "active");
   const graph = buildStaticGraph(surfaces, activeFindings);
   const staticBlastRadius = buildStaticBlastRadiusSummary(surfaces, findings, graph.relationships, graph.attackPaths);
+  const triageSummary = buildTriageSummary(findings);
   const manifest = buildManifest({
     rootPath,
     scanConfig: config,
@@ -51,6 +53,7 @@ export async function scanProject(rawConfig: Partial<ScanConfig> & { root_path: 
     findings,
     relationships: graph.relationships,
     attackPaths: graph.attackPaths,
+    triageSummary,
     staticBlastRadius
   });
   const reportMarkdown = renderMarkdownReport(manifest);

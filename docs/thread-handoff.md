@@ -243,6 +243,17 @@ The current iteration adds:
 - a high-signal rule for secret-backed automation with write authority
 - fixture and test coverage for scheduled/manual/webhook-style agent maintenance workflows
 
+## Production Triage Summary Pass
+
+The current iteration adds:
+
+- manifest-level `triage_summary` with total, active, suppressed, and expired-suppression counts
+- active finding rollups by severity, confidence, surface type, category, and recommended control
+- top active rules and top active risks with stable finding/object IDs, paths, risk scores, and controls
+- Markdown Triage Summary rendered near the top of the report
+- SARIF run properties for `agentcsp_triage_summary` and `agentcsp_static_blast_radius`
+- regression coverage for vulnerable and safe fixtures
+
 ## Initial Build Recommendation
 
 Start with a CLI-first MVP before building the dashboard:

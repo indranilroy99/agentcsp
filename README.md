@@ -24,7 +24,7 @@ untrusted_context -> agent_surface -> capability -> data_class -> side_effect ->
 
 ## Why AgentCSP
 
-Modern agent systems are assembled from prompts, repo instructions, MCP servers, browser tools, shell commands, package scripts, retrieval stores, memory, logs, credentials, CI workflows, and generated state. Security teams need one view of that authority before they can reason about policy, blast radius, or evidence.
+Modern agent systems are assembled from prompts, repo instructions, MCP servers, browser tools, shell commands, package scripts, retrieval stores, memory, logs, credentials, CI workflows, and generated state. Security teams need one view of that AI authority before they can reason about policy, blast radius, or evidence.
 
 AgentCSP answers practical questions:
 
@@ -37,9 +37,9 @@ AgentCSP answers practical questions:
 
 ## Current Status
 
-AgentCSP is in early MVP development. The first release is a local-first CLI that scans a repository, builds a versioned agent manifest, runs an open rule pack, and produces JSON and Markdown evidence.
+AgentCSP is in early MVP development. The first release is a local-first CLI that scans a repository, builds a versioned agent manifest, runs an open rule pack, and produces JSON, Markdown, and SARIF evidence.
 
-Runtime enforcement adapters, SARIF output, graph traversal, and the dashboard are planned after the CLI data model is stable.
+Runtime enforcement adapters, deeper graph traversal, and the dashboard are planned after the CLI data model is stable.
 
 ## Core Capabilities
 
@@ -54,6 +54,7 @@ Runtime enforcement adapters, SARIF output, graph traversal, and the dashboard a
 - **Trust Boundary Analysis**: tracks trusted, project, workspace, third-party, untrusted, and unknown provenance.
 - **Explainable Risk Scoring**: severity includes contributing factors such as trust level, data class, reversibility, external reach, and secret exposure.
 - **Finding Confidence**: each finding includes confidence and rationale so teams can separate correlated evidence from weaker static signals.
+- **Triage Summary**: summarizes active findings by severity, confidence, surface type, category, recommended control, top rules, and top risk objects.
 - **Static Attack Paths**: connects context sources to privileged capabilities so teams can see provenance-to-authority paths instead of isolated alerts.
 - **Auditable Suppressions**: supports owned, reasoned, expiring accepted-risk records without deleting evidence.
 - **Open Rule Packs**: constrained YAML rules operate over normalized manifest objects. No custom JavaScript execution is allowed in rules.
@@ -171,8 +172,10 @@ The Agent Manifest is the SBOM equivalent for AI agent deployments. Core section
 - `attack_paths`
 - `findings`
 - `evidence`
+- `triage_summary`
+- `static_blast_radius`
 
-Findings include severity, confidence, risk factors, redacted evidence, mappings, and recommended controls.
+Findings include severity, confidence, risk factors, redacted evidence, mappings, and recommended controls. The triage summary gives downstream CI and platform consumers stable counts for active risk, suppressions, confidence, surface types, control mix, top rules, and top active risks.
 
 ## Rules
 

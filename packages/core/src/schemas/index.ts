@@ -177,6 +177,75 @@ export const FindingSchema = z.object({
   evidence: z.array(EvidenceSchema).default([])
 });
 
+export const SeverityCountsSchema = z.object({
+  critical: z.number().int().nonnegative().default(0),
+  high: z.number().int().nonnegative().default(0),
+  medium: z.number().int().nonnegative().default(0),
+  low: z.number().int().nonnegative().default(0),
+  info: z.number().int().nonnegative().default(0)
+});
+
+export const ConfidenceCountsSchema = z.object({
+  very_high: z.number().int().nonnegative().default(0),
+  high: z.number().int().nonnegative().default(0),
+  medium: z.number().int().nonnegative().default(0),
+  low: z.number().int().nonnegative().default(0)
+});
+
+export const TriageSurfaceCountSchema = z.object({
+  surface_type: SurfaceTypeSchema,
+  count: z.number().int().nonnegative()
+});
+
+export const TriageCategoryCountSchema = z.object({
+  category: z.string(),
+  count: z.number().int().nonnegative()
+});
+
+export const TriageControlCountSchema = z.object({
+  control: ControlSchema,
+  count: z.number().int().nonnegative()
+});
+
+export const TriageRuleSummarySchema = z.object({
+  rule_id: z.string(),
+  name: z.string(),
+  category: z.string(),
+  severity: SeveritySchema,
+  confidence: ConfidenceSchema,
+  count: z.number().int().positive()
+});
+
+export const TriageFindingSummarySchema = z.object({
+  finding_id: z.string(),
+  rule_id: z.string(),
+  severity: SeveritySchema,
+  confidence: ConfidenceSchema,
+  risk_score: z.number().int().min(0).max(100),
+  object_id: z.string(),
+  object_type: SurfaceTypeSchema,
+  object_name: z.string(),
+  path: z.string(),
+  recommended_control: ControlSchema
+});
+
+export const TriageSummarySchema = z.object({
+  title: z.literal("AgentCSP Triage Summary").default("AgentCSP Triage Summary"),
+  total_findings: z.number().int().nonnegative().default(0),
+  active_findings: z.number().int().nonnegative().default(0),
+  suppressed_findings: z.number().int().nonnegative().default(0),
+  expired_suppressions: z.number().int().nonnegative().default(0),
+  highest_active_severity: SeveritySchema.default("info"),
+  max_active_risk_score: z.number().int().min(0).max(100).default(0),
+  active_by_severity: SeverityCountsSchema.default({ critical: 0, high: 0, medium: 0, low: 0, info: 0 }),
+  active_by_confidence: ConfidenceCountsSchema.default({ very_high: 0, high: 0, medium: 0, low: 0 }),
+  active_by_surface_type: z.array(TriageSurfaceCountSchema).default([]),
+  active_by_category: z.array(TriageCategoryCountSchema).default([]),
+  active_by_recommended_control: z.array(TriageControlCountSchema).default([]),
+  top_active_rules: z.array(TriageRuleSummarySchema).default([]),
+  top_active_risks: z.array(TriageFindingSummarySchema).default([])
+});
+
 export const AttackPathSchema = z.object({
   id: z.string(),
   title: z.string(),
@@ -315,6 +384,7 @@ export const AgentManifestSchema = z.object({
   attack_paths: z.array(AttackPathSchema).default([]),
   findings: z.array(FindingSchema).default([]),
   evidence: z.array(EvidenceSchema).default([]),
+  triage_summary: TriageSummarySchema.optional(),
   static_blast_radius: StaticBlastRadiusSummarySchema.optional()
 });
 
@@ -349,6 +419,9 @@ export type AttackPath = z.infer<typeof AttackPathSchema>;
 export type FindingSuppression = z.infer<typeof FindingSuppressionSchema>;
 export type FindingPolicyControl = z.infer<typeof FindingPolicyControlSchema>;
 export type Finding = z.infer<typeof FindingSchema>;
+export type SeverityCounts = z.infer<typeof SeverityCountsSchema>;
+export type ConfidenceCounts = z.infer<typeof ConfidenceCountsSchema>;
+export type TriageSummary = z.infer<typeof TriageSummarySchema>;
 export type Rule = z.infer<typeof RuleSchema>;
 export type Policy = z.infer<typeof PolicySchema>;
 export type AgentManifest = z.infer<typeof AgentManifestSchema>;
