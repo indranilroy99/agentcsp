@@ -115,6 +115,25 @@ Content metadata may include:
 
 Raw RAG, memory, transcript, and cached-output text is not emitted. AgentCSP records normalized signals so rules can reason about indirect prompt injection and cross-session contamination without publishing the content.
 
+## Automations
+
+GitHub workflow triggers that can run outside a normal direct code-review path are normalized into `automation` objects.
+
+Automation metadata may include:
+
+- `trigger_names`
+- `automation_triggers`
+- `scheduled`
+- `manual_dispatch`
+- `external_dispatch`
+- `workflow_run_trigger`
+- `write_permissions`
+- `mentions_secrets_context`
+- `has_permissions_block`
+- `content_redacted`
+
+Automation surfaces let rules reason about scheduled agents, manual dispatches, webhook-style dispatches, and background workflows that can run with secrets or write authority.
+
 ## Findings
 
 Each finding includes:

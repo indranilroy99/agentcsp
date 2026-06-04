@@ -234,6 +234,15 @@ The current iteration adds:
 - high-signal rules for retrieval poisoning and cross-session memory contamination
 - fixture and regression coverage proving raw poisoning text is not emitted
 
+## Automation Authority Pass
+
+The current iteration adds:
+
+- automation surfaces derived from GitHub workflow triggers such as `schedule`, `workflow_dispatch`, `repository_dispatch`, `workflow_run`, and `workflow_call`
+- automation metadata for scheduled/manual/external dispatch, write permissions, and secrets context
+- a high-signal rule for secret-backed automation with write authority
+- fixture and test coverage for scheduled/manual/webhook-style agent maintenance workflows
+
 ## Initial Build Recommendation
 
 Start with a CLI-first MVP before building the dashboard:

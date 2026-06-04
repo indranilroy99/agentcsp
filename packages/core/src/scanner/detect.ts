@@ -486,6 +486,9 @@ function detectWorkflow(file: WalkedFile, text: string | undefined, surfaces: De
   }
   const permissions = parsed.permissions;
   const actions = detectActions(content);
+  const triggerNames = extractWorkflowTriggers(parsed.on);
+  const writePermissions = hasWritePermissions(permissions);
+  const mentionsSecretsContext = /secrets\./i.test(content);
   const object = createSurfaceObject({
     type: "ci_cd",
     name: path.basename(file.relativePath),
@@ -501,15 +504,72 @@ function detectWorkflow(file: WalkedFile, text: string | undefined, surfaces: De
     metadata: {
       content_redacted: true,
       has_permissions_block: Boolean(permissions),
-      trigger_names: extractWorkflowTriggers(parsed.on),
-      pull_request_trigger: extractWorkflowTriggers(parsed.on).some((trigger) =>
-        ["pull_request", "pull_request_target"].includes(trigger)
-      ),
-      write_permissions: hasWritePermissions(permissions),
-      mentions_secrets_context: /secrets\./i.test(content)
+      trigger_names: triggerNames,
+      pull_request_trigger: triggerNames.some((trigger) => ["pull_request", "pull_request_target"].includes(trigger)),
+      write_permissions: writePermissions,
+      mentions_secrets_context: mentionsSecretsContext
     }
   });
   surfaces.ci_cd.push({
+    ...object,
+    untrusted_to_privileged: isUntrustedToPrivileged(object)
+  });
+  detectWorkflowAutomation(file, content, triggerNames, {
+    actions,
+    writePermissions,
+    mentionsSecretsContext,
+    permissions
+  }, surfaces);
+}
+
+function detectWorkflowAutomation(
+  file: WalkedFile,
+  content: string,
+  triggerNames: string[],
+  workflow: {
+    actions: ActionType[];
+    writePermissions: boolean;
+    mentionsSecretsContext: boolean;
+    permissions: unknown;
+  },
+  surfaces: DetectedSurfaces
+): void {
+  const automationTriggers = triggerNames.filter((trigger) =>
+    ["schedule", "workflow_dispatch", "repository_dispatch", "workflow_run", "workflow_call"].includes(trigger)
+  );
+  if (automationTriggers.length === 0) return;
+
+  const actions = uniqueActions([
+    ...(workflow.actions.length > 0 ? workflow.actions : (["execute"] as ActionType[])),
+    ...(workflow.writePermissions ? (["write"] as ActionType[]) : []),
+    ...(workflow.mentionsSecretsContext ? (["call"] as ActionType[]) : [])
+  ]);
+  const object = createSurfaceObject({
+    type: "automation",
+    name: `workflow:${path.basename(file.relativePath)}`,
+    path: file.relativePath,
+    trust_level: "project",
+    data_classes: workflow.mentionsSecretsContext ? ["credential"] : inferDataClasses(content, file.relativePath),
+    actions,
+    side_effect: true,
+    external_reach: hasExternalReach(content) || automationTriggers.includes("repository_dispatch"),
+    secret_exposure: workflow.mentionsSecretsContext,
+    reversible: isReversible(content),
+    reason: "GitHub Actions workflow trigger discovered as agent-relevant automation.",
+    metadata: {
+      content_redacted: true,
+      trigger_names: triggerNames,
+      automation_triggers: automationTriggers,
+      scheduled: automationTriggers.includes("schedule"),
+      manual_dispatch: automationTriggers.includes("workflow_dispatch"),
+      external_dispatch: automationTriggers.includes("repository_dispatch"),
+      workflow_run_trigger: automationTriggers.includes("workflow_run"),
+      write_permissions: workflow.writePermissions,
+      mentions_secrets_context: workflow.mentionsSecretsContext,
+      has_permissions_block: Boolean(workflow.permissions)
+    }
+  });
+  surfaces.automations.push({
     ...object,
     untrusted_to_privileged: isUntrustedToPrivileged(object)
   });

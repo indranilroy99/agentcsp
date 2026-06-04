@@ -50,6 +50,7 @@ Runtime enforcement adapters, SARIF output, graph traversal, and the dashboard a
 - **Remote MCP Trust Signals**: detects remote MCP servers, redacts URLs and header values, records host/header/key metadata, and flags credential-backed third-party MCP access.
 - **Runtime Posture Inventory**: parses agent runtime configs for sandbox mode, approval policy, network access, privileged tool allowlists, and env key exposure.
 - **RAG and Memory Poisoning Signals**: records redacted instruction-like, tool-directive, external-send, and persistence signals from retrieval and memory files.
+- **Automation Authority**: models scheduled, manual, and externally dispatched workflows as agent-relevant automation surfaces.
 - **Trust Boundary Analysis**: tracks trusted, project, workspace, third-party, untrusted, and unknown provenance.
 - **Explainable Risk Scoring**: severity includes contributing factors such as trust level, data class, reversibility, external reach, and secret exposure.
 - **Finding Confidence**: each finding includes confidence and rationale so teams can separate correlated evidence from weaker static signals.

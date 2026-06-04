@@ -101,6 +101,24 @@ describe("scanner", () => {
       write_permissions: true,
       mentions_secrets_context: true
     });
+    const automation = surfaces.automations.find((surface) => surface.name === "workflow:agent-maintenance.yml");
+    expect(automation).toMatchObject({
+      type: "automation",
+      path: ".github/workflows/agent-maintenance.yml",
+      secret_exposure: true,
+      side_effect: true,
+      external_reach: true
+    });
+    expect(automation?.metadata).toMatchObject({
+      scheduled: true,
+      manual_dispatch: true,
+      external_dispatch: true,
+      write_permissions: true,
+      mentions_secrets_context: true,
+      automation_triggers: ["repository_dispatch", "schedule", "workflow_dispatch"]
+    });
+    expect(automation?.actions).toContain("write");
+    expect(automation?.actions).toContain("execute");
     expect(surfaces.rag_sources.length).toBeGreaterThanOrEqual(1);
     expect(surfaces.memory.length).toBeGreaterThanOrEqual(1);
     const ragFile = surfaces.rag_sources.find((surface) => surface.path === "rag/customer-note.md");
