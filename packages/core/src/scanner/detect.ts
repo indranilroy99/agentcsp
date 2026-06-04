@@ -131,6 +131,16 @@ export async function detectSurfaces(files: WalkedFile[]): Promise<DetectedSurfa
       continue;
     }
 
+    const contextSurface = contextSurfaceType(file.relativePath);
+    if (contextSurface === "rag_source") {
+      detectRagContentFile(file, text, surfaces);
+      continue;
+    }
+    if (contextSurface === "memory") {
+      detectMemoryContentFile(file, text, surfaces);
+      continue;
+    }
+
     if (basename === "SKILL.md") {
       const content = text ?? "";
       const actions = detectActions(content);
@@ -203,6 +213,64 @@ export async function detectSurfaces(files: WalkedFile[]): Promise<DetectedSurfa
   return surfaces;
 }
 
+function detectRagContentFile(file: WalkedFile, text: string | undefined, surfaces: DetectedSurfaces): void {
+  const content = text ?? "";
+  const signals = classifyContextContent(content);
+  const actions = contextActions(signals, "rag_source");
+  const object = createSurfaceObject({
+    type: "rag_source",
+    name: path.basename(file.relativePath),
+    path: file.relativePath,
+    trust_level: "unknown",
+    data_classes: inferDataClasses(content, file.relativePath),
+    actions,
+    side_effect: false,
+    external_reach: signals.external_directive,
+    secret_exposure: signals.secret_reference,
+    reason: "RAG source file discovered as retrievable agent context.",
+    metadata: {
+      content_redacted: true,
+      content_analyzed: text !== undefined,
+      skipped_for_size: file.skippedForSize,
+      bytes: file.size,
+      ...signals
+    }
+  });
+  surfaces.rag_sources.push({
+    ...object,
+    untrusted_to_privileged: isUntrustedToPrivileged(object)
+  });
+}
+
+function detectMemoryContentFile(file: WalkedFile, text: string | undefined, surfaces: DetectedSurfaces): void {
+  const content = text ?? "";
+  const signals = classifyContextContent(content);
+  const actions = contextActions(signals, "memory");
+  const object = createSurfaceObject({
+    type: "memory",
+    name: path.basename(file.relativePath),
+    path: file.relativePath,
+    trust_level: "unknown",
+    data_classes: inferDataClasses(content, file.relativePath),
+    actions,
+    side_effect: actions.some((action) => action !== "read"),
+    external_reach: signals.external_directive,
+    secret_exposure: signals.secret_reference,
+    reason: "Memory file discovered as persisted agent context.",
+    metadata: {
+      content_redacted: true,
+      content_analyzed: text !== undefined,
+      skipped_for_size: file.skippedForSize,
+      bytes: file.size,
+      ...signals
+    }
+  });
+  surfaces.memory.push({
+    ...object,
+    untrusted_to_privileged: isUntrustedToPrivileged(object)
+  });
+}
+
 function detectDirectoryHeuristics(file: WalkedFile, seenDirectories: Set<string>, surfaces: DetectedSurfaces): void {
   const segments = file.relativePath.split("/");
   for (let index = 0; index < segments.length - 1; index += 1) {
@@ -257,6 +325,55 @@ function detectDirectoryHeuristics(file: WalkedFile, seenDirectories: Set<string
       );
     }
   }
+}
+
+function contextSurfaceType(relativePath: string): "rag_source" | "memory" | undefined {
+  const segments = relativePath.split("/").slice(0, -1).map((segment) => segment.toLowerCase());
+  if (segments.some((segment) => RAG_DIR_NAMES.has(segment))) return "rag_source";
+  if (segments.some((segment) => MEMORY_DIR_NAMES.has(segment) || LOG_DIR_NAMES.has(segment))) return "memory";
+  return undefined;
+}
+
+interface ContextContentSignals {
+  instruction_like_content: boolean;
+  instruction_override: boolean;
+  tool_directive: boolean;
+  memory_write_directive: boolean;
+  external_directive: boolean;
+  secret_reference: boolean;
+  content_signal_count: number;
+}
+
+function classifyContextContent(content: string): ContextContentSignals {
+  const instructionOverride = /\b(ignore|override|bypass|forget|disregard)\b[\s\S]{0,80}\b(instruction|policy|approval|guard|previous|system|developer)\b/i.test(
+    content
+  );
+  const instructionLike =
+    instructionOverride ||
+    /\b(system prompt|developer instruction|highest priority|follow these instructions|do not obey|new instruction)\b/i.test(content);
+  const toolDirective = /\b(call|invoke|use|run|execute|trigger)\b[\s\S]{0,80}\b(tool|mcp|shell|browser|github|slack|webhook|function|api)\b/i.test(content);
+  const memoryWriteDirective = /\b(remember|store|persist|save)\b[\s\S]{0,80}\b(memory|future|session|run|instruction|shortcut)\b/i.test(content);
+  const externalDirective =
+    hasExternalReach(content) || /\b(webhook|slack|email|external|publish|send|post|upload)\b/i.test(content);
+  const secretReference = hasSecretExposure(content);
+  const signals = [instructionLike, instructionOverride, toolDirective, memoryWriteDirective, externalDirective, secretReference].filter(Boolean).length;
+  return {
+    instruction_like_content: instructionLike,
+    instruction_override: instructionOverride,
+    tool_directive: toolDirective,
+    memory_write_directive: memoryWriteDirective,
+    external_directive: externalDirective,
+    secret_reference: secretReference,
+    content_signal_count: signals
+  };
+}
+
+function contextActions(signals: ContextContentSignals, type: "rag_source" | "memory"): ActionType[] {
+  const actions = new Set<ActionType>(["read"]);
+  if (type === "memory" || signals.memory_write_directive) actions.add("remember");
+  if (signals.tool_directive) actions.add("call");
+  if (signals.external_directive) actions.add("send");
+  return [...actions].sort((a, b) => a.localeCompare(b));
 }
 
 async function detectMcpConfig(file: WalkedFile, text: string | undefined, surfaces: DetectedSurfaces): Promise<void> {

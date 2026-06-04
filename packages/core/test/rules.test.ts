@@ -32,6 +32,8 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-002")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-CICD-002")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RAG-001")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RAG-002")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MEMORY-002")).toBe(true);
     expect(findings.some((finding) => finding.severity === "critical")).toBe(true);
     expect(findings.some((finding) => finding.confidence === "very_high")).toBe(true);
     expect(findings.find((finding) => finding.rule_id === "AGENTCSP-RUNTIME-001")?.confidence).toBe("very_high");

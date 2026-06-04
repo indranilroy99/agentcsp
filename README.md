@@ -49,6 +49,7 @@ Runtime enforcement adapters, SARIF output, graph traversal, and the dashboard a
 - **MCP and Tool Schema Authority**: extracts individual tool schemas and classifies external writes, destructive actions, credential-like inputs, filesystem paths, URL inputs, browser control, memory access, and shell authority.
 - **Remote MCP Trust Signals**: detects remote MCP servers, redacts URLs and header values, records host/header/key metadata, and flags credential-backed third-party MCP access.
 - **Runtime Posture Inventory**: parses agent runtime configs for sandbox mode, approval policy, network access, privileged tool allowlists, and env key exposure.
+- **RAG and Memory Poisoning Signals**: records redacted instruction-like, tool-directive, external-send, and persistence signals from retrieval and memory files.
 - **Trust Boundary Analysis**: tracks trusted, project, workspace, third-party, untrusted, and unknown provenance.
 - **Explainable Risk Scoring**: severity includes contributing factors such as trust level, data class, reversibility, external reach, and secret exposure.
 - **Finding Confidence**: each finding includes confidence and rationale so teams can separate correlated evidence from weaker static signals.
@@ -66,6 +67,7 @@ AgentCSP is conservative by default:
 - `.env*` files are reduced to file presence and key names only.
 - Evidence snippets are redacted by default.
 - Raw file contents are not dumped into the manifest.
+- RAG and memory content signals are emitted as booleans and counts, not raw text.
 - Large/generated folders are ignored by default.
 - `.agentcspignore` is supported in the MVP.
 - File traversal and object IDs are deterministic.

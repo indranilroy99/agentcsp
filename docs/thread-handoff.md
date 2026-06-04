@@ -225,6 +225,15 @@ The current iteration adds:
 - a high-signal rule for credential-backed third-party remote MCP access
 - fixture and test coverage proving raw URL paths and token placeholders are not emitted
 
+## RAG and Memory Content Signal Pass
+
+The current iteration adds:
+
+- file-level redacted content-signal analysis for RAG and memory surfaces
+- metadata for instruction-like content, instruction override, tool directives, memory-write directives, external directives, secret references, and signal counts
+- high-signal rules for retrieval poisoning and cross-session memory contamination
+- fixture and regression coverage proving raw poisoning text is not emitted
+
 ## Initial Build Recommendation
 
 Start with a CLI-first MVP before building the dashboard:

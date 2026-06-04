@@ -103,5 +103,28 @@ describe("scanner", () => {
     });
     expect(surfaces.rag_sources.length).toBeGreaterThanOrEqual(1);
     expect(surfaces.memory.length).toBeGreaterThanOrEqual(1);
+    const ragFile = surfaces.rag_sources.find((surface) => surface.path === "rag/customer-note.md");
+    expect(ragFile?.metadata).toMatchObject({
+      content_analyzed: true,
+      content_redacted: true,
+      instruction_like_content: true,
+      instruction_override: true,
+      tool_directive: true,
+      external_directive: true
+    });
+    expect(ragFile?.actions).toContain("call");
+    expect(ragFile?.actions).toContain("send");
+    expect(JSON.stringify(ragFile)).not.toContain("Ignore previous repository instructions");
+    const memoryFile = surfaces.memory.find((surface) => surface.path === "memory/release-notes.md");
+    expect(memoryFile?.metadata).toMatchObject({
+      content_analyzed: true,
+      content_redacted: true,
+      instruction_like_content: true,
+      memory_write_directive: true,
+      tool_directive: true
+    });
+    expect(memoryFile?.actions).toContain("remember");
+    expect(memoryFile?.actions).toContain("call");
+    expect(JSON.stringify(memoryFile)).not.toContain("maintenance shortcut");
   });
 });

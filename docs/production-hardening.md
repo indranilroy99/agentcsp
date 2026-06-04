@@ -34,6 +34,7 @@ Examples:
 - pull request workflow plus write permissions plus secrets
 - untrusted RAG source plus privileged tool path
 - memory write plus untrusted source provenance
+- RAG or memory content with instruction-like text plus tool/external directives
 - package publish/release authority plus agent-influenced workflow
 
 ## CI Expectations

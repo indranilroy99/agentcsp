@@ -49,4 +49,4 @@ The generated SARIF file is:
 
 ## Scanner Safety
 
-AgentCSP does not read or emit secret values by default. For `.env*` files, it records file presence and key names only. Evidence snippets are redacted, and raw file contents are not written to the manifest.
+AgentCSP does not read or emit secret values by default. For `.env*` files, it records file presence and key names only. Evidence snippets are redacted, and raw file contents are not written to the manifest. RAG and memory files are reduced to normalized content signals rather than raw text.
