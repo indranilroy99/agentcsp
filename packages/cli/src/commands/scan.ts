@@ -27,6 +27,9 @@ export async function runScanCommand(targetPath: string, options: Record<string,
   if (!quiet) {
     await printBanner({ animate: true });
     console.log(`AgentCSP scan complete: ${result.findings.length} finding(s)`);
+    console.log(
+      `Attack paths: ${result.manifest.attack_paths.length} (${result.manifest.static_blast_radius?.critical_attack_paths ?? 0} critical)`
+    );
     if (result.outputFiles.manifest) console.log(`Manifest: ${result.outputFiles.manifest}`);
     if (result.outputFiles.findings) console.log(`Findings: ${result.outputFiles.findings}`);
     if (result.outputFiles.report) console.log(`Report: ${result.outputFiles.report}`);

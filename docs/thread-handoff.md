@@ -150,6 +150,17 @@ The next pass added:
 - platform direction docs in `docs/platform.md`
 - production hardening docs in `docs/production-hardening.md`
 
+## Graph and Attack-Path Pass
+
+The next iteration added:
+
+- manifest `relationships`
+- manifest `attack_paths`
+- graph builder for context-to-capability and secret-to-capability paths
+- static attack path section in Markdown reports
+- blast-radius counts for relationships, attack paths, and critical attack paths
+- graph regression tests
+
 ## Initial Build Recommendation
 
 Start with a CLI-first MVP before building the dashboard:

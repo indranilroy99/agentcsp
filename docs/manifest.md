@@ -20,7 +20,35 @@ Core sections:
 - `runtime_config`
 - `ci_cd`
 - `automations`
+- `relationships`
+- `attack_paths`
 - `findings`
 - `evidence`
 
 The manifest is versioned and validated with Zod. JSON Schema exports live in `schemas/`.
+
+## Relationships
+
+`relationships` are static graph edges between normalized surfaces. They are intentionally bounded and evidence-backed.
+
+Examples:
+
+- `rag_source -> tool` with relation `influences`
+- `secret -> mcp_server` with relation `uses_secret`
+- `instruction -> ci_cd` with relation `influences`
+- `memory -> tool` with relation `influences`
+
+## Attack Paths
+
+`attack_paths` are prioritized paths that combine relationships with findings. They are designed to show security teams how context provenance can reach authority, data classes, and side effects.
+
+An attack path includes:
+
+- source surface
+- target surface
+- relationship edges
+- severity
+- confidence
+- risk factors
+- recommended control
+- redacted evidence

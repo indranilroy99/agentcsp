@@ -48,6 +48,7 @@ Runtime enforcement adapters, SARIF output, graph traversal, and the dashboard a
 - **Authority Signals**: classifies actions such as read, write, execute, publish, send, delete, remember, and call.
 - **Trust Boundary Analysis**: tracks trusted, project, workspace, third-party, untrusted, and unknown provenance.
 - **Explainable Risk Scoring**: severity includes contributing factors such as trust level, data class, reversibility, external reach, and secret exposure.
+- **Static Attack Paths**: connects context sources to privileged capabilities so teams can see provenance-to-authority paths instead of isolated alerts.
 - **Open Rule Packs**: constrained YAML rules operate over normalized manifest objects. No custom JavaScript execution is allowed in rules.
 - **Static Blast-Radius Summary**: reports reachable authority from static project metadata without claiming runtime graph traversal.
 - **Evidence Reports**: outputs JSON and Markdown with redacted evidence snippets and recommended controls.
@@ -156,6 +157,8 @@ The Agent Manifest is the SBOM equivalent for AI agent deployments. Core section
 - `runtime_config`
 - `ci_cd`
 - `automations`
+- `relationships`
+- `attack_paths`
 - `findings`
 - `evidence`
 

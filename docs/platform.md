@@ -51,6 +51,7 @@ AgentCSP should support three deployment profiles:
 - **Policy Center**: manages `agentcsp.yaml`, trust overrides, recommended controls, waivers, and future enforcement modes.
 - **Evidence Console**: shows redacted evidence, risk factors, mappings to OWASP/MITRE/NIST, owner, status, and audit history.
 - **Blast-Radius Graph**: visualizes context-to-capability-to-data-to-side-effect paths.
+- **Attack Path Explorer**: ranks provenance-to-authority paths by severity, confidence, and recommended control.
 - **Red-Team Lab**: generates and runs adversarial scenarios from discovered surfaces.
 - **RAG and Memory Lab**: tests retrieval poisoning, memory persistence, source provenance, and contamination paths.
 - **AI Supply-Chain View**: correlates package scripts, GitHub Actions, MCP dependencies, plugin metadata, generated state, and secrets references.

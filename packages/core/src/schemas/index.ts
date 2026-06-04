@@ -43,6 +43,7 @@ export const ControlSchema = z.enum([
 ]);
 
 export const SeveritySchema = z.enum(["info", "low", "medium", "high", "critical"]);
+export const ConfidenceSchema = z.enum(["low", "medium", "high", "very_high"]);
 
 export const SurfaceTypeSchema = z.enum([
   "agent",
@@ -100,6 +101,35 @@ export const SurfaceObjectSchema = z.object({
   metadata: z.record(z.unknown()).default({})
 });
 
+export const GraphNodeRefSchema = z.object({
+  id: z.string(),
+  type: SurfaceTypeSchema,
+  name: z.string(),
+  path: z.string(),
+  trust_level: TrustLevelSchema
+});
+
+export const GraphRelationSchema = z.enum([
+  "influences",
+  "loads",
+  "calls",
+  "reads",
+  "writes",
+  "uses_secret",
+  "external_reach",
+  "persists",
+  "triggers"
+]);
+
+export const GraphEdgeSchema = z.object({
+  id: z.string(),
+  source: GraphNodeRefSchema,
+  target: GraphNodeRefSchema,
+  relation: GraphRelationSchema,
+  reason: z.string(),
+  evidence: z.array(EvidenceSchema).default([])
+});
+
 export const FindingSchema = z.object({
   id: z.string(),
   rule_id: z.string(),
@@ -120,6 +150,20 @@ export const FindingSchema = z.object({
       nist_ai_rmf: z.array(z.string()).default([])
     })
     .default({ owasp: [], mitre_atlas: [], nist_ai_rmf: [] }),
+  evidence: z.array(EvidenceSchema).default([])
+});
+
+export const AttackPathSchema = z.object({
+  id: z.string(),
+  title: z.string(),
+  severity: SeveritySchema,
+  confidence: ConfidenceSchema,
+  source: GraphNodeRefSchema,
+  target: GraphNodeRefSchema,
+  edges: z.array(GraphEdgeSchema).default([]),
+  reason: z.string(),
+  recommended_control: ControlSchema,
+  risk: RiskFactorsSchema,
   evidence: z.array(EvidenceSchema).default([])
 });
 
@@ -182,6 +226,9 @@ export const StaticBlastRadiusSummarySchema = z.object({
   secret_reference_paths: z.number().int().nonnegative().default(0),
   memory_surfaces: z.number().int().nonnegative().default(0),
   rag_surfaces: z.number().int().nonnegative().default(0),
+  relationships: z.number().int().nonnegative().default(0),
+  attack_paths: z.number().int().nonnegative().default(0),
+  critical_attack_paths: z.number().int().nonnegative().default(0),
   highest_severity: SeveritySchema.default("info"),
   high_risk_objects: z.array(SurfaceObjectSchema).default([]),
   recommended_controls: z.array(z.string()).default([])
@@ -219,6 +266,8 @@ export const AgentManifestSchema = z.object({
   runtime_config: z.array(SurfaceObjectSchema).default([]),
   ci_cd: z.array(SurfaceObjectSchema).default([]),
   automations: z.array(SurfaceObjectSchema).default([]),
+  relationships: z.array(GraphEdgeSchema).default([]),
+  attack_paths: z.array(AttackPathSchema).default([]),
   findings: z.array(FindingSchema).default([]),
   evidence: z.array(EvidenceSchema).default([]),
   static_blast_radius: StaticBlastRadiusSummarySchema.optional()
@@ -242,10 +291,15 @@ export type DataClass = z.infer<typeof DataClassSchema>;
 export type ActionType = z.infer<typeof ActionTypeSchema>;
 export type Control = z.infer<typeof ControlSchema>;
 export type Severity = z.infer<typeof SeveritySchema>;
+export type Confidence = z.infer<typeof ConfidenceSchema>;
 export type SurfaceType = z.infer<typeof SurfaceTypeSchema>;
 export type RiskFactors = z.infer<typeof RiskFactorsSchema>;
 export type Evidence = z.infer<typeof EvidenceSchema>;
 export type SurfaceObject = z.infer<typeof SurfaceObjectSchema>;
+export type GraphNodeRef = z.infer<typeof GraphNodeRefSchema>;
+export type GraphRelation = z.infer<typeof GraphRelationSchema>;
+export type GraphEdge = z.infer<typeof GraphEdgeSchema>;
+export type AttackPath = z.infer<typeof AttackPathSchema>;
 export type Finding = z.infer<typeof FindingSchema>;
 export type Rule = z.infer<typeof RuleSchema>;
 export type Policy = z.infer<typeof PolicySchema>;

@@ -3,7 +3,9 @@ import {
   AgentManifestSchema,
   ManifestSchemaVersion,
   type AgentManifest,
+  type AttackPath,
   type Finding,
+  type GraphEdge,
   type ScanConfig,
   type StaticBlastRadiusSummary,
   type SurfaceObject
@@ -16,6 +18,8 @@ export function buildManifest(input: {
   scanConfig: ScanConfig;
   surfaces: DetectedSurfaces;
   findings?: Finding[];
+  relationships?: GraphEdge[];
+  attackPaths?: AttackPath[];
   staticBlastRadius?: StaticBlastRadiusSummary;
 }): AgentManifest {
   const evidence = collectEvidence(input.surfaces, input.findings ?? []);
@@ -49,6 +53,8 @@ export function buildManifest(input: {
     runtime_config: sortObjects(input.surfaces.runtime_config),
     ci_cd: sortObjects(input.surfaces.ci_cd),
     automations: sortObjects(input.surfaces.automations),
+    relationships: sortRelationships(input.relationships ?? []),
+    attack_paths: sortAttackPaths(input.attackPaths ?? []),
     findings: sortFindings(input.findings ?? []),
     evidence,
     static_blast_radius: input.staticBlastRadius
@@ -82,4 +88,20 @@ function collectEvidence(surfaces: DetectedSurfaces, findings: Finding[]) {
     for (const item of finding.evidence) evidence.set(item.id, item);
   }
   return [...evidence.values()].sort((a, b) => a.id.localeCompare(b.id));
+}
+
+function sortRelationships(relationships: GraphEdge[]): GraphEdge[] {
+  return [...relationships].sort((a, b) => a.id.localeCompare(b.id));
+}
+
+function sortAttackPaths(attackPaths: AttackPath[]): AttackPath[] {
+  const severityWeight = { critical: 0, high: 1, medium: 2, low: 3, info: 4 };
+  const confidenceWeight = { very_high: 0, high: 1, medium: 2, low: 3 };
+  return [...attackPaths].sort((a, b) => {
+    const severityCompare = severityWeight[a.severity] - severityWeight[b.severity];
+    if (severityCompare !== 0) return severityCompare;
+    const confidenceCompare = confidenceWeight[a.confidence] - confidenceWeight[b.confidence];
+    if (confidenceCompare !== 0) return confidenceCompare;
+    return a.id.localeCompare(b.id);
+  });
 }

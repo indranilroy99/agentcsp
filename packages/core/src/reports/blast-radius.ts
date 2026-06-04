@@ -1,9 +1,14 @@
-import type { Finding, StaticBlastRadiusSummary, SurfaceObject } from "../schemas/index.js";
+import type { AttackPath, Finding, GraphEdge, StaticBlastRadiusSummary, SurfaceObject } from "../schemas/index.js";
 import { allManifestObjects } from "../manifest/build.js";
 import type { DetectedSurfaces } from "../scanner/detect.js";
 import { highestSeverity } from "../risk/score.js";
 
-export function buildStaticBlastRadiusSummary(surfaces: DetectedSurfaces, findings: Finding[]): StaticBlastRadiusSummary {
+export function buildStaticBlastRadiusSummary(
+  surfaces: DetectedSurfaces,
+  findings: Finding[],
+  relationships: GraphEdge[] = [],
+  attackPaths: AttackPath[] = []
+): StaticBlastRadiusSummary {
   const objects = allManifestObjects(surfaces);
   const highRiskObjects = objects.filter(isHighRiskObject).slice(0, 20);
   return {
@@ -15,6 +20,9 @@ export function buildStaticBlastRadiusSummary(surfaces: DetectedSurfaces, findin
     secret_reference_paths: objects.filter((object) => object.secret_exposure || object.data_classes.includes("credential")).length,
     memory_surfaces: surfaces.memory.length,
     rag_surfaces: surfaces.rag_sources.length,
+    relationships: relationships.length,
+    attack_paths: attackPaths.length,
+    critical_attack_paths: attackPaths.filter((attackPath) => attackPath.severity === "critical").length,
     highest_severity: highestSeverity(findings),
     high_risk_objects: highRiskObjects,
     recommended_controls: summarizeControls(findings)

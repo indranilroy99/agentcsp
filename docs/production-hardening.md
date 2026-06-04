@@ -50,6 +50,7 @@ Every production change should pass:
 - Add package dependency and lockfile inventory.
 - Add MCP schema parsing beyond config files.
 - Add graph edges between context sources, capabilities, data classes, and side effects.
+- Add attack-path regression fixtures for common production AI architectures.
 - Add suppression and waiver workflow with expiry.
 - Add confidence levels to findings.
 - Add multi-fixture regression tests for true positives and false positives.

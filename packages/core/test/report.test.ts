@@ -17,9 +17,11 @@ describe("scanProject", () => {
 
     expect(result.manifest.metadata.config.secret_values_collected).toBe(false);
     expect(result.manifest.static_blast_radius?.title).toBe("Static Blast-Radius Summary");
+    expect(result.manifest.static_blast_radius?.attack_paths).toBeGreaterThan(0);
     expect(result.findings.length).toBeGreaterThan(0);
     expect(result.outputFiles.sarif).toBeDefined();
     expect(result.reportMarkdown).toContain("Recommended Controls");
+    expect(result.reportMarkdown).toContain("Static Attack Paths");
     expect(result.reportMarkdown).toContain("Policy actions in this MVP are recommended controls");
   });
 });

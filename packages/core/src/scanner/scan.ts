@@ -2,6 +2,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { ScanConfigSchema, type AgentManifest, type Finding, type ScanConfig } from "../schemas/index.js";
 import { buildManifest } from "../manifest/build.js";
+import { buildStaticGraph } from "../graph/build-graph.js";
 import { applyTrustOverrides, loadPolicy } from "../policy/load-policy.js";
 import { detectSurfaces, type DetectedSurfaces } from "./detect.js";
 import { walkProject } from "./walk.js";
@@ -39,12 +40,15 @@ export async function scanProject(rawConfig: Partial<ScanConfig> & { root_path: 
   const fallbackRulesDirectory = path.resolve(process.cwd(), "rules");
   const rules = await loadRules(await firstExistingDirectory([rulesDirectory, fallbackRulesDirectory]));
   const findings = runRules(surfaces, rules);
-  const staticBlastRadius = buildStaticBlastRadiusSummary(surfaces, findings);
+  const graph = buildStaticGraph(surfaces, findings);
+  const staticBlastRadius = buildStaticBlastRadiusSummary(surfaces, findings, graph.relationships, graph.attackPaths);
   const manifest = buildManifest({
     rootPath,
     scanConfig: config,
     surfaces,
     findings,
+    relationships: graph.relationships,
+    attackPaths: graph.attackPaths,
     staticBlastRadius
   });
   const reportMarkdown = renderMarkdownReport(manifest);

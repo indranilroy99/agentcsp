@@ -3,6 +3,7 @@ export * from "./scanner/scan.js";
 export * from "./scanner/detect.js";
 export * from "./manifest/build.js";
 export * from "./rules/engine.js";
+export * from "./graph/build-graph.js";
 export * from "./risk/score.js";
 export * from "./reports/blast-radius.js";
 export * from "./reports/markdown.js";

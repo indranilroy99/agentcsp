@@ -315,7 +315,7 @@
           },
           "default": []
         },
-        "findings": {
+        "relationships": {
           "type": "array",
           "items": {
             "type": "object",
@@ -323,13 +323,82 @@
               "id": {
                 "type": "string"
               },
-              "rule_id": {
+              "source": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  },
+                  "type": {
+                    "$ref": "#/definitions/AgentCSP Agent Manifest/properties/agents/items/properties/type"
+                  },
+                  "name": {
+                    "type": "string"
+                  },
+                  "path": {
+                    "type": "string"
+                  },
+                  "trust_level": {
+                    "$ref": "#/definitions/AgentCSP Agent Manifest/properties/agents/items/properties/trust_level"
+                  }
+                },
+                "required": [
+                  "id",
+                  "type",
+                  "name",
+                  "path",
+                  "trust_level"
+                ],
+                "additionalProperties": false
+              },
+              "target": {
+                "$ref": "#/definitions/AgentCSP Agent Manifest/properties/relationships/items/properties/source"
+              },
+              "relation": {
+                "type": "string",
+                "enum": [
+                  "influences",
+                  "loads",
+                  "calls",
+                  "reads",
+                  "writes",
+                  "uses_secret",
+                  "external_reach",
+                  "persists",
+                  "triggers"
+                ]
+              },
+              "reason": {
                 "type": "string"
               },
-              "name": {
+              "evidence": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/definitions/AgentCSP Agent Manifest/properties/agents/items/properties/evidence/items"
+                },
+                "default": []
+              }
+            },
+            "required": [
+              "id",
+              "source",
+              "target",
+              "relation",
+              "reason"
+            ],
+            "additionalProperties": false
+          },
+          "default": []
+        },
+        "attack_paths": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
                 "type": "string"
               },
-              "category": {
+              "title": {
                 "type": "string"
               },
               "severity": {
@@ -342,23 +411,30 @@
                   "critical"
                 ]
               },
-              "matched_object": {
-                "$ref": "#/definitions/AgentCSP Agent Manifest/properties/agents/items"
+              "confidence": {
+                "type": "string",
+                "enum": [
+                  "low",
+                  "medium",
+                  "high",
+                  "very_high"
+                ]
               },
-              "file_path": {
-                "type": "string"
+              "source": {
+                "$ref": "#/definitions/AgentCSP Agent Manifest/properties/relationships/items/properties/source"
+              },
+              "target": {
+                "$ref": "#/definitions/AgentCSP Agent Manifest/properties/relationships/items/properties/source"
+              },
+              "edges": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/definitions/AgentCSP Agent Manifest/properties/relationships/items"
+                },
+                "default": []
               },
               "reason": {
                 "type": "string"
-              },
-              "trust_boundary_crossed": {
-                "type": "boolean"
-              },
-              "data_classes": {
-                "type": "array",
-                "items": {
-                  "$ref": "#/definitions/AgentCSP Agent Manifest/properties/agents/items/properties/data_classes/items"
-                }
               },
               "recommended_control": {
                 "type": "string",
@@ -429,6 +505,73 @@
                   "trust_level"
                 ],
                 "additionalProperties": false
+              },
+              "evidence": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/definitions/AgentCSP Agent Manifest/properties/agents/items/properties/evidence/items"
+                },
+                "default": []
+              }
+            },
+            "required": [
+              "id",
+              "title",
+              "severity",
+              "confidence",
+              "source",
+              "target",
+              "reason",
+              "recommended_control",
+              "risk"
+            ],
+            "additionalProperties": false
+          },
+          "default": []
+        },
+        "findings": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "rule_id": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "category": {
+                "type": "string"
+              },
+              "severity": {
+                "$ref": "#/definitions/AgentCSP Agent Manifest/properties/attack_paths/items/properties/severity"
+              },
+              "matched_object": {
+                "$ref": "#/definitions/AgentCSP Agent Manifest/properties/agents/items"
+              },
+              "file_path": {
+                "type": "string"
+              },
+              "reason": {
+                "type": "string"
+              },
+              "trust_boundary_crossed": {
+                "type": "boolean"
+              },
+              "data_classes": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/definitions/AgentCSP Agent Manifest/properties/agents/items/properties/data_classes/items"
+                }
+              },
+              "recommended_control": {
+                "$ref": "#/definitions/AgentCSP Agent Manifest/properties/attack_paths/items/properties/recommended_control"
+              },
+              "risk": {
+                "$ref": "#/definitions/AgentCSP Agent Manifest/properties/attack_paths/items/properties/risk"
               },
               "maps_to": {
                 "type": "object",
@@ -538,8 +681,23 @@
               "minimum": 0,
               "default": 0
             },
+            "relationships": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            },
+            "attack_paths": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            },
+            "critical_attack_paths": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            },
             "highest_severity": {
-              "$ref": "#/definitions/AgentCSP Agent Manifest/properties/findings/items/properties/severity",
+              "$ref": "#/definitions/AgentCSP Agent Manifest/properties/attack_paths/items/properties/severity",
               "default": "info"
             },
             "high_risk_objects": {
