@@ -161,6 +161,21 @@ The next iteration added:
 - blast-radius counts for relationships, attack paths, and critical attack paths
 - graph regression tests
 
+## Suppression and Waiver Pass
+
+The next iteration added:
+
+- `agentcsp.yaml` suppressions with `id`, `reason`, `owner`, `expires_at`, and match fields
+- finding-level suppression metadata with active/expired status
+- active suppressions excluded from `--fail-on` gates
+- expired suppressions retained as active risk
+- SARIF external suppression metadata
+- Markdown report sections for active and suppressed findings
+- blast-radius counts for active and expired suppressions
+- CLI summary of suppressed findings
+- `--fail-on critical` support
+- suppression regression tests
+
 ## Initial Build Recommendation
 
 Start with a CLI-first MVP before building the dashboard:

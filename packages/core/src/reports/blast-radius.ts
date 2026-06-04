@@ -23,6 +23,8 @@ export function buildStaticBlastRadiusSummary(
     relationships: relationships.length,
     attack_paths: attackPaths.length,
     critical_attack_paths: attackPaths.filter((attackPath) => attackPath.severity === "critical").length,
+    active_suppressions: findings.filter((finding) => finding.suppression?.status === "active").length,
+    expired_suppressions: findings.filter((finding) => finding.suppression?.status === "expired").length,
     highest_severity: highestSeverity(findings),
     high_risk_objects: highRiskObjects,
     recommended_controls: summarizeControls(findings)
@@ -45,6 +47,7 @@ function isHighRiskObject(object: SurfaceObject): boolean {
 function summarizeControls(findings: Finding[]): string[] {
   const controls = new Set<string>();
   for (const finding of findings) {
+    if (finding.suppression?.status === "active") continue;
     controls.add(`Recommended control: ${finding.recommended_control.replaceAll("_", " ")} for ${finding.file_path}`);
   }
   return [...controls].sort((a, b) => a.localeCompare(b)).slice(0, 20);

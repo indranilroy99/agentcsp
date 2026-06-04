@@ -3,7 +3,7 @@ import path from "node:path";
 import { ScanConfigSchema, type AgentManifest, type Finding, type ScanConfig } from "../schemas/index.js";
 import { buildManifest } from "../manifest/build.js";
 import { buildStaticGraph } from "../graph/build-graph.js";
-import { applyTrustOverrides, loadPolicy } from "../policy/load-policy.js";
+import { applyFindingSuppressions, applyTrustOverrides, loadPolicy } from "../policy/load-policy.js";
 import { detectSurfaces, type DetectedSurfaces } from "./detect.js";
 import { walkProject } from "./walk.js";
 import { loadRules, runRules } from "../rules/engine.js";
@@ -39,8 +39,9 @@ export async function scanProject(rawConfig: Partial<ScanConfig> & { root_path: 
   const rulesDirectory = path.resolve(rootPath, "rules");
   const fallbackRulesDirectory = path.resolve(process.cwd(), "rules");
   const rules = await loadRules(await firstExistingDirectory([rulesDirectory, fallbackRulesDirectory]));
-  const findings = runRules(surfaces, rules);
-  const graph = buildStaticGraph(surfaces, findings);
+  const findings = applyFindingSuppressions(runRules(surfaces, rules), policy);
+  const activeFindings = findings.filter((finding) => finding.suppression?.status !== "active");
+  const graph = buildStaticGraph(surfaces, activeFindings);
   const staticBlastRadius = buildStaticBlastRadiusSummary(surfaces, findings, graph.relationships, graph.attackPaths);
   const manifest = buildManifest({
     rootPath,

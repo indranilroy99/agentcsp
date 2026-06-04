@@ -295,6 +295,49 @@
             "nist_ai_rmf": []
           }
         },
+        "suppression": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "status": {
+              "type": "string",
+              "enum": [
+                "active",
+                "expired"
+              ]
+            },
+            "reason": {
+              "type": "string"
+            },
+            "owner": {
+              "type": "string"
+            },
+            "expires_at": {
+              "type": "string"
+            },
+            "matched_on": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "default": []
+            },
+            "applied_at": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "id",
+            "status",
+            "reason",
+            "owner",
+            "expires_at",
+            "applied_at"
+          ],
+          "additionalProperties": false
+        },
         "evidence": {
           "type": "array",
           "items": {

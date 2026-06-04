@@ -102,12 +102,13 @@ export function severityFromScore(score: number, floor?: Severity): Severity {
 export function shouldFail(findings: Finding[], failOn?: Severity): boolean {
   if (!failOn) return false;
   const threshold = severityRank[failOn];
-  return findings.some((finding) => severityRank[finding.severity] >= threshold);
+  return findings.some((finding) => finding.suppression?.status !== "active" && severityRank[finding.severity] >= threshold);
 }
 
 export function highestSeverity(findings: Finding[]): Severity {
   let highest: Severity = "info";
   for (const finding of findings) {
+    if (finding.suppression?.status === "active") continue;
     if (severityRank[finding.severity] > severityRank[highest]) highest = finding.severity;
   }
   return highest;

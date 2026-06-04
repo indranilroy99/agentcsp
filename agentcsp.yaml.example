@@ -12,3 +12,12 @@ recommended_controls:
       external_reach: true
     control: "require_approval"
     reason: "External tool calls should be reviewed before runtime adapters enforce policy."
+
+suppressions:
+  - id: "accepted-risk-demo-package-script"
+    reason: "Demo fixture intentionally contains a network-to-shell package script."
+    owner: "security@example.com"
+    expires_at: "2026-12-31T23:59:59.000Z"
+    match:
+      rule_id: "AGENTCSP-TOOL-002"
+      path: "examples/vulnerable-agent/package.json"

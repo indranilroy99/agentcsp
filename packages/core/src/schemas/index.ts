@@ -44,6 +44,7 @@ export const ControlSchema = z.enum([
 
 export const SeveritySchema = z.enum(["info", "low", "medium", "high", "critical"]);
 export const ConfidenceSchema = z.enum(["low", "medium", "high", "very_high"]);
+export const SuppressionStatusSchema = z.enum(["active", "expired"]);
 
 export const SurfaceTypeSchema = z.enum([
   "agent",
@@ -130,6 +131,16 @@ export const GraphEdgeSchema = z.object({
   evidence: z.array(EvidenceSchema).default([])
 });
 
+export const FindingSuppressionSchema = z.object({
+  id: z.string(),
+  status: SuppressionStatusSchema,
+  reason: z.string(),
+  owner: z.string(),
+  expires_at: z.string(),
+  matched_on: z.array(z.string()).default([]),
+  applied_at: z.string()
+});
+
 export const FindingSchema = z.object({
   id: z.string(),
   rule_id: z.string(),
@@ -150,6 +161,7 @@ export const FindingSchema = z.object({
       nist_ai_rmf: z.array(z.string()).default([])
     })
     .default({ owasp: [], mitre_atlas: [], nist_ai_rmf: [] }),
+  suppression: FindingSuppressionSchema.optional(),
   evidence: z.array(EvidenceSchema).default([])
 });
 
@@ -214,6 +226,24 @@ export const PolicySchema = z.object({
         reason: z.string()
       })
     )
+    .default([]),
+  suppressions: z
+    .array(
+      z.object({
+        id: z.string(),
+        reason: z.string(),
+        owner: z.string(),
+        expires_at: z.string(),
+        match: z.object({
+          finding_id: z.string().optional(),
+          rule_id: z.string().optional(),
+          object_id: z.string().optional(),
+          path: z.string().optional(),
+          category: z.string().optional(),
+          severity: SeveritySchema.optional()
+        })
+      })
+    )
     .default([])
 });
 
@@ -229,6 +259,8 @@ export const StaticBlastRadiusSummarySchema = z.object({
   relationships: z.number().int().nonnegative().default(0),
   attack_paths: z.number().int().nonnegative().default(0),
   critical_attack_paths: z.number().int().nonnegative().default(0),
+  active_suppressions: z.number().int().nonnegative().default(0),
+  expired_suppressions: z.number().int().nonnegative().default(0),
   highest_severity: SeveritySchema.default("info"),
   high_risk_objects: z.array(SurfaceObjectSchema).default([]),
   recommended_controls: z.array(z.string()).default([])
@@ -292,6 +324,7 @@ export type ActionType = z.infer<typeof ActionTypeSchema>;
 export type Control = z.infer<typeof ControlSchema>;
 export type Severity = z.infer<typeof SeveritySchema>;
 export type Confidence = z.infer<typeof ConfidenceSchema>;
+export type SuppressionStatus = z.infer<typeof SuppressionStatusSchema>;
 export type SurfaceType = z.infer<typeof SurfaceTypeSchema>;
 export type RiskFactors = z.infer<typeof RiskFactorsSchema>;
 export type Evidence = z.infer<typeof EvidenceSchema>;
@@ -300,6 +333,7 @@ export type GraphNodeRef = z.infer<typeof GraphNodeRefSchema>;
 export type GraphRelation = z.infer<typeof GraphRelationSchema>;
 export type GraphEdge = z.infer<typeof GraphEdgeSchema>;
 export type AttackPath = z.infer<typeof AttackPathSchema>;
+export type FindingSuppression = z.infer<typeof FindingSuppressionSchema>;
 export type Finding = z.infer<typeof FindingSchema>;
 export type Rule = z.infer<typeof RuleSchema>;
 export type Policy = z.infer<typeof PolicySchema>;

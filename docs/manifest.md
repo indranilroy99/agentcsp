@@ -52,3 +52,19 @@ An attack path includes:
 - risk factors
 - recommended control
 - redacted evidence
+
+## Suppression State
+
+Findings may include a `suppression` object when they match a policy suppression.
+
+Active suppressions are excluded from CI failure gates. Expired suppressions are retained on the finding but treated as active risk.
+
+Suppression fields:
+
+- `id`
+- `status`
+- `reason`
+- `owner`
+- `expires_at`
+- `matched_on`
+- `applied_at`

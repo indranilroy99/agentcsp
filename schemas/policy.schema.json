@@ -68,6 +68,66 @@
             "additionalProperties": false
           },
           "default": []
+        },
+        "suppressions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "reason": {
+                "type": "string"
+              },
+              "owner": {
+                "type": "string"
+              },
+              "expires_at": {
+                "type": "string"
+              },
+              "match": {
+                "type": "object",
+                "properties": {
+                  "finding_id": {
+                    "type": "string"
+                  },
+                  "rule_id": {
+                    "type": "string"
+                  },
+                  "object_id": {
+                    "type": "string"
+                  },
+                  "path": {
+                    "type": "string"
+                  },
+                  "category": {
+                    "type": "string"
+                  },
+                  "severity": {
+                    "type": "string",
+                    "enum": [
+                      "info",
+                      "low",
+                      "medium",
+                      "high",
+                      "critical"
+                    ]
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "id",
+              "reason",
+              "owner",
+              "expires_at",
+              "match"
+            ],
+            "additionalProperties": false
+          },
+          "default": []
         }
       },
       "additionalProperties": false

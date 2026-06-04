@@ -27,7 +27,9 @@ Use `--fail-on` to opt into failure behavior:
 agentcsp scan . --fail-on high
 ```
 
-Supported values are `high`, `medium`, and `low`.
+Supported values are `critical`, `high`, `medium`, and `low`.
+
+Active suppressions in `agentcsp.yaml` are excluded from `--fail-on` gates. Expired suppressions are not excluded.
 
 ## SARIF
 

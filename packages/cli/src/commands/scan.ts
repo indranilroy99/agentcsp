@@ -28,6 +28,9 @@ export async function runScanCommand(targetPath: string, options: Record<string,
     await printBanner({ animate: true });
     console.log(`AgentCSP scan complete: ${result.findings.length} finding(s)`);
     console.log(
+      `Suppressed findings: ${result.findings.filter((finding) => finding.suppression?.status === "active").length}`
+    );
+    console.log(
       `Attack paths: ${result.manifest.attack_paths.length} (${result.manifest.static_blast_radius?.critical_attack_paths ?? 0} critical)`
     );
     if (result.outputFiles.manifest) console.log(`Manifest: ${result.outputFiles.manifest}`);
@@ -57,8 +60,8 @@ function parseFormats(value: string): Array<"json" | "md" | "sarif"> {
 function parseFailOn(value: unknown): Severity | undefined {
   if (value === undefined || value === null || value === false) return undefined;
   const parsed = SeveritySchema.safeParse(value);
-  if (!parsed.success || parsed.data === "info" || parsed.data === "critical") {
-    throw new Error("--fail-on must be one of high, medium, or low");
+  if (!parsed.success || parsed.data === "info") {
+    throw new Error("--fail-on must be one of critical, high, medium, or low");
   }
   return parsed.data;
 }

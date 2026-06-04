@@ -6,11 +6,11 @@ describe("cli options", () => {
     const spy = vi.spyOn(console, "log").mockImplementation(() => undefined);
     await expect(
       runScanCommand(".", {
-        failOn: "critical",
+        failOn: "info",
         format: "json",
         quiet: true
       })
-    ).rejects.toThrow("--fail-on must be one of high, medium, or low");
+    ).rejects.toThrow("--fail-on must be one of critical, high, medium, or low");
     spy.mockRestore();
   });
 

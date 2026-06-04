@@ -49,6 +49,7 @@ Runtime enforcement adapters, SARIF output, graph traversal, and the dashboard a
 - **Trust Boundary Analysis**: tracks trusted, project, workspace, third-party, untrusted, and unknown provenance.
 - **Explainable Risk Scoring**: severity includes contributing factors such as trust level, data class, reversibility, external reach, and secret exposure.
 - **Static Attack Paths**: connects context sources to privileged capabilities so teams can see provenance-to-authority paths instead of isolated alerts.
+- **Auditable Suppressions**: supports owned, reasoned, expiring accepted-risk records without deleting evidence.
 - **Open Rule Packs**: constrained YAML rules operate over normalized manifest objects. No custom JavaScript execution is allowed in rules.
 - **Static Blast-Radius Summary**: reports reachable authority from static project metadata without claiming runtime graph traversal.
 - **Evidence Reports**: outputs JSON and Markdown with redacted evidence snippets and recommended controls.
@@ -111,14 +112,14 @@ Useful flags:
 agentcsp scan . \
   --config agentcsp.yaml \
   --format json,md,sarif \
-  --fail-on high \
+  --fail-on critical \
   --no-hidden \
   --include-logs \
   --max-file-size 1048576 \
   --quiet
 ```
 
-AgentCSP exits with code `0` by default when a scan completes, even if findings exist. CI failure is opt-in through `--fail-on high`, `--fail-on medium`, or `--fail-on low`.
+AgentCSP exits with code `0` by default when a scan completes, even if findings exist. CI failure is opt-in through `--fail-on critical`, `--fail-on high`, `--fail-on medium`, or `--fail-on low`.
 
 The terminal banner animates only in interactive terminals. It is suppressed by `--quiet`, disabled in CI and piped output, and can be turned off with `AGENTCSP_NO_ANIMATION=1`.
 

@@ -49,10 +49,20 @@ export function renderSarifReport(manifest: AgentManifest): Record<string, unkno
         },
         results: manifest.findings.map((finding) => ({
           ruleId: finding.rule_id,
-          level: sarifLevel(finding.severity),
+          level: finding.suppression?.status === "active" ? "none" : sarifLevel(finding.severity),
           message: {
             text: `${finding.name}: ${finding.reason} Recommended control: ${finding.recommended_control.replaceAll("_", " ")}.`
           },
+          suppressions:
+            finding.suppression?.status === "active"
+              ? [
+                  {
+                    kind: "external",
+                    status: "accepted",
+                    justification: `${finding.suppression.reason} Owner: ${finding.suppression.owner}. Expires: ${finding.suppression.expires_at}.`
+                  }
+                ]
+              : undefined,
           locations: [
             {
               physicalLocation: {
