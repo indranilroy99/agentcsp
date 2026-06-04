@@ -1,5 +1,15 @@
 # AgentCSP
 
+```text
++-------------------------- AgentCSP --------------------------+
+| Context Security Policy for AI Agents                        |
+|                                                              |
+|  context  -->  surface  -->  capability  -->  control        |
+|     |             |             |              |              |
+|  trust       data class      authority      evidence          |
++--------------------------------------------------------------+
+```
+
 **Context Security Policy for AI Agents.**
 
 AgentCSP is an open-source control plane for discovering, testing, and enforcing security policy across AI agents, tools, skills, MCP servers, RAG, memory, CI/CD, and runtime actions.
