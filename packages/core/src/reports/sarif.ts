@@ -92,6 +92,7 @@ export function renderSarifReport(manifest: AgentManifest): Record<string, unkno
             risk_factors: finding.risk.rationale,
             confidence: finding.confidence,
             confidence_rationale: finding.confidence_rationale,
+            policy_control: finding.policy_control,
             trust_level: finding.risk.trust_level,
             data_classes: finding.data_classes,
             actions: finding.risk.actions,

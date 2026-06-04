@@ -192,7 +192,7 @@ recommendation:
 
 ## Policy
 
-`agentcsp.yaml` is advisory in v1. It supports trust overrides and recommended controls. Runtime enforcement is planned for future MCP and agent-framework adapters.
+`agentcsp.yaml` is advisory in v1. It supports trust overrides, recommended controls, and auditable suppressions. Runtime enforcement is planned for future MCP and agent-framework adapters.
 
 ```yaml
 schema_version: "0.1"
@@ -200,6 +200,14 @@ schema_version: "0.1"
 trust_overrides:
   - path: "rag/**"
     trust_level: "untrusted"
+
+recommended_controls:
+  - id: "deny-unsandboxed-runtime"
+    reason: "Organization policy forbids unsandboxed runtime without approval."
+    control: "deny"
+    match:
+      rule_id: "AGENTCSP-RUNTIME-001"
+      path: ".codex/config.toml"
 ```
 
 Reports use "recommended controls" until runtime enforcement exists.

@@ -1,6 +1,6 @@
 # Policy
 
-`agentcsp.yaml` is advisory in v1. It supports trust overrides and recommended controls.
+`agentcsp.yaml` is advisory in v1. It supports trust overrides, recommended controls, and suppressions.
 
 Runtime enforcement comes later through MCP and agent-framework adapters.
 
@@ -15,6 +15,40 @@ trust_overrides:
 ```
 
 Reports use "recommended controls" until runtime adapters can enforce decisions before tool calls or sensitive memory writes.
+
+## Recommended Controls
+
+Recommended controls let a team strengthen or change a finding recommendation without suppressing evidence.
+
+They are advisory in v1. When a policy control matches, AgentCSP updates `recommended_control` and records a `policy_control` object with the previous control, reason, match fields, and application time.
+
+Example:
+
+```yaml
+recommended_controls:
+  - id: "deny-unsandboxed-runtime"
+    reason: "Organization policy forbids unsandboxed runtime without approval."
+    control: "deny"
+    match:
+      rule_id: "AGENTCSP-RUNTIME-001"
+      path: ".codex/config.toml"
+```
+
+Supported match fields:
+
+- `finding_id`
+- `rule_id`
+- `object_id`
+- `path`
+- `category`
+- `severity`
+- `confidence`
+- `object_type`
+- `trust_level`
+- `data_class`
+- `action`
+
+Dotted fields are also supported for exact matches against finding fields, such as `matched_object.metadata.parsed_runtime_config`.
 
 ## Suppressions
 
@@ -38,7 +72,7 @@ suppressions:
     expires_at: "2026-12-31T23:59:59.000Z"
     match:
       rule_id: "AGENTCSP-TOOL-002"
-      path: "examples/vulnerable-agent/package.json"
+      path: "package.json"
 ```
 
 Supported match fields:

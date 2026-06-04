@@ -615,6 +615,40 @@
                   "nist_ai_rmf": []
                 }
               },
+              "policy_control": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  },
+                  "control": {
+                    "$ref": "#/definitions/AgentCSP Agent Manifest/properties/attack_paths/items/properties/recommended_control"
+                  },
+                  "previous_control": {
+                    "$ref": "#/definitions/AgentCSP Agent Manifest/properties/attack_paths/items/properties/recommended_control"
+                  },
+                  "reason": {
+                    "type": "string"
+                  },
+                  "matched_on": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "default": []
+                  },
+                  "applied_at": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "control",
+                  "previous_control",
+                  "reason",
+                  "applied_at"
+                ],
+                "additionalProperties": false
+              },
               "suppression": {
                 "type": "object",
                 "properties": {

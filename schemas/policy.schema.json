@@ -41,6 +41,9 @@
           "items": {
             "type": "object",
             "properties": {
+              "id": {
+                "type": "string"
+              },
               "match": {
                 "type": "object",
                 "additionalProperties": {}

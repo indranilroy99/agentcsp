@@ -6,6 +6,36 @@ import { scanProject } from "../src/scanner/scan.js";
 const fixtureRoot = path.resolve("examples/vulnerable-agent");
 
 describe("policy suppressions", () => {
+  it("applies advisory recommended controls without suppressing evidence", async () => {
+    const policyPath = await writeRecommendedControlPolicy();
+    const result = await scanProject({
+      root_path: fixtureRoot,
+      output_path: "/private/tmp/agentcsp-policy-control",
+      config_path: policyPath,
+      formats: ["json", "md", "sarif"],
+      include_hidden: true,
+      include_logs: false,
+      max_file_size_bytes: 1024 * 1024,
+      max_files: 5000,
+      quiet: true,
+      fail_on: "critical"
+    });
+
+    const finding = result.findings.find((item) => item.rule_id === "AGENTCSP-RUNTIME-001");
+    expect(finding?.recommended_control).toBe("deny");
+    expect(finding?.policy_control).toMatchObject({
+      id: "deny-unsandboxed-runtime",
+      control: "deny",
+      previous_control: "require_approval",
+      reason: "Organization policy forbids unsandboxed runtime without approval."
+    });
+    expect(finding?.policy_control?.matched_on).toEqual(["rule_id", "path"]);
+    expect(finding?.evidence.every((item) => item.redacted)).toBe(true);
+    expect(result.shouldFail).toBe(true);
+    expect(result.reportMarkdown).toContain("policy override from require approval");
+    expect(JSON.stringify(result.manifest.findings)).toContain("deny-unsandboxed-runtime");
+  });
+
   it("marks active suppressions and excludes them from fail gates", async () => {
     const policyPath = await writePolicy("active", "2999-12-31T23:59:59.000Z");
     const result = await scanProject({
@@ -65,6 +95,26 @@ async function writePolicy(name: string, expiresAt: string): Promise<string> {
       `    expires_at: "${expiresAt}"`,
       "    match:",
       '      severity: "critical"',
+      ""
+    ].join("\n"),
+    "utf8"
+  );
+  return policyPath;
+}
+
+async function writeRecommendedControlPolicy(): Promise<string> {
+  const policyPath = "/private/tmp/agentcsp-recommended-control-policy.yaml";
+  await fs.writeFile(
+    policyPath,
+    [
+      'schema_version: "0.1"',
+      "recommended_controls:",
+      '  - id: "deny-unsandboxed-runtime"',
+      '    reason: "Organization policy forbids unsandboxed runtime without approval."',
+      '    control: "deny"',
+      "    match:",
+      '      rule_id: "AGENTCSP-RUNTIME-001"',
+      '      path: ".codex/config.toml"',
       ""
     ].join("\n"),
     "utf8"

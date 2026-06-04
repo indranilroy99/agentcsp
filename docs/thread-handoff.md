@@ -206,6 +206,15 @@ The current iteration adds:
 - a safe read-only fixture used as a false-positive regression target
 - tests that require very-high-confidence findings on the vulnerable fixture and no high/critical findings on the safe fixture
 
+## Advisory Policy Control Pass
+
+The current iteration adds:
+
+- application of `agentcsp.yaml` `recommended_controls` to matching findings
+- finding-level `policy_control` metadata with previous control, reason, match fields, and application time
+- Markdown and SARIF export of policy-control metadata
+- regression coverage showing policy controls update recommendations without suppressing evidence
+
 ## Initial Build Recommendation
 
 Start with a CLI-first MVP before building the dashboard:

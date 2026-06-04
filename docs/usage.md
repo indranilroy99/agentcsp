@@ -31,6 +31,8 @@ Supported values are `critical`, `high`, `medium`, and `low`.
 
 Active suppressions in `agentcsp.yaml` are excluded from `--fail-on` gates. Expired suppressions are not excluded.
 
+Policy `recommended_controls` can change the recommended control shown in JSON, Markdown, and SARIF, but they do not suppress findings or change `--fail-on` behavior.
+
 ## SARIF
 
 Use SARIF when integrating AgentCSP with CI systems or code-scanning platforms:

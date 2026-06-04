@@ -84,6 +84,7 @@ Each finding includes:
 - `risk`
 - `matched_object`
 - `recommended_control`
+- optional `policy_control`
 - `maps_to`
 - `evidence`
 - optional `suppression`

@@ -141,6 +141,15 @@ export const FindingSuppressionSchema = z.object({
   applied_at: z.string()
 });
 
+export const FindingPolicyControlSchema = z.object({
+  id: z.string().optional(),
+  control: ControlSchema,
+  previous_control: ControlSchema,
+  reason: z.string(),
+  matched_on: z.array(z.string()).default([]),
+  applied_at: z.string()
+});
+
 export const FindingSchema = z.object({
   id: z.string(),
   rule_id: z.string(),
@@ -163,6 +172,7 @@ export const FindingSchema = z.object({
       nist_ai_rmf: z.array(z.string()).default([])
     })
     .default({ owasp: [], mitre_atlas: [], nist_ai_rmf: [] }),
+  policy_control: FindingPolicyControlSchema.optional(),
   suppression: FindingSuppressionSchema.optional(),
   evidence: z.array(EvidenceSchema).default([])
 });
@@ -223,6 +233,7 @@ export const PolicySchema = z.object({
   recommended_controls: z
     .array(
       z.object({
+        id: z.string().optional(),
         match: z.record(z.unknown()),
         control: ControlSchema,
         reason: z.string()
@@ -336,6 +347,7 @@ export type GraphRelation = z.infer<typeof GraphRelationSchema>;
 export type GraphEdge = z.infer<typeof GraphEdgeSchema>;
 export type AttackPath = z.infer<typeof AttackPathSchema>;
 export type FindingSuppression = z.infer<typeof FindingSuppressionSchema>;
+export type FindingPolicyControl = z.infer<typeof FindingPolicyControlSchema>;
 export type Finding = z.infer<typeof FindingSchema>;
 export type Rule = z.infer<typeof RuleSchema>;
 export type Policy = z.infer<typeof PolicySchema>;
