@@ -301,6 +301,16 @@ The current iteration adds:
 - CLI diagnostics count in non-quiet output
 - regression coverage proving raw malformed content and secret-like values are not emitted
 
+## Generated-State Replay Pass
+
+The current iteration adds:
+
+- redacted generated-state metadata for RAG/memory/log-derived surfaces
+- metadata for generated state kinds, transcript-like content, tool-output-like content, and cached-output-like content
+- rule `AGENTCSP-GENSTATE-001` for generated state that can replay instruction-like tool/external directives
+- vulnerable log fixture with replay-risk transcript content, still excluded by default
+- regression coverage proving the finding appears only with `include_logs` and raw transcript text is not emitted
+
 ## Initial Build Recommendation
 
 Start with a CLI-first MVP before building the dashboard:

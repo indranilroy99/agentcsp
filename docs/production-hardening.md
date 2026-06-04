@@ -39,6 +39,7 @@ Examples:
 - untrusted RAG source plus privileged tool path
 - memory write plus untrusted source provenance
 - RAG or memory content with instruction-like text plus tool/external directives
+- generated transcripts or cached tool output with instruction-like tool/external directives
 - scheduled or externally dispatched automation plus secrets and write authority
 - package publish/release authority plus agent-influenced workflow
 

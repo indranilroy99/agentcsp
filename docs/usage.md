@@ -27,6 +27,12 @@ Tune traversal limits with:
 agentcsp scan . --max-file-size 1048576 --max-files 5000
 ```
 
+Use `--include-logs` when transcripts, cached tool outputs, or generated run summaries may be replayed into future agent context:
+
+```bash
+agentcsp scan . --include-logs
+```
+
 `diagnostics` records redacted scan health warnings, such as malformed MCP, runtime, workflow, package, or tool definition files. Treat diagnostics as evidence that a file may need syntax repair or manual review before relying on a quiet scan.
 
 ## CI Behavior

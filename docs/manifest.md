@@ -101,7 +101,7 @@ Runtime metadata may include:
 
 Secret or environment values are not emitted. AgentCSP records key names and posture signals so rules can detect risky authority without exposing credentials.
 
-## RAG and Memory Content Signals
+## RAG, Memory, and Generated-State Signals
 
 RAG and memory files are normalized into file-level `rag_source` and `memory` objects when they appear under common retrieval, vector, memory, summary, or state paths.
 
@@ -109,6 +109,11 @@ Content metadata may include:
 
 - `content_redacted`
 - `content_analyzed`
+- `generated_state`
+- `generated_state_kinds`
+- `transcript_like`
+- `tool_output_like`
+- `cached_output_like`
 - `instruction_like_content`
 - `instruction_override`
 - `tool_directive`
@@ -118,7 +123,7 @@ Content metadata may include:
 - `content_signal_count`
 - `skipped_for_size`
 
-Raw RAG, memory, transcript, and cached-output text is not emitted. AgentCSP records normalized signals so rules can reason about indirect prompt injection and cross-session contamination without publishing the content.
+Raw RAG, memory, transcript, and cached-output text is not emitted. AgentCSP records normalized signals so rules can reason about indirect prompt injection, generated-state replay, and cross-session contamination without publishing the content.
 
 ## Automations
 

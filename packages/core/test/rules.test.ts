@@ -60,4 +60,27 @@ describe("rule engine", () => {
 
     expect(findings.filter((finding) => finding.severity === "critical" || finding.severity === "high")).toHaveLength(0);
   });
+
+  it("flags generated agent state replay risk when logs are explicitly included", async () => {
+    const fixtureRoot = path.resolve("examples/vulnerable-agent");
+    const files = await walkProject({
+      root_path: fixtureRoot,
+      output_path: ".agentcsp",
+      formats: ["json", "md"],
+      include_hidden: true,
+      include_logs: true,
+      max_file_size_bytes: 1024 * 1024,
+      max_files: 5000,
+      quiet: true
+    });
+    const surfaces = await detectSurfaces(files);
+    const rules = await loadRules(path.resolve("rules"));
+    const findings = runRules(surfaces, rules);
+    const generatedStateFinding = findings.find((finding) => finding.rule_id === "AGENTCSP-GENSTATE-001");
+
+    expect(generatedStateFinding).toBeDefined();
+    expect(generatedStateFinding?.matched_object.path).toBe("logs/session-transcript.txt");
+    expect(generatedStateFinding?.recommended_control).toBe("quarantine");
+    expect(JSON.stringify(generatedStateFinding)).not.toContain("Ignore previous repository instructions");
+  });
 });

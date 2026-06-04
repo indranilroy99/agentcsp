@@ -3,6 +3,7 @@ import { parse as parseToml } from "smol-toml";
 import YAML from "yaml";
 import {
   DEFAULT_MCP_CONFIG_NAMES,
+  GENERATED_STATE_DIR_NAMES,
   INSTRUCTION_FILE_NAMES,
   LOG_DIR_NAMES,
   MEMORY_DIR_NAMES,
@@ -219,6 +220,7 @@ export async function detectSurfaces(files: WalkedFile[]): Promise<DetectedSurfa
 function detectRagContentFile(file: WalkedFile, text: string | undefined, surfaces: DetectedSurfaces): void {
   const content = text ?? "";
   const signals = classifyContextContent(content);
+  const generatedState = classifyGeneratedState(file.relativePath, content);
   const actions = contextActions(signals, "rag_source");
   const object = createSurfaceObject({
     type: "rag_source",
@@ -236,6 +238,7 @@ function detectRagContentFile(file: WalkedFile, text: string | undefined, surfac
       content_analyzed: text !== undefined,
       skipped_for_size: file.skippedForSize,
       bytes: file.size,
+      ...generatedState,
       ...signals
     }
   });
@@ -248,6 +251,7 @@ function detectRagContentFile(file: WalkedFile, text: string | undefined, surfac
 function detectMemoryContentFile(file: WalkedFile, text: string | undefined, surfaces: DetectedSurfaces): void {
   const content = text ?? "";
   const signals = classifyContextContent(content);
+  const generatedState = classifyGeneratedState(file.relativePath, content);
   const actions = contextActions(signals, "memory");
   const object = createSurfaceObject({
     type: "memory",
@@ -265,6 +269,7 @@ function detectMemoryContentFile(file: WalkedFile, text: string | undefined, sur
       content_analyzed: text !== undefined,
       skipped_for_size: file.skippedForSize,
       bytes: file.size,
+      ...generatedState,
       ...signals
     }
   });
@@ -347,6 +352,14 @@ interface ContextContentSignals {
   content_signal_count: number;
 }
 
+interface GeneratedStateSignals {
+  generated_state: boolean;
+  generated_state_kinds: string[];
+  transcript_like: boolean;
+  tool_output_like: boolean;
+  cached_output_like: boolean;
+}
+
 function classifyContextContent(content: string): ContextContentSignals {
   const instructionOverride = /\b(ignore|override|bypass|forget|disregard)\b[\s\S]{0,80}\b(instruction|policy|approval|guard|previous|system|developer)\b/i.test(
     content
@@ -368,6 +381,35 @@ function classifyContextContent(content: string): ContextContentSignals {
     external_directive: externalDirective,
     secret_reference: secretReference,
     content_signal_count: signals
+  };
+}
+
+function classifyGeneratedState(relativePath: string, content: string): GeneratedStateSignals {
+  const lowerPath = relativePath.replaceAll("\\", "/").toLowerCase();
+  const segments = lowerPath.split("/");
+  const kinds = new Set<string>();
+
+  for (const segment of segments.slice(0, -1)) {
+    if (GENERATED_STATE_DIR_NAMES.has(segment)) kinds.add(segment.replaceAll("-", "_"));
+  }
+  if (/transcript|conversation|session|run[-_]?log|tool[-_]?output|cached[-_]?output|summary/i.test(lowerPath)) {
+    kinds.add("filename_signal");
+  }
+
+  const transcriptLike = /\b(assistant|user|system|developer|tool|function)\s*:/i.test(content);
+  const toolOutputLike = /\b(tool|function|mcp|browser|shell|command)\s+(result|output|response|call)\b/i.test(content);
+  const cachedOutputLike = /\b(cache|cached|artifact|tool output|run summary|session transcript)\b/i.test(content);
+
+  if (transcriptLike) kinds.add("transcript");
+  if (toolOutputLike) kinds.add("tool_output");
+  if (cachedOutputLike) kinds.add("cached_output");
+
+  return {
+    generated_state: kinds.size > 0,
+    generated_state_kinds: [...kinds].sort((a, b) => a.localeCompare(b)),
+    transcript_like: transcriptLike,
+    tool_output_like: toolOutputLike,
+    cached_output_like: cachedOutputLike
   };
 }
 

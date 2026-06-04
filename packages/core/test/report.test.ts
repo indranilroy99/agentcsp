@@ -78,4 +78,23 @@ describe("scanProject", () => {
     expect(result.manifest.triage_summary?.top_active_risks).toHaveLength(0);
     expect(result.reportMarkdown).toContain("No active findings were generated.");
   });
+
+  it("reports generated-state replay findings when logs are included", async () => {
+    const result = await scanProject({
+      root_path: path.resolve("examples/vulnerable-agent"),
+      output_path: "/private/tmp/agentcsp-include-logs-report-test-output",
+      formats: ["json", "md", "sarif"],
+      include_hidden: true,
+      include_logs: true,
+      max_file_size_bytes: 1024 * 1024,
+      max_files: 5000,
+      quiet: true
+    });
+
+    const finding = result.findings.find((item) => item.rule_id === "AGENTCSP-GENSTATE-001");
+    expect(finding).toBeDefined();
+    expect(result.manifest.memory.some((surface) => surface.path === "logs/session-transcript.txt")).toBe(true);
+    expect(result.reportMarkdown).toContain("AGENTCSP-GENSTATE-001");
+    expect(JSON.stringify(result.manifest)).not.toContain("Ignore previous repository instructions");
+  });
 });

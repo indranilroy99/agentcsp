@@ -60,4 +60,17 @@ export const MEMORY_DIR_NAMES = new Set([
   "state"
 ]);
 
+export const GENERATED_STATE_DIR_NAMES = new Set([
+  "logs",
+  "log",
+  "transcripts",
+  "summaries",
+  "state",
+  "runs",
+  "sessions",
+  "outputs",
+  "tool-output",
+  "tool_outputs"
+]);
+
 export const LOG_DIR_NAMES = new Set(["logs", "log"]);

@@ -145,4 +145,47 @@ describe("scanner", () => {
     expect(memoryFile?.actions).toContain("call");
     expect(JSON.stringify(memoryFile)).not.toContain("maintenance shortcut");
   });
+
+  it("detects generated transcript state only when logs are included", async () => {
+    const defaultFiles = await walkProject({
+      root_path: fixtureRoot,
+      output_path: ".agentcsp",
+      formats: ["json", "md"],
+      include_hidden: true,
+      include_logs: false,
+      max_file_size_bytes: 1024 * 1024,
+      max_files: 5000,
+      quiet: true
+    });
+    const defaultSurfaces = await detectSurfaces(defaultFiles);
+    expect(defaultSurfaces.memory.some((surface) => surface.path === "logs/session-transcript.txt")).toBe(false);
+
+    const logFiles = await walkProject({
+      root_path: fixtureRoot,
+      output_path: ".agentcsp",
+      formats: ["json", "md"],
+      include_hidden: true,
+      include_logs: true,
+      max_file_size_bytes: 1024 * 1024,
+      max_files: 5000,
+      quiet: true
+    });
+    const logSurfaces = await detectSurfaces(logFiles);
+    const transcript = logSurfaces.memory.find((surface) => surface.path === "logs/session-transcript.txt");
+
+    expect(transcript?.metadata).toMatchObject({
+      content_analyzed: true,
+      generated_state: true,
+      transcript_like: true,
+      tool_output_like: true,
+      cached_output_like: true,
+      instruction_like_content: true,
+      tool_directive: true,
+      external_directive: true
+    });
+    expect(transcript?.metadata.generated_state_kinds).toContain("tool_output");
+    expect(transcript?.actions).toContain("call");
+    expect(transcript?.actions).toContain("send");
+    expect(JSON.stringify(transcript)).not.toContain("Ignore previous repository instructions");
+  });
 });
