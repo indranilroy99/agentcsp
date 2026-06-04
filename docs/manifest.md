@@ -27,6 +27,28 @@ Core sections:
 
 The manifest is versioned and validated with Zod. JSON Schema exports live in `schemas/`.
 
+## MCP Server Authority
+
+MCP server entries are normalized into `mcp_server` objects. For remote MCP servers, AgentCSP records posture metadata without emitting raw URLs or header values.
+
+MCP metadata may include:
+
+- `command_name`
+- `args_count`
+- `transport`
+- `remote`
+- `remote_host`
+- `remote_scheme`
+- `url_redacted`
+- `header_names`
+- `auth_header_names`
+- `env_key_names`
+- `secret_ref_key_names`
+- `values_collected`
+- `content_redacted`
+
+Remote third-party MCP servers are treated as external trust boundaries. Credential references and auth headers are represented as key names only.
+
 ## Tool Schema Authority
 
 Tool definition files are normalized into individual `tool` objects when AgentCSP can parse JSON or YAML tool schemas.

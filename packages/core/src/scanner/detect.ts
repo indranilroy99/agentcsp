@@ -8,7 +8,7 @@ import {
   MEMORY_DIR_NAMES,
   RAG_DIR_NAMES
 } from "./defaults.js";
-import type { SurfaceObject } from "../schemas/index.js";
+import type { ActionType, SurfaceObject } from "../schemas/index.js";
 import type { WalkedFile } from "./walk.js";
 import { readTextFile } from "./read-safe.js";
 import {
@@ -284,23 +284,36 @@ async function detectMcpConfig(file: WalkedFile, text: string | undefined, surfa
   }
 
   for (const server of servers) {
-    const signalText = `${server.command ?? ""} ${(server.args ?? []).join(" ")} ${(server.envKeys ?? []).join(" ")}`;
+    const signalText = `${server.command ?? ""} ${(server.args ?? []).join(" ")} ${server.transport ?? ""} ${server.remoteHost ?? ""} ${(server.envKeys ?? []).join(" ")} ${(server.headerNames ?? []).join(" ")} ${(server.secretRefKeys ?? []).join(" ")}`;
     const actions = detectActions(signalText);
+    const externalRemote = Boolean(server.remote && server.remoteHost && !isLocalHost(server.remoteHost));
+    const secretKeys = [...(server.envKeys ?? []), ...(server.secretRefKeys ?? []), ...(server.authHeaderNames ?? [])];
+    const baseActions: ActionType[] = actions.length > 0 ? actions : ["call"];
+    const mcpActions: ActionType[] = [...baseActions, ...(externalRemote ? (["send"] as ActionType[]) : [])];
     const object = createSurfaceObject({
       type: "mcp_server",
       name: server.name,
       path: file.relativePath,
-      data_classes: server.envKeys && server.envKeys.length > 0 ? ["credential"] : ["unknown"],
-      actions: actions.length > 0 ? actions : ["call"],
+      trust_level: externalRemote ? "third_party" : inferTrustLevel(file.relativePath),
+      data_classes: secretKeys.length > 0 ? ["credential"] : ["unknown"],
+      actions: uniqueActions(mcpActions),
       side_effect: true,
-      external_reach: hasExternalReach(signalText),
-      secret_exposure: Boolean(server.envKeys?.some((key) => /token|secret|key|password/i.test(key))),
+      external_reach: externalRemote || hasExternalReach(signalText),
+      secret_exposure: secretKeys.some((key) => /authorization|token|secret|key|password|credential|auth/i.test(key)),
       reversible: isReversible(signalText),
       reason: "MCP server configuration exposes agent-callable tools and authority.",
       metadata: {
         command_name: server.command ? path.basename(server.command) : undefined,
         args_count: server.args?.length ?? 0,
+        transport: server.transport,
+        remote: server.remote,
+        remote_host: server.remoteHost,
+        remote_scheme: server.remoteScheme,
+        url_redacted: Boolean(server.remote),
+        header_names: server.headerNames ?? [],
+        auth_header_names: server.authHeaderNames ?? [],
         env_key_names: server.envKeys ?? [],
+        secret_ref_key_names: server.secretRefKeys ?? [],
         values_collected: false,
         content_redacted: true
       }
@@ -513,7 +526,19 @@ function detectRuntimeConfig(file: WalkedFile, text: string | undefined, surface
   });
 }
 
-function extractMcpServers(value: unknown): Array<{ name: string; command?: string; args?: string[]; envKeys?: string[] }> {
+function extractMcpServers(value: unknown): Array<{
+  name: string;
+  command?: string;
+  args?: string[];
+  envKeys?: string[];
+  transport?: string;
+  remote: boolean;
+  remoteHost?: string;
+  remoteScheme?: string;
+  headerNames?: string[];
+  authHeaderNames?: string[];
+  secretRefKeys?: string[];
+}> {
   if (!value || typeof value !== "object") return [];
   const root = value as Record<string, unknown>;
   const container = (root.mcpServers ?? root.servers) as Record<string, unknown> | undefined;
@@ -523,8 +548,60 @@ function extractMcpServers(value: unknown): Array<{ name: string; command?: stri
     const env = serverConfig.env && typeof serverConfig.env === "object" ? Object.keys(serverConfig.env) : [];
     const args = Array.isArray(serverConfig.args) ? serverConfig.args.filter((arg): arg is string => typeof arg === "string") : [];
     const command = typeof serverConfig.command === "string" ? serverConfig.command : undefined;
-    return { name, command, args, envKeys: env.sort((a, b) => a.localeCompare(b)) };
+    const url = typeof serverConfig.url === "string" ? serverConfig.url : typeof serverConfig.endpoint === "string" ? serverConfig.endpoint : undefined;
+    const remoteUrl = parseMcpRemoteUrl(url);
+    const transport = typeof serverConfig.transport === "string" ? serverConfig.transport : remoteUrl ? "http" : undefined;
+    const headers = serverConfig.headers && typeof serverConfig.headers === "object" ? (serverConfig.headers as Record<string, unknown>) : {};
+    const headerNames = Object.keys(headers).sort((a, b) => a.localeCompare(b));
+    const authHeaderNames = headerNames.filter((header) => /authorization|api[-_]?key|token|secret|credential|cookie/i.test(header));
+    const secretRefKeys = [
+      ...extractSecretReferenceKeys(Object.values(headers)),
+      ...extractSecretReferenceKeys([url, ...args])
+    ].sort((a, b) => a.localeCompare(b));
+    return {
+      name,
+      command,
+      args,
+      envKeys: env.sort((a, b) => a.localeCompare(b)),
+      transport,
+      remote: Boolean(remoteUrl),
+      remoteHost: remoteUrl?.host,
+      remoteScheme: remoteUrl?.scheme,
+      headerNames,
+      authHeaderNames,
+      secretRefKeys
+    };
   });
+}
+
+function parseMcpRemoteUrl(value: string | undefined): { host: string; scheme: string } | undefined {
+  if (!value) return undefined;
+  try {
+    const parsed = new URL(value);
+    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return undefined;
+    return { host: parsed.hostname.toLowerCase(), scheme: parsed.protocol.replace(":", "") };
+  } catch {
+    return undefined;
+  }
+}
+
+function extractSecretReferenceKeys(values: unknown[]): string[] {
+  const keys = new Set<string>();
+  for (const value of values) {
+    if (typeof value !== "string") continue;
+    for (const match of value.matchAll(/\$\{?([A-Z_][A-Z0-9_]*)\}?/g)) {
+      if (match[1] && /token|secret|key|password|credential|auth/i.test(match[1])) keys.add(match[1]);
+    }
+  }
+  return [...keys];
+}
+
+function isLocalHost(host: string): boolean {
+  return ["localhost", "127.0.0.1", "::1", "0.0.0.0"].includes(host);
+}
+
+function uniqueActions(actions: ActionType[]): ActionType[] {
+  return [...new Set(actions)].sort((a, b) => a.localeCompare(b));
 }
 
 function isEnvFile(basename: string): boolean {

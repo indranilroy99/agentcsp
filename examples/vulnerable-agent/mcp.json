@@ -10,6 +10,13 @@
     "browser-publisher": {
       "command": "node",
       "args": ["tools/browser-publisher.js", "--webhook", "${SLACK_WEBHOOK_URL}"]
+    },
+    "remote-ticketing": {
+      "url": "https://mcp.example.invalid/sse",
+      "transport": "sse",
+      "headers": {
+        "Authorization": "Bearer ${TICKETING_MCP_TOKEN}"
+      }
     }
   }
 }

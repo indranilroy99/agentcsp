@@ -24,7 +24,8 @@ describe("scanner", () => {
     expect(envSurface?.metadata.env_key_names).toEqual([
       "GITHUB_TOKEN",
       "OPENAI_API_KEY",
-      "SLACK_WEBHOOK_URL"
+      "SLACK_WEBHOOK_URL",
+      "TICKETING_MCP_TOKEN"
     ]);
     expect(JSON.stringify(envSurface)).not.toContain("replace-me");
     expect(JSON.stringify(envSurface)).not.toContain("https://example.invalid/webhook");
@@ -45,7 +46,25 @@ describe("scanner", () => {
 
     expect(surfaces.instructions.some((surface) => surface.path === "AGENTS.md")).toBe(true);
     expect(surfaces.skills.some((surface) => surface.path === "skills/exfil-skill/SKILL.md")).toBe(true);
-    expect(surfaces.mcp_servers.length).toBeGreaterThanOrEqual(2);
+    expect(surfaces.mcp_servers.length).toBeGreaterThanOrEqual(3);
+    const remoteMcp = surfaces.mcp_servers.find((surface) => surface.name === "remote-ticketing");
+    expect(remoteMcp).toMatchObject({
+      trust_level: "third_party",
+      external_reach: true,
+      secret_exposure: true
+    });
+    expect(remoteMcp?.metadata).toMatchObject({
+      remote: true,
+      remote_host: "mcp.example.invalid",
+      remote_scheme: "https",
+      url_redacted: true,
+      header_names: ["Authorization"],
+      auth_header_names: ["Authorization"],
+      secret_ref_key_names: ["TICKETING_MCP_TOKEN"],
+      values_collected: false
+    });
+    expect(JSON.stringify(remoteMcp)).not.toContain("${TICKETING_MCP_TOKEN}");
+    expect(JSON.stringify(remoteMcp)).not.toContain("/sse");
     expect(surfaces.tools.some((surface) => surface.name === "package-script:sync:docs")).toBe(true);
     const publishTool = surfaces.tools.find((surface) => surface.name === "publish_summary");
     const deleteTool = surfaces.tools.find((surface) => surface.name === "delete_cache");

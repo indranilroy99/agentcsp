@@ -215,6 +215,16 @@ The current iteration adds:
 - Markdown and SARIF export of policy-control metadata
 - regression coverage showing policy controls update recommendations without suppressing evidence
 
+## Remote MCP Trust and Auth Pass
+
+The current iteration adds:
+
+- remote MCP server parsing for `url`, `endpoint`, `transport`, and headers
+- redacted remote metadata with host/scheme/header names and secret reference key names only
+- third-party trust classification for external remote MCP servers
+- a high-signal rule for credential-backed third-party remote MCP access
+- fixture and test coverage proving raw URL paths and token placeholders are not emitted
+
 ## Initial Build Recommendation
 
 Start with a CLI-first MVP before building the dashboard:

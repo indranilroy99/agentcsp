@@ -28,6 +28,7 @@ Examples:
 
 - network retrieval plus shell execution
 - MCP server plus credential key names plus side effects
+- remote third-party MCP server plus auth headers or credential references
 - runtime config with unsandboxed execution plus no approval gate
 - runtime config with network access plus secret env keys plus privileged tools
 - pull request workflow plus write permissions plus secrets
