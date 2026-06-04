@@ -1,13 +1,15 @@
 # AgentCSP
 
 ```text
-+-------------------------- AgentCSP --------------------------+
-| Context Security Policy for AI Agents                        |
-|                                                              |
-|  context  -->  surface  -->  capability  -->  control        |
-|     |             |             |              |              |
-|  trust       data class      authority      evidence          |
-+--------------------------------------------------------------+
+    ___                    __  __________
+   /   | ____ ____  ____  / /_/ ____/ ___/____
+  / /| |/ __ '/ _ \/ __ \/ __/ /    \__ \/ __ \
+ / ___ / /_/ /  __/ / / / /_/ /___ ___/ / /_/ /
+/_/  |_\__, /\___/_/ /_/\__/\____//____/ .___/
+      /____/                           /_/
+
+  [ context ]==>[ surface ]==>[ capability ]==>[ control ]
+       trust        data class        authority       evidence
 ```
 
 **Context Security Policy for AI Agents.**
@@ -116,6 +118,8 @@ agentcsp scan . \
 ```
 
 AgentCSP exits with code `0` by default when a scan completes, even if findings exist. CI failure is opt-in through `--fail-on high`, `--fail-on medium`, or `--fail-on low`.
+
+The terminal banner animates only in interactive terminals. It is suppressed by `--quiet`, disabled in CI and piped output, and can be turned off with `AGENTCSP_NO_ANIMATION=1`.
 
 ## Repository Layout
 

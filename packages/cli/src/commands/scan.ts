@@ -1,6 +1,6 @@
 import path from "node:path";
 import { scanProject, SeveritySchema, type Severity } from "@agentcsp/core";
-import { AGENTCSP_BANNER } from "../banner.js";
+import { printBanner } from "../banner.js";
 
 const allowedFormats = new Set(["json", "md"]);
 
@@ -25,7 +25,7 @@ export async function runScanCommand(targetPath: string, options: Record<string,
   });
 
   if (!quiet) {
-    console.log(AGENTCSP_BANNER);
+    await printBanner({ animate: true });
     console.log(`AgentCSP scan complete: ${result.findings.length} finding(s)`);
     if (result.outputFiles.manifest) console.log(`Manifest: ${result.outputFiles.manifest}`);
     if (result.outputFiles.findings) console.log(`Findings: ${result.outputFiles.findings}`);

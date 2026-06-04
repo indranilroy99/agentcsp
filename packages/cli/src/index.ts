@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { Command } from "commander";
-import { AGENTCSP_BANNER } from "./banner.js";
+import { renderBanner } from "./banner.js";
 import { runScanCommand } from "./commands/scan.js";
 
 const program = new Command();
@@ -9,7 +9,7 @@ program
   .name("agentcsp")
   .description("Context Security Policy for AI Agents.")
   .version("0.1.0")
-  .addHelpText("beforeAll", AGENTCSP_BANNER);
+  .addHelpText("beforeAll", renderBanner({ color: Boolean(process.stdout.isTTY) }));
 
 program
   .command("scan")
