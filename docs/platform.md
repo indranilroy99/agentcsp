@@ -1,6 +1,6 @@
 # AgentCSP Platform Direction
 
-AgentCSP can grow into a centralized AI security and supply-chain control plane without turning the open CLI into a hosted-only product.
+AgentCSP can grow into a centralized AI agent security control plane without turning the open CLI into a hosted-only product.
 
 The platform should be built on the same open contracts as the CLI:
 
@@ -19,7 +19,7 @@ The platform should answer higher-order security questions that standalone scann
 - Which agents can reach secrets, browsers, shell, databases, GitHub, Slack, email, or external APIs?
 - Which MCP servers and tools are trusted, third-party, untrusted, or unknown?
 - Which RAG and memory sources can carry poisoned context across sessions?
-- Which repositories introduce AI supply-chain risk through package scripts, CI workflows, plugins, skills, or tool schemas?
+- Which repositories expose risky agent-triggered authority through package scripts, CI workflows, plugins, skills, or tool schemas?
 - Which policies are missing, advisory, enforced, or failing?
 - Which findings have enough evidence to support security review or audit?
 
@@ -54,7 +54,7 @@ AgentCSP should support three deployment profiles:
 - **Attack Path Explorer**: ranks provenance-to-authority paths by severity, confidence, and recommended control.
 - **Red-Team Lab**: generates and runs adversarial scenarios from discovered surfaces.
 - **RAG and Memory Lab**: tests retrieval poisoning, memory persistence, source provenance, and contamination paths.
-- **AI Supply-Chain View**: correlates package scripts, GitHub Actions, MCP dependencies, plugin metadata, generated state, and secrets references.
+- **Agent Authority View**: correlates package scripts, GitHub Actions, MCP servers, plugin metadata, generated state, and secrets references as agent-reachable authority.
 - **CI/CD and SARIF Integrations**: imports scan results and exports findings to code-scanning systems.
 
 ## Design Standard

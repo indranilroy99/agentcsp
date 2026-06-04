@@ -36,19 +36,19 @@ Examples:
 
 Every production change should pass:
 
-- dependency install from lockfile
+- reproducible install from lockfile
 - TypeScript check
 - unit tests
 - build
-- high/critical dependency audit
+- high/critical dependency audit for the tool's own release hygiene
 - fixture scan
 - SARIF validation
 
 ## Near-Term Production Work
 
 - Add SARIF upload examples for adopters.
-- Add package dependency and lockfile inventory.
-- Add MCP schema parsing beyond config files.
+- Add MCP and tool schema parsing beyond config files.
+- Add stronger runtime configuration inventory for sandbox, approval, network, and tool authority.
 - Add graph edges between context sources, capabilities, data classes, and side effects.
 - Add attack-path regression fixtures for common production AI architectures.
 - Add suppression and waiver workflow with expiry.

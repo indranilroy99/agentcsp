@@ -47,6 +47,21 @@ describe("scanner", () => {
     expect(surfaces.skills.some((surface) => surface.path === "skills/exfil-skill/SKILL.md")).toBe(true);
     expect(surfaces.mcp_servers.length).toBeGreaterThanOrEqual(2);
     expect(surfaces.tools.some((surface) => surface.name === "package-script:sync:docs")).toBe(true);
+    const publishTool = surfaces.tools.find((surface) => surface.name === "publish_summary");
+    const deleteTool = surfaces.tools.find((surface) => surface.name === "delete_cache");
+    const readTool = surfaces.tools.find((surface) => surface.name === "read_customer_record");
+    expect(publishTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      external_write: true,
+      accepts_secret_like_input: true,
+      accepts_url_input: true
+    });
+    expect(deleteTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      destructive_action: true,
+      accepts_path_input: true
+    });
+    expect(readTool?.side_effect).toBe(false);
     expect(surfaces.ci_cd.length).toBe(1);
     expect(surfaces.ci_cd[0]?.metadata).toMatchObject({
       pull_request_trigger: true,

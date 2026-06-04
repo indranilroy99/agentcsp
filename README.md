@@ -46,6 +46,7 @@ Runtime enforcement adapters, SARIF output, graph traversal, and the dashboard a
 - **Agent Surface Inventory**: discovers instructions, skills, plugins, MCP configs, package scripts, workflows, env references, RAG sources, memory surfaces, logs, and tool definitions.
 - **Agent Manifest**: emits `agent-manifest.json`, an SBOM-style record for AI agent deployments.
 - **Authority Signals**: classifies actions such as read, write, execute, publish, send, delete, remember, and call.
+- **MCP and Tool Schema Authority**: extracts individual tool schemas and classifies external writes, destructive actions, credential-like inputs, filesystem paths, URL inputs, browser control, memory access, and shell authority.
 - **Trust Boundary Analysis**: tracks trusted, project, workspace, third-party, untrusted, and unknown provenance.
 - **Explainable Risk Scoring**: severity includes contributing factors such as trust level, data class, reversibility, external reach, and secret exposure.
 - **Static Attack Paths**: connects context sources to privileged capabilities so teams can see provenance-to-authority paths instead of isolated alerts.
@@ -105,6 +106,8 @@ CLI shape:
 ```bash
 agentcsp scan [path] --out .agentcsp
 ```
+
+Relative `--out` paths are resolved from the current working directory. Absolute paths are preserved.
 
 Useful flags:
 
@@ -206,7 +209,7 @@ Reports use "recommended controls" until runtime enforcement exists.
 - Graph-based blast-radius analysis
 - Red-team rule exchange
 - Secure RAG and memory lab
-- Local and cloud-hostable platform for manifest registry, policy governance, evidence, and AI supply-chain security
+- Local and cloud-hostable platform for manifest registry, policy governance, evidence, and AI agent security operations
 - Runtime enforcement adapters
 - Evidence dashboard
 

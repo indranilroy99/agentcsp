@@ -27,6 +27,28 @@ Core sections:
 
 The manifest is versioned and validated with Zod. JSON Schema exports live in `schemas/`.
 
+## Tool Schema Authority
+
+Tool definition files are normalized into individual `tool` objects when AgentCSP can parse JSON or YAML tool schemas.
+
+Tool metadata may include:
+
+- `tool_name`
+- `parsed_tool_schema`
+- `authority_classes`
+- `schema_properties`
+- `required_properties`
+- `accepts_secret_like_input`
+- `accepts_path_input`
+- `accepts_url_input`
+- `external_write`
+- `destructive_action`
+- `read_only_hint`
+- `idempotent_hint`
+- `open_world_schema`
+
+These fields let rules reason about concrete agent-callable authority without dumping raw tool descriptions or schemas into the manifest.
+
 ## Relationships
 
 `relationships` are static graph edges between normalized surfaces. They are intentionally bounded and evidence-backed.

@@ -176,6 +176,16 @@ The next iteration added:
 - `--fail-on critical` support
 - suppression regression tests
 
+## MCP and Tool Schema Authority Pass
+
+The current iteration adds:
+
+- parsing of individual JSON/YAML tool schemas from tool definition files
+- tool metadata for schema properties, required properties, read-only hints, idempotency hints, and open-world schemas
+- authority classification for external writes, destructive actions, credential-like inputs, filesystem paths, URL inputs, browser control, memory access, and shell execution
+- high-signal rules for external writes with credential-like inputs and destructive filesystem tool schemas
+- fixture coverage for risky and read-only tools
+
 ## Initial Build Recommendation
 
 Start with a CLI-first MVP before building the dashboard:

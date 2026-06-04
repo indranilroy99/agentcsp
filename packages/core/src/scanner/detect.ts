@@ -381,24 +381,64 @@ function detectWorkflow(file: WalkedFile, text: string | undefined, surfaces: De
 
 function detectToolDefinition(file: WalkedFile, text: string | undefined, surfaces: DetectedSurfaces): void {
   const content = text ?? "";
-  const actions = detectActions(content);
-  const object = createSurfaceObject({
-    type: "tool",
-    name: path.basename(file.relativePath),
-    path: file.relativePath,
-    data_classes: inferDataClasses(content, file.relativePath),
-    actions: actions.length > 0 ? actions : ["call"],
-    side_effect: true,
-    external_reach: hasExternalReach(content),
-    secret_exposure: hasSecretExposure(content),
-    reversible: isReversible(content),
-    reason: "Tool definition file discovered as agent-callable capability metadata.",
-    metadata: { content_redacted: true }
-  });
-  surfaces.tools.push({
-    ...object,
-    untrusted_to_privileged: isUntrustedToPrivileged(object)
-  });
+  const toolDefinitions = extractToolDefinitions(content);
+  if (toolDefinitions.length === 0) {
+    const actions = detectActions(content);
+    const object = createSurfaceObject({
+      type: "tool",
+      name: path.basename(file.relativePath),
+      path: file.relativePath,
+      data_classes: inferDataClasses(content, file.relativePath),
+      actions: actions.length > 0 ? actions : ["call"],
+      side_effect: true,
+      external_reach: hasExternalReach(content),
+      secret_exposure: hasSecretExposure(content),
+      reversible: isReversible(content),
+      reason: "Tool definition file discovered as agent-callable capability metadata.",
+      metadata: { content_redacted: true, parsed_tool_schema: false }
+    });
+    surfaces.tools.push({
+      ...object,
+      untrusted_to_privileged: isUntrustedToPrivileged(object)
+    });
+    return;
+  }
+
+  for (const definition of toolDefinitions) {
+    const authority = classifyToolAuthority(definition);
+    const object = createSurfaceObject({
+      type: "tool",
+      name: definition.name,
+      path: file.relativePath,
+      data_classes: authority.secret_exposure ? ["credential"] : ["unknown"],
+      actions: authority.actions,
+      side_effect: authority.side_effect,
+      external_reach: authority.external_reach,
+      secret_exposure: authority.secret_exposure,
+      reversible: !authority.destructive_action && !authority.external_write,
+      reason: "Tool schema discovered as agent-callable capability metadata.",
+      metadata: {
+        tool_name: definition.name,
+        description_redacted: true,
+        parsed_tool_schema: true,
+        authority_classes: authority.authority_classes,
+        schema_properties: definition.schemaProperties,
+        required_properties: definition.requiredProperties,
+        accepts_secret_like_input: authority.accepts_secret_like_input,
+        accepts_path_input: authority.accepts_path_input,
+        accepts_url_input: authority.accepts_url_input,
+        external_write: authority.external_write,
+        destructive_action: authority.destructive_action,
+        read_only_hint: definition.annotations?.readOnlyHint,
+        idempotent_hint: definition.annotations?.idempotentHint,
+        open_world_schema: definition.openWorldSchema
+      }
+    });
+    surfaces.tools.push({
+      ...object,
+      untrusted_to_privileged: isUntrustedToPrivileged(object)
+    });
+  }
 }
 
 function extractMcpServers(value: unknown): Array<{ name: string; command?: string; args?: string[]; envKeys?: string[] }> {
@@ -434,4 +474,159 @@ function hasWritePermissions(value: unknown): boolean {
   if (typeof value === "string") return value === "write-all";
   if (!value || typeof value !== "object") return false;
   return Object.values(value as Record<string, unknown>).some((permission) => permission === "write");
+}
+
+interface ExtractedToolDefinition {
+  name: string;
+  description: string;
+  schemaProperties: string[];
+  requiredProperties: string[];
+  annotations?: {
+    readOnlyHint?: boolean;
+    idempotentHint?: boolean;
+  };
+  openWorldSchema: boolean;
+}
+
+function extractToolDefinitions(content: string): ExtractedToolDefinition[] {
+  if (!content.trim()) return [];
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(content);
+  } catch {
+    try {
+      parsed = YAML.parse(content);
+    } catch {
+      return [];
+    }
+  }
+  const candidates = toolCandidates(parsed);
+  return candidates
+    .map((candidate) => normalizeToolDefinition(candidate))
+    .filter((candidate): candidate is ExtractedToolDefinition => Boolean(candidate))
+    .sort((a, b) => a.name.localeCompare(b.name));
+}
+
+function toolCandidates(value: unknown): unknown[] {
+  if (!value || typeof value !== "object") return [];
+  const record = value as Record<string, unknown>;
+  if (Array.isArray(record.tools)) return record.tools;
+  if (Array.isArray(record.functions)) return record.functions;
+  if (typeof record.name === "string" && (typeof record.description === "string" || record.inputSchema)) return [record];
+  return [];
+}
+
+function normalizeToolDefinition(value: unknown): ExtractedToolDefinition | undefined {
+  if (!value || typeof value !== "object") return undefined;
+  const record = value as Record<string, unknown>;
+  const name = typeof record.name === "string" ? record.name : undefined;
+  if (!name) return undefined;
+  const description = typeof record.description === "string" ? record.description : "";
+  const schema = (record.inputSchema ?? record.parameters ?? record.schema) as Record<string, unknown> | undefined;
+  const properties = schema && typeof schema.properties === "object" ? Object.keys(schema.properties as Record<string, unknown>) : [];
+  const required = Array.isArray(schema?.required) ? schema.required.filter((item): item is string => typeof item === "string") : [];
+  const annotations = record.annotations && typeof record.annotations === "object" ? (record.annotations as Record<string, unknown>) : undefined;
+  const additionalProperties = schema?.additionalProperties;
+  return {
+    name,
+    description,
+    schemaProperties: properties.sort((a, b) => a.localeCompare(b)),
+    requiredProperties: required.sort((a, b) => a.localeCompare(b)),
+    annotations: annotations
+      ? {
+          readOnlyHint: typeof annotations.readOnlyHint === "boolean" ? annotations.readOnlyHint : undefined,
+          idempotentHint: typeof annotations.idempotentHint === "boolean" ? annotations.idempotentHint : undefined
+        }
+      : undefined,
+    openWorldSchema: additionalProperties !== false
+  };
+}
+
+function classifyToolAuthority(definition: ExtractedToolDefinition): {
+  authority_classes: string[];
+  actions: Array<"read" | "write" | "execute" | "publish" | "send" | "delete" | "remember" | "call">;
+  side_effect: boolean;
+  external_reach: boolean;
+  secret_exposure: boolean;
+  accepts_secret_like_input: boolean;
+  accepts_path_input: boolean;
+  accepts_url_input: boolean;
+  external_write: boolean;
+  destructive_action: boolean;
+} {
+  const text = normalizeAuthorityText(
+    `${definition.name} ${definition.description} ${definition.schemaProperties.join(" ")} ${definition.requiredProperties.join(" ")}`
+  );
+  const classes = new Set<string>();
+  const actions = new Set<"read" | "write" | "execute" | "publish" | "send" | "delete" | "remember" | "call">(["call"]);
+  const acceptsSecret = /secret|token|api[\s_-]?key|password|credential|auth/i.test(text);
+  const acceptsPath = /(^|[_\W])(path|file|directory|dir|folder|repo|repository|workspace|glob)([_\W]|$)/i.test(text);
+  const acceptsUrl = /\b(url|uri|webhook|endpoint|host|domain|http)\b/i.test(text);
+  const destructive = /\b(delete|remove|drop|truncate|destroy|purge|wipe)\b/i.test(text);
+  const externalWrite = /\b(publish|post|send|webhook|slack|email|release|deploy|comment|issue|pull\s+request|upload)\b/i.test(
+    text
+  );
+
+  if (/\b(shell|command|exec|bash|process|terminal|script)\b/i.test(text)) {
+    classes.add("shell_execution");
+    actions.add("execute");
+  }
+  if (/\b(browser|navigate|click|page|dom|screenshot)\b/i.test(text)) {
+    classes.add("browser_control");
+    actions.add("call");
+  }
+  if (acceptsUrl || /\b(fetch|request|http|api|network)\b/i.test(text)) {
+    classes.add("network_access");
+  }
+  if (acceptsPath || /\b(read\s+file|write\s+file|filesystem|fs)\b/i.test(text)) {
+    classes.add("filesystem_access");
+    actions.add(/\b(write|save|update|modify)\b/i.test(text) ? "write" : "read");
+  }
+  if (/\b(memory|remember|store|recall)\b/i.test(text)) {
+    classes.add("memory_access");
+    actions.add("remember");
+  }
+  if (acceptsSecret) {
+    classes.add("credential_input");
+  }
+  if (externalWrite) {
+    classes.add("external_write");
+    actions.add("send");
+    actions.add("publish");
+  }
+  if (destructive) {
+    classes.add("destructive_action");
+    actions.add("delete");
+  }
+  if (definition.openWorldSchema) {
+    classes.add("open_world_schema");
+  }
+
+  const readOnly = definition.annotations?.readOnlyHint === true;
+  const explicitSideEffectHint = definition.annotations?.readOnlyHint === false;
+  const sideEffect =
+    explicitSideEffectHint ||
+    (!readOnly &&
+      [...actions].some((action) => ["write", "execute", "publish", "send", "delete", "remember"].includes(action)));
+
+  return {
+    authority_classes: [...classes].sort((a, b) => a.localeCompare(b)),
+    actions: [...actions].sort((a, b) => a.localeCompare(b)),
+    side_effect: sideEffect,
+    external_reach: acceptsUrl || externalWrite,
+    secret_exposure: acceptsSecret,
+    accepts_secret_like_input: acceptsSecret,
+    accepts_path_input: acceptsPath,
+    accepts_url_input: acceptsUrl,
+    external_write: externalWrite,
+    destructive_action: destructive
+  };
+}
+
+function normalizeAuthorityText(value: string): string {
+  return value
+    .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
+    .replace(/[_-]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
 }

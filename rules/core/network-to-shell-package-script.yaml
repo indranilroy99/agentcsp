@@ -1,6 +1,6 @@
 id: AGENTCSP-TOOL-002
 name: Package script downloads remote content into a shell
-description: A package script combines network retrieval and shell execution, creating a high-risk path for supply-chain compromise or agent-triggered remote code execution.
+description: A package script combines network retrieval and shell execution, creating a high-risk path if an agent or automation can invoke it.
 category: unsafe_code_execution
 severity: critical
 maps_to:

@@ -51,6 +51,6 @@
 
 ## Phase 7: AgentCSP Platform
 
-- Add a local-first platform deployment for teams that need a persistent manifest registry, policy governance, evidence history, and AI supply-chain inventory.
+- Add a local-first platform deployment for teams that need a persistent manifest registry, policy governance, evidence history, and AI agent security inventory.
 - Support self-hosted deployment first, with optional cloud deployment for organizations that need centralized multi-repo visibility.
 - Keep CLI, schemas, rules, and scanner engine fully open and usable without the platform.

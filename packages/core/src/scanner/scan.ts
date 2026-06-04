@@ -29,7 +29,7 @@ export interface ScanResult {
 export async function scanProject(rawConfig: Partial<ScanConfig> & { root_path: string }): Promise<ScanResult> {
   const config = ScanConfigSchema.parse(rawConfig);
   const rootPath = path.resolve(config.root_path);
-  const outputPath = path.resolve(rootPath, config.output_path);
+  const outputPath = path.resolve(config.output_path);
 
   const files = await walkProject(config);
   const policy = await loadPolicy(rootPath, config.config_path);
