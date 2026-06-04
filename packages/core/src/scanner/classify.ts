@@ -80,27 +80,27 @@ export function inferDataClasses(text: string, filePath: string): DataClass[] {
 
 export function detectActions(text: string): ActionType[] {
   const actions: ActionType[] = [];
-  if (/read|load|open|fetch|retrieve/i.test(text)) actions.push("read");
-  if (/write|save|update|modify|commit/i.test(text)) actions.push("write");
-  if (EXECUTION_PATTERN.test(text)) actions.push("execute");
-  if (/publish|release|deploy|post/i.test(text)) actions.push("publish");
-  if (/send|email|slack|webhook/i.test(text)) actions.push("send");
-  if (/delete|remove|drop|truncate/i.test(text)) actions.push("delete");
-  if (/remember|memory|store/i.test(text)) actions.push("remember");
-  if (/tool|api|mcp|function|call/i.test(text)) actions.push("call");
+  if (hasAffirmedPattern(text, /\b(read|load|open|fetch|retrieve)\b/i)) actions.push("read");
+  if (hasAffirmedPattern(text, /\b(write|save|update|modify|commit)\b/i)) actions.push("write");
+  if (hasAffirmedPattern(text, EXECUTION_PATTERN)) actions.push("execute");
+  if (hasAffirmedPattern(text, /\b(publish|release|deploy|post)\b/i)) actions.push("publish");
+  if (hasAffirmedPattern(text, /\b(send|email|slack|webhook)\b/i)) actions.push("send");
+  if (hasAffirmedPattern(text, /\b(delete|remove|drop|truncate)\b/i)) actions.push("delete");
+  if (hasAffirmedPattern(text, /\b(remember|memory|store)\b/i)) actions.push("remember");
+  if (hasAffirmedPattern(text, /\b(tool|api|mcp|function|call)\b/i)) actions.push("call");
   return unique(actions);
 }
 
 export function hasExternalReach(text: string): boolean {
-  return EXTERNAL_PATTERN.test(text);
+  return hasAffirmedPattern(text, EXTERNAL_PATTERN);
 }
 
 export function hasExecution(text: string): boolean {
-  return EXECUTION_PATTERN.test(text);
+  return hasAffirmedPattern(text, EXECUTION_PATTERN);
 }
 
 export function isReversible(text: string): boolean {
-  return !IRREVERSIBLE_PATTERN.test(text);
+  return !hasAffirmedPattern(text, IRREVERSIBLE_PATTERN);
 }
 
 export function hasSecretExposure(text: string): boolean {
@@ -150,4 +150,24 @@ export function redactedCommandSignals(command: string): Record<string, unknown>
 
 function unique<T>(values: T[]): T[] {
   return [...new Set(values)];
+}
+
+function hasAffirmedPattern(text: string, pattern: RegExp): boolean {
+  const flags = pattern.flags.includes("g") ? pattern.flags : `${pattern.flags}g`;
+  const matcher = new RegExp(pattern.source, flags);
+  let match: RegExpExecArray | null;
+  while ((match = matcher.exec(text)) !== null) {
+    if (!isNegatedActionMatch(text, match.index)) return true;
+    if (match[0].length === 0) matcher.lastIndex += 1;
+  }
+  return false;
+}
+
+function isNegatedActionMatch(text: string, index: number): boolean {
+  const before = text.slice(Math.max(0, index - 120), index);
+  const clauseStart = Math.max(before.lastIndexOf("."), before.lastIndexOf("\n"), before.lastIndexOf(";"));
+  const clause = before.slice(clauseStart + 1);
+  return /\b(do not|don't|dont|must not|should not|cannot|can't|never|not allowed to|not permitted to|forbid(?:s|den)?|prohibit(?:s|ed)?)\b/i.test(
+    clause
+  );
 }

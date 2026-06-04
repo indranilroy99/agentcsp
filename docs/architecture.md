@@ -24,6 +24,8 @@ AgentCSP should model the agent environment as a graph:
 8. Produce reports and evidence.
 9. Enforce policies at runtime where integrations exist.
 
+The current static graph is intentionally conservative. It prioritizes file-specific context-to-capability paths only when normalized evidence shows instruction-like content, tool directives, external directives, memory-write directives, generated-state replay, or explicit instruction/skill authority. This keeps the MVP useful for security review without implying complete runtime graph traversal.
+
 ## Manifest Concept
 
 The Agent Manifest is the SBOM equivalent for an AI agent deployment. It should be exportable as JSON and eventually support signing.
@@ -61,4 +63,3 @@ Initial rule categories:
 - unsafe code execution
 - irreversible external write
 - unbounded consumption
-

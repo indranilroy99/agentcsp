@@ -311,6 +311,17 @@ The current iteration adds:
 - vulnerable log fixture with replay-risk transcript content, still excluded by default
 - regression coverage proving the finding appears only with `include_logs` and raw transcript text is not emitted
 
+## Evidence-Led Attack Path Pass
+
+The current iteration adds:
+
+- bounded, sorted high-risk capability selection for static graph construction
+- context-to-capability influence edges only when normalized context evidence shows instruction-like content, tool directives, external directives, memory-write directives, generated-state replay, or explicit instruction/skill authority
+- no heuristic-only RAG, memory, or log directory markers as prioritized influence sources
+- negation-aware action classification so text like "should not publish or call external services" is not treated as granted authority
+- attack-path reasons that name the normalized context signal and target authority while keeping raw context redacted
+- regression coverage for file-specific RAG-to-tool paths and generated-state replay paths when logs are explicitly included
+
 ## Initial Build Recommendation
 
 Start with a CLI-first MVP before building the dashboard:

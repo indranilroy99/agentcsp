@@ -4,6 +4,7 @@ import { detectSurfaces } from "../src/scanner/detect.js";
 import { walkProject } from "../src/scanner/walk.js";
 
 const fixtureRoot = path.resolve("examples/vulnerable-agent");
+const safeFixtureRoot = path.resolve("examples/safe-agent");
 
 describe("scanner", () => {
   it("collects env key names without exposing env values", async () => {
@@ -187,5 +188,26 @@ describe("scanner", () => {
     expect(transcript?.actions).toContain("call");
     expect(transcript?.actions).toContain("send");
     expect(JSON.stringify(transcript)).not.toContain("Ignore previous repository instructions");
+  });
+
+  it("does not treat negated safety instructions as granted authority", async () => {
+    const files = await walkProject({
+      root_path: safeFixtureRoot,
+      output_path: ".agentcsp",
+      formats: ["json", "md"],
+      include_hidden: true,
+      include_logs: false,
+      max_file_size_bytes: 1024 * 1024,
+      max_files: 5000,
+      quiet: true
+    });
+    const surfaces = await detectSurfaces(files);
+    const instruction = surfaces.instructions.find((surface) => surface.path === "AGENTS.md");
+
+    expect(instruction).toBeDefined();
+    expect(instruction?.actions).toEqual(["read"]);
+    expect(instruction?.side_effect).toBe(false);
+    expect(instruction?.external_reach).toBe(false);
+    expect(instruction?.reversible).toBe(true);
   });
 });

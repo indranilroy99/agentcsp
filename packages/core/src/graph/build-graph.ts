@@ -12,7 +12,7 @@ import type {
 } from "../schemas/index.js";
 import type { DetectedSurfaces } from "../scanner/detect.js";
 import { allManifestObjects } from "../manifest/build.js";
-import { scoreObjectRisk, severityFromScore } from "../risk/score.js";
+import { severityFromScore } from "../risk/score.js";
 import { stableId } from "../utils/ids.js";
 
 export interface StaticGraph {
@@ -22,19 +22,20 @@ export interface StaticGraph {
 
 export function buildStaticGraph(surfaces: DetectedSurfaces, findings: Finding[]): StaticGraph {
   const objects = allManifestObjects(surfaces);
-  const highRiskCapabilities = objects.filter(isHighRiskCapability);
+  const highRiskCapabilities = sortCapabilities(objects.filter(isHighRiskCapability)).slice(0, 30);
   const contextSources = objects.filter(isContextSource);
+  const actionableContextSources = contextSources.filter(isActionableContextSource);
   const relationships = new Map<string, GraphEdge>();
 
-  for (const context of contextSources) {
-    for (const capability of highRiskCapabilities.slice(0, 20)) {
+  for (const context of actionableContextSources) {
+    for (const capability of highRiskCapabilities.filter((target) => contextCanSteerCapability(context, target)).slice(0, 12)) {
       if (context.id === capability.id) continue;
       addEdge(
         relationships,
         context,
         capability,
         "influences",
-        "Agent-consumable context may influence a privileged capability during runtime."
+        contextInfluenceReason(context, capability)
       );
     }
   }
@@ -52,13 +53,17 @@ export function buildStaticGraph(surfaces: DetectedSurfaces, findings: Finding[]
   }
 
   for (const memory of surfaces.memory) {
-    for (const context of contextSources.filter((object) => object.id !== memory.id)) {
+    if (isHeuristicSurface(memory)) continue;
+    const persistenceSources = actionableContextSources
+      .filter((object) => object.id !== memory.id && explicitBoolean(object, "memory_write_directive"))
+      .slice(0, 10);
+    for (const context of persistenceSources) {
       addEdge(
         relationships,
         context,
         memory,
         "persists",
-        "Agent-consumable context may be written into or retrieved from persistent memory."
+        "Specific context signal requests persistence into agent memory. Raw context is redacted; review provenance before retrieval or replay."
       );
     }
   }
@@ -143,6 +148,27 @@ function isContextSource(object: SurfaceObject): boolean {
   return ["instruction", "prompt", "rag_source", "memory", "skill"].includes(object.type);
 }
 
+function isActionableContextSource(object: SurfaceObject): boolean {
+  if (isHeuristicSurface(object)) return false;
+  if (contextSignalCount(object) >= 2) return true;
+  if (
+    ["instruction_like_content", "instruction_override", "tool_directive", "memory_write_directive", "external_directive"].some((signal) =>
+      explicitBoolean(object, signal)
+    )
+  ) {
+    return true;
+  }
+  if (object.type === "instruction" || object.type === "skill") {
+    return (
+      object.side_effect ||
+      object.external_reach ||
+      object.secret_exposure ||
+      object.actions.some((action) => ["execute", "publish", "send", "delete", "write", "call", "remember"].includes(action))
+    );
+  }
+  return false;
+}
+
 function isHighRiskCapability(object: SurfaceObject): boolean {
   return (
     ["tool", "mcp_server", "runtime_config", "ci_cd", "plugin", "automation"].includes(object.type) &&
@@ -151,6 +177,39 @@ function isHighRiskCapability(object: SurfaceObject): boolean {
       object.secret_exposure ||
       object.actions.some((action) => ["execute", "publish", "send", "delete", "write", "call"].includes(action)))
   );
+}
+
+function contextCanSteerCapability(context: SurfaceObject, target: SurfaceObject): boolean {
+  if (!isActionableContextSource(context)) return false;
+
+  if (explicitBoolean(context, "tool_directive") && isAgentCallableAuthority(target)) return true;
+  if (
+    explicitBoolean(context, "external_directive") &&
+    (target.external_reach || target.actions.some((action) => ["send", "publish"].includes(action)))
+  ) {
+    return true;
+  }
+  if (
+    (explicitBoolean(context, "instruction_like_content") || explicitBoolean(context, "instruction_override")) &&
+    (target.side_effect || target.external_reach || target.secret_exposure)
+  ) {
+    return true;
+  }
+  if (explicitBoolean(context, "secret_reference") && target.secret_exposure) return true;
+
+  if (context.type === "instruction" || context.type === "skill") {
+    return sharesAuthorityIntent(context, target);
+  }
+
+  return false;
+}
+
+function contextInfluenceReason(context: SurfaceObject, target: SurfaceObject): string {
+  const signals = contextSignalLabels(context);
+  const targetAuthority = targetAuthorityLabels(target);
+  const signalText = signals.length > 0 ? signals.join(", ") : "agent-authority instruction";
+  const targetText = targetAuthority.length > 0 ? targetAuthority.join(", ") : "privileged capability";
+  return `Specific context signal (${signalText}) can steer target authority (${targetText}). Raw context is redacted; review provenance before privileged use.`;
 }
 
 function isAttackPathCandidate(edge: GraphEdge, finding: Finding): boolean {
@@ -264,4 +323,87 @@ function relationWeight(relation: GraphEdge["relation"] | undefined): number {
     persists: 1,
     external_reach: 1
   }[relation ?? "reads"];
+}
+
+function sortCapabilities(objects: SurfaceObject[]): SurfaceObject[] {
+  return [...objects].sort((a, b) => {
+    const riskCompare = capabilityWeight(b) - capabilityWeight(a);
+    if (riskCompare !== 0) return riskCompare;
+    return a.id.localeCompare(b.id);
+  });
+}
+
+function capabilityWeight(object: SurfaceObject): number {
+  let score = 0;
+  if (object.secret_exposure || object.data_classes.includes("credential")) score += 50;
+  if (object.external_reach) score += 35;
+  if (object.actions.includes("execute")) score += 30;
+  if (object.actions.some((action) => ["publish", "send", "delete", "write"].includes(action))) score += 25;
+  if (object.side_effect) score += 15;
+  if (!object.reversible) score += 10;
+  if (["third_party", "untrusted", "unknown"].includes(object.trust_level)) score += 10;
+  return score;
+}
+
+function contextSignalCount(object: SurfaceObject): number {
+  const value = object.metadata.content_signal_count;
+  return typeof value === "number" ? value : 0;
+}
+
+function explicitBoolean(object: SurfaceObject, metadataKey: string): boolean {
+  return object.metadata[metadataKey] === true;
+}
+
+function isHeuristicSurface(object: SurfaceObject): boolean {
+  return object.metadata.heuristic === true;
+}
+
+function isAgentCallableAuthority(object: SurfaceObject): boolean {
+  return (
+    ["tool", "mcp_server", "runtime_config", "plugin", "automation"].includes(object.type) ||
+    object.actions.some((action) => ["execute", "publish", "send", "delete", "write", "call"].includes(action))
+  );
+}
+
+function sharesAuthorityIntent(context: SurfaceObject, target: SurfaceObject): boolean {
+  const privilegedActions = ["execute", "publish", "send", "delete", "write", "call", "remember"];
+  if (!context.actions.some((action) => privilegedActions.includes(action))) return false;
+  if (context.actions.some((action) => target.actions.includes(action))) return true;
+  if (context.actions.includes("call") && ["tool", "mcp_server", "plugin"].includes(target.type)) return true;
+  if (context.actions.includes("execute") && ["tool", "runtime_config", "ci_cd", "automation"].includes(target.type)) return true;
+  if (context.actions.includes("send") && target.external_reach) return true;
+  return false;
+}
+
+function contextSignalLabels(object: SurfaceObject): string[] {
+  const labels: string[] = [];
+  if (explicitBoolean(object, "instruction_override")) labels.push("instruction override");
+  if (explicitBoolean(object, "instruction_like_content")) labels.push("instruction-like content");
+  if (explicitBoolean(object, "tool_directive")) labels.push("tool directive");
+  if (explicitBoolean(object, "external_directive")) labels.push("external directive");
+  if (explicitBoolean(object, "memory_write_directive")) labels.push("memory-write directive");
+  if (explicitBoolean(object, "generated_state")) labels.push("generated-state replay");
+  if (explicitBoolean(object, "secret_reference")) labels.push("secret reference");
+  if (labels.length === 0 && (object.type === "instruction" || object.type === "skill")) {
+    labels.push(
+      ...object.actions
+        .filter((action) => ["execute", "publish", "send", "delete", "write", "call", "remember"].includes(action))
+        .map((action) => `${action} authority`)
+    );
+  }
+  return labels;
+}
+
+function targetAuthorityLabels(object: SurfaceObject): string[] {
+  const labels: string[] = [];
+  if (object.secret_exposure || object.data_classes.includes("credential")) labels.push("credential-backed access");
+  if (object.external_reach) labels.push("external reach");
+  if (object.actions.includes("execute")) labels.push("execution");
+  if (object.actions.includes("publish")) labels.push("publish");
+  if (object.actions.includes("send")) labels.push("send");
+  if (object.actions.includes("delete")) labels.push("delete");
+  if (object.actions.includes("write")) labels.push("write");
+  if (object.actions.includes("call")) labels.push("tool call");
+  if (object.side_effect) labels.push("side effect");
+  return [...new Set(labels)];
 }

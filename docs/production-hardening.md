@@ -20,6 +20,7 @@ A finding should be considered production-grade when it includes:
 - baseline comparison for new, existing, and resolved findings
 - scan coverage counts for skipped files, ignored paths, and traversal limits
 - redacted parser diagnostics for malformed security-relevant configuration
+- negation-aware action classification so safety policy text is not treated as granted authority
 - recommended control
 - OWASP, MITRE ATLAS, and NIST AI RMF mappings where applicable
 - redacted evidence
@@ -42,6 +43,7 @@ Examples:
 - generated transcripts or cached tool output with instruction-like tool/external directives
 - scheduled or externally dispatched automation plus secrets and write authority
 - package publish/release authority plus agent-influenced workflow
+- attack paths that connect specific context-risk signals to concrete privileged capabilities
 
 ## CI Expectations
 
@@ -60,7 +62,7 @@ Every production change should pass:
 - Add SARIF upload examples for adopters.
 - Add MCP and tool schema parsing beyond config files.
 - Expand runtime configuration inventory across more agent frameworks.
-- Add graph edges between context sources, capabilities, data classes, and side effects.
+- Continue expanding graph edges between context sources, capabilities, data classes, and side effects while keeping heuristic-only paths out of prioritized attack paths.
 - Add attack-path regression fixtures for common production AI architectures.
 - Add suppression and waiver workflow with expiry.
 - Calibrate confidence levels across larger true-positive and false-positive fixture sets.
