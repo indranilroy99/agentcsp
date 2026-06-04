@@ -15,6 +15,9 @@ export function sortFindings(findings: Finding[]): Finding[] {
     const severityOrder = { critical: 0, high: 1, medium: 2, low: 3, info: 4 };
     const severityCompare = severityOrder[a.severity] - severityOrder[b.severity];
     if (severityCompare !== 0) return severityCompare;
+    const confidenceOrder = { very_high: 0, high: 1, medium: 2, low: 3 };
+    const confidenceCompare = confidenceOrder[a.confidence] - confidenceOrder[b.confidence];
+    if (confidenceCompare !== 0) return confidenceCompare;
     return a.id.localeCompare(b.id);
   });
 }

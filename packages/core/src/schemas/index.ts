@@ -147,6 +147,8 @@ export const FindingSchema = z.object({
   name: z.string(),
   category: z.string(),
   severity: SeveritySchema,
+  confidence: ConfidenceSchema,
+  confidence_rationale: z.array(z.string()).default([]),
   matched_object: SurfaceObjectSchema,
   file_path: z.string(),
   reason: z.string(),

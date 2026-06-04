@@ -15,6 +15,7 @@ A finding should be considered production-grade when it includes:
 - external reach
 - secret exposure signal
 - reason
+- confidence and confidence rationale
 - recommended control
 - OWASP, MITRE ATLAS, and NIST AI RMF mappings where applicable
 - redacted evidence
@@ -54,6 +55,6 @@ Every production change should pass:
 - Add graph edges between context sources, capabilities, data classes, and side effects.
 - Add attack-path regression fixtures for common production AI architectures.
 - Add suppression and waiver workflow with expiry.
-- Add confidence levels to findings.
+- Calibrate confidence levels across larger true-positive and false-positive fixture sets.
 - Add multi-fixture regression tests for true positives and false positives.
 - Add benchmarking against known vulnerable agent patterns.

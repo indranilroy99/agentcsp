@@ -196,6 +196,16 @@ The current iteration adds:
 - graph/report treatment of risky runtime config as agent authority
 - fixture coverage for a risky Codex-style runtime config
 
+## Finding Confidence and False-Positive Pass
+
+The current iteration adds:
+
+- finding-level `confidence` and `confidence_rationale` fields
+- Markdown and SARIF export of confidence signals
+- severity-plus-confidence sorting for findings
+- a safe read-only fixture used as a false-positive regression target
+- tests that require very-high-confidence findings on the vulnerable fixture and no high/critical findings on the safe fixture
+
 ## Initial Build Recommendation
 
 Start with a CLI-first MVP before building the dashboard:

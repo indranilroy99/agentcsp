@@ -32,6 +32,28 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-CICD-002")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RAG-001")).toBe(true);
     expect(findings.some((finding) => finding.severity === "critical")).toBe(true);
+    expect(findings.some((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(findings.find((finding) => finding.rule_id === "AGENTCSP-RUNTIME-001")?.confidence).toBe("very_high");
+    expect(findings.every((finding) => finding.confidence_rationale.length > 0)).toBe(true);
     expect(findings.every((finding) => finding.evidence.every((item) => item.redacted))).toBe(true);
+  });
+
+  it("keeps the safe read-only fixture free of high and critical findings", async () => {
+    const fixtureRoot = path.resolve("examples/safe-agent");
+    const files = await walkProject({
+      root_path: fixtureRoot,
+      output_path: ".agentcsp",
+      formats: ["json", "md"],
+      include_hidden: true,
+      include_logs: false,
+      max_file_size_bytes: 1024 * 1024,
+      max_files: 5000,
+      quiet: true
+    });
+    const surfaces = await detectSurfaces(files);
+    const rules = await loadRules(path.resolve("rules"));
+    const findings = runRules(surfaces, rules);
+
+    expect(findings.filter((finding) => finding.severity === "critical" || finding.severity === "high")).toHaveLength(0);
   });
 });

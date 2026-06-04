@@ -120,22 +120,22 @@ function renderFindings(findings: Finding[]): string {
 
 function renderFindingTable(findings: Finding[]): string {
   return [
-    "| Severity | Rule | Object | Recommended control | Risk factors |",
-    "| --- | --- | --- | --- | --- |",
+    "| Severity | Confidence | Rule | Object | Recommended control | Risk factors |",
+    "| --- | --- | --- | --- | --- | --- |",
     ...findings.map((finding) => {
       const factors = finding.risk.rationale.length > 0 ? finding.risk.rationale.join("; ") : "baseline rule match";
-      return `| ${finding.severity} | ${finding.rule_id} | \`${finding.matched_object.type}:${finding.matched_object.name}\` | ${finding.recommended_control.replaceAll("_", " ")} | ${escapeTable(factors)} |`;
+      return `| ${finding.severity} | ${finding.confidence} | ${finding.rule_id} | \`${finding.matched_object.type}:${finding.matched_object.name}\` | ${finding.recommended_control.replaceAll("_", " ")} | ${escapeTable(factors)} |`;
     })
   ].join("\n");
 }
 
 function renderSuppressedFindingTable(findings: Finding[]): string {
   return [
-    "| Severity | Rule | Object | Suppression | Expires | Owner |",
-    "| --- | --- | --- | --- | --- | --- |",
+    "| Severity | Confidence | Rule | Object | Suppression | Expires | Owner |",
+    "| --- | --- | --- | --- | --- | --- | --- |",
     ...findings.map((finding) => {
       const suppression = finding.suppression;
-      return `| ${finding.severity} | ${finding.rule_id} | \`${finding.matched_object.type}:${finding.matched_object.name}\` | ${escapeTable(suppression?.reason ?? "suppressed")} | ${suppression?.expires_at ?? "unknown"} | ${escapeTable(suppression?.owner ?? "unknown")} |`;
+      return `| ${finding.severity} | ${finding.confidence} | ${finding.rule_id} | \`${finding.matched_object.type}:${finding.matched_object.name}\` | ${escapeTable(suppression?.reason ?? "suppressed")} | ${suppression?.expires_at ?? "unknown"} | ${escapeTable(suppression?.owner ?? "unknown")} |`;
     })
   ].join("\n");
 }

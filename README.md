@@ -50,6 +50,7 @@ Runtime enforcement adapters, SARIF output, graph traversal, and the dashboard a
 - **Runtime Posture Inventory**: parses agent runtime configs for sandbox mode, approval policy, network access, privileged tool allowlists, and env key exposure.
 - **Trust Boundary Analysis**: tracks trusted, project, workspace, third-party, untrusted, and unknown provenance.
 - **Explainable Risk Scoring**: severity includes contributing factors such as trust level, data class, reversibility, external reach, and secret exposure.
+- **Finding Confidence**: each finding includes confidence and rationale so teams can separate correlated evidence from weaker static signals.
 - **Static Attack Paths**: connects context sources to privileged capabilities so teams can see provenance-to-authority paths instead of isolated alerts.
 - **Auditable Suppressions**: supports owned, reasoned, expiring accepted-risk records without deleting evidence.
 - **Open Rule Packs**: constrained YAML rules operate over normalized manifest objects. No custom JavaScript execution is allowed in rules.
@@ -166,6 +167,8 @@ The Agent Manifest is the SBOM equivalent for AI agent deployments. Core section
 - `attack_paths`
 - `findings`
 - `evidence`
+
+Findings include severity, confidence, risk factors, redacted evidence, mappings, and recommended controls.
 
 ## Rules
 

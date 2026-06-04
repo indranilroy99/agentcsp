@@ -1,0 +1,4 @@
+sandbox_mode = "read-only"
+approval_policy = "on-request"
+network_access = false
+allowed_tools = ["read_doc"]

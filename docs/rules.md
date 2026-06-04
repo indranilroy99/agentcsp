@@ -6,6 +6,8 @@ MVP rules operate on normalized manifest objects. They do not execute JavaScript
 
 The preferred rule style is correlated and evidence-backed. For example, a high-confidence rule should combine multiple signals such as external write plus credential-like tool input, destructive action plus path-like input, unsandboxed runtime plus approval bypass, shell execution, write permissions, untrusted provenance, or irreversible side effects.
 
+AgentCSP computes finding confidence from rule correlation depth, scoped object type, structured parsing, privileged actions, data class, external reach, and side-effect signals.
+
 Required fields:
 
 - `id`

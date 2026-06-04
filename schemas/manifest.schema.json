@@ -549,6 +549,16 @@
               "severity": {
                 "$ref": "#/definitions/AgentCSP Agent Manifest/properties/attack_paths/items/properties/severity"
               },
+              "confidence": {
+                "$ref": "#/definitions/AgentCSP Agent Manifest/properties/attack_paths/items/properties/confidence"
+              },
+              "confidence_rationale": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "default": []
+              },
               "matched_object": {
                 "$ref": "#/definitions/AgentCSP Agent Manifest/properties/agents/items"
               },
@@ -662,6 +672,7 @@
               "name",
               "category",
               "severity",
+              "confidence",
               "matched_object",
               "file_path",
               "reason",

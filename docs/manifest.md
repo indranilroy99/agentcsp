@@ -74,6 +74,22 @@ Runtime metadata may include:
 
 Secret or environment values are not emitted. AgentCSP records key names and posture signals so rules can detect risky authority without exposing credentials.
 
+## Findings
+
+Each finding includes:
+
+- `severity`
+- `confidence`
+- `confidence_rationale`
+- `risk`
+- `matched_object`
+- `recommended_control`
+- `maps_to`
+- `evidence`
+- optional `suppression`
+
+Confidence is separate from severity. Severity describes potential impact; confidence describes how strongly the normalized evidence supports the finding.
+
 ## Relationships
 
 `relationships` are static graph edges between normalized surfaces. They are intentionally bounded and evidence-backed.

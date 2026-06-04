@@ -26,6 +26,22 @@
             "critical"
           ]
         },
+        "confidence": {
+          "type": "string",
+          "enum": [
+            "low",
+            "medium",
+            "high",
+            "very_high"
+          ]
+        },
+        "confidence_rationale": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        },
         "matched_object": {
           "type": "object",
           "properties": {
@@ -352,6 +368,7 @@
         "name",
         "category",
         "severity",
+        "confidence",
         "matched_object",
         "file_path",
         "reason",

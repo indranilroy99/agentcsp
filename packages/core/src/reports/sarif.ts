@@ -90,6 +90,8 @@ export function renderSarifReport(manifest: AgentManifest): Record<string, unkno
             category: finding.category,
             risk_score: finding.risk.score,
             risk_factors: finding.risk.rationale,
+            confidence: finding.confidence,
+            confidence_rationale: finding.confidence_rationale,
             trust_level: finding.risk.trust_level,
             data_classes: finding.data_classes,
             actions: finding.risk.actions,
@@ -120,13 +122,7 @@ function securitySeverity(severity: Severity): string {
 }
 
 function precisionForFinding(finding: Finding): "very-high" | "high" | "medium" {
-  if (
-    finding.risk.secret_exposure ||
-    finding.risk.untrusted_to_privileged ||
-    (finding.risk.external_reach && finding.risk.actions.includes("execute"))
-  ) {
-    return "very-high";
-  }
-  if (finding.risk.external_reach || finding.risk.side_effect) return "high";
+  if (finding.confidence === "very_high") return "very-high";
+  if (finding.confidence === "high") return "high";
   return "medium";
 }
