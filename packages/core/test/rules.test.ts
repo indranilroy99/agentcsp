@@ -39,6 +39,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-003")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-004")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-005")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-006")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-001")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-002")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-003")).toBe(true);
@@ -131,6 +132,20 @@ describe("rule engine", () => {
       "browser-publisher",
       "filesystem-admin"
     ]);
+    const plaintextMcpFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-MCP-006");
+    expect(plaintextMcpFindings).toHaveLength(1);
+    expect(plaintextMcpFindings[0]?.matched_object.name).toBe("remote-ticketing");
+    expect(plaintextMcpFindings[0]?.matched_object.metadata).toMatchObject({
+      remote: true,
+      remote_scheme: "http",
+      plaintext_remote_transport: true,
+      auth_header_names: ["Authorization"],
+      secret_ref_key_names: ["TICKETING_MCP_TOKEN"]
+    });
+    expect(plaintextMcpFindings[0]?.severity).toBe("critical");
+    expect(plaintextMcpFindings[0]?.confidence).toBe("very_high");
+    expect(plaintextMcpFindings[0]?.recommended_control).toBe("deny");
+    expect(JSON.stringify(plaintextMcpFindings[0])).not.toContain("http://mcp.example.invalid/sse");
     expect(findings.find((finding) => finding.rule_id === "AGENTCSP-PROMPT-001")?.matched_object.path).toBe(
       "prompts/support-ticket.prompt.md"
     );

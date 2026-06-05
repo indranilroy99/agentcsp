@@ -1417,6 +1417,8 @@ async function detectMcpConfig(
     const signalText = `${server.command ?? ""} ${(server.args ?? []).join(" ")} ${server.transport ?? ""} ${server.remoteHost ?? ""} ${(server.envKeys ?? []).join(" ")} ${(server.headerNames ?? []).join(" ")} ${(server.secretRefKeys ?? []).join(" ")}`;
     const actions = detectActions(signalText);
     const externalRemote = Boolean(server.remote && server.remoteHost && !isLocalHost(server.remoteHost));
+    const plaintextRemoteTransport = externalRemote && server.remoteScheme === "http";
+    const encryptedRemoteTransport = externalRemote && server.remoteScheme === "https";
     const secretKeys = [...(server.envKeys ?? []), ...(server.secretRefKeys ?? []), ...(server.authHeaderNames ?? [])];
     const baseActions: ActionType[] = actions.length > 0 ? actions : ["call"];
     const packageRunner = server.packageRunner;
@@ -1447,6 +1449,8 @@ async function detectMcpConfig(
         remote: server.remote,
         remote_host: server.remoteHost,
         remote_scheme: server.remoteScheme,
+        plaintext_remote_transport: plaintextRemoteTransport,
+        encrypted_remote_transport: encryptedRemoteTransport,
         url_redacted: Boolean(server.remote),
         header_names: server.headerNames ?? [],
         auth_header_names: server.authHeaderNames ?? [],

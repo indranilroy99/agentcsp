@@ -575,6 +575,15 @@ The current iteration adds:
 - rule `AGENTCSP-TOOL-011` for model-visible tool descriptions that combine prompt-injection signals with external write and side-effect authority
 - scanner, rule, fixture verifier, and redaction coverage proving the finding is high-confidence while the safe fixture remains quiet
 
+## MCP Plaintext Transport Pass
+
+The current iteration adds:
+
+- remote MCP transport posture metadata for plaintext versus encrypted remote endpoints without emitting raw MCP URLs
+- vulnerable fixture coverage for a credential-backed remote MCP server over plaintext HTTP
+- rule `AGENTCSP-MCP-006` for remote MCP servers that combine plaintext transport with auth headers or credential references
+- scanner, rule, fixture verifier, and redaction coverage proving the finding is high-confidence while the safe fixture remains quiet
+
 ## Initial Build Recommendation
 
 Start with a CLI-first MVP before building the dashboard:

@@ -149,7 +149,9 @@ describe("scanner", () => {
     expect(remoteMcp?.metadata).toMatchObject({
       remote: true,
       remote_host: "mcp.example.invalid",
-      remote_scheme: "https",
+      remote_scheme: "http",
+      plaintext_remote_transport: true,
+      encrypted_remote_transport: false,
       url_redacted: true,
       header_names: ["Authorization"],
       auth_header_names: ["Authorization"],

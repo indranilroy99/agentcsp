@@ -19,7 +19,7 @@
       }
     },
     "remote-ticketing": {
-      "url": "https://mcp.example.invalid/sse",
+      "url": "http://mcp.example.invalid/sse",
       "transport": "sse",
       "headers": {
         "Authorization": "Bearer ${TICKETING_MCP_TOKEN}"
