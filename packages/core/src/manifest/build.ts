@@ -110,8 +110,21 @@ function sortAttackPaths(attackPaths: AttackPath[]): AttackPath[] {
   return [...attackPaths].sort((a, b) => {
     const severityCompare = severityWeight[a.severity] - severityWeight[b.severity];
     if (severityCompare !== 0) return severityCompare;
+    const priorityCompare = attackPathPriority(b) - attackPathPriority(a);
+    if (priorityCompare !== 0) return priorityCompare;
     const confidenceCompare = confidenceWeight[a.confidence] - confidenceWeight[b.confidence];
     if (confidenceCompare !== 0) return confidenceCompare;
     return a.id.localeCompare(b.id);
   });
+}
+
+function attackPathPriority(path: AttackPath): number {
+  let score = 0;
+  if (path.title.includes("route untrusted input")) score += 12;
+  if (path.title.includes("route sensitive context")) score += 5;
+  if (path.reason.includes("data-egress directive")) score += 3;
+  if (path.reason.includes("explicit tool reference")) score += 4;
+  if (path.reason.includes("specific agent-callable capability")) score += 4;
+  if (path.reason.includes("generated-state replay")) score += 5;
+  return score;
 }

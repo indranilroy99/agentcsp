@@ -48,6 +48,19 @@ describe("static graph", () => {
     );
     expect(promptToolEdge).toBeDefined();
     expect(promptToolEdge?.reason).toContain("explicit tool reference");
+    const promptExplicitToolPath = result.manifest.attack_paths.find(
+      (attackPath) =>
+        attackPath.source.path === "prompts/support-ticket.prompt.md" &&
+        attackPath.target.name === "publish_summary" &&
+        attackPath.title === "support-ticket.prompt.md can route untrusted input to publish_summary"
+    );
+    expect(promptExplicitToolPath).toBeDefined();
+    expect(promptExplicitToolPath?.severity).toBe("critical");
+    expect(promptExplicitToolPath?.confidence).toBe("very_high");
+    expect(promptExplicitToolPath?.recommended_control).toBe("require_approval");
+    expect(promptExplicitToolPath?.reason).toContain("explicit tool reference");
+    expect(promptExplicitToolPath?.reason).toContain("specific agent-callable capability");
+    expect(JSON.stringify(promptExplicitToolPath)).not.toContain("Review ticket");
     expect(result.manifest.relationships.some((edge) => edge.source.path === "rag")).toBe(false);
     expect(result.manifest.relationships.some((edge) => edge.source.path === "memory")).toBe(false);
     expect(

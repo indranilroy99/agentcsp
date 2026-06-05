@@ -464,6 +464,15 @@ The current iteration adds:
 - rule `AGENTCSP-PROMPT-003` for prompt templates that accept untrusted variables and explicitly reference a privileged discovered tool
 - scanner, rule, and graph regression coverage proving `prompts/support-ticket.prompt.md` references `publish_summary` without emitting raw prompt text
 
+## Prompt Source-Anchored Blast-Radius Pass
+
+The current iteration adds:
+
+- source-anchored attack-path eligibility for project prompt templates when the finding proves untrusted-to-privileged flow
+- source-finding preference for `AGENTCSP-PROMPT-003` when the target is the exact referenced tool
+- attack-path prioritization for prompt paths that route untrusted template input to specific privileged tools
+- graph regression coverage proving `support-ticket.prompt.md` can route untrusted input to `publish_summary` while keeping raw prompt text redacted
+
 ## Initial Build Recommendation
 
 Start with a CLI-first MVP before building the dashboard:

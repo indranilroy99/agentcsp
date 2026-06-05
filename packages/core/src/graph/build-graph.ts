@@ -287,10 +287,23 @@ function isAttackPathCandidate(edge: GraphEdge, finding: Finding): boolean {
 function isSourceFindingAttackPathCandidate(edge: GraphEdge, finding: Finding, target: SurfaceObject): boolean {
   if (edge.relation !== "influences") return false;
   if (!isContextRiskFinding(finding)) return false;
-  if (!["unknown", "untrusted", "third_party"].includes(edge.source.trust_level)) return false;
+  if (!sourceCarriesTaintedContext(edge, finding)) return false;
   if (finding.severity !== "critical" && finding.severity !== "high") return false;
   if (finding.rule_id === "AGENTCSP-RAG-003") return isDirectDataEgressCapability(target);
+  if (finding.rule_id === "AGENTCSP-PROMPT-003") {
+    return contextExplicitlyReferencesTarget(finding.matched_object, target) && isAgentCallableAuthority(target);
+  }
   return isAgentCallableAuthority(target) && (target.side_effect || target.external_reach || target.secret_exposure);
+}
+
+function sourceCarriesTaintedContext(edge: GraphEdge, finding: Finding): boolean {
+  return (
+    ["unknown", "untrusted", "third_party"].includes(edge.source.trust_level) ||
+    finding.risk.untrusted_to_privileged ||
+    finding.matched_object.metadata.untrusted_template_input === true ||
+    finding.matched_object.metadata.context_bridge_privileged === true ||
+    finding.matched_object.metadata.privileged_callable_reference === true
+  );
 }
 
 function isContextRiskFinding(finding: Finding): boolean {
@@ -306,6 +319,13 @@ function strongestFinding(findings: Finding[]): Finding | undefined {
 }
 
 function strongestSourceFindingForEdge(findings: Finding[], target: SurfaceObject | undefined): Finding | undefined {
+  if (target) {
+    const explicitPromptToolFinding = findings.find(
+      (finding) =>
+        finding.rule_id === "AGENTCSP-PROMPT-003" && contextExplicitlyReferencesTarget(finding.matched_object, target)
+    );
+    if (explicitPromptToolFinding) return explicitPromptToolFinding;
+  }
   if (target && isExternalEgressCapability(target)) {
     const dataEgressFinding = findings.find((finding) => finding.rule_id === "AGENTCSP-RAG-003");
     if (dataEgressFinding) return dataEgressFinding;
@@ -382,6 +402,9 @@ function attackPathTitle(edge: GraphEdge, finding: Finding): string {
   if (finding.matched_object.id === edge.source.id && finding.rule_id === "AGENTCSP-RAG-003") {
     return `${edge.source.name} can route sensitive context to ${edge.target.name}`;
   }
+  if (finding.matched_object.id === edge.source.id && finding.rule_id === "AGENTCSP-PROMPT-003") {
+    return `${edge.source.name} can route untrusted input to ${edge.target.name}`;
+  }
   if (finding.matched_object.id === edge.source.id) {
     return `${edge.source.name} can steer ${edge.target.name}: ${finding.name}`;
   }
@@ -425,8 +448,12 @@ function sortAttackPaths(paths: AttackPath[]): AttackPath[] {
 
 function attackPathPriority(path: AttackPath): number {
   let score = 0;
+  if (path.title.includes("route untrusted input")) score += 12;
   if (path.title.includes("route sensitive context")) score += 5;
   if (path.reason.includes("data-egress directive")) score += 3;
+  if (path.reason.includes("explicit tool reference")) score += 4;
+  if (path.reason.includes("specific agent-callable capability")) score += 4;
+  if (path.reason.includes("explicit privileged tool")) score += 3;
   if (path.reason.includes("RAG source directs sensitive context")) score += 3;
   if (path.reason.includes("generated-state replay")) score += 5;
   return score;
