@@ -50,6 +50,21 @@ describe("static graph", () => {
           attackPath.reason.includes("tool directive")
       )
     ).toBe(true);
+    const ragDataEgressPath = result.manifest.attack_paths.find(
+      (attackPath) =>
+        attackPath.source.path === "rag/customer-note.md" &&
+        attackPath.target.name === "publish_summary" &&
+        attackPath.title === "customer-note.md can route sensitive context to publish_summary"
+    );
+    expect(ragDataEgressPath).toBeDefined();
+    expect(ragDataEgressPath?.severity).toBe("critical");
+    expect(ragDataEgressPath?.confidence).toBe("very_high");
+    expect(ragDataEgressPath?.recommended_control).toBe("quarantine");
+    expect(ragDataEgressPath?.reason).toContain("data-egress directive");
+    expect(ragDataEgressPath?.reason).toContain("concrete exfiltration path");
+    expect(ragDataEgressPath?.risk.data_classes).toContain("confidential");
+    expect(ragDataEgressPath?.risk.external_reach).toBe(true);
+    expect(JSON.stringify(ragDataEgressPath)).not.toContain("latest internal summary");
   });
 
   it("correlates generated-state replay with privileged capability paths when logs are included", async () => {

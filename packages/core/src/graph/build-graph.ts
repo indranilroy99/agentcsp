@@ -102,39 +102,61 @@ export function buildStaticGraph(surfaces: DetectedSurfaces, findings: Finding[]
   const relationshipList = [...relationships.values()].sort((a, b) => a.id.localeCompare(b.id));
   return {
     relationships: relationshipList,
-    attackPaths: buildAttackPaths(relationshipList, findings)
+    attackPaths: buildAttackPaths(relationshipList, findings, objects)
   };
 }
 
-function buildAttackPaths(edges: GraphEdge[], findings: Finding[]): AttackPath[] {
+function buildAttackPaths(edges: GraphEdge[], findings: Finding[], objects: SurfaceObject[]): AttackPath[] {
   const findingsByObject = new Map<string, Finding[]>();
   for (const finding of findings) {
     const existing = findingsByObject.get(finding.matched_object.id) ?? [];
     existing.push(finding);
     findingsByObject.set(finding.matched_object.id, existing);
   }
+  const objectsById = new Map(objects.map((object) => [object.id, object]));
 
   const paths: AttackPath[] = [];
   for (const edge of edges) {
+    const targetObject = objectsById.get(edge.target.id);
     const targetFindings = findingsByObject.get(edge.target.id) ?? [];
     const strongest = strongestFinding(targetFindings);
-    if (!strongest) continue;
-    if (!isAttackPathCandidate(edge, strongest)) continue;
+    if (strongest && isAttackPathCandidate(edge, strongest)) {
+      const risk = mergeRisk(edge.target, strongest);
+      const severity = pathSeverity(edge, strongest, risk);
+      paths.push({
+        id: stableId("attack_path", [edge.id, strongest.id]),
+        title: attackPathTitle(edge, strongest),
+        severity,
+        confidence: pathConfidence(edge, strongest),
+        source: edge.source,
+        target: edge.target,
+        edges: [edge],
+        reason: `${edge.reason} ${strongest.reason}`,
+        recommended_control: strongest.recommended_control,
+        risk,
+        evidence: [...edge.evidence, ...strongest.evidence]
+      });
+    }
 
-    const risk = mergeRisk(edge.target, strongest);
-    const severity = pathSeverity(edge, strongest, risk);
+    const sourceFindings = findingsByObject.get(edge.source.id) ?? [];
+    const strongestSourceFinding = strongestSourceFindingForEdge(sourceFindings, targetObject);
+    if (!strongestSourceFinding || !targetObject) continue;
+    if (!isSourceFindingAttackPathCandidate(edge, strongestSourceFinding, targetObject)) continue;
+
+    const sourceAnchoredRisk = mergeSourceToTargetRisk(strongestSourceFinding, targetObject);
+    const sourceAnchoredSeverity = pathSeverity(edge, strongestSourceFinding, sourceAnchoredRisk);
     paths.push({
-      id: stableId("attack_path", [edge.id, strongest.id]),
-      title: attackPathTitle(edge, strongest),
-      severity,
-      confidence: pathConfidence(edge, strongest),
+      id: stableId("attack_path", [edge.id, strongestSourceFinding.id, "source"]),
+      title: attackPathTitle(edge, strongestSourceFinding),
+      severity: sourceAnchoredSeverity,
+      confidence: pathConfidence(edge, strongestSourceFinding),
       source: edge.source,
       target: edge.target,
       edges: [edge],
-      reason: `${edge.reason} ${strongest.reason}`,
-      recommended_control: strongest.recommended_control,
-      risk,
-      evidence: [...edge.evidence, ...strongest.evidence]
+      reason: `${edge.reason} ${strongestSourceFinding.reason}`,
+      recommended_control: strongestSourceFinding.recommended_control,
+      risk: sourceAnchoredRisk,
+      evidence: [...edge.evidence, ...strongestSourceFinding.evidence]
     });
   }
 
@@ -215,6 +237,13 @@ function contextCanSteerCapability(context: SurfaceObject, target: SurfaceObject
 
   if (explicitBoolean(context, "tool_directive") && isAgentCallableAuthority(target)) return true;
   if (
+    explicitBoolean(context, "data_egress_directive") &&
+    explicitBoolean(context, "context_bridge_data_egress") &&
+    isExternalEgressCapability(target)
+  ) {
+    return true;
+  }
+  if (
     explicitBoolean(context, "external_directive") &&
     (target.external_reach || target.actions.some((action) => ["send", "publish"].includes(action)))
   ) {
@@ -250,12 +279,33 @@ function isAttackPathCandidate(edge: GraphEdge, finding: Finding): boolean {
   return (untrustedSource && privilegedTarget) || criticalRule;
 }
 
+function isSourceFindingAttackPathCandidate(edge: GraphEdge, finding: Finding, target: SurfaceObject): boolean {
+  if (edge.relation !== "influences") return false;
+  if (!isContextRiskFinding(finding)) return false;
+  if (!["unknown", "untrusted", "third_party"].includes(edge.source.trust_level)) return false;
+  if (finding.severity !== "critical" && finding.severity !== "high") return false;
+  if (finding.rule_id === "AGENTCSP-RAG-003") return isDirectDataEgressCapability(target);
+  return isAgentCallableAuthority(target) && (target.side_effect || target.external_reach || target.secret_exposure);
+}
+
+function isContextRiskFinding(finding: Finding): boolean {
+  return /^(AGENTCSP-(RAG|MEMORY|GENSTATE|PROMPT|INSTRUCTION|SKILL)-)/u.test(finding.rule_id);
+}
+
 function strongestFinding(findings: Finding[]): Finding | undefined {
   return [...findings].sort((a, b) => {
     const severityCompare = severityWeight(b.severity) - severityWeight(a.severity);
     if (severityCompare !== 0) return severityCompare;
     return b.risk.score - a.risk.score;
   })[0];
+}
+
+function strongestSourceFindingForEdge(findings: Finding[], target: SurfaceObject | undefined): Finding | undefined {
+  if (target && isExternalEgressCapability(target)) {
+    const dataEgressFinding = findings.find((finding) => finding.rule_id === "AGENTCSP-RAG-003");
+    if (dataEgressFinding) return dataEgressFinding;
+  }
+  return strongestFinding(findings);
 }
 
 function mergeRisk(target: GraphNodeRef, finding: Finding): RiskFactors {
@@ -265,6 +315,35 @@ function mergeRisk(target: GraphNodeRef, finding: Finding): RiskFactors {
   }
   return {
     ...finding.risk,
+    rationale
+  };
+}
+
+function mergeSourceToTargetRisk(finding: Finding, target: SurfaceObject): RiskFactors {
+  const rationale = [...finding.risk.rationale];
+  let score = finding.risk.score;
+  if (target.external_reach) {
+    score += 20;
+    rationale.push("target external reach adds 20 to attack-path risk");
+  }
+  if (target.secret_exposure) {
+    score += 20;
+    rationale.push("target secret exposure adds 20 to attack-path risk");
+  }
+  if (target.side_effect) {
+    score += 10;
+    rationale.push("target side effect adds 10 to attack-path risk");
+  }
+  const actions = [...new Set([...finding.risk.actions, ...target.actions])].sort((a, b) => a.localeCompare(b));
+  const dataClasses = [...new Set([...finding.risk.data_classes, ...target.data_classes])].sort((a, b) => a.localeCompare(b));
+  return {
+    ...finding.risk,
+    actions,
+    data_classes: dataClasses,
+    side_effect: finding.risk.side_effect || target.side_effect,
+    external_reach: finding.risk.external_reach || target.external_reach,
+    secret_exposure: finding.risk.secret_exposure || target.secret_exposure,
+    score: Math.min(100, score),
     rationale
   };
 }
@@ -295,6 +374,12 @@ function attackPathTitle(edge: GraphEdge, finding: Finding): string {
   if (edge.relation === "uses_secret") {
     return `${edge.target.name} can use credential references`;
   }
+  if (finding.matched_object.id === edge.source.id && finding.rule_id === "AGENTCSP-RAG-003") {
+    return `${edge.source.name} can route sensitive context to ${edge.target.name}`;
+  }
+  if (finding.matched_object.id === edge.source.id) {
+    return `${edge.source.name} can steer ${edge.target.name}: ${finding.name}`;
+  }
   return `${edge.source.name} can influence ${edge.target.name}: ${finding.name}`;
 }
 
@@ -321,6 +406,8 @@ function sortAttackPaths(paths: AttackPath[]): AttackPath[] {
   return [...paths].sort((a, b) => {
     const severityCompare = severityWeight(b.severity) - severityWeight(a.severity);
     if (severityCompare !== 0) return severityCompare;
+    const attackPathPriorityCompare = attackPathPriority(b) - attackPathPriority(a);
+    if (attackPathPriorityCompare !== 0) return attackPathPriorityCompare;
     const sourceTrustCompare = trustWeight(b.source.trust_level) - trustWeight(a.source.trust_level);
     if (sourceTrustCompare !== 0) return sourceTrustCompare;
     const confidenceCompare = confidenceWeight(b.confidence) - confidenceWeight(a.confidence);
@@ -329,6 +416,15 @@ function sortAttackPaths(paths: AttackPath[]): AttackPath[] {
     if (relationCompare !== 0) return relationCompare;
     return a.id.localeCompare(b.id);
   });
+}
+
+function attackPathPriority(path: AttackPath): number {
+  let score = 0;
+  if (path.title.includes("route sensitive context")) score += 5;
+  if (path.reason.includes("data-egress directive")) score += 3;
+  if (path.reason.includes("RAG source directs sensitive context")) score += 3;
+  if (path.reason.includes("generated-state replay")) score += 5;
+  return score;
 }
 
 function trustWeight(trustLevel: GraphNodeRef["trust_level"]): number {
@@ -396,6 +492,28 @@ function isAgentCallableAuthority(object: SurfaceObject): boolean {
   );
 }
 
+function isExternalEgressCapability(object: SurfaceObject): boolean {
+  return (
+    object.external_reach ||
+    object.actions.some((action) => ["send", "publish"].includes(action)) ||
+    object.metadata.external_write === true ||
+    object.metadata.accepts_url_input === true
+  );
+}
+
+function isDirectDataEgressCapability(object: SurfaceObject): boolean {
+  if (object.type === "tool") {
+    return (
+      object.metadata.external_write === true &&
+      (object.metadata.accepts_url_input === true || object.metadata.accepts_secret_like_input === true)
+    );
+  }
+  if (object.type === "mcp_server") {
+    return object.external_reach && (object.secret_exposure || object.actions.some((action) => ["send", "publish"].includes(action)));
+  }
+  return false;
+}
+
 function sharesAuthorityIntent(context: SurfaceObject, target: SurfaceObject): boolean {
   const privilegedActions = ["execute", "publish", "send", "delete", "write", "call", "remember"];
   if (!context.actions.some((action) => privilegedActions.includes(action))) return false;
@@ -412,6 +530,9 @@ function contextSignalLabels(object: SurfaceObject): string[] {
   if (explicitBoolean(object, "instruction_like_content")) labels.push("instruction-like content");
   if (explicitBoolean(object, "tool_directive")) labels.push("tool directive");
   if (explicitBoolean(object, "external_directive")) labels.push("external directive");
+  if (explicitBoolean(object, "sensitive_context_reference")) labels.push("sensitive context reference");
+  if (explicitBoolean(object, "data_egress_directive")) labels.push("data-egress directive");
+  if (explicitBoolean(object, "context_bridge_data_egress")) labels.push("data-egress bridge");
   if (explicitBoolean(object, "memory_write_directive")) labels.push("memory-write directive");
   if (explicitBoolean(object, "generated_state")) labels.push("generated-state replay");
   if (explicitBoolean(object, "secret_reference")) labels.push("secret reference");

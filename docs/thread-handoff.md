@@ -444,6 +444,16 @@ The current iteration adds:
 - rule `AGENTCSP-RAG-003` for retrievable content that combines sensitive-context references, tool directives, and external-egress instructions
 - scanner and rule regression coverage proving the vulnerable RAG fixture is flagged while the raw poisoning text remains redacted
 
+## Source-Anchored Blast-Radius Pass
+
+The current iteration adds:
+
+- attack paths that can be anchored on source-side context findings, not only target capability findings
+- direct data-egress target filtering for RAG data-egress paths so the bounded blast-radius list favors tools and MCP servers that can actually move data externally
+- attack-path prioritization for source-anchored RAG data-egress and generated-state replay paths
+- graph regression coverage proving `rag/customer-note.md` can route sensitive context to `publish_summary` while keeping raw retrieval text redacted
+- regression coverage preserving generated-state replay visibility when logs are explicitly included
+
 ## Initial Build Recommendation
 
 Start with a CLI-first MVP before building the dashboard:

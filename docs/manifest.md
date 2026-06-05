@@ -349,7 +349,7 @@ Diagnostics do not include raw parser stack traces, raw file contents, secret va
 
 ## Relationships
 
-`relationships` are static graph edges between normalized surfaces. They are intentionally bounded and evidence-backed. Context-to-capability influence edges require concrete normalized signals such as instruction-like content, tool directives, external directives, memory-write directives, generated-state replay signals, or explicit instruction/skill authority. Heuristic-only RAG, memory, and log directory markers do not create influence paths by themselves.
+`relationships` are static graph edges between normalized surfaces. They are intentionally bounded and evidence-backed. Context-to-capability influence edges require concrete normalized signals such as instruction-like content, tool directives, external directives, data-egress directives, memory-write directives, generated-state replay signals, or explicit instruction/skill authority. Heuristic-only RAG, memory, and log directory markers do not create influence paths by themselves.
 
 Examples:
 
@@ -361,6 +361,8 @@ Examples:
 ## Attack Paths
 
 `attack_paths` are prioritized paths that combine relationships with findings. They are designed to show security teams how context provenance can reach authority, data classes, and side effects. The list is capped and sorted toward high-impact, high-confidence, file-specific paths.
+
+Attack paths may be anchored on target findings, such as a risky tool schema, or source findings, such as retrievable content that directs sensitive context toward an external destination. Source-anchored data-egress and generated-state replay paths are prioritized so the Static Blast-Radius Summary preserves why the context itself is dangerous.
 
 An attack path includes:
 

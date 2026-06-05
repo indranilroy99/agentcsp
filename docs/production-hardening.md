@@ -33,6 +33,7 @@ A finding should be considered production-grade when it includes:
 - prompt-template memory persistence signals for cross-session contamination
 - RAG and memory data-egress signals for sensitive context routed toward external destinations
 - skill data-flow signals for context-to-external-output bridges
+- source-anchored attack paths for dangerous context that reaches direct data-egress capabilities
 - recommended control
 - OWASP, MITRE ATLAS, and NIST AI RMF mappings where applicable
 - redacted evidence
@@ -69,6 +70,7 @@ Examples:
 - scheduled or externally dispatched automation plus secrets and write authority
 - package publish/release authority plus agent-influenced workflow
 - attack paths that connect specific context-risk signals to concrete privileged capabilities
+- source-anchored RAG data-egress paths that preserve the retrieval finding as the reason for the blast radius
 
 ## CI Expectations
 
