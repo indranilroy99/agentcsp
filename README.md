@@ -146,6 +146,8 @@ Use `--fail-on-confidence high` or `--fail-on-confidence very_high` with `--fail
 
 Use `--baseline` with a previous `findings.json` or `agent-manifest.json` to distinguish new, existing, and resolved findings. Add `--fail-on-new` when CI should fail only on new findings that meet the configured severity and confidence thresholds.
 
+Use `--fail-on-diagnostics` when malformed security-relevant configs should fail CI even if findings are otherwise below the configured severity gate.
+
 The terminal banner animates only in interactive terminals. It is suppressed by `--quiet`, disabled in CI and piped output, and can be turned off with `AGENTCSP_NO_ANIMATION=1`.
 
 SARIF output is available for CI and code-scanning integrations:

@@ -21,6 +21,7 @@ program
   .option("--fail-on-confidence <confidence>", "with --fail-on, require minimum confidence: very_high,high,medium,low")
   .option("--baseline <path>", "compare findings against a previous findings.json or agent-manifest.json")
   .option("--fail-on-new", "with --baseline and --fail-on, fail only on new findings")
+  .option("--fail-on-diagnostics", "fail when security-relevant scan diagnostics are emitted")
   .option("--no-hidden", "skip hidden AI/security folders")
   .option("--include-logs", "include log directories")
   .option("--max-file-size <bytes>", "maximum file size to inspect", parseInteger)

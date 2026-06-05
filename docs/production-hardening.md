@@ -20,6 +20,7 @@ A finding should be considered production-grade when it includes:
 - baseline comparison for new, existing, and resolved findings
 - scan coverage counts for skipped files, ignored paths, and traversal limits
 - redacted parser diagnostics for malformed security-relevant configuration
+- optional CI failure on diagnostics when malformed agent configuration should block release
 - negation-aware action classification so safety policy text is not treated as granted authority
 - MCP package-runner posture for unpinned third-party runtime launchers
 - local MCP implementation presence checks for secret-backed agent-callable servers

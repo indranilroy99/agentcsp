@@ -518,6 +518,14 @@ The current iteration adds:
 - attack-path prioritization for external PII data routes
 - graph regression coverage proving `rag/customer-note.md` can route customer data to `post_customer_update` without leaking raw retrieval text
 
+## Diagnostics CI Gate Pass
+
+The current iteration adds:
+
+- CLI flag `--fail-on-diagnostics` for teams that want malformed security-relevant config files to fail CI
+- opt-in exit-code behavior that remains separate from severity and confidence finding gates
+- CLI regression coverage proving diagnostics do not fail by default but do fail when requested
+
 ## Initial Build Recommendation
 
 Start with a CLI-first MVP before building the dashboard:

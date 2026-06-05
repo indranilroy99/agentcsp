@@ -1,4 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
+import fs from "node:fs/promises";
+import path from "node:path";
 import { runScanCommand } from "../src/commands/scan.js";
 
 describe("cli options", () => {
@@ -65,4 +67,35 @@ describe("cli options", () => {
       })
     ).rejects.toThrow("--fail-on-new requires --baseline");
   });
+
+  it("fails on diagnostics only when explicitly requested", async () => {
+    const root = await createDiagnosticsFixture();
+    process.exitCode = undefined;
+    await runScanCommand(root, {
+      out: "/private/tmp/agentcsp-cli-diagnostics-default-output",
+      format: "json",
+      quiet: true
+    });
+    expect(process.exitCode).toBeUndefined();
+
+    process.exitCode = undefined;
+    await runScanCommand(root, {
+      out: "/private/tmp/agentcsp-cli-diagnostics-fail-output",
+      failOnDiagnostics: true,
+      format: "json",
+      quiet: true
+    });
+    expect(process.exitCode).toBe(1);
+    process.exitCode = undefined;
+  });
 });
+
+async function createDiagnosticsFixture(): Promise<string> {
+  const root = "/private/tmp/agentcsp-cli-diagnostics-fixture";
+  await fs.rm(root, { recursive: true, force: true });
+  await fs.mkdir(path.join(root, ".codex"), { recursive: true });
+  await fs.writeFile(path.join(root, "AGENTS.md"), "Review repository changes only.\n", "utf8");
+  await fs.writeFile(path.join(root, "mcp.json"), '{"mcpServers": {"bad": {"command": "run"', "utf8");
+  await fs.writeFile(path.join(root, ".codex", "config.toml"), 'sandbox = "danger-full-access"\n[', "utf8");
+  return root;
+}

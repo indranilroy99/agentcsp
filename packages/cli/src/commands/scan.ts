@@ -14,6 +14,7 @@ export async function runScanCommand(targetPath: string, options: Record<string,
   }
   const baselinePath = options.baseline ? path.resolve(String(options.baseline)) : undefined;
   const failOnNew = Boolean(options.failOnNew);
+  const failOnDiagnostics = Boolean(options.failOnDiagnostics);
   if (failOnNew && !failOn) {
     throw new Error("--fail-on-new requires --fail-on");
   }
@@ -66,7 +67,7 @@ export async function runScanCommand(targetPath: string, options: Record<string,
     if (result.outputFiles.sarif) console.log(`SARIF: ${result.outputFiles.sarif}`);
   }
 
-  if (result.shouldFail) {
+  if (result.shouldFail || (failOnDiagnostics && result.manifest.diagnostics.length > 0)) {
     process.exitCode = 1;
   }
 }

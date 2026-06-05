@@ -59,6 +59,14 @@ Active suppressions in `agentcsp.yaml` are excluded from `--fail-on` gates. Expi
 
 Policy `recommended_controls` can change the recommended control shown in JSON, Markdown, and SARIF, but they do not suppress findings or change `--fail-on` behavior.
 
+Use `--fail-on-diagnostics` when parse failures in security-relevant files should fail CI:
+
+```bash
+agentcsp scan . --fail-on-diagnostics
+```
+
+This remains separate from finding severity gates. It is useful for repositories where malformed MCP, runtime, workflow, package, or tool-definition files should block a release until the scan can inspect them reliably.
+
 ## Baselines
 
 Use a previous `findings.json` or `agent-manifest.json` as a baseline when introducing AgentCSP to an existing project:
