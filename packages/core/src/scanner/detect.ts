@@ -301,6 +301,7 @@ function detectPromptTemplateFile(file: WalkedFile, text: string | undefined, su
   const content = text ?? "";
   const signals = classifyContextContent(content);
   const template = classifyPromptTemplate(content);
+  const bridge = classifyPromptTemplateBridge(template, signals);
   const actions = promptActions(signals);
   const object = createSurfaceObject({
     type: "prompt",
@@ -320,15 +321,13 @@ function detectPromptTemplateFile(file: WalkedFile, text: string | undefined, su
       skipped_for_size: file.skippedForSize,
       bytes: file.size,
       ...template,
+      ...bridge,
       ...signals
     }
   });
-  const untrustedTemplateBridge =
-    template.untrusted_template_input &&
-    (signals.tool_directive || signals.external_directive || signals.memory_write_directive || signals.secret_reference);
   surfaces.prompts.push({
     ...object,
-    untrusted_to_privileged: untrustedTemplateBridge || isUntrustedToPrivileged(object)
+    untrusted_to_privileged: bridge.template_bridge_privileged || isUntrustedToPrivileged(object)
   });
 }
 
@@ -440,6 +439,14 @@ interface PromptTemplateSignals {
   template_variable_count: number;
   untrusted_template_variables: string[];
   untrusted_template_input: boolean;
+}
+
+interface PromptTemplateBridgeSignals {
+  template_bridge_tool: boolean;
+  template_bridge_memory: boolean;
+  template_bridge_external: boolean;
+  template_bridge_secret: boolean;
+  template_bridge_privileged: boolean;
 }
 
 interface SkillDataFlowSignals {
@@ -580,6 +587,24 @@ function classifyPromptTemplate(content: string): PromptTemplateSignals {
     template_variable_count: variableNames.length,
     untrusted_template_variables: untrustedVariables,
     untrusted_template_input: untrustedVariables.length > 0
+  };
+}
+
+function classifyPromptTemplateBridge(
+  template: PromptTemplateSignals,
+  signals: ContextContentSignals
+): PromptTemplateBridgeSignals {
+  const untrustedTemplateInput = template.untrusted_template_input;
+  const bridgeTool = untrustedTemplateInput && signals.tool_directive;
+  const bridgeMemory = untrustedTemplateInput && signals.memory_write_directive;
+  const bridgeExternal = untrustedTemplateInput && signals.external_directive;
+  const bridgeSecret = untrustedTemplateInput && signals.secret_reference;
+  return {
+    template_bridge_tool: bridgeTool,
+    template_bridge_memory: bridgeMemory,
+    template_bridge_external: bridgeExternal,
+    template_bridge_secret: bridgeSecret,
+    template_bridge_privileged: bridgeTool || bridgeMemory || bridgeExternal || bridgeSecret
   };
 }
 

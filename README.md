@@ -51,7 +51,7 @@ Runtime enforcement adapters, deeper graph traversal, and the dashboard are plan
 - **MCP and Tool Schema Authority**: extracts individual tool schemas and classifies package-runner MCP launchers, tool name collisions, external writes, local-path-to-external data flow, destructive actions, credential-like inputs, open-world arguments, read-only hint conflicts, filesystem paths, URL inputs, browser control, memory access, and shell authority.
 - **Remote MCP Trust Signals**: detects remote MCP servers, redacts URLs and header values, records host/header/key metadata, and flags credential-backed third-party MCP access.
 - **Runtime Posture Inventory**: parses agent runtime configs for sandbox mode, approval policy, network access, privileged tool allowlists, MCP references, and env key exposure.
-- **Prompt Template Signals**: records redacted template variables and flags untrusted user/customer/context variables that are joined with tool or external action directives.
+- **Prompt Template Signals**: records redacted template variables and flags untrusted user/customer/context variables joined with tool, memory, external, or secret-sensitive directives.
 - **RAG, Memory, and Generated-State Signals**: records redacted instruction-like, tool-directive, external-send, persistence, transcript, cached-output, and tool-output replay signals from retrieval, memory, and included log files.
 - **Automation Authority**: models scheduled, manual, and externally dispatched workflows, including redacted agent package-script execution, as agent-relevant automation surfaces.
 - **Trust Boundary Analysis**: tracks trusted, project, workspace, third-party, untrusted, and unknown provenance.

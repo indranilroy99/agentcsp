@@ -184,6 +184,11 @@ Prompt metadata may include:
 - `template_variable_count`
 - `untrusted_template_variables`
 - `untrusted_template_input`
+- `template_bridge_tool`
+- `template_bridge_memory`
+- `template_bridge_external`
+- `template_bridge_secret`
+- `template_bridge_privileged`
 - `instruction_like_content`
 - `instruction_override`
 - `tool_directive`
@@ -193,7 +198,7 @@ Prompt metadata may include:
 - `content_signal_count`
 - `skipped_for_size`
 
-Raw prompt text is not emitted. AgentCSP records variable names and normalized context signals so rules can detect prompt templates that bridge untrusted input into privileged tool or external actions.
+Raw prompt text is not emitted. AgentCSP records variable names and normalized context signals so rules can detect prompt templates that bridge untrusted input into privileged tool, memory, external, or secret-sensitive actions.
 
 ## RAG, Memory, and Generated-State Signals
 

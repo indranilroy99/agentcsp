@@ -415,6 +415,15 @@ The current iteration adds:
 - rule `AGENTCSP-AUTOMATION-002` for unattended workflows that run agent package scripts with secrets and write authority
 - regression coverage proving the vulnerable workflow references `package-script:agent:run` while the safe fixture remains clean
 
+## Prompt Memory Bridge Pass
+
+The current iteration adds:
+
+- prompt-template bridge metadata for untrusted template variables flowing toward tool, memory, external, or secret-sensitive directives
+- vulnerable prompt fixture for untrusted customer-note persistence into long-term memory
+- rule `AGENTCSP-PROMPT-002` for prompt templates that persist untrusted template input into memory
+- scanner and rule regression coverage proving raw prompt text stays redacted while the safe fixture remains clean
+
 ## Initial Build Recommendation
 
 Start with a CLI-first MVP before building the dashboard:

@@ -271,6 +271,7 @@ describe("scanner", () => {
     expect(memoryFile?.actions).toContain("call");
     expect(JSON.stringify(memoryFile)).not.toContain("maintenance shortcut");
     const promptTemplate = surfaces.prompts.find((surface) => surface.path === "prompts/support-ticket.prompt.md");
+    const memoryPromptTemplate = surfaces.prompts.find((surface) => surface.path === "prompts/memory-ingest.prompt.md");
     expect(promptTemplate).toBeDefined();
     expect(promptTemplate?.metadata).toMatchObject({
       content_analyzed: true,
@@ -279,7 +280,10 @@ describe("scanner", () => {
       template_variable_count: 2,
       untrusted_template_input: true,
       tool_directive: true,
-      external_directive: true
+      external_directive: true,
+      template_bridge_tool: true,
+      template_bridge_external: true,
+      template_bridge_privileged: true
     });
     expect(promptTemplate?.metadata.template_variable_names).toEqual(["customer_note", "ticket_id"]);
     expect(promptTemplate?.metadata.untrusted_template_variables).toEqual(["customer_note", "ticket_id"]);
@@ -287,6 +291,21 @@ describe("scanner", () => {
     expect(promptTemplate?.actions).toContain("send");
     expect(promptTemplate?.untrusted_to_privileged).toBe(true);
     expect(JSON.stringify(promptTemplate)).not.toContain("Review ticket");
+    expect(memoryPromptTemplate?.metadata).toMatchObject({
+      content_analyzed: true,
+      content_redacted: true,
+      prompt_template: true,
+      template_variable_count: 1,
+      untrusted_template_input: true,
+      memory_write_directive: true,
+      template_bridge_memory: true,
+      template_bridge_privileged: true
+    });
+    expect(memoryPromptTemplate?.metadata.template_variable_names).toEqual(["customer_note"]);
+    expect(memoryPromptTemplate?.metadata.untrusted_template_variables).toEqual(["customer_note"]);
+    expect(memoryPromptTemplate?.actions).toContain("remember");
+    expect(memoryPromptTemplate?.untrusted_to_privileged).toBe(true);
+    expect(JSON.stringify(memoryPromptTemplate)).not.toContain("Summarize");
   });
 
   it("detects generated transcript state only when logs are included", async () => {
