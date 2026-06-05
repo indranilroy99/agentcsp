@@ -21,6 +21,7 @@ A finding should be considered production-grade when it includes:
 - scan coverage counts for skipped files, ignored paths, and traversal limits
 - redacted parser diagnostics for malformed security-relevant configuration
 - negation-aware action classification so safety policy text is not treated as granted authority
+- MCP package-runner posture for unpinned third-party runtime launchers
 - tool-schema integrity signals for open-world privileged arguments and read-only hint conflicts
 - recommended control
 - OWASP, MITRE ATLAS, and NIST AI RMF mappings where applicable
@@ -35,6 +36,7 @@ Examples:
 - network retrieval plus shell execution
 - MCP server plus credential key names plus side effects
 - remote third-party MCP server plus auth headers or credential references
+- package-runner MCP server plus unpinned package version plus credential exposure
 - runtime config with unsandboxed execution plus no approval gate
 - runtime config with network access plus secret env keys plus privileged tools
 - pull request workflow plus write permissions plus secrets

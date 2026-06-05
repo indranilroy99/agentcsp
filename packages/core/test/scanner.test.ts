@@ -49,6 +49,7 @@ describe("scanner", () => {
     expect(surfaces.skills.some((surface) => surface.path === "skills/exfil-skill/SKILL.md")).toBe(true);
     expect(surfaces.mcp_servers.length).toBeGreaterThanOrEqual(3);
     const remoteMcp = surfaces.mcp_servers.find((surface) => surface.name === "remote-ticketing");
+    const packageRunnerMcp = surfaces.mcp_servers.find((surface) => surface.name === "ticketing-package-runner");
     expect(remoteMcp).toMatchObject({
       trust_level: "third_party",
       external_reach: true,
@@ -66,6 +67,24 @@ describe("scanner", () => {
     });
     expect(JSON.stringify(remoteMcp)).not.toContain("${TICKETING_MCP_TOKEN}");
     expect(JSON.stringify(remoteMcp)).not.toContain("/sse");
+    expect(packageRunnerMcp).toMatchObject({
+      trust_level: "third_party",
+      external_reach: true,
+      secret_exposure: true
+    });
+    expect(packageRunnerMcp?.actions).toContain("execute");
+    expect(packageRunnerMcp?.metadata).toMatchObject({
+      command_name: "npx",
+      package_runner: true,
+      package_runner_name: "npx",
+      package_name: "@acme/ticketing-mcp",
+      package_version_pinned: false,
+      package_reference_redacted: true,
+      env_key_names: ["TICKETING_MCP_TOKEN"],
+      values_collected: false
+    });
+    expect(JSON.stringify(packageRunnerMcp)).not.toContain("${TICKETING_MCP_TOKEN}");
+    expect(JSON.stringify(packageRunnerMcp)).not.toContain("--workspace");
     expect(surfaces.tools.some((surface) => surface.name === "package-script:sync:docs")).toBe(true);
     const publishTool = surfaces.tools.find((surface) => surface.name === "publish_summary");
     const deleteTool = surfaces.tools.find((surface) => surface.name === "delete_cache");

@@ -49,6 +49,11 @@ MCP metadata may include:
 - `auth_header_names`
 - `env_key_names`
 - `secret_ref_key_names`
+- `package_runner`
+- `package_runner_name`
+- `package_name`
+- `package_version_pinned`
+- `package_reference_redacted`
 - `values_collected`
 - `content_redacted`
 

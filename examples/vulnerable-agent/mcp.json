@@ -11,6 +11,13 @@
       "command": "node",
       "args": ["tools/browser-publisher.js", "--webhook", "${SLACK_WEBHOOK_URL}"]
     },
+    "ticketing-package-runner": {
+      "command": "npx",
+      "args": ["-y", "@acme/ticketing-mcp", "--workspace", "."],
+      "env": {
+        "TICKETING_MCP_TOKEN": "${TICKETING_MCP_TOKEN}"
+      }
+    },
     "remote-ticketing": {
       "url": "https://mcp.example.invalid/sse",
       "transport": "sse",

@@ -1,0 +1,36 @@
+id: AGENTCSP-MCP-004
+name: MCP server launches unpinned package runner with credentials
+description: An MCP server is launched through a package runner without a pinned package version while credential key names are exposed, creating a high-impact path from agent context to third-party runtime code.
+category: mcp_authority
+severity: critical
+maps_to:
+  owasp:
+    - LLM02:2025 Sensitive Information Disclosure
+    - LLM05:2025 Improper Output Handling
+    - LLM06:2025 Excessive Agency
+  mitre_atlas:
+    - AML.T0051 LLM Plugin Compromise
+    - AML.T0054 Command and Scripting Interpreter
+    - AML.T0057 Exfiltration via Cyber Means
+  nist_ai_rmf:
+    - MAP 4.1
+    - MEASURE 2.7
+    - MANAGE 2.4
+match:
+  object_type: mcp_server
+  where:
+    - field: metadata.package_runner
+      op: equals
+      value: true
+    - field: metadata.package_version_pinned
+      op: equals
+      value: false
+    - field: secret_exposure
+      op: equals
+      value: true
+    - field: side_effect
+      op: equals
+      value: true
+recommendation:
+  control: require_approval
+  text: Pin the MCP package version, verify provenance, and require approval with least-privilege credentials before launching package-runner MCP servers.

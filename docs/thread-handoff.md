@@ -333,6 +333,17 @@ The current iteration adds:
 - vulnerable fixture tools for unbounded external webhook publishing and a destructive cleanup tool mislabeled read-only
 - scanner and rule regression coverage proving the safe read-only fixture remains clean
 
+## MCP Package-Runner Authority Pass
+
+The current iteration adds:
+
+- redacted MCP package-runner metadata for launchers such as `npx`, `uvx`, `pnpm dlx`, `yarn dlx`, `npm exec`, `bunx`, and `pipx run`
+- package name and version-pinning signals without emitting raw runner arguments or credential values
+- third-party trust and external-reach classification for package-runner MCP servers
+- rule `AGENTCSP-MCP-004` for unpinned package-runner MCP servers with credential-backed authority
+- vulnerable fixture coverage for an unpinned credential-backed MCP package launcher
+- regression coverage proving raw package-runner args and token placeholders are not emitted
+
 ## Initial Build Recommendation
 
 Start with a CLI-first MVP before building the dashboard:

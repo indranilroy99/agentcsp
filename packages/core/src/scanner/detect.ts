@@ -478,16 +478,21 @@ async function detectMcpConfig(file: WalkedFile, text: string | undefined, surfa
     const externalRemote = Boolean(server.remote && server.remoteHost && !isLocalHost(server.remoteHost));
     const secretKeys = [...(server.envKeys ?? []), ...(server.secretRefKeys ?? []), ...(server.authHeaderNames ?? [])];
     const baseActions: ActionType[] = actions.length > 0 ? actions : ["call"];
-    const mcpActions: ActionType[] = [...baseActions, ...(externalRemote ? (["send"] as ActionType[]) : [])];
+    const packageRunner = server.packageRunner;
+    const mcpActions: ActionType[] = [
+      ...baseActions,
+      ...(externalRemote ? (["send"] as ActionType[]) : []),
+      ...(packageRunner ? (["execute"] as ActionType[]) : [])
+    ];
     const object = createSurfaceObject({
       type: "mcp_server",
       name: server.name,
       path: file.relativePath,
-      trust_level: externalRemote ? "third_party" : inferTrustLevel(file.relativePath),
+      trust_level: externalRemote || packageRunner ? "third_party" : inferTrustLevel(file.relativePath),
       data_classes: secretKeys.length > 0 ? ["credential"] : ["unknown"],
       actions: uniqueActions(mcpActions),
       side_effect: true,
-      external_reach: externalRemote || hasExternalReach(signalText),
+      external_reach: externalRemote || Boolean(packageRunner) || hasExternalReach(signalText),
       secret_exposure: secretKeys.some((key) => /authorization|token|secret|key|password|credential|auth/i.test(key)),
       reversible: isReversible(signalText),
       reason: "MCP server configuration exposes agent-callable tools and authority.",
@@ -503,6 +508,11 @@ async function detectMcpConfig(file: WalkedFile, text: string | undefined, surfa
         auth_header_names: server.authHeaderNames ?? [],
         env_key_names: server.envKeys ?? [],
         secret_ref_key_names: server.secretRefKeys ?? [],
+        package_runner: Boolean(packageRunner),
+        package_runner_name: packageRunner?.runner,
+        package_name: packageRunner?.packageName,
+        package_version_pinned: packageRunner?.versionPinned,
+        package_reference_redacted: packageRunner?.packageReferenceRedacted ?? false,
         values_collected: false,
         content_redacted: true
       }
@@ -820,6 +830,7 @@ function extractMcpServers(value: unknown): Array<{
   headerNames?: string[];
   authHeaderNames?: string[];
   secretRefKeys?: string[];
+  packageRunner?: McpPackageRunnerSignal;
 }> {
   if (!value || typeof value !== "object") return [];
   const root = value as Record<string, unknown>;
@@ -836,6 +847,7 @@ function extractMcpServers(value: unknown): Array<{
     const headers = serverConfig.headers && typeof serverConfig.headers === "object" ? (serverConfig.headers as Record<string, unknown>) : {};
     const headerNames = Object.keys(headers).sort((a, b) => a.localeCompare(b));
     const authHeaderNames = headerNames.filter((header) => /authorization|api[-_]?key|token|secret|credential|cookie/i.test(header));
+    const packageRunner = classifyMcpPackageRunner(command, args);
     const secretRefKeys = [
       ...extractSecretReferenceKeys(Object.values(headers)),
       ...extractSecretReferenceKeys([url, ...args])
@@ -851,9 +863,104 @@ function extractMcpServers(value: unknown): Array<{
       remoteScheme: remoteUrl?.scheme,
       headerNames,
       authHeaderNames,
-      secretRefKeys
+      secretRefKeys,
+      packageRunner
     };
   });
+}
+
+interface McpPackageRunnerSignal {
+  runner: string;
+  packageName?: string;
+  versionPinned: boolean;
+  packageReferenceRedacted: boolean;
+}
+
+function classifyMcpPackageRunner(command: string | undefined, args: string[]): McpPackageRunnerSignal | undefined {
+  if (!command) return undefined;
+  const runner = path.basename(command).toLowerCase();
+  let packageSpec: string | undefined;
+
+  if (["npx", "bunx", "uvx"].includes(runner)) {
+    packageSpec = firstPackageLikeArg(args);
+  }
+  if (runner === "pnpm" && args[0] === "dlx") {
+    packageSpec = firstPackageLikeArg(args.slice(1));
+  }
+  if (runner === "yarn" && args[0] === "dlx") {
+    packageSpec = firstPackageLikeArg(args.slice(1));
+  }
+  if (runner === "npm" && ["exec", "x"].includes(args[0] ?? "")) {
+    packageSpec = firstPackageLikeArg(args.slice(1));
+  }
+  if (runner === "pipx" && args[0] === "run") {
+    packageSpec = firstPackageLikeArg(args.slice(1));
+  }
+
+  if (!packageSpec) return undefined;
+  const normalized = normalizePackageReference(packageSpec);
+  return {
+    runner,
+    packageName: normalized.name,
+    versionPinned: normalized.versionPinned,
+    packageReferenceRedacted: true
+  };
+}
+
+function firstPackageLikeArg(args: string[]): string | undefined {
+  const skipNextValueFor = new Set(["--package", "--from", "-p"]);
+  let skipNext = false;
+  for (const arg of args) {
+    if (skipNext) {
+      skipNext = false;
+      continue;
+    }
+    if (arg === "--") continue;
+    if (skipNextValueFor.has(arg)) {
+      skipNext = true;
+      continue;
+    }
+    if (arg.startsWith("-")) continue;
+    return arg;
+  }
+  return undefined;
+}
+
+function normalizePackageReference(spec: string): { name?: string; versionPinned: boolean } {
+  const trimmed = spec.trim();
+  if (!trimmed) return { versionPinned: false };
+
+  const pythonExactVersionIndex = trimmed.indexOf("==");
+  if (pythonExactVersionIndex > 0) {
+    const version = trimmed.slice(pythonExactVersionIndex + 2);
+    return {
+      name: trimmed.slice(0, pythonExactVersionIndex),
+      versionPinned: Boolean(version && !/^latest$/iu.test(version))
+    };
+  }
+
+  const versionMarker = npmVersionMarkerIndex(trimmed);
+  if (versionMarker > 0) {
+    const version = trimmed.slice(versionMarker + 1);
+    return {
+      name: trimmed.slice(0, versionMarker),
+      versionPinned: Boolean(version && !/^latest$/iu.test(version))
+    };
+  }
+
+  return {
+    name: trimmed,
+    versionPinned: false
+  };
+}
+
+function npmVersionMarkerIndex(spec: string): number {
+  if (spec.startsWith("@")) {
+    const slashIndex = spec.indexOf("/");
+    if (slashIndex === -1) return -1;
+    return spec.indexOf("@", slashIndex + 1);
+  }
+  return spec.indexOf("@");
 }
 
 function parseMcpRemoteUrl(value: string | undefined): { host: string; scheme: string } | undefined {
