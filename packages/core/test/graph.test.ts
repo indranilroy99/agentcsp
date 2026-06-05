@@ -61,6 +61,18 @@ describe("static graph", () => {
     expect(promptExplicitToolPath?.reason).toContain("explicit tool reference");
     expect(promptExplicitToolPath?.reason).toContain("specific agent-callable capability");
     expect(JSON.stringify(promptExplicitToolPath)).not.toContain("Review ticket");
+    const memoryExplicitToolPath = result.manifest.attack_paths.find(
+      (attackPath) =>
+        attackPath.source.path === "memory/release-notes.md" &&
+        attackPath.target.name === "publish_summary" &&
+        attackPath.title === "release-notes.md can replay memory into publish_summary"
+    );
+    expect(memoryExplicitToolPath).toBeDefined();
+    expect(memoryExplicitToolPath?.severity).toBe("critical");
+    expect(memoryExplicitToolPath?.confidence).toBe("very_high");
+    expect(memoryExplicitToolPath?.recommended_control).toBe("quarantine");
+    expect(memoryExplicitToolPath?.reason).toContain("cross-session replay path");
+    expect(JSON.stringify(memoryExplicitToolPath)).not.toContain("maintenance shortcut");
     expect(result.manifest.relationships.some((edge) => edge.source.path === "rag")).toBe(false);
     expect(result.manifest.relationships.some((edge) => edge.source.path === "memory")).toBe(false);
     expect(

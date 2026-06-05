@@ -52,7 +52,7 @@ Runtime enforcement adapters, deeper graph traversal, and the dashboard are plan
 - **Remote MCP Trust Signals**: detects remote MCP servers, redacts URLs and header values, records host/header/key metadata, and flags credential-backed third-party MCP access.
 - **Runtime Posture Inventory**: parses agent runtime configs for sandbox mode, approval policy, network access, privileged tool allowlists, MCP references, and env key exposure.
 - **Prompt Template Signals**: records redacted template variables, exact references to discovered tools, and flags untrusted user/customer/context variables joined with tool, memory, external, or secret-sensitive directives.
-- **RAG, Memory, and Generated-State Signals**: records redacted instruction-like, data-egress, tool-directive, external-send, persistence, transcript, cached-output, and tool-output replay signals from retrieval, memory, and included log files.
+- **RAG, Memory, and Generated-State Signals**: records redacted instruction-like, data-egress, explicit privileged-tool, external-send, persistence, transcript, cached-output, and tool-output replay signals from retrieval, memory, and included log files.
 - **Automation Authority**: models scheduled, manual, and externally dispatched workflows, including redacted agent package-script execution, as agent-relevant automation surfaces.
 - **Trust Boundary Analysis**: tracks trusted, project, workspace, third-party, untrusted, and unknown provenance.
 - **Explainable Risk Scoring**: severity includes contributing factors such as trust level, data class, reversibility, external reach, and secret exposure.

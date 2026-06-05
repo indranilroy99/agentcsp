@@ -293,6 +293,9 @@ function isSourceFindingAttackPathCandidate(edge: GraphEdge, finding: Finding, t
   if (finding.rule_id === "AGENTCSP-PROMPT-003") {
     return contextExplicitlyReferencesTarget(finding.matched_object, target) && isAgentCallableAuthority(target);
   }
+  if (finding.rule_id === "AGENTCSP-MEMORY-003") {
+    return contextExplicitlyReferencesTarget(finding.matched_object, target) && isAgentCallableAuthority(target);
+  }
   return isAgentCallableAuthority(target) && (target.side_effect || target.external_reach || target.secret_exposure);
 }
 
@@ -325,6 +328,11 @@ function strongestSourceFindingForEdge(findings: Finding[], target: SurfaceObjec
         finding.rule_id === "AGENTCSP-PROMPT-003" && contextExplicitlyReferencesTarget(finding.matched_object, target)
     );
     if (explicitPromptToolFinding) return explicitPromptToolFinding;
+    const explicitMemoryToolFinding = findings.find(
+      (finding) =>
+        finding.rule_id === "AGENTCSP-MEMORY-003" && contextExplicitlyReferencesTarget(finding.matched_object, target)
+    );
+    if (explicitMemoryToolFinding) return explicitMemoryToolFinding;
   }
   if (target && isExternalEgressCapability(target)) {
     const dataEgressFinding = findings.find((finding) => finding.rule_id === "AGENTCSP-RAG-003");
@@ -405,6 +413,9 @@ function attackPathTitle(edge: GraphEdge, finding: Finding): string {
   if (finding.matched_object.id === edge.source.id && finding.rule_id === "AGENTCSP-PROMPT-003") {
     return `${edge.source.name} can route untrusted input to ${edge.target.name}`;
   }
+  if (finding.matched_object.id === edge.source.id && finding.rule_id === "AGENTCSP-MEMORY-003") {
+    return `${edge.source.name} can replay memory into ${edge.target.name}`;
+  }
   if (finding.matched_object.id === edge.source.id) {
     return `${edge.source.name} can steer ${edge.target.name}: ${finding.name}`;
   }
@@ -449,6 +460,7 @@ function sortAttackPaths(paths: AttackPath[]): AttackPath[] {
 function attackPathPriority(path: AttackPath): number {
   let score = 0;
   if (path.title.includes("route untrusted input")) score += 12;
+  if (path.title.includes("replay memory")) score += 12;
   if (path.title.includes("route sensitive context")) score += 5;
   if (path.reason.includes("data-egress directive")) score += 3;
   if (path.reason.includes("explicit tool reference")) score += 4;

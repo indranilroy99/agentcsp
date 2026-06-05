@@ -473,6 +473,15 @@ The current iteration adds:
 - attack-path prioritization for prompt paths that route untrusted template input to specific privileged tools
 - graph regression coverage proving `support-ticket.prompt.md` can route untrusted input to `publish_summary` while keeping raw prompt text redacted
 
+## Memory Replay Tool Reference Pass
+
+The current iteration adds:
+
+- rule `AGENTCSP-MEMORY-003` for persisted memory that contains instruction-like content and explicitly references a discovered privileged tool
+- source-finding preference for `AGENTCSP-MEMORY-003` when the target is the exact referenced tool
+- attack-path prioritization for memory replay paths that can steer future runs into privileged tools
+- graph regression coverage proving `release-notes.md` can replay memory into `publish_summary` while keeping raw memory text redacted
+
 ## Initial Build Recommendation
 
 Start with a CLI-first MVP before building the dashboard:

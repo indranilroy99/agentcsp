@@ -32,6 +32,7 @@ A finding should be considered production-grade when it includes:
 - prompt-template variables and redacted context signals for untrusted-input bridges
 - exact callable-reference signals for prompts, memory, RAG, instructions, and skills that name discovered privileged tools or MCP servers
 - prompt-template memory persistence signals for cross-session contamination
+- memory replay signals for persisted context that explicitly names privileged tools
 - RAG and memory data-egress signals for sensitive context routed toward external destinations
 - skill data-flow signals for context-to-external-output bridges
 - source-anchored attack paths for dangerous context that reaches direct data-egress capabilities
@@ -57,6 +58,7 @@ Examples:
 - tool-name collision plus different authority signatures and a privileged peer
 - skill consumes retrieved/tool/memory context plus external publication
 - prompt template with user/customer/context variables plus explicit privileged tool reference
+- persisted memory with instruction-like content plus explicit privileged tool reference
 - prompt template with user/customer/context variables plus memory persistence directives
 - prompt template with user/customer/context variables plus tool or external directives
 - runtime config with unsandboxed execution plus no approval gate
@@ -75,6 +77,7 @@ Examples:
 - attack paths that connect specific context-risk signals to concrete privileged capabilities
 - source-anchored RAG data-egress paths that preserve the retrieval finding as the reason for the blast radius
 - source-anchored prompt paths that preserve explicit privileged-tool references from untrusted template variables
+- source-anchored memory replay paths that preserve the persisted-memory finding as the reason for the blast radius
 
 ## CI Expectations
 

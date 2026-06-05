@@ -49,6 +49,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RAG-003")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-SKILL-001")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MEMORY-002")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MEMORY-003")).toBe(true);
     expect(findings.some((finding) => finding.severity === "critical")).toBe(true);
     expect(findings.some((finding) => finding.confidence === "very_high")).toBe(true);
     expect(findings.find((finding) => finding.rule_id === "AGENTCSP-RUNTIME-001")?.confidence).toBe("very_high");
@@ -87,6 +88,11 @@ describe("rule engine", () => {
     expect(findings.find((finding) => finding.rule_id === "AGENTCSP-SKILL-001")?.matched_object.path).toBe(
       "skills/exfil-skill/SKILL.md"
     );
+    const memoryExplicitToolFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-MEMORY-003");
+    expect(memoryExplicitToolFindings).toHaveLength(1);
+    expect(memoryExplicitToolFindings[0]?.matched_object.path).toBe("memory/release-notes.md");
+    expect(memoryExplicitToolFindings[0]?.matched_object.metadata.referenced_privileged_tools).toEqual(["publish_summary"]);
+    expect(memoryExplicitToolFindings[0]?.recommended_control).toBe("quarantine");
     const instructionBridgeFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-INSTRUCTION-001");
     expect(instructionBridgeFindings).toHaveLength(1);
     expect(instructionBridgeFindings[0]?.matched_object.path).toBe("AGENTS.md");

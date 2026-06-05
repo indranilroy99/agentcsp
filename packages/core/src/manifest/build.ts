@@ -121,6 +121,7 @@ function sortAttackPaths(attackPaths: AttackPath[]): AttackPath[] {
 function attackPathPriority(path: AttackPath): number {
   let score = 0;
   if (path.title.includes("route untrusted input")) score += 12;
+  if (path.title.includes("replay memory")) score += 12;
   if (path.title.includes("route sensitive context")) score += 5;
   if (path.reason.includes("data-egress directive")) score += 3;
   if (path.reason.includes("explicit tool reference")) score += 4;
