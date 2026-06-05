@@ -59,6 +59,30 @@ MCP metadata may include:
 
 Remote third-party MCP servers are treated as external trust boundaries. Credential references and auth headers are represented as key names only.
 
+## Instruction Context Signals
+
+Instruction files are normalized into `instruction` objects. AgentCSP records redacted content signals when repository, workspace, or custom instructions connect untrusted inputs to privileged agent behavior.
+
+Instruction metadata may include:
+
+- `content_redacted`
+- `content_analyzed`
+- `instruction_like_content`
+- `instruction_override`
+- `untrusted_context_reference`
+- `tool_directive`
+- `memory_write_directive`
+- `external_directive`
+- `secret_reference`
+- `context_bridge_tool`
+- `context_bridge_memory`
+- `context_bridge_external`
+- `context_bridge_privileged`
+- `content_signal_count`
+- `skipped_for_size`
+
+Raw instruction text is not emitted. These fields let rules detect instruction-boundary designs where customer, user, web, support, or retrieved context can steer tools, memory, or external actions.
+
 ## Skill Data-Flow Signals
 
 Skill files are normalized into `skill` objects. AgentCSP records redacted data-flow signals when skills consume agent context and produce side-effecting output.

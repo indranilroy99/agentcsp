@@ -46,6 +46,21 @@ describe("scanner", () => {
     const surfaces = await detectSurfaces(files);
 
     expect(surfaces.instructions.some((surface) => surface.path === "AGENTS.md")).toBe(true);
+    const agentInstructions = surfaces.instructions.find((surface) => surface.path === "AGENTS.md");
+    expect(agentInstructions?.metadata).toMatchObject({
+      content_analyzed: true,
+      content_redacted: true,
+      untrusted_context_reference: true,
+      tool_directive: true,
+      memory_write_directive: true,
+      context_bridge_tool: true,
+      context_bridge_memory: true,
+      context_bridge_privileged: true
+    });
+    expect(agentInstructions?.actions).toContain("call");
+    expect(agentInstructions?.actions).toContain("remember");
+    expect(agentInstructions?.untrusted_to_privileged).toBe(true);
+    expect(JSON.stringify(agentInstructions)).not.toContain("Untrusted customer notes");
     expect(surfaces.skills.some((surface) => surface.path === "skills/exfil-skill/SKILL.md")).toBe(true);
     const exfilSkill = surfaces.skills.find((surface) => surface.path === "skills/exfil-skill/SKILL.md");
     expect(exfilSkill?.metadata).toMatchObject({
@@ -315,5 +330,15 @@ describe("scanner", () => {
     expect(instruction?.side_effect).toBe(false);
     expect(instruction?.external_reach).toBe(false);
     expect(instruction?.reversible).toBe(true);
+    expect(instruction?.untrusted_to_privileged).toBe(false);
+    expect(instruction?.metadata).toMatchObject({
+      content_analyzed: true,
+      content_redacted: true,
+      untrusted_context_reference: false,
+      tool_directive: false,
+      memory_write_directive: false,
+      external_directive: false,
+      context_bridge_privileged: false
+    });
   });
 });

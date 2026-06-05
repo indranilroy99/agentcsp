@@ -384,6 +384,16 @@ The current iteration adds:
 - scanner assertions proving the tool carries parsed path, URL, external-write, and credential-like authority metadata
 - documentation updates for local-path-to-external data-flow detection as a high-signal AgentCSP rule pattern
 
+## Instruction Context Bridge Pass
+
+The current iteration adds:
+
+- redacted instruction content signals for untrusted context references, tool directives, memory-write directives, external directives, and context bridges
+- negation-aware context-signal matching so safety policy text such as "should not call external services" is not treated as granted authority
+- rule `AGENTCSP-INSTRUCTION-001` for instruction files that route untrusted context into both tool and memory authority
+- confidence rationale credit for redacted content-signal analysis
+- scanner and rule regression coverage proving vulnerable instructions are flagged while the safe fixture remains clean
+
 ## Initial Build Recommendation
 
 Start with a CLI-first MVP before building the dashboard:

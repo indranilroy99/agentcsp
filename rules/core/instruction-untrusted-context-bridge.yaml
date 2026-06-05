@@ -1,0 +1,33 @@
+id: AGENTCSP-INSTRUCTION-001
+name: Instructions route untrusted context to tools or memory
+description: Agent instructions reference untrusted context and combine it with tool or memory authority, creating a concrete path for user-controlled context to steer persistent or agent-callable behavior.
+category: instruction_boundary
+severity: high
+maps_to:
+  owasp:
+    - LLM01:2025 Prompt Injection
+    - LLM06:2025 Excessive Agency
+  mitre_atlas:
+    - AML.T0051 LLM Prompt Injection
+  nist_ai_rmf:
+    - MAP 3.5
+    - MEASURE 2.9
+    - MANAGE 2.3
+match:
+  object_type: instruction
+  where:
+    - field: metadata.content_analyzed
+      op: equals
+      value: true
+    - field: metadata.untrusted_context_reference
+      op: equals
+      value: true
+    - field: metadata.context_bridge_tool
+      op: equals
+      value: true
+    - field: metadata.context_bridge_memory
+      op: equals
+      value: true
+recommendation:
+  control: require_approval
+  text: Separate untrusted context ingestion from tool and memory authority, require provenance checks before tool use, and prevent untrusted inputs from being stored as reusable instructions.

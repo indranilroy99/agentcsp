@@ -37,6 +37,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-002")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-CICD-002")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-AUTOMATION-001")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-INSTRUCTION-001")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-PROMPT-001")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RAG-001")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RAG-002")).toBe(true);
@@ -54,6 +55,10 @@ describe("rule engine", () => {
     expect(findings.find((finding) => finding.rule_id === "AGENTCSP-SKILL-001")?.matched_object.path).toBe(
       "skills/exfil-skill/SKILL.md"
     );
+    const instructionBridgeFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-INSTRUCTION-001");
+    expect(instructionBridgeFindings).toHaveLength(1);
+    expect(instructionBridgeFindings[0]?.matched_object.path).toBe("AGENTS.md");
+    expect(instructionBridgeFindings[0]?.confidence_rationale).toContain("redacted content signals analyzed");
     expect(findings.find((finding) => finding.rule_id === "AGENTCSP-TOOL-005")?.matched_object.name).toBe(
       "post_customer_update"
     );

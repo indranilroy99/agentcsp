@@ -106,10 +106,11 @@ export async function detectSurfaces(files: WalkedFile[]): Promise<DetectedSurfa
 
     if (INSTRUCTION_FILE_NAMES.has(basename) || lowerPath.includes(".cursor/rules/")) {
       const content = text ?? "";
+      const signals = classifyContextContent(content);
       const actions = detectActions(content);
       const dataClasses = inferDataClasses(content, file.relativePath);
-      const externalReach = hasExternalReach(content);
-      const secretExposure = hasSecretExposure(content);
+      const externalReach = hasExternalReach(content) || signals.external_directive;
+      const secretExposure = hasSecretExposure(content) || signals.secret_reference;
       const base = {
         trust_level: inferTrustLevel(file.relativePath),
         actions,
@@ -117,6 +118,7 @@ export async function detectSurfaces(files: WalkedFile[]): Promise<DetectedSurfa
         external_reach: externalReach,
         secret_exposure: secretExposure
       };
+      const instructionContextBridge = signals.untrusted_context_reference && signals.context_bridge_privileged;
       surfaces.instructions.push(
         createSurfaceObject({
           type: "instruction",
@@ -129,12 +131,14 @@ export async function detectSurfaces(files: WalkedFile[]): Promise<DetectedSurfa
           reversible: isReversible(content),
           external_reach: externalReach,
           secret_exposure: secretExposure,
-          untrusted_to_privileged: isUntrustedToPrivileged(base),
+          untrusted_to_privileged: instructionContextBridge || isUntrustedToPrivileged(base),
           reason: "Instruction file discovered as agent-consumable context.",
           metadata: {
+            content_analyzed: text !== undefined,
             bytes: file.size,
             skipped_for_size: file.skippedForSize,
-            content_redacted: true
+            content_redacted: true,
+            ...signals
           }
         })
       );
@@ -408,10 +412,15 @@ function isPromptTemplatePath(relativePath: string, basename: string): boolean {
 interface ContextContentSignals {
   instruction_like_content: boolean;
   instruction_override: boolean;
+  untrusted_context_reference: boolean;
   tool_directive: boolean;
   memory_write_directive: boolean;
   external_directive: boolean;
   secret_reference: boolean;
+  context_bridge_tool: boolean;
+  context_bridge_memory: boolean;
+  context_bridge_external: boolean;
+  context_bridge_privileged: boolean;
   content_signal_count: number;
 }
 
@@ -444,27 +453,79 @@ interface SkillDataFlowSignals {
 }
 
 function classifyContextContent(content: string): ContextContentSignals {
-  const instructionOverride = /\b(ignore|override|bypass|forget|disregard)\b[\s\S]{0,80}\b(instruction|policy|approval|guard|previous|system|developer)\b/i.test(
-    content
+  const instructionOverride = hasAffirmedContextPattern(
+    content,
+    /\b(ignore|override|bypass|forget|disregard)\b[\s\S]{0,80}\b(instruction|policy|approval|guard|previous|system|developer)\b/i
   );
   const instructionLike =
     instructionOverride ||
-    /\b(system prompt|developer instruction|highest priority|follow these instructions|do not obey|new instruction)\b/i.test(content);
-  const toolDirective = /\b(call|invoke|use|run|execute|trigger)\b[\s\S]{0,80}\b(tool|mcp|shell|browser|github|slack|webhook|function|api)\b/i.test(content);
-  const memoryWriteDirective = /\b(remember|store|persist|save)\b[\s\S]{0,80}\b(memory|future|session|run|instruction|shortcut)\b/i.test(content);
+    hasAffirmedContextPattern(
+      content,
+      /\b(system prompt|developer instruction|highest priority|follow these instructions|do not obey|new instruction)\b/i
+    );
+  const untrustedContext = hasAffirmedContextPattern(
+    content,
+    /\b(untrusted|user|customer|client|ticket|issue|support|web\s?page|browser|email|slack|copied chat|transcript|retrieved|rag|document|note)\b/i
+  );
+  const toolDirective = hasAffirmedContextPattern(
+    content,
+    /\b(call|invoke|use|run|execute|trigger)\b[\s\S]{0,80}\b(tool|mcp|shell|browser|github|slack|webhook|function|api)\b/i
+  );
+  const memoryWriteDirective = hasAffirmedContextPattern(
+    content,
+    /\b(remember|store|persist|save|write|update)\b[\s\S]{0,80}\b(memory|future|session|run|instruction|shortcut)\b/i
+  );
   const externalDirective =
-    hasExternalReach(content) || /\b(webhook|slack|email|external|publish|send|post|upload)\b/i.test(content);
+    hasExternalReach(content) ||
+    hasAffirmedContextPattern(content, /\b(webhook|slack|email|external|publish|send|post|upload)\b/i);
   const secretReference = hasSecretExposure(content);
-  const signals = [instructionLike, instructionOverride, toolDirective, memoryWriteDirective, externalDirective, secretReference].filter(Boolean).length;
+  const contextBridgeTool = untrustedContext && toolDirective;
+  const contextBridgeMemory = untrustedContext && memoryWriteDirective;
+  const contextBridgeExternal = untrustedContext && externalDirective;
+  const contextBridgePrivileged = contextBridgeTool || contextBridgeMemory || contextBridgeExternal || (untrustedContext && secretReference);
+  const signals = [
+    instructionLike,
+    instructionOverride,
+    untrustedContext,
+    toolDirective,
+    memoryWriteDirective,
+    externalDirective,
+    secretReference
+  ].filter(Boolean).length;
   return {
     instruction_like_content: instructionLike,
     instruction_override: instructionOverride,
+    untrusted_context_reference: untrustedContext,
     tool_directive: toolDirective,
     memory_write_directive: memoryWriteDirective,
     external_directive: externalDirective,
     secret_reference: secretReference,
+    context_bridge_tool: contextBridgeTool,
+    context_bridge_memory: contextBridgeMemory,
+    context_bridge_external: contextBridgeExternal,
+    context_bridge_privileged: contextBridgePrivileged,
     content_signal_count: signals
   };
+}
+
+function hasAffirmedContextPattern(content: string, pattern: RegExp): boolean {
+  const flags = pattern.flags.includes("g") ? pattern.flags : `${pattern.flags}g`;
+  const matcher = new RegExp(pattern.source, flags);
+  let match: RegExpExecArray | null;
+  while ((match = matcher.exec(content)) !== null) {
+    if (!isNegatedContextMatch(content, match.index)) return true;
+    if (match[0].length === 0) matcher.lastIndex += 1;
+  }
+  return false;
+}
+
+function isNegatedContextMatch(content: string, index: number): boolean {
+  const before = content.slice(Math.max(0, index - 120), index);
+  const clauseStart = Math.max(before.lastIndexOf("."), before.lastIndexOf("\n"), before.lastIndexOf(";"));
+  const clause = before.slice(clauseStart + 1);
+  return /\b(do not|don't|dont|must not|should not|cannot|can't|never|not allowed to|not permitted to|forbid(?:s|den)?|prohibit(?:s|ed)?)\b/i.test(
+    clause
+  );
 }
 
 function classifySkillDataFlow(content: string): SkillDataFlowSignals {

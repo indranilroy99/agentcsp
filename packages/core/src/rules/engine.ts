@@ -102,6 +102,10 @@ function confidenceForMatch(
     score += 10;
     rationale.push("structured agent configuration parsed");
   }
+  if (object.metadata.content_analyzed === true && object.metadata.content_redacted === true) {
+    score += 10;
+    rationale.push("redacted content signals analyzed");
+  }
 
   if (score >= 80) return { level: "very_high", rationale };
   if (score >= 55) return { level: "high", rationale };
