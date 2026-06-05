@@ -282,7 +282,7 @@ The current iteration adds:
 The current iteration adds:
 
 - manifest-level `scan_coverage` for deterministic scan-scope auditing
-- coverage counts for directories visited, files seen/indexed, oversized files, ignore skips, hidden/log directory skips, max-file limits, and max-file-limit exhaustion
+- coverage counts for directories visited, files seen/indexed, oversized files, ignore skips, hidden/log directory skips, diagnostic severity counts, max-file limits, and max-file-limit exhaustion
 - Markdown Scan Coverage section
 - SARIF run-level `agentcsp_scan_coverage`
 - CLI coverage summary in non-quiet output
@@ -298,7 +298,8 @@ The current iteration adds:
 - parse-error metadata on affected fallback surfaces
 - Markdown Scan Diagnostics section
 - SARIF run-level `agentcsp_diagnostics`
-- CLI diagnostics count in non-quiet output
+- CLI diagnostics count in non-quiet output, including warning/error breakdown when coverage is available
+- `scan_coverage` diagnostic counters for CI and dashboard consumers: `diagnostics_total`, `diagnostics_errors`, `diagnostics_warnings`, and `diagnostics_info`
 - regression coverage proving raw malformed content and secret-like values are not emitted
 
 ## Generated-State Replay Pass

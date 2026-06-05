@@ -19,7 +19,7 @@ The path defaults to the current directory. The output directory defaults to `.a
 
 `agent-manifest.json` includes `triage_summary`, a deterministic rollup of total findings, active findings, suppressions, severity, confidence, surface types, recommended controls, top rules, and top active risks. The Markdown report renders the same summary near the top for human triage.
 
-`scan_coverage` records files indexed, oversized files, ignored entries, skipped hidden/log directories, and whether `max_files` was reached. Use it to catch partial scans before treating a quiet report as clean.
+`scan_coverage` records files indexed, oversized files, ignored entries, skipped hidden/log directories, diagnostic counts, and whether `max_files` was reached. Use it to catch partial or parser-degraded scans before treating a quiet report as clean.
 
 Tune traversal limits with:
 
@@ -33,7 +33,7 @@ Use `--include-logs` when transcripts, cached tool outputs, or generated run sum
 agentcsp scan . --include-logs
 ```
 
-`diagnostics` records redacted scan health warnings, such as malformed MCP, runtime, workflow, package, or tool definition files. Treat diagnostics as evidence that a file may need syntax repair or manual review before relying on a quiet scan.
+`diagnostics` records redacted scan health warnings, such as malformed MCP, runtime, workflow, package, or tool definition files. `scan_coverage.diagnostics_total`, `diagnostics_warnings`, `diagnostics_errors`, and `diagnostics_info` provide stable machine-readable counts for CI and dashboards. Treat diagnostics as evidence that a file may need syntax repair or manual review before relying on a quiet scan.
 
 ## CI Behavior
 

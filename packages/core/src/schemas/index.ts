@@ -389,6 +389,10 @@ export const ScanCoverageSummarySchema = z.object({
   directories_skipped_by_ignore: z.number().int().nonnegative().default(0),
   directories_skipped_hidden: z.number().int().nonnegative().default(0),
   directories_skipped_logs: z.number().int().nonnegative().default(0),
+  diagnostics_total: z.number().int().nonnegative().default(0),
+  diagnostics_errors: z.number().int().nonnegative().default(0),
+  diagnostics_warnings: z.number().int().nonnegative().default(0),
+  diagnostics_info: z.number().int().nonnegative().default(0),
   max_files_reached: z.boolean().default(false),
   max_files: z.number().int().positive(),
   max_file_size_bytes: z.number().int().positive()

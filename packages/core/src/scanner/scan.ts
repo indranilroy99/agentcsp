@@ -1,6 +1,13 @@
 import fs from "node:fs/promises";
 import path from "node:path";
-import { ScanConfigSchema, type AgentManifest, type Finding, type ScanConfig } from "../schemas/index.js";
+import {
+  ScanConfigSchema,
+  type AgentManifest,
+  type Finding,
+  type ScanConfig,
+  type ScanCoverageSummary,
+  type ScanDiagnostic
+} from "../schemas/index.js";
 import { buildManifest } from "../manifest/build.js";
 import { buildStaticGraph } from "../graph/build-graph.js";
 import { applyFindingSuppressions, applyRecommendedControls, applyTrustOverrides, loadPolicy } from "../policy/load-policy.js";
@@ -38,6 +45,7 @@ export async function scanProject(rawConfig: Partial<ScanConfig> & { root_path: 
   const policy = await loadPolicy(rootPath, config.config_path);
   const detected = await detectSurfaces(files);
   const surfaces = applyPolicyToSurfaces(detected, policy);
+  const scanCoverage = withDiagnosticCoverage(walkResult.coverage, surfaces.diagnostics);
 
   const rulesDirectory = path.resolve(rootPath, "rules");
   const fallbackRulesDirectory = path.resolve(process.cwd(), "rules");
@@ -64,7 +72,7 @@ export async function scanProject(rawConfig: Partial<ScanConfig> & { root_path: 
     attackPaths: graph.attackPaths,
     triageSummary,
     baselineComparison: baselineResult?.comparison,
-    scanCoverage: walkResult.coverage,
+    scanCoverage,
     staticBlastRadius
   });
   const reportMarkdown = renderMarkdownReport(manifest);
@@ -92,6 +100,29 @@ export async function scanProject(rawConfig: Partial<ScanConfig> & { root_path: 
     reportMarkdown,
     outputFiles,
     shouldFail: shouldFail(failGateFindings, config.fail_on, config.fail_on_confidence)
+  };
+}
+
+function withDiagnosticCoverage(
+  coverage: ScanCoverageSummary,
+  diagnostics: ScanDiagnostic[]
+): ScanCoverageSummary {
+  const counts = diagnostics.reduce(
+    (summary, diagnostic) => {
+      if (diagnostic.severity === "error") summary.errors += 1;
+      if (diagnostic.severity === "warning") summary.warnings += 1;
+      if (diagnostic.severity === "info") summary.info += 1;
+      return summary;
+    },
+    { errors: 0, warnings: 0, info: 0 }
+  );
+
+  return {
+    ...coverage,
+    diagnostics_total: diagnostics.length,
+    diagnostics_errors: counts.errors,
+    diagnostics_warnings: counts.warnings,
+    diagnostics_info: counts.info
   };
 }
 

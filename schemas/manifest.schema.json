@@ -1156,6 +1156,26 @@
               "minimum": 0,
               "default": 0
             },
+            "diagnostics_total": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            },
+            "diagnostics_errors": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            },
+            "diagnostics_warnings": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            },
+            "diagnostics_info": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            },
             "max_files_reached": {
               "type": "boolean",
               "default": false

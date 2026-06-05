@@ -27,18 +27,35 @@ describe("scan diagnostics", () => {
     ]);
     expect(result.manifest.diagnostics.every((diagnostic) => diagnostic.content_redacted)).toBe(true);
     expect(result.manifest.diagnostics.every((diagnostic) => diagnostic.severity === "warning")).toBe(true);
+    expect(result.manifest.scan_coverage).toMatchObject({
+      diagnostics_total: 5,
+      diagnostics_errors: 0,
+      diagnostics_warnings: 5,
+      diagnostics_info: 0
+    });
     expect(result.manifest.mcp_servers[0]?.metadata).toMatchObject({ parse_error: true });
     expect(result.manifest.runtime_config[0]?.metadata).toMatchObject({ parse_error: true });
     expect(result.manifest.tools.some((tool) => tool.metadata.parse_error === true)).toBe(true);
     expect(result.reportMarkdown).toContain("## Scan Diagnostics");
     expect(result.reportMarkdown).toContain("MCP_CONFIG_PARSE_FAILED");
+    expect(result.reportMarkdown).toContain("- Diagnostics: 5");
+    expect(result.reportMarkdown).toContain("- Diagnostic warnings: 5");
 
     const sarif = JSON.parse(await fs.readFile(result.outputFiles.sarif!, "utf8")) as {
-      runs: Array<{ properties?: { agentcsp_diagnostics?: Array<{ code?: string }> } }>;
+      runs: Array<{
+        properties?: {
+          agentcsp_diagnostics?: Array<{ code?: string }>;
+          agentcsp_scan_coverage?: { diagnostics_total?: number; diagnostics_warnings?: number };
+        };
+      }>;
     };
     expect(sarif.runs[0]?.properties?.agentcsp_diagnostics?.map((item) => item.code)).toContain(
       "RUNTIME_CONFIG_PARSE_FAILED"
     );
+    expect(sarif.runs[0]?.properties?.agentcsp_scan_coverage).toMatchObject({
+      diagnostics_total: 5,
+      diagnostics_warnings: 5
+    });
 
     const output = JSON.stringify({
       manifest: result.manifest,

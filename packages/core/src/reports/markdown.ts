@@ -125,6 +125,10 @@ function renderScanCoverage(manifest: AgentManifest): string {
     `- Directories skipped by ignore rules: ${coverage.directories_skipped_by_ignore}`,
     `- Hidden directories skipped: ${coverage.directories_skipped_hidden}`,
     `- Log directories skipped: ${coverage.directories_skipped_logs}`,
+    `- Diagnostics: ${coverage.diagnostics_total}`,
+    `- Diagnostic errors: ${coverage.diagnostics_errors}`,
+    `- Diagnostic warnings: ${coverage.diagnostics_warnings}`,
+    `- Diagnostic info: ${coverage.diagnostics_info}`,
     `- Max files reached: \`${coverage.max_files_reached}\``,
     `- Max files: ${coverage.max_files}`,
     `- Max file size bytes: ${coverage.max_file_size_bytes}`

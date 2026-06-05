@@ -42,6 +42,10 @@ export async function walkProjectWithCoverage(config: ScanConfig): Promise<WalkR
     directories_skipped_by_ignore: 0,
     directories_skipped_hidden: 0,
     directories_skipped_logs: 0,
+    diagnostics_total: 0,
+    diagnostics_errors: 0,
+    diagnostics_warnings: 0,
+    diagnostics_info: 0,
     max_files_reached: false,
     max_files: maxFiles,
     max_file_size_bytes: maxFileSize

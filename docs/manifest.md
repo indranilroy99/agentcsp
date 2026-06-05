@@ -384,10 +384,11 @@ The summary includes:
 - files and directories skipped by default ignore rules or `.agentcspignore`
 - hidden directories skipped
 - log directories skipped
+- diagnostic totals by severity through `diagnostics_total`, `diagnostics_errors`, `diagnostics_warnings`, and `diagnostics_info`
 - whether `max_files` was reached
 - configured `max_files` and `max_file_size_bytes`
 
-Coverage counts do not include raw file contents or skipped path lists.
+Coverage counts do not include raw file contents or skipped path lists. Diagnostic counters summarize parser health; detailed redacted records remain in `diagnostics`.
 
 ## Diagnostics
 

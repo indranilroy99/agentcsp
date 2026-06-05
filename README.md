@@ -59,7 +59,7 @@ Runtime enforcement adapters, deeper graph traversal, and the dashboard are plan
 - **Finding Confidence**: each finding includes confidence and rationale so teams can separate correlated evidence from weaker static signals.
 - **Triage Summary**: summarizes active findings by severity, confidence, surface type, category, recommended control, top rules, and top risk objects.
 - **Baseline Comparison**: compares current findings to previous scan output so teams can separate new risk from existing debt.
-- **Scan Coverage Summary**: reports indexed files, oversized files, ignored paths, skipped hidden/log directories, and max-file limits.
+- **Scan Coverage Summary**: reports indexed files, oversized files, ignored paths, skipped hidden/log directories, max-file limits, and diagnostic counts.
 - **Scan Diagnostics**: emits redacted parser diagnostics when security-relevant configs cannot be parsed.
 - **Evidence-Led Static Attack Paths**: connects specific context-risk signals to privileged capabilities, highlights customer-data routes into PII-capable external tools, prefers exact callable references when context names a discovered tool or MCP server, and avoids expanding those cases into broad speculative blast-radius entries.
 - **Auditable Suppressions**: supports owned, reasoned, expiring accepted-risk records without deleting evidence.
