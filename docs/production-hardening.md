@@ -91,6 +91,7 @@ Examples:
 - source-anchored memory replay paths that preserve the persisted-memory finding as the reason for the blast radius
 - exact generated-state replay paths that preserve transcript or cached-output provenance without expanding into unrelated privileged targets
 - exact runtime auto-approval paths that preserve permission-to-package-script provenance for release or deploy authority
+- blast-radius summary counts for sensitive-data, PII, and credential external reach and attack paths
 
 ## CI Expectations
 

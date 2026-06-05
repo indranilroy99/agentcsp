@@ -434,6 +434,22 @@ An attack path includes:
 - recommended control
 - redacted evidence
 
+## Static Blast-Radius Summary
+
+`static_blast_radius` is a bounded rollup of the graph, findings, and normalized surfaces. It does not claim runtime traversal; it summarizes discovered static authority and data exposure so teams can triage likely blast radius quickly.
+
+The summary includes:
+
+- read, write, execute, external reach, and secret-reference path counts
+- sensitive-data, PII, and credential external-reach counts
+- sensitive-data, PII, and credential attack-path counts
+- RAG and memory surface counts
+- relationship, attack-path, and critical attack-path counts
+- active and expired suppression counts
+- highest severity
+- capped high-risk objects
+- recommended controls
+
 ## Suppression State
 
 Findings may include a `suppression` object when they match a policy suppression.

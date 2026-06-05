@@ -1208,6 +1208,36 @@
               "minimum": 0,
               "default": 0
             },
+            "sensitive_data_external_reach_paths": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            },
+            "pii_external_reach_paths": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            },
+            "credential_external_reach_paths": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            },
+            "sensitive_data_attack_paths": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            },
+            "pii_attack_paths": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            },
+            "credential_attack_paths": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            },
             "memory_surfaces": {
               "type": "integer",
               "minimum": 0,

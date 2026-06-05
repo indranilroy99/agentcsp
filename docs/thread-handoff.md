@@ -500,6 +500,15 @@ The current iteration adds:
 - rule `AGENTCSP-TOOL-010` for parsed tool schemas that can send PII-like input to URL-like external destinations
 - scanner and rule regression coverage proving customer-data egress tools are flagged while read-only local tools remain quiet
 
+## Sensitive Blast-Radius Summary Pass
+
+The current iteration adds:
+
+- static blast-radius counts for sensitive-data, PII, and credential external reach
+- static blast-radius counts for sensitive-data, PII, and credential attack paths
+- Markdown and SARIF property coverage for the new summary fields
+- report regression coverage proving the vulnerable fixture exposes sensitive-data blast radius while the safe fixture remains zero
+
 ## Initial Build Recommendation
 
 Start with a CLI-first MVP before building the dashboard:

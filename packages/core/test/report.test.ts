@@ -19,6 +19,12 @@ describe("scanProject", () => {
     expect(result.manifest.metadata.config.secret_values_collected).toBe(false);
     expect(result.manifest.static_blast_radius?.title).toBe("Static Blast-Radius Summary");
     expect(result.manifest.static_blast_radius?.attack_paths).toBeGreaterThan(0);
+    expect(result.manifest.static_blast_radius?.sensitive_data_external_reach_paths).toBeGreaterThan(0);
+    expect(result.manifest.static_blast_radius?.pii_external_reach_paths).toBeGreaterThan(0);
+    expect(result.manifest.static_blast_radius?.credential_external_reach_paths).toBeGreaterThan(0);
+    expect(result.manifest.static_blast_radius?.sensitive_data_attack_paths).toBeGreaterThan(0);
+    expect(result.manifest.static_blast_radius?.pii_attack_paths).toBeGreaterThan(0);
+    expect(result.manifest.static_blast_radius?.credential_attack_paths).toBeGreaterThan(0);
     expect(result.manifest.scan_coverage?.title).toBe("AgentCSP Scan Coverage");
     expect(result.manifest.scan_coverage?.files_indexed).toBeGreaterThan(0);
     expect(result.manifest.scan_coverage?.max_files_reached).toBe(false);
@@ -38,12 +44,16 @@ describe("scanProject", () => {
         properties?: {
           agentcsp_triage_summary?: { total_findings?: number };
           agentcsp_scan_coverage?: { files_indexed?: number };
+          agentcsp_static_blast_radius?: { pii_external_reach_paths?: number };
         };
       }>;
     };
     expect(sarif.runs[0]?.properties?.agentcsp_triage_summary?.total_findings).toBe(result.findings.length);
     expect(sarif.runs[0]?.properties?.agentcsp_scan_coverage?.files_indexed).toBe(
       result.manifest.scan_coverage?.files_indexed
+    );
+    expect(sarif.runs[0]?.properties?.agentcsp_static_blast_radius?.pii_external_reach_paths).toBe(
+      result.manifest.static_blast_radius?.pii_external_reach_paths
     );
     expect(JSON.stringify(sarif.runs[0]?.properties?.agentcsp_triage_summary)).not.toContain("replace-me");
     expect(result.reportMarkdown).toContain("## Triage Summary");
@@ -52,6 +62,8 @@ describe("scanProject", () => {
     expect(result.reportMarkdown).toContain("### Top Active Risks");
     expect(result.reportMarkdown).toContain("| Severity | Confidence | Risk | Rule | Object | Path | Recommended control |");
     expect(result.reportMarkdown).toContain("## Scan Coverage");
+    expect(result.reportMarkdown).toContain("PII external reach paths");
+    expect(result.reportMarkdown).toContain("PII attack paths");
     expect(result.reportMarkdown).toContain("Recommended Controls");
     expect(result.reportMarkdown).toContain("Static Attack Paths");
     expect(result.reportMarkdown).toContain("| Severity | Confidence | Rule | Object | Recommended control | Policy | Risk factors |");
@@ -76,6 +88,12 @@ describe("scanProject", () => {
     expect(result.manifest.triage_summary?.highest_active_severity).toBe("info");
     expect(result.manifest.triage_summary?.max_active_risk_score).toBe(0);
     expect(result.manifest.triage_summary?.top_active_risks).toHaveLength(0);
+    expect(result.manifest.static_blast_radius?.sensitive_data_external_reach_paths).toBe(0);
+    expect(result.manifest.static_blast_radius?.pii_external_reach_paths).toBe(0);
+    expect(result.manifest.static_blast_radius?.credential_external_reach_paths).toBe(0);
+    expect(result.manifest.static_blast_radius?.sensitive_data_attack_paths).toBe(0);
+    expect(result.manifest.static_blast_radius?.pii_attack_paths).toBe(0);
+    expect(result.manifest.static_blast_radius?.credential_attack_paths).toBe(0);
     expect(result.reportMarkdown).toContain("No active findings were generated.");
   });
 
