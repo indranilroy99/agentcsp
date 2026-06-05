@@ -112,14 +112,18 @@ describe("static graph", () => {
       quiet: true
     });
 
-    const replayPath = result.manifest.attack_paths.find(
-      (attackPath) =>
-        attackPath.source.path === "logs/session-transcript.txt" &&
-        attackPath.reason.includes("generated-state replay")
+    const transcriptPaths = result.manifest.attack_paths.filter(
+      (attackPath) => attackPath.source.path === "logs/session-transcript.txt"
     );
+    expect(transcriptPaths).toHaveLength(1);
+
+    const replayPath = transcriptPaths[0];
     expect(replayPath).toBeDefined();
+    expect(replayPath?.title).toBe("session-transcript.txt can replay generated state into publish_summary");
+    expect(replayPath?.target.name).toBe("publish_summary");
     expect(replayPath?.severity).toBe("critical");
     expect(replayPath?.confidence).toBe("very_high");
+    expect(replayPath?.recommended_control).toBe("quarantine");
     expect(JSON.stringify(replayPath)).not.toContain("Ignore previous repository instructions");
   });
 

@@ -121,7 +121,10 @@ function buildAttackPaths(edges: GraphEdge[], findings: Finding[], objects: Surf
 
   const paths: AttackPath[] = [];
   for (const edge of edges) {
+    const sourceObject = objectsById.get(edge.source.id);
     const targetObject = objectsById.get(edge.target.id);
+    if (shouldSuppressBroadContextAttackPath(edge, sourceObject, targetObject)) continue;
+
     const targetFindings = findingsByObject.get(edge.target.id) ?? [];
     const strongest = strongestFinding(targetFindings);
     if (strongest && isAttackPathCandidate(edge, strongest)) {
@@ -166,11 +169,28 @@ function buildAttackPaths(edges: GraphEdge[], findings: Finding[], objects: Surf
 
   const deduped = new Map<string, AttackPath>();
   for (const path of sortAttackPaths(paths)) {
-    const key = `${path.target.id}:${path.reason}`;
+    const key = attackPathDedupKey(path);
     if (!deduped.has(key)) deduped.set(key, path);
   }
 
   return [...deduped.values()].slice(0, 15);
+}
+
+function shouldSuppressBroadContextAttackPath(
+  edge: GraphEdge,
+  source: SurfaceObject | undefined,
+  target: SurfaceObject | undefined
+): boolean {
+  if (!source || !target) return false;
+  if (!isContextSource(source)) return false;
+  if (!explicitBoolean(source, "privileged_callable_reference")) return false;
+  return !contextExplicitlyReferencesTarget(source, target);
+}
+
+function attackPathDedupKey(path: AttackPath): string {
+  const relation = path.edges[0]?.relation;
+  if (relation === "influences") return `${path.source.id}:${relation}:${path.target.id}`;
+  return `${path.target.id}:${path.reason}`;
 }
 
 function addEdge(
@@ -303,6 +323,7 @@ function sourceCarriesTaintedContext(edge: GraphEdge, finding: Finding): boolean
   return (
     ["unknown", "untrusted", "third_party"].includes(edge.source.trust_level) ||
     finding.risk.untrusted_to_privileged ||
+    finding.matched_object.metadata.generated_state === true ||
     finding.matched_object.metadata.untrusted_template_input === true ||
     finding.matched_object.metadata.context_bridge_privileged === true ||
     finding.matched_object.metadata.privileged_callable_reference === true
@@ -328,6 +349,13 @@ function strongestSourceFindingForEdge(findings: Finding[], target: SurfaceObjec
         finding.rule_id === "AGENTCSP-PROMPT-003" && contextExplicitlyReferencesTarget(finding.matched_object, target)
     );
     if (explicitPromptToolFinding) return explicitPromptToolFinding;
+    const explicitGeneratedStateFinding = findings.find(
+      (finding) =>
+        finding.rule_id === "AGENTCSP-GENSTATE-001" &&
+        finding.matched_object.metadata.generated_state === true &&
+        contextExplicitlyReferencesTarget(finding.matched_object, target)
+    );
+    if (explicitGeneratedStateFinding) return explicitGeneratedStateFinding;
     const explicitMemoryToolFinding = findings.find(
       (finding) =>
         finding.rule_id === "AGENTCSP-MEMORY-003" && contextExplicitlyReferencesTarget(finding.matched_object, target)
@@ -413,6 +441,9 @@ function attackPathTitle(edge: GraphEdge, finding: Finding): string {
   if (finding.matched_object.id === edge.source.id && finding.rule_id === "AGENTCSP-PROMPT-003") {
     return `${edge.source.name} can route untrusted input to ${edge.target.name}`;
   }
+  if (finding.matched_object.id === edge.source.id && finding.matched_object.metadata.generated_state === true) {
+    return `${edge.source.name} can replay generated state into ${edge.target.name}`;
+  }
   if (finding.matched_object.id === edge.source.id && finding.rule_id === "AGENTCSP-MEMORY-003") {
     return `${edge.source.name} can replay memory into ${edge.target.name}`;
   }
@@ -461,6 +492,7 @@ function attackPathPriority(path: AttackPath): number {
   let score = 0;
   if (path.title.includes("route untrusted input")) score += 12;
   if (path.title.includes("replay memory")) score += 12;
+  if (path.title.includes("replay generated state")) score += 12;
   if (path.title.includes("route sensitive context")) score += 5;
   if (path.reason.includes("data-egress directive")) score += 3;
   if (path.reason.includes("explicit tool reference")) score += 4;

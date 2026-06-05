@@ -37,6 +37,8 @@ A finding should be considered production-grade when it includes:
 - skill data-flow signals for context-to-external-output bridges
 - source-anchored attack paths for dangerous context that reaches direct data-egress capabilities
 - source-anchored attack paths for project prompt templates that route untrusted variables to explicit privileged tools
+- source-anchored generated-state paths that replay transcripts or cached outputs into exact privileged tools
+- attack-path de-noising when exact callable references make broader speculative source paths less useful
 - recommended control
 - OWASP, MITRE ATLAS, and NIST AI RMF mappings where applicable
 - redacted evidence
@@ -78,6 +80,7 @@ Examples:
 - source-anchored RAG data-egress paths that preserve the retrieval finding as the reason for the blast radius
 - source-anchored prompt paths that preserve explicit privileged-tool references from untrusted template variables
 - source-anchored memory replay paths that preserve the persisted-memory finding as the reason for the blast radius
+- exact generated-state replay paths that preserve transcript or cached-output provenance without expanding into unrelated privileged targets
 
 ## CI Expectations
 

@@ -24,7 +24,7 @@ AgentCSP should model the agent environment as a graph:
 8. Produce reports and evidence.
 9. Enforce policies at runtime where integrations exist.
 
-The current static graph is intentionally conservative. It prioritizes file-specific context-to-capability paths only when normalized evidence shows instruction-like content, tool directives, external directives, memory-write directives, generated-state replay, or explicit instruction/skill authority. This keeps the MVP useful for security review without implying complete runtime graph traversal.
+The current static graph is intentionally conservative. It prioritizes file-specific context-to-capability paths only when normalized evidence shows instruction-like content, tool directives, external directives, memory-write directives, generated-state replay, or explicit instruction/skill authority. When context names a concrete privileged callable, the prioritized attack-path list keeps the exact path and avoids broad speculative entries from that same source. This keeps the MVP useful for security review without implying complete runtime graph traversal.
 
 ## Manifest Concept
 
