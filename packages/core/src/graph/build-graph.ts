@@ -320,6 +320,7 @@ function isAttackPathCandidate(edge: GraphEdge, finding: Finding): boolean {
 }
 
 function isSourceFindingAttackPathCandidate(edge: GraphEdge, finding: Finding, target: SurfaceObject): boolean {
+  if (isRuntimeSourceFindingAttackPathCandidate(edge, finding, target)) return true;
   if (edge.relation !== "influences") return false;
   if (!isContextRiskFinding(finding)) return false;
   if (!sourceCarriesTaintedContext(edge, finding)) return false;
@@ -332,6 +333,20 @@ function isSourceFindingAttackPathCandidate(edge: GraphEdge, finding: Finding, t
     return contextExplicitlyReferencesTarget(finding.matched_object, target) && isAgentCallableAuthority(target);
   }
   return isAgentCallableAuthority(target) && (target.side_effect || target.external_reach || target.secret_exposure);
+}
+
+function isRuntimeSourceFindingAttackPathCandidate(edge: GraphEdge, finding: Finding, target: SurfaceObject): boolean {
+  if (edge.relation !== "triggers") return false;
+  if (!isRuntimeRiskFinding(finding)) return false;
+  if (finding.severity !== "critical" && finding.severity !== "high") return false;
+  if (finding.rule_id === "AGENTCSP-RUNTIME-005") {
+    return (
+      target.type === "tool" &&
+      target.name.startsWith("package-script:") &&
+      stringMetadataArray(finding.matched_object.metadata.referenced_release_package_scripts).includes(target.name)
+    );
+  }
+  return false;
 }
 
 function sourceCarriesTaintedContext(edge: GraphEdge, finding: Finding): boolean {
@@ -349,6 +364,10 @@ function isContextRiskFinding(finding: Finding): boolean {
   return /^(AGENTCSP-(RAG|MEMORY|GENSTATE|PROMPT|INSTRUCTION|SKILL)-)/u.test(finding.rule_id);
 }
 
+function isRuntimeRiskFinding(finding: Finding): boolean {
+  return /^AGENTCSP-RUNTIME-/u.test(finding.rule_id);
+}
+
 function strongestFinding(findings: Finding[]): Finding | undefined {
   return [...findings].sort((a, b) => {
     const severityCompare = severityWeight(b.severity) - severityWeight(a.severity);
@@ -358,6 +377,14 @@ function strongestFinding(findings: Finding[]): Finding | undefined {
 }
 
 function strongestSourceFindingForEdge(findings: Finding[], target: SurfaceObject | undefined): Finding | undefined {
+  if (target?.type === "tool" && target.name.startsWith("package-script:")) {
+    const runtimeReleaseScriptFinding = findings.find(
+      (finding) =>
+        finding.rule_id === "AGENTCSP-RUNTIME-005" &&
+        stringMetadataArray(finding.matched_object.metadata.referenced_release_package_scripts).includes(target.name)
+    );
+    if (runtimeReleaseScriptFinding) return runtimeReleaseScriptFinding;
+  }
   if (target) {
     const explicitPromptToolFinding = findings.find(
       (finding) =>
@@ -456,6 +483,9 @@ function attackPathTitle(edge: GraphEdge, finding: Finding): string {
   if (finding.matched_object.id === edge.source.id && finding.rule_id === "AGENTCSP-PROMPT-003") {
     return `${edge.source.name} can route untrusted input to ${edge.target.name}`;
   }
+  if (finding.matched_object.id === edge.source.id && finding.rule_id === "AGENTCSP-RUNTIME-005") {
+    return `${edge.source.name} can auto-approve ${edge.target.name}`;
+  }
   if (finding.matched_object.id === edge.source.id && finding.matched_object.metadata.generated_state === true) {
     return `${edge.source.name} can replay generated state into ${edge.target.name}`;
   }
@@ -506,6 +536,7 @@ function sortAttackPaths(paths: AttackPath[]): AttackPath[] {
 function attackPathPriority(path: AttackPath): number {
   let score = 0;
   if (path.title.includes("route untrusted input")) score += 12;
+  if (path.title.includes("auto-approve package-script")) score += 12;
   if (path.title.includes("replay memory")) score += 12;
   if (path.title.includes("replay generated state")) score += 12;
   if (path.title.includes("route sensitive context")) score += 5;

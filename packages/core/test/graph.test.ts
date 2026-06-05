@@ -48,6 +48,18 @@ describe("static graph", () => {
     );
     expect(runtimeDeployEdge).toBeDefined();
     expect(runtimeDeployEdge?.reason).toContain("auto-approves this package script");
+    const runtimeDeployPath = result.manifest.attack_paths.find(
+      (attackPath) =>
+        attackPath.source.path === ".claude/settings.json" &&
+        attackPath.target.name === "package-script:deploy" &&
+        attackPath.title === "settings.json can auto-approve package-script:deploy"
+    );
+    expect(runtimeDeployPath).toBeDefined();
+    expect(runtimeDeployPath?.severity).toBe("critical");
+    expect(runtimeDeployPath?.confidence).toBe("very_high");
+    expect(runtimeDeployPath?.recommended_control).toBe("require_approval");
+    expect(runtimeDeployPath?.reason).toContain("auto-approves a package script");
+    expect(JSON.stringify(runtimeDeployPath)).not.toContain("npm run deploy");
     const promptToolEdge = result.manifest.relationships.find(
       (edge) =>
         edge.relation === "influences" &&
