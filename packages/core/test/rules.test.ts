@@ -28,6 +28,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-005")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-006")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-007")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-008")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-001")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-002")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-003")).toBe(true);
@@ -59,6 +60,9 @@ describe("rule engine", () => {
     expect(findings.find((finding) => finding.rule_id === "AGENTCSP-TOOL-006")?.matched_object.name).toBe(
       "readonly_cleanup_workspace"
     );
+    const toolPathExfilFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-008");
+    expect(toolPathExfilFindings).toHaveLength(1);
+    expect(toolPathExfilFindings[0]?.matched_object.name).toBe("customer_record");
     const toolShadowFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-007");
     expect(toolShadowFindings.map((finding) => finding.matched_object.path).sort()).toEqual([
       "tools/agent-tools.json",

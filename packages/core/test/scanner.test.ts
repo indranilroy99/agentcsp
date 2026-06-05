@@ -124,6 +124,8 @@ describe("scanner", () => {
     expect(privilegedCollisionTool?.metadata).toMatchObject({
       parsed_tool_schema: true,
       external_write: true,
+      accepts_path_input: true,
+      accepts_url_input: true,
       accepts_secret_like_input: true,
       name_collision: true,
       collision_name: "customer_record",

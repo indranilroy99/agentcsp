@@ -1,0 +1,35 @@
+id: AGENTCSP-TOOL-008
+name: Tool schema can send local path input to external destination
+description: A tool schema accepts local path-like input, a URL-like destination, and external write authority, creating a concrete exfiltration path if agent context controls tool arguments.
+category: tool_schema_authority
+severity: critical
+maps_to:
+  owasp:
+    - LLM01:2025 Prompt Injection
+    - LLM02:2025 Sensitive Information Disclosure
+    - LLM06:2025 Excessive Agency
+  mitre_atlas:
+    - AML.T0051 LLM Plugin Compromise
+    - AML.T0057 Exfiltration via Cyber Means
+  nist_ai_rmf:
+    - MAP 4.1
+    - MEASURE 2.7
+    - MANAGE 2.4
+match:
+  object_type: tool
+  where:
+    - field: metadata.parsed_tool_schema
+      op: equals
+      value: true
+    - field: metadata.external_write
+      op: equals
+      value: true
+    - field: metadata.accepts_path_input
+      op: equals
+      value: true
+    - field: metadata.accepts_url_input
+      op: equals
+      value: true
+recommendation:
+  control: require_approval
+  text: Require approval, path allowlists, and outbound destination controls before this tool can send local path-derived data externally.

@@ -47,7 +47,7 @@ Runtime enforcement adapters, deeper graph traversal, and the dashboard are plan
 - **Agent Manifest**: emits `agent-manifest.json`, an SBOM-style record for AI agent deployments.
 - **Authority Signals**: classifies actions such as read, write, execute, publish, send, delete, remember, and call.
 - **Skill Data-Flow Signals**: records redacted skill inputs and outputs when skills bridge retrieved context, tool output, memory, or prompts to external publication.
-- **MCP and Tool Schema Authority**: extracts individual tool schemas and classifies package-runner MCP launchers, tool name collisions, external writes, destructive actions, credential-like inputs, open-world arguments, read-only hint conflicts, filesystem paths, URL inputs, browser control, memory access, and shell authority.
+- **MCP and Tool Schema Authority**: extracts individual tool schemas and classifies package-runner MCP launchers, tool name collisions, external writes, local-path-to-external data flow, destructive actions, credential-like inputs, open-world arguments, read-only hint conflicts, filesystem paths, URL inputs, browser control, memory access, and shell authority.
 - **Remote MCP Trust Signals**: detects remote MCP servers, redacts URLs and header values, records host/header/key metadata, and flags credential-backed third-party MCP access.
 - **Runtime Posture Inventory**: parses agent runtime configs for sandbox mode, approval policy, network access, privileged tool allowlists, and env key exposure.
 - **Prompt Template Signals**: records redacted template variables and flags untrusted user/customer/context variables that are joined with tool or external action directives.

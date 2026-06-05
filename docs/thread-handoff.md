@@ -375,6 +375,15 @@ The current iteration adds:
 - fixture coverage using the existing external publisher skill
 - scanner and rule regression coverage proving skill text remains redacted
 
+## Tool Path Exfiltration Pass
+
+The current iteration adds:
+
+- rule `AGENTCSP-TOOL-008` for parsed tool schemas that accept local path-like input, a URL-like destination, and external-write authority
+- regression coverage binding the rule to the vulnerable `customer_record` tool
+- scanner assertions proving the tool carries parsed path, URL, external-write, and credential-like authority metadata
+- documentation updates for local-path-to-external data-flow detection as a high-signal AgentCSP rule pattern
+
 ## Initial Build Recommendation
 
 Start with a CLI-first MVP before building the dashboard:
