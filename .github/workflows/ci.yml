@@ -34,6 +34,9 @@ jobs:
       - name: TypeScript check
         run: pnpm lint
 
+      - name: Verify exported schemas
+        run: pnpm verify:schemas
+
       - name: Test
         run: pnpm test
 

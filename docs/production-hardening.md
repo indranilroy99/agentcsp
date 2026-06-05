@@ -54,6 +54,7 @@ A finding should be considered production-grade when it includes:
 - recommended control
 - OWASP, MITRE ATLAS, and NIST AI RMF mappings where applicable
 - redacted evidence
+- exported JSON Schema drift verification against Zod source definitions
 
 ## High-Signal Rule Strategy
 
@@ -112,6 +113,7 @@ Every production change should pass:
 - high/critical dependency audit for the tool's own release hygiene
 - fixture scan
 - SARIF validation
+- JSON Schema export verification
 
 ## Near-Term Production Work
 

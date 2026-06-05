@@ -301,6 +301,7 @@ The current iteration adds:
 - package builds copy built-in YAML rules into `packages/core/dist/builtin-rules`, and `@agentcsp/core` package files include the compiled distribution
 - core build uses forced TypeScript project emit before copying rule assets so stale `dist` state cannot omit compiled modules
 - `pnpm verify:packages` checks compiled package modules, package `files`, and built-in rule count parity between source and packaged artifacts
+- `pnpm verify:schemas` checks exported JSON Schema files against the current Zod source schemas without rewriting them
 - project-local malformed, schema-invalid, or duplicate custom rules are skipped with redacted diagnostics
 - parse-error metadata on affected fallback surfaces
 - Markdown Scan Diagnostics section

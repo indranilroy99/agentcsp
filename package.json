@@ -14,7 +14,8 @@
     "lint": "tsc -p packages/core/tsconfig.json --noEmit && tsc -p packages/cli/tsconfig.json --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
-    "verify:packages": "node scripts/verify-package-artifacts.mjs"
+    "verify:packages": "node scripts/verify-package-artifacts.mjs",
+    "verify:schemas": "tsx scripts/verify-schemas.ts"
   },
   "devDependencies": {
     "@types/node": "^24.0.0",
