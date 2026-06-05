@@ -47,6 +47,7 @@ A finding should be considered production-grade when it includes:
 - prompt-template memory persistence signals for cross-session contamination
 - memory replay signals for persisted context that explicitly names privileged tools
 - RAG and memory data-egress signals for sensitive context routed toward external destinations
+- RAG/vector-store connector metadata for remote credential-backed stores with write or sync ingestion
 - skill data-flow signals for context-to-external-output bridges
 - source-anchored attack paths for dangerous context that reaches direct data-egress capabilities
 - source-anchored attack paths for project prompt templates that route untrusted variables to explicit privileged tools
@@ -90,6 +91,7 @@ Examples:
 - memory write plus untrusted source provenance
 - RAG or memory content with instruction-like text plus tool/external directives
 - retrieved content plus sensitive context reference plus external data-egress directive
+- remote vector store plus credential reference plus untrusted source ingestion plus write/sync authority
 - generated transcripts or cached tool output with instruction-like tool/external directives
 - local path input plus URL-like destination plus external write capability
 - open-world tool schema plus external, filesystem, credential, or execution authority

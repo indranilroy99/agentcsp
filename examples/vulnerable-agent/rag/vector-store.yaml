@@ -1,0 +1,13 @@
+provider: pinecone
+endpoint: https://agentcsp-demo-vector.example.invalid
+api_key: ${PINECONE_API_KEY}
+index: customer-support-escalations
+namespace: internal-ticket-memory
+mode: read_write
+sync:
+  enabled: true
+  ingest_on_startup: true
+sources:
+  - support_tickets
+  - customer_notes
+  - public_web_pages

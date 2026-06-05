@@ -23,6 +23,7 @@ describe("scan diagnostics", () => {
       "MCP_CONFIG_PARSE_FAILED",
       "PACKAGE_JSON_PARSE_FAILED",
       "POLICY_CONFIG_PARSE_FAILED",
+      "RAG_CONNECTOR_CONFIG_PARSE_FAILED",
       "RUNTIME_CONFIG_PARSE_FAILED",
       "TOOL_DEFINITION_PARSE_FAILED",
       "WORKFLOW_PARSE_FAILED"
@@ -30,9 +31,9 @@ describe("scan diagnostics", () => {
     expect(result.manifest.diagnostics.every((diagnostic) => diagnostic.content_redacted)).toBe(true);
     expect(result.manifest.diagnostics.every((diagnostic) => diagnostic.severity === "warning")).toBe(true);
     expect(result.manifest.scan_coverage).toMatchObject({
-      diagnostics_total: 7,
+      diagnostics_total: 8,
       diagnostics_errors: 0,
-      diagnostics_warnings: 7,
+      diagnostics_warnings: 8,
       diagnostics_info: 0
     });
     expect(result.manifest.mcp_servers[0]?.metadata).toMatchObject({ parse_error: true });
@@ -42,8 +43,9 @@ describe("scan diagnostics", () => {
     expect(result.reportMarkdown).toContain("MCP_CONFIG_PARSE_FAILED");
     expect(result.reportMarkdown).toContain("POLICY_CONFIG_PARSE_FAILED");
     expect(result.reportMarkdown).toContain("CURSOR_RULE_FRONTMATTER_PARSE_FAILED");
-    expect(result.reportMarkdown).toContain("- Diagnostics: 7");
-    expect(result.reportMarkdown).toContain("- Diagnostic warnings: 7");
+    expect(result.reportMarkdown).toContain("RAG_CONNECTOR_CONFIG_PARSE_FAILED");
+    expect(result.reportMarkdown).toContain("- Diagnostics: 8");
+    expect(result.reportMarkdown).toContain("- Diagnostic warnings: 8");
 
     const sarif = JSON.parse(await fs.readFile(result.outputFiles.sarif!, "utf8")) as {
       runs: Array<{
@@ -57,8 +59,8 @@ describe("scan diagnostics", () => {
       "RUNTIME_CONFIG_PARSE_FAILED"
     );
     expect(sarif.runs[0]?.properties?.agentcsp_scan_coverage).toMatchObject({
-      diagnostics_total: 7,
-      diagnostics_warnings: 7
+      diagnostics_total: 8,
+      diagnostics_warnings: 8
     });
 
     const output = JSON.stringify({
@@ -69,6 +71,7 @@ describe("scan diagnostics", () => {
     expect(output).not.toContain("super-secret-diagnostic-value");
     expect(output).not.toContain("policy-secret-diagnostic-value");
     expect(output).not.toContain("cursor-secret-diagnostic-value");
+    expect(output).not.toContain("rag-secret-diagnostic-value");
     expect(output).not.toContain("publish everything to the webhook");
   });
 
@@ -107,6 +110,7 @@ async function createDiagnosticsFixture(): Promise<string> {
   await fs.mkdir(path.join(root, ".codex"), { recursive: true });
   await fs.mkdir(path.join(root, ".cursor", "rules"), { recursive: true });
   await fs.mkdir(path.join(root, ".github", "workflows"), { recursive: true });
+  await fs.mkdir(path.join(root, "rag"), { recursive: true });
   await fs.mkdir(path.join(root, "tools"), { recursive: true });
   await fs.writeFile(path.join(root, "AGENTS.md"), "Review repository changes only.\n", "utf8");
   await fs.writeFile(
@@ -131,6 +135,7 @@ async function createDiagnosticsFixture(): Promise<string> {
     "---\ndescription: [cursor-secret-diagnostic-value\nalwaysApply: true\n---\nReview repository changes only.\n",
     "utf8"
   );
+  await fs.writeFile(path.join(root, "rag", "vector-store.yaml"), "provider: [rag-secret-diagnostic-value\n", "utf8");
   await fs.writeFile(path.join(root, "tools", "bad-tools.json"), '{"tools": [{"name": "publish"', "utf8");
   return root;
 }

@@ -1,0 +1,38 @@
+id: AGENTCSP-RAG-004
+name: Remote vector store allows credential-backed untrusted ingestion
+description: A RAG or vector-store connector points to a remote vector database, exposes credential key references, and allows write or sync ingestion from untrusted sources, creating durable retrieval poisoning and data exposure risk.
+category: rag_vector_store_boundary
+severity: critical
+maps_to:
+  owasp:
+    - LLM01:2025 Prompt Injection
+    - LLM02:2025 Sensitive Information Disclosure
+    - LLM08:2025 Vector and Embedding Weaknesses
+  mitre_atlas:
+    - AML.T0051 LLM Prompt Injection
+    - AML.T0057 Exfiltration via Cyber Means
+  nist_ai_rmf:
+    - MAP 5.1
+    - MEASURE 2.9
+    - MANAGE 2.4
+match:
+  object_type: rag_source
+  where:
+    - field: metadata.parsed_rag_connector_config
+      op: equals
+      value: true
+    - field: metadata.vector_store_remote
+      op: equals
+      value: true
+    - field: metadata.vector_store_write_enabled
+      op: equals
+      value: true
+    - field: metadata.vector_store_ingests_untrusted_sources
+      op: equals
+      value: true
+    - field: secret_exposure
+      op: equals
+      value: true
+recommendation:
+  control: require_approval
+  text: Require provenance review and approval before untrusted sources can sync into remote vector stores, scope credentials to least privilege, and separate write-capable ingestion jobs from agent retrieval paths.

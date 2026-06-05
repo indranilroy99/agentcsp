@@ -56,6 +56,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RAG-001")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RAG-002")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RAG-003")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RAG-004")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-SKILL-001")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MEMORY-002")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MEMORY-003")).toBe(true);
@@ -130,6 +131,21 @@ describe("rule engine", () => {
     expect(ragEgressFindings[0]?.matched_object.path).toBe("rag/customer-note.md");
     expect(ragEgressFindings[0]?.data_classes).toContain("confidential");
     expect(ragEgressFindings[0]?.confidence).toBe("very_high");
+    const ragVectorFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-RAG-004");
+    expect(ragVectorFindings).toHaveLength(1);
+    expect(ragVectorFindings[0]?.matched_object.path).toBe("rag/vector-store.yaml");
+    expect(ragVectorFindings[0]?.matched_object.metadata).toMatchObject({
+      vector_store_provider: "pinecone",
+      vector_store_remote: true,
+      vector_store_write_enabled: true,
+      vector_store_sync_enabled: true,
+      vector_store_ingests_untrusted_sources: true
+    });
+    expect(ragVectorFindings[0]?.severity).toBe("critical");
+    expect(ragVectorFindings[0]?.confidence).toBe("very_high");
+    expect(ragVectorFindings[0]?.recommended_control).toBe("require_approval");
+    expect(JSON.stringify(ragVectorFindings[0])).not.toContain("${PINECONE_API_KEY}");
+    expect(JSON.stringify(ragVectorFindings[0])).not.toContain("agentcsp-demo-vector.example.invalid");
     expect(findings.find((finding) => finding.rule_id === "AGENTCSP-SKILL-001")?.matched_object.path).toBe(
       "skills/exfil-skill/SKILL.md"
     );

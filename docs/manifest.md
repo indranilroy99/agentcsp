@@ -309,6 +309,31 @@ Content metadata may include:
 
 Raw RAG, memory, transcript, and cached-output text is not emitted. AgentCSP records normalized signals and exact references to already-discovered callables so rules can reason about indirect prompt injection, generated-state replay, and cross-session contamination without publishing the content.
 
+RAG and vector-store connector configs are also normalized into `rag_source` objects when common retrieval, vector, embedding, or knowledge-store configuration files are discovered.
+
+Connector metadata may include:
+
+- `parsed_rag_connector_config`
+- `parse_error`
+- `rag_connector_fields`
+- `vector_store`
+- `vector_store_provider`
+- `vector_store_remote`
+- `vector_store_destination_redacted`
+- `vector_store_remote_destination_count`
+- `vector_store_remote_destination_kinds`
+- `vector_store_write_enabled`
+- `vector_store_sync_enabled`
+- `vector_store_ingests_untrusted_sources`
+- `vector_store_sensitive_collection`
+- `vector_store_pii_collection`
+- `vector_store_namespace_redacted`
+- `env_key_names`
+- `secret_ref_key_names`
+- `values_collected`
+
+Raw vector-store URLs, endpoints, collection names, namespaces, source labels, and secret placeholders are not emitted. Provider names, redacted destination categories, field names, booleans, counts, and credential key names let rules detect durable retrieval poisoning and remote data exposure without copying connector values into the manifest.
+
 ## Automations
 
 GitHub workflow triggers that can run outside a normal direct code-review path are normalized into `automation` objects.

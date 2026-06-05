@@ -546,6 +546,16 @@ The current iteration adds:
 - rule `AGENTCSP-CURSOR-001` for broad always-applied Cursor project rules that bridge untrusted context into privileged agent behavior
 - scanner and rule regression coverage proving the Cursor rule is flagged as high-confidence while the safe fixture remains quiet
 
+## RAG Vector Store Boundary Pass
+
+The current iteration adds:
+
+- first-class redacted metadata for RAG/vector-store connector configs, including provider, remote destination categories, write/sync authority, untrusted-source ingestion, sensitive collection signals, namespace redaction, and credential key references
+- redacted diagnostics for malformed RAG connector configuration
+- vulnerable fixture coverage for a remote credential-backed vector store that syncs customer/support sources without emitting raw endpoints, collection names, namespaces, source labels, or secret placeholders
+- rule `AGENTCSP-RAG-004` for remote vector stores that combine credentials, write authority, and untrusted ingestion
+- scanner, rule, fixture verifier, and redaction coverage proving the vector-store finding is high-confidence while the safe fixture remains quiet
+
 ## Initial Build Recommendation
 
 Start with a CLI-first MVP before building the dashboard:

@@ -107,6 +107,11 @@ export async function detectSurfaces(files: WalkedFile[]): Promise<DetectedSurfa
       continue;
     }
 
+    if (isRagConnectorConfigPath(file.relativePath, basename)) {
+      detectRagConnectorConfig(file, text, surfaces);
+      continue;
+    }
+
     if (INSTRUCTION_FILE_NAMES.has(basename) || isCursorRulePath(lowerPath)) {
       const content = text ?? "";
       const cursorRule = isCursorRulePath(lowerPath) ? classifyCursorRule(file, content, surfaces) : undefined;
@@ -282,6 +287,62 @@ function detectRagContentFile(file: WalkedFile, text: string | undefined, surfac
   });
 }
 
+function detectRagConnectorConfig(file: WalkedFile, text: string | undefined, surfaces: DetectedSurfaces): void {
+  const content = text ?? "";
+  const parsed = parseStructuredConfig(content, file.relativePath);
+  if (parsed.parseFailed) {
+    addDiagnostic(surfaces, file, {
+      parser: parsed.parser ?? "structured_config",
+      code: "RAG_CONNECTOR_CONFIG_PARSE_FAILED",
+      reason: "RAG or vector-store connector configuration could not be parsed. Raw content was redacted."
+    });
+  }
+
+  const posture = classifyRagConnectorConfig(parsed.value, file.relativePath);
+  const actions = new Set<ActionType>(["read", "call"]);
+  if (posture.vector_store_write_enabled || posture.vector_store_sync_enabled) {
+    actions.add("write");
+    actions.add("remember");
+  }
+  if (posture.vector_store_remote) actions.add("send");
+
+  const dataClasses = new Set<SurfaceObject["data_classes"][number]>(["unknown"]);
+  if (posture.secret_ref_key_names.length > 0 || posture.env_key_names.some(isCredentialLikeKeyName)) {
+    dataClasses.add("credential");
+  }
+  if (posture.vector_store_sensitive_collection || posture.vector_store_ingests_untrusted_sources) {
+    dataClasses.add("confidential");
+  }
+  if (posture.vector_store_pii_collection) dataClasses.add("pii");
+  if (dataClasses.size > 1) dataClasses.delete("unknown");
+
+  const object = createSurfaceObject({
+    type: "rag_source",
+    name: path.basename(file.relativePath),
+    path: file.relativePath,
+    trust_level: posture.vector_store_remote ? "third_party" : inferTrustLevel(file.relativePath),
+    data_classes: uniqueDataClasses([...dataClasses] as SurfaceObject["data_classes"]),
+    actions: uniqueActions([...actions]),
+    side_effect: posture.vector_store_write_enabled || posture.vector_store_sync_enabled,
+    reversible: !posture.vector_store_write_enabled && !posture.vector_store_sync_enabled,
+    external_reach: posture.vector_store_remote,
+    secret_exposure: posture.secret_ref_key_names.length > 0 || posture.env_key_names.some(isCredentialLikeKeyName),
+    reason: "RAG or vector-store connector configuration discovered as retrieval authority.",
+    metadata: {
+      content_redacted: true,
+      content_analyzed: false,
+      values_collected: false,
+      parsed_rag_connector_config: Boolean(parsed.value) && !parsed.parseFailed,
+      parse_error: parsed.parseFailed,
+      ...posture
+    }
+  });
+  surfaces.rag_sources.push({
+    ...object,
+    untrusted_to_privileged: isUntrustedToPrivileged(object)
+  });
+}
+
 function detectMemoryContentFile(file: WalkedFile, text: string | undefined, surfaces: DetectedSurfaces): void {
   const content = text ?? "";
   const signals = classifyContextContent(content);
@@ -410,6 +471,18 @@ function contextSurfaceType(relativePath: string): "rag_source" | "memory" | und
   return undefined;
 }
 
+function isRagConnectorConfigPath(relativePath: string, basename: string): boolean {
+  const normalized = relativePath.replaceAll("\\", "/").toLowerCase();
+  const lowerBase = basename.toLowerCase();
+  if (!/\.(json|ya?ml|toml)$/iu.test(lowerBase)) return false;
+
+  const segments = normalized.split("/").slice(0, -1);
+  const inRagDirectory = segments.some((segment) => RAG_DIR_NAMES.has(segment));
+  const connectorName = /(?:rag|retriev|vector|embedding|embed|knowledge|corpus|index|connector|source|store)/iu.test(lowerBase);
+  const configName = /(?:config|settings|store|index|source|connector|vector|embedding|retrieval)/iu.test(lowerBase);
+  return (inRagDirectory && configName) || connectorName;
+}
+
 function isPromptTemplatePath(relativePath: string, basename: string): boolean {
   const normalized = relativePath.replaceAll("\\", "/").toLowerCase();
   const lowerBase = basename.toLowerCase();
@@ -480,9 +553,198 @@ interface SkillDataFlowSignals {
   context_bridge_external_output: boolean;
 }
 
+interface RagConnectorPosture {
+  rag_connector_fields: string[];
+  vector_store: boolean;
+  vector_store_provider?: string;
+  vector_store_remote: boolean;
+  vector_store_destination_redacted: boolean;
+  vector_store_remote_destination_count: number;
+  vector_store_remote_destination_kinds: string[];
+  vector_store_write_enabled: boolean;
+  vector_store_sync_enabled: boolean;
+  vector_store_ingests_untrusted_sources: boolean;
+  vector_store_sensitive_collection: boolean;
+  vector_store_pii_collection: boolean;
+  vector_store_namespace_redacted: boolean;
+  env_key_names: string[];
+  secret_ref_key_names: string[];
+}
+
 interface CursorRuleClassification {
   analyzedContent: string;
   metadata: Record<string, unknown>;
+}
+
+function classifyRagConnectorConfig(value: unknown, filePath: string): RagConnectorPosture {
+  const fields = flattenRuntimeFields(value);
+  const stringValues = collectFieldStringValues(fields);
+  const provider = inferVectorStoreProvider([filePath, ...fields.map((field) => field.path), ...stringValues]);
+  const remote = classifyVectorStoreRemote(fields, provider);
+  const envKeys = collectEnvKeyNamesFromConfig(value);
+  const secretRefKeys = extractSecretReferenceKeys(stringValues);
+  const writeEnabled = hasVectorWriteSignal(fields);
+  const syncEnabled = hasVectorSyncSignal(fields);
+  const untrustedSources = hasVectorUntrustedSourceSignal(fields);
+  const sensitiveCollection = hasVectorSensitiveCollectionSignal(fields);
+  const piiCollection = hasVectorPiiCollectionSignal(fields);
+  const namespaceRedacted = fields.some((field) => /(^|\.)(collection|collections|namespace|index|indexes|table|bucket|corpus|dataset)$/iu.test(field.path));
+
+  return {
+    rag_connector_fields: fields
+      .map((field) => field.path)
+      .filter((fieldPath) => isRagConnectorSecurityField(fieldPath))
+      .sort((a, b) => a.localeCompare(b)),
+    vector_store: true,
+    vector_store_provider: provider,
+    vector_store_remote: remote.remote,
+    vector_store_destination_redacted: remote.destinationCount > 0,
+    vector_store_remote_destination_count: remote.destinationCount,
+    vector_store_remote_destination_kinds: remote.destinationKinds,
+    vector_store_write_enabled: writeEnabled,
+    vector_store_sync_enabled: syncEnabled,
+    vector_store_ingests_untrusted_sources: untrustedSources,
+    vector_store_sensitive_collection: sensitiveCollection,
+    vector_store_pii_collection: piiCollection,
+    vector_store_namespace_redacted: namespaceRedacted,
+    env_key_names: envKeys,
+    secret_ref_key_names: secretRefKeys
+  };
+}
+
+function collectFieldStringValues(fields: RuntimeField[]): string[] {
+  const values = new Set<string>();
+  for (const field of fields) {
+    if (typeof field.value === "string") values.add(field.value);
+    if (Array.isArray(field.value)) {
+      for (const item of field.value) values.add(String(item));
+    }
+  }
+  return [...values].sort((a, b) => a.localeCompare(b));
+}
+
+function inferVectorStoreProvider(candidates: string[]): string | undefined {
+  const text = candidates.join(" ").toLowerCase();
+  const providers: Array<[string, RegExp]> = [
+    ["pinecone", /\bpinecone\b/iu],
+    ["qdrant", /\bqdrant\b/iu],
+    ["weaviate", /\bweaviate\b/iu],
+    ["chroma", /\b(chroma|chromadb)\b/iu],
+    ["supabase", /\bsupabase\b/iu],
+    ["pgvector", /\bpgvector\b/iu],
+    ["milvus", /\bmilvus\b/iu],
+    ["redis", /\bredis\b/iu],
+    ["elasticsearch", /\belasticsearch\b/iu],
+    ["opensearch", /\bopensearch\b/iu],
+    ["azure_ai_search", /\b(azure[_\s-]?ai[_\s-]?search|azure[_\s-]?search)\b/iu],
+    ["vespa", /\bvespa\b/iu]
+  ];
+  return providers.find(([, pattern]) => pattern.test(text))?.[0];
+}
+
+function classifyVectorStoreRemote(
+  fields: RuntimeField[],
+  provider: string | undefined
+): { remote: boolean; destinationCount: number; destinationKinds: string[] } {
+  const destinationKinds = new Set<string>();
+  let destinationCount = 0;
+  const managedProviders = new Set(["pinecone", "supabase", "azure_ai_search"]);
+  if (provider && managedProviders.has(provider)) {
+    destinationKinds.add("managed_vector_db");
+    destinationCount += 1;
+  }
+
+  for (const field of fields) {
+    const values = Array.isArray(field.value) ? field.value.map(String) : [String(field.value ?? "")];
+    for (const value of values) {
+      const remoteUrl = parseRemoteHttpUrl(value);
+      if (remoteUrl) {
+        destinationKinds.add("http_endpoint");
+        destinationCount += 1;
+      }
+    }
+    if (/(^|\.)(endpoint|url|uri|host|dsn|connection|string)$/iu.test(field.path)) {
+      const text = values.join(" ");
+      if (/\b(cloud|api|svc|service|cluster|pinecone|qdrant|weaviate|supabase|azure|elastic|opensearch)\b/iu.test(text)) {
+        destinationKinds.add("configured_endpoint");
+        destinationCount += 1;
+      }
+    }
+  }
+
+  const kinds = [...destinationKinds].sort((a, b) => a.localeCompare(b));
+  return {
+    remote: destinationCount > 0,
+    destinationCount,
+    destinationKinds: kinds
+  };
+}
+
+function parseRemoteHttpUrl(value: string): URL | undefined {
+  try {
+    const parsed = new URL(value);
+    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return undefined;
+    if (isLocalHost(parsed.hostname.toLowerCase())) return undefined;
+    return parsed;
+  } catch {
+    return undefined;
+  }
+}
+
+function hasVectorWriteSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => {
+    const pathMatch = /(^|\.)(write|writable|read_write|upsert|upserts|insert|ingest|indexing|mutate|mutable|update|delete|sync|allow_updates|allow_deletes)$/iu.test(
+      field.path
+    );
+    const valueText = fieldValueText(field).toLowerCase();
+    return (pathMatch && truthyConfigValue(field.value)) || /\b(read_write|write|writable|upsert|insert|ingest|sync|mutable)\b/iu.test(valueText);
+  });
+}
+
+function hasVectorSyncSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => /(^|\.)sync(\.|$)|ingest_on_startup|auto_ingest|auto_sync/iu.test(field.path) && truthyConfigValue(field.value));
+}
+
+function hasVectorUntrustedSourceSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /\b(user|customer|client|ticket|support|issue|comment|message|email|slack|web|browser|public|external|retrieved|document|note)\b/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    )
+  );
+}
+
+function hasVectorSensitiveCollectionSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /\b(customer|client|ticket|support|internal|confidential|private|proprietary|sensitive|account|record|case)\b/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    )
+  );
+}
+
+function hasVectorPiiCollectionSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => /\b(pii|email|phone|address|ssn|passport)\b/iu.test(`${field.path} ${fieldValueText(field)}`));
+}
+
+function fieldValueText(field: RuntimeField): string {
+  if (Array.isArray(field.value)) return field.value.map(String).join(" ");
+  if (typeof field.value === "string" || typeof field.value === "number" || typeof field.value === "boolean") {
+    return String(field.value);
+  }
+  return "";
+}
+
+function truthyConfigValue(value: unknown): boolean {
+  if (typeof value === "boolean") return value;
+  if (typeof value === "number") return value !== 0;
+  if (typeof value === "string") return !/^(false|no|off|disabled|disable|none|readonly|read_only|read-only|0)$/iu.test(value.trim());
+  if (Array.isArray(value)) return value.length > 0;
+  return Boolean(value);
+}
+
+function isRagConnectorSecurityField(fieldPath: string): boolean {
+  return /provider|endpoint|url|uri|host|dsn|connection|secret|token|api[_-]?key|credential|auth|env|collection|namespace|index|table|bucket|corpus|dataset|write|upsert|insert|ingest|sync|source|document|embedding|vector/iu.test(
+    fieldPath
+  );
 }
 
 function isCursorRulePath(lowerPath: string): boolean {
@@ -1978,7 +2240,7 @@ function isRuntimeConfigPath(relativePath: string, basename: string): boolean {
   return false;
 }
 
-function parseRuntimeConfig(content: string, filePath: string): { value?: unknown; parseFailed: boolean; parser?: string } {
+function parseStructuredConfig(content: string, filePath: string): { value?: unknown; parseFailed: boolean; parser?: string } {
   if (!content.trim()) return { parseFailed: false };
   const lowerPath = filePath.toLowerCase();
   const parser = lowerPath.endsWith(".json")
@@ -1996,6 +2258,10 @@ function parseRuntimeConfig(content: string, filePath: string): { value?: unknow
     return { parseFailed: true, parser };
   }
   return { parseFailed: false, parser };
+}
+
+function parseRuntimeConfig(content: string, filePath: string): { value?: unknown; parseFailed: boolean; parser?: string } {
+  return parseStructuredConfig(content, filePath);
 }
 
 function classifyRuntimeConfig(value: unknown): RuntimePosture {
