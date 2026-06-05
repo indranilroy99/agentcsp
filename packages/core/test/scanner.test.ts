@@ -211,8 +211,15 @@ describe("scanner", () => {
     expect(surfaces.ci_cd[0]?.metadata).toMatchObject({
       pull_request_trigger: true,
       write_permissions: true,
-      mentions_secrets_context: true
+      mentions_secrets_context: true,
+      run_commands_redacted: true,
+      run_command_count: 1,
+      package_manager_run: true,
+      agent_run_command: true,
+      agent_package_script_names: ["agent:run"],
+      agent_package_script_bridge: true
     });
+    expect(surfaces.ci_cd[0]?.metadata.referenced_package_scripts).toEqual(["package-script:agent:run"]);
     const automation = surfaces.automations.find((surface) => surface.name === "workflow:agent-maintenance.yml");
     expect(automation).toMatchObject({
       type: "automation",
@@ -227,8 +234,15 @@ describe("scanner", () => {
       external_dispatch: true,
       write_permissions: true,
       mentions_secrets_context: true,
+      run_commands_redacted: true,
+      run_command_count: 1,
+      package_manager_run: true,
+      agent_run_command: true,
+      agent_package_script_bridge: true,
       automation_triggers: ["repository_dispatch", "schedule", "workflow_dispatch"]
     });
+    expect(automation?.metadata.agent_package_script_names).toEqual(["agent:run"]);
+    expect(automation?.metadata.referenced_agent_package_scripts).toEqual(["package-script:agent:run"]);
     expect(automation?.actions).toContain("write");
     expect(automation?.actions).toContain("execute");
     expect(surfaces.rag_sources.length).toBeGreaterThanOrEqual(1);

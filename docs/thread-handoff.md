@@ -405,6 +405,16 @@ The current iteration adds:
 - regression coverage proving the vulnerable Codex-style runtime points to the secret-backed `filesystem-admin` MCP server
 - docs updates for runtime-to-MCP reference detection as a concrete blast-radius signal
 
+## Agent Automation Script Pass
+
+The current iteration adds:
+
+- redacted workflow run-command signals for package-manager agent script execution
+- post-scan workflow annotation that correlates CI/CD and automation surfaces to discovered `package-script:*` tool objects
+- static graph `triggers` relationships from workflows to referenced package scripts
+- rule `AGENTCSP-AUTOMATION-002` for unattended workflows that run agent package scripts with secrets and write authority
+- regression coverage proving the vulnerable workflow references `package-script:agent:run` while the safe fixture remains clean
+
 ## Initial Build Recommendation
 
 Start with a CLI-first MVP before building the dashboard:

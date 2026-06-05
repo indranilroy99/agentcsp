@@ -32,6 +32,14 @@ describe("static graph", () => {
           edge.target.name === "filesystem-admin"
       )
     ).toBe(true);
+    expect(
+      result.manifest.relationships.some(
+        (edge) =>
+          edge.relation === "triggers" &&
+          edge.source.path === ".github/workflows/agent-maintenance.yml" &&
+          edge.target.name === "package-script:agent:run"
+      )
+    ).toBe(true);
     expect(result.manifest.relationships.some((edge) => edge.source.path === "rag")).toBe(false);
     expect(result.manifest.relationships.some((edge) => edge.source.path === "memory")).toBe(false);
     expect(

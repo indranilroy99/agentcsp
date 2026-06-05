@@ -53,7 +53,7 @@ Runtime enforcement adapters, deeper graph traversal, and the dashboard are plan
 - **Runtime Posture Inventory**: parses agent runtime configs for sandbox mode, approval policy, network access, privileged tool allowlists, MCP references, and env key exposure.
 - **Prompt Template Signals**: records redacted template variables and flags untrusted user/customer/context variables that are joined with tool or external action directives.
 - **RAG, Memory, and Generated-State Signals**: records redacted instruction-like, tool-directive, external-send, persistence, transcript, cached-output, and tool-output replay signals from retrieval, memory, and included log files.
-- **Automation Authority**: models scheduled, manual, and externally dispatched workflows as agent-relevant automation surfaces.
+- **Automation Authority**: models scheduled, manual, and externally dispatched workflows, including redacted agent package-script execution, as agent-relevant automation surfaces.
 - **Trust Boundary Analysis**: tracks trusted, project, workspace, third-party, untrusted, and unknown provenance.
 - **Explainable Risk Scoring**: severity includes contributing factors such as trust level, data class, reversibility, external reach, and secret exposure.
 - **Finding Confidence**: each finding includes confidence and rationale so teams can separate correlated evidence from weaker static signals.

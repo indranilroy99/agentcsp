@@ -38,6 +38,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-003")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-CICD-002")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-AUTOMATION-001")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-AUTOMATION-002")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-INSTRUCTION-001")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-PROMPT-001")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RAG-001")).toBe(true);
@@ -51,6 +52,10 @@ describe("rule engine", () => {
     expect(runtimeMcpFindings).toHaveLength(1);
     expect(runtimeMcpFindings[0]?.matched_object.path).toBe(".codex/config.toml");
     expect(runtimeMcpFindings[0]?.confidence).toBe("very_high");
+    const automationAgentFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-AUTOMATION-002");
+    expect(automationAgentFindings).toHaveLength(1);
+    expect(automationAgentFindings[0]?.matched_object.path).toBe(".github/workflows/agent-maintenance.yml");
+    expect(automationAgentFindings[0]?.confidence).toBe("very_high");
     expect(findings.find((finding) => finding.rule_id === "AGENTCSP-MCP-004")?.matched_object.name).toBe(
       "ticketing-package-runner"
     );

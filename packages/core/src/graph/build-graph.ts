@@ -67,6 +67,22 @@ export function buildStaticGraph(surfaces: DetectedSurfaces, findings: Finding[]
     }
   }
 
+  const packageScriptTools = surfaces.tools.filter((tool) => tool.name.startsWith("package-script:"));
+  for (const workflow of [...surfaces.ci_cd, ...surfaces.automations]) {
+    const referencedPackageScripts = stringMetadataArray(workflow.metadata.referenced_package_scripts);
+    if (referencedPackageScripts.length === 0) continue;
+    const referencedPackageScriptSet = new Set(referencedPackageScripts);
+    for (const tool of packageScriptTools.filter((candidate) => referencedPackageScriptSet.has(candidate.name))) {
+      addEdge(
+        relationships,
+        workflow,
+        tool,
+        "triggers",
+        "Workflow run command references this package script. Raw workflow command text is redacted; review agent script authority before automated execution."
+      );
+    }
+  }
+
   for (const memory of surfaces.memory) {
     if (isHeuristicSurface(memory)) continue;
     const persistenceSources = actionableContextSources

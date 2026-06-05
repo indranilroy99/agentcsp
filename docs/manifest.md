@@ -233,10 +233,21 @@ Automation metadata may include:
 - `workflow_run_trigger`
 - `write_permissions`
 - `mentions_secrets_context`
+- `run_commands_redacted`
+- `run_command_count`
+- `package_manager_run`
+- `agent_run_command`
+- `agent_package_script_names`
+- `referenced_package_scripts`
+- `referenced_package_script_count`
+- `referenced_agent_package_scripts`
+- `referenced_agent_package_script_count`
+- `package_script_bridge`
+- `agent_package_script_bridge`
 - `has_permissions_block`
 - `content_redacted`
 
-Automation surfaces let rules reason about scheduled agents, manual dispatches, webhook-style dispatches, and background workflows that can run with secrets or write authority.
+Automation surfaces let rules reason about scheduled agents, manual dispatches, webhook-style dispatches, and background workflows that can run agent scripts with secrets or write authority.
 
 ## Findings
 

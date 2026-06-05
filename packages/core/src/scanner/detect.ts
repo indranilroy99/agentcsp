@@ -231,6 +231,7 @@ export async function detectSurfaces(files: WalkedFile[]): Promise<DetectedSurfa
 
   annotateToolNameCollisions(surfaces);
   annotateRuntimeCapabilityReferences(surfaces);
+  annotateWorkflowPackageScriptReferences(surfaces);
   return surfaces;
 }
 
@@ -801,6 +802,7 @@ function detectWorkflow(file: WalkedFile, text: string | undefined, surfaces: De
   const triggerNames = extractWorkflowTriggers(parsed.on);
   const writePermissions = hasWritePermissions(permissions);
   const mentionsSecretsContext = /secrets\./i.test(content);
+  const commandSignals = classifyWorkflowRunCommands(collectWorkflowRunCommands(parsed));
   const object = createSurfaceObject({
     type: "ci_cd",
     name: path.basename(file.relativePath),
@@ -820,7 +822,8 @@ function detectWorkflow(file: WalkedFile, text: string | undefined, surfaces: De
       parse_error: parseFailed,
       pull_request_trigger: triggerNames.some((trigger) => ["pull_request", "pull_request_target"].includes(trigger)),
       write_permissions: writePermissions,
-      mentions_secrets_context: mentionsSecretsContext
+      mentions_secrets_context: mentionsSecretsContext,
+      ...commandSignals
     }
   });
   surfaces.ci_cd.push({
@@ -831,6 +834,7 @@ function detectWorkflow(file: WalkedFile, text: string | undefined, surfaces: De
     actions,
     writePermissions,
     mentionsSecretsContext,
+    commandSignals,
     permissions
   }, surfaces);
 }
@@ -843,6 +847,7 @@ function detectWorkflowAutomation(
     actions: ActionType[];
     writePermissions: boolean;
     mentionsSecretsContext: boolean;
+    commandSignals: WorkflowCommandSignals;
     permissions: unknown;
   },
   surfaces: DetectedSurfaces
@@ -879,6 +884,7 @@ function detectWorkflowAutomation(
       workflow_run_trigger: automationTriggers.includes("workflow_run"),
       write_permissions: workflow.writePermissions,
       mentions_secrets_context: workflow.mentionsSecretsContext,
+      ...workflow.commandSignals,
       has_permissions_block: Boolean(workflow.permissions)
     }
   });
@@ -1030,6 +1036,39 @@ function annotateRuntimeCapabilityReferences(surfaces: DetectedSurfaces): void {
   });
 }
 
+function annotateWorkflowPackageScriptReferences(surfaces: DetectedSurfaces): void {
+  const packageScriptTools = surfaces.tools
+    .filter((tool) => typeof tool.metadata.script_name === "string")
+    .sort((a, b) => a.name.localeCompare(b.name) || a.path.localeCompare(b.path));
+  if (packageScriptTools.length === 0) return;
+
+  const annotate = (surface: SurfaceObject): SurfaceObject => {
+    const agentScriptNames = stringMetadataArray(surface.metadata.agent_package_script_names);
+    if (agentScriptNames.length === 0) return surface;
+
+    const agentScriptNameSet = new Set(agentScriptNames);
+    const referencedPackageScripts = packageScriptTools.filter((tool) => agentScriptNameSet.has(String(tool.metadata.script_name)));
+    if (referencedPackageScripts.length === 0) return surface;
+
+    const agentPackageScripts = referencedPackageScripts.filter((tool) => isAgentPackageScriptName(String(tool.metadata.script_name)));
+    return {
+      ...surface,
+      metadata: {
+        ...surface.metadata,
+        referenced_package_scripts: surfaceNames(referencedPackageScripts),
+        referenced_package_script_count: referencedPackageScripts.length,
+        referenced_agent_package_scripts: surfaceNames(agentPackageScripts),
+        referenced_agent_package_script_count: agentPackageScripts.length,
+        package_script_bridge: referencedPackageScripts.length > 0,
+        agent_package_script_bridge: agentPackageScripts.length > 0
+      }
+    };
+  };
+
+  surfaces.ci_cd = surfaces.ci_cd.map(annotate);
+  surfaces.automations = surfaces.automations.map(annotate);
+}
+
 function referencedMcpServersForRuntime(allowedTools: string[], mcpServers: SurfaceObject[]): SurfaceObject[] {
   const allowAllTools = allowedTools.some((tool) => /(^|\s|\*)\*(\s|$)|all_tools|all-tools|all tools/iu.test(tool));
   const mcpReferences = new Set<string>();
@@ -1076,6 +1115,76 @@ function surfaceNames(surfaces: SurfaceObject[]): string[] {
 
 function uniqueDataClasses(values: SurfaceObject["data_classes"]): SurfaceObject["data_classes"] {
   return [...new Set(values)].sort((a, b) => a.localeCompare(b));
+}
+
+interface WorkflowCommandSignals {
+  run_commands_redacted: boolean;
+  run_command_count: number;
+  package_manager_run: boolean;
+  agent_run_command: boolean;
+  agent_package_script_names: string[];
+  command_redacted: boolean;
+  command_signals?: unknown;
+  network_to_shell?: unknown;
+  release_or_publish?: unknown;
+  destructive_command?: unknown;
+}
+
+function collectWorkflowRunCommands(value: unknown): string[] {
+  const commands: string[] = [];
+  collectWorkflowRunCommandsInto(value, commands);
+  return commands;
+}
+
+function collectWorkflowRunCommandsInto(value: unknown, commands: string[]): void {
+  if (Array.isArray(value)) {
+    for (const item of value) collectWorkflowRunCommandsInto(item, commands);
+    return;
+  }
+  if (!value || typeof value !== "object") return;
+
+  for (const [key, item] of Object.entries(value as Record<string, unknown>)) {
+    if (key === "run" && typeof item === "string") {
+      commands.push(item);
+      continue;
+    }
+    collectWorkflowRunCommandsInto(item, commands);
+  }
+}
+
+function classifyWorkflowRunCommands(commands: string[]): WorkflowCommandSignals {
+  const joined = commands.join("\n");
+  const commandSignals = redactedCommandSignals(joined);
+  const agentScriptNames = extractAgentPackageScriptNames(joined);
+  return {
+    run_commands_redacted: true,
+    run_command_count: commands.length,
+    package_manager_run: /\b(npm|pnpm|yarn|bun)\b/iu.test(joined),
+    agent_run_command: agentScriptNames.length > 0 || /\b(agent|codex|claude|mcp|assistant|bot)\b/iu.test(joined),
+    agent_package_script_names: agentScriptNames,
+    command_redacted: true,
+    ...commandSignals
+  };
+}
+
+function extractAgentPackageScriptNames(commandText: string): string[] {
+  const names = new Set<string>();
+  const patterns = [
+    /\bnpm\s+run\s+([a-zA-Z0-9][\w:.-]*)/giu,
+    /\b(?:pnpm|yarn|bun)\s+(?:run\s+)?([a-zA-Z0-9][\w:.-]*)/giu
+  ];
+
+  for (const pattern of patterns) {
+    for (const match of commandText.matchAll(pattern)) {
+      if (match[1] && isAgentPackageScriptName(match[1])) names.add(match[1]);
+    }
+  }
+
+  return [...names].sort((a, b) => a.localeCompare(b));
+}
+
+function isAgentPackageScriptName(name: string): boolean {
+  return /\b(agent|codex|claude|mcp|assistant|bot|autogen|crew|langgraph)\b/iu.test(name.replace(/[:._-]/g, " "));
 }
 
 function detectRuntimeConfig(file: WalkedFile, text: string | undefined, surfaces: DetectedSurfaces): void {
