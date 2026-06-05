@@ -59,6 +59,27 @@ MCP metadata may include:
 
 Remote third-party MCP servers are treated as external trust boundaries. Credential references and auth headers are represented as key names only.
 
+## Skill Data-Flow Signals
+
+Skill files are normalized into `skill` objects. AgentCSP records redacted data-flow signals when skills consume agent context and produce side-effecting output.
+
+Skill metadata may include:
+
+- `skill_directory`
+- `content_redacted`
+- `content_analyzed`
+- `retrieved_context_input`
+- `tool_output_input`
+- `memory_input`
+- `prompt_input`
+- `context_input_sources`
+- `context_input_count`
+- `external_output`
+- `local_write_output`
+- `context_bridge_external_output`
+
+Raw skill text is not emitted. These fields let rules detect skills that bridge retrieved documents, tool output, memory, or prompts into external publication or local writes.
+
 ## Tool Schema Authority
 
 Tool definition files are normalized into individual `tool` objects when AgentCSP can parse JSON or YAML tool schemas.

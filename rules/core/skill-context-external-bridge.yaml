@@ -1,0 +1,35 @@
+id: AGENTCSP-SKILL-001
+name: Skill routes context inputs to external output
+description: A skill consumes retrieved context, tool output, memory, or prompt inputs and can publish or send externally, creating a data-flow bridge from agent context to side-effect authority.
+category: skill_authority
+severity: critical
+maps_to:
+  owasp:
+    - LLM01:2025 Prompt Injection
+    - LLM05:2025 Improper Output Handling
+    - LLM06:2025 Excessive Agency
+  mitre_atlas:
+    - AML.T0051 LLM Prompt Injection
+    - AML.T0057 Exfiltration via Cyber Means
+  nist_ai_rmf:
+    - MAP 4.1
+    - MEASURE 2.9
+    - MANAGE 2.3
+match:
+  object_type: skill
+  where:
+    - field: metadata.context_bridge_external_output
+      op: equals
+      value: true
+    - field: metadata.context_input_count
+      op: gt
+      value: 0
+    - field: external_reach
+      op: equals
+      value: true
+    - field: side_effect
+      op: equals
+      value: true
+recommendation:
+  control: require_approval
+  text: Split context ingestion from external publication, validate retrieved/tool/memory inputs before use, and require approval before the skill can send externally.

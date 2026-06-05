@@ -365,6 +365,16 @@ The current iteration adds:
 - vulnerable fixture coverage for a customer-note prompt template routed to a publishing tool
 - regression coverage proving raw prompt template text is not emitted
 
+## Skill Data-Flow Bridge Pass
+
+The current iteration adds:
+
+- redacted skill metadata for retrieved context input, tool output input, memory input, prompt input, context input sources, external output, and local write output
+- context-to-external-output bridge marking for skills that combine agent context inputs with external publication
+- rule `AGENTCSP-SKILL-001` for skills that route retrieved/tool/memory/prompt context into external side effects
+- fixture coverage using the existing external publisher skill
+- scanner and rule regression coverage proving skill text remains redacted
+
 ## Initial Build Recommendation
 
 Start with a CLI-first MVP before building the dashboard:

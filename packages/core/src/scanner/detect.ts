@@ -156,6 +156,7 @@ export async function detectSurfaces(files: WalkedFile[]): Promise<DetectedSurfa
       const actions = detectActions(content);
       const externalReach = hasExternalReach(content);
       const dataClasses = inferDataClasses(content, file.relativePath);
+      const dataFlow = classifySkillDataFlow(content);
       surfaces.skills.push(
         createSurfaceObject({
           type: "skill",
@@ -170,7 +171,11 @@ export async function detectSurfaces(files: WalkedFile[]): Promise<DetectedSurfa
           reason: "Skill manifest discovered as agent-loadable capability context.",
           metadata: {
             skill_directory: dirname,
-            content_redacted: true
+            content_redacted: true,
+            content_analyzed: text !== undefined,
+            skipped_for_size: file.skippedForSize,
+            bytes: file.size,
+            ...dataFlow
           }
         })
       );
@@ -426,6 +431,18 @@ interface PromptTemplateSignals {
   untrusted_template_input: boolean;
 }
 
+interface SkillDataFlowSignals {
+  retrieved_context_input: boolean;
+  tool_output_input: boolean;
+  memory_input: boolean;
+  prompt_input: boolean;
+  context_input_sources: string[];
+  context_input_count: number;
+  external_output: boolean;
+  local_write_output: boolean;
+  context_bridge_external_output: boolean;
+}
+
 function classifyContextContent(content: string): ContextContentSignals {
   const instructionOverride = /\b(ignore|override|bypass|forget|disregard)\b[\s\S]{0,80}\b(instruction|policy|approval|guard|previous|system|developer)\b/i.test(
     content
@@ -447,6 +464,36 @@ function classifyContextContent(content: string): ContextContentSignals {
     external_directive: externalDirective,
     secret_reference: secretReference,
     content_signal_count: signals
+  };
+}
+
+function classifySkillDataFlow(content: string): SkillDataFlowSignals {
+  const sources = new Set<string>();
+  const retrievedContextInput = /\b(retrieved|retrieval|rag|document|documents|knowledge|context|customer note|web page|webpage)\b/iu.test(
+    content
+  );
+  const toolOutputInput = /\b(tool output|tool result|tool response|command output|browser output|mcp result)\b/iu.test(content);
+  const memoryInput = /\b(memory|memories|remembered|session state|stored context)\b/iu.test(content);
+  const promptInput = /\b(prompt|instruction|system message|developer message)\b/iu.test(content);
+  const externalOutput =
+    hasExternalReach(content) || /\b(publish|post|send|upload|webhook|slack|email|external)\b/iu.test(content);
+  const localWriteOutput = /\b(write|update|save|modify|append|release notes|file)\b/iu.test(content);
+
+  if (retrievedContextInput) sources.add("retrieved_context");
+  if (toolOutputInput) sources.add("tool_output");
+  if (memoryInput) sources.add("memory");
+  if (promptInput) sources.add("prompt");
+
+  return {
+    retrieved_context_input: retrievedContextInput,
+    tool_output_input: toolOutputInput,
+    memory_input: memoryInput,
+    prompt_input: promptInput,
+    context_input_sources: [...sources].sort((a, b) => a.localeCompare(b)),
+    context_input_count: sources.size,
+    external_output: externalOutput,
+    local_write_output: localWriteOutput,
+    context_bridge_external_output: sources.size > 0 && externalOutput
   };
 }
 

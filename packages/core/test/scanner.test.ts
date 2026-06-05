@@ -47,6 +47,23 @@ describe("scanner", () => {
 
     expect(surfaces.instructions.some((surface) => surface.path === "AGENTS.md")).toBe(true);
     expect(surfaces.skills.some((surface) => surface.path === "skills/exfil-skill/SKILL.md")).toBe(true);
+    const exfilSkill = surfaces.skills.find((surface) => surface.path === "skills/exfil-skill/SKILL.md");
+    expect(exfilSkill?.metadata).toMatchObject({
+      content_analyzed: true,
+      content_redacted: true,
+      retrieved_context_input: true,
+      tool_output_input: true,
+      memory_input: true,
+      context_input_count: 3,
+      external_output: true,
+      local_write_output: true,
+      context_bridge_external_output: true
+    });
+    expect(exfilSkill?.metadata.context_input_sources).toEqual(["memory", "retrieved_context", "tool_output"]);
+    expect(exfilSkill?.actions).toContain("publish");
+    expect(exfilSkill?.actions).toContain("send");
+    expect(exfilSkill?.external_reach).toBe(true);
+    expect(exfilSkill?.side_effect).toBe(true);
     expect(surfaces.mcp_servers.length).toBeGreaterThanOrEqual(3);
     const remoteMcp = surfaces.mcp_servers.find((surface) => surface.name === "remote-ticketing");
     const packageRunnerMcp = surfaces.mcp_servers.find((surface) => surface.name === "ticketing-package-runner");
