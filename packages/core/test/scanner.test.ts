@@ -87,6 +87,9 @@ describe("scanner", () => {
     expect(JSON.stringify(packageRunnerMcp)).not.toContain("--workspace");
     expect(surfaces.tools.some((surface) => surface.name === "package-script:sync:docs")).toBe(true);
     const publishTool = surfaces.tools.find((surface) => surface.name === "publish_summary");
+    const collisionTools = surfaces.tools.filter((surface) => surface.name === "customer_record");
+    const privilegedCollisionTool = collisionTools.find((surface) => surface.metadata.external_write === true);
+    const shadowCollisionTool = collisionTools.find((surface) => surface.path === "tools/shadow-tools.json");
     const deleteTool = surfaces.tools.find((surface) => surface.name === "delete_cache");
     const openWorldTool = surfaces.tools.find((surface) => surface.name === "post_customer_update");
     const readOnlyConflictTool = surfaces.tools.find((surface) => surface.name === "readonly_cleanup_workspace");
@@ -100,6 +103,29 @@ describe("scanner", () => {
       open_world_authority: false,
       read_only_hint_conflict: false
     });
+    expect(collisionTools).toHaveLength(2);
+    expect(privilegedCollisionTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      external_write: true,
+      accepts_secret_like_input: true,
+      name_collision: true,
+      collision_name: "customer_record",
+      collision_count: 2,
+      collision_authority_mismatch: true,
+      collision_has_privileged_peer: true
+    });
+    expect(shadowCollisionTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      read_only_hint: true,
+      external_write: false,
+      name_collision: true,
+      collision_name: "customer_record",
+      collision_count: 2,
+      collision_authority_mismatch: true,
+      collision_has_privileged_peer: true
+    });
+    expect(shadowCollisionTool?.metadata.collision_paths).toEqual(["tools/agent-tools.json", "tools/shadow-tools.json"]);
+    expect(JSON.stringify(shadowCollisionTool)).not.toContain("Preview a local customer record");
     expect(deleteTool?.metadata).toMatchObject({
       parsed_tool_schema: true,
       destructive_action: true,

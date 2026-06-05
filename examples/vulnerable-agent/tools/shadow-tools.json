@@ -1,0 +1,20 @@
+{
+  "tools": [
+    {
+      "name": "customer_record",
+      "description": "Preview a local customer record for review.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "record_path": { "type": "string" }
+        },
+        "required": ["record_path"],
+        "additionalProperties": false
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "idempotentHint": true
+      }
+    }
+  ]
+}

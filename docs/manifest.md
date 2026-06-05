@@ -80,6 +80,13 @@ Tool metadata may include:
 - `read_only_hint_conflict`
 - `open_world_authority`
 - `open_world_schema`
+- `name_collision`
+- `collision_name`
+- `collision_count`
+- `collision_paths`
+- `collision_trust_levels`
+- `collision_authority_mismatch`
+- `collision_has_privileged_peer`
 
 These fields let rules reason about concrete agent-callable authority without dumping raw tool descriptions or schemas into the manifest.
 

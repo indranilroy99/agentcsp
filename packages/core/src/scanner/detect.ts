@@ -214,6 +214,7 @@ export async function detectSurfaces(files: WalkedFile[]): Promise<DetectedSurfa
     }
   }
 
+  annotateToolNameCollisions(surfaces);
   return surfaces;
 }
 
@@ -742,6 +743,39 @@ function detectToolDefinition(file: WalkedFile, text: string | undefined, surfac
       untrusted_to_privileged: isUntrustedToPrivileged(object)
     });
   }
+}
+
+function annotateToolNameCollisions(surfaces: DetectedSurfaces): void {
+  const groups = new Map<string, SurfaceObject[]>();
+  for (const tool of surfaces.tools) {
+    const name = normalizeCallableName(tool.name);
+    if (!name) continue;
+    const existing = groups.get(name) ?? [];
+    existing.push(tool);
+    groups.set(name, existing);
+  }
+
+  surfaces.tools = surfaces.tools.map((tool) => {
+    const collisionName = normalizeCallableName(tool.name);
+    const peers = groups.get(collisionName) ?? [];
+    if (peers.length < 2) return tool;
+
+    const authoritySignatures = new Set(peers.map(authoritySignature));
+    const hasPrivilegedPeer = peers.some(isPrivilegedToolSurface);
+    return {
+      ...tool,
+      metadata: {
+        ...tool.metadata,
+        name_collision: true,
+        collision_name: collisionName,
+        collision_count: peers.length,
+        collision_paths: peers.map((peer) => peer.path).sort((a, b) => a.localeCompare(b)),
+        collision_trust_levels: [...new Set(peers.map((peer) => peer.trust_level))].sort((a, b) => a.localeCompare(b)),
+        collision_authority_mismatch: authoritySignatures.size > 1,
+        collision_has_privileged_peer: hasPrivilegedPeer
+      }
+    };
+  });
 }
 
 function detectRuntimeConfig(file: WalkedFile, text: string | undefined, surfaces: DetectedSurfaces): void {
@@ -1390,4 +1424,46 @@ function normalizeAuthorityText(value: string): string {
     .replace(/[_-]+/g, " ")
     .replace(/\s+/g, " ")
     .trim();
+}
+
+function normalizeCallableName(name: string): string {
+  return name
+    .replace(/([a-z0-9])([A-Z])/g, "$1_$2")
+    .replace(/[^a-zA-Z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "")
+    .toLowerCase();
+}
+
+function authoritySignature(tool: SurfaceObject): string {
+  const metadata = tool.metadata;
+  const flags = [
+    metadata.parsed_tool_schema === true ? "parsed" : "unparsed",
+    metadata.external_write === true ? "external_write" : "",
+    metadata.destructive_action === true ? "destructive" : "",
+    metadata.accepts_secret_like_input === true ? "secret_input" : "",
+    metadata.accepts_path_input === true ? "path_input" : "",
+    metadata.open_world_authority === true ? "open_world" : "",
+    metadata.read_only_hint === true ? "read_only" : "",
+    metadata.read_only_hint_conflict === true ? "read_only_conflict" : "",
+    tool.side_effect ? "side_effect" : "",
+    tool.external_reach ? "external_reach" : "",
+    tool.secret_exposure ? "secret_exposure" : "",
+    tool.reversible ? "reversible" : "irreversible",
+    ...tool.actions.map((action) => `action:${action}`)
+  ].filter(Boolean);
+  return [...new Set(flags)].sort((a, b) => a.localeCompare(b)).join("|");
+}
+
+function isPrivilegedToolSurface(tool: SurfaceObject): boolean {
+  return (
+    tool.side_effect ||
+    tool.external_reach ||
+    tool.secret_exposure ||
+    !tool.reversible ||
+    tool.actions.some((action) => ["write", "execute", "publish", "send", "delete", "remember"].includes(action)) ||
+    tool.metadata.external_write === true ||
+    tool.metadata.destructive_action === true ||
+    tool.metadata.open_world_authority === true ||
+    tool.metadata.read_only_hint_conflict === true
+  );
 }

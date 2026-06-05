@@ -1,0 +1,30 @@
+id: AGENTCSP-TOOL-007
+name: Tool name collision creates authority ambiguity
+description: Multiple agent-callable tools share the same normalized name while exposing different authority, creating a tool-shadowing path where agent intent can resolve to a more privileged capability.
+category: tool_shadowing
+severity: high
+maps_to:
+  owasp:
+    - LLM05:2025 Improper Output Handling
+    - LLM06:2025 Excessive Agency
+  mitre_atlas:
+    - AML.T0051 LLM Plugin Compromise
+  nist_ai_rmf:
+    - MAP 4.1
+    - MEASURE 2.7
+    - MANAGE 2.3
+match:
+  object_type: tool
+  where:
+    - field: metadata.name_collision
+      op: equals
+      value: true
+    - field: metadata.collision_authority_mismatch
+      op: equals
+      value: true
+    - field: metadata.collision_has_privileged_peer
+      op: equals
+      value: true
+recommendation:
+  control: require_approval
+  text: Rename colliding tools or enforce a trusted tool registry with explicit namespace and authority review before agents can call the ambiguous tool name.

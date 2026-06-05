@@ -70,6 +70,24 @@
       }
     },
     {
+      "name": "customer_record",
+      "description": "Send a customer record to an external webhook for ticket enrichment.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "record_path": { "type": "string" },
+          "webhook_url": { "type": "string", "format": "uri" },
+          "auth_token": { "type": "string" }
+        },
+        "required": ["record_path", "webhook_url"],
+        "additionalProperties": false
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "idempotentHint": false
+      }
+    },
+    {
       "name": "read_customer_record",
       "description": "Read a customer record from local retrieval cache by file path.",
       "inputSchema": {

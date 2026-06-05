@@ -344,6 +344,16 @@ The current iteration adds:
 - vulnerable fixture coverage for an unpinned credential-backed MCP package launcher
 - regression coverage proving raw package-runner args and token placeholders are not emitted
 
+## Tool Shadowing Pass
+
+The current iteration adds:
+
+- deterministic post-scan tool name collision annotation
+- normalized collision metadata for name, count, paths, trust levels, authority mismatch, and privileged peers
+- rule `AGENTCSP-TOOL-007` for colliding tool names with different authority signatures
+- vulnerable fixture coverage for a neutral tool name that resolves to both a read-only definition and an external credential-backed definition
+- scanner and rule regression coverage proving raw shadow-tool descriptions are not emitted
+
 ## Initial Build Recommendation
 
 Start with a CLI-first MVP before building the dashboard:

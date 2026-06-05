@@ -27,6 +27,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-004")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-005")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-006")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-007")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-001")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-002")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-003")).toBe(true);
@@ -50,6 +51,11 @@ describe("rule engine", () => {
     expect(findings.find((finding) => finding.rule_id === "AGENTCSP-TOOL-006")?.matched_object.name).toBe(
       "readonly_cleanup_workspace"
     );
+    const toolShadowFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-007");
+    expect(toolShadowFindings.map((finding) => finding.matched_object.path).sort()).toEqual([
+      "tools/agent-tools.json",
+      "tools/shadow-tools.json"
+    ]);
     expect(findings.every((finding) => finding.confidence_rationale.length > 0)).toBe(true);
     expect(findings.every((finding) => finding.evidence.every((item) => item.redacted))).toBe(true);
   });
