@@ -9,12 +9,20 @@ import {
   type FindingPolicyControl,
   type FindingSuppression,
   type Policy,
+  type ScanDiagnostic,
   type SurfaceObject,
   type TrustLevel
 } from "../schemas/index.js";
+import { stableId } from "../utils/ids.js";
+import { relativePath } from "../utils/paths.js";
+
+export interface LoadedPolicy {
+  policy: Policy;
+  diagnostics: ScanDiagnostic[];
+}
 
 export async function loadPolicy(rootPath: string, configPath?: string): Promise<Policy> {
-  const candidate = configPath ? path.resolve(rootPath, configPath) : path.join(rootPath, "agentcsp.yaml");
+  const candidate = policyCandidate(rootPath, configPath);
   try {
     const content = await fs.readFile(candidate, "utf8");
     return PolicySchema.parse(YAML.parse(content) ?? {});
@@ -23,6 +31,75 @@ export async function loadPolicy(rootPath: string, configPath?: string): Promise
     if (code === "ENOENT") return PolicySchema.parse({});
     throw error;
   }
+}
+
+export async function loadPolicyWithDiagnostics(rootPath: string, configPath?: string): Promise<LoadedPolicy> {
+  const emptyPolicy = PolicySchema.parse({});
+  const candidate = policyCandidate(rootPath, configPath);
+  try {
+    const content = await fs.readFile(candidate, "utf8");
+    return { policy: PolicySchema.parse(YAML.parse(content) ?? {}), diagnostics: [] };
+  } catch (error) {
+    const code = (error as NodeJS.ErrnoException).code;
+    if (code === "ENOENT") {
+      if (configPath) {
+        return {
+          policy: emptyPolicy,
+          diagnostics: [
+            policyDiagnostic(rootPath, candidate, {
+              code: "POLICY_CONFIG_NOT_FOUND",
+              reason: "Explicit AgentCSP policy config was not found. Scan continued with empty advisory policy."
+            })
+          ]
+        };
+      }
+      return { policy: emptyPolicy, diagnostics: [] };
+    }
+    return {
+      policy: emptyPolicy,
+      diagnostics: [
+        policyDiagnostic(rootPath, candidate, {
+          code: isValidationError(error) ? "POLICY_CONFIG_SCHEMA_FAILED" : "POLICY_CONFIG_PARSE_FAILED",
+          reason: isValidationError(error)
+            ? "AgentCSP policy config failed schema validation. Scan continued with empty advisory policy and raw content redacted."
+            : "AgentCSP policy config could not be parsed as YAML. Scan continued with empty advisory policy and raw content redacted."
+        })
+      ]
+    };
+  }
+}
+
+function policyCandidate(rootPath: string, configPath?: string): string {
+  return configPath ? path.resolve(rootPath, configPath) : path.join(rootPath, "agentcsp.yaml");
+}
+
+function policyDiagnostic(
+  rootPath: string,
+  absolutePath: string,
+  input: {
+    code: string;
+    reason: string;
+  }
+): ScanDiagnostic {
+  const filePath = relativePath(rootPath, absolutePath);
+  return {
+    id: stableId("diagnostic", [input.code, filePath]),
+    severity: "warning",
+    code: input.code,
+    file_path: filePath,
+    parser: "policy",
+    reason: input.reason,
+    content_redacted: true
+  };
+}
+
+function isValidationError(error: unknown): boolean {
+  return Boolean(
+    error &&
+      typeof error === "object" &&
+      "name" in error &&
+      (error as { name?: string }).name === "ZodError"
+  );
 }
 
 export function applyTrustOverrides<T extends SurfaceObject>(objects: T[], policy: Policy): T[] {

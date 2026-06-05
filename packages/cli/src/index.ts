@@ -15,7 +15,7 @@ program
   .command("scan")
   .argument("[path]", "project path to scan", ".")
   .option("--out <path>", "output directory", ".agentcsp")
-  .option("--config <path>", "policy config path", "agentcsp.yaml")
+  .option("--config <path>", "policy config path")
   .option("--format <formats>", "comma-separated output formats: json,md,sarif", "json,md")
   .option("--fail-on <severity>", "fail when findings meet severity: critical,high,medium,low")
   .option("--fail-on-confidence <confidence>", "with --fail-on, require minimum confidence: very_high,high,medium,low")

@@ -16,6 +16,12 @@ trust_overrides:
 
 Reports use "recommended controls" until runtime adapters can enforce decisions before tool calls or sensitive memory writes.
 
+## Policy Health
+
+Default missing policy files are allowed and do not produce diagnostics. If a policy file exists but cannot be parsed, fails schema validation, or an explicitly supplied `--config` path is missing, AgentCSP records a redacted scan diagnostic and continues with empty advisory policy.
+
+This keeps scanner output available for CI, SARIF, and audit review while making policy failures visible through `diagnostics` and `scan_coverage` diagnostic counters. Use `--fail-on-diagnostics` when policy health issues should fail CI.
+
 ## Recommended Controls
 
 Recommended controls let a team strengthen or change a finding recommendation without suppressing evidence.

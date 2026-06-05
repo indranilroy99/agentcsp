@@ -28,7 +28,7 @@ export async function runScanCommand(targetPath: string, options: Record<string,
   const result = await scanProject({
     root_path: rootPath,
     output_path: String(options.out ?? ".agentcsp"),
-    config_path: String(options.config ?? "agentcsp.yaml"),
+    config_path: typeof options.config === "string" ? options.config : undefined,
     formats,
     include_hidden: includeHidden,
     include_logs: includeLogs,

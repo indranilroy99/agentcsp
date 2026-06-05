@@ -392,7 +392,7 @@ Coverage counts do not include raw file contents or skipped path lists. Diagnost
 
 ## Diagnostics
 
-`diagnostics` records scan health issues that may affect completeness, such as malformed MCP configs, runtime configs, package manifests, workflow files, or tool definition files.
+`diagnostics` records scan health issues that may affect completeness, such as malformed MCP configs, runtime configs, package manifests, workflow files, policy files, or tool definition files.
 
 Each diagnostic includes:
 
@@ -405,6 +405,8 @@ Each diagnostic includes:
 - `content_redacted: true`
 
 Diagnostics do not include raw parser stack traces, raw file contents, secret values, or evidence snippets.
+
+Policy diagnostics include malformed `agentcsp.yaml`, schema-invalid policy files, and explicitly supplied missing `--config` paths. Scans continue with empty advisory policy in those cases so evidence is still generated; default missing policy files do not create diagnostics.
 
 ## Relationships
 

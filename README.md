@@ -146,7 +146,7 @@ Use `--fail-on-confidence high` or `--fail-on-confidence very_high` with `--fail
 
 Use `--baseline` with a previous `findings.json` or `agent-manifest.json` to distinguish new, existing, and resolved findings. Add `--fail-on-new` when CI should fail only on new findings that meet the configured severity and confidence thresholds.
 
-Use `--fail-on-diagnostics` when malformed security-relevant configs should fail CI even if findings are otherwise below the configured severity gate.
+Use `--fail-on-diagnostics` when malformed security-relevant configs should fail CI even if findings are otherwise below the configured severity gate. Malformed `agentcsp.yaml` files are reported as redacted diagnostics and scans continue with empty advisory policy so JSON, Markdown, and SARIF evidence are still emitted.
 
 The terminal banner animates only in interactive terminals. It is suppressed by `--quiet`, disabled in CI and piped output, and can be turned off with `AGENTCSP_NO_ANIMATION=1`.
 
@@ -220,6 +220,8 @@ recommendation:
 ## Policy
 
 `agentcsp.yaml` is advisory in v1. It supports trust overrides, recommended controls, and auditable suppressions. Runtime enforcement is planned for future MCP and agent-framework adapters.
+
+If `agentcsp.yaml` is malformed, fails schema validation, or an explicitly supplied `--config` path is missing, AgentCSP records a redacted scan diagnostic and continues with empty advisory policy. Default missing policy files do not produce diagnostics.
 
 ```yaml
 schema_version: "0.1"

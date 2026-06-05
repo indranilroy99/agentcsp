@@ -4,13 +4,19 @@ import {
   ScanConfigSchema,
   type AgentManifest,
   type Finding,
+  type Policy,
   type ScanConfig,
   type ScanCoverageSummary,
   type ScanDiagnostic
 } from "../schemas/index.js";
 import { buildManifest } from "../manifest/build.js";
 import { buildStaticGraph } from "../graph/build-graph.js";
-import { applyFindingSuppressions, applyRecommendedControls, applyTrustOverrides, loadPolicy } from "../policy/load-policy.js";
+import {
+  applyFindingSuppressions,
+  applyRecommendedControls,
+  applyTrustOverrides,
+  loadPolicyWithDiagnostics
+} from "../policy/load-policy.js";
 import { detectSurfaces, type DetectedSurfaces } from "./detect.js";
 import { walkProjectWithCoverage } from "./walk.js";
 import { loadRules, runRules } from "../rules/engine.js";
@@ -42,8 +48,10 @@ export async function scanProject(rawConfig: Partial<ScanConfig> & { root_path: 
 
   const walkResult = await walkProjectWithCoverage(config);
   const files = walkResult.files;
-  const policy = await loadPolicy(rootPath, config.config_path);
+  const policyResult = await loadPolicyWithDiagnostics(rootPath, config.config_path);
+  const policy = policyResult.policy;
   const detected = await detectSurfaces(files);
+  detected.diagnostics.push(...policyResult.diagnostics);
   const surfaces = applyPolicyToSurfaces(detected, policy);
   const scanCoverage = withDiagnosticCoverage(walkResult.coverage, surfaces.diagnostics);
 
@@ -126,7 +134,7 @@ function withDiagnosticCoverage(
   };
 }
 
-function applyPolicyToSurfaces(surfaces: DetectedSurfaces, policy: Awaited<ReturnType<typeof loadPolicy>>): DetectedSurfaces {
+function applyPolicyToSurfaces(surfaces: DetectedSurfaces, policy: Policy): DetectedSurfaces {
   return {
     agents: sortObjects(applyTrustOverrides(surfaces.agents, policy)),
     instructions: sortObjects(applyTrustOverrides(surfaces.instructions, policy)),

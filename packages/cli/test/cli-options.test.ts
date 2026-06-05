@@ -88,6 +88,35 @@ describe("cli options", () => {
     expect(process.exitCode).toBe(1);
     process.exitCode = undefined;
   });
+
+  it("emits diagnostics for explicitly missing policy configs", async () => {
+    const root = await createPolicyConfigFixture();
+    const outputPath = "/private/tmp/agentcsp-cli-missing-policy-output";
+    process.exitCode = undefined;
+    await runScanCommand(root, {
+      out: outputPath,
+      config: "missing-agentcsp.yaml",
+      format: "json",
+      quiet: true
+    });
+    expect(process.exitCode).toBeUndefined();
+
+    const manifest = JSON.parse(await fs.readFile(path.join(outputPath, "agent-manifest.json"), "utf8")) as {
+      diagnostics: Array<{ code?: string; content_redacted?: boolean }>;
+      scan_coverage?: { diagnostics_total?: number; diagnostics_warnings?: number };
+    };
+    expect(manifest.diagnostics).toEqual([
+      expect.objectContaining({
+        code: "POLICY_CONFIG_NOT_FOUND",
+        content_redacted: true
+      })
+    ]);
+    expect(manifest.scan_coverage).toMatchObject({
+      diagnostics_total: 1,
+      diagnostics_warnings: 1
+    });
+    process.exitCode = undefined;
+  });
 });
 
 async function createDiagnosticsFixture(): Promise<string> {
@@ -97,5 +126,13 @@ async function createDiagnosticsFixture(): Promise<string> {
   await fs.writeFile(path.join(root, "AGENTS.md"), "Review repository changes only.\n", "utf8");
   await fs.writeFile(path.join(root, "mcp.json"), '{"mcpServers": {"bad": {"command": "run"', "utf8");
   await fs.writeFile(path.join(root, ".codex", "config.toml"), 'sandbox = "danger-full-access"\n[', "utf8");
+  return root;
+}
+
+async function createPolicyConfigFixture(): Promise<string> {
+  const root = "/private/tmp/agentcsp-cli-policy-config-fixture";
+  await fs.rm(root, { recursive: true, force: true });
+  await fs.mkdir(root, { recursive: true });
+  await fs.writeFile(path.join(root, "AGENTS.md"), "Review repository changes only.\n", "utf8");
   return root;
 }

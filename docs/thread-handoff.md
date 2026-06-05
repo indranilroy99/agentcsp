@@ -295,6 +295,8 @@ The current iteration adds:
 
 - manifest-level `diagnostics` for redacted scan health warnings
 - parser diagnostics for malformed MCP configs, package manifests, GitHub workflows, runtime configs, and tool definition files
+- policy diagnostics for malformed `agentcsp.yaml`, schema-invalid policy files, and explicitly supplied missing `--config` paths
+- malformed or invalid policy scans continue with empty advisory policy so manifest, findings, Markdown, and SARIF are still emitted
 - parse-error metadata on affected fallback surfaces
 - Markdown Scan Diagnostics section
 - SARIF run-level `agentcsp_diagnostics`
