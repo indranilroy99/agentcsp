@@ -37,6 +37,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-001")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-002")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-003")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-004")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-CICD-002")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-AUTOMATION-001")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-AUTOMATION-002")).toBe(true);
@@ -54,9 +55,20 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.confidence === "very_high")).toBe(true);
     expect(findings.find((finding) => finding.rule_id === "AGENTCSP-RUNTIME-001")?.confidence).toBe("very_high");
     const runtimeMcpFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-RUNTIME-003");
-    expect(runtimeMcpFindings).toHaveLength(1);
-    expect(runtimeMcpFindings[0]?.matched_object.path).toBe(".codex/config.toml");
-    expect(runtimeMcpFindings[0]?.confidence).toBe("very_high");
+    expect(runtimeMcpFindings.map((finding) => finding.matched_object.path).sort()).toEqual([
+      ".claude/settings.json",
+      ".codex/config.toml"
+    ]);
+    expect(runtimeMcpFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    const runtimeAutoApprovedFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-RUNTIME-004");
+    expect(runtimeAutoApprovedFindings).toHaveLength(1);
+    expect(runtimeAutoApprovedFindings[0]?.matched_object.path).toBe(".claude/settings.json");
+    expect(runtimeAutoApprovedFindings[0]?.matched_object.metadata.permission_allowlist).toEqual(
+      expect.arrayContaining(["Bash", "WebFetch", "mcp:filesystem-admin"])
+    );
+    expect(runtimeAutoApprovedFindings[0]?.confidence).toBe("very_high");
+    expect(JSON.stringify(runtimeAutoApprovedFindings[0])).not.toContain("npm run release");
+    expect(JSON.stringify(runtimeAutoApprovedFindings[0])).not.toContain("${ANTHROPIC_API_KEY}");
     const automationAgentFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-AUTOMATION-002");
     expect(automationAgentFindings).toHaveLength(1);
     expect(automationAgentFindings[0]?.matched_object.path).toBe(".github/workflows/agent-maintenance.yml");

@@ -1440,6 +1440,14 @@ function detectRuntimeConfig(file: WalkedFile, text: string | undefined, surface
       network_enabled: posture.network_enabled,
       allowed_tools: posture.allowed_tools,
       disabled_tools: posture.disabled_tools,
+      permission_allowlist: posture.permission_allowlist,
+      permission_denylist: posture.permission_denylist,
+      auto_approved_tools_redacted: posture.auto_approved_tools_redacted,
+      auto_approved_tool_count: posture.auto_approved_tool_count,
+      auto_approved_privileged_tool_count: posture.auto_approved_privileged_tool_count,
+      auto_approved_privileged_tool_signal_count: posture.auto_approved_privileged_tool_signal_count,
+      auto_approved_privileged_tools: posture.auto_approved_privileged_tools,
+      auto_approved_privileged_tool_signals: posture.auto_approved_privileged_tool_signals,
       privileged_tools_allowed: posture.privileged_tools_allowed,
       privileged_tool_signals: posture.privileged_tool_signals,
       env_key_names: posture.env_key_names,
@@ -1743,6 +1751,14 @@ interface RuntimePosture {
   network_enabled: boolean;
   allowed_tools: string[];
   disabled_tools: string[];
+  permission_allowlist: string[];
+  permission_denylist: string[];
+  auto_approved_tools_redacted: boolean;
+  auto_approved_tool_count: number;
+  auto_approved_privileged_tool_count: number;
+  auto_approved_privileged_tool_signal_count: number;
+  auto_approved_privileged_tools: boolean;
+  auto_approved_privileged_tool_signals: string[];
   privileged_tools_allowed: boolean;
   privileged_tool_signals: string[];
   env_key_names: string[];
@@ -1755,6 +1771,7 @@ function isRuntimeConfigPath(relativePath: string, basename: string): boolean {
   if (TOP_LEVEL_RUNTIME_CONFIG_NAMES.has(lowerBase) && !normalized.includes("/")) return true;
   if (normalized.startsWith(".codex/") && RUNTIME_CONFIG_BASENAMES.has(lowerBase)) return true;
   if (normalized.startsWith(".agents/") && RUNTIME_CONFIG_BASENAMES.has(lowerBase)) return true;
+  if (normalized.startsWith(".claude/") && RUNTIME_CONFIG_BASENAMES.has(lowerBase)) return true;
   if (normalized.startsWith(".cursor/") && RUNTIME_CONFIG_BASENAMES.has(lowerBase)) return true;
   return false;
 }
@@ -1786,10 +1803,30 @@ function classifyRuntimeConfig(value: unknown): RuntimePosture {
     findFirstField(fields, /approval|require_approval|tool_approval|human_approval|confirmation|confirm/iu)?.value
   );
   const networkAccess = normalizeRuntimeScalar(findFirstField(fields, /network|internet|web_access|allow_network|net_access/iu)?.value);
-  const allowedTools = collectStringArrayFields(fields, /(^|\.)(allowed_tools|allow_tools|enabled_tools|tools_allowlist|tools)$/iu);
-  const disabledTools = collectStringArrayFields(fields, /(^|\.)(disabled_tools|deny_tools|blocked_tools|tools_denylist)$/iu);
+  const rawPermissionAllowlist = collectStringArrayFields(fields, /(^|\.)permissions\.(allow|allowed|allowlist)$/iu);
+  const rawPermissionDenylist = collectStringArrayFields(fields, /(^|\.)permissions\.(deny|denied|denylist|block|blocked)$/iu);
+  const permissionAllowlist = normalizeRuntimePermissionEntries(rawPermissionAllowlist);
+  const permissionDenylist = normalizeRuntimePermissionEntries(rawPermissionDenylist);
+  const configuredAllowedTools = collectStringArrayFields(fields, /(^|\.)(allowed_tools|allow_tools|enabled_tools|tools_allowlist|tools)$/iu);
+  const configuredDisabledTools = collectStringArrayFields(fields, /(^|\.)(disabled_tools|deny_tools|blocked_tools|tools_denylist)$/iu);
+  const allowedTools = uniqueStrings([
+    ...configuredAllowedTools,
+    ...permissionAllowlist
+  ]);
+  const disabledTools = uniqueStrings([
+    ...configuredDisabledTools,
+    ...permissionDenylist
+  ]);
   const envKeys = collectEnvKeyNamesFromConfig(value);
-  const privilegedSignals = classifyPrivilegedToolSignals(allowedTools);
+  const privilegedSignals = classifyPrivilegedToolSignals([...configuredAllowedTools, ...rawPermissionAllowlist]);
+  const autoApprovedPrivilegedSignals = classifyPrivilegedToolSignals(rawPermissionAllowlist);
+  const autoApprovedPrivilegedToolCount = rawPermissionAllowlist.filter(
+    (entry) => classifyPrivilegedToolSignals([entry]).length > 0
+  ).length;
+  const networkEnabled = Boolean(
+    (networkAccess && /true|yes|enabled|enable|on|full|unrestricted|allow/iu.test(networkAccess)) ||
+      privilegedSignals.some((signal) => ["browser", "external_messaging", "github"].includes(signal))
+  );
 
   return {
     runtime_fields: fields
@@ -1801,12 +1838,21 @@ function classifyRuntimeConfig(value: unknown): RuntimePosture {
     workspace_write: Boolean(sandboxMode && /workspace.*write|write.*workspace|project.*write/iu.test(sandboxMode)),
     approval_policy: approvalPolicy,
     approval_bypass: Boolean(
-      approvalPolicy && /never|none|auto|always_allow|disabled|disable|off|false|unrestricted|no_approval|without/iu.test(approvalPolicy)
+      (approvalPolicy && /never|none|auto|always_allow|disabled|disable|off|false|unrestricted|no_approval|without/iu.test(approvalPolicy)) ||
+        autoApprovedPrivilegedSignals.length > 0
     ),
     network_access: networkAccess,
-    network_enabled: Boolean(networkAccess && /true|yes|enabled|enable|on|full|unrestricted|allow/iu.test(networkAccess)),
+    network_enabled: networkEnabled,
     allowed_tools: allowedTools,
     disabled_tools: disabledTools,
+    permission_allowlist: permissionAllowlist,
+    permission_denylist: permissionDenylist,
+    auto_approved_tools_redacted: permissionAllowlist.length > 0,
+    auto_approved_tool_count: rawPermissionAllowlist.length,
+    auto_approved_privileged_tool_count: autoApprovedPrivilegedToolCount,
+    auto_approved_privileged_tool_signal_count: autoApprovedPrivilegedSignals.length,
+    auto_approved_privileged_tools: autoApprovedPrivilegedSignals.length > 0,
+    auto_approved_privileged_tool_signals: autoApprovedPrivilegedSignals,
     privileged_tools_allowed: privilegedSignals.length > 0,
     privileged_tool_signals: privilegedSignals,
     env_key_names: envKeys,
@@ -1857,6 +1903,28 @@ function collectStringArrayFields(fields: RuntimeField[], pathPattern: RegExp): 
   return [...values].sort((a, b) => a.localeCompare(b));
 }
 
+function normalizeRuntimePermissionEntries(entries: string[]): string[] {
+  return uniqueStrings(entries.map(normalizeRuntimePermissionEntry));
+}
+
+function normalizeRuntimePermissionEntry(entry: string): string {
+  const trimmed = entry.trim();
+  if (!trimmed) return "redacted_permission";
+  if (trimmed === "*") return "*";
+
+  const mcpMatch = trimmed.match(/^mcp__([^_\s()]+)__[^()\s]+/iu);
+  if (mcpMatch?.[1]) return `mcp:${mcpMatch[1]}`;
+
+  const toolCallMatch = trimmed.match(/^([a-zA-Z][\w-]*)\s*\(/u);
+  if (toolCallMatch?.[1]) return toolCallMatch[1];
+
+  const mcpRuntimeMatch = trimmed.match(/^mcp[:/]([^()\s]+)/iu);
+  if (mcpRuntimeMatch?.[1]) return `mcp:${normalizeCallableName(mcpRuntimeMatch[1])}`;
+
+  if (/^[a-zA-Z][\w:.-]{0,79}$/u.test(trimmed)) return trimmed;
+  return "redacted_permission";
+}
+
 function collectEnvKeyNamesFromConfig(value: unknown, prefix: string[] = []): string[] {
   const keys = new Set<string>();
   if (!value || typeof value !== "object" || Array.isArray(value)) return [];
@@ -1880,15 +1948,16 @@ function classifyPrivilegedToolSignals(tools: string[]): string[] {
   const joined = tools.join(" ").toLowerCase();
   if (/(^|\s|\*)\*(\s|$)|all_tools|all-tools|all tools/iu.test(joined)) signals.add("all_tools");
   if (/shell|bash|zsh|terminal|command|exec|process/iu.test(joined)) signals.add("shell");
-  if (/browser|web|playwright|puppeteer/iu.test(joined)) signals.add("browser");
-  if (/filesystem|file|workspace|fs/iu.test(joined)) signals.add("filesystem");
+  if (/browser|web|webfetch|websearch|playwright|puppeteer/iu.test(joined)) signals.add("browser");
+  if (/mcp:|mcp__/iu.test(joined)) signals.add("mcp");
+  if (/filesystem|file|workspace|fs|edit|multiedit|write|delete|notebookedit/iu.test(joined)) signals.add("filesystem");
   if (/github|gitlab|repo|pull|issue/iu.test(joined)) signals.add("github");
   if (/slack|email|smtp|webhook/iu.test(joined)) signals.add("external_messaging");
   return [...signals].sort((a, b) => a.localeCompare(b));
 }
 
 function isRuntimeSecurityField(fieldPath: string): boolean {
-  return /sandbox|approval|confirm|network|internet|web_access|tool|env|environment|secret|token|credential/iu.test(fieldPath);
+  return /sandbox|approval|confirm|network|internet|web_access|tool|permission|allow|deny|env|environment|secret|token|credential/iu.test(fieldPath);
 }
 
 interface ExtractedToolDefinition {

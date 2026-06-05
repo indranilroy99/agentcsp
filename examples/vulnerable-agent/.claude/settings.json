@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run release:*)",
+      "WebFetch(domain:*)",
+      "mcp__filesystem-admin__delete_file"
+    ],
+    "deny": []
+  },
+  "env": {
+    "ANTHROPIC_API_KEY": "${ANTHROPIC_API_KEY}",
+    "SLACK_WEBHOOK_URL": "${SLACK_WEBHOOK_URL}"
+  }
+}

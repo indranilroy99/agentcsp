@@ -28,6 +28,7 @@ A finding should be considered production-grade when it includes:
 - tool-schema path-to-external data-flow signals for exfiltration risk
 - instruction-file context bridge signals for untrusted inputs routed into tool or memory authority
 - runtime-to-MCP reference signals for approval bypass into secret-backed MCP servers
+- Claude-style runtime permission allowlists normalized into redacted auto-approved privileged tool signals
 - workflow-to-agent-script signals for unattended automation with secrets and write authority
 - prompt-template variables and redacted context signals for untrusted-input bridges
 - exact callable-reference signals for prompts, memory, RAG, instructions, and skills that name discovered privileged tools or MCP servers
@@ -55,6 +56,7 @@ Examples:
 - local MCP implementation path missing from scan plus credential exposure and side effects
 - package-runner MCP server plus unpinned package version plus credential exposure
 - runtime allowlist plus secret-backed MCP server plus approval bypass
+- auto-approved privileged runtime permissions plus credential key exposure
 - workflow automation plus agent package script plus secrets and write authority
 - instruction file plus untrusted context reference plus tool and memory bridge
 - tool-name collision plus different authority signatures and a privileged peer
@@ -98,7 +100,7 @@ Every production change should pass:
 
 - Add SARIF upload examples for adopters.
 - Add MCP and tool schema parsing beyond config files.
-- Expand runtime configuration inventory across more agent frameworks.
+- Continue expanding runtime configuration inventory across more agent frameworks.
 - Continue expanding graph edges between context sources, capabilities, data classes, and side effects while keeping heuristic-only paths out of prioritized attack paths.
 - Add attack-path regression fixtures for common production AI architectures.
 - Add suppression and waiver workflow with expiry.

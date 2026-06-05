@@ -18,6 +18,7 @@ export const DEFAULT_EXCLUDED_DIRS = new Set([
 export const DEFAULT_INCLUDED_HIDDEN_DIRS = new Set([
   ".codex",
   ".agents",
+  ".claude",
   ".cursor",
   ".github"
 ]);
