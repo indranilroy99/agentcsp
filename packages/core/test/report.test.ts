@@ -66,6 +66,7 @@ describe("scanProject", () => {
     expect(result.reportMarkdown).toContain("PII attack paths");
     expect(result.reportMarkdown).toContain("Recommended Controls");
     expect(result.reportMarkdown).toContain("Static Attack Paths");
+    expect(result.reportMarkdown).toContain("| Severity | Confidence | Route | Path | Recommended control |");
     expect(result.reportMarkdown).toContain("| Severity | Confidence | Rule | Object | Recommended control | Policy | Risk factors |");
     expect(result.reportMarkdown).toContain("Policy actions in this MVP are recommended controls");
   });

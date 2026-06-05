@@ -509,6 +509,15 @@ The current iteration adds:
 - Markdown and SARIF property coverage for the new summary fields
 - report regression coverage proving the vulnerable fixture exposes sensitive-data blast radius while the safe fixture remains zero
 
+## Customer-Data Attack Path Pass
+
+The current iteration adds:
+
+- graph titles that distinguish customer-data routes into PII-capable external tools from generic sensitive-context egress
+- target capability context appended to source-anchored attack paths when the target has a matching PII/path/content egress tool finding
+- attack-path prioritization for external PII data routes
+- graph regression coverage proving `rag/customer-note.md` can route customer data to `post_customer_update` without leaking raw retrieval text
+
 ## Initial Build Recommendation
 
 Start with a CLI-first MVP before building the dashboard:

@@ -147,7 +147,7 @@ function buildAttackPaths(edges: GraphEdge[], findings: Finding[], objects: Surf
       const severity = pathSeverity(edge, strongest, risk);
       paths.push({
         id: stableId("attack_path", [edge.id, strongest.id]),
-        title: attackPathTitle(edge, strongest),
+        title: attackPathTitle(edge, strongest, risk),
         severity,
         confidence: pathConfidence(edge, strongest),
         source: edge.source,
@@ -169,13 +169,16 @@ function buildAttackPaths(edges: GraphEdge[], findings: Finding[], objects: Surf
     const sourceAnchoredSeverity = pathSeverity(edge, strongestSourceFinding, sourceAnchoredRisk);
     paths.push({
       id: stableId("attack_path", [edge.id, strongestSourceFinding.id, "source"]),
-      title: attackPathTitle(edge, strongestSourceFinding),
+      title: attackPathTitle(edge, strongestSourceFinding, sourceAnchoredRisk),
       severity: sourceAnchoredSeverity,
       confidence: pathConfidence(edge, strongestSourceFinding),
       source: edge.source,
       target: edge.target,
       edges: [edge],
-      reason: `${edge.reason} ${strongestSourceFinding.reason}`,
+      reason: `${edge.reason} ${strongestSourceFinding.reason}${sourceAnchoredTargetFindingContext(
+        targetFindings,
+        targetObject
+      )}`,
       recommended_control: strongestSourceFinding.recommended_control,
       risk: sourceAnchoredRisk,
       evidence: [...edge.evidence, ...strongestSourceFinding.evidence]
@@ -429,6 +432,16 @@ function strongestSourceFindingForEdge(findings: Finding[], target: SurfaceObjec
   return strongestFinding(findings);
 }
 
+function sourceAnchoredTargetFindingContext(findings: Finding[], target: SurfaceObject | undefined): string {
+  if (!target) return "";
+  const contextualFinding =
+    findings.find((finding) => finding.rule_id === "AGENTCSP-TOOL-010") ??
+    findings.find((finding) => finding.rule_id === "AGENTCSP-TOOL-009") ??
+    findings.find((finding) => finding.rule_id === "AGENTCSP-TOOL-008");
+  if (!contextualFinding) return "";
+  return ` Target capability also matches: ${contextualFinding.reason}`;
+}
+
 function mergeRisk(target: GraphNodeRef, finding: Finding): RiskFactors {
   const rationale = [...finding.risk.rationale];
   if (["unknown", "untrusted", "third_party"].includes(target.trust_level)) {
@@ -491,9 +504,16 @@ function pathConfidence(edge: GraphEdge, finding: Finding): Confidence {
   return "high";
 }
 
-function attackPathTitle(edge: GraphEdge, finding: Finding): string {
+function attackPathTitle(edge: GraphEdge, finding: Finding, risk?: RiskFactors): string {
   if (edge.relation === "uses_secret") {
     return `${edge.target.name} can use credential references`;
+  }
+  if (
+    finding.matched_object.id === edge.source.id &&
+    finding.rule_id === "AGENTCSP-RAG-003" &&
+    risk?.data_classes.includes("pii")
+  ) {
+    return `${edge.source.name} can route customer data to ${edge.target.name}`;
   }
   if (finding.matched_object.id === edge.source.id && finding.rule_id === "AGENTCSP-RAG-003") {
     return `${edge.source.name} can route sensitive context to ${edge.target.name}`;
@@ -557,12 +577,15 @@ function sortAttackPaths(paths: AttackPath[]): AttackPath[] {
 function attackPathPriority(path: AttackPath): number {
   let score = 0;
   if (path.title.includes("route untrusted input")) score += 12;
+  if (path.title.includes("route customer data")) score += 12;
   if (path.title.includes("auto-approve package-script")) score += 12;
   if (path.title.includes("auto-approve destructive MCP")) score += 12;
   if (path.title.includes("replay memory")) score += 12;
   if (path.title.includes("replay generated state")) score += 12;
   if (path.title.includes("route sensitive context")) score += 5;
+  if (path.risk.external_reach && path.risk.data_classes.includes("pii")) score += 6;
   if (path.reason.includes("data-egress directive")) score += 3;
+  if (path.reason.includes("PII-like input")) score += 4;
   if (path.reason.includes("explicit tool reference")) score += 4;
   if (path.reason.includes("specific agent-callable capability")) score += 4;
   if (path.reason.includes("explicit privileged tool")) score += 3;
@@ -734,6 +757,9 @@ function normalizeGraphName(name: string): string {
 function targetAuthorityLabels(object: SurfaceObject): string[] {
   const labels: string[] = [];
   if (object.secret_exposure || object.data_classes.includes("credential")) labels.push("credential-backed access");
+  if (object.data_classes.includes("pii")) labels.push("PII data");
+  if (object.metadata.accepts_pii_like_input === true) labels.push("PII input");
+  if (object.metadata.accepts_customer_data_input === true) labels.push("customer-data input");
   if (object.external_reach) labels.push("external reach");
   if (object.actions.includes("execute")) labels.push("execution");
   if (object.actions.includes("publish")) labels.push("publish");

@@ -87,6 +87,7 @@ Examples:
 - package publish/release authority plus agent-influenced workflow
 - attack paths that connect specific context-risk signals to concrete privileged capabilities
 - source-anchored RAG data-egress paths that preserve the retrieval finding as the reason for the blast radius
+- exact customer-data paths from retrieved context into PII-capable external tools
 - source-anchored prompt paths that preserve explicit privileged-tool references from untrusted template variables
 - source-anchored memory replay paths that preserve the persisted-memory finding as the reason for the blast radius
 - exact generated-state replay paths that preserve transcript or cached-output provenance without expanding into unrelated privileged targets

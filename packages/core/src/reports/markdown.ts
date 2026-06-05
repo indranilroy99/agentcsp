@@ -261,11 +261,11 @@ function renderAttackPaths(attackPaths: AttackPath[]): string {
   return [
     "## Static Attack Paths",
     "",
-    "| Severity | Confidence | Path | Recommended control |",
-    "| --- | --- | --- | --- |",
+    "| Severity | Confidence | Route | Path | Recommended control |",
+    "| --- | --- | --- | --- | --- |",
     ...attackPaths.map((attackPath) => {
       const path = `${attackPath.source.type}:${attackPath.source.name} -> ${attackPath.target.type}:${attackPath.target.name}`;
-      return `| ${attackPath.severity} | ${attackPath.confidence} | \`${escapeTable(path)}\` | ${attackPath.recommended_control.replaceAll("_", " ")} |`;
+      return `| ${attackPath.severity} | ${attackPath.confidence} | ${escapeTable(attackPath.title)} | \`${escapeTable(path)}\` | ${attackPath.recommended_control.replaceAll("_", " ")} |`;
     })
   ].join("\n");
 }

@@ -61,7 +61,7 @@ Runtime enforcement adapters, deeper graph traversal, and the dashboard are plan
 - **Baseline Comparison**: compares current findings to previous scan output so teams can separate new risk from existing debt.
 - **Scan Coverage Summary**: reports indexed files, oversized files, ignored paths, skipped hidden/log directories, and max-file limits.
 - **Scan Diagnostics**: emits redacted parser diagnostics when security-relevant configs cannot be parsed.
-- **Evidence-Led Static Attack Paths**: connects specific context-risk signals to privileged capabilities, prefers exact callable references when context names a discovered tool or MCP server, and avoids expanding those cases into broad speculative blast-radius entries.
+- **Evidence-Led Static Attack Paths**: connects specific context-risk signals to privileged capabilities, highlights customer-data routes into PII-capable external tools, prefers exact callable references when context names a discovered tool or MCP server, and avoids expanding those cases into broad speculative blast-radius entries.
 - **Auditable Suppressions**: supports owned, reasoned, expiring accepted-risk records without deleting evidence.
 - **Open Rule Packs**: constrained YAML rules operate over normalized manifest objects. No custom JavaScript execution is allowed in rules.
 - **Static Blast-Radius Summary**: reports reachable authority from static project metadata without claiming runtime graph traversal.
