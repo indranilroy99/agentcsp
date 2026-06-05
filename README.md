@@ -63,7 +63,7 @@ Runtime enforcement adapters, deeper graph traversal, and the dashboard are plan
 - **Scan Diagnostics**: emits redacted parser diagnostics when security-relevant configs cannot be parsed.
 - **Evidence-Led Static Attack Paths**: connects specific context-risk signals to privileged capabilities, highlights customer-data routes into PII-capable external tools, prefers exact callable references when context names a discovered tool or MCP server, and avoids expanding those cases into broad speculative blast-radius entries.
 - **Auditable Suppressions**: supports owned, reasoned, expiring accepted-risk records without deleting evidence.
-- **Open Rule Packs**: constrained YAML rules operate over normalized manifest objects. No custom JavaScript execution is allowed in rules.
+- **Open Rule Packs**: constrained YAML rules operate over normalized manifest objects. Built-in rules always run; project-local rules are additive and never execute custom JavaScript.
 - **Static Blast-Radius Summary**: reports reachable authority from static project metadata without claiming runtime graph traversal.
 - **Evidence Reports**: outputs JSON and Markdown with redacted evidence snippets and recommended controls.
 
@@ -200,6 +200,8 @@ Findings include severity, confidence, risk factors, redacted evidence, mappings
 ## Rules
 
 Rules are open YAML files validated by Zod. MVP rules match normalized manifest objects first; graph-edge rules are planned later.
+
+AgentCSP always runs its built-in rule pack. If the scanned repository contains a project-local `rules/` directory, those rules are loaded additively. Malformed local rules and duplicate rule IDs are reported as redacted diagnostics and skipped so they cannot suppress built-in detections.
 
 ```yaml
 id: AGENTCSP-MCP-001

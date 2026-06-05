@@ -1,5 +1,6 @@
 import fs from "node:fs/promises";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import {
   ScanConfigSchema,
   type AgentManifest,
@@ -19,7 +20,7 @@ import {
 } from "../policy/load-policy.js";
 import { detectSurfaces, type DetectedSurfaces } from "./detect.js";
 import { walkProjectWithCoverage } from "./walk.js";
-import { loadRules, runRules } from "../rules/engine.js";
+import { loadRules, loadRulesWithDiagnostics, ruleDiagnostic, runRules } from "../rules/engine.js";
 import { buildStaticBlastRadiusSummary } from "../reports/blast-radius.js";
 import { renderMarkdownReport } from "../reports/markdown.js";
 import { renderSarifReport } from "../reports/sarif.js";
@@ -27,6 +28,8 @@ import { buildTriageSummary } from "../reports/triage.js";
 import { applyBaselineComparison } from "../reports/baseline.js";
 import { shouldFail } from "../risk/score.js";
 import { sortObjects } from "../utils/sort.js";
+
+const moduleDirectory = path.dirname(fileURLToPath(import.meta.url));
 
 export interface ScanResult {
   manifest: AgentManifest;
@@ -51,14 +54,12 @@ export async function scanProject(rawConfig: Partial<ScanConfig> & { root_path: 
   const policyResult = await loadPolicyWithDiagnostics(rootPath, config.config_path);
   const policy = policyResult.policy;
   const detected = await detectSurfaces(files);
-  detected.diagnostics.push(...policyResult.diagnostics);
+  const ruleLoad = await loadScanRules(rootPath);
+  detected.diagnostics.push(...policyResult.diagnostics, ...ruleLoad.diagnostics);
   const surfaces = applyPolicyToSurfaces(detected, policy);
   const scanCoverage = withDiagnosticCoverage(walkResult.coverage, surfaces.diagnostics);
 
-  const rulesDirectory = path.resolve(rootPath, "rules");
-  const fallbackRulesDirectory = path.resolve(process.cwd(), "rules");
-  const rules = await loadRules(await firstExistingDirectory([rulesDirectory, fallbackRulesDirectory]));
-  const policyControlledFindings = applyRecommendedControls(runRules(surfaces, rules), policy);
+  const policyControlledFindings = applyRecommendedControls(runRules(surfaces, ruleLoad.rules), policy);
   const suppressedFindings = applyFindingSuppressions(policyControlledFindings, policy);
   const baselineResult = config.baseline_path
     ? await applyBaselineComparison(suppressedFindings, config.baseline_path)
@@ -108,6 +109,38 @@ export async function scanProject(rawConfig: Partial<ScanConfig> & { root_path: 
     reportMarkdown,
     outputFiles,
     shouldFail: shouldFail(failGateFindings, config.fail_on, config.fail_on_confidence)
+  };
+}
+
+async function loadScanRules(rootPath: string): Promise<{ rules: Awaited<ReturnType<typeof loadRules>>; diagnostics: ScanDiagnostic[] }> {
+  const builtInRulesDirectory = await builtInRulesDirectoryPath();
+  const builtInRules = await loadRules(builtInRulesDirectory);
+  const rules = [...builtInRules];
+  const diagnostics: ScanDiagnostic[] = [];
+  const seenRuleIds = new Set(builtInRules.map((rule) => rule.id));
+  const projectRulesDirectory = path.resolve(rootPath, "rules");
+
+  if ((await directoryExists(projectRulesDirectory)) && !sameDirectory(projectRulesDirectory, builtInRulesDirectory)) {
+    const projectRuleLoad = await loadRulesWithDiagnostics(projectRulesDirectory, rootPath);
+    diagnostics.push(...projectRuleLoad.diagnostics);
+    for (const rule of projectRuleLoad.rules) {
+      if (seenRuleIds.has(rule.id)) {
+        diagnostics.push(
+          ruleDiagnostic(rootPath, projectRuleLoad.pathsByRuleId.get(rule.id) ?? projectRulesDirectory, {
+            code: "RULE_ID_DUPLICATE",
+            reason: `Project-local rule id ${rule.id} duplicates an existing AgentCSP rule and was skipped.`
+          })
+        );
+        continue;
+      }
+      rules.push(rule);
+      seenRuleIds.add(rule.id);
+    }
+  }
+
+  return {
+    rules: rules.sort((a, b) => a.id.localeCompare(b.id)),
+    diagnostics: diagnostics.sort((a, b) => a.id.localeCompare(b.id))
   };
 }
 
@@ -163,4 +196,24 @@ async function firstExistingDirectory(candidates: string[]): Promise<string> {
     }
   }
   throw new Error(`No rules directory found. Checked: ${candidates.join(", ")}`);
+}
+
+async function builtInRulesDirectoryPath(): Promise<string> {
+  return firstExistingDirectory([
+    path.resolve(moduleDirectory, "../../rules"),
+    path.resolve(moduleDirectory, "../../../../rules")
+  ]);
+}
+
+async function directoryExists(candidate: string): Promise<boolean> {
+  try {
+    const stats = await fs.stat(candidate);
+    return stats.isDirectory();
+  } catch {
+    return false;
+  }
+}
+
+function sameDirectory(left: string, right: string): boolean {
+  return path.resolve(left) === path.resolve(right);
 }

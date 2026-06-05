@@ -33,7 +33,7 @@ Use `--include-logs` when transcripts, cached tool outputs, or generated run sum
 agentcsp scan . --include-logs
 ```
 
-`diagnostics` records redacted scan health warnings, such as malformed MCP, runtime, workflow, package, policy, or tool definition files. `scan_coverage.diagnostics_total`, `diagnostics_warnings`, `diagnostics_errors`, and `diagnostics_info` provide stable machine-readable counts for CI and dashboards. Treat diagnostics as evidence that a file may need syntax repair or manual review before relying on a quiet scan.
+`diagnostics` records redacted scan health warnings, such as malformed MCP, runtime, workflow, package, policy, rule, or tool definition files. `scan_coverage.diagnostics_total`, `diagnostics_warnings`, `diagnostics_errors`, and `diagnostics_info` provide stable machine-readable counts for CI and dashboards. Treat diagnostics as evidence that a file may need syntax repair or manual review before relying on a quiet scan.
 
 ## CI Behavior
 
@@ -65,7 +65,7 @@ Use `--fail-on-diagnostics` when parse failures in security-relevant files shoul
 agentcsp scan . --fail-on-diagnostics
 ```
 
-This remains separate from finding severity gates. It is useful for repositories where malformed MCP, runtime, workflow, package, policy, or tool-definition files should block a release until the scan can inspect them reliably.
+This remains separate from finding severity gates. It is useful for repositories where malformed MCP, runtime, workflow, package, policy, rule, or tool-definition files should block a release until the scan can inspect them reliably.
 
 ## Baselines
 

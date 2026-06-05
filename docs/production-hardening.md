@@ -22,6 +22,8 @@ A finding should be considered production-grade when it includes:
 - diagnostic severity counts in scan coverage so parser-degraded scans are machine-readable
 - redacted parser diagnostics for malformed security-relevant configuration
 - redacted policy diagnostics for malformed, schema-invalid, or explicitly missing advisory policy configs
+- built-in rule pack loading that cannot be suppressed by a project-local `rules/` directory
+- redacted project-local rule diagnostics for malformed, schema-invalid, or duplicate custom rules
 - optional CI failure on diagnostics when malformed agent configuration should block release
 - negation-aware action classification so safety policy text is not treated as granted authority
 - MCP package-runner posture for unpinned third-party runtime launchers

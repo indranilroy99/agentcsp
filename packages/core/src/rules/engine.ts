@@ -1,11 +1,26 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import YAML from "yaml";
-import { RuleSchema, type Confidence, type Finding, type RiskFactors, type Rule, type SurfaceObject } from "../schemas/index.js";
+import {
+  RuleSchema,
+  type Confidence,
+  type Finding,
+  type RiskFactors,
+  type Rule,
+  type ScanDiagnostic,
+  type SurfaceObject
+} from "../schemas/index.js";
 import { stableId } from "../utils/ids.js";
+import { relativePath } from "../utils/paths.js";
 import { allManifestObjects } from "../manifest/build.js";
 import type { DetectedSurfaces } from "../scanner/detect.js";
 import { scoreObjectRisk, severityFromScore } from "../risk/score.js";
+
+export interface LoadedRules {
+  rules: Rule[];
+  diagnostics: ScanDiagnostic[];
+  pathsByRuleId: Map<string, string>;
+}
 
 export async function loadRules(rulesDirectory: string): Promise<Rule[]> {
   const rules: Rule[] = [];
@@ -23,6 +38,13 @@ export async function loadRules(rulesDirectory: string): Promise<Rule[]> {
     rules.push(RuleSchema.parse(YAML.parse(content)));
   }
   return rules.sort((a, b) => a.id.localeCompare(b.id));
+}
+
+export async function loadRulesWithDiagnostics(rulesDirectory: string, rootPath: string): Promise<LoadedRules> {
+  const result: LoadedRules = { rules: [], diagnostics: [], pathsByRuleId: new Map() };
+  await loadRulesWithDiagnosticsInto(rulesDirectory, rootPath, result);
+  result.rules.sort((a, b) => a.id.localeCompare(b.id));
+  return result;
 }
 
 export function runRules(surfaces: DetectedSurfaces, rules: Rule[]): Finding[] {
@@ -56,6 +78,71 @@ export function runRules(surfaces: DetectedSurfaces, rules: Rule[]): Finding[] {
     }
   }
   return findings.sort((a, b) => a.id.localeCompare(b.id));
+}
+
+async function loadRulesWithDiagnosticsInto(
+  rulesDirectory: string,
+  rootPath: string,
+  result: LoadedRules
+): Promise<void> {
+  const entries = await fs.readdir(rulesDirectory, { withFileTypes: true });
+  const sorted = entries.sort((a, b) => a.name.localeCompare(b.name));
+  for (const entry of sorted) {
+    const absolute = path.join(rulesDirectory, entry.name);
+    if (entry.isDirectory()) {
+      await loadRulesWithDiagnosticsInto(absolute, rootPath, result);
+      continue;
+    }
+    if (!entry.isFile()) continue;
+    if (!entry.name.endsWith(".yaml") && !entry.name.endsWith(".yml")) continue;
+
+    try {
+      const content = await fs.readFile(absolute, "utf8");
+      const rule = RuleSchema.parse(YAML.parse(content));
+      result.rules.push(rule);
+      result.pathsByRuleId.set(rule.id, absolute);
+    } catch (error) {
+      const code = isValidationError(error) ? "RULE_SCHEMA_FAILED" : "RULE_PARSE_FAILED";
+      result.diagnostics.push(
+        ruleDiagnostic(rootPath, absolute, {
+          code,
+          reason:
+            code === "RULE_SCHEMA_FAILED"
+              ? "Project-local AgentCSP rule failed schema validation and was skipped. Raw content was redacted."
+              : "Project-local AgentCSP rule could not be parsed as YAML and was skipped. Raw content was redacted."
+        })
+      );
+    }
+  }
+}
+
+export function ruleDiagnostic(
+  rootPath: string,
+  absolutePath: string,
+  input: {
+    code: string;
+    reason: string;
+  }
+): ScanDiagnostic {
+  const filePath = relativePath(rootPath, absolutePath);
+  return {
+    id: stableId("diagnostic", [input.code, filePath]),
+    severity: "warning",
+    code: input.code,
+    file_path: filePath,
+    parser: "rule",
+    reason: input.reason,
+    content_redacted: true
+  };
+}
+
+function isValidationError(error: unknown): boolean {
+  return Boolean(
+    error &&
+      typeof error === "object" &&
+      "name" in error &&
+      (error as { name?: string }).name === "ZodError"
+  );
 }
 
 function confidenceForMatch(

@@ -297,6 +297,8 @@ The current iteration adds:
 - parser diagnostics for malformed MCP configs, package manifests, GitHub workflows, runtime configs, and tool definition files
 - policy diagnostics for malformed `agentcsp.yaml`, schema-invalid policy files, and explicitly supplied missing `--config` paths
 - malformed or invalid policy scans continue with empty advisory policy so manifest, findings, Markdown, and SARIF are still emitted
+- built-in rules always run before project-local `rules/` entries, preventing a scanned repo's generic `rules/` folder from replacing AgentCSP detections
+- project-local malformed, schema-invalid, or duplicate custom rules are skipped with redacted diagnostics
 - parse-error metadata on affected fallback surfaces
 - Markdown Scan Diagnostics section
 - SARIF run-level `agentcsp_diagnostics`
