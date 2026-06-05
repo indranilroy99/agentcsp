@@ -336,7 +336,7 @@ function isSourceFindingAttackPathCandidate(edge: GraphEdge, finding: Finding, t
 }
 
 function isRuntimeSourceFindingAttackPathCandidate(edge: GraphEdge, finding: Finding, target: SurfaceObject): boolean {
-  if (edge.relation !== "triggers") return false;
+  if (edge.relation !== "triggers" && edge.relation !== "calls") return false;
   if (!isRuntimeRiskFinding(finding)) return false;
   if (finding.severity !== "critical" && finding.severity !== "high") return false;
   if (finding.rule_id === "AGENTCSP-RUNTIME-005") {
@@ -344,6 +344,14 @@ function isRuntimeSourceFindingAttackPathCandidate(edge: GraphEdge, finding: Fin
       target.type === "tool" &&
       target.name.startsWith("package-script:") &&
       stringMetadataArray(finding.matched_object.metadata.referenced_release_package_scripts).includes(target.name)
+    );
+  }
+  if (finding.rule_id === "AGENTCSP-RUNTIME-006") {
+    return (
+      target.type === "mcp_server" &&
+      stringMetadataArray(finding.matched_object.metadata.auto_approved_destructive_mcp_servers).includes(
+        normalizeGraphName(target.name)
+      )
     );
   }
   return false;
@@ -384,6 +392,16 @@ function strongestSourceFindingForEdge(findings: Finding[], target: SurfaceObjec
         stringMetadataArray(finding.matched_object.metadata.referenced_release_package_scripts).includes(target.name)
     );
     if (runtimeReleaseScriptFinding) return runtimeReleaseScriptFinding;
+  }
+  if (target?.type === "mcp_server") {
+    const runtimeDestructiveMcpFinding = findings.find(
+      (finding) =>
+        finding.rule_id === "AGENTCSP-RUNTIME-006" &&
+        stringMetadataArray(finding.matched_object.metadata.auto_approved_destructive_mcp_servers).includes(
+          normalizeGraphName(target.name)
+        )
+    );
+    if (runtimeDestructiveMcpFinding) return runtimeDestructiveMcpFinding;
   }
   if (target) {
     const explicitPromptToolFinding = findings.find(
@@ -486,6 +504,9 @@ function attackPathTitle(edge: GraphEdge, finding: Finding): string {
   if (finding.matched_object.id === edge.source.id && finding.rule_id === "AGENTCSP-RUNTIME-005") {
     return `${edge.source.name} can auto-approve ${edge.target.name}`;
   }
+  if (finding.matched_object.id === edge.source.id && finding.rule_id === "AGENTCSP-RUNTIME-006") {
+    return `${edge.source.name} can auto-approve destructive MCP on ${edge.target.name}`;
+  }
   if (finding.matched_object.id === edge.source.id && finding.matched_object.metadata.generated_state === true) {
     return `${edge.source.name} can replay generated state into ${edge.target.name}`;
   }
@@ -537,6 +558,7 @@ function attackPathPriority(path: AttackPath): number {
   let score = 0;
   if (path.title.includes("route untrusted input")) score += 12;
   if (path.title.includes("auto-approve package-script")) score += 12;
+  if (path.title.includes("auto-approve destructive MCP")) score += 12;
   if (path.title.includes("replay memory")) score += 12;
   if (path.title.includes("replay generated state")) score += 12;
   if (path.title.includes("route sensitive context")) score += 5;
@@ -699,6 +721,14 @@ function contextSignalLabels(object: SurfaceObject): string[] {
 function stringMetadataArray(value: unknown): string[] {
   if (!Array.isArray(value)) return [];
   return value.filter((item): item is string => typeof item === "string").sort((a, b) => a.localeCompare(b));
+}
+
+function normalizeGraphName(name: string): string {
+  return name
+    .replace(/([a-z0-9])([A-Z])/g, "$1_$2")
+    .replace(/[^a-zA-Z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "")
+    .toLowerCase();
 }
 
 function targetAuthorityLabels(object: SurfaceObject): string[] {

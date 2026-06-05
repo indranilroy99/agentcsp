@@ -1,0 +1,34 @@
+id: AGENTCSP-RUNTIME-006
+name: Runtime auto-approves destructive MCP tool
+description: An agent runtime configuration auto-approves a destructive MCP tool while the referenced MCP server has credential exposure, creating a concrete path from agent-controlled context to secret-backed side effects without per-call review.
+category: runtime_posture
+severity: critical
+maps_to:
+  owasp:
+    - LLM02:2025 Sensitive Information Disclosure
+    - LLM06:2025 Excessive Agency
+  mitre_atlas:
+    - AML.T0054 Command and Scripting Interpreter
+    - AML.T0057 Exfiltration via Cyber Means
+  nist_ai_rmf:
+    - GOVERN 1.5
+    - MANAGE 2.3
+    - MANAGE 2.4
+match:
+  object_type: runtime_config
+  where:
+    - field: metadata.parsed_runtime_config
+      op: equals
+      value: true
+    - field: metadata.auto_approved_destructive_mcp_tools
+      op: equals
+      value: true
+    - field: metadata.secret_backed_mcp_runtime_bridge
+      op: equals
+      value: true
+    - field: metadata.approval_bypass
+      op: equals
+      value: true
+recommendation:
+  control: require_approval
+  text: Remove auto-approval for destructive MCP tools, scope server credentials, and require per-call approval before agent runtime can invoke credential-backed side effects.

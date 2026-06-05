@@ -1483,6 +1483,13 @@ function detectRuntimeConfig(file: WalkedFile, text: string | undefined, surface
       permission_allowlist: posture.permission_allowlist,
       permission_denylist: posture.permission_denylist,
       auto_approved_package_script_names: posture.auto_approved_package_script_names,
+      auto_approved_mcp_servers: posture.auto_approved_mcp_servers,
+      auto_approved_mcp_tool_refs: posture.auto_approved_mcp_tool_refs,
+      auto_approved_mcp_tool_count: posture.auto_approved_mcp_tool_count,
+      auto_approved_destructive_mcp_servers: posture.auto_approved_destructive_mcp_servers,
+      auto_approved_destructive_mcp_tool_refs: posture.auto_approved_destructive_mcp_tool_refs,
+      auto_approved_destructive_mcp_tool_count: posture.auto_approved_destructive_mcp_tool_count,
+      auto_approved_destructive_mcp_tools: posture.auto_approved_destructive_mcp_tools,
       auto_approved_tools_redacted: posture.auto_approved_tools_redacted,
       auto_approved_tool_count: posture.auto_approved_tool_count,
       auto_approved_privileged_tool_count: posture.auto_approved_privileged_tool_count,
@@ -1795,6 +1802,13 @@ interface RuntimePosture {
   permission_allowlist: string[];
   permission_denylist: string[];
   auto_approved_package_script_names: string[];
+  auto_approved_mcp_servers: string[];
+  auto_approved_mcp_tool_refs: string[];
+  auto_approved_mcp_tool_count: number;
+  auto_approved_destructive_mcp_servers: string[];
+  auto_approved_destructive_mcp_tool_refs: string[];
+  auto_approved_destructive_mcp_tool_count: number;
+  auto_approved_destructive_mcp_tools: boolean;
   auto_approved_tools_redacted: boolean;
   auto_approved_tool_count: number;
   auto_approved_privileged_tool_count: number;
@@ -1866,6 +1880,8 @@ function classifyRuntimeConfig(value: unknown): RuntimePosture {
     (entry) => classifyPrivilegedToolSignals([entry]).length > 0
   ).length;
   const autoApprovedPackageScriptNames = extractPackageScriptNames(rawPermissionAllowlist.join("\n"));
+  const autoApprovedMcpToolRefs = extractRuntimeMcpToolRefs(rawPermissionAllowlist);
+  const autoApprovedDestructiveMcpToolRefs = autoApprovedMcpToolRefs.filter((ref) => isDestructiveMcpToolRef(ref.toolName));
   const networkEnabled = Boolean(
     (networkAccess && /true|yes|enabled|enable|on|full|unrestricted|allow/iu.test(networkAccess)) ||
       privilegedSignals.some((signal) => ["browser", "external_messaging", "github"].includes(signal))
@@ -1891,6 +1907,13 @@ function classifyRuntimeConfig(value: unknown): RuntimePosture {
     permission_allowlist: permissionAllowlist,
     permission_denylist: permissionDenylist,
     auto_approved_package_script_names: autoApprovedPackageScriptNames,
+    auto_approved_mcp_servers: uniqueStrings(autoApprovedMcpToolRefs.map((ref) => ref.serverName)),
+    auto_approved_mcp_tool_refs: uniqueStrings(autoApprovedMcpToolRefs.map((ref) => ref.ref)),
+    auto_approved_mcp_tool_count: autoApprovedMcpToolRefs.length,
+    auto_approved_destructive_mcp_servers: uniqueStrings(autoApprovedDestructiveMcpToolRefs.map((ref) => ref.serverName)),
+    auto_approved_destructive_mcp_tool_refs: uniqueStrings(autoApprovedDestructiveMcpToolRefs.map((ref) => ref.ref)),
+    auto_approved_destructive_mcp_tool_count: autoApprovedDestructiveMcpToolRefs.length,
+    auto_approved_destructive_mcp_tools: autoApprovedDestructiveMcpToolRefs.length > 0,
     auto_approved_tools_redacted: permissionAllowlist.length > 0,
     auto_approved_tool_count: rawPermissionAllowlist.length,
     auto_approved_privileged_tool_count: autoApprovedPrivilegedToolCount,
@@ -1967,6 +1990,42 @@ function normalizeRuntimePermissionEntry(entry: string): string {
 
   if (/^[a-zA-Z][\w:.-]{0,79}$/u.test(trimmed)) return trimmed;
   return "redacted_permission";
+}
+
+interface RuntimeMcpToolRef {
+  serverName: string;
+  toolName: string;
+  ref: string;
+}
+
+function extractRuntimeMcpToolRefs(entries: string[]): RuntimeMcpToolRef[] {
+  const refs = new Map<string, RuntimeMcpToolRef>();
+  for (const entry of entries) {
+    const trimmed = entry.trim();
+    const claudeMatch = trimmed.match(/^mcp__([^_\s()]+)__([^()\s]+)$/iu);
+    if (claudeMatch?.[1] && claudeMatch[2]) {
+      const serverName = normalizeCallableName(claudeMatch[1]);
+      const toolName = normalizeCallableName(claudeMatch[2]);
+      const ref = `mcp:${serverName}/${toolName}`;
+      refs.set(ref, { serverName, toolName, ref });
+      continue;
+    }
+
+    const runtimeMatch = trimmed.match(/^mcp[:/]([^/\s()]+)[/:]([^()\s]+)$/iu);
+    if (runtimeMatch?.[1] && runtimeMatch[2]) {
+      const serverName = normalizeCallableName(runtimeMatch[1]);
+      const toolName = normalizeCallableName(runtimeMatch[2]);
+      const ref = `mcp:${serverName}/${toolName}`;
+      refs.set(ref, { serverName, toolName, ref });
+    }
+  }
+  return [...refs.values()].sort((a, b) => a.ref.localeCompare(b.ref));
+}
+
+function isDestructiveMcpToolRef(toolName: string): boolean {
+  return /\b(delete|remove|drop|truncate|destroy|purge|wipe|write|update|modify|publish|release|deploy|send|post)\b/iu.test(
+    toolName.replace(/[_-]/g, " ")
+  );
 }
 
 function collectEnvKeyNamesFromConfig(value: unknown, prefix: string[] = []): string[] {

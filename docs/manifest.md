@@ -168,6 +168,13 @@ Runtime metadata may include:
 - `permission_allowlist`
 - `permission_denylist`
 - `auto_approved_package_script_names`
+- `auto_approved_mcp_servers`
+- `auto_approved_mcp_tool_refs`
+- `auto_approved_mcp_tool_count`
+- `auto_approved_destructive_mcp_servers`
+- `auto_approved_destructive_mcp_tool_refs`
+- `auto_approved_destructive_mcp_tool_count`
+- `auto_approved_destructive_mcp_tools`
 - `auto_approved_tools_redacted`
 - `auto_approved_tool_count`
 - `auto_approved_privileged_tool_count`
@@ -197,7 +204,7 @@ Runtime metadata may include:
 - `secret_env_exposure`
 - `secret_values_collected`
 
-Secret or environment values are not emitted. Permission allowlists are normalized to canonical tool names, package script names, and capability classes instead of raw command patterns. AgentCSP records key names, runtime posture, explicit MCP references, and exact package-script references so rules can detect risky authority without exposing credentials or dumping runtime config values.
+Secret or environment values are not emitted. Permission allowlists are normalized to canonical tool names, MCP tool references, package script names, and capability classes instead of raw command patterns. AgentCSP records key names, runtime posture, explicit MCP references, and exact package-script references so rules can detect risky authority without exposing credentials or dumping runtime config values.
 
 ## Prompt Template Signals
 

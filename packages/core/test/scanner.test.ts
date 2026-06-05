@@ -262,6 +262,13 @@ describe("scanner", () => {
       auto_approved_privileged_tool_signal_count: 4,
       auto_approved_privileged_tools: true,
       auto_approved_package_script_names: ["deploy"],
+      auto_approved_mcp_servers: ["filesystem_admin"],
+      auto_approved_mcp_tool_refs: ["mcp:filesystem_admin/delete_file"],
+      auto_approved_mcp_tool_count: 1,
+      auto_approved_destructive_mcp_servers: ["filesystem_admin"],
+      auto_approved_destructive_mcp_tool_refs: ["mcp:filesystem_admin/delete_file"],
+      auto_approved_destructive_mcp_tool_count: 1,
+      auto_approved_destructive_mcp_tools: true,
       auto_approved_package_script_bridge: true,
       auto_approved_release_package_script_bridge: true,
       secret_backed_mcp_runtime_bridge: true,
@@ -283,6 +290,7 @@ describe("scanner", () => {
     expect(claudeRuntimeConfig?.actions).toContain("execute");
     expect(claudeRuntimeConfig?.actions).toContain("send");
     expect(JSON.stringify(claudeRuntimeConfig)).not.toContain("npm run deploy");
+    expect(JSON.stringify(claudeRuntimeConfig)).not.toContain("mcp__filesystem-admin__delete_file");
     expect(JSON.stringify(claudeRuntimeConfig)).not.toContain("${ANTHROPIC_API_KEY}");
     expect(surfaces.ci_cd.length).toBe(1);
     expect(surfaces.ci_cd[0]?.metadata).toMatchObject({

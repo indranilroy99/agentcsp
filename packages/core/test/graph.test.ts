@@ -60,6 +60,18 @@ describe("static graph", () => {
     expect(runtimeDeployPath?.recommended_control).toBe("require_approval");
     expect(runtimeDeployPath?.reason).toContain("auto-approves a package script");
     expect(JSON.stringify(runtimeDeployPath)).not.toContain("npm run deploy");
+    const runtimeDestructiveMcpPath = result.manifest.attack_paths.find(
+      (attackPath) =>
+        attackPath.source.path === ".claude/settings.json" &&
+        attackPath.target.name === "filesystem-admin" &&
+        attackPath.title === "settings.json can auto-approve destructive MCP on filesystem-admin"
+    );
+    expect(runtimeDestructiveMcpPath).toBeDefined();
+    expect(runtimeDestructiveMcpPath?.severity).toBe("critical");
+    expect(runtimeDestructiveMcpPath?.confidence).toBe("very_high");
+    expect(runtimeDestructiveMcpPath?.recommended_control).toBe("require_approval");
+    expect(runtimeDestructiveMcpPath?.reason).toContain("auto-approves a destructive MCP tool");
+    expect(JSON.stringify(runtimeDestructiveMcpPath)).not.toContain("mcp__filesystem-admin__delete_file");
     const promptToolEdge = result.manifest.relationships.find(
       (edge) =>
         edge.relation === "influences" &&

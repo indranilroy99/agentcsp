@@ -122,6 +122,7 @@ function attackPathPriority(path: AttackPath): number {
   let score = 0;
   if (path.title.includes("route untrusted input")) score += 12;
   if (path.title.includes("auto-approve package-script")) score += 12;
+  if (path.title.includes("auto-approve destructive MCP")) score += 12;
   if (path.title.includes("replay memory")) score += 12;
   if (path.title.includes("replay generated state")) score += 12;
   if (path.title.includes("route sensitive context")) score += 5;

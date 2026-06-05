@@ -30,6 +30,7 @@ A finding should be considered production-grade when it includes:
 - instruction-file context bridge signals for untrusted inputs routed into tool or memory authority
 - runtime-to-MCP reference signals for approval bypass into secret-backed MCP servers
 - Claude-style runtime permission allowlists normalized into redacted auto-approved privileged tool signals
+- auto-approved destructive MCP tool refs correlated to credential-backed runtime servers
 - runtime permission allowlists correlated to exact package scripts and release authority
 - workflow-to-agent-script signals for unattended automation with secrets and write authority
 - prompt-template variables and redacted context signals for untrusted-input bridges
@@ -59,6 +60,7 @@ Examples:
 - local MCP implementation path missing from scan plus credential exposure and side effects
 - package-runner MCP server plus unpinned package version plus credential exposure
 - runtime allowlist plus secret-backed MCP server plus approval bypass
+- auto-approved destructive MCP tool plus credential-backed server
 - auto-approved privileged runtime permissions plus credential key exposure
 - auto-approved runtime package script plus release or deploy authority
 - external write tool plus prompt-like content input and URL destination
