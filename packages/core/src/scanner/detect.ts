@@ -230,6 +230,7 @@ export async function detectSurfaces(files: WalkedFile[]): Promise<DetectedSurfa
   }
 
   annotateToolNameCollisions(surfaces);
+  annotateRuntimeCapabilityReferences(surfaces);
   return surfaces;
 }
 
@@ -990,6 +991,91 @@ function annotateToolNameCollisions(surfaces: DetectedSurfaces): void {
       }
     };
   });
+}
+
+function annotateRuntimeCapabilityReferences(surfaces: DetectedSurfaces): void {
+  if (surfaces.runtime_config.length === 0 || surfaces.mcp_servers.length === 0) return;
+
+  surfaces.runtime_config = surfaces.runtime_config.map((runtime) => {
+    const allowedTools = stringMetadataArray(runtime.metadata.allowed_tools);
+    const referencedMcpServers = referencedMcpServersForRuntime(allowedTools, surfaces.mcp_servers);
+    if (referencedMcpServers.length === 0) return runtime;
+
+    const privilegedMcpServers = referencedMcpServers.filter(isPrivilegedMcpServer);
+    const secretBackedMcpServers = referencedMcpServers.filter(isSecretBackedMcpServer);
+    const hasSecretBackedMcp = secretBackedMcpServers.length > 0;
+    const hasPrivilegedMcp = privilegedMcpServers.length > 0;
+    const approvalBypass = runtime.metadata.approval_bypass === true;
+    const dataClasses = hasSecretBackedMcp ? uniqueDataClasses([...runtime.data_classes, "credential"]) : runtime.data_classes;
+
+    return {
+      ...runtime,
+      data_classes: dataClasses,
+      secret_exposure: runtime.secret_exposure || hasSecretBackedMcp,
+      metadata: {
+        ...runtime.metadata,
+        referenced_mcp_servers: surfaceNames(referencedMcpServers),
+        referenced_mcp_count: referencedMcpServers.length,
+        referenced_privileged_mcp_servers: surfaceNames(privilegedMcpServers),
+        referenced_privileged_mcp_count: privilegedMcpServers.length,
+        referenced_secret_backed_mcp_servers: surfaceNames(secretBackedMcpServers),
+        referenced_secret_backed_mcp_count: secretBackedMcpServers.length,
+        mcp_runtime_bridge: referencedMcpServers.length > 0,
+        privileged_mcp_runtime_bridge: hasPrivilegedMcp,
+        secret_backed_mcp_runtime_bridge: hasSecretBackedMcp,
+        approvalless_privileged_mcp_bridge: approvalBypass && hasPrivilegedMcp,
+        approvalless_secret_mcp_bridge: approvalBypass && hasSecretBackedMcp
+      }
+    };
+  });
+}
+
+function referencedMcpServersForRuntime(allowedTools: string[], mcpServers: SurfaceObject[]): SurfaceObject[] {
+  const allowAllTools = allowedTools.some((tool) => /(^|\s|\*)\*(\s|$)|all_tools|all-tools|all tools/iu.test(tool));
+  const mcpReferences = new Set<string>();
+
+  for (const tool of allowedTools) {
+    const normalized = tool.trim().toLowerCase();
+    const match = normalized.match(/^mcp[:/](.+)$/iu);
+    if (match?.[1]) mcpReferences.add(normalizeCallableName(match[1]));
+  }
+
+  return mcpServers
+    .filter((server) => allowAllTools || mcpReferences.has(normalizeCallableName(server.name)))
+    .sort((a, b) => a.name.localeCompare(b.name) || a.path.localeCompare(b.path));
+}
+
+function isPrivilegedMcpServer(server: SurfaceObject): boolean {
+  return (
+    server.side_effect ||
+    server.external_reach ||
+    server.secret_exposure ||
+    !server.reversible ||
+    server.actions.some((action) => ["write", "execute", "publish", "send", "delete", "remember", "call"].includes(action))
+  );
+}
+
+function isSecretBackedMcpServer(server: SurfaceObject): boolean {
+  return (
+    server.secret_exposure ||
+    server.data_classes.some((dataClass) => dataClass === "credential" || dataClass === "secret") ||
+    stringMetadataArray(server.metadata.env_key_names).length > 0 ||
+    stringMetadataArray(server.metadata.secret_ref_key_names).length > 0 ||
+    stringMetadataArray(server.metadata.auth_header_names).length > 0
+  );
+}
+
+function stringMetadataArray(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return value.filter((item): item is string => typeof item === "string").sort((a, b) => a.localeCompare(b));
+}
+
+function surfaceNames(surfaces: SurfaceObject[]): string[] {
+  return [...new Set(surfaces.map((surface) => surface.name))].sort((a, b) => a.localeCompare(b));
+}
+
+function uniqueDataClasses(values: SurfaceObject["data_classes"]): SurfaceObject["data_classes"] {
+  return [...new Set(values)].sort((a, b) => a.localeCompare(b));
 }
 
 function detectRuntimeConfig(file: WalkedFile, text: string | undefined, surfaces: DetectedSurfaces): void {

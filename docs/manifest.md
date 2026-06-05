@@ -154,11 +154,22 @@ Runtime metadata may include:
 - `disabled_tools`
 - `privileged_tools_allowed`
 - `privileged_tool_signals`
+- `referenced_mcp_servers`
+- `referenced_mcp_count`
+- `referenced_privileged_mcp_servers`
+- `referenced_privileged_mcp_count`
+- `referenced_secret_backed_mcp_servers`
+- `referenced_secret_backed_mcp_count`
+- `mcp_runtime_bridge`
+- `privileged_mcp_runtime_bridge`
+- `secret_backed_mcp_runtime_bridge`
+- `approvalless_privileged_mcp_bridge`
+- `approvalless_secret_mcp_bridge`
 - `env_key_names`
 - `secret_env_exposure`
 - `secret_values_collected`
 
-Secret or environment values are not emitted. AgentCSP records key names and posture signals so rules can detect risky authority without exposing credentials.
+Secret or environment values are not emitted. AgentCSP records key names, runtime posture, and explicit MCP references so rules can detect risky authority without exposing credentials.
 
 ## Prompt Template Signals
 

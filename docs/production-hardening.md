@@ -26,6 +26,7 @@ A finding should be considered production-grade when it includes:
 - tool-schema integrity signals for open-world privileged arguments and read-only hint conflicts
 - tool-schema path-to-external data-flow signals for exfiltration risk
 - instruction-file context bridge signals for untrusted inputs routed into tool or memory authority
+- runtime-to-MCP reference signals for approval bypass into secret-backed MCP servers
 - prompt-template variables and redacted context signals for untrusted-input bridges
 - skill data-flow signals for context-to-external-output bridges
 - recommended control
@@ -42,6 +43,7 @@ Examples:
 - MCP server plus credential key names plus side effects
 - remote third-party MCP server plus auth headers or credential references
 - package-runner MCP server plus unpinned package version plus credential exposure
+- runtime allowlist plus secret-backed MCP server plus approval bypass
 - instruction file plus untrusted context reference plus tool and memory bridge
 - tool-name collision plus different authority signatures and a privileged peer
 - skill consumes retrieved/tool/memory context plus external publication

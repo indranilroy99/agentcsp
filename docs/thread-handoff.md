@@ -394,6 +394,17 @@ The current iteration adds:
 - confidence rationale credit for redacted content-signal analysis
 - scanner and rule regression coverage proving vulnerable instructions are flagged while the safe fixture remains clean
 
+## Runtime MCP Reference Pass
+
+The current iteration adds:
+
+- post-scan runtime annotation that correlates allowed MCP runtime entries such as `mcp:<server>` with discovered MCP server objects
+- static graph `calls` relationships from runtime configs to referenced MCP servers
+- redacted runtime metadata for referenced MCP servers, privileged MCP references, secret-backed MCP references, and approvalless MCP bridge flags
+- rule `AGENTCSP-RUNTIME-003` for runtime configs that allow secret-backed MCP servers while approval is bypassed
+- regression coverage proving the vulnerable Codex-style runtime points to the secret-backed `filesystem-admin` MCP server
+- docs updates for runtime-to-MCP reference detection as a concrete blast-radius signal
+
 ## Initial Build Recommendation
 
 Start with a CLI-first MVP before building the dashboard:

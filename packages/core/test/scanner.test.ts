@@ -193,10 +193,17 @@ describe("scanner", () => {
       approval_bypass: true,
       network_enabled: true,
       privileged_tools_allowed: true,
+      mcp_runtime_bridge: true,
+      privileged_mcp_runtime_bridge: true,
+      secret_backed_mcp_runtime_bridge: true,
+      approvalless_secret_mcp_bridge: true,
       secret_env_exposure: true,
       secret_values_collected: false
     });
     expect(runtimeConfig?.metadata.env_key_names).toEqual(["GITHUB_TOKEN", "SLACK_WEBHOOK_URL"]);
+    expect(runtimeConfig?.metadata.referenced_mcp_servers).toEqual(["filesystem-admin"]);
+    expect(runtimeConfig?.metadata.referenced_secret_backed_mcp_servers).toEqual(["filesystem-admin"]);
+    expect(runtimeConfig?.metadata.referenced_secret_backed_mcp_count).toBe(1);
     expect(runtimeConfig?.actions).toContain("execute");
     expect(runtimeConfig?.actions).toContain("send");
     expect(JSON.stringify(runtimeConfig)).not.toContain("${GITHUB_TOKEN}");

@@ -52,6 +52,21 @@ export function buildStaticGraph(surfaces: DetectedSurfaces, findings: Finding[]
     }
   }
 
+  for (const runtime of surfaces.runtime_config) {
+    const referencedMcpNames = stringMetadataArray(runtime.metadata.referenced_mcp_servers);
+    if (referencedMcpNames.length === 0) continue;
+    const referencedMcpNameSet = new Set(referencedMcpNames);
+    for (const mcpServer of surfaces.mcp_servers.filter((server) => referencedMcpNameSet.has(server.name))) {
+      addEdge(
+        relationships,
+        runtime,
+        mcpServer,
+        "calls",
+        "Runtime tool allowlist explicitly references this MCP server. Raw runtime values are redacted; review approval and credential scope before agent use."
+      );
+    }
+  }
+
   for (const memory of surfaces.memory) {
     if (isHeuristicSurface(memory)) continue;
     const persistenceSources = actionableContextSources
@@ -392,6 +407,11 @@ function contextSignalLabels(object: SurfaceObject): string[] {
     );
   }
   return labels;
+}
+
+function stringMetadataArray(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return value.filter((item): item is string => typeof item === "string").sort((a, b) => a.localeCompare(b));
 }
 
 function targetAuthorityLabels(object: SurfaceObject): string[] {

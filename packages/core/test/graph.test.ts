@@ -24,6 +24,14 @@ describe("static graph", () => {
     const influenceEdges = result.manifest.relationships.filter((edge) => edge.relation === "influences");
     expect(influenceEdges.length).toBeGreaterThan(0);
     expect(influenceEdges.every((edge) => edge.reason.includes("Specific context signal"))).toBe(true);
+    expect(
+      result.manifest.relationships.some(
+        (edge) =>
+          edge.relation === "calls" &&
+          edge.source.path === ".codex/config.toml" &&
+          edge.target.name === "filesystem-admin"
+      )
+    ).toBe(true);
     expect(result.manifest.relationships.some((edge) => edge.source.path === "rag")).toBe(false);
     expect(result.manifest.relationships.some((edge) => edge.source.path === "memory")).toBe(false);
     expect(
