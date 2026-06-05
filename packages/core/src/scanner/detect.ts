@@ -109,7 +109,7 @@ export async function detectSurfaces(files: WalkedFile[]): Promise<DetectedSurfa
       const content = text ?? "";
       const signals = classifyContextContent(content);
       const actions = detectActions(content);
-      const dataClasses = inferDataClasses(content, file.relativePath);
+      const dataClasses = contextualDataClasses(inferDataClasses(content, file.relativePath), signals);
       const externalReach = hasExternalReach(content) || signals.external_directive;
       const secretExposure = hasSecretExposure(content) || signals.secret_reference;
       const base = {
@@ -246,7 +246,7 @@ function detectRagContentFile(file: WalkedFile, text: string | undefined, surfac
     name: path.basename(file.relativePath),
     path: file.relativePath,
     trust_level: "unknown",
-    data_classes: inferDataClasses(content, file.relativePath),
+    data_classes: contextualDataClasses(inferDataClasses(content, file.relativePath), signals),
     actions,
     side_effect: false,
     external_reach: signals.external_directive,
@@ -277,7 +277,7 @@ function detectMemoryContentFile(file: WalkedFile, text: string | undefined, sur
     name: path.basename(file.relativePath),
     path: file.relativePath,
     trust_level: "unknown",
-    data_classes: inferDataClasses(content, file.relativePath),
+    data_classes: contextualDataClasses(inferDataClasses(content, file.relativePath), signals),
     actions,
     side_effect: actions.some((action) => action !== "read"),
     external_reach: signals.external_directive,
@@ -309,7 +309,7 @@ function detectPromptTemplateFile(file: WalkedFile, text: string | undefined, su
     name: path.basename(file.relativePath),
     path: file.relativePath,
     trust_level: inferTrustLevel(file.relativePath),
-    data_classes: inferDataClasses(content, file.relativePath),
+    data_classes: contextualDataClasses(inferDataClasses(content, file.relativePath), signals),
     actions,
     side_effect: actions.some((action) => action !== "read"),
     reversible: isReversible(content),
@@ -419,9 +419,12 @@ interface ContextContentSignals {
   memory_write_directive: boolean;
   external_directive: boolean;
   secret_reference: boolean;
+  sensitive_context_reference: boolean;
+  data_egress_directive: boolean;
   context_bridge_tool: boolean;
   context_bridge_memory: boolean;
   context_bridge_external: boolean;
+  context_bridge_data_egress: boolean;
   context_bridge_privileged: boolean;
   content_signal_count: number;
 }
@@ -489,10 +492,18 @@ function classifyContextContent(content: string): ContextContentSignals {
     hasExternalReach(content) ||
     hasAffirmedContextPattern(content, /\b(webhook|slack|email|external|publish|send|post|upload)\b/i);
   const secretReference = hasSecretExposure(content);
+  const sensitiveContextReference = hasSensitiveContextReference(content);
+  const dataEgressDirective = hasDataEgressDirective(content);
   const contextBridgeTool = untrustedContext && toolDirective;
   const contextBridgeMemory = untrustedContext && memoryWriteDirective;
   const contextBridgeExternal = untrustedContext && externalDirective;
-  const contextBridgePrivileged = contextBridgeTool || contextBridgeMemory || contextBridgeExternal || (untrustedContext && secretReference);
+  const contextBridgeDataEgress = untrustedContext && dataEgressDirective;
+  const contextBridgePrivileged =
+    contextBridgeTool ||
+    contextBridgeMemory ||
+    contextBridgeExternal ||
+    contextBridgeDataEgress ||
+    (untrustedContext && secretReference);
   const signals = [
     instructionLike,
     instructionOverride,
@@ -500,7 +511,9 @@ function classifyContextContent(content: string): ContextContentSignals {
     toolDirective,
     memoryWriteDirective,
     externalDirective,
-    secretReference
+    secretReference,
+    sensitiveContextReference,
+    dataEgressDirective
   ].filter(Boolean).length;
   return {
     instruction_like_content: instructionLike,
@@ -510,12 +523,35 @@ function classifyContextContent(content: string): ContextContentSignals {
     memory_write_directive: memoryWriteDirective,
     external_directive: externalDirective,
     secret_reference: secretReference,
+    sensitive_context_reference: sensitiveContextReference,
+    data_egress_directive: dataEgressDirective,
     context_bridge_tool: contextBridgeTool,
     context_bridge_memory: contextBridgeMemory,
     context_bridge_external: contextBridgeExternal,
+    context_bridge_data_egress: contextBridgeDataEgress,
     context_bridge_privileged: contextBridgePrivileged,
     content_signal_count: signals
   };
+}
+
+function hasSensitiveContextReference(content: string): boolean {
+  return hasAffirmedContextPattern(
+    content,
+    /\b(internal|confidential|proprietary|private|sensitive|customer|client|ticket|support|account|record|summary|report|document|note|pii|credential|secret|token|api[\s_-]?key)\b/i
+  );
+}
+
+function hasDataEgressDirective(content: string): boolean {
+  const verbThenData = hasAffirmedContextPattern(
+    content,
+    /\b(send|post|upload|publish|forward|share|copy|exfiltrate)\b[\s\S]{0,140}\b(internal|confidential|proprietary|private|sensitive|customer|client|ticket|support|account|record|summary|report|document|note|data|credential|secret|token|api[\s_-]?key)\b/i
+  );
+  const dataThenVerb = hasAffirmedContextPattern(
+    content,
+    /\b(internal|confidential|proprietary|private|sensitive|customer|client|ticket|support|account|record|summary|report|document|note|data|credential|secret|token|api[\s_-]?key)\b[\s\S]{0,140}\b(send|post|upload|publish|forward|share|copy|exfiltrate)\b/i
+  );
+  const externalTarget = hasAffirmedContextPattern(content, /\b(webhook|slack|email|external|remote|url|api|outside|third[-\s]?party)\b/i);
+  return externalTarget && (verbThenData || dataThenVerb);
 }
 
 function hasAffirmedContextPattern(content: string, pattern: RegExp): boolean {
@@ -1156,6 +1192,17 @@ function surfaceNames(surfaces: SurfaceObject[]): string[] {
 
 function uniqueDataClasses(values: SurfaceObject["data_classes"]): SurfaceObject["data_classes"] {
   return [...new Set(values)].sort((a, b) => a.localeCompare(b));
+}
+
+function contextualDataClasses(
+  baseClasses: SurfaceObject["data_classes"],
+  signals: ContextContentSignals
+): SurfaceObject["data_classes"] {
+  const classes = new Set(baseClasses);
+  if (signals.secret_reference) classes.add("credential");
+  if (signals.sensitive_context_reference || signals.data_egress_directive) classes.add("confidential");
+  if (classes.size > 1) classes.delete("unknown");
+  return uniqueDataClasses([...classes] as SurfaceObject["data_classes"]);
 }
 
 interface WorkflowCommandSignals {

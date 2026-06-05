@@ -31,6 +31,7 @@ A finding should be considered production-grade when it includes:
 - workflow-to-agent-script signals for unattended automation with secrets and write authority
 - prompt-template variables and redacted context signals for untrusted-input bridges
 - prompt-template memory persistence signals for cross-session contamination
+- RAG and memory data-egress signals for sensitive context routed toward external destinations
 - skill data-flow signals for context-to-external-output bridges
 - recommended control
 - OWASP, MITRE ATLAS, and NIST AI RMF mappings where applicable
@@ -60,6 +61,7 @@ Examples:
 - untrusted RAG source plus privileged tool path
 - memory write plus untrusted source provenance
 - RAG or memory content with instruction-like text plus tool/external directives
+- retrieved content plus sensitive context reference plus external data-egress directive
 - generated transcripts or cached tool output with instruction-like tool/external directives
 - local path input plus URL-like destination plus external write capability
 - open-world tool schema plus external, filesystem, credential, or execution authority

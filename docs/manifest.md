@@ -81,14 +81,19 @@ Instruction metadata may include:
 - `memory_write_directive`
 - `external_directive`
 - `secret_reference`
+- `sensitive_context_reference`
+- `data_egress_directive`
 - `context_bridge_tool`
 - `context_bridge_memory`
 - `context_bridge_external`
+- `context_bridge_data_egress`
 - `context_bridge_privileged`
 - `content_signal_count`
 - `skipped_for_size`
 
 Raw instruction text is not emitted. These fields let rules detect instruction-boundary designs where customer, user, web, support, or retrieved context can steer tools, memory, or external actions.
+
+The same redacted context signals are used for analyzed RAG, memory, generated-state, and prompt-template files. `data_egress_directive` marks content that tries to move sensitive or internal context toward an external destination, while `context_bridge_data_egress` marks that bridge when the content is also untrusted or retrieved.
 
 ## Skill Data-Flow Signals
 

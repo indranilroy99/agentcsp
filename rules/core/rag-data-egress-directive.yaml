@@ -1,0 +1,45 @@
+id: AGENTCSP-RAG-003
+name: RAG source directs sensitive context to external destination
+description: A retrievable source references sensitive or internal context and includes an external egress directive through tools or agent-callable actions, creating a concrete exfiltration path through indirect prompt injection.
+category: rag_poisoning
+severity: critical
+maps_to:
+  owasp:
+    - LLM01:2025 Prompt Injection
+    - LLM02:2025 Sensitive Information Disclosure
+    - LLM06:2025 Excessive Agency
+    - LLM08:2025 Vector and Embedding Weaknesses
+  mitre_atlas:
+    - AML.T0051 LLM Prompt Injection
+    - AML.T0057 Exfiltration via Cyber Means
+  nist_ai_rmf:
+    - MAP 5.1
+    - MEASURE 2.9
+    - MANAGE 2.4
+match:
+  object_type: rag_source
+  where:
+    - field: metadata.content_analyzed
+      op: equals
+      value: true
+    - field: metadata.sensitive_context_reference
+      op: equals
+      value: true
+    - field: metadata.data_egress_directive
+      op: equals
+      value: true
+    - field: metadata.context_bridge_data_egress
+      op: equals
+      value: true
+    - field: metadata.tool_directive
+      op: equals
+      value: true
+    - field: metadata.external_directive
+      op: equals
+      value: true
+    - field: data_classes
+      op: includes
+      value: confidential
+recommendation:
+  control: quarantine
+  text: Quarantine this retrieval content, strip external egress instructions, and require provenance review before it can be retrieved by agents with tool or network authority.

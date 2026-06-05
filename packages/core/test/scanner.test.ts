@@ -289,8 +289,12 @@ describe("scanner", () => {
       instruction_like_content: true,
       instruction_override: true,
       tool_directive: true,
-      external_directive: true
+      external_directive: true,
+      sensitive_context_reference: true,
+      data_egress_directive: true,
+      context_bridge_data_egress: true
     });
+    expect(ragFile?.data_classes).toContain("confidential");
     expect(ragFile?.actions).toContain("call");
     expect(ragFile?.actions).toContain("send");
     expect(JSON.stringify(ragFile)).not.toContain("Ignore previous repository instructions");

@@ -434,6 +434,16 @@ The current iteration adds:
 - rule `AGENTCSP-MCP-005` for secret-backed MCP servers whose local implementation file was missing from the scan
 - scanner and rule regression coverage proving the vulnerable fixture surfaces opaque MCP authority without emitting raw credential placeholders
 
+## RAG Data-Egress Directive Pass
+
+The current iteration adds:
+
+- redacted context signals for sensitive/internal context references and external data-egress directives
+- `context_bridge_data_egress` metadata for untrusted or retrieved content that tries to move sensitive context toward an external destination
+- contextual data-class enrichment so affected RAG and memory objects can carry `confidential` without emitting raw content
+- rule `AGENTCSP-RAG-003` for retrievable content that combines sensitive-context references, tool directives, and external-egress instructions
+- scanner and rule regression coverage proving the vulnerable RAG fixture is flagged while the raw poisoning text remains redacted
+
 ## Initial Build Recommendation
 
 Start with a CLI-first MVP before building the dashboard:
