@@ -482,6 +482,15 @@ The current iteration adds:
 - attack-path prioritization for memory replay paths that can steer future runs into privileged tools
 - graph regression coverage proving `release-notes.md` can replay memory into `publish_summary` while keeping raw memory text redacted
 
+## Runtime Broad Web Access Pass
+
+The current iteration adds:
+
+- redacted runtime metadata for auto-approved network tools and normalized scope categories such as `wildcard_domain`
+- broad-scope flags for wildcard, all-tools, and unscoped web permissions without emitting raw domains, URLs, or runtime arguments
+- rule `AGENTCSP-RUNTIME-007` for runtime configs that auto-approve broad web access while exposing credential key names and bypassing per-call approval
+- scanner and rule regression coverage proving `.claude/settings.json` is flagged without leaking the raw web-permission allowlist entry
+
 ## Initial Build Recommendation
 
 Start with a CLI-first MVP before building the dashboard:

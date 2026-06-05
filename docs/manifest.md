@@ -175,6 +175,12 @@ Runtime metadata may include:
 - `auto_approved_destructive_mcp_tool_refs`
 - `auto_approved_destructive_mcp_tool_count`
 - `auto_approved_destructive_mcp_tools`
+- `auto_approved_network_tools`
+- `auto_approved_network_scope_kinds`
+- `auto_approved_network_scope_count`
+- `auto_approved_wildcard_network_scope`
+- `auto_approved_unscoped_network_tool`
+- `auto_approved_broad_network_scope`
 - `auto_approved_tools_redacted`
 - `auto_approved_tool_count`
 - `auto_approved_privileged_tool_count`
@@ -203,6 +209,8 @@ Runtime metadata may include:
 - `env_key_names`
 - `secret_env_exposure`
 - `secret_values_collected`
+
+Network permission scopes are normalized into bounded categories such as `wildcard_domain`, `scoped_domain`, and `unscoped_network_tool`; raw runtime permission strings, domains, URLs, and argument values are not emitted.
 
 Secret or environment values are not emitted. Permission allowlists are normalized to canonical tool names, MCP tool references, package script names, and capability classes instead of raw command patterns. AgentCSP records key names, runtime posture, explicit MCP references, and exact package-script references so rules can detect risky authority without exposing credentials or dumping runtime config values.
 

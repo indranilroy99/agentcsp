@@ -1490,6 +1490,12 @@ function detectRuntimeConfig(file: WalkedFile, text: string | undefined, surface
       auto_approved_destructive_mcp_tool_refs: posture.auto_approved_destructive_mcp_tool_refs,
       auto_approved_destructive_mcp_tool_count: posture.auto_approved_destructive_mcp_tool_count,
       auto_approved_destructive_mcp_tools: posture.auto_approved_destructive_mcp_tools,
+      auto_approved_network_tools: posture.auto_approved_network_tools,
+      auto_approved_network_scope_kinds: posture.auto_approved_network_scope_kinds,
+      auto_approved_network_scope_count: posture.auto_approved_network_scope_count,
+      auto_approved_wildcard_network_scope: posture.auto_approved_wildcard_network_scope,
+      auto_approved_unscoped_network_tool: posture.auto_approved_unscoped_network_tool,
+      auto_approved_broad_network_scope: posture.auto_approved_broad_network_scope,
       auto_approved_tools_redacted: posture.auto_approved_tools_redacted,
       auto_approved_tool_count: posture.auto_approved_tool_count,
       auto_approved_privileged_tool_count: posture.auto_approved_privileged_tool_count,
@@ -1809,6 +1815,12 @@ interface RuntimePosture {
   auto_approved_destructive_mcp_tool_refs: string[];
   auto_approved_destructive_mcp_tool_count: number;
   auto_approved_destructive_mcp_tools: boolean;
+  auto_approved_network_tools: string[];
+  auto_approved_network_scope_kinds: string[];
+  auto_approved_network_scope_count: number;
+  auto_approved_wildcard_network_scope: boolean;
+  auto_approved_unscoped_network_tool: boolean;
+  auto_approved_broad_network_scope: boolean;
   auto_approved_tools_redacted: boolean;
   auto_approved_tool_count: number;
   auto_approved_privileged_tool_count: number;
@@ -1882,10 +1894,13 @@ function classifyRuntimeConfig(value: unknown): RuntimePosture {
   const autoApprovedPackageScriptNames = extractPackageScriptNames(rawPermissionAllowlist.join("\n"));
   const autoApprovedMcpToolRefs = extractRuntimeMcpToolRefs(rawPermissionAllowlist);
   const autoApprovedDestructiveMcpToolRefs = autoApprovedMcpToolRefs.filter((ref) => isDestructiveMcpToolRef(ref.toolName));
+  const autoApprovedNetworkScopes = extractRuntimeNetworkScopes(rawPermissionAllowlist);
   const networkEnabled = Boolean(
     (networkAccess && /true|yes|enabled|enable|on|full|unrestricted|allow/iu.test(networkAccess)) ||
-      privilegedSignals.some((signal) => ["browser", "external_messaging", "github"].includes(signal))
+      privilegedSignals.some((signal) => ["browser", "external_messaging", "github"].includes(signal)) ||
+      autoApprovedNetworkScopes.length > 0
   );
+  const autoApprovedNetworkScopeKinds = uniqueStrings(autoApprovedNetworkScopes.map((scope) => scope.scopeKind));
 
   return {
     runtime_fields: fields
@@ -1914,6 +1929,16 @@ function classifyRuntimeConfig(value: unknown): RuntimePosture {
     auto_approved_destructive_mcp_tool_refs: uniqueStrings(autoApprovedDestructiveMcpToolRefs.map((ref) => ref.ref)),
     auto_approved_destructive_mcp_tool_count: autoApprovedDestructiveMcpToolRefs.length,
     auto_approved_destructive_mcp_tools: autoApprovedDestructiveMcpToolRefs.length > 0,
+    auto_approved_network_tools: uniqueStrings(autoApprovedNetworkScopes.map((scope) => scope.toolName)),
+    auto_approved_network_scope_kinds: autoApprovedNetworkScopeKinds,
+    auto_approved_network_scope_count: autoApprovedNetworkScopes.length,
+    auto_approved_wildcard_network_scope: autoApprovedNetworkScopeKinds.some(
+      (scopeKind) => scopeKind.startsWith("wildcard_") || scopeKind === "all_tools"
+    ),
+    auto_approved_unscoped_network_tool: autoApprovedNetworkScopeKinds.includes("unscoped_network_tool"),
+    auto_approved_broad_network_scope: autoApprovedNetworkScopeKinds.some(
+      (scopeKind) => scopeKind.startsWith("wildcard_") || scopeKind === "all_tools" || scopeKind === "unscoped_network_tool"
+    ),
     auto_approved_tools_redacted: permissionAllowlist.length > 0,
     auto_approved_tool_count: rawPermissionAllowlist.length,
     auto_approved_privileged_tool_count: autoApprovedPrivilegedToolCount,
@@ -2026,6 +2051,65 @@ function isDestructiveMcpToolRef(toolName: string): boolean {
   return /\b(delete|remove|drop|truncate|destroy|purge|wipe|write|update|modify|publish|release|deploy|send|post)\b/iu.test(
     toolName.replace(/[_-]/g, " ")
   );
+}
+
+interface RuntimeNetworkScope {
+  toolName: string;
+  scopeKind: string;
+}
+
+function extractRuntimeNetworkScopes(entries: string[]): RuntimeNetworkScope[] {
+  const scopes = new Map<string, RuntimeNetworkScope>();
+  for (const entry of entries) {
+    const trimmed = entry.trim();
+    if (!trimmed) continue;
+    if (trimmed === "*" || /^all[-_\s]?tools$/iu.test(trimmed)) {
+      addRuntimeNetworkScope(scopes, "all_tools", "all_tools");
+      continue;
+    }
+
+    const toolCallMatch = trimmed.match(/^([a-zA-Z][\w-]*)\s*(?:\((.*)\))?$/u);
+    if (!toolCallMatch?.[1]) continue;
+
+    const toolName = canonicalRuntimeNetworkToolName(toolCallMatch[1]);
+    if (!toolName) continue;
+
+    addRuntimeNetworkScope(scopes, toolName, runtimeNetworkScopeKind(toolName, toolCallMatch[2]));
+  }
+  return [...scopes.values()].sort((a, b) => `${a.toolName}:${a.scopeKind}`.localeCompare(`${b.toolName}:${b.scopeKind}`));
+}
+
+function addRuntimeNetworkScope(scopes: Map<string, RuntimeNetworkScope>, toolName: string, scopeKind: string): void {
+  const key = `${toolName}:${scopeKind}`;
+  scopes.set(key, { toolName, scopeKind });
+}
+
+function canonicalRuntimeNetworkToolName(toolName: string): string | undefined {
+  const normalized = normalizeCallableName(toolName);
+  if (/^web_?fetch$/iu.test(normalized)) return "WebFetch";
+  if (/^web_?search$/iu.test(normalized)) return "WebSearch";
+  if (/^browser$/iu.test(normalized)) return "Browser";
+  if (/^fetch$/iu.test(normalized)) return "fetch";
+  if (/^request$/iu.test(normalized)) return "request";
+  if (/^http$/iu.test(normalized)) return "http";
+  if (/^curl$/iu.test(normalized)) return "curl";
+  if (/^playwright$/iu.test(normalized)) return "playwright";
+  if (/^puppeteer$/iu.test(normalized)) return "puppeteer";
+  return undefined;
+}
+
+function runtimeNetworkScopeKind(toolName: string, scopeText: string | undefined): string {
+  if (!scopeText || !scopeText.trim()) return "unscoped_network_tool";
+
+  const normalized = scopeText.toLowerCase();
+  if (/domain\s*[:=]\s*\*/iu.test(normalized)) return "wildcard_domain";
+  if (/url\s*[:=]\s*\*|https?:\/\/\*/iu.test(normalized)) return "wildcard_url";
+  if (/^\s*\*\s*$/u.test(scopeText)) return toolName === "WebSearch" ? "wildcard_search" : "wildcard_network";
+  if (/(^|[,:=\s])\*(?:[,)\s]|$)/u.test(scopeText)) return "wildcard_network";
+  if (/domain|host/iu.test(normalized)) return "scoped_domain";
+  if (/url|https?:\/\//iu.test(normalized)) return "scoped_url";
+  if (toolName === "WebSearch") return "scoped_search";
+  return "scoped_network";
 }
 
 function collectEnvKeyNamesFromConfig(value: unknown, prefix: string[] = []): string[] {

@@ -41,6 +41,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-004")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-005")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-006")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-007")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-CICD-002")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-AUTOMATION-001")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-AUTOMATION-002")).toBe(true);
@@ -88,6 +89,15 @@ describe("rule engine", () => {
     ]);
     expect(runtimeDestructiveMcpFindings[0]?.confidence).toBe("very_high");
     expect(JSON.stringify(runtimeDestructiveMcpFindings[0])).not.toContain("mcp__filesystem-admin__delete_file");
+    const runtimeBroadWebFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-RUNTIME-007");
+    expect(runtimeBroadWebFindings).toHaveLength(1);
+    expect(runtimeBroadWebFindings[0]?.matched_object.path).toBe(".claude/settings.json");
+    expect(runtimeBroadWebFindings[0]?.matched_object.metadata.auto_approved_network_tools).toEqual(["WebFetch"]);
+    expect(runtimeBroadWebFindings[0]?.matched_object.metadata.auto_approved_network_scope_kinds).toEqual([
+      "wildcard_domain"
+    ]);
+    expect(runtimeBroadWebFindings[0]?.confidence).toBe("very_high");
+    expect(JSON.stringify(runtimeBroadWebFindings[0])).not.toContain("domain:*");
     const automationAgentFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-AUTOMATION-002");
     expect(automationAgentFindings).toHaveLength(1);
     expect(automationAgentFindings[0]?.matched_object.path).toBe(".github/workflows/agent-maintenance.yml");
