@@ -49,8 +49,11 @@ jobs:
       - name: Audit high and critical vulnerabilities
         run: pnpm audit --audit-level high
 
-      - name: AgentCSP scan demo fixture
+      - name: AgentCSP scan vulnerable fixture
         run: pnpm agentcsp scan examples/vulnerable-agent --out .agentcsp --format json,md,sarif --quiet
 
-      - name: Validate SARIF output
-        run: node -e "const fs=require('fs'); const s=JSON.parse(fs.readFileSync('.agentcsp/agentcsp.sarif','utf8')); if(s.version!=='2.1.0') process.exit(1); console.log('SARIF validated');"
+      - name: AgentCSP scan safe fixture
+        run: pnpm agentcsp scan examples/safe-agent --out .agentcsp-safe --format json,md --quiet
+
+      - name: Verify fixture outputs
+        run: pnpm verify:fixtures
