@@ -491,6 +491,15 @@ The current iteration adds:
 - rule `AGENTCSP-RUNTIME-007` for runtime configs that auto-approve broad web access while exposing credential key names and bypassing per-call approval
 - scanner and rule regression coverage proving `.claude/settings.json` is flagged without leaking the raw web-permission allowlist entry
 
+## Tool PII External Write Pass
+
+The current iteration adds:
+
+- tool-schema metadata for PII-like input, customer-data input, and accepted data classes derived from normalized tool names and schema fields
+- data-class enrichment for agent-callable tools that accept customer identifiers while preserving redacted descriptions and schema output boundaries
+- rule `AGENTCSP-TOOL-010` for parsed tool schemas that can send PII-like input to URL-like external destinations
+- scanner and rule regression coverage proving customer-data egress tools are flagged while read-only local tools remain quiet
+
 ## Initial Build Recommendation
 
 Start with a CLI-first MVP before building the dashboard:

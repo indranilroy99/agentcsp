@@ -1018,11 +1018,19 @@ function detectToolDefinition(file: WalkedFile, text: string | undefined, surfac
 
   for (const definition of toolDefinitions) {
     const authority = classifyToolAuthority(definition);
+    const dataClasses: SurfaceObject["data_classes"] = authority.accepted_data_classes.length > 0
+      ? uniqueDataClasses([
+          ...(authority.secret_exposure ? ["credential"] : []),
+          ...authority.accepted_data_classes
+        ] as SurfaceObject["data_classes"])
+      : authority.secret_exposure
+        ? (["credential"] as SurfaceObject["data_classes"])
+        : (["unknown"] as SurfaceObject["data_classes"]);
     const object = createSurfaceObject({
       type: "tool",
       name: definition.name,
       path: file.relativePath,
-      data_classes: authority.secret_exposure ? ["credential"] : ["unknown"],
+      data_classes: dataClasses,
       actions: authority.actions,
       side_effect: authority.side_effect,
       external_reach: authority.external_reach,
@@ -1040,6 +1048,9 @@ function detectToolDefinition(file: WalkedFile, text: string | undefined, surfac
         accepts_content_like_input: authority.accepts_content_like_input,
         accepts_path_input: authority.accepts_path_input,
         accepts_url_input: authority.accepts_url_input,
+        accepts_pii_like_input: authority.accepts_pii_like_input,
+        accepts_customer_data_input: authority.accepts_customer_data_input,
+        accepted_data_classes: authority.accepted_data_classes,
         external_write: authority.external_write,
         destructive_action: authority.destructive_action,
         read_only_hint: definition.annotations?.readOnlyHint,
@@ -2226,6 +2237,9 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   accepts_content_like_input: boolean;
   accepts_path_input: boolean;
   accepts_url_input: boolean;
+  accepts_pii_like_input: boolean;
+  accepts_customer_data_input: boolean;
+  accepted_data_classes: SurfaceObject["data_classes"];
   external_write: boolean;
   destructive_action: boolean;
   open_world_authority: boolean;
@@ -2243,6 +2257,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   );
   const acceptsPath = /(^|[_\W])(path|file|directory|dir|folder|repo|repository|workspace|glob)([_\W]|$)/i.test(text);
   const acceptsUrl = /\b(url|uri|webhook|endpoint|host|domain|http)\b/i.test(text);
+  const schemaDataProfile = classifyToolSchemaDataProfile(definition);
   const destructive = /\b(delete|remove|drop|truncate|destroy|purge|wipe)\b/i.test(text);
   const externalWrite = /\b(publish|post|send|webhook|slack|email|release|deploy|comment|issue|pull\s+request|upload)\b/i.test(
     text
@@ -2272,6 +2287,12 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   }
   if (acceptsContent) {
     classes.add("content_input");
+  }
+  if (schemaDataProfile.acceptsPii) {
+    classes.add("pii_input");
+  }
+  if (schemaDataProfile.acceptsCustomerData) {
+    classes.add("customer_data_input");
   }
   if (externalWrite) {
     classes.add("external_write");
@@ -2317,10 +2338,37 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
     accepts_content_like_input: acceptsContent,
     accepts_path_input: acceptsPath,
     accepts_url_input: acceptsUrl,
+    accepts_pii_like_input: schemaDataProfile.acceptsPii,
+    accepts_customer_data_input: schemaDataProfile.acceptsCustomerData,
+    accepted_data_classes: schemaDataProfile.dataClasses,
     external_write: externalWrite,
     destructive_action: destructive,
     open_world_authority: openWorldAuthority,
     read_only_hint_conflict: readOnlyHintConflict
+  };
+}
+
+function classifyToolSchemaDataProfile(definition: ExtractedToolDefinition): {
+  acceptsPii: boolean;
+  acceptsCustomerData: boolean;
+  dataClasses: SurfaceObject["data_classes"];
+} {
+  const schemaText = normalizeAuthorityText(
+    `${definition.name} ${definition.schemaProperties.join(" ")} ${definition.requiredProperties.join(" ")}`
+  );
+  const acceptsPii =
+    /\b(email|e mail|phone|mobile|address|ssn|social security|passport|date of birth|dob|birth date|customer id|user id|account id)\b/i.test(
+      schemaText
+    );
+  const acceptsCustomerData = /\b(customer|client|account|ticket|case|support|record)\b/i.test(schemaText);
+  const dataClasses = uniqueDataClasses([
+    ...(acceptsPii ? ["pii"] : []),
+    ...(acceptsCustomerData ? ["confidential"] : [])
+  ] as SurfaceObject["data_classes"]);
+  return {
+    acceptsPii,
+    acceptsCustomerData,
+    dataClasses
   };
 }
 

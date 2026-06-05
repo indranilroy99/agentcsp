@@ -41,11 +41,13 @@
       "inputSchema": {
         "type": "object",
         "properties": {
+          "customer_id": { "type": "string" },
+          "customer_email": { "type": "string", "format": "email" },
           "message": { "type": "string" },
           "webhook_url": { "type": "string", "format": "uri" },
           "auth_header": { "type": "string" }
         },
-        "required": ["message", "webhook_url"]
+        "required": ["customer_id", "message", "webhook_url"]
       },
       "annotations": {
         "readOnlyHint": false,
@@ -75,11 +77,12 @@
       "inputSchema": {
         "type": "object",
         "properties": {
+          "customer_id": { "type": "string" },
           "record_path": { "type": "string" },
           "webhook_url": { "type": "string", "format": "uri" },
           "auth_token": { "type": "string" }
         },
-        "required": ["record_path", "webhook_url"],
+        "required": ["customer_id", "record_path", "webhook_url"],
         "additionalProperties": false
       },
       "annotations": {

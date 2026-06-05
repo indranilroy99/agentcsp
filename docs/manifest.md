@@ -131,6 +131,9 @@ Tool metadata may include:
 - `accepts_content_like_input`
 - `accepts_path_input`
 - `accepts_url_input`
+- `accepts_pii_like_input`
+- `accepts_customer_data_input`
+- `accepted_data_classes`
 - `external_write`
 - `destructive_action`
 - `read_only_hint`

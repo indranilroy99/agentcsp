@@ -30,6 +30,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-007")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-008")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-009")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-010")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-001")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-002")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-003")).toBe(true);
@@ -153,6 +154,13 @@ describe("rule engine", () => {
       "publish_summary"
     ]);
     expect(toolContentExternalFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    const toolPiiExternalFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-010");
+    expect(toolPiiExternalFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
+      "customer_record",
+      "post_customer_update"
+    ]);
+    expect(toolPiiExternalFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(toolPiiExternalFindings.every((finding) => finding.data_classes.includes("pii"))).toBe(true);
     const toolShadowFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-007");
     expect(toolShadowFindings.map((finding) => finding.matched_object.path).sort()).toEqual([
       "tools/agent-tools.json",

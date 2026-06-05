@@ -179,6 +179,9 @@ describe("scanner", () => {
       accepts_url_input: true,
       accepts_secret_like_input: true,
       accepts_content_like_input: false,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      accepted_data_classes: ["confidential", "pii"],
       name_collision: true,
       collision_name: "customer_record",
       collision_count: 2,
@@ -211,10 +214,15 @@ describe("scanner", () => {
       accepts_url_input: true,
       accepts_secret_like_input: true,
       accepts_content_like_input: true,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      accepted_data_classes: ["confidential", "pii"],
       open_world_schema: true,
       open_world_authority: true,
       read_only_hint_conflict: false
     });
+    expect(privilegedCollisionTool?.data_classes).toEqual(["confidential", "credential", "pii"]);
+    expect(openWorldTool?.data_classes).toEqual(["confidential", "credential", "pii"]);
     expect(readOnlyConflictTool?.metadata).toMatchObject({
       parsed_tool_schema: true,
       read_only_hint: true,
