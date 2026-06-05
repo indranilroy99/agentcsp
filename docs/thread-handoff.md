@@ -322,6 +322,17 @@ The current iteration adds:
 - attack-path reasons that name the normalized context signal and target authority while keeping raw context redacted
 - regression coverage for file-specific RAG-to-tool paths and generated-state replay paths when logs are explicitly included
 
+## Tool Schema Integrity Pass
+
+The current iteration adds:
+
+- normalized tool metadata for `open_world_authority` and `read_only_hint_conflict`
+- side-effect classification for tools whose read-only hints conflict with destructive, external-write, execution, or state-changing authority
+- rule `AGENTCSP-TOOL-005` for privileged open-world tool schemas
+- rule `AGENTCSP-TOOL-006` for read-only hint conflicts
+- vulnerable fixture tools for unbounded external webhook publishing and a destructive cleanup tool mislabeled read-only
+- scanner and rule regression coverage proving the safe read-only fixture remains clean
+
 ## Initial Build Recommendation
 
 Start with a CLI-first MVP before building the dashboard:

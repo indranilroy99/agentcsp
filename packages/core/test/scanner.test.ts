@@ -69,19 +69,44 @@ describe("scanner", () => {
     expect(surfaces.tools.some((surface) => surface.name === "package-script:sync:docs")).toBe(true);
     const publishTool = surfaces.tools.find((surface) => surface.name === "publish_summary");
     const deleteTool = surfaces.tools.find((surface) => surface.name === "delete_cache");
+    const openWorldTool = surfaces.tools.find((surface) => surface.name === "post_customer_update");
+    const readOnlyConflictTool = surfaces.tools.find((surface) => surface.name === "readonly_cleanup_workspace");
     const readTool = surfaces.tools.find((surface) => surface.name === "read_customer_record");
     expect(publishTool?.metadata).toMatchObject({
       parsed_tool_schema: true,
       external_write: true,
       accepts_secret_like_input: true,
-      accepts_url_input: true
+      accepts_url_input: true,
+      open_world_schema: false,
+      open_world_authority: false,
+      read_only_hint_conflict: false
     });
     expect(deleteTool?.metadata).toMatchObject({
       parsed_tool_schema: true,
       destructive_action: true,
-      accepts_path_input: true
+      accepts_path_input: true,
+      read_only_hint_conflict: false
     });
+    expect(openWorldTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      external_write: true,
+      accepts_url_input: true,
+      accepts_secret_like_input: true,
+      open_world_schema: true,
+      open_world_authority: true,
+      read_only_hint_conflict: false
+    });
+    expect(readOnlyConflictTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      read_only_hint: true,
+      destructive_action: true,
+      accepts_path_input: true,
+      read_only_hint_conflict: true,
+      open_world_schema: false
+    });
+    expect(readOnlyConflictTool?.side_effect).toBe(true);
     expect(readTool?.side_effect).toBe(false);
+    expect(readTool?.metadata.read_only_hint_conflict).toBe(false);
     const runtimeConfig = surfaces.runtime_config.find((surface) => surface.path === ".codex/config.toml");
     expect(runtimeConfig?.metadata).toMatchObject({
       parsed_runtime_config: true,

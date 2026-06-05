@@ -1,0 +1,31 @@
+id: AGENTCSP-TOOL-005
+name: Tool schema allows open-world privileged arguments
+description: A privileged tool schema does not explicitly close additional properties, allowing unmodeled agent-supplied arguments to reach external, filesystem, credential, or execution authority.
+category: tool_schema_authority
+severity: high
+maps_to:
+  owasp:
+    - LLM05:2025 Improper Output Handling
+    - LLM06:2025 Excessive Agency
+  mitre_atlas:
+    - AML.T0051 LLM Plugin Compromise
+    - AML.T0057 Exfiltration via Cyber Means
+  nist_ai_rmf:
+    - MAP 4.1
+    - MEASURE 2.7
+    - MANAGE 2.4
+match:
+  object_type: tool
+  where:
+    - field: metadata.parsed_tool_schema
+      op: equals
+      value: true
+    - field: metadata.open_world_schema
+      op: equals
+      value: true
+    - field: metadata.open_world_authority
+      op: equals
+      value: true
+recommendation:
+  control: require_approval
+  text: Close the tool input schema with explicit allowed properties, validate arguments before execution, and require approval before unbounded tool arguments can reach privileged authority.

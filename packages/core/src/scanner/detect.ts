@@ -722,6 +722,8 @@ function detectToolDefinition(file: WalkedFile, text: string | undefined, surfac
         destructive_action: authority.destructive_action,
         read_only_hint: definition.annotations?.readOnlyHint,
         idempotent_hint: definition.annotations?.idempotentHint,
+        read_only_hint_conflict: authority.read_only_hint_conflict,
+        open_world_authority: authority.open_world_authority,
         open_world_schema: definition.openWorldSchema
       }
     });
@@ -1187,6 +1189,8 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   accepts_url_input: boolean;
   external_write: boolean;
   destructive_action: boolean;
+  open_world_authority: boolean;
+  read_only_hint_conflict: boolean;
 } {
   const text = normalizeAuthorityText(
     `${definition.name} ${definition.description} ${definition.schemaProperties.join(" ")} ${definition.requiredProperties.join(" ")}`
@@ -1238,10 +1242,24 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
 
   const readOnly = definition.annotations?.readOnlyHint === true;
   const explicitSideEffectHint = definition.annotations?.readOnlyHint === false;
+  const privilegedAction = [...actions].some((action) =>
+    ["write", "execute", "publish", "send", "delete", "remember"].includes(action)
+  );
+  const readOnlyHintConflict = readOnly && (externalWrite || destructive || privilegedAction);
+  const openWorldAuthority =
+    definition.openWorldSchema &&
+    (externalWrite ||
+      destructive ||
+      acceptsSecret ||
+      acceptsPath ||
+      acceptsUrl ||
+      classes.has("shell_execution") ||
+      classes.has("filesystem_access") ||
+      classes.has("network_access"));
   const sideEffect =
+    readOnlyHintConflict ||
     explicitSideEffectHint ||
-    (!readOnly &&
-      [...actions].some((action) => ["write", "execute", "publish", "send", "delete", "remember"].includes(action)));
+    (!readOnly && privilegedAction);
 
   return {
     authority_classes: [...classes].sort((a, b) => a.localeCompare(b)),
@@ -1253,7 +1271,9 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
     accepts_path_input: acceptsPath,
     accepts_url_input: acceptsUrl,
     external_write: externalWrite,
-    destructive_action: destructive
+    destructive_action: destructive,
+    open_world_authority: openWorldAuthority,
+    read_only_hint_conflict: readOnlyHintConflict
   };
 }
 

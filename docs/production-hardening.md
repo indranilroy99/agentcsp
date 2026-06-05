@@ -21,6 +21,7 @@ A finding should be considered production-grade when it includes:
 - scan coverage counts for skipped files, ignored paths, and traversal limits
 - redacted parser diagnostics for malformed security-relevant configuration
 - negation-aware action classification so safety policy text is not treated as granted authority
+- tool-schema integrity signals for open-world privileged arguments and read-only hint conflicts
 - recommended control
 - OWASP, MITRE ATLAS, and NIST AI RMF mappings where applicable
 - redacted evidence
@@ -41,6 +42,8 @@ Examples:
 - memory write plus untrusted source provenance
 - RAG or memory content with instruction-like text plus tool/external directives
 - generated transcripts or cached tool output with instruction-like tool/external directives
+- open-world tool schema plus external, filesystem, credential, or execution authority
+- read-only tool hint plus destructive or external write behavior
 - scheduled or externally dispatched automation plus secrets and write authority
 - package publish/release authority plus agent-influenced workflow
 - attack paths that connect specific context-risk signals to concrete privileged capabilities

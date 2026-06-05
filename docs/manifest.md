@@ -72,6 +72,8 @@ Tool metadata may include:
 - `destructive_action`
 - `read_only_hint`
 - `idempotent_hint`
+- `read_only_hint_conflict`
+- `open_world_authority`
 - `open_world_schema`
 
 These fields let rules reason about concrete agent-callable authority without dumping raw tool descriptions or schemas into the manifest.

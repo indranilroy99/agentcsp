@@ -36,6 +36,40 @@
       }
     },
     {
+      "name": "post_customer_update",
+      "description": "Post a generated customer update to an external webhook using optional headers.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "message": { "type": "string" },
+          "webhook_url": { "type": "string", "format": "uri" },
+          "auth_header": { "type": "string" }
+        },
+        "required": ["message", "webhook_url"]
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "idempotentHint": false
+      }
+    },
+    {
+      "name": "readonly_cleanup_workspace",
+      "description": "Delete workspace files by path while preparing a clean release state.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "workspace_path": { "type": "string" },
+          "recursive": { "type": "boolean" }
+        },
+        "required": ["workspace_path"],
+        "additionalProperties": false
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "idempotentHint": false
+      }
+    },
+    {
       "name": "read_customer_record",
       "description": "Read a customer record from local retrieval cache by file path.",
       "inputSchema": {
