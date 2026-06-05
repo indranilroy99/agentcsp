@@ -40,6 +40,9 @@ jobs:
       - name: Build
         run: pnpm build
 
+      - name: Verify package artifacts
+        run: pnpm verify:packages
+
       - name: Audit high and critical vulnerabilities
         run: pnpm audit --audit-level high
 

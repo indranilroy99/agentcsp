@@ -300,6 +300,7 @@ The current iteration adds:
 - built-in rules always run before project-local `rules/` entries, preventing a scanned repo's generic `rules/` folder from replacing AgentCSP detections
 - package builds copy built-in YAML rules into `packages/core/dist/builtin-rules`, and `@agentcsp/core` package files include the compiled distribution
 - core build uses forced TypeScript project emit before copying rule assets so stale `dist` state cannot omit compiled modules
+- `pnpm verify:packages` checks compiled package modules, package `files`, and built-in rule count parity between source and packaged artifacts
 - project-local malformed, schema-invalid, or duplicate custom rules are skipped with redacted diagnostics
 - parse-error metadata on affected fallback surfaces
 - Markdown Scan Diagnostics section

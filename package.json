@@ -13,7 +13,8 @@
     "generate:schemas": "tsx scripts/generate-schemas.ts",
     "lint": "tsc -p packages/core/tsconfig.json --noEmit && tsc -p packages/cli/tsconfig.json --noEmit",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "verify:packages": "node scripts/verify-package-artifacts.mjs"
   },
   "devDependencies": {
     "@types/node": "^24.0.0",
