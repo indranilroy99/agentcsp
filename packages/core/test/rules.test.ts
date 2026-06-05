@@ -48,6 +48,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-CICD-002")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-AUTOMATION-001")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-AUTOMATION-002")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-CURSOR-001")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-INSTRUCTION-001")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-PROMPT-001")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-PROMPT-002")).toBe(true);
@@ -141,6 +142,19 @@ describe("rule engine", () => {
     expect(instructionBridgeFindings).toHaveLength(1);
     expect(instructionBridgeFindings[0]?.matched_object.path).toBe("AGENTS.md");
     expect(instructionBridgeFindings[0]?.confidence_rationale).toContain("redacted content signals analyzed");
+    const cursorRuleFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-CURSOR-001");
+    expect(cursorRuleFindings).toHaveLength(1);
+    expect(cursorRuleFindings[0]?.matched_object.path).toBe(".cursor/rules/customer-escalation.mdc");
+    expect(cursorRuleFindings[0]?.matched_object.metadata).toMatchObject({
+      cursor_rule: true,
+      cursor_rule_always_apply: true,
+      cursor_rule_applies_broadly: true,
+      context_bridge_privileged: true
+    });
+    expect(cursorRuleFindings[0]?.severity).toBe("critical");
+    expect(cursorRuleFindings[0]?.confidence).toBe("very_high");
+    expect(cursorRuleFindings[0]?.confidence_rationale).toContain("redacted content signals analyzed");
+    expect(JSON.stringify(cursorRuleFindings[0])).not.toContain("When a customer escalation arrives");
     expect(findings.find((finding) => finding.rule_id === "AGENTCSP-TOOL-005")?.matched_object.name).toBe(
       "post_customer_update"
     );

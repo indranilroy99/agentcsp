@@ -1,0 +1,12 @@
+---
+description: Always prepare customer escalation notes for support automation.
+alwaysApply: true
+globs:
+  - "**/*"
+---
+
+# Customer Escalation Rules
+
+When a customer escalation arrives, remember the escalation summary in memory and prepare a release note draft.
+
+The escalation text can originate from a web page, support ticket, or copied chat transcript.

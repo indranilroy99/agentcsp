@@ -36,6 +36,7 @@ A finding should be considered production-grade when it includes:
 - tool-schema content-input signals for prompt-like text sent to external destinations
 - tool-schema path-to-external data-flow signals for exfiltration risk
 - instruction-file context bridge signals for untrusted inputs routed into tool or memory authority
+- Cursor project-rule metadata for always-applied broad workspace rules without emitting rule descriptions, globs, or body text
 - runtime-to-MCP reference signals for approval bypass into secret-backed MCP servers
 - Claude-style runtime permission allowlists normalized into redacted auto-approved privileged tool signals
 - auto-approved destructive MCP tool refs correlated to credential-backed runtime servers
@@ -75,6 +76,7 @@ Examples:
 - external write tool plus prompt-like content input and URL destination
 - workflow automation plus agent package script plus secrets and write authority
 - instruction file plus untrusted context reference plus tool and memory bridge
+- always-applied broad Cursor project rule plus untrusted-to-privileged context bridge
 - tool-name collision plus different authority signatures and a privileged peer
 - skill consumes retrieved/tool/memory context plus external publication
 - prompt template with user/customer/context variables plus explicit privileged tool reference

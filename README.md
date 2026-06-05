@@ -46,7 +46,7 @@ Runtime enforcement adapters, deeper graph traversal, and the dashboard are plan
 - **Agent Surface Inventory**: discovers instructions, prompt templates, skills, plugins, MCP configs, package scripts, workflows, env references, RAG sources, memory surfaces, logs, and tool definitions.
 - **Agent Manifest**: emits `agent-manifest.json`, an SBOM-style record for AI agent deployments.
 - **Authority Signals**: classifies actions such as read, write, execute, publish, send, delete, remember, and call.
-- **Instruction Context Signals**: records redacted instruction-file signals when repo, workspace, or custom instructions bridge untrusted context into tools, memory, or external actions.
+- **Instruction and Cursor Rule Signals**: records redacted instruction-file signals when repo, workspace, custom, or always-applied Cursor project rules bridge untrusted context into tools, memory, or external actions.
 - **Skill Data-Flow Signals**: records redacted skill inputs and outputs when skills bridge retrieved context, tool output, memory, or prompts to external publication.
 - **MCP and Tool Schema Authority**: extracts individual tool schemas and classifies package-runner MCP launchers, missing local MCP implementations, tool name collisions, external writes, prompt-like content inputs, PII/customer-data inputs, local-path-to-external data flow, destructive actions, credential-like inputs, open-world arguments, read-only hint conflicts, filesystem paths, URL inputs, browser control, memory access, and shell authority.
 - **Remote MCP Trust Signals**: detects remote MCP servers, redacts URLs and header values, records host/header/key metadata, and flags credential-backed third-party MCP access.

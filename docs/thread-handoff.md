@@ -536,6 +536,16 @@ The current iteration adds:
 - opt-in exit-code behavior that remains separate from severity and confidence finding gates
 - CLI regression coverage proving diagnostics do not fail by default but do fail when requested
 
+## Cursor Rule Boundary Pass
+
+The current iteration adds:
+
+- first-class redacted metadata for `.cursor/rules/` files, including frontmatter parse state, always-apply mode, broad scope categories, and body redaction
+- redacted diagnostics for malformed Cursor rule frontmatter
+- fixture coverage for an always-applied Cursor `.mdc` rule that routes customer escalation context into memory without emitting the rule description, globs, or body text
+- rule `AGENTCSP-CURSOR-001` for broad always-applied Cursor project rules that bridge untrusted context into privileged agent behavior
+- scanner and rule regression coverage proving the Cursor rule is flagged as high-confidence while the safe fixture remains quiet
+
 ## Initial Build Recommendation
 
 Start with a CLI-first MVP before building the dashboard:

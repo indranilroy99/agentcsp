@@ -61,6 +61,30 @@ describe("scanner", () => {
     expect(agentInstructions?.actions).toContain("remember");
     expect(agentInstructions?.untrusted_to_privileged).toBe(true);
     expect(JSON.stringify(agentInstructions)).not.toContain("Untrusted customer notes");
+    const cursorRule = surfaces.instructions.find((surface) => surface.path === ".cursor/rules/customer-escalation.mdc");
+    expect(cursorRule).toBeDefined();
+    expect(cursorRule?.metadata).toMatchObject({
+      content_analyzed: true,
+      content_redacted: true,
+      cursor_rule: true,
+      cursor_rule_frontmatter_present: true,
+      cursor_rule_frontmatter_parsed: true,
+      cursor_rule_body_redacted: true,
+      cursor_rule_description_present: true,
+      cursor_rule_always_apply: true,
+      cursor_rule_application_mode: "always",
+      cursor_rule_glob_count: 1,
+      cursor_rule_applies_broadly: true,
+      untrusted_context_reference: true,
+      memory_write_directive: true,
+      context_bridge_memory: true,
+      context_bridge_privileged: true
+    });
+    expect(cursorRule?.metadata.cursor_rule_glob_scope_kinds).toEqual(["all_files", "workspace"]);
+    expect(cursorRule?.actions).toContain("remember");
+    expect(cursorRule?.untrusted_to_privileged).toBe(true);
+    expect(JSON.stringify(cursorRule)).not.toContain("Always prepare customer escalation notes");
+    expect(JSON.stringify(cursorRule)).not.toContain("When a customer escalation arrives");
     expect(surfaces.skills.some((surface) => surface.path === "skills/exfil-skill/SKILL.md")).toBe(true);
     const exfilSkill = surfaces.skills.find((surface) => surface.path === "skills/exfil-skill/SKILL.md");
     expect(exfilSkill?.metadata).toMatchObject({

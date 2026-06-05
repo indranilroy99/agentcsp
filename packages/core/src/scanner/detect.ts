@@ -107,14 +107,16 @@ export async function detectSurfaces(files: WalkedFile[]): Promise<DetectedSurfa
       continue;
     }
 
-    if (INSTRUCTION_FILE_NAMES.has(basename) || lowerPath.includes(".cursor/rules/")) {
+    if (INSTRUCTION_FILE_NAMES.has(basename) || isCursorRulePath(lowerPath)) {
       const content = text ?? "";
+      const cursorRule = isCursorRulePath(lowerPath) ? classifyCursorRule(file, content, surfaces) : undefined;
+      const analyzedContent = cursorRule?.analyzedContent ?? content;
       recordContextContent(contextContentByPath, file, text);
-      const signals = classifyContextContent(content);
-      const actions = detectActions(content);
-      const dataClasses = contextualDataClasses(inferDataClasses(content, file.relativePath), signals);
-      const externalReach = hasExternalReach(content) || signals.external_directive;
-      const secretExposure = hasSecretExposure(content) || signals.secret_reference;
+      const signals = classifyContextContent(analyzedContent);
+      const actions = detectActions(analyzedContent);
+      const dataClasses = contextualDataClasses(inferDataClasses(analyzedContent, file.relativePath), signals);
+      const externalReach = hasExternalReach(analyzedContent) || signals.external_directive;
+      const secretExposure = hasSecretExposure(analyzedContent) || signals.secret_reference;
       const base = {
         trust_level: inferTrustLevel(file.relativePath),
         actions,
@@ -142,6 +144,7 @@ export async function detectSurfaces(files: WalkedFile[]): Promise<DetectedSurfa
             bytes: file.size,
             skipped_for_size: file.skippedForSize,
             content_redacted: true,
+            ...cursorRule?.metadata,
             ...signals
           }
         })
@@ -475,6 +478,126 @@ interface SkillDataFlowSignals {
   external_output: boolean;
   local_write_output: boolean;
   context_bridge_external_output: boolean;
+}
+
+interface CursorRuleClassification {
+  analyzedContent: string;
+  metadata: Record<string, unknown>;
+}
+
+function isCursorRulePath(lowerPath: string): boolean {
+  return lowerPath.includes(".cursor/rules/");
+}
+
+function classifyCursorRule(
+  file: WalkedFile,
+  content: string,
+  surfaces: DetectedSurfaces
+): CursorRuleClassification {
+  const frontmatter = parseCursorRuleFrontmatter(content);
+  const parsed = frontmatter?.parsed;
+  const globs = parsed ? cursorRuleGlobs(parsed) : [];
+  const alwaysApply = parsed ? cursorRuleBoolean(parsed, "alwaysApply") : undefined;
+  const descriptionPresent = parsed ? typeof parsed.description === "string" && parsed.description.trim().length > 0 : false;
+  const applicationMode = cursorRuleApplicationMode(alwaysApply, globs, descriptionPresent);
+  const scopeKinds = cursorRuleScopeKinds(globs);
+  const appliesBroadly = alwaysApply === true || scopeKinds.includes("all_files") || scopeKinds.includes("workspace");
+
+  if (frontmatter?.parseFailed) {
+    addDiagnostic(surfaces, file, {
+      code: "CURSOR_RULE_FRONTMATTER_PARSE_FAILED",
+      parser: "cursor-rule",
+      reason: "Cursor rule frontmatter could not be parsed and was skipped. Raw rule content was redacted."
+    });
+  }
+
+  return {
+    analyzedContent: frontmatter?.body ?? content,
+    metadata: {
+      cursor_rule: true,
+      cursor_rule_frontmatter_present: frontmatter !== undefined,
+      cursor_rule_frontmatter_parsed: Boolean(parsed),
+      cursor_rule_body_redacted: true,
+      cursor_rule_description_present: descriptionPresent,
+      cursor_rule_always_apply: alwaysApply === true,
+      cursor_rule_application_mode: applicationMode,
+      cursor_rule_glob_count: globs.length,
+      cursor_rule_glob_scope_kinds: scopeKinds,
+      cursor_rule_applies_broadly: appliesBroadly
+    }
+  };
+}
+
+function parseCursorRuleFrontmatter(
+  content: string
+): { parsed?: Record<string, unknown>; body: string; parseFailed: boolean } | undefined {
+  const normalized = content.replaceAll("\r\n", "\n");
+  if (!normalized.startsWith("---\n")) return undefined;
+  const endIndex = normalized.indexOf("\n---", 4);
+  if (endIndex === -1) return { body: normalized, parseFailed: true };
+  const frontmatterText = normalized.slice(4, endIndex).trim();
+  const bodyStart = normalized.indexOf("\n", endIndex + 4);
+  const body = bodyStart === -1 ? "" : normalized.slice(bodyStart + 1);
+  try {
+    const parsed = YAML.parse(frontmatterText);
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+      return { body, parseFailed: true };
+    }
+    return { parsed: parsed as Record<string, unknown>, body, parseFailed: false };
+  } catch {
+    return { body, parseFailed: true };
+  }
+}
+
+function cursorRuleBoolean(frontmatter: Record<string, unknown>, key: string): boolean | undefined {
+  const value = frontmatter[key];
+  if (typeof value === "boolean") return value;
+  if (typeof value === "string") {
+    const normalized = value.trim().toLowerCase();
+    if (normalized === "true") return true;
+    if (normalized === "false") return false;
+  }
+  return undefined;
+}
+
+function cursorRuleGlobs(frontmatter: Record<string, unknown>): string[] {
+  const raw = frontmatter.globs;
+  const values: string[] = [];
+  if (typeof raw === "string") {
+    values.push(...raw.split(",").map((value) => value.trim()));
+  } else if (Array.isArray(raw)) {
+    for (const value of raw) {
+      if (typeof value === "string") values.push(value.trim());
+    }
+  }
+  return [...new Set(values.filter(Boolean))].sort((a, b) => a.localeCompare(b));
+}
+
+function cursorRuleApplicationMode(
+  alwaysApply: boolean | undefined,
+  globs: string[],
+  descriptionPresent: boolean
+): string {
+  if (alwaysApply === true) return "always";
+  if (globs.length > 0) return "auto_attached";
+  if (descriptionPresent) return "agent_requested";
+  if (alwaysApply === false) return "manual";
+  return "unknown";
+}
+
+function cursorRuleScopeKinds(globs: string[]): string[] {
+  const kinds = new Set<string>();
+  for (const glob of globs) {
+    const normalized = glob.toLowerCase();
+    if (["*", "**", "**/*", "**/*.*"].includes(normalized)) kinds.add("all_files");
+    if (normalized.startsWith("**/") || normalized.startsWith("**.")) kinds.add("workspace");
+    if (/\.(ts|tsx|js|jsx|mjs|cjs|py|go|rs|java|kt|rb|php|cs|cpp|c|h|sh|zsh|bash)(?:[},\]])?$/iu.test(normalized)) {
+      kinds.add("code");
+    }
+    if (/\.(md|mdx|txt|rst|adoc)(?:[},\]])?$/iu.test(normalized) || normalized.includes("docs/")) kinds.add("docs");
+    if (/\.(json|ya?ml|toml|ini|env)(?:[},\]])?$/iu.test(normalized) || normalized.includes("config")) kinds.add("config");
+  }
+  return [...kinds].sort((a, b) => a.localeCompare(b));
 }
 
 function classifyContextContent(content: string): ContextContentSignals {

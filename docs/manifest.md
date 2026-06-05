@@ -93,6 +93,21 @@ Instruction metadata may include:
 
 Raw instruction text is not emitted. These fields let rules detect instruction-boundary designs where customer, user, web, support, or retrieved context can steer tools, memory, or external actions.
 
+Cursor project rules under `.cursor/rules/` are normalized as `instruction` objects with additional redacted metadata:
+
+- `cursor_rule`
+- `cursor_rule_frontmatter_present`
+- `cursor_rule_frontmatter_parsed`
+- `cursor_rule_body_redacted`
+- `cursor_rule_description_present`
+- `cursor_rule_always_apply`
+- `cursor_rule_application_mode`
+- `cursor_rule_glob_count`
+- `cursor_rule_glob_scope_kinds`
+- `cursor_rule_applies_broadly`
+
+AgentCSP does not emit Cursor rule descriptions, glob values, or body text. Glob scopes are reduced to coarse categories such as `all_files`, `workspace`, `code`, `docs`, and `config` so rules can identify broad always-applied authority without leaking repository-specific path patterns.
+
 The same redacted context signals are used for analyzed RAG, memory, generated-state, and prompt-template files. `data_egress_directive` marks content that tries to move sensitive or internal context toward an external destination, while `context_bridge_data_egress` marks that bridge when the content is also untrusted or retrieved.
 
 ## Skill Data-Flow Signals
