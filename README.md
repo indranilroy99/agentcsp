@@ -203,6 +203,8 @@ Rules are open YAML files validated by Zod. MVP rules match normalized manifest 
 
 AgentCSP always runs its built-in rule pack. If the scanned repository contains a project-local `rules/` directory, those rules are loaded additively. Malformed local rules and duplicate rule IDs are reported as redacted diagnostics and skipped so they cannot suppress built-in detections.
 
+The built-in rule pack is packaged with `@agentcsp/core` under the compiled distribution, so installed CLI builds do not depend on a checkout-relative root `rules/` directory.
+
 ```yaml
 id: AGENTCSP-MCP-001
 name: MCP server exposes agent-callable authority

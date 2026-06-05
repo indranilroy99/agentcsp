@@ -190,19 +190,30 @@ async function firstExistingDirectory(candidates: string[]): Promise<string> {
   for (const candidate of candidates) {
     try {
       const stats = await fs.stat(candidate);
-      if (stats.isDirectory()) return candidate;
+      if (stats.isDirectory() && (await hasRuleFiles(candidate))) return candidate;
     } catch {
       continue;
     }
   }
-  throw new Error(`No rules directory found. Checked: ${candidates.join(", ")}`);
+  throw new Error(`No built-in rules directory with YAML rules found. Checked: ${candidates.join(", ")}`);
 }
 
 async function builtInRulesDirectoryPath(): Promise<string> {
   return firstExistingDirectory([
+    path.resolve(moduleDirectory, "../builtin-rules"),
     path.resolve(moduleDirectory, "../../rules"),
     path.resolve(moduleDirectory, "../../../../rules")
   ]);
+}
+
+async function hasRuleFiles(directory: string): Promise<boolean> {
+  const entries = await fs.readdir(directory, { withFileTypes: true });
+  for (const entry of entries) {
+    const absolutePath = path.join(directory, entry.name);
+    if (entry.isDirectory() && (await hasRuleFiles(absolutePath))) return true;
+    if (entry.isFile() && (entry.name.endsWith(".yaml") || entry.name.endsWith(".yml"))) return true;
+  }
+  return false;
 }
 
 async function directoryExists(candidate: string): Promise<boolean> {

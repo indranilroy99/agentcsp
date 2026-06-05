@@ -298,6 +298,8 @@ The current iteration adds:
 - policy diagnostics for malformed `agentcsp.yaml`, schema-invalid policy files, and explicitly supplied missing `--config` paths
 - malformed or invalid policy scans continue with empty advisory policy so manifest, findings, Markdown, and SARIF are still emitted
 - built-in rules always run before project-local `rules/` entries, preventing a scanned repo's generic `rules/` folder from replacing AgentCSP detections
+- package builds copy built-in YAML rules into `packages/core/dist/builtin-rules`, and `@agentcsp/core` package files include the compiled distribution
+- core build uses forced TypeScript project emit before copying rule assets so stale `dist` state cannot omit compiled modules
 - project-local malformed, schema-invalid, or duplicate custom rules are skipped with redacted diagnostics
 - parse-error metadata on affected fallback surfaces
 - Markdown Scan Diagnostics section
