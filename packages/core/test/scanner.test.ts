@@ -193,8 +193,22 @@ describe("scanner", () => {
       accepts_url_input: true,
       open_world_schema: false,
       open_world_authority: false,
-      read_only_hint_conflict: false
+      read_only_hint_conflict: false,
+      model_visible_description_analyzed: true,
+      model_visible_description_redacted: true,
+      model_visible_description_instruction_like_content: true,
+      model_visible_description_instruction_override: true,
+      model_visible_description_untrusted_context_reference: true,
+      model_visible_description_tool_directive: true,
+      model_visible_description_external_directive: true,
+      model_visible_description_sensitive_context_reference: true,
+      model_visible_description_data_egress_directive: true,
+      model_visible_description_context_bridge_tool: true,
+      model_visible_description_context_bridge_external: true,
+      model_visible_description_context_bridge_data_egress: true,
+      model_visible_description_context_bridge_privileged: true
     });
+    expect(JSON.stringify(publishTool)).not.toContain("ignore previous instructions");
     expect(collisionTools).toHaveLength(2);
     expect(privilegedCollisionTool?.metadata).toMatchObject({
       parsed_tool_schema: true,

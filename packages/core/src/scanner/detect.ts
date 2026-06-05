@@ -1167,6 +1167,30 @@ function classifyContextContent(content: string): ContextContentSignals {
   };
 }
 
+function classifyModelVisibleToolDescription(description: string): Record<string, unknown> {
+  const analyzed = description.trim().length > 0;
+  const signals = classifyContextContent(description);
+  return {
+    model_visible_description_analyzed: analyzed,
+    model_visible_description_redacted: analyzed,
+    model_visible_description_instruction_like_content: signals.instruction_like_content,
+    model_visible_description_instruction_override: signals.instruction_override,
+    model_visible_description_untrusted_context_reference: signals.untrusted_context_reference,
+    model_visible_description_tool_directive: signals.tool_directive,
+    model_visible_description_memory_write_directive: signals.memory_write_directive,
+    model_visible_description_external_directive: signals.external_directive,
+    model_visible_description_secret_reference: signals.secret_reference,
+    model_visible_description_sensitive_context_reference: signals.sensitive_context_reference,
+    model_visible_description_data_egress_directive: signals.data_egress_directive,
+    model_visible_description_context_bridge_tool: signals.context_bridge_tool,
+    model_visible_description_context_bridge_memory: signals.context_bridge_memory,
+    model_visible_description_context_bridge_external: signals.context_bridge_external,
+    model_visible_description_context_bridge_data_egress: signals.context_bridge_data_egress,
+    model_visible_description_context_bridge_privileged: signals.context_bridge_privileged,
+    model_visible_description_signal_count: signals.content_signal_count
+  };
+}
+
 function hasSensitiveContextReference(content: string): boolean {
   return hasAffirmedContextPattern(
     content,
@@ -1639,6 +1663,7 @@ function detectToolDefinition(file: WalkedFile, text: string | undefined, surfac
 
   for (const definition of toolDefinitions) {
     const authority = classifyToolAuthority(definition);
+    const modelVisibleDescription = classifyModelVisibleToolDescription(definition.description);
     const dataClasses: SurfaceObject["data_classes"] = authority.accepted_data_classes.length > 0
       ? uniqueDataClasses([
           ...(authority.secret_exposure ? ["credential"] : []),
@@ -1678,7 +1703,8 @@ function detectToolDefinition(file: WalkedFile, text: string | undefined, surfac
         idempotent_hint: definition.annotations?.idempotentHint,
         read_only_hint_conflict: authority.read_only_hint_conflict,
         open_world_authority: authority.open_world_authority,
-        open_world_schema: definition.openWorldSchema
+        open_world_schema: definition.openWorldSchema,
+        ...modelVisibleDescription
       }
     });
     surfaces.tools.push({

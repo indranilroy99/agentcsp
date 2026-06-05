@@ -156,6 +156,23 @@ Tool metadata may include:
 - `read_only_hint_conflict`
 - `open_world_authority`
 - `open_world_schema`
+- `model_visible_description_analyzed`
+- `model_visible_description_redacted`
+- `model_visible_description_instruction_like_content`
+- `model_visible_description_instruction_override`
+- `model_visible_description_untrusted_context_reference`
+- `model_visible_description_tool_directive`
+- `model_visible_description_memory_write_directive`
+- `model_visible_description_external_directive`
+- `model_visible_description_secret_reference`
+- `model_visible_description_sensitive_context_reference`
+- `model_visible_description_data_egress_directive`
+- `model_visible_description_context_bridge_tool`
+- `model_visible_description_context_bridge_memory`
+- `model_visible_description_context_bridge_external`
+- `model_visible_description_context_bridge_data_egress`
+- `model_visible_description_context_bridge_privileged`
+- `model_visible_description_signal_count`
 - `name_collision`
 - `collision_name`
 - `collision_count`
@@ -164,7 +181,7 @@ Tool metadata may include:
 - `collision_authority_mismatch`
 - `collision_has_privileged_peer`
 
-These fields let rules reason about concrete agent-callable authority without dumping raw tool descriptions or schemas into the manifest.
+These fields let rules reason about concrete agent-callable authority without dumping raw tool descriptions or schemas into the manifest. Model-visible descriptions are treated as prompt surface: AgentCSP records redacted instruction, untrusted-context, external, memory, secret, and data-egress signals so rules can detect poisoned tool metadata attached to side-effecting authority.
 
 ## Runtime Configuration
 

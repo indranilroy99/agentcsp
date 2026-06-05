@@ -566,6 +566,15 @@ The current iteration adds:
 - rule `AGENTCSP-RUNTIME-008` for remote telemetry export that combines sensitive capture, disabled redaction, and credential references
 - scanner, rule, fixture verifier, and redaction coverage proving the telemetry finding is high-confidence while the safe fixture remains quiet
 
+## Tool Description Injection Pass
+
+The current iteration adds:
+
+- redacted model-visible tool-description metadata for instruction override, untrusted context, tool, memory, external, secret, sensitive-context, and data-egress signals
+- vulnerable fixture coverage for a poisoned external webhook tool description without emitting the raw injected description
+- rule `AGENTCSP-TOOL-011` for model-visible tool descriptions that combine prompt-injection signals with external write and side-effect authority
+- scanner, rule, fixture verifier, and redaction coverage proving the finding is high-confidence while the safe fixture remains quiet
+
 ## Initial Build Recommendation
 
 Start with a CLI-first MVP before building the dashboard:

@@ -33,6 +33,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-008")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-009")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-010")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-011")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-001")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-002")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-003")).toBe(true);
@@ -208,6 +209,18 @@ describe("rule engine", () => {
     ]);
     expect(toolPiiExternalFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
     expect(toolPiiExternalFindings.every((finding) => finding.data_classes.includes("pii"))).toBe(true);
+    const toolDescriptionInjectionFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-011");
+    expect(toolDescriptionInjectionFindings).toHaveLength(1);
+    expect(toolDescriptionInjectionFindings[0]?.matched_object.name).toBe("publish_summary");
+    expect(toolDescriptionInjectionFindings[0]?.matched_object.metadata).toMatchObject({
+      model_visible_description_instruction_override: true,
+      model_visible_description_context_bridge_privileged: true,
+      external_write: true
+    });
+    expect(toolDescriptionInjectionFindings[0]?.severity).toBe("critical");
+    expect(toolDescriptionInjectionFindings[0]?.confidence).toBe("very_high");
+    expect(toolDescriptionInjectionFindings[0]?.recommended_control).toBe("quarantine");
+    expect(JSON.stringify(toolDescriptionInjectionFindings[0])).not.toContain("ignore previous instructions");
     const toolShadowFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-007");
     expect(toolShadowFindings.map((finding) => finding.matched_object.path).sort()).toEqual([
       "tools/agent-tools.json",
