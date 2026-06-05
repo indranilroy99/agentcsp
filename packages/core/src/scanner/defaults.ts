@@ -41,6 +41,13 @@ export const INSTRUCTION_FILE_NAMES = new Set([
   "prompts.md"
 ]);
 
+export const PROMPT_DIR_NAMES = new Set([
+  "prompts",
+  "prompt_templates",
+  "prompt-templates",
+  "templates"
+]);
+
 export const RAG_DIR_NAMES = new Set([
   "rag",
   "retrieval",

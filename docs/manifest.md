@@ -115,6 +115,30 @@ Runtime metadata may include:
 
 Secret or environment values are not emitted. AgentCSP records key names and posture signals so rules can detect risky authority without exposing credentials.
 
+## Prompt Template Signals
+
+Prompt template files are normalized into `prompt` objects when they appear under common prompt/template paths or use prompt-specific filenames.
+
+Prompt metadata may include:
+
+- `content_redacted`
+- `content_analyzed`
+- `prompt_template`
+- `template_variable_names`
+- `template_variable_count`
+- `untrusted_template_variables`
+- `untrusted_template_input`
+- `instruction_like_content`
+- `instruction_override`
+- `tool_directive`
+- `memory_write_directive`
+- `external_directive`
+- `secret_reference`
+- `content_signal_count`
+- `skipped_for_size`
+
+Raw prompt text is not emitted. AgentCSP records variable names and normalized context signals so rules can detect prompt templates that bridge untrusted input into privileged tool or external actions.
+
 ## RAG, Memory, and Generated-State Signals
 
 RAG and memory files are normalized into file-level `rag_source` and `memory` objects when they appear under common retrieval, vector, memory, summary, or state paths.

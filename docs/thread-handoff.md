@@ -354,6 +354,17 @@ The current iteration adds:
 - vulnerable fixture coverage for a neutral tool name that resolves to both a read-only definition and an external credential-backed definition
 - scanner and rule regression coverage proving raw shadow-tool descriptions are not emitted
 
+## Prompt Template Bridge Pass
+
+The current iteration adds:
+
+- prompt template discovery under prompt/template paths and prompt-specific filenames
+- redacted prompt metadata for template variable names, variable counts, untrusted template variables, and context/tool/external directive signals
+- untrusted-to-privileged marking when prompt templates bridge untrusted variables into tool, external, memory, or secret-sensitive directives
+- rule `AGENTCSP-PROMPT-001` for prompt templates that combine untrusted variables with tool and external directives
+- vulnerable fixture coverage for a customer-note prompt template routed to a publishing tool
+- regression coverage proving raw prompt template text is not emitted
+
 ## Initial Build Recommendation
 
 Start with a CLI-first MVP before building the dashboard:

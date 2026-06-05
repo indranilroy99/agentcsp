@@ -215,6 +215,23 @@ describe("scanner", () => {
     expect(memoryFile?.actions).toContain("remember");
     expect(memoryFile?.actions).toContain("call");
     expect(JSON.stringify(memoryFile)).not.toContain("maintenance shortcut");
+    const promptTemplate = surfaces.prompts.find((surface) => surface.path === "prompts/support-ticket.prompt.md");
+    expect(promptTemplate).toBeDefined();
+    expect(promptTemplate?.metadata).toMatchObject({
+      content_analyzed: true,
+      content_redacted: true,
+      prompt_template: true,
+      template_variable_count: 2,
+      untrusted_template_input: true,
+      tool_directive: true,
+      external_directive: true
+    });
+    expect(promptTemplate?.metadata.template_variable_names).toEqual(["customer_note", "ticket_id"]);
+    expect(promptTemplate?.metadata.untrusted_template_variables).toEqual(["customer_note", "ticket_id"]);
+    expect(promptTemplate?.actions).toContain("call");
+    expect(promptTemplate?.actions).toContain("send");
+    expect(promptTemplate?.untrusted_to_privileged).toBe(true);
+    expect(JSON.stringify(promptTemplate)).not.toContain("Review ticket");
   });
 
   it("detects generated transcript state only when logs are included", async () => {

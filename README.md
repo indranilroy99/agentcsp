@@ -43,12 +43,13 @@ Runtime enforcement adapters, deeper graph traversal, and the dashboard are plan
 
 ## Core Capabilities
 
-- **Agent Surface Inventory**: discovers instructions, skills, plugins, MCP configs, package scripts, workflows, env references, RAG sources, memory surfaces, logs, and tool definitions.
+- **Agent Surface Inventory**: discovers instructions, prompt templates, skills, plugins, MCP configs, package scripts, workflows, env references, RAG sources, memory surfaces, logs, and tool definitions.
 - **Agent Manifest**: emits `agent-manifest.json`, an SBOM-style record for AI agent deployments.
 - **Authority Signals**: classifies actions such as read, write, execute, publish, send, delete, remember, and call.
 - **MCP and Tool Schema Authority**: extracts individual tool schemas and classifies package-runner MCP launchers, tool name collisions, external writes, destructive actions, credential-like inputs, open-world arguments, read-only hint conflicts, filesystem paths, URL inputs, browser control, memory access, and shell authority.
 - **Remote MCP Trust Signals**: detects remote MCP servers, redacts URLs and header values, records host/header/key metadata, and flags credential-backed third-party MCP access.
 - **Runtime Posture Inventory**: parses agent runtime configs for sandbox mode, approval policy, network access, privileged tool allowlists, and env key exposure.
+- **Prompt Template Signals**: records redacted template variables and flags untrusted user/customer/context variables that are joined with tool or external action directives.
 - **RAG, Memory, and Generated-State Signals**: records redacted instruction-like, tool-directive, external-send, persistence, transcript, cached-output, and tool-output replay signals from retrieval, memory, and included log files.
 - **Automation Authority**: models scheduled, manual, and externally dispatched workflows as agent-relevant automation surfaces.
 - **Trust Boundary Analysis**: tracks trusted, project, workspace, third-party, untrusted, and unknown provenance.

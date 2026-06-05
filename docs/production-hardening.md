@@ -24,6 +24,7 @@ A finding should be considered production-grade when it includes:
 - MCP package-runner posture for unpinned third-party runtime launchers
 - tool-name collision metadata for authority ambiguity and shadowing
 - tool-schema integrity signals for open-world privileged arguments and read-only hint conflicts
+- prompt-template variables and redacted context signals for untrusted-input bridges
 - recommended control
 - OWASP, MITRE ATLAS, and NIST AI RMF mappings where applicable
 - redacted evidence
@@ -39,6 +40,7 @@ Examples:
 - remote third-party MCP server plus auth headers or credential references
 - package-runner MCP server plus unpinned package version plus credential exposure
 - tool-name collision plus different authority signatures and a privileged peer
+- prompt template with user/customer/context variables plus tool or external directives
 - runtime config with unsandboxed execution plus no approval gate
 - runtime config with network access plus secret env keys plus privileged tools
 - pull request workflow plus write permissions plus secrets

@@ -7,6 +7,7 @@ import {
   INSTRUCTION_FILE_NAMES,
   LOG_DIR_NAMES,
   MEMORY_DIR_NAMES,
+  PROMPT_DIR_NAMES,
   RAG_DIR_NAMES
 } from "./defaults.js";
 import type { ActionType, ScanDiagnostic, SurfaceObject } from "../schemas/index.js";
@@ -95,6 +96,11 @@ export async function detectSurfaces(files: WalkedFile[]): Promise<DetectedSurfa
           }
         })
       );
+      continue;
+    }
+
+    if (isPromptTemplatePath(file.relativePath, basename)) {
+      detectPromptTemplateFile(file, text, surfaces);
       continue;
     }
 
@@ -280,6 +286,41 @@ function detectMemoryContentFile(file: WalkedFile, text: string | undefined, sur
   });
 }
 
+function detectPromptTemplateFile(file: WalkedFile, text: string | undefined, surfaces: DetectedSurfaces): void {
+  const content = text ?? "";
+  const signals = classifyContextContent(content);
+  const template = classifyPromptTemplate(content);
+  const actions = promptActions(signals);
+  const object = createSurfaceObject({
+    type: "prompt",
+    name: path.basename(file.relativePath),
+    path: file.relativePath,
+    trust_level: inferTrustLevel(file.relativePath),
+    data_classes: inferDataClasses(content, file.relativePath),
+    actions,
+    side_effect: actions.some((action) => action !== "read"),
+    reversible: isReversible(content),
+    external_reach: signals.external_directive,
+    secret_exposure: signals.secret_reference,
+    reason: "Prompt template discovered as agent-consumable context.",
+    metadata: {
+      content_redacted: true,
+      content_analyzed: text !== undefined,
+      skipped_for_size: file.skippedForSize,
+      bytes: file.size,
+      ...template,
+      ...signals
+    }
+  });
+  const untrustedTemplateBridge =
+    template.untrusted_template_input &&
+    (signals.tool_directive || signals.external_directive || signals.memory_write_directive || signals.secret_reference);
+  surfaces.prompts.push({
+    ...object,
+    untrusted_to_privileged: untrustedTemplateBridge || isUntrustedToPrivileged(object)
+  });
+}
+
 function detectDirectoryHeuristics(file: WalkedFile, seenDirectories: Set<string>, surfaces: DetectedSurfaces): void {
   const segments = file.relativePath.split("/");
   for (let index = 0; index < segments.length - 1; index += 1) {
@@ -343,6 +384,22 @@ function contextSurfaceType(relativePath: string): "rag_source" | "memory" | und
   return undefined;
 }
 
+function isPromptTemplatePath(relativePath: string, basename: string): boolean {
+  const normalized = relativePath.replaceAll("\\", "/").toLowerCase();
+  const lowerBase = basename.toLowerCase();
+  const segments = normalized.split("/").slice(0, -1);
+  if (segments.some((segment) => PROMPT_DIR_NAMES.has(segment))) {
+    return /\.(md|txt|yaml|yml|json|prompt)$/iu.test(lowerBase);
+  }
+  return (
+    lowerBase.endsWith(".prompt.md") ||
+    lowerBase.endsWith(".prompt.txt") ||
+    lowerBase.endsWith(".prompt.yaml") ||
+    lowerBase.endsWith(".prompt.yml") ||
+    lowerBase.endsWith(".prompt.json")
+  );
+}
+
 interface ContextContentSignals {
   instruction_like_content: boolean;
   instruction_override: boolean;
@@ -359,6 +416,14 @@ interface GeneratedStateSignals {
   transcript_like: boolean;
   tool_output_like: boolean;
   cached_output_like: boolean;
+}
+
+interface PromptTemplateSignals {
+  prompt_template: boolean;
+  template_variable_names: string[];
+  template_variable_count: number;
+  untrusted_template_variables: string[];
+  untrusted_template_input: boolean;
 }
 
 function classifyContextContent(content: string): ContextContentSignals {
@@ -383,6 +448,39 @@ function classifyContextContent(content: string): ContextContentSignals {
     secret_reference: secretReference,
     content_signal_count: signals
   };
+}
+
+function classifyPromptTemplate(content: string): PromptTemplateSignals {
+  const variables = new Set<string>();
+  for (const match of content.matchAll(/\{\{\s*([a-zA-Z_][a-zA-Z0-9_.-]*)\s*\}\}/g)) {
+    if (match[1]) variables.add(normalizeTemplateVariableName(match[1]));
+  }
+  for (const match of content.matchAll(/\$\{\s*([a-zA-Z_][a-zA-Z0-9_.-]*)\s*\}/g)) {
+    if (match[1]) variables.add(normalizeTemplateVariableName(match[1]));
+  }
+  for (const match of content.matchAll(/(?<!\{)\{([a-zA-Z_][a-zA-Z0-9_.-]*)\}(?!\})/g)) {
+    if (match[1]) variables.add(normalizeTemplateVariableName(match[1]));
+  }
+
+  const variableNames = [...variables].sort((a, b) => a.localeCompare(b));
+  const untrustedVariables = variableNames.filter(isUntrustedTemplateVariable);
+  return {
+    prompt_template: variableNames.length > 0,
+    template_variable_names: variableNames,
+    template_variable_count: variableNames.length,
+    untrusted_template_variables: untrustedVariables,
+    untrusted_template_input: untrustedVariables.length > 0
+  };
+}
+
+function normalizeTemplateVariableName(name: string): string {
+  return name.replace(/[^a-zA-Z0-9_.-]+/g, "_").replace(/^_+|_+$/g, "").toLowerCase();
+}
+
+function isUntrustedTemplateVariable(name: string): boolean {
+  return /\b(user|customer|client|ticket|issue|comment|message|input|query|request|web|page|browser|email|slack|review|pr|pull_request|retrieved|rag|document|context|note)\b/iu.test(
+    name.replace(/[._-]/g, " ")
+  );
 }
 
 function classifyGeneratedState(relativePath: string, content: string): GeneratedStateSignals {
@@ -417,6 +515,14 @@ function classifyGeneratedState(relativePath: string, content: string): Generate
 function contextActions(signals: ContextContentSignals, type: "rag_source" | "memory"): ActionType[] {
   const actions = new Set<ActionType>(["read"]);
   if (type === "memory" || signals.memory_write_directive) actions.add("remember");
+  if (signals.tool_directive) actions.add("call");
+  if (signals.external_directive) actions.add("send");
+  return [...actions].sort((a, b) => a.localeCompare(b));
+}
+
+function promptActions(signals: ContextContentSignals): ActionType[] {
+  const actions = new Set<ActionType>(["read"]);
+  if (signals.memory_write_directive) actions.add("remember");
   if (signals.tool_directive) actions.add("call");
   if (signals.external_directive) actions.add("send");
   return [...actions].sort((a, b) => a.localeCompare(b));
