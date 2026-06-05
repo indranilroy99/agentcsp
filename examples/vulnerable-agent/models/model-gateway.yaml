@@ -1,0 +1,10 @@
+provider: openai-compatible
+base_url: http://llm-gateway.example.invalid/v1
+api_key: ${OPENAI_API_KEY}
+model: agentcsp-support-ops
+request_context:
+  include_prompts: true
+  include_tool_outputs: true
+  include_retrieval_context: true
+  include_memory: true
+  include_customer_ticket_context: true

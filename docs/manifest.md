@@ -251,6 +251,35 @@ Network permission scopes are normalized into bounded categories such as `wildca
 
 Secret or environment values are not emitted. Permission allowlists are normalized to canonical tool names, MCP tool references, package script names, and capability classes instead of raw command patterns. AgentCSP records key names, runtime posture, explicit MCP references, and exact package-script references so rules can detect risky authority without exposing credentials or dumping runtime config values.
 
+## AI Model Endpoint Posture
+
+AI model provider, gateway, router, proxy, and inference configs are also normalized into `runtime_config` objects when common model endpoint configuration files are discovered.
+
+Model endpoint metadata may include:
+
+- `parsed_ai_model_config`
+- `ai_model_fields`
+- `ai_model_provider`
+- `ai_model_remote_endpoint`
+- `ai_model_custom_endpoint`
+- `ai_model_destination_redacted`
+- `ai_model_remote_destination_count`
+- `ai_model_remote_destination_kinds`
+- `ai_model_plaintext_endpoint`
+- `ai_model_encrypted_endpoint`
+- `ai_model_sends_prompts`
+- `ai_model_sends_tool_outputs`
+- `ai_model_sends_retrieval_context`
+- `ai_model_sends_memory`
+- `ai_model_sensitive_context`
+- `ai_model_pii_context`
+- `env_key_names`
+- `secret_ref_key_names`
+
+Raw model gateway URLs, model names, base URLs, request payload examples, and secret placeholders are not emitted. Provider names, redacted destination categories, transport posture, context booleans, and credential key names let rules detect risky model endpoints without copying prompts, tool outputs, memory, retrieval content, or endpoint values into the manifest.
+
+## AI Telemetry Export
+
 AI telemetry and trace-export configs are also normalized into `runtime_config` objects when common observability, tracing, LangSmith, Langfuse, Helicone, Braintrust, OpenTelemetry, or similar configuration files are discovered.
 
 Telemetry metadata may include:

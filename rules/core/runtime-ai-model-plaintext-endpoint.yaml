@@ -1,0 +1,38 @@
+id: AGENTCSP-RUNTIME-009
+name: AI model endpoint sends sensitive context over plaintext transport
+description: An AI model endpoint configuration sends prompts or other sensitive agent context to a remote model gateway over plaintext HTTP while credential references are present, exposing core agent traffic before tool policy can help.
+category: model_runtime
+severity: critical
+maps_to:
+  owasp:
+    - LLM02:2025 Sensitive Information Disclosure
+    - LLM05:2025 Improper Output Handling
+    - LLM06:2025 Excessive Agency
+  mitre_atlas:
+    - AML.T0051 LLM Plugin Compromise
+    - AML.T0057 Exfiltration via Cyber Means
+  nist_ai_rmf:
+    - MAP 4.1
+    - MEASURE 2.7
+    - MANAGE 2.4
+match:
+  object_type: runtime_config
+  where:
+    - field: metadata.parsed_ai_model_config
+      op: equals
+      value: true
+    - field: metadata.ai_model_remote_endpoint
+      op: equals
+      value: true
+    - field: metadata.ai_model_plaintext_endpoint
+      op: equals
+      value: true
+    - field: metadata.ai_model_sensitive_context
+      op: equals
+      value: true
+    - field: secret_exposure
+      op: equals
+      value: true
+recommendation:
+  control: deny
+  text: Block plaintext model gateways, require TLS and approved endpoint ownership, rotate exposed model credentials, and apply prompt/tool-output redaction before enabling the endpoint.

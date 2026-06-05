@@ -48,6 +48,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-006")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-007")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-008")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-009")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-CICD-002")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-AUTOMATION-001")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-AUTOMATION-002")).toBe(true);
@@ -120,6 +121,24 @@ describe("rule engine", () => {
     expect(runtimeTelemetryFindings[0]?.recommended_control).toBe("redact");
     expect(JSON.stringify(runtimeTelemetryFindings[0])).not.toContain("${LANGSMITH_API_KEY}");
     expect(JSON.stringify(runtimeTelemetryFindings[0])).not.toContain("api.smith.langchain.com");
+    const runtimeModelEndpointFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-RUNTIME-009");
+    expect(runtimeModelEndpointFindings).toHaveLength(1);
+    expect(runtimeModelEndpointFindings[0]?.matched_object.path).toBe("models/model-gateway.yaml");
+    expect(runtimeModelEndpointFindings[0]?.matched_object.metadata).toMatchObject({
+      ai_model_provider: "openai_compatible",
+      ai_model_remote_endpoint: true,
+      ai_model_plaintext_endpoint: true,
+      ai_model_sensitive_context: true,
+      ai_model_sends_tool_outputs: true,
+      ai_model_sends_retrieval_context: true,
+      ai_model_sends_memory: true
+    });
+    expect(runtimeModelEndpointFindings[0]?.severity).toBe("critical");
+    expect(runtimeModelEndpointFindings[0]?.confidence).toBe("very_high");
+    expect(runtimeModelEndpointFindings[0]?.recommended_control).toBe("deny");
+    expect(JSON.stringify(runtimeModelEndpointFindings[0])).not.toContain("${OPENAI_API_KEY}");
+    expect(JSON.stringify(runtimeModelEndpointFindings[0])).not.toContain("llm-gateway.example.invalid");
+    expect(JSON.stringify(runtimeModelEndpointFindings[0])).not.toContain("agentcsp-support-ops");
     const automationAgentFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-AUTOMATION-002");
     expect(automationAgentFindings).toHaveLength(1);
     expect(automationAgentFindings[0]?.matched_object.path).toBe(".github/workflows/agent-maintenance.yml");

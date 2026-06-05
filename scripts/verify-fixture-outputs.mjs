@@ -7,12 +7,15 @@ const safeOutput = path.resolve(process.argv[3] ?? ".agentcsp-safe");
 
 const leakPatterns = [
   /\$\{ANTHROPIC_API_KEY\}/u,
+  /\$\{OPENAI_API_KEY\}/u,
   /\$\{SLACK_WEBHOOK_URL\}/u,
   /Bash\(npm run deploy\)/u,
   /WebFetch\(domain:\*\)/u,
   /domain:\*/u,
   /mcp__filesystem-admin__delete_file/u,
   /http:\/\/mcp\.example\.invalid\/sse/u,
+  /http:\/\/llm-gateway\.example\.invalid\/v1/u,
+  /agentcsp-support-ops/u,
   /npm run deploy/u,
   /Post a generated customer update/u,
   /Send a customer record/u,
@@ -37,8 +40,8 @@ const leakPatterns = [
 const vulnerable = await readScanOutput(vulnerableOutput, { sarifRequired: true });
 const safe = await readScanOutput(safeOutput, { sarifRequired: false });
 
-assertEqual(vulnerable.manifest.findings.length, 73, "vulnerable manifest finding count");
-assertEqual(vulnerable.findings.length, 73, "vulnerable findings.json count");
+assertEqual(vulnerable.manifest.findings.length, 75, "vulnerable manifest finding count");
+assertEqual(vulnerable.findings.length, 75, "vulnerable findings.json count");
 assertEqual(vulnerable.manifest.attack_paths.length, 15, "vulnerable attack path count");
 assertEqual(vulnerable.manifest.static_blast_radius?.critical_attack_paths, 15, "vulnerable critical attack path count");
 assertEqual(vulnerable.manifest.diagnostics.length, 0, "vulnerable diagnostics count");
@@ -49,6 +52,7 @@ for (const ruleId of [
   "AGENTCSP-TOOL-011",
   "AGENTCSP-RUNTIME-007",
   "AGENTCSP-RUNTIME-008",
+  "AGENTCSP-RUNTIME-009",
   "AGENTCSP-RUNTIME-006",
   "AGENTCSP-MCP-006",
   "AGENTCSP-CURSOR-001",

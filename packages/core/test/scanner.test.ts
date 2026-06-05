@@ -387,6 +387,43 @@ describe("scanner", () => {
     expect(JSON.stringify(telemetryConfig)).not.toContain("${LANGSMITH_API_KEY}");
     expect(JSON.stringify(telemetryConfig)).not.toContain("api.smith.langchain.com");
     expect(JSON.stringify(telemetryConfig)).not.toContain("customer-support-agent");
+    const modelConfig = surfaces.runtime_config.find((surface) => surface.path === "models/model-gateway.yaml");
+    expect(modelConfig).toBeDefined();
+    expect(modelConfig).toMatchObject({
+      trust_level: "third_party",
+      external_reach: true,
+      secret_exposure: true,
+      side_effect: true,
+      reversible: false,
+      untrusted_to_privileged: true
+    });
+    expect(modelConfig?.metadata).toMatchObject({
+      content_redacted: true,
+      values_collected: false,
+      parsed_ai_model_config: true,
+      ai_model_provider: "openai_compatible",
+      ai_model_remote_endpoint: true,
+      ai_model_custom_endpoint: true,
+      ai_model_destination_redacted: true,
+      ai_model_plaintext_endpoint: true,
+      ai_model_encrypted_endpoint: false,
+      ai_model_sends_prompts: true,
+      ai_model_sends_tool_outputs: true,
+      ai_model_sends_retrieval_context: true,
+      ai_model_sends_memory: true,
+      ai_model_sensitive_context: true,
+      ai_model_pii_context: true
+    });
+    expect(modelConfig?.metadata.ai_model_remote_destination_kinds).toEqual([
+      "configured_model_endpoint",
+      "http_endpoint"
+    ]);
+    expect(modelConfig?.metadata.secret_ref_key_names).toEqual(["OPENAI_API_KEY"]);
+    expect(modelConfig?.data_classes).toEqual(["confidential", "credential", "pii"]);
+    expect(modelConfig?.actions).toEqual(["call", "read", "send"]);
+    expect(JSON.stringify(modelConfig)).not.toContain("${OPENAI_API_KEY}");
+    expect(JSON.stringify(modelConfig)).not.toContain("llm-gateway.example.invalid");
+    expect(JSON.stringify(modelConfig)).not.toContain("agentcsp-support-ops");
     expect(surfaces.ci_cd.length).toBe(1);
     expect(surfaces.ci_cd[0]?.metadata).toMatchObject({
       pull_request_trigger: true,

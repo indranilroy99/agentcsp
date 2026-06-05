@@ -584,6 +584,15 @@ The current iteration adds:
 - rule `AGENTCSP-MCP-006` for remote MCP servers that combine plaintext transport with auth headers or credential references
 - scanner, rule, fixture verifier, and redaction coverage proving the finding is high-confidence while the safe fixture remains quiet
 
+## AI Model Endpoint Pass
+
+The current iteration adds:
+
+- first-class redacted metadata for AI model provider, gateway, router, proxy, and inference configs, including provider, remote destination categories, plaintext/encrypted transport, prompt/tool-output/retrieval/memory context, PII context, and credential key references
+- vulnerable fixture coverage for an OpenAI-compatible model gateway over plaintext HTTP without emitting raw endpoint URLs, model names, or secret placeholders
+- rule `AGENTCSP-RUNTIME-009` for credential-backed model endpoints that send sensitive agent context over plaintext transport
+- scanner, rule, fixture verifier, and redaction coverage proving the finding is high-confidence while the safe fixture remains quiet
+
 ## Initial Build Recommendation
 
 Start with a CLI-first MVP before building the dashboard:

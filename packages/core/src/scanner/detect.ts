@@ -107,6 +107,11 @@ export async function detectSurfaces(files: WalkedFile[]): Promise<DetectedSurfa
       continue;
     }
 
+    if (isAiModelEndpointConfigPath(file.relativePath, basename)) {
+      detectAiModelEndpointConfig(file, text, surfaces);
+      continue;
+    }
+
     if (isAiTelemetryConfigPath(file.relativePath, basename)) {
       detectAiTelemetryConfig(file, text, surfaces);
       continue;
@@ -395,6 +400,52 @@ function detectAiTelemetryConfig(file: WalkedFile, text: string | undefined, sur
   });
 }
 
+function detectAiModelEndpointConfig(file: WalkedFile, text: string | undefined, surfaces: DetectedSurfaces): void {
+  const parsed = parseStructuredConfig(text ?? "", file.relativePath);
+  if (parsed.parseFailed) {
+    addDiagnostic(surfaces, file, {
+      parser: parsed.parser ?? "structured_config",
+      code: "AI_MODEL_CONFIG_PARSE_FAILED",
+      reason: "AI model endpoint configuration could not be parsed. Raw content was redacted."
+    });
+  }
+
+  const posture = classifyAiModelEndpointConfig(parsed.value, file.relativePath);
+  const actions = new Set<ActionType>(["read", "call"]);
+  if (posture.ai_model_remote_endpoint) actions.add("send");
+
+  const dataClasses = new Set<SurfaceObject["data_classes"][number]>(["unknown"]);
+  if (posture.env_key_names.some(isCredentialLikeKeyName) || posture.secret_ref_key_names.length > 0) dataClasses.add("credential");
+  if (posture.ai_model_sensitive_context) dataClasses.add("confidential");
+  if (posture.ai_model_pii_context) dataClasses.add("pii");
+  if (dataClasses.size > 1) dataClasses.delete("unknown");
+
+  const object = createSurfaceObject({
+    type: "runtime_config",
+    name: path.basename(file.relativePath),
+    path: file.relativePath,
+    trust_level: posture.ai_model_remote_endpoint ? "third_party" : inferTrustLevel(file.relativePath),
+    data_classes: uniqueDataClasses([...dataClasses] as SurfaceObject["data_classes"]),
+    actions: uniqueActions([...actions]),
+    side_effect: posture.ai_model_remote_endpoint,
+    reversible: !posture.ai_model_remote_endpoint,
+    external_reach: posture.ai_model_remote_endpoint,
+    secret_exposure: posture.env_key_names.some(isCredentialLikeKeyName) || posture.secret_ref_key_names.length > 0,
+    reason: "AI model endpoint configuration discovered as runtime prompt and context egress posture.",
+    metadata: {
+      content_redacted: true,
+      values_collected: false,
+      parsed_ai_model_config: Boolean(parsed.value) && !parsed.parseFailed,
+      parse_error: parsed.parseFailed,
+      ...posture
+    }
+  });
+  surfaces.runtime_config.push({
+    ...object,
+    untrusted_to_privileged: isUntrustedToPrivileged(object)
+  });
+}
+
 function detectMemoryContentFile(file: WalkedFile, text: string | undefined, surfaces: DetectedSurfaces): void {
   const content = text ?? "";
   const signals = classifyContextContent(content);
@@ -539,6 +590,21 @@ function isAiTelemetryConfigPath(relativePath: string, basename: string): boolea
   return telemetryDirectory || telemetryName;
 }
 
+function isAiModelEndpointConfigPath(relativePath: string, basename: string): boolean {
+  const normalized = relativePath.replaceAll("\\", "/").toLowerCase();
+  const lowerBase = basename.toLowerCase();
+  if (!/\.(json|ya?ml|toml)$/iu.test(lowerBase)) return false;
+  const segments = normalized.split("/").slice(0, -1);
+  const modelDirectory = segments.some((segment) =>
+    /^(models?|llms?|ai|inference|providers?|model-providers?|model-gateway|gateways?|litellm|openai|anthropic)$/iu.test(segment)
+  );
+  const modelConfigName = /(?:model|llm|inference|provider|gateway|router|proxy|openai|anthropic|litellm|completion|chat)/iu.test(lowerBase);
+  const configName = /(?:config|settings|provider|gateway|endpoint|llm|model|inference|router|proxy|openai|anthropic|litellm|completion|chat)/iu.test(
+    lowerBase
+  );
+  return modelConfigName || (modelDirectory && configName);
+}
+
 function isRagConnectorConfigPath(relativePath: string, basename: string): boolean {
   const normalized = relativePath.replaceAll("\\", "/").toLowerCase();
   const lowerBase = basename.toLowerCase();
@@ -661,9 +727,177 @@ interface AiTelemetryPosture {
   secret_ref_key_names: string[];
 }
 
+interface AiModelEndpointPosture {
+  ai_model_fields: string[];
+  ai_model_provider?: string;
+  ai_model_remote_endpoint: boolean;
+  ai_model_custom_endpoint: boolean;
+  ai_model_destination_redacted: boolean;
+  ai_model_remote_destination_count: number;
+  ai_model_remote_destination_kinds: string[];
+  ai_model_plaintext_endpoint: boolean;
+  ai_model_encrypted_endpoint: boolean;
+  ai_model_sends_prompts: boolean;
+  ai_model_sends_tool_outputs: boolean;
+  ai_model_sends_retrieval_context: boolean;
+  ai_model_sends_memory: boolean;
+  ai_model_sensitive_context: boolean;
+  ai_model_pii_context: boolean;
+  env_key_names: string[];
+  secret_ref_key_names: string[];
+}
+
 interface CursorRuleClassification {
   analyzedContent: string;
   metadata: Record<string, unknown>;
+}
+
+function classifyAiModelEndpointConfig(value: unknown, filePath: string): AiModelEndpointPosture {
+  const fields = flattenRuntimeFields(value);
+  const stringValues = collectFieldStringValues(fields);
+  const provider = inferAiModelProvider([filePath, ...fields.map((field) => field.path), ...stringValues]);
+  const remote = classifyAiModelRemoteEndpoint(fields, provider);
+  const envKeys = collectEnvKeyNamesFromConfig(value);
+  const secretRefKeys = extractSecretReferenceKeys(stringValues);
+  const promptSignal = hasAiModelContextSignal(fields, /\b(prompt|prompts|system|developer|input|inputs|message|messages|conversation|chat)\b/iu);
+  const toolOutputSignal = hasAiModelContextSignal(
+    fields,
+    /(?:^|[_\W])(tool[_\s-]?outputs?|function[_\s-]?outputs?|mcp|observation|command[_\s-]?outputs?)(?:[_\W]|$)/iu
+  );
+  const retrievalSignal = hasAiModelContextSignal(
+    fields,
+    /(?:^|[_\W])(retrieval[_\s-]?context|retrieval|retrieved|rag|documents?|vector|embedding)(?:[_\W]|$)/iu
+  );
+  const memorySignal = hasAiModelContextSignal(fields, /(?:^|[_\W])(memory|memories|session|state|history|transcript)(?:[_\W]|$)/iu);
+  const piiSignal = fields.some((field) => /\b(pii|email|phone|address|ssn|passport|customer|client|ticket|support)\b/iu.test(`${field.path} ${fieldValueText(field)}`));
+  const sendsPrompts = remote.remote || promptSignal;
+
+  return {
+    ai_model_fields: fields
+      .map((field) => field.path)
+      .filter((fieldPath) => isAiModelSecurityField(fieldPath))
+      .sort((a, b) => a.localeCompare(b)),
+    ai_model_provider: provider,
+    ai_model_remote_endpoint: remote.remote,
+    ai_model_custom_endpoint: remote.customEndpoint,
+    ai_model_destination_redacted: remote.destinationCount > 0,
+    ai_model_remote_destination_count: remote.destinationCount,
+    ai_model_remote_destination_kinds: remote.destinationKinds,
+    ai_model_plaintext_endpoint: remote.plaintext,
+    ai_model_encrypted_endpoint: remote.encrypted,
+    ai_model_sends_prompts: sendsPrompts,
+    ai_model_sends_tool_outputs: toolOutputSignal,
+    ai_model_sends_retrieval_context: retrievalSignal,
+    ai_model_sends_memory: memorySignal,
+    ai_model_sensitive_context: sendsPrompts || toolOutputSignal || retrievalSignal || memorySignal || piiSignal,
+    ai_model_pii_context: piiSignal,
+    env_key_names: envKeys,
+    secret_ref_key_names: secretRefKeys
+  };
+}
+
+function inferAiModelProvider(candidates: string[]): string | undefined {
+  const text = candidates.join(" ").toLowerCase();
+  const providers: Array<[string, RegExp]> = [
+    ["openai_compatible", /\b(openai[-_\s]?compatible|litellm|vllm|localai|llama\.?cpp|text[-_\s]?generation[-_\s]?inference|tgi)\b/iu],
+    ["azure_openai", /\b(azure[-_\s]?openai|azure ai)\b/iu],
+    ["openai", /\bopenai\b|\bapi\.openai\.com\b/iu],
+    ["anthropic", /\banthropic\b|\bapi\.anthropic\.com\b/iu],
+    ["bedrock", /\b(aws[-_\s]?bedrock|bedrock)\b/iu],
+    ["vertex_ai", /\b(vertex[-_\s]?ai|google[-_\s]?ai|gemini)\b/iu],
+    ["ollama", /\bollama\b/iu],
+    ["groq", /\bgroq\b/iu],
+    ["mistral", /\bmistral\b/iu],
+    ["cohere", /\bcohere\b/iu],
+    ["together", /\btogether\b/iu],
+    ["fireworks", /\bfireworks\b/iu],
+    ["openrouter", /\bopenrouter\b/iu],
+    ["huggingface", /\b(huggingface|hugging face)\b/iu]
+  ];
+  return providers.find(([, pattern]) => pattern.test(text))?.[0];
+}
+
+function classifyAiModelRemoteEndpoint(
+  fields: RuntimeField[],
+  provider: string | undefined
+): {
+  remote: boolean;
+  customEndpoint: boolean;
+  destinationCount: number;
+  destinationKinds: string[];
+  plaintext: boolean;
+  encrypted: boolean;
+} {
+  const destinationKinds = new Set<string>();
+  let destinationCount = 0;
+  let plaintext = false;
+  let encrypted = false;
+  let customEndpoint = false;
+  const managedProviders = new Set([
+    "openai",
+    "anthropic",
+    "azure_openai",
+    "bedrock",
+    "vertex_ai",
+    "groq",
+    "mistral",
+    "cohere",
+    "together",
+    "fireworks",
+    "openrouter",
+    "huggingface"
+  ]);
+  if (provider && managedProviders.has(provider)) {
+    destinationKinds.add("managed_model_api");
+    destinationCount += 1;
+  }
+  if (provider && ["openai_compatible", "ollama"].includes(provider)) {
+    customEndpoint = true;
+  }
+
+  for (const field of fields) {
+    const values = Array.isArray(field.value) ? field.value.map(String) : [String(field.value ?? "")];
+    for (const value of values) {
+      const remoteUrl = parseRemoteHttpUrl(value);
+      if (!remoteUrl) continue;
+      destinationKinds.add("http_endpoint");
+      destinationCount += 1;
+      if (remoteUrl.protocol === "http:") plaintext = true;
+      if (remoteUrl.protocol === "https:") encrypted = true;
+    }
+    if (/(^|\.)(base_url|baseurl|api_base|api_url|endpoint|url|uri|host|gateway|proxy|router|server)$/iu.test(field.path)) {
+      customEndpoint = true;
+      const text = values.join(" ");
+      if (/\b(api|gateway|proxy|router|llm|model|inference|openai|anthropic|litellm|vllm|ollama|localai)\b/iu.test(text)) {
+        destinationKinds.add("configured_model_endpoint");
+        destinationCount += 1;
+      }
+    }
+  }
+
+  return {
+    remote: destinationCount > 0,
+    customEndpoint,
+    destinationCount,
+    destinationKinds: [...destinationKinds].sort((a, b) => a.localeCompare(b)),
+    plaintext,
+    encrypted
+  };
+}
+
+function hasAiModelContextSignal(fields: RuntimeField[], pattern: RegExp): boolean {
+  return fields.some((field) => {
+    const text = `${field.path} ${fieldValueText(field)}`;
+    if (!pattern.test(text)) return false;
+    if (/redact|mask|scrub|sanitize|exclude|drop|deny/iu.test(field.path)) return false;
+    return truthyConfigValue(field.value) || /include|send|forward|attach|full|raw|context|history|memory|tool|prompt/iu.test(text);
+  });
+}
+
+function isAiModelSecurityField(fieldPath: string): boolean {
+  return /provider|model|base[_-]?url|api[_-]?base|endpoint|url|uri|host|gateway|proxy|router|server|api[_-]?key|token|secret|credential|auth|env|prompt|input|message|completion|output|tool|retrieval|rag|context|memory|history|pii/iu.test(
+    fieldPath
+  );
 }
 
 function classifyAiTelemetryConfig(value: unknown, filePath: string): AiTelemetryPosture {
