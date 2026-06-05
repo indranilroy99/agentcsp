@@ -49,6 +49,13 @@ MCP metadata may include:
 - `auth_header_names`
 - `env_key_names`
 - `secret_ref_key_names`
+- `local_command_paths`
+- `local_command_path_count`
+- `local_command_paths_found`
+- `local_command_paths_missing`
+- `local_command_paths_missing_count`
+- `local_command_paths_all_found`
+- `opaque_local_mcp_implementation`
 - `package_runner`
 - `package_runner_name`
 - `package_name`
@@ -57,7 +64,7 @@ MCP metadata may include:
 - `values_collected`
 - `content_redacted`
 
-Remote third-party MCP servers are treated as external trust boundaries. Credential references and auth headers are represented as key names only.
+Remote third-party MCP servers are treated as external trust boundaries. Credential references and auth headers are represented as key names only. For local MCP launchers, AgentCSP records project-local implementation path references such as `tools/server.js` and whether those files were present in the scan; raw command arguments and secret placeholders remain redacted.
 
 ## Instruction Context Signals
 

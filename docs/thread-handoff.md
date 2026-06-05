@@ -424,6 +424,16 @@ The current iteration adds:
 - rule `AGENTCSP-PROMPT-002` for prompt templates that persist untrusted template input into memory
 - scanner and rule regression coverage proving raw prompt text stays redacted while the safe fixture remains clean
 
+## MCP Local Implementation Visibility Pass
+
+The current iteration adds:
+
+- project-local MCP implementation path inventory for launchers such as `node tools/server.js`, while keeping raw command arguments and secret placeholders redacted
+- metadata for found and missing local MCP implementation paths, including `opaque_local_mcp_implementation`
+- credential-like handling for webhook environment references used inside MCP configs
+- rule `AGENTCSP-MCP-005` for secret-backed MCP servers whose local implementation file was missing from the scan
+- scanner and rule regression coverage proving the vulnerable fixture surfaces opaque MCP authority without emitting raw credential placeholders
+
 ## Initial Build Recommendation
 
 Start with a CLI-first MVP before building the dashboard:

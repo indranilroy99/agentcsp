@@ -33,6 +33,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-002")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-003")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-004")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-005")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-001")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-002")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-003")).toBe(true);
@@ -60,6 +61,11 @@ describe("rule engine", () => {
     expect(findings.find((finding) => finding.rule_id === "AGENTCSP-MCP-004")?.matched_object.name).toBe(
       "ticketing-package-runner"
     );
+    const opaqueMcpFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-MCP-005");
+    expect(opaqueMcpFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
+      "browser-publisher",
+      "filesystem-admin"
+    ]);
     expect(findings.find((finding) => finding.rule_id === "AGENTCSP-PROMPT-001")?.matched_object.path).toBe(
       "prompts/support-ticket.prompt.md"
     );

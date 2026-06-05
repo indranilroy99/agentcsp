@@ -80,8 +80,43 @@ describe("scanner", () => {
     expect(exfilSkill?.external_reach).toBe(true);
     expect(exfilSkill?.side_effect).toBe(true);
     expect(surfaces.mcp_servers.length).toBeGreaterThanOrEqual(3);
+    const localMcp = surfaces.mcp_servers.find((surface) => surface.name === "filesystem-admin");
+    const browserPublisherMcp = surfaces.mcp_servers.find((surface) => surface.name === "browser-publisher");
     const remoteMcp = surfaces.mcp_servers.find((surface) => surface.name === "remote-ticketing");
     const packageRunnerMcp = surfaces.mcp_servers.find((surface) => surface.name === "ticketing-package-runner");
+    expect(localMcp).toMatchObject({
+      trust_level: "project",
+      secret_exposure: true
+    });
+    expect(localMcp?.metadata).toMatchObject({
+      command_name: "node",
+      args_count: 1,
+      env_key_names: ["GITHUB_TOKEN"],
+      local_command_paths: ["tools/filesystem-admin.js"],
+      local_command_path_count: 1,
+      local_command_paths_found: [],
+      local_command_paths_missing: ["tools/filesystem-admin.js"],
+      local_command_paths_missing_count: 1,
+      local_command_paths_all_found: false,
+      opaque_local_mcp_implementation: true,
+      values_collected: false
+    });
+    expect(JSON.stringify(localMcp)).not.toContain("${GITHUB_TOKEN}");
+    expect(browserPublisherMcp).toMatchObject({
+      trust_level: "project",
+      secret_exposure: true
+    });
+    expect(browserPublisherMcp?.metadata).toMatchObject({
+      command_name: "node",
+      args_count: 3,
+      secret_ref_key_names: ["SLACK_WEBHOOK_URL"],
+      local_command_paths: ["tools/browser-publisher.js"],
+      local_command_paths_missing: ["tools/browser-publisher.js"],
+      local_command_paths_missing_count: 1,
+      opaque_local_mcp_implementation: true,
+      values_collected: false
+    });
+    expect(JSON.stringify(browserPublisherMcp)).not.toContain("${SLACK_WEBHOOK_URL}");
     expect(remoteMcp).toMatchObject({
       trust_level: "third_party",
       external_reach: true,

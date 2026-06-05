@@ -67,6 +67,7 @@ export function emptyDetectedSurfaces(): DetectedSurfaces {
 export async function detectSurfaces(files: WalkedFile[]): Promise<DetectedSurfaces> {
   const surfaces = emptyDetectedSurfaces();
   const seenDirectories = new Set<string>();
+  const projectFilePaths = new Set(files.map((file) => normalizeProjectPath(file.relativePath)));
 
   for (const file of files) {
     const basename = path.basename(file.relativePath);
@@ -205,7 +206,7 @@ export async function detectSurfaces(files: WalkedFile[]): Promise<DetectedSurfa
     }
 
     if (DEFAULT_MCP_CONFIG_NAMES.has(basename) || lowerPath.endsWith("/mcp.json")) {
-      await detectMcpConfig(file, text, surfaces);
+      await detectMcpConfig(file, text, surfaces, projectFilePaths);
       continue;
     }
 
@@ -681,7 +682,12 @@ function addDiagnostic(
   });
 }
 
-async function detectMcpConfig(file: WalkedFile, text: string | undefined, surfaces: DetectedSurfaces): Promise<void> {
+async function detectMcpConfig(
+  file: WalkedFile,
+  text: string | undefined,
+  surfaces: DetectedSurfaces,
+  projectFilePaths: Set<string>
+): Promise<void> {
   const raw = text ?? "{}";
   let parsed: unknown;
   let parseFailed = false;
@@ -721,6 +727,9 @@ async function detectMcpConfig(file: WalkedFile, text: string | undefined, surfa
     const secretKeys = [...(server.envKeys ?? []), ...(server.secretRefKeys ?? []), ...(server.authHeaderNames ?? [])];
     const baseActions: ActionType[] = actions.length > 0 ? actions : ["call"];
     const packageRunner = server.packageRunner;
+    const localImplementationPaths = server.localCommandPaths ?? [];
+    const localImplementationPathsFound = localImplementationPaths.filter((pathRef) => projectFilePaths.has(pathRef));
+    const localImplementationPathsMissing = localImplementationPaths.filter((pathRef) => !projectFilePaths.has(pathRef));
     const mcpActions: ActionType[] = [
       ...baseActions,
       ...(externalRemote ? (["send"] as ActionType[]) : []),
@@ -735,7 +744,7 @@ async function detectMcpConfig(file: WalkedFile, text: string | undefined, surfa
       actions: uniqueActions(mcpActions),
       side_effect: true,
       external_reach: externalRemote || Boolean(packageRunner) || hasExternalReach(signalText),
-      secret_exposure: secretKeys.some((key) => /authorization|token|secret|key|password|credential|auth/i.test(key)),
+      secret_exposure: secretKeys.some(isCredentialLikeKeyName),
       reversible: isReversible(signalText),
       reason: "MCP server configuration exposes agent-callable tools and authority.",
       metadata: {
@@ -750,6 +759,13 @@ async function detectMcpConfig(file: WalkedFile, text: string | undefined, surfa
         auth_header_names: server.authHeaderNames ?? [],
         env_key_names: server.envKeys ?? [],
         secret_ref_key_names: server.secretRefKeys ?? [],
+        local_command_paths: localImplementationPaths,
+        local_command_path_count: localImplementationPaths.length,
+        local_command_paths_found: localImplementationPathsFound,
+        local_command_paths_missing: localImplementationPathsMissing,
+        local_command_paths_missing_count: localImplementationPathsMissing.length,
+        local_command_paths_all_found: localImplementationPaths.length > 0 && localImplementationPathsMissing.length === 0,
+        opaque_local_mcp_implementation: localImplementationPaths.length > 0 && localImplementationPathsMissing.length > 0,
         package_runner: Boolean(packageRunner),
         package_runner_name: packageRunner?.runner,
         package_name: packageRunner?.packageName,
@@ -1299,6 +1315,7 @@ function extractMcpServers(value: unknown): Array<{
   authHeaderNames?: string[];
   secretRefKeys?: string[];
   packageRunner?: McpPackageRunnerSignal;
+  localCommandPaths?: string[];
 }> {
   if (!value || typeof value !== "object") return [];
   const root = value as Record<string, unknown>;
@@ -1316,6 +1333,7 @@ function extractMcpServers(value: unknown): Array<{
     const headerNames = Object.keys(headers).sort((a, b) => a.localeCompare(b));
     const authHeaderNames = headerNames.filter((header) => /authorization|api[-_]?key|token|secret|credential|cookie/i.test(header));
     const packageRunner = classifyMcpPackageRunner(command, args);
+    const localCommandPaths = extractLocalMcpCommandPathRefs(command, args);
     const secretRefKeys = [
       ...extractSecretReferenceKeys(Object.values(headers)),
       ...extractSecretReferenceKeys([url, ...args])
@@ -1332,9 +1350,47 @@ function extractMcpServers(value: unknown): Array<{
       headerNames,
       authHeaderNames,
       secretRefKeys,
-      packageRunner
+      packageRunner,
+      localCommandPaths
     };
   });
+}
+
+function extractLocalMcpCommandPathRefs(command: string | undefined, args: string[]): string[] {
+  return uniqueStrings([command, ...args].flatMap((value) => normalizeLocalImplementationPath(value)));
+}
+
+function isCredentialLikeKeyName(keyName: string): boolean {
+  return /authorization|token|secret|key|password|credential|auth|webhook|cookie|bearer/i.test(keyName);
+}
+
+function normalizeLocalImplementationPath(value: string | undefined): string[] {
+  if (!value) return [];
+  const normalizedValue = value.trim().replaceAll("\\", "/");
+  if (!normalizedValue) return [];
+  if (normalizedValue.startsWith("-")) return [];
+  if (normalizedValue.startsWith("${") || normalizedValue.includes("${")) return [];
+  if (/^[a-z][a-z0-9+.-]*:\/\//i.test(normalizedValue)) return [];
+  if (path.posix.isAbsolute(normalizedValue) || path.win32.isAbsolute(value)) return [];
+  if (!looksLikeImplementationPath(normalizedValue)) return [];
+
+  const normalizedPath = normalizeProjectPath(normalizedValue);
+  if (normalizedPath === "." || normalizedPath === ".." || normalizedPath.startsWith("../")) return [];
+  return [normalizedPath];
+}
+
+function looksLikeImplementationPath(value: string): boolean {
+  if (!value.includes("/") && !value.startsWith("./")) return false;
+  return /\.(?:cjs|mjs|js|cts|mts|ts|jsx|tsx|py|sh|rb|go|rs|jar|php|pl|ps1)$/i.test(value);
+}
+
+function normalizeProjectPath(value: string): string {
+  const normalized = path.posix.normalize(value.replaceAll("\\", "/"));
+  return normalized.startsWith("./") ? normalized.slice(2) : normalized;
+}
+
+function uniqueStrings(values: string[]): string[] {
+  return [...new Set(values)].sort((a, b) => a.localeCompare(b));
 }
 
 interface McpPackageRunnerSignal {
@@ -1447,10 +1503,10 @@ function extractSecretReferenceKeys(values: unknown[]): string[] {
   for (const value of values) {
     if (typeof value !== "string") continue;
     for (const match of value.matchAll(/\$\{?([A-Z_][A-Z0-9_]*)\}?/g)) {
-      if (match[1] && /token|secret|key|password|credential|auth/i.test(match[1])) keys.add(match[1]);
+      if (match[1] && isCredentialLikeKeyName(match[1])) keys.add(match[1]);
     }
   }
-  return [...keys];
+  return [...keys].sort((a, b) => a.localeCompare(b));
 }
 
 function isLocalHost(host: string): boolean {

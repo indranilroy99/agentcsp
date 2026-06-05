@@ -22,6 +22,7 @@ A finding should be considered production-grade when it includes:
 - redacted parser diagnostics for malformed security-relevant configuration
 - negation-aware action classification so safety policy text is not treated as granted authority
 - MCP package-runner posture for unpinned third-party runtime launchers
+- local MCP implementation presence checks for secret-backed agent-callable servers
 - tool-name collision metadata for authority ambiguity and shadowing
 - tool-schema integrity signals for open-world privileged arguments and read-only hint conflicts
 - tool-schema path-to-external data-flow signals for exfiltration risk
@@ -44,6 +45,7 @@ Examples:
 - network retrieval plus shell execution
 - MCP server plus credential key names plus side effects
 - remote third-party MCP server plus auth headers or credential references
+- local MCP implementation path missing from scan plus credential exposure and side effects
 - package-runner MCP server plus unpinned package version plus credential exposure
 - runtime allowlist plus secret-backed MCP server plus approval bypass
 - workflow automation plus agent package script plus secrets and write authority
