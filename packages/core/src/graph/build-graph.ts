@@ -72,6 +72,21 @@ export function buildStaticGraph(surfaces: DetectedSurfaces, findings: Finding[]
   }
 
   const packageScriptTools = surfaces.tools.filter((tool) => tool.name.startsWith("package-script:"));
+  for (const runtime of surfaces.runtime_config) {
+    const referencedPackageScripts = stringMetadataArray(runtime.metadata.referenced_auto_approved_package_scripts);
+    if (referencedPackageScripts.length === 0) continue;
+    const referencedPackageScriptSet = new Set(referencedPackageScripts);
+    for (const tool of packageScriptTools.filter((candidate) => referencedPackageScriptSet.has(candidate.name))) {
+      addEdge(
+        relationships,
+        runtime,
+        tool,
+        "triggers",
+        "Runtime permission allowlist auto-approves this package script. Raw permission patterns are redacted; review per-call approval and script authority before agent use."
+      );
+    }
+  }
+
   for (const workflow of [...surfaces.ci_cd, ...surfaces.automations]) {
     const referencedPackageScripts = stringMetadataArray(workflow.metadata.referenced_package_scripts);
     if (referencedPackageScripts.length === 0) continue;

@@ -238,6 +238,7 @@ export async function detectSurfaces(files: WalkedFile[]): Promise<DetectedSurfa
 
   annotateToolNameCollisions(surfaces);
   annotateRuntimeCapabilityReferences(surfaces);
+  annotateRuntimePackageScriptReferences(surfaces);
   annotateWorkflowPackageScriptReferences(surfaces);
   annotateContextCallableReferences(surfaces, contextContentByPath);
   return surfaces;
@@ -1157,6 +1158,40 @@ function annotateWorkflowPackageScriptReferences(surfaces: DetectedSurfaces): vo
   surfaces.automations = surfaces.automations.map(annotate);
 }
 
+function annotateRuntimePackageScriptReferences(surfaces: DetectedSurfaces): void {
+  const packageScriptTools = surfaces.tools
+    .filter((tool) => typeof tool.metadata.script_name === "string")
+    .sort((a, b) => a.name.localeCompare(b.name) || a.path.localeCompare(b.path));
+  if (packageScriptTools.length === 0 || surfaces.runtime_config.length === 0) return;
+
+  surfaces.runtime_config = surfaces.runtime_config.map((runtime) => {
+    const autoApprovedScriptNames = stringMetadataArray(runtime.metadata.auto_approved_package_script_names);
+    if (autoApprovedScriptNames.length === 0) return runtime;
+
+    const autoApprovedScriptNameSet = new Set(autoApprovedScriptNames);
+    const referencedPackageScripts = packageScriptTools.filter((tool) =>
+      autoApprovedScriptNameSet.has(String(tool.metadata.script_name))
+    );
+    if (referencedPackageScripts.length === 0) return runtime;
+
+    const releasePackageScripts = referencedPackageScripts.filter((tool) => tool.metadata.release_or_publish === true);
+    return {
+      ...runtime,
+      metadata: {
+        ...runtime.metadata,
+        referenced_package_scripts: surfaceNames(referencedPackageScripts),
+        referenced_package_script_count: referencedPackageScripts.length,
+        referenced_auto_approved_package_scripts: surfaceNames(referencedPackageScripts),
+        referenced_auto_approved_package_script_count: referencedPackageScripts.length,
+        referenced_release_package_scripts: surfaceNames(releasePackageScripts),
+        referenced_release_package_script_count: releasePackageScripts.length,
+        auto_approved_package_script_bridge: referencedPackageScripts.length > 0,
+        auto_approved_release_package_script_bridge: releasePackageScripts.length > 0
+      }
+    };
+  });
+}
+
 function annotateContextCallableReferences(
   surfaces: DetectedSurfaces,
   contextContentByPath: Map<string, string>
@@ -1360,6 +1395,10 @@ function classifyWorkflowRunCommands(commands: string[]): WorkflowCommandSignals
 }
 
 function extractAgentPackageScriptNames(commandText: string): string[] {
+  return extractPackageScriptNames(commandText).filter(isAgentPackageScriptName);
+}
+
+function extractPackageScriptNames(commandText: string): string[] {
   const names = new Set<string>();
   const patterns = [
     /\bnpm\s+run\s+([a-zA-Z0-9][\w:.-]*)/giu,
@@ -1368,7 +1407,7 @@ function extractAgentPackageScriptNames(commandText: string): string[] {
 
   for (const pattern of patterns) {
     for (const match of commandText.matchAll(pattern)) {
-      if (match[1] && isAgentPackageScriptName(match[1])) names.add(match[1]);
+      if (match[1]) names.add(match[1]);
     }
   }
 
@@ -1442,6 +1481,7 @@ function detectRuntimeConfig(file: WalkedFile, text: string | undefined, surface
       disabled_tools: posture.disabled_tools,
       permission_allowlist: posture.permission_allowlist,
       permission_denylist: posture.permission_denylist,
+      auto_approved_package_script_names: posture.auto_approved_package_script_names,
       auto_approved_tools_redacted: posture.auto_approved_tools_redacted,
       auto_approved_tool_count: posture.auto_approved_tool_count,
       auto_approved_privileged_tool_count: posture.auto_approved_privileged_tool_count,
@@ -1753,6 +1793,7 @@ interface RuntimePosture {
   disabled_tools: string[];
   permission_allowlist: string[];
   permission_denylist: string[];
+  auto_approved_package_script_names: string[];
   auto_approved_tools_redacted: boolean;
   auto_approved_tool_count: number;
   auto_approved_privileged_tool_count: number;
@@ -1823,6 +1864,7 @@ function classifyRuntimeConfig(value: unknown): RuntimePosture {
   const autoApprovedPrivilegedToolCount = rawPermissionAllowlist.filter(
     (entry) => classifyPrivilegedToolSignals([entry]).length > 0
   ).length;
+  const autoApprovedPackageScriptNames = extractPackageScriptNames(rawPermissionAllowlist.join("\n"));
   const networkEnabled = Boolean(
     (networkAccess && /true|yes|enabled|enable|on|full|unrestricted|allow/iu.test(networkAccess)) ||
       privilegedSignals.some((signal) => ["browser", "external_messaging", "github"].includes(signal))
@@ -1847,6 +1889,7 @@ function classifyRuntimeConfig(value: unknown): RuntimePosture {
     disabled_tools: disabledTools,
     permission_allowlist: permissionAllowlist,
     permission_denylist: permissionDenylist,
+    auto_approved_package_script_names: autoApprovedPackageScriptNames,
     auto_approved_tools_redacted: permissionAllowlist.length > 0,
     auto_approved_tool_count: rawPermissionAllowlist.length,
     auto_approved_privileged_tool_count: autoApprovedPrivilegedToolCount,

@@ -38,6 +38,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-002")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-003")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-004")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-005")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-CICD-002")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-AUTOMATION-001")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-AUTOMATION-002")).toBe(true);
@@ -67,8 +68,16 @@ describe("rule engine", () => {
       expect.arrayContaining(["Bash", "WebFetch", "mcp:filesystem-admin"])
     );
     expect(runtimeAutoApprovedFindings[0]?.confidence).toBe("very_high");
-    expect(JSON.stringify(runtimeAutoApprovedFindings[0])).not.toContain("npm run release");
+    expect(JSON.stringify(runtimeAutoApprovedFindings[0])).not.toContain("npm run deploy");
     expect(JSON.stringify(runtimeAutoApprovedFindings[0])).not.toContain("${ANTHROPIC_API_KEY}");
+    const runtimeAutoApprovedReleaseFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-RUNTIME-005");
+    expect(runtimeAutoApprovedReleaseFindings).toHaveLength(1);
+    expect(runtimeAutoApprovedReleaseFindings[0]?.matched_object.path).toBe(".claude/settings.json");
+    expect(runtimeAutoApprovedReleaseFindings[0]?.matched_object.metadata.referenced_release_package_scripts).toEqual([
+      "package-script:deploy"
+    ]);
+    expect(runtimeAutoApprovedReleaseFindings[0]?.confidence).toBe("very_high");
+    expect(JSON.stringify(runtimeAutoApprovedReleaseFindings[0])).not.toContain("npm run deploy");
     const automationAgentFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-AUTOMATION-002");
     expect(automationAgentFindings).toHaveLength(1);
     expect(automationAgentFindings[0]?.matched_object.path).toBe(".github/workflows/agent-maintenance.yml");

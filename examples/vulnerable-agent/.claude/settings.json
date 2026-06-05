@@ -1,7 +1,7 @@
 {
   "permissions": {
     "allow": [
-      "Bash(npm run release:*)",
+      "Bash(npm run deploy)",
       "WebFetch(domain:*)",
       "mcp__filesystem-admin__delete_file"
     ],

@@ -254,6 +254,9 @@ describe("scanner", () => {
       auto_approved_privileged_tool_count: 3,
       auto_approved_privileged_tool_signal_count: 4,
       auto_approved_privileged_tools: true,
+      auto_approved_package_script_names: ["deploy"],
+      auto_approved_package_script_bridge: true,
+      auto_approved_release_package_script_bridge: true,
       secret_backed_mcp_runtime_bridge: true,
       approvalless_secret_mcp_bridge: true,
       secret_env_exposure: true,
@@ -268,9 +271,11 @@ describe("scanner", () => {
     expect(claudeRuntimeConfig?.metadata.env_key_names).toEqual(["ANTHROPIC_API_KEY", "SLACK_WEBHOOK_URL"]);
     expect(claudeRuntimeConfig?.metadata.referenced_mcp_servers).toEqual(["filesystem-admin"]);
     expect(claudeRuntimeConfig?.metadata.referenced_secret_backed_mcp_servers).toEqual(["filesystem-admin"]);
+    expect(claudeRuntimeConfig?.metadata.referenced_auto_approved_package_scripts).toEqual(["package-script:deploy"]);
+    expect(claudeRuntimeConfig?.metadata.referenced_release_package_scripts).toEqual(["package-script:deploy"]);
     expect(claudeRuntimeConfig?.actions).toContain("execute");
     expect(claudeRuntimeConfig?.actions).toContain("send");
-    expect(JSON.stringify(claudeRuntimeConfig)).not.toContain("npm run release");
+    expect(JSON.stringify(claudeRuntimeConfig)).not.toContain("npm run deploy");
     expect(JSON.stringify(claudeRuntimeConfig)).not.toContain("${ANTHROPIC_API_KEY}");
     expect(surfaces.ci_cd.length).toBe(1);
     expect(surfaces.ci_cd[0]?.metadata).toMatchObject({

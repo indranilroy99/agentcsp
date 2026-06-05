@@ -40,6 +40,14 @@ describe("static graph", () => {
           edge.target.name === "package-script:agent:run"
       )
     ).toBe(true);
+    const runtimeDeployEdge = result.manifest.relationships.find(
+      (edge) =>
+        edge.relation === "triggers" &&
+        edge.source.path === ".claude/settings.json" &&
+        edge.target.name === "package-script:deploy"
+    );
+    expect(runtimeDeployEdge).toBeDefined();
+    expect(runtimeDeployEdge?.reason).toContain("auto-approves this package script");
     const promptToolEdge = result.manifest.relationships.find(
       (edge) =>
         edge.relation === "influences" &&
