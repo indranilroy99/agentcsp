@@ -1,0 +1,36 @@
+id: AGENTCSP-TOOL-009
+name: Tool schema can publish prompt-like content externally
+description: A tool schema accepts prompt-like content and a URL-like destination while performing external write authority, creating a concrete path for model-generated or untrusted content to leave the agent boundary.
+category: tool_schema_authority
+severity: high
+maps_to:
+  owasp:
+    - LLM01:2025 Prompt Injection
+    - LLM02:2025 Sensitive Information Disclosure
+    - LLM05:2025 Improper Output Handling
+    - LLM06:2025 Excessive Agency
+  mitre_atlas:
+    - AML.T0051 LLM Plugin Compromise
+    - AML.T0057 Exfiltration via Cyber Means
+  nist_ai_rmf:
+    - MAP 4.1
+    - MEASURE 2.7
+    - MANAGE 2.4
+match:
+  object_type: tool
+  where:
+    - field: metadata.parsed_tool_schema
+      op: equals
+      value: true
+    - field: metadata.external_write
+      op: equals
+      value: true
+    - field: metadata.accepts_content_like_input
+      op: equals
+      value: true
+    - field: metadata.accepts_url_input
+      op: equals
+      value: true
+recommendation:
+  control: require_approval
+  text: Require approval and output validation before prompt-like or model-generated content can be sent to an external destination.

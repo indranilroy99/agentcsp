@@ -25,6 +25,7 @@ A finding should be considered production-grade when it includes:
 - local MCP implementation presence checks for secret-backed agent-callable servers
 - tool-name collision metadata for authority ambiguity and shadowing
 - tool-schema integrity signals for open-world privileged arguments and read-only hint conflicts
+- tool-schema content-input signals for prompt-like text sent to external destinations
 - tool-schema path-to-external data-flow signals for exfiltration risk
 - instruction-file context bridge signals for untrusted inputs routed into tool or memory authority
 - runtime-to-MCP reference signals for approval bypass into secret-backed MCP servers
@@ -60,6 +61,7 @@ Examples:
 - runtime allowlist plus secret-backed MCP server plus approval bypass
 - auto-approved privileged runtime permissions plus credential key exposure
 - auto-approved runtime package script plus release or deploy authority
+- external write tool plus prompt-like content input and URL destination
 - workflow automation plus agent package script plus secrets and write authority
 - instruction file plus untrusted context reference plus tool and memory bridge
 - tool-name collision plus different authority signatures and a privileged peer

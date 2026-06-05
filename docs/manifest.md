@@ -128,6 +128,7 @@ Tool metadata may include:
 - `schema_properties`
 - `required_properties`
 - `accepts_secret_like_input`
+- `accepts_content_like_input`
 - `accepts_path_input`
 - `accepts_url_input`
 - `external_write`

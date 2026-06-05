@@ -1037,6 +1037,7 @@ function detectToolDefinition(file: WalkedFile, text: string | undefined, surfac
         schema_properties: definition.schemaProperties,
         required_properties: definition.requiredProperties,
         accepts_secret_like_input: authority.accepts_secret_like_input,
+        accepts_content_like_input: authority.accepts_content_like_input,
         accepts_path_input: authority.accepts_path_input,
         accepts_url_input: authority.accepts_url_input,
         external_write: authority.external_write,
@@ -2079,6 +2080,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   external_reach: boolean;
   secret_exposure: boolean;
   accepts_secret_like_input: boolean;
+  accepts_content_like_input: boolean;
   accepts_path_input: boolean;
   accepts_url_input: boolean;
   external_write: boolean;
@@ -2092,6 +2094,10 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   const classes = new Set<string>();
   const actions = new Set<"read" | "write" | "execute" | "publish" | "send" | "delete" | "remember" | "call">(["call"]);
   const acceptsSecret = /secret|token|api[\s_-]?key|password|credential|auth/i.test(text);
+  const propertyText = normalizeAuthorityText(`${definition.schemaProperties.join(" ")} ${definition.requiredProperties.join(" ")}`);
+  const acceptsContent = /\b(message|summary|content|text|prompt|comment|note|ticket|issue|email|chat|conversation|response|output|body)\b/i.test(
+    propertyText
+  );
   const acceptsPath = /(^|[_\W])(path|file|directory|dir|folder|repo|repository|workspace|glob)([_\W]|$)/i.test(text);
   const acceptsUrl = /\b(url|uri|webhook|endpoint|host|domain|http)\b/i.test(text);
   const destructive = /\b(delete|remove|drop|truncate|destroy|purge|wipe)\b/i.test(text);
@@ -2120,6 +2126,9 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   }
   if (acceptsSecret) {
     classes.add("credential_input");
+  }
+  if (acceptsContent) {
+    classes.add("content_input");
   }
   if (externalWrite) {
     classes.add("external_write");
@@ -2162,6 +2171,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
     external_reach: acceptsUrl || externalWrite,
     secret_exposure: acceptsSecret,
     accepts_secret_like_input: acceptsSecret,
+    accepts_content_like_input: acceptsContent,
     accepts_path_input: acceptsPath,
     accepts_url_input: acceptsUrl,
     external_write: externalWrite,
@@ -2194,6 +2204,7 @@ function authoritySignature(tool: SurfaceObject): string {
     metadata.external_write === true ? "external_write" : "",
     metadata.destructive_action === true ? "destructive" : "",
     metadata.accepts_secret_like_input === true ? "secret_input" : "",
+    metadata.accepts_content_like_input === true ? "content_input" : "",
     metadata.accepts_path_input === true ? "path_input" : "",
     metadata.open_world_authority === true ? "open_world" : "",
     metadata.read_only_hint === true ? "read_only" : "",

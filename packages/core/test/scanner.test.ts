@@ -165,6 +165,7 @@ describe("scanner", () => {
       parsed_tool_schema: true,
       external_write: true,
       accepts_secret_like_input: true,
+      accepts_content_like_input: true,
       accepts_url_input: true,
       open_world_schema: false,
       open_world_authority: false,
@@ -177,6 +178,7 @@ describe("scanner", () => {
       accepts_path_input: true,
       accepts_url_input: true,
       accepts_secret_like_input: true,
+      accepts_content_like_input: false,
       name_collision: true,
       collision_name: "customer_record",
       collision_count: 2,
@@ -187,6 +189,7 @@ describe("scanner", () => {
       parsed_tool_schema: true,
       read_only_hint: true,
       external_write: false,
+      accepts_content_like_input: false,
       name_collision: true,
       collision_name: "customer_record",
       collision_count: 2,
@@ -199,6 +202,7 @@ describe("scanner", () => {
       parsed_tool_schema: true,
       destructive_action: true,
       accepts_path_input: true,
+      accepts_content_like_input: false,
       read_only_hint_conflict: false
     });
     expect(openWorldTool?.metadata).toMatchObject({
@@ -206,6 +210,7 @@ describe("scanner", () => {
       external_write: true,
       accepts_url_input: true,
       accepts_secret_like_input: true,
+      accepts_content_like_input: true,
       open_world_schema: true,
       open_world_authority: true,
       read_only_hint_conflict: false
@@ -215,11 +220,13 @@ describe("scanner", () => {
       read_only_hint: true,
       destructive_action: true,
       accepts_path_input: true,
+      accepts_content_like_input: false,
       read_only_hint_conflict: true,
       open_world_schema: false
     });
     expect(readOnlyConflictTool?.side_effect).toBe(true);
     expect(readTool?.side_effect).toBe(false);
+    expect(readTool?.metadata.accepts_content_like_input).toBe(false);
     expect(readTool?.metadata.read_only_hint_conflict).toBe(false);
     const runtimeConfig = surfaces.runtime_config.find((surface) => surface.path === ".codex/config.toml");
     expect(runtimeConfig?.metadata).toMatchObject({
