@@ -556,6 +556,16 @@ The current iteration adds:
 - rule `AGENTCSP-RAG-004` for remote vector stores that combine credentials, write authority, and untrusted ingestion
 - scanner, rule, fixture verifier, and redaction coverage proving the vector-store finding is high-confidence while the safe fixture remains quiet
 
+## AI Telemetry Export Pass
+
+The current iteration adds:
+
+- first-class redacted metadata for AI telemetry and trace-export configs, including provider, remote destination categories, prompt/completion/tool-output/retrieval/memory capture, redaction posture, retention, and credential key references
+- redacted diagnostics for malformed AI telemetry configuration
+- vulnerable fixture coverage for a remote LangSmith-style trace exporter that captures sensitive agent context with redaction disabled without emitting raw endpoints, project names, or secret placeholders
+- rule `AGENTCSP-RUNTIME-008` for remote telemetry export that combines sensitive capture, disabled redaction, and credential references
+- scanner, rule, fixture verifier, and redaction coverage proving the telemetry finding is high-confidence while the safe fixture remains quiet
+
 ## Initial Build Recommendation
 
 Start with a CLI-first MVP before building the dashboard:

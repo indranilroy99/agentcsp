@@ -232,6 +232,33 @@ Network permission scopes are normalized into bounded categories such as `wildca
 
 Secret or environment values are not emitted. Permission allowlists are normalized to canonical tool names, MCP tool references, package script names, and capability classes instead of raw command patterns. AgentCSP records key names, runtime posture, explicit MCP references, and exact package-script references so rules can detect risky authority without exposing credentials or dumping runtime config values.
 
+AI telemetry and trace-export configs are also normalized into `runtime_config` objects when common observability, tracing, LangSmith, Langfuse, Helicone, Braintrust, OpenTelemetry, or similar configuration files are discovered.
+
+Telemetry metadata may include:
+
+- `parsed_ai_telemetry_config`
+- `ai_telemetry_fields`
+- `ai_telemetry_provider`
+- `ai_telemetry_export_enabled`
+- `ai_telemetry_remote_export`
+- `ai_telemetry_destination_redacted`
+- `ai_telemetry_remote_destination_count`
+- `ai_telemetry_remote_destination_kinds`
+- `ai_telemetry_captures_prompts`
+- `ai_telemetry_captures_completions`
+- `ai_telemetry_captures_tool_outputs`
+- `ai_telemetry_captures_retrieval`
+- `ai_telemetry_captures_memory`
+- `ai_telemetry_sensitive_capture`
+- `ai_telemetry_pii_capture`
+- `ai_telemetry_secret_capture_signal`
+- `ai_telemetry_redaction_disabled`
+- `ai_telemetry_retention_enabled`
+- `env_key_names`
+- `secret_ref_key_names`
+
+Raw telemetry endpoints, project names, trace payloads, sampled content, and secret placeholders are not emitted. Provider names, redacted destination categories, field paths, capture booleans, retention signals, redaction posture, and credential key names let rules detect sensitive trace export without copying observability configuration values into the manifest.
+
 ## Prompt Template Signals
 
 Prompt template files are normalized into `prompt` objects when they appear under common prompt/template paths or use prompt-specific filenames.

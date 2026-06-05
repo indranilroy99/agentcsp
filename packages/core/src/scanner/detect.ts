@@ -107,6 +107,11 @@ export async function detectSurfaces(files: WalkedFile[]): Promise<DetectedSurfa
       continue;
     }
 
+    if (isAiTelemetryConfigPath(file.relativePath, basename)) {
+      detectAiTelemetryConfig(file, text, surfaces);
+      continue;
+    }
+
     if (isRagConnectorConfigPath(file.relativePath, basename)) {
       detectRagConnectorConfig(file, text, surfaces);
       continue;
@@ -343,6 +348,53 @@ function detectRagConnectorConfig(file: WalkedFile, text: string | undefined, su
   });
 }
 
+function detectAiTelemetryConfig(file: WalkedFile, text: string | undefined, surfaces: DetectedSurfaces): void {
+  const parsed = parseStructuredConfig(text ?? "", file.relativePath);
+  if (parsed.parseFailed) {
+    addDiagnostic(surfaces, file, {
+      parser: parsed.parser ?? "structured_config",
+      code: "AI_TELEMETRY_CONFIG_PARSE_FAILED",
+      reason: "AI telemetry or trace-export configuration could not be parsed. Raw content was redacted."
+    });
+  }
+
+  const posture = classifyAiTelemetryConfig(parsed.value, file.relativePath);
+  const actions = new Set<ActionType>(["read", "call"]);
+  if (posture.ai_telemetry_remote_export) actions.add("send");
+  if (posture.ai_telemetry_retention_enabled) actions.add("remember");
+
+  const dataClasses = new Set<SurfaceObject["data_classes"][number]>(["unknown"]);
+  if (posture.env_key_names.some(isCredentialLikeKeyName) || posture.secret_ref_key_names.length > 0) dataClasses.add("credential");
+  if (posture.ai_telemetry_sensitive_capture) dataClasses.add("confidential");
+  if (posture.ai_telemetry_pii_capture) dataClasses.add("pii");
+  if (dataClasses.size > 1) dataClasses.delete("unknown");
+
+  const object = createSurfaceObject({
+    type: "runtime_config",
+    name: path.basename(file.relativePath),
+    path: file.relativePath,
+    trust_level: posture.ai_telemetry_remote_export ? "third_party" : inferTrustLevel(file.relativePath),
+    data_classes: uniqueDataClasses([...dataClasses] as SurfaceObject["data_classes"]),
+    actions: uniqueActions([...actions]),
+    side_effect: posture.ai_telemetry_export_enabled || posture.ai_telemetry_retention_enabled,
+    reversible: !posture.ai_telemetry_remote_export && !posture.ai_telemetry_retention_enabled,
+    external_reach: posture.ai_telemetry_remote_export,
+    secret_exposure: posture.env_key_names.some(isCredentialLikeKeyName) || posture.secret_ref_key_names.length > 0,
+    reason: "AI telemetry or trace-export configuration discovered as runtime data egress posture.",
+    metadata: {
+      content_redacted: true,
+      values_collected: false,
+      parsed_ai_telemetry_config: Boolean(parsed.value) && !parsed.parseFailed,
+      parse_error: parsed.parseFailed,
+      ...posture
+    }
+  });
+  surfaces.runtime_config.push({
+    ...object,
+    untrusted_to_privileged: isUntrustedToPrivileged(object)
+  });
+}
+
 function detectMemoryContentFile(file: WalkedFile, text: string | undefined, surfaces: DetectedSurfaces): void {
   const content = text ?? "";
   const signals = classifyContextContent(content);
@@ -471,6 +523,22 @@ function contextSurfaceType(relativePath: string): "rag_source" | "memory" | und
   return undefined;
 }
 
+function isAiTelemetryConfigPath(relativePath: string, basename: string): boolean {
+  const normalized = relativePath.replaceAll("\\", "/").toLowerCase();
+  const lowerBase = basename.toLowerCase();
+  if (!/\.(json|ya?ml|toml)$/iu.test(lowerBase)) return false;
+  const segments = normalized.split("/").slice(0, -1);
+  const telemetryDirectory = segments.some((segment) =>
+    /^(observability|telemetry|tracing|traces|evals|evaluations|langsmith|langfuse|helicone|braintrust|phoenix|arize|traceloop|opentelemetry|otel)$/iu.test(
+      segment
+    )
+  );
+  const telemetryName = /(?:observability|telemetry|tracing|trace|langsmith|langfuse|helicone|braintrust|phoenix|arize|traceloop|opentelemetry|otel)/iu.test(
+    lowerBase
+  );
+  return telemetryDirectory || telemetryName;
+}
+
 function isRagConnectorConfigPath(relativePath: string, basename: string): boolean {
   const normalized = relativePath.replaceAll("\\", "/").toLowerCase();
   const lowerBase = basename.toLowerCase();
@@ -571,9 +639,177 @@ interface RagConnectorPosture {
   secret_ref_key_names: string[];
 }
 
+interface AiTelemetryPosture {
+  ai_telemetry_fields: string[];
+  ai_telemetry_provider?: string;
+  ai_telemetry_export_enabled: boolean;
+  ai_telemetry_remote_export: boolean;
+  ai_telemetry_destination_redacted: boolean;
+  ai_telemetry_remote_destination_count: number;
+  ai_telemetry_remote_destination_kinds: string[];
+  ai_telemetry_captures_prompts: boolean;
+  ai_telemetry_captures_completions: boolean;
+  ai_telemetry_captures_tool_outputs: boolean;
+  ai_telemetry_captures_retrieval: boolean;
+  ai_telemetry_captures_memory: boolean;
+  ai_telemetry_sensitive_capture: boolean;
+  ai_telemetry_pii_capture: boolean;
+  ai_telemetry_secret_capture_signal: boolean;
+  ai_telemetry_redaction_disabled: boolean;
+  ai_telemetry_retention_enabled: boolean;
+  env_key_names: string[];
+  secret_ref_key_names: string[];
+}
+
 interface CursorRuleClassification {
   analyzedContent: string;
   metadata: Record<string, unknown>;
+}
+
+function classifyAiTelemetryConfig(value: unknown, filePath: string): AiTelemetryPosture {
+  const fields = flattenRuntimeFields(value);
+  const stringValues = collectFieldStringValues(fields);
+  const provider = inferAiTelemetryProvider([filePath, ...fields.map((field) => field.path), ...stringValues]);
+  const remote = classifyAiTelemetryRemote(fields, provider);
+  const envKeys = collectEnvKeyNamesFromConfig(value);
+  const secretRefKeys = extractSecretReferenceKeys(stringValues);
+  const capturesPrompts = hasTelemetryCaptureSignal(fields, /\b(prompt|prompts|input|inputs|message|messages|conversation|chat)\b/iu);
+  const capturesCompletions = hasTelemetryCaptureSignal(fields, /\b(completion|completions|response|responses|output|outputs|generation|generations)\b/iu);
+  const capturesToolOutputs = hasTelemetryCaptureSignal(
+    fields,
+    /(?:^|[_\W])(tool[_\s-]?outputs?|tools?|function[_\s-]?outputs?|functions?|mcp|command[_\s-]?outputs?|span|observation)(?:[_\W]|$)/iu
+  );
+  const capturesRetrieval = hasTelemetryCaptureSignal(
+    fields,
+    /(?:^|[_\W])(retrieval[_\s-]?context|retrieval|retrieved|rag|documents?|context|vector|embedding)(?:[_\W]|$)/iu
+  );
+  const capturesMemory = hasTelemetryCaptureSignal(fields, /\b(memory|memories|session|state|history|transcript|trace)\b/iu);
+  const secretCapture = hasTelemetrySecretCaptureSignal(fields);
+  const piiCapture = fields.some((field) => /\b(pii|email|phone|address|ssn|passport|customer|client|ticket|support)\b/iu.test(`${field.path} ${fieldValueText(field)}`));
+  const sensitiveCapture =
+    capturesPrompts ||
+    capturesCompletions ||
+    capturesToolOutputs ||
+    capturesRetrieval ||
+    capturesMemory ||
+    secretCapture ||
+    piiCapture;
+
+  return {
+    ai_telemetry_fields: fields
+      .map((field) => field.path)
+      .filter((fieldPath) => isAiTelemetrySecurityField(fieldPath))
+      .sort((a, b) => a.localeCompare(b)),
+    ai_telemetry_provider: provider,
+    ai_telemetry_export_enabled: remote.remote || hasTelemetryEnabledSignal(fields),
+    ai_telemetry_remote_export: remote.remote,
+    ai_telemetry_destination_redacted: remote.destinationCount > 0,
+    ai_telemetry_remote_destination_count: remote.destinationCount,
+    ai_telemetry_remote_destination_kinds: remote.destinationKinds,
+    ai_telemetry_captures_prompts: capturesPrompts,
+    ai_telemetry_captures_completions: capturesCompletions,
+    ai_telemetry_captures_tool_outputs: capturesToolOutputs,
+    ai_telemetry_captures_retrieval: capturesRetrieval,
+    ai_telemetry_captures_memory: capturesMemory,
+    ai_telemetry_sensitive_capture: sensitiveCapture,
+    ai_telemetry_pii_capture: piiCapture,
+    ai_telemetry_secret_capture_signal: secretCapture,
+    ai_telemetry_redaction_disabled: hasTelemetryRedactionDisabledSignal(fields),
+    ai_telemetry_retention_enabled: hasTelemetryRetentionSignal(fields),
+    env_key_names: envKeys,
+    secret_ref_key_names: secretRefKeys
+  };
+}
+
+function inferAiTelemetryProvider(candidates: string[]): string | undefined {
+  const text = candidates.join(" ").toLowerCase();
+  const providers: Array<[string, RegExp]> = [
+    ["langsmith", /\blangsmith\b|\bsmith\.langchain\b/iu],
+    ["langfuse", /\blangfuse\b/iu],
+    ["helicone", /\bhelicone\b/iu],
+    ["braintrust", /\bbraintrust\b/iu],
+    ["traceloop", /\btraceloop\b/iu],
+    ["phoenix", /\bphoenix\b/iu],
+    ["arize", /\barize\b/iu],
+    ["opentelemetry", /\b(open[_\s-]?telemetry|otel|otlp)\b/iu],
+    ["honeycomb", /\bhoneycomb\b/iu],
+    ["datadog", /\bdatadog\b/iu]
+  ];
+  return providers.find(([, pattern]) => pattern.test(text))?.[0];
+}
+
+function classifyAiTelemetryRemote(
+  fields: RuntimeField[],
+  provider: string | undefined
+): { remote: boolean; destinationCount: number; destinationKinds: string[] } {
+  const destinationKinds = new Set<string>();
+  let destinationCount = 0;
+  const managedProviders = new Set(["langsmith", "langfuse", "helicone", "braintrust", "traceloop", "arize", "honeycomb", "datadog"]);
+  if (provider && managedProviders.has(provider)) {
+    destinationKinds.add("managed_ai_observability");
+    destinationCount += 1;
+  }
+  for (const field of fields) {
+    const values = Array.isArray(field.value) ? field.value.map(String) : [String(field.value ?? "")];
+    for (const value of values) {
+      if (parseRemoteHttpUrl(value)) {
+        destinationKinds.add("http_endpoint");
+        destinationCount += 1;
+      }
+    }
+    if (/(^|\.)(endpoint|url|uri|host|dsn|base_url|exporter|otlp_endpoint)$/iu.test(field.path)) {
+      const text = values.join(" ");
+      if (/\b(api|cloud|trace|otel|otlp|langsmith|langfuse|helicone|braintrust|phoenix|arize|honeycomb|datadog)\b/iu.test(text)) {
+        destinationKinds.add("configured_endpoint");
+        destinationCount += 1;
+      }
+    }
+  }
+  return {
+    remote: destinationCount > 0,
+    destinationCount,
+    destinationKinds: [...destinationKinds].sort((a, b) => a.localeCompare(b))
+  };
+}
+
+function hasTelemetryCaptureSignal(fields: RuntimeField[], pattern: RegExp): boolean {
+  return fields.some((field) => {
+    const text = `${field.path} ${fieldValueText(field)}`;
+    if (!pattern.test(text)) return false;
+    if (/redact|mask|scrub|sanitize|exclude|drop|deny/iu.test(field.path)) return false;
+    return truthyConfigValue(field.value) || /capture|include|record|log|trace|store|full|payload/iu.test(text);
+  });
+}
+
+function hasTelemetryEnabledSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => /(^|\.)(enabled|tracing|telemetry|observability|export|remote)$/iu.test(field.path) && truthyConfigValue(field.value));
+}
+
+function hasTelemetrySecretCaptureSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => {
+    const text = `${field.path} ${fieldValueText(field)}`;
+    return /\b(secret|token|api[_-]?key|credential|authorization|password|cookie)\b/iu.test(text) && truthyConfigValue(field.value);
+  });
+}
+
+function hasTelemetryRedactionDisabledSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => {
+    const text = `${field.path} ${fieldValueText(field)}`.toLowerCase();
+    if (/(redact|redaction|mask|masking|scrub|sanitize|pii_filter|secret_filter)/iu.test(field.path)) {
+      return /false|off|disabled|disable|none|raw|full/iu.test(fieldValueText(field));
+    }
+    return /\b(disable_redaction|redaction_disabled|raw_traces|raw_payloads|capture_full_payloads)\b/iu.test(text) && truthyConfigValue(field.value);
+  });
+}
+
+function hasTelemetryRetentionSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => /retention|store|persist|dataset|history|trace_archive|ttl|days/iu.test(field.path) && truthyConfigValue(field.value));
+}
+
+function isAiTelemetrySecurityField(fieldPath: string): boolean {
+  return /provider|endpoint|url|uri|host|dsn|api[_-]?key|token|secret|credential|auth|env|export|remote|trace|span|prompt|input|output|completion|message|tool|retrieval|rag|context|memory|redact|mask|pii|retention|store|persist|sample|project/iu.test(
+    fieldPath
+  );
 }
 
 function classifyRagConnectorConfig(value: unknown, filePath: string): RagConnectorPosture {

@@ -41,6 +41,7 @@ A finding should be considered production-grade when it includes:
 - Claude-style runtime permission allowlists normalized into redacted auto-approved privileged tool signals
 - auto-approved destructive MCP tool refs correlated to credential-backed runtime servers
 - runtime permission allowlists correlated to exact package scripts and release authority
+- AI telemetry export metadata for prompt, completion, tool-output, retrieval, and memory capture without emitting trace payloads or endpoints
 - workflow-to-agent-script signals for unattended automation with secrets and write authority
 - prompt-template variables and redacted context signals for untrusted-input bridges
 - exact callable-reference signals for prompts, memory, RAG, instructions, and skills that name discovered privileged tools or MCP servers
@@ -86,6 +87,7 @@ Examples:
 - prompt template with user/customer/context variables plus tool or external directives
 - runtime config with unsandboxed execution plus no approval gate
 - runtime config with network access plus secret env keys plus privileged tools
+- AI telemetry remote export plus sensitive agent-context capture plus disabled redaction plus credential reference
 - pull request workflow plus write permissions plus secrets
 - untrusted RAG source plus privileged tool path
 - memory write plus untrusted source provenance

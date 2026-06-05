@@ -1,0 +1,35 @@
+id: AGENTCSP-RUNTIME-008
+name: Runtime exports sensitive agent traces without redaction
+description: An AI telemetry or trace-export configuration sends sensitive agent context such as prompts, completions, tool outputs, retrieval context, or memory to a remote observability system while redaction is disabled and credential references are present.
+category: runtime_telemetry
+severity: critical
+maps_to:
+  owasp:
+    - LLM02:2025 Sensitive Information Disclosure
+    - LLM06:2025 Excessive Agency
+  mitre_atlas:
+    - AML.T0057 Exfiltration via Cyber Means
+  nist_ai_rmf:
+    - MAP 5.1
+    - MANAGE 2.4
+match:
+  object_type: runtime_config
+  where:
+    - field: metadata.parsed_ai_telemetry_config
+      op: equals
+      value: true
+    - field: metadata.ai_telemetry_remote_export
+      op: equals
+      value: true
+    - field: metadata.ai_telemetry_sensitive_capture
+      op: equals
+      value: true
+    - field: metadata.ai_telemetry_redaction_disabled
+      op: equals
+      value: true
+    - field: secret_exposure
+      op: equals
+      value: true
+recommendation:
+  control: redact
+  text: Enable prompt, tool-output, memory, retrieval, PII, and secret redaction before exporting traces, scope telemetry credentials, and route sensitive traces to an approved retention boundary.

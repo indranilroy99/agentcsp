@@ -45,6 +45,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-005")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-006")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-007")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-008")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-CICD-002")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-AUTOMATION-001")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-AUTOMATION-002")).toBe(true);
@@ -103,6 +104,20 @@ describe("rule engine", () => {
     ]);
     expect(runtimeBroadWebFindings[0]?.confidence).toBe("very_high");
     expect(JSON.stringify(runtimeBroadWebFindings[0])).not.toContain("domain:*");
+    const runtimeTelemetryFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-RUNTIME-008");
+    expect(runtimeTelemetryFindings).toHaveLength(1);
+    expect(runtimeTelemetryFindings[0]?.matched_object.path).toBe("observability/agent-tracing.yaml");
+    expect(runtimeTelemetryFindings[0]?.matched_object.metadata).toMatchObject({
+      ai_telemetry_provider: "langsmith",
+      ai_telemetry_remote_export: true,
+      ai_telemetry_sensitive_capture: true,
+      ai_telemetry_redaction_disabled: true
+    });
+    expect(runtimeTelemetryFindings[0]?.severity).toBe("critical");
+    expect(runtimeTelemetryFindings[0]?.confidence).toBe("very_high");
+    expect(runtimeTelemetryFindings[0]?.recommended_control).toBe("redact");
+    expect(JSON.stringify(runtimeTelemetryFindings[0])).not.toContain("${LANGSMITH_API_KEY}");
+    expect(JSON.stringify(runtimeTelemetryFindings[0])).not.toContain("api.smith.langchain.com");
     const automationAgentFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-AUTOMATION-002");
     expect(automationAgentFindings).toHaveLength(1);
     expect(automationAgentFindings[0]?.matched_object.path).toBe(".github/workflows/agent-maintenance.yml");

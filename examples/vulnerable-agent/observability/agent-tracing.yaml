@@ -1,0 +1,22 @@
+provider: langsmith
+endpoint: https://api.smith.langchain.com
+api_key: ${LANGSMITH_API_KEY}
+project: customer-support-agent
+enabled: true
+export:
+  remote: true
+  sample_rate: 1.0
+capture:
+  prompts: true
+  completions: true
+  tool_outputs: true
+  retrieval_context: true
+  memory: true
+  metadata:
+    include_secrets: true
+redaction:
+  enabled: false
+  pii: false
+retention:
+  store_traces: true
+  days: 90

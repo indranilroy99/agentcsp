@@ -331,6 +331,46 @@ describe("scanner", () => {
     expect(JSON.stringify(claudeRuntimeConfig)).not.toContain("domain:*");
     expect(JSON.stringify(claudeRuntimeConfig)).not.toContain("mcp__filesystem-admin__delete_file");
     expect(JSON.stringify(claudeRuntimeConfig)).not.toContain("${ANTHROPIC_API_KEY}");
+    const telemetryConfig = surfaces.runtime_config.find((surface) => surface.path === "observability/agent-tracing.yaml");
+    expect(telemetryConfig).toBeDefined();
+    expect(telemetryConfig).toMatchObject({
+      trust_level: "third_party",
+      external_reach: true,
+      secret_exposure: true,
+      side_effect: true,
+      reversible: false,
+      untrusted_to_privileged: true
+    });
+    expect(telemetryConfig?.metadata).toMatchObject({
+      content_redacted: true,
+      values_collected: false,
+      parsed_ai_telemetry_config: true,
+      ai_telemetry_provider: "langsmith",
+      ai_telemetry_export_enabled: true,
+      ai_telemetry_remote_export: true,
+      ai_telemetry_destination_redacted: true,
+      ai_telemetry_captures_prompts: true,
+      ai_telemetry_captures_completions: true,
+      ai_telemetry_captures_tool_outputs: true,
+      ai_telemetry_captures_retrieval: true,
+      ai_telemetry_captures_memory: true,
+      ai_telemetry_sensitive_capture: true,
+      ai_telemetry_pii_capture: true,
+      ai_telemetry_secret_capture_signal: true,
+      ai_telemetry_redaction_disabled: true,
+      ai_telemetry_retention_enabled: true
+    });
+    expect(telemetryConfig?.metadata.ai_telemetry_remote_destination_kinds).toEqual([
+      "configured_endpoint",
+      "http_endpoint",
+      "managed_ai_observability"
+    ]);
+    expect(telemetryConfig?.metadata.secret_ref_key_names).toEqual(["LANGSMITH_API_KEY"]);
+    expect(telemetryConfig?.data_classes).toEqual(["confidential", "credential", "pii"]);
+    expect(telemetryConfig?.actions).toEqual(["call", "read", "remember", "send"]);
+    expect(JSON.stringify(telemetryConfig)).not.toContain("${LANGSMITH_API_KEY}");
+    expect(JSON.stringify(telemetryConfig)).not.toContain("api.smith.langchain.com");
+    expect(JSON.stringify(telemetryConfig)).not.toContain("customer-support-agent");
     expect(surfaces.ci_cd.length).toBe(1);
     expect(surfaces.ci_cd[0]?.metadata).toMatchObject({
       pull_request_trigger: true,
