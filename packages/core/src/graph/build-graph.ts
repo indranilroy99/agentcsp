@@ -28,7 +28,11 @@ export function buildStaticGraph(surfaces: DetectedSurfaces, findings: Finding[]
   const relationships = new Map<string, GraphEdge>();
 
   for (const context of actionableContextSources) {
-    for (const capability of highRiskCapabilities.filter((target) => contextCanSteerCapability(context, target)).slice(0, 12)) {
+    const steerableCapabilities = sortCapabilitiesForContext(
+      context,
+      highRiskCapabilities.filter((target) => contextCanSteerCapability(context, target))
+    ).slice(0, 12);
+    for (const capability of steerableCapabilities) {
       if (context.id === capability.id) continue;
       addEdge(
         relationships,
@@ -235,6 +239,7 @@ function isHighRiskCapability(object: SurfaceObject): boolean {
 function contextCanSteerCapability(context: SurfaceObject, target: SurfaceObject): boolean {
   if (!isActionableContextSource(context)) return false;
 
+  if (contextExplicitlyReferencesTarget(context, target)) return true;
   if (explicitBoolean(context, "tool_directive") && isAgentCallableAuthority(target)) return true;
   if (
     explicitBoolean(context, "data_egress_directive") &&
@@ -460,6 +465,21 @@ function sortCapabilities(objects: SurfaceObject[]): SurfaceObject[] {
   });
 }
 
+function sortCapabilitiesForContext(context: SurfaceObject, objects: SurfaceObject[]): SurfaceObject[] {
+  return [...objects].sort((a, b) => {
+    const explicitCompare = explicitReferenceWeight(context, b) - explicitReferenceWeight(context, a);
+    if (explicitCompare !== 0) return explicitCompare;
+    const riskCompare = capabilityWeight(b) - capabilityWeight(a);
+    if (riskCompare !== 0) return riskCompare;
+    return a.id.localeCompare(b.id);
+  });
+}
+
+function explicitReferenceWeight(context: SurfaceObject, target: SurfaceObject): number {
+  if (contextExplicitlyReferencesTarget(context, target)) return 100;
+  return 0;
+}
+
 function capabilityWeight(object: SurfaceObject): number {
   let score = 0;
   if (object.secret_exposure || object.data_classes.includes("credential")) score += 50;
@@ -490,6 +510,16 @@ function isAgentCallableAuthority(object: SurfaceObject): boolean {
     ["tool", "mcp_server", "runtime_config", "plugin", "automation"].includes(object.type) ||
     object.actions.some((action) => ["execute", "publish", "send", "delete", "write", "call"].includes(action))
   );
+}
+
+function contextExplicitlyReferencesTarget(context: SurfaceObject, target: SurfaceObject): boolean {
+  if (target.type === "tool") {
+    return stringMetadataArray(context.metadata.referenced_tools).includes(target.name);
+  }
+  if (target.type === "mcp_server") {
+    return stringMetadataArray(context.metadata.referenced_mcp_servers).includes(target.name);
+  }
+  return false;
 }
 
 function isExternalEgressCapability(object: SurfaceObject): boolean {
@@ -533,6 +563,9 @@ function contextSignalLabels(object: SurfaceObject): string[] {
   if (explicitBoolean(object, "sensitive_context_reference")) labels.push("sensitive context reference");
   if (explicitBoolean(object, "data_egress_directive")) labels.push("data-egress directive");
   if (explicitBoolean(object, "context_bridge_data_egress")) labels.push("data-egress bridge");
+  if (explicitBoolean(object, "explicit_tool_reference")) labels.push("explicit tool reference");
+  if (explicitBoolean(object, "explicit_mcp_reference")) labels.push("explicit MCP reference");
+  if (explicitBoolean(object, "privileged_callable_reference")) labels.push("privileged callable reference");
   if (explicitBoolean(object, "memory_write_directive")) labels.push("memory-write directive");
   if (explicitBoolean(object, "generated_state")) labels.push("generated-state replay");
   if (explicitBoolean(object, "secret_reference")) labels.push("secret reference");

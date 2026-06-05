@@ -68,6 +68,7 @@ export async function detectSurfaces(files: WalkedFile[]): Promise<DetectedSurfa
   const surfaces = emptyDetectedSurfaces();
   const seenDirectories = new Set<string>();
   const projectFilePaths = new Set(files.map((file) => normalizeProjectPath(file.relativePath)));
+  const contextContentByPath = new Map<string, string>();
 
   for (const file of files) {
     const basename = path.basename(file.relativePath);
@@ -101,12 +102,14 @@ export async function detectSurfaces(files: WalkedFile[]): Promise<DetectedSurfa
     }
 
     if (isPromptTemplatePath(file.relativePath, basename)) {
+      recordContextContent(contextContentByPath, file, text);
       detectPromptTemplateFile(file, text, surfaces);
       continue;
     }
 
     if (INSTRUCTION_FILE_NAMES.has(basename) || lowerPath.includes(".cursor/rules/")) {
       const content = text ?? "";
+      recordContextContent(contextContentByPath, file, text);
       const signals = classifyContextContent(content);
       const actions = detectActions(content);
       const dataClasses = contextualDataClasses(inferDataClasses(content, file.relativePath), signals);
@@ -148,16 +151,19 @@ export async function detectSurfaces(files: WalkedFile[]): Promise<DetectedSurfa
 
     const contextSurface = contextSurfaceType(file.relativePath);
     if (contextSurface === "rag_source") {
+      recordContextContent(contextContentByPath, file, text);
       detectRagContentFile(file, text, surfaces);
       continue;
     }
     if (contextSurface === "memory") {
+      recordContextContent(contextContentByPath, file, text);
       detectMemoryContentFile(file, text, surfaces);
       continue;
     }
 
     if (basename === "SKILL.md") {
       const content = text ?? "";
+      recordContextContent(contextContentByPath, file, text);
       const actions = detectActions(content);
       const externalReach = hasExternalReach(content);
       const dataClasses = inferDataClasses(content, file.relativePath);
@@ -233,7 +239,12 @@ export async function detectSurfaces(files: WalkedFile[]): Promise<DetectedSurfa
   annotateToolNameCollisions(surfaces);
   annotateRuntimeCapabilityReferences(surfaces);
   annotateWorkflowPackageScriptReferences(surfaces);
+  annotateContextCallableReferences(surfaces, contextContentByPath);
   return surfaces;
+}
+
+function recordContextContent(contentByPath: Map<string, string>, file: WalkedFile, text: string | undefined): void {
+  if (text !== undefined) contentByPath.set(file.relativePath, text);
 }
 
 function detectRagContentFile(file: WalkedFile, text: string | undefined, surfaces: DetectedSurfaces): void {
@@ -1146,6 +1157,95 @@ function annotateWorkflowPackageScriptReferences(surfaces: DetectedSurfaces): vo
   surfaces.automations = surfaces.automations.map(annotate);
 }
 
+function annotateContextCallableReferences(
+  surfaces: DetectedSurfaces,
+  contextContentByPath: Map<string, string>
+): void {
+  if (contextContentByPath.size === 0) return;
+
+  const toolCandidates = callableCandidates(surfaces.tools, toolAliases);
+  const mcpCandidates = callableCandidates(surfaces.mcp_servers, (server) => [server.name]);
+  if (toolCandidates.length === 0 && mcpCandidates.length === 0) return;
+
+  const annotate = (surface: SurfaceObject): SurfaceObject => {
+    if (isHeuristicSurface(surface)) return surface;
+    const content = contextContentByPath.get(surface.path);
+    if (!content) return surface;
+
+    const referencedTools = referencedCallableSurfaces(content, toolCandidates);
+    const referencedMcpServers = referencedCallableSurfaces(content, mcpCandidates);
+    if (referencedTools.length === 0 && referencedMcpServers.length === 0) return surface;
+
+    const privilegedTools = referencedTools.filter(isPrivilegedToolSurface);
+    const privilegedMcpServers = referencedMcpServers.filter(isPrivilegedMcpServer);
+    const hasPrivilegedReference = privilegedTools.length > 0 || privilegedMcpServers.length > 0;
+    return {
+      ...surface,
+      untrusted_to_privileged: surface.untrusted_to_privileged || hasPrivilegedReference,
+      metadata: {
+        ...surface.metadata,
+        referenced_tools: surfaceNames(referencedTools),
+        referenced_tool_count: referencedTools.length,
+        referenced_privileged_tools: surfaceNames(privilegedTools),
+        referenced_privileged_tool_count: privilegedTools.length,
+        referenced_mcp_servers: surfaceNames(referencedMcpServers),
+        referenced_mcp_count: referencedMcpServers.length,
+        referenced_privileged_mcp_servers: surfaceNames(privilegedMcpServers),
+        referenced_privileged_mcp_count: privilegedMcpServers.length,
+        explicit_tool_reference: referencedTools.length > 0,
+        explicit_mcp_reference: referencedMcpServers.length > 0,
+        explicit_callable_reference: referencedTools.length > 0 || referencedMcpServers.length > 0,
+        privileged_callable_reference: hasPrivilegedReference
+      }
+    };
+  };
+
+  surfaces.instructions = surfaces.instructions.map(annotate);
+  surfaces.skills = surfaces.skills.map(annotate);
+  surfaces.prompts = surfaces.prompts.map(annotate);
+  surfaces.rag_sources = surfaces.rag_sources.map(annotate);
+  surfaces.memory = surfaces.memory.map(annotate);
+}
+
+interface CallableCandidate {
+  surface: SurfaceObject;
+  aliases: string[];
+}
+
+function callableCandidates(
+  surfaces: SurfaceObject[],
+  aliasesForSurface: (surface: SurfaceObject) => Array<string | undefined>
+): CallableCandidate[] {
+  return surfaces
+    .map((surface) => ({
+      surface,
+      aliases: uniqueStrings(
+        aliasesForSurface(surface)
+          .filter((value): value is string => typeof value === "string" && value.trim().length > 0)
+          .map(normalizeCallableName)
+          .filter((value) => value.length >= 4)
+      )
+    }))
+    .filter((candidate) => candidate.aliases.length > 0)
+    .sort((a, b) => a.surface.name.localeCompare(b.surface.name) || a.surface.path.localeCompare(b.surface.path));
+}
+
+function toolAliases(tool: SurfaceObject): Array<string | undefined> {
+  return [
+    tool.name,
+    typeof tool.metadata.tool_name === "string" ? tool.metadata.tool_name : undefined,
+    typeof tool.metadata.script_name === "string" ? tool.metadata.script_name : undefined
+  ];
+}
+
+function referencedCallableSurfaces(content: string, candidates: CallableCandidate[]): SurfaceObject[] {
+  const normalizedContent = `_${normalizeCallableName(content)}_`;
+  return candidates
+    .filter((candidate) => candidate.aliases.some((alias) => normalizedContent.includes(`_${alias}_`)))
+    .map((candidate) => candidate.surface)
+    .sort((a, b) => a.name.localeCompare(b.name) || a.path.localeCompare(b.path));
+}
+
 function referencedMcpServersForRuntime(allowedTools: string[], mcpServers: SurfaceObject[]): SurfaceObject[] {
   const allowAllTools = allowedTools.some((tool) => /(^|\s|\*)\*(\s|$)|all_tools|all-tools|all tools/iu.test(tool));
   const mcpReferences = new Set<string>();
@@ -1184,6 +1284,10 @@ function isSecretBackedMcpServer(server: SurfaceObject): boolean {
 function stringMetadataArray(value: unknown): string[] {
   if (!Array.isArray(value)) return [];
   return value.filter((item): item is string => typeof item === "string").sort((a, b) => a.localeCompare(b));
+}
+
+function isHeuristicSurface(surface: SurfaceObject): boolean {
+  return surface.metadata.heuristic === true;
 }
 
 function surfaceNames(surfaces: SurfaceObject[]): string[] {

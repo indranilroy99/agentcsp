@@ -40,6 +40,14 @@ describe("static graph", () => {
           edge.target.name === "package-script:agent:run"
       )
     ).toBe(true);
+    const promptToolEdge = result.manifest.relationships.find(
+      (edge) =>
+        edge.relation === "influences" &&
+        edge.source.path === "prompts/support-ticket.prompt.md" &&
+        edge.target.name === "publish_summary"
+    );
+    expect(promptToolEdge).toBeDefined();
+    expect(promptToolEdge?.reason).toContain("explicit tool reference");
     expect(result.manifest.relationships.some((edge) => edge.source.path === "rag")).toBe(false);
     expect(result.manifest.relationships.some((edge) => edge.source.path === "memory")).toBe(false);
     expect(

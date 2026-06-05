@@ -207,10 +207,22 @@ Prompt metadata may include:
 - `memory_write_directive`
 - `external_directive`
 - `secret_reference`
+- `referenced_tools`
+- `referenced_tool_count`
+- `referenced_privileged_tools`
+- `referenced_privileged_tool_count`
+- `referenced_mcp_servers`
+- `referenced_mcp_count`
+- `referenced_privileged_mcp_servers`
+- `referenced_privileged_mcp_count`
+- `explicit_tool_reference`
+- `explicit_mcp_reference`
+- `explicit_callable_reference`
+- `privileged_callable_reference`
 - `content_signal_count`
 - `skipped_for_size`
 
-Raw prompt text is not emitted. AgentCSP records variable names and normalized context signals so rules can detect prompt templates that bridge untrusted input into privileged tool, memory, external, or secret-sensitive actions.
+Raw prompt text is not emitted. AgentCSP records variable names, normalized context signals, and references to discovered callable names so rules can detect prompt templates that bridge untrusted input into specific privileged tools, MCP servers, memory, external, or secret-sensitive actions.
 
 ## RAG, Memory, and Generated-State Signals
 
@@ -231,10 +243,22 @@ Content metadata may include:
 - `memory_write_directive`
 - `external_directive`
 - `secret_reference`
+- `referenced_tools`
+- `referenced_tool_count`
+- `referenced_privileged_tools`
+- `referenced_privileged_tool_count`
+- `referenced_mcp_servers`
+- `referenced_mcp_count`
+- `referenced_privileged_mcp_servers`
+- `referenced_privileged_mcp_count`
+- `explicit_tool_reference`
+- `explicit_mcp_reference`
+- `explicit_callable_reference`
+- `privileged_callable_reference`
 - `content_signal_count`
 - `skipped_for_size`
 
-Raw RAG, memory, transcript, and cached-output text is not emitted. AgentCSP records normalized signals so rules can reason about indirect prompt injection, generated-state replay, and cross-session contamination without publishing the content.
+Raw RAG, memory, transcript, and cached-output text is not emitted. AgentCSP records normalized signals and exact references to already-discovered callables so rules can reason about indirect prompt injection, generated-state replay, and cross-session contamination without publishing the content.
 
 ## Automations
 

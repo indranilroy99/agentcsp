@@ -304,8 +304,15 @@ describe("scanner", () => {
       content_redacted: true,
       instruction_like_content: true,
       memory_write_directive: true,
-      tool_directive: true
+      tool_directive: true,
+      explicit_tool_reference: true,
+      explicit_callable_reference: true,
+      privileged_callable_reference: true,
+      referenced_tool_count: 1,
+      referenced_privileged_tool_count: 1
     });
+    expect(memoryFile?.metadata.referenced_tools).toEqual(["publish_summary"]);
+    expect(memoryFile?.metadata.referenced_privileged_tools).toEqual(["publish_summary"]);
     expect(memoryFile?.actions).toContain("remember");
     expect(memoryFile?.actions).toContain("call");
     expect(JSON.stringify(memoryFile)).not.toContain("maintenance shortcut");
@@ -322,10 +329,17 @@ describe("scanner", () => {
       external_directive: true,
       template_bridge_tool: true,
       template_bridge_external: true,
-      template_bridge_privileged: true
+      template_bridge_privileged: true,
+      explicit_tool_reference: true,
+      explicit_callable_reference: true,
+      privileged_callable_reference: true,
+      referenced_tool_count: 1,
+      referenced_privileged_tool_count: 1
     });
     expect(promptTemplate?.metadata.template_variable_names).toEqual(["customer_note", "ticket_id"]);
     expect(promptTemplate?.metadata.untrusted_template_variables).toEqual(["customer_note", "ticket_id"]);
+    expect(promptTemplate?.metadata.referenced_tools).toEqual(["publish_summary"]);
+    expect(promptTemplate?.metadata.referenced_privileged_tools).toEqual(["publish_summary"]);
     expect(promptTemplate?.actions).toContain("call");
     expect(promptTemplate?.actions).toContain("send");
     expect(promptTemplate?.untrusted_to_privileged).toBe(true);

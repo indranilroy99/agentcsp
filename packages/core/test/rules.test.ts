@@ -43,6 +43,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-INSTRUCTION-001")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-PROMPT-001")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-PROMPT-002")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-PROMPT-003")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RAG-001")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RAG-002")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RAG-003")).toBe(true);
@@ -73,6 +74,11 @@ describe("rule engine", () => {
     const promptMemoryFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-PROMPT-002");
     expect(promptMemoryFindings).toHaveLength(1);
     expect(promptMemoryFindings[0]?.matched_object.path).toBe("prompts/memory-ingest.prompt.md");
+    const promptExplicitToolFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-PROMPT-003");
+    expect(promptExplicitToolFindings).toHaveLength(1);
+    expect(promptExplicitToolFindings[0]?.matched_object.path).toBe("prompts/support-ticket.prompt.md");
+    expect(promptExplicitToolFindings[0]?.matched_object.metadata.referenced_privileged_tools).toEqual(["publish_summary"]);
+    expect(promptExplicitToolFindings[0]?.confidence).toBe("very_high");
     const ragEgressFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-RAG-003");
     expect(ragEgressFindings).toHaveLength(1);
     expect(ragEgressFindings[0]?.matched_object.path).toBe("rag/customer-note.md");

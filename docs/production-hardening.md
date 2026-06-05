@@ -30,6 +30,7 @@ A finding should be considered production-grade when it includes:
 - runtime-to-MCP reference signals for approval bypass into secret-backed MCP servers
 - workflow-to-agent-script signals for unattended automation with secrets and write authority
 - prompt-template variables and redacted context signals for untrusted-input bridges
+- exact callable-reference signals for prompts, memory, RAG, instructions, and skills that name discovered privileged tools or MCP servers
 - prompt-template memory persistence signals for cross-session contamination
 - RAG and memory data-egress signals for sensitive context routed toward external destinations
 - skill data-flow signals for context-to-external-output bridges
@@ -54,6 +55,7 @@ Examples:
 - instruction file plus untrusted context reference plus tool and memory bridge
 - tool-name collision plus different authority signatures and a privileged peer
 - skill consumes retrieved/tool/memory context plus external publication
+- prompt template with user/customer/context variables plus explicit privileged tool reference
 - prompt template with user/customer/context variables plus memory persistence directives
 - prompt template with user/customer/context variables plus tool or external directives
 - runtime config with unsandboxed execution plus no approval gate

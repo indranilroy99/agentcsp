@@ -454,6 +454,16 @@ The current iteration adds:
 - graph regression coverage proving `rag/customer-note.md` can route sensitive context to `publish_summary` while keeping raw retrieval text redacted
 - regression coverage preserving generated-state replay visibility when logs are explicitly included
 
+## Explicit Callable Reference Pass
+
+The current iteration adds:
+
+- post-scan annotation for exact references from instructions, prompts, skills, RAG, and memory content to discovered tool and MCP names
+- privileged callable metadata such as `referenced_privileged_tools`, `explicit_callable_reference`, and `privileged_callable_reference`
+- graph prioritization so exact prompt-to-tool references are preserved ahead of generic tool-directive fanout
+- rule `AGENTCSP-PROMPT-003` for prompt templates that accept untrusted variables and explicitly reference a privileged discovered tool
+- scanner, rule, and graph regression coverage proving `prompts/support-ticket.prompt.md` references `publish_summary` without emitting raw prompt text
+
 ## Initial Build Recommendation
 
 Start with a CLI-first MVP before building the dashboard:
