@@ -982,6 +982,45 @@ Agent network egress metadata may include:
 
 Raw URLs, hostnames, IP addresses, CIDRs, header values, source labels, response field labels, and token placeholders are not emitted. Destination categories such as `cloud_metadata_service`, `localhost_or_cluster_service`, `private_network_range`, and `wildcard_destination`, combined with untrusted URL sources, credential-forwarding posture, redirect and DNS-rebinding posture, and approval state let rules detect model-steered SSRF paths without copying network targets into evidence.
 
+## Agent Workspace Context Sync Posture
+
+Workspace-context, context-sync, file-context, repository-context, and workspace-index configs are also normalized into `runtime_config` objects when common context ingestion files are discovered.
+
+Agent workspace context metadata may include:
+
+- `parsed_agent_workspace_context_config`
+- `agent_workspace_context_fields`
+- `agent_workspace_context_enabled`
+- `agent_workspace_context_auto_sync_enabled`
+- `agent_workspace_context_source_redacted`
+- `agent_workspace_context_source_count`
+- `agent_workspace_context_source_categories`
+- `agent_workspace_context_sensitive_paths`
+- `agent_workspace_context_secret_path_exposure`
+- `agent_workspace_context_env_file_access`
+- `agent_workspace_context_ssh_key_access`
+- `agent_workspace_context_cloud_credential_access`
+- `agent_workspace_context_kubeconfig_access`
+- `agent_workspace_context_home_directory_access`
+- `agent_workspace_context_git_history_access`
+- `agent_workspace_context_repo_wide_access`
+- `agent_workspace_context_destination_redacted`
+- `agent_workspace_context_destination_count`
+- `agent_workspace_context_destination_kinds`
+- `agent_workspace_context_remote_sync`
+- `agent_workspace_context_prompt_context`
+- `agent_workspace_context_rag_indexing`
+- `agent_workspace_context_memory_persistence`
+- `agent_workspace_context_untrusted_input`
+- `agent_workspace_context_pii_context`
+- `agent_workspace_context_redaction_disabled`
+- `agent_workspace_context_agentcspignore_bypassed`
+- `agent_workspace_context_approval_required`
+- `env_key_names`
+- `secret_ref_key_names`
+
+Raw file paths, repository names, home-directory paths, credential paths, URLs, destination names, field labels, and token placeholders are not emitted. Source categories such as `env_file`, `ssh_key`, `cloud_credential`, `kubeconfig`, `git_history`, `home_directory`, `private_repo`, and `untrusted_selector`, combined with remote sync, prompt/RAG/memory sinks, redaction posture, `.agentcspignore` posture, approval state, and credential key names let rules detect unsafe workspace context ingestion without copying local secrets or private paths into evidence.
+
 ## Agent Tool Retry And Replay Posture
 
 Tool-retry, replay, idempotency, duplicate-suppression, execution-policy, and retry-budget configs are also normalized into `runtime_config` objects when common agent tool retry configuration files are discovered.

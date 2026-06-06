@@ -66,7 +66,8 @@ describe("scanner", () => {
       "TOOL_OUTPUT_POLICY_TOKEN",
       "TOOL_RETRY_POLICY_TOKEN",
       "VAULT_AGENT_TOKEN",
-      "VISION_CONTEXT_TOKEN"
+      "VISION_CONTEXT_TOKEN",
+      "WORKSPACE_CONTEXT_TOKEN"
     ]);
     expect(JSON.stringify(envSurface)).not.toContain("replace-me");
     expect(JSON.stringify(envSurface)).not.toContain("https://example.invalid/webhook");
@@ -2742,6 +2743,76 @@ describe("scanner", () => {
     expect(JSON.stringify(networkEgressConfig)).not.toContain("untrusted_customer_ticket_url");
     expect(JSON.stringify(networkEgressConfig)).not.toContain("browser_tool_url");
     expect(JSON.stringify(networkEgressConfig)).not.toContain("retrieved_support_link");
+    const workspaceContextConfig = surfaces.runtime_config.find(
+      (surface) => surface.path === "workspace-context/context-sync.yaml"
+    );
+    expect(workspaceContextConfig).toBeDefined();
+    expect(workspaceContextConfig).toMatchObject({
+      trust_level: "project",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["call", "read", "remember", "send", "write"],
+      external_reach: true,
+      secret_exposure: true,
+      side_effect: true,
+      reversible: false,
+      untrusted_to_privileged: true
+    });
+    expect(workspaceContextConfig?.metadata).toMatchObject({
+      content_redacted: true,
+      values_collected: false,
+      parsed_agent_workspace_context_config: true,
+      agent_workspace_context_enabled: true,
+      agent_workspace_context_auto_sync_enabled: true,
+      agent_workspace_context_source_redacted: true,
+      agent_workspace_context_sensitive_paths: true,
+      agent_workspace_context_secret_path_exposure: true,
+      agent_workspace_context_env_file_access: true,
+      agent_workspace_context_ssh_key_access: true,
+      agent_workspace_context_cloud_credential_access: true,
+      agent_workspace_context_kubeconfig_access: true,
+      agent_workspace_context_home_directory_access: true,
+      agent_workspace_context_git_history_access: true,
+      agent_workspace_context_destination_redacted: true,
+      agent_workspace_context_remote_sync: true,
+      agent_workspace_context_prompt_context: true,
+      agent_workspace_context_rag_indexing: true,
+      agent_workspace_context_memory_persistence: true,
+      agent_workspace_context_untrusted_input: true,
+      agent_workspace_context_pii_context: true,
+      agent_workspace_context_redaction_disabled: true,
+      agent_workspace_context_agentcspignore_bypassed: true,
+      agent_workspace_context_approval_required: false
+    });
+    expect(workspaceContextConfig?.metadata.agent_workspace_context_source_categories).toEqual([
+      "cloud_credential",
+      "env_file",
+      "git_history",
+      "home_directory",
+      "kubeconfig",
+      "private_repo",
+      "ssh_key",
+      "untrusted_selector",
+      "workspace_file"
+    ]);
+    expect(workspaceContextConfig?.metadata.agent_workspace_context_destination_kinds).toEqual([
+      "http_destination",
+      "memory_store",
+      "prompt_context",
+      "rag_index",
+      "remote_context_index",
+      "shared_workspace"
+    ]);
+    expect(workspaceContextConfig?.metadata.env_key_names).toEqual(["WORKSPACE_CONTEXT_TOKEN"]);
+    expect(workspaceContextConfig?.metadata.secret_ref_key_names).toEqual(["WORKSPACE_CONTEXT_TOKEN"]);
+    expect(JSON.stringify(workspaceContextConfig)).not.toContain("${WORKSPACE_CONTEXT_TOKEN}");
+    expect(JSON.stringify(workspaceContextConfig)).not.toContain("context-sync.agentcsp-demo.example.invalid");
+    expect(JSON.stringify(workspaceContextConfig)).not.toContain("/workspace/customer_private_repo");
+    expect(JSON.stringify(workspaceContextConfig)).not.toContain("/Users/support/.ssh/id_rsa");
+    expect(JSON.stringify(workspaceContextConfig)).not.toContain("/Users/support/.aws/credentials");
+    expect(JSON.stringify(workspaceContextConfig)).not.toContain("/Users/support/.kube/config");
+    expect(JSON.stringify(workspaceContextConfig)).not.toContain("workspace_customer_email");
+    expect(JSON.stringify(workspaceContextConfig)).not.toContain("workspace_account_number");
+    expect(JSON.stringify(workspaceContextConfig)).not.toContain("confidential_repo_notes");
     const toolOutputPolicyConfig = surfaces.runtime_config.find((surface) => surface.path === "tool-results/result-policy.yaml");
     expect(toolOutputPolicyConfig).toBeDefined();
     expect(toolOutputPolicyConfig).toMatchObject({
@@ -3850,6 +3921,63 @@ describe("scanner", () => {
     expect(egress?.metadata.agent_network_egress_destination_kinds).toEqual(["http_destination"]);
     expect(egress?.metadata.env_key_names).toEqual([]);
     expect(egress?.metadata.secret_ref_key_names).toEqual([]);
+  });
+
+  it("keeps scoped local workspace context loading away from sensitive sync", async () => {
+    const files = await walkProject({
+      root_path: safeFixtureRoot,
+      output_path: ".agentcsp",
+      formats: ["json", "md"],
+      include_hidden: true,
+      include_logs: false,
+      max_file_size_bytes: 1024 * 1024,
+      max_files: 5000,
+      quiet: true
+    });
+    const surfaces = await detectSurfaces(files);
+    const contextLoader = surfaces.runtime_config.find((surface) => surface.path === "workspace-context/scoped-context.yaml");
+
+    expect(contextLoader).toMatchObject({
+      trust_level: "project",
+      data_classes: ["unknown"],
+      actions: ["call", "read"],
+      side_effect: false,
+      external_reach: false,
+      secret_exposure: false,
+      reversible: true,
+      untrusted_to_privileged: false
+    });
+    expect(contextLoader?.metadata).toMatchObject({
+      parsed_agent_workspace_context_config: true,
+      agent_workspace_context_enabled: true,
+      agent_workspace_context_auto_sync_enabled: false,
+      agent_workspace_context_source_redacted: true,
+      agent_workspace_context_source_count: 2,
+      agent_workspace_context_sensitive_paths: false,
+      agent_workspace_context_secret_path_exposure: false,
+      agent_workspace_context_env_file_access: false,
+      agent_workspace_context_ssh_key_access: false,
+      agent_workspace_context_cloud_credential_access: false,
+      agent_workspace_context_kubeconfig_access: false,
+      agent_workspace_context_home_directory_access: false,
+      agent_workspace_context_git_history_access: false,
+      agent_workspace_context_repo_wide_access: false,
+      agent_workspace_context_destination_redacted: false,
+      agent_workspace_context_destination_count: 0,
+      agent_workspace_context_remote_sync: false,
+      agent_workspace_context_prompt_context: false,
+      agent_workspace_context_rag_indexing: false,
+      agent_workspace_context_memory_persistence: false,
+      agent_workspace_context_untrusted_input: false,
+      agent_workspace_context_pii_context: false,
+      agent_workspace_context_redaction_disabled: false,
+      agent_workspace_context_agentcspignore_bypassed: false,
+      agent_workspace_context_approval_required: true
+    });
+    expect(contextLoader?.metadata.agent_workspace_context_source_categories).toEqual(["workspace_file"]);
+    expect(contextLoader?.metadata.agent_workspace_context_destination_kinds).toEqual([]);
+    expect(contextLoader?.metadata.env_key_names).toEqual([]);
+    expect(contextLoader?.metadata.secret_ref_key_names).toEqual([]);
   });
 
   it("keeps approval-gated read-only OpenAPI imports scoped", async () => {

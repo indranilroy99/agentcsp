@@ -1186,6 +1186,17 @@ The current iteration adds:
 - rule `AGENTCSP-RUNTIME-056` for automatic replay of non-idempotent privileged tools from untrusted context when idempotency controls and approval are missing
 - scanner, rule, fixture verifier, and redaction coverage proving raw tool names, retry argument labels, source labels, data-scope labels, and token placeholders stay redacted
 
+## Workspace Context Sync Exposure Pass
+
+The current iteration adds:
+
+- first-class redacted metadata for agent workspace-context, context-sync, file-context, repository-context, and workspace-index posture, including source categories for env files, SSH keys, cloud credentials, kubeconfig, git history, home directories, private repositories, workspace files, and untrusted selectors
+- destination posture for remote context indexes, prompt context, RAG/vector indexes, memory stores, and shared workspaces without emitting raw paths, repository names, URLs, field labels, or token placeholders
+- vulnerable fixture coverage for an automatic remote workspace context sync that can ingest `.env`, SSH, AWS, kubeconfig, git history, private repository paths, and untrusted selectors into prompt, RAG, memory, and remote context while redaction and approval are disabled
+- safe fixture coverage for a local scoped context loader that only reads explicit docs/source folders, respects `.agentcspignore`, excludes credential paths, keeps redaction enabled, and requires approval
+- rule `AGENTCSP-RUNTIME-059` for workspace context sync exposure that combines automatic sync, sensitive local source categories, credential exposure, remote sync, untrusted selectors, disabled redaction, and missing approval
+- scanner, rule, fixture verifier, and redaction coverage proving raw local paths, home-directory paths, credential paths, remote context URLs, data-field labels, and token placeholders stay redacted
+
 ## Initial Build Recommendation
 
 Start with a CLI-first MVP before building the dashboard:

@@ -159,6 +159,11 @@ export async function detectSurfaces(files: WalkedFile[]): Promise<DetectedSurfa
       continue;
     }
 
+    if (isAgentWorkspaceContextConfigPath(file.relativePath, basename)) {
+      detectAgentWorkspaceContextConfig(file, text, surfaces);
+      continue;
+    }
+
     if (isAgentWebhookEgressConfigPath(file.relativePath, basename)) {
       detectAgentWebhookEgressConfig(file, text, surfaces);
       continue;
@@ -2916,6 +2921,89 @@ function detectAgentNetworkEgressConfig(file: WalkedFile, text: string | undefin
   });
 }
 
+function detectAgentWorkspaceContextConfig(file: WalkedFile, text: string | undefined, surfaces: DetectedSurfaces): void {
+  const parsed = parseStructuredConfig(text ?? "", file.relativePath);
+  if (parsed.parseFailed) {
+    addDiagnostic(surfaces, file, {
+      parser: parsed.parser ?? "structured_config",
+      code: "AGENT_WORKSPACE_CONTEXT_CONFIG_PARSE_FAILED",
+      reason: "Agent workspace-context synchronization configuration could not be parsed. Raw content was redacted."
+    });
+  }
+
+  const posture = classifyAgentWorkspaceContextConfig(parsed.value, file.relativePath);
+  const actions = new Set<ActionType>(["call", "read"]);
+  if (
+    posture.agent_workspace_context_auto_sync_enabled ||
+    posture.agent_workspace_context_prompt_context ||
+    posture.agent_workspace_context_rag_indexing ||
+    posture.agent_workspace_context_memory_persistence
+  ) {
+    actions.add("remember");
+  }
+  if (posture.agent_workspace_context_auto_sync_enabled || posture.agent_workspace_context_rag_indexing) actions.add("write");
+  if (posture.agent_workspace_context_remote_sync) actions.add("send");
+
+  const dataClasses = new Set<SurfaceObject["data_classes"][number]>(["unknown"]);
+  if (
+    posture.agent_workspace_context_secret_path_exposure ||
+    posture.env_key_names.some(isCredentialLikeKeyName) ||
+    posture.secret_ref_key_names.length > 0
+  ) {
+    dataClasses.add("credential");
+  }
+  if (posture.agent_workspace_context_sensitive_paths || posture.agent_workspace_context_untrusted_input) {
+    dataClasses.add("confidential");
+  }
+  if (posture.agent_workspace_context_pii_context) dataClasses.add("pii");
+  if (dataClasses.size > 1) dataClasses.delete("unknown");
+
+  const object = createSurfaceObject({
+    type: "runtime_config",
+    name: path.basename(file.relativePath),
+    path: file.relativePath,
+    trust_level: inferTrustLevel(file.relativePath),
+    data_classes: uniqueDataClasses([...dataClasses] as SurfaceObject["data_classes"]),
+    actions: uniqueActions([...actions]),
+    side_effect:
+      posture.agent_workspace_context_auto_sync_enabled ||
+      posture.agent_workspace_context_remote_sync ||
+      posture.agent_workspace_context_rag_indexing ||
+      posture.agent_workspace_context_memory_persistence,
+    reversible:
+      !posture.agent_workspace_context_auto_sync_enabled &&
+      !posture.agent_workspace_context_remote_sync &&
+      !posture.agent_workspace_context_rag_indexing &&
+      !posture.agent_workspace_context_memory_persistence,
+    external_reach: posture.agent_workspace_context_remote_sync,
+    secret_exposure:
+      posture.agent_workspace_context_secret_path_exposure ||
+      posture.env_key_names.some(isCredentialLikeKeyName) ||
+      posture.secret_ref_key_names.length > 0,
+    reason: "Agent workspace-context synchronization configuration discovered as local file ingestion and context egress posture.",
+    metadata: {
+      content_redacted: true,
+      values_collected: false,
+      parsed_agent_workspace_context_config: Boolean(parsed.value) && !parsed.parseFailed,
+      parse_error: parsed.parseFailed,
+      ...posture
+    }
+  });
+  surfaces.runtime_config.push({
+    ...object,
+    untrusted_to_privileged:
+      (posture.agent_workspace_context_enabled &&
+        posture.agent_workspace_context_auto_sync_enabled &&
+        posture.agent_workspace_context_remote_sync &&
+        posture.agent_workspace_context_sensitive_paths &&
+        posture.agent_workspace_context_secret_path_exposure &&
+        posture.agent_workspace_context_untrusted_input &&
+        posture.agent_workspace_context_redaction_disabled &&
+        !posture.agent_workspace_context_approval_required) ||
+      isUntrustedToPrivileged(object)
+  });
+}
+
 function detectToolOutputPolicyConfig(file: WalkedFile, text: string | undefined, surfaces: DetectedSurfaces): void {
   const parsed = parseStructuredConfig(text ?? "", file.relativePath);
   if (parsed.parseFailed) {
@@ -4365,6 +4453,27 @@ function isAgentNetworkEgressConfigPath(relativePath: string, basename: string):
   return egressName || (egressDirectory && configName);
 }
 
+function isAgentWorkspaceContextConfigPath(relativePath: string, basename: string): boolean {
+  const normalized = relativePath.replaceAll("\\", "/").toLowerCase();
+  const lowerBase = basename.toLowerCase();
+  if (!/\.(json|ya?ml|toml)$/iu.test(lowerBase)) return false;
+  if (normalized.startsWith(".github/workflows/")) return false;
+  if (normalized.startsWith("rules/")) return false;
+  const segments = normalized.split("/").slice(0, -1);
+  const workspaceContextDirectory = segments.some((segment) =>
+    /^(workspace-context|workspace_context|context-sync|context_sync|file-context|file_context|repo-context|repo_context|context-ingestion|context_ingestion|workspace-index|workspace_index|context-index|context_index)$/iu.test(
+      segment
+    )
+  );
+  const workspaceContextName = /(?:workspace[-_]?context|context[-_]?sync|file[-_]?context|repo[-_]?context|workspace[-_]?index|context[-_]?index|context[-_]?ingestion|local[-_]?context)/iu.test(
+    lowerBase
+  );
+  const configName = /(?:config|settings|policy|sync|index|ingest|context|workspace|repo|files?|sources?|redaction|approval)/iu.test(
+    lowerBase
+  );
+  return workspaceContextName || (workspaceContextDirectory && configName);
+}
+
 function isToolOutputPolicyConfigPath(relativePath: string, basename: string): boolean {
   const normalized = relativePath.replaceAll("\\", "/").toLowerCase();
   const lowerBase = basename.toLowerCase();
@@ -5503,6 +5612,38 @@ interface AgentNetworkEgressPosture {
   agent_network_egress_sensitive_response_capture: boolean;
   agent_network_egress_pii_response_capture: boolean;
   agent_network_egress_approval_required: boolean;
+  env_key_names: string[];
+  secret_ref_key_names: string[];
+}
+
+interface AgentWorkspaceContextPosture {
+  agent_workspace_context_fields: string[];
+  agent_workspace_context_enabled: boolean;
+  agent_workspace_context_auto_sync_enabled: boolean;
+  agent_workspace_context_source_redacted: boolean;
+  agent_workspace_context_source_count: number;
+  agent_workspace_context_source_categories: string[];
+  agent_workspace_context_sensitive_paths: boolean;
+  agent_workspace_context_secret_path_exposure: boolean;
+  agent_workspace_context_env_file_access: boolean;
+  agent_workspace_context_ssh_key_access: boolean;
+  agent_workspace_context_cloud_credential_access: boolean;
+  agent_workspace_context_kubeconfig_access: boolean;
+  agent_workspace_context_home_directory_access: boolean;
+  agent_workspace_context_git_history_access: boolean;
+  agent_workspace_context_repo_wide_access: boolean;
+  agent_workspace_context_destination_redacted: boolean;
+  agent_workspace_context_destination_count: number;
+  agent_workspace_context_destination_kinds: string[];
+  agent_workspace_context_remote_sync: boolean;
+  agent_workspace_context_prompt_context: boolean;
+  agent_workspace_context_rag_indexing: boolean;
+  agent_workspace_context_memory_persistence: boolean;
+  agent_workspace_context_untrusted_input: boolean;
+  agent_workspace_context_pii_context: boolean;
+  agent_workspace_context_redaction_disabled: boolean;
+  agent_workspace_context_agentcspignore_bypassed: boolean;
+  agent_workspace_context_approval_required: boolean;
   env_key_names: string[];
   secret_ref_key_names: string[];
 }
@@ -12458,6 +12599,335 @@ function isAgentNetworkEgressSecurityField(fieldPath: string): boolean {
 }
 
 function agentNetworkEgressFieldText(field: RuntimeField): string {
+  return `${field.path} ${fieldValueText(field)}`.toLowerCase().replaceAll("_", " ").replaceAll("-", " ");
+}
+
+function classifyAgentWorkspaceContextConfig(value: unknown, filePath: string): AgentWorkspaceContextPosture {
+  const fields = flattenRuntimeFields(value);
+  const stringValues = collectFieldStringValues(fields);
+  const sources = classifyAgentWorkspaceContextSources(fields);
+  const destinations = classifyAgentWorkspaceContextDestinations(fields);
+  const envKeys = uniqueStrings([
+    ...collectEnvKeyNamesFromConfig(value).filter(isLikelyEnvKeyName),
+    ...extractEnvironmentReferenceKeys(stringValues)
+  ]);
+  const secretRefKeys = extractSecretReferenceKeys(stringValues);
+  const remoteSync = destinations.remoteSync || hasAgentWorkspaceContextRemoteSyncSignal(fields);
+  const promptContext = hasAgentWorkspaceContextPromptContextSignal(fields);
+  const ragIndexing = hasAgentWorkspaceContextRagIndexingSignal(fields);
+  const memoryPersistence = hasAgentWorkspaceContextMemoryPersistenceSignal(fields);
+
+  return {
+    agent_workspace_context_fields: fields
+      .map((field) => field.path)
+      .filter((fieldPath) => isAgentWorkspaceContextSecurityField(fieldPath))
+      .sort((a, b) => a.localeCompare(b)),
+    agent_workspace_context_enabled: hasAgentWorkspaceContextEnabledSignal(fields) || sources.sourceCount > 0,
+    agent_workspace_context_auto_sync_enabled: hasAgentWorkspaceContextAutoSyncSignal(fields),
+    agent_workspace_context_source_redacted: sources.sourceCount > 0,
+    agent_workspace_context_source_count: sources.sourceCount,
+    agent_workspace_context_source_categories: sources.sourceCategories,
+    agent_workspace_context_sensitive_paths: sources.sensitivePaths,
+    agent_workspace_context_secret_path_exposure:
+      sources.secretPathExposure || envKeys.some(isCredentialLikeKeyName) || secretRefKeys.length > 0,
+    agent_workspace_context_env_file_access: sources.envFileAccess,
+    agent_workspace_context_ssh_key_access: sources.sshKeyAccess,
+    agent_workspace_context_cloud_credential_access: sources.cloudCredentialAccess,
+    agent_workspace_context_kubeconfig_access: sources.kubeconfigAccess,
+    agent_workspace_context_home_directory_access: sources.homeDirectoryAccess,
+    agent_workspace_context_git_history_access: sources.gitHistoryAccess,
+    agent_workspace_context_repo_wide_access: sources.repoWideAccess,
+    agent_workspace_context_destination_redacted: destinations.destinationCount > 0,
+    agent_workspace_context_destination_count: destinations.destinationCount,
+    agent_workspace_context_destination_kinds: destinations.destinationKinds,
+    agent_workspace_context_remote_sync: remoteSync,
+    agent_workspace_context_prompt_context: promptContext,
+    agent_workspace_context_rag_indexing: ragIndexing,
+    agent_workspace_context_memory_persistence: memoryPersistence,
+    agent_workspace_context_untrusted_input: hasAgentWorkspaceContextUntrustedInputSignal(fields),
+    agent_workspace_context_pii_context: hasAgentWorkspaceContextPiiSignal(fields),
+    agent_workspace_context_redaction_disabled: hasAgentWorkspaceContextRedactionDisabledSignal(fields),
+    agent_workspace_context_agentcspignore_bypassed: hasAgentWorkspaceContextIgnoreBypassSignal(fields),
+    agent_workspace_context_approval_required: hasAgentWorkspaceContextApprovalRequiredSignal(fields),
+    env_key_names: envKeys,
+    secret_ref_key_names: secretRefKeys
+  };
+}
+
+function classifyAgentWorkspaceContextSources(fields: RuntimeField[]): {
+  sourceCount: number;
+  sourceCategories: string[];
+  sensitivePaths: boolean;
+  secretPathExposure: boolean;
+  envFileAccess: boolean;
+  sshKeyAccess: boolean;
+  cloudCredentialAccess: boolean;
+  kubeconfigAccess: boolean;
+  homeDirectoryAccess: boolean;
+  gitHistoryAccess: boolean;
+  repoWideAccess: boolean;
+} {
+  const sourceCategories = new Set<string>();
+  let sourceCount = 0;
+  let sensitivePaths = false;
+  let secretPathExposure = false;
+  let envFileAccess = false;
+  let sshKeyAccess = false;
+  let cloudCredentialAccess = false;
+  let kubeconfigAccess = false;
+  let homeDirectoryAccess = false;
+  let gitHistoryAccess = false;
+  let repoWideAccess = false;
+
+  for (const field of fields) {
+    if (isAgentWorkspaceContextControlField(field.path)) continue;
+    if (!isAgentWorkspaceContextSourceField(field)) continue;
+
+    const values = fieldStringValues(field);
+    const text = agentWorkspaceContextFieldText(field);
+    const sourceFieldHasValue = values.length > 0 || truthyConfigValue(field.value);
+    if (!sourceFieldHasValue) continue;
+    sourceCount += Math.max(1, values.length);
+
+    if (/\b(workspace|repo|repository|project|root|all files|all_files|glob|source|sources|path|paths|files?)\b/iu.test(text)) {
+      sourceCategories.add("workspace_file");
+    }
+    if (/\b(customer|client|support|private|confidential|internal|case|ticket|record|account|proprietary)\b/iu.test(text)) {
+      sourceCategories.add("private_repo");
+      sensitivePaths = true;
+    }
+    if (/\b(untrusted|user|customer|ticket|prompt|message|retrieved|browser|tool output|selector)\b/iu.test(text)) {
+      sourceCategories.add("untrusted_selector");
+    }
+    if (/\b(\.env|env file|env files|environment file|environment files)\b/iu.test(text)) {
+      sourceCategories.add("env_file");
+      envFileAccess = true;
+      secretPathExposure = true;
+    }
+    if (/\b(\.ssh|id_rsa|id_ed25519|ssh key|ssh keys|known_hosts)\b/iu.test(text)) {
+      sourceCategories.add("ssh_key");
+      sshKeyAccess = true;
+      secretPathExposure = true;
+    }
+    if (/\b(\.aws|aws credentials|aws config|cloud credentials|gcp credentials|azure credentials|service account|service-account|credentials\.json)\b/iu.test(
+      text
+    )) {
+      sourceCategories.add("cloud_credential");
+      cloudCredentialAccess = true;
+      secretPathExposure = true;
+    }
+    if (/\b(\.kube|kubeconfig|kubernetes config|kube config)\b/iu.test(text)) {
+      sourceCategories.add("kubeconfig");
+      kubeconfigAccess = true;
+      secretPathExposure = true;
+    }
+    if (/\b(~\/|\/users\/|\/home\/|home directory|home_directory|user home|user_home)\b/iu.test(text)) {
+      sourceCategories.add("home_directory");
+      homeDirectoryAccess = true;
+      sensitivePaths = true;
+    }
+    if (/\b(\.git\/logs|\.git\/config|git history|git_history|commit history|reflog)\b/iu.test(text)) {
+      sourceCategories.add("git_history");
+      gitHistoryAccess = true;
+      sensitivePaths = true;
+    }
+    if (/\b(\*\*\/\*|\*|workspace root|repo root|repository root|all repository|all workspace|entire repo|entire workspace)\b/iu.test(text)) {
+      sourceCategories.add("repo_wide");
+      repoWideAccess = true;
+      sensitivePaths = true;
+    }
+  }
+
+  if (envFileAccess || sshKeyAccess || cloudCredentialAccess || kubeconfigAccess || secretPathExposure) sensitivePaths = true;
+
+  return {
+    sourceCount,
+    sourceCategories: [...sourceCategories].sort((a, b) => a.localeCompare(b)),
+    sensitivePaths,
+    secretPathExposure,
+    envFileAccess,
+    sshKeyAccess,
+    cloudCredentialAccess,
+    kubeconfigAccess,
+    homeDirectoryAccess,
+    gitHistoryAccess,
+    repoWideAccess
+  };
+}
+
+function classifyAgentWorkspaceContextDestinations(fields: RuntimeField[]): {
+  destinationCount: number;
+  destinationKinds: string[];
+  remoteSync: boolean;
+} {
+  const destinationKinds = new Set<string>();
+  let destinationCount = 0;
+  let remoteSync = false;
+
+  for (const field of fields) {
+    if (isAgentWorkspaceContextControlField(field.path)) continue;
+    const text = agentWorkspaceContextFieldText(field);
+    const destinationField =
+      /(?:^|\.)(destination|destinations|sink|sinks|target|targets|endpoint|url|uri|provider|remote|sync|index|memory|prompt_context|rag|vector)(?:\.|$)/iu.test(
+        field.path
+      ) ||
+      /\b(inject into prompt|prompt context|model context|index for rag|rag index|vector index|persist to memory|memory store|remote sync)\b/iu.test(
+        text
+      );
+    if (!destinationField && !fieldStringValues(field).some(parseRemoteHttpUrl)) continue;
+    if (!truthyConfigValue(field.value)) continue;
+
+    const values = fieldStringValues(field);
+    destinationCount += Math.max(1, values.length);
+
+    if (values.some(parseRemoteHttpUrl)) {
+      destinationKinds.add("http_destination");
+      remoteSync = true;
+    }
+    if (/\b(remote|hosted|shared|cloud|http|https|s3|gcs|azure blob|external)\b/iu.test(text)) {
+      destinationKinds.add("remote_context_index");
+      remoteSync = true;
+    }
+    if (/\b(vector|rag|embedding|index|semantic search|retrieval)\b/iu.test(text)) destinationKinds.add("rag_index");
+    if (/\b(memory|long term|transcript|session state|persist)\b/iu.test(text)) destinationKinds.add("memory_store");
+    if (/\b(prompt context|system context|developer context|inject into prompt|model context)\b/iu.test(text)) {
+      destinationKinds.add("prompt_context");
+    }
+    if (/\b(workspace|team|tenant|shared)\b/iu.test(text)) destinationKinds.add("shared_workspace");
+  }
+
+  return {
+    destinationCount,
+    destinationKinds: [...destinationKinds].sort((a, b) => a.localeCompare(b)),
+    remoteSync
+  };
+}
+
+function hasAgentWorkspaceContextEnabledSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /(?:^|\.)(enabled|workspace_context|context_sync|context_ingestion|file_context|workspace_index)(?:\.|$)/iu.test(field.path) &&
+    truthyConfigValue(field.value)
+  );
+}
+
+function hasAgentWorkspaceContextAutoSyncSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /\b(auto[_\s-]?sync|continuous[_\s-]?sync|watch[_\s-]?workspace|sync[_\s-]?on[_\s-]?change|ingest[_\s-]?on[_\s-]?startup|auto[_\s-]?index|sync all)\b/iu.test(
+      agentWorkspaceContextFieldText(field)
+    ) && truthyConfigValue(field.value)
+  );
+}
+
+function hasAgentWorkspaceContextRemoteSyncSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /\b(remote|hosted|cloud|external|shared context|remote context|http|https|s3|gcs|azure blob)\b/iu.test(
+      agentWorkspaceContextFieldText(field)
+    ) && truthyConfigValue(field.value)
+  );
+}
+
+function hasAgentWorkspaceContextPromptContextSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /\b(inject[_\s-]?into[_\s-]?prompt|prompt[_\s-]?context|model[_\s-]?context|system[_\s-]?context|developer[_\s-]?context)\b/iu.test(
+      agentWorkspaceContextFieldText(field)
+    ) && truthyConfigValue(field.value)
+  );
+}
+
+function hasAgentWorkspaceContextRagIndexingSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /\b(rag|retrieval|vector|embedding|semantic[_\s-]?search|index[_\s-]?for[_\s-]?rag|workspace[_\s-]?index)\b/iu.test(
+      agentWorkspaceContextFieldText(field)
+    ) && truthyConfigValue(field.value)
+  );
+}
+
+function hasAgentWorkspaceContextMemoryPersistenceSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /\b(memory|long[_\s-]?term|persist|retention|transcript|session[_\s-]?state|remember)\b/iu.test(
+      agentWorkspaceContextFieldText(field)
+    ) && truthyConfigValue(field.value)
+  );
+}
+
+function hasAgentWorkspaceContextUntrustedInputSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /\b(untrusted|user|customer|client|ticket|support|issue|comment|message|prompt|retrieved|rag|document|browser|web page|tool output|model selected|selector|allow untrusted)\b/iu.test(
+      agentWorkspaceContextFieldText(field)
+    ) && truthyConfigValue(field.value)
+  );
+}
+
+function hasAgentWorkspaceContextPiiSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    !isAgentWorkspaceContextControlField(field.path) &&
+    /\b(pii|email|phone|address|ssn|passport|dob|customer id|user id|account id|account number)\b/iu.test(
+      agentWorkspaceContextFieldText(field)
+    ) && truthyConfigValue(field.value)
+  );
+}
+
+function hasAgentWorkspaceContextRedactionDisabledSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => {
+    const text = agentWorkspaceContextFieldText(field);
+    if (/\b(redact|redaction|mask|sanitize|secrets|pii|sensitive)\b/iu.test(field.path)) {
+      return disabledConfigValue(field.value) || /\b(disabled|off|false|none|raw|full|passthrough|bypass|skip)\b/iu.test(text);
+    }
+    return /\b(no redaction|redaction disabled|raw workspace|raw files|include raw|do not redact|disable secret scan)\b/iu.test(text);
+  });
+}
+
+function hasAgentWorkspaceContextIgnoreBypassSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => {
+    const text = agentWorkspaceContextFieldText(field);
+    if (/agentcspignore|gitignore|ignore|exclude|deny|block/iu.test(field.path)) {
+      return disabledConfigValue(field.value) || /\b(false|disabled|off|bypass|ignore disabled|not respected|skip ignore)\b/iu.test(text);
+    }
+    return /\b(bypass[_\s-]?ignore|ignore[_\s-]?rules[_\s-]?disabled|do not respect agentcspignore|include ignored files)\b/iu.test(text);
+  });
+}
+
+function hasAgentWorkspaceContextApprovalRequiredSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /\b(approval|required approval|human approval|security review|privacy review|confirm|confirmation|review|manual review)\b/iu.test(
+      agentWorkspaceContextFieldText(field)
+    ) && truthyConfigValue(field.value)
+  );
+}
+
+function isAgentWorkspaceContextSourceField(field: RuntimeField): boolean {
+  if (
+    /(?:^|\.)(destination|destinations|sink|sinks|target|targets|endpoint|url|uri|provider|remote|pipeline|memory|prompt_context|rag|vector|approval)(?:\.|$)/iu.test(
+      field.path
+    )
+  ) {
+    return false;
+  }
+  if (
+    /(?:^|\.)(sources?|roots?|paths?|include|includes|globs?|files?|workspace|repository|repo|home_directory|git_history|env_files|ssh_keys|cloud_credentials|kubeconfig|selectors?)(?:\.|$)/iu.test(
+      field.path
+    )
+  ) {
+    return true;
+  }
+  return /\b(workspace|repo|repository|source|sources|path|paths|files|\.env|\.ssh|\.aws|\.kube|kubeconfig|git history|home directory)\b/iu.test(
+    agentWorkspaceContextFieldText(field)
+  );
+}
+
+function isAgentWorkspaceContextControlField(fieldPath: string): boolean {
+  return /(?:^|\.)(deny|denied|block|blocked|exclude|excludes|disallow|forbid|prevent|protect|protection|redact|redaction|mask|sanitize|allowlist|trusted_sources)(?:\.|$)/iu.test(
+    fieldPath
+  );
+}
+
+function isAgentWorkspaceContextSecurityField(fieldPath: string): boolean {
+  return /enabled|sync|auto|workspace|context|source|root|path|file|repo|repository|home|env|ssh|aws|cloud|credential|kube|git|secret|token|pii|sensitive|customer|private|confidential|destination|endpoint|url|uri|provider|remote|index|rag|vector|memory|prompt|redact|mask|sanitize|ignore|agentcspignore|approval|review|untrusted|selector/iu.test(
+    fieldPath
+  );
+}
+
+function agentWorkspaceContextFieldText(field: RuntimeField): string {
   return `${field.path} ${fieldValueText(field)}`.toLowerCase().replaceAll("_", " ").replaceAll("-", " ");
 }
 

@@ -46,6 +46,8 @@ For context-window and compaction rules, require concrete instruction-integrity 
 
 For reasoning-state and scratchpad rules, require concrete state-replay correlation such as sensitive reasoning, plan, prompt, tool-observation, retrieval, memory, PII, or secret capture into a persistent remote or shared store, replay into planner or future model context, disabled redaction or access controls, credential evidence, and missing approval. Do not flag local ephemeral scratchpads that keep capture and replay disabled.
 
+For workspace-context sync rules, require concrete local-file exposure correlation such as automatic workspace ingestion, sensitive source categories such as env files, SSH keys, cloud credentials, kubeconfig, git history, home directories, or private repositories, remote or model/RAG/memory sinks, untrusted selectors, disabled redaction or ignored `.agentcspignore`, credential evidence, and missing approval. Do not flag scoped local context loaders that only read explicit low-risk folders with secrets and ignored paths excluded.
+
 For agent tool retry and replay rules, require concrete duplicate-execution correlation such as automatic retry or replay, untrusted context, privileged non-idempotent action authority, disabled idempotency or duplicate suppression, credential evidence, and missing approval. Do not flag approval-gated read-only retry budgets merely because they mention retry, backoff, or idempotency.
 
 AgentCSP computes finding confidence from rule correlation depth, scoped object type, structured parsing, privileged actions, data class, external reach, and side-effect signals.

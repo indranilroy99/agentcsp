@@ -1,0 +1,28 @@
+enabled: true
+auto_sync: false
+mode: local_context_loader
+destination:
+  remote: false
+sources:
+  - path: docs
+  - path: src
+include:
+  hidden_files: false
+  home_directory: false
+  git_history: false
+  env_files: false
+  ssh_keys: false
+  cloud_credentials: false
+  kubeconfig: false
+pipeline:
+  inject_into_prompt: false
+  index_for_rag: false
+  persist_to_memory: false
+  allow_untrusted_selectors: false
+redaction:
+  enabled: true
+  secrets: true
+  pii: true
+ignore_rules:
+  respect_agentcspignore: true
+approval_required: true
