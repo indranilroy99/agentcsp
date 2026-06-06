@@ -65,6 +65,9 @@ match:
     - field: metadata.parsed_agent_code_interpreter_config
       op: not_equals
       value: true
+    - field: metadata.parsed_agent_deployment_config
+      op: not_equals
+      value: true
     - field: metadata.parsed_ai_training_dataset_config
       op: not_equals
       value: true

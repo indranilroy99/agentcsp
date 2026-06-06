@@ -122,6 +122,11 @@ export async function detectSurfaces(files: WalkedFile[]): Promise<DetectedSurfa
       continue;
     }
 
+    if (isAgentDeploymentConfigPath(file.relativePath, basename)) {
+      detectAgentDeploymentConfig(file, text, surfaces);
+      continue;
+    }
+
     if (isAgentContainerRuntimeConfigPath(file.relativePath, basename)) {
       detectAgentContainerRuntimeConfig(file, text, surfaces);
       continue;
@@ -1895,6 +1900,72 @@ function detectAgentCodeInterpreterConfig(file: WalkedFile, text: string | undef
   });
 }
 
+function detectAgentDeploymentConfig(file: WalkedFile, text: string | undefined, surfaces: DetectedSurfaces): void {
+  const parsed = parseStructuredConfig(text ?? "", file.relativePath);
+  if (parsed.parseFailed) {
+    addDiagnostic(surfaces, file, {
+      parser: parsed.parser ?? "structured_config",
+      code: "AGENT_DEPLOYMENT_CONFIG_PARSE_FAILED",
+      reason: "Agent deployment or image configuration could not be parsed. Raw content was redacted."
+    });
+  }
+
+  const posture = classifyAgentDeploymentConfig(parsed.value, file.relativePath);
+  const actions = new Set<ActionType>(["read"]);
+  if (posture.agent_deployment_agent_workload) actions.add("execute");
+  if (posture.agent_deployment_remote_image || posture.agent_deployment_pull_policy_always) actions.add("send");
+  if (posture.agent_deployment_privileged_container || posture.agent_deployment_host_mount) actions.add("write");
+
+  const dataClasses = new Set<SurfaceObject["data_classes"][number]>(["internal"]);
+  if (
+    posture.agent_deployment_secret_env_exposure ||
+    posture.agent_deployment_credential_mount ||
+    posture.env_key_names.some(isCredentialLikeKeyName) ||
+    posture.secret_ref_key_names.length > 0
+  ) {
+    dataClasses.add("credential");
+  }
+
+  const object = createSurfaceObject({
+    type: "runtime_config",
+    name: path.basename(file.relativePath),
+    path: file.relativePath,
+    trust_level: posture.agent_deployment_remote_image || posture.agent_deployment_unpinned_image ? "third_party" : inferTrustLevel(file.relativePath),
+    data_classes: uniqueDataClasses([...dataClasses] as SurfaceObject["data_classes"]),
+    actions: uniqueActions([...actions]),
+    side_effect:
+      posture.agent_deployment_agent_workload ||
+      posture.agent_deployment_privileged_container ||
+      posture.agent_deployment_host_mount ||
+      posture.agent_deployment_pull_policy_always,
+    reversible: !posture.agent_deployment_privileged_container && !posture.agent_deployment_host_mount,
+    external_reach: posture.agent_deployment_remote_image || posture.agent_deployment_pull_policy_always,
+    secret_exposure:
+      posture.agent_deployment_secret_env_exposure ||
+      posture.agent_deployment_credential_mount ||
+      posture.env_key_names.some(isCredentialLikeKeyName) ||
+      posture.secret_ref_key_names.length > 0,
+    reason: "Agent deployment configuration discovered as container image provenance and runtime authority posture.",
+    metadata: {
+      content_redacted: true,
+      values_collected: false,
+      parsed_agent_deployment_config: Boolean(parsed.value) && !parsed.parseFailed,
+      parse_error: parsed.parseFailed,
+      ...posture
+    }
+  });
+  surfaces.runtime_config.push({
+    ...object,
+    untrusted_to_privileged:
+      (posture.agent_deployment_agent_workload &&
+        posture.agent_deployment_unpinned_image &&
+        (posture.agent_deployment_secret_env_exposure ||
+          posture.agent_deployment_privileged_container ||
+          posture.agent_deployment_host_mount)) ||
+      isUntrustedToPrivileged(object)
+  });
+}
+
 function detectAgentContainerRuntimeConfig(file: WalkedFile, text: string | undefined, surfaces: DetectedSurfaces): void {
   const parsed = parseStructuredConfig(text ?? "", file.relativePath);
   if (parsed.parseFailed) {
@@ -2567,6 +2638,26 @@ function isAgentCodeInterpreterConfigPath(relativePath: string, basename: string
   return interpreterName || (strongInterpreterDirectory && strongConfigName) || (genericExecutionDirectory && executionConfigName);
 }
 
+function isAgentDeploymentConfigPath(relativePath: string, basename: string): boolean {
+  const normalized = relativePath.replaceAll("\\", "/").toLowerCase();
+  const lowerBase = basename.toLowerCase();
+  if (!/\.(json|ya?ml|toml)$/iu.test(lowerBase)) return false;
+  if (normalized.startsWith(".github/workflows/")) return false;
+  if (normalized.startsWith("rules/")) return false;
+
+  const segments = normalized.split("/").slice(0, -1);
+  const deploymentDirectory = segments.some((segment) =>
+    /^(deploy|deployments?|k8s|kubernetes|helm|charts?|manifests?|ops|infra|infrastructure)$/iu.test(segment)
+  );
+  const deploymentName = /(?:agent[-_]?deployment|agent[-_]?workload|agent[-_]?release|k8s[-_]?agent|deployment|deploy|pod|workload|compose|helm[-_]?values)/iu.test(
+    lowerBase
+  );
+  const configName = /(?:config|settings|deployment|deploy|pod|workload|container|image|values|chart|compose|k8s|kubernetes|helm|agent)/iu.test(
+    lowerBase
+  );
+  return deploymentName || (deploymentDirectory && configName);
+}
+
 function isAgentContainerRuntimeConfigPath(relativePath: string, basename: string): boolean {
   const normalized = relativePath.replaceAll("\\", "/").toLowerCase();
   const lowerBase = basename.toLowerCase();
@@ -3067,6 +3158,31 @@ interface AgentCodeInterpreterPosture {
   agent_code_interpreter_pii_input: boolean;
   agent_code_interpreter_secret_env_exposure: boolean;
   agent_code_interpreter_approval_required: boolean;
+  env_key_names: string[];
+  secret_ref_key_names: string[];
+}
+
+interface AgentDeploymentPosture {
+  agent_deployment_fields: string[];
+  agent_deployment_platform?: string;
+  agent_deployment_agent_workload: boolean;
+  agent_deployment_image_references_redacted: boolean;
+  agent_deployment_image_count: number;
+  agent_deployment_image_reference_kinds: string[];
+  agent_deployment_remote_image: boolean;
+  agent_deployment_unpinned_image: boolean;
+  agent_deployment_digest_pinned: boolean;
+  agent_deployment_pull_policy_always: boolean;
+  agent_deployment_privileged_container: boolean;
+  agent_deployment_root_user: boolean;
+  agent_deployment_host_network: boolean;
+  agent_deployment_host_mount: boolean;
+  agent_deployment_credential_mount: boolean;
+  agent_deployment_mounts_redacted: boolean;
+  agent_deployment_mount_kinds: string[];
+  agent_deployment_secret_env_exposure: boolean;
+  agent_deployment_service_account_redacted: boolean;
+  agent_deployment_approval_required: boolean;
   env_key_names: string[];
   secret_ref_key_names: string[];
 }
@@ -6172,6 +6288,234 @@ function hasAgentCodeInterpreterApprovalRequiredSignal(fields: RuntimeField[]): 
 
 function isAgentCodeInterpreterSecurityField(fieldPath: string): boolean {
   return /provider|runtime|mode|enabled|interpreter|notebook|jupyter|kernel|python|repl|executor|runner|code|model|generated|execute|exec|shell|command|subprocess|network|internet|egress|http|package|install|pip|npm|apt|conda|filesystem|workspace|file|mount|path|output|stdout|stderr|artifact|persist|history|cache|retention|input|source|prompt|retrieval|rag|ticket|customer|browser|tool|pii|sensitive|secret|token|credential|env|approval/iu.test(
+    fieldPath
+  );
+}
+
+function classifyAgentDeploymentConfig(value: unknown, filePath: string): AgentDeploymentPosture {
+  const fields = flattenRuntimeFields(value);
+  const stringValues = collectFieldStringValues(fields);
+  const platform = inferAgentDeploymentPlatform([filePath, ...fields.map((field) => field.path), ...stringValues]);
+  const imageReferences = collectAgentDeploymentImages(fields);
+  const imageKinds = uniqueStrings(imageReferences.flatMap((image) => classifyAgentDeploymentImageKinds(image)));
+  const mounts = classifyAgentDeploymentMounts(fields);
+  const envKeys = uniqueStrings([
+    ...collectEnvKeyNamesFromConfig(value).filter(isLikelyEnvKeyName),
+    ...collectDeploymentEnvKeyNames(fields),
+    ...extractEnvironmentReferenceKeys(stringValues)
+  ]);
+  const secretRefKeys = uniqueStrings([
+    ...extractSecretReferenceKeys(stringValues),
+    ...envKeys.filter(isCredentialLikeKeyName)
+  ]);
+  const secretReference = hasAgentDeploymentSecretReferenceSignal(fields);
+
+  return {
+    agent_deployment_fields: fields
+      .map((field) => field.path)
+      .filter((fieldPath) => isAgentDeploymentSecurityField(fieldPath))
+      .sort((a, b) => a.localeCompare(b)),
+    agent_deployment_platform: platform,
+    agent_deployment_agent_workload: hasAgentDeploymentAgentWorkloadSignal(fields, filePath, imageReferences),
+    agent_deployment_image_references_redacted: imageReferences.length > 0,
+    agent_deployment_image_count: imageReferences.length,
+    agent_deployment_image_reference_kinds: imageKinds,
+    agent_deployment_remote_image: imageKinds.includes("remote_registry_image"),
+    agent_deployment_unpinned_image: imageKinds.some((kind) =>
+      ["implicit_latest_tag", "latest_tag", "missing_digest", "mutable_tag"].includes(kind)
+    ),
+    agent_deployment_digest_pinned: imageReferences.length > 0 && imageReferences.every(isDigestPinnedContainerImage),
+    agent_deployment_pull_policy_always: hasAgentDeploymentPullPolicyAlwaysSignal(fields),
+    agent_deployment_privileged_container: hasAgentDeploymentPrivilegedSignal(fields),
+    agent_deployment_root_user: hasAgentDeploymentRootUserSignal(fields),
+    agent_deployment_host_network: hasAgentDeploymentHostNetworkSignal(fields),
+    agent_deployment_host_mount: mounts.hostPathMount,
+    agent_deployment_credential_mount: mounts.credentialMount,
+    agent_deployment_mounts_redacted: mounts.mountKinds.length > 0,
+    agent_deployment_mount_kinds: mounts.mountKinds,
+    agent_deployment_secret_env_exposure: secretReference || envKeys.some(isCredentialLikeKeyName) || secretRefKeys.length > 0,
+    agent_deployment_service_account_redacted: hasAgentDeploymentServiceAccountSignal(fields),
+    agent_deployment_approval_required: hasAgentDeploymentApprovalRequiredSignal(fields),
+    env_key_names: envKeys,
+    secret_ref_key_names: secretRefKeys
+  };
+}
+
+function inferAgentDeploymentPlatform(candidates: string[]): string | undefined {
+  const text = candidates.join(" ").toLowerCase();
+  const platforms: Array<[string, RegExp]> = [
+    ["kubernetes", /\bkubernetes\b|\bk8s\b|\bdeployment\b|\bpod\b|apiVersion|securitycontext|hostnetwork|hostpath|serviceaccount/iu],
+    ["helm", /\bhelm\b|chart\.ya?ml|values\.ya?ml/iu],
+    ["docker_compose", /\bdocker[_\s-]?compose\b|compose\.ya?ml|\bservices\.\w+\.image\b/iu],
+    ["container", /\bcontainer\b|\bimage\b|\bworkload\b/iu]
+  ];
+  return platforms.find(([, pattern]) => pattern.test(text))?.[0];
+}
+
+function collectAgentDeploymentImages(fields: RuntimeField[]): string[] {
+  const images = new Set<string>();
+  for (const field of fields) {
+    if (!/(^|\.)(image|container_image|containerImage|image_ref|imageRef)$/iu.test(field.path)) continue;
+    if (typeof field.value !== "string") continue;
+    const value = field.value.trim();
+    if (!value || value.includes("${")) continue;
+    if (!/[@:/]/u.test(value) && !value.includes("/")) continue;
+    images.add(value);
+  }
+  return [...images].sort((a, b) => a.localeCompare(b));
+}
+
+function classifyAgentDeploymentImageKinds(imageReference: string): string[] {
+  const kinds = new Set<string>();
+  if (isRemoteContainerImage(imageReference)) kinds.add("remote_registry_image");
+  if (isDigestPinnedContainerImage(imageReference)) {
+    kinds.add("digest_pinned_image");
+  } else {
+    kinds.add("missing_digest");
+    if (imageUsesImplicitLatestTag(imageReference)) kinds.add("implicit_latest_tag");
+    if (imageUsesLatestTag(imageReference)) kinds.add("latest_tag");
+    kinds.add("mutable_tag");
+  }
+  return [...kinds].sort((a, b) => a.localeCompare(b));
+}
+
+function isRemoteContainerImage(imageReference: string): boolean {
+  const firstSegment = imageReference.split("/")[0]?.toLowerCase() ?? "";
+  return (
+    firstSegment.includes(".") ||
+    firstSegment.includes(":") ||
+    ["docker.io", "ghcr.io", "gcr.io", "quay.io", "public.ecr.aws", "registry.k8s.io"].includes(firstSegment)
+  );
+}
+
+function isDigestPinnedContainerImage(imageReference: string): boolean {
+  return /@sha256:[a-f0-9]{32,}$/iu.test(imageReference);
+}
+
+function imageUsesLatestTag(imageReference: string): boolean {
+  const withoutDigest = imageReference.split("@")[0] ?? "";
+  const lastSegment = withoutDigest.split("/").at(-1) ?? withoutDigest;
+  return /:latest$/iu.test(lastSegment);
+}
+
+function imageUsesImplicitLatestTag(imageReference: string): boolean {
+  const withoutDigest = imageReference.split("@")[0] ?? "";
+  const lastSegment = withoutDigest.split("/").at(-1) ?? withoutDigest;
+  return !lastSegment.includes(":");
+}
+
+function collectDeploymentEnvKeyNames(fields: RuntimeField[]): string[] {
+  const keys = new Set<string>();
+  for (const field of fields) {
+    if (!/(^|\.)(env|environment|env_vars|envVars)\.\d+\.name$/iu.test(field.path)) continue;
+    const value = fieldValueText(field).trim();
+    if (isLikelyEnvKeyName(value)) keys.add(value);
+  }
+  return [...keys].sort((a, b) => a.localeCompare(b));
+}
+
+function classifyAgentDeploymentMounts(fields: RuntimeField[]): {
+  hostPathMount: boolean;
+  credentialMount: boolean;
+  mountKinds: string[];
+} {
+  const mountKinds = new Set<string>();
+  for (const field of fields) {
+    if (!isAgentDeploymentMountField(field.path)) continue;
+    const text = `${field.path} ${fieldValueText(field)}`;
+    const lower = text.toLowerCase();
+    if (/docker\.sock|\/var\/run\/docker\.sock/iu.test(lower)) mountKinds.add("docker_socket");
+    if (/(^|[\s"'])(?:\/(?:var|etc|home|users|root|private|opt|srv|tmp|mnt|volumes?)|~\/|[a-z]:\\)|hostpath/iu.test(text)) {
+      mountKinds.add("host_path");
+    }
+    if (/(?:^|[\/._-])(?:\.ssh|\.aws|\.kube|\.docker|gcloud|credentials?|secrets?|id_rsa|private[_-]?key)(?:$|[\/._\s:-])/iu.test(
+      lower
+    )) {
+      mountKinds.add("credential_path");
+    }
+    if (/\b(host|docker_socket|credential|secret|\/etc|\/var|\/home|\/users|\/root|\/private)\b/iu.test(lower)) {
+      mountKinds.add("sensitive_host_path");
+    }
+  }
+  const kinds = [...mountKinds].sort((a, b) => a.localeCompare(b));
+  return {
+    hostPathMount: kinds.includes("host_path") || kinds.includes("docker_socket"),
+    credentialMount: kinds.includes("credential_path"),
+    mountKinds: kinds
+  };
+}
+
+function isAgentDeploymentMountField(fieldPath: string): boolean {
+  return /(?:^|\.)(volumes?|volume_mounts?|volumeMounts?|mounts?|mount_path|mountPath|host_path|hostPath|path)$/iu.test(
+    fieldPath
+  );
+}
+
+function hasAgentDeploymentAgentWorkloadSignal(fields: RuntimeField[], filePath: string, imageReferences: string[]): boolean {
+  const text = [filePath, ...imageReferences, ...fields.map((field) => `${field.path} ${fieldValueText(field)}`)].join(" ");
+  return /\b(agent|assistant|copilot|llm|model|mcp|rag|retrieval|vector|embedding|prompt|support[_\s-]?agent|chatbot|autonomous)\b/iu.test(
+    text
+  );
+}
+
+function hasAgentDeploymentPullPolicyAlwaysSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => {
+    if (!/(^|\.)(image_pull_policy|imagePullPolicy|pull_policy|pullPolicy)$/iu.test(field.path)) return false;
+    return fieldValueText(field).trim().toLowerCase() === "always";
+  });
+}
+
+function hasAgentDeploymentPrivilegedSignal(fields: RuntimeField[]): boolean {
+  return fields.some(
+    (field) =>
+      /(?:^|\.)(privileged|security_context\.privileged|securityContext\.privileged)$/iu.test(field.path) &&
+      truthyConfigValue(field.value)
+  );
+}
+
+function hasAgentDeploymentRootUserSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => {
+    if (!/(^|\.)(user|run_as_user|runAsUser|security_context\.run_as_user|securityContext\.runAsUser)$/iu.test(field.path)) {
+      return false;
+    }
+    const value = fieldValueText(field).trim().toLowerCase();
+    return value === "root" || value === "0" || value.startsWith("0:");
+  });
+}
+
+function hasAgentDeploymentHostNetworkSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => {
+    const value = fieldValueText(field).trim().toLowerCase();
+    if (/(^|\.)(network_mode|networkMode)$/iu.test(field.path)) return value === "host";
+    if (/(^|\.)(host_network|hostNetwork)$/iu.test(field.path)) return truthyConfigValue(field.value);
+    return /(?:^|[_\W])host[_\s-]?network(?:[_\W]|$)/iu.test(`${field.path} ${fieldValueText(field)}`) &&
+      truthyConfigValue(field.value);
+  });
+}
+
+function hasAgentDeploymentSecretReferenceSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /secretKeyRef|secretRef|secretName|valueFrom\.secret|imagePullSecrets|credential|token|api[_-]?key/iu.test(field.path)
+  );
+}
+
+function hasAgentDeploymentServiceAccountSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => {
+    if (!/service[_-]?account|serviceAccount|serviceAccountName/iu.test(field.path)) return false;
+    const value = fieldValueText(field).trim();
+    return value.length > 0 && value.toLowerCase() !== "default";
+  });
+}
+
+function hasAgentDeploymentApprovalRequiredSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /approval|required[_-]?approval|human[_-]?approval|confirm|confirmation|review|human[_-]?in[_-]?the[_-]?loop/iu.test(field.path) &&
+    truthyConfigValue(field.value)
+  );
+}
+
+function isAgentDeploymentSecurityField(fieldPath: string): boolean {
+  return /apiVersion|kind|metadata|labels?|annotations?|agent|workload|deployment|pod|container|image|pull|registry|digest|tag|service[_-]?account|serviceAccount|privileged|user|runAs|security|network|host|volume|mount|path|socket|secret|token|credential|env|approval/iu.test(
     fieldPath
   );
 }

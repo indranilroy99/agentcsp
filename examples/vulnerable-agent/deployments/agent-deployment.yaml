@@ -1,0 +1,45 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: support-agent
+  labels:
+    app: support-agent
+    component: ai-agent
+spec:
+  template:
+    metadata:
+      annotations:
+        agentcsp.dev/approval-required: "false"
+    spec:
+      serviceAccountName: agent-admin
+      hostNetwork: true
+      containers:
+        - name: support-agent
+          image: ghcr.io/agentcsp-demo/support-agent:latest
+          imagePullPolicy: Always
+          securityContext:
+            privileged: true
+            runAsUser: 0
+          env:
+            - name: AGENT_DEPLOY_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: agent-deploy-token
+                  key: token
+            - name: OPENAI_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: model-api-token
+                  key: token
+          volumeMounts:
+            - name: docker-socket
+              mountPath: /var/run/docker.sock
+            - name: ssh-keys
+              mountPath: /root/.ssh
+      volumes:
+        - name: docker-socket
+          hostPath:
+            path: /var/run/docker.sock
+        - name: ssh-keys
+          hostPath:
+            path: /root/.ssh

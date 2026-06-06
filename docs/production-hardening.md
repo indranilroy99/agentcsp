@@ -27,6 +27,7 @@ A finding should be considered production-grade when it includes:
 - CI package-artifact verification for compiled modules and bundled built-in rule counts
 - fixture artifact verification for manifest/finding schema validity, SARIF structure, expected signal, safe-fixture quietness, and redaction invariants
 - agent package-manifest supply-chain metadata for agent/MCP/model/RAG dependencies, risky dependency reference kinds, lifecycle scripts, and credential exposure without emitting dependency names, specs, remote URLs, Git refs, lifecycle commands, or local script paths
+- agent deployment image-provenance metadata for mutable remote images, digest pinning, pull policy, privileged runtime, service accounts, host mounts, and credential exposure without emitting image names, registry paths, service-account names, secret names, host paths, or token placeholders
 - redacted project-local rule diagnostics for malformed, schema-invalid, or duplicate custom rules
 - optional CI failure on diagnostics when malformed agent configuration should block release
 - negation-aware action classification so safety policy text is not treated as granted authority
@@ -101,6 +102,7 @@ Examples:
 - local MCP implementation path missing from scan plus credential exposure and side effects
 - package-runner MCP server plus unpinned package version plus credential exposure
 - agent package manifest plus risky agent dependency references, credentialed lifecycle scripts, and external dependency reach
+- agent deployment manifest plus mutable remote image provenance, privileged host authority, credential exposure, and no approval gate
 - runtime allowlist plus secret-backed MCP server plus approval bypass
 - auto-approved destructive MCP tool plus credential-backed server
 - auto-approved privileged runtime permissions plus credential key exposure
@@ -140,6 +142,7 @@ Examples:
 - AI telemetry remote export plus sensitive agent-context capture plus disabled redaction plus credential reference
 - artifact/output export plus public remote destination plus prompt, tool-output, browser, retrieval, memory, PII, or secret capture plus disabled redaction
 - webhook/callback egress plus model-generated or untrusted payloads, sensitive context, disabled redaction, credential reference, and no approval gate
+- agent deployment manifest plus floating remote image, pull-always policy, privileged runtime, host mounts, credentials, and no approval gate
 - privileged agent container plus Docker socket, host-root mount, host networking, credentials, untrusted input, and no approval gate
 - pull request workflow plus write permissions plus secrets
 - untrusted RAG source plus privileged tool path

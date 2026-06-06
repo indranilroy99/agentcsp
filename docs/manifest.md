@@ -782,6 +782,38 @@ Package-manifest metadata may include:
 
 Raw dependency names, dependency specs, remote package URLs, Git references, lifecycle commands, local script paths, and token placeholders are not emitted. AgentCSP records dependency categories, reference-kind categories, lifecycle-script names, command capability booleans, and credential key names so rules can detect install-time agent supply-chain risk without becoming a noisy generic SCA scanner.
 
+## Agent Deployment Image Provenance
+
+Agent deployment, Kubernetes, Helm, Compose, and workload manifests are normalized into `runtime_config` objects when deployment-oriented directories or filenames are discovered. This surface focuses on agent workload image provenance and runtime authority rather than general container vulnerability scanning.
+
+Deployment metadata may include:
+
+- `parsed_agent_deployment_config`
+- `agent_deployment_fields`
+- `agent_deployment_platform`
+- `agent_deployment_agent_workload`
+- `agent_deployment_image_references_redacted`
+- `agent_deployment_image_count`
+- `agent_deployment_image_reference_kinds`
+- `agent_deployment_remote_image`
+- `agent_deployment_unpinned_image`
+- `agent_deployment_digest_pinned`
+- `agent_deployment_pull_policy_always`
+- `agent_deployment_privileged_container`
+- `agent_deployment_root_user`
+- `agent_deployment_host_network`
+- `agent_deployment_host_mount`
+- `agent_deployment_credential_mount`
+- `agent_deployment_mounts_redacted`
+- `agent_deployment_mount_kinds`
+- `agent_deployment_secret_env_exposure`
+- `agent_deployment_service_account_redacted`
+- `agent_deployment_approval_required`
+- `env_key_names`
+- `secret_ref_key_names`
+
+Raw image names, registry paths, service-account names, secret names, host mount paths, and token placeholders are not emitted. Platform names, redacted image-reference categories such as `remote_registry_image`, `latest_tag`, and `missing_digest`, mount categories, service-account posture, approval posture, and credential key names let rules detect mutable agent deployment images running with credentialed host authority.
+
 ## Agent Artifact Export
 
 Agent artifact, output, report, screenshot, recording, and generated-output export configs are normalized into `runtime_config` objects when common artifact directories or export-oriented config filenames are discovered.

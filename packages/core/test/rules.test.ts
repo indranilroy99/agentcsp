@@ -87,6 +87,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RAG-004")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-SKILL-001")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-SUPPLYCHAIN-001")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-SUPPLYCHAIN-002")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MEMORY-002")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MEMORY-003")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MEMORY-004")).toBe(true);
@@ -449,6 +450,43 @@ describe("rule engine", () => {
     expect(JSON.stringify(supplyChainFindings[0])).not.toContain("openai-agents-fork");
     expect(JSON.stringify(supplyChainFindings[0])).not.toContain("packages.example.invalid");
     expect(JSON.stringify(supplyChainFindings[0])).not.toContain("scripts/install-agent-plugins.js");
+    const supplyChainDeploymentFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-SUPPLYCHAIN-002");
+    expect(supplyChainDeploymentFindings).toHaveLength(1);
+    expect(supplyChainDeploymentFindings[0]?.matched_object.path).toBe("deployments/agent-deployment.yaml");
+    expect(supplyChainDeploymentFindings[0]?.matched_object.metadata).toMatchObject({
+      parsed_agent_deployment_config: true,
+      agent_deployment_platform: "kubernetes",
+      agent_deployment_agent_workload: true,
+      agent_deployment_remote_image: true,
+      agent_deployment_unpinned_image: true,
+      agent_deployment_pull_policy_always: true,
+      agent_deployment_privileged_container: true,
+      agent_deployment_host_mount: true,
+      agent_deployment_secret_env_exposure: true,
+      agent_deployment_approval_required: false
+    });
+    expect(supplyChainDeploymentFindings[0]?.matched_object.metadata.agent_deployment_image_reference_kinds).toEqual([
+      "latest_tag",
+      "missing_digest",
+      "mutable_tag",
+      "remote_registry_image"
+    ]);
+    expect(supplyChainDeploymentFindings[0]?.matched_object.metadata.agent_deployment_mount_kinds).toEqual([
+      "credential_path",
+      "docker_socket",
+      "host_path"
+    ]);
+    expect(supplyChainDeploymentFindings[0]?.severity).toBe("critical");
+    expect(supplyChainDeploymentFindings[0]?.confidence).toBe("very_high");
+    expect(supplyChainDeploymentFindings[0]?.recommended_control).toBe("require_approval");
+    expect(JSON.stringify(supplyChainDeploymentFindings[0])).not.toContain("${AGENT_DEPLOY_TOKEN}");
+    expect(JSON.stringify(supplyChainDeploymentFindings[0])).not.toContain("ghcr.io/agentcsp-demo/support-agent");
+    expect(JSON.stringify(supplyChainDeploymentFindings[0])).not.toContain("support-agent:latest");
+    expect(JSON.stringify(supplyChainDeploymentFindings[0])).not.toContain("agent-admin");
+    expect(JSON.stringify(supplyChainDeploymentFindings[0])).not.toContain("agent-deploy-token");
+    expect(JSON.stringify(supplyChainDeploymentFindings[0])).not.toContain("model-api-token");
+    expect(JSON.stringify(supplyChainDeploymentFindings[0])).not.toContain("/var/run/docker.sock");
+    expect(JSON.stringify(supplyChainDeploymentFindings[0])).not.toContain("/root/.ssh");
     const runtimeModelEndpointFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-RUNTIME-009");
     expect(runtimeModelEndpointFindings).toHaveLength(1);
     expect(runtimeModelEndpointFindings[0]?.matched_object.path).toBe("models/model-gateway.yaml");

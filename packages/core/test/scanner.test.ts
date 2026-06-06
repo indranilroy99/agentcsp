@@ -24,6 +24,7 @@ describe("scanner", () => {
     expect(envSurface).toBeDefined();
     expect(envSurface?.metadata.env_key_names).toEqual([
       "AGENT_CONTAINER_TOKEN",
+      "AGENT_DEPLOY_TOKEN",
       "AGENT_EXTENSION_TOKEN",
       "AGENT_IDENTITY_TOKEN",
       "AGENT_SELF_MOD_TOKEN",
@@ -783,6 +784,63 @@ describe("scanner", () => {
     expect(JSON.stringify(containerRuntimeConfig)).not.toContain("/var/run/docker.sock");
     expect(JSON.stringify(containerRuntimeConfig)).not.toContain("~/.ssh");
     expect(JSON.stringify(containerRuntimeConfig)).not.toContain("untrusted_customer_ticket");
+    const deploymentConfig = surfaces.runtime_config.find(
+      (surface) => surface.path === "deployments/agent-deployment.yaml"
+    );
+    expect(deploymentConfig).toBeDefined();
+    expect(deploymentConfig).toMatchObject({
+      trust_level: "third_party",
+      external_reach: true,
+      secret_exposure: true,
+      side_effect: true,
+      reversible: false,
+      untrusted_to_privileged: true
+    });
+    expect(deploymentConfig?.metadata).toMatchObject({
+      content_redacted: true,
+      values_collected: false,
+      parsed_agent_deployment_config: true,
+      agent_deployment_platform: "kubernetes",
+      agent_deployment_agent_workload: true,
+      agent_deployment_image_references_redacted: true,
+      agent_deployment_image_count: 1,
+      agent_deployment_remote_image: true,
+      agent_deployment_unpinned_image: true,
+      agent_deployment_digest_pinned: false,
+      agent_deployment_pull_policy_always: true,
+      agent_deployment_privileged_container: true,
+      agent_deployment_root_user: true,
+      agent_deployment_host_network: true,
+      agent_deployment_host_mount: true,
+      agent_deployment_credential_mount: true,
+      agent_deployment_mounts_redacted: true,
+      agent_deployment_secret_env_exposure: true,
+      agent_deployment_service_account_redacted: true,
+      agent_deployment_approval_required: false
+    });
+    expect(deploymentConfig?.metadata.agent_deployment_image_reference_kinds).toEqual([
+      "latest_tag",
+      "missing_digest",
+      "mutable_tag",
+      "remote_registry_image"
+    ]);
+    expect(deploymentConfig?.metadata.agent_deployment_mount_kinds).toEqual([
+      "credential_path",
+      "docker_socket",
+      "host_path"
+    ]);
+    expect(deploymentConfig?.metadata.env_key_names).toEqual(["AGENT_DEPLOY_TOKEN", "OPENAI_API_KEY"]);
+    expect(deploymentConfig?.metadata.secret_ref_key_names).toEqual(["AGENT_DEPLOY_TOKEN", "OPENAI_API_KEY"]);
+    expect(deploymentConfig?.data_classes).toEqual(["credential", "internal"]);
+    expect(deploymentConfig?.actions).toEqual(["execute", "read", "send", "write"]);
+    expect(JSON.stringify(deploymentConfig)).not.toContain("${AGENT_DEPLOY_TOKEN}");
+    expect(JSON.stringify(deploymentConfig)).not.toContain("ghcr.io/agentcsp-demo/support-agent");
+    expect(JSON.stringify(deploymentConfig)).not.toContain("support-agent:latest");
+    expect(JSON.stringify(deploymentConfig)).not.toContain("agent-admin");
+    expect(JSON.stringify(deploymentConfig)).not.toContain("agent-deploy-token");
+    expect(JSON.stringify(deploymentConfig)).not.toContain("model-api-token");
+    expect(JSON.stringify(deploymentConfig)).not.toContain("/var/run/docker.sock");
+    expect(JSON.stringify(deploymentConfig)).not.toContain("/root/.ssh");
     const codeInterpreterConfig = surfaces.runtime_config.find(
       (surface) => surface.path === "code-interpreter/python-runtime.yaml"
     );

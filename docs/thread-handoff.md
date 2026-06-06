@@ -829,6 +829,15 @@ The current iteration adds:
 - rule `AGENTCSP-SUPPLYCHAIN-001` for package manifests that combine risky agent dependency references, install-time execution, external dependency reach, and credential exposure
 - scanner, rule, fixture verifier, and redaction coverage proving dependency names, dependency specs, remote package URLs, Git references, lifecycle commands, local script paths, and token placeholders stay redacted
 
+## Agent Deployment Image Provenance Pass
+
+The current iteration adds:
+
+- first-class redacted metadata for agent deployment manifests with image provenance, digest pinning, pull policy, privileged runtime, service-account, host-mount, and credential posture
+- vulnerable fixture coverage for a Kubernetes-style support agent deployed from a mutable remote image with pull-always policy, privileged root execution, host network, Docker socket and credential mounts, secret-backed env, and no approval gate
+- rule `AGENTCSP-SUPPLYCHAIN-002` for deployment manifests that combine mutable remote agent images, privileged host authority, credential exposure, and missing approval
+- scanner, rule, fixture verifier, and redaction coverage proving image references, registry paths, service-account names, secret names, host paths, and token placeholders stay redacted
+
 ## Initial Build Recommendation
 
 Start with a CLI-first MVP before building the dashboard:
