@@ -1,0 +1,56 @@
+id: AGENTCSP-RAG-005
+name: RAG retrieval allows untrusted broad access without provenance controls
+description: A RAG or vector-store retrieval policy accepts user-controlled queries or filters against broad sensitive collections while ACL, provenance, trust, or prompt-injection controls are disabled and retrieved chunks can flow into prompts or tools.
+category: rag_retrieval_boundary
+severity: critical
+maps_to:
+  owasp:
+    - LLM01:2025 Prompt Injection
+    - LLM02:2025 Sensitive Information Disclosure
+    - LLM08:2025 Vector and Embedding Weaknesses
+  mitre_atlas:
+    - AML.T0051 LLM Prompt Injection
+    - AML.T0057 Exfiltration via Cyber Means
+  nist_ai_rmf:
+    - MAP 5.1
+    - MEASURE 2.9
+    - MANAGE 2.4
+match:
+  object_type: rag_source
+  where:
+    - field: metadata.parsed_rag_connector_config
+      op: equals
+      value: true
+    - field: metadata.vector_store_remote
+      op: equals
+      value: true
+    - field: metadata.vector_store_retrieval_enabled
+      op: equals
+      value: true
+    - field: metadata.vector_store_user_query_input
+      op: equals
+      value: true
+    - field: metadata.vector_store_broad_retrieval_scope
+      op: equals
+      value: true
+    - field: metadata.vector_store_acl_disabled
+      op: equals
+      value: true
+    - field: metadata.vector_store_provenance_filter_disabled
+      op: equals
+      value: true
+    - field: metadata.vector_store_prompt_injection_passthrough
+      op: equals
+      value: true
+    - field: metadata.vector_store_tool_context_injection
+      op: equals
+      value: true
+    - field: metadata.vector_store_approval_required
+      op: equals
+      value: false
+    - field: secret_exposure
+      op: equals
+      value: true
+recommendation:
+  control: quarantine
+  text: Require tenant-aware ACLs, trusted-source and provenance filters, prompt-injection sanitization, and approval before user-controlled retrieval can inject raw chunks into prompts or tool context.

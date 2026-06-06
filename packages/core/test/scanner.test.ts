@@ -2342,16 +2342,40 @@ describe("scanner", () => {
       vector_store_sync_enabled: true,
       vector_store_ingests_untrusted_sources: true,
       vector_store_sensitive_collection: true,
+      vector_store_pii_collection: true,
       vector_store_namespace_redacted: true
     });
     expect(vectorStore?.metadata.vector_store_remote_destination_kinds).toEqual(["http_endpoint", "managed_vector_db"]);
+    expect(vectorStore?.metadata).toMatchObject({
+      vector_store_retrieval_enabled: true,
+      vector_store_user_query_input: true,
+      vector_store_filter_redacted: true,
+      vector_store_filter_count: 5,
+      vector_store_broad_retrieval_scope: true,
+      vector_store_acl_disabled: true,
+      vector_store_provenance_filter_disabled: true,
+      vector_store_trust_filter_disabled: true,
+      vector_store_prompt_injection_passthrough: true,
+      vector_store_raw_chunk_passthrough: true,
+      vector_store_tool_context_injection: true,
+      vector_store_approval_required: false
+    });
+    expect(vectorStore?.metadata.vector_store_filter_kinds).toEqual([
+      "metadata_filter",
+      "namespace_filter",
+      "source_filter",
+      "user_controlled_filter"
+    ]);
     expect(vectorStore?.metadata.secret_ref_key_names).toEqual(["PINECONE_API_KEY"]);
-    expect(vectorStore?.data_classes).toEqual(["confidential", "credential"]);
+    expect(vectorStore?.data_classes).toEqual(["confidential", "credential", "pii"]);
     expect(vectorStore?.actions).toEqual(["call", "read", "remember", "send", "write"]);
     expect(JSON.stringify(vectorStore)).not.toContain("${PINECONE_API_KEY}");
     expect(JSON.stringify(vectorStore)).not.toContain("agentcsp-demo-vector.example.invalid");
     expect(JSON.stringify(vectorStore)).not.toContain("customer-support-escalations");
     expect(JSON.stringify(vectorStore)).not.toContain("internal-ticket-memory");
+    expect(JSON.stringify(vectorStore)).not.toContain("customer_ticket_message");
+    expect(JSON.stringify(vectorStore)).not.toContain("customer_account_id");
+    expect(JSON.stringify(vectorStore)).not.toContain("internal_runbooks");
     const memoryStore = surfaces.memory.find((surface) => surface.path === "memory/long-term-store.yaml");
     expect(memoryStore).toBeDefined();
     expect(memoryStore).toMatchObject({

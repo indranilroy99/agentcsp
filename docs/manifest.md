@@ -1294,11 +1294,24 @@ Connector metadata may include:
 - `vector_store_sensitive_collection`
 - `vector_store_pii_collection`
 - `vector_store_namespace_redacted`
+- `vector_store_retrieval_enabled`
+- `vector_store_user_query_input`
+- `vector_store_filter_redacted`
+- `vector_store_filter_count`
+- `vector_store_filter_kinds`
+- `vector_store_broad_retrieval_scope`
+- `vector_store_acl_disabled`
+- `vector_store_provenance_filter_disabled`
+- `vector_store_trust_filter_disabled`
+- `vector_store_prompt_injection_passthrough`
+- `vector_store_raw_chunk_passthrough`
+- `vector_store_tool_context_injection`
+- `vector_store_approval_required`
 - `env_key_names`
 - `secret_ref_key_names`
 - `values_collected`
 
-Raw vector-store URLs, endpoints, collection names, namespaces, source labels, and secret placeholders are not emitted. Provider names, redacted destination categories, field names, booleans, counts, and credential key names let rules detect durable retrieval poisoning and remote data exposure without copying connector values into the manifest.
+Raw vector-store URLs, endpoints, collection names, namespaces, query selectors, filter values, source labels, raw chunk text, and secret placeholders are not emitted. Provider names, redacted destination categories, filter categories, ACL/provenance/trust-filter posture, prompt-injection passthrough posture, tool-context injection posture, booleans, counts, and credential key names let rules detect durable retrieval poisoning, unauthorized private retrieval, and remote data exposure without copying connector values into the manifest.
 
 ## Automations
 

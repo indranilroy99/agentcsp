@@ -11,3 +11,25 @@ sources:
   - support_tickets
   - customer_notes
   - public_web_pages
+retrieval:
+  enabled: true
+  query_from: customer_ticket_message
+  filters:
+    subject: customer_account_id
+    namespace: "*"
+    source_type:
+      - support_tickets
+      - customer_notes
+      - internal_runbooks
+  top_k: 50
+  include_metadata: true
+  include_raw_chunks: true
+  inject_into_prompt: system
+  pass_to_tools: true
+security:
+  acl: disabled
+  provenance_filter: disabled
+  trust_filter: none
+  prompt_injection_filter: disabled
+  citation_required: false
+  approval_required: false

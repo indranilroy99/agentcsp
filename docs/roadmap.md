@@ -43,6 +43,7 @@
 - Add LLM prompt, response, completion, and semantic cache posture for shared cache replay, sensitive capture, persistence, redaction posture, untrusted inputs, and approval boundaries.
 - Add AI model router and fallback posture for provider routing, automatic failover, sensitive context forwarding, redaction posture, output recording, and approval boundaries.
 - Add AI embedding and indexing posture for third-party embedding providers, vector upserts, sensitive source capture, redaction posture, retention, and approval boundaries.
+- Add RAG retrieval-authorization posture for user-controlled queries and filters, broad private retrieval scope, ACL/provenance/trust filtering, prompt-injection passthrough, and tool-context injection.
 - Add agent package-manifest supply-chain posture for agent/MCP/model/RAG dependencies, risky dependency references, lifecycle scripts, and credential exposure without broad generic SCA noise.
 - Add agent deployment image-provenance posture for mutable remote images, digest pinning, pull policy, privileged host authority, service accounts, host mounts, credential exposure, and approval boundaries.
 - Support allow, deny, approval, redaction, and quarantine recommendations.

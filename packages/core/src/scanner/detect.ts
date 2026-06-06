@@ -3346,6 +3346,19 @@ interface RagConnectorPosture {
   vector_store_sensitive_collection: boolean;
   vector_store_pii_collection: boolean;
   vector_store_namespace_redacted: boolean;
+  vector_store_retrieval_enabled: boolean;
+  vector_store_user_query_input: boolean;
+  vector_store_filter_redacted: boolean;
+  vector_store_filter_count: number;
+  vector_store_filter_kinds: string[];
+  vector_store_broad_retrieval_scope: boolean;
+  vector_store_acl_disabled: boolean;
+  vector_store_provenance_filter_disabled: boolean;
+  vector_store_trust_filter_disabled: boolean;
+  vector_store_prompt_injection_passthrough: boolean;
+  vector_store_raw_chunk_passthrough: boolean;
+  vector_store_tool_context_injection: boolean;
+  vector_store_approval_required: boolean;
   env_key_names: string[];
   secret_ref_key_names: string[];
 }
@@ -11183,6 +11196,14 @@ function classifyRagConnectorConfig(value: unknown, filePath: string): RagConnec
   const untrustedSources = hasVectorUntrustedSourceSignal(fields);
   const sensitiveCollection = hasVectorSensitiveCollectionSignal(fields);
   const piiCollection = hasVectorPiiCollectionSignal(fields);
+  const retrievalEnabled = hasVectorRetrievalEnabledSignal(fields);
+  const filterKinds = collectVectorRetrievalFilterKinds(fields);
+  const filterCount = countVectorRetrievalFilters(fields);
+  const aclDisabled = hasVectorAccessControlDisabledSignal(fields);
+  const provenanceDisabled = hasVectorProvenanceFilterDisabledSignal(fields);
+  const trustFilterDisabled = hasVectorTrustFilterDisabledSignal(fields);
+  const promptInjectionPassthrough = hasVectorPromptInjectionPassthroughSignal(fields);
+  const toolContextInjection = hasVectorToolContextInjectionSignal(fields);
   const namespaceRedacted = fields.some((field) => /(^|\.)(collection|collections|namespace|index|indexes|table|bucket|corpus|dataset)$/iu.test(field.path));
 
   return {
@@ -11202,6 +11223,19 @@ function classifyRagConnectorConfig(value: unknown, filePath: string): RagConnec
     vector_store_sensitive_collection: sensitiveCollection,
     vector_store_pii_collection: piiCollection,
     vector_store_namespace_redacted: namespaceRedacted,
+    vector_store_retrieval_enabled: retrievalEnabled,
+    vector_store_user_query_input: hasVectorUserQueryInputSignal(fields),
+    vector_store_filter_redacted: filterCount > 0,
+    vector_store_filter_count: filterCount,
+    vector_store_filter_kinds: filterKinds,
+    vector_store_broad_retrieval_scope: hasVectorBroadRetrievalScopeSignal(fields, sensitiveCollection, piiCollection),
+    vector_store_acl_disabled: aclDisabled,
+    vector_store_provenance_filter_disabled: provenanceDisabled,
+    vector_store_trust_filter_disabled: trustFilterDisabled,
+    vector_store_prompt_injection_passthrough: promptInjectionPassthrough,
+    vector_store_raw_chunk_passthrough: hasVectorRawChunkPassthroughSignal(fields),
+    vector_store_tool_context_injection: toolContextInjection,
+    vector_store_approval_required: hasVectorRetrievalApprovalRequiredSignal(fields),
     env_key_names: envKeys,
     secret_ref_key_names: secretRefKeys
   };
@@ -11317,7 +11351,128 @@ function hasVectorSensitiveCollectionSignal(fields: RuntimeField[]): boolean {
 }
 
 function hasVectorPiiCollectionSignal(fields: RuntimeField[]): boolean {
-  return fields.some((field) => /\b(pii|email|phone|address|ssn|passport)\b/iu.test(`${field.path} ${fieldValueText(field)}`));
+  return fields.some((field) =>
+    /(?:^|[_\W])(pii|email|phone|address|ssn|passport|account|tenant|customer[_\s-]?id)(?:[_\W]|$)/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    )
+  );
+}
+
+function hasVectorRetrievalEnabledSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => {
+    const text = `${field.path} ${fieldValueText(field)}`;
+    if (/(^|\.)(retrieval|retriever|search|semantic_search|query)(\.|$)/iu.test(field.path)) return truthyConfigValue(field.value);
+    return /\b(retrieval|retriever|semantic[_\s-]?search|vector[_\s-]?search|query[_\s-]?from|top[_\s-]?k)\b/iu.test(text);
+  });
+}
+
+function hasVectorUserQueryInputSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /\b(user|customer|client|ticket|support|issue|comment|message|prompt|request|query[_\s-]?from|input|browser|email|chat)\b/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    )
+  );
+}
+
+function collectVectorRetrievalFilterKinds(fields: RuntimeField[]): string[] {
+  const kinds = new Set<string>();
+  for (const field of fields) {
+    const text = `${field.path} ${fieldValueText(field)}`;
+    if (/(^|\.)(filters?|where|metadata|metadata_filter|metadataFilter)(\.|$)/iu.test(field.path)) kinds.add("metadata_filter");
+    if (/(^|\.)(namespace|namespaces|collection|collections|index|indexes)(\.|$)/iu.test(field.path)) kinds.add("namespace_filter");
+    if (/\b(user|customer|client|ticket|account|tenant|message|request|query|input)\b/iu.test(text)) kinds.add("user_controlled_filter");
+    if (/\b(source|sources|document|documents|provenance|trust|public|internal|private)\b/iu.test(text)) kinds.add("source_filter");
+  }
+  return [...kinds].sort((a, b) => a.localeCompare(b));
+}
+
+function countVectorRetrievalFilters(fields: RuntimeField[]): number {
+  let count = 0;
+  for (const field of fields) {
+    if (/(^|\.)(filters?|where|metadata|metadata_filter|metadataFilter|namespace|namespaces|collection|collections|index|indexes)(\.|$)/iu.test(field.path)) {
+      count += 1;
+    }
+  }
+  return count;
+}
+
+function hasVectorBroadRetrievalScopeSignal(fields: RuntimeField[], sensitiveCollection: boolean, piiCollection: boolean): boolean {
+  if (sensitiveCollection || piiCollection) return true;
+  return fields.some((field) => {
+    const text = `${field.path} ${fieldValueText(field)}`;
+    if (/(^|\.)(top_k|topK|limit|limit_k|max_results|maxResults)$/iu.test(field.path)) {
+      const numeric = Number(field.value);
+      if (Number.isFinite(numeric) && numeric >= 25) return true;
+    }
+    return /\b(\*|all|any|global|workspace|shared|private|internal|confidential|support|customer|wildcard)\b/iu.test(text);
+  });
+}
+
+function hasVectorAccessControlDisabledSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => {
+    const text = `${field.path} ${fieldValueText(field)}`;
+    if (/\b(acl|access[_\s-]?control|authorization|authz|tenant[_\s-]?isolation|row[_\s-]?level|rls)\b/iu.test(field.path)) {
+      return disabledConfigValue(field.value) || /\b(disabled|none|off|public|allow[_\s-]?all|no[_\s-]?acl|no[_\s-]?auth)\b/iu.test(text);
+    }
+    return /\b(acl|access[_\s-]?control|authorization|authz|tenant[_\s-]?isolation|row[_\s-]?level|rls)[_\s-]?(disabled|none|off|public|allow[_\s-]?all)\b/iu.test(
+      text
+    );
+  });
+}
+
+function hasVectorProvenanceFilterDisabledSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => {
+    const text = `${field.path} ${fieldValueText(field)}`;
+    if (/\b(provenance|source[_\s-]?allowlist|source[_\s-]?filter|citation|citations?|grounding|document[_\s-]?trust)\b/iu.test(field.path)) {
+      return disabledConfigValue(field.value) || /\b(disabled|none|off|skip|bypass|not[_\s-]?required|optional)\b/iu.test(text);
+    }
+    return /\b(skip|disable|disabled|no[_\s-]?provenance|no[_\s-]?citation|unverified[_\s-]?source|trust[_\s-]?filter[_\s-]?none)\b/iu.test(text);
+  });
+}
+
+function hasVectorTrustFilterDisabledSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => {
+    const text = `${field.path} ${fieldValueText(field)}`;
+    if (/\b(trust[_\s-]?filter|trusted[_\s-]?sources?|source[_\s-]?trust|allowlist)\b/iu.test(field.path)) {
+      return disabledConfigValue(field.value) || /\b(none|disabled|off|allow[_\s-]?all|untrusted[_\s-]?allowed)\b/iu.test(text);
+    }
+    return /\b(trust[_\s-]?filter|trusted[_\s-]?sources?)[_\s-]?(none|disabled|off|allow[_\s-]?all)\b/iu.test(text);
+  });
+}
+
+function hasVectorPromptInjectionPassthroughSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => {
+    const text = `${field.path} ${fieldValueText(field)}`;
+    if (/\b(prompt[_\s-]?injection|jailbreak|sanitize|sanitiz|redact|filter)\b/iu.test(field.path)) {
+      return disabledConfigValue(field.value) || /\b(disabled|none|raw|passthrough|bypass|skip)\b/iu.test(text);
+    }
+    if (/\b(inject[_\s-]?into[_\s-]?prompt|system|developer|prompt[_\s-]?context)\b/iu.test(text)) return truthyConfigValue(field.value);
+    return false;
+  });
+}
+
+function hasVectorRawChunkPassthroughSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /(?:^|[_\W])(raw[_\s-]?chunks?|include[_\s-]?raw|raw[_\s-]?documents?|full[_\s-]?text|chunk[_\s-]?text)(?:[_\W]|$)/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    ) &&
+    truthyConfigValue(field.value)
+  );
+}
+
+function hasVectorToolContextInjectionSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /\b(pass[_\s-]?to[_\s-]?tools?|tool[_\s-]?context|tool[_\s-]?arguments?|tool[_\s-]?inputs?|use[_\s-]?for[_\s-]?tools?)\b/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    ) && truthyConfigValue(field.value)
+  );
+}
+
+function hasVectorRetrievalApprovalRequiredSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /\b(approval|required[_-]?approval|human[_-]?approval|confirm|confirmation|review|human[_-]?in[_-]?the[_-]?loop)\b/iu.test(field.path) &&
+    truthyConfigValue(field.value)
+  );
 }
 
 function fieldValueText(field: RuntimeField): string {
@@ -11337,7 +11492,7 @@ function truthyConfigValue(value: unknown): boolean {
 }
 
 function isRagConnectorSecurityField(fieldPath: string): boolean {
-  return /provider|endpoint|url|uri|host|dsn|connection|secret|token|api[_-]?key|credential|auth|env|collection|namespace|index|table|bucket|corpus|dataset|write|upsert|insert|ingest|sync|source|document|embedding|vector/iu.test(
+  return /provider|endpoint|url|uri|host|dsn|connection|secret|token|api[_-]?key|credential|auth|env|collection|namespace|index|table|bucket|corpus|dataset|write|upsert|insert|ingest|sync|source|document|embedding|vector|retriev|query|filters?|acl|provenance|trust|citation|prompt[_-]?injection|approval|raw[_-]?chunks?|tools?/iu.test(
     fieldPath
   );
 }

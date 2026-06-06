@@ -1305,13 +1305,46 @@ describe("rule engine", () => {
       vector_store_remote: true,
       vector_store_write_enabled: true,
       vector_store_sync_enabled: true,
-      vector_store_ingests_untrusted_sources: true
+      vector_store_ingests_untrusted_sources: true,
+      vector_store_retrieval_enabled: true,
+      vector_store_user_query_input: true
     });
     expect(ragVectorFindings[0]?.severity).toBe("critical");
     expect(ragVectorFindings[0]?.confidence).toBe("very_high");
     expect(ragVectorFindings[0]?.recommended_control).toBe("require_approval");
     expect(JSON.stringify(ragVectorFindings[0])).not.toContain("${PINECONE_API_KEY}");
     expect(JSON.stringify(ragVectorFindings[0])).not.toContain("agentcsp-demo-vector.example.invalid");
+    const ragRetrievalFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-RAG-005");
+    expect(ragRetrievalFindings).toHaveLength(1);
+    expect(ragRetrievalFindings[0]?.matched_object.path).toBe("rag/vector-store.yaml");
+    expect(ragRetrievalFindings[0]?.matched_object.metadata).toMatchObject({
+      vector_store_provider: "pinecone",
+      vector_store_remote: true,
+      vector_store_retrieval_enabled: true,
+      vector_store_user_query_input: true,
+      vector_store_broad_retrieval_scope: true,
+      vector_store_acl_disabled: true,
+      vector_store_provenance_filter_disabled: true,
+      vector_store_prompt_injection_passthrough: true,
+      vector_store_tool_context_injection: true,
+      vector_store_approval_required: false
+    });
+    expect(ragRetrievalFindings[0]?.matched_object.metadata.vector_store_filter_kinds).toEqual([
+      "metadata_filter",
+      "namespace_filter",
+      "source_filter",
+      "user_controlled_filter"
+    ]);
+    expect(ragRetrievalFindings[0]?.severity).toBe("critical");
+    expect(ragRetrievalFindings[0]?.confidence).toBe("very_high");
+    expect(ragRetrievalFindings[0]?.recommended_control).toBe("quarantine");
+    expect(JSON.stringify(ragRetrievalFindings[0])).not.toContain("${PINECONE_API_KEY}");
+    expect(JSON.stringify(ragRetrievalFindings[0])).not.toContain("agentcsp-demo-vector.example.invalid");
+    expect(JSON.stringify(ragRetrievalFindings[0])).not.toContain("customer-support-escalations");
+    expect(JSON.stringify(ragRetrievalFindings[0])).not.toContain("internal-ticket-memory");
+    expect(JSON.stringify(ragRetrievalFindings[0])).not.toContain("customer_ticket_message");
+    expect(JSON.stringify(ragRetrievalFindings[0])).not.toContain("customer_account_id");
+    expect(JSON.stringify(ragRetrievalFindings[0])).not.toContain("internal_runbooks");
     expect(findings.find((finding) => finding.rule_id === "AGENTCSP-SKILL-001")?.matched_object.path).toBe(
       "skills/exfil-skill/SKILL.md"
     );

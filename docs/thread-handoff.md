@@ -921,6 +921,15 @@ The current iteration adds:
 - graph hardening so explicitly referenced privileged tools and MCP servers remain in bounded attack-path analysis even when newly discovered runtime surfaces increase capability volume
 - scanner, rule, fixture verifier, and redaction coverage proving raw authorization endpoints, MCP URLs, OAuth scopes, selector values, token-cache paths, data-scope labels, and token placeholders stay redacted
 
+## RAG Retrieval Authorization Pass
+
+The current iteration adds:
+
+- first-class redacted metadata for RAG/vector retrieval authorization posture, including user-controlled query inputs, redacted filter categories, broad sensitive retrieval scope, ACL posture, provenance/trust-filter posture, raw chunk passthrough, prompt-injection passthrough, tool-context injection, and approval posture
+- vulnerable fixture coverage for a remote credential-backed vector store that accepts customer-controlled retrieval selectors across broad private support data, injects raw chunks into prompt/tool context, disables ACL/provenance/trust/prompt-injection filters, and does not require approval
+- rule `AGENTCSP-RAG-005` for RAG retrieval authorization bypass that combines remote vector retrieval, user-controlled queries/filters, broad sensitive scope, disabled controls, tool-context injection, credential exposure, and no approval
+- scanner, rule, fixture verifier, and redaction coverage proving raw query selector values, filter values, source labels, vector endpoints, namespaces, collection names, and token placeholders stay redacted
+
 ## Initial Build Recommendation
 
 Start with a CLI-first MVP before building the dashboard:

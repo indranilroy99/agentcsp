@@ -156,6 +156,7 @@ const leakPatterns = [
   /support_tickets/u,
   /customer_notes/u,
   /public_web_pages/u,
+  /internal_runbooks/u,
   /\$\{LANGSMITH_API_KEY\}/u,
   /\$\{MEMORY_STORE_TOKEN\}/u,
   /api\.smith\.langchain\.com/u,
@@ -360,6 +361,7 @@ for (const ruleId of [
   "AGENTCSP-PROMPT-004",
   "AGENTCSP-RAG-003",
   "AGENTCSP-RAG-004",
+  "AGENTCSP-RAG-005",
   "AGENTCSP-SKILL-001",
   "AGENTCSP-SUPPLYCHAIN-001",
   "AGENTCSP-SUPPLYCHAIN-002"
