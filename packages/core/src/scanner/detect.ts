@@ -4366,6 +4366,7 @@ interface HostedAssistantPosture {
   hosted_assistant_tool_count: number;
   hosted_assistant_tool_categories: string[];
   hosted_assistant_privileged_tools: boolean;
+  hosted_assistant_privileged_tool_category_count: number;
   hosted_assistant_code_interpreter_enabled: boolean;
   hosted_assistant_file_search_enabled: boolean;
   hosted_assistant_function_tools_enabled: boolean;
@@ -4377,6 +4378,7 @@ interface HostedAssistantPosture {
   hosted_assistant_memory_write: boolean;
   hosted_assistant_tool_choice_auto: boolean;
   hosted_assistant_parallel_tool_calls: boolean;
+  hosted_assistant_parallel_privileged_tool_fanout: boolean;
   hosted_assistant_tool_resources_redacted: boolean;
   hosted_assistant_vector_store_redacted: boolean;
   hosted_assistant_vector_store_count: number;
@@ -7092,6 +7094,8 @@ function classifyHostedAssistantConfig(value: unknown, filePath: string): Hosted
   const stringValues = collectFieldStringValues(fields);
   const provider = inferHostedAssistantProvider([filePath, ...fields.map((field) => field.path), ...stringValues]);
   const toolCategories = collectHostedAssistantToolCategories(fields);
+  const privilegedToolCategoryCount = countHostedAssistantPrivilegedToolCategories(toolCategories);
+  const parallelToolCalls = hasHostedAssistantParallelToolCalls(fields);
   const vectorStoreCount = countHostedAssistantVectorStoreRefs(fields);
   const fileCount = countHostedAssistantFileRefs(fields);
   const envKeys = uniqueStrings([
@@ -7113,6 +7117,7 @@ function classifyHostedAssistantConfig(value: unknown, filePath: string): Hosted
     hosted_assistant_tool_count: countHostedAssistantToolEntries(value, fields),
     hosted_assistant_tool_categories: toolCategories,
     hosted_assistant_privileged_tools: isHostedAssistantPrivileged(toolCategories),
+    hosted_assistant_privileged_tool_category_count: privilegedToolCategoryCount,
     hosted_assistant_code_interpreter_enabled: toolCategories.includes("code_interpreter"),
     hosted_assistant_file_search_enabled: toolCategories.includes("file_search"),
     hosted_assistant_function_tools_enabled: toolCategories.includes("function_tool"),
@@ -7123,7 +7128,8 @@ function classifyHostedAssistantConfig(value: unknown, filePath: string): Hosted
     hosted_assistant_write_tool_authority: hasHostedAssistantWriteToolAuthority(fields, toolCategories),
     hosted_assistant_memory_write: hasHostedAssistantMemoryWriteSignal(fields, vectorStoreCount),
     hosted_assistant_tool_choice_auto: hasHostedAssistantAutomaticToolChoice(fields, toolCategories),
-    hosted_assistant_parallel_tool_calls: hasHostedAssistantParallelToolCalls(fields),
+    hosted_assistant_parallel_tool_calls: parallelToolCalls,
+    hosted_assistant_parallel_privileged_tool_fanout: parallelToolCalls && privilegedToolCategoryCount > 1,
     hosted_assistant_tool_resources_redacted: hasHostedAssistantToolResourceSignal(fields),
     hosted_assistant_vector_store_redacted: vectorStoreCount > 0,
     hosted_assistant_vector_store_count: vectorStoreCount,
@@ -7232,6 +7238,21 @@ function isHostedAssistantPrivileged(categories: string[]): boolean {
       "state_write"
     ].includes(category)
   );
+}
+
+function countHostedAssistantPrivilegedToolCategories(categories: string[]): number {
+  return categories.filter((category) =>
+    [
+      "code_interpreter",
+      "computer_use",
+      "database_access",
+      "external_response",
+      "function_tool",
+      "mcp_connector",
+      "secret_manager_access",
+      "state_write"
+    ].includes(category)
+  ).length;
 }
 
 function hasHostedAssistantExternalToolAuthority(categories: string[]): boolean {

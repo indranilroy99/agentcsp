@@ -1015,6 +1015,16 @@ The current iteration adds:
 - rule `AGENTCSP-RUNTIME-042` for hosted assistants that combine untrusted input, privileged hosted tools, sensitive context, automatic tool choice, and missing approval
 - scanner, rule, fixture verifier, and redaction coverage proving raw assistant IDs, model names, instructions, tool names, tool descriptions, file IDs, vector-store IDs, data labels, and token placeholders stay redacted
 
+## Hosted Assistant Parallel Fanout Pass
+
+The current iteration adds:
+
+- first-class redacted metadata for hosted assistant parallel privileged tool fanout, including privileged tool category counts and fanout posture
+- vulnerable fixture coverage through the existing support assistant with untrusted thread context, automatic tool choice, parallel tool calls, code interpreter, file-search resources, function tools, disabled guardrails, credentials, and no approval gate
+- safe fixture coverage through the existing read-only assistant with manual/no tool routing, no parallel tool calls, and approval required
+- rule `AGENTCSP-RUNTIME-049` for hosted assistants that combine untrusted context, automatic tool choice, parallel privileged fanout, disabled guardrails, credential exposure, and missing approval
+- scanner, rule, fixture verifier, and redaction coverage proving assistant IDs, model names, tool names, file/vector IDs, data labels, and token placeholders stay redacted
+
 ## Realtime Agent Session Pass
 
 The current iteration adds:

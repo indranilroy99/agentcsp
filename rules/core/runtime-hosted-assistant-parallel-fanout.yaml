@@ -1,0 +1,67 @@
+id: AGENTCSP-RUNTIME-049
+name: Hosted assistant fans untrusted context into parallel privileged tools
+description: A hosted assistant can route untrusted thread or customer context through parallel privileged tool calls while guardrails are disabled and approval is missing.
+category: hosted_assistant_authority
+severity: critical
+maps_to:
+  owasp:
+    - LLM01:2025 Prompt Injection
+    - LLM02:2025 Sensitive Information Disclosure
+    - LLM06:2025 Excessive Agency
+  mitre_atlas:
+    - AML.T0051 LLM Plugin Compromise
+    - AML.T0057 Exfiltration via Cyber Means
+  nist_ai_rmf:
+    - MAP 4.1
+    - MEASURE 2.7
+    - MANAGE 2.4
+match:
+  object_type: runtime_config
+  where:
+    - field: metadata.parsed_hosted_assistant_config
+      op: equals
+      value: true
+    - field: metadata.hosted_assistant_definition_detected
+      op: equals
+      value: true
+    - field: metadata.hosted_assistant_untrusted_input
+      op: equals
+      value: true
+    - field: metadata.hosted_assistant_tool_choice_auto
+      op: equals
+      value: true
+    - field: metadata.hosted_assistant_parallel_tool_calls
+      op: equals
+      value: true
+    - field: metadata.hosted_assistant_parallel_privileged_tool_fanout
+      op: equals
+      value: true
+    - field: metadata.hosted_assistant_code_interpreter_enabled
+      op: equals
+      value: true
+    - field: metadata.hosted_assistant_file_search_enabled
+      op: equals
+      value: true
+    - field: metadata.hosted_assistant_function_tools_enabled
+      op: equals
+      value: true
+    - field: metadata.hosted_assistant_tool_resources_redacted
+      op: equals
+      value: true
+    - field: metadata.hosted_assistant_guardrails_disabled
+      op: equals
+      value: true
+    - field: metadata.hosted_assistant_approval_required
+      op: equals
+      value: false
+    - field: secret_exposure
+      op: equals
+      value: true
+    - field: data_classes
+      op: contains_any
+      value:
+        - confidential
+        - pii
+recommendation:
+  control: require_approval
+  text: Disable parallel privileged tool fanout for hosted assistants handling untrusted context, keep code/function/file-search tools behind explicit approval, and re-enable prompt-injection filtering, output validation, and PII redaction before tool execution.

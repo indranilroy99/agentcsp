@@ -458,6 +458,7 @@ Hosted assistant metadata may include:
 - `hosted_assistant_tool_count`
 - `hosted_assistant_tool_categories`
 - `hosted_assistant_privileged_tools`
+- `hosted_assistant_privileged_tool_category_count`
 - `hosted_assistant_code_interpreter_enabled`
 - `hosted_assistant_file_search_enabled`
 - `hosted_assistant_function_tools_enabled`
@@ -466,6 +467,7 @@ Hosted assistant metadata may include:
 - `hosted_assistant_computer_use_enabled`
 - `hosted_assistant_tool_choice_auto`
 - `hosted_assistant_parallel_tool_calls`
+- `hosted_assistant_parallel_privileged_tool_fanout`
 - `hosted_assistant_vector_store_redacted`
 - `hosted_assistant_file_ids_redacted`
 - `hosted_assistant_sensitive_context`
@@ -477,7 +479,7 @@ Hosted assistant metadata may include:
 - `env_key_names`
 - `secret_ref_key_names`
 
-Raw assistant IDs, assistant names, model names, instructions, tool names, tool descriptions, file IDs, vector-store IDs, thread/message content, data labels, and secret placeholders are not emitted. Provider names, redacted counts, hosted-tool categories, tool-choice posture, file/vector resource posture, guardrail posture, approval posture, and credential key names let rules detect hosted assistants that auto-route untrusted thread or customer context into privileged hosted tools without copying deployable assistant contents into evidence.
+Raw assistant IDs, assistant names, model names, instructions, tool names, tool descriptions, file IDs, vector-store IDs, thread/message content, data labels, and secret placeholders are not emitted. Provider names, redacted counts, hosted-tool categories, privileged tool fanout posture, tool-choice posture, file/vector resource posture, guardrail posture, approval posture, and credential key names let rules detect hosted assistants that auto-route untrusted thread or customer context into privileged hosted tools without copying deployable assistant contents into evidence.
 
 ## Realtime And Voice Agent Session Posture
 

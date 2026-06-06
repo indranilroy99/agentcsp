@@ -92,6 +92,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-046")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-047")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-048")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-049")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-CICD-002")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-AUTOMATION-001")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-AUTOMATION-002")).toBe(true);
@@ -1338,6 +1339,36 @@ describe("rule engine", () => {
     expect(JSON.stringify(runtimeHostedAssistantFindings[0])).not.toContain("file_support_private_case_notes");
     expect(JSON.stringify(runtimeHostedAssistantFindings[0])).not.toContain("vs_customer_support_private");
     expect(JSON.stringify(runtimeHostedAssistantFindings[0])).not.toContain("customer_email_address");
+    const runtimeHostedAssistantFanoutFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-RUNTIME-049");
+    expect(runtimeHostedAssistantFanoutFindings).toHaveLength(1);
+    expect(runtimeHostedAssistantFanoutFindings[0]?.matched_object.path).toBe("assistants/support-assistant.yaml");
+    expect(runtimeHostedAssistantFanoutFindings[0]?.matched_object.metadata).toMatchObject({
+      parsed_hosted_assistant_config: true,
+      hosted_assistant_provider: "openai_assistants",
+      hosted_assistant_definition_detected: true,
+      hosted_assistant_untrusted_input: true,
+      hosted_assistant_tool_choice_auto: true,
+      hosted_assistant_parallel_tool_calls: true,
+      hosted_assistant_parallel_privileged_tool_fanout: true,
+      hosted_assistant_privileged_tool_category_count: 4,
+      hosted_assistant_code_interpreter_enabled: true,
+      hosted_assistant_function_tools_enabled: true,
+      hosted_assistant_tool_resources_redacted: true,
+      hosted_assistant_guardrails_disabled: true,
+      hosted_assistant_approval_required: false
+    });
+    expect(runtimeHostedAssistantFanoutFindings[0]?.severity).toBe("critical");
+    expect(runtimeHostedAssistantFanoutFindings[0]?.confidence).toBe("very_high");
+    expect(runtimeHostedAssistantFanoutFindings[0]?.recommended_control).toBe("require_approval");
+    expect(JSON.stringify(runtimeHostedAssistantFanoutFindings[0])).not.toContain("${OPENAI_ASSISTANT_TOKEN}");
+    expect(JSON.stringify(runtimeHostedAssistantFanoutFindings[0])).not.toContain("asst_support_ops_redacted_by_scanner");
+    expect(JSON.stringify(runtimeHostedAssistantFanoutFindings[0])).not.toContain("customer-remediation-assistant");
+    expect(JSON.stringify(runtimeHostedAssistantFanoutFindings[0])).not.toContain("gpt-4.1");
+    expect(JSON.stringify(runtimeHostedAssistantFanoutFindings[0])).not.toContain("update_customer_record");
+    expect(JSON.stringify(runtimeHostedAssistantFanoutFindings[0])).not.toContain("post_support_slack_reply");
+    expect(JSON.stringify(runtimeHostedAssistantFanoutFindings[0])).not.toContain("file_support_private_case_notes");
+    expect(JSON.stringify(runtimeHostedAssistantFanoutFindings[0])).not.toContain("vs_customer_support_private");
+    expect(JSON.stringify(runtimeHostedAssistantFanoutFindings[0])).not.toContain("customer_email_address");
     const runtimeRealtimeAgentFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-RUNTIME-043");
     expect(runtimeRealtimeAgentFindings).toHaveLength(1);
     expect(runtimeRealtimeAgentFindings[0]?.matched_object.path).toBe("realtime/support-voice-agent.yaml");
