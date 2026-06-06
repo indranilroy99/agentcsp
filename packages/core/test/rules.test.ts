@@ -86,6 +86,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-041")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-042")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-043")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-044")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-CICD-002")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-AUTOMATION-001")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-AUTOMATION-002")).toBe(true);
@@ -323,6 +324,45 @@ describe("rule engine", () => {
     expect(JSON.stringify(runtimeTrainingDatasetFindings[0])).not.toContain("training_account_number");
     expect(JSON.stringify(runtimeTrainingDatasetFindings[0])).not.toContain("training_confidential_agent_notes");
     expect(JSON.stringify(runtimeTrainingDatasetFindings[0])).not.toContain("support_memory_summary");
+    const runtimeFeedbackPipelineFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-RUNTIME-044");
+    expect(runtimeFeedbackPipelineFindings).toHaveLength(1);
+    expect(runtimeFeedbackPipelineFindings[0]?.matched_object.path).toBe("feedback/support-feedback-loop.yaml");
+    expect(runtimeFeedbackPipelineFindings[0]?.matched_object.metadata).toMatchObject({
+      parsed_ai_feedback_pipeline_config: true,
+      ai_feedback_provider: "humanloop",
+      ai_feedback_remote_export: true,
+      ai_feedback_training_promotion_enabled: true,
+      ai_feedback_model_update_enabled: true,
+      ai_feedback_eval_set_write: true,
+      ai_feedback_sensitive_capture: true,
+      ai_feedback_secret_capture: true,
+      ai_feedback_pii_capture: true,
+      ai_feedback_redaction_disabled: true,
+      ai_feedback_untrusted_input: true,
+      ai_feedback_approval_required: false
+    });
+    expect(runtimeFeedbackPipelineFindings[0]?.matched_object.metadata.ai_feedback_capture_categories).toEqual([
+      "browser_context",
+      "completion_context",
+      "feedback_label",
+      "memory_context",
+      "pii_data",
+      "prompt_context",
+      "retrieval_context",
+      "secret_material",
+      "tool_output"
+    ]);
+    expect(runtimeFeedbackPipelineFindings[0]?.severity).toBe("critical");
+    expect(runtimeFeedbackPipelineFindings[0]?.confidence).toBe("very_high");
+    expect(runtimeFeedbackPipelineFindings[0]?.recommended_control).toBe("redact");
+    expect(JSON.stringify(runtimeFeedbackPipelineFindings[0])).not.toContain("${FEEDBACK_PIPELINE_TOKEN}");
+    expect(JSON.stringify(runtimeFeedbackPipelineFindings[0])).not.toContain("feedback.agentcsp-demo.example.invalid");
+    expect(JSON.stringify(runtimeFeedbackPipelineFindings[0])).not.toContain("untrusted_customer_rating");
+    expect(JSON.stringify(runtimeFeedbackPipelineFindings[0])).not.toContain("support_agent_freeform_feedback");
+    expect(JSON.stringify(runtimeFeedbackPipelineFindings[0])).not.toContain("feedback_customer_email");
+    expect(JSON.stringify(runtimeFeedbackPipelineFindings[0])).not.toContain("feedback_account_number");
+    expect(JSON.stringify(runtimeFeedbackPipelineFindings[0])).not.toContain("feedback_authorization_header");
+    expect(JSON.stringify(runtimeFeedbackPipelineFindings[0])).not.toContain("support-feedback-rlhf-dataset");
     const runtimePromptCacheFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-RUNTIME-029");
     expect(runtimePromptCacheFindings).toHaveLength(1);
     expect(runtimePromptCacheFindings[0]?.matched_object.path).toBe("prompt-cache/llm-response-cache.yaml");

@@ -681,6 +681,72 @@ describe("scanner", () => {
     expect(JSON.stringify(trainingDatasetConfig)).not.toContain("training_account_number");
     expect(JSON.stringify(trainingDatasetConfig)).not.toContain("training_confidential_agent_notes");
     expect(JSON.stringify(trainingDatasetConfig)).not.toContain("support_memory_summary");
+    const feedbackPipelineConfig = surfaces.runtime_config.find((surface) => surface.path === "feedback/support-feedback-loop.yaml");
+    expect(feedbackPipelineConfig).toBeDefined();
+    expect(feedbackPipelineConfig).toMatchObject({
+      trust_level: "third_party",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["call", "execute", "read", "remember", "send", "write"],
+      external_reach: true,
+      secret_exposure: true,
+      side_effect: true,
+      reversible: false,
+      untrusted_to_privileged: true
+    });
+    expect(feedbackPipelineConfig?.metadata).toMatchObject({
+      content_redacted: true,
+      values_collected: false,
+      parsed_ai_feedback_pipeline_config: true,
+      ai_feedback_provider: "humanloop",
+      ai_feedback_collection_enabled: true,
+      ai_feedback_remote_export: true,
+      ai_feedback_destination_redacted: true,
+      ai_feedback_destination_count: 3,
+      ai_feedback_prompt_capture: true,
+      ai_feedback_completion_capture: true,
+      ai_feedback_tool_output_capture: true,
+      ai_feedback_retrieval_capture: true,
+      ai_feedback_memory_capture: true,
+      ai_feedback_browser_capture: true,
+      ai_feedback_feedback_label_capture: true,
+      ai_feedback_secret_capture: true,
+      ai_feedback_sensitive_capture: true,
+      ai_feedback_pii_capture: true,
+      ai_feedback_untrusted_input: true,
+      ai_feedback_training_promotion_enabled: true,
+      ai_feedback_model_update_enabled: true,
+      ai_feedback_eval_set_write: true,
+      ai_feedback_redaction_disabled: true,
+      ai_feedback_consent_required: false,
+      ai_feedback_retention_enabled: true,
+      ai_feedback_approval_required: false
+    });
+    expect(feedbackPipelineConfig?.metadata.ai_feedback_destination_kinds).toEqual([
+      "configured_feedback_destination",
+      "http_feedback_endpoint",
+      "managed_feedback_provider"
+    ]);
+    expect(feedbackPipelineConfig?.metadata.ai_feedback_capture_categories).toEqual([
+      "browser_context",
+      "completion_context",
+      "feedback_label",
+      "memory_context",
+      "pii_data",
+      "prompt_context",
+      "retrieval_context",
+      "secret_material",
+      "tool_output"
+    ]);
+    expect(feedbackPipelineConfig?.metadata.env_key_names).toEqual(["FEEDBACK_PIPELINE_TOKEN"]);
+    expect(feedbackPipelineConfig?.metadata.secret_ref_key_names).toEqual(["FEEDBACK_PIPELINE_TOKEN"]);
+    expect(JSON.stringify(feedbackPipelineConfig)).not.toContain("${FEEDBACK_PIPELINE_TOKEN}");
+    expect(JSON.stringify(feedbackPipelineConfig)).not.toContain("feedback.agentcsp-demo.example.invalid");
+    expect(JSON.stringify(feedbackPipelineConfig)).not.toContain("untrusted_customer_rating");
+    expect(JSON.stringify(feedbackPipelineConfig)).not.toContain("support_agent_freeform_feedback");
+    expect(JSON.stringify(feedbackPipelineConfig)).not.toContain("feedback_customer_email");
+    expect(JSON.stringify(feedbackPipelineConfig)).not.toContain("feedback_account_number");
+    expect(JSON.stringify(feedbackPipelineConfig)).not.toContain("feedback_authorization_header");
+    expect(JSON.stringify(feedbackPipelineConfig)).not.toContain("support-feedback-rlhf-dataset");
     const promptCacheConfig = surfaces.runtime_config.find(
       (surface) => surface.path === "prompt-cache/llm-response-cache.yaml"
     );
@@ -2988,6 +3054,56 @@ describe("scanner", () => {
       realtime_agent_approval_required: true
     });
     expect(JSON.stringify(realtimeAgent)).not.toContain("approved-realtime-model");
+  });
+
+  it("keeps local approved feedback loops scoped", async () => {
+    const files = await walkProject({
+      root_path: safeFixtureRoot,
+      output_path: ".agentcsp",
+      formats: ["json", "md"],
+      include_hidden: true,
+      include_logs: false,
+      max_file_size_bytes: 1024 * 1024,
+      max_files: 5000,
+      quiet: true
+    });
+    const surfaces = await detectSurfaces(files);
+    const feedbackPipeline = surfaces.runtime_config.find((surface) => surface.path === "feedback/read-feedback-loop.yaml");
+
+    expect(feedbackPipeline).toMatchObject({
+      trust_level: "project",
+      data_classes: ["unknown"],
+      actions: ["call", "read", "remember"],
+      external_reach: false,
+      secret_exposure: false,
+      untrusted_to_privileged: false
+    });
+    expect(feedbackPipeline?.metadata).toMatchObject({
+      parsed_ai_feedback_pipeline_config: true,
+      ai_feedback_provider: "generic_feedback",
+      ai_feedback_collection_enabled: true,
+      ai_feedback_remote_export: false,
+      ai_feedback_destination_redacted: false,
+      ai_feedback_destination_count: 0,
+      ai_feedback_prompt_capture: false,
+      ai_feedback_completion_capture: false,
+      ai_feedback_tool_output_capture: false,
+      ai_feedback_retrieval_capture: false,
+      ai_feedback_memory_capture: false,
+      ai_feedback_feedback_label_capture: true,
+      ai_feedback_secret_capture: false,
+      ai_feedback_sensitive_capture: false,
+      ai_feedback_pii_capture: false,
+      ai_feedback_untrusted_input: false,
+      ai_feedback_training_promotion_enabled: false,
+      ai_feedback_model_update_enabled: false,
+      ai_feedback_eval_set_write: false,
+      ai_feedback_redaction_disabled: false,
+      ai_feedback_consent_required: true,
+      ai_feedback_approval_required: true
+    });
+    expect(feedbackPipeline?.metadata.ai_feedback_capture_categories).toEqual(["feedback_label"]);
+    expect(JSON.stringify(feedbackPipeline)).not.toContain("local_feedback");
   });
 
   it("does not treat negated safety instructions as granted authority", async () => {

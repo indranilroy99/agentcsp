@@ -1006,6 +1006,16 @@ The current iteration adds:
 - rule `AGENTCSP-RUNTIME-043` for realtime agents that combine external caller/audio input, privileged tool authority, sensitive context, disabled prompt-injection filtering, and missing approval
 - scanner, rule, fixture verifier, and redaction coverage proving raw endpoints, model names, tool names, caller labels, recording labels, data-scope labels, and token placeholders stay redacted
 
+## AI Feedback And RLHF Pipeline Pass
+
+The current iteration adds:
+
+- first-class redacted metadata for AI feedback, human review, ratings, annotations, labeling, preference, and RLHF pipelines, including remote feedback destination categories, captured prompt/completion/tool/retrieval/memory/browser/PII/secret categories, training/eval/model-update promotion posture, redaction, consent, retention, and approval controls
+- vulnerable fixture coverage for a feedback loop that collects untrusted customer ratings and freeform feedback, captures raw production prompts, completions, tool outputs, retrieval context, memory, browser context, PII, and secret fields, and promotes them into training/eval/model-update paths without redaction, consent, or approval
+- safe fixture coverage for a local approved feedback queue that captures only feedback labels, keeps model-update and eval promotion disabled, and keeps redaction, consent, and approval controls enabled
+- rule `AGENTCSP-RUNTIME-044` for feedback/RLHF pipelines that combine untrusted sensitive capture, remote export, training promotion, disabled redaction, and missing approval
+- scanner, rule, fixture verifier, and redaction coverage proving raw feedback endpoints, source labels, data-field labels, dataset names, and token placeholders stay redacted
+
 ## Initial Build Recommendation
 
 Start with a CLI-first MVP before building the dashboard:

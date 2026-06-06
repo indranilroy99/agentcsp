@@ -984,6 +984,44 @@ Model router metadata may include:
 
 Raw provider URLs, model aliases, fallback labels, routing strategy values, source labels, prompts, tool outputs, retrieval context, memory content, and secret placeholders are not emitted. Router framework names, redacted destination categories, fallback posture, context booleans, redaction posture, approval posture, and credential key names let rules detect sensitive third-party model failover without copying routed payloads or provider endpoints into the manifest.
 
+## AI Feedback And RLHF Pipelines
+
+AI feedback, human review, rating, annotation, labeling, preference, and RLHF pipeline configs are normalized into `runtime_config` objects when feedback-oriented JSON, YAML, or TOML files are discovered.
+
+Feedback pipeline metadata may include:
+
+- `parsed_ai_feedback_pipeline_config`
+- `ai_feedback_fields`
+- `ai_feedback_provider`
+- `ai_feedback_collection_enabled`
+- `ai_feedback_remote_export`
+- `ai_feedback_destination_redacted`
+- `ai_feedback_destination_count`
+- `ai_feedback_destination_kinds`
+- `ai_feedback_capture_categories`
+- `ai_feedback_prompt_capture`
+- `ai_feedback_completion_capture`
+- `ai_feedback_tool_output_capture`
+- `ai_feedback_retrieval_capture`
+- `ai_feedback_memory_capture`
+- `ai_feedback_browser_capture`
+- `ai_feedback_feedback_label_capture`
+- `ai_feedback_secret_capture`
+- `ai_feedback_sensitive_capture`
+- `ai_feedback_pii_capture`
+- `ai_feedback_untrusted_input`
+- `ai_feedback_training_promotion_enabled`
+- `ai_feedback_model_update_enabled`
+- `ai_feedback_eval_set_write`
+- `ai_feedback_redaction_disabled`
+- `ai_feedback_consent_required`
+- `ai_feedback_retention_enabled`
+- `ai_feedback_approval_required`
+- `env_key_names`
+- `secret_ref_key_names`
+
+Raw feedback endpoints, project names, source labels, feedback labels, reviewer notes, dataset names, prompt text, completion text, tool traces, retrieval chunks, memory content, PII field labels, and secret placeholders are not emitted. Provider names, redacted destination categories, capture categories, training/eval/model-promotion posture, redaction/consent/approval posture, and credential key names let rules detect feedback loops that can convert tainted production interactions into future model behavior or evaluation data.
+
 ## AI Embedding Pipeline Boundary
 
 AI embedding, indexing, vectorization, document-index, and RAG-index pipeline configs are normalized into `runtime_config` objects when embedding-oriented directories or filenames are discovered.

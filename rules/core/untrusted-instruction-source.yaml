@@ -98,6 +98,9 @@ match:
     - field: metadata.parsed_ai_training_dataset_config
       op: not_equals
       value: true
+    - field: metadata.parsed_ai_feedback_pipeline_config
+      op: not_equals
+      value: true
     - field: metadata.parsed_llm_prompt_cache_config
       op: not_equals
       value: true

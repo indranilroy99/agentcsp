@@ -1,0 +1,24 @@
+provider: local_feedback
+feedback_collection:
+  enabled: true
+  local_review_queue: true
+  internal_reviewers_only: true
+  capture:
+    feedback_labels: true
+    prompts: false
+    completions: false
+    tool_outputs: false
+    retrieval_context: false
+    memory: false
+  promotion:
+    auto_promote_to_training_dataset: false
+    update_model_policy: false
+    write_eval_set: false
+  redaction:
+    enabled: true
+    pii_filter: true
+    secret_filter: true
+    anonymization: true
+  consent_required: true
+  approval_required: true
+  retention_days: 14

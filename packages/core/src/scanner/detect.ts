@@ -202,6 +202,11 @@ export async function detectSurfaces(files: WalkedFile[]): Promise<DetectedSurfa
       continue;
     }
 
+    if (isAiFeedbackPipelineConfigPath(file.relativePath, basename)) {
+      detectAiFeedbackPipelineConfig(file, text, surfaces);
+      continue;
+    }
+
     if (isAiTrainingDatasetConfigPath(file.relativePath, basename)) {
       detectAiTrainingDatasetConfig(file, text, surfaces);
       continue;
@@ -959,6 +964,96 @@ function detectAiTrainingDatasetConfig(file: WalkedFile, text: string | undefine
         (posture.ai_training_dataset_sensitive_capture ||
           posture.ai_training_dataset_secret_capture ||
           posture.ai_training_dataset_remote_upload)) ||
+      isUntrustedToPrivileged(object)
+  });
+}
+
+function detectAiFeedbackPipelineConfig(file: WalkedFile, text: string | undefined, surfaces: DetectedSurfaces): void {
+  const parsed = parseStructuredConfig(text ?? "", file.relativePath);
+  if (parsed.parseFailed) {
+    addDiagnostic(surfaces, file, {
+      parser: parsed.parser ?? "structured_config",
+      code: "AI_FEEDBACK_PIPELINE_CONFIG_PARSE_FAILED",
+      reason: "AI feedback, RLHF, or human-review pipeline configuration could not be parsed. Raw content was redacted."
+    });
+  }
+
+  const posture = classifyAiFeedbackPipelineConfig(parsed.value, file.relativePath);
+  const actions = new Set<ActionType>(["call", "read"]);
+  if (posture.ai_feedback_remote_export) actions.add("send");
+  if (
+    posture.ai_feedback_training_promotion_enabled ||
+    posture.ai_feedback_model_update_enabled ||
+    posture.ai_feedback_eval_set_write
+  ) {
+    actions.add("write");
+  }
+  if (posture.ai_feedback_model_update_enabled) actions.add("execute");
+  if (
+    posture.ai_feedback_retention_enabled ||
+    posture.ai_feedback_training_promotion_enabled ||
+    posture.ai_feedback_eval_set_write
+  ) {
+    actions.add("remember");
+  }
+
+  const dataClasses = new Set<SurfaceObject["data_classes"][number]>(["unknown"]);
+  if (
+    posture.ai_feedback_secret_capture ||
+    posture.env_key_names.some(isCredentialLikeKeyName) ||
+    posture.secret_ref_key_names.length > 0
+  ) {
+    dataClasses.add("credential");
+  }
+  if (posture.ai_feedback_sensitive_capture || posture.ai_feedback_untrusted_input) dataClasses.add("confidential");
+  if (posture.ai_feedback_pii_capture) dataClasses.add("pii");
+  if (dataClasses.size > 1) dataClasses.delete("unknown");
+
+  const object = createSurfaceObject({
+    type: "runtime_config",
+    name: path.basename(file.relativePath),
+    path: file.relativePath,
+    trust_level: posture.ai_feedback_remote_export ? "third_party" : inferTrustLevel(file.relativePath),
+    data_classes: uniqueDataClasses([...dataClasses] as SurfaceObject["data_classes"]),
+    actions: uniqueActions([...actions]),
+    side_effect:
+      posture.ai_feedback_collection_enabled ||
+      posture.ai_feedback_remote_export ||
+      posture.ai_feedback_training_promotion_enabled ||
+      posture.ai_feedback_model_update_enabled ||
+      posture.ai_feedback_eval_set_write ||
+      posture.ai_feedback_retention_enabled,
+    reversible:
+      !posture.ai_feedback_remote_export &&
+      !posture.ai_feedback_training_promotion_enabled &&
+      !posture.ai_feedback_model_update_enabled &&
+      !posture.ai_feedback_retention_enabled,
+    external_reach: posture.ai_feedback_remote_export,
+    secret_exposure:
+      posture.ai_feedback_secret_capture ||
+      posture.env_key_names.some(isCredentialLikeKeyName) ||
+      posture.secret_ref_key_names.length > 0,
+    reason: "AI feedback or RLHF pipeline configuration discovered as feedback-to-training data flow.",
+    metadata: {
+      content_redacted: true,
+      values_collected: false,
+      parsed_ai_feedback_pipeline_config: Boolean(parsed.value) && !parsed.parseFailed,
+      parse_error: parsed.parseFailed,
+      ...posture
+    }
+  });
+  surfaces.runtime_config.push({
+    ...object,
+    untrusted_to_privileged:
+      (posture.ai_feedback_untrusted_input &&
+        (posture.ai_feedback_training_promotion_enabled ||
+          posture.ai_feedback_model_update_enabled ||
+          posture.ai_feedback_eval_set_write) &&
+        (posture.ai_feedback_sensitive_capture ||
+          posture.ai_feedback_secret_capture ||
+          posture.ai_feedback_pii_capture ||
+          posture.ai_feedback_remote_export) &&
+        !posture.ai_feedback_approval_required) ||
       isUntrustedToPrivileged(object)
   });
 }
@@ -3118,6 +3213,27 @@ function isAiEvalHarnessConfigPath(relativePath: string, basename: string): bool
   return evalName || (evalDirectory && configName);
 }
 
+function isAiFeedbackPipelineConfigPath(relativePath: string, basename: string): boolean {
+  const normalized = relativePath.replaceAll("\\", "/").toLowerCase();
+  const lowerBase = basename.toLowerCase();
+  if (!/\.(json|ya?ml|toml)$/iu.test(lowerBase)) return false;
+  if (normalized.startsWith(".github/workflows/")) return false;
+  if (normalized.startsWith("rules/")) return false;
+  const segments = normalized.split("/").slice(0, -1);
+  const feedbackDirectory = segments.some((segment) =>
+    /^(feedback|human-feedback|human_feedback|rlhf|review|reviews|ratings?|annotations?|labeling|labelling|label-studio|label_studio|quality|qa-feedback|qa_feedback)$/iu.test(
+      segment
+    )
+  );
+  const feedbackName = /(?:feedback|human[-_]?feedback|rlhf|review[-_]?queue|rating[-_]?collector|annotation|label[-_]?studio|thumbs[-_]?feedback|quality[-_]?review)/iu.test(
+    lowerBase
+  );
+  const configName = /(?:config|settings|pipeline|collector|sink|export|dataset|review|feedback|ratings?|labels?|annotations?|training|evals?)/iu.test(
+    lowerBase
+  );
+  return feedbackName || (feedbackDirectory && configName);
+}
+
 function isAiTrainingDatasetConfigPath(relativePath: string, basename: string): boolean {
   const normalized = relativePath.replaceAll("\\", "/").toLowerCase();
   const lowerBase = basename.toLowerCase();
@@ -4711,6 +4827,37 @@ interface AiTrainingDatasetPosture {
   ai_training_dataset_redaction_disabled: boolean;
   ai_training_dataset_retention_enabled: boolean;
   ai_training_dataset_approval_required: boolean;
+  env_key_names: string[];
+  secret_ref_key_names: string[];
+}
+
+interface AiFeedbackPipelinePosture {
+  ai_feedback_fields: string[];
+  ai_feedback_provider?: string;
+  ai_feedback_collection_enabled: boolean;
+  ai_feedback_remote_export: boolean;
+  ai_feedback_destination_redacted: boolean;
+  ai_feedback_destination_count: number;
+  ai_feedback_destination_kinds: string[];
+  ai_feedback_capture_categories: string[];
+  ai_feedback_prompt_capture: boolean;
+  ai_feedback_completion_capture: boolean;
+  ai_feedback_tool_output_capture: boolean;
+  ai_feedback_retrieval_capture: boolean;
+  ai_feedback_memory_capture: boolean;
+  ai_feedback_browser_capture: boolean;
+  ai_feedback_feedback_label_capture: boolean;
+  ai_feedback_secret_capture: boolean;
+  ai_feedback_sensitive_capture: boolean;
+  ai_feedback_pii_capture: boolean;
+  ai_feedback_untrusted_input: boolean;
+  ai_feedback_training_promotion_enabled: boolean;
+  ai_feedback_model_update_enabled: boolean;
+  ai_feedback_eval_set_write: boolean;
+  ai_feedback_redaction_disabled: boolean;
+  ai_feedback_consent_required: boolean;
+  ai_feedback_retention_enabled: boolean;
+  ai_feedback_approval_required: boolean;
   env_key_names: string[];
   secret_ref_key_names: string[];
 }
@@ -12042,6 +12189,255 @@ function hasAiEmbeddingApprovalRequiredSignal(fields: RuntimeField[]): boolean {
 
 function isAiEmbeddingSecurityField(fieldPath: string): boolean {
   return /provider|embedding|embed|model|endpoint|url|uri|host|base[_-]?url|api[_-]?base|vector|index|upsert|destination|sink|store|sync|batch|chunk|document|source|capture|include|prompt|message|tool|retrieval|rag|memory|browser|raw|redact|sanitize|mask|pii|sensitive|secret|token|credential|auth|env|retention|approval/iu.test(
+    fieldPath
+  );
+}
+
+function classifyAiFeedbackPipelineConfig(value: unknown, filePath: string): AiFeedbackPipelinePosture {
+  const fields = flattenRuntimeFields(value);
+  const stringValues = collectFieldStringValues(fields);
+  const provider = inferAiFeedbackProvider([filePath, ...fields.map((field) => field.path), ...stringValues]);
+  const destination = classifyAiFeedbackDestination(fields, provider);
+  const captureCategories = collectAiFeedbackCaptureCategories(fields);
+  const envKeys = uniqueStrings([
+    ...collectEnvKeyNamesFromConfig(value).filter(isLikelyEnvKeyName),
+    ...extractEnvironmentReferenceKeys(stringValues)
+  ]);
+  const secretRefKeys = extractSecretReferenceKeys(stringValues);
+
+  return {
+    ai_feedback_fields: fields
+      .map((field) => field.path)
+      .filter((fieldPath) => isAiFeedbackSecurityField(fieldPath))
+      .sort((a, b) => a.localeCompare(b)),
+    ai_feedback_provider: provider,
+    ai_feedback_collection_enabled: Boolean(provider) || hasAiFeedbackCollectionEnabledSignal(fields),
+    ai_feedback_remote_export: destination.remote,
+    ai_feedback_destination_redacted: destination.destinationCount > 0,
+    ai_feedback_destination_count: destination.destinationCount,
+    ai_feedback_destination_kinds: destination.destinationKinds,
+    ai_feedback_capture_categories: captureCategories,
+    ai_feedback_prompt_capture: captureCategories.includes("prompt_context"),
+    ai_feedback_completion_capture: captureCategories.includes("completion_context"),
+    ai_feedback_tool_output_capture: captureCategories.includes("tool_output"),
+    ai_feedback_retrieval_capture: captureCategories.includes("retrieval_context"),
+    ai_feedback_memory_capture: captureCategories.includes("memory_context"),
+    ai_feedback_browser_capture: captureCategories.includes("browser_context"),
+    ai_feedback_feedback_label_capture: captureCategories.includes("feedback_label"),
+    ai_feedback_secret_capture: captureCategories.includes("secret_material"),
+    ai_feedback_sensitive_capture:
+      captureCategories.some((category) =>
+        ["prompt_context", "completion_context", "tool_output", "retrieval_context", "memory_context", "browser_context", "secret_material"].includes(category)
+      ) || hasAiFeedbackSensitiveDataSignal(fields),
+    ai_feedback_pii_capture: captureCategories.includes("pii_data") || hasAiFeedbackPiiDataSignal(fields),
+    ai_feedback_untrusted_input: hasAiFeedbackUntrustedInputSignal(fields),
+    ai_feedback_training_promotion_enabled: hasAiFeedbackTrainingPromotionSignal(fields),
+    ai_feedback_model_update_enabled: hasAiFeedbackModelUpdateSignal(fields),
+    ai_feedback_eval_set_write: hasAiFeedbackEvalSetWriteSignal(fields),
+    ai_feedback_redaction_disabled: hasAiFeedbackRedactionDisabledSignal(fields),
+    ai_feedback_consent_required: hasAiFeedbackConsentRequiredSignal(fields),
+    ai_feedback_retention_enabled: hasAiFeedbackRetentionSignal(fields),
+    ai_feedback_approval_required: hasAiFeedbackApprovalRequiredSignal(fields),
+    env_key_names: envKeys,
+    secret_ref_key_names: secretRefKeys
+  };
+}
+
+function inferAiFeedbackProvider(candidates: string[]): string | undefined {
+  const text = aiFeedbackSignalText(candidates.join(" "));
+  const providers: Array<[string, RegExp]> = [
+    ["humanloop", /\bhumanloop\b/iu],
+    ["braintrust", /\bbraintrust\b/iu],
+    ["langsmith", /\blangsmith\b|\bsmith\.langchain\b/iu],
+    ["label_studio", /\blabel studio\b/iu],
+    ["openai_feedback", /\b(openai feedback|openai fine tune|openai eval)\b/iu],
+    ["generic_feedback", /\b(feedback|rlhf|human feedback|review queue|rating collector|annotation|labeling|labelling)\b/iu]
+  ];
+  return providers.find(([, pattern]) => pattern.test(text))?.[0];
+}
+
+function classifyAiFeedbackDestination(
+  fields: RuntimeField[],
+  provider: string | undefined
+): { remote: boolean; destinationCount: number; destinationKinds: string[] } {
+  const destinationKinds = new Set<string>();
+  let destinationCount = 0;
+  const managedProviders = new Set(["humanloop", "braintrust", "langsmith", "openai_feedback"]);
+  if (provider && managedProviders.has(provider)) {
+    destinationKinds.add("managed_feedback_provider");
+    destinationCount += 1;
+  }
+
+  for (const field of fields) {
+    const values = Array.isArray(field.value) ? field.value.map(String) : [String(field.value ?? "")];
+    for (const value of values) {
+      if (parseRemoteHttpUrl(value)) {
+        destinationKinds.add("http_feedback_endpoint");
+        destinationCount += 1;
+      }
+    }
+    if (/(^|\.)(endpoint|url|uri|host|dsn|bucket|dataset|queue|sink|destination|upload|project|workspace)$/iu.test(field.path)) {
+      const text = aiFeedbackSignalText(values.join(" "));
+      if (/\b(api|cloud|feedback|review|rating|annotation|dataset|training|eval|humanloop|braintrust|langsmith|openai)\b/iu.test(text)) {
+        destinationKinds.add("configured_feedback_destination");
+        destinationCount += 1;
+      }
+    }
+  }
+
+  return {
+    remote: destinationCount > 0,
+    destinationCount,
+    destinationKinds: [...destinationKinds].sort((a, b) => a.localeCompare(b))
+  };
+}
+
+function collectAiFeedbackCaptureCategories(fields: RuntimeField[]): string[] {
+  const categories = new Set<string>();
+  for (const field of fields) {
+    const text = aiFeedbackSignalText(`${field.path} ${fieldValueText(field)}`);
+    if (!hasAiFeedbackCaptureLikeSignal(field)) continue;
+    if (/(?:^|[_\W])(feedback|rating|ratings|score|thumbs|label|labels|annotation|review|reviewer|preference)(?:[_\W]|$)/iu.test(text)) {
+      categories.add("feedback_label");
+    }
+    if (/(?:^|[_\W])(prompt|prompts|system|developer|message|conversation|chat|raw input)(?:[_\W]|$)/iu.test(text)) {
+      categories.add("prompt_context");
+    }
+    if (/(?:^|[_\W])(completion|completions|response|responses|generation|assistant output|model output)(?:[_\W]|$)/iu.test(text)) {
+      categories.add("completion_context");
+    }
+    if (/(?:^|[_\W])(tool outputs?|function outputs?|command outputs?|mcp|observation|trace|traces)(?:[_\W]|$)/iu.test(text)) {
+      categories.add("tool_output");
+    }
+    if (/(?:^|[_\W])(retrieval context|retrieval|retrieved|rag|documents?|vector|embedding|source chunks?)(?:[_\W]|$)/iu.test(text)) {
+      categories.add("retrieval_context");
+    }
+    if (/(?:^|[_\W])(memory|memories|history|transcript|session|state|summary)(?:[_\W]|$)/iu.test(text)) {
+      categories.add("memory_context");
+    }
+    if (/(?:^|[_\W])(browser|web page|page content|click|form|navigation|screenshot)(?:[_\W]|$)/iu.test(text)) {
+      categories.add("browser_context");
+    }
+    if (/(?:^|[_\W])(secret|token|credential|api key|password|authorization|vault|cookie)(?:[_\W]|$)/iu.test(text)) {
+      categories.add("secret_material");
+    }
+    if (/(?:^|[_\W])(pii|email|phone|address|ssn|passport|customer id|account number|account id)(?:[_\W]|$)/iu.test(text)) {
+      categories.add("pii_data");
+    }
+  }
+  return [...categories].sort((a, b) => a.localeCompare(b));
+}
+
+function hasAiFeedbackCaptureLikeSignal(field: RuntimeField): boolean {
+  const text = aiFeedbackSignalText(`${field.path} ${fieldValueText(field)}`);
+  if (/\b(exclude|drop|deny|redact|redaction|mask|scrub|sanitize|pii_filter|secret_filter|anonym|consent|approval)\b/iu.test(field.path)) {
+    return false;
+  }
+  return /(?:^|[_\W])(include|capture|collect|record|export|upload|dataset|feedback|rating|review|label|annotation|raw|source|inputs?|outputs?|logs?|records?|trace)(?:[_\W]|$)/iu.test(
+    text
+  ) && truthyConfigValue(field.value);
+}
+
+function hasAiFeedbackCollectionEnabledSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => /\b(feedback|rating|review|rlhf|annotation|labeling|labelling|human feedback)\b/iu.test(aiFeedbackSignalText(`${field.path} ${fieldValueText(field)}`)) && truthyConfigValue(field.value));
+}
+
+function hasAiFeedbackTrainingPromotionSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /\b(auto promote|promote|training dataset|fine tune dataset|rlhf dataset|train from feedback|feedback training|dataset write)\b/iu.test(
+      aiFeedbackSignalText(`${field.path} ${fieldValueText(field)}`)
+    ) && truthyConfigValue(field.value)
+  );
+}
+
+function hasAiFeedbackModelUpdateSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /\b(model update|update model|fine tune|finetune|train model|policy update|reward model|preference model|distill)\b/iu.test(
+      aiFeedbackSignalText(`${field.path} ${fieldValueText(field)}`)
+    ) && truthyConfigValue(field.value)
+  );
+}
+
+function hasAiFeedbackEvalSetWriteSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /\b(eval set|evaluation set|golden set|benchmark|test set|write eval|create eval)\b/iu.test(
+      aiFeedbackSignalText(`${field.path} ${fieldValueText(field)}`)
+    ) && truthyConfigValue(field.value)
+  );
+}
+
+function hasAiFeedbackSensitiveDataSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    !isAiFeedbackControlField(field.path) &&
+    /\b(customer|client|ticket|support|internal|confidential|private|proprietary|sensitive|account|billing|payment|record|case|profile|note|incident|transcript)\b/iu.test(
+      aiFeedbackSignalText(`${field.path} ${fieldValueText(field)}`)
+    )
+  );
+}
+
+function hasAiFeedbackPiiDataSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    !isAiFeedbackControlField(field.path) &&
+    /(?:^|[_\W])(pii|email|phone|address|ssn|passport|dob|date of birth|customer id|user id|account id|account number)(?:[_\W]|$)/iu.test(
+      aiFeedbackSignalText(`${field.path} ${fieldValueText(field)}`)
+    )
+  );
+}
+
+function hasAiFeedbackUntrustedInputSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    !isAiFeedbackControlField(field.path) &&
+    /\b(untrusted|user|customer|client|ticket|support|issue|comment|message|prompt|retrieved|rag|document|email|chat|inbound|external|public|web page|browser output|tool output)\b/iu.test(
+      aiFeedbackSignalText(`${field.path} ${fieldValueText(field)}`)
+    )
+  );
+}
+
+function hasAiFeedbackRedactionDisabledSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => {
+    const text = aiFeedbackSignalText(`${field.path} ${fieldValueText(field)}`);
+    if (/(^|\.)(include_raw|raw|raw_payload|raw_records?|raw_feedback)$/iu.test(field.path)) return truthyConfigValue(field.value);
+    if (/\b(redact|redaction|sanitize|sanitiz|mask|scrub|pii filter|secret filter|anonymize|anonymization)\b/iu.test(text)) {
+      return disabledConfigValue(field.value) || /\b(disabled|false|off|none|raw|full)\b/iu.test(text);
+    }
+    return /\b(raw payloads|capture full payloads|redaction disabled|disable redaction|no anonymization)\b/iu.test(text) && truthyConfigValue(field.value);
+  });
+}
+
+function hasAiFeedbackConsentRequiredSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /\b(consent|required consent|user consent|data consent|opt in|privacy review)\b/iu.test(aiFeedbackSignalText(field.path)) &&
+    truthyConfigValue(field.value)
+  );
+}
+
+function hasAiFeedbackRetentionSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /(?:^|[_\W])(retention|retain|persist|archive|history|store|save|keep|ttl|days)(?:[_\W]|$)/iu.test(
+      aiFeedbackSignalText(`${field.path} ${fieldValueText(field)}`)
+    ) && truthyConfigValue(field.value)
+  );
+}
+
+function hasAiFeedbackApprovalRequiredSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /\b(approval|required approval|human approval|confirm|confirmation|review gate|human in the loop)\b/iu.test(aiFeedbackSignalText(field.path)) &&
+    truthyConfigValue(field.value)
+  );
+}
+
+function aiFeedbackSignalText(text: string): string {
+  return text.toLowerCase().replaceAll("_", " ").replaceAll("-", " ");
+}
+
+function isAiFeedbackControlField(fieldPath: string): boolean {
+  return /redaction|redact|sanitize|mask|scrub|pii[_-]?filter|secret[_-]?filter|anonym|consent|approval|internal[_-]?reviewers?|local[_-]?review[_-]?queue|retention|ttl|days/iu.test(
+    fieldPath
+  );
+}
+
+function isAiFeedbackSecurityField(fieldPath: string): boolean {
+  return /provider|feedback|rating|review|annotation|label|rlhf|preference|reward|dataset|training|train|fine[_-]?tune|finetune|eval|model|policy|endpoint|url|uri|host|bucket|destination|upload|export|capture|include|prompt|completion|message|response|tool|retrieval|rag|memory|browser|source|input|output|record|log|trace|raw|redact|sanitize|mask|anonym|consent|pii|sensitive|secret|token|credential|auth|env|retention|approval/iu.test(
     fieldPath
   );
 }

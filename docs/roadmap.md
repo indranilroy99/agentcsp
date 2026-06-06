@@ -46,6 +46,7 @@
 - Add container runtime isolation posture for privileged containers, Docker socket mounts, host paths, host namespaces, dangerous capabilities, untrusted inputs, and approval boundaries.
 - Add code interpreter and notebook runtime posture for model-generated code execution, network/package installation, filesystem access, credential mounts, output persistence, untrusted inputs, and approval boundaries.
 - Add AI training and fine-tuning dataset posture for prompts, completions, tool outputs, retrieval context, memory, browser context, PII, secrets, model-update authority, redaction posture, and approval boundaries.
+- Add AI feedback and RLHF pipeline posture for ratings, reviewer notes, production interactions, tool traces, retrieval, memory, PII, secrets, training/eval promotion, consent, redaction, and approval boundaries.
 - Add LLM prompt, response, completion, and semantic cache posture for shared cache replay, sensitive capture, persistence, redaction posture, untrusted inputs, and approval boundaries.
 - Add AI model router and fallback posture for provider routing, automatic failover, sensitive context forwarding, redaction posture, output recording, and approval boundaries.
 - Add AI embedding and indexing posture for third-party embedding providers, vector upserts, sensitive source capture, redaction posture, retention, and approval boundaries.
