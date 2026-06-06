@@ -648,6 +648,15 @@ The current iteration adds:
 - rule `AGENTCSP-AUTOMATION-003` for untrusted workflow event input reaching privileged agent automation
 - scanner, rule, fixture verifier, and redaction coverage proving raw GitHub event expressions and event payload content stay redacted
 
+## Inbound Agent Trigger Authority Pass
+
+The current iteration adds:
+
+- first-class redacted metadata for inbound email, chat, ticket, webhook, and queue triggers that pass external message content into agent execution
+- vulnerable fixture coverage for a support inbox trigger that can invoke agent tools, reply externally, write customer state, persist memory, and access browser/database/secret-manager authority with credentials and no approval gate
+- rule `AGENTCSP-RUNTIME-014` for inbound untrusted messages that can drive privileged agent tools
+- scanner, rule, fixture verifier, and redaction coverage proving raw mailbox names, webhook URLs, sender addresses, labels, agent names, prompt fields, and token placeholders stay redacted
+
 ## Initial Build Recommendation
 
 Start with a CLI-first MVP before building the dashboard:

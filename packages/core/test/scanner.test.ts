@@ -30,6 +30,7 @@ describe("scanner", () => {
       "SLACK_WEBHOOK_URL",
       "SUPPORT_DB_PASSWORD",
       "SUPPORT_DB_URL",
+      "SUPPORT_INBOX_TOKEN",
       "TICKETING_MCP_TOKEN",
       "VAULT_AGENT_TOKEN"
     ]);
@@ -612,6 +613,65 @@ describe("scanner", () => {
     expect(JSON.stringify(secretManagerConfig)).not.toContain("prod-support-read");
     expect(JSON.stringify(secretManagerConfig)).not.toContain("agent-secret-broker");
     expect(JSON.stringify(secretManagerConfig)).not.toContain("vault_customer_credentials");
+    const inboundTriggerConfig = surfaces.runtime_config.find((surface) => surface.path === "inbox/support-triage.yaml");
+    expect(inboundTriggerConfig).toBeDefined();
+    expect(inboundTriggerConfig).toMatchObject({
+      trust_level: "third_party",
+      external_reach: true,
+      secret_exposure: true,
+      side_effect: true,
+      reversible: false,
+      untrusted_to_privileged: true
+    });
+    expect(inboundTriggerConfig?.metadata).toMatchObject({
+      content_redacted: true,
+      values_collected: false,
+      parsed_inbound_trigger_config: true,
+      inbound_trigger_provider: "gmail",
+      inbound_trigger_external_source: true,
+      inbound_trigger_source_redacted: true,
+      inbound_trigger_payload_redacted: true,
+      inbound_trigger_invokes_agent: true,
+      inbound_trigger_invokes_tools: true,
+      inbound_trigger_write_authority: true,
+      inbound_trigger_external_response: true,
+      inbound_trigger_memory_write: true,
+      inbound_trigger_sensitive_context: true,
+      inbound_trigger_pii_context: true,
+      inbound_trigger_attachment_context: true,
+      inbound_trigger_approval_required: false
+    });
+    expect(inboundTriggerConfig?.metadata.inbound_trigger_source_categories).toEqual([
+      "chat_message",
+      "email_message",
+      "ticket_comment",
+      "webhook_payload"
+    ]);
+    expect(inboundTriggerConfig?.metadata.inbound_trigger_payload_categories).toEqual([
+      "attachment",
+      "message_body",
+      "message_title",
+      "sender_identity"
+    ]);
+    expect(inboundTriggerConfig?.metadata.inbound_trigger_tool_authority_categories).toEqual([
+      "browser_action",
+      "database_access",
+      "external_response",
+      "memory_write",
+      "secret_manager_access",
+      "state_write",
+      "tool_call"
+    ]);
+    expect(inboundTriggerConfig?.metadata.env_key_names).toEqual(["SUPPORT_INBOX_TOKEN"]);
+    expect(inboundTriggerConfig?.metadata.secret_ref_key_names).toEqual(["SUPPORT_INBOX_TOKEN"]);
+    expect(inboundTriggerConfig?.data_classes).toEqual(["confidential", "credential", "pii"]);
+    expect(inboundTriggerConfig?.actions).toEqual(["call", "execute", "publish", "read", "remember", "send", "write"]);
+    expect(JSON.stringify(inboundTriggerConfig)).not.toContain("${SUPPORT_INBOX_TOKEN}");
+    expect(JSON.stringify(inboundTriggerConfig)).not.toContain("mail-router.example.invalid");
+    expect(JSON.stringify(inboundTriggerConfig)).not.toContain("secops-support@example.invalid");
+    expect(JSON.stringify(inboundTriggerConfig)).not.toContain("support-triage-agent");
+    expect(JSON.stringify(inboundTriggerConfig)).not.toContain("inbound_customer_email");
+    expect(JSON.stringify(inboundTriggerConfig)).not.toContain("message.body");
     expect(surfaces.ci_cd.length).toBe(1);
     expect(surfaces.ci_cd[0]?.metadata).toMatchObject({
       pull_request_trigger: true,

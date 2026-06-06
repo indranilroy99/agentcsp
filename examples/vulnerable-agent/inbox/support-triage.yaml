@@ -1,0 +1,34 @@
+provider: gmail
+endpoint: https://mail-router.example.invalid/hooks/support-agent
+auth:
+  token: ${SUPPORT_INBOX_TOKEN}
+sources:
+  - support mailbox secops-support@example.invalid
+  - inbound customer email
+  - slack escalation message
+  - ticket comment
+payload_fields:
+  - sender_email
+  - subject
+  - message_body
+  - attachments
+  - customer_account_id
+agent:
+  name: support-triage-agent
+  prompt_source: message.body
+  invoke_agent: true
+  tool_access:
+    - browser
+    - support_db
+    - slack_reply
+    - vault_secret_lookup
+  actions:
+    - call_tools
+    - reply_to_sender
+    - update_customer_record
+    - remember_case_notes
+  approval_required: false
+data_scope:
+  - inbound_customer_email
+  - support_case_notes
+  - attachment_text

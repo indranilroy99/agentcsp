@@ -281,6 +281,36 @@ Browser session metadata may include:
 
 Raw cookie files, storage-state files, profile paths, origins, browser endpoints, hostnames, and secret placeholders are not emitted. Provider names, broad-origin categories, authenticated-session booleans, untrusted-navigation signals, click/form authority, path-redaction flags, and credential key names let rules detect browser-agent account-action risk without copying browser state into the manifest.
 
+## Inbound Agent Trigger Posture
+
+Inbound email, chat, ticket, webhook, queue, and listener configs are also normalized into `runtime_config` objects when common inbound-agent trigger files are discovered.
+
+Inbound trigger metadata may include:
+
+- `parsed_inbound_trigger_config`
+- `inbound_trigger_fields`
+- `inbound_trigger_provider`
+- `inbound_trigger_external_source`
+- `inbound_trigger_source_redacted`
+- `inbound_trigger_source_count`
+- `inbound_trigger_source_categories`
+- `inbound_trigger_payload_redacted`
+- `inbound_trigger_payload_categories`
+- `inbound_trigger_invokes_agent`
+- `inbound_trigger_invokes_tools`
+- `inbound_trigger_tool_authority_categories`
+- `inbound_trigger_write_authority`
+- `inbound_trigger_external_response`
+- `inbound_trigger_memory_write`
+- `inbound_trigger_sensitive_context`
+- `inbound_trigger_pii_context`
+- `inbound_trigger_attachment_context`
+- `inbound_trigger_approval_required`
+- `env_key_names`
+- `secret_ref_key_names`
+
+Raw mailbox names, sender addresses, queue names, webhook URLs, prompt-field expressions, labels, channel names, agent names, and payload content are not emitted. Provider names, source categories, payload categories, tool-authority categories, approval posture, data-class booleans, and credential key names let rules detect direct paths from untrusted inbound messages into privileged agent execution.
+
 ## SaaS And API Connector Posture
 
 SaaS, API, ticketing, messaging, email, CRM, and repository-service connector configs are also normalized into `runtime_config` objects when common connector configuration files are discovered.

@@ -127,6 +127,11 @@ export async function detectSurfaces(files: WalkedFile[]): Promise<DetectedSurfa
       continue;
     }
 
+    if (isInboundAgentTriggerConfigPath(file.relativePath, basename)) {
+      detectInboundAgentTriggerConfig(file, text, surfaces);
+      continue;
+    }
+
     if (isSaasConnectorConfigPath(file.relativePath, basename)) {
       detectSaasConnectorConfig(file, text, surfaces);
       continue;
@@ -571,6 +576,67 @@ function detectBrowserSessionConfig(file: WalkedFile, text: string | undefined, 
   });
 }
 
+function detectInboundAgentTriggerConfig(file: WalkedFile, text: string | undefined, surfaces: DetectedSurfaces): void {
+  const parsed = parseStructuredConfig(text ?? "", file.relativePath);
+  if (parsed.parseFailed) {
+    addDiagnostic(surfaces, file, {
+      parser: parsed.parser ?? "structured_config",
+      code: "INBOUND_TRIGGER_CONFIG_PARSE_FAILED",
+      reason: "Inbound agent trigger configuration could not be parsed. Raw content was redacted."
+    });
+  }
+
+  const posture = classifyInboundAgentTriggerConfig(parsed.value, file.relativePath);
+  const actions = new Set<ActionType>(["read", "call"]);
+  if (posture.inbound_trigger_external_source) actions.add("send");
+  if (posture.inbound_trigger_invokes_tools) actions.add("execute");
+  if (posture.inbound_trigger_write_authority) actions.add("write");
+  if (posture.inbound_trigger_external_response) actions.add("publish");
+  if (posture.inbound_trigger_memory_write) actions.add("remember");
+
+  const dataClasses = new Set<SurfaceObject["data_classes"][number]>(["unknown"]);
+  if (posture.env_key_names.some(isCredentialLikeKeyName) || posture.secret_ref_key_names.length > 0) dataClasses.add("credential");
+  if (posture.inbound_trigger_sensitive_context) dataClasses.add("confidential");
+  if (posture.inbound_trigger_pii_context) dataClasses.add("pii");
+  if (dataClasses.size > 1) dataClasses.delete("unknown");
+
+  const object = createSurfaceObject({
+    type: "runtime_config",
+    name: path.basename(file.relativePath),
+    path: file.relativePath,
+    trust_level: posture.inbound_trigger_external_source ? "third_party" : inferTrustLevel(file.relativePath),
+    data_classes: uniqueDataClasses([...dataClasses] as SurfaceObject["data_classes"]),
+    actions: uniqueActions([...actions]),
+    side_effect:
+      posture.inbound_trigger_invokes_tools ||
+      posture.inbound_trigger_write_authority ||
+      posture.inbound_trigger_external_response ||
+      posture.inbound_trigger_memory_write,
+    reversible: !posture.inbound_trigger_write_authority && !posture.inbound_trigger_external_response,
+    external_reach: posture.inbound_trigger_external_source || posture.inbound_trigger_external_response,
+    secret_exposure: posture.env_key_names.some(isCredentialLikeKeyName) || posture.secret_ref_key_names.length > 0,
+    reason: "Inbound agent trigger configuration discovered as external context-to-authority posture.",
+    metadata: {
+      content_redacted: true,
+      values_collected: false,
+      parsed_inbound_trigger_config: Boolean(parsed.value) && !parsed.parseFailed,
+      parse_error: parsed.parseFailed,
+      ...posture
+    }
+  });
+  surfaces.runtime_config.push({
+    ...object,
+    untrusted_to_privileged:
+      (posture.inbound_trigger_external_source &&
+        posture.inbound_trigger_invokes_agent &&
+        (posture.inbound_trigger_invokes_tools ||
+          posture.inbound_trigger_write_authority ||
+          posture.inbound_trigger_external_response ||
+          posture.inbound_trigger_memory_write)) ||
+      isUntrustedToPrivileged(object)
+  });
+}
+
 function detectSaasConnectorConfig(file: WalkedFile, text: string | undefined, surfaces: DetectedSurfaces): void {
   const parsed = parseStructuredConfig(text ?? "", file.relativePath);
   if (parsed.parseFailed) {
@@ -857,6 +923,23 @@ function isBrowserSessionConfigPath(relativePath: string, basename: string): boo
   return browserName || (browserDirectory && configName);
 }
 
+function isInboundAgentTriggerConfigPath(relativePath: string, basename: string): boolean {
+  const normalized = relativePath.replaceAll("\\", "/").toLowerCase();
+  const lowerBase = basename.toLowerCase();
+  if (!/\.(json|ya?ml|toml)$/iu.test(lowerBase)) return false;
+  const segments = normalized.split("/").slice(0, -1);
+  const triggerDirectory = segments.some((segment) =>
+    /^(inbox|inbound|triggers?|events?|webhooks?|listeners?|receivers?|mail|email|messages?|chat|queue|queues|tickets?)$/iu.test(segment)
+  );
+  const triggerName = /(?:inbound|inbox|trigger|event|webhook|listener|receiver|mail|email|message|chat|ticket|triage|intake)/iu.test(
+    lowerBase
+  );
+  const configName = /(?:config|settings|connector|trigger|event|webhook|listener|receiver|inbox|source|intake|triage|agent)/iu.test(
+    lowerBase
+  );
+  return triggerName || (triggerDirectory && configName);
+}
+
 function isSaasConnectorConfigPath(relativePath: string, basename: string): boolean {
   const normalized = relativePath.replaceAll("\\", "/").toLowerCase();
   const lowerBase = basename.toLowerCase();
@@ -1038,6 +1121,29 @@ interface BrowserSessionPosture {
   secret_ref_key_names: string[];
 }
 
+interface InboundAgentTriggerPosture {
+  inbound_trigger_fields: string[];
+  inbound_trigger_provider?: string;
+  inbound_trigger_external_source: boolean;
+  inbound_trigger_source_redacted: boolean;
+  inbound_trigger_source_count: number;
+  inbound_trigger_source_categories: string[];
+  inbound_trigger_payload_redacted: boolean;
+  inbound_trigger_payload_categories: string[];
+  inbound_trigger_invokes_agent: boolean;
+  inbound_trigger_invokes_tools: boolean;
+  inbound_trigger_tool_authority_categories: string[];
+  inbound_trigger_write_authority: boolean;
+  inbound_trigger_external_response: boolean;
+  inbound_trigger_memory_write: boolean;
+  inbound_trigger_sensitive_context: boolean;
+  inbound_trigger_pii_context: boolean;
+  inbound_trigger_attachment_context: boolean;
+  inbound_trigger_approval_required: boolean;
+  env_key_names: string[];
+  secret_ref_key_names: string[];
+}
+
 interface SaasConnectorPosture {
   saas_connector_fields: string[];
   saas_connector_provider?: string;
@@ -1134,10 +1240,7 @@ function classifyDatabaseConnectorConfig(value: unknown, filePath: string): Data
   const stringValues = collectFieldStringValues(fields);
   const provider = inferDatabaseProvider([filePath, ...fields.map((field) => field.path), ...stringValues]);
   const remote = classifyDatabaseRemote(fields, provider);
-  const envKeys = uniqueStrings([
-    ...collectEnvKeyNamesFromConfig(value),
-    ...extractEnvironmentReferenceKeys(stringValues)
-  ]);
+  const envKeys = extractEnvironmentReferenceKeys(stringValues);
   const secretRefKeys = extractDatabaseSecretReferenceKeys(fields);
 
   return {
@@ -1492,6 +1595,205 @@ function hasBrowserPiiDataSignal(fields: RuntimeField[]): boolean {
 
 function isBrowserSessionSecurityField(fieldPath: string): boolean {
   return /provider|browser|playwright|puppeteer|selenium|profile|user[_-]?data|storage|session|cookie|auth|token|credential|password|origin|domain|host|url|debug|cdp|devtools|navigation|action|click|form|submit|upload|download|source|input|data|scope|permission|approval/iu.test(
+    fieldPath
+  );
+}
+
+function classifyInboundAgentTriggerConfig(value: unknown, filePath: string): InboundAgentTriggerPosture {
+  const fields = flattenRuntimeFields(value);
+  const stringValues = collectFieldStringValues(fields);
+  const provider = inferInboundTriggerProvider([filePath, ...fields.map((field) => field.path), ...stringValues]);
+  const sourceCategories = collectInboundTriggerSourceCategories(fields, provider);
+  const payloadCategories = collectInboundTriggerPayloadCategories(fields);
+  const toolAuthorityCategories = collectInboundTriggerToolAuthorityCategories(fields);
+  const envKeys = extractEnvironmentReferenceKeys(stringValues);
+  const secretRefKeys = extractSecretReferenceKeys(stringValues);
+
+  return {
+    inbound_trigger_fields: fields
+      .map((field) => field.path)
+      .filter((fieldPath) => isInboundTriggerSecurityField(fieldPath))
+      .sort((a, b) => a.localeCompare(b)),
+    inbound_trigger_provider: provider,
+    inbound_trigger_external_source: sourceCategories.length > 0,
+    inbound_trigger_source_redacted: sourceCategories.length > 0,
+    inbound_trigger_source_count: sourceCategories.length,
+    inbound_trigger_source_categories: sourceCategories,
+    inbound_trigger_payload_redacted: payloadCategories.length > 0,
+    inbound_trigger_payload_categories: payloadCategories,
+    inbound_trigger_invokes_agent: hasInboundTriggerAgentInvocationSignal(fields),
+    inbound_trigger_invokes_tools: toolAuthorityCategories.length > 0 || hasInboundTriggerToolInvocationSignal(fields),
+    inbound_trigger_tool_authority_categories: toolAuthorityCategories,
+    inbound_trigger_write_authority: hasInboundTriggerWriteAuthoritySignal(fields, toolAuthorityCategories),
+    inbound_trigger_external_response: hasInboundTriggerExternalResponseSignal(fields, toolAuthorityCategories),
+    inbound_trigger_memory_write: hasInboundTriggerMemoryWriteSignal(fields, toolAuthorityCategories),
+    inbound_trigger_sensitive_context: hasInboundTriggerSensitiveContextSignal(fields),
+    inbound_trigger_pii_context: hasInboundTriggerPiiContextSignal(fields),
+    inbound_trigger_attachment_context: hasInboundTriggerAttachmentSignal(fields),
+    inbound_trigger_approval_required: hasInboundTriggerApprovalRequiredSignal(fields),
+    env_key_names: envKeys,
+    secret_ref_key_names: secretRefKeys
+  };
+}
+
+function inferInboundTriggerProvider(candidates: string[]): string | undefined {
+  const text = candidates.join(" ").toLowerCase();
+  const providers: Array<[string, RegExp]> = [
+    ["gmail", /\bgmail\b|googleapis\.com\/auth\/gmail/iu],
+    ["outlook", /\boutlook\b|graph\.microsoft\.com|microsoft graph/iu],
+    ["slack", /\bslack\b|slack\.com/iu],
+    ["teams", /\bteams\b|microsoft teams/iu],
+    ["jira", /\bjira\b|atlassian/iu],
+    ["zendesk", /\bzendesk\b/iu],
+    ["github", /\bgithub\b|api\.github\.com/iu],
+    ["linear", /\blinear\b/iu],
+    ["servicenow", /\bservice[-_\s]?now\b/iu],
+    ["webhook", /\bwebhook\b|https?:\/\//iu],
+    ["queue", /\b(queue|sqs|pubsub|kafka|rabbitmq|nats)\b/iu]
+  ];
+  return providers.find(([, pattern]) => pattern.test(text))?.[0];
+}
+
+function collectInboundTriggerSourceCategories(fields: RuntimeField[], provider: string | undefined): string[] {
+  const categories = new Set<string>();
+  if (provider) {
+    if (["gmail", "outlook"].includes(provider)) categories.add("email_message");
+    if (["slack", "teams"].includes(provider)) categories.add("chat_message");
+    if (["jira", "zendesk", "linear", "servicenow"].includes(provider)) categories.add("ticket_comment");
+    if (provider === "github") categories.add("issue_or_pr_comment");
+    if (provider === "webhook") categories.add("webhook_payload");
+    if (provider === "queue") categories.add("message_queue");
+  }
+  for (const field of fields) {
+    const text = `${field.path} ${fieldValueText(field)}`.toLowerCase();
+    if (/\b(email|mailbox|imap|smtp|gmail|outlook|message[_\s-]?body)\b/iu.test(text)) categories.add("email_message");
+    if (/\b(slack|teams|discord|chat|channel|dm|direct[_\s-]?message)\b/iu.test(text)) categories.add("chat_message");
+    if (/\b(ticket|jira|zendesk|linear|servicenow|support[_\s-]?case|case[_\s-]?comment)\b/iu.test(text)) {
+      categories.add("ticket_comment");
+    }
+    if (/\b(github|gitlab|issue[_\s-]?comment|pull[_\s-]?request|pr[_\s-]?comment|review[_\s-]?comment)\b/iu.test(text)) {
+      categories.add("issue_or_pr_comment");
+    }
+    if (/\b(webhook|http[_\s-]?event|callback|receiver|listener)\b/iu.test(text) || fieldStringValues(field).some(parseRemoteHttpUrl)) {
+      categories.add("webhook_payload");
+    }
+    if (/\b(queue|sqs|pubsub|kafka|rabbitmq|nats|topic|subscription)\b/iu.test(text)) categories.add("message_queue");
+  }
+  return [...categories].sort((a, b) => a.localeCompare(b));
+}
+
+function fieldStringValues(field: RuntimeField): string[] {
+  if (Array.isArray(field.value)) return field.value.map(String);
+  if (typeof field.value === "string") return [field.value];
+  return [];
+}
+
+function collectInboundTriggerPayloadCategories(fields: RuntimeField[]): string[] {
+  const categories = new Set<string>();
+  for (const field of fields) {
+    const text = `${field.path} ${fieldValueText(field)}`.toLowerCase();
+    if (/\b(body|text|message|content|prompt|comment|description|summary|transcript)\b/iu.test(text)) categories.add("message_body");
+    if (/\b(subject|title|headline)\b/iu.test(text)) categories.add("message_title");
+    if (/\b(sender|from|author|user|customer|client|requester)\b/iu.test(text)) categories.add("sender_identity");
+    if (/\b(headers?|metadata|properties)\b/iu.test(text)) categories.add("message_metadata");
+    if (/(?:^|[_\W])(attachment|attachments|file|files|upload|document|image|pdf|csv)(?:[_\W]|$)/iu.test(text)) {
+      categories.add("attachment");
+    }
+  }
+  return [...categories].sort((a, b) => a.localeCompare(b));
+}
+
+function collectInboundTriggerToolAuthorityCategories(fields: RuntimeField[]): string[] {
+  const categories = new Set<string>();
+  for (const field of fields) {
+    const text = `${field.path} ${fieldValueText(field)}`.toLowerCase();
+    if (/\b(tool|tools|mcp|function|function_call|call_tools|invoke_tools)\b/iu.test(text)) categories.add("tool_call");
+    if (/\b(browser|playwright|puppeteer|web[_\s-]?agent|click|form|navigate)\b/iu.test(text)) categories.add("browser_action");
+    if (/\b(database|db|sql|query|support_db|warehouse)\b/iu.test(text)) categories.add("database_access");
+    if (/(?:^|[_\W])(vault|secret|secrets|secret[_\s-]?manager|key[_\s-]?vault|credential)(?:[_\W]|$)/iu.test(text)) {
+      categories.add("secret_manager_access");
+    }
+    if (/\b(reply|respond|send|email|message|slack|post|publish|comment|ticket[_\s-]?update)\b/iu.test(text)) {
+      categories.add("external_response");
+    }
+    if (/(?:^|[_\W])(memory|remember|store|persist|session[_\s-]?state)(?:[_\W]|$)/iu.test(text)) categories.add("memory_write");
+    if (/(?:^|[_\W])(write|update|create|delete|assign|close|escalate|merge|approve)(?:[_\W]|$)/iu.test(text)) {
+      categories.add("state_write");
+    }
+  }
+  return [...categories].sort((a, b) => a.localeCompare(b));
+}
+
+function hasInboundTriggerAgentInvocationSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /\b(agent|assistant|bot|autogen|crew|langgraph|codex|claude|run[_\s-]?agent|invoke[_\s-]?agent|triage[_\s-]?agent)\b/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    )
+  );
+}
+
+function hasInboundTriggerToolInvocationSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /\b(call[_\s-]?tools?|invoke[_\s-]?tools?|tool[_\s-]?access|mcp|function[_\s-]?call|browser|database|vault|secret[_\s-]?manager)\b/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    )
+  );
+}
+
+function hasInboundTriggerWriteAuthoritySignal(fields: RuntimeField[], categories: string[]): boolean {
+  return categories.some((category) => ["database_access", "external_response", "memory_write", "state_write"].includes(category)) ||
+    fields.some((field) =>
+      /\b(write|update|create|delete|reply|respond|send|post|publish|comment|close|assign|escalate|remember|persist)\b/iu.test(
+        `${field.path} ${fieldValueText(field)}`
+      )
+    );
+}
+
+function hasInboundTriggerExternalResponseSignal(fields: RuntimeField[], categories: string[]): boolean {
+  return categories.includes("external_response") ||
+    fields.some((field) => /\b(reply|respond|send|post|publish|comment|email|slack|message|webhook)\b/iu.test(`${field.path} ${fieldValueText(field)}`));
+}
+
+function hasInboundTriggerMemoryWriteSignal(fields: RuntimeField[], categories: string[]): boolean {
+  return categories.includes("memory_write") ||
+    fields.some((field) =>
+      /(?:^|[_\W])(memory|remember|store|persist|session[_\s-]?state|transcript)(?:[_\W]|$)/iu.test(
+        `${field.path} ${fieldValueText(field)}`
+      )
+    );
+}
+
+function hasInboundTriggerSensitiveContextSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /\b(customer|client|ticket|support|internal|confidential|private|proprietary|sensitive|account|billing|payment|order|record|case|profile|note|incident)\b/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    )
+  );
+}
+
+function hasInboundTriggerPiiContextSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /(?:^|[_\W])(pii|email|phone|address|ssn|passport|dob|date[_\s-]?of[_\s-]?birth|customer[_-]?id|user[_-]?id|account[_-]?id)(?:[_\W]|$)/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    )
+  );
+}
+
+function hasInboundTriggerAttachmentSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /\b(attachment|attachments|file|files|upload|document|image|pdf|csv|spreadsheet)\b/iu.test(`${field.path} ${fieldValueText(field)}`)
+  );
+}
+
+function hasInboundTriggerApprovalRequiredSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /approval|required[_-]?approval|human[_-]?approval|confirm|confirmation|moderation|review/iu.test(field.path) &&
+    truthyConfigValue(field.value)
+  );
+}
+
+function isInboundTriggerSecurityField(fieldPath: string): boolean {
+  return /provider|source|input|event|trigger|webhook|listener|receiver|mail|email|message|chat|ticket|issue|comment|payload|body|attachment|agent|assistant|bot|tool|mcp|browser|database|secret|memory|reply|respond|send|write|post|publish|approval|auth|token|credential|scope|permission|url|host|endpoint|queue|topic|subscription/iu.test(
     fieldPath
   );
 }

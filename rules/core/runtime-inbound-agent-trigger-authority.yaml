@@ -1,0 +1,44 @@
+id: AGENTCSP-RUNTIME-014
+name: Inbound untrusted message can drive privileged agent tools
+description: An inbound email, chat, ticket, webhook, or queue trigger passes external message content into an agent that can invoke tools, write state, respond externally, or persist memory with credential-backed authority and no approval gate.
+category: inbound_agent_trigger_authority
+severity: critical
+maps_to:
+  owasp:
+    - LLM01:2025 Prompt Injection
+    - LLM02:2025 Sensitive Information Disclosure
+    - LLM06:2025 Excessive Agency
+  mitre_atlas:
+    - AML.T0051 LLM Prompt Injection
+    - AML.T0057 Exfiltration via Cyber Means
+  nist_ai_rmf:
+    - MAP 5.1
+    - MEASURE 2.9
+    - MANAGE 2.4
+match:
+  object_type: runtime_config
+  where:
+    - field: metadata.parsed_inbound_trigger_config
+      op: equals
+      value: true
+    - field: metadata.inbound_trigger_external_source
+      op: equals
+      value: true
+    - field: metadata.inbound_trigger_invokes_agent
+      op: equals
+      value: true
+    - field: metadata.inbound_trigger_invokes_tools
+      op: equals
+      value: true
+    - field: metadata.inbound_trigger_write_authority
+      op: equals
+      value: true
+    - field: metadata.inbound_trigger_approval_required
+      op: equals
+      value: false
+    - field: secret_exposure
+      op: equals
+      value: true
+recommendation:
+  control: require_approval
+  text: Separate inbound untrusted message ingestion from privileged agent execution, require approval before tool calls or external replies, and sanitize or summarize inbound content before it can control tools, memory, or customer-system writes.

@@ -53,6 +53,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-011")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-012")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-013")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-014")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-CICD-002")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-AUTOMATION-001")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-AUTOMATION-002")).toBe(true);
@@ -228,6 +229,41 @@ describe("rule engine", () => {
     expect(JSON.stringify(runtimeSecretManagerFindings[0])).not.toContain("vault.example.invalid");
     expect(JSON.stringify(runtimeSecretManagerFindings[0])).not.toContain("secret/data/prod/customer-support");
     expect(JSON.stringify(runtimeSecretManagerFindings[0])).not.toContain("prod-support-read");
+    const runtimeInboundTriggerFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-RUNTIME-014");
+    expect(runtimeInboundTriggerFindings).toHaveLength(1);
+    expect(runtimeInboundTriggerFindings[0]?.matched_object.path).toBe("inbox/support-triage.yaml");
+    expect(runtimeInboundTriggerFindings[0]?.matched_object.metadata).toMatchObject({
+      inbound_trigger_provider: "gmail",
+      inbound_trigger_external_source: true,
+      inbound_trigger_invokes_agent: true,
+      inbound_trigger_invokes_tools: true,
+      inbound_trigger_write_authority: true,
+      inbound_trigger_external_response: true,
+      inbound_trigger_memory_write: true,
+      inbound_trigger_approval_required: false
+    });
+    expect(runtimeInboundTriggerFindings[0]?.matched_object.metadata.inbound_trigger_source_categories).toEqual([
+      "chat_message",
+      "email_message",
+      "ticket_comment",
+      "webhook_payload"
+    ]);
+    expect(runtimeInboundTriggerFindings[0]?.matched_object.metadata.inbound_trigger_tool_authority_categories).toEqual([
+      "browser_action",
+      "database_access",
+      "external_response",
+      "memory_write",
+      "secret_manager_access",
+      "state_write",
+      "tool_call"
+    ]);
+    expect(runtimeInboundTriggerFindings[0]?.severity).toBe("critical");
+    expect(runtimeInboundTriggerFindings[0]?.confidence).toBe("very_high");
+    expect(runtimeInboundTriggerFindings[0]?.recommended_control).toBe("require_approval");
+    expect(JSON.stringify(runtimeInboundTriggerFindings[0])).not.toContain("${SUPPORT_INBOX_TOKEN}");
+    expect(JSON.stringify(runtimeInboundTriggerFindings[0])).not.toContain("mail-router.example.invalid");
+    expect(JSON.stringify(runtimeInboundTriggerFindings[0])).not.toContain("secops-support@example.invalid");
+    expect(JSON.stringify(runtimeInboundTriggerFindings[0])).not.toContain("support-triage-agent");
     const automationAgentFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-AUTOMATION-002");
     expect(automationAgentFindings).toHaveLength(1);
     expect(automationAgentFindings[0]?.matched_object.path).toBe(".github/workflows/agent-maintenance.yml");
