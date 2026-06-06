@@ -40,6 +40,7 @@ describe("scanner", () => {
       "CODE_INTERPRETER_TOKEN",
       "CONTEXT_BROKER_TOKEN",
       "CONTEXT_COMPOSER_TOKEN",
+      "CONTEXT_WINDOW_TOKEN",
       "CREW_AGENT_TOKEN",
       "CUSTOMER_SUCCESS_SLACK_BOT_TOKEN",
       "EMBEDDING_API_KEY",
@@ -2471,6 +2472,87 @@ describe("scanner", () => {
     expect(JSON.stringify(contextComposerConfig)).not.toContain("support_db.update_customer_record");
     expect(JSON.stringify(contextComposerConfig)).not.toContain("vault_secret_lookup.read_support_token");
     expect(JSON.stringify(contextComposerConfig)).not.toContain("customer_context_email");
+    const contextWindowConfig = surfaces.runtime_config.find((surface) => surface.path === "context-window/truncation-policy.yaml");
+    expect(contextWindowConfig).toBeDefined();
+    expect(contextWindowConfig).toMatchObject({
+      trust_level: "project",
+      external_reach: true,
+      secret_exposure: true,
+      side_effect: true,
+      reversible: false,
+      untrusted_to_privileged: true
+    });
+    expect(contextWindowConfig?.metadata).toMatchObject({
+      content_redacted: true,
+      values_collected: false,
+      parsed_agent_context_window_config: true,
+      agent_context_window_enabled: true,
+      agent_context_window_truncation_enabled: true,
+      agent_context_window_compaction_enabled: false,
+      agent_context_window_summarization_enabled: true,
+      agent_context_window_overflow_policy_redacted: true,
+      agent_context_window_token_budget_low: true,
+      agent_context_window_untrusted_priority: true,
+      agent_context_window_tool_output_priority: true,
+      agent_context_window_memory_priority: true,
+      agent_context_window_privileged_instruction_retention: false,
+      agent_context_window_privileged_instruction_eviction: true,
+      agent_context_window_safety_instruction_retention: false,
+      agent_context_window_safety_instruction_eviction: true,
+      agent_context_window_memory_replay: true,
+      agent_context_window_summary_untrusted: true,
+      agent_context_window_summary_verification_disabled: true,
+      agent_context_window_delimiter_disabled: true,
+      agent_context_window_redaction_disabled: true,
+      agent_context_window_privileged_tool_authority: true,
+      agent_context_window_write_authority: true,
+      agent_context_window_external_authority: true,
+      agent_context_window_shell_authority: false,
+      agent_context_window_destructive_authority: false,
+      agent_context_window_secret_context: true,
+      agent_context_window_sensitive_context: true,
+      agent_context_window_pii_context: true,
+      agent_context_window_approval_required: false
+    });
+    expect(contextWindowConfig?.metadata.agent_context_window_strategy_categories).toEqual([
+      "drop_low_priority",
+      "overflow_drop",
+      "sliding_window",
+      "summarize_then_drop",
+      "truncate_oldest"
+    ]);
+    expect(contextWindowConfig?.metadata.agent_context_window_priority_categories).toEqual([
+      "developer_instruction",
+      "memory_context",
+      "retrieval_context",
+      "safety_policy",
+      "summary_context",
+      "system_instruction",
+      "tool_output",
+      "untrusted_user_input"
+    ]);
+    expect(contextWindowConfig?.metadata.agent_context_window_tool_authority_categories).toEqual([
+      "database_write",
+      "external_response",
+      "secret_manager_access",
+      "tool_call"
+    ]);
+    expect(contextWindowConfig?.metadata.env_key_names).toEqual(["CONTEXT_WINDOW_TOKEN"]);
+    expect(contextWindowConfig?.metadata.secret_ref_key_names).toEqual(["CONTEXT_WINDOW_TOKEN"]);
+    expect(contextWindowConfig?.data_classes).toEqual(["confidential", "credential", "pii"]);
+    expect(contextWindowConfig?.actions).toEqual(["call", "publish", "read", "remember", "send", "write"]);
+    expect(JSON.stringify(contextWindowConfig)).not.toContain("${CONTEXT_WINDOW_TOKEN}");
+    expect(JSON.stringify(contextWindowConfig)).not.toContain("sliding_window_with_summary");
+    expect(JSON.stringify(contextWindowConfig)).not.toContain("untrusted_customer_ticket");
+    expect(JSON.stringify(contextWindowConfig)).not.toContain("browser_tool_output");
+    expect(JSON.stringify(contextWindowConfig)).not.toContain("retrieved_customer_context");
+    expect(JSON.stringify(contextWindowConfig)).not.toContain("long_term_memory");
+    expect(JSON.stringify(contextWindowConfig)).not.toContain("system_prompt");
+    expect(JSON.stringify(contextWindowConfig)).not.toContain("developer_instructions");
+    expect(JSON.stringify(contextWindowConfig)).not.toContain("support_db.update_customer_record");
+    expect(JSON.stringify(contextWindowConfig)).not.toContain("slack.post_customer_reply");
+    expect(JSON.stringify(contextWindowConfig)).not.toContain("vault_secret_lookup.read_support_token");
+    expect(JSON.stringify(contextWindowConfig)).not.toContain("context_window_customer_email");
     const toolOutputPolicyConfig = surfaces.runtime_config.find((surface) => surface.path === "tool-results/result-policy.yaml");
     expect(toolOutputPolicyConfig).toBeDefined();
     expect(toolOutputPolicyConfig).toMatchObject({
@@ -3359,6 +3441,56 @@ describe("scanner", () => {
     expect(transcript?.actions).toContain("call");
     expect(transcript?.actions).toContain("send");
     expect(JSON.stringify(transcript)).not.toContain("Ignore previous repository instructions");
+  });
+
+  it("keeps pinned context-window policies scoped", async () => {
+    const files = await walkProject({
+      root_path: safeFixtureRoot,
+      output_path: ".agentcsp",
+      formats: ["json", "md"],
+      include_hidden: true,
+      include_logs: false,
+      max_file_size_bytes: 1024 * 1024,
+      max_files: 5000,
+      quiet: true
+    });
+    const surfaces = await detectSurfaces(files);
+    const contextWindowConfig = surfaces.runtime_config.find((surface) => surface.path === "context-window/pinned-policy.yaml");
+
+    expect(contextWindowConfig).toMatchObject({
+      trust_level: "project",
+      actions: ["call", "read"],
+      side_effect: false,
+      external_reach: false,
+      secret_exposure: false,
+      untrusted_to_privileged: false
+    });
+    expect(contextWindowConfig?.metadata).toMatchObject({
+      parsed_agent_context_window_config: true,
+      agent_context_window_enabled: true,
+      agent_context_window_truncation_enabled: true,
+      agent_context_window_compaction_enabled: false,
+      agent_context_window_summarization_enabled: true,
+      agent_context_window_overflow_policy_redacted: true,
+      agent_context_window_untrusted_priority: false,
+      agent_context_window_tool_output_priority: false,
+      agent_context_window_memory_priority: false,
+      agent_context_window_privileged_instruction_retention: true,
+      agent_context_window_privileged_instruction_eviction: false,
+      agent_context_window_safety_instruction_retention: true,
+      agent_context_window_safety_instruction_eviction: false,
+      agent_context_window_summary_untrusted: false,
+      agent_context_window_summary_verification_disabled: false,
+      agent_context_window_delimiter_disabled: false,
+      agent_context_window_redaction_disabled: false,
+      agent_context_window_privileged_tool_authority: false,
+      agent_context_window_write_authority: false,
+      agent_context_window_external_authority: false,
+      agent_context_window_approval_required: true
+    });
+    expect(contextWindowConfig?.metadata.agent_context_window_tool_authority_categories).toEqual([]);
+    expect(contextWindowConfig?.metadata.env_key_names).toEqual([]);
+    expect(contextWindowConfig?.metadata.secret_ref_key_names).toEqual([]);
   });
 
   it("keeps approval-gated read-only OpenAPI imports scoped", async () => {

@@ -867,6 +867,49 @@ Agent context-composer metadata may include:
 
 Raw source labels, role prompt text, message templates, tool names, action strings, data-field labels, and secret placeholders are not emitted. Source categories, privileged-role booleans, delimiter and sanitization posture, raw-context posture, tool-authority categories, approval posture, data-class booleans, and credential key names let rules detect context assembly paths where untrusted content is promoted into system or developer roles before privileged tool use.
 
+## Agent Context-Window And Compaction Posture
+
+Context-window, token-budget, truncation, compaction, summarization, message-retention, and overflow-policy configs are also normalized into `runtime_config` objects when common context-window files are discovered.
+
+Agent context-window metadata may include:
+
+- `parsed_agent_context_window_config`
+- `agent_context_window_fields`
+- `agent_context_window_enabled`
+- `agent_context_window_strategy_categories`
+- `agent_context_window_truncation_enabled`
+- `agent_context_window_compaction_enabled`
+- `agent_context_window_summarization_enabled`
+- `agent_context_window_overflow_policy_redacted`
+- `agent_context_window_token_budget_low`
+- `agent_context_window_priority_categories`
+- `agent_context_window_untrusted_priority`
+- `agent_context_window_tool_output_priority`
+- `agent_context_window_memory_priority`
+- `agent_context_window_privileged_instruction_retention`
+- `agent_context_window_privileged_instruction_eviction`
+- `agent_context_window_safety_instruction_retention`
+- `agent_context_window_safety_instruction_eviction`
+- `agent_context_window_memory_replay`
+- `agent_context_window_summary_untrusted`
+- `agent_context_window_summary_verification_disabled`
+- `agent_context_window_delimiter_disabled`
+- `agent_context_window_redaction_disabled`
+- `agent_context_window_tool_authority_categories`
+- `agent_context_window_privileged_tool_authority`
+- `agent_context_window_write_authority`
+- `agent_context_window_external_authority`
+- `agent_context_window_shell_authority`
+- `agent_context_window_destructive_authority`
+- `agent_context_window_secret_context`
+- `agent_context_window_sensitive_context`
+- `agent_context_window_pii_context`
+- `agent_context_window_approval_required`
+- `env_key_names`
+- `secret_ref_key_names`
+
+Raw priority labels, role labels, summary text, source labels, tool names, action strings, data-field labels, token placeholders, and context content are not emitted. Strategy categories, priority categories, instruction-retention booleans, summary verification posture, delimiter/redaction posture, tool-authority categories, approval posture, data-class booleans, and credential key names let rules detect cases where long-context truncation or compaction preserves untrusted context while evicting system, developer, or safety instructions before privileged tool use.
+
 ## Tool Output Policy Posture
 
 Tool-output, tool-result, observation, result-handler, output-handler, and tool-output policy configs are also normalized into `runtime_config` objects when common tool-observation handling configuration files are discovered.

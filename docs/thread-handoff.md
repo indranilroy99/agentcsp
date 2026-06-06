@@ -1146,6 +1146,16 @@ The current iteration adds:
 - graph candidate-window hardening so the Static Blast-Radius Summary keeps earlier high-signal context-to-capability paths as the runtime posture inventory grows, while the final attack-path output remains bounded
 - scanner, rule, fixture verifier, and redaction coverage proving raw remote desktop endpoints, app names, window titles, local transfer paths, data-scope labels, and token placeholders stay redacted
 
+## Context-Window Instruction Integrity Pass
+
+The current iteration adds:
+
+- first-class redacted metadata for context-window, token-budget, truncation, compaction, summarization, and overflow-policy posture, including strategy categories, priority categories, privileged instruction retention or eviction, safety-policy retention or eviction, summary verification, delimiter/redaction posture, privileged tool categories, credential exposure, and approval boundaries
+- vulnerable fixture coverage for a sliding-window support-agent policy that preserves untrusted customer, tool-output, retrieval, and memory context while dropping system, developer, and safety instructions, trusting summaries without verification, disabling delimiters and redaction, and allowing database, Slack, and vault tool authority without approval
+- safe fixture coverage for a pinned-system-first context-window policy that preserves system, developer, and safety instructions, drops lower-trust user/tool context first, verifies summaries, keeps delimiters and redaction enabled, and requires approval
+- rule `AGENTCSP-RUNTIME-055` for context-window instruction eviction that combines enabled truncation, untrusted/tool/memory priority, privileged instruction eviction, safety-policy eviction, unverified summaries, privileged tool authority, credential exposure, and missing approval
+- scanner, rule, fixture verifier, and redaction coverage proving raw priority labels, summary strategy names, tool names, data-scope labels, and token placeholders stay redacted
+
 ## Initial Build Recommendation
 
 Start with a CLI-first MVP before building the dashboard:

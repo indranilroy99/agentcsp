@@ -42,6 +42,7 @@
 - Add self-modification posture for agent-controlled prompt, policy, runtime, tool, memory, and workflow writes.
 - Add approval-gate integrity posture for model-mediated decisions, external approval channels, channel authentication, approver identity verification, replay protection, default-allow review paths, auto-execution, and human-review boundaries.
 - Add context-composer posture for role-boundary assembly, source promotion, sanitization, delimiters, and privileged tool exposure.
+- Add context-window and compaction posture for truncation, priority, instruction retention, safety-policy eviction, summary verification, redaction, and privileged tool exposure.
 - Add tool-output policy posture for raw browser, shell, MCP, API, retrieval, and customer observations that can enter prompt context or request privileged follow-up actions.
 - Add visual and OCR context posture for screenshots, uploaded images, OCR text, and multimodal observations that can enter prompt context or request privileged follow-up actions.
 - Add artifact/output export posture for generated prompts, completions, tool outputs, browser artifacts, retrieval context, memory, secrets, public access, retention, and redaction boundaries.

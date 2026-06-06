@@ -40,6 +40,8 @@ For browser file-transfer rules, require concrete file-transfer correlation such
 
 For computer-use and desktop automation rules, require concrete host-control correlation such as signed-in desktop state, screen or OCR capture, keyboard/mouse control, clipboard or file-transfer authority, credential-store exposure, untrusted instructions, disabled redaction, credential evidence, and missing approval. Do not flag local read-only review configs merely because they contain disabled desktop, screen, clipboard, upload, download, or credential-store fields.
 
+For context-window and compaction rules, require concrete instruction-integrity correlation such as enabled truncation or overflow handling, untrusted/tool/memory priority, system or developer instruction eviction, safety-policy eviction, unverified summaries, privileged tool authority, credential evidence, and missing approval. Do not flag bounded token budgets or pinned-system-first compaction policies merely because they mention truncation.
+
 AgentCSP computes finding confidence from rule correlation depth, scoped object type, structured parsing, privileged actions, data class, external reach, and side-effect signals.
 
 Required fields:

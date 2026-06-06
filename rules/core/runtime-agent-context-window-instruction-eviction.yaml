@@ -1,0 +1,54 @@
+id: AGENTCSP-RUNTIME-055
+name: Context-window truncation can evict privileged instructions
+description: An agent context-window policy prioritizes untrusted context, tool output, or memory while allowing system, developer, or safety instructions to be truncated, summarized, or dropped before privileged tools run.
+category: context_window_integrity
+severity: critical
+maps_to:
+  owasp:
+    - LLM01:2025 Prompt Injection
+    - LLM02:2025 Sensitive Information Disclosure
+    - LLM05:2025 Improper Output Handling
+    - LLM06:2025 Excessive Agency
+  mitre_atlas:
+    - AML.T0051 LLM Prompt Injection
+    - AML.T0057 Exfiltration via Cyber Means
+  nist_ai_rmf:
+    - MAP 5.1
+    - MEASURE 2.7
+    - MANAGE 2.4
+match:
+  object_type: runtime_config
+  where:
+    - field: metadata.parsed_agent_context_window_config
+      op: equals
+      value: true
+    - field: metadata.agent_context_window_enabled
+      op: equals
+      value: true
+    - field: metadata.agent_context_window_truncation_enabled
+      op: equals
+      value: true
+    - field: metadata.agent_context_window_untrusted_priority
+      op: equals
+      value: true
+    - field: metadata.agent_context_window_privileged_instruction_eviction
+      op: equals
+      value: true
+    - field: metadata.agent_context_window_safety_instruction_eviction
+      op: equals
+      value: true
+    - field: metadata.agent_context_window_privileged_tool_authority
+      op: equals
+      value: true
+    - field: metadata.agent_context_window_summary_verification_disabled
+      op: equals
+      value: true
+    - field: metadata.agent_context_window_approval_required
+      op: equals
+      value: false
+    - field: secret_exposure
+      op: equals
+      value: true
+recommendation:
+  control: require_approval
+  text: Pin system, developer, and safety instructions above untrusted context, verify summaries before reuse, and require approval before privileged tools run after context truncation or compaction.

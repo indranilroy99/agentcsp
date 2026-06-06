@@ -1,0 +1,31 @@
+enabled: true
+strategy: pinned_system_first
+overflow_policy:
+  truncate: lowest_trust_first
+  preserve_roles:
+    - system
+    - developer
+    - safety
+  drop_roles:
+    - user
+    - tool
+priority:
+  high:
+    - system
+    - developer
+    - safety
+  low:
+    - user
+    - tool
+summary:
+  enabled: true
+  include_untrusted_context: false
+  include_tool_outputs: false
+  include_memory: false
+  verify_summary: true
+  delimiter_boundaries: true
+redaction:
+  enabled: true
+  pii: true
+  secrets: true
+approval_required: true

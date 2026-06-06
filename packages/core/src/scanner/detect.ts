@@ -129,6 +129,11 @@ export async function detectSurfaces(files: WalkedFile[]): Promise<DetectedSurfa
       continue;
     }
 
+    if (isAgentContextWindowConfigPath(file.relativePath, basename)) {
+      detectAgentContextWindowConfig(file, text, surfaces);
+      continue;
+    }
+
     if (isAgentContextComposerConfigPath(file.relativePath, basename)) {
       detectAgentContextComposerConfig(file, text, surfaces);
       continue;
@@ -2594,6 +2599,79 @@ function detectAgentContextComposerConfig(file: WalkedFile, text: string | undef
   });
 }
 
+function detectAgentContextWindowConfig(file: WalkedFile, text: string | undefined, surfaces: DetectedSurfaces): void {
+  const parsed = parseStructuredConfig(text ?? "", file.relativePath);
+  if (parsed.parseFailed) {
+    addDiagnostic(surfaces, file, {
+      parser: parsed.parser ?? "structured_config",
+      code: "AGENT_CONTEXT_WINDOW_CONFIG_PARSE_FAILED",
+      reason: "Agent context-window configuration could not be parsed. Raw content was redacted."
+    });
+  }
+
+  const posture = classifyAgentContextWindowConfig(parsed.value, file.relativePath);
+  const actions = new Set<ActionType>(["call", "read"]);
+  if (posture.agent_context_window_write_authority) actions.add("write");
+  if (posture.agent_context_window_external_authority) {
+    actions.add("send");
+    actions.add("publish");
+  }
+  if (posture.agent_context_window_memory_replay) actions.add("remember");
+  if (posture.agent_context_window_shell_authority) actions.add("execute");
+
+  const dataClasses = new Set<SurfaceObject["data_classes"][number]>(["unknown"]);
+  if (
+    posture.agent_context_window_secret_context ||
+    posture.env_key_names.some(isCredentialLikeKeyName) ||
+    posture.secret_ref_key_names.length > 0
+  ) {
+    dataClasses.add("credential");
+  }
+  if (posture.agent_context_window_sensitive_context || posture.agent_context_window_untrusted_priority) {
+    dataClasses.add("confidential");
+  }
+  if (posture.agent_context_window_pii_context) dataClasses.add("pii");
+  if (dataClasses.size > 1) dataClasses.delete("unknown");
+
+  const object = createSurfaceObject({
+    type: "runtime_config",
+    name: path.basename(file.relativePath),
+    path: file.relativePath,
+    trust_level: inferTrustLevel(file.relativePath),
+    data_classes: uniqueDataClasses([...dataClasses] as SurfaceObject["data_classes"]),
+    actions: uniqueActions([...actions]),
+    side_effect:
+      posture.agent_context_window_privileged_tool_authority ||
+      posture.agent_context_window_write_authority ||
+      posture.agent_context_window_external_authority ||
+      posture.agent_context_window_memory_replay,
+    reversible: !posture.agent_context_window_external_authority && !posture.agent_context_window_destructive_authority,
+    external_reach: posture.agent_context_window_external_authority,
+    secret_exposure:
+      posture.agent_context_window_secret_context ||
+      posture.env_key_names.some(isCredentialLikeKeyName) ||
+      posture.secret_ref_key_names.length > 0,
+    reason: "Agent context-window configuration discovered as truncation, compaction, and instruction-retention posture.",
+    metadata: {
+      content_redacted: true,
+      values_collected: false,
+      parsed_agent_context_window_config: Boolean(parsed.value) && !parsed.parseFailed,
+      parse_error: parsed.parseFailed,
+      ...posture
+    }
+  });
+  surfaces.runtime_config.push({
+    ...object,
+    untrusted_to_privileged:
+      (posture.agent_context_window_untrusted_priority &&
+        posture.agent_context_window_privileged_instruction_eviction &&
+        posture.agent_context_window_safety_instruction_eviction &&
+        posture.agent_context_window_privileged_tool_authority &&
+        !posture.agent_context_window_approval_required) ||
+      isUntrustedToPrivileged(object)
+  });
+}
+
 function detectToolOutputPolicyConfig(file: WalkedFile, text: string | undefined, surfaces: DetectedSurfaces): void {
   const parsed = parseStructuredConfig(text ?? "", file.relativePath);
   if (parsed.parseFailed) {
@@ -3959,6 +4037,27 @@ function isAgentContextComposerConfigPath(relativePath: string, basename: string
   return contextName || (contextDirectory && configName);
 }
 
+function isAgentContextWindowConfigPath(relativePath: string, basename: string): boolean {
+  const normalized = relativePath.replaceAll("\\", "/").toLowerCase();
+  const lowerBase = basename.toLowerCase();
+  if (!/\.(json|ya?ml|toml)$/iu.test(lowerBase)) return false;
+  if (normalized.startsWith(".github/workflows/")) return false;
+  if (normalized.startsWith("rules/")) return false;
+  const segments = normalized.split("/").slice(0, -1);
+  const windowDirectory = segments.some((segment) =>
+    /^(context-window|context_window|context-windows|context_windows|context-budget|context_budget|token-budget|token_budget|compaction|compactions|summarization|summarisation|summaries|conversation-window|conversation_window|memory-compaction|memory_compaction)$/iu.test(
+      segment
+    )
+  );
+  const windowName = /(?:context[-_]?window|context[-_]?budget|token[-_]?budget|truncation|truncate|compaction|compact|summarization|summarisation|message[-_]?retention|instruction[-_]?retention|window[-_]?policy|overflow[-_]?policy)/iu.test(
+    lowerBase
+  );
+  const configName = /(?:config|settings|policy|context|window|budget|token|truncate|truncation|compact|compaction|summary|summaries|retention|priority|overflow)/iu.test(
+    lowerBase
+  );
+  return windowName || (windowDirectory && configName);
+}
+
 function isToolOutputPolicyConfigPath(relativePath: string, basename: string): boolean {
   const normalized = relativePath.replaceAll("\\", "/").toLowerCase();
   const lowerBase = basename.toLowerCase();
@@ -4966,6 +5065,42 @@ interface AgentContextComposerPosture {
   agent_context_composer_sensitive_data: boolean;
   agent_context_composer_pii_data: boolean;
   agent_context_composer_approval_required: boolean;
+  env_key_names: string[];
+  secret_ref_key_names: string[];
+}
+
+interface AgentContextWindowPosture {
+  agent_context_window_fields: string[];
+  agent_context_window_enabled: boolean;
+  agent_context_window_strategy_categories: string[];
+  agent_context_window_truncation_enabled: boolean;
+  agent_context_window_compaction_enabled: boolean;
+  agent_context_window_summarization_enabled: boolean;
+  agent_context_window_overflow_policy_redacted: boolean;
+  agent_context_window_token_budget_low: boolean;
+  agent_context_window_priority_categories: string[];
+  agent_context_window_untrusted_priority: boolean;
+  agent_context_window_tool_output_priority: boolean;
+  agent_context_window_memory_priority: boolean;
+  agent_context_window_privileged_instruction_retention: boolean;
+  agent_context_window_privileged_instruction_eviction: boolean;
+  agent_context_window_safety_instruction_retention: boolean;
+  agent_context_window_safety_instruction_eviction: boolean;
+  agent_context_window_memory_replay: boolean;
+  agent_context_window_summary_untrusted: boolean;
+  agent_context_window_summary_verification_disabled: boolean;
+  agent_context_window_delimiter_disabled: boolean;
+  agent_context_window_redaction_disabled: boolean;
+  agent_context_window_privileged_tool_authority: boolean;
+  agent_context_window_tool_authority_categories: string[];
+  agent_context_window_write_authority: boolean;
+  agent_context_window_external_authority: boolean;
+  agent_context_window_shell_authority: boolean;
+  agent_context_window_destructive_authority: boolean;
+  agent_context_window_secret_context: boolean;
+  agent_context_window_sensitive_context: boolean;
+  agent_context_window_pii_context: boolean;
+  agent_context_window_approval_required: boolean;
   env_key_names: string[];
   secret_ref_key_names: string[];
 }
@@ -10639,6 +10774,397 @@ function isAgentAuthorizationBrokerSecurityField(fieldPath: string): boolean {
 
 function agentAuthorizationFieldText(field: RuntimeField): string {
   return `${field.path} ${fieldValueText(field)}`.replaceAll("_", " ").replaceAll("-", " ");
+}
+
+function classifyAgentContextWindowConfig(value: unknown, filePath: string): AgentContextWindowPosture {
+  const fields = flattenRuntimeFields(value);
+  const stringValues = collectFieldStringValues(fields);
+  const strategyCategories = collectAgentContextWindowStrategyCategories(fields);
+  const priorityCategories = collectAgentContextWindowPriorityCategories(fields);
+  const authorityCategories = collectAgentContextWindowToolAuthorityCategories(fields);
+  const envKeys = uniqueStrings([
+    ...collectEnvKeyNamesFromConfig(value).filter(isLikelyEnvKeyName),
+    ...extractEnvironmentReferenceKeys(stringValues)
+  ]);
+  const secretRefKeys = extractSecretReferenceKeys(stringValues);
+  const truncationEnabled = hasAgentContextWindowTruncationSignal(fields, strategyCategories);
+  const compactionEnabled = hasAgentContextWindowCompactionSignal(fields, strategyCategories);
+  const summarizationEnabled = hasAgentContextWindowSummarizationSignal(fields, strategyCategories);
+  const untrustedPriority = hasAgentContextWindowUntrustedPrioritySignal(fields, priorityCategories);
+  const privilegedRetention = hasAgentContextWindowPrivilegedRetentionSignal(fields);
+  const safetyRetention = hasAgentContextWindowSafetyRetentionSignal(fields);
+  const privilegedEviction = hasAgentContextWindowPrivilegedEvictionSignal(fields) || (truncationEnabled && untrustedPriority && !privilegedRetention);
+  const safetyEviction = hasAgentContextWindowSafetyEvictionSignal(fields) || (truncationEnabled && untrustedPriority && !safetyRetention);
+  const secretContext = hasAgentContextWindowSecretContextSignal(fields) || authorityCategories.includes("secret_manager_access");
+  const sensitiveContext = hasAgentContextWindowSensitiveContextSignal(fields) || secretContext;
+
+  return {
+    agent_context_window_fields: fields
+      .map((field) => field.path)
+      .filter((fieldPath) => isAgentContextWindowSecurityField(fieldPath))
+      .sort((a, b) => a.localeCompare(b)),
+    agent_context_window_enabled:
+      hasAgentContextWindowEnabledSignal(fields) || truncationEnabled || compactionEnabled || summarizationEnabled || strategyCategories.length > 0,
+    agent_context_window_strategy_categories: strategyCategories,
+    agent_context_window_truncation_enabled: truncationEnabled,
+    agent_context_window_compaction_enabled: compactionEnabled,
+    agent_context_window_summarization_enabled: summarizationEnabled,
+    agent_context_window_overflow_policy_redacted: hasAgentContextWindowOverflowPolicySignal(fields),
+    agent_context_window_token_budget_low: hasAgentContextWindowLowTokenBudgetSignal(fields),
+    agent_context_window_priority_categories: priorityCategories,
+    agent_context_window_untrusted_priority: untrustedPriority,
+    agent_context_window_tool_output_priority: hasAgentContextWindowToolOutputPrioritySignal(fields, priorityCategories),
+    agent_context_window_memory_priority: hasAgentContextWindowMemoryPrioritySignal(fields, priorityCategories),
+    agent_context_window_privileged_instruction_retention: privilegedRetention,
+    agent_context_window_privileged_instruction_eviction: privilegedEviction,
+    agent_context_window_safety_instruction_retention: safetyRetention,
+    agent_context_window_safety_instruction_eviction: safetyEviction,
+    agent_context_window_memory_replay: hasAgentContextWindowMemoryReplaySignal(fields, priorityCategories, authorityCategories),
+    agent_context_window_summary_untrusted: hasAgentContextWindowSummaryUntrustedSignal(fields),
+    agent_context_window_summary_verification_disabled: hasAgentContextWindowSummaryVerificationDisabledSignal(fields),
+    agent_context_window_delimiter_disabled: hasAgentContextWindowDelimiterDisabledSignal(fields),
+    agent_context_window_redaction_disabled: hasAgentContextWindowRedactionDisabledSignal(fields),
+    agent_context_window_tool_authority_categories: authorityCategories,
+    agent_context_window_privileged_tool_authority: authorityCategories.length > 0 || hasAgentContextWindowPrivilegedToolSignal(fields),
+    agent_context_window_write_authority: hasAgentContextWindowWriteAuthoritySignal(fields, authorityCategories),
+    agent_context_window_external_authority: hasAgentContextWindowExternalAuthoritySignal(fields, authorityCategories),
+    agent_context_window_shell_authority: authorityCategories.includes("shell_execution"),
+    agent_context_window_destructive_authority: hasAgentContextWindowDestructiveAuthoritySignal(fields, authorityCategories),
+    agent_context_window_secret_context: secretContext,
+    agent_context_window_sensitive_context: sensitiveContext,
+    agent_context_window_pii_context: hasAgentContextWindowPiiContextSignal(fields),
+    agent_context_window_approval_required: hasAgentContextWindowApprovalRequiredSignal(fields),
+    env_key_names: envKeys,
+    secret_ref_key_names: secretRefKeys
+  };
+}
+
+function collectAgentContextWindowStrategyCategories(fields: RuntimeField[]): string[] {
+  const categories = new Set<string>();
+  for (const field of fields) {
+    const text = agentContextWindowFieldText(field);
+    if (/\b(sliding window|rolling window|moving window|window with summary)\b/iu.test(text)) categories.add("sliding_window");
+    if (/\b(drop oldest|oldest first|truncate oldest|fifo|first in first out)\b/iu.test(text)) categories.add("truncate_oldest");
+    if (/\b(summarize then drop|summary then drop|summari[sz]e .* drop|summary .* truncate)\b/iu.test(text)) {
+      categories.add("summarize_then_drop");
+    }
+    if (/\b(compact|compaction|compressed history|memory compaction)\b/iu.test(text)) categories.add("compact_history");
+    if (/\b(drop low priority|lowest trust first|low priority first|drop roles|drop sources)\b/iu.test(text)) categories.add("drop_low_priority");
+    if (/\b(overflow|over budget|max context|context budget|token budget|truncate)\b/iu.test(text)) categories.add("overflow_drop");
+  }
+  if (
+    [...categories].some((category) => ["drop_low_priority", "overflow_drop", "sliding_window", "truncate_oldest"].includes(category)) &&
+    fields.some((field) => /\b(summary|summaries|summari[sz]e|summari[sz]ation)\b/iu.test(agentContextWindowFieldText(field)) && truthyConfigValue(field.value))
+  ) {
+    categories.add("summarize_then_drop");
+  }
+  return [...categories].sort((a, b) => a.localeCompare(b));
+}
+
+function collectAgentContextWindowPriorityCategories(fields: RuntimeField[]): string[] {
+  const categories = new Set<string>();
+  for (const field of fields) {
+    if (!truthyConfigValue(field.value)) continue;
+    const text = agentContextWindowFieldText(field);
+    if (/\b(system|system prompt|system instruction|system role)\b/iu.test(text)) categories.add("system_instruction");
+    if (/\b(developer|developer prompt|developer instruction|dev instruction)\b/iu.test(text)) {
+      categories.add("developer_instruction");
+    }
+    if (/\b(safety|guardrail|policy|moderation|validator)\b/iu.test(text)) categories.add("safety_policy");
+    if (/\b(user|customer|client|ticket|support|issue|comment|message|inbound|external|public|email|chat|untrusted)\b/iu.test(text)) {
+      categories.add("untrusted_user_input");
+    }
+    if (/\b(retrieved|retrieval|rag|document|vector|knowledge base|customer context|account context)\b/iu.test(text)) {
+      categories.add("retrieval_context");
+    }
+    if (/\b(tool output|tool result|browser output|command output|function output|observation|mcp result)\b/iu.test(text)) {
+      categories.add("tool_output");
+    }
+    if (/\b(memory|memories|long term|session state|conversation history|transcript)\b/iu.test(text)) {
+      categories.add("memory_context");
+    }
+    if (/\b(summary|summaries|summari[sz]ed context)\b/iu.test(text)) categories.add("summary_context");
+  }
+  return [...categories].sort((a, b) => a.localeCompare(b));
+}
+
+function collectAgentContextWindowToolAuthorityCategories(fields: RuntimeField[]): string[] {
+  const categories = new Set<string>();
+  for (const field of fields) {
+    const text = agentContextWindowFieldText(field);
+    const authorityField = /(?:^|\.)(tools?|allowed_tools|tool_authority|tool_calls?|actions?|commands?|capabilities?|connectors?|permissions?|after_summary|on_overflow|on_truncation|follow_up|followup)(?:\.|$)/iu.test(
+      field.path
+    );
+    if (!authorityField && /(?:^|\.)(priority|sources?|inputs?|context|data_scope|summary|redaction|preserve_roles|drop_roles)(?:\.|$)/iu.test(field.path)) {
+      continue;
+    }
+    if (/\b(tool|tools|function|function call|mcp|connector|capability)\b/iu.test(text)) categories.add("tool_call");
+    if (/\b(database|db|sql|query|support db|warehouse|record|update customer record)\b/iu.test(text)) categories.add("database_write");
+    if (/\b(slack|email|webhook|message|ticket|issue|comment|reply|respond|send|post|publish)\b/iu.test(text)) {
+      categories.add("external_response");
+    }
+    if (/\b(browser|playwright|puppeteer|selenium|click|form|upload|download|navigate|submit)\b/iu.test(text)) {
+      categories.add("browser_action");
+    }
+    if (/\b(vault|secret|secrets|secret manager|key vault|credential|token)\b/iu.test(text)) categories.add("secret_manager_access");
+    if (/\b(memory|remember|store|persist|session state|long term)\b/iu.test(text)) categories.add("memory_write");
+    if (/\b(shell|bash|command|exec|terminal|python|node|subprocess|script)\b/iu.test(text)) categories.add("shell_execution");
+    if (/\b(filesystem|file write|workspace|repo|repository|git|commit|push|pull request|merge)\b/iu.test(text)) {
+      categories.add("repo_or_filesystem_write");
+    }
+  }
+  return [...categories].sort((a, b) => a.localeCompare(b));
+}
+
+function hasAgentContextWindowEnabledSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /(?:^|\.)(enabled|active|context_window|context-window|window_policy|truncation|compaction|summarization)(?:\.|$)/iu.test(field.path) &&
+    truthyConfigValue(field.value)
+  );
+}
+
+function hasAgentContextWindowTruncationSignal(fields: RuntimeField[], categories: string[]): boolean {
+  return categories.some((category) => ["drop_low_priority", "overflow_drop", "sliding_window", "truncate_oldest"].includes(category)) ||
+    fields.some((field) =>
+      /\b(truncate|truncation|drop oldest|oldest first|drop roles|overflow|sliding window|context budget|token budget|max context)\b/iu.test(
+        agentContextWindowFieldText(field)
+      ) && truthyConfigValue(field.value)
+    );
+}
+
+function hasAgentContextWindowCompactionSignal(fields: RuntimeField[], categories: string[]): boolean {
+  return categories.includes("compact_history") ||
+    fields.some((field) => /\b(compact|compaction|compress history|memory compaction)\b/iu.test(agentContextWindowFieldText(field)) && truthyConfigValue(field.value));
+}
+
+function hasAgentContextWindowSummarizationSignal(fields: RuntimeField[], categories: string[]): boolean {
+  return categories.includes("summarize_then_drop") ||
+    fields.some((field) =>
+      /\b(summary|summaries|summari[sz]e|summari[sz]ation)\b/iu.test(agentContextWindowFieldText(field)) && truthyConfigValue(field.value)
+    );
+}
+
+function hasAgentContextWindowOverflowPolicySignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => /\b(overflow|truncate|truncation|drop roles|preserve roles|retention|priority|context budget|token budget)\b/iu.test(agentContextWindowFieldText(field)));
+}
+
+function hasAgentContextWindowLowTokenBudgetSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => {
+    if (!/\b(max context tokens|max tokens|context budget|token budget|window tokens)\b/iu.test(agentContextWindowFieldText(field))) return false;
+    if (typeof field.value === "number") return field.value > 0 && field.value <= 64000;
+    const numeric = Number(String(field.value).replace(/[^0-9.]/gu, ""));
+    return Number.isFinite(numeric) && numeric > 0 && numeric <= 64000;
+  });
+}
+
+function hasAgentContextWindowUntrustedPrioritySignal(fields: RuntimeField[], categories: string[]): boolean {
+  const hasUntrustedCategory = categories.some((category) =>
+    ["memory_context", "retrieval_context", "summary_context", "tool_output", "untrusted_user_input"].includes(category)
+  );
+  return fields.some((field) => {
+    const text = agentContextWindowFieldText(field);
+    const privileged = /\b(system|developer|safety|guardrail|moderation|validator)\b/iu.test(text);
+    const untrusted = /\b(untrusted|user|customer|client|ticket|support|issue|comment|message|retrieved|retrieval|rag|browser output|tool output|memory|external)\b/iu.test(
+      text
+    );
+    const promoted = /\b(high|preserve|keep|pin|retain|include|prefer|above|trusted without verification)\b/iu.test(text);
+    const demoted = /\b(low|drop|evict|truncate|summari[sz]e|discard|below)\b/iu.test(text);
+    return ((untrusted && promoted) || (privileged && demoted && hasUntrustedCategory)) && truthyConfigValue(field.value);
+  });
+}
+
+function hasAgentContextWindowToolOutputPrioritySignal(fields: RuntimeField[], categories: string[]): boolean {
+  if (!categories.includes("tool_output")) return false;
+  return fields.some((field) => {
+    const text = agentContextWindowFieldText(field);
+    return /\b(tool output|tool result|browser output|command output|observation|mcp result)\b/iu.test(text) &&
+      /\b(high|preserve|keep|pin|retain|include|priority|prefer)\b/iu.test(text) &&
+      truthyConfigValue(field.value);
+  });
+}
+
+function hasAgentContextWindowMemoryPrioritySignal(fields: RuntimeField[], categories: string[]): boolean {
+  if (!categories.includes("memory_context")) return false;
+  return fields.some((field) => {
+    const text = agentContextWindowFieldText(field);
+    return /\b(memory|memories|long term|session state|conversation history)\b/iu.test(text) &&
+      /\b(high|preserve|keep|pin|retain|include|priority|prefer)\b/iu.test(text) &&
+      truthyConfigValue(field.value);
+  });
+}
+
+function hasAgentContextWindowPrivilegedRetentionSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => {
+    const text = agentContextWindowFieldText(field);
+    return /\b(system|developer|system prompt|developer instruction)\b/iu.test(text) &&
+      /\b(preserve|keep|pin|retain|never drop|do not drop|protected|immutable)\b/iu.test(text) &&
+      truthyConfigValue(field.value);
+  });
+}
+
+function hasAgentContextWindowSafetyRetentionSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => {
+    const text = agentContextWindowFieldText(field);
+    return /\b(safety|guardrail|moderation|validator)\b/iu.test(text) &&
+      /\b(preserve|keep|pin|retain|never drop|do not drop|protected|immutable)\b/iu.test(text) &&
+      truthyConfigValue(field.value);
+  });
+}
+
+function hasAgentContextWindowPrivilegedEvictionSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => {
+    const text = agentContextWindowFieldText(field);
+    return /\b(system|developer|system prompt|developer instruction)\b/iu.test(text) &&
+      /\b(drop|evict|truncate|discard|summari[sz]e|low priority|below|oldest first)\b/iu.test(text) &&
+      truthyConfigValue(field.value);
+  });
+}
+
+function hasAgentContextWindowSafetyEvictionSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => {
+    const text = agentContextWindowFieldText(field);
+    return /\b(safety|guardrail|moderation|validator)\b/iu.test(text) &&
+      /\b(drop|evict|truncate|discard|summari[sz]e|low priority|below|oldest first)\b/iu.test(text) &&
+      truthyConfigValue(field.value);
+  });
+}
+
+function hasAgentContextWindowMemoryReplaySignal(
+  fields: RuntimeField[],
+  priorityCategories: string[],
+  authorityCategories: string[]
+): boolean {
+  return priorityCategories.includes("memory_context") ||
+    authorityCategories.includes("memory_write") ||
+    fields.some((field) =>
+      /\b(memory|long term|conversation history|session state|future context|replay|remember|persist)\b/iu.test(agentContextWindowFieldText(field)) &&
+      truthyConfigValue(field.value)
+    );
+}
+
+function hasAgentContextWindowSummaryUntrustedSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => {
+    const text = agentContextWindowFieldText(field);
+    return /\b(summary|summaries|summari[sz]e)\b/iu.test(text) &&
+      /\b(untrusted|user|customer|retrieved|retrieval|rag|tool output|browser output|memory|external)\b/iu.test(text) &&
+      truthyConfigValue(field.value);
+  });
+}
+
+function hasAgentContextWindowSummaryVerificationDisabledSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => {
+    const text = agentContextWindowFieldText(field);
+    if (/\b(trusted without verification|trust summary|trusted summary|model summary trusted|summary trusted)\b/iu.test(text)) {
+      return truthyConfigValue(field.value);
+    }
+    if (/\b(summary|summaries|summari[sz]e|compaction)\b/iu.test(text) && /\b(verify|verification|validate|validation|attest|check)\b/iu.test(text)) {
+      return disabledConfigValue(field.value);
+    }
+    return false;
+  });
+}
+
+function hasAgentContextWindowDelimiterDisabledSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => {
+    const text = agentContextWindowFieldText(field);
+    if (/\b(delimiter|delimiters|boundary|boundaries|quote|escape|separate|isolate)\b/iu.test(text)) {
+      return disabledConfigValue(field.value) || /\b(none|disabled|raw|passthrough|off|false)\b/iu.test(text);
+    }
+    return false;
+  });
+}
+
+function hasAgentContextWindowRedactionDisabledSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => {
+    const text = agentContextWindowFieldText(field);
+    if (/\b(redaction|redact|mask|pii|secret|secrets|sanitize|sanitization)\b/iu.test(text)) {
+      return disabledConfigValue(field.value) || /\b(disabled|off|false|none|raw|passthrough|bypass|skip)\b/iu.test(text);
+    }
+    return false;
+  });
+}
+
+function hasAgentContextWindowPrivilegedToolSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /(?:^|\.)(tools?|allowed_tools|tool_authority|tool_calls?|actions?|commands?|capabilities?|connectors?|permissions?|after_summary|on_overflow|on_truncation|follow_up|followup)(?:\.|$)/iu.test(
+      field.path
+    ) &&
+    /\b(tool|tools|mcp|browser|shell|database|secret|vault|slack|email|webhook|filesystem|memory|write|update|send|post|publish)\b/iu.test(
+      agentContextWindowFieldText(field)
+    )
+  );
+}
+
+function hasAgentContextWindowWriteAuthoritySignal(fields: RuntimeField[], categories: string[]): boolean {
+  return categories.some((category) =>
+    ["database_write", "external_response", "memory_write", "repo_or_filesystem_write", "shell_execution"].includes(category)
+  ) || fields.some((field) =>
+    /\b(write|update|create|delete|reply|respond|send|post|publish|comment|commit|push|merge|deploy|remember|persist)\b/iu.test(
+      agentContextWindowFieldText(field)
+    )
+  );
+}
+
+function hasAgentContextWindowExternalAuthoritySignal(fields: RuntimeField[], categories: string[]): boolean {
+  return categories.includes("external_response") ||
+    fields.some((field) => /\b(slack|email|webhook|send|post|publish|reply|respond|ticket|issue|external|api|customer system)\b/iu.test(agentContextWindowFieldText(field)));
+}
+
+function hasAgentContextWindowDestructiveAuthoritySignal(fields: RuntimeField[], categories: string[]): boolean {
+  return categories.includes("shell_execution") ||
+    fields.some((field) =>
+      /(?:^|\.)(tools?|allowed_tools|tool_authority|tool_calls?|actions?|commands?|capabilities?|connectors?|permissions?|after_summary|on_overflow|on_truncation|follow_up|followup)(?:\.|$)/iu.test(
+        field.path
+      ) &&
+      /\b(delete|destroy|destructive|irreversible|overwrite|merge|deploy|charge|refund|close account|remove|revoke)\b/iu.test(
+        agentContextWindowFieldText(field)
+      )
+    );
+}
+
+function hasAgentContextWindowSecretContextSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    !/(?:^|\.)(redaction|redact|mask|pii|sanitize|sanitization)(?:\.|$)/iu.test(field.path) &&
+    /\b(secret|secrets|token|credential|api key|apikey|password|vault|key vault|authorization|oauth)\b/iu.test(
+      agentContextWindowFieldText(field)
+    )
+  );
+}
+
+function hasAgentContextWindowSensitiveContextSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    !/(?:^|\.)(redaction|redact|mask|pii|sanitize|sanitization)(?:\.|$)/iu.test(field.path) &&
+    /\b(customer|client|ticket|support|internal|confidential|private|proprietary|sensitive|account|billing|payment|prod|production|admin|credential|token|api key|secret)\b/iu.test(
+      agentContextWindowFieldText(field)
+    )
+  );
+}
+
+function hasAgentContextWindowPiiContextSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    !/(?:^|\.)(redaction|redact|mask|sanitize|sanitization)(?:\.|$)/iu.test(field.path) &&
+    /\b(pii|email|phone|address|ssn|passport|dob|date of birth|customer id|user id|account id|account number)\b/iu.test(
+      agentContextWindowFieldText(field)
+    )
+  );
+}
+
+function hasAgentContextWindowApprovalRequiredSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /\b(approval|required approval|human approval|confirm|confirmation|review|human in the loop|manual review)\b/iu.test(
+      agentContextWindowFieldText(field)
+    ) && truthyConfigValue(field.value)
+  );
+}
+
+function isAgentContextWindowSecurityField(fieldPath: string): boolean {
+  return /context|window|token|budget|truncate|truncation|overflow|compact|compaction|summary|summari|retention|priority|preserve|drop|role|system|developer|safety|guardrail|policy|user|customer|retrieval|rag|tool|browser|memory|delimiter|boundary|redact|sanitize|verify|validation|approval|secret|token|credential|auth|env|data|scope|pii|sensitive/iu.test(
+    fieldPath
+  );
+}
+
+function agentContextWindowFieldText(field: RuntimeField): string {
+  return `${field.path} ${fieldValueText(field)}`.toLowerCase().replaceAll("_", " ").replaceAll("-", " ");
 }
 
 function classifyAgentContextComposerConfig(value: unknown, filePath: string): AgentContextComposerPosture {
