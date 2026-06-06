@@ -61,6 +61,7 @@ A finding should be considered production-grade when it includes:
 - artifact/output export metadata for generated prompts, completions, tool outputs, browser artifacts, retrieval context, memory, and secrets without emitting bucket names, endpoints, paths, data-scope labels, or artifact contents
 - webhook/callback egress metadata for model-generated payload delivery without emitting callback endpoints, payload bodies, source labels, data-field labels, or token placeholders
 - container runtime metadata for privileged mode, Docker socket access, host mounts, host namespaces, dangerous capabilities, and tool authority without emitting image names, host paths, input labels, tool names, or token placeholders
+- code interpreter and notebook runtime metadata for model-driven code execution, network/package-install posture, filesystem access, credential mounts, output persistence, and approval posture without emitting kernel values, code snippets, package names, mounted paths, input labels, or token placeholders
 - workflow-to-agent-script signals for unattended automation with secrets and write authority
 - workflow event-payload signals for issue, pull request, discussion, or repository-dispatch text passed into privileged agent automation without emitting raw event expressions or payload content
 - prompt-template variables and redacted context signals for untrusted-input bridges

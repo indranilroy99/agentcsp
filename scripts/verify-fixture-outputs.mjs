@@ -8,6 +8,7 @@ const safeOutput = path.resolve(process.argv[3] ?? ".agentcsp-safe");
 const leakPatterns = [
   /\$\{ANTHROPIC_API_KEY\}/u,
   /\$\{AGENT_CONTAINER_TOKEN\}/u,
+  /\$\{CODE_INTERPRETER_TOKEN\}/u,
   /\$\{AGENT_IDENTITY_TOKEN\}/u,
   /\$\{AGENT_EXTENSION_TOKEN\}/u,
   /\$\{AGENT_SELF_MOD_TOKEN\}/u,
@@ -181,6 +182,8 @@ const leakPatterns = [
   /untrusted_customer_ticket/u,
   /agentcsp-demo\/support-agent/u,
   /\/var\/run\/docker\.sock/u,
+  /python3/u,
+  /~\/\.aws/u,
   /~\/\.ssh/u,
   /\/root\/\.ssh/u
 ];
@@ -188,8 +191,8 @@ const leakPatterns = [
 const vulnerable = await readScanOutput(vulnerableOutput, { sarifRequired: true });
 const safe = await readScanOutput(safeOutput, { sarifRequired: false });
 
-assertEqual(vulnerable.manifest.findings.length, 98, "vulnerable manifest finding count");
-assertEqual(vulnerable.findings.length, 98, "vulnerable findings.json count");
+assertEqual(vulnerable.manifest.findings.length, 99, "vulnerable manifest finding count");
+assertEqual(vulnerable.findings.length, 99, "vulnerable findings.json count");
 assertEqual(vulnerable.manifest.attack_paths.length, 15, "vulnerable attack path count");
 assertEqual(vulnerable.manifest.static_blast_radius?.critical_attack_paths, 15, "vulnerable critical attack path count");
 assertEqual(vulnerable.manifest.diagnostics.length, 0, "vulnerable diagnostics count");
@@ -218,6 +221,7 @@ for (const ruleId of [
   "AGENTCSP-RUNTIME-024",
   "AGENTCSP-RUNTIME-025",
   "AGENTCSP-RUNTIME-026",
+  "AGENTCSP-RUNTIME-027",
   "AGENTCSP-AUTOMATION-003",
   "AGENTCSP-RUNTIME-006",
   "AGENTCSP-MCP-006",

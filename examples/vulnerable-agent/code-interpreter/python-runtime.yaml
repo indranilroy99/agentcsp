@@ -1,0 +1,28 @@
+provider: jupyter
+kernel: python3
+runtime:
+  enabled: true
+  mode: code_interpreter
+  execute_model_code: true
+  allow_untrusted_code: true
+  network_access: true
+  package_install: true
+  shell_access: true
+  filesystem_access: true
+  workspace_write: true
+  mount_paths:
+    - ./
+    - ~/.aws
+    - ~/.ssh
+  env:
+    OPENAI_API_KEY: ${OPENAI_API_KEY}
+    CODE_INTERPRETER_TOKEN: ${CODE_INTERPRETER_TOKEN}
+inputs:
+  - untrusted_customer_ticket
+  - retrieved_customer_context
+  - browser_tool_output
+outputs:
+  capture_stdout: true
+  capture_files: true
+  persist_notebooks: true
+approval_required: false

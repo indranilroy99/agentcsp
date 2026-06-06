@@ -62,6 +62,9 @@ match:
     - field: metadata.parsed_agent_container_runtime_config
       op: not_equals
       value: true
+    - field: metadata.parsed_agent_code_interpreter_config
+      op: not_equals
+      value: true
 recommendation:
   control: quarantine
   text: Treat the source as tainted and require policy review before it can influence privileged action, memory writes, or external calls.

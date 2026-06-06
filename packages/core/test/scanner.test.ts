@@ -31,6 +31,7 @@ describe("scanner", () => {
       "APPROVAL_GATE_TOKEN",
       "ARTIFACT_EXPORT_TOKEN",
       "BROWSER_SESSION_TOKEN",
+      "CODE_INTERPRETER_TOKEN",
       "CONTEXT_COMPOSER_TOKEN",
       "CREW_AGENT_TOKEN",
       "CUSTOMER_SUCCESS_SLACK_BOT_TOKEN",
@@ -595,6 +596,59 @@ describe("scanner", () => {
     expect(JSON.stringify(containerRuntimeConfig)).not.toContain("/var/run/docker.sock");
     expect(JSON.stringify(containerRuntimeConfig)).not.toContain("~/.ssh");
     expect(JSON.stringify(containerRuntimeConfig)).not.toContain("untrusted_customer_ticket");
+    const codeInterpreterConfig = surfaces.runtime_config.find(
+      (surface) => surface.path === "code-interpreter/python-runtime.yaml"
+    );
+    expect(codeInterpreterConfig).toBeDefined();
+    expect(codeInterpreterConfig).toMatchObject({
+      trust_level: "workspace",
+      external_reach: true,
+      secret_exposure: true,
+      side_effect: true,
+      reversible: false,
+      untrusted_to_privileged: true
+    });
+    expect(codeInterpreterConfig?.metadata).toMatchObject({
+      content_redacted: true,
+      values_collected: false,
+      parsed_agent_code_interpreter_config: true,
+      agent_code_interpreter_provider: "jupyter",
+      agent_code_interpreter_enabled: true,
+      agent_code_interpreter_executes_model_code: true,
+      agent_code_interpreter_untrusted_input: true,
+      agent_code_interpreter_network_enabled: true,
+      agent_code_interpreter_package_install: true,
+      agent_code_interpreter_shell_access: true,
+      agent_code_interpreter_filesystem_access: true,
+      agent_code_interpreter_workspace_write: true,
+      agent_code_interpreter_output_capture: true,
+      agent_code_interpreter_output_persistence: true,
+      agent_code_interpreter_mounts_redacted: true,
+      agent_code_interpreter_credential_mount: true,
+      agent_code_interpreter_sensitive_input: true,
+      agent_code_interpreter_pii_input: false,
+      agent_code_interpreter_secret_env_exposure: true,
+      agent_code_interpreter_approval_required: false
+    });
+    expect(codeInterpreterConfig?.metadata.agent_code_interpreter_mount_kinds).toEqual([
+      "credential_path",
+      "host_path",
+      "workspace_mount"
+    ]);
+    expect(codeInterpreterConfig?.metadata.env_key_names).toEqual(["CODE_INTERPRETER_TOKEN", "OPENAI_API_KEY"]);
+    expect(codeInterpreterConfig?.metadata.secret_ref_key_names).toEqual([
+      "CODE_INTERPRETER_TOKEN",
+      "OPENAI_API_KEY"
+    ]);
+    expect(codeInterpreterConfig?.data_classes).toEqual(["confidential", "credential"]);
+    expect(codeInterpreterConfig?.actions).toEqual(["call", "execute", "read", "remember", "send", "write"]);
+    expect(JSON.stringify(codeInterpreterConfig)).not.toContain("${CODE_INTERPRETER_TOKEN}");
+    expect(JSON.stringify(codeInterpreterConfig)).not.toContain("python3");
+    expect(JSON.stringify(codeInterpreterConfig)).not.toContain("~/.aws");
+    expect(JSON.stringify(codeInterpreterConfig)).not.toContain("~/.ssh");
+    expect(JSON.stringify(codeInterpreterConfig)).not.toContain("untrusted_customer_ticket");
+    expect(JSON.stringify(codeInterpreterConfig)).not.toContain("retrieved_customer_context");
+    expect(JSON.stringify(codeInterpreterConfig)).not.toContain("browser_tool_output");
     const modelConfig = surfaces.runtime_config.find((surface) => surface.path === "models/model-gateway.yaml");
     expect(modelConfig).toBeDefined();
     expect(modelConfig).toMatchObject({

@@ -117,6 +117,11 @@ export async function detectSurfaces(files: WalkedFile[]): Promise<DetectedSurfa
       continue;
     }
 
+    if (isAgentCodeInterpreterConfigPath(file.relativePath, basename)) {
+      detectAgentCodeInterpreterConfig(file, text, surfaces);
+      continue;
+    }
+
     if (isAgentContainerRuntimeConfigPath(file.relativePath, basename)) {
       detectAgentContainerRuntimeConfig(file, text, surfaces);
       continue;
@@ -1490,6 +1495,105 @@ function detectAgentWebhookEgressConfig(file: WalkedFile, text: string | undefin
   });
 }
 
+function detectAgentCodeInterpreterConfig(file: WalkedFile, text: string | undefined, surfaces: DetectedSurfaces): void {
+  const parsed = parseStructuredConfig(text ?? "", file.relativePath);
+  if (parsed.parseFailed) {
+    addDiagnostic(surfaces, file, {
+      parser: parsed.parser ?? "structured_config",
+      code: "AGENT_CODE_INTERPRETER_CONFIG_PARSE_FAILED",
+      reason: "Agent code interpreter or notebook runtime configuration could not be parsed. Raw content was redacted."
+    });
+  }
+
+  const posture = classifyAgentCodeInterpreterConfig(parsed.value, file.relativePath);
+  const actions = new Set<ActionType>(["call", "read"]);
+  if (
+    posture.agent_code_interpreter_executes_model_code ||
+    posture.agent_code_interpreter_package_install ||
+    posture.agent_code_interpreter_shell_access
+  ) {
+    actions.add("execute");
+  }
+  if (posture.agent_code_interpreter_network_enabled) actions.add("send");
+  if (posture.agent_code_interpreter_filesystem_access || posture.agent_code_interpreter_workspace_write) {
+    actions.add("write");
+  }
+  if (posture.agent_code_interpreter_output_capture || posture.agent_code_interpreter_output_persistence) {
+    actions.add("remember");
+  }
+
+  const dataClasses = new Set<SurfaceObject["data_classes"][number]>(["unknown"]);
+  if (
+    posture.agent_code_interpreter_secret_env_exposure ||
+    posture.agent_code_interpreter_credential_mount ||
+    posture.env_key_names.some(isCredentialLikeKeyName) ||
+    posture.secret_ref_key_names.length > 0
+  ) {
+    dataClasses.add("credential");
+  }
+  if (
+    posture.agent_code_interpreter_sensitive_input ||
+    posture.agent_code_interpreter_untrusted_input ||
+    posture.agent_code_interpreter_filesystem_access ||
+    posture.agent_code_interpreter_output_capture
+  ) {
+    dataClasses.add("confidential");
+  }
+  if (posture.agent_code_interpreter_pii_input) dataClasses.add("pii");
+  if (dataClasses.size > 1) dataClasses.delete("unknown");
+
+  const object = createSurfaceObject({
+    type: "runtime_config",
+    name: path.basename(file.relativePath),
+    path: file.relativePath,
+    trust_level:
+      posture.agent_code_interpreter_shell_access ||
+      posture.agent_code_interpreter_package_install ||
+      posture.agent_code_interpreter_filesystem_access
+        ? "workspace"
+        : inferTrustLevel(file.relativePath),
+    data_classes: uniqueDataClasses([...dataClasses] as SurfaceObject["data_classes"]),
+    actions: uniqueActions([...actions]),
+    side_effect:
+      posture.agent_code_interpreter_executes_model_code ||
+      posture.agent_code_interpreter_package_install ||
+      posture.agent_code_interpreter_shell_access ||
+      posture.agent_code_interpreter_workspace_write ||
+      posture.agent_code_interpreter_network_enabled ||
+      posture.agent_code_interpreter_output_persistence,
+    reversible:
+      !posture.agent_code_interpreter_package_install &&
+      !posture.agent_code_interpreter_shell_access &&
+      !posture.agent_code_interpreter_workspace_write &&
+      !posture.agent_code_interpreter_output_persistence,
+    external_reach: posture.agent_code_interpreter_network_enabled,
+    secret_exposure:
+      posture.agent_code_interpreter_secret_env_exposure ||
+      posture.agent_code_interpreter_credential_mount ||
+      posture.env_key_names.some(isCredentialLikeKeyName) ||
+      posture.secret_ref_key_names.length > 0,
+    reason: "Agent code interpreter or notebook runtime configuration discovered as model-driven code execution posture.",
+    metadata: {
+      content_redacted: true,
+      values_collected: false,
+      parsed_agent_code_interpreter_config: Boolean(parsed.value) && !parsed.parseFailed,
+      parse_error: parsed.parseFailed,
+      ...posture
+    }
+  });
+  surfaces.runtime_config.push({
+    ...object,
+    untrusted_to_privileged:
+      (posture.agent_code_interpreter_untrusted_input &&
+        (posture.agent_code_interpreter_executes_model_code ||
+          posture.agent_code_interpreter_package_install ||
+          posture.agent_code_interpreter_shell_access ||
+          posture.agent_code_interpreter_filesystem_access ||
+          posture.agent_code_interpreter_network_enabled)) ||
+      isUntrustedToPrivileged(object)
+  });
+}
+
 function detectAgentContainerRuntimeConfig(file: WalkedFile, text: string | undefined, surfaces: DetectedSurfaces): void {
   const parsed = parseStructuredConfig(text ?? "", file.relativePath);
   if (parsed.parseFailed) {
@@ -2055,6 +2159,31 @@ function isAgentWebhookEgressConfigPath(relativePath: string, basename: string):
   return webhookName || (webhookDirectory && configName);
 }
 
+function isAgentCodeInterpreterConfigPath(relativePath: string, basename: string): boolean {
+  const normalized = relativePath.replaceAll("\\", "/").toLowerCase();
+  const lowerBase = basename.toLowerCase();
+  if (!/\.(json|ya?ml|toml)$/iu.test(lowerBase)) return false;
+  if (normalized.startsWith(".github/workflows/")) return false;
+  if (normalized.startsWith("rules/")) return false;
+  const segments = normalized.split("/").slice(0, -1);
+  const strongInterpreterDirectory = segments.some((segment) =>
+    /^(code-interpreters?|code_interpreters?|interpreters?|notebooks?|kernels?|python|repls?|code-runners?|code_runners?)$/iu.test(
+      segment
+    )
+  );
+  const genericExecutionDirectory = segments.some((segment) => /^(sandboxes?|runtimes?|executors?)$/iu.test(segment));
+  const interpreterName = /(?:code-interpreter|code_interpreter|notebook-runtime|notebook_runtime|python-runtime|python_runtime|jupyter|ipykernel|kernel|python-repl|python_repl|ipython|repl|code-runner|code_runner|code-executor|code_executor)/iu.test(
+    lowerBase
+  );
+  const strongConfigName = /(?:config|settings|runtime|interpreter|notebook|kernel|python|repl|executor|runner|sandbox)/iu.test(
+    lowerBase
+  );
+  const executionConfigName = /(?:interpreter|notebook|kernel|python|repl|code|executor|runner)/iu.test(
+    lowerBase
+  );
+  return interpreterName || (strongInterpreterDirectory && strongConfigName) || (genericExecutionDirectory && executionConfigName);
+}
+
 function isAgentContainerRuntimeConfigPath(relativePath: string, basename: string): boolean {
   const normalized = relativePath.replaceAll("\\", "/").toLowerCase();
   const lowerBase = basename.toLowerCase();
@@ -2531,6 +2660,30 @@ interface AgentWebhookEgressPosture {
   agent_webhook_egress_redaction_disabled: boolean;
   agent_webhook_egress_retry_enabled: boolean;
   agent_webhook_egress_approval_required: boolean;
+  env_key_names: string[];
+  secret_ref_key_names: string[];
+}
+
+interface AgentCodeInterpreterPosture {
+  agent_code_interpreter_fields: string[];
+  agent_code_interpreter_provider?: string;
+  agent_code_interpreter_enabled: boolean;
+  agent_code_interpreter_executes_model_code: boolean;
+  agent_code_interpreter_untrusted_input: boolean;
+  agent_code_interpreter_network_enabled: boolean;
+  agent_code_interpreter_package_install: boolean;
+  agent_code_interpreter_shell_access: boolean;
+  agent_code_interpreter_filesystem_access: boolean;
+  agent_code_interpreter_workspace_write: boolean;
+  agent_code_interpreter_output_capture: boolean;
+  agent_code_interpreter_output_persistence: boolean;
+  agent_code_interpreter_mounts_redacted: boolean;
+  agent_code_interpreter_mount_kinds: string[];
+  agent_code_interpreter_credential_mount: boolean;
+  agent_code_interpreter_sensitive_input: boolean;
+  agent_code_interpreter_pii_input: boolean;
+  agent_code_interpreter_secret_env_exposure: boolean;
+  agent_code_interpreter_approval_required: boolean;
   env_key_names: string[];
   secret_ref_key_names: string[];
 }
@@ -5317,6 +5470,211 @@ function hasAgentWebhookApprovalRequiredSignal(fields: RuntimeField[]): boolean 
 
 function isAgentWebhookEgressSecurityField(fieldPath: string): boolean {
   return /provider|webhook|callback|egress|outbound|sink|destination|endpoint|url|uri|method|headers?|authorization|auth|token|secret|credential|env|payload|body|include|capture|prompt|message|completion|response|output|tool|retrieval|rag|memory|browser|redact|mask|sanitize|pii|sensitive|retry|queue|approval|source|event|data/iu.test(
+    fieldPath
+  );
+}
+
+function classifyAgentCodeInterpreterConfig(value: unknown, filePath: string): AgentCodeInterpreterPosture {
+  const fields = flattenRuntimeFields(value);
+  const stringValues = collectFieldStringValues(fields);
+  const provider = inferAgentCodeInterpreterProvider([filePath, ...fields.map((field) => field.path), ...stringValues]);
+  const mounts = classifyAgentCodeInterpreterMounts(fields);
+  const envKeys = uniqueStrings([
+    ...collectEnvKeyNamesFromConfig(value).filter(isLikelyEnvKeyName),
+    ...extractEnvironmentReferenceKeys(stringValues)
+  ]);
+  const secretRefKeys = extractSecretReferenceKeys(stringValues);
+
+  return {
+    agent_code_interpreter_fields: fields
+      .map((field) => field.path)
+      .filter((fieldPath) => isAgentCodeInterpreterSecurityField(fieldPath))
+      .sort((a, b) => a.localeCompare(b)),
+    agent_code_interpreter_provider: provider,
+    agent_code_interpreter_enabled: Boolean(provider) || hasAgentCodeInterpreterEnabledSignal(fields),
+    agent_code_interpreter_executes_model_code: hasAgentCodeInterpreterExecutesModelCodeSignal(fields),
+    agent_code_interpreter_untrusted_input: hasAgentCodeInterpreterUntrustedInputSignal(fields),
+    agent_code_interpreter_network_enabled: hasAgentCodeInterpreterNetworkSignal(fields),
+    agent_code_interpreter_package_install: hasAgentCodeInterpreterPackageInstallSignal(fields),
+    agent_code_interpreter_shell_access: hasAgentCodeInterpreterShellAccessSignal(fields),
+    agent_code_interpreter_filesystem_access: hasAgentCodeInterpreterFilesystemSignal(fields) || mounts.mountKinds.length > 0,
+    agent_code_interpreter_workspace_write: hasAgentCodeInterpreterWorkspaceWriteSignal(fields),
+    agent_code_interpreter_output_capture: hasAgentCodeInterpreterOutputCaptureSignal(fields),
+    agent_code_interpreter_output_persistence: hasAgentCodeInterpreterOutputPersistenceSignal(fields),
+    agent_code_interpreter_mounts_redacted: mounts.mountKinds.length > 0,
+    agent_code_interpreter_mount_kinds: mounts.mountKinds,
+    agent_code_interpreter_credential_mount: mounts.credentialMount,
+    agent_code_interpreter_sensitive_input: hasAgentCodeInterpreterSensitiveInputSignal(fields) || mounts.sensitiveMount,
+    agent_code_interpreter_pii_input: hasAgentCodeInterpreterPiiInputSignal(fields),
+    agent_code_interpreter_secret_env_exposure: envKeys.some(isCredentialLikeKeyName) || secretRefKeys.length > 0,
+    agent_code_interpreter_approval_required: hasAgentCodeInterpreterApprovalRequiredSignal(fields),
+    env_key_names: envKeys,
+    secret_ref_key_names: secretRefKeys
+  };
+}
+
+function inferAgentCodeInterpreterProvider(candidates: string[]): string | undefined {
+  const text = candidates.join(" ").toLowerCase();
+  const providers: Array<[string, RegExp]> = [
+    ["jupyter", /\bjupyter\b|\bnotebook\b|\bipykernel\b/iu],
+    ["python_repl", /\bpython[_\s-]?repl\b|\bipython\b|\bpython3?\b/iu],
+    ["code_interpreter", /\bcode[_\s-]?interpreter\b/iu],
+    ["generic_executor", /\b(code[_\s-]?(runner|executor)|repl|kernel|interpreter)\b/iu]
+  ];
+  return providers.find(([, pattern]) => pattern.test(text))?.[0];
+}
+
+function hasAgentCodeInterpreterEnabledSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => {
+    const pathMatch = /(?:^|\.)(enabled|enable|active|runtime\.enabled|code_interpreter\.enabled|interpreter\.enabled)$/iu.test(
+      field.path
+    );
+    const text = `${field.path} ${fieldValueText(field)}`;
+    return (pathMatch && truthyConfigValue(field.value)) || /\b(code[_\s-]?interpreter|notebook|jupyter|kernel|repl)\b/iu.test(text);
+  });
+}
+
+function hasAgentCodeInterpreterExecutesModelCodeSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => {
+    const text = `${field.path} ${fieldValueText(field)}`;
+    const explicitPath = /(?:^|\.)(execute_model_code|model_code|generated_code|allow_untrusted_code|code_execution|eval|execute|exec|run_code|run_generated_code)$/iu.test(
+      field.path
+    );
+    if (explicitPath) return truthyConfigValue(field.value);
+    return /\b(model[_\s-]?generated|generated[_\s-]?code|execute[_\s-]?model[_\s-]?code|allow[_\s-]?untrusted[_\s-]?code|code[_\s-]?execution)\b/iu.test(
+      text
+    ) && truthyConfigValue(field.value);
+  });
+}
+
+function hasAgentCodeInterpreterUntrustedInputSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /(?:^|[_\W])(untrusted|user|customer|client|ticket|support|issue|comment|message|prompt|retrieved|rag|document|email|slack|browser|tool[_\s-]?output|web[_\s-]?page|chat|model[_\s-]?generated)(?:[_\W]|$)/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    )
+  );
+}
+
+function hasAgentCodeInterpreterNetworkSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /(?:^|[_\W])(network|internet|egress|outbound|web[_-]?access|http|https|allow[_-]?network)(?:[_\W]|$)/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    ) && truthyConfigValue(field.value)
+  );
+}
+
+function hasAgentCodeInterpreterPackageInstallSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /(?:^|[_\W])(package[_\s-]?install|install[_\s-]?packages|pip|npm|pnpm|yarn|apt|conda|poetry|uv|gem|cargo)(?:[_\W]|$)/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    ) && truthyConfigValue(field.value)
+  );
+}
+
+function hasAgentCodeInterpreterShellAccessSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /(?:^|[_\W])(shell|bash|sh|zsh|terminal|subprocess|system[_\s-]?command|command[_\s-]?execution|command|exec)(?:[_\W]|$)/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    ) && truthyConfigValue(field.value)
+  );
+}
+
+function hasAgentCodeInterpreterFilesystemSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /(?:^|[_\W])(filesystem|file[_\s-]?system|files?|workspace|repo|repository|mount|mounts|path|paths|directory|directories|scratch|artifact)(?:[_\W]|$)/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    ) && truthyConfigValue(field.value)
+  );
+}
+
+function hasAgentCodeInterpreterWorkspaceWriteSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /(?:^|[_\W])(workspace[_\s-]?write|write[_\s-]?workspace|write[_\s-]?files|save[_\s-]?files|file[_\s-]?write|writable|read[_\s-]?write|mutate)(?:[_\W]|$)/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    ) && truthyConfigValue(field.value)
+  );
+}
+
+function hasAgentCodeInterpreterOutputCaptureSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /(?:^|[_\W])(capture[_\s-]?(stdout|stderr|files|artifacts?|outputs?)|stdout|stderr|log[_\s-]?outputs?|artifact[_\s-]?capture|output[_\s-]?capture)(?:[_\W]|$)/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    ) && truthyConfigValue(field.value)
+  );
+}
+
+function hasAgentCodeInterpreterOutputPersistenceSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /(?:^|[_\W])(persist|persistence|save[_\s-]?notebooks?|persist[_\s-]?notebooks?|history|cache|retention|store[_\s-]?outputs?)(?:[_\W]|$)/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    ) && truthyConfigValue(field.value)
+  );
+}
+
+function classifyAgentCodeInterpreterMounts(fields: RuntimeField[]): {
+  credentialMount: boolean;
+  sensitiveMount: boolean;
+  mountKinds: string[];
+} {
+  const mountKinds = new Set<string>();
+  for (const field of fields) {
+    if (!isAgentCodeInterpreterMountField(field.path)) continue;
+    const text = `${field.path} ${fieldValueText(field)}`;
+    const lower = text.toLowerCase();
+    if (/\b(workspace|workspaces|repo|repository|project|source[_-]?code|checkout)\b|(?:^|[\s"'])(?:\.\/|\.\.\/)(?:[\s"']|$)/iu.test(lower)) {
+      mountKinds.add("workspace_mount");
+    }
+    if (/(?:^|[\/._-])(?:\.ssh|\.aws|\.kube|\.docker|gcloud|credentials?|secrets?|id_rsa|private[_-]?key)(?:$|[\/._\s:-])/iu.test(
+      lower
+    )) {
+      mountKinds.add("credential_path");
+    }
+    if (/(^|[\s"'])(?:\/(?:etc|home|users|root|private|var|opt|srv|mnt)|~\/|[a-z]:\\)/iu.test(text)) {
+      mountKinds.add("host_path");
+    }
+    if (/\b(credential|secret|private[_-]?key|\/etc|\/var|\/home|\/users|\/root|\/private)\b/iu.test(lower)) {
+      mountKinds.add("sensitive_path");
+    }
+  }
+  const kinds = [...mountKinds].sort((a, b) => a.localeCompare(b));
+  return {
+    credentialMount: kinds.includes("credential_path"),
+    sensitiveMount: kinds.includes("credential_path") || kinds.includes("host_path") || kinds.includes("sensitive_path"),
+    mountKinds: kinds
+  };
+}
+
+function isAgentCodeInterpreterMountField(fieldPath: string): boolean {
+  return /(?:^|\.)(mounts?|mount_paths?|mountPaths?|paths?|directories?|workspace_mounts?|workspaceMounts?|volumes?|binds?)$/iu.test(
+    fieldPath
+  );
+}
+
+function hasAgentCodeInterpreterSensitiveInputSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /(?:^|[_\W])(customer|client|ticket|support|internal|confidential|private|proprietary|sensitive|account|record|case|retrieved|rag|memory|tool[_\s-]?output|browser[_\s-]?output)(?:[_\W]|$)/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    )
+  );
+}
+
+function hasAgentCodeInterpreterPiiInputSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /(?:^|[_\W])(pii|email|phone|address|ssn|passport|dob|date[_\s-]?of[_\s-]?birth|customer[_-]?id|user[_-]?id|account[_-]?id)(?:[_\W]|$)/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    )
+  );
+}
+
+function hasAgentCodeInterpreterApprovalRequiredSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /approval|required[_-]?approval|human[_-]?approval|confirm|confirmation|review|human[_-]?in[_-]?the[_-]?loop/iu.test(field.path) &&
+    truthyConfigValue(field.value)
+  );
+}
+
+function isAgentCodeInterpreterSecurityField(fieldPath: string): boolean {
+  return /provider|runtime|mode|enabled|interpreter|notebook|jupyter|kernel|python|repl|executor|runner|code|model|generated|execute|exec|shell|command|subprocess|network|internet|egress|http|package|install|pip|npm|apt|conda|filesystem|workspace|file|mount|path|output|stdout|stderr|artifact|persist|history|cache|retention|input|source|prompt|retrieval|rag|ticket|customer|browser|tool|pii|sensitive|secret|token|credential|env|approval/iu.test(
     fieldPath
   );
 }

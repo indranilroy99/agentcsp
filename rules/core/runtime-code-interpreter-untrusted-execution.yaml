@@ -1,0 +1,49 @@
+id: AGENTCSP-RUNTIME-027
+name: Code interpreter executes untrusted model-driven code with privileged access
+description: An agent code interpreter, notebook, or REPL runtime can execute model-generated or untrusted code with network access, filesystem access, package installation, credential exposure, and no approval gate.
+category: code_interpreter_boundary
+severity: critical
+maps_to:
+  owasp:
+    - LLM06:2025 Excessive Agency
+    - LLM07:2025 System Prompt Leakage
+  mitre_atlas:
+    - AML.T0054 Command and Scripting Interpreter
+    - AML.T0057 Exfiltration via Cyber Means
+  nist_ai_rmf:
+    - MAP 5.1
+    - MEASURE 2.9
+    - MANAGE 2.4
+match:
+  object_type: runtime_config
+  where:
+    - field: metadata.parsed_agent_code_interpreter_config
+      op: equals
+      value: true
+    - field: metadata.agent_code_interpreter_enabled
+      op: equals
+      value: true
+    - field: metadata.agent_code_interpreter_executes_model_code
+      op: equals
+      value: true
+    - field: metadata.agent_code_interpreter_untrusted_input
+      op: equals
+      value: true
+    - field: metadata.agent_code_interpreter_network_enabled
+      op: equals
+      value: true
+    - field: metadata.agent_code_interpreter_package_install
+      op: equals
+      value: true
+    - field: metadata.agent_code_interpreter_filesystem_access
+      op: equals
+      value: true
+    - field: metadata.agent_code_interpreter_approval_required
+      op: equals
+      value: false
+    - field: secret_exposure
+      op: equals
+      value: true
+recommendation:
+  control: require_approval
+  text: Isolate code interpreter runtimes, disable network and package installation by default, strip credentials and sensitive mounts from the execution environment, use read-only scratch workspaces, and require human approval before untrusted or model-generated code can execute.

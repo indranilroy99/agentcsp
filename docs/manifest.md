@@ -792,6 +792,37 @@ Container runtime metadata may include:
 
 Raw image names, host mount paths, Docker socket paths, credential paths, input labels, tool lists, and token placeholders are not emitted. Provider names, redacted mount categories, namespace posture, capability categories, tool-authority categories, untrusted-input signals, approval posture, and credential key names let rules detect host-escape blast radius without copying container runtime details into the manifest.
 
+## Agent Code Interpreter Runtime
+
+Agent code interpreter, notebook, Python REPL, Jupyter, kernel, and code-runner configs are normalized into `runtime_config` objects when interpreter-oriented directories or filenames are discovered.
+
+Code interpreter metadata may include:
+
+- `parsed_agent_code_interpreter_config`
+- `agent_code_interpreter_fields`
+- `agent_code_interpreter_provider`
+- `agent_code_interpreter_enabled`
+- `agent_code_interpreter_executes_model_code`
+- `agent_code_interpreter_untrusted_input`
+- `agent_code_interpreter_network_enabled`
+- `agent_code_interpreter_package_install`
+- `agent_code_interpreter_shell_access`
+- `agent_code_interpreter_filesystem_access`
+- `agent_code_interpreter_workspace_write`
+- `agent_code_interpreter_output_capture`
+- `agent_code_interpreter_output_persistence`
+- `agent_code_interpreter_mounts_redacted`
+- `agent_code_interpreter_mount_kinds`
+- `agent_code_interpreter_credential_mount`
+- `agent_code_interpreter_sensitive_input`
+- `agent_code_interpreter_pii_input`
+- `agent_code_interpreter_secret_env_exposure`
+- `agent_code_interpreter_approval_required`
+- `env_key_names`
+- `secret_ref_key_names`
+
+Raw kernel values, code snippets, package names, mounted paths, input labels, output labels, and token placeholders are not emitted. Provider names, redacted mount categories, execution posture, network/package-install posture, output-retention posture, approval posture, and credential key names let rules detect untrusted code execution blast radius without copying notebook runtime details into the manifest.
+
 ## AI Telemetry Export
 
 AI telemetry and trace-export configs are also normalized into `runtime_config` objects when common observability, tracing, LangSmith, Langfuse, Helicone, Braintrust, OpenTelemetry, or similar configuration files are discovered.

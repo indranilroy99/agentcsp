@@ -66,6 +66,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-024")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-025")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-026")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-027")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-CICD-002")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-AUTOMATION-001")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-AUTOMATION-002")).toBe(true);
@@ -235,6 +236,36 @@ describe("rule engine", () => {
     expect(JSON.stringify(runtimeContainerFindings[0])).not.toContain("/var/run/docker.sock");
     expect(JSON.stringify(runtimeContainerFindings[0])).not.toContain("~/.ssh");
     expect(JSON.stringify(runtimeContainerFindings[0])).not.toContain("untrusted_customer_ticket");
+    const runtimeCodeInterpreterFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-RUNTIME-027");
+    expect(runtimeCodeInterpreterFindings).toHaveLength(1);
+    expect(runtimeCodeInterpreterFindings[0]?.matched_object.path).toBe("code-interpreter/python-runtime.yaml");
+    expect(runtimeCodeInterpreterFindings[0]?.matched_object.metadata).toMatchObject({
+      parsed_agent_code_interpreter_config: true,
+      agent_code_interpreter_provider: "jupyter",
+      agent_code_interpreter_enabled: true,
+      agent_code_interpreter_executes_model_code: true,
+      agent_code_interpreter_untrusted_input: true,
+      agent_code_interpreter_network_enabled: true,
+      agent_code_interpreter_package_install: true,
+      agent_code_interpreter_filesystem_access: true,
+      agent_code_interpreter_secret_env_exposure: true,
+      agent_code_interpreter_approval_required: false
+    });
+    expect(runtimeCodeInterpreterFindings[0]?.matched_object.metadata.agent_code_interpreter_mount_kinds).toEqual([
+      "credential_path",
+      "host_path",
+      "workspace_mount"
+    ]);
+    expect(runtimeCodeInterpreterFindings[0]?.severity).toBe("critical");
+    expect(runtimeCodeInterpreterFindings[0]?.confidence).toBe("very_high");
+    expect(runtimeCodeInterpreterFindings[0]?.recommended_control).toBe("require_approval");
+    expect(JSON.stringify(runtimeCodeInterpreterFindings[0])).not.toContain("${CODE_INTERPRETER_TOKEN}");
+    expect(JSON.stringify(runtimeCodeInterpreterFindings[0])).not.toContain("python3");
+    expect(JSON.stringify(runtimeCodeInterpreterFindings[0])).not.toContain("~/.aws");
+    expect(JSON.stringify(runtimeCodeInterpreterFindings[0])).not.toContain("~/.ssh");
+    expect(JSON.stringify(runtimeCodeInterpreterFindings[0])).not.toContain("untrusted_customer_ticket");
+    expect(JSON.stringify(runtimeCodeInterpreterFindings[0])).not.toContain("retrieved_customer_context");
+    expect(JSON.stringify(runtimeCodeInterpreterFindings[0])).not.toContain("browser_tool_output");
     const runtimeModelEndpointFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-RUNTIME-009");
     expect(runtimeModelEndpointFindings).toHaveLength(1);
     expect(runtimeModelEndpointFindings[0]?.matched_object.path).toBe("models/model-gateway.yaml");

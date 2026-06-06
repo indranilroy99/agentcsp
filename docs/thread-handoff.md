@@ -775,6 +775,15 @@ The current iteration adds:
 - graph-priority tuning that keeps concrete RAG-to-exfiltration and RAG-to-mutable-record paths visible as the runtime surface inventory grows
 - scanner, rule, fixture verifier, and redaction coverage proving image names, host paths, Docker socket paths, credential paths, input labels, tool names, and token placeholders stay redacted
 
+## Agent Code Interpreter Runtime Pass
+
+The current iteration adds:
+
+- first-class redacted metadata for agent code interpreter, notebook, Jupyter, Python REPL, kernel, and code-runner configs
+- vulnerable fixture coverage for untrusted customer/retrieval/browser context that can execute model-generated code with network access, package installation, shell/filesystem access, credential mounts, output persistence, and no approval gate
+- rule `AGENTCSP-RUNTIME-027` for code interpreter runtimes that combine model-driven code execution, untrusted input, network/package-install authority, filesystem access, credential exposure, and missing approval
+- scanner, rule, fixture verifier, and redaction coverage proving kernel values, mounted paths, input labels, output labels, and token placeholders stay redacted
+
 ## Initial Build Recommendation
 
 Start with a CLI-first MVP before building the dashboard:
