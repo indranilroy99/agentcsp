@@ -77,6 +77,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-051")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-052")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-053")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-054")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-030")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-031")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-032")).toBe(true);
@@ -1249,6 +1250,29 @@ describe("rule engine", () => {
     expect(JSON.stringify(runtimeSharedSessionFindings[0])).not.toContain("external_support_vendor");
     expect(JSON.stringify(runtimeSharedSessionFindings[0])).not.toContain("support_db.update_customer_record");
     expect(JSON.stringify(runtimeSharedSessionFindings[0])).not.toContain("session_share_customer_email");
+    const runtimeComputerUseFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-RUNTIME-054");
+    expect(runtimeComputerUseFindings).toHaveLength(1);
+    expect(runtimeComputerUseFindings[0]?.matched_object.path).toBe("computer/desktop-agent.yaml");
+    expect(runtimeComputerUseFindings[0]?.matched_object.metadata).toMatchObject({
+      parsed_agent_computer_use_config: true,
+      agent_computer_use_enabled: true,
+      agent_computer_use_authenticated_session: true,
+      agent_computer_use_screen_capture: true,
+      agent_computer_use_keyboard_input: true,
+      agent_computer_use_mouse_control: true,
+      agent_computer_use_clipboard_access: true,
+      agent_computer_use_file_transfer: true,
+      agent_computer_use_untrusted_input: true,
+      agent_computer_use_redaction_disabled: true,
+      agent_computer_use_approval_required: false
+    });
+    expect(runtimeComputerUseFindings[0]?.severity).toBe("critical");
+    expect(runtimeComputerUseFindings[0]?.confidence).toBe("very_high");
+    expect(runtimeComputerUseFindings[0]?.recommended_control).toBe("require_approval");
+    expect(JSON.stringify(runtimeComputerUseFindings[0])).not.toContain("${DESKTOP_AGENT_TOKEN}");
+    expect(JSON.stringify(runtimeComputerUseFindings[0])).not.toContain("desktop.agentcsp-demo.example.invalid");
+    expect(JSON.stringify(runtimeComputerUseFindings[0])).not.toContain("support-crm-admin");
+    expect(JSON.stringify(runtimeComputerUseFindings[0])).not.toContain("desktop_customer_email");
     const runtimeAuthorizationBrokerFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-RUNTIME-041");
     expect(runtimeAuthorizationBrokerFindings).toHaveLength(1);
     expect(runtimeAuthorizationBrokerFindings[0]?.matched_object.path).toBe("authz/tool-broker.yaml");

@@ -20,6 +20,7 @@ const leakPatterns = [
   /\$\{APPROVAL_GATE_TOKEN\}/u,
   /\$\{CHATOPS_APPROVAL_TOKEN\}/u,
   /\$\{SESSION_SHARE_TOKEN\}/u,
+  /\$\{DESKTOP_AGENT_TOKEN\}/u,
   /\$\{CONTEXT_COMPOSER_TOKEN\}/u,
   /\$\{TOOL_OUTPUT_POLICY_TOKEN\}/u,
   /\$\{VISION_CONTEXT_TOKEN\}/u,
@@ -98,6 +99,7 @@ const leakPatterns = [
   /browser_internal_case_notes/u,
   /hooks\.slack\.example\.invalid/u,
   /sessions\.agentcsp-demo\.example\.invalid/u,
+  /desktop\.agentcsp-demo\.example\.invalid/u,
   /chat:write/u,
   /channels:history/u,
   /users:read\.email/u,
@@ -258,6 +260,16 @@ const leakPatterns = [
   /session_share_customer_email/u,
   /session_share_account_number/u,
   /confidential_session_share_notes/u,
+  /support-crm-admin/u,
+  /billing-console-prod/u,
+  /password-manager-desktop/u,
+  /customer-crm-window/u,
+  /billing-admin-window/u,
+  /\/Users\/support\/customer_exports\/export\.csv/u,
+  /\/tmp\/agent-desktop-downloads/u,
+  /desktop_customer_email/u,
+  /desktop_account_number/u,
+  /confidential_desktop_notes/u,
   /chatops_approval_account_number/u,
   /confidential_chatops_approval_notes/u,
   /Summarize the customer request/u,
@@ -437,8 +449,8 @@ const leakPatterns = [
 const vulnerable = await readScanOutput(vulnerableOutput, { sarifRequired: true });
 const safe = await readScanOutput(safeOutput, { sarifRequired: false });
 
-assertEqual(vulnerable.manifest.findings.length, 146, "vulnerable manifest finding count");
-assertEqual(vulnerable.findings.length, 146, "vulnerable findings.json count");
+assertEqual(vulnerable.manifest.findings.length, 148, "vulnerable manifest finding count");
+assertEqual(vulnerable.findings.length, 148, "vulnerable findings.json count");
 assertEqual(vulnerable.manifest.attack_paths.length, 15, "vulnerable attack path count");
 assertEqual(vulnerable.manifest.static_blast_radius?.critical_attack_paths, 15, "vulnerable critical attack path count");
 assertEqual(vulnerable.manifest.diagnostics.length, 0, "vulnerable diagnostics count");
@@ -495,6 +507,7 @@ for (const ruleId of [
   "AGENTCSP-RUNTIME-051",
   "AGENTCSP-RUNTIME-052",
   "AGENTCSP-RUNTIME-053",
+  "AGENTCSP-RUNTIME-054",
   "AGENTCSP-AUTOMATION-003",
   "AGENTCSP-RUNTIME-006",
   "AGENTCSP-MCP-006",

@@ -1,0 +1,28 @@
+enabled: true
+provider: local-desktop-review
+session:
+  authenticated_user_session: false
+  signed_in_apps: []
+  credential_store: false
+  autofill: false
+screen_capture:
+  enabled: false
+  screenshots: false
+  ocr: false
+controls:
+  mouse: false
+  keyboard: false
+  clipboard_read: false
+  clipboard_write: false
+  file_upload: false
+  file_download: false
+  auto_accept_downloads: false
+  app_control: false
+  terminal_access: false
+redaction:
+  enabled: true
+  screen: true
+  clipboard: true
+  pii: true
+  secrets: true
+approval_required: true

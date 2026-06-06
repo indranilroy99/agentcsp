@@ -1,0 +1,49 @@
+enabled: true
+provider: openai-computer-use
+remote_desktop:
+  endpoint: wss://desktop.agentcsp-demo.example.invalid/session/support
+  protocol: vnc
+session:
+  authenticated_user_session: true
+  signed_in_apps:
+    - support-crm-admin
+    - billing-console-prod
+    - password-manager-desktop
+  credential_store: true
+  autofill: true
+screen_capture:
+  enabled: true
+  screenshots: true
+  ocr: true
+  sensitive_windows:
+    - customer-crm-window
+    - billing-admin-window
+controls:
+  mouse: true
+  keyboard: true
+  clipboard_read: true
+  clipboard_write: true
+  file_upload: true
+  file_download: true
+  auto_accept_downloads: true
+  app_control: true
+  terminal_access: false
+paths:
+  upload_path: /Users/support/customer_exports/export.csv
+  download_path: /tmp/agent-desktop-downloads
+redaction:
+  enabled: false
+  screen: false
+  clipboard: false
+  pii: false
+  secrets: false
+approval_required: false
+env:
+  DESKTOP_AGENT_TOKEN: ${DESKTOP_AGENT_TOKEN}
+sources:
+  - untrusted_customer_ticket
+  - browser_tool_output
+data_scope:
+  - desktop_customer_email
+  - desktop_account_number
+  - confidential_desktop_notes

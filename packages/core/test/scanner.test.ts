@@ -1807,6 +1807,63 @@ describe("scanner", () => {
     expect(JSON.stringify(browserSessionConfig)).not.toContain("Customer Payment Wallet");
     expect(JSON.stringify(browserSessionConfig)).not.toContain(".browser/downloads/customer-exports");
     expect(JSON.stringify(browserSessionConfig)).not.toContain("export.csv");
+    const computerUseConfig = surfaces.runtime_config.find((surface) => surface.path === "computer/desktop-agent.yaml");
+    expect(computerUseConfig).toBeDefined();
+    expect(computerUseConfig).toMatchObject({
+      trust_level: "third_party",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["call", "execute", "read", "send", "write"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false,
+      untrusted_to_privileged: true
+    });
+    expect(computerUseConfig?.metadata).toMatchObject({
+      content_redacted: true,
+      values_collected: false,
+      parsed_agent_computer_use_config: true,
+      agent_computer_use_provider: "openai_computer_use",
+      agent_computer_use_enabled: true,
+      agent_computer_use_remote_session: true,
+      agent_computer_use_destination_redacted: true,
+      agent_computer_use_destination_count: 1,
+      agent_computer_use_authenticated_session: true,
+      agent_computer_use_credential_store_access: true,
+      agent_computer_use_screen_capture: true,
+      agent_computer_use_ocr_capture: true,
+      agent_computer_use_clipboard_access: true,
+      agent_computer_use_clipboard_write: true,
+      agent_computer_use_keyboard_input: true,
+      agent_computer_use_mouse_control: true,
+      agent_computer_use_file_transfer: true,
+      agent_computer_use_download_auto_accept: true,
+      agent_computer_use_local_path_redacted: true,
+      agent_computer_use_app_control: true,
+      agent_computer_use_terminal_control: false,
+      agent_computer_use_sensitive_context: true,
+      agent_computer_use_pii_context: true,
+      agent_computer_use_redaction_disabled: true,
+      agent_computer_use_untrusted_input: true,
+      agent_computer_use_approval_required: false
+    });
+    expect(computerUseConfig?.metadata.agent_computer_use_destination_kinds).toEqual([
+      "computer_use_config",
+      "remote_desktop_endpoint",
+      "vnc_endpoint"
+    ]);
+    expect(computerUseConfig?.metadata.env_key_names).toEqual(["DESKTOP_AGENT_TOKEN"]);
+    expect(computerUseConfig?.metadata.secret_ref_key_names).toEqual(["DESKTOP_AGENT_TOKEN"]);
+    expect(JSON.stringify(computerUseConfig)).not.toContain("${DESKTOP_AGENT_TOKEN}");
+    expect(JSON.stringify(computerUseConfig)).not.toContain("desktop.agentcsp-demo.example.invalid");
+    expect(JSON.stringify(computerUseConfig)).not.toContain("support-crm-admin");
+    expect(JSON.stringify(computerUseConfig)).not.toContain("billing-console-prod");
+    expect(JSON.stringify(computerUseConfig)).not.toContain("password-manager-desktop");
+    expect(JSON.stringify(computerUseConfig)).not.toContain("customer-crm-window");
+    expect(JSON.stringify(computerUseConfig)).not.toContain("billing-admin-window");
+    expect(JSON.stringify(computerUseConfig)).not.toContain("/Users/support/customer_exports/export.csv");
+    expect(JSON.stringify(computerUseConfig)).not.toContain("/tmp/agent-desktop-downloads");
+    expect(JSON.stringify(computerUseConfig)).not.toContain("desktop_customer_email");
     const cloudControlPlaneConfig = surfaces.runtime_config.find(
       (surface) => surface.path === "cloud/aws-admin-agent.yaml"
     );
@@ -3488,6 +3545,64 @@ describe("scanner", () => {
     expect(browserSession?.metadata.env_key_names).toEqual([]);
     expect(browserSession?.metadata.secret_ref_key_names).toEqual([]);
     expect(JSON.stringify(browserSession)).not.toContain("approved_internal_docs");
+  });
+
+  it("keeps local read-only computer-use reviews scoped", async () => {
+    const files = await walkProject({
+      root_path: safeFixtureRoot,
+      output_path: ".agentcsp",
+      formats: ["json", "md"],
+      include_hidden: true,
+      include_logs: false,
+      max_file_size_bytes: 1024 * 1024,
+      max_files: 5000,
+      quiet: true
+    });
+    const surfaces = await detectSurfaces(files);
+    const computerUse = surfaces.runtime_config.find((surface) => surface.path === "computer/read-desktop.yaml");
+
+    expect(computerUse).toMatchObject({
+      trust_level: "project",
+      data_classes: ["unknown"],
+      actions: ["read"],
+      side_effect: false,
+      external_reach: false,
+      secret_exposure: false,
+      reversible: true,
+      untrusted_to_privileged: false
+    });
+    expect(computerUse?.metadata).toMatchObject({
+      content_redacted: true,
+      values_collected: false,
+      parsed_agent_computer_use_config: true,
+      agent_computer_use_provider: undefined,
+      agent_computer_use_enabled: true,
+      agent_computer_use_remote_session: false,
+      agent_computer_use_destination_redacted: false,
+      agent_computer_use_destination_count: 0,
+      agent_computer_use_authenticated_session: false,
+      agent_computer_use_credential_store_access: false,
+      agent_computer_use_screen_capture: false,
+      agent_computer_use_ocr_capture: false,
+      agent_computer_use_clipboard_access: false,
+      agent_computer_use_clipboard_write: false,
+      agent_computer_use_keyboard_input: false,
+      agent_computer_use_mouse_control: false,
+      agent_computer_use_file_transfer: false,
+      agent_computer_use_download_auto_accept: false,
+      agent_computer_use_local_path_redacted: false,
+      agent_computer_use_app_control: false,
+      agent_computer_use_terminal_control: false,
+      agent_computer_use_sensitive_context: false,
+      agent_computer_use_pii_context: false,
+      agent_computer_use_redaction_disabled: false,
+      agent_computer_use_untrusted_input: false,
+      agent_computer_use_approval_required: true
+    });
+    expect(computerUse?.metadata.agent_computer_use_destination_kinds).toEqual(["computer_use_config"]);
+    expect(computerUse?.metadata.env_key_names).toEqual([]);
+    expect(computerUse?.metadata.secret_ref_key_names).toEqual([]);
+    expect(JSON.stringify(computerUse)).not.toContain("local-desktop-review");
   });
 
   it("keeps local approved feedback loops scoped", async () => {

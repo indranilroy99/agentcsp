@@ -38,6 +38,8 @@ For memory-store access-boundary and retention rules, require concrete durable-m
 
 For browser file-transfer rules, require concrete file-transfer correlation such as authenticated browser state, untrusted navigation, broad origins, upload/download authority, redacted local transfer paths, sensitive or PII context, credential evidence, and missing approval. Do not flag local unauthenticated read-only browser configs merely because upload, download, cookie, or remote-debugging keys are explicitly set to false.
 
+For computer-use and desktop automation rules, require concrete host-control correlation such as signed-in desktop state, screen or OCR capture, keyboard/mouse control, clipboard or file-transfer authority, credential-store exposure, untrusted instructions, disabled redaction, credential evidence, and missing approval. Do not flag local read-only review configs merely because they contain disabled desktop, screen, clipboard, upload, download, or credential-store fields.
+
 AgentCSP computes finding confidence from rule correlation depth, scoped object type, structured parsing, privileged actions, data class, external reach, and side-effect signals.
 
 Required fields:

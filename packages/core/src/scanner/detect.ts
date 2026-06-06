@@ -249,6 +249,11 @@ export async function detectSurfaces(files: WalkedFile[]): Promise<DetectedSurfa
       continue;
     }
 
+    if (isAgentComputerUseConfigPath(file.relativePath, basename)) {
+      detectAgentComputerUseConfig(file, text, surfaces);
+      continue;
+    }
+
     if (isBrowserSessionConfigPath(file.relativePath, basename)) {
       detectBrowserSessionConfig(file, text, surfaces);
       continue;
@@ -1629,6 +1634,98 @@ function detectBrowserSessionConfig(file: WalkedFile, text: string | undefined, 
         posture.browser_download_upload_enabled &&
         (posture.browser_upload_path_redacted || posture.browser_download_path_redacted) &&
         !posture.browser_approval_required) ||
+      isUntrustedToPrivileged(object)
+  });
+}
+
+function detectAgentComputerUseConfig(file: WalkedFile, text: string | undefined, surfaces: DetectedSurfaces): void {
+  const parsed = parseStructuredConfig(text ?? "", file.relativePath);
+  if (parsed.parseFailed) {
+    addDiagnostic(surfaces, file, {
+      parser: parsed.parser ?? "structured_config",
+      code: "AGENT_COMPUTER_USE_CONFIG_PARSE_FAILED",
+      reason: "Agent computer-use configuration could not be parsed. Raw content was redacted."
+    });
+  }
+
+  const posture = classifyAgentComputerUseConfig(parsed.value, file.relativePath);
+  const actions = new Set<ActionType>(["read"]);
+  if (
+    posture.agent_computer_use_keyboard_input ||
+    posture.agent_computer_use_mouse_control ||
+    posture.agent_computer_use_clipboard_access ||
+    posture.agent_computer_use_file_transfer ||
+    posture.agent_computer_use_app_control
+  ) {
+    actions.add("call");
+  }
+  if (
+    posture.agent_computer_use_keyboard_input ||
+    posture.agent_computer_use_mouse_control ||
+    posture.agent_computer_use_clipboard_write ||
+    posture.agent_computer_use_file_transfer
+  ) {
+    actions.add("write");
+  }
+  if (posture.agent_computer_use_remote_session || posture.agent_computer_use_file_transfer) actions.add("send");
+  if (posture.agent_computer_use_terminal_control || posture.agent_computer_use_app_control) actions.add("execute");
+
+  const dataClasses = new Set<SurfaceObject["data_classes"][number]>(["unknown"]);
+  if (
+    posture.agent_computer_use_authenticated_session ||
+    posture.agent_computer_use_credential_store_access ||
+    posture.env_key_names.some(isCredentialLikeKeyName) ||
+    posture.secret_ref_key_names.length > 0
+  ) {
+    dataClasses.add("credential");
+  }
+  if (posture.agent_computer_use_sensitive_context || posture.agent_computer_use_screen_capture || posture.agent_computer_use_untrusted_input) {
+    dataClasses.add("confidential");
+  }
+  if (posture.agent_computer_use_pii_context) dataClasses.add("pii");
+  if (dataClasses.size > 1) dataClasses.delete("unknown");
+
+  const object = createSurfaceObject({
+    type: "runtime_config",
+    name: path.basename(file.relativePath),
+    path: file.relativePath,
+    trust_level: posture.agent_computer_use_remote_session ? "third_party" : inferTrustLevel(file.relativePath),
+    data_classes: uniqueDataClasses([...dataClasses] as SurfaceObject["data_classes"]),
+    actions: uniqueActions([...actions]),
+    side_effect:
+      posture.agent_computer_use_keyboard_input ||
+      posture.agent_computer_use_mouse_control ||
+      posture.agent_computer_use_clipboard_write ||
+      posture.agent_computer_use_file_transfer ||
+      posture.agent_computer_use_app_control ||
+      posture.agent_computer_use_terminal_control,
+    reversible: !posture.agent_computer_use_file_transfer && !posture.agent_computer_use_terminal_control,
+    external_reach: posture.agent_computer_use_remote_session || posture.agent_computer_use_file_transfer,
+    secret_exposure:
+      posture.agent_computer_use_authenticated_session ||
+      posture.agent_computer_use_credential_store_access ||
+      posture.env_key_names.some(isCredentialLikeKeyName) ||
+      posture.secret_ref_key_names.length > 0,
+    reason: "Agent computer-use configuration discovered as desktop, screen, clipboard, and host interaction posture.",
+    metadata: {
+      content_redacted: true,
+      values_collected: false,
+      parsed_agent_computer_use_config: Boolean(parsed.value) && !parsed.parseFailed,
+      parse_error: parsed.parseFailed,
+      ...posture
+    }
+  });
+  surfaces.runtime_config.push({
+    ...object,
+    untrusted_to_privileged:
+      (posture.agent_computer_use_untrusted_input &&
+        posture.agent_computer_use_authenticated_session &&
+        posture.agent_computer_use_screen_capture &&
+        (posture.agent_computer_use_keyboard_input ||
+          posture.agent_computer_use_mouse_control ||
+          posture.agent_computer_use_clipboard_write ||
+          posture.agent_computer_use_file_transfer) &&
+        !posture.agent_computer_use_approval_required) ||
       isUntrustedToPrivileged(object)
   });
 }
@@ -3588,6 +3685,27 @@ function isBrowserSessionConfigPath(relativePath: string, basename: string): boo
   return browserName || (browserDirectory && configName);
 }
 
+function isAgentComputerUseConfigPath(relativePath: string, basename: string): boolean {
+  const normalized = relativePath.replaceAll("\\", "/").toLowerCase();
+  const lowerBase = basename.toLowerCase();
+  if (!/\.(json|ya?ml|toml)$/iu.test(lowerBase)) return false;
+  if (normalized.startsWith(".github/workflows/")) return false;
+  if (normalized.startsWith("rules/")) return false;
+  const segments = normalized.split("/").slice(0, -1);
+  const computerDirectory = segments.some((segment) =>
+    /^(computer|computer-use|computer_use|desktop|desktops|desktop-agent|desktop_agent|remote-desktop|remote_desktop|vnc|rdp|novnc|workstation|ui-automation|ui_automation|operator|operators|screen-control|screen_control)$/iu.test(
+      segment
+    )
+  );
+  const computerName = /(?:computer[-_]?use|desktop[-_]?agent|remote[-_]?desktop|computer[-_]?agent|screen[-_]?control|ui[-_]?automation|vnc|rdp|novnc|workstation|operator[-_]?session)/iu.test(
+    lowerBase
+  );
+  const configName = /(?:config|settings|session|profile|auth|desktop|computer|screen|clipboard|keyboard|mouse|control|automation|operator|workstation|vnc|rdp)/iu.test(
+    lowerBase
+  );
+  return computerName || (computerDirectory && configName);
+}
+
 function isAgentCspPolicyConfigPath(relativePath: string, basename: string): boolean {
   const normalized = relativePath.replaceAll("\\", "/").toLowerCase();
   const lowerBase = basename.toLowerCase();
@@ -4465,6 +4583,36 @@ interface BrowserSessionPosture {
   browser_sensitive_data: boolean;
   browser_pii_data: boolean;
   browser_approval_required: boolean;
+  env_key_names: string[];
+  secret_ref_key_names: string[];
+}
+
+interface AgentComputerUsePosture {
+  agent_computer_use_fields: string[];
+  agent_computer_use_provider?: string;
+  agent_computer_use_enabled: boolean;
+  agent_computer_use_remote_session: boolean;
+  agent_computer_use_destination_redacted: boolean;
+  agent_computer_use_destination_count: number;
+  agent_computer_use_destination_kinds: string[];
+  agent_computer_use_authenticated_session: boolean;
+  agent_computer_use_credential_store_access: boolean;
+  agent_computer_use_screen_capture: boolean;
+  agent_computer_use_ocr_capture: boolean;
+  agent_computer_use_clipboard_access: boolean;
+  agent_computer_use_clipboard_write: boolean;
+  agent_computer_use_keyboard_input: boolean;
+  agent_computer_use_mouse_control: boolean;
+  agent_computer_use_file_transfer: boolean;
+  agent_computer_use_download_auto_accept: boolean;
+  agent_computer_use_local_path_redacted: boolean;
+  agent_computer_use_app_control: boolean;
+  agent_computer_use_terminal_control: boolean;
+  agent_computer_use_sensitive_context: boolean;
+  agent_computer_use_pii_context: boolean;
+  agent_computer_use_redaction_disabled: boolean;
+  agent_computer_use_untrusted_input: boolean;
+  agent_computer_use_approval_required: boolean;
   env_key_names: string[];
   secret_ref_key_names: string[];
 }
@@ -7074,6 +7222,313 @@ function hasBrowserApprovalRequiredSignal(fields: RuntimeField[]): boolean {
 
 function isBrowserSessionSecurityField(fieldPath: string): boolean {
   return /provider|browser|playwright|puppeteer|selenium|profile|user[_-]?data|storage|session|cookie|auth|token|credential|password|origin|domain|host|url|debug|cdp|devtools|extension|addon|plugin|autofill|wallet|payment|navigation|action|click|form|submit|upload|download|source|input|data|scope|permission|approval/iu.test(
+    fieldPath
+  );
+}
+
+function classifyAgentComputerUseConfig(value: unknown, filePath: string): AgentComputerUsePosture {
+  const fields = flattenRuntimeFields(value);
+  const stringValues = collectFieldStringValues(fields);
+  const provider = inferAgentComputerUseProvider([filePath, ...fields.map((field) => field.path), ...stringValues]);
+  const destinations = classifyAgentComputerUseDestinations(fields, filePath);
+  const envKeys = uniqueStrings([
+    ...collectEnvKeyNamesFromConfig(value).filter(isLikelyEnvKeyName),
+    ...extractEnvironmentReferenceKeys(stringValues)
+  ]);
+  const secretRefKeys = extractSecretReferenceKeys(stringValues);
+  const screenCapture = hasAgentComputerUseScreenCaptureSignal(fields);
+  const keyboardInput = hasAgentComputerUseKeyboardInputSignal(fields);
+  const mouseControl = hasAgentComputerUseMouseControlSignal(fields);
+  const clipboardAccess = hasAgentComputerUseClipboardAccessSignal(fields);
+  const clipboardWrite = hasAgentComputerUseClipboardWriteSignal(fields);
+  const fileTransfer = hasAgentComputerUseFileTransferSignal(fields);
+  const appControl = hasAgentComputerUseAppControlSignal(fields);
+  const terminalControl = hasAgentComputerUseTerminalControlSignal(fields);
+  const authenticatedSession = hasAgentComputerUseAuthenticatedSessionSignal(fields);
+  const credentialStoreAccess = hasAgentComputerUseCredentialStoreSignal(fields);
+
+  return {
+    agent_computer_use_fields: fields
+      .map((field) => field.path)
+      .filter((fieldPath) => isAgentComputerUseSecurityField(fieldPath))
+      .sort((a, b) => a.localeCompare(b)),
+    agent_computer_use_provider: provider,
+    agent_computer_use_enabled:
+      hasAgentComputerUseEnabledSignal(fields) ||
+      screenCapture ||
+      keyboardInput ||
+      mouseControl ||
+      clipboardAccess ||
+      fileTransfer ||
+      appControl ||
+      destinations.remote,
+    agent_computer_use_remote_session: destinations.remote,
+    agent_computer_use_destination_redacted: destinations.destinationCount > 0,
+    agent_computer_use_destination_count: destinations.destinationCount,
+    agent_computer_use_destination_kinds: destinations.destinationKinds,
+    agent_computer_use_authenticated_session: authenticatedSession,
+    agent_computer_use_credential_store_access: credentialStoreAccess,
+    agent_computer_use_screen_capture: screenCapture,
+    agent_computer_use_ocr_capture: hasAgentComputerUseOcrCaptureSignal(fields),
+    agent_computer_use_clipboard_access: clipboardAccess,
+    agent_computer_use_clipboard_write: clipboardWrite,
+    agent_computer_use_keyboard_input: keyboardInput,
+    agent_computer_use_mouse_control: mouseControl,
+    agent_computer_use_file_transfer: fileTransfer,
+    agent_computer_use_download_auto_accept: hasAgentComputerUseDownloadAutoAcceptSignal(fields),
+    agent_computer_use_local_path_redacted: hasAgentComputerUseLocalPathSignal(fields),
+    agent_computer_use_app_control: appControl,
+    agent_computer_use_terminal_control: terminalControl,
+    agent_computer_use_sensitive_context: hasAgentComputerUseSensitiveContextSignal(fields) || credentialStoreAccess,
+    agent_computer_use_pii_context: hasAgentComputerUsePiiContextSignal(fields),
+    agent_computer_use_redaction_disabled: hasAgentComputerUseRedactionDisabledSignal(fields),
+    agent_computer_use_untrusted_input: hasAgentComputerUseUntrustedInputSignal(fields),
+    agent_computer_use_approval_required: hasAgentComputerUseApprovalRequiredSignal(fields),
+    env_key_names: envKeys,
+    secret_ref_key_names: secretRefKeys
+  };
+}
+
+function inferAgentComputerUseProvider(candidates: string[]): string | undefined {
+  const text = candidates.join(" ").toLowerCase();
+  const providers: Array<[string, RegExp]> = [
+    ["openai_computer_use", /\bopenai[-_\s]?computer[-_\s]?use|computer[-_\s]?use[_\s-]?preview\b/iu],
+    ["anthropic_computer_use", /\banthropic[-_\s]?computer[-_\s]?use|claude[-_\s]?computer[-_\s]?use\b/iu],
+    ["remote_desktop", /\b(remote[_\s-]?desktop|vnc|rdp|novnc)\b/iu],
+    ["ui_automation", /\b(ui[_\s-]?automation|desktop[_\s-]?automation|operator)\b/iu]
+  ];
+  return providers.find(([, pattern]) => pattern.test(text))?.[0];
+}
+
+function classifyAgentComputerUseDestinations(
+  fields: RuntimeField[],
+  filePath: string
+): { remote: boolean; destinationCount: number; destinationKinds: string[] } {
+  const destinationKinds = new Set<string>();
+  let destinationCount = 0;
+  if (/(^|\/)(computer|computer-use|computer_use|desktop|remote-desktop|remote_desktop|vnc|rdp|novnc)(\/|$)/iu.test(filePath)) {
+    destinationKinds.add("computer_use_config");
+  }
+  for (const field of fields) {
+    const text = `${field.path} ${fieldValueText(field)}`;
+    if (
+      /(?:^|\.)(endpoint|url|uri|host|remote_desktop|remoteDesktop|vnc|rdp|novnc|websocket|ws_endpoint|control_server)(?:\.|$)/iu.test(
+        field.path
+      )
+    ) {
+      for (const value of browserFieldStringValues(field)) {
+        const destination = parseAgentComputerUseDestination(value);
+        if (destination) {
+          destinationKinds.add(destination.kind);
+          destinationCount += 1;
+        }
+      }
+    }
+    if (/(?:^|[_\W])(vnc|novnc)(?:[_\W]|$)/iu.test(text) && truthyConfigValue(field.value)) destinationKinds.add("vnc_endpoint");
+    if (/(?:^|[_\W])(rdp)(?:[_\W]|$)/iu.test(text) && truthyConfigValue(field.value)) {
+      destinationKinds.add("rdp_endpoint");
+    }
+  }
+  return {
+    remote: destinationCount > 0 || destinationKinds.has("vnc_endpoint") || destinationKinds.has("rdp_endpoint"),
+    destinationCount,
+    destinationKinds: [...destinationKinds].sort((a, b) => a.localeCompare(b))
+  };
+}
+
+function parseAgentComputerUseDestination(value: string): { kind: string } | undefined {
+  try {
+    const parsed = new URL(value);
+    if (!["http:", "https:", "ws:", "wss:", "vnc:", "rdp:"].includes(parsed.protocol)) return undefined;
+    if (isLocalHost(parsed.hostname.toLowerCase())) return undefined;
+    if (parsed.protocol === "http:" || parsed.protocol === "ws:" || parsed.protocol === "vnc:" || parsed.protocol === "rdp:") {
+      return { kind: "plaintext_remote_desktop_endpoint" };
+    }
+    return { kind: "remote_desktop_endpoint" };
+  } catch {
+    return undefined;
+  }
+}
+
+function hasAgentComputerUseEnabledSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /(?:^|\.)(enabled|computer_use_enabled|computerUseEnabled|desktop_automation_enabled|remote_desktop_enabled|operator_enabled)(?:\.|$)/iu.test(
+      field.path
+    ) && truthyConfigValue(field.value)
+  );
+}
+
+function hasAgentComputerUseAuthenticatedSessionSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /(?:^|[_\W])(authenticated[_\s-]?user[_\s-]?session|signed[_\s-]?in|logged[_\s-]?in|reuse[_\s-]?session|session[_\s-]?state|sso[_\s-]?session|desktop[_\s-]?session|user[_\s-]?profile|keychain|credential[_\s-]?store|password[_\s-]?manager|autofill)(?:[_\W]|$)/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    ) && truthyConfigValue(field.value)
+  );
+}
+
+function hasAgentComputerUseCredentialStoreSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /(?:^|[_\W])(credential[_\s-]?store|password[_\s-]?manager|keychain|secret[_\s-]?store|autofill|saved[_\s-]?passwords?|tokens?|cookie[_\s-]?jar)(?:[_\W]|$)/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    ) && truthyConfigValue(field.value)
+  );
+}
+
+function hasAgentComputerUseScreenCaptureSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    !isAgentComputerUseRedactionField(field.path) &&
+    /(?:^|[_\W])(screen[_\s-]?capture|screenshot|screenshots|display[_\s-]?capture|frame[_\s-]?capture|vision[_\s-]?capture|observe[_\s-]?screen|desktop[_\s-]?view)(?:[_\W]|$)/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    ) && truthyConfigValue(field.value)
+  );
+}
+
+function hasAgentComputerUseOcrCaptureSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    !isAgentComputerUseRedactionField(field.path) &&
+    /(?:^|[_\W])(ocr|screen[_\s-]?text|read[_\s-]?screen|text[_\s-]?recognition|visual[_\s-]?parser)(?:[_\W]|$)/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    ) && truthyConfigValue(field.value)
+  );
+}
+
+function hasAgentComputerUseClipboardAccessSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    !isAgentComputerUseRedactionField(field.path) &&
+    /(?:^|[_\W])(clipboard|copy|paste|clipboard[_\s-]?read|clipboard[_\s-]?write)(?:[_\W]|$)/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    ) && truthyConfigValue(field.value)
+  );
+}
+
+function hasAgentComputerUseClipboardWriteSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    !isAgentComputerUseRedactionField(field.path) &&
+    /(?:^|[_\W])(clipboard[_\s-]?write|paste|write[_\s-]?clipboard|set[_\s-]?clipboard)(?:[_\W]|$)/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    ) && truthyConfigValue(field.value)
+  );
+}
+
+function hasAgentComputerUseKeyboardInputSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /(?:^|[_\W])(keyboard|type|typing|keypress|key[_\s-]?press|hotkey|text[_\s-]?input|enter[_\s-]?text)(?:[_\W]|$)/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    ) && truthyConfigValue(field.value)
+  );
+}
+
+function hasAgentComputerUseMouseControlSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /(?:^|[_\W])(mouse|click|drag|scroll|pointer|cursor|tap|double[_\s-]?click)(?:[_\W]|$)/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    ) && truthyConfigValue(field.value)
+  );
+}
+
+function hasAgentComputerUseFileTransferSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    !isAgentComputerUseRedactionField(field.path) &&
+    /(?:^|[_\W])(file[_\s-]?transfer|upload|download|attach|attachment|file[_\s-]?chooser|save[_\s-]?as|export[_\s-]?file|import[_\s-]?file)(?:[_\W]|$)/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    ) && truthyConfigValue(field.value)
+  );
+}
+
+function hasAgentComputerUseDownloadAutoAcceptSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    !isAgentComputerUseRedactionField(field.path) &&
+    /(?:^|[_\W])(auto[_\s-]?accept[_\s-]?downloads?|accept[_\s-]?downloads?|auto[_\s-]?download|download[_\s-]?automatically|save[_\s-]?as)(?:[_\W]|$)/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    ) && truthyConfigValue(field.value)
+  );
+}
+
+function hasAgentComputerUseLocalPathSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /(?:^|[_\W])(path|file|folder|directory|upload|download|profile|session[_\s-]?state|credential[_\s-]?store)(?:[_\W]|$)/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    ) &&
+    /(?:\/|\\|~\/|\.csv|\.json|\.pdf|\.xlsx|\.docx|\.png|\.jpg|\.jpeg|\.env|\.ssh|keychain)/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    ) &&
+    truthyConfigValue(field.value)
+  );
+}
+
+function hasAgentComputerUseAppControlSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /(?:^|[_\W])(app[_\s-]?control|application[_\s-]?control|launch[_\s-]?app|open[_\s-]?app|focus[_\s-]?window|desktop[_\s-]?app|crm|admin[_\s-]?console|billing[_\s-]?console|support[_\s-]?console)(?:[_\W]|$)/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    ) && truthyConfigValue(field.value)
+  );
+}
+
+function hasAgentComputerUseTerminalControlSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /(?:^|[_\W])(terminal|shell|bash|powershell|command[_\s-]?prompt|cmd\.exe|execute[_\s-]?command|run[_\s-]?command)(?:[_\W]|$)/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    ) && truthyConfigValue(field.value)
+  );
+}
+
+function hasAgentComputerUseSensitiveContextSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    truthyConfigValue(field.value) &&
+    !/(?:^|\.)(redaction|redact|mask|pii_redaction|secret_redaction|secrets_redaction)(?:\.|$)/iu.test(field.path) &&
+    /(?:^|[_\W])(customer|client|ticket|support|internal|confidential|private|proprietary|sensitive|account|billing|payment|admin|credential|token|api[_-]?key|secret|case|record)(?:[_\W]|$)/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    )
+  );
+}
+
+function hasAgentComputerUsePiiContextSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    truthyConfigValue(field.value) &&
+    !/(?:^|\.)(redaction|redact|mask|pii_redaction|secret_redaction|secrets_redaction)(?:\.|$)/iu.test(field.path) &&
+    /(?:^|[_\W])(pii|email|phone|address|ssn|passport|dob|date[_\s-]?of[_\s-]?birth|customer[_-]?id|user[_-]?id|account[_-]?id)(?:[_\W]|$)/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    )
+  );
+}
+
+function hasAgentComputerUseRedactionDisabledSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => {
+    const text = `${field.path} ${fieldValueText(field)}`;
+    if (/(?:^|\.)(redaction|redact|mask|pii_redaction|secret_redaction|screen_redaction|clipboard_redaction)(?:\.|$)/iu.test(field.path)) {
+      return disabledConfigValue(field.value);
+    }
+    return /(?:^|[_\W])(redaction[_\s-]?disabled|no[_\s-]?redaction|raw[_\s-]?screen|raw[_\s-]?clipboard|unmasked|do[_\s-]?not[_\s-]?redact)(?:[_\W]|$)/iu.test(
+      text
+    ) && truthyConfigValue(field.value);
+  });
+}
+
+function hasAgentComputerUseUntrustedInputSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    !isAgentComputerUseRedactionField(field.path) &&
+    truthyConfigValue(field.value) &&
+    /(?:^|[_\W])(untrusted|user|customer|client|ticket|support|issue|comment|message|prompt|retrieved|rag|document|email|slack|browser|web[_-]?page|chat|inbound|external|tool[_\s-]?output|screen[_\s-]?instruction)(?:[_\W]|$)/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    )
+  );
+}
+
+function hasAgentComputerUseApprovalRequiredSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /approval|required[_-]?approval|human[_-]?approval|confirm|confirmation|review|human[_-]?in[_-]?the[_-]?loop/iu.test(field.path) &&
+    truthyConfigValue(field.value)
+  );
+}
+
+function isAgentComputerUseSecurityField(fieldPath: string): boolean {
+  return /provider|computer|desktop|screen|screenshot|display|ocr|vision|remote|vnc|rdp|novnc|endpoint|url|host|websocket|session|profile|auth|signed|credential|keychain|password|autofill|clipboard|keyboard|mouse|click|type|hotkey|file|upload|download|path|app|application|window|terminal|shell|command|redaction|redact|source|input|customer|ticket|email|pii|sensitive|approval|token|env/iu.test(
+    fieldPath
+  );
+}
+
+function isAgentComputerUseRedactionField(fieldPath: string): boolean {
+  return /(?:^|\.)(redaction|redact|mask|pii_redaction|secret_redaction|secrets_redaction|screen_redaction|clipboard_redaction)(?:\.|$)/iu.test(
     fieldPath
   );
 }

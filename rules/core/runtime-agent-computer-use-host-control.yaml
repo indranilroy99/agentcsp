@@ -1,0 +1,60 @@
+id: AGENTCSP-RUNTIME-054
+name: Computer-use agent controls a credentialed desktop session
+description: A computer-use or desktop automation agent can observe a signed-in desktop, drive keyboard and mouse or clipboard/file operations, and act on untrusted instructions while redaction and independent approval are disabled.
+category: computer_use_host_control
+severity: critical
+maps_to:
+  owasp:
+    - LLM01:2025 Prompt Injection
+    - LLM02:2025 Sensitive Information Disclosure
+    - LLM05:2025 Improper Output Handling
+    - LLM06:2025 Excessive Agency
+  mitre_atlas:
+    - AML.T0051 LLM Prompt Injection
+    - AML.T0057 Exfiltration via Cyber Means
+  nist_ai_rmf:
+    - MAP 5.1
+    - MEASURE 2.7
+    - MANAGE 2.4
+match:
+  object_type: runtime_config
+  where:
+    - field: metadata.parsed_agent_computer_use_config
+      op: equals
+      value: true
+    - field: metadata.agent_computer_use_enabled
+      op: equals
+      value: true
+    - field: metadata.agent_computer_use_authenticated_session
+      op: equals
+      value: true
+    - field: metadata.agent_computer_use_screen_capture
+      op: equals
+      value: true
+    - field: metadata.agent_computer_use_keyboard_input
+      op: equals
+      value: true
+    - field: metadata.agent_computer_use_mouse_control
+      op: equals
+      value: true
+    - field: metadata.agent_computer_use_clipboard_access
+      op: equals
+      value: true
+    - field: metadata.agent_computer_use_file_transfer
+      op: equals
+      value: true
+    - field: metadata.agent_computer_use_untrusted_input
+      op: equals
+      value: true
+    - field: metadata.agent_computer_use_redaction_disabled
+      op: equals
+      value: true
+    - field: metadata.agent_computer_use_approval_required
+      op: equals
+      value: false
+    - field: secret_exposure
+      op: equals
+      value: true
+recommendation:
+  control: require_approval
+  text: Require independent approval before computer-use agents can operate signed-in desktop sessions, and disable clipboard/file transfer or keyboard/mouse control from untrusted context until screen and clipboard redaction, scoped app allowlists, and credential-store isolation are enforced.

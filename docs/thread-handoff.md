@@ -1135,6 +1135,17 @@ The current iteration adds:
 - rule `AGENTCSP-RUNTIME-053` for public or external shared live sessions that combine disabled authentication, live control, tool authority, sensitive context, disabled redaction, credential exposure, and missing independent approval
 - scanner, rule, fixture verifier, and redaction coverage proving raw session URLs, session names, collaborator labels, tool names, source labels, data-scope labels, and token placeholders stay redacted
 
+## Computer-Use Desktop Control Pass
+
+The current iteration adds:
+
+- first-class redacted metadata for computer-use, desktop automation, remote desktop, VNC/RDP, workstation, operator, and UI automation posture, including signed-in desktop sessions, screen/OCR capture, clipboard access, keyboard/mouse control, file transfer, app/terminal control, remote desktop endpoints, credential-store exposure, redaction posture, and approval boundaries
+- vulnerable fixture coverage for a computer-use desktop agent that can observe a signed-in support desktop, use OCR, type/click, read/write clipboard, upload/download files, control desktop apps, and act on untrusted customer/browser context while redaction and approval are disabled
+- safe fixture coverage for a local read-only desktop review config with no signed-in session, screen capture, clipboard, keyboard/mouse, file transfer, app control, credential store, or untrusted input
+- rule `AGENTCSP-RUNTIME-054` for computer-use agents that combine authenticated desktop state, screen capture, keyboard/mouse control, clipboard and file authority, untrusted input, disabled redaction, credential exposure, and missing approval
+- graph candidate-window hardening so the Static Blast-Radius Summary keeps earlier high-signal context-to-capability paths as the runtime posture inventory grows, while the final attack-path output remains bounded
+- scanner, rule, fixture verifier, and redaction coverage proving raw remote desktop endpoints, app names, window titles, local transfer paths, data-scope labels, and token placeholders stay redacted
+
 ## Initial Build Recommendation
 
 Start with a CLI-first MVP before building the dashboard:

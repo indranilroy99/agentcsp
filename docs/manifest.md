@@ -381,6 +381,43 @@ Browser session metadata may include:
 
 Raw cookie files, storage-state files, profile paths, extension names, extension IDs, extension paths, download/upload paths, origins, browser endpoints, hostnames, autofill labels, and secret placeholders are not emitted. Provider names, broad-origin categories, authenticated-session booleans, untrusted-navigation signals, click/form authority, file-transfer posture, extension counts and categories, autofill/password-manager posture, path-redaction flags, approval posture, and credential key names let rules detect browser-agent account-action and sensitive file-transfer risk without copying browser state into the manifest.
 
+## Computer-Use And Desktop Automation Posture
+
+Computer-use, desktop automation, remote desktop, VNC/RDP, workstation, operator, and UI automation configs are also normalized into `runtime_config` objects when common computer-use directories or filenames are discovered.
+
+Computer-use metadata may include:
+
+- `parsed_agent_computer_use_config`
+- `agent_computer_use_fields`
+- `agent_computer_use_provider`
+- `agent_computer_use_enabled`
+- `agent_computer_use_remote_session`
+- `agent_computer_use_destination_redacted`
+- `agent_computer_use_destination_count`
+- `agent_computer_use_destination_kinds`
+- `agent_computer_use_authenticated_session`
+- `agent_computer_use_credential_store_access`
+- `agent_computer_use_screen_capture`
+- `agent_computer_use_ocr_capture`
+- `agent_computer_use_clipboard_access`
+- `agent_computer_use_clipboard_write`
+- `agent_computer_use_keyboard_input`
+- `agent_computer_use_mouse_control`
+- `agent_computer_use_file_transfer`
+- `agent_computer_use_download_auto_accept`
+- `agent_computer_use_local_path_redacted`
+- `agent_computer_use_app_control`
+- `agent_computer_use_terminal_control`
+- `agent_computer_use_sensitive_context`
+- `agent_computer_use_pii_context`
+- `agent_computer_use_redaction_disabled`
+- `agent_computer_use_untrusted_input`
+- `agent_computer_use_approval_required`
+- `env_key_names`
+- `secret_ref_key_names`
+
+Raw remote desktop endpoints, hostnames, app names, window titles, screen labels, clipboard contents, upload/download paths, profile paths, source labels, data-field labels, and secret placeholders are not emitted. Provider names, redacted destination categories, signed-in-session posture, screen/OCR capture, clipboard and keyboard/mouse authority, file-transfer posture, redaction posture, approval posture, data-class booleans, and credential key names let rules detect host-desktop blast radius without copying screenshots, clipboard data, or local paths into evidence.
+
 ## Inbound Agent Trigger Posture
 
 Inbound email, chat, ticket, webhook, queue, and listener configs are also normalized into `runtime_config` objects when common inbound-agent trigger files are discovered.

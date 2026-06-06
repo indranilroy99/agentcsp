@@ -24,7 +24,7 @@ export function buildStaticGraph(surfaces: DetectedSurfaces, findings: Finding[]
   const objects = allManifestObjects(surfaces);
   const allHighRiskCapabilities = sortCapabilities(objects.filter(isHighRiskCapability));
   const highRiskCapabilities = mergeCapabilities(
-    allHighRiskCapabilities.slice(0, 40),
+    allHighRiskCapabilities.slice(0, 80),
     explicitlyReferencedCapabilities(objects, allHighRiskCapabilities)
   );
   const contextSources = objects.filter(isContextSource);
@@ -35,7 +35,7 @@ export function buildStaticGraph(surfaces: DetectedSurfaces, findings: Finding[]
     const steerableCapabilities = sortCapabilitiesForContext(
       context,
       highRiskCapabilities.filter((target) => contextCanSteerCapability(context, target))
-    ).slice(0, 30);
+    ).slice(0, 40);
     for (const capability of steerableCapabilities) {
       if (context.id === capability.id) continue;
       addEdge(
