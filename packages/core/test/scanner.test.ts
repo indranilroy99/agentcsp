@@ -26,6 +26,7 @@ describe("scanner", () => {
       "AGENT_EXTENSION_TOKEN",
       "AGENT_IDENTITY_TOKEN",
       "AGENT_SELF_MOD_TOKEN",
+      "AGENT_WEBHOOK_TOKEN",
       "APPROVAL_GATE_TOKEN",
       "ARTIFACT_EXPORT_TOKEN",
       "BROWSER_SESSION_TOKEN",
@@ -461,6 +462,67 @@ describe("scanner", () => {
     expect(JSON.stringify(artifactExportConfig)).not.toContain("artifact_customer_email");
     expect(JSON.stringify(artifactExportConfig)).not.toContain("artifact_account_number");
     expect(JSON.stringify(artifactExportConfig)).not.toContain("confidential_ticket_context");
+    const webhookEgressConfig = surfaces.runtime_config.find(
+      (surface) => surface.path === "webhooks/model-callbacks.yaml"
+    );
+    expect(webhookEgressConfig).toBeDefined();
+    expect(webhookEgressConfig).toMatchObject({
+      trust_level: "third_party",
+      external_reach: true,
+      secret_exposure: true,
+      side_effect: true,
+      reversible: false,
+      untrusted_to_privileged: true
+    });
+    expect(webhookEgressConfig?.metadata).toMatchObject({
+      content_redacted: true,
+      values_collected: false,
+      parsed_agent_webhook_egress_config: true,
+      agent_webhook_egress_provider: "generic_webhook",
+      agent_webhook_egress_remote: true,
+      agent_webhook_egress_destination_redacted: true,
+      agent_webhook_egress_destination_count: 3,
+      agent_webhook_egress_plaintext_endpoint: false,
+      agent_webhook_egress_auth_header_redacted: true,
+      agent_webhook_egress_model_output_payload: true,
+      agent_webhook_egress_prompt_payload: true,
+      agent_webhook_egress_tool_output_payload: true,
+      agent_webhook_egress_retrieval_payload: true,
+      agent_webhook_egress_memory_payload: true,
+      agent_webhook_egress_browser_payload: true,
+      agent_webhook_egress_secret_payload: true,
+      agent_webhook_egress_sensitive_payload: true,
+      agent_webhook_egress_pii_payload: true,
+      agent_webhook_egress_external_write_enabled: true,
+      agent_webhook_egress_untrusted_input: true,
+      agent_webhook_egress_redaction_disabled: true,
+      agent_webhook_egress_retry_enabled: true,
+      agent_webhook_egress_approval_required: false
+    });
+    expect(webhookEgressConfig?.metadata.agent_webhook_egress_destination_kinds).toEqual([
+      "configured_webhook_destination",
+      "webhook_endpoint",
+      "webhook_provider"
+    ]);
+    expect(webhookEgressConfig?.metadata.agent_webhook_egress_auth_header_names).toEqual(["Authorization"]);
+    expect(webhookEgressConfig?.metadata.agent_webhook_egress_payload_categories).toEqual([
+      "browser_context",
+      "memory_context",
+      "model_output",
+      "prompt_context",
+      "retrieval_context",
+      "secret_material",
+      "tool_output"
+    ]);
+    expect(webhookEgressConfig?.metadata.env_key_names).toEqual(["AGENT_WEBHOOK_TOKEN"]);
+    expect(webhookEgressConfig?.metadata.secret_ref_key_names).toEqual(["AGENT_WEBHOOK_TOKEN"]);
+    expect(webhookEgressConfig?.data_classes).toEqual(["confidential", "credential", "pii"]);
+    expect(webhookEgressConfig?.actions).toEqual(["call", "publish", "read", "remember", "send", "write"]);
+    expect(JSON.stringify(webhookEgressConfig)).not.toContain("${AGENT_WEBHOOK_TOKEN}");
+    expect(JSON.stringify(webhookEgressConfig)).not.toContain("callback.agentcsp-demo.example.invalid");
+    expect(JSON.stringify(webhookEgressConfig)).not.toContain("webhook_customer_email");
+    expect(JSON.stringify(webhookEgressConfig)).not.toContain("webhook_account_number");
+    expect(JSON.stringify(webhookEgressConfig)).not.toContain("confidential_callback_summary");
     const modelConfig = surfaces.runtime_config.find((surface) => surface.path === "models/model-gateway.yaml");
     expect(modelConfig).toBeDefined();
     expect(modelConfig).toMatchObject({

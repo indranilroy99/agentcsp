@@ -756,6 +756,15 @@ The current iteration adds:
 - rule `AGENTCSP-RUNTIME-024` for artifact/output export boundaries that combine remote/public destination, sensitive capture, disabled redaction, and credential exposure
 - scanner, rule, fixture verifier, and redaction coverage proving bucket names, endpoints, data-scope labels, generated outputs, and token placeholders stay redacted
 
+## Agent Webhook Egress Boundary Pass
+
+The current iteration adds:
+
+- first-class redacted metadata for agent webhook, callback, outbound sink, event-sink, response-hook, reply-hook, and notification-sink configs
+- vulnerable fixture coverage for model-generated callback delivery that posts prompts, completions, tool outputs, browser context, retrieval context, memory, PII, and secrets to a remote endpoint with disabled redaction, retry queues, credentials, and no approval gate
+- rule `AGENTCSP-RUNTIME-025` for webhook/callback egress that combines remote delivery, model-generated or untrusted payloads, sensitive context, disabled redaction, credential exposure, and missing approval
+- scanner, rule, fixture verifier, and redaction coverage proving callback endpoints, payload bodies, source labels, data-field labels, and token placeholders stay redacted
+
 ## Initial Build Recommendation
 
 Start with a CLI-first MVP before building the dashboard:

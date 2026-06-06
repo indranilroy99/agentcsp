@@ -59,6 +59,7 @@ A finding should be considered production-grade when it includes:
 - AI model endpoint metadata for prompt, tool-output, retrieval, and memory egress without emitting model gateway URLs or model names
 - AI telemetry export metadata for prompt, completion, tool-output, retrieval, and memory capture without emitting trace payloads or endpoints
 - artifact/output export metadata for generated prompts, completions, tool outputs, browser artifacts, retrieval context, memory, and secrets without emitting bucket names, endpoints, paths, data-scope labels, or artifact contents
+- webhook/callback egress metadata for model-generated payload delivery without emitting callback endpoints, payload bodies, source labels, data-field labels, or token placeholders
 - workflow-to-agent-script signals for unattended automation with secrets and write authority
 - workflow event-payload signals for issue, pull request, discussion, or repository-dispatch text passed into privileged agent automation without emitting raw event expressions or payload content
 - prompt-template variables and redacted context signals for untrusted-input bridges
@@ -127,6 +128,8 @@ Examples:
 - database connector with credentials plus write/query authority plus sensitive data plus untrusted input
 - AI model endpoint with plaintext transport plus sensitive context plus credential reference
 - AI telemetry remote export plus sensitive agent-context capture plus disabled redaction plus credential reference
+- artifact/output export plus public remote destination plus prompt, tool-output, browser, retrieval, memory, PII, or secret capture plus disabled redaction
+- webhook/callback egress plus model-generated or untrusted payloads, sensitive context, disabled redaction, credential reference, and no approval gate
 - pull request workflow plus write permissions plus secrets
 - untrusted RAG source plus privileged tool path
 - memory write plus untrusted source provenance

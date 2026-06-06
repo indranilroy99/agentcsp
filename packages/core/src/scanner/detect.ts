@@ -112,6 +112,11 @@ export async function detectSurfaces(files: WalkedFile[]): Promise<DetectedSurfa
       continue;
     }
 
+    if (isAgentWebhookEgressConfigPath(file.relativePath, basename)) {
+      detectAgentWebhookEgressConfig(file, text, surfaces);
+      continue;
+    }
+
     if (isAgentApprovalGateConfigPath(file.relativePath, basename)) {
       detectAgentApprovalGateConfig(file, text, surfaces);
       continue;
@@ -1415,6 +1420,71 @@ function detectSaasConnectorConfig(file: WalkedFile, text: string | undefined, s
   });
 }
 
+function detectAgentWebhookEgressConfig(file: WalkedFile, text: string | undefined, surfaces: DetectedSurfaces): void {
+  const parsed = parseStructuredConfig(text ?? "", file.relativePath);
+  if (parsed.parseFailed) {
+    addDiagnostic(surfaces, file, {
+      parser: parsed.parser ?? "structured_config",
+      code: "AGENT_WEBHOOK_EGRESS_CONFIG_PARSE_FAILED",
+      reason: "Agent webhook or callback egress configuration could not be parsed. Raw content was redacted."
+    });
+  }
+
+  const posture = classifyAgentWebhookEgressConfig(parsed.value, file.relativePath);
+  const actions = new Set<ActionType>(["call", "read"]);
+  if (posture.agent_webhook_egress_remote) actions.add("send");
+  if (posture.agent_webhook_egress_external_write_enabled) {
+    actions.add("write");
+    actions.add("publish");
+  }
+  if (posture.agent_webhook_egress_retry_enabled) actions.add("remember");
+
+  const dataClasses = new Set<SurfaceObject["data_classes"][number]>(["unknown"]);
+  if (
+    posture.agent_webhook_egress_secret_payload ||
+    posture.env_key_names.some(isCredentialLikeKeyName) ||
+    posture.secret_ref_key_names.length > 0
+  ) {
+    dataClasses.add("credential");
+  }
+  if (posture.agent_webhook_egress_sensitive_payload) dataClasses.add("confidential");
+  if (posture.agent_webhook_egress_pii_payload) dataClasses.add("pii");
+  if (dataClasses.size > 1) dataClasses.delete("unknown");
+
+  const object = createSurfaceObject({
+    type: "runtime_config",
+    name: path.basename(file.relativePath),
+    path: file.relativePath,
+    trust_level: posture.agent_webhook_egress_remote ? "third_party" : inferTrustLevel(file.relativePath),
+    data_classes: uniqueDataClasses([...dataClasses] as SurfaceObject["data_classes"]),
+    actions: uniqueActions([...actions]),
+    side_effect: posture.agent_webhook_egress_external_write_enabled || posture.agent_webhook_egress_retry_enabled,
+    reversible: !posture.agent_webhook_egress_external_write_enabled && !posture.agent_webhook_egress_retry_enabled,
+    external_reach: posture.agent_webhook_egress_remote,
+    secret_exposure:
+      posture.agent_webhook_egress_secret_payload ||
+      posture.env_key_names.some(isCredentialLikeKeyName) ||
+      posture.secret_ref_key_names.length > 0,
+    reason: "Agent webhook or callback egress configuration discovered as model-output data egress posture.",
+    metadata: {
+      content_redacted: true,
+      values_collected: false,
+      parsed_agent_webhook_egress_config: Boolean(parsed.value) && !parsed.parseFailed,
+      parse_error: parsed.parseFailed,
+      ...posture
+    }
+  });
+  surfaces.runtime_config.push({
+    ...object,
+    untrusted_to_privileged:
+      (posture.agent_webhook_egress_remote &&
+        posture.agent_webhook_egress_external_write_enabled &&
+        posture.agent_webhook_egress_untrusted_input &&
+        (posture.agent_webhook_egress_sensitive_payload || posture.agent_webhook_egress_secret_payload)) ||
+      isUntrustedToPrivileged(object)
+  });
+}
+
 function detectSecretManagerConfig(file: WalkedFile, text: string | undefined, surfaces: DetectedSurfaces): void {
   const parsed = parseStructuredConfig(text ?? "", file.relativePath);
   if (parsed.parseFailed) {
@@ -1873,6 +1943,27 @@ function isAgentContextComposerConfigPath(relativePath: string, basename: string
   return contextName || (contextDirectory && configName);
 }
 
+function isAgentWebhookEgressConfigPath(relativePath: string, basename: string): boolean {
+  const normalized = relativePath.replaceAll("\\", "/").toLowerCase();
+  const lowerBase = basename.toLowerCase();
+  if (!/\.(json|ya?ml|toml)$/iu.test(lowerBase)) return false;
+  if (normalized.startsWith(".github/workflows/")) return false;
+  if (normalized.startsWith("rules/")) return false;
+  const segments = normalized.split("/").slice(0, -1);
+  const webhookDirectory = segments.some((segment) =>
+    /^(webhooks?|callbacks?|callback-routes?|callback_routes?|outbound|egress|egress-webhooks?|egress_webhooks?|sinks?|event-sinks?|event_sinks?|notifications?|response-hooks?|response_hooks?)$/iu.test(
+      segment
+    )
+  );
+  const webhookName = /(?:webhook|callback|call-back|egress|outbound|event-sink|event_sink|response-hook|response_hook|reply-hook|reply_hook|notification-sink|notification_sink)/iu.test(
+    lowerBase
+  );
+  const configName = /(?:config|settings|webhook|callback|egress|outbound|sink|destination|route|router|delivery|notification|response|reply)/iu.test(
+    lowerBase
+  );
+  return webhookName || (webhookDirectory && configName);
+}
+
 function isSaasConnectorConfigPath(relativePath: string, basename: string): boolean {
   const normalized = relativePath.replaceAll("\\", "/").toLowerCase();
   const lowerBase = basename.toLowerCase();
@@ -2299,6 +2390,35 @@ interface SaasConnectorPosture {
   saas_connector_sensitive_data: boolean;
   saas_connector_pii_data: boolean;
   saas_connector_approval_required: boolean;
+  env_key_names: string[];
+  secret_ref_key_names: string[];
+}
+
+interface AgentWebhookEgressPosture {
+  agent_webhook_egress_fields: string[];
+  agent_webhook_egress_provider?: string;
+  agent_webhook_egress_remote: boolean;
+  agent_webhook_egress_destination_redacted: boolean;
+  agent_webhook_egress_destination_count: number;
+  agent_webhook_egress_destination_kinds: string[];
+  agent_webhook_egress_plaintext_endpoint: boolean;
+  agent_webhook_egress_auth_header_redacted: boolean;
+  agent_webhook_egress_auth_header_names: string[];
+  agent_webhook_egress_payload_categories: string[];
+  agent_webhook_egress_model_output_payload: boolean;
+  agent_webhook_egress_prompt_payload: boolean;
+  agent_webhook_egress_tool_output_payload: boolean;
+  agent_webhook_egress_retrieval_payload: boolean;
+  agent_webhook_egress_memory_payload: boolean;
+  agent_webhook_egress_browser_payload: boolean;
+  agent_webhook_egress_secret_payload: boolean;
+  agent_webhook_egress_sensitive_payload: boolean;
+  agent_webhook_egress_pii_payload: boolean;
+  agent_webhook_egress_external_write_enabled: boolean;
+  agent_webhook_egress_untrusted_input: boolean;
+  agent_webhook_egress_redaction_disabled: boolean;
+  agent_webhook_egress_retry_enabled: boolean;
+  agent_webhook_egress_approval_required: boolean;
   env_key_names: string[];
   secret_ref_key_names: string[];
 }
@@ -4826,6 +4946,231 @@ function hasSaasApprovalRequiredSignal(fields: RuntimeField[]): boolean {
 
 function isSaasConnectorSecurityField(fieldPath: string): boolean {
   return /provider|service|connector|integration|api|endpoint|url|host|oauth|scope|permission|role|token|secret|credential|auth|webhook|channel|repo|email|ticket|issue|crm|customer|user|source|input|action|write|send|post|publish|approval|destination/iu.test(
+    fieldPath
+  );
+}
+
+function classifyAgentWebhookEgressConfig(value: unknown, filePath: string): AgentWebhookEgressPosture {
+  const fields = flattenRuntimeFields(value);
+  const stringValues = collectFieldStringValues(fields);
+  const provider = inferAgentWebhookEgressProvider([filePath, ...fields.map((field) => field.path), ...stringValues]);
+  const destination = classifyAgentWebhookEgressDestination(fields, provider);
+  const payloadCategories = collectAgentWebhookPayloadCategories(fields);
+  const envKeys = uniqueStrings([
+    ...collectEnvKeyNamesFromConfig(value).filter(isLikelyEnvKeyName),
+    ...extractEnvironmentReferenceKeys(stringValues)
+  ]);
+  const secretRefKeys = extractSecretReferenceKeys(stringValues);
+  const authHeaderNames = collectAgentWebhookAuthHeaderNames(fields);
+  const secretPayload = payloadCategories.includes("secret_material") || hasAgentWebhookSecretPayloadSignal(fields);
+  const piiPayload = hasAgentWebhookPiiPayloadSignal(fields);
+  const sensitivePayload = payloadCategories.length > 0 || piiPayload || secretPayload || hasAgentWebhookSensitivePayloadSignal(fields);
+
+  return {
+    agent_webhook_egress_fields: fields
+      .map((field) => field.path)
+      .filter((fieldPath) => isAgentWebhookEgressSecurityField(fieldPath))
+      .sort((a, b) => a.localeCompare(b)),
+    agent_webhook_egress_provider: provider,
+    agent_webhook_egress_remote: destination.remote,
+    agent_webhook_egress_destination_redacted: destination.destinationCount > 0,
+    agent_webhook_egress_destination_count: destination.destinationCount,
+    agent_webhook_egress_destination_kinds: destination.destinationKinds,
+    agent_webhook_egress_plaintext_endpoint: destination.plaintextEndpoint,
+    agent_webhook_egress_auth_header_redacted: authHeaderNames.length > 0,
+    agent_webhook_egress_auth_header_names: authHeaderNames,
+    agent_webhook_egress_payload_categories: payloadCategories,
+    agent_webhook_egress_model_output_payload: payloadCategories.includes("model_output"),
+    agent_webhook_egress_prompt_payload: payloadCategories.includes("prompt_context"),
+    agent_webhook_egress_tool_output_payload: payloadCategories.includes("tool_output"),
+    agent_webhook_egress_retrieval_payload: payloadCategories.includes("retrieval_context"),
+    agent_webhook_egress_memory_payload: payloadCategories.includes("memory_context"),
+    agent_webhook_egress_browser_payload: payloadCategories.includes("browser_context"),
+    agent_webhook_egress_secret_payload: secretPayload,
+    agent_webhook_egress_sensitive_payload: sensitivePayload,
+    agent_webhook_egress_pii_payload: piiPayload,
+    agent_webhook_egress_external_write_enabled: hasAgentWebhookExternalWriteSignal(fields),
+    agent_webhook_egress_untrusted_input: hasAgentWebhookUntrustedInputSignal(fields),
+    agent_webhook_egress_redaction_disabled: hasAgentWebhookRedactionDisabledSignal(fields),
+    agent_webhook_egress_retry_enabled: hasAgentWebhookRetrySignal(fields),
+    agent_webhook_egress_approval_required: hasAgentWebhookApprovalRequiredSignal(fields),
+    env_key_names: envKeys,
+    secret_ref_key_names: secretRefKeys
+  };
+}
+
+function inferAgentWebhookEgressProvider(candidates: string[]): string | undefined {
+  const text = candidates.join(" ").toLowerCase();
+  const providers: Array<[string, RegExp]> = [
+    ["slack_webhook", /\bslack\b|hooks\.slack/iu],
+    ["discord_webhook", /\bdiscord\b|discordapp\.com\/api\/webhooks|discord\.com\/api\/webhooks/iu],
+    ["github_webhook", /\bgithub\b|api\.github\.com|githubusercontent/iu],
+    ["generic_webhook", /\b(webhook|callback|call-back|event[_\s-]?sink|response[_\s-]?hook|reply[_\s-]?hook)\b/iu],
+    ["generic_http_callback", /\bhttps?:\/\//iu]
+  ];
+  return providers.find(([, pattern]) => pattern.test(text))?.[0];
+}
+
+function classifyAgentWebhookEgressDestination(
+  fields: RuntimeField[],
+  provider: string | undefined
+): { remote: boolean; destinationCount: number; destinationKinds: string[]; plaintextEndpoint: boolean } {
+  const destinationKinds = new Set<string>();
+  let destinationCount = 0;
+  let plaintextEndpoint = false;
+  if (provider && provider !== "generic_http_callback") {
+    destinationKinds.add("webhook_provider");
+    destinationCount += 1;
+  }
+
+  for (const field of fields) {
+    for (const value of fieldStringValues(field)) {
+      const parsed = parseRemoteHttpUrl(value);
+      if (!parsed) continue;
+      const kind = parsed.protocol === "http:" ? "plaintext_webhook_endpoint" : "webhook_endpoint";
+      destinationKinds.add(kind);
+      destinationCount += 1;
+      if (parsed.protocol === "http:") plaintextEndpoint = true;
+    }
+    if (/(^|\.)(endpoint|url|uri|webhook|callback|destination|sink|target|callback_url|webhook_url)$/iu.test(field.path)) {
+      const text = fieldValueText(field);
+      if (/\b(webhook|callback|https?:\/\/|external|remote|egress)\b/iu.test(text)) {
+        destinationKinds.add("configured_webhook_destination");
+        destinationCount += 1;
+      }
+    }
+  }
+
+  return {
+    remote: destinationCount > 0,
+    destinationCount,
+    destinationKinds: [...destinationKinds].sort((a, b) => a.localeCompare(b)),
+    plaintextEndpoint
+  };
+}
+
+function collectAgentWebhookAuthHeaderNames(fields: RuntimeField[]): string[] {
+  const headerNames = new Set<string>();
+  for (const field of fields) {
+    if (!/(^|\.)(headers?|auth[_-]?header|authorization[_-]?header|header[_-]?name)$/iu.test(field.path)) continue;
+    for (const value of fieldStringValues(field)) {
+      const normalized = normalizeHeaderName(value);
+      if (normalized) headerNames.add(normalized);
+    }
+  }
+  return [...headerNames].sort((a, b) => a.localeCompare(b));
+}
+
+function normalizeHeaderName(value: string): string | undefined {
+  const trimmed = value.trim();
+  if (!/^[a-z][a-z0-9_-]{1,63}$/iu.test(trimmed)) return undefined;
+  if (!/authorization|auth|token|api[_-]?key|x-api-key|x_agent|x-agent|bearer/iu.test(trimmed)) return undefined;
+  return trimmed;
+}
+
+function collectAgentWebhookPayloadCategories(fields: RuntimeField[]): string[] {
+  const categories = new Set<string>();
+  for (const field of fields) {
+    if (/(redact|redaction|mask|masking|scrub|sanitize|filter)/iu.test(field.path)) continue;
+    const text = `${field.path} ${fieldValueText(field)}`.toLowerCase();
+    const payloadField = /payload|body|include|capture|forward|send|post|data|event|source|message|response|output/iu.test(text);
+    if (!payloadField && !truthyConfigValue(field.value)) continue;
+    if (/(?:^|[_\W])(completion|completions|model[_\s-]?output|model[_\s-]?response|agent[_\s-]?reply|answer|response)(?:[_\W]|$)/iu.test(text)) {
+      categories.add("model_output");
+    }
+    if (/(?:^|[_\W])(prompt|prompts|system[_\s-]?prompt|developer[_\s-]?prompt|messages?|conversation|input)(?:[_\W]|$)/iu.test(text)) {
+      categories.add("prompt_context");
+    }
+    if (/(?:^|[_\W])(tool[_\s-]?outputs?|tool[_\s-]?results?|function[_\s-]?outputs?|mcp[_\s-]?results?|command[_\s-]?outputs?|observation)(?:[_\W]|$)/iu.test(text)) {
+      categories.add("tool_output");
+    }
+    if (/(?:^|[_\W])(retrieval|retrieved|rag|documents?|vector|embedding|knowledge[_\s-]?base|context)(?:[_\W]|$)/iu.test(text)) {
+      categories.add("retrieval_context");
+    }
+    if (/(?:^|[_\W])(memory|memories|session[_\s-]?state|history|transcript|long[_\s-]?term)(?:[_\W]|$)/iu.test(text)) {
+      categories.add("memory_context");
+    }
+    if (/(?:^|[_\W])(browser|screenshot|screenshots|dom|html|page[_\s-]?snapshot|recording|trace)(?:[_\W]|$)/iu.test(text)) {
+      categories.add("browser_context");
+    }
+    if (/(?:^|[_\W])(secret|secrets|token|credential|api[_-]?key|password|cookie|authorization|vault)(?:[_\W]|$)/iu.test(text)) {
+      categories.add("secret_material");
+    }
+  }
+  return [...categories].sort((a, b) => a.localeCompare(b));
+}
+
+function hasAgentWebhookExternalWriteSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => {
+    const text = `${field.path} ${fieldValueText(field)}`;
+    if (/(^|\.)(method|http[_-]?method)$/iu.test(field.path) && /\b(post|put|patch|delete)\b/iu.test(fieldValueText(field))) return true;
+    return /(?:^|[_\W])(post|put|patch|send|publish|forward|deliver|callback|webhook|notify|reply|response|write|create|update)(?:[_\W]|$)/iu.test(
+      text
+    ) && truthyConfigValue(field.value);
+  });
+}
+
+function hasAgentWebhookUntrustedInputSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /(?:^|[_\W])(untrusted|user|customer|client|ticket|support|issue|comment|message|prompt|retrieved|rag|document|email|slack|browser|web[_-]?page|chat|model[_\s-]?generated|agent[_\s-]?reply)(?:[_\W]|$)/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    )
+  );
+}
+
+function hasAgentWebhookSensitivePayloadSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /(?:^|[_\W])(customer|client|ticket|support|internal|confidential|private|proprietary|sensitive|account|billing|payment|prod|production|admin|case|incident|record|note)(?:[_\W]|$)/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    )
+  );
+}
+
+function hasAgentWebhookPiiPayloadSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /(?:^|[_\W])(pii|email|phone|address|ssn|passport|dob|date[_\s-]?of[_\s-]?birth|customer[_-]?id|user[_-]?id|account[_-]?id)(?:[_\W]|$)/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    )
+  );
+}
+
+function hasAgentWebhookSecretPayloadSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /(?:^|[_\W])(secret|secrets|token|credential|api[_-]?key|password|cookie|authorization|vault)(?:[_\W]|$)/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    ) && truthyConfigValue(field.value)
+  );
+}
+
+function hasAgentWebhookRedactionDisabledSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => {
+    const text = `${field.path} ${fieldValueText(field)}`;
+    if (/(redact|redaction|mask|masking|scrub|sanitize|pii_filter|secret_filter)/iu.test(field.path)) {
+      return disabledConfigValue(field.value) || /(?:^|[_\W])(disabled|off|false|none|raw|full)(?:[_\W]|$)/iu.test(text);
+    }
+    return /(?:^|[_\W])(raw[_\s-]?payload|raw[_\s-]?body|disable[_\s-]?redaction|redaction[_\s-]?disabled|capture[_\s-]?full[_\s-]?payloads)(?:[_\W]|$)/iu.test(
+      text
+    ) && truthyConfigValue(field.value);
+  });
+}
+
+function hasAgentWebhookRetrySignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /(?:^|[_\W])(retry|retries|queue|dead[_\s-]?letter|dlq|persist|buffer|store[_\s-]?failed|replay)(?:[_\W]|$)/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    ) && truthyConfigValue(field.value)
+  );
+}
+
+function hasAgentWebhookApprovalRequiredSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /approval|required[_-]?approval|human[_-]?approval|confirm|confirmation|review|human[_-]?in[_-]?the[_-]?loop/iu.test(field.path) &&
+    truthyConfigValue(field.value)
+  );
+}
+
+function isAgentWebhookEgressSecurityField(fieldPath: string): boolean {
+  return /provider|webhook|callback|egress|outbound|sink|destination|endpoint|url|uri|method|headers?|authorization|auth|token|secret|credential|env|payload|body|include|capture|prompt|message|completion|response|output|tool|retrieval|rag|memory|browser|redact|mask|sanitize|pii|sensitive|retry|queue|approval|source|event|data/iu.test(
     fieldPath
   );
 }

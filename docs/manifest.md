@@ -715,6 +715,42 @@ Artifact export metadata may include:
 
 Raw artifact bucket names, endpoints, paths, generated outputs, data-scope labels, and secret placeholders are not emitted. Provider names, redacted destination categories, capture categories, redaction posture, retention posture, approval posture, and credential key names let rules detect generated-output exfiltration without copying run artifacts into the manifest.
 
+## Agent Webhook Egress
+
+Agent webhook, callback, outbound sink, event-sink, response-hook, reply-hook, and notification-sink configs are normalized into `runtime_config` objects when common callback directories or webhook-oriented config filenames are discovered.
+
+Webhook egress metadata may include:
+
+- `parsed_agent_webhook_egress_config`
+- `agent_webhook_egress_fields`
+- `agent_webhook_egress_provider`
+- `agent_webhook_egress_remote`
+- `agent_webhook_egress_destination_redacted`
+- `agent_webhook_egress_destination_count`
+- `agent_webhook_egress_destination_kinds`
+- `agent_webhook_egress_plaintext_endpoint`
+- `agent_webhook_egress_auth_header_redacted`
+- `agent_webhook_egress_auth_header_names`
+- `agent_webhook_egress_payload_categories`
+- `agent_webhook_egress_model_output_payload`
+- `agent_webhook_egress_prompt_payload`
+- `agent_webhook_egress_tool_output_payload`
+- `agent_webhook_egress_retrieval_payload`
+- `agent_webhook_egress_memory_payload`
+- `agent_webhook_egress_browser_payload`
+- `agent_webhook_egress_secret_payload`
+- `agent_webhook_egress_sensitive_payload`
+- `agent_webhook_egress_pii_payload`
+- `agent_webhook_egress_external_write_enabled`
+- `agent_webhook_egress_untrusted_input`
+- `agent_webhook_egress_redaction_disabled`
+- `agent_webhook_egress_retry_enabled`
+- `agent_webhook_egress_approval_required`
+- `env_key_names`
+- `secret_ref_key_names`
+
+Raw callback endpoints, token placeholders, payload bodies, source labels, and data-field labels are not emitted. Provider names, redacted endpoint categories, auth-header names, payload categories, write posture, retry posture, approval posture, redaction posture, and credential key names let rules detect sensitive model-output callbacks without copying webhook payloads into the manifest.
+
 ## AI Telemetry Export
 
 AI telemetry and trace-export configs are also normalized into `runtime_config` objects when common observability, tracing, LangSmith, Langfuse, Helicone, Braintrust, OpenTelemetry, or similar configuration files are discovered.
