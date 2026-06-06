@@ -137,6 +137,11 @@ export async function detectSurfaces(files: WalkedFile[]): Promise<DetectedSurfa
       continue;
     }
 
+    if (isAiModelRouterConfigPath(file.relativePath, basename)) {
+      detectAiModelRouterConfig(file, text, surfaces);
+      continue;
+    }
+
     if (isAiModelEndpointConfigPath(file.relativePath, basename)) {
       detectAiModelEndpointConfig(file, text, surfaces);
       continue;
@@ -679,6 +684,75 @@ function detectAiModelEndpointConfig(file: WalkedFile, text: string | undefined,
   surfaces.runtime_config.push({
     ...object,
     untrusted_to_privileged: isUntrustedToPrivileged(object)
+  });
+}
+
+function detectAiModelRouterConfig(file: WalkedFile, text: string | undefined, surfaces: DetectedSurfaces): void {
+  const parsed = parseStructuredConfig(text ?? "", file.relativePath);
+  if (parsed.parseFailed) {
+    addDiagnostic(surfaces, file, {
+      parser: parsed.parser ?? "structured_config",
+      code: "AI_MODEL_ROUTER_CONFIG_PARSE_FAILED",
+      reason: "AI model router, fallback, or provider routing configuration could not be parsed. Raw content was redacted."
+    });
+  }
+
+  const posture = classifyAiModelRouterConfig(parsed.value, file.relativePath);
+  const actions = new Set<ActionType>(["call", "read"]);
+  if (posture.ai_model_router_remote_providers) actions.add("send");
+  if (posture.ai_model_router_auto_fallback || posture.ai_model_router_fallback_enabled) actions.add("execute");
+  if (posture.ai_model_router_records_outputs) actions.add("remember");
+
+  const dataClasses = new Set<SurfaceObject["data_classes"][number]>(["unknown"]);
+  if (
+    posture.ai_model_router_secret_context ||
+    posture.env_key_names.some(isCredentialLikeKeyName) ||
+    posture.secret_ref_key_names.length > 0
+  ) {
+    dataClasses.add("credential");
+  }
+  if (posture.ai_model_router_sensitive_context || posture.ai_model_router_untrusted_input) dataClasses.add("confidential");
+  if (posture.ai_model_router_pii_context) dataClasses.add("pii");
+  if (dataClasses.size > 1) dataClasses.delete("unknown");
+
+  const object = createSurfaceObject({
+    type: "runtime_config",
+    name: path.basename(file.relativePath),
+    path: file.relativePath,
+    trust_level: posture.ai_model_router_remote_providers ? "third_party" : inferTrustLevel(file.relativePath),
+    data_classes: uniqueDataClasses([...dataClasses] as SurfaceObject["data_classes"]),
+    actions: uniqueActions([...actions]),
+    side_effect:
+      posture.ai_model_router_enabled ||
+      posture.ai_model_router_remote_providers ||
+      posture.ai_model_router_fallback_enabled ||
+      posture.ai_model_router_auto_fallback ||
+      posture.ai_model_router_records_outputs,
+    reversible: !posture.ai_model_router_remote_providers && !posture.ai_model_router_records_outputs,
+    external_reach: posture.ai_model_router_remote_providers,
+    secret_exposure:
+      posture.ai_model_router_secret_context ||
+      posture.env_key_names.some(isCredentialLikeKeyName) ||
+      posture.secret_ref_key_names.length > 0,
+    reason: "AI model router or fallback configuration discovered as sensitive provider-routing egress posture.",
+    metadata: {
+      content_redacted: true,
+      values_collected: false,
+      parsed_ai_model_router_config: Boolean(parsed.value) && !parsed.parseFailed,
+      parse_error: parsed.parseFailed,
+      ...posture
+    }
+  });
+  surfaces.runtime_config.push({
+    ...object,
+    untrusted_to_privileged:
+      (posture.ai_model_router_untrusted_input &&
+        posture.ai_model_router_fallback_enabled &&
+        posture.ai_model_router_remote_providers &&
+        (posture.ai_model_router_sensitive_context ||
+          posture.ai_model_router_secret_context ||
+          posture.ai_model_router_redaction_disabled)) ||
+      isUntrustedToPrivileged(object)
   });
 }
 
@@ -2143,6 +2217,25 @@ function isAiModelEndpointConfigPath(relativePath: string, basename: string): bo
   return modelConfigName || (modelDirectory && configName);
 }
 
+function isAiModelRouterConfigPath(relativePath: string, basename: string): boolean {
+  const normalized = relativePath.replaceAll("\\", "/").toLowerCase();
+  const lowerBase = basename.toLowerCase();
+  if (!/\.(json|ya?ml|toml)$/iu.test(lowerBase)) return false;
+  if (normalized.startsWith(".github/workflows/")) return false;
+  if (normalized.startsWith("rules/")) return false;
+  const segments = normalized.split("/").slice(0, -1);
+  const routerDirectory = segments.some((segment) =>
+    /^(model-router|model_router|llm-router|llm_router|routers?|routing|fallbacks?|failovers?|providers?|model-providers?|model_providers?)$/iu.test(
+      segment
+    )
+  );
+  const routerName = /(?:model[-_]?router|llm[-_]?router|provider[-_]?router|routing[-_]?policy|model[-_]?routing|fallback|failover|provider[-_]?fallback|litellm[-_]?router)/iu.test(
+    lowerBase
+  );
+  const configName = /(?:config|settings|router|routing|fallback|failover|provider|model|llm|policy|gateway)/iu.test(lowerBase);
+  return routerName || (routerDirectory && configName);
+}
+
 function isAgentDatabaseConnectorConfigPath(relativePath: string, basename: string): boolean {
   const normalized = relativePath.replaceAll("\\", "/").toLowerCase();
   const lowerBase = basename.toLowerCase();
@@ -3086,6 +3179,33 @@ interface AiModelEndpointPosture {
   ai_model_sends_memory: boolean;
   ai_model_sensitive_context: boolean;
   ai_model_pii_context: boolean;
+  env_key_names: string[];
+  secret_ref_key_names: string[];
+}
+
+interface AiModelRouterPosture {
+  ai_model_router_fields: string[];
+  ai_model_router_provider?: string;
+  ai_model_router_enabled: boolean;
+  ai_model_router_remote_providers: boolean;
+  ai_model_router_destination_redacted: boolean;
+  ai_model_router_destination_count: number;
+  ai_model_router_destination_kinds: string[];
+  ai_model_router_provider_categories: string[];
+  ai_model_router_fallback_enabled: boolean;
+  ai_model_router_auto_fallback: boolean;
+  ai_model_router_cost_or_latency_routing: boolean;
+  ai_model_router_sends_prompts: boolean;
+  ai_model_router_sends_tool_outputs: boolean;
+  ai_model_router_sends_retrieval_context: boolean;
+  ai_model_router_sends_memory: boolean;
+  ai_model_router_sensitive_context: boolean;
+  ai_model_router_pii_context: boolean;
+  ai_model_router_secret_context: boolean;
+  ai_model_router_untrusted_input: boolean;
+  ai_model_router_redaction_disabled: boolean;
+  ai_model_router_records_outputs: boolean;
+  ai_model_router_approval_required: boolean;
   env_key_names: string[];
   secret_ref_key_names: string[];
 }
@@ -6503,6 +6623,285 @@ function hasAiModelContextSignal(fields: RuntimeField[], pattern: RegExp): boole
 
 function isAiModelSecurityField(fieldPath: string): boolean {
   return /provider|model|base[_-]?url|api[_-]?base|endpoint|url|uri|host|gateway|proxy|router|server|api[_-]?key|token|secret|credential|auth|env|prompt|input|message|completion|output|tool|retrieval|rag|context|memory|history|pii/iu.test(
+    fieldPath
+  );
+}
+
+function classifyAiModelRouterConfig(value: unknown, filePath: string): AiModelRouterPosture {
+  const fields = flattenRuntimeFields(value);
+  const stringValues = collectFieldStringValues(fields);
+  const provider = inferAiModelRouterProvider([filePath, ...fields.map((field) => field.path), ...stringValues]);
+  const destination = classifyAiModelRouterDestinations(fields, provider);
+  const envKeys = uniqueStrings([
+    ...collectEnvKeyNamesFromConfig(value).filter(isLikelyEnvKeyName),
+    ...extractEnvironmentReferenceKeys(stringValues)
+  ]);
+  const secretRefKeys = extractSecretReferenceKeys(stringValues);
+  const sendsPrompts = hasAiModelRouterContextSignal(
+    fields,
+    /(?:^|[_\W])(prompt|prompts|system|developer|input|inputs|message|messages|conversation|chat|raw[_\s-]?context)(?:[_\W]|$)/iu
+  );
+  const sendsToolOutputs = hasAiModelRouterContextSignal(
+    fields,
+    /(?:^|[_\W])(tool[_\s-]?outputs?|function[_\s-]?outputs?|mcp|observation|command[_\s-]?outputs?)(?:[_\W]|$)/iu
+  );
+  const sendsRetrieval = hasAiModelRouterContextSignal(
+    fields,
+    /(?:^|[_\W])(retrieval[_\s-]?context|retrieval|retrieved|rag|documents?|vector|embedding)(?:[_\W]|$)/iu
+  );
+  const sendsMemory = hasAiModelRouterContextSignal(
+    fields,
+    /(?:^|[_\W])(memory|memories|session|state|history|transcript|summary)(?:[_\W]|$)/iu
+  );
+  const secretContext =
+    hasAiModelRouterSecretSignal(fields) || envKeys.some(isCredentialLikeKeyName) || secretRefKeys.length > 0;
+  const piiContext = hasAiModelRouterPiiSignal(fields);
+  const sensitiveContext =
+    sendsPrompts ||
+    sendsToolOutputs ||
+    sendsRetrieval ||
+    sendsMemory ||
+    secretContext ||
+    piiContext ||
+    hasAiModelRouterSensitiveSignal(fields);
+
+  return {
+    ai_model_router_fields: fields
+      .map((field) => field.path)
+      .filter((fieldPath) => isAiModelRouterSecurityField(fieldPath))
+      .sort((a, b) => a.localeCompare(b)),
+    ai_model_router_provider: provider,
+    ai_model_router_enabled: Boolean(provider) || hasAiModelRouterEnabledSignal(fields),
+    ai_model_router_remote_providers: destination.remote,
+    ai_model_router_destination_redacted: destination.destinationCount > 0,
+    ai_model_router_destination_count: destination.destinationCount,
+    ai_model_router_destination_kinds: destination.destinationKinds,
+    ai_model_router_provider_categories: destination.providerCategories,
+    ai_model_router_fallback_enabled: hasAiModelRouterFallbackSignal(fields),
+    ai_model_router_auto_fallback: hasAiModelRouterAutoFallbackSignal(fields),
+    ai_model_router_cost_or_latency_routing: hasAiModelRouterCostOrLatencyRoutingSignal(fields),
+    ai_model_router_sends_prompts: sendsPrompts,
+    ai_model_router_sends_tool_outputs: sendsToolOutputs,
+    ai_model_router_sends_retrieval_context: sendsRetrieval,
+    ai_model_router_sends_memory: sendsMemory,
+    ai_model_router_sensitive_context: sensitiveContext,
+    ai_model_router_pii_context: piiContext,
+    ai_model_router_secret_context: secretContext,
+    ai_model_router_untrusted_input: hasAiModelRouterUntrustedInputSignal(fields),
+    ai_model_router_redaction_disabled: hasAiModelRouterRedactionDisabledSignal(fields),
+    ai_model_router_records_outputs: hasAiModelRouterRecordsOutputsSignal(fields),
+    ai_model_router_approval_required: hasAiModelRouterApprovalRequiredSignal(fields),
+    env_key_names: envKeys,
+    secret_ref_key_names: secretRefKeys
+  };
+}
+
+function inferAiModelRouterProvider(candidates: string[]): string | undefined {
+  const text = candidates.join(" ").toLowerCase();
+  const providers: Array<[string, RegExp]> = [
+    ["litellm", /\blitellm\b/iu],
+    ["openai_compatible_router", /\b(openai[-_\s]?compatible|model[_\s-]?gateway|llm[_\s-]?gateway|inference[_\s-]?gateway)\b/iu],
+    ["langchain_router", /\blangchain\b[\s\S]{0,80}\b(router|fallback|provider)\b/iu],
+    ["llamaindex_router", /\b(llama[-_\s]?index|llamaindex)\b[\s\S]{0,80}\b(router|fallback|provider)\b/iu],
+    ["semantic_kernel_router", /\bsemantic[-_\s]?kernel\b[\s\S]{0,80}\b(router|fallback|provider)\b/iu],
+    ["generic_model_router", /\b(model|llm|provider|inference)[_\s-]?(router|routing|fallback|failover|gateway)\b/iu]
+  ];
+  return providers.find(([, pattern]) => pattern.test(text))?.[0];
+}
+
+function classifyAiModelRouterDestinations(
+  fields: RuntimeField[],
+  provider: string | undefined
+): { remote: boolean; destinationCount: number; destinationKinds: string[]; providerCategories: string[] } {
+  const destinationRefs = new Set<string>();
+  const destinationKinds = new Set<string>();
+  const providerCategories = new Set<string>();
+  let hasRemoteUrl = false;
+
+  if (provider) {
+    destinationKinds.add("configured_model_router_destination");
+    providerCategories.add("model_router");
+    destinationRefs.add(`provider:${provider}`);
+  }
+
+  for (const field of fields) {
+    const values = Array.isArray(field.value) ? field.value.map(String) : [String(field.value ?? "")];
+    const text = `${field.path} ${values.join(" ")}`;
+    const categories = categorizeAiModelRouterProviderText(text);
+    let fieldHasRemoteUrl = false;
+
+    for (const category of categories) providerCategories.add(category);
+    if (categories.includes("managed_model_provider")) destinationKinds.add("managed_model_provider");
+    if (categories.includes("custom_model_gateway")) destinationKinds.add("custom_model_gateway");
+    if (categories.includes("third_party_model_route")) destinationKinds.add("third_party_model_route");
+
+    for (const value of values) {
+      const remoteUrl = parseRemoteHttpUrl(value);
+      if (!remoteUrl) continue;
+      fieldHasRemoteUrl = true;
+      hasRemoteUrl = true;
+      destinationKinds.add("http_model_endpoint");
+      destinationRefs.add(`url:${field.path}:${remoteUrl.protocol}`);
+    }
+    if (categories.length > 0 && isAiModelRouterDestinationField(field.path) && !fieldHasRemoteUrl) {
+      destinationKinds.add("configured_model_router_destination");
+      destinationRefs.add(`provider-field:${field.path}`);
+    }
+    if (isAiModelRouterFallbackDestinationField(field.path)) {
+      providerCategories.add("fallback_provider");
+      destinationKinds.add("fallback_route");
+      destinationRefs.add(`fallback:${field.path}`);
+    }
+  }
+
+  const remote =
+    hasRemoteUrl ||
+    providerCategories.has("managed_model_provider") ||
+    providerCategories.has("third_party_model_route") ||
+    providerCategories.has("fallback_provider");
+
+  return {
+    remote,
+    destinationCount: destinationRefs.size,
+    destinationKinds: [...destinationKinds].sort((a, b) => a.localeCompare(b)),
+    providerCategories: [...providerCategories].sort((a, b) => a.localeCompare(b))
+  };
+}
+
+function categorizeAiModelRouterProviderText(text: string): string[] {
+  const categories = new Set<string>();
+  if (
+    /\b(openai|anthropic|azure[-_\s]?openai|bedrock|vertex[-_\s]?ai|google[-_\s]?ai|gemini|groq|mistral|cohere|together|fireworks|huggingface|hugging face)\b/iu.test(
+      text
+    )
+  ) {
+    categories.add("managed_model_provider");
+  }
+  if (/\b(openrouter|third[-_\s]?party|external|community|unapproved|unknown[-_\s]?provider)\b/iu.test(text)) {
+    categories.add("third_party_model_route");
+  }
+  if (/\b(litellm|openai[-_\s]?compatible|gateway|proxy|router|vllm|ollama|localai|model[-_\s]?server)\b/iu.test(text)) {
+    categories.add("custom_model_gateway");
+  }
+  return [...categories].sort((a, b) => a.localeCompare(b));
+}
+
+function isAiModelRouterDestinationField(fieldPath: string): boolean {
+  return /(^|\.)(providers?|primary_provider|model_provider|fallback_providers?|secondary_provider|backup_provider|alternate_provider|endpoints?|base_url|baseurl|api_base|api_url|url|uri|host|gateway|proxy|routes?)($|\.)/iu.test(
+    fieldPath
+  );
+}
+
+function isAiModelRouterFallbackDestinationField(fieldPath: string): boolean {
+  return /(^|\.)(fallback_providers?|fallback_routes?|failover_providers?|backup_provider|secondary_provider|alternate_provider)($|\.)/iu.test(
+    fieldPath
+  );
+}
+
+function hasAiModelRouterEnabledSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => {
+    const text = `${field.path} ${fieldValueText(field)}`;
+    return /\b(model|llm|provider|inference)[_\s-]?(router|routing|fallback|failover|gateway)\b|routing\.enabled|router\.enabled/iu.test(
+      text
+    ) && truthyConfigValue(field.value);
+  });
+}
+
+function hasAiModelRouterFallbackSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /(?:^|[_\W])(fallback|fallbacks|failover|backup|secondary|alternate|retry[_\s-]?provider)(?:[_\W]|$)/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    ) && truthyConfigValue(field.value)
+  );
+}
+
+function hasAiModelRouterAutoFallbackSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /(?:^|[_\W])(auto[_\s-]?fallback|automatic[_\s-]?fallback|fallback[_\s-]?on|failover[_\s-]?on|retry[_\s-]?on|on[_\s-]?error|rate[_\s-]?limit|latency|provider[_\s-]?error)(?:[_\W]|$)/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    ) && truthyConfigValue(field.value)
+  );
+}
+
+function hasAiModelRouterCostOrLatencyRoutingSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /(?:^|[_\W])(cost|latency|least[_\s-]?cost|cheapest|fastest|load[_\s-]?balance|weighted|priority|routing[_\s-]?strategy)(?:[_\W]|$)/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    ) && truthyConfigValue(field.value)
+  );
+}
+
+function hasAiModelRouterContextSignal(fields: RuntimeField[], pattern: RegExp): boolean {
+  return fields.some((field) => {
+    const text = `${field.path} ${fieldValueText(field)}`;
+    if (!pattern.test(text)) return false;
+    if (/\b(redact|mask|scrub|sanitize|exclude|drop|deny)\b/iu.test(field.path)) return false;
+    return truthyConfigValue(field.value) || /\b(include|send|forward|attach|full|raw|context|history|memory|tool|prompt)\b/iu.test(text);
+  });
+}
+
+function hasAiModelRouterSecretSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /(?:^|[_\W])(secret|secrets|token|credential|api[_-]?key|password|authorization|vault|env)(?:[_\W]|$)/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    ) && truthyConfigValue(field.value)
+  );
+}
+
+function hasAiModelRouterPiiSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /(?:^|[_\W])(pii|email|phone|address|ssn|passport|dob|date[_\s-]?of[_\s-]?birth|customer[_-]?id|user[_-]?id|account[_-]?id|account[_-]?number)(?:[_\W]|$)/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    ) && truthyConfigValue(field.value)
+  );
+}
+
+function hasAiModelRouterSensitiveSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /\b(customer|client|ticket|support|internal|confidential|private|proprietary|sensitive|account|billing|payment|record|case|profile|note|incident)\b/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    ) && truthyConfigValue(field.value)
+  );
+}
+
+function hasAiModelRouterUntrustedInputSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /\b(untrusted|user|customer|client|ticket|support|issue|comment|message|prompt|retrieved|rag|document|email|chat|inbound|external|public|web[_-]?page|browser[_-]?output|tool[_-]?output)\b/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    )
+  );
+}
+
+function hasAiModelRouterRedactionDisabledSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => {
+    const text = `${field.path} ${fieldValueText(field)}`.toLowerCase();
+    if (/(^|\.)(include_raw|include_raw_prompts|raw|raw_payload|raw_context|send_raw|passthrough)$/iu.test(field.path)) {
+      return truthyConfigValue(field.value);
+    }
+    if (/redact|redaction|sanitize|sanitiz|mask|scrub|pii_filter|secret_filter|data_loss_prevention|dlp/iu.test(field.path)) {
+      return disabledConfigValue(field.value) || /\b(disabled|false|off|none|raw|passthrough|bypass)\b/iu.test(text);
+    }
+    return false;
+  });
+}
+
+function hasAiModelRouterRecordsOutputsSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /(?:^|[_\W])(record|records|log|logs|store|save|persist|retain|history|trace|traces|transcript|audit)(?:[_\W]|$)/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    ) && truthyConfigValue(field.value)
+  );
+}
+
+function hasAiModelRouterApprovalRequiredSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /approval|required[_-]?approval|human[_-]?approval|confirm|confirmation|review|human[_-]?in[_-]?the[_-]?loop/iu.test(field.path) &&
+    truthyConfigValue(field.value)
+  );
+}
+
+function isAiModelRouterSecurityField(fieldPath: string): boolean {
+  return /provider|model|llm|routing|router|fallback|failover|gateway|proxy|endpoint|url|uri|host|api[_-]?key|token|secret|credential|auth|env|prompt|input|message|completion|output|tool|retrieval|rag|context|memory|history|pii|redact|sanitize|mask|record|log|retain|approval|source/iu.test(
     fieldPath
   );
 }

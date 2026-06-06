@@ -69,6 +69,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-027")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-028")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-029")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-030")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-CICD-002")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-AUTOMATION-001")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-AUTOMATION-002")).toBe(true);
@@ -337,6 +338,42 @@ describe("rule engine", () => {
     expect(JSON.stringify(runtimePromptCacheFindings[0])).not.toContain("cache_customer_email");
     expect(JSON.stringify(runtimePromptCacheFindings[0])).not.toContain("cache_account_number");
     expect(JSON.stringify(runtimePromptCacheFindings[0])).not.toContain("cache_confidential_agent_notes");
+    const runtimeModelRouterFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-RUNTIME-030");
+    expect(runtimeModelRouterFindings).toHaveLength(1);
+    expect(runtimeModelRouterFindings[0]?.matched_object.path).toBe("models/model-router.yaml");
+    expect(runtimeModelRouterFindings[0]?.matched_object.metadata).toMatchObject({
+      parsed_ai_model_router_config: true,
+      ai_model_router_provider: "litellm",
+      ai_model_router_remote_providers: true,
+      ai_model_router_fallback_enabled: true,
+      ai_model_router_auto_fallback: true,
+      ai_model_router_sensitive_context: true,
+      ai_model_router_secret_context: true,
+      ai_model_router_redaction_disabled: true,
+      ai_model_router_untrusted_input: true,
+      ai_model_router_approval_required: false
+    });
+    expect(runtimeModelRouterFindings[0]?.matched_object.metadata.ai_model_router_destination_kinds).toEqual([
+      "configured_model_router_destination",
+      "custom_model_gateway",
+      "fallback_route",
+      "http_model_endpoint",
+      "managed_model_provider",
+      "third_party_model_route"
+    ]);
+    expect(runtimeModelRouterFindings[0]?.severity).toBe("critical");
+    expect(runtimeModelRouterFindings[0]?.confidence).toBe("very_high");
+    expect(runtimeModelRouterFindings[0]?.recommended_control).toBe("require_approval");
+    expect(JSON.stringify(runtimeModelRouterFindings[0])).not.toContain("${MODEL_ROUTER_TOKEN}");
+    expect(JSON.stringify(runtimeModelRouterFindings[0])).not.toContain("${FALLBACK_MODEL_TOKEN}");
+    expect(JSON.stringify(runtimeModelRouterFindings[0])).not.toContain("api.openai.example.invalid");
+    expect(JSON.stringify(runtimeModelRouterFindings[0])).not.toContain("api.anthropic.example.invalid");
+    expect(JSON.stringify(runtimeModelRouterFindings[0])).not.toContain("openrouter.example.invalid");
+    expect(JSON.stringify(runtimeModelRouterFindings[0])).not.toContain("unapproved-community-model");
+    expect(JSON.stringify(runtimeModelRouterFindings[0])).not.toContain("untrusted_customer_ticket");
+    expect(JSON.stringify(runtimeModelRouterFindings[0])).not.toContain("retrieved_customer_context");
+    expect(JSON.stringify(runtimeModelRouterFindings[0])).not.toContain("browser_tool_output");
+    expect(JSON.stringify(runtimeModelRouterFindings[0])).not.toContain("support_memory_summary");
     const runtimeModelEndpointFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-RUNTIME-009");
     expect(runtimeModelEndpointFindings).toHaveLength(1);
     expect(runtimeModelEndpointFindings[0]?.matched_object.path).toBe("models/model-gateway.yaml");

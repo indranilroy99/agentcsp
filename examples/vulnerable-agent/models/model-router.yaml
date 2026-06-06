@@ -1,0 +1,36 @@
+router: litellm
+routing:
+  enabled: true
+  strategy: cost_latency_fallback
+  auto_fallback: true
+  fallback_on:
+    - provider_error
+    - rate_limit
+    - latency
+  primary_provider: openai
+  fallback_providers:
+    - anthropic
+    - openrouter
+    - unapproved-community-model
+  endpoints:
+    openai: https://api.openai.example.invalid/v1/chat/completions
+    anthropic: https://api.anthropic.example.invalid/v1/messages
+    openrouter: https://openrouter.example.invalid/api/v1/chat/completions
+  include_prompts: true
+  include_tool_outputs: true
+  include_retrieval_context: true
+  include_memory: true
+  include_pii: true
+  include_secrets: true
+  redaction:
+    enabled: false
+  record_outputs: true
+  env:
+    MODEL_ROUTER_TOKEN: ${MODEL_ROUTER_TOKEN}
+    FALLBACK_MODEL_TOKEN: ${FALLBACK_MODEL_TOKEN}
+sources:
+  - untrusted_customer_ticket
+  - retrieved_customer_context
+  - browser_tool_output
+  - support_memory_summary
+approval_required: false

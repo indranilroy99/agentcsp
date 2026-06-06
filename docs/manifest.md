@@ -682,6 +682,40 @@ Model endpoint metadata may include:
 
 Raw model gateway URLs, model names, base URLs, request payload examples, and secret placeholders are not emitted. Provider names, redacted destination categories, transport posture, context booleans, and credential key names let rules detect risky model endpoints without copying prompts, tool outputs, memory, retrieval content, or endpoint values into the manifest.
 
+## AI Model Router Boundary
+
+AI model router, provider-routing, fallback, failover, and gateway configs are normalized into `runtime_config` objects when router-oriented directories or filenames are discovered before generic model endpoint classification.
+
+Model router metadata may include:
+
+- `parsed_ai_model_router_config`
+- `ai_model_router_fields`
+- `ai_model_router_provider`
+- `ai_model_router_enabled`
+- `ai_model_router_remote_providers`
+- `ai_model_router_destination_redacted`
+- `ai_model_router_destination_count`
+- `ai_model_router_destination_kinds`
+- `ai_model_router_provider_categories`
+- `ai_model_router_fallback_enabled`
+- `ai_model_router_auto_fallback`
+- `ai_model_router_cost_or_latency_routing`
+- `ai_model_router_sends_prompts`
+- `ai_model_router_sends_tool_outputs`
+- `ai_model_router_sends_retrieval_context`
+- `ai_model_router_sends_memory`
+- `ai_model_router_sensitive_context`
+- `ai_model_router_pii_context`
+- `ai_model_router_secret_context`
+- `ai_model_router_untrusted_input`
+- `ai_model_router_redaction_disabled`
+- `ai_model_router_records_outputs`
+- `ai_model_router_approval_required`
+- `env_key_names`
+- `secret_ref_key_names`
+
+Raw provider URLs, model aliases, fallback labels, routing strategy values, source labels, prompts, tool outputs, retrieval context, memory content, and secret placeholders are not emitted. Router framework names, redacted destination categories, fallback posture, context booleans, redaction posture, approval posture, and credential key names let rules detect sensitive third-party model failover without copying routed payloads or provider endpoints into the manifest.
+
 ## Agent Artifact Export
 
 Agent artifact, output, report, screenshot, recording, and generated-output export configs are normalized into `runtime_config` objects when common artifact directories or export-oriented config filenames are discovered.

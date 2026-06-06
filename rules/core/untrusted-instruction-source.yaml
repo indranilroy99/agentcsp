@@ -71,6 +71,9 @@ match:
     - field: metadata.parsed_llm_prompt_cache_config
       op: not_equals
       value: true
+    - field: metadata.parsed_ai_model_router_config
+      op: not_equals
+      value: true
 recommendation:
   control: quarantine
   text: Treat the source as tainted and require policy review before it can influence privileged action, memory writes, or external calls.

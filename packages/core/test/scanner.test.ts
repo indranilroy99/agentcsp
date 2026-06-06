@@ -36,11 +36,13 @@ describe("scanner", () => {
       "CREW_AGENT_TOKEN",
       "CUSTOMER_SUCCESS_SLACK_BOT_TOKEN",
       "EVAL_AGENT_TOKEN",
+      "FALLBACK_MODEL_TOKEN",
       "FINE_TUNE_TOKEN",
       "GITHUB_TOKEN",
       "LLM_CACHE_TOKEN",
       "LLM_CACHE_URL",
       "MEMORY_STORE_TOKEN",
+      "MODEL_ROUTER_TOKEN",
       "OPENAI_API_KEY",
       "SAFETY_RUNTIME_TOKEN",
       "SLACK_WEBHOOK_URL",
@@ -778,6 +780,68 @@ describe("scanner", () => {
     expect(JSON.stringify(codeInterpreterConfig)).not.toContain("untrusted_customer_ticket");
     expect(JSON.stringify(codeInterpreterConfig)).not.toContain("retrieved_customer_context");
     expect(JSON.stringify(codeInterpreterConfig)).not.toContain("browser_tool_output");
+    const modelRouterConfig = surfaces.runtime_config.find((surface) => surface.path === "models/model-router.yaml");
+    expect(modelRouterConfig).toBeDefined();
+    expect(modelRouterConfig).toMatchObject({
+      trust_level: "third_party",
+      external_reach: true,
+      secret_exposure: true,
+      side_effect: true,
+      reversible: false,
+      untrusted_to_privileged: true
+    });
+    expect(modelRouterConfig?.metadata).toMatchObject({
+      content_redacted: true,
+      values_collected: false,
+      parsed_ai_model_router_config: true,
+      ai_model_router_provider: "litellm",
+      ai_model_router_enabled: true,
+      ai_model_router_remote_providers: true,
+      ai_model_router_destination_redacted: true,
+      ai_model_router_fallback_enabled: true,
+      ai_model_router_auto_fallback: true,
+      ai_model_router_cost_or_latency_routing: true,
+      ai_model_router_sends_prompts: true,
+      ai_model_router_sends_tool_outputs: true,
+      ai_model_router_sends_retrieval_context: true,
+      ai_model_router_sends_memory: true,
+      ai_model_router_sensitive_context: true,
+      ai_model_router_pii_context: true,
+      ai_model_router_secret_context: true,
+      ai_model_router_untrusted_input: true,
+      ai_model_router_redaction_disabled: true,
+      ai_model_router_records_outputs: true,
+      ai_model_router_approval_required: false
+    });
+    expect(modelRouterConfig?.metadata.ai_model_router_destination_kinds).toEqual([
+      "configured_model_router_destination",
+      "custom_model_gateway",
+      "fallback_route",
+      "http_model_endpoint",
+      "managed_model_provider",
+      "third_party_model_route"
+    ]);
+    expect(modelRouterConfig?.metadata.ai_model_router_provider_categories).toEqual([
+      "custom_model_gateway",
+      "fallback_provider",
+      "managed_model_provider",
+      "model_router",
+      "third_party_model_route"
+    ]);
+    expect(modelRouterConfig?.metadata.env_key_names).toEqual(["FALLBACK_MODEL_TOKEN", "MODEL_ROUTER_TOKEN"]);
+    expect(modelRouterConfig?.metadata.secret_ref_key_names).toEqual(["FALLBACK_MODEL_TOKEN", "MODEL_ROUTER_TOKEN"]);
+    expect(modelRouterConfig?.data_classes).toEqual(["confidential", "credential", "pii"]);
+    expect(modelRouterConfig?.actions).toEqual(["call", "execute", "read", "remember", "send"]);
+    expect(JSON.stringify(modelRouterConfig)).not.toContain("${MODEL_ROUTER_TOKEN}");
+    expect(JSON.stringify(modelRouterConfig)).not.toContain("${FALLBACK_MODEL_TOKEN}");
+    expect(JSON.stringify(modelRouterConfig)).not.toContain("api.openai.example.invalid");
+    expect(JSON.stringify(modelRouterConfig)).not.toContain("api.anthropic.example.invalid");
+    expect(JSON.stringify(modelRouterConfig)).not.toContain("openrouter.example.invalid");
+    expect(JSON.stringify(modelRouterConfig)).not.toContain("unapproved-community-model");
+    expect(JSON.stringify(modelRouterConfig)).not.toContain("untrusted_customer_ticket");
+    expect(JSON.stringify(modelRouterConfig)).not.toContain("retrieved_customer_context");
+    expect(JSON.stringify(modelRouterConfig)).not.toContain("browser_tool_output");
+    expect(JSON.stringify(modelRouterConfig)).not.toContain("support_memory_summary");
     const modelConfig = surfaces.runtime_config.find((surface) => surface.path === "models/model-gateway.yaml");
     expect(modelConfig).toBeDefined();
     expect(modelConfig).toMatchObject({
