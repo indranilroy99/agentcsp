@@ -157,6 +157,11 @@ export async function detectSurfaces(files: WalkedFile[]): Promise<DetectedSurfa
       continue;
     }
 
+    if (isAgentExtensionLoaderConfigPath(file.relativePath, basename)) {
+      detectAgentExtensionLoaderConfig(file, text, surfaces);
+      continue;
+    }
+
     if (isSaasConnectorConfigPath(file.relativePath, basename)) {
       detectSaasConnectorConfig(file, text, surfaces);
       continue;
@@ -1005,6 +1010,69 @@ function detectAgentIdentityConfig(file: WalkedFile, text: string | undefined, s
   });
 }
 
+function detectAgentExtensionLoaderConfig(file: WalkedFile, text: string | undefined, surfaces: DetectedSurfaces): void {
+  const parsed = parseStructuredConfig(text ?? "", file.relativePath);
+  if (parsed.parseFailed) {
+    addDiagnostic(surfaces, file, {
+      parser: parsed.parser ?? "structured_config",
+      code: "AGENT_EXTENSION_LOADER_CONFIG_PARSE_FAILED",
+      reason: "Agent extension loader configuration could not be parsed. Raw content was redacted."
+    });
+  }
+
+  const posture = classifyAgentExtensionLoaderConfig(parsed.value, file.relativePath);
+  const actions = new Set<ActionType>(["read", "call"]);
+  if (posture.agent_extension_loader_remote) actions.add("send");
+  if (
+    posture.agent_extension_loader_auto_install_enabled ||
+    posture.agent_extension_loader_auto_update_enabled ||
+    posture.agent_extension_loader_privileged_authority
+  ) {
+    actions.add("execute");
+  }
+  if (posture.agent_extension_loader_privileged_authority) actions.add("write");
+  if (posture.agent_extension_loader_external_authority) actions.add("publish");
+
+  const dataClasses = new Set<SurfaceObject["data_classes"][number]>(["unknown"]);
+  if (posture.env_key_names.some(isCredentialLikeKeyName) || posture.secret_ref_key_names.length > 0) dataClasses.add("credential");
+  if (posture.agent_extension_loader_sensitive_data || posture.agent_extension_loader_untrusted_input) dataClasses.add("confidential");
+  if (posture.agent_extension_loader_pii_data) dataClasses.add("pii");
+  if (dataClasses.size > 1) dataClasses.delete("unknown");
+
+  const object = createSurfaceObject({
+    type: "runtime_config",
+    name: path.basename(file.relativePath),
+    path: file.relativePath,
+    trust_level: posture.agent_extension_loader_remote ? "third_party" : inferTrustLevel(file.relativePath),
+    data_classes: uniqueDataClasses([...dataClasses] as SurfaceObject["data_classes"]),
+    actions: uniqueActions([...actions]),
+    side_effect:
+      posture.agent_extension_loader_auto_install_enabled ||
+      posture.agent_extension_loader_auto_update_enabled ||
+      posture.agent_extension_loader_privileged_authority ||
+      posture.agent_extension_loader_external_authority,
+    reversible: !posture.agent_extension_loader_auto_install_enabled && !posture.agent_extension_loader_auto_update_enabled,
+    external_reach: posture.agent_extension_loader_remote || posture.agent_extension_loader_external_authority,
+    secret_exposure: posture.env_key_names.some(isCredentialLikeKeyName) || posture.secret_ref_key_names.length > 0,
+    reason: "Agent extension loader configuration discovered as dynamic capability loading posture.",
+    metadata: {
+      content_redacted: true,
+      values_collected: false,
+      parsed_agent_extension_loader_config: Boolean(parsed.value) && !parsed.parseFailed,
+      parse_error: parsed.parseFailed,
+      ...posture
+    }
+  });
+  surfaces.runtime_config.push({
+    ...object,
+    untrusted_to_privileged:
+      (posture.agent_extension_loader_untrusted_input &&
+        (posture.agent_extension_loader_auto_install_enabled || posture.agent_extension_loader_auto_update_enabled) &&
+        posture.agent_extension_loader_privileged_authority) ||
+      isUntrustedToPrivileged(object)
+  });
+}
+
 function detectSaasConnectorConfig(file: WalkedFile, text: string | undefined, surfaces: DetectedSurfaces): void {
   const parsed = parseStructuredConfig(text ?? "", file.relativePath);
   if (parsed.parseFailed) {
@@ -1412,6 +1480,28 @@ function isAgentIdentityConfigPath(relativePath: string, basename: string): bool
   return identityName || (identityDirectory && configName);
 }
 
+function isAgentExtensionLoaderConfigPath(relativePath: string, basename: string): boolean {
+  const normalized = relativePath.replaceAll("\\", "/").toLowerCase();
+  const lowerBase = basename.toLowerCase();
+  if (!/\.(json|ya?ml|toml)$/iu.test(lowerBase)) return false;
+  if (lowerBase === "plugin.json") return false;
+  if (normalized.startsWith(".github/workflows/")) return false;
+  if (normalized.startsWith("rules/")) return false;
+  const segments = normalized.split("/").slice(0, -1);
+  const extensionDirectory = segments.some((segment) =>
+    /^(extensions?|extension-registry|extension_registry|marketplaces?|registries|registry|skill-registry|skill_registry|plugin-registry|plugin_registry|remote-skills|remote_skills|capability-registry|capability_registry)$/iu.test(
+      segment
+    )
+  );
+  const extensionName = /(?:extension|marketplace|registry|catalog|remote-skill|remote_skill|remote-plugin|remote_plugin|skill-registry|skill_registry|plugin-registry|plugin_registry|capability-loader|capability_loader|extension-loader|extension_loader)/iu.test(
+    lowerBase
+  );
+  const configName = /(?:config|settings|registry|marketplace|catalog|loader|extensions?|skills?|plugins?|capabilities|install|autoload|auto-load|remote)/iu.test(
+    lowerBase
+  );
+  return extensionName || (extensionDirectory && configName);
+}
+
 function isSaasConnectorConfigPath(relativePath: string, basename: string): boolean {
   const normalized = relativePath.replaceAll("\\", "/").toLowerCase();
   const lowerBase = basename.toLowerCase();
@@ -1714,6 +1804,32 @@ interface AgentIdentityPosture {
   agent_identity_sensitive_data: boolean;
   agent_identity_pii_data: boolean;
   agent_identity_approval_required: boolean;
+  env_key_names: string[];
+  secret_ref_key_names: string[];
+}
+
+interface AgentExtensionLoaderPosture {
+  agent_extension_loader_fields: string[];
+  agent_extension_loader_provider?: string;
+  agent_extension_loader_remote: boolean;
+  agent_extension_loader_destination_redacted: boolean;
+  agent_extension_loader_destination_count: number;
+  agent_extension_loader_destination_kinds: string[];
+  agent_extension_loader_extension_refs_redacted: boolean;
+  agent_extension_loader_extension_ref_count: number;
+  agent_extension_loader_extension_kinds: string[];
+  agent_extension_loader_unpinned_reference: boolean;
+  agent_extension_loader_auto_install_enabled: boolean;
+  agent_extension_loader_auto_update_enabled: boolean;
+  agent_extension_loader_signature_verification_disabled: boolean;
+  agent_extension_loader_provenance_verification_missing: boolean;
+  agent_extension_loader_untrusted_input: boolean;
+  agent_extension_loader_tool_authority_categories: string[];
+  agent_extension_loader_privileged_authority: boolean;
+  agent_extension_loader_external_authority: boolean;
+  agent_extension_loader_sensitive_data: boolean;
+  agent_extension_loader_pii_data: boolean;
+  agent_extension_loader_approval_required: boolean;
   env_key_names: string[];
   secret_ref_key_names: string[];
 }
@@ -3097,6 +3213,293 @@ function hasAgentIdentityApprovalRequiredSignal(fields: RuntimeField[]): boolean
 
 function isAgentIdentitySecurityField(fieldPath: string): boolean {
   return /provider|identity|auth|oauth|oidc|issuer|audience|subject|principal|service|account|client|tenant|token|credential|secret|key|env|scope|permission|role|claim|capabilit|resource|impersonat|delegate|assume|federat|sts|refresh|ttl|lifetime|tool|mcp|browser|database|saas|connector|source|input|customer|ticket|email|approval|endpoint|url|host|authority|jwks/iu.test(
+    fieldPath
+  );
+}
+
+function classifyAgentExtensionLoaderConfig(value: unknown, filePath: string): AgentExtensionLoaderPosture {
+  const fields = flattenRuntimeFields(value);
+  const stringValues = collectFieldStringValues(fields);
+  const provider = inferAgentExtensionLoaderProvider([filePath, ...fields.map((field) => field.path), ...stringValues]);
+  const destinations = classifyAgentExtensionLoaderDestinations(fields, provider);
+  const extensionRefCount = countAgentExtensionReferences(fields);
+  const extensionKinds = collectAgentExtensionKinds(fields);
+  const authorityCategories = collectAgentExtensionAuthorityCategories(fields);
+  const envKeys = uniqueStrings([
+    ...collectEnvKeyNamesFromConfig(value).filter(isLikelyEnvKeyName),
+    ...extractEnvironmentReferenceKeys(stringValues)
+  ]);
+  const secretRefKeys = extractSecretReferenceKeys(stringValues);
+
+  return {
+    agent_extension_loader_fields: fields
+      .map((field) => field.path)
+      .filter((fieldPath) => isAgentExtensionLoaderSecurityField(fieldPath))
+      .sort((a, b) => a.localeCompare(b)),
+    agent_extension_loader_provider: provider,
+    agent_extension_loader_remote: destinations.remote,
+    agent_extension_loader_destination_redacted: destinations.destinationCount > 0,
+    agent_extension_loader_destination_count: destinations.destinationCount,
+    agent_extension_loader_destination_kinds: destinations.destinationKinds,
+    agent_extension_loader_extension_refs_redacted: extensionRefCount > 0,
+    agent_extension_loader_extension_ref_count: extensionRefCount,
+    agent_extension_loader_extension_kinds: extensionKinds,
+    agent_extension_loader_unpinned_reference: hasAgentExtensionUnpinnedReferenceSignal(fields),
+    agent_extension_loader_auto_install_enabled: hasAgentExtensionAutoInstallSignal(fields),
+    agent_extension_loader_auto_update_enabled: hasAgentExtensionAutoUpdateSignal(fields),
+    agent_extension_loader_signature_verification_disabled: hasAgentExtensionSignatureVerificationDisabledSignal(fields),
+    agent_extension_loader_provenance_verification_missing: hasAgentExtensionProvenanceVerificationMissingSignal(fields),
+    agent_extension_loader_untrusted_input: hasAgentExtensionUntrustedInputSignal(fields),
+    agent_extension_loader_tool_authority_categories: authorityCategories,
+    agent_extension_loader_privileged_authority: isAgentExtensionPrivileged(authorityCategories),
+    agent_extension_loader_external_authority: hasAgentExtensionExternalAuthoritySignal(fields, authorityCategories),
+    agent_extension_loader_sensitive_data: hasAgentExtensionSensitiveDataSignal(fields),
+    agent_extension_loader_pii_data: hasAgentExtensionPiiDataSignal(fields),
+    agent_extension_loader_approval_required: hasAgentExtensionApprovalRequiredSignal(fields),
+    env_key_names: envKeys,
+    secret_ref_key_names: secretRefKeys
+  };
+}
+
+function inferAgentExtensionLoaderProvider(candidates: string[]): string | undefined {
+  const text = candidates.join(" ").toLowerCase();
+  const providers: Array<[string, RegExp]> = [
+    ["agent_extension_marketplace", /\b(marketplace|registry|catalog|extension[_\s-]?loader|skill[_\s-]?registry|plugin[_\s-]?registry|agent[_\s-]?extension[_\s-]?marketplace)\b/iu],
+    ["openai_gpts_actions", /\b(gpts?|actions?)\b[\s\S]{0,80}\b(extension|plugin|tool)\b/iu],
+    ["github", /\bgithub\b|github\.com/iu],
+    ["npm", /\b(npm|node[_\s-]?package|package\.json)\b|registry\.npmjs\.org/iu],
+    ["pypi", /\b(pypi|python[_\s-]?package)\b|pypi\.org/iu],
+    ["git", /\b(git|gitlab|bitbucket)\b|\.git\b/iu]
+  ];
+  return providers.find(([, pattern]) => pattern.test(text))?.[0];
+}
+
+function classifyAgentExtensionLoaderDestinations(
+  fields: RuntimeField[],
+  provider: string | undefined
+): { remote: boolean; destinationCount: number; destinationKinds: string[] } {
+  const destinationKinds = new Set<string>();
+  let destinationCount = 0;
+  if (provider && provider !== "agent_extension_marketplace") {
+    destinationKinds.add("managed_extension_provider");
+    destinationCount += 1;
+  }
+
+  for (const field of fields) {
+    const values = fieldStringValues(field);
+    for (const value of values) {
+      const destination = parseAgentExtensionDestination(value);
+      if (destination) {
+        destinationKinds.add(destination.kind);
+        destinationCount += 1;
+      }
+    }
+    if (/(^|\.)(registry|registry_url|marketplace|catalog|endpoint|url|uri|host|source|repository|repo)$/iu.test(field.path)) {
+      const text = values.join(" ");
+      if (looksLikeRemoteExtensionHost(text)) {
+        destinationKinds.add("extension_registry_endpoint");
+        destinationCount += 1;
+      }
+    }
+  }
+
+  return {
+    remote: destinationCount > 0,
+    destinationCount,
+    destinationKinds: [...destinationKinds].sort((a, b) => a.localeCompare(b))
+  };
+}
+
+function parseAgentExtensionDestination(value: string): { kind: string } | undefined {
+  try {
+    const parsed = new URL(value);
+    if (!["http:", "https:", "git:", "ssh:"].includes(parsed.protocol)) return undefined;
+    if (isLocalHost(parsed.hostname.toLowerCase())) return undefined;
+    if (parsed.protocol === "git:" || parsed.protocol === "ssh:" || /\.git$/iu.test(parsed.pathname)) return { kind: "git_repository" };
+    return { kind: parsed.protocol === "http:" ? "plaintext_extension_registry" : "extension_registry_endpoint" };
+  } catch {
+    return undefined;
+  }
+}
+
+function looksLikeRemoteExtensionHost(value: string): boolean {
+  const trimmed = value.trim().toLowerCase();
+  if (!trimmed || trimmed.startsWith("${")) return false;
+  if (isLocalHost(trimmed)) return false;
+  return /\b(registry|marketplace|catalog|extensions?|plugins?|skills?|npmjs|pypi|github|gitlab|bitbucket)\b/iu.test(trimmed) ||
+    /^[a-z0-9.-]+\.[a-z]{2,}(?::\d+)?$/iu.test(trimmed);
+}
+
+function countAgentExtensionReferences(fields: RuntimeField[]): number {
+  let count = 0;
+  for (const field of fields) {
+    const text = `${field.path} ${fieldValueText(field)}`;
+    if (/(^|\.)(extensions?|skills?|plugins?|tools?|capabilities?|packages?|modules?)\.(\d+|[A-Za-z][\w-]*)/iu.test(field.path)) {
+      count += 1;
+      continue;
+    }
+    if (/(^|\.)(package|packages|module|modules|repository|repo|url|source|manifest|extension|skill|plugin)$/iu.test(field.path) && fieldStringValues(field).length > 0) {
+      count += 1;
+      continue;
+    }
+    if (/(?:^|[_\W])(@?[a-z0-9][\w.-]*\/[a-z0-9][\w.-]*|github:|git\+https?:|https?:\/\/|\.git)(?:[_\W]|$)/iu.test(text)) {
+      count += 1;
+    }
+  }
+  return count;
+}
+
+function collectAgentExtensionKinds(fields: RuntimeField[]): string[] {
+  const kinds = new Set<string>();
+  for (const field of fields) {
+    const text = `${field.path} ${fieldValueText(field)}`.toLowerCase();
+    if (/\b(skill|skills)\b/iu.test(text)) kinds.add("skill");
+    if (/\b(plugin|plugins)\b/iu.test(text)) kinds.add("plugin");
+    if (/\b(tool|tools|function|functions)\b/iu.test(text)) kinds.add("tool");
+    if (/\b(mcp|server|servers)\b/iu.test(text)) kinds.add("mcp_server");
+    if (/\b(prompt|prompts|template|templates)\b/iu.test(text)) kinds.add("prompt");
+    if (/\b(agent|agents|subagent|subagents)\b/iu.test(text)) kinds.add("agent");
+  }
+  return [...kinds].sort((a, b) => a.localeCompare(b));
+}
+
+function hasAgentExtensionUnpinnedReferenceSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => {
+    const text = `${field.path} ${fieldValueText(field)}`;
+    if (/\b(unpinned|latest|allow[_\s-]?unpinned|floating|no[_\s-]?pin|any[_\s-]?version)\b/iu.test(text) && truthyConfigValue(field.value)) {
+      return true;
+    }
+    return fieldStringValues(field).some((value) =>
+      /(?:@latest|:\*|version\s*[:=]\s*(latest|\*)|\bmain\b|\bmaster\b|\bHEAD\b)/iu.test(value) ||
+      (/(^|\/)(packages?|extensions?|skills?|plugins?)\b/iu.test(field.path) && looksLikeUnpinnedPackageReference(value))
+    );
+  });
+}
+
+function looksLikeUnpinnedPackageReference(value: string): boolean {
+  const trimmed = value.trim();
+  if (!trimmed || trimmed.startsWith("${")) return false;
+  if (/^https?:\/\//iu.test(trimmed)) return true;
+  if (/^[a-z0-9_.-]+\/[a-z0-9_.-]+(?:\.git)?$/iu.test(trimmed)) return true;
+  const npmLike = /^(@[a-z0-9_.-]+\/)?[a-z0-9_.-]+$/iu.test(trimmed);
+  return npmLike && !/@\d+\.\d+\.\d+/u.test(trimmed);
+}
+
+function hasAgentExtensionAutoInstallSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /\b(auto[_\s-]?(install|load|enable)|install[_\s-]?on[_\s-]?startup|load[_\s-]?on[_\s-]?startup|dynamic[_\s-]?load|autoload|auto-load|allow[_\s-]?install)\b/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    ) && truthyConfigValue(field.value)
+  );
+}
+
+function hasAgentExtensionAutoUpdateSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /\b(auto[_\s-]?update|update[_\s-]?on[_\s-]?startup|pull[_\s-]?latest|refresh[_\s-]?catalog|sync[_\s-]?registry|floating[_\s-]?version)\b/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    ) && truthyConfigValue(field.value)
+  );
+}
+
+function hasAgentExtensionSignatureVerificationDisabledSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => {
+    const text = `${field.path} ${fieldValueText(field)}`;
+    if (/\b(allow[_\s-]?unsigned|unsigned[_\s-]?allowed|skip[_\s-]?signature|signature[_\s-]?verification[_\s-]?disabled|no[_\s-]?signature)\b/iu.test(text)) {
+      return truthyConfigValue(field.value);
+    }
+    if (/\b(signature|signing|verify[_\s-]?signature|signature[_\s-]?verification|signed)\b/iu.test(field.path)) {
+      return disabledConfigValue(field.value);
+    }
+    return false;
+  });
+}
+
+function hasAgentExtensionProvenanceVerificationMissingSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => {
+    const text = `${field.path} ${fieldValueText(field)}`;
+    if (/\b(allow[_\s-]?untrusted|untrusted[_\s-]?registry|skip[_\s-]?provenance|provenance[_\s-]?verification[_\s-]?disabled|no[_\s-]?provenance)\b/iu.test(text)) {
+      return truthyConfigValue(field.value);
+    }
+    if (/(^|[_\W])(provenance|attestation|checksum|digest|slsa|verified[_\s-]?publisher|trusted[_\s-]?publisher)([_\W]|$)/iu.test(field.path)) {
+      return disabledConfigValue(field.value);
+    }
+    return false;
+  });
+}
+
+function hasAgentExtensionUntrustedInputSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /\b(untrusted|user|customer|client|ticket|support|issue|comment|message|prompt|retrieved|rag|document|email|slack|browser|web[_-]?page|chat|inbound|external|selector|requested[_\s-]?extension)\b/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    )
+  );
+}
+
+function collectAgentExtensionAuthorityCategories(fields: RuntimeField[]): string[] {
+  const categories = new Set<string>();
+  for (const field of fields) {
+    const text = `${field.path} ${fieldValueText(field)}`.toLowerCase();
+    if (/\b(tool|tools|function|function_call|mcp|capability|capabilities)\b/iu.test(text)) categories.add("tool_call");
+    if (/\b(browser|playwright|puppeteer|web[_\s-]?agent|click|form|navigate)\b/iu.test(text)) categories.add("browser_action");
+    if (/\b(database|db|sql|query|support_db|warehouse)\b/iu.test(text)) categories.add("database_access");
+    if (/(?:^|[_\W])(vault|secret|secrets|secret[_\s-]?manager|key[_\s-]?vault|credential)(?:[_\W]|$)/iu.test(text)) {
+      categories.add("secret_manager_access");
+    }
+    if (/\b(slack|email|webhook|message|ticket|issue|comment|reply|send|post|publish)\b/iu.test(text)) categories.add("external_response");
+    if (/(?:^|[_\W])(memory|remember|store|persist|session[_\s-]?state)(?:[_\W]|$)/iu.test(text)) categories.add("memory_write");
+    if (/\b(shell|bash|command|exec|terminal|python|node|subprocess)\b/iu.test(text)) categories.add("shell_execution");
+    if (/\b(filesystem|file[_\s-]?write|workspace|repo|repository|github|gitlab|pull[_\s-]?request)\b/iu.test(text)) {
+      categories.add("repo_or_filesystem_write");
+    }
+  }
+  return [...categories].sort((a, b) => a.localeCompare(b));
+}
+
+function isAgentExtensionPrivileged(categories: string[]): boolean {
+  return categories.some((category) =>
+    [
+      "browser_action",
+      "database_access",
+      "external_response",
+      "memory_write",
+      "repo_or_filesystem_write",
+      "secret_manager_access",
+      "shell_execution",
+      "tool_call"
+    ].includes(category)
+  );
+}
+
+function hasAgentExtensionExternalAuthoritySignal(fields: RuntimeField[], categories: string[]): boolean {
+  return categories.includes("external_response") ||
+    fields.some((field) => /\b(slack|email|webhook|send|post|publish|reply|respond|ticket|issue|external|api)\b/iu.test(`${field.path} ${fieldValueText(field)}`));
+}
+
+function hasAgentExtensionSensitiveDataSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /\b(customer|client|ticket|support|internal|confidential|private|proprietary|sensitive|account|billing|payment|prod|production|admin|credential|token|api[_-]?key|secret)\b/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    )
+  );
+}
+
+function hasAgentExtensionPiiDataSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /(?:^|[_\W])(pii|email|phone|address|ssn|passport|dob|date[_\s-]?of[_\s-]?birth|customer[_-]?id|user[_-]?id|account[_-]?id)(?:[_\W]|$)/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    )
+  );
+}
+
+function hasAgentExtensionApprovalRequiredSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /approval|required[_-]?approval|human[_-]?approval|confirm|confirmation|review|human[_-]?in[_-]?the[_-]?loop/iu.test(field.path) &&
+    truthyConfigValue(field.value)
+  );
+}
+
+function isAgentExtensionLoaderSecurityField(fieldPath: string): boolean {
+  return /provider|registry|marketplace|catalog|extension|skill|plugin|tool|mcp|package|module|source|repository|repo|url|host|endpoint|install|load|autoload|update|pin|version|signature|signing|provenance|attestation|checksum|digest|trusted|untrusted|selector|input|customer|ticket|prompt|retrieved|browser|authority|permission|scope|capabilit|approval|secret|token|credential|auth|env|pii|sensitive/iu.test(
     fieldPath
   );
 }

@@ -1,0 +1,48 @@
+id: AGENTCSP-RUNTIME-019
+name: Remote agent extension loader installs unsigned unpinned capabilities
+description: A remote agent extension loader can auto-install or auto-load unpinned and unsigned skills, plugins, tools, or MCP capabilities selected from untrusted context without approval.
+category: dynamic_agent_capability_loading
+severity: critical
+maps_to:
+  owasp:
+    - LLM01:2025 Prompt Injection
+    - LLM05:2025 Supply Chain Vulnerabilities
+    - LLM06:2025 Excessive Agency
+  mitre_atlas:
+    - AML.T0051 LLM Prompt Injection
+    - AML.T0054 LLM Plugin Compromise
+    - AML.T0057 Exfiltration via Cyber Means
+  nist_ai_rmf:
+    - MAP 5.1
+    - MEASURE 2.9
+    - MANAGE 2.2
+match:
+  object_type: runtime_config
+  where:
+    - field: metadata.parsed_agent_extension_loader_config
+      op: equals
+      value: true
+    - field: metadata.agent_extension_loader_remote
+      op: equals
+      value: true
+    - field: metadata.agent_extension_loader_auto_install_enabled
+      op: equals
+      value: true
+    - field: metadata.agent_extension_loader_unpinned_reference
+      op: equals
+      value: true
+    - field: metadata.agent_extension_loader_signature_verification_disabled
+      op: equals
+      value: true
+    - field: metadata.agent_extension_loader_untrusted_input
+      op: equals
+      value: true
+    - field: metadata.agent_extension_loader_privileged_authority
+      op: equals
+      value: true
+    - field: metadata.agent_extension_loader_approval_required
+      op: equals
+      value: false
+recommendation:
+  control: quarantine
+  text: Quarantine remote extension loading from untrusted context, require pinned and signed capabilities, verify provenance, and require approval before newly loaded skills, plugins, tools, or MCP servers can execute.

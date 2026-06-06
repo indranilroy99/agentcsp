@@ -703,6 +703,15 @@ The current iteration adds:
 - rule `AGENTCSP-RUNTIME-018` for identity delegation that combines credential issuance, impersonation, broad scope, untrusted input, credential exposure, and missing approval
 - scanner, rule, fixture verifier, and redaction coverage proving issuer URLs, token endpoints, service-account IDs, raw scopes, IAM roles, subject labels, tool names, data-field labels, and token placeholders stay redacted
 
+## Agent Extension Loader Pass
+
+The current iteration adds:
+
+- first-class redacted metadata for remote skill, plugin, tool, prompt, MCP, marketplace, registry, catalog, and capability-loader configs
+- vulnerable fixture coverage for a remote extension marketplace that auto-installs and auto-updates unpinned, unsigned skills/plugins selected from customer/retrieval/browser context with privileged tool authority and no approval gate
+- rule `AGENTCSP-RUNTIME-019` for remote extension loaders that combine auto-install, unpinned references, disabled signature verification, untrusted input, privileged authority, and missing approval
+- scanner, rule, fixture verifier, and redaction coverage proving registry URLs, Git URLs, package names, extension names, version strings, permission strings, selector fields, source labels, data-field labels, and token placeholders stay redacted
+
 ## Initial Build Recommendation
 
 Start with a CLI-first MVP before building the dashboard:

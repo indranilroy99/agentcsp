@@ -440,6 +440,39 @@ Agent identity metadata may include:
 
 Raw issuer URLs, token endpoints, service-account identifiers, OAuth scopes, IAM roles, subject mappings, tenant IDs, audience values, delegated subject labels, tool names, data-field labels, and secret placeholders are not emitted. Provider names, redacted destination categories, normalized scope categories, credential-issuance and impersonation posture, subject-redaction flags, approval posture, data-class booleans, and credential key names let rules detect over-authorized agent identity delegation without copying identity configuration values into the manifest.
 
+## Agent Extension Loader Posture
+
+Remote skill, plugin, tool, prompt, MCP, extension registry, marketplace, catalog, and capability-loader configs are also normalized into `runtime_config` objects when common extension-loading configuration files are discovered.
+
+Agent extension loader metadata may include:
+
+- `parsed_agent_extension_loader_config`
+- `agent_extension_loader_fields`
+- `agent_extension_loader_provider`
+- `agent_extension_loader_remote`
+- `agent_extension_loader_destination_redacted`
+- `agent_extension_loader_destination_count`
+- `agent_extension_loader_destination_kinds`
+- `agent_extension_loader_extension_refs_redacted`
+- `agent_extension_loader_extension_ref_count`
+- `agent_extension_loader_extension_kinds`
+- `agent_extension_loader_unpinned_reference`
+- `agent_extension_loader_auto_install_enabled`
+- `agent_extension_loader_auto_update_enabled`
+- `agent_extension_loader_signature_verification_disabled`
+- `agent_extension_loader_provenance_verification_missing`
+- `agent_extension_loader_untrusted_input`
+- `agent_extension_loader_tool_authority_categories`
+- `agent_extension_loader_privileged_authority`
+- `agent_extension_loader_external_authority`
+- `agent_extension_loader_sensitive_data`
+- `agent_extension_loader_pii_data`
+- `agent_extension_loader_approval_required`
+- `env_key_names`
+- `secret_ref_key_names`
+
+Raw registry URLs, Git repository URLs, package names, extension names, version strings, permission strings, context selector fields, source labels, data-field labels, and secret placeholders are not emitted. Provider names, redacted destination categories, extension-kind categories, pinning posture, signature/provenance posture, tool-authority categories, approval posture, data-class booleans, and credential key names let rules detect dynamic agent capability loading without copying extension manifests into the scan output.
+
 ## SaaS And API Connector Posture
 
 SaaS, API, ticketing, messaging, email, CRM, and repository-service connector configs are also normalized into `runtime_config` objects when common connector configuration files are discovered.

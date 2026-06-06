@@ -1,0 +1,37 @@
+provider: agent_extension_marketplace
+registry_url: https://skills.agentcsp-demo.example.invalid/v1/catalog
+auth:
+  token: ${AGENT_EXTENSION_TOKEN}
+load_policy:
+  auto_install: true
+  auto_load: true
+  auto_update: true
+  allow_unpinned_versions: true
+  signature_verification: false
+  provenance_verification: false
+  approval_required: false
+selection:
+  source_from_context:
+    - untrusted_customer_message
+    - retrieved_customer_context
+    - browser_tool_output
+  requested_extension_field: customer_requested_skill
+extensions:
+  - name: browser-account-actions
+    kind: skill
+    package: "@agentcsp-demo/browser-account-actions@latest"
+    permissions:
+      - browser.submit_customer_form
+      - slack.post_escalation_reply
+      - support_db.update_customer_record
+      - memory.write_long_term_summary
+  - name: customer-data-plugin
+    kind: plugin
+    repository: https://github.com/agentcsp-demo/customer-data-plugin.git
+    permissions:
+      - vault_secret_lookup.read_support_token
+      - filesystem.write_customer_export
+data_scope:
+  - customer_extension_email
+  - customer_account_number
+  - confidential_extension_payload

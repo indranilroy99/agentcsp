@@ -23,6 +23,7 @@ describe("scanner", () => {
 
     expect(envSurface).toBeDefined();
     expect(envSurface?.metadata.env_key_names).toEqual([
+      "AGENT_EXTENSION_TOKEN",
       "AGENT_IDENTITY_TOKEN",
       "BROWSER_SESSION_TOKEN",
       "CREW_AGENT_TOKEN",
@@ -678,6 +679,64 @@ describe("scanner", () => {
     expect(JSON.stringify(agentIdentityConfig)).not.toContain("roles/iam.serviceAccountTokenCreator");
     expect(JSON.stringify(agentIdentityConfig)).not.toContain("send_customer_reply");
     expect(JSON.stringify(agentIdentityConfig)).not.toContain("customer_oauth_email");
+    const agentExtensionLoaderConfig = surfaces.runtime_config.find((surface) => surface.path === "extensions/remote-skills.yaml");
+    expect(agentExtensionLoaderConfig).toBeDefined();
+    expect(agentExtensionLoaderConfig).toMatchObject({
+      trust_level: "third_party",
+      external_reach: true,
+      secret_exposure: true,
+      side_effect: true,
+      reversible: false,
+      untrusted_to_privileged: true
+    });
+    expect(agentExtensionLoaderConfig?.metadata).toMatchObject({
+      content_redacted: true,
+      values_collected: false,
+      parsed_agent_extension_loader_config: true,
+      agent_extension_loader_provider: "agent_extension_marketplace",
+      agent_extension_loader_remote: true,
+      agent_extension_loader_destination_redacted: true,
+      agent_extension_loader_extension_refs_redacted: true,
+      agent_extension_loader_unpinned_reference: true,
+      agent_extension_loader_auto_install_enabled: true,
+      agent_extension_loader_auto_update_enabled: true,
+      agent_extension_loader_signature_verification_disabled: true,
+      agent_extension_loader_provenance_verification_missing: true,
+      agent_extension_loader_untrusted_input: true,
+      agent_extension_loader_privileged_authority: true,
+      agent_extension_loader_external_authority: true,
+      agent_extension_loader_sensitive_data: true,
+      agent_extension_loader_pii_data: true,
+      agent_extension_loader_approval_required: false
+    });
+    expect(agentExtensionLoaderConfig?.metadata.agent_extension_loader_destination_kinds).toEqual([
+      "extension_registry_endpoint",
+      "git_repository"
+    ]);
+    expect(agentExtensionLoaderConfig?.metadata.agent_extension_loader_extension_kinds).toEqual(
+      expect.arrayContaining(["plugin", "skill"])
+    );
+    expect(agentExtensionLoaderConfig?.metadata.agent_extension_loader_tool_authority_categories).toEqual([
+      "browser_action",
+      "database_access",
+      "external_response",
+      "memory_write",
+      "repo_or_filesystem_write",
+      "secret_manager_access"
+    ]);
+    expect(agentExtensionLoaderConfig?.metadata.env_key_names).toEqual(["AGENT_EXTENSION_TOKEN"]);
+    expect(agentExtensionLoaderConfig?.metadata.secret_ref_key_names).toEqual(["AGENT_EXTENSION_TOKEN"]);
+    expect(agentExtensionLoaderConfig?.data_classes).toEqual(["confidential", "credential", "pii"]);
+    expect(agentExtensionLoaderConfig?.actions).toEqual(["call", "execute", "publish", "read", "send", "write"]);
+    expect(JSON.stringify(agentExtensionLoaderConfig)).not.toContain("${AGENT_EXTENSION_TOKEN}");
+    expect(JSON.stringify(agentExtensionLoaderConfig)).not.toContain("skills.agentcsp-demo.example.invalid");
+    expect(JSON.stringify(agentExtensionLoaderConfig)).not.toContain("@agentcsp-demo/browser-account-actions");
+    expect(JSON.stringify(agentExtensionLoaderConfig)).not.toContain("customer-data-plugin");
+    expect(JSON.stringify(agentExtensionLoaderConfig)).not.toContain("github.com/agentcsp-demo/customer-data-plugin");
+    expect(JSON.stringify(agentExtensionLoaderConfig)).not.toContain("browser-account-actions");
+    expect(JSON.stringify(agentExtensionLoaderConfig)).not.toContain("customer_requested_skill");
+    expect(JSON.stringify(agentExtensionLoaderConfig)).not.toContain("customer_extension_email");
+    expect(JSON.stringify(agentExtensionLoaderConfig)).not.toContain("confidential_extension_payload");
     const inboundTriggerConfig = surfaces.runtime_config.find((surface) => surface.path === "inbox/support-triage.yaml");
     expect(inboundTriggerConfig).toBeDefined();
     expect(inboundTriggerConfig).toMatchObject({
