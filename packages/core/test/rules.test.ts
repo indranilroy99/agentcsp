@@ -52,6 +52,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-010")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-011")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-012")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-013")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-CICD-002")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-AUTOMATION-001")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-AUTOMATION-002")).toBe(true);
@@ -203,6 +204,29 @@ describe("rule engine", () => {
     expect(JSON.stringify(runtimeSaasConnectorFindings[0])).not.toContain("hooks.slack.example.invalid");
     expect(JSON.stringify(runtimeSaasConnectorFindings[0])).not.toContain("chat:write");
     expect(JSON.stringify(runtimeSaasConnectorFindings[0])).not.toContain("#customer-escalations");
+    const runtimeSecretManagerFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-RUNTIME-013");
+    expect(runtimeSecretManagerFindings).toHaveLength(1);
+    expect(runtimeSecretManagerFindings[0]?.matched_object.path).toBe("secrets/vault-agent.yaml");
+    expect(runtimeSecretManagerFindings[0]?.matched_object.metadata).toMatchObject({
+      secret_manager_provider: "hashicorp_vault",
+      secret_manager_read_enabled: true,
+      secret_manager_broad_scope: true,
+      secret_manager_injects_into_tools: true,
+      secret_manager_untrusted_input: true,
+      secret_manager_approval_required: false
+    });
+    expect(runtimeSecretManagerFindings[0]?.matched_object.metadata.secret_manager_scope_categories).toEqual([
+      "secret_list",
+      "secret_read",
+      "sensitive_secret_scope"
+    ]);
+    expect(runtimeSecretManagerFindings[0]?.severity).toBe("critical");
+    expect(runtimeSecretManagerFindings[0]?.confidence).toBe("very_high");
+    expect(runtimeSecretManagerFindings[0]?.recommended_control).toBe("require_approval");
+    expect(JSON.stringify(runtimeSecretManagerFindings[0])).not.toContain("${VAULT_AGENT_TOKEN}");
+    expect(JSON.stringify(runtimeSecretManagerFindings[0])).not.toContain("vault.example.invalid");
+    expect(JSON.stringify(runtimeSecretManagerFindings[0])).not.toContain("secret/data/prod/customer-support");
+    expect(JSON.stringify(runtimeSecretManagerFindings[0])).not.toContain("prod-support-read");
     const automationAgentFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-AUTOMATION-002");
     expect(automationAgentFindings).toHaveLength(1);
     expect(automationAgentFindings[0]?.matched_object.path).toBe(".github/workflows/agent-maintenance.yml");

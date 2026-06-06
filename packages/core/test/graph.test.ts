@@ -134,8 +134,8 @@ describe("static graph", () => {
     const ragDataEgressPath = result.manifest.attack_paths.find(
       (attackPath) =>
         attackPath.source.path === "rag/customer-note.md" &&
-        attackPath.target.name === "remote-ticketing" &&
-        attackPath.title === "customer-note.md can route sensitive context to remote-ticketing"
+        attackPath.target.name === "browser-publisher" &&
+        attackPath.title === "customer-note.md can route sensitive context to browser-publisher"
     );
     expect(ragDataEgressPath).toBeDefined();
     expect(ragDataEgressPath?.severity).toBe("critical");
@@ -146,6 +146,19 @@ describe("static graph", () => {
     expect(ragDataEgressPath?.risk.data_classes).toContain("confidential");
     expect(ragDataEgressPath?.risk.external_reach).toBe(true);
     expect(JSON.stringify(ragDataEgressPath)).not.toContain("latest internal summary");
+    const ragSaasConnectorPath = result.manifest.attack_paths.find(
+      (attackPath) =>
+        attackPath.source.path === "rag/customer-note.md" &&
+        attackPath.target.name === "slack-customer-success.yaml" &&
+        attackPath.title === "customer-note.md can influence slack-customer-success.yaml: Untrusted context can influence privileged behavior"
+    );
+    expect(ragSaasConnectorPath).toBeDefined();
+    expect(ragSaasConnectorPath?.severity).toBe("critical");
+    expect(ragSaasConnectorPath?.confidence).toBe("very_high");
+    expect(ragSaasConnectorPath?.risk.data_classes).toContain("pii");
+    expect(ragSaasConnectorPath?.risk.actions).toEqual(["call", "publish", "read", "send", "write"]);
+    expect(JSON.stringify(ragSaasConnectorPath)).not.toContain("hooks.slack.example.invalid");
+    expect(JSON.stringify(ragSaasConnectorPath)).not.toContain("chat:write");
     const ragBrowserSessionPath = result.manifest.attack_paths.find(
       (attackPath) =>
         attackPath.source.path === "rag/customer-note.md" &&

@@ -630,6 +630,15 @@ The current iteration adds:
 - rule `AGENTCSP-RUNTIME-012` for SaaS connectors that combine broad credential-backed external write authority, untrusted input, and missing approval
 - scanner, rule, fixture verifier, and redaction coverage proving raw OAuth scopes, webhook URLs, workspace names, channel names, customer-system labels, and secret placeholders stay redacted
 
+## Secret Manager Authority Pass
+
+The current iteration adds:
+
+- first-class redacted metadata for Vault, cloud secret manager, key vault, KMS, Kubernetes secret, and credential-broker configs, including provider, destination categories, normalized secret scope categories, read/list/write posture, broad scope, tool injection, untrusted input, sensitive/PII scope, approval posture, and credential key references
+- vulnerable fixture coverage for a HashiCorp Vault-style connector that lets customer/retrieval context read and list production support secrets and inject them into tools without approval
+- rule `AGENTCSP-RUNTIME-013` for secret-manager connectors that combine read/list scope, broad sensitive secret scope, tool injection, untrusted input, and missing approval
+- scanner, rule, fixture verifier, and redaction coverage proving raw vault URLs, secret paths, policy names, secret labels, and token placeholders stay redacted
+
 ## Initial Build Recommendation
 
 Start with a CLI-first MVP before building the dashboard:

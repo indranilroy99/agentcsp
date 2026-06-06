@@ -30,7 +30,8 @@ describe("scanner", () => {
       "SLACK_WEBHOOK_URL",
       "SUPPORT_DB_PASSWORD",
       "SUPPORT_DB_URL",
-      "TICKETING_MCP_TOKEN"
+      "TICKETING_MCP_TOKEN",
+      "VAULT_AGENT_TOKEN"
     ]);
     expect(JSON.stringify(envSurface)).not.toContain("replace-me");
     expect(JSON.stringify(envSurface)).not.toContain("https://example.invalid/webhook");
@@ -562,6 +563,55 @@ describe("scanner", () => {
     expect(JSON.stringify(saasConnectorConfig)).not.toContain("#customer-escalations");
     expect(JSON.stringify(saasConnectorConfig)).not.toContain("agentcsp-demo-workspace");
     expect(JSON.stringify(saasConnectorConfig)).not.toContain("saas_customer_email");
+    const secretManagerConfig = surfaces.runtime_config.find((surface) => surface.path === "secrets/vault-agent.yaml");
+    expect(secretManagerConfig).toBeDefined();
+    expect(secretManagerConfig).toMatchObject({
+      trust_level: "third_party",
+      external_reach: true,
+      secret_exposure: true,
+      side_effect: true,
+      reversible: true,
+      untrusted_to_privileged: true
+    });
+    expect(secretManagerConfig?.metadata).toMatchObject({
+      content_redacted: true,
+      values_collected: false,
+      parsed_secret_manager_config: true,
+      secret_manager_provider: "hashicorp_vault",
+      secret_manager_remote: true,
+      secret_manager_destination_redacted: true,
+      secret_manager_scope_redacted: true,
+      secret_manager_path_references_redacted: true,
+      secret_manager_read_enabled: true,
+      secret_manager_list_enabled: true,
+      secret_manager_write_enabled: false,
+      secret_manager_broad_scope: true,
+      secret_manager_injects_into_tools: true,
+      secret_manager_untrusted_input: true,
+      secret_manager_sensitive_scope: true,
+      secret_manager_pii_scope: false,
+      secret_manager_approval_required: false
+    });
+    expect(secretManagerConfig?.metadata.secret_manager_destination_kinds).toEqual([
+      "managed_secret_store",
+      "secret_store_endpoint"
+    ]);
+    expect(secretManagerConfig?.metadata.secret_manager_scope_categories).toEqual([
+      "secret_list",
+      "secret_read",
+      "sensitive_secret_scope"
+    ]);
+    expect(secretManagerConfig?.metadata.env_key_names).toEqual(["VAULT_AGENT_TOKEN"]);
+    expect(secretManagerConfig?.metadata.secret_ref_key_names).toEqual(["VAULT_AGENT_TOKEN"]);
+    expect(secretManagerConfig?.data_classes).toEqual(["confidential", "credential", "secret"]);
+    expect(secretManagerConfig?.actions).toEqual(["call", "execute", "read", "send"]);
+    expect(JSON.stringify(secretManagerConfig)).not.toContain("${VAULT_AGENT_TOKEN}");
+    expect(JSON.stringify(secretManagerConfig)).not.toContain("vault.example.invalid");
+    expect(JSON.stringify(secretManagerConfig)).not.toContain("secret/data/prod/customer-support");
+    expect(JSON.stringify(secretManagerConfig)).not.toContain("kv/agent/service-tokens");
+    expect(JSON.stringify(secretManagerConfig)).not.toContain("prod-support-read");
+    expect(JSON.stringify(secretManagerConfig)).not.toContain("agent-secret-broker");
+    expect(JSON.stringify(secretManagerConfig)).not.toContain("vault_customer_credentials");
     expect(surfaces.ci_cd.length).toBe(1);
     expect(surfaces.ci_cd[0]?.metadata).toMatchObject({
       pull_request_trigger: true,

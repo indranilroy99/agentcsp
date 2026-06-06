@@ -45,6 +45,7 @@ A finding should be considered production-grade when it includes:
 - runtime permission allowlists correlated to exact package scripts and release authority
 - browser-session metadata for persistent authenticated state, broad origins, and untrusted click/form authority without emitting cookie files, profile paths, origins, or endpoints
 - SaaS/API connector metadata for broad credential-backed write scopes without emitting raw OAuth scopes, endpoints, workspaces, channels, queues, or customer-system names
+- secret-manager metadata for read/list credential-broker authority without emitting vault URLs, secret paths, policy names, role names, or resource IDs
 - database connector metadata for credential-backed read/write/query authority without emitting hosts, connection strings, usernames, or table names
 - AI model endpoint metadata for prompt, tool-output, retrieval, and memory egress without emitting model gateway URLs or model names
 - AI telemetry export metadata for prompt, completion, tool-output, retrieval, and memory capture without emitting trace payloads or endpoints
@@ -99,6 +100,7 @@ Examples:
 - runtime config with network access plus secret env keys plus privileged tools
 - authenticated browser session plus broad origins plus untrusted navigation plus click/form/upload authority
 - SaaS connector with broad write scopes plus credentials plus untrusted input plus no approval gate
+- secret manager connector with read/list scope plus tool injection plus untrusted input plus no approval gate
 - database connector with credentials plus write/query authority plus sensitive data plus untrusted input
 - AI model endpoint with plaintext transport plus sensitive context plus credential reference
 - AI telemetry remote export plus sensitive agent-context capture plus disabled redaction plus credential reference

@@ -309,6 +309,36 @@ SaaS connector metadata may include:
 
 Raw OAuth scopes, endpoint URLs, webhook URLs, workspace names, channel names, queue names, repository names, customer-system labels, and secret placeholders are not emitted. Provider names, redacted destination categories, normalized scope categories, write/read posture, untrusted-input booleans, approval posture, and credential key names let rules detect over-authorized SaaS connectors without copying integration configuration into the manifest.
 
+## Secret Manager Posture
+
+Vault, cloud secret manager, key vault, KMS, Kubernetes secret, and credential-broker configs are also normalized into `runtime_config` objects when common secret-manager configuration files are discovered.
+
+Secret manager metadata may include:
+
+- `parsed_secret_manager_config`
+- `secret_manager_fields`
+- `secret_manager_provider`
+- `secret_manager_remote`
+- `secret_manager_destination_redacted`
+- `secret_manager_destination_count`
+- `secret_manager_destination_kinds`
+- `secret_manager_scope_redacted`
+- `secret_manager_scope_categories`
+- `secret_manager_path_references_redacted`
+- `secret_manager_read_enabled`
+- `secret_manager_list_enabled`
+- `secret_manager_write_enabled`
+- `secret_manager_broad_scope`
+- `secret_manager_injects_into_tools`
+- `secret_manager_untrusted_input`
+- `secret_manager_sensitive_scope`
+- `secret_manager_pii_scope`
+- `secret_manager_approval_required`
+- `env_key_names`
+- `secret_ref_key_names`
+
+Raw vault URLs, secret paths, resource names, policy names, role names, project IDs, namespaces, ARNs, key names, and secret placeholders are not emitted. Provider names, redacted destination categories, normalized scope categories, read/list/write posture, tool-injection booleans, untrusted-input signals, approval posture, and credential key names let rules detect credential-broker blast radius without copying secret inventory into the manifest.
+
 ## Database Connector Posture
 
 Database, SQL, warehouse, and datastore connector configs are also normalized into `runtime_config` objects when common database connector configuration files are discovered.
