@@ -26,6 +26,8 @@ describe("scanner", () => {
       "GITHUB_TOKEN",
       "OPENAI_API_KEY",
       "SLACK_WEBHOOK_URL",
+      "SUPPORT_DB_PASSWORD",
+      "SUPPORT_DB_URL",
       "TICKETING_MCP_TOKEN"
     ]);
     expect(JSON.stringify(envSurface)).not.toContain("replace-me");
@@ -424,6 +426,44 @@ describe("scanner", () => {
     expect(JSON.stringify(modelConfig)).not.toContain("${OPENAI_API_KEY}");
     expect(JSON.stringify(modelConfig)).not.toContain("llm-gateway.example.invalid");
     expect(JSON.stringify(modelConfig)).not.toContain("agentcsp-support-ops");
+    const databaseConfig = surfaces.runtime_config.find((surface) => surface.path === "database/support-db.yaml");
+    expect(databaseConfig).toBeDefined();
+    expect(databaseConfig).toMatchObject({
+      trust_level: "third_party",
+      external_reach: true,
+      secret_exposure: true,
+      side_effect: true,
+      reversible: false,
+      untrusted_to_privileged: true
+    });
+    expect(databaseConfig?.metadata).toMatchObject({
+      content_redacted: true,
+      values_collected: false,
+      parsed_database_connector_config: true,
+      database_provider: "postgres",
+      database_remote: true,
+      database_destination_redacted: true,
+      database_read_enabled: true,
+      database_write_enabled: true,
+      database_delete_enabled: true,
+      database_query_execution_enabled: true,
+      database_untrusted_query_input: true,
+      database_sensitive_data: true,
+      database_pii_data: true,
+      database_table_names_redacted: true
+    });
+    expect(databaseConfig?.metadata.database_remote_destination_kinds).toEqual(["database_host"]);
+    expect(databaseConfig?.metadata.env_key_names).toEqual(
+      expect.arrayContaining(["SUPPORT_DB_PASSWORD", "SUPPORT_DB_URL"])
+    );
+    expect(databaseConfig?.metadata.secret_ref_key_names).toEqual(["SUPPORT_DB_PASSWORD", "SUPPORT_DB_URL"]);
+    expect(databaseConfig?.data_classes).toEqual(["confidential", "credential", "pii"]);
+    expect(databaseConfig?.actions).toEqual(["call", "delete", "execute", "read", "send", "write"]);
+    expect(JSON.stringify(databaseConfig)).not.toContain("${SUPPORT_DB_URL}");
+    expect(JSON.stringify(databaseConfig)).not.toContain("${SUPPORT_DB_PASSWORD}");
+    expect(JSON.stringify(databaseConfig)).not.toContain("support-db.example.invalid");
+    expect(JSON.stringify(databaseConfig)).not.toContain("customer_profiles");
+    expect(JSON.stringify(databaseConfig)).not.toContain("agent_writer");
     expect(surfaces.ci_cd.length).toBe(1);
     expect(surfaces.ci_cd[0]?.metadata).toMatchObject({
       pull_request_trigger: true,

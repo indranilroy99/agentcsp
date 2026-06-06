@@ -1,0 +1,41 @@
+id: AGENTCSP-RUNTIME-010
+name: Agent database connector exposes credential-backed sensitive writes
+description: A database connector allows agent-driven query execution or natural-language SQL with write authority, credentials, and sensitive data scope, creating a direct path from untrusted context to mutable records.
+category: database_authority
+severity: critical
+maps_to:
+  owasp:
+    - LLM01:2025 Prompt Injection
+    - LLM02:2025 Sensitive Information Disclosure
+    - LLM06:2025 Excessive Agency
+  mitre_atlas:
+    - AML.T0051 LLM Prompt Injection
+    - AML.T0057 Exfiltration via Cyber Means
+  nist_ai_rmf:
+    - MAP 5.1
+    - MEASURE 2.9
+    - MANAGE 2.4
+match:
+  object_type: runtime_config
+  where:
+    - field: metadata.parsed_database_connector_config
+      op: equals
+      value: true
+    - field: metadata.database_query_execution_enabled
+      op: equals
+      value: true
+    - field: metadata.database_write_enabled
+      op: equals
+      value: true
+    - field: metadata.database_untrusted_query_input
+      op: equals
+      value: true
+    - field: metadata.database_sensitive_data
+      op: equals
+      value: true
+    - field: secret_exposure
+      op: equals
+      value: true
+recommendation:
+  control: require_approval
+  text: Use read-only scoped credentials by default, block natural-language write queries from untrusted context, require approval for mutations, and separate sensitive tables from agent-controlled query execution.

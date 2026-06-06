@@ -111,15 +111,31 @@ describe("static graph", () => {
       result.manifest.attack_paths.some(
         (attackPath) =>
           attackPath.source.path === "rag/customer-note.md" &&
-          attackPath.target.name === "publish_summary" &&
+          attackPath.target.name === "support-db.yaml" &&
           attackPath.reason.includes("tool directive")
       )
     ).toBe(true);
+    const ragDatabaseAuthorityPath = result.manifest.attack_paths.find(
+      (attackPath) =>
+        attackPath.source.path === "rag/customer-note.md" &&
+        attackPath.target.name === "support-db.yaml" &&
+        attackPath.title ===
+          "customer-note.md can influence support-db.yaml: Agent database connector exposes credential-backed sensitive writes"
+    );
+    expect(ragDatabaseAuthorityPath).toBeDefined();
+    expect(ragDatabaseAuthorityPath?.severity).toBe("critical");
+    expect(ragDatabaseAuthorityPath?.confidence).toBe("very_high");
+    expect(ragDatabaseAuthorityPath?.recommended_control).toBe("require_approval");
+    expect(ragDatabaseAuthorityPath?.reason).toContain("direct path from untrusted context to mutable records");
+    expect(ragDatabaseAuthorityPath?.risk.data_classes).toContain("pii");
+    expect(ragDatabaseAuthorityPath?.risk.actions).toEqual(["call", "delete", "execute", "read", "send", "write"]);
+    expect(ragDatabaseAuthorityPath?.risk.external_reach).toBe(true);
+    expect(JSON.stringify(ragDatabaseAuthorityPath)).not.toContain("customer_profiles");
     const ragDataEgressPath = result.manifest.attack_paths.find(
       (attackPath) =>
         attackPath.source.path === "rag/customer-note.md" &&
-        attackPath.target.name === "publish_summary" &&
-        attackPath.title === "customer-note.md can route sensitive context to publish_summary"
+        attackPath.target.name === "remote-ticketing" &&
+        attackPath.title === "customer-note.md can route sensitive context to remote-ticketing"
     );
     expect(ragDataEgressPath).toBeDefined();
     expect(ragDataEgressPath?.severity).toBe("critical");

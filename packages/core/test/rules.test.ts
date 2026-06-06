@@ -49,6 +49,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-007")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-008")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-009")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-010")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-CICD-002")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-AUTOMATION-001")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-AUTOMATION-002")).toBe(true);
@@ -140,6 +141,26 @@ describe("rule engine", () => {
     expect(JSON.stringify(runtimeModelEndpointFindings[0])).not.toContain("${OPENAI_API_KEY}");
     expect(JSON.stringify(runtimeModelEndpointFindings[0])).not.toContain("llm-gateway.example.invalid");
     expect(JSON.stringify(runtimeModelEndpointFindings[0])).not.toContain("agentcsp-support-ops");
+    const runtimeDatabaseFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-RUNTIME-010");
+    expect(runtimeDatabaseFindings).toHaveLength(1);
+    expect(runtimeDatabaseFindings[0]?.matched_object.path).toBe("database/support-db.yaml");
+    expect(runtimeDatabaseFindings[0]?.matched_object.metadata).toMatchObject({
+      database_provider: "postgres",
+      database_remote: true,
+      database_write_enabled: true,
+      database_delete_enabled: true,
+      database_query_execution_enabled: true,
+      database_untrusted_query_input: true,
+      database_sensitive_data: true,
+      database_pii_data: true
+    });
+    expect(runtimeDatabaseFindings[0]?.severity).toBe("critical");
+    expect(runtimeDatabaseFindings[0]?.confidence).toBe("very_high");
+    expect(runtimeDatabaseFindings[0]?.recommended_control).toBe("require_approval");
+    expect(JSON.stringify(runtimeDatabaseFindings[0])).not.toContain("${SUPPORT_DB_URL}");
+    expect(JSON.stringify(runtimeDatabaseFindings[0])).not.toContain("${SUPPORT_DB_PASSWORD}");
+    expect(JSON.stringify(runtimeDatabaseFindings[0])).not.toContain("support-db.example.invalid");
+    expect(JSON.stringify(runtimeDatabaseFindings[0])).not.toContain("customer_profiles");
     const automationAgentFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-AUTOMATION-002");
     expect(automationAgentFindings).toHaveLength(1);
     expect(automationAgentFindings[0]?.matched_object.path).toBe(".github/workflows/agent-maintenance.yml");

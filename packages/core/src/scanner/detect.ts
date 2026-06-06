@@ -122,6 +122,11 @@ export async function detectSurfaces(files: WalkedFile[]): Promise<DetectedSurfa
       continue;
     }
 
+    if (isAgentDatabaseConnectorConfigPath(file.relativePath, basename)) {
+      detectDatabaseConnectorConfig(file, text, surfaces);
+      continue;
+    }
+
     if (INSTRUCTION_FILE_NAMES.has(basename) || isCursorRulePath(lowerPath)) {
       const content = text ?? "";
       const cursorRule = isCursorRulePath(lowerPath) ? classifyCursorRule(file, content, surfaces) : undefined;
@@ -446,6 +451,55 @@ function detectAiModelEndpointConfig(file: WalkedFile, text: string | undefined,
   });
 }
 
+function detectDatabaseConnectorConfig(file: WalkedFile, text: string | undefined, surfaces: DetectedSurfaces): void {
+  const parsed = parseStructuredConfig(text ?? "", file.relativePath);
+  if (parsed.parseFailed) {
+    addDiagnostic(surfaces, file, {
+      parser: parsed.parser ?? "structured_config",
+      code: "DATABASE_CONNECTOR_CONFIG_PARSE_FAILED",
+      reason: "Database connector configuration could not be parsed. Raw content was redacted."
+    });
+  }
+
+  const posture = classifyDatabaseConnectorConfig(parsed.value, file.relativePath);
+  const actions = new Set<ActionType>(["read", "call"]);
+  if (posture.database_query_execution_enabled) actions.add("execute");
+  if (posture.database_write_enabled) actions.add("write");
+  if (posture.database_delete_enabled) actions.add("delete");
+  if (posture.database_remote) actions.add("send");
+
+  const dataClasses = new Set<SurfaceObject["data_classes"][number]>(["unknown"]);
+  if (posture.env_key_names.some(isCredentialLikeKeyName) || posture.secret_ref_key_names.length > 0) dataClasses.add("credential");
+  if (posture.database_sensitive_data) dataClasses.add("confidential");
+  if (posture.database_pii_data) dataClasses.add("pii");
+  if (dataClasses.size > 1) dataClasses.delete("unknown");
+
+  const object = createSurfaceObject({
+    type: "runtime_config",
+    name: path.basename(file.relativePath),
+    path: file.relativePath,
+    trust_level: posture.database_remote ? "third_party" : inferTrustLevel(file.relativePath),
+    data_classes: uniqueDataClasses([...dataClasses] as SurfaceObject["data_classes"]),
+    actions: uniqueActions([...actions]),
+    side_effect: posture.database_write_enabled || posture.database_delete_enabled || posture.database_query_execution_enabled,
+    reversible: !posture.database_write_enabled && !posture.database_delete_enabled,
+    external_reach: posture.database_remote,
+    secret_exposure: posture.env_key_names.some(isCredentialLikeKeyName) || posture.secret_ref_key_names.length > 0,
+    reason: "Database connector configuration discovered as runtime data authority.",
+    metadata: {
+      content_redacted: true,
+      values_collected: false,
+      parsed_database_connector_config: Boolean(parsed.value) && !parsed.parseFailed,
+      parse_error: parsed.parseFailed,
+      ...posture
+    }
+  });
+  surfaces.runtime_config.push({
+    ...object,
+    untrusted_to_privileged: isUntrustedToPrivileged(object)
+  });
+}
+
 function detectMemoryContentFile(file: WalkedFile, text: string | undefined, surfaces: DetectedSurfaces): void {
   const content = text ?? "";
   const signals = classifyContextContent(content);
@@ -605,6 +659,21 @@ function isAiModelEndpointConfigPath(relativePath: string, basename: string): bo
   return modelConfigName || (modelDirectory && configName);
 }
 
+function isAgentDatabaseConnectorConfigPath(relativePath: string, basename: string): boolean {
+  const normalized = relativePath.replaceAll("\\", "/").toLowerCase();
+  const lowerBase = basename.toLowerCase();
+  if (!/\.(json|ya?ml|toml)$/iu.test(lowerBase)) return false;
+  const segments = normalized.split("/").slice(0, -1);
+  const databaseDirectory = segments.some((segment) =>
+    /^(database|databases|db|sql|warehouse|warehouses|datastore|datastores|connectors?|data-sources?|datasources)$/iu.test(segment)
+  );
+  const databaseName = /(?:database|db|sql|postgres|postgresql|mysql|mariadb|mssql|sqlserver|sqlite|snowflake|bigquery|redshift|databricks|warehouse|connector|datasource|data-source)/iu.test(
+    lowerBase
+  );
+  const configName = /(?:config|settings|connector|datasource|data-source|database|db|sql|warehouse|source)/iu.test(lowerBase);
+  return databaseName || (databaseDirectory && configName);
+}
+
 function isRagConnectorConfigPath(relativePath: string, basename: string): boolean {
   const normalized = relativePath.replaceAll("\\", "/").toLowerCase();
   const lowerBase = basename.toLowerCase();
@@ -710,6 +779,25 @@ interface RagConnectorPosture {
   secret_ref_key_names: string[];
 }
 
+interface DatabaseConnectorPosture {
+  database_fields: string[];
+  database_provider?: string;
+  database_remote: boolean;
+  database_destination_redacted: boolean;
+  database_remote_destination_count: number;
+  database_remote_destination_kinds: string[];
+  database_read_enabled: boolean;
+  database_write_enabled: boolean;
+  database_delete_enabled: boolean;
+  database_query_execution_enabled: boolean;
+  database_untrusted_query_input: boolean;
+  database_sensitive_data: boolean;
+  database_pii_data: boolean;
+  database_table_names_redacted: boolean;
+  env_key_names: string[];
+  secret_ref_key_names: string[];
+}
+
 interface AiTelemetryPosture {
   ai_telemetry_fields: string[];
   ai_telemetry_provider?: string;
@@ -755,6 +843,183 @@ interface AiModelEndpointPosture {
 interface CursorRuleClassification {
   analyzedContent: string;
   metadata: Record<string, unknown>;
+}
+
+function classifyDatabaseConnectorConfig(value: unknown, filePath: string): DatabaseConnectorPosture {
+  const fields = flattenRuntimeFields(value);
+  const stringValues = collectFieldStringValues(fields);
+  const provider = inferDatabaseProvider([filePath, ...fields.map((field) => field.path), ...stringValues]);
+  const remote = classifyDatabaseRemote(fields, provider);
+  const envKeys = uniqueStrings([
+    ...collectEnvKeyNamesFromConfig(value),
+    ...extractEnvironmentReferenceKeys(stringValues)
+  ]);
+  const secretRefKeys = extractDatabaseSecretReferenceKeys(fields);
+
+  return {
+    database_fields: fields
+      .map((field) => field.path)
+      .filter((fieldPath) => isDatabaseSecurityField(fieldPath))
+      .sort((a, b) => a.localeCompare(b)),
+    database_provider: provider,
+    database_remote: remote.remote,
+    database_destination_redacted: remote.destinationCount > 0,
+    database_remote_destination_count: remote.destinationCount,
+    database_remote_destination_kinds: remote.destinationKinds,
+    database_read_enabled: hasDatabaseReadSignal(fields),
+    database_write_enabled: hasDatabaseWriteSignal(fields),
+    database_delete_enabled: hasDatabaseDeleteSignal(fields),
+    database_query_execution_enabled: hasDatabaseQueryExecutionSignal(fields),
+    database_untrusted_query_input: hasDatabaseUntrustedQueryInputSignal(fields),
+    database_sensitive_data: hasDatabaseSensitiveDataSignal(fields),
+    database_pii_data: hasDatabasePiiDataSignal(fields),
+    database_table_names_redacted: hasDatabaseTableNameSignal(fields),
+    env_key_names: envKeys,
+    secret_ref_key_names: secretRefKeys
+  };
+}
+
+function inferDatabaseProvider(candidates: string[]): string | undefined {
+  const text = candidates.join(" ").toLowerCase();
+  const providers: Array<[string, RegExp]> = [
+    ["postgres", /\b(postgres|postgresql|pgvector)\b/iu],
+    ["mysql", /\b(mysql|mariadb)\b/iu],
+    ["mssql", /\b(mssql|sql\s*server|sqlserver)\b/iu],
+    ["sqlite", /\bsqlite\b/iu],
+    ["snowflake", /\bsnowflake\b/iu],
+    ["bigquery", /\bbigquery\b/iu],
+    ["redshift", /\bredshift\b/iu],
+    ["databricks", /\bdatabricks\b/iu],
+    ["supabase", /\bsupabase\b/iu],
+    ["neon", /\bneon\b/iu],
+    ["planetscale", /\bplanetscale\b/iu],
+    ["clickhouse", /\bclickhouse\b/iu],
+    ["oracle", /\boracle\b/iu]
+  ];
+  return providers.find(([, pattern]) => pattern.test(text))?.[0];
+}
+
+function classifyDatabaseRemote(
+  fields: RuntimeField[],
+  provider: string | undefined
+): { remote: boolean; destinationCount: number; destinationKinds: string[] } {
+  const destinationKinds = new Set<string>();
+  let destinationCount = 0;
+  const managedProviders = new Set(["snowflake", "bigquery", "redshift", "databricks", "supabase", "neon", "planetscale"]);
+  if (provider && managedProviders.has(provider)) {
+    destinationKinds.add("managed_database");
+    destinationCount += 1;
+  }
+
+  for (const field of fields) {
+    const values = Array.isArray(field.value) ? field.value.map(String) : [String(field.value ?? "")];
+    for (const value of values) {
+      const destination = parseRemoteDatabaseDestination(value);
+      if (destination) {
+        destinationKinds.add(destination.kind);
+        destinationCount += 1;
+      }
+    }
+    if (/(^|\.)(host|hostname|server|endpoint|dsn|connection|connection_string|url|uri)$/iu.test(field.path)) {
+      const text = values.join(" ");
+      if (looksLikeRemoteDatabaseHost(text)) {
+        destinationKinds.add("database_host");
+        destinationCount += 1;
+      }
+    }
+  }
+
+  return {
+    remote: destinationCount > 0,
+    destinationCount,
+    destinationKinds: [...destinationKinds].sort((a, b) => a.localeCompare(b))
+  };
+}
+
+function parseRemoteDatabaseDestination(value: string): { kind: string } | undefined {
+  try {
+    const parsed = new URL(value);
+    const protocol = parsed.protocol.replace(":", "").toLowerCase();
+    if (!/^(postgres|postgresql|mysql|mariadb|mssql|sqlserver|snowflake|redshift|clickhouse|oracle|jdbc)$/iu.test(protocol)) {
+      return undefined;
+    }
+    if (isLocalHost(parsed.hostname.toLowerCase())) return undefined;
+    return { kind: "connection_string" };
+  } catch {
+    return undefined;
+  }
+}
+
+function looksLikeRemoteDatabaseHost(value: string): boolean {
+  const trimmed = value.trim().toLowerCase();
+  if (!trimmed || trimmed.startsWith("${")) return false;
+  if (isLocalHost(trimmed)) return false;
+  return /\b(rds\.amazonaws\.com|database\.windows\.net|cloudsql|snowflakecomputing\.com|bigquery|redshift|databricks|supabase|neon\.tech|planetscale|db\.|database|warehouse)\b/iu.test(
+    trimmed
+  ) || /^[a-z0-9.-]+\.[a-z]{2,}(?::\d+)?$/iu.test(trimmed);
+}
+
+function hasDatabaseReadSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => /\b(select|read|readonly|read_only|read-only|query|queries)\b/iu.test(`${field.path} ${fieldValueText(field)}`));
+}
+
+function hasDatabaseWriteSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /\b(write|read_write|read-write|insert|update|upsert|merge|mutate|create|alter|drop|truncate|delete|ddl|dml|writable)\b/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    )
+  );
+}
+
+function hasDatabaseDeleteSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => /\b(delete|drop|truncate|purge|destroy)\b/iu.test(`${field.path} ${fieldValueText(field)}`));
+}
+
+function hasDatabaseQueryExecutionSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /\b(sql|query|queries|execute[_\s-]?queries?|query[_\s-]?execution|natural[_\s-]?language[_\s-]?sql|text[_\s-]?to[_\s-]?sql|nl2sql|agent[_\s-]?queries?)\b/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    )
+  );
+}
+
+function hasDatabaseUntrustedQueryInputSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /\b(untrusted|user|customer|client|ticket|support|issue|comment|message|prompt|natural[_\s-]?language|retrieved|rag|document|chat|email|slack)\b/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    )
+  );
+}
+
+function hasDatabaseSensitiveDataSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /\b(customer|client|ticket|support|internal|confidential|private|proprietary|sensitive|account|billing|payment|order|record|case|profile|note)\b/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    )
+  );
+}
+
+function hasDatabasePiiDataSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => /\b(pii|email|phone|address|ssn|passport|dob|date[_\s-]?of[_\s-]?birth)\b/iu.test(`${field.path} ${fieldValueText(field)}`));
+}
+
+function hasDatabaseTableNameSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => /(^|\.)(tables?|schemas?|collections?|datasets?|views?)$/iu.test(field.path));
+}
+
+function isDatabaseSecurityField(fieldPath: string): boolean {
+  return /provider|database|db|sql|query|host|hostname|server|endpoint|dsn|connection|url|uri|credential|secret|token|password|api[_-]?key|auth|env|user|role|permission|access|read|write|insert|update|delete|table|schema|dataset|view|source|input/iu.test(
+    fieldPath
+  );
+}
+
+function extractDatabaseSecretReferenceKeys(fields: RuntimeField[]): string[] {
+  const keys = new Set(extractSecretReferenceKeys(collectFieldStringValues(fields)));
+  for (const field of fields) {
+    if (!/(^|\.)(connection[_-]?url|database[_-]?url|db[_-]?url|dsn|uri|url)$/iu.test(field.path)) continue;
+    for (const key of extractEnvironmentReferenceKeys([fieldValueText(field)])) keys.add(key);
+  }
+  return [...keys].sort((a, b) => a.localeCompare(b));
 }
 
 function classifyAiModelEndpointConfig(value: unknown, filePath: string): AiModelEndpointPosture {
@@ -2695,11 +2960,15 @@ function parseMcpRemoteUrl(value: string | undefined): { host: string; scheme: s
 }
 
 function extractSecretReferenceKeys(values: unknown[]): string[] {
+  return extractEnvironmentReferenceKeys(values).filter((key) => isCredentialLikeKeyName(key));
+}
+
+function extractEnvironmentReferenceKeys(values: unknown[]): string[] {
   const keys = new Set<string>();
   for (const value of values) {
     if (typeof value !== "string") continue;
     for (const match of value.matchAll(/\$\{?([A-Z_][A-Z0-9_]*)\}?/g)) {
-      if (match[1] && isCredentialLikeKeyName(match[1])) keys.add(match[1]);
+      if (match[1]) keys.add(match[1]);
     }
   }
   return [...keys].sort((a, b) => a.localeCompare(b));

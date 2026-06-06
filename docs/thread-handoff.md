@@ -461,7 +461,7 @@ The current iteration adds:
 - attack paths that can be anchored on source-side context findings, not only target capability findings
 - direct data-egress target filtering for RAG data-egress paths so the bounded blast-radius list favors tools and MCP servers that can actually move data externally
 - attack-path prioritization for source-anchored RAG data-egress and generated-state replay paths
-- graph regression coverage proving `rag/customer-note.md` can route sensitive context to `publish_summary` while keeping raw retrieval text redacted
+- graph regression coverage proving `rag/customer-note.md` can route sensitive context to external agent authority while keeping raw retrieval text redacted
 - regression coverage preserving generated-state replay visibility when logs are explicitly included
 
 ## Explicit Callable Reference Pass
@@ -601,6 +601,16 @@ The current iteration adds:
 - vulnerable fixture coverage using the existing support-ticket prompt so customer and ticket variables enter a `System:` role before tool/external directives
 - rule `AGENTCSP-PROMPT-004` for untrusted template variables injected into system or developer prompt roles
 - scanner, rule, fixture verifier, and redaction coverage proving the finding is high-confidence while the safe fixture remains quiet
+
+## Database Connector Authority Pass
+
+The current iteration adds:
+
+- first-class redacted metadata for database connector configs, including provider, remote destination categories, read/write/delete/query authority, natural-language query input, sensitive/PII scope, table-name redaction, and credential key references
+- database connection URL placeholders treated as credential-bearing references in database connector fields without emitting connection strings or hostnames
+- vulnerable fixture coverage for a remote Postgres-style support database that allows agent-driven SQL writes over sensitive customer/support data
+- rule `AGENTCSP-RUNTIME-010` for credential-backed database connectors that combine write/query authority, untrusted query input, and sensitive data scope
+- static graph regression coverage proving retrievable untrusted context can influence the database authority path while raw retrieval text, hostnames, table names, usernames, and secret placeholders stay redacted
 
 ## Initial Build Recommendation
 

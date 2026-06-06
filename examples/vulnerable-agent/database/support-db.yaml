@@ -1,0 +1,28 @@
+provider: postgres
+connection_url: ${SUPPORT_DB_URL}
+host: support-db.example.invalid
+database: customer_support
+credentials:
+  username: agent_writer
+  password: ${SUPPORT_DB_PASSWORD}
+agent_access:
+  query_execution: true
+  natural_language_sql: true
+  input_sources:
+    - customer_ticket
+    - support_chat
+    - retrieved_context
+permissions:
+  - select
+  - insert
+  - update
+  - delete
+tables:
+  - customer_profiles
+  - support_tickets
+  - billing_contacts
+data_classes:
+  - customer
+  - email
+  - phone
+  - internal_notes

@@ -251,6 +251,32 @@ Network permission scopes are normalized into bounded categories such as `wildca
 
 Secret or environment values are not emitted. Permission allowlists are normalized to canonical tool names, MCP tool references, package script names, and capability classes instead of raw command patterns. AgentCSP records key names, runtime posture, explicit MCP references, and exact package-script references so rules can detect risky authority without exposing credentials or dumping runtime config values.
 
+## Database Connector Posture
+
+Database, SQL, warehouse, and datastore connector configs are also normalized into `runtime_config` objects when common database connector configuration files are discovered.
+
+Database connector metadata may include:
+
+- `parsed_database_connector_config`
+- `database_fields`
+- `database_provider`
+- `database_remote`
+- `database_destination_redacted`
+- `database_remote_destination_count`
+- `database_remote_destination_kinds`
+- `database_read_enabled`
+- `database_write_enabled`
+- `database_delete_enabled`
+- `database_query_execution_enabled`
+- `database_untrusted_query_input`
+- `database_sensitive_data`
+- `database_pii_data`
+- `database_table_names_redacted`
+- `env_key_names`
+- `secret_ref_key_names`
+
+Raw database hosts, connection strings, database names, usernames, table names, query examples, and secret placeholders are not emitted. Provider names, destination categories, read/write/query posture, data-class booleans, table-name redaction flags, and credential key names let rules detect agent-controlled database authority without copying database configuration values into the manifest.
+
 ## AI Model Endpoint Posture
 
 AI model provider, gateway, router, proxy, and inference configs are also normalized into `runtime_config` objects when common model endpoint configuration files are discovered.

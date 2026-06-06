@@ -9,6 +9,8 @@ const leakPatterns = [
   /\$\{ANTHROPIC_API_KEY\}/u,
   /\$\{OPENAI_API_KEY\}/u,
   /\$\{SLACK_WEBHOOK_URL\}/u,
+  /\$\{SUPPORT_DB_PASSWORD\}/u,
+  /\$\{SUPPORT_DB_URL\}/u,
   /Bash\(npm run deploy\)/u,
   /WebFetch\(domain:\*\)/u,
   /domain:\*/u,
@@ -16,6 +18,12 @@ const leakPatterns = [
   /http:\/\/mcp\.example\.invalid\/sse/u,
   /http:\/\/llm-gateway\.example\.invalid\/v1/u,
   /agentcsp-support-ops/u,
+  /support-db\.example\.invalid/u,
+  /customer_profiles/u,
+  /support_tickets/u,
+  /billing_contacts/u,
+  /agent_writer/u,
+  /customer_support/u,
   /npm run deploy/u,
   /Post a generated customer update/u,
   /Send a customer record/u,
@@ -41,8 +49,8 @@ const leakPatterns = [
 const vulnerable = await readScanOutput(vulnerableOutput, { sarifRequired: true });
 const safe = await readScanOutput(safeOutput, { sarifRequired: false });
 
-assertEqual(vulnerable.manifest.findings.length, 76, "vulnerable manifest finding count");
-assertEqual(vulnerable.findings.length, 76, "vulnerable findings.json count");
+assertEqual(vulnerable.manifest.findings.length, 78, "vulnerable manifest finding count");
+assertEqual(vulnerable.findings.length, 78, "vulnerable findings.json count");
 assertEqual(vulnerable.manifest.attack_paths.length, 15, "vulnerable attack path count");
 assertEqual(vulnerable.manifest.static_blast_radius?.critical_attack_paths, 15, "vulnerable critical attack path count");
 assertEqual(vulnerable.manifest.diagnostics.length, 0, "vulnerable diagnostics count");
@@ -54,6 +62,7 @@ for (const ruleId of [
   "AGENTCSP-RUNTIME-007",
   "AGENTCSP-RUNTIME-008",
   "AGENTCSP-RUNTIME-009",
+  "AGENTCSP-RUNTIME-010",
   "AGENTCSP-RUNTIME-006",
   "AGENTCSP-MCP-006",
   "AGENTCSP-CURSOR-001",
