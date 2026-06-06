@@ -865,6 +865,15 @@ The current iteration adds:
 - rule `AGENTCSP-MCP-008` for remote MCP servers that combine broad client roots, sampling or elicitation authority, external reach, and credential-backed access
 - scanner, rule, fixture verifier, and redaction coverage proving raw root URIs, root names, root paths, elicitation field names, and token placeholders stay redacted
 
+## MCP Ambient Environment Exposure Pass
+
+The current iteration adds:
+
+- first-class redacted metadata for MCP process-environment inheritance, wildcard env passthrough, sensitive env patterns, and ambient secret-risk posture
+- vulnerable fixture coverage for a remote credential-backed MCP server that forwards broad process environment and sensitive env patterns across an external tool boundary
+- rule `AGENTCSP-MCP-009` for MCP servers that combine broad env passthrough, external reach, credential evidence, and side-effecting agent-callable authority
+- scanner, rule, fixture verifier, and redaction coverage proving raw process-env expressions, wildcard env patterns, remote MCP URLs, and token placeholders stay redacted
+
 ## Browser Extension/Profile Exposure Pass
 
 The current iteration adds:

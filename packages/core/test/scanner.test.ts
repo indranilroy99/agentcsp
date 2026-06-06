@@ -212,6 +212,10 @@ describe("scanner", () => {
       plaintext_remote_transport: false,
       encrypted_remote_transport: true,
       auth_header_names: ["Authorization"],
+      mcp_env_passthrough: true,
+      mcp_env_passthrough_all: true,
+      mcp_env_passthrough_secret_risk: true,
+      mcp_env_passthrough_pattern_count: 5,
       secret_ref_key_names: ["CONTEXT_BROKER_TOKEN"],
       mcp_roots_redacted: true,
       mcp_root_count: 3,
@@ -226,8 +230,19 @@ describe("scanner", () => {
       values_collected: false,
       content_redacted: true
     });
+    expect(remoteContextBrokerMcp?.metadata.mcp_env_passthrough_source_kinds).toEqual([
+      "inherit_env",
+      "process_env",
+      "sensitive_prefix",
+      "wildcard"
+    ]);
     expect(JSON.stringify(remoteContextBrokerMcp)).not.toContain("${CONTEXT_BROKER_TOKEN}");
     expect(JSON.stringify(remoteContextBrokerMcp)).not.toContain("context-broker.example.invalid/mcp");
+    expect(JSON.stringify(remoteContextBrokerMcp)).not.toContain("process.env");
+    expect(JSON.stringify(remoteContextBrokerMcp)).not.toContain("AWS_*");
+    expect(JSON.stringify(remoteContextBrokerMcp)).not.toContain("OPENAI_*");
+    expect(JSON.stringify(remoteContextBrokerMcp)).not.toContain("SLACK_*");
+    expect(JSON.stringify(remoteContextBrokerMcp)).not.toContain("*_TOKEN");
     expect(JSON.stringify(remoteContextBrokerMcp)).not.toContain("file:///home/support/.ssh");
     expect(JSON.stringify(remoteContextBrokerMcp)).not.toContain("file:///workspace/customer-escalations");
     expect(JSON.stringify(remoteContextBrokerMcp)).not.toContain("file:///");

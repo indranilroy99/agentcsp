@@ -15321,7 +15321,7 @@ async function detectMcpConfig(
   }
 
   for (const server of servers) {
-    const signalText = `${server.command ?? ""} ${(server.args ?? []).join(" ")} ${server.transport ?? ""} ${server.remoteHost ?? ""} ${(server.envKeys ?? []).join(" ")} ${(server.headerNames ?? []).join(" ")} ${(server.secretRefKeys ?? []).join(" ")}`;
+    const signalText = `${server.command ?? ""} ${(server.args ?? []).join(" ")} ${server.transport ?? ""} ${server.remoteHost ?? ""} ${(server.envKeys ?? []).join(" ")} ${server.envExposure.passthroughSourceKinds.join(" ")} ${(server.headerNames ?? []).join(" ")} ${(server.secretRefKeys ?? []).join(" ")}`;
     const actions = detectActions(signalText);
     const externalRemote = Boolean(server.remote && server.remoteHost && !isLocalHost(server.remoteHost));
     const plaintextRemoteTransport = externalRemote && server.remoteScheme === "http";
@@ -15333,7 +15333,9 @@ async function detectMcpConfig(
     const localImplementationPaths = server.localCommandPaths ?? [];
     const localImplementationPathsFound = localImplementationPaths.filter((pathRef) => projectFilePaths.has(pathRef));
     const localImplementationPathsMissing = localImplementationPaths.filter((pathRef) => !projectFilePaths.has(pathRef));
-    const dataClasses = new Set<SurfaceObject["data_classes"][number]>(secretKeys.length > 0 ? ["credential"] : ["unknown"]);
+    const dataClasses = new Set<SurfaceObject["data_classes"][number]>(
+      secretKeys.length > 0 || server.envExposure.passthroughSecretRisk ? ["credential"] : ["unknown"]
+    );
     if (clientContext.rootsRedacted || clientContext.samplingIncludesContext) dataClasses.add("confidential");
     if (clientContext.elicitationSensitiveFields) dataClasses.add("pii");
     if (dataClasses.size > 1) dataClasses.delete("unknown");
@@ -15353,7 +15355,7 @@ async function detectMcpConfig(
       actions: uniqueActions(mcpActions),
       side_effect: true,
       external_reach: externalRemote || Boolean(packageRunner) || hasExternalReach(signalText),
-      secret_exposure: secretKeys.some(isCredentialLikeKeyName),
+      secret_exposure: secretKeys.some(isCredentialLikeKeyName) || server.envExposure.passthroughSecretRisk,
       reversible: isReversible(signalText),
       reason: "MCP server configuration exposes agent-callable tools and authority.",
       metadata: {
@@ -15369,6 +15371,11 @@ async function detectMcpConfig(
         header_names: server.headerNames ?? [],
         auth_header_names: server.authHeaderNames ?? [],
         env_key_names: server.envKeys ?? [],
+        mcp_env_passthrough: server.envExposure.passthrough,
+        mcp_env_passthrough_all: server.envExposure.passthroughAll,
+        mcp_env_passthrough_secret_risk: server.envExposure.passthroughSecretRisk,
+        mcp_env_passthrough_source_kinds: server.envExposure.passthroughSourceKinds,
+        mcp_env_passthrough_pattern_count: server.envExposure.passthroughPatternCount,
         secret_ref_key_names: server.secretRefKeys ?? [],
         local_command_paths: localImplementationPaths,
         local_command_path_count: localImplementationPaths.length,
@@ -16469,6 +16476,7 @@ interface ExtractedMcpServer {
   command?: string;
   args?: string[];
   envKeys?: string[];
+  envExposure: McpEnvironmentExposure;
   transport?: string;
   remote: boolean;
   remoteHost?: string;
@@ -16480,6 +16488,15 @@ interface ExtractedMcpServer {
   localCommandPaths?: string[];
   clientContext: McpClientContextPosture;
   contextSurfaces: McpContextDefinition[];
+}
+
+interface McpEnvironmentExposure {
+  explicitEnvKeys: string[];
+  passthrough: boolean;
+  passthroughAll: boolean;
+  passthroughSecretRisk: boolean;
+  passthroughSourceKinds: string[];
+  passthroughPatternCount: number;
 }
 
 interface McpClientContextPosture {
@@ -16585,7 +16602,7 @@ function extractMcpServers(value: unknown): ExtractedMcpServer[] {
   if (!container || typeof container !== "object") return [];
   return Object.entries(container).map(([name, config]) => {
     const serverConfig = (config ?? {}) as Record<string, unknown>;
-    const env = serverConfig.env && typeof serverConfig.env === "object" ? Object.keys(serverConfig.env) : [];
+    const envExposure = classifyMcpEnvironmentExposure(serverConfig);
     const args = Array.isArray(serverConfig.args) ? serverConfig.args.filter((arg): arg is string => typeof arg === "string") : [];
     const command = typeof serverConfig.command === "string" ? serverConfig.command : undefined;
     const url = typeof serverConfig.url === "string" ? serverConfig.url : typeof serverConfig.endpoint === "string" ? serverConfig.endpoint : undefined;
@@ -16604,7 +16621,8 @@ function extractMcpServers(value: unknown): ExtractedMcpServer[] {
       name,
       command,
       args,
-      envKeys: env.sort((a, b) => a.localeCompare(b)),
+      envKeys: envExposure.explicitEnvKeys,
+      envExposure,
       transport,
       remote: Boolean(remoteUrl),
       remoteHost: remoteUrl?.host,
@@ -16618,6 +16636,75 @@ function extractMcpServers(value: unknown): ExtractedMcpServer[] {
       contextSurfaces: extractMcpContextDefinitions(serverConfig)
     };
   });
+}
+
+function classifyMcpEnvironmentExposure(serverConfig: Record<string, unknown>): McpEnvironmentExposure {
+  const explicitEnvKeys = collectExplicitMcpEnvKeys(serverConfig.env);
+  const fields = flattenRuntimeFields(serverConfig);
+  const sourceKinds = new Set<string>();
+  let passthroughPatternCount = 0;
+
+  for (const field of fields) {
+    const pathText = field.path.toLowerCase();
+    const valueText = fieldValueText(field).toLowerCase();
+    const combined = `${pathText} ${valueText}`;
+    const patternCount = countEnvPassthroughPatterns(field.value);
+    const envPath =
+      /(?:^|\.)(env|environment|env_vars|envvars|environment_variables|allowed_env|allow_env|include_env|forward_env|pass_env|inherit_env|env_passthrough|environment_passthrough|pass_environment|all_env)$/iu.test(
+        field.path
+      ) || /env|environment/iu.test(field.path);
+    if (!envPath) continue;
+
+    if (/(?:^|[_\W])(process\.env|all[_\s-]?env|all[_\s-]?environment|inherit[_\s-]?env|pass[_\s-]?env|env[_\s-]?passthrough|environment[_\s-]?passthrough|pass[_\s-]?environment)(?:[_\W]|$)/iu.test(combined)) {
+      sourceKinds.add("process_env");
+    }
+    if (/(?:^|[_\W])\*(?:[_\W]|$)|all/iu.test(valueText)) sourceKinds.add("wildcard");
+    if (/inherit|passthrough|forward|include|pass/iu.test(pathText) && truthyConfigValue(field.value)) sourceKinds.add("inherit_env");
+    if (patternCount > 0 && hasSensitiveEnvPattern(valueText)) sourceKinds.add("sensitive_prefix");
+    passthroughPatternCount += patternCount;
+  }
+
+  const passthroughAll = sourceKinds.has("process_env") || sourceKinds.has("wildcard");
+  const passthrough = passthroughAll || sourceKinds.has("inherit_env") || sourceKinds.has("sensitive_prefix");
+  const passthroughSecretRisk = passthroughAll || sourceKinds.has("sensitive_prefix");
+
+  return {
+    explicitEnvKeys,
+    passthrough,
+    passthroughAll,
+    passthroughSecretRisk,
+    passthroughSourceKinds: [...sourceKinds].sort((a, b) => a.localeCompare(b)),
+    passthroughPatternCount
+  };
+}
+
+function collectExplicitMcpEnvKeys(env: unknown): string[] {
+  if (!env || typeof env !== "object" || Array.isArray(env)) return [];
+  return Object.keys(env as Record<string, unknown>)
+    .filter((key) => !isMcpBroadEnvPattern(key))
+    .sort((a, b) => a.localeCompare(b));
+}
+
+function hasEnvPassthroughPattern(value: string): boolean {
+  return /(?:^|[_\W])(\*|process\.env|all[_\s-]?env|all[_\s-]?environment|inherit[_\s-]?env|pass[_\s-]?env|env[_\s-]?passthrough|environment[_\s-]?passthrough|pass[_\s-]?environment|[A-Z0-9_]*\*[A-Z0-9_]*)(?:[_\W]|$)/iu.test(
+    value
+  );
+}
+
+function countEnvPassthroughPatterns(value: unknown): number {
+  if (Array.isArray(value)) return value.filter((item) => typeof item === "string" && hasEnvPassthroughPattern(item.toLowerCase())).length;
+  if (typeof value === "string") return hasEnvPassthroughPattern(value.toLowerCase()) ? 1 : 0;
+  return 0;
+}
+
+function hasSensitiveEnvPattern(value: string): boolean {
+  return /\b(token|secret|api[_\s-]?key|password|credential|auth|bearer|cookie|session|aws_|gcp_|azure_|github_|openai_|anthropic_|slack_|vault_|npm_)\b|\*_?(token|secret|key|credential|auth|password)/iu.test(
+    value
+  );
+}
+
+function isMcpBroadEnvPattern(value: string): boolean {
+  return value === "*" || /process\.env|all[_-]?env|inherit[_-]?env|pass[_-]?env|env[_-]?passthrough/iu.test(value);
 }
 
 function classifyMcpClientContext(serverConfig: Record<string, unknown>): McpClientContextPosture {

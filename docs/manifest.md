@@ -50,6 +50,11 @@ MCP metadata may include:
 - `header_names`
 - `auth_header_names`
 - `env_key_names`
+- `mcp_env_passthrough`
+- `mcp_env_passthrough_all`
+- `mcp_env_passthrough_secret_risk`
+- `mcp_env_passthrough_source_kinds`
+- `mcp_env_passthrough_pattern_count`
 - `secret_ref_key_names`
 - `local_command_paths`
 - `local_command_path_count`
@@ -76,7 +81,7 @@ MCP metadata may include:
 - `values_collected`
 - `content_redacted`
 
-Remote third-party MCP servers are treated as external trust boundaries. Credential references and auth headers are represented as key names only. Plaintext remote transport is represented as a boolean posture signal without emitting the raw URL. For local MCP launchers, AgentCSP records project-local implementation path references such as `tools/server.js` and whether those files were present in the scan; raw command arguments and secret placeholders remain redacted.
+Remote third-party MCP servers are treated as external trust boundaries. Credential references and auth headers are represented as key names only. Plaintext remote transport is represented as a boolean posture signal without emitting the raw URL. Ambient environment inheritance is reduced to source categories such as `process_env`, `inherit_env`, `wildcard`, and `sensitive_prefix`; raw env passthrough expressions and wildcard patterns are not emitted. For local MCP launchers, AgentCSP records project-local implementation path references such as `tools/server.js` and whether those files were present in the scan; raw command arguments and secret placeholders remain redacted.
 
 MCP client roots, sampling, and elicitation are represented as coarse posture metadata. Raw root URIs, filesystem paths, root names, sampling prompts, elicitation schemas, requested field names, and secret placeholders are not emitted. Root scopes are reduced to categories such as `workspace`, `home`, `host_root`, `credential_path`, `absolute_path`, `file_uri`, and `wildcard` so rules can detect remote servers that can request broad client context without copying sensitive client paths into evidence.
 

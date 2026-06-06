@@ -26,6 +26,7 @@
 - Add remote prompt-registry posture for auto-synced system/developer prompts, unpinned revisions, verification controls, and untrusted prompt selectors.
 - Add MCP prompt and resource context inventory for model-visible server-supplied context that can steer privileged MCP authority.
 - Add MCP client-context posture for roots, sampling, and elicitation requests from remote or third-party servers.
+- Add MCP environment-inheritance posture for ambient process env, wildcard env passthrough, sensitive env patterns, and external MCP boundaries.
 - Add MCP OAuth authorization posture for dynamic client registration, PKCE/state/resource-indicator controls, broad scopes, refresh-token storage, token forwarding, and untrusted server selection.
 - Add OpenAPI and Swagger tool-import posture for authenticated external API writes, user-controlled request schemas, sensitive data categories, and approval boundaries.
 - Add hosted assistant and deployable agent-definition posture for automatic tool choice, hosted code/file/vector/function resources, sensitive context, guardrail posture, and approval boundaries.

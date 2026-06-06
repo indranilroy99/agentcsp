@@ -43,6 +43,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-006")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-007")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-008")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-009")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-001")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-002")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-003")).toBe(true);
@@ -1612,6 +1613,35 @@ describe("rule engine", () => {
     expect(JSON.stringify(mcpClientContextFindings[0])).not.toContain("host-root");
     expect(JSON.stringify(mcpClientContextFindings[0])).not.toContain("customer_email");
     expect(JSON.stringify(mcpClientContextFindings[0])).not.toContain("api_token");
+    const mcpEnvPassthroughFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-MCP-009");
+    expect(mcpEnvPassthroughFindings).toHaveLength(1);
+    expect(mcpEnvPassthroughFindings[0]?.matched_object.name).toBe("remote-context-broker");
+    expect(mcpEnvPassthroughFindings[0]?.matched_object.metadata).toMatchObject({
+      remote: true,
+      remote_scheme: "https",
+      encrypted_remote_transport: true,
+      mcp_env_passthrough: true,
+      mcp_env_passthrough_all: true,
+      mcp_env_passthrough_secret_risk: true,
+      mcp_env_passthrough_pattern_count: 5,
+      secret_ref_key_names: ["CONTEXT_BROKER_TOKEN"]
+    });
+    expect(mcpEnvPassthroughFindings[0]?.matched_object.metadata.mcp_env_passthrough_source_kinds).toEqual([
+      "inherit_env",
+      "process_env",
+      "sensitive_prefix",
+      "wildcard"
+    ]);
+    expect(mcpEnvPassthroughFindings[0]?.severity).toBe("critical");
+    expect(mcpEnvPassthroughFindings[0]?.confidence).toBe("very_high");
+    expect(mcpEnvPassthroughFindings[0]?.recommended_control).toBe("deny");
+    expect(JSON.stringify(mcpEnvPassthroughFindings[0])).not.toContain("${CONTEXT_BROKER_TOKEN}");
+    expect(JSON.stringify(mcpEnvPassthroughFindings[0])).not.toContain("context-broker.example.invalid/mcp");
+    expect(JSON.stringify(mcpEnvPassthroughFindings[0])).not.toContain("process.env");
+    expect(JSON.stringify(mcpEnvPassthroughFindings[0])).not.toContain("AWS_*");
+    expect(JSON.stringify(mcpEnvPassthroughFindings[0])).not.toContain("OPENAI_*");
+    expect(JSON.stringify(mcpEnvPassthroughFindings[0])).not.toContain("SLACK_*");
+    expect(JSON.stringify(mcpEnvPassthroughFindings[0])).not.toContain("*_TOKEN");
     expect(findings.find((finding) => finding.rule_id === "AGENTCSP-PROMPT-001")?.matched_object.path).toBe(
       "prompts/support-ticket.prompt.md"
     );
