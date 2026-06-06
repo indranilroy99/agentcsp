@@ -685,6 +685,15 @@ The current iteration adds:
 - static graph regression coverage proving retrievable untrusted context can influence the live eval harness authority path
 - scanner, rule, fixture verifier, and redaction coverage proving raw suite names, scenario names, prompts, target URLs, agent names, tool strings, assertion values, output paths, data-field labels, and token placeholders stay redacted
 
+## Agent Memory Store Posture Pass
+
+The current iteration adds:
+
+- first-class redacted metadata for Redis, Postgres, SQLite, Zep, Mem0, LangGraph-style checkpointer, and related durable agent memory-store configs
+- vulnerable fixture coverage for remote long-term memory with untrusted customer, retrieval, and tool-output writes, shared cross-agent retention, secret capture, future-context replay, and no approval gate
+- rule `AGENTCSP-MEMORY-004` for remote memory stores that combine untrusted writes, replay into future agent context, credential exposure, and missing approval
+- scanner, rule, fixture verifier, and redaction coverage proving connection strings, hostnames, store names, namespaces, source labels, replay targets, data-field labels, and token placeholders stay redacted
+
 ## Initial Build Recommendation
 
 Start with a CLI-first MVP before building the dashboard:

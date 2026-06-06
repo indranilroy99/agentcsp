@@ -28,6 +28,7 @@ describe("scanner", () => {
       "CUSTOMER_SUCCESS_SLACK_BOT_TOKEN",
       "EVAL_AGENT_TOKEN",
       "GITHUB_TOKEN",
+      "MEMORY_STORE_TOKEN",
       "OPENAI_API_KEY",
       "SAFETY_RUNTIME_TOKEN",
       "SLACK_WEBHOOK_URL",
@@ -967,6 +968,52 @@ describe("scanner", () => {
     expect(JSON.stringify(vectorStore)).not.toContain("agentcsp-demo-vector.example.invalid");
     expect(JSON.stringify(vectorStore)).not.toContain("customer-support-escalations");
     expect(JSON.stringify(vectorStore)).not.toContain("internal-ticket-memory");
+    const memoryStore = surfaces.memory.find((surface) => surface.path === "memory/long-term-store.yaml");
+    expect(memoryStore).toBeDefined();
+    expect(memoryStore).toMatchObject({
+      trust_level: "third_party",
+      external_reach: true,
+      secret_exposure: true,
+      side_effect: true,
+      reversible: false,
+      untrusted_to_privileged: true
+    });
+    expect(memoryStore?.metadata).toMatchObject({
+      content_redacted: true,
+      content_analyzed: false,
+      values_collected: false,
+      parsed_agent_memory_store_config: true,
+      agent_memory_store_provider: "redis",
+      agent_memory_store_remote: true,
+      agent_memory_store_destination_redacted: true,
+      agent_memory_store_persistent: true,
+      agent_memory_store_shared: true,
+      agent_memory_store_write_enabled: true,
+      agent_memory_store_sync_enabled: true,
+      agent_memory_store_untrusted_write: true,
+      agent_memory_store_tool_output_capture: true,
+      agent_memory_store_prompt_capture: true,
+      agent_memory_store_retrieval_capture: true,
+      agent_memory_store_secret_capture: true,
+      agent_memory_store_output_replay_enabled: true,
+      agent_memory_store_sensitive_data: true,
+      agent_memory_store_pii_data: true,
+      agent_memory_store_namespace_redacted: true,
+      agent_memory_store_approval_required: false
+    });
+    expect(memoryStore?.metadata.agent_memory_store_destination_kinds).toEqual(["memory_store_endpoint"]);
+    expect(memoryStore?.metadata.env_key_names).toEqual(["MEMORY_STORE_TOKEN"]);
+    expect(memoryStore?.metadata.secret_ref_key_names).toEqual(["MEMORY_STORE_TOKEN"]);
+    expect(memoryStore?.data_classes).toEqual(["confidential", "credential", "pii"]);
+    expect(memoryStore?.actions).toEqual(["call", "read", "remember", "send", "write"]);
+    expect(JSON.stringify(memoryStore)).not.toContain("${MEMORY_STORE_TOKEN}");
+    expect(JSON.stringify(memoryStore)).not.toContain("redis-prod-memory.example.invalid");
+    expect(JSON.stringify(memoryStore)).not.toContain("support-long-term-memory");
+    expect(JSON.stringify(memoryStore)).not.toContain("customer_memory_namespace");
+    expect(JSON.stringify(memoryStore)).not.toContain("untrusted_customer_message");
+    expect(JSON.stringify(memoryStore)).not.toContain("browser_tool_output");
+    expect(JSON.stringify(memoryStore)).not.toContain("future_agent_context");
+    expect(JSON.stringify(memoryStore)).not.toContain("customer_email_address");
     const memoryFile = surfaces.memory.find((surface) => surface.path === "memory/release-notes.md");
     expect(memoryFile?.metadata).toMatchObject({
       content_analyzed: true,

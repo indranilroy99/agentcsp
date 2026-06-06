@@ -62,6 +62,7 @@ A finding should be considered production-grade when it includes:
 - memory replay signals for persisted context that explicitly names privileged tools
 - RAG and memory data-egress signals for sensitive context routed toward external destinations
 - RAG/vector-store connector metadata for remote credential-backed stores with write or sync ingestion
+- agent memory-store metadata for remote/shared durable memory, untrusted writes, tool/prompt/retrieval/secret capture, replay posture, and approval state without emitting connection strings, hostnames, store names, namespaces, source labels, replay targets, or data-field labels
 - skill data-flow signals for context-to-external-output bridges
 - source-anchored attack paths for dangerous context that reaches direct data-egress capabilities
 - source-anchored attack paths for project prompt templates that route untrusted variables to explicit privileged tools
@@ -120,6 +121,7 @@ Examples:
 - RAG or memory content with instruction-like text plus tool/external directives
 - retrieved content plus sensitive context reference plus external data-egress directive
 - remote vector store plus credential reference plus untrusted source ingestion plus write/sync authority
+- remote/shared memory store plus untrusted writes plus tool, prompt, retrieval, and secret capture plus future-context replay plus no approval gate
 - generated transcripts or cached tool output with instruction-like tool/external directives
 - local path input plus URL-like destination plus external write capability
 - open-world tool schema plus external, filesystem, credential, or execution authority

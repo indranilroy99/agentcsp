@@ -18,6 +18,9 @@ match:
     - field: actions
       op: includes
       value: remember
+    - field: metadata.parsed_agent_memory_store_config
+      op: not_equals
+      value: true
 recommendation:
   control: quarantine
   text: Quarantine memory writes from untrusted context until provenance and retention policy are explicit.

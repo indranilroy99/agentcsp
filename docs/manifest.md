@@ -628,6 +628,38 @@ Content metadata may include:
 
 Raw RAG, memory, transcript, and cached-output text is not emitted. AgentCSP records normalized signals and exact references to already-discovered callables so rules can reason about indirect prompt injection, generated-state replay, and cross-session contamination without publishing the content.
 
+Agent memory-store configs are also normalized into `memory` objects when common memory, checkpoint, state, session, or long-term memory configuration files are discovered.
+
+Memory-store metadata may include:
+
+- `parsed_agent_memory_store_config`
+- `parse_error`
+- `agent_memory_store_fields`
+- `agent_memory_store_provider`
+- `agent_memory_store_remote`
+- `agent_memory_store_destination_redacted`
+- `agent_memory_store_destination_count`
+- `agent_memory_store_destination_kinds`
+- `agent_memory_store_persistent`
+- `agent_memory_store_shared`
+- `agent_memory_store_write_enabled`
+- `agent_memory_store_sync_enabled`
+- `agent_memory_store_untrusted_write`
+- `agent_memory_store_tool_output_capture`
+- `agent_memory_store_prompt_capture`
+- `agent_memory_store_retrieval_capture`
+- `agent_memory_store_secret_capture`
+- `agent_memory_store_output_replay_enabled`
+- `agent_memory_store_sensitive_data`
+- `agent_memory_store_pii_data`
+- `agent_memory_store_namespace_redacted`
+- `agent_memory_store_approval_required`
+- `env_key_names`
+- `secret_ref_key_names`
+- `values_collected`
+
+Raw memory-store URLs, connection strings, collection names, namespaces, key prefixes, source labels, replay targets, data-field labels, and secret placeholders are not emitted. Provider names, redacted destination categories, capture/replay booleans, sharing and persistence posture, approval posture, data-class booleans, and credential key names let rules detect durable memory poisoning and cross-session context replay without copying memory configuration values into the manifest.
+
 RAG and vector-store connector configs are also normalized into `rag_source` objects when common retrieval, vector, embedding, or knowledge-store configuration files are discovered.
 
 Connector metadata may include:

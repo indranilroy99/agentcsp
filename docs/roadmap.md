@@ -36,6 +36,7 @@
 
 - Add test fixtures for poisoned docs, logs, tool outputs, and vector records.
 - Simulate persistence, retrieval, and memory contamination.
+- Inventory memory-store authority, sharing, approval gates, and replay boundaries before generating runtime experiments.
 - Report whether injected instructions survive across sessions or retrieval paths.
 
 ## Phase 5: OSS Bug Report Verifier

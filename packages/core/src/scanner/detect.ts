@@ -122,6 +122,11 @@ export async function detectSurfaces(files: WalkedFile[]): Promise<DetectedSurfa
       continue;
     }
 
+    if (isAgentMemoryStoreConfigPath(file.relativePath, basename)) {
+      detectAgentMemoryStoreConfig(file, text, surfaces);
+      continue;
+    }
+
     if (isRagConnectorConfigPath(file.relativePath, basename)) {
       detectRagConnectorConfig(file, text, surfaces);
       continue;
@@ -390,6 +395,76 @@ function detectRagConnectorConfig(file: WalkedFile, text: string | undefined, su
   surfaces.rag_sources.push({
     ...object,
     untrusted_to_privileged: isUntrustedToPrivileged(object)
+  });
+}
+
+function detectAgentMemoryStoreConfig(file: WalkedFile, text: string | undefined, surfaces: DetectedSurfaces): void {
+  const parsed = parseStructuredConfig(text ?? "", file.relativePath);
+  if (parsed.parseFailed) {
+    addDiagnostic(surfaces, file, {
+      parser: parsed.parser ?? "structured_config",
+      code: "AGENT_MEMORY_STORE_CONFIG_PARSE_FAILED",
+      reason: "Agent memory-store configuration could not be parsed. Raw content was redacted."
+    });
+  }
+
+  const posture = classifyAgentMemoryStoreConfig(parsed.value, file.relativePath);
+  const actions = new Set<ActionType>(["read", "remember", "call"]);
+  if (posture.agent_memory_store_write_enabled || posture.agent_memory_store_sync_enabled) actions.add("write");
+  if (posture.agent_memory_store_remote) actions.add("send");
+
+  const dataClasses = new Set<SurfaceObject["data_classes"][number]>(["unknown"]);
+  if (posture.env_key_names.some(isCredentialLikeKeyName) || posture.secret_ref_key_names.length > 0 || posture.agent_memory_store_secret_capture) {
+    dataClasses.add("credential");
+  }
+  if (
+    posture.agent_memory_store_sensitive_data ||
+    posture.agent_memory_store_untrusted_write ||
+    posture.agent_memory_store_tool_output_capture ||
+    posture.agent_memory_store_prompt_capture ||
+    posture.agent_memory_store_retrieval_capture
+  ) {
+    dataClasses.add("confidential");
+  }
+  if (posture.agent_memory_store_pii_data) dataClasses.add("pii");
+  if (dataClasses.size > 1) dataClasses.delete("unknown");
+
+  const object = createSurfaceObject({
+    type: "memory",
+    name: path.basename(file.relativePath),
+    path: file.relativePath,
+    trust_level: posture.agent_memory_store_remote ? "third_party" : inferTrustLevel(file.relativePath),
+    data_classes: uniqueDataClasses([...dataClasses] as SurfaceObject["data_classes"]),
+    actions: uniqueActions([...actions]),
+    side_effect:
+      posture.agent_memory_store_persistent ||
+      posture.agent_memory_store_shared ||
+      posture.agent_memory_store_write_enabled ||
+      posture.agent_memory_store_sync_enabled ||
+      posture.agent_memory_store_output_replay_enabled,
+    reversible: !posture.agent_memory_store_persistent && !posture.agent_memory_store_write_enabled && !posture.agent_memory_store_sync_enabled,
+    external_reach: posture.agent_memory_store_remote,
+    secret_exposure:
+      posture.agent_memory_store_secret_capture ||
+      posture.env_key_names.some(isCredentialLikeKeyName) ||
+      posture.secret_ref_key_names.length > 0,
+    reason: "Agent memory-store configuration discovered as durable context retention posture.",
+    metadata: {
+      content_redacted: true,
+      content_analyzed: false,
+      values_collected: false,
+      parsed_agent_memory_store_config: Boolean(parsed.value) && !parsed.parseFailed,
+      parse_error: parsed.parseFailed,
+      ...posture
+    }
+  });
+  surfaces.memory.push({
+    ...object,
+    untrusted_to_privileged:
+      (posture.agent_memory_store_untrusted_write &&
+        (posture.agent_memory_store_write_enabled || posture.agent_memory_store_sync_enabled || posture.agent_memory_store_persistent) &&
+        (posture.agent_memory_store_output_replay_enabled || posture.agent_memory_store_shared || posture.agent_memory_store_remote)) ||
+      isUntrustedToPrivileged(object)
   });
 }
 
@@ -1115,6 +1190,27 @@ function isAiEvalHarnessConfigPath(relativePath: string, basename: string): bool
   return evalName || (evalDirectory && configName);
 }
 
+function isAgentMemoryStoreConfigPath(relativePath: string, basename: string): boolean {
+  const normalized = relativePath.replaceAll("\\", "/").toLowerCase();
+  const lowerBase = basename.toLowerCase();
+  if (!/\.(json|ya?ml|toml)$/iu.test(lowerBase)) return false;
+  if (normalized.startsWith(".github/workflows/")) return false;
+  if (normalized.startsWith("rules/")) return false;
+  const segments = normalized.split("/").slice(0, -1);
+  const memoryDirectory = segments.some((segment) =>
+    /^(memory|memories|memory-store|memory_store|long-term-memory|long_term_memory|checkpoints?|checkpointers?|state|states|session-store|session_store|thread-store|thread_store|agent-memory|agent_memory)$/iu.test(
+      segment
+    )
+  );
+  const memoryName = /(?:memory|memories|checkpointer|checkpoint|thread-store|thread_store|session-store|session_store|long-term|long_term|mem0|zep|langgraph|redis-memory|redis_memory|memory-store|memory_store)/iu.test(
+    lowerBase
+  );
+  const configName = /(?:config|settings|store|stores|memory|memories|checkpoint|checkpointer|state|session|thread|persistence|retention)/iu.test(
+    lowerBase
+  );
+  return memoryName || (memoryDirectory && configName);
+}
+
 function isAiModelEndpointConfigPath(relativePath: string, basename: string): boolean {
   const normalized = relativePath.replaceAll("\\", "/").toLowerCase();
   const lowerBase = basename.toLowerCase();
@@ -1353,6 +1449,31 @@ interface RagConnectorPosture {
   vector_store_sensitive_collection: boolean;
   vector_store_pii_collection: boolean;
   vector_store_namespace_redacted: boolean;
+  env_key_names: string[];
+  secret_ref_key_names: string[];
+}
+
+interface AgentMemoryStorePosture {
+  agent_memory_store_fields: string[];
+  agent_memory_store_provider?: string;
+  agent_memory_store_remote: boolean;
+  agent_memory_store_destination_redacted: boolean;
+  agent_memory_store_destination_count: number;
+  agent_memory_store_destination_kinds: string[];
+  agent_memory_store_persistent: boolean;
+  agent_memory_store_shared: boolean;
+  agent_memory_store_write_enabled: boolean;
+  agent_memory_store_sync_enabled: boolean;
+  agent_memory_store_untrusted_write: boolean;
+  agent_memory_store_tool_output_capture: boolean;
+  agent_memory_store_prompt_capture: boolean;
+  agent_memory_store_retrieval_capture: boolean;
+  agent_memory_store_secret_capture: boolean;
+  agent_memory_store_output_replay_enabled: boolean;
+  agent_memory_store_sensitive_data: boolean;
+  agent_memory_store_pii_data: boolean;
+  agent_memory_store_namespace_redacted: boolean;
+  agent_memory_store_approval_required: boolean;
   env_key_names: string[];
   secret_ref_key_names: string[];
 }
@@ -3487,6 +3608,235 @@ function hasTelemetryRetentionSignal(fields: RuntimeField[]): boolean {
 
 function isAiTelemetrySecurityField(fieldPath: string): boolean {
   return /provider|endpoint|url|uri|host|dsn|api[_-]?key|token|secret|credential|auth|env|export|remote|trace|span|prompt|input|output|completion|message|tool|retrieval|rag|context|memory|redact|mask|pii|retention|store|persist|sample|project/iu.test(
+    fieldPath
+  );
+}
+
+function classifyAgentMemoryStoreConfig(value: unknown, filePath: string): AgentMemoryStorePosture {
+  const fields = flattenRuntimeFields(value);
+  const stringValues = collectFieldStringValues(fields);
+  const provider = inferAgentMemoryStoreProvider([filePath, ...fields.map((field) => field.path), ...stringValues]);
+  const remote = classifyAgentMemoryStoreRemote(fields, provider);
+  const envKeys = uniqueStrings([
+    ...collectEnvKeyNamesFromConfig(value).filter(isLikelyEnvKeyName),
+    ...extractEnvironmentReferenceKeys(stringValues)
+  ]);
+  const secretRefKeys = extractSecretReferenceKeys(stringValues);
+
+  return {
+    agent_memory_store_fields: fields
+      .map((field) => field.path)
+      .filter((fieldPath) => isAgentMemoryStoreSecurityField(fieldPath))
+      .sort((a, b) => a.localeCompare(b)),
+    agent_memory_store_provider: provider,
+    agent_memory_store_remote: remote.remote,
+    agent_memory_store_destination_redacted: remote.destinationCount > 0,
+    agent_memory_store_destination_count: remote.destinationCount,
+    agent_memory_store_destination_kinds: remote.destinationKinds,
+    agent_memory_store_persistent: hasAgentMemoryStorePersistentSignal(fields),
+    agent_memory_store_shared: hasAgentMemoryStoreSharedSignal(fields),
+    agent_memory_store_write_enabled: hasAgentMemoryStoreWriteSignal(fields),
+    agent_memory_store_sync_enabled: hasAgentMemoryStoreSyncSignal(fields),
+    agent_memory_store_untrusted_write: hasAgentMemoryStoreUntrustedWriteSignal(fields),
+    agent_memory_store_tool_output_capture: hasAgentMemoryStoreToolOutputSignal(fields),
+    agent_memory_store_prompt_capture: hasAgentMemoryStorePromptCaptureSignal(fields),
+    agent_memory_store_retrieval_capture: hasAgentMemoryStoreRetrievalCaptureSignal(fields),
+    agent_memory_store_secret_capture: hasAgentMemoryStoreSecretCaptureSignal(fields),
+    agent_memory_store_output_replay_enabled: hasAgentMemoryStoreReplaySignal(fields),
+    agent_memory_store_sensitive_data: hasAgentMemoryStoreSensitiveDataSignal(fields),
+    agent_memory_store_pii_data: hasAgentMemoryStorePiiDataSignal(fields),
+    agent_memory_store_namespace_redacted: hasAgentMemoryStoreNamespaceSignal(fields),
+    agent_memory_store_approval_required: hasAgentMemoryStoreApprovalRequiredSignal(fields),
+    env_key_names: envKeys,
+    secret_ref_key_names: secretRefKeys
+  };
+}
+
+function inferAgentMemoryStoreProvider(candidates: string[]): string | undefined {
+  const text = candidates.join(" ").toLowerCase();
+  const providers: Array<[string, RegExp]> = [
+    ["langgraph_checkpointer", /\b(langgraph|checkpointer|checkpoint)\b/iu],
+    ["redis", /\b(redis|rediss|upstash)\b/iu],
+    ["postgres", /\b(postgres|postgresql|pgvector)\b/iu],
+    ["sqlite", /\bsqlite\b/iu],
+    ["zep", /\bzep\b/iu],
+    ["mem0", /\bmem0\b/iu],
+    ["dynamodb", /\bdynamodb\b/iu],
+    ["mongodb", /\b(mongodb|mongo)\b/iu],
+    ["chroma", /\b(chroma|chromadb)\b/iu]
+  ];
+  return providers.find(([, pattern]) => pattern.test(text))?.[0];
+}
+
+function classifyAgentMemoryStoreRemote(
+  fields: RuntimeField[],
+  provider: string | undefined
+): { remote: boolean; destinationCount: number; destinationKinds: string[] } {
+  const destinationKinds = new Set<string>();
+  let destinationCount = 0;
+  const managedProviders = new Set(["zep", "mem0"]);
+  if (provider && managedProviders.has(provider)) {
+    destinationKinds.add("managed_memory_service");
+    destinationCount += 1;
+  }
+
+  for (const field of fields) {
+    const values = Array.isArray(field.value) ? field.value.map(String) : [String(field.value ?? "")];
+    for (const value of values) {
+      const destination = parseRemoteMemoryStoreDestination(value);
+      if (destination) {
+        destinationKinds.add(destination.kind);
+        destinationCount += 1;
+      }
+    }
+    if (/(^|\.)(host|hostname|server|endpoint|dsn|connection|connection_string|url|uri|redis_url|database_url)$/iu.test(field.path)) {
+      const text = values.join(" ");
+      if (looksLikeRemoteMemoryStoreHost(text)) {
+        destinationKinds.add("memory_store_host");
+        destinationCount += 1;
+      }
+    }
+  }
+
+  return {
+    remote: destinationCount > 0,
+    destinationCount,
+    destinationKinds: [...destinationKinds].sort((a, b) => a.localeCompare(b))
+  };
+}
+
+function parseRemoteMemoryStoreDestination(value: string): { kind: string } | undefined {
+  try {
+    const parsed = new URL(value);
+    const protocol = parsed.protocol.replace(":", "").toLowerCase();
+    if (!/^(https?|redis|rediss|postgres|postgresql|mongodb|mongodb\+srv)$/iu.test(protocol)) return undefined;
+    if (isLocalHost(parsed.hostname.toLowerCase())) return undefined;
+    return { kind: protocol === "http" ? "plaintext_memory_endpoint" : "memory_store_endpoint" };
+  } catch {
+    return undefined;
+  }
+}
+
+function looksLikeRemoteMemoryStoreHost(value: string): boolean {
+  const trimmed = value.trim().toLowerCase();
+  if (!trimmed || trimmed.startsWith("${")) return false;
+  if (isLocalHost(trimmed)) return false;
+  return /\b(upstash|redis|redislabs|memory|checkpoint|checkpointer|zep|mem0|mongodb|rds\.amazonaws\.com|supabase|neon\.tech|db\.|database)\b/iu.test(
+    trimmed
+  ) || /^[a-z0-9.-]+\.[a-z]{2,}(?::\d+)?$/iu.test(trimmed);
+}
+
+function hasAgentMemoryStorePersistentSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /\b(persistent|persist|persistence|long[_\s-]?term|durable|retention|ttl|checkpoint|checkpointer|cross[_\s-]?session|save|store)\b/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    ) && truthyConfigValue(field.value)
+  );
+}
+
+function hasAgentMemoryStoreSharedSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /shared|global|team|workspace|cross[_\s-]?agents?|multi[_\s-]?agents?|user[_\s-]?profile|tenant|organization|org[_\s-]?wide/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    ) && truthyConfigValue(field.value)
+  );
+}
+
+function hasAgentMemoryStoreWriteSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => {
+    const text = `${field.path} ${fieldValueText(field)}`;
+    return /\b(write|read[_\s-]?write|append|upsert|insert|update|save|store|remember|persist|checkpoint|mutable|writable)\b/iu.test(text) &&
+      truthyConfigValue(field.value);
+  });
+}
+
+function hasAgentMemoryStoreSyncSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /\b(sync|auto[_\s-]?sync|background[_\s-]?sync|flush|replicate|mirror|export|import)\b/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    ) && truthyConfigValue(field.value)
+  );
+}
+
+function hasAgentMemoryStoreUntrustedWriteSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /\b(untrusted|user|customer|client|ticket|support|issue|comment|message|prompt|retrieved|rag|document|email|chat|inbound|external|public|browser[_-]?output|tool[_-]?output)\b/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    )
+  );
+}
+
+function hasAgentMemoryStoreToolOutputSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /(?:^|[_\W])(tool[_\s-]?outputs?|function[_\s-]?outputs?|mcp|observation|command[_\s-]?outputs?|browser[_\s-]?outputs?)(?:[_\W]|$)/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    )
+  );
+}
+
+function hasAgentMemoryStorePromptCaptureSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /\b(prompt|prompts|system|developer|input|inputs|message|messages|conversation|chat|transcript)\b/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    )
+  );
+}
+
+function hasAgentMemoryStoreRetrievalCaptureSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /(?:^|[_\W])(retrieval[_\s-]?context|retrieval|retrieved|rag|documents?|vector|embedding|knowledge)(?:[_\W]|$)/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    )
+  );
+}
+
+function hasAgentMemoryStoreSecretCaptureSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /\b(secrets?|token|api[_-]?key|credential|authorization|password|cookie|vault)\b/iu.test(`${field.path} ${fieldValueText(field)}`)
+  );
+}
+
+function hasAgentMemoryStoreReplaySignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /\b(replay|recall|hydrate|inject|load[_\s-]?into[_\s-]?prompt|prepend|context[_\s-]?window|system[_\s-]?prompt|future[_\s-]?runs?|next[_\s-]?run)\b/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    ) && truthyConfigValue(field.value)
+  );
+}
+
+function hasAgentMemoryStoreSensitiveDataSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /\b(customer|client|ticket|support|internal|confidential|private|proprietary|sensitive|account|billing|payment|order|record|case|profile|note|incident)\b/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    )
+  );
+}
+
+function hasAgentMemoryStorePiiDataSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /(?:^|[_\W])(pii|email|phone|address|ssn|passport|dob|date[_\s-]?of[_\s-]?birth|customer[_-]?id|user[_-]?id|account[_-]?id)(?:[_\W]|$)/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    )
+  );
+}
+
+function hasAgentMemoryStoreNamespaceSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /(^|\.)(namespace|namespaces|collection|collections|key_prefix|prefix|table|tables|database|index|indexes|thread_id|user_id|tenant_id)$/iu.test(
+      field.path
+    )
+  );
+}
+
+function hasAgentMemoryStoreApprovalRequiredSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /approval|required[_-]?approval|human[_-]?approval|confirm|confirmation|review|human[_-]?in[_-]?the[_-]?loop/iu.test(field.path) &&
+    truthyConfigValue(field.value)
+  );
+}
+
+function isAgentMemoryStoreSecurityField(fieldPath: string): boolean {
+  return /provider|memory|memories|store|persistence|persistent|retention|ttl|checkpoint|checkpointer|thread|session|state|namespace|collection|prefix|table|database|index|shared|global|agent|tool|output|prompt|retrieval|rag|source|input|customer|ticket|email|chat|secret|token|credential|auth|env|endpoint|url|uri|host|dsn|connection|write|sync|replay|recall|inject|approval|pii|sensitive/iu.test(
     fieldPath
   );
 }

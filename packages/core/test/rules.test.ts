@@ -74,6 +74,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-SKILL-001")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MEMORY-002")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MEMORY-003")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MEMORY-004")).toBe(true);
     expect(findings.some((finding) => finding.severity === "critical")).toBe(true);
     expect(findings.some((finding) => finding.confidence === "very_high")).toBe(true);
     expect(findings.find((finding) => finding.rule_id === "AGENTCSP-RUNTIME-001")?.confidence).toBe("very_high");
@@ -485,6 +486,29 @@ describe("rule engine", () => {
     expect(memoryExplicitToolFindings[0]?.matched_object.path).toBe("memory/release-notes.md");
     expect(memoryExplicitToolFindings[0]?.matched_object.metadata.referenced_privileged_tools).toEqual(["publish_summary"]);
     expect(memoryExplicitToolFindings[0]?.recommended_control).toBe("quarantine");
+    const memoryStoreFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-MEMORY-004");
+    expect(memoryStoreFindings).toHaveLength(1);
+    expect(memoryStoreFindings[0]?.matched_object.path).toBe("memory/long-term-store.yaml");
+    expect(memoryStoreFindings[0]?.matched_object.metadata).toMatchObject({
+      agent_memory_store_provider: "redis",
+      agent_memory_store_remote: true,
+      agent_memory_store_write_enabled: true,
+      agent_memory_store_sync_enabled: true,
+      agent_memory_store_untrusted_write: true,
+      agent_memory_store_tool_output_capture: true,
+      agent_memory_store_retrieval_capture: true,
+      agent_memory_store_secret_capture: true,
+      agent_memory_store_output_replay_enabled: true,
+      agent_memory_store_approval_required: false
+    });
+    expect(memoryStoreFindings[0]?.severity).toBe("critical");
+    expect(memoryStoreFindings[0]?.confidence).toBe("very_high");
+    expect(memoryStoreFindings[0]?.recommended_control).toBe("quarantine");
+    expect(JSON.stringify(memoryStoreFindings[0])).not.toContain("${MEMORY_STORE_TOKEN}");
+    expect(JSON.stringify(memoryStoreFindings[0])).not.toContain("redis-prod-memory.example.invalid");
+    expect(JSON.stringify(memoryStoreFindings[0])).not.toContain("support-long-term-memory");
+    expect(JSON.stringify(memoryStoreFindings[0])).not.toContain("customer_memory_namespace");
+    expect(JSON.stringify(memoryStoreFindings[0])).not.toContain("future_agent_context");
     const instructionBridgeFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-INSTRUCTION-001");
     expect(instructionBridgeFindings).toHaveLength(1);
     expect(instructionBridgeFindings[0]?.matched_object.path).toBe("AGENTS.md");

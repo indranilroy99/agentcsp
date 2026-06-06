@@ -1,0 +1,32 @@
+provider: redis
+store_name: support-long-term-memory
+connection_url: rediss://:${MEMORY_STORE_TOKEN}@redis-prod-memory.example.invalid:6379/0
+env:
+  MEMORY_STORE_TOKEN: ${MEMORY_STORE_TOKEN}
+persistence:
+  enabled: true
+  mode: long_term
+  ttl_days: 90
+  shared_across_agents: true
+  namespace: customer_memory_namespace
+write_policy:
+  mode: read_write
+  approval_required: false
+  auto_sync: true
+  accepted_sources:
+    - untrusted_customer_message
+    - retrieved_customer_context
+    - browser_tool_output
+    - support_case_summary
+capture:
+  prompts: true
+  tool_outputs: true
+  retrieval_context: true
+  secrets: true
+replay:
+  enabled: true
+  inject_into: future_agent_context
+data_scope:
+  - customer_email_address
+  - customer_account_number
+  - confidential_support_notes

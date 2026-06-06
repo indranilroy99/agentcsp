@@ -1,0 +1,45 @@
+id: AGENTCSP-MEMORY-004
+name: Remote memory store replays untrusted context into future agents
+description: A remote or shared agent memory store accepts untrusted context, tool outputs, prompts, retrieval data, or secrets into durable memory and can replay that context into future agent runs without approval.
+category: memory_persistence_boundary
+severity: critical
+maps_to:
+  owasp:
+    - LLM01:2025 Prompt Injection
+    - LLM02:2025 Sensitive Information Disclosure
+    - LLM06:2025 Excessive Agency
+    - LLM08:2025 Vector and Embedding Weaknesses
+  mitre_atlas:
+    - AML.T0051 LLM Prompt Injection
+    - AML.T0057 Exfiltration via Cyber Means
+  nist_ai_rmf:
+    - MAP 5.1
+    - MEASURE 2.9
+    - MANAGE 2.2
+match:
+  object_type: memory
+  where:
+    - field: metadata.parsed_agent_memory_store_config
+      op: equals
+      value: true
+    - field: metadata.agent_memory_store_remote
+      op: equals
+      value: true
+    - field: metadata.agent_memory_store_write_enabled
+      op: equals
+      value: true
+    - field: metadata.agent_memory_store_untrusted_write
+      op: equals
+      value: true
+    - field: metadata.agent_memory_store_output_replay_enabled
+      op: equals
+      value: true
+    - field: metadata.agent_memory_store_approval_required
+      op: equals
+      value: false
+    - field: secret_exposure
+      op: equals
+      value: true
+recommendation:
+  control: quarantine
+  text: Quarantine untrusted memory writes before replay, separate user/retrieval/tool-output memory from privileged agent memory, disable secret capture, and require approval before shared or remote memory can hydrate future agent context.
