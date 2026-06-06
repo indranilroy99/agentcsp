@@ -201,6 +201,9 @@ Every production change should pass:
 - unit tests
 - build
 - high/critical dependency audit for the tool's own release hygiene
+- Dependabot coverage for npm/pnpm dependencies and GitHub Actions
+- AgentCSP SARIF upload to GitHub code scanning on default-branch pushes
+- documented security disclosure policy for scanner, evidence, CI, and packaged artifact vulnerabilities
 - fixture scan
 - SARIF validation
 - fixture artifact validation

@@ -957,6 +957,15 @@ The current iteration adds:
 - rule `AGENTCSP-RAG-006` for RAG ingestion poisoning that combines remote credential-backed vector ingestion, untrusted auto-indexed sources, trusted namespace writes, disabled ingestion controls, missing provenance, and no approval
 - scanner, rule, fixture verifier, and redaction coverage proving raw ingestion source labels, trusted namespace labels, vector endpoints, collection names, and token placeholders stay redacted
 
+## Repository Security Automation Pass
+
+The current iteration adds:
+
+- Dependabot version-update configuration for npm/pnpm dependencies and GitHub Actions with grouped minor/patch updates and major-version review boundaries
+- GitHub code-scanning upload for AgentCSP SARIF on default-branch pushes using `github/codeql-action/upload-sarif@v4`
+- CI fixture scan alignment with local verification by including log-derived generated-state signals in the vulnerable fixture scan
+- a `SECURITY.md` disclosure policy covering scanner evidence leaks, policy bypass, unsafe scan-scope behavior, and packaged artifact or CI supply-chain issues
+
 ## Initial Build Recommendation
 
 Start with a CLI-first MVP before building the dashboard:
