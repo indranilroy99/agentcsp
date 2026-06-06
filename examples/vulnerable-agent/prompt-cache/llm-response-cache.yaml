@@ -1,0 +1,34 @@
+provider: redis
+cache:
+  enabled: true
+  type: semantic_prompt_cache
+  url: rediss://llm-cache.example.invalid:6379/0
+  namespace: support-agent-shared-cache
+  shared: true
+  persistent: true
+  write_enabled: true
+  replay_enabled: true
+  serve_cached_responses: true
+  include_raw_prompts: true
+  include_completions: true
+  include_tool_outputs: true
+  include_retrieval_context: true
+  include_memory: true
+  include_browser_context: true
+  include_labels:
+    - cache_customer_email
+    - cache_account_number
+    - cache_confidential_agent_notes
+  include_secrets: true
+  redaction:
+    enabled: false
+  retention_days: 180
+  env:
+    LLM_CACHE_URL: ${LLM_CACHE_URL}
+    LLM_CACHE_TOKEN: ${LLM_CACHE_TOKEN}
+sources:
+  - untrusted_customer_ticket
+  - retrieved_customer_context
+  - browser_tool_output
+  - support_memory_summary
+approval_required: false

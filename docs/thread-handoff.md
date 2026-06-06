@@ -793,6 +793,15 @@ The current iteration adds:
 - rule `AGENTCSP-RUNTIME-028` for training dataset boundaries that combine model-update authority, remote upload, sensitive capture, disabled redaction, untrusted input, credential exposure, and missing approval
 - scanner, rule, fixture verifier, and redaction coverage proving endpoints, dataset names, record labels, source labels, training records, and token placeholders stay redacted
 
+## LLM Prompt Cache Boundary Pass
+
+The current iteration adds:
+
+- first-class redacted metadata for LLM prompt, response, completion, semantic, and model-cache configs
+- vulnerable fixture coverage for a shared remote Redis-style prompt cache that stores raw prompts, completions, tool outputs, retrieval context, memory, browser context, PII, and secrets from untrusted customer sources, then replays cached context into future model calls without approval
+- rule `AGENTCSP-RUNTIME-029` for prompt-cache boundaries that combine shared remote storage, sensitive capture, disabled redaction, replay, untrusted input, credential exposure, and missing approval
+- scanner, rule, fixture verifier, and redaction coverage proving cache URLs, namespaces, keys, values, record labels, source labels, and token placeholders stay redacted
+
 ## Initial Build Recommendation
 
 Start with a CLI-first MVP before building the dashboard:

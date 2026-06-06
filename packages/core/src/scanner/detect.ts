@@ -132,6 +132,11 @@ export async function detectSurfaces(files: WalkedFile[]): Promise<DetectedSurfa
       continue;
     }
 
+    if (isLlmPromptCacheConfigPath(file.relativePath, basename)) {
+      detectLlmPromptCacheConfig(file, text, surfaces);
+      continue;
+    }
+
     if (isAiModelEndpointConfigPath(file.relativePath, basename)) {
       detectAiModelEndpointConfig(file, text, surfaces);
       continue;
@@ -744,6 +749,78 @@ function detectAiTrainingDatasetConfig(file: WalkedFile, text: string | undefine
         (posture.ai_training_dataset_sensitive_capture ||
           posture.ai_training_dataset_secret_capture ||
           posture.ai_training_dataset_remote_upload)) ||
+      isUntrustedToPrivileged(object)
+  });
+}
+
+function detectLlmPromptCacheConfig(file: WalkedFile, text: string | undefined, surfaces: DetectedSurfaces): void {
+  const parsed = parseStructuredConfig(text ?? "", file.relativePath);
+  if (parsed.parseFailed) {
+    addDiagnostic(surfaces, file, {
+      parser: parsed.parser ?? "structured_config",
+      code: "LLM_PROMPT_CACHE_CONFIG_PARSE_FAILED",
+      reason: "LLM prompt, response, or semantic cache configuration could not be parsed. Raw content was redacted."
+    });
+  }
+
+  const posture = classifyLlmPromptCacheConfig(parsed.value, file.relativePath);
+  const actions = new Set<ActionType>(["call", "read"]);
+  if (posture.llm_prompt_cache_remote) actions.add("send");
+  if (posture.llm_prompt_cache_write_enabled || posture.llm_prompt_cache_persistent) actions.add("write");
+  if (posture.llm_prompt_cache_replay_enabled || posture.llm_prompt_cache_retention_enabled) actions.add("remember");
+
+  const dataClasses = new Set<SurfaceObject["data_classes"][number]>(["unknown"]);
+  if (
+    posture.llm_prompt_cache_secret_capture ||
+    posture.env_key_names.some(isCredentialLikeKeyName) ||
+    posture.secret_ref_key_names.length > 0
+  ) {
+    dataClasses.add("credential");
+  }
+  if (posture.llm_prompt_cache_sensitive_capture || posture.llm_prompt_cache_untrusted_input) dataClasses.add("confidential");
+  if (posture.llm_prompt_cache_pii_capture) dataClasses.add("pii");
+  if (dataClasses.size > 1) dataClasses.delete("unknown");
+
+  const object = createSurfaceObject({
+    type: "runtime_config",
+    name: path.basename(file.relativePath),
+    path: file.relativePath,
+    trust_level: posture.llm_prompt_cache_remote || posture.llm_prompt_cache_shared ? "third_party" : inferTrustLevel(file.relativePath),
+    data_classes: uniqueDataClasses([...dataClasses] as SurfaceObject["data_classes"]),
+    actions: uniqueActions([...actions]),
+    side_effect:
+      posture.llm_prompt_cache_enabled ||
+      posture.llm_prompt_cache_write_enabled ||
+      posture.llm_prompt_cache_persistent ||
+      posture.llm_prompt_cache_remote ||
+      posture.llm_prompt_cache_replay_enabled,
+    reversible:
+      !posture.llm_prompt_cache_remote &&
+      !posture.llm_prompt_cache_persistent &&
+      !posture.llm_prompt_cache_shared &&
+      !posture.llm_prompt_cache_replay_enabled,
+    external_reach: posture.llm_prompt_cache_remote,
+    secret_exposure:
+      posture.llm_prompt_cache_secret_capture ||
+      posture.env_key_names.some(isCredentialLikeKeyName) ||
+      posture.secret_ref_key_names.length > 0,
+    reason: "LLM prompt or response cache configuration discovered as sensitive replay and retention posture.",
+    metadata: {
+      content_redacted: true,
+      values_collected: false,
+      parsed_llm_prompt_cache_config: Boolean(parsed.value) && !parsed.parseFailed,
+      parse_error: parsed.parseFailed,
+      ...posture
+    }
+  });
+  surfaces.runtime_config.push({
+    ...object,
+    untrusted_to_privileged:
+      (posture.llm_prompt_cache_untrusted_input &&
+        posture.llm_prompt_cache_replay_enabled &&
+        (posture.llm_prompt_cache_sensitive_capture ||
+          posture.llm_prompt_cache_secret_capture ||
+          posture.llm_prompt_cache_remote)) ||
       isUntrustedToPrivileged(object)
   });
 }
@@ -2009,6 +2086,27 @@ function isAiTrainingDatasetConfigPath(relativePath: string, basename: string): 
   return trainingName || (trainingDirectory && configName);
 }
 
+function isLlmPromptCacheConfigPath(relativePath: string, basename: string): boolean {
+  const normalized = relativePath.replaceAll("\\", "/").toLowerCase();
+  const lowerBase = basename.toLowerCase();
+  if (!/\.(json|ya?ml|toml)$/iu.test(lowerBase)) return false;
+  if (normalized.startsWith(".github/workflows/")) return false;
+  if (normalized.startsWith("rules/")) return false;
+  const segments = normalized.split("/").slice(0, -1);
+  const cacheDirectory = segments.some((segment) =>
+    /^(prompt-cache|prompt_cache|llm-cache|llm_cache|response-cache|response_cache|semantic-cache|semantic_cache|model-cache|model_cache|completion-cache|completion_cache)$/iu.test(
+      segment
+    )
+  );
+  const cacheName = /(?:prompt[-_]?cache|llm[-_]?cache|response[-_]?cache|semantic[-_]?cache|completion[-_]?cache|model[-_]?cache|cache[-_]?store)/iu.test(
+    lowerBase
+  );
+  const configName = /(?:config|settings|cache|store|redis|semantic|prompt|completion|response|replay|retention)/iu.test(
+    lowerBase
+  );
+  return cacheName || (cacheDirectory && configName);
+}
+
 function isAgentMemoryStoreConfigPath(relativePath: string, basename: string): boolean {
   const normalized = relativePath.replaceAll("\\", "/").toLowerCase();
   const lowerBase = basename.toLowerCase();
@@ -2914,6 +3012,36 @@ interface AiTrainingDatasetPosture {
   ai_training_dataset_redaction_disabled: boolean;
   ai_training_dataset_retention_enabled: boolean;
   ai_training_dataset_approval_required: boolean;
+  env_key_names: string[];
+  secret_ref_key_names: string[];
+}
+
+interface LlmPromptCachePosture {
+  llm_prompt_cache_fields: string[];
+  llm_prompt_cache_provider?: string;
+  llm_prompt_cache_enabled: boolean;
+  llm_prompt_cache_remote: boolean;
+  llm_prompt_cache_shared: boolean;
+  llm_prompt_cache_persistent: boolean;
+  llm_prompt_cache_write_enabled: boolean;
+  llm_prompt_cache_destination_redacted: boolean;
+  llm_prompt_cache_destination_count: number;
+  llm_prompt_cache_destination_kinds: string[];
+  llm_prompt_cache_capture_categories: string[];
+  llm_prompt_cache_prompt_capture: boolean;
+  llm_prompt_cache_completion_capture: boolean;
+  llm_prompt_cache_tool_output_capture: boolean;
+  llm_prompt_cache_retrieval_capture: boolean;
+  llm_prompt_cache_memory_capture: boolean;
+  llm_prompt_cache_browser_capture: boolean;
+  llm_prompt_cache_secret_capture: boolean;
+  llm_prompt_cache_sensitive_capture: boolean;
+  llm_prompt_cache_pii_capture: boolean;
+  llm_prompt_cache_untrusted_input: boolean;
+  llm_prompt_cache_redaction_disabled: boolean;
+  llm_prompt_cache_replay_enabled: boolean;
+  llm_prompt_cache_retention_enabled: boolean;
+  llm_prompt_cache_approval_required: boolean;
   env_key_names: string[];
   secret_ref_key_names: string[];
 }
@@ -6606,6 +6734,267 @@ function hasAiTrainingApprovalRequiredSignal(fields: RuntimeField[]): boolean {
 
 function isAiTrainingDatasetSecurityField(fieldPath: string): boolean {
   return /provider|training|train|fine[_-]?tune|finetune|dataset|distill|rlhf|feedback|model|endpoint|url|uri|host|bucket|destination|upload|export|capture|include|prompt|completion|message|response|tool|retrieval|rag|memory|browser|source|input|output|record|log|raw|redact|sanitize|mask|pii|sensitive|secret|token|credential|auth|env|retention|approval/iu.test(
+    fieldPath
+  );
+}
+
+function classifyLlmPromptCacheConfig(value: unknown, filePath: string): LlmPromptCachePosture {
+  const fields = flattenRuntimeFields(value);
+  const stringValues = collectFieldStringValues(fields);
+  const provider = inferLlmPromptCacheProvider([filePath, ...fields.map((field) => field.path), ...stringValues]);
+  const destination = classifyLlmPromptCacheDestination(fields, provider);
+  const captureCategories = collectLlmPromptCacheCaptureCategories(fields);
+  const envKeys = uniqueStrings([
+    ...collectEnvKeyNamesFromConfig(value).filter(isLikelyEnvKeyName),
+    ...extractEnvironmentReferenceKeys(stringValues)
+  ]);
+  const secretRefKeys = extractSecretReferenceKeys(stringValues);
+
+  return {
+    llm_prompt_cache_fields: fields
+      .map((field) => field.path)
+      .filter((fieldPath) => isLlmPromptCacheSecurityField(fieldPath))
+      .sort((a, b) => a.localeCompare(b)),
+    llm_prompt_cache_provider: provider,
+    llm_prompt_cache_enabled: Boolean(provider) || hasLlmPromptCacheEnabledSignal(fields),
+    llm_prompt_cache_remote: destination.remote,
+    llm_prompt_cache_shared: hasLlmPromptCacheSharedSignal(fields),
+    llm_prompt_cache_persistent: hasLlmPromptCachePersistentSignal(fields),
+    llm_prompt_cache_write_enabled: hasLlmPromptCacheWriteSignal(fields),
+    llm_prompt_cache_destination_redacted: destination.destinationCount > 0,
+    llm_prompt_cache_destination_count: destination.destinationCount,
+    llm_prompt_cache_destination_kinds: destination.destinationKinds,
+    llm_prompt_cache_capture_categories: captureCategories,
+    llm_prompt_cache_prompt_capture: captureCategories.includes("prompt_context"),
+    llm_prompt_cache_completion_capture: captureCategories.includes("completion_context"),
+    llm_prompt_cache_tool_output_capture: captureCategories.includes("tool_output"),
+    llm_prompt_cache_retrieval_capture: captureCategories.includes("retrieval_context"),
+    llm_prompt_cache_memory_capture: captureCategories.includes("memory_context"),
+    llm_prompt_cache_browser_capture: captureCategories.includes("browser_context"),
+    llm_prompt_cache_secret_capture: captureCategories.includes("secret_material"),
+    llm_prompt_cache_sensitive_capture:
+      captureCategories.some((category) =>
+        ["prompt_context", "completion_context", "tool_output", "retrieval_context", "memory_context", "browser_context", "secret_material"].includes(
+          category
+        )
+      ) || hasLlmPromptCacheSensitiveDataSignal(fields),
+    llm_prompt_cache_pii_capture: captureCategories.includes("pii_data") || hasLlmPromptCachePiiDataSignal(fields),
+    llm_prompt_cache_untrusted_input: hasLlmPromptCacheUntrustedInputSignal(fields),
+    llm_prompt_cache_redaction_disabled: hasLlmPromptCacheRedactionDisabledSignal(fields),
+    llm_prompt_cache_replay_enabled: hasLlmPromptCacheReplaySignal(fields),
+    llm_prompt_cache_retention_enabled: hasLlmPromptCacheRetentionSignal(fields),
+    llm_prompt_cache_approval_required: hasLlmPromptCacheApprovalRequiredSignal(fields),
+    env_key_names: envKeys,
+    secret_ref_key_names: secretRefKeys
+  };
+}
+
+function inferLlmPromptCacheProvider(candidates: string[]): string | undefined {
+  const text = candidates.join(" ").toLowerCase();
+  const providers: Array<[string, RegExp]> = [
+    ["redis", /\b(redis|rediss|upstash)\b/iu],
+    ["momento", /\bmomento\b/iu],
+    ["dynamodb", /\bdynamodb\b/iu],
+    ["postgres", /\b(postgres|postgresql|pgvector)\b/iu],
+    ["langchain_cache", /\blangchain\b[\s\S]{0,80}\bcache\b|\binmemorycache\b|\bredissemanticcache\b/iu],
+    ["semantic_cache", /\bsemantic[_\s-]?cache\b/iu],
+    ["openai_prompt_cache", /\b(openai|prompt[_\s-]?cache)\b/iu],
+    ["generic_prompt_cache", /\b(prompt|llm|response|completion|model)[_\s-]?cache\b/iu]
+  ];
+  return providers.find(([, pattern]) => pattern.test(text))?.[0];
+}
+
+function classifyLlmPromptCacheDestination(
+  fields: RuntimeField[],
+  provider: string | undefined
+): { remote: boolean; destinationCount: number; destinationKinds: string[] } {
+  const destinationKinds = new Set<string>();
+  let destinationCount = 0;
+  const managedProviders = new Set(["redis", "momento", "dynamodb", "postgres"]);
+  if (provider && managedProviders.has(provider)) {
+    destinationKinds.add("managed_cache_store");
+    destinationCount += 1;
+  }
+
+  for (const field of fields) {
+    const values = Array.isArray(field.value) ? field.value.map(String) : [String(field.value ?? "")];
+    for (const value of values) {
+      const remoteUrl = parseRemoteCacheUrl(value);
+      if (!remoteUrl) continue;
+      destinationKinds.add(remoteUrl.kind);
+      destinationCount += 1;
+    }
+    if (/(^|\.)(endpoint|url|uri|host|dsn|connection|redis_url|cache_url|store|bucket|table|namespace|cluster)$/iu.test(field.path)) {
+      const text = values.join(" ");
+      if (/\b(redis|rediss|upstash|momento|dynamodb|postgres|cache|cluster|cloud|shared|remote)\b/iu.test(text)) {
+        destinationKinds.add("configured_cache_destination");
+        destinationCount += 1;
+      }
+    }
+  }
+
+  return {
+    remote: destinationCount > 0,
+    destinationCount,
+    destinationKinds: [...destinationKinds].sort((a, b) => a.localeCompare(b))
+  };
+}
+
+function parseRemoteCacheUrl(value: string): { kind: string } | undefined {
+  try {
+    const parsed = new URL(value);
+    const protocol = parsed.protocol.replace(":", "").toLowerCase();
+    if (["http", "https"].includes(protocol) && !isLocalHost(parsed.hostname.toLowerCase())) return { kind: "http_cache_endpoint" };
+    if (["redis", "rediss", "postgres", "postgresql"].includes(protocol) && !isLocalHost(parsed.hostname.toLowerCase())) {
+      return { kind: `${protocol}_cache_endpoint` };
+    }
+    return undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function hasLlmPromptCacheEnabledSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /(?:^|[_\W])(prompt[_\s-]?cache|llm[_\s-]?cache|response[_\s-]?cache|semantic[_\s-]?cache|completion[_\s-]?cache|cache[_\s-]?enabled)(?:[_\W]|$)/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    ) && truthyConfigValue(field.value)
+  );
+}
+
+function hasLlmPromptCacheSharedSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /(?:^|[_\W])(shared|global|cross[_\s-]?agent|multi[_\s-]?agent|workspace|team|tenant)(?:[_\W]|$)/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    ) && truthyConfigValue(field.value)
+  );
+}
+
+function hasLlmPromptCachePersistentSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /(?:^|[_\W])(persistent|persist|durable|retention|ttl|days|store|save|history|disk|redis|database)(?:[_\W]|$)/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    ) && truthyConfigValue(field.value)
+  );
+}
+
+function hasLlmPromptCacheWriteSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /(?:^|[_\W])(write|writes?|store|save|set|put|upsert|record|capture|cache[_\s-]?miss|populate)(?:[_\W]|$)/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    ) && truthyConfigValue(field.value)
+  );
+}
+
+function collectLlmPromptCacheCaptureCategories(fields: RuntimeField[]): string[] {
+  const categories = new Set<string>();
+  for (const field of fields) {
+    const text = `${field.path} ${fieldValueText(field)}`;
+    if (!hasLlmPromptCacheCaptureLikeSignal(field)) continue;
+    if (/(?:^|[_\W])(prompt|prompts|system|developer|message|conversation|chat|raw[_\s-]?input|cache[_\s-]?key)(?:[_\W]|$)/iu.test(text)) {
+      categories.add("prompt_context");
+    }
+    if (/(?:^|[_\W])(completion|completions|response|responses|generation|generations|assistant[_\s-]?output|cache[_\s-]?value)(?:[_\W]|$)/iu.test(
+      text
+    )) {
+      categories.add("completion_context");
+    }
+    if (/(?:^|[_\W])(tool[_\s-]?outputs?|function[_\s-]?outputs?|command[_\s-]?outputs?|mcp|observation)(?:[_\W]|$)/iu.test(
+      text
+    )) {
+      categories.add("tool_output");
+    }
+    if (/(?:^|[_\W])(retrieval[_\s-]?context|retrieval|retrieved|rag|documents?|vector|embedding)(?:[_\W]|$)/iu.test(text)) {
+      categories.add("retrieval_context");
+    }
+    if (/(?:^|[_\W])(memory|memories|history|transcript|session|state|summary)(?:[_\W]|$)/iu.test(text)) {
+      categories.add("memory_context");
+    }
+    if (/(?:^|[_\W])(browser|web[_\s-]?page|page[_\s-]?content|click|form|navigation)(?:[_\W]|$)/iu.test(text)) {
+      categories.add("browser_context");
+    }
+    if (/(?:^|[_\W])(secret|token|credential|api[_-]?key|password|authorization|vault)(?:[_\W]|$)/iu.test(text)) {
+      categories.add("secret_material");
+    }
+    if (/(?:^|[_\W])(pii|email|phone|address|ssn|passport|customer[_-]?id|account[_-]?number|account[_-]?id)(?:[_\W]|$)/iu.test(
+      text
+    )) {
+      categories.add("pii_data");
+    }
+  }
+  return [...categories].sort((a, b) => a.localeCompare(b));
+}
+
+function hasLlmPromptCacheCaptureLikeSignal(field: RuntimeField): boolean {
+  const text = `${field.path} ${fieldValueText(field)}`;
+  if (/\b(exclude|drop|deny|redact|mask|scrub|sanitize)\b/iu.test(field.path) && !truthyConfigValue(field.value)) return false;
+  return /(?:^|[_\W])(include|capture|collect|cache|store|save|key|value|prompt|completion|response|raw|source|inputs?|outputs?|logs?|records?)(?:[_\W]|$)/iu.test(
+    text
+  ) && truthyConfigValue(field.value);
+}
+
+function hasLlmPromptCacheSensitiveDataSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /\b(customer|client|ticket|support|internal|confidential|private|proprietary|sensitive|account|billing|payment|record|case|profile|note|incident)\b/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    )
+  );
+}
+
+function hasLlmPromptCachePiiDataSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /(?:^|[_\W])(pii|email|phone|address|ssn|passport|dob|date[_\s-]?of[_\s-]?birth|customer[_-]?id|user[_-]?id|account[_-]?id|account[_-]?number)(?:[_\W]|$)/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    )
+  );
+}
+
+function hasLlmPromptCacheUntrustedInputSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /\b(untrusted|user|customer|client|ticket|support|issue|comment|message|prompt|retrieved|rag|document|email|chat|inbound|external|public|web[_-]?page|browser[_-]?output|tool[_-]?output)\b/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    )
+  );
+}
+
+function hasLlmPromptCacheRedactionDisabledSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => {
+    const text = `${field.path} ${fieldValueText(field)}`.toLowerCase();
+    if (/(^|\.)(include_raw|raw|raw_payload|raw_records?|raw_prompts?|raw_completions?)$/iu.test(field.path)) {
+      return truthyConfigValue(field.value);
+    }
+    if (/redact|redaction|sanitize|sanitiz|mask|scrub|pii_filter|secret_filter/iu.test(field.path)) {
+      return disabledConfigValue(field.value) || /\b(disabled|false|off|none|raw)\b/iu.test(text);
+    }
+    return false;
+  });
+}
+
+function hasLlmPromptCacheReplaySignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /(?:^|[_\W])(replay|hydrate|reuse|read[_\s-]?through|cache[_\s-]?hit|serve[_\s-]?cached|inject|future[_\s-]?context|future[_\s-]?prompt)(?:[_\W]|$)/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    ) && truthyConfigValue(field.value)
+  );
+}
+
+function hasLlmPromptCacheRetentionSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /(?:^|[_\W])(retention|retain|persist|archive|history|store|save|keep|ttl|days)(?:[_\W]|$)/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    ) && truthyConfigValue(field.value)
+  );
+}
+
+function hasLlmPromptCacheApprovalRequiredSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /approval|required[_-]?approval|human[_-]?approval|confirm|confirmation|review|human[_-]?in[_-]?the[_-]?loop/iu.test(field.path) &&
+    truthyConfigValue(field.value)
+  );
+}
+
+function isLlmPromptCacheSecurityField(fieldPath: string): boolean {
+  return /provider|cache|semantic|redis|momento|dynamodb|postgres|endpoint|url|uri|host|dsn|connection|cluster|namespace|key|value|prompt|completion|message|response|tool|retrieval|rag|memory|browser|source|input|output|record|log|raw|redact|sanitize|mask|pii|sensitive|secret|token|credential|auth|env|shared|global|persist|retention|ttl|replay|hydrate|reuse|approval/iu.test(
     fieldPath
   );
 }

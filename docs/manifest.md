@@ -858,6 +858,43 @@ Training dataset metadata may include:
 
 Raw training endpoints, dataset names, record labels, source labels, prompts, completions, tool outputs, retrieval context, memory content, and token placeholders are not emitted. Provider names, redacted destination categories, capture categories, redaction posture, retention posture, approval posture, and credential key names let rules detect sensitive model-update pipelines without copying training data into the manifest.
 
+## LLM Prompt Cache Boundary
+
+LLM prompt, response, completion, semantic, and model-cache configs are normalized into `runtime_config` objects when cache-oriented directories or filenames are discovered. Generated cache data remains excluded by default through the scanner's normal generated/cache directory ignores.
+
+Prompt cache metadata may include:
+
+- `parsed_llm_prompt_cache_config`
+- `llm_prompt_cache_fields`
+- `llm_prompt_cache_provider`
+- `llm_prompt_cache_enabled`
+- `llm_prompt_cache_remote`
+- `llm_prompt_cache_shared`
+- `llm_prompt_cache_persistent`
+- `llm_prompt_cache_write_enabled`
+- `llm_prompt_cache_destination_redacted`
+- `llm_prompt_cache_destination_count`
+- `llm_prompt_cache_destination_kinds`
+- `llm_prompt_cache_capture_categories`
+- `llm_prompt_cache_prompt_capture`
+- `llm_prompt_cache_completion_capture`
+- `llm_prompt_cache_tool_output_capture`
+- `llm_prompt_cache_retrieval_capture`
+- `llm_prompt_cache_memory_capture`
+- `llm_prompt_cache_browser_capture`
+- `llm_prompt_cache_secret_capture`
+- `llm_prompt_cache_sensitive_capture`
+- `llm_prompt_cache_pii_capture`
+- `llm_prompt_cache_untrusted_input`
+- `llm_prompt_cache_redaction_disabled`
+- `llm_prompt_cache_replay_enabled`
+- `llm_prompt_cache_retention_enabled`
+- `llm_prompt_cache_approval_required`
+- `env_key_names`
+- `secret_ref_key_names`
+
+Raw cache URLs, DSNs, namespaces, cache keys, cache values, prompts, completions, source labels, record labels, and token placeholders are not emitted. Provider names, redacted destination categories, capture categories, shared/persistent posture, replay posture, redaction posture, approval posture, and credential key names let rules detect sensitive prompt-cache replay without copying cached content into the manifest.
+
 ## AI Telemetry Export
 
 AI telemetry and trace-export configs are also normalized into `runtime_config` objects when common observability, tracing, LangSmith, Langfuse, Helicone, Braintrust, OpenTelemetry, or similar configuration files are discovered.

@@ -63,6 +63,7 @@ A finding should be considered production-grade when it includes:
 - container runtime metadata for privileged mode, Docker socket access, host mounts, host namespaces, dangerous capabilities, and tool authority without emitting image names, host paths, input labels, tool names, or token placeholders
 - code interpreter and notebook runtime metadata for model-driven code execution, network/package-install posture, filesystem access, credential mounts, output persistence, and approval posture without emitting kernel values, code snippets, package names, mounted paths, input labels, or token placeholders
 - AI training and fine-tuning dataset metadata for model-update pipelines that capture prompts, completions, tool outputs, retrieval context, memory, browser context, PII, or secrets without emitting endpoints, dataset names, record labels, source labels, training records, or token placeholders
+- LLM prompt/response cache metadata for shared or remote cache replay, sensitive capture, redaction posture, persistence, and approval boundaries without emitting cache URLs, namespaces, keys, values, source labels, record labels, or token placeholders
 - workflow-to-agent-script signals for unattended automation with secrets and write authority
 - workflow event-payload signals for issue, pull request, discussion, or repository-dispatch text passed into privileged agent automation without emitting raw event expressions or payload content
 - prompt-template variables and redacted context signals for untrusted-input bridges

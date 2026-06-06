@@ -38,6 +38,8 @@ describe("scanner", () => {
       "EVAL_AGENT_TOKEN",
       "FINE_TUNE_TOKEN",
       "GITHUB_TOKEN",
+      "LLM_CACHE_TOKEN",
+      "LLM_CACHE_URL",
       "MEMORY_STORE_TOKEN",
       "OPENAI_API_KEY",
       "SAFETY_RUNTIME_TOKEN",
@@ -469,6 +471,70 @@ describe("scanner", () => {
     expect(JSON.stringify(trainingDatasetConfig)).not.toContain("training_account_number");
     expect(JSON.stringify(trainingDatasetConfig)).not.toContain("training_confidential_agent_notes");
     expect(JSON.stringify(trainingDatasetConfig)).not.toContain("support_memory_summary");
+    const promptCacheConfig = surfaces.runtime_config.find(
+      (surface) => surface.path === "prompt-cache/llm-response-cache.yaml"
+    );
+    expect(promptCacheConfig).toBeDefined();
+    expect(promptCacheConfig).toMatchObject({
+      trust_level: "third_party",
+      external_reach: true,
+      secret_exposure: true,
+      side_effect: true,
+      reversible: false,
+      untrusted_to_privileged: true
+    });
+    expect(promptCacheConfig?.metadata).toMatchObject({
+      content_redacted: true,
+      values_collected: false,
+      parsed_llm_prompt_cache_config: true,
+      llm_prompt_cache_provider: "redis",
+      llm_prompt_cache_enabled: true,
+      llm_prompt_cache_remote: true,
+      llm_prompt_cache_shared: true,
+      llm_prompt_cache_persistent: true,
+      llm_prompt_cache_write_enabled: true,
+      llm_prompt_cache_destination_redacted: true,
+      llm_prompt_cache_prompt_capture: true,
+      llm_prompt_cache_completion_capture: true,
+      llm_prompt_cache_tool_output_capture: true,
+      llm_prompt_cache_retrieval_capture: true,
+      llm_prompt_cache_memory_capture: true,
+      llm_prompt_cache_browser_capture: true,
+      llm_prompt_cache_secret_capture: true,
+      llm_prompt_cache_sensitive_capture: true,
+      llm_prompt_cache_pii_capture: true,
+      llm_prompt_cache_untrusted_input: true,
+      llm_prompt_cache_redaction_disabled: true,
+      llm_prompt_cache_replay_enabled: true,
+      llm_prompt_cache_retention_enabled: true,
+      llm_prompt_cache_approval_required: false
+    });
+    expect(promptCacheConfig?.metadata.llm_prompt_cache_destination_kinds).toEqual([
+      "configured_cache_destination",
+      "managed_cache_store",
+      "rediss_cache_endpoint"
+    ]);
+    expect(promptCacheConfig?.metadata.llm_prompt_cache_capture_categories).toEqual([
+      "browser_context",
+      "completion_context",
+      "memory_context",
+      "pii_data",
+      "prompt_context",
+      "retrieval_context",
+      "secret_material",
+      "tool_output"
+    ]);
+    expect(promptCacheConfig?.metadata.env_key_names).toEqual(["LLM_CACHE_TOKEN", "LLM_CACHE_URL"]);
+    expect(promptCacheConfig?.metadata.secret_ref_key_names).toEqual(["LLM_CACHE_TOKEN"]);
+    expect(promptCacheConfig?.data_classes).toEqual(["confidential", "credential", "pii"]);
+    expect(promptCacheConfig?.actions).toEqual(["call", "read", "remember", "send", "write"]);
+    expect(JSON.stringify(promptCacheConfig)).not.toContain("${LLM_CACHE_TOKEN}");
+    expect(JSON.stringify(promptCacheConfig)).not.toContain("${LLM_CACHE_URL}");
+    expect(JSON.stringify(promptCacheConfig)).not.toContain("llm-cache.example.invalid");
+    expect(JSON.stringify(promptCacheConfig)).not.toContain("support-agent-shared-cache");
+    expect(JSON.stringify(promptCacheConfig)).not.toContain("cache_customer_email");
+    expect(JSON.stringify(promptCacheConfig)).not.toContain("cache_account_number");
+    expect(JSON.stringify(promptCacheConfig)).not.toContain("cache_confidential_agent_notes");
     const artifactExportConfig = surfaces.runtime_config.find(
       (surface) => surface.path === "artifacts/run-export.yaml"
     );

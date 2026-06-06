@@ -68,6 +68,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-026")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-027")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-028")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-029")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-CICD-002")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-AUTOMATION-001")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-AUTOMATION-002")).toBe(true);
@@ -301,6 +302,41 @@ describe("rule engine", () => {
     expect(JSON.stringify(runtimeTrainingDatasetFindings[0])).not.toContain("training_account_number");
     expect(JSON.stringify(runtimeTrainingDatasetFindings[0])).not.toContain("training_confidential_agent_notes");
     expect(JSON.stringify(runtimeTrainingDatasetFindings[0])).not.toContain("support_memory_summary");
+    const runtimePromptCacheFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-RUNTIME-029");
+    expect(runtimePromptCacheFindings).toHaveLength(1);
+    expect(runtimePromptCacheFindings[0]?.matched_object.path).toBe("prompt-cache/llm-response-cache.yaml");
+    expect(runtimePromptCacheFindings[0]?.matched_object.metadata).toMatchObject({
+      parsed_llm_prompt_cache_config: true,
+      llm_prompt_cache_provider: "redis",
+      llm_prompt_cache_remote: true,
+      llm_prompt_cache_shared: true,
+      llm_prompt_cache_replay_enabled: true,
+      llm_prompt_cache_sensitive_capture: true,
+      llm_prompt_cache_secret_capture: true,
+      llm_prompt_cache_redaction_disabled: true,
+      llm_prompt_cache_untrusted_input: true,
+      llm_prompt_cache_approval_required: false
+    });
+    expect(runtimePromptCacheFindings[0]?.matched_object.metadata.llm_prompt_cache_capture_categories).toEqual([
+      "browser_context",
+      "completion_context",
+      "memory_context",
+      "pii_data",
+      "prompt_context",
+      "retrieval_context",
+      "secret_material",
+      "tool_output"
+    ]);
+    expect(runtimePromptCacheFindings[0]?.severity).toBe("critical");
+    expect(runtimePromptCacheFindings[0]?.confidence).toBe("very_high");
+    expect(runtimePromptCacheFindings[0]?.recommended_control).toBe("quarantine");
+    expect(JSON.stringify(runtimePromptCacheFindings[0])).not.toContain("${LLM_CACHE_TOKEN}");
+    expect(JSON.stringify(runtimePromptCacheFindings[0])).not.toContain("${LLM_CACHE_URL}");
+    expect(JSON.stringify(runtimePromptCacheFindings[0])).not.toContain("llm-cache.example.invalid");
+    expect(JSON.stringify(runtimePromptCacheFindings[0])).not.toContain("support-agent-shared-cache");
+    expect(JSON.stringify(runtimePromptCacheFindings[0])).not.toContain("cache_customer_email");
+    expect(JSON.stringify(runtimePromptCacheFindings[0])).not.toContain("cache_account_number");
+    expect(JSON.stringify(runtimePromptCacheFindings[0])).not.toContain("cache_confidential_agent_notes");
     const runtimeModelEndpointFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-RUNTIME-009");
     expect(runtimeModelEndpointFindings).toHaveLength(1);
     expect(runtimeModelEndpointFindings[0]?.matched_object.path).toBe("models/model-gateway.yaml");
