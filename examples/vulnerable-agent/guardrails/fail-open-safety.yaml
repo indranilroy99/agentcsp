@@ -1,0 +1,37 @@
+framework: openai
+policy_name: customer-support-fail-open-guardrail
+env:
+  SAFETY_FALLBACK_TOKEN: ${SAFETY_FALLBACK_TOKEN}
+inputs:
+  - customer_ticket_message
+  - retrieved_customer_context
+  - browser_tool_output
+guardrails:
+  enabled: true
+  prompt_injection_filter:
+    enabled: true
+  output_validation:
+    enabled: true
+  tool_result_sanitization:
+    enabled: true
+  content_moderation:
+    enabled: true
+fallback:
+  default_action: allow
+  on_timeout: allow
+  on_error: allow
+  enforcement_mode: monitor_only
+runtime_authority:
+  approval_required: false
+  tools:
+    - support_db.update_customer_record
+    - vault_secret_lookup.read_support_token
+    - slack.post_escalation_reply
+  actions:
+    - update_customer_record
+    - publish_customer_reply
+    - read_support_secret
+data_scope:
+  - failopen_customer_email
+  - failopen_account_number
+  - failopen_confidential_case_notes

@@ -1923,6 +1923,7 @@ function detectAgentSafetyConfig(file: WalkedFile, text: string | undefined, sur
     actions: uniqueActions([...actions]),
     side_effect:
       posture.agent_safety_controls_disabled ||
+      posture.agent_safety_fail_open ||
       posture.agent_safety_privileged_tool_authority ||
       posture.agent_safety_write_authority ||
       posture.agent_safety_external_authority ||
@@ -1945,7 +1946,7 @@ function detectAgentSafetyConfig(file: WalkedFile, text: string | undefined, sur
   surfaces.runtime_config.push({
     ...object,
     untrusted_to_privileged:
-      (posture.agent_safety_controls_disabled &&
+      ((posture.agent_safety_controls_disabled || posture.agent_safety_fail_open || posture.agent_safety_monitor_only) &&
         posture.agent_safety_untrusted_input &&
         (posture.agent_safety_privileged_tool_authority ||
           posture.agent_safety_write_authority ||
@@ -4333,6 +4334,12 @@ interface AgentSafetyPosture {
   agent_safety_content_moderation_disabled: boolean;
   agent_safety_pii_redaction_disabled: boolean;
   agent_safety_secret_redaction_disabled: boolean;
+  agent_safety_fail_open: boolean;
+  agent_safety_fail_open_categories: string[];
+  agent_safety_default_allow: boolean;
+  agent_safety_timeout_allows: boolean;
+  agent_safety_error_allows: boolean;
+  agent_safety_monitor_only: boolean;
   agent_safety_untrusted_input: boolean;
   agent_safety_privileged_tool_authority: boolean;
   agent_safety_tool_authority_categories: string[];
@@ -7645,6 +7652,7 @@ function classifyAgentSafetyConfig(value: unknown, filePath: string): AgentSafet
   const stringValues = collectFieldStringValues(fields);
   const framework = inferAgentSafetyFramework([filePath, ...fields.map((field) => field.path), ...stringValues]);
   const disabledControls = collectAgentSafetyDisabledControls(fields);
+  const failOpenCategories = collectAgentSafetyFailOpenCategories(fields);
   const toolAuthorityCategories = collectAgentSafetyToolAuthorityCategories(fields);
   const envKeys = uniqueStrings([
     ...collectEnvKeyNamesFromConfig(value).filter(isLikelyEnvKeyName),
@@ -7667,6 +7675,12 @@ function classifyAgentSafetyConfig(value: unknown, filePath: string): AgentSafet
     agent_safety_content_moderation_disabled: disabledControls.includes("content_moderation"),
     agent_safety_pii_redaction_disabled: disabledControls.includes("pii_redaction"),
     agent_safety_secret_redaction_disabled: disabledControls.includes("secret_redaction"),
+    agent_safety_fail_open: failOpenCategories.length > 0,
+    agent_safety_fail_open_categories: failOpenCategories,
+    agent_safety_default_allow: failOpenCategories.includes("default_allow"),
+    agent_safety_timeout_allows: failOpenCategories.includes("timeout_allow"),
+    agent_safety_error_allows: failOpenCategories.includes("error_allow"),
+    agent_safety_monitor_only: failOpenCategories.includes("monitor_only"),
     agent_safety_untrusted_input: hasAgentSafetyUntrustedInputSignal(fields),
     agent_safety_privileged_tool_authority: isAgentSafetyPrivileged(toolAuthorityCategories) || hasAgentSafetyToolAuthoritySignal(fields),
     agent_safety_tool_authority_categories: toolAuthorityCategories,
@@ -7723,6 +7737,50 @@ function collectAgentSafetyDisabledControls(fields: RuntimeField[]): string[] {
     }
   }
   return [...controls].sort((a, b) => a.localeCompare(b));
+}
+
+function collectAgentSafetyFailOpenCategories(fields: RuntimeField[]): string[] {
+  const categories = new Set<string>();
+  for (const field of fields) {
+    if (isAgentSafetyDefaultAllowSignal(field)) categories.add("default_allow");
+    if (isAgentSafetyTimeoutAllowSignal(field)) categories.add("timeout_allow");
+    if (isAgentSafetyErrorAllowSignal(field)) categories.add("error_allow");
+    if (isAgentSafetyMonitorOnlySignal(field)) categories.add("monitor_only");
+  }
+  return [...categories].sort((a, b) => a.localeCompare(b));
+}
+
+function isAgentSafetyDefaultAllowSignal(field: RuntimeField): boolean {
+  const text = agentSafetySignalText(field);
+  if (!/\b(default|fallback|no match|unknown|policy missing|classification missing)\b/iu.test(text)) return false;
+  return agentSafetyAllowValue(field) || /\b(allow|permit|approve|pass|continue)\b/iu.test(text);
+}
+
+function isAgentSafetyTimeoutAllowSignal(field: RuntimeField): boolean {
+  const text = agentSafetySignalText(field);
+  if (!/\b(timeout|deadline|latency|unavailable|guardrail timeout|moderation timeout|validator timeout)\b/iu.test(text)) return false;
+  return agentSafetyAllowValue(field) || /\b(allow|permit|approve|pass|continue|fail open)\b/iu.test(text);
+}
+
+function isAgentSafetyErrorAllowSignal(field: RuntimeField): boolean {
+  const text = agentSafetySignalText(field);
+  if (!/\b(error|exception|parse error|policy error|service error|guardrail error|moderation error|validator error|unavailable|fail open)\b/iu.test(text)) return false;
+  return agentSafetyAllowValue(field) || /\b(allow|permit|approve|pass|continue|fail open)\b/iu.test(text);
+}
+
+function isAgentSafetyMonitorOnlySignal(field: RuntimeField): boolean {
+  const text = agentSafetySignalText(field);
+  if (!/\b(monitor only|warn only|log only|report only|shadow|dry run|audit only|observe only)\b/iu.test(text)) return false;
+  return truthyConfigValue(field.value) || /\b(enabled|true|monitor only|warn only|shadow|dry run)\b/iu.test(text);
+}
+
+function agentSafetyAllowValue(field: RuntimeField): boolean {
+  const value = fieldValueText(field).trim().toLowerCase().replaceAll("_", " ").replaceAll("-", " ");
+  return /^(allow|permit|approve|pass|continue|bypass|skip|warn only|monitor only|log only|report only|shadow|dry run|fail open)$/iu.test(value);
+}
+
+function agentSafetySignalText(field: RuntimeField): string {
+  return `${field.path} ${fieldValueText(field)}`.toLowerCase().replaceAll("_", " ").replaceAll("-", " ");
 }
 
 function isAgentSafetyGlobalDisabledSignal(field: RuntimeField): boolean {
@@ -7869,7 +7927,7 @@ function hasAgentSafetyApprovalRequiredSignal(fields: RuntimeField[]): boolean {
 }
 
 function isAgentSafetySecurityField(fieldPath: string): boolean {
-  return /framework|provider|guardrail|safety|policy|control|moderation|filter|injection|jailbreak|validation|validator|sanitize|sanitiz|redact|mask|secret|pii|tool|mcp|function|output|input|source|customer|ticket|email|browser|database|memory|write|send|publish|approval|auth|token|credential|env|permission|scope/iu.test(
+  return /framework|provider|guardrail|safety|policy|control|moderation|filter|injection|jailbreak|validation|validator|sanitize|sanitiz|redact|mask|secret|pii|tool|mcp|function|output|input|source|customer|ticket|email|browser|database|memory|write|send|publish|approval|auth|token|credential|env|permission|scope|default|fallback|timeout|error|exception|fail[_-]?open|monitor|warn|shadow|dry[_-]?run|enforcement/iu.test(
     fieldPath
   );
 }

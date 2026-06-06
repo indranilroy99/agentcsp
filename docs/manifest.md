@@ -524,6 +524,12 @@ Agent safety metadata may include:
 - `agent_safety_content_moderation_disabled`
 - `agent_safety_pii_redaction_disabled`
 - `agent_safety_secret_redaction_disabled`
+- `agent_safety_fail_open`
+- `agent_safety_fail_open_categories`
+- `agent_safety_default_allow`
+- `agent_safety_timeout_allows`
+- `agent_safety_error_allows`
+- `agent_safety_monitor_only`
 - `agent_safety_untrusted_input`
 - `agent_safety_privileged_tool_authority`
 - `agent_safety_tool_authority_categories`
@@ -537,7 +543,7 @@ Agent safety metadata may include:
 - `env_key_names`
 - `secret_ref_key_names`
 
-Raw policy names, source names, tool strings, action lists, data-field labels, prompt text, and secret placeholders are not emitted. Framework names, disabled-control categories, tool-authority categories, approval posture, data-class booleans, and credential key names let rules detect when weakened safety controls expose privileged agent actions without copying control policy contents into the manifest.
+Raw policy names, source names, fallback-action strings, tool strings, action lists, data-field labels, prompt text, and secret placeholders are not emitted. Framework names, disabled-control categories, fail-open categories such as `default_allow`, `timeout_allow`, `error_allow`, and `monitor_only`, tool-authority categories, approval posture, data-class booleans, and credential key names let rules detect when weakened safety controls expose privileged agent actions without copying control policy contents into the manifest.
 
 ## AI Eval Harness Posture
 

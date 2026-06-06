@@ -87,6 +87,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-042")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-043")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-044")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-045")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-CICD-002")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-AUTOMATION-001")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-AUTOMATION-002")).toBe(true);
@@ -1363,6 +1364,45 @@ describe("rule engine", () => {
     expect(JSON.stringify(runtimeAgentSafetyFindings[0])).not.toContain("customer_ticket_message");
     expect(JSON.stringify(runtimeAgentSafetyFindings[0])).not.toContain("support_db.update_customer_record");
     expect(JSON.stringify(runtimeAgentSafetyFindings[0])).not.toContain("customer_email_address");
+    const runtimeAgentSafetyFailOpenFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-RUNTIME-045");
+    expect(runtimeAgentSafetyFailOpenFindings.map((finding) => finding.matched_object.path).sort()).toEqual([
+      "guardrails/agent-safety.yaml",
+      "guardrails/fail-open-safety.yaml"
+    ]);
+    const explicitFailOpenFinding = runtimeAgentSafetyFailOpenFindings.find(
+      (finding) => finding.matched_object.path === "guardrails/fail-open-safety.yaml"
+    );
+    expect(explicitFailOpenFinding).toBeDefined();
+    expect(explicitFailOpenFinding?.matched_object.metadata).toMatchObject({
+      agent_safety_framework: "openai",
+      agent_safety_controls_disabled: false,
+      agent_safety_fail_open: true,
+      agent_safety_default_allow: true,
+      agent_safety_timeout_allows: true,
+      agent_safety_error_allows: true,
+      agent_safety_monitor_only: true,
+      agent_safety_untrusted_input: true,
+      agent_safety_privileged_tool_authority: true,
+      agent_safety_external_authority: true,
+      agent_safety_secret_exposure: true,
+      agent_safety_approval_required: false
+    });
+    expect(explicitFailOpenFinding?.matched_object.metadata.agent_safety_fail_open_categories).toEqual([
+      "default_allow",
+      "error_allow",
+      "monitor_only",
+      "timeout_allow"
+    ]);
+    expect(explicitFailOpenFinding?.severity).toBe("critical");
+    expect(explicitFailOpenFinding?.confidence).toBe("very_high");
+    expect(explicitFailOpenFinding?.recommended_control).toBe("require_approval");
+    expect(JSON.stringify(explicitFailOpenFinding)).not.toContain("${SAFETY_FALLBACK_TOKEN}");
+    expect(JSON.stringify(explicitFailOpenFinding)).not.toContain("customer-support-fail-open-guardrail");
+    expect(JSON.stringify(explicitFailOpenFinding)).not.toContain("customer_ticket_message");
+    expect(JSON.stringify(explicitFailOpenFinding)).not.toContain("support_db.update_customer_record");
+    expect(JSON.stringify(explicitFailOpenFinding)).not.toContain("failopen_customer_email");
+    expect(JSON.stringify(explicitFailOpenFinding)).not.toContain("failopen_account_number");
+    expect(JSON.stringify(explicitFailOpenFinding)).not.toContain("failopen_confidential_case_notes");
     const runtimeAiEvalHarnessFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-RUNTIME-017");
     expect(runtimeAiEvalHarnessFindings).toHaveLength(1);
     expect(runtimeAiEvalHarnessFindings[0]?.matched_object.path).toBe("evals/live-redteam.yaml");

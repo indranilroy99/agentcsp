@@ -1,0 +1,25 @@
+framework: openai
+policy_name: internal-readonly-default-deny
+inputs:
+  - internal_review_summary
+guardrails:
+  enabled: true
+  prompt_injection_filter:
+    enabled: true
+  output_validation:
+    enabled: true
+  tool_result_sanitization:
+    enabled: true
+  content_moderation:
+    enabled: true
+fallback:
+  default_action: deny
+  on_timeout: block
+  on_error: block
+  enforcement_mode: enforce
+runtime_authority:
+  approval_required: true
+  tools:
+    - readonly_docs.search
+data_scope:
+  - approved_internal_docs

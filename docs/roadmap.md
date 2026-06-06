@@ -31,7 +31,7 @@
 - Add hosted assistant and deployable agent-definition posture for automatic tool choice, hosted code/file/vector/function resources, sensitive context, guardrail posture, and approval boundaries.
 - Add realtime and voice agent session posture for external callers, raw audio and transcript capture, recording redaction, prompt-injection filtering, privileged tool authority, and approval boundaries.
 - Add agent authorization-broker posture for model-selected tool grants, dynamic resource scopes, default-allow/fail-open decisions, audit posture, credential exposure, and approval boundaries.
-- Add runtime posture inventory for sandbox, approval, network, tool authority, and agent safety-control posture.
+- Add runtime posture inventory for sandbox, approval, network, tool authority, disabled safety controls, and fail-open agent safety fallback posture.
 - Add browser extension/profile posture for privileged extensions, password-manager/autofill exposure, and download/upload path redaction.
 - Add identity delegation posture for agent OAuth, OIDC, service-account, workload-identity, and token-broker authority.
 - Add cloud control-plane authority posture for agent IAM, compute, storage, secret, audit-log, IaC, and auto-remediation authority.

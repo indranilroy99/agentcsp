@@ -1016,6 +1016,16 @@ The current iteration adds:
 - rule `AGENTCSP-RUNTIME-044` for feedback/RLHF pipelines that combine untrusted sensitive capture, remote export, training promotion, disabled redaction, and missing approval
 - scanner, rule, fixture verifier, and redaction coverage proving raw feedback endpoints, source labels, data-field labels, dataset names, and token placeholders stay redacted
 
+## Agent Safety Fail-Open Posture Pass
+
+The current iteration adds:
+
+- first-class redacted metadata for agent safety fail-open posture, including default-allow, timeout-allow, error-allow, and monitor-only fallback categories
+- vulnerable fixture coverage for an otherwise enabled guardrail policy that allows by default, allows on timeout and error, runs monitor-only, and can reach database, secret-manager, and external-response tools without approval
+- safe fixture coverage for an approval-gated default-deny safety policy that blocks timeout and error paths
+- rule `AGENTCSP-RUNTIME-045` for safety policies that fail open around privileged tools when untrusted input, credentials, and missing approval are present
+- scanner, rule, fixture verifier, graph tie-break, and redaction coverage proving raw policy names, fallback tokens, tool names, and data-scope labels stay redacted
+
 ## Initial Build Recommendation
 
 Start with a CLI-first MVP before building the dashboard:

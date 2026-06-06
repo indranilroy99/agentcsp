@@ -387,8 +387,25 @@ function strongestFinding(findings: Finding[]): Finding | undefined {
   return [...findings].sort((a, b) => {
     const severityCompare = severityWeight(b.severity) - severityWeight(a.severity);
     if (severityCompare !== 0) return severityCompare;
-    return b.risk.score - a.risk.score;
+    const riskCompare = b.risk.score - a.risk.score;
+    if (riskCompare !== 0) return riskCompare;
+    const priorityCompare = findingPriority(b) - findingPriority(a);
+    if (priorityCompare !== 0) return priorityCompare;
+    return a.rule_id.localeCompare(b.rule_id);
   })[0];
+}
+
+function findingPriority(finding: Finding): number {
+  if (
+    finding.rule_id === "AGENTCSP-RUNTIME-016" &&
+    finding.matched_object.metadata.agent_safety_controls_disabled === true
+  ) {
+    return 20;
+  }
+  if (finding.rule_id === "AGENTCSP-RUNTIME-045" && finding.matched_object.metadata.agent_safety_fail_open === true) {
+    return 18;
+  }
+  return 0;
 }
 
 function strongestSourceFindingForEdge(findings: Finding[], target: SurfaceObject | undefined): Finding | undefined {

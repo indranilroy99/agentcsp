@@ -117,9 +117,11 @@ const leakPatterns = [
   /customer_account_id/u,
   /internal_support_notes/u,
   /customer-support-disabled-safety/u,
+  /customer-support-fail-open-guardrail/u,
   /customer_ticket_message/u,
   /retrieved_customer_context/u,
   /browser_tool_output/u,
+  /\$\{SAFETY_FALLBACK_TOKEN\}/u,
   /support_db\.update_customer_record/u,
   /vault_secret_lookup\.read_support_token/u,
   /slack\.post_escalation_reply/u,
@@ -128,6 +130,9 @@ const leakPatterns = [
   /customer_email_address/u,
   /customer_account_number/u,
   /confidential_support_notes/u,
+  /failopen_customer_email/u,
+  /failopen_account_number/u,
+  /failopen_confidential_case_notes/u,
   /production-support-redteam/u,
   /agent-prod\.example\.invalid/u,
   /customer-support-prod-agent/u,
@@ -374,14 +379,17 @@ const leakPatterns = [
   /feedback_authorization_header/u,
   /support-feedback-rlhf-dataset/u,
   /local_feedback/u,
-  /vs_readonly_docs/u
+  /vs_readonly_docs/u,
+  /internal-readonly-default-deny/u,
+  /readonly_docs\.search/u,
+  /approved_internal_docs/u
 ];
 
 const vulnerable = await readScanOutput(vulnerableOutput, { sarifRequired: true });
 const safe = await readScanOutput(safeOutput, { sarifRequired: false });
 
-assertEqual(vulnerable.manifest.findings.length, 131, "vulnerable manifest finding count");
-assertEqual(vulnerable.findings.length, 131, "vulnerable findings.json count");
+assertEqual(vulnerable.manifest.findings.length, 133, "vulnerable manifest finding count");
+assertEqual(vulnerable.findings.length, 133, "vulnerable findings.json count");
 assertEqual(vulnerable.manifest.attack_paths.length, 15, "vulnerable attack path count");
 assertEqual(vulnerable.manifest.static_blast_radius?.critical_attack_paths, 15, "vulnerable critical attack path count");
 assertEqual(vulnerable.manifest.diagnostics.length, 0, "vulnerable diagnostics count");
@@ -429,6 +437,7 @@ for (const ruleId of [
   "AGENTCSP-RUNTIME-042",
   "AGENTCSP-RUNTIME-043",
   "AGENTCSP-RUNTIME-044",
+  "AGENTCSP-RUNTIME-045",
   "AGENTCSP-AUTOMATION-003",
   "AGENTCSP-RUNTIME-006",
   "AGENTCSP-MCP-006",

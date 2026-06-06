@@ -2516,6 +2516,11 @@ describe("scanner", () => {
       agent_safety_content_moderation_disabled: true,
       agent_safety_pii_redaction_disabled: true,
       agent_safety_secret_redaction_disabled: true,
+      agent_safety_fail_open: true,
+      agent_safety_default_allow: false,
+      agent_safety_timeout_allows: false,
+      agent_safety_error_allows: false,
+      agent_safety_monitor_only: true,
       agent_safety_untrusted_input: true,
       agent_safety_privileged_tool_authority: true,
       agent_safety_write_authority: true,
@@ -2535,6 +2540,7 @@ describe("scanner", () => {
       "secret_redaction",
       "tool_result_sanitization"
     ]);
+    expect(agentSafetyConfig?.metadata.agent_safety_fail_open_categories).toEqual(["monitor_only"]);
     expect(agentSafetyConfig?.metadata.agent_safety_tool_authority_categories).toEqual([
       "browser_action",
       "database_access",
@@ -2555,6 +2561,62 @@ describe("scanner", () => {
     expect(JSON.stringify(agentSafetyConfig)).not.toContain("support_db.update_customer_record");
     expect(JSON.stringify(agentSafetyConfig)).not.toContain("vault_secret_lookup.read_support_token");
     expect(JSON.stringify(agentSafetyConfig)).not.toContain("customer_email_address");
+    const failOpenSafetyConfig = surfaces.runtime_config.find((surface) => surface.path === "guardrails/fail-open-safety.yaml");
+    expect(failOpenSafetyConfig).toBeDefined();
+    expect(failOpenSafetyConfig).toMatchObject({
+      trust_level: "project",
+      external_reach: true,
+      secret_exposure: true,
+      side_effect: true,
+      reversible: false,
+      untrusted_to_privileged: true
+    });
+    expect(failOpenSafetyConfig?.metadata).toMatchObject({
+      content_redacted: true,
+      values_collected: false,
+      parsed_agent_safety_config: true,
+      agent_safety_framework: "openai",
+      agent_safety_controls_declared: true,
+      agent_safety_controls_disabled: false,
+      agent_safety_fail_open: true,
+      agent_safety_default_allow: true,
+      agent_safety_timeout_allows: true,
+      agent_safety_error_allows: true,
+      agent_safety_monitor_only: true,
+      agent_safety_untrusted_input: true,
+      agent_safety_privileged_tool_authority: true,
+      agent_safety_write_authority: true,
+      agent_safety_external_authority: true,
+      agent_safety_memory_write_authority: false,
+      agent_safety_secret_exposure: true,
+      agent_safety_sensitive_data: true,
+      agent_safety_pii_data: true,
+      agent_safety_approval_required: false
+    });
+    expect(failOpenSafetyConfig?.metadata.agent_safety_disabled_controls).toEqual([]);
+    expect(failOpenSafetyConfig?.metadata.agent_safety_fail_open_categories).toEqual([
+      "default_allow",
+      "error_allow",
+      "monitor_only",
+      "timeout_allow"
+    ]);
+    expect(failOpenSafetyConfig?.metadata.agent_safety_tool_authority_categories).toEqual([
+      "database_access",
+      "external_response",
+      "secret_manager_access",
+      "tool_call"
+    ]);
+    expect(failOpenSafetyConfig?.metadata.env_key_names).toEqual(["SAFETY_FALLBACK_TOKEN"]);
+    expect(failOpenSafetyConfig?.metadata.secret_ref_key_names).toEqual(["SAFETY_FALLBACK_TOKEN"]);
+    expect(failOpenSafetyConfig?.data_classes).toEqual(["confidential", "credential", "pii"]);
+    expect(failOpenSafetyConfig?.actions).toEqual(["call", "execute", "publish", "read", "send", "write"]);
+    expect(JSON.stringify(failOpenSafetyConfig)).not.toContain("${SAFETY_FALLBACK_TOKEN}");
+    expect(JSON.stringify(failOpenSafetyConfig)).not.toContain("customer-support-fail-open-guardrail");
+    expect(JSON.stringify(failOpenSafetyConfig)).not.toContain("customer_ticket_message");
+    expect(JSON.stringify(failOpenSafetyConfig)).not.toContain("support_db.update_customer_record");
+    expect(JSON.stringify(failOpenSafetyConfig)).not.toContain("failopen_customer_email");
+    expect(JSON.stringify(failOpenSafetyConfig)).not.toContain("failopen_account_number");
+    expect(JSON.stringify(failOpenSafetyConfig)).not.toContain("failopen_confidential_case_notes");
     const aiEvalHarnessConfig = surfaces.runtime_config.find((surface) => surface.path === "evals/live-redteam.yaml");
     expect(aiEvalHarnessConfig).toBeDefined();
     expect(aiEvalHarnessConfig).toMatchObject({
@@ -3104,6 +3166,58 @@ describe("scanner", () => {
     });
     expect(feedbackPipeline?.metadata.ai_feedback_capture_categories).toEqual(["feedback_label"]);
     expect(JSON.stringify(feedbackPipeline)).not.toContain("local_feedback");
+  });
+
+  it("keeps default-deny approval-gated safety policies scoped", async () => {
+    const files = await walkProject({
+      root_path: safeFixtureRoot,
+      output_path: ".agentcsp",
+      formats: ["json", "md"],
+      include_hidden: true,
+      include_logs: false,
+      max_file_size_bytes: 1024 * 1024,
+      max_files: 5000,
+      quiet: true
+    });
+    const surfaces = await detectSurfaces(files);
+    const safetyPolicy = surfaces.runtime_config.find((surface) => surface.path === "guardrails/default-deny-safety.yaml");
+
+    expect(safetyPolicy).toMatchObject({
+      trust_level: "project",
+      data_classes: ["confidential"],
+      actions: ["call", "execute", "read"],
+      side_effect: true,
+      external_reach: false,
+      secret_exposure: false,
+      reversible: true,
+      untrusted_to_privileged: false
+    });
+    expect(safetyPolicy?.metadata).toMatchObject({
+      parsed_agent_safety_config: true,
+      agent_safety_framework: "openai",
+      agent_safety_controls_declared: true,
+      agent_safety_controls_disabled: false,
+      agent_safety_fail_open: false,
+      agent_safety_default_allow: false,
+      agent_safety_timeout_allows: false,
+      agent_safety_error_allows: false,
+      agent_safety_monitor_only: false,
+      agent_safety_untrusted_input: false,
+      agent_safety_privileged_tool_authority: true,
+      agent_safety_write_authority: false,
+      agent_safety_external_authority: false,
+      agent_safety_memory_write_authority: false,
+      agent_safety_secret_exposure: false,
+      agent_safety_sensitive_data: true,
+      agent_safety_pii_data: false,
+      agent_safety_approval_required: true
+    });
+    expect(safetyPolicy?.metadata.agent_safety_disabled_controls).toEqual([]);
+    expect(safetyPolicy?.metadata.agent_safety_fail_open_categories).toEqual([]);
+    expect(safetyPolicy?.metadata.agent_safety_tool_authority_categories).toEqual(["tool_call"]);
+    expect(JSON.stringify(safetyPolicy)).not.toContain("internal-readonly-default-deny");
+    expect(JSON.stringify(safetyPolicy)).not.toContain("readonly_docs.search");
+    expect(JSON.stringify(safetyPolicy)).not.toContain("approved_internal_docs");
   });
 
   it("does not treat negated safety instructions as granted authority", async () => {

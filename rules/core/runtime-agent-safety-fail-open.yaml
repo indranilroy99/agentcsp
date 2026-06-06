@@ -1,0 +1,41 @@
+id: AGENTCSP-RUNTIME-045
+name: Agent safety policy fails open around privileged tools
+description: An agent safety, moderation, or guardrail policy defaults to allow, allows on timeout or error, or runs monitor-only while untrusted context can reach privileged tools without approval.
+category: agent_safety_fail_open
+severity: critical
+maps_to:
+  owasp:
+    - LLM01:2025 Prompt Injection
+    - LLM02:2025 Sensitive Information Disclosure
+    - LLM06:2025 Excessive Agency
+  mitre_atlas:
+    - AML.T0051 LLM Prompt Injection
+    - AML.T0057 Exfiltration via Cyber Means
+  nist_ai_rmf:
+    - MAP 5.1
+    - MEASURE 2.9
+    - MANAGE 2.4
+match:
+  object_type: runtime_config
+  where:
+    - field: metadata.parsed_agent_safety_config
+      op: equals
+      value: true
+    - field: metadata.agent_safety_fail_open
+      op: equals
+      value: true
+    - field: metadata.agent_safety_untrusted_input
+      op: equals
+      value: true
+    - field: metadata.agent_safety_privileged_tool_authority
+      op: equals
+      value: true
+    - field: metadata.agent_safety_approval_required
+      op: equals
+      value: false
+    - field: secret_exposure
+      op: equals
+      value: true
+recommendation:
+  control: require_approval
+  text: Change safety fallback behavior to deny or quarantine on default, timeout, parse error, and service error paths; disable monitor-only mode for privileged agents and require approval before fail-open safety decisions can reach write, external, memory, or credential-backed tools.
