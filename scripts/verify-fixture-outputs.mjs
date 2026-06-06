@@ -19,6 +19,7 @@ const leakPatterns = [
   /\$\{BROWSER_SESSION_TOKEN\}/u,
   /\$\{CREW_AGENT_TOKEN\}/u,
   /\$\{CUSTOMER_SUCCESS_SLACK_BOT_TOKEN\}/u,
+  /\$\{EMBEDDING_API_KEY\}/u,
   /\$\{EVAL_AGENT_TOKEN\}/u,
   /\$\{FALLBACK_MODEL_TOKEN\}/u,
   /\$\{FINE_TUNE_TOKEN\}/u,
@@ -206,14 +207,18 @@ const leakPatterns = [
   /unapproved-community-model/u,
   /cost_latency_fallback/u,
   /provider_error/u,
-  /rate_limit/u
+  /rate_limit/u,
+  /embedding-indexer/u,
+  /text-embedding-3-large/u,
+  /vector-index\.example\.invalid/u,
+  /customer-support-embeddings/u
 ];
 
 const vulnerable = await readScanOutput(vulnerableOutput, { sarifRequired: true });
 const safe = await readScanOutput(safeOutput, { sarifRequired: false });
 
-assertEqual(vulnerable.manifest.findings.length, 102, "vulnerable manifest finding count");
-assertEqual(vulnerable.findings.length, 102, "vulnerable findings.json count");
+assertEqual(vulnerable.manifest.findings.length, 104, "vulnerable manifest finding count");
+assertEqual(vulnerable.findings.length, 104, "vulnerable findings.json count");
 assertEqual(vulnerable.manifest.attack_paths.length, 15, "vulnerable attack path count");
 assertEqual(vulnerable.manifest.static_blast_radius?.critical_attack_paths, 15, "vulnerable critical attack path count");
 assertEqual(vulnerable.manifest.diagnostics.length, 0, "vulnerable diagnostics count");
@@ -246,6 +251,7 @@ for (const ruleId of [
   "AGENTCSP-RUNTIME-028",
   "AGENTCSP-RUNTIME-029",
   "AGENTCSP-RUNTIME-030",
+  "AGENTCSP-RUNTIME-031",
   "AGENTCSP-AUTOMATION-003",
   "AGENTCSP-RUNTIME-006",
   "AGENTCSP-MCP-006",

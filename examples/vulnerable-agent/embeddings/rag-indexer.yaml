@@ -1,0 +1,30 @@
+pipeline: embedding-indexer
+enabled: true
+provider: openai
+endpoint: https://api.openai.example.invalid/v1/embeddings
+model: text-embedding-3-large
+api_key: ${EMBEDDING_API_KEY}
+batch_indexing: true
+auto_sync: true
+sources:
+  - untrusted_customer_ticket
+  - retrieved_customer_context
+  - browser_tool_output
+  - support_memory_summary
+capture:
+  include_documents: true
+  include_prompts: true
+  include_tool_outputs: true
+  include_retrieval_context: true
+  include_memory: true
+  include_browser_context: true
+  include_pii: true
+  include_secrets: true
+redaction:
+  enabled: false
+destination:
+  vector_store: https://vector-index.example.invalid/upsert
+  namespace: customer-support-embeddings
+retention:
+  store_raw_chunks: true
+approval_required: false

@@ -70,6 +70,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-028")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-029")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-030")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-031")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-CICD-002")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-AUTOMATION-001")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-AUTOMATION-002")).toBe(true);
@@ -374,6 +375,42 @@ describe("rule engine", () => {
     expect(JSON.stringify(runtimeModelRouterFindings[0])).not.toContain("retrieved_customer_context");
     expect(JSON.stringify(runtimeModelRouterFindings[0])).not.toContain("browser_tool_output");
     expect(JSON.stringify(runtimeModelRouterFindings[0])).not.toContain("support_memory_summary");
+    const runtimeEmbeddingFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-RUNTIME-031");
+    expect(runtimeEmbeddingFindings).toHaveLength(1);
+    expect(runtimeEmbeddingFindings[0]?.matched_object.path).toBe("embeddings/rag-indexer.yaml");
+    expect(runtimeEmbeddingFindings[0]?.matched_object.metadata).toMatchObject({
+      parsed_ai_embedding_pipeline_config: true,
+      ai_embedding_provider: "openai",
+      ai_embedding_remote_provider: true,
+      ai_embedding_vector_write_enabled: true,
+      ai_embedding_sensitive_capture: true,
+      ai_embedding_secret_capture: true,
+      ai_embedding_redaction_disabled: true,
+      ai_embedding_untrusted_input: true,
+      ai_embedding_approval_required: false
+    });
+    expect(runtimeEmbeddingFindings[0]?.matched_object.metadata.ai_embedding_capture_categories).toEqual([
+      "browser_context",
+      "document_context",
+      "memory_context",
+      "pii_data",
+      "prompt_context",
+      "retrieval_context",
+      "secret_material",
+      "tool_output"
+    ]);
+    expect(runtimeEmbeddingFindings[0]?.severity).toBe("critical");
+    expect(runtimeEmbeddingFindings[0]?.confidence).toBe("very_high");
+    expect(runtimeEmbeddingFindings[0]?.recommended_control).toBe("redact");
+    expect(JSON.stringify(runtimeEmbeddingFindings[0])).not.toContain("${EMBEDDING_API_KEY}");
+    expect(JSON.stringify(runtimeEmbeddingFindings[0])).not.toContain("api.openai.example.invalid");
+    expect(JSON.stringify(runtimeEmbeddingFindings[0])).not.toContain("text-embedding-3-large");
+    expect(JSON.stringify(runtimeEmbeddingFindings[0])).not.toContain("vector-index.example.invalid");
+    expect(JSON.stringify(runtimeEmbeddingFindings[0])).not.toContain("customer-support-embeddings");
+    expect(JSON.stringify(runtimeEmbeddingFindings[0])).not.toContain("untrusted_customer_ticket");
+    expect(JSON.stringify(runtimeEmbeddingFindings[0])).not.toContain("retrieved_customer_context");
+    expect(JSON.stringify(runtimeEmbeddingFindings[0])).not.toContain("browser_tool_output");
+    expect(JSON.stringify(runtimeEmbeddingFindings[0])).not.toContain("support_memory_summary");
     const runtimeModelEndpointFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-RUNTIME-009");
     expect(runtimeModelEndpointFindings).toHaveLength(1);
     expect(runtimeModelEndpointFindings[0]?.matched_object.path).toBe("models/model-gateway.yaml");

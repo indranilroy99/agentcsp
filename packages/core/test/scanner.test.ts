@@ -35,6 +35,7 @@ describe("scanner", () => {
       "CONTEXT_COMPOSER_TOKEN",
       "CREW_AGENT_TOKEN",
       "CUSTOMER_SUCCESS_SLACK_BOT_TOKEN",
+      "EMBEDDING_API_KEY",
       "EVAL_AGENT_TOKEN",
       "FALLBACK_MODEL_TOKEN",
       "FINE_TUNE_TOKEN",
@@ -842,6 +843,72 @@ describe("scanner", () => {
     expect(JSON.stringify(modelRouterConfig)).not.toContain("retrieved_customer_context");
     expect(JSON.stringify(modelRouterConfig)).not.toContain("browser_tool_output");
     expect(JSON.stringify(modelRouterConfig)).not.toContain("support_memory_summary");
+    const embeddingPipelineConfig = surfaces.runtime_config.find(
+      (surface) => surface.path === "embeddings/rag-indexer.yaml"
+    );
+    expect(embeddingPipelineConfig).toBeDefined();
+    expect(embeddingPipelineConfig).toMatchObject({
+      trust_level: "third_party",
+      external_reach: true,
+      secret_exposure: true,
+      side_effect: true,
+      reversible: false,
+      untrusted_to_privileged: true
+    });
+    expect(embeddingPipelineConfig?.metadata).toMatchObject({
+      content_redacted: true,
+      values_collected: false,
+      parsed_ai_embedding_pipeline_config: true,
+      ai_embedding_provider: "openai",
+      ai_embedding_enabled: true,
+      ai_embedding_remote_provider: true,
+      ai_embedding_destination_redacted: true,
+      ai_embedding_vector_write_enabled: true,
+      ai_embedding_batch_indexing: true,
+      ai_embedding_auto_sync: true,
+      ai_embedding_document_capture: true,
+      ai_embedding_prompt_capture: true,
+      ai_embedding_tool_output_capture: true,
+      ai_embedding_retrieval_capture: true,
+      ai_embedding_memory_capture: true,
+      ai_embedding_browser_capture: true,
+      ai_embedding_secret_capture: true,
+      ai_embedding_sensitive_capture: true,
+      ai_embedding_pii_capture: true,
+      ai_embedding_untrusted_input: true,
+      ai_embedding_redaction_disabled: true,
+      ai_embedding_retention_enabled: true,
+      ai_embedding_approval_required: false
+    });
+    expect(embeddingPipelineConfig?.metadata.ai_embedding_destination_kinds).toEqual([
+      "configured_embedding_destination",
+      "http_embedding_endpoint",
+      "http_vector_store_destination",
+      "managed_embedding_provider"
+    ]);
+    expect(embeddingPipelineConfig?.metadata.ai_embedding_capture_categories).toEqual([
+      "browser_context",
+      "document_context",
+      "memory_context",
+      "pii_data",
+      "prompt_context",
+      "retrieval_context",
+      "secret_material",
+      "tool_output"
+    ]);
+    expect(embeddingPipelineConfig?.metadata.env_key_names).toEqual(["EMBEDDING_API_KEY"]);
+    expect(embeddingPipelineConfig?.metadata.secret_ref_key_names).toEqual(["EMBEDDING_API_KEY"]);
+    expect(embeddingPipelineConfig?.data_classes).toEqual(["confidential", "credential", "pii"]);
+    expect(embeddingPipelineConfig?.actions).toEqual(["call", "read", "remember", "send", "write"]);
+    expect(JSON.stringify(embeddingPipelineConfig)).not.toContain("${EMBEDDING_API_KEY}");
+    expect(JSON.stringify(embeddingPipelineConfig)).not.toContain("api.openai.example.invalid");
+    expect(JSON.stringify(embeddingPipelineConfig)).not.toContain("text-embedding-3-large");
+    expect(JSON.stringify(embeddingPipelineConfig)).not.toContain("vector-index.example.invalid");
+    expect(JSON.stringify(embeddingPipelineConfig)).not.toContain("customer-support-embeddings");
+    expect(JSON.stringify(embeddingPipelineConfig)).not.toContain("untrusted_customer_ticket");
+    expect(JSON.stringify(embeddingPipelineConfig)).not.toContain("retrieved_customer_context");
+    expect(JSON.stringify(embeddingPipelineConfig)).not.toContain("browser_tool_output");
+    expect(JSON.stringify(embeddingPipelineConfig)).not.toContain("support_memory_summary");
     const modelConfig = surfaces.runtime_config.find((surface) => surface.path === "models/model-gateway.yaml");
     expect(modelConfig).toBeDefined();
     expect(modelConfig).toMatchObject({

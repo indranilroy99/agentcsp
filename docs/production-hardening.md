@@ -58,6 +58,7 @@ A finding should be considered production-grade when it includes:
 - database connector metadata for credential-backed read/write/query authority without emitting hosts, connection strings, usernames, or table names
 - AI model endpoint metadata for prompt, tool-output, retrieval, and memory egress without emitting model gateway URLs or model names
 - AI model router and fallback metadata for sensitive context failover, provider-routing, redaction posture, output recording, and approval boundaries without emitting provider endpoints, model aliases, routing strategy values, source labels, or token placeholders
+- AI embedding and indexing metadata for third-party embedding egress, vector writes, source capture, redaction posture, retention, and approval boundaries without emitting embedding endpoints, model aliases, vector namespaces, source labels, document chunks, or token placeholders
 - AI telemetry export metadata for prompt, completion, tool-output, retrieval, and memory capture without emitting trace payloads or endpoints
 - artifact/output export metadata for generated prompts, completions, tool outputs, browser artifacts, retrieval context, memory, and secrets without emitting bucket names, endpoints, paths, data-scope labels, or artifact contents
 - webhook/callback egress metadata for model-generated payload delivery without emitting callback endpoints, payload bodies, source labels, data-field labels, or token placeholders
@@ -133,6 +134,7 @@ Examples:
 - database connector with credentials plus write/query authority plus sensitive data plus untrusted input
 - AI model endpoint with plaintext transport plus sensitive context plus credential reference
 - AI model router with automatic third-party fallback plus sensitive context, disabled redaction, untrusted input, credential reference, and no approval gate
+- AI embedding pipeline with third-party embedding, vector writes, sensitive capture, disabled redaction, untrusted input, credential reference, and no approval gate
 - AI telemetry remote export plus sensitive agent-context capture plus disabled redaction plus credential reference
 - artifact/output export plus public remote destination plus prompt, tool-output, browser, retrieval, memory, PII, or secret capture plus disabled redaction
 - webhook/callback egress plus model-generated or untrusted payloads, sensitive context, disabled redaction, credential reference, and no approval gate

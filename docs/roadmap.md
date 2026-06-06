@@ -33,6 +33,7 @@
 - Add AI training and fine-tuning dataset posture for prompts, completions, tool outputs, retrieval context, memory, browser context, PII, secrets, model-update authority, redaction posture, and approval boundaries.
 - Add LLM prompt, response, completion, and semantic cache posture for shared cache replay, sensitive capture, persistence, redaction posture, untrusted inputs, and approval boundaries.
 - Add AI model router and fallback posture for provider routing, automatic failover, sensitive context forwarding, redaction posture, output recording, and approval boundaries.
+- Add AI embedding and indexing posture for third-party embedding providers, vector upserts, sensitive source capture, redaction posture, retention, and approval boundaries.
 - Support allow, deny, approval, redaction, and quarantine recommendations.
 - Add SARIF output and CI integrations for code-scanning workflows.
 - Add high-confidence correlated findings that combine provenance, data class, authority, and side effects.

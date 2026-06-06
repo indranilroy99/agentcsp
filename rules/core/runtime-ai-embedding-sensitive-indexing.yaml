@@ -1,0 +1,47 @@
+id: AGENTCSP-RUNTIME-031
+name: AI embedding pipeline indexes sensitive unredacted context
+description: An AI embedding or indexing pipeline can send prompts, RAG documents, tool outputs, browser context, memory, PII, or secrets from untrusted sources to a third-party embedding provider and write the resulting vectors without approval.
+category: embedding_boundary
+severity: critical
+maps_to:
+  owasp:
+    - LLM01:2025 Prompt Injection
+    - LLM02:2025 Sensitive Information Disclosure
+    - LLM08:2025 Vector and Embedding Weaknesses
+  mitre_atlas:
+    - AML.T0051 LLM Prompt Injection
+    - AML.T0057 Exfiltration via Cyber Means
+  nist_ai_rmf:
+    - MAP 5.1
+    - MEASURE 2.9
+    - MANAGE 2.2
+match:
+  object_type: runtime_config
+  where:
+    - field: metadata.parsed_ai_embedding_pipeline_config
+      op: equals
+      value: true
+    - field: metadata.ai_embedding_remote_provider
+      op: equals
+      value: true
+    - field: metadata.ai_embedding_vector_write_enabled
+      op: equals
+      value: true
+    - field: metadata.ai_embedding_sensitive_capture
+      op: equals
+      value: true
+    - field: metadata.ai_embedding_redaction_disabled
+      op: equals
+      value: true
+    - field: metadata.ai_embedding_untrusted_input
+      op: equals
+      value: true
+    - field: metadata.ai_embedding_approval_required
+      op: equals
+      value: false
+    - field: secret_exposure
+      op: equals
+      value: true
+recommendation:
+  control: redact
+  text: Redact PII and secrets before embedding, isolate vector namespaces by trust boundary, disable automatic indexing for untrusted sources, and require approval before third-party embedding or vector upsert for sensitive agents.

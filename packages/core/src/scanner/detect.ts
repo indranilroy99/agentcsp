@@ -142,6 +142,11 @@ export async function detectSurfaces(files: WalkedFile[]): Promise<DetectedSurfa
       continue;
     }
 
+    if (isAiEmbeddingPipelineConfigPath(file.relativePath, basename)) {
+      detectAiEmbeddingPipelineConfig(file, text, surfaces);
+      continue;
+    }
+
     if (isAiModelEndpointConfigPath(file.relativePath, basename)) {
       detectAiModelEndpointConfig(file, text, surfaces);
       continue;
@@ -752,6 +757,75 @@ function detectAiModelRouterConfig(file: WalkedFile, text: string | undefined, s
         (posture.ai_model_router_sensitive_context ||
           posture.ai_model_router_secret_context ||
           posture.ai_model_router_redaction_disabled)) ||
+      isUntrustedToPrivileged(object)
+  });
+}
+
+function detectAiEmbeddingPipelineConfig(file: WalkedFile, text: string | undefined, surfaces: DetectedSurfaces): void {
+  const parsed = parseStructuredConfig(text ?? "", file.relativePath);
+  if (parsed.parseFailed) {
+    addDiagnostic(surfaces, file, {
+      parser: parsed.parser ?? "structured_config",
+      code: "AI_EMBEDDING_PIPELINE_CONFIG_PARSE_FAILED",
+      reason: "AI embedding or indexing pipeline configuration could not be parsed. Raw content was redacted."
+    });
+  }
+
+  const posture = classifyAiEmbeddingPipelineConfig(parsed.value, file.relativePath);
+  const actions = new Set<ActionType>(["call", "read"]);
+  if (posture.ai_embedding_remote_provider) actions.add("send");
+  if (posture.ai_embedding_vector_write_enabled || posture.ai_embedding_auto_sync) actions.add("write");
+  if (posture.ai_embedding_vector_write_enabled || posture.ai_embedding_retention_enabled) actions.add("remember");
+
+  const dataClasses = new Set<SurfaceObject["data_classes"][number]>(["unknown"]);
+  if (
+    posture.ai_embedding_secret_capture ||
+    posture.env_key_names.some(isCredentialLikeKeyName) ||
+    posture.secret_ref_key_names.length > 0
+  ) {
+    dataClasses.add("credential");
+  }
+  if (posture.ai_embedding_sensitive_capture || posture.ai_embedding_untrusted_input) dataClasses.add("confidential");
+  if (posture.ai_embedding_pii_capture) dataClasses.add("pii");
+  if (dataClasses.size > 1) dataClasses.delete("unknown");
+
+  const object = createSurfaceObject({
+    type: "runtime_config",
+    name: path.basename(file.relativePath),
+    path: file.relativePath,
+    trust_level: posture.ai_embedding_remote_provider ? "third_party" : inferTrustLevel(file.relativePath),
+    data_classes: uniqueDataClasses([...dataClasses] as SurfaceObject["data_classes"]),
+    actions: uniqueActions([...actions]),
+    side_effect:
+      posture.ai_embedding_enabled ||
+      posture.ai_embedding_remote_provider ||
+      posture.ai_embedding_vector_write_enabled ||
+      posture.ai_embedding_auto_sync ||
+      posture.ai_embedding_retention_enabled,
+    reversible: !posture.ai_embedding_remote_provider && !posture.ai_embedding_vector_write_enabled,
+    external_reach: posture.ai_embedding_remote_provider,
+    secret_exposure:
+      posture.ai_embedding_secret_capture ||
+      posture.env_key_names.some(isCredentialLikeKeyName) ||
+      posture.secret_ref_key_names.length > 0,
+    reason: "AI embedding or indexing pipeline configuration discovered as sensitive text embedding egress posture.",
+    metadata: {
+      content_redacted: true,
+      values_collected: false,
+      parsed_ai_embedding_pipeline_config: Boolean(parsed.value) && !parsed.parseFailed,
+      parse_error: parsed.parseFailed,
+      ...posture
+    }
+  });
+  surfaces.runtime_config.push({
+    ...object,
+    untrusted_to_privileged:
+      (posture.ai_embedding_untrusted_input &&
+        posture.ai_embedding_remote_provider &&
+        posture.ai_embedding_vector_write_enabled &&
+        (posture.ai_embedding_sensitive_capture ||
+          posture.ai_embedding_secret_capture ||
+          posture.ai_embedding_redaction_disabled)) ||
       isUntrustedToPrivileged(object)
   });
 }
@@ -2236,6 +2310,27 @@ function isAiModelRouterConfigPath(relativePath: string, basename: string): bool
   return routerName || (routerDirectory && configName);
 }
 
+function isAiEmbeddingPipelineConfigPath(relativePath: string, basename: string): boolean {
+  const normalized = relativePath.replaceAll("\\", "/").toLowerCase();
+  const lowerBase = basename.toLowerCase();
+  if (!/\.(json|ya?ml|toml)$/iu.test(lowerBase)) return false;
+  if (normalized.startsWith(".github/workflows/")) return false;
+  if (normalized.startsWith("rules/")) return false;
+  const segments = normalized.split("/").slice(0, -1);
+  const embeddingDirectory = segments.some((segment) =>
+    /^(embeddings?|embedding-pipeline|embedding_pipeline|embedders?|indexers?|indexing|vectorization|vectorize|document-index|document_index|rag-index|rag_index|ingestion)$/iu.test(
+      segment
+    )
+  );
+  const embeddingName = /(?:embedding[-_]?pipeline|embedding[-_]?index|embedding[-_]?sync|embedder|vectori[sz]e|document[-_]?index|rag[-_]?index|indexer|ingestion[-_]?pipeline)/iu.test(
+    lowerBase
+  );
+  const configName = /(?:config|settings|embedding|embed|index|indexer|ingest|sync|pipeline|vector|provider|destination)/iu.test(
+    lowerBase
+  );
+  return embeddingName || (embeddingDirectory && configName);
+}
+
 function isAgentDatabaseConnectorConfigPath(relativePath: string, basename: string): boolean {
   const normalized = relativePath.replaceAll("\\", "/").toLowerCase();
   const lowerBase = basename.toLowerCase();
@@ -3206,6 +3301,35 @@ interface AiModelRouterPosture {
   ai_model_router_redaction_disabled: boolean;
   ai_model_router_records_outputs: boolean;
   ai_model_router_approval_required: boolean;
+  env_key_names: string[];
+  secret_ref_key_names: string[];
+}
+
+interface AiEmbeddingPipelinePosture {
+  ai_embedding_fields: string[];
+  ai_embedding_provider?: string;
+  ai_embedding_enabled: boolean;
+  ai_embedding_remote_provider: boolean;
+  ai_embedding_destination_redacted: boolean;
+  ai_embedding_destination_count: number;
+  ai_embedding_destination_kinds: string[];
+  ai_embedding_vector_write_enabled: boolean;
+  ai_embedding_batch_indexing: boolean;
+  ai_embedding_auto_sync: boolean;
+  ai_embedding_capture_categories: string[];
+  ai_embedding_document_capture: boolean;
+  ai_embedding_prompt_capture: boolean;
+  ai_embedding_tool_output_capture: boolean;
+  ai_embedding_retrieval_capture: boolean;
+  ai_embedding_memory_capture: boolean;
+  ai_embedding_browser_capture: boolean;
+  ai_embedding_secret_capture: boolean;
+  ai_embedding_sensitive_capture: boolean;
+  ai_embedding_pii_capture: boolean;
+  ai_embedding_untrusted_input: boolean;
+  ai_embedding_redaction_disabled: boolean;
+  ai_embedding_retention_enabled: boolean;
+  ai_embedding_approval_required: boolean;
   env_key_names: string[];
   secret_ref_key_names: string[];
 }
@@ -6902,6 +7026,260 @@ function hasAiModelRouterApprovalRequiredSignal(fields: RuntimeField[]): boolean
 
 function isAiModelRouterSecurityField(fieldPath: string): boolean {
   return /provider|model|llm|routing|router|fallback|failover|gateway|proxy|endpoint|url|uri|host|api[_-]?key|token|secret|credential|auth|env|prompt|input|message|completion|output|tool|retrieval|rag|context|memory|history|pii|redact|sanitize|mask|record|log|retain|approval|source/iu.test(
+    fieldPath
+  );
+}
+
+function classifyAiEmbeddingPipelineConfig(value: unknown, filePath: string): AiEmbeddingPipelinePosture {
+  const fields = flattenRuntimeFields(value);
+  const stringValues = collectFieldStringValues(fields);
+  const provider = inferAiEmbeddingProvider([filePath, ...fields.map((field) => field.path), ...stringValues]);
+  const destination = classifyAiEmbeddingDestination(fields, provider);
+  const captureCategories = collectAiEmbeddingCaptureCategories(fields);
+  const envKeys = uniqueStrings([
+    ...collectEnvKeyNamesFromConfig(value).filter(isLikelyEnvKeyName),
+    ...extractEnvironmentReferenceKeys(stringValues)
+  ]);
+  const secretRefKeys = extractSecretReferenceKeys(stringValues);
+
+  return {
+    ai_embedding_fields: fields
+      .map((field) => field.path)
+      .filter((fieldPath) => isAiEmbeddingSecurityField(fieldPath))
+      .sort((a, b) => a.localeCompare(b)),
+    ai_embedding_provider: provider,
+    ai_embedding_enabled: Boolean(provider) || hasAiEmbeddingEnabledSignal(fields),
+    ai_embedding_remote_provider: destination.remote,
+    ai_embedding_destination_redacted: destination.destinationCount > 0,
+    ai_embedding_destination_count: destination.destinationCount,
+    ai_embedding_destination_kinds: destination.destinationKinds,
+    ai_embedding_vector_write_enabled: hasAiEmbeddingVectorWriteSignal(fields),
+    ai_embedding_batch_indexing: hasAiEmbeddingBatchIndexingSignal(fields),
+    ai_embedding_auto_sync: hasAiEmbeddingAutoSyncSignal(fields),
+    ai_embedding_capture_categories: captureCategories,
+    ai_embedding_document_capture: captureCategories.includes("document_context"),
+    ai_embedding_prompt_capture: captureCategories.includes("prompt_context"),
+    ai_embedding_tool_output_capture: captureCategories.includes("tool_output"),
+    ai_embedding_retrieval_capture: captureCategories.includes("retrieval_context"),
+    ai_embedding_memory_capture: captureCategories.includes("memory_context"),
+    ai_embedding_browser_capture: captureCategories.includes("browser_context"),
+    ai_embedding_secret_capture: captureCategories.includes("secret_material"),
+    ai_embedding_sensitive_capture:
+      captureCategories.some((category) =>
+        ["document_context", "prompt_context", "tool_output", "retrieval_context", "memory_context", "browser_context", "secret_material"].includes(
+          category
+        )
+      ) || hasAiEmbeddingSensitiveDataSignal(fields),
+    ai_embedding_pii_capture: captureCategories.includes("pii_data") || hasAiEmbeddingPiiDataSignal(fields),
+    ai_embedding_untrusted_input: hasAiEmbeddingUntrustedInputSignal(fields),
+    ai_embedding_redaction_disabled: hasAiEmbeddingRedactionDisabledSignal(fields),
+    ai_embedding_retention_enabled: hasAiEmbeddingRetentionSignal(fields),
+    ai_embedding_approval_required: hasAiEmbeddingApprovalRequiredSignal(fields),
+    env_key_names: envKeys,
+    secret_ref_key_names: secretRefKeys
+  };
+}
+
+function inferAiEmbeddingProvider(candidates: string[]): string | undefined {
+  const text = candidates.join(" ").toLowerCase();
+  const providers: Array<[string, RegExp]> = [
+    ["openai", /\bopenai\b|\bapi\.openai\.com\b|\btext-embedding\b/iu],
+    ["azure_openai", /\b(azure[-_\s]?openai|azure ai)\b/iu],
+    ["vertex_ai", /\b(vertex[-_\s]?ai|google[-_\s]?ai|gemini)\b/iu],
+    ["bedrock", /\b(aws[-_\s]?bedrock|bedrock|titan[-_\s]?embed)\b/iu],
+    ["cohere", /\bcohere\b/iu],
+    ["voyage", /\bvoyage(?:ai)?\b/iu],
+    ["jina", /\bjina\b/iu],
+    ["huggingface", /\b(huggingface|hugging face)\b/iu],
+    ["together", /\btogether\b/iu],
+    ["pinecone_inference", /\bpinecone\b[\s\S]{0,80}\b(embed|inference)\b/iu],
+    ["generic_embedding", /\b(embedding|embeddings|embedder|vectori[sz]e|document[_\s-]?index|rag[_\s-]?index)\b/iu]
+  ];
+  return providers.find(([, pattern]) => pattern.test(text))?.[0];
+}
+
+function classifyAiEmbeddingDestination(
+  fields: RuntimeField[],
+  provider: string | undefined
+): { remote: boolean; destinationCount: number; destinationKinds: string[] } {
+  const destinationKinds = new Set<string>();
+  const destinationRefs = new Set<string>();
+  const managedProviders = new Set([
+    "openai",
+    "azure_openai",
+    "vertex_ai",
+    "bedrock",
+    "cohere",
+    "voyage",
+    "jina",
+    "huggingface",
+    "together",
+    "pinecone_inference"
+  ]);
+  if (provider && managedProviders.has(provider)) {
+    destinationKinds.add("managed_embedding_provider");
+    destinationRefs.add(`provider:${provider}`);
+  }
+
+  for (const field of fields) {
+    const values = Array.isArray(field.value) ? field.value.map(String) : [String(field.value ?? "")];
+    for (const value of values) {
+      const remoteUrl = parseRemoteHttpUrl(value);
+      if (!remoteUrl) continue;
+      if (/(^|\.)(vector_store|vectorstore|index|indexes|upsert|destination|sink|store)$/iu.test(field.path)) {
+        destinationKinds.add("http_vector_store_destination");
+      } else {
+        destinationKinds.add("http_embedding_endpoint");
+      }
+      destinationRefs.add(`url:${field.path}:${remoteUrl.protocol}`);
+    }
+    if (/(^|\.)(endpoint|url|uri|host|provider|model|base_url|api_url|vector_store|index|destination|sink|store)$/iu.test(field.path)) {
+      const text = values.join(" ");
+      if (/\b(api|cloud|embedding|embeddings|embed|vector|index|upsert|provider|openai|azure|vertex|bedrock|cohere|voyage|jina|huggingface|pinecone)\b/iu.test(
+        text
+      )) {
+        destinationKinds.add("configured_embedding_destination");
+        destinationRefs.add(`configured:${field.path}`);
+      }
+    }
+  }
+
+  return {
+    remote: destinationRefs.size > 0,
+    destinationCount: destinationRefs.size,
+    destinationKinds: [...destinationKinds].sort((a, b) => a.localeCompare(b))
+  };
+}
+
+function hasAiEmbeddingEnabledSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /\b(embedding|embeddings|embedder|vectori[sz]e|document[_\s-]?index|rag[_\s-]?index|indexing[_\s-]?pipeline)\b/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    ) && truthyConfigValue(field.value)
+  );
+}
+
+function hasAiEmbeddingVectorWriteSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /(?:^|[_\W])(upsert|write|index|indexing|insert|ingest|sync|vector[_\s-]?store|destination|sink|store)(?:[_\W]|$)/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    ) && truthyConfigValue(field.value)
+  );
+}
+
+function hasAiEmbeddingBatchIndexingSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /(?:^|[_\W])(batch|bulk|chunk|chunks|chunking|pipeline|index[_\s-]?all|backfill)(?:[_\W]|$)/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    ) && truthyConfigValue(field.value)
+  );
+}
+
+function hasAiEmbeddingAutoSyncSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /(?:^|[_\W])(auto[_\s-]?sync|sync[_\s-]?on[_\s-]?startup|watch|scheduler|scheduled|continuous|on[_\s-]?change|auto[_\s-]?ingest)(?:[_\W]|$)/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    ) && truthyConfigValue(field.value)
+  );
+}
+
+function collectAiEmbeddingCaptureCategories(fields: RuntimeField[]): string[] {
+  const categories = new Set<string>();
+  for (const field of fields) {
+    const text = `${field.path} ${fieldValueText(field)}`;
+    if (!hasAiEmbeddingCaptureLikeSignal(field)) continue;
+    if (/(?:^|[_\W])(documents?|docs?|chunks?|pages?|files?|source[_\s-]?text|content)(?:[_\W]|$)/iu.test(text)) {
+      categories.add("document_context");
+    }
+    if (/(?:^|[_\W])(prompt|prompts|system|developer|message|conversation|chat|raw[_\s-]?input)(?:[_\W]|$)/iu.test(text)) {
+      categories.add("prompt_context");
+    }
+    if (/(?:^|[_\W])(tool[_\s-]?outputs?|function[_\s-]?outputs?|command[_\s-]?outputs?|mcp|observation)(?:[_\W]|$)/iu.test(
+      text
+    )) {
+      categories.add("tool_output");
+    }
+    if (/(?:^|[_\W])(retrieval[_\s-]?context|retrieval|retrieved|rag|vector|embedding)(?:[_\W]|$)/iu.test(text)) {
+      categories.add("retrieval_context");
+    }
+    if (/(?:^|[_\W])(memory|memories|history|transcript|session|state|summary)(?:[_\W]|$)/iu.test(text)) {
+      categories.add("memory_context");
+    }
+    if (/(?:^|[_\W])(browser|web[_\s-]?page|page[_\s-]?content|click|form|navigation)(?:[_\W]|$)/iu.test(text)) {
+      categories.add("browser_context");
+    }
+    if (/(?:^|[_\W])(secret|token|credential|api[_-]?key|password|authorization|vault)(?:[_\W]|$)/iu.test(text)) {
+      categories.add("secret_material");
+    }
+    if (/(?:^|[_\W])(pii|email|phone|address|ssn|passport|customer[_-]?id|account[_-]?number|account[_-]?id)(?:[_\W]|$)/iu.test(
+      text
+    )) {
+      categories.add("pii_data");
+    }
+  }
+  return [...categories].sort((a, b) => a.localeCompare(b));
+}
+
+function hasAiEmbeddingCaptureLikeSignal(field: RuntimeField): boolean {
+  const text = `${field.path} ${fieldValueText(field)}`;
+  if (/\b(exclude|drop|deny|redact|mask|scrub|sanitize)\b/iu.test(field.path) && !truthyConfigValue(field.value)) return false;
+  return /(?:^|[_\W])(include|capture|collect|embed|embedding|index|indexing|ingest|sync|source|inputs?|documents?|docs?|chunks?|raw|tool|memory|browser)(?:[_\W]|$)/iu.test(
+    text
+  ) && truthyConfigValue(field.value);
+}
+
+function hasAiEmbeddingSensitiveDataSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /\b(customer|client|ticket|support|internal|confidential|private|proprietary|sensitive|account|billing|payment|record|case|profile|note|incident)\b/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    ) && truthyConfigValue(field.value)
+  );
+}
+
+function hasAiEmbeddingPiiDataSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /(?:^|[_\W])(pii|email|phone|address|ssn|passport|dob|date[_\s-]?of[_\s-]?birth|customer[_-]?id|user[_-]?id|account[_-]?id|account[_-]?number)(?:[_\W]|$)/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    ) && truthyConfigValue(field.value)
+  );
+}
+
+function hasAiEmbeddingUntrustedInputSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /\b(untrusted|user|customer|client|ticket|support|issue|comment|message|prompt|retrieved|rag|document|email|chat|inbound|external|public|web[_-]?page|browser[_-]?output|tool[_-]?output)\b/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    )
+  );
+}
+
+function hasAiEmbeddingRedactionDisabledSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => {
+    const text = `${field.path} ${fieldValueText(field)}`.toLowerCase();
+    if (/(^|\.)(include_raw|raw|raw_chunks|raw_documents|source_text|passthrough)$/iu.test(field.path)) return truthyConfigValue(field.value);
+    if (/redact|redaction|sanitize|sanitiz|mask|scrub|pii_filter|secret_filter|data_loss_prevention|dlp/iu.test(field.path)) {
+      return disabledConfigValue(field.value) || /\b(disabled|false|off|none|raw|passthrough|bypass)\b/iu.test(text);
+    }
+    return false;
+  });
+}
+
+function hasAiEmbeddingRetentionSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /(?:^|[_\W])(retention|retain|persist|archive|history|store|save|keep|ttl|days|raw[_\s-]?chunks|raw[_\s-]?documents)(?:[_\W]|$)/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    ) && truthyConfigValue(field.value)
+  );
+}
+
+function hasAiEmbeddingApprovalRequiredSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /approval|required[_-]?approval|human[_-]?approval|confirm|confirmation|review|human[_-]?in[_-]?the[_-]?loop/iu.test(field.path) &&
+    truthyConfigValue(field.value)
+  );
+}
+
+function isAiEmbeddingSecurityField(fieldPath: string): boolean {
+  return /provider|embedding|embed|model|endpoint|url|uri|host|base[_-]?url|api[_-]?base|vector|index|upsert|destination|sink|store|sync|batch|chunk|document|source|capture|include|prompt|message|tool|retrieval|rag|memory|browser|raw|redact|sanitize|mask|pii|sensitive|secret|token|credential|auth|env|retention|approval/iu.test(
     fieldPath
   );
 }

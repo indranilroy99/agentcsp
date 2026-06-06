@@ -716,6 +716,42 @@ Model router metadata may include:
 
 Raw provider URLs, model aliases, fallback labels, routing strategy values, source labels, prompts, tool outputs, retrieval context, memory content, and secret placeholders are not emitted. Router framework names, redacted destination categories, fallback posture, context booleans, redaction posture, approval posture, and credential key names let rules detect sensitive third-party model failover without copying routed payloads or provider endpoints into the manifest.
 
+## AI Embedding Pipeline Boundary
+
+AI embedding, indexing, vectorization, document-index, and RAG-index pipeline configs are normalized into `runtime_config` objects when embedding-oriented directories or filenames are discovered.
+
+Embedding pipeline metadata may include:
+
+- `parsed_ai_embedding_pipeline_config`
+- `ai_embedding_fields`
+- `ai_embedding_provider`
+- `ai_embedding_enabled`
+- `ai_embedding_remote_provider`
+- `ai_embedding_destination_redacted`
+- `ai_embedding_destination_count`
+- `ai_embedding_destination_kinds`
+- `ai_embedding_vector_write_enabled`
+- `ai_embedding_batch_indexing`
+- `ai_embedding_auto_sync`
+- `ai_embedding_capture_categories`
+- `ai_embedding_document_capture`
+- `ai_embedding_prompt_capture`
+- `ai_embedding_tool_output_capture`
+- `ai_embedding_retrieval_capture`
+- `ai_embedding_memory_capture`
+- `ai_embedding_browser_capture`
+- `ai_embedding_secret_capture`
+- `ai_embedding_sensitive_capture`
+- `ai_embedding_pii_capture`
+- `ai_embedding_untrusted_input`
+- `ai_embedding_redaction_disabled`
+- `ai_embedding_retention_enabled`
+- `ai_embedding_approval_required`
+- `env_key_names`
+- `secret_ref_key_names`
+
+Raw embedding endpoints, model aliases, vector-store URLs, namespaces, source labels, document chunks, prompts, tool outputs, browser context, memory content, and secret placeholders are not emitted. Provider names, redacted destination categories, capture categories, sync/write posture, redaction posture, retention posture, approval posture, and credential key names let rules detect sensitive third-party embedding and vector indexing without copying indexed text into the manifest.
+
 ## Agent Artifact Export
 
 Agent artifact, output, report, screenshot, recording, and generated-output export configs are normalized into `runtime_config` objects when common artifact directories or export-oriented config filenames are discovered.

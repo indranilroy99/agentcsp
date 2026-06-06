@@ -811,6 +811,15 @@ The current iteration adds:
 - rule `AGENTCSP-RUNTIME-030` for model-router boundaries that combine third-party fallback, sensitive context, disabled redaction, untrusted input, credential exposure, and missing approval
 - scanner, rule, fixture verifier, and redaction coverage proving provider endpoints, model aliases, fallback labels, routing strategy values, source labels, context labels, and token placeholders stay redacted
 
+## AI Embedding/Indexing Boundary Pass
+
+The current iteration adds:
+
+- first-class redacted metadata for AI embedding, indexing, vectorization, document-index, and RAG-index pipelines
+- vulnerable fixture coverage for a third-party embedding pipeline that indexes documents, prompts, tool outputs, browser context, retrieval context, memory, PII, and secrets from untrusted customer sources into a vector destination with disabled redaction, raw-chunk retention, credentials, and no approval gate
+- rule `AGENTCSP-RUNTIME-031` for embedding boundaries that combine third-party embedding, vector writes, sensitive capture, disabled redaction, untrusted input, credential exposure, and missing approval
+- scanner, rule, fixture verifier, and redaction coverage proving embedding endpoints, model aliases, vector-store destinations, namespaces, source labels, document chunks, context labels, and token placeholders stay redacted
+
 ## Initial Build Recommendation
 
 Start with a CLI-first MVP before building the dashboard:
