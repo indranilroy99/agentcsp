@@ -865,6 +865,15 @@ The current iteration adds:
 - rule `AGENTCSP-MCP-008` for remote MCP servers that combine broad client roots, sampling or elicitation authority, external reach, and credential-backed access
 - scanner, rule, fixture verifier, and redaction coverage proving raw root URIs, root names, root paths, elicitation field names, and token placeholders stay redacted
 
+## Browser Extension/Profile Exposure Pass
+
+The current iteration adds:
+
+- first-class redacted metadata for browser extension/profile posture, including extension counts, extension categories, privileged extension permission signals, extension automation signals, password-manager/autofill posture, and download/upload path redaction
+- vulnerable fixture coverage for an authenticated Playwright-style browser profile that loads password-manager and wallet-like extension state while untrusted customer/retrieval context can drive broad-origin browser actions
+- rule `AGENTCSP-RUNTIME-033` for browser-agent sessions that combine authenticated state, untrusted navigation, broad origins, privileged extensions, autofill/password-manager exposure, and secret exposure
+- scanner, rule, fixture verifier, and redaction coverage proving raw extension names, extension IDs, extension paths, download/upload paths, browser profile paths, origins, and token placeholders stay redacted
+
 ## Initial Build Recommendation
 
 Start with a CLI-first MVP before building the dashboard:

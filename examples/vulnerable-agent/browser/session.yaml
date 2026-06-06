@@ -4,6 +4,29 @@ user_data_dir: .browser/support-profile
 storage_state: .auth/support-browser-state.json
 cookie_jar: .auth/customer-support-cookies.json
 remote_debugging_url: http://127.0.0.1:9222
+extensions:
+  - path: .browser/extensions/password-manager
+    name: Support Password Manager
+    permissions:
+      - tabs
+      - webRequest
+      - storage
+  - id: wallet-extension-prod
+    name: Customer Payment Wallet
+    permissions:
+      - activeTab
+      - nativeMessaging
+autofill:
+  enabled: true
+  password_manager: true
+  credit_cards: true
+downloads:
+  path: .browser/downloads/customer-exports
+  auto_accept: true
+uploads:
+  allow_file_chooser: true
+  paths:
+    - .browser/downloads/customer-exports/export.csv
 allowed_origins:
   - "*"
   - https://support.example.invalid

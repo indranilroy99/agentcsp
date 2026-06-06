@@ -23,6 +23,7 @@
 - Add MCP prompt and resource context inventory for model-visible server-supplied context that can steer privileged MCP authority.
 - Add MCP client-context posture for roots, sampling, and elicitation requests from remote or third-party servers.
 - Add runtime posture inventory for sandbox, approval, network, tool authority, and agent safety-control posture.
+- Add browser extension/profile posture for privileged extensions, password-manager/autofill exposure, and download/upload path redaction.
 - Add identity delegation posture for agent OAuth, OIDC, service-account, workload-identity, and token-broker authority.
 - Add cloud control-plane authority posture for agent IAM, compute, storage, secret, audit-log, IaC, and auto-remediation authority.
 - Add dynamic extension-loader posture for remote skills, plugins, tools, prompts, and MCP capabilities.

@@ -74,6 +74,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-030")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-031")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-032")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-033")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-CICD-002")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-AUTOMATION-001")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-AUTOMATION-002")).toBe(true);
@@ -610,6 +611,39 @@ describe("rule engine", () => {
     expect(JSON.stringify(runtimeBrowserDebugFindings[0])).not.toContain(".auth/support-browser-state.json");
     expect(JSON.stringify(runtimeBrowserDebugFindings[0])).not.toContain(".auth/customer-support-cookies.json");
     expect(JSON.stringify(runtimeBrowserDebugFindings[0])).not.toContain("http://127.0.0.1:9222");
+    const runtimeBrowserExtensionFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-RUNTIME-033");
+    expect(runtimeBrowserExtensionFindings).toHaveLength(1);
+    expect(runtimeBrowserExtensionFindings[0]?.matched_object.path).toBe("browser/session.yaml");
+    expect(runtimeBrowserExtensionFindings[0]?.matched_object.metadata).toMatchObject({
+      browser_provider: "playwright",
+      browser_authenticated_session: true,
+      browser_untrusted_navigation: true,
+      browser_extensions_redacted: true,
+      browser_extension_count: 2,
+      browser_extension_privileged_permissions: true,
+      browser_extension_automation: true,
+      browser_password_manager_enabled: true,
+      browser_autofill_sensitive_data: true,
+      browser_download_path_redacted: true,
+      browser_upload_path_redacted: true,
+      browser_broad_origin_access: true
+    });
+    expect(runtimeBrowserExtensionFindings[0]?.matched_object.metadata.browser_extension_kinds).toEqual([
+      "local_extension",
+      "password_manager",
+      "payment_wallet",
+      "privileged_browser_extension"
+    ]);
+    expect(runtimeBrowserExtensionFindings[0]?.severity).toBe("critical");
+    expect(runtimeBrowserExtensionFindings[0]?.confidence).toBe("very_high");
+    expect(runtimeBrowserExtensionFindings[0]?.recommended_control).toBe("quarantine");
+    expect(JSON.stringify(runtimeBrowserExtensionFindings[0])).not.toContain("${BROWSER_SESSION_TOKEN}");
+    expect(JSON.stringify(runtimeBrowserExtensionFindings[0])).not.toContain(".browser/extensions/password-manager");
+    expect(JSON.stringify(runtimeBrowserExtensionFindings[0])).not.toContain("Support Password Manager");
+    expect(JSON.stringify(runtimeBrowserExtensionFindings[0])).not.toContain("wallet-extension-prod");
+    expect(JSON.stringify(runtimeBrowserExtensionFindings[0])).not.toContain("Customer Payment Wallet");
+    expect(JSON.stringify(runtimeBrowserExtensionFindings[0])).not.toContain(".browser/downloads/customer-exports");
+    expect(JSON.stringify(runtimeBrowserExtensionFindings[0])).not.toContain("export.csv");
     const runtimeSaasConnectorFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-RUNTIME-012");
     expect(runtimeSaasConnectorFindings).toHaveLength(1);
     expect(runtimeSaasConnectorFindings[0]?.matched_object.path).toBe("connectors/slack-customer-success.yaml");

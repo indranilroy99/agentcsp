@@ -1114,13 +1114,14 @@ function detectBrowserSessionConfig(file: WalkedFile, text: string | undefined, 
   const dataClasses = new Set<SurfaceObject["data_classes"][number]>(["unknown"]);
   if (
     posture.browser_authenticated_session ||
+    posture.browser_password_manager_enabled ||
     posture.env_key_names.some(isCredentialLikeKeyName) ||
     posture.secret_ref_key_names.length > 0
   ) {
     dataClasses.add("credential");
   }
   if (posture.browser_sensitive_data) dataClasses.add("confidential");
-  if (posture.browser_pii_data) dataClasses.add("pii");
+  if (posture.browser_pii_data || posture.browser_autofill_sensitive_data) dataClasses.add("pii");
   if (dataClasses.size > 1) dataClasses.delete("unknown");
 
   const object = createSurfaceObject({
@@ -1135,6 +1136,7 @@ function detectBrowserSessionConfig(file: WalkedFile, text: string | undefined, 
     external_reach: posture.browser_network_remote,
     secret_exposure:
       posture.browser_authenticated_session ||
+      posture.browser_password_manager_enabled ||
       posture.env_key_names.some(isCredentialLikeKeyName) ||
       posture.secret_ref_key_names.length > 0,
     reason: "Browser session configuration discovered as authenticated agent browsing authority.",
@@ -2989,6 +2991,15 @@ interface BrowserSessionPosture {
   browser_untrusted_navigation: boolean;
   browser_click_or_form_authority: boolean;
   browser_download_upload_enabled: boolean;
+  browser_extensions_redacted: boolean;
+  browser_extension_count: number;
+  browser_extension_kinds: string[];
+  browser_extension_privileged_permissions: boolean;
+  browser_extension_automation: boolean;
+  browser_password_manager_enabled: boolean;
+  browser_autofill_sensitive_data: boolean;
+  browser_download_path_redacted: boolean;
+  browser_upload_path_redacted: boolean;
   browser_network_remote: boolean;
   browser_broad_origin_access: boolean;
   browser_destination_redacted: boolean;
@@ -3782,6 +3793,7 @@ function classifyBrowserSessionConfig(value: unknown, filePath: string): Browser
   const sessionStorage = hasBrowserSessionStorageSignal(fields);
   const persistentProfile = hasBrowserPersistentProfileSignal(fields);
   const authenticatedSession = cookieStorage || sessionStorage || hasBrowserAuthenticationSignal(fields);
+  const extensionKinds = collectBrowserExtensionKinds(fields);
 
   return {
     browser_fields: fields
@@ -3797,6 +3809,15 @@ function classifyBrowserSessionConfig(value: unknown, filePath: string): Browser
     browser_untrusted_navigation: hasBrowserUntrustedNavigationSignal(fields),
     browser_click_or_form_authority: hasBrowserClickOrFormAuthoritySignal(fields),
     browser_download_upload_enabled: hasBrowserDownloadUploadSignal(fields),
+    browser_extensions_redacted: hasBrowserExtensionSignal(fields),
+    browser_extension_count: countBrowserExtensions(fields),
+    browser_extension_kinds: extensionKinds,
+    browser_extension_privileged_permissions: hasBrowserPrivilegedExtensionPermissionSignal(fields),
+    browser_extension_automation: hasBrowserExtensionAutomationSignal(fields),
+    browser_password_manager_enabled: hasBrowserPasswordManagerSignal(fields),
+    browser_autofill_sensitive_data: hasBrowserAutofillSensitiveDataSignal(fields),
+    browser_download_path_redacted: hasBrowserDownloadPathSignal(fields),
+    browser_upload_path_redacted: hasBrowserUploadPathSignal(fields),
     browser_network_remote: destinations.remote,
     browser_broad_origin_access: destinations.broadOrigin,
     browser_destination_redacted: destinations.destinationCount > 0,
@@ -3931,9 +3952,84 @@ function hasBrowserDownloadUploadSignal(fields: RuntimeField[]): boolean {
   return fields.some((field) => /\b(upload|download|attach|screenshot|file[_-]?chooser|save[_-]?as)\b/iu.test(`${field.path} ${fieldValueText(field)}`));
 }
 
+function hasBrowserExtensionSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => /\b(extension|extensions|addon|add-on|plugin|crx|wallet|password[_-]?manager)\b/iu.test(`${field.path} ${fieldValueText(field)}`));
+}
+
+function countBrowserExtensions(fields: RuntimeField[]): number {
+  const entries = new Set<string>();
+  for (const field of fields) {
+    const match = field.path.match(/(?:^|\.)(?:extensions?|addons?|plugins?)\.(?:\d+|[^.]+)/iu);
+    if (match?.[0]) entries.add(match[0].replace(/^\./u, ""));
+  }
+  return entries.size;
+}
+
+function collectBrowserExtensionKinds(fields: RuntimeField[]): string[] {
+  const kinds = new Set<string>();
+  for (const field of fields) {
+    const text = `${field.path} ${fieldValueText(field)}`;
+    if (!/\b(extension|extensions|addon|add-on|plugin|crx|wallet|password[_-]?manager)\b/iu.test(text)) continue;
+    if (/password[_\s-]?manager|credential|secret|vault/iu.test(text)) kinds.add("password_manager");
+    if (/wallet|payment|credit[_\s-]?card|card/iu.test(text)) kinds.add("payment_wallet");
+    if (/path|load[_\s-]?extension|extension[_\s-]?dir|crx/iu.test(text)) kinds.add("local_extension");
+    if (/web[_\s-]?request|native[_\s-]?messaging|tabs|activeTab|cookies|storage|debugger|scripting/iu.test(text)) {
+      kinds.add("privileged_browser_extension");
+    }
+  }
+  return [...kinds].sort((a, b) => a.localeCompare(b));
+}
+
+function hasBrowserPrivilegedExtensionPermissionSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /(?:^|\.)(permissions?|extension_permissions|extensionPermissions)(?:\.|$)/iu.test(field.path) &&
+    /\b(webRequest|nativeMessaging|tabs|activeTab|cookies|storage|debugger|scripting|all_urls|webNavigation)\b/iu.test(
+      fieldValueText(field)
+    )
+  );
+}
+
+function hasBrowserExtensionAutomationSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /\b(load[_-]?extension|extension[_-]?dir|disable[_-]?extensions|extensions?|addons?|plugins?|crx|native[_-]?messaging|web[_-]?request)\b/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    )
+  );
+}
+
+function hasBrowserPasswordManagerSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /\b(password[_\s-]?manager|credential[_\s-]?store|browser[_\s-]?passwords?|autofill[_\s-]?passwords?|vault)\b/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    ) && truthyConfigValue(field.value)
+  );
+}
+
+function hasBrowserAutofillSensitiveDataSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /\b(autofill|auto[_-]?fill|credit[_\s-]?cards?|payment|wallet|address|phone|email|password[_\s-]?manager)\b/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    ) && truthyConfigValue(field.value)
+  );
+}
+
+function hasBrowserDownloadPathSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /\b(download[_-]?path|downloads?|download[_-]?dir|save[_-]?as|download)\b/iu.test(`${field.path} ${fieldValueText(field)}`) &&
+    /(?:path|dir|directory|file|\.csv|\.json|\.pdf|\/|\\)/iu.test(`${field.path} ${fieldValueText(field)}`)
+  );
+}
+
+function hasBrowserUploadPathSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /\b(upload[_-]?path|uploads?|file[_-]?chooser|attach|attachment)\b/iu.test(`${field.path} ${fieldValueText(field)}`) &&
+    /(?:path|dir|directory|file|\.csv|\.json|\.pdf|\/|\\)/iu.test(`${field.path} ${fieldValueText(field)}`)
+  );
+}
+
 function hasBrowserPathReferenceSignal(fields: RuntimeField[]): boolean {
   return fields.some((field) =>
-    /\b(user[_-]?data[_-]?dir|profile|profile[_-]?dir|storage[_-]?state|cookie[_-]?jar|cookies?|download[_-]?path|upload[_-]?path|auth[_-]?state|path|file)\b/iu.test(
+    /\b(user[_-]?data[_-]?dir|profile|profile[_-]?dir|storage[_-]?state|cookie[_-]?jar|cookies?|download[_-]?path|upload[_-]?path|extension[_-]?path|auth[_-]?state|path|file)\b/iu.test(
       `${field.path} ${fieldValueText(field)}`
     )
   );
@@ -3956,7 +4052,7 @@ function hasBrowserPiiDataSignal(fields: RuntimeField[]): boolean {
 }
 
 function isBrowserSessionSecurityField(fieldPath: string): boolean {
-  return /provider|browser|playwright|puppeteer|selenium|profile|user[_-]?data|storage|session|cookie|auth|token|credential|password|origin|domain|host|url|debug|cdp|devtools|navigation|action|click|form|submit|upload|download|source|input|data|scope|permission|approval/iu.test(
+  return /provider|browser|playwright|puppeteer|selenium|profile|user[_-]?data|storage|session|cookie|auth|token|credential|password|origin|domain|host|url|debug|cdp|devtools|extension|addon|plugin|autofill|wallet|payment|navigation|action|click|form|submit|upload|download|source|input|data|scope|permission|approval/iu.test(
     fieldPath
   );
 }

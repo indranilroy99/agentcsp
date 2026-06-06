@@ -1215,6 +1215,14 @@ describe("scanner", () => {
       browser_untrusted_navigation: true,
       browser_click_or_form_authority: true,
       browser_download_upload_enabled: true,
+      browser_extensions_redacted: true,
+      browser_extension_count: 2,
+      browser_extension_privileged_permissions: true,
+      browser_extension_automation: true,
+      browser_password_manager_enabled: true,
+      browser_autofill_sensitive_data: true,
+      browser_download_path_redacted: true,
+      browser_upload_path_redacted: true,
       browser_network_remote: true,
       browser_broad_origin_access: true,
       browser_destination_redacted: true,
@@ -1226,6 +1234,12 @@ describe("scanner", () => {
       "browser_endpoint",
       "wildcard_origin"
     ]);
+    expect(browserSessionConfig?.metadata.browser_extension_kinds).toEqual([
+      "local_extension",
+      "password_manager",
+      "payment_wallet",
+      "privileged_browser_extension"
+    ]);
     expect(browserSessionConfig?.metadata.env_key_names).toEqual(["BROWSER_SESSION_TOKEN"]);
     expect(browserSessionConfig?.metadata.secret_ref_key_names).toEqual(["BROWSER_SESSION_TOKEN"]);
     expect(browserSessionConfig?.data_classes).toEqual(["confidential", "credential", "pii"]);
@@ -1236,6 +1250,12 @@ describe("scanner", () => {
     expect(JSON.stringify(browserSessionConfig)).not.toContain(".auth/customer-support-cookies.json");
     expect(JSON.stringify(browserSessionConfig)).not.toContain("support.example.invalid");
     expect(JSON.stringify(browserSessionConfig)).not.toContain("browser_customer_email");
+    expect(JSON.stringify(browserSessionConfig)).not.toContain(".browser/extensions/password-manager");
+    expect(JSON.stringify(browserSessionConfig)).not.toContain("Support Password Manager");
+    expect(JSON.stringify(browserSessionConfig)).not.toContain("wallet-extension-prod");
+    expect(JSON.stringify(browserSessionConfig)).not.toContain("Customer Payment Wallet");
+    expect(JSON.stringify(browserSessionConfig)).not.toContain(".browser/downloads/customer-exports");
+    expect(JSON.stringify(browserSessionConfig)).not.toContain("export.csv");
     const cloudControlPlaneConfig = surfaces.runtime_config.find(
       (surface) => surface.path === "cloud/aws-admin-agent.yaml"
     );

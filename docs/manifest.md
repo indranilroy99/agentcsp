@@ -298,6 +298,15 @@ Browser session metadata may include:
 - `browser_untrusted_navigation`
 - `browser_click_or_form_authority`
 - `browser_download_upload_enabled`
+- `browser_extensions_redacted`
+- `browser_extension_count`
+- `browser_extension_kinds`
+- `browser_extension_privileged_permissions`
+- `browser_extension_automation`
+- `browser_password_manager_enabled`
+- `browser_autofill_sensitive_data`
+- `browser_download_path_redacted`
+- `browser_upload_path_redacted`
 - `browser_network_remote`
 - `browser_broad_origin_access`
 - `browser_destination_redacted`
@@ -309,7 +318,7 @@ Browser session metadata may include:
 - `env_key_names`
 - `secret_ref_key_names`
 
-Raw cookie files, storage-state files, profile paths, origins, browser endpoints, hostnames, and secret placeholders are not emitted. Provider names, broad-origin categories, authenticated-session booleans, untrusted-navigation signals, click/form authority, path-redaction flags, and credential key names let rules detect browser-agent account-action risk without copying browser state into the manifest.
+Raw cookie files, storage-state files, profile paths, extension names, extension IDs, extension paths, download/upload paths, origins, browser endpoints, hostnames, autofill labels, and secret placeholders are not emitted. Provider names, broad-origin categories, authenticated-session booleans, untrusted-navigation signals, click/form authority, extension counts and categories, autofill/password-manager posture, path-redaction flags, and credential key names let rules detect browser-agent account-action risk without copying browser state into the manifest.
 
 ## Inbound Agent Trigger Posture
 
