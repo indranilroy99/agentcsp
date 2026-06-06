@@ -996,6 +996,16 @@ The current iteration adds:
 - rule `AGENTCSP-RUNTIME-042` for hosted assistants that combine untrusted input, privileged hosted tools, sensitive context, automatic tool choice, and missing approval
 - scanner, rule, fixture verifier, and redaction coverage proving raw assistant IDs, model names, instructions, tool names, tool descriptions, file IDs, vector-store IDs, data labels, and token placeholders stay redacted
 
+## Realtime Agent Session Pass
+
+The current iteration adds:
+
+- first-class redacted metadata for realtime, voice, streaming, telephony, WebRTC, WebSocket, Twilio, LiveKit, and similar agent-session posture, including external caller/audio input, transcript and recording capture, redaction and sanitization controls, prompt-injection filtering, tool-authority categories, memory writes, sensitive/PII context, credential exposure, and approval posture
+- vulnerable fixture coverage for a support voice agent that accepts external callers, records and transcribes calls, disables transcript sanitization and prompt-injection filtering, writes memory, and can invoke function, MCP, secret, state-write, and external-response tools without approval
+- safe fixture coverage for an approval-gated read-only realtime session that keeps callers internal, disables recording, and avoids external writes
+- rule `AGENTCSP-RUNTIME-043` for realtime agents that combine external caller/audio input, privileged tool authority, sensitive context, disabled prompt-injection filtering, and missing approval
+- scanner, rule, fixture verifier, and redaction coverage proving raw endpoints, model names, tool names, caller labels, recording labels, data-scope labels, and token placeholders stay redacted
+
 ## Initial Build Recommendation
 
 Start with a CLI-first MVP before building the dashboard:

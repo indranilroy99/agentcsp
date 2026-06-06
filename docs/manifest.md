@@ -471,6 +471,41 @@ Hosted assistant metadata may include:
 
 Raw assistant IDs, assistant names, model names, instructions, tool names, tool descriptions, file IDs, vector-store IDs, thread/message content, data labels, and secret placeholders are not emitted. Provider names, redacted counts, hosted-tool categories, tool-choice posture, file/vector resource posture, guardrail posture, approval posture, and credential key names let rules detect hosted assistants that auto-route untrusted thread or customer context into privileged hosted tools without copying deployable assistant contents into evidence.
 
+## Realtime And Voice Agent Session Posture
+
+Realtime, voice, streaming, telephony, WebRTC, WebSocket, LiveKit, Twilio, and similar session configs are normalized into `runtime_config` objects when common realtime or voice-agent JSON, YAML, or TOML files are discovered.
+
+Realtime agent session metadata may include:
+
+- `parsed_realtime_agent_session_config`
+- `realtime_agent_fields`
+- `realtime_agent_provider`
+- `realtime_agent_session_detected`
+- `realtime_agent_destination_redacted`
+- `realtime_agent_destination_count`
+- `realtime_agent_destination_kinds`
+- `realtime_agent_external_caller`
+- `realtime_agent_voice_or_audio_input`
+- `realtime_agent_transcript_capture`
+- `realtime_agent_recording_enabled`
+- `realtime_agent_recording_redaction_disabled`
+- `realtime_agent_transcript_sanitization_disabled`
+- `realtime_agent_prompt_injection_filter_disabled`
+- `realtime_agent_tool_calls_enabled`
+- `realtime_agent_tool_authority_categories`
+- `realtime_agent_privileged_tool_authority`
+- `realtime_agent_write_authority`
+- `realtime_agent_external_response`
+- `realtime_agent_memory_write`
+- `realtime_agent_sensitive_context`
+- `realtime_agent_pii_context`
+- `realtime_agent_secret_exposure`
+- `realtime_agent_approval_required`
+- `env_key_names`
+- `secret_ref_key_names`
+
+Raw endpoints, room names, phone numbers, session IDs, model names, transcript labels, tool names, tool descriptions, recording labels, data-scope labels, and secret placeholders are not emitted. Provider names, destination categories, transcript and recording posture, prompt-injection filtering posture, tool-authority categories, approval posture, data-class booleans, and credential key names let rules detect external callers or raw audio being routed into privileged tools without copying call-session details into evidence.
+
 ## Agent Safety Control Posture
 
 Agent safety, guardrail, moderation, validation, sanitization, and redaction configs are normalized into `runtime_config` objects when common control configuration files are discovered.

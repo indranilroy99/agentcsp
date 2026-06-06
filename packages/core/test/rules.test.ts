@@ -85,6 +85,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-040")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-041")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-042")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-043")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-CICD-002")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-AUTOMATION-001")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-AUTOMATION-002")).toBe(true);
@@ -1200,6 +1201,53 @@ describe("rule engine", () => {
     expect(JSON.stringify(runtimeHostedAssistantFindings[0])).not.toContain("file_support_private_case_notes");
     expect(JSON.stringify(runtimeHostedAssistantFindings[0])).not.toContain("vs_customer_support_private");
     expect(JSON.stringify(runtimeHostedAssistantFindings[0])).not.toContain("customer_email_address");
+    const runtimeRealtimeAgentFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-RUNTIME-043");
+    expect(runtimeRealtimeAgentFindings).toHaveLength(1);
+    expect(runtimeRealtimeAgentFindings[0]?.matched_object.path).toBe("realtime/support-voice-agent.yaml");
+    expect(runtimeRealtimeAgentFindings[0]?.matched_object.metadata).toMatchObject({
+      parsed_realtime_agent_session_config: true,
+      realtime_agent_provider: "openai_realtime",
+      realtime_agent_external_caller: true,
+      realtime_agent_voice_or_audio_input: true,
+      realtime_agent_transcript_capture: true,
+      realtime_agent_recording_enabled: true,
+      realtime_agent_recording_redaction_disabled: true,
+      realtime_agent_transcript_sanitization_disabled: true,
+      realtime_agent_prompt_injection_filter_disabled: true,
+      realtime_agent_tool_calls_enabled: true,
+      realtime_agent_privileged_tool_authority: true,
+      realtime_agent_write_authority: true,
+      realtime_agent_external_response: true,
+      realtime_agent_memory_write: true,
+      realtime_agent_sensitive_context: true,
+      realtime_agent_pii_context: true,
+      realtime_agent_secret_exposure: true,
+      realtime_agent_approval_required: false
+    });
+    expect(runtimeRealtimeAgentFindings[0]?.matched_object.metadata.realtime_agent_destination_kinds).toEqual([
+      "realtime_provider",
+      "telephony_provider",
+      "websocket_endpoint"
+    ]);
+    expect(runtimeRealtimeAgentFindings[0]?.matched_object.metadata.realtime_agent_tool_authority_categories).toEqual([
+      "external_response",
+      "memory_write",
+      "secret_manager_access",
+      "state_write",
+      "tool_call"
+    ]);
+    expect(runtimeRealtimeAgentFindings[0]?.severity).toBe("critical");
+    expect(runtimeRealtimeAgentFindings[0]?.confidence).toBe("very_high");
+    expect(runtimeRealtimeAgentFindings[0]?.recommended_control).toBe("require_approval");
+    expect(JSON.stringify(runtimeRealtimeAgentFindings[0])).not.toContain("${REALTIME_AGENT_TOKEN}");
+    expect(JSON.stringify(runtimeRealtimeAgentFindings[0])).not.toContain("${TWILIO_AUTH_TOKEN}");
+    expect(JSON.stringify(runtimeRealtimeAgentFindings[0])).not.toContain("realtime.agentcsp-demo.example.invalid");
+    expect(JSON.stringify(runtimeRealtimeAgentFindings[0])).not.toContain("gpt-4o-realtime-preview");
+    expect(JSON.stringify(runtimeRealtimeAgentFindings[0])).not.toContain("realtime_update_customer_record");
+    expect(JSON.stringify(runtimeRealtimeAgentFindings[0])).not.toContain("realtime_send_sms_reply");
+    expect(JSON.stringify(runtimeRealtimeAgentFindings[0])).not.toContain("realtime_secret_lookup");
+    expect(JSON.stringify(runtimeRealtimeAgentFindings[0])).not.toContain("pstn_customer_phone");
+    expect(JSON.stringify(runtimeRealtimeAgentFindings[0])).not.toContain("anonymous_support_caller");
     const runtimeAgentOrchestrationFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-RUNTIME-015");
     expect(runtimeAgentOrchestrationFindings).toHaveLength(1);
     expect(runtimeAgentOrchestrationFindings[0]?.matched_object.path).toBe("agents/support-crew.yaml");

@@ -247,6 +247,11 @@ export async function detectSurfaces(files: WalkedFile[]): Promise<DetectedSurfa
       continue;
     }
 
+    if (isRealtimeAgentSessionConfigPath(file.relativePath, basename)) {
+      detectRealtimeAgentSessionConfig(file, text, surfaces);
+      continue;
+    }
+
     if (isAgentOrchestrationConfigPath(file.relativePath, basename)) {
       detectAgentOrchestrationConfig(file, text, surfaces);
       continue;
@@ -1635,6 +1640,85 @@ function detectHostedAssistantConfig(file: WalkedFile, text: string | undefined,
         posture.hosted_assistant_sensitive_context &&
         posture.hosted_assistant_tool_choice_auto &&
         !posture.hosted_assistant_approval_required) ||
+      isUntrustedToPrivileged(object)
+  });
+}
+
+function detectRealtimeAgentSessionConfig(file: WalkedFile, text: string | undefined, surfaces: DetectedSurfaces): void {
+  const parsed = parseStructuredConfig(text ?? "", file.relativePath);
+  if (parsed.parseFailed) {
+    addDiagnostic(surfaces, file, {
+      parser: parsed.parser ?? "structured_config",
+      code: "REALTIME_AGENT_SESSION_CONFIG_PARSE_FAILED",
+      reason: "Realtime, voice, or streaming agent session configuration could not be parsed. Raw content was redacted."
+    });
+  }
+
+  const posture = classifyRealtimeAgentSessionConfig(parsed.value, file.relativePath);
+  const actions = new Set<ActionType>(["read", "call"]);
+  if (posture.realtime_agent_tool_calls_enabled) actions.add("execute");
+  if (posture.realtime_agent_write_authority) actions.add("write");
+  if (posture.realtime_agent_external_response || posture.realtime_agent_external_caller || posture.realtime_agent_destination_count > 0) {
+    actions.add("send");
+  }
+  if (posture.realtime_agent_external_response) actions.add("publish");
+  if (posture.realtime_agent_memory_write || posture.realtime_agent_transcript_capture || posture.realtime_agent_recording_enabled) {
+    actions.add("remember");
+  }
+
+  const dataClasses = new Set<SurfaceObject["data_classes"][number]>(["unknown"]);
+  if (
+    posture.realtime_agent_secret_exposure ||
+    posture.env_key_names.some(isCredentialLikeKeyName) ||
+    posture.secret_ref_key_names.length > 0
+  ) {
+    dataClasses.add("credential");
+  }
+  if (posture.realtime_agent_sensitive_context || posture.realtime_agent_recording_enabled || posture.realtime_agent_transcript_capture) {
+    dataClasses.add("confidential");
+  }
+  if (posture.realtime_agent_pii_context || posture.realtime_agent_external_caller || posture.realtime_agent_voice_or_audio_input) {
+    dataClasses.add("pii");
+  }
+  if (dataClasses.size > 1) dataClasses.delete("unknown");
+
+  const object = createSurfaceObject({
+    type: "runtime_config",
+    name: path.basename(file.relativePath),
+    path: file.relativePath,
+    trust_level: posture.realtime_agent_external_caller ? "third_party" : inferTrustLevel(file.relativePath),
+    data_classes: uniqueDataClasses([...dataClasses] as SurfaceObject["data_classes"]),
+    actions: uniqueActions([...actions]),
+    side_effect:
+      posture.realtime_agent_tool_calls_enabled ||
+      posture.realtime_agent_write_authority ||
+      posture.realtime_agent_external_response ||
+      posture.realtime_agent_memory_write ||
+      posture.realtime_agent_recording_enabled,
+    reversible: !posture.realtime_agent_write_authority && !posture.realtime_agent_external_response,
+    external_reach: posture.realtime_agent_external_caller || posture.realtime_agent_destination_count > 0 || posture.realtime_agent_external_response,
+    secret_exposure:
+      posture.realtime_agent_secret_exposure ||
+      posture.env_key_names.some(isCredentialLikeKeyName) ||
+      posture.secret_ref_key_names.length > 0,
+    reason: "Realtime, voice, or streaming agent session discovered as caller-to-model and caller-to-tool authority posture.",
+    metadata: {
+      content_redacted: true,
+      values_collected: false,
+      parsed_realtime_agent_session_config: Boolean(parsed.value) && !parsed.parseFailed,
+      parse_error: parsed.parseFailed,
+      ...posture
+    }
+  });
+  surfaces.runtime_config.push({
+    ...object,
+    untrusted_to_privileged:
+      (posture.realtime_agent_external_caller &&
+        posture.realtime_agent_voice_or_audio_input &&
+        posture.realtime_agent_tool_calls_enabled &&
+        posture.realtime_agent_privileged_tool_authority &&
+        (posture.realtime_agent_sensitive_context || posture.realtime_agent_pii_context) &&
+        !posture.realtime_agent_approval_required) ||
       isUntrustedToPrivileged(object)
   });
 }
@@ -3229,6 +3313,27 @@ function isHostedAssistantConfigPath(relativePath: string, basename: string): bo
   return assistantName || (assistantDirectory && configName) || (genericAgentDirectory && assistantName);
 }
 
+function isRealtimeAgentSessionConfigPath(relativePath: string, basename: string): boolean {
+  const normalized = relativePath.replaceAll("\\", "/").toLowerCase();
+  const lowerBase = basename.toLowerCase();
+  if (!/\.(json|ya?ml|toml)$/iu.test(lowerBase)) return false;
+  if (normalized.startsWith(".github/workflows/")) return false;
+  if (normalized.startsWith("rules/")) return false;
+  const segments = normalized.split("/").slice(0, -1);
+  const realtimeDirectory = segments.some((segment) =>
+    /^(realtime|real-time|real_time|voice|voices|voice-agents?|voice_agents?|calls?|call-center|call_center|telephony|twilio|livekit|webrtc|websocket|websockets|streaming|audio)$/iu.test(
+      segment
+    )
+  );
+  const realtimeName = /(?:realtime|real[-_]?time|voice[-_]?agent|call[-_]?agent|telephony[-_]?agent|livekit|twilio|webrtc|websocket|streaming[-_]?agent|audio[-_]?agent)/iu.test(
+    lowerBase
+  );
+  const configName = /(?:config|settings|session|sessions|agent|runtime|voice|call|telephony|audio|stream|websocket|webrtc|tools?|approval)/iu.test(
+    lowerBase
+  );
+  return realtimeName || (realtimeDirectory && configName);
+}
+
 function isAgentOrchestrationConfigPath(relativePath: string, basename: string): boolean {
   const normalized = relativePath.replaceAll("\\", "/").toLowerCase();
   const lowerBase = basename.toLowerCase();
@@ -4044,6 +4149,34 @@ interface HostedAssistantPosture {
   hosted_assistant_untrusted_input: boolean;
   hosted_assistant_guardrails_disabled: boolean;
   hosted_assistant_approval_required: boolean;
+  env_key_names: string[];
+  secret_ref_key_names: string[];
+}
+
+interface RealtimeAgentSessionPosture {
+  realtime_agent_fields: string[];
+  realtime_agent_provider?: string;
+  realtime_agent_session_detected: boolean;
+  realtime_agent_destination_redacted: boolean;
+  realtime_agent_destination_count: number;
+  realtime_agent_destination_kinds: string[];
+  realtime_agent_external_caller: boolean;
+  realtime_agent_voice_or_audio_input: boolean;
+  realtime_agent_transcript_capture: boolean;
+  realtime_agent_recording_enabled: boolean;
+  realtime_agent_recording_redaction_disabled: boolean;
+  realtime_agent_transcript_sanitization_disabled: boolean;
+  realtime_agent_prompt_injection_filter_disabled: boolean;
+  realtime_agent_tool_calls_enabled: boolean;
+  realtime_agent_tool_authority_categories: string[];
+  realtime_agent_privileged_tool_authority: boolean;
+  realtime_agent_write_authority: boolean;
+  realtime_agent_external_response: boolean;
+  realtime_agent_memory_write: boolean;
+  realtime_agent_sensitive_context: boolean;
+  realtime_agent_pii_context: boolean;
+  realtime_agent_secret_exposure: boolean;
+  realtime_agent_approval_required: boolean;
   env_key_names: string[];
   secret_ref_key_names: string[];
 }
@@ -6877,6 +7010,276 @@ function hasHostedAssistantApprovalRequiredSignal(fields: RuntimeField[]): boole
 
 function isHostedAssistantSecurityField(fieldPath: string): boolean {
   return /provider|assistant|agent|model|deployment|instructions?|prompt|developer|system|tools?|function|code[_-]?interpreter|file[_-]?search|web[_-]?search|computer|mcp|tool[_-]?resources|resources|attachments?|file[_-]?ids?|vector[_-]?store|knowledge|thread|message|input|customer|ticket|email|account|pii|sensitive|secret|token|credential|auth|api[_-]?key|approval|review|tool[_-]?choice|parallel|guardrail|safety|moderation|sanitize|redact|validation|output/iu.test(
+    fieldPath
+  );
+}
+
+function classifyRealtimeAgentSessionConfig(value: unknown, filePath: string): RealtimeAgentSessionPosture {
+  const fields = flattenRuntimeFields(value);
+  const stringValues = collectFieldStringValues(fields);
+  const provider = inferRealtimeAgentProvider([filePath, ...fields.map((field) => field.path), ...stringValues]);
+  const destinations = classifyRealtimeAgentDestinations(fields, provider);
+  const toolAuthorityCategories = collectRealtimeAgentToolAuthorityCategories(fields);
+  const toolCallsEnabled =
+    !hasRealtimeAgentToolCallsDisabledSignal(fields) && (toolAuthorityCategories.length > 0 || hasRealtimeAgentToolCallSignal(fields));
+  const envKeys = uniqueStrings([
+    ...collectEnvKeyNamesFromConfig(value).filter(isLikelyEnvKeyName),
+    ...extractEnvironmentReferenceKeys(stringValues)
+  ]);
+  const secretRefKeys = extractSecretReferenceKeys(stringValues);
+
+  return {
+    realtime_agent_fields: fields
+      .map((field) => field.path)
+      .filter((fieldPath) => isRealtimeAgentSecurityField(fieldPath))
+      .sort((a, b) => a.localeCompare(b)),
+    realtime_agent_provider: provider,
+    realtime_agent_session_detected: hasRealtimeAgentSessionSignal(fields, provider),
+    realtime_agent_destination_redacted: destinations.destinationCount > 0,
+    realtime_agent_destination_count: destinations.destinationCount,
+    realtime_agent_destination_kinds: destinations.destinationKinds,
+    realtime_agent_external_caller: hasRealtimeAgentExternalCallerSignal(fields, provider),
+    realtime_agent_voice_or_audio_input: hasRealtimeAgentVoiceOrAudioInputSignal(fields, provider),
+    realtime_agent_transcript_capture: hasRealtimeAgentTranscriptCaptureSignal(fields),
+    realtime_agent_recording_enabled: hasRealtimeAgentRecordingSignal(fields),
+    realtime_agent_recording_redaction_disabled: hasRealtimeAgentRecordingRedactionDisabledSignal(fields),
+    realtime_agent_transcript_sanitization_disabled: hasRealtimeAgentTranscriptSanitizationDisabledSignal(fields),
+    realtime_agent_prompt_injection_filter_disabled: hasRealtimeAgentPromptInjectionFilterDisabledSignal(fields),
+    realtime_agent_tool_calls_enabled: toolCallsEnabled,
+    realtime_agent_tool_authority_categories: toolAuthorityCategories,
+    realtime_agent_privileged_tool_authority: isRealtimeAgentPrivileged(toolAuthorityCategories),
+    realtime_agent_write_authority: hasRealtimeAgentWriteAuthoritySignal(fields, toolAuthorityCategories),
+    realtime_agent_external_response: hasRealtimeAgentExternalResponseSignal(fields, toolAuthorityCategories),
+    realtime_agent_memory_write: hasRealtimeAgentMemoryWriteSignal(fields, toolAuthorityCategories),
+    realtime_agent_sensitive_context: hasRealtimeAgentSensitiveContextSignal(fields),
+    realtime_agent_pii_context: hasRealtimeAgentPiiContextSignal(fields),
+    realtime_agent_secret_exposure: hasRealtimeAgentSecretSignal(fields) || envKeys.some(isCredentialLikeKeyName) || secretRefKeys.length > 0,
+    realtime_agent_approval_required: hasRealtimeAgentApprovalRequiredSignal(fields),
+    env_key_names: envKeys,
+    secret_ref_key_names: secretRefKeys
+  };
+}
+
+function inferRealtimeAgentProvider(candidates: string[]): string | undefined {
+  const text = candidates.join(" ").toLowerCase().replaceAll("_", " ").replaceAll("-", " ");
+  const providers: Array<[string, RegExp]> = [
+    ["azure_openai_realtime", /\b(azure openai realtime|aoai realtime)\b/iu],
+    ["openai_realtime", /\b(openai realtime|realtime api|responses realtime|gpt realtime|openai)\b/iu],
+    ["livekit", /\blivekit\b/iu],
+    ["twilio", /\btwilio\b/iu],
+    ["daily", /\bdaily\.co|daily\b/iu],
+    ["webrtc", /\bwebrtc|rtc\b/iu],
+    ["websocket", /\bwebsocket|web socket|wss:\/\/|ws:\/\//iu],
+    ["sip", /\b(sip|telephony|phone call|voice call)\b/iu]
+  ];
+  return providers.find(([, pattern]) => pattern.test(text))?.[0];
+}
+
+function hasRealtimeAgentSessionSignal(fields: RuntimeField[], provider: string | undefined): boolean {
+  if (provider !== undefined) return true;
+  return fields.some((field) =>
+    /\b(realtime|real\s?time|voice\s?agent|call\s?agent|audio\s?session|streaming\s?agent|webrtc|websocket|livekit|twilio)\b/iu.test(
+      realtimeSignalText(field)
+    )
+  );
+}
+
+function classifyRealtimeAgentDestinations(
+  fields: RuntimeField[],
+  provider: string | undefined
+): { destinationCount: number; destinationKinds: string[] } {
+  const kinds = new Set<string>();
+  const destinations = new Set<string>();
+  if (provider) kinds.add(provider.includes("twilio") || provider === "sip" ? "telephony_provider" : "realtime_provider");
+  for (const field of fields) {
+    const text = `${field.path} ${fieldValueText(field)}`;
+    if (/wss?:\/\//iu.test(text) || /\b(websocket|web[_\s-]?socket)\b/iu.test(text)) kinds.add("websocket_endpoint");
+    if (/https?:\/\//iu.test(text) || fieldStringValues(field).some(parseRemoteHttpUrl)) kinds.add("http_realtime_endpoint");
+    if (/\b(webrtc|rtc|sdp|ice[_\s-]?server|turn[_\s-]?server|stun)\b/iu.test(text)) kinds.add("webrtc_session");
+    if (/\b(twilio|sip|phone|pstn|call[_\s-]?sid|from_number|to_number|caller)\b/iu.test(text)) kinds.add("telephony_provider");
+    if (/\b(room|channel|participant|livekit|daily)\b/iu.test(text)) kinds.add("voice_room");
+    if (/\+?[0-9][0-9().\-\s]{6,}/u.test(text) && /\b(phone|caller|from|to|number)\b/iu.test(text)) kinds.add("phone_number");
+    if (kinds.size > 0 && /url|uri|endpoint|host|room|channel|phone|number|sip|ws|websocket|webrtc|livekit|twilio|daily/iu.test(field.path)) {
+      destinations.add(field.path);
+    }
+  }
+  return {
+    destinationCount: destinations.size,
+    destinationKinds: [...kinds].sort((a, b) => a.localeCompare(b))
+  };
+}
+
+function hasRealtimeAgentExternalCallerSignal(fields: RuntimeField[], provider: string | undefined): boolean {
+  if (provider && ["daily", "livekit", "sip", "twilio"].includes(provider)) return true;
+  return fields.some((field) =>
+    !hasRealtimeInternalOnlyCallerSignal(field) &&
+    /\b(external|public|anonymous|callers?|customer|client|phone|pstn|sip|twilio|inbound\s?call|incoming\s?call|web\s?visitor|participant)\b/iu.test(
+      realtimeSignalText(field)
+    )
+  );
+}
+
+function hasRealtimeInternalOnlyCallerSignal(field: RuntimeField): boolean {
+  return /\b(internal\s?callers?\s?only|internal\s?only|trusted\s?callers?\s?only|private\s?callers?\s?only)\b/iu.test(
+    realtimeSignalText(field)
+  ) && truthyConfigValue(field.value);
+}
+
+function hasRealtimeAgentVoiceOrAudioInputSignal(fields: RuntimeField[], provider: string | undefined): boolean {
+  if (provider && ["daily", "livekit", "openai_realtime", "sip", "twilio", "webrtc"].includes(provider)) return true;
+  return fields.some((field) =>
+    /\b(voice|audio|microphone|mic|call|phone|speech|transcription|transcribe|realtime|webrtc|websocket|streaming)\b/iu.test(
+      realtimeSignalText(field)
+    )
+  );
+}
+
+function hasRealtimeAgentTranscriptCaptureSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /\b(transcript|transcription|caption|conversation\s?log|call\s?log|summary)\b/iu.test(realtimeSignalText(field)) &&
+    truthyConfigValue(field.value)
+  );
+}
+
+function hasRealtimeAgentRecordingSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /\b(recording|record\s?audio|record\s?call|audio\s?archive|store\s?audio)\b/iu.test(realtimeSignalText(field)) &&
+    truthyConfigValue(field.value)
+  );
+}
+
+function hasRealtimeAgentRecordingRedactionDisabledSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => {
+    const text = realtimeSignalText(field);
+    return /\b(recording|audio|call)\b/iu.test(text) && /\b(redact|mask|sanitize|scrub|retention|privacy)\b/iu.test(text) && disabledConfigValue(field.value);
+  });
+}
+
+function hasRealtimeAgentTranscriptSanitizationDisabledSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => {
+    const text = realtimeSignalText(field);
+    return /\b(transcript|transcription|conversation|captions?)\b/iu.test(text) && /\b(sanitize|sanitiz|redact|mask|filter|scrub)\b/iu.test(text) && disabledConfigValue(field.value);
+  });
+}
+
+function hasRealtimeAgentPromptInjectionFilterDisabledSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => {
+    const text = realtimeSignalText(field);
+    if (!/\b(prompt\s+injection|jailbreak|instruction\s+override|safety|guardrail)\b/iu.test(text)) return false;
+    if (/(^|\.)(enabled|enforced|required|active)$/iu.test(field.path)) return disabledConfigValue(field.value);
+    return /\b(disabled|disable|off|none|bypass|skip|raw|passthrough|allow\s+all|monitor\s+only)\b/iu.test(text);
+  });
+}
+
+function realtimeSignalText(field: RuntimeField): string {
+  return `${field.path} ${fieldValueText(field)}`.replaceAll("_", " ").replaceAll("-", " ");
+}
+
+function collectRealtimeAgentToolAuthorityCategories(fields: RuntimeField[]): string[] {
+  const categories = new Set<string>();
+  for (const field of fields) {
+    const text = realtimeSignalText(field).toLowerCase();
+    if (/\b(tool|tools|function|function call|mcp|capability|action)\b/iu.test(text)) categories.add("tool_call");
+    if (/\b(database|db|sql|query|crm|support\s?db|warehouse)\b/iu.test(text)) categories.add("database_access");
+    if (/\b(slack|email|sms|message|webhook|ticket|jira|zendesk|reply|respond|send|post|publish)\b/iu.test(text)) {
+      categories.add("external_response");
+    }
+    if (/\b(browser|computer\s?use|click|form|navigate|screen)\b/iu.test(text)) categories.add("browser_action");
+    if (/(?:^|[_\W])(vault|secret|secrets|secret\s?manager|credential|api\s?key)(?:[_\W]|$)/iu.test(text)) {
+      categories.add("secret_manager_access");
+    }
+    if (/(?:^|[_\W])(memory|remember|persist|store|conversation\s?state|call\s?summary)(?:[_\W]|$)/iu.test(text)) {
+      categories.add("memory_write");
+    }
+    if (/\b(write|update|create|delete|close|assign|escalate|approve|refund|commit|push|merge)\b/iu.test(text)) {
+      categories.add("state_write");
+    }
+  }
+  return [...categories].sort((a, b) => a.localeCompare(b));
+}
+
+function hasRealtimeAgentToolCallSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /\b(tool\s?calls?|function\s?calls?|call\s?tools?|mcp|actions?|capabilities|tool\s?choice)\b/iu.test(realtimeSignalText(field)) &&
+    truthyConfigValue(field.value)
+  );
+}
+
+function hasRealtimeAgentToolCallsDisabledSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => {
+    const text = realtimeSignalText(field);
+    const fieldPath = field.path.replaceAll("_", " ").replaceAll("-", " ");
+    if (!/\b(tool|tools|tool choice|function call|mcp|actions|capabilities)\b/iu.test(text)) return false;
+    if (/\b(tool choice|mode|enabled|allow|allowed|auto|automatic)\b/iu.test(fieldPath)) {
+      return disabledConfigValue(field.value);
+    }
+    return /\b(no tools|tool choice none|tools disabled|disable tools|read only tools|readonly tools)\b/iu.test(text);
+  });
+}
+
+function isRealtimeAgentPrivileged(categories: string[]): boolean {
+  return categories.some((category) =>
+    ["browser_action", "database_access", "external_response", "secret_manager_access", "state_write", "tool_call"].includes(category)
+  );
+}
+
+function hasRealtimeAgentWriteAuthoritySignal(fields: RuntimeField[], categories: string[]): boolean {
+  return categories.some((category) => ["database_access", "external_response", "state_write"].includes(category)) ||
+    fields.some((field) =>
+      /\b(write|update|create|delete|reply|respond|send|post|publish|comment|close|assign|escalate|approve|refund)\b/iu.test(
+        realtimeSignalText(field)
+      )
+    );
+}
+
+function hasRealtimeAgentExternalResponseSignal(fields: RuntimeField[], categories: string[]): boolean {
+  return categories.includes("external_response") ||
+    fields.some((field) => /\b(reply|respond|send|post|publish|comment|email|slack|sms|message|webhook)\b/iu.test(realtimeSignalText(field)));
+}
+
+function hasRealtimeAgentMemoryWriteSignal(fields: RuntimeField[], categories: string[]): boolean {
+  return categories.includes("memory_write") ||
+    fields.some((field) =>
+      /(?:^|[_\W])(memory|remember|persist|store|conversation\s?state|call\s?summary|transcript\s?store)(?:[_\W]|$)/iu.test(
+        realtimeSignalText(field)
+      )
+    );
+}
+
+function hasRealtimeAgentSensitiveContextSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /\b(customer|client|ticket|support|internal|confidential|private|proprietary|sensitive|account|billing|payment|order|record|case|profile|note|incident|transcript|recording)\b/iu.test(
+      realtimeSignalText(field)
+    )
+  );
+}
+
+function hasRealtimeAgentPiiContextSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /(?:^|[_\W])(pii|email|phone|caller|address|ssn|passport|dob|date\s?of\s?birth|customer\s?id|user\s?id|account\s?id)(?:[_\W]|$)/iu.test(
+      realtimeSignalText(field)
+    )
+  );
+}
+
+function hasRealtimeAgentSecretSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /\b(secret|token|credential|api\s?key|password|vault|key\s?vault|authorization|bearer|twilio\s?auth)\b/iu.test(
+      realtimeSignalText(field)
+    )
+  );
+}
+
+function hasRealtimeAgentApprovalRequiredSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /\b(approval|required approval|human approval|confirm|confirmation|review|human in the loop|requires action)\b/iu.test(
+      field.path.replaceAll("_", " ").replaceAll("-", " ")
+    ) && truthyConfigValue(field.value)
+  );
+}
+
+function isRealtimeAgentSecurityField(fieldPath: string): boolean {
+  return /provider|realtime|real[_-]?time|voice|audio|call|phone|caller|participant|room|channel|session|stream|websocket|webrtc|twilio|livekit|daily|sip|transcript|recording|conversation|input|message|customer|ticket|email|account|pii|sensitive|secret|token|credential|auth|api[_-]?key|tools?|function|mcp|action|database|browser|memory|reply|respond|send|write|approval|review|guardrail|safety|prompt[_-]?injection|sanitize|redact|filter|moderation/iu.test(
     fieldPath
   );
 }

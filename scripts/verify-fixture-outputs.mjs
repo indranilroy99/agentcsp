@@ -39,11 +39,13 @@ const leakPatterns = [
   /\$\{MODEL_ROUTER_TOKEN\}/u,
   /\$\{OPENAI_API_KEY\}/u,
   /\$\{PROMPT_REGISTRY_TOKEN\}/u,
+  /\$\{REALTIME_AGENT_TOKEN\}/u,
   /\$\{SAFETY_RUNTIME_TOKEN\}/u,
   /\$\{SLACK_WEBHOOK_URL\}/u,
   /\$\{SUPPORT_DB_PASSWORD\}/u,
   /\$\{SUPPORT_DB_URL\}/u,
   /\$\{SUPPORT_INBOX_TOKEN\}/u,
+  /\$\{TWILIO_AUTH_TOKEN\}/u,
   /\$\{VAULT_AGENT_TOKEN\}/u,
   /Bash\(npm run deploy\)/u,
   /WebFetch\(domain:\*\)/u,
@@ -351,14 +353,26 @@ const leakPatterns = [
   /file_support_private_case_notes/u,
   /vs_customer_support_private/u,
   /approved-internal-model/u,
+  /realtime\.agentcsp-demo\.example\.invalid/u,
+  /gpt-4o-realtime-preview/u,
+  /realtime_update_customer_record/u,
+  /realtime_send_sms_reply/u,
+  /realtime_secret_lookup/u,
+  /pstn_customer_phone/u,
+  /anonymous_support_caller/u,
+  /support_voice_recordings_private/u,
+  /realtime_caller_phone_number/u,
+  /realtime_customer_account_id/u,
+  /confidential_live_support_notes/u,
+  /approved-realtime-model/u,
   /vs_readonly_docs/u
 ];
 
 const vulnerable = await readScanOutput(vulnerableOutput, { sarifRequired: true });
 const safe = await readScanOutput(safeOutput, { sarifRequired: false });
 
-assertEqual(vulnerable.manifest.findings.length, 129, "vulnerable manifest finding count");
-assertEqual(vulnerable.findings.length, 129, "vulnerable findings.json count");
+assertEqual(vulnerable.manifest.findings.length, 130, "vulnerable manifest finding count");
+assertEqual(vulnerable.findings.length, 130, "vulnerable findings.json count");
 assertEqual(vulnerable.manifest.attack_paths.length, 15, "vulnerable attack path count");
 assertEqual(vulnerable.manifest.static_blast_radius?.critical_attack_paths, 15, "vulnerable critical attack path count");
 assertEqual(vulnerable.manifest.diagnostics.length, 0, "vulnerable diagnostics count");
@@ -404,6 +418,7 @@ for (const ruleId of [
   "AGENTCSP-RUNTIME-040",
   "AGENTCSP-RUNTIME-041",
   "AGENTCSP-RUNTIME-042",
+  "AGENTCSP-RUNTIME-043",
   "AGENTCSP-AUTOMATION-003",
   "AGENTCSP-RUNTIME-006",
   "AGENTCSP-MCP-006",

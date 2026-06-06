@@ -29,6 +29,7 @@
 - Add MCP OAuth authorization posture for dynamic client registration, PKCE/state/resource-indicator controls, broad scopes, refresh-token storage, token forwarding, and untrusted server selection.
 - Add OpenAPI and Swagger tool-import posture for authenticated external API writes, user-controlled request schemas, sensitive data categories, and approval boundaries.
 - Add hosted assistant and deployable agent-definition posture for automatic tool choice, hosted code/file/vector/function resources, sensitive context, guardrail posture, and approval boundaries.
+- Add realtime and voice agent session posture for external callers, raw audio and transcript capture, recording redaction, prompt-injection filtering, privileged tool authority, and approval boundaries.
 - Add agent authorization-broker posture for model-selected tool grants, dynamic resource scopes, default-allow/fail-open decisions, audit posture, credential exposure, and approval boundaries.
 - Add runtime posture inventory for sandbox, approval, network, tool authority, and agent safety-control posture.
 - Add browser extension/profile posture for privileged extensions, password-manager/autofill exposure, and download/upload path redaction.

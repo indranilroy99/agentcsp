@@ -1,0 +1,36 @@
+provider: openai_realtime
+session:
+  model: gpt-4o-realtime-preview
+  endpoint: wss://realtime.agentcsp-demo.example.invalid/v1
+  external_callers:
+    - pstn_customer_phone
+    - anonymous_support_caller
+  input_audio: true
+  transcript:
+    enabled: true
+    sanitize: false
+    include_raw_user_audio_transcript: true
+  recording:
+    enabled: true
+    redact_pii: false
+    storage_label: support_voice_recordings_private
+  tools:
+    - type: function
+      name: realtime_update_customer_record
+      description: Update customer account and support case from live call transcript.
+    - type: function
+      name: realtime_send_sms_reply
+      description: Send an SMS follow-up to the caller.
+    - type: mcp
+      name: realtime_secret_lookup
+  tool_choice: auto
+  prompt_injection_filter: disabled
+  approval_required: false
+  data_scope:
+    - realtime_caller_phone_number
+    - realtime_customer_account_id
+    - confidential_live_support_notes
+  memory:
+    write_transcript_summary: true
+  credential_env: "${REALTIME_AGENT_TOKEN}"
+  twilio_auth_token_env: "${TWILIO_AUTH_TOKEN}"

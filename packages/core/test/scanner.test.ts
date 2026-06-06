@@ -2310,6 +2310,70 @@ describe("scanner", () => {
     expect(JSON.stringify(hostedAssistantConfig)).not.toContain("file_support_private_case_notes");
     expect(JSON.stringify(hostedAssistantConfig)).not.toContain("vs_customer_support_private");
     expect(JSON.stringify(hostedAssistantConfig)).not.toContain("customer_email_address");
+    const realtimeAgentConfig = surfaces.runtime_config.find((surface) => surface.path === "realtime/support-voice-agent.yaml");
+    expect(realtimeAgentConfig).toBeDefined();
+    expect(realtimeAgentConfig).toMatchObject({
+      trust_level: "third_party",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["call", "execute", "publish", "read", "remember", "send", "write"],
+      external_reach: true,
+      secret_exposure: true,
+      side_effect: true,
+      reversible: false,
+      untrusted_to_privileged: true
+    });
+    expect(realtimeAgentConfig?.metadata).toMatchObject({
+      content_redacted: true,
+      values_collected: false,
+      parsed_realtime_agent_session_config: true,
+      realtime_agent_provider: "openai_realtime",
+      realtime_agent_session_detected: true,
+      realtime_agent_destination_redacted: true,
+      realtime_agent_destination_count: 2,
+      realtime_agent_external_caller: true,
+      realtime_agent_voice_or_audio_input: true,
+      realtime_agent_transcript_capture: true,
+      realtime_agent_recording_enabled: true,
+      realtime_agent_recording_redaction_disabled: true,
+      realtime_agent_transcript_sanitization_disabled: true,
+      realtime_agent_prompt_injection_filter_disabled: true,
+      realtime_agent_tool_calls_enabled: true,
+      realtime_agent_privileged_tool_authority: true,
+      realtime_agent_write_authority: true,
+      realtime_agent_external_response: true,
+      realtime_agent_memory_write: true,
+      realtime_agent_sensitive_context: true,
+      realtime_agent_pii_context: true,
+      realtime_agent_secret_exposure: true,
+      realtime_agent_approval_required: false
+    });
+    expect(realtimeAgentConfig?.metadata.realtime_agent_destination_kinds).toEqual([
+      "realtime_provider",
+      "telephony_provider",
+      "websocket_endpoint"
+    ]);
+    expect(realtimeAgentConfig?.metadata.realtime_agent_tool_authority_categories).toEqual([
+      "external_response",
+      "memory_write",
+      "secret_manager_access",
+      "state_write",
+      "tool_call"
+    ]);
+    expect(realtimeAgentConfig?.metadata.env_key_names).toEqual(["REALTIME_AGENT_TOKEN", "TWILIO_AUTH_TOKEN"]);
+    expect(realtimeAgentConfig?.metadata.secret_ref_key_names).toEqual(["REALTIME_AGENT_TOKEN", "TWILIO_AUTH_TOKEN"]);
+    expect(JSON.stringify(realtimeAgentConfig)).not.toContain("${REALTIME_AGENT_TOKEN}");
+    expect(JSON.stringify(realtimeAgentConfig)).not.toContain("${TWILIO_AUTH_TOKEN}");
+    expect(JSON.stringify(realtimeAgentConfig)).not.toContain("realtime.agentcsp-demo.example.invalid");
+    expect(JSON.stringify(realtimeAgentConfig)).not.toContain("gpt-4o-realtime-preview");
+    expect(JSON.stringify(realtimeAgentConfig)).not.toContain("realtime_update_customer_record");
+    expect(JSON.stringify(realtimeAgentConfig)).not.toContain("realtime_send_sms_reply");
+    expect(JSON.stringify(realtimeAgentConfig)).not.toContain("realtime_secret_lookup");
+    expect(JSON.stringify(realtimeAgentConfig)).not.toContain("pstn_customer_phone");
+    expect(JSON.stringify(realtimeAgentConfig)).not.toContain("anonymous_support_caller");
+    expect(JSON.stringify(realtimeAgentConfig)).not.toContain("support_voice_recordings_private");
+    expect(JSON.stringify(realtimeAgentConfig)).not.toContain("realtime_caller_phone_number");
+    expect(JSON.stringify(realtimeAgentConfig)).not.toContain("realtime_customer_account_id");
+    expect(JSON.stringify(realtimeAgentConfig)).not.toContain("confidential_live_support_notes");
     const agentOrchestrationConfig = surfaces.runtime_config.find((surface) => surface.path === "agents/support-crew.yaml");
     expect(agentOrchestrationConfig).toBeDefined();
     expect(agentOrchestrationConfig).toMatchObject({
@@ -2880,6 +2944,50 @@ describe("scanner", () => {
       hosted_assistant_guardrails_disabled: false,
       hosted_assistant_approval_required: true
     });
+  });
+
+  it("keeps approval-gated read-only realtime agents scoped", async () => {
+    const files = await walkProject({
+      root_path: safeFixtureRoot,
+      output_path: ".agentcsp",
+      formats: ["json", "md"],
+      include_hidden: true,
+      include_logs: false,
+      max_file_size_bytes: 1024 * 1024,
+      max_files: 5000,
+      quiet: true
+    });
+    const surfaces = await detectSurfaces(files);
+    const realtimeAgent = surfaces.runtime_config.find((surface) => surface.path === "realtime/read-voice-agent.yaml");
+
+    expect(realtimeAgent).toMatchObject({
+      trust_level: "project",
+      actions: ["call", "read", "remember"],
+      side_effect: false,
+      external_reach: false,
+      secret_exposure: false,
+      reversible: true,
+      untrusted_to_privileged: false
+    });
+    expect(realtimeAgent?.metadata).toMatchObject({
+      parsed_realtime_agent_session_config: true,
+      realtime_agent_provider: "openai_realtime",
+      realtime_agent_session_detected: true,
+      realtime_agent_destination_redacted: false,
+      realtime_agent_destination_count: 0,
+      realtime_agent_external_caller: false,
+      realtime_agent_voice_or_audio_input: true,
+      realtime_agent_transcript_capture: true,
+      realtime_agent_recording_enabled: false,
+      realtime_agent_prompt_injection_filter_disabled: false,
+      realtime_agent_tool_calls_enabled: false,
+      realtime_agent_write_authority: false,
+      realtime_agent_external_response: false,
+      realtime_agent_memory_write: false,
+      realtime_agent_secret_exposure: false,
+      realtime_agent_approval_required: true
+    });
+    expect(JSON.stringify(realtimeAgent)).not.toContain("approved-realtime-model");
   });
 
   it("does not treat negated safety instructions as granted authority", async () => {

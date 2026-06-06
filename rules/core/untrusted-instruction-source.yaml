@@ -122,6 +122,9 @@ match:
     - field: metadata.parsed_hosted_assistant_config
       op: not_equals
       value: true
+    - field: metadata.parsed_realtime_agent_session_config
+      op: not_equals
+      value: true
     - field: metadata.parsed_openapi_tool_spec
       op: not_equals
       value: true

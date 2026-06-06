@@ -1,0 +1,15 @@
+provider: openai_realtime
+session:
+  model: approved-realtime-model
+  input_audio: true
+  internal_callers_only: true
+  transcript:
+    enabled: true
+    sanitize: true
+  recording:
+    enabled: false
+  tools:
+    - type: file_search
+  tool_choice: none
+  prompt_injection_filter: enabled
+  approval_required: true
