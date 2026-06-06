@@ -24,6 +24,7 @@ describe("scanner", () => {
     expect(envSurface).toBeDefined();
     expect(envSurface?.metadata.env_key_names).toEqual([
       "A2A_AGENT_TOKEN",
+      "A2A_FEDERATION_TOKEN",
       "AGENT_CONTAINER_TOKEN",
       "AGENT_DEPLOY_TOKEN",
       "AGENT_EXTENSION_TOKEN",
@@ -1354,6 +1355,60 @@ describe("scanner", () => {
     expect(JSON.stringify(agentExposureConfig)).not.toContain("support_db.update_customer_record");
     expect(JSON.stringify(agentExposureConfig)).not.toContain("a2a_customer_email");
     expect(JSON.stringify(agentExposureConfig)).not.toContain("confidential_a2a_case_notes");
+    const agentFederationConfig = surfaces.runtime_config.find((surface) => surface.path === "agent-federation/remote-agents.yaml");
+    expect(agentFederationConfig).toBeDefined();
+    expect(agentFederationConfig).toMatchObject({
+      trust_level: "third_party",
+      external_reach: true,
+      secret_exposure: true,
+      side_effect: true,
+      reversible: false,
+      untrusted_to_privileged: true
+    });
+    expect(agentFederationConfig?.metadata).toMatchObject({
+      content_redacted: true,
+      values_collected: false,
+      parsed_agent_federation_config: true,
+      agent_federation_provider: "a2a",
+      agent_federation_remote: true,
+      agent_federation_destination_redacted: true,
+      agent_federation_destination_count: 3,
+      agent_federation_agent_refs_redacted: true,
+      agent_federation_agent_ref_count: 2,
+      agent_federation_dynamic_discovery: true,
+      agent_federation_untrusted_selector: true,
+      agent_federation_auto_delegation_enabled: true,
+      agent_federation_context_forwarding_enabled: true,
+      agent_federation_sensitive_context_forwarding: true,
+      agent_federation_pii_context_forwarding: true,
+      agent_federation_secret_forwarding: true,
+      agent_federation_tool_result_forwarding: true,
+      agent_federation_memory_forwarding: true,
+      agent_federation_credential_forwarding: true,
+      agent_federation_signature_verification_disabled: true,
+      agent_federation_identity_verification_missing: true,
+      agent_federation_allowlist_missing: true,
+      agent_federation_approval_required: false
+    });
+    expect(agentFederationConfig?.metadata.agent_federation_destination_kinds).toEqual([
+      "agent_registry",
+      "remote_agent_card"
+    ]);
+    expect(agentFederationConfig?.metadata.env_key_names).toEqual(["A2A_FEDERATION_TOKEN"]);
+    expect(agentFederationConfig?.metadata.secret_ref_key_names).toEqual(["A2A_FEDERATION_TOKEN"]);
+    expect(agentFederationConfig?.data_classes).toEqual(["confidential", "credential", "pii", "secret"]);
+    expect(agentFederationConfig?.actions).toEqual(["call", "execute", "publish", "read", "remember", "send"]);
+    expect(JSON.stringify(agentFederationConfig)).not.toContain("${A2A_FEDERATION_TOKEN}");
+    expect(JSON.stringify(agentFederationConfig)).not.toContain("agents.agentcsp-demo.example.invalid");
+    expect(JSON.stringify(agentFederationConfig)).not.toContain("refunds.agentcsp-demo.example.invalid");
+    expect(JSON.stringify(agentFederationConfig)).not.toContain("partner-agent.agentcsp-demo.example.invalid");
+    expect(JSON.stringify(agentFederationConfig)).not.toContain("refund-case-agent");
+    expect(JSON.stringify(agentFederationConfig)).not.toContain("partner-remediation-agent");
+    expect(JSON.stringify(agentFederationConfig)).not.toContain("customer_requested_agent");
+    expect(JSON.stringify(agentFederationConfig)).not.toContain("a2a_federation_customer_email");
+    expect(JSON.stringify(agentFederationConfig)).not.toContain("confidential_federated_case_notes");
+    expect(JSON.stringify(agentFederationConfig)).not.toContain("support_db.update_customer_record");
+    expect(JSON.stringify(agentFederationConfig)).not.toContain("support_memory_summary");
     const browserSessionConfig = surfaces.runtime_config.find((surface) => surface.path === "browser/session.yaml");
     expect(browserSessionConfig).toBeDefined();
     expect(browserSessionConfig).toMatchObject({

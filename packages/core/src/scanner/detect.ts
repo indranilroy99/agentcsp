@@ -101,6 +101,11 @@ export async function detectSurfaces(files: WalkedFile[]): Promise<DetectedSurfa
       continue;
     }
 
+    if (isAgentFederationConfigPath(file.relativePath, basename)) {
+      detectAgentFederationConfig(file, text, surfaces);
+      continue;
+    }
+
     if (isAgentExposureConfigPath(file.relativePath, basename)) {
       detectAgentExposureConfig(file, text, surfaces);
       continue;
@@ -1268,6 +1273,76 @@ function detectAgentExposureConfig(file: WalkedFile, text: string | undefined, s
         posture.agent_exposure_tool_invocation_enabled &&
         posture.agent_exposure_privileged_authority &&
         !posture.agent_exposure_approval_required) ||
+      isUntrustedToPrivileged(object)
+  });
+}
+
+function detectAgentFederationConfig(file: WalkedFile, text: string | undefined, surfaces: DetectedSurfaces): void {
+  const parsed = parseStructuredConfig(text ?? "", file.relativePath);
+  if (parsed.parseFailed) {
+    addDiagnostic(surfaces, file, {
+      parser: parsed.parser ?? "structured_config",
+      code: "AGENT_FEDERATION_CONFIG_PARSE_FAILED",
+      reason: "Agent federation or remote-agent delegation configuration could not be parsed. Raw content was redacted."
+    });
+  }
+
+  const posture = classifyAgentFederationConfig(parsed.value, file.relativePath);
+  const actions = new Set<ActionType>(["call", "read"]);
+  if (posture.agent_federation_remote) actions.add("send");
+  if (posture.agent_federation_auto_delegation_enabled) actions.add("execute");
+  if (posture.agent_federation_context_forwarding_enabled) actions.add("publish");
+  if (posture.agent_federation_memory_forwarding) actions.add("remember");
+
+  const dataClasses = new Set<SurfaceObject["data_classes"][number]>(["unknown"]);
+  if (
+    posture.agent_federation_credential_forwarding ||
+    posture.env_key_names.some(isCredentialLikeKeyName) ||
+    posture.secret_ref_key_names.length > 0
+  ) {
+    dataClasses.add("credential");
+  }
+  if (posture.agent_federation_secret_forwarding) dataClasses.add("secret");
+  if (posture.agent_federation_sensitive_context_forwarding) dataClasses.add("confidential");
+  if (posture.agent_federation_pii_context_forwarding) dataClasses.add("pii");
+  if (dataClasses.size > 1) dataClasses.delete("unknown");
+
+  const object = createSurfaceObject({
+    type: "runtime_config",
+    name: path.basename(file.relativePath),
+    path: file.relativePath,
+    trust_level: posture.agent_federation_remote ? "third_party" : inferTrustLevel(file.relativePath),
+    data_classes: uniqueDataClasses([...dataClasses] as SurfaceObject["data_classes"]),
+    actions: uniqueActions([...actions]),
+    side_effect:
+      posture.agent_federation_auto_delegation_enabled ||
+      posture.agent_federation_context_forwarding_enabled ||
+      posture.agent_federation_memory_forwarding ||
+      posture.agent_federation_credential_forwarding,
+    reversible: !posture.agent_federation_context_forwarding_enabled && !posture.agent_federation_memory_forwarding,
+    external_reach: posture.agent_federation_remote,
+    secret_exposure:
+      posture.agent_federation_secret_forwarding ||
+      posture.agent_federation_credential_forwarding ||
+      posture.env_key_names.some(isCredentialLikeKeyName) ||
+      posture.secret_ref_key_names.length > 0,
+    reason: "Agent federation configuration discovered as outbound remote-agent delegation and context-forwarding posture.",
+    metadata: {
+      content_redacted: true,
+      values_collected: false,
+      parsed_agent_federation_config: Boolean(parsed.value) && !parsed.parseFailed,
+      parse_error: parsed.parseFailed,
+      ...posture
+    }
+  });
+  surfaces.runtime_config.push({
+    ...object,
+    untrusted_to_privileged:
+      (posture.agent_federation_remote &&
+        posture.agent_federation_auto_delegation_enabled &&
+        posture.agent_federation_untrusted_selector &&
+        posture.agent_federation_context_forwarding_enabled &&
+        !posture.agent_federation_approval_required) ||
       isUntrustedToPrivileged(object)
   });
 }
@@ -3047,6 +3122,27 @@ function isAgentExposureConfigPath(relativePath: string, basename: string): bool
   return exposureName || (exposureDirectory && configName);
 }
 
+function isAgentFederationConfigPath(relativePath: string, basename: string): boolean {
+  const normalized = relativePath.replaceAll("\\", "/").toLowerCase();
+  const lowerBase = basename.toLowerCase();
+  if (!/\.(json|ya?ml|toml)$/iu.test(lowerBase)) return false;
+  if (normalized.startsWith(".github/workflows/")) return false;
+  if (normalized.startsWith("rules/")) return false;
+  const segments = normalized.split("/").slice(0, -1);
+  const federationDirectory = segments.some((segment) =>
+    /^(agent-federation|agent_federation|agent-peers?|agent_peers?|remote-agents?|remote_agents?|a2a-clients?|a2a_clients?|agent-registry|agent_registry|agent-catalog|agent_catalog|agent-directory|agent_directory|agent-marketplace|agent_marketplace|peer-agents?|peer_agents?)$/iu.test(
+      segment
+    )
+  );
+  const federationName = /(?:agent[-_]?federation|remote[-_]?agents?|agent[-_]?peers?|peer[-_]?agents?|a2a[-_]?client|agent[-_]?registry|agent[-_]?catalog|agent[-_]?directory|agent[-_]?marketplace|agent[-_]?routing|agent[-_]?handoff)/iu.test(
+    lowerBase
+  );
+  const configName = /(?:config|settings|registry|catalog|directory|marketplace|agents?|peers?|federation|routing|handoff|delegation|client)/iu.test(
+    lowerBase
+  );
+  return federationName || (federationDirectory && configName);
+}
+
 function isAgentPromptRegistryConfigPath(relativePath: string, basename: string): boolean {
   const normalized = relativePath.replaceAll("\\", "/").toLowerCase();
   const lowerBase = basename.toLowerCase();
@@ -3275,6 +3371,33 @@ interface AgentExposurePosture {
   agent_exposure_pii_data: boolean;
   agent_exposure_rate_limit_missing: boolean;
   agent_exposure_approval_required: boolean;
+  env_key_names: string[];
+  secret_ref_key_names: string[];
+}
+
+interface AgentFederationPosture {
+  agent_federation_fields: string[];
+  agent_federation_provider?: string;
+  agent_federation_remote: boolean;
+  agent_federation_destination_redacted: boolean;
+  agent_federation_destination_count: number;
+  agent_federation_destination_kinds: string[];
+  agent_federation_agent_refs_redacted: boolean;
+  agent_federation_agent_ref_count: number;
+  agent_federation_dynamic_discovery: boolean;
+  agent_federation_untrusted_selector: boolean;
+  agent_federation_auto_delegation_enabled: boolean;
+  agent_federation_context_forwarding_enabled: boolean;
+  agent_federation_sensitive_context_forwarding: boolean;
+  agent_federation_pii_context_forwarding: boolean;
+  agent_federation_secret_forwarding: boolean;
+  agent_federation_tool_result_forwarding: boolean;
+  agent_federation_memory_forwarding: boolean;
+  agent_federation_credential_forwarding: boolean;
+  agent_federation_signature_verification_disabled: boolean;
+  agent_federation_identity_verification_missing: boolean;
+  agent_federation_allowlist_missing: boolean;
+  agent_federation_approval_required: boolean;
   env_key_names: string[];
   secret_ref_key_names: string[];
 }
@@ -4797,6 +4920,282 @@ function hasAgentExposureApprovalRequiredSignal(fields: RuntimeField[]): boolean
 
 function isAgentExposureSecurityField(fieldPath: string): boolean {
   return /provider|protocol|version|a2a|agent|card|discover|public|registry|catalog|marketplace|url|uri|endpoint|host|server|transport|jsonrpc|skill|capabilit|tool|mcp|function|browser|database|secret|memory|file|shell|command|auth|security|scheme|anonymous|oauth|oidc|jwt|bearer|token|credential|env|caller|external|partner|input|task|message|customer|ticket|email|account|sensitive|pii|rate|quota|throttle|approval/iu.test(
+    fieldPath
+  );
+}
+
+function classifyAgentFederationConfig(value: unknown, filePath: string): AgentFederationPosture {
+  const fields = flattenRuntimeFields(value);
+  const stringValues = collectFieldStringValues(fields);
+  const provider = inferAgentFederationProvider([filePath, ...fields.map((field) => field.path), ...stringValues]);
+  const destinations = classifyAgentFederationDestinations(fields, provider);
+  const agentRefCount = countAgentFederationRefs(value, fields);
+  const envKeys = uniqueStrings([
+    ...collectEnvKeyNamesFromConfig(value).filter(isLikelyEnvKeyName),
+    ...extractEnvironmentReferenceKeys(stringValues)
+  ]);
+  const secretRefKeys = extractSecretReferenceKeys(stringValues);
+  const credentialForwarding = hasAgentFederationCredentialForwardingSignal(fields) || envKeys.some(isCredentialLikeKeyName) || secretRefKeys.length > 0;
+
+  return {
+    agent_federation_fields: fields
+      .map((field) => field.path)
+      .filter((fieldPath) => isAgentFederationSecurityField(fieldPath))
+      .sort((a, b) => a.localeCompare(b)),
+    agent_federation_provider: provider,
+    agent_federation_remote: destinations.remote,
+    agent_federation_destination_redacted: destinations.destinationCount > 0,
+    agent_federation_destination_count: destinations.destinationCount,
+    agent_federation_destination_kinds: destinations.destinationKinds,
+    agent_federation_agent_refs_redacted: agentRefCount > 0,
+    agent_federation_agent_ref_count: agentRefCount,
+    agent_federation_dynamic_discovery: hasAgentFederationDynamicDiscoverySignal(fields, provider),
+    agent_federation_untrusted_selector: hasAgentFederationUntrustedSelectorSignal(fields),
+    agent_federation_auto_delegation_enabled: hasAgentFederationAutoDelegationSignal(fields),
+    agent_federation_context_forwarding_enabled: hasAgentFederationContextForwardingSignal(fields),
+    agent_federation_sensitive_context_forwarding: hasAgentFederationSensitiveContextSignal(fields),
+    agent_federation_pii_context_forwarding: hasAgentFederationPiiContextSignal(fields),
+    agent_federation_secret_forwarding: hasAgentFederationSecretForwardingSignal(fields),
+    agent_federation_tool_result_forwarding: hasAgentFederationToolResultForwardingSignal(fields),
+    agent_federation_memory_forwarding: hasAgentFederationMemoryForwardingSignal(fields),
+    agent_federation_credential_forwarding: credentialForwarding,
+    agent_federation_signature_verification_disabled: hasAgentFederationSignatureVerificationDisabledSignal(fields),
+    agent_federation_identity_verification_missing: hasAgentFederationIdentityVerificationMissingSignal(fields),
+    agent_federation_allowlist_missing: hasAgentFederationAllowlistMissingSignal(fields),
+    agent_federation_approval_required: hasAgentFederationApprovalRequiredSignal(fields),
+    env_key_names: envKeys,
+    secret_ref_key_names: secretRefKeys
+  };
+}
+
+function inferAgentFederationProvider(candidates: string[]): string | undefined {
+  const text = candidates.join(" ").toLowerCase();
+  const providers: Array<[string, RegExp]> = [
+    ["a2a", /\b(a2a|agent2agent|agent[-_\s]?to[-_\s]?agent)\b/iu],
+    ["agent_registry", /\b(agent[_\s-]?registry|agent[_\s-]?catalog|agent[_\s-]?directory|agent[_\s-]?marketplace)\b/iu],
+    ["agent_federation", /\b(agent[_\s-]?federation|remote[_\s-]?agents?|peer[_\s-]?agents?|agent[_\s-]?peers?)\b/iu]
+  ];
+  return providers.find(([, pattern]) => pattern.test(text))?.[0];
+}
+
+function classifyAgentFederationDestinations(
+  fields: RuntimeField[],
+  provider: string | undefined
+): { remote: boolean; destinationCount: number; destinationKinds: string[] } {
+  const destinationKinds = new Set<string>();
+  let destinationCount = 0;
+  if (provider === "agent_registry") {
+    destinationKinds.add("agent_registry");
+    destinationCount += 1;
+  }
+
+  for (const field of fields) {
+    const values = fieldStringValues(field);
+    let fieldMatchedDestination = false;
+    for (const value of values) {
+      const destination = parseAgentFederationDestination(value);
+      if (destination) {
+        destinationKinds.add(destination.kind);
+        destinationCount += 1;
+        fieldMatchedDestination = true;
+      }
+    }
+    if (
+      !fieldMatchedDestination &&
+      /(^|\.)(url|uri|endpoint|host|base_url|baseUrl|registry|catalog|directory|agent_card|agentCard|card_url|cardUrl)$/iu.test(field.path)
+    ) {
+      const text = values.join(" ");
+      if (looksLikeRemoteAgentFederationEndpoint(text)) {
+        destinationKinds.add("remote_agent_endpoint");
+        destinationCount += 1;
+      }
+    }
+  }
+
+  return {
+    remote: destinationCount > 0,
+    destinationCount,
+    destinationKinds: [...destinationKinds].sort((a, b) => a.localeCompare(b))
+  };
+}
+
+function parseAgentFederationDestination(value: string): { kind: string } | undefined {
+  try {
+    const parsed = new URL(value);
+    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return undefined;
+    if (isLocalHost(parsed.hostname.toLowerCase())) return undefined;
+    if (/\/\.well-known\/agent(?:-card)?\.json$/iu.test(parsed.pathname)) return { kind: "remote_agent_card" };
+    if (/\b(registry|catalog|directory|marketplace|discover|search)\b/iu.test(parsed.pathname)) return { kind: "agent_registry" };
+    if (/\b(a2a|agent|task|jsonrpc|json-rpc)\b/iu.test(parsed.pathname)) return { kind: "remote_agent_endpoint" };
+    return { kind: parsed.protocol === "http:" ? "plaintext_remote_agent_endpoint" : "remote_agent_endpoint" };
+  } catch {
+    return undefined;
+  }
+}
+
+function looksLikeRemoteAgentFederationEndpoint(value: string): boolean {
+  const trimmed = value.trim().toLowerCase();
+  if (!trimmed || trimmed.startsWith("${")) return false;
+  if (isLocalHost(trimmed)) return false;
+  return /\b(a2a|agent|registry|catalog|directory|marketplace|task|jsonrpc|json-rpc)\b/iu.test(trimmed) ||
+    /^[a-z0-9.-]+\.[a-z]{2,}(?::\d+)?$/iu.test(trimmed);
+}
+
+function countAgentFederationRefs(value: unknown, fields: RuntimeField[]): number {
+  const directCount = countAgentFederationCollectionEntries(value, new Set(["agents", "remote_agents", "peers", "agent_cards", "agent_refs"]));
+  if (directCount > 0) return directCount;
+
+  const prefixes = new Set<string>();
+  for (const field of fields) {
+    const match = field.path.match(/(?:^|\.)(agents?|remote_agents?|peers?|agent_cards?|agent_refs?)\.(\d+|[A-Za-z][\w-]*)/u);
+    if (match?.[1] && match[2]) prefixes.add(`${match[1]}.${match[2]}`);
+  }
+  return prefixes.size;
+}
+
+function countAgentFederationCollectionEntries(value: unknown, keys: Set<string>): number {
+  if (!value || typeof value !== "object") return 0;
+  let count = 0;
+  for (const [key, item] of Object.entries(value as Record<string, unknown>)) {
+    if (keys.has(key)) {
+      if (Array.isArray(item)) count += item.length;
+      else if (item && typeof item === "object") count += Object.keys(item as Record<string, unknown>).length;
+      else if (item !== undefined && item !== null) count += 1;
+      continue;
+    }
+    if (item && typeof item === "object") count += countAgentFederationCollectionEntries(item, keys);
+  }
+  return count;
+}
+
+function hasAgentFederationDynamicDiscoverySignal(fields: RuntimeField[], provider: string | undefined): boolean {
+  return provider === "agent_registry" || fields.some((field) =>
+    /\b(dynamic[_\s-]?discover|auto[_\s-]?discover|discover[_\s-]?agents?|registry|catalog|directory|marketplace|search[_\s-]?agents?|model[_\s-]?selected|select[_\s-]?agent)\b/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    ) && truthyConfigValue(field.value)
+  );
+}
+
+function hasAgentFederationUntrustedSelectorSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /(?:^|[_\W])(untrusted|user|customer|client|ticket|support|issue|comment|message|prompt|retrieved|rag|document|email|chat|inbound|external|browser[_\s-]?output|tool[_\s-]?output|model[_\s-]?selected|requested[_\s-]?agent)(?:[_\W]|$)/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    )
+  );
+}
+
+function hasAgentFederationAutoDelegationSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /\b(auto[_\s-]?(delegate|handoff|route|select|invoke)|delegate[_\s-]?without[_\s-]?approval|autonomous[_\s-]?delegation|task[_\s-]?routing|model[_\s-]?delegation)\b/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    ) && truthyConfigValue(field.value)
+  );
+}
+
+function hasAgentFederationContextForwardingSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /\b(forward|forwarding|share|send|include|relay|delegate)[_\s-]?(context|prompt|message|tool|memory|retrieval|rag|transcript|credentials?|headers?|tokens?)\b/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    ) || /(^|\.)(context|forward_context|forwardContext|shared_context|sharedContext|send_context|sendContext)(\.|$)/iu.test(field.path)
+  );
+}
+
+function hasAgentFederationSensitiveContextSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /\b(customer|client|ticket|support|internal|confidential|private|proprietary|sensitive|account|billing|payment|case|record|profile|note|incident|prompt|retrieval|rag|tool[_\s-]?output|browser[_\s-]?output|memory)\b/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    )
+  );
+}
+
+function hasAgentFederationPiiContextSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /(?:^|[_\W])(pii|email|phone|address|ssn|passport|dob|date[_\s-]?of[_\s-]?birth|customer[_-]?id|user[_-]?id|account[_-]?id)(?:[_\W]|$)/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    )
+  );
+}
+
+function hasAgentFederationSecretForwardingSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /\b(forward|share|send|include|relay|delegate|pass)[_\s-]?(secret|secrets|token|tokens|credential|credentials|auth|authorization|api[_\s-]?key|vault)\b/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    )
+  );
+}
+
+function hasAgentFederationToolResultForwardingSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /(?:^|[_\W])(tool[_\s-]?results?|tool[_\s-]?outputs?|tool[_\s-]?traces?|tool[_\s-]?responses?|browser[_\s-]?output|command[_\s-]?output|execution[_\s-]?result)(?:[_\W]|$)/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    )
+  );
+}
+
+function hasAgentFederationMemoryForwardingSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /(?:^|[_\W])(memory|memories|summary|summaries|history|transcript|session[_\s-]?state|long[_\s-]?term)(?:[_\W]|$)/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    )
+  );
+}
+
+function hasAgentFederationCredentialForwardingSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /\b(forward|share|send|include|relay|delegate|pass)[_\s-]?(headers?|authorization|auth|bearer|oauth|token|credential|api[_\s-]?key|cookie|session)\b/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    ) || /(^|\.)(headers?|auth|authorization|credentials?|tokens?|cookies?|session)(\.|$)/iu.test(field.path)
+  );
+}
+
+function hasAgentFederationSignatureVerificationDisabledSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => {
+    const text = `${field.path} ${fieldValueText(field)}`;
+    if (/\b(allow[_\s-]?unsigned|unsigned[_\s-]?allowed|skip[_\s-]?signature|signature[_\s-]?verification[_\s-]?disabled|no[_\s-]?signature)\b/iu.test(text)) {
+      return truthyConfigValue(field.value);
+    }
+    if (/\b(signature|signing|verify[_\s-]?signature|signature[_\s-]?verification|signed)\b/iu.test(field.path)) {
+      return disabledConfigValue(field.value);
+    }
+    return false;
+  });
+}
+
+function hasAgentFederationIdentityVerificationMissingSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => {
+    const text = `${field.path} ${fieldValueText(field)}`;
+    if (/\b(skip[_\s-]?identity|identity[_\s-]?verification[_\s-]?disabled|unverified[_\s-]?agents?|trust[_\s-]?any[_\s-]?agent|allow[_\s-]?unknown[_\s-]?agents?)\b/iu.test(text)) {
+      return truthyConfigValue(field.value);
+    }
+    if (/(?:^|[_\W])(identity|issuer|did|jwks|attestation|provenance|trust[_\s-]?anchor|verified[_\s-]?publisher)(?:[_\W]|$)/iu.test(field.path)) {
+      return disabledConfigValue(field.value);
+    }
+    return false;
+  });
+}
+
+function hasAgentFederationAllowlistMissingSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => {
+    const text = `${field.path} ${fieldValueText(field)}`;
+    if (/\b(allow[_\s-]?all|any[_\s-]?agent|unrestricted[_\s-]?agents?|no[_\s-]?allowlist|allowlist[_\s-]?disabled|trust[_\s-]?registry)\b/iu.test(text)) {
+      return truthyConfigValue(field.value);
+    }
+    if (/(?:^|[_\W])(allowlist|allowed[_\s-]?agents?|trusted[_\s-]?agents?|deny[_\s-]?unknown|block[_\s-]?unknown)(?:[_\W]|$)/iu.test(field.path)) {
+      return disabledConfigValue(field.value);
+    }
+    return false;
+  });
+}
+
+function hasAgentFederationApprovalRequiredSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /approval|required[_-]?approval|human[_-]?approval|confirm|confirmation|review|human[_-]?in[_-]?the[_-]?loop/iu.test(field.path) &&
+    truthyConfigValue(field.value)
+  );
+}
+
+function isAgentFederationSecurityField(fieldPath: string): boolean {
+  return /provider|protocol|a2a|agent|agents|peer|peers|card|registry|catalog|directory|marketplace|url|uri|endpoint|host|server|discover|dynamic|select|selector|delegate|handoff|route|invoke|context|prompt|message|retrieval|rag|tool|browser|memory|transcript|summary|secret|token|credential|auth|header|cookie|session|env|signature|signing|identity|issuer|did|jwks|attestation|provenance|trust|allowlist|allowed|unknown|customer|ticket|email|account|pii|sensitive|approval/iu.test(
     fieldPath
   );
 }

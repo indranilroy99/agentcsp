@@ -902,6 +902,15 @@ The current iteration adds:
 - rule `AGENTCSP-RUNTIME-036` for public agent cards that combine anonymous external access, privileged tool authority, missing approval, missing rate limits, and credential exposure
 - scanner, rule, fixture verifier, and redaction coverage proving raw endpoint URLs, agent names, skill IDs, tool strings, caller labels, data-scope labels, and token placeholders stay redacted
 
+## Remote Agent Federation Pass
+
+The current iteration adds:
+
+- first-class redacted metadata for outbound A2A and remote-agent federation posture, including remote destination categories, agent reference counts, dynamic discovery, untrusted agent selectors, auto-delegation, context forwarding, tool-result forwarding, memory forwarding, credential forwarding, verification posture, allowlist posture, and approval posture
+- vulnerable fixture coverage for an A2A federation config that dynamically selects third-party agents from untrusted customer/retrieval/browser context and forwards prompts, retrieval context, tool results, memory, and credentials without verification, allowlists, or approval
+- rule `AGENTCSP-RUNTIME-037` for remote agent federation that combines dynamic discovery, untrusted peer selection, sensitive context forwarding, credential forwarding, missing identity verification, missing allowlists, and no approval
+- scanner, rule, fixture verifier, and redaction coverage proving raw registry URLs, agent-card URLs, peer names, selector fields, source labels, task names, data-scope labels, and token placeholders stay redacted
+
 ## Initial Build Recommendation
 
 Start with a CLI-first MVP before building the dashboard:

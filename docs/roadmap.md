@@ -22,6 +22,7 @@
 - Add `agentcsp.yaml` policy files.
 - Add `agentcsp.yaml` policy-integrity posture for broad suppressions, permissive control downgrades, and risky trust overrides.
 - Add A2A and public agent-card exposure posture for external discovery, anonymous caller access, privileged capability categories, rate limits, and approval gates.
+- Add outbound remote-agent federation posture for dynamic A2A discovery, model-selected peers, sensitive context forwarding, credential forwarding, peer verification, allowlists, and approval gates.
 - Add remote prompt-registry posture for auto-synced system/developer prompts, unpinned revisions, verification controls, and untrusted prompt selectors.
 - Add MCP prompt and resource context inventory for model-visible server-supplied context that can steer privileged MCP authority.
 - Add MCP client-context posture for roots, sampling, and elicitation requests from remote or third-party servers.

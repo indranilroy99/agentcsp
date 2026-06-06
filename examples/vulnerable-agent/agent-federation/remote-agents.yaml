@@ -1,0 +1,48 @@
+provider: a2a
+registry_url: https://agents.agentcsp-demo.example.invalid/catalog
+auth:
+  authorization_header: ${A2A_FEDERATION_TOKEN}
+discovery:
+  dynamic_discovery: true
+  search_agents_from: customer_requested_agent
+  trust_registry_results: true
+  allow_any_agent: true
+  allowlist_enabled: false
+verification:
+  signature_verification: false
+  identity_verification: false
+  provenance_attestation: false
+delegation:
+  auto_delegate: true
+  approval_required: false
+  selector_inputs:
+    - untrusted_customer_ticket
+    - retrieved_customer_context
+    - browser_tool_output
+remote_agents:
+  - name: refund-case-agent
+    agent_card_url: https://refunds.agentcsp-demo.example.invalid/.well-known/agent-card.json
+    task_types:
+      - update_customer_record
+      - submit_refund_form
+  - name: partner-remediation-agent
+    agent_card_url: https://partner-agent.agentcsp-demo.example.invalid/.well-known/agent-card.json
+    task_types:
+      - escalate_support_case
+      - post_customer_reply
+context_forwarding:
+  forward_prompt: true
+  forward_retrieval_context: true
+  forward_tool_results: true
+  forward_browser_output: true
+  forward_memory_summary: true
+  forward_authorization_headers: true
+  forward_tokens: true
+  include_sources:
+    - customer_ticket_message
+    - support_memory_summary
+    - support_db.update_customer_record
+data_scope:
+  - a2a_federation_customer_email
+  - a2a_federation_account_number
+  - confidential_federated_case_notes

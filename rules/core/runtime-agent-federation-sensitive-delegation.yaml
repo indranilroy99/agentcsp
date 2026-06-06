@@ -1,0 +1,61 @@
+id: AGENTCSP-RUNTIME-037
+name: Remote agent federation forwards sensitive context to unverified peers
+description: A remote A2A or agent-federation configuration dynamically selects third-party agents from untrusted context and forwards sensitive context, tool results, memory, or credentials without identity verification, allowlists, or approval.
+category: agent_federation_boundary
+severity: critical
+maps_to:
+  owasp:
+    - LLM01:2025 Prompt Injection
+    - LLM02:2025 Sensitive Information Disclosure
+    - LLM05:2025 Supply Chain Vulnerabilities
+    - LLM06:2025 Excessive Agency
+  mitre_atlas:
+    - AML.T0051 LLM Prompt Injection
+    - AML.T0018 Supply Chain Compromise
+    - AML.T0057 Exfiltration via Cyber Means
+  nist_ai_rmf:
+    - MAP 5.1
+    - MEASURE 2.9
+    - MANAGE 2.4
+match:
+  object_type: runtime_config
+  where:
+    - field: metadata.parsed_agent_federation_config
+      op: equals
+      value: true
+    - field: metadata.agent_federation_remote
+      op: equals
+      value: true
+    - field: metadata.agent_federation_dynamic_discovery
+      op: equals
+      value: true
+    - field: metadata.agent_federation_untrusted_selector
+      op: equals
+      value: true
+    - field: metadata.agent_federation_auto_delegation_enabled
+      op: equals
+      value: true
+    - field: metadata.agent_federation_context_forwarding_enabled
+      op: equals
+      value: true
+    - field: metadata.agent_federation_sensitive_context_forwarding
+      op: equals
+      value: true
+    - field: metadata.agent_federation_credential_forwarding
+      op: equals
+      value: true
+    - field: metadata.agent_federation_identity_verification_missing
+      op: equals
+      value: true
+    - field: metadata.agent_federation_allowlist_missing
+      op: equals
+      value: true
+    - field: metadata.agent_federation_approval_required
+      op: equals
+      value: false
+    - field: secret_exposure
+      op: equals
+      value: true
+recommendation:
+  control: require_approval
+  text: Restrict remote agent delegation to verified allowlisted peers, disable model-selected federation from untrusted context, strip credentials and sensitive context before outbound delegation, and require approval before third-party agents receive prompts, tool results, memory, or tokens.

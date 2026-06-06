@@ -78,6 +78,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-034")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-035")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-036")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-037")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-CICD-002")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-AUTOMATION-001")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-AUTOMATION-002")).toBe(true);
@@ -566,6 +567,41 @@ describe("rule engine", () => {
     expect(JSON.stringify(runtimeAgentExposureFindings[0])).not.toContain("support_db.update_customer_record");
     expect(JSON.stringify(runtimeAgentExposureFindings[0])).not.toContain("a2a_customer_email");
     expect(JSON.stringify(runtimeAgentExposureFindings[0])).not.toContain("confidential_a2a_case_notes");
+    const runtimeAgentFederationFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-RUNTIME-037");
+    expect(runtimeAgentFederationFindings).toHaveLength(1);
+    expect(runtimeAgentFederationFindings[0]?.matched_object.path).toBe("agent-federation/remote-agents.yaml");
+    expect(runtimeAgentFederationFindings[0]?.matched_object.metadata).toMatchObject({
+      parsed_agent_federation_config: true,
+      agent_federation_provider: "a2a",
+      agent_federation_remote: true,
+      agent_federation_dynamic_discovery: true,
+      agent_federation_untrusted_selector: true,
+      agent_federation_auto_delegation_enabled: true,
+      agent_federation_context_forwarding_enabled: true,
+      agent_federation_sensitive_context_forwarding: true,
+      agent_federation_credential_forwarding: true,
+      agent_federation_identity_verification_missing: true,
+      agent_federation_allowlist_missing: true,
+      agent_federation_approval_required: false
+    });
+    expect(runtimeAgentFederationFindings[0]?.matched_object.metadata.agent_federation_destination_kinds).toEqual([
+      "agent_registry",
+      "remote_agent_card"
+    ]);
+    expect(runtimeAgentFederationFindings[0]?.severity).toBe("critical");
+    expect(runtimeAgentFederationFindings[0]?.confidence).toBe("very_high");
+    expect(runtimeAgentFederationFindings[0]?.recommended_control).toBe("require_approval");
+    expect(JSON.stringify(runtimeAgentFederationFindings[0])).not.toContain("${A2A_FEDERATION_TOKEN}");
+    expect(JSON.stringify(runtimeAgentFederationFindings[0])).not.toContain("agents.agentcsp-demo.example.invalid");
+    expect(JSON.stringify(runtimeAgentFederationFindings[0])).not.toContain("refunds.agentcsp-demo.example.invalid");
+    expect(JSON.stringify(runtimeAgentFederationFindings[0])).not.toContain("partner-agent.agentcsp-demo.example.invalid");
+    expect(JSON.stringify(runtimeAgentFederationFindings[0])).not.toContain("refund-case-agent");
+    expect(JSON.stringify(runtimeAgentFederationFindings[0])).not.toContain("partner-remediation-agent");
+    expect(JSON.stringify(runtimeAgentFederationFindings[0])).not.toContain("customer_requested_agent");
+    expect(JSON.stringify(runtimeAgentFederationFindings[0])).not.toContain("a2a_federation_customer_email");
+    expect(JSON.stringify(runtimeAgentFederationFindings[0])).not.toContain("confidential_federated_case_notes");
+    expect(JSON.stringify(runtimeAgentFederationFindings[0])).not.toContain("support_db.update_customer_record");
+    expect(JSON.stringify(runtimeAgentFederationFindings[0])).not.toContain("support_memory_summary");
     const supplyChainFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-SUPPLYCHAIN-001");
     expect(supplyChainFindings).toHaveLength(1);
     expect(supplyChainFindings[0]?.matched_object.path).toBe("package.json");

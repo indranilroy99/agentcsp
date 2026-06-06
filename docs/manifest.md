@@ -1487,6 +1487,40 @@ Agent exposure metadata may include:
 
 Raw endpoint URLs, agent names, skill IDs, skill descriptions, tool strings, caller labels, data-scope labels, and token placeholders are not emitted. Provider names, endpoint categories, capability counts, authentication posture, authority categories, rate-limit posture, approval posture, and credential key names let rules detect externally callable agent authority without publishing the agent card body.
 
+## Agent Federation Posture
+
+Outbound A2A clients, remote-agent federation configs, agent registries, peer-agent catalogs, and agent handoff routing configs are normalized into `runtime_config` objects when discovered. This models the boundary where a local agent delegates work or forwards context to third-party agents.
+
+Agent federation metadata may include:
+
+- `parsed_agent_federation_config`
+- `agent_federation_fields`
+- `agent_federation_provider`
+- `agent_federation_remote`
+- `agent_federation_destination_redacted`
+- `agent_federation_destination_count`
+- `agent_federation_destination_kinds`
+- `agent_federation_agent_refs_redacted`
+- `agent_federation_agent_ref_count`
+- `agent_federation_dynamic_discovery`
+- `agent_federation_untrusted_selector`
+- `agent_federation_auto_delegation_enabled`
+- `agent_federation_context_forwarding_enabled`
+- `agent_federation_sensitive_context_forwarding`
+- `agent_federation_pii_context_forwarding`
+- `agent_federation_secret_forwarding`
+- `agent_federation_tool_result_forwarding`
+- `agent_federation_memory_forwarding`
+- `agent_federation_credential_forwarding`
+- `agent_federation_signature_verification_disabled`
+- `agent_federation_identity_verification_missing`
+- `agent_federation_allowlist_missing`
+- `agent_federation_approval_required`
+- `env_key_names`
+- `secret_ref_key_names`
+
+Raw registry URLs, agent-card URLs, endpoint URLs, peer names, agent IDs, task names, selector fields, forwarded source labels, tool strings, data-scope labels, and token placeholders are not emitted. Provider names, destination categories, peer counts, dynamic-discovery posture, context-forwarding categories, verification posture, allowlist posture, approval posture, and credential key names let rules detect remote-agent delegation risk without copying federation configuration values into evidence.
+
 Rule diagnostics include malformed project-local rules, schema-invalid rules, and duplicate rule IDs. Built-in AgentCSP rules still run when project-local rule diagnostics are emitted.
 
 ## Relationships

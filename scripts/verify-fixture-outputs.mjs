@@ -7,6 +7,7 @@ const safeOutput = path.resolve(process.argv[3] ?? ".agentcsp-safe");
 
 const leakPatterns = [
   /\$\{A2A_AGENT_TOKEN\}/u,
+  /\$\{A2A_FEDERATION_TOKEN\}/u,
   /\$\{ANTHROPIC_API_KEY\}/u,
   /\$\{AGENT_CONTAINER_TOKEN\}/u,
   /\$\{AGENT_DEPLOY_TOKEN\}/u,
@@ -278,14 +279,23 @@ const leakPatterns = [
   /partner_agents/u,
   /a2a_customer_email/u,
   /a2a_account_number/u,
-  /confidential_a2a_case_notes/u
+  /confidential_a2a_case_notes/u,
+  /agents\.agentcsp-demo\.example\.invalid/u,
+  /refunds\.agentcsp-demo\.example\.invalid/u,
+  /partner-agent\.agentcsp-demo\.example\.invalid/u,
+  /refund-case-agent/u,
+  /partner-remediation-agent/u,
+  /customer_requested_agent/u,
+  /a2a_federation_customer_email/u,
+  /a2a_federation_account_number/u,
+  /confidential_federated_case_notes/u
 ];
 
 const vulnerable = await readScanOutput(vulnerableOutput, { sarifRequired: true });
 const safe = await readScanOutput(safeOutput, { sarifRequired: false });
 
-assertEqual(vulnerable.manifest.findings.length, 114, "vulnerable manifest finding count");
-assertEqual(vulnerable.findings.length, 114, "vulnerable findings.json count");
+assertEqual(vulnerable.manifest.findings.length, 116, "vulnerable manifest finding count");
+assertEqual(vulnerable.findings.length, 116, "vulnerable findings.json count");
 assertEqual(vulnerable.manifest.attack_paths.length, 15, "vulnerable attack path count");
 assertEqual(vulnerable.manifest.static_blast_radius?.critical_attack_paths, 15, "vulnerable critical attack path count");
 assertEqual(vulnerable.manifest.diagnostics.length, 0, "vulnerable diagnostics count");
@@ -324,6 +334,7 @@ for (const ruleId of [
   "AGENTCSP-RUNTIME-034",
   "AGENTCSP-RUNTIME-035",
   "AGENTCSP-RUNTIME-036",
+  "AGENTCSP-RUNTIME-037",
   "AGENTCSP-AUTOMATION-003",
   "AGENTCSP-RUNTIME-006",
   "AGENTCSP-MCP-006",
