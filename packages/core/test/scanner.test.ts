@@ -53,6 +53,7 @@ describe("scanner", () => {
       "MCP_OAUTH_CLIENT_SECRET",
       "MEMORY_STORE_TOKEN",
       "MODEL_ROUTER_TOKEN",
+      "NETWORK_EGRESS_TOKEN",
       "OPENAI_API_KEY",
       "PROMPT_REGISTRY_TOKEN",
       "REASONING_STATE_TOKEN",
@@ -2685,6 +2686,62 @@ describe("scanner", () => {
     expect(JSON.stringify(reasoningStateConfig)).not.toContain("untrusted_customer_ticket");
     expect(JSON.stringify(reasoningStateConfig)).not.toContain("browser_tool_output");
     expect(JSON.stringify(reasoningStateConfig)).not.toContain("retrieved_customer_context");
+    const networkEgressConfig = surfaces.runtime_config.find((surface) => surface.path === "network/egress-policy.yaml");
+    expect(networkEgressConfig).toBeDefined();
+    expect(networkEgressConfig).toMatchObject({
+      trust_level: "project",
+      external_reach: true,
+      secret_exposure: true,
+      side_effect: true,
+      reversible: false,
+      untrusted_to_privileged: true
+    });
+    expect(networkEgressConfig?.metadata).toMatchObject({
+      content_redacted: true,
+      values_collected: false,
+      parsed_agent_network_egress_config: true,
+      agent_network_egress_enabled: true,
+      agent_network_egress_web_tool_authority: true,
+      agent_network_egress_destination_redacted: true,
+      agent_network_egress_destination_count: 11,
+      agent_network_egress_private_network_access: true,
+      agent_network_egress_metadata_service_access: true,
+      agent_network_egress_localhost_access: true,
+      agent_network_egress_private_cidr_access: true,
+      agent_network_egress_wildcard_destination: true,
+      agent_network_egress_untrusted_input: true,
+      agent_network_egress_user_controlled_url: true,
+      agent_network_egress_redirects_allowed: true,
+      agent_network_egress_dns_rebinding_protection_disabled: true,
+      agent_network_egress_request_headers_forwarded: true,
+      agent_network_egress_credential_forwarding: true,
+      agent_network_egress_response_capture: true,
+      agent_network_egress_sensitive_response_capture: true,
+      agent_network_egress_pii_response_capture: true,
+      agent_network_egress_approval_required: false
+    });
+    expect(networkEgressConfig?.metadata.agent_network_egress_destination_kinds).toEqual([
+      "cloud_metadata_service",
+      "http_destination",
+      "localhost_or_cluster_service",
+      "private_network_range",
+      "wildcard_destination"
+    ]);
+    expect(networkEgressConfig?.metadata.env_key_names).toEqual(["NETWORK_EGRESS_TOKEN"]);
+    expect(networkEgressConfig?.metadata.secret_ref_key_names).toEqual(["NETWORK_EGRESS_TOKEN"]);
+    expect(networkEgressConfig?.data_classes).toEqual(["confidential", "credential", "pii"]);
+    expect(networkEgressConfig?.actions).toEqual(["call", "read", "remember", "send"]);
+    expect(JSON.stringify(networkEgressConfig)).not.toContain("${NETWORK_EGRESS_TOKEN}");
+    expect(JSON.stringify(networkEgressConfig)).not.toContain("169.254.169.254");
+    expect(JSON.stringify(networkEgressConfig)).not.toContain("metadata.google.internal");
+    expect(JSON.stringify(networkEgressConfig)).not.toContain("127.0.0.1");
+    expect(JSON.stringify(networkEgressConfig)).not.toContain("admin.internal.local");
+    expect(JSON.stringify(networkEgressConfig)).not.toContain("egress_metadata_token");
+    expect(JSON.stringify(networkEgressConfig)).not.toContain("egress_customer_email");
+    expect(JSON.stringify(networkEgressConfig)).not.toContain("confidential_internal_response");
+    expect(JSON.stringify(networkEgressConfig)).not.toContain("untrusted_customer_ticket_url");
+    expect(JSON.stringify(networkEgressConfig)).not.toContain("browser_tool_url");
+    expect(JSON.stringify(networkEgressConfig)).not.toContain("retrieved_support_link");
     const toolOutputPolicyConfig = surfaces.runtime_config.find((surface) => surface.path === "tool-results/result-policy.yaml");
     expect(toolOutputPolicyConfig).toBeDefined();
     expect(toolOutputPolicyConfig).toMatchObject({
@@ -3742,6 +3799,57 @@ describe("scanner", () => {
     expect(scratchpad?.metadata.agent_reasoning_state_destination_kinds).toEqual([]);
     expect(scratchpad?.metadata.env_key_names).toEqual([]);
     expect(scratchpad?.metadata.secret_ref_key_names).toEqual([]);
+  });
+
+  it("keeps approved web egress policies away from private metadata access", async () => {
+    const files = await walkProject({
+      root_path: safeFixtureRoot,
+      output_path: ".agentcsp",
+      formats: ["json", "md"],
+      include_hidden: true,
+      include_logs: false,
+      max_file_size_bytes: 1024 * 1024,
+      max_files: 5000,
+      quiet: true
+    });
+    const surfaces = await detectSurfaces(files);
+    const egress = surfaces.runtime_config.find((surface) => surface.path === "network/scoped-egress.yaml");
+
+    expect(egress).toMatchObject({
+      trust_level: "project",
+      data_classes: ["unknown"],
+      actions: ["call", "read", "send"],
+      side_effect: false,
+      external_reach: true,
+      secret_exposure: false,
+      reversible: true,
+      untrusted_to_privileged: false
+    });
+    expect(egress?.metadata).toMatchObject({
+      parsed_agent_network_egress_config: true,
+      agent_network_egress_enabled: true,
+      agent_network_egress_web_tool_authority: true,
+      agent_network_egress_destination_redacted: true,
+      agent_network_egress_destination_count: 1,
+      agent_network_egress_private_network_access: false,
+      agent_network_egress_metadata_service_access: false,
+      agent_network_egress_localhost_access: false,
+      agent_network_egress_private_cidr_access: false,
+      agent_network_egress_wildcard_destination: false,
+      agent_network_egress_untrusted_input: false,
+      agent_network_egress_user_controlled_url: false,
+      agent_network_egress_redirects_allowed: false,
+      agent_network_egress_dns_rebinding_protection_disabled: false,
+      agent_network_egress_request_headers_forwarded: false,
+      agent_network_egress_credential_forwarding: false,
+      agent_network_egress_response_capture: false,
+      agent_network_egress_sensitive_response_capture: false,
+      agent_network_egress_pii_response_capture: false,
+      agent_network_egress_approval_required: true
+    });
+    expect(egress?.metadata.agent_network_egress_destination_kinds).toEqual(["http_destination"]);
+    expect(egress?.metadata.env_key_names).toEqual([]);
+    expect(egress?.metadata.secret_ref_key_names).toEqual([]);
   });
 
   it("keeps approval-gated read-only OpenAPI imports scoped", async () => {

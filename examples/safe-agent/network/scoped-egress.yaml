@@ -1,0 +1,23 @@
+enabled: true
+tools:
+  - WebFetch
+sources:
+  - approved_internal_docs
+allowed_destinations:
+  - https://docs.example.invalid
+private_network:
+  allow_private_ranges: false
+  allow_link_local: false
+  allow_localhost: false
+metadata_service:
+  allow: false
+redirects:
+  follow: false
+dns_rebinding:
+  protection_enabled: true
+request:
+  forward_headers: false
+  include_credentials: false
+response:
+  capture_body: false
+approval_required: true

@@ -154,6 +154,11 @@ export async function detectSurfaces(files: WalkedFile[]): Promise<DetectedSurfa
       continue;
     }
 
+    if (isAgentNetworkEgressConfigPath(file.relativePath, basename)) {
+      detectAgentNetworkEgressConfig(file, text, surfaces);
+      continue;
+    }
+
     if (isAgentWebhookEgressConfigPath(file.relativePath, basename)) {
       detectAgentWebhookEgressConfig(file, text, surfaces);
       continue;
@@ -2839,6 +2844,78 @@ function detectAgentReasoningStateConfig(file: WalkedFile, text: string | undefi
   });
 }
 
+function detectAgentNetworkEgressConfig(file: WalkedFile, text: string | undefined, surfaces: DetectedSurfaces): void {
+  const parsed = parseStructuredConfig(text ?? "", file.relativePath);
+  if (parsed.parseFailed) {
+    addDiagnostic(surfaces, file, {
+      parser: parsed.parser ?? "structured_config",
+      code: "AGENT_NETWORK_EGRESS_CONFIG_PARSE_FAILED",
+      reason: "Agent network egress configuration could not be parsed. Raw content was redacted."
+    });
+  }
+
+  const posture = classifyAgentNetworkEgressConfig(parsed.value, file.relativePath);
+  const actions = new Set<ActionType>(["call", "read"]);
+  if (posture.agent_network_egress_enabled || posture.agent_network_egress_web_tool_authority) actions.add("send");
+  if (posture.agent_network_egress_response_capture) actions.add("remember");
+
+  const dataClasses = new Set<SurfaceObject["data_classes"][number]>(["unknown"]);
+  if (
+    posture.agent_network_egress_credential_forwarding ||
+    posture.agent_network_egress_request_headers_forwarded ||
+    posture.env_key_names.some(isCredentialLikeKeyName) ||
+    posture.secret_ref_key_names.length > 0
+  ) {
+    dataClasses.add("credential");
+  }
+  if (posture.agent_network_egress_sensitive_response_capture || posture.agent_network_egress_untrusted_input) {
+    dataClasses.add("confidential");
+  }
+  if (posture.agent_network_egress_pii_response_capture) dataClasses.add("pii");
+  if (dataClasses.size > 1) dataClasses.delete("unknown");
+
+  const object = createSurfaceObject({
+    type: "runtime_config",
+    name: path.basename(file.relativePath),
+    path: file.relativePath,
+    trust_level: inferTrustLevel(file.relativePath),
+    data_classes: uniqueDataClasses([...dataClasses] as SurfaceObject["data_classes"]),
+    actions: uniqueActions([...actions]),
+    side_effect:
+      posture.agent_network_egress_credential_forwarding ||
+      posture.agent_network_egress_request_headers_forwarded ||
+      posture.agent_network_egress_response_capture ||
+      posture.agent_network_egress_metadata_service_access,
+    reversible: !posture.agent_network_egress_credential_forwarding && !posture.agent_network_egress_metadata_service_access,
+    external_reach: posture.agent_network_egress_enabled || posture.agent_network_egress_private_network_access,
+    secret_exposure:
+      posture.agent_network_egress_credential_forwarding ||
+      posture.agent_network_egress_request_headers_forwarded ||
+      posture.env_key_names.some(isCredentialLikeKeyName) ||
+      posture.secret_ref_key_names.length > 0,
+    reason: "Agent network egress configuration discovered as web tool destination and credential-forwarding posture.",
+    metadata: {
+      content_redacted: true,
+      values_collected: false,
+      parsed_agent_network_egress_config: Boolean(parsed.value) && !parsed.parseFailed,
+      parse_error: parsed.parseFailed,
+      ...posture
+    }
+  });
+  surfaces.runtime_config.push({
+    ...object,
+    untrusted_to_privileged:
+      (posture.agent_network_egress_enabled &&
+        posture.agent_network_egress_web_tool_authority &&
+        posture.agent_network_egress_untrusted_input &&
+        posture.agent_network_egress_private_network_access &&
+        posture.agent_network_egress_metadata_service_access &&
+        posture.agent_network_egress_credential_forwarding &&
+        !posture.agent_network_egress_approval_required) ||
+      isUntrustedToPrivileged(object)
+  });
+}
+
 function detectToolOutputPolicyConfig(file: WalkedFile, text: string | undefined, surfaces: DetectedSurfaces): void {
   const parsed = parseStructuredConfig(text ?? "", file.relativePath);
   if (parsed.parseFailed) {
@@ -4267,6 +4344,27 @@ function isAgentReasoningStateConfigPath(relativePath: string, basename: string)
   return reasoningName || (reasoningDirectory && configName);
 }
 
+function isAgentNetworkEgressConfigPath(relativePath: string, basename: string): boolean {
+  const normalized = relativePath.replaceAll("\\", "/").toLowerCase();
+  const lowerBase = basename.toLowerCase();
+  if (!/\.(json|ya?ml|toml)$/iu.test(lowerBase)) return false;
+  if (normalized.startsWith(".github/workflows/")) return false;
+  if (normalized.startsWith("rules/")) return false;
+  const segments = normalized.split("/").slice(0, -1);
+  const egressDirectory = segments.some((segment) =>
+    /^(network|networks|egress|web-egress|web_egress|agent-egress|agent_egress|web-access|web_access|fetch|webfetch|http|browser-egress|browser_egress|ssrf)$/iu.test(
+      segment
+    )
+  );
+  const egressName = /(?:network[-_]?egress|web[-_]?egress|agent[-_]?egress|egress[-_]?policy|web[-_]?access|fetch[-_]?policy|webfetch|private[-_]?network|metadata[-_]?access|ssrf)/iu.test(
+    lowerBase
+  );
+  const configName = /(?:config|settings|policy|egress|network|web|fetch|browser|http|url|allow|deny|metadata|private|cidr|destination)/iu.test(
+    lowerBase
+  );
+  return egressName || (egressDirectory && configName);
+}
+
 function isToolOutputPolicyConfigPath(relativePath: string, basename: string): boolean {
   const normalized = relativePath.replaceAll("\\", "/").toLowerCase();
   const lowerBase = basename.toLowerCase();
@@ -5379,6 +5477,32 @@ interface AgentReasoningStatePosture {
   agent_reasoning_state_access_control_disabled: boolean;
   agent_reasoning_state_retention_enabled: boolean;
   agent_reasoning_state_approval_required: boolean;
+  env_key_names: string[];
+  secret_ref_key_names: string[];
+}
+
+interface AgentNetworkEgressPosture {
+  agent_network_egress_fields: string[];
+  agent_network_egress_enabled: boolean;
+  agent_network_egress_web_tool_authority: boolean;
+  agent_network_egress_destination_redacted: boolean;
+  agent_network_egress_destination_count: number;
+  agent_network_egress_destination_kinds: string[];
+  agent_network_egress_private_network_access: boolean;
+  agent_network_egress_metadata_service_access: boolean;
+  agent_network_egress_localhost_access: boolean;
+  agent_network_egress_private_cidr_access: boolean;
+  agent_network_egress_wildcard_destination: boolean;
+  agent_network_egress_untrusted_input: boolean;
+  agent_network_egress_user_controlled_url: boolean;
+  agent_network_egress_redirects_allowed: boolean;
+  agent_network_egress_dns_rebinding_protection_disabled: boolean;
+  agent_network_egress_request_headers_forwarded: boolean;
+  agent_network_egress_credential_forwarding: boolean;
+  agent_network_egress_response_capture: boolean;
+  agent_network_egress_sensitive_response_capture: boolean;
+  agent_network_egress_pii_response_capture: boolean;
+  agent_network_egress_approval_required: boolean;
   env_key_names: string[];
   secret_ref_key_names: string[];
 }
@@ -12084,6 +12208,256 @@ function isAgentReasoningStateSecurityField(fieldPath: string): boolean {
 }
 
 function agentReasoningStateFieldText(field: RuntimeField): string {
+  return `${field.path} ${fieldValueText(field)}`.toLowerCase().replaceAll("_", " ").replaceAll("-", " ");
+}
+
+function classifyAgentNetworkEgressConfig(value: unknown, filePath: string): AgentNetworkEgressPosture {
+  const fields = flattenRuntimeFields(value);
+  const stringValues = collectFieldStringValues(fields);
+  const destination = classifyAgentNetworkEgressDestinations(fields);
+  const envKeys = uniqueStrings([
+    ...collectEnvKeyNamesFromConfig(value).filter(isLikelyEnvKeyName),
+    ...extractEnvironmentReferenceKeys(stringValues)
+  ]);
+  const secretRefKeys = extractSecretReferenceKeys(stringValues);
+  const headersForwarded = hasAgentNetworkEgressHeaderForwardingSignal(fields);
+  const credentialForwarding =
+    headersForwarded ||
+    hasAgentNetworkEgressCredentialForwardingSignal(fields) ||
+    envKeys.some(isCredentialLikeKeyName) ||
+    secretRefKeys.length > 0;
+
+  return {
+    agent_network_egress_fields: fields
+      .map((field) => field.path)
+      .filter((fieldPath) => isAgentNetworkEgressSecurityField(fieldPath))
+      .sort((a, b) => a.localeCompare(b)),
+    agent_network_egress_enabled: hasAgentNetworkEgressEnabledSignal(fields) || destination.destinationCount > 0,
+    agent_network_egress_web_tool_authority: hasAgentNetworkEgressWebToolSignal(fields),
+    agent_network_egress_destination_redacted: destination.destinationCount > 0,
+    agent_network_egress_destination_count: destination.destinationCount,
+    agent_network_egress_destination_kinds: destination.destinationKinds,
+    agent_network_egress_private_network_access:
+      destination.privateNetwork || destination.metadataService || destination.localhost || destination.privateCidr,
+    agent_network_egress_metadata_service_access: destination.metadataService,
+    agent_network_egress_localhost_access: destination.localhost,
+    agent_network_egress_private_cidr_access: destination.privateCidr,
+    agent_network_egress_wildcard_destination: destination.wildcardDestination,
+    agent_network_egress_untrusted_input: hasAgentNetworkEgressUntrustedInputSignal(fields),
+    agent_network_egress_user_controlled_url: hasAgentNetworkEgressUserControlledUrlSignal(fields),
+    agent_network_egress_redirects_allowed: hasAgentNetworkEgressRedirectsAllowedSignal(fields),
+    agent_network_egress_dns_rebinding_protection_disabled: hasAgentNetworkEgressDnsRebindingDisabledSignal(fields),
+    agent_network_egress_request_headers_forwarded: headersForwarded,
+    agent_network_egress_credential_forwarding: credentialForwarding,
+    agent_network_egress_response_capture: hasAgentNetworkEgressResponseCaptureSignal(fields),
+    agent_network_egress_sensitive_response_capture: hasAgentNetworkEgressSensitiveResponseSignal(fields) || destination.metadataService,
+    agent_network_egress_pii_response_capture: hasAgentNetworkEgressPiiResponseSignal(fields),
+    agent_network_egress_approval_required: hasAgentNetworkEgressApprovalRequiredSignal(fields),
+    env_key_names: envKeys,
+    secret_ref_key_names: secretRefKeys
+  };
+}
+
+function classifyAgentNetworkEgressDestinations(fields: RuntimeField[]): {
+  destinationCount: number;
+  destinationKinds: string[];
+  privateNetwork: boolean;
+  metadataService: boolean;
+  localhost: boolean;
+  privateCidr: boolean;
+  wildcardDestination: boolean;
+} {
+  const destinationKinds = new Set<string>();
+  let destinationCount = 0;
+  let privateNetwork = false;
+  let metadataService = false;
+  let localhost = false;
+  let privateCidr = false;
+  let wildcardDestination = false;
+
+  for (const field of fields) {
+    if (disabledConfigValue(field.value)) continue;
+    if (/(^|\.)(deny|denied|block|blocked|disallow|exclude|forbid|prevent|protect|protection|guard|guardrail)(\.|$)/iu.test(field.path)) {
+      continue;
+    }
+    const values = fieldStringValues(field);
+    const text = agentNetworkEgressFieldText(field);
+    const destinationField =
+      /(?:^|\.)(allow|allowed|destinations?|targets?|hosts?|domains?|urls?|uris?|endpoints?|cidrs?|ranges?|metadata|private_network|private_cidr|localhost|internal|egress)(?:\.|$)/iu.test(
+        field.path
+      ) || values.length > 0;
+    if (!destinationField) continue;
+
+    for (const value of values) {
+      const lower = value.toLowerCase();
+      if (parseRemoteHttpUrl(value)) {
+        destinationKinds.add("http_destination");
+        destinationCount += 1;
+      }
+      if (/\b(169\.254\.169\.254|metadata\.google\.internal|metadata\.azure\.com|metadata\.oraclecloud\.com|169\.254\.170\.2|100\.100\.100\.200|metadata service|instance metadata|imds|aws metadata|gcp metadata|azure metadata)\b/iu.test(lower)) {
+        destinationKinds.add("cloud_metadata_service");
+        destinationCount += 1;
+        metadataService = true;
+        privateNetwork = true;
+      }
+      if (/\b(localhost|127\.0\.0\.1|0\.0\.0\.0|::1|host\.docker\.internal|kubernetes\.default|svc\.cluster\.local)\b/iu.test(lower)) {
+        destinationKinds.add("localhost_or_cluster_service");
+        destinationCount += 1;
+        localhost = true;
+        privateNetwork = true;
+      }
+      if (/\b(10\.\d{1,3}\.\d{1,3}\.\d{1,3}|192\.168\.\d{1,3}\.\d{1,3}|172\.(1[6-9]|2\d|3[0-1])\.\d{1,3}\.\d{1,3}|10\.0\.0\.0\/8|192\.168\.0\.0\/16|172\.16\.0\.0\/12|fc00::\/7|fd00::\/8|link-local|private cidr)\b/iu.test(
+        lower
+      )) {
+        destinationKinds.add("private_network_range");
+        destinationCount += 1;
+        privateCidr = true;
+        privateNetwork = true;
+      }
+      if (/^(?:\*|\*\.|0\.0\.0\.0\/0|::\/0)$/iu.test(lower) || /\b(any|all hosts|domain:\*|wildcard|allow all|0\.0\.0\.0\/0|::\/0)\b/iu.test(lower)) {
+        destinationKinds.add("wildcard_destination");
+        destinationCount += 1;
+        wildcardDestination = true;
+      }
+    }
+
+    if (/\b(metadata service|instance metadata|imds|private network|private cidr|localhost|loopback|link local|internal network)\b/iu.test(text)) {
+      destinationCount += 1;
+      if (/\b(metadata service|instance metadata|imds)\b/iu.test(text)) {
+        destinationKinds.add("cloud_metadata_service");
+        metadataService = true;
+      }
+      if (/\b(localhost|loopback)\b/iu.test(text)) {
+        destinationKinds.add("localhost_or_cluster_service");
+        localhost = true;
+      }
+      if (/\b(private network|private cidr|link local|internal network)\b/iu.test(text)) {
+        destinationKinds.add("private_network_range");
+        privateCidr = true;
+      }
+      privateNetwork = true;
+    }
+  }
+
+  return {
+    destinationCount,
+    destinationKinds: [...destinationKinds].sort((a, b) => a.localeCompare(b)),
+    privateNetwork,
+    metadataService,
+    localhost,
+    privateCidr,
+    wildcardDestination
+  };
+}
+
+function hasAgentNetworkEgressEnabledSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /(?:^|\.)(enabled|network_access|web_access|egress|allow_egress|http_enabled|fetch_enabled|browser_network)(?:\.|$)/iu.test(
+      field.path
+    ) && truthyConfigValue(field.value)
+  );
+}
+
+function hasAgentNetworkEgressWebToolSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /\b(webfetch|web fetch|browser|http|https|fetch|url fetch|requests|curl|wget|playwright|browser tool|network tool)\b/iu.test(
+      agentNetworkEgressFieldText(field)
+    ) && truthyConfigValue(field.value)
+  );
+}
+
+function hasAgentNetworkEgressUntrustedInputSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /\b(untrusted|user|customer|client|ticket|support|issue|comment|message|prompt|retrieved|rag|document|email|slack|browser|web page|inbound|external|tool output|tool result)\b/iu.test(
+      agentNetworkEgressFieldText(field)
+    ) && truthyConfigValue(field.value)
+  );
+}
+
+function hasAgentNetworkEgressUserControlledUrlSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /\b(user controlled url|user supplied url|customer url|ticket url|retrieved link|browser link|model selected url|llm selected url|url from prompt|follow links)\b/iu.test(
+      agentNetworkEgressFieldText(field)
+    ) && truthyConfigValue(field.value)
+  );
+}
+
+function hasAgentNetworkEgressRedirectsAllowedSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /\b(redirect|redirects|follow redirects|redirects allowed|allow redirect|http 30[1278])\b/iu.test(agentNetworkEgressFieldText(field)) &&
+    truthyConfigValue(field.value)
+  );
+}
+
+function hasAgentNetworkEgressDnsRebindingDisabledSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => {
+    const text = agentNetworkEgressFieldText(field);
+    if (/\b(dns rebinding|dns_rebinding|rebind|resolve private|private ip check|post dns validation)\b/iu.test(text)) {
+      return disabledConfigValue(field.value) || /\b(disabled|off|false|none|skip|allow)\b/iu.test(text);
+    }
+    return false;
+  });
+}
+
+function hasAgentNetworkEgressHeaderForwardingSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    !/(^|\.)(redaction|redact|mask|sanitize|deny|block|remove|strip)(\.|$)/iu.test(field.path) &&
+    /\b(header|headers|authorization|cookie|cookies|x api key|x-api-key|bearer|session)\b/iu.test(agentNetworkEgressFieldText(field)) &&
+    truthyConfigValue(field.value)
+  );
+}
+
+function hasAgentNetworkEgressCredentialForwardingSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    !/(^|\.)(redaction|redact|mask|sanitize|deny|block|remove|strip)(\.|$)/iu.test(field.path) &&
+    /\b(forward credentials|include credentials|credential forwarding|send credentials|auth passthrough|forward env|token passthrough|ambient credentials|metadata token|authorization)\b/iu.test(
+      agentNetworkEgressFieldText(field)
+    ) && truthyConfigValue(field.value)
+  );
+}
+
+function hasAgentNetworkEgressResponseCaptureSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /\b(response|responses|body|payload|capture|store|log|trace|include body|return body|tool output)\b/iu.test(
+      agentNetworkEgressFieldText(field)
+    ) && truthyConfigValue(field.value)
+  );
+}
+
+function hasAgentNetworkEgressSensitiveResponseSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /(?:^|\.)(response|responses|capture|captures|body|payload|sensitive_fields|data_fields|store_as_tool_output)(?:\.|$)/iu.test(
+      field.path
+    ) &&
+    /\b(secret|token|credential|metadata|iam|identity|customer|client|ticket|support|internal|confidential|private|account|billing|payment|admin)\b/iu.test(
+      agentNetworkEgressFieldText(field)
+    ) && !disabledConfigValue(field.value)
+  );
+}
+
+function hasAgentNetworkEgressPiiResponseSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /\b(pii|email|phone|address|ssn|passport|dob|customer id|user id|account id|account number)\b/iu.test(
+      agentNetworkEgressFieldText(field)
+    ) && !disabledConfigValue(field.value)
+  );
+}
+
+function hasAgentNetworkEgressApprovalRequiredSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /\b(approval|required approval|human approval|security review|confirm|confirmation|review)\b/iu.test(
+      agentNetworkEgressFieldText(field)
+    ) && truthyConfigValue(field.value)
+  );
+}
+
+function isAgentNetworkEgressSecurityField(fieldPath: string): boolean {
+  return /enabled|network|egress|web|fetch|browser|http|url|uri|endpoint|host|domain|destination|target|allow|deny|metadata|imds|localhost|private|cidr|link|redirect|dns|rebind|header|authorization|cookie|credential|token|secret|auth|env|source|input|customer|ticket|retriev|rag|response|capture|body|pii|sensitive|approval|review/iu.test(
+    fieldPath
+  );
+}
+
+function agentNetworkEgressFieldText(field: RuntimeField): string {
   return `${field.path} ${fieldValueText(field)}`.toLowerCase().replaceAll("_", " ").replaceAll("-", " ");
 }
 

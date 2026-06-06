@@ -81,6 +81,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-055")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-056")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-057")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-058")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-030")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-031")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-032")).toBe(true);
@@ -1377,6 +1378,39 @@ describe("rule engine", () => {
     expect(JSON.stringify(runtimeReasoningStateFindings[0])).not.toContain("scratchpad_account_number");
     expect(JSON.stringify(runtimeReasoningStateFindings[0])).not.toContain("confidential_reasoning_notes");
     expect(JSON.stringify(runtimeReasoningStateFindings[0])).not.toContain("untrusted_customer_ticket");
+    const runtimeNetworkEgressFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-RUNTIME-058");
+    expect(runtimeNetworkEgressFindings).toHaveLength(1);
+    expect(runtimeNetworkEgressFindings[0]?.matched_object.path).toBe("network/egress-policy.yaml");
+    expect(runtimeNetworkEgressFindings[0]?.matched_object.metadata).toMatchObject({
+      parsed_agent_network_egress_config: true,
+      agent_network_egress_enabled: true,
+      agent_network_egress_web_tool_authority: true,
+      agent_network_egress_untrusted_input: true,
+      agent_network_egress_private_network_access: true,
+      agent_network_egress_metadata_service_access: true,
+      agent_network_egress_credential_forwarding: true,
+      agent_network_egress_dns_rebinding_protection_disabled: true,
+      agent_network_egress_approval_required: false
+    });
+    expect(runtimeNetworkEgressFindings[0]?.matched_object.metadata.agent_network_egress_destination_kinds).toEqual([
+      "cloud_metadata_service",
+      "http_destination",
+      "localhost_or_cluster_service",
+      "private_network_range",
+      "wildcard_destination"
+    ]);
+    expect(runtimeNetworkEgressFindings[0]?.severity).toBe("critical");
+    expect(runtimeNetworkEgressFindings[0]?.confidence).toBe("very_high");
+    expect(runtimeNetworkEgressFindings[0]?.recommended_control).toBe("require_approval");
+    expect(JSON.stringify(runtimeNetworkEgressFindings[0])).not.toContain("${NETWORK_EGRESS_TOKEN}");
+    expect(JSON.stringify(runtimeNetworkEgressFindings[0])).not.toContain("169.254.169.254");
+    expect(JSON.stringify(runtimeNetworkEgressFindings[0])).not.toContain("metadata.google.internal");
+    expect(JSON.stringify(runtimeNetworkEgressFindings[0])).not.toContain("127.0.0.1");
+    expect(JSON.stringify(runtimeNetworkEgressFindings[0])).not.toContain("admin.internal.local");
+    expect(JSON.stringify(runtimeNetworkEgressFindings[0])).not.toContain("egress_metadata_token");
+    expect(JSON.stringify(runtimeNetworkEgressFindings[0])).not.toContain("egress_customer_email");
+    expect(JSON.stringify(runtimeNetworkEgressFindings[0])).not.toContain("confidential_internal_response");
+    expect(JSON.stringify(runtimeNetworkEgressFindings[0])).not.toContain("untrusted_customer_ticket_url");
     const runtimeAuthorizationBrokerFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-RUNTIME-041");
     expect(runtimeAuthorizationBrokerFindings).toHaveLength(1);
     expect(runtimeAuthorizationBrokerFindings[0]?.matched_object.path).toBe("authz/tool-broker.yaml");

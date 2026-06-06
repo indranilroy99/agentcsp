@@ -1156,6 +1156,16 @@ The current iteration adds:
 - rule `AGENTCSP-RUNTIME-055` for context-window instruction eviction that combines enabled truncation, untrusted/tool/memory priority, privileged instruction eviction, safety-policy eviction, unverified summaries, privileged tool authority, credential exposure, and missing approval
 - scanner, rule, fixture verifier, and redaction coverage proving raw priority labels, summary strategy names, tool names, data-scope labels, and token placeholders stay redacted
 
+## Agent Network Egress Metadata Pass
+
+The current iteration adds:
+
+- first-class redacted metadata for agent web, browser, fetch, and network-egress posture, including private-network, localhost, cloud metadata service, wildcard destination, untrusted URL source, user-controlled URL, redirect handling, DNS-rebinding protection, header and credential forwarding, response capture, data-class, credential exposure, and approval boundaries
+- vulnerable fixture coverage for a web egress policy that lets untrusted customer, browser, and retrieval links drive WebFetch/browser/http tools to metadata, localhost, private/internal, and wildcard destinations while forwarding credentials, following redirects, disabling DNS-rebinding protection, and lacking approval
+- safe fixture coverage for an approval-gated public-documentation egress policy that blocks metadata, private ranges, localhost, redirects, credential forwarding, and response capture
+- rule `AGENTCSP-RUNTIME-058` for model-steered web egress to cloud metadata/private network destinations with credential forwarding and no approval
+- scanner, rule, fixture verifier, and redaction coverage proving raw URLs, hostnames, IP addresses, source labels, response data labels, and token placeholders stay redacted
+
 ## Agent Reasoning State Exposure Pass
 
 The current iteration adds:

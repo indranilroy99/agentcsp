@@ -1,0 +1,53 @@
+id: AGENTCSP-RUNTIME-058
+name: Agent web egress can reach metadata services with credentials
+description: An agent network egress policy lets web or browser tools follow untrusted URLs to private network and cloud metadata endpoints while forwarding credentials or headers and approval is missing.
+category: network_egress_ssrf
+severity: critical
+maps_to:
+  owasp:
+    - LLM01:2025 Prompt Injection
+    - LLM02:2025 Sensitive Information Disclosure
+    - LLM06:2025 Excessive Agency
+  mitre_atlas:
+    - AML.T0051 LLM Prompt Injection
+    - AML.T0057 Exfiltration via Cyber Means
+  nist_ai_rmf:
+    - MAP 5.1
+    - MEASURE 2.7
+    - MANAGE 2.4
+match:
+  object_type: runtime_config
+  where:
+    - field: metadata.parsed_agent_network_egress_config
+      op: equals
+      value: true
+    - field: metadata.agent_network_egress_enabled
+      op: equals
+      value: true
+    - field: metadata.agent_network_egress_web_tool_authority
+      op: equals
+      value: true
+    - field: metadata.agent_network_egress_untrusted_input
+      op: equals
+      value: true
+    - field: metadata.agent_network_egress_private_network_access
+      op: equals
+      value: true
+    - field: metadata.agent_network_egress_metadata_service_access
+      op: equals
+      value: true
+    - field: metadata.agent_network_egress_credential_forwarding
+      op: equals
+      value: true
+    - field: metadata.agent_network_egress_dns_rebinding_protection_disabled
+      op: equals
+      value: true
+    - field: metadata.agent_network_egress_approval_required
+      op: equals
+      value: false
+    - field: secret_exposure
+      op: equals
+      value: true
+recommendation:
+  control: require_approval
+  text: Block metadata, localhost, link-local, and private CIDR destinations from model-selected web egress by default, strip credentials and authorization headers before outbound fetches, validate DNS after redirects, and require approval before untrusted URLs can be fetched by agent tools.

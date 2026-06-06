@@ -949,6 +949,39 @@ Agent reasoning-state metadata may include:
 
 Raw reasoning text, chain-of-thought, scratchpad entries, planner traces, destination URLs, workspace names, source labels, tool names, data-field labels, and token placeholders are not emitted. Capture categories, destination categories, persistence and replay posture, planner-use posture, redaction and access-control posture, approval posture, data-class booleans, and credential key names let rules detect cases where sensitive agent reasoning state can be stored remotely and replayed into future privileged decisions.
 
+## Agent Network Egress Posture
+
+Network-egress, web-egress, browser-egress, fetch-policy, web-access, private-network, metadata-access, and SSRF-oriented configs are also normalized into `runtime_config` objects when common agent egress policy files are discovered.
+
+Agent network egress metadata may include:
+
+- `parsed_agent_network_egress_config`
+- `agent_network_egress_fields`
+- `agent_network_egress_enabled`
+- `agent_network_egress_web_tool_authority`
+- `agent_network_egress_destination_redacted`
+- `agent_network_egress_destination_count`
+- `agent_network_egress_destination_kinds`
+- `agent_network_egress_private_network_access`
+- `agent_network_egress_metadata_service_access`
+- `agent_network_egress_localhost_access`
+- `agent_network_egress_private_cidr_access`
+- `agent_network_egress_wildcard_destination`
+- `agent_network_egress_untrusted_input`
+- `agent_network_egress_user_controlled_url`
+- `agent_network_egress_redirects_allowed`
+- `agent_network_egress_dns_rebinding_protection_disabled`
+- `agent_network_egress_request_headers_forwarded`
+- `agent_network_egress_credential_forwarding`
+- `agent_network_egress_response_capture`
+- `agent_network_egress_sensitive_response_capture`
+- `agent_network_egress_pii_response_capture`
+- `agent_network_egress_approval_required`
+- `env_key_names`
+- `secret_ref_key_names`
+
+Raw URLs, hostnames, IP addresses, CIDRs, header values, source labels, response field labels, and token placeholders are not emitted. Destination categories such as `cloud_metadata_service`, `localhost_or_cluster_service`, `private_network_range`, and `wildcard_destination`, combined with untrusted URL sources, credential-forwarding posture, redirect and DNS-rebinding posture, and approval state let rules detect model-steered SSRF paths without copying network targets into evidence.
+
 ## Agent Tool Retry And Replay Posture
 
 Tool-retry, replay, idempotency, duplicate-suppression, execution-policy, and retry-budget configs are also normalized into `runtime_config` objects when common agent tool retry configuration files are discovered.
