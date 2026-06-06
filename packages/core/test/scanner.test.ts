@@ -28,6 +28,7 @@ describe("scanner", () => {
       "CUSTOMER_SUCCESS_SLACK_BOT_TOKEN",
       "GITHUB_TOKEN",
       "OPENAI_API_KEY",
+      "SAFETY_RUNTIME_TOKEN",
       "SLACK_WEBHOOK_URL",
       "SUPPORT_DB_PASSWORD",
       "SUPPORT_DB_URL",
@@ -726,6 +727,68 @@ describe("scanner", () => {
     expect(JSON.stringify(agentOrchestrationConfig)).not.toContain("intake-router");
     expect(JSON.stringify(agentOrchestrationConfig)).not.toContain("operations-executor");
     expect(JSON.stringify(agentOrchestrationConfig)).not.toContain("customer_account_id");
+    const agentSafetyConfig = surfaces.runtime_config.find((surface) => surface.path === "guardrails/agent-safety.yaml");
+    expect(agentSafetyConfig).toBeDefined();
+    expect(agentSafetyConfig).toMatchObject({
+      trust_level: "project",
+      external_reach: true,
+      secret_exposure: true,
+      side_effect: true,
+      reversible: false,
+      untrusted_to_privileged: true
+    });
+    expect(agentSafetyConfig?.metadata).toMatchObject({
+      content_redacted: true,
+      values_collected: false,
+      parsed_agent_safety_config: true,
+      agent_safety_framework: "langchain",
+      agent_safety_controls_declared: true,
+      agent_safety_controls_disabled: true,
+      agent_safety_prompt_injection_filter_disabled: true,
+      agent_safety_output_validation_disabled: true,
+      agent_safety_tool_result_sanitization_disabled: true,
+      agent_safety_content_moderation_disabled: true,
+      agent_safety_pii_redaction_disabled: true,
+      agent_safety_secret_redaction_disabled: true,
+      agent_safety_untrusted_input: true,
+      agent_safety_privileged_tool_authority: true,
+      agent_safety_write_authority: true,
+      agent_safety_external_authority: true,
+      agent_safety_memory_write_authority: true,
+      agent_safety_secret_exposure: true,
+      agent_safety_sensitive_data: true,
+      agent_safety_pii_data: true,
+      agent_safety_approval_required: false
+    });
+    expect(agentSafetyConfig?.metadata.agent_safety_disabled_controls).toEqual([
+      "all_controls",
+      "content_moderation",
+      "output_validation",
+      "pii_redaction",
+      "prompt_injection_filter",
+      "secret_redaction",
+      "tool_result_sanitization"
+    ]);
+    expect(agentSafetyConfig?.metadata.agent_safety_tool_authority_categories).toEqual([
+      "browser_action",
+      "database_access",
+      "external_response",
+      "memory_write",
+      "secret_manager_access",
+      "tool_call"
+    ]);
+    expect(agentSafetyConfig?.metadata.env_key_names).toEqual(["SAFETY_RUNTIME_TOKEN"]);
+    expect(agentSafetyConfig?.metadata.secret_ref_key_names).toEqual(["SAFETY_RUNTIME_TOKEN"]);
+    expect(agentSafetyConfig?.data_classes).toEqual(["confidential", "credential", "pii"]);
+    expect(agentSafetyConfig?.actions).toEqual(["call", "execute", "publish", "read", "remember", "send", "write"]);
+    expect(JSON.stringify(agentSafetyConfig)).not.toContain("${SAFETY_RUNTIME_TOKEN}");
+    expect(JSON.stringify(agentSafetyConfig)).not.toContain("customer-support-disabled-safety");
+    expect(JSON.stringify(agentSafetyConfig)).not.toContain("customer_ticket_message");
+    expect(JSON.stringify(agentSafetyConfig)).not.toContain("retrieved_customer_context");
+    expect(JSON.stringify(agentSafetyConfig)).not.toContain("browser_tool_output");
+    expect(JSON.stringify(agentSafetyConfig)).not.toContain("support_db.update_customer_record");
+    expect(JSON.stringify(agentSafetyConfig)).not.toContain("vault_secret_lookup.read_support_token");
+    expect(JSON.stringify(agentSafetyConfig)).not.toContain("customer_email_address");
     expect(surfaces.ci_cd.length).toBe(1);
     expect(surfaces.ci_cd[0]?.metadata).toMatchObject({
       pull_request_trigger: true,

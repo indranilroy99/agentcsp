@@ -46,6 +46,7 @@ A finding should be considered production-grade when it includes:
 - browser-session metadata for persistent authenticated state, broad origins, and untrusted click/form authority without emitting cookie files, profile paths, origins, or endpoints
 - inbound agent trigger metadata for email, chat, ticket, webhook, and queue payloads that reach agent tools without emitting mailbox names, sender addresses, URLs, labels, agent names, or payload text
 - multi-agent orchestration metadata for delegation, shared memory, tool authority, and approval posture without emitting agent names, role prompts, task text, graph labels, memory namespaces, or raw tool lists
+- agent safety-control metadata for disabled guardrails, validation, moderation, tool-result sanitization, and redaction without emitting policy names, source names, tool strings, action lists, data-field labels, or prompt text
 - SaaS/API connector metadata for broad credential-backed write scopes without emitting raw OAuth scopes, endpoints, workspaces, channels, queues, or customer-system names
 - secret-manager metadata for read/list credential-broker authority without emitting vault URLs, secret paths, policy names, role names, or resource IDs
 - database connector metadata for credential-backed read/write/query authority without emitting hosts, connection strings, usernames, or table names
@@ -105,6 +106,7 @@ Examples:
 - authenticated browser session plus broad origins plus untrusted navigation plus click/form/upload authority
 - inbound email/chat/ticket/webhook payload plus agent invocation plus tool authority plus secrets plus no approval gate
 - multi-agent delegation plus untrusted input plus shared memory plus privileged specialist tools plus credentials plus no approval gate
+- disabled agent safety controls plus untrusted input plus privileged tools plus credentials plus no approval gate
 - SaaS connector with broad write scopes plus credentials plus untrusted input plus no approval gate
 - secret manager connector with read/list scope plus tool injection plus untrusted input plus no approval gate
 - database connector with credentials plus write/query authority plus sensitive data plus untrusted input

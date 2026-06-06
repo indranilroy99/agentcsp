@@ -55,6 +55,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-013")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-014")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-015")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-016")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-CICD-002")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-AUTOMATION-001")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-AUTOMATION-002")).toBe(true);
@@ -298,6 +299,48 @@ describe("rule engine", () => {
     expect(JSON.stringify(runtimeAgentOrchestrationFindings[0])).not.toContain("support-escalation-crew");
     expect(JSON.stringify(runtimeAgentOrchestrationFindings[0])).not.toContain("production-support-memory");
     expect(JSON.stringify(runtimeAgentOrchestrationFindings[0])).not.toContain("operations-executor");
+    const runtimeAgentSafetyFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-RUNTIME-016");
+    expect(runtimeAgentSafetyFindings).toHaveLength(1);
+    expect(runtimeAgentSafetyFindings[0]?.matched_object.path).toBe("guardrails/agent-safety.yaml");
+    expect(runtimeAgentSafetyFindings[0]?.matched_object.metadata).toMatchObject({
+      agent_safety_framework: "langchain",
+      agent_safety_controls_disabled: true,
+      agent_safety_prompt_injection_filter_disabled: true,
+      agent_safety_output_validation_disabled: true,
+      agent_safety_tool_result_sanitization_disabled: true,
+      agent_safety_content_moderation_disabled: true,
+      agent_safety_pii_redaction_disabled: true,
+      agent_safety_secret_redaction_disabled: true,
+      agent_safety_untrusted_input: true,
+      agent_safety_privileged_tool_authority: true,
+      agent_safety_external_authority: true,
+      agent_safety_approval_required: false
+    });
+    expect(runtimeAgentSafetyFindings[0]?.matched_object.metadata.agent_safety_disabled_controls).toEqual([
+      "all_controls",
+      "content_moderation",
+      "output_validation",
+      "pii_redaction",
+      "prompt_injection_filter",
+      "secret_redaction",
+      "tool_result_sanitization"
+    ]);
+    expect(runtimeAgentSafetyFindings[0]?.matched_object.metadata.agent_safety_tool_authority_categories).toEqual([
+      "browser_action",
+      "database_access",
+      "external_response",
+      "memory_write",
+      "secret_manager_access",
+      "tool_call"
+    ]);
+    expect(runtimeAgentSafetyFindings[0]?.severity).toBe("critical");
+    expect(runtimeAgentSafetyFindings[0]?.confidence).toBe("very_high");
+    expect(runtimeAgentSafetyFindings[0]?.recommended_control).toBe("require_approval");
+    expect(JSON.stringify(runtimeAgentSafetyFindings[0])).not.toContain("${SAFETY_RUNTIME_TOKEN}");
+    expect(JSON.stringify(runtimeAgentSafetyFindings[0])).not.toContain("customer-support-disabled-safety");
+    expect(JSON.stringify(runtimeAgentSafetyFindings[0])).not.toContain("customer_ticket_message");
+    expect(JSON.stringify(runtimeAgentSafetyFindings[0])).not.toContain("support_db.update_customer_record");
+    expect(JSON.stringify(runtimeAgentSafetyFindings[0])).not.toContain("customer_email_address");
     const automationAgentFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-AUTOMATION-002");
     expect(automationAgentFindings).toHaveLength(1);
     expect(automationAgentFindings[0]?.matched_object.path).toBe(".github/workflows/agent-maintenance.yml");

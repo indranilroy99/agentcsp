@@ -175,21 +175,24 @@ describe("static graph", () => {
     expect(ragInboundTriggerPath?.risk.actions).toEqual(["call", "execute", "publish", "read", "remember", "send", "write"]);
     expect(JSON.stringify(ragInboundTriggerPath)).not.toContain("mail-router.example.invalid");
     expect(JSON.stringify(ragInboundTriggerPath)).not.toContain("support-triage-agent");
-    const ragBrowserSessionPath = result.manifest.attack_paths.find(
+    const ragAgentSafetyPath = result.manifest.attack_paths.find(
       (attackPath) =>
         attackPath.source.path === "rag/customer-note.md" &&
-        attackPath.target.name === "session.yaml" &&
-        attackPath.title === "customer-note.md can influence session.yaml: Untrusted context can influence privileged behavior"
+        attackPath.target.name === "agent-safety.yaml" &&
+        attackPath.title ===
+          "customer-note.md can influence agent-safety.yaml: Disabled agent safety controls expose privileged tools to untrusted context"
     );
-    expect(ragBrowserSessionPath).toBeDefined();
-    expect(ragBrowserSessionPath?.severity).toBe("critical");
-    expect(ragBrowserSessionPath?.confidence).toBe("very_high");
-    expect(ragBrowserSessionPath?.reason).toContain("tool directive");
-    expect(ragBrowserSessionPath?.risk.data_classes).toContain("pii");
-    expect(ragBrowserSessionPath?.risk.actions).toEqual(["call", "read", "send", "write"]);
-    expect(ragBrowserSessionPath?.risk.external_reach).toBe(true);
-    expect(JSON.stringify(ragBrowserSessionPath)).not.toContain(".auth/support-browser-state.json");
-    expect(JSON.stringify(ragBrowserSessionPath)).not.toContain("support.example.invalid");
+    expect(ragAgentSafetyPath).toBeDefined();
+    expect(ragAgentSafetyPath?.severity).toBe("critical");
+    expect(ragAgentSafetyPath?.confidence).toBe("very_high");
+    expect(ragAgentSafetyPath?.recommended_control).toBe("require_approval");
+    expect(ragAgentSafetyPath?.reason).toContain("tool directive");
+    expect(ragAgentSafetyPath?.risk.data_classes).toContain("pii");
+    expect(ragAgentSafetyPath?.risk.actions).toEqual(["call", "execute", "publish", "read", "remember", "send", "write"]);
+    expect(ragAgentSafetyPath?.risk.external_reach).toBe(true);
+    expect(JSON.stringify(ragAgentSafetyPath)).not.toContain("customer-support-disabled-safety");
+    expect(JSON.stringify(ragAgentSafetyPath)).not.toContain("support_db.update_customer_record");
+    expect(JSON.stringify(ragAgentSafetyPath)).not.toContain("customer_email_address");
   });
 
   it("correlates generated-state replay with privileged capability paths when logs are included", async () => {

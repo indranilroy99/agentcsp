@@ -666,6 +666,15 @@ The current iteration adds:
 - rule `AGENTCSP-RUNTIME-015` for multi-agent delegation that routes untrusted context to privileged agents
 - scanner, rule, fixture verifier, and redaction coverage proving raw crew names, agent names, role prompts, memory namespaces, graph labels, raw tool lists, and token placeholders stay redacted
 
+## Agent Safety-Control Posture Pass
+
+The current iteration adds:
+
+- first-class redacted metadata for agent safety, guardrail, moderation, validation, sanitization, and redaction configs
+- vulnerable fixture coverage for a support agent runtime with disabled prompt-injection filtering, output validation, tool-result sanitization, moderation, PII redaction, and secret redaction while privileged tools, credentials, untrusted input, external writes, and memory writes remain available without approval
+- rule `AGENTCSP-RUNTIME-016` for disabled agent safety controls exposing privileged tools to untrusted context
+- scanner, rule, fixture verifier, and redaction coverage proving raw policy names, input source names, tool strings, action lists, data-field labels, and token placeholders stay redacted
+
 ## Initial Build Recommendation
 
 Start with a CLI-first MVP before building the dashboard:

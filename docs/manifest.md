@@ -342,6 +342,39 @@ Agent orchestration metadata may include:
 
 Raw agent names, crew names, role prompts, task descriptions, memory namespaces, graph labels, tool lists, and secret placeholders are not emitted. Framework names, counts, redacted delegation categories, shared-memory posture, tool-authority categories, approval posture, data-class booleans, and credential key names let rules detect indirect prompt-injection paths across agent handoffs without copying orchestration content into the manifest.
 
+## Agent Safety Control Posture
+
+Agent safety, guardrail, moderation, validation, sanitization, and redaction configs are normalized into `runtime_config` objects when common control configuration files are discovered.
+
+Agent safety metadata may include:
+
+- `parsed_agent_safety_config`
+- `agent_safety_fields`
+- `agent_safety_framework`
+- `agent_safety_controls_declared`
+- `agent_safety_controls_disabled`
+- `agent_safety_disabled_controls`
+- `agent_safety_prompt_injection_filter_disabled`
+- `agent_safety_output_validation_disabled`
+- `agent_safety_tool_result_sanitization_disabled`
+- `agent_safety_content_moderation_disabled`
+- `agent_safety_pii_redaction_disabled`
+- `agent_safety_secret_redaction_disabled`
+- `agent_safety_untrusted_input`
+- `agent_safety_privileged_tool_authority`
+- `agent_safety_tool_authority_categories`
+- `agent_safety_write_authority`
+- `agent_safety_external_authority`
+- `agent_safety_memory_write_authority`
+- `agent_safety_secret_exposure`
+- `agent_safety_sensitive_data`
+- `agent_safety_pii_data`
+- `agent_safety_approval_required`
+- `env_key_names`
+- `secret_ref_key_names`
+
+Raw policy names, source names, tool strings, action lists, data-field labels, prompt text, and secret placeholders are not emitted. Framework names, disabled-control categories, tool-authority categories, approval posture, data-class booleans, and credential key names let rules detect when weakened safety controls expose privileged agent actions without copying control policy contents into the manifest.
+
 ## SaaS And API Connector Posture
 
 SaaS, API, ticketing, messaging, email, CRM, and repository-service connector configs are also normalized into `runtime_config` objects when common connector configuration files are discovered.

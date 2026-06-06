@@ -137,6 +137,11 @@ export async function detectSurfaces(files: WalkedFile[]): Promise<DetectedSurfa
       continue;
     }
 
+    if (isAgentSafetyConfigPath(file.relativePath, basename)) {
+      detectAgentSafetyConfig(file, text, surfaces);
+      continue;
+    }
+
     if (isSaasConnectorConfigPath(file.relativePath, basename)) {
       detectSaasConnectorConfig(file, text, surfaces);
       continue;
@@ -706,6 +711,79 @@ function detectAgentOrchestrationConfig(file: WalkedFile, text: string | undefin
   });
 }
 
+function detectAgentSafetyConfig(file: WalkedFile, text: string | undefined, surfaces: DetectedSurfaces): void {
+  const parsed = parseStructuredConfig(text ?? "", file.relativePath);
+  if (parsed.parseFailed) {
+    addDiagnostic(surfaces, file, {
+      parser: parsed.parser ?? "structured_config",
+      code: "AGENT_SAFETY_CONFIG_PARSE_FAILED",
+      reason: "Agent safety or guardrail configuration could not be parsed. Raw content was redacted."
+    });
+  }
+
+  const posture = classifyAgentSafetyConfig(parsed.value, file.relativePath);
+  const actions = new Set<ActionType>(["read", "call"]);
+  if (posture.agent_safety_privileged_tool_authority) actions.add("execute");
+  if (posture.agent_safety_write_authority) actions.add("write");
+  if (posture.agent_safety_external_authority) {
+    actions.add("send");
+    actions.add("publish");
+  }
+  if (posture.agent_safety_memory_write_authority) actions.add("remember");
+
+  const dataClasses = new Set<SurfaceObject["data_classes"][number]>(["unknown"]);
+  if (
+    posture.agent_safety_secret_exposure ||
+    posture.env_key_names.some(isCredentialLikeKeyName) ||
+    posture.secret_ref_key_names.length > 0
+  ) {
+    dataClasses.add("credential");
+  }
+  if (posture.agent_safety_sensitive_data) dataClasses.add("confidential");
+  if (posture.agent_safety_pii_data) dataClasses.add("pii");
+  if (dataClasses.size > 1) dataClasses.delete("unknown");
+
+  const object = createSurfaceObject({
+    type: "runtime_config",
+    name: path.basename(file.relativePath),
+    path: file.relativePath,
+    trust_level: inferTrustLevel(file.relativePath),
+    data_classes: uniqueDataClasses([...dataClasses] as SurfaceObject["data_classes"]),
+    actions: uniqueActions([...actions]),
+    side_effect:
+      posture.agent_safety_controls_disabled ||
+      posture.agent_safety_privileged_tool_authority ||
+      posture.agent_safety_write_authority ||
+      posture.agent_safety_external_authority ||
+      posture.agent_safety_memory_write_authority,
+    reversible: !posture.agent_safety_write_authority && !posture.agent_safety_external_authority,
+    external_reach: posture.agent_safety_external_authority,
+    secret_exposure:
+      posture.agent_safety_secret_exposure ||
+      posture.env_key_names.some(isCredentialLikeKeyName) ||
+      posture.secret_ref_key_names.length > 0,
+    reason: "Agent safety or guardrail configuration discovered as runtime control posture.",
+    metadata: {
+      content_redacted: true,
+      values_collected: false,
+      parsed_agent_safety_config: Boolean(parsed.value) && !parsed.parseFailed,
+      parse_error: parsed.parseFailed,
+      ...posture
+    }
+  });
+  surfaces.runtime_config.push({
+    ...object,
+    untrusted_to_privileged:
+      (posture.agent_safety_controls_disabled &&
+        posture.agent_safety_untrusted_input &&
+        (posture.agent_safety_privileged_tool_authority ||
+          posture.agent_safety_write_authority ||
+          posture.agent_safety_external_authority ||
+          posture.agent_safety_memory_write_authority)) ||
+      isUntrustedToPrivileged(object)
+  });
+}
+
 function detectSaasConnectorConfig(file: WalkedFile, text: string | undefined, surfaces: DetectedSurfaces): void {
   const parsed = parseStructuredConfig(text ?? "", file.relativePath);
   if (parsed.parseFailed) {
@@ -1014,6 +1092,7 @@ function isAgentOrchestrationConfigPath(relativePath: string, basename: string):
   const lowerBase = basename.toLowerCase();
   if (!/\.(json|ya?ml|toml)$/iu.test(lowerBase)) return false;
   if (normalized.startsWith(".github/workflows/")) return false;
+  if (normalized.startsWith("rules/")) return false;
   const segments = normalized.split("/").slice(0, -1);
   const orchestrationDirectory = segments.some((segment) =>
     /^(agents?|subagents?|multi-agent|multi_agent|orchestration|orchestrators?|crews?|teams?|graphs?|langgraph|crewai|autogen|semantic-kernel|swarm)$/iu.test(
@@ -1027,6 +1106,26 @@ function isAgentOrchestrationConfigPath(relativePath: string, basename: string):
     lowerBase
   );
   return orchestrationName || (orchestrationDirectory && configName);
+}
+
+function isAgentSafetyConfigPath(relativePath: string, basename: string): boolean {
+  const normalized = relativePath.replaceAll("\\", "/").toLowerCase();
+  const lowerBase = basename.toLowerCase();
+  if (!/\.(json|ya?ml|toml)$/iu.test(lowerBase)) return false;
+  if (normalized.startsWith(".github/workflows/")) return false;
+  const segments = normalized.split("/").slice(0, -1);
+  const safetyDirectory = segments.some((segment) =>
+    /^(guardrails?|safety|safety-controls|safety_controls|policy|policies|runtime-policy|runtime_policy|evaluators?|validators?|moderation|controls)$/iu.test(
+      segment
+    )
+  );
+  const safetyName = /(?:guardrail|safety|moderation|content-filter|content_filter|prompt-injection|prompt_injection|injection-filter|injection_filter|output-validator|output_validator|tool-result|tool_result|redaction|sanitize|sanitizer|validator|runtime-policy|runtime_policy)/iu.test(
+    lowerBase
+  );
+  const configName = /(?:config|settings|policy|policies|controls?|guardrails?|safety|moderation|validator|redaction|sanitiz)/iu.test(
+    lowerBase
+  );
+  return safetyName || (safetyDirectory && configName);
 }
 
 function isSaasConnectorConfigPath(relativePath: string, basename: string): boolean {
@@ -1253,6 +1352,32 @@ interface AgentOrchestrationPosture {
   agent_orchestration_sensitive_data: boolean;
   agent_orchestration_pii_data: boolean;
   agent_orchestration_approval_required: boolean;
+  env_key_names: string[];
+  secret_ref_key_names: string[];
+}
+
+interface AgentSafetyPosture {
+  agent_safety_fields: string[];
+  agent_safety_framework?: string;
+  agent_safety_controls_declared: boolean;
+  agent_safety_controls_disabled: boolean;
+  agent_safety_disabled_controls: string[];
+  agent_safety_prompt_injection_filter_disabled: boolean;
+  agent_safety_output_validation_disabled: boolean;
+  agent_safety_tool_result_sanitization_disabled: boolean;
+  agent_safety_content_moderation_disabled: boolean;
+  agent_safety_pii_redaction_disabled: boolean;
+  agent_safety_secret_redaction_disabled: boolean;
+  agent_safety_untrusted_input: boolean;
+  agent_safety_privileged_tool_authority: boolean;
+  agent_safety_tool_authority_categories: string[];
+  agent_safety_write_authority: boolean;
+  agent_safety_external_authority: boolean;
+  agent_safety_memory_write_authority: boolean;
+  agent_safety_secret_exposure: boolean;
+  agent_safety_sensitive_data: boolean;
+  agent_safety_pii_data: boolean;
+  agent_safety_approval_required: boolean;
   env_key_names: string[];
   secret_ref_key_names: string[];
 }
@@ -2116,6 +2241,240 @@ function hasAgentOrchestrationApprovalRequiredSignal(fields: RuntimeField[]): bo
 
 function isAgentOrchestrationSecurityField(fieldPath: string): boolean {
   return /framework|provider|agent|agents|subagent|crew|team|worker|role|task|graph|node|edge|handoff|delegate|delegation|supervisor|manager|router|tool|mcp|browser|database|secret|memory|input|source|customer|ticket|email|chat|write|send|reply|approval|auth|token|credential|env|scope|permission|state|vector|namespace/iu.test(
+    fieldPath
+  );
+}
+
+function classifyAgentSafetyConfig(value: unknown, filePath: string): AgentSafetyPosture {
+  const fields = flattenRuntimeFields(value);
+  const stringValues = collectFieldStringValues(fields);
+  const framework = inferAgentSafetyFramework([filePath, ...fields.map((field) => field.path), ...stringValues]);
+  const disabledControls = collectAgentSafetyDisabledControls(fields);
+  const toolAuthorityCategories = collectAgentSafetyToolAuthorityCategories(fields);
+  const envKeys = uniqueStrings([
+    ...collectEnvKeyNamesFromConfig(value).filter(isLikelyEnvKeyName),
+    ...extractEnvironmentReferenceKeys(stringValues)
+  ]);
+  const secretRefKeys = extractSecretReferenceKeys(stringValues);
+
+  return {
+    agent_safety_fields: fields
+      .map((field) => field.path)
+      .filter((fieldPath) => isAgentSafetySecurityField(fieldPath))
+      .sort((a, b) => a.localeCompare(b)),
+    agent_safety_framework: framework,
+    agent_safety_controls_declared: disabledControls.length > 0 || hasAgentSafetyControlSignal(fields),
+    agent_safety_controls_disabled: disabledControls.length > 0,
+    agent_safety_disabled_controls: disabledControls,
+    agent_safety_prompt_injection_filter_disabled: disabledControls.includes("prompt_injection_filter"),
+    agent_safety_output_validation_disabled: disabledControls.includes("output_validation"),
+    agent_safety_tool_result_sanitization_disabled: disabledControls.includes("tool_result_sanitization"),
+    agent_safety_content_moderation_disabled: disabledControls.includes("content_moderation"),
+    agent_safety_pii_redaction_disabled: disabledControls.includes("pii_redaction"),
+    agent_safety_secret_redaction_disabled: disabledControls.includes("secret_redaction"),
+    agent_safety_untrusted_input: hasAgentSafetyUntrustedInputSignal(fields),
+    agent_safety_privileged_tool_authority: isAgentSafetyPrivileged(toolAuthorityCategories) || hasAgentSafetyToolAuthoritySignal(fields),
+    agent_safety_tool_authority_categories: toolAuthorityCategories,
+    agent_safety_write_authority: hasAgentSafetyWriteAuthoritySignal(fields, toolAuthorityCategories),
+    agent_safety_external_authority: hasAgentSafetyExternalAuthoritySignal(fields, toolAuthorityCategories),
+    agent_safety_memory_write_authority: hasAgentSafetyMemoryWriteSignal(fields, toolAuthorityCategories),
+    agent_safety_secret_exposure:
+      toolAuthorityCategories.includes("secret_manager_access") ||
+      hasAgentSafetySecretSignal(fields) ||
+      envKeys.some(isCredentialLikeKeyName) ||
+      secretRefKeys.length > 0,
+    agent_safety_sensitive_data: hasAgentSafetySensitiveDataSignal(fields),
+    agent_safety_pii_data: hasAgentSafetyPiiDataSignal(fields),
+    agent_safety_approval_required: hasAgentSafetyApprovalRequiredSignal(fields),
+    env_key_names: envKeys,
+    secret_ref_key_names: secretRefKeys
+  };
+}
+
+function inferAgentSafetyFramework(candidates: string[]): string | undefined {
+  const text = candidates.join(" ").toLowerCase();
+  const frameworks: Array<[string, RegExp]> = [
+    ["nemo_guardrails", /\b(nemo[-_\s]?guardrails?|guardrails?\.ai)\b/iu],
+    ["langchain", /\blangchain\b/iu],
+    ["llamaindex", /\b(llama[-_\s]?index|llamaindex)\b/iu],
+    ["openai", /\bopenai\b/iu],
+    ["anthropic", /\banthropic\b/iu],
+    ["pydantic_ai", /\bpydantic[-_\s]?ai\b/iu]
+  ];
+  return frameworks.find(([, pattern]) => pattern.test(text))?.[0];
+}
+
+function collectAgentSafetyDisabledControls(fields: RuntimeField[]): string[] {
+  const controls = new Set<string>();
+  for (const field of fields) {
+    if (isAgentSafetyGlobalDisabledSignal(field)) controls.add("all_controls");
+    if (isAgentSafetyControlDisabled(field, /prompt[_\s-]?injection|injection[_\s-]?filter|jailbreak|instruction[_\s-]?override/iu)) {
+      controls.add("prompt_injection_filter");
+    }
+    if (isAgentSafetyControlDisabled(field, /output[_\s-]?validation|response[_\s-]?validation|schema[_\s-]?validation|validator/iu)) {
+      controls.add("output_validation");
+    }
+    if (isAgentSafetyControlDisabled(field, /tool[_\s-]?(result|output|response)|function[_\s-]?(result|output|response)|observation|sanitize|sanitiz/iu)) {
+      controls.add("tool_result_sanitization");
+    }
+    if (isAgentSafetyControlDisabled(field, /content[_\s-]?moderation|moderation|harm[_\s-]?filter|unsafe[_\s-]?content|content[_\s-]?filter/iu)) {
+      controls.add("content_moderation");
+    }
+    if (isAgentSafetyControlDisabled(field, /pii|personal[_\s-]?data|email|phone|ssn|privacy|redact|mask/iu)) {
+      controls.add("pii_redaction");
+    }
+    if (isAgentSafetyControlDisabled(field, /secret|token|credential|api[_\s-]?key|password|redact|mask|scrub/iu)) {
+      controls.add("secret_redaction");
+    }
+  }
+  return [...controls].sort((a, b) => a.localeCompare(b));
+}
+
+function isAgentSafetyGlobalDisabledSignal(field: RuntimeField): boolean {
+  const text = `${field.path} ${fieldValueText(field)}`;
+  const mentionsSafety = /\b(guardrails?|safety|controls?|policy|policies|moderation|validation|filter|sanitiz|redaction)\b/iu.test(text);
+  if (!mentionsSafety) return false;
+  if (/(^|\.)(enabled|enforced|required|active)$/iu.test(field.path)) return disabledConfigValue(field.value);
+  if (/\b(disabled|disable|bypass|skip|passthrough|allow_all|allow-all|raw|warn_only|warn-only|log_only|log-only|report_only|report-only|monitor_only|monitor-only)\b/iu.test(field.path)) {
+    return truthyConfigValue(field.value);
+  }
+  return /\b(disabled|disable|bypass|skip|passthrough|allow_all|allow-all|raw|warn_only|warn-only|log_only|log-only|report_only|report-only|monitor_only|monitor-only)\b/iu.test(
+    fieldValueText(field)
+  );
+}
+
+function isAgentSafetyControlDisabled(field: RuntimeField, controlPattern: RegExp): boolean {
+  const text = `${field.path} ${fieldValueText(field)}`;
+  if (!controlPattern.test(text)) return false;
+  if (/(^|\.)(enabled|enforced|required|active)$/iu.test(field.path)) return disabledConfigValue(field.value);
+  if (/\b(disabled|disable|bypass|skip|passthrough|allow_all|allow-all|raw|warn_only|warn-only|log_only|log-only|report_only|report-only|monitor_only|monitor-only)\b/iu.test(field.path)) {
+    return truthyConfigValue(field.value);
+  }
+  return disabledConfigValue(field.value);
+}
+
+function disabledConfigValue(value: unknown): boolean {
+  if (typeof value === "boolean") return !value;
+  if (typeof value === "number") return value === 0;
+  if (typeof value === "string") {
+    return /^(false|no|off|disabled|disable|none|raw|passthrough|bypass|skip|unchecked|allow_all|allow-all|warn_only|warn-only|log_only|log-only|report_only|report-only|monitor_only|monitor-only|0)$/iu.test(
+      value.trim()
+    );
+  }
+  return false;
+}
+
+function hasAgentSafetyControlSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /\b(guardrails?|safety|moderation|prompt[_\s-]?injection|jailbreak|validation|validator|sanitize|sanitiz|redaction|mask|filter)\b/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    )
+  );
+}
+
+function hasAgentSafetyUntrustedInputSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /\b(untrusted|user|customer|client|ticket|support|issue|comment|message|prompt|retrieved|rag|document|email|chat|inbound|web[_-]?page|browser[_-]?output|tool[_-]?output|external)\b/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    )
+  );
+}
+
+function collectAgentSafetyToolAuthorityCategories(fields: RuntimeField[]): string[] {
+  const categories = new Set<string>();
+  for (const field of fields) {
+    const text = `${field.path} ${fieldValueText(field)}`.toLowerCase();
+    if (/\b(tool|tools|function|function_call|mcp|connector|capability)\b/iu.test(text)) categories.add("tool_call");
+    if (/\b(browser|playwright|puppeteer|web[_\s-]?agent|click|form|navigate)\b/iu.test(text)) categories.add("browser_action");
+    if (/\b(database|db|sql|query|support_db|warehouse)\b/iu.test(text)) categories.add("database_access");
+    if (/(?:^|[_\W])(vault|secret|secrets|secret[_\s-]?manager|key[_\s-]?vault|credential)(?:[_\W]|$)/iu.test(text)) {
+      categories.add("secret_manager_access");
+    }
+    if (/\b(slack|email|webhook|message|ticket|issue|comment|reply|send|post|publish)\b/iu.test(text)) categories.add("external_response");
+    if (/(?:^|[_\W])(memory|remember|store|persist|session[_\s-]?state)(?:[_\W]|$)/iu.test(text)) categories.add("memory_write");
+    if (/\b(shell|bash|command|exec|terminal|python|node|subprocess)\b/iu.test(text)) categories.add("shell_execution");
+    if (/\b(filesystem|file[_\s-]?write|workspace|repo|repository|github|gitlab|pull[_\s-]?request)\b/iu.test(text)) {
+      categories.add("repo_or_filesystem_write");
+    }
+  }
+  return [...categories].sort((a, b) => a.localeCompare(b));
+}
+
+function hasAgentSafetyToolAuthoritySignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /\b(call[_\s-]?tools?|invoke[_\s-]?tools?|tool[_\s-]?access|function[_\s-]?call|mcp|browser|database|vault|shell|filesystem|write[_\s-]?tool)\b/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    )
+  );
+}
+
+function isAgentSafetyPrivileged(categories: string[]): boolean {
+  return categories.some((category) =>
+    [
+      "browser_action",
+      "database_access",
+      "external_response",
+      "memory_write",
+      "repo_or_filesystem_write",
+      "secret_manager_access",
+      "shell_execution",
+      "tool_call"
+    ].includes(category)
+  );
+}
+
+function hasAgentSafetyWriteAuthoritySignal(fields: RuntimeField[], categories: string[]): boolean {
+  return categories.some((category) => ["database_access", "external_response", "repo_or_filesystem_write", "shell_execution"].includes(category)) ||
+    fields.some((field) =>
+      /\b(write|update|create|delete|reply|respond|send|post|publish|comment|commit|push|merge|deploy|remember|persist|approve|close|assign)\b/iu.test(
+        `${field.path} ${fieldValueText(field)}`
+      )
+    );
+}
+
+function hasAgentSafetyExternalAuthoritySignal(fields: RuntimeField[], categories: string[]): boolean {
+  return categories.includes("external_response") ||
+    fields.some((field) => /\b(slack|email|webhook|send|post|publish|reply|respond|ticket|issue|external)\b/iu.test(`${field.path} ${fieldValueText(field)}`));
+}
+
+function hasAgentSafetyMemoryWriteSignal(fields: RuntimeField[], categories: string[]): boolean {
+  return categories.includes("memory_write") ||
+    fields.some((field) =>
+      /(?:^|[_\W])(memory|remember|store|persist|session[_\s-]?state|long[_\s-]?term[_\s-]?memory)(?:[_\W]|$)/iu.test(
+        `${field.path} ${fieldValueText(field)}`
+      )
+    );
+}
+
+function hasAgentSafetySecretSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => /\b(secret|token|credential|api[_-]?key|password|vault|key[_\s-]?vault)\b/iu.test(`${field.path} ${fieldValueText(field)}`));
+}
+
+function hasAgentSafetySensitiveDataSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /\b(customer|client|ticket|support|internal|confidential|private|proprietary|sensitive|account|billing|payment|order|record|case|profile|note|incident)\b/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    )
+  );
+}
+
+function hasAgentSafetyPiiDataSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /(?:^|[_\W])(pii|email|phone|address|ssn|passport|dob|date[_\s-]?of[_\s-]?birth|customer[_-]?id|user[_-]?id|account[_-]?id)(?:[_\W]|$)/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    )
+  );
+}
+
+function hasAgentSafetyApprovalRequiredSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /approval|required[_-]?approval|human[_-]?approval|confirm|confirmation|review|human[_-]?in[_-]?the[_-]?loop/iu.test(field.path) &&
+    truthyConfigValue(field.value)
+  );
+}
+
+function isAgentSafetySecurityField(fieldPath: string): boolean {
+  return /framework|provider|guardrail|safety|policy|control|moderation|filter|injection|jailbreak|validation|validator|sanitize|sanitiz|redact|mask|secret|pii|tool|mcp|function|output|input|source|customer|ticket|email|browser|database|memory|write|send|publish|approval|auth|token|credential|env|permission|scope/iu.test(
     fieldPath
   );
 }

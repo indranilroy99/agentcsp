@@ -1,0 +1,41 @@
+id: AGENTCSP-RUNTIME-016
+name: Disabled agent safety controls expose privileged tools to untrusted context
+description: An agent safety or guardrail configuration disables prompt-injection filtering, output validation, tool-result sanitization, moderation, or redaction while untrusted context can reach privileged tools, credentials, and side effects without approval.
+category: agent_safety_control_bypass
+severity: critical
+maps_to:
+  owasp:
+    - LLM01:2025 Prompt Injection
+    - LLM02:2025 Sensitive Information Disclosure
+    - LLM06:2025 Excessive Agency
+  mitre_atlas:
+    - AML.T0051 LLM Prompt Injection
+    - AML.T0057 Exfiltration via Cyber Means
+  nist_ai_rmf:
+    - MAP 5.1
+    - MEASURE 2.9
+    - MANAGE 2.4
+match:
+  object_type: runtime_config
+  where:
+    - field: metadata.parsed_agent_safety_config
+      op: equals
+      value: true
+    - field: metadata.agent_safety_controls_disabled
+      op: equals
+      value: true
+    - field: metadata.agent_safety_untrusted_input
+      op: equals
+      value: true
+    - field: metadata.agent_safety_privileged_tool_authority
+      op: equals
+      value: true
+    - field: metadata.agent_safety_approval_required
+      op: equals
+      value: false
+    - field: secret_exposure
+      op: equals
+      value: true
+recommendation:
+  control: require_approval
+  text: Re-enable prompt-injection filtering, output validation, tool-result sanitization, and redaction before privileged tool use; require approval for external writes, memory writes, and credential-backed tool calls until the safety policy is enforced.
