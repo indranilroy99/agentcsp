@@ -1,0 +1,34 @@
+mode: prompt_context_composer
+auth:
+  token: ${CONTEXT_COMPOSER_TOKEN}
+sources:
+  - customer_ticket_message
+  - retrieved_account_context
+  - browser_tool_output
+  - command_tool_result
+  - support_memory_summary
+roles:
+  system:
+    include_sources:
+      - customer_ticket_message
+      - retrieved_account_context
+    delimiter: none
+    sanitization: disabled
+  developer:
+    include_sources:
+      - browser_tool_output
+      - command_tool_result
+    include_raw_context: true
+    prompt_injection_filter: disabled
+tool_authority:
+  tools:
+    - support_db.update_customer_record
+    - vault_secret_lookup.read_support_token
+    - slack.post_escalation_reply
+    - browser.submit_customer_form
+    - memory.write_long_term_summary
+  approval_required: false
+data_scope:
+  - customer_context_email
+  - customer_account_number
+  - confidential_account_notes

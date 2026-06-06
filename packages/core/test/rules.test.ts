@@ -61,6 +61,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-019")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-020")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-021")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-022")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-CICD-002")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-AUTOMATION-001")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-AUTOMATION-002")).toBe(true);
@@ -357,6 +358,36 @@ describe("rule engine", () => {
     expect(JSON.stringify(runtimeApprovalGateFindings[0])).not.toContain("Summarize the customer request");
     expect(JSON.stringify(runtimeApprovalGateFindings[0])).not.toContain("support_db.update_customer_record");
     expect(JSON.stringify(runtimeApprovalGateFindings[0])).not.toContain("customer_email_address");
+    const runtimeContextComposerFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-RUNTIME-022");
+    expect(runtimeContextComposerFindings).toHaveLength(1);
+    expect(runtimeContextComposerFindings[0]?.matched_object.path).toBe("context/system-context.yaml");
+    expect(runtimeContextComposerFindings[0]?.matched_object.metadata).toMatchObject({
+      parsed_agent_context_composer_config: true,
+      agent_context_composer_untrusted_sources: true,
+      agent_context_composer_privileged_role_injection: true,
+      agent_context_composer_system_role: true,
+      agent_context_composer_developer_role: true,
+      agent_context_composer_sanitization_disabled: true,
+      agent_context_composer_delimiter_disabled: true,
+      agent_context_composer_privileged_tool_authority: true,
+      agent_context_composer_approval_required: false
+    });
+    expect(runtimeContextComposerFindings[0]?.matched_object.metadata.agent_context_composer_tool_authority_categories).toEqual([
+      "browser_action",
+      "database_access",
+      "external_response",
+      "memory_write",
+      "secret_manager_access",
+      "tool_call"
+    ]);
+    expect(runtimeContextComposerFindings[0]?.severity).toBe("critical");
+    expect(runtimeContextComposerFindings[0]?.confidence).toBe("very_high");
+    expect(runtimeContextComposerFindings[0]?.recommended_control).toBe("quarantine");
+    expect(JSON.stringify(runtimeContextComposerFindings[0])).not.toContain("${CONTEXT_COMPOSER_TOKEN}");
+    expect(JSON.stringify(runtimeContextComposerFindings[0])).not.toContain("customer_ticket_message");
+    expect(JSON.stringify(runtimeContextComposerFindings[0])).not.toContain("retrieved_account_context");
+    expect(JSON.stringify(runtimeContextComposerFindings[0])).not.toContain("support_db.update_customer_record");
+    expect(JSON.stringify(runtimeContextComposerFindings[0])).not.toContain("customer_context_email");
     const runtimeInboundTriggerFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-RUNTIME-014");
     expect(runtimeInboundTriggerFindings).toHaveLength(1);
     expect(runtimeInboundTriggerFindings[0]?.matched_object.path).toBe("inbox/support-triage.yaml");

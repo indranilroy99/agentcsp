@@ -107,6 +107,11 @@ export async function detectSurfaces(files: WalkedFile[]): Promise<DetectedSurfa
       continue;
     }
 
+    if (isAgentContextComposerConfigPath(file.relativePath, basename)) {
+      detectAgentContextComposerConfig(file, text, surfaces);
+      continue;
+    }
+
     if (isAgentApprovalGateConfigPath(file.relativePath, basename)) {
       detectAgentApprovalGateConfig(file, text, surfaces);
       continue;
@@ -1219,6 +1224,75 @@ function detectAgentApprovalGateConfig(file: WalkedFile, text: string | undefine
   });
 }
 
+function detectAgentContextComposerConfig(file: WalkedFile, text: string | undefined, surfaces: DetectedSurfaces): void {
+  const parsed = parseStructuredConfig(text ?? "", file.relativePath);
+  if (parsed.parseFailed) {
+    addDiagnostic(surfaces, file, {
+      parser: parsed.parser ?? "structured_config",
+      code: "AGENT_CONTEXT_COMPOSER_CONFIG_PARSE_FAILED",
+      reason: "Agent context-composer configuration could not be parsed. Raw content was redacted."
+    });
+  }
+
+  const posture = classifyAgentContextComposerConfig(parsed.value, file.relativePath);
+  const actions = new Set<ActionType>(["call", "read"]);
+  if (posture.agent_context_composer_write_authority || posture.agent_context_composer_privileged_tool_authority) actions.add("write");
+  if (posture.agent_context_composer_external_authority) {
+    actions.add("send");
+    actions.add("publish");
+  }
+  if (posture.agent_context_composer_memory_write) actions.add("remember");
+  if (posture.agent_context_composer_shell_authority) actions.add("execute");
+
+  const dataClasses = new Set<SurfaceObject["data_classes"][number]>(["unknown"]);
+  if (
+    posture.agent_context_composer_secret_access ||
+    posture.env_key_names.some(isCredentialLikeKeyName) ||
+    posture.secret_ref_key_names.length > 0
+  ) {
+    dataClasses.add("credential");
+  }
+  if (posture.agent_context_composer_sensitive_data || posture.agent_context_composer_untrusted_sources) dataClasses.add("confidential");
+  if (posture.agent_context_composer_pii_data) dataClasses.add("pii");
+  if (dataClasses.size > 1) dataClasses.delete("unknown");
+
+  const object = createSurfaceObject({
+    type: "runtime_config",
+    name: path.basename(file.relativePath),
+    path: file.relativePath,
+    trust_level: inferTrustLevel(file.relativePath),
+    data_classes: uniqueDataClasses([...dataClasses] as SurfaceObject["data_classes"]),
+    actions: uniqueActions([...actions]),
+    side_effect:
+      posture.agent_context_composer_privileged_tool_authority ||
+      posture.agent_context_composer_write_authority ||
+      posture.agent_context_composer_external_authority ||
+      posture.agent_context_composer_memory_write,
+    reversible: !posture.agent_context_composer_external_authority && !posture.agent_context_composer_destructive_authority,
+    external_reach: posture.agent_context_composer_external_authority,
+    secret_exposure:
+      posture.agent_context_composer_secret_access ||
+      posture.env_key_names.some(isCredentialLikeKeyName) ||
+      posture.secret_ref_key_names.length > 0,
+    reason: "Agent context-composer configuration discovered as prompt assembly and role-boundary posture.",
+    metadata: {
+      content_redacted: true,
+      values_collected: false,
+      parsed_agent_context_composer_config: Boolean(parsed.value) && !parsed.parseFailed,
+      parse_error: parsed.parseFailed,
+      ...posture
+    }
+  });
+  surfaces.runtime_config.push({
+    ...object,
+    untrusted_to_privileged:
+      posture.agent_context_composer_untrusted_sources &&
+      posture.agent_context_composer_privileged_role_injection &&
+      posture.agent_context_composer_privileged_tool_authority &&
+      (posture.agent_context_composer_sanitization_disabled || posture.agent_context_composer_delimiter_disabled)
+  });
+}
+
 function detectSaasConnectorConfig(file: WalkedFile, text: string | undefined, surfaces: DetectedSurfaces): void {
   const parsed = parseStructuredConfig(text ?? "", file.relativePath);
   if (parsed.parseFailed) {
@@ -1688,6 +1762,25 @@ function isAgentApprovalGateConfigPath(relativePath: string, basename: string): 
   return approvalName || (approvalDirectory && configName);
 }
 
+function isAgentContextComposerConfigPath(relativePath: string, basename: string): boolean {
+  const normalized = relativePath.replaceAll("\\", "/").toLowerCase();
+  const lowerBase = basename.toLowerCase();
+  if (!/\.(json|ya?ml|toml)$/iu.test(lowerBase)) return false;
+  if (normalized.startsWith(".github/workflows/")) return false;
+  if (normalized.startsWith("rules/")) return false;
+  const segments = normalized.split("/").slice(0, -1);
+  const contextDirectory = segments.some((segment) =>
+    /^(context|contexts|context-composer|context_composer|prompt-composer|prompt_composer|prompt-assembly|prompt_assembly|prompt-router|prompt_router|context-router|context_router|context-policy|context_policy)$/iu.test(
+      segment
+    )
+  );
+  const contextName = /(?:context-composer|context_composer|prompt-composer|prompt_composer|prompt-assembly|prompt_assembly|context-router|context_router|prompt-router|prompt_router|context-policy|context_policy|role-map|role_map|message-builder|message_builder|context-builder|context_builder)/iu.test(
+    lowerBase
+  );
+  const configName = /(?:config|settings|policy|context|prompt|role|message|composer|assembly|builder|router|sources?)/iu.test(lowerBase);
+  return contextName || (contextDirectory && configName);
+}
+
 function isSaasConnectorConfigPath(relativePath: string, basename: string): boolean {
   const normalized = relativePath.replaceAll("\\", "/").toLowerCase();
   const lowerBase = basename.toLowerCase();
@@ -2066,6 +2159,33 @@ interface AgentApprovalGatePosture {
   agent_approval_secret_access: boolean;
   agent_approval_sensitive_data: boolean;
   agent_approval_pii_data: boolean;
+  env_key_names: string[];
+  secret_ref_key_names: string[];
+}
+
+interface AgentContextComposerPosture {
+  agent_context_composer_fields: string[];
+  agent_context_composer_source_redacted: boolean;
+  agent_context_composer_source_categories: string[];
+  agent_context_composer_untrusted_sources: boolean;
+  agent_context_composer_privileged_role_injection: boolean;
+  agent_context_composer_system_role: boolean;
+  agent_context_composer_developer_role: boolean;
+  agent_context_composer_role_boundary_redacted: boolean;
+  agent_context_composer_delimiter_disabled: boolean;
+  agent_context_composer_sanitization_disabled: boolean;
+  agent_context_composer_raw_context_enabled: boolean;
+  agent_context_composer_tool_authority_categories: string[];
+  agent_context_composer_privileged_tool_authority: boolean;
+  agent_context_composer_write_authority: boolean;
+  agent_context_composer_external_authority: boolean;
+  agent_context_composer_memory_write: boolean;
+  agent_context_composer_shell_authority: boolean;
+  agent_context_composer_destructive_authority: boolean;
+  agent_context_composer_secret_access: boolean;
+  agent_context_composer_sensitive_data: boolean;
+  agent_context_composer_pii_data: boolean;
+  agent_context_composer_approval_required: boolean;
   env_key_names: string[];
   secret_ref_key_names: string[];
 }
@@ -4142,6 +4262,253 @@ function hasAgentApprovalPiiDataSignal(fields: RuntimeField[]): boolean {
 
 function isAgentApprovalGateSecurityField(fieldPath: string): boolean {
   return /approval|approve|review|reviewer|human|hitl|gate|decision|prompt|summary|justification|reason|model|llm|judge|classifier|score|default|fallback|timeout|execute|run|action|tool|mcp|browser|shell|database|db|secret|token|credential|auth|env|source|input|customer|ticket|retrieved|browser|memory|external|write|delete|pii|sensitive/iu.test(
+    fieldPath
+  );
+}
+
+function classifyAgentContextComposerConfig(value: unknown, filePath: string): AgentContextComposerPosture {
+  const fields = flattenRuntimeFields(value);
+  const stringValues = collectFieldStringValues(fields);
+  const sourceCategories = collectAgentContextComposerSourceCategories(fields);
+  const authorityCategories = collectAgentContextComposerToolAuthorityCategories(fields);
+  const envKeys = uniqueStrings([
+    ...collectEnvKeyNamesFromConfig(value).filter(isLikelyEnvKeyName),
+    ...extractEnvironmentReferenceKeys(stringValues)
+  ]);
+  const secretRefKeys = extractSecretReferenceKeys(stringValues);
+  const secretAccess = hasAgentContextComposerSecretAccessSignal(fields) || authorityCategories.includes("secret_manager_access");
+
+  return {
+    agent_context_composer_fields: fields
+      .map((field) => field.path)
+      .filter((fieldPath) => isAgentContextComposerSecurityField(fieldPath))
+      .sort((a, b) => a.localeCompare(b)),
+    agent_context_composer_source_redacted: sourceCategories.length > 0 || hasAgentContextComposerSourceSignal(fields),
+    agent_context_composer_source_categories: sourceCategories,
+    agent_context_composer_untrusted_sources: hasAgentContextComposerUntrustedSourceSignal(fields) || sourceCategories.some((category) =>
+      ["retrieval_context", "tool_output", "untrusted_user_input", "web_content"].includes(category)
+    ),
+    agent_context_composer_privileged_role_injection: hasAgentContextComposerPrivilegedRoleSignal(fields),
+    agent_context_composer_system_role: hasAgentContextComposerSystemRoleSignal(fields),
+    agent_context_composer_developer_role: hasAgentContextComposerDeveloperRoleSignal(fields),
+    agent_context_composer_role_boundary_redacted: hasAgentContextComposerRoleBoundarySignal(fields),
+    agent_context_composer_delimiter_disabled: hasAgentContextComposerDelimiterDisabledSignal(fields),
+    agent_context_composer_sanitization_disabled: hasAgentContextComposerSanitizationDisabledSignal(fields),
+    agent_context_composer_raw_context_enabled: hasAgentContextComposerRawContextSignal(fields),
+    agent_context_composer_tool_authority_categories: authorityCategories,
+    agent_context_composer_privileged_tool_authority: authorityCategories.length > 0 || hasAgentContextComposerPrivilegedToolSignal(fields),
+    agent_context_composer_write_authority: hasAgentContextComposerWriteAuthoritySignal(fields, authorityCategories),
+    agent_context_composer_external_authority: authorityCategories.includes("external_response") || hasAgentContextComposerExternalAuthoritySignal(fields),
+    agent_context_composer_memory_write: authorityCategories.includes("memory_write"),
+    agent_context_composer_shell_authority: authorityCategories.includes("shell_execution"),
+    agent_context_composer_destructive_authority: hasAgentContextComposerDestructiveAuthoritySignal(fields, authorityCategories),
+    agent_context_composer_secret_access: secretAccess,
+    agent_context_composer_sensitive_data: hasAgentContextComposerSensitiveDataSignal(fields) || secretAccess,
+    agent_context_composer_pii_data: hasAgentContextComposerPiiDataSignal(fields),
+    agent_context_composer_approval_required: hasAgentContextComposerApprovalRequiredSignal(fields),
+    env_key_names: envKeys,
+    secret_ref_key_names: secretRefKeys
+  };
+}
+
+function collectAgentContextComposerSourceCategories(fields: RuntimeField[]): string[] {
+  const categories = new Set<string>();
+  for (const field of fields) {
+    const text = `${field.path} ${fieldValueText(field)}`.toLowerCase();
+    if (/(?:^|[_\W])(user|customer|client|ticket|support|issue|comment|message|inbound|external|public|email|slack|chat)(?:[_\W]|$)/iu.test(text)) {
+      categories.add("untrusted_user_input");
+    }
+    if (/(?:^|[_\W])(retrieved|retrieval|rag|documents?|vector|embedding|knowledge[_\s-]?base|account[_\s-]?context|customer[_\s-]?context)(?:[_\W]|$)/iu.test(text)) {
+      categories.add("retrieval_context");
+    }
+    if (/(?:^|[_\W])(tool[_\s-]?outputs?|tool[_\s-]?results?|function[_\s-]?outputs?|mcp[_\s-]?results?|browser[_\s-]?outputs?|command[_\s-]?outputs?|observation)(?:[_\W]|$)/iu.test(text)) {
+      categories.add("tool_output");
+    }
+    if (/(?:^|[_\W])(memory|memories|session[_\s-]?state|conversation[_\s-]?history|transcript|long[_\s-]?term)(?:[_\W]|$)/iu.test(text)) {
+      categories.add("memory_context");
+    }
+    if (/(?:^|[_\W])(web[_\s-]?page|browser|html|dom|url|website|crawl|scrape)(?:[_\W]|$)/iu.test(text)) categories.add("web_content");
+  }
+  return [...categories].sort((a, b) => a.localeCompare(b));
+}
+
+function collectAgentContextComposerToolAuthorityCategories(fields: RuntimeField[]): string[] {
+  const categories = new Set<string>();
+  for (const field of fields) {
+    const text = `${field.path} ${fieldValueText(field)}`.toLowerCase();
+    const authorityField = /(?:^|\.)(tool_authority|runtime_authority|authority|tools?|actions?|allowed_tools|permissions?|capabilities?|connectors?)(?:\.|$)/iu.test(
+      field.path
+    );
+    if (
+      !authorityField &&
+      /(?:^|\.)(sources?|inputs?|context_sources|include_sources|context|data_scope)(?:\.|$)/iu.test(field.path)
+    ) {
+      continue;
+    }
+    if (/(?:^|[_\W])(tool|tools|function|function[_\s-]?call|mcp|connector|capability)(?:[_\W]|$)/iu.test(text)) categories.add("tool_call");
+    if (/(?:^|[_\W])(database|db|sql|query|support[_\s-]?db|warehouse|update[_\s-]?customer[_\s-]?record)(?:[_\W]|$)/iu.test(text)) {
+      categories.add("database_access");
+    }
+    if (/(?:^|[_\W])(slack|email|webhook|message|ticket|issue|comment|reply|respond|send|post|publish)(?:[_\W]|$)/iu.test(text)) {
+      categories.add("external_response");
+    }
+    if (/(?:^|[_\W])(browser|playwright|puppeteer|selenium|click|form|upload|download|navigate|submit)(?:[_\W]|$)/iu.test(text)) {
+      categories.add("browser_action");
+    }
+    if (/(?:^|[_\W])(vault|secret|secrets|secret[_\s-]?manager|key[_\s-]?vault|credential|token)(?:[_\W]|$)/iu.test(text)) {
+      categories.add("secret_manager_access");
+    }
+    if (/(?:^|[_\W])(memory|remember|store|persist|session[_\s-]?state|long[_\s-]?term)(?:[_\W]|$)/iu.test(text)) {
+      categories.add("memory_write");
+    }
+    if (/(?:^|[_\W])(shell|bash|command|exec|terminal|python|node|subprocess|script)(?:[_\W]|$)/iu.test(text)) categories.add("shell_execution");
+    if (/(?:^|[_\W])(filesystem|file[_\s-]?write|workspace|repo|repository|git|commit|push|pull[_\s-]?request|merge)(?:[_\W]|$)/iu.test(text)) {
+      categories.add("repo_or_filesystem_write");
+    }
+  }
+  return [...categories].sort((a, b) => a.localeCompare(b));
+}
+
+function hasAgentContextComposerSourceSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /(?:^|\.)(sources?|inputs?|context|context_sources|include_sources|retrieval|memory|tool_outputs?|browser_outputs?)(?:\.|$)/iu.test(
+      field.path
+    )
+  );
+}
+
+function hasAgentContextComposerUntrustedSourceSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /(?:^|[_\W])(untrusted|user|customer|client|ticket|support|issue|comment|message|prompt|retrieved|rag|document|email|slack|browser|web[_-]?page|chat|inbound|external|tool[_\s-]?output)(?:[_\W]|$)/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    )
+  );
+}
+
+function hasAgentContextComposerPrivilegedRoleSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /(?:^|[_\W])(system|developer|instruction|instructions|privileged[_\s-]?role|role[_\s-]?system|role[_\s-]?developer)(?:[_\W]|$)/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    )
+  );
+}
+
+function hasAgentContextComposerSystemRoleSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /(?:^|[_\W])(system|system[_\s-]?prompt|role[_\s-]?system)(?:[_\W]|$)/iu.test(`${field.path} ${fieldValueText(field)}`)
+  );
+}
+
+function hasAgentContextComposerDeveloperRoleSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /(?:^|[_\W])(developer|developer[_\s-]?prompt|role[_\s-]?developer)(?:[_\W]|$)/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    )
+  );
+}
+
+function hasAgentContextComposerRoleBoundarySignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => /(?:^|\.)(roles?|messages?|system|developer|role_map|role_mapping)(?:\.|$)/iu.test(field.path));
+}
+
+function hasAgentContextComposerDelimiterDisabledSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => {
+    const text = `${field.path} ${fieldValueText(field)}`;
+    if (/(?:^|\.)(delimiter|delimiters|isolation|separation|separators?|boundary|boundaries|quote|escape)(?:\.|$)/iu.test(field.path)) {
+      return disabledConfigValue(field.value) || /(?:^|[_\W])(none|disabled|raw|passthrough|off|false)(?:[_\W]|$)/iu.test(text);
+    }
+    return /(?:^|[_\W])(no[_\s-]?delimiter|delimiter[_\s-]?none|raw[_\s-]?context|passthrough[_\s-]?context)(?:[_\W]|$)/iu.test(text);
+  });
+}
+
+function hasAgentContextComposerSanitizationDisabledSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => {
+    const text = `${field.path} ${fieldValueText(field)}`;
+    if (/(?:^|\.)(sanitize|sanitization|filter|prompt_injection_filter|prompt-injection-filter|validation|validate|strip_instructions|strip-instructions|escape|redact)(?:\.|$)/iu.test(
+      field.path
+    )) {
+      return disabledConfigValue(field.value) || /(?:^|[_\W])(disabled|off|false|none|raw|passthrough|bypass)(?:[_\W]|$)/iu.test(text);
+    }
+    return /(?:^|[_\W])(unsanitized|raw[_\s-]?context|no[_\s-]?sanitization|bypass[_\s-]?filter)(?:[_\W]|$)/iu.test(text);
+  });
+}
+
+function hasAgentContextComposerRawContextSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /(?:^|[_\W])(raw[_\s-]?context|include[_\s-]?raw|full[_\s-]?context|verbatim|passthrough)(?:[_\W]|$)/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    ) && truthyConfigValue(field.value)
+  );
+}
+
+function hasAgentContextComposerPrivilegedToolSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /(?:^|[_\W])(tool|tools|mcp|browser|shell|database|secret|vault|slack|email|webhook|filesystem|memory|write|update|send|post|publish)(?:[_\W]|$)/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    )
+  );
+}
+
+function hasAgentContextComposerWriteAuthoritySignal(fields: RuntimeField[], categories: string[]): boolean {
+  return categories.some((category) =>
+    ["database_access", "external_response", "memory_write", "repo_or_filesystem_write", "shell_execution"].includes(category)
+  ) || fields.some((field) =>
+    /(?:^|[_\W])(write|update|create|delete|reply|respond|send|post|publish|comment|commit|push|merge|deploy|remember|persist|assign)(?:[_\W]|$)/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    )
+  );
+}
+
+function hasAgentContextComposerExternalAuthoritySignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /(?:^|[_\W])(slack|email|webhook|send|post|publish|reply|respond|ticket|issue|external|api|customer[_\s-]?system)(?:[_\W]|$)/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    )
+  );
+}
+
+function hasAgentContextComposerDestructiveAuthoritySignal(fields: RuntimeField[], categories: string[]): boolean {
+  return categories.includes("shell_execution") ||
+    fields.some((field) =>
+      /(?:^|[_\W])(delete|drop|destroy|destructive|irreversible|overwrite|merge|deploy|charge|refund|close[_\s-]?account|remove|revoke)(?:[_\W]|$)/iu.test(
+        `${field.path} ${fieldValueText(field)}`
+      )
+    );
+}
+
+function hasAgentContextComposerSecretAccessSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /(?:^|[_\W])(secret|secrets|token|credential|api[_-]?key|password|vault|key[_\s-]?vault|authorization|oauth)(?:[_\W]|$)/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    )
+  );
+}
+
+function hasAgentContextComposerSensitiveDataSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /(?:^|[_\W])(customer|client|ticket|support|internal|confidential|private|proprietary|sensitive|account|billing|payment|prod|production|admin|credential|token|api[_-]?key|secret)(?:[_\W]|$)/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    )
+  );
+}
+
+function hasAgentContextComposerPiiDataSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /(?:^|[_\W])(pii|email|phone|address|ssn|passport|dob|date[_\s-]?of[_\s-]?birth|customer[_-]?id|user[_-]?id|account[_-]?id)(?:[_\W]|$)/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    )
+  );
+}
+
+function hasAgentContextComposerApprovalRequiredSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /approval|required[_-]?approval|human[_-]?approval|confirm|confirmation|review|human[_-]?in[_-]?the[_-]?loop/iu.test(field.path) &&
+    truthyConfigValue(field.value)
+  );
+}
+
+function isAgentContextComposerSecurityField(fieldPath: string): boolean {
+  return /context|source|input|prompt|message|role|system|developer|instruction|composer|builder|assembly|router|delimiter|boundary|sanitize|filter|validation|raw|passthrough|tool|mcp|browser|shell|database|db|secret|token|credential|auth|env|memory|external|write|delete|approval|customer|ticket|retrieved|rag|pii|sensitive/iu.test(
     fieldPath
   );
 }

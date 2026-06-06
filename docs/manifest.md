@@ -537,6 +537,40 @@ Agent approval-gate metadata may include:
 
 Raw approval prompts, model names, approval summaries, action names, reviewer labels, source labels, data-field labels, and secret placeholders are not emitted. Prompt-source categories, action-authority categories, model-driven decision posture, default-allow posture, human-review posture, auto-execution posture, data-class booleans, and credential key names let rules detect approval gates where untrusted context can influence privileged execution.
 
+## Agent Context-Composer Posture
+
+Context-composer, prompt-composer, prompt-assembly, context-router, prompt-router, message-builder, and role-map configs are also normalized into `runtime_config` objects when common context assembly configuration files are discovered.
+
+Agent context-composer metadata may include:
+
+- `parsed_agent_context_composer_config`
+- `agent_context_composer_fields`
+- `agent_context_composer_source_redacted`
+- `agent_context_composer_source_categories`
+- `agent_context_composer_untrusted_sources`
+- `agent_context_composer_privileged_role_injection`
+- `agent_context_composer_system_role`
+- `agent_context_composer_developer_role`
+- `agent_context_composer_role_boundary_redacted`
+- `agent_context_composer_delimiter_disabled`
+- `agent_context_composer_sanitization_disabled`
+- `agent_context_composer_raw_context_enabled`
+- `agent_context_composer_tool_authority_categories`
+- `agent_context_composer_privileged_tool_authority`
+- `agent_context_composer_write_authority`
+- `agent_context_composer_external_authority`
+- `agent_context_composer_memory_write`
+- `agent_context_composer_shell_authority`
+- `agent_context_composer_destructive_authority`
+- `agent_context_composer_secret_access`
+- `agent_context_composer_sensitive_data`
+- `agent_context_composer_pii_data`
+- `agent_context_composer_approval_required`
+- `env_key_names`
+- `secret_ref_key_names`
+
+Raw source labels, role prompt text, message templates, tool names, action strings, data-field labels, and secret placeholders are not emitted. Source categories, privileged-role booleans, delimiter and sanitization posture, raw-context posture, tool-authority categories, approval posture, data-class booleans, and credential key names let rules detect context assembly paths where untrusted content is promoted into system or developer roles before privileged tool use.
+
 ## SaaS And API Connector Posture
 
 SaaS, API, ticketing, messaging, email, CRM, and repository-service connector configs are also normalized into `runtime_config` objects when common connector configuration files are discovered.

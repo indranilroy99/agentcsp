@@ -730,6 +730,15 @@ The current iteration adds:
 - rule `AGENTCSP-RUNTIME-021` for model-mediated approval gates that combine untrusted approval context, default-allow behavior, auto-executed privileged actions, credential exposure, and no required human reviewer
 - scanner, rule, fixture verifier, and redaction coverage proving approval prompts, model names, action strings, source labels, data-field labels, and token placeholders stay redacted
 
+## Agent Context-Composer Role Boundary Pass
+
+The current iteration adds:
+
+- first-class redacted metadata for context-composer, prompt-composer, prompt-assembly, context-router, prompt-router, message-builder, and role-map configs
+- vulnerable fixture coverage for customer, retrieval, browser, tool-output, and memory context promoted into system and developer role assembly with disabled sanitization, no delimiter boundary, privileged tools, credentials, and no approval gate
+- rule `AGENTCSP-RUNTIME-022` for context composers that combine untrusted sources, privileged role injection, disabled sanitization/delimiting, privileged tool authority, credential exposure, and missing approval
+- scanner, rule, fixture verifier, and redaction coverage proving role prompts, source labels, tool names, action strings, data-field labels, and token placeholders stay redacted
+
 ## Initial Build Recommendation
 
 Start with a CLI-first MVP before building the dashboard:

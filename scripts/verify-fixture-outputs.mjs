@@ -11,6 +11,7 @@ const leakPatterns = [
   /\$\{AGENT_EXTENSION_TOKEN\}/u,
   /\$\{AGENT_SELF_MOD_TOKEN\}/u,
   /\$\{APPROVAL_GATE_TOKEN\}/u,
+  /\$\{CONTEXT_COMPOSER_TOKEN\}/u,
   /\$\{BROWSER_SESSION_TOKEN\}/u,
   /\$\{CREW_AGENT_TOKEN\}/u,
   /\$\{CUSTOMER_SUCCESS_SLACK_BOT_TOKEN\}/u,
@@ -160,14 +161,18 @@ const leakPatterns = [
   /Summarize the customer request/u,
   /retrieved_account_context/u,
   /slack\.post_customer_reply/u,
+  /command_tool_result/u,
+  /support_memory_summary/u,
+  /customer_context_email/u,
+  /confidential_account_notes/u,
   /"command": "run"/u
 ];
 
 const vulnerable = await readScanOutput(vulnerableOutput, { sarifRequired: true });
 const safe = await readScanOutput(safeOutput, { sarifRequired: false });
 
-assertEqual(vulnerable.manifest.findings.length, 94, "vulnerable manifest finding count");
-assertEqual(vulnerable.findings.length, 94, "vulnerable findings.json count");
+assertEqual(vulnerable.manifest.findings.length, 95, "vulnerable manifest finding count");
+assertEqual(vulnerable.findings.length, 95, "vulnerable findings.json count");
 assertEqual(vulnerable.manifest.attack_paths.length, 15, "vulnerable attack path count");
 assertEqual(vulnerable.manifest.static_blast_radius?.critical_attack_paths, 15, "vulnerable critical attack path count");
 assertEqual(vulnerable.manifest.diagnostics.length, 0, "vulnerable diagnostics count");
@@ -191,6 +196,7 @@ for (const ruleId of [
   "AGENTCSP-RUNTIME-019",
   "AGENTCSP-RUNTIME-020",
   "AGENTCSP-RUNTIME-021",
+  "AGENTCSP-RUNTIME-022",
   "AGENTCSP-AUTOMATION-003",
   "AGENTCSP-RUNTIME-006",
   "AGENTCSP-MCP-006",

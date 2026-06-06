@@ -25,6 +25,7 @@
 - Add dynamic extension-loader posture for remote skills, plugins, tools, prompts, and MCP capabilities.
 - Add self-modification posture for agent-controlled prompt, policy, runtime, tool, memory, and workflow writes.
 - Add approval-gate integrity posture for model-mediated decisions, default-allow review paths, auto-execution, and human-review boundaries.
+- Add context-composer posture for role-boundary assembly, source promotion, sanitization, delimiters, and privileged tool exposure.
 - Support allow, deny, approval, redaction, and quarantine recommendations.
 - Add SARIF output and CI integrations for code-scanning workflows.
 - Add high-confidence correlated findings that combine provenance, data class, authority, and side effects.

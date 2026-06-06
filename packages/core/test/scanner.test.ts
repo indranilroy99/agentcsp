@@ -28,6 +28,7 @@ describe("scanner", () => {
       "AGENT_SELF_MOD_TOKEN",
       "APPROVAL_GATE_TOKEN",
       "BROWSER_SESSION_TOKEN",
+      "CONTEXT_COMPOSER_TOKEN",
       "CREW_AGENT_TOKEN",
       "CUSTOMER_SUCCESS_SLACK_BOT_TOKEN",
       "EVAL_AGENT_TOKEN",
@@ -855,6 +856,66 @@ describe("scanner", () => {
     expect(JSON.stringify(approvalGateConfig)).not.toContain("support_db.update_customer_record");
     expect(JSON.stringify(approvalGateConfig)).not.toContain("vault_secret_lookup.read_support_token");
     expect(JSON.stringify(approvalGateConfig)).not.toContain("customer_email_address");
+    const contextComposerConfig = surfaces.runtime_config.find((surface) => surface.path === "context/system-context.yaml");
+    expect(contextComposerConfig).toBeDefined();
+    expect(contextComposerConfig).toMatchObject({
+      external_reach: true,
+      secret_exposure: true,
+      side_effect: true,
+      reversible: false,
+      untrusted_to_privileged: true
+    });
+    expect(contextComposerConfig?.metadata).toMatchObject({
+      content_redacted: true,
+      values_collected: false,
+      parsed_agent_context_composer_config: true,
+      agent_context_composer_source_redacted: true,
+      agent_context_composer_untrusted_sources: true,
+      agent_context_composer_privileged_role_injection: true,
+      agent_context_composer_system_role: true,
+      agent_context_composer_developer_role: true,
+      agent_context_composer_role_boundary_redacted: true,
+      agent_context_composer_delimiter_disabled: true,
+      agent_context_composer_sanitization_disabled: true,
+      agent_context_composer_raw_context_enabled: true,
+      agent_context_composer_privileged_tool_authority: true,
+      agent_context_composer_write_authority: true,
+      agent_context_composer_external_authority: true,
+      agent_context_composer_memory_write: true,
+      agent_context_composer_shell_authority: false,
+      agent_context_composer_destructive_authority: false,
+      agent_context_composer_secret_access: true,
+      agent_context_composer_sensitive_data: true,
+      agent_context_composer_pii_data: true,
+      agent_context_composer_approval_required: false
+    });
+    expect(contextComposerConfig?.metadata.agent_context_composer_source_categories).toEqual([
+      "memory_context",
+      "retrieval_context",
+      "tool_output",
+      "untrusted_user_input",
+      "web_content"
+    ]);
+    expect(contextComposerConfig?.metadata.agent_context_composer_tool_authority_categories).toEqual([
+      "browser_action",
+      "database_access",
+      "external_response",
+      "memory_write",
+      "secret_manager_access",
+      "tool_call"
+    ]);
+    expect(contextComposerConfig?.metadata.env_key_names).toEqual(["CONTEXT_COMPOSER_TOKEN"]);
+    expect(contextComposerConfig?.metadata.secret_ref_key_names).toEqual(["CONTEXT_COMPOSER_TOKEN"]);
+    expect(contextComposerConfig?.data_classes).toEqual(["confidential", "credential", "pii"]);
+    expect(contextComposerConfig?.actions).toEqual(["call", "publish", "read", "remember", "send", "write"]);
+    expect(JSON.stringify(contextComposerConfig)).not.toContain("${CONTEXT_COMPOSER_TOKEN}");
+    expect(JSON.stringify(contextComposerConfig)).not.toContain("customer_ticket_message");
+    expect(JSON.stringify(contextComposerConfig)).not.toContain("retrieved_account_context");
+    expect(JSON.stringify(contextComposerConfig)).not.toContain("browser_tool_output");
+    expect(JSON.stringify(contextComposerConfig)).not.toContain("command_tool_result");
+    expect(JSON.stringify(contextComposerConfig)).not.toContain("support_db.update_customer_record");
+    expect(JSON.stringify(contextComposerConfig)).not.toContain("vault_secret_lookup.read_support_token");
+    expect(JSON.stringify(contextComposerConfig)).not.toContain("customer_context_email");
     const inboundTriggerConfig = surfaces.runtime_config.find((surface) => surface.path === "inbox/support-triage.yaml");
     expect(inboundTriggerConfig).toBeDefined();
     expect(inboundTriggerConfig).toMatchObject({
