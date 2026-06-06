@@ -1,0 +1,55 @@
+id: AGENTCSP-MEMORY-006
+name: Sensitive agent memory is retained without redaction controls
+description: A remote or durable agent memory store captures sensitive, PII, or secret-bearing context with long retention while redaction is disabled and approval is missing.
+category: memory_retention_boundary
+severity: critical
+maps_to:
+  owasp:
+    - LLM02:2025 Sensitive Information Disclosure
+    - LLM06:2025 Excessive Agency
+    - LLM08:2025 Vector and Embedding Weaknesses
+  mitre_atlas:
+    - AML.T0057 Exfiltration via Cyber Means
+  nist_ai_rmf:
+    - MAP 5.1
+    - MEASURE 2.9
+    - MANAGE 2.3
+match:
+  object_type: memory
+  where:
+    - field: metadata.parsed_agent_memory_store_config
+      op: equals
+      value: true
+    - field: metadata.agent_memory_store_remote
+      op: equals
+      value: true
+    - field: metadata.agent_memory_store_persistent
+      op: equals
+      value: true
+    - field: metadata.agent_memory_store_write_enabled
+      op: equals
+      value: true
+    - field: metadata.agent_memory_store_long_retention
+      op: equals
+      value: true
+    - field: metadata.agent_memory_store_redaction_disabled
+      op: equals
+      value: true
+    - field: metadata.agent_memory_store_secret_capture
+      op: equals
+      value: true
+    - field: metadata.agent_memory_store_approval_required
+      op: equals
+      value: false
+    - field: secret_exposure
+      op: equals
+      value: true
+    - field: data_classes
+      op: contains_any
+      value:
+        - credential
+        - pii
+        - confidential
+recommendation:
+  control: redact
+  text: Disable secret capture, shorten retention for agent memory, require approval before durable writes, and enforce PII and secret redaction before prompts, retrieval context, tool outputs, or customer records are persisted.

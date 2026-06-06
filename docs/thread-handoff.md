@@ -704,6 +704,16 @@ The current iteration adds:
 - rule `AGENTCSP-MEMORY-005` for shared memory stores that cross tenant boundaries without isolation while untrusted context and secrets can persist
 - scanner, rule, fixture verifier, and redaction coverage proving tenant selectors, shared-with labels, namespaces, source labels, connection strings, and token placeholders stay redacted
 
+## Agent Memory Retention Pass
+
+The current iteration adds:
+
+- first-class redacted metadata for durable memory retention and redaction posture, including retention-day categories, long or unbounded retention, and disabled redaction controls
+- vulnerable fixture coverage for remote long-term memory that captures prompts, retrieval context, tool outputs, PII, and secrets for long retention while redaction and approval are disabled
+- safe fixture coverage for local private session memory with short retention, enabled redaction controls, disabled sensitive capture, and approval-required writes
+- rule `AGENTCSP-MEMORY-006` for remote durable memory stores that retain sensitive, PII, or secret-bearing context without redaction or approval
+- scanner, rule, fixture verifier, and redaction coverage proving connection strings, hostnames, store names, namespaces, tenant labels, data-field labels, and token placeholders stay redacted
+
 ## Agent Identity Delegation Pass
 
 The current iteration adds:

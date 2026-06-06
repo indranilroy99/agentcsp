@@ -4138,6 +4138,10 @@ interface AgentMemoryStorePosture {
   agent_memory_store_retrieval_capture: boolean;
   agent_memory_store_secret_capture: boolean;
   agent_memory_store_output_replay_enabled: boolean;
+  agent_memory_store_retention_days?: number;
+  agent_memory_store_long_retention: boolean;
+  agent_memory_store_unbounded_retention: boolean;
+  agent_memory_store_redaction_disabled: boolean;
   agent_memory_store_sensitive_data: boolean;
   agent_memory_store_pii_data: boolean;
   agent_memory_store_namespace_redacted: boolean;
@@ -14209,6 +14213,8 @@ function classifyAgentMemoryStoreConfig(value: unknown, filePath: string): Agent
   const stringValues = collectFieldStringValues(fields);
   const provider = inferAgentMemoryStoreProvider([filePath, ...fields.map((field) => field.path), ...stringValues]);
   const remote = classifyAgentMemoryStoreRemote(fields, provider);
+  const retentionDays = extractAgentMemoryStoreRetentionDays(fields);
+  const unboundedRetention = hasAgentMemoryStoreUnboundedRetentionSignal(fields);
   const envKeys = uniqueStrings([
     ...collectEnvKeyNamesFromConfig(value).filter(isLikelyEnvKeyName),
     ...extractEnvironmentReferenceKeys(stringValues)
@@ -14235,6 +14241,10 @@ function classifyAgentMemoryStoreConfig(value: unknown, filePath: string): Agent
     agent_memory_store_retrieval_capture: hasAgentMemoryStoreRetrievalCaptureSignal(fields),
     agent_memory_store_secret_capture: hasAgentMemoryStoreSecretCaptureSignal(fields),
     agent_memory_store_output_replay_enabled: hasAgentMemoryStoreReplaySignal(fields),
+    agent_memory_store_retention_days: retentionDays,
+    agent_memory_store_long_retention: unboundedRetention || (retentionDays !== undefined && retentionDays >= 30),
+    agent_memory_store_unbounded_retention: unboundedRetention,
+    agent_memory_store_redaction_disabled: hasAgentMemoryStoreRedactionDisabledSignal(fields),
     agent_memory_store_sensitive_data: hasAgentMemoryStoreSensitiveDataSignal(fields),
     agent_memory_store_pii_data: hasAgentMemoryStorePiiDataSignal(fields),
     agent_memory_store_namespace_redacted: hasAgentMemoryStoreNamespaceSignal(fields),
@@ -14413,6 +14423,71 @@ function hasAgentMemoryStoreReplaySignal(fields: RuntimeField[]): boolean {
   );
 }
 
+function extractAgentMemoryStoreRetentionDays(fields: RuntimeField[]): number | undefined {
+  let longestRetentionDays: number | undefined;
+  for (const field of fields) {
+    if (!/(ttl|retention|retain|expires?|expiration|max[_\s-]?age|maxAge|lifetime|duration|days|weeks|months|years)/iu.test(field.path)) {
+      continue;
+    }
+    const days = parseRetentionDays(field.value);
+    if (days === undefined) continue;
+    longestRetentionDays = Math.max(longestRetentionDays ?? 0, days);
+  }
+  return longestRetentionDays;
+}
+
+function parseRetentionDays(value: unknown): number | undefined {
+  if (Array.isArray(value)) {
+    const parsed = value.map((item) => parseRetentionDays(item)).filter((item): item is number => item !== undefined);
+    if (parsed.length === 0) return undefined;
+    return Math.max(...parsed);
+  }
+  if (typeof value === "number" && Number.isFinite(value) && value >= 0) return Math.ceil(value);
+  if (typeof value !== "string") return undefined;
+
+  const normalized = value.trim().toLowerCase();
+  if (!normalized) return undefined;
+  const numeric = Number(normalized);
+  if (Number.isFinite(numeric) && numeric >= 0) return Math.ceil(numeric);
+
+  const duration = normalized.match(/^(\d+(?:\.\d+)?)\s*(h|hour|hours|d|day|days|w|week|weeks|m|month|months|y|year|years)$/iu);
+  if (!duration) return undefined;
+  const [, amountText, unitText] = duration;
+  if (!amountText || !unitText) return undefined;
+  const amount = Number(amountText);
+  if (!Number.isFinite(amount) || amount < 0) return undefined;
+  const unit = unitText.toLowerCase();
+  if (/^h/iu.test(unit)) return Math.ceil(amount / 24);
+  if (/^d/iu.test(unit)) return Math.ceil(amount);
+  if (/^w/iu.test(unit)) return Math.ceil(amount * 7);
+  if (/^m/iu.test(unit)) return Math.ceil(amount * 30);
+  return Math.ceil(amount * 365);
+}
+
+function hasAgentMemoryStoreUnboundedRetentionSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => {
+    const text = `${field.path} ${fieldValueText(field)}`;
+    if (/(^|\.)(ttl|ttl_days|expires|expiration|max_age|maxAge|lifetime)$/u.test(field.path) && disabledConfigValue(field.value)) {
+      return true;
+    }
+    return /\b(no[_\s-]?ttl|no[_\s-]?expiration|never[_\s-]?expire|never[_\s-]?expires|forever|indefinite|indefinitely|unlimited|permanent|keep[_\s-]?forever)\b/iu.test(
+      text
+    );
+  });
+}
+
+function hasAgentMemoryStoreRedactionDisabledSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => {
+    const text = `${field.path} ${fieldValueText(field)}`;
+    if (/\b(redact|redaction|mask|sanitize|sanitiz|scrub|anonym|pii[_\s-]?redaction|secret[_\s-]?redaction)\b/iu.test(field.path)) {
+      return disabledConfigValue(field.value);
+    }
+    return /\b(no[_\s-]?redaction|redaction[_\s-]?disabled|store[_\s-]?raw|raw[_\s-]?memory|raw[_\s-]?prompts?|raw[_\s-]?tool[_\s-]?outputs?)\b/iu.test(
+      text
+    ) && truthyConfigValue(field.value);
+  });
+}
+
 function hasAgentMemoryStoreSensitiveDataSignal(fields: RuntimeField[]): boolean {
   return fields.some((field) =>
     /\b(customer|client|ticket|support|internal|confidential|private|proprietary|sensitive|account|billing|payment|order|record|case|profile|note|incident)\b/iu.test(
@@ -14422,11 +14497,12 @@ function hasAgentMemoryStoreSensitiveDataSignal(fields: RuntimeField[]): boolean
 }
 
 function hasAgentMemoryStorePiiDataSignal(fields: RuntimeField[]): boolean {
-  return fields.some((field) =>
-    /(?:^|[_\W])(pii|email|phone|address|ssn|passport|dob|date[_\s-]?of[_\s-]?birth|customer[_-]?id|user[_-]?id|account[_-]?id)(?:[_\W]|$)/iu.test(
+  return fields.some((field) => {
+    if (/(redact|redaction|mask|sanitize|sanitiz|scrub|anonym)/iu.test(field.path)) return false;
+    return /(?:^|[_\W])(pii|email|phone|address|ssn|passport|dob|date[_\s-]?of[_\s-]?birth|customer[_-]?id|user[_-]?id|account[_-]?id)(?:[_\W]|$)/iu.test(
       `${field.path} ${fieldValueText(field)}`
-    )
-  );
+    );
+  });
 }
 
 function hasAgentMemoryStoreNamespaceSignal(fields: RuntimeField[]): boolean {
@@ -14499,7 +14575,7 @@ function hasAgentMemoryStoreApprovalRequiredSignal(fields: RuntimeField[]): bool
 }
 
 function isAgentMemoryStoreSecurityField(fieldPath: string): boolean {
-  return /provider|memory|memories|store|persistence|persistent|retention|ttl|checkpoint|checkpointer|thread|session|state|namespace|collection|prefix|table|database|index|shared|global|public|anonymous|guest|tenant|isolation|acl|rbac|access|agent|tool|output|prompt|retrieval|rag|source|input|customer|ticket|email|chat|secret|token|credential|auth|env|endpoint|url|uri|host|dsn|connection|write|sync|replay|recall|inject|approval|pii|sensitive/iu.test(
+  return /provider|memory|memories|store|persistence|persistent|retention|ttl|expire|duration|lifetime|checkpoint|checkpointer|thread|session|state|namespace|collection|prefix|table|database|index|shared|global|public|anonymous|guest|tenant|isolation|acl|rbac|access|agent|tool|output|prompt|retrieval|rag|source|input|customer|ticket|email|chat|secret|token|credential|auth|env|endpoint|url|uri|host|dsn|connection|write|sync|replay|recall|inject|redact|mask|sanitize|scrub|anonym|approval|pii|sensitive/iu.test(
     fieldPath
   );
 }

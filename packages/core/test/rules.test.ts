@@ -116,6 +116,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MEMORY-003")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MEMORY-004")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MEMORY-005")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MEMORY-006")).toBe(true);
     expect(findings.some((finding) => finding.severity === "critical")).toBe(true);
     expect(findings.some((finding) => finding.confidence === "very_high")).toBe(true);
     expect(findings.find((finding) => finding.rule_id === "AGENTCSP-RUNTIME-001")?.confidence).toBe("very_high");
@@ -1868,6 +1869,36 @@ describe("rule engine", () => {
     expect(JSON.stringify(memoryAccessBoundaryFindings[0])).not.toContain("customer_memory_namespace");
     expect(JSON.stringify(memoryAccessBoundaryFindings[0])).not.toContain("partner_support_vendor");
     expect(JSON.stringify(memoryAccessBoundaryFindings[0])).not.toContain("global_customer_memory");
+    const memoryRetentionFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-MEMORY-006");
+    expect(memoryRetentionFindings).toHaveLength(1);
+    expect(memoryRetentionFindings[0]?.matched_object.path).toBe("memory/long-term-store.yaml");
+    expect(memoryRetentionFindings[0]?.matched_object.metadata).toMatchObject({
+      agent_memory_store_provider: "redis",
+      agent_memory_store_remote: true,
+      agent_memory_store_persistent: true,
+      agent_memory_store_write_enabled: true,
+      agent_memory_store_secret_capture: true,
+      agent_memory_store_retention_days: 90,
+      agent_memory_store_long_retention: true,
+      agent_memory_store_unbounded_retention: false,
+      agent_memory_store_redaction_disabled: true,
+      agent_memory_store_sensitive_data: true,
+      agent_memory_store_pii_data: true,
+      agent_memory_store_approval_required: false
+    });
+    expect(memoryRetentionFindings[0]?.severity).toBe("critical");
+    expect(memoryRetentionFindings[0]?.confidence).toBe("very_high");
+    expect(memoryRetentionFindings[0]?.recommended_control).toBe("redact");
+    expect(memoryRetentionFindings[0]?.matched_object.metadata.secret_ref_key_names).toEqual(["MEMORY_STORE_TOKEN"]);
+    expect(JSON.stringify(memoryRetentionFindings[0])).not.toContain("${MEMORY_STORE_TOKEN}");
+    expect(JSON.stringify(memoryRetentionFindings[0])).not.toContain("redis-prod-memory.example.invalid");
+    expect(JSON.stringify(memoryRetentionFindings[0])).not.toContain("support-long-term-memory");
+    expect(JSON.stringify(memoryRetentionFindings[0])).not.toContain("customer_memory_namespace");
+    expect(JSON.stringify(memoryRetentionFindings[0])).not.toContain("partner_support_vendor");
+    expect(JSON.stringify(memoryRetentionFindings[0])).not.toContain("global_customer_memory");
+    expect(JSON.stringify(memoryRetentionFindings[0])).not.toContain("customer_email_address");
+    expect(JSON.stringify(memoryRetentionFindings[0])).not.toContain("customer_account_number");
+    expect(JSON.stringify(memoryRetentionFindings[0])).not.toContain("confidential_support_notes");
     const instructionBridgeFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-INSTRUCTION-001");
     expect(instructionBridgeFindings).toHaveLength(1);
     expect(instructionBridgeFindings[0]?.matched_object.path).toBe("AGENTS.md");

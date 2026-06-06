@@ -9,6 +9,10 @@ persistence:
   ttl_days: 90
   shared_across_agents: true
   namespace: customer_memory_namespace
+retention:
+  redaction_enabled: false
+  pii_redaction: false
+  secret_redaction: false
 access_control:
   public_read: true
   public_write: true

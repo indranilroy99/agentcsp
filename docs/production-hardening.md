@@ -90,7 +90,7 @@ A finding should be considered production-grade when it includes:
 - RAG/vector-store connector metadata for remote credential-backed stores with write or sync ingestion
 - RAG ingestion metadata for user uploads, ticket attachments, public web pages, and message sources that can auto-index into trusted/private namespaces without quarantine, moderation, instruction stripping, provenance, or approval while avoiding raw source labels, target namespaces, chunk text, and token placeholders
 - RAG retrieval-authorization metadata for user-controlled queries and filters, broad private scopes, disabled ACL/provenance/trust filters, raw chunk passthrough, prompt injection passthrough, and tool-context injection without emitting query selectors, filter values, source labels, chunk text, or token placeholders
-- agent memory-store metadata for remote/shared durable memory, untrusted writes, tool/prompt/retrieval/secret capture, replay posture, and approval state without emitting connection strings, hostnames, store names, namespaces, source labels, replay targets, or data-field labels
+- agent memory-store metadata for remote/shared durable memory, untrusted writes, tool/prompt/retrieval/secret capture, replay posture, retention and redaction posture, and approval state without emitting connection strings, hostnames, store names, namespaces, source labels, replay targets, or data-field labels
 - skill data-flow signals for context-to-external-output bridges
 - source-anchored attack paths for dangerous context that reaches direct data-egress capabilities
 - source-anchored attack paths for project prompt templates that route untrusted variables to explicit privileged tools
@@ -179,6 +179,7 @@ Examples:
 - RAG ingestion pipeline plus auto-indexed user uploads, ticket attachments, public web pages, or message sources into trusted private namespaces, disabled quarantine/moderation/instruction stripping/sanitization, missing provenance, credentials, and no approval gate
 - RAG retrieval with user-controlled query or filter inputs plus broad sensitive scope, disabled ACL/provenance/trust filters, raw prompt/tool passthrough, credentials, and no approval gate
 - remote/shared memory store plus untrusted writes plus tool, prompt, retrieval, and secret capture plus future-context replay plus no approval gate
+- remote durable memory store plus sensitive, PII, or secret-bearing context capture plus long retention, disabled redaction, credentials, and no approval gate
 - generated transcripts or cached tool output with instruction-like tool/external directives
 - local path input plus URL-like destination plus external write capability
 - open-world tool schema plus external, filesystem, credential, or execution authority

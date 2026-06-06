@@ -6,6 +6,10 @@ persistence:
   ttl_days: 1
   shared_across_agents: false
   namespace: internal_private_session_memory
+retention:
+  redaction_enabled: true
+  pii_redaction: true
+  secret_redaction: true
 access_control:
   public_read: false
   public_write: false

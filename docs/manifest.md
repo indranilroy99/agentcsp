@@ -1524,6 +1524,10 @@ Memory-store metadata may include:
 - `agent_memory_store_retrieval_capture`
 - `agent_memory_store_secret_capture`
 - `agent_memory_store_output_replay_enabled`
+- `agent_memory_store_retention_days`
+- `agent_memory_store_long_retention`
+- `agent_memory_store_unbounded_retention`
+- `agent_memory_store_redaction_disabled`
 - `agent_memory_store_sensitive_data`
 - `agent_memory_store_pii_data`
 - `agent_memory_store_namespace_redacted`
@@ -1536,7 +1540,7 @@ Memory-store metadata may include:
 - `secret_ref_key_names`
 - `values_collected`
 
-Raw memory-store URLs, connection strings, collection names, namespaces, key prefixes, source labels, replay targets, access-control labels, tenant selectors, shared-with labels, data-field labels, and secret placeholders are not emitted. Provider names, redacted destination categories, capture/replay booleans, sharing and persistence posture, public or cross-tenant exposure posture, access-control and tenant-isolation posture, approval posture, data-class booleans, and credential key names let rules detect durable memory poisoning and cross-session or cross-tenant context replay without copying memory configuration values into the manifest.
+Raw memory-store URLs, connection strings, collection names, namespaces, key prefixes, source labels, replay targets, access-control labels, tenant selectors, shared-with labels, data-field labels, and secret placeholders are not emitted. Provider names, redacted destination categories, capture/replay booleans, sharing and persistence posture, retention and redaction posture, public or cross-tenant exposure posture, access-control and tenant-isolation posture, approval posture, data-class booleans, and credential key names let rules detect durable memory poisoning, sensitive context retention, and cross-session or cross-tenant context replay without copying memory configuration values into the manifest.
 
 RAG and vector-store connector configs are also normalized into `rag_source` objects when common retrieval, vector, embedding, or knowledge-store configuration files are discovered.
 
