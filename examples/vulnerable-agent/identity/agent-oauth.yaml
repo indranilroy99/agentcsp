@@ -1,0 +1,43 @@
+provider: google_workload_identity
+issuer_url: https://auth.agentcsp-demo.example.invalid/oauth2
+audience: support-agent-prod
+service_account: support-agent-prod@agentcsp-demo.iam.gserviceaccount.com
+token_endpoint: https://sts.googleapis.com/v1/token
+credential_source:
+  env:
+    AGENT_IDENTITY_TOKEN: ${AGENT_IDENTITY_TOKEN}
+delegation:
+  enabled: true
+  impersonate_service_account: true
+  subject_sources:
+    - untrusted_customer_message
+    - retrieved_customer_context
+    - browser_tool_output
+  allowed_subjects:
+    - customer-support-prod-agent
+token:
+  issue_access_token: true
+  refresh_enabled: true
+  ttl_minutes: 60
+scopes:
+  - https://www.googleapis.com/auth/cloud-platform
+  - https://www.googleapis.com/auth/gmail.modify
+  - https://www.googleapis.com/auth/drive
+permissions:
+  roles:
+    - roles/owner
+    - roles/iam.serviceAccountTokenCreator
+authority:
+  inject_into_tools:
+    - support_db.update_customer_record
+    - slack.post_escalation_reply
+    - browser.submit_customer_form
+  write_actions:
+    - update_customer_record
+    - send_customer_reply
+approval:
+  required: false
+data_scope:
+  - customer_oauth_email
+  - customer_account_number
+  - confidential_identity_claims

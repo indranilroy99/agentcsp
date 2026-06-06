@@ -7,6 +7,7 @@ const safeOutput = path.resolve(process.argv[3] ?? ".agentcsp-safe");
 
 const leakPatterns = [
   /\$\{ANTHROPIC_API_KEY\}/u,
+  /\$\{AGENT_IDENTITY_TOKEN\}/u,
   /\$\{BROWSER_SESSION_TOKEN\}/u,
   /\$\{CREW_AGENT_TOKEN\}/u,
   /\$\{CUSTOMER_SUCCESS_SLACK_BOT_TOKEN\}/u,
@@ -124,14 +125,26 @@ const leakPatterns = [
   /untrusted_customer_message/u,
   /support_case_summary/u,
   /future_agent_context/u,
+  /auth\.agentcsp-demo\.example\.invalid/u,
+  /sts\.googleapis\.com/u,
+  /support-agent-prod/u,
+  /agentcsp-demo\.iam\.gserviceaccount\.com/u,
+  /googleapis\.com\/auth\/cloud-platform/u,
+  /googleapis\.com\/auth\/gmail\.modify/u,
+  /googleapis\.com\/auth\/drive/u,
+  /roles\/owner/u,
+  /roles\/iam\.serviceAccountTokenCreator/u,
+  /send_customer_reply/u,
+  /customer_oauth_email/u,
+  /confidential_identity_claims/u,
   /"command": "run"/u
 ];
 
 const vulnerable = await readScanOutput(vulnerableOutput, { sarifRequired: true });
 const safe = await readScanOutput(safeOutput, { sarifRequired: false });
 
-assertEqual(vulnerable.manifest.findings.length, 90, "vulnerable manifest finding count");
-assertEqual(vulnerable.findings.length, 90, "vulnerable findings.json count");
+assertEqual(vulnerable.manifest.findings.length, 91, "vulnerable manifest finding count");
+assertEqual(vulnerable.findings.length, 91, "vulnerable findings.json count");
 assertEqual(vulnerable.manifest.attack_paths.length, 15, "vulnerable attack path count");
 assertEqual(vulnerable.manifest.static_blast_radius?.critical_attack_paths, 15, "vulnerable critical attack path count");
 assertEqual(vulnerable.manifest.diagnostics.length, 0, "vulnerable diagnostics count");
@@ -151,6 +164,7 @@ for (const ruleId of [
   "AGENTCSP-RUNTIME-015",
   "AGENTCSP-RUNTIME-016",
   "AGENTCSP-RUNTIME-017",
+  "AGENTCSP-RUNTIME-018",
   "AGENTCSP-AUTOMATION-003",
   "AGENTCSP-RUNTIME-006",
   "AGENTCSP-MCP-006",

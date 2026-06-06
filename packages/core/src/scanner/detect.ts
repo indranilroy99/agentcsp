@@ -152,6 +152,11 @@ export async function detectSurfaces(files: WalkedFile[]): Promise<DetectedSurfa
       continue;
     }
 
+    if (isAgentIdentityConfigPath(file.relativePath, basename)) {
+      detectAgentIdentityConfig(file, text, surfaces);
+      continue;
+    }
+
     if (isSaasConnectorConfigPath(file.relativePath, basename)) {
       detectSaasConnectorConfig(file, text, surfaces);
       continue;
@@ -928,6 +933,78 @@ function detectAgentSafetyConfig(file: WalkedFile, text: string | undefined, sur
   });
 }
 
+function detectAgentIdentityConfig(file: WalkedFile, text: string | undefined, surfaces: DetectedSurfaces): void {
+  const parsed = parseStructuredConfig(text ?? "", file.relativePath);
+  if (parsed.parseFailed) {
+    addDiagnostic(surfaces, file, {
+      parser: parsed.parser ?? "structured_config",
+      code: "AGENT_IDENTITY_CONFIG_PARSE_FAILED",
+      reason: "Agent identity or credential delegation configuration could not be parsed. Raw content was redacted."
+    });
+  }
+
+  const posture = classifyAgentIdentityConfig(parsed.value, file.relativePath);
+  const actions = new Set<ActionType>(["read", "call"]);
+  if (posture.agent_identity_remote) actions.add("send");
+  if (posture.agent_identity_credential_issuance_enabled || posture.agent_identity_impersonation_enabled) actions.add("approve");
+  if (posture.agent_identity_write_scope || posture.agent_identity_admin_scope) actions.add("write");
+
+  const dataClasses = new Set<SurfaceObject["data_classes"][number]>(["unknown"]);
+  if (
+    posture.agent_identity_credential_issuance_enabled ||
+    posture.agent_identity_impersonation_enabled ||
+    posture.env_key_names.some(isCredentialLikeKeyName) ||
+    posture.secret_ref_key_names.length > 0
+  ) {
+    dataClasses.add("credential");
+  }
+  if (posture.agent_identity_sensitive_data || posture.agent_identity_untrusted_input) dataClasses.add("confidential");
+  if (posture.agent_identity_pii_data) dataClasses.add("pii");
+  if (dataClasses.size > 1) dataClasses.delete("unknown");
+
+  const object = createSurfaceObject({
+    type: "runtime_config",
+    name: path.basename(file.relativePath),
+    path: file.relativePath,
+    trust_level: posture.agent_identity_remote ? "third_party" : inferTrustLevel(file.relativePath),
+    data_classes: uniqueDataClasses([...dataClasses] as SurfaceObject["data_classes"]),
+    actions: uniqueActions([...actions]),
+    side_effect:
+      posture.agent_identity_credential_issuance_enabled ||
+      posture.agent_identity_impersonation_enabled ||
+      posture.agent_identity_write_scope ||
+      posture.agent_identity_admin_scope ||
+      posture.agent_identity_tool_injection,
+    reversible:
+      !posture.agent_identity_credential_issuance_enabled &&
+      !posture.agent_identity_impersonation_enabled &&
+      !posture.agent_identity_write_scope &&
+      !posture.agent_identity_admin_scope,
+    external_reach: posture.agent_identity_remote || posture.agent_identity_external_authority,
+    secret_exposure:
+      posture.agent_identity_credential_issuance_enabled ||
+      posture.agent_identity_impersonation_enabled ||
+      posture.env_key_names.some(isCredentialLikeKeyName) ||
+      posture.secret_ref_key_names.length > 0,
+    reason: "Agent identity delegation configuration discovered as credential issuance and impersonation posture.",
+    metadata: {
+      content_redacted: true,
+      values_collected: false,
+      parsed_agent_identity_config: Boolean(parsed.value) && !parsed.parseFailed,
+      parse_error: parsed.parseFailed,
+      ...posture
+    }
+  });
+  surfaces.runtime_config.push({
+    ...object,
+    untrusted_to_privileged:
+      (posture.agent_identity_untrusted_input &&
+        (posture.agent_identity_credential_issuance_enabled || posture.agent_identity_impersonation_enabled) &&
+        (posture.agent_identity_broad_scope || posture.agent_identity_write_scope || posture.agent_identity_admin_scope || posture.agent_identity_tool_injection)) ||
+      isUntrustedToPrivileged(object)
+  });
+}
+
 function detectSaasConnectorConfig(file: WalkedFile, text: string | undefined, surfaces: DetectedSurfaces): void {
   const parsed = parseStructuredConfig(text ?? "", file.relativePath);
   if (parsed.parseFailed) {
@@ -1314,6 +1391,27 @@ function isAgentSafetyConfigPath(relativePath: string, basename: string): boolea
   return safetyName || (safetyDirectory && configName);
 }
 
+function isAgentIdentityConfigPath(relativePath: string, basename: string): boolean {
+  const normalized = relativePath.replaceAll("\\", "/").toLowerCase();
+  const lowerBase = basename.toLowerCase();
+  if (!/\.(json|ya?ml|toml)$/iu.test(lowerBase)) return false;
+  if (normalized.startsWith(".github/workflows/")) return false;
+  if (normalized.startsWith("rules/")) return false;
+  const segments = normalized.split("/").slice(0, -1);
+  const identityDirectory = segments.some((segment) =>
+    /^(identity|identities|auth|authorization|oauth|oidc|workload-identity|workload_identity|service-accounts?|service_accounts?|iam|federation|credential-delegation|credential_delegation)$/iu.test(
+      segment
+    )
+  );
+  const identityName = /(?:identity|auth|oauth|oidc|workload-identity|workload_identity|service-account|service_account|iam|impersonat|delegat|federat|token-broker|token_broker|credential-delegation|credential_delegation)/iu.test(
+    lowerBase
+  );
+  const configName = /(?:config|settings|identity|auth|oauth|oidc|iam|service|account|token|credential|delegat|impersonat|broker|federat)/iu.test(
+    lowerBase
+  );
+  return identityName || (identityDirectory && configName);
+}
+
 function isSaasConnectorConfigPath(relativePath: string, basename: string): boolean {
   const normalized = relativePath.replaceAll("\\", "/").toLowerCase();
   const lowerBase = basename.toLowerCase();
@@ -1589,6 +1687,33 @@ interface AgentSafetyPosture {
   agent_safety_sensitive_data: boolean;
   agent_safety_pii_data: boolean;
   agent_safety_approval_required: boolean;
+  env_key_names: string[];
+  secret_ref_key_names: string[];
+}
+
+interface AgentIdentityPosture {
+  agent_identity_fields: string[];
+  agent_identity_provider?: string;
+  agent_identity_remote: boolean;
+  agent_identity_destination_redacted: boolean;
+  agent_identity_destination_count: number;
+  agent_identity_destination_kinds: string[];
+  agent_identity_issuer_redacted: boolean;
+  agent_identity_subject_redacted: boolean;
+  agent_identity_scope_redacted: boolean;
+  agent_identity_scope_categories: string[];
+  agent_identity_broad_scope: boolean;
+  agent_identity_admin_scope: boolean;
+  agent_identity_write_scope: boolean;
+  agent_identity_credential_issuance_enabled: boolean;
+  agent_identity_impersonation_enabled: boolean;
+  agent_identity_token_refresh_enabled: boolean;
+  agent_identity_tool_injection: boolean;
+  agent_identity_external_authority: boolean;
+  agent_identity_untrusted_input: boolean;
+  agent_identity_sensitive_data: boolean;
+  agent_identity_pii_data: boolean;
+  agent_identity_approval_required: boolean;
   env_key_names: string[];
   secret_ref_key_names: string[];
 }
@@ -2716,6 +2841,264 @@ function isAgentSafetySecurityField(fieldPath: string): boolean {
 
 function isLikelyEnvKeyName(value: string): boolean {
   return /^[A-Z][A-Z0-9_]{2,}$/u.test(value);
+}
+
+function classifyAgentIdentityConfig(value: unknown, filePath: string): AgentIdentityPosture {
+  const fields = flattenRuntimeFields(value);
+  const stringValues = collectFieldStringValues(fields);
+  const provider = inferAgentIdentityProvider([filePath, ...fields.map((field) => field.path), ...stringValues]);
+  const destinations = classifyAgentIdentityDestinations(fields, provider);
+  const scopeCategories = collectAgentIdentityScopeCategories(fields);
+  const envKeys = uniqueStrings([
+    ...collectEnvKeyNamesFromConfig(value).filter(isLikelyEnvKeyName),
+    ...extractEnvironmentReferenceKeys(stringValues)
+  ]);
+  const secretRefKeys = extractSecretReferenceKeys(stringValues);
+
+  return {
+    agent_identity_fields: fields
+      .map((field) => field.path)
+      .filter((fieldPath) => isAgentIdentitySecurityField(fieldPath))
+      .sort((a, b) => a.localeCompare(b)),
+    agent_identity_provider: provider,
+    agent_identity_remote: destinations.remote,
+    agent_identity_destination_redacted: destinations.destinationCount > 0,
+    agent_identity_destination_count: destinations.destinationCount,
+    agent_identity_destination_kinds: destinations.destinationKinds,
+    agent_identity_issuer_redacted: hasAgentIdentityIssuerSignal(fields),
+    agent_identity_subject_redacted: hasAgentIdentitySubjectSignal(fields),
+    agent_identity_scope_redacted: scopeCategories.length > 0,
+    agent_identity_scope_categories: scopeCategories,
+    agent_identity_broad_scope: isAgentIdentityBroadScope(scopeCategories),
+    agent_identity_admin_scope: scopeCategories.some((scope) => scope === "admin_scope" || scope === "iam_admin" || scope === "wildcard_scope"),
+    agent_identity_write_scope: scopeCategories.some((scope) =>
+      ["cloud_write", "email_modify", "repo_write", "storage_write", "ticket_write", "workspace_write"].includes(scope)
+    ),
+    agent_identity_credential_issuance_enabled: hasAgentIdentityCredentialIssuanceSignal(fields),
+    agent_identity_impersonation_enabled: hasAgentIdentityImpersonationSignal(fields),
+    agent_identity_token_refresh_enabled: hasAgentIdentityTokenRefreshSignal(fields),
+    agent_identity_tool_injection: hasAgentIdentityToolInjectionSignal(fields),
+    agent_identity_external_authority: hasAgentIdentityExternalAuthoritySignal(fields, scopeCategories),
+    agent_identity_untrusted_input: hasAgentIdentityUntrustedInputSignal(fields),
+    agent_identity_sensitive_data: hasAgentIdentitySensitiveDataSignal(fields),
+    agent_identity_pii_data: hasAgentIdentityPiiDataSignal(fields),
+    agent_identity_approval_required: hasAgentIdentityApprovalRequiredSignal(fields),
+    env_key_names: envKeys,
+    secret_ref_key_names: secretRefKeys
+  };
+}
+
+function inferAgentIdentityProvider(candidates: string[]): string | undefined {
+  const text = candidates.join(" ").toLowerCase();
+  const providers: Array<[string, RegExp]> = [
+    ["google_workload_identity", /\b(google[_\s-]?workload[_\s-]?identity|gcp[_\s-]?workload[_\s-]?identity|sts\.googleapis\.com|iamcredentials\.googleapis\.com)\b/iu],
+    ["aws_sts", /\b(aws[_\s-]?sts|assume[_\s-]?role|web[_\s-]?identity|sts\.amazonaws\.com)\b/iu],
+    ["azure_entra", /\b(azure[_\s-]?entra|azure[_\s-]?ad|microsoft[_\s-]?identity|login\.microsoftonline\.com)\b/iu],
+    ["github_app", /\b(github[_\s-]?app|installation[_\s-]?token|github\.com\/login\/oauth|api\.github\.com\/app)\b/iu],
+    ["oauth2", /\b(oauth2?|oidc|openid[_\s-]?connect|authorization[_\s-]?server|token[_\s-]?endpoint)\b/iu],
+    ["service_account", /\b(service[_\s-]?account|impersonat|delegat|token[_\s-]?broker|credential[_\s-]?broker)\b/iu]
+  ];
+  return providers.find(([, pattern]) => pattern.test(text))?.[0];
+}
+
+function classifyAgentIdentityDestinations(
+  fields: RuntimeField[],
+  provider: string | undefined
+): { remote: boolean; destinationCount: number; destinationKinds: string[] } {
+  const destinationKinds = new Set<string>();
+  let destinationCount = 0;
+  if (provider && provider !== "service_account") {
+    destinationKinds.add("managed_identity_provider");
+    destinationCount += 1;
+  }
+
+  for (const field of fields) {
+    const values = fieldStringValues(field);
+    for (const value of values) {
+      const destination = parseAgentIdentityDestination(value);
+      if (destination) {
+        destinationKinds.add(destination.kind);
+        destinationCount += 1;
+      }
+    }
+    if (/(^|\.)(issuer|issuer_url|authority|authorization_server|token_endpoint|sts_endpoint|endpoint|url|uri|host|audience)$/iu.test(field.path)) {
+      const text = values.join(" ");
+      if (looksLikeRemoteIdentityHost(text)) {
+        destinationKinds.add("identity_provider_endpoint");
+        destinationCount += 1;
+      }
+    }
+  }
+
+  return {
+    remote: destinationCount > 0,
+    destinationCount,
+    destinationKinds: [...destinationKinds].sort((a, b) => a.localeCompare(b))
+  };
+}
+
+function parseAgentIdentityDestination(value: string): { kind: string } | undefined {
+  try {
+    const parsed = new URL(value);
+    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return undefined;
+    if (isLocalHost(parsed.hostname.toLowerCase())) return undefined;
+    return { kind: parsed.protocol === "http:" ? "plaintext_identity_endpoint" : "identity_provider_endpoint" };
+  } catch {
+    return undefined;
+  }
+}
+
+function looksLikeRemoteIdentityHost(value: string): boolean {
+  const trimmed = value.trim().toLowerCase();
+  if (!trimmed || trimmed.startsWith("${")) return false;
+  if (isLocalHost(trimmed)) return false;
+  return /\b(sts|iam|oauth|oidc|login|auth|accounts|identity|token|entra|okta|auth0|googleapis|amazonaws|microsoftonline)\b/iu.test(trimmed) ||
+    /^[a-z0-9.-]+\.[a-z]{2,}(?::\d+)?$/iu.test(trimmed);
+}
+
+function collectAgentIdentityScopeCategories(fields: RuntimeField[]): string[] {
+  const categories = new Set<string>();
+  for (const field of fields) {
+    if (!/(^|\.)(scopes?|oauth[_-]?scopes?|permissions?|roles?|claims?|capabilities|access|resources?|allowed[_-]?actions?)$/iu.test(field.path)) {
+      continue;
+    }
+    const text = `${field.path} ${fieldValueText(field)}`.toLowerCase();
+    if (/(^|[\s,])\*(?=[$\s,])|\ball[_\s-]?(scopes?|roles?|permissions?|resources?)\b|full[_\s-]?access|cloud-platform/iu.test(text)) {
+      categories.add("wildcard_scope");
+    }
+    if (/\b(admin|administrator|owner|superuser|root|org[_\s-]?admin|roles\/owner|roles\/editor)\b/iu.test(text)) {
+      categories.add("admin_scope");
+    }
+    if (/iam\.serviceaccount|service[_\s-]?account[_\s-]?token[_\s-]?creator|token[_\s-]?creator|impersonat|assume[_\s-]?role|sts:assumerole|iam:passrole/iu.test(text)) {
+      categories.add("iam_admin");
+    }
+    if (/repo\b|contents:write|pull[_-]?requests?:write|issues?:write|workflow|checks:write|deployments?:write/iu.test(text)) {
+      categories.add("repo_write");
+    }
+    if (/gmail\.modify|gmail\.send|mail\.send|mail\.readwrite|email:send|email:write/iu.test(text)) {
+      categories.add("email_modify");
+    }
+    if (/drive|storage|s3|blob|bucket|objects?:write|storage\.objects|s3:put|s3:delete/iu.test(text)) {
+      categories.add("storage_write");
+    }
+    if (/jira.*write|write:jira|issue:write|tickets?:write|zendesk.*write|linear.*write|servicenow.*write/iu.test(text)) {
+      categories.add("ticket_write");
+    }
+    if (/database|sql|cloudsql|rds|dynamodb|bigquery|datastore|firestore|spanner/iu.test(text)) {
+      categories.add("cloud_write");
+    }
+    if (/workspace|directory|users?:write|groups?:write|admin\.directory/iu.test(text)) {
+      categories.add("workspace_write");
+    }
+    if (/read|list|get|profile|metadata|openid|userinfo|email/iu.test(text)) categories.add("read_scope");
+  }
+  return [...categories].sort((a, b) => a.localeCompare(b));
+}
+
+function isAgentIdentityBroadScope(scopeCategories: string[]): boolean {
+  return scopeCategories.some((scope) =>
+    [
+      "admin_scope",
+      "cloud_write",
+      "email_modify",
+      "iam_admin",
+      "repo_write",
+      "storage_write",
+      "ticket_write",
+      "wildcard_scope",
+      "workspace_write"
+    ].includes(scope)
+  );
+}
+
+function hasAgentIdentityIssuerSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => /(^|\.)(issuer|issuer_url|authority|authorization_server|jwks_uri|audience|client_id)$/iu.test(field.path));
+}
+
+function hasAgentIdentitySubjectSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /subject|principal|service[_\s-]?account|client[_\s-]?id|installation[_\s-]?id|tenant|audience|allowed[_\s-]?subjects?|actor|identity/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    )
+  );
+}
+
+function hasAgentIdentityCredentialIssuanceSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /\b(issue|mint|exchange|token[_\s-]?endpoint|access[_\s-]?token|id[_\s-]?token|credential|session[_\s-]?token|sts|assume[_\s-]?role|installation[_\s-]?token)\b/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    ) && truthyConfigValue(field.value)
+  );
+}
+
+function hasAgentIdentityImpersonationSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /\b(impersonat|delegate|delegation|assume[_\s-]?role|service[_\s-]?account|act[_\s-]?as|on[_\s-]?behalf|subject[_\s-]?mapping|workload[_\s-]?identity|federat)\b/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    ) && truthyConfigValue(field.value)
+  );
+}
+
+function hasAgentIdentityTokenRefreshSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /\b(refresh|refresh[_\s-]?enabled|refresh[_\s-]?token|auto[_\s-]?refresh|renew|rotate|ttl|lifetime|duration)\b/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    ) && truthyConfigValue(field.value)
+  );
+}
+
+function hasAgentIdentityToolInjectionSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /(?:^|[_\W])(inject|export|materialize|hydrate|pass|forward|write[_-]?env|env[_-]?inject|tool|tools|mcp|runtime|browser|database|saas|connector|header|authorization)(?:[_\W]|$)/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    )
+  );
+}
+
+function hasAgentIdentityExternalAuthoritySignal(fields: RuntimeField[], scopeCategories: string[]): boolean {
+  return scopeCategories.some((scope) => ["email_modify", "repo_write", "storage_write", "ticket_write", "workspace_write"].includes(scope)) ||
+    fields.some((field) =>
+      /\b(send|post|publish|write|update|create|delete|reply|email|slack|github|jira|zendesk|drive|storage|external|api)\b/iu.test(
+        `${field.path} ${fieldValueText(field)}`
+      )
+    );
+}
+
+function hasAgentIdentityUntrustedInputSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /\b(untrusted|user|customer|client|ticket|support|issue|comment|message|prompt|retrieved|rag|document|email|slack|browser|web[_-]?page|chat|inbound|external)\b/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    )
+  );
+}
+
+function hasAgentIdentitySensitiveDataSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /\b(customer|client|ticket|support|internal|confidential|private|proprietary|sensitive|account|billing|payment|prod|production|admin|credential|token|api[_-]?key|secret)\b/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    )
+  );
+}
+
+function hasAgentIdentityPiiDataSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /(?:^|[_\W])(pii|email|phone|address|ssn|passport|dob|date[_\s-]?of[_\s-]?birth|customer[_-]?id|user[_-]?id|account[_-]?id)(?:[_\W]|$)/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    )
+  );
+}
+
+function hasAgentIdentityApprovalRequiredSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /approval|required[_-]?approval|human[_-]?approval|confirm|confirmation|review|human[_-]?in[_-]?the[_-]?loop/iu.test(field.path) &&
+    truthyConfigValue(field.value)
+  );
+}
+
+function isAgentIdentitySecurityField(fieldPath: string): boolean {
+  return /provider|identity|auth|oauth|oidc|issuer|audience|subject|principal|service|account|client|tenant|token|credential|secret|key|env|scope|permission|role|claim|capabilit|resource|impersonat|delegate|assume|federat|sts|refresh|ttl|lifetime|tool|mcp|browser|database|saas|connector|source|input|customer|ticket|email|approval|endpoint|url|host|authority|jwks/iu.test(
+    fieldPath
+  );
 }
 
 function classifySaasConnectorConfig(value: unknown, filePath: string): SaasConnectorPosture {

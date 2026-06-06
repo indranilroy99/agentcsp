@@ -406,6 +406,40 @@ AI eval metadata may include:
 
 Raw suite names, scenario names, prompts, target URLs, agent names, tool strings, assertion values, output paths, data-field labels, and secret placeholders are not emitted. Framework names, redacted dataset counts, tool-authority categories, production/live execution posture, output retention, approval posture, data-class booleans, and credential key names let rules detect red-team harnesses that can hit real agents with real authority.
 
+## Agent Identity Delegation Posture
+
+Agent identity, OAuth, OIDC, service-account, workload-identity, IAM, and credential-delegation configs are also normalized into `runtime_config` objects when common identity configuration files are discovered.
+
+Agent identity metadata may include:
+
+- `parsed_agent_identity_config`
+- `agent_identity_fields`
+- `agent_identity_provider`
+- `agent_identity_remote`
+- `agent_identity_destination_redacted`
+- `agent_identity_destination_count`
+- `agent_identity_destination_kinds`
+- `agent_identity_issuer_redacted`
+- `agent_identity_subject_redacted`
+- `agent_identity_scope_redacted`
+- `agent_identity_scope_categories`
+- `agent_identity_broad_scope`
+- `agent_identity_admin_scope`
+- `agent_identity_write_scope`
+- `agent_identity_credential_issuance_enabled`
+- `agent_identity_impersonation_enabled`
+- `agent_identity_token_refresh_enabled`
+- `agent_identity_tool_injection`
+- `agent_identity_external_authority`
+- `agent_identity_untrusted_input`
+- `agent_identity_sensitive_data`
+- `agent_identity_pii_data`
+- `agent_identity_approval_required`
+- `env_key_names`
+- `secret_ref_key_names`
+
+Raw issuer URLs, token endpoints, service-account identifiers, OAuth scopes, IAM roles, subject mappings, tenant IDs, audience values, delegated subject labels, tool names, data-field labels, and secret placeholders are not emitted. Provider names, redacted destination categories, normalized scope categories, credential-issuance and impersonation posture, subject-redaction flags, approval posture, data-class booleans, and credential key names let rules detect over-authorized agent identity delegation without copying identity configuration values into the manifest.
+
 ## SaaS And API Connector Posture
 
 SaaS, API, ticketing, messaging, email, CRM, and repository-service connector configs are also normalized into `runtime_config` objects when common connector configuration files are discovered.

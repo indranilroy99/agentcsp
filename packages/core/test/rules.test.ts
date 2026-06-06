@@ -57,6 +57,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-015")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-016")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-017")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-018")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-CICD-002")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-AUTOMATION-001")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-AUTOMATION-002")).toBe(true);
@@ -233,6 +234,35 @@ describe("rule engine", () => {
     expect(JSON.stringify(runtimeSecretManagerFindings[0])).not.toContain("vault.example.invalid");
     expect(JSON.stringify(runtimeSecretManagerFindings[0])).not.toContain("secret/data/prod/customer-support");
     expect(JSON.stringify(runtimeSecretManagerFindings[0])).not.toContain("prod-support-read");
+    const runtimeAgentIdentityFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-RUNTIME-018");
+    expect(runtimeAgentIdentityFindings).toHaveLength(1);
+    expect(runtimeAgentIdentityFindings[0]?.matched_object.path).toBe("identity/agent-oauth.yaml");
+    expect(runtimeAgentIdentityFindings[0]?.matched_object.metadata).toMatchObject({
+      agent_identity_provider: "google_workload_identity",
+      agent_identity_credential_issuance_enabled: true,
+      agent_identity_impersonation_enabled: true,
+      agent_identity_broad_scope: true,
+      agent_identity_admin_scope: true,
+      agent_identity_write_scope: true,
+      agent_identity_untrusted_input: true,
+      agent_identity_approval_required: false
+    });
+    expect(runtimeAgentIdentityFindings[0]?.matched_object.metadata.agent_identity_scope_categories).toEqual([
+      "admin_scope",
+      "email_modify",
+      "iam_admin",
+      "storage_write",
+      "wildcard_scope"
+    ]);
+    expect(runtimeAgentIdentityFindings[0]?.severity).toBe("critical");
+    expect(runtimeAgentIdentityFindings[0]?.confidence).toBe("very_high");
+    expect(runtimeAgentIdentityFindings[0]?.recommended_control).toBe("require_approval");
+    expect(JSON.stringify(runtimeAgentIdentityFindings[0])).not.toContain("${AGENT_IDENTITY_TOKEN}");
+    expect(JSON.stringify(runtimeAgentIdentityFindings[0])).not.toContain("auth.agentcsp-demo.example.invalid");
+    expect(JSON.stringify(runtimeAgentIdentityFindings[0])).not.toContain("sts.googleapis.com");
+    expect(JSON.stringify(runtimeAgentIdentityFindings[0])).not.toContain("support-agent-prod");
+    expect(JSON.stringify(runtimeAgentIdentityFindings[0])).not.toContain("cloud-platform");
+    expect(JSON.stringify(runtimeAgentIdentityFindings[0])).not.toContain("roles/owner");
     const runtimeInboundTriggerFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-RUNTIME-014");
     expect(runtimeInboundTriggerFindings).toHaveLength(1);
     expect(runtimeInboundTriggerFindings[0]?.matched_object.path).toBe("inbox/support-triage.yaml");

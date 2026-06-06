@@ -1,0 +1,44 @@
+id: AGENTCSP-RUNTIME-018
+name: Agent identity delegation mints broad credentials from untrusted context
+description: An agent identity or OAuth delegation config can issue or impersonate broad credentials while untrusted context can influence the delegated subject, tool injection, or runtime authority without approval.
+category: identity_delegation_boundary
+severity: critical
+maps_to:
+  owasp:
+    - LLM01:2025 Prompt Injection
+    - LLM02:2025 Sensitive Information Disclosure
+    - LLM06:2025 Excessive Agency
+  mitre_atlas:
+    - AML.T0051 LLM Prompt Injection
+    - AML.T0057 Exfiltration via Cyber Means
+  nist_ai_rmf:
+    - MAP 5.1
+    - MEASURE 2.9
+    - MANAGE 2.2
+match:
+  object_type: runtime_config
+  where:
+    - field: metadata.parsed_agent_identity_config
+      op: equals
+      value: true
+    - field: metadata.agent_identity_credential_issuance_enabled
+      op: equals
+      value: true
+    - field: metadata.agent_identity_impersonation_enabled
+      op: equals
+      value: true
+    - field: metadata.agent_identity_broad_scope
+      op: equals
+      value: true
+    - field: metadata.agent_identity_untrusted_input
+      op: equals
+      value: true
+    - field: metadata.agent_identity_approval_required
+      op: equals
+      value: false
+    - field: secret_exposure
+      op: equals
+      value: true
+recommendation:
+  control: require_approval
+  text: Require approval before agent-driven token issuance or service-account impersonation, split agent identities by task, remove broad scopes, and keep untrusted context out of identity subject or delegation inputs.

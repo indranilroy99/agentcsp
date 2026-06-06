@@ -21,6 +21,7 @@
 - Build graph-based blast-radius analysis.
 - Add `agentcsp.yaml` policy files.
 - Add runtime posture inventory for sandbox, approval, network, tool authority, and agent safety-control posture.
+- Add identity delegation posture for agent OAuth, OIDC, service-account, workload-identity, and token-broker authority.
 - Support allow, deny, approval, redaction, and quarantine recommendations.
 - Add SARIF output and CI integrations for code-scanning workflows.
 - Add high-confidence correlated findings that combine provenance, data class, authority, and side effects.

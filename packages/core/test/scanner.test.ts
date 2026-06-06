@@ -23,6 +23,7 @@ describe("scanner", () => {
 
     expect(envSurface).toBeDefined();
     expect(envSurface?.metadata.env_key_names).toEqual([
+      "AGENT_IDENTITY_TOKEN",
       "BROWSER_SESSION_TOKEN",
       "CREW_AGENT_TOKEN",
       "CUSTOMER_SUCCESS_SLACK_BOT_TOKEN",
@@ -617,6 +618,66 @@ describe("scanner", () => {
     expect(JSON.stringify(secretManagerConfig)).not.toContain("prod-support-read");
     expect(JSON.stringify(secretManagerConfig)).not.toContain("agent-secret-broker");
     expect(JSON.stringify(secretManagerConfig)).not.toContain("vault_customer_credentials");
+    const agentIdentityConfig = surfaces.runtime_config.find((surface) => surface.path === "identity/agent-oauth.yaml");
+    expect(agentIdentityConfig).toBeDefined();
+    expect(agentIdentityConfig).toMatchObject({
+      trust_level: "third_party",
+      external_reach: true,
+      secret_exposure: true,
+      side_effect: true,
+      reversible: false,
+      untrusted_to_privileged: true
+    });
+    expect(agentIdentityConfig?.metadata).toMatchObject({
+      content_redacted: true,
+      values_collected: false,
+      parsed_agent_identity_config: true,
+      agent_identity_provider: "google_workload_identity",
+      agent_identity_remote: true,
+      agent_identity_destination_redacted: true,
+      agent_identity_issuer_redacted: true,
+      agent_identity_subject_redacted: true,
+      agent_identity_scope_redacted: true,
+      agent_identity_broad_scope: true,
+      agent_identity_admin_scope: true,
+      agent_identity_write_scope: true,
+      agent_identity_credential_issuance_enabled: true,
+      agent_identity_impersonation_enabled: true,
+      agent_identity_token_refresh_enabled: true,
+      agent_identity_tool_injection: true,
+      agent_identity_external_authority: true,
+      agent_identity_untrusted_input: true,
+      agent_identity_sensitive_data: true,
+      agent_identity_pii_data: true,
+      agent_identity_approval_required: false
+    });
+    expect(agentIdentityConfig?.metadata.agent_identity_destination_kinds).toEqual([
+      "identity_provider_endpoint",
+      "managed_identity_provider"
+    ]);
+    expect(agentIdentityConfig?.metadata.agent_identity_scope_categories).toEqual([
+      "admin_scope",
+      "email_modify",
+      "iam_admin",
+      "storage_write",
+      "wildcard_scope"
+    ]);
+    expect(agentIdentityConfig?.metadata.env_key_names).toEqual(["AGENT_IDENTITY_TOKEN"]);
+    expect(agentIdentityConfig?.metadata.secret_ref_key_names).toEqual(["AGENT_IDENTITY_TOKEN"]);
+    expect(agentIdentityConfig?.data_classes).toEqual(["confidential", "credential", "pii"]);
+    expect(agentIdentityConfig?.actions).toEqual(["approve", "call", "read", "send", "write"]);
+    expect(JSON.stringify(agentIdentityConfig)).not.toContain("${AGENT_IDENTITY_TOKEN}");
+    expect(JSON.stringify(agentIdentityConfig)).not.toContain("auth.agentcsp-demo.example.invalid");
+    expect(JSON.stringify(agentIdentityConfig)).not.toContain("sts.googleapis.com");
+    expect(JSON.stringify(agentIdentityConfig)).not.toContain("support-agent-prod");
+    expect(JSON.stringify(agentIdentityConfig)).not.toContain("agentcsp-demo.iam.gserviceaccount.com");
+    expect(JSON.stringify(agentIdentityConfig)).not.toContain("customer-support-prod-agent");
+    expect(JSON.stringify(agentIdentityConfig)).not.toContain("cloud-platform");
+    expect(JSON.stringify(agentIdentityConfig)).not.toContain("gmail.modify");
+    expect(JSON.stringify(agentIdentityConfig)).not.toContain("roles/owner");
+    expect(JSON.stringify(agentIdentityConfig)).not.toContain("roles/iam.serviceAccountTokenCreator");
+    expect(JSON.stringify(agentIdentityConfig)).not.toContain("send_customer_reply");
+    expect(JSON.stringify(agentIdentityConfig)).not.toContain("customer_oauth_email");
     const inboundTriggerConfig = surfaces.runtime_config.find((surface) => surface.path === "inbox/support-triage.yaml");
     expect(inboundTriggerConfig).toBeDefined();
     expect(inboundTriggerConfig).toMatchObject({
