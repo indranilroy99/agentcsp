@@ -35,6 +35,7 @@ A finding should be considered production-grade when it includes:
 - remote MCP transport posture for credential-backed plaintext endpoints
 - local MCP implementation presence checks for secret-backed agent-callable servers
 - MCP prompt/resource context metadata for server-supplied model context that can steer privileged or secret-backed MCP authority without emitting prompt/resource text, names, descriptions, URIs, URLs, or token placeholders
+- MCP client root, sampling, and elicitation metadata for remote context requests without emitting raw root paths, root names, sampling prompts, elicitation schemas, requested field names, or token placeholders
 - tool-name collision metadata for authority ambiguity and shadowing
 - tool-schema integrity signals for open-world privileged arguments and read-only hint conflicts
 - model-visible tool-description injection signals without emitting raw descriptions
@@ -103,6 +104,7 @@ Examples:
 - remote MCP server plus plaintext transport plus credential-backed access
 - local MCP implementation path missing from scan plus credential exposure and side effects
 - MCP prompt or resource context plus untrusted input, tool/external directives, privileged server authority, and credential-backed MCP access
+- remote credential-backed MCP server plus broad client roots, sampling or elicitation authority, and sensitive client-context exposure
 - package-runner MCP server plus unpinned package version plus credential exposure
 - agent package manifest plus risky agent dependency references, credentialed lifecycle scripts, and external dependency reach
 - agent deployment manifest plus mutable remote image provenance, privileged host authority, credential exposure, and no approval gate

@@ -36,6 +36,7 @@ describe("scanner", () => {
       "AWS_SESSION_TOKEN",
       "BROWSER_SESSION_TOKEN",
       "CODE_INTERPRETER_TOKEN",
+      "CONTEXT_BROKER_TOKEN",
       "CONTEXT_COMPOSER_TOKEN",
       "CREW_AGENT_TOKEN",
       "CUSTOMER_SUCCESS_SLACK_BOT_TOKEN",
@@ -136,6 +137,7 @@ describe("scanner", () => {
     const localMcp = surfaces.mcp_servers.find((surface) => surface.name === "filesystem-admin");
     const browserPublisherMcp = surfaces.mcp_servers.find((surface) => surface.name === "browser-publisher");
     const remoteMcp = surfaces.mcp_servers.find((surface) => surface.name === "remote-ticketing");
+    const remoteContextBrokerMcp = surfaces.mcp_servers.find((surface) => surface.name === "remote-context-broker");
     const packageRunnerMcp = surfaces.mcp_servers.find((surface) => surface.name === "ticketing-package-runner");
     expect(localMcp).toMatchObject({
       trust_level: "project",
@@ -189,6 +191,45 @@ describe("scanner", () => {
     });
     expect(JSON.stringify(remoteMcp)).not.toContain("${TICKETING_MCP_TOKEN}");
     expect(JSON.stringify(remoteMcp)).not.toContain("/sse");
+    expect(remoteContextBrokerMcp).toMatchObject({
+      trust_level: "third_party",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["call", "read", "send"],
+      external_reach: true,
+      secret_exposure: true,
+      untrusted_to_privileged: true
+    });
+    expect(remoteContextBrokerMcp?.metadata).toMatchObject({
+      remote: true,
+      remote_host: "context-broker.example.invalid",
+      remote_scheme: "https",
+      plaintext_remote_transport: false,
+      encrypted_remote_transport: true,
+      auth_header_names: ["Authorization"],
+      secret_ref_key_names: ["CONTEXT_BROKER_TOKEN"],
+      mcp_roots_redacted: true,
+      mcp_root_count: 3,
+      mcp_root_scope_kinds: ["absolute_path", "credential_path", "file_uri", "home", "host_root", "workspace"],
+      mcp_root_broad_scope: true,
+      mcp_sampling_enabled: true,
+      mcp_sampling_includes_context: true,
+      mcp_elicitation_enabled: true,
+      mcp_elicitation_sensitive_fields: true,
+      mcp_context_request_authority: true,
+      mcp_client_context_exposure: true,
+      values_collected: false,
+      content_redacted: true
+    });
+    expect(JSON.stringify(remoteContextBrokerMcp)).not.toContain("${CONTEXT_BROKER_TOKEN}");
+    expect(JSON.stringify(remoteContextBrokerMcp)).not.toContain("context-broker.example.invalid/mcp");
+    expect(JSON.stringify(remoteContextBrokerMcp)).not.toContain("file:///home/support/.ssh");
+    expect(JSON.stringify(remoteContextBrokerMcp)).not.toContain("file:///workspace/customer-escalations");
+    expect(JSON.stringify(remoteContextBrokerMcp)).not.toContain("file:///");
+    expect(JSON.stringify(remoteContextBrokerMcp)).not.toContain("support-ssh");
+    expect(JSON.stringify(remoteContextBrokerMcp)).not.toContain("customer-escalations");
+    expect(JSON.stringify(remoteContextBrokerMcp)).not.toContain("host-root");
+    expect(JSON.stringify(remoteContextBrokerMcp)).not.toContain("customer_email");
+    expect(JSON.stringify(remoteContextBrokerMcp)).not.toContain("api_token");
     expect(packageRunnerMcp).toMatchObject({
       trust_level: "third_party",
       external_reach: true,

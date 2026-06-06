@@ -1,0 +1,44 @@
+id: AGENTCSP-MCP-008
+name: Remote MCP server can request broad client context
+description: A remote credential-backed MCP server is configured with broad client roots plus sampling or elicitation authority, allowing the server to request filesystem, model, or user context through the client.
+category: mcp_client_context_exposure
+severity: critical
+maps_to:
+  owasp:
+    - LLM01:2025 Prompt Injection
+    - LLM02:2025 Sensitive Information Disclosure
+    - LLM06:2025 Excessive Agency
+  mitre_atlas:
+    - AML.T0051 LLM Plugin Compromise
+    - AML.T0057 Exfiltration via Cyber Means
+  nist_ai_rmf:
+    - MAP 4.1
+    - MEASURE 2.7
+    - MANAGE 2.3
+match:
+  object_type: mcp_server
+  where:
+    - field: metadata.remote
+      op: equals
+      value: true
+    - field: metadata.mcp_client_context_exposure
+      op: equals
+      value: true
+    - field: metadata.mcp_roots_redacted
+      op: equals
+      value: true
+    - field: metadata.mcp_root_broad_scope
+      op: equals
+      value: true
+    - field: metadata.mcp_context_request_authority
+      op: equals
+      value: true
+    - field: secret_exposure
+      op: equals
+      value: true
+    - field: external_reach
+      op: equals
+      value: true
+recommendation:
+  control: deny
+  text: Do not expose broad client roots, sampling, or elicitation to remote MCP servers by default. Restrict roots to task-specific paths, disable server-initiated model/user-context requests unless explicitly approved, and isolate credential-backed MCP servers from sensitive client context.

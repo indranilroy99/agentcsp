@@ -9978,11 +9978,18 @@ async function detectMcpConfig(
     const secretKeys = [...(server.envKeys ?? []), ...(server.secretRefKeys ?? []), ...(server.authHeaderNames ?? [])];
     const baseActions: ActionType[] = actions.length > 0 ? actions : ["call"];
     const packageRunner = server.packageRunner;
+    const clientContext = server.clientContext;
     const localImplementationPaths = server.localCommandPaths ?? [];
     const localImplementationPathsFound = localImplementationPaths.filter((pathRef) => projectFilePaths.has(pathRef));
     const localImplementationPathsMissing = localImplementationPaths.filter((pathRef) => !projectFilePaths.has(pathRef));
+    const dataClasses = new Set<SurfaceObject["data_classes"][number]>(secretKeys.length > 0 ? ["credential"] : ["unknown"]);
+    if (clientContext.rootsRedacted || clientContext.samplingIncludesContext) dataClasses.add("confidential");
+    if (clientContext.elicitationSensitiveFields) dataClasses.add("pii");
+    if (dataClasses.size > 1) dataClasses.delete("unknown");
     const mcpActions: ActionType[] = [
       ...baseActions,
+      ...(clientContext.rootsRedacted ? (["read"] as ActionType[]) : []),
+      ...(clientContext.contextRequestAuthority ? (["call"] as ActionType[]) : []),
       ...(externalRemote ? (["send"] as ActionType[]) : []),
       ...(packageRunner ? (["execute"] as ActionType[]) : [])
     ];
@@ -9991,7 +9998,7 @@ async function detectMcpConfig(
       name: server.name,
       path: file.relativePath,
       trust_level: externalRemote || packageRunner ? "third_party" : inferTrustLevel(file.relativePath),
-      data_classes: secretKeys.length > 0 ? ["credential"] : ["unknown"],
+      data_classes: uniqueDataClasses([...dataClasses] as SurfaceObject["data_classes"]),
       actions: uniqueActions(mcpActions),
       side_effect: true,
       external_reach: externalRemote || Boolean(packageRunner) || hasExternalReach(signalText),
@@ -10024,6 +10031,16 @@ async function detectMcpConfig(
         package_name: packageRunner?.packageName,
         package_version_pinned: packageRunner?.versionPinned,
         package_reference_redacted: packageRunner?.packageReferenceRedacted ?? false,
+        mcp_roots_redacted: clientContext.rootsRedacted,
+        mcp_root_count: clientContext.rootCount,
+        mcp_root_scope_kinds: clientContext.rootScopeKinds,
+        mcp_root_broad_scope: clientContext.rootBroadScope,
+        mcp_sampling_enabled: clientContext.samplingEnabled,
+        mcp_sampling_includes_context: clientContext.samplingIncludesContext,
+        mcp_elicitation_enabled: clientContext.elicitationEnabled,
+        mcp_elicitation_sensitive_fields: clientContext.elicitationSensitiveFields,
+        mcp_context_request_authority: clientContext.contextRequestAuthority,
+        mcp_client_context_exposure: clientContext.clientContextExposure,
         values_collected: false,
         content_redacted: true
       }
@@ -11036,7 +11053,21 @@ interface ExtractedMcpServer {
   secretRefKeys?: string[];
   packageRunner?: McpPackageRunnerSignal;
   localCommandPaths?: string[];
+  clientContext: McpClientContextPosture;
   contextSurfaces: McpContextDefinition[];
+}
+
+interface McpClientContextPosture {
+  rootsRedacted: boolean;
+  rootCount: number;
+  rootScopeKinds: string[];
+  rootBroadScope: boolean;
+  samplingEnabled: boolean;
+  samplingIncludesContext: boolean;
+  elicitationEnabled: boolean;
+  elicitationSensitiveFields: boolean;
+  contextRequestAuthority: boolean;
+  clientContextExposure: boolean;
 }
 
 interface McpContextDefinition {
@@ -11158,9 +11189,84 @@ function extractMcpServers(value: unknown): ExtractedMcpServer[] {
       secretRefKeys,
       packageRunner,
       localCommandPaths,
+      clientContext: classifyMcpClientContext(serverConfig),
       contextSurfaces: extractMcpContextDefinitions(serverConfig)
     };
   });
+}
+
+function classifyMcpClientContext(serverConfig: Record<string, unknown>): McpClientContextPosture {
+  const fields = flattenRuntimeFields(serverConfig);
+  const rootFields = fields.filter(isMcpRootField);
+  const rootScopeKinds = collectMcpRootScopeKinds(rootFields);
+  const samplingEnabled = hasMcpCapabilityEnabled(fields, /(^|\.)sampling(\.|$)|sample[_-]?request|llm[_-]?request|model[_-]?request/iu);
+  const samplingIncludesContext =
+    samplingEnabled &&
+    fields.some((field) =>
+      /sampling|sample|llm|model/iu.test(field.path) &&
+      /\b(context|messages?|prompts?|workspace|roots?|files?|all)\b/iu.test(`${field.path} ${fieldValueText(field)}`)
+    );
+  const elicitationEnabled = hasMcpCapabilityEnabled(fields, /(^|\.)elicitation(\.|$)|elicit|ask[_-]?user|user[_-]?input/iu);
+  const elicitationSensitiveFields =
+    elicitationEnabled &&
+    fields.some((field) =>
+      /elicitation|elicit|field|input|schema/iu.test(field.path) &&
+      /(?:^|[_\W])(api[_-]?key|api[_-]?token|token|secret|password|credential|email|phone|address|ssn|customer|account)(?:[_\W]|$)/iu.test(
+        `${field.path} ${fieldValueText(field)}`
+      )
+    );
+  const contextRequestAuthority = samplingEnabled || elicitationEnabled;
+  return {
+    rootsRedacted: rootFields.length > 0,
+    rootCount: countMcpRootEntries(rootFields),
+    rootScopeKinds,
+    rootBroadScope: rootScopeKinds.some((kind) =>
+      ["absolute_path", "credential_path", "file_uri", "home", "host_root", "workspace", "wildcard"].includes(kind)
+    ),
+    samplingEnabled,
+    samplingIncludesContext,
+    elicitationEnabled,
+    elicitationSensitiveFields,
+    contextRequestAuthority,
+    clientContextExposure: rootFields.length > 0 || contextRequestAuthority
+  };
+}
+
+function isMcpRootField(field: RuntimeField): boolean {
+  const text = `${field.path} ${fieldValueText(field)}`;
+  return /(^|\.)(roots?|root_uris|rootUris|client_roots|clientRoots|workspace_roots|workspaceRoots|allowed_paths|allowedPaths|filesystem|fs_roots|mounts?)(\.|$)/iu.test(
+    field.path
+  ) || /\bfile:\/\/|(^|[\s,])(~\/|\/workspace|\/home\/|\/Users\/|\/root\/|\/var\/|\/etc\/|\/)(?=\S*)/iu.test(text);
+}
+
+function collectMcpRootScopeKinds(fields: RuntimeField[]): string[] {
+  const kinds = new Set<string>();
+  for (const field of fields) {
+    const text = `${field.path} ${fieldValueText(field)}`;
+    if (/\*/u.test(text)) kinds.add("wildcard");
+    if (/\bfile:\/\//iu.test(text)) kinds.add("file_uri");
+    if (/\bfile:\/\/\/(?:\s|$)|(^|[\s,])\/(?:\s|$)|host[_-]?root|rootfs/iu.test(text)) kinds.add("host_root");
+    if (/(^|[\s,])~\/|\/home\/|\/Users\/|\/root\//u.test(text)) kinds.add("home");
+    if (/\/workspace|\/workspaces|\/repo|\/project|workspace|repository|project/iu.test(text)) kinds.add("workspace");
+    if (/\.ssh|\.aws|\.kube|credentials?|secrets?|tokens?|private[_-]?key/iu.test(text)) kinds.add("credential_path");
+    if (/\bfile:\/\/\/[^/\s]|(^|[\s,])\/[A-Za-z0-9_.-]/u.test(text)) kinds.add("absolute_path");
+  }
+  return [...kinds].sort((a, b) => a.localeCompare(b));
+}
+
+function countMcpRootEntries(fields: RuntimeField[]): number {
+  const entries = new Set<string>();
+  for (const field of fields) {
+    const match = field.path.match(
+      /((?:^|\.)(?:roots?|root_uris|rootUris|client_roots|clientRoots|workspace_roots|workspaceRoots|allowed_paths|allowedPaths|fs_roots|mounts?)\.(?:\d+|[^.]+))/u
+    );
+    entries.add(match?.[1]?.replace(/^\./u, "") ?? field.path);
+  }
+  return entries.size;
+}
+
+function hasMcpCapabilityEnabled(fields: RuntimeField[], pathPattern: RegExp): boolean {
+  return fields.some((field) => pathPattern.test(field.path) && truthyConfigValue(field.value));
 }
 
 function extractMcpContextDefinitions(serverConfig: Record<string, unknown>): McpContextDefinition[] {

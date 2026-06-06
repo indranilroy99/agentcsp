@@ -856,6 +856,15 @@ The current iteration adds:
 - rule `AGENTCSP-MCP-007` for MCP prompt/resource context that combines untrusted input, tool/external directives, privileged server authority, and credential-backed MCP access
 - scanner, rule, fixture verifier, and redaction coverage proving raw MCP prompt text, resource text, prompt names, descriptions, URIs, URLs, and token placeholders stay redacted
 
+## MCP Client-Context Exposure Pass
+
+The current iteration adds:
+
+- first-class redacted metadata for MCP client roots, sampling, and elicitation, including broad root scope categories, context-request authority, sampling context inclusion, sensitive elicitation posture, and credential key references
+- vulnerable fixture coverage for a remote credential-backed MCP server with broad client roots, sampling enabled, elicitation enabled, and sensitive client-context exposure
+- rule `AGENTCSP-MCP-008` for remote MCP servers that combine broad client roots, sampling or elicitation authority, external reach, and credential-backed access
+- scanner, rule, fixture verifier, and redaction coverage proving raw root URIs, root names, root paths, elicitation field names, and token placeholders stay redacted
+
 ## Initial Build Recommendation
 
 Start with a CLI-first MVP before building the dashboard:

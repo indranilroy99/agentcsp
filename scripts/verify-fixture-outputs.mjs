@@ -21,6 +21,7 @@ const leakPatterns = [
   /\$\{AWS_SECRET_ACCESS_KEY\}/u,
   /\$\{AWS_SESSION_TOKEN\}/u,
   /\$\{BROWSER_SESSION_TOKEN\}/u,
+  /\$\{CONTEXT_BROKER_TOKEN\}/u,
   /\$\{CREW_AGENT_TOKEN\}/u,
   /\$\{CUSTOMER_SUCCESS_SLACK_BOT_TOKEN\}/u,
   /\$\{EMBEDDING_API_KEY\}/u,
@@ -47,6 +48,13 @@ const leakPatterns = [
   /exfil\.example\.invalid/u,
   /support:\/\/customer-escalation-runbook/u,
   /Retrieved support runbook/u,
+  /context-broker\.example\.invalid\/mcp/u,
+  /file:\/\/\/home\/support\/\.ssh/u,
+  /file:\/\/\/workspace\/customer-escalations/u,
+  /support-ssh/u,
+  /customer-escalations/u,
+  /host-root/u,
+  /api_token/u,
   /http:\/\/mcp\.example\.invalid\/sse/u,
   /http:\/\/llm-gateway\.example\.invalid\/v1/u,
   /agentcsp-support-ops/u,
@@ -246,8 +254,8 @@ const leakPatterns = [
 const vulnerable = await readScanOutput(vulnerableOutput, { sarifRequired: true });
 const safe = await readScanOutput(safeOutput, { sarifRequired: false });
 
-assertEqual(vulnerable.manifest.findings.length, 105, "vulnerable manifest finding count");
-assertEqual(vulnerable.findings.length, 105, "vulnerable findings.json count");
+assertEqual(vulnerable.manifest.findings.length, 109, "vulnerable manifest finding count");
+assertEqual(vulnerable.findings.length, 109, "vulnerable findings.json count");
 assertEqual(vulnerable.manifest.attack_paths.length, 15, "vulnerable attack path count");
 assertEqual(vulnerable.manifest.static_blast_radius?.critical_attack_paths, 15, "vulnerable critical attack path count");
 assertEqual(vulnerable.manifest.diagnostics.length, 0, "vulnerable diagnostics count");
@@ -286,6 +294,7 @@ for (const ruleId of [
   "AGENTCSP-RUNTIME-006",
   "AGENTCSP-MCP-006",
   "AGENTCSP-MCP-007",
+  "AGENTCSP-MCP-008",
   "AGENTCSP-CURSOR-001",
   "AGENTCSP-MEMORY-003",
   "AGENTCSP-MEMORY-004",
