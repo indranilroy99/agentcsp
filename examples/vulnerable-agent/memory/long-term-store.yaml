@@ -9,6 +9,18 @@ persistence:
   ttl_days: 90
   shared_across_agents: true
   namespace: customer_memory_namespace
+access_control:
+  public_read: true
+  public_write: true
+  rbac: false
+  auth_required: false
+  tenant_isolation: false
+  namespace_isolation: false
+  shared_across_tenants: true
+  allowed_tenants: "*"
+  shared_with:
+    - partner_support_vendor
+  namespace_scope: global_customer_memory
 write_policy:
   mode: read_write
   approval_required: false

@@ -694,6 +694,16 @@ The current iteration adds:
 - rule `AGENTCSP-MEMORY-004` for remote memory stores that combine untrusted writes, replay into future agent context, credential exposure, and missing approval
 - scanner, rule, fixture verifier, and redaction coverage proving connection strings, hostnames, store names, namespaces, source labels, replay targets, data-field labels, and token placeholders stay redacted
 
+## Agent Memory Access Boundary Pass
+
+The current iteration adds:
+
+- first-class redacted metadata for public memory access, cross-tenant sharing, disabled access control, and disabled tenant or namespace isolation in durable agent memory-store configs
+- vulnerable fixture coverage for a public cross-tenant long-term memory store that accepts untrusted writes, captures secrets, shares memory across agents and tenants, and lacks approval
+- safe fixture coverage for local private session memory with RBAC, tenant isolation, explicit disabled captures, no replay, and approval-required writes
+- rule `AGENTCSP-MEMORY-005` for shared memory stores that cross tenant boundaries without isolation while untrusted context and secrets can persist
+- scanner, rule, fixture verifier, and redaction coverage proving tenant selectors, shared-with labels, namespaces, source labels, connection strings, and token placeholders stay redacted
+
 ## Agent Identity Delegation Pass
 
 The current iteration adds:

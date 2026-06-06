@@ -1,0 +1,29 @@
+provider: sqlite
+path: .agent-memory/session.db
+persistence:
+  enabled: true
+  mode: session
+  ttl_days: 1
+  shared_across_agents: false
+  namespace: internal_private_session_memory
+access_control:
+  public_read: false
+  public_write: false
+  rbac: true
+  auth_required: true
+  tenant_isolation: true
+  namespace_isolation: true
+  shared_across_tenants: false
+write_policy:
+  mode: append
+  approval_required: true
+  auto_sync: false
+  accepted_sources:
+    - approved_internal_summary
+capture:
+  prompts: false
+  tool_outputs: false
+  retrieval_context: false
+  secrets: false
+replay:
+  enabled: false

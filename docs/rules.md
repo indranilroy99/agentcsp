@@ -32,6 +32,8 @@ For background agent task-queue rules, require concrete async-to-tool correlatio
 
 For AI telemetry and trace-sharing rules, require concrete trace-exposure correlation such as remote export, sensitive prompt/completion/tool-output/retrieval/memory capture, public or broadly shared trace access, disabled RBAC/SSO or equivalent access controls, disabled redaction, credential evidence, and missing approval. Do not flag local telemetry configs that keep export disabled, redaction enabled, and approval/RBAC enabled.
 
+For memory-store access-boundary rules, require concrete durable-memory correlation such as persistent and shared memory, public or cross-tenant access, disabled access control or tenant isolation, untrusted writes, sensitive or secret-bearing context, and missing approval. Do not flag local private session memory merely because it is stored under a memory directory or has explicit disabled capture fields.
+
 AgentCSP computes finding confidence from rule correlation depth, scoped object type, structured parsing, privileged actions, data class, external reach, and side-effect signals.
 
 Required fields:

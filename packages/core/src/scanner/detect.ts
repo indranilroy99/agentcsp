@@ -77,7 +77,9 @@ export async function detectSurfaces(files: WalkedFile[]): Promise<DetectedSurfa
     const lowerBase = basename.toLowerCase();
     const text = await readTextFile(file);
 
-    detectDirectoryHeuristics(file, seenDirectories, surfaces);
+    detectDirectoryHeuristics(file, seenDirectories, surfaces, {
+      skipMemoryDirectory: isAgentMemoryStoreConfigPath(file.relativePath, basename)
+    });
 
     if (isEnvFile(basename)) {
       const keyNames = text ? safeEnvKeyNames(text) : [];
@@ -3174,7 +3176,12 @@ function detectPromptTemplateFile(file: WalkedFile, text: string | undefined, su
   });
 }
 
-function detectDirectoryHeuristics(file: WalkedFile, seenDirectories: Set<string>, surfaces: DetectedSurfaces): void {
+function detectDirectoryHeuristics(
+  file: WalkedFile,
+  seenDirectories: Set<string>,
+  surfaces: DetectedSurfaces,
+  options: { skipMemoryDirectory?: boolean } = {}
+): void {
   const segments = file.relativePath.split("/");
   for (let index = 0; index < segments.length - 1; index += 1) {
     const segment = segments[index]?.toLowerCase();
@@ -3196,7 +3203,7 @@ function detectDirectoryHeuristics(file: WalkedFile, seenDirectories: Set<string
         })
       );
     }
-    if (MEMORY_DIR_NAMES.has(segment)) {
+    if (MEMORY_DIR_NAMES.has(segment) && !options.skipMemoryDirectory) {
       seenDirectories.add(dirPath);
       surfaces.memory.push(
         createSurfaceObject({
@@ -4128,6 +4135,10 @@ interface AgentMemoryStorePosture {
   agent_memory_store_sensitive_data: boolean;
   agent_memory_store_pii_data: boolean;
   agent_memory_store_namespace_redacted: boolean;
+  agent_memory_store_public_access: boolean;
+  agent_memory_store_cross_tenant_access: boolean;
+  agent_memory_store_access_control_disabled: boolean;
+  agent_memory_store_tenant_isolation_disabled: boolean;
   agent_memory_store_approval_required: boolean;
   env_key_names: string[];
   secret_ref_key_names: string[];
@@ -14165,6 +14176,10 @@ function classifyAgentMemoryStoreConfig(value: unknown, filePath: string): Agent
     agent_memory_store_sensitive_data: hasAgentMemoryStoreSensitiveDataSignal(fields),
     agent_memory_store_pii_data: hasAgentMemoryStorePiiDataSignal(fields),
     agent_memory_store_namespace_redacted: hasAgentMemoryStoreNamespaceSignal(fields),
+    agent_memory_store_public_access: hasAgentMemoryStorePublicAccessSignal(fields),
+    agent_memory_store_cross_tenant_access: hasAgentMemoryStoreCrossTenantAccessSignal(fields),
+    agent_memory_store_access_control_disabled: hasAgentMemoryStoreAccessControlDisabledSignal(fields),
+    agent_memory_store_tenant_isolation_disabled: hasAgentMemoryStoreTenantIsolationDisabledSignal(fields),
     agent_memory_store_approval_required: hasAgentMemoryStoreApprovalRequiredSignal(fields),
     env_key_names: envKeys,
     secret_ref_key_names: secretRefKeys
@@ -14254,11 +14269,22 @@ function hasAgentMemoryStorePersistentSignal(fields: RuntimeField[]): boolean {
 }
 
 function hasAgentMemoryStoreSharedSignal(fields: RuntimeField[]): boolean {
-  return fields.some((field) =>
-    /shared|global|team|workspace|cross[_\s-]?agents?|multi[_\s-]?agents?|user[_\s-]?profile|tenant|organization|org[_\s-]?wide/iu.test(
-      `${field.path} ${fieldValueText(field)}`
-    ) && truthyConfigValue(field.value)
-  );
+  return fields.some((field) => {
+    const text = `${field.path} ${fieldValueText(field)}`.toLowerCase();
+    if (/(^|\.)(tenant_isolation|namespace_isolation|per_tenant_namespace|auth_required|rbac|acl)$/iu.test(field.path)) {
+      return false;
+    }
+    if (
+      /(?:^|[_\W])(shared|global|team|workspace|cross[_\s-]?agents?|multi[_\s-]?agents?|user[_\s-]?profile|organization|org[_\s-]?wide)(?:[_\W]|$)/iu.test(
+        text
+      )
+    ) {
+      return truthyConfigValue(field.value);
+    }
+    return /(?:^|[_\W])(cross[_\s-]?tenant|multi[_\s-]?tenant[_\s-]?shared|shared[_\s-]?across[_\s-]?tenants|all[_\s-]?tenants)(?:[_\W]|$)/iu.test(
+      text
+    ) && truthyConfigValue(field.value);
+  });
 }
 
 function hasAgentMemoryStoreWriteSignal(fields: RuntimeField[]): boolean {
@@ -14289,7 +14315,7 @@ function hasAgentMemoryStoreToolOutputSignal(fields: RuntimeField[]): boolean {
   return fields.some((field) =>
     /(?:^|[_\W])(tool[_\s-]?outputs?|function[_\s-]?outputs?|mcp|observation|command[_\s-]?outputs?|browser[_\s-]?outputs?)(?:[_\W]|$)/iu.test(
       `${field.path} ${fieldValueText(field)}`
-    )
+    ) && truthyConfigValue(field.value)
   );
 }
 
@@ -14297,7 +14323,7 @@ function hasAgentMemoryStorePromptCaptureSignal(fields: RuntimeField[]): boolean
   return fields.some((field) =>
     /\b(prompt|prompts|system|developer|input|inputs|message|messages|conversation|chat|transcript)\b/iu.test(
       `${field.path} ${fieldValueText(field)}`
-    )
+    ) && truthyConfigValue(field.value)
   );
 }
 
@@ -14305,13 +14331,15 @@ function hasAgentMemoryStoreRetrievalCaptureSignal(fields: RuntimeField[]): bool
   return fields.some((field) =>
     /(?:^|[_\W])(retrieval[_\s-]?context|retrieval|retrieved|rag|documents?|vector|embedding|knowledge)(?:[_\W]|$)/iu.test(
       `${field.path} ${fieldValueText(field)}`
-    )
+    ) && truthyConfigValue(field.value)
   );
 }
 
 function hasAgentMemoryStoreSecretCaptureSignal(fields: RuntimeField[]): boolean {
   return fields.some((field) =>
-    /\b(secrets?|token|api[_-]?key|credential|authorization|password|cookie|vault)\b/iu.test(`${field.path} ${fieldValueText(field)}`)
+    /\b(secrets?|token|api[_-]?key|credential|authorization|password|cookie|vault)\b/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    ) && truthyConfigValue(field.value)
   );
 }
 
@@ -14347,15 +14375,69 @@ function hasAgentMemoryStoreNamespaceSignal(fields: RuntimeField[]): boolean {
   );
 }
 
+function hasAgentMemoryStorePublicAccessSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => {
+    const text = `${field.path} ${fieldValueText(field)}`.toLowerCase();
+    if (/\b(private|internal[_\s-]?only|restricted|deny[_\s-]?public|public[_\s-]?disabled|allowlist)\b/iu.test(text)) return false;
+    return /(?:^|[_\W])(public|publicly|anonymous|anyone|unauthenticated|guest|public[_\s-]?(read|write|access)|open[_\s-]?memory)(?:[_\W]|$)/iu.test(
+      text
+    ) && truthyConfigValue(field.value);
+  });
+}
+
+function hasAgentMemoryStoreCrossTenantAccessSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => {
+    const text = `${field.path} ${fieldValueText(field)}`.toLowerCase();
+    if (/\b(single[_\s-]?tenant|tenant[_\s-]?isolated|per[_\s-]?tenant|private|restricted)\b/iu.test(text)) return false;
+    if (
+      /(?:^|\.)(allowed_tenants|tenants|shared_with|shared_tenants|tenant_scope|namespace_scope|scope)$/iu.test(field.path) &&
+      /(?:^|[_\W])(\*|all[_\s-]?tenants|any[_\s-]?tenant|global|org[_\s-]?wide|organization[_\s-]?wide|cross[_\s-]?tenant|partner|external)(?:[_\W]|$)/iu.test(
+        text
+      )
+    ) {
+      return truthyConfigValue(field.value);
+    }
+    return /(?:^|[_\W])(cross[_\s-]?tenant|multi[_\s-]?tenant[_\s-]?shared|shared[_\s-]?across[_\s-]?tenants|all[_\s-]?tenants|global[_\s-]?memory|organization[_\s-]?wide|org[_\s-]?wide)(?:[_\W]|$)/iu.test(
+      text
+    ) && truthyConfigValue(field.value);
+  });
+}
+
+function hasAgentMemoryStoreAccessControlDisabledSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => {
+    const text = `${field.path} ${fieldValueText(field)}`.toLowerCase();
+    if (/(^|\.)(access_control|accessControl|acl|rbac|auth_required|authRequired|sso_required|ssoRequired|authorization_required|authorizationRequired)$/u.test(field.path)) {
+      return disabledConfigValue(field.value);
+    }
+    return /\b(access[_\s-]?control[_\s-]?disabled|acl[_\s-]?disabled|rbac[_\s-]?disabled|auth[_\s-]?disabled|no[_\s-]?auth|anonymous[_\s-]?access)\b/iu.test(
+      text
+    ) && truthyConfigValue(field.value);
+  });
+}
+
+function hasAgentMemoryStoreTenantIsolationDisabledSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => {
+    const text = `${field.path} ${fieldValueText(field)}`.toLowerCase();
+    if (/(^|\.)(tenant_isolation|tenantIsolation|namespace_isolation|namespaceIsolation|isolation|per_tenant_namespace|perTenantNamespace)$/u.test(field.path)) {
+      return disabledConfigValue(field.value);
+    }
+    return /\b(tenant[_\s-]?isolation[_\s-]?disabled|namespace[_\s-]?isolation[_\s-]?disabled|shared[_\s-]?namespace|global[_\s-]?namespace|no[_\s-]?tenant[_\s-]?isolation)\b/iu.test(
+      text
+    ) && truthyConfigValue(field.value);
+  });
+}
+
 function hasAgentMemoryStoreApprovalRequiredSignal(fields: RuntimeField[]): boolean {
   return fields.some((field) =>
-    /approval|required[_-]?approval|human[_-]?approval|confirm|confirmation|review|human[_-]?in[_-]?the[_-]?loop/iu.test(field.path) &&
+    /(?:^|[_\W])(approval|approval[_\s-]?required|required[_\s-]?approval|human[_\s-]?approval|confirm|confirmation|review|human[_\s-]?in[_\s-]?the[_\s-]?loop)(?:[_\W]|$)/iu.test(
+      field.path
+    ) &&
     truthyConfigValue(field.value)
   );
 }
 
 function isAgentMemoryStoreSecurityField(fieldPath: string): boolean {
-  return /provider|memory|memories|store|persistence|persistent|retention|ttl|checkpoint|checkpointer|thread|session|state|namespace|collection|prefix|table|database|index|shared|global|agent|tool|output|prompt|retrieval|rag|source|input|customer|ticket|email|chat|secret|token|credential|auth|env|endpoint|url|uri|host|dsn|connection|write|sync|replay|recall|inject|approval|pii|sensitive/iu.test(
+  return /provider|memory|memories|store|persistence|persistent|retention|ttl|checkpoint|checkpointer|thread|session|state|namespace|collection|prefix|table|database|index|shared|global|public|anonymous|guest|tenant|isolation|acl|rbac|access|agent|tool|output|prompt|retrieval|rag|source|input|customer|ticket|email|chat|secret|token|credential|auth|env|endpoint|url|uri|host|dsn|connection|write|sync|replay|recall|inject|approval|pii|sensitive/iu.test(
     fieldPath
   );
 }

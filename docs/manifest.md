@@ -1522,12 +1522,16 @@ Memory-store metadata may include:
 - `agent_memory_store_sensitive_data`
 - `agent_memory_store_pii_data`
 - `agent_memory_store_namespace_redacted`
+- `agent_memory_store_public_access`
+- `agent_memory_store_cross_tenant_access`
+- `agent_memory_store_access_control_disabled`
+- `agent_memory_store_tenant_isolation_disabled`
 - `agent_memory_store_approval_required`
 - `env_key_names`
 - `secret_ref_key_names`
 - `values_collected`
 
-Raw memory-store URLs, connection strings, collection names, namespaces, key prefixes, source labels, replay targets, data-field labels, and secret placeholders are not emitted. Provider names, redacted destination categories, capture/replay booleans, sharing and persistence posture, approval posture, data-class booleans, and credential key names let rules detect durable memory poisoning and cross-session context replay without copying memory configuration values into the manifest.
+Raw memory-store URLs, connection strings, collection names, namespaces, key prefixes, source labels, replay targets, access-control labels, tenant selectors, shared-with labels, data-field labels, and secret placeholders are not emitted. Provider names, redacted destination categories, capture/replay booleans, sharing and persistence posture, public or cross-tenant exposure posture, access-control and tenant-isolation posture, approval posture, data-class booleans, and credential key names let rules detect durable memory poisoning and cross-session or cross-tenant context replay without copying memory configuration values into the manifest.
 
 RAG and vector-store connector configs are also normalized into `rag_source` objects when common retrieval, vector, embedding, or knowledge-store configuration files are discovered.
 

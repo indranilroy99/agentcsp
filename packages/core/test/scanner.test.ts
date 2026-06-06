@@ -2959,6 +2959,10 @@ describe("scanner", () => {
       agent_memory_store_sensitive_data: true,
       agent_memory_store_pii_data: true,
       agent_memory_store_namespace_redacted: true,
+      agent_memory_store_public_access: true,
+      agent_memory_store_cross_tenant_access: true,
+      agent_memory_store_access_control_disabled: true,
+      agent_memory_store_tenant_isolation_disabled: true,
       agent_memory_store_approval_required: false
     });
     expect(memoryStore?.metadata.agent_memory_store_destination_kinds).toEqual(["memory_store_endpoint"]);
@@ -2970,6 +2974,8 @@ describe("scanner", () => {
     expect(JSON.stringify(memoryStore)).not.toContain("redis-prod-memory.example.invalid");
     expect(JSON.stringify(memoryStore)).not.toContain("support-long-term-memory");
     expect(JSON.stringify(memoryStore)).not.toContain("customer_memory_namespace");
+    expect(JSON.stringify(memoryStore)).not.toContain("partner_support_vendor");
+    expect(JSON.stringify(memoryStore)).not.toContain("global_customer_memory");
     expect(JSON.stringify(memoryStore)).not.toContain("untrusted_customer_message");
     expect(JSON.stringify(memoryStore)).not.toContain("browser_tool_output");
     expect(JSON.stringify(memoryStore)).not.toContain("future_agent_context");
@@ -3363,6 +3369,63 @@ describe("scanner", () => {
     expect(JSON.stringify(taskQueue)).not.toContain("internal_review_ticket");
     expect(JSON.stringify(taskQueue)).not.toContain("approved_internal_summary");
     expect(JSON.stringify(taskQueue)).not.toContain("readonly_docs.search");
+  });
+
+  it("keeps local approval-gated session memory scoped", async () => {
+    const files = await walkProject({
+      root_path: safeFixtureRoot,
+      output_path: ".agentcsp",
+      formats: ["json", "md"],
+      include_hidden: true,
+      include_logs: false,
+      max_file_size_bytes: 1024 * 1024,
+      max_files: 5000,
+      quiet: true
+    });
+    const surfaces = await detectSurfaces(files);
+    const memoryStore = surfaces.memory.find((surface) => surface.path === "memory/private-session-store.yaml");
+
+    expect(memoryStore).toMatchObject({
+      trust_level: "project",
+      data_classes: ["unknown"],
+      actions: ["call", "read", "remember", "write"],
+      side_effect: true,
+      external_reach: false,
+      secret_exposure: false,
+      untrusted_to_privileged: false
+    });
+    expect(surfaces.memory.some((surface) => surface.path === "memory" && surface.metadata.heuristic === true)).toBe(false);
+    expect(memoryStore?.metadata).toMatchObject({
+      content_redacted: true,
+      content_analyzed: false,
+      values_collected: false,
+      parsed_agent_memory_store_config: true,
+      agent_memory_store_provider: "sqlite",
+      agent_memory_store_remote: false,
+      agent_memory_store_destination_redacted: false,
+      agent_memory_store_persistent: true,
+      agent_memory_store_shared: false,
+      agent_memory_store_write_enabled: true,
+      agent_memory_store_sync_enabled: false,
+      agent_memory_store_untrusted_write: false,
+      agent_memory_store_tool_output_capture: false,
+      agent_memory_store_prompt_capture: false,
+      agent_memory_store_retrieval_capture: false,
+      agent_memory_store_secret_capture: false,
+      agent_memory_store_output_replay_enabled: false,
+      agent_memory_store_sensitive_data: false,
+      agent_memory_store_pii_data: false,
+      agent_memory_store_public_access: false,
+      agent_memory_store_cross_tenant_access: false,
+      agent_memory_store_access_control_disabled: false,
+      agent_memory_store_tenant_isolation_disabled: false,
+      agent_memory_store_approval_required: true
+    });
+    expect(memoryStore?.metadata.agent_memory_store_destination_kinds).toEqual([]);
+    expect(memoryStore?.metadata.env_key_names).toEqual([]);
+    expect(memoryStore?.metadata.secret_ref_key_names).toEqual([]);
+    expect(JSON.stringify(memoryStore)).not.toContain("internal_private_session_memory");
+    expect(JSON.stringify(memoryStore)).not.toContain("approved_internal_summary");
   });
 
   it("keeps local redacted telemetry sharing scoped", async () => {
