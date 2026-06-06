@@ -910,6 +910,45 @@ Agent context-window metadata may include:
 
 Raw priority labels, role labels, summary text, source labels, tool names, action strings, data-field labels, token placeholders, and context content are not emitted. Strategy categories, priority categories, instruction-retention booleans, summary verification posture, delimiter/redaction posture, tool-authority categories, approval posture, data-class booleans, and credential key names let rules detect cases where long-context truncation or compaction preserves untrusted context while evicting system, developer, or safety instructions before privileged tool use.
 
+## Agent Reasoning And Scratchpad State
+
+Reasoning-state, scratchpad, planner-state, agent-state, run-state, chain-of-thought, and thought-log configs are also normalized into `runtime_config` objects when common agent state files are discovered.
+
+Agent reasoning-state metadata may include:
+
+- `parsed_agent_reasoning_state_config`
+- `agent_reasoning_state_fields`
+- `agent_reasoning_state_enabled`
+- `agent_reasoning_state_capture_enabled`
+- `agent_reasoning_state_capture_categories`
+- `agent_reasoning_state_chain_of_thought_capture`
+- `agent_reasoning_state_plan_capture`
+- `agent_reasoning_state_tool_observation_capture`
+- `agent_reasoning_state_prompt_context_capture`
+- `agent_reasoning_state_retrieval_context_capture`
+- `agent_reasoning_state_memory_context_capture`
+- `agent_reasoning_state_secret_capture`
+- `agent_reasoning_state_sensitive_capture`
+- `agent_reasoning_state_pii_capture`
+- `agent_reasoning_state_untrusted_input`
+- `agent_reasoning_state_persistent`
+- `agent_reasoning_state_shared`
+- `agent_reasoning_state_remote`
+- `agent_reasoning_state_public_access`
+- `agent_reasoning_state_destination_redacted`
+- `agent_reasoning_state_destination_count`
+- `agent_reasoning_state_destination_kinds`
+- `agent_reasoning_state_replay_enabled`
+- `agent_reasoning_state_planner_uses_state`
+- `agent_reasoning_state_redaction_disabled`
+- `agent_reasoning_state_access_control_disabled`
+- `agent_reasoning_state_retention_enabled`
+- `agent_reasoning_state_approval_required`
+- `env_key_names`
+- `secret_ref_key_names`
+
+Raw reasoning text, chain-of-thought, scratchpad entries, planner traces, destination URLs, workspace names, source labels, tool names, data-field labels, and token placeholders are not emitted. Capture categories, destination categories, persistence and replay posture, planner-use posture, redaction and access-control posture, approval posture, data-class booleans, and credential key names let rules detect cases where sensitive agent reasoning state can be stored remotely and replayed into future privileged decisions.
+
 ## Agent Tool Retry And Replay Posture
 
 Tool-retry, replay, idempotency, duplicate-suppression, execution-policy, and retry-budget configs are also normalized into `runtime_config` objects when common agent tool retry configuration files are discovered.

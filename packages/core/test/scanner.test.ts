@@ -55,6 +55,7 @@ describe("scanner", () => {
       "MODEL_ROUTER_TOKEN",
       "OPENAI_API_KEY",
       "PROMPT_REGISTRY_TOKEN",
+      "REASONING_STATE_TOKEN",
       "SAFETY_RUNTIME_TOKEN",
       "SLACK_WEBHOOK_URL",
       "SUPPORT_DB_PASSWORD",
@@ -2619,6 +2620,71 @@ describe("scanner", () => {
     expect(JSON.stringify(toolRetryPolicyConfig)).not.toContain("retry_customer_email");
     expect(JSON.stringify(toolRetryPolicyConfig)).not.toContain("retry_account_number");
     expect(JSON.stringify(toolRetryPolicyConfig)).not.toContain("confidential_retry_notes");
+    const reasoningStateConfig = surfaces.runtime_config.find((surface) => surface.path === "reasoning/scratchpad-policy.yaml");
+    expect(reasoningStateConfig).toBeDefined();
+    expect(reasoningStateConfig).toMatchObject({
+      trust_level: "project",
+      external_reach: true,
+      secret_exposure: true,
+      side_effect: true,
+      reversible: false,
+      untrusted_to_privileged: true
+    });
+    expect(reasoningStateConfig?.metadata).toMatchObject({
+      content_redacted: true,
+      values_collected: false,
+      parsed_agent_reasoning_state_config: true,
+      agent_reasoning_state_enabled: true,
+      agent_reasoning_state_capture_enabled: true,
+      agent_reasoning_state_chain_of_thought_capture: true,
+      agent_reasoning_state_plan_capture: true,
+      agent_reasoning_state_tool_observation_capture: true,
+      agent_reasoning_state_prompt_context_capture: true,
+      agent_reasoning_state_retrieval_context_capture: true,
+      agent_reasoning_state_memory_context_capture: true,
+      agent_reasoning_state_secret_capture: true,
+      agent_reasoning_state_sensitive_capture: true,
+      agent_reasoning_state_pii_capture: true,
+      agent_reasoning_state_untrusted_input: true,
+      agent_reasoning_state_persistent: true,
+      agent_reasoning_state_shared: true,
+      agent_reasoning_state_remote: true,
+      agent_reasoning_state_public_access: true,
+      agent_reasoning_state_destination_redacted: true,
+      agent_reasoning_state_destination_count: 3,
+      agent_reasoning_state_replay_enabled: true,
+      agent_reasoning_state_planner_uses_state: true,
+      agent_reasoning_state_redaction_disabled: true,
+      agent_reasoning_state_access_control_disabled: true,
+      agent_reasoning_state_retention_enabled: true,
+      agent_reasoning_state_approval_required: false
+    });
+    expect(reasoningStateConfig?.metadata.agent_reasoning_state_capture_categories).toEqual([
+      "memory_context",
+      "plan_context",
+      "prompt_context",
+      "reasoning_trace",
+      "retrieval_context",
+      "secret_material",
+      "tool_observation"
+    ]);
+    expect(reasoningStateConfig?.metadata.agent_reasoning_state_destination_kinds).toEqual([
+      "configured_state_store",
+      "http_reasoning_store"
+    ]);
+    expect(reasoningStateConfig?.metadata.env_key_names).toEqual(["REASONING_STATE_TOKEN"]);
+    expect(reasoningStateConfig?.metadata.secret_ref_key_names).toEqual(["REASONING_STATE_TOKEN"]);
+    expect(reasoningStateConfig?.data_classes).toEqual(["confidential", "credential", "pii"]);
+    expect(reasoningStateConfig?.actions).toEqual(["call", "publish", "read", "remember", "send", "write"]);
+    expect(JSON.stringify(reasoningStateConfig)).not.toContain("${REASONING_STATE_TOKEN}");
+    expect(JSON.stringify(reasoningStateConfig)).not.toContain("scratchpad.agentcsp-demo.example.invalid");
+    expect(JSON.stringify(reasoningStateConfig)).not.toContain("customer-support-reasoning");
+    expect(JSON.stringify(reasoningStateConfig)).not.toContain("scratchpad_customer_email");
+    expect(JSON.stringify(reasoningStateConfig)).not.toContain("scratchpad_account_number");
+    expect(JSON.stringify(reasoningStateConfig)).not.toContain("confidential_reasoning_notes");
+    expect(JSON.stringify(reasoningStateConfig)).not.toContain("untrusted_customer_ticket");
+    expect(JSON.stringify(reasoningStateConfig)).not.toContain("browser_tool_output");
+    expect(JSON.stringify(reasoningStateConfig)).not.toContain("retrieved_customer_context");
     const toolOutputPolicyConfig = surfaces.runtime_config.find((surface) => surface.path === "tool-results/result-policy.yaml");
     expect(toolOutputPolicyConfig).toBeDefined();
     expect(toolOutputPolicyConfig).toMatchObject({
@@ -3619,6 +3685,63 @@ describe("scanner", () => {
     expect(retryPolicy?.metadata.env_key_names).toEqual([]);
     expect(retryPolicy?.metadata.secret_ref_key_names).toEqual([]);
     expect(JSON.stringify(retryPolicy)).not.toContain("readonly_docs.search");
+  });
+
+  it("keeps local ephemeral reasoning scratchpads scoped", async () => {
+    const files = await walkProject({
+      root_path: safeFixtureRoot,
+      output_path: ".agentcsp",
+      formats: ["json", "md"],
+      include_hidden: true,
+      include_logs: false,
+      max_file_size_bytes: 1024 * 1024,
+      max_files: 5000,
+      quiet: true
+    });
+    const surfaces = await detectSurfaces(files);
+    const scratchpad = surfaces.runtime_config.find((surface) => surface.path === "reasoning/local-scratchpad.yaml");
+
+    expect(scratchpad).toMatchObject({
+      trust_level: "project",
+      data_classes: ["unknown"],
+      actions: ["call", "read"],
+      side_effect: false,
+      external_reach: false,
+      secret_exposure: false,
+      reversible: true,
+      untrusted_to_privileged: false
+    });
+    expect(scratchpad?.metadata).toMatchObject({
+      parsed_agent_reasoning_state_config: true,
+      agent_reasoning_state_enabled: true,
+      agent_reasoning_state_capture_enabled: false,
+      agent_reasoning_state_chain_of_thought_capture: false,
+      agent_reasoning_state_plan_capture: false,
+      agent_reasoning_state_tool_observation_capture: false,
+      agent_reasoning_state_prompt_context_capture: false,
+      agent_reasoning_state_retrieval_context_capture: false,
+      agent_reasoning_state_memory_context_capture: false,
+      agent_reasoning_state_secret_capture: false,
+      agent_reasoning_state_sensitive_capture: false,
+      agent_reasoning_state_pii_capture: false,
+      agent_reasoning_state_untrusted_input: false,
+      agent_reasoning_state_persistent: false,
+      agent_reasoning_state_shared: false,
+      agent_reasoning_state_remote: false,
+      agent_reasoning_state_public_access: false,
+      agent_reasoning_state_destination_redacted: false,
+      agent_reasoning_state_destination_count: 0,
+      agent_reasoning_state_replay_enabled: false,
+      agent_reasoning_state_planner_uses_state: false,
+      agent_reasoning_state_redaction_disabled: false,
+      agent_reasoning_state_access_control_disabled: false,
+      agent_reasoning_state_retention_enabled: false,
+      agent_reasoning_state_approval_required: true
+    });
+    expect(scratchpad?.metadata.agent_reasoning_state_capture_categories).toEqual([]);
+    expect(scratchpad?.metadata.agent_reasoning_state_destination_kinds).toEqual([]);
+    expect(scratchpad?.metadata.env_key_names).toEqual([]);
+    expect(scratchpad?.metadata.secret_ref_key_names).toEqual([]);
   });
 
   it("keeps approval-gated read-only OpenAPI imports scoped", async () => {

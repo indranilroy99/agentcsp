@@ -1,0 +1,30 @@
+enabled: true
+store:
+  remote: false
+  persistent: false
+  shared: false
+capture:
+  chain_of_thought: false
+  reasoning_steps: false
+  tool_observations: false
+  prompts: false
+  retrieval_context: false
+  memory: false
+  include_secrets: false
+replay:
+  enabled: false
+  hydrate_future_context: false
+  inject_into_system_prompt: false
+  planner_uses_scratchpad: false
+redaction:
+  enabled: true
+  pii: true
+  secrets: true
+access_control:
+  rbac: true
+  sso_required: true
+  tenant_isolation: true
+retention:
+  store: false
+  days: 0
+approval_required: true

@@ -204,6 +204,11 @@ export async function detectSurfaces(files: WalkedFile[]): Promise<DetectedSurfa
       continue;
     }
 
+    if (isAgentReasoningStateConfigPath(file.relativePath, basename)) {
+      detectAgentReasoningStateConfig(file, text, surfaces);
+      continue;
+    }
+
     if (isLlmPromptCacheConfigPath(file.relativePath, basename)) {
       detectLlmPromptCacheConfig(file, text, surfaces);
       continue;
@@ -2756,6 +2761,84 @@ function detectAgentToolRetryPolicyConfig(file: WalkedFile, text: string | undef
   });
 }
 
+function detectAgentReasoningStateConfig(file: WalkedFile, text: string | undefined, surfaces: DetectedSurfaces): void {
+  const parsed = parseStructuredConfig(text ?? "", file.relativePath);
+  if (parsed.parseFailed) {
+    addDiagnostic(surfaces, file, {
+      parser: parsed.parser ?? "structured_config",
+      code: "AGENT_REASONING_STATE_CONFIG_PARSE_FAILED",
+      reason: "Agent reasoning-state configuration could not be parsed. Raw content was redacted."
+    });
+  }
+
+  const posture = classifyAgentReasoningStateConfig(parsed.value, file.relativePath);
+  const actions = new Set<ActionType>(["call", "read"]);
+  if (posture.agent_reasoning_state_capture_enabled || posture.agent_reasoning_state_persistent) actions.add("remember");
+  if (posture.agent_reasoning_state_persistent || posture.agent_reasoning_state_shared) actions.add("write");
+  if (posture.agent_reasoning_state_remote || posture.agent_reasoning_state_public_access) {
+    actions.add("send");
+    actions.add("publish");
+  }
+
+  const dataClasses = new Set<SurfaceObject["data_classes"][number]>(["unknown"]);
+  if (
+    posture.agent_reasoning_state_secret_capture ||
+    posture.env_key_names.some(isCredentialLikeKeyName) ||
+    posture.secret_ref_key_names.length > 0
+  ) {
+    dataClasses.add("credential");
+  }
+  if (posture.agent_reasoning_state_sensitive_capture || posture.agent_reasoning_state_untrusted_input) {
+    dataClasses.add("confidential");
+  }
+  if (posture.agent_reasoning_state_pii_capture) dataClasses.add("pii");
+  if (dataClasses.size > 1) dataClasses.delete("unknown");
+
+  const object = createSurfaceObject({
+    type: "runtime_config",
+    name: path.basename(file.relativePath),
+    path: file.relativePath,
+    trust_level: inferTrustLevel(file.relativePath),
+    data_classes: uniqueDataClasses([...dataClasses] as SurfaceObject["data_classes"]),
+    actions: uniqueActions([...actions]),
+    side_effect:
+      posture.agent_reasoning_state_capture_enabled ||
+      posture.agent_reasoning_state_persistent ||
+      posture.agent_reasoning_state_replay_enabled ||
+      posture.agent_reasoning_state_planner_uses_state,
+    reversible:
+      !posture.agent_reasoning_state_persistent &&
+      !posture.agent_reasoning_state_remote &&
+      !posture.agent_reasoning_state_shared &&
+      !posture.agent_reasoning_state_retention_enabled,
+    external_reach: posture.agent_reasoning_state_remote || posture.agent_reasoning_state_public_access,
+    secret_exposure:
+      posture.agent_reasoning_state_secret_capture ||
+      posture.env_key_names.some(isCredentialLikeKeyName) ||
+      posture.secret_ref_key_names.length > 0,
+    reason: "Agent reasoning-state configuration discovered as scratchpad capture and replay posture.",
+    metadata: {
+      content_redacted: true,
+      values_collected: false,
+      parsed_agent_reasoning_state_config: Boolean(parsed.value) && !parsed.parseFailed,
+      parse_error: parsed.parseFailed,
+      ...posture
+    }
+  });
+  surfaces.runtime_config.push({
+    ...object,
+    untrusted_to_privileged:
+      (posture.agent_reasoning_state_untrusted_input &&
+        posture.agent_reasoning_state_capture_enabled &&
+        posture.agent_reasoning_state_replay_enabled &&
+        posture.agent_reasoning_state_planner_uses_state &&
+        posture.agent_reasoning_state_sensitive_capture &&
+        posture.agent_reasoning_state_redaction_disabled &&
+        !posture.agent_reasoning_state_approval_required) ||
+      isUntrustedToPrivileged(object)
+  });
+}
+
 function detectToolOutputPolicyConfig(file: WalkedFile, text: string | undefined, surfaces: DetectedSurfaces): void {
   const parsed = parseStructuredConfig(text ?? "", file.relativePath);
   if (parsed.parseFailed) {
@@ -4163,6 +4246,27 @@ function isAgentToolRetryPolicyConfigPath(relativePath: string, basename: string
   return retryName || (retryDirectory && configName);
 }
 
+function isAgentReasoningStateConfigPath(relativePath: string, basename: string): boolean {
+  const normalized = relativePath.replaceAll("\\", "/").toLowerCase();
+  const lowerBase = basename.toLowerCase();
+  if (!/\.(json|ya?ml|toml)$/iu.test(lowerBase)) return false;
+  if (normalized.startsWith(".github/workflows/")) return false;
+  if (normalized.startsWith("rules/")) return false;
+  const segments = normalized.split("/").slice(0, -1);
+  const reasoningDirectory = segments.some((segment) =>
+    /^(reasoning|reasoning-state|reasoning_state|scratchpad|scratchpads|planner|planner-state|planner_state|agent-state|agent_state|run-state|run_state|thoughts|cot|chain-of-thought|chain_of_thought)$/iu.test(
+      segment
+    )
+  );
+  const reasoningName = /(?:reasoning|scratchpad|planner[-_]?state|agent[-_]?state|run[-_]?state|chain[-_]?of[-_]?thought|thought[-_]?log|cot[-_]?log|reasoning[-_]?trace|reasoning[-_]?memory)/iu.test(
+    lowerBase
+  );
+  const configName = /(?:config|settings|policy|state|store|memory|trace|log|scratchpad|planner|reasoning|retention|replay)/iu.test(
+    lowerBase
+  );
+  return reasoningName || (reasoningDirectory && configName);
+}
+
 function isToolOutputPolicyConfigPath(relativePath: string, basename: string): boolean {
   const normalized = relativePath.replaceAll("\\", "/").toLowerCase();
   const lowerBase = basename.toLowerCase();
@@ -5243,6 +5347,38 @@ interface AgentToolRetryPosture {
   agent_tool_retry_sensitive_context: boolean;
   agent_tool_retry_pii_context: boolean;
   agent_tool_retry_approval_required: boolean;
+  env_key_names: string[];
+  secret_ref_key_names: string[];
+}
+
+interface AgentReasoningStatePosture {
+  agent_reasoning_state_fields: string[];
+  agent_reasoning_state_enabled: boolean;
+  agent_reasoning_state_capture_enabled: boolean;
+  agent_reasoning_state_capture_categories: string[];
+  agent_reasoning_state_chain_of_thought_capture: boolean;
+  agent_reasoning_state_plan_capture: boolean;
+  agent_reasoning_state_tool_observation_capture: boolean;
+  agent_reasoning_state_prompt_context_capture: boolean;
+  agent_reasoning_state_retrieval_context_capture: boolean;
+  agent_reasoning_state_memory_context_capture: boolean;
+  agent_reasoning_state_secret_capture: boolean;
+  agent_reasoning_state_sensitive_capture: boolean;
+  agent_reasoning_state_pii_capture: boolean;
+  agent_reasoning_state_untrusted_input: boolean;
+  agent_reasoning_state_persistent: boolean;
+  agent_reasoning_state_shared: boolean;
+  agent_reasoning_state_remote: boolean;
+  agent_reasoning_state_public_access: boolean;
+  agent_reasoning_state_destination_redacted: boolean;
+  agent_reasoning_state_destination_count: number;
+  agent_reasoning_state_destination_kinds: string[];
+  agent_reasoning_state_replay_enabled: boolean;
+  agent_reasoning_state_planner_uses_state: boolean;
+  agent_reasoning_state_redaction_disabled: boolean;
+  agent_reasoning_state_access_control_disabled: boolean;
+  agent_reasoning_state_retention_enabled: boolean;
+  agent_reasoning_state_approval_required: boolean;
   env_key_names: string[];
   secret_ref_key_names: string[];
 }
@@ -11669,6 +11805,285 @@ function isAgentToolRetrySecurityField(fieldPath: string): boolean {
 }
 
 function agentToolRetryFieldText(field: RuntimeField): string {
+  return `${field.path} ${fieldValueText(field)}`.toLowerCase().replaceAll("_", " ").replaceAll("-", " ");
+}
+
+function classifyAgentReasoningStateConfig(value: unknown, filePath: string): AgentReasoningStatePosture {
+  const fields = flattenRuntimeFields(value);
+  const stringValues = collectFieldStringValues(fields);
+  const destination = classifyAgentReasoningStateDestination(fields);
+  const captureCategories = collectAgentReasoningStateCaptureCategories(fields);
+  const envKeys = uniqueStrings([
+    ...collectEnvKeyNamesFromConfig(value).filter(isLikelyEnvKeyName),
+    ...extractEnvironmentReferenceKeys(stringValues)
+  ]);
+  const secretRefKeys = extractSecretReferenceKeys(stringValues);
+  const secretCapture = captureCategories.includes("secret_material") || hasAgentReasoningStateSecretCaptureSignal(fields);
+  const piiCapture = hasAgentReasoningStatePiiCaptureSignal(fields);
+  const sensitiveCapture =
+    captureCategories.length > 0 || secretCapture || piiCapture || hasAgentReasoningStateSensitiveCaptureSignal(fields);
+
+  return {
+    agent_reasoning_state_fields: fields
+      .map((field) => field.path)
+      .filter((fieldPath) => isAgentReasoningStateSecurityField(fieldPath))
+      .sort((a, b) => a.localeCompare(b)),
+    agent_reasoning_state_enabled: hasAgentReasoningStateEnabledSignal(fields) || captureCategories.length > 0,
+    agent_reasoning_state_capture_enabled: hasAgentReasoningStateCaptureEnabledSignal(fields) || captureCategories.length > 0,
+    agent_reasoning_state_capture_categories: captureCategories,
+    agent_reasoning_state_chain_of_thought_capture: captureCategories.includes("reasoning_trace"),
+    agent_reasoning_state_plan_capture: captureCategories.includes("plan_context"),
+    agent_reasoning_state_tool_observation_capture: captureCategories.includes("tool_observation"),
+    agent_reasoning_state_prompt_context_capture: captureCategories.includes("prompt_context"),
+    agent_reasoning_state_retrieval_context_capture: captureCategories.includes("retrieval_context"),
+    agent_reasoning_state_memory_context_capture: captureCategories.includes("memory_context"),
+    agent_reasoning_state_secret_capture: secretCapture,
+    agent_reasoning_state_sensitive_capture: sensitiveCapture,
+    agent_reasoning_state_pii_capture: piiCapture,
+    agent_reasoning_state_untrusted_input: hasAgentReasoningStateUntrustedInputSignal(fields),
+    agent_reasoning_state_persistent: hasAgentReasoningStatePersistentSignal(fields),
+    agent_reasoning_state_shared: hasAgentReasoningStateSharedSignal(fields),
+    agent_reasoning_state_remote: destination.remote,
+    agent_reasoning_state_public_access: destination.publicAccess,
+    agent_reasoning_state_destination_redacted: destination.destinationCount > 0,
+    agent_reasoning_state_destination_count: destination.destinationCount,
+    agent_reasoning_state_destination_kinds: destination.destinationKinds,
+    agent_reasoning_state_replay_enabled: hasAgentReasoningStateReplaySignal(fields),
+    agent_reasoning_state_planner_uses_state: hasAgentReasoningStatePlannerUseSignal(fields),
+    agent_reasoning_state_redaction_disabled: hasAgentReasoningStateRedactionDisabledSignal(fields),
+    agent_reasoning_state_access_control_disabled: hasAgentReasoningStateAccessControlDisabledSignal(fields),
+    agent_reasoning_state_retention_enabled: hasAgentReasoningStateRetentionSignal(fields),
+    agent_reasoning_state_approval_required: hasAgentReasoningStateApprovalRequiredSignal(fields),
+    env_key_names: envKeys,
+    secret_ref_key_names: secretRefKeys
+  };
+}
+
+function classifyAgentReasoningStateDestination(fields: RuntimeField[]): {
+  remote: boolean;
+  publicAccess: boolean;
+  destinationCount: number;
+  destinationKinds: string[];
+} {
+  const destinationKinds = new Set<string>();
+  let destinationCount = 0;
+  let publicAccess = false;
+
+  for (const field of fields) {
+    const values = fieldStringValues(field);
+    for (const value of values) {
+      const lower = value.toLowerCase();
+      if (parseRemoteHttpUrl(value)) {
+        destinationKinds.add("http_reasoning_store");
+        destinationCount += 1;
+      }
+      if (/^(s3|gs|azblob|redis|postgres|mongodb|qdrant|pinecone):\/\//iu.test(value)) {
+        destinationKinds.add("remote_state_store");
+        destinationCount += 1;
+      }
+      if (/\b(redis|postgres|mongodb|dynamodb|s3|gcs|azure|langgraph|supabase|cloud|bucket|shared[_\s-]?store)\b/iu.test(lower)) {
+        destinationKinds.add("configured_state_store");
+        destinationCount += 1;
+      }
+      if (/\b(public|anonymous|share[_\s-]?link|external[_\s-]?viewer|world[_\s-]?read|unauthenticated)\b/iu.test(lower)) {
+        publicAccess = true;
+      }
+    }
+
+    if (disabledConfigValue(field.value)) continue;
+    const text = agentReasoningStateFieldText(field);
+    if (/(^|\.)(remote|cloud|external|shared_store|state_store|scratchpad_store|endpoint|url|uri|dsn|host|bucket|database)$/iu.test(field.path)) {
+      if (truthyConfigValue(field.value) || /\b(remote|cloud|external|shared|bucket|database|http|redis|postgres|mongodb)\b/iu.test(text)) {
+        destinationKinds.add("configured_state_store");
+        destinationCount += 1;
+      }
+    }
+    if (/(^|\.)(public|public_access|public_share_links|anonymous|share_link|external_viewers|unauthenticated)$/iu.test(field.path)) {
+      publicAccess = publicAccess || truthyConfigValue(field.value);
+    }
+  }
+
+  return {
+    remote: destinationCount > 0,
+    publicAccess,
+    destinationCount,
+    destinationKinds: [...destinationKinds].sort((a, b) => a.localeCompare(b))
+  };
+}
+
+function collectAgentReasoningStateCaptureCategories(fields: RuntimeField[]): string[] {
+  const categories = new Set<string>();
+  for (const field of fields) {
+    if (disabledConfigValue(field.value)) continue;
+    if (/(^|\.)(store|redaction|access_control|accessControl|approval_required|approval|retention)(\.|$)/iu.test(field.path)) {
+      continue;
+    }
+    const text = agentReasoningStateFieldText(field);
+    const captureLike =
+      /(?:^|\.)(capture|captures|include|includes|record|records|store|stores|persist|save|log|logs|trace|traces|state|scratchpad|reasoning|planner|data_fields|data_scope)(?:\.|$)/iu.test(
+        field.path
+      ) || truthyConfigValue(field.value);
+    if (!captureLike) continue;
+    if (/\b(chain of thought|cot|reasoning|reasoning step|reasoning trace|thought|scratchpad|hidden reasoning|private reasoning)\b/iu.test(text)) {
+      categories.add("reasoning_trace");
+    }
+    if (/\b(plan|planner|planning|task decomposition|subtask|next action|decision trace)\b/iu.test(text)) {
+      categories.add("plan_context");
+    }
+    if (/\b(tool observation|tool output|tool result|function result|mcp result|browser output|command output|observation)\b/iu.test(text)) {
+      categories.add("tool_observation");
+    }
+    if (/\b(prompt|system prompt|developer prompt|message|conversation|input)\b/iu.test(text)) {
+      categories.add("prompt_context");
+    }
+    if (/\b(retrieval|retrieved|rag|document|vector|embedding|knowledge base|context)\b/iu.test(text)) {
+      categories.add("retrieval_context");
+    }
+    if (/\b(memory|memories|session state|history|transcript|long term|cached output)\b/iu.test(text)) {
+      categories.add("memory_context");
+    }
+    if (/\b(secret|secrets|token|credential|api key|password|cookie|authorization|vault)\b/iu.test(text)) {
+      categories.add("secret_material");
+    }
+  }
+  return [...categories].sort((a, b) => a.localeCompare(b));
+}
+
+function hasAgentReasoningStateEnabledSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /(?:^|\.)(enabled|scratchpad_enabled|reasoning_state_enabled|planner_state_enabled|state_enabled)(?:\.|$)/iu.test(field.path) &&
+    truthyConfigValue(field.value)
+  );
+}
+
+function hasAgentReasoningStateCaptureEnabledSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /\b(capture|record|store|persist|save|trace|log)\b/iu.test(agentReasoningStateFieldText(field)) && truthyConfigValue(field.value)
+  );
+}
+
+function hasAgentReasoningStateSecretCaptureSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    !/(^|\.)(store|redaction|access_control|accessControl|approval|retention)(\.|$)/iu.test(field.path) &&
+    /\b(secret|token|credential|api key|password|cookie|authorization|vault)\b/iu.test(agentReasoningStateFieldText(field)) &&
+    truthyConfigValue(field.value)
+  );
+}
+
+function hasAgentReasoningStateSensitiveCaptureSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    !/(^|\.)(store|redaction|access_control|accessControl|approval|retention)(\.|$)/iu.test(field.path) &&
+    /\b(customer|client|ticket|support|internal|confidential|private|proprietary|sensitive|account|billing|payment|production|admin|reasoning|scratchpad)\b/iu.test(
+      agentReasoningStateFieldText(field)
+    ) && !disabledConfigValue(field.value)
+  );
+}
+
+function hasAgentReasoningStatePiiCaptureSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    !/(^|\.)(store|redaction|access_control|accessControl|approval|retention)(\.|$)/iu.test(field.path) &&
+    /\b(pii|email|phone|address|ssn|passport|dob|date of birth|customer id|user id|account id|account number)\b/iu.test(
+      agentReasoningStateFieldText(field)
+    ) && !disabledConfigValue(field.value)
+  );
+}
+
+function hasAgentReasoningStateUntrustedInputSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /\b(untrusted|user|customer|client|ticket|support|issue|comment|message|prompt|retrieved|rag|document|email|slack|browser|web page|inbound|external|tool output|tool result)\b/iu.test(
+      agentReasoningStateFieldText(field)
+    ) && truthyConfigValue(field.value)
+  );
+}
+
+function hasAgentReasoningStatePersistentSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /\b(persist|persistent|store|save|archive|history|retention|long term|database|bucket|state store|scratchpad store)\b/iu.test(
+      agentReasoningStateFieldText(field)
+    ) && truthyConfigValue(field.value)
+  );
+}
+
+function hasAgentReasoningStateSharedSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => {
+    if (/(^|\.)(access_control|accessControl|rbac|sso_required|require_sso|tenant_isolation|private)(\.|$)/iu.test(field.path)) {
+      return false;
+    }
+    const text = agentReasoningStateFieldText(field);
+    if (/\b(private|local only|session only|owner only|isolated)\b/iu.test(text)) return false;
+    if (
+      !/(^|\.)(sharing|share|shared|shared_with|shared_workspace|workspace|team|collaborators?|viewers?|external_viewers|public_access|public_share_links|store\.shared)$/iu.test(
+        field.path
+      ) &&
+      !/\b(cross session|cross agent|external viewer|public scratchpad|shared scratchpad|shared workspace)\b/iu.test(text)
+    ) {
+      return false;
+    }
+    return truthyConfigValue(field.value);
+  });
+}
+
+function hasAgentReasoningStateReplaySignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /\b(replay|reuse|hydrate|load into prompt|inject into prompt|restore|resume|feed back|future context|planner context|system prompt|developer prompt)\b/iu.test(
+      agentReasoningStateFieldText(field)
+    ) && truthyConfigValue(field.value)
+  );
+}
+
+function hasAgentReasoningStatePlannerUseSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /\b(planner uses|use scratchpad|use reasoning|planning context|decision context|next action|tool selection|system prompt|developer prompt|model context)\b/iu.test(
+      agentReasoningStateFieldText(field)
+    ) && truthyConfigValue(field.value)
+  );
+}
+
+function hasAgentReasoningStateRedactionDisabledSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => {
+    const text = agentReasoningStateFieldText(field);
+    if (/(redact|redaction|mask|masking|scrub|sanitize|pii_filter|secret_filter)/iu.test(field.path)) {
+      return disabledConfigValue(field.value) || /\b(disabled|off|false|none|raw|full)\b/iu.test(text);
+    }
+    return /\b(raw scratchpad|raw reasoning|disable redaction|redaction disabled|capture full reasoning|capture raw thoughts)\b/iu.test(text) &&
+      truthyConfigValue(field.value);
+  });
+}
+
+function hasAgentReasoningStateAccessControlDisabledSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => {
+    const text = agentReasoningStateFieldText(field);
+    if (/(^|\.)(access_control|acl|rbac|sso_required|require_sso|auth_required|tenant_isolation|private)$/iu.test(field.path)) {
+      return disabledConfigValue(field.value);
+    }
+    return /\b(access control disabled|rbac disabled|sso disabled|auth disabled|no auth|anonymous|public scratchpad|tenant isolation disabled)\b/iu.test(
+      text
+    ) && truthyConfigValue(field.value);
+  });
+}
+
+function hasAgentReasoningStateRetentionSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /\b(retention|ttl|days|archive|history|persist|store|keep|expire|long term)\b/iu.test(agentReasoningStateFieldText(field)) &&
+    truthyConfigValue(field.value)
+  );
+}
+
+function hasAgentReasoningStateApprovalRequiredSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /\b(approval|required approval|human approval|privacy review|security review|confirm|confirmation|review)\b/iu.test(
+      agentReasoningStateFieldText(field)
+    ) && truthyConfigValue(field.value)
+  );
+}
+
+function isAgentReasoningStateSecurityField(fieldPath: string): boolean {
+  return /enabled|reasoning|scratchpad|thought|cot|planner|plan|state|trace|capture|record|store|persist|memory|history|tool|observation|prompt|message|retrieval|rag|context|secret|token|credential|auth|env|pii|sensitive|data|source|input|replay|hydrate|resume|redact|mask|sanitize|public|share|shared|workspace|team|tenant|access|acl|rbac|sso|retention|ttl|approval|review|url|uri|endpoint|dsn|host|bucket|database/iu.test(
+    fieldPath
+  );
+}
+
+function agentReasoningStateFieldText(field: RuntimeField): string {
   return `${field.path} ${fieldValueText(field)}`.toLowerCase().replaceAll("_", " ").replaceAll("-", " ");
 }
 

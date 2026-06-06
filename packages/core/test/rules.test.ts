@@ -80,6 +80,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-054")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-055")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-056")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-057")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-030")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-031")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-032")).toBe(true);
@@ -1340,6 +1341,42 @@ describe("rule engine", () => {
     expect(JSON.stringify(runtimeToolRetryFindings[0])).not.toContain("browser_tool_output");
     expect(JSON.stringify(runtimeToolRetryFindings[0])).not.toContain("retrieved_customer_context");
     expect(JSON.stringify(runtimeToolRetryFindings[0])).not.toContain("retry_customer_email");
+    const runtimeReasoningStateFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-RUNTIME-057");
+    expect(runtimeReasoningStateFindings).toHaveLength(1);
+    expect(runtimeReasoningStateFindings[0]?.matched_object.path).toBe("reasoning/scratchpad-policy.yaml");
+    expect(runtimeReasoningStateFindings[0]?.matched_object.metadata).toMatchObject({
+      parsed_agent_reasoning_state_config: true,
+      agent_reasoning_state_enabled: true,
+      agent_reasoning_state_capture_enabled: true,
+      agent_reasoning_state_remote: true,
+      agent_reasoning_state_persistent: true,
+      agent_reasoning_state_replay_enabled: true,
+      agent_reasoning_state_planner_uses_state: true,
+      agent_reasoning_state_untrusted_input: true,
+      agent_reasoning_state_sensitive_capture: true,
+      agent_reasoning_state_redaction_disabled: true,
+      agent_reasoning_state_access_control_disabled: true,
+      agent_reasoning_state_approval_required: false
+    });
+    expect(runtimeReasoningStateFindings[0]?.matched_object.metadata.agent_reasoning_state_capture_categories).toEqual([
+      "memory_context",
+      "plan_context",
+      "prompt_context",
+      "reasoning_trace",
+      "retrieval_context",
+      "secret_material",
+      "tool_observation"
+    ]);
+    expect(runtimeReasoningStateFindings[0]?.severity).toBe("critical");
+    expect(runtimeReasoningStateFindings[0]?.confidence).toBe("very_high");
+    expect(runtimeReasoningStateFindings[0]?.recommended_control).toBe("redact");
+    expect(JSON.stringify(runtimeReasoningStateFindings[0])).not.toContain("${REASONING_STATE_TOKEN}");
+    expect(JSON.stringify(runtimeReasoningStateFindings[0])).not.toContain("scratchpad.agentcsp-demo.example.invalid");
+    expect(JSON.stringify(runtimeReasoningStateFindings[0])).not.toContain("customer-support-reasoning");
+    expect(JSON.stringify(runtimeReasoningStateFindings[0])).not.toContain("scratchpad_customer_email");
+    expect(JSON.stringify(runtimeReasoningStateFindings[0])).not.toContain("scratchpad_account_number");
+    expect(JSON.stringify(runtimeReasoningStateFindings[0])).not.toContain("confidential_reasoning_notes");
+    expect(JSON.stringify(runtimeReasoningStateFindings[0])).not.toContain("untrusted_customer_ticket");
     const runtimeAuthorizationBrokerFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-RUNTIME-041");
     expect(runtimeAuthorizationBrokerFindings).toHaveLength(1);
     expect(runtimeAuthorizationBrokerFindings[0]?.matched_object.path).toBe("authz/tool-broker.yaml");

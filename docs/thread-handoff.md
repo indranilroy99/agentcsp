@@ -1156,6 +1156,16 @@ The current iteration adds:
 - rule `AGENTCSP-RUNTIME-055` for context-window instruction eviction that combines enabled truncation, untrusted/tool/memory priority, privileged instruction eviction, safety-policy eviction, unverified summaries, privileged tool authority, credential exposure, and missing approval
 - scanner, rule, fixture verifier, and redaction coverage proving raw priority labels, summary strategy names, tool names, data-scope labels, and token placeholders stay redacted
 
+## Agent Reasoning State Exposure Pass
+
+The current iteration adds:
+
+- first-class redacted metadata for agent reasoning-state, scratchpad, planner-state, run-state, chain-of-thought, and thought-log posture, including capture categories, persistent/shared/remote destinations, public access, replay into future model context, planner use, redaction, access control, retention, credential exposure, and approval boundaries
+- vulnerable fixture coverage for a remote shared scratchpad that captures reasoning steps, plans, tool observations, prompts, retrieval, memory, PII, and secrets from untrusted context, replays the state into future planner context, disables redaction and access controls, and lacks approval
+- safe fixture coverage for a local ephemeral scratchpad with capture, persistence, sharing, remote storage, replay, and secret collection disabled while redaction, access controls, and approval remain enabled
+- rule `AGENTCSP-RUNTIME-057` for persisted and replayed reasoning state that combines remote persistence, untrusted sensitive capture, disabled redaction/access controls, credential exposure, and missing approval
+- scanner, rule, fixture verifier, and redaction coverage proving raw reasoning destinations, workspace names, source labels, data-scope labels, and token placeholders stay redacted
+
 ## Agent Tool Retry Replay Pass
 
 The current iteration adds:
