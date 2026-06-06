@@ -67,6 +67,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-025")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-026")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-027")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-028")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-CICD-002")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-AUTOMATION-001")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-AUTOMATION-002")).toBe(true);
@@ -266,6 +267,40 @@ describe("rule engine", () => {
     expect(JSON.stringify(runtimeCodeInterpreterFindings[0])).not.toContain("untrusted_customer_ticket");
     expect(JSON.stringify(runtimeCodeInterpreterFindings[0])).not.toContain("retrieved_customer_context");
     expect(JSON.stringify(runtimeCodeInterpreterFindings[0])).not.toContain("browser_tool_output");
+    const runtimeTrainingDatasetFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-RUNTIME-028");
+    expect(runtimeTrainingDatasetFindings).toHaveLength(1);
+    expect(runtimeTrainingDatasetFindings[0]?.matched_object.path).toBe("training/fine-tune-dataset.yaml");
+    expect(runtimeTrainingDatasetFindings[0]?.matched_object.metadata).toMatchObject({
+      parsed_ai_training_dataset_config: true,
+      ai_training_dataset_provider: "openai",
+      ai_training_dataset_model_update_enabled: true,
+      ai_training_dataset_remote_upload: true,
+      ai_training_dataset_sensitive_capture: true,
+      ai_training_dataset_secret_capture: true,
+      ai_training_dataset_redaction_disabled: true,
+      ai_training_dataset_untrusted_input: true,
+      ai_training_dataset_approval_required: false
+    });
+    expect(runtimeTrainingDatasetFindings[0]?.matched_object.metadata.ai_training_dataset_capture_categories).toEqual([
+      "browser_context",
+      "completion_context",
+      "memory_context",
+      "pii_data",
+      "prompt_context",
+      "retrieval_context",
+      "secret_material",
+      "tool_output"
+    ]);
+    expect(runtimeTrainingDatasetFindings[0]?.severity).toBe("critical");
+    expect(runtimeTrainingDatasetFindings[0]?.confidence).toBe("very_high");
+    expect(runtimeTrainingDatasetFindings[0]?.recommended_control).toBe("redact");
+    expect(JSON.stringify(runtimeTrainingDatasetFindings[0])).not.toContain("${FINE_TUNE_TOKEN}");
+    expect(JSON.stringify(runtimeTrainingDatasetFindings[0])).not.toContain("api.openai.example.invalid");
+    expect(JSON.stringify(runtimeTrainingDatasetFindings[0])).not.toContain("support-escalation-finetune");
+    expect(JSON.stringify(runtimeTrainingDatasetFindings[0])).not.toContain("training_customer_email");
+    expect(JSON.stringify(runtimeTrainingDatasetFindings[0])).not.toContain("training_account_number");
+    expect(JSON.stringify(runtimeTrainingDatasetFindings[0])).not.toContain("training_confidential_agent_notes");
+    expect(JSON.stringify(runtimeTrainingDatasetFindings[0])).not.toContain("support_memory_summary");
     const runtimeModelEndpointFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-RUNTIME-009");
     expect(runtimeModelEndpointFindings).toHaveLength(1);
     expect(runtimeModelEndpointFindings[0]?.matched_object.path).toBe("models/model-gateway.yaml");

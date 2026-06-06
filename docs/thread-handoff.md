@@ -784,6 +784,15 @@ The current iteration adds:
 - rule `AGENTCSP-RUNTIME-027` for code interpreter runtimes that combine model-driven code execution, untrusted input, network/package-install authority, filesystem access, credential exposure, and missing approval
 - scanner, rule, fixture verifier, and redaction coverage proving kernel values, mounted paths, input labels, output labels, and token placeholders stay redacted
 
+## AI Training Dataset Boundary Pass
+
+The current iteration adds:
+
+- first-class redacted metadata for AI training, fine-tuning, distillation, feedback-training, RLHF, and dataset-export configs
+- vulnerable fixture coverage for a model-update dataset pipeline that captures raw prompts, completions, tool outputs, retrieval context, memory, browser context, PII, and secrets from untrusted customer sources, uploads to a managed provider, retains data, and has no approval gate
+- rule `AGENTCSP-RUNTIME-028` for training dataset boundaries that combine model-update authority, remote upload, sensitive capture, disabled redaction, untrusted input, credential exposure, and missing approval
+- scanner, rule, fixture verifier, and redaction coverage proving endpoints, dataset names, record labels, source labels, training records, and token placeholders stay redacted
+
 ## Initial Build Recommendation
 
 Start with a CLI-first MVP before building the dashboard:

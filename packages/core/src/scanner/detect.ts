@@ -137,6 +137,11 @@ export async function detectSurfaces(files: WalkedFile[]): Promise<DetectedSurfa
       continue;
     }
 
+    if (isAiTrainingDatasetConfigPath(file.relativePath, basename)) {
+      detectAiTrainingDatasetConfig(file, text, surfaces);
+      continue;
+    }
+
     if (isAiEvalHarnessConfigPath(file.relativePath, basename)) {
       detectAiEvalHarnessConfig(file, text, surfaces);
       continue;
@@ -669,6 +674,77 @@ function detectAiModelEndpointConfig(file: WalkedFile, text: string | undefined,
   surfaces.runtime_config.push({
     ...object,
     untrusted_to_privileged: isUntrustedToPrivileged(object)
+  });
+}
+
+function detectAiTrainingDatasetConfig(file: WalkedFile, text: string | undefined, surfaces: DetectedSurfaces): void {
+  const parsed = parseStructuredConfig(text ?? "", file.relativePath);
+  if (parsed.parseFailed) {
+    addDiagnostic(surfaces, file, {
+      parser: parsed.parser ?? "structured_config",
+      code: "AI_TRAINING_DATASET_CONFIG_PARSE_FAILED",
+      reason: "AI training, fine-tuning, or dataset export configuration could not be parsed. Raw content was redacted."
+    });
+  }
+
+  const posture = classifyAiTrainingDatasetConfig(parsed.value, file.relativePath);
+  const actions = new Set<ActionType>(["call", "read"]);
+  if (posture.ai_training_dataset_remote_upload) actions.add("send");
+  if (posture.ai_training_dataset_export_enabled || posture.ai_training_dataset_model_update_enabled) actions.add("write");
+  if (posture.ai_training_dataset_model_update_enabled) actions.add("execute");
+  if (posture.ai_training_dataset_retention_enabled || posture.ai_training_dataset_model_update_enabled) actions.add("remember");
+
+  const dataClasses = new Set<SurfaceObject["data_classes"][number]>(["unknown"]);
+  if (
+    posture.ai_training_dataset_secret_capture ||
+    posture.env_key_names.some(isCredentialLikeKeyName) ||
+    posture.secret_ref_key_names.length > 0
+  ) {
+    dataClasses.add("credential");
+  }
+  if (posture.ai_training_dataset_sensitive_capture || posture.ai_training_dataset_untrusted_input) dataClasses.add("confidential");
+  if (posture.ai_training_dataset_pii_capture) dataClasses.add("pii");
+  if (dataClasses.size > 1) dataClasses.delete("unknown");
+
+  const object = createSurfaceObject({
+    type: "runtime_config",
+    name: path.basename(file.relativePath),
+    path: file.relativePath,
+    trust_level: posture.ai_training_dataset_remote_upload ? "third_party" : inferTrustLevel(file.relativePath),
+    data_classes: uniqueDataClasses([...dataClasses] as SurfaceObject["data_classes"]),
+    actions: uniqueActions([...actions]),
+    side_effect:
+      posture.ai_training_dataset_export_enabled ||
+      posture.ai_training_dataset_remote_upload ||
+      posture.ai_training_dataset_model_update_enabled ||
+      posture.ai_training_dataset_retention_enabled,
+    reversible:
+      !posture.ai_training_dataset_remote_upload &&
+      !posture.ai_training_dataset_model_update_enabled &&
+      !posture.ai_training_dataset_retention_enabled,
+    external_reach: posture.ai_training_dataset_remote_upload,
+    secret_exposure:
+      posture.ai_training_dataset_secret_capture ||
+      posture.env_key_names.some(isCredentialLikeKeyName) ||
+      posture.secret_ref_key_names.length > 0,
+    reason: "AI training or fine-tuning dataset configuration discovered as sensitive model-update data flow.",
+    metadata: {
+      content_redacted: true,
+      values_collected: false,
+      parsed_ai_training_dataset_config: Boolean(parsed.value) && !parsed.parseFailed,
+      parse_error: parsed.parseFailed,
+      ...posture
+    }
+  });
+  surfaces.runtime_config.push({
+    ...object,
+    untrusted_to_privileged:
+      (posture.ai_training_dataset_untrusted_input &&
+        posture.ai_training_dataset_model_update_enabled &&
+        (posture.ai_training_dataset_sensitive_capture ||
+          posture.ai_training_dataset_secret_capture ||
+          posture.ai_training_dataset_remote_upload)) ||
+      isUntrustedToPrivileged(object)
   });
 }
 
@@ -1912,6 +1988,27 @@ function isAiEvalHarnessConfigPath(relativePath: string, basename: string): bool
   return evalName || (evalDirectory && configName);
 }
 
+function isAiTrainingDatasetConfigPath(relativePath: string, basename: string): boolean {
+  const normalized = relativePath.replaceAll("\\", "/").toLowerCase();
+  const lowerBase = basename.toLowerCase();
+  if (!/\.(json|ya?ml|toml)$/iu.test(lowerBase)) return false;
+  if (normalized.startsWith(".github/workflows/")) return false;
+  if (normalized.startsWith("rules/")) return false;
+  const segments = normalized.split("/").slice(0, -1);
+  const trainingDirectory = segments.some((segment) =>
+    /^(training|train|fine-tuning|fine_tuning|finetuning|finetune|datasets?|model-training|model_training|distillation|rlhf|feedback|feedback-training|feedback_training)$/iu.test(
+      segment
+    )
+  );
+  const trainingName = /(?:fine[-_]?tune|finetune|training[-_]?dataset|dataset[-_]?export|model[-_]?training|distillation|rlhf|feedback[-_]?training|train[-_]?export)/iu.test(
+    lowerBase
+  );
+  const configName = /(?:config|settings|dataset|datasets|training|train|fine[-_]?tune|finetune|distill|rlhf|feedback|export|upload)/iu.test(
+    lowerBase
+  );
+  return trainingName || (trainingDirectory && configName);
+}
+
 function isAgentMemoryStoreConfigPath(relativePath: string, basename: string): boolean {
   const normalized = relativePath.replaceAll("\\", "/").toLowerCase();
   const lowerBase = basename.toLowerCase();
@@ -2789,6 +2886,34 @@ interface AgentArtifactExportPosture {
   agent_artifact_export_retention_enabled: boolean;
   agent_artifact_export_redaction_disabled: boolean;
   agent_artifact_export_approval_required: boolean;
+  env_key_names: string[];
+  secret_ref_key_names: string[];
+}
+
+interface AiTrainingDatasetPosture {
+  ai_training_dataset_fields: string[];
+  ai_training_dataset_provider?: string;
+  ai_training_dataset_enabled: boolean;
+  ai_training_dataset_export_enabled: boolean;
+  ai_training_dataset_model_update_enabled: boolean;
+  ai_training_dataset_remote_upload: boolean;
+  ai_training_dataset_destination_redacted: boolean;
+  ai_training_dataset_destination_count: number;
+  ai_training_dataset_destination_kinds: string[];
+  ai_training_dataset_capture_categories: string[];
+  ai_training_dataset_prompt_capture: boolean;
+  ai_training_dataset_completion_capture: boolean;
+  ai_training_dataset_tool_output_capture: boolean;
+  ai_training_dataset_retrieval_capture: boolean;
+  ai_training_dataset_memory_capture: boolean;
+  ai_training_dataset_browser_capture: boolean;
+  ai_training_dataset_secret_capture: boolean;
+  ai_training_dataset_sensitive_capture: boolean;
+  ai_training_dataset_pii_capture: boolean;
+  ai_training_dataset_untrusted_input: boolean;
+  ai_training_dataset_redaction_disabled: boolean;
+  ai_training_dataset_retention_enabled: boolean;
+  ai_training_dataset_approval_required: boolean;
   env_key_names: string[];
   secret_ref_key_names: string[];
 }
@@ -6250,6 +6375,237 @@ function hasAiModelContextSignal(fields: RuntimeField[], pattern: RegExp): boole
 
 function isAiModelSecurityField(fieldPath: string): boolean {
   return /provider|model|base[_-]?url|api[_-]?base|endpoint|url|uri|host|gateway|proxy|router|server|api[_-]?key|token|secret|credential|auth|env|prompt|input|message|completion|output|tool|retrieval|rag|context|memory|history|pii/iu.test(
+    fieldPath
+  );
+}
+
+function classifyAiTrainingDatasetConfig(value: unknown, filePath: string): AiTrainingDatasetPosture {
+  const fields = flattenRuntimeFields(value);
+  const stringValues = collectFieldStringValues(fields);
+  const provider = inferAiTrainingDatasetProvider([filePath, ...fields.map((field) => field.path), ...stringValues]);
+  const destination = classifyAiTrainingDatasetDestination(fields, provider);
+  const captureCategories = collectAiTrainingDatasetCaptureCategories(fields);
+  const envKeys = uniqueStrings([
+    ...collectEnvKeyNamesFromConfig(value).filter(isLikelyEnvKeyName),
+    ...extractEnvironmentReferenceKeys(stringValues)
+  ]);
+  const secretRefKeys = extractSecretReferenceKeys(stringValues);
+
+  return {
+    ai_training_dataset_fields: fields
+      .map((field) => field.path)
+      .filter((fieldPath) => isAiTrainingDatasetSecurityField(fieldPath))
+      .sort((a, b) => a.localeCompare(b)),
+    ai_training_dataset_provider: provider,
+    ai_training_dataset_enabled: Boolean(provider) || hasAiTrainingDatasetEnabledSignal(fields),
+    ai_training_dataset_export_enabled: hasAiTrainingDatasetExportSignal(fields),
+    ai_training_dataset_model_update_enabled: hasAiTrainingModelUpdateSignal(fields),
+    ai_training_dataset_remote_upload: destination.remote,
+    ai_training_dataset_destination_redacted: destination.destinationCount > 0,
+    ai_training_dataset_destination_count: destination.destinationCount,
+    ai_training_dataset_destination_kinds: destination.destinationKinds,
+    ai_training_dataset_capture_categories: captureCategories,
+    ai_training_dataset_prompt_capture: captureCategories.includes("prompt_context"),
+    ai_training_dataset_completion_capture: captureCategories.includes("completion_context"),
+    ai_training_dataset_tool_output_capture: captureCategories.includes("tool_output"),
+    ai_training_dataset_retrieval_capture: captureCategories.includes("retrieval_context"),
+    ai_training_dataset_memory_capture: captureCategories.includes("memory_context"),
+    ai_training_dataset_browser_capture: captureCategories.includes("browser_context"),
+    ai_training_dataset_secret_capture: captureCategories.includes("secret_material"),
+    ai_training_dataset_sensitive_capture:
+      captureCategories.some((category) =>
+        ["prompt_context", "tool_output", "retrieval_context", "memory_context", "browser_context", "secret_material"].includes(category)
+      ) || hasAiTrainingSensitiveDataSignal(fields),
+    ai_training_dataset_pii_capture: captureCategories.includes("pii_data") || hasAiTrainingPiiDataSignal(fields),
+    ai_training_dataset_untrusted_input: hasAiTrainingUntrustedInputSignal(fields),
+    ai_training_dataset_redaction_disabled: hasAiTrainingRedactionDisabledSignal(fields),
+    ai_training_dataset_retention_enabled: hasAiTrainingRetentionSignal(fields),
+    ai_training_dataset_approval_required: hasAiTrainingApprovalRequiredSignal(fields),
+    env_key_names: envKeys,
+    secret_ref_key_names: secretRefKeys
+  };
+}
+
+function inferAiTrainingDatasetProvider(candidates: string[]): string | undefined {
+  const text = candidates.join(" ").toLowerCase();
+  const providers: Array<[string, RegExp]> = [
+    ["openai", /\bopenai\b|\bapi\.openai\.com\b/iu],
+    ["azure_openai", /\b(azure[-_\s]?openai|azure ai)\b/iu],
+    ["vertex_ai", /\b(vertex[-_\s]?ai|google[-_\s]?ai|gemini)\b/iu],
+    ["bedrock", /\b(aws[-_\s]?bedrock|bedrock)\b/iu],
+    ["sagemaker", /\bsage[-_\s]?maker\b/iu],
+    ["huggingface", /\b(huggingface|hugging face)\b/iu],
+    ["wandb", /\b(wandb|weights\s*&\s*biases)\b/iu],
+    ["mlflow", /\bmlflow\b/iu],
+    ["generic_training", /\b(fine[-_\s]?tune|finetune|training|distillation|rlhf|feedback[_\s-]?training)\b/iu]
+  ];
+  return providers.find(([, pattern]) => pattern.test(text))?.[0];
+}
+
+function classifyAiTrainingDatasetDestination(
+  fields: RuntimeField[],
+  provider: string | undefined
+): { remote: boolean; destinationCount: number; destinationKinds: string[] } {
+  const destinationKinds = new Set<string>();
+  let destinationCount = 0;
+  const managedProviders = new Set(["openai", "azure_openai", "vertex_ai", "bedrock", "sagemaker", "huggingface", "wandb", "mlflow"]);
+  if (provider && managedProviders.has(provider)) {
+    destinationKinds.add("managed_training_provider");
+    destinationCount += 1;
+  }
+
+  for (const field of fields) {
+    const values = Array.isArray(field.value) ? field.value.map(String) : [String(field.value ?? "")];
+    for (const value of values) {
+      const remoteUrl = parseRemoteHttpUrl(value);
+      if (!remoteUrl) continue;
+      destinationKinds.add("http_training_endpoint");
+      destinationCount += 1;
+    }
+    if (/(^|\.)(endpoint|url|uri|host|bucket|dataset|dataset_name|dataset_path|output|destination|upload|registry|project)$/iu.test(field.path)) {
+      const text = values.join(" ");
+      if (/\b(api|cloud|bucket|dataset|training|fine[-_\s]?tune|finetune|upload|registry|provider|openai|vertex|bedrock|sagemaker|huggingface|wandb|mlflow)\b/iu.test(
+        text
+      )) {
+        destinationKinds.add("configured_training_destination");
+        destinationCount += 1;
+      }
+    }
+  }
+
+  return {
+    remote: destinationCount > 0,
+    destinationCount,
+    destinationKinds: [...destinationKinds].sort((a, b) => a.localeCompare(b))
+  };
+}
+
+function hasAiTrainingDatasetEnabledSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => {
+    const text = `${field.path} ${fieldValueText(field)}`;
+    return /\b(training|fine[-_\s]?tune|finetune|dataset[_\s-]?export|distillation|rlhf|feedback[_\s-]?training)\b/iu.test(
+      text
+    ) && truthyConfigValue(field.value);
+  });
+}
+
+function hasAiTrainingDatasetExportSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /(?:^|[_\W])(export|upload|write|create|build|materialize|collect|capture|dataset)(?:[_\W]|$)/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    ) &&
+    truthyConfigValue(field.value)
+  );
+}
+
+function hasAiTrainingModelUpdateSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /(?:^|[_\W])(fine[-_\s]?tune|fine[-_\s]?tuning|finetune|finetuning|train[_\s-]?model|model[_\s-]?training|distillation|distill|rlhf|feedback[_\s-]?training|model[_\s-]?update)(?:[_\W]|$)/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    ) && truthyConfigValue(field.value)
+  );
+}
+
+function collectAiTrainingDatasetCaptureCategories(fields: RuntimeField[]): string[] {
+  const categories = new Set<string>();
+  for (const field of fields) {
+    const text = `${field.path} ${fieldValueText(field)}`;
+    if (!hasAiTrainingCaptureLikeSignal(field)) continue;
+    if (/(?:^|[_\W])(prompt|prompts|system|developer|message|conversation|chat|raw[_\s-]?input)(?:[_\W]|$)/iu.test(text)) {
+      categories.add("prompt_context");
+    }
+    if (/(?:^|[_\W])(completion|completions|response|responses|generation|generations|assistant[_\s-]?output)(?:[_\W]|$)/iu.test(
+      text
+    )) {
+      categories.add("completion_context");
+    }
+    if (/(?:^|[_\W])(tool[_\s-]?outputs?|function[_\s-]?outputs?|command[_\s-]?outputs?|mcp|observation)(?:[_\W]|$)/iu.test(
+      text
+    )) {
+      categories.add("tool_output");
+    }
+    if (/(?:^|[_\W])(retrieval[_\s-]?context|retrieval|retrieved|rag|documents?|vector|embedding)(?:[_\W]|$)/iu.test(text)) {
+      categories.add("retrieval_context");
+    }
+    if (/(?:^|[_\W])(memory|memories|history|transcript|session|state|summary)(?:[_\W]|$)/iu.test(text)) {
+      categories.add("memory_context");
+    }
+    if (/(?:^|[_\W])(browser|web[_\s-]?page|page[_\s-]?content|click|form|navigation)(?:[_\W]|$)/iu.test(text)) {
+      categories.add("browser_context");
+    }
+    if (/(?:^|[_\W])(secret|token|credential|api[_-]?key|password|authorization|vault)(?:[_\W]|$)/iu.test(text)) {
+      categories.add("secret_material");
+    }
+    if (/(?:^|[_\W])(pii|email|phone|address|ssn|passport|customer[_-]?id|account[_-]?number|account[_-]?id)(?:[_\W]|$)/iu.test(
+      text
+    )) {
+      categories.add("pii_data");
+    }
+  }
+  return [...categories].sort((a, b) => a.localeCompare(b));
+}
+
+function hasAiTrainingCaptureLikeSignal(field: RuntimeField): boolean {
+  const text = `${field.path} ${fieldValueText(field)}`;
+  if (/\b(exclude|drop|deny|redact|mask|scrub|sanitize)\b/iu.test(field.path) && !truthyConfigValue(field.value)) return false;
+  return /(?:^|[_\W])(include|capture|collect|export|upload|dataset|train|fine[-_\s]?tune|finetune|raw|source|inputs?|outputs?|logs?|records?)(?:[_\W]|$)/iu.test(
+    text
+  ) && truthyConfigValue(field.value);
+}
+
+function hasAiTrainingSensitiveDataSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /\b(customer|client|ticket|support|internal|confidential|private|proprietary|sensitive|account|billing|payment|record|case|profile|note|incident)\b/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    )
+  );
+}
+
+function hasAiTrainingPiiDataSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /(?:^|[_\W])(pii|email|phone|address|ssn|passport|dob|date[_\s-]?of[_\s-]?birth|customer[_-]?id|user[_-]?id|account[_-]?id|account[_-]?number)(?:[_\W]|$)/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    )
+  );
+}
+
+function hasAiTrainingUntrustedInputSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /\b(untrusted|user|customer|client|ticket|support|issue|comment|message|prompt|retrieved|rag|document|email|chat|inbound|external|public|web[_-]?page|browser[_-]?output|tool[_-]?output)\b/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    )
+  );
+}
+
+function hasAiTrainingRedactionDisabledSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => {
+    const text = `${field.path} ${fieldValueText(field)}`.toLowerCase();
+    if (/(^|\.)(include_raw|include_raw_prompts|raw|raw_payload|raw_records?)$/iu.test(field.path)) return truthyConfigValue(field.value);
+    if (/redact|redaction|sanitize|sanitiz|mask|scrub|pii_filter|secret_filter/iu.test(field.path)) {
+      return disabledConfigValue(field.value) || /\b(disabled|false|off|none|raw)\b/iu.test(text);
+    }
+    return false;
+  });
+}
+
+function hasAiTrainingRetentionSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /(?:^|[_\W])(retention|retain|persist|archive|history|store|save|keep|ttl|days)(?:[_\W]|$)/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    ) &&
+    truthyConfigValue(field.value)
+  );
+}
+
+function hasAiTrainingApprovalRequiredSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /approval|required[_-]?approval|human[_-]?approval|confirm|confirmation|review|human[_-]?in[_-]?the[_-]?loop/iu.test(field.path) &&
+    truthyConfigValue(field.value)
+  );
+}
+
+function isAiTrainingDatasetSecurityField(fieldPath: string): boolean {
+  return /provider|training|train|fine[_-]?tune|finetune|dataset|distill|rlhf|feedback|model|endpoint|url|uri|host|bucket|destination|upload|export|capture|include|prompt|completion|message|response|tool|retrieval|rag|memory|browser|source|input|output|record|log|raw|redact|sanitize|mask|pii|sensitive|secret|token|credential|auth|env|retention|approval/iu.test(
     fieldPath
   );
 }

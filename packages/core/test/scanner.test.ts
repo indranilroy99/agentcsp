@@ -36,6 +36,7 @@ describe("scanner", () => {
       "CREW_AGENT_TOKEN",
       "CUSTOMER_SUCCESS_SLACK_BOT_TOKEN",
       "EVAL_AGENT_TOKEN",
+      "FINE_TUNE_TOKEN",
       "GITHUB_TOKEN",
       "MEMORY_STORE_TOKEN",
       "OPENAI_API_KEY",
@@ -406,6 +407,68 @@ describe("scanner", () => {
     expect(JSON.stringify(telemetryConfig)).not.toContain("${LANGSMITH_API_KEY}");
     expect(JSON.stringify(telemetryConfig)).not.toContain("api.smith.langchain.com");
     expect(JSON.stringify(telemetryConfig)).not.toContain("customer-support-agent");
+    const trainingDatasetConfig = surfaces.runtime_config.find(
+      (surface) => surface.path === "training/fine-tune-dataset.yaml"
+    );
+    expect(trainingDatasetConfig).toBeDefined();
+    expect(trainingDatasetConfig).toMatchObject({
+      trust_level: "third_party",
+      external_reach: true,
+      secret_exposure: true,
+      side_effect: true,
+      reversible: false,
+      untrusted_to_privileged: true
+    });
+    expect(trainingDatasetConfig?.metadata).toMatchObject({
+      content_redacted: true,
+      values_collected: false,
+      parsed_ai_training_dataset_config: true,
+      ai_training_dataset_provider: "openai",
+      ai_training_dataset_enabled: true,
+      ai_training_dataset_export_enabled: true,
+      ai_training_dataset_model_update_enabled: true,
+      ai_training_dataset_remote_upload: true,
+      ai_training_dataset_destination_redacted: true,
+      ai_training_dataset_prompt_capture: true,
+      ai_training_dataset_completion_capture: true,
+      ai_training_dataset_tool_output_capture: true,
+      ai_training_dataset_retrieval_capture: true,
+      ai_training_dataset_memory_capture: true,
+      ai_training_dataset_browser_capture: true,
+      ai_training_dataset_secret_capture: true,
+      ai_training_dataset_sensitive_capture: true,
+      ai_training_dataset_pii_capture: true,
+      ai_training_dataset_untrusted_input: true,
+      ai_training_dataset_redaction_disabled: true,
+      ai_training_dataset_retention_enabled: true,
+      ai_training_dataset_approval_required: false
+    });
+    expect(trainingDatasetConfig?.metadata.ai_training_dataset_destination_kinds).toEqual([
+      "configured_training_destination",
+      "http_training_endpoint",
+      "managed_training_provider"
+    ]);
+    expect(trainingDatasetConfig?.metadata.ai_training_dataset_capture_categories).toEqual([
+      "browser_context",
+      "completion_context",
+      "memory_context",
+      "pii_data",
+      "prompt_context",
+      "retrieval_context",
+      "secret_material",
+      "tool_output"
+    ]);
+    expect(trainingDatasetConfig?.metadata.env_key_names).toEqual(["FINE_TUNE_TOKEN", "OPENAI_API_KEY"]);
+    expect(trainingDatasetConfig?.metadata.secret_ref_key_names).toEqual(["FINE_TUNE_TOKEN", "OPENAI_API_KEY"]);
+    expect(trainingDatasetConfig?.data_classes).toEqual(["confidential", "credential", "pii"]);
+    expect(trainingDatasetConfig?.actions).toEqual(["call", "execute", "read", "remember", "send", "write"]);
+    expect(JSON.stringify(trainingDatasetConfig)).not.toContain("${FINE_TUNE_TOKEN}");
+    expect(JSON.stringify(trainingDatasetConfig)).not.toContain("api.openai.example.invalid");
+    expect(JSON.stringify(trainingDatasetConfig)).not.toContain("support-escalation-finetune");
+    expect(JSON.stringify(trainingDatasetConfig)).not.toContain("training_customer_email");
+    expect(JSON.stringify(trainingDatasetConfig)).not.toContain("training_account_number");
+    expect(JSON.stringify(trainingDatasetConfig)).not.toContain("training_confidential_agent_notes");
+    expect(JSON.stringify(trainingDatasetConfig)).not.toContain("support_memory_summary");
     const artifactExportConfig = surfaces.runtime_config.find(
       (surface) => surface.path === "artifacts/run-export.yaml"
     );

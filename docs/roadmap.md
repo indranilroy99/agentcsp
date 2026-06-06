@@ -30,6 +30,7 @@
 - Add webhook/callback egress posture for model-generated payload delivery, sensitive context capture, retry queues, redaction posture, and approval boundaries.
 - Add container runtime isolation posture for privileged containers, Docker socket mounts, host paths, host namespaces, dangerous capabilities, untrusted inputs, and approval boundaries.
 - Add code interpreter and notebook runtime posture for model-generated code execution, network/package installation, filesystem access, credential mounts, output persistence, untrusted inputs, and approval boundaries.
+- Add AI training and fine-tuning dataset posture for prompts, completions, tool outputs, retrieval context, memory, browser context, PII, secrets, model-update authority, redaction posture, and approval boundaries.
 - Support allow, deny, approval, redaction, and quarantine recommendations.
 - Add SARIF output and CI integrations for code-scanning workflows.
 - Add high-confidence correlated findings that combine provenance, data class, authority, and side effects.

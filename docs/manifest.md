@@ -823,6 +823,41 @@ Code interpreter metadata may include:
 
 Raw kernel values, code snippets, package names, mounted paths, input labels, output labels, and token placeholders are not emitted. Provider names, redacted mount categories, execution posture, network/package-install posture, output-retention posture, approval posture, and credential key names let rules detect untrusted code execution blast radius without copying notebook runtime details into the manifest.
 
+## AI Training Dataset Boundary
+
+AI training, fine-tuning, distillation, feedback-training, RLHF, and dataset-export configs are normalized into `runtime_config` objects when training-oriented directories or filenames are discovered.
+
+Training dataset metadata may include:
+
+- `parsed_ai_training_dataset_config`
+- `ai_training_dataset_fields`
+- `ai_training_dataset_provider`
+- `ai_training_dataset_enabled`
+- `ai_training_dataset_export_enabled`
+- `ai_training_dataset_model_update_enabled`
+- `ai_training_dataset_remote_upload`
+- `ai_training_dataset_destination_redacted`
+- `ai_training_dataset_destination_count`
+- `ai_training_dataset_destination_kinds`
+- `ai_training_dataset_capture_categories`
+- `ai_training_dataset_prompt_capture`
+- `ai_training_dataset_completion_capture`
+- `ai_training_dataset_tool_output_capture`
+- `ai_training_dataset_retrieval_capture`
+- `ai_training_dataset_memory_capture`
+- `ai_training_dataset_browser_capture`
+- `ai_training_dataset_secret_capture`
+- `ai_training_dataset_sensitive_capture`
+- `ai_training_dataset_pii_capture`
+- `ai_training_dataset_untrusted_input`
+- `ai_training_dataset_redaction_disabled`
+- `ai_training_dataset_retention_enabled`
+- `ai_training_dataset_approval_required`
+- `env_key_names`
+- `secret_ref_key_names`
+
+Raw training endpoints, dataset names, record labels, source labels, prompts, completions, tool outputs, retrieval context, memory content, and token placeholders are not emitted. Provider names, redacted destination categories, capture categories, redaction posture, retention posture, approval posture, and credential key names let rules detect sensitive model-update pipelines without copying training data into the manifest.
+
 ## AI Telemetry Export
 
 AI telemetry and trace-export configs are also normalized into `runtime_config` objects when common observability, tracing, LangSmith, Langfuse, Helicone, Braintrust, OpenTelemetry, or similar configuration files are discovered.
