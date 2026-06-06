@@ -122,6 +122,11 @@ export async function detectSurfaces(files: WalkedFile[]): Promise<DetectedSurfa
       continue;
     }
 
+    if (isBrowserSessionConfigPath(file.relativePath, basename)) {
+      detectBrowserSessionConfig(file, text, surfaces);
+      continue;
+    }
+
     if (isAgentDatabaseConnectorConfigPath(file.relativePath, basename)) {
       detectDatabaseConnectorConfig(file, text, surfaces);
       continue;
@@ -500,6 +505,62 @@ function detectDatabaseConnectorConfig(file: WalkedFile, text: string | undefine
   });
 }
 
+function detectBrowserSessionConfig(file: WalkedFile, text: string | undefined, surfaces: DetectedSurfaces): void {
+  const parsed = parseStructuredConfig(text ?? "", file.relativePath);
+  if (parsed.parseFailed) {
+    addDiagnostic(surfaces, file, {
+      parser: parsed.parser ?? "structured_config",
+      code: "BROWSER_SESSION_CONFIG_PARSE_FAILED",
+      reason: "Browser session configuration could not be parsed. Raw content was redacted."
+    });
+  }
+
+  const posture = classifyBrowserSessionConfig(parsed.value, file.relativePath);
+  const actions = new Set<ActionType>(["read", "call"]);
+  if (posture.browser_network_remote) actions.add("send");
+  if (posture.browser_click_or_form_authority || posture.browser_download_upload_enabled) actions.add("write");
+
+  const dataClasses = new Set<SurfaceObject["data_classes"][number]>(["unknown"]);
+  if (
+    posture.browser_authenticated_session ||
+    posture.env_key_names.some(isCredentialLikeKeyName) ||
+    posture.secret_ref_key_names.length > 0
+  ) {
+    dataClasses.add("credential");
+  }
+  if (posture.browser_sensitive_data) dataClasses.add("confidential");
+  if (posture.browser_pii_data) dataClasses.add("pii");
+  if (dataClasses.size > 1) dataClasses.delete("unknown");
+
+  const object = createSurfaceObject({
+    type: "runtime_config",
+    name: path.basename(file.relativePath),
+    path: file.relativePath,
+    trust_level: posture.browser_network_remote ? "third_party" : inferTrustLevel(file.relativePath),
+    data_classes: uniqueDataClasses([...dataClasses] as SurfaceObject["data_classes"]),
+    actions: uniqueActions([...actions]),
+    side_effect: posture.browser_click_or_form_authority || posture.browser_download_upload_enabled,
+    reversible: !posture.browser_click_or_form_authority && !posture.browser_download_upload_enabled,
+    external_reach: posture.browser_network_remote,
+    secret_exposure:
+      posture.browser_authenticated_session ||
+      posture.env_key_names.some(isCredentialLikeKeyName) ||
+      posture.secret_ref_key_names.length > 0,
+    reason: "Browser session configuration discovered as authenticated agent browsing authority.",
+    metadata: {
+      content_redacted: true,
+      values_collected: false,
+      parsed_browser_session_config: Boolean(parsed.value) && !parsed.parseFailed,
+      parse_error: parsed.parseFailed,
+      ...posture
+    }
+  });
+  surfaces.runtime_config.push({
+    ...object,
+    untrusted_to_privileged: isUntrustedToPrivileged(object)
+  });
+}
+
 function detectMemoryContentFile(file: WalkedFile, text: string | undefined, surfaces: DetectedSurfaces): void {
   const content = text ?? "";
   const signals = classifyContextContent(content);
@@ -674,6 +735,21 @@ function isAgentDatabaseConnectorConfigPath(relativePath: string, basename: stri
   return databaseName || (databaseDirectory && configName);
 }
 
+function isBrowserSessionConfigPath(relativePath: string, basename: string): boolean {
+  const normalized = relativePath.replaceAll("\\", "/").toLowerCase();
+  const lowerBase = basename.toLowerCase();
+  if (!/\.(json|ya?ml|toml)$/iu.test(lowerBase)) return false;
+  const segments = normalized.split("/").slice(0, -1);
+  const browserDirectory = segments.some((segment) =>
+    /^(browser|browsers|browser-agent|web-agent|playwright|puppeteer|selenium|stagehand|browserbase|browser-use|browser_use)$/iu.test(segment)
+  );
+  const browserName = /(?:browser|playwright|puppeteer|selenium|stagehand|browserbase|browser-use|browser_use|browser-session|browser_session|browser-profile|browser_profile)/iu.test(
+    lowerBase
+  );
+  const configName = /(?:config|settings|session|profile|auth|cookies?|storage-state|storage_state|context)/iu.test(lowerBase);
+  return browserName || (browserDirectory && configName);
+}
+
 function isRagConnectorConfigPath(relativePath: string, basename: string): boolean {
   const normalized = relativePath.replaceAll("\\", "/").toLowerCase();
   const lowerBase = basename.toLowerCase();
@@ -794,6 +870,29 @@ interface DatabaseConnectorPosture {
   database_sensitive_data: boolean;
   database_pii_data: boolean;
   database_table_names_redacted: boolean;
+  env_key_names: string[];
+  secret_ref_key_names: string[];
+}
+
+interface BrowserSessionPosture {
+  browser_fields: string[];
+  browser_provider?: string;
+  browser_persistent_profile: boolean;
+  browser_cookie_storage: boolean;
+  browser_session_storage: boolean;
+  browser_authenticated_session: boolean;
+  browser_remote_debugging: boolean;
+  browser_untrusted_navigation: boolean;
+  browser_click_or_form_authority: boolean;
+  browser_download_upload_enabled: boolean;
+  browser_network_remote: boolean;
+  browser_broad_origin_access: boolean;
+  browser_destination_redacted: boolean;
+  browser_destination_count: number;
+  browser_destination_kinds: string[];
+  browser_path_references_redacted: boolean;
+  browser_sensitive_data: boolean;
+  browser_pii_data: boolean;
   env_key_names: string[];
   secret_ref_key_names: string[];
 }
@@ -1020,6 +1119,196 @@ function extractDatabaseSecretReferenceKeys(fields: RuntimeField[]): string[] {
     for (const key of extractEnvironmentReferenceKeys([fieldValueText(field)])) keys.add(key);
   }
   return [...keys].sort((a, b) => a.localeCompare(b));
+}
+
+function classifyBrowserSessionConfig(value: unknown, filePath: string): BrowserSessionPosture {
+  const fields = flattenRuntimeFields(value);
+  const stringValues = collectFieldStringValues(fields);
+  const provider = inferBrowserProvider([filePath, ...fields.map((field) => field.path), ...stringValues]);
+  const destinations = classifyBrowserDestinations(fields);
+  const envKeys = extractEnvironmentReferenceKeys(stringValues);
+  const secretRefKeys = extractSecretReferenceKeys(stringValues);
+  const cookieStorage = hasBrowserCookieStorageSignal(fields);
+  const sessionStorage = hasBrowserSessionStorageSignal(fields);
+  const persistentProfile = hasBrowserPersistentProfileSignal(fields);
+  const authenticatedSession = cookieStorage || sessionStorage || hasBrowserAuthenticationSignal(fields);
+
+  return {
+    browser_fields: fields
+      .map((field) => field.path)
+      .filter((fieldPath) => isBrowserSessionSecurityField(fieldPath))
+      .sort((a, b) => a.localeCompare(b)),
+    browser_provider: provider,
+    browser_persistent_profile: persistentProfile,
+    browser_cookie_storage: cookieStorage,
+    browser_session_storage: sessionStorage,
+    browser_authenticated_session: authenticatedSession,
+    browser_remote_debugging: hasBrowserRemoteDebuggingSignal(fields),
+    browser_untrusted_navigation: hasBrowserUntrustedNavigationSignal(fields),
+    browser_click_or_form_authority: hasBrowserClickOrFormAuthoritySignal(fields),
+    browser_download_upload_enabled: hasBrowserDownloadUploadSignal(fields),
+    browser_network_remote: destinations.remote,
+    browser_broad_origin_access: destinations.broadOrigin,
+    browser_destination_redacted: destinations.destinationCount > 0,
+    browser_destination_count: destinations.destinationCount,
+    browser_destination_kinds: destinations.destinationKinds,
+    browser_path_references_redacted: hasBrowserPathReferenceSignal(fields),
+    browser_sensitive_data: hasBrowserSensitiveDataSignal(fields),
+    browser_pii_data: hasBrowserPiiDataSignal(fields),
+    env_key_names: envKeys,
+    secret_ref_key_names: secretRefKeys
+  };
+}
+
+function inferBrowserProvider(candidates: string[]): string | undefined {
+  const text = candidates.join(" ").toLowerCase();
+  const providers: Array<[string, RegExp]> = [
+    ["playwright", /\bplaywright\b/iu],
+    ["puppeteer", /\bpuppeteer\b/iu],
+    ["browser_use", /\bbrowser[-_\s]?use\b/iu],
+    ["browserbase", /\bbrowserbase\b/iu],
+    ["stagehand", /\bstagehand\b/iu],
+    ["selenium", /\bselenium|webdriver\b/iu]
+  ];
+  return providers.find(([, pattern]) => pattern.test(text))?.[0];
+}
+
+function classifyBrowserDestinations(
+  fields: RuntimeField[]
+): { remote: boolean; broadOrigin: boolean; destinationCount: number; destinationKinds: string[] } {
+  const destinationKinds = new Set<string>();
+  let destinationCount = 0;
+  let broadOrigin = false;
+
+  for (const field of fields) {
+    const text = `${field.path} ${fieldValueText(field)}`;
+    if (/(^|\.)(allowed[_-]?origins?|allowed[_-]?hosts?|domains?|hosts?|urls?|scope|scopes|permissions?)$/iu.test(field.path)) {
+      if (/(^|[\s,])\*(?=[$\s,])|\ball[_\s-]?(origins?|domains?|hosts?|urls?|sites?)\b/iu.test(text)) {
+        broadOrigin = true;
+        destinationKinds.add("wildcard_origin");
+        destinationCount += 1;
+      }
+    }
+    for (const value of browserFieldStringValues(field)) {
+      const destination = parseRemoteBrowserDestination(value);
+      if (destination) {
+        destinationKinds.add(destination.kind);
+        destinationCount += 1;
+      }
+    }
+  }
+
+  return {
+    remote: destinationCount > 0 || broadOrigin,
+    broadOrigin,
+    destinationCount,
+    destinationKinds: [...destinationKinds].sort((a, b) => a.localeCompare(b))
+  };
+}
+
+function parseRemoteBrowserDestination(value: string): { kind: string } | undefined {
+  try {
+    const parsed = new URL(value);
+    if (parsed.protocol !== "http:" && parsed.protocol !== "https:" && parsed.protocol !== "wss:" && parsed.protocol !== "ws:") {
+      return undefined;
+    }
+    if (isLocalHost(parsed.hostname.toLowerCase())) return undefined;
+    return { kind: parsed.protocol === "http:" || parsed.protocol === "ws:" ? "plaintext_browser_endpoint" : "browser_endpoint" };
+  } catch {
+    return undefined;
+  }
+}
+
+function browserFieldStringValues(field: RuntimeField): string[] {
+  if (Array.isArray(field.value)) return field.value.map(String);
+  if (typeof field.value === "string") return [field.value];
+  return [];
+}
+
+function hasBrowserPersistentProfileSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /\b(persistent|persist|user[_-]?data[_-]?dir|profile|profile[_-]?dir|browser[_-]?profile|keep[_-]?session|reuse[_-]?session|storage[_-]?state)\b/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    ) && truthyConfigValue(field.value)
+  );
+}
+
+function hasBrowserCookieStorageSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => /\b(cookie|cookies|cookie[_-]?jar|cookie[_-]?store)\b/iu.test(`${field.path} ${fieldValueText(field)}`));
+}
+
+function hasBrowserSessionStorageSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /\b(storage[_-]?state|session[_-]?storage|local[_-]?storage|auth[_-]?state|authenticated[_-]?state)\b/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    )
+  );
+}
+
+function hasBrowserAuthenticationSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /\b(auth|authenticated|login|session|bearer|cookie|token|credential|password|sso|oauth)\b/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    ) && truthyConfigValue(field.value)
+  );
+}
+
+function hasBrowserRemoteDebuggingSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /(?:^|[_\W])(remote[_-]?debugging|debug[_-]?port|cdp|devtools|browser[_-]?ws|websocket[_-]?endpoint)(?:[_\W]|$)/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    )
+  );
+}
+
+function hasBrowserUntrustedNavigationSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /\b(untrusted|user|customer|client|ticket|support|issue|comment|message|prompt|retrieved|rag|document|browser[_-]?output|web[_-]?page|email|slack)\b/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    )
+  );
+}
+
+function hasBrowserClickOrFormAuthoritySignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /\b(click|submit|fill|type|press|form|approve|confirm|checkout|purchase|post|send|save|update|delete|navigate|goto|visit)\b/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    )
+  );
+}
+
+function hasBrowserDownloadUploadSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => /\b(upload|download|attach|screenshot|file[_-]?chooser|save[_-]?as)\b/iu.test(`${field.path} ${fieldValueText(field)}`));
+}
+
+function hasBrowserPathReferenceSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /\b(user[_-]?data[_-]?dir|profile|profile[_-]?dir|storage[_-]?state|cookie[_-]?jar|cookies?|download[_-]?path|upload[_-]?path|auth[_-]?state|path|file)\b/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    )
+  );
+}
+
+function hasBrowserSensitiveDataSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /\b(customer|client|ticket|support|internal|confidential|private|proprietary|sensitive|account|billing|payment|order|record|case|profile|note)\b/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    )
+  );
+}
+
+function hasBrowserPiiDataSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /(?:^|[_\W])(pii|email|phone|address|ssn|passport|dob|date[_\s-]?of[_\s-]?birth)(?:[_\W]|$)/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    )
+  );
+}
+
+function isBrowserSessionSecurityField(fieldPath: string): boolean {
+  return /provider|browser|playwright|puppeteer|selenium|profile|user[_-]?data|storage|session|cookie|auth|token|credential|password|origin|domain|host|url|debug|cdp|devtools|navigation|action|click|form|submit|upload|download|source|input|data|scope|permission|approval/iu.test(
+    fieldPath
+  );
 }
 
 function classifyAiModelEndpointConfig(value: unknown, filePath: string): AiModelEndpointPosture {

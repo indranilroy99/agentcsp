@@ -50,6 +50,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-008")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-009")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-010")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-011")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-CICD-002")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-AUTOMATION-001")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-AUTOMATION-002")).toBe(true);
@@ -161,6 +162,24 @@ describe("rule engine", () => {
     expect(JSON.stringify(runtimeDatabaseFindings[0])).not.toContain("${SUPPORT_DB_PASSWORD}");
     expect(JSON.stringify(runtimeDatabaseFindings[0])).not.toContain("support-db.example.invalid");
     expect(JSON.stringify(runtimeDatabaseFindings[0])).not.toContain("customer_profiles");
+    const runtimeBrowserSessionFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-RUNTIME-011");
+    expect(runtimeBrowserSessionFindings).toHaveLength(1);
+    expect(runtimeBrowserSessionFindings[0]?.matched_object.path).toBe("browser/session.yaml");
+    expect(runtimeBrowserSessionFindings[0]?.matched_object.metadata).toMatchObject({
+      browser_provider: "playwright",
+      browser_authenticated_session: true,
+      browser_untrusted_navigation: true,
+      browser_click_or_form_authority: true,
+      browser_broad_origin_access: true,
+      browser_path_references_redacted: true
+    });
+    expect(runtimeBrowserSessionFindings[0]?.severity).toBe("critical");
+    expect(runtimeBrowserSessionFindings[0]?.confidence).toBe("very_high");
+    expect(runtimeBrowserSessionFindings[0]?.recommended_control).toBe("require_approval");
+    expect(JSON.stringify(runtimeBrowserSessionFindings[0])).not.toContain("${BROWSER_SESSION_TOKEN}");
+    expect(JSON.stringify(runtimeBrowserSessionFindings[0])).not.toContain(".browser/support-profile");
+    expect(JSON.stringify(runtimeBrowserSessionFindings[0])).not.toContain(".auth/support-browser-state.json");
+    expect(JSON.stringify(runtimeBrowserSessionFindings[0])).not.toContain("support.example.invalid");
     const automationAgentFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-AUTOMATION-002");
     expect(automationAgentFindings).toHaveLength(1);
     expect(automationAgentFindings[0]?.matched_object.path).toBe(".github/workflows/agent-maintenance.yml");

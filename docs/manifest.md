@@ -251,6 +251,36 @@ Network permission scopes are normalized into bounded categories such as `wildca
 
 Secret or environment values are not emitted. Permission allowlists are normalized to canonical tool names, MCP tool references, package script names, and capability classes instead of raw command patterns. AgentCSP records key names, runtime posture, explicit MCP references, and exact package-script references so rules can detect risky authority without exposing credentials or dumping runtime config values.
 
+## Browser Session Posture
+
+Browser, Playwright, Puppeteer, Selenium, and browser-agent session configs are also normalized into `runtime_config` objects when common browser session configuration files are discovered.
+
+Browser session metadata may include:
+
+- `parsed_browser_session_config`
+- `browser_fields`
+- `browser_provider`
+- `browser_persistent_profile`
+- `browser_cookie_storage`
+- `browser_session_storage`
+- `browser_authenticated_session`
+- `browser_remote_debugging`
+- `browser_untrusted_navigation`
+- `browser_click_or_form_authority`
+- `browser_download_upload_enabled`
+- `browser_network_remote`
+- `browser_broad_origin_access`
+- `browser_destination_redacted`
+- `browser_destination_count`
+- `browser_destination_kinds`
+- `browser_path_references_redacted`
+- `browser_sensitive_data`
+- `browser_pii_data`
+- `env_key_names`
+- `secret_ref_key_names`
+
+Raw cookie files, storage-state files, profile paths, origins, browser endpoints, hostnames, and secret placeholders are not emitted. Provider names, broad-origin categories, authenticated-session booleans, untrusted-navigation signals, click/form authority, path-redaction flags, and credential key names let rules detect browser-agent account-action risk without copying browser state into the manifest.
+
 ## Database Connector Posture
 
 Database, SQL, warehouse, and datastore connector configs are also normalized into `runtime_config` objects when common database connector configuration files are discovered.

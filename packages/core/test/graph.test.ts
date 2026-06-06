@@ -146,19 +146,21 @@ describe("static graph", () => {
     expect(ragDataEgressPath?.risk.data_classes).toContain("confidential");
     expect(ragDataEgressPath?.risk.external_reach).toBe(true);
     expect(JSON.stringify(ragDataEgressPath)).not.toContain("latest internal summary");
-    const ragCustomerDataPath = result.manifest.attack_paths.find(
+    const ragBrowserSessionPath = result.manifest.attack_paths.find(
       (attackPath) =>
         attackPath.source.path === "rag/customer-note.md" &&
-        attackPath.target.name === "post_customer_update" &&
-        attackPath.title === "customer-note.md can route customer data to post_customer_update"
+        attackPath.target.name === "session.yaml" &&
+        attackPath.title === "customer-note.md can influence session.yaml: Untrusted context can influence privileged behavior"
     );
-    expect(ragCustomerDataPath).toBeDefined();
-    expect(ragCustomerDataPath?.severity).toBe("critical");
-    expect(ragCustomerDataPath?.confidence).toBe("very_high");
-    expect(ragCustomerDataPath?.reason).toContain("Target capability also matches");
-    expect(ragCustomerDataPath?.reason).toContain("PII-like input");
-    expect(ragCustomerDataPath?.risk.data_classes).toContain("pii");
-    expect(ragCustomerDataPath?.risk.external_reach).toBe(true);
+    expect(ragBrowserSessionPath).toBeDefined();
+    expect(ragBrowserSessionPath?.severity).toBe("critical");
+    expect(ragBrowserSessionPath?.confidence).toBe("very_high");
+    expect(ragBrowserSessionPath?.reason).toContain("tool directive");
+    expect(ragBrowserSessionPath?.risk.data_classes).toContain("pii");
+    expect(ragBrowserSessionPath?.risk.actions).toEqual(["call", "read", "send", "write"]);
+    expect(ragBrowserSessionPath?.risk.external_reach).toBe(true);
+    expect(JSON.stringify(ragBrowserSessionPath)).not.toContain(".auth/support-browser-state.json");
+    expect(JSON.stringify(ragBrowserSessionPath)).not.toContain("support.example.invalid");
   });
 
   it("correlates generated-state replay with privileged capability paths when logs are included", async () => {

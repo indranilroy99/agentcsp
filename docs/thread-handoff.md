@@ -612,6 +612,15 @@ The current iteration adds:
 - rule `AGENTCSP-RUNTIME-010` for credential-backed database connectors that combine write/query authority, untrusted query input, and sensitive data scope
 - static graph regression coverage proving retrievable untrusted context can influence the database authority path while raw retrieval text, hostnames, table names, usernames, and secret placeholders stay redacted
 
+## Browser Session Authority Pass
+
+The current iteration adds:
+
+- first-class redacted metadata for browser-agent session configs, including provider, persistent profile state, cookie/session storage, authenticated-session posture, remote debugging, broad origins, untrusted navigation sources, click/form/upload authority, path redaction, and credential key references
+- vulnerable fixture coverage for a Playwright-style authenticated support browser profile driven by customer/retrieval context across broad origins
+- rule `AGENTCSP-RUNTIME-011` for authenticated browser sessions that combine broad origins, untrusted navigation, click/form authority, and credential exposure
+- static graph regression coverage proving retrievable untrusted context can influence authenticated browser-session authority while raw cookie files, profile paths, origins, endpoints, and secret placeholders stay redacted
+
 ## Initial Build Recommendation
 
 Start with a CLI-first MVP before building the dashboard:

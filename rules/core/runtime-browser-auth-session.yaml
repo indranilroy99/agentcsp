@@ -1,0 +1,41 @@
+id: AGENTCSP-RUNTIME-011
+name: Agent browser session exposes authenticated state to untrusted navigation
+description: A browser-agent configuration reuses authenticated browser state while allowing untrusted context to drive navigation, clicks, form submission, or uploads across broad origins, creating a concrete path from indirect prompt injection to account actions.
+category: browser_session_authority
+severity: critical
+maps_to:
+  owasp:
+    - LLM01:2025 Prompt Injection
+    - LLM02:2025 Sensitive Information Disclosure
+    - LLM06:2025 Excessive Agency
+  mitre_atlas:
+    - AML.T0051 LLM Prompt Injection
+    - AML.T0057 Exfiltration via Cyber Means
+  nist_ai_rmf:
+    - MAP 5.1
+    - MEASURE 2.9
+    - MANAGE 2.4
+match:
+  object_type: runtime_config
+  where:
+    - field: metadata.parsed_browser_session_config
+      op: equals
+      value: true
+    - field: metadata.browser_authenticated_session
+      op: equals
+      value: true
+    - field: metadata.browser_untrusted_navigation
+      op: equals
+      value: true
+    - field: metadata.browser_click_or_form_authority
+      op: equals
+      value: true
+    - field: metadata.browser_broad_origin_access
+      op: equals
+      value: true
+    - field: secret_exposure
+      op: equals
+      value: true
+recommendation:
+  control: require_approval
+  text: Isolate authenticated browser state from untrusted content, replace persistent profiles with task-scoped sessions, restrict origins, and require approval before clicks, form submissions, uploads, or account-changing browser actions.

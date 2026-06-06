@@ -23,6 +23,7 @@ describe("scanner", () => {
 
     expect(envSurface).toBeDefined();
     expect(envSurface?.metadata.env_key_names).toEqual([
+      "BROWSER_SESSION_TOKEN",
       "GITHUB_TOKEN",
       "OPENAI_API_KEY",
       "SLACK_WEBHOOK_URL",
@@ -464,6 +465,50 @@ describe("scanner", () => {
     expect(JSON.stringify(databaseConfig)).not.toContain("support-db.example.invalid");
     expect(JSON.stringify(databaseConfig)).not.toContain("customer_profiles");
     expect(JSON.stringify(databaseConfig)).not.toContain("agent_writer");
+    const browserSessionConfig = surfaces.runtime_config.find((surface) => surface.path === "browser/session.yaml");
+    expect(browserSessionConfig).toBeDefined();
+    expect(browserSessionConfig).toMatchObject({
+      trust_level: "third_party",
+      external_reach: true,
+      secret_exposure: true,
+      side_effect: true,
+      reversible: false,
+      untrusted_to_privileged: true
+    });
+    expect(browserSessionConfig?.metadata).toMatchObject({
+      content_redacted: true,
+      values_collected: false,
+      parsed_browser_session_config: true,
+      browser_provider: "playwright",
+      browser_persistent_profile: true,
+      browser_cookie_storage: true,
+      browser_session_storage: true,
+      browser_authenticated_session: true,
+      browser_remote_debugging: true,
+      browser_untrusted_navigation: true,
+      browser_click_or_form_authority: true,
+      browser_download_upload_enabled: true,
+      browser_network_remote: true,
+      browser_broad_origin_access: true,
+      browser_destination_redacted: true,
+      browser_path_references_redacted: true,
+      browser_sensitive_data: true,
+      browser_pii_data: true
+    });
+    expect(browserSessionConfig?.metadata.browser_destination_kinds).toEqual([
+      "browser_endpoint",
+      "wildcard_origin"
+    ]);
+    expect(browserSessionConfig?.metadata.env_key_names).toEqual(["BROWSER_SESSION_TOKEN"]);
+    expect(browserSessionConfig?.metadata.secret_ref_key_names).toEqual(["BROWSER_SESSION_TOKEN"]);
+    expect(browserSessionConfig?.data_classes).toEqual(["confidential", "credential", "pii"]);
+    expect(browserSessionConfig?.actions).toEqual(["call", "read", "send", "write"]);
+    expect(JSON.stringify(browserSessionConfig)).not.toContain("${BROWSER_SESSION_TOKEN}");
+    expect(JSON.stringify(browserSessionConfig)).not.toContain(".browser/support-profile");
+    expect(JSON.stringify(browserSessionConfig)).not.toContain(".auth/support-browser-state.json");
+    expect(JSON.stringify(browserSessionConfig)).not.toContain(".auth/customer-support-cookies.json");
+    expect(JSON.stringify(browserSessionConfig)).not.toContain("support.example.invalid");
+    expect(JSON.stringify(browserSessionConfig)).not.toContain("browser_customer_email");
     expect(surfaces.ci_cd.length).toBe(1);
     expect(surfaces.ci_cd[0]?.metadata).toMatchObject({
       pull_request_trigger: true,

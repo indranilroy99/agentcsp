@@ -43,6 +43,7 @@ A finding should be considered production-grade when it includes:
 - Claude-style runtime permission allowlists normalized into redacted auto-approved privileged tool signals
 - auto-approved destructive MCP tool refs correlated to credential-backed runtime servers
 - runtime permission allowlists correlated to exact package scripts and release authority
+- browser-session metadata for persistent authenticated state, broad origins, and untrusted click/form authority without emitting cookie files, profile paths, origins, or endpoints
 - database connector metadata for credential-backed read/write/query authority without emitting hosts, connection strings, usernames, or table names
 - AI model endpoint metadata for prompt, tool-output, retrieval, and memory egress without emitting model gateway URLs or model names
 - AI telemetry export metadata for prompt, completion, tool-output, retrieval, and memory capture without emitting trace payloads or endpoints
@@ -95,6 +96,7 @@ Examples:
 - prompt template with user/customer/context variables plus tool or external directives
 - runtime config with unsandboxed execution plus no approval gate
 - runtime config with network access plus secret env keys plus privileged tools
+- authenticated browser session plus broad origins plus untrusted navigation plus click/form/upload authority
 - database connector with credentials plus write/query authority plus sensitive data plus untrusted input
 - AI model endpoint with plaintext transport plus sensitive context plus credential reference
 - AI telemetry remote export plus sensitive agent-context capture plus disabled redaction plus credential reference

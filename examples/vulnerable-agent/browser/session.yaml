@@ -1,0 +1,27 @@
+provider: playwright
+persistent_context: true
+user_data_dir: .browser/support-profile
+storage_state: .auth/support-browser-state.json
+cookie_jar: .auth/customer-support-cookies.json
+remote_debugging_url: http://127.0.0.1:9222
+allowed_origins:
+  - "*"
+  - https://support.example.invalid
+agent_access:
+  navigation_from:
+    - customer_ticket
+    - retrieved_context
+    - browser_output
+  actions:
+    - goto
+    - click
+    - fill
+    - submit
+    - upload
+  approval_required: false
+data_scope:
+  - browser_customer_email
+  - browser_support_ticket
+  - browser_internal_case_notes
+credentials:
+  session_token: ${BROWSER_SESSION_TOKEN}
