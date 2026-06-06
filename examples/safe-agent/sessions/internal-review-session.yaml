@@ -1,0 +1,34 @@
+enabled: true
+provider: local-review
+session_name: internal-readonly-review
+access:
+  public_link: false
+  anonymous_viewers: false
+  auth_required: true
+  sso_required: true
+  rbac_required: true
+  external_collaborators: []
+  collaborator_allowlist:
+    - security_reviewers
+capabilities:
+  live_control: false
+  inject_messages: false
+  approve_actions: false
+  run_tools: false
+  edit_system_prompt: false
+  resume_session: false
+  replay_tool_outputs: false
+capture:
+  prompts: false
+  completions: false
+  tool_outputs: false
+  browser_context: false
+  retrieval_context: false
+  memory: false
+  transcript: false
+  secrets: false
+redaction:
+  enabled: true
+  pii: true
+  secrets: true
+approval_required: true

@@ -1,0 +1,46 @@
+enabled: true
+provider: shared-copilot
+session_name: customer-support-live-share
+share_url: https://sessions.agentcsp-demo.example.invalid/share/customer-support
+access:
+  public_link: true
+  anonymous_viewers: true
+  auth_required: false
+  sso_required: false
+  collaborator_allowlist: "*"
+  external_collaborators:
+    - external_support_vendor
+capabilities:
+  live_control: true
+  inject_messages: true
+  approve_actions: true
+  run_tools: true
+  edit_system_prompt: true
+  resume_session: true
+  replay_tool_outputs: true
+capture:
+  prompts: true
+  completions: true
+  tool_outputs: true
+  browser_context: true
+  retrieval_context: true
+  memory: true
+  transcript: true
+  secrets: true
+redaction:
+  enabled: false
+  pii: false
+  secrets: false
+approval_required: false
+env:
+  SESSION_SHARE_TOKEN: ${SESSION_SHARE_TOKEN}
+sources:
+  - untrusted_customer_ticket
+  - browser_tool_output
+data_scope:
+  - session_share_customer_email
+  - session_share_account_number
+  - confidential_session_share_notes
+tools:
+  - support_db.update_customer_record
+  - vault_secret_lookup.read_support_token

@@ -1,0 +1,54 @@
+id: AGENTCSP-RUNTIME-053
+name: Public shared agent session exposes live tool control
+description: A live agent session is shared with public, anonymous, or external collaborators while authentication is disabled, collaborators can inject prompts or control tools and approvals, sensitive context is captured without redaction, and privileged actions can proceed without approval.
+category: agent_session_sharing
+severity: critical
+maps_to:
+  owasp:
+    - LLM01:2025 Prompt Injection
+    - LLM02:2025 Sensitive Information Disclosure
+    - LLM05:2025 Improper Output Handling
+    - LLM06:2025 Excessive Agency
+  mitre_atlas:
+    - AML.T0051 LLM Prompt Injection
+    - AML.T0057 Exfiltration via Cyber Means
+  nist_ai_rmf:
+    - MAP 5.1
+    - MEASURE 2.7
+    - MANAGE 2.4
+match:
+  object_type: runtime_config
+  where:
+    - field: metadata.parsed_agent_session_sharing_config
+      op: equals
+      value: true
+    - field: metadata.agent_session_sharing_enabled
+      op: equals
+      value: true
+    - field: metadata.agent_session_sharing_external
+      op: equals
+      value: true
+    - field: metadata.agent_session_sharing_auth_disabled
+      op: equals
+      value: true
+    - field: metadata.agent_session_sharing_live_control_enabled
+      op: equals
+      value: true
+    - field: metadata.agent_session_sharing_tool_control_enabled
+      op: equals
+      value: true
+    - field: metadata.agent_session_sharing_sensitive_context
+      op: equals
+      value: true
+    - field: metadata.agent_session_sharing_redaction_disabled
+      op: equals
+      value: true
+    - field: metadata.agent_session_sharing_approval_required
+      op: equals
+      value: false
+    - field: secret_exposure
+      op: equals
+      value: true
+recommendation:
+  control: deny
+  text: Deny public or external live-session sharing until collaborator identity is authenticated, sessions are read-only by default, prompt/tool/approval control is separated from viewing, sensitive context is redacted, and privileged actions require independent approval.

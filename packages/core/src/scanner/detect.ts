@@ -179,6 +179,11 @@ export async function detectSurfaces(files: WalkedFile[]): Promise<DetectedSurfa
       continue;
     }
 
+    if (isAgentSessionSharingConfigPath(file.relativePath, basename)) {
+      detectAgentSessionSharingConfig(file, text, surfaces);
+      continue;
+    }
+
     if (isAgentApprovalGateConfigPath(file.relativePath, basename)) {
       detectAgentApprovalGateConfig(file, text, surfaces);
       continue;
@@ -2259,6 +2264,93 @@ function detectAgentApprovalGateConfig(file: WalkedFile, text: string | undefine
   });
 }
 
+function detectAgentSessionSharingConfig(file: WalkedFile, text: string | undefined, surfaces: DetectedSurfaces): void {
+  const parsed = parseStructuredConfig(text ?? "", file.relativePath);
+  if (parsed.parseFailed) {
+    addDiagnostic(surfaces, file, {
+      parser: parsed.parser ?? "structured_config",
+      code: "AGENT_SESSION_SHARING_CONFIG_PARSE_FAILED",
+      reason: "Agent session-sharing configuration could not be parsed. Raw content was redacted."
+    });
+  }
+
+  const posture = classifyAgentSessionSharingConfig(parsed.value, file.relativePath);
+  const actions = new Set<ActionType>(["read"]);
+  if (posture.agent_session_sharing_live_control_enabled || posture.agent_session_sharing_tool_control_enabled) {
+    actions.add("call");
+  }
+  if (posture.agent_session_sharing_tool_write_authority) actions.add("write");
+  if (posture.agent_session_sharing_tool_execution_authority) actions.add("execute");
+  if (posture.agent_session_sharing_external || posture.agent_session_sharing_prompt_injection_enabled) {
+    actions.add("send");
+    actions.add("publish");
+  }
+  if (posture.agent_session_sharing_approval_control_enabled) actions.add("approve");
+  if (posture.agent_session_sharing_transcript_capture || posture.agent_session_sharing_resume_replay_enabled) {
+    actions.add("remember");
+  }
+
+  const dataClasses = new Set<SurfaceObject["data_classes"][number]>(["unknown"]);
+  if (
+    posture.agent_session_sharing_secret_capture ||
+    posture.env_key_names.some(isCredentialLikeKeyName) ||
+    posture.secret_ref_key_names.length > 0
+  ) {
+    dataClasses.add("credential");
+  }
+  if (posture.agent_session_sharing_sensitive_context || posture.agent_session_sharing_untrusted_input) {
+    dataClasses.add("confidential");
+  }
+  if (posture.agent_session_sharing_pii_context) dataClasses.add("pii");
+  if (dataClasses.size > 1) dataClasses.delete("unknown");
+
+  const secretExposure =
+    posture.agent_session_sharing_secret_capture ||
+    posture.env_key_names.some(isCredentialLikeKeyName) ||
+    posture.secret_ref_key_names.length > 0;
+  const sideEffect =
+    posture.agent_session_sharing_live_control_enabled ||
+    posture.agent_session_sharing_tool_control_enabled ||
+    posture.agent_session_sharing_approval_control_enabled ||
+    posture.agent_session_sharing_prompt_injection_enabled ||
+    posture.agent_session_sharing_resume_replay_enabled;
+
+  const object = createSurfaceObject({
+    type: "runtime_config",
+    name: path.basename(file.relativePath),
+    path: file.relativePath,
+    trust_level: inferTrustLevel(file.relativePath),
+    data_classes: uniqueDataClasses([...dataClasses] as SurfaceObject["data_classes"]),
+    actions: uniqueActions([...actions]),
+    side_effect: sideEffect,
+    reversible: !posture.agent_session_sharing_tool_write_authority && !posture.agent_session_sharing_approval_control_enabled,
+    external_reach: posture.agent_session_sharing_external || posture.agent_session_sharing_public_access,
+    secret_exposure: secretExposure,
+    reason: "Agent session-sharing configuration discovered as live collaboration and control posture.",
+    metadata: {
+      content_redacted: true,
+      values_collected: false,
+      parsed_agent_session_sharing_config: Boolean(parsed.value) && !parsed.parseFailed,
+      parse_error: parsed.parseFailed,
+      ...posture
+    }
+  });
+  surfaces.runtime_config.push({
+    ...object,
+    untrusted_to_privileged:
+      (posture.agent_session_sharing_untrusted_input &&
+        (posture.agent_session_sharing_public_access ||
+          posture.agent_session_sharing_anonymous_access ||
+          posture.agent_session_sharing_external_collaborators) &&
+        posture.agent_session_sharing_live_control_enabled &&
+        (posture.agent_session_sharing_tool_control_enabled ||
+          posture.agent_session_sharing_approval_control_enabled ||
+          posture.agent_session_sharing_prompt_injection_enabled) &&
+        !posture.agent_session_sharing_approval_required) ||
+      isUntrustedToPrivileged(object)
+  });
+}
+
 function detectAgentAuthorizationBrokerConfig(file: WalkedFile, text: string | undefined, surfaces: DetectedSurfaces): void {
   const parsed = parseStructuredConfig(text ?? "", file.relativePath);
   if (parsed.parseFailed) {
@@ -3688,6 +3780,27 @@ function isAgentApprovalGateConfigPath(relativePath: string, basename: string): 
   return approvalName || (approvalDirectory && configName);
 }
 
+function isAgentSessionSharingConfigPath(relativePath: string, basename: string): boolean {
+  const normalized = relativePath.replaceAll("\\", "/").toLowerCase();
+  const lowerBase = basename.toLowerCase();
+  if (!/\.(json|ya?ml|toml)$/iu.test(lowerBase)) return false;
+  if (normalized.startsWith(".github/workflows/")) return false;
+  if (normalized.startsWith("rules/")) return false;
+  const segments = normalized.split("/").slice(0, -1);
+  const sharingDirectory = segments.some((segment) =>
+    /^(sessions?|session-sharing|session_sharing|shared-sessions?|shared_sessions?|collaboration|collaborations|collaborators?|live-share|live_share|handoffs?|agent-handoffs?|agent_handoffs?|co-browse|co_browse)$/iu.test(
+      segment
+    )
+  );
+  const sharingName = /(?:session[-_]?share|share[-_]?session|shared[-_]?session|live[-_]?share|co[-_]?browse|collab|collaboration|collaborator|copilot[-_]?session|shared[-_]?copilot|session[-_]?handoff|agent[-_]?handoff)/iu.test(
+    lowerBase
+  );
+  const configName = /(?:config|settings|policy|session|share|sharing|collab|collaborat|handoff|copilot|live|review)/iu.test(
+    lowerBase
+  );
+  return sharingName || (sharingDirectory && configName);
+}
+
 function isAgentAuthorizationBrokerConfigPath(relativePath: string, basename: string): boolean {
   const normalized = relativePath.replaceAll("\\", "/").toLowerCase();
   const lowerBase = basename.toLowerCase();
@@ -4606,6 +4719,39 @@ interface AgentApprovalGatePosture {
   agent_approval_secret_access: boolean;
   agent_approval_sensitive_data: boolean;
   agent_approval_pii_data: boolean;
+  env_key_names: string[];
+  secret_ref_key_names: string[];
+}
+
+interface AgentSessionSharingPosture {
+  agent_session_sharing_fields: string[];
+  agent_session_sharing_enabled: boolean;
+  agent_session_sharing_external: boolean;
+  agent_session_sharing_public_access: boolean;
+  agent_session_sharing_anonymous_access: boolean;
+  agent_session_sharing_auth_disabled: boolean;
+  agent_session_sharing_destination_redacted: boolean;
+  agent_session_sharing_destination_count: number;
+  agent_session_sharing_destination_kinds: string[];
+  agent_session_sharing_collaborator_count: number;
+  agent_session_sharing_external_collaborators: boolean;
+  agent_session_sharing_broad_collaborator_scope: boolean;
+  agent_session_sharing_control_categories: string[];
+  agent_session_sharing_live_control_enabled: boolean;
+  agent_session_sharing_prompt_injection_enabled: boolean;
+  agent_session_sharing_tool_control_enabled: boolean;
+  agent_session_sharing_tool_write_authority: boolean;
+  agent_session_sharing_tool_execution_authority: boolean;
+  agent_session_sharing_approval_control_enabled: boolean;
+  agent_session_sharing_resume_replay_enabled: boolean;
+  agent_session_sharing_capture_categories: string[];
+  agent_session_sharing_transcript_capture: boolean;
+  agent_session_sharing_sensitive_context: boolean;
+  agent_session_sharing_pii_context: boolean;
+  agent_session_sharing_secret_capture: boolean;
+  agent_session_sharing_redaction_disabled: boolean;
+  agent_session_sharing_untrusted_input: boolean;
+  agent_session_sharing_approval_required: boolean;
   env_key_names: string[];
   secret_ref_key_names: string[];
 }
@@ -9235,6 +9381,435 @@ function hasAgentApprovalPiiDataSignal(fields: RuntimeField[]): boolean {
 
 function isAgentApprovalGateSecurityField(fieldPath: string): boolean {
   return /approval|approve|review|reviewer|human|hitl|gate|decision|channel|chatops|slack|teams|email|webhook|signature|identity|approver|allowlist|sso|rbac|replay|nonce|timestamp|prompt|summary|justification|reason|model|llm|judge|classifier|score|default|fallback|timeout|execute|run|action|tool|mcp|browser|shell|database|db|secret|token|credential|auth|env|source|input|customer|ticket|retrieved|browser|memory|external|write|delete|pii|sensitive/iu.test(
+    fieldPath
+  );
+}
+
+function classifyAgentSessionSharingConfig(value: unknown, filePath: string): AgentSessionSharingPosture {
+  const fields = flattenRuntimeFields(value);
+  const stringValues = collectFieldStringValues(fields);
+  const destination = classifyAgentSessionSharingDestination(fields, filePath);
+  const controlCategories = collectAgentSessionSharingControlCategories(fields);
+  const captureCategories = collectAgentSessionSharingCaptureCategories(fields);
+  const collaboratorCount = countAgentSessionSharingCollaborators(fields);
+  const envKeys = uniqueStrings([
+    ...collectEnvKeyNamesFromConfig(value).filter(isLikelyEnvKeyName),
+    ...extractEnvironmentReferenceKeys(stringValues)
+  ]);
+  const secretRefKeys = extractSecretReferenceKeys(stringValues);
+  const publicAccess = hasAgentSessionSharingPublicAccessSignal(fields);
+  const anonymousAccess = hasAgentSessionSharingAnonymousAccessSignal(fields);
+  const authDisabled = hasAgentSessionSharingAuthDisabledSignal(fields);
+  const externalCollaborators = collaboratorCount > 0 || hasAgentSessionSharingExternalCollaboratorSignal(fields);
+  const broadCollaboratorScope = hasAgentSessionSharingBroadCollaboratorScopeSignal(fields);
+  const liveControl = controlCategories.includes("live_control") || hasAgentSessionSharingLiveControlSignal(fields);
+  const toolControl = controlCategories.some((category) =>
+    [
+      "browser_action",
+      "database_write",
+      "external_response",
+      "repo_or_filesystem_write",
+      "secret_manager_access",
+      "shell_execution",
+      "tool_call"
+    ].includes(category)
+  );
+  const approvalControl = controlCategories.includes("approval_control");
+  const promptInjection = controlCategories.includes("prompt_injection") || hasAgentSessionSharingPromptInjectionSignal(fields);
+  const resumeReplay = controlCategories.includes("resume_replay") || hasAgentSessionSharingResumeReplaySignal(fields);
+  const secretCapture =
+    captureCategories.includes("secret_context") ||
+    controlCategories.includes("secret_manager_access") ||
+    envKeys.some(isCredentialLikeKeyName) ||
+    secretRefKeys.length > 0 ||
+    hasAgentSessionSharingSecretCaptureSignal(fields);
+  const sensitiveContext =
+    captureCategories.some((category) =>
+      ["browser_context", "memory_context", "retrieval_context", "secret_context", "tool_output", "transcript"].includes(category)
+    ) ||
+    hasAgentSessionSharingSensitiveContextSignal(fields) ||
+    secretCapture;
+  const piiContext = hasAgentSessionSharingPiiContextSignal(fields);
+  const external =
+    publicAccess ||
+    anonymousAccess ||
+    externalCollaborators ||
+    destination.destinationKinds.some((kind) =>
+      ["chatops_channel", "email_invite", "external_share_link", "public_share_link", "third_party_collaborator", "webhook_callback"].includes(kind)
+    ) ||
+    hasAgentSessionSharingExternalAccessSignal(fields);
+  const enabled = hasAgentSessionSharingEnabledSignal(fields, {
+    publicAccess,
+    anonymousAccess,
+    external,
+    liveControl,
+    toolControl,
+    promptInjection,
+    resumeReplay
+  });
+
+  return {
+    agent_session_sharing_fields: fields
+      .map((field) => field.path)
+      .filter((fieldPath) => isAgentSessionSharingSecurityField(fieldPath))
+      .sort((a, b) => a.localeCompare(b)),
+    agent_session_sharing_enabled: enabled,
+    agent_session_sharing_external: external,
+    agent_session_sharing_public_access: publicAccess,
+    agent_session_sharing_anonymous_access: anonymousAccess,
+    agent_session_sharing_auth_disabled: authDisabled,
+    agent_session_sharing_destination_redacted: destination.destinationCount > 0,
+    agent_session_sharing_destination_count: destination.destinationCount,
+    agent_session_sharing_destination_kinds: destination.destinationKinds,
+    agent_session_sharing_collaborator_count: collaboratorCount,
+    agent_session_sharing_external_collaborators: externalCollaborators,
+    agent_session_sharing_broad_collaborator_scope: broadCollaboratorScope,
+    agent_session_sharing_control_categories: controlCategories,
+    agent_session_sharing_live_control_enabled: liveControl,
+    agent_session_sharing_prompt_injection_enabled: promptInjection,
+    agent_session_sharing_tool_control_enabled: toolControl,
+    agent_session_sharing_tool_write_authority: controlCategories.some((category) =>
+      ["database_write", "external_response", "repo_or_filesystem_write"].includes(category)
+    ),
+    agent_session_sharing_tool_execution_authority: controlCategories.includes("shell_execution"),
+    agent_session_sharing_approval_control_enabled: approvalControl,
+    agent_session_sharing_resume_replay_enabled: resumeReplay,
+    agent_session_sharing_capture_categories: captureCategories,
+    agent_session_sharing_transcript_capture: captureCategories.includes("transcript"),
+    agent_session_sharing_sensitive_context: sensitiveContext,
+    agent_session_sharing_pii_context: piiContext,
+    agent_session_sharing_secret_capture: secretCapture,
+    agent_session_sharing_redaction_disabled: hasAgentSessionSharingRedactionDisabledSignal(fields),
+    agent_session_sharing_untrusted_input: hasAgentSessionSharingUntrustedInputSignal(fields),
+    agent_session_sharing_approval_required: hasAgentSessionSharingApprovalRequiredSignal(fields),
+    env_key_names: envKeys,
+    secret_ref_key_names: secretRefKeys
+  };
+}
+
+function classifyAgentSessionSharingDestination(
+  fields: RuntimeField[],
+  filePath: string
+): { destinationCount: number; destinationKinds: string[] } {
+  const destinationPaths = new Set<string>();
+  const destinationKinds = new Set<string>();
+  if (/(^|\/)(sessions?|session-sharing|session_sharing|live-share|live_share|collaboration|handoffs?)(\/|$)/iu.test(filePath)) {
+    destinationKinds.add("session_config");
+  }
+  for (const field of fields) {
+    const text = `${field.path} ${fieldValueText(field)}`.toLowerCase();
+    if (
+      /(?:^|\.)(share_url|session_url|invite_url|live_url|collaboration_url|handoff_url|webhook|callback|endpoint|url)(?:\.|$)/iu.test(
+        field.path
+      )
+    ) {
+      destinationPaths.add(field.path);
+      if (typeof field.value === "string" && parseRemoteHttpUrl(field.value)) {
+        destinationKinds.add("external_share_link");
+      } else {
+        destinationKinds.add("share_link");
+      }
+    }
+    if (/(?:^|\.)(public_link|public_share|share_public|anonymous_link)(?:\.|$)/iu.test(field.path) && truthyConfigValue(field.value)) {
+      destinationPaths.add(field.path);
+      destinationKinds.add("public_share_link");
+    }
+    if (/(?:^|\.)(external_collaborators?|guests?|guest_users?|partners?|vendors?)(?:\.|$)/iu.test(field.path) && truthyConfigValue(field.value)) {
+      destinationPaths.add(field.path);
+      destinationKinds.add("third_party_collaborator");
+    }
+    if (/(?:^|[_\W])(slack|teams|discord|chatops|chat[_\s-]?ops|shared[_\s-]?channel)(?:[_\W]|$)/iu.test(text)) {
+      destinationKinds.add("chatops_channel");
+    }
+    if (
+      /(?:^|\.)(invite|invites?|email|mail|channel|delivery|notification)(?:\.|$)/iu.test(field.path) &&
+      /(?:^|[_\W])(email|mail|invite)(?:[_\W]|$)/iu.test(text)
+    ) {
+      destinationKinds.add("email_invite");
+    }
+    if (
+      /(?:^|\.)(webhook|callback|endpoint|url|channel|delivery)(?:\.|$)/iu.test(field.path) &&
+      /(?:^|[_\W])(webhook|callback)(?:[_\W]|$)/iu.test(text)
+    ) {
+      destinationKinds.add("webhook_callback");
+    }
+  }
+  return {
+    destinationCount: destinationPaths.size,
+    destinationKinds: [...destinationKinds].sort((a, b) => a.localeCompare(b))
+  };
+}
+
+function collectAgentSessionSharingControlCategories(fields: RuntimeField[]): string[] {
+  const categories = new Set<string>();
+  for (const field of fields) {
+    const text = `${field.path} ${fieldValueText(field)}`.toLowerCase();
+    const authorityField =
+      /(?:^|\.)(capabilities|controls?|permissions?|tools?|actions?|authority|allowed_tools|tool_authority|functions?|mcp|operators?)(?:\.|$)/iu.test(
+        field.path
+      ) ||
+      /(?:^|[_\W])(run|call|invoke|control|approve|inject|edit|resume|replay|handoff|take[_\s-]?over)(?:[_\W]|$)/iu.test(
+        field.path
+      );
+    if (/(?:^|[_\W])(live[_\s-]?control|remote[_\s-]?control|co[_\s-]?pilot|co[_\s-]?browse|take[_\s-]?over|operator[_\s-]?control)(?:[_\W]|$)/iu.test(text) && truthyConfigValue(field.value)) {
+      categories.add("live_control");
+    }
+    if (/(?:^|[_\W])(inject[_\s-]?messages?|send[_\s-]?messages?|prompt[_\s-]?inject|edit[_\s-]?prompt|edit[_\s-]?system[_\s-]?prompt|system[_\s-]?prompt)(?:[_\W]|$)/iu.test(text) && truthyConfigValue(field.value)) {
+      categories.add("prompt_injection");
+    }
+    if (/(?:^|[_\W])(approve[_\s-]?actions?|approval[_\s-]?control|can[_\s-]?approve|approve[_\s-]?tool|approve[_\s-]?run)(?:[_\W]|$)/iu.test(text) && truthyConfigValue(field.value)) {
+      categories.add("approval_control");
+    }
+    if (/(?:^|[_\W])(resume[_\s-]?session|replay|replay[_\s-]?tool|handoff|continue[_\s-]?session|restore[_\s-]?session)(?:[_\W]|$)/iu.test(text) && truthyConfigValue(field.value)) {
+      categories.add("resume_replay");
+    }
+    if (/(?:^|[_\W])(run[_\s-]?tools?|tool[_\s-]?control|call[_\s-]?tools?|invoke[_\s-]?tools?|mcp|function[_\s-]?call)(?:[_\W]|$)/iu.test(text) && truthyConfigValue(field.value)) {
+      categories.add("tool_call");
+    }
+    if (authorityField && /(?:^|[_\W])(shell|bash|command|exec|terminal|python|node|subprocess|script)(?:[_\W]|$)/iu.test(text)) {
+      categories.add("shell_execution");
+    }
+    if (authorityField && /(?:^|[_\W])(database|db|sql|query|support[_\s-]?db|warehouse|update[_\s-]?customer[_\s-]?record)(?:[_\W]|$)/iu.test(text)) {
+      categories.add("database_write");
+    }
+    if (authorityField && /(?:^|[_\W])(slack|email|webhook|message|ticket|issue|comment|reply|respond|send|post|publish)(?:[_\W]|$)/iu.test(text)) {
+      categories.add("external_response");
+    }
+    if (authorityField && /(?:^|[_\W])(browser|playwright|puppeteer|selenium|click|form|upload|download|navigate)(?:[_\W]|$)/iu.test(text)) {
+      categories.add("browser_action");
+    }
+    if (authorityField && /(?:^|[_\W])(vault|secret|secrets|secret[_\s-]?manager|key[_\s-]?vault|credential|token)(?:[_\W]|$)/iu.test(text)) {
+      categories.add("secret_manager_access");
+    }
+    if (authorityField && /(?:^|[_\W])(filesystem|file[_\s-]?write|workspace|repo|repository|git|commit|push|pull[_\s-]?request|merge)(?:[_\W]|$)/iu.test(text)) {
+      categories.add("repo_or_filesystem_write");
+    }
+    if (authorityField && /(?:^|[_\W])(memory|remember|store|persist|session[_\s-]?state|long[_\s-]?term)(?:[_\W]|$)/iu.test(text)) {
+      categories.add("memory_write");
+    }
+  }
+  return [...categories].sort((a, b) => a.localeCompare(b));
+}
+
+function collectAgentSessionSharingCaptureCategories(fields: RuntimeField[]): string[] {
+  const categories = new Set<string>();
+  for (const field of fields) {
+    const text = `${field.path} ${fieldValueText(field)}`.toLowerCase();
+    if (!truthyConfigValue(field.value)) continue;
+    if (/(?:^|\.)(redaction|redact|mask|pii_redaction|secret_redaction|secrets_redaction)(?:\.|$)/iu.test(field.path)) {
+      continue;
+    }
+    if (/(?:^|[_\W])(prompt|prompts|instructions?|system[_\s-]?prompt|developer[_\s-]?prompt)(?:[_\W]|$)/iu.test(text)) {
+      categories.add("prompt_context");
+    }
+    if (/(?:^|[_\W])(completion|completions|response|responses|assistant[_\s-]?message|model[_\s-]?output)(?:[_\W]|$)/iu.test(text)) {
+      categories.add("completion_context");
+    }
+    if (/(?:^|[_\W])(transcript|conversation|chat[_\s-]?history|session[_\s-]?history)(?:[_\W]|$)/iu.test(text)) {
+      categories.add("transcript");
+    }
+    if (/(?:^|[_\W])(tool[_\s-]?outputs?|tool[_\s-]?results?|function[_\s-]?outputs?|mcp[_\s-]?results?|command[_\s-]?outputs?)(?:[_\W]|$)/iu.test(text)) {
+      categories.add("tool_output");
+    }
+    if (/(?:^|[_\W])(browser[_\s-]?context|browser[_\s-]?state|cookies?|storage[_\s-]?state|page[_\s-]?context)(?:[_\W]|$)/iu.test(text)) {
+      categories.add("browser_context");
+    }
+    if (/(?:^|[_\W])(retrieval|retrieved|rag|documents?|vector|embedding|knowledge[_\s-]?base)(?:[_\W]|$)/iu.test(text)) {
+      categories.add("retrieval_context");
+    }
+    if (/(?:^|[_\W])(memory|memories|session[_\s-]?state|long[_\s-]?term)(?:[_\W]|$)/iu.test(text)) {
+      categories.add("memory_context");
+    }
+    if (/(?:^|[_\W])(secret|secrets|token|credential|api[_-]?key|password|authorization|oauth)(?:[_\W]|$)/iu.test(text)) {
+      categories.add("secret_context");
+    }
+  }
+  return [...categories].sort((a, b) => a.localeCompare(b));
+}
+
+function countAgentSessionSharingCollaborators(fields: RuntimeField[]): number {
+  let count = 0;
+  for (const field of fields) {
+    if (!/(^|\.)(external_collaborators?|collaborators?|guest_users?|guests?|partners?|vendors?)(\.|$)/iu.test(field.path)) {
+      continue;
+    }
+    if (Array.isArray(field.value)) {
+      count += field.value.length;
+      continue;
+    }
+    if (truthyConfigValue(field.value)) count += 1;
+  }
+  return count;
+}
+
+function hasAgentSessionSharingEnabledSignal(
+  fields: RuntimeField[],
+  inferred: {
+    publicAccess: boolean;
+    anonymousAccess: boolean;
+    external: boolean;
+    liveControl: boolean;
+    toolControl: boolean;
+    promptInjection: boolean;
+    resumeReplay: boolean;
+  }
+): boolean {
+  const enabledField = fields.find((field) =>
+    /(?:^|\.)(enabled|session_sharing_enabled|sharing_enabled|live_share_enabled|collaboration_enabled)(?:\.|$)/iu.test(field.path)
+  );
+  if (enabledField) return truthyConfigValue(enabledField.value);
+  return (
+    inferred.publicAccess ||
+    inferred.anonymousAccess ||
+    inferred.external ||
+    inferred.liveControl ||
+    inferred.toolControl ||
+    inferred.promptInjection ||
+    inferred.resumeReplay
+  );
+}
+
+function hasAgentSessionSharingPublicAccessSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /(?:^|[_\W])(public[_\s-]?link|public[_\s-]?share|share[_\s-]?public|internet[_\s-]?facing|anyone[_\s-]?with[_\s-]?link|open[_\s-]?session)(?:[_\W]|$)/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    ) && truthyConfigValue(field.value)
+  );
+}
+
+function hasAgentSessionSharingAnonymousAccessSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /(?:^|[_\W])(anonymous|unauthenticated|guest[_\s-]?access|allow[_\s-]?anonymous|no[_\s-]?login)(?:[_\W]|$)/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    ) && truthyConfigValue(field.value)
+  );
+}
+
+function hasAgentSessionSharingAuthDisabledSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => {
+    const text = `${field.path} ${fieldValueText(field)}`;
+    if (
+      /(?:^|\.)(auth_required|authentication_required|authorization_required|login_required|sso_required|rbac_required|identity_verification_required|allowlist_required)(?:\.|$)/iu.test(
+        field.path
+      )
+    ) {
+      return disabledConfigValue(field.value);
+    }
+    return /(?:^|[_\W])(no[_\s-]?auth|auth[_\s-]?disabled|unauthenticated|anonymous[_\s-]?allowed|allow[_\s-]?anonymous|public[_\s-]?session)(?:[_\W]|$)/iu.test(
+      text
+    ) && truthyConfigValue(field.value);
+  });
+}
+
+function hasAgentSessionSharingExternalCollaboratorSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /(?:^|[_\W])(external[_\s-]?collaborators?|external[_\s-]?viewers?|partners?|vendors?|guest[_\s-]?users?|contractors?|support[_\s-]?vendor|third[_\s-]?party)(?:[_\W]|$)/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    ) && truthyConfigValue(field.value)
+  );
+}
+
+function hasAgentSessionSharingBroadCollaboratorScopeSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /(?:^|[_\W])(allow[_\s-]?any|anyone|any[_\s-]?user|all[_\s-]?users|all[_\s-]?members|workspace[_\s-]?members|public|anonymous|\*)(?:[_\W]|$)/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    ) && truthyConfigValue(field.value)
+  );
+}
+
+function hasAgentSessionSharingLiveControlSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /(?:^|[_\W])(live[_\s-]?control|remote[_\s-]?control|collaborative[_\s-]?control|take[_\s-]?over|co[_\s-]?pilot|co[_\s-]?browse)(?:[_\W]|$)/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    ) && truthyConfigValue(field.value)
+  );
+}
+
+function hasAgentSessionSharingPromptInjectionSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /(?:^|[_\W])(inject[_\s-]?messages?|prompt[_\s-]?inject|edit[_\s-]?prompt|edit[_\s-]?system[_\s-]?prompt|message[_\s-]?injection|send[_\s-]?prompt)(?:[_\W]|$)/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    ) && truthyConfigValue(field.value)
+  );
+}
+
+function hasAgentSessionSharingResumeReplaySignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /(?:^|[_\W])(resume[_\s-]?session|replay[_\s-]?session|replay[_\s-]?tool|session[_\s-]?handoff|restore[_\s-]?session|continue[_\s-]?session)(?:[_\W]|$)/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    ) && truthyConfigValue(field.value)
+  );
+}
+
+function hasAgentSessionSharingSecretCaptureSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => {
+    const text = `${field.path} ${fieldValueText(field)}`;
+    if (/(?:^|\.)(capture|record|include|store|save|retain)(?:\.|$)/iu.test(field.path)) {
+      return /(?:^|[_\W])(secret|secrets|token|credential|api[_-]?key|password|authorization|oauth)(?:[_\W]|$)/iu.test(text) &&
+        truthyConfigValue(field.value);
+    }
+    return /(?:^|[_\W])(secret[_\s-]?capture|capture[_\s-]?secrets|record[_\s-]?tokens|include[_\s-]?credentials)(?:[_\W]|$)/iu.test(
+      text
+    ) && truthyConfigValue(field.value);
+  });
+}
+
+function hasAgentSessionSharingSensitiveContextSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    !/(?:^|\.)(redaction|redact|mask|pii_redaction|secret_redaction|secrets_redaction)(?:\.|$)/iu.test(field.path) &&
+    /(?:^|[_\W])(customer|client|ticket|support|internal|confidential|private|proprietary|sensitive|account|billing|payment|prod|production|admin|credential|token|api[_-]?key|secret)(?:[_\W]|$)/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    )
+  );
+}
+
+function hasAgentSessionSharingPiiContextSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    !/(?:^|\.)(redaction|redact|mask|pii_redaction|secret_redaction|secrets_redaction)(?:\.|$)/iu.test(field.path) &&
+    /(?:^|[_\W])(pii|email|phone|address|ssn|passport|dob|date[_\s-]?of[_\s-]?birth|customer[_-]?id|user[_-]?id|account[_-]?id)(?:[_\W]|$)/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    )
+  );
+}
+
+function hasAgentSessionSharingRedactionDisabledSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => {
+    const text = `${field.path} ${fieldValueText(field)}`;
+    if (/(?:^|\.)(redaction|redact|mask|pii_redaction|secret_redaction|secrets_redaction|data_redaction)(?:\.|$)/iu.test(field.path)) {
+      return disabledConfigValue(field.value);
+    }
+    return /(?:^|[_\W])(redaction[_\s-]?disabled|no[_\s-]?redaction|raw[_\s-]?capture|do[_\s-]?not[_\s-]?redact|unmasked)(?:[_\W]|$)/iu.test(
+      text
+    ) && truthyConfigValue(field.value);
+  });
+}
+
+function hasAgentSessionSharingUntrustedInputSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => {
+    if (!truthyConfigValue(field.value)) return false;
+    return /(?:^|[_\W])(untrusted|user|customer|client|ticket|support|issue|comment|message|prompt|retrieved|rag|document|email|slack|browser|web[_-]?page|chat|inbound|external|tool[_\s-]?output|anonymous|guest)(?:[_\W]|$)/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    );
+  });
+}
+
+function hasAgentSessionSharingExternalAccessSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /(?:^|[_\W])(external[_\s-]?session|external[_\s-]?viewer|external[_\s-]?collaborator|shared[_\s-]?outside|third[_\s-]?party|public[_\s-]?share|internet[_\s-]?facing)(?:[_\W]|$)/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    ) && truthyConfigValue(field.value)
+  );
+}
+
+function hasAgentSessionSharingApprovalRequiredSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /approval|required[_-]?approval|human[_-]?approval|confirm|confirmation|review|human[_-]?in[_-]?the[_-]?loop/iu.test(field.path) &&
+    truthyConfigValue(field.value)
+  );
+}
+
+function isAgentSessionSharingSecurityField(fieldPath: string): boolean {
+  return /session|share|sharing|collab|collaborator|guest|public|anonymous|external|auth|sso|rbac|allowlist|identity|live|control|copilot|browse|prompt|message|inject|tool|mcp|function|approval|approve|resume|replay|handoff|capture|record|transcript|completion|browser|retrieval|rag|memory|secret|token|credential|redaction|redact|source|input|customer|ticket|email|pii|sensitive|env|webhook|callback|endpoint|url/iu.test(
     fieldPath
   );
 }

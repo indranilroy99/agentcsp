@@ -756,6 +756,46 @@ Agent approval-gate metadata may include:
 
 Raw approval prompts, model names, approval summaries, approval channel URLs, channel names, action names, reviewer labels, approver allowlists, source labels, data-field labels, and secret placeholders are not emitted. Prompt-source categories, approval-channel categories, channel authentication posture, approver identity posture, replay-protection posture, action-authority categories, model-driven decision posture, default-allow posture, human-review posture, auto-execution posture, data-class booleans, and credential key names let rules detect approval gates where untrusted context or spoofable approval channels can influence privileged execution.
 
+## Agent Session-Sharing Posture
+
+Live session-sharing, shared-copilot, collaboration, co-browse, and handoff configs are also normalized into `runtime_config` objects when common session-sharing directories or filenames are discovered.
+
+Agent session-sharing metadata may include:
+
+- `parsed_agent_session_sharing_config`
+- `agent_session_sharing_fields`
+- `agent_session_sharing_enabled`
+- `agent_session_sharing_external`
+- `agent_session_sharing_public_access`
+- `agent_session_sharing_anonymous_access`
+- `agent_session_sharing_auth_disabled`
+- `agent_session_sharing_destination_redacted`
+- `agent_session_sharing_destination_count`
+- `agent_session_sharing_destination_kinds`
+- `agent_session_sharing_collaborator_count`
+- `agent_session_sharing_external_collaborators`
+- `agent_session_sharing_broad_collaborator_scope`
+- `agent_session_sharing_control_categories`
+- `agent_session_sharing_live_control_enabled`
+- `agent_session_sharing_prompt_injection_enabled`
+- `agent_session_sharing_tool_control_enabled`
+- `agent_session_sharing_tool_write_authority`
+- `agent_session_sharing_tool_execution_authority`
+- `agent_session_sharing_approval_control_enabled`
+- `agent_session_sharing_resume_replay_enabled`
+- `agent_session_sharing_capture_categories`
+- `agent_session_sharing_transcript_capture`
+- `agent_session_sharing_sensitive_context`
+- `agent_session_sharing_pii_context`
+- `agent_session_sharing_secret_capture`
+- `agent_session_sharing_redaction_disabled`
+- `agent_session_sharing_untrusted_input`
+- `agent_session_sharing_approval_required`
+- `env_key_names`
+- `secret_ref_key_names`
+
+Raw session URLs, session names, collaborator labels, allowlist entries, tool names, source labels, data-field labels, transcript content, prompt text, and secret placeholders are not emitted. Destination categories, collaborator counts, access-control posture, live-control categories, context-capture categories, redaction posture, approval posture, data-class booleans, and credential key names let rules detect public or external live-session control without copying session content into evidence.
+
 ## Agent Context-Composer Posture
 
 Context-composer, prompt-composer, prompt-assembly, context-router, prompt-router, message-builder, and role-map configs are also normalized into `runtime_config` objects when common context assembly configuration files are discovered.

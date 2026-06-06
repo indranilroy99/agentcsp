@@ -2277,6 +2277,83 @@ describe("scanner", () => {
     expect(JSON.stringify(chatopsApprovalConfig)).not.toContain("#customer-support");
     expect(JSON.stringify(chatopsApprovalConfig)).not.toContain("support_db.update_customer_record");
     expect(JSON.stringify(chatopsApprovalConfig)).not.toContain("chatops_approval_customer_email");
+    const sharedSessionConfig = surfaces.runtime_config.find((surface) => surface.path === "sessions/shared-copilot.yaml");
+    expect(sharedSessionConfig).toBeDefined();
+    expect(sharedSessionConfig).toMatchObject({
+      trust_level: "project",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["approve", "call", "publish", "read", "remember", "send", "write"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false,
+      untrusted_to_privileged: true
+    });
+    expect(sharedSessionConfig?.metadata).toMatchObject({
+      content_redacted: true,
+      values_collected: false,
+      parsed_agent_session_sharing_config: true,
+      agent_session_sharing_enabled: true,
+      agent_session_sharing_external: true,
+      agent_session_sharing_public_access: true,
+      agent_session_sharing_anonymous_access: true,
+      agent_session_sharing_auth_disabled: true,
+      agent_session_sharing_destination_redacted: true,
+      agent_session_sharing_destination_count: 3,
+      agent_session_sharing_collaborator_count: 1,
+      agent_session_sharing_external_collaborators: true,
+      agent_session_sharing_broad_collaborator_scope: true,
+      agent_session_sharing_live_control_enabled: true,
+      agent_session_sharing_prompt_injection_enabled: true,
+      agent_session_sharing_tool_control_enabled: true,
+      agent_session_sharing_tool_write_authority: true,
+      agent_session_sharing_tool_execution_authority: false,
+      agent_session_sharing_approval_control_enabled: true,
+      agent_session_sharing_resume_replay_enabled: true,
+      agent_session_sharing_transcript_capture: true,
+      agent_session_sharing_sensitive_context: true,
+      agent_session_sharing_pii_context: true,
+      agent_session_sharing_secret_capture: true,
+      agent_session_sharing_redaction_disabled: true,
+      agent_session_sharing_untrusted_input: true,
+      agent_session_sharing_approval_required: false
+    });
+    expect(sharedSessionConfig?.metadata.agent_session_sharing_destination_kinds).toEqual([
+      "external_share_link",
+      "public_share_link",
+      "session_config",
+      "third_party_collaborator"
+    ]);
+    expect(sharedSessionConfig?.metadata.agent_session_sharing_control_categories).toEqual([
+      "approval_control",
+      "database_write",
+      "live_control",
+      "prompt_injection",
+      "resume_replay",
+      "secret_manager_access",
+      "tool_call"
+    ]);
+    expect(sharedSessionConfig?.metadata.agent_session_sharing_capture_categories).toEqual([
+      "browser_context",
+      "completion_context",
+      "memory_context",
+      "prompt_context",
+      "retrieval_context",
+      "secret_context",
+      "tool_output",
+      "transcript"
+    ]);
+    expect(sharedSessionConfig?.metadata.env_key_names).toEqual(["SESSION_SHARE_TOKEN"]);
+    expect(sharedSessionConfig?.metadata.secret_ref_key_names).toEqual(["SESSION_SHARE_TOKEN"]);
+    expect(JSON.stringify(sharedSessionConfig)).not.toContain("${SESSION_SHARE_TOKEN}");
+    expect(JSON.stringify(sharedSessionConfig)).not.toContain("sessions.agentcsp-demo.example.invalid");
+    expect(JSON.stringify(sharedSessionConfig)).not.toContain("customer-support-live-share");
+    expect(JSON.stringify(sharedSessionConfig)).not.toContain("external_support_vendor");
+    expect(JSON.stringify(sharedSessionConfig)).not.toContain("support_db.update_customer_record");
+    expect(JSON.stringify(sharedSessionConfig)).not.toContain("vault_secret_lookup.read_support_token");
+    expect(JSON.stringify(sharedSessionConfig)).not.toContain("untrusted_customer_ticket");
+    expect(JSON.stringify(sharedSessionConfig)).not.toContain("browser_tool_output");
+    expect(JSON.stringify(sharedSessionConfig)).not.toContain("session_share_customer_email");
     const contextComposerConfig = surfaces.runtime_config.find((surface) => surface.path === "context/system-context.yaml");
     expect(contextComposerConfig).toBeDefined();
     expect(contextComposerConfig).toMatchObject({
@@ -3730,6 +3807,66 @@ describe("scanner", () => {
     expect(JSON.stringify(approvalChannel)).not.toContain("security_reviewers");
     expect(JSON.stringify(approvalChannel)).not.toContain("approved_internal_summary");
     expect(JSON.stringify(approvalChannel)).not.toContain("readonly_docs.search");
+  });
+
+  it("keeps authenticated read-only shared sessions quiet", async () => {
+    const files = await walkProject({
+      root_path: safeFixtureRoot,
+      output_path: ".agentcsp",
+      formats: ["json", "md"],
+      include_hidden: true,
+      include_logs: false,
+      max_file_size_bytes: 1024 * 1024,
+      max_files: 5000,
+      quiet: true
+    });
+    const surfaces = await detectSurfaces(files);
+    const sharedSession = surfaces.runtime_config.find((surface) => surface.path === "sessions/internal-review-session.yaml");
+
+    expect(sharedSession).toMatchObject({
+      trust_level: "project",
+      data_classes: ["confidential"],
+      actions: ["read"],
+      side_effect: false,
+      external_reach: false,
+      secret_exposure: false,
+      reversible: true,
+      untrusted_to_privileged: false
+    });
+    expect(sharedSession?.metadata).toMatchObject({
+      parsed_agent_session_sharing_config: true,
+      agent_session_sharing_enabled: true,
+      agent_session_sharing_external: false,
+      agent_session_sharing_public_access: false,
+      agent_session_sharing_anonymous_access: false,
+      agent_session_sharing_auth_disabled: false,
+      agent_session_sharing_destination_redacted: false,
+      agent_session_sharing_destination_count: 0,
+      agent_session_sharing_collaborator_count: 0,
+      agent_session_sharing_external_collaborators: false,
+      agent_session_sharing_broad_collaborator_scope: false,
+      agent_session_sharing_live_control_enabled: false,
+      agent_session_sharing_prompt_injection_enabled: false,
+      agent_session_sharing_tool_control_enabled: false,
+      agent_session_sharing_tool_write_authority: false,
+      agent_session_sharing_tool_execution_authority: false,
+      agent_session_sharing_approval_control_enabled: false,
+      agent_session_sharing_resume_replay_enabled: false,
+      agent_session_sharing_transcript_capture: false,
+      agent_session_sharing_sensitive_context: true,
+      agent_session_sharing_pii_context: false,
+      agent_session_sharing_secret_capture: false,
+      agent_session_sharing_redaction_disabled: false,
+      agent_session_sharing_untrusted_input: false,
+      agent_session_sharing_approval_required: true
+    });
+    expect(sharedSession?.metadata.agent_session_sharing_destination_kinds).toEqual(["session_config"]);
+    expect(sharedSession?.metadata.agent_session_sharing_control_categories).toEqual([]);
+    expect(sharedSession?.metadata.agent_session_sharing_capture_categories).toEqual([]);
+    expect(sharedSession?.metadata.env_key_names).toEqual([]);
+    expect(sharedSession?.metadata.secret_ref_key_names).toEqual([]);
+    expect(JSON.stringify(sharedSession)).not.toContain("internal-readonly-review");
+    expect(JSON.stringify(sharedSession)).not.toContain("security_reviewers");
   });
 
   it("keeps local approval-gated session memory scoped", async () => {

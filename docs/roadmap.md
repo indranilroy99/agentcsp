@@ -31,6 +31,7 @@
 - Add OpenAPI and Swagger tool-import posture for authenticated external API writes, user-controlled request schemas, sensitive data categories, and approval boundaries.
 - Add hosted assistant and deployable agent-definition posture for automatic tool choice, parallel privileged tool fanout, hosted code/file/vector/function resources, sensitive context, guardrail posture, and approval boundaries.
 - Add realtime and voice agent session posture for external callers, raw audio and transcript capture, recording redaction, prompt-injection filtering, privileged tool authority, and approval boundaries.
+- Add live session-sharing and collaboration posture for public links, anonymous or external collaborators, prompt/tool/approval control, replay/handoff behavior, sensitive capture, redaction posture, and approval boundaries.
 - Add agent authorization-broker posture for model-selected tool grants, dynamic resource scopes, default-allow/fail-open decisions, audit posture, credential exposure, and approval boundaries.
 - Add runtime posture inventory for sandbox, approval, network, tool authority, disabled safety controls, and fail-open agent safety fallback posture.
 - Add browser extension/profile and file-transfer posture for privileged extensions, password-manager/autofill exposure, upload/download authority, approval gates, and download/upload path redaction.

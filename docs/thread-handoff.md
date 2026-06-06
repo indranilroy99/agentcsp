@@ -1125,6 +1125,16 @@ The current iteration adds:
 - rule `AGENTCSP-RUNTIME-052` for spoofable approval channels that combine external approval ingress, disabled channel authentication, unverified approver identity, disabled replay protection, broad approver scope, privileged action authority, and auto-execution
 - scanner, rule, fixture verifier, and redaction coverage proving raw approval URLs, channel names, approver labels, action names, data-scope labels, and token placeholders stay redacted
 
+## Live Agent Session-Sharing Pass
+
+The current iteration adds:
+
+- first-class redacted metadata for live agent session-sharing and collaboration posture, including public links, anonymous access, external collaborators, disabled authentication, live prompt/tool/approval control, replay and handoff behavior, sensitive capture, redaction posture, and approval boundaries
+- vulnerable fixture coverage for a public shared-copilot session where anonymous external collaborators can inject messages, edit prompt context, approve actions, run tools, resume/replay the session, and capture browser, retrieval, memory, transcript, PII, and secret context without redaction or approval
+- safe fixture coverage for an authenticated internal read-only review session with SSO/RBAC, no external collaborators, no live control, no capture, redaction enabled, and approval required
+- rule `AGENTCSP-RUNTIME-053` for public or external shared live sessions that combine disabled authentication, live control, tool authority, sensitive context, disabled redaction, credential exposure, and missing independent approval
+- scanner, rule, fixture verifier, and redaction coverage proving raw session URLs, session names, collaborator labels, tool names, source labels, data-scope labels, and token placeholders stay redacted
+
 ## Initial Build Recommendation
 
 Start with a CLI-first MVP before building the dashboard:
