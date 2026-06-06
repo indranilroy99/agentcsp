@@ -1,0 +1,58 @@
+id: AGENTCSP-RUNTIME-036
+name: Public agent card exposes privileged tool authority
+description: A public agent discovery or A2A agent-card configuration allows anonymous external agents to invoke privileged tools, memory, or external actions while approval and rate limiting are disabled.
+category: agent_exposure_authority
+severity: critical
+maps_to:
+  owasp:
+    - LLM01:2025 Prompt Injection
+    - LLM02:2025 Sensitive Information Disclosure
+    - LLM05:2025 Supply Chain Vulnerabilities
+    - LLM06:2025 Excessive Agency
+  mitre_atlas:
+    - AML.T0051 LLM Prompt Injection
+    - AML.T0057 Exfiltration via Cyber Means
+  nist_ai_rmf:
+    - MAP 5.1
+    - MEASURE 2.9
+    - MANAGE 2.4
+match:
+  object_type: runtime_config
+  where:
+    - field: metadata.parsed_agent_exposure_config
+      op: equals
+      value: true
+    - field: metadata.agent_exposure_public_discovery
+      op: equals
+      value: true
+    - field: metadata.agent_exposure_anonymous_access
+      op: equals
+      value: true
+    - field: metadata.agent_exposure_external_callers
+      op: equals
+      value: true
+    - field: metadata.agent_exposure_tool_invocation_enabled
+      op: equals
+      value: true
+    - field: metadata.agent_exposure_tool_authority_categories
+      op: contains_any
+      value:
+        - browser_action
+        - code_execution
+        - database_access
+        - external_response
+        - filesystem_access
+        - memory_access
+        - secret_manager_access
+    - field: metadata.agent_exposure_approval_required
+      op: equals
+      value: false
+    - field: metadata.agent_exposure_rate_limit_missing
+      op: equals
+      value: true
+    - field: secret_exposure
+      op: equals
+      value: true
+recommendation:
+  control: require_approval
+  text: Require authentication and caller allowlists for public agent cards, remove privileged tools from anonymous A2A exposure, enforce rate limits, and require approval before external agents can trigger browser, database, memory, or secret-backed actions.

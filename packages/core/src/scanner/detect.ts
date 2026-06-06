@@ -101,6 +101,11 @@ export async function detectSurfaces(files: WalkedFile[]): Promise<DetectedSurfa
       continue;
     }
 
+    if (isAgentExposureConfigPath(file.relativePath, basename)) {
+      detectAgentExposureConfig(file, text, surfaces);
+      continue;
+    }
+
     if (isAgentPromptRegistryConfigPath(file.relativePath, basename)) {
       detectAgentPromptRegistryConfig(file, text, surfaces);
       continue;
@@ -1199,6 +1204,70 @@ function detectAgentPromptRegistryConfig(file: WalkedFile, text: string | undefi
           posture.agent_prompt_registry_memory_directive ||
           posture.agent_prompt_registry_external_directive) &&
         !posture.agent_prompt_registry_approval_required) ||
+      isUntrustedToPrivileged(object)
+  });
+}
+
+function detectAgentExposureConfig(file: WalkedFile, text: string | undefined, surfaces: DetectedSurfaces): void {
+  const parsed = parseStructuredConfig(text ?? "", file.relativePath);
+  if (parsed.parseFailed) {
+    addDiagnostic(surfaces, file, {
+      parser: parsed.parser ?? "structured_config",
+      code: "AGENT_EXPOSURE_CONFIG_PARSE_FAILED",
+      reason: "Agent exposure or agent-card configuration could not be parsed. Raw content was redacted."
+    });
+  }
+
+  const posture = classifyAgentExposureConfig(parsed.value, file.relativePath);
+  const actions = new Set<ActionType>(["call", "read"]);
+  if (posture.agent_exposure_public_discovery || posture.agent_exposure_external_callers) {
+    actions.add("send");
+    actions.add("publish");
+  }
+  if (posture.agent_exposure_tool_invocation_enabled) actions.add("execute");
+  if (posture.agent_exposure_write_authority) actions.add("write");
+  if (posture.agent_exposure_memory_access) actions.add("remember");
+
+  const dataClasses = new Set<SurfaceObject["data_classes"][number]>(["unknown"]);
+  if (posture.env_key_names.some(isCredentialLikeKeyName) || posture.secret_ref_key_names.length > 0) dataClasses.add("credential");
+  if (posture.agent_exposure_secret_access) dataClasses.add("secret");
+  if (posture.agent_exposure_sensitive_data) dataClasses.add("confidential");
+  if (posture.agent_exposure_pii_data) dataClasses.add("pii");
+  if (dataClasses.size > 1) dataClasses.delete("unknown");
+
+  const object = createSurfaceObject({
+    type: "runtime_config",
+    name: path.basename(file.relativePath),
+    path: file.relativePath,
+    trust_level: posture.agent_exposure_external_callers || posture.agent_exposure_public_discovery ? "third_party" : inferTrustLevel(file.relativePath),
+    data_classes: uniqueDataClasses([...dataClasses] as SurfaceObject["data_classes"]),
+    actions: uniqueActions([...actions]),
+    side_effect:
+      posture.agent_exposure_tool_invocation_enabled ||
+      posture.agent_exposure_write_authority ||
+      posture.agent_exposure_memory_access,
+    reversible: !posture.agent_exposure_write_authority && !posture.agent_exposure_memory_access,
+    external_reach: posture.agent_exposure_public_discovery || posture.agent_exposure_external_callers || posture.agent_exposure_endpoint_count > 0,
+    secret_exposure:
+      posture.agent_exposure_secret_access ||
+      posture.env_key_names.some(isCredentialLikeKeyName) ||
+      posture.secret_ref_key_names.length > 0,
+    reason: "Agent exposure configuration discovered as public agent-discovery and external invocation posture.",
+    metadata: {
+      content_redacted: true,
+      values_collected: false,
+      parsed_agent_exposure_config: Boolean(parsed.value) && !parsed.parseFailed,
+      parse_error: parsed.parseFailed,
+      ...posture
+    }
+  });
+  surfaces.runtime_config.push({
+    ...object,
+    untrusted_to_privileged:
+      (posture.agent_exposure_external_callers &&
+        posture.agent_exposure_tool_invocation_enabled &&
+        posture.agent_exposure_privileged_authority &&
+        !posture.agent_exposure_approval_required) ||
       isUntrustedToPrivileged(object)
   });
 }
@@ -2958,6 +3027,26 @@ function isRagConnectorConfigPath(relativePath: string, basename: string): boole
   return (inRagDirectory && configName) || connectorName;
 }
 
+function isAgentExposureConfigPath(relativePath: string, basename: string): boolean {
+  const normalized = relativePath.replaceAll("\\", "/").toLowerCase();
+  const lowerBase = basename.toLowerCase();
+  if (!/\.(json|ya?ml|toml)$/iu.test(lowerBase)) return false;
+  if (normalized.startsWith(".github/workflows/")) return false;
+  if (normalized.startsWith("rules/")) return false;
+  if (/\/?\.well-known\/agent(?:-card)?\.(json|ya?ml|toml)$/iu.test(normalized)) return true;
+  const segments = normalized.split("/").slice(0, -1);
+  const exposureDirectory = segments.some((segment) =>
+    /^(a2a|agent2agent|agent-to-agent|agent_to_agent|agent-cards?|agent_cards?|agent-discovery|agent_discovery|agent-exposure|agent_exposure|public-agents?|public_agents?)$/iu.test(
+      segment
+    )
+  );
+  const exposureName = /(?:a2a|agent2agent|agent[-_]?to[-_]?agent|agent[-_]?card|agent[-_]?discovery|agent[-_]?exposure|agent[-_]?capabilit|public[-_]?agent|remote[-_]?agent[-_]?card)/iu.test(
+    lowerBase
+  );
+  const configName = /(?:config|settings|card|discovery|capabilit|endpoint|server|public|a2a|agent)/iu.test(lowerBase);
+  return exposureName || (exposureDirectory && configName);
+}
+
 function isAgentPromptRegistryConfigPath(relativePath: string, basename: string): boolean {
   const normalized = relativePath.replaceAll("\\", "/").toLowerCase();
   const lowerBase = basename.toLowerCase();
@@ -3159,6 +3248,33 @@ interface AgentPromptRegistryPosture {
   agent_prompt_registry_sensitive_context: boolean;
   agent_prompt_registry_pii_context: boolean;
   agent_prompt_registry_approval_required: boolean;
+  env_key_names: string[];
+  secret_ref_key_names: string[];
+}
+
+interface AgentExposurePosture {
+  agent_exposure_fields: string[];
+  agent_exposure_provider?: string;
+  agent_exposure_public_discovery: boolean;
+  agent_exposure_endpoint_redacted: boolean;
+  agent_exposure_endpoint_count: number;
+  agent_exposure_endpoint_kinds: string[];
+  agent_exposure_capabilities_redacted: boolean;
+  agent_exposure_capability_count: number;
+  agent_exposure_auth_required: boolean;
+  agent_exposure_auth_disabled: boolean;
+  agent_exposure_anonymous_access: boolean;
+  agent_exposure_external_callers: boolean;
+  agent_exposure_tool_invocation_enabled: boolean;
+  agent_exposure_tool_authority_categories: string[];
+  agent_exposure_privileged_authority: boolean;
+  agent_exposure_write_authority: boolean;
+  agent_exposure_memory_access: boolean;
+  agent_exposure_secret_access: boolean;
+  agent_exposure_sensitive_data: boolean;
+  agent_exposure_pii_data: boolean;
+  agent_exposure_rate_limit_missing: boolean;
+  agent_exposure_approval_required: boolean;
   env_key_names: string[];
   secret_ref_key_names: string[];
 }
@@ -4391,6 +4507,296 @@ function hasAgentPromptRegistryApprovalRequiredSignal(fields: RuntimeField[]): b
 
 function isAgentPromptRegistrySecurityField(fieldPath: string): boolean {
   return /provider|registry|catalog|hub|store|prompt|template|instruction|system|developer|role|source|repository|repo|url|uri|host|endpoint|sync|update|pull|refresh|pin|version|signature|signing|provenance|attestation|checksum|digest|trusted|untrusted|selector|input|customer|ticket|tool|mcp|browser|database|shell|memory|external|webhook|approval|secret|token|credential|auth|env|pii|sensitive/iu.test(
+    fieldPath
+  );
+}
+
+function classifyAgentExposureConfig(value: unknown, filePath: string): AgentExposurePosture {
+  const fields = flattenRuntimeFields(value);
+  const stringValues = collectFieldStringValues(fields);
+  const provider = inferAgentExposureProvider([filePath, ...fields.map((field) => field.path), ...stringValues]);
+  const endpoints = classifyAgentExposureEndpoints(fields, provider);
+  const toolAuthorityCategories = collectAgentExposureToolAuthorityCategories(fields);
+  const authRequired = hasAgentExposureAuthRequiredSignal(fields);
+  const authDisabled = hasAgentExposureAuthDisabledSignal(fields);
+  const publicDiscovery = hasAgentExposurePublicDiscoverySignal(fields, filePath) || endpoints.publicDiscovery;
+  const externalCallers = publicDiscovery || hasAgentExposureExternalCallerSignal(fields);
+  const envKeys = uniqueStrings([
+    ...collectEnvKeyNamesFromConfig(value).filter(isLikelyEnvKeyName),
+    ...extractEnvironmentReferenceKeys(stringValues)
+  ]);
+  const secretRefKeys = extractSecretReferenceKeys(stringValues);
+  const capabilityCount = countAgentExposureCapabilities(value, fields);
+
+  return {
+    agent_exposure_fields: fields
+      .map((field) => field.path)
+      .filter((fieldPath) => isAgentExposureSecurityField(fieldPath))
+      .sort((a, b) => a.localeCompare(b)),
+    agent_exposure_provider: provider,
+    agent_exposure_public_discovery: publicDiscovery,
+    agent_exposure_endpoint_redacted: endpoints.endpointCount > 0,
+    agent_exposure_endpoint_count: endpoints.endpointCount,
+    agent_exposure_endpoint_kinds: endpoints.endpointKinds,
+    agent_exposure_capabilities_redacted: capabilityCount > 0,
+    agent_exposure_capability_count: capabilityCount,
+    agent_exposure_auth_required: authRequired,
+    agent_exposure_auth_disabled: authDisabled,
+    agent_exposure_anonymous_access: authDisabled || (!authRequired && publicDiscovery),
+    agent_exposure_external_callers: externalCallers,
+    agent_exposure_tool_invocation_enabled: toolAuthorityCategories.length > 0 || hasAgentExposureToolInvocationSignal(fields),
+    agent_exposure_tool_authority_categories: toolAuthorityCategories,
+    agent_exposure_privileged_authority: isAgentExposurePrivileged(toolAuthorityCategories),
+    agent_exposure_write_authority: hasAgentExposureWriteAuthoritySignal(fields, toolAuthorityCategories),
+    agent_exposure_memory_access: toolAuthorityCategories.includes("memory_access") || hasAgentExposureMemorySignal(fields),
+    agent_exposure_secret_access: toolAuthorityCategories.includes("secret_manager_access") || hasAgentExposureSecretSignal(fields),
+    agent_exposure_sensitive_data: hasAgentExposureSensitiveDataSignal(fields),
+    agent_exposure_pii_data: hasAgentExposurePiiDataSignal(fields),
+    agent_exposure_rate_limit_missing: hasAgentExposureRateLimitMissingSignal(fields),
+    agent_exposure_approval_required: hasAgentExposureApprovalRequiredSignal(fields),
+    env_key_names: envKeys,
+    secret_ref_key_names: secretRefKeys
+  };
+}
+
+function inferAgentExposureProvider(candidates: string[]): string | undefined {
+  const text = candidates.join(" ").toLowerCase();
+  const providers: Array<[string, RegExp]> = [
+    ["a2a_agent_card", /\b(a2a|agent2agent|agent[-_\s]?to[-_\s]?agent|agent[_\s-]?card)\b/iu],
+    ["agent_card", /\b(agent[_\s-]?discovery|agent[_\s-]?capabilities|public[_\s-]?agent)\b/iu]
+  ];
+  return providers.find(([, pattern]) => pattern.test(text))?.[0];
+}
+
+function classifyAgentExposureEndpoints(
+  fields: RuntimeField[],
+  provider: string | undefined
+): { publicDiscovery: boolean; endpointCount: number; endpointKinds: string[] } {
+  const endpointKinds = new Set<string>();
+  let endpointCount = 0;
+  let publicDiscovery = provider === "a2a_agent_card";
+
+  for (const field of fields) {
+    const values = fieldStringValues(field);
+    let fieldMatchedEndpoint = false;
+    for (const value of values) {
+      const endpoint = parseAgentExposureEndpoint(value);
+      if (endpoint) {
+        endpointKinds.add(endpoint.kind);
+        endpointCount += 1;
+        fieldMatchedEndpoint = true;
+        if (endpoint.publicDiscovery) publicDiscovery = true;
+      }
+    }
+    if (!fieldMatchedEndpoint && /(^|\.)(url|uri|endpoint|host|base_url|baseUrl|server|address)$/iu.test(field.path)) {
+      const text = values.join(" ");
+      if (looksLikeRemoteAgentEndpoint(text)) {
+        endpointKinds.add("agent_endpoint");
+        endpointCount += 1;
+      }
+    }
+  }
+
+  return {
+    publicDiscovery,
+    endpointCount,
+    endpointKinds: [...endpointKinds].sort((a, b) => a.localeCompare(b))
+  };
+}
+
+function parseAgentExposureEndpoint(value: string): { kind: string; publicDiscovery: boolean } | undefined {
+  try {
+    const parsed = new URL(value);
+    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return undefined;
+    if (isLocalHost(parsed.hostname.toLowerCase())) return undefined;
+    const publicDiscovery = /\/\.well-known\/agent(?:-card)?\.json$/iu.test(parsed.pathname);
+    return {
+      kind: publicDiscovery ? "well_known_agent_card" : parsed.protocol === "http:" ? "plaintext_agent_endpoint" : "agent_endpoint",
+      publicDiscovery
+    };
+  } catch {
+    return undefined;
+  }
+}
+
+function looksLikeRemoteAgentEndpoint(value: string): boolean {
+  const trimmed = value.trim().toLowerCase();
+  if (!trimmed || trimmed.startsWith("${")) return false;
+  if (isLocalHost(trimmed)) return false;
+  return /\b(a2a|agent|assistant|runtime|task|jsonrpc|json-rpc)\b/iu.test(trimmed) || /^[a-z0-9.-]+\.[a-z]{2,}(?::\d+)?$/iu.test(trimmed);
+}
+
+function countAgentExposureCapabilities(value: unknown, fields: RuntimeField[]): number {
+  const directCount = countAgentExposureCollectionEntries(value, new Set(["skills", "capabilities", "tools", "actions", "interfaces", "supported_interfaces"]));
+  if (directCount > 0) return directCount;
+
+  const prefixes = new Set<string>();
+  for (const field of fields) {
+    const match = field.path.match(/(?:^|\.)(skills?|capabilities?|tools?|actions?|interfaces?|supported_interfaces?)\.(\d+|[A-Za-z][\w-]*)/u);
+    if (match?.[1] && match[2]) prefixes.add(`${match[1]}.${match[2]}`);
+  }
+  return prefixes.size;
+}
+
+function countAgentExposureCollectionEntries(value: unknown, keys: Set<string>): number {
+  if (!value || typeof value !== "object") return 0;
+  let count = 0;
+  for (const [key, item] of Object.entries(value as Record<string, unknown>)) {
+    if (keys.has(key)) {
+      if (Array.isArray(item)) count += item.length;
+      else if (item && typeof item === "object") count += Object.keys(item as Record<string, unknown>).length;
+      else if (item !== undefined && item !== null) count += 1;
+      continue;
+    }
+    if (item && typeof item === "object") count += countAgentExposureCollectionEntries(item, keys);
+  }
+  return count;
+}
+
+function hasAgentExposurePublicDiscoverySignal(fields: RuntimeField[], filePath: string): boolean {
+  if (/\.well-known\/agent(?:-card)?\.(json|ya?ml|toml)$/iu.test(filePath)) return true;
+  return fields.some((field) => {
+    const text = `${field.path} ${fieldValueText(field)}`;
+    return (
+      /\b(public[_\s-]?discover|discoverable|agent[_\s-]?card|well[-_\s]?known|published|catalog|registry|marketplace)\b/iu.test(text) &&
+      truthyConfigValue(field.value)
+    );
+  });
+}
+
+function hasAgentExposureAuthRequiredSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => {
+    const text = `${field.path} ${fieldValueText(field)}`;
+    if (/(^|\.)(auth|authentication|authorization|security)\.(required|enabled|enforced)$/iu.test(field.path)) {
+      return truthyConfigValue(field.value);
+    }
+    if (/(^|\.)(securitySchemes|security_schemes|auth|authentication|authorization|oauth|oidc|jwt|bearer|api[_-]?key)/iu.test(field.path)) {
+      return /\b(oauth|oidc|jwt|bearer|api[_\s-]?key|mTLS|mutual[_\s-]?tls|signed|token)\b/iu.test(text) && !/\b(none|anonymous|public|optional)\b/iu.test(text);
+    }
+    return false;
+  });
+}
+
+function hasAgentExposureAuthDisabledSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => {
+    const text = `${field.path} ${fieldValueText(field)}`;
+    if (/(^|\.)(auth|authentication|authorization|security)\.(required|enabled|enforced)$/iu.test(field.path)) {
+      return disabledConfigValue(field.value);
+    }
+    if (/(^|\.)(auth|authentication|authorization|security|securitySchemes|security_schemes|schemes?)/iu.test(field.path)) {
+      return /\b(none|anonymous|unauthenticated|public|no[_\s-]?auth|auth[_\s-]?disabled|optional)\b/iu.test(text);
+    }
+    return false;
+  });
+}
+
+function hasAgentExposureExternalCallerSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /\b(external[_\s-]?agents?|partner[_\s-]?agents?|remote[_\s-]?agents?|public[_\s-]?agents?|allow[_\s-]?external|cross[_\s-]?org|federated|marketplace|registry|catalog|internet)\b/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    ) && truthyConfigValue(field.value)
+  );
+}
+
+function collectAgentExposureToolAuthorityCategories(fields: RuntimeField[]): string[] {
+  const categories = new Set<string>();
+  for (const field of fields) {
+    const text = `${field.path} ${fieldValueText(field)}`.toLowerCase();
+    if (/\b(tool|tools|function|function_call|mcp|capability|capabilities|invoke|call)\b/iu.test(text)) categories.add("tool_call");
+    if (/\b(browser|playwright|puppeteer|web[_\s-]?agent|click|form|navigate|submit)\b/iu.test(text)) categories.add("browser_action");
+    if (/\b(database|db|sql|query|support_db|warehouse|record)\b/iu.test(text)) categories.add("database_access");
+    if (/(?:^|[_\W])(vault|secret|secrets|secret[_\s-]?manager|key[_\s-]?vault|credential|token)(?:[_\W]|$)/iu.test(text)) {
+      categories.add("secret_manager_access");
+    }
+    if (/\b(slack|email|webhook|message|ticket|issue|comment|reply|send|post|publish|callback)\b/iu.test(text)) {
+      categories.add("external_response");
+    }
+    if (/(?:^|[_\W])(memory|remember|store|persist|session[_\s-]?state|history|summary)(?:[_\W]|$)/iu.test(text)) {
+      categories.add("memory_access");
+    }
+    if (/\b(filesystem|file|workspace|repo|repository|github|gitlab|pull[_\s-]?request|commit|path)\b/iu.test(text)) {
+      categories.add("filesystem_access");
+    }
+    if (/\b(shell|bash|command|exec|terminal|python|node|subprocess|code[_\s-]?interpreter)\b/iu.test(text)) {
+      categories.add("code_execution");
+    }
+  }
+  return [...categories].sort((a, b) => a.localeCompare(b));
+}
+
+function hasAgentExposureToolInvocationSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /\b(invoke[_\s-]?tools?|call[_\s-]?tools?|tool[_\s-]?access|capability|capabilities|mcp|function[_\s-]?call|task[_\s-]?execute)\b/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    ) && truthyConfigValue(field.value)
+  );
+}
+
+function isAgentExposurePrivileged(categories: string[]): boolean {
+  return categories.some((category) =>
+    [
+      "browser_action",
+      "code_execution",
+      "database_access",
+      "external_response",
+      "filesystem_access",
+      "memory_access",
+      "secret_manager_access",
+      "tool_call"
+    ].includes(category)
+  );
+}
+
+function hasAgentExposureWriteAuthoritySignal(fields: RuntimeField[], categories: string[]): boolean {
+  return categories.some((category) =>
+    ["browser_action", "code_execution", "database_access", "external_response", "filesystem_access", "memory_access"].includes(category)
+  ) || fields.some((field) =>
+    /\b(write|update|create|delete|reply|respond|send|post|publish|comment|commit|push|merge|deploy|remember|persist|submit)\b/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    )
+  );
+}
+
+function hasAgentExposureMemorySignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => /\b(memory|remember|store|persist|session[_\s-]?state|history|summary)\b/iu.test(`${field.path} ${fieldValueText(field)}`));
+}
+
+function hasAgentExposureSecretSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => /\b(secret|token|credential|api[_-]?key|password|vault|key[_\s-]?vault)\b/iu.test(`${field.path} ${fieldValueText(field)}`));
+}
+
+function hasAgentExposureSensitiveDataSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /\b(customer|client|ticket|support|internal|confidential|private|proprietary|sensitive|account|billing|payment|case|record|profile|note|incident)\b/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    )
+  );
+}
+
+function hasAgentExposurePiiDataSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /(?:^|[_\W])(pii|email|phone|address|ssn|passport|dob|date[_\s-]?of[_\s-]?birth|customer[_-]?id|user[_-]?id|account[_-]?id)(?:[_\W]|$)/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    )
+  );
+}
+
+function hasAgentExposureRateLimitMissingSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /\b(rate[_\s-]?limit|quota|throttle|abuse[_\s-]?limit|request[_\s-]?limit)\b/iu.test(field.path) &&
+    (disabledConfigValue(field.value) || /\b(none|disabled|unlimited|no[_\s-]?limit|0)\b/iu.test(fieldValueText(field)))
+  );
+}
+
+function hasAgentExposureApprovalRequiredSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /approval|required[_-]?approval|human[_-]?approval|confirm|confirmation|review|human[_-]?in[_-]?the[_-]?loop/iu.test(field.path) &&
+    truthyConfigValue(field.value)
+  );
+}
+
+function isAgentExposureSecurityField(fieldPath: string): boolean {
+  return /provider|protocol|version|a2a|agent|card|discover|public|registry|catalog|marketplace|url|uri|endpoint|host|server|transport|jsonrpc|skill|capabilit|tool|mcp|function|browser|database|secret|memory|file|shell|command|auth|security|scheme|anonymous|oauth|oidc|jwt|bearer|token|credential|env|caller|external|partner|input|task|message|customer|ticket|email|account|sensitive|pii|rate|quota|throttle|approval/iu.test(
     fieldPath
   );
 }

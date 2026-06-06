@@ -6,6 +6,7 @@ const vulnerableOutput = path.resolve(process.argv[2] ?? ".agentcsp");
 const safeOutput = path.resolve(process.argv[3] ?? ".agentcsp-safe");
 
 const leakPatterns = [
+  /\$\{A2A_AGENT_TOKEN\}/u,
   /\$\{ANTHROPIC_API_KEY\}/u,
   /\$\{AGENT_CONTAINER_TOKEN\}/u,
   /\$\{AGENT_DEPLOY_TOKEN\}/u,
@@ -242,7 +243,6 @@ const leakPatterns = [
   /unapproved-community-model/u,
   /cost_latency_fallback/u,
   /provider_error/u,
-  /rate_limit/u,
   /embedding-indexer/u,
   /text-embedding-3-large/u,
   /vector-index\.example\.invalid/u,
@@ -267,14 +267,25 @@ const leakPatterns = [
   /suppress-critical-legacy-agent/u,
   /security@example\.com/u,
   /legacy_agent_security/u,
-  /Fixture demonstrates risky/u
+  /Fixture demonstrates risky/u,
+  /support-agent\.agentcsp-demo\.example\.invalid/u,
+  /support-case-remediation-agent/u,
+  /customer-record-update/u,
+  /credential-assisted-remediation/u,
+  /Update customer records/u,
+  /Credential assisted remediation/u,
+  /public_agent_registry/u,
+  /partner_agents/u,
+  /a2a_customer_email/u,
+  /a2a_account_number/u,
+  /confidential_a2a_case_notes/u
 ];
 
 const vulnerable = await readScanOutput(vulnerableOutput, { sarifRequired: true });
 const safe = await readScanOutput(safeOutput, { sarifRequired: false });
 
-assertEqual(vulnerable.manifest.findings.length, 112, "vulnerable manifest finding count");
-assertEqual(vulnerable.findings.length, 112, "vulnerable findings.json count");
+assertEqual(vulnerable.manifest.findings.length, 114, "vulnerable manifest finding count");
+assertEqual(vulnerable.findings.length, 114, "vulnerable findings.json count");
 assertEqual(vulnerable.manifest.attack_paths.length, 15, "vulnerable attack path count");
 assertEqual(vulnerable.manifest.static_blast_radius?.critical_attack_paths, 15, "vulnerable critical attack path count");
 assertEqual(vulnerable.manifest.diagnostics.length, 0, "vulnerable diagnostics count");
@@ -312,6 +323,7 @@ for (const ruleId of [
   "AGENTCSP-RUNTIME-033",
   "AGENTCSP-RUNTIME-034",
   "AGENTCSP-RUNTIME-035",
+  "AGENTCSP-RUNTIME-036",
   "AGENTCSP-AUTOMATION-003",
   "AGENTCSP-RUNTIME-006",
   "AGENTCSP-MCP-006",

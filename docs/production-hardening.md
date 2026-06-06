@@ -48,6 +48,7 @@ A finding should be considered production-grade when it includes:
 - auto-approved destructive MCP tool refs correlated to credential-backed runtime servers
 - runtime permission allowlists correlated to exact package scripts and release authority
 - AgentCSP policy-integrity metadata for broad suppressions, permissive control downgrades, and trust elevation of untrusted context without emitting policy IDs, owners, reasons, raw paths, or match values
+- public A2A and agent-card exposure metadata for external discovery, anonymous access, endpoint categories, capability counts, privileged authority categories, approval posture, and rate-limit posture without emitting endpoint URLs, agent names, skill IDs, tool strings, caller labels, data-scope labels, or token placeholders
 - prompt-registry metadata for remote system/developer prompt supply, auto-sync, unpinned revisions, signature/provenance verification, untrusted selectors, and privileged prompt directives without emitting registry URLs, prompt IDs, selector fields, directive strings, data-scope labels, or token placeholders
 - browser-session metadata for persistent authenticated state, broad origins, remote-debugging posture, extension/profile exposure, password-manager/autofill posture, and untrusted click/form authority without emitting cookie files, extension names, extension IDs, profile paths, download/upload paths, origins, or endpoints
 - inbound agent trigger metadata for email, chat, ticket, webhook, and queue payloads that reach agent tools without emitting mailbox names, sender addresses, URLs, labels, agent names, or payload text
@@ -130,6 +131,7 @@ Examples:
 - runtime config with unsandboxed execution plus no approval gate
 - runtime config with network access plus secret env keys plus privileged tools
 - project-local AgentCSP policy plus broad high-severity suppressions, permissive recommended-control downgrades, and trust elevation for untrusted context
+- public agent card plus anonymous external callers plus privileged browser, database, memory, or secret-backed authority plus no approval or rate limit
 - remote prompt registry plus auto-synced unpinned system or developer prompts, disabled signature/provenance checks, untrusted selectors, privileged tool directives, and no approval gate
 - authenticated browser session plus broad origins plus untrusted navigation plus click/form/upload authority
 - authenticated browser session plus remote-debugging posture plus cookie/storage profile references and credential exposure

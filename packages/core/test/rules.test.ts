@@ -77,6 +77,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-033")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-034")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-035")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-036")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-CICD-002")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-AUTOMATION-001")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-AUTOMATION-002")).toBe(true);
@@ -532,6 +533,39 @@ describe("rule engine", () => {
     expect(JSON.stringify(runtimePromptRegistryFindings[0])).not.toContain("prompt_registry_customer_email");
     expect(JSON.stringify(runtimePromptRegistryFindings[0])).not.toContain("confidential_prompt_context");
     expect(JSON.stringify(runtimePromptRegistryFindings[0])).not.toContain("support_db.update_customer_record");
+    const runtimeAgentExposureFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-RUNTIME-036");
+    expect(runtimeAgentExposureFindings).toHaveLength(1);
+    expect(runtimeAgentExposureFindings[0]?.matched_object.path).toBe(".well-known/agent-card.json");
+    expect(runtimeAgentExposureFindings[0]?.matched_object.metadata).toMatchObject({
+      parsed_agent_exposure_config: true,
+      agent_exposure_provider: "a2a_agent_card",
+      agent_exposure_public_discovery: true,
+      agent_exposure_anonymous_access: true,
+      agent_exposure_external_callers: true,
+      agent_exposure_tool_invocation_enabled: true,
+      agent_exposure_privileged_authority: true,
+      agent_exposure_rate_limit_missing: true,
+      agent_exposure_approval_required: false
+    });
+    expect(runtimeAgentExposureFindings[0]?.matched_object.metadata.agent_exposure_tool_authority_categories).toEqual([
+      "browser_action",
+      "database_access",
+      "external_response",
+      "memory_access",
+      "secret_manager_access",
+      "tool_call"
+    ]);
+    expect(runtimeAgentExposureFindings[0]?.severity).toBe("critical");
+    expect(runtimeAgentExposureFindings[0]?.confidence).toBe("very_high");
+    expect(runtimeAgentExposureFindings[0]?.recommended_control).toBe("require_approval");
+    expect(JSON.stringify(runtimeAgentExposureFindings[0])).not.toContain("${A2A_AGENT_TOKEN}");
+    expect(JSON.stringify(runtimeAgentExposureFindings[0])).not.toContain("support-agent.agentcsp-demo.example.invalid");
+    expect(JSON.stringify(runtimeAgentExposureFindings[0])).not.toContain("support-case-remediation-agent");
+    expect(JSON.stringify(runtimeAgentExposureFindings[0])).not.toContain("customer-record-update");
+    expect(JSON.stringify(runtimeAgentExposureFindings[0])).not.toContain("credential-assisted-remediation");
+    expect(JSON.stringify(runtimeAgentExposureFindings[0])).not.toContain("support_db.update_customer_record");
+    expect(JSON.stringify(runtimeAgentExposureFindings[0])).not.toContain("a2a_customer_email");
+    expect(JSON.stringify(runtimeAgentExposureFindings[0])).not.toContain("confidential_a2a_case_notes");
     const supplyChainFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-SUPPLYCHAIN-001");
     expect(supplyChainFindings).toHaveLength(1);
     expect(supplyChainFindings[0]?.matched_object.path).toBe("package.json");

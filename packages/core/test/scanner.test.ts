@@ -23,6 +23,7 @@ describe("scanner", () => {
 
     expect(envSurface).toBeDefined();
     expect(envSurface?.metadata.env_key_names).toEqual([
+      "A2A_AGENT_TOKEN",
       "AGENT_CONTAINER_TOKEN",
       "AGENT_DEPLOY_TOKEN",
       "AGENT_EXTENSION_TOKEN",
@@ -1298,6 +1299,61 @@ describe("scanner", () => {
     expect(JSON.stringify(promptRegistryConfig)).not.toContain("prompt_registry_customer_email");
     expect(JSON.stringify(promptRegistryConfig)).not.toContain("confidential_prompt_context");
     expect(JSON.stringify(promptRegistryConfig)).not.toContain("support_db.update_customer_record");
+    const agentExposureConfig = surfaces.runtime_config.find((surface) => surface.path === ".well-known/agent-card.json");
+    expect(agentExposureConfig).toBeDefined();
+    expect(agentExposureConfig).toMatchObject({
+      trust_level: "third_party",
+      external_reach: true,
+      secret_exposure: true,
+      side_effect: true,
+      reversible: false,
+      untrusted_to_privileged: true
+    });
+    expect(agentExposureConfig?.metadata).toMatchObject({
+      content_redacted: true,
+      values_collected: false,
+      parsed_agent_exposure_config: true,
+      agent_exposure_provider: "a2a_agent_card",
+      agent_exposure_public_discovery: true,
+      agent_exposure_endpoint_redacted: true,
+      agent_exposure_endpoint_count: 1,
+      agent_exposure_capabilities_redacted: true,
+      agent_exposure_capability_count: 7,
+      agent_exposure_auth_required: false,
+      agent_exposure_auth_disabled: true,
+      agent_exposure_anonymous_access: true,
+      agent_exposure_external_callers: true,
+      agent_exposure_tool_invocation_enabled: true,
+      agent_exposure_privileged_authority: true,
+      agent_exposure_write_authority: true,
+      agent_exposure_memory_access: true,
+      agent_exposure_secret_access: true,
+      agent_exposure_sensitive_data: true,
+      agent_exposure_pii_data: true,
+      agent_exposure_rate_limit_missing: true,
+      agent_exposure_approval_required: false
+    });
+    expect(agentExposureConfig?.metadata.agent_exposure_endpoint_kinds).toEqual(["agent_endpoint"]);
+    expect(agentExposureConfig?.metadata.agent_exposure_tool_authority_categories).toEqual([
+      "browser_action",
+      "database_access",
+      "external_response",
+      "memory_access",
+      "secret_manager_access",
+      "tool_call"
+    ]);
+    expect(agentExposureConfig?.metadata.env_key_names).toEqual(["A2A_AGENT_TOKEN"]);
+    expect(agentExposureConfig?.metadata.secret_ref_key_names).toEqual(["A2A_AGENT_TOKEN"]);
+    expect(agentExposureConfig?.data_classes).toEqual(["confidential", "credential", "pii", "secret"]);
+    expect(agentExposureConfig?.actions).toEqual(["call", "execute", "publish", "read", "remember", "send", "write"]);
+    expect(JSON.stringify(agentExposureConfig)).not.toContain("${A2A_AGENT_TOKEN}");
+    expect(JSON.stringify(agentExposureConfig)).not.toContain("support-agent.agentcsp-demo.example.invalid");
+    expect(JSON.stringify(agentExposureConfig)).not.toContain("support-case-remediation-agent");
+    expect(JSON.stringify(agentExposureConfig)).not.toContain("customer-record-update");
+    expect(JSON.stringify(agentExposureConfig)).not.toContain("credential-assisted-remediation");
+    expect(JSON.stringify(agentExposureConfig)).not.toContain("support_db.update_customer_record");
+    expect(JSON.stringify(agentExposureConfig)).not.toContain("a2a_customer_email");
+    expect(JSON.stringify(agentExposureConfig)).not.toContain("confidential_a2a_case_notes");
     const browserSessionConfig = surfaces.runtime_config.find((surface) => surface.path === "browser/session.yaml");
     expect(browserSessionConfig).toBeDefined();
     expect(browserSessionConfig).toMatchObject({

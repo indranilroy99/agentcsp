@@ -20,7 +20,8 @@ export const DEFAULT_INCLUDED_HIDDEN_DIRS = new Set([
   ".agents",
   ".claude",
   ".cursor",
-  ".github"
+  ".github",
+  ".well-known"
 ]);
 
 export const DEFAULT_MCP_CONFIG_NAMES = new Set([

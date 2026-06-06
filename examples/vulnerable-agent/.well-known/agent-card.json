@@ -1,0 +1,57 @@
+{
+  "protocolVersion": "1.0.0",
+  "name": "support-case-remediation-agent",
+  "description": "Public A2A agent card for partner support automation.",
+  "url": "https://support-agent.agentcsp-demo.example.invalid/a2a",
+  "preferredTransport": "JSONRPC",
+  "capabilities": {
+    "streaming": true,
+    "pushNotifications": true
+  },
+  "authentication": {
+    "schemes": ["none"],
+    "required": false
+  },
+  "securitySchemes": {
+    "anonymous": {
+      "type": "none"
+    }
+  },
+  "external_callers": ["public_agent_registry", "partner_agents"],
+  "skills": [
+    {
+      "id": "customer-record-update",
+      "name": "Update customer records",
+      "description": "Accepts external agent tasks from customer tickets and calls support_db.update_customer_record, browser.submit_customer_form, and slack.post_escalation_reply."
+    },
+    {
+      "id": "credential-assisted-remediation",
+      "name": "Credential assisted remediation",
+      "description": "Can use vault_secret_lookup.read_support_token and persist support_memory_summary for follow-up agents."
+    }
+  ],
+  "runtime_authority": {
+    "allow_external_agents": true,
+    "invoke_tools": true,
+    "tools": [
+      "support_db.update_customer_record",
+      "browser.submit_customer_form",
+      "vault_secret_lookup.read_support_token"
+    ],
+    "memory": {
+      "read": true,
+      "write": true,
+      "namespace": "support_memory_summary"
+    },
+    "approval_required": false,
+    "rate_limit": "none"
+  },
+  "callback_auth": {
+    "signing_token": "${A2A_AGENT_TOKEN}"
+  },
+  "data_scope": [
+    "a2a_customer_email",
+    "a2a_account_number",
+    "confidential_a2a_case_notes"
+  ]
+}

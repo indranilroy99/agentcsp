@@ -893,6 +893,15 @@ The current iteration adds:
 - rule `AGENTCSP-RUNTIME-035` for prompt registries that combine remote auto-sync, unpinned prompt refs, disabled verification, untrusted selectors, privileged role injection, tool directives, and no approval gate
 - scanner, rule, fixture verifier, and redaction coverage proving raw registry URLs, prompt IDs, selector fields, directive strings, data-scope labels, and token placeholders stay redacted
 
+## Public Agent-Card Exposure Pass
+
+The current iteration adds:
+
+- first-class redacted metadata for public A2A and agent-card exposure, including endpoint categories, capability counts, authentication posture, anonymous external caller access, privileged authority categories, rate-limit posture, and approval posture
+- vulnerable fixture coverage for a `.well-known/agent-card.json` that exposes browser, database, memory, secret, and external-response authority to anonymous external agents
+- rule `AGENTCSP-RUNTIME-036` for public agent cards that combine anonymous external access, privileged tool authority, missing approval, missing rate limits, and credential exposure
+- scanner, rule, fixture verifier, and redaction coverage proving raw endpoint URLs, agent names, skill IDs, tool strings, caller labels, data-scope labels, and token placeholders stay redacted
+
 ## Initial Build Recommendation
 
 Start with a CLI-first MVP before building the dashboard:

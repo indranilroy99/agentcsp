@@ -1453,6 +1453,40 @@ Prompt-registry metadata may include:
 
 Raw registry URLs, repository URLs, prompt IDs, prompt names, selector fields, directive strings, data-scope labels, and token placeholders are not emitted. Provider names, destination categories, prompt-kind categories, auto-sync posture, verification posture, role-injection posture, untrusted selector signals, and approval posture let rules detect remote prompt supply-chain risk without copying prompt content into the manifest.
 
+## Agent Exposure Posture
+
+Public A2A agent cards, `.well-known` agent-card documents, agent discovery configs, and agent capability catalogs are normalized into `runtime_config` objects when discovered. This models the boundary where external agents can discover and invoke local agent capabilities.
+
+Agent exposure metadata may include:
+
+- `parsed_agent_exposure_config`
+- `agent_exposure_fields`
+- `agent_exposure_provider`
+- `agent_exposure_public_discovery`
+- `agent_exposure_endpoint_redacted`
+- `agent_exposure_endpoint_count`
+- `agent_exposure_endpoint_kinds`
+- `agent_exposure_capabilities_redacted`
+- `agent_exposure_capability_count`
+- `agent_exposure_auth_required`
+- `agent_exposure_auth_disabled`
+- `agent_exposure_anonymous_access`
+- `agent_exposure_external_callers`
+- `agent_exposure_tool_invocation_enabled`
+- `agent_exposure_tool_authority_categories`
+- `agent_exposure_privileged_authority`
+- `agent_exposure_write_authority`
+- `agent_exposure_memory_access`
+- `agent_exposure_secret_access`
+- `agent_exposure_sensitive_data`
+- `agent_exposure_pii_data`
+- `agent_exposure_rate_limit_missing`
+- `agent_exposure_approval_required`
+- `env_key_names`
+- `secret_ref_key_names`
+
+Raw endpoint URLs, agent names, skill IDs, skill descriptions, tool strings, caller labels, data-scope labels, and token placeholders are not emitted. Provider names, endpoint categories, capability counts, authentication posture, authority categories, rate-limit posture, approval posture, and credential key names let rules detect externally callable agent authority without publishing the agent card body.
+
 Rule diagnostics include malformed project-local rules, schema-invalid rules, and duplicate rule IDs. Built-in AgentCSP rules still run when project-local rule diagnostics are emitted.
 
 ## Relationships
