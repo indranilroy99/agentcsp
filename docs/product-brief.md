@@ -17,6 +17,7 @@ AI agent security is fragmented. Teams have scanners, prompt filters, red-team h
 - what agents can access
 - where untrusted context enters
 - which tools and credentials are exposed
+- where dynamic authorization brokers can mint tool or resource grants
 - whether memory and RAG can be poisoned
 - what actions require approval
 - what evidence exists after a policy decision
@@ -44,4 +45,3 @@ That graph drives scanning, red-team generation, policy enforcement, and blast-r
 - Do not rely on prompt filtering as the primary security boundary.
 - Do not become another isolated benchmark runner.
 - Do not require vendor lock-in or a hosted service for core value.
-

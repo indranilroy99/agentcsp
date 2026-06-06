@@ -177,6 +177,11 @@ export async function detectSurfaces(files: WalkedFile[]): Promise<DetectedSurfa
       continue;
     }
 
+    if (isAgentAuthorizationBrokerConfigPath(file.relativePath, basename)) {
+      detectAgentAuthorizationBrokerConfig(file, text, surfaces);
+      continue;
+    }
+
     if (isLlmPromptCacheConfigPath(file.relativePath, basename)) {
       detectLlmPromptCacheConfig(file, text, surfaces);
       continue;
@@ -1958,6 +1963,83 @@ function detectAgentApprovalGateConfig(file: WalkedFile, text: string | undefine
   });
 }
 
+function detectAgentAuthorizationBrokerConfig(file: WalkedFile, text: string | undefined, surfaces: DetectedSurfaces): void {
+  const parsed = parseStructuredConfig(text ?? "", file.relativePath);
+  if (parsed.parseFailed) {
+    addDiagnostic(surfaces, file, {
+      parser: parsed.parser ?? "structured_config",
+      code: "AGENT_AUTHORIZATION_BROKER_CONFIG_PARSE_FAILED",
+      reason: "Agent authorization-broker configuration could not be parsed. Raw content was redacted."
+    });
+  }
+
+  const posture = classifyAgentAuthorizationBrokerConfig(parsed.value, file.relativePath);
+  const actions = new Set<ActionType>(["approve", "call", "read"]);
+  if (posture.agent_authorization_write_authority || posture.agent_authorization_privileged_tool_authority) actions.add("write");
+  if (posture.agent_authorization_shell_authority) actions.add("execute");
+  if (posture.agent_authorization_external_authority) {
+    actions.add("send");
+    actions.add("publish");
+  }
+  if (posture.agent_authorization_memory_write) actions.add("remember");
+
+  const dataClasses = new Set<SurfaceObject["data_classes"][number]>(["unknown"]);
+  if (
+    posture.agent_authorization_secret_authority ||
+    posture.env_key_names.some(isCredentialLikeKeyName) ||
+    posture.secret_ref_key_names.length > 0
+  ) {
+    dataClasses.add("credential");
+  }
+  if (posture.agent_authorization_sensitive_data || posture.agent_authorization_untrusted_subject) dataClasses.add("confidential");
+  if (posture.agent_authorization_pii_data) dataClasses.add("pii");
+  if (dataClasses.size > 1) dataClasses.delete("unknown");
+
+  const object = createSurfaceObject({
+    type: "runtime_config",
+    name: path.basename(file.relativePath),
+    path: file.relativePath,
+    trust_level: inferTrustLevel(file.relativePath),
+    data_classes: uniqueDataClasses([...dataClasses] as SurfaceObject["data_classes"]),
+    actions: uniqueActions([...actions]),
+    side_effect:
+      posture.agent_authorization_dynamic_grants_enabled ||
+      posture.agent_authorization_default_allow_or_fail_open ||
+      posture.agent_authorization_write_authority ||
+      posture.agent_authorization_external_authority ||
+      posture.agent_authorization_privileged_tool_authority,
+    reversible:
+      !posture.agent_authorization_write_authority &&
+      !posture.agent_authorization_external_authority &&
+      !posture.agent_authorization_shell_authority &&
+      !posture.agent_authorization_dynamic_grants_enabled,
+    external_reach: posture.agent_authorization_remote || posture.agent_authorization_external_authority,
+    secret_exposure:
+      posture.agent_authorization_secret_authority ||
+      posture.env_key_names.some(isCredentialLikeKeyName) ||
+      posture.secret_ref_key_names.length > 0,
+    reason: "Agent authorization-broker configuration discovered as dynamic tool-permission and resource-grant posture.",
+    metadata: {
+      content_redacted: true,
+      values_collected: false,
+      parsed_agent_authorization_broker_config: Boolean(parsed.value) && !parsed.parseFailed,
+      parse_error: parsed.parseFailed,
+      ...posture
+    }
+  });
+  surfaces.runtime_config.push({
+    ...object,
+    untrusted_to_privileged:
+      (posture.agent_authorization_dynamic_grants_enabled &&
+        posture.agent_authorization_model_selected_scope &&
+        (posture.agent_authorization_untrusted_subject || posture.agent_authorization_untrusted_resource) &&
+        posture.agent_authorization_broad_scope &&
+        posture.agent_authorization_privileged_tool_authority &&
+        !posture.agent_authorization_approval_required) ||
+      isUntrustedToPrivileged(object)
+  });
+}
+
 function detectAgentContextComposerConfig(file: WalkedFile, text: string | undefined, surfaces: DetectedSurfaces): void {
   const parsed = parseStructuredConfig(text ?? "", file.relativePath);
   if (parsed.parseFailed) {
@@ -3165,6 +3247,27 @@ function isAgentApprovalGateConfigPath(relativePath: string, basename: string): 
   return approvalName || (approvalDirectory && configName);
 }
 
+function isAgentAuthorizationBrokerConfigPath(relativePath: string, basename: string): boolean {
+  const normalized = relativePath.replaceAll("\\", "/").toLowerCase();
+  const lowerBase = basename.toLowerCase();
+  if (!/\.(json|ya?ml|toml)$/iu.test(lowerBase)) return false;
+  if (normalized.startsWith(".github/workflows/")) return false;
+  if (normalized.startsWith("rules/")) return false;
+  const segments = normalized.split("/").slice(0, -1);
+  const brokerDirectory = segments.some((segment) =>
+    /^(authz|authorization-broker|authorization_broker|permission-broker|permission_broker|tool-authz|tool_authz|tool-policy|tool_policy|capability-broker|capability_broker|grant-broker|grant_broker)$/iu.test(
+      segment
+    )
+  );
+  const brokerName = /(?:agent[-_]?authz|authorization[-_]?broker|authz[-_]?broker|permission[-_]?broker|tool[-_]?authz|tool[-_]?authorization|tool[-_]?policy|capability[-_]?broker|grant[-_]?broker|permission[-_]?policy)/iu.test(
+    lowerBase
+  );
+  const configName = /(?:config|settings|policy|broker|authorization|authz|permissions?|grants?|capabilities?|tools?|resources?|runtime)/iu.test(
+    lowerBase
+  );
+  return brokerName || (brokerDirectory && configName);
+}
+
 function isAgentContextComposerConfigPath(relativePath: string, basename: string): boolean {
   const normalized = relativePath.replaceAll("\\", "/").toLowerCase();
   const lowerBase = basename.toLowerCase();
@@ -3952,6 +4055,45 @@ interface AgentApprovalGatePosture {
   agent_approval_secret_access: boolean;
   agent_approval_sensitive_data: boolean;
   agent_approval_pii_data: boolean;
+  env_key_names: string[];
+  secret_ref_key_names: string[];
+}
+
+interface AgentAuthorizationBrokerPosture {
+  agent_authorization_fields: string[];
+  agent_authorization_provider?: string;
+  agent_authorization_remote: boolean;
+  agent_authorization_destination_redacted: boolean;
+  agent_authorization_destination_count: number;
+  agent_authorization_destination_kinds: string[];
+  agent_authorization_policy_redacted: boolean;
+  agent_authorization_policy_count: number;
+  agent_authorization_enabled: boolean;
+  agent_authorization_dynamic_grants_enabled: boolean;
+  agent_authorization_model_selected_scope: boolean;
+  agent_authorization_untrusted_subject: boolean;
+  agent_authorization_untrusted_resource: boolean;
+  agent_authorization_default_allow: boolean;
+  agent_authorization_fail_open: boolean;
+  agent_authorization_default_allow_or_fail_open: boolean;
+  agent_authorization_tool_scope_redacted: boolean;
+  agent_authorization_resource_scope_redacted: boolean;
+  agent_authorization_wildcard_tool_scope: boolean;
+  agent_authorization_wildcard_resource_scope: boolean;
+  agent_authorization_broad_scope: boolean;
+  agent_authorization_tool_authority_categories: string[];
+  agent_authorization_privileged_tool_authority: boolean;
+  agent_authorization_write_authority: boolean;
+  agent_authorization_external_authority: boolean;
+  agent_authorization_memory_write: boolean;
+  agent_authorization_shell_authority: boolean;
+  agent_authorization_destructive_authority: boolean;
+  agent_authorization_secret_authority: boolean;
+  agent_authorization_sensitive_data: boolean;
+  agent_authorization_pii_data: boolean;
+  agent_authorization_audit_disabled: boolean;
+  agent_authorization_grant_ttl_missing: boolean;
+  agent_authorization_approval_required: boolean;
   env_key_names: string[];
   secret_ref_key_names: string[];
 }
@@ -7723,6 +7865,378 @@ function isAgentApprovalGateSecurityField(fieldPath: string): boolean {
   return /approval|approve|review|reviewer|human|hitl|gate|decision|prompt|summary|justification|reason|model|llm|judge|classifier|score|default|fallback|timeout|execute|run|action|tool|mcp|browser|shell|database|db|secret|token|credential|auth|env|source|input|customer|ticket|retrieved|browser|memory|external|write|delete|pii|sensitive/iu.test(
     fieldPath
   );
+}
+
+function classifyAgentAuthorizationBrokerConfig(value: unknown, filePath: string): AgentAuthorizationBrokerPosture {
+  const fields = flattenRuntimeFields(value);
+  const stringValues = collectFieldStringValues(fields);
+  const provider = inferAgentAuthorizationBrokerProvider([filePath, ...fields.map((field) => field.path), ...stringValues]);
+  const destinations = classifyAgentAuthorizationDestinations(fields, provider);
+  const toolAuthorityCategories = collectAgentAuthorizationToolAuthorityCategories(fields);
+  const envKeys = uniqueStrings([
+    ...collectEnvKeyNamesFromConfig(value).filter(isLikelyEnvKeyName),
+    ...extractEnvironmentReferenceKeys(stringValues)
+  ]);
+  const secretRefKeys = extractSecretReferenceKeys(stringValues);
+  const policyCount = countAgentAuthorizationPolicyEntries(fields);
+  const wildcardToolScope = hasAgentAuthorizationWildcardToolScopeSignal(fields);
+  const wildcardResourceScope = hasAgentAuthorizationWildcardResourceScopeSignal(fields);
+  const defaultAllow = hasAgentAuthorizationDefaultAllowSignal(fields);
+  const failOpen = hasAgentAuthorizationFailOpenSignal(fields);
+  const secretAuthority = hasAgentAuthorizationSecretAuthoritySignal(fields) || toolAuthorityCategories.includes("secret_manager_access");
+
+  return {
+    agent_authorization_fields: fields
+      .map((field) => field.path)
+      .filter((fieldPath) => isAgentAuthorizationBrokerSecurityField(fieldPath))
+      .sort((a, b) => a.localeCompare(b)),
+    agent_authorization_provider: provider,
+    agent_authorization_remote: destinations.remote,
+    agent_authorization_destination_redacted: destinations.destinationCount > 0,
+    agent_authorization_destination_count: destinations.destinationCount,
+    agent_authorization_destination_kinds: destinations.destinationKinds,
+    agent_authorization_policy_redacted: policyCount > 0,
+    agent_authorization_policy_count: policyCount,
+    agent_authorization_enabled: hasAgentAuthorizationBrokerEnabledSignal(fields) || policyCount > 0,
+    agent_authorization_dynamic_grants_enabled: hasAgentAuthorizationDynamicGrantSignal(fields),
+    agent_authorization_model_selected_scope: hasAgentAuthorizationModelSelectedScopeSignal(fields),
+    agent_authorization_untrusted_subject: hasAgentAuthorizationUntrustedSubjectSignal(fields),
+    agent_authorization_untrusted_resource: hasAgentAuthorizationUntrustedResourceSignal(fields),
+    agent_authorization_default_allow: defaultAllow,
+    agent_authorization_fail_open: failOpen,
+    agent_authorization_default_allow_or_fail_open: defaultAllow || failOpen,
+    agent_authorization_tool_scope_redacted: wildcardToolScope || hasAgentAuthorizationToolScopeSignal(fields),
+    agent_authorization_resource_scope_redacted: wildcardResourceScope || hasAgentAuthorizationResourceScopeSignal(fields),
+    agent_authorization_wildcard_tool_scope: wildcardToolScope,
+    agent_authorization_wildcard_resource_scope: wildcardResourceScope,
+    agent_authorization_broad_scope:
+      wildcardToolScope ||
+      wildcardResourceScope ||
+      hasAgentAuthorizationBroadScopeSignal(fields, toolAuthorityCategories),
+    agent_authorization_tool_authority_categories: toolAuthorityCategories,
+    agent_authorization_privileged_tool_authority:
+      isAgentAuthorizationPrivileged(toolAuthorityCategories) || hasAgentAuthorizationPrivilegedToolSignal(fields),
+    agent_authorization_write_authority: hasAgentAuthorizationWriteAuthoritySignal(fields, toolAuthorityCategories),
+    agent_authorization_external_authority: hasAgentAuthorizationExternalAuthoritySignal(fields, toolAuthorityCategories),
+    agent_authorization_memory_write: toolAuthorityCategories.includes("memory_write"),
+    agent_authorization_shell_authority: toolAuthorityCategories.includes("shell_execution"),
+    agent_authorization_destructive_authority: hasAgentAuthorizationDestructiveAuthoritySignal(fields, toolAuthorityCategories),
+    agent_authorization_secret_authority: secretAuthority,
+    agent_authorization_sensitive_data: hasAgentAuthorizationSensitiveDataSignal(fields) || secretAuthority,
+    agent_authorization_pii_data: hasAgentAuthorizationPiiDataSignal(fields),
+    agent_authorization_audit_disabled: hasAgentAuthorizationAuditDisabledSignal(fields),
+    agent_authorization_grant_ttl_missing: hasAgentAuthorizationGrantSignal(fields) && !hasAgentAuthorizationGrantTtlSignal(fields),
+    agent_authorization_approval_required: hasAgentAuthorizationApprovalRequiredSignal(fields),
+    env_key_names: envKeys,
+    secret_ref_key_names: secretRefKeys
+  };
+}
+
+function inferAgentAuthorizationBrokerProvider(candidates: string[]): string | undefined {
+  const text = candidates.join(" ").toLowerCase();
+  const providers: Array<[string, RegExp]> = [
+    ["permit_io", /\bpermit(?:\.io)?\b/iu],
+    ["openfga", /\b(openfga|open[_\s-]?fga)\b/iu],
+    ["authzed", /\b(authzed|spicedb|spice[_\s-]?db)\b/iu],
+    ["cerbos", /\bcerbos\b/iu],
+    ["ory_keto", /\b(ory[_\s-]?keto|keto)\b/iu],
+    ["oso", /\boso\b/iu],
+    ["opal", /\bopal\b/iu],
+    ["custom", /\b(authz|authorization|permission[_\s-]?broker|capability[_\s-]?broker|grant[_\s-]?broker)\b/iu]
+  ];
+  return providers.find(([, pattern]) => pattern.test(text))?.[0];
+}
+
+function classifyAgentAuthorizationDestinations(
+  fields: RuntimeField[],
+  provider: string | undefined
+): { remote: boolean; destinationCount: number; destinationKinds: string[] } {
+  const destinationKinds = new Set<string>();
+  let destinationCount = 0;
+  if (provider && ["authzed", "permit_io"].includes(provider)) {
+    destinationKinds.add("managed_authz_provider");
+    destinationCount += 1;
+  }
+
+  for (const field of fields) {
+    const values = Array.isArray(field.value) ? field.value.map(String) : [String(field.value ?? "")];
+    for (const value of values) {
+      if (parseRemoteHttpUrl(value)) {
+        destinationKinds.add("http_endpoint");
+        destinationCount += 1;
+      }
+    }
+    if (/(^|\.)(endpoint|url|uri|host|dsn|connection|string)$/iu.test(field.path)) {
+      const text = values.join(" ");
+      if (/\b(authz|authorization|policy|broker|api|cloud|service|svc)\b/iu.test(text)) {
+        destinationKinds.add("configured_endpoint");
+        destinationCount += 1;
+      }
+    }
+  }
+
+  const kinds = [...destinationKinds].sort((a, b) => a.localeCompare(b));
+  return {
+    remote: destinationCount > 0,
+    destinationCount,
+    destinationKinds: kinds
+  };
+}
+
+function countAgentAuthorizationPolicyEntries(fields: RuntimeField[]): number {
+  return fields.filter((field) =>
+    /(^|\.)(policies?|rules?|grants?|grant_requests?|permissions?|scopes?|resources?|tools?|capabilities?|allow|allowlist|actions?)(\.|$)/iu.test(
+      field.path
+    )
+  ).length;
+}
+
+function hasAgentAuthorizationBrokerEnabledSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /\b(authz|authorization|permission[_\s-]?broker|capability[_\s-]?broker|grant[_\s-]?broker|policy[_\s-]?engine|broker)\b/iu.test(
+      agentAuthorizationFieldText(field)
+    ) && truthyConfigValue(field.value)
+  );
+}
+
+function hasAgentAuthorizationGrantSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => /\b(grant|permission|scope|capability|authorize|authorization|authz)\b/iu.test(agentAuthorizationFieldText(field)));
+}
+
+function hasAgentAuthorizationDynamicGrantSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /\b(dynamic|runtime|request(?:ed)?|on[_\s-]?demand|temporary|ephemeral|mint|issue|delegate|elevate|grant)\b/iu.test(
+      agentAuthorizationFieldText(field)
+    ) &&
+    /\b(grant|permission|scope|capability|authorize|authorization|authz|access)\b/iu.test(agentAuthorizationFieldText(field)) &&
+    truthyConfigValue(field.value)
+  );
+}
+
+function hasAgentAuthorizationModelSelectedScopeSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /\b(model|llm|assistant|agent|ai[_\s-]?policy|policy[_\s-]?model|classifier|selector|planner)\b/iu.test(
+      agentAuthorizationFieldText(field)
+    ) &&
+    /\b(select|choose|request|infer|derive|scope|tool|resource|permission|grant|capability|action)\b/iu.test(
+      agentAuthorizationFieldText(field)
+    ) &&
+    truthyConfigValue(field.value)
+  );
+}
+
+function hasAgentAuthorizationUntrustedSubjectSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /\b(subject|principal|actor|requested[_\s-]?by|requester|user|customer|ticket|message|browser|tool[_\s-]?output|retrieved|external|untrusted)\b/iu.test(
+      agentAuthorizationFieldText(field)
+    ) &&
+    /\b(untrusted|user|customer|client|ticket|support|issue|comment|message|prompt|retrieved|rag|browser|tool[_\s-]?output|external|inbound)\b/iu.test(
+      agentAuthorizationFieldText(field)
+    )
+  );
+}
+
+function hasAgentAuthorizationUntrustedResourceSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /\b(resource|resources|tenant|account|customer|record|path|object|collection|namespace|tool|scope|filter)\b/iu.test(
+      agentAuthorizationFieldText(field)
+    ) &&
+    /\b(user[_\s-]?requested|customer[_\s-]?requested|from[_\s-]?input|ticket|message|prompt|browser|tool[_\s-]?output|retrieved|external|untrusted)\b/iu.test(
+      agentAuthorizationFieldText(field)
+    )
+  );
+}
+
+function hasAgentAuthorizationDefaultAllowSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => {
+    const text = `${field.path} ${fieldValueText(field)}`;
+    if (/(^|\.)(default_allow|allow_by_default|default_decision|default_action|fallback_action|approve_by_default|permit_by_default)(\.|$)/iu.test(field.path)) {
+      return /(?:^|[_\W])(allow|permit|approve|grant|execute|continue|run|send|write)(?:[_\W]|$)/iu.test(text) && truthyConfigValue(field.value);
+    }
+    return /\b(default|fallback|unknown|no[_\s-]?match)\b/iu.test(field.path) &&
+      /\b(allow|permit|approve|grant|execute|continue|run|send|write)\b/iu.test(text) &&
+      truthyConfigValue(field.value);
+  });
+}
+
+function hasAgentAuthorizationFailOpenSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /\b(fail[_\s-]?open|on[_\s-]?error|timeout|unavailable|policy[_\s-]?error|fallback)\b/iu.test(agentAuthorizationFieldText(field)) &&
+    /\b(allow|permit|approve|grant|execute|continue|run|send|write|fail[_\s-]?open)\b/iu.test(agentAuthorizationFieldText(field)) &&
+    truthyConfigValue(field.value)
+  );
+}
+
+function hasAgentAuthorizationToolScopeSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /(^|\.)(tools?|allowed_tools|tool_scope|tool_scopes|capabilities?|permissions?|actions?|scopes?)(\.|$)/iu.test(field.path)
+  );
+}
+
+function hasAgentAuthorizationResourceScopeSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /(^|\.)(resources?|resource_scope|resource_scopes|tenants?|accounts?|customers?|records?|collections?|namespaces?|paths?)(\.|$)/iu.test(
+      field.path
+    )
+  );
+}
+
+function hasAgentAuthorizationWildcardToolScopeSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => {
+    if (!hasAgentAuthorizationToolScopeSignal([field])) return false;
+    const text = fieldValueText(field);
+    return /\*|all[_\s-]?tools|tools?:\*|mcp:tools:\*|capabilities?:\*|actions?:\*|permissions?:\*|admin|write:\*/iu.test(text);
+  });
+}
+
+function hasAgentAuthorizationWildcardResourceScopeSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => {
+    if (!hasAgentAuthorizationResourceScopeSignal([field])) return false;
+    const text = fieldValueText(field);
+    return /\*|all[_\s-]?resources|resources?:\*|tenant:\*|account:\*|customer:\*|namespace:\*|collection:\*|vault:\/\/|\/\*\*?$/iu.test(text);
+  });
+}
+
+function hasAgentAuthorizationBroadScopeSignal(fields: RuntimeField[], categories: string[]): boolean {
+  return categories.some((category) =>
+    ["database_access", "external_response", "repo_or_filesystem_write", "secret_manager_access", "shell_execution", "tool_call"].includes(category)
+  ) || fields.some((field) =>
+    /\b(admin|owner|write|delete|all[_\s-]?actions|all[_\s-]?permissions|broad|wildcard|unrestricted|global|tenant[_\s-]?wide|workspace[_\s-]?wide)\b/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    )
+  );
+}
+
+function collectAgentAuthorizationToolAuthorityCategories(fields: RuntimeField[]): string[] {
+  const categories = new Set<string>();
+  for (const field of fields) {
+    const text = `${field.path} ${fieldValueText(field)}`.toLowerCase();
+    if (/(?:^|[_\W])(tool|tools|function|function[_\s-]?call|mcp|connector|capability)(?:[_\W]|$)/iu.test(text)) categories.add("tool_call");
+    if (/(?:^|[_\W])(browser|playwright|puppeteer|selenium|click|form|upload|download|navigate)(?:[_\W]|$)/iu.test(text)) {
+      categories.add("browser_action");
+    }
+    if (/(?:^|[_\W])(database|db|sql|query|support[_\s-]?db|warehouse|record|table)(?:[_\W]|$)/iu.test(text)) {
+      categories.add("database_access");
+    }
+    if (/(?:^|[_\W])(vault|secret|secrets|secret[_\s-]?manager|key[_\s-]?vault|credential|token)(?:[_\W]|$)/iu.test(text)) {
+      categories.add("secret_manager_access");
+    }
+    if (/(?:^|[_\W])(slack|email|webhook|message|ticket|issue|comment|reply|respond|send|post|publish)(?:[_\W]|$)/iu.test(text)) {
+      categories.add("external_response");
+    }
+    if (/(?:^|[_\W])(filesystem|file[_\s-]?write|workspace|repo|repository|git|commit|push|pull[_\s-]?request|merge)(?:[_\W]|$)/iu.test(text)) {
+      categories.add("repo_or_filesystem_write");
+    }
+    if (/(?:^|[_\W])(shell|bash|command|exec|terminal|python|node|subprocess|script)(?:[_\W]|$)/iu.test(text)) {
+      categories.add("shell_execution");
+    }
+    if (/(?:^|[_\W])(memory|remember|store|persist|session[_\s-]?state|long[_\s-]?term)(?:[_\W]|$)/iu.test(text)) {
+      categories.add("memory_write");
+    }
+  }
+  return [...categories].sort((a, b) => a.localeCompare(b));
+}
+
+function isAgentAuthorizationPrivileged(categories: string[]): boolean {
+  return categories.some((category) =>
+    [
+      "browser_action",
+      "database_access",
+      "external_response",
+      "repo_or_filesystem_write",
+      "secret_manager_access",
+      "shell_execution",
+      "tool_call"
+    ].includes(category)
+  );
+}
+
+function hasAgentAuthorizationPrivilegedToolSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /\b(privileged|admin|production|prod|write|delete|external|credential|secret|tool|mcp|browser|shell|database|capability)\b/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    )
+  );
+}
+
+function hasAgentAuthorizationWriteAuthoritySignal(fields: RuntimeField[], categories: string[]): boolean {
+  return categories.some((category) =>
+    ["database_access", "external_response", "memory_write", "repo_or_filesystem_write", "shell_execution"].includes(category)
+  ) || fields.some((field) =>
+    /(?:^|[_\W])(write|update|create|delete|reply|respond|send|post|publish|comment|commit|push|merge|deploy|remember|persist|approve|grant|revoke)(?:[_\W]|$)/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    )
+  );
+}
+
+function hasAgentAuthorizationExternalAuthoritySignal(fields: RuntimeField[], categories: string[]): boolean {
+  return categories.includes("external_response") ||
+    fields.some((field) => /\b(slack|email|webhook|send|post|publish|reply|respond|ticket|issue|external|api|customer[_\s-]?system)\b/iu.test(`${field.path} ${fieldValueText(field)}`));
+}
+
+function hasAgentAuthorizationDestructiveAuthoritySignal(fields: RuntimeField[], categories: string[]): boolean {
+  return categories.includes("shell_execution") ||
+    fields.some((field) =>
+      /(?:^|[_\W])(delete|drop|destroy|destructive|irreversible|overwrite|merge|deploy|charge|refund|close[_\s-]?account|remove|revoke)(?:[_\W]|$)/iu.test(
+        `${field.path} ${fieldValueText(field)}`
+      )
+    );
+}
+
+function hasAgentAuthorizationSecretAuthoritySignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /(?:^|[_\W])(secret|secrets|token|credential|api[_-]?key|password|vault|key[_\s-]?vault|authorization|oauth)(?:[_\W]|$)/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    )
+  );
+}
+
+function hasAgentAuthorizationSensitiveDataSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /(?:^|[_\W])(customer|client|ticket|support|internal|confidential|private|proprietary|sensitive|account|billing|payment|prod|production|admin|credential|token|api[_-]?key|secret)(?:[_\W]|$)/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    )
+  );
+}
+
+function hasAgentAuthorizationPiiDataSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /(?:^|[_\W])(pii|email|phone|address|ssn|passport|dob|date[_\s-]?of[_\s-]?birth|customer[_-]?id|user[_-]?id|account[_-]?id)(?:[_\W]|$)/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    )
+  );
+}
+
+function hasAgentAuthorizationAuditDisabledSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => {
+    const text = agentAuthorizationFieldText(field);
+    if (/\b(audit|log|trace|evidence|decision[_\s-]?log)\b/iu.test(text)) {
+      return disabledConfigValue(field.value) || /\b(disabled|off|none|false|skip|bypass)\b/iu.test(text);
+    }
+    return false;
+  });
+}
+
+function hasAgentAuthorizationGrantTtlSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => /\b(ttl|expires|expiration|duration|max[_\s-]?age|lifetime|not[_\s-]?after|timeout)\b/iu.test(field.path));
+}
+
+function hasAgentAuthorizationApprovalRequiredSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /\b(approval|required[_-]?approval|human[_-]?approval|confirm|confirmation|review|human[_-]?in[_-]?the[_-]?loop|manual[_-]?review)\b/iu.test(
+      field.path
+    ) && truthyConfigValue(field.value)
+  );
+}
+
+function isAgentAuthorizationBrokerSecurityField(fieldPath: string): boolean {
+  return /authz|authorization|permission|permit|grant|scope|policy|broker|capability|tool|mcp|function|resource|tenant|account|customer|principal|subject|actor|model|llm|selector|dynamic|default|fallback|fail|audit|ttl|expire|approval|review|human|secret|token|credential|auth|env|source|input|ticket|browser|retrieved|memory|external|write|delete|pii|sensitive/iu.test(
+    fieldPath
+  );
+}
+
+function agentAuthorizationFieldText(field: RuntimeField): string {
+  return `${field.path} ${fieldValueText(field)}`.replaceAll("_", " ").replaceAll("-", " ");
 }
 
 function classifyAgentContextComposerConfig(value: unknown, filePath: string): AgentContextComposerPosture {

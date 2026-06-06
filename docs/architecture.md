@@ -6,7 +6,7 @@ AgentCSP should model the agent environment as a graph:
 
 - Principals: users, agents, subagents, service accounts, CI jobs
 - Context sources: prompts, skills, RAG docs, memory, web pages, emails, tool outputs, logs
-- Capabilities: tools, MCP functions, shell commands, API operations, filesystem access
+- Capabilities: tools, MCP functions, shell commands, API operations, filesystem access, authorization brokers
 - Data classes: public, internal, confidential, secret, credential, PII
 - Trust levels: trusted, project, workspace, third-party, untrusted, unknown
 - Actions: read, write, execute, publish, send, delete, approve, remember

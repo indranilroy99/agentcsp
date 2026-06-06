@@ -56,6 +56,9 @@ match:
     - field: metadata.parsed_agent_approval_config
       op: not_equals
       value: true
+    - field: metadata.parsed_agent_authorization_broker_config
+      op: not_equals
+      value: true
     - field: metadata.parsed_agent_context_composer_config
       op: not_equals
       value: true

@@ -27,6 +27,7 @@
 - Add MCP prompt and resource context inventory for model-visible server-supplied context that can steer privileged MCP authority.
 - Add MCP client-context posture for roots, sampling, and elicitation requests from remote or third-party servers.
 - Add MCP OAuth authorization posture for dynamic client registration, PKCE/state/resource-indicator controls, broad scopes, refresh-token storage, token forwarding, and untrusted server selection.
+- Add agent authorization-broker posture for model-selected tool grants, dynamic resource scopes, default-allow/fail-open decisions, audit posture, credential exposure, and approval boundaries.
 - Add runtime posture inventory for sandbox, approval, network, tool authority, and agent safety-control posture.
 - Add browser extension/profile posture for privileged extensions, password-manager/autofill exposure, and download/upload path redaction.
 - Add identity delegation posture for agent OAuth, OIDC, service-account, workload-identity, and token-broker authority.

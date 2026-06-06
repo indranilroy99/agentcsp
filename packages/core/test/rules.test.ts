@@ -82,6 +82,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-038")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-039")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-040")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-041")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-CICD-002")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-AUTOMATION-001")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-AUTOMATION-002")).toBe(true);
@@ -988,6 +989,45 @@ describe("rule engine", () => {
     expect(JSON.stringify(runtimeApprovalGateFindings[0])).not.toContain("Summarize the customer request");
     expect(JSON.stringify(runtimeApprovalGateFindings[0])).not.toContain("support_db.update_customer_record");
     expect(JSON.stringify(runtimeApprovalGateFindings[0])).not.toContain("customer_email_address");
+    const runtimeAuthorizationBrokerFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-RUNTIME-041");
+    expect(runtimeAuthorizationBrokerFindings).toHaveLength(1);
+    expect(runtimeAuthorizationBrokerFindings[0]?.matched_object.path).toBe("authz/tool-broker.yaml");
+    expect(runtimeAuthorizationBrokerFindings[0]?.matched_object.metadata).toMatchObject({
+      parsed_agent_authorization_broker_config: true,
+      agent_authorization_remote: true,
+      agent_authorization_dynamic_grants_enabled: true,
+      agent_authorization_model_selected_scope: true,
+      agent_authorization_untrusted_subject: true,
+      agent_authorization_untrusted_resource: true,
+      agent_authorization_default_allow: true,
+      agent_authorization_fail_open: true,
+      agent_authorization_default_allow_or_fail_open: true,
+      agent_authorization_wildcard_tool_scope: true,
+      agent_authorization_wildcard_resource_scope: true,
+      agent_authorization_broad_scope: true,
+      agent_authorization_privileged_tool_authority: true,
+      agent_authorization_write_authority: true,
+      agent_authorization_external_authority: true,
+      agent_authorization_secret_authority: true,
+      agent_authorization_audit_disabled: true,
+      agent_authorization_grant_ttl_missing: true,
+      agent_authorization_approval_required: false
+    });
+    expect(runtimeAuthorizationBrokerFindings[0]?.matched_object.metadata.agent_authorization_tool_authority_categories).toEqual([
+      "browser_action",
+      "database_access",
+      "external_response",
+      "secret_manager_access",
+      "tool_call"
+    ]);
+    expect(runtimeAuthorizationBrokerFindings[0]?.severity).toBe("critical");
+    expect(runtimeAuthorizationBrokerFindings[0]?.confidence).toBe("very_high");
+    expect(runtimeAuthorizationBrokerFindings[0]?.recommended_control).toBe("require_approval");
+    expect(JSON.stringify(runtimeAuthorizationBrokerFindings[0])).not.toContain("${AGENT_AUTHZ_BROKER_TOKEN}");
+    expect(JSON.stringify(runtimeAuthorizationBrokerFindings[0])).not.toContain("authz-broker.agentcsp-demo.example.invalid");
+    expect(JSON.stringify(runtimeAuthorizationBrokerFindings[0])).not.toContain("customer_ticket_message");
+    expect(JSON.stringify(runtimeAuthorizationBrokerFindings[0])).not.toContain("support_db.write");
+    expect(JSON.stringify(runtimeAuthorizationBrokerFindings[0])).not.toContain("authz_customer_email");
     const runtimeContextComposerFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-RUNTIME-022");
     expect(runtimeContextComposerFindings).toHaveLength(1);
     expect(runtimeContextComposerFindings[0]?.matched_object.path).toBe("context/system-context.yaml");

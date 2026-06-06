@@ -966,6 +966,16 @@ The current iteration adds:
 - CI fixture scan alignment with local verification by including log-derived generated-state signals in the vulnerable fixture scan
 - a `SECURITY.md` disclosure policy covering scanner evidence leaks, policy bypass, unsafe scan-scope behavior, and packaged artifact or CI supply-chain issues
 
+## Agent Authorization Broker Pass
+
+The current iteration adds:
+
+- first-class redacted metadata for agent authorization-broker posture, including remote broker destinations, dynamic grant requests, model-selected tool/resource scope, untrusted subject/resource inputs, default-allow and fail-open behavior, wildcard tool/resource scope, privileged authority categories, audit posture, grant TTL posture, credential exposure, and approval posture
+- vulnerable fixture coverage for a model-selected tool-permission broker that grants broad support, browser, Slack, database, and secret-manager authority from customer/retrieval/browser context with default-allow/fail-open behavior, disabled audit logging, credentials, and no approval
+- safe fixture coverage for a scoped local policy engine that denies by default, disables dynamic grants, requires review, audits decisions, and sets a grant TTL
+- rule `AGENTCSP-RUNTIME-041` for authorization brokers that combines dynamic grants, model-selected scope, untrusted subjects, broad privileged tool/resource authority, default-open behavior, credential exposure, and missing approval
+- scanner, rule, fixture verifier, and redaction coverage proving raw broker endpoints, tool names, wildcard tenant/resource scopes, data-scope labels, and token placeholders stay redacted
+
 ## Initial Build Recommendation
 
 Start with a CLI-first MVP before building the dashboard:

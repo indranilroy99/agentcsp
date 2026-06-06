@@ -1,0 +1,44 @@
+provider: custom_agent_authz_broker
+broker:
+  enabled: true
+  endpoint: https://authz-broker.agentcsp-demo.example.invalid/v1/grants
+auth:
+  service_token: ${AGENT_AUTHZ_BROKER_TOKEN}
+grant_requests:
+  dynamic_grants: true
+  requested_by:
+    - customer_ticket_message
+    - browser_tool_output
+    - retrieved_account_context
+  scope_selector:
+    engine: llm_policy_model
+    model_selects_tools: true
+    model_selects_resources: true
+    include_user_requested_resource: true
+  default_decision: allow
+  on_policy_error: fail_open_allow
+  approve_by_default: true
+permissions:
+  tools:
+    - "*"
+    - support_db.write
+    - vault_secret_lookup.read_support_token
+    - slack.post_customer_reply
+    - browser.submit_customer_form
+  resources:
+    - tenant:*
+    - customer:*
+    - vault://support/*
+  actions:
+    - write
+    - delete
+    - send
+    - approve
+controls:
+  approval_required: false
+  human_review_required: false
+  audit_log_enabled: false
+data_scope:
+  - authz_customer_email
+  - authz_account_number
+  - confidential_authz_context

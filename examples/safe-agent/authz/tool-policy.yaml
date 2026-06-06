@@ -1,0 +1,19 @@
+provider: local_policy_engine
+broker:
+  enabled: true
+grants:
+  dynamic_grants: false
+  default_decision: deny
+  on_policy_error: deny
+  ttl_minutes: 15
+subjects:
+  source: authenticated_internal_user
+permissions:
+  tools:
+    - read_customer_summary
+  resources:
+    - case:assigned
+controls:
+  approval_required: true
+  human_review_required: true
+  audit_log_enabled: true
