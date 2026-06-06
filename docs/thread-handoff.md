@@ -1156,6 +1156,16 @@ The current iteration adds:
 - rule `AGENTCSP-RUNTIME-055` for context-window instruction eviction that combines enabled truncation, untrusted/tool/memory priority, privileged instruction eviction, safety-policy eviction, unverified summaries, privileged tool authority, credential exposure, and missing approval
 - scanner, rule, fixture verifier, and redaction coverage proving raw priority labels, summary strategy names, tool names, data-scope labels, and token placeholders stay redacted
 
+## Agent Tool Retry Replay Pass
+
+The current iteration adds:
+
+- first-class redacted metadata for agent tool retry, replay, retry budgets, retry-on-error classes, idempotency, duplicate suppression, exactly-once controls, non-idempotent action authority, untrusted input, tool-output replay, credential exposure, and approval boundaries
+- vulnerable fixture coverage for an automatic retry/replay policy that can re-run support database, messaging, and vault-backed tool calls from untrusted customer, browser, retrieval, and tool-output context while idempotency, deduplication, exactly-once controls, backoff, and approval are disabled
+- safe fixture coverage for an approval-gated read-only retry policy with one attempt, replay disabled, idempotency and duplicate suppression enabled, and no credential exposure
+- rule `AGENTCSP-RUNTIME-056` for automatic replay of non-idempotent privileged tools from untrusted context when idempotency controls and approval are missing
+- scanner, rule, fixture verifier, and redaction coverage proving raw tool names, retry argument labels, source labels, data-scope labels, and token placeholders stay redacted
+
 ## Initial Build Recommendation
 
 Start with a CLI-first MVP before building the dashboard:

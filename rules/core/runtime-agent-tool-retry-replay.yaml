@@ -1,0 +1,53 @@
+id: AGENTCSP-RUNTIME-056
+name: Agent retries non-idempotent tools without approval
+description: An agent tool retry policy automatically replays non-idempotent or side-effecting tool calls from untrusted context while idempotency and duplicate-execution controls are disabled.
+category: tool_retry_replay
+severity: critical
+maps_to:
+  owasp:
+    - LLM01:2025 Prompt Injection
+    - LLM05:2025 Improper Output Handling
+    - LLM06:2025 Excessive Agency
+  mitre_atlas:
+    - AML.T0051 LLM Prompt Injection
+    - AML.T0057 Exfiltration via Cyber Means
+  nist_ai_rmf:
+    - MAP 5.1
+    - MEASURE 2.7
+    - MANAGE 2.4
+match:
+  object_type: runtime_config
+  where:
+    - field: metadata.parsed_agent_tool_retry_policy_config
+      op: equals
+      value: true
+    - field: metadata.agent_tool_retry_enabled
+      op: equals
+      value: true
+    - field: metadata.agent_tool_retry_automatic_retry
+      op: equals
+      value: true
+    - field: metadata.agent_tool_retry_replay_enabled
+      op: equals
+      value: true
+    - field: metadata.agent_tool_retry_untrusted_input
+      op: equals
+      value: true
+    - field: metadata.agent_tool_retry_privileged_tool_authority
+      op: equals
+      value: true
+    - field: metadata.agent_tool_retry_non_idempotent_actions
+      op: equals
+      value: true
+    - field: metadata.agent_tool_retry_idempotency_disabled
+      op: equals
+      value: true
+    - field: metadata.agent_tool_retry_approval_required
+      op: equals
+      value: false
+    - field: secret_exposure
+      op: equals
+      value: true
+recommendation:
+  control: require_approval
+  text: Require approval before retrying side-effecting tools, enforce idempotency keys and duplicate suppression, and block automatic replay of original tool arguments from untrusted context.

@@ -42,6 +42,8 @@ For computer-use and desktop automation rules, require concrete host-control cor
 
 For context-window and compaction rules, require concrete instruction-integrity correlation such as enabled truncation or overflow handling, untrusted/tool/memory priority, system or developer instruction eviction, safety-policy eviction, unverified summaries, privileged tool authority, credential evidence, and missing approval. Do not flag bounded token budgets or pinned-system-first compaction policies merely because they mention truncation.
 
+For agent tool retry and replay rules, require concrete duplicate-execution correlation such as automatic retry or replay, untrusted context, privileged non-idempotent action authority, disabled idempotency or duplicate suppression, credential evidence, and missing approval. Do not flag approval-gated read-only retry budgets merely because they mention retry, backoff, or idempotency.
+
 AgentCSP computes finding confidence from rule correlation depth, scoped object type, structured parsing, privileged actions, data class, external reach, and side-effect signals.
 
 Required fields:

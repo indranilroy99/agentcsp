@@ -134,6 +134,11 @@ export async function detectSurfaces(files: WalkedFile[]): Promise<DetectedSurfa
       continue;
     }
 
+    if (isAgentToolRetryPolicyConfigPath(file.relativePath, basename)) {
+      detectAgentToolRetryPolicyConfig(file, text, surfaces);
+      continue;
+    }
+
     if (isAgentContextComposerConfigPath(file.relativePath, basename)) {
       detectAgentContextComposerConfig(file, text, surfaces);
       continue;
@@ -2672,6 +2677,85 @@ function detectAgentContextWindowConfig(file: WalkedFile, text: string | undefin
   });
 }
 
+function detectAgentToolRetryPolicyConfig(file: WalkedFile, text: string | undefined, surfaces: DetectedSurfaces): void {
+  const parsed = parseStructuredConfig(text ?? "", file.relativePath);
+  if (parsed.parseFailed) {
+    addDiagnostic(surfaces, file, {
+      parser: parsed.parser ?? "structured_config",
+      code: "AGENT_TOOL_RETRY_POLICY_CONFIG_PARSE_FAILED",
+      reason: "Agent tool retry policy configuration could not be parsed. Raw content was redacted."
+    });
+  }
+
+  const posture = classifyAgentToolRetryPolicyConfig(parsed.value, file.relativePath);
+  const actions = new Set<ActionType>(["call", "read"]);
+  if (posture.agent_tool_retry_write_authority || posture.agent_tool_retry_non_idempotent_actions) actions.add("write");
+  if (posture.agent_tool_retry_destructive_authority) actions.add("delete");
+  if (posture.agent_tool_retry_external_authority) {
+    actions.add("send");
+    actions.add("publish");
+  }
+  if (posture.agent_tool_retry_memory_authority) actions.add("remember");
+  if (posture.agent_tool_retry_shell_authority) actions.add("execute");
+
+  const dataClasses = new Set<SurfaceObject["data_classes"][number]>(["unknown"]);
+  if (
+    posture.agent_tool_retry_secret_context ||
+    posture.env_key_names.some(isCredentialLikeKeyName) ||
+    posture.secret_ref_key_names.length > 0
+  ) {
+    dataClasses.add("credential");
+  }
+  if (posture.agent_tool_retry_sensitive_context || posture.agent_tool_retry_untrusted_input) dataClasses.add("confidential");
+  if (posture.agent_tool_retry_pii_context) dataClasses.add("pii");
+  if (dataClasses.size > 1) dataClasses.delete("unknown");
+
+  const object = createSurfaceObject({
+    type: "runtime_config",
+    name: path.basename(file.relativePath),
+    path: file.relativePath,
+    trust_level: inferTrustLevel(file.relativePath),
+    data_classes: uniqueDataClasses([...dataClasses] as SurfaceObject["data_classes"]),
+    actions: uniqueActions([...actions]),
+    side_effect:
+      posture.agent_tool_retry_automatic_retry ||
+      posture.agent_tool_retry_replay_enabled ||
+      posture.agent_tool_retry_write_authority ||
+      posture.agent_tool_retry_external_authority ||
+      posture.agent_tool_retry_memory_authority ||
+      posture.agent_tool_retry_destructive_authority,
+    reversible:
+      !posture.agent_tool_retry_non_idempotent_actions &&
+      !posture.agent_tool_retry_external_authority &&
+      !posture.agent_tool_retry_destructive_authority,
+    external_reach: posture.agent_tool_retry_external_authority,
+    secret_exposure:
+      posture.agent_tool_retry_secret_context ||
+      posture.env_key_names.some(isCredentialLikeKeyName) ||
+      posture.secret_ref_key_names.length > 0,
+    reason: "Agent tool retry policy discovered as automatic replay and idempotency posture.",
+    metadata: {
+      content_redacted: true,
+      values_collected: false,
+      parsed_agent_tool_retry_policy_config: Boolean(parsed.value) && !parsed.parseFailed,
+      parse_error: parsed.parseFailed,
+      ...posture
+    }
+  });
+  surfaces.runtime_config.push({
+    ...object,
+    untrusted_to_privileged:
+      (posture.agent_tool_retry_untrusted_input &&
+        posture.agent_tool_retry_automatic_retry &&
+        posture.agent_tool_retry_replay_enabled &&
+        posture.agent_tool_retry_privileged_tool_authority &&
+        posture.agent_tool_retry_non_idempotent_actions &&
+        posture.agent_tool_retry_idempotency_disabled &&
+        !posture.agent_tool_retry_approval_required) ||
+      isUntrustedToPrivileged(object)
+  });
+}
+
 function detectToolOutputPolicyConfig(file: WalkedFile, text: string | undefined, surfaces: DetectedSurfaces): void {
   const parsed = parseStructuredConfig(text ?? "", file.relativePath);
   if (parsed.parseFailed) {
@@ -4058,6 +4142,27 @@ function isAgentContextWindowConfigPath(relativePath: string, basename: string):
   return windowName || (windowDirectory && configName);
 }
 
+function isAgentToolRetryPolicyConfigPath(relativePath: string, basename: string): boolean {
+  const normalized = relativePath.replaceAll("\\", "/").toLowerCase();
+  const lowerBase = basename.toLowerCase();
+  if (!/\.(json|ya?ml|toml)$/iu.test(lowerBase)) return false;
+  if (normalized.startsWith(".github/workflows/")) return false;
+  if (normalized.startsWith("rules/")) return false;
+  const segments = normalized.split("/").slice(0, -1);
+  const retryDirectory = segments.some((segment) =>
+    /^(tool-retry|tool_retry|tool-retries|tool_retries|retries|retry|tool-runtime|tool_runtime|tool-execution|tool_execution|execution-policy|execution_policy|run-policy|run_policy|agent-replay|agent_replay)$/iu.test(
+      segment
+    )
+  );
+  const retryName = /(?:tool[-_]?retr(?:y|ies)|retry[-_]?policy|tool[-_]?replay|replay[-_]?policy|idempotency|dedupe|de[-_]?dupe|exactly[-_]?once|tool[-_]?execution[-_]?policy|tool[-_]?runtime[-_]?policy)/iu.test(
+    lowerBase
+  );
+  const configName = /(?:config|settings|policy|retry|retries|replay|idempotency|dedupe|de-dupe|execution|runtime|tools?|backoff|timeout|failure)/iu.test(
+    lowerBase
+  );
+  return retryName || (retryDirectory && configName);
+}
+
 function isToolOutputPolicyConfigPath(relativePath: string, basename: string): boolean {
   const normalized = relativePath.replaceAll("\\", "/").toLowerCase();
   const lowerBase = basename.toLowerCase();
@@ -5101,6 +5206,43 @@ interface AgentContextWindowPosture {
   agent_context_window_sensitive_context: boolean;
   agent_context_window_pii_context: boolean;
   agent_context_window_approval_required: boolean;
+  env_key_names: string[];
+  secret_ref_key_names: string[];
+}
+
+interface AgentToolRetryPosture {
+  agent_tool_retry_fields: string[];
+  agent_tool_retry_enabled: boolean;
+  agent_tool_retry_automatic_retry: boolean;
+  agent_tool_retry_replay_enabled: boolean;
+  agent_tool_retry_retry_on_failure: boolean;
+  agent_tool_retry_retry_on_timeout: boolean;
+  agent_tool_retry_retry_on_rate_limit: boolean;
+  agent_tool_retry_retry_on_validation_error: boolean;
+  agent_tool_retry_max_attempts_redacted: boolean;
+  agent_tool_retry_max_attempts_gt_one: boolean;
+  agent_tool_retry_unbounded_attempts: boolean;
+  agent_tool_retry_budget_missing: boolean;
+  agent_tool_retry_backoff_disabled: boolean;
+  agent_tool_retry_idempotency_required: boolean;
+  agent_tool_retry_idempotency_disabled: boolean;
+  agent_tool_retry_deduplication_disabled: boolean;
+  agent_tool_retry_exactly_once_disabled: boolean;
+  agent_tool_retry_non_idempotent_actions: boolean;
+  agent_tool_retry_untrusted_input: boolean;
+  agent_tool_retry_tool_output_replay: boolean;
+  agent_tool_retry_model_selected_retry: boolean;
+  agent_tool_retry_action_categories: string[];
+  agent_tool_retry_privileged_tool_authority: boolean;
+  agent_tool_retry_write_authority: boolean;
+  agent_tool_retry_external_authority: boolean;
+  agent_tool_retry_memory_authority: boolean;
+  agent_tool_retry_shell_authority: boolean;
+  agent_tool_retry_destructive_authority: boolean;
+  agent_tool_retry_secret_context: boolean;
+  agent_tool_retry_sensitive_context: boolean;
+  agent_tool_retry_pii_context: boolean;
+  agent_tool_retry_approval_required: boolean;
   env_key_names: string[];
   secret_ref_key_names: string[];
 }
@@ -11164,6 +11306,369 @@ function isAgentContextWindowSecurityField(fieldPath: string): boolean {
 }
 
 function agentContextWindowFieldText(field: RuntimeField): string {
+  return `${field.path} ${fieldValueText(field)}`.toLowerCase().replaceAll("_", " ").replaceAll("-", " ");
+}
+
+function classifyAgentToolRetryPolicyConfig(value: unknown, filePath: string): AgentToolRetryPosture {
+  const fields = flattenRuntimeFields(value);
+  const stringValues = collectFieldStringValues(fields);
+  const actionCategories = collectAgentToolRetryActionCategories(fields);
+  const maxAttempts = classifyAgentToolRetryMaxAttempts(fields);
+  const automaticRetry = hasAgentToolRetryAutomaticSignal(fields);
+  const replayEnabled = hasAgentToolRetryReplaySignal(fields);
+  const idempotencyRequired = hasAgentToolRetryIdempotencyRequiredSignal(fields);
+  const dedupeDisabled = hasAgentToolRetryDeduplicationDisabledSignal(fields);
+  const exactlyOnceDisabled = hasAgentToolRetryExactlyOnceDisabledSignal(fields);
+  const explicitIdempotencyDisabled = hasAgentToolRetryIdempotencyDisabledSignal(fields);
+  const nonIdempotent =
+    hasAgentToolRetryNonIdempotentSignal(fields, actionCategories) ||
+    actionCategories.some((category) =>
+      ["database_write", "external_response", "repo_or_filesystem_write", "secret_manager_access", "shell_execution"].includes(category)
+    );
+  const idempotencyDisabled = explicitIdempotencyDisabled || dedupeDisabled || exactlyOnceDisabled || (automaticRetry && nonIdempotent && !idempotencyRequired);
+  const secretContext = hasAgentToolRetrySecretContextSignal(fields) || actionCategories.includes("secret_manager_access");
+  const envKeys = uniqueStrings([
+    ...collectEnvKeyNamesFromConfig(value).filter(isLikelyEnvKeyName),
+    ...extractEnvironmentReferenceKeys(stringValues)
+  ]);
+  const secretRefKeys = extractSecretReferenceKeys(stringValues);
+
+  return {
+    agent_tool_retry_fields: fields
+      .map((field) => field.path)
+      .filter((fieldPath) => isAgentToolRetrySecurityField(fieldPath))
+      .sort((a, b) => a.localeCompare(b)),
+    agent_tool_retry_enabled: hasAgentToolRetryEnabledSignal(fields) || automaticRetry || replayEnabled,
+    agent_tool_retry_automatic_retry: automaticRetry,
+    agent_tool_retry_replay_enabled: replayEnabled,
+    agent_tool_retry_retry_on_failure: hasAgentToolRetryFailureSignal(fields),
+    agent_tool_retry_retry_on_timeout: hasAgentToolRetryTimeoutSignal(fields),
+    agent_tool_retry_retry_on_rate_limit: hasAgentToolRetryRateLimitSignal(fields),
+    agent_tool_retry_retry_on_validation_error: hasAgentToolRetryValidationErrorSignal(fields),
+    agent_tool_retry_max_attempts_redacted: maxAttempts.redacted,
+    agent_tool_retry_max_attempts_gt_one: maxAttempts.gtOne,
+    agent_tool_retry_unbounded_attempts: maxAttempts.unbounded,
+    agent_tool_retry_budget_missing: automaticRetry && !maxAttempts.redacted,
+    agent_tool_retry_backoff_disabled: hasAgentToolRetryBackoffDisabledSignal(fields),
+    agent_tool_retry_idempotency_required: idempotencyRequired,
+    agent_tool_retry_idempotency_disabled: idempotencyDisabled,
+    agent_tool_retry_deduplication_disabled: dedupeDisabled,
+    agent_tool_retry_exactly_once_disabled: exactlyOnceDisabled,
+    agent_tool_retry_non_idempotent_actions: nonIdempotent,
+    agent_tool_retry_untrusted_input: hasAgentToolRetryUntrustedInputSignal(fields),
+    agent_tool_retry_tool_output_replay: hasAgentToolRetryToolOutputReplaySignal(fields),
+    agent_tool_retry_model_selected_retry: hasAgentToolRetryModelSelectedSignal(fields),
+    agent_tool_retry_action_categories: actionCategories,
+    agent_tool_retry_privileged_tool_authority: isAgentToolRetryPrivileged(actionCategories) || hasAgentToolRetryPrivilegedToolSignal(fields),
+    agent_tool_retry_write_authority: hasAgentToolRetryWriteAuthoritySignal(fields, actionCategories),
+    agent_tool_retry_external_authority: actionCategories.includes("external_response") || hasAgentToolRetryExternalAuthoritySignal(fields),
+    agent_tool_retry_memory_authority: actionCategories.includes("memory_write"),
+    agent_tool_retry_shell_authority: actionCategories.includes("shell_execution"),
+    agent_tool_retry_destructive_authority: hasAgentToolRetryDestructiveAuthoritySignal(fields, actionCategories),
+    agent_tool_retry_secret_context: secretContext,
+    agent_tool_retry_sensitive_context: hasAgentToolRetrySensitiveContextSignal(fields) || secretContext,
+    agent_tool_retry_pii_context: hasAgentToolRetryPiiContextSignal(fields),
+    agent_tool_retry_approval_required: hasAgentToolRetryApprovalRequiredSignal(fields),
+    env_key_names: envKeys,
+    secret_ref_key_names: secretRefKeys
+  };
+}
+
+function collectAgentToolRetryActionCategories(fields: RuntimeField[]): string[] {
+  const categories = new Set<string>();
+  for (const field of fields) {
+    const text = agentToolRetryFieldText(field);
+    const authorityField = /(?:^|\.)(tools?|allowed_tools|tool_calls?|actions?|commands?|capabilities?|connectors?|permissions?|non_idempotent_actions?|retry_actions?|on_retry|on_failure|on_timeout|after_retry|follow_up|followup)(?:\.|$)/iu.test(
+      field.path
+    );
+    if (
+      !authorityField &&
+      /(?:^|\.)(sources?|inputs?|context|data_scope|capture|retry_on|retry|replay|idempotency|dedupe|backoff|max_attempts|approval|env)(?:\.|$)/iu.test(
+        field.path
+      )
+    ) {
+      continue;
+    }
+    if (/(?:^|[_\W])(tool|tools|function|function[_\s-]?call|mcp|connector|capability)(?:[_\W]|$)/iu.test(text)) categories.add("tool_call");
+    if (authorityField && /(?:^|[_\W])(database|db|sql|query|support[_\s-]?db|warehouse|record|update[_\s-]?customer[_\s-]?record)(?:[_\W]|$)/iu.test(text)) {
+      categories.add("database_write");
+    }
+    if (authorityField && /(?:^|[_\W])(slack|email|webhook|message|ticket|issue|comment|reply|respond|send|post|publish|sms|notification)(?:[_\W]|$)/iu.test(text)) {
+      categories.add("external_response");
+    }
+    if (authorityField && /(?:^|[_\W])(browser|playwright|puppeteer|selenium|click|form|upload|download|navigate|submit)(?:[_\W]|$)/iu.test(text)) {
+      categories.add("browser_action");
+    }
+    if (authorityField && /(?:^|[_\W])(vault|secret|secrets|secret[_\s-]?manager|key[_\s-]?vault|credential|token)(?:[_\W]|$)/iu.test(text)) {
+      categories.add("secret_manager_access");
+    }
+    if (authorityField && /(?:^|[_\W])(memory|remember|store|persist|session[_\s-]?state|long[_\s-]?term)(?:[_\W]|$)/iu.test(text)) {
+      categories.add("memory_write");
+    }
+    if (authorityField && /(?:^|[_\W])(shell|bash|command|exec|terminal|python|node|subprocess|script)(?:[_\W]|$)/iu.test(text)) {
+      categories.add("shell_execution");
+    }
+    if (authorityField && /(?:^|[_\W])(filesystem|file[_\s-]?write|workspace|repo|repository|git|commit|push|pull[_\s-]?request|merge)(?:[_\W]|$)/iu.test(text)) {
+      categories.add("repo_or_filesystem_write");
+    }
+  }
+  return [...categories].sort((a, b) => a.localeCompare(b));
+}
+
+function classifyAgentToolRetryMaxAttempts(fields: RuntimeField[]): { redacted: boolean; gtOne: boolean; unbounded: boolean } {
+  let redacted = false;
+  let gtOne = false;
+  let unbounded = false;
+  for (const field of fields) {
+    if (!/(?:^|\.)(max_attempts|max_retries|retry_count|attempts|retries|retry_budget|limit)(?:\.|$)/iu.test(field.path)) continue;
+    redacted = true;
+    const text = fieldValueText(field);
+    if (/\b(unlimited|unbounded|infinite|forever|none|no[_\s-]?limit)\b/iu.test(text)) {
+      unbounded = true;
+      gtOne = true;
+      continue;
+    }
+    if (typeof field.value === "number" && field.value > 1) gtOne = true;
+    const numeric = Number(String(field.value).replace(/[^0-9.]/gu, ""));
+    if (Number.isFinite(numeric) && numeric > 1) gtOne = true;
+  }
+  return { redacted, gtOne, unbounded };
+}
+
+function hasAgentToolRetryEnabledSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /(?:^|\.)(enabled|retry_enabled|tool_retry_enabled|replay_enabled|automatic_retry|auto_retry)(?:\.|$)/iu.test(field.path) &&
+    truthyConfigValue(field.value)
+  );
+}
+
+function hasAgentToolRetryAutomaticSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => {
+    const text = agentToolRetryFieldText(field);
+    if (/(?:^|\.)(automatic_retry|auto_retry|retry_automatically|auto_replay|automatic_replay)(?:\.|$)/iu.test(field.path)) {
+      return truthyConfigValue(field.value);
+    }
+    return /\b(auto retry|automatic retry|retry automatically|auto replay|automatic replay|retry without approval)\b/iu.test(text) &&
+      truthyConfigValue(field.value);
+  });
+}
+
+function hasAgentToolRetryReplaySignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => {
+    const text = agentToolRetryFieldText(field);
+    if (/(?:^|\.)(replay|replay_enabled|replay_tool_calls|reuse_original_tool_arguments|resubmit|repeat_tool_call|retry_original_args)(?:\.|$)/iu.test(
+      field.path
+    )) {
+      return truthyConfigValue(field.value);
+    }
+    return /\b(replay|repeat tool call|resubmit|reuse original arguments|retry original args|reinvoke|rerun tool)\b/iu.test(text) &&
+      truthyConfigValue(field.value);
+  });
+}
+
+function hasAgentToolRetryFailureSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => /\b(failure|failed|error|exception|tool error)\b/iu.test(agentToolRetryFieldText(field)) && truthyConfigValue(field.value));
+}
+
+function hasAgentToolRetryTimeoutSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => /\b(timeout|timed out|network error|unavailable)\b/iu.test(agentToolRetryFieldText(field)) && truthyConfigValue(field.value));
+}
+
+function hasAgentToolRetryRateLimitSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => /\b(rate limit|ratelimit|429|quota|throttle)\b/iu.test(agentToolRetryFieldText(field)) && truthyConfigValue(field.value));
+}
+
+function hasAgentToolRetryValidationErrorSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => /\b(validation error|schema error|parse error|invalid output|invalid response)\b/iu.test(agentToolRetryFieldText(field)) && truthyConfigValue(field.value));
+}
+
+function hasAgentToolRetryBackoffDisabledSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => {
+    const text = agentToolRetryFieldText(field);
+    if (/(?:^|\.)(backoff|jitter|retry_delay|cooldown|rate_limit_backoff)(?:\.|$)/iu.test(field.path)) {
+      return disabledConfigValue(field.value) || /\b(disabled|off|none|false|zero|immediate|no delay)\b/iu.test(text);
+    }
+    return /\b(no backoff|backoff disabled|immediate retry|retry immediately|no jitter)\b/iu.test(text) && truthyConfigValue(field.value);
+  });
+}
+
+function hasAgentToolRetryIdempotencyRequiredSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => {
+    const text = agentToolRetryFieldText(field);
+    return /\b(idempotency|idempotent|dedupe|de dupe|exactly once|request id|operation id)\b/iu.test(text) &&
+      /\b(required|require|enabled|true|key|required key|exactly once)\b/iu.test(text) &&
+      truthyConfigValue(field.value);
+  });
+}
+
+function hasAgentToolRetryIdempotencyDisabledSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => {
+    const text = agentToolRetryFieldText(field);
+    if (/\b(idempotency|idempotent|idempotency key|idempotency required)\b/iu.test(text)) {
+      return disabledConfigValue(field.value) || /\b(disabled|off|false|none|not required|optional|skip)\b/iu.test(text);
+    }
+    return false;
+  });
+}
+
+function hasAgentToolRetryDeduplicationDisabledSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => {
+    const text = agentToolRetryFieldText(field);
+    if (/\b(dedupe|de dupe|deduplication|duplicate|duplicate suppression|duplicate guard)\b/iu.test(text)) {
+      return disabledConfigValue(field.value) || /\b(disabled|off|false|none|skip|no dedupe|allow duplicates)\b/iu.test(text);
+    }
+    return false;
+  });
+}
+
+function hasAgentToolRetryExactlyOnceDisabledSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => {
+    const text = agentToolRetryFieldText(field);
+    if (/\b(exactly once|once only|single execution)\b/iu.test(text)) {
+      return disabledConfigValue(field.value) || /\b(disabled|off|false|none|at least once|best effort)\b/iu.test(text);
+    }
+    return false;
+  });
+}
+
+function hasAgentToolRetryNonIdempotentSignal(fields: RuntimeField[], categories: string[]): boolean {
+  return categories.some((category) => ["database_write", "external_response", "repo_or_filesystem_write", "secret_manager_access", "shell_execution"].includes(category)) ||
+    fields.some((field) => {
+      const text = agentToolRetryFieldText(field);
+      if (/\b(non idempotent|nonidempotent|idempotent false|not idempotent|side effect|external write|irreversible)\b/iu.test(text)) {
+        return truthyConfigValue(field.value) || disabledConfigValue(field.value);
+      }
+      return false;
+    });
+}
+
+function hasAgentToolRetryUntrustedInputSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /\b(untrusted|user|customer|client|ticket|support|issue|comment|message|prompt|retrieved|rag|document|email|slack|browser|web page|chat|inbound|external|tool output|tool result)\b/iu.test(
+      agentToolRetryFieldText(field)
+    ) && truthyConfigValue(field.value)
+  );
+}
+
+function hasAgentToolRetryToolOutputReplaySignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /\b(tool outputs?|tool results?|observations?|browser outputs?|command outputs?|mcp results?|function results?)\b/iu.test(agentToolRetryFieldText(field)) &&
+    /\b(replay|retry|reuse|resubmit|include|capture)\b/iu.test(agentToolRetryFieldText(field)) &&
+    truthyConfigValue(field.value)
+  );
+}
+
+function hasAgentToolRetryModelSelectedSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /\b(model|llm|assistant|agent|planner|classifier)\b/iu.test(agentToolRetryFieldText(field)) &&
+    /\b(retry|replay|decide|select|choose|on error|policy)\b/iu.test(agentToolRetryFieldText(field)) &&
+    truthyConfigValue(field.value)
+  );
+}
+
+function isAgentToolRetryPrivileged(categories: string[]): boolean {
+  return categories.some((category) =>
+    [
+      "browser_action",
+      "database_write",
+      "external_response",
+      "memory_write",
+      "repo_or_filesystem_write",
+      "secret_manager_access",
+      "shell_execution"
+    ].includes(category)
+  );
+}
+
+function hasAgentToolRetryPrivilegedToolSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /(?:^|\.)(tools?|allowed_tools|tool_calls?|actions?|commands?|capabilities?|connectors?|permissions?|non_idempotent_actions?|retry_actions?)(?:\.|$)/iu.test(
+      field.path
+    ) &&
+    /\b(privileged|admin|production|prod|write|delete|external|credential|secret|mcp|browser|shell|database)\b/iu.test(
+      agentToolRetryFieldText(field)
+    )
+  );
+}
+
+function hasAgentToolRetryWriteAuthoritySignal(fields: RuntimeField[], categories: string[]): boolean {
+  return categories.some((category) =>
+    ["database_write", "external_response", "memory_write", "repo_or_filesystem_write", "shell_execution"].includes(category)
+  ) || fields.some((field) =>
+    /(?:^|\.)(tools?|allowed_tools|tool_calls?|actions?|commands?|capabilities?|connectors?|permissions?|non_idempotent_actions?|retry_actions?)(?:\.|$)/iu.test(
+      field.path
+    ) &&
+    /\b(write|update|create|delete|reply|respond|send|post|publish|comment|commit|push|merge|deploy|remember|persist)\b/iu.test(
+      agentToolRetryFieldText(field)
+    )
+  );
+}
+
+function hasAgentToolRetryExternalAuthoritySignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /(?:^|\.)(tools?|allowed_tools|tool_calls?|actions?|commands?|capabilities?|connectors?|permissions?|non_idempotent_actions?|retry_actions?)(?:\.|$)/iu.test(
+      field.path
+    ) &&
+    /\b(slack|email|webhook|send|post|publish|reply|respond|ticket|issue|external|api|customer system|sms|notification)\b/iu.test(
+      agentToolRetryFieldText(field)
+    )
+  );
+}
+
+function hasAgentToolRetryDestructiveAuthoritySignal(fields: RuntimeField[], categories: string[]): boolean {
+  return categories.includes("shell_execution") ||
+    fields.some((field) =>
+      /(?:^|\.)(tools?|allowed_tools|tool_calls?|actions?|commands?|capabilities?|connectors?|permissions?|non_idempotent_actions?|retry_actions?)(?:\.|$)/iu.test(
+        field.path
+      ) &&
+      /\b(delete|drop|destroy|destructive|irreversible|overwrite|merge|deploy|charge|refund|close account|remove|revoke)\b/iu.test(
+        agentToolRetryFieldText(field)
+      )
+    );
+}
+
+function hasAgentToolRetrySecretContextSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    !/(?:^|\.)(redaction|redact|mask|sanitize|sanitization)(?:\.|$)/iu.test(field.path) &&
+    /\b(secret|secrets|token|credential|api key|apikey|password|vault|key vault|authorization|oauth)\b/iu.test(
+      agentToolRetryFieldText(field)
+    )
+  );
+}
+
+function hasAgentToolRetrySensitiveContextSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    !/(?:^|\.)(redaction|redact|mask|sanitize|sanitization)(?:\.|$)/iu.test(field.path) &&
+    /\b(customer|client|ticket|support|internal|confidential|private|proprietary|sensitive|account|billing|payment|prod|production|admin|credential|token|api key|secret)\b/iu.test(
+      agentToolRetryFieldText(field)
+    )
+  );
+}
+
+function hasAgentToolRetryPiiContextSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    !/(?:^|\.)(redaction|redact|mask|sanitize|sanitization)(?:\.|$)/iu.test(field.path) &&
+    /\b(pii|email|phone|address|ssn|passport|dob|date of birth|customer id|user id|account id|account number)\b/iu.test(
+      agentToolRetryFieldText(field)
+    )
+  );
+}
+
+function hasAgentToolRetryApprovalRequiredSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /\b(approval|required approval|human approval|confirm|confirmation|review|human in the loop|manual review)\b/iu.test(
+      agentToolRetryFieldText(field)
+    ) && truthyConfigValue(field.value)
+  );
+}
+
+function isAgentToolRetrySecurityField(fieldPath: string): boolean {
+  return /tool|retry|retries|replay|attempt|failure|timeout|error|rate|limit|quota|validation|backoff|jitter|idempot|dedupe|duplicate|exactly|once|budget|source|input|context|customer|ticket|retriev|rag|browser|message|action|command|capabil|permission|non_idempotent|approval|secret|token|credential|auth|env|data|scope|pii|sensitive/iu.test(
+    fieldPath
+  );
+}
+
+function agentToolRetryFieldText(field: RuntimeField): string {
   return `${field.path} ${fieldValueText(field)}`.toLowerCase().replaceAll("_", " ").replaceAll("-", " ");
 }
 

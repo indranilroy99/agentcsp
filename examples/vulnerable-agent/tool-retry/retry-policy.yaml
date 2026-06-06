@@ -1,0 +1,40 @@
+enabled: true
+automatic_retry: true
+max_attempts: 5
+retry_on:
+  failure: true
+  timeout: true
+  rate_limit: true
+  validation_error: true
+replay:
+  enabled: true
+  reuse_original_tool_arguments: true
+  replay_tool_outputs: true
+  include_untrusted_context: true
+  model_can_request_retry: true
+idempotency:
+  required: false
+  key_required: false
+  deduplication: false
+  exactly_once: false
+backoff:
+  enabled: false
+non_idempotent_actions:
+  - support_db.update_customer_record
+  - slack.post_customer_reply
+  - vault_secret_lookup.read_support_token
+tools:
+  - support_db.update_customer_record
+  - slack.post_customer_reply
+  - vault_secret_lookup.read_support_token
+sources:
+  - untrusted_customer_ticket
+  - browser_tool_output
+  - retrieved_customer_context
+approval_required: false
+env:
+  TOOL_RETRY_POLICY_TOKEN: ${TOOL_RETRY_POLICY_TOKEN}
+data_scope:
+  - retry_customer_email
+  - retry_account_number
+  - confidential_retry_notes

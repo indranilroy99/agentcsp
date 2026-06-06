@@ -62,6 +62,7 @@ describe("scanner", () => {
       "SUPPORT_INBOX_TOKEN",
       "TICKETING_MCP_TOKEN",
       "TOOL_OUTPUT_POLICY_TOKEN",
+      "TOOL_RETRY_POLICY_TOKEN",
       "VAULT_AGENT_TOKEN",
       "VISION_CONTEXT_TOKEN"
     ]);
@@ -2553,6 +2554,71 @@ describe("scanner", () => {
     expect(JSON.stringify(contextWindowConfig)).not.toContain("slack.post_customer_reply");
     expect(JSON.stringify(contextWindowConfig)).not.toContain("vault_secret_lookup.read_support_token");
     expect(JSON.stringify(contextWindowConfig)).not.toContain("context_window_customer_email");
+    const toolRetryPolicyConfig = surfaces.runtime_config.find((surface) => surface.path === "tool-retry/retry-policy.yaml");
+    expect(toolRetryPolicyConfig).toBeDefined();
+    expect(toolRetryPolicyConfig).toMatchObject({
+      trust_level: "project",
+      external_reach: true,
+      secret_exposure: true,
+      side_effect: true,
+      reversible: false,
+      untrusted_to_privileged: true
+    });
+    expect(toolRetryPolicyConfig?.metadata).toMatchObject({
+      content_redacted: true,
+      values_collected: false,
+      parsed_agent_tool_retry_policy_config: true,
+      agent_tool_retry_enabled: true,
+      agent_tool_retry_automatic_retry: true,
+      agent_tool_retry_replay_enabled: true,
+      agent_tool_retry_retry_on_failure: true,
+      agent_tool_retry_retry_on_timeout: true,
+      agent_tool_retry_retry_on_rate_limit: true,
+      agent_tool_retry_retry_on_validation_error: true,
+      agent_tool_retry_max_attempts_redacted: true,
+      agent_tool_retry_max_attempts_gt_one: true,
+      agent_tool_retry_unbounded_attempts: false,
+      agent_tool_retry_budget_missing: false,
+      agent_tool_retry_backoff_disabled: true,
+      agent_tool_retry_idempotency_required: false,
+      agent_tool_retry_idempotency_disabled: true,
+      agent_tool_retry_deduplication_disabled: true,
+      agent_tool_retry_exactly_once_disabled: true,
+      agent_tool_retry_non_idempotent_actions: true,
+      agent_tool_retry_untrusted_input: true,
+      agent_tool_retry_tool_output_replay: true,
+      agent_tool_retry_model_selected_retry: true,
+      agent_tool_retry_privileged_tool_authority: true,
+      agent_tool_retry_write_authority: true,
+      agent_tool_retry_external_authority: true,
+      agent_tool_retry_memory_authority: false,
+      agent_tool_retry_shell_authority: false,
+      agent_tool_retry_destructive_authority: false,
+      agent_tool_retry_secret_context: true,
+      agent_tool_retry_sensitive_context: true,
+      agent_tool_retry_pii_context: true,
+      agent_tool_retry_approval_required: false
+    });
+    expect(toolRetryPolicyConfig?.metadata.agent_tool_retry_action_categories).toEqual([
+      "database_write",
+      "external_response",
+      "secret_manager_access",
+      "tool_call"
+    ]);
+    expect(toolRetryPolicyConfig?.metadata.env_key_names).toEqual(["TOOL_RETRY_POLICY_TOKEN"]);
+    expect(toolRetryPolicyConfig?.metadata.secret_ref_key_names).toEqual(["TOOL_RETRY_POLICY_TOKEN"]);
+    expect(toolRetryPolicyConfig?.data_classes).toEqual(["confidential", "credential", "pii"]);
+    expect(toolRetryPolicyConfig?.actions).toEqual(["call", "publish", "read", "send", "write"]);
+    expect(JSON.stringify(toolRetryPolicyConfig)).not.toContain("${TOOL_RETRY_POLICY_TOKEN}");
+    expect(JSON.stringify(toolRetryPolicyConfig)).not.toContain("support_db.update_customer_record");
+    expect(JSON.stringify(toolRetryPolicyConfig)).not.toContain("slack.post_customer_reply");
+    expect(JSON.stringify(toolRetryPolicyConfig)).not.toContain("vault_secret_lookup.read_support_token");
+    expect(JSON.stringify(toolRetryPolicyConfig)).not.toContain("untrusted_customer_ticket");
+    expect(JSON.stringify(toolRetryPolicyConfig)).not.toContain("browser_tool_output");
+    expect(JSON.stringify(toolRetryPolicyConfig)).not.toContain("retrieved_customer_context");
+    expect(JSON.stringify(toolRetryPolicyConfig)).not.toContain("retry_customer_email");
+    expect(JSON.stringify(toolRetryPolicyConfig)).not.toContain("retry_account_number");
+    expect(JSON.stringify(toolRetryPolicyConfig)).not.toContain("confidential_retry_notes");
     const toolOutputPolicyConfig = surfaces.runtime_config.find((surface) => surface.path === "tool-results/result-policy.yaml");
     expect(toolOutputPolicyConfig).toBeDefined();
     expect(toolOutputPolicyConfig).toMatchObject({
@@ -3491,6 +3557,68 @@ describe("scanner", () => {
     expect(contextWindowConfig?.metadata.agent_context_window_tool_authority_categories).toEqual([]);
     expect(contextWindowConfig?.metadata.env_key_names).toEqual([]);
     expect(contextWindowConfig?.metadata.secret_ref_key_names).toEqual([]);
+  });
+
+  it("keeps idempotent approval-gated tool retry policies scoped", async () => {
+    const files = await walkProject({
+      root_path: safeFixtureRoot,
+      output_path: ".agentcsp",
+      formats: ["json", "md"],
+      include_hidden: true,
+      include_logs: false,
+      max_file_size_bytes: 1024 * 1024,
+      max_files: 5000,
+      quiet: true
+    });
+    const surfaces = await detectSurfaces(files);
+    const retryPolicy = surfaces.runtime_config.find((surface) => surface.path === "tool-retry/scoped-retry.yaml");
+
+    expect(retryPolicy).toMatchObject({
+      trust_level: "project",
+      actions: ["call", "read"],
+      side_effect: false,
+      external_reach: false,
+      secret_exposure: false,
+      reversible: true,
+      untrusted_to_privileged: false
+    });
+    expect(retryPolicy?.metadata).toMatchObject({
+      parsed_agent_tool_retry_policy_config: true,
+      agent_tool_retry_enabled: true,
+      agent_tool_retry_automatic_retry: false,
+      agent_tool_retry_replay_enabled: false,
+      agent_tool_retry_retry_on_failure: false,
+      agent_tool_retry_retry_on_timeout: false,
+      agent_tool_retry_retry_on_rate_limit: false,
+      agent_tool_retry_retry_on_validation_error: false,
+      agent_tool_retry_max_attempts_redacted: true,
+      agent_tool_retry_max_attempts_gt_one: false,
+      agent_tool_retry_unbounded_attempts: false,
+      agent_tool_retry_budget_missing: false,
+      agent_tool_retry_backoff_disabled: false,
+      agent_tool_retry_idempotency_required: true,
+      agent_tool_retry_idempotency_disabled: false,
+      agent_tool_retry_deduplication_disabled: false,
+      agent_tool_retry_exactly_once_disabled: false,
+      agent_tool_retry_non_idempotent_actions: false,
+      agent_tool_retry_untrusted_input: false,
+      agent_tool_retry_tool_output_replay: false,
+      agent_tool_retry_model_selected_retry: false,
+      agent_tool_retry_privileged_tool_authority: false,
+      agent_tool_retry_write_authority: false,
+      agent_tool_retry_external_authority: false,
+      agent_tool_retry_memory_authority: false,
+      agent_tool_retry_shell_authority: false,
+      agent_tool_retry_destructive_authority: false,
+      agent_tool_retry_secret_context: false,
+      agent_tool_retry_sensitive_context: false,
+      agent_tool_retry_pii_context: false,
+      agent_tool_retry_approval_required: true
+    });
+    expect(retryPolicy?.metadata.agent_tool_retry_action_categories).toEqual(["tool_call"]);
+    expect(retryPolicy?.metadata.env_key_names).toEqual([]);
+    expect(retryPolicy?.metadata.secret_ref_key_names).toEqual([]);
+    expect(JSON.stringify(retryPolicy)).not.toContain("readonly_docs.search");
   });
 
   it("keeps approval-gated read-only OpenAPI imports scoped", async () => {

@@ -910,6 +910,50 @@ Agent context-window metadata may include:
 
 Raw priority labels, role labels, summary text, source labels, tool names, action strings, data-field labels, token placeholders, and context content are not emitted. Strategy categories, priority categories, instruction-retention booleans, summary verification posture, delimiter/redaction posture, tool-authority categories, approval posture, data-class booleans, and credential key names let rules detect cases where long-context truncation or compaction preserves untrusted context while evicting system, developer, or safety instructions before privileged tool use.
 
+## Agent Tool Retry And Replay Posture
+
+Tool-retry, replay, idempotency, duplicate-suppression, execution-policy, and retry-budget configs are also normalized into `runtime_config` objects when common agent tool retry configuration files are discovered.
+
+Agent tool retry metadata may include:
+
+- `parsed_agent_tool_retry_policy_config`
+- `agent_tool_retry_fields`
+- `agent_tool_retry_enabled`
+- `agent_tool_retry_automatic_retry`
+- `agent_tool_retry_replay_enabled`
+- `agent_tool_retry_retry_on_failure`
+- `agent_tool_retry_retry_on_timeout`
+- `agent_tool_retry_retry_on_rate_limit`
+- `agent_tool_retry_retry_on_validation_error`
+- `agent_tool_retry_max_attempts_redacted`
+- `agent_tool_retry_max_attempts_gt_one`
+- `agent_tool_retry_unbounded_attempts`
+- `agent_tool_retry_budget_missing`
+- `agent_tool_retry_backoff_disabled`
+- `agent_tool_retry_idempotency_required`
+- `agent_tool_retry_idempotency_disabled`
+- `agent_tool_retry_deduplication_disabled`
+- `agent_tool_retry_exactly_once_disabled`
+- `agent_tool_retry_non_idempotent_actions`
+- `agent_tool_retry_untrusted_input`
+- `agent_tool_retry_tool_output_replay`
+- `agent_tool_retry_model_selected_retry`
+- `agent_tool_retry_action_categories`
+- `agent_tool_retry_privileged_tool_authority`
+- `agent_tool_retry_write_authority`
+- `agent_tool_retry_external_authority`
+- `agent_tool_retry_memory_authority`
+- `agent_tool_retry_shell_authority`
+- `agent_tool_retry_destructive_authority`
+- `agent_tool_retry_secret_context`
+- `agent_tool_retry_sensitive_context`
+- `agent_tool_retry_pii_context`
+- `agent_tool_retry_approval_required`
+- `env_key_names`
+- `secret_ref_key_names`
+
+Raw tool names, action strings, retry argument labels, source labels, data-field labels, and token placeholders are not emitted. Retry posture, replay posture, idempotency and duplicate-suppression booleans, action categories, approval posture, data-class booleans, and credential key names let rules detect cases where an agent can automatically replay non-idempotent privileged tools from untrusted context without copying tool arguments or secret values into evidence.
+
 ## Tool Output Policy Posture
 
 Tool-output, tool-result, observation, result-handler, output-handler, and tool-output policy configs are also normalized into `runtime_config` objects when common tool-observation handling configuration files are discovered.

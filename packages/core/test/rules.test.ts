@@ -79,6 +79,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-053")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-054")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-055")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-056")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-030")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-031")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-032")).toBe(true);
@@ -1308,6 +1309,37 @@ describe("rule engine", () => {
     expect(JSON.stringify(runtimeContextWindowFindings[0])).not.toContain("support_db.update_customer_record");
     expect(JSON.stringify(runtimeContextWindowFindings[0])).not.toContain("slack.post_customer_reply");
     expect(JSON.stringify(runtimeContextWindowFindings[0])).not.toContain("context_window_customer_email");
+    const runtimeToolRetryFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-RUNTIME-056");
+    expect(runtimeToolRetryFindings).toHaveLength(1);
+    expect(runtimeToolRetryFindings[0]?.matched_object.path).toBe("tool-retry/retry-policy.yaml");
+    expect(runtimeToolRetryFindings[0]?.matched_object.metadata).toMatchObject({
+      parsed_agent_tool_retry_policy_config: true,
+      agent_tool_retry_enabled: true,
+      agent_tool_retry_automatic_retry: true,
+      agent_tool_retry_replay_enabled: true,
+      agent_tool_retry_untrusted_input: true,
+      agent_tool_retry_privileged_tool_authority: true,
+      agent_tool_retry_non_idempotent_actions: true,
+      agent_tool_retry_idempotency_disabled: true,
+      agent_tool_retry_approval_required: false
+    });
+    expect(runtimeToolRetryFindings[0]?.matched_object.metadata.agent_tool_retry_action_categories).toEqual([
+      "database_write",
+      "external_response",
+      "secret_manager_access",
+      "tool_call"
+    ]);
+    expect(runtimeToolRetryFindings[0]?.severity).toBe("critical");
+    expect(runtimeToolRetryFindings[0]?.confidence).toBe("very_high");
+    expect(runtimeToolRetryFindings[0]?.recommended_control).toBe("require_approval");
+    expect(JSON.stringify(runtimeToolRetryFindings[0])).not.toContain("${TOOL_RETRY_POLICY_TOKEN}");
+    expect(JSON.stringify(runtimeToolRetryFindings[0])).not.toContain("support_db.update_customer_record");
+    expect(JSON.stringify(runtimeToolRetryFindings[0])).not.toContain("slack.post_customer_reply");
+    expect(JSON.stringify(runtimeToolRetryFindings[0])).not.toContain("vault_secret_lookup.read_support_token");
+    expect(JSON.stringify(runtimeToolRetryFindings[0])).not.toContain("untrusted_customer_ticket");
+    expect(JSON.stringify(runtimeToolRetryFindings[0])).not.toContain("browser_tool_output");
+    expect(JSON.stringify(runtimeToolRetryFindings[0])).not.toContain("retrieved_customer_context");
+    expect(JSON.stringify(runtimeToolRetryFindings[0])).not.toContain("retry_customer_email");
     const runtimeAuthorizationBrokerFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-RUNTIME-041");
     expect(runtimeAuthorizationBrokerFindings).toHaveLength(1);
     expect(runtimeAuthorizationBrokerFindings[0]?.matched_object.path).toBe("authz/tool-broker.yaml");

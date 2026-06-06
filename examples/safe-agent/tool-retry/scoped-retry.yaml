@@ -1,0 +1,24 @@
+enabled: true
+automatic_retry: false
+max_attempts: 1
+retry_on:
+  failure: false
+  timeout: false
+  rate_limit: false
+  validation_error: false
+replay:
+  enabled: false
+  reuse_original_tool_arguments: false
+  replay_tool_outputs: false
+  include_untrusted_context: false
+  model_can_request_retry: false
+idempotency:
+  required: true
+  key_required: true
+  deduplication: true
+  exactly_once: true
+backoff:
+  enabled: true
+tools:
+  - readonly_docs.search
+approval_required: true
