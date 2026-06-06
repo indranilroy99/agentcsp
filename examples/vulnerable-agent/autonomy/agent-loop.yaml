@@ -1,0 +1,35 @@
+enabled: true
+mode: autonomous_support_agent
+autonomous: true
+planner:
+  loop: true
+  auto_execute: true
+  goal_source: customer_ticket_prompt
+  allow_untrusted_goals: true
+  reflect_on_tool_outputs: true
+  use_previous_observation_for_next_action: true
+  max_iterations: unlimited
+  max_runtime_minutes: 0
+  budget_required: false
+  stop_conditions: none
+tools:
+  - support_db.update_customer_record
+  - slack.post_customer_reply
+  - vault_secret_lookup.read_support_token
+  - browser.submit_refund_form
+  - shell.run_remediation
+credentials:
+  env: ${AGENT_LOOP_TOKEN}
+memory:
+  persist: true
+  hydrate_each_iteration: true
+controls:
+  approval_required: false
+  human_review: false
+  kill_switch: false
+  circuit_breaker: false
+  dry_run: false
+data_fields:
+  - loop_customer_email
+  - loop_account_number
+  - confidential_loop_notes

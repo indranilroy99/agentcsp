@@ -29,6 +29,7 @@ describe("scanner", () => {
       "AGENT_DEPLOY_TOKEN",
       "AGENT_EXTENSION_TOKEN",
       "AGENT_IDENTITY_TOKEN",
+      "AGENT_LOOP_TOKEN",
       "AGENT_SELF_MOD_TOKEN",
       "AGENT_WEBHOOK_TOKEN",
       "APPROVAL_GATE_TOKEN",
@@ -3189,6 +3190,71 @@ describe("scanner", () => {
     expect(JSON.stringify(agentOrchestrationConfig)).not.toContain("intake-router");
     expect(JSON.stringify(agentOrchestrationConfig)).not.toContain("operations-executor");
     expect(JSON.stringify(agentOrchestrationConfig)).not.toContain("customer_account_id");
+    const autonomousLoopConfig = surfaces.runtime_config.find((surface) => surface.path === "autonomy/agent-loop.yaml");
+    expect(autonomousLoopConfig).toBeDefined();
+    expect(autonomousLoopConfig).toMatchObject({
+      trust_level: "project",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["call", "execute", "publish", "read", "remember", "send", "write"],
+      external_reach: true,
+      secret_exposure: true,
+      side_effect: true,
+      reversible: false,
+      untrusted_to_privileged: true
+    });
+    expect(autonomousLoopConfig?.metadata).toMatchObject({
+      content_redacted: true,
+      values_collected: false,
+      parsed_agent_autonomous_loop_config: true,
+      agent_autonomous_loop_enabled: true,
+      agent_autonomous_loop_autonomous_mode: true,
+      agent_autonomous_loop_loop_enabled: true,
+      agent_autonomous_loop_auto_execute: true,
+      agent_autonomous_loop_goal_source_redacted: true,
+      agent_autonomous_loop_untrusted_goal: true,
+      agent_autonomous_loop_privileged_tool_authority: true,
+      agent_autonomous_loop_write_authority: true,
+      agent_autonomous_loop_external_authority: true,
+      agent_autonomous_loop_secret_authority: true,
+      agent_autonomous_loop_shell_authority: true,
+      agent_autonomous_loop_memory_feedback: true,
+      agent_autonomous_loop_tool_output_feedback: true,
+      agent_autonomous_loop_unbounded_iterations: true,
+      agent_autonomous_loop_iteration_limit_redacted: true,
+      agent_autonomous_loop_iteration_limit_high: false,
+      agent_autonomous_loop_runtime_budget_missing: true,
+      agent_autonomous_loop_stop_condition_missing: true,
+      agent_autonomous_loop_kill_switch_disabled: true,
+      agent_autonomous_loop_dry_run_disabled: true,
+      agent_autonomous_loop_sensitive_context: true,
+      agent_autonomous_loop_pii_context: true,
+      agent_autonomous_loop_approval_required: false
+    });
+    expect(autonomousLoopConfig?.metadata.agent_autonomous_loop_goal_source_categories).toEqual([
+      "customer_goal",
+      "untrusted_prompt"
+    ]);
+    expect(autonomousLoopConfig?.metadata.agent_autonomous_loop_tool_authority_categories).toEqual([
+      "browser_action",
+      "database_write",
+      "external_response",
+      "memory_write",
+      "secret_manager_access",
+      "shell_execution",
+      "tool_call"
+    ]);
+    expect(autonomousLoopConfig?.metadata.env_key_names).toEqual(["AGENT_LOOP_TOKEN"]);
+    expect(autonomousLoopConfig?.metadata.secret_ref_key_names).toEqual(["AGENT_LOOP_TOKEN"]);
+    expect(JSON.stringify(autonomousLoopConfig)).not.toContain("${AGENT_LOOP_TOKEN}");
+    expect(JSON.stringify(autonomousLoopConfig)).not.toContain("customer_ticket_prompt");
+    expect(JSON.stringify(autonomousLoopConfig)).not.toContain("support_db.update_customer_record");
+    expect(JSON.stringify(autonomousLoopConfig)).not.toContain("slack.post_customer_reply");
+    expect(JSON.stringify(autonomousLoopConfig)).not.toContain("vault_secret_lookup.read_support_token");
+    expect(JSON.stringify(autonomousLoopConfig)).not.toContain("browser.submit_refund_form");
+    expect(JSON.stringify(autonomousLoopConfig)).not.toContain("shell.run_remediation");
+    expect(JSON.stringify(autonomousLoopConfig)).not.toContain("loop_customer_email");
+    expect(JSON.stringify(autonomousLoopConfig)).not.toContain("loop_account_number");
+    expect(JSON.stringify(autonomousLoopConfig)).not.toContain("confidential_loop_notes");
     const agentSafetyConfig = surfaces.runtime_config.find((surface) => surface.path === "guardrails/agent-safety.yaml");
     expect(agentSafetyConfig).toBeDefined();
     expect(agentSafetyConfig).toMatchObject({
@@ -4380,6 +4446,64 @@ describe("scanner", () => {
     expect(JSON.stringify(taskQueue)).not.toContain("internal_review_ticket");
     expect(JSON.stringify(taskQueue)).not.toContain("approved_internal_summary");
     expect(JSON.stringify(taskQueue)).not.toContain("readonly_docs.search");
+  });
+
+  it("keeps bounded approval-gated agent loops scoped", async () => {
+    const files = await walkProject({
+      root_path: safeFixtureRoot,
+      output_path: ".agentcsp",
+      formats: ["json", "md"],
+      include_hidden: true,
+      include_logs: false,
+      max_file_size_bytes: 1024 * 1024,
+      max_files: 5000,
+      quiet: true
+    });
+    const surfaces = await detectSurfaces(files);
+    const loop = surfaces.runtime_config.find((surface) => surface.path === "autonomy/bounded-loop.yaml");
+
+    expect(loop).toMatchObject({
+      trust_level: "project",
+      data_classes: ["unknown"],
+      actions: ["call", "read"],
+      side_effect: false,
+      external_reach: false,
+      secret_exposure: false,
+      reversible: true,
+      untrusted_to_privileged: false
+    });
+    expect(loop?.metadata).toMatchObject({
+      parsed_agent_autonomous_loop_config: true,
+      agent_autonomous_loop_enabled: true,
+      agent_autonomous_loop_autonomous_mode: false,
+      agent_autonomous_loop_loop_enabled: true,
+      agent_autonomous_loop_auto_execute: false,
+      agent_autonomous_loop_goal_source_redacted: false,
+      agent_autonomous_loop_untrusted_goal: false,
+      agent_autonomous_loop_privileged_tool_authority: false,
+      agent_autonomous_loop_write_authority: false,
+      agent_autonomous_loop_external_authority: false,
+      agent_autonomous_loop_secret_authority: false,
+      agent_autonomous_loop_shell_authority: false,
+      agent_autonomous_loop_memory_feedback: false,
+      agent_autonomous_loop_tool_output_feedback: false,
+      agent_autonomous_loop_unbounded_iterations: false,
+      agent_autonomous_loop_iteration_limit_redacted: true,
+      agent_autonomous_loop_iteration_limit_high: false,
+      agent_autonomous_loop_runtime_budget_missing: false,
+      agent_autonomous_loop_stop_condition_missing: false,
+      agent_autonomous_loop_kill_switch_disabled: false,
+      agent_autonomous_loop_dry_run_disabled: false,
+      agent_autonomous_loop_sensitive_context: false,
+      agent_autonomous_loop_pii_context: false,
+      agent_autonomous_loop_approval_required: true
+    });
+    expect(loop?.metadata.agent_autonomous_loop_goal_source_categories).toEqual([]);
+    expect(loop?.metadata.agent_autonomous_loop_tool_authority_categories).toEqual(["tool_call"]);
+    expect(loop?.metadata.env_key_names).toEqual([]);
+    expect(loop?.metadata.secret_ref_key_names).toEqual([]);
+    expect(JSON.stringify(loop)).not.toContain("approved_review");
+    expect(JSON.stringify(loop)).not.toContain("readonly_docs.search");
   });
 
   it("keeps local tenant-scoped prompt caches quiet", async () => {

@@ -299,6 +299,11 @@ export async function detectSurfaces(files: WalkedFile[]): Promise<DetectedSurfa
       continue;
     }
 
+    if (isAgentAutonomousLoopConfigPath(file.relativePath, basename)) {
+      detectAgentAutonomousLoopConfig(file, text, surfaces);
+      continue;
+    }
+
     if (isAgentOrchestrationConfigPath(file.relativePath, basename)) {
       detectAgentOrchestrationConfig(file, text, surfaces);
       continue;
@@ -2032,6 +2037,86 @@ function detectAgentOrchestrationConfig(file: WalkedFile, text: string | undefin
           posture.agent_orchestration_write_authority ||
           posture.agent_orchestration_external_authority ||
           posture.agent_orchestration_shared_memory)) ||
+      isUntrustedToPrivileged(object)
+  });
+}
+
+function detectAgentAutonomousLoopConfig(file: WalkedFile, text: string | undefined, surfaces: DetectedSurfaces): void {
+  const parsed = parseStructuredConfig(text ?? "", file.relativePath);
+  if (parsed.parseFailed) {
+    addDiagnostic(surfaces, file, {
+      parser: parsed.parser ?? "structured_config",
+      code: "AGENT_AUTONOMOUS_LOOP_CONFIG_PARSE_FAILED",
+      reason: "Autonomous agent loop configuration could not be parsed. Raw content was redacted."
+    });
+  }
+
+  const posture = classifyAgentAutonomousLoopConfig(parsed.value, file.relativePath);
+  const actions = new Set<ActionType>(["call", "read"]);
+  if (posture.agent_autonomous_loop_privileged_tool_authority) actions.add("execute");
+  if (posture.agent_autonomous_loop_write_authority) actions.add("write");
+  if (posture.agent_autonomous_loop_external_authority) {
+    actions.add("send");
+    actions.add("publish");
+  }
+  if (posture.agent_autonomous_loop_memory_feedback) actions.add("remember");
+
+  const dataClasses = new Set<SurfaceObject["data_classes"][number]>(["unknown"]);
+  if (
+    posture.agent_autonomous_loop_secret_authority ||
+    posture.env_key_names.some(isCredentialLikeKeyName) ||
+    posture.secret_ref_key_names.length > 0
+  ) {
+    dataClasses.add("credential");
+  }
+  if (posture.agent_autonomous_loop_sensitive_context || posture.agent_autonomous_loop_untrusted_goal) {
+    dataClasses.add("confidential");
+  }
+  if (posture.agent_autonomous_loop_pii_context) dataClasses.add("pii");
+  if (dataClasses.size > 1) dataClasses.delete("unknown");
+
+  const object = createSurfaceObject({
+    type: "runtime_config",
+    name: path.basename(file.relativePath),
+    path: file.relativePath,
+    trust_level: inferTrustLevel(file.relativePath),
+    data_classes: uniqueDataClasses([...dataClasses] as SurfaceObject["data_classes"]),
+    actions: uniqueActions([...actions]),
+    side_effect:
+      posture.agent_autonomous_loop_auto_execute ||
+      posture.agent_autonomous_loop_privileged_tool_authority ||
+      posture.agent_autonomous_loop_write_authority ||
+      posture.agent_autonomous_loop_external_authority ||
+      posture.agent_autonomous_loop_memory_feedback,
+    reversible:
+      !posture.agent_autonomous_loop_write_authority &&
+      !posture.agent_autonomous_loop_external_authority &&
+      !posture.agent_autonomous_loop_memory_feedback,
+    external_reach: posture.agent_autonomous_loop_external_authority,
+    secret_exposure:
+      posture.agent_autonomous_loop_secret_authority ||
+      posture.env_key_names.some(isCredentialLikeKeyName) ||
+      posture.secret_ref_key_names.length > 0,
+    reason: "Autonomous agent loop configuration discovered as repeated planner and tool execution posture.",
+    metadata: {
+      content_redacted: true,
+      values_collected: false,
+      parsed_agent_autonomous_loop_config: Boolean(parsed.value) && !parsed.parseFailed,
+      parse_error: parsed.parseFailed,
+      ...posture
+    }
+  });
+  surfaces.runtime_config.push({
+    ...object,
+    untrusted_to_privileged:
+      (posture.agent_autonomous_loop_enabled &&
+        posture.agent_autonomous_loop_autonomous_mode &&
+        posture.agent_autonomous_loop_auto_execute &&
+        posture.agent_autonomous_loop_untrusted_goal &&
+        posture.agent_autonomous_loop_privileged_tool_authority &&
+        posture.agent_autonomous_loop_unbounded_iterations &&
+        posture.agent_autonomous_loop_kill_switch_disabled &&
+        !posture.agent_autonomous_loop_approval_required) ||
       isUntrustedToPrivileged(object)
   });
 }
@@ -4205,6 +4290,27 @@ function isAgentOrchestrationConfigPath(relativePath: string, basename: string):
   return orchestrationName || (orchestrationDirectory && configName);
 }
 
+function isAgentAutonomousLoopConfigPath(relativePath: string, basename: string): boolean {
+  const normalized = relativePath.replaceAll("\\", "/").toLowerCase();
+  const lowerBase = basename.toLowerCase();
+  if (!/\.(json|ya?ml|toml)$/iu.test(lowerBase)) return false;
+  if (normalized.startsWith(".github/workflows/")) return false;
+  if (normalized.startsWith("rules/")) return false;
+  const segments = normalized.split("/").slice(0, -1);
+  const loopDirectory = segments.some((segment) =>
+    /^(autonomy|autonomous|autonomous-agent|autonomous_agent|agent-loop|agent_loop|control-loop|control_loop|planner-executor|planner_executor|agent-runner|agent_runner)$/iu.test(
+      segment
+    )
+  );
+  const loopName = /(?:autonomous[-_]?agent|autonomous[-_]?loop|agent[-_]?loop|control[-_]?loop|planner[-_]?executor|planner[-_]?loop|agent[-_]?runner|self[-_]?directed[-_]?agent)/iu.test(
+    lowerBase
+  );
+  const configName = /(?:config|settings|policy|loop|autonomy|autonomous|planner|executor|runner|control|budget|approval)/iu.test(
+    lowerBase
+  );
+  return loopName || (loopDirectory && configName);
+}
+
 function isAgentSafetyConfigPath(relativePath: string, basename: string): boolean {
   const normalized = relativePath.replaceAll("\\", "/").toLowerCase();
   const lowerBase = basename.toLowerCase();
@@ -5241,6 +5347,37 @@ interface AgentOrchestrationPosture {
   agent_orchestration_sensitive_data: boolean;
   agent_orchestration_pii_data: boolean;
   agent_orchestration_approval_required: boolean;
+  env_key_names: string[];
+  secret_ref_key_names: string[];
+}
+
+interface AgentAutonomousLoopPosture {
+  agent_autonomous_loop_fields: string[];
+  agent_autonomous_loop_enabled: boolean;
+  agent_autonomous_loop_autonomous_mode: boolean;
+  agent_autonomous_loop_loop_enabled: boolean;
+  agent_autonomous_loop_auto_execute: boolean;
+  agent_autonomous_loop_goal_source_redacted: boolean;
+  agent_autonomous_loop_goal_source_categories: string[];
+  agent_autonomous_loop_untrusted_goal: boolean;
+  agent_autonomous_loop_tool_authority_categories: string[];
+  agent_autonomous_loop_privileged_tool_authority: boolean;
+  agent_autonomous_loop_write_authority: boolean;
+  agent_autonomous_loop_external_authority: boolean;
+  agent_autonomous_loop_secret_authority: boolean;
+  agent_autonomous_loop_shell_authority: boolean;
+  agent_autonomous_loop_memory_feedback: boolean;
+  agent_autonomous_loop_tool_output_feedback: boolean;
+  agent_autonomous_loop_unbounded_iterations: boolean;
+  agent_autonomous_loop_iteration_limit_redacted: boolean;
+  agent_autonomous_loop_iteration_limit_high: boolean;
+  agent_autonomous_loop_runtime_budget_missing: boolean;
+  agent_autonomous_loop_stop_condition_missing: boolean;
+  agent_autonomous_loop_kill_switch_disabled: boolean;
+  agent_autonomous_loop_dry_run_disabled: boolean;
+  agent_autonomous_loop_sensitive_context: boolean;
+  agent_autonomous_loop_pii_context: boolean;
+  agent_autonomous_loop_approval_required: boolean;
   env_key_names: string[];
   secret_ref_key_names: string[];
 }
@@ -9176,6 +9313,311 @@ function isAgentOrchestrationSecurityField(fieldPath: string): boolean {
   return /framework|provider|agent|agents|subagent|crew|team|worker|role|task|graph|node|edge|handoff|delegate|delegation|supervisor|manager|router|tool|mcp|browser|database|secret|memory|input|source|customer|ticket|email|chat|write|send|reply|approval|auth|token|credential|env|scope|permission|state|vector|namespace/iu.test(
     fieldPath
   );
+}
+
+function classifyAgentAutonomousLoopConfig(value: unknown, filePath: string): AgentAutonomousLoopPosture {
+  const fields = flattenRuntimeFields(value);
+  const stringValues = collectFieldStringValues(fields);
+  const goalSourceCategories = collectAgentAutonomousLoopGoalSourceCategories(fields);
+  const toolAuthorityCategories = collectAgentAutonomousLoopToolAuthorityCategories(fields);
+  const envKeys = uniqueStrings([
+    ...collectEnvKeyNamesFromConfig(value).filter(isLikelyEnvKeyName),
+    ...extractEnvironmentReferenceKeys(stringValues)
+  ]);
+  const secretRefKeys = extractSecretReferenceKeys(stringValues);
+
+  return {
+    agent_autonomous_loop_fields: fields
+      .map((field) => field.path)
+      .filter((fieldPath) => isAgentAutonomousLoopSecurityField(fieldPath))
+      .sort((a, b) => a.localeCompare(b)),
+    agent_autonomous_loop_enabled: hasAgentAutonomousLoopEnabledSignal(fields) || hasAgentAutonomousLoopModeSignal(fields),
+    agent_autonomous_loop_autonomous_mode: hasAgentAutonomousLoopModeSignal(fields),
+    agent_autonomous_loop_loop_enabled: hasAgentAutonomousLoopLoopSignal(fields),
+    agent_autonomous_loop_auto_execute: hasAgentAutonomousLoopAutoExecuteSignal(fields),
+    agent_autonomous_loop_goal_source_redacted: goalSourceCategories.length > 0,
+    agent_autonomous_loop_goal_source_categories: goalSourceCategories,
+    agent_autonomous_loop_untrusted_goal: hasAgentAutonomousLoopUntrustedGoalSignal(fields) || goalSourceCategories.some((category) =>
+      ["customer_goal", "external_message", "retrieved_context", "untrusted_prompt"].includes(category)
+    ),
+    agent_autonomous_loop_tool_authority_categories: toolAuthorityCategories,
+    agent_autonomous_loop_privileged_tool_authority: isAgentAutonomousLoopPrivileged(toolAuthorityCategories),
+    agent_autonomous_loop_write_authority: hasAgentAutonomousLoopWriteAuthoritySignal(fields, toolAuthorityCategories),
+    agent_autonomous_loop_external_authority: hasAgentAutonomousLoopExternalAuthoritySignal(fields, toolAuthorityCategories),
+    agent_autonomous_loop_secret_authority:
+      toolAuthorityCategories.includes("secret_manager_access") ||
+      hasAgentAutonomousLoopSecretSignal(fields) ||
+      envKeys.some(isCredentialLikeKeyName) ||
+      secretRefKeys.length > 0,
+    agent_autonomous_loop_shell_authority: toolAuthorityCategories.includes("shell_execution"),
+    agent_autonomous_loop_memory_feedback: hasAgentAutonomousLoopMemoryFeedbackSignal(fields, toolAuthorityCategories),
+    agent_autonomous_loop_tool_output_feedback: hasAgentAutonomousLoopToolOutputFeedbackSignal(fields),
+    agent_autonomous_loop_unbounded_iterations: hasAgentAutonomousLoopUnboundedIterationSignal(fields),
+    agent_autonomous_loop_iteration_limit_redacted: hasAgentAutonomousLoopIterationLimitSignal(fields),
+    agent_autonomous_loop_iteration_limit_high: hasAgentAutonomousLoopHighIterationLimitSignal(fields),
+    agent_autonomous_loop_runtime_budget_missing: hasAgentAutonomousLoopRuntimeBudgetMissingSignal(fields),
+    agent_autonomous_loop_stop_condition_missing: hasAgentAutonomousLoopStopConditionMissingSignal(fields),
+    agent_autonomous_loop_kill_switch_disabled: hasAgentAutonomousLoopKillSwitchDisabledSignal(fields),
+    agent_autonomous_loop_dry_run_disabled: hasAgentAutonomousLoopDryRunDisabledSignal(fields),
+    agent_autonomous_loop_sensitive_context: hasAgentAutonomousLoopSensitiveContextSignal(fields),
+    agent_autonomous_loop_pii_context: hasAgentAutonomousLoopPiiContextSignal(fields),
+    agent_autonomous_loop_approval_required: hasAgentAutonomousLoopApprovalRequiredSignal(fields),
+    env_key_names: envKeys,
+    secret_ref_key_names: secretRefKeys
+  };
+}
+
+function collectAgentAutonomousLoopGoalSourceCategories(fields: RuntimeField[]): string[] {
+  const categories = new Set<string>();
+  for (const field of fields) {
+    if (isAgentAutonomousLoopControlField(field.path)) continue;
+    const text = agentAutonomousLoopText(field);
+    if (!/\b(goal|objective|task|request|source|input|prompt|message|ticket|issue|comment|event|selector)\b/iu.test(text)) continue;
+    if (/\b(customer|client|support|ticket|case|account|portal)\b/iu.test(text)) categories.add("customer_goal");
+    if (/\b(email|slack|chat|message|webhook|github|issue|pull request|comment|external|public)\b/iu.test(text)) {
+      categories.add("external_message");
+    }
+    if (/\b(retrieved|retrieval|rag|document|browser|web page|tool output|tool result)\b/iu.test(text)) {
+      categories.add("retrieved_context");
+    }
+    if (/\b(untrusted|user prompt|prompt|freeform|natural language|model selected)\b/iu.test(text)) {
+      categories.add("untrusted_prompt");
+    }
+  }
+  return [...categories].sort((a, b) => a.localeCompare(b));
+}
+
+function collectAgentAutonomousLoopToolAuthorityCategories(fields: RuntimeField[]): string[] {
+  const categories = new Set<string>();
+  for (const field of fields) {
+    if (isAgentAutonomousLoopControlField(field.path)) continue;
+    if (disabledConfigValue(field.value)) continue;
+    const text = agentAutonomousLoopText(field);
+    if (!/\b(tool|tools|function|mcp|capability|action|command|executor|remediation|browser|database|vault|slack|email|shell|filesystem|memory)\b/iu.test(text)) {
+      continue;
+    }
+    if (/\b(tool|tools|function|mcp|capability|action|executor)\b/iu.test(text)) categories.add("tool_call");
+    if (/\b(database|db|sql|query|crm|support db|warehouse|record)\b/iu.test(text)) categories.add("database_write");
+    if (/\b(slack|email|sms|message|webhook|ticket|jira|zendesk|reply|respond|send|post|publish)\b/iu.test(text)) {
+      categories.add("external_response");
+    }
+    if (/\b(browser|playwright|puppeteer|click|form|navigate|refund form)\b/iu.test(text)) categories.add("browser_action");
+    if (/(?:^|[_\W])(vault|secret|secrets|secret manager|key vault|credential|api key)(?:[_\W]|$)/iu.test(text)) {
+      categories.add("secret_manager_access");
+    }
+    if (/(?:^|[_\W])(memory|remember|store|persist|session state|scratchpad)(?:[_\W]|$)/iu.test(text)) {
+      categories.add("memory_write");
+    }
+    if (/\b(shell|bash|command|exec|terminal|python|node|subprocess)\b/iu.test(text)) categories.add("shell_execution");
+    if (/\b(filesystem|file write|workspace|repo|repository|github|gitlab|commit|push|merge)\b/iu.test(text)) {
+      categories.add("repo_or_filesystem_write");
+    }
+  }
+  return [...categories].sort((a, b) => a.localeCompare(b));
+}
+
+function hasAgentAutonomousLoopEnabledSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /(?:^|\.)(enabled|active|autonomy|autonomous|agent_loop|control_loop)(?:\.|$)/iu.test(field.path) &&
+    truthyConfigValue(field.value)
+  );
+}
+
+function hasAgentAutonomousLoopModeSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /\b(autonomous|autonomy|self directed|self-directed|agent loop|control loop|planner executor|autopilot)\b/iu.test(
+      agentAutonomousLoopText(field)
+    ) && truthyConfigValue(field.value)
+  );
+}
+
+function hasAgentAutonomousLoopLoopSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /\b(loop|while|iterate|iterations|planner loop|execution loop|control loop|run until done|continue until)\b/iu.test(
+      agentAutonomousLoopText(field)
+    ) && truthyConfigValue(field.value)
+  );
+}
+
+function hasAgentAutonomousLoopAutoExecuteSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => {
+    const text = agentAutonomousLoopText(field);
+    if (/\b(manual|dry run|approval required|human review|disabled|off)\b/iu.test(text)) return false;
+    if (/(^|\.)(auto_execute|autoExecute|execute|execution|invoke|run|apply|remediate|auto_approve|autoApprove)$/u.test(field.path)) {
+      return truthyConfigValue(field.value);
+    }
+    return /\b(auto execute|auto-execute|execute automatically|autonomous execution|run tools automatically|apply automatically|auto remediate|autopilot)\b/iu.test(
+      text
+    );
+  });
+}
+
+function hasAgentAutonomousLoopUntrustedGoalSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    !isAgentAutonomousLoopControlField(field.path) &&
+    /\b(untrusted|user|customer|client|ticket|support|issue|comment|message|prompt|retrieved|rag|document|email|chat|webhook|external|public|browser|tool output|model selected)\b/iu.test(
+      agentAutonomousLoopText(field)
+    ) && truthyConfigValue(field.value)
+  );
+}
+
+function isAgentAutonomousLoopPrivileged(categories: string[]): boolean {
+  return categories.some((category) =>
+    [
+      "browser_action",
+      "database_write",
+      "external_response",
+      "repo_or_filesystem_write",
+      "secret_manager_access",
+      "shell_execution"
+    ].includes(category)
+  );
+}
+
+function hasAgentAutonomousLoopWriteAuthoritySignal(fields: RuntimeField[], categories: string[]): boolean {
+  return categories.some((category) =>
+    ["database_write", "external_response", "repo_or_filesystem_write", "shell_execution"].includes(category)
+  ) || fields.some((field) =>
+    !isAgentAutonomousLoopControlField(field.path) &&
+    /\b(write|update|create|delete|reply|respond|send|post|publish|comment|commit|push|merge|deploy|refund|remediate|apply)\b/iu.test(
+      agentAutonomousLoopText(field)
+    )
+  );
+}
+
+function hasAgentAutonomousLoopExternalAuthoritySignal(fields: RuntimeField[], categories: string[]): boolean {
+  return categories.includes("external_response") ||
+    fields.some((field) =>
+      !isAgentAutonomousLoopControlField(field.path) &&
+      /\b(slack|email|webhook|send|post|publish|reply|respond|ticket|issue|external|sms)\b/iu.test(agentAutonomousLoopText(field))
+    );
+}
+
+function hasAgentAutonomousLoopSecretSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    !isAgentAutonomousLoopControlField(field.path) &&
+    /\b(secret|token|credential|api key|password|vault|key vault|authorization|bearer)\b/iu.test(agentAutonomousLoopText(field))
+  );
+}
+
+function hasAgentAutonomousLoopMemoryFeedbackSignal(fields: RuntimeField[], categories: string[]): boolean {
+  return categories.includes("memory_write") ||
+    fields.some((field) =>
+      /\b(memory|remember|persist|hydrate|scratchpad|conversation state|long term|long-term|feedback memory)\b/iu.test(
+        agentAutonomousLoopText(field)
+      ) && truthyConfigValue(field.value)
+    );
+}
+
+function hasAgentAutonomousLoopToolOutputFeedbackSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /\b(tool output|tool result|observation|reflect|reflection|self critique|self-critique|feedback|next action|previous result)\b/iu.test(
+      agentAutonomousLoopText(field)
+    ) && truthyConfigValue(field.value)
+  );
+}
+
+function hasAgentAutonomousLoopUnboundedIterationSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => {
+    const text = agentAutonomousLoopText(field);
+    if (!/\b(iteration|iterations|steps|turns|loops|max|limit|budget|until done|unlimited|infinite|none|zero)\b/iu.test(text)) return false;
+    if (typeof field.value === "number") return field.value === 0 || field.value > 25;
+    if (typeof field.value === "string") return /\b(unlimited|infinite|none|no limit|unbounded|until done|0)\b/iu.test(field.value);
+    return /\b(unlimited|infinite|no limit|unbounded|run until done|continue until done)\b/iu.test(text) && truthyConfigValue(field.value);
+  });
+}
+
+function hasAgentAutonomousLoopIterationLimitSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => /\b(max iterations|max steps|max turns|iteration limit|step budget|tool budget)\b/iu.test(agentAutonomousLoopText(field)));
+}
+
+function hasAgentAutonomousLoopHighIterationLimitSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => {
+    if (!/\b(max iterations|max steps|max turns|iteration limit|step budget|tool budget)\b/iu.test(agentAutonomousLoopText(field))) {
+      return false;
+    }
+    const numeric = Number(field.value);
+    return Number.isFinite(numeric) && numeric > 25;
+  });
+}
+
+function hasAgentAutonomousLoopRuntimeBudgetMissingSignal(fields: RuntimeField[]): boolean {
+  const budgetFields = fields.filter((field) =>
+    /\b(timeout|max runtime|runtime budget|time budget|cost budget|token budget|tool budget|step budget|budget required|budget_required)\b/iu.test(
+      agentAutonomousLoopText(field)
+    )
+  );
+  if (budgetFields.length === 0) return true;
+  return budgetFields.some((field) => disabledConfigValue(field.value) || /\b(none|disabled|off|unlimited|no budget|0)\b/iu.test(agentAutonomousLoopText(field)));
+}
+
+function hasAgentAutonomousLoopStopConditionMissingSignal(fields: RuntimeField[]): boolean {
+  const stopFields = fields.filter((field) =>
+    /\b(stop condition|stop_condition|stop conditions|stop_conditions|termination|exit criteria|halt|done criteria)\b/iu.test(
+      agentAutonomousLoopText(field)
+    )
+  );
+  if (stopFields.length === 0) return true;
+  return stopFields.some((field) => disabledConfigValue(field.value) || /\b(none|disabled|off|never|until done|model decides)\b/iu.test(agentAutonomousLoopText(field)));
+}
+
+function hasAgentAutonomousLoopKillSwitchDisabledSignal(fields: RuntimeField[]): boolean {
+  const killSwitchFields = fields.filter((field) =>
+    /\b(kill switch|kill_switch|emergency stop|emergency_stop|circuit breaker|circuit_breaker|abort|cancel|halt)\b/iu.test(
+      agentAutonomousLoopText(field)
+    )
+  );
+  if (killSwitchFields.length === 0) return true;
+  return killSwitchFields.some((field) => disabledConfigValue(field.value) || /\b(disabled|off|false|none|no kill switch|no circuit breaker)\b/iu.test(agentAutonomousLoopText(field)));
+}
+
+function hasAgentAutonomousLoopDryRunDisabledSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /\b(dry run|dry_run|preview only|preview_only|simulate|simulation)\b/iu.test(agentAutonomousLoopText(field)) &&
+    disabledConfigValue(field.value)
+  );
+}
+
+function hasAgentAutonomousLoopSensitiveContextSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    !isAgentAutonomousLoopControlField(field.path) &&
+    /\b(customer|client|ticket|support|internal|confidential|private|proprietary|sensitive|account|billing|payment|case|record|profile|incident|remediation)\b/iu.test(
+      agentAutonomousLoopText(field)
+    )
+  );
+}
+
+function hasAgentAutonomousLoopPiiContextSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    !isAgentAutonomousLoopControlField(field.path) &&
+    /(?:^|[_\W])(pii|email|phone|address|ssn|passport|dob|date of birth|customer id|user id|account id|account number)(?:[_\W]|$)/iu.test(
+      agentAutonomousLoopText(field)
+    )
+  );
+}
+
+function hasAgentAutonomousLoopApprovalRequiredSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /\b(approval|required approval|human approval|security review|manual review|confirm|confirmation|human in the loop|human-in-the-loop)\b/iu.test(
+      agentAutonomousLoopText(field)
+    ) && truthyConfigValue(field.value)
+  );
+}
+
+function isAgentAutonomousLoopControlField(fieldPath: string): boolean {
+  return /(?:^|\.)(deny|denied|block|blocked|exclude|excludes|redact|redaction|mask|sanitize|allowlist|trusted_goals|trusted_sources|approval|human_review|kill_switch|circuit_breaker|dry_run|stop_conditions?|termination|budget|max_iterations|max_steps|max_runtime)(?:\.|$)/iu.test(
+    fieldPath
+  );
+}
+
+function isAgentAutonomousLoopSecurityField(fieldPath: string): boolean {
+  return /enabled|autonom|loop|planner|executor|runner|control|goal|objective|task|source|input|prompt|message|ticket|issue|comment|external|customer|retriev|rag|browser|tool|function|mcp|capability|database|db|slack|email|webhook|vault|secret|credential|token|auth|env|shell|command|filesystem|repo|memory|scratchpad|reflect|feedback|iteration|steps|turns|budget|runtime|timeout|stop|termination|kill|circuit|dry|approval|review|pii|sensitive|confidential/iu.test(
+    fieldPath
+  );
+}
+
+function agentAutonomousLoopText(field: RuntimeField): string {
+  return `${field.path} ${fieldValueText(field)}`.toLowerCase().replaceAll("_", " ").replaceAll("-", " ");
 }
 
 function classifyAgentSafetyConfig(value: unknown, filePath: string): AgentSafetyPosture {

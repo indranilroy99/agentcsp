@@ -1197,6 +1197,16 @@ The current iteration adds:
 - rule `AGENTCSP-RUNTIME-059` for workspace context sync exposure that combines automatic sync, sensitive local source categories, credential exposure, remote sync, untrusted selectors, disabled redaction, and missing approval
 - scanner, rule, fixture verifier, and redaction coverage proving raw local paths, home-directory paths, credential paths, remote context URLs, data-field labels, and token placeholders stay redacted
 
+## Autonomous Agent Loop Authority Pass
+
+The current iteration adds:
+
+- first-class redacted metadata for autonomous agent, control-loop, planner-executor, and self-directed runner configs, including goal-source categories, auto-execution, privileged tool categories, tool-output feedback, iteration/runtime budgets, stop conditions, kill-switch posture, dry-run posture, approval posture, and credential exposure
+- vulnerable fixture coverage for an automatic customer-ticket driven agent loop that can repeatedly call browser, database, messaging, shell, memory, and secret-manager authority from untrusted goals while budget, stop, kill-switch, dry-run, and approval controls are missing
+- safe fixture coverage for a bounded read-only review loop that disables autonomous execution, limits iterations, keeps tool-output feedback out of future planning, requires approval, and exposes no credentials
+- rule `AGENTCSP-RUNTIME-060` for autonomous loops that route untrusted goals through tool-output feedback into privileged actions without budgets, kill switches, or approval
+- scanner, rule, fixture verifier, and redaction coverage proving raw goals, planner prompts, tool names, observation labels, action strings, data-field labels, and token placeholders stay redacted
+
 ## Initial Build Recommendation
 
 Start with a CLI-first MVP before building the dashboard:

@@ -1,0 +1,27 @@
+enabled: true
+mode: bounded_review_agent
+autonomous: false
+planner:
+  loop: true
+  auto_execute: false
+  goal_source: approved_review
+  allow_untrusted_goals: false
+  reflect_on_tool_outputs: false
+  use_previous_observation_for_next_action: false
+  max_iterations: 3
+  max_runtime_minutes: 10
+  budget_required: true
+  stop_conditions:
+    - review_complete
+    - tool_budget_exhausted
+tools:
+  - readonly_docs.search
+memory:
+  persist: false
+  hydrate_each_iteration: false
+controls:
+  approval_required: true
+  human_review: true
+  kill_switch: true
+  circuit_breaker: true
+  dry_run: true

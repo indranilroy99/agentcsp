@@ -60,6 +60,7 @@ A finding should be considered production-grade when it includes:
 - browser-session metadata for persistent authenticated state, broad origins, remote-debugging posture, extension/profile exposure, password-manager/autofill posture, file-transfer posture, approval gates, and untrusted click/form/upload authority without emitting cookie files, extension names, extension IDs, profile paths, download/upload paths, origins, or endpoints
 - inbound agent trigger metadata for email, chat, ticket, webhook, and queue payloads that reach agent tools without emitting mailbox names, sender addresses, URLs, labels, agent names, or payload text
 - multi-agent orchestration metadata for delegation, shared memory, tool authority, and approval posture without emitting agent names, role prompts, task text, graph labels, memory namespaces, or raw tool lists
+- autonomous agent loop metadata for untrusted goals, auto-execution, tool authority, tool-output feedback, iteration and runtime budgets, stop conditions, kill switches, dry-run posture, and approval boundaries without emitting raw goals, planner prompts, tool names, observation labels, action strings, data-field labels, or token placeholders
 - agent safety-control metadata for disabled guardrails, validation, moderation, tool-result sanitization, and redaction without emitting policy names, source names, tool strings, action lists, data-field labels, or prompt text
 - AI eval harness metadata for live red-team execution, adversarial cases, production targets, privileged tool authority, output retention, and approval posture without emitting suite names, scenario names, prompts, target URLs, agent names, tool strings, assertion values, output paths, or data-field labels
 - agent identity delegation metadata for credential issuance, impersonation, broad scopes, untrusted subjects, tool injection, and approval posture without emitting issuers, token endpoints, service-account IDs, raw scopes, IAM roles, subject labels, tool names, data-field labels, or token placeholders
@@ -157,6 +158,7 @@ Examples:
 - authenticated browser session plus privileged browser extensions or password-manager/autofill state plus broad untrusted navigation and browser action authority
 - inbound email/chat/ticket/webhook payload plus agent invocation plus tool authority plus secrets plus no approval gate
 - multi-agent delegation plus untrusted input plus shared memory plus privileged specialist tools plus credentials plus no approval gate
+- autonomous agent loop plus untrusted goals, automatic execution, privileged tool authority, tool-output feedback, missing iteration/runtime budgets or stop conditions, disabled kill switch, credentials, and no approval gate
 - disabled agent safety controls plus untrusted input plus privileged tools plus credentials plus no approval gate
 - live eval harness plus adversarial prompts plus production agent target plus privileged tools plus credentials plus no approval gate
 - agent identity delegation plus credential issuance plus service-account impersonation plus broad scopes plus untrusted subject inputs plus no approval gate

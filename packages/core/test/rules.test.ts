@@ -83,6 +83,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-057")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-058")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-059")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-060")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-030")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-031")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-032")).toBe(true);
@@ -1768,6 +1769,47 @@ describe("rule engine", () => {
     expect(JSON.stringify(runtimeAgentOrchestrationFindings[0])).not.toContain("support-escalation-crew");
     expect(JSON.stringify(runtimeAgentOrchestrationFindings[0])).not.toContain("production-support-memory");
     expect(JSON.stringify(runtimeAgentOrchestrationFindings[0])).not.toContain("operations-executor");
+    const runtimeAutonomousLoopFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-RUNTIME-060");
+    expect(runtimeAutonomousLoopFindings).toHaveLength(1);
+    expect(runtimeAutonomousLoopFindings[0]?.matched_object.path).toBe("autonomy/agent-loop.yaml");
+    expect(runtimeAutonomousLoopFindings[0]?.matched_object.metadata).toMatchObject({
+      parsed_agent_autonomous_loop_config: true,
+      agent_autonomous_loop_enabled: true,
+      agent_autonomous_loop_autonomous_mode: true,
+      agent_autonomous_loop_auto_execute: true,
+      agent_autonomous_loop_untrusted_goal: true,
+      agent_autonomous_loop_privileged_tool_authority: true,
+      agent_autonomous_loop_tool_output_feedback: true,
+      agent_autonomous_loop_unbounded_iterations: true,
+      agent_autonomous_loop_kill_switch_disabled: true,
+      agent_autonomous_loop_approval_required: false
+    });
+    expect(runtimeAutonomousLoopFindings[0]?.matched_object.metadata.agent_autonomous_loop_goal_source_categories).toEqual([
+      "customer_goal",
+      "untrusted_prompt"
+    ]);
+    expect(runtimeAutonomousLoopFindings[0]?.matched_object.metadata.agent_autonomous_loop_tool_authority_categories).toEqual([
+      "browser_action",
+      "database_write",
+      "external_response",
+      "memory_write",
+      "secret_manager_access",
+      "shell_execution",
+      "tool_call"
+    ]);
+    expect(runtimeAutonomousLoopFindings[0]?.severity).toBe("critical");
+    expect(runtimeAutonomousLoopFindings[0]?.confidence).toBe("very_high");
+    expect(runtimeAutonomousLoopFindings[0]?.recommended_control).toBe("require_approval");
+    expect(JSON.stringify(runtimeAutonomousLoopFindings[0])).not.toContain("${AGENT_LOOP_TOKEN}");
+    expect(JSON.stringify(runtimeAutonomousLoopFindings[0])).not.toContain("customer_ticket_prompt");
+    expect(JSON.stringify(runtimeAutonomousLoopFindings[0])).not.toContain("support_db.update_customer_record");
+    expect(JSON.stringify(runtimeAutonomousLoopFindings[0])).not.toContain("slack.post_customer_reply");
+    expect(JSON.stringify(runtimeAutonomousLoopFindings[0])).not.toContain("vault_secret_lookup.read_support_token");
+    expect(JSON.stringify(runtimeAutonomousLoopFindings[0])).not.toContain("browser.submit_refund_form");
+    expect(JSON.stringify(runtimeAutonomousLoopFindings[0])).not.toContain("shell.run_remediation");
+    expect(JSON.stringify(runtimeAutonomousLoopFindings[0])).not.toContain("loop_customer_email");
+    expect(JSON.stringify(runtimeAutonomousLoopFindings[0])).not.toContain("loop_account_number");
+    expect(JSON.stringify(runtimeAutonomousLoopFindings[0])).not.toContain("confidential_loop_notes");
     const runtimeAgentSafetyFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-RUNTIME-016");
     expect(runtimeAgentSafetyFindings).toHaveLength(1);
     expect(runtimeAgentSafetyFindings[0]?.matched_object.path).toBe("guardrails/agent-safety.yaml");

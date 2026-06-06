@@ -479,6 +479,44 @@ Agent orchestration metadata may include:
 
 Raw agent names, crew names, role prompts, task descriptions, memory namespaces, graph labels, tool lists, and secret placeholders are not emitted. Framework names, counts, redacted delegation categories, shared-memory posture, tool-authority categories, approval posture, data-class booleans, and credential key names let rules detect indirect prompt-injection paths across agent handoffs without copying orchestration content into the manifest.
 
+## Agent Autonomous Loop Posture
+
+Autonomous agent, control-loop, planner-executor, and self-directed runner configs are normalized into `runtime_config` objects when common loop configuration files are discovered.
+
+Agent autonomous loop metadata may include:
+
+- `parsed_agent_autonomous_loop_config`
+- `agent_autonomous_loop_fields`
+- `agent_autonomous_loop_enabled`
+- `agent_autonomous_loop_autonomous_mode`
+- `agent_autonomous_loop_loop_enabled`
+- `agent_autonomous_loop_auto_execute`
+- `agent_autonomous_loop_goal_source_redacted`
+- `agent_autonomous_loop_goal_source_categories`
+- `agent_autonomous_loop_untrusted_goal`
+- `agent_autonomous_loop_tool_authority_categories`
+- `agent_autonomous_loop_privileged_tool_authority`
+- `agent_autonomous_loop_write_authority`
+- `agent_autonomous_loop_external_authority`
+- `agent_autonomous_loop_secret_authority`
+- `agent_autonomous_loop_shell_authority`
+- `agent_autonomous_loop_memory_feedback`
+- `agent_autonomous_loop_tool_output_feedback`
+- `agent_autonomous_loop_unbounded_iterations`
+- `agent_autonomous_loop_iteration_limit_redacted`
+- `agent_autonomous_loop_iteration_limit_high`
+- `agent_autonomous_loop_runtime_budget_missing`
+- `agent_autonomous_loop_stop_condition_missing`
+- `agent_autonomous_loop_kill_switch_disabled`
+- `agent_autonomous_loop_dry_run_disabled`
+- `agent_autonomous_loop_sensitive_context`
+- `agent_autonomous_loop_pii_context`
+- `agent_autonomous_loop_approval_required`
+- `env_key_names`
+- `secret_ref_key_names`
+
+Raw goals, objective text, planner prompts, tool names, action strings, observation labels, stop-condition labels, data-field labels, and secret placeholders are not emitted. Goal-source categories, tool-authority categories, loop-budget posture, tool-output feedback posture, kill-switch posture, dry-run posture, approval posture, data-class booleans, and credential key names let rules detect untrusted goals that can repeatedly drive privileged agent actions without copying loop contents into evidence.
+
 ## Hosted Assistant Definition Posture
 
 Hosted assistant, assistant API, deployable agent, and hosted-agent definition files are normalized into `runtime_config` objects when common JSON, YAML, or TOML config files are discovered.
