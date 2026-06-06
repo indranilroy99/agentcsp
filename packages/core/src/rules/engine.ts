@@ -177,7 +177,7 @@ function confidenceForMatch(
     score += 15;
     rationale.push("external reach present");
   }
-  if (risk.actions.some((action) => ["execute", "publish", "send", "delete"].includes(action))) {
+  if (risk.actions.some((action) => ["approve", "delete", "execute", "publish", "send", "write"].includes(action))) {
     score += 15;
     rationale.push("privileged action present");
   }
@@ -185,7 +185,10 @@ function confidenceForMatch(
     score += 10;
     rationale.push("side effect or irreversible action present");
   }
-  if (object.metadata.parsed_tool_schema === true || object.metadata.parsed_runtime_config === true) {
+  if (
+    object.metadata.parsed_tool_schema === true ||
+    Object.entries(object.metadata).some(([key, value]) => key.startsWith("parsed_") && key.endsWith("_config") && value === true)
+  ) {
     score += 10;
     rationale.push("structured agent configuration parsed");
   }

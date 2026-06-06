@@ -22,6 +22,19 @@ Default missing policy files are allowed and do not produce diagnostics. If a po
 
 This keeps scanner output available for CI, SARIF, and audit review while making policy failures visible through `diagnostics` and `scan_coverage` diagnostic counters. Use `--fail-on-diagnostics` when policy health issues should fail CI.
 
+## Policy Integrity Signals
+
+AgentCSP also models project-local policy files as scan-control posture. A policy file can be security-sensitive because it can change trust levels, downgrade recommended controls, or suppress findings before CI gates evaluate them.
+
+The scanner records redacted policy-integrity metadata for:
+
+- broad suppressions that match high or critical severity without a specific finding, object, or rule
+- long-lived active suppressions
+- `allow` or `warn` recommended controls scoped to high-impact findings
+- trust overrides that mark untrusted context paths as trusted, project, or workspace scope
+
+Policy-integrity metadata does not emit raw suppression IDs, owners, reasons, paths, categories, or match values.
+
 ## Recommended Controls
 
 Recommended controls let a team strengthen or change a finding recommendation without suppressing evidence.

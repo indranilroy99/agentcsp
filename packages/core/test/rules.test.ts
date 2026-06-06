@@ -75,6 +75,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-031")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-032")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-033")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-034")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-CICD-002")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-AUTOMATION-001")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-AUTOMATION-002")).toBe(true);
@@ -462,6 +463,40 @@ describe("rule engine", () => {
     expect(JSON.stringify(runtimeCloudControlPlaneFindings[0])).not.toContain("retrieved_cloud_runbook");
     expect(JSON.stringify(runtimeCloudControlPlaneFindings[0])).not.toContain("aws-cli");
     expect(JSON.stringify(runtimeCloudControlPlaneFindings[0])).not.toContain("terraform-apply");
+    const runtimeAgentCspPolicyFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-RUNTIME-034");
+    expect(runtimeAgentCspPolicyFindings).toHaveLength(1);
+    expect(runtimeAgentCspPolicyFindings[0]?.matched_object.path).toBe("agentcsp.yaml");
+    expect(runtimeAgentCspPolicyFindings[0]?.matched_object.metadata).toMatchObject({
+      parsed_agentcsp_policy_config: true,
+      agentcsp_policy_trust_override_count: 1,
+      agentcsp_policy_marks_untrusted_context_trusted: true,
+      agentcsp_policy_suppression_count: 1,
+      agentcsp_policy_broad_suppression: true,
+      agentcsp_policy_high_severity_suppression: true,
+      agentcsp_policy_long_lived_suppression: true,
+      agentcsp_policy_recommended_control_count: 1,
+      agentcsp_policy_recommended_control_downgrade: true,
+      agentcsp_policy_weakens_security_controls: true
+    });
+    expect(runtimeAgentCspPolicyFindings[0]?.matched_object.metadata.agentcsp_policy_trust_override_kinds).toEqual([
+      "broad_trust_override",
+      "trust_elevation",
+      "untrusted_context_trusted"
+    ]);
+    expect(runtimeAgentCspPolicyFindings[0]?.matched_object.metadata.agentcsp_policy_recommended_control_downgrade_kinds).toEqual([
+      "allow_broad_match",
+      "allow_critical",
+      "allow_sensitive_scope"
+    ]);
+    expect(runtimeAgentCspPolicyFindings[0]?.severity).toBe("critical");
+    expect(runtimeAgentCspPolicyFindings[0]?.confidence).toBe("very_high");
+    expect(runtimeAgentCspPolicyFindings[0]?.recommended_control).toBe("require_approval");
+    expect(JSON.stringify(runtimeAgentCspPolicyFindings[0])).not.toContain("rag/**");
+    expect(JSON.stringify(runtimeAgentCspPolicyFindings[0])).not.toContain("allow-critical-legacy-agent");
+    expect(JSON.stringify(runtimeAgentCspPolicyFindings[0])).not.toContain("suppress-critical-legacy-agent");
+    expect(JSON.stringify(runtimeAgentCspPolicyFindings[0])).not.toContain("security@example.com");
+    expect(JSON.stringify(runtimeAgentCspPolicyFindings[0])).not.toContain("legacy_agent_security");
+    expect(JSON.stringify(runtimeAgentCspPolicyFindings[0])).not.toContain("Fixture demonstrates risky");
     const supplyChainFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-SUPPLYCHAIN-001");
     expect(supplyChainFindings).toHaveLength(1);
     expect(supplyChainFindings[0]?.matched_object.path).toBe("package.json");

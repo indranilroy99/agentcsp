@@ -1,0 +1,41 @@
+id: AGENTCSP-RUNTIME-034
+name: AgentCSP policy weakens high-impact AI security findings
+description: A project-local AgentCSP advisory policy includes broad suppressions, permissive recommended-control overrides, or trust elevation for untrusted agent context, creating a scan-control path that can hide or downgrade high-impact AI security risk.
+category: agentcsp_policy_integrity
+severity: critical
+maps_to:
+  owasp:
+    - LLM01:2025 Prompt Injection
+    - LLM06:2025 Excessive Agency
+    - LLM10:2025 Unbounded Consumption
+  mitre_atlas:
+    - AML.T0051 LLM Prompt Injection
+    - AML.T0046 Exfiltration via Cloud Resources
+  nist_ai_rmf:
+    - GOVERN 1.1
+    - MAP 5.1
+    - MANAGE 2.4
+match:
+  object_type: runtime_config
+  where:
+    - field: metadata.parsed_agentcsp_policy_config
+      op: equals
+      value: true
+    - field: metadata.agentcsp_policy_weakens_security_controls
+      op: equals
+      value: true
+    - field: metadata.agentcsp_policy_marks_untrusted_context_trusted
+      op: equals
+      value: true
+    - field: metadata.agentcsp_policy_broad_suppression
+      op: equals
+      value: true
+    - field: metadata.agentcsp_policy_high_severity_suppression
+      op: equals
+      value: true
+    - field: metadata.agentcsp_policy_recommended_control_downgrade
+      op: equals
+      value: true
+recommendation:
+  control: require_approval
+  text: Review project-local AgentCSP policy changes as security-sensitive code, avoid broad high-severity suppressions or permissive control downgrades, keep trust overrides narrow, and require security-owner approval for policy files that affect untrusted context or critical findings.

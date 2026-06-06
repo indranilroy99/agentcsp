@@ -132,6 +132,11 @@ export async function detectSurfaces(files: WalkedFile[]): Promise<DetectedSurfa
       continue;
     }
 
+    if (isAgentCspPolicyConfigPath(file.relativePath, basename)) {
+      detectAgentCspPolicyConfig(file, text, surfaces);
+      continue;
+    }
+
     if (isAgentContainerRuntimeConfigPath(file.relativePath, basename)) {
       detectAgentContainerRuntimeConfig(file, text, surfaces);
       continue;
@@ -1093,6 +1098,38 @@ function detectDatabaseConnectorConfig(file: WalkedFile, text: string | undefine
   surfaces.runtime_config.push({
     ...object,
     untrusted_to_privileged: isUntrustedToPrivileged(object)
+  });
+}
+
+function detectAgentCspPolicyConfig(file: WalkedFile, text: string | undefined, surfaces: DetectedSurfaces): void {
+  const parsed = parseStructuredConfig(text ?? "", file.relativePath);
+  const posture = classifyAgentCspPolicyConfig(parsed.value);
+  const actions = new Set<ActionType>(["approve", "read"]);
+  if (posture.agentcsp_policy_weakens_security_controls) actions.add("write");
+
+  const object = createSurfaceObject({
+    type: "runtime_config",
+    name: path.basename(file.relativePath),
+    path: file.relativePath,
+    trust_level: inferTrustLevel(file.relativePath),
+    data_classes: posture.secret_ref_key_names.length > 0 || posture.env_key_names.some(isCredentialLikeKeyName) ? ["credential"] : ["unknown"],
+    actions: uniqueActions([...actions]),
+    side_effect: posture.agentcsp_policy_weakens_security_controls,
+    reversible: !posture.agentcsp_policy_active_suppression || !posture.agentcsp_policy_recommended_control_downgrade,
+    external_reach: false,
+    secret_exposure: posture.secret_ref_key_names.length > 0 || posture.env_key_names.some(isCredentialLikeKeyName),
+    reason: "AgentCSP advisory policy discovered as scan-control configuration.",
+    metadata: {
+      content_redacted: true,
+      values_collected: false,
+      parsed_agentcsp_policy_config: Boolean(parsed.value) && !parsed.parseFailed,
+      parse_error: parsed.parseFailed,
+      ...posture
+    }
+  });
+  surfaces.runtime_config.push({
+    ...object,
+    untrusted_to_privileged: posture.agentcsp_policy_weakens_security_controls || isUntrustedToPrivileged(object)
   });
 }
 
@@ -2528,6 +2565,14 @@ function isBrowserSessionConfigPath(relativePath: string, basename: string): boo
   return browserName || (browserDirectory && configName);
 }
 
+function isAgentCspPolicyConfigPath(relativePath: string, basename: string): boolean {
+  const normalized = relativePath.replaceAll("\\", "/").toLowerCase();
+  const lowerBase = basename.toLowerCase();
+  if (!/\.(ya?ml|json|toml)$/iu.test(lowerBase)) return false;
+  if (normalized.startsWith(".agentcsp/")) return false;
+  return /(^|\/)(\.?agentcsp|agentcsp\.policy|agentcsp-policy)\.(ya?ml|json|toml)$/iu.test(normalized);
+}
+
 function isInboundAgentTriggerConfigPath(relativePath: string, basename: string): boolean {
   const normalized = relativePath.replaceAll("\\", "/").toLowerCase();
   const lowerBase = basename.toLowerCase();
@@ -2976,6 +3021,29 @@ interface DatabaseConnectorPosture {
   database_sensitive_data: boolean;
   database_pii_data: boolean;
   database_table_names_redacted: boolean;
+  env_key_names: string[];
+  secret_ref_key_names: string[];
+}
+
+interface AgentCspPolicyPosture {
+  agentcsp_policy_fields: string[];
+  agentcsp_policy_trust_override_count: number;
+  agentcsp_policy_trust_overrides_redacted: boolean;
+  agentcsp_policy_trust_override_kinds: string[];
+  agentcsp_policy_marks_untrusted_context_trusted: boolean;
+  agentcsp_policy_suppression_count: number;
+  agentcsp_policy_suppressions_redacted: boolean;
+  agentcsp_policy_broad_suppression: boolean;
+  agentcsp_policy_high_severity_suppression: boolean;
+  agentcsp_policy_long_lived_suppression: boolean;
+  agentcsp_policy_active_suppression: boolean;
+  agentcsp_policy_suppression_match_kinds: string[];
+  agentcsp_policy_recommended_control_count: number;
+  agentcsp_policy_recommended_controls_redacted: boolean;
+  agentcsp_policy_recommended_control_downgrade: boolean;
+  agentcsp_policy_recommended_control_downgrade_kinds: string[];
+  agentcsp_policy_weakening_controls: string[];
+  agentcsp_policy_weakens_security_controls: boolean;
   env_key_names: string[];
   secret_ref_key_names: string[];
 }
@@ -3780,6 +3848,187 @@ function extractDatabaseSecretReferenceKeys(fields: RuntimeField[]): string[] {
     for (const key of extractEnvironmentReferenceKeys([fieldValueText(field)])) keys.add(key);
   }
   return [...keys].sort((a, b) => a.localeCompare(b));
+}
+
+function classifyAgentCspPolicyConfig(value: unknown): AgentCspPolicyPosture {
+  const fields = flattenRuntimeFields(value);
+  const stringValues = collectFieldStringValues(fields);
+  const envKeys = extractEnvironmentReferenceKeys(stringValues);
+  const secretRefKeys = extractSecretReferenceKeys(stringValues);
+  const trustOverrides = policyObjectArray(value, "trust_overrides");
+  const suppressions = policyObjectArray(value, "suppressions");
+  const recommendedControls = policyObjectArray(value, "recommended_controls");
+  const trustOverrideKinds = collectPolicyTrustOverrideKinds(trustOverrides);
+  const suppressionMatchKinds = collectPolicySuppressionMatchKinds(suppressions);
+  const recommendedControlDowngradeKinds = collectPolicyRecommendedControlDowngradeKinds(recommendedControls);
+  const weakeningControls = collectPolicyWeakeningControls(recommendedControls);
+  const marksUntrustedContextTrusted = trustOverrideKinds.includes("untrusted_context_trusted");
+  const broadSuppression = hasPolicyBroadSuppression(suppressions);
+  const highSeveritySuppression = hasPolicyHighSeveritySuppression(suppressions);
+  const longLivedSuppression = hasPolicyLongLivedSuppression(suppressions);
+  const recommendedControlDowngrade = recommendedControlDowngradeKinds.length > 0;
+
+  return {
+    agentcsp_policy_fields: fields
+      .map((field) => field.path)
+      .filter((fieldPath) => isAgentCspPolicySecurityField(fieldPath))
+      .sort((a, b) => a.localeCompare(b)),
+    agentcsp_policy_trust_override_count: trustOverrides.length,
+    agentcsp_policy_trust_overrides_redacted: trustOverrides.length > 0,
+    agentcsp_policy_trust_override_kinds: trustOverrideKinds,
+    agentcsp_policy_marks_untrusted_context_trusted: marksUntrustedContextTrusted,
+    agentcsp_policy_suppression_count: suppressions.length,
+    agentcsp_policy_suppressions_redacted: suppressions.length > 0,
+    agentcsp_policy_broad_suppression: broadSuppression,
+    agentcsp_policy_high_severity_suppression: highSeveritySuppression,
+    agentcsp_policy_long_lived_suppression: longLivedSuppression,
+    agentcsp_policy_active_suppression: suppressions.some(policySuppressionActive),
+    agentcsp_policy_suppression_match_kinds: suppressionMatchKinds,
+    agentcsp_policy_recommended_control_count: recommendedControls.length,
+    agentcsp_policy_recommended_controls_redacted: recommendedControls.length > 0,
+    agentcsp_policy_recommended_control_downgrade: recommendedControlDowngrade,
+    agentcsp_policy_recommended_control_downgrade_kinds: recommendedControlDowngradeKinds,
+    agentcsp_policy_weakening_controls: weakeningControls,
+    agentcsp_policy_weakens_security_controls:
+      marksUntrustedContextTrusted ||
+      (broadSuppression && (highSeveritySuppression || longLivedSuppression)) ||
+      recommendedControlDowngrade,
+    env_key_names: envKeys,
+    secret_ref_key_names: secretRefKeys
+  };
+}
+
+function policyObjectArray(value: unknown, key: string): Array<Record<string, unknown>> {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return [];
+  const entry = (value as Record<string, unknown>)[key];
+  if (!Array.isArray(entry)) return [];
+  return entry.filter((item): item is Record<string, unknown> => Boolean(item && typeof item === "object" && !Array.isArray(item)));
+}
+
+function policyObject(value: unknown): Record<string, unknown> {
+  return value && typeof value === "object" && !Array.isArray(value) ? (value as Record<string, unknown>) : {};
+}
+
+function policyString(value: unknown): string {
+  return typeof value === "string" ? value : "";
+}
+
+function collectPolicyTrustOverrideKinds(entries: Array<Record<string, unknown>>): string[] {
+  const kinds = new Set<string>();
+  for (const entry of entries) {
+    const target = policyString(entry.trust_level).toLowerCase();
+    const targetElevatesTrust = /^(trusted|project|workspace)$/iu.test(target);
+    const policyPath = policyString(entry.path);
+    if (targetElevatesTrust) kinds.add("trust_elevation");
+    if (targetElevatesTrust && policyPathLooksBroad(policyPath)) kinds.add("broad_trust_override");
+    if (targetElevatesTrust && policyPathLooksLikeUntrustedContext(policyPath)) kinds.add("untrusted_context_trusted");
+  }
+  return [...kinds].sort((a, b) => a.localeCompare(b));
+}
+
+function hasPolicyBroadSuppression(entries: Array<Record<string, unknown>>): boolean {
+  return entries.some((entry) => {
+    const match = policyObject(entry.match);
+    return (
+      !policyString(match.finding_id) &&
+      !policyString(match.object_id) &&
+      !policyString(match.rule_id) &&
+      (Boolean(policyString(match.severity) || policyString(match.category)) || policyPathLooksBroad(policyString(match.path)))
+    );
+  });
+}
+
+function hasPolicyHighSeveritySuppression(entries: Array<Record<string, unknown>>): boolean {
+  return entries.some((entry) => /^(critical|high)$/iu.test(policyString(policyObject(entry.match).severity)));
+}
+
+function hasPolicyLongLivedSuppression(entries: Array<Record<string, unknown>>): boolean {
+  return entries.some((entry) => {
+    const expiresAt = policyString(entry.expires_at);
+    const year = Number.parseInt(expiresAt.slice(0, 4), 10);
+    return Number.isFinite(year) && year >= 2099;
+  });
+}
+
+function policySuppressionActive(entry: Record<string, unknown>): boolean {
+  const timestamp = Date.parse(policyString(entry.expires_at));
+  return Number.isFinite(timestamp) && timestamp > Date.now();
+}
+
+function collectPolicySuppressionMatchKinds(entries: Array<Record<string, unknown>>): string[] {
+  const kinds = new Set<string>();
+  for (const entry of entries) {
+    const match = policyObject(entry.match);
+    if (policyString(match.finding_id)) kinds.add("finding_id");
+    if (policyString(match.object_id)) kinds.add("object_id");
+    if (policyString(match.rule_id)) kinds.add("rule_id");
+    if (policyString(match.path)) kinds.add(policyPathLooksBroad(policyString(match.path)) ? "wildcard_path" : "path");
+    if (policyString(match.category)) kinds.add("category");
+    if (policyString(match.severity)) kinds.add("severity");
+    if (!policyString(match.finding_id) && !policyString(match.object_id) && !policyString(match.rule_id)) kinds.add("broad_match");
+  }
+  return [...kinds].sort((a, b) => a.localeCompare(b));
+}
+
+function collectPolicyRecommendedControlDowngradeKinds(entries: Array<Record<string, unknown>>): string[] {
+  const kinds = new Set<string>();
+  for (const entry of entries) {
+    const control = policyString(entry.control).toLowerCase();
+    if (!/^(allow|warn)$/iu.test(control)) continue;
+    const match = policyObject(entry.match);
+    if (/^critical$/iu.test(policyString(match.severity))) kinds.add(`${control}_critical`);
+    if (/^high$/iu.test(policyString(match.severity))) kinds.add(`${control}_high`);
+    if (policyRecommendedControlMatchLooksBroad(match)) kinds.add(`${control}_broad_match`);
+    if (policyRecommendedControlMatchLooksSensitive(match)) kinds.add(`${control}_sensitive_scope`);
+  }
+  return [...kinds].sort((a, b) => a.localeCompare(b));
+}
+
+function collectPolicyWeakeningControls(entries: Array<Record<string, unknown>>): string[] {
+  const controls = new Set<string>();
+  for (const entry of entries) {
+    const control = policyString(entry.control).toLowerCase();
+    if (/^(allow|warn)$/iu.test(control)) controls.add(control);
+  }
+  return [...controls].sort((a, b) => a.localeCompare(b));
+}
+
+function policyRecommendedControlMatchLooksBroad(match: Record<string, unknown>): boolean {
+  if (policyString(match.finding_id) || policyString(match.object_id)) return false;
+  return Boolean(
+    policyString(match.severity) ||
+      policyString(match.category) ||
+      policyString(match.object_type) ||
+      policyString(match.trust_level) ||
+      policyString(match.data_class) ||
+      policyString(match.action) ||
+      policyPathLooksBroad(policyString(match.path))
+  );
+}
+
+function policyRecommendedControlMatchLooksSensitive(match: Record<string, unknown>): boolean {
+  return (
+    /^(critical|high)$/iu.test(policyString(match.severity)) ||
+    /^(credential|secret|pii|confidential)$/iu.test(policyString(match.data_class)) ||
+    /^(write|execute|delete|send|publish|approve)$/iu.test(policyString(match.action))
+  );
+}
+
+function policyPathLooksBroad(policyPath: string): boolean {
+  const normalized = policyPath.trim().toLowerCase();
+  return !normalized || normalized === "*" || normalized === "**" || normalized === "**/*" || normalized.includes("**");
+}
+
+function policyPathLooksLikeUntrustedContext(policyPath: string): boolean {
+  return /\b(rag|retrieval|retrieved|memory|memories|logs?|transcripts?|prompts?|context|inbox|tickets?|messages?|customers?|uploads?|external|web|browser)\b/iu.test(
+    policyPath
+  );
+}
+
+function isAgentCspPolicySecurityField(fieldPath: string): boolean {
+  return /schema|trust|override|suppress|recommended|control|match|finding|rule|object|path|category|severity|confidence|data|class|action|expires|owner|reason/iu.test(
+    fieldPath
+  );
 }
 
 function classifyBrowserSessionConfig(value: unknown, filePath: string): BrowserSessionPosture {

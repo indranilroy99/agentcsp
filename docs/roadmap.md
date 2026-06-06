@@ -20,6 +20,7 @@
 - Add permission and side-effect classification.
 - Build graph-based blast-radius analysis.
 - Add `agentcsp.yaml` policy files.
+- Add `agentcsp.yaml` policy-integrity posture for broad suppressions, permissive control downgrades, and risky trust overrides.
 - Add MCP prompt and resource context inventory for model-visible server-supplied context that can steer privileged MCP authority.
 - Add MCP client-context posture for roots, sampling, and elicitation requests from remote or third-party servers.
 - Add runtime posture inventory for sandbox, approval, network, tool authority, and agent safety-control posture.

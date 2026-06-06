@@ -1192,6 +1192,57 @@ describe("scanner", () => {
     expect(JSON.stringify(databaseConfig)).not.toContain("support-db.example.invalid");
     expect(JSON.stringify(databaseConfig)).not.toContain("customer_profiles");
     expect(JSON.stringify(databaseConfig)).not.toContain("agent_writer");
+    const agentCspPolicyConfig = surfaces.runtime_config.find((surface) => surface.path === "agentcsp.yaml");
+    expect(agentCspPolicyConfig).toBeDefined();
+    expect(agentCspPolicyConfig).toMatchObject({
+      trust_level: "project",
+      external_reach: false,
+      secret_exposure: false,
+      side_effect: true,
+      reversible: false,
+      untrusted_to_privileged: true
+    });
+    expect(agentCspPolicyConfig?.metadata).toMatchObject({
+      content_redacted: true,
+      values_collected: false,
+      parsed_agentcsp_policy_config: true,
+      agentcsp_policy_trust_override_count: 1,
+      agentcsp_policy_trust_overrides_redacted: true,
+      agentcsp_policy_marks_untrusted_context_trusted: true,
+      agentcsp_policy_suppression_count: 1,
+      agentcsp_policy_suppressions_redacted: true,
+      agentcsp_policy_broad_suppression: true,
+      agentcsp_policy_high_severity_suppression: true,
+      agentcsp_policy_long_lived_suppression: true,
+      agentcsp_policy_active_suppression: true,
+      agentcsp_policy_recommended_control_count: 1,
+      agentcsp_policy_recommended_controls_redacted: true,
+      agentcsp_policy_recommended_control_downgrade: true,
+      agentcsp_policy_weakens_security_controls: true
+    });
+    expect(agentCspPolicyConfig?.metadata.agentcsp_policy_trust_override_kinds).toEqual([
+      "broad_trust_override",
+      "trust_elevation",
+      "untrusted_context_trusted"
+    ]);
+    expect(agentCspPolicyConfig?.metadata.agentcsp_policy_suppression_match_kinds).toEqual([
+      "broad_match",
+      "severity",
+      "wildcard_path"
+    ]);
+    expect(agentCspPolicyConfig?.metadata.agentcsp_policy_recommended_control_downgrade_kinds).toEqual([
+      "allow_broad_match",
+      "allow_critical",
+      "allow_sensitive_scope"
+    ]);
+    expect(agentCspPolicyConfig?.metadata.agentcsp_policy_weakening_controls).toEqual(["allow"]);
+    expect(agentCspPolicyConfig?.actions).toEqual(["approve", "read", "write"]);
+    expect(JSON.stringify(agentCspPolicyConfig)).not.toContain("rag/**");
+    expect(JSON.stringify(agentCspPolicyConfig)).not.toContain("allow-critical-legacy-agent");
+    expect(JSON.stringify(agentCspPolicyConfig)).not.toContain("suppress-critical-legacy-agent");
+    expect(JSON.stringify(agentCspPolicyConfig)).not.toContain("security@example.com");
+    expect(JSON.stringify(agentCspPolicyConfig)).not.toContain("legacy_agent_security");
+    expect(JSON.stringify(agentCspPolicyConfig)).not.toContain("Fixture demonstrates risky");
     const browserSessionConfig = surfaces.runtime_config.find((surface) => surface.path === "browser/session.yaml");
     expect(browserSessionConfig).toBeDefined();
     expect(browserSessionConfig).toMatchObject({

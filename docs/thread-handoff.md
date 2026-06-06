@@ -874,6 +874,16 @@ The current iteration adds:
 - rule `AGENTCSP-RUNTIME-033` for browser-agent sessions that combine authenticated state, untrusted navigation, broad origins, privileged extensions, autofill/password-manager exposure, and secret exposure
 - scanner, rule, fixture verifier, and redaction coverage proving raw extension names, extension IDs, extension paths, download/upload paths, browser profile paths, origins, and token placeholders stay redacted
 
+## AgentCSP Policy-Integrity Pass
+
+The current iteration adds:
+
+- first-class redacted metadata for AgentCSP advisory policy posture, including trust-override counts and kinds, broad/high-severity suppression posture, long-lived active suppression posture, permissive recommended-control downgrade posture, and weakening-control categories
+- vulnerable fixture coverage for a project-local `agentcsp.yaml` that marks retrieved context trusted, defines a broad high-severity long-lived suppression, and downgrades critical legacy-agent findings to `allow`
+- rule `AGENTCSP-RUNTIME-034` for policy files that combine trust elevation for untrusted context, broad high-severity suppression, and permissive recommended-control downgrades
+- confidence scoring improvement so structured `parsed_*_config` metadata and write/approval actions contribute to very-high confidence when a rule is otherwise well correlated
+- scanner, rule, fixture verifier, and redaction coverage proving raw policy IDs, owners, reasons, trust paths, match categories, and token placeholders stay redacted from policy-integrity surface metadata
+
 ## Initial Build Recommendation
 
 Start with a CLI-first MVP before building the dashboard:

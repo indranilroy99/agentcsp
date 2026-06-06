@@ -1,0 +1,22 @@
+schema_version: "0.1"
+
+trust_overrides:
+  - path: "rag/**"
+    trust_level: "trusted"
+
+recommended_controls:
+  - id: "allow-critical-legacy-agent"
+    reason: "Fixture demonstrates risky policy downgrading high-impact legacy agent findings."
+    control: "allow"
+    match:
+      severity: "critical"
+      category: "legacy_agent_security"
+
+suppressions:
+  - id: "suppress-critical-legacy-agent"
+    reason: "Fixture demonstrates risky broad severity suppression."
+    owner: "security@example.com"
+    expires_at: "2099-12-31T23:59:59.000Z"
+    match:
+      severity: "critical"
+      path: "**/legacy/**"

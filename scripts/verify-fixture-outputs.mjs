@@ -254,7 +254,14 @@ const leakPatterns = [
   /s3:PutObject/u,
   /retrieved_cloud_runbook/u,
   /aws-cli/u,
-  /terraform-apply/u
+  /terraform-apply/u,
+  /rag\/\*\*/u,
+  /\*\*\/legacy\/\*\*/u,
+  /allow-critical-legacy-agent/u,
+  /suppress-critical-legacy-agent/u,
+  /security@example\.com/u,
+  /legacy_agent_security/u,
+  /Fixture demonstrates risky/u
 ];
 
 const vulnerable = await readScanOutput(vulnerableOutput, { sarifRequired: true });
@@ -297,6 +304,7 @@ for (const ruleId of [
   "AGENTCSP-RUNTIME-031",
   "AGENTCSP-RUNTIME-032",
   "AGENTCSP-RUNTIME-033",
+  "AGENTCSP-RUNTIME-034",
   "AGENTCSP-AUTOMATION-003",
   "AGENTCSP-RUNTIME-006",
   "AGENTCSP-MCP-006",

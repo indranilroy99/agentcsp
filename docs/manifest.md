@@ -1390,6 +1390,36 @@ Diagnostics do not include raw parser stack traces, raw file contents, secret va
 
 Policy diagnostics include malformed `agentcsp.yaml`, schema-invalid policy files, and explicitly supplied missing `--config` paths. Scans continue with empty advisory policy in those cases so evidence is still generated; default missing policy files do not create diagnostics.
 
+## AgentCSP Policy Integrity Posture
+
+Project-local `agentcsp.yaml`, `agentcsp.yml`, and common AgentCSP policy config filenames are normalized into `runtime_config` objects when discovered. This models scan-control posture because advisory policy can change trust, recommended controls, suppressions, and CI failure behavior.
+
+Policy-integrity metadata may include:
+
+- `parsed_agentcsp_policy_config`
+- `agentcsp_policy_fields`
+- `agentcsp_policy_trust_override_count`
+- `agentcsp_policy_trust_overrides_redacted`
+- `agentcsp_policy_trust_override_kinds`
+- `agentcsp_policy_marks_untrusted_context_trusted`
+- `agentcsp_policy_suppression_count`
+- `agentcsp_policy_suppressions_redacted`
+- `agentcsp_policy_broad_suppression`
+- `agentcsp_policy_high_severity_suppression`
+- `agentcsp_policy_long_lived_suppression`
+- `agentcsp_policy_active_suppression`
+- `agentcsp_policy_suppression_match_kinds`
+- `agentcsp_policy_recommended_control_count`
+- `agentcsp_policy_recommended_controls_redacted`
+- `agentcsp_policy_recommended_control_downgrade`
+- `agentcsp_policy_recommended_control_downgrade_kinds`
+- `agentcsp_policy_weakening_controls`
+- `agentcsp_policy_weakens_security_controls`
+- `env_key_names`
+- `secret_ref_key_names`
+
+Raw trust-override paths, suppression IDs, owners, reasons, recommended-control IDs, match values, and policy comments are not emitted as policy-integrity surface metadata. Counts, match-kind categories, weakening-control categories, and booleans let rules detect broad high-severity suppressions, permissive control downgrades, and trust elevation for untrusted context without copying the policy body into the manifest.
+
 Rule diagnostics include malformed project-local rules, schema-invalid rules, and duplicate rule IDs. Built-in AgentCSP rules still run when project-local rule diagnostics are emitted.
 
 ## Relationships
