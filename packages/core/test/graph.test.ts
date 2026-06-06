@@ -146,19 +146,35 @@ describe("static graph", () => {
     expect(ragDataEgressPath?.risk.data_classes).toContain("confidential");
     expect(ragDataEgressPath?.risk.external_reach).toBe(true);
     expect(JSON.stringify(ragDataEgressPath)).not.toContain("latest internal summary");
-    const ragSaasConnectorPath = result.manifest.attack_paths.find(
+    const ragAgentOrchestrationPath = result.manifest.attack_paths.find(
       (attackPath) =>
         attackPath.source.path === "rag/customer-note.md" &&
-        attackPath.target.name === "slack-customer-success.yaml" &&
-        attackPath.title === "customer-note.md can influence slack-customer-success.yaml: Untrusted context can influence privileged behavior"
+        attackPath.target.name === "support-crew.yaml" &&
+        attackPath.title ===
+          "customer-note.md can influence support-crew.yaml: Multi-agent delegation routes untrusted context to privileged agents"
     );
-    expect(ragSaasConnectorPath).toBeDefined();
-    expect(ragSaasConnectorPath?.severity).toBe("critical");
-    expect(ragSaasConnectorPath?.confidence).toBe("very_high");
-    expect(ragSaasConnectorPath?.risk.data_classes).toContain("pii");
-    expect(ragSaasConnectorPath?.risk.actions).toEqual(["call", "publish", "read", "send", "write"]);
-    expect(JSON.stringify(ragSaasConnectorPath)).not.toContain("hooks.slack.example.invalid");
-    expect(JSON.stringify(ragSaasConnectorPath)).not.toContain("chat:write");
+    expect(ragAgentOrchestrationPath).toBeDefined();
+    expect(ragAgentOrchestrationPath?.severity).toBe("critical");
+    expect(ragAgentOrchestrationPath?.confidence).toBe("very_high");
+    expect(ragAgentOrchestrationPath?.recommended_control).toBe("require_approval");
+    expect(ragAgentOrchestrationPath?.risk.data_classes).toContain("pii");
+    expect(ragAgentOrchestrationPath?.risk.actions).toEqual(["call", "execute", "publish", "read", "remember", "send", "write"]);
+    expect(JSON.stringify(ragAgentOrchestrationPath)).not.toContain("support-escalation-crew");
+    expect(JSON.stringify(ragAgentOrchestrationPath)).not.toContain("operations-executor");
+    const ragInboundTriggerPath = result.manifest.attack_paths.find(
+      (attackPath) =>
+        attackPath.source.path === "rag/customer-note.md" &&
+        attackPath.target.name === "support-triage.yaml" &&
+        attackPath.title === "customer-note.md can influence support-triage.yaml: Inbound untrusted message can drive privileged agent tools"
+    );
+    expect(ragInboundTriggerPath).toBeDefined();
+    expect(ragInboundTriggerPath?.severity).toBe("critical");
+    expect(ragInboundTriggerPath?.confidence).toBe("very_high");
+    expect(ragInboundTriggerPath?.recommended_control).toBe("require_approval");
+    expect(ragInboundTriggerPath?.risk.data_classes).toContain("pii");
+    expect(ragInboundTriggerPath?.risk.actions).toEqual(["call", "execute", "publish", "read", "remember", "send", "write"]);
+    expect(JSON.stringify(ragInboundTriggerPath)).not.toContain("mail-router.example.invalid");
+    expect(JSON.stringify(ragInboundTriggerPath)).not.toContain("support-triage-agent");
     const ragBrowserSessionPath = result.manifest.attack_paths.find(
       (attackPath) =>
         attackPath.source.path === "rag/customer-note.md" &&

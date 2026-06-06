@@ -54,6 +54,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-012")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-013")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-014")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-015")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-CICD-002")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-AUTOMATION-001")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-AUTOMATION-002")).toBe(true);
@@ -264,6 +265,39 @@ describe("rule engine", () => {
     expect(JSON.stringify(runtimeInboundTriggerFindings[0])).not.toContain("mail-router.example.invalid");
     expect(JSON.stringify(runtimeInboundTriggerFindings[0])).not.toContain("secops-support@example.invalid");
     expect(JSON.stringify(runtimeInboundTriggerFindings[0])).not.toContain("support-triage-agent");
+    const runtimeAgentOrchestrationFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-RUNTIME-015");
+    expect(runtimeAgentOrchestrationFindings).toHaveLength(1);
+    expect(runtimeAgentOrchestrationFindings[0]?.matched_object.path).toBe("agents/support-crew.yaml");
+    expect(runtimeAgentOrchestrationFindings[0]?.matched_object.metadata).toMatchObject({
+      agent_orchestration_framework: "crewai",
+      agent_orchestration_multi_agent: true,
+      agent_orchestration_agent_count: 2,
+      agent_orchestration_delegation_enabled: true,
+      agent_orchestration_untrusted_input: true,
+      agent_orchestration_shared_memory: true,
+      agent_orchestration_invokes_tools: true,
+      agent_orchestration_privileged_agent: true,
+      agent_orchestration_write_authority: true,
+      agent_orchestration_external_authority: true,
+      agent_orchestration_secret_authority: true,
+      agent_orchestration_approval_required: false
+    });
+    expect(runtimeAgentOrchestrationFindings[0]?.matched_object.metadata.agent_orchestration_tool_authority_categories).toEqual([
+      "browser_action",
+      "database_access",
+      "external_response",
+      "memory_write",
+      "repo_or_filesystem_write",
+      "secret_manager_access",
+      "tool_call"
+    ]);
+    expect(runtimeAgentOrchestrationFindings[0]?.severity).toBe("critical");
+    expect(runtimeAgentOrchestrationFindings[0]?.confidence).toBe("very_high");
+    expect(runtimeAgentOrchestrationFindings[0]?.recommended_control).toBe("require_approval");
+    expect(JSON.stringify(runtimeAgentOrchestrationFindings[0])).not.toContain("${CREW_AGENT_TOKEN}");
+    expect(JSON.stringify(runtimeAgentOrchestrationFindings[0])).not.toContain("support-escalation-crew");
+    expect(JSON.stringify(runtimeAgentOrchestrationFindings[0])).not.toContain("production-support-memory");
+    expect(JSON.stringify(runtimeAgentOrchestrationFindings[0])).not.toContain("operations-executor");
     const automationAgentFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-AUTOMATION-002");
     expect(automationAgentFindings).toHaveLength(1);
     expect(automationAgentFindings[0]?.matched_object.path).toBe(".github/workflows/agent-maintenance.yml");

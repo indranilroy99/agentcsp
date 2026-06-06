@@ -1,0 +1,47 @@
+id: AGENTCSP-RUNTIME-015
+name: Multi-agent delegation routes untrusted context to privileged agents
+description: A multi-agent orchestration configuration lets untrusted or retrieved context be delegated automatically into privileged agents with shared memory, tool authority, credentials, and no approval gate.
+category: agent_orchestration_authority
+severity: critical
+maps_to:
+  owasp:
+    - LLM01:2025 Prompt Injection
+    - LLM02:2025 Sensitive Information Disclosure
+    - LLM06:2025 Excessive Agency
+  mitre_atlas:
+    - AML.T0051 LLM Prompt Injection
+    - AML.T0057 Exfiltration via Cyber Means
+  nist_ai_rmf:
+    - MAP 5.1
+    - MEASURE 2.9
+    - MANAGE 2.4
+match:
+  object_type: runtime_config
+  where:
+    - field: metadata.parsed_agent_orchestration_config
+      op: equals
+      value: true
+    - field: metadata.agent_orchestration_multi_agent
+      op: equals
+      value: true
+    - field: metadata.agent_orchestration_delegation_enabled
+      op: equals
+      value: true
+    - field: metadata.agent_orchestration_untrusted_input
+      op: equals
+      value: true
+    - field: metadata.agent_orchestration_invokes_tools
+      op: equals
+      value: true
+    - field: metadata.agent_orchestration_shared_memory
+      op: equals
+      value: true
+    - field: metadata.agent_orchestration_approval_required
+      op: equals
+      value: false
+    - field: secret_exposure
+      op: equals
+      value: true
+recommendation:
+  control: require_approval
+  text: Require approval before delegated agents can use privileged tools, isolate shared memory between untrusted intake and executor agents, and restrict specialist-agent credentials to the minimum task scope.

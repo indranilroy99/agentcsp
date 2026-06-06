@@ -24,6 +24,7 @@ describe("scanner", () => {
     expect(envSurface).toBeDefined();
     expect(envSurface?.metadata.env_key_names).toEqual([
       "BROWSER_SESSION_TOKEN",
+      "CREW_AGENT_TOKEN",
       "CUSTOMER_SUCCESS_SLACK_BOT_TOKEN",
       "GITHUB_TOKEN",
       "OPENAI_API_KEY",
@@ -672,6 +673,59 @@ describe("scanner", () => {
     expect(JSON.stringify(inboundTriggerConfig)).not.toContain("support-triage-agent");
     expect(JSON.stringify(inboundTriggerConfig)).not.toContain("inbound_customer_email");
     expect(JSON.stringify(inboundTriggerConfig)).not.toContain("message.body");
+    const agentOrchestrationConfig = surfaces.runtime_config.find((surface) => surface.path === "agents/support-crew.yaml");
+    expect(agentOrchestrationConfig).toBeDefined();
+    expect(agentOrchestrationConfig).toMatchObject({
+      trust_level: "project",
+      external_reach: true,
+      secret_exposure: true,
+      side_effect: true,
+      reversible: false,
+      untrusted_to_privileged: true
+    });
+    expect(agentOrchestrationConfig?.metadata).toMatchObject({
+      content_redacted: true,
+      values_collected: false,
+      parsed_agent_orchestration_config: true,
+      agent_orchestration_framework: "crewai",
+      agent_orchestration_multi_agent: true,
+      agent_orchestration_agent_count: 2,
+      agent_orchestration_agent_names_redacted: true,
+      agent_orchestration_delegation_enabled: true,
+      agent_orchestration_untrusted_input: true,
+      agent_orchestration_shared_memory: true,
+      agent_orchestration_memory_redacted: true,
+      agent_orchestration_invokes_tools: true,
+      agent_orchestration_privileged_agent: true,
+      agent_orchestration_write_authority: true,
+      agent_orchestration_external_authority: true,
+      agent_orchestration_secret_authority: true,
+      agent_orchestration_sensitive_data: true,
+      agent_orchestration_pii_data: true,
+      agent_orchestration_approval_required: false
+    });
+    expect(agentOrchestrationConfig?.metadata.agent_orchestration_delegation_categories).toEqual(
+      expect.arrayContaining(["agent_delegation", "automatic_delegation", "peer_handoff"])
+    );
+    expect(agentOrchestrationConfig?.metadata.agent_orchestration_tool_authority_categories).toEqual([
+      "browser_action",
+      "database_access",
+      "external_response",
+      "memory_write",
+      "repo_or_filesystem_write",
+      "secret_manager_access",
+      "tool_call"
+    ]);
+    expect(agentOrchestrationConfig?.metadata.env_key_names).toEqual(["CREW_AGENT_TOKEN"]);
+    expect(agentOrchestrationConfig?.metadata.secret_ref_key_names).toEqual(["CREW_AGENT_TOKEN"]);
+    expect(agentOrchestrationConfig?.data_classes).toEqual(["confidential", "credential", "pii"]);
+    expect(agentOrchestrationConfig?.actions).toEqual(["call", "execute", "publish", "read", "remember", "send", "write"]);
+    expect(JSON.stringify(agentOrchestrationConfig)).not.toContain("${CREW_AGENT_TOKEN}");
+    expect(JSON.stringify(agentOrchestrationConfig)).not.toContain("support-escalation-crew");
+    expect(JSON.stringify(agentOrchestrationConfig)).not.toContain("production-support-memory");
+    expect(JSON.stringify(agentOrchestrationConfig)).not.toContain("intake-router");
+    expect(JSON.stringify(agentOrchestrationConfig)).not.toContain("operations-executor");
+    expect(JSON.stringify(agentOrchestrationConfig)).not.toContain("customer_account_id");
     expect(surfaces.ci_cd.length).toBe(1);
     expect(surfaces.ci_cd[0]?.metadata).toMatchObject({
       pull_request_trigger: true,

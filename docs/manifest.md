@@ -311,6 +311,37 @@ Inbound trigger metadata may include:
 
 Raw mailbox names, sender addresses, queue names, webhook URLs, prompt-field expressions, labels, channel names, agent names, and payload content are not emitted. Provider names, source categories, payload categories, tool-authority categories, approval posture, data-class booleans, and credential key names let rules detect direct paths from untrusted inbound messages into privileged agent execution.
 
+## Agent Orchestration Posture
+
+CrewAI, AutoGen, LangGraph, Semantic Kernel, swarm-style, and other multi-agent orchestration configs are also normalized into `runtime_config` objects when common orchestration configuration files are discovered.
+
+Agent orchestration metadata may include:
+
+- `parsed_agent_orchestration_config`
+- `agent_orchestration_fields`
+- `agent_orchestration_framework`
+- `agent_orchestration_multi_agent`
+- `agent_orchestration_agent_count`
+- `agent_orchestration_agent_names_redacted`
+- `agent_orchestration_delegation_enabled`
+- `agent_orchestration_delegation_categories`
+- `agent_orchestration_untrusted_input`
+- `agent_orchestration_shared_memory`
+- `agent_orchestration_memory_redacted`
+- `agent_orchestration_invokes_tools`
+- `agent_orchestration_tool_authority_categories`
+- `agent_orchestration_privileged_agent`
+- `agent_orchestration_write_authority`
+- `agent_orchestration_external_authority`
+- `agent_orchestration_secret_authority`
+- `agent_orchestration_sensitive_data`
+- `agent_orchestration_pii_data`
+- `agent_orchestration_approval_required`
+- `env_key_names`
+- `secret_ref_key_names`
+
+Raw agent names, crew names, role prompts, task descriptions, memory namespaces, graph labels, tool lists, and secret placeholders are not emitted. Framework names, counts, redacted delegation categories, shared-memory posture, tool-authority categories, approval posture, data-class booleans, and credential key names let rules detect indirect prompt-injection paths across agent handoffs without copying orchestration content into the manifest.
+
 ## SaaS And API Connector Posture
 
 SaaS, API, ticketing, messaging, email, CRM, and repository-service connector configs are also normalized into `runtime_config` objects when common connector configuration files are discovered.

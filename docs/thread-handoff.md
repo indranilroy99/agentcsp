@@ -657,6 +657,15 @@ The current iteration adds:
 - rule `AGENTCSP-RUNTIME-014` for inbound untrusted messages that can drive privileged agent tools
 - scanner, rule, fixture verifier, and redaction coverage proving raw mailbox names, webhook URLs, sender addresses, labels, agent names, prompt fields, and token placeholders stay redacted
 
+## Multi-Agent Orchestration Authority Pass
+
+The current iteration adds:
+
+- first-class redacted metadata for CrewAI, AutoGen, LangGraph, Semantic Kernel, swarm-style, and related multi-agent orchestration configs
+- vulnerable fixture coverage for a support crew where untrusted intake delegates automatically into a privileged executor with shared memory, browser/database/secret/messaging/filesystem authority, credentials, and no approval gate
+- rule `AGENTCSP-RUNTIME-015` for multi-agent delegation that routes untrusted context to privileged agents
+- scanner, rule, fixture verifier, and redaction coverage proving raw crew names, agent names, role prompts, memory namespaces, graph labels, raw tool lists, and token placeholders stay redacted
+
 ## Initial Build Recommendation
 
 Start with a CLI-first MVP before building the dashboard:

@@ -1,0 +1,43 @@
+framework: crewai
+crew_name: support-escalation-crew
+env:
+  CREW_AGENT_TOKEN: ${CREW_AGENT_TOKEN}
+memory:
+  shared: true
+  namespace: production-support-memory
+  persists_across_agents: true
+inputs:
+  - inbound_customer_email
+  - retrieved_context
+  - support_ticket_comment
+delegation:
+  mode: automatic
+  allow_delegation: true
+  from: intake-router
+  to: operations-executor
+  approval_required: false
+agents:
+  - name: intake-router
+    role: Reads untrusted customer tickets and delegates urgent cases to specialist agents.
+    can_delegate: true
+    input_sources:
+      - customer_message
+      - rag_customer_note
+  - name: operations-executor
+    role: Uses privileged tools to update customer records, fetch secrets, and publish escalation notes.
+    tools:
+      - browser
+      - support_db
+      - vault_secret_lookup
+      - slack_reply
+      - filesystem-admin
+    actions:
+      - update_customer_record
+      - reply_to_customer
+      - remember_escalation_context
+      - read_support_secret
+      - write_ticket_comment
+data_scope:
+  - customer_email
+  - customer_account_id
+  - internal_support_notes

@@ -132,6 +132,11 @@ export async function detectSurfaces(files: WalkedFile[]): Promise<DetectedSurfa
       continue;
     }
 
+    if (isAgentOrchestrationConfigPath(file.relativePath, basename)) {
+      detectAgentOrchestrationConfig(file, text, surfaces);
+      continue;
+    }
+
     if (isSaasConnectorConfigPath(file.relativePath, basename)) {
       detectSaasConnectorConfig(file, text, surfaces);
       continue;
@@ -637,6 +642,70 @@ function detectInboundAgentTriggerConfig(file: WalkedFile, text: string | undefi
   });
 }
 
+function detectAgentOrchestrationConfig(file: WalkedFile, text: string | undefined, surfaces: DetectedSurfaces): void {
+  const parsed = parseStructuredConfig(text ?? "", file.relativePath);
+  if (parsed.parseFailed) {
+    addDiagnostic(surfaces, file, {
+      parser: parsed.parser ?? "structured_config",
+      code: "AGENT_ORCHESTRATION_CONFIG_PARSE_FAILED",
+      reason: "Multi-agent orchestration configuration could not be parsed. Raw content was redacted."
+    });
+  }
+
+  const posture = classifyAgentOrchestrationConfig(parsed.value, file.relativePath);
+  const actions = new Set<ActionType>(["read", "call"]);
+  if (posture.agent_orchestration_invokes_tools) actions.add("execute");
+  if (posture.agent_orchestration_write_authority) actions.add("write");
+  if (posture.agent_orchestration_external_authority) {
+    actions.add("send");
+    actions.add("publish");
+  }
+  if (posture.agent_orchestration_shared_memory) actions.add("remember");
+
+  const dataClasses = new Set<SurfaceObject["data_classes"][number]>(["unknown"]);
+  if (posture.env_key_names.some(isCredentialLikeKeyName) || posture.secret_ref_key_names.length > 0) dataClasses.add("credential");
+  if (posture.agent_orchestration_sensitive_data) dataClasses.add("confidential");
+  if (posture.agent_orchestration_pii_data) dataClasses.add("pii");
+  if (dataClasses.size > 1) dataClasses.delete("unknown");
+
+  const object = createSurfaceObject({
+    type: "runtime_config",
+    name: path.basename(file.relativePath),
+    path: file.relativePath,
+    trust_level: inferTrustLevel(file.relativePath),
+    data_classes: uniqueDataClasses([...dataClasses] as SurfaceObject["data_classes"]),
+    actions: uniqueActions([...actions]),
+    side_effect:
+      posture.agent_orchestration_delegation_enabled ||
+      posture.agent_orchestration_invokes_tools ||
+      posture.agent_orchestration_write_authority ||
+      posture.agent_orchestration_external_authority ||
+      posture.agent_orchestration_shared_memory,
+    reversible: !posture.agent_orchestration_write_authority && !posture.agent_orchestration_external_authority,
+    external_reach: posture.agent_orchestration_external_authority,
+    secret_exposure: posture.env_key_names.some(isCredentialLikeKeyName) || posture.secret_ref_key_names.length > 0,
+    reason: "Multi-agent orchestration configuration discovered as delegation and authority posture.",
+    metadata: {
+      content_redacted: true,
+      values_collected: false,
+      parsed_agent_orchestration_config: Boolean(parsed.value) && !parsed.parseFailed,
+      parse_error: parsed.parseFailed,
+      ...posture
+    }
+  });
+  surfaces.runtime_config.push({
+    ...object,
+    untrusted_to_privileged:
+      (posture.agent_orchestration_delegation_enabled &&
+        posture.agent_orchestration_untrusted_input &&
+        (posture.agent_orchestration_invokes_tools ||
+          posture.agent_orchestration_write_authority ||
+          posture.agent_orchestration_external_authority ||
+          posture.agent_orchestration_shared_memory)) ||
+      isUntrustedToPrivileged(object)
+  });
+}
+
 function detectSaasConnectorConfig(file: WalkedFile, text: string | undefined, surfaces: DetectedSurfaces): void {
   const parsed = parseStructuredConfig(text ?? "", file.relativePath);
   if (parsed.parseFailed) {
@@ -940,6 +1009,26 @@ function isInboundAgentTriggerConfigPath(relativePath: string, basename: string)
   return triggerName || (triggerDirectory && configName);
 }
 
+function isAgentOrchestrationConfigPath(relativePath: string, basename: string): boolean {
+  const normalized = relativePath.replaceAll("\\", "/").toLowerCase();
+  const lowerBase = basename.toLowerCase();
+  if (!/\.(json|ya?ml|toml)$/iu.test(lowerBase)) return false;
+  if (normalized.startsWith(".github/workflows/")) return false;
+  const segments = normalized.split("/").slice(0, -1);
+  const orchestrationDirectory = segments.some((segment) =>
+    /^(agents?|subagents?|multi-agent|multi_agent|orchestration|orchestrators?|crews?|teams?|graphs?|langgraph|crewai|autogen|semantic-kernel|swarm)$/iu.test(
+      segment
+    )
+  );
+  const orchestrationName = /(?:crew|crewai|autogen|langgraph|semantic-kernel|semantic_kernel|swarm|multi-agent|multi_agent|subagent|orchestrat|delegate|handoff|supervisor|agent-team|agent_team|agent-graph|agent_graph)/iu.test(
+    lowerBase
+  );
+  const configName = /(?:config|settings|agents?|crew|team|graph|workflow|orchestrat|delegate|handoff|supervisor|runtime)/iu.test(
+    lowerBase
+  );
+  return orchestrationName || (orchestrationDirectory && configName);
+}
+
 function isSaasConnectorConfigPath(relativePath: string, basename: string): boolean {
   const normalized = relativePath.replaceAll("\\", "/").toLowerCase();
   const lowerBase = basename.toLowerCase();
@@ -1140,6 +1229,30 @@ interface InboundAgentTriggerPosture {
   inbound_trigger_pii_context: boolean;
   inbound_trigger_attachment_context: boolean;
   inbound_trigger_approval_required: boolean;
+  env_key_names: string[];
+  secret_ref_key_names: string[];
+}
+
+interface AgentOrchestrationPosture {
+  agent_orchestration_fields: string[];
+  agent_orchestration_framework?: string;
+  agent_orchestration_multi_agent: boolean;
+  agent_orchestration_agent_count: number;
+  agent_orchestration_agent_names_redacted: boolean;
+  agent_orchestration_delegation_enabled: boolean;
+  agent_orchestration_delegation_categories: string[];
+  agent_orchestration_untrusted_input: boolean;
+  agent_orchestration_shared_memory: boolean;
+  agent_orchestration_memory_redacted: boolean;
+  agent_orchestration_invokes_tools: boolean;
+  agent_orchestration_tool_authority_categories: string[];
+  agent_orchestration_privileged_agent: boolean;
+  agent_orchestration_write_authority: boolean;
+  agent_orchestration_external_authority: boolean;
+  agent_orchestration_secret_authority: boolean;
+  agent_orchestration_sensitive_data: boolean;
+  agent_orchestration_pii_data: boolean;
+  agent_orchestration_approval_required: boolean;
   env_key_names: string[];
   secret_ref_key_names: string[];
 }
@@ -1796,6 +1909,219 @@ function isInboundTriggerSecurityField(fieldPath: string): boolean {
   return /provider|source|input|event|trigger|webhook|listener|receiver|mail|email|message|chat|ticket|issue|comment|payload|body|attachment|agent|assistant|bot|tool|mcp|browser|database|secret|memory|reply|respond|send|write|post|publish|approval|auth|token|credential|scope|permission|url|host|endpoint|queue|topic|subscription/iu.test(
     fieldPath
   );
+}
+
+function classifyAgentOrchestrationConfig(value: unknown, filePath: string): AgentOrchestrationPosture {
+  const fields = flattenRuntimeFields(value);
+  const stringValues = collectFieldStringValues(fields);
+  const framework = inferAgentOrchestrationFramework([filePath, ...fields.map((field) => field.path), ...stringValues]);
+  const agentCount = countConfiguredAgents(value, fields);
+  const delegationCategories = collectAgentOrchestrationDelegationCategories(fields);
+  const toolAuthorityCategories = collectAgentOrchestrationToolAuthorityCategories(fields);
+  const envKeys = uniqueStrings([
+    ...collectEnvKeyNamesFromConfig(value).filter(isLikelyEnvKeyName),
+    ...extractEnvironmentReferenceKeys(stringValues)
+  ]);
+  const secretRefKeys = extractSecretReferenceKeys(stringValues);
+
+  return {
+    agent_orchestration_fields: fields
+      .map((field) => field.path)
+      .filter((fieldPath) => isAgentOrchestrationSecurityField(fieldPath))
+      .sort((a, b) => a.localeCompare(b)),
+    agent_orchestration_framework: framework,
+    agent_orchestration_multi_agent: agentCount >= 2 || hasMultiAgentSignal(fields),
+    agent_orchestration_agent_count: agentCount,
+    agent_orchestration_agent_names_redacted: agentCount > 0 || hasAgentNameSignal(fields),
+    agent_orchestration_delegation_enabled: delegationCategories.length > 0,
+    agent_orchestration_delegation_categories: delegationCategories,
+    agent_orchestration_untrusted_input: hasAgentOrchestrationUntrustedInputSignal(fields),
+    agent_orchestration_shared_memory: hasAgentOrchestrationSharedMemorySignal(fields),
+    agent_orchestration_memory_redacted: hasAgentOrchestrationMemoryReferenceSignal(fields),
+    agent_orchestration_invokes_tools: toolAuthorityCategories.length > 0 || hasAgentOrchestrationToolSignal(fields),
+    agent_orchestration_tool_authority_categories: toolAuthorityCategories,
+    agent_orchestration_privileged_agent: isAgentOrchestrationPrivileged(toolAuthorityCategories),
+    agent_orchestration_write_authority: hasAgentOrchestrationWriteAuthoritySignal(fields, toolAuthorityCategories),
+    agent_orchestration_external_authority: hasAgentOrchestrationExternalAuthoritySignal(fields, toolAuthorityCategories),
+    agent_orchestration_secret_authority: toolAuthorityCategories.includes("secret_manager_access") || hasAgentOrchestrationSecretSignal(fields),
+    agent_orchestration_sensitive_data: hasAgentOrchestrationSensitiveDataSignal(fields),
+    agent_orchestration_pii_data: hasAgentOrchestrationPiiDataSignal(fields),
+    agent_orchestration_approval_required: hasAgentOrchestrationApprovalRequiredSignal(fields),
+    env_key_names: envKeys,
+    secret_ref_key_names: secretRefKeys
+  };
+}
+
+function inferAgentOrchestrationFramework(candidates: string[]): string | undefined {
+  const text = candidates.join(" ").toLowerCase();
+  const frameworks: Array<[string, RegExp]> = [
+    ["crewai", /\b(crewai|crew ai|crew)\b/iu],
+    ["autogen", /\b(autogen|auto gen|autogenstudio)\b/iu],
+    ["langgraph", /\blanggraph\b/iu],
+    ["semantic_kernel", /\b(semantic[-_\s]?kernel|sk[-_\s]?agent)\b/iu],
+    ["openai_swarm", /\bswarm\b/iu],
+    ["langchain_agents", /\b(langchain|agentexecutor|agent executor)\b/iu]
+  ];
+  return frameworks.find(([, pattern]) => pattern.test(text))?.[0];
+}
+
+function countConfiguredAgents(value: unknown, fields: RuntimeField[]): number {
+  if (value && typeof value === "object" && !Array.isArray(value)) {
+    const record = value as Record<string, unknown>;
+    for (const key of ["agents", "workers", "subagents", "team", "crew", "roles", "nodes"]) {
+      const candidate = record[key];
+      if (Array.isArray(candidate)) return candidate.length;
+      if (candidate && typeof candidate === "object") return Object.keys(candidate as Record<string, unknown>).length;
+    }
+  }
+
+  const pathPrefixes = new Set<string>();
+  for (const field of fields) {
+    const match = field.path.match(/(?:^|\.)(agents?|workers?|subagents?|team|crew|roles?|nodes?)\.(\d+|[A-Za-z][\w-]*)/u);
+    if (match?.[1] && match[2]) pathPrefixes.add(`${match[1]}.${match[2]}`);
+  }
+  return pathPrefixes.size;
+}
+
+function hasMultiAgentSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /\b(multi[-_\s]?agent|crew|team|subagent|worker|supervisor|manager|router|orchestrator)\b/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    )
+  );
+}
+
+function hasAgentNameSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => /(?:^|\.)(agents?|workers?|subagents?|team|crew|roles?|nodes?)\.[^.]+\.name$/iu.test(field.path));
+}
+
+function collectAgentOrchestrationDelegationCategories(fields: RuntimeField[]): string[] {
+  const categories = new Set<string>();
+  for (const field of fields) {
+    const text = `${field.path} ${fieldValueText(field)}`.toLowerCase();
+    if (/\b(delegate|delegation|can[_\s-]?delegate|handoff|hand[-_\s]?off|transfer)\b/iu.test(text)) categories.add("agent_delegation");
+    if (/\b(supervisor|manager|router|planner|coordinator|orchestrator)\b/iu.test(text)) categories.add("supervisor_routing");
+    if (/\b(peer|worker|subagent|specialist|role)\b/iu.test(text)) categories.add("peer_handoff");
+    if (/\b(auto|automatic|without[_\s-]?approval|no[_\s-]?approval|autonomous)\b/iu.test(text)) categories.add("automatic_delegation");
+  }
+  return [...categories].sort((a, b) => a.localeCompare(b));
+}
+
+function hasAgentOrchestrationUntrustedInputSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /\b(untrusted|user|customer|client|ticket|support|issue|comment|message|prompt|retrieved|rag|document|email|chat|inbound|web[_-]?page|external)\b/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    )
+  );
+}
+
+function hasAgentOrchestrationSharedMemorySignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /\b(shared[_\s-]?memory|memory[_\s-]?shared|team[_\s-]?memory|crew[_\s-]?memory|cross[-_\s]?agent|global[_\s-]?memory|persistent[_\s-]?memory)\b/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    ) || (/memory/iu.test(field.path) && truthyConfigValue(field.value))
+  );
+}
+
+function hasAgentOrchestrationMemoryReferenceSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /\b(memory|vector|state|scratchpad|transcript|summary|session|history|store|namespace)\b/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    )
+  );
+}
+
+function collectAgentOrchestrationToolAuthorityCategories(fields: RuntimeField[]): string[] {
+  const categories = new Set<string>();
+  for (const field of fields) {
+    const text = `${field.path} ${fieldValueText(field)}`.toLowerCase();
+    if (/\b(tool|tools|function|mcp|connector|capability)\b/iu.test(text)) categories.add("tool_call");
+    if (/\b(browser|playwright|puppeteer|web[_\s-]?agent|click|form|navigate)\b/iu.test(text)) categories.add("browser_action");
+    if (/\b(database|db|sql|query|support_db|warehouse)\b/iu.test(text)) categories.add("database_access");
+    if (/(?:^|[_\W])(vault|secret|secrets|secret[_\s-]?manager|key[_\s-]?vault|credential)(?:[_\W]|$)/iu.test(text)) {
+      categories.add("secret_manager_access");
+    }
+    if (/\b(slack|email|webhook|message|ticket|issue|comment|reply|send|post|publish)\b/iu.test(text)) categories.add("external_response");
+    if (/(?:^|[_\W])(memory|remember|store|persist|session[_\s-]?state)(?:[_\W]|$)/iu.test(text)) categories.add("memory_write");
+    if (/\b(shell|bash|command|exec|terminal|python|node|subprocess)\b/iu.test(text)) categories.add("shell_execution");
+    if (/\b(filesystem|file[_\s-]?write|workspace|repo|repository|github|gitlab|pull[_\s-]?request)\b/iu.test(text)) {
+      categories.add("repo_or_filesystem_write");
+    }
+  }
+  return [...categories].sort((a, b) => a.localeCompare(b));
+}
+
+function hasAgentOrchestrationToolSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /\b(call[_\s-]?tools?|invoke[_\s-]?tools?|tool[_\s-]?access|mcp|function[_\s-]?call|browser|database|vault|shell)\b/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    )
+  );
+}
+
+function isAgentOrchestrationPrivileged(categories: string[]): boolean {
+  return categories.some((category) =>
+    [
+      "browser_action",
+      "database_access",
+      "external_response",
+      "repo_or_filesystem_write",
+      "secret_manager_access",
+      "shell_execution",
+      "tool_call"
+    ].includes(category)
+  );
+}
+
+function hasAgentOrchestrationWriteAuthoritySignal(fields: RuntimeField[], categories: string[]): boolean {
+  return categories.some((category) => ["database_access", "external_response", "repo_or_filesystem_write", "shell_execution"].includes(category)) ||
+    fields.some((field) =>
+      /\b(write|update|create|delete|reply|respond|send|post|publish|comment|commit|push|merge|deploy|remember|persist)\b/iu.test(
+        `${field.path} ${fieldValueText(field)}`
+      )
+    );
+}
+
+function hasAgentOrchestrationExternalAuthoritySignal(fields: RuntimeField[], categories: string[]): boolean {
+  return categories.includes("external_response") ||
+    fields.some((field) => /\b(slack|email|webhook|send|post|publish|reply|respond|ticket|issue|external)\b/iu.test(`${field.path} ${fieldValueText(field)}`));
+}
+
+function hasAgentOrchestrationSecretSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => /\b(secret|token|credential|api[_-]?key|password|vault|key[_\s-]?vault)\b/iu.test(`${field.path} ${fieldValueText(field)}`));
+}
+
+function hasAgentOrchestrationSensitiveDataSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /\b(customer|client|ticket|support|internal|confidential|private|proprietary|sensitive|account|billing|payment|order|record|case|profile|note|incident)\b/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    )
+  );
+}
+
+function hasAgentOrchestrationPiiDataSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /(?:^|[_\W])(pii|email|phone|address|ssn|passport|dob|date[_\s-]?of[_\s-]?birth|customer[_-]?id|user[_-]?id|account[_-]?id)(?:[_\W]|$)/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    )
+  );
+}
+
+function hasAgentOrchestrationApprovalRequiredSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /approval|required[_-]?approval|human[_-]?approval|confirm|confirmation|review|human[_-]?in[_-]?the[_-]?loop/iu.test(field.path) &&
+    truthyConfigValue(field.value)
+  );
+}
+
+function isAgentOrchestrationSecurityField(fieldPath: string): boolean {
+  return /framework|provider|agent|agents|subagent|crew|team|worker|role|task|graph|node|edge|handoff|delegate|delegation|supervisor|manager|router|tool|mcp|browser|database|secret|memory|input|source|customer|ticket|email|chat|write|send|reply|approval|auth|token|credential|env|scope|permission|state|vector|namespace/iu.test(
+    fieldPath
+  );
+}
+
+function isLikelyEnvKeyName(value: string): boolean {
+  return /^[A-Z][A-Z0-9_]{2,}$/u.test(value);
 }
 
 function classifySaasConnectorConfig(value: unknown, filePath: string): SaasConnectorPosture {
