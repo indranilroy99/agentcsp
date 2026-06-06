@@ -606,6 +606,9 @@ describe("scanner", () => {
       ai_telemetry_pii_capture: true,
       ai_telemetry_secret_capture_signal: true,
       ai_telemetry_redaction_disabled: true,
+      ai_telemetry_public_access: true,
+      ai_telemetry_shared_workspace: true,
+      ai_telemetry_access_control_disabled: true,
       ai_telemetry_retention_enabled: true
     });
     expect(telemetryConfig?.metadata.ai_telemetry_remote_destination_kinds).toEqual([
@@ -619,6 +622,8 @@ describe("scanner", () => {
     expect(JSON.stringify(telemetryConfig)).not.toContain("${LANGSMITH_API_KEY}");
     expect(JSON.stringify(telemetryConfig)).not.toContain("api.smith.langchain.com");
     expect(JSON.stringify(telemetryConfig)).not.toContain("customer-support-agent");
+    expect(JSON.stringify(telemetryConfig)).not.toContain("customer-support-observability");
+    expect(JSON.stringify(telemetryConfig)).not.toContain("external_support_vendor");
     const trainingDatasetConfig = surfaces.runtime_config.find(
       (surface) => surface.path === "training/fine-tune-dataset.yaml"
     );
@@ -3343,6 +3348,59 @@ describe("scanner", () => {
     expect(JSON.stringify(taskQueue)).not.toContain("internal_review_ticket");
     expect(JSON.stringify(taskQueue)).not.toContain("approved_internal_summary");
     expect(JSON.stringify(taskQueue)).not.toContain("readonly_docs.search");
+  });
+
+  it("keeps local redacted telemetry sharing scoped", async () => {
+    const files = await walkProject({
+      root_path: safeFixtureRoot,
+      output_path: ".agentcsp",
+      formats: ["json", "md"],
+      include_hidden: true,
+      include_logs: false,
+      max_file_size_bytes: 1024 * 1024,
+      max_files: 5000,
+      quiet: true
+    });
+    const surfaces = await detectSurfaces(files);
+    const telemetryConfig = surfaces.runtime_config.find((surface) => surface.path === "observability/internal-tracing.yaml");
+
+    expect(telemetryConfig).toMatchObject({
+      trust_level: "project",
+      data_classes: ["unknown"],
+      actions: ["call", "read", "remember"],
+      side_effect: true,
+      external_reach: false,
+      secret_exposure: false,
+      reversible: false,
+      untrusted_to_privileged: false
+    });
+    expect(telemetryConfig?.metadata).toMatchObject({
+      content_redacted: true,
+      values_collected: false,
+      parsed_ai_telemetry_config: true,
+      ai_telemetry_export_enabled: true,
+      ai_telemetry_remote_export: false,
+      ai_telemetry_destination_redacted: false,
+      ai_telemetry_remote_destination_count: 0,
+      ai_telemetry_captures_prompts: false,
+      ai_telemetry_captures_completions: false,
+      ai_telemetry_captures_tool_outputs: false,
+      ai_telemetry_captures_retrieval: false,
+      ai_telemetry_captures_memory: false,
+      ai_telemetry_sensitive_capture: false,
+      ai_telemetry_pii_capture: false,
+      ai_telemetry_secret_capture_signal: false,
+      ai_telemetry_redaction_disabled: false,
+      ai_telemetry_public_access: false,
+      ai_telemetry_shared_workspace: false,
+      ai_telemetry_access_control_disabled: false,
+      ai_telemetry_retention_enabled: true,
+      ai_telemetry_approval_required: true
+    });
+    expect(telemetryConfig?.metadata.ai_telemetry_remote_destination_kinds).toEqual([]);
+    expect(telemetryConfig?.metadata.env_key_names).toEqual([]);
+    expect(telemetryConfig?.metadata.secret_ref_key_names).toEqual([]);
+    expect(JSON.stringify(telemetryConfig)).not.toContain("internal_private_agent_traces");
   });
 
   it("does not treat negated safety instructions as granted authority", async () => {

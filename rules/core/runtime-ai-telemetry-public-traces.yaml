@@ -1,0 +1,42 @@
+id: AGENTCSP-RUNTIME-047
+name: Public agent trace sharing exposes sensitive context
+description: AI telemetry exports sensitive traces to a remote observability system while public or broadly shared trace access is enabled, redaction is disabled, and credentials are present.
+category: runtime_telemetry_public_access
+severity: critical
+maps_to:
+  owasp:
+    - LLM02:2025 Sensitive Information Disclosure
+    - LLM06:2025 Excessive Agency
+  mitre_atlas:
+    - AML.T0057 Exfiltration via Cyber Means
+  nist_ai_rmf:
+    - MAP 5.1
+    - MEASURE 2.9
+    - MANAGE 2.4
+match:
+  object_type: runtime_config
+  where:
+    - field: metadata.parsed_ai_telemetry_config
+      op: equals
+      value: true
+    - field: metadata.ai_telemetry_remote_export
+      op: equals
+      value: true
+    - field: metadata.ai_telemetry_sensitive_capture
+      op: equals
+      value: true
+    - field: metadata.ai_telemetry_public_access
+      op: equals
+      value: true
+    - field: metadata.ai_telemetry_redaction_disabled
+      op: equals
+      value: true
+    - field: metadata.ai_telemetry_approval_required
+      op: equals
+      value: false
+    - field: secret_exposure
+      op: equals
+      value: true
+recommendation:
+  control: redact
+  text: Disable public trace sharing, require SSO/RBAC for agent observability projects, enable prompt/tool-output/retrieval/memory redaction, and require approval before sensitive traces are exported outside a restricted workspace.

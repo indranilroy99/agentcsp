@@ -89,6 +89,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-044")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-045")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-046")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-047")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-CICD-002")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-AUTOMATION-001")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-AUTOMATION-002")).toBe(true);
@@ -168,6 +169,27 @@ describe("rule engine", () => {
     expect(runtimeTelemetryFindings[0]?.recommended_control).toBe("redact");
     expect(JSON.stringify(runtimeTelemetryFindings[0])).not.toContain("${LANGSMITH_API_KEY}");
     expect(JSON.stringify(runtimeTelemetryFindings[0])).not.toContain("api.smith.langchain.com");
+    const runtimePublicTelemetryFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-RUNTIME-047");
+    expect(runtimePublicTelemetryFindings).toHaveLength(1);
+    expect(runtimePublicTelemetryFindings[0]?.matched_object.path).toBe("observability/agent-tracing.yaml");
+    expect(runtimePublicTelemetryFindings[0]?.matched_object.metadata).toMatchObject({
+      ai_telemetry_provider: "langsmith",
+      ai_telemetry_remote_export: true,
+      ai_telemetry_sensitive_capture: true,
+      ai_telemetry_redaction_disabled: true,
+      ai_telemetry_public_access: true,
+      ai_telemetry_shared_workspace: true,
+      ai_telemetry_access_control_disabled: true,
+      ai_telemetry_approval_required: false
+    });
+    expect(runtimePublicTelemetryFindings[0]?.severity).toBe("critical");
+    expect(runtimePublicTelemetryFindings[0]?.confidence).toBe("very_high");
+    expect(runtimePublicTelemetryFindings[0]?.recommended_control).toBe("redact");
+    expect(JSON.stringify(runtimePublicTelemetryFindings[0])).not.toContain("${LANGSMITH_API_KEY}");
+    expect(JSON.stringify(runtimePublicTelemetryFindings[0])).not.toContain("api.smith.langchain.com");
+    expect(JSON.stringify(runtimePublicTelemetryFindings[0])).not.toContain("customer-support-agent");
+    expect(JSON.stringify(runtimePublicTelemetryFindings[0])).not.toContain("customer-support-observability");
+    expect(JSON.stringify(runtimePublicTelemetryFindings[0])).not.toContain("external_support_vendor");
     const runtimeArtifactExportFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-RUNTIME-024");
     expect(runtimeArtifactExportFindings).toHaveLength(1);
     expect(runtimeArtifactExportFindings[0]?.matched_object.path).toBe("artifacts/run-export.yaml");

@@ -1,0 +1,25 @@
+provider: local_otlp
+endpoint: http://localhost:4318
+enabled: true
+export:
+  remote: false
+capture:
+  prompts: false
+  completions: false
+  tool_outputs: false
+  retrieval_context: false
+  memory: false
+redaction:
+  enabled: true
+  pii: true
+sharing:
+  workspace: internal_private_agent_traces
+  public_share_links: false
+  anonymous_viewers: false
+access_control:
+  rbac: true
+  sso_required: true
+  approval_required: true
+retention:
+  store_traces: false
+  days: 7

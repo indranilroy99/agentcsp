@@ -4912,7 +4912,11 @@ interface AiTelemetryPosture {
   ai_telemetry_pii_capture: boolean;
   ai_telemetry_secret_capture_signal: boolean;
   ai_telemetry_redaction_disabled: boolean;
+  ai_telemetry_public_access: boolean;
+  ai_telemetry_shared_workspace: boolean;
+  ai_telemetry_access_control_disabled: boolean;
   ai_telemetry_retention_enabled: boolean;
+  ai_telemetry_approval_required: boolean;
   env_key_names: string[];
   secret_ref_key_names: string[];
 }
@@ -13721,7 +13725,7 @@ function classifyAiTelemetryConfig(value: unknown, filePath: string): AiTelemetr
   );
   const capturesMemory = hasTelemetryCaptureSignal(fields, /\b(memory|memories|session|state|history|transcript|trace)\b/iu);
   const secretCapture = hasTelemetrySecretCaptureSignal(fields);
-  const piiCapture = fields.some((field) => /\b(pii|email|phone|address|ssn|passport|customer|client|ticket|support)\b/iu.test(`${field.path} ${fieldValueText(field)}`));
+  const piiCapture = hasTelemetryPiiCaptureSignal(fields);
   const sensitiveCapture =
     capturesPrompts ||
     capturesCompletions ||
@@ -13751,7 +13755,11 @@ function classifyAiTelemetryConfig(value: unknown, filePath: string): AiTelemetr
     ai_telemetry_pii_capture: piiCapture,
     ai_telemetry_secret_capture_signal: secretCapture,
     ai_telemetry_redaction_disabled: hasTelemetryRedactionDisabledSignal(fields),
+    ai_telemetry_public_access: hasTelemetryPublicAccessSignal(fields),
+    ai_telemetry_shared_workspace: hasTelemetrySharedWorkspaceSignal(fields),
+    ai_telemetry_access_control_disabled: hasTelemetryAccessControlDisabledSignal(fields),
     ai_telemetry_retention_enabled: hasTelemetryRetentionSignal(fields),
+    ai_telemetry_approval_required: hasTelemetryApprovalRequiredSignal(fields),
     env_key_names: envKeys,
     secret_ref_key_names: secretRefKeys
   };
@@ -13813,7 +13821,18 @@ function hasTelemetryCaptureSignal(fields: RuntimeField[], pattern: RegExp): boo
     const text = `${field.path} ${fieldValueText(field)}`;
     if (!pattern.test(text)) return false;
     if (/redact|mask|scrub|sanitize|exclude|drop|deny/iu.test(field.path)) return false;
+    if (disabledConfigValue(field.value)) return false;
     return truthyConfigValue(field.value) || /capture|include|record|log|trace|store|full|payload/iu.test(text);
+  });
+}
+
+function hasTelemetryPiiCaptureSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => {
+    const text = `${field.path} ${fieldValueText(field)}`;
+    if (!/\b(pii|email|phone|address|ssn|passport|customer|client|ticket|support)\b/iu.test(text)) return false;
+    if (/redact|redaction|mask|masking|scrub|sanitize|exclude|drop|deny/iu.test(field.path)) return false;
+    if (disabledConfigValue(field.value)) return false;
+    return truthyConfigValue(field.value) || /capture|include|record|log|trace|store|full|payload|field|label/iu.test(text);
   });
 }
 
@@ -13838,12 +13857,58 @@ function hasTelemetryRedactionDisabledSignal(fields: RuntimeField[]): boolean {
   });
 }
 
+function hasTelemetryPublicAccessSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => {
+    const text = `${field.path} ${fieldValueText(field)}`.toLowerCase();
+    if (/(private|internal_only|internal-only|restricted|allowlist|deny_public|public_disabled)/iu.test(text)) return false;
+    return /(?:^|[_\W])(public|publicly|anonymous|anyone|share[_\s-]?links?|shareable|external[_\s-]?viewers?|guest[_\s-]?access|unauthenticated)(?:[_\W]|$)/iu.test(
+      text
+    ) && truthyConfigValue(field.value);
+  });
+}
+
+function hasTelemetrySharedWorkspaceSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => {
+    const text = `${field.path} ${fieldValueText(field)}`.toLowerCase();
+    if (/\b(private|internal[_\s-]?only|restricted|owner[_\s-]?only)\b/iu.test(text)) return false;
+    if (
+      /(?:^|\.)(shared_with|shared[_\s-]?with|collaborators?|viewers?|external[_\s-]?viewers?|external[_\s-]?teams?|cross[_\s-]?team|team[_\s-]?access|tenant[_\s-]?access|organization[_\s-]?access|organisation[_\s-]?access)$/iu.test(
+        field.path
+      )
+    ) {
+      return truthyConfigValue(field.value);
+    }
+    return /(?:^|[_\W])(shared[_\s-]?workspace|workspace[_\s-]?shared|org[_\s-]?wide|organization[_\s-]?wide|organisation[_\s-]?wide|tenant[_\s-]?wide|cross[_\s-]?team|external[_\s-]?team)(?:[_\W]|$)/iu.test(
+      text
+    ) && truthyConfigValue(field.value);
+  });
+}
+
+function hasTelemetryAccessControlDisabledSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => {
+    const text = `${field.path} ${fieldValueText(field)}`.toLowerCase();
+    if (/(^|\.)(access_control|accessControl|acl|rbac|sso_required|ssoRequired|require_sso|requireSso|auth_required|authRequired)$/u.test(field.path)) {
+      return disabledConfigValue(field.value);
+    }
+    return /\b(access[_\s-]?control[_\s-]?disabled|rbac[_\s-]?disabled|sso[_\s-]?disabled|auth[_\s-]?disabled|no[_\s-]?auth|public[_\s-]?traces)\b/iu.test(
+      text
+    ) && truthyConfigValue(field.value);
+  });
+}
+
 function hasTelemetryRetentionSignal(fields: RuntimeField[]): boolean {
   return fields.some((field) => /retention|store|persist|dataset|history|trace_archive|ttl|days/iu.test(field.path) && truthyConfigValue(field.value));
 }
 
+function hasTelemetryApprovalRequiredSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /(?:^|[_\W])(approval|approval[_\s-]?required|required[_\s-]?approval|human[_\s-]?approval|review|security[_\s-]?review|privacy[_\s-]?review|confirm|confirmation)(?:[_\W]|$)/iu.test(field.path) &&
+    truthyConfigValue(field.value)
+  );
+}
+
 function isAiTelemetrySecurityField(fieldPath: string): boolean {
-  return /provider|endpoint|url|uri|host|dsn|api[_-]?key|token|secret|credential|auth|env|export|remote|trace|span|prompt|input|output|completion|message|tool|retrieval|rag|context|memory|redact|mask|pii|retention|store|persist|sample|project/iu.test(
+  return /provider|endpoint|url|uri|host|dsn|api[_-]?key|token|secret|credential|auth|env|export|remote|trace|span|prompt|input|output|completion|message|tool|retrieval|rag|context|memory|redact|mask|pii|retention|store|persist|sample|project|public|anonymous|guest|viewer|share|shared|workspace|team|tenant|access|acl|rbac|sso|approval|review/iu.test(
     fieldPath
   );
 }

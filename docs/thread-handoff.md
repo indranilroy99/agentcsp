@@ -1036,6 +1036,16 @@ The current iteration adds:
 - rule `AGENTCSP-RUNTIME-046` for background agent queues that combine background consumers, auto-execution, untrusted payloads, privileged tool authority, credential exposure, and missing approval
 - scanner, rule, fixture verifier, and redaction coverage proving raw queue names, queue URLs, DLQ names, job labels, payload labels, tool names, and token placeholders stay redacted
 
+## AI Telemetry Public Trace Sharing Pass
+
+The current iteration adds:
+
+- first-class redacted metadata for public and shared AI telemetry trace access, including public share links, anonymous viewers, shared recipients, disabled RBAC/SSO controls, and approval posture
+- vulnerable fixture coverage for a LangSmith-style trace export that captures prompts, completions, tool outputs, retrieval, memory, PII, and secret fields into a remote project with public sharing and disabled access controls
+- safe fixture coverage for a local OpenTelemetry-style trace config with remote export disabled, redaction enabled, public sharing disabled, RBAC/SSO enabled, and approval required
+- rule `AGENTCSP-RUNTIME-047` for sensitive remote trace exports exposed through public or broadly shared access without redaction, access control, or approval
+- scanner, rule, fixture verifier, and redaction coverage proving raw endpoints, project names, workspace names, vendor labels, trace labels, and token placeholders stay redacted
+
 ## Initial Build Recommendation
 
 Start with a CLI-first MVP before building the dashboard:

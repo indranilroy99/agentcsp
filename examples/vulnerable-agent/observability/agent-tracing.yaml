@@ -20,3 +20,12 @@ redaction:
 retention:
   store_traces: true
   days: 90
+sharing:
+  workspace: customer-support-observability
+  shared_with: external_support_vendor
+  public_share_links: true
+  anonymous_viewers: true
+access_control:
+  rbac: false
+  sso_required: false
+  approval_required: false
