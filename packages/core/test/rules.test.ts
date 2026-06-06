@@ -63,6 +63,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-021")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-022")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-023")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-024")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-CICD-002")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-AUTOMATION-001")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-AUTOMATION-002")).toBe(true);
@@ -138,6 +139,35 @@ describe("rule engine", () => {
     expect(runtimeTelemetryFindings[0]?.recommended_control).toBe("redact");
     expect(JSON.stringify(runtimeTelemetryFindings[0])).not.toContain("${LANGSMITH_API_KEY}");
     expect(JSON.stringify(runtimeTelemetryFindings[0])).not.toContain("api.smith.langchain.com");
+    const runtimeArtifactExportFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-RUNTIME-024");
+    expect(runtimeArtifactExportFindings).toHaveLength(1);
+    expect(runtimeArtifactExportFindings[0]?.matched_object.path).toBe("artifacts/run-export.yaml");
+    expect(runtimeArtifactExportFindings[0]?.matched_object.metadata).toMatchObject({
+      parsed_agent_artifact_export_config: true,
+      agent_artifact_export_provider: "s3",
+      agent_artifact_export_remote: true,
+      agent_artifact_export_public_access: true,
+      agent_artifact_export_sensitive_capture: true,
+      agent_artifact_export_redaction_disabled: true,
+      agent_artifact_export_secret_capture: true
+    });
+    expect(runtimeArtifactExportFindings[0]?.matched_object.metadata.agent_artifact_export_capture_categories).toEqual([
+      "browser_artifact",
+      "memory_context",
+      "prompt_context",
+      "retrieval_context",
+      "secret_material",
+      "tool_output"
+    ]);
+    expect(runtimeArtifactExportFindings[0]?.severity).toBe("critical");
+    expect(runtimeArtifactExportFindings[0]?.confidence).toBe("very_high");
+    expect(runtimeArtifactExportFindings[0]?.recommended_control).toBe("redact");
+    expect(JSON.stringify(runtimeArtifactExportFindings[0])).not.toContain("${ARTIFACT_EXPORT_TOKEN}");
+    expect(JSON.stringify(runtimeArtifactExportFindings[0])).not.toContain("agentcsp-demo-public-artifacts");
+    expect(JSON.stringify(runtimeArtifactExportFindings[0])).not.toContain("artifacts.agentcsp-demo.example.invalid");
+    expect(JSON.stringify(runtimeArtifactExportFindings[0])).not.toContain("artifact_customer_email");
+    expect(JSON.stringify(runtimeArtifactExportFindings[0])).not.toContain("artifact_account_number");
+    expect(JSON.stringify(runtimeArtifactExportFindings[0])).not.toContain("confidential_ticket_context");
     const runtimeModelEndpointFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-RUNTIME-009");
     expect(runtimeModelEndpointFindings).toHaveLength(1);
     expect(runtimeModelEndpointFindings[0]?.matched_object.path).toBe("models/model-gateway.yaml");

@@ -1,0 +1,31 @@
+provider: s3
+bucket: agentcsp-demo-public-artifacts
+base_url: https://artifacts.agentcsp-demo.example.invalid/runs
+credentials:
+  access_key: ${ARTIFACT_EXPORT_TOKEN}
+export:
+  enabled: true
+  upload_on_run_complete: true
+  public_access: true
+  presigned_urls: true
+  write_mode: append
+capture:
+  prompts: true
+  completions: true
+  tool_outputs: true
+  browser_screenshots: true
+  retrieval_context: true
+  memory: true
+  secrets: true
+redaction:
+  enabled: false
+  pii: false
+  secrets: false
+retention:
+  archive: true
+  days: 180
+approval_required: false
+data_scope:
+  - artifact_customer_email
+  - artifact_account_number
+  - confidential_ticket_context

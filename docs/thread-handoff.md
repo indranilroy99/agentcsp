@@ -747,6 +747,15 @@ The current iteration adds:
 - vulnerable fixture coverage through the existing Playwright browser-session config with persistent profile, storage state, cookie jar, remote debugging, broad origins, untrusted navigation, and no approval gate
 - rule, fixture verifier, and redaction coverage proving debugging URLs, cookie/storage paths, profile paths, origin names, and token placeholders stay redacted
 
+## Agent Artifact Export Boundary Pass
+
+The current iteration adds:
+
+- first-class redacted metadata for agent artifact, generated-output, report, screenshot, recording, and run-export configs
+- vulnerable fixture coverage for public remote S3-style artifact export that captures prompts, completions, tool outputs, browser artifacts, retrieval context, memory, PII, and secrets with disabled redaction and long retention
+- rule `AGENTCSP-RUNTIME-024` for artifact/output export boundaries that combine remote/public destination, sensitive capture, disabled redaction, and credential exposure
+- scanner, rule, fixture verifier, and redaction coverage proving bucket names, endpoints, data-scope labels, generated outputs, and token placeholders stay redacted
+
 ## Initial Build Recommendation
 
 Start with a CLI-first MVP before building the dashboard:

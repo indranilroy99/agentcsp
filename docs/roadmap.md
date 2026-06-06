@@ -26,6 +26,7 @@
 - Add self-modification posture for agent-controlled prompt, policy, runtime, tool, memory, and workflow writes.
 - Add approval-gate integrity posture for model-mediated decisions, default-allow review paths, auto-execution, and human-review boundaries.
 - Add context-composer posture for role-boundary assembly, source promotion, sanitization, delimiters, and privileged tool exposure.
+- Add artifact/output export posture for generated prompts, completions, tool outputs, browser artifacts, retrieval context, memory, secrets, public access, retention, and redaction boundaries.
 - Support allow, deny, approval, redaction, and quarantine recommendations.
 - Add SARIF output and CI integrations for code-scanning workflows.
 - Add high-confidence correlated findings that combine provenance, data class, authority, and side effects.

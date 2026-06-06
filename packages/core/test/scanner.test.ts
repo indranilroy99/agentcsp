@@ -27,6 +27,7 @@ describe("scanner", () => {
       "AGENT_IDENTITY_TOKEN",
       "AGENT_SELF_MOD_TOKEN",
       "APPROVAL_GATE_TOKEN",
+      "ARTIFACT_EXPORT_TOKEN",
       "BROWSER_SESSION_TOKEN",
       "CONTEXT_COMPOSER_TOKEN",
       "CREW_AGENT_TOKEN",
@@ -402,6 +403,64 @@ describe("scanner", () => {
     expect(JSON.stringify(telemetryConfig)).not.toContain("${LANGSMITH_API_KEY}");
     expect(JSON.stringify(telemetryConfig)).not.toContain("api.smith.langchain.com");
     expect(JSON.stringify(telemetryConfig)).not.toContain("customer-support-agent");
+    const artifactExportConfig = surfaces.runtime_config.find(
+      (surface) => surface.path === "artifacts/run-export.yaml"
+    );
+    expect(artifactExportConfig).toBeDefined();
+    expect(artifactExportConfig).toMatchObject({
+      trust_level: "third_party",
+      external_reach: true,
+      secret_exposure: true,
+      side_effect: true,
+      reversible: false,
+      untrusted_to_privileged: true
+    });
+    expect(artifactExportConfig?.metadata).toMatchObject({
+      content_redacted: true,
+      values_collected: false,
+      parsed_agent_artifact_export_config: true,
+      agent_artifact_export_provider: "s3",
+      agent_artifact_export_remote: true,
+      agent_artifact_export_public_access: true,
+      agent_artifact_export_destination_redacted: true,
+      agent_artifact_export_destination_count: 3,
+      agent_artifact_export_path_redacted: true,
+      agent_artifact_export_sensitive_capture: true,
+      agent_artifact_export_pii_capture: true,
+      agent_artifact_export_secret_capture: true,
+      agent_artifact_export_browser_capture: true,
+      agent_artifact_export_tool_output_capture: true,
+      agent_artifact_export_memory_capture: true,
+      agent_artifact_export_retrieval_capture: true,
+      agent_artifact_export_prompt_capture: true,
+      agent_artifact_export_write_enabled: true,
+      agent_artifact_export_retention_enabled: true,
+      agent_artifact_export_redaction_disabled: true,
+      agent_artifact_export_approval_required: false
+    });
+    expect(artifactExportConfig?.metadata.agent_artifact_export_destination_kinds).toEqual([
+      "configured_artifact_destination",
+      "http_artifact_endpoint",
+      "managed_artifact_store"
+    ]);
+    expect(artifactExportConfig?.metadata.agent_artifact_export_capture_categories).toEqual([
+      "browser_artifact",
+      "memory_context",
+      "prompt_context",
+      "retrieval_context",
+      "secret_material",
+      "tool_output"
+    ]);
+    expect(artifactExportConfig?.metadata.env_key_names).toEqual(["ARTIFACT_EXPORT_TOKEN"]);
+    expect(artifactExportConfig?.metadata.secret_ref_key_names).toEqual(["ARTIFACT_EXPORT_TOKEN"]);
+    expect(artifactExportConfig?.data_classes).toEqual(["confidential", "credential", "pii"]);
+    expect(artifactExportConfig?.actions).toEqual(["call", "publish", "read", "remember", "send", "write"]);
+    expect(JSON.stringify(artifactExportConfig)).not.toContain("${ARTIFACT_EXPORT_TOKEN}");
+    expect(JSON.stringify(artifactExportConfig)).not.toContain("agentcsp-demo-public-artifacts");
+    expect(JSON.stringify(artifactExportConfig)).not.toContain("artifacts.agentcsp-demo.example.invalid");
+    expect(JSON.stringify(artifactExportConfig)).not.toContain("artifact_customer_email");
+    expect(JSON.stringify(artifactExportConfig)).not.toContain("artifact_account_number");
+    expect(JSON.stringify(artifactExportConfig)).not.toContain("confidential_ticket_context");
     const modelConfig = surfaces.runtime_config.find((surface) => surface.path === "models/model-gateway.yaml");
     expect(modelConfig).toBeDefined();
     expect(modelConfig).toMatchObject({

@@ -1,0 +1,39 @@
+id: AGENTCSP-RUNTIME-024
+name: Agent artifact export publishes sensitive context without redaction
+description: An agent artifact or generated-output export configuration stores prompts, completions, tool outputs, browser artifacts, retrieval context, memory, or secrets in a remote or public destination while redaction is disabled.
+category: artifact_export_boundary
+severity: critical
+maps_to:
+  owasp:
+    - LLM02:2025 Sensitive Information Disclosure
+    - LLM06:2025 Excessive Agency
+  mitre_atlas:
+    - AML.T0057 Exfiltration via Cyber Means
+  nist_ai_rmf:
+    - MAP 5.1
+    - MEASURE 2.9
+    - MANAGE 2.4
+match:
+  object_type: runtime_config
+  where:
+    - field: metadata.parsed_agent_artifact_export_config
+      op: equals
+      value: true
+    - field: metadata.agent_artifact_export_remote
+      op: equals
+      value: true
+    - field: metadata.agent_artifact_export_public_access
+      op: equals
+      value: true
+    - field: metadata.agent_artifact_export_sensitive_capture
+      op: equals
+      value: true
+    - field: metadata.agent_artifact_export_redaction_disabled
+      op: equals
+      value: true
+    - field: secret_exposure
+      op: equals
+      value: true
+recommendation:
+  control: redact
+  text: Disable public artifact export for agent runs, redact prompts, tool outputs, retrieval context, memory, browser artifacts, PII, and secrets before storage, and route generated artifacts to an approved private retention boundary.

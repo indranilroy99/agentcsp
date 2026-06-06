@@ -682,6 +682,39 @@ Model endpoint metadata may include:
 
 Raw model gateway URLs, model names, base URLs, request payload examples, and secret placeholders are not emitted. Provider names, redacted destination categories, transport posture, context booleans, and credential key names let rules detect risky model endpoints without copying prompts, tool outputs, memory, retrieval content, or endpoint values into the manifest.
 
+## Agent Artifact Export
+
+Agent artifact, output, report, screenshot, recording, and generated-output export configs are normalized into `runtime_config` objects when common artifact directories or export-oriented config filenames are discovered.
+
+Artifact export metadata may include:
+
+- `parsed_agent_artifact_export_config`
+- `agent_artifact_export_fields`
+- `agent_artifact_export_provider`
+- `agent_artifact_export_remote`
+- `agent_artifact_export_public_access`
+- `agent_artifact_export_destination_redacted`
+- `agent_artifact_export_destination_count`
+- `agent_artifact_export_destination_kinds`
+- `agent_artifact_export_path_redacted`
+- `agent_artifact_export_capture_categories`
+- `agent_artifact_export_sensitive_capture`
+- `agent_artifact_export_pii_capture`
+- `agent_artifact_export_secret_capture`
+- `agent_artifact_export_browser_capture`
+- `agent_artifact_export_tool_output_capture`
+- `agent_artifact_export_memory_capture`
+- `agent_artifact_export_retrieval_capture`
+- `agent_artifact_export_prompt_capture`
+- `agent_artifact_export_write_enabled`
+- `agent_artifact_export_retention_enabled`
+- `agent_artifact_export_redaction_disabled`
+- `agent_artifact_export_approval_required`
+- `env_key_names`
+- `secret_ref_key_names`
+
+Raw artifact bucket names, endpoints, paths, generated outputs, data-scope labels, and secret placeholders are not emitted. Provider names, redacted destination categories, capture categories, redaction posture, retention posture, approval posture, and credential key names let rules detect generated-output exfiltration without copying run artifacts into the manifest.
+
 ## AI Telemetry Export
 
 AI telemetry and trace-export configs are also normalized into `runtime_config` objects when common observability, tracing, LangSmith, Langfuse, Helicone, Braintrust, OpenTelemetry, or similar configuration files are discovered.

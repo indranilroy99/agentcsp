@@ -127,6 +127,11 @@ export async function detectSurfaces(files: WalkedFile[]): Promise<DetectedSurfa
       continue;
     }
 
+    if (isAgentArtifactExportConfigPath(file.relativePath, basename)) {
+      detectAgentArtifactExportConfig(file, text, surfaces);
+      continue;
+    }
+
     if (isAiTelemetryConfigPath(file.relativePath, basename)) {
       detectAiTelemetryConfig(file, text, surfaces);
       continue;
@@ -537,6 +542,72 @@ function detectAiTelemetryConfig(file: WalkedFile, text: string | undefined, sur
   surfaces.runtime_config.push({
     ...object,
     untrusted_to_privileged: isUntrustedToPrivileged(object)
+  });
+}
+
+function detectAgentArtifactExportConfig(file: WalkedFile, text: string | undefined, surfaces: DetectedSurfaces): void {
+  const parsed = parseStructuredConfig(text ?? "", file.relativePath);
+  if (parsed.parseFailed) {
+    addDiagnostic(surfaces, file, {
+      parser: parsed.parser ?? "structured_config",
+      code: "AGENT_ARTIFACT_EXPORT_CONFIG_PARSE_FAILED",
+      reason: "Agent artifact or output export configuration could not be parsed. Raw content was redacted."
+    });
+  }
+
+  const posture = classifyAgentArtifactExportConfig(parsed.value, file.relativePath);
+  const actions = new Set<ActionType>(["call", "read"]);
+  if (posture.agent_artifact_export_remote || posture.agent_artifact_export_public_access) actions.add("send");
+  if (posture.agent_artifact_export_write_enabled) actions.add("write");
+  if (posture.agent_artifact_export_retention_enabled) actions.add("remember");
+  if (posture.agent_artifact_export_public_access) actions.add("publish");
+
+  const dataClasses = new Set<SurfaceObject["data_classes"][number]>(["unknown"]);
+  if (
+    posture.agent_artifact_export_secret_capture ||
+    posture.env_key_names.some(isCredentialLikeKeyName) ||
+    posture.secret_ref_key_names.length > 0
+  ) {
+    dataClasses.add("credential");
+  }
+  if (posture.agent_artifact_export_sensitive_capture) dataClasses.add("confidential");
+  if (posture.agent_artifact_export_pii_capture) dataClasses.add("pii");
+  if (dataClasses.size > 1) dataClasses.delete("unknown");
+
+  const object = createSurfaceObject({
+    type: "runtime_config",
+    name: path.basename(file.relativePath),
+    path: file.relativePath,
+    trust_level: posture.agent_artifact_export_remote || posture.agent_artifact_export_public_access ? "third_party" : inferTrustLevel(file.relativePath),
+    data_classes: uniqueDataClasses([...dataClasses] as SurfaceObject["data_classes"]),
+    actions: uniqueActions([...actions]),
+    side_effect:
+      posture.agent_artifact_export_write_enabled ||
+      posture.agent_artifact_export_remote ||
+      posture.agent_artifact_export_public_access ||
+      posture.agent_artifact_export_retention_enabled,
+    reversible: !posture.agent_artifact_export_remote && !posture.agent_artifact_export_public_access && !posture.agent_artifact_export_retention_enabled,
+    external_reach: posture.agent_artifact_export_remote || posture.agent_artifact_export_public_access,
+    secret_exposure:
+      posture.agent_artifact_export_secret_capture ||
+      posture.env_key_names.some(isCredentialLikeKeyName) ||
+      posture.secret_ref_key_names.length > 0,
+    reason: "Agent artifact export configuration discovered as generated-output data egress posture.",
+    metadata: {
+      content_redacted: true,
+      values_collected: false,
+      parsed_agent_artifact_export_config: Boolean(parsed.value) && !parsed.parseFailed,
+      parse_error: parsed.parseFailed,
+      ...posture
+    }
+  });
+  surfaces.runtime_config.push({
+    ...object,
+    untrusted_to_privileged:
+      ((posture.agent_artifact_export_public_access || posture.agent_artifact_export_remote) &&
+        posture.agent_artifact_export_sensitive_capture &&
+        (posture.agent_artifact_export_redaction_disabled || posture.agent_artifact_export_secret_capture)) ||
+      isUntrustedToPrivileged(object)
   });
 }
 
@@ -1534,6 +1605,27 @@ function isAiTelemetryConfigPath(relativePath: string, basename: string): boolea
   return telemetryDirectory || telemetryName;
 }
 
+function isAgentArtifactExportConfigPath(relativePath: string, basename: string): boolean {
+  const normalized = relativePath.replaceAll("\\", "/").toLowerCase();
+  const lowerBase = basename.toLowerCase();
+  if (!/\.(json|ya?ml|toml)$/iu.test(lowerBase)) return false;
+  if (normalized.startsWith(".github/workflows/")) return false;
+  if (normalized.startsWith("rules/")) return false;
+  const segments = normalized.split("/").slice(0, -1);
+  const artifactDirectory = segments.some((segment) =>
+    /^(artifacts?|outputs?|exports?|reports?|screenshots?|recordings?|runs?|run-artifacts|run_artifacts|agent-artifacts|agent_artifacts|generated-output|generated_output)$/iu.test(
+      segment
+    )
+  );
+  const artifactName = /(?:artifact|output|export|report|screenshot|recording|run-result|run_result|agent-result|agent_result|generated-output|generated_output)/iu.test(
+    lowerBase
+  );
+  const configName = /(?:config|settings|artifact|output|export|report|store|sink|destination|archive|retention|screenshots?)/iu.test(
+    lowerBase
+  );
+  return artifactName || (artifactDirectory && configName);
+}
+
 function isAiEvalHarnessConfigPath(relativePath: string, basename: string): boolean {
   const normalized = relativePath.replaceAll("\\", "/").toLowerCase();
   const lowerBase = basename.toLowerCase();
@@ -2252,6 +2344,32 @@ interface AiTelemetryPosture {
   ai_telemetry_secret_capture_signal: boolean;
   ai_telemetry_redaction_disabled: boolean;
   ai_telemetry_retention_enabled: boolean;
+  env_key_names: string[];
+  secret_ref_key_names: string[];
+}
+
+interface AgentArtifactExportPosture {
+  agent_artifact_export_fields: string[];
+  agent_artifact_export_provider?: string;
+  agent_artifact_export_remote: boolean;
+  agent_artifact_export_public_access: boolean;
+  agent_artifact_export_destination_redacted: boolean;
+  agent_artifact_export_destination_count: number;
+  agent_artifact_export_destination_kinds: string[];
+  agent_artifact_export_path_redacted: boolean;
+  agent_artifact_export_capture_categories: string[];
+  agent_artifact_export_sensitive_capture: boolean;
+  agent_artifact_export_pii_capture: boolean;
+  agent_artifact_export_secret_capture: boolean;
+  agent_artifact_export_browser_capture: boolean;
+  agent_artifact_export_tool_output_capture: boolean;
+  agent_artifact_export_memory_capture: boolean;
+  agent_artifact_export_retrieval_capture: boolean;
+  agent_artifact_export_prompt_capture: boolean;
+  agent_artifact_export_write_enabled: boolean;
+  agent_artifact_export_retention_enabled: boolean;
+  agent_artifact_export_redaction_disabled: boolean;
+  agent_artifact_export_approval_required: boolean;
   env_key_names: string[];
   secret_ref_key_names: string[];
 }
@@ -5403,6 +5521,224 @@ function hasTelemetryRetentionSignal(fields: RuntimeField[]): boolean {
 
 function isAiTelemetrySecurityField(fieldPath: string): boolean {
   return /provider|endpoint|url|uri|host|dsn|api[_-]?key|token|secret|credential|auth|env|export|remote|trace|span|prompt|input|output|completion|message|tool|retrieval|rag|context|memory|redact|mask|pii|retention|store|persist|sample|project/iu.test(
+    fieldPath
+  );
+}
+
+function classifyAgentArtifactExportConfig(value: unknown, filePath: string): AgentArtifactExportPosture {
+  const fields = flattenRuntimeFields(value);
+  const stringValues = collectFieldStringValues(fields);
+  const provider = inferAgentArtifactExportProvider([filePath, ...fields.map((field) => field.path), ...stringValues]);
+  const destination = classifyAgentArtifactExportDestination(fields, provider);
+  const captureCategories = collectAgentArtifactExportCaptureCategories(fields);
+  const envKeys = uniqueStrings([
+    ...collectEnvKeyNamesFromConfig(value).filter(isLikelyEnvKeyName),
+    ...extractEnvironmentReferenceKeys(stringValues)
+  ]);
+  const secretRefKeys = extractSecretReferenceKeys(stringValues);
+  const secretCapture = hasAgentArtifactSecretCaptureSignal(fields) || captureCategories.includes("secret_material");
+  const piiCapture = hasAgentArtifactPiiCaptureSignal(fields);
+  const sensitiveCapture = captureCategories.length > 0 || secretCapture || piiCapture || hasAgentArtifactSensitiveCaptureSignal(fields);
+
+  return {
+    agent_artifact_export_fields: fields
+      .map((field) => field.path)
+      .filter((fieldPath) => isAgentArtifactExportSecurityField(fieldPath))
+      .sort((a, b) => a.localeCompare(b)),
+    agent_artifact_export_provider: provider,
+    agent_artifact_export_remote: destination.remote,
+    agent_artifact_export_public_access: destination.publicAccess || hasAgentArtifactPublicAccessSignal(fields),
+    agent_artifact_export_destination_redacted: destination.destinationCount > 0,
+    agent_artifact_export_destination_count: destination.destinationCount,
+    agent_artifact_export_destination_kinds: destination.destinationKinds,
+    agent_artifact_export_path_redacted: hasAgentArtifactPathSignal(fields),
+    agent_artifact_export_capture_categories: captureCategories,
+    agent_artifact_export_sensitive_capture: sensitiveCapture,
+    agent_artifact_export_pii_capture: piiCapture,
+    agent_artifact_export_secret_capture: secretCapture,
+    agent_artifact_export_browser_capture: captureCategories.includes("browser_artifact"),
+    agent_artifact_export_tool_output_capture: captureCategories.includes("tool_output"),
+    agent_artifact_export_memory_capture: captureCategories.includes("memory_context"),
+    agent_artifact_export_retrieval_capture: captureCategories.includes("retrieval_context"),
+    agent_artifact_export_prompt_capture: captureCategories.includes("prompt_context"),
+    agent_artifact_export_write_enabled: hasAgentArtifactWriteSignal(fields),
+    agent_artifact_export_retention_enabled: hasAgentArtifactRetentionSignal(fields),
+    agent_artifact_export_redaction_disabled: hasAgentArtifactRedactionDisabledSignal(fields),
+    agent_artifact_export_approval_required: hasAgentArtifactApprovalRequiredSignal(fields),
+    env_key_names: envKeys,
+    secret_ref_key_names: secretRefKeys
+  };
+}
+
+function inferAgentArtifactExportProvider(candidates: string[]): string | undefined {
+  const text = candidates.join(" ").toLowerCase();
+  const providers: Array<[string, RegExp]> = [
+    ["s3", /\b(s3|aws[_\s-]?s3|amazon[_\s-]?s3)\b/iu],
+    ["gcs", /\b(gcs|google[_\s-]?cloud[_\s-]?storage)\b/iu],
+    ["azure_blob", /\b(azure[_\s-]?blob|blob[_\s-]?storage)\b/iu],
+    ["github_artifacts", /\b(github[_\s-]?artifacts?|actions[_\s-]?artifacts?)\b/iu],
+    ["buildkite_artifacts", /\bbuildkite\b/iu],
+    ["generic_http", /\b(http|https|webhook|presigned|signed[_\s-]?url)\b/iu],
+    ["local_public", /\b(public|static|www|dist|site)\b/iu]
+  ];
+  return providers.find(([, pattern]) => pattern.test(text))?.[0];
+}
+
+function classifyAgentArtifactExportDestination(
+  fields: RuntimeField[],
+  provider: string | undefined
+): { remote: boolean; publicAccess: boolean; destinationCount: number; destinationKinds: string[] } {
+  const destinationKinds = new Set<string>();
+  let destinationCount = 0;
+  let publicAccess = false;
+  const remoteProviders = new Set(["s3", "gcs", "azure_blob", "github_artifacts", "buildkite_artifacts", "generic_http"]);
+  if (provider && remoteProviders.has(provider)) {
+    destinationKinds.add(provider === "generic_http" ? "http_artifact_endpoint" : "managed_artifact_store");
+    destinationCount += 1;
+  }
+  if (provider === "local_public") {
+    publicAccess = true;
+    destinationKinds.add("public_local_path");
+    destinationCount += 1;
+  }
+
+  for (const field of fields) {
+    const values = fieldStringValues(field);
+    for (const value of values) {
+      const lower = value.toLowerCase();
+      if (parseRemoteHttpUrl(value)) {
+        destinationKinds.add("http_artifact_endpoint");
+        destinationCount += 1;
+      }
+      if (/^(s3|gs|azblob):\/\//iu.test(value) || /\b(bucket|s3\.amazonaws\.com|storage\.googleapis\.com|blob\.core\.windows\.net)\b/iu.test(lower)) {
+        destinationKinds.add("cloud_object_store");
+        destinationCount += 1;
+      }
+      if (/\b(public|anonymous|world[_\s-]?read|allusers|signed[_\s-]?url|presigned|share[_\s-]?link|external[_\s-]?link)\b/iu.test(lower)) {
+        publicAccess = true;
+      }
+    }
+    const text = `${field.path} ${fieldValueText(field)}`;
+    if (/(^|\.)(public|public_read|public-read|anonymous|share|shared|signed_url|presigned|external_link)$/iu.test(field.path) && truthyConfigValue(field.value)) {
+      publicAccess = true;
+    }
+    if (/(^|\.)(bucket|buckets|container|containers|artifact_store|artifact-store|destination|destinations|url|uri|endpoint|path|output_path)$/iu.test(field.path)) {
+      if (/\b(public|external|shared|cloud|bucket|s3|gcs|azure|github|artifact)\b/iu.test(text)) {
+        destinationKinds.add("configured_artifact_destination");
+        destinationCount += 1;
+      }
+    }
+  }
+  return {
+    remote: destinationCount > 0 && ![...destinationKinds].every((kind) => kind === "public_local_path"),
+    publicAccess,
+    destinationCount,
+    destinationKinds: [...destinationKinds].sort((a, b) => a.localeCompare(b))
+  };
+}
+
+function collectAgentArtifactExportCaptureCategories(fields: RuntimeField[]): string[] {
+  const categories = new Set<string>();
+  for (const field of fields) {
+    const text = `${field.path} ${fieldValueText(field)}`.toLowerCase();
+    if (/(?:^|[_\W])(prompt|prompts|system[_\s-]?prompt|developer[_\s-]?prompt|messages?|conversation|input)(?:[_\W]|$)/iu.test(text)) {
+      categories.add("prompt_context");
+    }
+    if (/(?:^|[_\W])(tool[_\s-]?outputs?|tool[_\s-]?results?|function[_\s-]?outputs?|mcp[_\s-]?results?|command[_\s-]?outputs?|observation)(?:[_\W]|$)/iu.test(text)) {
+      categories.add("tool_output");
+    }
+    if (/(?:^|[_\W])(browser|screenshot|screenshots|dom|html|page[_\s-]?snapshot|recording|video)(?:[_\W]|$)/iu.test(text)) {
+      categories.add("browser_artifact");
+    }
+    if (/(?:^|[_\W])(retrieval|retrieved|rag|documents?|vector|embedding|knowledge[_\s-]?base|context)(?:[_\W]|$)/iu.test(text)) {
+      categories.add("retrieval_context");
+    }
+    if (/(?:^|[_\W])(memory|memories|session[_\s-]?state|history|transcript|long[_\s-]?term)(?:[_\W]|$)/iu.test(text)) {
+      categories.add("memory_context");
+    }
+    if (/(?:^|[_\W])(secret|secrets|token|credential|api[_-]?key|password|cookie|authorization|vault)(?:[_\W]|$)/iu.test(text)) {
+      categories.add("secret_material");
+    }
+  }
+  return [...categories].sort((a, b) => a.localeCompare(b));
+}
+
+function hasAgentArtifactPathSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /(^|\.)(bucket|buckets|container|containers|path|paths|output_path|output_dir|artifact_dir|destination|destinations|prefix|key|object_key)$/iu.test(
+      field.path
+    )
+  );
+}
+
+function hasAgentArtifactPublicAccessSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /(?:^|[_\W])(public|anonymous|world[_\s-]?read|allusers|signed[_\s-]?url|presigned|share[_\s-]?link|external[_\s-]?link)(?:[_\W]|$)/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    ) && truthyConfigValue(field.value)
+  );
+}
+
+function hasAgentArtifactWriteSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /(?:^|[_\W])(write|upload|export|store|persist|archive|save|sync|publish|send)(?:[_\W]|$)/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    ) && truthyConfigValue(field.value)
+  );
+}
+
+function hasAgentArtifactRetentionSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /(?:^|[_\W])(retention|ttl|days|archive|history|persist|store|keep|expire)(?:[_\W]|$)/iu.test(field.path) &&
+    truthyConfigValue(field.value)
+  );
+}
+
+function hasAgentArtifactRedactionDisabledSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => {
+    const text = `${field.path} ${fieldValueText(field)}`;
+    if (/(redact|redaction|mask|masking|scrub|sanitize|pii_filter|secret_filter)/iu.test(field.path)) {
+      return disabledConfigValue(field.value) || /(?:^|[_\W])(disabled|off|false|none|raw|full)(?:[_\W]|$)/iu.test(text);
+    }
+    return /(?:^|[_\W])(raw[_\s-]?artifacts|raw[_\s-]?outputs|disable[_\s-]?redaction|redaction[_\s-]?disabled|capture[_\s-]?full[_\s-]?payloads)(?:[_\W]|$)/iu.test(
+      text
+    ) && truthyConfigValue(field.value);
+  });
+}
+
+function hasAgentArtifactSecretCaptureSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /(?:^|[_\W])(secret|secrets|token|credential|api[_-]?key|password|cookie|authorization|vault)(?:[_\W]|$)/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    ) && truthyConfigValue(field.value)
+  );
+}
+
+function hasAgentArtifactSensitiveCaptureSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /(?:^|[_\W])(customer|client|ticket|support|internal|confidential|private|proprietary|sensitive|account|billing|payment|prod|production|admin|trace|report|artifact|output)(?:[_\W]|$)/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    )
+  );
+}
+
+function hasAgentArtifactPiiCaptureSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /(?:^|[_\W])(pii|email|phone|address|ssn|passport|dob|date[_\s-]?of[_\s-]?birth|customer[_-]?id|user[_-]?id|account[_-]?id)(?:[_\W]|$)/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    )
+  );
+}
+
+function hasAgentArtifactApprovalRequiredSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /approval|required[_-]?approval|human[_-]?approval|confirm|confirmation|review|human[_-]?in[_-]?the[_-]?loop/iu.test(field.path) &&
+    truthyConfigValue(field.value)
+  );
+}
+
+function isAgentArtifactExportSecurityField(fieldPath: string): boolean {
+  return /provider|artifact|output|export|report|screenshot|recording|destination|bucket|container|path|prefix|key|url|uri|endpoint|public|share|signed|presigned|upload|write|store|archive|retention|ttl|prompt|message|tool|browser|retrieval|rag|memory|secret|token|credential|auth|env|redact|mask|sanitize|pii|sensitive|approval/iu.test(
     fieldPath
   );
 }
