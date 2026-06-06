@@ -1,0 +1,53 @@
+id: AGENTCSP-RUNTIME-052
+name: Spoofable approval channel can trigger privileged agent actions
+description: A human approval gate accepts approval decisions through an external ChatOps, webhook, email, ticket, or comment channel while channel authentication, approver identity verification, and replay protection are weak, then auto-executes privileged actions.
+category: approval_channel_integrity
+severity: critical
+maps_to:
+  owasp:
+    - LLM01:2025 Prompt Injection
+    - LLM05:2025 Improper Output Handling
+    - LLM06:2025 Excessive Agency
+  mitre_atlas:
+    - AML.T0051 LLM Prompt Injection
+    - AML.T0057 Exfiltration via Cyber Means
+  nist_ai_rmf:
+    - GOVERN 1.5
+    - MAP 5.1
+    - MANAGE 2.4
+match:
+  object_type: runtime_config
+  where:
+    - field: metadata.parsed_agent_approval_config
+      op: equals
+      value: true
+    - field: metadata.agent_approval_human_required
+      op: equals
+      value: true
+    - field: metadata.agent_approval_external_channel
+      op: equals
+      value: true
+    - field: metadata.agent_approval_channel_auth_disabled
+      op: equals
+      value: true
+    - field: metadata.agent_approval_approver_identity_unverified
+      op: equals
+      value: true
+    - field: metadata.agent_approval_replay_protection_disabled
+      op: equals
+      value: true
+    - field: metadata.agent_approval_broad_approver_scope
+      op: equals
+      value: true
+    - field: metadata.agent_approval_privileged_actions
+      op: equals
+      value: true
+    - field: metadata.agent_approval_auto_execute_after_approval
+      op: equals
+      value: true
+    - field: secret_exposure
+      op: equals
+      value: true
+recommendation:
+  control: deny
+  text: Deny approval execution from spoofable external channels until signed requests, SSO-backed approver identity, explicit approver allowlists, replay protection, and a separate execution approval step are enforced.

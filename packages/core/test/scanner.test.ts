@@ -2176,6 +2176,11 @@ describe("scanner", () => {
       values_collected: false,
       parsed_agent_approval_config: true,
       agent_approval_prompt_redacted: true,
+      agent_approval_external_channel: false,
+      agent_approval_channel_auth_disabled: false,
+      agent_approval_approver_identity_unverified: false,
+      agent_approval_replay_protection_disabled: false,
+      agent_approval_broad_approver_scope: false,
       agent_approval_context_untrusted: true,
       agent_approval_decision_model_driven: true,
       agent_approval_uses_untrusted_summary: true,
@@ -2197,6 +2202,7 @@ describe("scanner", () => {
       "tool_output",
       "untrusted_user_input"
     ]);
+    expect(approvalGateConfig?.metadata.agent_approval_channel_categories).toEqual([]);
     expect(approvalGateConfig?.metadata.agent_approval_action_categories).toEqual([
       "browser_action",
       "database_write",
@@ -2216,6 +2222,61 @@ describe("scanner", () => {
     expect(JSON.stringify(approvalGateConfig)).not.toContain("support_db.update_customer_record");
     expect(JSON.stringify(approvalGateConfig)).not.toContain("vault_secret_lookup.read_support_token");
     expect(JSON.stringify(approvalGateConfig)).not.toContain("customer_email_address");
+    const chatopsApprovalConfig = surfaces.runtime_config.find((surface) => surface.path === "approvals/chatops-approval.yaml");
+    expect(chatopsApprovalConfig).toBeDefined();
+    expect(chatopsApprovalConfig).toMatchObject({
+      external_reach: true,
+      secret_exposure: true,
+      side_effect: true,
+      reversible: false,
+      untrusted_to_privileged: true
+    });
+    expect(chatopsApprovalConfig?.metadata).toMatchObject({
+      content_redacted: true,
+      values_collected: false,
+      parsed_agent_approval_config: true,
+      agent_approval_prompt_redacted: true,
+      agent_approval_external_channel: true,
+      agent_approval_channel_auth_disabled: true,
+      agent_approval_approver_identity_unverified: true,
+      agent_approval_replay_protection_disabled: true,
+      agent_approval_broad_approver_scope: true,
+      agent_approval_context_untrusted: true,
+      agent_approval_decision_model_driven: false,
+      agent_approval_uses_untrusted_summary: false,
+      agent_approval_human_required: true,
+      agent_approval_default_allow: false,
+      agent_approval_auto_execute_after_approval: true,
+      agent_approval_privileged_actions: true,
+      agent_approval_write_actions: true,
+      agent_approval_external_actions: true,
+      agent_approval_memory_write: false,
+      agent_approval_secret_access: true,
+      agent_approval_sensitive_data: true,
+      agent_approval_pii_data: true
+    });
+    expect(chatopsApprovalConfig?.metadata.agent_approval_channel_categories).toEqual(["chatops", "webhook"]);
+    expect(chatopsApprovalConfig?.metadata.agent_approval_prompt_source_categories).toEqual([
+      "retrieval_context",
+      "tool_output",
+      "untrusted_user_input"
+    ]);
+    expect(chatopsApprovalConfig?.metadata.agent_approval_action_categories).toEqual([
+      "browser_action",
+      "database_write",
+      "external_response",
+      "secret_manager_access",
+      "tool_call"
+    ]);
+    expect(chatopsApprovalConfig?.metadata.env_key_names).toEqual(["CHATOPS_APPROVAL_TOKEN"]);
+    expect(chatopsApprovalConfig?.metadata.secret_ref_key_names).toEqual(["CHATOPS_APPROVAL_TOKEN"]);
+    expect(chatopsApprovalConfig?.data_classes).toEqual(["confidential", "credential", "pii"]);
+    expect(chatopsApprovalConfig?.actions).toEqual(["approve", "call", "execute", "publish", "read", "send", "write"]);
+    expect(JSON.stringify(chatopsApprovalConfig)).not.toContain("${CHATOPS_APPROVAL_TOKEN}");
+    expect(JSON.stringify(chatopsApprovalConfig)).not.toContain("hooks.slack.example.invalid");
+    expect(JSON.stringify(chatopsApprovalConfig)).not.toContain("#customer-support");
+    expect(JSON.stringify(chatopsApprovalConfig)).not.toContain("support_db.update_customer_record");
+    expect(JSON.stringify(chatopsApprovalConfig)).not.toContain("chatops_approval_customer_email");
     const contextComposerConfig = surfaces.runtime_config.find((surface) => surface.path === "context/system-context.yaml");
     expect(contextComposerConfig).toBeDefined();
     expect(contextComposerConfig).toMatchObject({
@@ -3614,6 +3675,61 @@ describe("scanner", () => {
     expect(modelGateway?.metadata.ai_model_remote_destination_kinds).toEqual([]);
     expect(JSON.stringify(modelGateway)).not.toContain("internal-read-model-gateway");
     expect(JSON.stringify(modelGateway)).not.toContain("localhost:11434");
+  });
+
+  it("keeps signed internal approval channels quiet", async () => {
+    const files = await walkProject({
+      root_path: safeFixtureRoot,
+      output_path: ".agentcsp",
+      formats: ["json", "md"],
+      include_hidden: true,
+      include_logs: false,
+      max_file_size_bytes: 1024 * 1024,
+      max_files: 5000,
+      quiet: true
+    });
+    const surfaces = await detectSurfaces(files);
+    const approvalChannel = surfaces.runtime_config.find((surface) => surface.path === "approvals/internal-review.yaml");
+
+    expect(approvalChannel).toMatchObject({
+      trust_level: "project",
+      data_classes: ["confidential"],
+      actions: ["approve", "call", "read"],
+      side_effect: false,
+      external_reach: false,
+      secret_exposure: false,
+      reversible: true,
+      untrusted_to_privileged: false
+    });
+    expect(approvalChannel?.metadata).toMatchObject({
+      parsed_agent_approval_config: true,
+      agent_approval_prompt_redacted: true,
+      agent_approval_external_channel: false,
+      agent_approval_channel_auth_disabled: false,
+      agent_approval_approver_identity_unverified: false,
+      agent_approval_replay_protection_disabled: false,
+      agent_approval_broad_approver_scope: false,
+      agent_approval_context_untrusted: false,
+      agent_approval_decision_model_driven: false,
+      agent_approval_uses_untrusted_summary: false,
+      agent_approval_human_required: true,
+      agent_approval_default_allow: false,
+      agent_approval_auto_execute_after_approval: false,
+      agent_approval_privileged_actions: false,
+      agent_approval_write_actions: false,
+      agent_approval_destructive_actions: false,
+      agent_approval_external_actions: false,
+      agent_approval_memory_write: false,
+      agent_approval_secret_access: false,
+      agent_approval_sensitive_data: true,
+      agent_approval_pii_data: false
+    });
+    expect(approvalChannel?.metadata.agent_approval_channel_categories).toEqual(["internal_console"]);
+    expect(approvalChannel?.metadata.agent_approval_prompt_source_categories).toEqual([]);
+    expect(approvalChannel?.metadata.agent_approval_action_categories).toEqual([]);
+    expect(JSON.stringify(approvalChannel)).not.toContain("security_reviewers");
+    expect(JSON.stringify(approvalChannel)).not.toContain("approved_internal_summary");
+    expect(JSON.stringify(approvalChannel)).not.toContain("readonly_docs.search");
   });
 
   it("keeps local approval-gated session memory scoped", async () => {

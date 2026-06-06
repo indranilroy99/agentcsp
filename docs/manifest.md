@@ -730,6 +730,12 @@ Agent approval-gate metadata may include:
 - `agent_approval_fields`
 - `agent_approval_prompt_redacted`
 - `agent_approval_prompt_source_categories`
+- `agent_approval_channel_categories`
+- `agent_approval_external_channel`
+- `agent_approval_channel_auth_disabled`
+- `agent_approval_approver_identity_unverified`
+- `agent_approval_replay_protection_disabled`
+- `agent_approval_broad_approver_scope`
 - `agent_approval_context_untrusted`
 - `agent_approval_decision_model_driven`
 - `agent_approval_uses_untrusted_summary`
@@ -748,7 +754,7 @@ Agent approval-gate metadata may include:
 - `env_key_names`
 - `secret_ref_key_names`
 
-Raw approval prompts, model names, approval summaries, action names, reviewer labels, source labels, data-field labels, and secret placeholders are not emitted. Prompt-source categories, action-authority categories, model-driven decision posture, default-allow posture, human-review posture, auto-execution posture, data-class booleans, and credential key names let rules detect approval gates where untrusted context can influence privileged execution.
+Raw approval prompts, model names, approval summaries, approval channel URLs, channel names, action names, reviewer labels, approver allowlists, source labels, data-field labels, and secret placeholders are not emitted. Prompt-source categories, approval-channel categories, channel authentication posture, approver identity posture, replay-protection posture, action-authority categories, model-driven decision posture, default-allow posture, human-review posture, auto-execution posture, data-class booleans, and credential key names let rules detect approval gates where untrusted context or spoofable approval channels can influence privileged execution.
 
 ## Agent Context-Composer Posture
 

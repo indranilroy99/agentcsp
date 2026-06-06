@@ -1,0 +1,25 @@
+mode: human_review_gate
+channel:
+  type: internal_console
+  auth_required: true
+  sso_required: true
+  rbac: true
+  verify_signature: true
+  replay_protection:
+    enabled: true
+    nonce_required: true
+    timestamp_required: true
+  approver_allowlist:
+    - security_reviewers
+approval_request:
+  sources:
+    - approved_internal_summary
+  include_raw_context: false
+decision:
+  human_required: true
+  default_action: deny
+  timeout_action: deny
+on_approval:
+  auto_execute: false
+  actions:
+    - readonly_docs.search

@@ -1,0 +1,41 @@
+mode: human_review_gate
+channel:
+  type: slack_webhook
+  webhook_url: https://hooks.slack.example.invalid/agent-approvals
+  public_channel: "#customer-support"
+  external_users_allowed: true
+  allow_any_channel_member: true
+  allow_requester_approval: true
+  approver_from_payload: true
+  auth_required: false
+  sso_required: false
+  verify_slack_signature: false
+  replay_protection:
+    enabled: false
+    nonce_required: false
+    timestamp_required: false
+  signing_secret: ${CHATOPS_APPROVAL_TOKEN}
+approval_request:
+  accepted_responses:
+    - approve
+    - /approve
+  sources:
+    - customer_ticket_message
+    - retrieved_account_context
+    - browser_tool_output
+  include_raw_context: true
+decision:
+  human_required: true
+  default_action: deny
+  timeout_action: deny
+on_approval:
+  auto_execute: true
+  actions:
+    - support_db.update_customer_record
+    - vault_secret_lookup.read_support_token
+    - slack.post_customer_reply
+    - browser.submit_customer_form
+data_scope:
+  - chatops_approval_customer_email
+  - chatops_approval_account_number
+  - confidential_chatops_approval_notes
