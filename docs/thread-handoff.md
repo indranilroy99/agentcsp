@@ -765,6 +765,16 @@ The current iteration adds:
 - rule `AGENTCSP-RUNTIME-025` for webhook/callback egress that combines remote delivery, model-generated or untrusted payloads, sensitive context, disabled redaction, credential exposure, and missing approval
 - scanner, rule, fixture verifier, and redaction coverage proving callback endpoints, payload bodies, source labels, data-field labels, and token placeholders stay redacted
 
+## Agent Container Isolation Boundary Pass
+
+The current iteration adds:
+
+- first-class redacted metadata for agent container, sandbox, Docker, Compose, runner, executor, and runtime isolation configs
+- vulnerable fixture coverage for a privileged Docker agent container with Docker socket access, host-root and credential mounts, host network/PID/IPC namespaces, dangerous capabilities, untrusted inputs, credential env, and no approval gate
+- rule `AGENTCSP-RUNTIME-026` for container host-escape boundaries that combine privileged mode, Docker socket, host path mounts, host networking, untrusted input, credential exposure, and missing approval
+- graph-priority tuning that keeps concrete RAG-to-exfiltration and RAG-to-mutable-record paths visible as the runtime surface inventory grows
+- scanner, rule, fixture verifier, and redaction coverage proving image names, host paths, Docker socket paths, credential paths, input labels, tool names, and token placeholders stay redacted
+
 ## Initial Build Recommendation
 
 Start with a CLI-first MVP before building the dashboard:

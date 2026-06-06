@@ -65,6 +65,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-023")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-024")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-025")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-026")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-CICD-002")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-AUTOMATION-001")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-AUTOMATION-002")).toBe(true);
@@ -199,6 +200,41 @@ describe("rule engine", () => {
     expect(JSON.stringify(runtimeWebhookEgressFindings[0])).not.toContain("webhook_customer_email");
     expect(JSON.stringify(runtimeWebhookEgressFindings[0])).not.toContain("webhook_account_number");
     expect(JSON.stringify(runtimeWebhookEgressFindings[0])).not.toContain("confidential_callback_summary");
+    const runtimeContainerFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-RUNTIME-026");
+    expect(runtimeContainerFindings).toHaveLength(1);
+    expect(runtimeContainerFindings[0]?.matched_object.path).toBe("runtime/agent-container.yaml");
+    expect(runtimeContainerFindings[0]?.matched_object.metadata).toMatchObject({
+      parsed_agent_container_runtime_config: true,
+      agent_container_provider: "docker",
+      agent_container_privileged: true,
+      agent_container_docker_socket_mount: true,
+      agent_container_host_path_mount: true,
+      agent_container_host_network: true,
+      agent_container_untrusted_input: true,
+      agent_container_secret_env_exposure: true,
+      agent_container_approval_required: false
+    });
+    expect(runtimeContainerFindings[0]?.matched_object.metadata.agent_container_mount_kinds).toEqual([
+      "credential_path",
+      "docker_socket",
+      "host_path",
+      "host_root",
+      "sensitive_host_path",
+      "writable_host_path"
+    ]);
+    expect(runtimeContainerFindings[0]?.matched_object.metadata.agent_container_capability_categories).toEqual([
+      "net_admin",
+      "privileged_mode",
+      "sys_admin"
+    ]);
+    expect(runtimeContainerFindings[0]?.severity).toBe("critical");
+    expect(runtimeContainerFindings[0]?.confidence).toBe("very_high");
+    expect(runtimeContainerFindings[0]?.recommended_control).toBe("deny");
+    expect(JSON.stringify(runtimeContainerFindings[0])).not.toContain("${AGENT_CONTAINER_TOKEN}");
+    expect(JSON.stringify(runtimeContainerFindings[0])).not.toContain("agentcsp-demo/support-agent");
+    expect(JSON.stringify(runtimeContainerFindings[0])).not.toContain("/var/run/docker.sock");
+    expect(JSON.stringify(runtimeContainerFindings[0])).not.toContain("~/.ssh");
+    expect(JSON.stringify(runtimeContainerFindings[0])).not.toContain("untrusted_customer_ticket");
     const runtimeModelEndpointFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-RUNTIME-009");
     expect(runtimeModelEndpointFindings).toHaveLength(1);
     expect(runtimeModelEndpointFindings[0]?.matched_object.path).toBe("models/model-gateway.yaml");

@@ -751,6 +751,47 @@ Webhook egress metadata may include:
 
 Raw callback endpoints, token placeholders, payload bodies, source labels, and data-field labels are not emitted. Provider names, redacted endpoint categories, auth-header names, payload categories, write posture, retry posture, approval posture, redaction posture, and credential key names let rules detect sensitive model-output callbacks without copying webhook payloads into the manifest.
 
+## Agent Container Runtime
+
+Agent container, sandbox, Docker, Compose, runner, executor, and runtime isolation configs are normalized into `runtime_config` objects when common runtime directories or container-oriented config filenames are discovered.
+
+Container runtime metadata may include:
+
+- `parsed_agent_container_runtime_config`
+- `agent_container_runtime_fields`
+- `agent_container_provider`
+- `agent_container_runtime_enabled`
+- `agent_container_privileged`
+- `agent_container_root_user`
+- `agent_container_docker_socket_mount`
+- `agent_container_host_path_mount`
+- `agent_container_host_root_mount`
+- `agent_container_writable_host_mount`
+- `agent_container_workspace_mount`
+- `agent_container_credential_mount`
+- `agent_container_sensitive_mount`
+- `agent_container_mounts_redacted`
+- `agent_container_mount_kinds`
+- `agent_container_host_network`
+- `agent_container_host_pid`
+- `agent_container_host_ipc`
+- `agent_container_network_enabled`
+- `agent_container_dangerous_capability`
+- `agent_container_capability_categories`
+- `agent_container_tool_authority_categories`
+- `agent_container_shell_authority`
+- `agent_container_filesystem_authority`
+- `agent_container_browser_authority`
+- `agent_container_docker_authority`
+- `agent_container_untrusted_input`
+- `agent_container_pii_input`
+- `agent_container_secret_env_exposure`
+- `agent_container_approval_required`
+- `env_key_names`
+- `secret_ref_key_names`
+
+Raw image names, host mount paths, Docker socket paths, credential paths, input labels, tool lists, and token placeholders are not emitted. Provider names, redacted mount categories, namespace posture, capability categories, tool-authority categories, untrusted-input signals, approval posture, and credential key names let rules detect host-escape blast radius without copying container runtime details into the manifest.
+
 ## AI Telemetry Export
 
 AI telemetry and trace-export configs are also normalized into `runtime_config` objects when common observability, tracing, LangSmith, Langfuse, Helicone, Braintrust, OpenTelemetry, or similar configuration files are discovered.

@@ -23,6 +23,7 @@ describe("scanner", () => {
 
     expect(envSurface).toBeDefined();
     expect(envSurface?.metadata.env_key_names).toEqual([
+      "AGENT_CONTAINER_TOKEN",
       "AGENT_EXTENSION_TOKEN",
       "AGENT_IDENTITY_TOKEN",
       "AGENT_SELF_MOD_TOKEN",
@@ -523,6 +524,77 @@ describe("scanner", () => {
     expect(JSON.stringify(webhookEgressConfig)).not.toContain("webhook_customer_email");
     expect(JSON.stringify(webhookEgressConfig)).not.toContain("webhook_account_number");
     expect(JSON.stringify(webhookEgressConfig)).not.toContain("confidential_callback_summary");
+    const containerRuntimeConfig = surfaces.runtime_config.find(
+      (surface) => surface.path === "runtime/agent-container.yaml"
+    );
+    expect(containerRuntimeConfig).toBeDefined();
+    expect(containerRuntimeConfig).toMatchObject({
+      trust_level: "workspace",
+      external_reach: true,
+      secret_exposure: true,
+      side_effect: true,
+      reversible: false,
+      untrusted_to_privileged: true
+    });
+    expect(containerRuntimeConfig?.metadata).toMatchObject({
+      content_redacted: true,
+      values_collected: false,
+      parsed_agent_container_runtime_config: true,
+      agent_container_provider: "docker",
+      agent_container_runtime_enabled: true,
+      agent_container_privileged: true,
+      agent_container_root_user: true,
+      agent_container_docker_socket_mount: true,
+      agent_container_host_path_mount: true,
+      agent_container_host_root_mount: true,
+      agent_container_writable_host_mount: true,
+      agent_container_workspace_mount: false,
+      agent_container_credential_mount: true,
+      agent_container_sensitive_mount: true,
+      agent_container_mounts_redacted: true,
+      agent_container_host_network: true,
+      agent_container_host_pid: true,
+      agent_container_host_ipc: true,
+      agent_container_network_enabled: true,
+      agent_container_dangerous_capability: true,
+      agent_container_shell_authority: true,
+      agent_container_filesystem_authority: true,
+      agent_container_browser_authority: true,
+      agent_container_docker_authority: true,
+      agent_container_untrusted_input: true,
+      agent_container_pii_input: false,
+      agent_container_secret_env_exposure: true,
+      agent_container_approval_required: false
+    });
+    expect(containerRuntimeConfig?.metadata.agent_container_mount_kinds).toEqual([
+      "credential_path",
+      "docker_socket",
+      "host_path",
+      "host_root",
+      "sensitive_host_path",
+      "writable_host_path"
+    ]);
+    expect(containerRuntimeConfig?.metadata.agent_container_capability_categories).toEqual([
+      "net_admin",
+      "privileged_mode",
+      "sys_admin"
+    ]);
+    expect(containerRuntimeConfig?.metadata.agent_container_tool_authority_categories).toEqual([
+      "browser",
+      "docker",
+      "filesystem",
+      "mcp",
+      "shell"
+    ]);
+    expect(containerRuntimeConfig?.metadata.env_key_names).toEqual(["AGENT_CONTAINER_TOKEN", "OPENAI_API_KEY"]);
+    expect(containerRuntimeConfig?.metadata.secret_ref_key_names).toEqual(["AGENT_CONTAINER_TOKEN", "OPENAI_API_KEY"]);
+    expect(containerRuntimeConfig?.data_classes).toEqual(["confidential", "credential"]);
+    expect(containerRuntimeConfig?.actions).toEqual(["call", "execute", "read", "send", "write"]);
+    expect(JSON.stringify(containerRuntimeConfig)).not.toContain("${AGENT_CONTAINER_TOKEN}");
+    expect(JSON.stringify(containerRuntimeConfig)).not.toContain("agentcsp-demo/support-agent");
+    expect(JSON.stringify(containerRuntimeConfig)).not.toContain("/var/run/docker.sock");
+    expect(JSON.stringify(containerRuntimeConfig)).not.toContain("~/.ssh");
+    expect(JSON.stringify(containerRuntimeConfig)).not.toContain("untrusted_customer_ticket");
     const modelConfig = surfaces.runtime_config.find((surface) => surface.path === "models/model-gateway.yaml");
     expect(modelConfig).toBeDefined();
     expect(modelConfig).toMatchObject({

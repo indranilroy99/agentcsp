@@ -1,0 +1,30 @@
+provider: docker
+image: agentcsp-demo/support-agent:latest
+container:
+  privileged: true
+  user: root
+  network_mode: host
+  pid: host
+  ipc: host
+  volumes:
+    - /var/run/docker.sock:/var/run/docker.sock
+    - /:/host:rw
+    - ~/.ssh:/root/.ssh:ro
+  capabilities:
+    - SYS_ADMIN
+    - NET_ADMIN
+env:
+  OPENAI_API_KEY: ${OPENAI_API_KEY}
+  AGENT_CONTAINER_TOKEN: ${AGENT_CONTAINER_TOKEN}
+agent:
+  inputs:
+    - untrusted_customer_ticket
+    - retrieved_customer_context
+  tools:
+    - shell
+    - browser
+    - filesystem
+    - mcp
+sandbox:
+  enabled: false
+approval_required: false

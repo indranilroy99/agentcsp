@@ -117,6 +117,11 @@ export async function detectSurfaces(files: WalkedFile[]): Promise<DetectedSurfa
       continue;
     }
 
+    if (isAgentContainerRuntimeConfigPath(file.relativePath, basename)) {
+      detectAgentContainerRuntimeConfig(file, text, surfaces);
+      continue;
+    }
+
     if (isAgentApprovalGateConfigPath(file.relativePath, basename)) {
       detectAgentApprovalGateConfig(file, text, surfaces);
       continue;
@@ -1485,6 +1490,92 @@ function detectAgentWebhookEgressConfig(file: WalkedFile, text: string | undefin
   });
 }
 
+function detectAgentContainerRuntimeConfig(file: WalkedFile, text: string | undefined, surfaces: DetectedSurfaces): void {
+  const parsed = parseStructuredConfig(text ?? "", file.relativePath);
+  if (parsed.parseFailed) {
+    addDiagnostic(surfaces, file, {
+      parser: parsed.parser ?? "structured_config",
+      code: "AGENT_CONTAINER_RUNTIME_CONFIG_PARSE_FAILED",
+      reason: "Agent container or sandbox runtime configuration could not be parsed. Raw content was redacted."
+    });
+  }
+
+  const posture = classifyAgentContainerRuntimeConfig(parsed.value, file.relativePath);
+  const actions = new Set<ActionType>(["call", "read"]);
+  if (posture.agent_container_shell_authority || posture.agent_container_docker_socket_mount) actions.add("execute");
+  if (
+    posture.agent_container_host_path_mount ||
+    posture.agent_container_writable_host_mount ||
+    posture.agent_container_workspace_mount
+  ) {
+    actions.add("write");
+  }
+  if (posture.agent_container_host_network || posture.agent_container_network_enabled) actions.add("send");
+
+  const dataClasses = new Set<SurfaceObject["data_classes"][number]>(["unknown"]);
+  if (
+    posture.agent_container_secret_env_exposure ||
+    posture.agent_container_credential_mount ||
+    posture.env_key_names.some(isCredentialLikeKeyName) ||
+    posture.secret_ref_key_names.length > 0
+  ) {
+    dataClasses.add("credential");
+  }
+  if (posture.agent_container_sensitive_mount || posture.agent_container_untrusted_input) dataClasses.add("confidential");
+  if (posture.agent_container_pii_input) dataClasses.add("pii");
+  if (dataClasses.size > 1) dataClasses.delete("unknown");
+
+  const object = createSurfaceObject({
+    type: "runtime_config",
+    name: path.basename(file.relativePath),
+    path: file.relativePath,
+    trust_level:
+      posture.agent_container_privileged ||
+      posture.agent_container_docker_socket_mount ||
+      posture.agent_container_host_path_mount
+        ? "workspace"
+        : inferTrustLevel(file.relativePath),
+    data_classes: uniqueDataClasses([...dataClasses] as SurfaceObject["data_classes"]),
+    actions: uniqueActions([...actions]),
+    side_effect:
+      posture.agent_container_privileged ||
+      posture.agent_container_docker_socket_mount ||
+      posture.agent_container_host_path_mount ||
+      posture.agent_container_dangerous_capability ||
+      posture.agent_container_host_network,
+    reversible:
+      !posture.agent_container_privileged &&
+      !posture.agent_container_docker_socket_mount &&
+      !posture.agent_container_host_path_mount &&
+      !posture.agent_container_writable_host_mount,
+    external_reach: posture.agent_container_host_network || posture.agent_container_network_enabled,
+    secret_exposure:
+      posture.agent_container_secret_env_exposure ||
+      posture.agent_container_credential_mount ||
+      posture.env_key_names.some(isCredentialLikeKeyName) ||
+      posture.secret_ref_key_names.length > 0,
+    reason: "Agent container or sandbox runtime configuration discovered as execution isolation posture.",
+    metadata: {
+      content_redacted: true,
+      values_collected: false,
+      parsed_agent_container_runtime_config: Boolean(parsed.value) && !parsed.parseFailed,
+      parse_error: parsed.parseFailed,
+      ...posture
+    }
+  });
+  surfaces.runtime_config.push({
+    ...object,
+    untrusted_to_privileged:
+      posture.agent_container_untrusted_input &&
+      (posture.agent_container_privileged ||
+        posture.agent_container_docker_socket_mount ||
+        posture.agent_container_host_path_mount ||
+        posture.agent_container_dangerous_capability ||
+        posture.agent_container_shell_authority) ||
+      isUntrustedToPrivileged(object)
+  });
+}
+
 function detectSecretManagerConfig(file: WalkedFile, text: string | undefined, surfaces: DetectedSurfaces): void {
   const parsed = parseStructuredConfig(text ?? "", file.relativePath);
   if (parsed.parseFailed) {
@@ -1964,6 +2055,27 @@ function isAgentWebhookEgressConfigPath(relativePath: string, basename: string):
   return webhookName || (webhookDirectory && configName);
 }
 
+function isAgentContainerRuntimeConfigPath(relativePath: string, basename: string): boolean {
+  const normalized = relativePath.replaceAll("\\", "/").toLowerCase();
+  const lowerBase = basename.toLowerCase();
+  if (!/\.(json|ya?ml|toml)$/iu.test(lowerBase)) return false;
+  if (normalized.startsWith(".github/workflows/")) return false;
+  if (normalized.startsWith("rules/")) return false;
+  const segments = normalized.split("/").slice(0, -1);
+  const containerDirectory = segments.some((segment) =>
+    /^(runtime|runtimes|sandbox|sandboxes|containers?|container-runtime|container_runtime|docker|compose|runners?|agent-runners?|agent_runners?|execution|executors?)$/iu.test(
+      segment
+    )
+  );
+  const containerName = /(?:agent-container|agent_container|container-runtime|container_runtime|runtime-container|runtime_container|sandbox-runtime|sandbox_runtime|docker-compose|compose|devcontainer|agent-runner|agent_runner|executor|execution-sandbox|execution_sandbox)/iu.test(
+    lowerBase
+  );
+  const configName = /(?:config|settings|runtime|sandbox|container|docker|compose|runner|executor|execution|isolation)/iu.test(
+    lowerBase
+  );
+  return containerName || (containerDirectory && configName);
+}
+
 function isSaasConnectorConfigPath(relativePath: string, basename: string): boolean {
   const normalized = relativePath.replaceAll("\\", "/").toLowerCase();
   const lowerBase = basename.toLowerCase();
@@ -2419,6 +2531,40 @@ interface AgentWebhookEgressPosture {
   agent_webhook_egress_redaction_disabled: boolean;
   agent_webhook_egress_retry_enabled: boolean;
   agent_webhook_egress_approval_required: boolean;
+  env_key_names: string[];
+  secret_ref_key_names: string[];
+}
+
+interface AgentContainerRuntimePosture {
+  agent_container_runtime_fields: string[];
+  agent_container_provider?: string;
+  agent_container_runtime_enabled: boolean;
+  agent_container_privileged: boolean;
+  agent_container_root_user: boolean;
+  agent_container_docker_socket_mount: boolean;
+  agent_container_host_path_mount: boolean;
+  agent_container_host_root_mount: boolean;
+  agent_container_writable_host_mount: boolean;
+  agent_container_workspace_mount: boolean;
+  agent_container_credential_mount: boolean;
+  agent_container_sensitive_mount: boolean;
+  agent_container_mounts_redacted: boolean;
+  agent_container_mount_kinds: string[];
+  agent_container_host_network: boolean;
+  agent_container_host_pid: boolean;
+  agent_container_host_ipc: boolean;
+  agent_container_network_enabled: boolean;
+  agent_container_dangerous_capability: boolean;
+  agent_container_capability_categories: string[];
+  agent_container_tool_authority_categories: string[];
+  agent_container_shell_authority: boolean;
+  agent_container_filesystem_authority: boolean;
+  agent_container_browser_authority: boolean;
+  agent_container_docker_authority: boolean;
+  agent_container_untrusted_input: boolean;
+  agent_container_pii_input: boolean;
+  agent_container_secret_env_exposure: boolean;
+  agent_container_approval_required: boolean;
   env_key_names: string[];
   secret_ref_key_names: string[];
 }
@@ -5171,6 +5317,245 @@ function hasAgentWebhookApprovalRequiredSignal(fields: RuntimeField[]): boolean 
 
 function isAgentWebhookEgressSecurityField(fieldPath: string): boolean {
   return /provider|webhook|callback|egress|outbound|sink|destination|endpoint|url|uri|method|headers?|authorization|auth|token|secret|credential|env|payload|body|include|capture|prompt|message|completion|response|output|tool|retrieval|rag|memory|browser|redact|mask|sanitize|pii|sensitive|retry|queue|approval|source|event|data/iu.test(
+    fieldPath
+  );
+}
+
+function classifyAgentContainerRuntimeConfig(value: unknown, filePath: string): AgentContainerRuntimePosture {
+  const fields = flattenRuntimeFields(value);
+  const stringValues = collectFieldStringValues(fields);
+  const provider = inferAgentContainerProvider([filePath, ...fields.map((field) => field.path), ...stringValues]);
+  const mounts = classifyAgentContainerMounts(fields);
+  const capabilityCategories = collectAgentContainerCapabilityCategories(fields);
+  const toolAuthorityCategories = collectAgentContainerToolAuthorityCategories(fields);
+  const envKeys = uniqueStrings([
+    ...collectEnvKeyNamesFromConfig(value).filter(isLikelyEnvKeyName),
+    ...extractEnvironmentReferenceKeys(stringValues)
+  ]);
+  const secretRefKeys = extractSecretReferenceKeys(stringValues);
+
+  return {
+    agent_container_runtime_fields: fields
+      .map((field) => field.path)
+      .filter((fieldPath) => isAgentContainerRuntimeSecurityField(fieldPath))
+      .sort((a, b) => a.localeCompare(b)),
+    agent_container_provider: provider,
+    agent_container_runtime_enabled: Boolean(provider) || hasAgentContainerRuntimeSignal(fields),
+    agent_container_privileged: hasAgentContainerPrivilegedSignal(fields),
+    agent_container_root_user: hasAgentContainerRootUserSignal(fields),
+    agent_container_docker_socket_mount: mounts.dockerSocketMount,
+    agent_container_host_path_mount: mounts.hostPathMount,
+    agent_container_host_root_mount: mounts.hostRootMount,
+    agent_container_writable_host_mount: mounts.writableHostMount,
+    agent_container_workspace_mount: mounts.workspaceMount,
+    agent_container_credential_mount: mounts.credentialMount,
+    agent_container_sensitive_mount: mounts.sensitiveMount,
+    agent_container_mounts_redacted: mounts.mountKinds.length > 0,
+    agent_container_mount_kinds: mounts.mountKinds,
+    agent_container_host_network: hasAgentContainerHostNetworkSignal(fields),
+    agent_container_host_pid: hasAgentContainerHostNamespaceSignal(fields, "pid"),
+    agent_container_host_ipc: hasAgentContainerHostNamespaceSignal(fields, "ipc"),
+    agent_container_network_enabled: hasAgentContainerNetworkEnabledSignal(fields),
+    agent_container_dangerous_capability: capabilityCategories.length > 0,
+    agent_container_capability_categories: capabilityCategories,
+    agent_container_tool_authority_categories: toolAuthorityCategories,
+    agent_container_shell_authority: toolAuthorityCategories.includes("shell"),
+    agent_container_filesystem_authority: toolAuthorityCategories.includes("filesystem"),
+    agent_container_browser_authority: toolAuthorityCategories.includes("browser"),
+    agent_container_docker_authority: toolAuthorityCategories.includes("docker"),
+    agent_container_untrusted_input: hasAgentContainerUntrustedInputSignal(fields),
+    agent_container_pii_input: hasAgentContainerPiiInputSignal(fields),
+    agent_container_secret_env_exposure: envKeys.some(isCredentialLikeKeyName) || secretRefKeys.length > 0,
+    agent_container_approval_required: hasAgentContainerApprovalRequiredSignal(fields),
+    env_key_names: envKeys,
+    secret_ref_key_names: secretRefKeys
+  };
+}
+
+function inferAgentContainerProvider(candidates: string[]): string | undefined {
+  const text = candidates.join(" ").toLowerCase();
+  const providers: Array<[string, RegExp]> = [
+    ["docker_compose", /\bdocker[_\s-]?compose\b|compose\.ya?ml/iu],
+    ["docker", /\bdocker\b|dockerfile|docker\.sock|containerd/iu],
+    ["kubernetes", /\bkubernetes\b|\bk8s\b|securitycontext|hostnetwork|hostpath/iu],
+    ["devcontainer", /\bdevcontainer\b|\.devcontainer/iu],
+    ["generic_container", /\b(container|sandbox|runner|executor)\b/iu]
+  ];
+  return providers.find(([, pattern]) => pattern.test(text))?.[0];
+}
+
+function hasAgentContainerRuntimeSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /(?:^|[_\W])(container|docker|compose|sandbox|runner|executor|image|runtime)(?:[_\W]|$)/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    )
+  );
+}
+
+function hasAgentContainerPrivilegedSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /(?:^|\.)(privileged|security_context\.privileged|securityContext\.privileged)$/iu.test(field.path) &&
+    truthyConfigValue(field.value)
+  );
+}
+
+function hasAgentContainerRootUserSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => {
+    if (!/(^|\.)(user|run_as_user|runAsUser|security_context\.run_as_user|securityContext\.runAsUser)$/iu.test(field.path)) {
+      return false;
+    }
+    const value = fieldValueText(field).trim().toLowerCase();
+    return value === "root" || value === "0" || value.startsWith("0:");
+  });
+}
+
+function classifyAgentContainerMounts(fields: RuntimeField[]): {
+  dockerSocketMount: boolean;
+  hostPathMount: boolean;
+  hostRootMount: boolean;
+  writableHostMount: boolean;
+  workspaceMount: boolean;
+  credentialMount: boolean;
+  sensitiveMount: boolean;
+  mountKinds: string[];
+} {
+  const mountKinds = new Set<string>();
+  for (const field of fields) {
+    if (!isAgentContainerMountField(field.path)) continue;
+    const text = `${field.path} ${fieldValueText(field)}`;
+    const lower = text.toLowerCase();
+    if (/docker\.sock|\/var\/run\/docker\.sock/iu.test(lower)) mountKinds.add("docker_socket");
+    if (/(^|[\s"'])\/(?=[:\s"']|$)|source[=:\s]+\/(?:\s|$)|hostpath\.path\s*\/(?:\s|$)|\/:\/(?:host|root|mnt)\b/iu.test(lower)) {
+      mountKinds.add("host_root");
+    }
+    if (/(^|[\s"'])(?:\/(?:var|etc|home|users|root|private|opt|srv|tmp|mnt|volumes?)|~\/|[a-z]:\\)|:(?:\/host|\/workspace|\/workspaces|\/repo|\/project)\b/iu.test(
+      text
+    )) {
+      mountKinds.add("host_path");
+    }
+    if (/:rw\b|read[_-]?only[=:\s]+false|readonly[=:\s]+false|writable[=:\s]+true|mode[=:\s]+rw/iu.test(lower)) {
+      mountKinds.add("writable_host_path");
+    }
+    if (/\b(workspace|workspaces|repo|repository|project|source[_-]?code|checkout)\b/iu.test(lower)) {
+      mountKinds.add("workspace_mount");
+    }
+    if (/(?:^|[\/._-])(?:\.ssh|\.aws|\.kube|\.docker|gcloud|credentials?|secrets?|id_rsa|private[_-]?key)(?:$|[\/._\s:-])/iu.test(
+      lower
+    )) {
+      mountKinds.add("credential_path");
+    }
+    if (/\b(host|docker_socket|credential|secret|\/etc|\/var|\/home|\/users|\/root|\/private)\b/iu.test(lower)) {
+      mountKinds.add("sensitive_host_path");
+    }
+  }
+  const kinds = [...mountKinds].sort((a, b) => a.localeCompare(b));
+  return {
+    dockerSocketMount: kinds.includes("docker_socket"),
+    hostPathMount: kinds.includes("host_path") || kinds.includes("host_root") || kinds.includes("docker_socket"),
+    hostRootMount: kinds.includes("host_root"),
+    writableHostMount: kinds.includes("writable_host_path") || kinds.includes("host_root") || kinds.includes("docker_socket"),
+    workspaceMount: kinds.includes("workspace_mount"),
+    credentialMount: kinds.includes("credential_path"),
+    sensitiveMount: kinds.includes("sensitive_host_path") || kinds.includes("credential_path") || kinds.includes("docker_socket"),
+    mountKinds: kinds
+  };
+}
+
+function isAgentContainerMountField(fieldPath: string): boolean {
+  return /(?:^|\.)(volumes?|mounts?|binds?|host_path|hostPath|volume_mounts?|volumeMounts?|workspace_mounts?|workspaceMounts?|docker_socket|dockerSock)$/iu.test(
+    fieldPath
+  );
+}
+
+function hasAgentContainerHostNetworkSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => {
+    const value = fieldValueText(field).trim().toLowerCase();
+    if (/(^|\.)(network_mode|networkMode)$/iu.test(field.path)) return value === "host";
+    if (/(^|\.)(host_network|hostNetwork)$/iu.test(field.path)) return truthyConfigValue(field.value);
+    return /(?:^|[_\W])host[_\s-]?network(?:[_\W]|$)/iu.test(`${field.path} ${fieldValueText(field)}`) &&
+      truthyConfigValue(field.value);
+  });
+}
+
+function hasAgentContainerHostNamespaceSignal(fields: RuntimeField[], namespace: "pid" | "ipc"): boolean {
+  const pattern = namespace === "pid" ? /(^|\.)(pid|pid_mode|pidMode|host_pid|hostPID)$/iu : /(^|\.)(ipc|ipc_mode|ipcMode|host_ipc|hostIPC)$/iu;
+  return fields.some((field) => {
+    if (!pattern.test(field.path)) return false;
+    const value = fieldValueText(field).trim().toLowerCase();
+    return value === "host" || truthyConfigValue(field.value);
+  });
+}
+
+function hasAgentContainerNetworkEnabledSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /(?:^|[_\W])(network|internet|egress|outbound|web[_-]?access|allow[_-]?network)(?:[_\W]|$)/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    ) && truthyConfigValue(field.value)
+  );
+}
+
+function collectAgentContainerCapabilityCategories(fields: RuntimeField[]): string[] {
+  const categories = new Set<string>();
+  for (const field of fields) {
+    const text = `${field.path} ${fieldValueText(field)}`.toLowerCase();
+    if (!/(capabilities|cap_add|capAdd|security_opt|securityOpt|apparmor|seccomp|privileged)/iu.test(field.path)) continue;
+    if (/(^|[\s,])all(?=[$\s,])/iu.test(text)) categories.add("all_capabilities");
+    if (/(^|\.)(privileged|security_context\.privileged|securityContext\.privileged)$/iu.test(field.path) && truthyConfigValue(field.value)) {
+      categories.add("privileged_mode");
+    }
+    if (/sys[_-]?admin/iu.test(text)) categories.add("sys_admin");
+    if (/net[_-]?admin/iu.test(text)) categories.add("net_admin");
+    if (/sys[_-]?ptrace|ptrace/iu.test(text)) categories.add("ptrace");
+    if (/dac[_-]?read[_-]?search|dac[_-]?override/iu.test(text)) categories.add("dac_override");
+    if (/apparmor[=:\s]+unconfined|seccomp[=:\s]+unconfined|no-new-privileges[=:\s]+false/iu.test(text)) {
+      categories.add("security_profile_disabled");
+    }
+  }
+  return [...categories].sort((a, b) => a.localeCompare(b));
+}
+
+function collectAgentContainerToolAuthorityCategories(fields: RuntimeField[]): string[] {
+  const categories = new Set<string>();
+  for (const field of fields) {
+    const text = `${field.path} ${fieldValueText(field)}`;
+    if (!/(tools?|allowlist|capabilities|authority|commands?|runtime|executor|permissions?)/iu.test(field.path)) continue;
+    if (/(?:^|[_\W])(shell|bash|sh|zsh|command|terminal|exec)(?:[_\W]|$)/iu.test(text)) categories.add("shell");
+    if (/(?:^|[_\W])(filesystem|file[_\s-]?system|files?|workspace|repo|repository)(?:[_\W]|$)/iu.test(text)) {
+      categories.add("filesystem");
+    }
+    if (/(?:^|[_\W])(browser|playwright|selenium|chromium|web)(?:[_\W]|$)/iu.test(text)) categories.add("browser");
+    if (/(?:^|[_\W])(docker|container|compose|kubernetes|kubectl)(?:[_\W]|$)/iu.test(text)) categories.add("docker");
+    if (/(?:^|[_\W])(mcp|tool[_\s-]?server|function)(?:[_\W]|$)/iu.test(text)) categories.add("mcp");
+    if (/(?:^|[_\W])(network|http|webhook|api|external)(?:[_\W]|$)/iu.test(text)) categories.add("network");
+  }
+  return [...categories].sort((a, b) => a.localeCompare(b));
+}
+
+function hasAgentContainerUntrustedInputSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /(?:^|[_\W])(untrusted|user|customer|client|ticket|support|issue|comment|message|prompt|retrieved|rag|document|email|slack|browser|web[_-]?page|chat|model[_\s-]?generated)(?:[_\W]|$)/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    )
+  );
+}
+
+function hasAgentContainerPiiInputSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /(?:^|[_\W])(pii|email|phone|address|ssn|passport|dob|date[_\s-]?of[_\s-]?birth|customer[_-]?id|user[_-]?id|account[_-]?id)(?:[_\W]|$)/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    )
+  );
+}
+
+function hasAgentContainerApprovalRequiredSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /approval|required[_-]?approval|human[_-]?approval|confirm|confirmation|review|human[_-]?in[_-]?the[_-]?loop/iu.test(field.path) &&
+    truthyConfigValue(field.value)
+  );
+}
+
+function isAgentContainerRuntimeSecurityField(fieldPath: string): boolean {
+  return /provider|image|container|docker|compose|sandbox|runtime|runner|executor|privileged|user|network|pid|ipc|volume|mount|bind|host|workspace|socket|capabilit|cap_add|security|apparmor|seccomp|tool|authority|command|shell|browser|filesystem|mcp|input|source|prompt|retrieval|rag|ticket|customer|pii|secret|token|credential|env|approval/iu.test(
     fieldPath
   );
 }

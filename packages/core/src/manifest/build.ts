@@ -125,10 +125,13 @@ function attackPathPriority(path: AttackPath): number {
   if (path.title.includes("auto-approve destructive MCP")) score += 12;
   if (path.title.includes("replay memory")) score += 12;
   if (path.title.includes("replay generated state")) score += 12;
-  if (path.title.includes("route sensitive context")) score += 5;
+  if (path.title.includes("route sensitive context")) score += 12;
   if (path.reason.includes("data-egress directive")) score += 3;
   if (path.reason.includes("explicit tool reference")) score += 4;
   if (path.reason.includes("specific agent-callable capability")) score += 4;
+  if (path.source.path.startsWith("rag/") && path.reason.includes("direct path from untrusted context to mutable records")) {
+    score += 6;
+  }
   if (path.reason.includes("generated-state replay")) score += 5;
   return score;
 }

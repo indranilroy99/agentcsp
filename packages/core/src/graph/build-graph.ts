@@ -22,7 +22,7 @@ export interface StaticGraph {
 
 export function buildStaticGraph(surfaces: DetectedSurfaces, findings: Finding[]): StaticGraph {
   const objects = allManifestObjects(surfaces);
-  const highRiskCapabilities = sortCapabilities(objects.filter(isHighRiskCapability)).slice(0, 30);
+  const highRiskCapabilities = sortCapabilities(objects.filter(isHighRiskCapability)).slice(0, 40);
   const contextSources = objects.filter(isContextSource);
   const actionableContextSources = contextSources.filter(isActionableContextSource);
   const relationships = new Map<string, GraphEdge>();
@@ -31,7 +31,7 @@ export function buildStaticGraph(surfaces: DetectedSurfaces, findings: Finding[]
     const steerableCapabilities = sortCapabilitiesForContext(
       context,
       highRiskCapabilities.filter((target) => contextCanSteerCapability(context, target))
-    ).slice(0, 12);
+    ).slice(0, 18);
     for (const capability of steerableCapabilities) {
       if (context.id === capability.id) continue;
       addEdge(
@@ -582,7 +582,7 @@ function attackPathPriority(path: AttackPath): number {
   if (path.title.includes("auto-approve destructive MCP")) score += 12;
   if (path.title.includes("replay memory")) score += 12;
   if (path.title.includes("replay generated state")) score += 12;
-  if (path.title.includes("route sensitive context")) score += 5;
+  if (path.title.includes("route sensitive context")) score += 12;
   if (path.risk.external_reach && path.risk.data_classes.includes("pii")) score += 6;
   if (path.reason.includes("data-egress directive")) score += 3;
   if (path.reason.includes("PII-like input")) score += 4;
@@ -590,6 +590,9 @@ function attackPathPriority(path: AttackPath): number {
   if (path.reason.includes("specific agent-callable capability")) score += 4;
   if (path.reason.includes("explicit privileged tool")) score += 3;
   if (path.reason.includes("RAG source directs sensitive context")) score += 3;
+  if (path.source.path.startsWith("rag/") && path.reason.includes("direct path from untrusted context to mutable records")) {
+    score += 6;
+  }
   if (path.reason.includes("generated-state replay")) score += 5;
   return score;
 }
