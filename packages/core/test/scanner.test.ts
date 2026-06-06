@@ -26,6 +26,7 @@ describe("scanner", () => {
       "AGENT_EXTENSION_TOKEN",
       "AGENT_IDENTITY_TOKEN",
       "AGENT_SELF_MOD_TOKEN",
+      "APPROVAL_GATE_TOKEN",
       "BROWSER_SESSION_TOKEN",
       "CREW_AGENT_TOKEN",
       "CUSTOMER_SUCCESS_SLACK_BOT_TOKEN",
@@ -800,6 +801,60 @@ describe("scanner", () => {
     expect(JSON.stringify(selfModificationConfig)).not.toContain("tool_allowlist");
     expect(JSON.stringify(selfModificationConfig)).not.toContain("npm run agent:run");
     expect(JSON.stringify(selfModificationConfig)).not.toContain("customer_self_mod_email");
+    const approvalGateConfig = surfaces.runtime_config.find((surface) => surface.path === "approvals/model-reviewer.yaml");
+    expect(approvalGateConfig).toBeDefined();
+    expect(approvalGateConfig).toMatchObject({
+      external_reach: true,
+      secret_exposure: true,
+      side_effect: true,
+      reversible: false,
+      untrusted_to_privileged: true
+    });
+    expect(approvalGateConfig?.metadata).toMatchObject({
+      content_redacted: true,
+      values_collected: false,
+      parsed_agent_approval_config: true,
+      agent_approval_prompt_redacted: true,
+      agent_approval_context_untrusted: true,
+      agent_approval_decision_model_driven: true,
+      agent_approval_uses_untrusted_summary: true,
+      agent_approval_human_required: false,
+      agent_approval_default_allow: true,
+      agent_approval_auto_execute_after_approval: true,
+      agent_approval_privileged_actions: true,
+      agent_approval_write_actions: true,
+      agent_approval_destructive_actions: false,
+      agent_approval_external_actions: true,
+      agent_approval_memory_write: true,
+      agent_approval_secret_access: true,
+      agent_approval_sensitive_data: true,
+      agent_approval_pii_data: true
+    });
+    expect(approvalGateConfig?.metadata.agent_approval_prompt_source_categories).toEqual([
+      "memory_context",
+      "retrieval_context",
+      "tool_output",
+      "untrusted_user_input"
+    ]);
+    expect(approvalGateConfig?.metadata.agent_approval_action_categories).toEqual([
+      "browser_action",
+      "database_write",
+      "external_response",
+      "memory_write",
+      "secret_manager_access",
+      "tool_call"
+    ]);
+    expect(approvalGateConfig?.metadata.env_key_names).toEqual(["APPROVAL_GATE_TOKEN"]);
+    expect(approvalGateConfig?.metadata.secret_ref_key_names).toEqual(["APPROVAL_GATE_TOKEN"]);
+    expect(approvalGateConfig?.data_classes).toEqual(["confidential", "credential", "pii"]);
+    expect(approvalGateConfig?.actions).toEqual(["approve", "call", "execute", "publish", "read", "remember", "send", "write"]);
+    expect(JSON.stringify(approvalGateConfig)).not.toContain("${APPROVAL_GATE_TOKEN}");
+    expect(JSON.stringify(approvalGateConfig)).not.toContain("support-approval-classifier");
+    expect(JSON.stringify(approvalGateConfig)).not.toContain("Summarize the customer request");
+    expect(JSON.stringify(approvalGateConfig)).not.toContain("approve_and_execute");
+    expect(JSON.stringify(approvalGateConfig)).not.toContain("support_db.update_customer_record");
+    expect(JSON.stringify(approvalGateConfig)).not.toContain("vault_secret_lookup.read_support_token");
+    expect(JSON.stringify(approvalGateConfig)).not.toContain("customer_email_address");
     const inboundTriggerConfig = surfaces.runtime_config.find((surface) => surface.path === "inbox/support-triage.yaml");
     expect(inboundTriggerConfig).toBeDefined();
     expect(inboundTriggerConfig).toMatchObject({

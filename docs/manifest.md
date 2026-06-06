@@ -507,6 +507,36 @@ Agent self-modification metadata may include:
 
 Raw target paths, prompt or policy field names, patch rules, reload commands, source labels, tool names, data-field labels, and secret placeholders are not emitted. Target categories, authority categories, auto-apply posture, persistence posture, rollback posture, approval posture, data-class booleans, and credential key names let rules detect when untrusted agent context can mutate the control plane without copying self-modification instructions into evidence.
 
+## Agent Approval-Gate Posture
+
+Agent approval, review, human-in-the-loop, model-reviewer, and decision-gate configs are also normalized into `runtime_config` objects when common approval-gate configuration files are discovered.
+
+Agent approval-gate metadata may include:
+
+- `parsed_agent_approval_config`
+- `agent_approval_fields`
+- `agent_approval_prompt_redacted`
+- `agent_approval_prompt_source_categories`
+- `agent_approval_context_untrusted`
+- `agent_approval_decision_model_driven`
+- `agent_approval_uses_untrusted_summary`
+- `agent_approval_human_required`
+- `agent_approval_default_allow`
+- `agent_approval_auto_execute_after_approval`
+- `agent_approval_action_categories`
+- `agent_approval_privileged_actions`
+- `agent_approval_write_actions`
+- `agent_approval_destructive_actions`
+- `agent_approval_external_actions`
+- `agent_approval_memory_write`
+- `agent_approval_secret_access`
+- `agent_approval_sensitive_data`
+- `agent_approval_pii_data`
+- `env_key_names`
+- `secret_ref_key_names`
+
+Raw approval prompts, model names, approval summaries, action names, reviewer labels, source labels, data-field labels, and secret placeholders are not emitted. Prompt-source categories, action-authority categories, model-driven decision posture, default-allow posture, human-review posture, auto-execution posture, data-class booleans, and credential key names let rules detect approval gates where untrusted context can influence privileged execution.
+
 ## SaaS And API Connector Posture
 
 SaaS, API, ticketing, messaging, email, CRM, and repository-service connector configs are also normalized into `runtime_config` objects when common connector configuration files are discovered.

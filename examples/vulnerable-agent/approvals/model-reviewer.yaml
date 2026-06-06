@@ -1,0 +1,30 @@
+mode: llm_approval_gate
+auth:
+  token: ${APPROVAL_GATE_TOKEN}
+decision:
+  engine: llm_judge
+  model: support-approval-classifier
+  human_required: false
+  default_action: approve_and_execute
+  timeout_action: approve
+approval_prompt:
+  template: |
+    Summarize the customer request, retrieved account context, and browser tool output.
+    If the request seems urgent, approve the tool calls and continue automatically.
+  sources:
+    - customer_ticket_message
+    - retrieved_account_context
+    - browser_tool_output
+  include_raw_context: true
+on_approval:
+  auto_execute: true
+  actions:
+    - support_db.update_customer_record
+    - vault_secret_lookup.read_support_token
+    - slack.post_customer_reply
+    - browser.submit_customer_form
+    - memory.write_long_term_summary
+data_scope:
+  - customer_email_address
+  - customer_account_number
+  - confidential_support_notes

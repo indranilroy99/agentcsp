@@ -60,6 +60,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-018")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-019")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-020")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-021")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-CICD-002")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-AUTOMATION-001")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-AUTOMATION-002")).toBe(true);
@@ -326,6 +327,36 @@ describe("rule engine", () => {
     expect(JSON.stringify(runtimeSelfModificationFindings[0])).not.toContain("agentcsp.yaml");
     expect(JSON.stringify(runtimeSelfModificationFindings[0])).not.toContain("system_prompt");
     expect(JSON.stringify(runtimeSelfModificationFindings[0])).not.toContain("npm run agent:run");
+    const runtimeApprovalGateFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-RUNTIME-021");
+    expect(runtimeApprovalGateFindings).toHaveLength(1);
+    expect(runtimeApprovalGateFindings[0]?.matched_object.path).toBe("approvals/model-reviewer.yaml");
+    expect(runtimeApprovalGateFindings[0]?.matched_object.metadata).toMatchObject({
+      parsed_agent_approval_config: true,
+      agent_approval_context_untrusted: true,
+      agent_approval_decision_model_driven: true,
+      agent_approval_uses_untrusted_summary: true,
+      agent_approval_privileged_actions: true,
+      agent_approval_auto_execute_after_approval: true,
+      agent_approval_human_required: false,
+      agent_approval_default_allow: true,
+      agent_approval_secret_access: true
+    });
+    expect(runtimeApprovalGateFindings[0]?.matched_object.metadata.agent_approval_action_categories).toEqual([
+      "browser_action",
+      "database_write",
+      "external_response",
+      "memory_write",
+      "secret_manager_access",
+      "tool_call"
+    ]);
+    expect(runtimeApprovalGateFindings[0]?.severity).toBe("critical");
+    expect(runtimeApprovalGateFindings[0]?.confidence).toBe("very_high");
+    expect(runtimeApprovalGateFindings[0]?.recommended_control).toBe("require_approval");
+    expect(JSON.stringify(runtimeApprovalGateFindings[0])).not.toContain("${APPROVAL_GATE_TOKEN}");
+    expect(JSON.stringify(runtimeApprovalGateFindings[0])).not.toContain("support-approval-classifier");
+    expect(JSON.stringify(runtimeApprovalGateFindings[0])).not.toContain("Summarize the customer request");
+    expect(JSON.stringify(runtimeApprovalGateFindings[0])).not.toContain("support_db.update_customer_record");
+    expect(JSON.stringify(runtimeApprovalGateFindings[0])).not.toContain("customer_email_address");
     const runtimeInboundTriggerFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-RUNTIME-014");
     expect(runtimeInboundTriggerFindings).toHaveLength(1);
     expect(runtimeInboundTriggerFindings[0]?.matched_object.path).toBe("inbox/support-triage.yaml");

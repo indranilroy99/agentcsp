@@ -107,6 +107,11 @@ export async function detectSurfaces(files: WalkedFile[]): Promise<DetectedSurfa
       continue;
     }
 
+    if (isAgentApprovalGateConfigPath(file.relativePath, basename)) {
+      detectAgentApprovalGateConfig(file, text, surfaces);
+      continue;
+    }
+
     if (isAiModelEndpointConfigPath(file.relativePath, basename)) {
       detectAiModelEndpointConfig(file, text, surfaces);
       continue;
@@ -1142,6 +1147,78 @@ function detectAgentSelfModificationConfig(file: WalkedFile, text: string | unde
   });
 }
 
+function detectAgentApprovalGateConfig(file: WalkedFile, text: string | undefined, surfaces: DetectedSurfaces): void {
+  const parsed = parseStructuredConfig(text ?? "", file.relativePath);
+  if (parsed.parseFailed) {
+    addDiagnostic(surfaces, file, {
+      parser: parsed.parser ?? "structured_config",
+      code: "AGENT_APPROVAL_GATE_CONFIG_PARSE_FAILED",
+      reason: "Agent approval-gate configuration could not be parsed. Raw content was redacted."
+    });
+  }
+
+  const posture = classifyAgentApprovalGateConfig(parsed.value, file.relativePath);
+  const actions = new Set<ActionType>(["approve", "call", "read"]);
+  if (posture.agent_approval_auto_execute_after_approval) actions.add("execute");
+  if (posture.agent_approval_write_actions || posture.agent_approval_destructive_actions) actions.add("write");
+  if (posture.agent_approval_external_actions) {
+    actions.add("send");
+    actions.add("publish");
+  }
+  if (posture.agent_approval_memory_write) actions.add("remember");
+
+  const dataClasses = new Set<SurfaceObject["data_classes"][number]>(["unknown"]);
+  if (
+    posture.agent_approval_secret_access ||
+    posture.env_key_names.some(isCredentialLikeKeyName) ||
+    posture.secret_ref_key_names.length > 0
+  ) {
+    dataClasses.add("credential");
+  }
+  if (posture.agent_approval_sensitive_data || posture.agent_approval_context_untrusted) dataClasses.add("confidential");
+  if (posture.agent_approval_pii_data) dataClasses.add("pii");
+  if (dataClasses.size > 1) dataClasses.delete("unknown");
+
+  const object = createSurfaceObject({
+    type: "runtime_config",
+    name: path.basename(file.relativePath),
+    path: file.relativePath,
+    trust_level: inferTrustLevel(file.relativePath),
+    data_classes: uniqueDataClasses([...dataClasses] as SurfaceObject["data_classes"]),
+    actions: uniqueActions([...actions]),
+    side_effect:
+      posture.agent_approval_auto_execute_after_approval ||
+      posture.agent_approval_privileged_actions ||
+      posture.agent_approval_default_allow ||
+      posture.agent_approval_decision_model_driven,
+    reversible: !posture.agent_approval_destructive_actions && !posture.agent_approval_external_actions,
+    external_reach: posture.agent_approval_external_actions,
+    secret_exposure:
+      posture.agent_approval_secret_access ||
+      posture.env_key_names.some(isCredentialLikeKeyName) ||
+      posture.secret_ref_key_names.length > 0,
+    reason: "Agent approval-gate configuration discovered as privileged decision posture.",
+    metadata: {
+      content_redacted: true,
+      values_collected: false,
+      parsed_agent_approval_config: Boolean(parsed.value) && !parsed.parseFailed,
+      parse_error: parsed.parseFailed,
+      ...posture
+    }
+  });
+  surfaces.runtime_config.push({
+    ...object,
+    untrusted_to_privileged:
+      posture.agent_approval_context_untrusted &&
+      posture.agent_approval_privileged_actions &&
+      posture.agent_approval_auto_execute_after_approval &&
+      (posture.agent_approval_decision_model_driven ||
+        posture.agent_approval_uses_untrusted_summary ||
+        posture.agent_approval_default_allow ||
+        !posture.agent_approval_human_required)
+  });
+}
+
 function detectSaasConnectorConfig(file: WalkedFile, text: string | undefined, surfaces: DetectedSurfaces): void {
   const parsed = parseStructuredConfig(text ?? "", file.relativePath);
   if (parsed.parseFailed) {
@@ -1592,6 +1669,25 @@ function isAgentSelfModificationConfigPath(relativePath: string, basename: strin
   return mutationName || (mutationDirectory && configName);
 }
 
+function isAgentApprovalGateConfigPath(relativePath: string, basename: string): boolean {
+  const normalized = relativePath.replaceAll("\\", "/").toLowerCase();
+  const lowerBase = basename.toLowerCase();
+  if (!/\.(json|ya?ml|toml)$/iu.test(lowerBase)) return false;
+  if (normalized.startsWith(".github/workflows/")) return false;
+  if (normalized.startsWith("rules/")) return false;
+  const segments = normalized.split("/").slice(0, -1);
+  const approvalDirectory = segments.some((segment) =>
+    /^(approvals?|approval-gates?|approval_gates?|review-gates?|review_gates?|human-review|human_review|hitl|human-in-the-loop|human_in_the_loop|decision-gates?|decision_gates?)$/iu.test(
+      segment
+    )
+  );
+  const approvalName = /(?:approval|approve|approver|review|reviewer|human-review|human_review|hitl|human-in-the-loop|human_in_the_loop|decision-gate|decision_gate|approval-gate|approval_gate|model-reviewer|model_reviewer)/iu.test(
+    lowerBase
+  );
+  const configName = /(?:config|settings|policy|approval|review|gate|decision|workflow|runtime|human|model)/iu.test(lowerBase);
+  return approvalName || (approvalDirectory && configName);
+}
+
 function isSaasConnectorConfigPath(relativePath: string, basename: string): boolean {
   const normalized = relativePath.replaceAll("\\", "/").toLowerCase();
   const lowerBase = basename.toLowerCase();
@@ -1947,6 +2043,29 @@ interface AgentSelfModificationPosture {
   agent_self_modification_sensitive_data: boolean;
   agent_self_modification_pii_data: boolean;
   agent_self_modification_approval_required: boolean;
+  env_key_names: string[];
+  secret_ref_key_names: string[];
+}
+
+interface AgentApprovalGatePosture {
+  agent_approval_fields: string[];
+  agent_approval_prompt_redacted: boolean;
+  agent_approval_prompt_source_categories: string[];
+  agent_approval_context_untrusted: boolean;
+  agent_approval_decision_model_driven: boolean;
+  agent_approval_uses_untrusted_summary: boolean;
+  agent_approval_human_required: boolean;
+  agent_approval_default_allow: boolean;
+  agent_approval_auto_execute_after_approval: boolean;
+  agent_approval_action_categories: string[];
+  agent_approval_privileged_actions: boolean;
+  agent_approval_write_actions: boolean;
+  agent_approval_destructive_actions: boolean;
+  agent_approval_external_actions: boolean;
+  agent_approval_memory_write: boolean;
+  agent_approval_secret_access: boolean;
+  agent_approval_sensitive_data: boolean;
+  agent_approval_pii_data: boolean;
   env_key_names: string[];
   secret_ref_key_names: string[];
 }
@@ -3805,6 +3924,224 @@ function hasAgentSelfModificationApprovalRequiredSignal(fields: RuntimeField[]):
 
 function isAgentSelfModificationSecurityField(fieldPath: string): boolean {
   return /self|modify|mutation|patch|update|write|target|prompt|instruction|policy|guardrail|runtime|config|tool|mcp|plugin|skill|memory|workflow|automation|apply|commit|persist|reload|execute|rollback|backup|approval|source|input|customer|ticket|retrieved|browser|authority|permission|secret|token|credential|auth|env|pii|sensitive/iu.test(
+    fieldPath
+  );
+}
+
+function classifyAgentApprovalGateConfig(value: unknown, filePath: string): AgentApprovalGatePosture {
+  const fields = flattenRuntimeFields(value);
+  const stringValues = collectFieldStringValues(fields);
+  const promptSourceCategories = collectAgentApprovalPromptSourceCategories(fields);
+  const actionCategories = collectAgentApprovalActionCategories(fields);
+  const envKeys = uniqueStrings([
+    ...collectEnvKeyNamesFromConfig(value).filter(isLikelyEnvKeyName),
+    ...extractEnvironmentReferenceKeys(stringValues)
+  ]);
+  const secretRefKeys = extractSecretReferenceKeys(stringValues);
+  const secretAccess = hasAgentApprovalSecretAccessSignal(fields) || actionCategories.includes("secret_manager_access");
+
+  return {
+    agent_approval_fields: fields
+      .map((field) => field.path)
+      .filter((fieldPath) => isAgentApprovalGateSecurityField(fieldPath))
+      .sort((a, b) => a.localeCompare(b)),
+    agent_approval_prompt_redacted: hasAgentApprovalPromptSignal(fields) || promptSourceCategories.length > 0,
+    agent_approval_prompt_source_categories: promptSourceCategories,
+    agent_approval_context_untrusted: hasAgentApprovalUntrustedContextSignal(fields) || promptSourceCategories.some((category) =>
+      ["retrieval_context", "tool_output", "untrusted_user_input"].includes(category)
+    ),
+    agent_approval_decision_model_driven: hasAgentApprovalModelDrivenDecisionSignal(fields),
+    agent_approval_uses_untrusted_summary: hasAgentApprovalUntrustedSummarySignal(fields, promptSourceCategories),
+    agent_approval_human_required: hasAgentApprovalHumanRequiredSignal(fields),
+    agent_approval_default_allow: hasAgentApprovalDefaultAllowSignal(fields),
+    agent_approval_auto_execute_after_approval: hasAgentApprovalAutoExecuteSignal(fields),
+    agent_approval_action_categories: actionCategories,
+    agent_approval_privileged_actions: actionCategories.length > 0 || hasAgentApprovalPrivilegedActionSignal(fields),
+    agent_approval_write_actions: hasAgentApprovalWriteActionSignal(fields, actionCategories),
+    agent_approval_destructive_actions: hasAgentApprovalDestructiveActionSignal(fields, actionCategories),
+    agent_approval_external_actions: actionCategories.includes("external_response") || hasAgentApprovalExternalActionSignal(fields),
+    agent_approval_memory_write: actionCategories.includes("memory_write"),
+    agent_approval_secret_access: secretAccess,
+    agent_approval_sensitive_data: hasAgentApprovalSensitiveDataSignal(fields) || secretAccess,
+    agent_approval_pii_data: hasAgentApprovalPiiDataSignal(fields),
+    env_key_names: envKeys,
+    secret_ref_key_names: secretRefKeys
+  };
+}
+
+function collectAgentApprovalPromptSourceCategories(fields: RuntimeField[]): string[] {
+  const categories = new Set<string>();
+  for (const field of fields) {
+    const text = `${field.path} ${fieldValueText(field)}`.toLowerCase();
+    if (/(?:^|[_\W])(user|customer|client|ticket|support|issue|comment|message|inbound|external|public|web[_\s-]?page|email|slack|chat)(?:[_\W]|$)/iu.test(text)) {
+      categories.add("untrusted_user_input");
+    }
+    if (/(?:^|[_\W])(retrieved|retrieval|rag|documents?|vector|embedding|knowledge[_\s-]?base|customer[_\s-]?context)(?:[_\W]|$)/iu.test(text)) {
+      categories.add("retrieval_context");
+    }
+    if (/(?:^|[_\W])(tool[_\s-]?outputs?|tool[_\s-]?results?|function[_\s-]?outputs?|mcp[_\s-]?results?|browser[_\s-]?outputs?|command[_\s-]?outputs?)(?:[_\W]|$)/iu.test(text)) {
+      categories.add("tool_output");
+    }
+    if (/(?:^|[_\W])(memory|memories|session[_\s-]?state|conversation[_\s-]?history|transcript)(?:[_\W]|$)/iu.test(text)) {
+      categories.add("memory_context");
+    }
+  }
+  return [...categories].sort((a, b) => a.localeCompare(b));
+}
+
+function collectAgentApprovalActionCategories(fields: RuntimeField[]): string[] {
+  const categories = new Set<string>();
+  for (const field of fields) {
+    const text = `${field.path} ${fieldValueText(field)}`.toLowerCase();
+    if (/(?:^|[_\W])(shell|bash|command|exec|terminal|python|node|subprocess|script)(?:[_\W]|$)/iu.test(text)) categories.add("shell_execution");
+    if (/(?:^|[_\W])(database|db|sql|query|support[_\s-]?db|warehouse|update[_\s-]?customer[_\s-]?record)(?:[_\W]|$)/iu.test(text)) {
+      categories.add("database_write");
+    }
+    if (/(?:^|[_\W])(slack|email|webhook|message|ticket|issue|comment|reply|respond|send|post|publish)(?:[_\W]|$)/iu.test(text)) {
+      categories.add("external_response");
+    }
+    if (/(?:^|[_\W])(browser|playwright|puppeteer|selenium|click|form|upload|download|navigate)(?:[_\W]|$)/iu.test(text)) categories.add("browser_action");
+    if (/(?:^|[_\W])(vault|secret|secrets|secret[_\s-]?manager|key[_\s-]?vault|credential|token)(?:[_\W]|$)/iu.test(text)) {
+      categories.add("secret_manager_access");
+    }
+    if (/(?:^|[_\W])(filesystem|file[_\s-]?write|workspace|repo|repository|git|commit|push|pull[_\s-]?request|merge)(?:[_\W]|$)/iu.test(text)) {
+      categories.add("repo_or_filesystem_write");
+    }
+    if (/(?:^|[_\W])(memory|remember|store|persist|session[_\s-]?state|long[_\s-]?term)(?:[_\W]|$)/iu.test(text)) {
+      categories.add("memory_write");
+    }
+    if (/(?:^|[_\W])(tool|tools|function|function[_\s-]?call|mcp|connector|capability)(?:[_\W]|$)/iu.test(text)) {
+      categories.add("tool_call");
+    }
+  }
+  return [...categories].sort((a, b) => a.localeCompare(b));
+}
+
+function hasAgentApprovalPromptSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /(?:^|\.)(approval_prompt|prompt|template|summary|summarization|justification|reason|rubric|review_text|approval_request)(?:\.|$)/iu.test(
+      field.path
+    )
+  );
+}
+
+function hasAgentApprovalUntrustedContextSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /(?:^|[_\W])(untrusted|user|customer|client|ticket|support|issue|comment|message|prompt|retrieved|rag|document|email|slack|browser|web[_-]?page|chat|inbound|external|tool[_\s-]?output)(?:[_\W]|$)/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    )
+  );
+}
+
+function hasAgentApprovalModelDrivenDecisionSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /(?:^|[_\W])(llm|model|ai[_\s-]?judge|judge|classifier|critic|scorer|risk[_\s-]?score|auto[_\s-]?approve|autonomous|policy[_\s-]?model|decision[_\s-]?model)(?:[_\W]|$)/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    ) && truthyConfigValue(field.value)
+  );
+}
+
+function hasAgentApprovalUntrustedSummarySignal(fields: RuntimeField[], promptSourceCategories: string[]): boolean {
+  const hasUntrustedSource = promptSourceCategories.some((category) =>
+    ["retrieval_context", "tool_output", "untrusted_user_input"].includes(category)
+  );
+  if (!hasUntrustedSource) return false;
+  return fields.some((field) =>
+    /(?:^|[_\W])(summary|summarize|summarization|justification|reason|approval[_\s-]?prompt|review[_\s-]?text|decision[_\s-]?context)(?:[_\W]|$)/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    )
+  );
+}
+
+function hasAgentApprovalHumanRequiredSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /(?:^|\.)(human_required|human_review_required|human_approval_required|required_human_review|reviewer_required|human_in_the_loop|required_review|manual_review)(?:\.|$)/iu.test(
+      field.path
+    ) && truthyConfigValue(field.value)
+  );
+}
+
+function hasAgentApprovalDefaultAllowSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => {
+    const text = `${field.path} ${fieldValueText(field)}`;
+    if (/(?:^|\.)(default_allow|allow_by_default|approve_by_default|default_approve|fail_open)(?:\.|$)/iu.test(field.path)) {
+      return truthyConfigValue(field.value);
+    }
+    return /(?:^|[_\W])(default|fallback|timeout|on[_\s-]?error|fail[_\s-]?open)(?:[_\W]|$)/iu.test(field.path) &&
+      /(?:^|[_\W])(allow|approve|execute|continue|run|send|post)(?:[_\W]|$)/iu.test(text) &&
+      truthyConfigValue(field.value);
+  });
+}
+
+function hasAgentApprovalAutoExecuteSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /(?:^|[_\W])(auto[_\s-]?execute|execute[_\s-]?after[_\s-]?approval|on[_\s-]?approval|post[_\s-]?approval|after[_\s-]?approval|apply[_\s-]?approved|run[_\s-]?approved|send[_\s-]?approved|execute|run|invoke|call)(?:[_\W]|$)/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    ) && truthyConfigValue(field.value)
+  );
+}
+
+function hasAgentApprovalPrivilegedActionSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /(?:^|[_\W])(privileged|admin|production|prod|write|delete|external|credential|secret|tool|mcp|browser|shell|database)(?:[_\W]|$)/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    )
+  );
+}
+
+function hasAgentApprovalWriteActionSignal(fields: RuntimeField[], categories: string[]): boolean {
+  return categories.some((category) =>
+    ["database_write", "external_response", "memory_write", "repo_or_filesystem_write", "shell_execution"].includes(category)
+  ) || fields.some((field) =>
+    /(?:^|[_\W])(write|update|create|delete|reply|respond|send|post|publish|comment|commit|push|merge|deploy|remember|persist|approve|close|assign)(?:[_\W]|$)/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    )
+  );
+}
+
+function hasAgentApprovalDestructiveActionSignal(fields: RuntimeField[], categories: string[]): boolean {
+  return categories.includes("shell_execution") ||
+    fields.some((field) =>
+      /(?:^|[_\W])(delete|drop|destroy|destructive|irreversible|overwrite|merge|deploy|charge|refund|close[_\s-]?account|remove|revoke)(?:[_\W]|$)/iu.test(
+        `${field.path} ${fieldValueText(field)}`
+      )
+    );
+}
+
+function hasAgentApprovalExternalActionSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /(?:^|[_\W])(slack|email|webhook|send|post|publish|reply|respond|ticket|issue|external|api|customer[_\s-]?system)(?:[_\W]|$)/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    )
+  );
+}
+
+function hasAgentApprovalSecretAccessSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /(?:^|[_\W])(secret|secrets|token|credential|api[_-]?key|password|vault|key[_\s-]?vault|authorization|oauth)(?:[_\W]|$)/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    )
+  );
+}
+
+function hasAgentApprovalSensitiveDataSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /(?:^|[_\W])(customer|client|ticket|support|internal|confidential|private|proprietary|sensitive|account|billing|payment|prod|production|admin|credential|token|api[_-]?key|secret)(?:[_\W]|$)/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    )
+  );
+}
+
+function hasAgentApprovalPiiDataSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /(?:^|[_\W])(pii|email|phone|address|ssn|passport|dob|date[_\s-]?of[_\s-]?birth|customer[_-]?id|user[_-]?id|account[_-]?id)(?:[_\W]|$)/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    )
+  );
+}
+
+function isAgentApprovalGateSecurityField(fieldPath: string): boolean {
+  return /approval|approve|review|reviewer|human|hitl|gate|decision|prompt|summary|justification|reason|model|llm|judge|classifier|score|default|fallback|timeout|execute|run|action|tool|mcp|browser|shell|database|db|secret|token|credential|auth|env|source|input|customer|ticket|retrieved|browser|memory|external|write|delete|pii|sensitive/iu.test(
     fieldPath
   );
 }

@@ -1,0 +1,50 @@
+id: AGENTCSP-RUNTIME-021
+name: Model-mediated approval gate can execute privileged actions
+description: An agent approval gate lets untrusted context shape an LLM-driven approval decision, defaults toward approval, and automatically executes privileged actions without a required human reviewer.
+category: approval_gate_integrity
+severity: critical
+maps_to:
+  owasp:
+    - LLM01:2025 Prompt Injection
+    - LLM02:2025 Sensitive Information Disclosure
+    - LLM06:2025 Excessive Agency
+  mitre_atlas:
+    - AML.T0051 LLM Prompt Injection
+    - AML.T0057 Exfiltration via Cyber Means
+  nist_ai_rmf:
+    - GOVERN 1.5
+    - MAP 5.1
+    - MANAGE 2.4
+match:
+  object_type: runtime_config
+  where:
+    - field: metadata.parsed_agent_approval_config
+      op: equals
+      value: true
+    - field: metadata.agent_approval_context_untrusted
+      op: equals
+      value: true
+    - field: metadata.agent_approval_decision_model_driven
+      op: equals
+      value: true
+    - field: metadata.agent_approval_uses_untrusted_summary
+      op: equals
+      value: true
+    - field: metadata.agent_approval_privileged_actions
+      op: equals
+      value: true
+    - field: metadata.agent_approval_auto_execute_after_approval
+      op: equals
+      value: true
+    - field: metadata.agent_approval_human_required
+      op: equals
+      value: false
+    - field: metadata.agent_approval_default_allow
+      op: equals
+      value: true
+    - field: secret_exposure
+      op: equals
+      value: true
+recommendation:
+  control: require_approval
+  text: Require a human reviewer outside the model context for privileged approvals, keep raw untrusted context out of approval prompts, default to deny on timeout or uncertainty, and separate approval from automatic execution.

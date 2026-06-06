@@ -721,6 +721,15 @@ The current iteration adds:
 - rule `AGENTCSP-RUNTIME-020` for self-modification configs that combine untrusted input, auto-applied persistent control-plane writes, instruction/policy/tool targets, and missing approval
 - scanner, rule, fixture verifier, and redaction coverage proving target paths, patch-rule field names, reload commands, source labels, tool names, data-field labels, and token placeholders stay redacted
 
+## Agent Approval-Gate Integrity Pass
+
+The current iteration adds:
+
+- first-class redacted metadata for agent approval, review, human-in-the-loop, model-reviewer, and decision-gate configs
+- vulnerable fixture coverage for an LLM-driven approval gate where customer/retrieval/browser context shapes the approval prompt, human review is not required, default behavior approves, and privileged actions auto-execute
+- rule `AGENTCSP-RUNTIME-021` for model-mediated approval gates that combine untrusted approval context, default-allow behavior, auto-executed privileged actions, credential exposure, and no required human reviewer
+- scanner, rule, fixture verifier, and redaction coverage proving approval prompts, model names, action strings, source labels, data-field labels, and token placeholders stay redacted
+
 ## Initial Build Recommendation
 
 Start with a CLI-first MVP before building the dashboard:
