@@ -24,6 +24,7 @@ describe("scanner", () => {
     expect(envSurface).toBeDefined();
     expect(envSurface?.metadata.env_key_names).toEqual([
       "BROWSER_SESSION_TOKEN",
+      "CUSTOMER_SUCCESS_SLACK_BOT_TOKEN",
       "GITHUB_TOKEN",
       "OPENAI_API_KEY",
       "SLACK_WEBHOOK_URL",
@@ -509,6 +510,58 @@ describe("scanner", () => {
     expect(JSON.stringify(browserSessionConfig)).not.toContain(".auth/customer-support-cookies.json");
     expect(JSON.stringify(browserSessionConfig)).not.toContain("support.example.invalid");
     expect(JSON.stringify(browserSessionConfig)).not.toContain("browser_customer_email");
+    const saasConnectorConfig = surfaces.runtime_config.find(
+      (surface) => surface.path === "connectors/slack-customer-success.yaml"
+    );
+    expect(saasConnectorConfig).toBeDefined();
+    expect(saasConnectorConfig).toMatchObject({
+      trust_level: "third_party",
+      external_reach: true,
+      secret_exposure: true,
+      side_effect: true,
+      reversible: false,
+      untrusted_to_privileged: true
+    });
+    expect(saasConnectorConfig?.metadata).toMatchObject({
+      content_redacted: true,
+      values_collected: false,
+      parsed_saas_connector_config: true,
+      saas_connector_provider: "slack",
+      saas_connector_external_reach: true,
+      saas_connector_destination_redacted: true,
+      saas_connector_scope_redacted: true,
+      saas_connector_broad_scope: true,
+      saas_connector_admin_scope: false,
+      saas_connector_read_enabled: true,
+      saas_connector_external_write_enabled: true,
+      saas_connector_untrusted_input: true,
+      saas_connector_sensitive_data: true,
+      saas_connector_pii_data: true,
+      saas_connector_approval_required: false
+    });
+    expect(saasConnectorConfig?.metadata.saas_connector_destination_kinds).toEqual([
+      "api_endpoint",
+      "managed_saas_provider"
+    ]);
+    expect(saasConnectorConfig?.metadata.saas_connector_scope_categories).toEqual([
+      "messaging_read",
+      "messaging_write",
+      "read_scope"
+    ]);
+    expect(saasConnectorConfig?.metadata.env_key_names).toEqual(
+      expect.arrayContaining(["CUSTOMER_SUCCESS_SLACK_BOT_TOKEN"])
+    );
+    expect(saasConnectorConfig?.metadata.secret_ref_key_names).toEqual(["CUSTOMER_SUCCESS_SLACK_BOT_TOKEN"]);
+    expect(saasConnectorConfig?.data_classes).toEqual(["confidential", "credential", "pii"]);
+    expect(saasConnectorConfig?.actions).toEqual(["call", "publish", "read", "send", "write"]);
+    expect(JSON.stringify(saasConnectorConfig)).not.toContain("${CUSTOMER_SUCCESS_SLACK_BOT_TOKEN}");
+    expect(JSON.stringify(saasConnectorConfig)).not.toContain("hooks.slack.example.invalid");
+    expect(JSON.stringify(saasConnectorConfig)).not.toContain("chat:write");
+    expect(JSON.stringify(saasConnectorConfig)).not.toContain("channels:history");
+    expect(JSON.stringify(saasConnectorConfig)).not.toContain("users:read.email");
+    expect(JSON.stringify(saasConnectorConfig)).not.toContain("#customer-escalations");
+    expect(JSON.stringify(saasConnectorConfig)).not.toContain("agentcsp-demo-workspace");
+    expect(JSON.stringify(saasConnectorConfig)).not.toContain("saas_customer_email");
     expect(surfaces.ci_cd.length).toBe(1);
     expect(surfaces.ci_cd[0]?.metadata).toMatchObject({
       pull_request_trigger: true,

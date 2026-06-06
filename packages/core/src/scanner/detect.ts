@@ -127,6 +127,11 @@ export async function detectSurfaces(files: WalkedFile[]): Promise<DetectedSurfa
       continue;
     }
 
+    if (isSaasConnectorConfigPath(file.relativePath, basename)) {
+      detectSaasConnectorConfig(file, text, surfaces);
+      continue;
+    }
+
     if (isAgentDatabaseConnectorConfigPath(file.relativePath, basename)) {
       detectDatabaseConnectorConfig(file, text, surfaces);
       continue;
@@ -561,6 +566,57 @@ function detectBrowserSessionConfig(file: WalkedFile, text: string | undefined, 
   });
 }
 
+function detectSaasConnectorConfig(file: WalkedFile, text: string | undefined, surfaces: DetectedSurfaces): void {
+  const parsed = parseStructuredConfig(text ?? "", file.relativePath);
+  if (parsed.parseFailed) {
+    addDiagnostic(surfaces, file, {
+      parser: parsed.parser ?? "structured_config",
+      code: "SAAS_CONNECTOR_CONFIG_PARSE_FAILED",
+      reason: "SaaS or API connector configuration could not be parsed. Raw content was redacted."
+    });
+  }
+
+  const posture = classifySaasConnectorConfig(parsed.value, file.relativePath);
+  const actions = new Set<ActionType>(["read", "call"]);
+  if (posture.saas_connector_external_reach) actions.add("send");
+  if (posture.saas_connector_external_write_enabled) {
+    actions.add("write");
+    actions.add("publish");
+  }
+  if (posture.saas_connector_admin_scope) actions.add("approve");
+
+  const dataClasses = new Set<SurfaceObject["data_classes"][number]>(["unknown"]);
+  if (posture.env_key_names.some(isCredentialLikeKeyName) || posture.secret_ref_key_names.length > 0) dataClasses.add("credential");
+  if (posture.saas_connector_sensitive_data) dataClasses.add("confidential");
+  if (posture.saas_connector_pii_data) dataClasses.add("pii");
+  if (dataClasses.size > 1) dataClasses.delete("unknown");
+
+  const object = createSurfaceObject({
+    type: "runtime_config",
+    name: path.basename(file.relativePath),
+    path: file.relativePath,
+    trust_level: posture.saas_connector_external_reach ? "third_party" : inferTrustLevel(file.relativePath),
+    data_classes: uniqueDataClasses([...dataClasses] as SurfaceObject["data_classes"]),
+    actions: uniqueActions([...actions]),
+    side_effect: posture.saas_connector_external_write_enabled || posture.saas_connector_admin_scope,
+    reversible: !posture.saas_connector_external_write_enabled && !posture.saas_connector_admin_scope,
+    external_reach: posture.saas_connector_external_reach,
+    secret_exposure: posture.env_key_names.some(isCredentialLikeKeyName) || posture.secret_ref_key_names.length > 0,
+    reason: "SaaS or API connector configuration discovered as external agent authority.",
+    metadata: {
+      content_redacted: true,
+      values_collected: false,
+      parsed_saas_connector_config: Boolean(parsed.value) && !parsed.parseFailed,
+      parse_error: parsed.parseFailed,
+      ...posture
+    }
+  });
+  surfaces.runtime_config.push({
+    ...object,
+    untrusted_to_privileged: isUntrustedToPrivileged(object)
+  });
+}
+
 function detectMemoryContentFile(file: WalkedFile, text: string | undefined, surfaces: DetectedSurfaces): void {
   const content = text ?? "";
   const signals = classifyContextContent(content);
@@ -750,6 +806,23 @@ function isBrowserSessionConfigPath(relativePath: string, basename: string): boo
   return browserName || (browserDirectory && configName);
 }
 
+function isSaasConnectorConfigPath(relativePath: string, basename: string): boolean {
+  const normalized = relativePath.replaceAll("\\", "/").toLowerCase();
+  const lowerBase = basename.toLowerCase();
+  if (!/\.(json|ya?ml|toml)$/iu.test(lowerBase)) return false;
+  const segments = normalized.split("/").slice(0, -1);
+  const connectorDirectory = segments.some((segment) =>
+    /^(integrations?|connectors?|api-connectors?|apis?|saas|services?|slack|github|email|gmail|jira|linear|zendesk|salesforce|hubspot|notion|ticketing|crm)$/iu.test(
+      segment
+    )
+  );
+  const providerName = /(?:slack|github|gitlab|email|gmail|outlook|smtp|jira|linear|zendesk|salesforce|hubspot|notion|servicenow|ticketing|crm|webhook|api-connector|api_connector|saas-connector|saas_connector)/iu.test(
+    lowerBase
+  );
+  const configName = /(?:config|settings|connector|integration|service|client|oauth|api|webhook|destination|sink)/iu.test(lowerBase);
+  return providerName || (connectorDirectory && configName);
+}
+
 function isRagConnectorConfigPath(relativePath: string, basename: string): boolean {
   const normalized = relativePath.replaceAll("\\", "/").toLowerCase();
   const lowerBase = basename.toLowerCase();
@@ -893,6 +966,27 @@ interface BrowserSessionPosture {
   browser_path_references_redacted: boolean;
   browser_sensitive_data: boolean;
   browser_pii_data: boolean;
+  env_key_names: string[];
+  secret_ref_key_names: string[];
+}
+
+interface SaasConnectorPosture {
+  saas_connector_fields: string[];
+  saas_connector_provider?: string;
+  saas_connector_external_reach: boolean;
+  saas_connector_destination_redacted: boolean;
+  saas_connector_destination_count: number;
+  saas_connector_destination_kinds: string[];
+  saas_connector_scope_redacted: boolean;
+  saas_connector_scope_categories: string[];
+  saas_connector_broad_scope: boolean;
+  saas_connector_admin_scope: boolean;
+  saas_connector_read_enabled: boolean;
+  saas_connector_external_write_enabled: boolean;
+  saas_connector_untrusted_input: boolean;
+  saas_connector_sensitive_data: boolean;
+  saas_connector_pii_data: boolean;
+  saas_connector_approval_required: boolean;
   env_key_names: string[];
   secret_ref_key_names: string[];
 }
@@ -1307,6 +1401,205 @@ function hasBrowserPiiDataSignal(fields: RuntimeField[]): boolean {
 
 function isBrowserSessionSecurityField(fieldPath: string): boolean {
   return /provider|browser|playwright|puppeteer|selenium|profile|user[_-]?data|storage|session|cookie|auth|token|credential|password|origin|domain|host|url|debug|cdp|devtools|navigation|action|click|form|submit|upload|download|source|input|data|scope|permission|approval/iu.test(
+    fieldPath
+  );
+}
+
+function classifySaasConnectorConfig(value: unknown, filePath: string): SaasConnectorPosture {
+  const fields = flattenRuntimeFields(value);
+  const stringValues = collectFieldStringValues(fields);
+  const provider = inferSaasProvider([filePath, ...fields.map((field) => field.path), ...stringValues]);
+  const destinations = classifySaasConnectorDestinations(fields, provider);
+  const scopeCategories = collectSaasScopeCategories(fields);
+  const envKeys = uniqueStrings([
+    ...collectEnvKeyNamesFromConfig(value),
+    ...extractEnvironmentReferenceKeys(stringValues)
+  ]);
+  const secretRefKeys = extractSecretReferenceKeys(stringValues);
+  const externalWrite = hasSaasExternalWriteSignal(fields, scopeCategories);
+  const approvalRequired = hasSaasApprovalRequiredSignal(fields);
+
+  return {
+    saas_connector_fields: fields
+      .map((field) => field.path)
+      .filter((fieldPath) => isSaasConnectorSecurityField(fieldPath))
+      .sort((a, b) => a.localeCompare(b)),
+    saas_connector_provider: provider,
+    saas_connector_external_reach: destinations.remote,
+    saas_connector_destination_redacted: destinations.destinationCount > 0,
+    saas_connector_destination_count: destinations.destinationCount,
+    saas_connector_destination_kinds: destinations.destinationKinds,
+    saas_connector_scope_redacted: scopeCategories.length > 0,
+    saas_connector_scope_categories: scopeCategories,
+    saas_connector_broad_scope: isSaasBroadScope(scopeCategories),
+    saas_connector_admin_scope: scopeCategories.some((scope) => scope.includes("admin") || scope === "wildcard_scope"),
+    saas_connector_read_enabled: hasSaasReadSignal(fields, scopeCategories),
+    saas_connector_external_write_enabled: externalWrite,
+    saas_connector_untrusted_input: hasSaasUntrustedInputSignal(fields),
+    saas_connector_sensitive_data: hasSaasSensitiveDataSignal(fields),
+    saas_connector_pii_data: hasSaasPiiDataSignal(fields),
+    saas_connector_approval_required: approvalRequired,
+    env_key_names: envKeys,
+    secret_ref_key_names: secretRefKeys
+  };
+}
+
+function inferSaasProvider(candidates: string[]): string | undefined {
+  const text = candidates.join(" ").toLowerCase();
+  const providers: Array<[string, RegExp]> = [
+    ["slack", /\bslack\b|slack\.com/iu],
+    ["github", /\bgithub\b|api\.github\.com/iu],
+    ["gitlab", /\bgitlab\b/iu],
+    ["gmail", /\bgmail\b|googleapis\.com\/auth\/gmail/iu],
+    ["outlook", /\boutlook\b|graph\.microsoft\.com|microsoft graph/iu],
+    ["jira", /\bjira\b|atlassian/iu],
+    ["linear", /\blinear\b/iu],
+    ["zendesk", /\bzendesk\b/iu],
+    ["salesforce", /\bsalesforce\b/iu],
+    ["hubspot", /\bhubspot\b/iu],
+    ["notion", /\bnotion\b/iu],
+    ["servicenow", /\bservice[-_\s]?now\b/iu]
+  ];
+  return providers.find(([, pattern]) => pattern.test(text))?.[0];
+}
+
+function classifySaasConnectorDestinations(
+  fields: RuntimeField[],
+  provider: string | undefined
+): { remote: boolean; destinationCount: number; destinationKinds: string[] } {
+  const destinationKinds = new Set<string>();
+  let destinationCount = 0;
+  if (provider) {
+    destinationKinds.add("managed_saas_provider");
+    destinationCount += 1;
+  }
+  for (const field of fields) {
+    for (const value of saasFieldStringValues(field)) {
+      const destination = parseRemoteSaasDestination(value);
+      if (destination) {
+        destinationKinds.add(destination.kind);
+        destinationCount += 1;
+      }
+    }
+  }
+  return {
+    remote: destinationCount > 0,
+    destinationCount,
+    destinationKinds: [...destinationKinds].sort((a, b) => a.localeCompare(b))
+  };
+}
+
+function parseRemoteSaasDestination(value: string): { kind: string } | undefined {
+  try {
+    const parsed = new URL(value);
+    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return undefined;
+    if (isLocalHost(parsed.hostname.toLowerCase())) return undefined;
+    return { kind: parsed.protocol === "http:" ? "plaintext_api_endpoint" : "api_endpoint" };
+  } catch {
+    return undefined;
+  }
+}
+
+function saasFieldStringValues(field: RuntimeField): string[] {
+  if (Array.isArray(field.value)) return field.value.map(String);
+  if (typeof field.value === "string") return [field.value];
+  return [];
+}
+
+function collectSaasScopeCategories(fields: RuntimeField[]): string[] {
+  const categories = new Set<string>();
+  for (const field of fields) {
+    if (!/(^|\.)(scopes?|oauth[_-]?scopes?|permissions?|roles?)$/iu.test(field.path)) continue;
+    const text = `${field.path} ${fieldValueText(field)}`.toLowerCase();
+    if (/(^|[\s,])\*(?=[$\s,])|\ball[_\s-]?scopes?\b|full[_\s-]?access/iu.test(text)) categories.add("wildcard_scope");
+    if (/\b(admin|administrator|owner|admin:org|admin:repo|admin:repo_hook|manage_runners)\b/iu.test(text)) {
+      categories.add("admin_scope");
+    }
+    if (/\brepo\b|contents:write|pull[_-]?requests?:write|issues?:write|workflow|checks:write|deployments?:write/iu.test(text)) {
+      categories.add("repo_write");
+    }
+    if (/chat:write|channels?:write|groups?:write|im:write|mpim:write|files:write|reactions:write|pins:write|commands/iu.test(text)) {
+      categories.add("messaging_write");
+    }
+    if (/channels?:history|groups?:history|im:history|mpim:history|users:read|users:read\.email|team:read/iu.test(text)) {
+      categories.add("messaging_read");
+    }
+    if (/gmail\.modify|gmail\.send|mail\.send|mail\.readwrite|mailboxsettings|smtp|email:send|email:write/iu.test(text)) {
+      categories.add("email_modify");
+    }
+    if (/jira.*write|write:jira|issue:write|tickets?:write|zendesk.*write|linear.*write|servicenow.*write/iu.test(text)) {
+      categories.add("ticket_write");
+    }
+    if (/salesforce.*write|hubspot.*write|crm\.objects.*write|contacts?:write|companies?:write|deals?:write/iu.test(text)) {
+      categories.add("crm_write");
+    }
+    if (/calendar.*write|calendar\.events|calendars?:write/iu.test(text)) categories.add("calendar_write");
+    if (/read|history|list|metadata|profile|users:read|contacts?:read/iu.test(text)) categories.add("read_scope");
+  }
+  return [...categories].sort((a, b) => a.localeCompare(b));
+}
+
+function isSaasBroadScope(scopeCategories: string[]): boolean {
+  return scopeCategories.some((scope) =>
+    [
+      "admin_scope",
+      "calendar_write",
+      "crm_write",
+      "email_modify",
+      "messaging_write",
+      "repo_write",
+      "ticket_write",
+      "wildcard_scope"
+    ].includes(scope)
+  );
+}
+
+function hasSaasReadSignal(fields: RuntimeField[], scopeCategories: string[]): boolean {
+  return scopeCategories.some((scope) => scope.includes("read")) ||
+    fields.some((field) => /\b(read|list|fetch|history|search|lookup|get)\b/iu.test(`${field.path} ${fieldValueText(field)}`));
+}
+
+function hasSaasExternalWriteSignal(fields: RuntimeField[], scopeCategories: string[]): boolean {
+  return scopeCategories.some((scope) => ["calendar_write", "crm_write", "email_modify", "messaging_write", "repo_write", "ticket_write"].includes(scope)) ||
+    fields.some((field) =>
+      /\b(write|send|post|publish|create|update|delete|comment|reply|email|message|ticket|issue|merge|approve|upload|invite|assign)\b/iu.test(
+        `${field.path} ${fieldValueText(field)}`
+      )
+    );
+}
+
+function hasSaasUntrustedInputSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /\b(untrusted|user|customer|client|ticket|support|issue|comment|message|prompt|retrieved|rag|document|email|slack|browser|web[_-]?page|chat)\b/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    )
+  );
+}
+
+function hasSaasSensitiveDataSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /\b(customer|client|ticket|support|internal|confidential|private|proprietary|sensitive|account|billing|payment|order|record|case|profile|note|incident)\b/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    )
+  );
+}
+
+function hasSaasPiiDataSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /(?:^|[_\W])(pii|email|phone|address|ssn|passport|dob|date[_\s-]?of[_\s-]?birth|customer[_-]?id|user[_-]?id)(?:[_\W]|$)/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    )
+  );
+}
+
+function hasSaasApprovalRequiredSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /approval|required[_-]?approval|human[_-]?approval|confirm|confirmation/iu.test(field.path) && truthyConfigValue(field.value)
+  );
+}
+
+function isSaasConnectorSecurityField(fieldPath: string): boolean {
+  return /provider|service|connector|integration|api|endpoint|url|host|oauth|scope|permission|role|token|secret|credential|auth|webhook|channel|repo|email|ticket|issue|crm|customer|user|source|input|action|write|send|post|publish|approval|destination/iu.test(
     fieldPath
   );
 }

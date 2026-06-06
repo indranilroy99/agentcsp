@@ -51,6 +51,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-009")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-010")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-011")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-012")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-CICD-002")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-AUTOMATION-001")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-AUTOMATION-002")).toBe(true);
@@ -180,6 +181,28 @@ describe("rule engine", () => {
     expect(JSON.stringify(runtimeBrowserSessionFindings[0])).not.toContain(".browser/support-profile");
     expect(JSON.stringify(runtimeBrowserSessionFindings[0])).not.toContain(".auth/support-browser-state.json");
     expect(JSON.stringify(runtimeBrowserSessionFindings[0])).not.toContain("support.example.invalid");
+    const runtimeSaasConnectorFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-RUNTIME-012");
+    expect(runtimeSaasConnectorFindings).toHaveLength(1);
+    expect(runtimeSaasConnectorFindings[0]?.matched_object.path).toBe("connectors/slack-customer-success.yaml");
+    expect(runtimeSaasConnectorFindings[0]?.matched_object.metadata).toMatchObject({
+      saas_connector_provider: "slack",
+      saas_connector_external_write_enabled: true,
+      saas_connector_broad_scope: true,
+      saas_connector_untrusted_input: true,
+      saas_connector_approval_required: false
+    });
+    expect(runtimeSaasConnectorFindings[0]?.matched_object.metadata.saas_connector_scope_categories).toEqual([
+      "messaging_read",
+      "messaging_write",
+      "read_scope"
+    ]);
+    expect(runtimeSaasConnectorFindings[0]?.severity).toBe("critical");
+    expect(runtimeSaasConnectorFindings[0]?.confidence).toBe("very_high");
+    expect(runtimeSaasConnectorFindings[0]?.recommended_control).toBe("require_approval");
+    expect(JSON.stringify(runtimeSaasConnectorFindings[0])).not.toContain("${CUSTOMER_SUCCESS_SLACK_BOT_TOKEN}");
+    expect(JSON.stringify(runtimeSaasConnectorFindings[0])).not.toContain("hooks.slack.example.invalid");
+    expect(JSON.stringify(runtimeSaasConnectorFindings[0])).not.toContain("chat:write");
+    expect(JSON.stringify(runtimeSaasConnectorFindings[0])).not.toContain("#customer-escalations");
     const automationAgentFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-AUTOMATION-002");
     expect(automationAgentFindings).toHaveLength(1);
     expect(automationAgentFindings[0]?.matched_object.path).toBe(".github/workflows/agent-maintenance.yml");

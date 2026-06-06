@@ -621,6 +621,15 @@ The current iteration adds:
 - rule `AGENTCSP-RUNTIME-011` for authenticated browser sessions that combine broad origins, untrusted navigation, click/form authority, and credential exposure
 - static graph regression coverage proving retrievable untrusted context can influence authenticated browser-session authority while raw cookie files, profile paths, origins, endpoints, and secret placeholders stay redacted
 
+## SaaS Connector Authority Pass
+
+The current iteration adds:
+
+- first-class redacted metadata for SaaS/API connector configs, including provider, destination categories, normalized OAuth/API scope categories, broad/admin scope posture, read/write authority, untrusted input, sensitive/PII scope, approval posture, and credential key references
+- vulnerable fixture coverage for a Slack-style customer-success connector with broad write scopes, untrusted customer/retrieval inputs, and no approval gate
+- rule `AGENTCSP-RUNTIME-012` for SaaS connectors that combine broad credential-backed external write authority, untrusted input, and missing approval
+- scanner, rule, fixture verifier, and redaction coverage proving raw OAuth scopes, webhook URLs, workspace names, channel names, customer-system labels, and secret placeholders stay redacted
+
 ## Initial Build Recommendation
 
 Start with a CLI-first MVP before building the dashboard:

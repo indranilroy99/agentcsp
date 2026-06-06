@@ -1,0 +1,41 @@
+id: AGENTCSP-RUNTIME-012
+name: Agent SaaS connector grants broad credential-backed write authority
+description: A SaaS or API connector exposes broad credential-backed external write authority to untrusted agent context without an approval gate, creating a direct path from indirect prompt injection to messages, tickets, repository actions, or customer-system updates.
+category: saas_connector_authority
+severity: critical
+maps_to:
+  owasp:
+    - LLM01:2025 Prompt Injection
+    - LLM02:2025 Sensitive Information Disclosure
+    - LLM06:2025 Excessive Agency
+  mitre_atlas:
+    - AML.T0051 LLM Prompt Injection
+    - AML.T0057 Exfiltration via Cyber Means
+  nist_ai_rmf:
+    - MAP 5.1
+    - MEASURE 2.9
+    - MANAGE 2.4
+match:
+  object_type: runtime_config
+  where:
+    - field: metadata.parsed_saas_connector_config
+      op: equals
+      value: true
+    - field: metadata.saas_connector_external_write_enabled
+      op: equals
+      value: true
+    - field: metadata.saas_connector_broad_scope
+      op: equals
+      value: true
+    - field: metadata.saas_connector_untrusted_input
+      op: equals
+      value: true
+    - field: metadata.saas_connector_approval_required
+      op: equals
+      value: false
+    - field: secret_exposure
+      op: equals
+      value: true
+recommendation:
+  control: require_approval
+  text: Split read and write credentials, narrow OAuth/API scopes to task-specific actions, require approval for external writes, and prevent untrusted retrieved or customer content from directly driving SaaS updates.

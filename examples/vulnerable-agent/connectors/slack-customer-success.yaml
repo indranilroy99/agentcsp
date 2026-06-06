@@ -1,0 +1,28 @@
+provider: slack
+api_endpoint: https://slack.com/api
+webhook_url: https://hooks.slack.example.invalid/customer-success
+auth:
+  bot_token: ${CUSTOMER_SUCCESS_SLACK_BOT_TOKEN}
+oauth_scopes:
+  - chat:write
+  - channels:history
+  - users:read.email
+  - files:write
+agent_access:
+  input_sources:
+    - customer_ticket
+    - retrieved_context
+    - support_chat
+  actions:
+    - post_message
+    - upload_file
+    - update_message
+  approval_required: false
+destinations:
+  channels:
+    - "#customer-escalations"
+  workspace: agentcsp-demo-workspace
+data_scope:
+  - saas_customer_email
+  - saas_ticket_summary
+  - saas_internal_note

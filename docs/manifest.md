@@ -281,6 +281,34 @@ Browser session metadata may include:
 
 Raw cookie files, storage-state files, profile paths, origins, browser endpoints, hostnames, and secret placeholders are not emitted. Provider names, broad-origin categories, authenticated-session booleans, untrusted-navigation signals, click/form authority, path-redaction flags, and credential key names let rules detect browser-agent account-action risk without copying browser state into the manifest.
 
+## SaaS And API Connector Posture
+
+SaaS, API, ticketing, messaging, email, CRM, and repository-service connector configs are also normalized into `runtime_config` objects when common connector configuration files are discovered.
+
+SaaS connector metadata may include:
+
+- `parsed_saas_connector_config`
+- `saas_connector_fields`
+- `saas_connector_provider`
+- `saas_connector_external_reach`
+- `saas_connector_destination_redacted`
+- `saas_connector_destination_count`
+- `saas_connector_destination_kinds`
+- `saas_connector_scope_redacted`
+- `saas_connector_scope_categories`
+- `saas_connector_broad_scope`
+- `saas_connector_admin_scope`
+- `saas_connector_read_enabled`
+- `saas_connector_external_write_enabled`
+- `saas_connector_untrusted_input`
+- `saas_connector_sensitive_data`
+- `saas_connector_pii_data`
+- `saas_connector_approval_required`
+- `env_key_names`
+- `secret_ref_key_names`
+
+Raw OAuth scopes, endpoint URLs, webhook URLs, workspace names, channel names, queue names, repository names, customer-system labels, and secret placeholders are not emitted. Provider names, redacted destination categories, normalized scope categories, write/read posture, untrusted-input booleans, approval posture, and credential key names let rules detect over-authorized SaaS connectors without copying integration configuration into the manifest.
+
 ## Database Connector Posture
 
 Database, SQL, warehouse, and datastore connector configs are also normalized into `runtime_config` objects when common database connector configuration files are discovered.
