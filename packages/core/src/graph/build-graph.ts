@@ -22,7 +22,11 @@ export interface StaticGraph {
 
 export function buildStaticGraph(surfaces: DetectedSurfaces, findings: Finding[]): StaticGraph {
   const objects = allManifestObjects(surfaces);
-  const highRiskCapabilities = sortCapabilities(objects.filter(isHighRiskCapability)).slice(0, 40);
+  const allHighRiskCapabilities = sortCapabilities(objects.filter(isHighRiskCapability));
+  const highRiskCapabilities = mergeCapabilities(
+    allHighRiskCapabilities.slice(0, 40),
+    explicitlyReferencedCapabilities(objects, allHighRiskCapabilities)
+  );
   const contextSources = objects.filter(isContextSource);
   const actionableContextSources = contextSources.filter(isActionableContextSource);
   const relationships = new Map<string, GraphEdge>();
@@ -639,6 +643,19 @@ function sortCapabilities(objects: SurfaceObject[]): SurfaceObject[] {
   });
 }
 
+function mergeCapabilities(...groups: SurfaceObject[][]): SurfaceObject[] {
+  const byId = new Map<string, SurfaceObject>();
+  for (const group of groups) {
+    for (const object of group) byId.set(object.id, object);
+  }
+  return sortCapabilities([...byId.values()]);
+}
+
+function explicitlyReferencedCapabilities(contexts: SurfaceObject[], candidates: SurfaceObject[]): SurfaceObject[] {
+  const contextSources = contexts.filter(isContextSource);
+  return candidates.filter((candidate) => contextSources.some((context) => contextExplicitlyReferencesTarget(context, candidate)));
+}
+
 function sortCapabilitiesForContext(context: SurfaceObject, objects: SurfaceObject[]): SurfaceObject[] {
   return [...objects].sort((a, b) => {
     const explicitCompare = explicitReferenceWeight(context, b) - explicitReferenceWeight(context, a);
@@ -706,10 +723,16 @@ function isAgentCallableAuthority(object: SurfaceObject): boolean {
 
 function contextExplicitlyReferencesTarget(context: SurfaceObject, target: SurfaceObject): boolean {
   if (target.type === "tool") {
-    return stringMetadataArray(context.metadata.referenced_tools).includes(target.name);
+    return [
+      ...stringMetadataArray(context.metadata.referenced_tools),
+      ...stringMetadataArray(context.metadata.referenced_privileged_tools)
+    ].includes(target.name);
   }
   if (target.type === "mcp_server") {
-    return stringMetadataArray(context.metadata.referenced_mcp_servers).includes(target.name);
+    return [
+      ...stringMetadataArray(context.metadata.referenced_mcp_servers),
+      ...stringMetadataArray(context.metadata.referenced_privileged_mcp_servers)
+    ].includes(target.name);
   }
   return false;
 }

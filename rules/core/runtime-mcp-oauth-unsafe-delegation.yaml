@@ -1,0 +1,59 @@
+id: AGENTCSP-RUNTIME-038
+name: MCP OAuth client forwards broad tokens without PKCE or audience binding
+description: An MCP OAuth configuration uses remote dynamic client registration with broad scopes, disabled PKCE and state validation, missing resource indicators or audience binding, persisted refresh tokens, and token forwarding to untrusted MCP servers without approval.
+category: mcp_oauth_boundary
+severity: critical
+maps_to:
+  owasp:
+    - LLM02:2025 Sensitive Information Disclosure
+    - LLM05:2025 Supply Chain Vulnerabilities
+    - LLM06:2025 Excessive Agency
+  mitre_atlas:
+    - AML.T0018 Supply Chain Compromise
+    - AML.T0057 Exfiltration via Cyber Means
+  nist_ai_rmf:
+    - MAP 5.1
+    - MEASURE 2.9
+    - MANAGE 2.4
+match:
+  object_type: runtime_config
+  where:
+    - field: metadata.parsed_mcp_authorization_config
+      op: equals
+      value: true
+    - field: metadata.mcp_authorization_remote
+      op: equals
+      value: true
+    - field: metadata.mcp_authorization_dynamic_client_registration
+      op: equals
+      value: true
+    - field: metadata.mcp_authorization_pkce_disabled
+      op: equals
+      value: true
+    - field: metadata.mcp_authorization_state_validation_disabled
+      op: equals
+      value: true
+    - field: metadata.mcp_authorization_resource_indicator_missing
+      op: equals
+      value: true
+    - field: metadata.mcp_authorization_broad_scope
+      op: equals
+      value: true
+    - field: metadata.mcp_authorization_refresh_token_storage
+      op: equals
+      value: true
+    - field: metadata.mcp_authorization_token_forwarding
+      op: equals
+      value: true
+    - field: metadata.mcp_authorization_untrusted_server
+      op: equals
+      value: true
+    - field: metadata.mcp_authorization_approval_required
+      op: equals
+      value: false
+    - field: secret_exposure
+      op: equals
+      value: true
+recommendation:
+  control: require_approval
+  text: Require PKCE, state validation, resource indicators, and audience binding for MCP OAuth; disable broad DCR and token forwarding to untrusted servers; scope tokens per MCP resource and require approval before remote MCP servers receive persisted or delegated credentials.

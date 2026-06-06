@@ -32,6 +32,7 @@ const leakPatterns = [
   /\$\{FINE_TUNE_TOKEN\}/u,
   /\$\{LLM_CACHE_TOKEN\}/u,
   /\$\{LLM_CACHE_URL\}/u,
+  /\$\{MCP_OAUTH_CLIENT_SECRET\}/u,
   /\$\{MODEL_ROUTER_TOKEN\}/u,
   /\$\{OPENAI_API_KEY\}/u,
   /\$\{PROMPT_REGISTRY_TOKEN\}/u,
@@ -288,14 +289,25 @@ const leakPatterns = [
   /customer_requested_agent/u,
   /a2a_federation_customer_email/u,
   /a2a_federation_account_number/u,
-  /confidential_federated_case_notes/u
+  /confidential_federated_case_notes/u,
+  /oauth-mcp\.agentcsp-demo\.example\.invalid/u,
+  /authz\.agentcsp-demo\.example\.invalid/u,
+  /mcp:tools:\*/u,
+  /support_db\.write/u,
+  /browser\.actions/u,
+  /customer\.email/u,
+  /customer_requested_mcp_server/u,
+  /mcp_oauth_customer_email/u,
+  /mcp_oauth_account_number/u,
+  /confidential_mcp_oauth_context/u,
+  /\.auth\/mcp-oauth-tokens\.json/u
 ];
 
 const vulnerable = await readScanOutput(vulnerableOutput, { sarifRequired: true });
 const safe = await readScanOutput(safeOutput, { sarifRequired: false });
 
-assertEqual(vulnerable.manifest.findings.length, 116, "vulnerable manifest finding count");
-assertEqual(vulnerable.findings.length, 116, "vulnerable findings.json count");
+assertEqual(vulnerable.manifest.findings.length, 123, "vulnerable manifest finding count");
+assertEqual(vulnerable.findings.length, 123, "vulnerable findings.json count");
 assertEqual(vulnerable.manifest.attack_paths.length, 15, "vulnerable attack path count");
 assertEqual(vulnerable.manifest.static_blast_radius?.critical_attack_paths, 15, "vulnerable critical attack path count");
 assertEqual(vulnerable.manifest.diagnostics.length, 0, "vulnerable diagnostics count");
@@ -335,6 +347,7 @@ for (const ruleId of [
   "AGENTCSP-RUNTIME-035",
   "AGENTCSP-RUNTIME-036",
   "AGENTCSP-RUNTIME-037",
+  "AGENTCSP-RUNTIME-038",
   "AGENTCSP-AUTOMATION-003",
   "AGENTCSP-RUNTIME-006",
   "AGENTCSP-MCP-006",

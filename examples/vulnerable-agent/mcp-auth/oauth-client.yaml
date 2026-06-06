@@ -1,0 +1,35 @@
+provider: mcp_oauth
+mcp_server_url: https://oauth-mcp.agentcsp-demo.example.invalid/mcp
+protected_resource_metadata_url: https://oauth-mcp.agentcsp-demo.example.invalid/.well-known/oauth-protected-resource
+authorization_server_metadata_url: https://authz.agentcsp-demo.example.invalid/.well-known/oauth-authorization-server
+dynamic_client_registration:
+  enabled: true
+  registration_endpoint: https://authz.agentcsp-demo.example.invalid/register
+  client_type: public
+  client_secret: ${MCP_OAUTH_CLIENT_SECRET}
+security:
+  pkce: false
+  state_validation: false
+  resource_indicator: false
+  audience_binding: false
+  approval_required: false
+  consent_required: false
+  allow_any_mcp_server: true
+scopes:
+  - offline_access
+  - mcp:tools:*
+  - support_db.write
+  - browser.actions
+  - customer.email
+token_handling:
+  store_refresh_tokens: true
+  token_cache_path: .auth/mcp-oauth-tokens.json
+  forward_authorization_header: true
+  forward_tokens_to_mcp_server: true
+server_selection:
+  dynamic_server: true
+  user_provided_server_url: customer_requested_mcp_server
+data_scope:
+  - mcp_oauth_customer_email
+  - mcp_oauth_account_number
+  - confidential_mcp_oauth_context

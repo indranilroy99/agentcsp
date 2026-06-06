@@ -36,6 +36,7 @@ A finding should be considered production-grade when it includes:
 - local MCP implementation presence checks for secret-backed agent-callable servers
 - MCP prompt/resource context metadata for server-supplied model context that can steer privileged or secret-backed MCP authority without emitting prompt/resource text, names, descriptions, URIs, URLs, or token placeholders
 - MCP client root, sampling, and elicitation metadata for remote context requests without emitting raw root paths, root names, sampling prompts, elicitation schemas, requested field names, or token placeholders
+- MCP OAuth authorization metadata for remote authorization endpoints, dynamic client registration, PKCE/state/resource-indicator posture, scope categories, refresh-token storage, token forwarding, and untrusted server selection without emitting endpoints, raw scopes, selectors, token-cache paths, data labels, or token placeholders
 - tool-name collision metadata for authority ambiguity and shadowing
 - tool-schema integrity signals for open-world privileged arguments and read-only hint conflicts
 - model-visible tool-description injection signals without emitting raw descriptions
@@ -109,6 +110,7 @@ Examples:
 - local MCP implementation path missing from scan plus credential exposure and side effects
 - MCP prompt or resource context plus untrusted input, tool/external directives, privileged server authority, and credential-backed MCP access
 - remote credential-backed MCP server plus broad client roots, sampling or elicitation authority, and sensitive client-context exposure
+- MCP OAuth client plus remote dynamic client registration, disabled PKCE/state/resource indicators, broad scopes, refresh-token storage, token forwarding, untrusted server selection, credential exposure, and no approval gate
 - package-runner MCP server plus unpinned package version plus credential exposure
 - agent package manifest plus risky agent dependency references, credentialed lifecycle scripts, and external dependency reach
 - agent deployment manifest plus mutable remote image provenance, privileged host authority, credential exposure, and no approval gate

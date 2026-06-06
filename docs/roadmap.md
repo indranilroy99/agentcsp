@@ -26,6 +26,7 @@
 - Add remote prompt-registry posture for auto-synced system/developer prompts, unpinned revisions, verification controls, and untrusted prompt selectors.
 - Add MCP prompt and resource context inventory for model-visible server-supplied context that can steer privileged MCP authority.
 - Add MCP client-context posture for roots, sampling, and elicitation requests from remote or third-party servers.
+- Add MCP OAuth authorization posture for dynamic client registration, PKCE/state/resource-indicator controls, broad scopes, refresh-token storage, token forwarding, and untrusted server selection.
 - Add runtime posture inventory for sandbox, approval, network, tool authority, and agent safety-control posture.
 - Add browser extension/profile posture for privileged extensions, password-manager/autofill exposure, and download/upload path redaction.
 - Add identity delegation posture for agent OAuth, OIDC, service-account, workload-identity, and token-broker authority.

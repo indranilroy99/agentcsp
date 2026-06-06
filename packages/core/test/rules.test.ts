@@ -79,6 +79,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-035")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-036")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-037")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-038")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-CICD-002")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-AUTOMATION-001")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-AUTOMATION-002")).toBe(true);
@@ -602,6 +603,40 @@ describe("rule engine", () => {
     expect(JSON.stringify(runtimeAgentFederationFindings[0])).not.toContain("confidential_federated_case_notes");
     expect(JSON.stringify(runtimeAgentFederationFindings[0])).not.toContain("support_db.update_customer_record");
     expect(JSON.stringify(runtimeAgentFederationFindings[0])).not.toContain("support_memory_summary");
+    const runtimeMcpAuthorizationFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-RUNTIME-038");
+    expect(runtimeMcpAuthorizationFindings).toHaveLength(1);
+    expect(runtimeMcpAuthorizationFindings[0]?.matched_object.path).toBe("mcp-auth/oauth-client.yaml");
+    expect(runtimeMcpAuthorizationFindings[0]?.matched_object.metadata).toMatchObject({
+      parsed_mcp_authorization_config: true,
+      mcp_authorization_provider: "mcp_oauth",
+      mcp_authorization_remote: true,
+      mcp_authorization_dynamic_client_registration: true,
+      mcp_authorization_pkce_disabled: true,
+      mcp_authorization_state_validation_disabled: true,
+      mcp_authorization_resource_indicator_missing: true,
+      mcp_authorization_broad_scope: true,
+      mcp_authorization_refresh_token_storage: true,
+      mcp_authorization_token_forwarding: true,
+      mcp_authorization_untrusted_server: true,
+      mcp_authorization_approval_required: false
+    });
+    expect(runtimeMcpAuthorizationFindings[0]?.matched_object.metadata.mcp_authorization_scope_kinds).toEqual([
+      "agent_resource_scope",
+      "broad_scope",
+      "identity_or_pii_scope",
+      "write_scope"
+    ]);
+    expect(runtimeMcpAuthorizationFindings[0]?.severity).toBe("critical");
+    expect(runtimeMcpAuthorizationFindings[0]?.confidence).toBe("very_high");
+    expect(runtimeMcpAuthorizationFindings[0]?.recommended_control).toBe("require_approval");
+    expect(JSON.stringify(runtimeMcpAuthorizationFindings[0])).not.toContain("${MCP_OAUTH_CLIENT_SECRET}");
+    expect(JSON.stringify(runtimeMcpAuthorizationFindings[0])).not.toContain("oauth-mcp.agentcsp-demo.example.invalid");
+    expect(JSON.stringify(runtimeMcpAuthorizationFindings[0])).not.toContain("authz.agentcsp-demo.example.invalid");
+    expect(JSON.stringify(runtimeMcpAuthorizationFindings[0])).not.toContain("mcp:tools:*");
+    expect(JSON.stringify(runtimeMcpAuthorizationFindings[0])).not.toContain("support_db.write");
+    expect(JSON.stringify(runtimeMcpAuthorizationFindings[0])).not.toContain("customer_requested_mcp_server");
+    expect(JSON.stringify(runtimeMcpAuthorizationFindings[0])).not.toContain("mcp_oauth_customer_email");
+    expect(JSON.stringify(runtimeMcpAuthorizationFindings[0])).not.toContain(".auth/mcp-oauth-tokens.json");
     const supplyChainFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-SUPPLYCHAIN-001");
     expect(supplyChainFindings).toHaveLength(1);
     expect(supplyChainFindings[0]?.matched_object.path).toBe("package.json");

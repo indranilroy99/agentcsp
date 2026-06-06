@@ -98,6 +98,39 @@ MCP prompts and resources declared in MCP configuration are normalized as `promp
 
 Raw MCP prompt text, resource text, prompt names, descriptions, URIs, URLs, and secret placeholders are not emitted. AgentCSP records only redacted content-signal booleans and the associated MCP server posture so rules can detect server-supplied context that tries to steer privileged or secret-backed MCP authority.
 
+## MCP Authorization Posture
+
+MCP OAuth and authorization-client configs are normalized into `runtime_config` objects when common MCP auth configuration files are discovered.
+
+MCP authorization metadata may include:
+
+- `parsed_mcp_authorization_config`
+- `mcp_authorization_fields`
+- `mcp_authorization_provider`
+- `mcp_authorization_remote`
+- `mcp_authorization_destination_redacted`
+- `mcp_authorization_destination_count`
+- `mcp_authorization_destination_kinds`
+- `mcp_authorization_dynamic_client_registration`
+- `mcp_authorization_client_secret_exposure`
+- `mcp_authorization_public_client`
+- `mcp_authorization_pkce_disabled`
+- `mcp_authorization_state_validation_disabled`
+- `mcp_authorization_resource_indicator_missing`
+- `mcp_authorization_scope_redacted`
+- `mcp_authorization_scope_kinds`
+- `mcp_authorization_broad_scope`
+- `mcp_authorization_sensitive_scope`
+- `mcp_authorization_pii_scope`
+- `mcp_authorization_refresh_token_storage`
+- `mcp_authorization_token_forwarding`
+- `mcp_authorization_untrusted_server`
+- `mcp_authorization_approval_required`
+- `env_key_names`
+- `secret_ref_key_names`
+
+Raw authorization endpoints, MCP server URLs, registration endpoints, OAuth scopes, selector values, token-cache paths, data-scope labels, and secret placeholders are not emitted. Provider names, destination categories, scope categories, DCR posture, PKCE/state/resource-indicator controls, refresh-token storage, token forwarding, untrusted server-selection posture, approval posture, and credential key names let rules detect unsafe token delegation into MCP servers without copying authorization material into the manifest.
+
 ## Instruction Context Signals
 
 Instruction files are normalized into `instruction` objects. AgentCSP records redacted content signals when repository, workspace, or custom instructions connect untrusted inputs to privileged agent behavior.

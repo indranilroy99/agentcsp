@@ -101,6 +101,11 @@ export async function detectSurfaces(files: WalkedFile[]): Promise<DetectedSurfa
       continue;
     }
 
+    if (isMcpAuthorizationConfigPath(file.relativePath, basename)) {
+      detectMcpAuthorizationConfig(file, text, surfaces);
+      continue;
+    }
+
     if (isAgentFederationConfigPath(file.relativePath, basename)) {
       detectAgentFederationConfig(file, text, surfaces);
       continue;
@@ -1343,6 +1348,75 @@ function detectAgentFederationConfig(file: WalkedFile, text: string | undefined,
         posture.agent_federation_untrusted_selector &&
         posture.agent_federation_context_forwarding_enabled &&
         !posture.agent_federation_approval_required) ||
+      isUntrustedToPrivileged(object)
+  });
+}
+
+function detectMcpAuthorizationConfig(file: WalkedFile, text: string | undefined, surfaces: DetectedSurfaces): void {
+  const parsed = parseStructuredConfig(text ?? "", file.relativePath);
+  if (parsed.parseFailed) {
+    addDiagnostic(surfaces, file, {
+      parser: parsed.parser ?? "structured_config",
+      code: "MCP_AUTHORIZATION_CONFIG_PARSE_FAILED",
+      reason: "MCP authorization configuration could not be parsed. Raw content was redacted."
+    });
+  }
+
+  const posture = classifyMcpAuthorizationConfig(parsed.value, file.relativePath);
+  const actions = new Set<ActionType>(["call", "read"]);
+  if (posture.mcp_authorization_remote) actions.add("send");
+  if (posture.mcp_authorization_dynamic_client_registration || posture.mcp_authorization_refresh_token_storage) actions.add("write");
+  if (posture.mcp_authorization_refresh_token_storage) actions.add("remember");
+
+  const dataClasses = new Set<SurfaceObject["data_classes"][number]>(["unknown"]);
+  if (
+    posture.mcp_authorization_client_secret_exposure ||
+    posture.mcp_authorization_token_forwarding ||
+    posture.env_key_names.some(isCredentialLikeKeyName) ||
+    posture.secret_ref_key_names.length > 0
+  ) {
+    dataClasses.add("credential");
+  }
+  if (posture.mcp_authorization_token_forwarding) dataClasses.add("secret");
+  if (posture.mcp_authorization_sensitive_scope) dataClasses.add("confidential");
+  if (posture.mcp_authorization_pii_scope) dataClasses.add("pii");
+  if (dataClasses.size > 1) dataClasses.delete("unknown");
+
+  const object = createSurfaceObject({
+    type: "runtime_config",
+    name: path.basename(file.relativePath),
+    path: file.relativePath,
+    trust_level: posture.mcp_authorization_remote ? "third_party" : inferTrustLevel(file.relativePath),
+    data_classes: uniqueDataClasses([...dataClasses] as SurfaceObject["data_classes"]),
+    actions: uniqueActions([...actions]),
+    side_effect:
+      posture.mcp_authorization_dynamic_client_registration ||
+      posture.mcp_authorization_refresh_token_storage ||
+      posture.mcp_authorization_token_forwarding,
+    reversible: !posture.mcp_authorization_refresh_token_storage && !posture.mcp_authorization_token_forwarding,
+    external_reach: posture.mcp_authorization_remote,
+    secret_exposure:
+      posture.mcp_authorization_client_secret_exposure ||
+      posture.mcp_authorization_token_forwarding ||
+      posture.env_key_names.some(isCredentialLikeKeyName) ||
+      posture.secret_ref_key_names.length > 0,
+    reason: "MCP authorization configuration discovered as OAuth and token boundary posture.",
+    metadata: {
+      content_redacted: true,
+      values_collected: false,
+      parsed_mcp_authorization_config: Boolean(parsed.value) && !parsed.parseFailed,
+      parse_error: parsed.parseFailed,
+      ...posture
+    }
+  });
+  surfaces.runtime_config.push({
+    ...object,
+    untrusted_to_privileged:
+      (posture.mcp_authorization_remote &&
+        posture.mcp_authorization_dynamic_client_registration &&
+        posture.mcp_authorization_broad_scope &&
+        (posture.mcp_authorization_token_forwarding || posture.mcp_authorization_refresh_token_storage) &&
+        !posture.mcp_authorization_approval_required) ||
       isUntrustedToPrivileged(object)
   });
 }
@@ -3090,6 +3164,27 @@ function isSecretManagerConfigPath(relativePath: string, basename: string): bool
   return secretManagerName || (secretDirectory && configName);
 }
 
+function isMcpAuthorizationConfigPath(relativePath: string, basename: string): boolean {
+  const normalized = relativePath.replaceAll("\\", "/").toLowerCase();
+  const lowerBase = basename.toLowerCase();
+  if (!/\.(json|ya?ml|toml)$/iu.test(lowerBase)) return false;
+  if (normalized.startsWith(".github/workflows/")) return false;
+  if (normalized.startsWith("rules/")) return false;
+  const segments = normalized.split("/").slice(0, -1);
+  const mcpAuthDirectory = segments.some((segment) =>
+    /^(mcp-auth|mcp_auth|mcp-oauth|mcp_oauth|mcp-authorization|mcp_authorization|oauth-mcp|oauth_mcp|authorization|auth)$/iu.test(
+      segment
+    )
+  );
+  const mcpAuthName = /(?:mcp[-_]?auth|mcp[-_]?oauth|mcp[-_]?authorization|oauth[-_]?mcp|mcp[-_]?client[-_]?registration|mcp[-_]?token|mcp[-_]?protected[-_]?resource)/iu.test(
+    lowerBase
+  );
+  const configName = /(?:config|settings|oauth|authorization|auth|client|registration|token|scope|resource|metadata|server)/iu.test(
+    lowerBase
+  );
+  return mcpAuthName || (mcpAuthDirectory && configName);
+}
+
 function isRagConnectorConfigPath(relativePath: string, basename: string): boolean {
   const normalized = relativePath.replaceAll("\\", "/").toLowerCase();
   const lowerBase = basename.toLowerCase();
@@ -3398,6 +3493,32 @@ interface AgentFederationPosture {
   agent_federation_identity_verification_missing: boolean;
   agent_federation_allowlist_missing: boolean;
   agent_federation_approval_required: boolean;
+  env_key_names: string[];
+  secret_ref_key_names: string[];
+}
+
+interface McpAuthorizationPosture {
+  mcp_authorization_fields: string[];
+  mcp_authorization_provider?: string;
+  mcp_authorization_remote: boolean;
+  mcp_authorization_destination_redacted: boolean;
+  mcp_authorization_destination_count: number;
+  mcp_authorization_destination_kinds: string[];
+  mcp_authorization_dynamic_client_registration: boolean;
+  mcp_authorization_client_secret_exposure: boolean;
+  mcp_authorization_public_client: boolean;
+  mcp_authorization_pkce_disabled: boolean;
+  mcp_authorization_state_validation_disabled: boolean;
+  mcp_authorization_resource_indicator_missing: boolean;
+  mcp_authorization_scope_redacted: boolean;
+  mcp_authorization_scope_kinds: string[];
+  mcp_authorization_broad_scope: boolean;
+  mcp_authorization_sensitive_scope: boolean;
+  mcp_authorization_pii_scope: boolean;
+  mcp_authorization_refresh_token_storage: boolean;
+  mcp_authorization_token_forwarding: boolean;
+  mcp_authorization_untrusted_server: boolean;
+  mcp_authorization_approval_required: boolean;
   env_key_names: string[];
   secret_ref_key_names: string[];
 }
@@ -5196,6 +5317,256 @@ function hasAgentFederationApprovalRequiredSignal(fields: RuntimeField[]): boole
 
 function isAgentFederationSecurityField(fieldPath: string): boolean {
   return /provider|protocol|a2a|agent|agents|peer|peers|card|registry|catalog|directory|marketplace|url|uri|endpoint|host|server|discover|dynamic|select|selector|delegate|handoff|route|invoke|context|prompt|message|retrieval|rag|tool|browser|memory|transcript|summary|secret|token|credential|auth|header|cookie|session|env|signature|signing|identity|issuer|did|jwks|attestation|provenance|trust|allowlist|allowed|unknown|customer|ticket|email|account|pii|sensitive|approval/iu.test(
+    fieldPath
+  );
+}
+
+function classifyMcpAuthorizationConfig(value: unknown, filePath: string): McpAuthorizationPosture {
+  const fields = flattenRuntimeFields(value);
+  const stringValues = collectFieldStringValues(fields);
+  const provider = inferMcpAuthorizationProvider([filePath, ...fields.map((field) => field.path), ...stringValues]);
+  const destinations = classifyMcpAuthorizationDestinations(fields, provider);
+  const scopes = collectMcpAuthorizationScopeKinds(fields);
+  const envKeys = uniqueStrings([
+    ...collectEnvKeyNamesFromConfig(value).filter(isLikelyEnvKeyName),
+    ...extractEnvironmentReferenceKeys(stringValues)
+  ]);
+  const secretRefKeys = extractSecretReferenceKeys(stringValues);
+
+  return {
+    mcp_authorization_fields: fields
+      .map((field) => field.path)
+      .filter((fieldPath) => isMcpAuthorizationSecurityField(fieldPath))
+      .sort((a, b) => a.localeCompare(b)),
+    mcp_authorization_provider: provider,
+    mcp_authorization_remote: destinations.remote,
+    mcp_authorization_destination_redacted: destinations.destinationCount > 0,
+    mcp_authorization_destination_count: destinations.destinationCount,
+    mcp_authorization_destination_kinds: destinations.destinationKinds,
+    mcp_authorization_dynamic_client_registration: hasMcpAuthorizationDynamicClientRegistrationSignal(fields),
+    mcp_authorization_client_secret_exposure: hasMcpAuthorizationClientSecretExposureSignal(fields),
+    mcp_authorization_public_client: hasMcpAuthorizationPublicClientSignal(fields),
+    mcp_authorization_pkce_disabled: hasMcpAuthorizationPkceDisabledSignal(fields),
+    mcp_authorization_state_validation_disabled: hasMcpAuthorizationStateValidationDisabledSignal(fields),
+    mcp_authorization_resource_indicator_missing: hasMcpAuthorizationResourceIndicatorMissingSignal(fields),
+    mcp_authorization_scope_redacted: scopes.length > 0,
+    mcp_authorization_scope_kinds: scopes,
+    mcp_authorization_broad_scope: hasMcpAuthorizationBroadScopeSignal(fields, scopes),
+    mcp_authorization_sensitive_scope: hasMcpAuthorizationSensitiveScopeSignal(fields, scopes),
+    mcp_authorization_pii_scope: hasMcpAuthorizationPiiScopeSignal(fields, scopes),
+    mcp_authorization_refresh_token_storage: hasMcpAuthorizationRefreshTokenStorageSignal(fields),
+    mcp_authorization_token_forwarding: hasMcpAuthorizationTokenForwardingSignal(fields),
+    mcp_authorization_untrusted_server: hasMcpAuthorizationUntrustedServerSignal(fields),
+    mcp_authorization_approval_required: hasMcpAuthorizationApprovalRequiredSignal(fields),
+    env_key_names: envKeys,
+    secret_ref_key_names: secretRefKeys
+  };
+}
+
+function inferMcpAuthorizationProvider(candidates: string[]): string | undefined {
+  const text = candidates.join(" ").toLowerCase();
+  const providers: Array<[string, RegExp]> = [
+    ["mcp_oauth", /\b(mcp[_\s-]?(oauth|auth|authorization)|oauth[_\s-]?mcp)\b/iu],
+    ["oauth", /\b(oauth|oidc|openid|authorization[_\s-]?server|protected[_\s-]?resource)\b/iu]
+  ];
+  return providers.find(([, pattern]) => pattern.test(text))?.[0];
+}
+
+function classifyMcpAuthorizationDestinations(
+  fields: RuntimeField[],
+  provider: string | undefined
+): { remote: boolean; destinationCount: number; destinationKinds: string[] } {
+  const destinationKinds = new Set<string>();
+  let destinationCount = 0;
+  if (provider === "mcp_oauth") {
+    destinationKinds.add("mcp_authorization_config");
+  }
+
+  for (const field of fields) {
+    const values = fieldStringValues(field);
+    let matched = false;
+    for (const value of values) {
+      const destination = parseMcpAuthorizationDestination(value);
+      if (destination) {
+        destinationKinds.add(destination.kind);
+        destinationCount += 1;
+        matched = true;
+      }
+    }
+    if (!matched && /(^|\.)(issuer|authorization_server|authorizationServer|auth_server|authServer|resource_server|resourceServer|endpoint|url|uri|host|metadata|registration_endpoint|token_endpoint|authorization_endpoint)$/iu.test(field.path)) {
+      const text = values.join(" ");
+      if (looksLikeRemoteMcpAuthorizationEndpoint(text)) {
+        destinationKinds.add("oauth_endpoint");
+        destinationCount += 1;
+      }
+    }
+  }
+
+  return {
+    remote: destinationCount > 0,
+    destinationCount,
+    destinationKinds: [...destinationKinds].sort((a, b) => a.localeCompare(b))
+  };
+}
+
+function parseMcpAuthorizationDestination(value: string): { kind: string } | undefined {
+  try {
+    const parsed = new URL(value);
+    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return undefined;
+    if (isLocalHost(parsed.hostname.toLowerCase())) return undefined;
+    const pathName = parsed.pathname.toLowerCase();
+    if (/\.well-known\/oauth-protected-resource/iu.test(pathName)) return { kind: "protected_resource_metadata" };
+    if (/\.well-known\/(oauth-authorization-server|openid-configuration)/iu.test(pathName)) return { kind: "authorization_server_metadata" };
+    if (/\bregister|registration\b/iu.test(pathName)) return { kind: "dynamic_client_registration_endpoint" };
+    if (/\btoken\b/iu.test(pathName)) return { kind: "token_endpoint" };
+    if (/\bauthori[sz]e\b/iu.test(pathName)) return { kind: "authorization_endpoint" };
+    if (/\bmcp\b/iu.test(pathName)) return { kind: parsed.protocol === "http:" ? "plaintext_mcp_resource_endpoint" : "mcp_resource_endpoint" };
+    return { kind: parsed.protocol === "http:" ? "plaintext_oauth_endpoint" : "oauth_endpoint" };
+  } catch {
+    return undefined;
+  }
+}
+
+function looksLikeRemoteMcpAuthorizationEndpoint(value: string): boolean {
+  const trimmed = value.trim().toLowerCase();
+  if (!trimmed || trimmed.startsWith("${")) return false;
+  if (isLocalHost(trimmed)) return false;
+  return /\b(oauth|oidc|openid|auth|token|issuer|mcp|resource|register)\b/iu.test(trimmed) ||
+    /^[a-z0-9.-]+\.[a-z]{2,}(?::\d+)?$/iu.test(trimmed);
+}
+
+function hasMcpAuthorizationDynamicClientRegistrationSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /\b(dynamic[_\s-]?client[_\s-]?registration|client[_\s-]?registration|registration[_\s-]?endpoint|dcr|auto[_\s-]?register|register[_\s-]?client)\b/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    ) && truthyConfigValue(field.value)
+  );
+}
+
+function hasMcpAuthorizationClientSecretExposureSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /(?:^|[_\W])(client[_\s-]?secret|clientSecret|secret|token|credential|api[_\s-]?key|authorization[_\s-]?header|bearer)(?:[_\W]|$)/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    )
+  );
+}
+
+function hasMcpAuthorizationPublicClientSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => {
+    const text = `${field.path} ${fieldValueText(field)}`;
+    if (/(^|\.)(client_type|clientType|application_type|applicationType|token_endpoint_auth_method)$/iu.test(field.path)) {
+      return /\b(public|native|desktop|cli|none)\b/iu.test(fieldValueText(field));
+    }
+    return /\b(public[_\s-]?client|native[_\s-]?client|desktop[_\s-]?client|cli[_\s-]?client|local[_\s-]?client|confidential[_\s-]?client\s*false)\b/iu.test(
+      text
+    );
+  });
+}
+
+function hasMcpAuthorizationPkceDisabledSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => {
+    const text = `${field.path} ${fieldValueText(field)}`;
+    if (/\b(pkce|code[_\s-]?challenge|code[_\s-]?verifier)\b/iu.test(field.path)) return disabledConfigValue(field.value);
+    return /\b(pkce[_\s-]?disabled|disable[_\s-]?pkce|no[_\s-]?pkce|skip[_\s-]?pkce)\b/iu.test(text) && truthyConfigValue(field.value);
+  });
+}
+
+function hasMcpAuthorizationStateValidationDisabledSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => {
+    const text = `${field.path} ${fieldValueText(field)}`;
+    if (/(?:^|[_\W])(state|csrf|nonce)(?:[_\W]|$)/iu.test(field.path)) return disabledConfigValue(field.value);
+    return /\b(skip[_\s-]?(state|csrf|nonce)|state[_\s-]?validation[_\s-]?disabled|csrf[_\s-]?disabled|no[_\s-]?state)\b/iu.test(text) &&
+      truthyConfigValue(field.value);
+  });
+}
+
+function hasMcpAuthorizationResourceIndicatorMissingSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => {
+    const text = `${field.path} ${fieldValueText(field)}`;
+    if (/\b(resource[_\s-]?indicator|resource[_\s-]?parameter|resource[_\s-]?binding|audience|aud)\b/iu.test(field.path)) {
+      return disabledConfigValue(field.value);
+    }
+    return /\b(no[_\s-]?resource[_\s-]?indicator|resource[_\s-]?indicator[_\s-]?disabled|audience[_\s-]?binding[_\s-]?disabled|skip[_\s-]?audience|accept[_\s-]?any[_\s-]?audience)\b/iu.test(text) &&
+      truthyConfigValue(field.value);
+  });
+}
+
+function collectMcpAuthorizationScopeKinds(fields: RuntimeField[]): string[] {
+  const kinds = new Set<string>();
+  for (const field of fields) {
+    if (!/(^|\.)(scopes?|oauth[_\s-]?scopes?|permissions?|claims?|resources?)$/iu.test(field.path)) continue;
+    const text = fieldStringValues(field).join(" ").toLowerCase();
+    if (!text) continue;
+    if (/(^|[\s,])(\*|all|admin|full_access|full-access|offline_access)(?=[$\s,])/iu.test(text)) kinds.add("broad_scope");
+    if (/\b(read|list|get)\b/iu.test(text)) kinds.add("read_scope");
+    if (/\b(write|create|update|delete|admin|manage|modify|send|post)\b/iu.test(text)) kinds.add("write_scope");
+    if (/\b(email|profile|openid|user|account|customer|pii)\b/iu.test(text)) kinds.add("identity_or_pii_scope");
+    if (/\b(secret|token|credential|vault|key)\b/iu.test(text)) kinds.add("credential_scope");
+    if (/\b(tool|mcp|resource|database|browser|filesystem|repo|workflow|cloud)\b/iu.test(text)) kinds.add("agent_resource_scope");
+  }
+  return [...kinds].sort((a, b) => a.localeCompare(b));
+}
+
+function hasMcpAuthorizationBroadScopeSignal(fields: RuntimeField[], scopeKinds: string[]): boolean {
+  return scopeKinds.includes("broad_scope") ||
+    fields.some((field) =>
+      /(?:^|[_\W])(all[_\s-]?scopes|wildcard[_\s-]?scope|admin[_\s-]?scope|full[_\s-]?access|offline[_\s-]?access)(?:[_\W]|$)/iu.test(
+        `${field.path} ${fieldValueText(field)}`
+      )
+    );
+}
+
+function hasMcpAuthorizationSensitiveScopeSignal(fields: RuntimeField[], scopeKinds: string[]): boolean {
+  return scopeKinds.some((scopeKind) => ["agent_resource_scope", "credential_scope", "write_scope"].includes(scopeKind)) ||
+    fields.some((field) =>
+      /\b(customer|client|ticket|support|internal|confidential|private|proprietary|sensitive|account|billing|payment|case|record|profile|note|database|browser|filesystem|cloud|secret|vault)\b/iu.test(
+        `${field.path} ${fieldValueText(field)}`
+      )
+    );
+}
+
+function hasMcpAuthorizationPiiScopeSignal(fields: RuntimeField[], scopeKinds: string[]): boolean {
+  return scopeKinds.includes("identity_or_pii_scope") ||
+    fields.some((field) =>
+      /(?:^|[_\W])(pii|email|phone|address|ssn|passport|dob|date[_\s-]?of[_\s-]?birth|customer[_-]?id|user[_-]?id|account[_-]?id)(?:[_\W]|$)/iu.test(
+        `${field.path} ${fieldValueText(field)}`
+      )
+    );
+}
+
+function hasMcpAuthorizationRefreshTokenStorageSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /\b(refresh[_\s-]?token|offline[_\s-]?access|token[_\s-]?cache|token[_\s-]?storage|persist[_\s-]?tokens?|store[_\s-]?tokens?|save[_\s-]?tokens?)\b/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    ) && truthyConfigValue(field.value)
+  );
+}
+
+function hasMcpAuthorizationTokenForwardingSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /\b(forward|send|pass|relay|include|propagate)[_\s-]?(authorization|auth|bearer|access[_\s-]?token|refresh[_\s-]?token|headers?|credentials?)\b/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    ) || /(^|\.)(forward_authorization|forwardAuthorization|forward_authorization_header|forwardAuthorizationHeader|forward_tokens|forwardTokens|forward_tokens_to_mcp_server|authorization_header|authorizationHeader|headers?)(\.|$)/iu.test(field.path)
+  );
+}
+
+function hasMcpAuthorizationUntrustedServerSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /\b(untrusted|third[_\s-]?party|external|remote|marketplace|user[_\s-]?provided|customer[_\s-]?provided|dynamic[_\s-]?server|unknown[_\s-]?server|allow[_\s-]?any[_\s-]?server)\b/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    )
+  );
+}
+
+function hasMcpAuthorizationApprovalRequiredSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /approval|required[_-]?approval|human[_-]?approval|confirm|confirmation|review|human[_-]?in[_-]?the[_-]?loop|consent/iu.test(field.path) &&
+    truthyConfigValue(field.value)
+  );
+}
+
+function isMcpAuthorizationSecurityField(fieldPath: string): boolean {
+  return /mcp|oauth|oidc|openid|auth|authorization|protected|resource|metadata|issuer|client|registration|dcr|pkce|code|challenge|state|csrf|nonce|audience|scope|permission|claim|token|refresh|storage|cache|forward|header|bearer|credential|secret|env|redirect|uri|url|endpoint|server|untrusted|third|remote|dynamic|approval|consent/iu.test(
     fieldPath
   );
 }

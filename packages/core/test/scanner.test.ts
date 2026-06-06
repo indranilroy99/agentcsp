@@ -49,6 +49,7 @@ describe("scanner", () => {
       "GITHUB_TOKEN",
       "LLM_CACHE_TOKEN",
       "LLM_CACHE_URL",
+      "MCP_OAUTH_CLIENT_SECRET",
       "MEMORY_STORE_TOKEN",
       "MODEL_ROUTER_TOKEN",
       "OPENAI_API_KEY",
@@ -1409,6 +1410,64 @@ describe("scanner", () => {
     expect(JSON.stringify(agentFederationConfig)).not.toContain("confidential_federated_case_notes");
     expect(JSON.stringify(agentFederationConfig)).not.toContain("support_db.update_customer_record");
     expect(JSON.stringify(agentFederationConfig)).not.toContain("support_memory_summary");
+    const mcpAuthorizationConfig = surfaces.runtime_config.find((surface) => surface.path === "mcp-auth/oauth-client.yaml");
+    expect(mcpAuthorizationConfig).toBeDefined();
+    expect(mcpAuthorizationConfig).toMatchObject({
+      trust_level: "third_party",
+      external_reach: true,
+      secret_exposure: true,
+      side_effect: true,
+      reversible: false,
+      untrusted_to_privileged: true
+    });
+    expect(mcpAuthorizationConfig?.metadata).toMatchObject({
+      content_redacted: true,
+      values_collected: false,
+      parsed_mcp_authorization_config: true,
+      mcp_authorization_provider: "mcp_oauth",
+      mcp_authorization_remote: true,
+      mcp_authorization_destination_redacted: true,
+      mcp_authorization_destination_count: 4,
+      mcp_authorization_dynamic_client_registration: true,
+      mcp_authorization_client_secret_exposure: true,
+      mcp_authorization_public_client: true,
+      mcp_authorization_pkce_disabled: true,
+      mcp_authorization_state_validation_disabled: true,
+      mcp_authorization_resource_indicator_missing: true,
+      mcp_authorization_scope_redacted: true,
+      mcp_authorization_broad_scope: true,
+      mcp_authorization_sensitive_scope: true,
+      mcp_authorization_pii_scope: true,
+      mcp_authorization_refresh_token_storage: true,
+      mcp_authorization_token_forwarding: true,
+      mcp_authorization_untrusted_server: true,
+      mcp_authorization_approval_required: false
+    });
+    expect(mcpAuthorizationConfig?.metadata.mcp_authorization_destination_kinds).toEqual([
+      "authorization_server_metadata",
+      "dynamic_client_registration_endpoint",
+      "mcp_authorization_config",
+      "mcp_resource_endpoint",
+      "protected_resource_metadata"
+    ]);
+    expect(mcpAuthorizationConfig?.metadata.mcp_authorization_scope_kinds).toEqual([
+      "agent_resource_scope",
+      "broad_scope",
+      "identity_or_pii_scope",
+      "write_scope"
+    ]);
+    expect(mcpAuthorizationConfig?.metadata.env_key_names).toEqual(["MCP_OAUTH_CLIENT_SECRET"]);
+    expect(mcpAuthorizationConfig?.metadata.secret_ref_key_names).toEqual(["MCP_OAUTH_CLIENT_SECRET"]);
+    expect(mcpAuthorizationConfig?.data_classes).toEqual(["confidential", "credential", "pii", "secret"]);
+    expect(mcpAuthorizationConfig?.actions).toEqual(["call", "read", "remember", "send", "write"]);
+    expect(JSON.stringify(mcpAuthorizationConfig)).not.toContain("${MCP_OAUTH_CLIENT_SECRET}");
+    expect(JSON.stringify(mcpAuthorizationConfig)).not.toContain("oauth-mcp.agentcsp-demo.example.invalid");
+    expect(JSON.stringify(mcpAuthorizationConfig)).not.toContain("authz.agentcsp-demo.example.invalid");
+    expect(JSON.stringify(mcpAuthorizationConfig)).not.toContain("mcp:tools:*");
+    expect(JSON.stringify(mcpAuthorizationConfig)).not.toContain("support_db.write");
+    expect(JSON.stringify(mcpAuthorizationConfig)).not.toContain("customer_requested_mcp_server");
+    expect(JSON.stringify(mcpAuthorizationConfig)).not.toContain("mcp_oauth_customer_email");
+    expect(JSON.stringify(mcpAuthorizationConfig)).not.toContain(".auth/mcp-oauth-tokens.json");
     const browserSessionConfig = surfaces.runtime_config.find((surface) => surface.path === "browser/session.yaml");
     expect(browserSessionConfig).toBeDefined();
     expect(browserSessionConfig).toMatchObject({
