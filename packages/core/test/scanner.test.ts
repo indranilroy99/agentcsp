@@ -540,6 +540,9 @@ describe("scanner", () => {
       prompt_template: true,
       template_variable_count: 2,
       untrusted_template_input: true,
+      privileged_prompt_role: true,
+      privileged_role_untrusted_template_input: true,
+      privileged_role_untrusted_variable_count: 2,
       tool_directive: true,
       external_directive: true,
       template_bridge_tool: true,
@@ -553,12 +556,15 @@ describe("scanner", () => {
     });
     expect(promptTemplate?.metadata.template_variable_names).toEqual(["customer_note", "ticket_id"]);
     expect(promptTemplate?.metadata.untrusted_template_variables).toEqual(["customer_note", "ticket_id"]);
+    expect(promptTemplate?.metadata.privileged_template_roles).toEqual(["developer", "system"]);
+    expect(promptTemplate?.metadata.privileged_role_untrusted_variables).toEqual(["customer_note", "ticket_id"]);
     expect(promptTemplate?.metadata.referenced_tools).toEqual(["publish_summary"]);
     expect(promptTemplate?.metadata.referenced_privileged_tools).toEqual(["publish_summary"]);
     expect(promptTemplate?.actions).toContain("call");
     expect(promptTemplate?.actions).toContain("send");
     expect(promptTemplate?.untrusted_to_privileged).toBe(true);
     expect(JSON.stringify(promptTemplate)).not.toContain("Review ticket");
+    expect(JSON.stringify(promptTemplate)).not.toContain("customer note");
     expect(memoryPromptTemplate?.metadata).toMatchObject({
       content_analyzed: true,
       content_redacted: true,

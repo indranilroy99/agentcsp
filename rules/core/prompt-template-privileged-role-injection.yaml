@@ -1,0 +1,34 @@
+id: AGENTCSP-PROMPT-004
+name: Prompt template injects untrusted input into privileged role
+description: A prompt template places user, customer, ticket, web, or retrieved-context variables inside a system or developer role, allowing untrusted content to enter the highest-priority instruction boundary.
+category: prompt_role_boundary
+severity: critical
+maps_to:
+  owasp:
+    - LLM01:2025 Prompt Injection
+    - LLM05:2025 Improper Output Handling
+    - LLM06:2025 Excessive Agency
+  mitre_atlas:
+    - AML.T0051 LLM Prompt Injection
+  nist_ai_rmf:
+    - MAP 5.1
+    - MEASURE 2.9
+    - MANAGE 2.3
+match:
+  object_type: prompt
+  where:
+    - field: metadata.prompt_template
+      op: equals
+      value: true
+    - field: metadata.untrusted_template_input
+      op: equals
+      value: true
+    - field: metadata.privileged_prompt_role
+      op: equals
+      value: true
+    - field: metadata.privileged_role_untrusted_template_input
+      op: equals
+      value: true
+recommendation:
+  control: quarantine
+  text: Keep untrusted variables out of system and developer roles; place them in delimited user/context blocks with provenance, validation, and tool-use approval gates.

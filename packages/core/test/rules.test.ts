@@ -57,6 +57,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-PROMPT-001")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-PROMPT-002")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-PROMPT-003")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-PROMPT-004")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RAG-001")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RAG-002")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RAG-003")).toBe(true);
@@ -176,6 +177,22 @@ describe("rule engine", () => {
     expect(promptExplicitToolFindings[0]?.matched_object.path).toBe("prompts/support-ticket.prompt.md");
     expect(promptExplicitToolFindings[0]?.matched_object.metadata.referenced_privileged_tools).toEqual(["publish_summary"]);
     expect(promptExplicitToolFindings[0]?.confidence).toBe("very_high");
+    const promptRoleBoundaryFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-PROMPT-004");
+    expect(promptRoleBoundaryFindings).toHaveLength(1);
+    expect(promptRoleBoundaryFindings[0]?.matched_object.path).toBe("prompts/support-ticket.prompt.md");
+    expect(promptRoleBoundaryFindings[0]?.matched_object.metadata).toMatchObject({
+      privileged_prompt_role: true,
+      privileged_role_untrusted_template_input: true,
+      privileged_role_untrusted_variable_count: 2
+    });
+    expect(promptRoleBoundaryFindings[0]?.matched_object.metadata.privileged_template_roles).toEqual([
+      "developer",
+      "system"
+    ]);
+    expect(promptRoleBoundaryFindings[0]?.severity).toBe("critical");
+    expect(promptRoleBoundaryFindings[0]?.confidence).toBe("very_high");
+    expect(promptRoleBoundaryFindings[0]?.recommended_control).toBe("quarantine");
+    expect(JSON.stringify(promptRoleBoundaryFindings[0])).not.toContain("customer note");
     const ragEgressFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-RAG-003");
     expect(ragEgressFindings).toHaveLength(1);
     expect(ragEgressFindings[0]?.matched_object.path).toBe("rag/customer-note.md");

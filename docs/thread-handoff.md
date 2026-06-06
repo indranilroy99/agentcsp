@@ -593,6 +593,15 @@ The current iteration adds:
 - rule `AGENTCSP-RUNTIME-009` for credential-backed model endpoints that send sensitive agent context over plaintext transport
 - scanner, rule, fixture verifier, and redaction coverage proving the finding is high-confidence while the safe fixture remains quiet
 
+## Prompt Role Boundary Pass
+
+The current iteration adds:
+
+- redacted prompt-template metadata for system/developer role segments, privileged role names, and untrusted variables placed inside those roles
+- vulnerable fixture coverage using the existing support-ticket prompt so customer and ticket variables enter a `System:` role before tool/external directives
+- rule `AGENTCSP-PROMPT-004` for untrusted template variables injected into system or developer prompt roles
+- scanner, rule, fixture verifier, and redaction coverage proving the finding is high-confidence while the safe fixture remains quiet
+
 ## Initial Build Recommendation
 
 Start with a CLI-first MVP before building the dashboard:

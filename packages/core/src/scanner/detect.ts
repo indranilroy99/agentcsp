@@ -665,6 +665,11 @@ interface PromptTemplateSignals {
   template_variable_count: number;
   untrusted_template_variables: string[];
   untrusted_template_input: boolean;
+  privileged_prompt_role: boolean;
+  privileged_template_roles: string[];
+  privileged_role_untrusted_variables: string[];
+  privileged_role_untrusted_variable_count: number;
+  privileged_role_untrusted_template_input: boolean;
 }
 
 interface PromptTemplateBridgeSignals {
@@ -1496,6 +1501,20 @@ function classifySkillDataFlow(content: string): SkillDataFlowSignals {
 }
 
 function classifyPromptTemplate(content: string): PromptTemplateSignals {
+  const variableNames = extractTemplateVariableNames(content);
+  const untrustedVariables = variableNames.filter(isUntrustedTemplateVariable);
+  const roleSignals = classifyPromptTemplateRoleSignals(content, untrustedVariables);
+  return {
+    prompt_template: variableNames.length > 0,
+    template_variable_names: variableNames,
+    template_variable_count: variableNames.length,
+    untrusted_template_variables: untrustedVariables,
+    untrusted_template_input: untrustedVariables.length > 0,
+    ...roleSignals
+  };
+}
+
+function extractTemplateVariableNames(content: string): string[] {
   const variables = new Set<string>();
   for (const match of content.matchAll(/\{\{\s*([a-zA-Z_][a-zA-Z0-9_.-]*)\s*\}\}/g)) {
     if (match[1]) variables.add(normalizeTemplateVariableName(match[1]));
@@ -1507,15 +1526,83 @@ function classifyPromptTemplate(content: string): PromptTemplateSignals {
     if (match[1]) variables.add(normalizeTemplateVariableName(match[1]));
   }
 
-  const variableNames = [...variables].sort((a, b) => a.localeCompare(b));
-  const untrustedVariables = variableNames.filter(isUntrustedTemplateVariable);
+  return [...variables].sort((a, b) => a.localeCompare(b));
+}
+
+function classifyPromptTemplateRoleSignals(
+  content: string,
+  untrustedVariables: string[]
+): Pick<
+  PromptTemplateSignals,
+  | "privileged_prompt_role"
+  | "privileged_template_roles"
+  | "privileged_role_untrusted_variables"
+  | "privileged_role_untrusted_variable_count"
+  | "privileged_role_untrusted_template_input"
+> {
+  const roleSegments = promptRoleSegments(content);
+  const privilegedRoles = new Set<string>();
+  const privilegedRoleVariables = new Set<string>();
+  const untrustedVariableSet = new Set(untrustedVariables);
+
+  for (const segment of roleSegments) {
+    privilegedRoles.add(segment.role);
+    for (const variableName of extractTemplateVariableNames(segment.text)) {
+      if (untrustedVariableSet.has(variableName)) privilegedRoleVariables.add(variableName);
+    }
+  }
+
+  const variables = [...privilegedRoleVariables].sort((a, b) => a.localeCompare(b));
   return {
-    prompt_template: variableNames.length > 0,
-    template_variable_names: variableNames,
-    template_variable_count: variableNames.length,
-    untrusted_template_variables: untrustedVariables,
-    untrusted_template_input: untrustedVariables.length > 0
+    privileged_prompt_role: privilegedRoles.size > 0,
+    privileged_template_roles: [...privilegedRoles].sort((a, b) => a.localeCompare(b)),
+    privileged_role_untrusted_variables: variables,
+    privileged_role_untrusted_variable_count: variables.length,
+    privileged_role_untrusted_template_input: variables.length > 0
   };
+}
+
+function promptRoleSegments(content: string): Array<{ role: "developer" | "system"; text: string }> {
+  const segments: Array<{ role: "developer" | "system"; text: string }> = [];
+  let activeRole: "developer" | "system" | undefined;
+  let activeLines: string[] = [];
+
+  const flush = (): void => {
+    if (activeRole) segments.push({ role: activeRole, text: activeLines.join("\n") });
+    activeRole = undefined;
+    activeLines = [];
+  };
+
+  for (const line of content.split(/\r?\n/u)) {
+    const markdownHeading = line.match(/^\s*#{1,6}\s*(system|developer)\b/iu);
+    if (markdownHeading?.[1]) {
+      flush();
+      activeRole = markdownHeading[1].toLowerCase() as "developer" | "system";
+      continue;
+    }
+
+    const roleLabel = line.match(/^\s*(?:[-*]\s*)?(system|developer|user|assistant|tool|function)\s*:\s*(.*)$/iu);
+    if (roleLabel?.[1]) {
+      flush();
+      const role = roleLabel[1].toLowerCase();
+      activeRole = role === "system" || role === "developer" ? role : undefined;
+      if (activeRole && roleLabel[2]) activeLines.push(roleLabel[2]);
+      continue;
+    }
+
+    const yamlRole = line.match(/^\s*(?:-\s*)?role\s*:\s*["']?(system|developer|user|assistant|tool|function)["']?/iu);
+    if (yamlRole?.[1]) {
+      flush();
+      const role = yamlRole[1].toLowerCase();
+      activeRole = role === "system" || role === "developer" ? role : undefined;
+      continue;
+    }
+
+    if (activeRole) activeLines.push(line);
+  }
+  flush();
+
+  return segments;
 }
 
 function classifyPromptTemplateBridge(

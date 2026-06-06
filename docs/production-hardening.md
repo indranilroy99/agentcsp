@@ -47,6 +47,7 @@ A finding should be considered production-grade when it includes:
 - AI telemetry export metadata for prompt, completion, tool-output, retrieval, and memory capture without emitting trace payloads or endpoints
 - workflow-to-agent-script signals for unattended automation with secrets and write authority
 - prompt-template variables and redacted context signals for untrusted-input bridges
+- prompt-template role-boundary signals for untrusted variables injected into system or developer roles
 - exact callable-reference signals for prompts, memory, RAG, instructions, and skills that name discovered privileged tools or MCP servers
 - prompt-template memory persistence signals for cross-session contamination
 - memory replay signals for persisted context that explicitly names privileged tools
@@ -87,6 +88,7 @@ Examples:
 - tool-name collision plus different authority signatures and a privileged peer
 - skill consumes retrieved/tool/memory context plus external publication
 - prompt template with user/customer/context variables plus explicit privileged tool reference
+- prompt template with user/customer/context variables embedded in system or developer roles
 - persisted memory with instruction-like content plus explicit privileged tool reference
 - prompt template with user/customer/context variables plus memory persistence directives
 - prompt template with user/customer/context variables plus tool or external directives
