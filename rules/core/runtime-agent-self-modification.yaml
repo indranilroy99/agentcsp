@@ -1,0 +1,51 @@
+id: AGENTCSP-RUNTIME-020
+name: Agent self-modification auto-applies untrusted control-plane changes
+description: An agent self-modification config can write and auto-apply untrusted changes to instructions, prompts, policy, runtime config, tools, or memory without approval.
+category: agent_control_plane_mutation
+severity: critical
+maps_to:
+  owasp:
+    - LLM01:2025 Prompt Injection
+    - LLM06:2025 Excessive Agency
+    - LLM07:2025 System Prompt Leakage
+  mitre_atlas:
+    - AML.T0051 LLM Prompt Injection
+    - AML.T0054 LLM Plugin Compromise
+    - AML.T0057 Exfiltration via Cyber Means
+  nist_ai_rmf:
+    - MAP 5.1
+    - MEASURE 2.9
+    - MANAGE 2.2
+match:
+  object_type: runtime_config
+  where:
+    - field: metadata.parsed_agent_self_modification_config
+      op: equals
+      value: true
+    - field: metadata.agent_self_modification_write_enabled
+      op: equals
+      value: true
+    - field: metadata.agent_self_modification_auto_apply
+      op: equals
+      value: true
+    - field: metadata.agent_self_modification_persistent_change
+      op: equals
+      value: true
+    - field: metadata.agent_self_modification_untrusted_input
+      op: equals
+      value: true
+    - field: metadata.agent_self_modification_instruction_target
+      op: equals
+      value: true
+    - field: metadata.agent_self_modification_policy_target
+      op: equals
+      value: true
+    - field: metadata.agent_self_modification_tool_target
+      op: equals
+      value: true
+    - field: metadata.agent_self_modification_approval_required
+      op: equals
+      value: false
+recommendation:
+  control: quarantine
+  text: Quarantine self-modifying agent writes from untrusted context, require human approval before prompt, policy, tool, runtime, or memory changes are applied, and keep rollback checkpoints for every control-plane mutation.

@@ -162,6 +162,11 @@ export async function detectSurfaces(files: WalkedFile[]): Promise<DetectedSurfa
       continue;
     }
 
+    if (isAgentSelfModificationConfigPath(file.relativePath, basename)) {
+      detectAgentSelfModificationConfig(file, text, surfaces);
+      continue;
+    }
+
     if (isSaasConnectorConfigPath(file.relativePath, basename)) {
       detectSaasConnectorConfig(file, text, surfaces);
       continue;
@@ -1073,6 +1078,70 @@ function detectAgentExtensionLoaderConfig(file: WalkedFile, text: string | undef
   });
 }
 
+function detectAgentSelfModificationConfig(file: WalkedFile, text: string | undefined, surfaces: DetectedSurfaces): void {
+  const parsed = parseStructuredConfig(text ?? "", file.relativePath);
+  if (parsed.parseFailed) {
+    addDiagnostic(surfaces, file, {
+      parser: parsed.parser ?? "structured_config",
+      code: "AGENT_SELF_MODIFICATION_CONFIG_PARSE_FAILED",
+      reason: "Agent self-modification configuration could not be parsed. Raw content was redacted."
+    });
+  }
+
+  const posture = classifyAgentSelfModificationConfig(parsed.value, file.relativePath);
+  const actions = new Set<ActionType>(["read", "call"]);
+  if (posture.agent_self_modification_write_enabled || posture.agent_self_modification_auto_apply) actions.add("write");
+  if (posture.agent_self_modification_executes_after_update) actions.add("execute");
+  if (posture.agent_self_modification_external_authority) {
+    actions.add("send");
+    actions.add("publish");
+  }
+  if (posture.agent_self_modification_memory_target) actions.add("remember");
+
+  const dataClasses = new Set<SurfaceObject["data_classes"][number]>(["unknown"]);
+  if (posture.env_key_names.some(isCredentialLikeKeyName) || posture.secret_ref_key_names.length > 0) dataClasses.add("credential");
+  if (posture.agent_self_modification_sensitive_data || posture.agent_self_modification_untrusted_input) dataClasses.add("confidential");
+  if (posture.agent_self_modification_pii_data) dataClasses.add("pii");
+  if (dataClasses.size > 1) dataClasses.delete("unknown");
+
+  const object = createSurfaceObject({
+    type: "runtime_config",
+    name: path.basename(file.relativePath),
+    path: file.relativePath,
+    trust_level: inferTrustLevel(file.relativePath),
+    data_classes: uniqueDataClasses([...dataClasses] as SurfaceObject["data_classes"]),
+    actions: uniqueActions([...actions]),
+    side_effect:
+      posture.agent_self_modification_write_enabled ||
+      posture.agent_self_modification_auto_apply ||
+      posture.agent_self_modification_persistent_change ||
+      posture.agent_self_modification_executes_after_update,
+    reversible: posture.agent_self_modification_rollback_enabled,
+    external_reach: posture.agent_self_modification_external_authority,
+    secret_exposure: posture.env_key_names.some(isCredentialLikeKeyName) || posture.secret_ref_key_names.length > 0,
+    reason: "Agent self-modification configuration discovered as persistent control-plane mutation posture.",
+    metadata: {
+      content_redacted: true,
+      values_collected: false,
+      parsed_agent_self_modification_config: Boolean(parsed.value) && !parsed.parseFailed,
+      parse_error: parsed.parseFailed,
+      ...posture
+    }
+  });
+  surfaces.runtime_config.push({
+    ...object,
+    untrusted_to_privileged:
+      (posture.agent_self_modification_untrusted_input &&
+        posture.agent_self_modification_write_enabled &&
+        (posture.agent_self_modification_instruction_target ||
+          posture.agent_self_modification_policy_target ||
+          posture.agent_self_modification_tool_target ||
+          posture.agent_self_modification_runtime_target) &&
+        posture.agent_self_modification_auto_apply) ||
+      isUntrustedToPrivileged(object)
+  });
+}
+
 function detectSaasConnectorConfig(file: WalkedFile, text: string | undefined, surfaces: DetectedSurfaces): void {
   const parsed = parseStructuredConfig(text ?? "", file.relativePath);
   if (parsed.parseFailed) {
@@ -1502,6 +1571,27 @@ function isAgentExtensionLoaderConfigPath(relativePath: string, basename: string
   return extensionName || (extensionDirectory && configName);
 }
 
+function isAgentSelfModificationConfigPath(relativePath: string, basename: string): boolean {
+  const normalized = relativePath.replaceAll("\\", "/").toLowerCase();
+  const lowerBase = basename.toLowerCase();
+  if (!/\.(json|ya?ml|toml)$/iu.test(lowerBase)) return false;
+  if (normalized.startsWith(".github/workflows/")) return false;
+  if (normalized.startsWith("rules/")) return false;
+  const segments = normalized.split("/").slice(0, -1);
+  const mutationDirectory = segments.some((segment) =>
+    /^(self-modification|self_modification|self-update|self_update|agent-updates?|agent_updates?|policy-writers?|policy_writers?|mutation|mutations|patches|autofix|auto-fix|codemods?)$/iu.test(
+      segment
+    )
+  );
+  const mutationName = /(?:self-modification|self_modification|self-update|self_update|agent-update|agent_update|policy-writer|policy_writer|prompt-writer|prompt_writer|instruction-writer|instruction_writer|runtime-writer|runtime_writer|autofix|auto-fix|codemod|mutation)/iu.test(
+    lowerBase
+  );
+  const configName = /(?:config|settings|policy|prompt|instruction|runtime|mutation|patch|update|writer|autofix|codemod|self)/iu.test(
+    lowerBase
+  );
+  return mutationName || (mutationDirectory && configName);
+}
+
 function isSaasConnectorConfigPath(relativePath: string, basename: string): boolean {
   const normalized = relativePath.replaceAll("\\", "/").toLowerCase();
   const lowerBase = basename.toLowerCase();
@@ -1830,6 +1920,33 @@ interface AgentExtensionLoaderPosture {
   agent_extension_loader_sensitive_data: boolean;
   agent_extension_loader_pii_data: boolean;
   agent_extension_loader_approval_required: boolean;
+  env_key_names: string[];
+  secret_ref_key_names: string[];
+}
+
+interface AgentSelfModificationPosture {
+  agent_self_modification_fields: string[];
+  agent_self_modification_target_redacted: boolean;
+  agent_self_modification_target_count: number;
+  agent_self_modification_target_categories: string[];
+  agent_self_modification_instruction_target: boolean;
+  agent_self_modification_prompt_target: boolean;
+  agent_self_modification_policy_target: boolean;
+  agent_self_modification_tool_target: boolean;
+  agent_self_modification_runtime_target: boolean;
+  agent_self_modification_memory_target: boolean;
+  agent_self_modification_workflow_target: boolean;
+  agent_self_modification_write_enabled: boolean;
+  agent_self_modification_auto_apply: boolean;
+  agent_self_modification_persistent_change: boolean;
+  agent_self_modification_executes_after_update: boolean;
+  agent_self_modification_rollback_enabled: boolean;
+  agent_self_modification_untrusted_input: boolean;
+  agent_self_modification_authority_categories: string[];
+  agent_self_modification_external_authority: boolean;
+  agent_self_modification_sensitive_data: boolean;
+  agent_self_modification_pii_data: boolean;
+  agent_self_modification_approval_required: boolean;
   env_key_names: string[];
   secret_ref_key_names: string[];
 }
@@ -3500,6 +3617,194 @@ function hasAgentExtensionApprovalRequiredSignal(fields: RuntimeField[]): boolea
 
 function isAgentExtensionLoaderSecurityField(fieldPath: string): boolean {
   return /provider|registry|marketplace|catalog|extension|skill|plugin|tool|mcp|package|module|source|repository|repo|url|host|endpoint|install|load|autoload|update|pin|version|signature|signing|provenance|attestation|checksum|digest|trusted|untrusted|selector|input|customer|ticket|prompt|retrieved|browser|authority|permission|scope|capabilit|approval|secret|token|credential|auth|env|pii|sensitive/iu.test(
+    fieldPath
+  );
+}
+
+function classifyAgentSelfModificationConfig(value: unknown, filePath: string): AgentSelfModificationPosture {
+  const fields = flattenRuntimeFields(value);
+  const stringValues = collectFieldStringValues(fields);
+  const targetCategories = collectAgentSelfModificationTargetCategories(fields);
+  const authorityCategories = collectAgentSelfModificationAuthorityCategories(fields);
+  const envKeys = uniqueStrings([
+    ...collectEnvKeyNamesFromConfig(value).filter(isLikelyEnvKeyName),
+    ...extractEnvironmentReferenceKeys(stringValues)
+  ]);
+  const secretRefKeys = extractSecretReferenceKeys(stringValues);
+
+  return {
+    agent_self_modification_fields: fields
+      .map((field) => field.path)
+      .filter((fieldPath) => isAgentSelfModificationSecurityField(fieldPath))
+      .sort((a, b) => a.localeCompare(b)),
+    agent_self_modification_target_redacted: targetCategories.length > 0 || hasAgentSelfModificationTargetReferenceSignal(fields),
+    agent_self_modification_target_count: countAgentSelfModificationTargets(fields),
+    agent_self_modification_target_categories: targetCategories,
+    agent_self_modification_instruction_target: targetCategories.includes("instruction_file"),
+    agent_self_modification_prompt_target: targetCategories.includes("prompt_template"),
+    agent_self_modification_policy_target: targetCategories.includes("policy_file"),
+    agent_self_modification_tool_target: targetCategories.includes("tool_definition"),
+    agent_self_modification_runtime_target: targetCategories.includes("runtime_config"),
+    agent_self_modification_memory_target: targetCategories.includes("memory_store"),
+    agent_self_modification_workflow_target: targetCategories.includes("workflow_file"),
+    agent_self_modification_write_enabled: hasAgentSelfModificationWriteSignal(fields),
+    agent_self_modification_auto_apply: hasAgentSelfModificationAutoApplySignal(fields),
+    agent_self_modification_persistent_change: hasAgentSelfModificationPersistentChangeSignal(fields, targetCategories),
+    agent_self_modification_executes_after_update: hasAgentSelfModificationExecuteAfterUpdateSignal(fields, authorityCategories),
+    agent_self_modification_rollback_enabled: hasAgentSelfModificationRollbackSignal(fields),
+    agent_self_modification_untrusted_input: hasAgentSelfModificationUntrustedInputSignal(fields),
+    agent_self_modification_authority_categories: authorityCategories,
+    agent_self_modification_external_authority: hasAgentSelfModificationExternalAuthoritySignal(fields, authorityCategories),
+    agent_self_modification_sensitive_data: hasAgentSelfModificationSensitiveDataSignal(fields),
+    agent_self_modification_pii_data: hasAgentSelfModificationPiiDataSignal(fields),
+    agent_self_modification_approval_required: hasAgentSelfModificationApprovalRequiredSignal(fields),
+    env_key_names: envKeys,
+    secret_ref_key_names: secretRefKeys
+  };
+}
+
+function collectAgentSelfModificationTargetCategories(fields: RuntimeField[]): string[] {
+  const categories = new Set<string>();
+  for (const field of fields) {
+    const text = `${field.path} ${fieldValueText(field)}`.toLowerCase();
+    if (/\b(agents?\.md|claude\.md|instructions?|system[_\s-]?prompt|developer[_\s-]?prompt|repo[_\s-]?instructions?)\b/iu.test(text)) {
+      categories.add("instruction_file");
+    }
+    if (/\b(prompt|prompts|template|templates|prompt[_\s-]?registry)\b/iu.test(text)) categories.add("prompt_template");
+    if (/\b(agentcsp\.ya?ml|policy|policies|guardrail|guardrails|safety|redaction|approval)\b/iu.test(text)) categories.add("policy_file");
+    if (/\b(tool|tools|function|functions|schema|schemas|mcp|plugin|skill)\b/iu.test(text)) categories.add("tool_definition");
+    if (/\b(runtime|settings|config|codex|claude|cursor|permissions?|allowlist|approval[_\s-]?policy)\b/iu.test(text)) {
+      categories.add("runtime_config");
+    }
+    if (/\b(memory|memories|long[_\s-]?term|state|checkpoint|checkpointer)\b/iu.test(text)) categories.add("memory_store");
+    if (/\b(workflow|workflows|github[_\s-]?actions|ci|cd|automation)\b/iu.test(text)) categories.add("workflow_file");
+  }
+  return [...categories].sort((a, b) => a.localeCompare(b));
+}
+
+function hasAgentSelfModificationTargetReferenceSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /(?:^|[_\W])(\.codex|\.claude|\.cursor|agents?\.md|claude\.md|agentcsp\.ya?ml|package\.json|mcp\.json|tools?\/|prompts?\/|memory\/|\.github\/workflows)(?:[_\W]|$)/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    )
+  );
+}
+
+function countAgentSelfModificationTargets(fields: RuntimeField[]): number {
+  let count = 0;
+  for (const field of fields) {
+    const text = `${field.path} ${fieldValueText(field)}`;
+    if (/(^|\.)(targets?|target_files?|paths?|files?|write_targets?|patch_targets?|managed_files?)\.(\d+|[A-Za-z][\w-]*)/iu.test(field.path)) {
+      count += 1;
+      continue;
+    }
+    if (/(^|\.)(target|target_file|path|file|write_target|patch_target|managed_file)$/iu.test(field.path) && fieldStringValues(field).length > 0) {
+      count += 1;
+      continue;
+    }
+    if (/(?:^|[_\W])(\.codex|\.claude|\.cursor|agents?\.md|claude\.md|agentcsp\.ya?ml|package\.json|mcp\.json|tools?\/|prompts?\/|memory\/|\.github\/workflows)(?:[_\W]|$)/iu.test(text)) {
+      count += 1;
+    }
+  }
+  return count;
+}
+
+function hasAgentSelfModificationWriteSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /(?:^|[_\W])(write|patch|modify|update|rewrite|edit|commit|save|persist|apply|replace|mutate|generate[_\s-]?patch|create)(?:[_\W]|$)/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    ) && truthyConfigValue(field.value)
+  );
+}
+
+function hasAgentSelfModificationAutoApplySignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /\b(auto[_\s-]?apply|apply[_\s-]?automatically|auto[_\s-]?commit|auto[_\s-]?merge|auto[_\s-]?save|without[_\s-]?approval|no[_\s-]?approval|autonomous|direct[_\s-]?write)\b/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    ) && truthyConfigValue(field.value)
+  );
+}
+
+function hasAgentSelfModificationPersistentChangeSignal(fields: RuntimeField[], targetCategories: string[]): boolean {
+  return targetCategories.length > 0 ||
+    fields.some((field) =>
+      /\b(persist|permanent|durable|repo|repository|workspace|filesystem|git|commit|save|write[_\s-]?through|store)\b/iu.test(
+        `${field.path} ${fieldValueText(field)}`
+      ) && truthyConfigValue(field.value)
+    );
+}
+
+function hasAgentSelfModificationExecuteAfterUpdateSignal(fields: RuntimeField[], authorityCategories: string[]): boolean {
+  return authorityCategories.includes("shell_execution") ||
+    fields.some((field) =>
+      /(?:^|[_\W])(reload|restart|execute[_\s-]?after|run[_\s-]?after|hot[_\s-]?reload|apply[_\s-]?then[_\s-]?run|load[_\s-]?updated)(?:[_\W]|$)/iu.test(
+        `${field.path} ${fieldValueText(field)}`
+      ) && truthyConfigValue(field.value)
+    );
+}
+
+function hasAgentSelfModificationRollbackSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /\b(rollback|revert|backup|snapshot|restore|undo|approval[_\s-]?checkpoint)\b/iu.test(field.path) && truthyConfigValue(field.value)
+  );
+}
+
+function hasAgentSelfModificationUntrustedInputSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /\b(untrusted|user|customer|client|ticket|support|issue|comment|message|prompt|retrieved|rag|document|email|slack|browser|web[_-]?page|chat|inbound|external|tool[_\s-]?output)\b/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    )
+  );
+}
+
+function collectAgentSelfModificationAuthorityCategories(fields: RuntimeField[]): string[] {
+  const categories = new Set<string>();
+  for (const field of fields) {
+    const text = `${field.path} ${fieldValueText(field)}`.toLowerCase();
+    if (/(?:^|[_\W])(shell|bash|command|exec|terminal|python|node|subprocess|script)(?:[_\W]|$)/iu.test(text)) categories.add("shell_execution");
+    if (/(?:^|[_\W])(filesystem|file[_\s-]?write|workspace|repo|repository|git|commit|push|pull[_\s-]?request)(?:[_\W]|$)/iu.test(text)) {
+      categories.add("repo_or_filesystem_write");
+    }
+    if (/(?:^|[_\W])(tool|tools|function|mcp|plugin|skill|capability)(?:[_\W]|$)/iu.test(text)) categories.add("tool_definition_write");
+    if (/(?:^|[_\W])(prompt|instruction|system[_\s-]?prompt|developer[_\s-]?prompt|policy|guardrail|safety)(?:[_\W]|$)/iu.test(text)) {
+      categories.add("control_plane_write");
+    }
+    if (/(?:^|[_\W])(slack|email|webhook|message|ticket|issue|comment|reply|send|post|publish)(?:[_\W]|$)/iu.test(text)) categories.add("external_response");
+    if (/(?:^|[_\W])(memory|remember|store|persist|session[_\s-]?state)(?:[_\W]|$)/iu.test(text)) categories.add("memory_write");
+  }
+  return [...categories].sort((a, b) => a.localeCompare(b));
+}
+
+function hasAgentSelfModificationExternalAuthoritySignal(fields: RuntimeField[], categories: string[]): boolean {
+  return categories.includes("external_response") ||
+    fields.some((field) => /\b(slack|email|webhook|send|post|publish|reply|respond|ticket|issue|external|api)\b/iu.test(`${field.path} ${fieldValueText(field)}`));
+}
+
+function hasAgentSelfModificationSensitiveDataSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /\b(customer|client|ticket|support|internal|confidential|private|proprietary|sensitive|account|billing|payment|prod|production|admin|credential|token|api[_-]?key|secret)\b/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    )
+  );
+}
+
+function hasAgentSelfModificationPiiDataSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /(?:^|[_\W])(pii|email|phone|address|ssn|passport|dob|date[_\s-]?of[_\s-]?birth|customer[_-]?id|user[_-]?id|account[_-]?id)(?:[_\W]|$)/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    )
+  );
+}
+
+function hasAgentSelfModificationApprovalRequiredSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /approval|required[_-]?approval|human[_-]?approval|confirm|confirmation|review|human[_-]?in[_-]?the[_-]?loop/iu.test(field.path) &&
+    truthyConfigValue(field.value)
+  );
+}
+
+function isAgentSelfModificationSecurityField(fieldPath: string): boolean {
+  return /self|modify|mutation|patch|update|write|target|prompt|instruction|policy|guardrail|runtime|config|tool|mcp|plugin|skill|memory|workflow|automation|apply|commit|persist|reload|execute|rollback|backup|approval|source|input|customer|ticket|retrieved|browser|authority|permission|secret|token|credential|auth|env|pii|sensitive/iu.test(
     fieldPath
   );
 }

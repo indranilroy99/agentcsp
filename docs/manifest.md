@@ -473,6 +473,40 @@ Agent extension loader metadata may include:
 
 Raw registry URLs, Git repository URLs, package names, extension names, version strings, permission strings, context selector fields, source labels, data-field labels, and secret placeholders are not emitted. Provider names, redacted destination categories, extension-kind categories, pinning posture, signature/provenance posture, tool-authority categories, approval posture, data-class booleans, and credential key names let rules detect dynamic agent capability loading without copying extension manifests into the scan output.
 
+## Agent Self-Modification Posture
+
+Agent self-modification, policy-writer, prompt-writer, runtime-writer, autofix, codemod, and mutation configs are also normalized into `runtime_config` objects when common self-modification configuration files are discovered.
+
+Agent self-modification metadata may include:
+
+- `parsed_agent_self_modification_config`
+- `agent_self_modification_fields`
+- `agent_self_modification_target_redacted`
+- `agent_self_modification_target_count`
+- `agent_self_modification_target_categories`
+- `agent_self_modification_instruction_target`
+- `agent_self_modification_prompt_target`
+- `agent_self_modification_policy_target`
+- `agent_self_modification_tool_target`
+- `agent_self_modification_runtime_target`
+- `agent_self_modification_memory_target`
+- `agent_self_modification_workflow_target`
+- `agent_self_modification_write_enabled`
+- `agent_self_modification_auto_apply`
+- `agent_self_modification_persistent_change`
+- `agent_self_modification_executes_after_update`
+- `agent_self_modification_rollback_enabled`
+- `agent_self_modification_untrusted_input`
+- `agent_self_modification_authority_categories`
+- `agent_self_modification_external_authority`
+- `agent_self_modification_sensitive_data`
+- `agent_self_modification_pii_data`
+- `agent_self_modification_approval_required`
+- `env_key_names`
+- `secret_ref_key_names`
+
+Raw target paths, prompt or policy field names, patch rules, reload commands, source labels, tool names, data-field labels, and secret placeholders are not emitted. Target categories, authority categories, auto-apply posture, persistence posture, rollback posture, approval posture, data-class booleans, and credential key names let rules detect when untrusted agent context can mutate the control plane without copying self-modification instructions into evidence.
+
 ## SaaS And API Connector Posture
 
 SaaS, API, ticketing, messaging, email, CRM, and repository-service connector configs are also normalized into `runtime_config` objects when common connector configuration files are discovered.

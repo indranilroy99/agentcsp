@@ -59,6 +59,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-017")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-018")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-019")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-020")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-CICD-002")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-AUTOMATION-001")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-AUTOMATION-002")).toBe(true);
@@ -294,6 +295,37 @@ describe("rule engine", () => {
     expect(JSON.stringify(runtimeAgentExtensionFindings[0])).not.toContain("@agentcsp-demo/browser-account-actions");
     expect(JSON.stringify(runtimeAgentExtensionFindings[0])).not.toContain("customer-data-plugin");
     expect(JSON.stringify(runtimeAgentExtensionFindings[0])).not.toContain("customer_requested_skill");
+    const runtimeSelfModificationFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-RUNTIME-020");
+    expect(runtimeSelfModificationFindings).toHaveLength(1);
+    expect(runtimeSelfModificationFindings[0]?.matched_object.path).toBe("self-modification/policy-writer.yaml");
+    expect(runtimeSelfModificationFindings[0]?.matched_object.metadata).toMatchObject({
+      parsed_agent_self_modification_config: true,
+      agent_self_modification_write_enabled: true,
+      agent_self_modification_auto_apply: true,
+      agent_self_modification_persistent_change: true,
+      agent_self_modification_untrusted_input: true,
+      agent_self_modification_instruction_target: true,
+      agent_self_modification_policy_target: true,
+      agent_self_modification_tool_target: true,
+      agent_self_modification_approval_required: false
+    });
+    expect(runtimeSelfModificationFindings[0]?.matched_object.metadata.agent_self_modification_target_categories).toEqual([
+      "instruction_file",
+      "memory_store",
+      "policy_file",
+      "prompt_template",
+      "runtime_config",
+      "tool_definition"
+    ]);
+    expect(runtimeSelfModificationFindings[0]?.severity).toBe("critical");
+    expect(runtimeSelfModificationFindings[0]?.confidence).toBe("very_high");
+    expect(runtimeSelfModificationFindings[0]?.recommended_control).toBe("quarantine");
+    expect(JSON.stringify(runtimeSelfModificationFindings[0])).not.toContain("${AGENT_SELF_MOD_TOKEN}");
+    expect(JSON.stringify(runtimeSelfModificationFindings[0])).not.toContain("AGENTS.md");
+    expect(JSON.stringify(runtimeSelfModificationFindings[0])).not.toContain("support-ticket.prompt.md");
+    expect(JSON.stringify(runtimeSelfModificationFindings[0])).not.toContain("agentcsp.yaml");
+    expect(JSON.stringify(runtimeSelfModificationFindings[0])).not.toContain("system_prompt");
+    expect(JSON.stringify(runtimeSelfModificationFindings[0])).not.toContain("npm run agent:run");
     const runtimeInboundTriggerFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-RUNTIME-014");
     expect(runtimeInboundTriggerFindings).toHaveLength(1);
     expect(runtimeInboundTriggerFindings[0]?.matched_object.path).toBe("inbox/support-triage.yaml");

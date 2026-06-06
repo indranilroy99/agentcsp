@@ -25,6 +25,7 @@ describe("scanner", () => {
     expect(envSurface?.metadata.env_key_names).toEqual([
       "AGENT_EXTENSION_TOKEN",
       "AGENT_IDENTITY_TOKEN",
+      "AGENT_SELF_MOD_TOKEN",
       "BROWSER_SESSION_TOKEN",
       "CREW_AGENT_TOKEN",
       "CUSTOMER_SUCCESS_SLACK_BOT_TOKEN",
@@ -737,6 +738,68 @@ describe("scanner", () => {
     expect(JSON.stringify(agentExtensionLoaderConfig)).not.toContain("customer_requested_skill");
     expect(JSON.stringify(agentExtensionLoaderConfig)).not.toContain("customer_extension_email");
     expect(JSON.stringify(agentExtensionLoaderConfig)).not.toContain("confidential_extension_payload");
+    const selfModificationConfig = surfaces.runtime_config.find((surface) => surface.path === "self-modification/policy-writer.yaml");
+    expect(selfModificationConfig).toBeDefined();
+    expect(selfModificationConfig).toMatchObject({
+      external_reach: true,
+      secret_exposure: true,
+      side_effect: true,
+      reversible: false,
+      untrusted_to_privileged: true
+    });
+    expect(selfModificationConfig?.metadata).toMatchObject({
+      content_redacted: true,
+      values_collected: false,
+      parsed_agent_self_modification_config: true,
+      agent_self_modification_target_redacted: true,
+      agent_self_modification_instruction_target: true,
+      agent_self_modification_prompt_target: true,
+      agent_self_modification_policy_target: true,
+      agent_self_modification_tool_target: true,
+      agent_self_modification_runtime_target: true,
+      agent_self_modification_memory_target: true,
+      agent_self_modification_write_enabled: true,
+      agent_self_modification_auto_apply: true,
+      agent_self_modification_persistent_change: true,
+      agent_self_modification_executes_after_update: true,
+      agent_self_modification_rollback_enabled: false,
+      agent_self_modification_untrusted_input: true,
+      agent_self_modification_external_authority: true,
+      agent_self_modification_sensitive_data: true,
+      agent_self_modification_pii_data: true,
+      agent_self_modification_approval_required: false
+    });
+    expect(selfModificationConfig?.metadata.agent_self_modification_target_categories).toEqual([
+      "instruction_file",
+      "memory_store",
+      "policy_file",
+      "prompt_template",
+      "runtime_config",
+      "tool_definition"
+    ]);
+    expect(selfModificationConfig?.metadata.agent_self_modification_authority_categories).toEqual([
+      "control_plane_write",
+      "external_response",
+      "memory_write",
+      "repo_or_filesystem_write",
+      "shell_execution",
+      "tool_definition_write"
+    ]);
+    expect(selfModificationConfig?.metadata.env_key_names).toEqual(["AGENT_SELF_MOD_TOKEN"]);
+    expect(selfModificationConfig?.metadata.secret_ref_key_names).toEqual(["AGENT_SELF_MOD_TOKEN"]);
+    expect(selfModificationConfig?.data_classes).toEqual(["confidential", "credential", "pii"]);
+    expect(selfModificationConfig?.actions).toEqual(["call", "execute", "publish", "read", "remember", "send", "write"]);
+    expect(JSON.stringify(selfModificationConfig)).not.toContain("${AGENT_SELF_MOD_TOKEN}");
+    expect(JSON.stringify(selfModificationConfig)).not.toContain("AGENTS.md");
+    expect(JSON.stringify(selfModificationConfig)).not.toContain("support-ticket.prompt.md");
+    expect(JSON.stringify(selfModificationConfig)).not.toContain("agentcsp.yaml");
+    expect(JSON.stringify(selfModificationConfig)).not.toContain(".codex/config.toml");
+    expect(JSON.stringify(selfModificationConfig)).not.toContain("tools/agent-tools.json");
+    expect(JSON.stringify(selfModificationConfig)).not.toContain("system_prompt");
+    expect(JSON.stringify(selfModificationConfig)).not.toContain("developer_prompt");
+    expect(JSON.stringify(selfModificationConfig)).not.toContain("tool_allowlist");
+    expect(JSON.stringify(selfModificationConfig)).not.toContain("npm run agent:run");
+    expect(JSON.stringify(selfModificationConfig)).not.toContain("customer_self_mod_email");
     const inboundTriggerConfig = surfaces.runtime_config.find((surface) => surface.path === "inbox/support-triage.yaml");
     expect(inboundTriggerConfig).toBeDefined();
     expect(inboundTriggerConfig).toMatchObject({

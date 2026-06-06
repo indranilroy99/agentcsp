@@ -712,6 +712,15 @@ The current iteration adds:
 - rule `AGENTCSP-RUNTIME-019` for remote extension loaders that combine auto-install, unpinned references, disabled signature verification, untrusted input, privileged authority, and missing approval
 - scanner, rule, fixture verifier, and redaction coverage proving registry URLs, Git URLs, package names, extension names, version strings, permission strings, selector fields, source labels, data-field labels, and token placeholders stay redacted
 
+## Agent Self-Modification Pass
+
+The current iteration adds:
+
+- first-class redacted metadata for self-modifying agent, policy-writer, prompt-writer, runtime-writer, autofix, codemod, and mutation configs
+- vulnerable fixture coverage for untrusted customer/retrieval/browser context that can auto-apply persistent writes to instructions, prompt templates, policy, runtime config, tool definitions, and memory, then reload agent execution without approval
+- rule `AGENTCSP-RUNTIME-020` for self-modification configs that combine untrusted input, auto-applied persistent control-plane writes, instruction/policy/tool targets, and missing approval
+- scanner, rule, fixture verifier, and redaction coverage proving target paths, patch-rule field names, reload commands, source labels, tool names, data-field labels, and token placeholders stay redacted
+
 ## Initial Build Recommendation
 
 Start with a CLI-first MVP before building the dashboard:

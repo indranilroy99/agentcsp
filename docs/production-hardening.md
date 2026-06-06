@@ -50,6 +50,7 @@ A finding should be considered production-grade when it includes:
 - AI eval harness metadata for live red-team execution, adversarial cases, production targets, privileged tool authority, output retention, and approval posture without emitting suite names, scenario names, prompts, target URLs, agent names, tool strings, assertion values, output paths, or data-field labels
 - agent identity delegation metadata for credential issuance, impersonation, broad scopes, untrusted subjects, tool injection, and approval posture without emitting issuers, token endpoints, service-account IDs, raw scopes, IAM roles, subject labels, tool names, data-field labels, or token placeholders
 - agent extension loader metadata for remote registries, auto-install/update posture, pinning, signature/provenance verification, untrusted selectors, and tool authority without emitting registry URLs, Git URLs, package names, extension names, permission strings, selector fields, source labels, or token placeholders
+- agent self-modification metadata for untrusted writes to instructions, prompts, policy, runtime config, tools, memory, or workflows without emitting target paths, patch rules, reload commands, source labels, tool names, data-field labels, or token placeholders
 - SaaS/API connector metadata for broad credential-backed write scopes without emitting raw OAuth scopes, endpoints, workspaces, channels, queues, or customer-system names
 - secret-manager metadata for read/list credential-broker authority without emitting vault URLs, secret paths, policy names, role names, or resource IDs
 - database connector metadata for credential-backed read/write/query authority without emitting hosts, connection strings, usernames, or table names
@@ -114,6 +115,7 @@ Examples:
 - live eval harness plus adversarial prompts plus production agent target plus privileged tools plus credentials plus no approval gate
 - agent identity delegation plus credential issuance plus service-account impersonation plus broad scopes plus untrusted subject inputs plus no approval gate
 - remote agent extension loader plus auto-install plus unpinned unsigned capabilities plus untrusted selector inputs plus privileged tool authority plus no approval gate
+- agent self-modification plus untrusted inputs plus auto-applied writes to instructions, policy, runtime config, and tool definitions plus no approval gate
 - SaaS connector with broad write scopes plus credentials plus untrusted input plus no approval gate
 - secret manager connector with read/list scope plus tool injection plus untrusted input plus no approval gate
 - database connector with credentials plus write/query authority plus sensitive data plus untrusted input
