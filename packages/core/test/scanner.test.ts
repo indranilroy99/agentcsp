@@ -31,6 +31,9 @@ describe("scanner", () => {
       "AGENT_WEBHOOK_TOKEN",
       "APPROVAL_GATE_TOKEN",
       "ARTIFACT_EXPORT_TOKEN",
+      "AWS_ACCESS_KEY_ID",
+      "AWS_SECRET_ACCESS_KEY",
+      "AWS_SESSION_TOKEN",
       "BROWSER_SESSION_TOKEN",
       "CODE_INTERPRETER_TOKEN",
       "CONTEXT_COMPOSER_TOKEN",
@@ -1141,6 +1144,80 @@ describe("scanner", () => {
     expect(JSON.stringify(browserSessionConfig)).not.toContain(".auth/customer-support-cookies.json");
     expect(JSON.stringify(browserSessionConfig)).not.toContain("support.example.invalid");
     expect(JSON.stringify(browserSessionConfig)).not.toContain("browser_customer_email");
+    const cloudControlPlaneConfig = surfaces.runtime_config.find(
+      (surface) => surface.path === "cloud/aws-admin-agent.yaml"
+    );
+    expect(cloudControlPlaneConfig).toBeDefined();
+    expect(cloudControlPlaneConfig).toMatchObject({
+      trust_level: "third_party",
+      external_reach: true,
+      secret_exposure: true,
+      side_effect: true,
+      reversible: false,
+      untrusted_to_privileged: true
+    });
+    expect(cloudControlPlaneConfig?.metadata).toMatchObject({
+      content_redacted: true,
+      values_collected: false,
+      parsed_cloud_control_plane_config: true,
+      cloud_provider: "aws",
+      cloud_control_plane_remote: true,
+      cloud_control_plane_account_redacted: true,
+      cloud_control_plane_role_redacted: true,
+      cloud_control_plane_resource_references_redacted: true,
+      cloud_control_plane_scope_redacted: true,
+      cloud_control_plane_broad_scope: true,
+      cloud_control_plane_admin_scope: true,
+      cloud_control_plane_iam_write: true,
+      cloud_control_plane_secret_access: true,
+      cloud_control_plane_secret_write: true,
+      cloud_control_plane_storage_write: true,
+      cloud_control_plane_compute_write: true,
+      cloud_control_plane_delete_authority: true,
+      cloud_control_plane_audit_log_access: true,
+      cloud_control_plane_auto_remediation: true,
+      cloud_control_plane_untrusted_input: true,
+      cloud_control_plane_approval_required: false
+    });
+    expect(cloudControlPlaneConfig?.metadata.cloud_control_plane_scope_categories).toEqual([
+      "admin_scope",
+      "audit_log_read",
+      "compute_write",
+      "iam_write",
+      "secret_read",
+      "secret_write",
+      "storage_write",
+      "write_scope"
+    ]);
+    expect(cloudControlPlaneConfig?.metadata.cloud_control_plane_tool_authority_categories).toEqual([
+      "aws_cli",
+      "iac_apply"
+    ]);
+    expect(cloudControlPlaneConfig?.metadata.env_key_names).toEqual([
+      "AWS_ACCESS_KEY_ID",
+      "AWS_SECRET_ACCESS_KEY",
+      "AWS_SESSION_TOKEN"
+    ]);
+    expect(cloudControlPlaneConfig?.metadata.secret_ref_key_names).toEqual([
+      "AWS_ACCESS_KEY_ID",
+      "AWS_SECRET_ACCESS_KEY",
+      "AWS_SESSION_TOKEN"
+    ]);
+    expect(cloudControlPlaneConfig?.data_classes).toEqual(["confidential", "credential", "internal", "secret"]);
+    expect(cloudControlPlaneConfig?.actions).toEqual(["call", "delete", "execute", "read", "send", "write"]);
+    expect(JSON.stringify(cloudControlPlaneConfig)).not.toContain("${AWS_ACCESS_KEY_ID}");
+    expect(JSON.stringify(cloudControlPlaneConfig)).not.toContain("${AWS_SECRET_ACCESS_KEY}");
+    expect(JSON.stringify(cloudControlPlaneConfig)).not.toContain("${AWS_SESSION_TOKEN}");
+    expect(JSON.stringify(cloudControlPlaneConfig)).not.toContain("123456789012");
+    expect(JSON.stringify(cloudControlPlaneConfig)).not.toContain("arn:aws:iam");
+    expect(JSON.stringify(cloudControlPlaneConfig)).not.toContain("support-agent-admin");
+    expect(JSON.stringify(cloudControlPlaneConfig)).not.toContain("AdministratorAccess");
+    expect(JSON.stringify(cloudControlPlaneConfig)).not.toContain("iam:PassRole");
+    expect(JSON.stringify(cloudControlPlaneConfig)).not.toContain("s3:PutObject");
+    expect(JSON.stringify(cloudControlPlaneConfig)).not.toContain("untrusted_customer_ticket");
+    expect(JSON.stringify(cloudControlPlaneConfig)).not.toContain("retrieved_cloud_runbook");
+    expect(JSON.stringify(cloudControlPlaneConfig)).not.toContain("aws-cli");
+    expect(JSON.stringify(cloudControlPlaneConfig)).not.toContain("terraform-apply");
     const saasConnectorConfig = surfaces.runtime_config.find(
       (surface) => surface.path === "connectors/slack-customer-success.yaml"
     );

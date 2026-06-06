@@ -22,6 +22,7 @@
 - Add `agentcsp.yaml` policy files.
 - Add runtime posture inventory for sandbox, approval, network, tool authority, and agent safety-control posture.
 - Add identity delegation posture for agent OAuth, OIDC, service-account, workload-identity, and token-broker authority.
+- Add cloud control-plane authority posture for agent IAM, compute, storage, secret, audit-log, IaC, and auto-remediation authority.
 - Add dynamic extension-loader posture for remote skills, plugins, tools, prompts, and MCP capabilities.
 - Add self-modification posture for agent-controlled prompt, policy, runtime, tool, memory, and workflow writes.
 - Add approval-gate integrity posture for model-mediated decisions, default-allow review paths, auto-execution, and human-review boundaries.

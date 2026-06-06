@@ -71,6 +71,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-029")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-030")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-031")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-032")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-CICD-002")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-AUTOMATION-001")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-AUTOMATION-002")).toBe(true);
@@ -413,6 +414,51 @@ describe("rule engine", () => {
     expect(JSON.stringify(runtimeEmbeddingFindings[0])).not.toContain("retrieved_customer_context");
     expect(JSON.stringify(runtimeEmbeddingFindings[0])).not.toContain("browser_tool_output");
     expect(JSON.stringify(runtimeEmbeddingFindings[0])).not.toContain("support_memory_summary");
+    const runtimeCloudControlPlaneFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-RUNTIME-032");
+    expect(runtimeCloudControlPlaneFindings).toHaveLength(1);
+    expect(runtimeCloudControlPlaneFindings[0]?.matched_object.path).toBe("cloud/aws-admin-agent.yaml");
+    expect(runtimeCloudControlPlaneFindings[0]?.matched_object.metadata).toMatchObject({
+      parsed_cloud_control_plane_config: true,
+      cloud_provider: "aws",
+      cloud_control_plane_remote: true,
+      cloud_control_plane_broad_scope: true,
+      cloud_control_plane_admin_scope: true,
+      cloud_control_plane_iam_write: true,
+      cloud_control_plane_secret_access: true,
+      cloud_control_plane_compute_write: true,
+      cloud_control_plane_untrusted_input: true,
+      cloud_control_plane_approval_required: false
+    });
+    expect(runtimeCloudControlPlaneFindings[0]?.matched_object.metadata.cloud_control_plane_scope_categories).toEqual([
+      "admin_scope",
+      "audit_log_read",
+      "compute_write",
+      "iam_write",
+      "secret_read",
+      "secret_write",
+      "storage_write",
+      "write_scope"
+    ]);
+    expect(runtimeCloudControlPlaneFindings[0]?.matched_object.metadata.cloud_control_plane_tool_authority_categories).toEqual([
+      "aws_cli",
+      "iac_apply"
+    ]);
+    expect(runtimeCloudControlPlaneFindings[0]?.severity).toBe("critical");
+    expect(runtimeCloudControlPlaneFindings[0]?.confidence).toBe("very_high");
+    expect(runtimeCloudControlPlaneFindings[0]?.recommended_control).toBe("require_approval");
+    expect(JSON.stringify(runtimeCloudControlPlaneFindings[0])).not.toContain("${AWS_ACCESS_KEY_ID}");
+    expect(JSON.stringify(runtimeCloudControlPlaneFindings[0])).not.toContain("${AWS_SECRET_ACCESS_KEY}");
+    expect(JSON.stringify(runtimeCloudControlPlaneFindings[0])).not.toContain("${AWS_SESSION_TOKEN}");
+    expect(JSON.stringify(runtimeCloudControlPlaneFindings[0])).not.toContain("123456789012");
+    expect(JSON.stringify(runtimeCloudControlPlaneFindings[0])).not.toContain("arn:aws:iam");
+    expect(JSON.stringify(runtimeCloudControlPlaneFindings[0])).not.toContain("support-agent-admin");
+    expect(JSON.stringify(runtimeCloudControlPlaneFindings[0])).not.toContain("AdministratorAccess");
+    expect(JSON.stringify(runtimeCloudControlPlaneFindings[0])).not.toContain("iam:PassRole");
+    expect(JSON.stringify(runtimeCloudControlPlaneFindings[0])).not.toContain("s3:PutObject");
+    expect(JSON.stringify(runtimeCloudControlPlaneFindings[0])).not.toContain("untrusted_customer_ticket");
+    expect(JSON.stringify(runtimeCloudControlPlaneFindings[0])).not.toContain("retrieved_cloud_runbook");
+    expect(JSON.stringify(runtimeCloudControlPlaneFindings[0])).not.toContain("aws-cli");
+    expect(JSON.stringify(runtimeCloudControlPlaneFindings[0])).not.toContain("terraform-apply");
     const supplyChainFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-SUPPLYCHAIN-001");
     expect(supplyChainFindings).toHaveLength(1);
     expect(supplyChainFindings[0]?.matched_object.path).toBe("package.json");

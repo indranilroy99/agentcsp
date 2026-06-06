@@ -17,6 +17,9 @@ const leakPatterns = [
   /\$\{APPROVAL_GATE_TOKEN\}/u,
   /\$\{CONTEXT_COMPOSER_TOKEN\}/u,
   /\$\{ARTIFACT_EXPORT_TOKEN\}/u,
+  /\$\{AWS_ACCESS_KEY_ID\}/u,
+  /\$\{AWS_SECRET_ACCESS_KEY\}/u,
+  /\$\{AWS_SESSION_TOKEN\}/u,
   /\$\{BROWSER_SESSION_TOKEN\}/u,
   /\$\{CREW_AGENT_TOKEN\}/u,
   /\$\{CUSTOMER_SUCCESS_SLACK_BOT_TOKEN\}/u,
@@ -222,14 +225,23 @@ const leakPatterns = [
   /@openai\/agents/u,
   /openai-agents-fork/u,
   /packages\.example\.invalid/u,
-  /scripts\/install-agent-plugins\.js/u
+  /scripts\/install-agent-plugins\.js/u,
+  /123456789012/u,
+  /arn:aws:iam/u,
+  /support-agent-admin/u,
+  /AdministratorAccess/u,
+  /iam:PassRole/u,
+  /s3:PutObject/u,
+  /retrieved_cloud_runbook/u,
+  /aws-cli/u,
+  /terraform-apply/u
 ];
 
 const vulnerable = await readScanOutput(vulnerableOutput, { sarifRequired: true });
 const safe = await readScanOutput(safeOutput, { sarifRequired: false });
 
-assertEqual(vulnerable.manifest.findings.length, 107, "vulnerable manifest finding count");
-assertEqual(vulnerable.findings.length, 107, "vulnerable findings.json count");
+assertEqual(vulnerable.manifest.findings.length, 103, "vulnerable manifest finding count");
+assertEqual(vulnerable.findings.length, 103, "vulnerable findings.json count");
 assertEqual(vulnerable.manifest.attack_paths.length, 15, "vulnerable attack path count");
 assertEqual(vulnerable.manifest.static_blast_radius?.critical_attack_paths, 15, "vulnerable critical attack path count");
 assertEqual(vulnerable.manifest.diagnostics.length, 0, "vulnerable diagnostics count");
@@ -263,6 +275,7 @@ for (const ruleId of [
   "AGENTCSP-RUNTIME-029",
   "AGENTCSP-RUNTIME-030",
   "AGENTCSP-RUNTIME-031",
+  "AGENTCSP-RUNTIME-032",
   "AGENTCSP-AUTOMATION-003",
   "AGENTCSP-RUNTIME-006",
   "AGENTCSP-MCP-006",

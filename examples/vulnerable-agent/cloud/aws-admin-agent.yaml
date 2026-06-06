@@ -1,0 +1,35 @@
+provider: aws
+account_id: "123456789012"
+region: us-east-1
+role_arn: arn:aws:iam::123456789012:role/support-agent-admin
+credentials:
+  env:
+    AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
+    AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
+    AWS_SESSION_TOKEN: ${AWS_SESSION_TOKEN}
+policy:
+  managed_policies:
+    - AdministratorAccess
+  actions:
+    - iam:PassRole
+    - iam:CreateUser
+    - secretsmanager:GetSecretValue
+    - secretsmanager:PutSecretValue
+    - s3:GetObject
+    - s3:PutObject
+    - lambda:UpdateFunctionCode
+    - ec2:RunInstances
+    - cloudtrail:LookupEvents
+  resources:
+    - "*"
+agent:
+  name: support-remediation-agent
+  input_sources:
+    - untrusted_customer_ticket
+    - retrieved_cloud_runbook
+  tools:
+    - aws-cli
+    - terraform-apply
+  auto_remediate: true
+approval:
+  required: false

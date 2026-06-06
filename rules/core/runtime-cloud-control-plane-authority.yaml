@@ -1,0 +1,49 @@
+id: AGENTCSP-RUNTIME-032
+name: Cloud control-plane agent has broad credentialed write authority
+description: An agent-facing cloud control-plane configuration grants broad admin, IAM, secret, storage, or compute authority to untrusted inputs without an approval gate.
+category: cloud_control_plane_authority
+severity: critical
+maps_to:
+  owasp:
+    - LLM06:2025 Excessive Agency
+    - LLM02:2025 Sensitive Information Disclosure
+  mitre_atlas:
+    - AML.T0054 Command and Scripting Interpreter
+    - AML.T0057 Exfiltration via Cyber Means
+  nist_ai_rmf:
+    - GOVERN 1.5
+    - MAP 5.1
+    - MANAGE 2.4
+match:
+  object_type: runtime_config
+  where:
+    - field: metadata.parsed_cloud_control_plane_config
+      op: equals
+      value: true
+    - field: metadata.cloud_control_plane_broad_scope
+      op: equals
+      value: true
+    - field: metadata.cloud_control_plane_admin_scope
+      op: equals
+      value: true
+    - field: metadata.cloud_control_plane_iam_write
+      op: equals
+      value: true
+    - field: metadata.cloud_control_plane_secret_access
+      op: equals
+      value: true
+    - field: metadata.cloud_control_plane_compute_write
+      op: equals
+      value: true
+    - field: metadata.cloud_control_plane_untrusted_input
+      op: equals
+      value: true
+    - field: metadata.cloud_control_plane_approval_required
+      op: equals
+      value: false
+    - field: secret_exposure
+      op: equals
+      value: true
+recommendation:
+  control: require_approval
+  text: Split cloud control-plane permissions by task, remove wildcard and administrator policies from agent roles, deny untrusted context from invoking IAM or secret writes, and require human approval before cloud remediation tools can mutate production resources.

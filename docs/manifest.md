@@ -440,6 +440,39 @@ Agent identity metadata may include:
 
 Raw issuer URLs, token endpoints, service-account identifiers, OAuth scopes, IAM roles, subject mappings, tenant IDs, audience values, delegated subject labels, tool names, data-field labels, and secret placeholders are not emitted. Provider names, redacted destination categories, normalized scope categories, credential-issuance and impersonation posture, subject-redaction flags, approval posture, data-class booleans, and credential key names let rules detect over-authorized agent identity delegation without copying identity configuration values into the manifest.
 
+## Cloud Control-Plane Authority Posture
+
+Cloud, IAM, infrastructure, Terraform/IaC, Kubernetes platform, and control-plane configs are also normalized into `runtime_config` objects when common cloud authority configuration files are discovered.
+
+Cloud control-plane metadata may include:
+
+- `parsed_cloud_control_plane_config`
+- `cloud_control_plane_fields`
+- `cloud_provider`
+- `cloud_control_plane_remote`
+- `cloud_control_plane_account_redacted`
+- `cloud_control_plane_role_redacted`
+- `cloud_control_plane_resource_references_redacted`
+- `cloud_control_plane_scope_redacted`
+- `cloud_control_plane_scope_categories`
+- `cloud_control_plane_broad_scope`
+- `cloud_control_plane_admin_scope`
+- `cloud_control_plane_iam_write`
+- `cloud_control_plane_secret_access`
+- `cloud_control_plane_secret_write`
+- `cloud_control_plane_storage_write`
+- `cloud_control_plane_compute_write`
+- `cloud_control_plane_delete_authority`
+- `cloud_control_plane_audit_log_access`
+- `cloud_control_plane_tool_authority_categories`
+- `cloud_control_plane_auto_remediation`
+- `cloud_control_plane_untrusted_input`
+- `cloud_control_plane_approval_required`
+- `env_key_names`
+- `secret_ref_key_names`
+
+Raw account IDs, role ARNs, role names, policy names, action strings, resource identifiers, region values, tool names, source labels, data-field labels, and secret placeholders are not emitted. Provider names, redacted scope categories, broad/admin/write posture, tool-authority categories, approval posture, data-class booleans, and credential key names let rules detect AI agents that can modify cloud control planes without copying cloud configuration values into the scan output.
+
 ## Agent Extension Loader Posture
 
 Remote skill, plugin, tool, prompt, MCP, extension registry, marketplace, catalog, and capability-loader configs are also normalized into `runtime_config` objects when common extension-loading configuration files are discovered.

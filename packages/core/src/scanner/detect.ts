@@ -127,6 +127,11 @@ export async function detectSurfaces(files: WalkedFile[]): Promise<DetectedSurfa
       continue;
     }
 
+    if (isCloudControlPlaneConfigPath(file.relativePath, basename)) {
+      detectCloudControlPlaneConfig(file, text, surfaces);
+      continue;
+    }
+
     if (isAgentContainerRuntimeConfigPath(file.relativePath, basename)) {
       detectAgentContainerRuntimeConfig(file, text, surfaces);
       continue;
@@ -1966,6 +1971,95 @@ function detectAgentDeploymentConfig(file: WalkedFile, text: string | undefined,
   });
 }
 
+function detectCloudControlPlaneConfig(file: WalkedFile, text: string | undefined, surfaces: DetectedSurfaces): void {
+  const parsed = parseStructuredConfig(text ?? "", file.relativePath);
+  if (parsed.parseFailed) {
+    addDiagnostic(surfaces, file, {
+      parser: parsed.parser ?? "structured_config",
+      code: "CLOUD_CONTROL_PLANE_CONFIG_PARSE_FAILED",
+      reason: "Cloud control-plane agent configuration could not be parsed. Raw content was redacted."
+    });
+  }
+
+  const posture = classifyCloudControlPlaneConfig(parsed.value, file.relativePath);
+  const actions = new Set<ActionType>(["call", "read"]);
+  if (posture.cloud_control_plane_remote) actions.add("send");
+  if (
+    posture.cloud_control_plane_admin_scope ||
+    posture.cloud_control_plane_iam_write ||
+    posture.cloud_control_plane_secret_write ||
+    posture.cloud_control_plane_storage_write ||
+    posture.cloud_control_plane_compute_write ||
+    posture.cloud_control_plane_auto_remediation
+  ) {
+    actions.add("write");
+  }
+  if (posture.cloud_control_plane_tool_authority_categories.length > 0) actions.add("execute");
+  if (posture.cloud_control_plane_delete_authority) actions.add("delete");
+
+  const dataClasses = new Set<SurfaceObject["data_classes"][number]>(["internal"]);
+  if (
+    posture.cloud_control_plane_secret_access ||
+    posture.cloud_control_plane_secret_write ||
+    posture.env_key_names.some(isCredentialLikeKeyName) ||
+    posture.secret_ref_key_names.length > 0
+  ) {
+    dataClasses.add("credential");
+    dataClasses.add("secret");
+  }
+  if (posture.cloud_control_plane_audit_log_access || posture.cloud_control_plane_untrusted_input) {
+    dataClasses.add("confidential");
+  }
+
+  const object = createSurfaceObject({
+    type: "runtime_config",
+    name: path.basename(file.relativePath),
+    path: file.relativePath,
+    trust_level: posture.cloud_control_plane_remote ? "third_party" : inferTrustLevel(file.relativePath),
+    data_classes: uniqueDataClasses([...dataClasses] as SurfaceObject["data_classes"]),
+    actions: uniqueActions([...actions]),
+    side_effect:
+      posture.cloud_control_plane_admin_scope ||
+      posture.cloud_control_plane_iam_write ||
+      posture.cloud_control_plane_secret_write ||
+      posture.cloud_control_plane_storage_write ||
+      posture.cloud_control_plane_compute_write ||
+      posture.cloud_control_plane_auto_remediation,
+    reversible:
+      !posture.cloud_control_plane_admin_scope &&
+      !posture.cloud_control_plane_delete_authority &&
+      !posture.cloud_control_plane_iam_write &&
+      !posture.cloud_control_plane_secret_write &&
+      !posture.cloud_control_plane_compute_write,
+    external_reach: posture.cloud_control_plane_remote,
+    secret_exposure:
+      posture.cloud_control_plane_secret_access ||
+      posture.cloud_control_plane_secret_write ||
+      posture.env_key_names.some(isCredentialLikeKeyName) ||
+      posture.secret_ref_key_names.length > 0,
+    reason: "Cloud control-plane agent configuration discovered as cloud authority posture.",
+    metadata: {
+      content_redacted: true,
+      values_collected: false,
+      parsed_cloud_control_plane_config: Boolean(parsed.value) && !parsed.parseFailed,
+      parse_error: parsed.parseFailed,
+      ...posture
+    }
+  });
+  surfaces.runtime_config.push({
+    ...object,
+    untrusted_to_privileged:
+      (posture.cloud_control_plane_untrusted_input &&
+        (posture.cloud_control_plane_admin_scope ||
+          posture.cloud_control_plane_iam_write ||
+          posture.cloud_control_plane_secret_access ||
+          posture.cloud_control_plane_secret_write ||
+          posture.cloud_control_plane_compute_write ||
+          posture.cloud_control_plane_storage_write)) ||
+      isUntrustedToPrivileged(object)
+  });
+}
+
 function detectAgentContainerRuntimeConfig(file: WalkedFile, text: string | undefined, surfaces: DetectedSurfaces): void {
   const parsed = parseStructuredConfig(text ?? "", file.relativePath);
   if (parsed.parseFailed) {
@@ -2658,6 +2752,28 @@ function isAgentDeploymentConfigPath(relativePath: string, basename: string): bo
   return deploymentName || (deploymentDirectory && configName);
 }
 
+function isCloudControlPlaneConfigPath(relativePath: string, basename: string): boolean {
+  const normalized = relativePath.replaceAll("\\", "/").toLowerCase();
+  const lowerBase = basename.toLowerCase();
+  if (!/\.(json|ya?ml|toml)$/iu.test(lowerBase)) return false;
+  if (normalized.startsWith(".github/workflows/")) return false;
+  if (normalized.startsWith("rules/")) return false;
+
+  const segments = normalized.split("/").slice(0, -1);
+  const cloudDirectory = segments.some((segment) =>
+    /^(cloud|clouds|cloud-control|cloud_control|control-plane|control_plane|platform|platforms|iam|identity-access|identity_access|aws|gcp|google-cloud|google_cloud|azure|terraform|iac|infra|infrastructure)$/iu.test(
+      segment
+    )
+  );
+  const cloudName = /(?:cloud[-_]?control|control[-_]?plane|cloud[-_]?agent|cloud[-_]?admin|iam[-_]?agent|aws[-_]?agent|gcp[-_]?agent|azure[-_]?agent|terraform[-_]?agent|iac[-_]?agent|remediation[-_]?agent|cloud[-_]?remediation)/iu.test(
+    lowerBase
+  );
+  const configName = /(?:config|settings|policy|cloud|aws|gcp|azure|iam|identity|role|permission|scope|terraform|iac|remediation|agent|control)/iu.test(
+    lowerBase
+  );
+  return cloudName || (cloudDirectory && configName);
+}
+
 function isAgentContainerRuntimeConfigPath(relativePath: string, basename: string): boolean {
   const normalized = relativePath.replaceAll("\\", "/").toLowerCase();
   const lowerBase = basename.toLowerCase();
@@ -3183,6 +3299,32 @@ interface AgentDeploymentPosture {
   agent_deployment_secret_env_exposure: boolean;
   agent_deployment_service_account_redacted: boolean;
   agent_deployment_approval_required: boolean;
+  env_key_names: string[];
+  secret_ref_key_names: string[];
+}
+
+interface CloudControlPlanePosture {
+  cloud_control_plane_fields: string[];
+  cloud_provider?: string;
+  cloud_control_plane_remote: boolean;
+  cloud_control_plane_account_redacted: boolean;
+  cloud_control_plane_role_redacted: boolean;
+  cloud_control_plane_resource_references_redacted: boolean;
+  cloud_control_plane_scope_redacted: boolean;
+  cloud_control_plane_scope_categories: string[];
+  cloud_control_plane_broad_scope: boolean;
+  cloud_control_plane_admin_scope: boolean;
+  cloud_control_plane_iam_write: boolean;
+  cloud_control_plane_secret_access: boolean;
+  cloud_control_plane_secret_write: boolean;
+  cloud_control_plane_storage_write: boolean;
+  cloud_control_plane_compute_write: boolean;
+  cloud_control_plane_delete_authority: boolean;
+  cloud_control_plane_audit_log_access: boolean;
+  cloud_control_plane_tool_authority_categories: string[];
+  cloud_control_plane_auto_remediation: boolean;
+  cloud_control_plane_untrusted_input: boolean;
+  cloud_control_plane_approval_required: boolean;
   env_key_names: string[];
   secret_ref_key_names: string[];
 }
@@ -6516,6 +6658,224 @@ function hasAgentDeploymentApprovalRequiredSignal(fields: RuntimeField[]): boole
 
 function isAgentDeploymentSecurityField(fieldPath: string): boolean {
   return /apiVersion|kind|metadata|labels?|annotations?|agent|workload|deployment|pod|container|image|pull|registry|digest|tag|service[_-]?account|serviceAccount|privileged|user|runAs|security|network|host|volume|mount|path|socket|secret|token|credential|env|approval/iu.test(
+    fieldPath
+  );
+}
+
+function classifyCloudControlPlaneConfig(value: unknown, filePath: string): CloudControlPlanePosture {
+  const fields = flattenRuntimeFields(value);
+  const stringValues = collectFieldStringValues(fields);
+  const provider = inferCloudControlPlaneProvider([filePath, ...fields.map((field) => field.path), ...stringValues]);
+  const scopeCategories = collectCloudControlPlaneScopeCategories(fields);
+  const toolAuthorityCategories = collectCloudControlPlaneToolAuthorityCategories(fields);
+  const envKeys = uniqueStrings([
+    ...collectEnvKeyNamesFromConfig(value).filter(isLikelyEnvKeyName),
+    ...extractEnvironmentReferenceKeys(stringValues)
+  ]);
+  const secretRefKeys = extractSecretReferenceKeys(stringValues);
+  const adminScope = isCloudControlPlaneAdminScope(scopeCategories);
+  const iamWrite = adminScope || scopeCategories.includes("iam_write") || scopeCategories.includes("policy_write");
+  const secretWrite = adminScope || scopeCategories.includes("secret_write");
+  const secretAccess = secretWrite || scopeCategories.includes("secret_read");
+  const storageWrite = adminScope || scopeCategories.includes("storage_write");
+  const computeWrite = adminScope || scopeCategories.includes("compute_write");
+
+  return {
+    cloud_control_plane_fields: fields
+      .map((field) => field.path)
+      .filter((fieldPath) => isCloudControlPlaneSecurityField(fieldPath))
+      .sort((a, b) => a.localeCompare(b)),
+    cloud_provider: provider,
+    cloud_control_plane_remote: hasCloudControlPlaneRemoteSignal(fields, provider),
+    cloud_control_plane_account_redacted: hasCloudControlPlaneAccountReference(fields),
+    cloud_control_plane_role_redacted: hasCloudControlPlaneRoleReference(fields),
+    cloud_control_plane_resource_references_redacted: hasCloudControlPlaneResourceReference(fields),
+    cloud_control_plane_scope_redacted: scopeCategories.length > 0,
+    cloud_control_plane_scope_categories: scopeCategories,
+    cloud_control_plane_broad_scope: isCloudControlPlaneBroadScope(scopeCategories),
+    cloud_control_plane_admin_scope: adminScope,
+    cloud_control_plane_iam_write: iamWrite,
+    cloud_control_plane_secret_access: secretAccess,
+    cloud_control_plane_secret_write: secretWrite,
+    cloud_control_plane_storage_write: storageWrite,
+    cloud_control_plane_compute_write: computeWrite,
+    cloud_control_plane_delete_authority: adminScope || scopeCategories.includes("delete_authority"),
+    cloud_control_plane_audit_log_access: scopeCategories.includes("audit_log_read"),
+    cloud_control_plane_tool_authority_categories: toolAuthorityCategories,
+    cloud_control_plane_auto_remediation: hasCloudControlPlaneAutoRemediationSignal(fields),
+    cloud_control_plane_untrusted_input: hasCloudControlPlaneUntrustedInputSignal(fields),
+    cloud_control_plane_approval_required: hasCloudControlPlaneApprovalRequiredSignal(fields),
+    env_key_names: envKeys,
+    secret_ref_key_names: secretRefKeys
+  };
+}
+
+function inferCloudControlPlaneProvider(candidates: string[]): string | undefined {
+  const text = candidates.join(" ").toLowerCase();
+  const providers: Array<[string, RegExp]> = [
+    ["aws", /\baws\b|amazonaws\.com|arn:aws|iam:|s3:|ec2:|lambda:|cloudtrail|secretsmanager|administratoraccess/iu],
+    ["gcp", /\bgcp\b|google[_\s-]?cloud|googleapis\.com|roles\/|cloud-platform|compute\.instances|secretmanager/iu],
+    ["azure", /\bazure\b|management\.azure\.com|microsoft\.graph|roleassignments|keyvault|subscriptions\/[^/\s]+/iu],
+    ["kubernetes", /\bkubernetes\b|\bk8s\b|kubectl|clusterrole|cluster-admin/iu],
+    ["terraform", /\bterraform\b|\biac\b|\btofu\b/iu],
+    ["cloud_control_plane", /\bcloud\b|\bcontrol[_\s-]?plane\b/iu]
+  ];
+  return providers.find(([, pattern]) => pattern.test(text))?.[0];
+}
+
+function hasCloudControlPlaneRemoteSignal(fields: RuntimeField[], provider: string | undefined): boolean {
+  if (provider && provider !== "terraform") return true;
+  return fields.some((field) => {
+    const text = fieldValueText(field);
+    try {
+      const parsed = new URL(text);
+      return (parsed.protocol === "http:" || parsed.protocol === "https:") && !isLocalHost(parsed.hostname.toLowerCase());
+    } catch {
+      return /\b(amazonaws\.com|googleapis\.com|management\.azure\.com|vault\.azure\.net|cloud|region|endpoint)\b/iu.test(
+        `${field.path} ${text}`
+      );
+    }
+  });
+}
+
+function collectCloudControlPlaneScopeCategories(fields: RuntimeField[]): string[] {
+  const categories = new Set<string>();
+  for (const field of fields) {
+    if (!isCloudControlPlaneScopeField(field.path)) continue;
+    const text = `${field.path} ${fieldValueText(field)}`.toLowerCase();
+    if (/(^|[\s,])\*(?=[$\s,])|\*:?\*|administratoraccess|cluster-admin|\bowner\b|\bcontributor\b|cloud-platform|roles\/owner|all[_\s-]?(actions?|permissions?|resources?|scopes?)|full[_\s-]?access|admin/i.test(text)) {
+      categories.add("admin_scope");
+    }
+    if (/(^|[\s,])\*(?=[$\s,])|\*:?\*|resources?\s*[:=]\s*\*|all[_\s-]?(resources?|projects?|accounts?|subscriptions?)/iu.test(text)) {
+      categories.add("wildcard_resource");
+    }
+    if (/iam:|iam\.|iam\/|identity|principal|service[_-]?account|serviceaccount|passrole|assume[_-]?role|sts:|setiampolicy|roleassignments|user[_\s-]?access[_\s-]?administrator/iu.test(
+      text
+    )) {
+      if (/\b(write|create|update|delete|put|set|attach|detach|pass|assume|admin|owner|iam:\*|passrole|setiampolicy|roleassignments\/write)\b/iu.test(text)) {
+        categories.add("iam_write");
+      } else {
+        categories.add("iam_read");
+      }
+    }
+    if (/policy|policies|permission|permissions/iu.test(text) && /\b(write|create|update|delete|put|attach|admin|owner)\b/iu.test(text)) {
+      categories.add("policy_write");
+    }
+    if (/secrets?manager|secretmanager|keyvault|key[_\s-]?vault|kms|ssm|getsecretvalue|accesssecretversion|decrypt|secrets?\./iu.test(
+      text
+    )) {
+      categories.add("secret_read");
+      if (/\b(write|put|create|update|delete|destroy|rotate|set|encrypt|putsecretvalue|addsecretversion)\b|secretsmanager:\*/iu.test(text)) {
+        categories.add("secret_write");
+      }
+    }
+    if (/s3:|storage\.objects|blob|bucket|buckets?|object|objects?|artifact|storage/iu.test(text)) {
+      if (/\b(write|put|create|update|delete|destroy|upload|publish|set|s3:\*)\b|putobject|deleteobject/iu.test(text)) {
+        categories.add("storage_write");
+      } else {
+        categories.add("storage_read");
+      }
+    }
+    if (/ec2:|lambda:|ecs:|eks:|compute\.instances|cloudfunctions|run\.services|container|virtualmachines|vmss|kubectl|terraform|iac/iu.test(
+      text
+    )) {
+      if (/\b(run|start|stop|terminate|create|update|delete|apply|deploy|write|put|set|ec2:\*|lambda:\*)\b|runinstances|updatefunctioncode/iu.test(text)) {
+        categories.add("compute_write");
+      } else {
+        categories.add("compute_read");
+      }
+    }
+    if (/cloudtrail|audit|logs?|logging|monitor|events?|lookup[_-]?events|logging\.|activitylog|securitycenter/iu.test(text)) {
+      categories.add("audit_log_read");
+    }
+    if (/\b(delete|destroy|terminate|remove|purge|wipe|revoke)\b|delete[A-Z_:-]|:delete/iu.test(text)) {
+      categories.add("delete_authority");
+    }
+    if (/\b(read|get|list|describe|lookup|view)\b/iu.test(text)) categories.add("read_scope");
+    if (/\b(write|put|create|update|delete|apply|deploy|set|attach|detach|pass|assume)\b/iu.test(text)) {
+      categories.add("write_scope");
+    }
+  }
+  return [...categories].sort((a, b) => a.localeCompare(b));
+}
+
+function isCloudControlPlaneScopeField(fieldPath: string): boolean {
+  return /(?:^|\.)(actions?|permissions?|policies|policy|roles?|scopes?|resources?|capabilities|allow|allowlist|managed_policies|managedPolicies|service_account|serviceAccount|role_arn|roleArn|tools?|commands?)$/iu.test(
+    fieldPath
+  );
+}
+
+function isCloudControlPlaneBroadScope(scopeCategories: string[]): boolean {
+  return scopeCategories.includes("admin_scope") || scopeCategories.includes("wildcard_resource");
+}
+
+function isCloudControlPlaneAdminScope(scopeCategories: string[]): boolean {
+  return scopeCategories.includes("admin_scope");
+}
+
+function collectCloudControlPlaneToolAuthorityCategories(fields: RuntimeField[]): string[] {
+  const categories = new Set<string>();
+  for (const field of fields) {
+    if (!/(tools?|commands?|executors?|runners?|automation|remediation|actions?)/iu.test(field.path)) continue;
+    const text = `${field.path} ${fieldValueText(field)}`;
+    if (/(?:^|[_\W])(aws|aws[_-]?cli|boto3)(?:[_\W]|$)/iu.test(text)) categories.add("aws_cli");
+    if (/(?:^|[_\W])(gcloud|google[_-]?cloud)(?:[_\W]|$)/iu.test(text)) categories.add("gcloud_cli");
+    if (/(?:^|[_\W])(az|azure[_-]?cli)(?:[_\W]|$)/iu.test(text)) categories.add("azure_cli");
+    if (/(?:^|[_\W])(kubectl|helm|kubernetes|k8s)(?:[_\W]|$)/iu.test(text)) categories.add("kubernetes_cli");
+    if (/(?:^|[_\W])(terraform|opentofu|tofu|pulumi|cloudformation|cdk)(?:[_\W]|$)/iu.test(text)) {
+      categories.add("iac_apply");
+    }
+  }
+  return [...categories].sort((a, b) => a.localeCompare(b));
+}
+
+function hasCloudControlPlaneAccountReference(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /account|account_id|accountId|project|project_id|projectId|subscription|subscription_id|tenant|tenant_id|organization|org_id|namespace|cluster/iu.test(
+      field.path
+    ) || /\b\d{12}\b|projects\/[^/\s]+|subscriptions\/[^/\s]+|tenants?\/[^/\s]+/iu.test(fieldValueText(field))
+  );
+}
+
+function hasCloudControlPlaneRoleReference(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /role|role_arn|roleArn|principal|service[_-]?account|serviceAccount|client[_-]?id|workload[_-]?identity|assume/iu.test(field.path) ||
+    /\barn:aws:iam::\d{12}:role\/|roles\/[a-z.]+|serviceAccounts\/[^/\s]+|roleassignments/iu.test(fieldValueText(field))
+  );
+}
+
+function hasCloudControlPlaneResourceReference(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /resources?|arns?|buckets?|projects?|subscriptions?|accounts?|clusters?|namespaces?|regions?|role_arn|roleArn/iu.test(field.path) ||
+    /\barn:aws:|projects\/[^/\s]+|subscriptions\/[^/\s]+|\/buckets\/|^\*$/iu.test(fieldValueText(field).trim())
+  );
+}
+
+function hasCloudControlPlaneAutoRemediationSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /auto[_-]?(remediate|remediation|fix|apply|deploy|execute)|remediation|auto_apply|autoApply|auto_execute|autoExecute/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    ) && truthyConfigValue(field.value)
+  );
+}
+
+function hasCloudControlPlaneUntrustedInputSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /(?:^|[_\W])(untrusted|user|customer|client|ticket|support|issue|comment|message|prompt|retrieved|rag|runbook|document|email|slack|browser|web[_-]?page|chat|model[_\s-]?generated)(?:[_\W]|$)/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    )
+  );
+}
+
+function hasCloudControlPlaneApprovalRequiredSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /approval|required[_-]?approval|human[_-]?approval|confirm|confirmation|review|human[_-]?in[_-]?the[_-]?loop/iu.test(field.path) &&
+    truthyConfigValue(field.value)
+  );
+}
+
+function isCloudControlPlaneSecurityField(fieldPath: string): boolean {
+  return /provider|cloud|account|project|subscription|tenant|organization|region|endpoint|role|principal|service[_-]?account|identity|credential|secret|token|key|auth|env|policy|policies|permission|scope|action|resource|arn|bucket|cluster|namespace|iam|kms|ssm|storage|compute|lambda|ec2|audit|log|tool|command|runner|terraform|iac|remediation|source|input|customer|ticket|runbook|approval/iu.test(
     fieldPath
   );
 }

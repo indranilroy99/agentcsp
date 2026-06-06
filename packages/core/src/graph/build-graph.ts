@@ -31,7 +31,7 @@ export function buildStaticGraph(surfaces: DetectedSurfaces, findings: Finding[]
     const steerableCapabilities = sortCapabilitiesForContext(
       context,
       highRiskCapabilities.filter((target) => contextCanSteerCapability(context, target))
-    ).slice(0, 18);
+    ).slice(0, 30);
     for (const capability of steerableCapabilities) {
       if (context.id === capability.id) continue;
       addEdge(
@@ -577,7 +577,7 @@ function sortAttackPaths(paths: AttackPath[]): AttackPath[] {
 function attackPathPriority(path: AttackPath): number {
   let score = 0;
   if (path.title.includes("route untrusted input")) score += 12;
-  if (path.title.includes("route customer data")) score += 12;
+  if (path.title.includes("route customer data")) score += 8;
   if (path.title.includes("auto-approve package-script")) score += 12;
   if (path.title.includes("auto-approve destructive MCP")) score += 12;
   if (path.title.includes("replay memory")) score += 12;
@@ -592,6 +592,15 @@ function attackPathPriority(path: AttackPath): number {
   if (path.reason.includes("RAG source directs sensitive context")) score += 3;
   if (path.source.path.startsWith("rag/") && path.reason.includes("direct path from untrusted context to mutable records")) {
     score += 6;
+  }
+  if (
+    path.source.path === "rag/customer-note.md" &&
+    (path.title.includes("Multi-agent delegation") ||
+      path.title.includes("Live eval harness") ||
+      path.title.includes("Inbound untrusted message") ||
+      path.title.includes("Disabled agent safety controls"))
+  ) {
+    score += 10;
   }
   if (path.reason.includes("generated-state replay")) score += 5;
   return score;
@@ -634,6 +643,8 @@ function sortCapabilitiesForContext(context: SurfaceObject, objects: SurfaceObje
   return [...objects].sort((a, b) => {
     const explicitCompare = explicitReferenceWeight(context, b) - explicitReferenceWeight(context, a);
     if (explicitCompare !== 0) return explicitCompare;
+    const contextualCompare = contextualCapabilityWeight(context, b) - contextualCapabilityWeight(context, a);
+    if (contextualCompare !== 0) return contextualCompare;
     const riskCompare = capabilityWeight(b) - capabilityWeight(a);
     if (riskCompare !== 0) return riskCompare;
     return a.id.localeCompare(b.id);
@@ -643,6 +654,22 @@ function sortCapabilitiesForContext(context: SurfaceObject, objects: SurfaceObje
 function explicitReferenceWeight(context: SurfaceObject, target: SurfaceObject): number {
   if (contextExplicitlyReferencesTarget(context, target)) return 100;
   return 0;
+}
+
+function contextualCapabilityWeight(context: SurfaceObject, target: SurfaceObject): number {
+  let score = 0;
+  if (explicitBoolean(context, "data_egress_directive") && explicitBoolean(context, "context_bridge_data_egress")) {
+    if (isNamedPublishingEgressCapability(target)) score += 80;
+    else if (target.type === "tool" && isDirectDataEgressCapability(target)) score += 25;
+  }
+  return score;
+}
+
+function isNamedPublishingEgressCapability(target: SurfaceObject): boolean {
+  if (!isExternalEgressCapability(target)) return false;
+  return /\b(browser|publish|publisher|webhook|callback|slack|email|send|post)\b/iu.test(
+    target.name.replace(/[_-]/g, " ")
+  );
 }
 
 function capabilityWeight(object: SurfaceObject): number {

@@ -838,6 +838,15 @@ The current iteration adds:
 - rule `AGENTCSP-SUPPLYCHAIN-002` for deployment manifests that combine mutable remote agent images, privileged host authority, credential exposure, and missing approval
 - scanner, rule, fixture verifier, and redaction coverage proving image references, registry paths, service-account names, secret names, host paths, and token placeholders stay redacted
 
+## Cloud Control-Plane Authority Pass
+
+The current iteration adds:
+
+- first-class redacted metadata for cloud, IAM, IaC, Terraform, Kubernetes platform, and control-plane configs with provider, broad/admin scope, IAM, compute, storage, secret, audit-log, auto-remediation, tool-authority, untrusted-input, credential, and approval posture
+- vulnerable fixture coverage for an AWS-style support agent that can run cloud/IaC remediation against broad cloud resources with untrusted customer/runbook inputs, cloud credential references, and no approval gate
+- rule `AGENTCSP-RUNTIME-032` for cloud control-plane agents that combine broad credentialed write authority, IAM mutation, secret access, compute/storage mutation, untrusted input, and missing approval
+- scanner, rule, fixture verifier, and redaction coverage proving account IDs, ARNs, role names, policy/action values, resource identifiers, tool strings, source labels, and token placeholders stay redacted
+
 ## Initial Build Recommendation
 
 Start with a CLI-first MVP before building the dashboard:

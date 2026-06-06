@@ -62,6 +62,7 @@ A finding should be considered production-grade when it includes:
 - AI model router and fallback metadata for sensitive context failover, provider-routing, redaction posture, output recording, and approval boundaries without emitting provider endpoints, model aliases, routing strategy values, source labels, or token placeholders
 - AI embedding and indexing metadata for third-party embedding egress, vector writes, source capture, redaction posture, retention, and approval boundaries without emitting embedding endpoints, model aliases, vector namespaces, source labels, document chunks, or token placeholders
 - AI telemetry export metadata for prompt, completion, tool-output, retrieval, and memory capture without emitting trace payloads or endpoints
+- cloud control-plane metadata for IAM, compute, storage, secret, audit-log, and IaC authority without emitting account IDs, ARNs, role names, policy/action values, resource identifiers, tool strings, source labels, or token placeholders
 - artifact/output export metadata for generated prompts, completions, tool outputs, browser artifacts, retrieval context, memory, and secrets without emitting bucket names, endpoints, paths, data-scope labels, or artifact contents
 - webhook/callback egress metadata for model-generated payload delivery without emitting callback endpoints, payload bodies, source labels, data-field labels, or token placeholders
 - container runtime metadata for privileged mode, Docker socket access, host mounts, host namespaces, dangerous capabilities, and tool authority without emitting image names, host paths, input labels, tool names, or token placeholders
@@ -129,6 +130,7 @@ Examples:
 - disabled agent safety controls plus untrusted input plus privileged tools plus credentials plus no approval gate
 - live eval harness plus adversarial prompts plus production agent target plus privileged tools plus credentials plus no approval gate
 - agent identity delegation plus credential issuance plus service-account impersonation plus broad scopes plus untrusted subject inputs plus no approval gate
+- cloud control-plane agent plus broad admin/write scope, IAM authority, secret access, compute/storage mutation, untrusted input, credential exposure, and no approval gate
 - remote agent extension loader plus auto-install plus unpinned unsigned capabilities plus untrusted selector inputs plus privileged tool authority plus no approval gate
 - agent self-modification plus untrusted inputs plus auto-applied writes to instructions, policy, runtime config, and tool definitions plus no approval gate
 - model-mediated approval gate plus untrusted approval context plus default-allow behavior plus auto-executed privileged actions and no required human reviewer

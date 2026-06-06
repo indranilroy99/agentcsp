@@ -59,6 +59,15 @@ match:
     - field: metadata.parsed_agent_webhook_egress_config
       op: not_equals
       value: true
+    - field: metadata.parsed_saas_connector_config
+      op: not_equals
+      value: true
+    - field: metadata.parsed_secret_manager_config
+      op: not_equals
+      value: true
+    - field: metadata.parsed_database_connector_config
+      op: not_equals
+      value: true
     - field: metadata.parsed_agent_container_runtime_config
       op: not_equals
       value: true
@@ -68,16 +77,25 @@ match:
     - field: metadata.parsed_agent_deployment_config
       op: not_equals
       value: true
+    - field: metadata.parsed_cloud_control_plane_config
+      op: not_equals
+      value: true
     - field: metadata.parsed_ai_training_dataset_config
       op: not_equals
       value: true
     - field: metadata.parsed_llm_prompt_cache_config
       op: not_equals
       value: true
+    - field: metadata.parsed_ai_model_config
+      op: not_equals
+      value: true
     - field: metadata.parsed_ai_model_router_config
       op: not_equals
       value: true
     - field: metadata.parsed_ai_embedding_pipeline_config
+      op: not_equals
+      value: true
+    - field: metadata.parsed_ai_telemetry_config
       op: not_equals
       value: true
     - field: metadata.parsed_agent_package_manifest_config
