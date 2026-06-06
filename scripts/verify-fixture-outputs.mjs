@@ -133,6 +133,19 @@ const leakPatterns = [
   /failopen_customer_email/u,
   /failopen_account_number/u,
   /failopen_confidential_case_notes/u,
+  /\$\{AGENT_TASK_QUEUE_URL\}/u,
+  /customer-support-agent-jobs/u,
+  /support-agent-dlq/u,
+  /support_ticket_event/u,
+  /customer_uploaded_attachment/u,
+  /queued_external_webhook_body/u,
+  /support_db\.update_customer_record/u,
+  /slack\.post_customer_reply/u,
+  /browser\.submit_refund_form/u,
+  /queued_customer_email/u,
+  /queued_customer_account_id/u,
+  /queued_confidential_case_notes/u,
+  /queued_support_api_token/u,
   /production-support-redteam/u,
   /agent-prod\.example\.invalid/u,
   /customer-support-prod-agent/u,
@@ -382,14 +395,16 @@ const leakPatterns = [
   /vs_readonly_docs/u,
   /internal-readonly-default-deny/u,
   /readonly_docs\.search/u,
-  /approved_internal_docs/u
+  /approved_internal_docs/u,
+  /internal_review_ticket/u,
+  /approved_internal_summary/u
 ];
 
 const vulnerable = await readScanOutput(vulnerableOutput, { sarifRequired: true });
 const safe = await readScanOutput(safeOutput, { sarifRequired: false });
 
-assertEqual(vulnerable.manifest.findings.length, 133, "vulnerable manifest finding count");
-assertEqual(vulnerable.findings.length, 133, "vulnerable findings.json count");
+assertEqual(vulnerable.manifest.findings.length, 135, "vulnerable manifest finding count");
+assertEqual(vulnerable.findings.length, 135, "vulnerable findings.json count");
 assertEqual(vulnerable.manifest.attack_paths.length, 15, "vulnerable attack path count");
 assertEqual(vulnerable.manifest.static_blast_radius?.critical_attack_paths, 15, "vulnerable critical attack path count");
 assertEqual(vulnerable.manifest.diagnostics.length, 0, "vulnerable diagnostics count");
@@ -438,6 +453,7 @@ for (const ruleId of [
   "AGENTCSP-RUNTIME-043",
   "AGENTCSP-RUNTIME-044",
   "AGENTCSP-RUNTIME-045",
+  "AGENTCSP-RUNTIME-046",
   "AGENTCSP-AUTOMATION-003",
   "AGENTCSP-RUNTIME-006",
   "AGENTCSP-MCP-006",

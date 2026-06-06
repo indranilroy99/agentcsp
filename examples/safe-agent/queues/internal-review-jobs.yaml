@@ -1,0 +1,23 @@
+provider: local
+queue:
+  backend: in_memory
+consumer:
+  background_agent: false
+  auto_execute: false
+  approval_required: true
+inputs:
+  - internal_review_ticket
+job_payload:
+  prompt_passthrough: false
+  tool_output_passthrough: false
+  includes:
+    - approved_internal_summary
+tools:
+  - readonly_docs.search
+retry_policy:
+  enabled: true
+  max_attempts: 2
+  replay_on_failure: false
+dead_letter_queue:
+  enabled: true
+  replay_enabled: false

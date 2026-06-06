@@ -147,6 +147,11 @@ export async function detectSurfaces(files: WalkedFile[]): Promise<DetectedSurfa
       continue;
     }
 
+    if (isAgentTaskQueueConfigPath(file.relativePath, basename)) {
+      detectAgentTaskQueueConfig(file, text, surfaces);
+      continue;
+    }
+
     if (isAgentCodeInterpreterConfigPath(file.relativePath, basename)) {
       detectAgentCodeInterpreterConfig(file, text, surfaces);
       continue;
@@ -2642,6 +2647,82 @@ function detectAgentWebhookEgressConfig(file: WalkedFile, text: string | undefin
   });
 }
 
+function detectAgentTaskQueueConfig(file: WalkedFile, text: string | undefined, surfaces: DetectedSurfaces): void {
+  const parsed = parseStructuredConfig(text ?? "", file.relativePath);
+  if (parsed.parseFailed) {
+    addDiagnostic(surfaces, file, {
+      parser: parsed.parser ?? "structured_config",
+      code: "AGENT_TASK_QUEUE_CONFIG_PARSE_FAILED",
+      reason: "Agent background task or queue configuration could not be parsed. Raw content was redacted."
+    });
+  }
+
+  const posture = classifyAgentTaskQueueConfig(parsed.value, file.relativePath);
+  const actions = new Set<ActionType>(["call", "read"]);
+  if (posture.agent_task_queue_privileged_tool_authority) actions.add("execute");
+  if (posture.agent_task_queue_write_authority) actions.add("write");
+  if (posture.agent_task_queue_external_authority) {
+    actions.add("send");
+    actions.add("publish");
+  }
+  if (posture.agent_task_queue_replay_enabled || posture.agent_task_queue_memory_authority) actions.add("remember");
+
+  const dataClasses = new Set<SurfaceObject["data_classes"][number]>(["unknown"]);
+  if (
+    posture.agent_task_queue_secret_exposure ||
+    posture.env_key_names.some(isCredentialLikeKeyName) ||
+    posture.secret_ref_key_names.length > 0
+  ) {
+    dataClasses.add("credential");
+  }
+  if (posture.agent_task_queue_sensitive_payload) dataClasses.add("confidential");
+  if (posture.agent_task_queue_pii_payload) dataClasses.add("pii");
+  if (dataClasses.size > 1) dataClasses.delete("unknown");
+
+  const object = createSurfaceObject({
+    type: "runtime_config",
+    name: path.basename(file.relativePath),
+    path: file.relativePath,
+    trust_level: inferTrustLevel(file.relativePath),
+    data_classes: uniqueDataClasses([...dataClasses] as SurfaceObject["data_classes"]),
+    actions: uniqueActions([...actions]),
+    side_effect:
+      posture.agent_task_queue_background_consumer ||
+      posture.agent_task_queue_auto_execute ||
+      posture.agent_task_queue_privileged_tool_authority ||
+      posture.agent_task_queue_write_authority ||
+      posture.agent_task_queue_external_authority ||
+      posture.agent_task_queue_replay_enabled,
+    reversible:
+      !posture.agent_task_queue_write_authority &&
+      !posture.agent_task_queue_external_authority &&
+      !posture.agent_task_queue_replay_enabled,
+    external_reach: posture.agent_task_queue_remote || posture.agent_task_queue_external_authority,
+    secret_exposure:
+      posture.agent_task_queue_secret_exposure ||
+      posture.env_key_names.some(isCredentialLikeKeyName) ||
+      posture.secret_ref_key_names.length > 0,
+    reason: "Agent background task or queue configuration discovered as asynchronous agent authority posture.",
+    metadata: {
+      content_redacted: true,
+      values_collected: false,
+      parsed_agent_task_queue_config: Boolean(parsed.value) && !parsed.parseFailed,
+      parse_error: parsed.parseFailed,
+      ...posture
+    }
+  });
+  surfaces.runtime_config.push({
+    ...object,
+    untrusted_to_privileged:
+      (posture.agent_task_queue_background_consumer &&
+        posture.agent_task_queue_auto_execute &&
+        posture.agent_task_queue_untrusted_payload &&
+        posture.agent_task_queue_privileged_tool_authority &&
+        !posture.agent_task_queue_approval_required) ||
+      isUntrustedToPrivileged(object)
+  });
+}
+
 function detectAgentCodeInterpreterConfig(file: WalkedFile, text: string | undefined, surfaces: DetectedSurfaces): void {
   const parsed = parseStructuredConfig(text ?? "", file.relativePath);
   if (parsed.parseFailed) {
@@ -3674,6 +3755,27 @@ function isAgentWebhookEgressConfigPath(relativePath: string, basename: string):
   return webhookName || (webhookDirectory && configName);
 }
 
+function isAgentTaskQueueConfigPath(relativePath: string, basename: string): boolean {
+  const normalized = relativePath.replaceAll("\\", "/").toLowerCase();
+  const lowerBase = basename.toLowerCase();
+  if (!/\.(json|ya?ml|toml)$/iu.test(lowerBase)) return false;
+  if (normalized.startsWith(".github/workflows/")) return false;
+  if (normalized.startsWith("rules/")) return false;
+  const segments = normalized.split("/").slice(0, -1);
+  const queueDirectory = segments.some((segment) =>
+    /^(queues?|task-queues?|task_queues?|jobs?|job-queues?|job_queues?|workers?|background-jobs?|background_jobs?|background-agents?|background_agents?|async-agents?|async_agents?|celery|bullmq|bull|sidekiq|temporal|durable-functions?|durable_functions?)$/iu.test(
+      segment
+    )
+  );
+  const queueName = /(?:task[-_]?queue|job[-_]?queue|agent[-_]?queue|background[-_]?agent|background[-_]?job|async[-_]?agent|worker[-_]?agent|celery|bullmq|sidekiq|temporal|durable[-_]?function|queue[-_]?consumer)/iu.test(
+    lowerBase
+  );
+  const configName = /(?:config|settings|queue|worker|consumer|job|task|agent|runtime|schedule|retry|dead[-_]?letter|dlq)/iu.test(
+    lowerBase
+  );
+  return queueName || (queueDirectory && configName);
+}
+
 function isAgentCodeInterpreterConfigPath(relativePath: string, basename: string): boolean {
   const normalized = relativePath.replaceAll("\\", "/").toLowerCase();
   const lowerBase = basename.toLowerCase();
@@ -4626,6 +4728,37 @@ interface AgentWebhookEgressPosture {
   agent_webhook_egress_redaction_disabled: boolean;
   agent_webhook_egress_retry_enabled: boolean;
   agent_webhook_egress_approval_required: boolean;
+  env_key_names: string[];
+  secret_ref_key_names: string[];
+}
+
+interface AgentTaskQueuePosture {
+  agent_task_queue_fields: string[];
+  agent_task_queue_provider?: string;
+  agent_task_queue_detected: boolean;
+  agent_task_queue_remote: boolean;
+  agent_task_queue_destination_redacted: boolean;
+  agent_task_queue_destination_count: number;
+  agent_task_queue_destination_kinds: string[];
+  agent_task_queue_background_consumer: boolean;
+  agent_task_queue_asynchronous_execution: boolean;
+  agent_task_queue_auto_execute: boolean;
+  agent_task_queue_untrusted_payload: boolean;
+  agent_task_queue_payload_categories: string[];
+  agent_task_queue_prompt_passthrough: boolean;
+  agent_task_queue_tool_output_passthrough: boolean;
+  agent_task_queue_retry_enabled: boolean;
+  agent_task_queue_dead_letter_queue: boolean;
+  agent_task_queue_replay_enabled: boolean;
+  agent_task_queue_tool_authority_categories: string[];
+  agent_task_queue_privileged_tool_authority: boolean;
+  agent_task_queue_write_authority: boolean;
+  agent_task_queue_external_authority: boolean;
+  agent_task_queue_memory_authority: boolean;
+  agent_task_queue_secret_exposure: boolean;
+  agent_task_queue_sensitive_payload: boolean;
+  agent_task_queue_pii_payload: boolean;
+  agent_task_queue_approval_required: boolean;
   env_key_names: string[];
   secret_ref_key_names: string[];
 }
@@ -10489,6 +10622,370 @@ function hasAgentWebhookApprovalRequiredSignal(fields: RuntimeField[]): boolean 
 function isAgentWebhookEgressSecurityField(fieldPath: string): boolean {
   return /provider|webhook|callback|egress|outbound|sink|destination|endpoint|url|uri|method|headers?|authorization|auth|token|secret|credential|env|payload|body|include|capture|prompt|message|completion|response|output|tool|retrieval|rag|memory|browser|redact|mask|sanitize|pii|sensitive|retry|queue|approval|source|event|data/iu.test(
     fieldPath
+  );
+}
+
+function classifyAgentTaskQueueConfig(value: unknown, filePath: string): AgentTaskQueuePosture {
+  const fields = flattenRuntimeFields(value);
+  const stringValues = collectFieldStringValues(fields);
+  const provider = inferAgentTaskQueueProvider([filePath, ...fields.map((field) => field.path), ...stringValues]);
+  const destination = classifyAgentTaskQueueDestination(fields, provider);
+  const payloadCategories = collectAgentTaskQueuePayloadCategories(fields);
+  const toolAuthorityCategories = collectAgentTaskQueueToolAuthorityCategories(fields);
+  const envKeys = uniqueStrings([
+    ...collectEnvKeyNamesFromConfig(value).filter(isLikelyEnvKeyName),
+    ...extractEnvironmentReferenceKeys(stringValues)
+  ]);
+  const secretRefKeys = extractSecretReferenceKeys(stringValues);
+  const replayEnabled = hasAgentTaskQueueRetryReplaySignal(fields) || hasAgentTaskQueueDeadLetterReplaySignal(fields);
+  const secretExposure =
+    payloadCategories.includes("secret_material") ||
+    hasAgentTaskQueueSecretSignal(fields) ||
+    envKeys.some(isCredentialLikeKeyName) ||
+    secretRefKeys.length > 0;
+  const piiPayload = hasAgentTaskQueuePiiPayloadSignal(fields);
+  const sensitivePayload =
+    payloadCategories.length > 0 || piiPayload || secretExposure || hasAgentTaskQueueSensitivePayloadSignal(fields);
+
+  return {
+    agent_task_queue_fields: fields
+      .map((field) => field.path)
+      .filter((fieldPath) => isAgentTaskQueueSecurityField(fieldPath))
+      .sort((a, b) => a.localeCompare(b)),
+    agent_task_queue_provider: provider,
+    agent_task_queue_detected: Boolean(provider) || hasAgentTaskQueueSignal(fields),
+    agent_task_queue_remote: destination.remote,
+    agent_task_queue_destination_redacted: destination.destinationCount > 0,
+    agent_task_queue_destination_count: destination.destinationCount,
+    agent_task_queue_destination_kinds: destination.destinationKinds,
+    agent_task_queue_background_consumer: hasAgentTaskQueueBackgroundConsumerSignal(fields, provider),
+    agent_task_queue_asynchronous_execution: hasAgentTaskQueueAsyncSignal(fields, provider),
+    agent_task_queue_auto_execute: hasAgentTaskQueueAutoExecuteSignal(fields),
+    agent_task_queue_untrusted_payload: hasAgentTaskQueueUntrustedPayloadSignal(fields),
+    agent_task_queue_payload_categories: payloadCategories,
+    agent_task_queue_prompt_passthrough: payloadCategories.includes("prompt_context") || hasAgentTaskQueuePromptPassthroughSignal(fields),
+    agent_task_queue_tool_output_passthrough:
+      payloadCategories.includes("tool_output") || hasAgentTaskQueueToolOutputPassthroughSignal(fields),
+    agent_task_queue_retry_enabled: hasAgentTaskQueueRetrySignal(fields),
+    agent_task_queue_dead_letter_queue: hasAgentTaskQueueDeadLetterSignal(fields),
+    agent_task_queue_replay_enabled: replayEnabled,
+    agent_task_queue_tool_authority_categories: toolAuthorityCategories,
+    agent_task_queue_privileged_tool_authority: isAgentTaskQueuePrivileged(toolAuthorityCategories),
+    agent_task_queue_write_authority: hasAgentTaskQueueWriteAuthoritySignal(fields, toolAuthorityCategories),
+    agent_task_queue_external_authority: hasAgentTaskQueueExternalAuthoritySignal(fields, toolAuthorityCategories),
+    agent_task_queue_memory_authority: hasAgentTaskQueueMemoryAuthoritySignal(fields, toolAuthorityCategories),
+    agent_task_queue_secret_exposure: secretExposure,
+    agent_task_queue_sensitive_payload: sensitivePayload,
+    agent_task_queue_pii_payload: piiPayload,
+    agent_task_queue_approval_required: hasAgentTaskQueueApprovalRequiredSignal(fields),
+    env_key_names: envKeys,
+    secret_ref_key_names: secretRefKeys
+  };
+}
+
+function inferAgentTaskQueueProvider(candidates: string[]): string | undefined {
+  const text = candidates.join(" ").toLowerCase().replaceAll("_", " ").replaceAll("-", " ");
+  const providers: Array<[string, RegExp]> = [
+    ["temporal", /\btemporal\b/iu],
+    ["celery", /\bcelery\b/iu],
+    ["bullmq", /\bbullmq\b|\bbull\b/iu],
+    ["sidekiq", /\bsidekiq\b/iu],
+    ["redis_queue", /\bredis\b|rediss?:\/\//iu],
+    ["sqs", /\b(sqs|amazon sqs|aws sqs)\b/iu],
+    ["pubsub", /\b(pubsub|pub sub|google pubsub)\b/iu],
+    ["kafka", /\bkafka\b/iu],
+    ["rabbitmq", /\brabbitmq\b|amqp:\/\//iu],
+    ["durable_functions", /\bdurable functions?\b/iu],
+    ["background_agent_queue", /\b(background agent|task queue|job queue|queue consumer|worker agent)\b/iu]
+  ];
+  return providers.find(([, pattern]) => pattern.test(text))?.[0];
+}
+
+function classifyAgentTaskQueueDestination(
+  fields: RuntimeField[],
+  provider: string | undefined
+): { remote: boolean; destinationCount: number; destinationKinds: string[] } {
+  const destinationKinds = new Set<string>();
+  let destinationCount = 0;
+  if (provider && provider !== "background_agent_queue") {
+    destinationKinds.add(provider === "background_agent_queue" ? "message_queue" : provider);
+    destinationCount += 1;
+  }
+
+  for (const field of fields) {
+    const text = `${field.path} ${fieldValueText(field)}`;
+    if (/(^|\.)(queue|queues|topic|topics|subscription|subscriptions|stream|streams|broker|backend|url|uri|endpoint|host|dlq|dead_letter_queue|deadLetterQueue)$/iu.test(field.path)) {
+      if (/\b(in memory|in-memory|local|localhost|127\.0\.0\.1)\b/iu.test(agentTaskQueueText(field))) {
+        destinationKinds.add("local_in_memory_queue");
+        destinationCount += 1;
+        continue;
+      }
+      if (/\b(redis|rediss?:\/\/)\b/iu.test(text)) destinationKinds.add("redis_queue");
+      if (/\b(sqs|queue-url|queue url|amazon sqs|aws sqs)\b/iu.test(text)) destinationKinds.add("sqs_queue");
+      if (/\b(pubsub|pub sub|topic|subscription)\b/iu.test(text)) destinationKinds.add("pubsub_topic");
+      if (/\bkafka\b/iu.test(text)) destinationKinds.add("kafka_topic");
+      if (/\b(rabbitmq|amqp:\/\/)\b/iu.test(text)) destinationKinds.add("rabbitmq_queue");
+      if (/\btemporal\b/iu.test(text)) destinationKinds.add("temporal_task_queue");
+      if (/\b(celery|bullmq|bull|sidekiq|worker)\b/iu.test(text)) destinationKinds.add("worker_queue");
+      if (/\b(dead letter|dead-letter|dead_letter|dlq)\b/iu.test(text)) destinationKinds.add("dead_letter_queue");
+      if (/\b(queue|topic|subscription|stream|broker|backend)\b/iu.test(text)) destinationKinds.add("message_queue");
+      if (fieldStringValues(field).some((value) => parseRemoteHttpUrl(value))) destinationKinds.add("remote_queue_endpoint");
+      if (fieldStringValues(field).some((value) => /^(redis|rediss|amqp|sqs|kafka):/iu.test(value.trim()))) {
+        destinationKinds.add("remote_queue_endpoint");
+      }
+      if (destinationKinds.size > 0) destinationCount += 1;
+    }
+  }
+
+  return {
+    remote: destinationKinds.size > 0 && [...destinationKinds].some((kind) => kind !== "local_in_memory_queue"),
+    destinationCount,
+    destinationKinds: [...destinationKinds].sort((a, b) => a.localeCompare(b))
+  };
+}
+
+function hasAgentTaskQueueSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => /\b(task queue|job queue|background agent|queue consumer|worker agent|async agent)\b/iu.test(agentTaskQueueText(field)));
+}
+
+function hasAgentTaskQueueBackgroundConsumerSignal(fields: RuntimeField[], provider: string | undefined): boolean {
+  if (provider && provider !== "background_agent_queue") return true;
+  return fields.some((field) =>
+    !agentTaskQueueInternalOnlySignal(field) &&
+    /\b(background|worker|consumer|subscriber|daemon|async|job runner|task runner|scheduled worker)\b/iu.test(agentTaskQueueText(field)) &&
+    !disabledConfigValue(field.value)
+  );
+}
+
+function hasAgentTaskQueueAsyncSignal(fields: RuntimeField[], provider: string | undefined): boolean {
+  if (provider !== undefined) return true;
+  return fields.some((field) =>
+    /\b(async|asynchronous|background|queue|queued|worker|job|task|deferred|scheduled|retry|dead letter|dlq)\b/iu.test(agentTaskQueueText(field)) &&
+    !disabledConfigValue(field.value)
+  );
+}
+
+function hasAgentTaskQueueAutoExecuteSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => {
+    const text = agentTaskQueueText(field);
+    if (/\b(manual|approval required|require approval|human review|required review|dry run|disabled|off)\b/iu.test(text)) return false;
+    if (/(^|\.)(auto_execute|autoExecute|execute|execution|run|invoke|consume|process|auto_approve|autoApprove)$/u.test(field.path)) {
+      return truthyConfigValue(field.value);
+    }
+    return /\b(auto execute|auto-execute|auto process|auto invoke|consume automatically|execute automatically|fire and forget|fire-and-forget)\b/iu.test(
+      text
+    );
+  });
+}
+
+function hasAgentTaskQueueUntrustedPayloadSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    !disabledConfigValue(field.value) &&
+    !agentTaskQueueInternalOnlySignal(field) &&
+    /(?:^|[_\W])(untrusted|user|customer|client|ticket|support|issue|comment|message|prompt|retrieved|rag|document|attachment|upload|email|slack|browser|web[_\s-]?page|chat|webhook|external|public)(?:[_\W]|$)/iu.test(
+      agentTaskQueueText(field)
+    )
+  );
+}
+
+function collectAgentTaskQueuePayloadCategories(fields: RuntimeField[]): string[] {
+  const categories = new Set<string>();
+  for (const field of fields) {
+    if (/(redact|mask|sanitize|filter|approval)/iu.test(field.path)) continue;
+    if (disabledConfigValue(field.value)) continue;
+    if (agentTaskQueueInternalOnlySignal(field)) continue;
+    const text = agentTaskQueueText(field).toLowerCase();
+    const payloadField = /payload|body|message|event|job|task|input|include|context|source|passthrough|capture|data/iu.test(text);
+    if (!payloadField) continue;
+    if (/(?:^|[_\W])(prompt|prompts|system prompt|developer prompt|messages?|conversation|user input)(?:[_\W]|$)/iu.test(text)) {
+      categories.add("prompt_context");
+    }
+    if (/(?:^|[_\W])(tool output|tool result|function output|mcp result|browser output|command output|observation)(?:[_\W]|$)/iu.test(text)) {
+      categories.add("tool_output");
+    }
+    if (/(?:^|[_\W])(retrieval|retrieved|rag|documents?|attachments?|uploads?|vector|knowledge base)(?:[_\W]|$)/iu.test(text)) {
+      categories.add("retrieval_context");
+    }
+    if (/(?:^|[_\W])(memory|session state|history|transcript|long term|thread state)(?:[_\W]|$)/iu.test(text)) {
+      categories.add("memory_context");
+    }
+    if (/(?:^|[_\W])(browser|screenshot|dom|html|page snapshot|web page)(?:[_\W]|$)/iu.test(text)) {
+      categories.add("browser_context");
+    }
+    if (/(?:^|[_\W])(secret|secrets|token|credential|api key|password|cookie|authorization|vault)(?:[_\W]|$)/iu.test(text)) {
+      categories.add("secret_material");
+    }
+  }
+  return [...categories].sort((a, b) => a.localeCompare(b));
+}
+
+function hasAgentTaskQueuePromptPassthroughSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    !disabledConfigValue(field.value) && /\b(prompt passthrough|raw prompt|prompt pass through|prompt_passthrough)\b/iu.test(agentTaskQueueText(field))
+  );
+}
+
+function hasAgentTaskQueueToolOutputPassthroughSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    !disabledConfigValue(field.value) &&
+    /\b(tool output passthrough|raw tool output|tool result passthrough|tool_output_passthrough)\b/iu.test(agentTaskQueueText(field))
+  );
+}
+
+function hasAgentTaskQueueRetrySignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /(?:^|[_\W])(retry|retries|retry policy|attempts|max attempts|backoff|store failed|persist failed)(?:[_\W]|$)/iu.test(
+      agentTaskQueueText(field)
+    ) && truthyConfigValue(field.value)
+  );
+}
+
+function hasAgentTaskQueueDeadLetterSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /(?:^|[_\W])(dead letter|dead-letter|dead_letter|dlq|failed jobs|failed tasks)(?:[_\W]|$)/iu.test(agentTaskQueueText(field)) &&
+    truthyConfigValue(field.value)
+  );
+}
+
+function hasAgentTaskQueueRetryReplaySignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /(?:^|[_\W])(replay|requeue|retry on failure|replay on failure|retry failed|redrive)(?:[_\W]|$)/iu.test(agentTaskQueueText(field)) &&
+    truthyConfigValue(field.value)
+  );
+}
+
+function hasAgentTaskQueueDeadLetterReplaySignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /\b(dead letter|dead-letter|dead_letter|dlq|failed jobs|failed tasks)\b/iu.test(agentTaskQueueText(field)) &&
+    /\b(redrive|replay|requeue)\b/iu.test(agentTaskQueueText(field)) &&
+    truthyConfigValue(field.value)
+  );
+}
+
+function collectAgentTaskQueueToolAuthorityCategories(fields: RuntimeField[]): string[] {
+  const categories = new Set<string>();
+  for (const field of fields) {
+    if (!isAgentTaskQueueAuthorityField(field.path)) continue;
+    if (disabledConfigValue(field.value)) continue;
+    const text = agentTaskQueueText(field).toLowerCase();
+    if (/\b(tool|tools|function|function call|mcp|capability|action|agent action)\b/iu.test(text)) categories.add("tool_call");
+    if (/\b(database|db|sql|query|crm|support db|warehouse)\b/iu.test(text)) categories.add("database_access");
+    if (/\b(slack|email|sms|message|webhook|ticket|jira|zendesk|reply|respond|send|post|publish)\b/iu.test(text)) {
+      categories.add("external_response");
+    }
+    if (/\b(browser|computer use|click|form|navigate|screen|playwright|puppeteer)\b/iu.test(text)) categories.add("browser_action");
+    if (/(?:^|[_\W])(vault|secret|secrets|secret manager|credential|api key)(?:[_\W]|$)/iu.test(text)) {
+      categories.add("secret_manager_access");
+    }
+    if (/(?:^|[_\W])(memory|remember|persist|store|conversation state|thread state)(?:[_\W]|$)/iu.test(text)) {
+      categories.add("memory_write");
+    }
+    if (/\b(shell|bash|command|exec|terminal|python|node|subprocess)\b/iu.test(text)) categories.add("shell_execution");
+    if (/\b(filesystem|file write|workspace|repo|repository|github|gitlab|pull request|commit|push)\b/iu.test(text)) {
+      categories.add("repo_or_filesystem_write");
+    }
+  }
+  return [...categories].sort((a, b) => a.localeCompare(b));
+}
+
+function isAgentTaskQueuePrivileged(categories: string[]): boolean {
+  return categories.some((category) =>
+    [
+      "browser_action",
+      "database_access",
+      "external_response",
+      "memory_write",
+      "repo_or_filesystem_write",
+      "secret_manager_access",
+      "shell_execution"
+    ].includes(category)
+  );
+}
+
+function hasAgentTaskQueueWriteAuthoritySignal(fields: RuntimeField[], categories: string[]): boolean {
+  return categories.some((category) =>
+    ["browser_action", "database_access", "external_response", "memory_write", "repo_or_filesystem_write", "shell_execution"].includes(
+      category
+    )
+  ) || fields.some((field) =>
+    /\b(write|update|create|delete|reply|respond|send|post|publish|comment|close|assign|escalate|approve|refund|commit|push|merge)\b/iu.test(
+      agentTaskQueueText(field)
+    )
+  );
+}
+
+function hasAgentTaskQueueExternalAuthoritySignal(fields: RuntimeField[], categories: string[]): boolean {
+  return categories.some((category) => ["browser_action", "external_response"].includes(category)) ||
+    fields.some((field) =>
+      isAgentTaskQueueAuthorityField(field.path) &&
+      !agentTaskQueueInternalOnlySignal(field) &&
+      /\b(external|public|internet|webhook|slack|email|sms|message|ticket|reply|send|post|publish|browser|navigate)\b/iu.test(
+        agentTaskQueueText(field)
+      )
+    );
+}
+
+function hasAgentTaskQueueMemoryAuthoritySignal(fields: RuntimeField[], categories: string[]): boolean {
+  return categories.includes("memory_write") ||
+    fields.some((field) =>
+      isAgentTaskQueueAuthorityField(field.path) &&
+      /\b(memory|remember|persist|store|thread state|conversation state)\b/iu.test(agentTaskQueueText(field))
+    );
+}
+
+function hasAgentTaskQueueSensitivePayloadSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    !agentTaskQueueInternalOnlySignal(field) &&
+    /(?:^|[_\W])(customer|client|ticket|support|internal|confidential|private|proprietary|sensitive|account|billing|payment|prod|production|admin|case|incident|record|note)(?:[_\W]|$)/iu.test(
+      agentTaskQueueText(field)
+    )
+  );
+}
+
+function hasAgentTaskQueuePiiPayloadSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /(?:^|[_\W])(pii|email|phone|address|ssn|passport|dob|date of birth|customer id|user id|account id)(?:[_\W]|$)/iu.test(
+      agentTaskQueueText(field)
+    )
+  );
+}
+
+function hasAgentTaskQueueSecretSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /(?:^|[_\W])(secret|secrets|token|credential|api key|password|cookie|authorization|vault)(?:[_\W]|$)/iu.test(
+      agentTaskQueueText(field)
+    )
+  );
+}
+
+function hasAgentTaskQueueApprovalRequiredSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /approval|required[_-]?approval|human[_-]?approval|confirm|confirmation|review|human[_-]?in[_-]?the[_-]?loop/iu.test(field.path) &&
+    truthyConfigValue(field.value)
+  );
+}
+
+function isAgentTaskQueueSecurityField(fieldPath: string): boolean {
+  return /provider|queue|topic|subscription|stream|broker|backend|url|uri|endpoint|host|worker|consumer|subscriber|background|async|job|task|schedule|retry|replay|requeue|redrive|dead[_-]?letter|dlq|payload|body|message|event|input|source|prompt|tool|output|retrieval|rag|memory|browser|action|function|mcp|database|secret|token|credential|env|pii|sensitive|approval|auto|execute|process/iu.test(
+    fieldPath
+  );
+}
+
+function agentTaskQueueText(field: RuntimeField): string {
+  return `${field.path} ${fieldValueText(field)}`.replaceAll("_", " ").replaceAll("-", " ");
+}
+
+function isAgentTaskQueueAuthorityField(fieldPath: string): boolean {
+  return /(?:^|\.)(tools?|actions?|capabilities?|functions?|mcp|runtime_authority|tool_authority|allowed_tools?|agent_tools?)(?:\.|$)?/iu.test(
+    fieldPath
+  );
+}
+
+function agentTaskQueueInternalOnlySignal(field: RuntimeField): boolean {
+  const text = agentTaskQueueText(field);
+  if (!/\b(internal|approved|trusted|read only|readonly|manual review|approval required)\b/iu.test(text)) return false;
+  return !/\b(untrusted|customer|client|external|public|webhook|upload|attachment|slack|email|browser|user supplied|user-supplied)\b/iu.test(
+    text
   );
 }
 

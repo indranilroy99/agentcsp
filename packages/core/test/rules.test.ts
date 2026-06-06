@@ -88,6 +88,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-043")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-044")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-045")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-046")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-CICD-002")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-AUTOMATION-001")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-AUTOMATION-002")).toBe(true);
@@ -364,6 +365,51 @@ describe("rule engine", () => {
     expect(JSON.stringify(runtimeFeedbackPipelineFindings[0])).not.toContain("feedback_account_number");
     expect(JSON.stringify(runtimeFeedbackPipelineFindings[0])).not.toContain("feedback_authorization_header");
     expect(JSON.stringify(runtimeFeedbackPipelineFindings[0])).not.toContain("support-feedback-rlhf-dataset");
+    const runtimeTaskQueueFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-RUNTIME-046");
+    expect(runtimeTaskQueueFindings).toHaveLength(1);
+    expect(runtimeTaskQueueFindings[0]?.matched_object.path).toBe("queues/support-agent-jobs.yaml");
+    expect(runtimeTaskQueueFindings[0]?.matched_object.metadata).toMatchObject({
+      parsed_agent_task_queue_config: true,
+      agent_task_queue_provider: "bullmq",
+      agent_task_queue_background_consumer: true,
+      agent_task_queue_auto_execute: true,
+      agent_task_queue_untrusted_payload: true,
+      agent_task_queue_prompt_passthrough: true,
+      agent_task_queue_tool_output_passthrough: true,
+      agent_task_queue_replay_enabled: true,
+      agent_task_queue_privileged_tool_authority: true,
+      agent_task_queue_write_authority: true,
+      agent_task_queue_external_authority: true,
+      agent_task_queue_secret_exposure: true,
+      agent_task_queue_sensitive_payload: true,
+      agent_task_queue_pii_payload: true,
+      agent_task_queue_approval_required: false
+    });
+    expect(runtimeTaskQueueFindings[0]?.matched_object.metadata.agent_task_queue_payload_categories).toEqual([
+      "prompt_context",
+      "retrieval_context",
+      "secret_material",
+      "tool_output"
+    ]);
+    expect(runtimeTaskQueueFindings[0]?.matched_object.metadata.agent_task_queue_tool_authority_categories).toEqual([
+      "browser_action",
+      "database_access",
+      "external_response",
+      "secret_manager_access",
+      "tool_call"
+    ]);
+    expect(runtimeTaskQueueFindings[0]?.severity).toBe("critical");
+    expect(runtimeTaskQueueFindings[0]?.confidence).toBe("very_high");
+    expect(runtimeTaskQueueFindings[0]?.recommended_control).toBe("require_approval");
+    expect(JSON.stringify(runtimeTaskQueueFindings[0])).not.toContain("${AGENT_TASK_QUEUE_URL}");
+    expect(JSON.stringify(runtimeTaskQueueFindings[0])).not.toContain("customer-support-agent-jobs");
+    expect(JSON.stringify(runtimeTaskQueueFindings[0])).not.toContain("support-agent-dlq");
+    expect(JSON.stringify(runtimeTaskQueueFindings[0])).not.toContain("support_ticket_event");
+    expect(JSON.stringify(runtimeTaskQueueFindings[0])).not.toContain("support_db.update_customer_record");
+    expect(JSON.stringify(runtimeTaskQueueFindings[0])).not.toContain("queued_customer_email");
+    expect(JSON.stringify(runtimeTaskQueueFindings[0])).not.toContain("queued_customer_account_id");
+    expect(JSON.stringify(runtimeTaskQueueFindings[0])).not.toContain("queued_confidential_case_notes");
+    expect(JSON.stringify(runtimeTaskQueueFindings[0])).not.toContain("queued_support_api_token");
     const runtimePromptCacheFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-RUNTIME-029");
     expect(runtimePromptCacheFindings).toHaveLength(1);
     expect(runtimePromptCacheFindings[0]?.matched_object.path).toBe("prompt-cache/llm-response-cache.yaml");

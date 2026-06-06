@@ -1,0 +1,44 @@
+id: AGENTCSP-RUNTIME-046
+name: Background agent queue auto-executes untrusted privileged jobs
+description: A background agent or task queue consumes untrusted queued jobs and can auto-execute privileged tools with credential exposure and no approval boundary.
+category: background_agent_task_queue
+severity: critical
+maps_to:
+  owasp:
+    - LLM01:2025 Prompt Injection
+    - LLM02:2025 Sensitive Information Disclosure
+    - LLM06:2025 Excessive Agency
+  mitre_atlas:
+    - AML.T0051 LLM Prompt Injection
+    - AML.T0057 Exfiltration via Cyber Means
+  nist_ai_rmf:
+    - MAP 5.1
+    - MEASURE 2.9
+    - MANAGE 2.4
+match:
+  object_type: runtime_config
+  where:
+    - field: metadata.parsed_agent_task_queue_config
+      op: equals
+      value: true
+    - field: metadata.agent_task_queue_background_consumer
+      op: equals
+      value: true
+    - field: metadata.agent_task_queue_auto_execute
+      op: equals
+      value: true
+    - field: metadata.agent_task_queue_untrusted_payload
+      op: equals
+      value: true
+    - field: metadata.agent_task_queue_privileged_tool_authority
+      op: equals
+      value: true
+    - field: metadata.agent_task_queue_approval_required
+      op: equals
+      value: false
+    - field: secret_exposure
+      op: equals
+      value: true
+recommendation:
+  control: require_approval
+  text: Require approval before queued or replayed background-agent jobs can execute write, external, browser, database, memory, shell, or credential-backed tools; separate untrusted queue payloads from privileged tool execution and disable automatic redrive into privileged agents.

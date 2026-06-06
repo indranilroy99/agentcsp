@@ -747,6 +747,75 @@ describe("scanner", () => {
     expect(JSON.stringify(feedbackPipelineConfig)).not.toContain("feedback_account_number");
     expect(JSON.stringify(feedbackPipelineConfig)).not.toContain("feedback_authorization_header");
     expect(JSON.stringify(feedbackPipelineConfig)).not.toContain("support-feedback-rlhf-dataset");
+    const taskQueueConfig = surfaces.runtime_config.find((surface) => surface.path === "queues/support-agent-jobs.yaml");
+    expect(taskQueueConfig).toBeDefined();
+    expect(taskQueueConfig).toMatchObject({
+      trust_level: "project",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["call", "execute", "publish", "read", "remember", "send", "write"],
+      external_reach: true,
+      secret_exposure: true,
+      side_effect: true,
+      reversible: false,
+      untrusted_to_privileged: true
+    });
+    expect(taskQueueConfig?.metadata).toMatchObject({
+      content_redacted: true,
+      values_collected: false,
+      parsed_agent_task_queue_config: true,
+      agent_task_queue_provider: "bullmq",
+      agent_task_queue_detected: true,
+      agent_task_queue_remote: true,
+      agent_task_queue_destination_redacted: true,
+      agent_task_queue_destination_count: 4,
+      agent_task_queue_background_consumer: true,
+      agent_task_queue_asynchronous_execution: true,
+      agent_task_queue_auto_execute: true,
+      agent_task_queue_untrusted_payload: true,
+      agent_task_queue_prompt_passthrough: true,
+      agent_task_queue_tool_output_passthrough: true,
+      agent_task_queue_retry_enabled: true,
+      agent_task_queue_dead_letter_queue: true,
+      agent_task_queue_replay_enabled: true,
+      agent_task_queue_privileged_tool_authority: true,
+      agent_task_queue_write_authority: true,
+      agent_task_queue_external_authority: true,
+      agent_task_queue_memory_authority: false,
+      agent_task_queue_secret_exposure: true,
+      agent_task_queue_sensitive_payload: true,
+      agent_task_queue_pii_payload: true,
+      agent_task_queue_approval_required: false
+    });
+    expect(taskQueueConfig?.metadata.agent_task_queue_destination_kinds).toEqual([
+      "bullmq",
+      "dead_letter_queue",
+      "message_queue",
+      "redis_queue"
+    ]);
+    expect(taskQueueConfig?.metadata.agent_task_queue_payload_categories).toEqual([
+      "prompt_context",
+      "retrieval_context",
+      "secret_material",
+      "tool_output"
+    ]);
+    expect(taskQueueConfig?.metadata.agent_task_queue_tool_authority_categories).toEqual([
+      "browser_action",
+      "database_access",
+      "external_response",
+      "secret_manager_access",
+      "tool_call"
+    ]);
+    expect(taskQueueConfig?.metadata.env_key_names).toEqual(["AGENT_TASK_QUEUE_URL"]);
+    expect(taskQueueConfig?.metadata.secret_ref_key_names).toEqual([]);
+    expect(JSON.stringify(taskQueueConfig)).not.toContain("${AGENT_TASK_QUEUE_URL}");
+    expect(JSON.stringify(taskQueueConfig)).not.toContain("customer-support-agent-jobs");
+    expect(JSON.stringify(taskQueueConfig)).not.toContain("support-agent-dlq");
+    expect(JSON.stringify(taskQueueConfig)).not.toContain("support_ticket_event");
+    expect(JSON.stringify(taskQueueConfig)).not.toContain("support_db.update_customer_record");
+    expect(JSON.stringify(taskQueueConfig)).not.toContain("queued_customer_email");
+    expect(JSON.stringify(taskQueueConfig)).not.toContain("queued_customer_account_id");
+    expect(JSON.stringify(taskQueueConfig)).not.toContain("queued_confidential_case_notes");
+    expect(JSON.stringify(taskQueueConfig)).not.toContain("queued_support_api_token");
     const promptCacheConfig = surfaces.runtime_config.find(
       (surface) => surface.path === "prompt-cache/llm-response-cache.yaml"
     );
@@ -3218,6 +3287,62 @@ describe("scanner", () => {
     expect(JSON.stringify(safetyPolicy)).not.toContain("internal-readonly-default-deny");
     expect(JSON.stringify(safetyPolicy)).not.toContain("readonly_docs.search");
     expect(JSON.stringify(safetyPolicy)).not.toContain("approved_internal_docs");
+  });
+
+  it("keeps local approval-gated background queues scoped", async () => {
+    const files = await walkProject({
+      root_path: safeFixtureRoot,
+      output_path: ".agentcsp",
+      formats: ["json", "md"],
+      include_hidden: true,
+      include_logs: false,
+      max_file_size_bytes: 1024 * 1024,
+      max_files: 5000,
+      quiet: true
+    });
+    const surfaces = await detectSurfaces(files);
+    const taskQueue = surfaces.runtime_config.find((surface) => surface.path === "queues/internal-review-jobs.yaml");
+
+    expect(taskQueue).toMatchObject({
+      trust_level: "project",
+      data_classes: ["unknown"],
+      actions: ["call", "read"],
+      side_effect: false,
+      external_reach: false,
+      secret_exposure: false,
+      reversible: true,
+      untrusted_to_privileged: false
+    });
+    expect(taskQueue?.metadata).toMatchObject({
+      parsed_agent_task_queue_config: true,
+      agent_task_queue_detected: true,
+      agent_task_queue_remote: false,
+      agent_task_queue_destination_redacted: true,
+      agent_task_queue_destination_count: 1,
+      agent_task_queue_background_consumer: false,
+      agent_task_queue_asynchronous_execution: true,
+      agent_task_queue_auto_execute: false,
+      agent_task_queue_untrusted_payload: false,
+      agent_task_queue_prompt_passthrough: false,
+      agent_task_queue_tool_output_passthrough: false,
+      agent_task_queue_retry_enabled: true,
+      agent_task_queue_dead_letter_queue: true,
+      agent_task_queue_replay_enabled: false,
+      agent_task_queue_privileged_tool_authority: false,
+      agent_task_queue_write_authority: false,
+      agent_task_queue_external_authority: false,
+      agent_task_queue_memory_authority: false,
+      agent_task_queue_secret_exposure: false,
+      agent_task_queue_sensitive_payload: false,
+      agent_task_queue_pii_payload: false,
+      agent_task_queue_approval_required: true
+    });
+    expect(taskQueue?.metadata.agent_task_queue_destination_kinds).toEqual(["local_in_memory_queue"]);
+    expect(taskQueue?.metadata.agent_task_queue_payload_categories).toEqual([]);
+    expect(taskQueue?.metadata.agent_task_queue_tool_authority_categories).toEqual(["tool_call"]);
+    expect(JSON.stringify(taskQueue)).not.toContain("internal_review_ticket");
+    expect(JSON.stringify(taskQueue)).not.toContain("approved_internal_summary");
+    expect(JSON.stringify(taskQueue)).not.toContain("readonly_docs.search");
   });
 
   it("does not treat negated safety instructions as granted authority", async () => {

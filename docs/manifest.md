@@ -1028,6 +1028,44 @@ Feedback pipeline metadata may include:
 
 Raw feedback endpoints, project names, source labels, feedback labels, reviewer notes, dataset names, prompt text, completion text, tool traces, retrieval chunks, memory content, PII field labels, and secret placeholders are not emitted. Provider names, redacted destination categories, capture categories, training/eval/model-promotion posture, redaction/consent/approval posture, and credential key names let rules detect feedback loops that can convert tainted production interactions into future model behavior or evaluation data.
 
+## Background Agent Task Queue Posture
+
+Background agent, task-queue, job-queue, worker, Celery, BullMQ, Sidekiq, Temporal, SQS, Pub/Sub, Kafka, RabbitMQ, and similar async-agent configs are normalized into `runtime_config` objects when queue-oriented JSON, YAML, or TOML files are discovered.
+
+Task-queue metadata may include:
+
+- `parsed_agent_task_queue_config`
+- `agent_task_queue_fields`
+- `agent_task_queue_provider`
+- `agent_task_queue_detected`
+- `agent_task_queue_remote`
+- `agent_task_queue_destination_redacted`
+- `agent_task_queue_destination_count`
+- `agent_task_queue_destination_kinds`
+- `agent_task_queue_background_consumer`
+- `agent_task_queue_asynchronous_execution`
+- `agent_task_queue_auto_execute`
+- `agent_task_queue_untrusted_payload`
+- `agent_task_queue_payload_categories`
+- `agent_task_queue_prompt_passthrough`
+- `agent_task_queue_tool_output_passthrough`
+- `agent_task_queue_retry_enabled`
+- `agent_task_queue_dead_letter_queue`
+- `agent_task_queue_replay_enabled`
+- `agent_task_queue_tool_authority_categories`
+- `agent_task_queue_privileged_tool_authority`
+- `agent_task_queue_write_authority`
+- `agent_task_queue_external_authority`
+- `agent_task_queue_memory_authority`
+- `agent_task_queue_secret_exposure`
+- `agent_task_queue_sensitive_payload`
+- `agent_task_queue_pii_payload`
+- `agent_task_queue_approval_required`
+- `env_key_names`
+- `secret_ref_key_names`
+
+Raw queue names, queue URLs, topic names, dead-letter queue names, job labels, payload labels, tool strings, action lists, and secret placeholders are not emitted. Provider names, redacted destination categories, payload categories, tool-authority categories, replay posture, approval posture, data-class booleans, and credential key names let rules detect background agents that can replay or auto-execute untrusted queued jobs into privileged tools without copying queue payloads into evidence.
+
 ## AI Embedding Pipeline Boundary
 
 AI embedding, indexing, vectorization, document-index, and RAG-index pipeline configs are normalized into `runtime_config` objects when embedding-oriented directories or filenames are discovered.

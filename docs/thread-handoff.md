@@ -1026,6 +1026,16 @@ The current iteration adds:
 - rule `AGENTCSP-RUNTIME-045` for safety policies that fail open around privileged tools when untrusted input, credentials, and missing approval are present
 - scanner, rule, fixture verifier, graph tie-break, and redaction coverage proving raw policy names, fallback tokens, tool names, and data-scope labels stay redacted
 
+## Background Agent Task Queue Pass
+
+The current iteration adds:
+
+- first-class redacted metadata for background agent, task-queue, job-queue, worker, BullMQ, Celery, Temporal, SQS, Pub/Sub, Kafka, RabbitMQ, and similar async-agent posture
+- vulnerable fixture coverage for a BullMQ support-agent queue that auto-executes untrusted customer jobs, passes prompt/tool-output context, redrives failed jobs, and can reach database, Slack, browser, and secret-manager tools without approval
+- safe fixture coverage for a local in-memory internal review queue with approval required, no auto-execution, no replay, no untrusted payload, and no privileged authority
+- rule `AGENTCSP-RUNTIME-046` for background agent queues that combine background consumers, auto-execution, untrusted payloads, privileged tool authority, credential exposure, and missing approval
+- scanner, rule, fixture verifier, and redaction coverage proving raw queue names, queue URLs, DLQ names, job labels, payload labels, tool names, and token placeholders stay redacted
+
 ## Initial Build Recommendation
 
 Start with a CLI-first MVP before building the dashboard:

@@ -1,0 +1,35 @@
+provider: bullmq
+queue:
+  name: customer-support-agent-jobs
+  backend: redis
+  url: ${AGENT_TASK_QUEUE_URL}
+  dead_letter_queue: support-agent-dlq
+consumer:
+  background_agent: true
+  concurrency: 8
+  auto_execute: true
+  approval_required: false
+inputs:
+  - support_ticket_event
+  - customer_uploaded_attachment
+  - queued_external_webhook_body
+job_payload:
+  prompt_passthrough: true
+  tool_output_passthrough: true
+  includes:
+    - queued_customer_email
+    - queued_customer_account_id
+    - queued_confidential_case_notes
+    - queued_support_api_token
+tools:
+  - support_db.update_customer_record
+  - slack.post_customer_reply
+  - vault_secret_lookup.read_support_token
+  - browser.submit_refund_form
+retry_policy:
+  enabled: true
+  max_attempts: 5
+  replay_on_failure: true
+dead_letter_queue:
+  enabled: true
+  replay_enabled: true

@@ -26,6 +26,8 @@ For agent safety and guardrail posture rules, require concrete fail-open or disa
 
 For feedback and RLHF pipeline rules, require concrete feedback-to-model correlation such as untrusted ratings, reviewer notes, prompts, completions, tool traces, retrieval, memory, PII, or secrets captured into remote feedback stores, training datasets, eval sets, or model-update paths with redaction, consent, or approval controls disabled.
 
+For background agent task-queue rules, require concrete async-to-tool correlation such as background consumers, automatic execution, untrusted job payloads, prompt or tool-output passthrough, retry or dead-letter replay, privileged tool authority, credential exposure, and missing approval. Do not flag local approval-gated queues merely because they contain internal review jobs.
+
 AgentCSP computes finding confidence from rule correlation depth, scoped object type, structured parsing, privileged actions, data class, external reach, and side-effect signals.
 
 Required fields:
