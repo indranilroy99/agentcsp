@@ -96,6 +96,8 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RAG-002")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RAG-003")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RAG-004")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RAG-005")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RAG-006")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-SKILL-001")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-SUPPLYCHAIN-001")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-SUPPLYCHAIN-002")).toBe(true);
@@ -1388,6 +1390,38 @@ describe("rule engine", () => {
     expect(ragVectorFindings[0]?.recommended_control).toBe("require_approval");
     expect(JSON.stringify(ragVectorFindings[0])).not.toContain("${PINECONE_API_KEY}");
     expect(JSON.stringify(ragVectorFindings[0])).not.toContain("agentcsp-demo-vector.example.invalid");
+    const ragIngestionFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-RAG-006");
+    expect(ragIngestionFindings).toHaveLength(1);
+    expect(ragIngestionFindings[0]?.matched_object.path).toBe("rag/vector-store.yaml");
+    expect(ragIngestionFindings[0]?.matched_object.metadata).toMatchObject({
+      vector_store_provider: "pinecone",
+      vector_store_remote: true,
+      vector_store_ingestion_enabled: true,
+      vector_store_auto_ingest_enabled: true,
+      vector_store_ingests_untrusted_sources: true,
+      vector_store_ingestion_writes_trusted_namespace: true,
+      vector_store_ingestion_quarantine_disabled: true,
+      vector_store_ingestion_moderation_disabled: true,
+      vector_store_ingestion_instruction_stripping_disabled: true,
+      vector_store_ingestion_sanitization_disabled: true,
+      vector_store_ingestion_provenance_required: false,
+      vector_store_ingestion_approval_required: false
+    });
+    expect(ragIngestionFindings[0]?.matched_object.metadata.vector_store_ingestion_source_categories).toEqual([
+      "message_source",
+      "public_web",
+      "support_ticket",
+      "ticket_attachment",
+      "user_upload"
+    ]);
+    expect(ragIngestionFindings[0]?.severity).toBe("critical");
+    expect(ragIngestionFindings[0]?.confidence).toBe("very_high");
+    expect(ragIngestionFindings[0]?.recommended_control).toBe("quarantine");
+    expect(JSON.stringify(ragIngestionFindings[0])).not.toContain("${PINECONE_API_KEY}");
+    expect(JSON.stringify(ragIngestionFindings[0])).not.toContain("customer_uploaded_docs");
+    expect(JSON.stringify(ragIngestionFindings[0])).not.toContain("support_ticket_attachments");
+    expect(JSON.stringify(ragIngestionFindings[0])).not.toContain("shared_inbox_messages");
+    expect(JSON.stringify(ragIngestionFindings[0])).not.toContain("trusted_internal_runbooks");
     const ragRetrievalFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-RAG-005");
     expect(ragRetrievalFindings).toHaveLength(1);
     expect(ragRetrievalFindings[0]?.matched_object.path).toBe("rag/vector-store.yaml");

@@ -1362,6 +1362,17 @@ Connector metadata may include:
 - `vector_store_write_enabled`
 - `vector_store_sync_enabled`
 - `vector_store_ingests_untrusted_sources`
+- `vector_store_ingestion_enabled`
+- `vector_store_ingestion_source_redacted`
+- `vector_store_ingestion_source_categories`
+- `vector_store_auto_ingest_enabled`
+- `vector_store_ingestion_writes_trusted_namespace`
+- `vector_store_ingestion_quarantine_disabled`
+- `vector_store_ingestion_moderation_disabled`
+- `vector_store_ingestion_instruction_stripping_disabled`
+- `vector_store_ingestion_sanitization_disabled`
+- `vector_store_ingestion_provenance_required`
+- `vector_store_ingestion_approval_required`
 - `vector_store_sensitive_collection`
 - `vector_store_pii_collection`
 - `vector_store_namespace_redacted`
@@ -1382,7 +1393,7 @@ Connector metadata may include:
 - `secret_ref_key_names`
 - `values_collected`
 
-Raw vector-store URLs, endpoints, collection names, namespaces, query selectors, filter values, source labels, raw chunk text, and secret placeholders are not emitted. Provider names, redacted destination categories, filter categories, ACL/provenance/trust-filter posture, prompt-injection passthrough posture, tool-context injection posture, booleans, counts, and credential key names let rules detect durable retrieval poisoning, unauthorized private retrieval, and remote data exposure without copying connector values into the manifest.
+Raw vector-store URLs, endpoints, collection names, namespaces, query selectors, filter values, ingestion source labels, target namespace labels, raw chunk text, and secret placeholders are not emitted. Provider names, redacted destination categories, ingestion source categories, quarantine/moderation/instruction-stripping posture, filter categories, ACL/provenance/trust-filter posture, prompt-injection passthrough posture, tool-context injection posture, booleans, counts, and credential key names let rules detect durable ingestion poisoning, unauthorized private retrieval, and remote data exposure without copying connector values into the manifest.
 
 ## Automations
 

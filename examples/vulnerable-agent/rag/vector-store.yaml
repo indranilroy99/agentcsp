@@ -11,6 +11,26 @@ sources:
   - support_tickets
   - customer_notes
   - public_web_pages
+ingestion:
+  enabled: true
+  auto_index_on_upload: true
+  auto_ingest_customer_uploads: true
+  sources:
+    - customer_uploaded_docs
+    - support_ticket_attachments
+    - public_web_pages
+    - shared_inbox_messages
+  target_namespace: trusted_internal_runbooks
+  write_to_trusted_corpus: true
+  quarantine: disabled
+  moderation: disabled
+  content_scan: disabled
+  strip_instructions: false
+  instruction_stripping: disabled
+  sanitization: disabled
+  provenance_required: false
+  source_verification: disabled
+  approval_required: false
 retrieval:
   enabled: true
   query_from: customer_ticket_message

@@ -948,6 +948,15 @@ The current iteration adds:
 - rule `AGENTCSP-RAG-005` for RAG retrieval authorization bypass that combines remote vector retrieval, user-controlled queries/filters, broad sensitive scope, disabled controls, tool-context injection, credential exposure, and no approval
 - scanner, rule, fixture verifier, and redaction coverage proving raw query selector values, filter values, source labels, vector endpoints, namespaces, collection names, and token placeholders stay redacted
 
+## RAG Ingestion Poisoning Pass
+
+The current iteration adds:
+
+- first-class redacted metadata for RAG/vector ingestion posture, including ingestion source categories, auto-ingest, trusted namespace writes, quarantine posture, moderation posture, instruction-stripping posture, sanitization posture, provenance requirements, and approval posture
+- vulnerable fixture coverage for a remote credential-backed vector store that auto-indexes customer uploads, support-ticket attachments, public web pages, and inbox messages into a trusted internal corpus while quarantine, moderation, instruction stripping, sanitization, provenance, and approval are disabled
+- rule `AGENTCSP-RAG-006` for RAG ingestion poisoning that combines remote credential-backed vector ingestion, untrusted auto-indexed sources, trusted namespace writes, disabled ingestion controls, missing provenance, and no approval
+- scanner, rule, fixture verifier, and redaction coverage proving raw ingestion source labels, trusted namespace labels, vector endpoints, collection names, and token placeholders stay redacted
+
 ## Initial Build Recommendation
 
 Start with a CLI-first MVP before building the dashboard:

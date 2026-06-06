@@ -2479,11 +2479,28 @@ describe("scanner", () => {
       vector_store_write_enabled: true,
       vector_store_sync_enabled: true,
       vector_store_ingests_untrusted_sources: true,
+      vector_store_ingestion_enabled: true,
+      vector_store_ingestion_source_redacted: true,
+      vector_store_auto_ingest_enabled: true,
+      vector_store_ingestion_writes_trusted_namespace: true,
+      vector_store_ingestion_quarantine_disabled: true,
+      vector_store_ingestion_moderation_disabled: true,
+      vector_store_ingestion_instruction_stripping_disabled: true,
+      vector_store_ingestion_sanitization_disabled: true,
+      vector_store_ingestion_provenance_required: false,
+      vector_store_ingestion_approval_required: false,
       vector_store_sensitive_collection: true,
       vector_store_pii_collection: true,
       vector_store_namespace_redacted: true
     });
     expect(vectorStore?.metadata.vector_store_remote_destination_kinds).toEqual(["http_endpoint", "managed_vector_db"]);
+    expect(vectorStore?.metadata.vector_store_ingestion_source_categories).toEqual([
+      "message_source",
+      "public_web",
+      "support_ticket",
+      "ticket_attachment",
+      "user_upload"
+    ]);
     expect(vectorStore?.metadata).toMatchObject({
       vector_store_retrieval_enabled: true,
       vector_store_user_query_input: true,
@@ -2511,6 +2528,10 @@ describe("scanner", () => {
     expect(JSON.stringify(vectorStore)).not.toContain("agentcsp-demo-vector.example.invalid");
     expect(JSON.stringify(vectorStore)).not.toContain("customer-support-escalations");
     expect(JSON.stringify(vectorStore)).not.toContain("internal-ticket-memory");
+    expect(JSON.stringify(vectorStore)).not.toContain("customer_uploaded_docs");
+    expect(JSON.stringify(vectorStore)).not.toContain("support_ticket_attachments");
+    expect(JSON.stringify(vectorStore)).not.toContain("shared_inbox_messages");
+    expect(JSON.stringify(vectorStore)).not.toContain("trusted_internal_runbooks");
     expect(JSON.stringify(vectorStore)).not.toContain("customer_ticket_message");
     expect(JSON.stringify(vectorStore)).not.toContain("customer_account_id");
     expect(JSON.stringify(vectorStore)).not.toContain("internal_runbooks");

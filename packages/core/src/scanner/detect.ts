@@ -3544,6 +3544,17 @@ interface RagConnectorPosture {
   vector_store_write_enabled: boolean;
   vector_store_sync_enabled: boolean;
   vector_store_ingests_untrusted_sources: boolean;
+  vector_store_ingestion_enabled: boolean;
+  vector_store_ingestion_source_redacted: boolean;
+  vector_store_ingestion_source_categories: string[];
+  vector_store_auto_ingest_enabled: boolean;
+  vector_store_ingestion_writes_trusted_namespace: boolean;
+  vector_store_ingestion_quarantine_disabled: boolean;
+  vector_store_ingestion_moderation_disabled: boolean;
+  vector_store_ingestion_instruction_stripping_disabled: boolean;
+  vector_store_ingestion_sanitization_disabled: boolean;
+  vector_store_ingestion_provenance_required: boolean;
+  vector_store_ingestion_approval_required: boolean;
   vector_store_sensitive_collection: boolean;
   vector_store_pii_collection: boolean;
   vector_store_namespace_redacted: boolean;
@@ -12014,6 +12025,7 @@ function classifyRagConnectorConfig(value: unknown, filePath: string): RagConnec
   const writeEnabled = hasVectorWriteSignal(fields);
   const syncEnabled = hasVectorSyncSignal(fields);
   const untrustedSources = hasVectorUntrustedSourceSignal(fields);
+  const ingestionSourceCategories = collectVectorIngestionSourceCategories(fields);
   const sensitiveCollection = hasVectorSensitiveCollectionSignal(fields);
   const piiCollection = hasVectorPiiCollectionSignal(fields);
   const retrievalEnabled = hasVectorRetrievalEnabledSignal(fields);
@@ -12040,6 +12052,17 @@ function classifyRagConnectorConfig(value: unknown, filePath: string): RagConnec
     vector_store_write_enabled: writeEnabled,
     vector_store_sync_enabled: syncEnabled,
     vector_store_ingests_untrusted_sources: untrustedSources,
+    vector_store_ingestion_enabled: writeEnabled || syncEnabled || hasVectorIngestionEnabledSignal(fields),
+    vector_store_ingestion_source_redacted: ingestionSourceCategories.length > 0 || hasVectorIngestionSourceSignal(fields),
+    vector_store_ingestion_source_categories: ingestionSourceCategories,
+    vector_store_auto_ingest_enabled: hasVectorAutoIngestSignal(fields),
+    vector_store_ingestion_writes_trusted_namespace: hasVectorIngestionTrustedNamespaceSignal(fields),
+    vector_store_ingestion_quarantine_disabled: hasVectorIngestionQuarantineDisabledSignal(fields),
+    vector_store_ingestion_moderation_disabled: hasVectorIngestionModerationDisabledSignal(fields),
+    vector_store_ingestion_instruction_stripping_disabled: hasVectorIngestionInstructionStrippingDisabledSignal(fields),
+    vector_store_ingestion_sanitization_disabled: hasVectorIngestionSanitizationDisabledSignal(fields),
+    vector_store_ingestion_provenance_required: hasVectorIngestionProvenanceRequiredSignal(fields),
+    vector_store_ingestion_approval_required: hasVectorIngestionApprovalRequiredSignal(fields),
     vector_store_sensitive_collection: sensitiveCollection,
     vector_store_pii_collection: piiCollection,
     vector_store_namespace_redacted: namespaceRedacted,
@@ -12159,6 +12182,129 @@ function hasVectorUntrustedSourceSignal(fields: RuntimeField[]): boolean {
     /\b(user|customer|client|ticket|support|issue|comment|message|email|slack|web|browser|public|external|retrieved|document|note)\b/iu.test(
       `${field.path} ${fieldValueText(field)}`
     )
+  );
+}
+
+function collectVectorIngestionSourceCategories(fields: RuntimeField[]): string[] {
+  const categories = new Set<string>();
+  for (const field of fields) {
+    const text = `${field.path} ${fieldValueText(field)}`;
+    const ingestionPath = /(?:^|\.)(ingest|ingestion|indexing|sync|sources?|documents?|loaders?|uploads?|attachments?)(?:\.|$)/iu.test(field.path);
+    if (!ingestionPath && /(?:^|\.)(retrieval|retriever|query|filters?|where)(?:\.|$)/iu.test(field.path)) continue;
+    if (!ingestionPath) continue;
+    if (/(?:^|[_\W])(customer|client|user|uploaded?|upload|portal|self[_\s-]?service)(?:[_\W]|$)/iu.test(text)) {
+      categories.add("user_upload");
+    }
+    if (/(?:^|[_\W])(attachment|attachments|ticket[_\s-]?attachment|support[_\s-]?attachment|invoice|receipt|pdf)(?:[_\W]|$)/iu.test(text)) {
+      categories.add("ticket_attachment");
+    }
+    if (/(?:^|[_\W])(ticket|tickets|support[_\s-]?ticket|case|cases|comment|comments|note|notes)(?:[_\W]|$)/iu.test(text)) {
+      categories.add("support_ticket");
+    }
+    if (/(?:^|[_\W])(web|public[_\s-]?web|web[_\s-]?page|website|url|crawl|crawler|scrape|browser)(?:[_\W]|$)/iu.test(text)) {
+      categories.add("public_web");
+    }
+    if (/(?:^|[_\W])(email|mailbox|gmail|outlook|inbox|message|messages|slack|chat)(?:[_\W]|$)/iu.test(text)) {
+      categories.add("message_source");
+    }
+    if (/(?:^|[_\W])(retrieved|retrieval|rag|memory|transcript|tool[_\s-]?output|browser[_\s-]?output)(?:[_\W]|$)/iu.test(text)) {
+      categories.add("agent_generated_context");
+    }
+  }
+  return [...categories].sort((a, b) => a.localeCompare(b));
+}
+
+function hasVectorIngestionSourceSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /(?:^|\.)(ingest|ingestion|indexing|sync|sources?|documents?|loaders?|uploads?|attachments?)(?:\.|$)/iu.test(field.path)
+  );
+}
+
+function hasVectorIngestionEnabledSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => {
+    const text = `${field.path} ${fieldValueText(field)}`;
+    if (/(?:^|\.)(ingest|ingestion|indexing|index|upsert|loader|loaders|documents?|sources?)(?:\.|$)/iu.test(field.path)) {
+      return truthyConfigValue(field.value);
+    }
+    return /\b(auto[_\s-]?index|auto[_\s-]?ingest|index[_\s-]?on[_\s-]?upload|ingest[_\s-]?on[_\s-]?startup|sync[_\s-]?documents)\b/iu.test(text);
+  });
+}
+
+function hasVectorAutoIngestSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /\b(auto[_\s-]?ingest|auto[_\s-]?index|ingest[_\s-]?on[_\s-]?startup|index[_\s-]?on[_\s-]?upload|sync[_\s-]?on[_\s-]?upload|continuous[_\s-]?sync|watch[_\s-]?uploads?)\b/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    ) && truthyConfigValue(field.value)
+  );
+}
+
+function hasVectorIngestionTrustedNamespaceSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /\b(trusted|private|internal|prod|production|agent[_\s-]?memory|runbooks?|knowledge[_\s-]?base|authoritative|golden|system[_\s-]?context|developer[_\s-]?context)\b/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    )
+  );
+}
+
+function hasVectorIngestionQuarantineDisabledSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => {
+    const text = `${field.path} ${fieldValueText(field)}`;
+    if (/\b(quarantine|staging|hold|review[_\s-]?queue|pending[_\s-]?review)\b/iu.test(field.path)) {
+      return disabledConfigValue(field.value) || /\b(disabled|none|off|false|skip|bypass)\b/iu.test(text);
+    }
+    return /\b(no[_\s-]?quarantine|quarantine[_\s-]?(disabled|none|off)|skip[_\s-]?quarantine|bypass[_\s-]?quarantine)\b/iu.test(text);
+  });
+}
+
+function hasVectorIngestionModerationDisabledSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => {
+    const text = `${field.path} ${fieldValueText(field)}`;
+    if (/\b(moderation|moderate|safety[_\s-]?check|toxicity|abuse|policy[_\s-]?check|malware[_\s-]?scan|content[_\s-]?scan)\b/iu.test(field.path)) {
+      return disabledConfigValue(field.value) || /\b(disabled|none|off|false|skip|bypass)\b/iu.test(text);
+    }
+    return /\b(no[_\s-]?moderation|moderation[_\s-]?(disabled|none|off)|skip[_\s-]?moderation|bypass[_\s-]?moderation)\b/iu.test(text);
+  });
+}
+
+function hasVectorIngestionInstructionStrippingDisabledSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => {
+    const text = `${field.path} ${fieldValueText(field)}`;
+    if (/\b(strip[_\s-]?instructions?|instruction[_\s-]?stripping|remove[_\s-]?instructions?|tool[_\s-]?directive[_\s-]?filter|system[_\s-]?prompt[_\s-]?filter)\b/iu.test(
+      field.path
+    )) {
+      return disabledConfigValue(field.value) || /\b(disabled|none|off|false|skip|bypass)\b/iu.test(text);
+    }
+    return /\b(no[_\s-]?instruction[_\s-]?stripping|instruction[_\s-]?stripping[_\s-]?(disabled|none|off)|preserve[_\s-]?instructions|keep[_\s-]?tool[_\s-]?directives)\b/iu.test(
+      text
+    );
+  });
+}
+
+function hasVectorIngestionSanitizationDisabledSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => {
+    const text = `${field.path} ${fieldValueText(field)}`;
+    if (/\b(sanitize|sanitization|filter|validation|validate|redact|mask|clean|normalize)\b/iu.test(field.path)) {
+      return disabledConfigValue(field.value) || /\b(disabled|none|off|false|raw|passthrough|skip|bypass)\b/iu.test(text);
+    }
+    return /\b(unsanitized|raw[_\s-]?documents?|raw[_\s-]?chunks?|no[_\s-]?sanitization|bypass[_\s-]?filter)\b/iu.test(text);
+  });
+}
+
+function hasVectorIngestionProvenanceRequiredSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /\b(provenance[_\s.-]?required|required[_\s.-]?provenance|source[_\s.-]?verification|verified[_\s.-]?source|signature[_\s.-]?required|signed[_\s.-]?documents?)\b/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    ) &&
+    truthyConfigValue(field.value)
+  );
+}
+
+function hasVectorIngestionApprovalRequiredSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /\b(ingestion[_\s.-]?approval|approval[_\s.-]?required|required[_\s.-]?approval|require[_\s.-]?approval|human[_\s.-]?approval|manual[_\s.-]?review|review[_\s.-]?required|confirm|confirmation|human[_\s.-]?in[_\s.-]?the[_\s.-]?loop)\b/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    ) &&
+    truthyConfigValue(field.value)
   );
 }
 
@@ -12312,7 +12458,7 @@ function truthyConfigValue(value: unknown): boolean {
 }
 
 function isRagConnectorSecurityField(fieldPath: string): boolean {
-  return /provider|endpoint|url|uri|host|dsn|connection|secret|token|api[_-]?key|credential|auth|env|collection|namespace|index|table|bucket|corpus|dataset|write|upsert|insert|ingest|sync|source|document|embedding|vector|retriev|query|filters?|acl|provenance|trust|citation|prompt[_-]?injection|approval|raw[_-]?chunks?|tools?/iu.test(
+  return /provider|endpoint|url|uri|host|dsn|connection|secret|token|api[_-]?key|credential|auth|env|collection|namespace|index|table|bucket|corpus|dataset|write|upsert|insert|ingest|sync|source|document|upload|attachment|loader|embedding|vector|retriev|query|filters?|acl|provenance|trust|citation|quarantine|moderation|sanitize|instruction|prompt[_-]?injection|approval|raw[_-]?chunks?|tools?/iu.test(
     fieldPath
   );
 }

@@ -159,6 +159,10 @@ const leakPatterns = [
   /customer_notes/u,
   /public_web_pages/u,
   /internal_runbooks/u,
+  /customer_uploaded_docs/u,
+  /support_ticket_attachments/u,
+  /shared_inbox_messages/u,
+  /trusted_internal_runbooks/u,
   /\$\{LANGSMITH_API_KEY\}/u,
   /\$\{MEMORY_STORE_TOKEN\}/u,
   /api\.smith\.langchain\.com/u,
@@ -324,8 +328,8 @@ const leakPatterns = [
 const vulnerable = await readScanOutput(vulnerableOutput, { sarifRequired: true });
 const safe = await readScanOutput(safeOutput, { sarifRequired: false });
 
-assertEqual(vulnerable.manifest.findings.length, 125, "vulnerable manifest finding count");
-assertEqual(vulnerable.findings.length, 125, "vulnerable findings.json count");
+assertEqual(vulnerable.manifest.findings.length, 126, "vulnerable manifest finding count");
+assertEqual(vulnerable.findings.length, 126, "vulnerable findings.json count");
 assertEqual(vulnerable.manifest.attack_paths.length, 15, "vulnerable attack path count");
 assertEqual(vulnerable.manifest.static_blast_radius?.critical_attack_paths, 15, "vulnerable critical attack path count");
 assertEqual(vulnerable.manifest.diagnostics.length, 0, "vulnerable diagnostics count");
@@ -381,6 +385,7 @@ for (const ruleId of [
   "AGENTCSP-RAG-003",
   "AGENTCSP-RAG-004",
   "AGENTCSP-RAG-005",
+  "AGENTCSP-RAG-006",
   "AGENTCSP-SKILL-001",
   "AGENTCSP-SUPPLYCHAIN-001",
   "AGENTCSP-SUPPLYCHAIN-002"

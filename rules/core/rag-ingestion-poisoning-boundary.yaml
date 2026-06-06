@@ -1,0 +1,59 @@
+id: AGENTCSP-RAG-006
+name: RAG ingestion auto-trusts untrusted content without review
+description: A RAG or vector-store ingestion pipeline automatically indexes user uploads, ticket attachments, public web pages, or message sources into a trusted or private corpus while quarantine, moderation, instruction stripping, sanitization, provenance, and approval controls are disabled.
+category: rag_ingestion_boundary
+severity: critical
+maps_to:
+  owasp:
+    - LLM01:2025 Prompt Injection
+    - LLM02:2025 Sensitive Information Disclosure
+    - LLM08:2025 Vector and Embedding Weaknesses
+  mitre_atlas:
+    - AML.T0051 LLM Prompt Injection
+    - AML.T0057 Exfiltration via Cyber Means
+  nist_ai_rmf:
+    - MAP 5.1
+    - MEASURE 2.9
+    - MANAGE 2.4
+match:
+  object_type: rag_source
+  where:
+    - field: metadata.parsed_rag_connector_config
+      op: equals
+      value: true
+    - field: metadata.vector_store_remote
+      op: equals
+      value: true
+    - field: metadata.vector_store_ingestion_enabled
+      op: equals
+      value: true
+    - field: metadata.vector_store_auto_ingest_enabled
+      op: equals
+      value: true
+    - field: metadata.vector_store_ingests_untrusted_sources
+      op: equals
+      value: true
+    - field: metadata.vector_store_ingestion_writes_trusted_namespace
+      op: equals
+      value: true
+    - field: metadata.vector_store_ingestion_quarantine_disabled
+      op: equals
+      value: true
+    - field: metadata.vector_store_ingestion_instruction_stripping_disabled
+      op: equals
+      value: true
+    - field: metadata.vector_store_ingestion_sanitization_disabled
+      op: equals
+      value: true
+    - field: metadata.vector_store_ingestion_provenance_required
+      op: equals
+      value: false
+    - field: metadata.vector_store_ingestion_approval_required
+      op: equals
+      value: false
+    - field: secret_exposure
+      op: equals
+      value: true
+recommendation:
+  control: quarantine
+  text: Stage untrusted documents outside trusted retrieval namespaces, require provenance and human review before indexing, strip instruction-like content and tool directives, sanitize chunks before embedding, and separate ingestion credentials from retrieval credentials.
