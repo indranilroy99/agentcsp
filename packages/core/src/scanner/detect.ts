@@ -132,6 +132,11 @@ export async function detectSurfaces(files: WalkedFile[]): Promise<DetectedSurfa
       continue;
     }
 
+    if (isToolOutputPolicyConfigPath(file.relativePath, basename)) {
+      detectToolOutputPolicyConfig(file, text, surfaces);
+      continue;
+    }
+
     if (isAgentWebhookEgressConfigPath(file.relativePath, basename)) {
       detectAgentWebhookEgressConfig(file, text, surfaces);
       continue;
@@ -2017,6 +2022,82 @@ function detectAgentContextComposerConfig(file: WalkedFile, text: string | undef
   });
 }
 
+function detectToolOutputPolicyConfig(file: WalkedFile, text: string | undefined, surfaces: DetectedSurfaces): void {
+  const parsed = parseStructuredConfig(text ?? "", file.relativePath);
+  if (parsed.parseFailed) {
+    addDiagnostic(surfaces, file, {
+      parser: parsed.parser ?? "structured_config",
+      code: "TOOL_OUTPUT_POLICY_CONFIG_PARSE_FAILED",
+      reason: "Tool-output policy configuration could not be parsed. Raw content was redacted."
+    });
+  }
+
+  const posture = classifyToolOutputPolicyConfig(parsed.value, file.relativePath);
+  const actions = new Set<ActionType>(["call", "read"]);
+  if (posture.tool_output_followup_tool_calls || posture.tool_output_write_authority) actions.add("write");
+  if (posture.tool_output_external_reach) {
+    actions.add("send");
+    actions.add("publish");
+  }
+  if (posture.tool_output_memory_write) actions.add("remember");
+  if (posture.tool_output_shell_authority) actions.add("execute");
+  if (posture.tool_output_approval_input) actions.add("approve");
+
+  const dataClasses = new Set<SurfaceObject["data_classes"][number]>(["unknown"]);
+  if (
+    posture.tool_output_secret_capture ||
+    posture.tool_output_secret_access ||
+    posture.env_key_names.some(isCredentialLikeKeyName) ||
+    posture.secret_ref_key_names.length > 0
+  ) {
+    dataClasses.add("credential");
+  }
+  if (posture.tool_output_sensitive_data || posture.tool_output_untrusted_sources) dataClasses.add("confidential");
+  if (posture.tool_output_pii_data) dataClasses.add("pii");
+  if (dataClasses.size > 1) dataClasses.delete("unknown");
+
+  const object = createSurfaceObject({
+    type: "runtime_config",
+    name: path.basename(file.relativePath),
+    path: file.relativePath,
+    trust_level: inferTrustLevel(file.relativePath),
+    data_classes: uniqueDataClasses([...dataClasses] as SurfaceObject["data_classes"]),
+    actions: uniqueActions([...actions]),
+    side_effect:
+      posture.tool_output_followup_tool_calls ||
+      posture.tool_output_write_authority ||
+      posture.tool_output_external_reach ||
+      posture.tool_output_memory_write ||
+      posture.tool_output_approval_input,
+    reversible: !posture.tool_output_external_reach && !posture.tool_output_destructive_authority,
+    external_reach: posture.tool_output_external_reach,
+    secret_exposure:
+      posture.tool_output_secret_capture ||
+      posture.tool_output_secret_access ||
+      posture.env_key_names.some(isCredentialLikeKeyName) ||
+      posture.secret_ref_key_names.length > 0,
+    reason: "Tool-output policy configuration discovered as agent context and follow-up action posture.",
+    metadata: {
+      content_redacted: true,
+      values_collected: false,
+      parsed_tool_output_policy_config: Boolean(parsed.value) && !parsed.parseFailed,
+      parse_error: parsed.parseFailed,
+      ...posture
+    }
+  });
+  surfaces.runtime_config.push({
+    ...object,
+    untrusted_to_privileged:
+      posture.tool_output_untrusted_sources &&
+      posture.tool_output_raw_output_enabled &&
+      posture.tool_output_followup_tool_calls &&
+      (posture.tool_output_sanitization_disabled ||
+        posture.tool_output_prompt_injection_filter_disabled ||
+        posture.tool_output_delimiter_disabled ||
+        posture.tool_output_approval_required === false)
+  });
+}
+
 function detectSaasConnectorConfig(file: WalkedFile, text: string | undefined, surfaces: DetectedSurfaces): void {
   const parsed = parseStructuredConfig(text ?? "", file.relativePath);
   if (parsed.parseFailed) {
@@ -3021,6 +3102,25 @@ function isAgentContextComposerConfigPath(relativePath: string, basename: string
   return contextName || (contextDirectory && configName);
 }
 
+function isToolOutputPolicyConfigPath(relativePath: string, basename: string): boolean {
+  const normalized = relativePath.replaceAll("\\", "/").toLowerCase();
+  const lowerBase = basename.toLowerCase();
+  if (!/\.(json|ya?ml|toml)$/iu.test(lowerBase)) return false;
+  if (normalized.startsWith(".github/workflows/")) return false;
+  if (normalized.startsWith("rules/")) return false;
+  const segments = normalized.split("/").slice(0, -1);
+  const toolOutputDirectory = segments.some((segment) =>
+    /^(tool-results?|tool_results?|tool-outputs?|tool_outputs?|tool-result-policy|tool_result_policy|result-handlers?|result_handlers?|output-handlers?|output_handlers?|observation-handlers?|observation_handlers?)$/iu.test(
+      segment
+    )
+  );
+  const toolOutputName = /(?:tool[-_]?results?|tool[-_]?outputs?|tool[-_]?observations?|result[-_]?handler|output[-_]?handler|observation[-_]?handler|tool[-_]?result[-_]?policy|tool[-_]?output[-_]?policy)/iu.test(
+    lowerBase
+  );
+  const configName = /(?:config|settings|policy|handler|router|results?|outputs?|observations?|tools?)/iu.test(lowerBase);
+  return toolOutputName || (toolOutputDirectory && configName);
+}
+
 function isAgentWebhookEgressConfigPath(relativePath: string, basename: string): boolean {
   const normalized = relativePath.replaceAll("\\", "/").toLowerCase();
   const lowerBase = basename.toLowerCase();
@@ -3767,6 +3867,34 @@ interface AgentContextComposerPosture {
   agent_context_composer_sensitive_data: boolean;
   agent_context_composer_pii_data: boolean;
   agent_context_composer_approval_required: boolean;
+  env_key_names: string[];
+  secret_ref_key_names: string[];
+}
+
+interface ToolOutputPolicyPosture {
+  tool_output_policy_fields: string[];
+  tool_output_source_redacted: boolean;
+  tool_output_source_categories: string[];
+  tool_output_untrusted_sources: boolean;
+  tool_output_raw_output_enabled: boolean;
+  tool_output_prompt_context: boolean;
+  tool_output_system_or_developer_context: boolean;
+  tool_output_delimiter_disabled: boolean;
+  tool_output_sanitization_disabled: boolean;
+  tool_output_prompt_injection_filter_disabled: boolean;
+  tool_output_followup_tool_calls: boolean;
+  tool_output_tool_authority_categories: string[];
+  tool_output_write_authority: boolean;
+  tool_output_external_reach: boolean;
+  tool_output_memory_write: boolean;
+  tool_output_shell_authority: boolean;
+  tool_output_destructive_authority: boolean;
+  tool_output_approval_input: boolean;
+  tool_output_secret_capture: boolean;
+  tool_output_secret_access: boolean;
+  tool_output_sensitive_data: boolean;
+  tool_output_pii_data: boolean;
+  tool_output_approval_required: boolean;
   env_key_names: string[];
   secret_ref_key_names: string[];
 }
@@ -7699,6 +7827,279 @@ function hasAgentContextComposerApprovalRequiredSignal(fields: RuntimeField[]): 
 
 function isAgentContextComposerSecurityField(fieldPath: string): boolean {
   return /context|source|input|prompt|message|role|system|developer|instruction|composer|builder|assembly|router|delimiter|boundary|sanitize|filter|validation|raw|passthrough|tool|mcp|browser|shell|database|db|secret|token|credential|auth|env|memory|external|write|delete|approval|customer|ticket|retrieved|rag|pii|sensitive/iu.test(
+    fieldPath
+  );
+}
+
+function classifyToolOutputPolicyConfig(value: unknown, filePath: string): ToolOutputPolicyPosture {
+  const fields = flattenRuntimeFields(value);
+  const stringValues = collectFieldStringValues(fields);
+  const sourceCategories = collectToolOutputSourceCategories(fields);
+  const authorityCategories = collectToolOutputAuthorityCategories(fields);
+  const envKeys = uniqueStrings([
+    ...collectEnvKeyNamesFromConfig(value).filter(isLikelyEnvKeyName),
+    ...extractEnvironmentReferenceKeys(stringValues)
+  ]);
+  const secretRefKeys = extractSecretReferenceKeys(stringValues);
+  const secretAccess = authorityCategories.includes("secret_manager_access") || hasToolOutputSecretAccessSignal(fields);
+  const secretCapture = hasToolOutputSecretCaptureSignal(fields);
+
+  return {
+    tool_output_policy_fields: fields
+      .map((field) => field.path)
+      .filter((fieldPath) => isToolOutputPolicySecurityField(fieldPath))
+      .sort((a, b) => a.localeCompare(b)),
+    tool_output_source_redacted: sourceCategories.length > 0 || hasToolOutputSourceSignal(fields),
+    tool_output_source_categories: sourceCategories,
+    tool_output_untrusted_sources: hasToolOutputUntrustedSourceSignal(fields) || sourceCategories.some((category) =>
+      ["browser_output", "shell_output", "mcp_result", "api_response", "database_result", "retrieval_output"].includes(category)
+    ),
+    tool_output_raw_output_enabled: hasToolOutputRawOutputSignal(fields),
+    tool_output_prompt_context: hasToolOutputPromptContextSignal(fields),
+    tool_output_system_or_developer_context: hasToolOutputSystemOrDeveloperContextSignal(fields),
+    tool_output_delimiter_disabled: hasToolOutputDelimiterDisabledSignal(fields),
+    tool_output_sanitization_disabled: hasToolOutputSanitizationDisabledSignal(fields),
+    tool_output_prompt_injection_filter_disabled: hasToolOutputPromptInjectionFilterDisabledSignal(fields),
+    tool_output_followup_tool_calls: authorityCategories.length > 0 || hasToolOutputFollowupToolSignal(fields),
+    tool_output_tool_authority_categories: authorityCategories,
+    tool_output_write_authority: hasToolOutputWriteAuthoritySignal(fields, authorityCategories),
+    tool_output_external_reach: authorityCategories.includes("external_response") || hasToolOutputExternalReachSignal(fields),
+    tool_output_memory_write: authorityCategories.includes("memory_write") || hasToolOutputMemoryWriteSignal(fields),
+    tool_output_shell_authority: authorityCategories.includes("shell_execution"),
+    tool_output_destructive_authority: hasToolOutputDestructiveAuthoritySignal(fields, authorityCategories),
+    tool_output_approval_input: hasToolOutputApprovalInputSignal(fields),
+    tool_output_secret_capture: secretCapture,
+    tool_output_secret_access: secretAccess,
+    tool_output_sensitive_data: hasToolOutputSensitiveDataSignal(fields) || secretCapture || secretAccess,
+    tool_output_pii_data: hasToolOutputPiiDataSignal(fields),
+    tool_output_approval_required: hasToolOutputApprovalRequiredSignal(fields),
+    env_key_names: envKeys,
+    secret_ref_key_names: secretRefKeys
+  };
+}
+
+function collectToolOutputSourceCategories(fields: RuntimeField[]): string[] {
+  const categories = new Set<string>();
+  for (const field of fields) {
+    const text = `${field.path} ${fieldValueText(field)}`;
+    if (/(?:^|[_\W])(browser|web[_\s-]?page|dom|html|download|upload|playwright|puppeteer|selenium)(?:[_\W]|$)/iu.test(text)) {
+      categories.add("browser_output");
+    }
+    if (/(?:^|[_\W])(shell|bash|command|terminal|stdout|stderr|subprocess|exec|python|node)(?:[_\W]|$)/iu.test(text)) {
+      categories.add("shell_output");
+    }
+    if (/(?:^|[_\W])(mcp|tool[_\s-]?result|tool[_\s-]?output|function[_\s-]?result|observation)(?:[_\W]|$)/iu.test(text)) {
+      categories.add("mcp_result");
+    }
+    if (/(?:^|[_\W])(api|http|webhook|connector|saas|service[_\s-]?response)(?:[_\W]|$)/iu.test(text)) categories.add("api_response");
+    if (/(?:^|[_\W])(database|db|sql|query[_\s-]?result|record|row)(?:[_\W]|$)/iu.test(text)) categories.add("database_result");
+    if (/(?:^|[_\W])(retrieval|retrieved|rag|vector|knowledge|document)(?:[_\W]|$)/iu.test(text)) categories.add("retrieval_output");
+  }
+  return [...categories].sort((a, b) => a.localeCompare(b));
+}
+
+function collectToolOutputAuthorityCategories(fields: RuntimeField[]): string[] {
+  const categories = new Set<string>();
+  for (const field of fields) {
+    const text = `${field.path} ${fieldValueText(field)}`;
+    const authorityField = /(?:^|\.)(follow_up|followup|next_actions?|actions?|tools?|allowed_tools|tool_calls?|commands?|capabilities|on_match|on_result|after_result|auto_execute|routes?)(?:\.|$)/iu.test(
+      field.path
+    );
+    if (
+      !authorityField &&
+      /(?:^|\.)(sources?|inputs?|outputs?|include|capture|context|prompt|metadata|data_scope)(?:\.|$)/iu.test(field.path)
+    ) {
+      continue;
+    }
+    if (/(?:^|[_\W])(tool|tools|function|function[_\s-]?call|mcp|connector|capability)(?:[_\W]|$)/iu.test(text)) categories.add("tool_call");
+    if (/(?:^|[_\W])(database|db|sql|query|support[_\s-]?db|warehouse|update[_\s-]?customer[_\s-]?record)(?:[_\W]|$)/iu.test(text)) {
+      categories.add("database_access");
+    }
+    if (/(?:^|[_\W])(slack|email|webhook|message|ticket|issue|comment|reply|respond|send|post|publish)(?:[_\W]|$)/iu.test(text)) {
+      categories.add("external_response");
+    }
+    if (/(?:^|[_\W])(browser|playwright|puppeteer|selenium|click|form|upload|download|navigate|submit)(?:[_\W]|$)/iu.test(text)) {
+      categories.add("browser_action");
+    }
+    if (/(?:^|[_\W])(vault|secret|secrets|secret[_\s-]?manager|key[_\s-]?vault|credential|token)(?:[_\W]|$)/iu.test(text)) {
+      categories.add("secret_manager_access");
+    }
+    if (/(?:^|[_\W])(memory|remember|store|persist|session[_\s-]?state|long[_\s-]?term)(?:[_\W]|$)/iu.test(text)) {
+      categories.add("memory_write");
+    }
+    if (/(?:^|[_\W])(shell|bash|command|exec|terminal|python|node|subprocess|script)(?:[_\W]|$)/iu.test(text)) categories.add("shell_execution");
+    if (/(?:^|[_\W])(filesystem|file[_\s-]?write|workspace|repo|repository|git|commit|push|pull[_\s-]?request|merge)(?:[_\W]|$)/iu.test(text)) {
+      categories.add("repo_or_filesystem_write");
+    }
+  }
+  return [...categories].sort((a, b) => a.localeCompare(b));
+}
+
+function hasToolOutputSourceSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => /(?:^|\.)(sources?|inputs?|tool_outputs?|tool_results?|observations?|capture|include)(?:\.|$)/iu.test(field.path));
+}
+
+function hasToolOutputUntrustedSourceSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /(?:^|[_\W])(untrusted|external|browser|web[_-]?page|html|dom|shell|command|stdout|stderr|mcp|tool[_\s-]?output|tool[_\s-]?result|function[_\s-]?result|api|database|retrieval|rag|customer|client|ticket|support|issue|message|email|slack|chat)(?:[_\W]|$)/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    )
+  );
+}
+
+function hasToolOutputRawOutputSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /(?:^|[_\W])(raw[_\s-]?output|include[_\s-]?raw|raw[_\s-]?tool|raw[_\s-]?observation|full[_\s-]?output|verbatim|passthrough|stdout|stderr)(?:[_\W]|$)/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    ) && truthyConfigValue(field.value)
+  );
+}
+
+function hasToolOutputPromptContextSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /(?:^|[_\W])(prompt|context[_\s-]?window|model[_\s-]?context|messages?|system|developer|assistant|inject[_\s-]?into[_\s-]?prompt)(?:[_\W]|$)/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    ) && truthyConfigValue(field.value)
+  );
+}
+
+function hasToolOutputSystemOrDeveloperContextSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /(?:^|[_\W])(system|developer|system[_\s-]?prompt|developer[_\s-]?prompt|privileged[_\s-]?role)(?:[_\W]|$)/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    )
+  );
+}
+
+function hasToolOutputDelimiterDisabledSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => {
+    const text = `${field.path} ${fieldValueText(field)}`;
+    if (/(?:^|\.)(delimiter|delimiters|isolation|separation|separators?|boundary|boundaries|quote|escape)(?:\.|$)/iu.test(field.path)) {
+      return disabledConfigValue(field.value) || /(?:^|[_\W])(none|disabled|raw|passthrough|off|false)(?:[_\W]|$)/iu.test(text);
+    }
+    return /(?:^|[_\W])(no[_\s-]?delimiter|delimiter[_\s-]?none|raw[_\s-]?output|passthrough[_\s-]?output)(?:[_\W]|$)/iu.test(text);
+  });
+}
+
+function hasToolOutputSanitizationDisabledSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => {
+    const text = `${field.path} ${fieldValueText(field)}`;
+    if (/(?:^|\.)(sanitize|sanitization|filter|validation|validate|strip_instructions|strip-instructions|escape|redact|mask)(?:\.|$)/iu.test(
+      field.path
+    )) {
+      return disabledConfigValue(field.value) || /(?:^|[_\W])(disabled|off|false|none|raw|passthrough|bypass|skip)(?:[_\W]|$)/iu.test(text);
+    }
+    return /(?:^|[_\W])(unsanitized|raw[_\s-]?output|no[_\s-]?sanitization|bypass[_\s-]?filter)(?:[_\W]|$)/iu.test(text);
+  });
+}
+
+function hasToolOutputPromptInjectionFilterDisabledSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => {
+    const text = `${field.path} ${fieldValueText(field)}`;
+    if (/(?:^|\.)(prompt_injection_filter|prompt-injection-filter|instruction_filter|instruction-filter|jailbreak_filter|jailbreak-filter)(?:\.|$)/iu.test(
+      field.path
+    )) {
+      return disabledConfigValue(field.value) || /(?:^|[_\W])(disabled|off|false|none|raw|passthrough|bypass|skip)(?:[_\W]|$)/iu.test(text);
+    }
+    return /(?:^|[_\W])(prompt[_\s-]?injection|jailbreak|instruction[_\s-]?filter)(?:[_\W]|$)/iu.test(text) &&
+      /(?:^|[_\W])(disabled|off|false|none|bypass|skip|passthrough)(?:[_\W]|$)/iu.test(text);
+  });
+}
+
+function hasToolOutputFollowupToolSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /(?:^|[_\W])(follow[_\s-]?up|next[_\s-]?action|auto[_\s-]?execute|on[_\s-]?result|after[_\s-]?result|tool[_\s-]?call|invoke|call[_\s-]?tools?|route[_\s-]?to[_\s-]?tool)(?:[_\W]|$)/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    ) && truthyConfigValue(field.value)
+  );
+}
+
+function hasToolOutputWriteAuthoritySignal(fields: RuntimeField[], categories: string[]): boolean {
+  return categories.some((category) =>
+    ["database_access", "external_response", "memory_write", "repo_or_filesystem_write", "shell_execution"].includes(category)
+  ) || fields.some((field) =>
+    /(?:^|[_\W])(write|update|create|delete|reply|respond|send|post|publish|comment|commit|push|merge|deploy|remember|persist|assign)(?:[_\W]|$)/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    )
+  );
+}
+
+function hasToolOutputExternalReachSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /(?:^|[_\W])(slack|email|webhook|send|post|publish|reply|respond|ticket|issue|external|api|customer[_\s-]?system)(?:[_\W]|$)/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    )
+  );
+}
+
+function hasToolOutputMemoryWriteSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /(?:^|[_\W])(memory|remember|store|persist|session[_\s-]?state|long[_\s-]?term)(?:[_\W]|$)/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    )
+  );
+}
+
+function hasToolOutputDestructiveAuthoritySignal(fields: RuntimeField[], categories: string[]): boolean {
+  return categories.includes("shell_execution") ||
+    fields.some((field) =>
+      /(?:^|[_\W])(delete|drop|destroy|destructive|irreversible|overwrite|merge|deploy|charge|refund|close[_\s-]?account|remove|revoke)(?:[_\W]|$)/iu.test(
+        `${field.path} ${fieldValueText(field)}`
+      )
+    );
+}
+
+function hasToolOutputApprovalInputSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /(?:^|[_\W])(approval|approve|review|reviewer|decision|gate|human[_\s-]?review|risk[_\s-]?score|auto[_\s-]?approve)(?:[_\W]|$)/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    )
+  );
+}
+
+function hasToolOutputSecretCaptureSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /(?:^|[_\W])(include[_\s-]?secrets?|secret[_\s-]?output|credential[_\s-]?output|token[_\s-]?output|api[_-]?key|authorization)(?:[_\W]|$)/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    ) && truthyConfigValue(field.value)
+  );
+}
+
+function hasToolOutputSecretAccessSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /(?:^|[_\W])(secret|secrets|token|credential|api[_-]?key|password|vault|key[_\s-]?vault|authorization|oauth)(?:[_\W]|$)/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    )
+  );
+}
+
+function hasToolOutputSensitiveDataSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /(?:^|[_\W])(customer|client|ticket|support|internal|confidential|private|proprietary|sensitive|account|billing|payment|prod|production|admin|credential|token|api[_-]?key|secret)(?:[_\W]|$)/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    )
+  );
+}
+
+function hasToolOutputPiiDataSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /(?:^|[_\W])(pii|email|phone|address|ssn|passport|dob|date[_\s-]?of[_\s-]?birth|customer[_-]?id|user[_-]?id|account[_-]?id)(?:[_\W]|$)/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    )
+  );
+}
+
+function hasToolOutputApprovalRequiredSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /(?:approval[_\s.-]?required|required[_\s.-]?approval|require[_\s.-]?approval|human[_\s.-]?approval|manual[_\s.-]?review|review[_\s.-]?required|confirm|confirmation|human[_\s.-]?in[_\s.-]?the[_\s.-]?loop)/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    ) &&
+    truthyConfigValue(field.value)
+  );
+}
+
+function isToolOutputPolicySecurityField(fieldPath: string): boolean {
+  return /tool|result|output|observation|source|input|capture|include|raw|prompt|context|message|role|system|developer|delimiter|boundary|sanitize|filter|validation|prompt[_-]?injection|follow|action|route|invoke|call|mcp|browser|shell|command|database|db|secret|token|credential|auth|env|memory|external|write|delete|approval|customer|ticket|retrieved|rag|pii|sensitive/iu.test(
     fieldPath
   );
 }

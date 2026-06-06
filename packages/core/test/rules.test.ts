@@ -80,6 +80,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-036")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-037")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-038")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-039")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-CICD-002")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-AUTOMATION-001")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-AUTOMATION-002")).toBe(true);
@@ -1014,6 +1015,41 @@ describe("rule engine", () => {
     expect(JSON.stringify(runtimeContextComposerFindings[0])).not.toContain("retrieved_account_context");
     expect(JSON.stringify(runtimeContextComposerFindings[0])).not.toContain("support_db.update_customer_record");
     expect(JSON.stringify(runtimeContextComposerFindings[0])).not.toContain("customer_context_email");
+    const runtimeToolOutputFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-RUNTIME-039");
+    expect(runtimeToolOutputFindings).toHaveLength(1);
+    expect(runtimeToolOutputFindings[0]?.matched_object.path).toBe("tool-results/result-policy.yaml");
+    expect(runtimeToolOutputFindings[0]?.matched_object.metadata).toMatchObject({
+      parsed_tool_output_policy_config: true,
+      tool_output_untrusted_sources: true,
+      tool_output_raw_output_enabled: true,
+      tool_output_prompt_context: true,
+      tool_output_sanitization_disabled: true,
+      tool_output_prompt_injection_filter_disabled: true,
+      tool_output_followup_tool_calls: true,
+      tool_output_write_authority: true,
+      tool_output_external_reach: true,
+      tool_output_memory_write: true,
+      tool_output_shell_authority: true,
+      tool_output_destructive_authority: true,
+      tool_output_approval_required: false
+    });
+    expect(runtimeToolOutputFindings[0]?.matched_object.metadata.tool_output_tool_authority_categories).toEqual([
+      "database_access",
+      "external_response",
+      "memory_write",
+      "secret_manager_access",
+      "shell_execution",
+      "tool_call"
+    ]);
+    expect(runtimeToolOutputFindings[0]?.severity).toBe("critical");
+    expect(runtimeToolOutputFindings[0]?.confidence).toBe("very_high");
+    expect(runtimeToolOutputFindings[0]?.recommended_control).toBe("quarantine");
+    expect(JSON.stringify(runtimeToolOutputFindings[0])).not.toContain("${TOOL_OUTPUT_POLICY_TOKEN}");
+    expect(JSON.stringify(runtimeToolOutputFindings[0])).not.toContain("browser_tool_output");
+    expect(JSON.stringify(runtimeToolOutputFindings[0])).not.toContain("shell_command_output");
+    expect(JSON.stringify(runtimeToolOutputFindings[0])).not.toContain("support_db.update_customer_record");
+    expect(JSON.stringify(runtimeToolOutputFindings[0])).not.toContain("slack.post_escalation_reply");
+    expect(JSON.stringify(runtimeToolOutputFindings[0])).not.toContain("tool_output_customer_email");
     const runtimeInboundTriggerFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-RUNTIME-014");
     expect(runtimeInboundTriggerFindings).toHaveLength(1);
     expect(runtimeInboundTriggerFindings[0]?.matched_object.path).toBe("inbox/support-triage.yaml");

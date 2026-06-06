@@ -60,6 +60,7 @@ describe("scanner", () => {
       "SUPPORT_DB_URL",
       "SUPPORT_INBOX_TOKEN",
       "TICKETING_MCP_TOKEN",
+      "TOOL_OUTPUT_POLICY_TOKEN",
       "VAULT_AGENT_TOKEN"
     ]);
     expect(JSON.stringify(envSurface)).not.toContain("replace-me");
@@ -2001,6 +2002,73 @@ describe("scanner", () => {
     expect(JSON.stringify(contextComposerConfig)).not.toContain("support_db.update_customer_record");
     expect(JSON.stringify(contextComposerConfig)).not.toContain("vault_secret_lookup.read_support_token");
     expect(JSON.stringify(contextComposerConfig)).not.toContain("customer_context_email");
+    const toolOutputPolicyConfig = surfaces.runtime_config.find((surface) => surface.path === "tool-results/result-policy.yaml");
+    expect(toolOutputPolicyConfig).toBeDefined();
+    expect(toolOutputPolicyConfig).toMatchObject({
+      trust_level: "project",
+      external_reach: true,
+      secret_exposure: true,
+      side_effect: true,
+      reversible: false,
+      untrusted_to_privileged: true
+    });
+    expect(toolOutputPolicyConfig?.metadata).toMatchObject({
+      content_redacted: true,
+      values_collected: false,
+      parsed_tool_output_policy_config: true,
+      tool_output_source_redacted: true,
+      tool_output_untrusted_sources: true,
+      tool_output_raw_output_enabled: true,
+      tool_output_prompt_context: true,
+      tool_output_system_or_developer_context: true,
+      tool_output_delimiter_disabled: true,
+      tool_output_sanitization_disabled: true,
+      tool_output_prompt_injection_filter_disabled: true,
+      tool_output_followup_tool_calls: true,
+      tool_output_write_authority: true,
+      tool_output_external_reach: true,
+      tool_output_memory_write: true,
+      tool_output_shell_authority: true,
+      tool_output_destructive_authority: true,
+      tool_output_approval_input: true,
+      tool_output_secret_capture: true,
+      tool_output_secret_access: true,
+      tool_output_sensitive_data: true,
+      tool_output_pii_data: true,
+      tool_output_approval_required: false
+    });
+    expect(toolOutputPolicyConfig?.metadata.tool_output_source_categories).toEqual([
+      "api_response",
+      "browser_output",
+      "database_result",
+      "mcp_result",
+      "shell_output"
+    ]);
+    expect(toolOutputPolicyConfig?.metadata.tool_output_tool_authority_categories).toEqual([
+      "database_access",
+      "external_response",
+      "memory_write",
+      "secret_manager_access",
+      "shell_execution",
+      "tool_call"
+    ]);
+    expect(toolOutputPolicyConfig?.metadata.env_key_names).toEqual(["TOOL_OUTPUT_POLICY_TOKEN"]);
+    expect(toolOutputPolicyConfig?.metadata.secret_ref_key_names).toEqual(["TOOL_OUTPUT_POLICY_TOKEN"]);
+    expect(toolOutputPolicyConfig?.data_classes).toEqual(["confidential", "credential", "pii"]);
+    expect(toolOutputPolicyConfig?.actions).toEqual(["approve", "call", "execute", "publish", "read", "remember", "send", "write"]);
+    expect(JSON.stringify(toolOutputPolicyConfig)).not.toContain("${TOOL_OUTPUT_POLICY_TOKEN}");
+    expect(JSON.stringify(toolOutputPolicyConfig)).not.toContain("browser_tool_output");
+    expect(JSON.stringify(toolOutputPolicyConfig)).not.toContain("shell_command_output");
+    expect(JSON.stringify(toolOutputPolicyConfig)).not.toContain("mcp_filesystem_result");
+    expect(JSON.stringify(toolOutputPolicyConfig)).not.toContain("api_connector_response");
+    expect(JSON.stringify(toolOutputPolicyConfig)).not.toContain("customer_uploaded_html");
+    expect(JSON.stringify(toolOutputPolicyConfig)).not.toContain("support_db.update_customer_record");
+    expect(JSON.stringify(toolOutputPolicyConfig)).not.toContain("slack.post_escalation_reply");
+    expect(JSON.stringify(toolOutputPolicyConfig)).not.toContain("memory.write_long_term_summary");
+    expect(JSON.stringify(toolOutputPolicyConfig)).not.toContain("vault_secret_lookup.read_support_token");
+    expect(JSON.stringify(toolOutputPolicyConfig)).not.toContain("tool_output_customer_email");
+    expect(JSON.stringify(toolOutputPolicyConfig)).not.toContain("tool_output_account_number");
+    expect(JSON.stringify(toolOutputPolicyConfig)).not.toContain("confidential_tool_trace");
     const inboundTriggerConfig = surfaces.runtime_config.find((surface) => surface.path === "inbox/support-triage.yaml");
     expect(inboundTriggerConfig).toBeDefined();
     expect(inboundTriggerConfig).toMatchObject({

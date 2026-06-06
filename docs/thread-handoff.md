@@ -921,6 +921,15 @@ The current iteration adds:
 - graph hardening so explicitly referenced privileged tools and MCP servers remain in bounded attack-path analysis even when newly discovered runtime surfaces increase capability volume
 - scanner, rule, fixture verifier, and redaction coverage proving raw authorization endpoints, MCP URLs, OAuth scopes, selector values, token-cache paths, data-scope labels, and token placeholders stay redacted
 
+## Tool Output Injection Boundary Pass
+
+The current iteration adds:
+
+- first-class redacted metadata for tool-output policy posture, including browser/shell/MCP/API/customer source categories, raw-output handling, prompt-context injection, delimiter posture, sanitization posture, prompt-injection filtering, follow-up tool authority, memory writes, shell authority, external reach, secret access, and approval posture
+- vulnerable fixture coverage for raw tool observations that can enter developer prompt context, request follow-up tools, write customer records, send Slack replies, persist memory, run shell commands, and access a secret lookup tool without approval
+- rule `AGENTCSP-RUNTIME-039` for tool-output injection boundaries that combine untrusted raw observations, disabled sanitization and prompt-injection filtering, privileged follow-up action authority, credential exposure, and no approval
+- scanner, rule, fixture verifier, and redaction coverage proving raw observation labels, tool names, data-scope labels, and token placeholders stay redacted
+
 ## RAG Retrieval Authorization Pass
 
 The current iteration adds:

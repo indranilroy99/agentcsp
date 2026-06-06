@@ -676,6 +676,41 @@ Agent context-composer metadata may include:
 
 Raw source labels, role prompt text, message templates, tool names, action strings, data-field labels, and secret placeholders are not emitted. Source categories, privileged-role booleans, delimiter and sanitization posture, raw-context posture, tool-authority categories, approval posture, data-class booleans, and credential key names let rules detect context assembly paths where untrusted content is promoted into system or developer roles before privileged tool use.
 
+## Tool Output Policy Posture
+
+Tool-output, tool-result, observation, result-handler, output-handler, and tool-output policy configs are also normalized into `runtime_config` objects when common tool-observation handling configuration files are discovered.
+
+Tool output policy metadata may include:
+
+- `parsed_tool_output_policy_config`
+- `tool_output_policy_fields`
+- `tool_output_source_redacted`
+- `tool_output_source_categories`
+- `tool_output_untrusted_sources`
+- `tool_output_raw_output_enabled`
+- `tool_output_prompt_context`
+- `tool_output_system_or_developer_context`
+- `tool_output_delimiter_disabled`
+- `tool_output_sanitization_disabled`
+- `tool_output_prompt_injection_filter_disabled`
+- `tool_output_followup_tool_calls`
+- `tool_output_tool_authority_categories`
+- `tool_output_write_authority`
+- `tool_output_external_reach`
+- `tool_output_memory_write`
+- `tool_output_shell_authority`
+- `tool_output_destructive_authority`
+- `tool_output_approval_input`
+- `tool_output_secret_capture`
+- `tool_output_secret_access`
+- `tool_output_sensitive_data`
+- `tool_output_pii_data`
+- `tool_output_approval_required`
+- `env_key_names`
+- `secret_ref_key_names`
+
+Raw observation labels, source names, tool names, follow-up action strings, data-field labels, and secret placeholders are not emitted. Source categories, raw-output posture, prompt-context posture, delimiter and sanitization posture, prompt-injection filter posture, authority categories, approval posture, data-class booleans, and credential key names let rules detect cases where untrusted browser, shell, MCP, API, retrieval, or customer outputs can steer privileged follow-up actions.
+
 ## SaaS And API Connector Posture
 
 SaaS, API, ticketing, messaging, email, CRM, and repository-service connector configs are also normalized into `runtime_config` objects when common connector configuration files are discovered.

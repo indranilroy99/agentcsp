@@ -59,6 +59,9 @@ match:
     - field: metadata.parsed_agent_context_composer_config
       op: not_equals
       value: true
+    - field: metadata.parsed_tool_output_policy_config
+      op: not_equals
+      value: true
     - field: metadata.parsed_agent_artifact_export_config
       op: not_equals
       value: true

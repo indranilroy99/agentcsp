@@ -1,0 +1,36 @@
+mode: tool_output_policy
+auth:
+  token: ${TOOL_OUTPUT_POLICY_TOKEN}
+sources:
+  - browser_tool_output
+  - shell_command_output
+  - mcp_filesystem_result
+  - api_connector_response
+  - customer_uploaded_html
+handling:
+  include_raw_output: true
+  preserve_html: true
+  inject_into_prompt: developer
+  delimiter: none
+  sanitization: disabled
+  prompt_injection_filter: disabled
+  strip_instructions: false
+  include_secrets: true
+  allow_tool_output_to_request_tools: true
+follow_up:
+  auto_call_tools: true
+  tools:
+    - support_db.update_customer_record
+    - slack.post_escalation_reply
+    - memory.write_long_term_summary
+    - vault_secret_lookup.read_support_token
+  allow_shell_commands: true
+  approval_required: false
+memory:
+  persist_tool_outputs: true
+approval:
+  use_tool_output_as_decision_context: true
+data_scope:
+  - tool_output_customer_email
+  - tool_output_account_number
+  - confidential_tool_trace
