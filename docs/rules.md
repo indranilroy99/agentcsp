@@ -28,6 +28,8 @@ For agent safety and guardrail posture rules, require concrete fail-open or disa
 
 For feedback and RLHF pipeline rules, require concrete feedback-to-model correlation such as untrusted ratings, reviewer notes, prompts, completions, tool traces, retrieval, memory, PII, or secrets captured into remote feedback stores, training datasets, eval sets, or model-update paths with redaction, consent, or approval controls disabled.
 
+For LLM prompt, response, and semantic-cache rules, require concrete cache-replay correlation such as remote or shared cache storage, semantic reuse, user-controlled cache-key material, broad match thresholds, cross-tenant replay or disabled tenant isolation, sensitive capture, disabled redaction, credential evidence, and missing approval. Do not flag local exact-match caches merely because they store tenant-scoped hashes.
+
 For background agent task-queue rules, require concrete async-to-tool correlation such as background consumers, automatic execution, untrusted job payloads, prompt or tool-output passthrough, retry or dead-letter replay, privileged tool authority, credential exposure, and missing approval. Do not flag local approval-gated queues merely because they contain internal review jobs.
 
 For AI telemetry and trace-sharing rules, require concrete trace-exposure correlation such as remote export, sensitive prompt/completion/tool-output/retrieval/memory capture, public or broadly shared trace access, disabled RBAC/SSO or equivalent access controls, disabled redaction, credential evidence, and missing approval. Do not flag local telemetry configs that keep export disabled, redaction enabled, and approval/RBAC enabled.

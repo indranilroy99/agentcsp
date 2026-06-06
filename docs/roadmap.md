@@ -50,7 +50,7 @@
 - Add AI training and fine-tuning dataset posture for prompts, completions, tool outputs, retrieval context, memory, browser context, PII, secrets, model-update authority, redaction posture, and approval boundaries.
 - Add AI feedback and RLHF pipeline posture for ratings, reviewer notes, production interactions, tool traces, retrieval, memory, PII, secrets, training/eval promotion, consent, redaction, and approval boundaries.
 - Add AI telemetry trace-sharing posture for public links, anonymous viewers, shared workspaces, RBAC/SSO controls, sensitive trace capture, redaction, credential references, and approval boundaries.
-- Add LLM prompt, response, completion, and semantic cache posture for shared cache replay, sensitive capture, persistence, redaction posture, untrusted inputs, and approval boundaries.
+- Add LLM prompt, response, completion, and semantic cache posture for shared cache replay, semantic reuse, user-controlled cache keys, tenant boundaries, sensitive capture, persistence, redaction posture, untrusted inputs, and approval boundaries.
 - Add AI model router and fallback posture for provider routing, automatic failover, sensitive context forwarding, redaction posture, output recording, and approval boundaries.
 - Add AI embedding and indexing posture for third-party embedding providers, vector upserts, sensitive source capture, redaction posture, retention, and approval boundaries.
 - Add RAG ingestion poisoning posture for user uploads, ticket attachments, public web pages, and message sources that auto-index into trusted retrieval namespaces without quarantine, instruction stripping, provenance, or approval.

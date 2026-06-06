@@ -714,6 +714,16 @@ The current iteration adds:
 - rule `AGENTCSP-MEMORY-006` for remote durable memory stores that retain sensitive, PII, or secret-bearing context without redaction or approval
 - scanner, rule, fixture verifier, and redaction coverage proving connection strings, hostnames, store names, namespaces, tenant labels, data-field labels, and token placeholders stay redacted
 
+## Semantic Prompt Cache Boundary Pass
+
+The current iteration adds:
+
+- first-class redacted metadata for shared semantic prompt-cache posture, including user-controlled cache-key inputs, broad match thresholds, cross-tenant replay, and tenant-isolation controls
+- vulnerable fixture coverage for a Redis-backed shared semantic response cache that accepts untrusted customer, retrieval, and browser context as cache-key material, uses a broad similarity threshold, reuses entries across tenants, captures sensitive context, disables redaction, and does not require approval
+- safe fixture coverage for a local exact-match cache with tenant-scoped digest keys, no semantic reuse, no cross-tenant replay, enabled redaction, and approval required
+- rule `AGENTCSP-RUNTIME-050` for shared semantic prompt caches that can replay untrusted sensitive context across tenant boundaries
+- scanner, rule, fixture verifier, and redaction coverage proving cache URLs, namespaces, cache-key labels, tenant labels, record labels, source labels, and token placeholders stay redacted
+
 ## Agent Identity Delegation Pass
 
 The current iteration adds:

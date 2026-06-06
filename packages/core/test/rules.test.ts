@@ -73,6 +73,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-027")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-028")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-029")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-050")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-030")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-031")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-032")).toBe(true);
@@ -472,6 +473,35 @@ describe("rule engine", () => {
     expect(JSON.stringify(runtimePromptCacheFindings[0])).not.toContain("cache_customer_email");
     expect(JSON.stringify(runtimePromptCacheFindings[0])).not.toContain("cache_account_number");
     expect(JSON.stringify(runtimePromptCacheFindings[0])).not.toContain("cache_confidential_agent_notes");
+    const runtimePromptCacheCrossTenantFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-RUNTIME-050");
+    expect(runtimePromptCacheCrossTenantFindings).toHaveLength(1);
+    expect(runtimePromptCacheCrossTenantFindings[0]?.matched_object.path).toBe("prompt-cache/llm-response-cache.yaml");
+    expect(runtimePromptCacheCrossTenantFindings[0]?.matched_object.metadata).toMatchObject({
+      parsed_llm_prompt_cache_config: true,
+      llm_prompt_cache_provider: "redis",
+      llm_prompt_cache_remote: true,
+      llm_prompt_cache_shared: true,
+      llm_prompt_cache_semantic_reuse_enabled: true,
+      llm_prompt_cache_user_controlled_key: true,
+      llm_prompt_cache_broad_match_threshold: true,
+      llm_prompt_cache_cross_tenant_replay: true,
+      llm_prompt_cache_tenant_isolation_disabled: true,
+      llm_prompt_cache_sensitive_capture: true,
+      llm_prompt_cache_redaction_disabled: true,
+      llm_prompt_cache_approval_required: false
+    });
+    expect(runtimePromptCacheCrossTenantFindings[0]?.severity).toBe("critical");
+    expect(runtimePromptCacheCrossTenantFindings[0]?.confidence).toBe("very_high");
+    expect(runtimePromptCacheCrossTenantFindings[0]?.recommended_control).toBe("quarantine");
+    expect(JSON.stringify(runtimePromptCacheCrossTenantFindings[0])).not.toContain("${LLM_CACHE_TOKEN}");
+    expect(JSON.stringify(runtimePromptCacheCrossTenantFindings[0])).not.toContain("${LLM_CACHE_URL}");
+    expect(JSON.stringify(runtimePromptCacheCrossTenantFindings[0])).not.toContain("llm-cache.example.invalid");
+    expect(JSON.stringify(runtimePromptCacheCrossTenantFindings[0])).not.toContain("support-agent-shared-cache");
+    expect(JSON.stringify(runtimePromptCacheCrossTenantFindings[0])).not.toContain("cache_customer_email");
+    expect(JSON.stringify(runtimePromptCacheCrossTenantFindings[0])).not.toContain("cache_account_number");
+    expect(JSON.stringify(runtimePromptCacheCrossTenantFindings[0])).not.toContain("cache_confidential_agent_notes");
+    expect(JSON.stringify(runtimePromptCacheCrossTenantFindings[0])).not.toContain("untrusted_customer_prompt");
+    expect(JSON.stringify(runtimePromptCacheCrossTenantFindings[0])).not.toContain("global_support_semantic_cache");
     const runtimeModelRouterFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-RUNTIME-030");
     expect(runtimeModelRouterFindings).toHaveLength(1);
     expect(runtimeModelRouterFindings[0]?.matched_object.path).toBe("models/model-router.yaml");

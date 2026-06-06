@@ -289,6 +289,10 @@ const leakPatterns = [
   /cache_customer_email/u,
   /cache_account_number/u,
   /cache_confidential_agent_notes/u,
+  /untrusted_customer_prompt/u,
+  /global_support_semantic_cache/u,
+  /approved_internal_digest/u,
+  /tenant_scoped_internal_cache/u,
   /api\.anthropic\.example\.invalid/u,
   /openrouter\.example\.invalid/u,
   /unapproved-community-model/u,
@@ -413,8 +417,8 @@ const leakPatterns = [
 const vulnerable = await readScanOutput(vulnerableOutput, { sarifRequired: true });
 const safe = await readScanOutput(safeOutput, { sarifRequired: false });
 
-assertEqual(vulnerable.manifest.findings.length, 141, "vulnerable manifest finding count");
-assertEqual(vulnerable.findings.length, 141, "vulnerable findings.json count");
+assertEqual(vulnerable.manifest.findings.length, 142, "vulnerable manifest finding count");
+assertEqual(vulnerable.findings.length, 142, "vulnerable findings.json count");
 assertEqual(vulnerable.manifest.attack_paths.length, 15, "vulnerable attack path count");
 assertEqual(vulnerable.manifest.static_blast_radius?.critical_attack_paths, 15, "vulnerable critical attack path count");
 assertEqual(vulnerable.manifest.diagnostics.length, 0, "vulnerable diagnostics count");
@@ -467,6 +471,7 @@ for (const ruleId of [
   "AGENTCSP-RUNTIME-047",
   "AGENTCSP-RUNTIME-048",
   "AGENTCSP-RUNTIME-049",
+  "AGENTCSP-RUNTIME-050",
   "AGENTCSP-AUTOMATION-003",
   "AGENTCSP-RUNTIME-006",
   "AGENTCSP-MCP-006",

@@ -78,7 +78,7 @@ A finding should be considered production-grade when it includes:
 - container runtime metadata for privileged mode, Docker socket access, host mounts, host namespaces, dangerous capabilities, and tool authority without emitting image names, host paths, input labels, tool names, or token placeholders
 - code interpreter and notebook runtime metadata for model-driven code execution, network/package-install posture, filesystem access, credential mounts, output persistence, and approval posture without emitting kernel values, code snippets, package names, mounted paths, input labels, or token placeholders
 - AI training and fine-tuning dataset metadata for model-update pipelines that capture prompts, completions, tool outputs, retrieval context, memory, browser context, PII, or secrets without emitting endpoints, dataset names, record labels, source labels, training records, or token placeholders
-- LLM prompt/response cache metadata for shared or remote cache replay, sensitive capture, redaction posture, persistence, and approval boundaries without emitting cache URLs, namespaces, keys, values, source labels, record labels, or token placeholders
+- LLM prompt/response cache metadata for shared or remote cache replay, semantic reuse, user-controlled cache keys, broad match thresholds, tenant-isolation posture, sensitive capture, redaction posture, persistence, and approval boundaries without emitting cache URLs, namespaces, keys, values, source labels, record labels, tenant labels, or token placeholders
 - workflow-to-agent-script signals for unattended automation with secrets and write authority
 - workflow event-payload signals for issue, pull request, discussion, or repository-dispatch text passed into privileged agent automation without emitting raw event expressions or payload content
 - prompt-template variables and redacted context signals for untrusted-input bridges
@@ -168,6 +168,7 @@ Examples:
 - AI telemetry remote export plus sensitive agent-context capture plus disabled redaction plus credential reference
 - artifact/output export plus public remote destination plus prompt, tool-output, browser, retrieval, memory, PII, or secret capture plus disabled redaction
 - webhook/callback egress plus model-generated or untrusted payloads, sensitive context, disabled redaction, credential reference, and no approval gate
+- shared semantic prompt cache plus user-controlled cache keys, broad match thresholds, cross-tenant replay, disabled tenant isolation, sensitive capture, disabled redaction, credentials, and no approval gate
 - agent deployment manifest plus floating remote image, pull-always policy, privileged runtime, host mounts, credentials, and no approval gate
 - privileged agent container plus Docker socket, host-root mount, host networking, credentials, untrusted input, and no approval gate
 - pull request workflow plus write permissions plus secrets

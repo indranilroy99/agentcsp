@@ -9,6 +9,16 @@ cache:
   write_enabled: true
   replay_enabled: true
   serve_cached_responses: true
+  semantic_reuse: true
+  similarity_threshold: 0.72
+  cache_key_sources:
+    - untrusted_customer_prompt
+    - retrieved_customer_context
+    - browser_tool_output
+  tenant_isolation: false
+  namespace_isolation: false
+  reuse_across_tenants: true
+  key_scope: global_support_semantic_cache
   include_raw_prompts: true
   include_completions: true
   include_tool_outputs: true

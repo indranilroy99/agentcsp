@@ -1378,6 +1378,11 @@ Prompt cache metadata may include:
 - `llm_prompt_cache_sensitive_capture`
 - `llm_prompt_cache_pii_capture`
 - `llm_prompt_cache_untrusted_input`
+- `llm_prompt_cache_semantic_reuse_enabled`
+- `llm_prompt_cache_user_controlled_key`
+- `llm_prompt_cache_broad_match_threshold`
+- `llm_prompt_cache_cross_tenant_replay`
+- `llm_prompt_cache_tenant_isolation_disabled`
 - `llm_prompt_cache_redaction_disabled`
 - `llm_prompt_cache_replay_enabled`
 - `llm_prompt_cache_retention_enabled`
@@ -1385,7 +1390,7 @@ Prompt cache metadata may include:
 - `env_key_names`
 - `secret_ref_key_names`
 
-Raw cache URLs, DSNs, namespaces, cache keys, cache values, prompts, completions, source labels, record labels, and token placeholders are not emitted. Provider names, redacted destination categories, capture categories, shared/persistent posture, replay posture, redaction posture, approval posture, and credential key names let rules detect sensitive prompt-cache replay without copying cached content into the manifest.
+Raw cache URLs, DSNs, namespaces, cache keys, cache values, prompts, completions, source labels, record labels, tenant labels, key-scope labels, and token placeholders are not emitted. Provider names, redacted destination categories, capture categories, shared/persistent posture, semantic reuse posture, user-controlled cache-key posture, broad-match posture, tenant-isolation posture, replay posture, redaction posture, approval posture, and credential key names let rules detect sensitive prompt-cache replay and semantic-cache poisoning without copying cached content into the manifest.
 
 ## AI Telemetry Export
 

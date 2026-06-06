@@ -5054,6 +5054,11 @@ interface LlmPromptCachePosture {
   llm_prompt_cache_sensitive_capture: boolean;
   llm_prompt_cache_pii_capture: boolean;
   llm_prompt_cache_untrusted_input: boolean;
+  llm_prompt_cache_semantic_reuse_enabled: boolean;
+  llm_prompt_cache_user_controlled_key: boolean;
+  llm_prompt_cache_broad_match_threshold: boolean;
+  llm_prompt_cache_cross_tenant_replay: boolean;
+  llm_prompt_cache_tenant_isolation_disabled: boolean;
   llm_prompt_cache_redaction_disabled: boolean;
   llm_prompt_cache_replay_enabled: boolean;
   llm_prompt_cache_retention_enabled: boolean;
@@ -13351,6 +13356,11 @@ function classifyLlmPromptCacheConfig(value: unknown, filePath: string): LlmProm
       ) || hasLlmPromptCacheSensitiveDataSignal(fields),
     llm_prompt_cache_pii_capture: captureCategories.includes("pii_data") || hasLlmPromptCachePiiDataSignal(fields),
     llm_prompt_cache_untrusted_input: hasLlmPromptCacheUntrustedInputSignal(fields),
+    llm_prompt_cache_semantic_reuse_enabled: hasLlmPromptCacheSemanticReuseSignal(fields, provider),
+    llm_prompt_cache_user_controlled_key: hasLlmPromptCacheUserControlledKeySignal(fields),
+    llm_prompt_cache_broad_match_threshold: hasLlmPromptCacheBroadMatchThresholdSignal(fields),
+    llm_prompt_cache_cross_tenant_replay: hasLlmPromptCacheCrossTenantReplaySignal(fields),
+    llm_prompt_cache_tenant_isolation_disabled: hasLlmPromptCacheTenantIsolationDisabledSignal(fields),
     llm_prompt_cache_redaction_disabled: hasLlmPromptCacheRedactionDisabledSignal(fields),
     llm_prompt_cache_replay_enabled: hasLlmPromptCacheReplaySignal(fields),
     llm_prompt_cache_retention_enabled: hasLlmPromptCacheRetentionSignal(fields),
@@ -13434,11 +13444,15 @@ function hasLlmPromptCacheEnabledSignal(fields: RuntimeField[]): boolean {
 }
 
 function hasLlmPromptCacheSharedSignal(fields: RuntimeField[]): boolean {
-  return fields.some((field) =>
-    /(?:^|[_\W])(shared|global|cross[_\s-]?agent|multi[_\s-]?agent|workspace|team|tenant)(?:[_\W]|$)/iu.test(
-      `${field.path} ${fieldValueText(field)}`
-    ) && truthyConfigValue(field.value)
-  );
+  return fields.some((field) => {
+    const text = `${field.path} ${fieldValueText(field)}`;
+    if (/\b(private|local|single[_\s-]?tenant|tenant[_\s-]?scoped|per[_\s-]?tenant|tenant[_\s-]?isolation|namespace[_\s-]?isolation)\b/iu.test(text)) {
+      return false;
+    }
+    return /(?:^|[_\W])(shared|global|cross[_\s-]?agent|multi[_\s-]?agent|workspace|team|cross[_\s-]?tenant|shared[_\s-]?across[_\s-]?tenants)(?:[_\W]|$)/iu.test(
+      text
+    ) && truthyConfigValue(field.value);
+  });
 }
 
 function hasLlmPromptCachePersistentSignal(fields: RuntimeField[]): boolean {
@@ -13498,6 +13512,10 @@ function collectLlmPromptCacheCaptureCategories(fields: RuntimeField[]): string[
 
 function hasLlmPromptCacheCaptureLikeSignal(field: RuntimeField): boolean {
   const text = `${field.path} ${fieldValueText(field)}`;
+  if (/(redact|redaction|mask|sanitize|sanitiz|scrub|anonym|filter)/iu.test(field.path)) return false;
+  if (/(^|\.)(type|provider|enabled|shared|persistent|write_enabled|writeEnabled|replay_enabled|replayEnabled|semantic_reuse|semanticReuse|similarity_threshold|similarityThreshold|tenant_isolation|tenantIsolation|namespace_isolation|namespaceIsolation|reuse_across_tenants|reuseAcrossTenants|key_scope|keyScope|cache_key_sources?|cacheKeySources?|key_sources?|keySources?|approval_required|approvalRequired)(\.|$)/u.test(field.path)) {
+    return false;
+  }
   if (/\b(exclude|drop|deny|redact|mask|scrub|sanitize)\b/iu.test(field.path) && !truthyConfigValue(field.value)) return false;
   return /(?:^|[_\W])(include|capture|collect|cache|store|save|key|value|prompt|completion|response|raw|source|inputs?|outputs?|logs?|records?)(?:[_\W]|$)/iu.test(
     text
@@ -13505,19 +13523,23 @@ function hasLlmPromptCacheCaptureLikeSignal(field: RuntimeField): boolean {
 }
 
 function hasLlmPromptCacheSensitiveDataSignal(fields: RuntimeField[]): boolean {
-  return fields.some((field) =>
-    /\b(customer|client|ticket|support|internal|confidential|private|proprietary|sensitive|account|billing|payment|record|case|profile|note|incident)\b/iu.test(
+  return fields.some((field) => {
+    if (/(redact|redaction|mask|sanitize|sanitiz|scrub|anonym|filter|key_scope|keyScope|cache_key|cacheKey|key_sources?|keySources?|tenant|namespace|approval|type)/iu.test(field.path)) {
+      return false;
+    }
+    return /\b(customer|client|ticket|support|internal|confidential|private|proprietary|sensitive|account|billing|payment|record|case|profile|note|incident)\b/iu.test(
       `${field.path} ${fieldValueText(field)}`
-    )
-  );
+    );
+  });
 }
 
 function hasLlmPromptCachePiiDataSignal(fields: RuntimeField[]): boolean {
-  return fields.some((field) =>
-    /(?:^|[_\W])(pii|email|phone|address|ssn|passport|dob|date[_\s-]?of[_\s-]?birth|customer[_-]?id|user[_-]?id|account[_-]?id|account[_-]?number)(?:[_\W]|$)/iu.test(
+  return fields.some((field) => {
+    if (/(redact|redaction|mask|sanitize|sanitiz|scrub|anonym|filter)/iu.test(field.path)) return false;
+    return /(?:^|[_\W])(pii|email|phone|address|ssn|passport|dob|date[_\s-]?of[_\s-]?birth|customer[_-]?id|user[_-]?id|account[_-]?id|account[_-]?number)(?:[_\W]|$)/iu.test(
       `${field.path} ${fieldValueText(field)}`
-    )
-  );
+    );
+  });
 }
 
 function hasLlmPromptCacheUntrustedInputSignal(fields: RuntimeField[]): boolean {
@@ -13526,6 +13548,74 @@ function hasLlmPromptCacheUntrustedInputSignal(fields: RuntimeField[]): boolean 
       `${field.path} ${fieldValueText(field)}`
     )
   );
+}
+
+function hasLlmPromptCacheSemanticReuseSignal(fields: RuntimeField[], provider: string | undefined): boolean {
+  if (provider === "semantic_cache") return true;
+  return fields.some((field) => {
+    if (/(^|\.)(similarity_threshold|similarityThreshold|score_threshold|scoreThreshold|semantic_threshold|semanticThreshold|match_threshold|matchThreshold)$/u.test(field.path)) {
+      return false;
+    }
+    const text = `${field.path} ${fieldValueText(field)}`;
+    return /(?:^|[_\W])(semantic|embedding|similarity|nearest[_\s-]?neighbor|vector[_\s-]?cache|serve[_\s-]?cached|cache[_\s-]?hit|reuse)(?:[_\W]|$)/iu.test(
+      text
+    ) && truthyConfigValue(field.value);
+  });
+}
+
+function hasLlmPromptCacheUserControlledKeySignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => {
+    const text = `${field.path} ${fieldValueText(field)}`;
+    if (/(^|\.)(cache_key_sources?|key_sources?|key_source|semantic_inputs?|match_inputs?|input_sources?|sources?)(\.|$)/iu.test(field.path)) {
+      return /(?:^|[_\W])(untrusted|user|customer|client|ticket|support|issue|comment|message|prompt|retrieved|rag|email|chat|browser|tool[_\s-]?output|public)(?:[_\W]|$)/iu.test(
+        text
+      );
+    }
+    return /(?:^|[_\W])(user|customer|client|ticket|message|prompt|retrieved|browser|tool[_\s-]?output)(?:[_\W]|$)/iu.test(text) &&
+      /(?:^|[_\W])(cache[_\s-]?key|key[_\s-]?source|semantic[_\s-]?input|match[_\s-]?input|lookup[_\s-]?key)(?:[_\W]|$)/iu.test(text);
+  });
+}
+
+function hasLlmPromptCacheBroadMatchThresholdSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => {
+    const text = `${field.path} ${fieldValueText(field)}`;
+    if (/\b(broad[_\s-]?match|loose[_\s-]?match|low[_\s-]?threshold|fuzzy[_\s-]?reuse)\b/iu.test(text) && truthyConfigValue(field.value)) {
+      return true;
+    }
+    if (/(^|\.)(similarity_threshold|similarityThreshold|score_threshold|scoreThreshold|semantic_threshold|semanticThreshold|match_threshold|matchThreshold)$/u.test(field.path)) {
+      const threshold = Number(field.value);
+      return Number.isFinite(threshold) && threshold > 0 && threshold <= 0.85;
+    }
+    return false;
+  });
+}
+
+function hasLlmPromptCacheCrossTenantReplaySignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => {
+    const text = `${field.path} ${fieldValueText(field)}`;
+    if (/(^|\.)(reuse_across_tenants|cross_tenant_reuse|cross_tenant_replay|shared_across_tenants)$/iu.test(field.path)) {
+      return /\b(\*|all|any|global|workspace|organization|org[_\s-]?wide|cross[_\s-]?tenant|multi[_\s-]?tenant)\b/iu.test(text) ||
+        truthyConfigValue(field.value);
+    }
+    if (/(^|\.)(allowed_tenants|tenant_scope|key_scope|namespace_scope)$/iu.test(field.path)) {
+      return /\b(\*|all|any|global|workspace|organization|org[_\s-]?wide|cross[_\s-]?tenant|multi[_\s-]?tenant)\b/iu.test(text);
+    }
+    return /\b(cross[_\s-]?tenant|shared[_\s-]?across[_\s-]?tenants|all[_\s-]?tenants|global[_\s-]?(cache|namespace|key)|org[_\s-]?wide[_\s-]?cache)\b/iu.test(
+      text
+    ) && truthyConfigValue(field.value);
+  });
+}
+
+function hasLlmPromptCacheTenantIsolationDisabledSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => {
+    const text = `${field.path} ${fieldValueText(field)}`;
+    if (/(^|\.)(tenant_isolation|tenantIsolation|namespace_isolation|namespaceIsolation|per_tenant_key|perTenantKey|tenant_scoped|tenantScoped|cache_key_includes_tenant|cacheKeyIncludesTenant)$/u.test(field.path)) {
+      return disabledConfigValue(field.value);
+    }
+    return /\b(no[_\s-]?tenant[_\s-]?isolation|tenant[_\s-]?isolation[_\s-]?disabled|namespace[_\s-]?isolation[_\s-]?disabled|global[_\s-]?cache[_\s-]?key|shared[_\s-]?tenant[_\s-]?key)\b/iu.test(
+      text
+    ) && truthyConfigValue(field.value);
+  });
 }
 
 function hasLlmPromptCacheRedactionDisabledSignal(fields: RuntimeField[]): boolean {
@@ -13565,7 +13655,7 @@ function hasLlmPromptCacheApprovalRequiredSignal(fields: RuntimeField[]): boolea
 }
 
 function isLlmPromptCacheSecurityField(fieldPath: string): boolean {
-  return /provider|cache|semantic|redis|momento|dynamodb|postgres|endpoint|url|uri|host|dsn|connection|cluster|namespace|key|value|prompt|completion|message|response|tool|retrieval|rag|memory|browser|source|input|output|record|log|raw|redact|sanitize|mask|pii|sensitive|secret|token|credential|auth|env|shared|global|persist|retention|ttl|replay|hydrate|reuse|approval/iu.test(
+  return /provider|cache|semantic|similarity|threshold|redis|momento|dynamodb|postgres|endpoint|url|uri|host|dsn|connection|cluster|namespace|tenant|isolation|scope|key|value|prompt|completion|message|response|tool|retrieval|rag|memory|browser|source|input|output|record|log|raw|redact|sanitize|mask|pii|sensitive|secret|token|credential|auth|env|shared|global|persist|retention|ttl|replay|hydrate|reuse|approval/iu.test(
     fieldPath
   );
 }

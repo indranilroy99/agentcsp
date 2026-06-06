@@ -869,6 +869,11 @@ describe("scanner", () => {
       llm_prompt_cache_sensitive_capture: true,
       llm_prompt_cache_pii_capture: true,
       llm_prompt_cache_untrusted_input: true,
+      llm_prompt_cache_semantic_reuse_enabled: true,
+      llm_prompt_cache_user_controlled_key: true,
+      llm_prompt_cache_broad_match_threshold: true,
+      llm_prompt_cache_cross_tenant_replay: true,
+      llm_prompt_cache_tenant_isolation_disabled: true,
       llm_prompt_cache_redaction_disabled: true,
       llm_prompt_cache_replay_enabled: true,
       llm_prompt_cache_retention_enabled: true,
@@ -900,6 +905,8 @@ describe("scanner", () => {
     expect(JSON.stringify(promptCacheConfig)).not.toContain("cache_customer_email");
     expect(JSON.stringify(promptCacheConfig)).not.toContain("cache_account_number");
     expect(JSON.stringify(promptCacheConfig)).not.toContain("cache_confidential_agent_notes");
+    expect(JSON.stringify(promptCacheConfig)).not.toContain("untrusted_customer_prompt");
+    expect(JSON.stringify(promptCacheConfig)).not.toContain("global_support_semantic_cache");
     const artifactExportConfig = surfaces.runtime_config.find(
       (surface) => surface.path === "artifacts/run-export.yaml"
     );
@@ -3443,6 +3450,60 @@ describe("scanner", () => {
     expect(JSON.stringify(taskQueue)).not.toContain("internal_review_ticket");
     expect(JSON.stringify(taskQueue)).not.toContain("approved_internal_summary");
     expect(JSON.stringify(taskQueue)).not.toContain("readonly_docs.search");
+  });
+
+  it("keeps local tenant-scoped prompt caches quiet", async () => {
+    const files = await walkProject({
+      root_path: safeFixtureRoot,
+      output_path: ".agentcsp",
+      formats: ["json", "md"],
+      include_hidden: true,
+      include_logs: false,
+      max_file_size_bytes: 1024 * 1024,
+      max_files: 5000,
+      quiet: true
+    });
+    const surfaces = await detectSurfaces(files);
+    const promptCache = surfaces.runtime_config.find((surface) => surface.path === "prompt-cache/local-response-cache.yaml");
+
+    expect(promptCache).toMatchObject({
+      trust_level: "project",
+      data_classes: ["unknown"],
+      actions: ["call", "read", "write"],
+      side_effect: true,
+      external_reach: false,
+      secret_exposure: false,
+      reversible: true,
+      untrusted_to_privileged: false
+    });
+    expect(promptCache?.metadata).toMatchObject({
+      parsed_llm_prompt_cache_config: true,
+      llm_prompt_cache_enabled: true,
+      llm_prompt_cache_remote: false,
+      llm_prompt_cache_shared: false,
+      llm_prompt_cache_persistent: false,
+      llm_prompt_cache_write_enabled: true,
+      llm_prompt_cache_prompt_capture: false,
+      llm_prompt_cache_completion_capture: false,
+      llm_prompt_cache_secret_capture: false,
+      llm_prompt_cache_sensitive_capture: false,
+      llm_prompt_cache_pii_capture: false,
+      llm_prompt_cache_untrusted_input: false,
+      llm_prompt_cache_semantic_reuse_enabled: false,
+      llm_prompt_cache_user_controlled_key: false,
+      llm_prompt_cache_broad_match_threshold: false,
+      llm_prompt_cache_cross_tenant_replay: false,
+      llm_prompt_cache_tenant_isolation_disabled: false,
+      llm_prompt_cache_redaction_disabled: false,
+      llm_prompt_cache_replay_enabled: false,
+      llm_prompt_cache_retention_enabled: false,
+      llm_prompt_cache_approval_required: true
+    });
+    expect(promptCache?.metadata.llm_prompt_cache_capture_categories).toEqual([]);
+    expect(promptCache?.metadata.env_key_names).toEqual([]);
+    expect(promptCache?.metadata.secret_ref_key_names).toEqual([]);
+    expect(JSON.stringify(promptCache)).not.toContain("approved_internal_digest");
+    expect(JSON.stringify(promptCache)).not.toContain("tenant_scoped_internal_cache");
   });
 
   it("keeps local approval-gated session memory scoped", async () => {
