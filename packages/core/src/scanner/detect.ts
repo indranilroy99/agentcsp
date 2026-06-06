@@ -9334,8 +9334,9 @@ async function detectMcpConfig(
 async function detectPackageScripts(file: WalkedFile, text: string | undefined, surfaces: DetectedSurfaces): Promise<void> {
   if (!text) return;
   try {
-    const parsed = JSON.parse(text) as { scripts?: Record<string, string>; name?: string };
+    const parsed = JSON.parse(text) as PackageJsonLike;
     const scripts = parsed.scripts ?? {};
+    detectAgentPackageManifestConfig(file, parsed, surfaces);
     for (const [scriptName, command] of Object.entries(scripts).sort(([a], [b]) => a.localeCompare(b))) {
       const actions = detectActions(command);
       const object = createSurfaceObject({
@@ -9368,6 +9369,183 @@ async function detectPackageScripts(file: WalkedFile, text: string | undefined, 
     });
     return;
   }
+}
+
+interface PackageJsonLike {
+  name?: string;
+  private?: boolean;
+  scripts?: Record<string, string>;
+  dependencies?: Record<string, string>;
+  devDependencies?: Record<string, string>;
+  optionalDependencies?: Record<string, string>;
+  peerDependencies?: Record<string, string>;
+}
+
+interface AgentPackageManifestPosture {
+  package_manifest_fields: string[];
+  package_manifest_dependency_names_redacted: boolean;
+  package_manifest_dependency_specs_redacted: boolean;
+  package_manifest_dependency_count: number;
+  package_manifest_agent_dependency_count: number;
+  package_manifest_agent_dependency_categories: string[];
+  package_manifest_dependency_reference_kinds: string[];
+  package_manifest_risky_dependency_count: number;
+  package_manifest_unpinned_dependency: boolean;
+  package_manifest_remote_dependency: boolean;
+  package_manifest_lifecycle_script: boolean;
+  package_manifest_lifecycle_script_names: string[];
+  package_manifest_install_script_count: number;
+  package_manifest_lifecycle_shell_execution: boolean;
+  package_manifest_lifecycle_network_access: boolean;
+  package_manifest_lifecycle_secret_env: boolean;
+  package_manifest_agent_script_count: number;
+  package_manifest_package_private?: boolean;
+  env_key_names: string[];
+  secret_ref_key_names: string[];
+}
+
+function detectAgentPackageManifestConfig(file: WalkedFile, manifest: PackageJsonLike, surfaces: DetectedSurfaces): void {
+  const posture = classifyAgentPackageManifest(manifest);
+  if (
+    posture.package_manifest_agent_dependency_count === 0 &&
+    !posture.package_manifest_lifecycle_script &&
+    posture.package_manifest_agent_script_count === 0
+  ) {
+    return;
+  }
+
+  const actions = new Set<ActionType>(["read"]);
+  if (posture.package_manifest_lifecycle_script) actions.add("execute");
+  if (posture.package_manifest_remote_dependency || posture.package_manifest_lifecycle_network_access) actions.add("send");
+  if (posture.package_manifest_lifecycle_script) actions.add("write");
+
+  const dataClasses = new Set<SurfaceObject["data_classes"][number]>(["internal"]);
+  if (posture.package_manifest_lifecycle_secret_env || posture.secret_ref_key_names.length > 0) dataClasses.add("credential");
+
+  const object = createSurfaceObject({
+    type: "runtime_config",
+    name: path.basename(file.relativePath),
+    path: file.relativePath,
+    trust_level: posture.package_manifest_remote_dependency ? "third_party" : inferTrustLevel(file.relativePath),
+    data_classes: uniqueDataClasses([...dataClasses] as SurfaceObject["data_classes"]),
+    actions: uniqueActions([...actions]),
+    side_effect: posture.package_manifest_lifecycle_script,
+    reversible: !posture.package_manifest_lifecycle_script,
+    external_reach: posture.package_manifest_remote_dependency || posture.package_manifest_lifecycle_network_access,
+    secret_exposure: posture.package_manifest_lifecycle_secret_env || posture.secret_ref_key_names.length > 0,
+    reason: "Agent package manifest discovered as install-time dependency and lifecycle-script authority.",
+    metadata: {
+      content_redacted: true,
+      values_collected: false,
+      parsed_agent_package_manifest_config: true,
+      ...posture
+    }
+  });
+  surfaces.runtime_config.push({
+    ...object,
+    untrusted_to_privileged:
+      (posture.package_manifest_agent_dependency_count > 0 &&
+        posture.package_manifest_risky_dependency_count > 0 &&
+        posture.package_manifest_lifecycle_script &&
+        (posture.package_manifest_remote_dependency || posture.package_manifest_lifecycle_network_access)) ||
+      isUntrustedToPrivileged(object)
+  });
+}
+
+function classifyAgentPackageManifest(manifest: PackageJsonLike): AgentPackageManifestPosture {
+  const dependencyEntries = collectPackageDependencyEntries(manifest);
+  const agentDependencies = dependencyEntries.filter((entry) => agentDependencyCategories(entry.name).length > 0);
+  const dependencyReferenceKinds = uniqueStrings(dependencyEntries.flatMap((entry) => packageDependencyReferenceKinds(entry.spec)));
+  const riskyDependencies = agentDependencies.filter((entry) => packageDependencyReferenceKinds(entry.spec).some(isRiskyPackageReferenceKind));
+  const scripts = manifest.scripts ?? {};
+  const lifecycleScriptNames = Object.keys(scripts)
+    .filter(isPackageLifecycleScriptName)
+    .sort((a, b) => a.localeCompare(b));
+  const lifecycleCommands = lifecycleScriptNames.map((scriptName) => scripts[scriptName] ?? "");
+  const envKeys = uniqueStrings(extractEnvironmentReferenceKeys(lifecycleCommands));
+  const secretRefKeys = uniqueStrings(extractSecretReferenceKeys(lifecycleCommands));
+  const packageFields = new Set<string>();
+  for (const section of ["dependencies", "devDependencies", "optionalDependencies", "peerDependencies"] as const) {
+    if (manifest[section] && Object.keys(manifest[section] ?? {}).length > 0) packageFields.add(section);
+  }
+  if (manifest.scripts && Object.keys(manifest.scripts).length > 0) packageFields.add("scripts");
+  for (const scriptName of lifecycleScriptNames) packageFields.add(`scripts.${scriptName}`);
+
+  return {
+    package_manifest_fields: [...packageFields].sort((a, b) => a.localeCompare(b)),
+    package_manifest_dependency_names_redacted: dependencyEntries.length > 0,
+    package_manifest_dependency_specs_redacted: dependencyEntries.length > 0,
+    package_manifest_dependency_count: dependencyEntries.length,
+    package_manifest_agent_dependency_count: agentDependencies.length,
+    package_manifest_agent_dependency_categories: uniqueStrings(agentDependencies.flatMap((entry) => agentDependencyCategories(entry.name))),
+    package_manifest_dependency_reference_kinds: dependencyReferenceKinds,
+    package_manifest_risky_dependency_count: riskyDependencies.length,
+    package_manifest_unpinned_dependency: dependencyReferenceKinds.some((kind) =>
+      ["floating_range", "latest_tag", "workspace_range"].includes(kind)
+    ),
+    package_manifest_remote_dependency: dependencyReferenceKinds.some((kind) =>
+      ["git_dependency", "http_tarball", "github_dependency"].includes(kind)
+    ),
+    package_manifest_lifecycle_script: lifecycleScriptNames.length > 0,
+    package_manifest_lifecycle_script_names: lifecycleScriptNames,
+    package_manifest_install_script_count: lifecycleScriptNames.length,
+    package_manifest_lifecycle_shell_execution: lifecycleCommands.some(hasExecution),
+    package_manifest_lifecycle_network_access: lifecycleCommands.some(hasExternalReach),
+    package_manifest_lifecycle_secret_env: secretRefKeys.length > 0,
+    package_manifest_agent_script_count: Object.keys(scripts).filter((scriptName) => /agent|mcp|llm|rag|eval|prompt|embed|vector/iu.test(scriptName)).length,
+    package_manifest_package_private: manifest.private,
+    env_key_names: envKeys,
+    secret_ref_key_names: secretRefKeys
+  };
+}
+
+function collectPackageDependencyEntries(manifest: PackageJsonLike): Array<{ section: string; name: string; spec: string }> {
+  const entries: Array<{ section: string; name: string; spec: string }> = [];
+  for (const section of ["dependencies", "devDependencies", "optionalDependencies", "peerDependencies"] as const) {
+    for (const [name, spec] of Object.entries(manifest[section] ?? {})) {
+      entries.push({ section, name, spec });
+    }
+  }
+  return entries.sort((a, b) => `${a.section}:${a.name}`.localeCompare(`${b.section}:${b.name}`));
+}
+
+function agentDependencyCategories(packageName: string): string[] {
+  const normalized = packageName.toLowerCase();
+  const categories = new Set<string>();
+  if (/modelcontextprotocol|mcp/iu.test(normalized)) categories.add("mcp_sdk");
+  if (/langchain|langgraph|llamaindex|autogen|crewai|pydantic-ai|semantic-kernel|copilotkit/iu.test(normalized)) {
+    categories.add("agent_framework");
+  }
+  if (/openai|anthropic|ai-sdk|@ai-sdk|cohere|mistral|groq|gemini|vertex|bedrock/iu.test(normalized)) categories.add("model_sdk");
+  if (/pinecone|qdrant|weaviate|chroma|chromadb|milvus|pgvector|vector|rag|retrieval/iu.test(normalized)) {
+    categories.add("rag_vector_store");
+  }
+  if (/playwright|puppeteer|browserbase|stagehand|browser-use/iu.test(normalized)) categories.add("browser_automation");
+  return [...categories].sort((a, b) => a.localeCompare(b));
+}
+
+function packageDependencyReferenceKinds(spec: string): string[] {
+  const trimmed = spec.trim();
+  const kinds = new Set<string>();
+  if (!trimmed) return ["unknown_spec"];
+  if (/^(?:github:|git\+|git:\/\/|ssh:\/\/|git@)/iu.test(trimmed)) kinds.add("git_dependency");
+  if (/^https?:\/\//iu.test(trimmed)) kinds.add("http_tarball");
+  if (/^[\w.-]+\/[\w.-]+(?:#.+)?$/u.test(trimmed)) kinds.add("github_dependency");
+  if (/^(?:file:|\.\.?\/|\/)/iu.test(trimmed)) kinds.add("file_dependency");
+  if (/^workspace:/iu.test(trimmed)) kinds.add("workspace_range");
+  if (/^(?:latest|\*)$/iu.test(trimmed)) kinds.add("latest_tag");
+  if (/[\^~*xX]|\|\||>=|<=|>|</u.test(trimmed)) kinds.add("floating_range");
+  if (/^\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?$/u.test(trimmed)) kinds.add("exact_semver");
+  if (kinds.size === 0) kinds.add("nonstandard_spec");
+  return [...kinds].sort((a, b) => a.localeCompare(b));
+}
+
+function isRiskyPackageReferenceKind(kind: string): boolean {
+  return ["floating_range", "git_dependency", "github_dependency", "http_tarball", "latest_tag", "nonstandard_spec", "workspace_range"].includes(kind);
+}
+
+function isPackageLifecycleScriptName(scriptName: string): boolean {
+  return /^(preinstall|install|postinstall|prepare|prepublish|prepack|postpack)$/iu.test(scriptName);
 }
 
 function detectWorkflow(file: WalkedFile, text: string | undefined, surfaces: DetectedSurfaces): void {

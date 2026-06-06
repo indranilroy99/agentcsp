@@ -77,6 +77,9 @@ match:
     - field: metadata.parsed_ai_embedding_pipeline_config
       op: not_equals
       value: true
+    - field: metadata.parsed_agent_package_manifest_config
+      op: not_equals
+      value: true
 recommendation:
   control: quarantine
   text: Treat the source as tainted and require policy review before it can influence privileged action, memory writes, or external calls.

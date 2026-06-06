@@ -752,6 +752,36 @@ Embedding pipeline metadata may include:
 
 Raw embedding endpoints, model aliases, vector-store URLs, namespaces, source labels, document chunks, prompts, tool outputs, browser context, memory content, and secret placeholders are not emitted. Provider names, redacted destination categories, capture categories, sync/write posture, redaction posture, retention posture, approval posture, and credential key names let rules detect sensitive third-party embedding and vector indexing without copying indexed text into the manifest.
 
+## Agent Package Manifest Supply Chain
+
+Agent-relevant `package.json` manifests are normalized into `runtime_config` objects when they include agent, MCP, model, RAG, vector, or browser-automation dependencies, lifecycle scripts, or agent-oriented package scripts. This is intentionally narrower than a general dependency audit.
+
+Package-manifest metadata may include:
+
+- `parsed_agent_package_manifest_config`
+- `package_manifest_fields`
+- `package_manifest_dependency_names_redacted`
+- `package_manifest_dependency_specs_redacted`
+- `package_manifest_dependency_count`
+- `package_manifest_agent_dependency_count`
+- `package_manifest_agent_dependency_categories`
+- `package_manifest_dependency_reference_kinds`
+- `package_manifest_risky_dependency_count`
+- `package_manifest_unpinned_dependency`
+- `package_manifest_remote_dependency`
+- `package_manifest_lifecycle_script`
+- `package_manifest_lifecycle_script_names`
+- `package_manifest_install_script_count`
+- `package_manifest_lifecycle_shell_execution`
+- `package_manifest_lifecycle_network_access`
+- `package_manifest_lifecycle_secret_env`
+- `package_manifest_agent_script_count`
+- `package_manifest_package_private`
+- `env_key_names`
+- `secret_ref_key_names`
+
+Raw dependency names, dependency specs, remote package URLs, Git references, lifecycle commands, local script paths, and token placeholders are not emitted. AgentCSP records dependency categories, reference-kind categories, lifecycle-script names, command capability booleans, and credential key names so rules can detect install-time agent supply-chain risk without becoming a noisy generic SCA scanner.
+
 ## Agent Artifact Export
 
 Agent artifact, output, report, screenshot, recording, and generated-output export configs are normalized into `runtime_config` objects when common artifact directories or export-oriented config filenames are discovered.

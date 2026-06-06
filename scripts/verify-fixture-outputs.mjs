@@ -211,14 +211,19 @@ const leakPatterns = [
   /embedding-indexer/u,
   /text-embedding-3-large/u,
   /vector-index\.example\.invalid/u,
-  /customer-support-embeddings/u
+  /customer-support-embeddings/u,
+  /@agentcsp-demo\/remote-rag-plugin/u,
+  /@openai\/agents/u,
+  /openai-agents-fork/u,
+  /packages\.example\.invalid/u,
+  /scripts\/install-agent-plugins\.js/u
 ];
 
 const vulnerable = await readScanOutput(vulnerableOutput, { sarifRequired: true });
 const safe = await readScanOutput(safeOutput, { sarifRequired: false });
 
-assertEqual(vulnerable.manifest.findings.length, 104, "vulnerable manifest finding count");
-assertEqual(vulnerable.findings.length, 104, "vulnerable findings.json count");
+assertEqual(vulnerable.manifest.findings.length, 106, "vulnerable manifest finding count");
+assertEqual(vulnerable.findings.length, 106, "vulnerable findings.json count");
 assertEqual(vulnerable.manifest.attack_paths.length, 15, "vulnerable attack path count");
 assertEqual(vulnerable.manifest.static_blast_radius?.critical_attack_paths, 15, "vulnerable critical attack path count");
 assertEqual(vulnerable.manifest.diagnostics.length, 0, "vulnerable diagnostics count");
@@ -262,7 +267,8 @@ for (const ruleId of [
   "AGENTCSP-PROMPT-004",
   "AGENTCSP-RAG-003",
   "AGENTCSP-RAG-004",
-  "AGENTCSP-SKILL-001"
+  "AGENTCSP-SKILL-001",
+  "AGENTCSP-SUPPLYCHAIN-001"
 ]) {
   assert(
     vulnerable.findings.some((finding) => finding.rule_id === ruleId),

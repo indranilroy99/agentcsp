@@ -820,6 +820,15 @@ The current iteration adds:
 - rule `AGENTCSP-RUNTIME-031` for embedding boundaries that combine third-party embedding, vector writes, sensitive capture, disabled redaction, untrusted input, credential exposure, and missing approval
 - scanner, rule, fixture verifier, and redaction coverage proving embedding endpoints, model aliases, vector-store destinations, namespaces, source labels, document chunks, context labels, and token placeholders stay redacted
 
+## Agent Package Manifest Supply-Chain Pass
+
+The current iteration adds:
+
+- first-class redacted metadata for agent-relevant `package.json` manifests with agent, MCP, model, RAG, vector, or browser-automation dependencies
+- vulnerable fixture coverage for floating and remote agent dependency specs combined with a credentialed lifecycle script
+- rule `AGENTCSP-SUPPLYCHAIN-001` for package manifests that combine risky agent dependency references, install-time execution, external dependency reach, and credential exposure
+- scanner, rule, fixture verifier, and redaction coverage proving dependency names, dependency specs, remote package URLs, Git references, lifecycle commands, local script paths, and token placeholders stay redacted
+
 ## Initial Build Recommendation
 
 Start with a CLI-first MVP before building the dashboard:

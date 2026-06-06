@@ -26,6 +26,7 @@ A finding should be considered production-grade when it includes:
 - packaged built-in rule assets under `@agentcsp/core` so installed builds retain the same detection baseline
 - CI package-artifact verification for compiled modules and bundled built-in rule counts
 - fixture artifact verification for manifest/finding schema validity, SARIF structure, expected signal, safe-fixture quietness, and redaction invariants
+- agent package-manifest supply-chain metadata for agent/MCP/model/RAG dependencies, risky dependency reference kinds, lifecycle scripts, and credential exposure without emitting dependency names, specs, remote URLs, Git refs, lifecycle commands, or local script paths
 - redacted project-local rule diagnostics for malformed, schema-invalid, or duplicate custom rules
 - optional CI failure on diagnostics when malformed agent configuration should block release
 - negation-aware action classification so safety policy text is not treated as granted authority
@@ -99,6 +100,7 @@ Examples:
 - remote MCP server plus plaintext transport plus credential-backed access
 - local MCP implementation path missing from scan plus credential exposure and side effects
 - package-runner MCP server plus unpinned package version plus credential exposure
+- agent package manifest plus risky agent dependency references, credentialed lifecycle scripts, and external dependency reach
 - runtime allowlist plus secret-backed MCP server plus approval bypass
 - auto-approved destructive MCP tool plus credential-backed server
 - auto-approved privileged runtime permissions plus credential key exposure

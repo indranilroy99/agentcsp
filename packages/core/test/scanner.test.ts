@@ -204,6 +204,61 @@ describe("scanner", () => {
     expect(JSON.stringify(packageRunnerMcp)).not.toContain("${TICKETING_MCP_TOKEN}");
     expect(JSON.stringify(packageRunnerMcp)).not.toContain("--workspace");
     expect(surfaces.tools.some((surface) => surface.name === "package-script:sync:docs")).toBe(true);
+    expect(surfaces.tools.some((surface) => surface.name === "package-script:postinstall")).toBe(true);
+    const packageManifestConfig = surfaces.runtime_config.find(
+      (surface) => surface.path === "package.json" && surface.metadata.parsed_agent_package_manifest_config === true
+    );
+    expect(packageManifestConfig).toBeDefined();
+    expect(packageManifestConfig).toMatchObject({
+      trust_level: "third_party",
+      external_reach: true,
+      secret_exposure: true,
+      side_effect: true,
+      reversible: false,
+      untrusted_to_privileged: true
+    });
+    expect(packageManifestConfig?.metadata).toMatchObject({
+      content_redacted: true,
+      values_collected: false,
+      parsed_agent_package_manifest_config: true,
+      package_manifest_dependency_names_redacted: true,
+      package_manifest_dependency_specs_redacted: true,
+      package_manifest_dependency_count: 4,
+      package_manifest_agent_dependency_count: 4,
+      package_manifest_risky_dependency_count: 4,
+      package_manifest_unpinned_dependency: true,
+      package_manifest_remote_dependency: true,
+      package_manifest_lifecycle_script: true,
+      package_manifest_lifecycle_script_names: ["postinstall"],
+      package_manifest_install_script_count: 1,
+      package_manifest_lifecycle_shell_execution: true,
+      package_manifest_lifecycle_network_access: false,
+      package_manifest_lifecycle_secret_env: true,
+      package_manifest_agent_script_count: 1,
+      package_manifest_package_private: true
+    });
+    expect(packageManifestConfig?.metadata.package_manifest_agent_dependency_categories).toEqual([
+      "agent_framework",
+      "mcp_sdk",
+      "model_sdk",
+      "rag_vector_store"
+    ]);
+    expect(packageManifestConfig?.metadata.package_manifest_dependency_reference_kinds).toEqual([
+      "floating_range",
+      "git_dependency",
+      "http_tarball",
+      "latest_tag"
+    ]);
+    expect(packageManifestConfig?.metadata.env_key_names).toEqual(["AGENT_EXTENSION_TOKEN"]);
+    expect(packageManifestConfig?.metadata.secret_ref_key_names).toEqual(["AGENT_EXTENSION_TOKEN"]);
+    expect(packageManifestConfig?.data_classes).toEqual(["credential", "internal"]);
+    expect(packageManifestConfig?.actions).toEqual(["execute", "read", "send", "write"]);
+    expect(JSON.stringify(packageManifestConfig)).not.toContain("${AGENT_EXTENSION_TOKEN}");
+    expect(JSON.stringify(packageManifestConfig)).not.toContain("@agentcsp-demo/remote-rag-plugin");
+    expect(JSON.stringify(packageManifestConfig)).not.toContain("@openai/agents");
+    expect(JSON.stringify(packageManifestConfig)).not.toContain("openai-agents-fork");
+    expect(JSON.stringify(packageManifestConfig)).not.toContain("packages.example.invalid");
+    expect(JSON.stringify(packageManifestConfig)).not.toContain("scripts/install-agent-plugins.js");
     const publishTool = surfaces.tools.find((surface) => surface.name === "publish_summary");
     const collisionTools = surfaces.tools.filter((surface) => surface.name === "customer_record");
     const privilegedCollisionTool = collisionTools.find((surface) => surface.metadata.external_write === true);
