@@ -76,6 +76,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-032")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-033")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-034")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-035")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-CICD-002")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-AUTOMATION-001")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-AUTOMATION-002")).toBe(true);
@@ -497,6 +498,40 @@ describe("rule engine", () => {
     expect(JSON.stringify(runtimeAgentCspPolicyFindings[0])).not.toContain("security@example.com");
     expect(JSON.stringify(runtimeAgentCspPolicyFindings[0])).not.toContain("legacy_agent_security");
     expect(JSON.stringify(runtimeAgentCspPolicyFindings[0])).not.toContain("Fixture demonstrates risky");
+    const runtimePromptRegistryFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-RUNTIME-035");
+    expect(runtimePromptRegistryFindings).toHaveLength(1);
+    expect(runtimePromptRegistryFindings[0]?.matched_object.path).toBe("prompt-registry/remote-prompts.yaml");
+    expect(runtimePromptRegistryFindings[0]?.matched_object.metadata).toMatchObject({
+      parsed_agent_prompt_registry_config: true,
+      agent_prompt_registry_provider: "agent_prompt_registry",
+      agent_prompt_registry_remote: true,
+      agent_prompt_registry_auto_sync_enabled: true,
+      agent_prompt_registry_unpinned_reference: true,
+      agent_prompt_registry_signature_verification_disabled: true,
+      agent_prompt_registry_provenance_verification_missing: true,
+      agent_prompt_registry_untrusted_selector: true,
+      agent_prompt_registry_privileged_role_injection: true,
+      agent_prompt_registry_tool_directive: true,
+      agent_prompt_registry_approval_required: false
+    });
+    expect(runtimePromptRegistryFindings[0]?.matched_object.metadata.agent_prompt_registry_prompt_kinds).toEqual([
+      "developer_prompt",
+      "prompt_template",
+      "runbook",
+      "system_prompt",
+      "tool_instruction"
+    ]);
+    expect(runtimePromptRegistryFindings[0]?.severity).toBe("critical");
+    expect(runtimePromptRegistryFindings[0]?.confidence).toBe("very_high");
+    expect(runtimePromptRegistryFindings[0]?.recommended_control).toBe("quarantine");
+    expect(JSON.stringify(runtimePromptRegistryFindings[0])).not.toContain("${PROMPT_REGISTRY_TOKEN}");
+    expect(JSON.stringify(runtimePromptRegistryFindings[0])).not.toContain("prompts.agentcsp-demo.example.invalid");
+    expect(JSON.stringify(runtimePromptRegistryFindings[0])).not.toContain("customer-escalation-system-vLatest");
+    expect(JSON.stringify(runtimePromptRegistryFindings[0])).not.toContain("support-agent-developer-policy");
+    expect(JSON.stringify(runtimePromptRegistryFindings[0])).not.toContain("customer_requested_prompt");
+    expect(JSON.stringify(runtimePromptRegistryFindings[0])).not.toContain("prompt_registry_customer_email");
+    expect(JSON.stringify(runtimePromptRegistryFindings[0])).not.toContain("confidential_prompt_context");
+    expect(JSON.stringify(runtimePromptRegistryFindings[0])).not.toContain("support_db.update_customer_record");
     const supplyChainFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-SUPPLYCHAIN-001");
     expect(supplyChainFindings).toHaveLength(1);
     expect(supplyChainFindings[0]?.matched_object.path).toBe("package.json");

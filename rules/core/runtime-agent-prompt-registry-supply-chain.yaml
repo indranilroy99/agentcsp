@@ -1,0 +1,53 @@
+id: AGENTCSP-RUNTIME-035
+name: Remote prompt registry can inject untrusted privileged prompts
+description: A remote prompt registry or prompt hub can auto-sync unpinned prompts into system or developer roles while untrusted context selects prompt content and verification or approval is disabled, creating a model-visible supply-chain path into privileged tool behavior.
+category: agent_prompt_registry_supply_chain
+severity: critical
+maps_to:
+  owasp:
+    - LLM01:2025 Prompt Injection
+    - LLM05:2025 Supply Chain Vulnerabilities
+    - LLM06:2025 Excessive Agency
+  mitre_atlas:
+    - AML.T0051 LLM Prompt Injection
+    - AML.T0018 Supply Chain Compromise
+  nist_ai_rmf:
+    - MAP 5.1
+    - MEASURE 2.9
+    - MANAGE 2.4
+match:
+  object_type: runtime_config
+  where:
+    - field: metadata.parsed_agent_prompt_registry_config
+      op: equals
+      value: true
+    - field: metadata.agent_prompt_registry_remote
+      op: equals
+      value: true
+    - field: metadata.agent_prompt_registry_auto_sync_enabled
+      op: equals
+      value: true
+    - field: metadata.agent_prompt_registry_unpinned_reference
+      op: equals
+      value: true
+    - field: metadata.agent_prompt_registry_signature_verification_disabled
+      op: equals
+      value: true
+    - field: metadata.agent_prompt_registry_provenance_verification_missing
+      op: equals
+      value: true
+    - field: metadata.agent_prompt_registry_untrusted_selector
+      op: equals
+      value: true
+    - field: metadata.agent_prompt_registry_privileged_role_injection
+      op: equals
+      value: true
+    - field: metadata.agent_prompt_registry_tool_directive
+      op: equals
+      value: true
+    - field: metadata.agent_prompt_registry_approval_required
+      op: equals
+      value: false
+recommendation:
+  control: quarantine
+  text: Pin prompt registry revisions, require signature and provenance verification, prevent untrusted context from selecting system or developer prompts, and require security approval before remote prompt updates can affect privileged agents.

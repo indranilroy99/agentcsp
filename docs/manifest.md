@@ -1420,6 +1420,39 @@ Policy-integrity metadata may include:
 
 Raw trust-override paths, suppression IDs, owners, reasons, recommended-control IDs, match values, and policy comments are not emitted as policy-integrity surface metadata. Counts, match-kind categories, weakening-control categories, and booleans let rules detect broad high-severity suppressions, permissive control downgrades, and trust elevation for untrusted context without copying the policy body into the manifest.
 
+## Agent Prompt Registry Posture
+
+Remote prompt registries, prompt hubs, prompt catalogs, and instruction registries are normalized into `runtime_config` objects when discovered. This models prompt supply-chain posture because registry content can become model-visible system or developer instructions.
+
+Prompt-registry metadata may include:
+
+- `parsed_agent_prompt_registry_config`
+- `agent_prompt_registry_fields`
+- `agent_prompt_registry_provider`
+- `agent_prompt_registry_remote`
+- `agent_prompt_registry_destination_redacted`
+- `agent_prompt_registry_destination_count`
+- `agent_prompt_registry_destination_kinds`
+- `agent_prompt_registry_prompt_refs_redacted`
+- `agent_prompt_registry_prompt_ref_count`
+- `agent_prompt_registry_prompt_kinds`
+- `agent_prompt_registry_auto_sync_enabled`
+- `agent_prompt_registry_unpinned_reference`
+- `agent_prompt_registry_signature_verification_disabled`
+- `agent_prompt_registry_provenance_verification_missing`
+- `agent_prompt_registry_untrusted_selector`
+- `agent_prompt_registry_privileged_role_injection`
+- `agent_prompt_registry_tool_directive`
+- `agent_prompt_registry_memory_directive`
+- `agent_prompt_registry_external_directive`
+- `agent_prompt_registry_sensitive_context`
+- `agent_prompt_registry_pii_context`
+- `agent_prompt_registry_approval_required`
+- `env_key_names`
+- `secret_ref_key_names`
+
+Raw registry URLs, repository URLs, prompt IDs, prompt names, selector fields, directive strings, data-scope labels, and token placeholders are not emitted. Provider names, destination categories, prompt-kind categories, auto-sync posture, verification posture, role-injection posture, untrusted selector signals, and approval posture let rules detect remote prompt supply-chain risk without copying prompt content into the manifest.
+
 Rule diagnostics include malformed project-local rules, schema-invalid rules, and duplicate rule IDs. Built-in AgentCSP rules still run when project-local rule diagnostics are emitted.
 
 ## Relationships

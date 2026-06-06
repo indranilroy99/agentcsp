@@ -21,6 +21,7 @@
 - Build graph-based blast-radius analysis.
 - Add `agentcsp.yaml` policy files.
 - Add `agentcsp.yaml` policy-integrity posture for broad suppressions, permissive control downgrades, and risky trust overrides.
+- Add remote prompt-registry posture for auto-synced system/developer prompts, unpinned revisions, verification controls, and untrusted prompt selectors.
 - Add MCP prompt and resource context inventory for model-visible server-supplied context that can steer privileged MCP authority.
 - Add MCP client-context posture for roots, sampling, and elicitation requests from remote or third-party servers.
 - Add runtime posture inventory for sandbox, approval, network, tool authority, and agent safety-control posture.

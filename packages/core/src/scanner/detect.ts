@@ -101,6 +101,11 @@ export async function detectSurfaces(files: WalkedFile[]): Promise<DetectedSurfa
       continue;
     }
 
+    if (isAgentPromptRegistryConfigPath(file.relativePath, basename)) {
+      detectAgentPromptRegistryConfig(file, text, surfaces);
+      continue;
+    }
+
     if (isPromptTemplatePath(file.relativePath, basename)) {
       recordContextContent(contextContentByPath, file, text);
       detectPromptTemplateFile(file, text, surfaces);
@@ -1130,6 +1135,71 @@ function detectAgentCspPolicyConfig(file: WalkedFile, text: string | undefined, 
   surfaces.runtime_config.push({
     ...object,
     untrusted_to_privileged: posture.agentcsp_policy_weakens_security_controls || isUntrustedToPrivileged(object)
+  });
+}
+
+function detectAgentPromptRegistryConfig(file: WalkedFile, text: string | undefined, surfaces: DetectedSurfaces): void {
+  const parsed = parseStructuredConfig(text ?? "", file.relativePath);
+  if (parsed.parseFailed) {
+    addDiagnostic(surfaces, file, {
+      parser: parsed.parser ?? "structured_config",
+      code: "AGENT_PROMPT_REGISTRY_CONFIG_PARSE_FAILED",
+      reason: "Agent prompt-registry configuration could not be parsed. Raw content was redacted."
+    });
+  }
+
+  const posture = classifyAgentPromptRegistryConfig(parsed.value, file.relativePath);
+  const actions = new Set<ActionType>(["call", "read"]);
+  if (posture.agent_prompt_registry_remote) actions.add("send");
+  if (posture.agent_prompt_registry_auto_sync_enabled) {
+    actions.add("remember");
+    actions.add("write");
+  }
+  if (posture.agent_prompt_registry_tool_directive) actions.add("execute");
+  if (posture.agent_prompt_registry_external_directive) actions.add("publish");
+
+  const dataClasses = new Set<SurfaceObject["data_classes"][number]>(["unknown"]);
+  if (posture.env_key_names.some(isCredentialLikeKeyName) || posture.secret_ref_key_names.length > 0) dataClasses.add("credential");
+  if (posture.agent_prompt_registry_sensitive_context) dataClasses.add("confidential");
+  if (posture.agent_prompt_registry_pii_context) dataClasses.add("pii");
+  if (dataClasses.size > 1) dataClasses.delete("unknown");
+
+  const object = createSurfaceObject({
+    type: "runtime_config",
+    name: path.basename(file.relativePath),
+    path: file.relativePath,
+    trust_level: posture.agent_prompt_registry_remote ? "third_party" : inferTrustLevel(file.relativePath),
+    data_classes: uniqueDataClasses([...dataClasses] as SurfaceObject["data_classes"]),
+    actions: uniqueActions([...actions]),
+    side_effect:
+      posture.agent_prompt_registry_auto_sync_enabled ||
+      posture.agent_prompt_registry_privileged_role_injection ||
+      posture.agent_prompt_registry_tool_directive,
+    reversible:
+      !posture.agent_prompt_registry_auto_sync_enabled &&
+      !posture.agent_prompt_registry_privileged_role_injection &&
+      !posture.agent_prompt_registry_tool_directive,
+    external_reach: posture.agent_prompt_registry_remote || posture.agent_prompt_registry_external_directive,
+    secret_exposure: posture.env_key_names.some(isCredentialLikeKeyName) || posture.secret_ref_key_names.length > 0,
+    reason: "Agent prompt-registry configuration discovered as model-visible prompt supply posture.",
+    metadata: {
+      content_redacted: true,
+      values_collected: false,
+      parsed_agent_prompt_registry_config: Boolean(parsed.value) && !parsed.parseFailed,
+      parse_error: parsed.parseFailed,
+      ...posture
+    }
+  });
+  surfaces.runtime_config.push({
+    ...object,
+    untrusted_to_privileged:
+      ((posture.agent_prompt_registry_remote || posture.agent_prompt_registry_untrusted_selector) &&
+        (posture.agent_prompt_registry_privileged_role_injection ||
+          posture.agent_prompt_registry_tool_directive ||
+          posture.agent_prompt_registry_memory_directive ||
+          posture.agent_prompt_registry_external_directive) &&
+        !posture.agent_prompt_registry_approval_required) ||
+      isUntrustedToPrivileged(object)
   });
 }
 
@@ -2888,6 +2958,25 @@ function isRagConnectorConfigPath(relativePath: string, basename: string): boole
   return (inRagDirectory && configName) || connectorName;
 }
 
+function isAgentPromptRegistryConfigPath(relativePath: string, basename: string): boolean {
+  const normalized = relativePath.replaceAll("\\", "/").toLowerCase();
+  const lowerBase = basename.toLowerCase();
+  if (!/\.(json|ya?ml|toml)$/iu.test(lowerBase)) return false;
+  if (normalized.startsWith(".github/workflows/")) return false;
+  if (normalized.startsWith("rules/")) return false;
+  const segments = normalized.split("/").slice(0, -1);
+  const promptRegistryDirectory = segments.some((segment) =>
+    /^(prompt-registry|prompt_registry|prompt-catalog|prompt_catalog|prompt-hub|prompt_hub|prompt-store|prompt_store|instruction-registry|instruction_registry|context-registry|context_registry|agent-prompts|agent_prompts)$/iu.test(
+      segment
+    )
+  );
+  const promptRegistryName = /(?:prompt[-_]?registry|prompt[-_]?catalog|prompt[-_]?hub|prompt[-_]?store|instruction[-_]?registry|instruction[-_]?catalog|system[-_]?prompt[-_]?registry|developer[-_]?prompt[-_]?registry|agent[-_]?prompts?)/iu.test(
+    lowerBase
+  );
+  const configName = /(?:config|settings|registry|catalog|hub|store|sync|prompts?|instructions?|templates?|sources?)/iu.test(lowerBase);
+  return promptRegistryName || (promptRegistryDirectory && configName);
+}
+
 function isPromptTemplatePath(relativePath: string, basename: string): boolean {
   const normalized = relativePath.replaceAll("\\", "/").toLowerCase();
   const lowerBase = basename.toLowerCase();
@@ -3044,6 +3133,32 @@ interface AgentCspPolicyPosture {
   agentcsp_policy_recommended_control_downgrade_kinds: string[];
   agentcsp_policy_weakening_controls: string[];
   agentcsp_policy_weakens_security_controls: boolean;
+  env_key_names: string[];
+  secret_ref_key_names: string[];
+}
+
+interface AgentPromptRegistryPosture {
+  agent_prompt_registry_fields: string[];
+  agent_prompt_registry_provider?: string;
+  agent_prompt_registry_remote: boolean;
+  agent_prompt_registry_destination_redacted: boolean;
+  agent_prompt_registry_destination_count: number;
+  agent_prompt_registry_destination_kinds: string[];
+  agent_prompt_registry_prompt_refs_redacted: boolean;
+  agent_prompt_registry_prompt_ref_count: number;
+  agent_prompt_registry_prompt_kinds: string[];
+  agent_prompt_registry_auto_sync_enabled: boolean;
+  agent_prompt_registry_unpinned_reference: boolean;
+  agent_prompt_registry_signature_verification_disabled: boolean;
+  agent_prompt_registry_provenance_verification_missing: boolean;
+  agent_prompt_registry_untrusted_selector: boolean;
+  agent_prompt_registry_privileged_role_injection: boolean;
+  agent_prompt_registry_tool_directive: boolean;
+  agent_prompt_registry_memory_directive: boolean;
+  agent_prompt_registry_external_directive: boolean;
+  agent_prompt_registry_sensitive_context: boolean;
+  agent_prompt_registry_pii_context: boolean;
+  agent_prompt_registry_approval_required: boolean;
   env_key_names: string[];
   secret_ref_key_names: string[];
 }
@@ -4027,6 +4142,255 @@ function policyPathLooksLikeUntrustedContext(policyPath: string): boolean {
 
 function isAgentCspPolicySecurityField(fieldPath: string): boolean {
   return /schema|trust|override|suppress|recommended|control|match|finding|rule|object|path|category|severity|confidence|data|class|action|expires|owner|reason/iu.test(
+    fieldPath
+  );
+}
+
+function classifyAgentPromptRegistryConfig(value: unknown, filePath: string): AgentPromptRegistryPosture {
+  const fields = flattenRuntimeFields(value);
+  const stringValues = collectFieldStringValues(fields);
+  const provider = inferAgentPromptRegistryProvider([filePath, ...fields.map((field) => field.path), ...stringValues]);
+  const destinations = classifyAgentPromptRegistryDestinations(fields, provider);
+  const promptRefCount = countAgentPromptRegistryRefs(fields);
+  const envKeys = uniqueStrings([
+    ...collectEnvKeyNamesFromConfig(value).filter(isLikelyEnvKeyName),
+    ...extractEnvironmentReferenceKeys(stringValues)
+  ]);
+  const secretRefKeys = extractSecretReferenceKeys(stringValues);
+
+  return {
+    agent_prompt_registry_fields: fields
+      .map((field) => field.path)
+      .filter((fieldPath) => isAgentPromptRegistrySecurityField(fieldPath))
+      .sort((a, b) => a.localeCompare(b)),
+    agent_prompt_registry_provider: provider,
+    agent_prompt_registry_remote: destinations.remote,
+    agent_prompt_registry_destination_redacted: destinations.destinationCount > 0,
+    agent_prompt_registry_destination_count: destinations.destinationCount,
+    agent_prompt_registry_destination_kinds: destinations.destinationKinds,
+    agent_prompt_registry_prompt_refs_redacted: promptRefCount > 0,
+    agent_prompt_registry_prompt_ref_count: promptRefCount,
+    agent_prompt_registry_prompt_kinds: collectAgentPromptRegistryKinds(fields),
+    agent_prompt_registry_auto_sync_enabled: hasAgentPromptRegistryAutoSyncSignal(fields),
+    agent_prompt_registry_unpinned_reference: hasAgentPromptRegistryUnpinnedReferenceSignal(fields),
+    agent_prompt_registry_signature_verification_disabled: hasAgentPromptRegistrySignatureVerificationDisabledSignal(fields),
+    agent_prompt_registry_provenance_verification_missing: hasAgentPromptRegistryProvenanceVerificationMissingSignal(fields),
+    agent_prompt_registry_untrusted_selector: hasAgentPromptRegistryUntrustedSelectorSignal(fields),
+    agent_prompt_registry_privileged_role_injection: hasAgentPromptRegistryPrivilegedRoleSignal(fields),
+    agent_prompt_registry_tool_directive: hasAgentPromptRegistryToolDirectiveSignal(fields),
+    agent_prompt_registry_memory_directive: hasAgentPromptRegistryMemoryDirectiveSignal(fields),
+    agent_prompt_registry_external_directive: hasAgentPromptRegistryExternalDirectiveSignal(fields),
+    agent_prompt_registry_sensitive_context: hasAgentPromptRegistrySensitiveContextSignal(fields),
+    agent_prompt_registry_pii_context: hasAgentPromptRegistryPiiContextSignal(fields),
+    agent_prompt_registry_approval_required: hasAgentPromptRegistryApprovalRequiredSignal(fields),
+    env_key_names: envKeys,
+    secret_ref_key_names: secretRefKeys
+  };
+}
+
+function inferAgentPromptRegistryProvider(candidates: string[]): string | undefined {
+  const text = candidates.join(" ").toLowerCase();
+  const providers: Array<[string, RegExp]> = [
+    ["langfuse_prompt_management", /\blangfuse\b/iu],
+    ["promptlayer", /\bpromptlayer\b/iu],
+    ["humanloop", /\bhumanloop\b/iu],
+    ["langsmith_hub", /\blangsmith|smith\.langchain|langchain[_\s-]?hub\b/iu],
+    ["github", /\bgithub\b|github\.com/iu],
+    ["git", /\b(git|gitlab|bitbucket)\b|\.git\b/iu],
+    ["agent_prompt_registry", /\b(prompt[_\s-]?registry|prompt[_\s-]?catalog|prompt[_\s-]?hub|prompt[_\s-]?store|instruction[_\s-]?registry)\b/iu]
+  ];
+  return providers.find(([, pattern]) => pattern.test(text))?.[0];
+}
+
+function classifyAgentPromptRegistryDestinations(
+  fields: RuntimeField[],
+  provider: string | undefined
+): { remote: boolean; destinationCount: number; destinationKinds: string[] } {
+  const destinationKinds = new Set<string>();
+  let destinationCount = 0;
+  const managedProviders = new Set(["humanloop", "langfuse_prompt_management", "langsmith_hub", "promptlayer"]);
+  if (provider && managedProviders.has(provider)) {
+    destinationKinds.add("managed_prompt_registry");
+    destinationCount += 1;
+  }
+
+  for (const field of fields) {
+    const values = fieldStringValues(field);
+    for (const value of values) {
+      const destination = parseAgentPromptRegistryDestination(value);
+      if (destination) {
+        destinationKinds.add(destination.kind);
+        destinationCount += 1;
+      }
+    }
+    if (/(^|\.)(registry|registry_url|catalog|hub|store|endpoint|url|uri|host|source|repository|repo)$/iu.test(field.path)) {
+      const text = values.join(" ");
+      if (looksLikeRemotePromptRegistryHost(text)) {
+        destinationKinds.add("prompt_registry_endpoint");
+        destinationCount += 1;
+      }
+    }
+  }
+
+  return {
+    remote: destinationCount > 0,
+    destinationCount,
+    destinationKinds: [...destinationKinds].sort((a, b) => a.localeCompare(b))
+  };
+}
+
+function parseAgentPromptRegistryDestination(value: string): { kind: string } | undefined {
+  try {
+    const parsed = new URL(value);
+    if (!["http:", "https:", "git:", "ssh:"].includes(parsed.protocol)) return undefined;
+    if (isLocalHost(parsed.hostname.toLowerCase())) return undefined;
+    if (parsed.protocol === "git:" || parsed.protocol === "ssh:" || /\.git$/iu.test(parsed.pathname)) return { kind: "git_prompt_repository" };
+    return { kind: parsed.protocol === "http:" ? "plaintext_prompt_registry" : "prompt_registry_endpoint" };
+  } catch {
+    return undefined;
+  }
+}
+
+function looksLikeRemotePromptRegistryHost(value: string): boolean {
+  const trimmed = value.trim().toLowerCase();
+  if (!trimmed || trimmed.startsWith("${")) return false;
+  if (isLocalHost(trimmed)) return false;
+  return /\b(prompt|catalog|hub|registry|langfuse|promptlayer|humanloop|smith\.langchain|github|gitlab|bitbucket)\b/iu.test(trimmed) ||
+    /^[a-z0-9.-]+\.[a-z]{2,}(?::\d+)?$/iu.test(trimmed);
+}
+
+function countAgentPromptRegistryRefs(fields: RuntimeField[]): number {
+  let count = 0;
+  for (const field of fields) {
+    if (/(^|\.)(prompts?|templates?|instructions?|system_prompts?|developer_prompts?|prompt_refs?|promptRefs)\.(\d+|[A-Za-z][\w-]*)/iu.test(field.path)) {
+      count += 1;
+      continue;
+    }
+    if (/(^|\.)(prompt|prompt_id|prompt_ref|template|instruction|source|name|id)$/iu.test(field.path) && fieldStringValues(field).length > 0) {
+      count += 1;
+    }
+  }
+  return count;
+}
+
+function collectAgentPromptRegistryKinds(fields: RuntimeField[]): string[] {
+  const kinds = new Set<string>();
+  for (const field of fields) {
+    const text = `${field.path} ${fieldValueText(field)}`.toLowerCase();
+    if (/\bsystem\b|system[_\s-]?prompt/iu.test(text)) kinds.add("system_prompt");
+    if (/\bdeveloper\b|developer[_\s-]?prompt/iu.test(text)) kinds.add("developer_prompt");
+    if (/\btool|mcp|function|browser|database|shell\b/iu.test(text)) kinds.add("tool_instruction");
+    if (/\brunbook|playbook|procedure|policy\b/iu.test(text)) kinds.add("runbook");
+    if (/\btemplate|prompt\b/iu.test(text)) kinds.add("prompt_template");
+  }
+  return [...kinds].sort((a, b) => a.localeCompare(b));
+}
+
+function hasAgentPromptRegistryAutoSyncSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /\b(auto[_\s-]?(sync|update|pull|refresh|load)|sync[_\s-]?on[_\s-]?startup|pull[_\s-]?latest|refresh[_\s-]?catalog|dynamic[_\s-]?prompt|live[_\s-]?prompt)\b/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    ) && truthyConfigValue(field.value)
+  );
+}
+
+function hasAgentPromptRegistryUnpinnedReferenceSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => {
+    const text = `${field.path} ${fieldValueText(field)}`;
+    if (/\b(unpinned|latest|floating|no[_\s-]?pin|any[_\s-]?version|mutable|track[_\s-]?latest)\b/iu.test(text) && truthyConfigValue(field.value)) {
+      return true;
+    }
+    return fieldStringValues(field).some((value) => /(?:@latest|:\*|\bmain\b|\bmaster\b|\bHEAD\b|version\s*[:=]\s*(latest|\*))/iu.test(value));
+  });
+}
+
+function hasAgentPromptRegistrySignatureVerificationDisabledSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => {
+    const text = `${field.path} ${fieldValueText(field)}`;
+    if (/\b(allow[_\s-]?unsigned|unsigned[_\s-]?allowed|skip[_\s-]?signature|signature[_\s-]?verification[_\s-]?disabled|no[_\s-]?signature)\b/iu.test(text)) {
+      return truthyConfigValue(field.value);
+    }
+    if (/\b(signature|signing|verify[_\s-]?signature|signature[_\s-]?verification|signed)\b/iu.test(field.path)) {
+      return disabledConfigValue(field.value);
+    }
+    return false;
+  });
+}
+
+function hasAgentPromptRegistryProvenanceVerificationMissingSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => {
+    const text = `${field.path} ${fieldValueText(field)}`;
+    if (/\b(allow[_\s-]?untrusted|untrusted[_\s-]?registry|skip[_\s-]?provenance|provenance[_\s-]?verification[_\s-]?disabled|no[_\s-]?provenance)\b/iu.test(text)) {
+      return truthyConfigValue(field.value);
+    }
+    if (/(^|[_\W])(provenance|attestation|checksum|digest|slsa|verified[_\s-]?publisher|trusted[_\s-]?publisher)([_\W]|$)/iu.test(field.path)) {
+      return disabledConfigValue(field.value);
+    }
+    return false;
+  });
+}
+
+function hasAgentPromptRegistryUntrustedSelectorSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /\b(untrusted|user|customer|client|ticket|support|issue|comment|message|prompt|retrieved|rag|document|email|slack|browser|web[_-]?page|chat|inbound|external|selector|requested[_\s-]?prompt)\b/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    )
+  );
+}
+
+function hasAgentPromptRegistryPrivilegedRoleSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /\b(system|developer|root|policy|privileged[_\s-]?role|role[_\s-]?map|inject[_\s-]?as|load[_\s-]?as)\b/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    )
+  );
+}
+
+function hasAgentPromptRegistryToolDirectiveSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /\b(tool|tools|mcp|function|function_call|browser|database|sql|slack|email|webhook|shell|bash|command|execute|call|invoke)\b/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    )
+  );
+}
+
+function hasAgentPromptRegistryMemoryDirectiveSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => /\b(memory|remember|store|persist|long[_\s-]?term|summary)\b/iu.test(`${field.path} ${fieldValueText(field)}`));
+}
+
+function hasAgentPromptRegistryExternalDirectiveSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /\b(send|post|publish|reply|webhook|slack|email|external|callback|ticket|issue|customer[_\s-]?update)\b/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    )
+  );
+}
+
+function hasAgentPromptRegistrySensitiveContextSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /\b(customer|client|ticket|support|internal|confidential|private|proprietary|sensitive|account|billing|payment|prod|production|admin|credential|token|api[_-]?key|secret)\b/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    )
+  );
+}
+
+function hasAgentPromptRegistryPiiContextSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /(?:^|[_\W])(pii|email|phone|address|ssn|passport|dob|date[_\s-]?of[_\s-]?birth|customer[_-]?id|user[_-]?id|account[_-]?id)(?:[_\W]|$)/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    )
+  );
+}
+
+function hasAgentPromptRegistryApprovalRequiredSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /approval|required[_-]?approval|human[_-]?approval|confirm|confirmation|review|human[_-]?in[_-]?the[_-]?loop/iu.test(field.path) &&
+    truthyConfigValue(field.value)
+  );
+}
+
+function isAgentPromptRegistrySecurityField(fieldPath: string): boolean {
+  return /provider|registry|catalog|hub|store|prompt|template|instruction|system|developer|role|source|repository|repo|url|uri|host|endpoint|sync|update|pull|refresh|pin|version|signature|signing|provenance|attestation|checksum|digest|trusted|untrusted|selector|input|customer|ticket|tool|mcp|browser|database|shell|memory|external|webhook|approval|secret|token|credential|auth|env|pii|sensitive/iu.test(
     fieldPath
   );
 }

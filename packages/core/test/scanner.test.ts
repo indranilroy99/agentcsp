@@ -50,6 +50,7 @@ describe("scanner", () => {
       "MEMORY_STORE_TOKEN",
       "MODEL_ROUTER_TOKEN",
       "OPENAI_API_KEY",
+      "PROMPT_REGISTRY_TOKEN",
       "SAFETY_RUNTIME_TOKEN",
       "SLACK_WEBHOOK_URL",
       "SUPPORT_DB_PASSWORD",
@@ -1243,6 +1244,60 @@ describe("scanner", () => {
     expect(JSON.stringify(agentCspPolicyConfig)).not.toContain("security@example.com");
     expect(JSON.stringify(agentCspPolicyConfig)).not.toContain("legacy_agent_security");
     expect(JSON.stringify(agentCspPolicyConfig)).not.toContain("Fixture demonstrates risky");
+    const promptRegistryConfig = surfaces.runtime_config.find(
+      (surface) => surface.path === "prompt-registry/remote-prompts.yaml"
+    );
+    expect(promptRegistryConfig).toBeDefined();
+    expect(promptRegistryConfig).toMatchObject({
+      trust_level: "third_party",
+      external_reach: true,
+      secret_exposure: true,
+      side_effect: true,
+      reversible: false,
+      untrusted_to_privileged: true
+    });
+    expect(promptRegistryConfig?.metadata).toMatchObject({
+      content_redacted: true,
+      values_collected: false,
+      parsed_agent_prompt_registry_config: true,
+      agent_prompt_registry_provider: "agent_prompt_registry",
+      agent_prompt_registry_remote: true,
+      agent_prompt_registry_destination_redacted: true,
+      agent_prompt_registry_prompt_refs_redacted: true,
+      agent_prompt_registry_prompt_ref_count: 10,
+      agent_prompt_registry_auto_sync_enabled: true,
+      agent_prompt_registry_unpinned_reference: true,
+      agent_prompt_registry_signature_verification_disabled: true,
+      agent_prompt_registry_provenance_verification_missing: true,
+      agent_prompt_registry_untrusted_selector: true,
+      agent_prompt_registry_privileged_role_injection: true,
+      agent_prompt_registry_tool_directive: true,
+      agent_prompt_registry_memory_directive: true,
+      agent_prompt_registry_external_directive: true,
+      agent_prompt_registry_sensitive_context: true,
+      agent_prompt_registry_pii_context: true,
+      agent_prompt_registry_approval_required: false
+    });
+    expect(promptRegistryConfig?.metadata.agent_prompt_registry_destination_kinds).toEqual(["prompt_registry_endpoint"]);
+    expect(promptRegistryConfig?.metadata.agent_prompt_registry_prompt_kinds).toEqual([
+      "developer_prompt",
+      "prompt_template",
+      "runbook",
+      "system_prompt",
+      "tool_instruction"
+    ]);
+    expect(promptRegistryConfig?.metadata.env_key_names).toEqual(["PROMPT_REGISTRY_TOKEN"]);
+    expect(promptRegistryConfig?.metadata.secret_ref_key_names).toEqual(["PROMPT_REGISTRY_TOKEN"]);
+    expect(promptRegistryConfig?.data_classes).toEqual(["confidential", "credential", "pii"]);
+    expect(promptRegistryConfig?.actions).toEqual(["call", "execute", "publish", "read", "remember", "send", "write"]);
+    expect(JSON.stringify(promptRegistryConfig)).not.toContain("${PROMPT_REGISTRY_TOKEN}");
+    expect(JSON.stringify(promptRegistryConfig)).not.toContain("prompts.agentcsp-demo.example.invalid");
+    expect(JSON.stringify(promptRegistryConfig)).not.toContain("customer-escalation-system-vLatest");
+    expect(JSON.stringify(promptRegistryConfig)).not.toContain("support-agent-developer-policy");
+    expect(JSON.stringify(promptRegistryConfig)).not.toContain("customer_requested_prompt");
+    expect(JSON.stringify(promptRegistryConfig)).not.toContain("prompt_registry_customer_email");
+    expect(JSON.stringify(promptRegistryConfig)).not.toContain("confidential_prompt_context");
+    expect(JSON.stringify(promptRegistryConfig)).not.toContain("support_db.update_customer_record");
     const browserSessionConfig = surfaces.runtime_config.find((surface) => surface.path === "browser/session.yaml");
     expect(browserSessionConfig).toBeDefined();
     expect(browserSessionConfig).toMatchObject({

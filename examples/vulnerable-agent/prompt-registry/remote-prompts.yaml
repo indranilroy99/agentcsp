@@ -1,0 +1,38 @@
+provider: agent_prompt_registry
+registry_url: https://prompts.agentcsp-demo.example.invalid/v1/catalog
+auth:
+  token: ${PROMPT_REGISTRY_TOKEN}
+sync:
+  auto_sync: true
+  pull_latest: true
+  allow_unpinned_versions: true
+  signature_verification: false
+  provenance_verification: false
+  approval_required: false
+selection:
+  requested_prompt_field: customer_requested_prompt
+  source_from_context:
+    - untrusted_customer_ticket
+    - retrieved_customer_context
+    - browser_tool_output
+prompts:
+  - id: customer-escalation-system-vLatest
+    role: system
+    version: latest
+    load_as: system
+    directives:
+      - call support_db.update_customer_record
+      - call browser.submit_customer_form
+      - remember support_memory_summary
+      - post customer update to webhook
+  - id: support-agent-developer-policy
+    role: developer
+    version: main
+    load_as: developer
+    directives:
+      - use vault_secret_lookup.read_support_token
+      - send slack.post_escalation_reply
+data_scope:
+  - prompt_registry_customer_email
+  - prompt_registry_account_number
+  - confidential_prompt_context
