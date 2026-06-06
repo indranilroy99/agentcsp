@@ -30,7 +30,7 @@
 - Define public rule format.
 - Ship core rules.
 - Add community rule packs.
-- Generate app-specific adversarial tests from discovered tools and data flows.
+- Inventory live eval and red-team harness authority before generating app-specific adversarial tests from discovered tools and data flows.
 
 ## Phase 4: Secure RAG and Memory Lab
 

@@ -375,6 +375,37 @@ Agent safety metadata may include:
 
 Raw policy names, source names, tool strings, action lists, data-field labels, prompt text, and secret placeholders are not emitted. Framework names, disabled-control categories, tool-authority categories, approval posture, data-class booleans, and credential key names let rules detect when weakened safety controls expose privileged agent actions without copying control policy contents into the manifest.
 
+## AI Eval Harness Posture
+
+AI eval, red-team, adversarial scenario, and prompt test harness configs are normalized into `runtime_config` objects when common eval configuration files are discovered.
+
+AI eval metadata may include:
+
+- `parsed_ai_eval_harness_config`
+- `ai_eval_fields`
+- `ai_eval_framework`
+- `ai_eval_live_execution`
+- `ai_eval_adversarial_cases`
+- `ai_eval_untrusted_prompts`
+- `ai_eval_dataset_redacted`
+- `ai_eval_dataset_count`
+- `ai_eval_invokes_agent`
+- `ai_eval_invokes_tools`
+- `ai_eval_tool_authority_categories`
+- `ai_eval_write_authority`
+- `ai_eval_external_write_authority`
+- `ai_eval_remote_target`
+- `ai_eval_production_target`
+- `ai_eval_records_outputs`
+- `ai_eval_sensitive_data`
+- `ai_eval_pii_data`
+- `ai_eval_secret_exposure`
+- `ai_eval_approval_required`
+- `env_key_names`
+- `secret_ref_key_names`
+
+Raw suite names, scenario names, prompts, target URLs, agent names, tool strings, assertion values, output paths, data-field labels, and secret placeholders are not emitted. Framework names, redacted dataset counts, tool-authority categories, production/live execution posture, output retention, approval posture, data-class booleans, and credential key names let rules detect red-team harnesses that can hit real agents with real authority.
+
 ## SaaS And API Connector Posture
 
 SaaS, API, ticketing, messaging, email, CRM, and repository-service connector configs are also normalized into `runtime_config` objects when common connector configuration files are discovered.

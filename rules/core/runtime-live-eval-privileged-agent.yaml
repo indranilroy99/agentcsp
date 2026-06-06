@@ -1,0 +1,49 @@
+id: AGENTCSP-RUNTIME-017
+name: Live eval harness runs adversarial prompts against privileged agents
+description: An AI eval or red-team harness executes adversarial or untrusted prompts against a live production agent with privileged tools, credentials, output retention, and no approval gate.
+category: live_eval_agent_authority
+severity: critical
+maps_to:
+  owasp:
+    - LLM01:2025 Prompt Injection
+    - LLM02:2025 Sensitive Information Disclosure
+    - LLM06:2025 Excessive Agency
+    - LLM09:2025 Misinformation
+  mitre_atlas:
+    - AML.T0051 LLM Prompt Injection
+    - AML.T0054 LLM Jailbreak
+    - AML.T0057 Exfiltration via Cyber Means
+  nist_ai_rmf:
+    - MAP 5.1
+    - MEASURE 2.9
+    - MANAGE 2.4
+match:
+  object_type: runtime_config
+  where:
+    - field: metadata.parsed_ai_eval_harness_config
+      op: equals
+      value: true
+    - field: metadata.ai_eval_live_execution
+      op: equals
+      value: true
+    - field: metadata.ai_eval_adversarial_cases
+      op: equals
+      value: true
+    - field: metadata.ai_eval_invokes_agent
+      op: equals
+      value: true
+    - field: metadata.ai_eval_invokes_tools
+      op: equals
+      value: true
+    - field: metadata.ai_eval_production_target
+      op: equals
+      value: true
+    - field: metadata.ai_eval_approval_required
+      op: equals
+      value: false
+    - field: secret_exposure
+      op: equals
+      value: true
+recommendation:
+  control: require_approval
+  text: Run adversarial evals against isolated staging agents by default, block production credentials from eval harnesses, disable external writes and memory retention during red-team runs, and require approval before live privileged tool execution.

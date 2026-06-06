@@ -56,6 +56,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-014")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-015")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-016")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-017")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-CICD-002")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-AUTOMATION-001")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-AUTOMATION-002")).toBe(true);
@@ -341,6 +342,41 @@ describe("rule engine", () => {
     expect(JSON.stringify(runtimeAgentSafetyFindings[0])).not.toContain("customer_ticket_message");
     expect(JSON.stringify(runtimeAgentSafetyFindings[0])).not.toContain("support_db.update_customer_record");
     expect(JSON.stringify(runtimeAgentSafetyFindings[0])).not.toContain("customer_email_address");
+    const runtimeAiEvalHarnessFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-RUNTIME-017");
+    expect(runtimeAiEvalHarnessFindings).toHaveLength(1);
+    expect(runtimeAiEvalHarnessFindings[0]?.matched_object.path).toBe("evals/live-redteam.yaml");
+    expect(runtimeAiEvalHarnessFindings[0]?.matched_object.metadata).toMatchObject({
+      ai_eval_framework: "promptfoo",
+      ai_eval_live_execution: true,
+      ai_eval_adversarial_cases: true,
+      ai_eval_untrusted_prompts: true,
+      ai_eval_dataset_redacted: true,
+      ai_eval_dataset_count: 2,
+      ai_eval_invokes_agent: true,
+      ai_eval_invokes_tools: true,
+      ai_eval_external_write_authority: true,
+      ai_eval_production_target: true,
+      ai_eval_records_outputs: true,
+      ai_eval_approval_required: false
+    });
+    expect(runtimeAiEvalHarnessFindings[0]?.matched_object.metadata.ai_eval_tool_authority_categories).toEqual([
+      "browser_action",
+      "database_access",
+      "external_response",
+      "memory_write",
+      "secret_manager_access",
+      "tool_call"
+    ]);
+    expect(runtimeAiEvalHarnessFindings[0]?.severity).toBe("critical");
+    expect(runtimeAiEvalHarnessFindings[0]?.confidence).toBe("very_high");
+    expect(runtimeAiEvalHarnessFindings[0]?.recommended_control).toBe("require_approval");
+    expect(JSON.stringify(runtimeAiEvalHarnessFindings[0])).not.toContain("${EVAL_AGENT_TOKEN}");
+    expect(JSON.stringify(runtimeAiEvalHarnessFindings[0])).not.toContain("production-support-redteam");
+    expect(JSON.stringify(runtimeAiEvalHarnessFindings[0])).not.toContain("agent-prod.example.invalid");
+    expect(JSON.stringify(runtimeAiEvalHarnessFindings[0])).not.toContain("customer-support-prod-agent");
+    expect(JSON.stringify(runtimeAiEvalHarnessFindings[0])).not.toContain("Ignore previous instructions");
+    expect(JSON.stringify(runtimeAiEvalHarnessFindings[0])).not.toContain("prompt-injection-customer-record");
+    expect(JSON.stringify(runtimeAiEvalHarnessFindings[0])).not.toContain("support_db.update_customer_record");
     const automationAgentFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-AUTOMATION-002");
     expect(automationAgentFindings).toHaveLength(1);
     expect(automationAgentFindings[0]?.matched_object.path).toBe(".github/workflows/agent-maintenance.yml");

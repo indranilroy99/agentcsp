@@ -112,6 +112,11 @@ export async function detectSurfaces(files: WalkedFile[]): Promise<DetectedSurfa
       continue;
     }
 
+    if (isAiEvalHarnessConfigPath(file.relativePath, basename)) {
+      detectAiEvalHarnessConfig(file, text, surfaces);
+      continue;
+    }
+
     if (isAiTelemetryConfigPath(file.relativePath, basename)) {
       detectAiTelemetryConfig(file, text, surfaces);
       continue;
@@ -478,6 +483,70 @@ function detectAiModelEndpointConfig(file: WalkedFile, text: string | undefined,
   surfaces.runtime_config.push({
     ...object,
     untrusted_to_privileged: isUntrustedToPrivileged(object)
+  });
+}
+
+function detectAiEvalHarnessConfig(file: WalkedFile, text: string | undefined, surfaces: DetectedSurfaces): void {
+  const parsed = parseStructuredConfig(text ?? "", file.relativePath);
+  if (parsed.parseFailed) {
+    addDiagnostic(surfaces, file, {
+      parser: parsed.parser ?? "structured_config",
+      code: "AI_EVAL_HARNESS_CONFIG_PARSE_FAILED",
+      reason: "AI eval or red-team harness configuration could not be parsed. Raw content was redacted."
+    });
+  }
+
+  const posture = classifyAiEvalHarnessConfig(parsed.value, file.relativePath);
+  const actions = new Set<ActionType>(["read", "call"]);
+  if (posture.ai_eval_live_execution || posture.ai_eval_invokes_agent || posture.ai_eval_invokes_tools) actions.add("execute");
+  if (posture.ai_eval_external_write_authority || posture.ai_eval_write_authority) actions.add("write");
+  if (posture.ai_eval_remote_target || posture.ai_eval_production_target || posture.ai_eval_external_write_authority) actions.add("send");
+  if (posture.ai_eval_external_write_authority) actions.add("publish");
+  if (posture.ai_eval_records_outputs) actions.add("remember");
+
+  const dataClasses = new Set<SurfaceObject["data_classes"][number]>(["unknown"]);
+  if (posture.ai_eval_secret_exposure || posture.env_key_names.some(isCredentialLikeKeyName) || posture.secret_ref_key_names.length > 0) {
+    dataClasses.add("credential");
+  }
+  if (posture.ai_eval_sensitive_data || posture.ai_eval_production_target) dataClasses.add("confidential");
+  if (posture.ai_eval_pii_data) dataClasses.add("pii");
+  if (dataClasses.size > 1) dataClasses.delete("unknown");
+
+  const object = createSurfaceObject({
+    type: "runtime_config",
+    name: path.basename(file.relativePath),
+    path: file.relativePath,
+    trust_level: posture.ai_eval_remote_target || posture.ai_eval_production_target ? "third_party" : inferTrustLevel(file.relativePath),
+    data_classes: uniqueDataClasses([...dataClasses] as SurfaceObject["data_classes"]),
+    actions: uniqueActions([...actions]),
+    side_effect:
+      posture.ai_eval_live_execution ||
+      posture.ai_eval_invokes_tools ||
+      posture.ai_eval_write_authority ||
+      posture.ai_eval_external_write_authority ||
+      posture.ai_eval_records_outputs,
+    reversible: !posture.ai_eval_write_authority && !posture.ai_eval_external_write_authority,
+    external_reach: posture.ai_eval_remote_target || posture.ai_eval_external_write_authority || posture.ai_eval_production_target,
+    secret_exposure: posture.ai_eval_secret_exposure || posture.env_key_names.some(isCredentialLikeKeyName) || posture.secret_ref_key_names.length > 0,
+    reason: "AI eval or red-team harness configuration discovered as live agent test authority.",
+    metadata: {
+      content_redacted: true,
+      values_collected: false,
+      parsed_ai_eval_harness_config: Boolean(parsed.value) && !parsed.parseFailed,
+      parse_error: parsed.parseFailed,
+      ...posture
+    }
+  });
+  surfaces.runtime_config.push({
+    ...object,
+    untrusted_to_privileged:
+      ((posture.ai_eval_adversarial_cases || posture.ai_eval_untrusted_prompts) &&
+        (posture.ai_eval_live_execution || posture.ai_eval_invokes_agent) &&
+        (posture.ai_eval_invokes_tools ||
+          posture.ai_eval_write_authority ||
+          posture.ai_eval_external_write_authority ||
+          posture.ai_eval_secret_exposure)) ||
+      isUntrustedToPrivileged(object)
   });
 }
 
@@ -1025,6 +1094,27 @@ function isAiTelemetryConfigPath(relativePath: string, basename: string): boolea
   return telemetryDirectory || telemetryName;
 }
 
+function isAiEvalHarnessConfigPath(relativePath: string, basename: string): boolean {
+  const normalized = relativePath.replaceAll("\\", "/").toLowerCase();
+  const lowerBase = basename.toLowerCase();
+  if (!/\.(json|ya?ml|toml)$/iu.test(lowerBase)) return false;
+  if (normalized.startsWith(".github/workflows/")) return false;
+  if (normalized.startsWith("rules/")) return false;
+  const segments = normalized.split("/").slice(0, -1);
+  const evalDirectory = segments.some((segment) =>
+    /^(evals?|evaluations?|red[-_]?team|redteam|adversarial|scenarios?|test-harness|test_harness|promptfoo|garak|deepeval|agent-tests?|agent_tests?|ai-tests?|ai_tests?)$/iu.test(
+      segment
+    )
+  );
+  const evalName = /(?:eval|evaluation|red[-_]?team|redteam|adversarial|scenario|promptfoo|garak|deepeval|jailbreak|agent-test|agent_test|test-harness|test_harness)/iu.test(
+    lowerBase
+  );
+  const configName = /(?:config|settings|suite|scenarios?|tests?|evals?|evaluation|red[-_]?team|promptfoo|garak|deepeval|harness)/iu.test(
+    lowerBase
+  );
+  return evalName || (evalDirectory && configName);
+}
+
 function isAiModelEndpointConfigPath(relativePath: string, basename: string): boolean {
   const normalized = relativePath.replaceAll("\\", "/").toLowerCase();
   const lowerBase = basename.toLowerCase();
@@ -1444,6 +1534,30 @@ interface AiTelemetryPosture {
   ai_telemetry_secret_capture_signal: boolean;
   ai_telemetry_redaction_disabled: boolean;
   ai_telemetry_retention_enabled: boolean;
+  env_key_names: string[];
+  secret_ref_key_names: string[];
+}
+
+interface AiEvalHarnessPosture {
+  ai_eval_fields: string[];
+  ai_eval_framework?: string;
+  ai_eval_live_execution: boolean;
+  ai_eval_adversarial_cases: boolean;
+  ai_eval_untrusted_prompts: boolean;
+  ai_eval_dataset_redacted: boolean;
+  ai_eval_dataset_count: number;
+  ai_eval_invokes_agent: boolean;
+  ai_eval_invokes_tools: boolean;
+  ai_eval_tool_authority_categories: string[];
+  ai_eval_write_authority: boolean;
+  ai_eval_external_write_authority: boolean;
+  ai_eval_remote_target: boolean;
+  ai_eval_production_target: boolean;
+  ai_eval_records_outputs: boolean;
+  ai_eval_sensitive_data: boolean;
+  ai_eval_pii_data: boolean;
+  ai_eval_secret_exposure: boolean;
+  ai_eval_approval_required: boolean;
   env_key_names: string[];
   secret_ref_key_names: string[];
 }
@@ -3014,6 +3128,219 @@ function hasAiModelContextSignal(fields: RuntimeField[], pattern: RegExp): boole
 
 function isAiModelSecurityField(fieldPath: string): boolean {
   return /provider|model|base[_-]?url|api[_-]?base|endpoint|url|uri|host|gateway|proxy|router|server|api[_-]?key|token|secret|credential|auth|env|prompt|input|message|completion|output|tool|retrieval|rag|context|memory|history|pii/iu.test(
+    fieldPath
+  );
+}
+
+function classifyAiEvalHarnessConfig(value: unknown, filePath: string): AiEvalHarnessPosture {
+  const fields = flattenRuntimeFields(value);
+  const stringValues = collectFieldStringValues(fields);
+  const framework = inferAiEvalFramework([filePath, ...fields.map((field) => field.path), ...stringValues]);
+  const toolAuthorityCategories = collectAiEvalToolAuthorityCategories(fields);
+  const datasetCount = countAiEvalDatasetEntries(value, fields);
+  const envKeys = uniqueStrings([
+    ...collectEnvKeyNamesFromConfig(value).filter(isLikelyEnvKeyName),
+    ...extractEnvironmentReferenceKeys(stringValues)
+  ]);
+  const secretRefKeys = extractSecretReferenceKeys(stringValues);
+
+  return {
+    ai_eval_fields: fields
+      .map((field) => field.path)
+      .filter((fieldPath) => isAiEvalSecurityField(fieldPath))
+      .sort((a, b) => a.localeCompare(b)),
+    ai_eval_framework: framework,
+    ai_eval_live_execution: hasAiEvalLiveExecutionSignal(fields),
+    ai_eval_adversarial_cases: hasAiEvalAdversarialSignal(fields),
+    ai_eval_untrusted_prompts: hasAiEvalUntrustedPromptSignal(fields),
+    ai_eval_dataset_redacted: datasetCount > 0 || hasAiEvalDatasetSignal(fields),
+    ai_eval_dataset_count: datasetCount,
+    ai_eval_invokes_agent: hasAiEvalAgentInvocationSignal(fields),
+    ai_eval_invokes_tools: toolAuthorityCategories.length > 0 || hasAiEvalToolInvocationSignal(fields),
+    ai_eval_tool_authority_categories: toolAuthorityCategories,
+    ai_eval_write_authority: hasAiEvalWriteAuthoritySignal(fields, toolAuthorityCategories),
+    ai_eval_external_write_authority: hasAiEvalExternalWriteAuthoritySignal(fields, toolAuthorityCategories),
+    ai_eval_remote_target: hasAiEvalRemoteTargetSignal(fields),
+    ai_eval_production_target: hasAiEvalProductionTargetSignal(fields),
+    ai_eval_records_outputs: hasAiEvalOutputRetentionSignal(fields),
+    ai_eval_sensitive_data: hasAiEvalSensitiveDataSignal(fields),
+    ai_eval_pii_data: hasAiEvalPiiDataSignal(fields),
+    ai_eval_secret_exposure:
+      toolAuthorityCategories.includes("secret_manager_access") ||
+      hasAiEvalSecretSignal(fields) ||
+      envKeys.some(isCredentialLikeKeyName) ||
+      secretRefKeys.length > 0,
+    ai_eval_approval_required: hasAiEvalApprovalRequiredSignal(fields),
+    env_key_names: envKeys,
+    secret_ref_key_names: secretRefKeys
+  };
+}
+
+function inferAiEvalFramework(candidates: string[]): string | undefined {
+  const text = candidates.join(" ").toLowerCase();
+  const frameworks: Array<[string, RegExp]> = [
+    ["promptfoo", /\bpromptfoo\b/iu],
+    ["garak", /\bgarak\b/iu],
+    ["deepeval", /\bdeepeval\b/iu],
+    ["openai_evals", /\b(openai[-_\s]?evals?|evals\.elsuite)\b/iu],
+    ["langsmith", /\blangsmith\b/iu],
+    ["braintrust", /\bbraintrust\b/iu],
+    ["custom_red_team", /\b(red[-_\s]?team|adversarial|jailbreak|prompt[-_\s]?injection)\b/iu]
+  ];
+  return frameworks.find(([, pattern]) => pattern.test(text))?.[0];
+}
+
+function countAiEvalDatasetEntries(value: unknown, fields: RuntimeField[]): number {
+  const counts: number[] = [];
+  if (value && typeof value === "object" && !Array.isArray(value)) {
+    for (const [key, item] of Object.entries(value as Record<string, unknown>)) {
+      if (!/(tests?|scenarios?|cases?|prompts?|probes?|attacks?|datasets?)$/iu.test(key)) continue;
+      if (Array.isArray(item)) counts.push(item.length);
+      if (item && typeof item === "object" && !Array.isArray(item)) counts.push(Object.keys(item as Record<string, unknown>).length);
+    }
+  }
+
+  const prefixes = new Set<string>();
+  for (const field of fields) {
+    const match = field.path.match(/(?:^|\.)(tests?|scenarios?|cases?|prompts?|probes?|attacks?|datasets?)\.(\d+|[A-Za-z][\w-]*)/u);
+    if (match?.[1] && match[2]) prefixes.add(`${match[1]}.${match[2]}`);
+  }
+  if (prefixes.size > 0) counts.push(prefixes.size);
+  return Math.max(0, ...counts);
+}
+
+function hasAiEvalDatasetSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => /(?:^|\.)(tests?|scenarios?|cases?|prompts?|probes?|attacks?|datasets?)(?:\.|$)/iu.test(field.path));
+}
+
+function hasAiEvalLiveExecutionSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => {
+    const text = `${field.path} ${fieldValueText(field)}`;
+    if (/(^|\.)(dry_run|dryrun|mock|simulate|simulation|offline)$/iu.test(field.path)) return disabledConfigValue(field.value);
+    return /\b(live|execute|run[_\s-]?agent|invoke[_\s-]?agent|call[_\s-]?agent|call[_\s-]?tools?|execute[_\s-]?tools?|real[_\s-]?tools?|production[_\s-]?run)\b/iu.test(
+      text
+    ) && truthyConfigValue(field.value);
+  });
+}
+
+function hasAiEvalAdversarialSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /\b(red[-_\s]?team|adversarial|jailbreak|prompt[_\s-]?injection|instruction[_\s-]?override|attack|malicious|unsafe|bypass|exfiltrat|data[_\s-]?leak|tool[_\s-]?misuse)\b/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    )
+  );
+}
+
+function hasAiEvalUntrustedPromptSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /\b(untrusted|user|customer|client|ticket|support|issue|comment|message|prompt|retrieved|rag|document|email|chat|inbound|external|public|web[_-]?page|browser[_-]?output)\b/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    )
+  );
+}
+
+function hasAiEvalAgentInvocationSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /\b(agent|assistant|bot|autogen|crew|langgraph|codex|claude|run[_\s-]?agent|invoke[_\s-]?agent|target[_\s-]?agent|live[_\s-]?agent)\b/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    )
+  );
+}
+
+function collectAiEvalToolAuthorityCategories(fields: RuntimeField[]): string[] {
+  const categories = new Set<string>();
+  for (const field of fields) {
+    const text = `${field.path} ${fieldValueText(field)}`.toLowerCase();
+    if (/\b(tool|tools|function|function_call|mcp|connector|capability)\b/iu.test(text)) categories.add("tool_call");
+    if (/\b(browser|playwright|puppeteer|web[_\s-]?agent|click|form|navigate)\b/iu.test(text)) categories.add("browser_action");
+    if (/\b(database|db|sql|query|support_db|warehouse)\b/iu.test(text)) categories.add("database_access");
+    if (/(?:^|[_\W])(vault|secret|secrets|secret[_\s-]?manager|key[_\s-]?vault|credential)(?:[_\W]|$)/iu.test(text)) {
+      categories.add("secret_manager_access");
+    }
+    if (/\b(slack|email|webhook|message|ticket|issue|comment|reply|send|post|publish)\b/iu.test(text)) categories.add("external_response");
+    if (/(?:^|[_\W])(memory|remember|store|persist|session[_\s-]?state)(?:[_\W]|$)/iu.test(text)) categories.add("memory_write");
+    if (/\b(shell|bash|command|exec|terminal|python|node|subprocess)\b/iu.test(text)) categories.add("shell_execution");
+    if (/\b(filesystem|file[_\s-]?write|workspace|repo|repository|github|gitlab|pull[_\s-]?request)\b/iu.test(text)) {
+      categories.add("repo_or_filesystem_write");
+    }
+  }
+  return [...categories].sort((a, b) => a.localeCompare(b));
+}
+
+function hasAiEvalToolInvocationSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /\b(call[_\s-]?tools?|invoke[_\s-]?tools?|tool[_\s-]?access|function[_\s-]?call|mcp|browser|database|vault|shell|filesystem|write[_\s-]?tool)\b/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    )
+  );
+}
+
+function hasAiEvalWriteAuthoritySignal(fields: RuntimeField[], categories: string[]): boolean {
+  return categories.some((category) => ["database_access", "external_response", "repo_or_filesystem_write", "shell_execution"].includes(category)) ||
+    fields.some((field) =>
+      /\b(write|update|create|delete|reply|respond|send|post|publish|comment|commit|push|merge|deploy|remember|persist|approve|close|assign)\b/iu.test(
+        `${field.path} ${fieldValueText(field)}`
+      )
+    );
+}
+
+function hasAiEvalExternalWriteAuthoritySignal(fields: RuntimeField[], categories: string[]): boolean {
+  return categories.includes("external_response") ||
+    fields.some((field) => /\b(slack|email|webhook|send|post|publish|reply|respond|ticket|issue|external)\b/iu.test(`${field.path} ${fieldValueText(field)}`));
+}
+
+function hasAiEvalRemoteTargetSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => {
+    const values = Array.isArray(field.value) ? field.value.map(String) : [String(field.value ?? "")];
+    return values.some((value) => Boolean(parseRemoteHttpUrl(value)));
+  });
+}
+
+function hasAiEvalProductionTargetSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /\b(prod|production|live|customer[_\s-]?support|customer[_\s-]?success|billing|payment|admin|internal[_\s-]?ops|real[_\s-]?users?)\b/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    )
+  );
+}
+
+function hasAiEvalOutputRetentionSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /\b(results?|outputs?|traces?|logs?|history|store|persist|artifact|report|dataset|record|recording|retention)\b/iu.test(field.path) &&
+    truthyConfigValue(field.value)
+  );
+}
+
+function hasAiEvalSecretSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => /\b(secret|token|credential|api[_-]?key|password|vault|key[_\s-]?vault|authorization)\b/iu.test(`${field.path} ${fieldValueText(field)}`));
+}
+
+function hasAiEvalSensitiveDataSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /\b(customer|client|ticket|support|internal|confidential|private|proprietary|sensitive|account|billing|payment|order|record|case|profile|note|incident)\b/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    )
+  );
+}
+
+function hasAiEvalPiiDataSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /(?:^|[_\W])(pii|email|phone|address|ssn|passport|dob|date[_\s-]?of[_\s-]?birth|customer[_-]?id|user[_-]?id|account[_-]?id)(?:[_\W]|$)/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    )
+  );
+}
+
+function hasAiEvalApprovalRequiredSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /approval|required[_-]?approval|human[_-]?approval|confirm|confirmation|review|human[_-]?in[_-]?the[_-]?loop/iu.test(field.path) &&
+    truthyConfigValue(field.value)
+  );
+}
+
+function isAiEvalSecurityField(fieldPath: string): boolean {
+  if (/(^|\.)(vars?|assert|assertions?|expected|value)\./iu.test(fieldPath)) return false;
+  return /framework|provider|eval|evaluation|redteam|red[_-]?team|scenario|case|dataset|prompt|probe|attack|jailbreak|injection|target|agent|assistant|tool|mcp|function|browser|database|secret|memory|input|source|customer|ticket|email|chat|write|send|reply|approval|auth|token|credential|env|scope|permission|result|output|trace|log|retention|endpoint|url|host|production|live/iu.test(
     fieldPath
   );
 }

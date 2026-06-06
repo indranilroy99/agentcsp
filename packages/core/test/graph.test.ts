@@ -161,6 +161,21 @@ describe("static graph", () => {
     expect(ragAgentOrchestrationPath?.risk.actions).toEqual(["call", "execute", "publish", "read", "remember", "send", "write"]);
     expect(JSON.stringify(ragAgentOrchestrationPath)).not.toContain("support-escalation-crew");
     expect(JSON.stringify(ragAgentOrchestrationPath)).not.toContain("operations-executor");
+    const ragAiEvalHarnessPath = result.manifest.attack_paths.find(
+      (attackPath) =>
+        attackPath.source.path === "rag/customer-note.md" &&
+        attackPath.target.name === "live-redteam.yaml" &&
+        attackPath.title === "customer-note.md can influence live-redteam.yaml: Live eval harness runs adversarial prompts against privileged agents"
+    );
+    expect(ragAiEvalHarnessPath).toBeDefined();
+    expect(ragAiEvalHarnessPath?.severity).toBe("critical");
+    expect(ragAiEvalHarnessPath?.confidence).toBe("very_high");
+    expect(ragAiEvalHarnessPath?.recommended_control).toBe("require_approval");
+    expect(ragAiEvalHarnessPath?.risk.data_classes).toContain("pii");
+    expect(ragAiEvalHarnessPath?.risk.actions).toEqual(["call", "execute", "publish", "read", "remember", "send", "write"]);
+    expect(JSON.stringify(ragAiEvalHarnessPath)).not.toContain("production-support-redteam");
+    expect(JSON.stringify(ragAiEvalHarnessPath)).not.toContain("agent-prod.example.invalid");
+    expect(JSON.stringify(ragAiEvalHarnessPath)).not.toContain("prompt-injection-customer-record");
     const ragInboundTriggerPath = result.manifest.attack_paths.find(
       (attackPath) =>
         attackPath.source.path === "rag/customer-note.md" &&

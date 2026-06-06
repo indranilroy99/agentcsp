@@ -26,6 +26,7 @@ describe("scanner", () => {
       "BROWSER_SESSION_TOKEN",
       "CREW_AGENT_TOKEN",
       "CUSTOMER_SUCCESS_SLACK_BOT_TOKEN",
+      "EVAL_AGENT_TOKEN",
       "GITHUB_TOKEN",
       "OPENAI_API_KEY",
       "SAFETY_RUNTIME_TOKEN",
@@ -789,6 +790,60 @@ describe("scanner", () => {
     expect(JSON.stringify(agentSafetyConfig)).not.toContain("support_db.update_customer_record");
     expect(JSON.stringify(agentSafetyConfig)).not.toContain("vault_secret_lookup.read_support_token");
     expect(JSON.stringify(agentSafetyConfig)).not.toContain("customer_email_address");
+    const aiEvalHarnessConfig = surfaces.runtime_config.find((surface) => surface.path === "evals/live-redteam.yaml");
+    expect(aiEvalHarnessConfig).toBeDefined();
+    expect(aiEvalHarnessConfig).toMatchObject({
+      trust_level: "third_party",
+      external_reach: true,
+      secret_exposure: true,
+      side_effect: true,
+      reversible: false,
+      untrusted_to_privileged: true
+    });
+    expect(aiEvalHarnessConfig?.metadata).toMatchObject({
+      content_redacted: true,
+      values_collected: false,
+      parsed_ai_eval_harness_config: true,
+      ai_eval_framework: "promptfoo",
+      ai_eval_live_execution: true,
+      ai_eval_adversarial_cases: true,
+      ai_eval_untrusted_prompts: true,
+      ai_eval_dataset_redacted: true,
+      ai_eval_dataset_count: 2,
+      ai_eval_invokes_agent: true,
+      ai_eval_invokes_tools: true,
+      ai_eval_write_authority: true,
+      ai_eval_external_write_authority: true,
+      ai_eval_remote_target: true,
+      ai_eval_production_target: true,
+      ai_eval_records_outputs: true,
+      ai_eval_sensitive_data: true,
+      ai_eval_pii_data: true,
+      ai_eval_secret_exposure: true,
+      ai_eval_approval_required: false
+    });
+    expect(aiEvalHarnessConfig?.metadata.ai_eval_tool_authority_categories).toEqual([
+      "browser_action",
+      "database_access",
+      "external_response",
+      "memory_write",
+      "secret_manager_access",
+      "tool_call"
+    ]);
+    expect(aiEvalHarnessConfig?.metadata.env_key_names).toEqual(["EVAL_AGENT_TOKEN"]);
+    expect(aiEvalHarnessConfig?.metadata.secret_ref_key_names).toEqual(["EVAL_AGENT_TOKEN"]);
+    expect(aiEvalHarnessConfig?.data_classes).toEqual(["confidential", "credential", "pii"]);
+    expect(aiEvalHarnessConfig?.actions).toEqual(["call", "execute", "publish", "read", "remember", "send", "write"]);
+    expect(JSON.stringify(aiEvalHarnessConfig)).not.toContain("${EVAL_AGENT_TOKEN}");
+    expect(JSON.stringify(aiEvalHarnessConfig)).not.toContain("production-support-redteam");
+    expect(JSON.stringify(aiEvalHarnessConfig)).not.toContain("agent-prod.example.invalid");
+    expect(JSON.stringify(aiEvalHarnessConfig)).not.toContain("customer-support-prod-agent");
+    expect(JSON.stringify(aiEvalHarnessConfig)).not.toContain("Ignore previous instructions");
+    expect(JSON.stringify(aiEvalHarnessConfig)).not.toContain("prompt-injection-customer-record");
+    expect(JSON.stringify(aiEvalHarnessConfig)).not.toContain("untrusted_customer_ticket");
+    expect(JSON.stringify(aiEvalHarnessConfig)).not.toContain("support_api_token");
+    expect(JSON.stringify(aiEvalHarnessConfig)).not.toContain("support_db.update_customer_record");
+    expect(JSON.stringify(aiEvalHarnessConfig)).not.toContain(".evals/prod-redteam-results.json");
     expect(surfaces.ci_cd.length).toBe(1);
     expect(surfaces.ci_cd[0]?.metadata).toMatchObject({
       pull_request_trigger: true,
