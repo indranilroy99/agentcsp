@@ -68,6 +68,24 @@ MCP metadata may include:
 
 Remote third-party MCP servers are treated as external trust boundaries. Credential references and auth headers are represented as key names only. Plaintext remote transport is represented as a boolean posture signal without emitting the raw URL. For local MCP launchers, AgentCSP records project-local implementation path references such as `tools/server.js` and whether those files were present in the scan; raw command arguments and secret placeholders remain redacted.
 
+MCP prompts and resources declared in MCP configuration are normalized as `prompt` objects when their model-visible context can be inspected safely. Additional metadata may include:
+
+- `mcp_context_surface`
+- `mcp_context_kind`
+- `mcp_context_source_field`
+- `mcp_context_server_name`
+- `mcp_context_server_remote`
+- `mcp_context_server_plaintext_remote`
+- `mcp_context_server_privileged`
+- `mcp_context_server_secret_backed`
+- `mcp_context_uri_redacted`
+- `mcp_context_name_redacted`
+- `mcp_context_content_analyzed`
+- `env_key_names`
+- `secret_ref_key_names`
+
+Raw MCP prompt text, resource text, prompt names, descriptions, URIs, URLs, and secret placeholders are not emitted. AgentCSP records only redacted content-signal booleans and the associated MCP server posture so rules can detect server-supplied context that tries to steer privileged or secret-backed MCP authority.
+
 ## Instruction Context Signals
 
 Instruction files are normalized into `instruction` objects. AgentCSP records redacted content signals when repository, workspace, or custom instructions connect untrusted inputs to privileged agent behavior.

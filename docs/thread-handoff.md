@@ -847,6 +847,15 @@ The current iteration adds:
 - rule `AGENTCSP-RUNTIME-032` for cloud control-plane agents that combine broad credentialed write authority, IAM mutation, secret access, compute/storage mutation, untrusted input, and missing approval
 - scanner, rule, fixture verifier, and redaction coverage proving account IDs, ARNs, role names, policy/action values, resource identifiers, tool strings, source labels, and token placeholders stay redacted
 
+## MCP Prompt and Resource Context Pass
+
+The current iteration adds:
+
+- first-class redacted metadata for MCP prompts and resources declared in MCP config, including context kind, source field, associated server posture, URI/name redaction, content-signal booleans, and credential key references
+- vulnerable fixture coverage for server-supplied MCP prompt/resource context that tries to route untrusted customer context through a secret-backed privileged MCP server
+- rule `AGENTCSP-MCP-007` for MCP prompt/resource context that combines untrusted input, tool/external directives, privileged server authority, and credential-backed MCP access
+- scanner, rule, fixture verifier, and redaction coverage proving raw MCP prompt text, resource text, prompt names, descriptions, URIs, URLs, and token placeholders stay redacted
+
 ## Initial Build Recommendation
 
 Start with a CLI-first MVP before building the dashboard:

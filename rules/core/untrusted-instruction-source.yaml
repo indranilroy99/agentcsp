@@ -20,6 +20,9 @@ match:
     - field: metadata.untrusted_event_agent_input
       op: not_equals
       value: true
+    - field: metadata.mcp_context_surface
+      op: not_equals
+      value: true
     - field: metadata.parsed_browser_session_config
       op: not_equals
       value: true

@@ -207,6 +207,57 @@ describe("scanner", () => {
     });
     expect(JSON.stringify(packageRunnerMcp)).not.toContain("${TICKETING_MCP_TOKEN}");
     expect(JSON.stringify(packageRunnerMcp)).not.toContain("--workspace");
+    const mcpContextSurfaces = surfaces.prompts.filter((surface) => surface.metadata.mcp_context_surface === true);
+    expect(mcpContextSurfaces).toHaveLength(2);
+    const mcpPromptContext = mcpContextSurfaces.find((surface) => surface.metadata.mcp_context_kind === "prompt");
+    const mcpResourceContext = mcpContextSurfaces.find((surface) => surface.metadata.mcp_context_kind === "resource");
+    expect(mcpPromptContext).toMatchObject({
+      name: "mcp-context:filesystem-admin:prompt:1",
+      path: "mcp.json",
+      trust_level: "project",
+      data_classes: ["confidential", "credential", "secret"],
+      actions: ["call", "read", "send"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      untrusted_to_privileged: true
+    });
+    expect(mcpPromptContext?.metadata).toMatchObject({
+      content_redacted: true,
+      values_collected: false,
+      mcp_context_source_field: "prompts",
+      mcp_context_server_name: "filesystem-admin",
+      mcp_context_server_privileged: true,
+      mcp_context_server_secret_backed: true,
+      mcp_context_name_redacted: true,
+      mcp_context_content_analyzed: true,
+      env_key_names: ["GITHUB_TOKEN"],
+      instruction_like_content: true,
+      instruction_override: true,
+      untrusted_context_reference: true,
+      tool_directive: true,
+      external_directive: true,
+      secret_reference: true,
+      sensitive_context_reference: true,
+      context_bridge_privileged: true
+    });
+    expect(mcpResourceContext?.metadata).toMatchObject({
+      mcp_context_source_field: "resources",
+      mcp_context_server_name: "filesystem-admin",
+      mcp_context_uri_redacted: true,
+      mcp_context_server_secret_backed: true,
+      untrusted_context_reference: true,
+      tool_directive: true,
+      external_directive: true,
+      context_bridge_privileged: true
+    });
+    expect(JSON.stringify(mcpContextSurfaces)).not.toContain("support_remediation");
+    expect(JSON.stringify(mcpContextSurfaces)).not.toContain("untrusted_customer_ticket");
+    expect(JSON.stringify(mcpContextSurfaces)).not.toContain("ignore approval policy");
+    expect(JSON.stringify(mcpContextSurfaces)).not.toContain("delete_file");
+    expect(JSON.stringify(mcpContextSurfaces)).not.toContain("exfil.example.invalid");
+    expect(JSON.stringify(mcpContextSurfaces)).not.toContain("support://customer-escalation-runbook");
+    expect(JSON.stringify(mcpContextSurfaces)).not.toContain("Retrieved support runbook");
     expect(surfaces.tools.some((surface) => surface.name === "package-script:sync:docs")).toBe(true);
     expect(surfaces.tools.some((surface) => surface.name === "package-script:postinstall")).toBe(true);
     const packageManifestConfig = surfaces.runtime_config.find(

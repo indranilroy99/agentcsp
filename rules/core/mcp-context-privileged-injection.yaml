@@ -1,0 +1,47 @@
+id: AGENTCSP-MCP-007
+name: MCP prompt or resource can steer privileged server authority
+description: A model-visible MCP prompt or resource from a privileged, secret-backed MCP server contains untrusted-context and tool/external bridge signals, creating a path for MCP-supplied context to steer agent actions.
+category: mcp_context_poisoning
+severity: critical
+maps_to:
+  owasp:
+    - LLM01:2025 Prompt Injection
+    - LLM02:2025 Sensitive Information Disclosure
+    - LLM06:2025 Excessive Agency
+  mitre_atlas:
+    - AML.T0051 LLM Plugin Compromise
+    - AML.T0057 Exfiltration via Cyber Means
+  nist_ai_rmf:
+    - MAP 4.1
+    - MEASURE 2.7
+    - MANAGE 2.3
+match:
+  object_type: prompt
+  where:
+    - field: metadata.mcp_context_surface
+      op: equals
+      value: true
+    - field: metadata.mcp_context_server_privileged
+      op: equals
+      value: true
+    - field: metadata.mcp_context_server_secret_backed
+      op: equals
+      value: true
+    - field: metadata.untrusted_context_reference
+      op: equals
+      value: true
+    - field: metadata.tool_directive
+      op: equals
+      value: true
+    - field: metadata.external_directive
+      op: equals
+      value: true
+    - field: metadata.context_bridge_privileged
+      op: equals
+      value: true
+    - field: secret_exposure
+      op: equals
+      value: true
+recommendation:
+  control: quarantine
+  text: Treat MCP prompts and resources as untrusted model context, remove instruction-like tool/external directives from server-supplied context, and require review before exposing those contexts alongside privileged MCP tools.

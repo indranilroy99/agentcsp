@@ -10028,10 +10028,12 @@ async function detectMcpConfig(
         content_redacted: true
       }
     });
-    surfaces.mcp_servers.push({
+    const mcpSurface = {
       ...object,
       untrusted_to_privileged: isUntrustedToPrivileged(object)
-    });
+    };
+    surfaces.mcp_servers.push(mcpSurface);
+    detectMcpContextSurfaces(file, server, mcpSurface, surfaces);
   }
 }
 
@@ -11020,7 +11022,7 @@ function detectRuntimeConfig(file: WalkedFile, text: string | undefined, surface
   });
 }
 
-function extractMcpServers(value: unknown): Array<{
+interface ExtractedMcpServer {
   name: string;
   command?: string;
   args?: string[];
@@ -11034,7 +11036,93 @@ function extractMcpServers(value: unknown): Array<{
   secretRefKeys?: string[];
   packageRunner?: McpPackageRunnerSignal;
   localCommandPaths?: string[];
-}> {
+  contextSurfaces: McpContextDefinition[];
+}
+
+interface McpContextDefinition {
+  kind: "prompt" | "resource";
+  index: number;
+  sourceField: string;
+  content: string;
+  uriRedacted: boolean;
+  nameRedacted: boolean;
+  envKeys: string[];
+  secretRefKeys: string[];
+}
+
+function detectMcpContextSurfaces(
+  file: WalkedFile,
+  server: ExtractedMcpServer,
+  serverSurface: SurfaceObject,
+  surfaces: DetectedSurfaces
+): void {
+  if (server.contextSurfaces.length === 0) return;
+
+  for (const context of server.contextSurfaces) {
+    const signals = classifyContextContent(context.content);
+    const serverPrivileged = isPrivilegedMcpServer(serverSurface);
+    const serverSecretBacked = isSecretBackedMcpServer(serverSurface);
+    const actions = new Set<ActionType>(promptActions(signals));
+    if (serverPrivileged && signals.tool_directive) actions.add("call");
+    if (signals.external_directive || serverSurface.external_reach) actions.add("send");
+
+    const dataClasses = new Set<SurfaceObject["data_classes"][number]>(
+      contextualDataClasses(inferDataClasses(context.content, file.relativePath), signals)
+    );
+    if (serverSecretBacked || context.secretRefKeys.length > 0) {
+      dataClasses.add("credential");
+      dataClasses.add("secret");
+    }
+    if (signals.sensitive_context_reference || signals.data_egress_directive) dataClasses.add("confidential");
+
+    const object = createSurfaceObject({
+      type: "prompt",
+      name: `mcp-context:${server.name}:${context.kind}:${context.index + 1}`,
+      path: file.relativePath,
+      trust_level: serverSurface.trust_level,
+      data_classes: uniqueDataClasses([...dataClasses] as SurfaceObject["data_classes"]),
+      actions: uniqueActions([...actions]),
+      side_effect: serverPrivileged && signals.context_bridge_privileged,
+      reversible: isReversible(context.content),
+      external_reach: serverSurface.external_reach || signals.external_directive,
+      secret_exposure: serverSecretBacked || context.secretRefKeys.length > 0 || signals.secret_reference,
+      reason: "MCP prompt or resource content discovered as model-visible context.",
+      metadata: {
+        content_redacted: true,
+        values_collected: false,
+        mcp_context_surface: true,
+        mcp_context_kind: context.kind,
+        mcp_context_source_field: context.sourceField,
+        mcp_context_server_name: server.name,
+        mcp_context_server_remote: serverSurface.metadata.remote === true,
+        mcp_context_server_plaintext_remote: serverSurface.metadata.plaintext_remote_transport === true,
+        mcp_context_server_privileged: serverPrivileged,
+        mcp_context_server_secret_backed: serverSecretBacked,
+        mcp_context_uri_redacted: context.uriRedacted,
+        mcp_context_name_redacted: context.nameRedacted,
+        mcp_context_content_analyzed: context.content.trim().length > 0,
+        env_key_names: uniqueStrings([
+          ...context.envKeys,
+          ...stringMetadataArray(serverSurface.metadata.env_key_names)
+        ]),
+        secret_ref_key_names: uniqueStrings([
+          ...context.secretRefKeys,
+          ...stringMetadataArray(serverSurface.metadata.secret_ref_key_names)
+        ]),
+        ...signals
+      }
+    });
+
+    surfaces.prompts.push({
+      ...object,
+      untrusted_to_privileged:
+        (serverPrivileged && signals.untrusted_context_reference && signals.context_bridge_privileged) ||
+        isUntrustedToPrivileged(object)
+    });
+  }
+}
+
+function extractMcpServers(value: unknown): ExtractedMcpServer[] {
   if (!value || typeof value !== "object") return [];
   const root = value as Record<string, unknown>;
   const container = (root.mcpServers ?? root.servers) as Record<string, unknown> | undefined;
@@ -11069,8 +11157,69 @@ function extractMcpServers(value: unknown): Array<{
       authHeaderNames,
       secretRefKeys,
       packageRunner,
-      localCommandPaths
+      localCommandPaths,
+      contextSurfaces: extractMcpContextDefinitions(serverConfig)
     };
+  });
+}
+
+function extractMcpContextDefinitions(serverConfig: Record<string, unknown>): McpContextDefinition[] {
+  const definitions: McpContextDefinition[] = [];
+  collectMcpContextDefinitions(definitions, "prompt", "prompts", serverConfig.prompts);
+  collectMcpContextDefinitions(definitions, "prompt", "promptTemplates", serverConfig.promptTemplates);
+  collectMcpContextDefinitions(definitions, "prompt", "prompt_templates", serverConfig.prompt_templates);
+  collectMcpContextDefinitions(definitions, "prompt", "exposedPrompts", serverConfig.exposedPrompts);
+  collectMcpContextDefinitions(definitions, "resource", "resources", serverConfig.resources);
+  collectMcpContextDefinitions(definitions, "resource", "resourceTemplates", serverConfig.resourceTemplates);
+  collectMcpContextDefinitions(definitions, "resource", "resource_templates", serverConfig.resource_templates);
+
+  const capabilities = serverConfig.capabilities && typeof serverConfig.capabilities === "object"
+    ? (serverConfig.capabilities as Record<string, unknown>)
+    : undefined;
+  if (capabilities) {
+    collectMcpContextDefinitions(definitions, "prompt", "capabilities.prompts", capabilities.prompts);
+    collectMcpContextDefinitions(definitions, "resource", "capabilities.resources", capabilities.resources);
+  }
+
+  return definitions.slice(0, 20).map((definition, index) => ({ ...definition, index }));
+}
+
+function collectMcpContextDefinitions(
+  definitions: McpContextDefinition[],
+  kind: McpContextDefinition["kind"],
+  sourceField: string,
+  value: unknown
+): void {
+  if (value === undefined || value === null || typeof value === "boolean" || typeof value === "number") return;
+  const entries = mcpContextEntries(value);
+  for (const entry of entries) {
+    const fields = flattenRuntimeFields(entry);
+    const fieldTexts = collectFieldStringValues(fields);
+    const pathTexts = fields.map((field) => field.path);
+    const content = uniqueStrings([sourceField, ...pathTexts, ...fieldTexts]).join("\n");
+    if (!content.trim()) continue;
+    definitions.push({
+      kind,
+      index: definitions.length,
+      sourceField,
+      content,
+      uriRedacted: fields.some((field) => /(^|\.)(uri|url|endpoint|href)$/iu.test(field.path) && fieldValueText(field).trim().length > 0),
+      nameRedacted: fields.some((field) => /(^|\.)(name|title|id|description)$/iu.test(field.path) && fieldValueText(field).trim().length > 0),
+      envKeys: extractEnvironmentReferenceKeys(fieldTexts).filter(isLikelyEnvKeyName),
+      secretRefKeys: extractSecretReferenceKeys(fieldTexts)
+    });
+  }
+}
+
+function mcpContextEntries(value: unknown): unknown[] {
+  if (typeof value === "string") return [value];
+  if (Array.isArray(value)) return value;
+  if (!value || typeof value !== "object") return [];
+  return Object.entries(value as Record<string, unknown>).map(([key, item]) => {
+    if (item && typeof item === "object" && !Array.isArray(item)) {
+      return { name: key, ...(item as Record<string, unknown>) };
+    }
+    return { name: key, value: item };
   });
 }
 

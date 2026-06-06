@@ -40,6 +40,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-004")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-005")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-006")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-007")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-001")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-002")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-003")).toBe(true);
@@ -1001,6 +1002,29 @@ describe("rule engine", () => {
     expect(plaintextMcpFindings[0]?.confidence).toBe("very_high");
     expect(plaintextMcpFindings[0]?.recommended_control).toBe("deny");
     expect(JSON.stringify(plaintextMcpFindings[0])).not.toContain("http://mcp.example.invalid/sse");
+    const mcpContextFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-MCP-007");
+    expect(mcpContextFindings).toHaveLength(2);
+    expect(mcpContextFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
+      "mcp-context:filesystem-admin:prompt:1",
+      "mcp-context:filesystem-admin:resource:2"
+    ]);
+    expect(mcpContextFindings.every((finding) => finding.matched_object.path === "mcp.json")).toBe(true);
+    expect(mcpContextFindings.every((finding) => finding.severity === "critical")).toBe(true);
+    expect(mcpContextFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(mcpContextFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
+    expect(mcpContextFindings.every((finding) => finding.matched_object.metadata.mcp_context_server_secret_backed === true)).toBe(
+      true
+    );
+    expect(mcpContextFindings.every((finding) => finding.matched_object.metadata.context_bridge_privileged === true)).toBe(
+      true
+    );
+    expect(JSON.stringify(mcpContextFindings)).not.toContain("support_remediation");
+    expect(JSON.stringify(mcpContextFindings)).not.toContain("untrusted_customer_ticket");
+    expect(JSON.stringify(mcpContextFindings)).not.toContain("ignore approval policy");
+    expect(JSON.stringify(mcpContextFindings)).not.toContain("delete_file");
+    expect(JSON.stringify(mcpContextFindings)).not.toContain("exfil.example.invalid");
+    expect(JSON.stringify(mcpContextFindings)).not.toContain("support://customer-escalation-runbook");
+    expect(JSON.stringify(mcpContextFindings)).not.toContain("Retrieved support runbook");
     expect(findings.find((finding) => finding.rule_id === "AGENTCSP-PROMPT-001")?.matched_object.path).toBe(
       "prompts/support-ticket.prompt.md"
     );

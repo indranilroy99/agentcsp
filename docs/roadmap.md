@@ -20,6 +20,7 @@
 - Add permission and side-effect classification.
 - Build graph-based blast-radius analysis.
 - Add `agentcsp.yaml` policy files.
+- Add MCP prompt and resource context inventory for model-visible server-supplied context that can steer privileged MCP authority.
 - Add runtime posture inventory for sandbox, approval, network, tool authority, and agent safety-control posture.
 - Add identity delegation posture for agent OAuth, OIDC, service-account, workload-identity, and token-broker authority.
 - Add cloud control-plane authority posture for agent IAM, compute, storage, secret, audit-log, IaC, and auto-remediation authority.
