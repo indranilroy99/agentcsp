@@ -61,7 +61,8 @@ describe("scanner", () => {
       "SUPPORT_INBOX_TOKEN",
       "TICKETING_MCP_TOKEN",
       "TOOL_OUTPUT_POLICY_TOKEN",
-      "VAULT_AGENT_TOKEN"
+      "VAULT_AGENT_TOKEN",
+      "VISION_CONTEXT_TOKEN"
     ]);
     expect(JSON.stringify(envSurface)).not.toContain("replace-me");
     expect(JSON.stringify(envSurface)).not.toContain("https://example.invalid/webhook");
@@ -2069,6 +2070,75 @@ describe("scanner", () => {
     expect(JSON.stringify(toolOutputPolicyConfig)).not.toContain("tool_output_customer_email");
     expect(JSON.stringify(toolOutputPolicyConfig)).not.toContain("tool_output_account_number");
     expect(JSON.stringify(toolOutputPolicyConfig)).not.toContain("confidential_tool_trace");
+    const visualContextPolicyConfig = surfaces.runtime_config.find((surface) => surface.path === "vision/screenshot-policy.yaml");
+    expect(visualContextPolicyConfig).toBeDefined();
+    expect(visualContextPolicyConfig).toMatchObject({
+      trust_level: "project",
+      external_reach: true,
+      secret_exposure: true,
+      side_effect: true,
+      reversible: false,
+      untrusted_to_privileged: true
+    });
+    expect(visualContextPolicyConfig?.metadata).toMatchObject({
+      content_redacted: true,
+      values_collected: false,
+      parsed_visual_context_policy_config: true,
+      visual_context_source_redacted: true,
+      visual_context_untrusted_sources: true,
+      visual_context_raw_image_enabled: true,
+      visual_context_ocr_enabled: true,
+      visual_context_prompt_context: true,
+      visual_context_system_or_developer_context: true,
+      visual_context_boundary_disabled: true,
+      visual_context_sanitization_disabled: true,
+      visual_context_prompt_injection_filter_disabled: true,
+      visual_context_followup_tool_calls: true,
+      visual_context_write_authority: true,
+      visual_context_external_reach: true,
+      visual_context_memory_write: true,
+      visual_context_shell_authority: true,
+      visual_context_destructive_authority: true,
+      visual_context_approval_input: true,
+      visual_context_secret_capture: true,
+      visual_context_secret_access: true,
+      visual_context_sensitive_data: true,
+      visual_context_pii_data: true,
+      visual_context_approval_required: false
+    });
+    expect(visualContextPolicyConfig?.metadata.visual_context_source_categories).toEqual([
+      "browser_screenshot",
+      "document_image",
+      "ocr_text",
+      "screen_capture",
+      "uploaded_image"
+    ]);
+    expect(visualContextPolicyConfig?.metadata.visual_context_tool_authority_categories).toEqual([
+      "browser_action",
+      "database_access",
+      "external_response",
+      "memory_write",
+      "secret_manager_access",
+      "shell_execution",
+      "tool_call"
+    ]);
+    expect(visualContextPolicyConfig?.metadata.env_key_names).toEqual(["VISION_CONTEXT_TOKEN"]);
+    expect(visualContextPolicyConfig?.metadata.secret_ref_key_names).toEqual(["VISION_CONTEXT_TOKEN"]);
+    expect(visualContextPolicyConfig?.data_classes).toEqual(["confidential", "credential", "pii"]);
+    expect(visualContextPolicyConfig?.actions).toEqual(["approve", "call", "execute", "publish", "read", "remember", "send", "write"]);
+    expect(JSON.stringify(visualContextPolicyConfig)).not.toContain("${VISION_CONTEXT_TOKEN}");
+    expect(JSON.stringify(visualContextPolicyConfig)).not.toContain("browser_screenshot_observation");
+    expect(JSON.stringify(visualContextPolicyConfig)).not.toContain("screen_capture_after_navigation");
+    expect(JSON.stringify(visualContextPolicyConfig)).not.toContain("customer_uploaded_invoice_image");
+    expect(JSON.stringify(visualContextPolicyConfig)).not.toContain("ocr_text_from_support_attachment");
+    expect(JSON.stringify(visualContextPolicyConfig)).not.toContain("support_db.update_customer_record");
+    expect(JSON.stringify(visualContextPolicyConfig)).not.toContain("slack.post_escalation_reply");
+    expect(JSON.stringify(visualContextPolicyConfig)).not.toContain("browser.submit_customer_form");
+    expect(JSON.stringify(visualContextPolicyConfig)).not.toContain("memory.write_long_term_summary");
+    expect(JSON.stringify(visualContextPolicyConfig)).not.toContain("vault_secret_lookup.read_support_token");
+    expect(JSON.stringify(visualContextPolicyConfig)).not.toContain("visual_customer_email");
+    expect(JSON.stringify(visualContextPolicyConfig)).not.toContain("visual_account_number");
+    expect(JSON.stringify(visualContextPolicyConfig)).not.toContain("confidential_invoice_image");
     const inboundTriggerConfig = surfaces.runtime_config.find((surface) => surface.path === "inbox/support-triage.yaml");
     expect(inboundTriggerConfig).toBeDefined();
     expect(inboundTriggerConfig).toMatchObject({

@@ -711,6 +711,42 @@ Tool output policy metadata may include:
 
 Raw observation labels, source names, tool names, follow-up action strings, data-field labels, and secret placeholders are not emitted. Source categories, raw-output posture, prompt-context posture, delimiter and sanitization posture, prompt-injection filter posture, authority categories, approval posture, data-class booleans, and credential key names let rules detect cases where untrusted browser, shell, MCP, API, retrieval, or customer outputs can steer privileged follow-up actions.
 
+## Visual Context Policy Posture
+
+Vision, visual-context, screenshot, screen-capture, OCR, multimodal, image-input, and image-observation configs are also normalized into `runtime_config` objects when common visual context handling configuration files are discovered.
+
+Visual context policy metadata may include:
+
+- `parsed_visual_context_policy_config`
+- `visual_context_policy_fields`
+- `visual_context_source_redacted`
+- `visual_context_source_categories`
+- `visual_context_untrusted_sources`
+- `visual_context_raw_image_enabled`
+- `visual_context_ocr_enabled`
+- `visual_context_prompt_context`
+- `visual_context_system_or_developer_context`
+- `visual_context_boundary_disabled`
+- `visual_context_sanitization_disabled`
+- `visual_context_prompt_injection_filter_disabled`
+- `visual_context_followup_tool_calls`
+- `visual_context_tool_authority_categories`
+- `visual_context_write_authority`
+- `visual_context_external_reach`
+- `visual_context_memory_write`
+- `visual_context_shell_authority`
+- `visual_context_destructive_authority`
+- `visual_context_approval_input`
+- `visual_context_secret_capture`
+- `visual_context_secret_access`
+- `visual_context_sensitive_data`
+- `visual_context_pii_data`
+- `visual_context_approval_required`
+- `env_key_names`
+- `secret_ref_key_names`
+
+Raw image paths, screenshot labels, OCR text, source names, tool names, action strings, data-field labels, and secret placeholders are not emitted. Source categories, raw-image posture, OCR posture, prompt-context posture, visual-boundary posture, sanitization posture, prompt-injection filter posture, authority categories, approval posture, data-class booleans, and credential key names let rules detect cases where untrusted screenshots, uploaded images, screen captures, or OCR-derived text can steer privileged agent actions.
+
 ## SaaS And API Connector Posture
 
 SaaS, API, ticketing, messaging, email, CRM, and repository-service connector configs are also normalized into `runtime_config` objects when common connector configuration files are discovered.

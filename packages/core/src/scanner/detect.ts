@@ -137,6 +137,11 @@ export async function detectSurfaces(files: WalkedFile[]): Promise<DetectedSurfa
       continue;
     }
 
+    if (isVisualContextPolicyConfigPath(file.relativePath, basename)) {
+      detectVisualContextPolicyConfig(file, text, surfaces);
+      continue;
+    }
+
     if (isAgentWebhookEgressConfigPath(file.relativePath, basename)) {
       detectAgentWebhookEgressConfig(file, text, surfaces);
       continue;
@@ -2098,6 +2103,83 @@ function detectToolOutputPolicyConfig(file: WalkedFile, text: string | undefined
   });
 }
 
+function detectVisualContextPolicyConfig(file: WalkedFile, text: string | undefined, surfaces: DetectedSurfaces): void {
+  const parsed = parseStructuredConfig(text ?? "", file.relativePath);
+  if (parsed.parseFailed) {
+    addDiagnostic(surfaces, file, {
+      parser: parsed.parser ?? "structured_config",
+      code: "VISUAL_CONTEXT_POLICY_CONFIG_PARSE_FAILED",
+      reason: "Visual context policy configuration could not be parsed. Raw content was redacted."
+    });
+  }
+
+  const posture = classifyVisualContextPolicyConfig(parsed.value, file.relativePath);
+  const actions = new Set<ActionType>(["call", "read"]);
+  if (posture.visual_context_followup_tool_calls || posture.visual_context_write_authority) actions.add("write");
+  if (posture.visual_context_external_reach) {
+    actions.add("send");
+    actions.add("publish");
+  }
+  if (posture.visual_context_memory_write) actions.add("remember");
+  if (posture.visual_context_shell_authority) actions.add("execute");
+  if (posture.visual_context_approval_input) actions.add("approve");
+
+  const dataClasses = new Set<SurfaceObject["data_classes"][number]>(["unknown"]);
+  if (
+    posture.visual_context_secret_capture ||
+    posture.visual_context_secret_access ||
+    posture.env_key_names.some(isCredentialLikeKeyName) ||
+    posture.secret_ref_key_names.length > 0
+  ) {
+    dataClasses.add("credential");
+  }
+  if (posture.visual_context_sensitive_data || posture.visual_context_untrusted_sources) dataClasses.add("confidential");
+  if (posture.visual_context_pii_data) dataClasses.add("pii");
+  if (dataClasses.size > 1) dataClasses.delete("unknown");
+
+  const object = createSurfaceObject({
+    type: "runtime_config",
+    name: path.basename(file.relativePath),
+    path: file.relativePath,
+    trust_level: inferTrustLevel(file.relativePath),
+    data_classes: uniqueDataClasses([...dataClasses] as SurfaceObject["data_classes"]),
+    actions: uniqueActions([...actions]),
+    side_effect:
+      posture.visual_context_followup_tool_calls ||
+      posture.visual_context_write_authority ||
+      posture.visual_context_external_reach ||
+      posture.visual_context_memory_write ||
+      posture.visual_context_approval_input,
+    reversible: !posture.visual_context_external_reach && !posture.visual_context_destructive_authority,
+    external_reach: posture.visual_context_external_reach,
+    secret_exposure:
+      posture.visual_context_secret_capture ||
+      posture.visual_context_secret_access ||
+      posture.env_key_names.some(isCredentialLikeKeyName) ||
+      posture.secret_ref_key_names.length > 0,
+    reason: "Visual context policy configuration discovered as screenshot, OCR, image-input, and follow-up action posture.",
+    metadata: {
+      content_redacted: true,
+      values_collected: false,
+      parsed_visual_context_policy_config: Boolean(parsed.value) && !parsed.parseFailed,
+      parse_error: parsed.parseFailed,
+      ...posture
+    }
+  });
+  surfaces.runtime_config.push({
+    ...object,
+    untrusted_to_privileged:
+      posture.visual_context_untrusted_sources &&
+      (posture.visual_context_raw_image_enabled || posture.visual_context_ocr_enabled) &&
+      posture.visual_context_prompt_context &&
+      posture.visual_context_followup_tool_calls &&
+      (posture.visual_context_sanitization_disabled ||
+        posture.visual_context_prompt_injection_filter_disabled ||
+        posture.visual_context_boundary_disabled ||
+        posture.visual_context_approval_required === false)
+  });
+}
+
 function detectSaasConnectorConfig(file: WalkedFile, text: string | undefined, surfaces: DetectedSurfaces): void {
   const parsed = parseStructuredConfig(text ?? "", file.relativePath);
   if (parsed.parseFailed) {
@@ -3121,6 +3203,25 @@ function isToolOutputPolicyConfigPath(relativePath: string, basename: string): b
   return toolOutputName || (toolOutputDirectory && configName);
 }
 
+function isVisualContextPolicyConfigPath(relativePath: string, basename: string): boolean {
+  const normalized = relativePath.replaceAll("\\", "/").toLowerCase();
+  const lowerBase = basename.toLowerCase();
+  if (!/\.(json|ya?ml|toml)$/iu.test(lowerBase)) return false;
+  if (normalized.startsWith(".github/workflows/")) return false;
+  if (normalized.startsWith("rules/")) return false;
+  const segments = normalized.split("/").slice(0, -1);
+  const visualDirectory = segments.some((segment) =>
+    /^(vision|visual|visual-context|visual_context|screenshots?|screen-capture|screen_capture|multimodal|multi-modal|ocr|image-inputs?|image_inputs?|image-observations?|image_observations?)$/iu.test(
+      segment
+    )
+  );
+  const visualName = /(?:vision|visual[-_]?context|multimodal|multi[-_]?modal|screenshot|screen[-_]?capture|ocr|image[-_]?input|image[-_]?observation|visual[-_]?policy)/iu.test(
+    lowerBase
+  );
+  const configName = /(?:config|settings|policy|handler|router|context|vision|visual|image|screen|screenshot|ocr|multimodal|tools?)/iu.test(lowerBase);
+  return visualName || (visualDirectory && configName);
+}
+
 function isAgentWebhookEgressConfigPath(relativePath: string, basename: string): boolean {
   const normalized = relativePath.replaceAll("\\", "/").toLowerCase();
   const lowerBase = basename.toLowerCase();
@@ -3895,6 +3996,35 @@ interface ToolOutputPolicyPosture {
   tool_output_sensitive_data: boolean;
   tool_output_pii_data: boolean;
   tool_output_approval_required: boolean;
+  env_key_names: string[];
+  secret_ref_key_names: string[];
+}
+
+interface VisualContextPolicyPosture {
+  visual_context_policy_fields: string[];
+  visual_context_source_redacted: boolean;
+  visual_context_source_categories: string[];
+  visual_context_untrusted_sources: boolean;
+  visual_context_raw_image_enabled: boolean;
+  visual_context_ocr_enabled: boolean;
+  visual_context_prompt_context: boolean;
+  visual_context_system_or_developer_context: boolean;
+  visual_context_boundary_disabled: boolean;
+  visual_context_sanitization_disabled: boolean;
+  visual_context_prompt_injection_filter_disabled: boolean;
+  visual_context_followup_tool_calls: boolean;
+  visual_context_tool_authority_categories: string[];
+  visual_context_write_authority: boolean;
+  visual_context_external_reach: boolean;
+  visual_context_memory_write: boolean;
+  visual_context_shell_authority: boolean;
+  visual_context_destructive_authority: boolean;
+  visual_context_approval_input: boolean;
+  visual_context_secret_capture: boolean;
+  visual_context_secret_access: boolean;
+  visual_context_sensitive_data: boolean;
+  visual_context_pii_data: boolean;
+  visual_context_approval_required: boolean;
   env_key_names: string[];
   secret_ref_key_names: string[];
 }
@@ -8100,6 +8230,295 @@ function hasToolOutputApprovalRequiredSignal(fields: RuntimeField[]): boolean {
 
 function isToolOutputPolicySecurityField(fieldPath: string): boolean {
   return /tool|result|output|observation|source|input|capture|include|raw|prompt|context|message|role|system|developer|delimiter|boundary|sanitize|filter|validation|prompt[_-]?injection|follow|action|route|invoke|call|mcp|browser|shell|command|database|db|secret|token|credential|auth|env|memory|external|write|delete|approval|customer|ticket|retrieved|rag|pii|sensitive/iu.test(
+    fieldPath
+  );
+}
+
+function classifyVisualContextPolicyConfig(value: unknown, filePath: string): VisualContextPolicyPosture {
+  const fields = flattenRuntimeFields(value);
+  const stringValues = collectFieldStringValues(fields);
+  const sourceCategories = collectVisualContextSourceCategories(fields);
+  const authorityCategories = collectVisualContextAuthorityCategories(fields);
+  const envKeys = uniqueStrings([
+    ...collectEnvKeyNamesFromConfig(value).filter(isLikelyEnvKeyName),
+    ...extractEnvironmentReferenceKeys(stringValues)
+  ]);
+  const secretRefKeys = extractSecretReferenceKeys(stringValues);
+  const secretAccess = authorityCategories.includes("secret_manager_access") || hasVisualContextSecretAccessSignal(fields);
+  const secretCapture = hasVisualContextSecretCaptureSignal(fields);
+
+  return {
+    visual_context_policy_fields: fields
+      .map((field) => field.path)
+      .filter((fieldPath) => isVisualContextPolicySecurityField(fieldPath))
+      .sort((a, b) => a.localeCompare(b)),
+    visual_context_source_redacted: sourceCategories.length > 0 || hasVisualContextSourceSignal(fields),
+    visual_context_source_categories: sourceCategories,
+    visual_context_untrusted_sources: hasVisualContextUntrustedSourceSignal(fields) || sourceCategories.some((category) =>
+      ["browser_screenshot", "screen_capture", "uploaded_image", "document_image", "ocr_text", "camera_capture"].includes(category)
+    ),
+    visual_context_raw_image_enabled: hasVisualContextRawImageSignal(fields),
+    visual_context_ocr_enabled: hasVisualContextOcrSignal(fields),
+    visual_context_prompt_context: hasVisualContextPromptSignal(fields),
+    visual_context_system_or_developer_context: hasVisualContextSystemOrDeveloperSignal(fields),
+    visual_context_boundary_disabled: hasVisualContextBoundaryDisabledSignal(fields),
+    visual_context_sanitization_disabled: hasVisualContextSanitizationDisabledSignal(fields),
+    visual_context_prompt_injection_filter_disabled: hasVisualContextPromptInjectionFilterDisabledSignal(fields),
+    visual_context_followup_tool_calls: authorityCategories.length > 0 || hasVisualContextFollowupToolSignal(fields),
+    visual_context_tool_authority_categories: authorityCategories,
+    visual_context_write_authority: hasVisualContextWriteAuthoritySignal(fields, authorityCategories),
+    visual_context_external_reach: authorityCategories.includes("external_response") || hasVisualContextExternalReachSignal(fields),
+    visual_context_memory_write: authorityCategories.includes("memory_write") || hasVisualContextMemoryWriteSignal(fields),
+    visual_context_shell_authority: authorityCategories.includes("shell_execution"),
+    visual_context_destructive_authority: hasVisualContextDestructiveAuthoritySignal(fields, authorityCategories),
+    visual_context_approval_input: hasVisualContextApprovalInputSignal(fields),
+    visual_context_secret_capture: secretCapture,
+    visual_context_secret_access: secretAccess,
+    visual_context_sensitive_data: hasVisualContextSensitiveDataSignal(fields) || secretCapture || secretAccess,
+    visual_context_pii_data: hasVisualContextPiiDataSignal(fields),
+    visual_context_approval_required: hasVisualContextApprovalRequiredSignal(fields),
+    env_key_names: envKeys,
+    secret_ref_key_names: secretRefKeys
+  };
+}
+
+function collectVisualContextSourceCategories(fields: RuntimeField[]): string[] {
+  const categories = new Set<string>();
+  for (const field of fields) {
+    const text = `${field.path} ${fieldValueText(field)}`;
+    if (/(?:^|[_\W])(browser|web[_\s-]?page|dom|playwright|puppeteer|selenium|navigate)(?:[_\W]|$)/iu.test(text) &&
+      /(?:^|[_\W])(screenshot|screen[_\s-]?capture|image|vision|visual)(?:[_\W]|$)/iu.test(text)) {
+      categories.add("browser_screenshot");
+    }
+    if (/(?:^|[_\W])(screen|desktop|window|viewport|screenshot|screen[_\s-]?capture|capture)(?:[_\W]|$)/iu.test(text)) {
+      categories.add("screen_capture");
+    }
+    if (/(?:^|[_\W])(upload|uploaded|attachment|customer[_\s-]?uploaded|user[_\s-]?image|file[_\s-]?image|image[_\s-]?input)(?:[_\W]|$)/iu.test(text)) {
+      categories.add("uploaded_image");
+    }
+    if (/(?:^|[_\W])(invoice|receipt|statement|document|pdf|form|id[_\s-]?card|passport|license|image[_\s-]?document)(?:[_\W]|$)/iu.test(text)) {
+      categories.add("document_image");
+    }
+    if (/(?:^|[_\W])(ocr|optical[_\s-]?character|extracted[_\s-]?text|image[_\s-]?text|text[_\s-]?from[_\s-]?image)(?:[_\W]|$)/iu.test(text)) {
+      categories.add("ocr_text");
+    }
+    if (/(?:^|[_\W])(camera|webcam|photo|picture|snapshot)(?:[_\W]|$)/iu.test(text)) categories.add("camera_capture");
+  }
+  return [...categories].sort((a, b) => a.localeCompare(b));
+}
+
+function collectVisualContextAuthorityCategories(fields: RuntimeField[]): string[] {
+  const categories = new Set<string>();
+  for (const field of fields) {
+    const text = `${field.path} ${fieldValueText(field)}`;
+    const authorityField = /(?:^|\.)(follow_up|followup|next_actions?|actions?|tools?|allowed_tools|tool_calls?|commands?|capabilities|on_match|on_result|after_result|auto_execute|routes?)(?:\.|$)/iu.test(
+      field.path
+    );
+    if (
+      !authorityField &&
+      /(?:^|\.)(sources?|inputs?|images?|screenshots?|captures?|ocr|context|prompt|metadata|data_scope)(?:\.|$)/iu.test(field.path)
+    ) {
+      continue;
+    }
+    if (/(?:^|[_\W])(tool|tools|function|function[_\s-]?call|mcp|connector|capability)(?:[_\W]|$)/iu.test(text)) categories.add("tool_call");
+    if (/(?:^|[_\W])(database|db|sql|query|support[_\s-]?db|warehouse|update[_\s-]?customer[_\s-]?record)(?:[_\W]|$)/iu.test(text)) {
+      categories.add("database_access");
+    }
+    if (/(?:^|[_\W])(slack|email|webhook|message|ticket|issue|comment|reply|respond|send|post|publish)(?:[_\W]|$)/iu.test(text)) {
+      categories.add("external_response");
+    }
+    if (/(?:^|[_\W])(browser|playwright|puppeteer|selenium|click|form|upload|download|navigate|submit)(?:[_\W]|$)/iu.test(text)) {
+      categories.add("browser_action");
+    }
+    if (/(?:^|[_\W])(vault|secret|secrets|secret[_\s-]?manager|key[_\s-]?vault|credential|token)(?:[_\W]|$)/iu.test(text)) {
+      categories.add("secret_manager_access");
+    }
+    if (/(?:^|[_\W])(memory|remember|store|persist|session[_\s-]?state|long[_\s-]?term)(?:[_\W]|$)/iu.test(text)) {
+      categories.add("memory_write");
+    }
+    if (/(?:^|[_\W])(shell|bash|command|exec|terminal|python|node|subprocess|script)(?:[_\W]|$)/iu.test(text)) categories.add("shell_execution");
+    if (/(?:^|[_\W])(filesystem|file[_\s-]?write|workspace|repo|repository|git|commit|push|pull[_\s-]?request|merge)(?:[_\W]|$)/iu.test(text)) {
+      categories.add("repo_or_filesystem_write");
+    }
+  }
+  return [...categories].sort((a, b) => a.localeCompare(b));
+}
+
+function hasVisualContextSourceSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => /(?:^|\.)(sources?|inputs?|images?|screenshots?|captures?|vision|visual|ocr|attachments?)(?:\.|$)/iu.test(field.path));
+}
+
+function hasVisualContextUntrustedSourceSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /(?:^|[_\W])(untrusted|external|browser|web[_-]?page|screenshot|screen[_\s-]?capture|ocr|image|visual|vision|upload|uploaded|attachment|customer|client|ticket|support|issue|message|email|slack|chat|camera|webcam)(?:[_\W]|$)/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    )
+  );
+}
+
+function hasVisualContextRawImageSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /(?:^|[_\W])(raw[_\s-]?image|raw[_\s-]?images|include[_\s-]?raw|raw[_\s-]?screenshot|full[_\s-]?image|verbatim|unprocessed|passthrough)(?:[_\W]|$)/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    ) && truthyConfigValue(field.value)
+  );
+}
+
+function hasVisualContextOcrSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /(?:^|[_\W])(ocr|optical[_\s-]?character|include[_\s-]?ocr|extracted[_\s-]?text|image[_\s-]?text|text[_\s-]?from[_\s-]?image)(?:[_\W]|$)/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    ) && truthyConfigValue(field.value)
+  );
+}
+
+function hasVisualContextPromptSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /(?:^|[_\W])(prompt|context[_\s-]?window|model[_\s-]?context|messages?|system|developer|assistant|inject[_\s-]?into[_\s-]?prompt|vision[_\s-]?context)(?:[_\W]|$)/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    ) && truthyConfigValue(field.value)
+  );
+}
+
+function hasVisualContextSystemOrDeveloperSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /(?:^|[_\W])(system|developer|system[_\s-]?prompt|developer[_\s-]?prompt|privileged[_\s-]?role)(?:[_\W]|$)/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    )
+  );
+}
+
+function hasVisualContextBoundaryDisabledSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => {
+    const text = `${field.path} ${fieldValueText(field)}`;
+    if (/(?:^|\.)(boundary|boundaries|delimiter|delimiters|isolation|separation|taint|provenance|caption_boundary|caption-boundary|crop|mask|quote|escape)(?:\.|$)/iu.test(
+      field.path
+    )) {
+      return disabledConfigValue(field.value) || /(?:^|[_\W])(none|disabled|raw|passthrough|off|false)(?:[_\W]|$)/iu.test(text);
+    }
+    return /(?:^|[_\W])(no[_\s-]?boundary|boundary[_\s-]?none|raw[_\s-]?image|passthrough[_\s-]?image|unbounded[_\s-]?ocr)(?:[_\W]|$)/iu.test(text);
+  });
+}
+
+function hasVisualContextSanitizationDisabledSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => {
+    const text = `${field.path} ${fieldValueText(field)}`;
+    if (/(?:^|\.)(sanitize|sanitization|filter|validation|validate|strip_visual_instructions|strip-visual-instructions|strip_ocr_instructions|strip-ocr-instructions|escape|redact|mask)(?:\.|$)/iu.test(
+      field.path
+    )) {
+      return disabledConfigValue(field.value) || /(?:^|[_\W])(disabled|off|false|none|raw|passthrough|bypass|skip)(?:[_\W]|$)/iu.test(text);
+    }
+    return /(?:^|[_\W])(unsanitized|raw[_\s-]?image|raw[_\s-]?ocr|no[_\s-]?sanitization|bypass[_\s-]?filter)(?:[_\W]|$)/iu.test(text);
+  });
+}
+
+function hasVisualContextPromptInjectionFilterDisabledSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => {
+    const text = `${field.path} ${fieldValueText(field)}`;
+    if (/(?:^|\.)(prompt_injection_filter|prompt-injection-filter|instruction_filter|instruction-filter|jailbreak_filter|jailbreak-filter|visual_prompt_injection|visual-prompt-injection)(?:\.|$)/iu.test(
+      field.path
+    )) {
+      return disabledConfigValue(field.value) || /(?:^|[_\W])(disabled|off|false|none|raw|passthrough|bypass|skip)(?:[_\W]|$)/iu.test(text);
+    }
+    return /(?:^|[_\W])(prompt[_\s-]?injection|visual[_\s-]?prompt[_\s-]?injection|jailbreak|instruction[_\s-]?filter)(?:[_\W]|$)/iu.test(text) &&
+      /(?:^|[_\W])(disabled|off|false|none|bypass|skip|passthrough)(?:[_\W]|$)/iu.test(text);
+  });
+}
+
+function hasVisualContextFollowupToolSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /(?:^|[_\W])(follow[_\s-]?up|next[_\s-]?action|auto[_\s-]?execute|on[_\s-]?result|after[_\s-]?vision|after[_\s-]?ocr|tool[_\s-]?call|invoke|call[_\s-]?tools?|route[_\s-]?to[_\s-]?tool)(?:[_\W]|$)/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    ) && truthyConfigValue(field.value)
+  );
+}
+
+function hasVisualContextWriteAuthoritySignal(fields: RuntimeField[], categories: string[]): boolean {
+  return categories.some((category) =>
+    ["database_access", "external_response", "memory_write", "repo_or_filesystem_write", "shell_execution"].includes(category)
+  ) || fields.some((field) =>
+    /(?:^|[_\W])(write|update|create|delete|reply|respond|send|post|publish|comment|commit|push|merge|deploy|remember|persist|assign)(?:[_\W]|$)/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    )
+  );
+}
+
+function hasVisualContextExternalReachSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /(?:^|[_\W])(slack|email|webhook|send|post|publish|reply|respond|ticket|issue|external|api|customer[_\s-]?system)(?:[_\W]|$)/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    )
+  );
+}
+
+function hasVisualContextMemoryWriteSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /(?:^|[_\W])(memory|remember|store|persist|session[_\s-]?state|long[_\s-]?term)(?:[_\W]|$)/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    )
+  );
+}
+
+function hasVisualContextDestructiveAuthoritySignal(fields: RuntimeField[], categories: string[]): boolean {
+  return categories.includes("shell_execution") ||
+    fields.some((field) =>
+      /(?:^|[_\W])(delete|drop|destroy|destructive|irreversible|overwrite|merge|deploy|charge|refund|close[_\s-]?account|remove|revoke)(?:[_\W]|$)/iu.test(
+        `${field.path} ${fieldValueText(field)}`
+      )
+    );
+}
+
+function hasVisualContextApprovalInputSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /(?:^|[_\W])(approval|approve|review|reviewer|decision|gate|human[_\s-]?review|risk[_\s-]?score|auto[_\s-]?approve)(?:[_\W]|$)/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    )
+  );
+}
+
+function hasVisualContextSecretCaptureSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /(?:^|[_\W])(include[_\s-]?secrets?|secret[_\s-]?image|secret[_\s-]?ocr|credential[_\s-]?image|token[_\s-]?image|api[_-]?key|authorization)(?:[_\W]|$)/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    ) && truthyConfigValue(field.value)
+  );
+}
+
+function hasVisualContextSecretAccessSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /(?:^|[_\W])(secret|secrets|token|credential|api[_-]?key|password|vault|key[_\s-]?vault|authorization|oauth)(?:[_\W]|$)/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    )
+  );
+}
+
+function hasVisualContextSensitiveDataSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /(?:^|[_\W])(customer|client|ticket|support|internal|confidential|private|proprietary|sensitive|account|billing|payment|invoice|statement|prod|production|admin|credential|token|api[_-]?key|secret)(?:[_\W]|$)/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    )
+  );
+}
+
+function hasVisualContextPiiDataSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /(?:^|[_\W])(pii|email|phone|address|ssn|passport|dob|date[_\s-]?of[_\s-]?birth|customer[_-]?id|user[_-]?id|account[_-]?id|invoice|receipt)(?:[_\W]|$)/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    )
+  );
+}
+
+function hasVisualContextApprovalRequiredSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /(?:approval[_\s.-]?required|required[_\s.-]?approval|require[_\s.-]?approval|human[_\s.-]?approval|manual[_\s.-]?review|review[_\s.-]?required|confirm|confirmation|human[_\s.-]?in[_\s.-]?the[_\s.-]?loop)/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    ) &&
+    truthyConfigValue(field.value)
+  );
+}
+
+function isVisualContextPolicySecurityField(fieldPath: string): boolean {
+  return /vision|visual|image|screenshot|screen|capture|ocr|source|input|attachment|upload|raw|prompt|context|message|role|system|developer|boundary|delimiter|sanitize|filter|validation|prompt[_-]?injection|follow|action|route|invoke|call|tool|mcp|browser|shell|command|database|db|secret|token|credential|auth|env|memory|external|write|delete|approval|customer|ticket|pii|sensitive/iu.test(
     fieldPath
   );
 }

@@ -63,6 +63,7 @@ A finding should be considered production-grade when it includes:
 - agent approval-gate metadata for model-mediated decisions, untrusted approval prompts, default-allow posture, auto-execution, human-review posture, and privileged action categories without emitting prompts, model names, action strings, reviewer labels, source labels, or token placeholders
 - agent context-composer metadata for untrusted context promotion into system or developer roles, raw-context handling, delimiter posture, sanitization posture, and privileged tool categories without emitting role prompts, source labels, tool names, action strings, or token placeholders
 - tool-output policy metadata for raw browser, shell, MCP, API, retrieval, or customer observations routed into prompt context and follow-up actions without emitting observation labels, tool names, action strings, source labels, data-field labels, or token placeholders
+- visual context policy metadata for screenshots, screen captures, uploaded images, OCR text, and multimodal observations routed into prompt context and follow-up actions without emitting image paths, OCR text, source labels, tool names, action strings, data-field labels, or token placeholders
 - SaaS/API connector metadata for broad credential-backed write scopes without emitting raw OAuth scopes, endpoints, workspaces, channels, queues, or customer-system names
 - secret-manager metadata for read/list credential-broker authority without emitting vault URLs, secret paths, policy names, role names, or resource IDs
 - database connector metadata for credential-backed read/write/query authority without emitting hosts, connection strings, usernames, or table names
@@ -153,6 +154,7 @@ Examples:
 - model-mediated approval gate plus untrusted approval context plus default-allow behavior plus auto-executed privileged actions and no required human reviewer
 - context composer plus untrusted customer/retrieval/tool-output context promoted into system or developer roles plus disabled sanitization and privileged tool authority
 - tool-output policy plus raw browser, shell, MCP, API, or customer observations injected into model context plus disabled sanitization, disabled prompt-injection filtering, follow-up tool authority, credentials, and no approval gate
+- visual context policy plus raw screenshots, uploaded images, or OCR text injected into model context plus disabled visual sanitization, disabled prompt-injection filtering, follow-up tool authority, credentials, and no approval gate
 - SaaS connector with broad write scopes plus credentials plus untrusted input plus no approval gate
 - secret manager connector with read/list scope plus tool injection plus untrusted input plus no approval gate
 - database connector with credentials plus write/query authority plus sensitive data plus untrusted input

@@ -1,0 +1,34 @@
+mode: visual_context_policy
+auth:
+  token: ${VISION_CONTEXT_TOKEN}
+sources:
+  - browser_screenshot_observation
+  - screen_capture_after_navigation
+  - customer_uploaded_invoice_image
+  - ocr_text_from_support_attachment
+handling:
+  include_raw_images: true
+  include_ocr_text: true
+  inject_into_prompt: system
+  boundary: none
+  sanitization: disabled
+  prompt_injection_filter: disabled
+  strip_visual_instructions: false
+  include_secrets: true
+  allow_visual_content_to_request_tools: true
+follow_up:
+  auto_call_tools: true
+  tools:
+    - support_db.update_customer_record
+    - slack.post_escalation_reply
+    - browser.submit_customer_form
+    - memory.write_long_term_summary
+    - vault_secret_lookup.read_support_token
+  allow_shell_commands: true
+  approval_required: false
+approval:
+  use_visual_context_as_decision_context: true
+data_scope:
+  - visual_customer_email
+  - visual_account_number
+  - confidential_invoice_image

@@ -36,6 +36,7 @@
 - Add approval-gate integrity posture for model-mediated decisions, default-allow review paths, auto-execution, and human-review boundaries.
 - Add context-composer posture for role-boundary assembly, source promotion, sanitization, delimiters, and privileged tool exposure.
 - Add tool-output policy posture for raw browser, shell, MCP, API, retrieval, and customer observations that can enter prompt context or request privileged follow-up actions.
+- Add visual and OCR context posture for screenshots, uploaded images, OCR text, and multimodal observations that can enter prompt context or request privileged follow-up actions.
 - Add artifact/output export posture for generated prompts, completions, tool outputs, browser artifacts, retrieval context, memory, secrets, public access, retention, and redaction boundaries.
 - Add webhook/callback egress posture for model-generated payload delivery, sensitive context capture, retry queues, redaction posture, and approval boundaries.
 - Add container runtime isolation posture for privileged containers, Docker socket mounts, host paths, host namespaces, dangerous capabilities, untrusted inputs, and approval boundaries.

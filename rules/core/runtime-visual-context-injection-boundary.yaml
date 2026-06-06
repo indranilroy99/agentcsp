@@ -1,0 +1,53 @@
+id: AGENTCSP-RUNTIME-040
+name: Visual or OCR context can steer privileged agent actions
+description: A visual context policy sends raw screenshots, uploaded images, or OCR text into privileged model context while allowing follow-up tool calls without visual sanitization, prompt-injection filtering, boundary isolation, or approval.
+category: visual_context_injection_boundary
+severity: critical
+maps_to:
+  owasp:
+    - LLM01:2025 Prompt Injection
+    - LLM02:2025 Sensitive Information Disclosure
+    - LLM06:2025 Excessive Agency
+  mitre_atlas:
+    - AML.T0051 LLM Prompt Injection
+    - AML.T0057 Exfiltration via Cyber Means
+  nist_ai_rmf:
+    - MAP 5.1
+    - MEASURE 2.9
+    - MANAGE 2.4
+match:
+  object_type: runtime_config
+  where:
+    - field: metadata.parsed_visual_context_policy_config
+      op: equals
+      value: true
+    - field: metadata.visual_context_untrusted_sources
+      op: equals
+      value: true
+    - field: metadata.visual_context_raw_image_enabled
+      op: equals
+      value: true
+    - field: metadata.visual_context_ocr_enabled
+      op: equals
+      value: true
+    - field: metadata.visual_context_prompt_context
+      op: equals
+      value: true
+    - field: metadata.visual_context_sanitization_disabled
+      op: equals
+      value: true
+    - field: metadata.visual_context_prompt_injection_filter_disabled
+      op: equals
+      value: true
+    - field: metadata.visual_context_followup_tool_calls
+      op: equals
+      value: true
+    - field: metadata.visual_context_approval_required
+      op: equals
+      value: false
+    - field: secret_exposure
+      op: equals
+      value: true
+recommendation:
+  control: quarantine
+  text: Treat visual and OCR inputs as tainted context, isolate them from system and developer prompts, strip visual instruction text, preserve provenance boundaries, and require approval before screenshot or OCR-derived context can trigger writes, browser actions, memory persistence, external sends, shell execution, or secret access.
