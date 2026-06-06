@@ -739,6 +739,14 @@ The current iteration adds:
 - rule `AGENTCSP-RUNTIME-022` for context composers that combine untrusted sources, privileged role injection, disabled sanitization/delimiting, privileged tool authority, credential exposure, and missing approval
 - scanner, rule, fixture verifier, and redaction coverage proving role prompts, source labels, tool names, action strings, data-field labels, and token placeholders stay redacted
 
+## Browser Remote-Debugging Session Pass
+
+The current iteration adds:
+
+- rule `AGENTCSP-RUNTIME-023` for authenticated browser-agent sessions that expose remote debugging while reusing cookie, storage-state, or profile references and credential key names
+- vulnerable fixture coverage through the existing Playwright browser-session config with persistent profile, storage state, cookie jar, remote debugging, broad origins, untrusted navigation, and no approval gate
+- rule, fixture verifier, and redaction coverage proving debugging URLs, cookie/storage paths, profile paths, origin names, and token placeholders stay redacted
+
 ## Initial Build Recommendation
 
 Start with a CLI-first MVP before building the dashboard:

@@ -62,6 +62,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-020")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-021")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-022")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-023")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-CICD-002")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-AUTOMATION-001")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-AUTOMATION-002")).toBe(true);
@@ -193,6 +194,25 @@ describe("rule engine", () => {
     expect(JSON.stringify(runtimeBrowserSessionFindings[0])).not.toContain(".browser/support-profile");
     expect(JSON.stringify(runtimeBrowserSessionFindings[0])).not.toContain(".auth/support-browser-state.json");
     expect(JSON.stringify(runtimeBrowserSessionFindings[0])).not.toContain("support.example.invalid");
+    const runtimeBrowserDebugFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-RUNTIME-023");
+    expect(runtimeBrowserDebugFindings).toHaveLength(1);
+    expect(runtimeBrowserDebugFindings[0]?.matched_object.path).toBe("browser/session.yaml");
+    expect(runtimeBrowserDebugFindings[0]?.matched_object.metadata).toMatchObject({
+      browser_provider: "playwright",
+      browser_authenticated_session: true,
+      browser_remote_debugging: true,
+      browser_path_references_redacted: true,
+      browser_cookie_storage: true,
+      browser_session_storage: true
+    });
+    expect(runtimeBrowserDebugFindings[0]?.severity).toBe("critical");
+    expect(runtimeBrowserDebugFindings[0]?.confidence).toBe("very_high");
+    expect(runtimeBrowserDebugFindings[0]?.recommended_control).toBe("deny");
+    expect(JSON.stringify(runtimeBrowserDebugFindings[0])).not.toContain("${BROWSER_SESSION_TOKEN}");
+    expect(JSON.stringify(runtimeBrowserDebugFindings[0])).not.toContain(".browser/support-profile");
+    expect(JSON.stringify(runtimeBrowserDebugFindings[0])).not.toContain(".auth/support-browser-state.json");
+    expect(JSON.stringify(runtimeBrowserDebugFindings[0])).not.toContain(".auth/customer-support-cookies.json");
+    expect(JSON.stringify(runtimeBrowserDebugFindings[0])).not.toContain("http://127.0.0.1:9222");
     const runtimeSaasConnectorFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-RUNTIME-012");
     expect(runtimeSaasConnectorFindings).toHaveLength(1);
     expect(runtimeSaasConnectorFindings[0]?.matched_object.path).toBe("connectors/slack-customer-success.yaml");

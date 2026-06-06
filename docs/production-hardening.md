@@ -43,7 +43,7 @@ A finding should be considered production-grade when it includes:
 - Claude-style runtime permission allowlists normalized into redacted auto-approved privileged tool signals
 - auto-approved destructive MCP tool refs correlated to credential-backed runtime servers
 - runtime permission allowlists correlated to exact package scripts and release authority
-- browser-session metadata for persistent authenticated state, broad origins, and untrusted click/form authority without emitting cookie files, profile paths, origins, or endpoints
+- browser-session metadata for persistent authenticated state, broad origins, remote-debugging posture, and untrusted click/form authority without emitting cookie files, profile paths, origins, or endpoints
 - inbound agent trigger metadata for email, chat, ticket, webhook, and queue payloads that reach agent tools without emitting mailbox names, sender addresses, URLs, labels, agent names, or payload text
 - multi-agent orchestration metadata for delegation, shared memory, tool authority, and approval posture without emitting agent names, role prompts, task text, graph labels, memory namespaces, or raw tool lists
 - agent safety-control metadata for disabled guardrails, validation, moderation, tool-result sanitization, and redaction without emitting policy names, source names, tool strings, action lists, data-field labels, or prompt text
@@ -111,6 +111,7 @@ Examples:
 - runtime config with unsandboxed execution plus no approval gate
 - runtime config with network access plus secret env keys plus privileged tools
 - authenticated browser session plus broad origins plus untrusted navigation plus click/form/upload authority
+- authenticated browser session plus remote-debugging posture plus cookie/storage profile references and credential exposure
 - inbound email/chat/ticket/webhook payload plus agent invocation plus tool authority plus secrets plus no approval gate
 - multi-agent delegation plus untrusted input plus shared memory plus privileged specialist tools plus credentials plus no approval gate
 - disabled agent safety controls plus untrusted input plus privileged tools plus credentials plus no approval gate
