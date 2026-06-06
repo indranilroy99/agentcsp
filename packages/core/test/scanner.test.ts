@@ -458,6 +458,56 @@ describe("scanner", () => {
     expect(readTool?.side_effect).toBe(false);
     expect(readTool?.metadata.accepts_content_like_input).toBe(false);
     expect(readTool?.metadata.read_only_hint_conflict).toBe(false);
+    const openApiTool = surfaces.tools.find((surface) => surface.path === "tools/support-openapi.yaml");
+    expect(openApiTool).toMatchObject({
+      name: "openapi:post:1",
+      trust_level: "third_party",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["call", "read", "send", "write"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      untrusted_to_privileged: true
+    });
+    expect(openApiTool?.metadata).toMatchObject({
+      parsed_openapi_tool_spec: true,
+      openapi_method: "post",
+      openapi_agent_tool_import: true,
+      openapi_path_redacted: true,
+      openapi_operation_id_redacted: true,
+      openapi_summary_redacted: true,
+      openapi_server_redacted: true,
+      openapi_remote_server: true,
+      openapi_server_count: 1,
+      openapi_security_required: true,
+      openapi_security_scheme_types: ["bearer"],
+      openapi_authenticated_operation: true,
+      openapi_parameter_count: 1,
+      openapi_request_body_present: true,
+      openapi_request_schema_redacted: true,
+      openapi_request_field_count: 5,
+      openapi_user_controlled_input: true,
+      openapi_accepts_pii_like_input: true,
+      openapi_accepts_customer_data_input: true,
+      openapi_sensitive_input: true,
+      openapi_write_operation: true,
+      openapi_destructive_operation: false,
+      openapi_external_operation: true,
+      openapi_broad_or_sensitive_scope: true,
+      openapi_approval_required: false
+    });
+    expect(openApiTool?.metadata.openapi_server_kinds).toEqual(["remote_http_api"]);
+    expect(openApiTool?.metadata.openapi_request_data_categories).toEqual([
+      "credential_input",
+      "customer_data",
+      "freeform_content",
+      "pii_input"
+    ]);
+    expect(JSON.stringify(openApiTool)).not.toContain("support-api.agentcsp-demo.example.invalid");
+    expect(JSON.stringify(openApiTool)).not.toContain("/customers/{customer_id}/messages");
+    expect(JSON.stringify(openApiTool)).not.toContain("postCustomerRemediationMessage");
+    expect(JSON.stringify(openApiTool)).not.toContain("openapi_customer_email");
+    expect(JSON.stringify(openApiTool)).not.toContain("openapi_authorization_token");
     const runtimeConfig = surfaces.runtime_config.find((surface) => surface.path === ".codex/config.toml");
     expect(runtimeConfig?.metadata).toMatchObject({
       parsed_runtime_config: true,
@@ -2691,6 +2741,46 @@ describe("scanner", () => {
     expect(transcript?.actions).toContain("call");
     expect(transcript?.actions).toContain("send");
     expect(JSON.stringify(transcript)).not.toContain("Ignore previous repository instructions");
+  });
+
+  it("keeps approval-gated read-only OpenAPI imports scoped", async () => {
+    const files = await walkProject({
+      root_path: safeFixtureRoot,
+      output_path: ".agentcsp",
+      formats: ["json", "md"],
+      include_hidden: true,
+      include_logs: false,
+      max_file_size_bytes: 1024 * 1024,
+      max_files: 5000,
+      quiet: true
+    });
+    const surfaces = await detectSurfaces(files);
+    const openApiTool = surfaces.tools.find((surface) => surface.path === "tools/read-openapi.yaml");
+
+    expect(openApiTool).toMatchObject({
+      name: "openapi:get:1",
+      trust_level: "project",
+      data_classes: ["confidential"],
+      actions: ["call", "read"],
+      side_effect: false,
+      external_reach: false,
+      secret_exposure: false,
+      untrusted_to_privileged: false
+    });
+    expect(openApiTool?.metadata).toMatchObject({
+      parsed_openapi_tool_spec: true,
+      openapi_agent_tool_import: true,
+      openapi_method: "get",
+      openapi_remote_server: false,
+      openapi_server_kinds: ["relative_server"],
+      openapi_authenticated_operation: false,
+      openapi_write_operation: false,
+      openapi_destructive_operation: false,
+      openapi_external_operation: false,
+      openapi_broad_or_sensitive_scope: true,
+      openapi_approval_required: true
+    });
+    expect(openApiTool?.metadata.openapi_request_data_categories).toEqual(["customer_data"]);
   });
 
   it("does not treat negated safety instructions as granted authority", async () => {

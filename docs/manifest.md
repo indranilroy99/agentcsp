@@ -248,6 +248,26 @@ Tool metadata may include:
 
 These fields let rules reason about concrete agent-callable authority without dumping raw tool descriptions or schemas into the manifest. Model-visible descriptions are treated as prompt surface: AgentCSP records redacted instruction, untrusted-context, external, memory, secret, and data-egress signals so rules can detect poisoned tool metadata attached to side-effecting authority.
 
+OpenAPI and Swagger files imported as agent tools are also normalized into `tool` objects. Metadata may include:
+
+- `parsed_openapi_tool_spec`
+- `openapi_agent_tool_import`
+- `openapi_method`
+- `openapi_server_kinds`
+- `openapi_remote_server`
+- `openapi_security_required`
+- `openapi_security_scheme_types`
+- `openapi_authenticated_operation`
+- `openapi_user_controlled_input`
+- `openapi_request_data_categories`
+- `openapi_write_operation`
+- `openapi_destructive_operation`
+- `openapi_external_operation`
+- `openapi_broad_or_sensitive_scope`
+- `openapi_approval_required`
+
+Raw OpenAPI paths, operation IDs, summaries, descriptions, server URLs, request schemas, and request field names are not emitted. AgentCSP records redacted operation posture so rules can detect agent-imported API tools that combine authenticated external writes, user-controlled inputs, sensitive data classes, and missing approval boundaries.
+
 ## Runtime Configuration
 
 Runtime configuration files are normalized into `runtime_config` objects when AgentCSP can parse security-relevant JSON, YAML, or TOML config.

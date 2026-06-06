@@ -389,6 +389,8 @@ export async function detectSurfaces(files: WalkedFile[]): Promise<DetectedSurfa
       continue;
     }
 
+    if (isOpenApiToolSpecPath(file.relativePath, basename) && detectOpenApiToolSpec(file, text, surfaces)) continue;
+
     if (DEFAULT_MCP_CONFIG_NAMES.has(basename) || lowerPath.endsWith("/mcp.json")) {
       await detectMcpConfig(file, text, surfaces, projectFilePaths);
       continue;
@@ -13926,6 +13928,80 @@ function detectWorkflowAutomation(
   });
 }
 
+function detectOpenApiToolSpec(file: WalkedFile, text: string | undefined, surfaces: DetectedSurfaces): boolean {
+  const hasNamingSignal = hasOpenApiNamingSignal(file.relativePath, path.basename(file.relativePath));
+  const parsed = parseStructuredConfig(text ?? "", file.relativePath);
+  if (parsed.parseFailed) {
+    if (!hasNamingSignal) return false;
+    addDiagnostic(surfaces, file, {
+      parser: parsed.parser ?? "structured_config",
+      code: "OPENAPI_TOOL_SPEC_PARSE_FAILED",
+      reason: "OpenAPI or Swagger tool specification could not be parsed. Raw content was redacted."
+    });
+    return true;
+  }
+
+  if (!isOpenApiDocument(parsed.value)) return false;
+
+  const operations = extractOpenApiOperations(parsed.value, file.relativePath);
+  if (operations.length === 0 && parsed.value !== undefined) {
+    addDiagnostic(surfaces, file, {
+      parser: parsed.parser ?? "structured_config",
+      code: "OPENAPI_TOOL_SPEC_NO_OPERATIONS",
+      reason: "OpenAPI or Swagger file did not contain agent-callable operations. Raw content was redacted.",
+      severity: "info"
+    });
+    return true;
+  }
+
+  for (const operation of operations) {
+    const actions = new Set<ActionType>(["call", "read"]);
+    if (operation.openapi_external_operation) actions.add("send");
+    if (operation.openapi_write_operation) actions.add("write");
+    if (operation.openapi_destructive_operation) actions.add("delete");
+
+    const dataClasses = new Set<SurfaceObject["data_classes"][number]>(["unknown"]);
+    if (operation.openapi_authenticated_operation || operation.env_key_names.some(isCredentialLikeKeyName)) {
+      dataClasses.add("credential");
+    }
+    if (operation.openapi_accepts_customer_data_input || operation.openapi_sensitive_input) dataClasses.add("confidential");
+    if (operation.openapi_accepts_pii_like_input) dataClasses.add("pii");
+    if (dataClasses.size > 1) dataClasses.delete("unknown");
+
+    const object = createSurfaceObject({
+      type: "tool",
+      name: `openapi:${operation.openapi_method}:${operation.openapi_operation_index}`,
+      path: file.relativePath,
+      trust_level: operation.openapi_remote_server ? "third_party" : inferTrustLevel(file.relativePath),
+      data_classes: uniqueDataClasses([...dataClasses] as SurfaceObject["data_classes"]),
+      actions: uniqueActions([...actions]),
+      side_effect: operation.openapi_write_operation || operation.openapi_destructive_operation,
+      reversible: !operation.openapi_destructive_operation,
+      external_reach: operation.openapi_external_operation,
+      secret_exposure: operation.openapi_authenticated_operation || operation.env_key_names.some(isCredentialLikeKeyName),
+      reason: "OpenAPI or Swagger specification discovered as an agent-importable API tool surface.",
+      metadata: {
+        content_redacted: true,
+        values_collected: false,
+        parsed_openapi_tool_spec: true,
+        ...operation
+      }
+    });
+    surfaces.tools.push({
+      ...object,
+      untrusted_to_privileged:
+        (operation.openapi_agent_tool_import &&
+          operation.openapi_user_controlled_input &&
+          operation.openapi_authenticated_operation &&
+          operation.openapi_write_operation &&
+          operation.openapi_broad_or_sensitive_scope &&
+          !operation.openapi_approval_required) ||
+        isUntrustedToPrivileged(object)
+    });
+  }
+  return true;
+}
+
 function detectToolDefinition(file: WalkedFile, text: string | undefined, surfaces: DetectedSurfaces): void {
   const content = text ?? "";
   const extraction = extractToolDefinitions(content);
@@ -15018,6 +15094,31 @@ function isEnvFile(basename: string): boolean {
   return basename === ".env" || basename.startsWith(".env.");
 }
 
+function isOpenApiToolSpecPath(relativePath: string, basename: string): boolean {
+  const normalized = relativePath.replaceAll("\\", "/").toLowerCase();
+  const lowerBase = basename.toLowerCase();
+  if (!/\.(json|ya?ml)$/iu.test(lowerBase)) return false;
+  if (normalized.startsWith(".github/workflows/")) return false;
+  if (normalized.startsWith("rules/")) return false;
+  if (hasOpenApiNamingSignal(relativePath, basename)) return true;
+  const segments = normalized.split("/").slice(0, -1);
+  const apiDirectory = segments.some((segment) =>
+    /^(tools?|actions?|functions?|openapi|swagger|api|api-tools?|api_tools?|agent-tools?|agent_tools?)$/iu.test(segment)
+  );
+  const apiName = /(?:api[-_]?tools?|tool[-_]?api|actions?[-_]?api|agent[-_]?api|agent[-_]?tools?)/iu.test(lowerBase);
+  return apiDirectory || apiName;
+}
+
+function hasOpenApiNamingSignal(relativePath: string, basename: string): boolean {
+  const normalized = relativePath.replaceAll("\\", "/").toLowerCase();
+  const lowerBase = basename.toLowerCase();
+  const segments = normalized.split("/").slice(0, -1);
+  return (
+    /(?:openapi|swagger)/iu.test(lowerBase) ||
+    segments.some((segment) => /^(openapi|swagger|openapi-specs?|swagger-specs?)$/iu.test(segment))
+  );
+}
+
 function extractWorkflowTriggers(value: unknown): string[] {
   if (typeof value === "string") return [value];
   if (Array.isArray(value)) {
@@ -15445,6 +15546,327 @@ interface ExtractedToolDefinition {
     idempotentHint?: boolean;
   };
   openWorldSchema: boolean;
+}
+
+interface OpenApiOperationPosture {
+  openapi_operation_index: number;
+  openapi_method: string;
+  openapi_version_detected: boolean;
+  openapi_agent_tool_import: boolean;
+  openapi_path_redacted: boolean;
+  openapi_operation_id_redacted: boolean;
+  openapi_summary_redacted: boolean;
+  openapi_server_redacted: boolean;
+  openapi_remote_server: boolean;
+  openapi_server_count: number;
+  openapi_server_kinds: string[];
+  openapi_security_required: boolean;
+  openapi_security_scheme_types: string[];
+  openapi_authenticated_operation: boolean;
+  openapi_parameter_count: number;
+  openapi_request_body_present: boolean;
+  openapi_request_schema_redacted: boolean;
+  openapi_request_field_count: number;
+  openapi_request_data_categories: string[];
+  openapi_user_controlled_input: boolean;
+  openapi_accepts_pii_like_input: boolean;
+  openapi_accepts_customer_data_input: boolean;
+  openapi_sensitive_input: boolean;
+  openapi_write_operation: boolean;
+  openapi_destructive_operation: boolean;
+  openapi_external_operation: boolean;
+  openapi_broad_or_sensitive_scope: boolean;
+  openapi_approval_required: boolean;
+  env_key_names: string[];
+  secret_ref_key_names: string[];
+}
+
+const OPENAPI_HTTP_METHODS = new Set(["delete", "get", "head", "options", "patch", "post", "put"]);
+
+function extractOpenApiOperations(value: unknown, filePath: string): OpenApiOperationPosture[] {
+  if (!isOpenApiDocument(value)) return [];
+  const root = value as Record<string, unknown>;
+  const rootFields = flattenRuntimeFields(root);
+  const stringValues = collectFieldStringValues(rootFields);
+  const servers = classifyOpenApiServers(root);
+  const rootSecurityTypes = collectOpenApiSecuritySchemeTypes(root);
+  const rootSecurityRequired = openApiSecurityRequired(root.security);
+  const rootAgentImport = hasOpenApiAgentImportSignal(root, filePath);
+  const rootApprovalRequired = hasOpenApiApprovalRequiredSignal(rootFields);
+  const paths = root.paths && typeof root.paths === "object" && !Array.isArray(root.paths) ? (root.paths as Record<string, unknown>) : {};
+  const operations: OpenApiOperationPosture[] = [];
+  let operationIndex = 0;
+
+  for (const [pathName, pathItem] of Object.entries(paths).sort(([a], [b]) => a.localeCompare(b))) {
+    if (!pathItem || typeof pathItem !== "object" || Array.isArray(pathItem)) continue;
+    const pathRecord = pathItem as Record<string, unknown>;
+    for (const method of [...OPENAPI_HTTP_METHODS].sort((a, b) => a.localeCompare(b))) {
+      const operation = pathRecord[method];
+      if (!operation || typeof operation !== "object" || Array.isArray(operation)) continue;
+      operationIndex += 1;
+      const operationRecord = operation as Record<string, unknown>;
+      const operationFields = flattenRuntimeFields(operationRecord);
+      const operationStrings = collectFieldStringValues(operationFields);
+      const operationSecurityTypes = collectOpenApiOperationSecurityTypes(root, operationRecord);
+      const securityRequired =
+        openApiSecurityRequired(operationRecord.security) ||
+        (operationRecord.security === undefined && rootSecurityRequired) ||
+        operationSecurityTypes.length > 0;
+      const requestProfile = classifyOpenApiRequestProfile(operationRecord, pathRecord);
+      const operationText = normalizeAuthorityText(`${method} ${pathName} ${operationStrings.join(" ")}`);
+      const writeOperation = isOpenApiWriteOperation(method, operationText);
+      const destructiveOperation = isOpenApiDestructiveOperation(method, operationText);
+      const approvalRequired = rootApprovalRequired || hasOpenApiApprovalRequiredSignal(operationFields);
+      const envKeys = uniqueStrings([
+        ...collectEnvKeyNamesFromConfig(operationRecord).filter(isLikelyEnvKeyName),
+        ...extractEnvironmentReferenceKeys([...stringValues, ...operationStrings])
+      ]);
+      const secretRefKeys = extractSecretReferenceKeys([...stringValues, ...operationStrings]);
+      const schemeTypes = uniqueStrings([...rootSecurityTypes, ...operationSecurityTypes]);
+      const sensitiveInput = requestProfile.dataCategories.some((category) =>
+        ["credential_input", "customer_data", "freeform_content", "pii_input"].includes(category)
+      );
+
+      operations.push({
+        openapi_operation_index: operationIndex,
+        openapi_method: method,
+        openapi_version_detected: true,
+        openapi_agent_tool_import: rootAgentImport || hasOpenApiAgentImportSignal(operationRecord, filePath),
+        openapi_path_redacted: true,
+        openapi_operation_id_redacted: typeof operationRecord.operationId === "string",
+        openapi_summary_redacted: typeof operationRecord.summary === "string" || typeof operationRecord.description === "string",
+        openapi_server_redacted: servers.serverCount > 0,
+        openapi_remote_server: servers.remote,
+        openapi_server_count: servers.serverCount,
+        openapi_server_kinds: servers.serverKinds,
+        openapi_security_required: securityRequired,
+        openapi_security_scheme_types: schemeTypes,
+        openapi_authenticated_operation: securityRequired || schemeTypes.length > 0 || envKeys.some(isCredentialLikeKeyName),
+        openapi_parameter_count: requestProfile.parameterCount,
+        openapi_request_body_present: requestProfile.requestBodyPresent,
+        openapi_request_schema_redacted: requestProfile.requestFieldCount > 0,
+        openapi_request_field_count: requestProfile.requestFieldCount,
+        openapi_request_data_categories: requestProfile.dataCategories,
+        openapi_user_controlled_input: requestProfile.parameterCount > 0 || requestProfile.requestBodyPresent,
+        openapi_accepts_pii_like_input: requestProfile.dataCategories.includes("pii_input"),
+        openapi_accepts_customer_data_input: requestProfile.dataCategories.includes("customer_data"),
+        openapi_sensitive_input: sensitiveInput,
+        openapi_write_operation: writeOperation,
+        openapi_destructive_operation: destructiveOperation,
+        openapi_external_operation: servers.remote,
+        openapi_broad_or_sensitive_scope: writeOperation || destructiveOperation || sensitiveInput || requestProfile.dataCategories.includes("credential_input"),
+        openapi_approval_required: approvalRequired,
+        env_key_names: envKeys,
+        secret_ref_key_names: secretRefKeys
+      });
+    }
+  }
+
+  return operations.sort((a, b) => a.openapi_operation_index - b.openapi_operation_index);
+}
+
+function isOpenApiDocument(value: unknown): boolean {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  const record = value as Record<string, unknown>;
+  const hasVersion = typeof record.openapi === "string" || typeof record.swagger === "string";
+  return hasVersion && Boolean(record.paths && typeof record.paths === "object" && !Array.isArray(record.paths));
+}
+
+function classifyOpenApiServers(root: Record<string, unknown>): { remote: boolean; serverCount: number; serverKinds: string[] } {
+  const kinds = new Set<string>();
+  const servers = Array.isArray(root.servers) ? root.servers : [];
+  let count = 0;
+  for (const server of servers) {
+    if (!server || typeof server !== "object" || Array.isArray(server)) continue;
+    const url = (server as Record<string, unknown>).url;
+    if (typeof url !== "string") continue;
+    count += 1;
+    const parsed = parseRemoteHttpUrl(url);
+    if (parsed) kinds.add("remote_http_api");
+    else if (/^\//u.test(url)) kinds.add("relative_server");
+    else kinds.add("configured_server");
+  }
+  if (typeof root.host === "string") {
+    count += 1;
+    kinds.add("swagger_host");
+  }
+  const serverKinds = [...kinds].sort((a, b) => a.localeCompare(b));
+  return {
+    remote: serverKinds.includes("remote_http_api") || serverKinds.includes("swagger_host"),
+    serverCount: count,
+    serverKinds
+  };
+}
+
+function collectOpenApiSecuritySchemeTypes(root: Record<string, unknown>): string[] {
+  const schemes = openApiSecuritySchemes(root);
+  const types = new Set<string>();
+  for (const scheme of Object.values(schemes)) {
+    if (!scheme || typeof scheme !== "object" || Array.isArray(scheme)) continue;
+    const record = scheme as Record<string, unknown>;
+    const type = typeof record.type === "string" ? record.type.toLowerCase() : undefined;
+    const schemeName = typeof record.scheme === "string" ? record.scheme.toLowerCase() : undefined;
+    if (type === "apikey" || type === "apiKey".toLowerCase()) types.add("api_key");
+    if (type === "http" && schemeName === "bearer") types.add("bearer");
+    if (type === "http" && schemeName === "basic") types.add("basic");
+    if (type === "oauth2") types.add("oauth2");
+    if (type === "openIdConnect".toLowerCase()) types.add("openid_connect");
+  }
+  return [...types].sort((a, b) => a.localeCompare(b));
+}
+
+function collectOpenApiOperationSecurityTypes(root: Record<string, unknown>, operation: Record<string, unknown>): string[] {
+  if (operation.security === undefined) return [];
+  if (!openApiSecurityRequired(operation.security)) return [];
+  const schemes = openApiSecuritySchemes(root);
+  const names = openApiSecurityRequirementNames(operation.security);
+  if (names.length === 0) return collectOpenApiSecuritySchemeTypes(root);
+  const types = new Set<string>();
+  for (const name of names) {
+    const scheme = schemes[name];
+    if (!scheme || typeof scheme !== "object" || Array.isArray(scheme)) continue;
+    for (const type of collectOpenApiSecuritySchemeTypes({ components: { securitySchemes: { [name]: scheme } } })) {
+      types.add(type);
+    }
+  }
+  return [...types].sort((a, b) => a.localeCompare(b));
+}
+
+function openApiSecuritySchemes(root: Record<string, unknown>): Record<string, unknown> {
+  const components = root.components && typeof root.components === "object" ? (root.components as Record<string, unknown>) : {};
+  const componentSchemes =
+    components.securitySchemes && typeof components.securitySchemes === "object" && !Array.isArray(components.securitySchemes)
+      ? (components.securitySchemes as Record<string, unknown>)
+      : {};
+  const swaggerSchemes =
+    root.securityDefinitions && typeof root.securityDefinitions === "object" && !Array.isArray(root.securityDefinitions)
+      ? (root.securityDefinitions as Record<string, unknown>)
+      : {};
+  return { ...swaggerSchemes, ...componentSchemes };
+}
+
+function openApiSecurityRequired(value: unknown): boolean {
+  if (!Array.isArray(value)) return false;
+  return value.some((item) => item && typeof item === "object" && Object.keys(item as Record<string, unknown>).length > 0);
+}
+
+function openApiSecurityRequirementNames(value: unknown): string[] {
+  const names = new Set<string>();
+  if (!Array.isArray(value)) return [];
+  for (const item of value) {
+    if (!item || typeof item !== "object" || Array.isArray(item)) continue;
+    for (const name of Object.keys(item as Record<string, unknown>)) names.add(name);
+  }
+  return [...names].sort((a, b) => a.localeCompare(b));
+}
+
+function hasOpenApiAgentImportSignal(value: Record<string, unknown>, filePath: string): boolean {
+  if (/(\b|\/)(tools?|actions?|functions?|openapi|swagger|api-tools?|api_tools?|agent-tools?|agent_tools?)(\/|$)/iu.test(filePath)) return true;
+  const fields = flattenRuntimeFields(value);
+  return fields.some((field) =>
+    /\b(agent|assistant|tool|function|action|mcp|openapi[_\s-]?import|tool[_\s-]?import)\b/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    ) && truthyConfigValue(field.value)
+  );
+}
+
+function hasOpenApiApprovalRequiredSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /\b(approval|required[_-]?approval|human[_-]?approval|confirm|confirmation|review|human[_-]?in[_-]?the[_-]?loop|manual[_-]?review)\b/iu.test(
+      field.path.replaceAll("_", " ").replaceAll("-", " ")
+    ) && truthyConfigValue(field.value)
+  );
+}
+
+function classifyOpenApiRequestProfile(
+  operation: Record<string, unknown>,
+  pathItem: Record<string, unknown>
+): {
+  parameterCount: number;
+  requestBodyPresent: boolean;
+  requestFieldCount: number;
+  dataCategories: string[];
+} {
+  const parameterNames = [
+    ...openApiParameterNames(pathItem.parameters),
+    ...openApiParameterNames(operation.parameters)
+  ];
+  const schemaFieldNames = openApiRequestSchemaFieldNames(operation.requestBody);
+  const dataCategories = classifyOpenApiRequestDataCategories([...parameterNames, ...schemaFieldNames]);
+  return {
+    parameterCount: parameterNames.length,
+    requestBodyPresent: Boolean(operation.requestBody),
+    requestFieldCount: schemaFieldNames.length,
+    dataCategories
+  };
+}
+
+function openApiParameterNames(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((item) => (item && typeof item === "object" && !Array.isArray(item) ? (item as Record<string, unknown>).name : undefined))
+    .filter((name): name is string => typeof name === "string")
+    .sort((a, b) => a.localeCompare(b));
+}
+
+function openApiRequestSchemaFieldNames(value: unknown): string[] {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return [];
+  const requestBody = value as Record<string, unknown>;
+  const content = requestBody.content && typeof requestBody.content === "object" ? (requestBody.content as Record<string, unknown>) : {};
+  const fields = new Set<string>();
+  for (const media of Object.values(content)) {
+    if (!media || typeof media !== "object" || Array.isArray(media)) continue;
+    const schema = (media as Record<string, unknown>).schema;
+    collectOpenApiSchemaFieldNames(schema, fields);
+  }
+  return [...fields].sort((a, b) => a.localeCompare(b));
+}
+
+function collectOpenApiSchemaFieldNames(value: unknown, fields: Set<string>): void {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return;
+  const record = value as Record<string, unknown>;
+  const properties = record.properties && typeof record.properties === "object" && !Array.isArray(record.properties)
+    ? (record.properties as Record<string, unknown>)
+    : {};
+  for (const [name, schema] of Object.entries(properties)) {
+    fields.add(name);
+    collectOpenApiSchemaFieldNames(schema, fields);
+  }
+  for (const key of ["allOf", "anyOf", "oneOf"] as const) {
+    if (!Array.isArray(record[key])) continue;
+    for (const item of record[key] as unknown[]) collectOpenApiSchemaFieldNames(item, fields);
+  }
+  if (record.items) collectOpenApiSchemaFieldNames(record.items, fields);
+}
+
+function classifyOpenApiRequestDataCategories(names: string[]): string[] {
+  const categories = new Set<string>();
+  const text = normalizeAuthorityText(names.join(" "));
+  if (/\b(email|phone|mobile|address|ssn|social security|passport|date of birth|dob|birth date|user id|account id|customer id)\b/iu.test(text)) {
+    categories.add("pii_input");
+  }
+  if (/\b(customer|client|account|ticket|case|support|record|profile|billing|payment|invoice)\b/iu.test(text)) {
+    categories.add("customer_data");
+  }
+  if (/\b(message|summary|content|text|prompt|comment|note|body|reply|description)\b/iu.test(text)) {
+    categories.add("freeform_content");
+  }
+  if (/\b(secret|token|api key|password|credential|auth|authorization)\b/iu.test(text)) {
+    categories.add("credential_input");
+  }
+  return [...categories].sort((a, b) => a.localeCompare(b));
+}
+
+function isOpenApiWriteOperation(method: string, operationText: string): boolean {
+  return ["delete", "patch", "post", "put"].includes(method) ||
+    /\b(create|update|modify|write|send|post|publish|upload|submit|approve|grant|revoke|refund|charge|close|assign|merge)\b/iu.test(
+      operationText
+    );
+}
+
+function isOpenApiDestructiveOperation(method: string, operationText: string): boolean {
+  return method === "delete" ||
+    /\b(delete|remove|drop|destroy|purge|wipe|revoke|refund|charge|close account|cancel|terminate)\b/iu.test(operationText);
 }
 
 function extractToolDefinitions(content: string): { definitions: ExtractedToolDefinition[]; parseFailed: boolean } {

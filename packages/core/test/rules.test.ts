@@ -34,6 +34,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-009")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-010")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-011")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-012")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-001")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-002")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-003")).toBe(true);
@@ -1575,6 +1576,37 @@ describe("rule engine", () => {
     expect(toolDescriptionInjectionFindings[0]?.confidence).toBe("very_high");
     expect(toolDescriptionInjectionFindings[0]?.recommended_control).toBe("quarantine");
     expect(JSON.stringify(toolDescriptionInjectionFindings[0])).not.toContain("ignore previous instructions");
+    const openApiToolFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-012");
+    expect(openApiToolFindings).toHaveLength(1);
+    expect(openApiToolFindings[0]?.matched_object).toMatchObject({
+      name: "openapi:post:1",
+      path: "tools/support-openapi.yaml",
+      trust_level: "third_party",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["call", "read", "send", "write"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      untrusted_to_privileged: true
+    });
+    expect(openApiToolFindings[0]?.matched_object.metadata).toMatchObject({
+      parsed_openapi_tool_spec: true,
+      openapi_agent_tool_import: true,
+      openapi_external_operation: true,
+      openapi_authenticated_operation: true,
+      openapi_write_operation: true,
+      openapi_user_controlled_input: true,
+      openapi_broad_or_sensitive_scope: true,
+      openapi_approval_required: false
+    });
+    expect(openApiToolFindings[0]?.severity).toBe("critical");
+    expect(openApiToolFindings[0]?.confidence).toBe("very_high");
+    expect(openApiToolFindings[0]?.recommended_control).toBe("require_approval");
+    expect(JSON.stringify(openApiToolFindings[0])).not.toContain("support-api.agentcsp-demo.example.invalid");
+    expect(JSON.stringify(openApiToolFindings[0])).not.toContain("/customers/{customer_id}/messages");
+    expect(JSON.stringify(openApiToolFindings[0])).not.toContain("postCustomerRemediationMessage");
+    expect(JSON.stringify(openApiToolFindings[0])).not.toContain("openapi_customer_email");
+    expect(JSON.stringify(openApiToolFindings[0])).not.toContain("openapi_authorization_token");
     const toolShadowFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-007");
     expect(toolShadowFindings.map((finding) => finding.matched_object.path).sort()).toEqual([
       "tools/agent-tools.json",

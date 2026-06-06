@@ -1,0 +1,53 @@
+id: AGENTCSP-TOOL-012
+name: OpenAPI tool import exposes authenticated external write
+description: An agent-imported OpenAPI or Swagger spec exposes an authenticated external write operation with user-controlled request inputs and sensitive data scope without an approval boundary.
+category: api_tool_authority
+severity: critical
+maps_to:
+  owasp:
+    - LLM01:2025 Prompt Injection
+    - LLM02:2025 Sensitive Information Disclosure
+    - LLM06:2025 Excessive Agency
+  mitre_atlas:
+    - AML.T0051 LLM Plugin Compromise
+    - AML.T0057 Exfiltration via Cyber Means
+  nist_ai_rmf:
+    - MAP 4.1
+    - MEASURE 2.7
+    - MANAGE 2.4
+match:
+  object_type: tool
+  where:
+    - field: metadata.parsed_openapi_tool_spec
+      op: equals
+      value: true
+    - field: metadata.openapi_agent_tool_import
+      op: equals
+      value: true
+    - field: metadata.openapi_external_operation
+      op: equals
+      value: true
+    - field: metadata.openapi_authenticated_operation
+      op: equals
+      value: true
+    - field: metadata.openapi_write_operation
+      op: equals
+      value: true
+    - field: metadata.openapi_user_controlled_input
+      op: equals
+      value: true
+    - field: metadata.openapi_broad_or_sensitive_scope
+      op: equals
+      value: true
+    - field: metadata.openapi_approval_required
+      op: equals
+      value: false
+    - field: data_classes
+      op: contains_any
+      value:
+        - credential
+        - confidential
+        - pii
+recommendation:
+  control: require_approval
+  text: Require approval before agent-imported API tools can perform authenticated external writes, minimize request schemas, pin operation allowlists, and keep user-controlled fields out of privileged API calls.

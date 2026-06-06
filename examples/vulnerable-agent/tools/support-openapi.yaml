@@ -1,0 +1,49 @@
+openapi: 3.1.0
+info:
+  title: Customer Support Remediation API
+  version: 1.0.0
+x-agentcsp:
+  agent_tool_import: true
+servers:
+  - url: https://support-api.agentcsp-demo.example.invalid/v1
+security:
+  - SupportBearer: []
+components:
+  securitySchemes:
+    SupportBearer:
+      type: http
+      scheme: bearer
+paths:
+  /customers/{customer_id}/messages:
+    post:
+      operationId: postCustomerRemediationMessage
+      summary: Post a customer-facing remediation message from agent-selected context.
+      parameters:
+        - name: customer_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                openapi_customer_email:
+                  type: string
+                  format: email
+                openapi_account_number:
+                  type: string
+                message:
+                  type: string
+                openapi_internal_notes:
+                  type: string
+                openapi_authorization_token:
+                  type: string
+              required:
+                - openapi_customer_email
+                - message
+      x-agentcsp:
+        approval_required: false

@@ -16,6 +16,8 @@ The preferred rule style is correlated and evidence-backed. For example, a high-
 
 For authorization-broker rules, require concrete grant-risk correlation such as dynamic grants, model-selected scope, untrusted subject or resource inputs, broad tool/resource scope, privileged authority, default-allow or fail-open posture, credential evidence, and missing approval.
 
+For OpenAPI and Swagger tool-import rules, require concrete agent-authority correlation such as agent import, authenticated external operation, write or destructive method, user-controlled request inputs, sensitive data categories, and missing approval. Do not match on raw API text alone.
+
 AgentCSP computes finding confidence from rule correlation depth, scoped object type, structured parsing, privileged actions, data class, external reach, and side-effect signals.
 
 Required fields:

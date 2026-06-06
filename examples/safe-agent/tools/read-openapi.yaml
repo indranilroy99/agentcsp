@@ -1,0 +1,21 @@
+openapi: 3.1.0
+info:
+  title: Internal Case Lookup API
+  version: 1.0.0
+x-agentcsp:
+  agent_tool_import: true
+servers:
+  - url: /internal-api
+paths:
+  /cases/{case_id}:
+    get:
+      operationId: readAssignedCase
+      summary: Read an assigned case summary.
+      parameters:
+        - name: case_id
+          in: path
+          required: true
+          schema:
+            type: string
+      x-agentcsp:
+        approval_required: true
