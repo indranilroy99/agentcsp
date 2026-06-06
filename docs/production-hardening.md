@@ -50,6 +50,7 @@ A finding should be considered production-grade when it includes:
 - AI model endpoint metadata for prompt, tool-output, retrieval, and memory egress without emitting model gateway URLs or model names
 - AI telemetry export metadata for prompt, completion, tool-output, retrieval, and memory capture without emitting trace payloads or endpoints
 - workflow-to-agent-script signals for unattended automation with secrets and write authority
+- workflow event-payload signals for issue, pull request, discussion, or repository-dispatch text passed into privileged agent automation without emitting raw event expressions or payload content
 - prompt-template variables and redacted context signals for untrusted-input bridges
 - prompt-template role-boundary signals for untrusted variables injected into system or developer roles
 - exact callable-reference signals for prompts, memory, RAG, instructions, and skills that name discovered privileged tools or MCP servers
@@ -87,6 +88,7 @@ Examples:
 - external write tool plus prompt-like content input and URL destination
 - model-visible tool-description injection plus external write and side-effect authority
 - workflow automation plus agent package script plus secrets and write authority
+- workflow automation plus untrusted event payload plus agent package script plus secrets and write authority
 - instruction file plus untrusted context reference plus tool and memory bridge
 - always-applied broad Cursor project rule plus untrusted-to-privileged context bridge
 - tool-name collision plus different authority signatures and a privileged peer
@@ -115,6 +117,7 @@ Examples:
 - open-world tool schema plus external, filesystem, credential, or execution authority
 - read-only tool hint plus destructive or external write behavior
 - scheduled or externally dispatched automation plus secrets and write authority
+- issue/comment/repository-dispatch event payloads passed into secret-backed agent automation with write authority
 - package publish/release authority plus agent-influenced workflow
 - attack paths that connect specific context-risk signals to concrete privileged capabilities
 - source-anchored RAG data-egress paths that preserve the retrieval finding as the reason for the blast radius

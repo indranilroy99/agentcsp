@@ -1,0 +1,44 @@
+id: AGENTCSP-AUTOMATION-003
+name: Untrusted workflow event input reaches privileged agent automation
+description: A workflow passes issue, pull request, discussion, or repository-dispatch payload text into an agent job that also has secrets and write authority, creating a direct path from external content to privileged agent execution.
+category: automation_authority
+severity: critical
+maps_to:
+  owasp:
+    - LLM01:2025 Prompt Injection
+    - LLM02:2025 Sensitive Information Disclosure
+    - LLM06:2025 Excessive Agency
+  mitre_atlas:
+    - AML.T0051 LLM Prompt Injection
+    - AML.T0057 Exfiltration via Cyber Means
+  nist_ai_rmf:
+    - GOVERN 1.5
+    - MAP 5.1
+    - MANAGE 2.4
+match:
+  object_type: automation
+  where:
+    - field: metadata.untrusted_event_trigger
+      op: equals
+      value: true
+    - field: metadata.untrusted_event_payload_used
+      op: equals
+      value: true
+    - field: metadata.untrusted_event_agent_input
+      op: equals
+      value: true
+    - field: metadata.agent_package_script_bridge
+      op: equals
+      value: true
+    - field: metadata.write_permissions
+      op: equals
+      value: true
+    - field: metadata.mentions_secrets_context
+      op: equals
+      value: true
+    - field: secret_exposure
+      op: equals
+      value: true
+recommendation:
+  control: require_approval
+  text: Do not pass external event payloads directly into secret-backed agent jobs. Split untrusted event handling from privileged credentials, require maintainer approval, and sanitize or summarize event text before agent execution.

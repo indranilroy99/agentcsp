@@ -56,6 +56,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-CICD-002")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-AUTOMATION-001")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-AUTOMATION-002")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-AUTOMATION-003")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-CURSOR-001")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-INSTRUCTION-001")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-PROMPT-001")).toBe(true);
@@ -231,6 +232,33 @@ describe("rule engine", () => {
     expect(automationAgentFindings).toHaveLength(1);
     expect(automationAgentFindings[0]?.matched_object.path).toBe(".github/workflows/agent-maintenance.yml");
     expect(automationAgentFindings[0]?.confidence).toBe("very_high");
+    const automationUntrustedEventFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-AUTOMATION-003");
+    expect(automationUntrustedEventFindings).toHaveLength(1);
+    expect(automationUntrustedEventFindings[0]?.matched_object.path).toBe(".github/workflows/agent-maintenance.yml");
+    expect(automationUntrustedEventFindings[0]?.matched_object.metadata).toMatchObject({
+      untrusted_event_trigger: true,
+      untrusted_event_payload_used: true,
+      untrusted_event_agent_input: true,
+      agent_package_script_bridge: true,
+      write_permissions: true,
+      mentions_secrets_context: true
+    });
+    expect(automationUntrustedEventFindings[0]?.matched_object.metadata.untrusted_event_triggers).toEqual([
+      "issue_comment",
+      "pull_request",
+      "repository_dispatch"
+    ]);
+    expect(automationUntrustedEventFindings[0]?.matched_object.metadata.untrusted_event_payload_sources).toEqual([
+      "issue_comment_body",
+      "pull_request_text",
+      "repository_dispatch_payload"
+    ]);
+    expect(automationUntrustedEventFindings[0]?.severity).toBe("critical");
+    expect(automationUntrustedEventFindings[0]?.confidence).toBe("very_high");
+    expect(automationUntrustedEventFindings[0]?.recommended_control).toBe("require_approval");
+    expect(JSON.stringify(automationUntrustedEventFindings[0])).not.toContain("github.event.comment.body");
+    expect(JSON.stringify(automationUntrustedEventFindings[0])).not.toContain("github.event.client_payload.prompt");
+    expect(JSON.stringify(automationUntrustedEventFindings[0])).not.toContain("github.event.pull_request.body");
     expect(findings.find((finding) => finding.rule_id === "AGENTCSP-MCP-004")?.matched_object.name).toBe(
       "ticketing-package-runner"
     );

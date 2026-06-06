@@ -17,6 +17,9 @@ match:
     - field: untrusted_to_privileged
       op: equals
       value: true
+    - field: metadata.untrusted_event_agent_input
+      op: not_equals
+      value: true
 recommendation:
   control: quarantine
   text: Treat the source as tainted and require policy review before it can influence privileged action, memory writes, or external calls.

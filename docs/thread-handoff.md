@@ -639,6 +639,15 @@ The current iteration adds:
 - rule `AGENTCSP-RUNTIME-013` for secret-manager connectors that combine read/list scope, broad sensitive secret scope, tool injection, untrusted input, and missing approval
 - scanner, rule, fixture verifier, and redaction coverage proving raw vault URLs, secret paths, policy names, secret labels, and token placeholders stay redacted
 
+## Workflow Event Input Authority Pass
+
+The current iteration adds:
+
+- redacted metadata for GitHub workflow event payloads that pass issue comments, pull request text, discussion text, or repository-dispatch payloads into agent jobs
+- vulnerable fixture coverage for an issue/comment and repository-dispatch workflow that feeds event text into an agent package script with secrets and write permissions
+- rule `AGENTCSP-AUTOMATION-003` for untrusted workflow event input reaching privileged agent automation
+- scanner, rule, fixture verifier, and redaction coverage proving raw GitHub event expressions and event payload content stay redacted
+
 ## Initial Build Recommendation
 
 Start with a CLI-first MVP before building the dashboard:

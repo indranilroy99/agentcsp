@@ -2988,6 +2988,9 @@ function detectWorkflow(file: WalkedFile, text: string | undefined, surfaces: De
   const writePermissions = hasWritePermissions(permissions);
   const mentionsSecretsContext = /secrets\./i.test(content);
   const commandSignals = classifyWorkflowRunCommands(collectWorkflowRunCommands(parsed));
+  const eventSignals = classifyWorkflowEventInput(triggerNames, parsed, content, commandSignals);
+  const untrustedEventPrivilegedBridge =
+    eventSignals.untrusted_event_agent_input && (writePermissions || mentionsSecretsContext || commandSignals.agent_package_script_names.length > 0);
   const object = createSurfaceObject({
     type: "ci_cd",
     name: path.basename(file.relativePath),
@@ -3008,18 +3011,20 @@ function detectWorkflow(file: WalkedFile, text: string | undefined, surfaces: De
       pull_request_trigger: triggerNames.some((trigger) => ["pull_request", "pull_request_target"].includes(trigger)),
       write_permissions: writePermissions,
       mentions_secrets_context: mentionsSecretsContext,
-      ...commandSignals
+      ...commandSignals,
+      ...eventSignals
     }
   });
   surfaces.ci_cd.push({
     ...object,
-    untrusted_to_privileged: isUntrustedToPrivileged(object)
+    untrusted_to_privileged: untrustedEventPrivilegedBridge || isUntrustedToPrivileged(object)
   });
   detectWorkflowAutomation(file, content, triggerNames, {
     actions,
     writePermissions,
     mentionsSecretsContext,
     commandSignals,
+    eventSignals,
     permissions
   }, surfaces);
 }
@@ -3033,12 +3038,21 @@ function detectWorkflowAutomation(
     writePermissions: boolean;
     mentionsSecretsContext: boolean;
     commandSignals: WorkflowCommandSignals;
+    eventSignals: WorkflowEventInputSignals;
     permissions: unknown;
   },
   surfaces: DetectedSurfaces
 ): void {
   const automationTriggers = triggerNames.filter((trigger) =>
-    ["schedule", "workflow_dispatch", "repository_dispatch", "workflow_run", "workflow_call"].includes(trigger)
+    [
+      "discussion_comment",
+      "issue_comment",
+      "repository_dispatch",
+      "schedule",
+      "workflow_call",
+      "workflow_dispatch",
+      "workflow_run"
+    ].includes(trigger)
   );
   if (automationTriggers.length === 0) return;
 
@@ -3070,12 +3084,19 @@ function detectWorkflowAutomation(
       write_permissions: workflow.writePermissions,
       mentions_secrets_context: workflow.mentionsSecretsContext,
       ...workflow.commandSignals,
+      ...workflow.eventSignals,
       has_permissions_block: Boolean(workflow.permissions)
     }
   });
+  const untrustedEventPrivilegedBridge =
+    workflow.eventSignals.untrusted_event_agent_input &&
+    (workflow.writePermissions ||
+      workflow.mentionsSecretsContext ||
+      workflow.commandSignals.agent_package_script_names.length > 0 ||
+      actions.some((action) => ["write", "execute", "publish", "send", "delete", "call"].includes(action)));
   surfaces.automations.push({
     ...object,
-    untrusted_to_privileged: isUntrustedToPrivileged(object)
+    untrusted_to_privileged: untrustedEventPrivilegedBridge || isUntrustedToPrivileged(object)
   });
 }
 
@@ -3467,6 +3488,18 @@ interface WorkflowCommandSignals {
   destructive_command?: unknown;
 }
 
+interface WorkflowEventInputSignals {
+  untrusted_event_trigger: boolean;
+  untrusted_event_triggers: string[];
+  untrusted_event_payload_used: boolean;
+  untrusted_event_payload_sources: string[];
+  untrusted_event_payload_source_count: number;
+  untrusted_event_payload_redacted: boolean;
+  untrusted_event_context_env_keys: string[];
+  untrusted_event_context_env_key_count: number;
+  untrusted_event_agent_input: boolean;
+}
+
 function collectWorkflowRunCommands(value: unknown): string[] {
   const commands: string[] = [];
   collectWorkflowRunCommandsInto(value, commands);
@@ -3502,6 +3535,82 @@ function classifyWorkflowRunCommands(commands: string[]): WorkflowCommandSignals
     command_redacted: true,
     ...commandSignals
   };
+}
+
+function classifyWorkflowEventInput(
+  triggerNames: string[],
+  parsedWorkflow: unknown,
+  content: string,
+  commandSignals: WorkflowCommandSignals
+): WorkflowEventInputSignals {
+  const eventTriggers = triggerNames.filter(isUntrustedWorkflowEventTrigger);
+  const payloadSources = classifyWorkflowEventPayloadSources(content);
+  const untrustedPayloadSources = payloadSources.filter((source) => source !== "workflow_dispatch_input");
+  const eventEnvKeys = collectWorkflowEventInputEnvKeys(parsedWorkflow);
+  const payloadUsed = untrustedPayloadSources.length > 0;
+  return {
+    untrusted_event_trigger: eventTriggers.length > 0,
+    untrusted_event_triggers: eventTriggers,
+    untrusted_event_payload_used: payloadUsed,
+    untrusted_event_payload_sources: untrustedPayloadSources,
+    untrusted_event_payload_source_count: untrustedPayloadSources.length,
+    untrusted_event_payload_redacted: payloadUsed,
+    untrusted_event_context_env_keys: eventEnvKeys,
+    untrusted_event_context_env_key_count: eventEnvKeys.length,
+    untrusted_event_agent_input: payloadUsed && commandSignals.agent_run_command
+  };
+}
+
+function isUntrustedWorkflowEventTrigger(triggerName: string): boolean {
+  return [
+    "discussion",
+    "discussion_comment",
+    "issue_comment",
+    "issues",
+    "pull_request",
+    "pull_request_review",
+    "pull_request_target",
+    "repository_dispatch"
+  ].includes(triggerName);
+}
+
+function classifyWorkflowEventPayloadSources(content: string): string[] {
+  const sources = new Set<string>();
+  if (/github\.event\.comment\.body/iu.test(content)) sources.add("issue_comment_body");
+  if (/github\.event\.issue\.(body|title)/iu.test(content)) sources.add("issue_text");
+  if (/github\.event\.pull_request\.(body|title)/iu.test(content)) sources.add("pull_request_text");
+  if (/github\.event\.review\.body/iu.test(content)) sources.add("pull_request_review_body");
+  if (/github\.event\.discussion\.(body|title)/iu.test(content)) sources.add("discussion_text");
+  if (/github\.event\.client_payload(?:\.|[\s}])|github\.event\.client_payload$/iu.test(content)) {
+    sources.add("repository_dispatch_payload");
+  }
+  if (/github\.event\.inputs(?:\.|[\s}])|\binputs\.[A-Za-z_][\w-]*/u.test(content)) sources.add("workflow_dispatch_input");
+  return [...sources].sort((a, b) => a.localeCompare(b));
+}
+
+function collectWorkflowEventInputEnvKeys(value: unknown): string[] {
+  const keys = new Set<string>();
+  collectWorkflowEventInputEnvKeysInto(value, keys);
+  return [...keys].sort((a, b) => a.localeCompare(b));
+}
+
+function collectWorkflowEventInputEnvKeysInto(value: unknown, keys: Set<string>): void {
+  if (Array.isArray(value)) {
+    for (const item of value) collectWorkflowEventInputEnvKeysInto(item, keys);
+    return;
+  }
+  if (!value || typeof value !== "object") return;
+
+  for (const [key, item] of Object.entries(value as Record<string, unknown>)) {
+    if (key === "env" && item && typeof item === "object" && !Array.isArray(item)) {
+      for (const [envKey, envValue] of Object.entries(item as Record<string, unknown>)) {
+        if (typeof envValue === "string" && classifyWorkflowEventPayloadSources(envValue).length > 0) {
+          keys.add(envKey);
+        }
+      }
+    }
+    collectWorkflowEventInputEnvKeysInto(item, keys);
+  }
 }
 
 function extractAgentPackageScriptNames(commandText: string): string[] {

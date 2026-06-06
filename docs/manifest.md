@@ -540,6 +540,15 @@ Automation metadata may include:
 - `manual_dispatch`
 - `external_dispatch`
 - `workflow_run_trigger`
+- `untrusted_event_trigger`
+- `untrusted_event_triggers`
+- `untrusted_event_payload_used`
+- `untrusted_event_payload_sources`
+- `untrusted_event_payload_source_count`
+- `untrusted_event_payload_redacted`
+- `untrusted_event_context_env_keys`
+- `untrusted_event_context_env_key_count`
+- `untrusted_event_agent_input`
 - `write_permissions`
 - `mentions_secrets_context`
 - `run_commands_redacted`
@@ -556,7 +565,7 @@ Automation metadata may include:
 - `has_permissions_block`
 - `content_redacted`
 
-Automation surfaces let rules reason about scheduled agents, manual dispatches, webhook-style dispatches, and background workflows that can run agent scripts with secrets or write authority.
+Automation surfaces let rules reason about scheduled agents, manual dispatches, webhook-style dispatches, issue/comment-triggered agent jobs, and background workflows that can run agent scripts with secrets or write authority. GitHub event payload expressions and payload text are not emitted; AgentCSP records coarse source classes such as issue comment body, pull request text, discussion text, or repository dispatch payload plus env key names when event payloads are passed to agent jobs.
 
 ## Findings
 

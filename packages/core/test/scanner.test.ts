@@ -622,21 +622,45 @@ describe("scanner", () => {
       package_manager_run: true,
       agent_run_command: true,
       agent_package_script_names: ["agent:run"],
-      agent_package_script_bridge: true
+      agent_package_script_bridge: true,
+      untrusted_event_trigger: true,
+      untrusted_event_payload_used: true,
+      untrusted_event_payload_redacted: true,
+      untrusted_event_agent_input: true
     });
     expect(surfaces.ci_cd[0]?.metadata.referenced_package_scripts).toEqual(["package-script:agent:run"]);
+    expect(surfaces.ci_cd[0]?.metadata.untrusted_event_triggers).toEqual([
+      "issue_comment",
+      "pull_request",
+      "repository_dispatch"
+    ]);
+    expect(surfaces.ci_cd[0]?.metadata.untrusted_event_payload_sources).toEqual([
+      "issue_comment_body",
+      "pull_request_text",
+      "repository_dispatch_payload"
+    ]);
+    expect(surfaces.ci_cd[0]?.metadata.untrusted_event_context_env_keys).toEqual(["AGENTCSP_TICKET_CONTEXT"]);
+    expect(surfaces.ci_cd[0]?.untrusted_to_privileged).toBe(true);
+    expect(JSON.stringify(surfaces.ci_cd[0])).not.toContain("github.event.comment.body");
+    expect(JSON.stringify(surfaces.ci_cd[0])).not.toContain("github.event.client_payload.prompt");
+    expect(JSON.stringify(surfaces.ci_cd[0])).not.toContain("github.event.pull_request.body");
     const automation = surfaces.automations.find((surface) => surface.name === "workflow:agent-maintenance.yml");
     expect(automation).toMatchObject({
       type: "automation",
       path: ".github/workflows/agent-maintenance.yml",
       secret_exposure: true,
       side_effect: true,
-      external_reach: true
+      external_reach: true,
+      untrusted_to_privileged: true
     });
     expect(automation?.metadata).toMatchObject({
       scheduled: true,
       manual_dispatch: true,
       external_dispatch: true,
+      untrusted_event_trigger: true,
+      untrusted_event_payload_used: true,
+      untrusted_event_payload_redacted: true,
+      untrusted_event_agent_input: true,
       write_permissions: true,
       mentions_secrets_context: true,
       run_commands_redacted: true,
@@ -644,12 +668,22 @@ describe("scanner", () => {
       package_manager_run: true,
       agent_run_command: true,
       agent_package_script_bridge: true,
-      automation_triggers: ["repository_dispatch", "schedule", "workflow_dispatch"]
+      automation_triggers: ["issue_comment", "repository_dispatch", "schedule", "workflow_dispatch"]
     });
     expect(automation?.metadata.agent_package_script_names).toEqual(["agent:run"]);
     expect(automation?.metadata.referenced_agent_package_scripts).toEqual(["package-script:agent:run"]);
+    expect(automation?.metadata.untrusted_event_triggers).toEqual(["issue_comment", "pull_request", "repository_dispatch"]);
+    expect(automation?.metadata.untrusted_event_payload_sources).toEqual([
+      "issue_comment_body",
+      "pull_request_text",
+      "repository_dispatch_payload"
+    ]);
+    expect(automation?.metadata.untrusted_event_context_env_keys).toEqual(["AGENTCSP_TICKET_CONTEXT"]);
     expect(automation?.actions).toContain("write");
     expect(automation?.actions).toContain("execute");
+    expect(JSON.stringify(automation)).not.toContain("github.event.comment.body");
+    expect(JSON.stringify(automation)).not.toContain("github.event.client_payload.prompt");
+    expect(JSON.stringify(automation)).not.toContain("github.event.pull_request.body");
     expect(surfaces.rag_sources.length).toBeGreaterThanOrEqual(1);
     expect(surfaces.memory.length).toBeGreaterThanOrEqual(1);
     const ragFile = surfaces.rag_sources.find((surface) => surface.path === "rag/customer-note.md");
