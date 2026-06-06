@@ -733,6 +733,8 @@ function detectAiModelEndpointConfig(file: WalkedFile, text: string | undefined,
   const posture = classifyAiModelEndpointConfig(parsed.value, file.relativePath);
   const actions = new Set<ActionType>(["read", "call"]);
   if (posture.ai_model_remote_endpoint) actions.add("send");
+  if (posture.ai_model_request_logging_enabled) actions.add("remember");
+  if (posture.ai_model_tool_calling_enabled) actions.add("execute");
 
   const dataClasses = new Set<SurfaceObject["data_classes"][number]>(["unknown"]);
   if (posture.env_key_names.some(isCredentialLikeKeyName) || posture.secret_ref_key_names.length > 0) dataClasses.add("credential");
@@ -747,9 +749,15 @@ function detectAiModelEndpointConfig(file: WalkedFile, text: string | undefined,
     trust_level: posture.ai_model_remote_endpoint ? "third_party" : inferTrustLevel(file.relativePath),
     data_classes: uniqueDataClasses([...dataClasses] as SurfaceObject["data_classes"]),
     actions: uniqueActions([...actions]),
-    side_effect: posture.ai_model_remote_endpoint,
-    reversible: !posture.ai_model_remote_endpoint,
-    external_reach: posture.ai_model_remote_endpoint,
+    side_effect:
+      posture.ai_model_remote_endpoint ||
+      posture.ai_model_request_logging_enabled ||
+      posture.ai_model_tool_calling_enabled,
+    reversible:
+      !posture.ai_model_remote_endpoint &&
+      !posture.ai_model_request_logging_enabled &&
+      !posture.ai_model_tool_calling_enabled,
+    external_reach: posture.ai_model_remote_endpoint || posture.ai_model_public_endpoint,
     secret_exposure: posture.env_key_names.some(isCredentialLikeKeyName) || posture.secret_ref_key_names.length > 0,
     reason: "AI model endpoint configuration discovered as runtime prompt and context egress posture.",
     metadata: {
@@ -762,7 +770,13 @@ function detectAiModelEndpointConfig(file: WalkedFile, text: string | undefined,
   });
   surfaces.runtime_config.push({
     ...object,
-    untrusted_to_privileged: isUntrustedToPrivileged(object)
+    untrusted_to_privileged:
+      (posture.ai_model_untrusted_input &&
+        (posture.ai_model_public_endpoint ||
+          posture.ai_model_tool_calling_enabled ||
+          posture.ai_model_request_logging_enabled) &&
+        !posture.ai_model_approval_required) ||
+      isUntrustedToPrivileged(object)
   });
 }
 
@@ -5096,6 +5110,9 @@ interface AiModelEndpointPosture {
   ai_model_provider?: string;
   ai_model_remote_endpoint: boolean;
   ai_model_custom_endpoint: boolean;
+  ai_model_public_endpoint: boolean;
+  ai_model_auth_required: boolean;
+  ai_model_auth_disabled: boolean;
   ai_model_destination_redacted: boolean;
   ai_model_remote_destination_count: number;
   ai_model_remote_destination_kinds: string[];
@@ -5107,6 +5124,11 @@ interface AiModelEndpointPosture {
   ai_model_sends_memory: boolean;
   ai_model_sensitive_context: boolean;
   ai_model_pii_context: boolean;
+  ai_model_untrusted_input: boolean;
+  ai_model_request_logging_enabled: boolean;
+  ai_model_redaction_disabled: boolean;
+  ai_model_tool_calling_enabled: boolean;
+  ai_model_approval_required: boolean;
   env_key_names: string[];
   secret_ref_key_names: string[];
 }
@@ -12158,7 +12180,10 @@ function classifyAiModelEndpointConfig(value: unknown, filePath: string): AiMode
   const stringValues = collectFieldStringValues(fields);
   const provider = inferAiModelProvider([filePath, ...fields.map((field) => field.path), ...stringValues]);
   const remote = classifyAiModelRemoteEndpoint(fields, provider);
-  const envKeys = collectEnvKeyNamesFromConfig(value);
+  const envKeys = uniqueStrings([
+    ...collectEnvKeyNamesFromConfig(value).filter(isLikelyEnvKeyName),
+    ...extractEnvironmentReferenceKeys(stringValues)
+  ]);
   const secretRefKeys = extractSecretReferenceKeys(stringValues);
   const promptSignal = hasAiModelContextSignal(fields, /\b(prompt|prompts|system|developer|input|inputs|message|messages|conversation|chat)\b/iu);
   const toolOutputSignal = hasAiModelContextSignal(
@@ -12170,8 +12195,14 @@ function classifyAiModelEndpointConfig(value: unknown, filePath: string): AiMode
     /(?:^|[_\W])(retrieval[_\s-]?context|retrieval|retrieved|rag|documents?|vector|embedding)(?:[_\W]|$)/iu
   );
   const memorySignal = hasAiModelContextSignal(fields, /(?:^|[_\W])(memory|memories|session|state|history|transcript)(?:[_\W]|$)/iu);
-  const piiSignal = fields.some((field) => /\b(pii|email|phone|address|ssn|passport|customer|client|ticket|support)\b/iu.test(`${field.path} ${fieldValueText(field)}`));
+  const piiSignal = fields.some((field) => {
+    if (/redact|redaction|sanitize|sanitiz|mask|scrub|anonym|pii_filter|secret_filter|data_loss_prevention|dlp/iu.test(field.path)) {
+      return false;
+    }
+    return /\b(pii|email|phone|address|ssn|passport|customer|client|ticket|support)\b/iu.test(`${field.path} ${fieldValueText(field)}`);
+  });
   const sendsPrompts = remote.remote || promptSignal;
+  const untrustedInput = hasAiModelUntrustedInputSignal(fields);
 
   return {
     ai_model_fields: fields
@@ -12181,6 +12212,9 @@ function classifyAiModelEndpointConfig(value: unknown, filePath: string): AiMode
     ai_model_provider: provider,
     ai_model_remote_endpoint: remote.remote,
     ai_model_custom_endpoint: remote.customEndpoint,
+    ai_model_public_endpoint: hasAiModelPublicEndpointSignal(fields),
+    ai_model_auth_required: hasAiModelAuthRequiredSignal(fields),
+    ai_model_auth_disabled: hasAiModelAuthDisabledSignal(fields),
     ai_model_destination_redacted: remote.destinationCount > 0,
     ai_model_remote_destination_count: remote.destinationCount,
     ai_model_remote_destination_kinds: remote.destinationKinds,
@@ -12192,6 +12226,11 @@ function classifyAiModelEndpointConfig(value: unknown, filePath: string): AiMode
     ai_model_sends_memory: memorySignal,
     ai_model_sensitive_context: sendsPrompts || toolOutputSignal || retrievalSignal || memorySignal || piiSignal,
     ai_model_pii_context: piiSignal,
+    ai_model_untrusted_input: untrustedInput,
+    ai_model_request_logging_enabled: hasAiModelRequestLoggingSignal(fields),
+    ai_model_redaction_disabled: hasAiModelRedactionDisabledSignal(fields),
+    ai_model_tool_calling_enabled: hasAiModelToolCallingSignal(fields),
+    ai_model_approval_required: hasAiModelApprovalRequiredSignal(fields),
     env_key_names: envKeys,
     secret_ref_key_names: secretRefKeys
   };
@@ -12291,12 +12330,104 @@ function hasAiModelContextSignal(fields: RuntimeField[], pattern: RegExp): boole
     const text = `${field.path} ${fieldValueText(field)}`;
     if (!pattern.test(text)) return false;
     if (/redact|mask|scrub|sanitize|exclude|drop|deny/iu.test(field.path)) return false;
+    if (disabledConfigValue(field.value)) return false;
     return truthyConfigValue(field.value) || /include|send|forward|attach|full|raw|context|history|memory|tool|prompt/iu.test(text);
   });
 }
 
+function hasAiModelPublicEndpointSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => {
+    const text = `${field.path} ${fieldValueText(field)}`.toLowerCase();
+    if (/\b(private|internal[_\s-]?only|restricted|deny[_\s-]?public|public[_\s-]?disabled|allowlist)\b/iu.test(text)) {
+      return false;
+    }
+    if (/(^|\.)(bind|bind_host|listen|listen_address|host|hostname|address)$/iu.test(field.path)) {
+      return /(?:^|[_\W])(0\.0\.0\.0|\[::\]|::|\*)(?:[_\W]|$)/u.test(text);
+    }
+    if (
+      /(?:^|[_\W])(public|publicly|anonymous|allow[_\s-]?anonymous|anonymous[_\s-]?clients|unauthenticated|guest[_\s-]?access|internet[_\s-]?facing|open[_\s-]?endpoint)(?:[_\W]|$)/iu.test(
+        text
+      )
+    ) {
+      return truthyConfigValue(field.value);
+    }
+    return false;
+  });
+}
+
+function hasAiModelAuthRequiredSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => {
+    if (!/(^|\.)(auth|authentication|authorization|api_key_required|require_api_key|token_required|rbac|acl|sso_required)$/iu.test(field.path)) {
+      return false;
+    }
+    return truthyConfigValue(field.value);
+  });
+}
+
+function hasAiModelAuthDisabledSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => {
+    const text = `${field.path} ${fieldValueText(field)}`.toLowerCase();
+    if (/(^|\.)(auth|authentication|authorization|api_key_required|require_api_key|token_required|rbac|acl|sso_required)$/iu.test(field.path)) {
+      return disabledConfigValue(field.value);
+    }
+    return /\b(no[_\s-]?auth|auth[_\s-]?disabled|authentication[_\s-]?disabled|unauthenticated|allow[_\s-]?anonymous|anonymous[_\s-]?clients|public[_\s-]?without[_\s-]?auth)\b/iu.test(
+      text
+    ) && truthyConfigValue(field.value);
+  });
+}
+
+function hasAiModelUntrustedInputSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => {
+    if (disabledConfigValue(field.value)) return false;
+    return /\b(untrusted|user|customer|client|ticket|support|issue|comment|message|prompt|retrieved|rag|document|email|chat|inbound|external|public|web[_-]?page|browser[_-]?output|tool[_-]?output)\b/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    );
+  });
+}
+
+function hasAiModelRequestLoggingSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => {
+    const text = `${field.path} ${fieldValueText(field)}`;
+    if (!/(?:^|[_\W])(request[_\s-]?logging|log|logs|record|records|store|persist|retain|history|trace|traces|transcript|audit)(?:[_\W]|$)/iu.test(text)) {
+      return false;
+    }
+    return truthyConfigValue(field.value);
+  });
+}
+
+function hasAiModelRedactionDisabledSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => {
+    const text = `${field.path} ${fieldValueText(field)}`.toLowerCase();
+    if (/redact|redaction|sanitize|sanitiz|mask|scrub|pii_filter|secret_filter|data_loss_prevention|dlp/iu.test(field.path)) {
+      return disabledConfigValue(field.value) || /\b(disabled|false|off|none|raw|passthrough|bypass)\b/iu.test(text);
+    }
+    return /\b(raw[_\s-]?prompts?|raw[_\s-]?requests?|raw[_\s-]?payloads?|store[_\s-]?raw|no[_\s-]?redaction|redaction[_\s-]?disabled)\b/iu.test(
+      text
+    ) && truthyConfigValue(field.value);
+  });
+}
+
+function hasAiModelToolCallingSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => {
+    const text = `${field.path} ${fieldValueText(field)}`;
+    if (/(?:^|[_\W])(tool|function|mcp)[_\s-]?(outputs?|results?|responses?|traces?|observations?)(?:[_\W]|$)/iu.test(text)) {
+      return false;
+    }
+    return /(?:^|[_\W])(tool[_\s-]?calling|function[_\s-]?calling|tool[_\s-]?use|function[_\s-]?use|available[_\s-]?tools?|exposed[_\s-]?tools?|mcp[_\s-]?tools?|auto[_\s-]?execute|tool[_\s-]?choice|parallel[_\s-]?tool[_\s-]?calls?)(?:[_\W]|$)/iu.test(
+      text
+    ) && truthyConfigValue(field.value);
+  });
+}
+
+function hasAiModelApprovalRequiredSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /approval|required[_-]?approval|human[_-]?approval|confirm|confirmation|review|human[_-]?in[_-]?the[_-]?loop/iu.test(field.path) &&
+    truthyConfigValue(field.value)
+  );
+}
+
 function isAiModelSecurityField(fieldPath: string): boolean {
-  return /provider|model|base[_-]?url|api[_-]?base|endpoint|url|uri|host|gateway|proxy|router|server|api[_-]?key|token|secret|credential|auth|env|prompt|input|message|completion|output|tool|retrieval|rag|context|memory|history|pii/iu.test(
+  return /provider|model|base[_-]?url|api[_-]?base|endpoint|url|uri|host|gateway|proxy|router|server|bind|listen|public|anonymous|api[_-]?key|token|secret|credential|auth|env|prompt|input|message|completion|output|tool|function|mcp|retrieval|rag|context|memory|history|log|record|trace|redact|sanitize|approval|pii/iu.test(
     fieldPath
   );
 }

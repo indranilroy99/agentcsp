@@ -1105,6 +1105,16 @@ The current iteration adds:
 - rule `AGENTCSP-RUNTIME-048` for authenticated browser sessions that can transfer sensitive local files from untrusted navigation without approval
 - scanner, rule, fixture verifier, and redaction coverage proving raw browser profile paths, transfer paths, origins, data labels, and token placeholders stay redacted
 
+## Public Model Gateway Pass
+
+The current iteration adds:
+
+- first-class redacted metadata for AI model endpoint and gateway exposure posture, including public or anonymous access, authentication posture, request logging, redaction posture, tool-calling authority, untrusted inputs, sensitive context capture, and approval boundaries
+- vulnerable fixture coverage for an HTTPS OpenAI-compatible model gateway that is public, unauthenticated, records prompts, tool calls, tool outputs, retrieval context, memory, PII, and secrets, and exposes tool calling without approval
+- safe fixture coverage for a localhost-only authenticated model gateway with request logging and tool calling disabled
+- rule `AGENTCSP-RUNTIME-051` for public or anonymous model gateways that combine disabled auth, sensitive context logging, disabled redaction, tool calling, and missing approval
+- scanner, rule, fixture verifier, and redaction coverage proving raw gateway URLs, gateway names, tool names, data-scope labels, and token placeholders stay redacted
+
 ## Initial Build Recommendation
 
 Start with a CLI-first MVP before building the dashboard:

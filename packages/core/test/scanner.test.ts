@@ -1352,6 +1352,9 @@ describe("scanner", () => {
       ai_model_provider: "openai_compatible",
       ai_model_remote_endpoint: true,
       ai_model_custom_endpoint: true,
+      ai_model_public_endpoint: false,
+      ai_model_auth_required: false,
+      ai_model_auth_disabled: false,
       ai_model_destination_redacted: true,
       ai_model_plaintext_endpoint: true,
       ai_model_encrypted_endpoint: false,
@@ -1360,7 +1363,12 @@ describe("scanner", () => {
       ai_model_sends_retrieval_context: true,
       ai_model_sends_memory: true,
       ai_model_sensitive_context: true,
-      ai_model_pii_context: true
+      ai_model_pii_context: true,
+      ai_model_untrusted_input: true,
+      ai_model_request_logging_enabled: false,
+      ai_model_redaction_disabled: false,
+      ai_model_tool_calling_enabled: false,
+      ai_model_approval_required: false
     });
     expect(modelConfig?.metadata.ai_model_remote_destination_kinds).toEqual([
       "configured_model_endpoint",
@@ -1372,6 +1380,56 @@ describe("scanner", () => {
     expect(JSON.stringify(modelConfig)).not.toContain("${OPENAI_API_KEY}");
     expect(JSON.stringify(modelConfig)).not.toContain("llm-gateway.example.invalid");
     expect(JSON.stringify(modelConfig)).not.toContain("agentcsp-support-ops");
+    const publicModelGateway = surfaces.runtime_config.find((surface) => surface.path === "models/public-gateway.yaml");
+    expect(publicModelGateway).toBeDefined();
+    expect(publicModelGateway).toMatchObject({
+      trust_level: "third_party",
+      external_reach: true,
+      secret_exposure: true,
+      side_effect: true,
+      reversible: false,
+      untrusted_to_privileged: true
+    });
+    expect(publicModelGateway?.metadata).toMatchObject({
+      content_redacted: true,
+      values_collected: false,
+      parsed_ai_model_config: true,
+      ai_model_provider: "openai_compatible",
+      ai_model_remote_endpoint: true,
+      ai_model_custom_endpoint: true,
+      ai_model_public_endpoint: true,
+      ai_model_auth_required: false,
+      ai_model_auth_disabled: true,
+      ai_model_destination_redacted: true,
+      ai_model_plaintext_endpoint: false,
+      ai_model_encrypted_endpoint: true,
+      ai_model_sends_prompts: true,
+      ai_model_sends_tool_outputs: true,
+      ai_model_sends_retrieval_context: true,
+      ai_model_sends_memory: true,
+      ai_model_sensitive_context: true,
+      ai_model_pii_context: true,
+      ai_model_untrusted_input: true,
+      ai_model_request_logging_enabled: true,
+      ai_model_redaction_disabled: true,
+      ai_model_tool_calling_enabled: true,
+      ai_model_approval_required: false
+    });
+    expect(publicModelGateway?.metadata.ai_model_remote_destination_kinds).toEqual([
+      "configured_model_endpoint",
+      "http_endpoint"
+    ]);
+    expect(publicModelGateway?.metadata.env_key_names).toEqual(["PUBLIC_MODEL_GATEWAY_TOKEN"]);
+    expect(publicModelGateway?.metadata.secret_ref_key_names).toEqual(["PUBLIC_MODEL_GATEWAY_TOKEN"]);
+    expect(publicModelGateway?.data_classes).toEqual(["confidential", "credential", "pii"]);
+    expect(publicModelGateway?.actions).toEqual(["call", "execute", "read", "remember", "send"]);
+    expect(JSON.stringify(publicModelGateway)).not.toContain("${PUBLIC_MODEL_GATEWAY_TOKEN}");
+    expect(JSON.stringify(publicModelGateway)).not.toContain("model-gateway.agentcsp-demo.example.invalid");
+    expect(JSON.stringify(publicModelGateway)).not.toContain("public-support-model-gateway");
+    expect(JSON.stringify(publicModelGateway)).not.toContain("support_db.write");
+    expect(JSON.stringify(publicModelGateway)).not.toContain("slack.post_customer_reply");
+    expect(JSON.stringify(publicModelGateway)).not.toContain("untrusted_customer_prompt");
+    expect(JSON.stringify(publicModelGateway)).not.toContain("public_gateway_customer_email");
     const databaseConfig = surfaces.runtime_config.find((surface) => surface.path === "database/support-db.yaml");
     expect(databaseConfig).toBeDefined();
     expect(databaseConfig).toMatchObject({
@@ -3504,6 +3562,58 @@ describe("scanner", () => {
     expect(promptCache?.metadata.secret_ref_key_names).toEqual([]);
     expect(JSON.stringify(promptCache)).not.toContain("approved_internal_digest");
     expect(JSON.stringify(promptCache)).not.toContain("tenant_scoped_internal_cache");
+  });
+
+  it("keeps authenticated internal model gateways quiet", async () => {
+    const files = await walkProject({
+      root_path: safeFixtureRoot,
+      output_path: ".agentcsp",
+      formats: ["json", "md"],
+      include_hidden: true,
+      include_logs: false,
+      max_file_size_bytes: 1024 * 1024,
+      max_files: 5000,
+      quiet: true
+    });
+    const surfaces = await detectSurfaces(files);
+    const modelGateway = surfaces.runtime_config.find((surface) => surface.path === "models/internal-gateway.yaml");
+
+    expect(modelGateway).toMatchObject({
+      trust_level: "project",
+      data_classes: ["unknown"],
+      actions: ["call", "read"],
+      side_effect: false,
+      external_reach: false,
+      secret_exposure: false,
+      reversible: true,
+      untrusted_to_privileged: false
+    });
+    expect(modelGateway?.metadata).toMatchObject({
+      parsed_ai_model_config: true,
+      ai_model_provider: "openai_compatible",
+      ai_model_remote_endpoint: false,
+      ai_model_custom_endpoint: true,
+      ai_model_public_endpoint: false,
+      ai_model_auth_required: true,
+      ai_model_auth_disabled: false,
+      ai_model_destination_redacted: false,
+      ai_model_plaintext_endpoint: false,
+      ai_model_encrypted_endpoint: false,
+      ai_model_sends_prompts: false,
+      ai_model_sends_tool_outputs: false,
+      ai_model_sends_retrieval_context: false,
+      ai_model_sends_memory: false,
+      ai_model_sensitive_context: false,
+      ai_model_pii_context: false,
+      ai_model_untrusted_input: false,
+      ai_model_request_logging_enabled: false,
+      ai_model_redaction_disabled: false,
+      ai_model_tool_calling_enabled: false,
+      ai_model_approval_required: true
+    });
+    expect(modelGateway?.metadata.ai_model_remote_destination_kinds).toEqual([]);
+    expect(JSON.stringify(modelGateway)).not.toContain("internal-read-model-gateway");
+    expect(JSON.stringify(modelGateway)).not.toContain("localhost:11434");
   });
 
   it("keeps local approval-gated session memory scoped", async () => {

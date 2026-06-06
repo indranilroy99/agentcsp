@@ -950,6 +950,9 @@ Model endpoint metadata may include:
 - `ai_model_provider`
 - `ai_model_remote_endpoint`
 - `ai_model_custom_endpoint`
+- `ai_model_public_endpoint`
+- `ai_model_auth_required`
+- `ai_model_auth_disabled`
 - `ai_model_destination_redacted`
 - `ai_model_remote_destination_count`
 - `ai_model_remote_destination_kinds`
@@ -961,10 +964,15 @@ Model endpoint metadata may include:
 - `ai_model_sends_memory`
 - `ai_model_sensitive_context`
 - `ai_model_pii_context`
+- `ai_model_untrusted_input`
+- `ai_model_request_logging_enabled`
+- `ai_model_redaction_disabled`
+- `ai_model_tool_calling_enabled`
+- `ai_model_approval_required`
 - `env_key_names`
 - `secret_ref_key_names`
 
-Raw model gateway URLs, model names, base URLs, request payload examples, and secret placeholders are not emitted. Provider names, redacted destination categories, transport posture, context booleans, and credential key names let rules detect risky model endpoints without copying prompts, tool outputs, memory, retrieval content, or endpoint values into the manifest.
+Raw model gateway URLs, model names, base URLs, request payload examples, exposed tool names, data-scope labels, and secret placeholders are not emitted. Provider names, redacted destination categories, transport posture, public/auth posture, request-logging posture, redaction posture, tool-calling posture, approval posture, context booleans, and credential key names let rules detect risky model endpoints without copying prompts, tool outputs, memory, retrieval content, or endpoint values into the manifest.
 
 ## AI Model Router Boundary
 

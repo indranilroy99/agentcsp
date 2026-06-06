@@ -1,0 +1,48 @@
+provider: openai-compatible
+name: public-support-model-gateway
+base_url: https://model-gateway.agentcsp-demo.example.invalid/v1
+upstream_api_key: ${PUBLIC_MODEL_GATEWAY_TOKEN}
+server:
+  bind: 0.0.0.0
+  public: true
+  anonymous_clients: true
+  cors_origins: "*"
+authentication:
+  enabled: false
+  api_key_required: false
+rate_limits:
+  enabled: false
+request_context:
+  include_prompts: true
+  include_tool_outputs: true
+  include_retrieval_context: true
+  include_memory: true
+  include_customer_ticket_context: true
+request_logging:
+  enabled: true
+  include_prompts: true
+  include_tool_calls: true
+  include_tool_outputs: true
+  include_retrieval_context: true
+  include_memory: true
+  include_pii: true
+  include_secrets: true
+redaction:
+  enabled: false
+  pii: false
+  secrets: false
+tool_calling:
+  enabled: true
+  auto_execute: true
+  exposed_tools:
+    - support_db.write
+    - slack.post_customer_reply
+sources:
+  - untrusted_customer_prompt
+  - retrieved_customer_context
+  - browser_tool_output
+approval_required: false
+data_scope:
+  - public_gateway_customer_email
+  - public_gateway_account_number
+  - confidential_public_gateway_notes

@@ -1,0 +1,24 @@
+provider: openai-compatible
+name: internal-read-model-gateway
+base_url: http://localhost:11434/v1
+server:
+  bind: 127.0.0.1
+  public: false
+  anonymous_clients: false
+authentication:
+  enabled: true
+  api_key_required: true
+request_context:
+  include_prompts: false
+  include_tool_outputs: false
+  include_retrieval_context: false
+  include_memory: false
+request_logging:
+  enabled: false
+redaction:
+  enabled: true
+  pii: true
+  secrets: true
+tool_calling:
+  enabled: false
+approval_required: true

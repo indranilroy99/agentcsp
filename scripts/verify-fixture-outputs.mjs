@@ -39,6 +39,7 @@ const leakPatterns = [
   /\$\{MCP_OAUTH_CLIENT_SECRET\}/u,
   /\$\{MODEL_ROUTER_TOKEN\}/u,
   /\$\{OPENAI_API_KEY\}/u,
+  /\$\{PUBLIC_MODEL_GATEWAY_TOKEN\}/u,
   /\$\{PROMPT_REGISTRY_TOKEN\}/u,
   /\$\{REALTIME_AGENT_TOKEN\}/u,
   /\$\{SAFETY_RUNTIME_TOKEN\}/u,
@@ -73,6 +74,12 @@ const leakPatterns = [
   /http:\/\/mcp\.example\.invalid\/sse/u,
   /http:\/\/llm-gateway\.example\.invalid\/v1/u,
   /agentcsp-support-ops/u,
+  /model-gateway\.agentcsp-demo\.example\.invalid/u,
+  /public-support-model-gateway/u,
+  /support_db\.write/u,
+  /public_gateway_customer_email/u,
+  /public_gateway_account_number/u,
+  /confidential_public_gateway_notes/u,
   /\.browser\/support-profile/u,
   /\.auth\/support-browser-state\.json/u,
   /\.auth\/customer-support-cookies\.json/u,
@@ -417,8 +424,8 @@ const leakPatterns = [
 const vulnerable = await readScanOutput(vulnerableOutput, { sarifRequired: true });
 const safe = await readScanOutput(safeOutput, { sarifRequired: false });
 
-assertEqual(vulnerable.manifest.findings.length, 142, "vulnerable manifest finding count");
-assertEqual(vulnerable.findings.length, 142, "vulnerable findings.json count");
+assertEqual(vulnerable.manifest.findings.length, 143, "vulnerable manifest finding count");
+assertEqual(vulnerable.findings.length, 143, "vulnerable findings.json count");
 assertEqual(vulnerable.manifest.attack_paths.length, 15, "vulnerable attack path count");
 assertEqual(vulnerable.manifest.static_blast_radius?.critical_attack_paths, 15, "vulnerable critical attack path count");
 assertEqual(vulnerable.manifest.diagnostics.length, 0, "vulnerable diagnostics count");
@@ -472,6 +479,7 @@ for (const ruleId of [
   "AGENTCSP-RUNTIME-048",
   "AGENTCSP-RUNTIME-049",
   "AGENTCSP-RUNTIME-050",
+  "AGENTCSP-RUNTIME-051",
   "AGENTCSP-AUTOMATION-003",
   "AGENTCSP-RUNTIME-006",
   "AGENTCSP-MCP-006",
