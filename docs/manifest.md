@@ -434,6 +434,43 @@ Agent orchestration metadata may include:
 
 Raw agent names, crew names, role prompts, task descriptions, memory namespaces, graph labels, tool lists, and secret placeholders are not emitted. Framework names, counts, redacted delegation categories, shared-memory posture, tool-authority categories, approval posture, data-class booleans, and credential key names let rules detect indirect prompt-injection paths across agent handoffs without copying orchestration content into the manifest.
 
+## Hosted Assistant Definition Posture
+
+Hosted assistant, assistant API, deployable agent, and hosted-agent definition files are normalized into `runtime_config` objects when common JSON, YAML, or TOML config files are discovered.
+
+Hosted assistant metadata may include:
+
+- `parsed_hosted_assistant_config`
+- `hosted_assistant_fields`
+- `hosted_assistant_provider`
+- `hosted_assistant_definition_detected`
+- `hosted_assistant_model_redacted`
+- `hosted_assistant_instructions_redacted`
+- `hosted_assistant_tool_names_redacted`
+- `hosted_assistant_tool_count`
+- `hosted_assistant_tool_categories`
+- `hosted_assistant_privileged_tools`
+- `hosted_assistant_code_interpreter_enabled`
+- `hosted_assistant_file_search_enabled`
+- `hosted_assistant_function_tools_enabled`
+- `hosted_assistant_mcp_tools_enabled`
+- `hosted_assistant_web_search_enabled`
+- `hosted_assistant_computer_use_enabled`
+- `hosted_assistant_tool_choice_auto`
+- `hosted_assistant_parallel_tool_calls`
+- `hosted_assistant_vector_store_redacted`
+- `hosted_assistant_file_ids_redacted`
+- `hosted_assistant_sensitive_context`
+- `hosted_assistant_pii_context`
+- `hosted_assistant_secret_context`
+- `hosted_assistant_untrusted_input`
+- `hosted_assistant_guardrails_disabled`
+- `hosted_assistant_approval_required`
+- `env_key_names`
+- `secret_ref_key_names`
+
+Raw assistant IDs, assistant names, model names, instructions, tool names, tool descriptions, file IDs, vector-store IDs, thread/message content, data labels, and secret placeholders are not emitted. Provider names, redacted counts, hosted-tool categories, tool-choice posture, file/vector resource posture, guardrail posture, approval posture, and credential key names let rules detect hosted assistants that auto-route untrusted thread or customer context into privileged hosted tools without copying deployable assistant contents into evidence.
+
 ## Agent Safety Control Posture
 
 Agent safety, guardrail, moderation, validation, sanitization, and redaction configs are normalized into `runtime_config` objects when common control configuration files are discovered.

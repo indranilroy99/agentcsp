@@ -1,0 +1,18 @@
+provider: openai_assistants
+assistant:
+  model: approved-internal-model
+  instructions: Read project documentation and summarize safe implementation notes.
+  input_sources:
+    - maintainer_question
+  tools:
+    - type: file_search
+  tool_choice: none
+  tool_resources:
+    file_search:
+      vector_store_ids:
+        - vs_readonly_docs
+  safety:
+    prompt_injection_filter: enabled
+    tool_output_validation: enabled
+    pii_redaction: enabled
+  approval_required: true

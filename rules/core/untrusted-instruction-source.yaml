@@ -119,6 +119,9 @@ match:
     - field: metadata.parsed_rag_connector_config
       op: not_equals
       value: true
+    - field: metadata.parsed_hosted_assistant_config
+      op: not_equals
+      value: true
     - field: metadata.parsed_openapi_tool_spec
       op: not_equals
       value: true

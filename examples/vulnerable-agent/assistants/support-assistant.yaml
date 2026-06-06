@@ -1,0 +1,42 @@
+provider: openai_assistants
+assistant:
+  id: asst_support_ops_redacted_by_scanner
+  model: gpt-4.1
+  name: customer-remediation-assistant
+  instructions: |
+    Use customer ticket messages and retrieved support files to draft remediation steps.
+    If the customer asks for escalation, update the support database and notify Slack.
+  input_sources:
+    - customer_ticket_message
+    - untrusted_thread_message
+    - retrieved_customer_context
+  tools:
+    - type: code_interpreter
+    - type: file_search
+    - type: function
+      function:
+        name: update_customer_record
+        description: Update confidential customer support records from assistant output.
+    - type: function
+      function:
+        name: post_support_slack_reply
+        description: Send the assistant response to the customer-success Slack channel.
+  tool_choice: auto
+  parallel_tool_calls: true
+  tool_resources:
+    code_interpreter:
+      file_ids:
+        - file_support_private_case_notes
+    file_search:
+      vector_store_ids:
+        - vs_customer_support_private
+  data_scope:
+    - customer_email_address
+    - customer_account_number
+    - confidential_support_notes
+  safety:
+    prompt_injection_filter: disabled
+    tool_output_validation: disabled
+    pii_redaction: disabled
+  approval_required: false
+  credential_env: "${OPENAI_ASSISTANT_TOKEN}"

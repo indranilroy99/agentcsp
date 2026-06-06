@@ -18,6 +18,8 @@ For authorization-broker rules, require concrete grant-risk correlation such as 
 
 For OpenAPI and Swagger tool-import rules, require concrete agent-authority correlation such as agent import, authenticated external operation, write or destructive method, user-controlled request inputs, sensitive data categories, and missing approval. Do not match on raw API text alone.
 
+For hosted assistant definition rules, require concrete deployment-risk correlation such as hosted assistant detection, untrusted thread or customer inputs, sensitive file or vector resources, automatic tool choice, privileged hosted tools, disabled guardrails, credential evidence, and missing approval.
+
 AgentCSP computes finding confidence from rule correlation depth, scoped object type, structured parsing, privileged actions, data class, external reach, and side-effect signals.
 
 Required fields:

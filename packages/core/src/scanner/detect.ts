@@ -242,6 +242,11 @@ export async function detectSurfaces(files: WalkedFile[]): Promise<DetectedSurfa
       continue;
     }
 
+    if (isHostedAssistantConfigPath(file.relativePath, basename)) {
+      detectHostedAssistantConfig(file, text, surfaces);
+      continue;
+    }
+
     if (isAgentOrchestrationConfigPath(file.relativePath, basename)) {
       detectAgentOrchestrationConfig(file, text, surfaces);
       continue;
@@ -1553,6 +1558,83 @@ function detectInboundAgentTriggerConfig(file: WalkedFile, text: string | undefi
           posture.inbound_trigger_write_authority ||
           posture.inbound_trigger_external_response ||
           posture.inbound_trigger_memory_write)) ||
+      isUntrustedToPrivileged(object)
+  });
+}
+
+function detectHostedAssistantConfig(file: WalkedFile, text: string | undefined, surfaces: DetectedSurfaces): void {
+  const parsed = parseStructuredConfig(text ?? "", file.relativePath);
+  if (parsed.parseFailed) {
+    addDiagnostic(surfaces, file, {
+      parser: parsed.parser ?? "structured_config",
+      code: "HOSTED_ASSISTANT_CONFIG_PARSE_FAILED",
+      reason: "Hosted assistant or deployable agent definition could not be parsed. Raw content was redacted."
+    });
+  }
+
+  const posture = classifyHostedAssistantConfig(parsed.value, file.relativePath);
+  const actions = new Set<ActionType>(["read", "call"]);
+  if (posture.hosted_assistant_code_interpreter_enabled || posture.hosted_assistant_computer_use_enabled) actions.add("execute");
+  if (posture.hosted_assistant_write_tool_authority) actions.add("write");
+  if (posture.hosted_assistant_external_tool_authority || posture.hosted_assistant_web_search_enabled || posture.hosted_assistant_mcp_tools_enabled) {
+    actions.add("send");
+    actions.add("publish");
+  }
+  if (posture.hosted_assistant_memory_write || posture.hosted_assistant_vector_store_count > 0) actions.add("remember");
+
+  const dataClasses = new Set<SurfaceObject["data_classes"][number]>(["unknown"]);
+  if (
+    posture.hosted_assistant_secret_context ||
+    posture.env_key_names.some(isCredentialLikeKeyName) ||
+    posture.secret_ref_key_names.length > 0
+  ) {
+    dataClasses.add("credential");
+    dataClasses.add("secret");
+  }
+  if (posture.hosted_assistant_sensitive_context) dataClasses.add("confidential");
+  if (posture.hosted_assistant_pii_context) dataClasses.add("pii");
+  if (dataClasses.size > 1) dataClasses.delete("unknown");
+
+  const object = createSurfaceObject({
+    type: "runtime_config",
+    name: path.basename(file.relativePath),
+    path: file.relativePath,
+    trust_level: inferTrustLevel(file.relativePath),
+    data_classes: uniqueDataClasses([...dataClasses] as SurfaceObject["data_classes"]),
+    actions: uniqueActions([...actions]),
+    side_effect:
+      posture.hosted_assistant_privileged_tools ||
+      posture.hosted_assistant_write_tool_authority ||
+      posture.hosted_assistant_external_tool_authority ||
+      posture.hosted_assistant_memory_write ||
+      posture.hosted_assistant_guardrails_disabled,
+    reversible: !posture.hosted_assistant_write_tool_authority && !posture.hosted_assistant_external_tool_authority,
+    external_reach:
+      posture.hosted_assistant_external_tool_authority ||
+      posture.hosted_assistant_web_search_enabled ||
+      posture.hosted_assistant_mcp_tools_enabled,
+    secret_exposure:
+      posture.hosted_assistant_secret_context ||
+      posture.env_key_names.some(isCredentialLikeKeyName) ||
+      posture.secret_ref_key_names.length > 0,
+    reason: "Hosted assistant or deployable agent definition discovered as model, tool, file, and vector-store authority posture.",
+    metadata: {
+      content_redacted: true,
+      values_collected: false,
+      parsed_hosted_assistant_config: Boolean(parsed.value) && !parsed.parseFailed,
+      parse_error: parsed.parseFailed,
+      ...posture
+    }
+  });
+  surfaces.runtime_config.push({
+    ...object,
+    untrusted_to_privileged:
+      (posture.hosted_assistant_definition_detected &&
+        posture.hosted_assistant_untrusted_input &&
+        posture.hosted_assistant_privileged_tools &&
+        posture.hosted_assistant_sensitive_context &&
+        posture.hosted_assistant_tool_choice_auto &&
+        !posture.hosted_assistant_approval_required) ||
       isUntrustedToPrivileged(object)
   });
 }
@@ -3125,6 +3207,28 @@ function isInboundAgentTriggerConfigPath(relativePath: string, basename: string)
   return triggerName || (triggerDirectory && configName);
 }
 
+function isHostedAssistantConfigPath(relativePath: string, basename: string): boolean {
+  const normalized = relativePath.replaceAll("\\", "/").toLowerCase();
+  const lowerBase = basename.toLowerCase();
+  if (!/\.(json|ya?ml|toml)$/iu.test(lowerBase)) return false;
+  if (normalized.startsWith(".github/workflows/")) return false;
+  if (normalized.startsWith("rules/")) return false;
+  const segments = normalized.split("/").slice(0, -1);
+  const assistantDirectory = segments.some((segment) =>
+    /^(assistants?|hosted-agents?|hosted_agents?|hosted-assistants?|hosted_assistants?|assistant-definitions?|assistant_definitions?|openai-assistants?|openai_assistants?|bedrock-agents?|bedrock_agents?|vertex-agents?|vertex_agents?)$/iu.test(
+      segment
+    )
+  );
+  const genericAgentDirectory = segments.some((segment) => /^(agents?|agent-definitions?|agent_definitions?)$/iu.test(segment));
+  const assistantName = /(?:assistant|hosted[-_]?agent|agent[-_]?definition|assistant[-_]?definition|openai[-_]?assistant|responses[-_]?agent|bedrock[-_]?agent|vertex[-_]?agent)/iu.test(
+    lowerBase
+  );
+  const configName = /(?:config|settings|assistant|agent|definition|runtime|deployment|model|tools?|tool[-_]?resources|vector|file[-_]?search|code[-_]?interpreter)/iu.test(
+    lowerBase
+  );
+  return assistantName || (assistantDirectory && configName) || (genericAgentDirectory && assistantName);
+}
+
 function isAgentOrchestrationConfigPath(relativePath: string, basename: string): boolean {
   const normalized = relativePath.replaceAll("\\", "/").toLowerCase();
   const lowerBase = basename.toLowerCase();
@@ -3904,6 +4008,42 @@ interface InboundAgentTriggerPosture {
   inbound_trigger_pii_context: boolean;
   inbound_trigger_attachment_context: boolean;
   inbound_trigger_approval_required: boolean;
+  env_key_names: string[];
+  secret_ref_key_names: string[];
+}
+
+interface HostedAssistantPosture {
+  hosted_assistant_fields: string[];
+  hosted_assistant_provider?: string;
+  hosted_assistant_definition_detected: boolean;
+  hosted_assistant_model_redacted: boolean;
+  hosted_assistant_instructions_redacted: boolean;
+  hosted_assistant_tool_names_redacted: boolean;
+  hosted_assistant_tool_count: number;
+  hosted_assistant_tool_categories: string[];
+  hosted_assistant_privileged_tools: boolean;
+  hosted_assistant_code_interpreter_enabled: boolean;
+  hosted_assistant_file_search_enabled: boolean;
+  hosted_assistant_function_tools_enabled: boolean;
+  hosted_assistant_mcp_tools_enabled: boolean;
+  hosted_assistant_web_search_enabled: boolean;
+  hosted_assistant_computer_use_enabled: boolean;
+  hosted_assistant_external_tool_authority: boolean;
+  hosted_assistant_write_tool_authority: boolean;
+  hosted_assistant_memory_write: boolean;
+  hosted_assistant_tool_choice_auto: boolean;
+  hosted_assistant_parallel_tool_calls: boolean;
+  hosted_assistant_tool_resources_redacted: boolean;
+  hosted_assistant_vector_store_redacted: boolean;
+  hosted_assistant_vector_store_count: number;
+  hosted_assistant_file_ids_redacted: boolean;
+  hosted_assistant_file_count: number;
+  hosted_assistant_sensitive_context: boolean;
+  hosted_assistant_pii_context: boolean;
+  hosted_assistant_secret_context: boolean;
+  hosted_assistant_untrusted_input: boolean;
+  hosted_assistant_guardrails_disabled: boolean;
+  hosted_assistant_approval_required: boolean;
   env_key_names: string[];
   secret_ref_key_names: string[];
 }
@@ -6467,6 +6607,276 @@ function hasInboundTriggerApprovalRequiredSignal(fields: RuntimeField[]): boolea
 
 function isInboundTriggerSecurityField(fieldPath: string): boolean {
   return /provider|source|input|event|trigger|webhook|listener|receiver|mail|email|message|chat|ticket|issue|comment|payload|body|attachment|agent|assistant|bot|tool|mcp|browser|database|secret|memory|reply|respond|send|write|post|publish|approval|auth|token|credential|scope|permission|url|host|endpoint|queue|topic|subscription/iu.test(
+    fieldPath
+  );
+}
+
+function classifyHostedAssistantConfig(value: unknown, filePath: string): HostedAssistantPosture {
+  const fields = flattenRuntimeFields(value);
+  const stringValues = collectFieldStringValues(fields);
+  const provider = inferHostedAssistantProvider([filePath, ...fields.map((field) => field.path), ...stringValues]);
+  const toolCategories = collectHostedAssistantToolCategories(fields);
+  const vectorStoreCount = countHostedAssistantVectorStoreRefs(fields);
+  const fileCount = countHostedAssistantFileRefs(fields);
+  const envKeys = uniqueStrings([
+    ...collectEnvKeyNamesFromConfig(value).filter(isLikelyEnvKeyName),
+    ...extractEnvironmentReferenceKeys(stringValues)
+  ]);
+  const secretRefKeys = extractSecretReferenceKeys(stringValues);
+
+  return {
+    hosted_assistant_fields: fields
+      .map((field) => field.path)
+      .filter((fieldPath) => isHostedAssistantSecurityField(fieldPath))
+      .sort((a, b) => a.localeCompare(b)),
+    hosted_assistant_provider: provider,
+    hosted_assistant_definition_detected: hasHostedAssistantDefinitionSignal(fields, provider),
+    hosted_assistant_model_redacted: hasHostedAssistantModelSignal(fields),
+    hosted_assistant_instructions_redacted: hasHostedAssistantInstructionSignal(fields),
+    hosted_assistant_tool_names_redacted: toolCategories.length > 0 || hasHostedAssistantToolNameSignal(fields),
+    hosted_assistant_tool_count: countHostedAssistantToolEntries(value, fields),
+    hosted_assistant_tool_categories: toolCategories,
+    hosted_assistant_privileged_tools: isHostedAssistantPrivileged(toolCategories),
+    hosted_assistant_code_interpreter_enabled: toolCategories.includes("code_interpreter"),
+    hosted_assistant_file_search_enabled: toolCategories.includes("file_search"),
+    hosted_assistant_function_tools_enabled: toolCategories.includes("function_tool"),
+    hosted_assistant_mcp_tools_enabled: toolCategories.includes("mcp_connector"),
+    hosted_assistant_web_search_enabled: toolCategories.includes("web_search"),
+    hosted_assistant_computer_use_enabled: toolCategories.includes("computer_use"),
+    hosted_assistant_external_tool_authority: hasHostedAssistantExternalToolAuthority(toolCategories),
+    hosted_assistant_write_tool_authority: hasHostedAssistantWriteToolAuthority(fields, toolCategories),
+    hosted_assistant_memory_write: hasHostedAssistantMemoryWriteSignal(fields, vectorStoreCount),
+    hosted_assistant_tool_choice_auto: hasHostedAssistantAutomaticToolChoice(fields, toolCategories),
+    hosted_assistant_parallel_tool_calls: hasHostedAssistantParallelToolCalls(fields),
+    hosted_assistant_tool_resources_redacted: hasHostedAssistantToolResourceSignal(fields),
+    hosted_assistant_vector_store_redacted: vectorStoreCount > 0,
+    hosted_assistant_vector_store_count: vectorStoreCount,
+    hosted_assistant_file_ids_redacted: fileCount > 0,
+    hosted_assistant_file_count: fileCount,
+    hosted_assistant_sensitive_context: hasHostedAssistantSensitiveContextSignal(fields),
+    hosted_assistant_pii_context: hasHostedAssistantPiiContextSignal(fields),
+    hosted_assistant_secret_context: hasHostedAssistantSecretContextSignal(fields) || envKeys.some(isCredentialLikeKeyName) || secretRefKeys.length > 0,
+    hosted_assistant_untrusted_input: hasHostedAssistantUntrustedInputSignal(fields),
+    hosted_assistant_guardrails_disabled: hasHostedAssistantGuardrailsDisabledSignal(fields),
+    hosted_assistant_approval_required: hasHostedAssistantApprovalRequiredSignal(fields),
+    env_key_names: envKeys,
+    secret_ref_key_names: secretRefKeys
+  };
+}
+
+function inferHostedAssistantProvider(candidates: string[]): string | undefined {
+  const text = candidates.join(" ").toLowerCase().replaceAll("_", " ").replaceAll("-", " ");
+  const providers: Array<[string, RegExp]> = [
+    ["openai_assistants", /\b(openai|assistant_id|assistants?\.create|assistant[_-]?api|responses?[_-]?api)\b/iu],
+    ["azure_openai_assistants", /\b(azure[_\s-]?openai|aoai)\b/iu],
+    ["anthropic_agent", /\b(anthropic|claude|tool_use)\b/iu],
+    ["bedrock_agent", /\b(bedrock|amazon[_\s-]?bedrock)\b/iu],
+    ["vertex_agent", /\b(vertex|google[_\s-]?cloud[_\s-]?ai|gemini)\b/iu],
+    ["langgraph_cloud", /\b(langgraph[_\s-]?cloud|langsmith)\b/iu],
+    ["hosted_assistant", /\b(hosted[_\s-]?assistant|hosted[_\s-]?agent|assistant[_\s-]?definition)\b/iu]
+  ];
+  return providers.find(([, pattern]) => pattern.test(text))?.[0];
+}
+
+function hasHostedAssistantDefinitionSignal(fields: RuntimeField[], provider: string | undefined): boolean {
+  if (provider !== undefined) return true;
+  const hasModel = hasHostedAssistantModelSignal(fields);
+  const hasInstructions = hasHostedAssistantInstructionSignal(fields);
+  const hasTools = countHostedAssistantToolEntries(undefined, fields) > 0 || collectHostedAssistantToolCategories(fields).length > 0;
+  return hasModel && (hasInstructions || hasTools);
+}
+
+function hasHostedAssistantModelSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => /(?:^|\.)(model|model_id|modelId|deployment|deployment_id|deploymentId)$/iu.test(field.path));
+}
+
+function hasHostedAssistantInstructionSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => /(?:^|\.)(instructions?|system_prompt|systemPrompt|developer_message|developerMessage|prompt)$/iu.test(field.path));
+}
+
+function hasHostedAssistantToolNameSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => /(?:^|\.)(name|tool_name|toolName|function\.name)$/iu.test(field.path) && /\btools?\b/iu.test(field.path));
+}
+
+function countHostedAssistantToolEntries(value: unknown, fields: RuntimeField[]): number {
+  const entries = new Set<string>();
+  if (value && typeof value === "object" && !Array.isArray(value)) {
+    const record = value as Record<string, unknown>;
+    for (const key of ["tools", "functions", "capabilities"]) {
+      const candidate = record[key];
+      if (Array.isArray(candidate)) return candidate.length;
+      if (candidate && typeof candidate === "object") return Object.keys(candidate as Record<string, unknown>).length;
+    }
+  }
+  for (const field of fields) {
+    const match = field.path.match(/(?:^|\.)(tools?|functions?|capabilities)\.(\d+|[A-Za-z][\w-]*)/u);
+    if (match?.[1] && match[2]) entries.add(`${match[1]}.${match[2]}`);
+  }
+  return entries.size;
+}
+
+function collectHostedAssistantToolCategories(fields: RuntimeField[]): string[] {
+  const categories = new Set<string>();
+  for (const field of fields) {
+    const text = `${field.path} ${fieldValueText(field)}`.toLowerCase();
+    if (!/\b(tool|tools|function|functions|capability|capabilities|tool_resources|toolresources|code_interpreter|file_search|web_search|computer|mcp)\b/iu.test(text)) {
+      continue;
+    }
+    if (/\b(code[_\s-]?interpreter|python|sandbox|repl|notebook)\b/iu.test(text)) categories.add("code_interpreter");
+    if (/\b(file[_\s-]?search|retrieval|vector[_\s-]?store|knowledge[_\s-]?base|documents?)\b/iu.test(text)) categories.add("file_search");
+    if (/\b(function|function[_\s-]?call|json[_\s-]?schema|tool[_\s-]?schema)\b/iu.test(text)) categories.add("function_tool");
+    if (/\b(mcp|model[_\s-]?context[_\s-]?protocol)\b/iu.test(text)) categories.add("mcp_connector");
+    if (/\b(web[_\s-]?search|browser[_\s-]?search|search[_\s-]?the[_\s-]?web)\b/iu.test(text)) categories.add("web_search");
+    if (/\b(computer[_\s-]?use|browser|click|form|screen|desktop)\b/iu.test(text)) categories.add("computer_use");
+    if (/\b(slack|email|webhook|ticket|jira|zendesk|github|comment|reply|respond|send|post|publish)\b/iu.test(text)) {
+      categories.add("external_response");
+    }
+    if (/\b(database|db|sql|query|support_db|warehouse|crm)\b/iu.test(text)) categories.add("database_access");
+    if (/(?:^|[_\W])(vault|secret|secrets|secret[_\s-]?manager|credential|api[_\s-]?key)(?:[_\W]|$)/iu.test(text)) {
+      categories.add("secret_manager_access");
+    }
+    if (/\b(write|update|create|delete|close|assign|escalate|approve|refund|commit|push|merge)\b/iu.test(text)) {
+      categories.add("state_write");
+    }
+    if (/(?:^|[_\W])(memory|remember|persist|store|vector[_\s-]?store)(?:[_\W]|$)/iu.test(text)) categories.add("memory_write");
+  }
+  return [...categories].sort((a, b) => a.localeCompare(b));
+}
+
+function isHostedAssistantPrivileged(categories: string[]): boolean {
+  return categories.some((category) =>
+    [
+      "code_interpreter",
+      "computer_use",
+      "database_access",
+      "external_response",
+      "function_tool",
+      "mcp_connector",
+      "secret_manager_access",
+      "state_write"
+    ].includes(category)
+  );
+}
+
+function hasHostedAssistantExternalToolAuthority(categories: string[]): boolean {
+  return categories.some((category) => ["computer_use", "external_response", "mcp_connector", "web_search"].includes(category));
+}
+
+function hasHostedAssistantWriteToolAuthority(fields: RuntimeField[], categories: string[]): boolean {
+  return categories.some((category) =>
+    ["code_interpreter", "computer_use", "database_access", "external_response", "state_write"].includes(category)
+  ) || fields.some((field) =>
+    /\b(write|update|create|delete|reply|respond|send|post|publish|comment|close|assign|escalate|approve|refund|commit|push|merge)\b/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    )
+  );
+}
+
+function hasHostedAssistantMemoryWriteSignal(fields: RuntimeField[], vectorStoreCount: number): boolean {
+  return vectorStoreCount > 0 || fields.some((field) =>
+    /(?:^|[_\W])(memory|remember|persist|store|vector[_\s-]?store|thread[_\s-]?state)(?:[_\W]|$)/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    )
+  );
+}
+
+function hasHostedAssistantAutomaticToolChoice(fields: RuntimeField[], categories: string[]): boolean {
+  if (categories.length === 0) return false;
+  const toolChoiceFields = fields.filter((field) => /(?:^|\.)(tool_choice|toolChoice|tool_selection|toolSelection)(?:\.|$)?/iu.test(field.path));
+  if (toolChoiceFields.length === 0) return true;
+  if (toolChoiceFields.some((field) => /\b(none|disabled|disable|off|manual|read[_-]?only|read-only)\b/iu.test(fieldValueText(field)))) {
+    return false;
+  }
+  return toolChoiceFields.some((field) => /\b(auto|required|any|automatic|enabled|on|true)\b/iu.test(fieldValueText(field)) || truthyConfigValue(field.value));
+}
+
+function hasHostedAssistantParallelToolCalls(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /(?:^|\.)(parallel_tool_calls|parallelToolCalls|parallel_tools|parallelTools)(?:\.|$)?/iu.test(field.path) &&
+    truthyConfigValue(field.value)
+  );
+}
+
+function hasHostedAssistantToolResourceSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => /\b(tool_resources|toolResources|resources|attachments|file_ids|fileIds|vector_store_ids|vectorStoreIds)\b/iu.test(field.path));
+}
+
+function countHostedAssistantVectorStoreRefs(fields: RuntimeField[]): number {
+  return countHostedAssistantResourceRefs(fields, /vector[_-]?store[_-]?ids?|vectorStoreIds|vector[_-]?stores?|knowledge[_-]?base/iu);
+}
+
+function countHostedAssistantFileRefs(fields: RuntimeField[]): number {
+  return countHostedAssistantResourceRefs(fields, /file[_-]?ids?|fileIds|attachments?|documents?/iu);
+}
+
+function countHostedAssistantResourceRefs(fields: RuntimeField[], pathPattern: RegExp): number {
+  const refs = new Set<string>();
+  for (const field of fields) {
+    if (!pathPattern.test(field.path)) continue;
+    if (Array.isArray(field.value)) {
+      for (const value of field.value) refs.add(String(value));
+      continue;
+    }
+    if (typeof field.value === "string" || typeof field.value === "number") {
+      refs.add(String(field.value));
+      continue;
+    }
+    refs.add(field.path);
+  }
+  return refs.size;
+}
+
+function hasHostedAssistantSensitiveContextSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /\b(customer|client|ticket|support|internal|confidential|private|proprietary|sensitive|account|billing|payment|order|record|case|profile|note|incident|file[_\s-]?search|vector[_\s-]?store|knowledge[_\s-]?base)\b/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    )
+  );
+}
+
+function hasHostedAssistantPiiContextSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /(?:^|[_\W])(pii|email|phone|address|ssn|passport|dob|date[_\s-]?of[_\s-]?birth|customer[_-]?id|user[_-]?id|account[_-]?id)(?:[_\W]|$)/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    )
+  );
+}
+
+function hasHostedAssistantSecretContextSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /\b(secret|token|credential|api[_-]?key|password|vault|key[_\s-]?vault|authorization|bearer)\b/iu.test(`${field.path} ${fieldValueText(field)}`)
+  );
+}
+
+function hasHostedAssistantUntrustedInputSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /\b(untrusted|user|customer|client|ticket|support|issue|comment|message|prompt|retrieved|rag|document|email|chat|inbound|web[_-]?page|browser[_-]?output|tool[_-]?output|external|thread[_\s-]?message)\b/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    )
+  );
+}
+
+function hasHostedAssistantGuardrailsDisabledSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => {
+    const text = `${field.path} ${fieldValueText(field)}`;
+    if (!/\b(guardrail|safety|moderation|validation|sanitize|sanitiz|redaction|prompt[_\s-]?injection|jailbreak)\b/iu.test(text)) {
+      return false;
+    }
+    if (/(^|\.)(enabled|enforced|required|active)$/iu.test(field.path)) return disabledConfigValue(field.value);
+    return /\b(disabled|disable|off|none|bypass|skip|raw|passthrough|allow[_\s-]?all|warn[_\s-]?only|monitor[_\s-]?only)\b/iu.test(text);
+  });
+}
+
+function hasHostedAssistantApprovalRequiredSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /\b(approval|required approval|human approval|confirm|confirmation|review|human in the loop|requires action)\b/iu.test(
+      field.path.replaceAll("_", " ").replaceAll("-", " ")
+    ) && truthyConfigValue(field.value)
+  );
+}
+
+function isHostedAssistantSecurityField(fieldPath: string): boolean {
+  return /provider|assistant|agent|model|deployment|instructions?|prompt|developer|system|tools?|function|code[_-]?interpreter|file[_-]?search|web[_-]?search|computer|mcp|tool[_-]?resources|resources|attachments?|file[_-]?ids?|vector[_-]?store|knowledge|thread|message|input|customer|ticket|email|account|pii|sensitive|secret|token|credential|auth|api[_-]?key|approval|review|tool[_-]?choice|parallel|guardrail|safety|moderation|sanitize|redact|validation|output/iu.test(
     fieldPath
   );
 }

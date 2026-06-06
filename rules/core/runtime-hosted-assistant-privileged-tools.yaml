@@ -1,0 +1,50 @@
+id: AGENTCSP-RUNTIME-042
+name: Hosted assistant auto-routes untrusted context to privileged tools
+description: A deployable hosted assistant definition combines untrusted thread or customer inputs with hosted code, file, vector, function, or MCP tool authority over sensitive context while automatic tool routing is enabled and approval is missing.
+category: hosted_assistant_authority
+severity: critical
+maps_to:
+  owasp:
+    - LLM01:2025 Prompt Injection
+    - LLM02:2025 Sensitive Information Disclosure
+    - LLM06:2025 Excessive Agency
+  mitre_atlas:
+    - AML.T0051 LLM Plugin Compromise
+    - AML.T0057 Exfiltration via Cyber Means
+  nist_ai_rmf:
+    - MAP 4.1
+    - MEASURE 2.7
+    - MANAGE 2.4
+match:
+  object_type: runtime_config
+  where:
+    - field: metadata.parsed_hosted_assistant_config
+      op: equals
+      value: true
+    - field: metadata.hosted_assistant_definition_detected
+      op: equals
+      value: true
+    - field: metadata.hosted_assistant_untrusted_input
+      op: equals
+      value: true
+    - field: metadata.hosted_assistant_privileged_tools
+      op: equals
+      value: true
+    - field: metadata.hosted_assistant_sensitive_context
+      op: equals
+      value: true
+    - field: metadata.hosted_assistant_tool_choice_auto
+      op: equals
+      value: true
+    - field: metadata.hosted_assistant_approval_required
+      op: equals
+      value: false
+    - field: data_classes
+      op: contains_any
+      value:
+        - credential
+        - confidential
+        - pii
+recommendation:
+  control: require_approval
+  text: Require approval before hosted assistants can auto-route untrusted thread, ticket, or customer context into code interpreter, function, MCP, file-search, vector-store, or external-response tools; constrain tool choice and isolate sensitive file/vector resources.

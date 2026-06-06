@@ -2248,6 +2248,68 @@ describe("scanner", () => {
     expect(JSON.stringify(inboundTriggerConfig)).not.toContain("support-triage-agent");
     expect(JSON.stringify(inboundTriggerConfig)).not.toContain("inbound_customer_email");
     expect(JSON.stringify(inboundTriggerConfig)).not.toContain("message.body");
+    const hostedAssistantConfig = surfaces.runtime_config.find((surface) => surface.path === "assistants/support-assistant.yaml");
+    expect(hostedAssistantConfig).toBeDefined();
+    expect(hostedAssistantConfig).toMatchObject({
+      trust_level: "project",
+      data_classes: ["confidential", "credential", "pii", "secret"],
+      actions: ["call", "execute", "publish", "read", "remember", "send", "write"],
+      external_reach: true,
+      secret_exposure: true,
+      side_effect: true,
+      reversible: false,
+      untrusted_to_privileged: true
+    });
+    expect(hostedAssistantConfig?.metadata).toMatchObject({
+      content_redacted: true,
+      values_collected: false,
+      parsed_hosted_assistant_config: true,
+      hosted_assistant_provider: "openai_assistants",
+      hosted_assistant_definition_detected: true,
+      hosted_assistant_model_redacted: true,
+      hosted_assistant_instructions_redacted: true,
+      hosted_assistant_tool_names_redacted: true,
+      hosted_assistant_tool_count: 4,
+      hosted_assistant_privileged_tools: true,
+      hosted_assistant_code_interpreter_enabled: true,
+      hosted_assistant_file_search_enabled: true,
+      hosted_assistant_function_tools_enabled: true,
+      hosted_assistant_external_tool_authority: true,
+      hosted_assistant_write_tool_authority: true,
+      hosted_assistant_memory_write: true,
+      hosted_assistant_tool_choice_auto: true,
+      hosted_assistant_parallel_tool_calls: true,
+      hosted_assistant_tool_resources_redacted: true,
+      hosted_assistant_vector_store_redacted: true,
+      hosted_assistant_vector_store_count: 1,
+      hosted_assistant_file_ids_redacted: true,
+      hosted_assistant_file_count: 1,
+      hosted_assistant_sensitive_context: true,
+      hosted_assistant_pii_context: true,
+      hosted_assistant_secret_context: true,
+      hosted_assistant_untrusted_input: true,
+      hosted_assistant_guardrails_disabled: true,
+      hosted_assistant_approval_required: false
+    });
+    expect(hostedAssistantConfig?.metadata.hosted_assistant_tool_categories).toEqual([
+      "code_interpreter",
+      "external_response",
+      "file_search",
+      "function_tool",
+      "memory_write",
+      "state_write"
+    ]);
+    expect(hostedAssistantConfig?.metadata.env_key_names).toEqual(["OPENAI_ASSISTANT_TOKEN"]);
+    expect(hostedAssistantConfig?.metadata.secret_ref_key_names).toEqual(["OPENAI_ASSISTANT_TOKEN"]);
+    expect(JSON.stringify(hostedAssistantConfig)).not.toContain("${OPENAI_ASSISTANT_TOKEN}");
+    expect(JSON.stringify(hostedAssistantConfig)).not.toContain("asst_support_ops_redacted_by_scanner");
+    expect(JSON.stringify(hostedAssistantConfig)).not.toContain("customer-remediation-assistant");
+    expect(JSON.stringify(hostedAssistantConfig)).not.toContain("gpt-4.1");
+    expect(JSON.stringify(hostedAssistantConfig)).not.toContain("update_customer_record");
+    expect(JSON.stringify(hostedAssistantConfig)).not.toContain("post_support_slack_reply");
+    expect(JSON.stringify(hostedAssistantConfig)).not.toContain("file_support_private_case_notes");
+    expect(JSON.stringify(hostedAssistantConfig)).not.toContain("vs_customer_support_private");
+    expect(JSON.stringify(hostedAssistantConfig)).not.toContain("customer_email_address");
     const agentOrchestrationConfig = surfaces.runtime_config.find((surface) => surface.path === "agents/support-crew.yaml");
     expect(agentOrchestrationConfig).toBeDefined();
     expect(agentOrchestrationConfig).toMatchObject({
@@ -2781,6 +2843,43 @@ describe("scanner", () => {
       openapi_approval_required: true
     });
     expect(openApiTool?.metadata.openapi_request_data_categories).toEqual(["customer_data"]);
+  });
+
+  it("keeps approval-gated read-only hosted assistants scoped", async () => {
+    const files = await walkProject({
+      root_path: safeFixtureRoot,
+      output_path: ".agentcsp",
+      formats: ["json", "md"],
+      include_hidden: true,
+      include_logs: false,
+      max_file_size_bytes: 1024 * 1024,
+      max_files: 5000,
+      quiet: true
+    });
+    const surfaces = await detectSurfaces(files);
+    const hostedAssistant = surfaces.runtime_config.find((surface) => surface.path === "assistants/read-assistant.yaml");
+
+    expect(hostedAssistant).toMatchObject({
+      trust_level: "project",
+      actions: ["call", "read", "remember"],
+      side_effect: true,
+      external_reach: false,
+      secret_exposure: false,
+      untrusted_to_privileged: false
+    });
+    expect(hostedAssistant?.metadata).toMatchObject({
+      parsed_hosted_assistant_config: true,
+      hosted_assistant_provider: "openai_assistants",
+      hosted_assistant_definition_detected: true,
+      hosted_assistant_file_search_enabled: true,
+      hosted_assistant_privileged_tools: false,
+      hosted_assistant_tool_choice_auto: false,
+      hosted_assistant_vector_store_redacted: true,
+      hosted_assistant_vector_store_count: 1,
+      hosted_assistant_untrusted_input: false,
+      hosted_assistant_guardrails_disabled: false,
+      hosted_assistant_approval_required: true
+    });
   });
 
   it("does not treat negated safety instructions as granted authority", async () => {

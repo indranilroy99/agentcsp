@@ -986,6 +986,16 @@ The current iteration adds:
 - rule `AGENTCSP-TOOL-012` for OpenAPI tool imports that combine authenticated external writes, user-controlled inputs, sensitive scope, and missing approval
 - scanner, rule, fixture verifier, and redaction coverage proving raw API server URLs, paths, operation IDs, summaries, request schemas, request field names, and token placeholders stay redacted
 
+## Hosted Assistant Definition Pass
+
+The current iteration adds:
+
+- first-class redacted metadata for hosted assistant and deployable agent definitions, including provider category, model/instruction redaction, hosted tool categories, tool-choice posture, file/vector resources, sensitive context, untrusted input, guardrail posture, and approval posture
+- vulnerable fixture coverage for a hosted support assistant that auto-routes untrusted ticket and thread context into code interpreter, file search, vector-store resources, and function tools over sensitive customer context without approval
+- safe fixture coverage for an approval-gated read-only hosted assistant with manual/no automatic tool routing
+- rule `AGENTCSP-RUNTIME-042` for hosted assistants that combine untrusted input, privileged hosted tools, sensitive context, automatic tool choice, and missing approval
+- scanner, rule, fixture verifier, and redaction coverage proving raw assistant IDs, model names, instructions, tool names, tool descriptions, file IDs, vector-store IDs, data labels, and token placeholders stay redacted
+
 ## Initial Build Recommendation
 
 Start with a CLI-first MVP before building the dashboard:
