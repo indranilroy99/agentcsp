@@ -91,6 +91,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-045")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-046")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-047")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-048")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-CICD-002")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-AUTOMATION-001")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-AUTOMATION-002")).toBe(true);
@@ -938,6 +939,31 @@ describe("rule engine", () => {
     expect(JSON.stringify(runtimeBrowserExtensionFindings[0])).not.toContain("Customer Payment Wallet");
     expect(JSON.stringify(runtimeBrowserExtensionFindings[0])).not.toContain(".browser/downloads/customer-exports");
     expect(JSON.stringify(runtimeBrowserExtensionFindings[0])).not.toContain("export.csv");
+    const runtimeBrowserFileTransferFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-RUNTIME-048");
+    expect(runtimeBrowserFileTransferFindings).toHaveLength(1);
+    expect(runtimeBrowserFileTransferFindings[0]?.matched_object.path).toBe("browser/session.yaml");
+    expect(runtimeBrowserFileTransferFindings[0]?.matched_object.metadata).toMatchObject({
+      browser_provider: "playwright",
+      browser_authenticated_session: true,
+      browser_untrusted_navigation: true,
+      browser_download_upload_enabled: true,
+      browser_download_auto_accept: true,
+      browser_file_chooser_enabled: true,
+      browser_download_path_redacted: true,
+      browser_upload_path_redacted: true,
+      browser_broad_origin_access: true,
+      browser_sensitive_data: true,
+      browser_pii_data: true,
+      browser_approval_required: false
+    });
+    expect(runtimeBrowserFileTransferFindings[0]?.severity).toBe("critical");
+    expect(runtimeBrowserFileTransferFindings[0]?.confidence).toBe("very_high");
+    expect(runtimeBrowserFileTransferFindings[0]?.recommended_control).toBe("require_approval");
+    expect(JSON.stringify(runtimeBrowserFileTransferFindings[0])).not.toContain("${BROWSER_SESSION_TOKEN}");
+    expect(JSON.stringify(runtimeBrowserFileTransferFindings[0])).not.toContain(".browser/downloads/customer-exports");
+    expect(JSON.stringify(runtimeBrowserFileTransferFindings[0])).not.toContain("export.csv");
+    expect(JSON.stringify(runtimeBrowserFileTransferFindings[0])).not.toContain("support.example.invalid");
+    expect(JSON.stringify(runtimeBrowserFileTransferFindings[0])).not.toContain("browser_customer_email");
     const runtimeSaasConnectorFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-RUNTIME-012");
     expect(runtimeSaasConnectorFindings).toHaveLength(1);
     expect(runtimeSaasConnectorFindings[0]?.matched_object.path).toBe("connectors/slack-customer-success.yaml");

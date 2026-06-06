@@ -1604,7 +1604,13 @@ function detectBrowserSessionConfig(file: WalkedFile, text: string | undefined, 
   });
   surfaces.runtime_config.push({
     ...object,
-    untrusted_to_privileged: isUntrustedToPrivileged(object)
+    untrusted_to_privileged:
+      (posture.browser_authenticated_session &&
+        posture.browser_untrusted_navigation &&
+        posture.browser_download_upload_enabled &&
+        (posture.browser_upload_path_redacted || posture.browser_download_path_redacted) &&
+        !posture.browser_approval_required) ||
+      isUntrustedToPrivileged(object)
   });
 }
 
@@ -4303,6 +4309,8 @@ interface BrowserSessionPosture {
   browser_untrusted_navigation: boolean;
   browser_click_or_form_authority: boolean;
   browser_download_upload_enabled: boolean;
+  browser_download_auto_accept: boolean;
+  browser_file_chooser_enabled: boolean;
   browser_extensions_redacted: boolean;
   browser_extension_count: number;
   browser_extension_kinds: string[];
@@ -4320,6 +4328,7 @@ interface BrowserSessionPosture {
   browser_path_references_redacted: boolean;
   browser_sensitive_data: boolean;
   browser_pii_data: boolean;
+  browser_approval_required: boolean;
   env_key_names: string[];
   secret_ref_key_names: string[];
 }
@@ -6599,6 +6608,8 @@ function classifyBrowserSessionConfig(value: unknown, filePath: string): Browser
     browser_untrusted_navigation: hasBrowserUntrustedNavigationSignal(fields),
     browser_click_or_form_authority: hasBrowserClickOrFormAuthoritySignal(fields),
     browser_download_upload_enabled: hasBrowserDownloadUploadSignal(fields),
+    browser_download_auto_accept: hasBrowserDownloadAutoAcceptSignal(fields),
+    browser_file_chooser_enabled: hasBrowserFileChooserSignal(fields),
     browser_extensions_redacted: hasBrowserExtensionSignal(fields),
     browser_extension_count: countBrowserExtensions(fields),
     browser_extension_kinds: extensionKinds,
@@ -6616,6 +6627,7 @@ function classifyBrowserSessionConfig(value: unknown, filePath: string): Browser
     browser_path_references_redacted: hasBrowserPathReferenceSignal(fields),
     browser_sensitive_data: hasBrowserSensitiveDataSignal(fields),
     browser_pii_data: hasBrowserPiiDataSignal(fields),
+    browser_approval_required: hasBrowserApprovalRequiredSignal(fields),
     env_key_names: envKeys,
     secret_ref_key_names: secretRefKeys
   };
@@ -6695,14 +6707,16 @@ function hasBrowserPersistentProfileSignal(fields: RuntimeField[]): boolean {
 }
 
 function hasBrowserCookieStorageSignal(fields: RuntimeField[]): boolean {
-  return fields.some((field) => /\b(cookie|cookies|cookie[_-]?jar|cookie[_-]?store)\b/iu.test(`${field.path} ${fieldValueText(field)}`));
+  return fields.some(
+    (field) => /\b(cookie|cookies|cookie[_-]?jar|cookie[_-]?store)\b/iu.test(`${field.path} ${fieldValueText(field)}`) && truthyConfigValue(field.value)
+  );
 }
 
 function hasBrowserSessionStorageSignal(fields: RuntimeField[]): boolean {
   return fields.some((field) =>
     /\b(storage[_-]?state|session[_-]?storage|local[_-]?storage|auth[_-]?state|authenticated[_-]?state)\b/iu.test(
       `${field.path} ${fieldValueText(field)}`
-    )
+    ) && truthyConfigValue(field.value)
   );
 }
 
@@ -6718,7 +6732,7 @@ function hasBrowserRemoteDebuggingSignal(fields: RuntimeField[]): boolean {
   return fields.some((field) =>
     /(?:^|[_\W])(remote[_-]?debugging|debug[_-]?port|cdp|devtools|browser[_-]?ws|websocket[_-]?endpoint)(?:[_\W]|$)/iu.test(
       `${field.path} ${fieldValueText(field)}`
-    )
+    ) && truthyConfigValue(field.value)
   );
 }
 
@@ -6726,7 +6740,7 @@ function hasBrowserUntrustedNavigationSignal(fields: RuntimeField[]): boolean {
   return fields.some((field) =>
     /\b(untrusted|user|customer|client|ticket|support|issue|comment|message|prompt|retrieved|rag|document|browser[_-]?output|web[_-]?page|email|slack)\b/iu.test(
       `${field.path} ${fieldValueText(field)}`
-    )
+    ) && truthyConfigValue(field.value)
   );
 }
 
@@ -6734,12 +6748,29 @@ function hasBrowserClickOrFormAuthoritySignal(fields: RuntimeField[]): boolean {
   return fields.some((field) =>
     /\b(click|submit|fill|type|press|form|approve|confirm|checkout|purchase|post|send|save|update|delete|navigate|goto|visit)\b/iu.test(
       `${field.path} ${fieldValueText(field)}`
-    )
+    ) && truthyConfigValue(field.value)
   );
 }
 
 function hasBrowserDownloadUploadSignal(fields: RuntimeField[]): boolean {
-  return fields.some((field) => /\b(upload|download|attach|screenshot|file[_-]?chooser|save[_-]?as)\b/iu.test(`${field.path} ${fieldValueText(field)}`));
+  return fields.some(
+    (field) => /\b(upload|download|attach|screenshot|file[_-]?chooser|save[_-]?as)\b/iu.test(`${field.path} ${fieldValueText(field)}`) && truthyConfigValue(field.value)
+  );
+}
+
+function hasBrowserDownloadAutoAcceptSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /\b(auto[_-]?accept|accept[_-]?downloads?|download[_-]?automatically|auto[_-]?download|save[_-]?as)\b/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    ) && truthyConfigValue(field.value)
+  );
+}
+
+function hasBrowserFileChooserSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /\b(file[_-]?chooser|allow[_-]?file[_-]?chooser|uploads?|attach|attachment)\b/iu.test(`${field.path} ${fieldValueText(field)}`) &&
+    truthyConfigValue(field.value)
+  );
 }
 
 function hasBrowserExtensionSignal(fields: RuntimeField[]): boolean {
@@ -6806,14 +6837,16 @@ function hasBrowserAutofillSensitiveDataSignal(fields: RuntimeField[]): boolean 
 function hasBrowserDownloadPathSignal(fields: RuntimeField[]): boolean {
   return fields.some((field) =>
     /\b(download[_-]?path|downloads?|download[_-]?dir|save[_-]?as|download)\b/iu.test(`${field.path} ${fieldValueText(field)}`) &&
-    /(?:path|dir|directory|file|\.csv|\.json|\.pdf|\/|\\)/iu.test(`${field.path} ${fieldValueText(field)}`)
+    /(?:path|dir|directory|file|\.csv|\.json|\.pdf|\/|\\)/iu.test(`${field.path} ${fieldValueText(field)}`) &&
+    truthyConfigValue(field.value)
   );
 }
 
 function hasBrowserUploadPathSignal(fields: RuntimeField[]): boolean {
   return fields.some((field) =>
     /\b(upload[_-]?path|uploads?|file[_-]?chooser|attach|attachment)\b/iu.test(`${field.path} ${fieldValueText(field)}`) &&
-    /(?:path|dir|directory|file|\.csv|\.json|\.pdf|\/|\\)/iu.test(`${field.path} ${fieldValueText(field)}`)
+    /(?:path|dir|directory|file|\.csv|\.json|\.pdf|\/|\\)/iu.test(`${field.path} ${fieldValueText(field)}`) &&
+    truthyConfigValue(field.value)
   );
 }
 
@@ -6821,7 +6854,7 @@ function hasBrowserPathReferenceSignal(fields: RuntimeField[]): boolean {
   return fields.some((field) =>
     /\b(user[_-]?data[_-]?dir|profile|profile[_-]?dir|storage[_-]?state|cookie[_-]?jar|cookies?|download[_-]?path|upload[_-]?path|extension[_-]?path|auth[_-]?state|path|file)\b/iu.test(
       `${field.path} ${fieldValueText(field)}`
-    )
+    ) && truthyConfigValue(field.value)
   );
 }
 
@@ -6838,6 +6871,14 @@ function hasBrowserPiiDataSignal(fields: RuntimeField[]): boolean {
     /(?:^|[_\W])(pii|email|phone|address|ssn|passport|dob|date[_\s-]?of[_\s-]?birth)(?:[_\W]|$)/iu.test(
       `${field.path} ${fieldValueText(field)}`
     )
+  );
+}
+
+function hasBrowserApprovalRequiredSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /(?:^|[_\W])(approval|approval[_\s-]?required|required[_\s-]?approval|human[_\s-]?approval|confirm|confirmation|review|human[_\s-]?in[_\s-]?the[_\s-]?loop)(?:[_\W]|$)/iu.test(
+      field.path
+    ) && truthyConfigValue(field.value)
   );
 }
 

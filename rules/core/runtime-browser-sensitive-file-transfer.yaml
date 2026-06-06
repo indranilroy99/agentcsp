@@ -1,0 +1,62 @@
+id: AGENTCSP-RUNTIME-048
+name: Browser agent can transfer sensitive local files from untrusted navigation
+description: An authenticated browser-agent session lets untrusted navigation drive uploads or downloads of sensitive local files across broad origins without approval.
+category: browser_file_transfer_boundary
+severity: critical
+maps_to:
+  owasp:
+    - LLM01:2025 Prompt Injection
+    - LLM02:2025 Sensitive Information Disclosure
+    - LLM06:2025 Excessive Agency
+  mitre_atlas:
+    - AML.T0051 LLM Prompt Injection
+    - AML.T0057 Exfiltration via Cyber Means
+  nist_ai_rmf:
+    - MAP 5.1
+    - MEASURE 2.9
+    - MANAGE 2.4
+match:
+  object_type: runtime_config
+  where:
+    - field: metadata.parsed_browser_session_config
+      op: equals
+      value: true
+    - field: metadata.browser_authenticated_session
+      op: equals
+      value: true
+    - field: metadata.browser_untrusted_navigation
+      op: equals
+      value: true
+    - field: metadata.browser_download_upload_enabled
+      op: equals
+      value: true
+    - field: metadata.browser_download_auto_accept
+      op: equals
+      value: true
+    - field: metadata.browser_file_chooser_enabled
+      op: equals
+      value: true
+    - field: metadata.browser_download_path_redacted
+      op: equals
+      value: true
+    - field: metadata.browser_upload_path_redacted
+      op: equals
+      value: true
+    - field: metadata.browser_broad_origin_access
+      op: equals
+      value: true
+    - field: metadata.browser_approval_required
+      op: equals
+      value: false
+    - field: metadata.browser_sensitive_data
+      op: equals
+      value: true
+    - field: data_classes
+      op: includes
+      value: pii
+    - field: secret_exposure
+      op: equals
+      value: true
+recommendation:
+  control: require_approval
+  text: Disable automatic browser downloads and file choosers for untrusted navigation, scope upload/download directories to disposable task folders, restrict origins, and require approval before authenticated browser sessions can transfer local files.

@@ -1,0 +1,19 @@
+provider: playwright
+persistent_context: false
+storage_state: false
+cookie_jar: false
+remote_debugging: false
+downloads:
+  auto_accept: false
+uploads:
+  allow_file_chooser: false
+allowed_origins:
+  - http://localhost
+agent_access:
+  navigation_from:
+    - approved_internal_docs
+  actions:
+    - read
+  approval_required: true
+data_scope:
+  - public_docs

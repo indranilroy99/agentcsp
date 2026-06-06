@@ -1698,6 +1698,8 @@ describe("scanner", () => {
       browser_untrusted_navigation: true,
       browser_click_or_form_authority: true,
       browser_download_upload_enabled: true,
+      browser_download_auto_accept: true,
+      browser_file_chooser_enabled: true,
       browser_extensions_redacted: true,
       browser_extension_count: 2,
       browser_extension_privileged_permissions: true,
@@ -1711,7 +1713,8 @@ describe("scanner", () => {
       browser_destination_redacted: true,
       browser_path_references_redacted: true,
       browser_sensitive_data: true,
-      browser_pii_data: true
+      browser_pii_data: true,
+      browser_approval_required: false
     });
     expect(browserSessionConfig?.metadata.browser_destination_kinds).toEqual([
       "browser_endpoint",
@@ -3211,6 +3214,68 @@ describe("scanner", () => {
       realtime_agent_approval_required: true
     });
     expect(JSON.stringify(realtimeAgent)).not.toContain("approved-realtime-model");
+  });
+
+  it("keeps local browser sessions from looking like authenticated file-transfer authority", async () => {
+    const files = await walkProject({
+      root_path: safeFixtureRoot,
+      output_path: ".agentcsp",
+      formats: ["json", "md"],
+      include_hidden: true,
+      include_logs: false,
+      max_file_size_bytes: 1024 * 1024,
+      max_files: 5000,
+      quiet: true
+    });
+    const surfaces = await detectSurfaces(files);
+    const browserSession = surfaces.runtime_config.find((surface) => surface.path === "browser/read-session.yaml");
+
+    expect(browserSession).toMatchObject({
+      trust_level: "project",
+      data_classes: ["unknown"],
+      actions: ["call", "read"],
+      side_effect: false,
+      external_reach: false,
+      secret_exposure: false,
+      reversible: true,
+      untrusted_to_privileged: false
+    });
+    expect(browserSession?.metadata).toMatchObject({
+      content_redacted: true,
+      values_collected: false,
+      parsed_browser_session_config: true,
+      browser_provider: "playwright",
+      browser_persistent_profile: false,
+      browser_cookie_storage: false,
+      browser_session_storage: false,
+      browser_authenticated_session: false,
+      browser_remote_debugging: false,
+      browser_untrusted_navigation: false,
+      browser_click_or_form_authority: false,
+      browser_download_upload_enabled: false,
+      browser_download_auto_accept: false,
+      browser_file_chooser_enabled: false,
+      browser_extensions_redacted: false,
+      browser_extension_count: 0,
+      browser_extension_privileged_permissions: false,
+      browser_extension_automation: false,
+      browser_password_manager_enabled: false,
+      browser_autofill_sensitive_data: false,
+      browser_download_path_redacted: false,
+      browser_upload_path_redacted: false,
+      browser_network_remote: false,
+      browser_broad_origin_access: false,
+      browser_destination_redacted: false,
+      browser_path_references_redacted: false,
+      browser_sensitive_data: false,
+      browser_pii_data: false,
+      browser_approval_required: true
+    });
+    expect(browserSession?.metadata.browser_destination_kinds).toEqual([]);
+    expect(browserSession?.metadata.browser_extension_kinds).toEqual([]);
+    expect(browserSession?.metadata.env_key_names).toEqual([]);
+    expect(browserSession?.metadata.secret_ref_key_names).toEqual([]);
+    expect(JSON.stringify(browserSession)).not.toContain("approved_internal_docs");
   });
 
   it("keeps local approved feedback loops scoped", async () => {

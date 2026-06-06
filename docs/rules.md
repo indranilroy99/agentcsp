@@ -34,6 +34,8 @@ For AI telemetry and trace-sharing rules, require concrete trace-exposure correl
 
 For memory-store access-boundary rules, require concrete durable-memory correlation such as persistent and shared memory, public or cross-tenant access, disabled access control or tenant isolation, untrusted writes, sensitive or secret-bearing context, and missing approval. Do not flag local private session memory merely because it is stored under a memory directory or has explicit disabled capture fields.
 
+For browser file-transfer rules, require concrete file-transfer correlation such as authenticated browser state, untrusted navigation, broad origins, upload/download authority, redacted local transfer paths, sensitive or PII context, credential evidence, and missing approval. Do not flag local unauthenticated read-only browser configs merely because upload, download, cookie, or remote-debugging keys are explicitly set to false.
+
 AgentCSP computes finding confidence from rule correlation depth, scoped object type, structured parsing, privileged actions, data class, external reach, and side-effect signals.
 
 Required fields:

@@ -1065,6 +1065,16 @@ The current iteration adds:
 - rule `AGENTCSP-RUNTIME-047` for sensitive remote trace exports exposed through public or broadly shared access without redaction, access control, or approval
 - scanner, rule, fixture verifier, and redaction coverage proving raw endpoints, project names, workspace names, vendor labels, trace labels, and token placeholders stay redacted
 
+## Browser File-Transfer Boundary Pass
+
+The current iteration adds:
+
+- first-class redacted metadata for browser file-transfer posture, including automatic download acceptance, file chooser/upload enablement, approval posture, and false-value handling for browser session controls
+- vulnerable fixture coverage through the existing Playwright browser-session config with authenticated state, broad origins, untrusted navigation, auto-accepted downloads, upload paths, sensitive browser context, credentials, and no approval gate
+- safe fixture coverage for a local unauthenticated read-only browser config with disabled cookie/storage state, disabled remote debugging, disabled file transfer, scoped origins, and approval required
+- rule `AGENTCSP-RUNTIME-048` for authenticated browser sessions that can transfer sensitive local files from untrusted navigation without approval
+- scanner, rule, fixture verifier, and redaction coverage proving raw browser profile paths, transfer paths, origins, data labels, and token placeholders stay redacted
+
 ## Initial Build Recommendation
 
 Start with a CLI-first MVP before building the dashboard:
