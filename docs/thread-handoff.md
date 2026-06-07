@@ -1085,6 +1085,7 @@ The current iteration adds:
 - vulnerable fixture coverage for a BullMQ support-agent queue that auto-executes untrusted customer jobs, passes prompt/tool-output context, redrives failed jobs, and can reach database, Slack, browser, and secret-manager tools without approval
 - safe fixture coverage for a local in-memory internal review queue with approval required, no auto-execution, no replay, no untrusted payload, and no privileged authority
 - rule `AGENTCSP-RUNTIME-046` for background agent queues that combine background consumers, auto-execution, untrusted payloads, privileged tool authority, credential exposure, and missing approval
+- rule `AGENTCSP-RUNTIME-073` for background queue retry/DLQ redrive that replays untrusted prompt or tool-output jobs into privileged credential-backed workers without approval
 - scanner, rule, fixture verifier, and redaction coverage proving raw queue names, queue URLs, DLQ names, job labels, payload labels, tool names, and token placeholders stay redacted
 
 ## AI Telemetry Public Trace Sharing Pass
