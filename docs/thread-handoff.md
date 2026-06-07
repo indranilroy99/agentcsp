@@ -1289,6 +1289,7 @@ The current iteration adds:
 - vulnerable fixture coverage for a model-output action router that accepts untrusted customer, retrieval, and browser-output inputs, disables schema validation, allows unknown actions, repairs invalid JSON, permits unlimited action batches, and auto-executes database, Slack, shell, secret-manager, and memory actions without redaction, dry-run, or approval controls
 - safe fixture coverage for a scoped structured tool-call router that uses strict schema validation, denies unknown actions, disables JSON repair and auto-execution, limits actions per response, redacts arguments and secrets, runs dry-run, and requires approval
 - rule `AGENTCSP-RUNTIME-065` for model-output action routers that route untrusted model text into privileged tools without closed schemas, redaction, dry-run, or approval
+- rule `AGENTCSP-RUNTIME-104` for open-schema model-output action routers that repair and batch-execute unknown model-selected database, external-response, memory, secret-manager, and shell actions with credentials and no approval
 - scanner, rule, fixture verifier, and redaction coverage proving raw input-source labels, action names, context labels, safe internal labels, and token placeholders stay redacted
 
 ## MCP Dynamic Tool Catalog Trust Pass
