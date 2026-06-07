@@ -1319,6 +1319,7 @@ The current iteration adds:
 - vulnerable fixture coverage for a remote instruction loader that auto-refreshes unpinned system and developer instructions selected by untrusted customer, retrieval, and browser context while disabled verification and privileged database, browser, Slack, memory, and secret-manager authority are present
 - safe fixture coverage for a local pinned instruction bundle that disables remote fetch and auto-refresh, verifies signatures and provenance, rejects untrusted selectors, exposes no credentials, and requires approval
 - rule `AGENTCSP-RUNTIME-067` for remote instruction loaders that combine remote auto-refresh, unpinned instructions, disabled verification, untrusted selectors, privileged role injection, privileged tool authority, and missing approval
+- rule `AGENTCSP-RUNTIME-103` for remote instruction refresh that grants browser, database, external-response, memory, and secret-manager authority from untrusted-selected system and developer instructions with credential evidence and no approval
 - scanner, rule, fixture verifier, and redaction coverage proving raw instruction URLs, instruction IDs, selector labels, tool names, data-scope labels, and token placeholders stay redacted
 
 ## Model-Only Guardrail Enforcement Pass

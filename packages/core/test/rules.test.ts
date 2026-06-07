@@ -115,6 +115,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-065")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-066")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-067")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-103")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-068")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-069")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-070")).toBe(true);
@@ -1169,6 +1170,84 @@ describe("rule engine", () => {
     expect(JSON.stringify(runtimeRemoteInstructionFindings[0])).not.toContain("remote_instruction_customer_email");
     expect(JSON.stringify(runtimeRemoteInstructionFindings[0])).not.toContain("confidential_remote_instruction_notes");
     expect(JSON.stringify(runtimeRemoteInstructionFindings[0])).not.toContain("support_db.update_customer_record");
+    const runtimeRemoteInstructionSecretToolFindings = findings.filter(
+      (finding) => finding.rule_id === "AGENTCSP-RUNTIME-103"
+    );
+    expect(runtimeRemoteInstructionSecretToolFindings).toHaveLength(1);
+    expect(runtimeRemoteInstructionSecretToolFindings[0]?.matched_object.path).toBe(
+      "instruction-loader/remote-instructions.yaml"
+    );
+    expect(runtimeRemoteInstructionSecretToolFindings[0]?.matched_object.metadata).toMatchObject({
+      parsed_agent_remote_instruction_loader_config: true,
+      agent_remote_instruction_provider: "remote_instruction_loader",
+      agent_remote_instruction_remote: true,
+      agent_remote_instruction_system_role: true,
+      agent_remote_instruction_developer_role: true,
+      agent_remote_instruction_auto_refresh_enabled: true,
+      agent_remote_instruction_unpinned_reference: true,
+      agent_remote_instruction_signature_verification_disabled: true,
+      agent_remote_instruction_provenance_verification_missing: true,
+      agent_remote_instruction_untrusted_selector: true,
+      agent_remote_instruction_privileged_role_injection: true,
+      agent_remote_instruction_privileged_tool_authority: true,
+      agent_remote_instruction_write_authority: true,
+      agent_remote_instruction_external_authority: true,
+      agent_remote_instruction_memory_write: true,
+      agent_remote_instruction_secret_access: true,
+      agent_remote_instruction_sensitive_context: true,
+      agent_remote_instruction_pii_context: true,
+      agent_remote_instruction_approval_required: false
+    });
+    expect(
+      runtimeRemoteInstructionSecretToolFindings[0]?.matched_object.metadata
+        .agent_remote_instruction_tool_authority_categories
+    ).toEqual(["browser_action", "database_access", "external_response", "memory_write", "secret_manager_access"]);
+    expect(runtimeRemoteInstructionSecretToolFindings[0]?.matched_object.data_classes).toContain("credential");
+    expect(runtimeRemoteInstructionSecretToolFindings[0]?.matched_object.secret_exposure).toBe(true);
+    expect(runtimeRemoteInstructionSecretToolFindings[0]?.matched_object.untrusted_to_privileged).toBe(true);
+    expect(runtimeRemoteInstructionSecretToolFindings[0]?.severity).toBe("critical");
+    expect(runtimeRemoteInstructionSecretToolFindings[0]?.confidence).toBe("very_high");
+    expect(runtimeRemoteInstructionSecretToolFindings[0]?.recommended_control).toBe("quarantine");
+    expect(JSON.stringify(runtimeRemoteInstructionSecretToolFindings[0])).not.toContain("${REMOTE_INSTRUCTION_TOKEN}");
+    expect(JSON.stringify(runtimeRemoteInstructionSecretToolFindings[0])).not.toContain(
+      "instructions.agentcsp-demo.example.invalid"
+    );
+    expect(JSON.stringify(runtimeRemoteInstructionSecretToolFindings[0])).not.toContain(
+      "customer-escalation-system-latest"
+    );
+    expect(JSON.stringify(runtimeRemoteInstructionSecretToolFindings[0])).not.toContain(
+      "support-agent-developer-runtime"
+    );
+    expect(JSON.stringify(runtimeRemoteInstructionSecretToolFindings[0])).not.toContain(
+      "customer_requested_instruction"
+    );
+    expect(JSON.stringify(runtimeRemoteInstructionSecretToolFindings[0])).not.toContain("untrusted_customer_ticket");
+    expect(JSON.stringify(runtimeRemoteInstructionSecretToolFindings[0])).not.toContain(
+      "retrieved_customer_context"
+    );
+    expect(JSON.stringify(runtimeRemoteInstructionSecretToolFindings[0])).not.toContain("browser_tool_output");
+    expect(JSON.stringify(runtimeRemoteInstructionSecretToolFindings[0])).not.toContain(
+      "remote_instruction_customer_email"
+    );
+    expect(JSON.stringify(runtimeRemoteInstructionSecretToolFindings[0])).not.toContain(
+      "remote_instruction_account_number"
+    );
+    expect(JSON.stringify(runtimeRemoteInstructionSecretToolFindings[0])).not.toContain(
+      "confidential_remote_instruction_notes"
+    );
+    expect(JSON.stringify(runtimeRemoteInstructionSecretToolFindings[0])).not.toContain(
+      "support_memory.remote_instruction_summary"
+    );
+    expect(JSON.stringify(runtimeRemoteInstructionSecretToolFindings[0])).not.toContain(
+      "support_db.update_customer_record"
+    );
+    expect(JSON.stringify(runtimeRemoteInstructionSecretToolFindings[0])).not.toContain(
+      "browser.submit_customer_form"
+    );
+    expect(JSON.stringify(runtimeRemoteInstructionSecretToolFindings[0])).not.toContain(
+      "vault_secret_lookup.read_support_token"
+    );
+    expect(JSON.stringify(runtimeRemoteInstructionSecretToolFindings[0])).not.toContain("slack.post_customer_reply");
     const runtimeAgentExposureFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-RUNTIME-036");
     expect(runtimeAgentExposureFindings).toHaveLength(1);
     expect(runtimeAgentExposureFindings[0]?.matched_object.path).toBe(".well-known/agent-card.json");
