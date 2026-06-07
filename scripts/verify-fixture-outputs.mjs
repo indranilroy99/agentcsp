@@ -576,8 +576,8 @@ const leakPatterns = [
 const vulnerable = await readScanOutput(vulnerableOutput, { sarifRequired: true });
 const safe = await readScanOutput(safeOutput, { sarifRequired: false });
 
-assertEqual(vulnerable.manifest.findings.length, 191, "vulnerable manifest finding count");
-assertEqual(vulnerable.findings.length, 191, "vulnerable findings.json count");
+assertEqual(vulnerable.manifest.findings.length, 192, "vulnerable manifest finding count");
+assertEqual(vulnerable.findings.length, 192, "vulnerable findings.json count");
 assertEqual(vulnerable.manifest.attack_paths.length, 15, "vulnerable attack path count");
 assertEqual(vulnerable.manifest.static_blast_radius?.critical_attack_paths, 15, "vulnerable critical attack path count");
 assertEqual(vulnerable.manifest.diagnostics.length, 0, "vulnerable diagnostics count");
@@ -617,6 +617,7 @@ for (const ruleId of [
   "AGENTCSP-RUNTIME-030",
   "AGENTCSP-RUNTIME-031",
   "AGENTCSP-RUNTIME-032",
+  "AGENTCSP-RUNTIME-082",
   "AGENTCSP-RUNTIME-033",
   "AGENTCSP-RUNTIME-034",
   "AGENTCSP-RUNTIME-035",

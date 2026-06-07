@@ -1,0 +1,82 @@
+id: AGENTCSP-RUNTIME-082
+name: Cloud auto-remediation agent can mutate IAM, secrets, and infrastructure
+description: An agent-facing cloud control-plane configuration lets untrusted inputs drive auto-remediation with admin scope, IAM writes, secret read/write authority, compute and storage mutation, delete authority, audit-log access, cloud CLI or IaC apply tools, credential exposure, and no approval gate.
+category: cloud_auto_remediation_takeover
+severity: critical
+maps_to:
+  owasp:
+    - LLM02:2025 Sensitive Information Disclosure
+    - LLM06:2025 Excessive Agency
+  mitre_atlas:
+    - AML.T0054 Command and Scripting Interpreter
+    - AML.T0057 Exfiltration via Cyber Means
+  nist_ai_rmf:
+    - GOVERN 1.5
+    - MAP 5.1
+    - MANAGE 2.4
+match:
+  object_type: runtime_config
+  where:
+    - field: metadata.parsed_cloud_control_plane_config
+      op: equals
+      value: true
+    - field: metadata.cloud_control_plane_broad_scope
+      op: equals
+      value: true
+    - field: metadata.cloud_control_plane_admin_scope
+      op: equals
+      value: true
+    - field: metadata.cloud_control_plane_iam_write
+      op: equals
+      value: true
+    - field: metadata.cloud_control_plane_secret_access
+      op: equals
+      value: true
+    - field: metadata.cloud_control_plane_secret_write
+      op: equals
+      value: true
+    - field: metadata.cloud_control_plane_storage_write
+      op: equals
+      value: true
+    - field: metadata.cloud_control_plane_compute_write
+      op: equals
+      value: true
+    - field: metadata.cloud_control_plane_delete_authority
+      op: equals
+      value: true
+    - field: metadata.cloud_control_plane_audit_log_access
+      op: equals
+      value: true
+    - field: metadata.cloud_control_plane_auto_remediation
+      op: equals
+      value: true
+    - field: metadata.cloud_control_plane_untrusted_input
+      op: equals
+      value: true
+    - field: metadata.cloud_control_plane_approval_required
+      op: equals
+      value: false
+    - field: metadata.cloud_control_plane_scope_categories
+      op: contains_any
+      value:
+        - admin_scope
+        - iam_write
+        - secret_write
+        - compute_write
+        - storage_write
+    - field: metadata.cloud_control_plane_tool_authority_categories
+      op: contains_any
+      value:
+        - aws_cli
+        - gcloud_cli
+        - iac_apply
+        - kubectl
+    - field: secret_exposure
+      op: equals
+      value: true
+    - field: untrusted_to_privileged
+      op: equals
+      value: true
+recommendation:
+  control: deny
+  text: Deny untrusted auto-remediation paths that can mutate IAM, secrets, compute, storage, or infrastructure state. Split cloud permissions into least-privilege roles, require signed and reviewed runbooks, disable automatic IaC apply from agent context, and require human approval for production cloud mutations.

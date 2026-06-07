@@ -879,6 +879,7 @@ The current iteration adds:
 - first-class redacted metadata for cloud, IAM, IaC, Terraform, Kubernetes platform, and control-plane configs with provider, broad/admin scope, IAM, compute, storage, secret, audit-log, auto-remediation, tool-authority, untrusted-input, credential, and approval posture
 - vulnerable fixture coverage for an AWS-style support agent that can run cloud/IaC remediation against broad cloud resources with untrusted customer/runbook inputs, cloud credential references, and no approval gate
 - rule `AGENTCSP-RUNTIME-032` for cloud control-plane agents that combine broad credentialed write authority, IAM mutation, secret access, compute/storage mutation, untrusted input, and missing approval
+- rule `AGENTCSP-RUNTIME-082` for cloud auto-remediation where untrusted runbooks or customer context can drive admin-scoped IAM, secret, compute, storage, delete, audit-log, cloud CLI, or IaC apply authority without approval
 - scanner, rule, fixture verifier, and redaction coverage proving account IDs, ARNs, role names, policy/action values, resource identifiers, tool strings, source labels, and token placeholders stay redacted
 
 ## MCP Prompt and Resource Context Pass

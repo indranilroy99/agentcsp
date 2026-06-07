@@ -107,6 +107,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-030")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-031")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-032")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-082")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-033")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-034")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-035")).toBe(true);
@@ -728,6 +729,60 @@ describe("rule engine", () => {
     expect(JSON.stringify(runtimeCloudControlPlaneFindings[0])).not.toContain("retrieved_cloud_runbook");
     expect(JSON.stringify(runtimeCloudControlPlaneFindings[0])).not.toContain("aws-cli");
     expect(JSON.stringify(runtimeCloudControlPlaneFindings[0])).not.toContain("terraform-apply");
+    const runtimeCloudAutoRemediationFindings = findings.filter(
+      (finding) => finding.rule_id === "AGENTCSP-RUNTIME-082"
+    );
+    expect(runtimeCloudAutoRemediationFindings).toHaveLength(1);
+    expect(runtimeCloudAutoRemediationFindings[0]?.matched_object.path).toBe("cloud/aws-admin-agent.yaml");
+    expect(runtimeCloudAutoRemediationFindings[0]?.matched_object.metadata).toMatchObject({
+      parsed_cloud_control_plane_config: true,
+      cloud_provider: "aws",
+      cloud_control_plane_remote: true,
+      cloud_control_plane_broad_scope: true,
+      cloud_control_plane_admin_scope: true,
+      cloud_control_plane_iam_write: true,
+      cloud_control_plane_secret_access: true,
+      cloud_control_plane_secret_write: true,
+      cloud_control_plane_storage_write: true,
+      cloud_control_plane_compute_write: true,
+      cloud_control_plane_delete_authority: true,
+      cloud_control_plane_audit_log_access: true,
+      cloud_control_plane_auto_remediation: true,
+      cloud_control_plane_untrusted_input: true,
+      cloud_control_plane_approval_required: false
+    });
+    expect(runtimeCloudAutoRemediationFindings[0]?.matched_object.metadata.cloud_control_plane_scope_categories).toEqual([
+      "admin_scope",
+      "audit_log_read",
+      "compute_write",
+      "iam_write",
+      "secret_read",
+      "secret_write",
+      "storage_write",
+      "write_scope"
+    ]);
+    expect(
+      runtimeCloudAutoRemediationFindings[0]?.matched_object.metadata.cloud_control_plane_tool_authority_categories
+    ).toEqual(["aws_cli", "iac_apply"]);
+    expect(runtimeCloudAutoRemediationFindings[0]?.severity).toBe("critical");
+    expect(runtimeCloudAutoRemediationFindings[0]?.confidence).toBe("very_high");
+    expect(runtimeCloudAutoRemediationFindings[0]?.recommended_control).toBe("deny");
+    expect(JSON.stringify(runtimeCloudAutoRemediationFindings[0])).not.toContain("${AWS_ACCESS_KEY_ID}");
+    expect(JSON.stringify(runtimeCloudAutoRemediationFindings[0])).not.toContain("${AWS_SECRET_ACCESS_KEY}");
+    expect(JSON.stringify(runtimeCloudAutoRemediationFindings[0])).not.toContain("${AWS_SESSION_TOKEN}");
+    expect(JSON.stringify(runtimeCloudAutoRemediationFindings[0])).not.toContain("123456789012");
+    expect(JSON.stringify(runtimeCloudAutoRemediationFindings[0])).not.toContain("arn:aws:iam");
+    expect(JSON.stringify(runtimeCloudAutoRemediationFindings[0])).not.toContain("support-agent-admin");
+    expect(JSON.stringify(runtimeCloudAutoRemediationFindings[0])).not.toContain("support-remediation-agent");
+    expect(JSON.stringify(runtimeCloudAutoRemediationFindings[0])).not.toContain("AdministratorAccess");
+    expect(JSON.stringify(runtimeCloudAutoRemediationFindings[0])).not.toContain("iam:PassRole");
+    expect(JSON.stringify(runtimeCloudAutoRemediationFindings[0])).not.toContain("secretsmanager:PutSecretValue");
+    expect(JSON.stringify(runtimeCloudAutoRemediationFindings[0])).not.toContain("s3:PutObject");
+    expect(JSON.stringify(runtimeCloudAutoRemediationFindings[0])).not.toContain("lambda:UpdateFunctionCode");
+    expect(JSON.stringify(runtimeCloudAutoRemediationFindings[0])).not.toContain("untrusted_customer_ticket");
+    expect(JSON.stringify(runtimeCloudAutoRemediationFindings[0])).not.toContain("retrieved_cloud_runbook");
+    expect(JSON.stringify(runtimeCloudAutoRemediationFindings[0])).not.toContain("aws-cli");
+    expect(JSON.stringify(runtimeCloudAutoRemediationFindings[0])).not.toContain("terraform-apply");
     const runtimeAgentCspPolicyFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-RUNTIME-034");
     expect(runtimeAgentCspPolicyFindings).toHaveLength(1);
     expect(runtimeAgentCspPolicyFindings[0]?.matched_object.path).toBe("agentcsp.yaml");
