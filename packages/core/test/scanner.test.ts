@@ -44,6 +44,7 @@ describe("scanner", () => {
       "CONTEXT_WINDOW_TOKEN",
       "CREW_AGENT_TOKEN",
       "CUSTOMER_SUCCESS_SLACK_BOT_TOKEN",
+      "DEBUG_CONSOLE_TOKEN",
       "EMBEDDING_API_KEY",
       "EVAL_AGENT_TOKEN",
       "FALLBACK_MODEL_TOKEN",
@@ -1695,6 +1696,72 @@ describe("scanner", () => {
     expect(JSON.stringify(publicChatConfig)).not.toContain("public_chat_customer_email");
     expect(JSON.stringify(publicChatConfig)).not.toContain("public_chat_account_number");
     expect(JSON.stringify(publicChatConfig)).not.toContain("confidential_public_chat_notes");
+    const debugConsoleConfig = surfaces.runtime_config.find((surface) => surface.path === "debug/agent-playground.yaml");
+    expect(debugConsoleConfig).toBeDefined();
+    expect(debugConsoleConfig).toMatchObject({
+      trust_level: "third_party",
+      data_classes: ["confidential", "credential", "pii", "secret"],
+      actions: ["call", "execute", "publish", "read", "remember", "send", "write"],
+      external_reach: true,
+      secret_exposure: true,
+      side_effect: true,
+      reversible: false,
+      untrusted_to_privileged: true
+    });
+    expect(debugConsoleConfig?.metadata).toMatchObject({
+      content_redacted: true,
+      values_collected: false,
+      parsed_agent_debug_console_config: true,
+      agent_debug_console_enabled: true,
+      agent_debug_console_endpoint_redacted: true,
+      agent_debug_console_endpoint_count: 1,
+      agent_debug_console_public_endpoint: true,
+      agent_debug_console_anonymous_access: true,
+      agent_debug_console_auth_disabled: true,
+      agent_debug_console_cors_broad: true,
+      agent_debug_console_prompt_view_enabled: true,
+      agent_debug_console_system_prompt_visible: true,
+      agent_debug_console_developer_prompt_visible: true,
+      agent_debug_console_raw_context_visible: true,
+      agent_debug_console_trace_view_enabled: true,
+      agent_debug_console_memory_view_enabled: true,
+      agent_debug_console_tool_schema_visible: true,
+      agent_debug_console_prompt_edit_enabled: true,
+      agent_debug_console_tool_invocation_enabled: true,
+      agent_debug_console_impersonation_enabled: true,
+      agent_debug_console_privileged_tool_authority: true,
+      agent_debug_console_write_authority: true,
+      agent_debug_console_external_authority: true,
+      agent_debug_console_memory_write_authority: true,
+      agent_debug_console_secret_context_visible: true,
+      agent_debug_console_sensitive_context: true,
+      agent_debug_console_pii_context: true,
+      agent_debug_console_redaction_disabled: true,
+      agent_debug_console_audit_logging_disabled: true,
+      agent_debug_console_approval_required: false
+    });
+    expect(debugConsoleConfig?.metadata.agent_debug_console_endpoint_kinds).toEqual(["debug_console_endpoint"]);
+    expect(debugConsoleConfig?.metadata.agent_debug_console_tool_authority_categories).toEqual([
+      "database_write",
+      "external_response",
+      "memory_write",
+      "prompt_write",
+      "secret_manager_access",
+      "tool_call"
+    ]);
+    expect(debugConsoleConfig?.metadata.env_key_names).toEqual(["DEBUG_CONSOLE_TOKEN"]);
+    expect(debugConsoleConfig?.metadata.secret_ref_key_names).toEqual(["DEBUG_CONSOLE_TOKEN"]);
+    expect(JSON.stringify(debugConsoleConfig)).not.toContain("${DEBUG_CONSOLE_TOKEN}");
+    expect(JSON.stringify(debugConsoleConfig)).not.toContain("debug.agentcsp-demo.example.invalid");
+    expect(JSON.stringify(debugConsoleConfig)).not.toContain("support_agent_system_prompt");
+    expect(JSON.stringify(debugConsoleConfig)).not.toContain("developer_override_prompt");
+    expect(JSON.stringify(debugConsoleConfig)).not.toContain("debug_customer_email");
+    expect(JSON.stringify(debugConsoleConfig)).not.toContain("debug_account_number");
+    expect(JSON.stringify(debugConsoleConfig)).not.toContain("confidential_debug_trace");
+    expect(JSON.stringify(debugConsoleConfig)).not.toContain("support_db.update_customer_record");
+    expect(JSON.stringify(debugConsoleConfig)).not.toContain("slack.post_customer_reply");
+    expect(JSON.stringify(debugConsoleConfig)).not.toContain("vault_secret_lookup.read_support_token");
+    expect(JSON.stringify(debugConsoleConfig)).not.toContain("memory.write_debug_summary");
     const agentFederationConfig = surfaces.runtime_config.find((surface) => surface.path === "agent-federation/remote-agents.yaml");
     expect(agentFederationConfig).toBeDefined();
     expect(agentFederationConfig).toMatchObject({
@@ -4636,6 +4703,70 @@ describe("scanner", () => {
     expect(JSON.stringify(chat)).not.toContain("approved_internal_question");
     expect(JSON.stringify(chat)).not.toContain("readonly_docs.search");
     expect(JSON.stringify(chat)).not.toContain("approved_internal_docs");
+  });
+
+  it("keeps internal prompt inspectors scoped", async () => {
+    const files = await walkProject({
+      root_path: safeFixtureRoot,
+      output_path: ".agentcsp",
+      formats: ["json", "md"],
+      include_hidden: true,
+      include_logs: false,
+      max_file_size_bytes: 1024 * 1024,
+      max_files: 5000,
+      quiet: true
+    });
+    const surfaces = await detectSurfaces(files);
+    const inspector = surfaces.runtime_config.find((surface) => surface.path === "debug/internal-inspector.yaml");
+
+    expect(inspector).toMatchObject({
+      trust_level: "project",
+      data_classes: ["confidential"],
+      actions: ["call", "read"],
+      side_effect: false,
+      external_reach: false,
+      secret_exposure: false,
+      reversible: true,
+      untrusted_to_privileged: false
+    });
+    expect(inspector?.metadata).toMatchObject({
+      content_redacted: true,
+      values_collected: false,
+      parsed_agent_debug_console_config: true,
+      agent_debug_console_enabled: true,
+      agent_debug_console_endpoint_redacted: false,
+      agent_debug_console_endpoint_count: 0,
+      agent_debug_console_public_endpoint: false,
+      agent_debug_console_anonymous_access: false,
+      agent_debug_console_auth_disabled: false,
+      agent_debug_console_cors_broad: false,
+      agent_debug_console_prompt_view_enabled: true,
+      agent_debug_console_system_prompt_visible: false,
+      agent_debug_console_developer_prompt_visible: false,
+      agent_debug_console_raw_context_visible: false,
+      agent_debug_console_trace_view_enabled: false,
+      agent_debug_console_memory_view_enabled: false,
+      agent_debug_console_tool_schema_visible: true,
+      agent_debug_console_prompt_edit_enabled: false,
+      agent_debug_console_tool_invocation_enabled: false,
+      agent_debug_console_impersonation_enabled: false,
+      agent_debug_console_privileged_tool_authority: false,
+      agent_debug_console_write_authority: false,
+      agent_debug_console_external_authority: false,
+      agent_debug_console_memory_write_authority: false,
+      agent_debug_console_secret_context_visible: false,
+      agent_debug_console_sensitive_context: true,
+      agent_debug_console_pii_context: false,
+      agent_debug_console_redaction_disabled: false,
+      agent_debug_console_audit_logging_disabled: false,
+      agent_debug_console_approval_required: true
+    });
+    expect(inspector?.metadata.agent_debug_console_endpoint_kinds).toEqual([]);
+    expect(inspector?.metadata.agent_debug_console_tool_authority_categories).toEqual(["tool_call"]);
+    expect(inspector?.metadata.env_key_names).toEqual([]);
+    expect(inspector?.metadata.secret_ref_key_names).toEqual([]);
+    expect(JSON.stringify(inspector)).not.toContain("approved_internal_prompt_summary");
+    expect(JSON.stringify(inspector)).not.toContain("readonly_docs.search");
   });
 
   it("keeps local tenant-scoped prompt caches quiet", async () => {

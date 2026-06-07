@@ -123,6 +123,11 @@ export async function detectSurfaces(files: WalkedFile[]): Promise<DetectedSurfa
       continue;
     }
 
+    if (isAgentDebugConsoleConfigPath(file.relativePath, basename)) {
+      detectAgentDebugConsoleConfig(file, text, surfaces);
+      continue;
+    }
+
     if (isAgentPromptRegistryConfigPath(file.relativePath, basename)) {
       detectAgentPromptRegistryConfig(file, text, surfaces);
       continue;
@@ -1537,6 +1542,91 @@ function detectAgentPublicChatConfig(file: WalkedFile, text: string | undefined,
         posture.public_agent_chat_auto_tool_invocation &&
         posture.public_agent_chat_privileged_tool_authority &&
         !posture.public_agent_chat_approval_required) ||
+      isUntrustedToPrivileged(object)
+  });
+}
+
+function detectAgentDebugConsoleConfig(file: WalkedFile, text: string | undefined, surfaces: DetectedSurfaces): void {
+  const parsed = parseStructuredConfig(text ?? "", file.relativePath);
+  if (parsed.parseFailed) {
+    addDiagnostic(surfaces, file, {
+      parser: parsed.parser ?? "structured_config",
+      code: "AGENT_DEBUG_CONSOLE_CONFIG_PARSE_FAILED",
+      reason: "Agent debug, playground, or inspector configuration could not be parsed. Raw content was redacted."
+    });
+  }
+
+  const posture = classifyAgentDebugConsoleConfig(parsed.value);
+  const actions = new Set<ActionType>(["call", "read"]);
+  if (posture.agent_debug_console_public_endpoint || posture.agent_debug_console_external_authority) actions.add("send");
+  if (posture.agent_debug_console_tool_invocation_enabled || posture.agent_debug_console_impersonation_enabled) actions.add("execute");
+  if (posture.agent_debug_console_prompt_edit_enabled || posture.agent_debug_console_write_authority) actions.add("write");
+  if (posture.agent_debug_console_external_authority) actions.add("publish");
+  if (posture.agent_debug_console_memory_view_enabled || posture.agent_debug_console_memory_write_authority) actions.add("remember");
+
+  const dataClasses = new Set<SurfaceObject["data_classes"][number]>(["unknown"]);
+  if (
+    posture.agent_debug_console_secret_context_visible ||
+    posture.env_key_names.some(isCredentialLikeKeyName) ||
+    posture.secret_ref_key_names.length > 0
+  ) {
+    dataClasses.add("credential");
+    if (posture.agent_debug_console_secret_context_visible) dataClasses.add("secret");
+  }
+  if (
+    posture.agent_debug_console_prompt_view_enabled ||
+    posture.agent_debug_console_raw_context_visible ||
+    posture.agent_debug_console_trace_view_enabled ||
+    posture.agent_debug_console_memory_view_enabled ||
+    posture.agent_debug_console_sensitive_context
+  ) {
+    dataClasses.add("confidential");
+  }
+  if (posture.agent_debug_console_pii_context) dataClasses.add("pii");
+  if (dataClasses.size > 1) dataClasses.delete("unknown");
+
+  const object = createSurfaceObject({
+    type: "runtime_config",
+    name: path.basename(file.relativePath),
+    path: file.relativePath,
+    trust_level: posture.agent_debug_console_public_endpoint || posture.agent_debug_console_anonymous_access ? "third_party" : inferTrustLevel(file.relativePath),
+    data_classes: uniqueDataClasses([...dataClasses] as SurfaceObject["data_classes"]),
+    actions: uniqueActions([...actions]),
+    side_effect:
+      posture.agent_debug_console_prompt_edit_enabled ||
+      posture.agent_debug_console_tool_invocation_enabled ||
+      posture.agent_debug_console_write_authority ||
+      posture.agent_debug_console_external_authority ||
+      posture.agent_debug_console_impersonation_enabled,
+    reversible:
+      !posture.agent_debug_console_prompt_edit_enabled &&
+      !posture.agent_debug_console_tool_invocation_enabled &&
+      !posture.agent_debug_console_write_authority &&
+      !posture.agent_debug_console_external_authority &&
+      !posture.agent_debug_console_impersonation_enabled,
+    external_reach: posture.agent_debug_console_public_endpoint || posture.agent_debug_console_external_authority,
+    secret_exposure:
+      posture.agent_debug_console_secret_context_visible ||
+      posture.env_key_names.some(isCredentialLikeKeyName) ||
+      posture.secret_ref_key_names.length > 0,
+    reason: "Agent debug or playground console discovered as model-context and tool-authority exposure posture.",
+    metadata: {
+      content_redacted: true,
+      values_collected: false,
+      parsed_agent_debug_console_config: Boolean(parsed.value) && !parsed.parseFailed,
+      parse_error: parsed.parseFailed,
+      ...posture
+    }
+  });
+  surfaces.runtime_config.push({
+    ...object,
+    untrusted_to_privileged:
+      (posture.agent_debug_console_enabled &&
+        posture.agent_debug_console_public_endpoint &&
+        posture.agent_debug_console_anonymous_access &&
+        posture.agent_debug_console_tool_invocation_enabled &&
+        posture.agent_debug_console_privileged_tool_authority &&
+        !posture.agent_debug_console_approval_required) ||
       isUntrustedToPrivileged(object)
   });
 }
@@ -4938,6 +5028,25 @@ function isAgentPublicChatConfigPath(relativePath: string, basename: string): bo
   return chatName || (chatDirectory && configName);
 }
 
+function isAgentDebugConsoleConfigPath(relativePath: string, basename: string): boolean {
+  const normalized = relativePath.replaceAll("\\", "/").toLowerCase();
+  const lowerBase = basename.toLowerCase();
+  if (!/\.(json|ya?ml|toml)$/iu.test(lowerBase)) return false;
+  if (normalized.startsWith(".github/workflows/")) return false;
+  if (normalized.startsWith("rules/")) return false;
+  const segments = normalized.split("/").slice(0, -1);
+  const debugDirectory = segments.some((segment) =>
+    /^(debug|debug-console|debug_console|playground|playgrounds|agent-playground|agent_playground|prompt-debug|prompt_debug|prompt-inspector|prompt_inspector|agent-inspector|agent_inspector|agent-admin|agent_admin|admin-console|admin_console|devtools|dev-tools)$/iu.test(
+      segment
+    )
+  );
+  const debugName = /(?:debug|playground|prompt[-_]?inspector|prompt[-_]?debug|agent[-_]?inspector|agent[-_]?admin|admin[-_]?console|agent[-_]?devtools|developer[-_]?console)/iu.test(
+    lowerBase
+  );
+  const configName = /(?:config|settings|policy|console|playground|debug|inspector|admin|endpoint|route|api|agent|auth|cors)/iu.test(lowerBase);
+  return debugName || (debugDirectory && configName);
+}
+
 function isAgentFederationConfigPath(relativePath: string, basename: string): boolean {
   const normalized = relativePath.replaceAll("\\", "/").toLowerCase();
   const lowerBase = basename.toLowerCase();
@@ -5249,6 +5358,41 @@ interface AgentPublicChatPosture {
   public_agent_chat_pii_context: boolean;
   public_agent_chat_redaction_disabled: boolean;
   public_agent_chat_approval_required: boolean;
+  env_key_names: string[];
+  secret_ref_key_names: string[];
+}
+
+interface AgentDebugConsolePosture {
+  agent_debug_console_fields: string[];
+  agent_debug_console_enabled: boolean;
+  agent_debug_console_endpoint_redacted: boolean;
+  agent_debug_console_endpoint_count: number;
+  agent_debug_console_endpoint_kinds: string[];
+  agent_debug_console_public_endpoint: boolean;
+  agent_debug_console_anonymous_access: boolean;
+  agent_debug_console_auth_disabled: boolean;
+  agent_debug_console_cors_broad: boolean;
+  agent_debug_console_prompt_view_enabled: boolean;
+  agent_debug_console_system_prompt_visible: boolean;
+  agent_debug_console_developer_prompt_visible: boolean;
+  agent_debug_console_raw_context_visible: boolean;
+  agent_debug_console_trace_view_enabled: boolean;
+  agent_debug_console_memory_view_enabled: boolean;
+  agent_debug_console_tool_schema_visible: boolean;
+  agent_debug_console_prompt_edit_enabled: boolean;
+  agent_debug_console_tool_invocation_enabled: boolean;
+  agent_debug_console_impersonation_enabled: boolean;
+  agent_debug_console_tool_authority_categories: string[];
+  agent_debug_console_privileged_tool_authority: boolean;
+  agent_debug_console_write_authority: boolean;
+  agent_debug_console_external_authority: boolean;
+  agent_debug_console_memory_write_authority: boolean;
+  agent_debug_console_secret_context_visible: boolean;
+  agent_debug_console_sensitive_context: boolean;
+  agent_debug_console_pii_context: boolean;
+  agent_debug_console_redaction_disabled: boolean;
+  agent_debug_console_audit_logging_disabled: boolean;
+  agent_debug_console_approval_required: boolean;
   env_key_names: string[];
   secret_ref_key_names: string[];
 }
@@ -7643,6 +7787,382 @@ function isAgentPublicChatSecurityField(fieldPath: string): boolean {
 }
 
 function agentPublicChatText(field: RuntimeField): string {
+  return `${field.path} ${fieldValueText(field)}`.toLowerCase().replaceAll("_", " ").replaceAll("-", " ");
+}
+
+function classifyAgentDebugConsoleConfig(value: unknown): AgentDebugConsolePosture {
+  const fields = flattenRuntimeFields(value);
+  const stringValues = collectFieldStringValues(fields);
+  const endpoints = classifyAgentDebugConsoleEndpoints(fields);
+  const toolAuthorityCategories = collectAgentDebugConsoleToolAuthorityCategories(fields);
+  const envKeys = uniqueStrings([
+    ...collectEnvKeyNamesFromConfig(value).filter(isLikelyEnvKeyName),
+    ...extractEnvironmentReferenceKeys(stringValues)
+  ]);
+  const secretRefKeys = extractSecretReferenceKeys(stringValues);
+  const authDisabled = hasAgentDebugConsoleAuthDisabledSignal(fields);
+  const anonymousAccess = authDisabled || hasAgentDebugConsoleAnonymousAccessSignal(fields);
+
+  return {
+    agent_debug_console_fields: fields
+      .map((field) => field.path)
+      .filter((fieldPath) => isAgentDebugConsoleSecurityField(fieldPath))
+      .sort((a, b) => a.localeCompare(b)),
+    agent_debug_console_enabled: !hasAgentDebugConsoleDisabledSignal(fields),
+    agent_debug_console_endpoint_redacted: endpoints.endpointCount > 0,
+    agent_debug_console_endpoint_count: endpoints.endpointCount,
+    agent_debug_console_endpoint_kinds: endpoints.endpointKinds,
+    agent_debug_console_public_endpoint:
+      endpoints.publicEndpoint || hasAgentDebugConsolePublicEndpointSignal(fields) || anonymousAccess,
+    agent_debug_console_anonymous_access: anonymousAccess,
+    agent_debug_console_auth_disabled: authDisabled,
+    agent_debug_console_cors_broad: hasAgentDebugConsoleBroadCorsSignal(fields),
+    agent_debug_console_prompt_view_enabled: hasAgentDebugConsolePromptViewSignal(fields),
+    agent_debug_console_system_prompt_visible: hasAgentDebugConsoleSystemPromptSignal(fields),
+    agent_debug_console_developer_prompt_visible: hasAgentDebugConsoleDeveloperPromptSignal(fields),
+    agent_debug_console_raw_context_visible: hasAgentDebugConsoleRawContextSignal(fields),
+    agent_debug_console_trace_view_enabled: hasAgentDebugConsoleTraceViewSignal(fields),
+    agent_debug_console_memory_view_enabled: hasAgentDebugConsoleMemoryViewSignal(fields),
+    agent_debug_console_tool_schema_visible: hasAgentDebugConsoleToolSchemaSignal(fields),
+    agent_debug_console_prompt_edit_enabled: hasAgentDebugConsolePromptEditSignal(fields),
+    agent_debug_console_tool_invocation_enabled: hasAgentDebugConsoleToolInvocationSignal(fields),
+    agent_debug_console_impersonation_enabled: hasAgentDebugConsoleImpersonationSignal(fields),
+    agent_debug_console_tool_authority_categories: toolAuthorityCategories,
+    agent_debug_console_privileged_tool_authority: isAgentDebugConsolePrivileged(toolAuthorityCategories),
+    agent_debug_console_write_authority: hasAgentDebugConsoleWriteAuthoritySignal(fields, toolAuthorityCategories),
+    agent_debug_console_external_authority: toolAuthorityCategories.includes("external_response") || hasAgentDebugConsoleExternalAuthoritySignal(fields),
+    agent_debug_console_memory_write_authority: toolAuthorityCategories.includes("memory_write") || hasAgentDebugConsoleMemoryWriteAuthoritySignal(fields),
+    agent_debug_console_secret_context_visible:
+      toolAuthorityCategories.includes("secret_manager_access") ||
+      hasAgentDebugConsoleSecretSignal(fields) ||
+      envKeys.some(isCredentialLikeKeyName) ||
+      secretRefKeys.length > 0,
+    agent_debug_console_sensitive_context: hasAgentDebugConsoleSensitiveContextSignal(fields),
+    agent_debug_console_pii_context: hasAgentDebugConsolePiiContextSignal(fields),
+    agent_debug_console_redaction_disabled: hasAgentDebugConsoleRedactionDisabledSignal(fields),
+    agent_debug_console_audit_logging_disabled: hasAgentDebugConsoleAuditLoggingDisabledSignal(fields),
+    agent_debug_console_approval_required: hasAgentDebugConsoleApprovalRequiredSignal(fields),
+    env_key_names: envKeys,
+    secret_ref_key_names: secretRefKeys
+  };
+}
+
+function classifyAgentDebugConsoleEndpoints(fields: RuntimeField[]): { publicEndpoint: boolean; endpointCount: number; endpointKinds: string[] } {
+  const endpointKinds = new Set<string>();
+  let endpointCount = 0;
+  for (const field of fields) {
+    if (!/(^|\.)(endpoints?|url|uri|host|base_url|baseUrl|route|api|console_url|consoleUrl|playground_url|playgroundUrl|server)$/iu.test(field.path)) continue;
+    if (/(?:^|\.)(cors|origin|origins|allowed_origins|allowedOrigins)(?:\.|$)/iu.test(field.path)) continue;
+    for (const value of fieldStringValues(field)) {
+      const endpoint = parseAgentDebugConsoleEndpoint(value);
+      if (!endpoint) continue;
+      endpointKinds.add(endpoint.kind);
+      endpointCount += 1;
+    }
+  }
+  return {
+    publicEndpoint: endpointCount > 0,
+    endpointCount,
+    endpointKinds: [...endpointKinds].sort((a, b) => a.localeCompare(b))
+  };
+}
+
+function parseAgentDebugConsoleEndpoint(value: string): { kind: string } | undefined {
+  try {
+    const parsed = new URL(value);
+    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return undefined;
+    if (isLocalHost(parsed.hostname.toLowerCase())) return undefined;
+    return { kind: parsed.protocol === "http:" ? "plaintext_debug_console_endpoint" : "debug_console_endpoint" };
+  } catch {
+    return undefined;
+  }
+}
+
+function hasAgentDebugConsoleDisabledSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => /(?:^|\.)(enabled|active)(?:\.|$)/iu.test(field.path) && disabledConfigValue(field.value));
+}
+
+function hasAgentDebugConsolePublicEndpointSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /\b(public|internet|external|anonymous|debug playground|public playground|developer console|admin console)\b/iu.test(agentDebugConsoleText(field)) &&
+    truthyConfigValue(field.value)
+  );
+}
+
+function hasAgentDebugConsoleAnonymousAccessSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /\b(anonymous|unauthenticated|guest|public users?|no login|no auth|public access)\b/iu.test(agentDebugConsoleText(field)) &&
+    truthyConfigValue(field.value)
+  );
+}
+
+function hasAgentDebugConsoleAuthDisabledSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => {
+    const text = agentDebugConsoleText(field);
+    if (/(?:^|\.)(auth|authentication|authorization|security|login)\.(required|enabled|enforced)$/iu.test(field.path)) {
+      return disabledConfigValue(field.value);
+    }
+    return /\b(no auth|no login|auth disabled|authentication disabled|anonymous|unauthenticated|public access|optional auth)\b/iu.test(text) &&
+      truthyConfigValue(field.value);
+  });
+}
+
+function hasAgentDebugConsoleBroadCorsSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => {
+    const text = agentDebugConsoleText(field);
+    if (!/\b(cors|origin|origins|allowed origins|allowed origin|cross origin)\b/iu.test(text)) return false;
+    return /\*|all origins|any origin|wildcard|allow all|public web/iu.test(text) && !disabledConfigValue(field.value);
+  });
+}
+
+function hasAgentDebugConsolePromptViewSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    !isAgentDebugConsoleControlField(field.path) &&
+    !disabledConfigValue(field.value) &&
+    /\b(prompt viewer|prompt_viewer|prompt inspector|system prompt|developer prompt|instruction viewer|view prompts?|show prompts?|prompt history)\b/iu.test(
+      agentDebugConsoleText(field)
+    )
+  );
+}
+
+function hasAgentDebugConsoleSystemPromptSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    !isAgentDebugConsoleControlField(field.path) &&
+    !disabledConfigValue(field.value) &&
+    /\b(system prompt|system_prompt|system instructions?|root instructions?|highest priority)\b/iu.test(agentDebugConsoleText(field))
+  );
+}
+
+function hasAgentDebugConsoleDeveloperPromptSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    !isAgentDebugConsoleControlField(field.path) &&
+    !disabledConfigValue(field.value) &&
+    /\b(developer prompt|developer_prompt|developer instructions?|policy prompt|tool instructions?)\b/iu.test(agentDebugConsoleText(field))
+  );
+}
+
+function hasAgentDebugConsoleRawContextSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    !isAgentDebugConsoleControlField(field.path) &&
+    !disabledConfigValue(field.value) &&
+    /\b(raw context|raw_context|context viewer|full context|request context|model context|messages|conversation dump|prompt dump)\b/iu.test(
+      agentDebugConsoleText(field)
+    )
+  );
+}
+
+function hasAgentDebugConsoleTraceViewSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    !isAgentDebugConsoleControlField(field.path) &&
+    !disabledConfigValue(field.value) &&
+    /\b(trace viewer|trace_viewer|traces?|spans?|run history|tool trace|debug trace|observability)\b/iu.test(agentDebugConsoleText(field))
+  );
+}
+
+function hasAgentDebugConsoleMemoryViewSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    !isAgentDebugConsoleControlField(field.path) &&
+    !disabledConfigValue(field.value) &&
+    /\b(memory viewer|memory_viewer|memory|memories|conversation memory|long term memory|session state)\b/iu.test(
+      agentDebugConsoleText(field)
+    )
+  );
+}
+
+function hasAgentDebugConsoleToolSchemaSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    !isAgentDebugConsoleControlField(field.path) &&
+    !disabledConfigValue(field.value) &&
+    /\b(tool schema|tool_schema|tool viewer|function schema|mcp tools?|available tools?|tool descriptions?)\b/iu.test(
+      agentDebugConsoleText(field)
+    )
+  );
+}
+
+function hasAgentDebugConsolePromptEditSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    !isAgentDebugConsoleControlField(field.path) &&
+    !disabledConfigValue(field.value) &&
+    /\b(prompt editor|prompt_editor|edit prompt|modify prompt|override prompt|system prompt edit|developer prompt edit|hot reload prompt)\b/iu.test(
+      agentDebugConsoleText(field)
+    )
+  );
+}
+
+function hasAgentDebugConsoleToolInvocationSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => {
+    const text = agentDebugConsoleText(field);
+    if (/\b(manual|approval required|disabled|off|read only|read-only|view only|view-only)\b/iu.test(text)) return false;
+    if (/(?:^|\.)(tool_invocation|toolInvocation|invoke_tools|invokeTools|run_tools|runTools|tool_calls|toolCalls)(?:\.|$)/u.test(field.path)) {
+      return truthyConfigValue(field.value);
+    }
+    return /\b(invoke tools?|run tools?|execute tools?|tool invocation|tool console|call tools?|function calls?|mcp calls?)\b/iu.test(text) &&
+      truthyConfigValue(field.value);
+  });
+}
+
+function hasAgentDebugConsoleImpersonationSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    !isAgentDebugConsoleControlField(field.path) &&
+    !disabledConfigValue(field.value) &&
+    /\b(impersonat\w*|act as|run as|assume user|switch tenant|sudo|admin mode|operator mode)\b/iu.test(agentDebugConsoleText(field))
+  );
+}
+
+function collectAgentDebugConsoleToolAuthorityCategories(fields: RuntimeField[]): string[] {
+  const categories = new Set<string>();
+  for (const field of fields) {
+    if (isAgentDebugConsoleControlField(field.path)) continue;
+    if (!isAgentDebugConsoleAuthorityField(field.path)) continue;
+    if (disabledConfigValue(field.value)) continue;
+    const text = agentDebugConsoleText(field);
+    if (!/\b(tool|tools|function|mcp|capability|action|browser|database|db|sql|slack|email|webhook|secret|vault|memory|shell|filesystem|file|prompt|impersonat)\b/iu.test(text)) {
+      continue;
+    }
+    if (/\b(tool|tools|function|mcp|capability|action)\b/iu.test(text)) categories.add("tool_call");
+    if (/\b(database|db|sql|query|crm|support db|warehouse|record|update customer)\b/iu.test(text)) categories.add("database_write");
+    if (/\b(slack|email|sms|message|webhook|ticket|jira|zendesk|reply|respond|send|post|publish)\b/iu.test(text)) {
+      categories.add("external_response");
+    }
+    if (/\b(browser|playwright|puppeteer|click|form|navigate|submit)\b/iu.test(text)) categories.add("browser_action");
+    if (/(?:^|[_\W])(vault|secret|secrets|secret manager|key vault|credential|api key|token)(?:[_\W]|$)/iu.test(text)) {
+      categories.add("secret_manager_access");
+    }
+    if (/(?:^|[_\W])(memory|remember|store|persist|summary|session state|conversation state)(?:[_\W]|$)/iu.test(text)) {
+      categories.add("memory_write");
+    }
+    if (/\b(shell|bash|command|exec|terminal|python|node|subprocess|code interpreter)\b/iu.test(text)) categories.add("code_execution");
+    if (/\b(filesystem|file write|workspace|repo|repository|github|gitlab|commit|push|merge)\b/iu.test(text)) {
+      categories.add("filesystem_write");
+    }
+    if (/\b(prompt editor|prompt write|system prompt edit|developer prompt edit|override prompt)\b/iu.test(text)) {
+      categories.add("prompt_write");
+    }
+    if (/\b(impersonat\w*|run as|assume user|sudo|admin mode)\b/iu.test(text)) categories.add("impersonation");
+  }
+  return [...categories].sort((a, b) => a.localeCompare(b));
+}
+
+function isAgentDebugConsolePrivileged(categories: string[]): boolean {
+  return categories.some((category) =>
+    [
+      "browser_action",
+      "code_execution",
+      "database_write",
+      "external_response",
+      "filesystem_write",
+      "impersonation",
+      "memory_write",
+      "prompt_write",
+      "secret_manager_access"
+    ].includes(category)
+  );
+}
+
+function hasAgentDebugConsoleWriteAuthoritySignal(fields: RuntimeField[], categories: string[]): boolean {
+  return categories.some((category) =>
+    [
+      "browser_action",
+      "code_execution",
+      "database_write",
+      "external_response",
+      "filesystem_write",
+      "memory_write",
+      "prompt_write"
+    ].includes(category)
+  ) || fields.some((field) =>
+    !isAgentDebugConsoleControlField(field.path) &&
+    isAgentDebugConsoleAuthorityField(field.path) &&
+    /\b(write|update|create|delete|edit|override|reply|respond|send|post|publish|comment|commit|push|merge|submit|remember|persist)\b/iu.test(
+      agentDebugConsoleText(field)
+    )
+  );
+}
+
+function hasAgentDebugConsoleExternalAuthoritySignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    !isAgentDebugConsoleControlField(field.path) &&
+    isAgentDebugConsoleAuthorityField(field.path) &&
+    /\b(reply|respond|send|post|publish|slack|email|sms|webhook|ticket|external response)\b/iu.test(agentDebugConsoleText(field)) &&
+    !disabledConfigValue(field.value)
+  );
+}
+
+function hasAgentDebugConsoleMemoryWriteAuthoritySignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    !isAgentDebugConsoleControlField(field.path) &&
+    isAgentDebugConsoleAuthorityField(field.path) &&
+    /\b(memory|remember|persist|store|conversation state|session state|long term|long-term|summary)\b/iu.test(agentDebugConsoleText(field)) &&
+    /\b(write|update|create|persist|store|remember|summary)\b/iu.test(agentDebugConsoleText(field)) &&
+    !disabledConfigValue(field.value)
+  );
+}
+
+function hasAgentDebugConsoleSecretSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    !isAgentDebugConsoleControlField(field.path) &&
+    /\b(secret|token|credential|api key|password|vault|key vault|authorization|bearer)\b/iu.test(agentDebugConsoleText(field))
+  );
+}
+
+function hasAgentDebugConsoleSensitiveContextSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    !isAgentDebugConsoleControlField(field.path) &&
+    /\b(system prompt|developer prompt|raw context|trace|memory|customer|client|ticket|support|internal|confidential|private|proprietary|sensitive|account|billing|payment|case|record|profile|incident)\b/iu.test(
+      agentDebugConsoleText(field)
+    )
+  );
+}
+
+function hasAgentDebugConsolePiiContextSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    !isAgentDebugConsoleControlField(field.path) &&
+    /(?:^|[_\W])(pii|email|phone|address|ssn|passport|dob|date of birth|customer id|user id|account id|account number)(?:[_\W]|$)/iu.test(
+      agentDebugConsoleText(field)
+    )
+  );
+}
+
+function hasAgentDebugConsoleRedactionDisabledSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /\b(redaction|redact|mask|sanitize|pii redaction|secret redaction|prompt redaction|trace redaction|dlp)\b/iu.test(agentDebugConsoleText(field)) &&
+    disabledConfigValue(field.value)
+  );
+}
+
+function hasAgentDebugConsoleAuditLoggingDisabledSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /\b(audit|audit log|audit logging|logging|log)\b/iu.test(agentDebugConsoleText(field)) &&
+    disabledConfigValue(field.value)
+  );
+}
+
+function hasAgentDebugConsoleApprovalRequiredSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /\b(approval|required approval|human approval|manual review|confirm|confirmation|human in the loop|human-in-the-loop)\b/iu.test(agentDebugConsoleText(field)) &&
+    truthyConfigValue(field.value)
+  );
+}
+
+function isAgentDebugConsoleControlField(fieldPath: string): boolean {
+  return /(?:^|\.)(auth|authentication|authorization|security|cors|origin|origins|allowed_origins|redaction|redact|mask|sanitize|approval|human_review|audit|audit_logging|logging)(?:\.|$)/iu.test(
+    fieldPath
+  );
+}
+
+function isAgentDebugConsoleAuthorityField(fieldPath: string): boolean {
+  return /(?:^|\.)(tools?|allowed_tools|tool_calls?|actions?|commands?|capabilities?|features|permissions?|connectors?|mcp|functions?)(?:\.|$)/iu.test(
+    fieldPath
+  );
+}
+
+function isAgentDebugConsoleSecurityField(fieldPath: string): boolean {
+  return /enabled|active|public|debug|console|playground|inspector|admin|devtools|endpoint|url|uri|host|route|api|auth|anonymous|guest|cors|origin|prompt|system|developer|instruction|context|message|trace|span|memory|tool|schema|mcp|function|browser|database|db|slack|email|webhook|secret|vault|credential|token|impersonat|audit|redaction|approval|pii|sensitive|confidential/iu.test(
+    fieldPath
+  );
+}
+
+function agentDebugConsoleText(field: RuntimeField): string {
   return `${field.path} ${fieldValueText(field)}`.toLowerCase().replaceAll("_", " ").replaceAll("-", " ");
 }
 

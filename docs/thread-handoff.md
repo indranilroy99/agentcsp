@@ -1227,6 +1227,16 @@ The current iteration adds:
 - rule `AGENTCSP-RUNTIME-062` for public chat ingress that routes anonymous prompt input into privileged tools without abuse controls, redaction, or approval
 - scanner, rule, fixture verifier, and redaction coverage proving raw endpoints, allowed origins, visitor labels, upload labels, tool names, context labels, and token placeholders stay redacted
 
+## Agent Debug Console Exposure Pass
+
+The current iteration adds:
+
+- first-class redacted metadata for agent debug, playground, prompt-inspector, developer-console, and admin-inspection posture, including endpoint categories, anonymous access, auth/CORS posture, prompt/raw-context/trace/memory/tool-schema visibility, prompt editing, impersonation, live tool invocation, authority categories, redaction posture, audit posture, approval posture, and credential exposure
+- vulnerable fixture coverage for a public agent playground that exposes system and developer prompts, raw context, traces, memory, and tool schemas while allowing prompt editing, impersonation, and database, Slack, memory, and secret-manager tool invocation without redaction, audit logging, or approval
+- safe fixture coverage for an SSO-protected internal prompt inspector that keeps system/developer prompts, raw context, traces, memory, prompt editing, impersonation, and live tool invocation disabled while requiring approval and audit logging
+- rule `AGENTCSP-RUNTIME-063` for public debug/playground consoles that expose prompt/context internals and privileged tool invocation without redaction, audit logging, or approval
+- scanner, rule, fixture verifier, and redaction coverage proving raw endpoints, prompt labels, trace labels, memory labels, context labels, tool names, and token placeholders stay redacted
+
 ## Initial Build Recommendation
 
 Start with a CLI-first MVP before building the dashboard:

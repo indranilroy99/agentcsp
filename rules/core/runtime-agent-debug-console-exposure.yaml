@@ -1,0 +1,68 @@
+id: AGENTCSP-RUNTIME-063
+name: Public agent debug console exposes prompts and privileged tools
+description: A public or anonymous agent debug, playground, or inspector console exposes system/developer prompts, raw context, traces, memory, or tool schemas while allowing privileged tool invocation without redaction, audit logging, or approval.
+category: agent_debug_console_exposure
+severity: critical
+maps_to:
+  owasp:
+    - LLM01:2025 Prompt Injection
+    - LLM02:2025 Sensitive Information Disclosure
+    - LLM06:2025 Excessive Agency
+  mitre_atlas:
+    - AML.T0051 LLM Prompt Injection
+    - AML.T0057 Exfiltration via Cyber Means
+  nist_ai_rmf:
+    - MAP 5.1
+    - MEASURE 2.9
+    - MANAGE 2.4
+match:
+  object_type: runtime_config
+  where:
+    - field: metadata.parsed_agent_debug_console_config
+      op: equals
+      value: true
+    - field: metadata.agent_debug_console_enabled
+      op: equals
+      value: true
+    - field: metadata.agent_debug_console_public_endpoint
+      op: equals
+      value: true
+    - field: metadata.agent_debug_console_anonymous_access
+      op: equals
+      value: true
+    - field: metadata.agent_debug_console_auth_disabled
+      op: equals
+      value: true
+    - field: metadata.agent_debug_console_prompt_view_enabled
+      op: equals
+      value: true
+    - field: metadata.agent_debug_console_raw_context_visible
+      op: equals
+      value: true
+    - field: metadata.agent_debug_console_tool_schema_visible
+      op: equals
+      value: true
+    - field: metadata.agent_debug_console_tool_invocation_enabled
+      op: equals
+      value: true
+    - field: metadata.agent_debug_console_privileged_tool_authority
+      op: equals
+      value: true
+    - field: metadata.agent_debug_console_secret_context_visible
+      op: equals
+      value: true
+    - field: metadata.agent_debug_console_redaction_disabled
+      op: equals
+      value: true
+    - field: metadata.agent_debug_console_audit_logging_disabled
+      op: equals
+      value: true
+    - field: metadata.agent_debug_console_approval_required
+      op: equals
+      value: false
+    - field: secret_exposure
+      op: equals
+      value: true
+recommendation:
+  control: deny
+  text: Remove public access to agent debug and playground consoles, require SSO and admin authorization, keep raw system/developer prompts and traces redacted, disable live privileged tool invocation in debug views, enable audit logging, and require approval for any console action that can mutate data or reach secret-backed tools.

@@ -1,0 +1,29 @@
+enabled: true
+surface: internal_prompt_inspector
+endpoint: local-only
+auth:
+  required: true
+  sso: true
+  anonymous: false
+features:
+  prompt_viewer: true
+  system_prompt_viewer: false
+  developer_prompt_viewer: false
+  raw_context_viewer: false
+  trace_viewer: false
+  memory_viewer: false
+  tool_schema_viewer: true
+  prompt_editor: false
+  impersonation: false
+  tool_invocation: false
+debug_context:
+  - approved_internal_prompt_summary
+tools:
+  - readonly_docs.search
+controls:
+  approval_required: true
+  audit_logging: true
+redaction:
+  prompts: true
+  traces: true
+  secrets: true

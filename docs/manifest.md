@@ -2183,6 +2183,48 @@ Public agent chat metadata may include:
 
 Raw chat endpoints, allowed origins, tool names, visitor labels, attachment labels, context field names, data-scope labels, and token placeholders are not emitted. Endpoint categories, authentication posture, CORS/CSRF/rate-limit/abuse-control posture, file-upload posture, authority categories, redaction posture, approval posture, and credential key names let rules detect public prompt-to-tool authority without copying public chat configuration values into evidence.
 
+## Agent Debug Console Posture
+
+Agent debug consoles, playgrounds, prompt inspectors, developer consoles, and admin inspection surfaces are normalized into `runtime_config` objects when discovered. This models the boundary where diagnostic tooling can expose system/developer prompts, raw context, traces, memory, tool schemas, impersonation, or live tool invocation.
+
+Agent debug console metadata may include:
+
+- `parsed_agent_debug_console_config`
+- `agent_debug_console_fields`
+- `agent_debug_console_enabled`
+- `agent_debug_console_endpoint_redacted`
+- `agent_debug_console_endpoint_count`
+- `agent_debug_console_endpoint_kinds`
+- `agent_debug_console_public_endpoint`
+- `agent_debug_console_anonymous_access`
+- `agent_debug_console_auth_disabled`
+- `agent_debug_console_cors_broad`
+- `agent_debug_console_prompt_view_enabled`
+- `agent_debug_console_system_prompt_visible`
+- `agent_debug_console_developer_prompt_visible`
+- `agent_debug_console_raw_context_visible`
+- `agent_debug_console_trace_view_enabled`
+- `agent_debug_console_memory_view_enabled`
+- `agent_debug_console_tool_schema_visible`
+- `agent_debug_console_prompt_edit_enabled`
+- `agent_debug_console_tool_invocation_enabled`
+- `agent_debug_console_impersonation_enabled`
+- `agent_debug_console_tool_authority_categories`
+- `agent_debug_console_privileged_tool_authority`
+- `agent_debug_console_write_authority`
+- `agent_debug_console_external_authority`
+- `agent_debug_console_memory_write_authority`
+- `agent_debug_console_secret_context_visible`
+- `agent_debug_console_sensitive_context`
+- `agent_debug_console_pii_context`
+- `agent_debug_console_redaction_disabled`
+- `agent_debug_console_audit_logging_disabled`
+- `agent_debug_console_approval_required`
+- `env_key_names`
+- `secret_ref_key_names`
+
+Raw console endpoints, prompt names, prompt bodies, trace names, memory labels, context field names, tool names, allowed origins, and token placeholders are not emitted. Endpoint categories, authentication posture, visible-context categories, authority categories, redaction posture, audit posture, approval posture, and credential key names let rules detect exposed diagnostic control planes without publishing the debug configuration body.
+
 ## Agent Federation Posture
 
 Outbound A2A clients, remote-agent federation configs, agent registries, peer-agent catalogs, and agent handoff routing configs are normalized into `runtime_config` objects when discovered. This models the boundary where a local agent delegates work or forwards context to third-party agents.

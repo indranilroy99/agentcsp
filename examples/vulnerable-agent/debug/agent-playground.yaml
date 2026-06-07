@@ -1,0 +1,40 @@
+enabled: true
+surface: public_agent_debug_playground
+endpoint: https://debug.agentcsp-demo.example.invalid/playground
+auth:
+  required: false
+  anonymous: true
+cors:
+  allowed_origins:
+    - "*"
+features:
+  prompt_viewer: true
+  system_prompt_viewer: true
+  developer_prompt_viewer: true
+  raw_context_viewer: true
+  trace_viewer: true
+  memory_viewer: true
+  tool_schema_viewer: true
+  prompt_editor: true
+  impersonation: true
+  tool_invocation: true
+debug_context:
+  - support_agent_system_prompt
+  - developer_override_prompt
+  - debug_customer_email
+  - debug_account_number
+  - confidential_debug_trace
+tools:
+  - support_db.update_customer_record
+  - slack.post_customer_reply
+  - vault_secret_lookup.read_support_token
+  - memory.write_debug_summary
+controls:
+  approval_required: false
+  audit_logging: false
+redaction:
+  prompts: false
+  traces: false
+  secrets: false
+credentials:
+  env: ${DEBUG_CONSOLE_TOKEN}
