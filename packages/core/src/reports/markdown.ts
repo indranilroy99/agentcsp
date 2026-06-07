@@ -29,6 +29,8 @@ export function renderMarkdownReport(manifest: AgentManifest): string {
     "",
     renderTriageSummary(manifest),
     "",
+    renderCiGateSummary(manifest),
+    "",
     renderBaselineComparison(manifest),
     "",
     renderScanCoverage(manifest),
@@ -93,6 +95,29 @@ function renderTriageSummary(manifest: AgentManifest): string {
     "### Top Active Risks",
     "",
     renderTopRiskTable(summary.top_active_risks)
+  ].join("\n");
+}
+
+function renderCiGateSummary(manifest: AgentManifest): string {
+  const summary = manifest.ci_gate_summary;
+  if (!summary) return "## CI Gate Summary\n\nNo CI gate summary was generated.";
+  const failedGates = summary.failed_gates.length > 0 ? summary.failed_gates.join(", ") : "none";
+  return [
+    "## CI Gate Summary",
+    "",
+    `- Status: \`${summary.status}\``,
+    `- Should fail: \`${summary.should_fail}\``,
+    `- Failed gates: ${failedGates}`,
+    `- Severity threshold: \`${summary.fail_on ?? "none"}\``,
+    `- Confidence threshold: \`${summary.fail_on_confidence ?? "none"}\``,
+    `- New findings only: \`${summary.fail_on_new}\``,
+    `- Fail on expired suppressions: \`${summary.fail_on_expired_suppressions}\``,
+    `- Fail on diagnostics: \`${summary.fail_on_diagnostics}\``,
+    `- Evaluated findings: ${summary.evaluated_findings}`,
+    `- Severity gate findings: ${summary.severity_gate_findings}`,
+    `- Active suppressions excluded: ${summary.active_suppressions_excluded}`,
+    `- Expired suppression findings: ${summary.expired_suppression_findings}`,
+    `- Diagnostics: ${summary.diagnostic_count}`
   ].join("\n");
 }
 

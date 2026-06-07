@@ -40,7 +40,8 @@ export async function runScanCommand(targetPath: string, options: Record<string,
     fail_on_confidence: failOnConfidence,
     baseline_path: baselinePath,
     fail_on_new: failOnNew,
-    fail_on_expired_suppressions: failOnExpiredSuppressions
+    fail_on_expired_suppressions: failOnExpiredSuppressions,
+    fail_on_diagnostics: failOnDiagnostics
   });
 
   if (!quiet) {
@@ -72,13 +73,17 @@ export async function runScanCommand(targetPath: string, options: Record<string,
         `Baseline: ${result.manifest.baseline_comparison.new_findings} new, ${result.manifest.baseline_comparison.existing_findings} existing, ${result.manifest.baseline_comparison.resolved_findings} resolved`
       );
     }
+    if (result.manifest.ci_gate_summary) {
+      const failedGates = result.manifest.ci_gate_summary.failed_gates.join(", ") || "none";
+      console.log(`CI gate: ${result.manifest.ci_gate_summary.status} (failed gates: ${failedGates})`);
+    }
     if (result.outputFiles.manifest) console.log(`Manifest: ${result.outputFiles.manifest}`);
     if (result.outputFiles.findings) console.log(`Findings: ${result.outputFiles.findings}`);
     if (result.outputFiles.report) console.log(`Report: ${result.outputFiles.report}`);
     if (result.outputFiles.sarif) console.log(`SARIF: ${result.outputFiles.sarif}`);
   }
 
-  if (result.shouldFail || (failOnDiagnostics && result.manifest.diagnostics.length > 0)) {
+  if (result.shouldFail) {
     process.exitCode = 1;
   }
 }

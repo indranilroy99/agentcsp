@@ -25,8 +25,8 @@ import { buildStaticBlastRadiusSummary } from "../reports/blast-radius.js";
 import { renderMarkdownReport } from "../reports/markdown.js";
 import { renderSarifReport } from "../reports/sarif.js";
 import { buildTriageSummary } from "../reports/triage.js";
+import { buildCiGateSummary } from "../reports/gates.js";
 import { applyBaselineComparison } from "../reports/baseline.js";
-import { shouldFail } from "../risk/score.js";
 import { sortObjects } from "../utils/sort.js";
 
 const moduleDirectory = path.dirname(fileURLToPath(import.meta.url));
@@ -66,15 +66,14 @@ export async function scanProject(rawConfig: Partial<ScanConfig> & { root_path: 
     : undefined;
   const findings = baselineResult?.findings ?? suppressedFindings;
   const activeFindings = findings.filter((finding) => finding.suppression?.status !== "active");
-  const expiredSuppressionCount = findings.filter((finding) => finding.suppression?.status === "expired").length;
-  const failGateFindings = config.fail_on_new
-    ? findings.filter((finding) => finding.baseline_status === "new")
-    : findings;
-  const severityGateFailed = shouldFail(failGateFindings, config.fail_on, config.fail_on_confidence);
-  const expiredSuppressionGateFailed = config.fail_on_expired_suppressions && expiredSuppressionCount > 0;
   const graph = buildStaticGraph(surfaces, activeFindings);
   const staticBlastRadius = buildStaticBlastRadiusSummary(surfaces, findings, graph.relationships, graph.attackPaths);
   const triageSummary = buildTriageSummary(findings);
+  const ciGateSummary = buildCiGateSummary({
+    findings,
+    diagnostics: surfaces.diagnostics,
+    config
+  });
   const manifest = buildManifest({
     rootPath,
     scanConfig: config,
@@ -84,6 +83,7 @@ export async function scanProject(rawConfig: Partial<ScanConfig> & { root_path: 
     attackPaths: graph.attackPaths,
     triageSummary,
     baselineComparison: baselineResult?.comparison,
+    ciGateSummary,
     scanCoverage,
     staticBlastRadius
   });
@@ -111,7 +111,7 @@ export async function scanProject(rawConfig: Partial<ScanConfig> & { root_path: 
     findings,
     reportMarkdown,
     outputFiles,
-    shouldFail: severityGateFailed || expiredSuppressionGateFailed
+    shouldFail: ciGateSummary.should_fail
   };
 }
 

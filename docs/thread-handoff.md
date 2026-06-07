@@ -1499,6 +1499,15 @@ The current iteration adds:
 - Markdown report visibility for findings matched by expired suppressions, keeping stale waivers visible as active risk
 - regression coverage proving expired suppressions can fail CI without a `--fail-on` severity gate and remain non-failing unless the gate is explicitly enabled
 
+## CI Gate Summary Pass
+
+The current iteration adds:
+
+- a first-class `ci_gate_summary` in the manifest that records pass/fail status, enabled gates, failed gate names, evaluated finding counts, severity-gate matches, active suppressions excluded, expired suppression counts, and diagnostic counts
+- shared core gate evaluation for severity/confidence, new-only baseline gates, expired suppressions, and diagnostics so CLI exit behavior and machine-readable output stay aligned
+- Markdown and SARIF `agentcsp_ci_gate_summary` output for CI, code-scanning, and future dashboard ingestion
+- regression coverage proving diagnostic gates, expired-suppression gates, and default pass behavior are explainable without raw evidence or secret values
+
 ## Initial Build Recommendation
 
 Start with a CLI-first MVP before building the dashboard:

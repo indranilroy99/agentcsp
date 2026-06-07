@@ -159,7 +159,7 @@ SARIF output is available for CI and code-scanning integrations:
 agentcsp scan . --format json,md,sarif --out .agentcsp
 ```
 
-SARIF includes scan-level triage, coverage, diagnostics, baseline, and static blast-radius properties, plus rule/result precision, rank, tags, and GitHub-compatible `security-severity` metadata.
+SARIF includes scan-level triage, CI gate, coverage, diagnostics, baseline, and static blast-radius properties, plus rule/result precision, rank, tags, and GitHub-compatible `security-severity` metadata.
 
 ## Repository Layout
 

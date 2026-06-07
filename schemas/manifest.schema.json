@@ -1108,6 +1108,85 @@
           ],
           "additionalProperties": false
         },
+        "ci_gate_summary": {
+          "type": "object",
+          "properties": {
+            "title": {
+              "type": "string",
+              "const": "AgentCSP CI Gate Summary",
+              "default": "AgentCSP CI Gate Summary"
+            },
+            "status": {
+              "type": "string",
+              "enum": [
+                "pass",
+                "fail"
+              ],
+              "default": "pass"
+            },
+            "should_fail": {
+              "type": "boolean",
+              "default": false
+            },
+            "fail_on": {
+              "$ref": "#/definitions/AgentCSP Agent Manifest/properties/attack_paths/items/properties/severity"
+            },
+            "fail_on_confidence": {
+              "$ref": "#/definitions/AgentCSP Agent Manifest/properties/attack_paths/items/properties/confidence"
+            },
+            "fail_on_new": {
+              "type": "boolean",
+              "default": false
+            },
+            "fail_on_expired_suppressions": {
+              "type": "boolean",
+              "default": false
+            },
+            "fail_on_diagnostics": {
+              "type": "boolean",
+              "default": false
+            },
+            "evaluated_findings": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            },
+            "severity_gate_findings": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            },
+            "active_suppressions_excluded": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            },
+            "expired_suppression_findings": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            },
+            "diagnostic_count": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            },
+            "failed_gates": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "severity",
+                  "new_findings",
+                  "expired_suppressions",
+                  "diagnostics"
+                ]
+              },
+              "default": []
+            }
+          },
+          "additionalProperties": false
+        },
         "scan_coverage": {
           "type": "object",
           "properties": {

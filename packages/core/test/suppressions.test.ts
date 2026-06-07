@@ -55,6 +55,13 @@ describe("policy suppressions", () => {
     expect(suppressed.length).toBeGreaterThan(0);
     expect(suppressed.every((finding) => finding.suppression?.owner === "security@example.com")).toBe(true);
     expect(result.manifest.static_blast_radius?.active_suppressions).toBe(suppressed.length);
+    expect(result.manifest.ci_gate_summary).toMatchObject({
+      status: "pass",
+      should_fail: false,
+      fail_on: "critical",
+      severity_gate_findings: 0,
+      active_suppressions_excluded: suppressed.length
+    });
     expect(result.shouldFail).toBe(false);
     expect(result.reportMarkdown).toContain("Suppressed Findings");
   });
@@ -78,6 +85,14 @@ describe("policy suppressions", () => {
     expect(expired.length).toBeGreaterThan(0);
     expect(result.manifest.static_blast_radius?.expired_suppressions).toBe(expired.length);
     expect(result.manifest.static_blast_radius?.active_suppressions).toBe(0);
+    expect(result.manifest.ci_gate_summary).toMatchObject({
+      status: "fail",
+      should_fail: true,
+      fail_on: "critical",
+      severity_gate_findings: expired.length,
+      expired_suppression_findings: expired.length,
+      failed_gates: ["severity"]
+    });
     expect(result.shouldFail).toBe(true);
     expect(result.reportMarkdown).toContain("### Expired Suppressions");
     expect(result.reportMarkdown).toContain("expired-critical-demo-risk");
@@ -100,6 +115,14 @@ describe("policy suppressions", () => {
 
     const expired = result.findings.filter((finding) => finding.suppression?.status === "expired");
     expect(expired.length).toBeGreaterThan(0);
+    expect(result.manifest.ci_gate_summary).toMatchObject({
+      status: "fail",
+      should_fail: true,
+      fail_on_expired_suppressions: true,
+      severity_gate_findings: 0,
+      expired_suppression_findings: expired.length,
+      failed_gates: ["expired_suppressions"]
+    });
     expect(result.shouldFail).toBe(true);
   });
 
@@ -119,6 +142,14 @@ describe("policy suppressions", () => {
 
     const expired = result.findings.filter((finding) => finding.suppression?.status === "expired");
     expect(expired.length).toBeGreaterThan(0);
+    expect(result.manifest.ci_gate_summary).toMatchObject({
+      status: "pass",
+      should_fail: false,
+      fail_on_expired_suppressions: false,
+      severity_gate_findings: 0,
+      expired_suppression_findings: expired.length,
+      failed_gates: []
+    });
     expect(result.shouldFail).toBe(false);
   });
 });

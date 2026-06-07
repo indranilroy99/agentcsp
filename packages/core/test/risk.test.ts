@@ -43,6 +43,18 @@ describe("risk gates", () => {
       })
     ).toThrow("fail_on_new requires baseline_path");
   });
+
+  it("allows diagnostic and expired-suppression gates without a severity threshold", () => {
+    const parsed = ScanConfigSchema.parse({
+      root_path: ".",
+      fail_on_diagnostics: true,
+      fail_on_expired_suppressions: true
+    });
+
+    expect(parsed.fail_on).toBeUndefined();
+    expect(parsed.fail_on_diagnostics).toBe(true);
+    expect(parsed.fail_on_expired_suppressions).toBe(true);
+  });
 });
 
 function finding(severity: Finding["severity"], confidence: Finding["confidence"], suppressed = false): Finding {

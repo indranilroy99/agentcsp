@@ -2172,6 +2172,24 @@ The summary includes:
 
 The triage summary does not include raw file contents, evidence snippets, secret values, or unredacted tool/runtime configuration values.
 
+## CI Gate Summary
+
+`ci_gate_summary` records the deterministic CI decision inputs for the current scan. It is generated even when no fail gates are enabled so CI systems, dashboards, and audit workflows can explain why a scan passed or failed without inferring from process exit code alone.
+
+The summary includes:
+
+- pass/fail status and `should_fail`
+- configured severity and confidence thresholds
+- whether new-finding-only, expired-suppression, and diagnostic gates were enabled
+- evaluated finding count
+- finding count that matched the severity/confidence gate
+- active suppressions excluded from severity gates
+- expired suppression finding count
+- diagnostic count
+- failed gate names
+
+The CI gate summary does not include raw evidence, secret values, policy reasons, unredacted paths beyond the findings already present in the manifest, or raw diagnostic content.
+
 ## Baseline Comparison
 
 `baseline_comparison` is present when the scan is run with a previous `findings.json` or `agent-manifest.json` baseline.

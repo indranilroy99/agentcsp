@@ -58,6 +58,7 @@ describe("scanProject", () => {
         }>;
         properties?: {
           agentcsp_triage_summary?: { total_findings?: number };
+          agentcsp_ci_gate_summary?: { status?: string; should_fail?: boolean };
           agentcsp_scan_coverage?: { files_indexed?: number };
           agentcsp_static_blast_radius?: { pii_external_reach_paths?: number };
         };
@@ -77,6 +78,10 @@ describe("scanProject", () => {
     expect(firstResult?.properties?.precision).toBeDefined();
     expect(firstResult?.properties?.rule_tags?.length).toBeGreaterThan(0);
     expect(sarif.runs[0]?.properties?.agentcsp_triage_summary?.total_findings).toBe(result.findings.length);
+    expect(sarif.runs[0]?.properties?.agentcsp_ci_gate_summary).toMatchObject({
+      status: "pass",
+      should_fail: false
+    });
     expect(sarif.runs[0]?.properties?.agentcsp_scan_coverage?.files_indexed).toBe(
       result.manifest.scan_coverage?.files_indexed
     );
@@ -85,6 +90,8 @@ describe("scanProject", () => {
     );
     expect(JSON.stringify(sarif.runs[0]?.properties?.agentcsp_triage_summary)).not.toContain("replace-me");
     expect(result.reportMarkdown).toContain("## Triage Summary");
+    expect(result.reportMarkdown).toContain("## CI Gate Summary");
+    expect(result.reportMarkdown).toContain("- Status: `pass`");
     expect(result.reportMarkdown).toContain("### Active Findings by Severity");
     expect(result.reportMarkdown).toContain("### Top Active Rules");
     expect(result.reportMarkdown).toContain("### Top Active Risks");
@@ -114,6 +121,12 @@ describe("scanProject", () => {
 
     expect(result.findings).toHaveLength(0);
     expect(result.manifest.triage_summary?.total_findings).toBe(0);
+    expect(result.manifest.ci_gate_summary).toMatchObject({
+      status: "pass",
+      should_fail: false,
+      evaluated_findings: 0,
+      severity_gate_findings: 0
+    });
     expect(result.manifest.triage_summary?.active_findings).toBe(0);
     expect(result.manifest.triage_summary?.highest_active_severity).toBe("info");
     expect(result.manifest.triage_summary?.max_active_risk_score).toBe(0);

@@ -827,6 +827,8 @@ if (vulnerable.sarif) {
   assert(firstResult.properties.rule_tags?.length > 0, "SARIF result tags missing");
   assert(firstResult.rank > 0, "SARIF result rank missing");
   assert(run.properties?.agentcsp_triage_summary, "SARIF triage summary missing");
+  assert(run.properties?.agentcsp_ci_gate_summary, "SARIF CI gate summary missing");
+  assertEqual(run.properties.agentcsp_ci_gate_summary.status, "pass", "SARIF CI gate status");
   assert(run.properties?.agentcsp_scan_coverage, "SARIF scan coverage missing");
   assert(run.properties?.agentcsp_static_blast_radius, "SARIF blast-radius summary missing");
 }

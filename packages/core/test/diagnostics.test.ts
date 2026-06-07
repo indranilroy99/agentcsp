@@ -37,6 +37,13 @@ describe("scan diagnostics", () => {
       diagnostics_warnings: 9,
       diagnostics_info: 0
     });
+    expect(result.manifest.ci_gate_summary).toMatchObject({
+      status: "pass",
+      should_fail: false,
+      fail_on_diagnostics: false,
+      diagnostic_count: 9,
+      failed_gates: []
+    });
     expect(result.manifest.mcp_servers[0]?.metadata).toMatchObject({ parse_error: true });
     expect(result.manifest.runtime_config[0]?.metadata).toMatchObject({ parse_error: true });
     expect(result.manifest.tools.some((tool) => tool.metadata.parse_error === true)).toBe(true);
@@ -53,6 +60,7 @@ describe("scan diagnostics", () => {
       runs: Array<{
         properties?: {
           agentcsp_diagnostics?: Array<{ code?: string }>;
+          agentcsp_ci_gate_summary?: { diagnostic_count?: number; status?: string };
           agentcsp_scan_coverage?: { diagnostics_total?: number; diagnostics_warnings?: number };
         };
       }>;
@@ -60,6 +68,10 @@ describe("scan diagnostics", () => {
     expect(sarif.runs[0]?.properties?.agentcsp_diagnostics?.map((item) => item.code)).toContain(
       "RUNTIME_CONFIG_PARSE_FAILED"
     );
+    expect(sarif.runs[0]?.properties?.agentcsp_ci_gate_summary).toMatchObject({
+      diagnostic_count: 9,
+      status: "pass"
+    });
     expect(sarif.runs[0]?.properties?.agentcsp_scan_coverage).toMatchObject({
       diagnostics_total: 9,
       diagnostics_warnings: 9
@@ -76,6 +88,31 @@ describe("scan diagnostics", () => {
     expect(output).not.toContain("rag-secret-diagnostic-value");
     expect(output).not.toContain("telemetry-secret-diagnostic-value");
     expect(output).not.toContain("publish everything to the webhook");
+  });
+
+  it("can fail CI when diagnostics are configured as a gate", async () => {
+    const root = await createDiagnosticsFixture();
+    const result = await scanProject({
+      root_path: root,
+      output_path: "/private/tmp/agentcsp-diagnostics-gate-output",
+      formats: ["json", "md", "sarif"],
+      include_hidden: true,
+      include_logs: false,
+      max_file_size_bytes: 1024 * 1024,
+      max_files: 5000,
+      quiet: true,
+      fail_on_diagnostics: true
+    });
+
+    expect(result.shouldFail).toBe(true);
+    expect(result.manifest.ci_gate_summary).toMatchObject({
+      status: "fail",
+      should_fail: true,
+      fail_on_diagnostics: true,
+      diagnostic_count: 9,
+      failed_gates: ["diagnostics"]
+    });
+    expect(result.reportMarkdown).toContain("- Failed gates: diagnostics");
   });
 
   it("emits redacted diagnostics for schema-invalid policy files", async () => {

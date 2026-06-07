@@ -329,6 +329,7 @@ Every production change should pass:
 - Dependabot coverage for npm/pnpm dependencies and GitHub Actions
 - AgentCSP SARIF upload to GitHub code scanning on default-branch pushes
 - SARIF rules and results include GitHub-compatible `security-severity`, precision, tags, ranks, and help metadata
+- machine-readable CI gate summaries in JSON, Markdown, and SARIF so failed scans explain the exact gate that failed
 - documented security disclosure policy for scanner, evidence, CI, and packaged artifact vulnerabilities
 - optional CI gate for expired suppressions so accepted-risk records cannot silently outlive their review window
 - fixture scan

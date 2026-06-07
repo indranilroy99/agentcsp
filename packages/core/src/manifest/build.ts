@@ -5,6 +5,7 @@ import {
   type AgentManifest,
   type AttackPath,
   type BaselineComparison,
+  type CiGateSummary,
   type Finding,
   type GraphEdge,
   type ScanConfig,
@@ -25,6 +26,7 @@ export function buildManifest(input: {
   attackPaths?: AttackPath[];
   triageSummary?: TriageSummary;
   baselineComparison?: BaselineComparison;
+  ciGateSummary?: CiGateSummary;
   scanCoverage?: ScanCoverageSummary;
   staticBlastRadius?: StaticBlastRadiusSummary;
 }): AgentManifest {
@@ -66,6 +68,7 @@ export function buildManifest(input: {
     diagnostics: input.surfaces.diagnostics,
     triage_summary: input.triageSummary,
     baseline_comparison: input.baselineComparison,
+    ci_gate_summary: input.ciGateSummary,
     scan_coverage: input.scanCoverage,
     static_blast_radius: input.staticBlastRadius
   });
