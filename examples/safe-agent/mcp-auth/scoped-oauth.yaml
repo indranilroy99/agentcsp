@@ -1,0 +1,15 @@
+provider: mcp_oauth
+mcp_server_url: https://safe-mcp.example.invalid/mcp
+protected_resource_metadata_url: https://safe-mcp.example.invalid/.well-known/oauth-protected-resource
+authorization_server_metadata_url: https://auth-safe.example.invalid/.well-known/oauth-authorization-server
+dynamic_client_registration:
+  enabled: false
+security:
+  pkce: true
+  state_validation: true
+  resource_indicator: true
+  audience_binding: true
+  approval_required: true
+  consent_required: true
+scopes:
+  - read

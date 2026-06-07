@@ -2197,6 +2197,9 @@ describe("scanner", () => {
       mcp_authorization_remote: true,
       mcp_authorization_destination_redacted: true,
       mcp_authorization_destination_count: 4,
+      mcp_authorization_plaintext_endpoint: true,
+      mcp_authorization_plaintext_oauth_endpoint: true,
+      mcp_authorization_plaintext_mcp_resource_endpoint: true,
       mcp_authorization_dynamic_client_registration: true,
       mcp_authorization_client_secret_exposure: true,
       mcp_authorization_public_client: true,
@@ -2216,8 +2219,8 @@ describe("scanner", () => {
       "authorization_server_metadata",
       "dynamic_client_registration_endpoint",
       "mcp_authorization_config",
-      "mcp_resource_endpoint",
-      "protected_resource_metadata"
+      "plaintext_mcp_resource_endpoint",
+      "plaintext_protected_resource_metadata"
     ]);
     expect(mcpAuthorizationConfig?.metadata.mcp_authorization_scope_kinds).toEqual([
       "agent_resource_scope",
@@ -4534,6 +4537,69 @@ describe("scanner", () => {
     expect(JSON.stringify(catalogMcp)).not.toContain("file:///workspace/docs/approved-internal-digest.json");
     expect(JSON.stringify(catalogMcp)).not.toContain("trusted_internal");
     expect(JSON.stringify(catalogMcp)).not.toContain("approved_internal_docs");
+  });
+
+  it("keeps PKCE-bound MCP OAuth clients scoped", async () => {
+    const files = await walkProject({
+      root_path: safeFixtureRoot,
+      output_path: ".agentcsp",
+      formats: ["json", "md"],
+      include_hidden: true,
+      include_logs: false,
+      max_file_size_bytes: 1024 * 1024,
+      max_files: 5000,
+      quiet: true
+    });
+    const surfaces = await detectSurfaces(files);
+    const mcpAuthorization = surfaces.runtime_config.find((surface) => surface.path === "mcp-auth/scoped-oauth.yaml");
+
+    expect(mcpAuthorization).toMatchObject({
+      trust_level: "third_party",
+      data_classes: ["unknown"],
+      actions: ["call", "read", "send"],
+      side_effect: false,
+      reversible: true,
+      external_reach: true,
+      secret_exposure: false,
+      untrusted_to_privileged: false
+    });
+    expect(mcpAuthorization?.metadata).toMatchObject({
+      content_redacted: true,
+      values_collected: false,
+      parsed_mcp_authorization_config: true,
+      mcp_authorization_provider: "mcp_oauth",
+      mcp_authorization_remote: true,
+      mcp_authorization_destination_redacted: true,
+      mcp_authorization_destination_count: 3,
+      mcp_authorization_plaintext_endpoint: false,
+      mcp_authorization_plaintext_oauth_endpoint: false,
+      mcp_authorization_plaintext_mcp_resource_endpoint: false,
+      mcp_authorization_dynamic_client_registration: false,
+      mcp_authorization_client_secret_exposure: false,
+      mcp_authorization_public_client: false,
+      mcp_authorization_pkce_disabled: false,
+      mcp_authorization_state_validation_disabled: false,
+      mcp_authorization_resource_indicator_missing: false,
+      mcp_authorization_scope_redacted: true,
+      mcp_authorization_broad_scope: false,
+      mcp_authorization_sensitive_scope: false,
+      mcp_authorization_pii_scope: false,
+      mcp_authorization_refresh_token_storage: false,
+      mcp_authorization_token_forwarding: false,
+      mcp_authorization_untrusted_server: false,
+      mcp_authorization_approval_required: true
+    });
+    expect(mcpAuthorization?.metadata.mcp_authorization_destination_kinds).toEqual([
+      "authorization_server_metadata",
+      "mcp_authorization_config",
+      "mcp_resource_endpoint",
+      "protected_resource_metadata"
+    ]);
+    expect(mcpAuthorization?.metadata.mcp_authorization_scope_kinds).toEqual(["read_scope"]);
+    expect(mcpAuthorization?.metadata.env_key_names).toEqual([]);
+    expect(mcpAuthorization?.metadata.secret_ref_key_names).toEqual([]);
+    expect(JSON.stringify(mcpAuthorization)).not.toContain("safe-mcp.example.invalid");
+    expect(JSON.stringify(mcpAuthorization)).not.toContain("auth-safe.example.invalid");
   });
 
   it("keeps scoped context composers from materializing env secrets", async () => {

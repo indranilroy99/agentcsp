@@ -1007,10 +1007,12 @@ The current iteration adds:
 
 The current iteration adds:
 
-- first-class redacted metadata for MCP OAuth authorization posture, including remote authorization/resource endpoint categories, dynamic client registration, public-client/client-secret posture, PKCE/state/resource-indicator controls, scope categories, refresh-token storage, token forwarding, untrusted server selection, and approval posture
-- vulnerable fixture coverage for an MCP OAuth client that dynamically registers against remote authorization metadata, requests broad and sensitive scopes, stores refresh tokens, forwards authorization headers to an untrusted MCP server, and does not require approval
+- first-class redacted metadata for MCP OAuth authorization posture, including remote authorization/resource endpoint categories, plaintext endpoint posture, dynamic client registration, public-client/client-secret posture, PKCE/state/resource-indicator controls, scope categories, refresh-token storage, token forwarding, untrusted server selection, and approval posture
+- vulnerable fixture coverage for an MCP OAuth client that dynamically registers against remote authorization metadata, requests broad and sensitive scopes, stores refresh tokens, forwards authorization headers to a plaintext untrusted MCP server, and does not require approval
+- safe fixture coverage for a TLS-only, PKCE-bound, state/resource-bound, approval-gated MCP OAuth client that does not forward or persist delegated credentials
 - rule `AGENTCSP-RUNTIME-038` for MCP OAuth delegation that combines remote DCR, disabled PKCE/state/resource indicators, broad scopes, refresh-token storage, token forwarding, untrusted server selection, credential exposure, and no approval
 - rule `AGENTCSP-RUNTIME-118` for MCP OAuth refresh-token replay risk where public-client/client-secret exposure, missing PKCE/state/resource binding, broad write/PII scopes, persisted refresh tokens, and token forwarding can reach untrusted MCP servers without approval
+- rule `AGENTCSP-RUNTIME-125` for MCP OAuth clients that forward or persist delegated credentials across plaintext MCP resource endpoints without approval
 - graph hardening so explicitly referenced privileged tools and MCP servers remain in bounded attack-path analysis even when newly discovered runtime surfaces increase capability volume
 - scanner, rule, fixture verifier, and redaction coverage proving raw authorization endpoints, MCP URLs, OAuth scopes, selector values, token-cache paths, data-scope labels, and token placeholders stay redacted
 

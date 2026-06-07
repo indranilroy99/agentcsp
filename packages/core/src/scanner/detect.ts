@@ -1946,6 +1946,20 @@ function detectMcpAuthorizationConfig(file: WalkedFile, text: string | undefined
   }
 
   const posture = classifyMcpAuthorizationConfig(parsed.value, file.relativePath);
+  const credentialMaterial =
+    posture.mcp_authorization_client_secret_exposure ||
+    posture.mcp_authorization_token_forwarding ||
+    posture.mcp_authorization_refresh_token_storage ||
+    posture.env_key_names.some(isCredentialLikeKeyName) ||
+    posture.secret_ref_key_names.length > 0;
+  const unsafeMcpAuthorizationBridge =
+    posture.mcp_authorization_remote &&
+    !posture.mcp_authorization_approval_required &&
+    ((posture.mcp_authorization_dynamic_client_registration &&
+      posture.mcp_authorization_broad_scope &&
+      (posture.mcp_authorization_token_forwarding || posture.mcp_authorization_refresh_token_storage)) ||
+      (posture.mcp_authorization_plaintext_endpoint && credentialMaterial) ||
+      (posture.mcp_authorization_untrusted_server && credentialMaterial));
   const actions = new Set<ActionType>(["call", "read"]);
   if (posture.mcp_authorization_remote) actions.add("send");
   if (posture.mcp_authorization_dynamic_client_registration || posture.mcp_authorization_refresh_token_storage) actions.add("write");
@@ -1995,12 +2009,8 @@ function detectMcpAuthorizationConfig(file: WalkedFile, text: string | undefined
   surfaces.runtime_config.push({
     ...object,
     untrusted_to_privileged:
-      (posture.mcp_authorization_remote &&
-        posture.mcp_authorization_dynamic_client_registration &&
-        posture.mcp_authorization_broad_scope &&
-        (posture.mcp_authorization_token_forwarding || posture.mcp_authorization_refresh_token_storage) &&
-        !posture.mcp_authorization_approval_required) ||
-      isUntrustedToPrivileged(object)
+      unsafeMcpAuthorizationBridge ||
+      (isUntrustedToPrivileged(object) && credentialMaterial && !posture.mcp_authorization_approval_required)
   });
 }
 
@@ -5844,6 +5854,9 @@ interface McpAuthorizationPosture {
   mcp_authorization_destination_redacted: boolean;
   mcp_authorization_destination_count: number;
   mcp_authorization_destination_kinds: string[];
+  mcp_authorization_plaintext_endpoint: boolean;
+  mcp_authorization_plaintext_oauth_endpoint: boolean;
+  mcp_authorization_plaintext_mcp_resource_endpoint: boolean;
   mcp_authorization_dynamic_client_registration: boolean;
   mcp_authorization_client_secret_exposure: boolean;
   mcp_authorization_public_client: boolean;
@@ -9949,6 +9962,7 @@ function classifyMcpAuthorizationConfig(value: unknown, filePath: string): McpAu
   const stringValues = collectFieldStringValues(fields);
   const provider = inferMcpAuthorizationProvider([filePath, ...fields.map((field) => field.path), ...stringValues]);
   const destinations = classifyMcpAuthorizationDestinations(fields, provider);
+  const plaintextDestinationKinds = destinations.destinationKinds.filter((kind) => kind.startsWith("plaintext_"));
   const scopes = collectMcpAuthorizationScopeKinds(fields);
   const envKeys = uniqueStrings([
     ...collectEnvKeyNamesFromConfig(value).filter(isLikelyEnvKeyName),
@@ -9966,6 +9980,13 @@ function classifyMcpAuthorizationConfig(value: unknown, filePath: string): McpAu
     mcp_authorization_destination_redacted: destinations.destinationCount > 0,
     mcp_authorization_destination_count: destinations.destinationCount,
     mcp_authorization_destination_kinds: destinations.destinationKinds,
+    mcp_authorization_plaintext_endpoint: plaintextDestinationKinds.length > 0,
+    mcp_authorization_plaintext_oauth_endpoint: plaintextDestinationKinds.some(
+      (kind) => kind !== "plaintext_mcp_resource_endpoint"
+    ),
+    mcp_authorization_plaintext_mcp_resource_endpoint: plaintextDestinationKinds.includes(
+      "plaintext_mcp_resource_endpoint"
+    ),
     mcp_authorization_dynamic_client_registration: hasMcpAuthorizationDynamicClientRegistrationSignal(fields),
     mcp_authorization_client_secret_exposure: hasMcpAuthorizationClientSecretExposureSignal(fields),
     mcp_authorization_public_client: hasMcpAuthorizationPublicClientSignal(fields),
@@ -10038,11 +10059,20 @@ function parseMcpAuthorizationDestination(value: string): { kind: string } | und
     if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return undefined;
     if (isLocalHost(parsed.hostname.toLowerCase())) return undefined;
     const pathName = parsed.pathname.toLowerCase();
-    if (/\.well-known\/oauth-protected-resource/iu.test(pathName)) return { kind: "protected_resource_metadata" };
-    if (/\.well-known\/(oauth-authorization-server|openid-configuration)/iu.test(pathName)) return { kind: "authorization_server_metadata" };
-    if (/\bregister|registration\b/iu.test(pathName)) return { kind: "dynamic_client_registration_endpoint" };
-    if (/\btoken\b/iu.test(pathName)) return { kind: "token_endpoint" };
-    if (/\bauthori[sz]e\b/iu.test(pathName)) return { kind: "authorization_endpoint" };
+    const plaintext = parsed.protocol === "http:";
+    if (/\.well-known\/oauth-protected-resource/iu.test(pathName)) {
+      return { kind: plaintext ? "plaintext_protected_resource_metadata" : "protected_resource_metadata" };
+    }
+    if (/\.well-known\/(oauth-authorization-server|openid-configuration)/iu.test(pathName)) {
+      return { kind: plaintext ? "plaintext_authorization_server_metadata" : "authorization_server_metadata" };
+    }
+    if (/\bregister|registration\b/iu.test(pathName)) {
+      return { kind: plaintext ? "plaintext_dynamic_client_registration_endpoint" : "dynamic_client_registration_endpoint" };
+    }
+    if (/\btoken\b/iu.test(pathName)) return { kind: plaintext ? "plaintext_token_endpoint" : "token_endpoint" };
+    if (/\bauthori[sz]e\b/iu.test(pathName)) {
+      return { kind: plaintext ? "plaintext_authorization_endpoint" : "authorization_endpoint" };
+    }
     if (/\bmcp\b/iu.test(pathName)) return { kind: parsed.protocol === "http:" ? "plaintext_mcp_resource_endpoint" : "mcp_resource_endpoint" };
     return { kind: parsed.protocol === "http:" ? "plaintext_oauth_endpoint" : "oauth_endpoint" };
   } catch {

@@ -172,6 +172,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-047")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-048")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-124")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-125")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-049")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-CICD-002")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-AUTOMATION-001")).toBe(true);
@@ -2174,6 +2175,46 @@ describe("rule engine", () => {
     expect(JSON.stringify(runtimeMcpOauthReplayFindings[0])).not.toContain("mcp_oauth_account_number");
     expect(JSON.stringify(runtimeMcpOauthReplayFindings[0])).not.toContain("confidential_mcp_oauth_context");
     expect(JSON.stringify(runtimeMcpOauthReplayFindings[0])).not.toContain(".auth/mcp-oauth-tokens.json");
+    const runtimeMcpOauthPlaintextFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-RUNTIME-125");
+    expect(runtimeMcpOauthPlaintextFindings).toHaveLength(1);
+    expect(runtimeMcpOauthPlaintextFindings[0]?.matched_object.path).toBe("mcp-auth/oauth-client.yaml");
+    expect(runtimeMcpOauthPlaintextFindings[0]?.matched_object.metadata).toMatchObject({
+      parsed_mcp_authorization_config: true,
+      mcp_authorization_provider: "mcp_oauth",
+      mcp_authorization_remote: true,
+      mcp_authorization_plaintext_endpoint: true,
+      mcp_authorization_plaintext_oauth_endpoint: true,
+      mcp_authorization_plaintext_mcp_resource_endpoint: true,
+      mcp_authorization_broad_scope: true,
+      mcp_authorization_sensitive_scope: true,
+      mcp_authorization_refresh_token_storage: true,
+      mcp_authorization_token_forwarding: true,
+      mcp_authorization_approval_required: false,
+      secret_ref_key_names: ["MCP_OAUTH_CLIENT_SECRET"]
+    });
+    expect(runtimeMcpOauthPlaintextFindings[0]?.matched_object.metadata.mcp_authorization_destination_kinds).toEqual([
+      "authorization_server_metadata",
+      "dynamic_client_registration_endpoint",
+      "mcp_authorization_config",
+      "plaintext_mcp_resource_endpoint",
+      "plaintext_protected_resource_metadata"
+    ]);
+    expect(runtimeMcpOauthPlaintextFindings[0]?.severity).toBe("critical");
+    expect(runtimeMcpOauthPlaintextFindings[0]?.confidence).toBe("very_high");
+    expect(runtimeMcpOauthPlaintextFindings[0]?.recommended_control).toBe("quarantine");
+    expect(JSON.stringify(runtimeMcpOauthPlaintextFindings[0])).not.toContain("${MCP_OAUTH_CLIENT_SECRET}");
+    expect(JSON.stringify(runtimeMcpOauthPlaintextFindings[0])).not.toContain("oauth-mcp.agentcsp-demo.example.invalid");
+    expect(JSON.stringify(runtimeMcpOauthPlaintextFindings[0])).not.toContain("authz.agentcsp-demo.example.invalid");
+    expect(JSON.stringify(runtimeMcpOauthPlaintextFindings[0])).not.toContain("offline_access");
+    expect(JSON.stringify(runtimeMcpOauthPlaintextFindings[0])).not.toContain("mcp:tools:*");
+    expect(JSON.stringify(runtimeMcpOauthPlaintextFindings[0])).not.toContain("support_db.write");
+    expect(JSON.stringify(runtimeMcpOauthPlaintextFindings[0])).not.toContain("browser.actions");
+    expect(JSON.stringify(runtimeMcpOauthPlaintextFindings[0])).not.toContain("customer.email");
+    expect(JSON.stringify(runtimeMcpOauthPlaintextFindings[0])).not.toContain("customer_requested_mcp_server");
+    expect(JSON.stringify(runtimeMcpOauthPlaintextFindings[0])).not.toContain("mcp_oauth_customer_email");
+    expect(JSON.stringify(runtimeMcpOauthPlaintextFindings[0])).not.toContain("mcp_oauth_account_number");
+    expect(JSON.stringify(runtimeMcpOauthPlaintextFindings[0])).not.toContain("confidential_mcp_oauth_context");
+    expect(JSON.stringify(runtimeMcpOauthPlaintextFindings[0])).not.toContain(".auth/mcp-oauth-tokens.json");
     const supplyChainFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-SUPPLYCHAIN-001");
     expect(supplyChainFindings).toHaveLength(1);
     expect(supplyChainFindings[0]?.matched_object.path).toBe("package.json");

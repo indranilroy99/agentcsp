@@ -182,6 +182,9 @@ MCP authorization metadata may include:
 - `mcp_authorization_destination_redacted`
 - `mcp_authorization_destination_count`
 - `mcp_authorization_destination_kinds`
+- `mcp_authorization_plaintext_endpoint`
+- `mcp_authorization_plaintext_oauth_endpoint`
+- `mcp_authorization_plaintext_mcp_resource_endpoint`
 - `mcp_authorization_dynamic_client_registration`
 - `mcp_authorization_client_secret_exposure`
 - `mcp_authorization_public_client`
@@ -200,7 +203,7 @@ MCP authorization metadata may include:
 - `env_key_names`
 - `secret_ref_key_names`
 
-Raw authorization endpoints, MCP server URLs, registration endpoints, OAuth scopes, selector values, token-cache paths, data-scope labels, and secret placeholders are not emitted. Provider names, destination categories, scope categories, DCR posture, PKCE/state/resource-indicator controls, refresh-token storage, token forwarding, untrusted server-selection posture, approval posture, and credential key names let rules detect unsafe token delegation into MCP servers without copying authorization material into the manifest.
+Raw authorization endpoints, MCP server URLs, registration endpoints, OAuth scopes, selector values, token-cache paths, data-scope labels, and secret placeholders are not emitted. Provider names, destination categories, plaintext endpoint posture, scope categories, DCR posture, PKCE/state/resource-indicator controls, refresh-token storage, token forwarding, untrusted server-selection posture, approval posture, and credential key names let rules detect unsafe token delegation into MCP servers without copying authorization material into the manifest.
 
 ## Instruction Context Signals
 

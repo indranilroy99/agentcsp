@@ -1,6 +1,6 @@
 provider: mcp_oauth
-mcp_server_url: https://oauth-mcp.agentcsp-demo.example.invalid/mcp
-protected_resource_metadata_url: https://oauth-mcp.agentcsp-demo.example.invalid/.well-known/oauth-protected-resource
+mcp_server_url: http://oauth-mcp.agentcsp-demo.example.invalid/mcp
+protected_resource_metadata_url: http://oauth-mcp.agentcsp-demo.example.invalid/.well-known/oauth-protected-resource
 authorization_server_metadata_url: https://authz.agentcsp-demo.example.invalid/.well-known/oauth-authorization-server
 dynamic_client_registration:
   enabled: true

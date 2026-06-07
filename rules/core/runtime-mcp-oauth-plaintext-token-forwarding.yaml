@@ -1,0 +1,69 @@
+id: AGENTCSP-RUNTIME-125
+name: MCP OAuth tokens are forwarded across plaintext endpoints
+description: An MCP OAuth client forwards or persists delegated token material while a remote MCP resource endpoint or authorization boundary is configured over plaintext transport and approval is missing.
+category: mcp_oauth_plaintext_token_boundary
+severity: critical
+maps_to:
+  owasp:
+    - LLM02:2025 Sensitive Information Disclosure
+    - LLM05:2025 Supply Chain Vulnerabilities
+    - LLM06:2025 Excessive Agency
+  mitre_atlas:
+    - AML.T0054 LLM Plugin Compromise
+    - AML.T0057 Exfiltration via Cyber Means
+  nist_ai_rmf:
+    - MAP 5.1
+    - MEASURE 2.9
+    - MANAGE 2.4
+match:
+  object_type: runtime_config
+  where:
+    - field: metadata.parsed_mcp_authorization_config
+      op: equals
+      value: true
+    - field: metadata.mcp_authorization_provider
+      op: equals
+      value: mcp_oauth
+    - field: metadata.mcp_authorization_remote
+      op: equals
+      value: true
+    - field: metadata.mcp_authorization_plaintext_endpoint
+      op: equals
+      value: true
+    - field: metadata.mcp_authorization_plaintext_mcp_resource_endpoint
+      op: equals
+      value: true
+    - field: metadata.mcp_authorization_broad_scope
+      op: equals
+      value: true
+    - field: metadata.mcp_authorization_sensitive_scope
+      op: equals
+      value: true
+    - field: metadata.mcp_authorization_refresh_token_storage
+      op: equals
+      value: true
+    - field: metadata.mcp_authorization_token_forwarding
+      op: equals
+      value: true
+    - field: metadata.mcp_authorization_approval_required
+      op: equals
+      value: false
+    - field: secret_exposure
+      op: equals
+      value: true
+    - field: data_classes
+      op: contains_any
+      value:
+        - secret
+        - credential
+    - field: actions
+      op: contains_any
+      value:
+        - send
+    - field: actions
+      op: contains_any
+      value:
+        - remember
+recommendation:
+  control: quarantine
+  text: Quarantine MCP OAuth clients that forward or persist delegated credentials across plaintext MCP resource endpoints. Require TLS, audience/resource binding, scoped tokens per MCP server, disabled token forwarding by default, and approval before delegated credentials cross the MCP boundary.
