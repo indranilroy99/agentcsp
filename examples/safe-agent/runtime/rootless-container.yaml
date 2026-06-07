@@ -1,0 +1,16 @@
+provider: docker
+image: internal/read-agent:1.0.0
+container:
+  privileged: false
+  user: "1000:1000"
+  network_mode: none
+  pid: none
+  ipc: none
+  volumes: []
+  capabilities: []
+agent:
+  tools:
+    - readonly_docs.search
+sandbox:
+  enabled: true
+approval_required: true

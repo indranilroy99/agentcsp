@@ -5710,6 +5710,64 @@ describe("scanner", () => {
     expect(JSON.stringify(sharedSession)).not.toContain("security_reviewers");
   });
 
+  it("keeps rootless approval-gated agent containers scoped", async () => {
+    const files = await walkProject({
+      root_path: safeFixtureRoot,
+      output_path: ".agentcsp",
+      formats: ["json", "md"],
+      include_hidden: true,
+      include_logs: false,
+      max_file_size_bytes: 1024 * 1024,
+      max_files: 5000,
+      quiet: true
+    });
+    const surfaces = await detectSurfaces(files);
+    const containerRuntime = surfaces.runtime_config.find((surface) => surface.path === "runtime/rootless-container.yaml");
+
+    expect(containerRuntime).toMatchObject({
+      side_effect: false,
+      external_reach: false,
+      secret_exposure: false,
+      reversible: true,
+      untrusted_to_privileged: false
+    });
+    expect(containerRuntime?.metadata).toMatchObject({
+      parsed_agent_container_runtime_config: true,
+      agent_container_provider: "docker",
+      agent_container_runtime_enabled: true,
+      agent_container_privileged: false,
+      agent_container_root_user: false,
+      agent_container_docker_socket_mount: false,
+      agent_container_host_path_mount: false,
+      agent_container_host_root_mount: false,
+      agent_container_writable_host_mount: false,
+      agent_container_workspace_mount: false,
+      agent_container_credential_mount: false,
+      agent_container_sensitive_mount: false,
+      agent_container_mounts_redacted: false,
+      agent_container_host_network: false,
+      agent_container_host_pid: false,
+      agent_container_host_ipc: false,
+      agent_container_network_enabled: false,
+      agent_container_dangerous_capability: false,
+      agent_container_shell_authority: false,
+      agent_container_filesystem_authority: false,
+      agent_container_browser_authority: false,
+      agent_container_docker_authority: false,
+      agent_container_untrusted_input: true,
+      agent_container_pii_input: false,
+      agent_container_secret_env_exposure: false,
+      agent_container_approval_required: true
+    });
+    expect(containerRuntime?.metadata.agent_container_mount_kinds).toEqual([]);
+    expect(containerRuntime?.metadata.agent_container_capability_categories).toEqual([]);
+    expect(containerRuntime?.metadata.agent_container_tool_authority_categories).toEqual([]);
+    expect(containerRuntime?.metadata.env_key_names).toEqual([]);
+    expect(containerRuntime?.metadata.secret_ref_key_names).toEqual([]);
+    expect(JSON.stringify(containerRuntime)).not.toContain("internal/read-agent");
+    expect(JSON.stringify(containerRuntime)).not.toContain("readonly_docs.search");
+  });
+
   it("keeps local approval-gated session memory scoped", async () => {
     const files = await walkProject({
       root_path: safeFixtureRoot,

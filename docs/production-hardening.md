@@ -264,7 +264,8 @@ Examples:
 - webhook retry queue plus untrusted model/tool/retrieval/memory/browser payloads, PII, secrets, disabled redaction, credentialed remote delivery, and no approval gate
 - shared semantic prompt cache plus user-controlled cache keys, broad match thresholds, cross-tenant replay, disabled tenant isolation, sensitive capture, disabled redaction, credentials, and no approval gate
 - agent deployment manifest plus floating remote image, pull-always policy, privileged runtime, host mounts, credentials, and no approval gate
-- privileged agent container plus Docker socket, host-root mount, host networking, credentials, untrusted input, and no approval gate
+- privileged agent container plus Docker socket, host filesystem root mount, host networking, credentials, untrusted input, and no approval gate
+- privileged root agent container plus Docker socket, writable host filesystem root and credential mounts, host PID/IPC/network namespaces, SYS_ADMIN/NET_ADMIN capability, shell/filesystem/Docker authority, credentials, untrusted input, and no approval gate
 - pull request workflow plus write permissions plus secrets
 - untrusted RAG source plus privileged tool path
 - memory write plus untrusted source provenance
