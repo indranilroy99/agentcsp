@@ -121,6 +121,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-067")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-103")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-068")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-109")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-069")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-070")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-071")).toBe(true);
@@ -4064,6 +4065,7 @@ describe("rule engine", () => {
       "secret_manager_access",
       "tool_call"
     ]);
+    expect(runtimeModelOnlySafetyFindings[0]?.matched_object.data_classes).toContain("secret");
     expect(runtimeModelOnlySafetyFindings[0]?.severity).toBe("critical");
     expect(runtimeModelOnlySafetyFindings[0]?.confidence).toBe("very_high");
     expect(runtimeModelOnlySafetyFindings[0]?.recommended_control).toBe("require_approval");
@@ -4073,8 +4075,85 @@ describe("rule engine", () => {
     expect(JSON.stringify(runtimeModelOnlySafetyFindings[0])).not.toContain("support-approval-model");
     expect(JSON.stringify(runtimeModelOnlySafetyFindings[0])).not.toContain("untrusted_customer_ticket");
     expect(JSON.stringify(runtimeModelOnlySafetyFindings[0])).not.toContain("support_db.update_customer_record");
+    expect(JSON.stringify(runtimeModelOnlySafetyFindings[0])).not.toContain("vault_secret_lookup.read_support_token");
     expect(JSON.stringify(runtimeModelOnlySafetyFindings[0])).not.toContain("model_guardrail_customer_email");
     expect(JSON.stringify(runtimeModelOnlySafetyFindings[0])).not.toContain("confidential_model_guardrail_notes");
+    const runtimeModelOnlySecretAuthorityFindings = findings.filter(
+      (finding) => finding.rule_id === "AGENTCSP-RUNTIME-109"
+    );
+    expect(runtimeModelOnlySecretAuthorityFindings).toHaveLength(1);
+    expect(runtimeModelOnlySecretAuthorityFindings[0]?.matched_object.path).toBe("guardrails/model-only-safety.yaml");
+    expect(runtimeModelOnlySecretAuthorityFindings[0]?.matched_object.metadata).toMatchObject({
+      parsed_agent_safety_config: true,
+      agent_safety_framework: "openai",
+      agent_safety_controls_declared: true,
+      agent_safety_controls_disabled: false,
+      agent_safety_fail_open: false,
+      agent_safety_model_only_enforcement: true,
+      agent_safety_pre_tool_enforcement_missing: true,
+      agent_safety_deterministic_policy_missing: true,
+      agent_safety_post_hoc_only: true,
+      agent_safety_untrusted_input: true,
+      agent_safety_privileged_tool_authority: true,
+      agent_safety_write_authority: true,
+      agent_safety_external_authority: true,
+      agent_safety_secret_exposure: true,
+      agent_safety_sensitive_data: true,
+      agent_safety_pii_data: true,
+      agent_safety_approval_required: false
+    });
+    expect(
+      runtimeModelOnlySecretAuthorityFindings[0]?.matched_object.metadata.agent_safety_model_only_categories
+    ).toEqual([
+      "deterministic_policy_missing",
+      "llm_judge",
+      "post_hoc_review",
+      "pre_tool_enforcement_missing",
+      "prompt_only_policy",
+      "self_review"
+    ]);
+    expect(
+      runtimeModelOnlySecretAuthorityFindings[0]?.matched_object.metadata.agent_safety_tool_authority_categories
+    ).toEqual(["browser_action", "database_access", "external_response", "secret_manager_access", "tool_call"]);
+    expect(runtimeModelOnlySecretAuthorityFindings[0]?.matched_object.data_classes).toContain("credential");
+    expect(runtimeModelOnlySecretAuthorityFindings[0]?.matched_object.data_classes).toContain("secret");
+    expect(runtimeModelOnlySecretAuthorityFindings[0]?.matched_object.actions).toContain("execute");
+    expect(runtimeModelOnlySecretAuthorityFindings[0]?.matched_object.actions).toContain("write");
+    expect(runtimeModelOnlySecretAuthorityFindings[0]?.matched_object.actions).toContain("publish");
+    expect(runtimeModelOnlySecretAuthorityFindings[0]?.matched_object.secret_exposure).toBe(true);
+    expect(runtimeModelOnlySecretAuthorityFindings[0]?.matched_object.untrusted_to_privileged).toBe(true);
+    expect(runtimeModelOnlySecretAuthorityFindings[0]?.severity).toBe("critical");
+    expect(runtimeModelOnlySecretAuthorityFindings[0]?.confidence).toBe("very_high");
+    expect(runtimeModelOnlySecretAuthorityFindings[0]?.recommended_control).toBe("quarantine");
+    expect(JSON.stringify(runtimeModelOnlySecretAuthorityFindings[0])).not.toContain("${MODEL_GUARDRAIL_TOKEN}");
+    expect(JSON.stringify(runtimeModelOnlySecretAuthorityFindings[0])).not.toContain("support-agent-model-only-guardrail");
+    expect(JSON.stringify(runtimeModelOnlySecretAuthorityFindings[0])).not.toContain("support-agent-self-review-policy");
+    expect(JSON.stringify(runtimeModelOnlySecretAuthorityFindings[0])).not.toContain("support-approval-model");
+    expect(JSON.stringify(runtimeModelOnlySecretAuthorityFindings[0])).not.toContain("untrusted_customer_ticket");
+    expect(JSON.stringify(runtimeModelOnlySecretAuthorityFindings[0])).not.toContain(
+      "retrieved_customer_context"
+    );
+    expect(JSON.stringify(runtimeModelOnlySecretAuthorityFindings[0])).not.toContain("browser_tool_output");
+    expect(JSON.stringify(runtimeModelOnlySecretAuthorityFindings[0])).not.toContain(
+      "support_db.update_customer_record"
+    );
+    expect(JSON.stringify(runtimeModelOnlySecretAuthorityFindings[0])).not.toContain(
+      "vault_secret_lookup.read_support_token"
+    );
+    expect(JSON.stringify(runtimeModelOnlySecretAuthorityFindings[0])).not.toContain("slack.post_customer_reply");
+    expect(JSON.stringify(runtimeModelOnlySecretAuthorityFindings[0])).not.toContain("browser.submit_customer_form");
+    expect(JSON.stringify(runtimeModelOnlySecretAuthorityFindings[0])).not.toContain("update_customer_record");
+    expect(JSON.stringify(runtimeModelOnlySecretAuthorityFindings[0])).not.toContain("publish_customer_reply");
+    expect(JSON.stringify(runtimeModelOnlySecretAuthorityFindings[0])).not.toContain("read_support_secret");
+    expect(JSON.stringify(runtimeModelOnlySecretAuthorityFindings[0])).not.toContain(
+      "model_guardrail_customer_email"
+    );
+    expect(JSON.stringify(runtimeModelOnlySecretAuthorityFindings[0])).not.toContain(
+      "model_guardrail_account_number"
+    );
+    expect(JSON.stringify(runtimeModelOnlySecretAuthorityFindings[0])).not.toContain(
+      "confidential_model_guardrail_notes"
+    );
     const runtimeAiEvalHarnessFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-RUNTIME-017");
     expect(runtimeAiEvalHarnessFindings).toHaveLength(1);
     expect(runtimeAiEvalHarnessFindings[0]?.matched_object.path).toBe("evals/live-redteam.yaml");

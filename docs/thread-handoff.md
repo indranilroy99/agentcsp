@@ -1336,6 +1336,7 @@ The current iteration adds:
 - vulnerable fixture coverage for a model-only guardrail that accepts untrusted customer, retrieval, and browser context, lacks deterministic schema or allowlist enforcement before tool calls, and protects credential-backed database, browser, Slack, and secret-manager tools only through model review
 - safe fixture coverage for a default-deny deterministic pre-tool safety policy that explicitly disables model reviewers and self-review while requiring approval
 - rule `AGENTCSP-RUNTIME-068` for model-only guardrails that combine missing deterministic pre-tool policy, untrusted input, privileged tool authority, credential exposure, and missing approval
+- rule `AGENTCSP-RUNTIME-109` for enabled model-only safety review that combines prompt-only, LLM-judge, self-review, post-hoc enforcement, missing deterministic pre-tool controls, database, browser, external-response, and secret-manager authority, PII, secrets, credentials, and no approval
 - scanner, rule, fixture verifier, and redaction coverage proving raw policy names, model-reviewer labels, policy-prompt labels, source labels, tool names, data-scope labels, and token placeholders stay redacted
 
 ## MCP Resource Subscription Context Bridge Pass

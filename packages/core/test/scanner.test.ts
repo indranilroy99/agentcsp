@@ -3784,7 +3784,7 @@ describe("scanner", () => {
     ]);
     expect(agentSafetyConfig?.metadata.env_key_names).toEqual(["SAFETY_RUNTIME_TOKEN"]);
     expect(agentSafetyConfig?.metadata.secret_ref_key_names).toEqual(["SAFETY_RUNTIME_TOKEN"]);
-    expect(agentSafetyConfig?.data_classes).toEqual(["confidential", "credential", "pii"]);
+    expect(agentSafetyConfig?.data_classes).toEqual(["confidential", "credential", "pii", "secret"]);
     expect(agentSafetyConfig?.actions).toEqual(["call", "execute", "publish", "read", "remember", "send", "write"]);
     expect(JSON.stringify(agentSafetyConfig)).not.toContain("${SAFETY_RUNTIME_TOKEN}");
     expect(JSON.stringify(agentSafetyConfig)).not.toContain("customer-support-disabled-safety");
@@ -3841,7 +3841,7 @@ describe("scanner", () => {
     ]);
     expect(failOpenSafetyConfig?.metadata.env_key_names).toEqual(["SAFETY_FALLBACK_TOKEN"]);
     expect(failOpenSafetyConfig?.metadata.secret_ref_key_names).toEqual(["SAFETY_FALLBACK_TOKEN"]);
-    expect(failOpenSafetyConfig?.data_classes).toEqual(["confidential", "credential", "pii"]);
+    expect(failOpenSafetyConfig?.data_classes).toEqual(["confidential", "credential", "pii", "secret"]);
     expect(failOpenSafetyConfig?.actions).toEqual(["call", "execute", "publish", "read", "send", "write"]);
     expect(JSON.stringify(failOpenSafetyConfig)).not.toContain("${SAFETY_FALLBACK_TOKEN}");
     expect(JSON.stringify(failOpenSafetyConfig)).not.toContain("customer-support-fail-open-guardrail");
@@ -3898,7 +3898,7 @@ describe("scanner", () => {
     ]);
     expect(modelOnlySafetyConfig?.metadata.env_key_names).toEqual(["MODEL_GUARDRAIL_TOKEN"]);
     expect(modelOnlySafetyConfig?.metadata.secret_ref_key_names).toEqual(["MODEL_GUARDRAIL_TOKEN"]);
-    expect(modelOnlySafetyConfig?.data_classes).toEqual(["confidential", "credential", "pii"]);
+    expect(modelOnlySafetyConfig?.data_classes).toEqual(["confidential", "credential", "pii", "secret"]);
     expect(modelOnlySafetyConfig?.actions).toEqual(["call", "execute", "publish", "read", "send", "write"]);
     expect(JSON.stringify(modelOnlySafetyConfig)).not.toContain("${MODEL_GUARDRAIL_TOKEN}");
     expect(JSON.stringify(modelOnlySafetyConfig)).not.toContain("support-agent-model-only-guardrail");

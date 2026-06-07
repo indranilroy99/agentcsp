@@ -2549,6 +2549,7 @@ function detectAgentSafetyConfig(file: WalkedFile, text: string | undefined, sur
   ) {
     dataClasses.add("credential");
   }
+  if (posture.agent_safety_secret_exposure) dataClasses.add("secret");
   if (posture.agent_safety_sensitive_data) dataClasses.add("confidential");
   if (posture.agent_safety_pii_data) dataClasses.add("pii");
   if (dataClasses.size > 1) dataClasses.delete("unknown");
