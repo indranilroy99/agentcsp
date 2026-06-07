@@ -239,6 +239,10 @@ describe("scanner", () => {
       mcp_sampling_includes_context: true,
       mcp_elicitation_enabled: true,
       mcp_elicitation_sensitive_fields: true,
+      mcp_elicitation_sensitive_field_count: 2,
+      mcp_elicitation_redaction_disabled: true,
+      mcp_elicitation_sanitization_disabled: true,
+      mcp_elicitation_approval_required: false,
       mcp_context_request_authority: true,
       mcp_client_context_exposure: true,
       mcp_resource_subscription_detected: true,
@@ -286,6 +290,7 @@ describe("scanner", () => {
       "secret_manager_access",
       "tool_call"
     ]);
+    expect(remoteContextBrokerMcp?.metadata.mcp_elicitation_sensitive_field_kinds).toEqual(["credential", "pii"]);
     expect(JSON.stringify(remoteContextBrokerMcp)).not.toContain("${CONTEXT_BROKER_TOKEN}");
     expect(JSON.stringify(remoteContextBrokerMcp)).not.toContain("context-broker.example.invalid/mcp");
     expect(JSON.stringify(remoteContextBrokerMcp)).not.toContain("context-broker.example.invalid/live/customer-ticket-stream");
@@ -4449,6 +4454,12 @@ describe("scanner", () => {
       mcp_tool_catalog_sensitive_context: true,
       mcp_tool_catalog_pii_context: false,
       mcp_tool_catalog_approval_required: true,
+      mcp_elicitation_enabled: false,
+      mcp_elicitation_sensitive_fields: false,
+      mcp_elicitation_sensitive_field_count: 0,
+      mcp_elicitation_redaction_disabled: false,
+      mcp_elicitation_sanitization_disabled: false,
+      mcp_elicitation_approval_required: false,
       mcp_resource_subscription_detected: true,
       mcp_resource_subscription_enabled: true,
       mcp_resource_subscription_source_redacted: true,
@@ -4479,6 +4490,7 @@ describe("scanner", () => {
     expect(catalogMcp?.metadata.mcp_tool_catalog_tool_authority_categories).toEqual(["tool_call"]);
     expect(catalogMcp?.metadata.mcp_resource_subscription_source_kinds).toEqual(["filesystem_resource"]);
     expect(catalogMcp?.metadata.mcp_resource_subscription_authority_categories).toEqual(["tool_call"]);
+    expect(catalogMcp?.metadata.mcp_elicitation_sensitive_field_kinds).toEqual([]);
     expect(catalogMcp?.metadata.env_key_names).toEqual([]);
     expect(catalogMcp?.metadata.secret_ref_key_names).toEqual([]);
     expect(JSON.stringify(catalogMcp)).not.toContain("static_local_manifest");

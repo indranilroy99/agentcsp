@@ -66,7 +66,10 @@
         },
         "elicitation": {
           "enabled": true,
-          "fields": ["customer_email", "api_token"]
+          "fields": ["customer_email", "api_token"],
+          "redaction": false,
+          "sanitization": false,
+          "approval_required": false
         }
       },
       "resource_subscriptions": {

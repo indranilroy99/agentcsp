@@ -22827,7 +22827,14 @@ async function detectMcpConfig(
       secretKeys.length > 0 || server.envExposure.passthroughSecretRisk ? ["credential"] : ["unknown"]
     );
     if (clientContext.rootsRedacted || clientContext.samplingIncludesContext) dataClasses.add("confidential");
-    if (clientContext.elicitationSensitiveFields) dataClasses.add("pii");
+    if (clientContext.elicitationSensitiveFields) {
+      if (clientContext.elicitationSensitiveFieldKinds.includes("credential")) {
+        dataClasses.add("credential");
+        dataClasses.add("secret");
+      }
+      if (clientContext.elicitationSensitiveFieldKinds.includes("pii")) dataClasses.add("pii");
+      dataClasses.add("confidential");
+    }
     if (toolCatalog.sensitiveContext) dataClasses.add("confidential");
     if (toolCatalog.piiContext) dataClasses.add("pii");
     if (toolCatalog.secretContext) {
@@ -22914,6 +22921,11 @@ async function detectMcpConfig(
         mcp_sampling_includes_context: clientContext.samplingIncludesContext,
         mcp_elicitation_enabled: clientContext.elicitationEnabled,
         mcp_elicitation_sensitive_fields: clientContext.elicitationSensitiveFields,
+        mcp_elicitation_sensitive_field_count: clientContext.elicitationSensitiveFieldCount,
+        mcp_elicitation_sensitive_field_kinds: clientContext.elicitationSensitiveFieldKinds,
+        mcp_elicitation_redaction_disabled: clientContext.elicitationRedactionDisabled,
+        mcp_elicitation_sanitization_disabled: clientContext.elicitationSanitizationDisabled,
+        mcp_elicitation_approval_required: clientContext.elicitationApprovalRequired,
         mcp_context_request_authority: clientContext.contextRequestAuthority,
         mcp_client_context_exposure: clientContext.clientContextExposure,
         mcp_tool_catalog_detected: toolCatalog.detected,
@@ -24108,6 +24120,11 @@ interface McpClientContextPosture {
   samplingIncludesContext: boolean;
   elicitationEnabled: boolean;
   elicitationSensitiveFields: boolean;
+  elicitationSensitiveFieldCount: number;
+  elicitationSensitiveFieldKinds: string[];
+  elicitationRedactionDisabled: boolean;
+  elicitationSanitizationDisabled: boolean;
+  elicitationApprovalRequired: boolean;
   contextRequestAuthority: boolean;
   clientContextExposure: boolean;
 }
@@ -24367,6 +24384,8 @@ function classifyMcpClientContext(serverConfig: Record<string, unknown>): McpCli
   const fields = flattenRuntimeFields(serverConfig);
   const rootFields = fields.filter(isMcpRootField);
   const rootScopeKinds = collectMcpRootScopeKinds(rootFields);
+  const elicitationFields = fields.filter(isMcpElicitationField);
+  const elicitationSensitiveFieldKinds = collectMcpElicitationSensitiveFieldKinds(elicitationFields);
   const samplingEnabled = hasMcpCapabilityEnabled(fields, /(^|\.)sampling(\.|$)|sample[_-]?request|llm[_-]?request|model[_-]?request/iu);
   const samplingIncludesContext =
     samplingEnabled &&
@@ -24377,12 +24396,7 @@ function classifyMcpClientContext(serverConfig: Record<string, unknown>): McpCli
   const elicitationEnabled = hasMcpCapabilityEnabled(fields, /(^|\.)elicitation(\.|$)|elicit|ask[_-]?user|user[_-]?input/iu);
   const elicitationSensitiveFields =
     elicitationEnabled &&
-    fields.some((field) =>
-      /elicitation|elicit|field|input|schema/iu.test(field.path) &&
-      /(?:^|[_\W])(api[_-]?key|api[_-]?token|token|secret|password|credential|email|phone|address|ssn|customer|account)(?:[_\W]|$)/iu.test(
-        `${field.path} ${fieldValueText(field)}`
-      )
-    );
+    elicitationSensitiveFieldKinds.length > 0;
   const contextRequestAuthority = samplingEnabled || elicitationEnabled;
   return {
     rootsRedacted: rootFields.length > 0,
@@ -24395,9 +24409,76 @@ function classifyMcpClientContext(serverConfig: Record<string, unknown>): McpCli
     samplingIncludesContext,
     elicitationEnabled,
     elicitationSensitiveFields,
+    elicitationSensitiveFieldCount: countMcpElicitationSensitiveFields(elicitationFields),
+    elicitationSensitiveFieldKinds,
+    elicitationRedactionDisabled: elicitationEnabled && hasMcpElicitationControlDisabledSignal(elicitationFields, /redact|redaction|mask/iu),
+    elicitationSanitizationDisabled: elicitationEnabled && hasMcpElicitationControlDisabledSignal(
+      elicitationFields,
+      /sanitize|sanitization|validation|validate|schema/iu
+    ),
+    elicitationApprovalRequired: elicitationEnabled && hasMcpElicitationApprovalRequiredSignal(elicitationFields),
     contextRequestAuthority,
     clientContextExposure: rootFields.length > 0 || contextRequestAuthority
   };
+}
+
+function isMcpElicitationField(field: RuntimeField): boolean {
+  return /(?:^|\.)(elicitation|elicit|ask_user|askUser|user_input|userInput|input_request|inputRequest)(?:\.|$)/u.test(
+    field.path
+  ) || /\b(elicitation|elicit|ask user|user input|input request)\b/iu.test(`${field.path} ${fieldValueText(field)}`);
+}
+
+function collectMcpElicitationSensitiveFieldKinds(fields: RuntimeField[]): string[] {
+  const kinds = new Set<string>();
+  for (const field of fields) {
+    const text = mcpElicitationText(field);
+    if (/(?:^|[_\W])(api[_\s-]?key|api[_\s-]?token|token|secret|password|credential|bearer|cookie|session)(?:[_\W]|$)/iu.test(text)) {
+      kinds.add("credential");
+    }
+    if (/(?:^|[_\W])(pii|email|phone|address|ssn|passport|dob|date of birth|customer|account|user id|account id|account number)(?:[_\W]|$)/iu.test(text)) {
+      kinds.add("pii");
+    }
+  }
+  return [...kinds].sort((a, b) => a.localeCompare(b));
+}
+
+function countMcpElicitationSensitiveFields(fields: RuntimeField[]): number {
+  let count = 0;
+  for (const field of fields) {
+    if (!/(?:^|\.)(fields?|schema|properties|inputs?|requested_fields?|requestedFields?)(?:\.|$)/u.test(field.path)) continue;
+    if (Array.isArray(field.value)) {
+      count += field.value.filter((value) =>
+        typeof value === "string" &&
+        collectMcpElicitationSensitiveFieldKinds([{ ...field, value }]).length > 0
+      ).length;
+      continue;
+    }
+    if (collectMcpElicitationSensitiveFieldKinds([field]).length > 0) count += 1;
+  }
+  return count;
+}
+
+function hasMcpElicitationControlDisabledSignal(fields: RuntimeField[], controlPattern: RegExp): boolean {
+  return fields.some((field) => {
+    const text = mcpElicitationText(field);
+    if (!controlPattern.test(text)) return false;
+    if (/(?:^|\.)(enabled|enforced|required|verification|verify|validation|validate|filter|sanitize|redact)(?:\.|$)/iu.test(field.path)) {
+      return disabledConfigValue(field.value);
+    }
+    return /\b(disabled|off|false|none|skip|bypass|not required|no redaction|no sanitization|unvalidated|raw)\b/iu.test(text);
+  });
+}
+
+function hasMcpElicitationApprovalRequiredSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /\b(approval|required approval|human approval|manual review|review required|confirm|confirmation|human in the loop|human-in-the-loop)\b/iu.test(
+      mcpElicitationText(field)
+    ) && truthyConfigValue(field.value)
+  );
+}
+
+function mcpElicitationText(field: RuntimeField): string {
+  return `${field.path} ${fieldValueText(field)}`.toLowerCase().replaceAll("_", " ").replaceAll("-", " ");
 }
 
 function classifyMcpToolCatalog(serverConfig: Record<string, unknown>): McpToolCatalogPosture {

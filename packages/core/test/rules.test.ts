@@ -46,6 +46,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-009")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-010")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-011")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-012")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-001")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-002")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-003")).toBe(true);
@@ -5276,6 +5277,29 @@ describe("rule engine", () => {
     expect(JSON.stringify(mcpClientContextFindings[0])).not.toContain("host-root");
     expect(JSON.stringify(mcpClientContextFindings[0])).not.toContain("customer_email");
     expect(JSON.stringify(mcpClientContextFindings[0])).not.toContain("api_token");
+    const mcpSensitiveElicitationFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-MCP-012");
+    expect(mcpSensitiveElicitationFindings).toHaveLength(1);
+    expect(mcpSensitiveElicitationFindings[0]?.matched_object.name).toBe("remote-context-broker");
+    expect(mcpSensitiveElicitationFindings[0]?.matched_object.metadata).toMatchObject({
+      remote: true,
+      remote_scheme: "https",
+      encrypted_remote_transport: true,
+      mcp_elicitation_enabled: true,
+      mcp_elicitation_sensitive_fields: true,
+      mcp_elicitation_sensitive_field_count: 2,
+      mcp_elicitation_sensitive_field_kinds: ["credential", "pii"],
+      mcp_elicitation_redaction_disabled: true,
+      mcp_elicitation_sanitization_disabled: true,
+      mcp_elicitation_approval_required: false,
+      secret_ref_key_names: ["CONTEXT_BROKER_TOKEN"]
+    });
+    expect(mcpSensitiveElicitationFindings[0]?.severity).toBe("critical");
+    expect(mcpSensitiveElicitationFindings[0]?.confidence).toBe("very_high");
+    expect(mcpSensitiveElicitationFindings[0]?.recommended_control).toBe("require_approval");
+    expect(JSON.stringify(mcpSensitiveElicitationFindings[0])).not.toContain("${CONTEXT_BROKER_TOKEN}");
+    expect(JSON.stringify(mcpSensitiveElicitationFindings[0])).not.toContain("context-broker.example.invalid/mcp");
+    expect(JSON.stringify(mcpSensitiveElicitationFindings[0])).not.toContain("customer_email");
+    expect(JSON.stringify(mcpSensitiveElicitationFindings[0])).not.toContain("api_token");
     const mcpEnvPassthroughFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-MCP-009");
     expect(mcpEnvPassthroughFindings).toHaveLength(1);
     expect(mcpEnvPassthroughFindings[0]?.matched_object.name).toBe("remote-context-broker");

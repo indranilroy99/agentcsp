@@ -917,6 +917,15 @@ The current iteration adds:
 - rule `AGENTCSP-MCP-008` for remote MCP servers that combine broad client roots, sampling or elicitation authority, external reach, and credential-backed access
 - scanner, rule, fixture verifier, and redaction coverage proving raw root URIs, root names, root paths, elicitation field names, and token placeholders stay redacted
 
+## MCP Sensitive Elicitation Pass
+
+The current iteration adds:
+
+- first-class redacted metadata for MCP elicitation sensitive-field counts, sensitive-field categories, redaction posture, sanitization posture, and approval posture
+- vulnerable fixture coverage for a remote credential-backed MCP context broker that can elicit customer and token-like fields while redaction, sanitization, and approval are disabled
+- rule `AGENTCSP-MCP-012` for remote MCP servers that can collect credential and PII elicitation fields across an external trust boundary without local controls or approval
+- regression coverage proving raw elicitation field names, remote MCP URLs, and token placeholders stay redacted
+
 ## MCP Ambient Environment Exposure Pass
 
 The current iteration adds:
