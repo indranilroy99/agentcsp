@@ -118,6 +118,11 @@ export async function detectSurfaces(files: WalkedFile[]): Promise<DetectedSurfa
       continue;
     }
 
+    if (isAgentPublicChatConfigPath(file.relativePath, basename)) {
+      detectAgentPublicChatConfig(file, text, surfaces);
+      continue;
+    }
+
     if (isAgentPromptRegistryConfigPath(file.relativePath, basename)) {
       detectAgentPromptRegistryConfig(file, text, surfaces);
       continue;
@@ -1461,6 +1466,77 @@ function detectAgentExposureConfig(file: WalkedFile, text: string | undefined, s
         posture.agent_exposure_tool_invocation_enabled &&
         posture.agent_exposure_privileged_authority &&
         !posture.agent_exposure_approval_required) ||
+      isUntrustedToPrivileged(object)
+  });
+}
+
+function detectAgentPublicChatConfig(file: WalkedFile, text: string | undefined, surfaces: DetectedSurfaces): void {
+  const parsed = parseStructuredConfig(text ?? "", file.relativePath);
+  if (parsed.parseFailed) {
+    addDiagnostic(surfaces, file, {
+      parser: parsed.parser ?? "structured_config",
+      code: "PUBLIC_AGENT_CHAT_CONFIG_PARSE_FAILED",
+      reason: "Public agent chat or web ingress configuration could not be parsed. Raw content was redacted."
+    });
+  }
+
+  const posture = classifyAgentPublicChatConfig(parsed.value);
+  const actions = new Set<ActionType>(["call", "read"]);
+  if (posture.public_agent_chat_public_endpoint || posture.public_agent_chat_external_response) actions.add("send");
+  if (posture.public_agent_chat_auto_tool_invocation || posture.public_agent_chat_privileged_tool_authority) actions.add("execute");
+  if (posture.public_agent_chat_write_authority) actions.add("write");
+  if (posture.public_agent_chat_external_response) actions.add("publish");
+  if (posture.public_agent_chat_memory_write) actions.add("remember");
+
+  const dataClasses = new Set<SurfaceObject["data_classes"][number]>(["unknown"]);
+  if (
+    posture.public_agent_chat_secret_access ||
+    posture.env_key_names.some(isCredentialLikeKeyName) ||
+    posture.secret_ref_key_names.length > 0
+  ) {
+    dataClasses.add("credential");
+    if (posture.public_agent_chat_secret_access) dataClasses.add("secret");
+  }
+  if (posture.public_agent_chat_sensitive_context || posture.public_agent_chat_untrusted_input) dataClasses.add("confidential");
+  if (posture.public_agent_chat_pii_context) dataClasses.add("pii");
+  if (dataClasses.size > 1) dataClasses.delete("unknown");
+
+  const object = createSurfaceObject({
+    type: "runtime_config",
+    name: path.basename(file.relativePath),
+    path: file.relativePath,
+    trust_level: posture.public_agent_chat_public_endpoint || posture.public_agent_chat_anonymous_access ? "third_party" : inferTrustLevel(file.relativePath),
+    data_classes: uniqueDataClasses([...dataClasses] as SurfaceObject["data_classes"]),
+    actions: uniqueActions([...actions]),
+    side_effect:
+      posture.public_agent_chat_auto_tool_invocation ||
+      posture.public_agent_chat_write_authority ||
+      posture.public_agent_chat_external_response ||
+      posture.public_agent_chat_memory_write,
+    reversible: !posture.public_agent_chat_write_authority && !posture.public_agent_chat_external_response && !posture.public_agent_chat_memory_write,
+    external_reach: posture.public_agent_chat_public_endpoint || posture.public_agent_chat_external_response,
+    secret_exposure:
+      posture.public_agent_chat_secret_access ||
+      posture.env_key_names.some(isCredentialLikeKeyName) ||
+      posture.secret_ref_key_names.length > 0,
+    reason: "Public agent chat ingress discovered as web-facing prompt-to-tool authority.",
+    metadata: {
+      content_redacted: true,
+      values_collected: false,
+      parsed_public_agent_chat_config: Boolean(parsed.value) && !parsed.parseFailed,
+      parse_error: parsed.parseFailed,
+      ...posture
+    }
+  });
+  surfaces.runtime_config.push({
+    ...object,
+    untrusted_to_privileged:
+      (posture.public_agent_chat_enabled &&
+        posture.public_agent_chat_public_endpoint &&
+        posture.public_agent_chat_anonymous_access &&
+        posture.public_agent_chat_auto_tool_invocation &&
+        posture.public_agent_chat_privileged_tool_authority &&
+        !posture.public_agent_chat_approval_required) ||
       isUntrustedToPrivileged(object)
   });
 }
@@ -4843,6 +4919,25 @@ function isAgentExposureConfigPath(relativePath: string, basename: string): bool
   return exposureName || (exposureDirectory && configName);
 }
 
+function isAgentPublicChatConfigPath(relativePath: string, basename: string): boolean {
+  const normalized = relativePath.replaceAll("\\", "/").toLowerCase();
+  const lowerBase = basename.toLowerCase();
+  if (!/\.(json|ya?ml|toml)$/iu.test(lowerBase)) return false;
+  if (normalized.startsWith(".github/workflows/")) return false;
+  if (normalized.startsWith("rules/")) return false;
+  const segments = normalized.split("/").slice(0, -1);
+  const chatDirectory = segments.some((segment) =>
+    /^(public-chat|public_chat|chat-widget|chat_widget|web-chat|web_chat|agent-chat|agent_chat|chatbot|chatbots|chat-api|chat_api|agent-api|agent_api|support-widget|support_widget|web-agent|web_agent|customer-chat|customer_chat)$/iu.test(
+      segment
+    )
+  );
+  const chatName = /(?:public[-_]?chat|chat[-_]?widget|web[-_]?chat|agent[-_]?chat|chatbot|chat[-_]?api|agent[-_]?api|support[-_]?widget|customer[-_]?chat|web[-_]?agent[-_]?endpoint)/iu.test(
+    lowerBase
+  );
+  const configName = /(?:config|settings|policy|widget|chat|endpoint|route|api|agent|public|auth|cors|rate|limit)/iu.test(lowerBase);
+  return chatName || (chatDirectory && configName);
+}
+
 function isAgentFederationConfigPath(relativePath: string, basename: string): boolean {
   const normalized = relativePath.replaceAll("\\", "/").toLowerCase();
   const lowerBase = basename.toLowerCase();
@@ -5124,6 +5219,36 @@ interface AgentExposurePosture {
   agent_exposure_pii_data: boolean;
   agent_exposure_rate_limit_missing: boolean;
   agent_exposure_approval_required: boolean;
+  env_key_names: string[];
+  secret_ref_key_names: string[];
+}
+
+interface AgentPublicChatPosture {
+  public_agent_chat_fields: string[];
+  public_agent_chat_enabled: boolean;
+  public_agent_chat_endpoint_redacted: boolean;
+  public_agent_chat_endpoint_count: number;
+  public_agent_chat_endpoint_kinds: string[];
+  public_agent_chat_public_endpoint: boolean;
+  public_agent_chat_anonymous_access: boolean;
+  public_agent_chat_auth_disabled: boolean;
+  public_agent_chat_cors_broad: boolean;
+  public_agent_chat_csrf_disabled: boolean;
+  public_agent_chat_rate_limit_missing: boolean;
+  public_agent_chat_abuse_protection_disabled: boolean;
+  public_agent_chat_file_upload_enabled: boolean;
+  public_agent_chat_untrusted_input: boolean;
+  public_agent_chat_auto_tool_invocation: boolean;
+  public_agent_chat_tool_authority_categories: string[];
+  public_agent_chat_privileged_tool_authority: boolean;
+  public_agent_chat_write_authority: boolean;
+  public_agent_chat_external_response: boolean;
+  public_agent_chat_memory_write: boolean;
+  public_agent_chat_secret_access: boolean;
+  public_agent_chat_sensitive_context: boolean;
+  public_agent_chat_pii_context: boolean;
+  public_agent_chat_redaction_disabled: boolean;
+  public_agent_chat_approval_required: boolean;
   env_key_names: string[];
   secret_ref_key_names: string[];
 }
@@ -7217,6 +7342,308 @@ function isAgentExposureSecurityField(fieldPath: string): boolean {
   return /provider|protocol|version|a2a|agent|card|discover|public|registry|catalog|marketplace|url|uri|endpoint|host|server|transport|jsonrpc|skill|capabilit|tool|mcp|function|browser|database|secret|memory|file|shell|command|auth|security|scheme|anonymous|oauth|oidc|jwt|bearer|token|credential|env|caller|external|partner|input|task|message|customer|ticket|email|account|sensitive|pii|rate|quota|throttle|approval/iu.test(
     fieldPath
   );
+}
+
+function classifyAgentPublicChatConfig(value: unknown): AgentPublicChatPosture {
+  const fields = flattenRuntimeFields(value);
+  const stringValues = collectFieldStringValues(fields);
+  const endpoints = classifyAgentPublicChatEndpoints(fields);
+  const toolAuthorityCategories = collectAgentPublicChatToolAuthorityCategories(fields);
+  const envKeys = uniqueStrings([
+    ...collectEnvKeyNamesFromConfig(value).filter(isLikelyEnvKeyName),
+    ...extractEnvironmentReferenceKeys(stringValues)
+  ]);
+  const secretRefKeys = extractSecretReferenceKeys(stringValues);
+  const authDisabled = hasAgentPublicChatAuthDisabledSignal(fields);
+  const anonymousAccess = authDisabled || hasAgentPublicChatAnonymousAccessSignal(fields);
+
+  return {
+    public_agent_chat_fields: fields
+      .map((field) => field.path)
+      .filter((fieldPath) => isAgentPublicChatSecurityField(fieldPath))
+      .sort((a, b) => a.localeCompare(b)),
+    public_agent_chat_enabled: !hasAgentPublicChatDisabledSignal(fields),
+    public_agent_chat_endpoint_redacted: endpoints.endpointCount > 0,
+    public_agent_chat_endpoint_count: endpoints.endpointCount,
+    public_agent_chat_endpoint_kinds: endpoints.endpointKinds,
+    public_agent_chat_public_endpoint:
+      endpoints.publicEndpoint || hasAgentPublicChatPublicEndpointSignal(fields) || anonymousAccess,
+    public_agent_chat_anonymous_access: anonymousAccess,
+    public_agent_chat_auth_disabled: authDisabled,
+    public_agent_chat_cors_broad: hasAgentPublicChatBroadCorsSignal(fields),
+    public_agent_chat_csrf_disabled: hasAgentPublicChatCsrfDisabledSignal(fields),
+    public_agent_chat_rate_limit_missing: hasAgentPublicChatRateLimitMissingSignal(fields),
+    public_agent_chat_abuse_protection_disabled: hasAgentPublicChatAbuseProtectionDisabledSignal(fields),
+    public_agent_chat_file_upload_enabled: hasAgentPublicChatFileUploadSignal(fields),
+    public_agent_chat_untrusted_input: hasAgentPublicChatUntrustedInputSignal(fields),
+    public_agent_chat_auto_tool_invocation: hasAgentPublicChatAutoToolInvocationSignal(fields),
+    public_agent_chat_tool_authority_categories: toolAuthorityCategories,
+    public_agent_chat_privileged_tool_authority: isAgentPublicChatPrivileged(toolAuthorityCategories),
+    public_agent_chat_write_authority: hasAgentPublicChatWriteAuthoritySignal(fields, toolAuthorityCategories),
+    public_agent_chat_external_response: toolAuthorityCategories.includes("external_response") || hasAgentPublicChatExternalResponseSignal(fields),
+    public_agent_chat_memory_write: toolAuthorityCategories.includes("memory_write") || hasAgentPublicChatMemoryWriteSignal(fields),
+    public_agent_chat_secret_access:
+      toolAuthorityCategories.includes("secret_manager_access") ||
+      hasAgentPublicChatSecretSignal(fields) ||
+      envKeys.some(isCredentialLikeKeyName) ||
+      secretRefKeys.length > 0,
+    public_agent_chat_sensitive_context: hasAgentPublicChatSensitiveContextSignal(fields),
+    public_agent_chat_pii_context: hasAgentPublicChatPiiContextSignal(fields),
+    public_agent_chat_redaction_disabled: hasAgentPublicChatRedactionDisabledSignal(fields),
+    public_agent_chat_approval_required: hasAgentPublicChatApprovalRequiredSignal(fields),
+    env_key_names: envKeys,
+    secret_ref_key_names: secretRefKeys
+  };
+}
+
+function classifyAgentPublicChatEndpoints(fields: RuntimeField[]): { publicEndpoint: boolean; endpointCount: number; endpointKinds: string[] } {
+  const endpointKinds = new Set<string>();
+  let endpointCount = 0;
+  for (const field of fields) {
+    if (!/(^|\.)(endpoints?|url|uri|host|base_url|baseUrl|route|api|chat_url|chatUrl|widget_url|widgetUrl|server)$/iu.test(field.path)) continue;
+    if (/(?:^|\.)(cors|origin|origins|allowed_origins|allowedOrigins)(?:\.|$)/iu.test(field.path)) continue;
+    for (const value of fieldStringValues(field)) {
+      const endpoint = parseAgentPublicChatEndpoint(value);
+      if (!endpoint) continue;
+      endpointKinds.add(endpoint.kind);
+      endpointCount += 1;
+    }
+  }
+  return {
+    publicEndpoint: endpointCount > 0,
+    endpointCount,
+    endpointKinds: [...endpointKinds].sort((a, b) => a.localeCompare(b))
+  };
+}
+
+function parseAgentPublicChatEndpoint(value: string): { kind: string } | undefined {
+  try {
+    const parsed = new URL(value);
+    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return undefined;
+    if (isLocalHost(parsed.hostname.toLowerCase())) return undefined;
+    return { kind: parsed.protocol === "http:" ? "plaintext_public_chat_endpoint" : "public_chat_endpoint" };
+  } catch {
+    return undefined;
+  }
+}
+
+function hasAgentPublicChatDisabledSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => /(?:^|\.)(enabled|active)(?:\.|$)/iu.test(field.path) && disabledConfigValue(field.value));
+}
+
+function hasAgentPublicChatPublicEndpointSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /\b(public|internet|external|website|web widget|chat widget|customer portal|anonymous users?)\b/iu.test(agentPublicChatText(field)) &&
+    truthyConfigValue(field.value)
+  );
+}
+
+function hasAgentPublicChatAnonymousAccessSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /\b(anonymous|unauthenticated|guest|public users?|website visitors?|customer portal|no login|no auth)\b/iu.test(agentPublicChatText(field)) &&
+    truthyConfigValue(field.value)
+  );
+}
+
+function hasAgentPublicChatAuthDisabledSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => {
+    const text = agentPublicChatText(field);
+    if (/(?:^|\.)(auth|authentication|authorization|security|login)\.(required|enabled|enforced)$/iu.test(field.path)) {
+      return disabledConfigValue(field.value);
+    }
+    return /\b(no auth|no login|auth disabled|authentication disabled|anonymous|unauthenticated|public access|optional auth)\b/iu.test(text) &&
+      truthyConfigValue(field.value);
+  });
+}
+
+function hasAgentPublicChatBroadCorsSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => {
+    const text = agentPublicChatText(field);
+    if (!/\b(cors|origin|origins|allowed origins|allowed origin|cross origin)\b/iu.test(text)) return false;
+    return /\*|all origins|any origin|wildcard|allow all|public web/iu.test(text) && !disabledConfigValue(field.value);
+  });
+}
+
+function hasAgentPublicChatCsrfDisabledSignal(fields: RuntimeField[]): boolean {
+  const csrfFields = fields.filter((field) => /\b(csrf|xsrf|same site|same-site|same_site)\b/iu.test(agentPublicChatText(field)));
+  if (csrfFields.length === 0) return true;
+  return csrfFields.some((field) => disabledConfigValue(field.value) || /\b(disabled|off|none|false|no csrf)\b/iu.test(agentPublicChatText(field)));
+}
+
+function hasAgentPublicChatRateLimitMissingSignal(fields: RuntimeField[]): boolean {
+  const rateFields = fields.filter((field) => /\b(rate limit|rate_limit|ratelimit|quota|throttle|burst|requests per|rpm|rps)\b/iu.test(agentPublicChatText(field)));
+  if (rateFields.length === 0) return true;
+  return rateFields.some((field) => disabledConfigValue(field.value) || /\b(disabled|off|none|unlimited|no limit|0)\b/iu.test(agentPublicChatText(field)));
+}
+
+function hasAgentPublicChatAbuseProtectionDisabledSignal(fields: RuntimeField[]): boolean {
+  const abuseFields = fields.filter((field) =>
+    /\b(abuse|bot|captcha|turnstile|recaptcha|waf|moderation|prompt injection|jailbreak|safety|guardrail|filter)\b/iu.test(agentPublicChatText(field))
+  );
+  if (abuseFields.length === 0) return true;
+  return abuseFields.some((field) => disabledConfigValue(field.value) || /\b(disabled|off|none|false|monitor only)\b/iu.test(agentPublicChatText(field)));
+}
+
+function hasAgentPublicChatFileUploadSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /\b(file upload|upload|attachment|attachments|image upload|document upload|user files?)\b/iu.test(agentPublicChatText(field)) &&
+    truthyConfigValue(field.value)
+  );
+}
+
+function hasAgentPublicChatUntrustedInputSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => {
+    if (isAgentPublicChatControlField(field.path)) return false;
+    const text = agentPublicChatText(field);
+    if (
+      /\b(approved|trusted|internal only|internal|allowlisted|reviewed)\b/iu.test(text) &&
+      !/\b(public|anonymous|customer|visitor|external|upload|ticket|web)\b/iu.test(text)
+    ) {
+      return false;
+    }
+    return /\b(public|anonymous|unauthenticated|guest|visitor|customer|user message|freeform|prompt|chat message|uploaded|attachment|website|external|ticket)\b/iu.test(text) &&
+      !disabledConfigValue(field.value);
+  });
+}
+
+function hasAgentPublicChatAutoToolInvocationSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => {
+    const text = agentPublicChatText(field);
+    if (/\b(manual|approval required|disabled|off|read only|read-only)\b/iu.test(text)) return false;
+    if (/(?:^|\.)(tool_choice|toolChoice)(?:\.|$)/u.test(field.path)) {
+      return /\b(auto|automatic|autonomous)\b/iu.test(text);
+    }
+    if (/(?:^|\.)(auto_invoke_tools|autoInvokeTools|auto_tool_calls|autoToolCalls|auto_execute|autoExecute)(?:\.|$)/u.test(field.path)) {
+      if (disabledConfigValue(field.value)) return false;
+      return truthyConfigValue(field.value) || fieldStringValues(field).some((value) => /\b(auto|automatic|autonomous)\b/iu.test(value));
+    }
+    return /\b(auto invoke tools|automatic tool calls|tool choice auto|auto execute|run tools automatically|agent may call tools)\b/iu.test(text);
+  });
+}
+
+function collectAgentPublicChatToolAuthorityCategories(fields: RuntimeField[]): string[] {
+  const categories = new Set<string>();
+  for (const field of fields) {
+    if (isAgentPublicChatControlField(field.path)) continue;
+    if (disabledConfigValue(field.value)) continue;
+    const text = agentPublicChatText(field);
+    if (!/\b(tool|tools|function|mcp|capability|action|browser|database|db|sql|slack|email|webhook|secret|vault|memory|shell|filesystem|file|code)\b/iu.test(text)) {
+      continue;
+    }
+    if (/\b(tool|tools|function|mcp|capability|action)\b/iu.test(text)) categories.add("tool_call");
+    if (/\b(database|db|sql|query|crm|support db|warehouse|record|update customer)\b/iu.test(text)) categories.add("database_write");
+    if (/\b(slack|email|sms|message|webhook|ticket|jira|zendesk|reply|respond|send|post|publish)\b/iu.test(text)) {
+      categories.add("external_response");
+    }
+    if (/\b(browser|playwright|puppeteer|click|form|navigate|submit)\b/iu.test(text)) categories.add("browser_action");
+    if (/(?:^|[_\W])(vault|secret|secrets|secret manager|key vault|credential|api key|token)(?:[_\W]|$)/iu.test(text)) {
+      categories.add("secret_manager_access");
+    }
+    if (/(?:^|[_\W])(memory|remember|store|persist|session state|conversation state)(?:[_\W]|$)/iu.test(text)) {
+      categories.add("memory_write");
+    }
+    if (/\b(shell|bash|command|exec|terminal|python|node|subprocess|code interpreter)\b/iu.test(text)) categories.add("code_execution");
+    if (/\b(filesystem|file write|workspace|repo|repository|github|gitlab|commit|push|merge)\b/iu.test(text)) {
+      categories.add("filesystem_write");
+    }
+  }
+  return [...categories].sort((a, b) => a.localeCompare(b));
+}
+
+function isAgentPublicChatPrivileged(categories: string[]): boolean {
+  return categories.some((category) =>
+    [
+      "browser_action",
+      "code_execution",
+      "database_write",
+      "external_response",
+      "filesystem_write",
+      "memory_write",
+      "secret_manager_access"
+    ].includes(category)
+  );
+}
+
+function hasAgentPublicChatWriteAuthoritySignal(fields: RuntimeField[], categories: string[]): boolean {
+  return categories.some((category) =>
+    ["browser_action", "code_execution", "database_write", "external_response", "filesystem_write", "memory_write"].includes(category)
+  ) || fields.some((field) =>
+    !isAgentPublicChatControlField(field.path) &&
+    /\b(write|update|create|delete|reply|respond|send|post|publish|comment|commit|push|merge|submit|remember|persist)\b/iu.test(
+      agentPublicChatText(field)
+    )
+  );
+}
+
+function hasAgentPublicChatExternalResponseSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    !isAgentPublicChatControlField(field.path) &&
+    /\b(reply|respond|send|post|publish|slack|email|sms|webhook|ticket|external response)\b/iu.test(agentPublicChatText(field)) &&
+    !disabledConfigValue(field.value)
+  );
+}
+
+function hasAgentPublicChatMemoryWriteSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    !isAgentPublicChatControlField(field.path) &&
+    /\b(memory|remember|persist|store|conversation state|session state|long term|long-term)\b/iu.test(agentPublicChatText(field)) &&
+    truthyConfigValue(field.value)
+  );
+}
+
+function hasAgentPublicChatSecretSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    !isAgentPublicChatControlField(field.path) &&
+    /\b(secret|token|credential|api key|password|vault|key vault|authorization|bearer)\b/iu.test(agentPublicChatText(field))
+  );
+}
+
+function hasAgentPublicChatSensitiveContextSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    !isAgentPublicChatControlField(field.path) &&
+    /\b(customer|client|ticket|support|internal|confidential|private|proprietary|sensitive|account|billing|payment|case|record|profile|incident)\b/iu.test(
+      agentPublicChatText(field)
+    )
+  );
+}
+
+function hasAgentPublicChatPiiContextSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    !isAgentPublicChatControlField(field.path) &&
+    /(?:^|[_\W])(pii|email|phone|address|ssn|passport|dob|date of birth|customer id|user id|account id|account number)(?:[_\W]|$)/iu.test(
+      agentPublicChatText(field)
+    )
+  );
+}
+
+function hasAgentPublicChatRedactionDisabledSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /\b(redaction|redact|mask|sanitize|pii redaction|secret redaction|dlp)\b/iu.test(agentPublicChatText(field)) &&
+    disabledConfigValue(field.value)
+  );
+}
+
+function hasAgentPublicChatApprovalRequiredSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /\b(approval|required approval|human approval|manual review|confirm|confirmation|human in the loop|human-in-the-loop)\b/iu.test(agentPublicChatText(field)) &&
+    truthyConfigValue(field.value)
+  );
+}
+
+function isAgentPublicChatControlField(fieldPath: string): boolean {
+  return /(?:^|\.)(auth|authentication|authorization|security|cors|origin|origins|allowed_origins|csrf|xsrf|rate_limit|rateLimit|quota|throttle|abuse|captcha|turnstile|recaptcha|waf|moderation|guardrail|safety|redaction|redact|mask|sanitize|approval|human_review)(?:\.|$)/iu.test(
+    fieldPath
+  );
+}
+
+function isAgentPublicChatSecurityField(fieldPath: string): boolean {
+  return /enabled|active|public|chat|widget|web|agent|endpoint|url|uri|host|route|api|auth|anonymous|guest|cors|origin|csrf|rate|quota|throttle|abuse|captcha|moderation|guardrail|upload|attachment|input|prompt|message|customer|visitor|ticket|tool|mcp|function|browser|database|db|slack|email|webhook|secret|vault|credential|token|memory|shell|filesystem|redaction|approval|pii|sensitive|confidential/iu.test(
+    fieldPath
+  );
+}
+
+function agentPublicChatText(field: RuntimeField): string {
+  return `${field.path} ${fieldValueText(field)}`.toLowerCase().replaceAll("_", " ").replaceAll("-", " ");
 }
 
 function classifyAgentFederationConfig(value: unknown, filePath: string): AgentFederationPosture {

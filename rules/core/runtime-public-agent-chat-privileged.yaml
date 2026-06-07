@@ -1,0 +1,65 @@
+id: AGENTCSP-RUNTIME-062
+name: Public chat ingress can invoke privileged agent tools
+description: A public or anonymous web chat endpoint can route untrusted visitor messages and uploads into automatic privileged tool calls while authentication, CORS, rate limiting, abuse protection, redaction, and approval controls are weak or disabled.
+category: public_agent_chat_ingress
+severity: critical
+maps_to:
+  owasp:
+    - LLM01:2025 Prompt Injection
+    - LLM02:2025 Sensitive Information Disclosure
+    - LLM06:2025 Excessive Agency
+  mitre_atlas:
+    - AML.T0051 LLM Prompt Injection
+    - AML.T0057 Exfiltration via Cyber Means
+  nist_ai_rmf:
+    - MAP 5.1
+    - MEASURE 2.9
+    - MANAGE 2.4
+match:
+  object_type: runtime_config
+  where:
+    - field: metadata.parsed_public_agent_chat_config
+      op: equals
+      value: true
+    - field: metadata.public_agent_chat_enabled
+      op: equals
+      value: true
+    - field: metadata.public_agent_chat_public_endpoint
+      op: equals
+      value: true
+    - field: metadata.public_agent_chat_anonymous_access
+      op: equals
+      value: true
+    - field: metadata.public_agent_chat_auth_disabled
+      op: equals
+      value: true
+    - field: metadata.public_agent_chat_cors_broad
+      op: equals
+      value: true
+    - field: metadata.public_agent_chat_rate_limit_missing
+      op: equals
+      value: true
+    - field: metadata.public_agent_chat_abuse_protection_disabled
+      op: equals
+      value: true
+    - field: metadata.public_agent_chat_untrusted_input
+      op: equals
+      value: true
+    - field: metadata.public_agent_chat_auto_tool_invocation
+      op: equals
+      value: true
+    - field: metadata.public_agent_chat_privileged_tool_authority
+      op: equals
+      value: true
+    - field: metadata.public_agent_chat_redaction_disabled
+      op: equals
+      value: true
+    - field: metadata.public_agent_chat_approval_required
+      op: equals
+      value: false
+    - field: secret_exposure
+      op: equals
+      value: true
+recommendation:
+  control: require_approval
+  text: Require authentication for public agent chat endpoints, restrict CORS to approved origins, enforce rate limits and abuse controls, sanitize uploads and visitor messages, disable automatic privileged tool calls, and require approval before customer-facing chat can reach database, messaging, memory, browser, or secret-backed tools.

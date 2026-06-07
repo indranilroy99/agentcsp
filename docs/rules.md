@@ -22,6 +22,8 @@ For MCP environment-exposure rules, require concrete ambient-secret correlation 
 
 For hosted assistant definition rules, require concrete deployment-risk correlation such as hosted assistant detection, untrusted thread or customer inputs, sensitive file or vector resources, automatic tool choice, parallel privileged tool fanout, privileged hosted tools, disabled guardrails, credential evidence, and missing approval.
 
+For public agent chat ingress rules, require concrete public prompt-to-tool correlation such as a public or anonymous web/chat endpoint, disabled authentication, broad CORS or missing CSRF/rate-limit/abuse controls, untrusted messages or uploads, automatic tool invocation, privileged database, external-response, memory, or secret-manager authority, disabled redaction, credential evidence, and missing approval. Do not flag authenticated internal read-only chats that require approval, keep auto tool invocation disabled, and expose no credentials.
+
 For realtime and voice agent session rules, require concrete caller-to-tool correlation such as external caller or audio input, transcript or recording capture, disabled prompt-injection filtering or transcript sanitization, privileged function, MCP, database, messaging, memory, or secret-manager authority, sensitive or PII context, credential evidence, and missing approval.
 
 For agent safety and guardrail posture rules, require concrete fail-open or disabled-control correlation such as default-allow, timeout-allow, error-allow, monitor-only, or disabled moderation/validation/redaction controls plus untrusted input, privileged tool authority, credential evidence, and missing approval.

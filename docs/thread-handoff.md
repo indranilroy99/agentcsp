@@ -1217,6 +1217,16 @@ The current iteration adds:
 - rule `AGENTCSP-RUNTIME-061` for secret managers that expose raw credentials to model-visible context from untrusted selectors without redaction or approval
 - scanner, rule, fixture verifier, and redaction coverage proving raw prompt targets, model-context labels, vault selectors, alias names, data-scope labels, and token placeholders stay redacted
 
+## Public Agent Chat Ingress Pass
+
+The current iteration adds:
+
+- first-class redacted metadata for public chat, chatbot, customer-support widget, and web assistant ingress posture, including endpoint categories, anonymous access, auth/CORS/CSRF/rate-limit/abuse-control posture, file uploads, automatic tool invocation, privileged authority categories, redaction posture, approval posture, and credential exposure
+- vulnerable fixture coverage for a public support widget that accepts anonymous messages and attachments, disables auth and abuse controls, auto-invokes database, Slack, memory, and secret-manager tools, disables redaction, and lacks approval
+- safe fixture coverage for an authenticated internal read-only chat that requires SSO and approval, disables automatic tool invocation, keeps rate limits and redaction enabled, and exposes no credentials
+- rule `AGENTCSP-RUNTIME-062` for public chat ingress that routes anonymous prompt input into privileged tools without abuse controls, redaction, or approval
+- scanner, rule, fixture verifier, and redaction coverage proving raw endpoints, allowed origins, visitor labels, upload labels, tool names, context labels, and token placeholders stay redacted
+
 ## Initial Build Recommendation
 
 Start with a CLI-first MVP before building the dashboard:

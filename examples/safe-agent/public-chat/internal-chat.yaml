@@ -1,0 +1,30 @@
+enabled: true
+surface: internal_assistant_chat
+endpoint: local-only
+auth:
+  required: true
+  sso: true
+  anonymous: false
+cors:
+  allowed_origins:
+    - https://support.internal.example
+csrf_protection: true
+rate_limit:
+  requests_per_minute: 30
+abuse_protection: true
+file_uploads: false
+input_sources:
+  - approved_internal_question
+agent:
+  auto_invoke_tools: false
+  tool_choice: manual
+  tools:
+    - readonly_docs.search
+  context:
+    - approved_internal_docs
+controls:
+  approval_required: true
+  human_review: true
+redaction:
+  pii: true
+  secrets: true

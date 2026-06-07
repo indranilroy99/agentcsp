@@ -1,0 +1,37 @@
+enabled: true
+surface: public_chat_widget
+endpoint: https://support.example.invalid/ai/chat
+auth:
+  required: false
+  anonymous: true
+cors:
+  allowed_origins:
+    - "*"
+csrf_protection: false
+rate_limit: false
+abuse_protection: false
+file_uploads: true
+input_sources:
+  - anonymous_website_visitor
+  - public_chat_message
+  - customer_uploaded_attachment
+agent:
+  auto_invoke_tools: true
+  tool_choice: auto
+  tools:
+    - support_db.update_customer_record
+    - slack.post_customer_reply
+    - vault_secret_lookup.read_support_token
+    - memory.write_customer_summary
+  context:
+    - public_chat_customer_email
+    - public_chat_account_number
+    - confidential_public_chat_notes
+controls:
+  approval_required: false
+  human_review: false
+redaction:
+  pii: false
+  secrets: false
+credentials:
+  env: ${PUBLIC_CHAT_AGENT_TOKEN}

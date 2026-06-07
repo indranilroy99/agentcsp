@@ -57,6 +57,7 @@ describe("scanner", () => {
       "NETWORK_EGRESS_TOKEN",
       "OPENAI_API_KEY",
       "PROMPT_REGISTRY_TOKEN",
+      "PUBLIC_CHAT_AGENT_TOKEN",
       "REASONING_STATE_TOKEN",
       "SAFETY_RUNTIME_TOKEN",
       "SLACK_WEBHOOK_URL",
@@ -1634,6 +1635,66 @@ describe("scanner", () => {
     expect(JSON.stringify(agentExposureConfig)).not.toContain("support_db.update_customer_record");
     expect(JSON.stringify(agentExposureConfig)).not.toContain("a2a_customer_email");
     expect(JSON.stringify(agentExposureConfig)).not.toContain("confidential_a2a_case_notes");
+    const publicChatConfig = surfaces.runtime_config.find((surface) => surface.path === "public-chat/support-widget.yaml");
+    expect(publicChatConfig).toBeDefined();
+    expect(publicChatConfig).toMatchObject({
+      trust_level: "third_party",
+      data_classes: ["confidential", "credential", "pii", "secret"],
+      actions: ["call", "execute", "publish", "read", "remember", "send", "write"],
+      external_reach: true,
+      secret_exposure: true,
+      side_effect: true,
+      reversible: false,
+      untrusted_to_privileged: true
+    });
+    expect(publicChatConfig?.metadata).toMatchObject({
+      content_redacted: true,
+      values_collected: false,
+      parsed_public_agent_chat_config: true,
+      public_agent_chat_enabled: true,
+      public_agent_chat_endpoint_redacted: true,
+      public_agent_chat_endpoint_count: 1,
+      public_agent_chat_public_endpoint: true,
+      public_agent_chat_anonymous_access: true,
+      public_agent_chat_auth_disabled: true,
+      public_agent_chat_cors_broad: true,
+      public_agent_chat_csrf_disabled: true,
+      public_agent_chat_rate_limit_missing: true,
+      public_agent_chat_abuse_protection_disabled: true,
+      public_agent_chat_file_upload_enabled: true,
+      public_agent_chat_untrusted_input: true,
+      public_agent_chat_auto_tool_invocation: true,
+      public_agent_chat_privileged_tool_authority: true,
+      public_agent_chat_write_authority: true,
+      public_agent_chat_external_response: true,
+      public_agent_chat_memory_write: true,
+      public_agent_chat_secret_access: true,
+      public_agent_chat_sensitive_context: true,
+      public_agent_chat_pii_context: true,
+      public_agent_chat_redaction_disabled: true,
+      public_agent_chat_approval_required: false
+    });
+    expect(publicChatConfig?.metadata.public_agent_chat_endpoint_kinds).toEqual(["public_chat_endpoint"]);
+    expect(publicChatConfig?.metadata.public_agent_chat_tool_authority_categories).toEqual([
+      "database_write",
+      "external_response",
+      "memory_write",
+      "secret_manager_access",
+      "tool_call"
+    ]);
+    expect(publicChatConfig?.metadata.env_key_names).toEqual(["PUBLIC_CHAT_AGENT_TOKEN"]);
+    expect(publicChatConfig?.metadata.secret_ref_key_names).toEqual(["PUBLIC_CHAT_AGENT_TOKEN"]);
+    expect(JSON.stringify(publicChatConfig)).not.toContain("${PUBLIC_CHAT_AGENT_TOKEN}");
+    expect(JSON.stringify(publicChatConfig)).not.toContain("support.example.invalid");
+    expect(JSON.stringify(publicChatConfig)).not.toContain("support_db.update_customer_record");
+    expect(JSON.stringify(publicChatConfig)).not.toContain("slack.post_customer_reply");
+    expect(JSON.stringify(publicChatConfig)).not.toContain("vault_secret_lookup.read_support_token");
+    expect(JSON.stringify(publicChatConfig)).not.toContain("memory.write_customer_summary");
+    expect(JSON.stringify(publicChatConfig)).not.toContain("anonymous_website_visitor");
+    expect(JSON.stringify(publicChatConfig)).not.toContain("customer_uploaded_attachment");
+    expect(JSON.stringify(publicChatConfig)).not.toContain("public_chat_customer_email");
+    expect(JSON.stringify(publicChatConfig)).not.toContain("public_chat_account_number");
+    expect(JSON.stringify(publicChatConfig)).not.toContain("confidential_public_chat_notes");
     const agentFederationConfig = surfaces.runtime_config.find((surface) => surface.path === "agent-federation/remote-agents.yaml");
     expect(agentFederationConfig).toBeDefined();
     expect(agentFederationConfig).toMatchObject({
@@ -4514,6 +4575,67 @@ describe("scanner", () => {
     expect(loop?.metadata.secret_ref_key_names).toEqual([]);
     expect(JSON.stringify(loop)).not.toContain("approved_review");
     expect(JSON.stringify(loop)).not.toContain("readonly_docs.search");
+  });
+
+  it("keeps authenticated internal agent chats scoped", async () => {
+    const files = await walkProject({
+      root_path: safeFixtureRoot,
+      output_path: ".agentcsp",
+      formats: ["json", "md"],
+      include_hidden: true,
+      include_logs: false,
+      max_file_size_bytes: 1024 * 1024,
+      max_files: 5000,
+      quiet: true
+    });
+    const surfaces = await detectSurfaces(files);
+    const chat = surfaces.runtime_config.find((surface) => surface.path === "public-chat/internal-chat.yaml");
+
+    expect(chat).toMatchObject({
+      trust_level: "project",
+      data_classes: ["confidential"],
+      actions: ["call", "read"],
+      side_effect: false,
+      external_reach: false,
+      secret_exposure: false,
+      reversible: true,
+      untrusted_to_privileged: false
+    });
+    expect(chat?.metadata).toMatchObject({
+      content_redacted: true,
+      values_collected: false,
+      parsed_public_agent_chat_config: true,
+      public_agent_chat_enabled: true,
+      public_agent_chat_endpoint_redacted: false,
+      public_agent_chat_endpoint_count: 0,
+      public_agent_chat_public_endpoint: false,
+      public_agent_chat_anonymous_access: false,
+      public_agent_chat_auth_disabled: false,
+      public_agent_chat_cors_broad: false,
+      public_agent_chat_csrf_disabled: false,
+      public_agent_chat_rate_limit_missing: false,
+      public_agent_chat_abuse_protection_disabled: false,
+      public_agent_chat_file_upload_enabled: false,
+      public_agent_chat_untrusted_input: false,
+      public_agent_chat_auto_tool_invocation: false,
+      public_agent_chat_privileged_tool_authority: false,
+      public_agent_chat_write_authority: false,
+      public_agent_chat_external_response: false,
+      public_agent_chat_memory_write: false,
+      public_agent_chat_secret_access: false,
+      public_agent_chat_sensitive_context: true,
+      public_agent_chat_pii_context: false,
+      public_agent_chat_redaction_disabled: false,
+      public_agent_chat_approval_required: true
+    });
+    expect(chat?.metadata.public_agent_chat_endpoint_kinds).toEqual([]);
+    expect(chat?.metadata.public_agent_chat_tool_authority_categories).toEqual(["tool_call"]);
+    expect(chat?.metadata.env_key_names).toEqual([]);
+    expect(chat?.metadata.secret_ref_key_names).toEqual([]);
+    expect(JSON.stringify(chat)).not.toContain("support.internal.example");
+    expect(JSON.stringify(chat)).not.toContain("approved_internal_question");
+    expect(JSON.stringify(chat)).not.toContain("readonly_docs.search");
+    expect(JSON.stringify(chat)).not.toContain("approved_internal_docs");
   });
 
   it("keeps local tenant-scoped prompt caches quiet", async () => {

@@ -2146,6 +2146,43 @@ Agent exposure metadata may include:
 
 Raw endpoint URLs, agent names, skill IDs, skill descriptions, tool strings, caller labels, data-scope labels, and token placeholders are not emitted. Provider names, endpoint categories, capability counts, authentication posture, authority categories, rate-limit posture, approval posture, and credential key names let rules detect externally callable agent authority without publishing the agent card body.
 
+## Public Agent Chat Ingress Posture
+
+Public chat widgets, customer-support chat routes, chatbot endpoints, and web assistant ingress configs are normalized into `runtime_config` objects when discovered. This models the boundary where anonymous or public users can send prompt text or attachments into an agent that may call tools.
+
+Public agent chat metadata may include:
+
+- `parsed_public_agent_chat_config`
+- `public_agent_chat_fields`
+- `public_agent_chat_enabled`
+- `public_agent_chat_endpoint_redacted`
+- `public_agent_chat_endpoint_count`
+- `public_agent_chat_endpoint_kinds`
+- `public_agent_chat_public_endpoint`
+- `public_agent_chat_anonymous_access`
+- `public_agent_chat_auth_disabled`
+- `public_agent_chat_cors_broad`
+- `public_agent_chat_csrf_disabled`
+- `public_agent_chat_rate_limit_missing`
+- `public_agent_chat_abuse_protection_disabled`
+- `public_agent_chat_file_upload_enabled`
+- `public_agent_chat_untrusted_input`
+- `public_agent_chat_auto_tool_invocation`
+- `public_agent_chat_tool_authority_categories`
+- `public_agent_chat_privileged_tool_authority`
+- `public_agent_chat_write_authority`
+- `public_agent_chat_external_response`
+- `public_agent_chat_memory_write`
+- `public_agent_chat_secret_access`
+- `public_agent_chat_sensitive_context`
+- `public_agent_chat_pii_context`
+- `public_agent_chat_redaction_disabled`
+- `public_agent_chat_approval_required`
+- `env_key_names`
+- `secret_ref_key_names`
+
+Raw chat endpoints, allowed origins, tool names, visitor labels, attachment labels, context field names, data-scope labels, and token placeholders are not emitted. Endpoint categories, authentication posture, CORS/CSRF/rate-limit/abuse-control posture, file-upload posture, authority categories, redaction posture, approval posture, and credential key names let rules detect public prompt-to-tool authority without copying public chat configuration values into evidence.
+
 ## Agent Federation Posture
 
 Outbound A2A clients, remote-agent federation configs, agent registries, peer-agent catalogs, and agent handoff routing configs are normalized into `runtime_config` objects when discovered. This models the boundary where a local agent delegates work or forwards context to third-party agents.
