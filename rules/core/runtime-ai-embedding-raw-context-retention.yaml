@@ -1,0 +1,89 @@
+id: AGENTCSP-RUNTIME-087
+name: Embedding pipeline retains raw sensitive agent context
+description: A remote AI embedding or RAG-index pipeline auto-syncs untrusted prompts, documents, tool outputs, retrieval context, memory, browser context, PII, and secrets into a vector destination while raw retention is enabled, redaction is disabled, credential references are present, and approval is missing.
+category: embedding_raw_context_retention
+severity: critical
+maps_to:
+  owasp:
+    - LLM01:2025 Prompt Injection
+    - LLM02:2025 Sensitive Information Disclosure
+    - LLM08:2025 Vector and Embedding Weaknesses
+  mitre_atlas:
+    - AML.T0051 LLM Prompt Injection
+    - AML.T0057 Exfiltration via Cyber Means
+    - AML.T0059 Data from Information Repositories
+  nist_ai_rmf:
+    - MAP 5.1
+    - MEASURE 2.9
+    - MANAGE 2.4
+match:
+  object_type: runtime_config
+  where:
+    - field: metadata.parsed_ai_embedding_pipeline_config
+      op: equals
+      value: true
+    - field: metadata.ai_embedding_remote_provider
+      op: equals
+      value: true
+    - field: metadata.ai_embedding_vector_write_enabled
+      op: equals
+      value: true
+    - field: metadata.ai_embedding_auto_sync
+      op: equals
+      value: true
+    - field: metadata.ai_embedding_document_capture
+      op: equals
+      value: true
+    - field: metadata.ai_embedding_prompt_capture
+      op: equals
+      value: true
+    - field: metadata.ai_embedding_tool_output_capture
+      op: equals
+      value: true
+    - field: metadata.ai_embedding_retrieval_capture
+      op: equals
+      value: true
+    - field: metadata.ai_embedding_memory_capture
+      op: equals
+      value: true
+    - field: metadata.ai_embedding_browser_capture
+      op: equals
+      value: true
+    - field: metadata.ai_embedding_secret_capture
+      op: equals
+      value: true
+    - field: metadata.ai_embedding_pii_capture
+      op: equals
+      value: true
+    - field: metadata.ai_embedding_untrusted_input
+      op: equals
+      value: true
+    - field: metadata.ai_embedding_redaction_disabled
+      op: equals
+      value: true
+    - field: metadata.ai_embedding_retention_enabled
+      op: equals
+      value: true
+    - field: metadata.ai_embedding_approval_required
+      op: equals
+      value: false
+    - field: metadata.ai_embedding_capture_categories
+      op: contains_any
+      value:
+        - document_context
+        - prompt_context
+        - tool_output
+        - retrieval_context
+        - memory_context
+        - browser_context
+        - pii_data
+        - secret_material
+    - field: secret_exposure
+      op: equals
+      value: true
+    - field: untrusted_to_privileged
+      op: equals
+      value: true
+recommendation:
+  control: quarantine
+  text: Quarantine raw embedding inputs from untrusted sources, disable raw chunk retention for prompts, documents, tool outputs, retrieval context, memory, browser context, PII, and secrets, redact before embedding or vector upsert, and require approval before sensitive context can be retained in remote vector destinations.

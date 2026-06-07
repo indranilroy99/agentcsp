@@ -110,6 +110,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-071")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-030")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-031")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-087")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-032")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-082")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-033")).toBe(true);
@@ -730,6 +731,50 @@ describe("rule engine", () => {
     expect(JSON.stringify(runtimeEmbeddingFindings[0])).not.toContain("retrieved_customer_context");
     expect(JSON.stringify(runtimeEmbeddingFindings[0])).not.toContain("browser_tool_output");
     expect(JSON.stringify(runtimeEmbeddingFindings[0])).not.toContain("support_memory_summary");
+    const runtimeEmbeddingRetentionFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-RUNTIME-087");
+    expect(runtimeEmbeddingRetentionFindings).toHaveLength(1);
+    expect(runtimeEmbeddingRetentionFindings[0]?.matched_object.path).toBe("embeddings/rag-indexer.yaml");
+    expect(runtimeEmbeddingRetentionFindings[0]?.matched_object.metadata).toMatchObject({
+      parsed_ai_embedding_pipeline_config: true,
+      ai_embedding_provider: "openai",
+      ai_embedding_remote_provider: true,
+      ai_embedding_vector_write_enabled: true,
+      ai_embedding_auto_sync: true,
+      ai_embedding_document_capture: true,
+      ai_embedding_prompt_capture: true,
+      ai_embedding_tool_output_capture: true,
+      ai_embedding_retrieval_capture: true,
+      ai_embedding_memory_capture: true,
+      ai_embedding_browser_capture: true,
+      ai_embedding_secret_capture: true,
+      ai_embedding_pii_capture: true,
+      ai_embedding_untrusted_input: true,
+      ai_embedding_redaction_disabled: true,
+      ai_embedding_retention_enabled: true,
+      ai_embedding_approval_required: false
+    });
+    expect(runtimeEmbeddingRetentionFindings[0]?.matched_object.metadata.ai_embedding_capture_categories).toEqual([
+      "browser_context",
+      "document_context",
+      "memory_context",
+      "pii_data",
+      "prompt_context",
+      "retrieval_context",
+      "secret_material",
+      "tool_output"
+    ]);
+    expect(runtimeEmbeddingRetentionFindings[0]?.severity).toBe("critical");
+    expect(runtimeEmbeddingRetentionFindings[0]?.confidence).toBe("very_high");
+    expect(runtimeEmbeddingRetentionFindings[0]?.recommended_control).toBe("quarantine");
+    expect(JSON.stringify(runtimeEmbeddingRetentionFindings[0])).not.toContain("${EMBEDDING_API_KEY}");
+    expect(JSON.stringify(runtimeEmbeddingRetentionFindings[0])).not.toContain("api.openai.example.invalid");
+    expect(JSON.stringify(runtimeEmbeddingRetentionFindings[0])).not.toContain("text-embedding-3-large");
+    expect(JSON.stringify(runtimeEmbeddingRetentionFindings[0])).not.toContain("vector-index.example.invalid");
+    expect(JSON.stringify(runtimeEmbeddingRetentionFindings[0])).not.toContain("customer-support-embeddings");
+    expect(JSON.stringify(runtimeEmbeddingRetentionFindings[0])).not.toContain("untrusted_customer_ticket");
+    expect(JSON.stringify(runtimeEmbeddingRetentionFindings[0])).not.toContain("retrieved_customer_context");
+    expect(JSON.stringify(runtimeEmbeddingRetentionFindings[0])).not.toContain("browser_tool_output");
+    expect(JSON.stringify(runtimeEmbeddingRetentionFindings[0])).not.toContain("support_memory_summary");
     const runtimeCloudControlPlaneFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-RUNTIME-032");
     expect(runtimeCloudControlPlaneFindings).toHaveLength(1);
     expect(runtimeCloudControlPlaneFindings[0]?.matched_object.path).toBe("cloud/aws-admin-agent.yaml");

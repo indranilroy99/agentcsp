@@ -855,6 +855,7 @@ The current iteration adds:
 - first-class redacted metadata for AI embedding, indexing, vectorization, document-index, and RAG-index pipelines
 - vulnerable fixture coverage for a third-party embedding pipeline that indexes documents, prompts, tool outputs, browser context, retrieval context, memory, PII, and secrets from untrusted customer sources into a vector destination with disabled redaction, raw-chunk retention, credentials, and no approval gate
 - rule `AGENTCSP-RUNTIME-031` for embedding boundaries that combine third-party embedding, vector writes, sensitive capture, disabled redaction, untrusted input, credential exposure, and missing approval
+- rule `AGENTCSP-RUNTIME-087` for embedding and RAG-index pipelines that retain raw untrusted prompts, documents, tool outputs, retrieval context, memory, browser context, PII, and secrets in remote vector destinations without approval
 - scanner, rule, fixture verifier, and redaction coverage proving embedding endpoints, model aliases, vector-store destinations, namespaces, source labels, document chunks, context labels, and token placeholders stay redacted
 
 ## Agent Package Manifest Supply-Chain Pass

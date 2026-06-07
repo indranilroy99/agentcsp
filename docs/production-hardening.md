@@ -94,6 +94,7 @@ A finding should be considered production-grade when it includes:
 - AI model gateway request-logging metadata for prompts, tool outputs, retrieval context, memory, PII, untrusted input, redaction posture, approval state, and credential references without emitting gateway URLs, model names, request payloads, source labels, or token placeholders
 - AI model router and fallback metadata for sensitive context failover, provider-routing, redaction posture, output recording, and approval boundaries without emitting provider endpoints, model aliases, routing strategy values, source labels, or token placeholders
 - AI embedding and indexing metadata for third-party embedding egress, vector writes, source capture, redaction posture, retention, and approval boundaries without emitting embedding endpoints, model aliases, vector namespaces, source labels, document chunks, or token placeholders
+- AI embedding raw-retention metadata for auto-synced prompts, documents, tool outputs, retrieval context, memory, browser context, PII, and secrets retained in remote vector destinations without emitting embedding endpoints, vector namespaces, source labels, raw chunks, or token placeholders
 - AI telemetry export metadata for prompt, completion, tool-output, retrieval, and memory capture without emitting trace payloads or endpoints
 - cloud control-plane metadata for IAM, compute, storage, secret, audit-log, and IaC authority without emitting account IDs, ARNs, role names, policy/action values, resource identifiers, tool strings, source labels, or token placeholders
 - cloud auto-remediation metadata for untrusted runbooks, admin scope, IAM mutation, secret read/write, compute/storage mutation, delete authority, audit-log access, cloud CLI or IaC apply tools, and approval posture without emitting account IDs, ARNs, role names, policy/action values, tool strings, source labels, or token placeholders
@@ -220,6 +221,7 @@ Examples:
 - AI model router with automatic third-party fallback plus sensitive context, disabled redaction, untrusted input, credential reference, and no approval gate
 - AI model gateway request logging plus prompts, tool outputs, retrieval context, memory, PII, disabled redaction, untrusted input, credential reference, and no approval gate
 - AI embedding pipeline with third-party embedding, vector writes, sensitive capture, disabled redaction, untrusted input, credential reference, and no approval gate
+- AI embedding raw retention plus auto-sync, prompts, documents, tool outputs, retrieval context, memory, browser context, PII, secrets, disabled redaction, credential reference, and no approval gate
 - AI telemetry remote export plus sensitive agent-context capture plus disabled redaction plus credential reference
 - cloud auto-remediation plus untrusted runbook or customer context plus admin scope, IAM mutation, secret write, compute/storage mutation, cloud CLI or IaC apply authority, credentials, and no approval gate
 - artifact/output export plus public remote destination plus prompt, tool-output, browser, retrieval, memory, PII, or secret capture plus disabled redaction
