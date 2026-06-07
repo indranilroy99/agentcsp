@@ -3550,7 +3550,7 @@ describe("scanner", () => {
     expect(realtimeAgentConfig).toBeDefined();
     expect(realtimeAgentConfig).toMatchObject({
       trust_level: "third_party",
-      data_classes: ["confidential", "credential", "pii"],
+      data_classes: ["confidential", "credential", "pii", "secret"],
       actions: ["call", "execute", "publish", "read", "remember", "send", "write"],
       external_reach: true,
       secret_exposure: true,

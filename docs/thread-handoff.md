@@ -1079,6 +1079,7 @@ The current iteration adds:
 - safe fixture coverage for an approval-gated read-only realtime session that keeps callers internal, disables recording, and avoids external writes
 - rule `AGENTCSP-RUNTIME-043` for realtime agents that combine external caller/audio input, privileged tool authority, sensitive context, disabled prompt-injection filtering, and missing approval
 - rule `AGENTCSP-RUNTIME-069` for realtime agents that capture external caller transcripts and recordings while transcript sanitization, recording redaction, and approval controls are disabled
+- rule `AGENTCSP-RUNTIME-111` for realtime caller audio that is recorded, unsanitized, and allowed to drive secret-aware write or external-response tools without approval
 - scanner, rule, fixture verifier, and redaction coverage proving raw endpoints, model names, tool names, caller labels, recording labels, data-scope labels, and token placeholders stay redacted
 
 ## AI Feedback And RLHF Pipeline Pass

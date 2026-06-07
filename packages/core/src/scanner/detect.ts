@@ -2327,6 +2327,7 @@ function detectRealtimeAgentSessionConfig(file: WalkedFile, text: string | undef
     posture.secret_ref_key_names.length > 0
   ) {
     dataClasses.add("credential");
+    dataClasses.add("secret");
   }
   if (posture.realtime_agent_sensitive_context || posture.realtime_agent_recording_enabled || posture.realtime_agent_transcript_capture) {
     dataClasses.add("confidential");

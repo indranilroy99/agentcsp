@@ -124,6 +124,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-068")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-109")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-069")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-111")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-070")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-071")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-030")).toBe(true);
@@ -3834,6 +3835,64 @@ describe("rule engine", () => {
     expect(JSON.stringify(runtimeRealtimeRecordingFindings[0])).not.toContain("realtime_caller_phone_number");
     expect(JSON.stringify(runtimeRealtimeRecordingFindings[0])).not.toContain("realtime_customer_account_id");
     expect(JSON.stringify(runtimeRealtimeRecordingFindings[0])).not.toContain("confidential_live_support_notes");
+    const runtimeRealtimeCallerToolRecordingFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-RUNTIME-111");
+    expect(runtimeRealtimeCallerToolRecordingFindings).toHaveLength(1);
+    expect(runtimeRealtimeCallerToolRecordingFindings[0]?.matched_object.path).toBe("realtime/support-voice-agent.yaml");
+    expect(runtimeRealtimeCallerToolRecordingFindings[0]?.matched_object.data_classes).toEqual([
+      "confidential",
+      "credential",
+      "pii",
+      "secret"
+    ]);
+    expect(runtimeRealtimeCallerToolRecordingFindings[0]?.matched_object.actions).toEqual([
+      "call",
+      "execute",
+      "publish",
+      "read",
+      "remember",
+      "send",
+      "write"
+    ]);
+    expect(runtimeRealtimeCallerToolRecordingFindings[0]?.matched_object.metadata).toMatchObject({
+      parsed_realtime_agent_session_config: true,
+      realtime_agent_external_caller: true,
+      realtime_agent_voice_or_audio_input: true,
+      realtime_agent_transcript_capture: true,
+      realtime_agent_recording_enabled: true,
+      realtime_agent_recording_redaction_disabled: true,
+      realtime_agent_transcript_sanitization_disabled: true,
+      realtime_agent_prompt_injection_filter_disabled: true,
+      realtime_agent_tool_calls_enabled: true,
+      realtime_agent_privileged_tool_authority: true,
+      realtime_agent_write_authority: true,
+      realtime_agent_external_response: true,
+      realtime_agent_memory_write: true,
+      realtime_agent_secret_exposure: true,
+      realtime_agent_approval_required: false
+    });
+    expect(runtimeRealtimeCallerToolRecordingFindings[0]?.matched_object.metadata.realtime_agent_tool_authority_categories).toEqual([
+      "external_response",
+      "memory_write",
+      "secret_manager_access",
+      "state_write",
+      "tool_call"
+    ]);
+    expect(runtimeRealtimeCallerToolRecordingFindings[0]?.severity).toBe("critical");
+    expect(runtimeRealtimeCallerToolRecordingFindings[0]?.confidence).toBe("very_high");
+    expect(runtimeRealtimeCallerToolRecordingFindings[0]?.recommended_control).toBe("quarantine");
+    expect(JSON.stringify(runtimeRealtimeCallerToolRecordingFindings[0])).not.toContain("${REALTIME_AGENT_TOKEN}");
+    expect(JSON.stringify(runtimeRealtimeCallerToolRecordingFindings[0])).not.toContain("${TWILIO_AUTH_TOKEN}");
+    expect(JSON.stringify(runtimeRealtimeCallerToolRecordingFindings[0])).not.toContain("realtime.agentcsp-demo.example.invalid");
+    expect(JSON.stringify(runtimeRealtimeCallerToolRecordingFindings[0])).not.toContain("gpt-4o-realtime-preview");
+    expect(JSON.stringify(runtimeRealtimeCallerToolRecordingFindings[0])).not.toContain("realtime_update_customer_record");
+    expect(JSON.stringify(runtimeRealtimeCallerToolRecordingFindings[0])).not.toContain("realtime_send_sms_reply");
+    expect(JSON.stringify(runtimeRealtimeCallerToolRecordingFindings[0])).not.toContain("realtime_secret_lookup");
+    expect(JSON.stringify(runtimeRealtimeCallerToolRecordingFindings[0])).not.toContain("pstn_customer_phone");
+    expect(JSON.stringify(runtimeRealtimeCallerToolRecordingFindings[0])).not.toContain("anonymous_support_caller");
+    expect(JSON.stringify(runtimeRealtimeCallerToolRecordingFindings[0])).not.toContain("support_voice_recordings_private");
+    expect(JSON.stringify(runtimeRealtimeCallerToolRecordingFindings[0])).not.toContain("realtime_caller_phone_number");
+    expect(JSON.stringify(runtimeRealtimeCallerToolRecordingFindings[0])).not.toContain("realtime_customer_account_id");
+    expect(JSON.stringify(runtimeRealtimeCallerToolRecordingFindings[0])).not.toContain("confidential_live_support_notes");
     const runtimeAgentOrchestrationFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-RUNTIME-015");
     expect(runtimeAgentOrchestrationFindings).toHaveLength(1);
     expect(runtimeAgentOrchestrationFindings[0]?.matched_object.path).toBe("agents/support-crew.yaml");

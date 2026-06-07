@@ -1,0 +1,103 @@
+id: AGENTCSP-RUNTIME-111
+name: Realtime caller audio can drive privileged recorded tool actions
+description: A realtime or voice agent accepts external caller audio, stores raw transcript or recording context, disables transcript and recording protections, and can invoke secret-aware write or external-response tools without approval.
+category: realtime_agent_authority
+severity: critical
+maps_to:
+  owasp:
+    - LLM01:2025 Prompt Injection
+    - LLM02:2025 Sensitive Information Disclosure
+    - LLM06:2025 Excessive Agency
+  mitre_atlas:
+    - AML.T0051 LLM Plugin Compromise
+    - AML.T0057 Exfiltration via Cyber Means
+  nist_ai_rmf:
+    - MAP 4.1
+    - MEASURE 2.7
+    - MANAGE 2.4
+match:
+  object_type: runtime_config
+  where:
+    - field: metadata.parsed_realtime_agent_session_config
+      op: equals
+      value: true
+    - field: metadata.realtime_agent_external_caller
+      op: equals
+      value: true
+    - field: metadata.realtime_agent_voice_or_audio_input
+      op: equals
+      value: true
+    - field: metadata.realtime_agent_transcript_capture
+      op: equals
+      value: true
+    - field: metadata.realtime_agent_recording_enabled
+      op: equals
+      value: true
+    - field: metadata.realtime_agent_transcript_sanitization_disabled
+      op: equals
+      value: true
+    - field: metadata.realtime_agent_recording_redaction_disabled
+      op: equals
+      value: true
+    - field: metadata.realtime_agent_prompt_injection_filter_disabled
+      op: equals
+      value: true
+    - field: metadata.realtime_agent_tool_calls_enabled
+      op: equals
+      value: true
+    - field: metadata.realtime_agent_privileged_tool_authority
+      op: equals
+      value: true
+    - field: metadata.realtime_agent_write_authority
+      op: equals
+      value: true
+    - field: metadata.realtime_agent_external_response
+      op: equals
+      value: true
+    - field: metadata.realtime_agent_memory_write
+      op: equals
+      value: true
+    - field: metadata.realtime_agent_secret_exposure
+      op: equals
+      value: true
+    - field: metadata.realtime_agent_approval_required
+      op: equals
+      value: false
+    - field: metadata.realtime_agent_tool_authority_categories
+      op: contains_any
+      value:
+        - secret_manager_access
+    - field: metadata.realtime_agent_tool_authority_categories
+      op: contains_any
+      value:
+        - state_write
+    - field: metadata.realtime_agent_tool_authority_categories
+      op: contains_any
+      value:
+        - external_response
+    - field: data_classes
+      op: contains_any
+      value:
+        - secret
+    - field: data_classes
+      op: contains_any
+      value:
+        - pii
+    - field: actions
+      op: contains_any
+      value:
+        - execute
+    - field: actions
+      op: contains_any
+      value:
+        - publish
+    - field: actions
+      op: contains_any
+      value:
+        - write
+    - field: untrusted_to_privileged
+      op: equals
+      value: true
+recommendation:
+  control: quarantine
+  text: Quarantine realtime caller-driven tool execution until raw audio and transcript retention are disabled or redacted, transcript sanitization and prompt-injection filtering are enforced, secret-manager and state-write tools are approval gated, and external responses are separated from recorded caller context.
