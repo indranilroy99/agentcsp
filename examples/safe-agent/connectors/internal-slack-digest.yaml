@@ -12,5 +12,10 @@ agent_access:
   approval_required: true
 destinations:
   workspace: approved-security-workspace
+  recipient_allowlist:
+    - approved-security-workspace
+  external_shared_channels: false
+  public_channels: false
+  direct_messages: false
 data_scope:
   - approved_digest

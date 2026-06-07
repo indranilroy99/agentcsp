@@ -2471,6 +2471,14 @@ describe("scanner", () => {
       saas_connector_admin_scope: false,
       saas_connector_read_enabled: true,
       saas_connector_external_write_enabled: true,
+      saas_connector_recipient_redacted: true,
+      saas_connector_user_or_model_selected_recipient: true,
+      saas_connector_external_or_shared_destination: true,
+      saas_connector_public_channel_destination: true,
+      saas_connector_direct_message_destination: true,
+      saas_connector_broadcast_destination: true,
+      saas_connector_attachment_upload_enabled: true,
+      saas_connector_recipient_allowlist_missing: true,
       saas_connector_untrusted_input: true,
       saas_connector_sensitive_data: true,
       saas_connector_pii_data: true,
@@ -2485,6 +2493,14 @@ describe("scanner", () => {
       "messaging_write",
       "read_scope"
     ]);
+    expect(saasConnectorConfig?.metadata.saas_connector_recipient_kinds).toEqual([
+      "broadcast",
+      "channel",
+      "direct_message",
+      "external_or_shared",
+      "public_channel",
+      "workspace"
+    ]);
     expect(saasConnectorConfig?.metadata.env_key_names).toEqual(
       expect.arrayContaining(["CUSTOMER_SUCCESS_SLACK_BOT_TOKEN"])
     );
@@ -2497,6 +2513,7 @@ describe("scanner", () => {
     expect(JSON.stringify(saasConnectorConfig)).not.toContain("channels:history");
     expect(JSON.stringify(saasConnectorConfig)).not.toContain("users:read.email");
     expect(JSON.stringify(saasConnectorConfig)).not.toContain("#customer-escalations");
+    expect(JSON.stringify(saasConnectorConfig)).not.toContain("model_selected_customer_channel");
     expect(JSON.stringify(saasConnectorConfig)).not.toContain("agentcsp-demo-workspace");
     expect(JSON.stringify(saasConnectorConfig)).not.toContain("saas_customer_email");
     expect(JSON.stringify(saasConnectorConfig)).not.toContain("saas_ticket_summary");

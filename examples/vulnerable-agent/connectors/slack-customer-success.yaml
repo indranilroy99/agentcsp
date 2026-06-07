@@ -22,6 +22,13 @@ destinations:
   channels:
     - "#customer-escalations"
   workspace: agentcsp-demo-workspace
+  slack_connect: true
+  external_shared_channels: true
+  public_channels: true
+  direct_messages: true
+  broadcast: true
+  recipient_source: model_selected_customer_channel
+  recipient_allowlist: disabled
 data_scope:
   - saas_customer_email
   - saas_ticket_summary

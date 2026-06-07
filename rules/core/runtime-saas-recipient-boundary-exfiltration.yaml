@@ -1,0 +1,76 @@
+id: AGENTCSP-RUNTIME-126
+name: SaaS connector lets untrusted context select external recipients
+description: A messaging SaaS connector can post or upload sensitive customer data through credential-backed write scopes while untrusted or model-controlled context can select external, shared, public, direct-message, or broadcast recipients without an allowlist or approval gate.
+category: saas_recipient_boundary
+severity: critical
+maps_to:
+  owasp:
+    - LLM01:2025 Prompt Injection
+    - LLM02:2025 Sensitive Information Disclosure
+    - LLM05:2025 Improper Output Handling
+    - LLM06:2025 Excessive Agency
+  mitre_atlas:
+    - AML.T0051 LLM Prompt Injection
+    - AML.T0054 LLM Plugin Compromise
+    - AML.T0057 Exfiltration via Cyber Means
+  nist_ai_rmf:
+    - MAP 5.1
+    - MEASURE 2.7
+    - MANAGE 2.4
+match:
+  object_type: runtime_config
+  where:
+    - field: metadata.parsed_saas_connector_config
+      op: equals
+      value: true
+    - field: metadata.saas_connector_provider
+      op: equals
+      value: slack
+    - field: metadata.saas_connector_scope_categories
+      op: includes
+      value: messaging_write
+    - field: metadata.saas_connector_external_write_enabled
+      op: equals
+      value: true
+    - field: metadata.saas_connector_user_or_model_selected_recipient
+      op: equals
+      value: true
+    - field: metadata.saas_connector_external_or_shared_destination
+      op: equals
+      value: true
+    - field: metadata.saas_connector_public_channel_destination
+      op: equals
+      value: true
+    - field: metadata.saas_connector_attachment_upload_enabled
+      op: equals
+      value: true
+    - field: metadata.saas_connector_recipient_allowlist_missing
+      op: equals
+      value: true
+    - field: metadata.saas_connector_untrusted_input
+      op: equals
+      value: true
+    - field: metadata.saas_connector_sensitive_data
+      op: equals
+      value: true
+    - field: metadata.saas_connector_pii_data
+      op: equals
+      value: true
+    - field: metadata.saas_connector_approval_required
+      op: equals
+      value: false
+    - field: data_classes
+      op: includes
+      value: credential
+    - field: actions
+      op: includes
+      value: publish
+    - field: secret_exposure
+      op: equals
+      value: true
+    - field: untrusted_to_privileged
+      op: equals
+      value: true
+recommendation:
+  control: require_approval
+  text: Require a deterministic recipient allowlist for Slack or messaging writes, disable model- or customer-selected recipients, block external/shared/public/broadcast destinations by default, strip attachment upload authority from untrusted-context paths, and require approval before posting sensitive customer data.

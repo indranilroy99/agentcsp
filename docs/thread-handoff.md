@@ -634,6 +634,16 @@ The current iteration adds:
 - rule `AGENTCSP-RUNTIME-110` for messaging SaaS connectors that combine credential-backed read/write scopes, untrusted customer or retrieval context, sensitive PII-bearing data, external publication authority, and no approval
 - scanner, rule, fixture verifier, and redaction coverage proving raw OAuth scopes, webhook URLs, workspace names, channel names, customer-system labels, and secret placeholders stay redacted
 
+## SaaS Recipient Boundary Pass
+
+The current iteration adds:
+
+- first-class redacted metadata for messaging/SaaS recipient posture, including recipient categories, user/model-selected recipients, external/shared destinations, public channel destinations, direct messages, broadcast destinations, attachment upload authority, and recipient allowlist posture
+- vulnerable fixture coverage for a Slack connector where untrusted customer and retrieval context can drive credential-backed posts/uploads into model-selected external/shared/public/direct-message/broadcast destinations without a recipient allowlist or approval
+- safe fixture coverage for an internal read-only Slack digest connector with approved recipient controls, no write scope, no model-selected recipient, no attachment upload, and required approval
+- rule `AGENTCSP-RUNTIME-126` for SaaS recipient-boundary exposure that combines Slack messaging write scope, untrusted context, model/user-selected external recipients, public destination exposure, upload authority, missing recipient allowlist, sensitive PII, credentials, and no approval
+- scanner, rule, fixture verifier, and redaction coverage proving raw Slack scopes, channel names, workspace names, recipient selectors, webhook URLs, and token placeholders stay redacted
+
 ## Secret Manager Authority Pass
 
 The current iteration adds:

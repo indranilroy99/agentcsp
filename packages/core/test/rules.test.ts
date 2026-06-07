@@ -173,6 +173,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-048")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-124")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-125")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-126")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-049")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-CICD-002")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-AUTOMATION-001")).toBe(true);
@@ -2709,6 +2710,46 @@ describe("rule engine", () => {
     expect(JSON.stringify(runtimeSaasConnectorFindings[0])).not.toContain("hooks.slack.example.invalid");
     expect(JSON.stringify(runtimeSaasConnectorFindings[0])).not.toContain("chat:write");
     expect(JSON.stringify(runtimeSaasConnectorFindings[0])).not.toContain("#customer-escalations");
+    const runtimeSaasRecipientBoundaryFindings = findings.filter(
+      (finding) => finding.rule_id === "AGENTCSP-RUNTIME-126"
+    );
+    expect(runtimeSaasRecipientBoundaryFindings).toHaveLength(1);
+    expect(runtimeSaasRecipientBoundaryFindings[0]?.matched_object.path).toBe(
+      "connectors/slack-customer-success.yaml"
+    );
+    expect(runtimeSaasRecipientBoundaryFindings[0]?.matched_object.metadata).toMatchObject({
+      parsed_saas_connector_config: true,
+      saas_connector_provider: "slack",
+      saas_connector_external_write_enabled: true,
+      saas_connector_user_or_model_selected_recipient: true,
+      saas_connector_external_or_shared_destination: true,
+      saas_connector_public_channel_destination: true,
+      saas_connector_direct_message_destination: true,
+      saas_connector_broadcast_destination: true,
+      saas_connector_attachment_upload_enabled: true,
+      saas_connector_recipient_allowlist_missing: true,
+      saas_connector_untrusted_input: true,
+      saas_connector_sensitive_data: true,
+      saas_connector_pii_data: true,
+      saas_connector_approval_required: false
+    });
+    expect(runtimeSaasRecipientBoundaryFindings[0]?.matched_object.metadata.saas_connector_recipient_kinds).toEqual([
+      "broadcast",
+      "channel",
+      "direct_message",
+      "external_or_shared",
+      "public_channel",
+      "workspace"
+    ]);
+    expect(runtimeSaasRecipientBoundaryFindings[0]?.severity).toBe("critical");
+    expect(runtimeSaasRecipientBoundaryFindings[0]?.confidence).toBe("very_high");
+    expect(runtimeSaasRecipientBoundaryFindings[0]?.recommended_control).toBe("require_approval");
+    expect(JSON.stringify(runtimeSaasRecipientBoundaryFindings[0])).not.toContain("${CUSTOMER_SUCCESS_SLACK_BOT_TOKEN}");
+    expect(JSON.stringify(runtimeSaasRecipientBoundaryFindings[0])).not.toContain("hooks.slack.example.invalid");
+    expect(JSON.stringify(runtimeSaasRecipientBoundaryFindings[0])).not.toContain("chat:write");
+    expect(JSON.stringify(runtimeSaasRecipientBoundaryFindings[0])).not.toContain("#customer-escalations");
+    expect(JSON.stringify(runtimeSaasRecipientBoundaryFindings[0])).not.toContain("model_selected_customer_channel");
+    expect(JSON.stringify(runtimeSaasRecipientBoundaryFindings[0])).not.toContain("agentcsp-demo-workspace");
     const runtimeSaasCustomerPublicationFindings = findings.filter(
       (finding) => finding.rule_id === "AGENTCSP-RUNTIME-110"
     );
@@ -5874,7 +5915,24 @@ describe("rule engine", () => {
     const rules = await loadRules(path.resolve("rules"));
     const findings = runRules(surfaces, rules);
     const safeVectorStore = surfaces.rag_sources.find((surface) => surface.path === "vector-config/vector-store.yaml");
+    const safeSaasConnector = surfaces.runtime_config.find(
+      (surface) => surface.path === "connectors/internal-slack-digest.yaml"
+    );
 
+    expect(safeSaasConnector?.metadata).toMatchObject({
+      parsed_saas_connector_config: true,
+      saas_connector_external_write_enabled: false,
+      saas_connector_user_or_model_selected_recipient: false,
+      saas_connector_external_or_shared_destination: false,
+      saas_connector_public_channel_destination: false,
+      saas_connector_direct_message_destination: false,
+      saas_connector_broadcast_destination: false,
+      saas_connector_attachment_upload_enabled: false,
+      saas_connector_recipient_allowlist_missing: false,
+      saas_connector_approval_required: true
+    });
+    expect(safeSaasConnector?.metadata.saas_connector_recipient_kinds).toEqual(["workspace"]);
+    expect(findings.filter((finding) => finding.rule_id === "AGENTCSP-RUNTIME-126")).toHaveLength(0);
     expect(safeVectorStore?.metadata).toMatchObject({
       parsed_rag_connector_config: true,
       vector_store_remote_fetch_enabled: false,

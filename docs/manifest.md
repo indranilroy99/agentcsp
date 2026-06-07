@@ -1335,6 +1335,15 @@ SaaS connector metadata may include:
 - `saas_connector_admin_scope`
 - `saas_connector_read_enabled`
 - `saas_connector_external_write_enabled`
+- `saas_connector_recipient_redacted`
+- `saas_connector_recipient_kinds`
+- `saas_connector_user_or_model_selected_recipient`
+- `saas_connector_external_or_shared_destination`
+- `saas_connector_public_channel_destination`
+- `saas_connector_direct_message_destination`
+- `saas_connector_broadcast_destination`
+- `saas_connector_attachment_upload_enabled`
+- `saas_connector_recipient_allowlist_missing`
 - `saas_connector_untrusted_input`
 - `saas_connector_sensitive_data`
 - `saas_connector_pii_data`
@@ -1342,7 +1351,7 @@ SaaS connector metadata may include:
 - `env_key_names`
 - `secret_ref_key_names`
 
-Raw OAuth scopes, endpoint URLs, webhook URLs, workspace names, channel names, queue names, repository names, customer-system labels, and secret placeholders are not emitted. Provider names, redacted destination categories, normalized scope categories, write/read posture, untrusted-input booleans, approval posture, and credential key names let rules detect over-authorized SaaS connectors without copying integration configuration into the manifest.
+Raw OAuth scopes, endpoint URLs, webhook URLs, workspace names, channel names, recipient labels, queue names, repository names, customer-system labels, and secret placeholders are not emitted. Provider names, redacted destination categories, normalized scope categories, recipient categories, recipient-selection posture, recipient allowlist posture, attachment-upload posture, write/read posture, untrusted-input booleans, approval posture, and credential key names let rules detect over-authorized SaaS connectors and external recipient-boundary exposure without copying integration configuration into the manifest.
 
 ## Secret Manager Posture
 

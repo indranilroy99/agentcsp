@@ -6592,6 +6592,15 @@ interface SaasConnectorPosture {
   saas_connector_admin_scope: boolean;
   saas_connector_read_enabled: boolean;
   saas_connector_external_write_enabled: boolean;
+  saas_connector_recipient_redacted: boolean;
+  saas_connector_recipient_kinds: string[];
+  saas_connector_user_or_model_selected_recipient: boolean;
+  saas_connector_external_or_shared_destination: boolean;
+  saas_connector_public_channel_destination: boolean;
+  saas_connector_direct_message_destination: boolean;
+  saas_connector_broadcast_destination: boolean;
+  saas_connector_attachment_upload_enabled: boolean;
+  saas_connector_recipient_allowlist_missing: boolean;
   saas_connector_untrusted_input: boolean;
   saas_connector_sensitive_data: boolean;
   saas_connector_pii_data: boolean;
@@ -17179,6 +17188,9 @@ function classifySaasConnectorConfig(value: unknown, filePath: string): SaasConn
   const secretRefKeys = extractSecretReferenceKeys(stringValues);
   const externalWrite = hasSaasExternalWriteSignal(fields, scopeCategories);
   const approvalRequired = hasSaasApprovalRequiredSignal(fields);
+  const recipientKinds = collectSaasRecipientKinds(fields);
+  const attachmentUploadEnabled = hasSaasAttachmentUploadSignal(fields, scopeCategories);
+  const recipientAllowlistRequired = hasSaasRecipientAllowlistRequiredSignal(fields);
 
   return {
     saas_connector_fields: fields
@@ -17196,6 +17208,15 @@ function classifySaasConnectorConfig(value: unknown, filePath: string): SaasConn
     saas_connector_admin_scope: scopeCategories.some((scope) => scope.includes("admin") || scope === "wildcard_scope"),
     saas_connector_read_enabled: hasSaasReadSignal(fields, scopeCategories),
     saas_connector_external_write_enabled: externalWrite,
+    saas_connector_recipient_redacted: recipientKinds.length > 0,
+    saas_connector_recipient_kinds: recipientKinds,
+    saas_connector_user_or_model_selected_recipient: hasSaasUserOrModelSelectedRecipientSignal(fields),
+    saas_connector_external_or_shared_destination: recipientKinds.includes("external_or_shared"),
+    saas_connector_public_channel_destination: recipientKinds.includes("public_channel"),
+    saas_connector_direct_message_destination: recipientKinds.includes("direct_message"),
+    saas_connector_broadcast_destination: recipientKinds.includes("broadcast"),
+    saas_connector_attachment_upload_enabled: attachmentUploadEnabled,
+    saas_connector_recipient_allowlist_missing: externalWrite && !recipientAllowlistRequired,
     saas_connector_untrusted_input: hasSaasUntrustedInputSignal(fields),
     saas_connector_sensitive_data: hasSaasSensitiveDataSignal(fields),
     saas_connector_pii_data: hasSaasPiiDataSignal(fields),
@@ -17329,6 +17350,103 @@ function hasSaasExternalWriteSignal(fields: RuntimeField[], scopeCategories: str
     );
 }
 
+function collectSaasRecipientKinds(fields: RuntimeField[]): string[] {
+  const kinds = new Set<string>();
+  for (const field of fields) {
+    if (/(allowlist|allow[_-]?list|denylist|deny[_-]?list|approved|trusted|safe)/iu.test(field.path)) continue;
+    if (
+      /(?:^|\.)(external_shared_channels|externalSharedChannels|public_channels|publicChannels|direct_messages|directMessages|broadcast|slack_connect|slackConnect)$/iu.test(
+        field.path
+      ) &&
+      !truthyConfigValue(field.value)
+    ) {
+      continue;
+    }
+    if (
+      disabledConfigValue(field.value) &&
+      /(?:external|shared|public|direct|dm|broadcast|slack[_-]?connect|recipient|channel|workspace|target|destination)/iu.test(field.path)
+    ) {
+      continue;
+    }
+    const text = `${field.path} ${fieldValueText(field)}`;
+    const recipientPath = /(?:^|\.)(destinations?|recipients?|channels?|rooms?|users?|targets?|to|cc|bcc|workspace|workspaces|audience|route|routing)(?:\.|$)/iu.test(
+      field.path
+    );
+    if (!recipientPath && !/(?:^|[_\W])(channel|recipient|destination|workspace|slack[_\s-]?connect|shared[_\s-]?channel|direct[_\s-]?message|dm|broadcast)(?:[_\W]|$)/iu.test(text)) {
+      continue;
+    }
+    if (/(?:^|[_\W])(channel|channels|room|rooms)(?:[_\W]|$)/iu.test(text)) kinds.add("channel");
+    if (/(?:^|[_\W])(workspace|workspaces|tenant|org|organization)(?:[_\W]|$)/iu.test(text)) kinds.add("workspace");
+    if (/(?:^|[_\W])(direct[_\s-]?message|direct[_\s-]?messages|dm|ims?|user[_\s-]?dm|private[_\s-]?message)(?:[_\W]|$)/iu.test(text)) {
+      kinds.add("direct_message");
+    }
+    if (/(?:^|[_\W])(email|to|cc|bcc|mailbox|address)(?:[_\W]|$)/iu.test(text)) {
+      kinds.add("email_recipient");
+    }
+    if (/(?:^|[_\W])(public[_\s-]?channels?|public[_\s-]?rooms?|public[_\s-]?workspace|open[_\s-]?channels?)(?:[_\W]|$)/iu.test(text)) {
+      kinds.add("public_channel");
+    }
+    if (/(?:^|[_\W])(external|shared[_\s-]?channel|slack[_\s-]?connect|guest|partner|customer[_\s-]?channel|cross[_\s-]?workspace|federated)(?:[_\W]|$)/iu.test(text)) {
+      kinds.add("external_or_shared");
+    }
+    if (/(?:^|[_\W])(broadcast|all[_\s-]?channels|all[_\s-]?users|everyone|here|channel[_\s-]?wide|workspace[_\s-]?wide|fanout|mass[_\s-]?message)(?:[_\W]|$)/iu.test(text)) {
+      kinds.add("broadcast");
+    }
+    if (/(?:^|[_\W])(\*|any|all|wildcard)(?:[_\W]|$)/iu.test(text) && /(?:recipient|channel|destination|workspace|target)/iu.test(text)) {
+      kinds.add("broadcast");
+    }
+  }
+  return [...kinds].sort((a, b) => a.localeCompare(b));
+}
+
+function hasSaasUserOrModelSelectedRecipientSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => {
+    const text = `${field.path} ${fieldValueText(field)}`;
+    if (
+      /(?:^|[_\W])(user|customer|client|model|llm|agent|prompt|ticket|message|retrieved|rag)[_\s.-]?(selected|provided|supplied|controlled|generated|input)?[_\s.-]?(recipient|channel|destination|workspace|target|to|cc|bcc)(?:[_\W]|$)/iu.test(
+        text
+      )
+    ) {
+      return truthyConfigValue(field.value);
+    }
+    if (
+      /(?:^|[_\W])(recipient|channel|destination|workspace|target|to|cc|bcc)[_\s.-]?(from|source|selector|selected[_\s.-]?by)(?:[_\W]|$)/iu.test(
+        field.path
+      ) &&
+      /(?:^|[_\W])(user|customer|client|model|llm|agent|prompt|ticket|message|retrieved|rag)(?:[_\W]|$)/iu.test(fieldValueText(field))
+    ) {
+      return true;
+    }
+    return false;
+  });
+}
+
+function hasSaasAttachmentUploadSignal(fields: RuntimeField[], scopeCategories: string[]): boolean {
+  return (
+    scopeCategories.includes("messaging_write") &&
+      fields.some((field) => /files?:write|upload[_\s.-]?file|file[_\s.-]?upload|attachments?:write/iu.test(`${field.path} ${fieldValueText(field)}`))
+  ) || fields.some((field) =>
+    /(?:^|[_\W])(upload|attach|attachment|file[_\s.-]?send|send[_\s.-]?file|post[_\s.-]?file)(?:[_\W]|$)/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    ) && truthyConfigValue(field.value)
+  );
+}
+
+function hasSaasRecipientAllowlistRequiredSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => {
+    const text = `${field.path} ${fieldValueText(field)}`;
+    if (
+      /(?:^|[_\W])(recipient|channel|destination|workspace|target|domain|tenant|workspace)[_\s.-]?(allowlist|allow[_\s.-]?list|denylist|deny[_\s.-]?list|approved|trusted|safe)(?:[_\W]|$)/iu.test(
+        field.path
+      )
+    ) {
+      return truthyConfigValue(field.value);
+    }
+    return /(?:^|[_\W])(recipient|channel|destination|workspace|target|domain)[_\s.-]?(allowlist|required|approved|trusted|safe)(?:[_\W]|$)/iu.test(text) &&
+      /\b(enabled|true|required|on|strict)\b/iu.test(text);
+  });
+}
+
 function hasSaasUntrustedInputSignal(fields: RuntimeField[]): boolean {
   return fields.some((field) => {
     if (!/(^|\.)(inputs?|input_sources?|sources?|payload|payloads|context|contexts|messages?|events?|triggers?|documents?|attachments?)(\.|$)/iu.test(field.path)) {
@@ -17363,7 +17481,7 @@ function hasSaasApprovalRequiredSignal(fields: RuntimeField[]): boolean {
 }
 
 function isSaasConnectorSecurityField(fieldPath: string): boolean {
-  return /provider|service|connector|integration|api|endpoint|url|host|oauth|scope|permission|role|token|secret|credential|auth|webhook|channel|repo|email|ticket|issue|crm|customer|user|source|input|action|write|send|post|publish|approval|destination/iu.test(
+  return /provider|service|connector|integration|api|endpoint|url|host|oauth|scope|permission|role|token|secret|credential|auth|webhook|channel|recipient|workspace|target|allowlist|denylist|slack[_-]?connect|shared|external|public|broadcast|direct|dm|attachment|upload|repo|email|ticket|issue|crm|customer|user|source|input|action|write|send|post|publish|approval|destination/iu.test(
     fieldPath
   );
 }
