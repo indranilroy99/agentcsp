@@ -1267,6 +1267,16 @@ The current iteration adds:
 - rule `AGENTCSP-MCP-010` for dynamic remote MCP tool catalogs that combine mutable tool supply, model-visible descriptions, remote schema trust, disabled verification, unreviewed privileged tools, credentials, and missing approval
 - scanner, rule, fixture verifier, and redaction coverage proving raw catalog URLs, source values, tool names, context labels, safe manifest labels, and token placeholders stay redacted
 
+## Context Composer Env Secret Materialization Pass
+
+The current iteration adds:
+
+- first-class redacted metadata for context composers that materialize environment references into system, developer, prompt, or model-visible context, including target categories, secret-bearing env posture, redaction posture, untrusted selector posture, approval posture, and credential key names
+- vulnerable fixture coverage for a context composer that injects credential-bearing environment references into system, developer, and model context while untrusted customer, retrieval, browser, command, and memory sources are present, redaction is disabled, and approval is missing
+- safe fixture coverage for a scoped context composer that explicitly disables env materialization, keeps redaction enabled, and requires approval
+- rule `AGENTCSP-RUNTIME-066` for context composers that combine untrusted sources, env-secret materialization into privileged/model context, disabled redaction, credential exposure, and missing approval
+- scanner, rule, fixture verifier, and redaction coverage proving raw env placeholders, untrusted selector labels, source labels, tool names, and safe internal labels stay redacted
+
 ## Initial Build Recommendation
 
 Start with a CLI-first MVP before building the dashboard:

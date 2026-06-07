@@ -2972,12 +2972,14 @@ function detectAgentContextComposerConfig(file: WalkedFile, text: string | undef
     actions.add("send");
     actions.add("publish");
   }
+  if (posture.agent_context_composer_env_materialization_privileged_context) actions.add("send");
   if (posture.agent_context_composer_memory_write) actions.add("remember");
   if (posture.agent_context_composer_shell_authority) actions.add("execute");
 
   const dataClasses = new Set<SurfaceObject["data_classes"][number]>(["unknown"]);
   if (
     posture.agent_context_composer_secret_access ||
+    posture.agent_context_composer_secret_env_materialization ||
     posture.env_key_names.some(isCredentialLikeKeyName) ||
     posture.secret_ref_key_names.length > 0
   ) {
@@ -2998,11 +3000,16 @@ function detectAgentContextComposerConfig(file: WalkedFile, text: string | undef
       posture.agent_context_composer_privileged_tool_authority ||
       posture.agent_context_composer_write_authority ||
       posture.agent_context_composer_external_authority ||
-      posture.agent_context_composer_memory_write,
-    reversible: !posture.agent_context_composer_external_authority && !posture.agent_context_composer_destructive_authority,
+      posture.agent_context_composer_memory_write ||
+      posture.agent_context_composer_secret_env_materialization,
+    reversible:
+      !posture.agent_context_composer_external_authority &&
+      !posture.agent_context_composer_destructive_authority &&
+      !posture.agent_context_composer_secret_env_materialization,
     external_reach: posture.agent_context_composer_external_authority,
     secret_exposure:
       posture.agent_context_composer_secret_access ||
+      posture.agent_context_composer_secret_env_materialization ||
       posture.env_key_names.some(isCredentialLikeKeyName) ||
       posture.secret_ref_key_names.length > 0,
     reason: "Agent context-composer configuration discovered as prompt assembly and role-boundary posture.",
@@ -3020,7 +3027,9 @@ function detectAgentContextComposerConfig(file: WalkedFile, text: string | undef
       posture.agent_context_composer_untrusted_sources &&
       posture.agent_context_composer_privileged_role_injection &&
       posture.agent_context_composer_privileged_tool_authority &&
-      (posture.agent_context_composer_sanitization_disabled || posture.agent_context_composer_delimiter_disabled)
+      (posture.agent_context_composer_sanitization_disabled ||
+        posture.agent_context_composer_delimiter_disabled ||
+        posture.agent_context_composer_secret_env_materialization)
   });
 }
 
@@ -6135,6 +6144,12 @@ interface AgentContextComposerPosture {
   agent_context_composer_delimiter_disabled: boolean;
   agent_context_composer_sanitization_disabled: boolean;
   agent_context_composer_raw_context_enabled: boolean;
+  agent_context_composer_env_materialization: boolean;
+  agent_context_composer_secret_env_materialization: boolean;
+  agent_context_composer_env_materialization_target_categories: string[];
+  agent_context_composer_env_materialization_privileged_context: boolean;
+  agent_context_composer_env_materialization_redaction_disabled: boolean;
+  agent_context_composer_untrusted_env_selector: boolean;
   agent_context_composer_tool_authority_categories: string[];
   agent_context_composer_privileged_tool_authority: boolean;
   agent_context_composer_write_authority: boolean;
@@ -15189,7 +15204,19 @@ function classifyAgentContextComposerConfig(value: unknown, filePath: string): A
     ...extractEnvironmentReferenceKeys(stringValues)
   ]);
   const secretRefKeys = extractSecretReferenceKeys(stringValues);
-  const secretAccess = hasAgentContextComposerSecretAccessSignal(fields) || authorityCategories.includes("secret_manager_access");
+  const envMaterializationTargets = collectAgentContextComposerEnvMaterializationTargets(fields);
+  const envMaterialization =
+    hasAgentContextComposerEnvMaterializationEnabledSignal(fields) ||
+    (!hasAgentContextComposerEnvMaterializationDisabledSignal(fields) &&
+      envMaterializationTargets.length > 0 &&
+      (envKeys.length > 0 || hasAgentContextComposerSecretEnvMaterializationSignal(fields)));
+  const secretEnvMaterialization =
+    envMaterialization &&
+    (envKeys.some(isCredentialLikeKeyName) ||
+      secretRefKeys.length > 0 ||
+      hasAgentContextComposerSecretEnvMaterializationSignal(fields));
+  const secretAccess =
+    hasAgentContextComposerSecretAccessSignal(fields) || authorityCategories.includes("secret_manager_access") || secretEnvMaterialization;
 
   return {
     agent_context_composer_fields: fields
@@ -15208,6 +15235,15 @@ function classifyAgentContextComposerConfig(value: unknown, filePath: string): A
     agent_context_composer_delimiter_disabled: hasAgentContextComposerDelimiterDisabledSignal(fields),
     agent_context_composer_sanitization_disabled: hasAgentContextComposerSanitizationDisabledSignal(fields),
     agent_context_composer_raw_context_enabled: hasAgentContextComposerRawContextSignal(fields),
+    agent_context_composer_env_materialization: envMaterialization,
+    agent_context_composer_secret_env_materialization: secretEnvMaterialization,
+    agent_context_composer_env_materialization_target_categories: envMaterializationTargets,
+    agent_context_composer_env_materialization_privileged_context: envMaterializationTargets.some((target) =>
+      ["developer_prompt", "model_context", "prompt_context", "system_prompt"].includes(target)
+    ),
+    agent_context_composer_env_materialization_redaction_disabled:
+      envMaterialization && hasAgentContextComposerEnvMaterializationRedactionDisabledSignal(fields),
+    agent_context_composer_untrusted_env_selector: envMaterialization && hasAgentContextComposerUntrustedEnvSelectorSignal(fields),
     agent_context_composer_tool_authority_categories: authorityCategories,
     agent_context_composer_privileged_tool_authority: authorityCategories.length > 0 || hasAgentContextComposerPrivilegedToolSignal(fields),
     agent_context_composer_write_authority: hasAgentContextComposerWriteAuthoritySignal(fields, authorityCategories),
@@ -15248,6 +15284,7 @@ function collectAgentContextComposerSourceCategories(fields: RuntimeField[]): st
 function collectAgentContextComposerToolAuthorityCategories(fields: RuntimeField[]): string[] {
   const categories = new Set<string>();
   for (const field of fields) {
+    if (isAgentContextComposerPositiveControlField(field)) continue;
     const text = `${field.path} ${fieldValueText(field)}`.toLowerCase();
     const authorityField = /(?:^|\.)(tool_authority|runtime_authority|authority|tools?|actions?|allowed_tools|permissions?|capabilities?|connectors?)(?:\.|$)/iu.test(
       field.path
@@ -15354,6 +15391,109 @@ function hasAgentContextComposerRawContextSignal(fields: RuntimeField[]): boolea
   );
 }
 
+function hasAgentContextComposerEnvMaterializationEnabledSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /(?:^|\.)(env_materialization|envMaterialization|environment_materialization|environmentMaterialization|secret_materialization|secretMaterialization)(?:\.|$)/u.test(
+      field.path
+    ) &&
+    /(?:^|\.)(enabled|active)(?:\.|$)/iu.test(field.path) &&
+    truthyConfigValue(field.value)
+  );
+}
+
+function hasAgentContextComposerEnvMaterializationDisabledSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /(?:^|\.)(env_materialization|envMaterialization|environment_materialization|environmentMaterialization|secret_materialization|secretMaterialization)(?:\.|$)/u.test(
+      field.path
+    ) &&
+    /(?:^|\.)(enabled|active)(?:\.|$)/iu.test(field.path) &&
+    disabledConfigValue(field.value)
+  );
+}
+
+function collectAgentContextComposerEnvMaterializationTargets(fields: RuntimeField[]): string[] {
+  const targets = new Set<string>();
+  for (const field of fields) {
+    const text = agentContextComposerEnvMaterializationText(field);
+    const envMaterializationPath =
+      /(?:^|\.)(env_materialization|envMaterialization|environment_materialization|environmentMaterialization|secret_materialization|secretMaterialization)(?:\.|$)/u.test(
+        field.path
+      );
+    const materializationField =
+      envMaterializationPath ||
+      (/\b(env|environment|secret|credential|token|password|api key|api-key)\b/iu.test(text) &&
+        /\b(materialize|inject|hydrate|include|render|expose|copy|pass|forward)\b/iu.test(text));
+    if (!materializationField) continue;
+    if (/\bsystem\b|\bsystem prompt\b|\bsystem_prompt\b/iu.test(text)) {
+      targets.add("system_prompt");
+      continue;
+    }
+    if (/\bdeveloper\b|\bdeveloper prompt\b|\bdeveloper_prompt\b/iu.test(text)) {
+      targets.add("developer_prompt");
+      continue;
+    }
+    if (/\b(model|llm|assistant)\b|\bmodel context\b|\bmodel_context\b/iu.test(text)) {
+      targets.add("model_context");
+      continue;
+    }
+    if (/\bprompt\b|\bprompt context\b|\bprompt_context\b/iu.test(text)) {
+      targets.add("prompt_context");
+      continue;
+    }
+    if (/\btool\b|\btool context\b|\btool_context\b/iu.test(text)) targets.add("tool_context");
+  }
+  return [...targets].sort((a, b) => a.localeCompare(b));
+}
+
+function hasAgentContextComposerSecretEnvMaterializationSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => {
+    const text = agentContextComposerEnvMaterializationText(field);
+    if (
+      !/(?:^|\.)(env_materialization|envMaterialization|environment_materialization|environmentMaterialization|secret_materialization|secretMaterialization)(?:\.|$)/u.test(
+        field.path
+      ) &&
+      !/\b(env|environment|secret|credential|token|password|api key|api-key)\b/iu.test(text)
+    ) {
+      return false;
+    }
+    return /\b(secret|token|credential|password|api key|api-key|authorization|bearer|oauth|private key)\b/iu.test(text);
+  });
+}
+
+function hasAgentContextComposerEnvMaterializationRedactionDisabledSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => {
+    if (
+      !/(?:^|\.)(env_materialization|envMaterialization|environment_materialization|environmentMaterialization|secret_materialization|secretMaterialization)(?:\.|$)/u.test(
+        field.path
+      )
+    ) {
+      return false;
+    }
+    const text = agentContextComposerEnvMaterializationText(field);
+    if (!/\b(redact|redaction|mask|filter|secret filter|secret_filter|sanitize|sanitization)\b/iu.test(text)) return false;
+    return disabledConfigValue(field.value) || /\b(disabled|off|false|none|raw|unredacted|no redaction|without redaction)\b/iu.test(text);
+  });
+}
+
+function hasAgentContextComposerUntrustedEnvSelectorSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => {
+    if (
+      !/(?:^|\.)(env_materialization|envMaterialization|environment_materialization|environmentMaterialization|secret_materialization|secretMaterialization)(?:\.|$)/u.test(
+        field.path
+      )
+    ) {
+      return false;
+    }
+    return /\b(untrusted|user|customer|client|ticket|support|issue|comment|message|prompt|retrieved|rag|browser|web|selector|requested|from context|from_context)\b/iu.test(
+      agentContextComposerEnvMaterializationText(field)
+    );
+  });
+}
+
+function agentContextComposerEnvMaterializationText(field: RuntimeField): string {
+  return `${field.path} ${fieldValueText(field)}`.toLowerCase().replaceAll("_", " ").replaceAll("-", " ");
+}
+
 function hasAgentContextComposerPrivilegedToolSignal(fields: RuntimeField[]): boolean {
   return fields.some((field) =>
     /(?:^|[_\W])(tool|tools|mcp|browser|shell|database|secret|vault|slack|email|webhook|filesystem|memory|write|update|send|post|publish)(?:[_\W]|$)/iu.test(
@@ -15391,6 +15531,7 @@ function hasAgentContextComposerDestructiveAuthoritySignal(fields: RuntimeField[
 
 function hasAgentContextComposerSecretAccessSignal(fields: RuntimeField[]): boolean {
   return fields.some((field) =>
+    !isAgentContextComposerPositiveControlField(field) &&
     /(?:^|[_\W])(secret|secrets|token|credential|api[_-]?key|password|vault|key[_\s-]?vault|authorization|oauth)(?:[_\W]|$)/iu.test(
       `${field.path} ${fieldValueText(field)}`
     )
@@ -15399,6 +15540,7 @@ function hasAgentContextComposerSecretAccessSignal(fields: RuntimeField[]): bool
 
 function hasAgentContextComposerSensitiveDataSignal(fields: RuntimeField[]): boolean {
   return fields.some((field) =>
+    !isAgentContextComposerPositiveControlField(field) &&
     /(?:^|[_\W])(customer|client|ticket|support|internal|confidential|private|proprietary|sensitive|account|billing|payment|prod|production|admin|credential|token|api[_-]?key|secret)(?:[_\W]|$)/iu.test(
       `${field.path} ${fieldValueText(field)}`
     )
@@ -15407,10 +15549,18 @@ function hasAgentContextComposerSensitiveDataSignal(fields: RuntimeField[]): boo
 
 function hasAgentContextComposerPiiDataSignal(fields: RuntimeField[]): boolean {
   return fields.some((field) =>
+    !isAgentContextComposerPositiveControlField(field) &&
     /(?:^|[_\W])(pii|email|phone|address|ssn|passport|dob|date[_\s-]?of[_\s-]?birth|customer[_-]?id|user[_-]?id|account[_-]?id)(?:[_\W]|$)/iu.test(
       `${field.path} ${fieldValueText(field)}`
     )
   );
+}
+
+function isAgentContextComposerPositiveControlField(field: RuntimeField): boolean {
+  if (!/(?:^|\.)(redaction|redact|mask|masking|sanitize|sanitization|filter|validation)(?:\.|$)/iu.test(field.path)) {
+    return false;
+  }
+  return truthyConfigValue(field.value) || /\b(enabled|on|true|enforced|required)\b/iu.test(`${field.path} ${fieldValueText(field)}`);
 }
 
 function hasAgentContextComposerApprovalRequiredSignal(fields: RuntimeField[]): boolean {

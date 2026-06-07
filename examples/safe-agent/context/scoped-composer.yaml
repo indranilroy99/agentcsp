@@ -1,0 +1,25 @@
+mode: scoped_context_composer
+sources:
+  - approved_internal_summary
+roles:
+  user:
+    include_sources:
+      - approved_internal_summary
+    delimiter: fenced
+    sanitization: enabled
+  system:
+    include_sources: []
+    delimiter: enforced
+    sanitization: enabled
+env_materialization:
+  enabled: false
+  redaction: enabled
+  approval_required: true
+tool_authority:
+  tools:
+    - readonly_docs.search
+  approval_required: true
+redaction:
+  secrets: true
+  pii: true
+approval_required: true

@@ -90,6 +90,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-063")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-064")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-065")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-066")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-030")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-031")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-032")).toBe(true);
@@ -1696,6 +1697,41 @@ describe("rule engine", () => {
     expect(JSON.stringify(runtimeContextComposerFindings[0])).not.toContain("retrieved_account_context");
     expect(JSON.stringify(runtimeContextComposerFindings[0])).not.toContain("support_db.update_customer_record");
     expect(JSON.stringify(runtimeContextComposerFindings[0])).not.toContain("customer_context_email");
+    const runtimeContextEnvSecretFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-RUNTIME-066");
+    expect(runtimeContextEnvSecretFindings).toHaveLength(1);
+    expect(runtimeContextEnvSecretFindings[0]?.matched_object.path).toBe("context/system-context.yaml");
+    expect(runtimeContextEnvSecretFindings[0]?.matched_object.metadata).toMatchObject({
+      parsed_agent_context_composer_config: true,
+      agent_context_composer_untrusted_sources: true,
+      agent_context_composer_env_materialization: true,
+      agent_context_composer_secret_env_materialization: true,
+      agent_context_composer_env_materialization_privileged_context: true,
+      agent_context_composer_env_materialization_redaction_disabled: true,
+      agent_context_composer_untrusted_env_selector: true,
+      agent_context_composer_approval_required: false
+    });
+    expect(runtimeContextEnvSecretFindings[0]?.matched_object.metadata.agent_context_composer_env_materialization_target_categories).toEqual([
+      "developer_prompt",
+      "model_context",
+      "system_prompt"
+    ]);
+    expect(runtimeContextEnvSecretFindings[0]?.matched_object.metadata.env_key_names).toEqual([
+      "CONTEXT_COMPOSER_TOKEN",
+      "CUSTOMER_SUCCESS_SLACK_BOT_TOKEN",
+      "OPENAI_API_KEY",
+      "SUPPORT_DB_PASSWORD"
+    ]);
+    expect(runtimeContextEnvSecretFindings[0]?.severity).toBe("critical");
+    expect(runtimeContextEnvSecretFindings[0]?.confidence).toBe("very_high");
+    expect(runtimeContextEnvSecretFindings[0]?.recommended_control).toBe("redact");
+    expect(JSON.stringify(runtimeContextEnvSecretFindings[0])).not.toContain("${CONTEXT_COMPOSER_TOKEN}");
+    expect(JSON.stringify(runtimeContextEnvSecretFindings[0])).not.toContain("${CUSTOMER_SUCCESS_SLACK_BOT_TOKEN}");
+    expect(JSON.stringify(runtimeContextEnvSecretFindings[0])).not.toContain("${OPENAI_API_KEY}");
+    expect(JSON.stringify(runtimeContextEnvSecretFindings[0])).not.toContain("${SUPPORT_DB_PASSWORD}");
+    expect(JSON.stringify(runtimeContextEnvSecretFindings[0])).not.toContain("customer_requested_env_key");
+    expect(JSON.stringify(runtimeContextEnvSecretFindings[0])).not.toContain("customer_ticket_message");
+    expect(JSON.stringify(runtimeContextEnvSecretFindings[0])).not.toContain("retrieved_account_context");
+    expect(JSON.stringify(runtimeContextEnvSecretFindings[0])).not.toContain("support_db.update_customer_record");
     const runtimeToolOutputFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-RUNTIME-039");
     expect(runtimeToolOutputFindings).toHaveLength(1);
     expect(runtimeToolOutputFindings[0]?.matched_object.path).toBe("tool-results/result-policy.yaml");

@@ -914,6 +914,12 @@ Agent context-composer metadata may include:
 - `agent_context_composer_delimiter_disabled`
 - `agent_context_composer_sanitization_disabled`
 - `agent_context_composer_raw_context_enabled`
+- `agent_context_composer_env_materialization`
+- `agent_context_composer_secret_env_materialization`
+- `agent_context_composer_env_materialization_target_categories`
+- `agent_context_composer_env_materialization_privileged_context`
+- `agent_context_composer_env_materialization_redaction_disabled`
+- `agent_context_composer_untrusted_env_selector`
 - `agent_context_composer_tool_authority_categories`
 - `agent_context_composer_privileged_tool_authority`
 - `agent_context_composer_write_authority`
@@ -928,7 +934,7 @@ Agent context-composer metadata may include:
 - `env_key_names`
 - `secret_ref_key_names`
 
-Raw source labels, role prompt text, message templates, tool names, action strings, data-field labels, and secret placeholders are not emitted. Source categories, privileged-role booleans, delimiter and sanitization posture, raw-context posture, tool-authority categories, approval posture, data-class booleans, and credential key names let rules detect context assembly paths where untrusted content is promoted into system or developer roles before privileged tool use.
+Raw source labels, role prompt text, message templates, tool names, action strings, data-field labels, env selector labels, and secret placeholders are not emitted. Source categories, privileged-role booleans, delimiter and sanitization posture, raw-context posture, environment-materialization target categories, tool-authority categories, approval posture, data-class booleans, and credential key names let rules detect context assembly paths where untrusted content or credential-bearing environment references are promoted into system, developer, or model-visible context before privileged tool use.
 
 ## Agent Context-Window And Compaction Posture
 

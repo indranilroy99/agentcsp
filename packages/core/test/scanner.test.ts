@@ -2759,6 +2759,11 @@ describe("scanner", () => {
       agent_context_composer_delimiter_disabled: true,
       agent_context_composer_sanitization_disabled: true,
       agent_context_composer_raw_context_enabled: true,
+      agent_context_composer_env_materialization: true,
+      agent_context_composer_secret_env_materialization: true,
+      agent_context_composer_env_materialization_privileged_context: true,
+      agent_context_composer_env_materialization_redaction_disabled: true,
+      agent_context_composer_untrusted_env_selector: true,
       agent_context_composer_privileged_tool_authority: true,
       agent_context_composer_write_authority: true,
       agent_context_composer_external_authority: true,
@@ -2777,6 +2782,11 @@ describe("scanner", () => {
       "untrusted_user_input",
       "web_content"
     ]);
+    expect(contextComposerConfig?.metadata.agent_context_composer_env_materialization_target_categories).toEqual([
+      "developer_prompt",
+      "model_context",
+      "system_prompt"
+    ]);
     expect(contextComposerConfig?.metadata.agent_context_composer_tool_authority_categories).toEqual([
       "browser_action",
       "database_access",
@@ -2785,11 +2795,25 @@ describe("scanner", () => {
       "secret_manager_access",
       "tool_call"
     ]);
-    expect(contextComposerConfig?.metadata.env_key_names).toEqual(["CONTEXT_COMPOSER_TOKEN"]);
-    expect(contextComposerConfig?.metadata.secret_ref_key_names).toEqual(["CONTEXT_COMPOSER_TOKEN"]);
+    expect(contextComposerConfig?.metadata.env_key_names).toEqual([
+      "CONTEXT_COMPOSER_TOKEN",
+      "CUSTOMER_SUCCESS_SLACK_BOT_TOKEN",
+      "OPENAI_API_KEY",
+      "SUPPORT_DB_PASSWORD"
+    ]);
+    expect(contextComposerConfig?.metadata.secret_ref_key_names).toEqual([
+      "CONTEXT_COMPOSER_TOKEN",
+      "CUSTOMER_SUCCESS_SLACK_BOT_TOKEN",
+      "OPENAI_API_KEY",
+      "SUPPORT_DB_PASSWORD"
+    ]);
     expect(contextComposerConfig?.data_classes).toEqual(["confidential", "credential", "pii"]);
     expect(contextComposerConfig?.actions).toEqual(["call", "publish", "read", "remember", "send", "write"]);
     expect(JSON.stringify(contextComposerConfig)).not.toContain("${CONTEXT_COMPOSER_TOKEN}");
+    expect(JSON.stringify(contextComposerConfig)).not.toContain("${CUSTOMER_SUCCESS_SLACK_BOT_TOKEN}");
+    expect(JSON.stringify(contextComposerConfig)).not.toContain("${OPENAI_API_KEY}");
+    expect(JSON.stringify(contextComposerConfig)).not.toContain("${SUPPORT_DB_PASSWORD}");
+    expect(JSON.stringify(contextComposerConfig)).not.toContain("customer_requested_env_key");
     expect(JSON.stringify(contextComposerConfig)).not.toContain("customer_ticket_message");
     expect(JSON.stringify(contextComposerConfig)).not.toContain("retrieved_account_context");
     expect(JSON.stringify(contextComposerConfig)).not.toContain("browser_tool_output");
@@ -4200,6 +4224,43 @@ describe("scanner", () => {
     expect(JSON.stringify(catalogMcp)).not.toContain("static_local_manifest");
     expect(JSON.stringify(catalogMcp)).not.toContain("readonly_docs.search");
     expect(JSON.stringify(catalogMcp)).not.toContain("approved_internal_summary");
+  });
+
+  it("keeps scoped context composers from materializing env secrets", async () => {
+    const files = await walkProject({
+      root_path: safeFixtureRoot,
+      output_path: ".agentcsp",
+      formats: ["json", "md"],
+      include_hidden: true,
+      include_logs: false,
+      max_file_size_bytes: 1024 * 1024,
+      max_files: 5000,
+      quiet: true
+    });
+    const surfaces = await detectSurfaces(files);
+    const composer = surfaces.runtime_config.find((surface) => surface.path === "context/scoped-composer.yaml");
+
+    expect(composer).toMatchObject({
+      trust_level: "project",
+      secret_exposure: false,
+      external_reach: false,
+      reversible: true,
+      untrusted_to_privileged: false
+    });
+    expect(composer?.metadata).toMatchObject({
+      parsed_agent_context_composer_config: true,
+      agent_context_composer_env_materialization: false,
+      agent_context_composer_secret_env_materialization: false,
+      agent_context_composer_env_materialization_privileged_context: false,
+      agent_context_composer_env_materialization_redaction_disabled: false,
+      agent_context_composer_untrusted_env_selector: false,
+      agent_context_composer_approval_required: true
+    });
+    expect(composer?.metadata.agent_context_composer_env_materialization_target_categories).toEqual([]);
+    expect(composer?.metadata.env_key_names).toEqual([]);
+    expect(composer?.metadata.secret_ref_key_names).toEqual([]);
+    expect(JSON.stringify(composer)).not.toContain("approved_internal_summary");
+    expect(JSON.stringify(composer)).not.toContain("readonly_docs.search");
   });
 
   it("keeps idempotent approval-gated tool retry policies scoped", async () => {

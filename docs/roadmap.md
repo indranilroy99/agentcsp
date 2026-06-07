@@ -47,7 +47,7 @@
 - Add dynamic extension-loader posture for remote skills, plugins, tools, prompts, and MCP capabilities.
 - Add self-modification posture for agent-controlled prompt, policy, runtime, tool, memory, and workflow writes.
 - Add approval-gate integrity posture for model-mediated decisions, external approval channels, channel authentication, approver identity verification, replay protection, default-allow review paths, auto-execution, and human-review boundaries.
-- Add context-composer posture for role-boundary assembly, source promotion, sanitization, delimiters, and privileged tool exposure.
+- Add context-composer posture for role-boundary assembly, source promotion, sanitization, delimiters, environment-secret materialization, and privileged tool exposure.
 - Add context-window and compaction posture for truncation, priority, instruction retention, safety-policy eviction, summary verification, redaction, and privileged tool exposure.
 - Add reasoning-state and scratchpad posture for chain-of-thought, planner traces, tool observations, prompts, retrieval, memory, persistence, sharing, replay, redaction, access controls, and approval boundaries.
 - Add workspace context sync posture for env files, SSH keys, cloud credentials, kubeconfig, git history, home directories, private repositories, untrusted selectors, prompt/RAG/memory sinks, remote sync, redaction, `.agentcspignore`, and approval boundaries.
