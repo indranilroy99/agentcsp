@@ -236,6 +236,7 @@ Every production change should pass:
 - high/critical dependency audit for the tool's own release hygiene
 - Dependabot coverage for npm/pnpm dependencies and GitHub Actions
 - AgentCSP SARIF upload to GitHub code scanning on default-branch pushes
+- SARIF rules and results include GitHub-compatible `security-severity`, precision, tags, ranks, and help metadata
 - documented security disclosure policy for scanner, evidence, CI, and packaged artifact vulnerabilities
 - fixture scan
 - SARIF validation

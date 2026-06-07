@@ -693,6 +693,23 @@ if (vulnerable.sarif) {
   assert(run, "SARIF run is missing");
   assertEqual(run.tool?.driver?.name, "AgentCSP", "SARIF driver name");
   assertEqual(run.results?.length, vulnerable.findings.length, "SARIF result count");
+  assertEqual(run.automationDetails?.id, "agentcsp-scan", "SARIF automation id");
+  const firstRule = run.tool?.driver?.rules?.[0];
+  const firstResult = run.results?.[0];
+  assert(firstRule?.properties?.["security-severity"], "SARIF rule security-severity missing");
+  assertEqual(
+    firstRule.properties.securitySeverity,
+    firstRule.properties["security-severity"],
+    "SARIF compatibility security severity"
+  );
+  assert(firstRule.properties.precision, "SARIF rule precision missing");
+  assert(firstRule.properties.tags?.length > 0, "SARIF rule tags missing");
+  assert(firstRule.defaultConfiguration?.rank > 0, "SARIF rule rank missing");
+  assert(firstRule.help?.markdown?.includes("Recommended control:"), "SARIF rule help markdown missing");
+  assert(firstResult?.properties?.["security-severity"], "SARIF result security-severity missing");
+  assert(firstResult.properties.precision, "SARIF result precision missing");
+  assert(firstResult.properties.rule_tags?.length > 0, "SARIF result tags missing");
+  assert(firstResult.rank > 0, "SARIF result rank missing");
   assert(run.properties?.agentcsp_triage_summary, "SARIF triage summary missing");
   assert(run.properties?.agentcsp_scan_coverage, "SARIF scan coverage missing");
   assert(run.properties?.agentcsp_static_blast_radius, "SARIF blast-radius summary missing");

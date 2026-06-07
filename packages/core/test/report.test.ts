@@ -41,6 +41,21 @@ describe("scanProject", () => {
     expect(result.outputFiles.sarif).toBeDefined();
     const sarif = JSON.parse(await fs.readFile(result.outputFiles.sarif!, "utf8")) as {
       runs: Array<{
+        automationDetails?: { id?: string };
+        tool?: {
+          driver?: {
+            rules?: Array<{
+              id?: string;
+              help?: { markdown?: string };
+              defaultConfiguration?: { rank?: number };
+              properties?: { "security-severity"?: string; securitySeverity?: string; precision?: string; tags?: string[] };
+            }>;
+          };
+        };
+        results?: Array<{
+          rank?: number;
+          properties?: { "security-severity"?: string; precision?: string; rule_tags?: string[] };
+        }>;
         properties?: {
           agentcsp_triage_summary?: { total_findings?: number };
           agentcsp_scan_coverage?: { files_indexed?: number };
@@ -48,6 +63,19 @@ describe("scanProject", () => {
         };
       }>;
     };
+    const firstRule = sarif.runs[0]?.tool?.driver?.rules?.[0];
+    const firstResult = sarif.runs[0]?.results?.[0];
+    expect(sarif.runs[0]?.automationDetails?.id).toBe("agentcsp-scan");
+    expect(firstRule?.properties?.["security-severity"]).toMatch(/^\d+\.\d$/u);
+    expect(firstRule?.properties?.securitySeverity).toBe(firstRule?.properties?.["security-severity"]);
+    expect(firstRule?.properties?.precision).toBeDefined();
+    expect(firstRule?.properties?.tags?.length).toBeGreaterThan(0);
+    expect(firstRule?.defaultConfiguration?.rank).toBeGreaterThan(0);
+    expect(firstRule?.help?.markdown).toContain("Recommended control:");
+    expect(firstResult?.rank).toBeGreaterThan(0);
+    expect(firstResult?.properties?.["security-severity"]).toMatch(/^\d+\.\d$/u);
+    expect(firstResult?.properties?.precision).toBeDefined();
+    expect(firstResult?.properties?.rule_tags?.length).toBeGreaterThan(0);
     expect(sarif.runs[0]?.properties?.agentcsp_triage_summary?.total_findings).toBe(result.findings.length);
     expect(sarif.runs[0]?.properties?.agentcsp_scan_coverage?.files_indexed).toBe(
       result.manifest.scan_coverage?.files_indexed

@@ -28,11 +28,13 @@ export function renderSarifReport(manifest: AgentManifest): Record<string, unkno
                 text: finding.reason
               },
               help: {
-                text: `Recommended control: ${finding.recommended_control.replaceAll("_", " ")}`
+                text: `Recommended control: ${finding.recommended_control.replaceAll("_", " ")}`,
+                markdown: sarifRuleHelpMarkdown(finding)
               },
               properties: {
                 category: finding.category,
                 precision: precisionForFinding(finding),
+                "security-severity": securitySeverity(finding.severity),
                 securitySeverity: securitySeverity(finding.severity),
                 tags: [
                   finding.category,
@@ -42,14 +44,19 @@ export function renderSarifReport(manifest: AgentManifest): Record<string, unkno
                 ]
               },
               defaultConfiguration: {
-                level: sarifLevel(finding.severity)
+                level: sarifLevel(finding.severity),
+                rank: sarifRank(finding.severity)
               }
             }))
           }
         },
+        automationDetails: {
+          id: "agentcsp-scan"
+        },
         results: manifest.findings.map((finding) => ({
           ruleId: finding.rule_id,
           level: finding.suppression?.status === "active" ? "none" : sarifLevel(finding.severity),
+          rank: sarifRank(finding.severity),
           baselineState: sarifBaselineState(finding.baseline_status),
           message: {
             text: `${finding.name}: ${finding.reason} Recommended control: ${finding.recommended_control.replaceAll("_", " ")}.`
@@ -89,6 +96,14 @@ export function renderSarifReport(manifest: AgentManifest): Record<string, unkno
           properties: {
             severity: finding.severity,
             category: finding.category,
+            precision: precisionForFinding(finding),
+            "security-severity": securitySeverity(finding.severity),
+            rule_tags: [
+              finding.category,
+              ...finding.maps_to.owasp,
+              ...finding.maps_to.mitre_atlas,
+              ...finding.maps_to.nist_ai_rmf
+            ],
             risk_score: finding.risk.score,
             risk_factors: finding.risk.rationale,
             confidence: finding.confidence,
@@ -116,6 +131,24 @@ export function renderSarifReport(manifest: AgentManifest): Record<string, unkno
   };
 }
 
+function sarifRuleHelpMarkdown(finding: Finding): string {
+  const mappings = [
+    ...finding.maps_to.owasp.map((item) => `- OWASP: ${item}`),
+    ...finding.maps_to.mitre_atlas.map((item) => `- MITRE ATLAS: ${item}`),
+    ...finding.maps_to.nist_ai_rmf.map((item) => `- NIST AI RMF: ${item}`)
+  ];
+  return [
+    `### ${finding.name}`,
+    "",
+    finding.reason,
+    "",
+    `Recommended control: ${finding.recommended_control.replaceAll("_", " ")}`,
+    "",
+    "Mappings:",
+    ...mappings
+  ].join("\n");
+}
+
 function sarifBaselineState(status: Finding["baseline_status"]): "new" | "unchanged" | undefined {
   if (status === "new") return "new";
   if (status === "existing") return "unchanged";
@@ -137,6 +170,17 @@ function securitySeverity(severity: Severity): string {
     critical: "9.5"
   };
   return scores[severity];
+}
+
+function sarifRank(severity: Severity): number {
+  const ranks: Record<Severity, number> = {
+    info: 10,
+    low: 30,
+    medium: 55,
+    high: 80,
+    critical: 95
+  };
+  return ranks[severity];
 }
 
 function precisionForFinding(finding: Finding): "very-high" | "high" | "medium" {

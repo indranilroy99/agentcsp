@@ -1307,6 +1307,14 @@ The current iteration adds:
 - rule `AGENTCSP-MCP-011` for remote MCP resource subscriptions that combine live untrusted context, raw model-visible injection, disabled controls, privileged authority, credentials, and missing approval
 - scanner, rule, fixture verifier, and redaction coverage proving raw subscribed resource URIs, stream labels, trust labels, context labels, action names, safe resource paths, and token placeholders stay redacted
 
+## SARIF Code-Scanning Metadata Pass
+
+The current iteration adds:
+
+- GitHub code-scanning compatible `security-severity` metadata on SARIF rules and results while preserving the existing `securitySeverity` compatibility field
+- SARIF rule and result ranks, precision, tags, result-level rule tags, automation details, and rule help markdown so CI and code-scanning platforms can triage AgentCSP findings without parsing Markdown reports
+- report and fixture-output regression coverage proving SARIF emits scan-level triage, coverage, blast-radius context, security severity, precision, tags, ranks, and help metadata
+
 ## Initial Build Recommendation
 
 Start with a CLI-first MVP before building the dashboard:
