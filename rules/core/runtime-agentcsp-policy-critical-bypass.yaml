@@ -1,0 +1,86 @@
+id: AGENTCSP-RUNTIME-116
+name: AgentCSP policy can hide critical findings through long-lived allow rules
+description: A project-local AgentCSP policy marks untrusted context as trusted while defining active long-lived broad critical suppressions and recommended-control downgrades to allow, creating a durable path to hide or downgrade critical AI security findings.
+category: agentcsp_policy_critical_bypass
+severity: critical
+maps_to:
+  owasp:
+    - LLM01:2025 Prompt Injection
+    - LLM06:2025 Excessive Agency
+    - LLM10:2025 Unbounded Consumption
+  mitre_atlas:
+    - AML.T0051 LLM Prompt Injection
+    - AML.T0046 Exfiltration via Cloud Resources
+  nist_ai_rmf:
+    - GOVERN 1.1
+    - MAP 5.1
+    - MANAGE 2.4
+match:
+  object_type: runtime_config
+  where:
+    - field: metadata.parsed_agentcsp_policy_config
+      op: equals
+      value: true
+    - field: metadata.agentcsp_policy_weakens_security_controls
+      op: equals
+      value: true
+    - field: metadata.agentcsp_policy_marks_untrusted_context_trusted
+      op: equals
+      value: true
+    - field: metadata.agentcsp_policy_broad_suppression
+      op: equals
+      value: true
+    - field: metadata.agentcsp_policy_high_severity_suppression
+      op: equals
+      value: true
+    - field: metadata.agentcsp_policy_long_lived_suppression
+      op: equals
+      value: true
+    - field: metadata.agentcsp_policy_active_suppression
+      op: equals
+      value: true
+    - field: metadata.agentcsp_policy_recommended_control_downgrade
+      op: equals
+      value: true
+    - field: metadata.agentcsp_policy_trust_override_kinds
+      op: contains_any
+      value:
+        - untrusted_context_trusted
+    - field: metadata.agentcsp_policy_trust_override_kinds
+      op: contains_any
+      value:
+        - trust_elevation
+    - field: metadata.agentcsp_policy_suppression_match_kinds
+      op: contains_any
+      value:
+        - severity
+    - field: metadata.agentcsp_policy_suppression_match_kinds
+      op: contains_any
+      value:
+        - wildcard_path
+    - field: metadata.agentcsp_policy_recommended_control_downgrade_kinds
+      op: contains_any
+      value:
+        - allow_critical
+    - field: metadata.agentcsp_policy_recommended_control_downgrade_kinds
+      op: contains_any
+      value:
+        - allow_broad_match
+    - field: metadata.agentcsp_policy_weakening_controls
+      op: contains_any
+      value:
+        - allow
+    - field: actions
+      op: contains_any
+      value:
+        - approve
+    - field: actions
+      op: contains_any
+      value:
+        - write
+    - field: untrusted_to_privileged
+      op: equals
+      value: true
+recommendation:
+  control: require_approval
+  text: Treat AgentCSP policy files as security-sensitive control-plane code, block long-lived critical suppressions and allow downgrades by default, require short expiry and owner review for any critical waiver, and require approval before trust overrides can mark retrieved or untrusted context as trusted.

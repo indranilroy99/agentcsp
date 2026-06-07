@@ -184,7 +184,7 @@ Examples:
 - prompt template with user/customer/context variables plus tool or external directives
 - runtime config with unsandboxed execution plus no approval gate
 - runtime config with network access plus secret env keys plus privileged tools
-- project-local AgentCSP policy plus broad high-severity suppressions, permissive recommended-control downgrades, and trust elevation for untrusted context
+- project-local AgentCSP policy plus active long-lived broad critical suppressions, permissive allow downgrades, and trust elevation for untrusted context
 - public agent card plus anonymous external callers plus callback/signing credential references, privileged browser, database, memory, or secret-backed authority plus no approval or rate limit
 - public agent chat widget plus anonymous messages or uploads, disabled auth and abuse controls, automatic tool invocation, database or external-response authority, secret-manager access, disabled redaction, and no approval gate
 - public agent chat uploads plus disabled CSRF, missing rate limits, disabled abuse protection, automatic database, messaging, memory, or secret-manager tool execution, disabled redaction, credentials, and no approval gate

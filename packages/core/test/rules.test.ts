@@ -137,6 +137,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-082")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-033")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-034")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-116")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-035")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-036")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-114")).toBe(true);
@@ -1172,6 +1173,51 @@ describe("rule engine", () => {
     expect(JSON.stringify(runtimeAgentCspPolicyFindings[0])).not.toContain("security@example.com");
     expect(JSON.stringify(runtimeAgentCspPolicyFindings[0])).not.toContain("legacy_agent_security");
     expect(JSON.stringify(runtimeAgentCspPolicyFindings[0])).not.toContain("Fixture demonstrates risky");
+    const runtimeAgentCspPolicyCriticalBypassFindings = findings.filter(
+      (finding) => finding.rule_id === "AGENTCSP-RUNTIME-116"
+    );
+    expect(runtimeAgentCspPolicyCriticalBypassFindings).toHaveLength(1);
+    expect(runtimeAgentCspPolicyCriticalBypassFindings[0]?.matched_object.path).toBe("agentcsp.yaml");
+    expect(runtimeAgentCspPolicyCriticalBypassFindings[0]?.matched_object.metadata).toMatchObject({
+      parsed_agentcsp_policy_config: true,
+      agentcsp_policy_trust_override_count: 1,
+      agentcsp_policy_marks_untrusted_context_trusted: true,
+      agentcsp_policy_suppression_count: 1,
+      agentcsp_policy_broad_suppression: true,
+      agentcsp_policy_high_severity_suppression: true,
+      agentcsp_policy_long_lived_suppression: true,
+      agentcsp_policy_active_suppression: true,
+      agentcsp_policy_recommended_control_count: 1,
+      agentcsp_policy_recommended_control_downgrade: true,
+      agentcsp_policy_weakens_security_controls: true
+    });
+    expect(
+      runtimeAgentCspPolicyCriticalBypassFindings[0]?.matched_object.metadata
+        .agentcsp_policy_trust_override_kinds
+    ).toEqual(["broad_trust_override", "trust_elevation", "untrusted_context_trusted"]);
+    expect(
+      runtimeAgentCspPolicyCriticalBypassFindings[0]?.matched_object.metadata
+        .agentcsp_policy_suppression_match_kinds
+    ).toEqual(["broad_match", "severity", "wildcard_path"]);
+    expect(
+      runtimeAgentCspPolicyCriticalBypassFindings[0]?.matched_object.metadata
+        .agentcsp_policy_recommended_control_downgrade_kinds
+    ).toEqual(["allow_broad_match", "allow_critical", "allow_sensitive_scope"]);
+    expect(runtimeAgentCspPolicyCriticalBypassFindings[0]?.matched_object.metadata.agentcsp_policy_weakening_controls).toEqual([
+      "allow"
+    ]);
+    expect(runtimeAgentCspPolicyCriticalBypassFindings[0]?.matched_object.actions).toEqual(["approve", "read", "write"]);
+    expect(runtimeAgentCspPolicyCriticalBypassFindings[0]?.severity).toBe("critical");
+    expect(runtimeAgentCspPolicyCriticalBypassFindings[0]?.confidence).toBe("very_high");
+    expect(runtimeAgentCspPolicyCriticalBypassFindings[0]?.recommended_control).toBe("require_approval");
+    expect(JSON.stringify(runtimeAgentCspPolicyCriticalBypassFindings[0])).not.toContain("rag/**");
+    expect(JSON.stringify(runtimeAgentCspPolicyCriticalBypassFindings[0])).not.toContain("**/legacy/**");
+    expect(JSON.stringify(runtimeAgentCspPolicyCriticalBypassFindings[0])).not.toContain("allow-critical-legacy-agent");
+    expect(JSON.stringify(runtimeAgentCspPolicyCriticalBypassFindings[0])).not.toContain("suppress-critical-legacy-agent");
+    expect(JSON.stringify(runtimeAgentCspPolicyCriticalBypassFindings[0])).not.toContain("security@example.com");
+    expect(JSON.stringify(runtimeAgentCspPolicyCriticalBypassFindings[0])).not.toContain("2099-12-31");
+    expect(JSON.stringify(runtimeAgentCspPolicyCriticalBypassFindings[0])).not.toContain("legacy_agent_security");
+    expect(JSON.stringify(runtimeAgentCspPolicyCriticalBypassFindings[0])).not.toContain("Fixture demonstrates risky");
     const runtimePromptRegistryFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-RUNTIME-035");
     expect(runtimePromptRegistryFindings).toHaveLength(1);
     expect(runtimePromptRegistryFindings[0]?.matched_object.path).toBe("prompt-registry/remote-prompts.yaml");
