@@ -76,6 +76,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-025")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-026")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-027")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-081")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-028")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-029")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-050")).toBe(true);
@@ -352,6 +353,44 @@ describe("rule engine", () => {
     expect(JSON.stringify(runtimeCodeInterpreterFindings[0])).not.toContain("untrusted_customer_ticket");
     expect(JSON.stringify(runtimeCodeInterpreterFindings[0])).not.toContain("retrieved_customer_context");
     expect(JSON.stringify(runtimeCodeInterpreterFindings[0])).not.toContain("browser_tool_output");
+    const runtimeCodeInterpreterExfiltrationFindings = findings.filter(
+      (finding) => finding.rule_id === "AGENTCSP-RUNTIME-081"
+    );
+    expect(runtimeCodeInterpreterExfiltrationFindings).toHaveLength(1);
+    expect(runtimeCodeInterpreterExfiltrationFindings[0]?.matched_object.path).toBe(
+      "code-interpreter/python-runtime.yaml"
+    );
+    expect(runtimeCodeInterpreterExfiltrationFindings[0]?.matched_object.metadata).toMatchObject({
+      parsed_agent_code_interpreter_config: true,
+      agent_code_interpreter_provider: "jupyter",
+      agent_code_interpreter_enabled: true,
+      agent_code_interpreter_executes_model_code: true,
+      agent_code_interpreter_untrusted_input: true,
+      agent_code_interpreter_network_enabled: true,
+      agent_code_interpreter_package_install: true,
+      agent_code_interpreter_shell_access: true,
+      agent_code_interpreter_filesystem_access: true,
+      agent_code_interpreter_workspace_write: true,
+      agent_code_interpreter_output_capture: true,
+      agent_code_interpreter_output_persistence: true,
+      agent_code_interpreter_credential_mount: true,
+      agent_code_interpreter_secret_env_exposure: true,
+      agent_code_interpreter_approval_required: false
+    });
+    expect(
+      runtimeCodeInterpreterExfiltrationFindings[0]?.matched_object.metadata.agent_code_interpreter_mount_kinds
+    ).toEqual(["credential_path", "host_path", "workspace_mount"]);
+    expect(runtimeCodeInterpreterExfiltrationFindings[0]?.severity).toBe("critical");
+    expect(runtimeCodeInterpreterExfiltrationFindings[0]?.confidence).toBe("very_high");
+    expect(runtimeCodeInterpreterExfiltrationFindings[0]?.recommended_control).toBe("deny");
+    expect(JSON.stringify(runtimeCodeInterpreterExfiltrationFindings[0])).not.toContain("${CODE_INTERPRETER_TOKEN}");
+    expect(JSON.stringify(runtimeCodeInterpreterExfiltrationFindings[0])).not.toContain("${OPENAI_API_KEY}");
+    expect(JSON.stringify(runtimeCodeInterpreterExfiltrationFindings[0])).not.toContain("python3");
+    expect(JSON.stringify(runtimeCodeInterpreterExfiltrationFindings[0])).not.toContain("~/.aws");
+    expect(JSON.stringify(runtimeCodeInterpreterExfiltrationFindings[0])).not.toContain("~/.ssh");
+    expect(JSON.stringify(runtimeCodeInterpreterExfiltrationFindings[0])).not.toContain("untrusted_customer_ticket");
+    expect(JSON.stringify(runtimeCodeInterpreterExfiltrationFindings[0])).not.toContain("retrieved_customer_context");
+    expect(JSON.stringify(runtimeCodeInterpreterExfiltrationFindings[0])).not.toContain("browser_tool_output");
     const runtimeTrainingDatasetFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-RUNTIME-028");
     expect(runtimeTrainingDatasetFindings).toHaveLength(1);
     expect(runtimeTrainingDatasetFindings[0]?.matched_object.path).toBe("training/fine-tune-dataset.yaml");
