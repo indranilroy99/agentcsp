@@ -143,6 +143,11 @@ export async function detectSurfaces(files: WalkedFile[]): Promise<DetectedSurfa
       continue;
     }
 
+    if (isAgentRemoteInstructionLoaderConfigPath(file.relativePath, basename)) {
+      detectAgentRemoteInstructionLoaderConfig(file, text, surfaces);
+      continue;
+    }
+
     if (isPromptTemplatePath(file.relativePath, basename)) {
       recordContextContent(contextContentByPath, file, text);
       detectPromptTemplateFile(file, text, surfaces);
@@ -1417,6 +1422,75 @@ function detectAgentPromptRegistryConfig(file: WalkedFile, text: string | undefi
           posture.agent_prompt_registry_memory_directive ||
           posture.agent_prompt_registry_external_directive) &&
         !posture.agent_prompt_registry_approval_required) ||
+      isUntrustedToPrivileged(object)
+  });
+}
+
+function detectAgentRemoteInstructionLoaderConfig(file: WalkedFile, text: string | undefined, surfaces: DetectedSurfaces): void {
+  const parsed = parseStructuredConfig(text ?? "", file.relativePath);
+  if (parsed.parseFailed) {
+    addDiagnostic(surfaces, file, {
+      parser: parsed.parser ?? "structured_config",
+      code: "AGENT_REMOTE_INSTRUCTION_LOADER_CONFIG_PARSE_FAILED",
+      reason: "Agent remote instruction-loader configuration could not be parsed. Raw content was redacted."
+    });
+  }
+
+  const posture = classifyAgentRemoteInstructionLoaderConfig(parsed.value, file.relativePath);
+  const actions = new Set<ActionType>(["call", "read"]);
+  if (posture.agent_remote_instruction_remote) actions.add("send");
+  if (posture.agent_remote_instruction_auto_refresh_enabled) {
+    actions.add("remember");
+    actions.add("write");
+  }
+  if (posture.agent_remote_instruction_privileged_tool_authority || posture.agent_remote_instruction_shell_authority) {
+    actions.add("execute");
+  }
+  if (posture.agent_remote_instruction_external_authority) actions.add("publish");
+  if (posture.agent_remote_instruction_memory_write) actions.add("remember");
+  if (posture.agent_remote_instruction_write_authority) actions.add("write");
+
+  const dataClasses = new Set<SurfaceObject["data_classes"][number]>(["unknown"]);
+  if (posture.env_key_names.some(isCredentialLikeKeyName) || posture.secret_ref_key_names.length > 0) dataClasses.add("credential");
+  if (posture.agent_remote_instruction_sensitive_context || posture.agent_remote_instruction_secret_access) dataClasses.add("confidential");
+  if (posture.agent_remote_instruction_pii_context) dataClasses.add("pii");
+  if (dataClasses.size > 1) dataClasses.delete("unknown");
+
+  const object = createSurfaceObject({
+    type: "runtime_config",
+    name: path.basename(file.relativePath),
+    path: file.relativePath,
+    trust_level: posture.agent_remote_instruction_remote ? "third_party" : inferTrustLevel(file.relativePath),
+    data_classes: uniqueDataClasses([...dataClasses] as SurfaceObject["data_classes"]),
+    actions: uniqueActions([...actions]),
+    side_effect:
+      posture.agent_remote_instruction_auto_refresh_enabled ||
+      posture.agent_remote_instruction_privileged_role_injection ||
+      posture.agent_remote_instruction_privileged_tool_authority ||
+      posture.agent_remote_instruction_write_authority,
+    reversible:
+      !posture.agent_remote_instruction_auto_refresh_enabled &&
+      !posture.agent_remote_instruction_privileged_role_injection &&
+      !posture.agent_remote_instruction_privileged_tool_authority &&
+      !posture.agent_remote_instruction_write_authority,
+    external_reach: posture.agent_remote_instruction_remote || posture.agent_remote_instruction_external_authority,
+    secret_exposure: posture.env_key_names.some(isCredentialLikeKeyName) || posture.secret_ref_key_names.length > 0,
+    reason: "Agent remote instruction-loader configuration discovered as model-visible instruction authority posture.",
+    metadata: {
+      content_redacted: true,
+      values_collected: false,
+      parsed_agent_remote_instruction_loader_config: Boolean(parsed.value) && !parsed.parseFailed,
+      parse_error: parsed.parseFailed,
+      ...posture
+    }
+  });
+  surfaces.runtime_config.push({
+    ...object,
+    untrusted_to_privileged:
+      ((posture.agent_remote_instruction_remote || posture.agent_remote_instruction_untrusted_selector) &&
+        posture.agent_remote_instruction_privileged_role_injection &&
+        posture.agent_remote_instruction_privileged_tool_authority &&
+        !posture.agent_remote_instruction_approval_required) ||
       isUntrustedToPrivileged(object)
   });
 }
@@ -5290,6 +5364,25 @@ function isAgentPromptRegistryConfigPath(relativePath: string, basename: string)
   return promptRegistryName || (promptRegistryDirectory && configName);
 }
 
+function isAgentRemoteInstructionLoaderConfigPath(relativePath: string, basename: string): boolean {
+  const normalized = relativePath.replaceAll("\\", "/").toLowerCase();
+  const lowerBase = basename.toLowerCase();
+  if (!/\.(json|ya?ml|toml)$/iu.test(lowerBase)) return false;
+  if (normalized.startsWith(".github/workflows/")) return false;
+  if (normalized.startsWith("rules/")) return false;
+  const segments = normalized.split("/").slice(0, -1);
+  const instructionDirectory = segments.some((segment) =>
+    /^(instructions?|instruction-loader|instruction_loader|instruction-loaders|instruction_loaders|remote-instructions?|remote_instructions?|system-instructions?|system_instructions?|developer-instructions?|developer_instructions?|instruction-sources?|instruction_sources?|instruction-sync|instruction_sync|prompt-loader|prompt_loader|prompt-loaders|prompt_loaders)$/iu.test(
+      segment
+    )
+  );
+  const loaderName = /(?:remote[-_]?instructions?|instruction[-_]?(loader|loaders|sync|source|sources|import|imports|fetch|pull|refresh)|system[-_]?instructions?|developer[-_]?instructions?|prompt[-_]?(loader|loaders|source|sources|import|imports))/iu.test(
+    lowerBase
+  );
+  const configName = /(?:config|settings|sources?|instructions?|loader|sync|remote|prompts?|policy|manifest|pinned)/iu.test(lowerBase);
+  return loaderName || (instructionDirectory && configName);
+}
+
 function isPromptTemplatePath(relativePath: string, basename: string): boolean {
   const normalized = relativePath.replaceAll("\\", "/").toLowerCase();
   const lowerBase = basename.toLowerCase();
@@ -5504,6 +5597,38 @@ interface AgentPromptRegistryPosture {
   agent_prompt_registry_sensitive_context: boolean;
   agent_prompt_registry_pii_context: boolean;
   agent_prompt_registry_approval_required: boolean;
+  env_key_names: string[];
+  secret_ref_key_names: string[];
+}
+
+interface AgentRemoteInstructionLoaderPosture {
+  agent_remote_instruction_fields: string[];
+  agent_remote_instruction_provider?: string;
+  agent_remote_instruction_remote: boolean;
+  agent_remote_instruction_destination_redacted: boolean;
+  agent_remote_instruction_destination_count: number;
+  agent_remote_instruction_destination_kinds: string[];
+  agent_remote_instruction_refs_redacted: boolean;
+  agent_remote_instruction_ref_count: number;
+  agent_remote_instruction_role_categories: string[];
+  agent_remote_instruction_system_role: boolean;
+  agent_remote_instruction_developer_role: boolean;
+  agent_remote_instruction_auto_refresh_enabled: boolean;
+  agent_remote_instruction_unpinned_reference: boolean;
+  agent_remote_instruction_signature_verification_disabled: boolean;
+  agent_remote_instruction_provenance_verification_missing: boolean;
+  agent_remote_instruction_untrusted_selector: boolean;
+  agent_remote_instruction_privileged_role_injection: boolean;
+  agent_remote_instruction_tool_authority_categories: string[];
+  agent_remote_instruction_privileged_tool_authority: boolean;
+  agent_remote_instruction_write_authority: boolean;
+  agent_remote_instruction_external_authority: boolean;
+  agent_remote_instruction_memory_write: boolean;
+  agent_remote_instruction_shell_authority: boolean;
+  agent_remote_instruction_secret_access: boolean;
+  agent_remote_instruction_sensitive_context: boolean;
+  agent_remote_instruction_pii_context: boolean;
+  agent_remote_instruction_approval_required: boolean;
   env_key_names: string[];
   secret_ref_key_names: string[];
 }
@@ -7460,6 +7585,363 @@ function hasAgentPromptRegistryApprovalRequiredSignal(fields: RuntimeField[]): b
 
 function isAgentPromptRegistrySecurityField(fieldPath: string): boolean {
   return /provider|registry|catalog|hub|store|prompt|template|instruction|system|developer|role|source|repository|repo|url|uri|host|endpoint|sync|update|pull|refresh|pin|version|signature|signing|provenance|attestation|checksum|digest|trusted|untrusted|selector|input|customer|ticket|tool|mcp|browser|database|shell|memory|external|webhook|approval|secret|token|credential|auth|env|pii|sensitive/iu.test(
+    fieldPath
+  );
+}
+
+function classifyAgentRemoteInstructionLoaderConfig(value: unknown, filePath: string): AgentRemoteInstructionLoaderPosture {
+  const fields = flattenRuntimeFields(value);
+  const stringValues = collectFieldStringValues(fields);
+  const provider = inferAgentRemoteInstructionLoaderProvider([filePath, ...fields.map((field) => field.path), ...stringValues]);
+  const destinations = classifyAgentRemoteInstructionDestinations(fields, provider);
+  const instructionRefCount = countAgentRemoteInstructionRefs(fields);
+  const roleCategories = collectAgentRemoteInstructionRoleCategories(fields);
+  const authorityCategories = collectAgentRemoteInstructionAuthorityCategories(fields);
+  const envKeys = uniqueStrings([
+    ...collectEnvKeyNamesFromConfig(value).filter(isLikelyEnvKeyName),
+    ...extractEnvironmentReferenceKeys(stringValues)
+  ]);
+  const secretRefKeys = extractSecretReferenceKeys(stringValues);
+  const secretAccess = authorityCategories.includes("secret_manager_access") || hasAgentRemoteInstructionSecretAccessSignal(fields);
+
+  return {
+    agent_remote_instruction_fields: fields
+      .map((field) => field.path)
+      .filter((fieldPath) => isAgentRemoteInstructionSecurityField(fieldPath))
+      .sort((a, b) => a.localeCompare(b)),
+    agent_remote_instruction_provider: provider,
+    agent_remote_instruction_remote: destinations.remote,
+    agent_remote_instruction_destination_redacted: destinations.destinationCount > 0,
+    agent_remote_instruction_destination_count: destinations.destinationCount,
+    agent_remote_instruction_destination_kinds: destinations.destinationKinds,
+    agent_remote_instruction_refs_redacted: instructionRefCount > 0,
+    agent_remote_instruction_ref_count: instructionRefCount,
+    agent_remote_instruction_role_categories: roleCategories,
+    agent_remote_instruction_system_role: roleCategories.includes("system_instruction"),
+    agent_remote_instruction_developer_role: roleCategories.includes("developer_instruction"),
+    agent_remote_instruction_auto_refresh_enabled: hasAgentRemoteInstructionAutoRefreshSignal(fields),
+    agent_remote_instruction_unpinned_reference: hasAgentRemoteInstructionUnpinnedReferenceSignal(fields),
+    agent_remote_instruction_signature_verification_disabled: hasAgentRemoteInstructionSignatureVerificationDisabledSignal(fields),
+    agent_remote_instruction_provenance_verification_missing: hasAgentRemoteInstructionProvenanceVerificationMissingSignal(fields),
+    agent_remote_instruction_untrusted_selector: hasAgentRemoteInstructionUntrustedSelectorSignal(fields),
+    agent_remote_instruction_privileged_role_injection: hasAgentRemoteInstructionPrivilegedRoleSignal(fields),
+    agent_remote_instruction_tool_authority_categories: authorityCategories,
+    agent_remote_instruction_privileged_tool_authority: authorityCategories.length > 0 || hasAgentRemoteInstructionPrivilegedToolSignal(fields),
+    agent_remote_instruction_write_authority: hasAgentRemoteInstructionWriteAuthoritySignal(fields, authorityCategories),
+    agent_remote_instruction_external_authority:
+      authorityCategories.includes("external_response") || hasAgentRemoteInstructionExternalAuthoritySignal(fields),
+    agent_remote_instruction_memory_write: authorityCategories.includes("memory_write") || hasAgentRemoteInstructionMemoryWriteSignal(fields),
+    agent_remote_instruction_shell_authority: authorityCategories.includes("shell_execution"),
+    agent_remote_instruction_secret_access: secretAccess,
+    agent_remote_instruction_sensitive_context: hasAgentRemoteInstructionSensitiveDataSignal(fields) || secretAccess,
+    agent_remote_instruction_pii_context: hasAgentRemoteInstructionPiiDataSignal(fields),
+    agent_remote_instruction_approval_required: hasAgentRemoteInstructionApprovalRequiredSignal(fields),
+    env_key_names: envKeys,
+    secret_ref_key_names: secretRefKeys
+  };
+}
+
+function inferAgentRemoteInstructionLoaderProvider(candidates: string[]): string | undefined {
+  const text = candidates.join(" ").toLowerCase();
+  const providers: Array<[string, RegExp]> = [
+    ["github", /\bgithub\b|github\.com/iu],
+    ["git", /\b(git|gitlab|bitbucket)\b|\.git\b/iu],
+    ["remote_instruction_loader", /\b(remote[_\s-]?instruction|instruction[_\s-]?loader|instruction[_\s-]?sync|prompt[_\s-]?loader)\b/iu],
+    ["http_instruction_endpoint", /\bhttps?:\/\/|\b(endpoint|instruction[_\s-]?url|instructions?[_\s-]?url)\b/iu]
+  ];
+  return providers.find(([, pattern]) => pattern.test(text))?.[0];
+}
+
+function classifyAgentRemoteInstructionDestinations(
+  fields: RuntimeField[],
+  provider: string | undefined
+): { remote: boolean; destinationCount: number; destinationKinds: string[] } {
+  const destinationKinds = new Set<string>();
+  let destinationCount = 0;
+
+  if (provider && ["git", "github"].includes(provider)) {
+    destinationKinds.add("git_instruction_repository");
+    destinationCount += 1;
+  }
+
+  for (const field of fields) {
+    const values = fieldStringValues(field);
+    for (const value of values) {
+      const destination = parseAgentRemoteInstructionDestination(value);
+      if (destination) {
+        destinationKinds.add(destination.kind);
+        destinationCount += 1;
+      }
+    }
+    if (/(^|\.)(endpoint|url|uri|host|source|repository|repo|instruction_url|instructions_url)$/iu.test(field.path)) {
+      const text = values.join(" ");
+      if (looksLikeRemoteInstructionHost(text)) {
+        destinationKinds.add("remote_instruction_endpoint");
+        destinationCount += 1;
+      }
+    }
+  }
+
+  return {
+    remote: destinationCount > 0,
+    destinationCount,
+    destinationKinds: [...destinationKinds].sort((a, b) => a.localeCompare(b))
+  };
+}
+
+function parseAgentRemoteInstructionDestination(value: string): { kind: string } | undefined {
+  const httpUrl = parseRemoteHttpUrl(value);
+  if (httpUrl) {
+    return { kind: httpUrl.protocol === "http:" ? "plaintext_instruction_endpoint" : "remote_instruction_endpoint" };
+  }
+  try {
+    const parsed = new URL(value);
+    if (!["git:", "ssh:"].includes(parsed.protocol)) return undefined;
+    if (isLocalHost(parsed.hostname.toLowerCase())) return undefined;
+    return { kind: "git_instruction_repository" };
+  } catch {
+    if (/\b(github|gitlab|bitbucket)\.[a-z]{2,}\b/iu.test(value) || /\.git(?:$|[#?])/iu.test(value)) {
+      return { kind: "git_instruction_repository" };
+    }
+    return undefined;
+  }
+}
+
+function looksLikeRemoteInstructionHost(value: string): boolean {
+  const trimmed = value.trim().toLowerCase();
+  if (!trimmed || trimmed.startsWith("${")) return false;
+  if (isLocalHost(trimmed)) return false;
+  return /\b(instruction|instructions|prompt|prompts|policy|config|github|gitlab|bitbucket)\b/iu.test(trimmed) ||
+    /^[a-z0-9.-]+\.[a-z]{2,}(?::\d+)?$/iu.test(trimmed);
+}
+
+function countAgentRemoteInstructionRefs(fields: RuntimeField[]): number {
+  let count = 0;
+  for (const field of fields) {
+    if (/(^|\.)(instructions?|system_instructions?|developer_instructions?|remote_instructions?|prompts?|prompt_refs?)\.(\d+|[A-Za-z][\w-]*)/iu.test(field.path)) {
+      count += 1;
+      continue;
+    }
+    if (/(^|\.)(instruction|instruction_id|instruction_ref|prompt|prompt_id|source|name|id|uri|url)$/iu.test(field.path) && fieldStringValues(field).length > 0) {
+      count += 1;
+    }
+  }
+  return count;
+}
+
+function collectAgentRemoteInstructionRoleCategories(fields: RuntimeField[]): string[] {
+  const categories = new Set<string>();
+  for (const field of fields) {
+    const text = `${field.path} ${fieldValueText(field)}`.toLowerCase();
+    if (/(?:^|[_\W])(system|system[_\s-]?prompt|system[_\s-]?instruction|load[_\s-]?as[_\s-]?system)(?:[_\W]|$)/iu.test(text)) {
+      categories.add("system_instruction");
+    }
+    if (/(?:^|[_\W])(developer|developer[_\s-]?prompt|developer[_\s-]?instruction|load[_\s-]?as[_\s-]?developer)(?:[_\W]|$)/iu.test(text)) {
+      categories.add("developer_instruction");
+    }
+    if (/(?:^|[_\W])(tool|tools|mcp|function|browser|database|shell|capability)(?:[_\W]|$)/iu.test(text)) {
+      categories.add("tool_instruction");
+    }
+    if (/(?:^|[_\W])(runbook|playbook|procedure|policy)(?:[_\W]|$)/iu.test(text)) categories.add("runbook");
+  }
+  return [...categories].sort((a, b) => a.localeCompare(b));
+}
+
+function hasAgentRemoteInstructionAutoRefreshSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /\b(auto[_\s-]?(sync|update|pull|refresh|load)|sync[_\s-]?on[_\s-]?startup|pull[_\s-]?latest|refresh[_\s-]?instructions?|dynamic[_\s-]?instructions?|live[_\s-]?instructions?)\b/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    ) && truthyConfigValue(field.value)
+  );
+}
+
+function hasAgentRemoteInstructionUnpinnedReferenceSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => {
+    const text = `${field.path} ${fieldValueText(field)}`;
+    if (/\b(unpinned|latest|floating|no[_\s-]?pin|any[_\s-]?version|mutable|track[_\s-]?latest|allow[_\s-]?unpinned)\b/iu.test(text) && truthyConfigValue(field.value)) {
+      return true;
+    }
+    return fieldStringValues(field).some((value) => /(?:@latest|:\*|\bmain\b|\bmaster\b|\bHEAD\b|version\s*[:=]\s*(latest|\*))/iu.test(value));
+  });
+}
+
+function hasAgentRemoteInstructionSignatureVerificationDisabledSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => {
+    const text = `${field.path} ${fieldValueText(field)}`;
+    if (/\b(allow[_\s-]?unsigned|unsigned[_\s-]?allowed|skip[_\s-]?signature|signature[_\s-]?verification[_\s-]?disabled|no[_\s-]?signature)\b/iu.test(text)) {
+      return truthyConfigValue(field.value);
+    }
+    if (/\b(signature|signing|verify[_\s-]?signature|signature[_\s-]?verification|signed)\b/iu.test(field.path)) {
+      return disabledConfigValue(field.value);
+    }
+    return false;
+  });
+}
+
+function hasAgentRemoteInstructionProvenanceVerificationMissingSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => {
+    const text = `${field.path} ${fieldValueText(field)}`;
+    if (/\b(allow[_\s-]?untrusted|untrusted[_\s-]?source|skip[_\s-]?provenance|provenance[_\s-]?verification[_\s-]?disabled|no[_\s-]?provenance)\b/iu.test(text)) {
+      return truthyConfigValue(field.value);
+    }
+    if (/(^|[_\W])(provenance|attestation|checksum|digest|slsa|verified[_\s-]?publisher|trusted[_\s-]?publisher)([_\W]|$)/iu.test(field.path)) {
+      return disabledConfigValue(field.value);
+    }
+    return false;
+  });
+}
+
+function hasAgentRemoteInstructionUntrustedSelectorSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /\b(untrusted|user|customer|client|ticket|support|issue|comment|message|prompt|retrieved|rag|document|email|slack|browser|web[_-]?page|chat|inbound|external|selector|requested[_\s-]?instruction|requested[_\s-]?prompt|from[_\s-]?context)\b/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    )
+  );
+}
+
+function hasAgentRemoteInstructionPrivilegedRoleSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /\b(system|developer|root|policy|privileged[_\s-]?role|role[_\s-]?map|inject[_\s-]?as|load[_\s-]?as)\b/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    )
+  );
+}
+
+function collectAgentRemoteInstructionAuthorityCategories(fields: RuntimeField[]): string[] {
+  const categories = new Set<string>();
+  for (const field of fields) {
+    if (isAgentRemoteInstructionPositiveControlField(field)) continue;
+    const text = `${field.path} ${fieldValueText(field)}`.toLowerCase();
+    const authorityField = isAgentRemoteInstructionAuthorityField(field);
+    if (
+      !authorityField &&
+      /(?:^|\.)(auth|token|api_key|secret|credential|env|sources?|inputs?|selectors?|selection|context|data_scope|metadata)(?:\.|$)/iu.test(
+        field.path
+      )
+    ) {
+      continue;
+    }
+    if (
+      !authorityField &&
+      !/\b(call|invoke|execute|run|send|post|publish|write|update|remember|tool|mcp|browser|database|slack|email|webhook|shell|vault|secret[_\s-]?lookup)\b/iu.test(
+        text
+      )
+    ) {
+      continue;
+    }
+    if (/(?:^|[_\W])(tool|tools|function|function[_\s-]?call|mcp|connector|capability)(?:[_\W]|$)/iu.test(text)) categories.add("tool_call");
+    if (/(?:^|[_\W])(database|db|sql|query|support[_\s-]?db|warehouse|update[_\s-]?customer[_\s-]?record)(?:[_\W]|$)/iu.test(text)) {
+      categories.add("database_access");
+    }
+    if (/(?:^|[_\W])(slack|email|webhook|message|ticket|issue|comment|reply|respond|send|post|publish)(?:[_\W]|$)/iu.test(text)) {
+      categories.add("external_response");
+    }
+    if (/(?:^|[_\W])(browser|playwright|puppeteer|selenium|click|form|upload|download|navigate|submit)(?:[_\W]|$)/iu.test(text)) {
+      categories.add("browser_action");
+    }
+    if (/(?:^|[_\W])(vault|secret[_\s-]?lookup|secret[_\s-]?manager|key[_\s-]?vault|credential[_\s-]?broker)(?:[_\W]|$)/iu.test(text)) {
+      categories.add("secret_manager_access");
+    }
+    if (/(?:^|[_\W])(memory|remember|store|persist|session[_\s-]?state|long[_\s-]?term)(?:[_\W]|$)/iu.test(text)) {
+      categories.add("memory_write");
+    }
+    if (/(?:^|[_\W])(shell|bash|command|exec|terminal|python|node|subprocess|script)(?:[_\W]|$)/iu.test(text)) categories.add("shell_execution");
+    if (/(?:^|[_\W])(filesystem|file[_\s-]?write|workspace|repo|repository|git|commit|push|pull[_\s-]?request|merge)(?:[_\W]|$)/iu.test(text)) {
+      categories.add("repo_or_filesystem_write");
+    }
+  }
+  return [...categories].sort((a, b) => a.localeCompare(b));
+}
+
+function hasAgentRemoteInstructionPrivilegedToolSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    !isAgentRemoteInstructionPositiveControlField(field) &&
+    /\b(call[_\s-]?tools?|invoke[_\s-]?tools?|tool[_\s-]?access|function[_\s-]?call|mcp|browser|database|vault|secret[_\s-]?lookup|shell|filesystem|write[_\s-]?tool)\b/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    )
+  );
+}
+
+function hasAgentRemoteInstructionWriteAuthoritySignal(fields: RuntimeField[], categories: string[]): boolean {
+  return categories.some((category) =>
+    ["database_access", "external_response", "memory_write", "repo_or_filesystem_write", "shell_execution"].includes(category)
+  ) || fields.some((field) =>
+    !isAgentRemoteInstructionPositiveControlField(field) &&
+    /(?:^|[_\W])(write|update|create|delete|reply|respond|send|post|publish|comment|commit|push|merge|deploy|remember|persist|assign)(?:[_\W]|$)/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    )
+  );
+}
+
+function hasAgentRemoteInstructionExternalAuthoritySignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => {
+    if (isAgentRemoteInstructionPositiveControlField(field)) return false;
+    if (!isAgentRemoteInstructionAuthorityField(field)) return false;
+    return /(?:^|[_\W])(slack|email|webhook|send|post|publish|reply|respond|external[_\s-]?response|customer[_\s-]?system)(?:[_\W]|$)/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    );
+  });
+}
+
+function hasAgentRemoteInstructionMemoryWriteSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => {
+    if (isAgentRemoteInstructionPositiveControlField(field)) return false;
+    if (!isAgentRemoteInstructionAuthorityField(field)) return false;
+    return /(?:^|[_\W])(memory|remember|store|persist|session[_\s-]?state|long[_\s-]?term)(?:[_\W]|$)/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    );
+  });
+}
+
+function hasAgentRemoteInstructionSecretAccessSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    !isAgentRemoteInstructionPositiveControlField(field) &&
+    /(?:^|[_\W])(secret|token|credential|api[_-]?key|password|vault|key[_\s-]?vault|authorization|oauth|secret[_\s-]?lookup)(?:[_\W]|$)/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    )
+  );
+}
+
+function hasAgentRemoteInstructionSensitiveDataSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    !isAgentRemoteInstructionPositiveControlField(field) &&
+    /(?:^|[_\W])(customer|client|ticket|support|internal|confidential|private|proprietary|sensitive|account|billing|payment|prod|production|admin|credential|token|api[_-]?key|secret)(?:[_\W]|$)/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    )
+  );
+}
+
+function hasAgentRemoteInstructionPiiDataSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    !isAgentRemoteInstructionPositiveControlField(field) &&
+    /(?:^|[_\W])(pii|email|phone|address|ssn|passport|dob|date[_\s-]?of[_\s-]?birth|customer[_-]?id|user[_-]?id|account[_-]?id)(?:[_\W]|$)/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    )
+  );
+}
+
+function isAgentRemoteInstructionPositiveControlField(field: RuntimeField): boolean {
+  if (!/(?:^|\.)(redaction|redact|mask|masking|sanitize|sanitization|filter|validation|approval|required_approval|human_approval)(?:\.|$)/iu.test(field.path)) {
+    return false;
+  }
+  return truthyConfigValue(field.value) || /\b(enabled|on|true|enforced|required)\b/iu.test(`${field.path} ${fieldValueText(field)}`);
+}
+
+function isAgentRemoteInstructionAuthorityField(field: RuntimeField): boolean {
+  return /(?:^|\.)(directives?|tool_authority|runtime_authority|authority|tools?|actions?|allowed_tools|permissions?|capabilities?|connectors?|on_load|on_sync|after_load)(?:\.|$)/iu.test(
+    field.path
+  );
+}
+
+function hasAgentRemoteInstructionApprovalRequiredSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /approval|required[_-]?approval|human[_-]?approval|confirm|confirmation|review|human[_-]?in[_-]?the[_-]?loop/iu.test(field.path) &&
+    truthyConfigValue(field.value)
+  );
+}
+
+function isAgentRemoteInstructionSecurityField(fieldPath: string): boolean {
+  return /provider|instruction|prompt|system|developer|role|source|repository|repo|url|uri|host|endpoint|sync|update|pull|refresh|load|pin|version|signature|signing|provenance|attestation|checksum|digest|trusted|untrusted|selector|input|customer|ticket|tool|mcp|browser|database|shell|memory|external|webhook|approval|secret|token|credential|auth|env|pii|sensitive/iu.test(
     fieldPath
   );
 }

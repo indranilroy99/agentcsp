@@ -28,6 +28,7 @@
 - Add model-output action-router posture for action DSLs, command parsers, lenient schema validation, JSON repair, batch auto-execution, privileged tool authority, dry-run controls, redaction, credentials, and approval boundaries.
 - Add outbound remote-agent federation posture for dynamic A2A discovery, model-selected peers, sensitive context forwarding, credential forwarding, peer verification, allowlists, and approval gates.
 - Add remote prompt-registry posture for auto-synced system/developer prompts, unpinned revisions, verification controls, and untrusted prompt selectors.
+- Add remote instruction-loader posture for auto-refreshed system/developer instructions, unpinned revisions, verification controls, untrusted selectors, privileged tool authority, and approval boundaries.
 - Add MCP prompt and resource context inventory for model-visible server-supplied context that can steer privileged MCP authority.
 - Add MCP client-context posture for roots, sampling, and elicitation requests from remote or third-party servers.
 - Add MCP environment-inheritance posture for ambient process env, wildcard env passthrough, sensitive env patterns, and external MCP boundaries.

@@ -160,6 +160,7 @@ Examples:
 - model-output action router plus untrusted input sources, disabled schema validation, unknown actions, JSON repair, batch auto-execution, privileged write/shell/memory/secret/external-response authority, disabled redaction or dry-run controls, and no approval gate
 - remote agent federation plus dynamic discovery, untrusted agent selection, sensitive context and credential forwarding, disabled identity verification, missing allowlists, and no approval
 - remote prompt registry plus auto-synced unpinned system or developer prompts, disabled signature/provenance checks, untrusted selectors, privileged tool directives, and no approval gate
+- remote instruction loader plus auto-refreshed unpinned system or developer instructions, disabled signature/provenance checks, untrusted selectors, privileged tool authority, credentials, and no approval gate
 - hosted assistant plus untrusted thread context, automatic tool choice, parallel privileged code/function/file-resource fanout, disabled guardrails, credentials, and no approval gate
 - authenticated browser session plus broad origins plus untrusted navigation plus click/form/upload authority
 - authenticated browser session plus broad origins, untrusted navigation, automatic downloads, file chooser/upload paths, sensitive local file context, credentials, and no approval gate

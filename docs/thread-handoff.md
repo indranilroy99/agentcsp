@@ -1277,6 +1277,16 @@ The current iteration adds:
 - rule `AGENTCSP-RUNTIME-066` for context composers that combine untrusted sources, env-secret materialization into privileged/model context, disabled redaction, credential exposure, and missing approval
 - scanner, rule, fixture verifier, and redaction coverage proving raw env placeholders, untrusted selector labels, source labels, tool names, and safe internal labels stay redacted
 
+## Remote Instruction Loader Authority Pass
+
+The current iteration adds:
+
+- first-class redacted metadata for remote instruction loaders and instruction-sync configs, including destination categories, instruction reference counts, role categories, refresh and pinning posture, signature/provenance verification, untrusted selector posture, privileged tool-authority categories, approval posture, data-class booleans, and credential key names
+- vulnerable fixture coverage for a remote instruction loader that auto-refreshes unpinned system and developer instructions selected by untrusted customer, retrieval, and browser context while disabled verification and privileged database, browser, Slack, memory, and secret-manager authority are present
+- safe fixture coverage for a local pinned instruction bundle that disables remote fetch and auto-refresh, verifies signatures and provenance, rejects untrusted selectors, exposes no credentials, and requires approval
+- rule `AGENTCSP-RUNTIME-067` for remote instruction loaders that combine remote auto-refresh, unpinned instructions, disabled verification, untrusted selectors, privileged role injection, privileged tool authority, and missing approval
+- scanner, rule, fixture verifier, and redaction coverage proving raw instruction URLs, instruction IDs, selector labels, tool names, data-scope labels, and token placeholders stay redacted
+
 ## Initial Build Recommendation
 
 Start with a CLI-first MVP before building the dashboard:

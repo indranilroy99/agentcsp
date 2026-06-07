@@ -1,0 +1,53 @@
+id: AGENTCSP-RUNTIME-067
+name: Remote instructions can refresh privileged agent authority
+description: A remote instruction loader can auto-refresh unpinned system or developer instructions from a third-party endpoint while untrusted context selects the instruction set and privileged tool authority is available without approval.
+category: agent_remote_instruction_authority
+severity: critical
+maps_to:
+  owasp:
+    - LLM01:2025 Prompt Injection
+    - LLM05:2025 Supply Chain Vulnerabilities
+    - LLM06:2025 Excessive Agency
+  mitre_atlas:
+    - AML.T0051 LLM Prompt Injection
+    - AML.T0018 Supply Chain Compromise
+  nist_ai_rmf:
+    - MAP 5.1
+    - MEASURE 2.9
+    - MANAGE 2.4
+match:
+  object_type: runtime_config
+  where:
+    - field: metadata.parsed_agent_remote_instruction_loader_config
+      op: equals
+      value: true
+    - field: metadata.agent_remote_instruction_remote
+      op: equals
+      value: true
+    - field: metadata.agent_remote_instruction_auto_refresh_enabled
+      op: equals
+      value: true
+    - field: metadata.agent_remote_instruction_unpinned_reference
+      op: equals
+      value: true
+    - field: metadata.agent_remote_instruction_signature_verification_disabled
+      op: equals
+      value: true
+    - field: metadata.agent_remote_instruction_provenance_verification_missing
+      op: equals
+      value: true
+    - field: metadata.agent_remote_instruction_untrusted_selector
+      op: equals
+      value: true
+    - field: metadata.agent_remote_instruction_privileged_role_injection
+      op: equals
+      value: true
+    - field: metadata.agent_remote_instruction_privileged_tool_authority
+      op: equals
+      value: true
+    - field: metadata.agent_remote_instruction_approval_required
+      op: equals
+      value: false
+recommendation:
+  control: quarantine
+  text: Pin remote instruction revisions, require signature and provenance verification, prevent untrusted context from selecting system or developer instructions, and require approval before refreshed instructions can affect privileged tools.

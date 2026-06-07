@@ -62,6 +62,7 @@ describe("scanner", () => {
       "PROMPT_REGISTRY_TOKEN",
       "PUBLIC_CHAT_AGENT_TOKEN",
       "REASONING_STATE_TOKEN",
+      "REMOTE_INSTRUCTION_TOKEN",
       "RESPONSE_STREAM_TOKEN",
       "SAFETY_RUNTIME_TOKEN",
       "SLACK_WEBHOOK_URL",
@@ -1650,6 +1651,71 @@ describe("scanner", () => {
     expect(JSON.stringify(promptRegistryConfig)).not.toContain("prompt_registry_customer_email");
     expect(JSON.stringify(promptRegistryConfig)).not.toContain("confidential_prompt_context");
     expect(JSON.stringify(promptRegistryConfig)).not.toContain("support_db.update_customer_record");
+    const remoteInstructionLoaderConfig = surfaces.runtime_config.find(
+      (surface) => surface.path === "instruction-loader/remote-instructions.yaml"
+    );
+    expect(remoteInstructionLoaderConfig).toBeDefined();
+    expect(remoteInstructionLoaderConfig).toMatchObject({
+      trust_level: "third_party",
+      external_reach: true,
+      secret_exposure: true,
+      side_effect: true,
+      reversible: false,
+      untrusted_to_privileged: true
+    });
+    expect(remoteInstructionLoaderConfig?.metadata).toMatchObject({
+      content_redacted: true,
+      values_collected: false,
+      parsed_agent_remote_instruction_loader_config: true,
+      agent_remote_instruction_provider: "remote_instruction_loader",
+      agent_remote_instruction_remote: true,
+      agent_remote_instruction_destination_redacted: true,
+      agent_remote_instruction_refs_redacted: true,
+      agent_remote_instruction_ref_count: 10,
+      agent_remote_instruction_system_role: true,
+      agent_remote_instruction_developer_role: true,
+      agent_remote_instruction_auto_refresh_enabled: true,
+      agent_remote_instruction_unpinned_reference: true,
+      agent_remote_instruction_signature_verification_disabled: true,
+      agent_remote_instruction_provenance_verification_missing: true,
+      agent_remote_instruction_untrusted_selector: true,
+      agent_remote_instruction_privileged_role_injection: true,
+      agent_remote_instruction_privileged_tool_authority: true,
+      agent_remote_instruction_write_authority: true,
+      agent_remote_instruction_external_authority: true,
+      agent_remote_instruction_memory_write: true,
+      agent_remote_instruction_secret_access: true,
+      agent_remote_instruction_sensitive_context: true,
+      agent_remote_instruction_pii_context: true,
+      agent_remote_instruction_approval_required: false
+    });
+    expect(remoteInstructionLoaderConfig?.metadata.agent_remote_instruction_destination_kinds).toEqual([
+      "remote_instruction_endpoint"
+    ]);
+    expect(remoteInstructionLoaderConfig?.metadata.agent_remote_instruction_role_categories).toEqual([
+      "developer_instruction",
+      "system_instruction",
+      "tool_instruction"
+    ]);
+    expect(remoteInstructionLoaderConfig?.metadata.agent_remote_instruction_tool_authority_categories).toEqual([
+      "browser_action",
+      "database_access",
+      "external_response",
+      "memory_write",
+      "secret_manager_access"
+    ]);
+    expect(remoteInstructionLoaderConfig?.metadata.env_key_names).toEqual(["REMOTE_INSTRUCTION_TOKEN"]);
+    expect(remoteInstructionLoaderConfig?.metadata.secret_ref_key_names).toEqual(["REMOTE_INSTRUCTION_TOKEN"]);
+    expect(remoteInstructionLoaderConfig?.data_classes).toEqual(["confidential", "credential", "pii"]);
+    expect(remoteInstructionLoaderConfig?.actions).toEqual(["call", "execute", "publish", "read", "remember", "send", "write"]);
+    expect(JSON.stringify(remoteInstructionLoaderConfig)).not.toContain("${REMOTE_INSTRUCTION_TOKEN}");
+    expect(JSON.stringify(remoteInstructionLoaderConfig)).not.toContain("instructions.agentcsp-demo.example.invalid");
+    expect(JSON.stringify(remoteInstructionLoaderConfig)).not.toContain("customer-escalation-system-latest");
+    expect(JSON.stringify(remoteInstructionLoaderConfig)).not.toContain("support-agent-developer-runtime");
+    expect(JSON.stringify(remoteInstructionLoaderConfig)).not.toContain("customer_requested_instruction");
+    expect(JSON.stringify(remoteInstructionLoaderConfig)).not.toContain("remote_instruction_customer_email");
+    expect(JSON.stringify(remoteInstructionLoaderConfig)).not.toContain("confidential_remote_instruction_notes");
+    expect(JSON.stringify(remoteInstructionLoaderConfig)).not.toContain("support_db.update_customer_record");
     const agentExposureConfig = surfaces.runtime_config.find((surface) => surface.path === ".well-known/agent-card.json");
     expect(agentExposureConfig).toBeDefined();
     expect(agentExposureConfig).toMatchObject({
@@ -4261,6 +4327,47 @@ describe("scanner", () => {
     expect(composer?.metadata.secret_ref_key_names).toEqual([]);
     expect(JSON.stringify(composer)).not.toContain("approved_internal_summary");
     expect(JSON.stringify(composer)).not.toContain("readonly_docs.search");
+  });
+
+  it("keeps pinned remote instruction loaders scoped", async () => {
+    const files = await walkProject({
+      root_path: safeFixtureRoot,
+      output_path: ".agentcsp",
+      formats: ["json", "md"],
+      include_hidden: true,
+      include_logs: false,
+      max_file_size_bytes: 1024 * 1024,
+      max_files: 5000,
+      quiet: true
+    });
+    const surfaces = await detectSurfaces(files);
+    const loader = surfaces.runtime_config.find((surface) => surface.path === "instruction-loader/pinned-instructions.yaml");
+
+    expect(loader).toMatchObject({
+      trust_level: "project",
+      secret_exposure: false,
+      external_reach: false,
+      untrusted_to_privileged: false
+    });
+    expect(loader?.metadata).toMatchObject({
+      parsed_agent_remote_instruction_loader_config: true,
+      agent_remote_instruction_remote: false,
+      agent_remote_instruction_auto_refresh_enabled: false,
+      agent_remote_instruction_unpinned_reference: false,
+      agent_remote_instruction_signature_verification_disabled: false,
+      agent_remote_instruction_provenance_verification_missing: false,
+      agent_remote_instruction_untrusted_selector: false,
+      agent_remote_instruction_privileged_tool_authority: false,
+      agent_remote_instruction_approval_required: true
+    });
+    expect(loader?.metadata.agent_remote_instruction_destination_kinds).toEqual([]);
+    expect(loader?.metadata.agent_remote_instruction_role_categories).toEqual(["system_instruction"]);
+    expect(loader?.metadata.agent_remote_instruction_tool_authority_categories).toEqual([]);
+    expect(loader?.metadata.env_key_names).toEqual([]);
+    expect(loader?.metadata.secret_ref_key_names).toEqual([]);
+    expect(JSON.stringify(loader)).not.toContain("approved-internal-system-summary");
+    expect(JSON.stringify(loader)).not.toContain("readonly_docs.search");
+    expect(JSON.stringify(loader)).not.toContain("approved_internal_instruction");
   });
 
   it("keeps idempotent approval-gated tool retry policies scoped", async () => {

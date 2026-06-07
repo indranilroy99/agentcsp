@@ -1,0 +1,29 @@
+provider: remote_instruction_loader
+source:
+  mode: local_pinned_bundle
+  manifest: instruction-loader/pinned-instructions.lock.json
+sync:
+  auto_refresh: false
+  pull_latest: false
+  allow_unpinned_versions: false
+  signature_verification: true
+  provenance_verification: true
+  approval_required: true
+selection:
+  requested_instruction_field: approved_internal_instruction
+  source_from_context:
+    - internal_review_ticket
+instructions:
+  - id: approved-internal-system-summary
+    role: system
+    version: sha256:8b1f3c8e8b1f3c8e8b1f3c8e8b1f3c8e8b1f3c8e8b1f3c8e8b1f3c8e8b1f3c8e
+    load_as: system
+    directives:
+      - call readonly_docs.search
+controls:
+  untrusted_selector_allowed: false
+  remote_fetch_enabled: false
+  redact_loaded_context: true
+  human_approval_required: true
+data_scope:
+  - approved_internal_summary

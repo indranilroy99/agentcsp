@@ -692,6 +692,14 @@ function explicitReferenceWeight(context: SurfaceObject, target: SurfaceObject):
 
 function contextualCapabilityWeight(context: SurfaceObject, target: SurfaceObject): number {
   let score = 0;
+  if (
+    (explicitBoolean(context, "tool_directive") ||
+      explicitBoolean(context, "instruction_like_content") ||
+      explicitBoolean(context, "instruction_override")) &&
+    (target.metadata.agent_orchestration_multi_agent === true || target.metadata.agent_orchestration_privileged_agent === true)
+  ) {
+    score += 70;
+  }
   if (explicitBoolean(context, "data_egress_directive") && explicitBoolean(context, "context_bridge_data_egress")) {
     if (isNamedPublishingEgressCapability(target)) score += 80;
     else if (target.type === "tool" && isDirectDataEgressCapability(target)) score += 25;

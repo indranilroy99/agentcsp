@@ -2143,6 +2143,45 @@ Prompt-registry metadata may include:
 
 Raw registry URLs, repository URLs, prompt IDs, prompt names, selector fields, directive strings, data-scope labels, and token placeholders are not emitted. Provider names, destination categories, prompt-kind categories, auto-sync posture, verification posture, role-injection posture, untrusted selector signals, and approval posture let rules detect remote prompt supply-chain risk without copying prompt content into the manifest.
 
+## Agent Remote Instruction-Loader Posture
+
+Remote instruction loaders, instruction sync configs, prompt loaders, and system or developer instruction-source configs are normalized into `runtime_config` objects when discovered. This models the path where externally refreshed instructions become model-visible agent authority without going through a formal prompt registry.
+
+Remote instruction-loader metadata may include:
+
+- `parsed_agent_remote_instruction_loader_config`
+- `agent_remote_instruction_fields`
+- `agent_remote_instruction_provider`
+- `agent_remote_instruction_remote`
+- `agent_remote_instruction_destination_redacted`
+- `agent_remote_instruction_destination_count`
+- `agent_remote_instruction_destination_kinds`
+- `agent_remote_instruction_refs_redacted`
+- `agent_remote_instruction_ref_count`
+- `agent_remote_instruction_role_categories`
+- `agent_remote_instruction_system_role`
+- `agent_remote_instruction_developer_role`
+- `agent_remote_instruction_auto_refresh_enabled`
+- `agent_remote_instruction_unpinned_reference`
+- `agent_remote_instruction_signature_verification_disabled`
+- `agent_remote_instruction_provenance_verification_missing`
+- `agent_remote_instruction_untrusted_selector`
+- `agent_remote_instruction_privileged_role_injection`
+- `agent_remote_instruction_tool_authority_categories`
+- `agent_remote_instruction_privileged_tool_authority`
+- `agent_remote_instruction_write_authority`
+- `agent_remote_instruction_external_authority`
+- `agent_remote_instruction_memory_write`
+- `agent_remote_instruction_shell_authority`
+- `agent_remote_instruction_secret_access`
+- `agent_remote_instruction_sensitive_context`
+- `agent_remote_instruction_pii_context`
+- `agent_remote_instruction_approval_required`
+- `env_key_names`
+- `secret_ref_key_names`
+
+Raw remote instruction URLs, repository URLs, instruction IDs, instruction names, selector values, directive strings, tool names, data-scope labels, and token placeholders are not emitted. Destination categories, role categories, refresh and pinning posture, verification posture, untrusted selector posture, tool-authority categories, approval posture, data-class booleans, and credential key names let rules detect remote instruction authority without copying instruction content into evidence.
+
 ## Agent Exposure Posture
 
 Public A2A agent cards, `.well-known` agent-card documents, agent discovery configs, and agent capability catalogs are normalized into `runtime_config` objects when discovered. This models the boundary where external agents can discover and invoke local agent capabilities.
