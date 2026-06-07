@@ -76,6 +76,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-022")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-023")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-024")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-093")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-025")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-085")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-026")).toBe(true);
@@ -269,6 +270,44 @@ describe("rule engine", () => {
     expect(JSON.stringify(runtimeArtifactExportFindings[0])).not.toContain("artifact_customer_email");
     expect(JSON.stringify(runtimeArtifactExportFindings[0])).not.toContain("artifact_account_number");
     expect(JSON.stringify(runtimeArtifactExportFindings[0])).not.toContain("confidential_ticket_context");
+    const runtimeArtifactRetentionFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-RUNTIME-093");
+    expect(runtimeArtifactRetentionFindings).toHaveLength(1);
+    expect(runtimeArtifactRetentionFindings[0]?.matched_object.path).toBe("artifacts/run-export.yaml");
+    expect(runtimeArtifactRetentionFindings[0]?.matched_object.metadata).toMatchObject({
+      parsed_agent_artifact_export_config: true,
+      agent_artifact_export_provider: "s3",
+      agent_artifact_export_remote: true,
+      agent_artifact_export_public_access: true,
+      agent_artifact_export_write_enabled: true,
+      agent_artifact_export_retention_enabled: true,
+      agent_artifact_export_prompt_capture: true,
+      agent_artifact_export_tool_output_capture: true,
+      agent_artifact_export_browser_capture: true,
+      agent_artifact_export_retrieval_capture: true,
+      agent_artifact_export_memory_capture: true,
+      agent_artifact_export_secret_capture: true,
+      agent_artifact_export_sensitive_capture: true,
+      agent_artifact_export_pii_capture: true,
+      agent_artifact_export_redaction_disabled: true,
+      agent_artifact_export_approval_required: false
+    });
+    expect(runtimeArtifactRetentionFindings[0]?.matched_object.metadata.agent_artifact_export_capture_categories).toEqual([
+      "browser_artifact",
+      "memory_context",
+      "prompt_context",
+      "retrieval_context",
+      "secret_material",
+      "tool_output"
+    ]);
+    expect(runtimeArtifactRetentionFindings[0]?.severity).toBe("critical");
+    expect(runtimeArtifactRetentionFindings[0]?.confidence).toBe("very_high");
+    expect(runtimeArtifactRetentionFindings[0]?.recommended_control).toBe("quarantine");
+    expect(JSON.stringify(runtimeArtifactRetentionFindings[0])).not.toContain("${ARTIFACT_EXPORT_TOKEN}");
+    expect(JSON.stringify(runtimeArtifactRetentionFindings[0])).not.toContain("agentcsp-demo-public-artifacts");
+    expect(JSON.stringify(runtimeArtifactRetentionFindings[0])).not.toContain("artifacts.agentcsp-demo.example.invalid");
+    expect(JSON.stringify(runtimeArtifactRetentionFindings[0])).not.toContain("artifact_customer_email");
+    expect(JSON.stringify(runtimeArtifactRetentionFindings[0])).not.toContain("artifact_account_number");
+    expect(JSON.stringify(runtimeArtifactRetentionFindings[0])).not.toContain("confidential_ticket_context");
     const runtimeWebhookEgressFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-RUNTIME-025");
     expect(runtimeWebhookEgressFindings).toHaveLength(1);
     expect(runtimeWebhookEgressFindings[0]?.matched_object.path).toBe("webhooks/model-callbacks.yaml");

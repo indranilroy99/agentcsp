@@ -790,6 +790,7 @@ The current iteration adds:
 - first-class redacted metadata for agent artifact, generated-output, report, screenshot, recording, and run-export configs
 - vulnerable fixture coverage for public remote S3-style artifact export that captures prompts, completions, tool outputs, browser artifacts, retrieval context, memory, PII, and secrets with disabled redaction and long retention
 - rule `AGENTCSP-RUNTIME-024` for artifact/output export boundaries that combine remote/public destination, sensitive capture, disabled redaction, and credential exposure
+- rule `AGENTCSP-RUNTIME-093` for public retained generated-run artifacts that contain prompts, tool outputs, browser artifacts, retrieval context, memory, PII, and secrets without redaction or approval
 - scanner, rule, fixture verifier, and redaction coverage proving bucket names, endpoints, data-scope labels, generated outputs, and token placeholders stay redacted
 
 ## Agent Webhook Egress Boundary Pass
