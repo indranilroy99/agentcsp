@@ -71,6 +71,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-018")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-072")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-019")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-098")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-020")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-077")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-021")).toBe(true);
@@ -2032,6 +2033,61 @@ describe("rule engine", () => {
     expect(JSON.stringify(runtimeAgentExtensionFindings[0])).not.toContain("@agentcsp-demo/browser-account-actions");
     expect(JSON.stringify(runtimeAgentExtensionFindings[0])).not.toContain("customer-data-plugin");
     expect(JSON.stringify(runtimeAgentExtensionFindings[0])).not.toContain("customer_requested_skill");
+    const runtimeAgentExtensionAutoUpdateFindings = findings.filter(
+      (finding) => finding.rule_id === "AGENTCSP-RUNTIME-098"
+    );
+    expect(runtimeAgentExtensionAutoUpdateFindings).toHaveLength(1);
+    expect(runtimeAgentExtensionAutoUpdateFindings[0]?.matched_object.path).toBe("extensions/remote-skills.yaml");
+    expect(runtimeAgentExtensionAutoUpdateFindings[0]?.matched_object.metadata).toMatchObject({
+      parsed_agent_extension_loader_config: true,
+      agent_extension_loader_provider: "agent_extension_marketplace",
+      agent_extension_loader_remote: true,
+      agent_extension_loader_unpinned_reference: true,
+      agent_extension_loader_auto_install_enabled: true,
+      agent_extension_loader_auto_update_enabled: true,
+      agent_extension_loader_signature_verification_disabled: true,
+      agent_extension_loader_provenance_verification_missing: true,
+      agent_extension_loader_untrusted_input: true,
+      agent_extension_loader_privileged_authority: true,
+      agent_extension_loader_external_authority: true,
+      agent_extension_loader_sensitive_data: true,
+      agent_extension_loader_pii_data: true,
+      agent_extension_loader_approval_required: false
+    });
+    expect(runtimeAgentExtensionAutoUpdateFindings[0]?.matched_object.metadata.agent_extension_loader_extension_kinds).toEqual([
+      "plugin",
+      "skill"
+    ]);
+    expect(runtimeAgentExtensionAutoUpdateFindings[0]?.matched_object.metadata.agent_extension_loader_tool_authority_categories).toEqual([
+      "browser_action",
+      "database_access",
+      "external_response",
+      "memory_write",
+      "repo_or_filesystem_write",
+      "secret_manager_access"
+    ]);
+    expect(runtimeAgentExtensionAutoUpdateFindings[0]?.severity).toBe("critical");
+    expect(runtimeAgentExtensionAutoUpdateFindings[0]?.confidence).toBe("very_high");
+    expect(runtimeAgentExtensionAutoUpdateFindings[0]?.recommended_control).toBe("quarantine");
+    expect(JSON.stringify(runtimeAgentExtensionAutoUpdateFindings[0])).not.toContain("${AGENT_EXTENSION_TOKEN}");
+    expect(JSON.stringify(runtimeAgentExtensionAutoUpdateFindings[0])).not.toContain("skills.agentcsp-demo.example.invalid");
+    expect(JSON.stringify(runtimeAgentExtensionAutoUpdateFindings[0])).not.toContain("browser-account-actions");
+    expect(JSON.stringify(runtimeAgentExtensionAutoUpdateFindings[0])).not.toContain("@agentcsp-demo/browser-account-actions");
+    expect(JSON.stringify(runtimeAgentExtensionAutoUpdateFindings[0])).not.toContain("customer-data-plugin");
+    expect(JSON.stringify(runtimeAgentExtensionAutoUpdateFindings[0])).not.toContain("github.com/agentcsp-demo/customer-data-plugin");
+    expect(JSON.stringify(runtimeAgentExtensionAutoUpdateFindings[0])).not.toContain("browser.submit_customer_form");
+    expect(JSON.stringify(runtimeAgentExtensionAutoUpdateFindings[0])).not.toContain("slack.post_escalation_reply");
+    expect(JSON.stringify(runtimeAgentExtensionAutoUpdateFindings[0])).not.toContain("support_db.update_customer_record");
+    expect(JSON.stringify(runtimeAgentExtensionAutoUpdateFindings[0])).not.toContain("memory.write_long_term_summary");
+    expect(JSON.stringify(runtimeAgentExtensionAutoUpdateFindings[0])).not.toContain("vault_secret_lookup.read_support_token");
+    expect(JSON.stringify(runtimeAgentExtensionAutoUpdateFindings[0])).not.toContain("filesystem.write_customer_export");
+    expect(JSON.stringify(runtimeAgentExtensionAutoUpdateFindings[0])).not.toContain("untrusted_customer_message");
+    expect(JSON.stringify(runtimeAgentExtensionAutoUpdateFindings[0])).not.toContain("retrieved_customer_context");
+    expect(JSON.stringify(runtimeAgentExtensionAutoUpdateFindings[0])).not.toContain("browser_tool_output");
+    expect(JSON.stringify(runtimeAgentExtensionAutoUpdateFindings[0])).not.toContain("customer_requested_skill");
+    expect(JSON.stringify(runtimeAgentExtensionAutoUpdateFindings[0])).not.toContain("customer_extension_email");
+    expect(JSON.stringify(runtimeAgentExtensionAutoUpdateFindings[0])).not.toContain("customer_account_number");
+    expect(JSON.stringify(runtimeAgentExtensionAutoUpdateFindings[0])).not.toContain("confidential_extension_payload");
     const runtimeSelfModificationFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-RUNTIME-020");
     expect(runtimeSelfModificationFindings).toHaveLength(1);
     expect(runtimeSelfModificationFindings[0]?.matched_object.path).toBe("self-modification/policy-writer.yaml");

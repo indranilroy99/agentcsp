@@ -746,6 +746,7 @@ The current iteration adds:
 - first-class redacted metadata for remote skill, plugin, tool, prompt, MCP, marketplace, registry, catalog, and capability-loader configs
 - vulnerable fixture coverage for a remote extension marketplace that auto-installs and auto-updates unpinned, unsigned skills/plugins selected from customer/retrieval/browser context with privileged tool authority and no approval gate
 - rule `AGENTCSP-RUNTIME-019` for remote extension loaders that combine auto-install, unpinned references, disabled signature verification, untrusted input, privileged authority, and missing approval
+- rule `AGENTCSP-RUNTIME-098` for remote extension loaders that auto-install and auto-update unpinned unsigned skills or plugins with browser, database, filesystem, memory, external-response, and secret-manager authority from untrusted selectors
 - scanner, rule, fixture verifier, and redaction coverage proving registry URLs, Git URLs, package names, extension names, version strings, permission strings, selector fields, source labels, data-field labels, and token placeholders stay redacted
 
 ## Agent Self-Modification Pass
