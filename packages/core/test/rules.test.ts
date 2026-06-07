@@ -109,6 +109,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-070")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-071")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-030")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-088")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-031")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-087")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-032")).toBe(true);
@@ -695,6 +696,49 @@ describe("rule engine", () => {
     expect(JSON.stringify(runtimeModelRouterFindings[0])).not.toContain("retrieved_customer_context");
     expect(JSON.stringify(runtimeModelRouterFindings[0])).not.toContain("browser_tool_output");
     expect(JSON.stringify(runtimeModelRouterFindings[0])).not.toContain("support_memory_summary");
+    const runtimeModelRouterOutputRetentionFindings = findings.filter(
+      (finding) => finding.rule_id === "AGENTCSP-RUNTIME-088"
+    );
+    expect(runtimeModelRouterOutputRetentionFindings).toHaveLength(1);
+    expect(runtimeModelRouterOutputRetentionFindings[0]?.matched_object.path).toBe("models/model-router.yaml");
+    expect(runtimeModelRouterOutputRetentionFindings[0]?.matched_object.metadata).toMatchObject({
+      parsed_ai_model_router_config: true,
+      ai_model_router_provider: "litellm",
+      ai_model_router_remote_providers: true,
+      ai_model_router_fallback_enabled: true,
+      ai_model_router_auto_fallback: true,
+      ai_model_router_sends_prompts: true,
+      ai_model_router_sends_tool_outputs: true,
+      ai_model_router_sends_retrieval_context: true,
+      ai_model_router_sends_memory: true,
+      ai_model_router_sensitive_context: true,
+      ai_model_router_pii_context: true,
+      ai_model_router_secret_context: true,
+      ai_model_router_untrusted_input: true,
+      ai_model_router_redaction_disabled: true,
+      ai_model_router_records_outputs: true,
+      ai_model_router_approval_required: false
+    });
+    expect(runtimeModelRouterOutputRetentionFindings[0]?.matched_object.metadata.ai_model_router_provider_categories).toEqual([
+      "custom_model_gateway",
+      "fallback_provider",
+      "managed_model_provider",
+      "model_router",
+      "third_party_model_route"
+    ]);
+    expect(runtimeModelRouterOutputRetentionFindings[0]?.severity).toBe("critical");
+    expect(runtimeModelRouterOutputRetentionFindings[0]?.confidence).toBe("very_high");
+    expect(runtimeModelRouterOutputRetentionFindings[0]?.recommended_control).toBe("redact");
+    expect(JSON.stringify(runtimeModelRouterOutputRetentionFindings[0])).not.toContain("${MODEL_ROUTER_TOKEN}");
+    expect(JSON.stringify(runtimeModelRouterOutputRetentionFindings[0])).not.toContain("${FALLBACK_MODEL_TOKEN}");
+    expect(JSON.stringify(runtimeModelRouterOutputRetentionFindings[0])).not.toContain("api.openai.example.invalid");
+    expect(JSON.stringify(runtimeModelRouterOutputRetentionFindings[0])).not.toContain("api.anthropic.example.invalid");
+    expect(JSON.stringify(runtimeModelRouterOutputRetentionFindings[0])).not.toContain("openrouter.example.invalid");
+    expect(JSON.stringify(runtimeModelRouterOutputRetentionFindings[0])).not.toContain("unapproved-community-model");
+    expect(JSON.stringify(runtimeModelRouterOutputRetentionFindings[0])).not.toContain("untrusted_customer_ticket");
+    expect(JSON.stringify(runtimeModelRouterOutputRetentionFindings[0])).not.toContain("retrieved_customer_context");
+    expect(JSON.stringify(runtimeModelRouterOutputRetentionFindings[0])).not.toContain("browser_tool_output");
+    expect(JSON.stringify(runtimeModelRouterOutputRetentionFindings[0])).not.toContain("support_memory_summary");
     const runtimeEmbeddingFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-RUNTIME-031");
     expect(runtimeEmbeddingFindings).toHaveLength(1);
     expect(runtimeEmbeddingFindings[0]?.matched_object.path).toBe("embeddings/rag-indexer.yaml");

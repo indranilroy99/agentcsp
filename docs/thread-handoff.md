@@ -846,6 +846,7 @@ The current iteration adds:
 - first-class redacted metadata for AI model router, provider-routing, fallback, failover, and model-gateway configs
 - vulnerable fixture coverage for a LiteLLM-style router that automatically fails over sensitive prompts, tool outputs, retrieval context, memory, PII, and secrets from untrusted customer sources to third-party model providers with disabled redaction, output recording, credentials, and no approval gate
 - rule `AGENTCSP-RUNTIME-030` for model-router boundaries that combine third-party fallback, sensitive context, disabled redaction, untrusted input, credential exposure, and missing approval
+- rule `AGENTCSP-RUNTIME-088` for model routers that record unredacted fallback outputs for prompts, tool outputs, retrieval context, memory, PII, and secrets from untrusted context without approval
 - scanner, rule, fixture verifier, and redaction coverage proving provider endpoints, model aliases, fallback labels, routing strategy values, source labels, context labels, and token placeholders stay redacted
 
 ## AI Embedding/Indexing Boundary Pass

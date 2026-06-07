@@ -1,0 +1,81 @@
+id: AGENTCSP-RUNTIME-088
+name: Model router records unredacted sensitive fallback outputs
+description: An AI model router automatically fails over untrusted prompts, tool outputs, retrieval context, memory, PII, and secrets to remote providers while recording outputs with redaction disabled, credential references present, and no approval gate.
+category: model_router_output_retention
+severity: critical
+maps_to:
+  owasp:
+    - LLM01:2025 Prompt Injection
+    - LLM02:2025 Sensitive Information Disclosure
+    - LLM06:2025 Excessive Agency
+  mitre_atlas:
+    - AML.T0051 LLM Prompt Injection
+    - AML.T0057 Exfiltration via Cyber Means
+    - AML.T0059 Data from Information Repositories
+  nist_ai_rmf:
+    - MAP 5.1
+    - MEASURE 2.7
+    - MANAGE 2.4
+match:
+  object_type: runtime_config
+  where:
+    - field: metadata.parsed_ai_model_router_config
+      op: equals
+      value: true
+    - field: metadata.ai_model_router_remote_providers
+      op: equals
+      value: true
+    - field: metadata.ai_model_router_fallback_enabled
+      op: equals
+      value: true
+    - field: metadata.ai_model_router_auto_fallback
+      op: equals
+      value: true
+    - field: metadata.ai_model_router_sends_prompts
+      op: equals
+      value: true
+    - field: metadata.ai_model_router_sends_tool_outputs
+      op: equals
+      value: true
+    - field: metadata.ai_model_router_sends_retrieval_context
+      op: equals
+      value: true
+    - field: metadata.ai_model_router_sends_memory
+      op: equals
+      value: true
+    - field: metadata.ai_model_router_sensitive_context
+      op: equals
+      value: true
+    - field: metadata.ai_model_router_pii_context
+      op: equals
+      value: true
+    - field: metadata.ai_model_router_secret_context
+      op: equals
+      value: true
+    - field: metadata.ai_model_router_untrusted_input
+      op: equals
+      value: true
+    - field: metadata.ai_model_router_redaction_disabled
+      op: equals
+      value: true
+    - field: metadata.ai_model_router_records_outputs
+      op: equals
+      value: true
+    - field: metadata.ai_model_router_approval_required
+      op: equals
+      value: false
+    - field: metadata.ai_model_router_provider_categories
+      op: contains_any
+      value:
+        - fallback_provider
+        - third_party_model_route
+        - custom_model_gateway
+    - field: secret_exposure
+      op: equals
+      value: true
+    - field: untrusted_to_privileged
+      op: equals
+      value: true
+recommendation:
+  control: redact
+  text: Disable output recording for sensitive model-router fallback paths, redact prompts, tool outputs, retrieval context, memory, PII, and secrets before routing or persistence, restrict fallback providers to an approved allowlist, and require approval before untrusted context can be routed through recording-enabled model routers.
