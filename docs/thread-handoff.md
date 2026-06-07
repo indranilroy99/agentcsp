@@ -992,6 +992,7 @@ The current iteration adds:
 - first-class redacted metadata for visual context policy posture, including browser screenshot, screen-capture, uploaded-image, document-image, OCR-text, raw-image handling, prompt-context injection, visual boundary posture, sanitization posture, prompt-injection filtering, follow-up tool authority, memory writes, shell authority, external reach, secret access, and approval posture
 - vulnerable fixture coverage for raw screenshots and OCR text that can enter system prompt context, request follow-up tools, write customer records, submit browser forms, send Slack replies, persist memory, run shell commands, and access a secret lookup tool without approval
 - rule `AGENTCSP-RUNTIME-040` for visual context injection boundaries that combine untrusted raw screenshots or OCR text, disabled visual sanitization and prompt-injection filtering, privileged follow-up action authority, credential exposure, and no approval
+- rule `AGENTCSP-RUNTIME-095` for visual/OCR context promoted into system or developer context and approval decision context while browser, database, external response, memory, shell, and secret-manager tools can execute without approval
 - scanner, rule, fixture verifier, and redaction coverage proving raw screenshot labels, OCR source labels, tool names, data-scope labels, and token placeholders stay redacted
 
 ## RAG Retrieval Authorization Pass

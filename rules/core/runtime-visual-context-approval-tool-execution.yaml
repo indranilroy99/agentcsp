@@ -1,0 +1,100 @@
+id: AGENTCSP-RUNTIME-095
+name: Visual context can approve and execute privileged tools
+description: Raw screenshots, uploaded images, or OCR text are promoted into system or developer context and approval decision context while browser, database, external response, memory, shell, or secret-manager tools can execute without visual sanitization or approval.
+category: visual_context_privileged_tool_execution
+severity: critical
+maps_to:
+  owasp:
+    - LLM01:2025 Prompt Injection
+    - LLM02:2025 Sensitive Information Disclosure
+    - LLM06:2025 Excessive Agency
+  mitre_atlas:
+    - AML.T0051 LLM Prompt Injection
+    - AML.T0057 Exfiltration via Cyber Means
+    - AML.T0059 Data from Information Repositories
+  nist_ai_rmf:
+    - MAP 5.1
+    - MEASURE 2.9
+    - MANAGE 2.4
+match:
+  object_type: runtime_config
+  where:
+    - field: metadata.parsed_visual_context_policy_config
+      op: equals
+      value: true
+    - field: metadata.visual_context_untrusted_sources
+      op: equals
+      value: true
+    - field: metadata.visual_context_raw_image_enabled
+      op: equals
+      value: true
+    - field: metadata.visual_context_ocr_enabled
+      op: equals
+      value: true
+    - field: metadata.visual_context_prompt_context
+      op: equals
+      value: true
+    - field: metadata.visual_context_system_or_developer_context
+      op: equals
+      value: true
+    - field: metadata.visual_context_boundary_disabled
+      op: equals
+      value: true
+    - field: metadata.visual_context_sanitization_disabled
+      op: equals
+      value: true
+    - field: metadata.visual_context_prompt_injection_filter_disabled
+      op: equals
+      value: true
+    - field: metadata.visual_context_approval_input
+      op: equals
+      value: true
+    - field: metadata.visual_context_followup_tool_calls
+      op: equals
+      value: true
+    - field: metadata.visual_context_tool_authority_categories
+      op: contains_any
+      value:
+        - browser_action
+        - database_access
+        - secret_manager_access
+        - shell_execution
+    - field: metadata.visual_context_write_authority
+      op: equals
+      value: true
+    - field: metadata.visual_context_external_reach
+      op: equals
+      value: true
+    - field: metadata.visual_context_memory_write
+      op: equals
+      value: true
+    - field: metadata.visual_context_shell_authority
+      op: equals
+      value: true
+    - field: metadata.visual_context_destructive_authority
+      op: equals
+      value: true
+    - field: metadata.visual_context_secret_capture
+      op: equals
+      value: true
+    - field: metadata.visual_context_secret_access
+      op: equals
+      value: true
+    - field: metadata.visual_context_sensitive_data
+      op: equals
+      value: true
+    - field: metadata.visual_context_pii_data
+      op: equals
+      value: true
+    - field: metadata.visual_context_approval_required
+      op: equals
+      value: false
+    - field: secret_exposure
+      op: equals
+      value: true
+    - field: untrusted_to_privileged
+      op: equals
+      value: true
+recommendation:
+  control: quarantine
+  text: Quarantine visual and OCR-derived context before approval or tool execution, keep image/OCR content out of system and developer roles, strip embedded visual instructions, require deterministic visual-content policy checks, and require approval before visual context can drive browser, database, external response, memory, shell, or secret-manager tools.

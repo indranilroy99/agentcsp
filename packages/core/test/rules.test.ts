@@ -129,6 +129,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-039")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-079")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-040")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-095")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-041")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-075")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-042")).toBe(true);
@@ -2814,6 +2815,64 @@ describe("rule engine", () => {
     expect(JSON.stringify(runtimeVisualContextFindings[0])).not.toContain("ocr_text_from_support_attachment");
     expect(JSON.stringify(runtimeVisualContextFindings[0])).not.toContain("browser.submit_customer_form");
     expect(JSON.stringify(runtimeVisualContextFindings[0])).not.toContain("visual_customer_email");
+    const runtimeVisualToolExecutionFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-RUNTIME-095");
+    expect(runtimeVisualToolExecutionFindings).toHaveLength(1);
+    expect(runtimeVisualToolExecutionFindings[0]?.matched_object.path).toBe("vision/screenshot-policy.yaml");
+    expect(runtimeVisualToolExecutionFindings[0]?.matched_object.metadata).toMatchObject({
+      parsed_visual_context_policy_config: true,
+      visual_context_untrusted_sources: true,
+      visual_context_raw_image_enabled: true,
+      visual_context_ocr_enabled: true,
+      visual_context_prompt_context: true,
+      visual_context_system_or_developer_context: true,
+      visual_context_boundary_disabled: true,
+      visual_context_sanitization_disabled: true,
+      visual_context_prompt_injection_filter_disabled: true,
+      visual_context_approval_input: true,
+      visual_context_followup_tool_calls: true,
+      visual_context_write_authority: true,
+      visual_context_external_reach: true,
+      visual_context_memory_write: true,
+      visual_context_shell_authority: true,
+      visual_context_destructive_authority: true,
+      visual_context_secret_capture: true,
+      visual_context_secret_access: true,
+      visual_context_sensitive_data: true,
+      visual_context_pii_data: true,
+      visual_context_approval_required: false
+    });
+    expect(runtimeVisualToolExecutionFindings[0]?.matched_object.metadata.visual_context_source_categories).toEqual([
+      "browser_screenshot",
+      "document_image",
+      "ocr_text",
+      "screen_capture",
+      "uploaded_image"
+    ]);
+    expect(runtimeVisualToolExecutionFindings[0]?.matched_object.metadata.visual_context_tool_authority_categories).toEqual([
+      "browser_action",
+      "database_access",
+      "external_response",
+      "memory_write",
+      "secret_manager_access",
+      "shell_execution",
+      "tool_call"
+    ]);
+    expect(runtimeVisualToolExecutionFindings[0]?.severity).toBe("critical");
+    expect(runtimeVisualToolExecutionFindings[0]?.confidence).toBe("very_high");
+    expect(runtimeVisualToolExecutionFindings[0]?.recommended_control).toBe("quarantine");
+    expect(JSON.stringify(runtimeVisualToolExecutionFindings[0])).not.toContain("${VISION_CONTEXT_TOKEN}");
+    expect(JSON.stringify(runtimeVisualToolExecutionFindings[0])).not.toContain("browser_screenshot_observation");
+    expect(JSON.stringify(runtimeVisualToolExecutionFindings[0])).not.toContain("screen_capture_after_navigation");
+    expect(JSON.stringify(runtimeVisualToolExecutionFindings[0])).not.toContain("customer_uploaded_invoice_image");
+    expect(JSON.stringify(runtimeVisualToolExecutionFindings[0])).not.toContain("ocr_text_from_support_attachment");
+    expect(JSON.stringify(runtimeVisualToolExecutionFindings[0])).not.toContain("support_db.update_customer_record");
+    expect(JSON.stringify(runtimeVisualToolExecutionFindings[0])).not.toContain("slack.post_escalation_reply");
+    expect(JSON.stringify(runtimeVisualToolExecutionFindings[0])).not.toContain("browser.submit_customer_form");
+    expect(JSON.stringify(runtimeVisualToolExecutionFindings[0])).not.toContain("memory.write_long_term_summary");
+    expect(JSON.stringify(runtimeVisualToolExecutionFindings[0])).not.toContain("vault_secret_lookup.read_support_token");
+    expect(JSON.stringify(runtimeVisualToolExecutionFindings[0])).not.toContain("visual_customer_email");
+    expect(JSON.stringify(runtimeVisualToolExecutionFindings[0])).not.toContain("visual_account_number");
+    expect(JSON.stringify(runtimeVisualToolExecutionFindings[0])).not.toContain("confidential_invoice_image");
     const runtimeInboundTriggerFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-RUNTIME-014");
     expect(runtimeInboundTriggerFindings).toHaveLength(1);
     expect(runtimeInboundTriggerFindings[0]?.matched_object.path).toBe("inbox/support-triage.yaml");
