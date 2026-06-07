@@ -33,9 +33,11 @@ await assertPackageFiles("packages/core/package.json");
 await assertPackageFiles("packages/cli/package.json");
 await assertCorePackageMetadata();
 await assertCliPackageMetadata();
-await verifyPackedTarballs(packagedRuleCount);
+await verifyPackedPackageInstall(packagedRuleCount);
 
-console.log(`Package artifacts verified: ${packagedRuleCount} built-in rules packaged and tarballs verified`);
+console.log(
+  `Package artifacts verified: ${packagedRuleCount} built-in rules packaged, tarballs verified, install smoke passed`
+);
 
 async function assertFile(filePath) {
   const stats = await fs.stat(filePath);
@@ -79,7 +81,7 @@ async function assertCliPackageMetadata() {
   }
 }
 
-async function verifyPackedTarballs(expectedRuleCount) {
+async function verifyPackedPackageInstall(expectedRuleCount) {
   const packRoot = await fs.mkdtemp(path.join(os.tmpdir(), "agentcsp-pack-"));
   try {
     const coreTarball = await packWorkspacePackage("@agentcsp/core", path.join(packRoot, "core"));
@@ -115,6 +117,8 @@ async function verifyPackedTarballs(expectedRuleCount) {
       "package/dist/banner.js",
       "package/dist/commands/scan.js"
     ]);
+
+    await smokeTestInstalledCli(coreTarball, cliTarball, path.join(packRoot, "install"));
   } finally {
     await fs.rm(packRoot, { recursive: true, force: true });
   }
@@ -150,6 +154,115 @@ function assertTarballEntries(packageName, entries, expectedEntries) {
   if (missing.length > 0) {
     throw new Error(`${packageName} tarball is missing expected entries: ${missing.join(", ")}`);
   }
+}
+
+async function smokeTestInstalledCli(coreTarball, cliTarball, installRoot) {
+  await fs.mkdir(installRoot, { recursive: true });
+  const runtimeDependencies = await collectRuntimeDependencies();
+  await fs.writeFile(
+    path.join(installRoot, "package.json"),
+    `${JSON.stringify(
+      {
+        name: "agentcsp-package-smoke",
+        version: "0.0.0",
+        private: true,
+        type: "module",
+        dependencies: runtimeDependencies
+      },
+      null,
+      2
+    )}\n`
+  );
+
+  await execFileAsync("pnpm", ["install", "--offline"], {
+    cwd: installRoot,
+    maxBuffer: 20 * 1024 * 1024
+  });
+
+  const installedCorePath = path.join(installRoot, "node_modules", "@agentcsp", "core");
+  const installedCliPath = path.join(installRoot, "node_modules", "agentcsp");
+  await extractTarball(coreTarball, installedCorePath);
+  await extractTarball(cliTarball, installedCliPath);
+
+  const outputPath = path.join(installRoot, "scan-output");
+  await assertInstalledPackageMetadata(installedCorePath, installedCliPath);
+  await assertFile(path.join(installedCliPath, "dist", "index.js"));
+  await assertFile(path.join(installedCorePath, "dist", "index.js"));
+
+  await execFileAsync(
+    process.execPath,
+    [
+      path.join(installedCliPath, "dist", "index.js"),
+      "scan",
+      path.join(repoRoot, "examples", "safe-agent"),
+      "--out",
+      outputPath,
+      "--format",
+      "json,md",
+      "--quiet"
+    ],
+    {
+      cwd: installRoot,
+      maxBuffer: 20 * 1024 * 1024
+    }
+  );
+
+  await assertFile(path.join(outputPath, "agent-manifest.json"));
+  await assertFile(path.join(outputPath, "findings.json"));
+  await assertFile(path.join(outputPath, "report.md"));
+
+  const findings = JSON.parse(await fs.readFile(path.join(outputPath, "findings.json"), "utf8"));
+  if (!Array.isArray(findings)) {
+    throw new Error("Installed CLI smoke test produced a non-array findings.json");
+  }
+  if (findings.length !== 0) {
+    throw new Error(`Installed CLI smoke test expected the safe fixture to stay clean, found ${findings.length}`);
+  }
+}
+
+async function collectRuntimeDependencies() {
+  const dependencies = {};
+  for (const relativePackageJson of ["packages/core/package.json", "packages/cli/package.json"]) {
+    const packageJson = await readPackageJson(relativePackageJson);
+    for (const [name, version] of Object.entries(packageJson.dependencies ?? {})) {
+      if (name === "@agentcsp/core" || name === "agentcsp") continue;
+      dependencies[name] = version;
+    }
+  }
+  return Object.fromEntries(Object.entries(dependencies).sort(([left], [right]) => left.localeCompare(right)));
+}
+
+async function assertInstalledPackageMetadata(installedCorePath, installedCliPath) {
+  const corePackageJson = JSON.parse(await fs.readFile(path.join(installedCorePath, "package.json"), "utf8"));
+  const cliPackageJson = JSON.parse(await fs.readFile(path.join(installedCliPath, "package.json"), "utf8"));
+  if (corePackageJson.name !== "@agentcsp/core") {
+    throw new Error("Installed-tree smoke test unpacked an invalid core package");
+  }
+  if (cliPackageJson.name !== "agentcsp") {
+    throw new Error("Installed-tree smoke test unpacked an invalid CLI package");
+  }
+  if (cliPackageJson.bin?.agentcsp !== "./dist/index.js") {
+    throw new Error("Packed CLI package does not expose the agentcsp bin at ./dist/index.js");
+  }
+  const packedCoreDependency = cliPackageJson.dependencies?.["@agentcsp/core"];
+  const compatibleCoreVersions = new Set([
+    corePackageJson.version,
+    `^${corePackageJson.version}`,
+    `~${corePackageJson.version}`
+  ]);
+  if (!compatibleCoreVersions.has(packedCoreDependency)) {
+    throw new Error(
+      `Packed CLI dependency on @agentcsp/core is not publish-compatible: expected ${corePackageJson.version}, found ${packedCoreDependency}`
+    );
+  }
+}
+
+async function extractTarball(tarballPath, destination) {
+  await fs.mkdir(destination, { recursive: true });
+  await execFileAsync("tar", ["-xzf", tarballPath, "-C", destination, "--strip-components", "1"], {
+    cwd: repoRoot,
+    maxBuffer: 10 * 1024 * 1024
+  });
 }
 
 async function readPackageJson(relativePackageJson) {

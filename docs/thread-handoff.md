@@ -1323,6 +1323,7 @@ The current iteration adds:
 - tarball inspection proving the core package ships the compiled entrypoint, schemas export, scanner, rule engine, and the full copied built-in rule pack
 - tarball inspection proving the CLI package ships the executable entrypoint, banner module, and scan command implementation
 - package metadata checks for the core exports and the `agentcsp` CLI bin target
+- installed-tree package smoke testing that combines packed AgentCSP artifacts with runtime dependencies, validates publish-compatible CLI-to-core package metadata, and runs `agentcsp scan` from the packed CLI entrypoint against the safe fixture
 
 ## Initial Build Recommendation
 
