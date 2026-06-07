@@ -136,6 +136,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-042")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-043")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-044")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-097")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-045")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-046")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-073")).toBe(true);
@@ -601,6 +602,56 @@ describe("rule engine", () => {
     expect(JSON.stringify(runtimeFeedbackPipelineFindings[0])).not.toContain("feedback_account_number");
     expect(JSON.stringify(runtimeFeedbackPipelineFindings[0])).not.toContain("feedback_authorization_header");
     expect(JSON.stringify(runtimeFeedbackPipelineFindings[0])).not.toContain("support-feedback-rlhf-dataset");
+    const runtimeFeedbackAutoPromotionFindings = findings.filter(
+      (finding) => finding.rule_id === "AGENTCSP-RUNTIME-097"
+    );
+    expect(runtimeFeedbackAutoPromotionFindings).toHaveLength(1);
+    expect(runtimeFeedbackAutoPromotionFindings[0]?.matched_object.path).toBe("feedback/support-feedback-loop.yaml");
+    expect(runtimeFeedbackAutoPromotionFindings[0]?.matched_object.metadata).toMatchObject({
+      parsed_ai_feedback_pipeline_config: true,
+      ai_feedback_provider: "humanloop",
+      ai_feedback_collection_enabled: true,
+      ai_feedback_remote_export: true,
+      ai_feedback_prompt_capture: true,
+      ai_feedback_completion_capture: true,
+      ai_feedback_tool_output_capture: true,
+      ai_feedback_retrieval_capture: true,
+      ai_feedback_memory_capture: true,
+      ai_feedback_browser_capture: true,
+      ai_feedback_secret_capture: true,
+      ai_feedback_sensitive_capture: true,
+      ai_feedback_pii_capture: true,
+      ai_feedback_untrusted_input: true,
+      ai_feedback_training_promotion_enabled: true,
+      ai_feedback_model_update_enabled: true,
+      ai_feedback_eval_set_write: true,
+      ai_feedback_redaction_disabled: true,
+      ai_feedback_consent_required: false,
+      ai_feedback_retention_enabled: true,
+      ai_feedback_approval_required: false
+    });
+    expect(runtimeFeedbackAutoPromotionFindings[0]?.matched_object.metadata.ai_feedback_capture_categories).toEqual([
+      "browser_context",
+      "completion_context",
+      "feedback_label",
+      "memory_context",
+      "pii_data",
+      "prompt_context",
+      "retrieval_context",
+      "secret_material",
+      "tool_output"
+    ]);
+    expect(runtimeFeedbackAutoPromotionFindings[0]?.severity).toBe("critical");
+    expect(runtimeFeedbackAutoPromotionFindings[0]?.confidence).toBe("very_high");
+    expect(runtimeFeedbackAutoPromotionFindings[0]?.recommended_control).toBe("quarantine");
+    expect(JSON.stringify(runtimeFeedbackAutoPromotionFindings[0])).not.toContain("${FEEDBACK_PIPELINE_TOKEN}");
+    expect(JSON.stringify(runtimeFeedbackAutoPromotionFindings[0])).not.toContain("feedback.agentcsp-demo.example.invalid");
+    expect(JSON.stringify(runtimeFeedbackAutoPromotionFindings[0])).not.toContain("untrusted_customer_rating");
+    expect(JSON.stringify(runtimeFeedbackAutoPromotionFindings[0])).not.toContain("support_agent_freeform_feedback");
+    expect(JSON.stringify(runtimeFeedbackAutoPromotionFindings[0])).not.toContain("feedback_customer_email");
+    expect(JSON.stringify(runtimeFeedbackAutoPromotionFindings[0])).not.toContain("feedback_account_number");
+    expect(JSON.stringify(runtimeFeedbackAutoPromotionFindings[0])).not.toContain("feedback_authorization_header");
+    expect(JSON.stringify(runtimeFeedbackAutoPromotionFindings[0])).not.toContain("support-feedback-rlhf-dataset");
     const runtimeTaskQueueFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-RUNTIME-046");
     expect(runtimeTaskQueueFindings).toHaveLength(1);
     expect(runtimeTaskQueueFindings[0]?.matched_object.path).toBe("queues/support-agent-jobs.yaml");

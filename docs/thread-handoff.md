@@ -1083,6 +1083,7 @@ The current iteration adds:
 - vulnerable fixture coverage for a feedback loop that collects untrusted customer ratings and freeform feedback, captures raw production prompts, completions, tool outputs, retrieval context, memory, browser context, PII, and secret fields, and promotes them into training/eval/model-update paths without redaction, consent, or approval
 - safe fixture coverage for a local approved feedback queue that captures only feedback labels, keeps model-update and eval promotion disabled, and keeps redaction, consent, and approval controls enabled
 - rule `AGENTCSP-RUNTIME-044` for feedback/RLHF pipelines that combine untrusted sensitive capture, remote export, training promotion, disabled redaction, and missing approval
+- rule `AGENTCSP-RUNTIME-097` for feedback/RLHF pipelines that retain raw prompts, completions, tool outputs, retrieval context, memory, browser context, PII, and secrets while auto-promoting to training, eval, or model-update paths without consent, redaction, or approval
 - scanner, rule, fixture verifier, and redaction coverage proving raw feedback endpoints, source labels, data-field labels, dataset names, and token placeholders stay redacted
 
 ## Agent Safety Fail-Open Posture Pass
