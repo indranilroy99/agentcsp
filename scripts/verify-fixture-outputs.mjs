@@ -80,6 +80,9 @@ const leakPatterns = [
   /mcp:\/\/browser-observations\/tool-output/u,
   /untrusted_customer_stream/u,
   /ticket_attachments/u,
+  /sampling_customer_email/u,
+  /sampling_tool_output/u,
+  /sampling_api_token/u,
   /subscription_customer_email/u,
   /subscription_account_number/u,
   /confidential_subscription_notes/u,
@@ -617,8 +620,8 @@ const leakPatterns = [
 const vulnerable = await readScanOutput(vulnerableOutput, { sarifRequired: true });
 const safe = await readScanOutput(safeOutput, { sarifRequired: false });
 
-assertEqual(vulnerable.manifest.findings.length, 237, "vulnerable manifest finding count");
-assertEqual(vulnerable.findings.length, 237, "vulnerable findings.json count");
+assertEqual(vulnerable.manifest.findings.length, 238, "vulnerable manifest finding count");
+assertEqual(vulnerable.findings.length, 238, "vulnerable findings.json count");
 assertEqual(vulnerable.manifest.attack_paths.length, 15, "vulnerable attack path count");
 assertEqual(vulnerable.manifest.static_blast_radius?.critical_attack_paths, 15, "vulnerable critical attack path count");
 assertEqual(vulnerable.manifest.diagnostics.length, 0, "vulnerable diagnostics count");
@@ -755,6 +758,7 @@ for (const ruleId of [
   "AGENTCSP-MCP-010",
   "AGENTCSP-MCP-011",
   "AGENTCSP-MCP-012",
+  "AGENTCSP-MCP-013",
   "AGENTCSP-CURSOR-001",
   "AGENTCSP-GENSTATE-001",
   "AGENTCSP-MEMORY-003",

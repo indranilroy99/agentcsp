@@ -22827,6 +22827,17 @@ async function detectMcpConfig(
       secretKeys.length > 0 || server.envExposure.passthroughSecretRisk ? ["credential"] : ["unknown"]
     );
     if (clientContext.rootsRedacted || clientContext.samplingIncludesContext) dataClasses.add("confidential");
+    if (clientContext.samplingSensitiveContext) {
+      if (
+        clientContext.samplingContextKinds.includes("credential_context") ||
+        clientContext.samplingContextKinds.includes("secret_context")
+      ) {
+        dataClasses.add("credential");
+        dataClasses.add("secret");
+      }
+      if (clientContext.samplingContextKinds.includes("pii_context")) dataClasses.add("pii");
+      dataClasses.add("confidential");
+    }
     if (clientContext.elicitationSensitiveFields) {
       if (clientContext.elicitationSensitiveFieldKinds.includes("credential")) {
         dataClasses.add("credential");
@@ -22919,6 +22930,11 @@ async function detectMcpConfig(
         mcp_root_broad_scope: clientContext.rootBroadScope,
         mcp_sampling_enabled: clientContext.samplingEnabled,
         mcp_sampling_includes_context: clientContext.samplingIncludesContext,
+        mcp_sampling_context_kinds: clientContext.samplingContextKinds,
+        mcp_sampling_sensitive_context: clientContext.samplingSensitiveContext,
+        mcp_sampling_redaction_disabled: clientContext.samplingRedactionDisabled,
+        mcp_sampling_prompt_injection_filter_disabled: clientContext.samplingPromptInjectionFilterDisabled,
+        mcp_sampling_approval_required: clientContext.samplingApprovalRequired,
         mcp_elicitation_enabled: clientContext.elicitationEnabled,
         mcp_elicitation_sensitive_fields: clientContext.elicitationSensitiveFields,
         mcp_elicitation_sensitive_field_count: clientContext.elicitationSensitiveFieldCount,
@@ -24118,6 +24134,11 @@ interface McpClientContextPosture {
   rootBroadScope: boolean;
   samplingEnabled: boolean;
   samplingIncludesContext: boolean;
+  samplingContextKinds: string[];
+  samplingSensitiveContext: boolean;
+  samplingRedactionDisabled: boolean;
+  samplingPromptInjectionFilterDisabled: boolean;
+  samplingApprovalRequired: boolean;
   elicitationEnabled: boolean;
   elicitationSensitiveFields: boolean;
   elicitationSensitiveFieldCount: number;
@@ -24384,14 +24405,18 @@ function classifyMcpClientContext(serverConfig: Record<string, unknown>): McpCli
   const fields = flattenRuntimeFields(serverConfig);
   const rootFields = fields.filter(isMcpRootField);
   const rootScopeKinds = collectMcpRootScopeKinds(rootFields);
+  const samplingFields = fields.filter(isMcpSamplingField);
+  const samplingContextKinds = collectMcpSamplingContextKinds(samplingFields);
   const elicitationFields = fields.filter(isMcpElicitationField);
   const elicitationSensitiveFieldKinds = collectMcpElicitationSensitiveFieldKinds(elicitationFields);
   const samplingEnabled = hasMcpCapabilityEnabled(fields, /(^|\.)sampling(\.|$)|sample[_-]?request|llm[_-]?request|model[_-]?request/iu);
   const samplingIncludesContext =
     samplingEnabled &&
-    fields.some((field) =>
-      /sampling|sample|llm|model/iu.test(field.path) &&
-      /\b(context|messages?|prompts?|workspace|roots?|files?|all)\b/iu.test(`${field.path} ${fieldValueText(field)}`)
+    samplingContextKinds.length > 0;
+  const samplingSensitiveContext =
+    samplingEnabled &&
+    samplingContextKinds.some((kind) =>
+      ["credential_context", "pii_context", "secret_context", "tool_output", "workspace"].includes(kind)
     );
   const elicitationEnabled = hasMcpCapabilityEnabled(fields, /(^|\.)elicitation(\.|$)|elicit|ask[_-]?user|user[_-]?input/iu);
   const elicitationSensitiveFields =
@@ -24407,6 +24432,14 @@ function classifyMcpClientContext(serverConfig: Record<string, unknown>): McpCli
     ),
     samplingEnabled,
     samplingIncludesContext,
+    samplingContextKinds,
+    samplingSensitiveContext,
+    samplingRedactionDisabled: samplingEnabled && hasMcpSamplingControlDisabledSignal(samplingFields, /redact|redaction|mask/iu),
+    samplingPromptInjectionFilterDisabled: samplingEnabled && hasMcpSamplingControlDisabledSignal(
+      samplingFields,
+      /prompt[_\s-]?injection|instruction[_\s-]?(?:strip|filter)|jailbreak|sanitize|sanitization/iu
+    ),
+    samplingApprovalRequired: samplingEnabled && hasMcpSamplingApprovalRequiredSignal(samplingFields),
     elicitationEnabled,
     elicitationSensitiveFields,
     elicitationSensitiveFieldCount: countMcpElicitationSensitiveFields(elicitationFields),
@@ -24420,6 +24453,61 @@ function classifyMcpClientContext(serverConfig: Record<string, unknown>): McpCli
     contextRequestAuthority,
     clientContextExposure: rootFields.length > 0 || contextRequestAuthority
   };
+}
+
+function isMcpSamplingField(field: RuntimeField): boolean {
+  return /(?:^|\.)(sampling|sample_request|sampleRequest|llm_request|llmRequest|model_request|modelRequest)(?:\.|$)/u.test(
+    field.path
+  ) || /\b(sampling|sample request|llm request|model request)\b/iu.test(`${field.path} ${fieldValueText(field)}`);
+}
+
+function collectMcpSamplingContextKinds(fields: RuntimeField[]): string[] {
+  const kinds = new Set<string>();
+  for (const field of fields) {
+    const text = mcpSamplingText(field);
+    if (/\b(workspace|repo|repository|project|files?|file system|filesystem|directory)\b/iu.test(text)) kinds.add("workspace");
+    if (/\b(root|roots?|client root|file uri|file:\/\/|home|host root)\b/iu.test(text)) kinds.add("root_context");
+    if (/\b(messages?|conversation|chat history|prompt|prompts?|system prompt|developer prompt)\b/iu.test(text)) {
+      kinds.add("prompt_context");
+    }
+    if (/\b(tool output|tool result|mcp output|command output|shell output|browser output|api response)\b/iu.test(text)) {
+      kinds.add("tool_output");
+    }
+    if (/\b(memory|conversation state|session state|long term|long-term|summary|remembered)\b/iu.test(text)) {
+      kinds.add("memory_context");
+    }
+    if (/(?:^|[_\W])(secret|token|api key|api token|credential|password|bearer|cookie|session)(?:[_\W]|$)/iu.test(text)) {
+      kinds.add("credential_context");
+      kinds.add("secret_context");
+    }
+    if (/(?:^|[_\W])(pii|email|phone|address|ssn|passport|dob|date of birth|customer|account|user id|account id|account number)(?:[_\W]|$)/iu.test(text)) {
+      kinds.add("pii_context");
+    }
+  }
+  return [...kinds].sort((a, b) => a.localeCompare(b));
+}
+
+function hasMcpSamplingControlDisabledSignal(fields: RuntimeField[], controlPattern: RegExp): boolean {
+  return fields.some((field) => {
+    const text = mcpSamplingText(field);
+    if (!controlPattern.test(text)) return false;
+    if (/(?:^|\.)(enabled|enforced|required|verification|verify|validation|validate|filter|sanitize|redact)(?:\.|$)/iu.test(field.path)) {
+      return disabledConfigValue(field.value);
+    }
+    return /\b(disabled|off|false|none|skip|bypass|not required|no redaction|no sanitization|unfiltered|raw)\b/iu.test(text);
+  });
+}
+
+function hasMcpSamplingApprovalRequiredSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /\b(approval|required approval|human approval|manual review|review required|confirm|confirmation|human in the loop|human-in-the-loop)\b/iu.test(
+      mcpSamplingText(field)
+    ) && truthyConfigValue(field.value)
+  );
+}
+
+function mcpSamplingText(field: RuntimeField): string {
+  return `${field.path} ${fieldValueText(field)}`.toLowerCase().replaceAll("_", " ").replaceAll("-", " ");
 }
 
 function isMcpElicitationField(field: RuntimeField): boolean {

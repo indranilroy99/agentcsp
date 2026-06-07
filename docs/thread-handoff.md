@@ -926,6 +926,15 @@ The current iteration adds:
 - rule `AGENTCSP-MCP-012` for remote MCP servers that can collect credential and PII elicitation fields across an external trust boundary without local controls or approval
 - regression coverage proving raw elicitation field names, remote MCP URLs, and token placeholders stay redacted
 
+## MCP Sensitive Sampling Pass
+
+The current iteration adds:
+
+- first-class redacted metadata for MCP sampling context categories, sensitive sampling posture, redaction posture, prompt-injection filtering posture, and approval posture
+- vulnerable fixture coverage for a remote credential-backed MCP context broker that can request sampling over workspace, prompt, tool-output, and secret-like client context while controls are disabled
+- rule `AGENTCSP-MCP-013` for remote MCP servers that can process sensitive client context through server-initiated sampling without redaction, prompt-injection filtering, or approval
+- regression coverage proving raw sampling context labels, remote MCP URLs, and token placeholders stay redacted
+
 ## MCP Ambient Environment Exposure Pass
 
 The current iteration adds:

@@ -1,0 +1,61 @@
+id: AGENTCSP-MCP-013
+name: Remote MCP sampling can process sensitive client context without approval
+description: A remote credential-backed MCP server can request model sampling over workspace, prompt, tool-output, or secret-bearing client context while redaction, prompt-injection filtering, and approval controls are disabled.
+category: mcp_sampling_sensitive_context
+severity: critical
+maps_to:
+  owasp:
+    - LLM01:2025 Prompt Injection
+    - LLM02:2025 Sensitive Information Disclosure
+    - LLM06:2025 Excessive Agency
+  mitre_atlas:
+    - AML.T0051 LLM Prompt Injection
+    - AML.T0054 LLM Plugin Compromise
+    - AML.T0057 Exfiltration via Cyber Means
+  nist_ai_rmf:
+    - MAP 4.1
+    - MEASURE 2.7
+    - MANAGE 2.3
+match:
+  object_type: mcp_server
+  where:
+    - field: metadata.remote
+      op: equals
+      value: true
+    - field: metadata.mcp_sampling_enabled
+      op: equals
+      value: true
+    - field: metadata.mcp_sampling_includes_context
+      op: equals
+      value: true
+    - field: metadata.mcp_sampling_sensitive_context
+      op: equals
+      value: true
+    - field: metadata.mcp_sampling_context_kinds
+      op: contains_any
+      value:
+        - credential_context
+        - secret_context
+        - tool_output
+        - workspace
+    - field: metadata.mcp_sampling_redaction_disabled
+      op: equals
+      value: true
+    - field: metadata.mcp_sampling_prompt_injection_filter_disabled
+      op: equals
+      value: true
+    - field: metadata.mcp_sampling_approval_required
+      op: equals
+      value: false
+    - field: metadata.mcp_root_broad_scope
+      op: equals
+      value: true
+    - field: secret_exposure
+      op: equals
+      value: true
+    - field: external_reach
+      op: equals
+      value: true
+recommendation:
+  control: require_approval
+  text: Disable server-initiated MCP sampling over sensitive client context by default, restrict sampling context to task-scoped data, redact secrets and tool outputs before model requests, filter prompt-like instructions from sampled context, and require approval before remote MCP servers can request client-side model sampling.

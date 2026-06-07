@@ -74,6 +74,11 @@ MCP metadata may include:
 - `mcp_root_broad_scope`
 - `mcp_sampling_enabled`
 - `mcp_sampling_includes_context`
+- `mcp_sampling_context_kinds`
+- `mcp_sampling_sensitive_context`
+- `mcp_sampling_redaction_disabled`
+- `mcp_sampling_prompt_injection_filter_disabled`
+- `mcp_sampling_approval_required`
 - `mcp_elicitation_enabled`
 - `mcp_elicitation_sensitive_fields`
 - `mcp_elicitation_sensitive_field_count`
@@ -136,7 +141,7 @@ MCP metadata may include:
 
 Remote third-party MCP servers are treated as external trust boundaries. Credential references and auth headers are represented as key names only. Plaintext remote transport is represented as a boolean posture signal without emitting the raw URL. Ambient environment inheritance is reduced to source categories such as `process_env`, `inherit_env`, `wildcard`, and `sensitive_prefix`; raw env passthrough expressions and wildcard patterns are not emitted. For local MCP launchers, AgentCSP records project-local implementation path references such as `tools/server.js` and whether those files were present in the scan; raw command arguments and secret placeholders remain redacted.
 
-MCP client roots, sampling, and elicitation are represented as coarse posture metadata. Raw root URIs, filesystem paths, root names, sampling prompts, elicitation schemas, requested field names, and secret placeholders are not emitted. Root scopes are reduced to categories such as `workspace`, `home`, `host_root`, `credential_path`, `absolute_path`, `file_uri`, and `wildcard` so rules can detect remote servers that can request broad client context without copying sensitive client paths into evidence. Sensitive elicitation requests are reduced to a count, high-level field categories such as `credential` and `pii`, local redaction/sanitization posture, and approval posture.
+MCP client roots, sampling, and elicitation are represented as coarse posture metadata. Raw root URIs, filesystem paths, root names, sampling prompts, sampling context labels, elicitation schemas, requested field names, and secret placeholders are not emitted. Root scopes are reduced to categories such as `workspace`, `home`, `host_root`, `credential_path`, `absolute_path`, `file_uri`, and `wildcard` so rules can detect remote servers that can request broad client context without copying sensitive client paths into evidence. Sampling requests are reduced to context categories such as `workspace`, `root_context`, `prompt_context`, `tool_output`, `credential_context`, `secret_context`, and `pii_context`, plus local redaction, prompt-injection filtering, and approval posture. Sensitive elicitation requests are reduced to a count, high-level field categories such as `credential` and `pii`, local redaction/sanitization posture, and approval posture.
 
 MCP tool catalogs are represented as posture metadata when an MCP server declares dynamic discovery, remote registries, tool manifests, marketplace entries, or model-visible tool descriptions. Raw catalog URLs, registry values, tool names, action names, context labels, and secret placeholders are not emitted. Source kinds such as `remote_registry`, `dynamic_discovery`, `tool_catalog`, `marketplace`, and `static_manifest`, combined with pinning, signature/provenance verification, review, approval, and authority categories, let rules distinguish risky mutable tool supply from pinned reviewed catalogs.
 

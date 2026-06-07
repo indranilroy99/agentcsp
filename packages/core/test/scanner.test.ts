@@ -237,6 +237,10 @@ describe("scanner", () => {
       mcp_root_broad_scope: true,
       mcp_sampling_enabled: true,
       mcp_sampling_includes_context: true,
+      mcp_sampling_sensitive_context: true,
+      mcp_sampling_redaction_disabled: true,
+      mcp_sampling_prompt_injection_filter_disabled: true,
+      mcp_sampling_approval_required: false,
       mcp_elicitation_enabled: true,
       mcp_elicitation_sensitive_fields: true,
       mcp_elicitation_sensitive_field_count: 2,
@@ -290,6 +294,15 @@ describe("scanner", () => {
       "secret_manager_access",
       "tool_call"
     ]);
+    expect(remoteContextBrokerMcp?.metadata.mcp_sampling_context_kinds).toEqual([
+      "credential_context",
+      "pii_context",
+      "prompt_context",
+      "root_context",
+      "secret_context",
+      "tool_output",
+      "workspace"
+    ]);
     expect(remoteContextBrokerMcp?.metadata.mcp_elicitation_sensitive_field_kinds).toEqual(["credential", "pii"]);
     expect(JSON.stringify(remoteContextBrokerMcp)).not.toContain("${CONTEXT_BROKER_TOKEN}");
     expect(JSON.stringify(remoteContextBrokerMcp)).not.toContain("context-broker.example.invalid/mcp");
@@ -316,6 +329,9 @@ describe("scanner", () => {
     expect(JSON.stringify(remoteContextBrokerMcp)).not.toContain("support-ssh");
     expect(JSON.stringify(remoteContextBrokerMcp)).not.toContain("customer-escalations");
     expect(JSON.stringify(remoteContextBrokerMcp)).not.toContain("host-root");
+    expect(JSON.stringify(remoteContextBrokerMcp)).not.toContain("sampling_customer_email");
+    expect(JSON.stringify(remoteContextBrokerMcp)).not.toContain("sampling_tool_output");
+    expect(JSON.stringify(remoteContextBrokerMcp)).not.toContain("sampling_api_token");
     expect(JSON.stringify(remoteContextBrokerMcp)).not.toContain("customer_email");
     expect(JSON.stringify(remoteContextBrokerMcp)).not.toContain("api_token");
     expect(remoteToolCatalogMcp).toMatchObject({
@@ -4454,6 +4470,12 @@ describe("scanner", () => {
       mcp_tool_catalog_sensitive_context: true,
       mcp_tool_catalog_pii_context: false,
       mcp_tool_catalog_approval_required: true,
+      mcp_sampling_enabled: false,
+      mcp_sampling_includes_context: false,
+      mcp_sampling_sensitive_context: false,
+      mcp_sampling_redaction_disabled: false,
+      mcp_sampling_prompt_injection_filter_disabled: false,
+      mcp_sampling_approval_required: false,
       mcp_elicitation_enabled: false,
       mcp_elicitation_sensitive_fields: false,
       mcp_elicitation_sensitive_field_count: 0,
@@ -4490,6 +4512,7 @@ describe("scanner", () => {
     expect(catalogMcp?.metadata.mcp_tool_catalog_tool_authority_categories).toEqual(["tool_call"]);
     expect(catalogMcp?.metadata.mcp_resource_subscription_source_kinds).toEqual(["filesystem_resource"]);
     expect(catalogMcp?.metadata.mcp_resource_subscription_authority_categories).toEqual(["tool_call"]);
+    expect(catalogMcp?.metadata.mcp_sampling_context_kinds).toEqual([]);
     expect(catalogMcp?.metadata.mcp_elicitation_sensitive_field_kinds).toEqual([]);
     expect(catalogMcp?.metadata.env_key_names).toEqual([]);
     expect(catalogMcp?.metadata.secret_ref_key_names).toEqual([]);
