@@ -1,0 +1,60 @@
+id: AGENTCSP-RUNTIME-071
+name: Context-window summary replays untrusted context without verification
+description: A context-window policy summarizes untrusted, tool, or memory context, trusts the summary without verification, disables boundaries and redaction, and allows the summarized context to reach privileged tools without approval.
+category: context_window_summary_replay
+severity: critical
+maps_to:
+  owasp:
+    - LLM01:2025 Prompt Injection
+    - LLM02:2025 Sensitive Information Disclosure
+    - LLM05:2025 Improper Output Handling
+    - LLM06:2025 Excessive Agency
+  mitre_atlas:
+    - AML.T0051 LLM Prompt Injection
+    - AML.T0057 Exfiltration via Cyber Means
+  nist_ai_rmf:
+    - MAP 5.1
+    - MEASURE 2.7
+    - MANAGE 2.4
+match:
+  object_type: runtime_config
+  where:
+    - field: metadata.parsed_agent_context_window_config
+      op: equals
+      value: true
+    - field: metadata.agent_context_window_enabled
+      op: equals
+      value: true
+    - field: metadata.agent_context_window_summarization_enabled
+      op: equals
+      value: true
+    - field: metadata.agent_context_window_summary_untrusted
+      op: equals
+      value: true
+    - field: metadata.agent_context_window_summary_verification_disabled
+      op: equals
+      value: true
+    - field: metadata.agent_context_window_delimiter_disabled
+      op: equals
+      value: true
+    - field: metadata.agent_context_window_redaction_disabled
+      op: equals
+      value: true
+    - field: metadata.agent_context_window_memory_replay
+      op: equals
+      value: true
+    - field: metadata.agent_context_window_privileged_tool_authority
+      op: equals
+      value: true
+    - field: metadata.agent_context_window_approval_required
+      op: equals
+      value: false
+    - field: data_classes
+      op: contains_any
+      value:
+        - credential
+        - confidential
+        - pii
+recommendation:
+  control: redact
+  text: Treat context-window summaries as tainted until verified, preserve delimiters around summarized user, tool, retrieval, and memory content, redact PII and secrets before compaction, and require approval before summarized context can drive privileged tools.
