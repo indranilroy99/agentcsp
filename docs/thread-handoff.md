@@ -1140,6 +1140,7 @@ The current iteration adds:
 - vulnerable fixture coverage for an HTTPS OpenAI-compatible model gateway that is public, unauthenticated, records prompts, tool calls, tool outputs, retrieval context, memory, PII, and secrets, and exposes tool calling without approval
 - safe fixture coverage for a localhost-only authenticated model gateway with request logging and tool calling disabled
 - rule `AGENTCSP-RUNTIME-051` for public or anonymous model gateways that combine disabled auth, sensitive context logging, disabled redaction, tool calling, and missing approval
+- rule `AGENTCSP-RUNTIME-108` for public anonymous model gateways that combine broad CORS, missing rate limits, unredacted prompt/tool/retrieval/memory/PII/secret logging, automatic database/external-response tool execution, credentials, and no approval
 - scanner, rule, fixture verifier, and redaction coverage proving raw gateway URLs, gateway names, tool names, data-scope labels, and token placeholders stay redacted
 
 ## Approval Channel Integrity Pass

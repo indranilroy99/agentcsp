@@ -1524,6 +1524,9 @@ describe("scanner", () => {
       ai_model_remote_endpoint: true,
       ai_model_custom_endpoint: true,
       ai_model_public_endpoint: true,
+      ai_model_anonymous_clients: true,
+      ai_model_cors_broad: true,
+      ai_model_rate_limit_missing: true,
       ai_model_auth_required: false,
       ai_model_auth_disabled: true,
       ai_model_destination_redacted: true,
@@ -1535,20 +1538,28 @@ describe("scanner", () => {
       ai_model_sends_memory: true,
       ai_model_sensitive_context: true,
       ai_model_pii_context: true,
+      ai_model_secret_context: true,
       ai_model_untrusted_input: true,
       ai_model_request_logging_enabled: true,
       ai_model_redaction_disabled: true,
       ai_model_tool_calling_enabled: true,
+      ai_model_tool_auto_execute: true,
+      ai_model_tool_write_authority: true,
+      ai_model_tool_external_authority: true,
       ai_model_approval_required: false
     });
+    expect(publicModelGateway?.metadata.ai_model_tool_authority_categories).toEqual([
+      "database_write",
+      "external_response"
+    ]);
     expect(publicModelGateway?.metadata.ai_model_remote_destination_kinds).toEqual([
       "configured_model_endpoint",
       "http_endpoint"
     ]);
     expect(publicModelGateway?.metadata.env_key_names).toEqual(["PUBLIC_MODEL_GATEWAY_TOKEN"]);
     expect(publicModelGateway?.metadata.secret_ref_key_names).toEqual(["PUBLIC_MODEL_GATEWAY_TOKEN"]);
-    expect(publicModelGateway?.data_classes).toEqual(["confidential", "credential", "pii"]);
-    expect(publicModelGateway?.actions).toEqual(["call", "execute", "read", "remember", "send"]);
+    expect(publicModelGateway?.data_classes).toEqual(["confidential", "credential", "pii", "secret"]);
+    expect(publicModelGateway?.actions).toEqual(["call", "execute", "read", "remember", "send", "write"]);
     expect(JSON.stringify(publicModelGateway)).not.toContain("${PUBLIC_MODEL_GATEWAY_TOKEN}");
     expect(JSON.stringify(publicModelGateway)).not.toContain("model-gateway.agentcsp-demo.example.invalid");
     expect(JSON.stringify(publicModelGateway)).not.toContain("public-support-model-gateway");
@@ -5522,6 +5533,9 @@ describe("scanner", () => {
       ai_model_remote_endpoint: false,
       ai_model_custom_endpoint: true,
       ai_model_public_endpoint: false,
+      ai_model_anonymous_clients: false,
+      ai_model_cors_broad: false,
+      ai_model_rate_limit_missing: false,
       ai_model_auth_required: true,
       ai_model_auth_disabled: false,
       ai_model_destination_redacted: false,
@@ -5533,12 +5547,17 @@ describe("scanner", () => {
       ai_model_sends_memory: false,
       ai_model_sensitive_context: false,
       ai_model_pii_context: false,
+      ai_model_secret_context: false,
       ai_model_untrusted_input: false,
       ai_model_request_logging_enabled: false,
       ai_model_redaction_disabled: false,
       ai_model_tool_calling_enabled: false,
+      ai_model_tool_auto_execute: false,
+      ai_model_tool_write_authority: false,
+      ai_model_tool_external_authority: false,
       ai_model_approval_required: true
     });
+    expect(modelGateway?.metadata.ai_model_tool_authority_categories).toEqual([]);
     expect(modelGateway?.metadata.ai_model_remote_destination_kinds).toEqual([]);
     expect(JSON.stringify(modelGateway)).not.toContain("internal-read-model-gateway");
     expect(JSON.stringify(modelGateway)).not.toContain("localhost:11434");

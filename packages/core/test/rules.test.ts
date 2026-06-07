@@ -92,6 +92,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-029")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-050")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-051")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-108")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-052")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-078")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-053")).toBe(true);
@@ -2005,6 +2006,63 @@ describe("rule engine", () => {
     expect(JSON.stringify(runtimePublicModelGatewayFindings[0])).not.toContain("public-support-model-gateway");
     expect(JSON.stringify(runtimePublicModelGatewayFindings[0])).not.toContain("support_db.write");
     expect(JSON.stringify(runtimePublicModelGatewayFindings[0])).not.toContain("public_gateway_customer_email");
+    const runtimePublicModelGatewayAutoToolFindings = findings.filter(
+      (finding) => finding.rule_id === "AGENTCSP-RUNTIME-108"
+    );
+    expect(runtimePublicModelGatewayAutoToolFindings).toHaveLength(1);
+    expect(runtimePublicModelGatewayAutoToolFindings[0]?.matched_object.path).toBe("models/public-gateway.yaml");
+    expect(runtimePublicModelGatewayAutoToolFindings[0]?.matched_object.metadata).toMatchObject({
+      parsed_ai_model_config: true,
+      ai_model_provider: "openai_compatible",
+      ai_model_custom_endpoint: true,
+      ai_model_public_endpoint: true,
+      ai_model_anonymous_clients: true,
+      ai_model_cors_broad: true,
+      ai_model_rate_limit_missing: true,
+      ai_model_auth_disabled: true,
+      ai_model_sends_prompts: true,
+      ai_model_sends_tool_outputs: true,
+      ai_model_sends_retrieval_context: true,
+      ai_model_sends_memory: true,
+      ai_model_pii_context: true,
+      ai_model_secret_context: true,
+      ai_model_untrusted_input: true,
+      ai_model_request_logging_enabled: true,
+      ai_model_redaction_disabled: true,
+      ai_model_tool_calling_enabled: true,
+      ai_model_tool_auto_execute: true,
+      ai_model_tool_write_authority: true,
+      ai_model_tool_external_authority: true,
+      ai_model_approval_required: false
+    });
+    expect(runtimePublicModelGatewayAutoToolFindings[0]?.matched_object.metadata.ai_model_tool_authority_categories).toEqual([
+      "database_write",
+      "external_response"
+    ]);
+    expect(runtimePublicModelGatewayAutoToolFindings[0]?.matched_object.data_classes).toContain("credential");
+    expect(runtimePublicModelGatewayAutoToolFindings[0]?.matched_object.data_classes).toContain("secret");
+    expect(runtimePublicModelGatewayAutoToolFindings[0]?.matched_object.actions).toContain("execute");
+    expect(runtimePublicModelGatewayAutoToolFindings[0]?.matched_object.actions).toContain("write");
+    expect(runtimePublicModelGatewayAutoToolFindings[0]?.matched_object.secret_exposure).toBe(true);
+    expect(runtimePublicModelGatewayAutoToolFindings[0]?.matched_object.untrusted_to_privileged).toBe(true);
+    expect(runtimePublicModelGatewayAutoToolFindings[0]?.severity).toBe("critical");
+    expect(runtimePublicModelGatewayAutoToolFindings[0]?.confidence).toBe("very_high");
+    expect(runtimePublicModelGatewayAutoToolFindings[0]?.recommended_control).toBe("deny");
+    expect(JSON.stringify(runtimePublicModelGatewayAutoToolFindings[0])).not.toContain("${PUBLIC_MODEL_GATEWAY_TOKEN}");
+    expect(JSON.stringify(runtimePublicModelGatewayAutoToolFindings[0])).not.toContain(
+      "model-gateway.agentcsp-demo.example.invalid"
+    );
+    expect(JSON.stringify(runtimePublicModelGatewayAutoToolFindings[0])).not.toContain("public-support-model-gateway");
+    expect(JSON.stringify(runtimePublicModelGatewayAutoToolFindings[0])).not.toContain("support_db.write");
+    expect(JSON.stringify(runtimePublicModelGatewayAutoToolFindings[0])).not.toContain("slack.post_customer_reply");
+    expect(JSON.stringify(runtimePublicModelGatewayAutoToolFindings[0])).not.toContain("untrusted_customer_prompt");
+    expect(JSON.stringify(runtimePublicModelGatewayAutoToolFindings[0])).not.toContain("retrieved_customer_context");
+    expect(JSON.stringify(runtimePublicModelGatewayAutoToolFindings[0])).not.toContain("browser_tool_output");
+    expect(JSON.stringify(runtimePublicModelGatewayAutoToolFindings[0])).not.toContain("public_gateway_customer_email");
+    expect(JSON.stringify(runtimePublicModelGatewayAutoToolFindings[0])).not.toContain("public_gateway_account_number");
+    expect(JSON.stringify(runtimePublicModelGatewayAutoToolFindings[0])).not.toContain(
+      "confidential_public_gateway_notes"
+    );
     const runtimeDatabaseFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-RUNTIME-010");
     expect(runtimeDatabaseFindings).toHaveLength(1);
     expect(runtimeDatabaseFindings[0]?.matched_object.path).toBe("database/support-db.yaml");
