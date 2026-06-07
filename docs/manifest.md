@@ -493,12 +493,19 @@ Inbound trigger metadata may include:
 - `inbound_trigger_memory_write`
 - `inbound_trigger_sensitive_context`
 - `inbound_trigger_pii_context`
+- `inbound_trigger_webhook_integrity_disabled`
+- `inbound_trigger_webhook_timestamp_validation_disabled`
+- `inbound_trigger_webhook_replay_protection_disabled`
 - `inbound_trigger_attachment_context`
+- `inbound_trigger_attachment_raw_text`
+- `inbound_trigger_attachment_sandbox_disabled`
+- `inbound_trigger_attachment_scan_disabled`
+- `inbound_trigger_attachment_instruction_stripping_disabled`
 - `inbound_trigger_approval_required`
 - `env_key_names`
 - `secret_ref_key_names`
 
-Raw mailbox names, sender addresses, queue names, webhook URLs, prompt-field expressions, labels, channel names, agent names, and payload content are not emitted. Provider names, source categories, payload categories, tool-authority categories, approval posture, data-class booleans, and credential key names let rules detect direct paths from untrusted inbound messages into privileged agent execution.
+Raw mailbox names, sender addresses, queue names, webhook URLs, signature header names, timestamp header names, delivery identifiers, prompt-field expressions, labels, channel names, agent names, attachment filenames, and payload content are not emitted. Provider names, source categories, payload categories, webhook integrity posture, attachment parser posture, tool-authority categories, approval posture, data-class booleans, and credential key names let rules detect direct paths from untrusted inbound messages into privileged agent execution.
 
 ## Agent Orchestration Posture
 

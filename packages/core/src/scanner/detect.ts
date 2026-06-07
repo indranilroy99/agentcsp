@@ -5945,6 +5945,9 @@ interface InboundAgentTriggerPosture {
   inbound_trigger_memory_write: boolean;
   inbound_trigger_sensitive_context: boolean;
   inbound_trigger_pii_context: boolean;
+  inbound_trigger_webhook_integrity_disabled: boolean;
+  inbound_trigger_webhook_timestamp_validation_disabled: boolean;
+  inbound_trigger_webhook_replay_protection_disabled: boolean;
   inbound_trigger_attachment_context: boolean;
   inbound_trigger_attachment_raw_text: boolean;
   inbound_trigger_attachment_sandbox_disabled: boolean;
@@ -10826,6 +10829,9 @@ function classifyInboundAgentTriggerConfig(value: unknown, filePath: string): In
     inbound_trigger_memory_write: hasInboundTriggerMemoryWriteSignal(fields, toolAuthorityCategories),
     inbound_trigger_sensitive_context: hasInboundTriggerSensitiveContextSignal(fields),
     inbound_trigger_pii_context: hasInboundTriggerPiiContextSignal(fields),
+    inbound_trigger_webhook_integrity_disabled: hasInboundTriggerWebhookIntegrityDisabledSignal(fields),
+    inbound_trigger_webhook_timestamp_validation_disabled: hasInboundTriggerWebhookTimestampValidationDisabledSignal(fields),
+    inbound_trigger_webhook_replay_protection_disabled: hasInboundTriggerWebhookReplayProtectionDisabledSignal(fields),
     inbound_trigger_attachment_context: hasInboundTriggerAttachmentSignal(fields),
     inbound_trigger_attachment_raw_text: hasInboundTriggerAttachmentRawTextSignal(fields),
     inbound_trigger_attachment_sandbox_disabled: hasInboundTriggerAttachmentSandboxDisabledSignal(fields),
@@ -10980,6 +10986,69 @@ function hasInboundTriggerPiiContextSignal(fields: RuntimeField[]): boolean {
   );
 }
 
+function hasInboundTriggerWebhookIntegrityDisabledSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => {
+    const text = `${field.path} ${fieldValueText(field)}`.toLowerCase().replaceAll("_", " ").replaceAll("-", " ");
+    if (!/\b(webhook|callback|http event|receiver|listener|signature|signing|hmac|signed|unsigned)\b/iu.test(text)) {
+      return false;
+    }
+    if (
+      /(?:^|\.)(signature_required|verify_signature|verify_webhook_signature|verify_slack_signature|signed_webhook|required_signature|hmac_required|signature_verification)(?:\.|$)/iu.test(
+        field.path
+      )
+    ) {
+      return disabledConfigValue(field.value);
+    }
+    if (/(?:^|\.)(allow_unsigned|allow_unsigned_events|accept_unsigned|unsigned_events_allowed)(?:\.|$)/iu.test(field.path)) {
+      return truthyConfigValue(field.value);
+    }
+    return /\b(no[_\s-]?signature|signature[_\s-]?disabled|signature[_\s-]?not[_\s-]?required|unsigned[_\s-]?webhook|accept[_\s-]?unsigned|skip[_\s-]?signature|hmac[_\s-]?disabled)\b/iu.test(
+      text
+    ) && truthyConfigValue(field.value);
+  });
+}
+
+function hasInboundTriggerWebhookTimestampValidationDisabledSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => {
+    const text = `${field.path} ${fieldValueText(field)}`.toLowerCase().replaceAll("_", " ").replaceAll("-", " ");
+    if (!/\b(webhook|callback|http event|receiver|listener|timestamp|freshness|clock skew|ttl|age)\b/iu.test(text)) {
+      return false;
+    }
+    if (
+      /(?:^|\.)(timestamp_required|timestamp_validation|verify_timestamp|freshness_check|max_event_age|timestamp_tolerance|clock_skew_tolerance)(?:\.|$)/iu.test(
+        field.path
+      )
+    ) {
+      return disabledConfigValue(field.value) || /\b(none|disabled|off|unlimited|no[_\s-]?limit|0)\b/iu.test(text);
+    }
+    return /\b(no[_\s-]?timestamp|timestamp[_\s-]?disabled|timestamp[_\s-]?not[_\s-]?required|no[_\s-]?freshness|freshness[_\s-]?disabled|unlimited[_\s-]?age)\b/iu.test(
+      text
+    ) && truthyConfigValue(field.value);
+  });
+}
+
+function hasInboundTriggerWebhookReplayProtectionDisabledSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => {
+    const text = `${field.path} ${fieldValueText(field)}`.toLowerCase().replaceAll("_", " ").replaceAll("-", " ");
+    if (!/\b(webhook|callback|http event|receiver|listener|replay|nonce|dedupe|deduplication|idempotency|delivery id)\b/iu.test(text)) {
+      return false;
+    }
+    if (
+      /(?:^|\.)(replay_protection|prevent_replay|nonce_required|dedupe|deduplication|idempotency_key_required|delivery_id_required)(?:\.|$)/iu.test(
+        field.path
+      )
+    ) {
+      return disabledConfigValue(field.value);
+    }
+    if (/(?:^|\.)(allow_replay|replay_allowed|accept_replays|redrive_without_dedupe)(?:\.|$)/iu.test(field.path)) {
+      return truthyConfigValue(field.value);
+    }
+    return /\b(no[_\s-]?replay[_\s-]?protection|replay[_\s-]?protection[_\s-]?disabled|nonce[_\s-]?disabled|dedupe[_\s-]?disabled|idempotency[_\s-]?disabled|accept[_\s-]?replays)\b/iu.test(
+      text
+    ) && truthyConfigValue(field.value);
+  });
+}
+
 function hasInboundTriggerAttachmentSignal(fields: RuntimeField[]): boolean {
   return fields.some((field) =>
     /\b(attachment|attachments|file|files|upload|document|image|pdf|csv|spreadsheet)\b/iu.test(`${field.path} ${fieldValueText(field)}`)
@@ -11066,7 +11135,7 @@ function hasInboundTriggerApprovalRequiredSignal(fields: RuntimeField[]): boolea
 }
 
 function isInboundTriggerSecurityField(fieldPath: string): boolean {
-  return /provider|source|input|event|trigger|webhook|listener|receiver|mail|email|message|chat|ticket|issue|comment|payload|body|attachment|file|upload|document|extract|parser|sandbox|scan|malware|virus|sanitize|instruction|agent|assistant|bot|tool|mcp|browser|database|secret|memory|reply|respond|send|write|post|publish|approval|auth|token|credential|scope|permission|url|host|endpoint|queue|topic|subscription/iu.test(
+  return /provider|source|input|event|trigger|webhook|listener|receiver|callback|signature|signing|hmac|timestamp|freshness|replay|nonce|dedupe|idempotency|mail|email|message|chat|ticket|issue|comment|payload|body|attachment|file|upload|document|extract|parser|sandbox|scan|malware|virus|sanitize|instruction|agent|assistant|bot|tool|mcp|browser|database|secret|memory|reply|respond|send|write|post|publish|approval|auth|token|credential|scope|permission|url|host|endpoint|queue|topic|subscription/iu.test(
     fieldPath
   );
 }

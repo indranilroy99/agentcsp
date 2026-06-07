@@ -1,0 +1,89 @@
+id: AGENTCSP-RUNTIME-122
+name: Unsigned inbound webhook can drive privileged agent tools
+description: An inbound webhook or HTTP event trigger accepts unsigned or replayable payloads without timestamp freshness checks, then invokes privileged agent tools with credential-backed authority and no approval gate.
+category: inbound_webhook_integrity_bypass
+severity: critical
+maps_to:
+  owasp:
+    - LLM01:2025 Prompt Injection
+    - LLM02:2025 Sensitive Information Disclosure
+    - LLM06:2025 Excessive Agency
+  mitre_atlas:
+    - AML.T0051 LLM Prompt Injection
+    - AML.T0057 Exfiltration via Cyber Means
+    - AML.T0059 Data from Information Repositories
+  nist_ai_rmf:
+    - MAP 5.1
+    - MEASURE 2.9
+    - MANAGE 2.4
+match:
+  object_type: runtime_config
+  where:
+    - field: metadata.parsed_inbound_trigger_config
+      op: equals
+      value: true
+    - field: metadata.inbound_trigger_external_source
+      op: equals
+      value: true
+    - field: metadata.inbound_trigger_source_categories
+      op: contains_any
+      value:
+        - webhook_payload
+    - field: metadata.inbound_trigger_webhook_integrity_disabled
+      op: equals
+      value: true
+    - field: metadata.inbound_trigger_webhook_timestamp_validation_disabled
+      op: equals
+      value: true
+    - field: metadata.inbound_trigger_webhook_replay_protection_disabled
+      op: equals
+      value: true
+    - field: metadata.inbound_trigger_invokes_agent
+      op: equals
+      value: true
+    - field: metadata.inbound_trigger_invokes_tools
+      op: equals
+      value: true
+    - field: metadata.inbound_trigger_tool_authority_categories
+      op: contains_any
+      value:
+        - browser_action
+        - database_access
+        - external_response
+        - memory_write
+        - secret_manager_access
+    - field: metadata.inbound_trigger_write_authority
+      op: equals
+      value: true
+    - field: metadata.inbound_trigger_external_response
+      op: equals
+      value: true
+    - field: metadata.inbound_trigger_memory_write
+      op: equals
+      value: true
+    - field: metadata.inbound_trigger_sensitive_context
+      op: equals
+      value: true
+    - field: metadata.inbound_trigger_pii_context
+      op: equals
+      value: true
+    - field: metadata.inbound_trigger_approval_required
+      op: equals
+      value: false
+    - field: data_classes
+      op: contains_any
+      value:
+        - credential
+    - field: data_classes
+      op: contains_any
+      value:
+        - pii
+    - field: secret_exposure
+      op: equals
+      value: true
+    - field: untrusted_to_privileged
+      op: equals
+      value: true
+recommendation:
+  control: require_approval
+  text: Require signed inbound webhooks with HMAC or provider signature verification, enforce timestamp freshness and nonce or delivery-id replay protection, reject unsigned payloads before agent invocation, and require approval before webhook-derived context can reach browser, database, external-response, memory, or secret-manager tools.

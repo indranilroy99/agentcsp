@@ -1404,6 +1404,15 @@ The current iteration adds:
 - rule `AGENTCSP-RUNTIME-121` for unsandboxed public chat upload parsing that can drive privileged agent tools with credential-backed authority
 - regression coverage proving raw upload filenames, public endpoints, visitor labels, tool names, context labels, data labels, and token placeholders stay redacted
 
+## Inbound Webhook Integrity Pass
+
+The current iteration adds:
+
+- first-class inbound-trigger metadata for webhook signature verification posture, timestamp freshness posture, and replay-protection posture
+- fixture coverage for an inbound support webhook that accepts unsigned partner events, skips timestamp validation, disables nonce/delivery-id replay protection, and routes forged webhook-derived context into browser, database, external-response, memory, and secret-manager tools without approval
+- rule `AGENTCSP-RUNTIME-122` for unsigned or replayable inbound webhooks that can drive privileged agent tools with credential-backed authority
+- regression coverage proving raw webhook header names, delivery identifiers, source labels, endpoints, mailbox names, agent names, prompt fields, and token placeholders stay redacted
+
 ## Automation Shell-Argument Boundary Pass
 
 The current iteration adds:

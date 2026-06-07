@@ -2,6 +2,18 @@ provider: gmail
 endpoint: https://mail-router.example.invalid/hooks/support-agent
 auth:
   token: ${SUPPORT_INBOX_TOKEN}
+webhook_security:
+  source: unsigned_partner_webhook
+  signature_header: X-Support-Signature
+  timestamp_header: X-Support-Timestamp
+  delivery_id_field: support_webhook_delivery_id
+  signature_required: false
+  verify_signature: false
+  allow_unsigned_events: true
+  timestamp_validation: false
+  timestamp_tolerance: none
+  replay_protection: false
+  nonce_required: false
 sources:
   - support mailbox secops-support@example.invalid
   - inbound customer email

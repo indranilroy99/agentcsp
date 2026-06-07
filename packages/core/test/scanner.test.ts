@@ -3465,6 +3465,9 @@ describe("scanner", () => {
       inbound_trigger_memory_write: true,
       inbound_trigger_sensitive_context: true,
       inbound_trigger_pii_context: true,
+      inbound_trigger_webhook_integrity_disabled: true,
+      inbound_trigger_webhook_timestamp_validation_disabled: true,
+      inbound_trigger_webhook_replay_protection_disabled: true,
       inbound_trigger_attachment_context: true,
       inbound_trigger_approval_required: false
     });
@@ -3499,6 +3502,10 @@ describe("scanner", () => {
     expect(JSON.stringify(inboundTriggerConfig)).not.toContain("support-triage-agent");
     expect(JSON.stringify(inboundTriggerConfig)).not.toContain("inbound_customer_email");
     expect(JSON.stringify(inboundTriggerConfig)).not.toContain("message.body");
+    expect(JSON.stringify(inboundTriggerConfig)).not.toContain("unsigned_partner_webhook");
+    expect(JSON.stringify(inboundTriggerConfig)).not.toContain("X-Support-Signature");
+    expect(JSON.stringify(inboundTriggerConfig)).not.toContain("X-Support-Timestamp");
+    expect(JSON.stringify(inboundTriggerConfig)).not.toContain("support_webhook_delivery_id");
     const hostedAssistantConfig = surfaces.runtime_config.find((surface) => surface.path === "assistants/support-assistant.yaml");
     expect(hostedAssistantConfig).toBeDefined();
     expect(hostedAssistantConfig).toMatchObject({
