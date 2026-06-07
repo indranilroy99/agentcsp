@@ -965,6 +965,7 @@ The current iteration adds:
 - first-class redacted metadata for outbound A2A and remote-agent federation posture, including remote destination categories, agent reference counts, dynamic discovery, untrusted agent selectors, auto-delegation, context forwarding, tool-result forwarding, memory forwarding, credential forwarding, verification posture, allowlist posture, and approval posture
 - vulnerable fixture coverage for an A2A federation config that dynamically selects third-party agents from untrusted customer/retrieval/browser context and forwards prompts, retrieval context, tool results, memory, and credentials without verification, allowlists, or approval
 - rule `AGENTCSP-RUNTIME-037` for remote agent federation that combines dynamic discovery, untrusted peer selection, sensitive context forwarding, credential forwarding, missing identity verification, missing allowlists, and no approval
+- rule `AGENTCSP-RUNTIME-102` for A2A federation that auto-delegates to unverified remote peers while forwarding prompts, retrieval context, tool results, browser output, memory, authorization headers, or tokens from untrusted selectors
 - scanner, rule, fixture verifier, and redaction coverage proving raw registry URLs, agent-card URLs, peer names, selector fields, source labels, task names, data-scope labels, and token placeholders stay redacted
 
 ## MCP OAuth Authorization Pass
