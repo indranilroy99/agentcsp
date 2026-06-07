@@ -1223,6 +1223,9 @@ Secret manager metadata may include:
 - `secret_manager_write_enabled`
 - `secret_manager_broad_scope`
 - `secret_manager_injects_into_tools`
+- `secret_manager_injects_into_prompt_context`
+- `secret_manager_prompt_context_categories`
+- `secret_manager_redaction_disabled`
 - `secret_manager_untrusted_input`
 - `secret_manager_sensitive_scope`
 - `secret_manager_pii_scope`
@@ -1230,7 +1233,7 @@ Secret manager metadata may include:
 - `env_key_names`
 - `secret_ref_key_names`
 
-Raw vault URLs, secret paths, resource names, policy names, role names, project IDs, namespaces, ARNs, key names, and secret placeholders are not emitted. Provider names, redacted destination categories, normalized scope categories, read/list/write posture, tool-injection booleans, untrusted-input signals, approval posture, and credential key names let rules detect credential-broker blast radius without copying secret inventory into the manifest.
+Raw vault URLs, secret paths, resource names, policy names, role names, project IDs, namespaces, ARNs, key names, prompt target labels, model-context labels, alias names, and secret placeholders are not emitted. Provider names, redacted destination categories, normalized scope categories, read/list/write posture, tool-injection booleans, prompt-context materialization categories, redaction posture, untrusted-input signals, approval posture, and credential key names let rules detect credential-broker blast radius without copying secret inventory into the manifest.
 
 ## Database Connector Posture
 

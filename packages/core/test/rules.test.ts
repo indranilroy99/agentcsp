@@ -84,6 +84,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-058")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-059")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-060")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-061")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-030")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-031")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-032")).toBe(true);
@@ -1058,6 +1059,8 @@ describe("rule engine", () => {
       secret_manager_read_enabled: true,
       secret_manager_broad_scope: true,
       secret_manager_injects_into_tools: true,
+      secret_manager_injects_into_prompt_context: true,
+      secret_manager_redaction_disabled: true,
       secret_manager_untrusted_input: true,
       secret_manager_approval_required: false
     });
@@ -1073,6 +1076,30 @@ describe("rule engine", () => {
     expect(JSON.stringify(runtimeSecretManagerFindings[0])).not.toContain("vault.example.invalid");
     expect(JSON.stringify(runtimeSecretManagerFindings[0])).not.toContain("secret/data/prod/customer-support");
     expect(JSON.stringify(runtimeSecretManagerFindings[0])).not.toContain("prod-support-read");
+    const runtimeSecretPromptFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-RUNTIME-061");
+    expect(runtimeSecretPromptFindings).toHaveLength(1);
+    expect(runtimeSecretPromptFindings[0]?.matched_object.path).toBe("secrets/vault-agent.yaml");
+    expect(runtimeSecretPromptFindings[0]?.matched_object.metadata).toMatchObject({
+      secret_manager_provider: "hashicorp_vault",
+      secret_manager_read_enabled: true,
+      secret_manager_broad_scope: true,
+      secret_manager_injects_into_prompt_context: true,
+      secret_manager_redaction_disabled: true,
+      secret_manager_untrusted_input: true,
+      secret_manager_approval_required: false
+    });
+    expect(runtimeSecretPromptFindings[0]?.matched_object.metadata.secret_manager_prompt_context_categories).toEqual([
+      "model_prompt_context",
+      "system_prompt_context"
+    ]);
+    expect(runtimeSecretPromptFindings[0]?.severity).toBe("critical");
+    expect(runtimeSecretPromptFindings[0]?.confidence).toBe("very_high");
+    expect(runtimeSecretPromptFindings[0]?.recommended_control).toBe("redact");
+    expect(JSON.stringify(runtimeSecretPromptFindings[0])).not.toContain("${VAULT_AGENT_TOKEN}");
+    expect(JSON.stringify(runtimeSecretPromptFindings[0])).not.toContain("support-agent-system-prompt");
+    expect(JSON.stringify(runtimeSecretPromptFindings[0])).not.toContain("customer-support-secret-context");
+    expect(JSON.stringify(runtimeSecretPromptFindings[0])).not.toContain("vault://prod/customer-support/*");
+    expect(JSON.stringify(runtimeSecretPromptFindings[0])).not.toContain("env://SUPPORT_DB_PASSWORD");
     const runtimeAgentIdentityFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-RUNTIME-018");
     expect(runtimeAgentIdentityFindings).toHaveLength(1);
     expect(runtimeAgentIdentityFindings[0]?.matched_object.path).toBe("identity/agent-oauth.yaml");

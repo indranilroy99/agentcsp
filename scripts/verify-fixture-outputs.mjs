@@ -123,6 +123,14 @@ const leakPatterns = [
   /vault_customer_credentials/u,
   /vault_api_tokens/u,
   /vault_internal_notes/u,
+  /support-agent-system-prompt/u,
+  /customer-support-secret-context/u,
+  /vault:\/\/prod\/customer-support\/\*/u,
+  /env:\/\/SUPPORT_DB_PASSWORD/u,
+  /aliases\/support-readonly-token/u,
+  /readonly-secret-aliases/u,
+  /approved_internal_task/u,
+  /internal_alias_only/u,
   /github\.event\.comment\.body/u,
   /github\.event\.client_payload\.prompt/u,
   /github\.event\.pull_request\.body/u,
@@ -492,8 +500,8 @@ const leakPatterns = [
 const vulnerable = await readScanOutput(vulnerableOutput, { sarifRequired: true });
 const safe = await readScanOutput(safeOutput, { sarifRequired: false });
 
-assertEqual(vulnerable.manifest.findings.length, 160, "vulnerable manifest finding count");
-assertEqual(vulnerable.findings.length, 160, "vulnerable findings.json count");
+assertEqual(vulnerable.manifest.findings.length, 161, "vulnerable manifest finding count");
+assertEqual(vulnerable.findings.length, 161, "vulnerable findings.json count");
 assertEqual(vulnerable.manifest.attack_paths.length, 15, "vulnerable attack path count");
 assertEqual(vulnerable.manifest.static_blast_radius?.critical_attack_paths, 15, "vulnerable critical attack path count");
 assertEqual(vulnerable.manifest.diagnostics.length, 0, "vulnerable diagnostics count");
@@ -557,6 +565,7 @@ for (const ruleId of [
   "AGENTCSP-RUNTIME-058",
   "AGENTCSP-RUNTIME-059",
   "AGENTCSP-RUNTIME-060",
+  "AGENTCSP-RUNTIME-061",
   "AGENTCSP-AUTOMATION-003",
   "AGENTCSP-RUNTIME-006",
   "AGENTCSP-MCP-006",

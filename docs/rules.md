@@ -26,6 +26,8 @@ For realtime and voice agent session rules, require concrete caller-to-tool corr
 
 For agent safety and guardrail posture rules, require concrete fail-open or disabled-control correlation such as default-allow, timeout-allow, error-allow, monitor-only, or disabled moderation/validation/redaction controls plus untrusted input, privileged tool authority, credential evidence, and missing approval.
 
+For secret-manager prompt-materialization rules, require concrete secret-to-model-context correlation such as read/list scope, broad or sensitive secret scope, raw secret values injected or materialized into system, developer, model, memory, retrieval, or tool context, untrusted selector or prompt sources, disabled secret redaction, credential evidence, and missing approval. Do not flag scoped alias-only secret brokers that keep raw values out of prompts, keep redaction enabled, reject untrusted selectors, and require approval.
+
 For feedback and RLHF pipeline rules, require concrete feedback-to-model correlation such as untrusted ratings, reviewer notes, prompts, completions, tool traces, retrieval, memory, PII, or secrets captured into remote feedback stores, training datasets, eval sets, or model-update paths with redaction, consent, or approval controls disabled.
 
 For LLM prompt, response, and semantic-cache rules, require concrete cache-replay correlation such as remote or shared cache storage, semantic reuse, user-controlled cache-key material, broad match thresholds, cross-tenant replay or disabled tenant isolation, sensitive capture, disabled redaction, credential evidence, and missing approval. Do not flag local exact-match caches merely because they store tenant-scoped hashes.

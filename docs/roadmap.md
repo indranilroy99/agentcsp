@@ -51,6 +51,7 @@
 - Add visual and OCR context posture for screenshots, uploaded images, OCR text, and multimodal observations that can enter prompt context or request privileged follow-up actions.
 - Add artifact/output export posture for generated prompts, completions, tool outputs, browser artifacts, retrieval context, memory, secrets, public access, retention, and redaction boundaries.
 - Add webhook/callback egress posture for model-generated payload delivery, sensitive context capture, retry queues, redaction posture, and approval boundaries.
+- Add secret-manager prompt materialization posture for raw secret values entering system, developer, model, memory, retrieval, or tool context with redaction and approval boundaries.
 - Add background agent task-queue posture for asynchronous job consumers, untrusted queued payloads, retry and dead-letter replay, privileged tool authority, credentials, and approval boundaries.
 - Add autonomous agent loop posture for planner/executor loops, untrusted goals, auto-execution, tool-output feedback, iteration/runtime budgets, stop conditions, kill switches, dry-run mode, and approval boundaries.
 - Add container runtime isolation posture for privileged containers, Docker socket mounts, host paths, host namespaces, dangerous capabilities, untrusted inputs, and approval boundaries.

@@ -2003,7 +2003,7 @@ describe("scanner", () => {
       external_reach: true,
       secret_exposure: true,
       side_effect: true,
-      reversible: true,
+      reversible: false,
       untrusted_to_privileged: true
     });
     expect(secretManagerConfig?.metadata).toMatchObject({
@@ -2020,6 +2020,8 @@ describe("scanner", () => {
       secret_manager_write_enabled: false,
       secret_manager_broad_scope: true,
       secret_manager_injects_into_tools: true,
+      secret_manager_injects_into_prompt_context: true,
+      secret_manager_redaction_disabled: true,
       secret_manager_untrusted_input: true,
       secret_manager_sensitive_scope: true,
       secret_manager_pii_scope: false,
@@ -2034,6 +2036,10 @@ describe("scanner", () => {
       "secret_read",
       "sensitive_secret_scope"
     ]);
+    expect(secretManagerConfig?.metadata.secret_manager_prompt_context_categories).toEqual([
+      "model_prompt_context",
+      "system_prompt_context"
+    ]);
     expect(secretManagerConfig?.metadata.env_key_names).toEqual(["VAULT_AGENT_TOKEN"]);
     expect(secretManagerConfig?.metadata.secret_ref_key_names).toEqual(["VAULT_AGENT_TOKEN"]);
     expect(secretManagerConfig?.data_classes).toEqual(["confidential", "credential", "secret"]);
@@ -2045,6 +2051,10 @@ describe("scanner", () => {
     expect(JSON.stringify(secretManagerConfig)).not.toContain("prod-support-read");
     expect(JSON.stringify(secretManagerConfig)).not.toContain("agent-secret-broker");
     expect(JSON.stringify(secretManagerConfig)).not.toContain("vault_customer_credentials");
+    expect(JSON.stringify(secretManagerConfig)).not.toContain("support-agent-system-prompt");
+    expect(JSON.stringify(secretManagerConfig)).not.toContain("customer-support-secret-context");
+    expect(JSON.stringify(secretManagerConfig)).not.toContain("vault://prod/customer-support/*");
+    expect(JSON.stringify(secretManagerConfig)).not.toContain("env://SUPPORT_DB_PASSWORD");
     const agentIdentityConfig = surfaces.runtime_config.find((surface) => surface.path === "identity/agent-oauth.yaml");
     expect(agentIdentityConfig).toBeDefined();
     expect(agentIdentityConfig).toMatchObject({
@@ -4610,6 +4620,56 @@ describe("scanner", () => {
     expect(modelGateway?.metadata.ai_model_remote_destination_kinds).toEqual([]);
     expect(JSON.stringify(modelGateway)).not.toContain("internal-read-model-gateway");
     expect(JSON.stringify(modelGateway)).not.toContain("localhost:11434");
+  });
+
+  it("keeps scoped approval-gated secret brokers out of prompt materialization risk", async () => {
+    const files = await walkProject({
+      root_path: safeFixtureRoot,
+      output_path: ".agentcsp",
+      formats: ["json", "md"],
+      include_hidden: true,
+      include_logs: false,
+      max_file_size_bytes: 1024 * 1024,
+      max_files: 5000,
+      quiet: true
+    });
+    const surfaces = await detectSurfaces(files);
+    const secretBroker = surfaces.runtime_config.find((surface) => surface.path === "secrets/scoped-broker.yaml");
+
+    expect(secretBroker).toMatchObject({
+      trust_level: "project",
+      data_classes: ["confidential", "credential", "secret"],
+      actions: ["call", "read"],
+      side_effect: false,
+      external_reach: false,
+      secret_exposure: true,
+      reversible: true,
+      untrusted_to_privileged: false
+    });
+    expect(secretBroker?.metadata).toMatchObject({
+      parsed_secret_manager_config: true,
+      secret_manager_remote: false,
+      secret_manager_destination_redacted: false,
+      secret_manager_scope_redacted: true,
+      secret_manager_path_references_redacted: true,
+      secret_manager_read_enabled: true,
+      secret_manager_list_enabled: false,
+      secret_manager_write_enabled: false,
+      secret_manager_broad_scope: false,
+      secret_manager_injects_into_tools: false,
+      secret_manager_injects_into_prompt_context: false,
+      secret_manager_redaction_disabled: false,
+      secret_manager_untrusted_input: false,
+      secret_manager_approval_required: true
+    });
+    expect(secretBroker?.metadata.secret_manager_scope_categories).toEqual(["secret_read"]);
+    expect(secretBroker?.metadata.secret_manager_prompt_context_categories).toEqual([]);
+    expect(secretBroker?.metadata.env_key_names).toEqual([]);
+    expect(secretBroker?.metadata.secret_ref_key_names).toEqual([]);
+    expect(JSON.stringify(secretBroker)).not.toContain("aliases/support-readonly-token");
+    expect(JSON.stringify(secretBroker)).not.toContain("readonly-secret-aliases");
+    expect(JSON.stringify(secretBroker)).not.toContain("approved_internal_task");
+    expect(JSON.stringify(secretBroker)).not.toContain("internal_alias_only");
   });
 
   it("keeps signed internal approval channels quiet", async () => {

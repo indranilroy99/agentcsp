@@ -1207,6 +1207,16 @@ The current iteration adds:
 - rule `AGENTCSP-RUNTIME-060` for autonomous loops that route untrusted goals through tool-output feedback into privileged actions without budgets, kill switches, or approval
 - scanner, rule, fixture verifier, and redaction coverage proving raw goals, planner prompts, tool names, observation labels, action strings, data-field labels, and token placeholders stay redacted
 
+## Secret Prompt Materialization Pass
+
+The current iteration adds:
+
+- first-class redacted metadata for secret-manager prompt/context materialization, including prompt-context categories, redaction posture, untrusted selector posture, approval posture, and credential exposure
+- vulnerable fixture coverage for a Vault-backed support agent broker that reads broad customer-support secrets and materializes raw secret values into system and model prompt context from customer or retrieved inputs while redaction and approval are disabled
+- safe fixture coverage for an approval-gated local secret-alias broker that resolves scoped aliases without materializing raw secret values into prompts or model context
+- rule `AGENTCSP-RUNTIME-061` for secret managers that expose raw credentials to model-visible context from untrusted selectors without redaction or approval
+- scanner, rule, fixture verifier, and redaction coverage proving raw prompt targets, model-context labels, vault selectors, alias names, data-scope labels, and token placeholders stay redacted
+
 ## Initial Build Recommendation
 
 Start with a CLI-first MVP before building the dashboard:

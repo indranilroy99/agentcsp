@@ -3789,6 +3789,7 @@ function detectSecretManagerConfig(file: WalkedFile, text: string | undefined, s
   if (posture.secret_manager_remote) actions.add("send");
   if (posture.secret_manager_write_enabled) actions.add("write");
   if (posture.secret_manager_injects_into_tools) actions.add("execute");
+  if (posture.secret_manager_injects_into_prompt_context) actions.add("send");
 
   const dataClasses = new Set<SurfaceObject["data_classes"][number]>(["credential", "secret"]);
   if (posture.secret_manager_sensitive_scope) dataClasses.add("confidential");
@@ -3801,8 +3802,11 @@ function detectSecretManagerConfig(file: WalkedFile, text: string | undefined, s
     trust_level: posture.secret_manager_remote ? "third_party" : inferTrustLevel(file.relativePath),
     data_classes: uniqueDataClasses([...dataClasses] as SurfaceObject["data_classes"]),
     actions: uniqueActions([...actions]),
-    side_effect: posture.secret_manager_write_enabled || posture.secret_manager_injects_into_tools,
-    reversible: !posture.secret_manager_write_enabled,
+    side_effect:
+      posture.secret_manager_write_enabled ||
+      posture.secret_manager_injects_into_tools ||
+      posture.secret_manager_injects_into_prompt_context,
+    reversible: !posture.secret_manager_write_enabled && !posture.secret_manager_injects_into_prompt_context,
     external_reach: posture.secret_manager_remote,
     secret_exposure: true,
     reason: "Secret manager connector configuration discovered as credential-broker authority.",
@@ -3816,7 +3820,11 @@ function detectSecretManagerConfig(file: WalkedFile, text: string | undefined, s
   });
   surfaces.runtime_config.push({
     ...object,
-    untrusted_to_privileged: isUntrustedToPrivileged(object)
+    untrusted_to_privileged:
+      (posture.secret_manager_read_enabled &&
+        posture.secret_manager_untrusted_input &&
+        (posture.secret_manager_injects_into_tools || posture.secret_manager_injects_into_prompt_context)) ||
+      isUntrustedToPrivileged(object)
   });
 }
 
@@ -6047,6 +6055,9 @@ interface SecretManagerPosture {
   secret_manager_write_enabled: boolean;
   secret_manager_broad_scope: boolean;
   secret_manager_injects_into_tools: boolean;
+  secret_manager_injects_into_prompt_context: boolean;
+  secret_manager_prompt_context_categories: string[];
+  secret_manager_redaction_disabled: boolean;
   secret_manager_untrusted_input: boolean;
   secret_manager_sensitive_scope: boolean;
   secret_manager_pii_scope: boolean;
@@ -15866,6 +15877,7 @@ function classifySecretManagerConfig(value: unknown, filePath: string): SecretMa
   const provider = inferSecretManagerProvider([filePath, ...fields.map((field) => field.path), ...stringValues]);
   const destination = classifySecretManagerDestination(fields, provider);
   const scopeCategories = collectSecretManagerScopeCategories(fields);
+  const promptContextCategories = collectSecretManagerPromptContextCategories(fields);
   const envKeys = extractEnvironmentReferenceKeys(stringValues);
   const secretRefKeys = extractSecretReferenceKeys(stringValues);
   const readEnabled = hasSecretManagerReadSignal(fields, scopeCategories);
@@ -15890,6 +15902,9 @@ function classifySecretManagerConfig(value: unknown, filePath: string): SecretMa
     secret_manager_write_enabled: writeEnabled,
     secret_manager_broad_scope: isSecretManagerBroadScope(scopeCategories, listEnabled),
     secret_manager_injects_into_tools: hasSecretManagerToolInjectionSignal(fields),
+    secret_manager_injects_into_prompt_context: promptContextCategories.length > 0,
+    secret_manager_prompt_context_categories: promptContextCategories,
+    secret_manager_redaction_disabled: hasSecretManagerRedactionDisabledSignal(fields),
     secret_manager_untrusted_input: hasSecretManagerUntrustedInputSignal(fields),
     secret_manager_sensitive_scope: hasSecretManagerSensitiveScopeSignal(fields),
     secret_manager_pii_scope: hasSecretManagerPiiScopeSignal(fields),
@@ -15897,6 +15912,32 @@ function classifySecretManagerConfig(value: unknown, filePath: string): SecretMa
     env_key_names: envKeys,
     secret_ref_key_names: secretRefKeys
   };
+}
+
+function collectSecretManagerPromptContextCategories(fields: RuntimeField[]): string[] {
+  const categories = new Set<string>();
+  for (const field of fields) {
+    if (isSecretManagerRedactionControlField(field.path)) continue;
+    if (disabledConfigValue(field.value)) continue;
+    const text = `${field.path} ${fieldValueText(field)}`.toLowerCase().replaceAll("_", " ").replaceAll("-", " ");
+    const secretSignal = /(?:^|[_\W])(secret|secrets|token|credential|credentials|api key|password|vault|key vault|env|environment variable)(?:[_\W]|$)/iu.test(
+      text
+    );
+    const contextSignal = /\b(prompt|prompts|system|developer|model|message|messages|context|context window|conversation|thread|memory|retrieval|rag|tool output|observation)\b/iu.test(
+      text
+    );
+    const materializationSignal = /\b(inject|injection|include|materialize|hydrate|render|template|interpolate|prepend|append|load|pass|forward|expose|surface|attach|copy)\b/iu.test(
+      text
+    );
+    if (!secretSignal || !contextSignal || !materializationSignal) continue;
+    if (/\b(system|developer|instruction|policy)\b/iu.test(text)) categories.add("system_prompt_context");
+    if (/\b(prompt|model|message|context|context window|conversation|thread)\b/iu.test(text)) categories.add("model_prompt_context");
+    if (/\b(memory|memories|session state|history)\b/iu.test(text)) categories.add("memory_context");
+    if (/\b(retrieval|retrieved|rag|document|vector)\b/iu.test(text)) categories.add("retrieval_context");
+    if (/\b(tool output|tool result|observation|function output|mcp result)\b/iu.test(text)) categories.add("tool_context");
+    if (/\b(env|environment variable|process env)\b/iu.test(text)) categories.add("environment_context");
+  }
+  return [...categories].sort((a, b) => a.localeCompare(b));
 }
 
 function inferSecretManagerProvider(candidates: string[]): string | undefined {
@@ -15967,7 +16008,12 @@ function collectSecretManagerScopeCategories(fields: RuntimeField[]): string[] {
     if (/\b(read|get|decrypt|access|retrieve)\b/iu.test(text)) categories.add("secret_read");
     if (/\b(list|enumerate|metadata)\b/iu.test(text)) categories.add("secret_list");
     if (/\b(write|put|create|update|delete|destroy|rotate|revoke|encrypt)\b/iu.test(text)) categories.add("secret_write");
-    if (/\b(prod|production|customer|client|billing|payment|support|internal|admin|service[_-]?tokens?|api[_-]?tokens?|credentials?)\b/iu.test(text)) {
+    if (
+      !/\b(alias|aliases|readonly|read only|read-only|internal alias)\b/iu.test(text) &&
+      /\b(prod|production|customer|client|billing|payment|support|internal|admin|service[_-]?tokens?|api[_-]?tokens?|credentials?)\b/iu.test(
+        text
+      )
+    ) {
       categories.add("sensitive_secret_scope");
     }
     if (/\b(email|phone|address|ssn|passport|pii|customer[_-]?id|user[_-]?id)\b/iu.test(text)) {
@@ -16006,18 +16052,60 @@ function hasSecretManagerPathReferenceSignal(fields: RuntimeField[]): boolean {
 
 function hasSecretManagerToolInjectionSignal(fields: RuntimeField[]): boolean {
   return fields.some((field) =>
+    !disabledConfigValue(field.value) &&
     /(?:^|[_\W])(inject|export|materialize|hydrate|pass|forward|write[_-]?env|env[_-]?inject|tool|mcp|runtime|command|shell|browser|saas|connector)(?:[_\W]|$)/iu.test(
       `${field.path} ${fieldValueText(field)}`
     )
   );
 }
 
+function hasSecretManagerRedactionDisabledSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => {
+    const text = `${field.path} ${fieldValueText(field)}`.toLowerCase().replaceAll("_", " ").replaceAll("-", " ");
+    if (
+      isSecretManagerRedactionControlField(field.path) &&
+      (disabledConfigValue(field.value) || /\b(disabled|off|false|none|raw|unmasked|no redaction)\b/iu.test(text))
+    ) {
+      return true;
+    }
+    return (
+      /\b(raw secrets?|raw tokens?|unmasked secrets?|unmasked tokens?|include secret values|expose secret values|materialize secret values|store raw secrets?)\b/iu.test(
+        text
+      ) && truthyConfigValue(field.value)
+    );
+  });
+}
+
 function hasSecretManagerUntrustedInputSignal(fields: RuntimeField[]): boolean {
-  return fields.some((field) =>
-    /(?:^|[_\W])(untrusted|user|customer|client|ticket|support|issue|comment|message|prompt|retrieved|rag|document|email|slack|browser|web[_-]?page|chat)(?:[_\W]|$)/iu.test(
-      `${field.path} ${fieldValueText(field)}`
-    )
-  );
+  return fields.some((field) => {
+    if (isSecretManagerRedactionControlField(field.path) || /(?:^|\.)(approval|required_approval|human_review)(?:\.|$)/iu.test(field.path)) {
+      return false;
+    }
+    if (
+      /(?:^|\.)(secret[_-]?paths?|paths?|policies|roles?|capabilities|auth|endpoint|provider|data[_-]?scope)(?:\.|$|\[\d+\])/iu.test(
+        field.path
+      )
+    ) {
+      return false;
+    }
+    const valueText = fieldValueText(field).toLowerCase().replaceAll("_", " ").replaceAll("-", " ");
+    const pathText = field.path.toLowerCase().replaceAll("_", " ").replaceAll("-", " ");
+    const untrustedPattern =
+      /(?:^|[_\W])(untrusted|user|customer|client|ticket|support|issue|comment|message|prompt|retrieved|rag|document|email|slack|browser|web page|chat)(?:[_\W]|$)/iu;
+    if (
+      !untrustedPattern.test(valueText) &&
+      !(typeof field.value === "boolean" && truthyConfigValue(field.value) && untrustedPattern.test(pathText))
+    ) {
+      return false;
+    }
+    if (
+      /\b(approved|trusted|internal only|internal|allowlisted|reviewed)\b/iu.test(valueText) &&
+      !/\b(untrusted|customer|client|ticket|retrieved|rag|web page|browser|external|public)\b/iu.test(valueText)
+    ) {
+      return false;
+    }
+    return true;
+  });
 }
 
 function hasSecretManagerSensitiveScopeSignal(fields: RuntimeField[]): boolean {
@@ -16043,7 +16131,13 @@ function hasSecretManagerApprovalRequiredSignal(fields: RuntimeField[]): boolean
 }
 
 function isSecretManagerSecurityField(fieldPath: string): boolean {
-  return /provider|vault|secret|credential|token|password|api[_-]?key|auth|endpoint|url|host|path|mount|namespace|policy|role|permission|capabilit|scope|read|list|write|access|decrypt|inject|export|tool|source|input|approval|resource|project|arn|kms|keyvault/iu.test(
+  return /provider|vault|secret|credential|token|password|api[_-]?key|auth|endpoint|url|host|path|mount|namespace|policy|role|permission|capabilit|scope|read|list|write|access|decrypt|inject|export|materialize|hydrate|prompt|system|developer|model|message|context|memory|retrieval|rag|tool|redact|redaction|mask|sanitize|source|input|approval|resource|project|arn|kms|keyvault/iu.test(
+    fieldPath
+  );
+}
+
+function isSecretManagerRedactionControlField(fieldPath: string): boolean {
+  return /(?:^|\.)(redaction|redact|mask|masked|sanitize|sanitiz|secret_redaction|secrets_redaction|mask_secret_values|secret_values)(?:\.|$)/iu.test(
     fieldPath
   );
 }
