@@ -5675,6 +5675,7 @@ interface AgentExposurePosture {
   agent_exposure_write_authority: boolean;
   agent_exposure_memory_access: boolean;
   agent_exposure_secret_access: boolean;
+  agent_exposure_callback_credential_reference: boolean;
   agent_exposure_sensitive_data: boolean;
   agent_exposure_pii_data: boolean;
   agent_exposure_rate_limit_missing: boolean;
@@ -8031,6 +8032,7 @@ function classifyAgentExposureConfig(value: unknown, filePath: string): AgentExp
     agent_exposure_write_authority: hasAgentExposureWriteAuthoritySignal(fields, toolAuthorityCategories),
     agent_exposure_memory_access: toolAuthorityCategories.includes("memory_access") || hasAgentExposureMemorySignal(fields),
     agent_exposure_secret_access: toolAuthorityCategories.includes("secret_manager_access") || hasAgentExposureSecretSignal(fields),
+    agent_exposure_callback_credential_reference: hasAgentExposureCallbackCredentialSignal(fields, envKeys, secretRefKeys),
     agent_exposure_sensitive_data: hasAgentExposureSensitiveDataSignal(fields),
     agent_exposure_pii_data: hasAgentExposurePiiDataSignal(fields),
     agent_exposure_rate_limit_missing: hasAgentExposureRateLimitMissingSignal(fields),
@@ -8246,6 +8248,22 @@ function hasAgentExposureSecretSignal(fields: RuntimeField[]): boolean {
   return fields.some((field) => /\b(secret|token|credential|api[_-]?key|password|vault|key[_\s-]?vault)\b/iu.test(`${field.path} ${fieldValueText(field)}`));
 }
 
+function hasAgentExposureCallbackCredentialSignal(fields: RuntimeField[], envKeys: string[], secretRefKeys: string[]): boolean {
+  if (envKeys.length === 0 && secretRefKeys.length === 0) return false;
+
+  return fields.some((field) => {
+    const text = `${field.path} ${fieldValueText(field)}`;
+    const callbackOrSigningPath = /(?:^|\.)(callback|callback_auth|webhook|webhooks|signing|signature|signing_token|signing_secret|pushNotifications|push_notifications)(?:\.|$)/iu.test(
+      field.path
+    );
+    const callbackOrSigningText = /\b(callback|webhook|push[_\s-]?notification|signing|signature|signed)\b/iu.test(text);
+    const credentialText = /(?:^|[_\W])(token|credential|secret|api[_\s-]?key|auth|authorization|bearer|jwt|signature|signing)(?:[_\W]|$)/iu.test(
+      text
+    );
+    return (callbackOrSigningPath || callbackOrSigningText) && credentialText;
+  });
+}
+
 function hasAgentExposureSensitiveDataSignal(fields: RuntimeField[]): boolean {
   return fields.some((field) =>
     /\b(customer|client|ticket|support|internal|confidential|private|proprietary|sensitive|account|billing|payment|case|record|profile|note|incident)\b/iu.test(
@@ -8277,7 +8295,7 @@ function hasAgentExposureApprovalRequiredSignal(fields: RuntimeField[]): boolean
 }
 
 function isAgentExposureSecurityField(fieldPath: string): boolean {
-  return /provider|protocol|version|a2a|agent|card|discover|public|registry|catalog|marketplace|url|uri|endpoint|host|server|transport|jsonrpc|skill|capabilit|tool|mcp|function|browser|database|secret|memory|file|shell|command|auth|security|scheme|anonymous|oauth|oidc|jwt|bearer|token|credential|env|caller|external|partner|input|task|message|customer|ticket|email|account|sensitive|pii|rate|quota|throttle|approval/iu.test(
+  return /provider|protocol|version|a2a|agent|card|discover|public|registry|catalog|marketplace|url|uri|endpoint|host|server|transport|jsonrpc|skill|capabilit|tool|mcp|function|browser|database|secret|memory|file|shell|command|auth|security|scheme|anonymous|oauth|oidc|jwt|bearer|token|credential|env|caller|external|partner|callback|webhook|signing|signature|push|input|task|message|customer|ticket|email|account|sensitive|pii|rate|quota|throttle|approval/iu.test(
     fieldPath
   );
 }

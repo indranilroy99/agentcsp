@@ -958,9 +958,10 @@ The current iteration adds:
 
 The current iteration adds:
 
-- first-class redacted metadata for public A2A and agent-card exposure, including endpoint categories, capability counts, authentication posture, anonymous external caller access, privileged authority categories, rate-limit posture, and approval posture
+- first-class redacted metadata for public A2A and agent-card exposure, including endpoint categories, capability counts, authentication posture, anonymous external caller access, privileged authority categories, callback/signing credential posture, rate-limit posture, and approval posture
 - vulnerable fixture coverage for a `.well-known/agent-card.json` that exposes browser, database, memory, secret, and external-response authority to anonymous external agents
 - rule `AGENTCSP-RUNTIME-036` for public agent cards that combine anonymous external access, privileged tool authority, missing approval, missing rate limits, and credential exposure
+- rule `AGENTCSP-RUNTIME-114` for anonymous public A2A agent cards that combine callback/signing credentials, secret-manager access, memory/write authority, missing approval, and missing rate limits
 - scanner, rule, fixture verifier, and redaction coverage proving raw endpoint URLs, agent names, skill IDs, tool strings, caller labels, data-scope labels, and token placeholders stay redacted
 
 ## Remote Agent Federation Pass

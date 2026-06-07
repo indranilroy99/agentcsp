@@ -1804,6 +1804,7 @@ describe("scanner", () => {
       agent_exposure_write_authority: true,
       agent_exposure_memory_access: true,
       agent_exposure_secret_access: true,
+      agent_exposure_callback_credential_reference: true,
       agent_exposure_sensitive_data: true,
       agent_exposure_pii_data: true,
       agent_exposure_rate_limit_missing: true,
@@ -1828,7 +1829,14 @@ describe("scanner", () => {
     expect(JSON.stringify(agentExposureConfig)).not.toContain("customer-record-update");
     expect(JSON.stringify(agentExposureConfig)).not.toContain("credential-assisted-remediation");
     expect(JSON.stringify(agentExposureConfig)).not.toContain("support_db.update_customer_record");
+    expect(JSON.stringify(agentExposureConfig)).not.toContain("browser.submit_customer_form");
+    expect(JSON.stringify(agentExposureConfig)).not.toContain("slack.post_escalation_reply");
+    expect(JSON.stringify(agentExposureConfig)).not.toContain("vault_secret_lookup.read_support_token");
+    expect(JSON.stringify(agentExposureConfig)).not.toContain("support_memory_summary");
+    expect(JSON.stringify(agentExposureConfig)).not.toContain("public_agent_registry");
+    expect(JSON.stringify(agentExposureConfig)).not.toContain("partner_agents");
     expect(JSON.stringify(agentExposureConfig)).not.toContain("a2a_customer_email");
+    expect(JSON.stringify(agentExposureConfig)).not.toContain("a2a_account_number");
     expect(JSON.stringify(agentExposureConfig)).not.toContain("confidential_a2a_case_notes");
     const publicChatConfig = surfaces.runtime_config.find((surface) => surface.path === "public-chat/support-widget.yaml");
     expect(publicChatConfig).toBeDefined();

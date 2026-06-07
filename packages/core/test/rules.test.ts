@@ -139,6 +139,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-034")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-035")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-036")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-114")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-037")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-102")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-038")).toBe(true);
@@ -1354,6 +1355,61 @@ describe("rule engine", () => {
     expect(JSON.stringify(runtimeAgentExposureFindings[0])).not.toContain("support_db.update_customer_record");
     expect(JSON.stringify(runtimeAgentExposureFindings[0])).not.toContain("a2a_customer_email");
     expect(JSON.stringify(runtimeAgentExposureFindings[0])).not.toContain("confidential_a2a_case_notes");
+    const runtimeAgentCardCallbackSecretFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-RUNTIME-114");
+    expect(runtimeAgentCardCallbackSecretFindings).toHaveLength(1);
+    expect(runtimeAgentCardCallbackSecretFindings[0]?.matched_object.path).toBe(".well-known/agent-card.json");
+    expect(runtimeAgentCardCallbackSecretFindings[0]?.matched_object.metadata).toMatchObject({
+      parsed_agent_exposure_config: true,
+      agent_exposure_provider: "a2a_agent_card",
+      agent_exposure_public_discovery: true,
+      agent_exposure_auth_disabled: true,
+      agent_exposure_anonymous_access: true,
+      agent_exposure_external_callers: true,
+      agent_exposure_tool_invocation_enabled: true,
+      agent_exposure_privileged_authority: true,
+      agent_exposure_write_authority: true,
+      agent_exposure_memory_access: true,
+      agent_exposure_secret_access: true,
+      agent_exposure_callback_credential_reference: true,
+      agent_exposure_rate_limit_missing: true,
+      agent_exposure_approval_required: false
+    });
+    expect(runtimeAgentCardCallbackSecretFindings[0]?.matched_object.metadata.agent_exposure_tool_authority_categories).toEqual([
+      "browser_action",
+      "database_access",
+      "external_response",
+      "memory_access",
+      "secret_manager_access",
+      "tool_call"
+    ]);
+    expect(runtimeAgentCardCallbackSecretFindings[0]?.matched_object.data_classes).toEqual(["confidential", "credential", "pii", "secret"]);
+    expect(runtimeAgentCardCallbackSecretFindings[0]?.matched_object.actions).toEqual([
+      "call",
+      "execute",
+      "publish",
+      "read",
+      "remember",
+      "send",
+      "write"
+    ]);
+    expect(runtimeAgentCardCallbackSecretFindings[0]?.severity).toBe("critical");
+    expect(runtimeAgentCardCallbackSecretFindings[0]?.confidence).toBe("very_high");
+    expect(runtimeAgentCardCallbackSecretFindings[0]?.recommended_control).toBe("quarantine");
+    expect(JSON.stringify(runtimeAgentCardCallbackSecretFindings[0])).not.toContain("${A2A_AGENT_TOKEN}");
+    expect(JSON.stringify(runtimeAgentCardCallbackSecretFindings[0])).not.toContain("support-agent.agentcsp-demo.example.invalid");
+    expect(JSON.stringify(runtimeAgentCardCallbackSecretFindings[0])).not.toContain("support-case-remediation-agent");
+    expect(JSON.stringify(runtimeAgentCardCallbackSecretFindings[0])).not.toContain("customer-record-update");
+    expect(JSON.stringify(runtimeAgentCardCallbackSecretFindings[0])).not.toContain("credential-assisted-remediation");
+    expect(JSON.stringify(runtimeAgentCardCallbackSecretFindings[0])).not.toContain("support_db.update_customer_record");
+    expect(JSON.stringify(runtimeAgentCardCallbackSecretFindings[0])).not.toContain("browser.submit_customer_form");
+    expect(JSON.stringify(runtimeAgentCardCallbackSecretFindings[0])).not.toContain("slack.post_escalation_reply");
+    expect(JSON.stringify(runtimeAgentCardCallbackSecretFindings[0])).not.toContain("vault_secret_lookup.read_support_token");
+    expect(JSON.stringify(runtimeAgentCardCallbackSecretFindings[0])).not.toContain("support_memory_summary");
+    expect(JSON.stringify(runtimeAgentCardCallbackSecretFindings[0])).not.toContain("public_agent_registry");
+    expect(JSON.stringify(runtimeAgentCardCallbackSecretFindings[0])).not.toContain("partner_agents");
+    expect(JSON.stringify(runtimeAgentCardCallbackSecretFindings[0])).not.toContain("a2a_customer_email");
+    expect(JSON.stringify(runtimeAgentCardCallbackSecretFindings[0])).not.toContain("a2a_account_number");
+    expect(JSON.stringify(runtimeAgentCardCallbackSecretFindings[0])).not.toContain("confidential_a2a_case_notes");
     const runtimePublicChatFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-RUNTIME-062");
     expect(runtimePublicChatFindings).toHaveLength(1);
     expect(runtimePublicChatFindings[0]?.matched_object.path).toBe("public-chat/support-widget.yaml");

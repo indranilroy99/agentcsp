@@ -2240,6 +2240,7 @@ Agent exposure metadata may include:
 - `agent_exposure_write_authority`
 - `agent_exposure_memory_access`
 - `agent_exposure_secret_access`
+- `agent_exposure_callback_credential_reference`
 - `agent_exposure_sensitive_data`
 - `agent_exposure_pii_data`
 - `agent_exposure_rate_limit_missing`
@@ -2247,7 +2248,7 @@ Agent exposure metadata may include:
 - `env_key_names`
 - `secret_ref_key_names`
 
-Raw endpoint URLs, agent names, skill IDs, skill descriptions, tool strings, caller labels, data-scope labels, and token placeholders are not emitted. Provider names, endpoint categories, capability counts, authentication posture, authority categories, rate-limit posture, approval posture, and credential key names let rules detect externally callable agent authority without publishing the agent card body.
+Raw endpoint URLs, agent names, skill IDs, skill descriptions, tool strings, caller labels, data-scope labels, and token placeholders are not emitted. Provider names, endpoint categories, capability counts, authentication posture, authority categories, callback/signing credential posture, rate-limit posture, approval posture, and credential key names let rules detect externally callable agent authority without publishing the agent card body.
 
 ## Public Agent Chat Ingress Posture
 
