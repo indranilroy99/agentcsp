@@ -181,6 +181,7 @@ Examples:
 - agent identity delegation plus credential issuance plus service-account impersonation plus broad scopes plus untrusted subject inputs plus no approval gate
 - agent identity delegation plus refreshable broad credentials, untrusted subject inputs, tool injection, credential exposure, and no approval gate
 - cloud control-plane agent plus broad admin/write scope, IAM authority, secret access, compute/storage mutation, untrusted input, credential exposure, and no approval gate
+- authorization broker plus dynamic grants, untrusted subject/resource inputs, wildcard tool and resource scopes, fail-open/default-allow behavior, missing grant TTL, disabled audit logging, destructive or secret-backed authority, and no approval gate
 - remote agent extension loader plus auto-install plus unpinned unsigned capabilities plus untrusted selector inputs plus privileged tool authority plus no approval gate
 - agent self-modification plus untrusted inputs plus auto-applied writes to instructions, policy, runtime config, and tool definitions plus no approval gate
 - model-mediated approval gate plus untrusted approval context plus default-allow behavior plus auto-executed privileged actions and no required human reviewer
