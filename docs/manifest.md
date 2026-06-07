@@ -2316,6 +2316,10 @@ Public agent chat metadata may include:
 - `public_agent_chat_rate_limit_missing`
 - `public_agent_chat_abuse_protection_disabled`
 - `public_agent_chat_file_upload_enabled`
+- `public_agent_chat_upload_raw_text`
+- `public_agent_chat_upload_sandbox_disabled`
+- `public_agent_chat_upload_scan_disabled`
+- `public_agent_chat_upload_instruction_stripping_disabled`
 - `public_agent_chat_untrusted_input`
 - `public_agent_chat_auto_tool_invocation`
 - `public_agent_chat_tool_authority_categories`
@@ -2331,7 +2335,7 @@ Public agent chat metadata may include:
 - `env_key_names`
 - `secret_ref_key_names`
 
-Raw chat endpoints, allowed origins, tool names, visitor labels, attachment labels, context field names, data-scope labels, and token placeholders are not emitted. Endpoint categories, authentication posture, CORS/CSRF/rate-limit/abuse-control posture, file-upload posture, authority categories, redaction posture, approval posture, and credential key names let rules detect public prompt-to-tool authority without copying public chat configuration values into evidence.
+Raw chat endpoints, allowed origins, tool names, visitor labels, attachment labels, upload filenames, context field names, data-scope labels, and token placeholders are not emitted. Endpoint categories, authentication posture, CORS/CSRF/rate-limit/abuse-control posture, file-upload and upload-parser posture, authority categories, redaction posture, approval posture, and credential key names let rules detect public prompt-to-tool authority without copying public chat configuration values into evidence.
 
 ## Agent Debug Console Posture
 

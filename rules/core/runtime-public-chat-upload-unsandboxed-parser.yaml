@@ -1,0 +1,118 @@
+id: AGENTCSP-RUNTIME-121
+name: Public chat uploads are parsed unsafely before privileged tools
+description: An anonymous public chat endpoint accepts visitor uploads, extracts raw uploaded content without sandboxing, malware or content scanning, or prompt-instruction stripping, and then allows that uploaded context to reach privileged tools with credential-backed authority and no approval gate.
+category: public_chat_upload_parser_boundary
+severity: critical
+maps_to:
+  owasp:
+    - LLM01:2025 Prompt Injection
+    - LLM02:2025 Sensitive Information Disclosure
+    - LLM05:2025 Supply Chain Vulnerabilities
+    - LLM06:2025 Excessive Agency
+  mitre_atlas:
+    - AML.T0051 LLM Prompt Injection
+    - AML.T0057 Exfiltration via Cyber Means
+    - AML.T0059 Data from Information Repositories
+  nist_ai_rmf:
+    - MAP 5.1
+    - MEASURE 2.9
+    - MANAGE 2.4
+match:
+  object_type: runtime_config
+  where:
+    - field: metadata.parsed_public_agent_chat_config
+      op: equals
+      value: true
+    - field: metadata.public_agent_chat_enabled
+      op: equals
+      value: true
+    - field: metadata.public_agent_chat_public_endpoint
+      op: equals
+      value: true
+    - field: metadata.public_agent_chat_anonymous_access
+      op: equals
+      value: true
+    - field: metadata.public_agent_chat_auth_disabled
+      op: equals
+      value: true
+    - field: metadata.public_agent_chat_cors_broad
+      op: equals
+      value: true
+    - field: metadata.public_agent_chat_csrf_disabled
+      op: equals
+      value: true
+    - field: metadata.public_agent_chat_rate_limit_missing
+      op: equals
+      value: true
+    - field: metadata.public_agent_chat_abuse_protection_disabled
+      op: equals
+      value: true
+    - field: metadata.public_agent_chat_file_upload_enabled
+      op: equals
+      value: true
+    - field: metadata.public_agent_chat_upload_raw_text
+      op: equals
+      value: true
+    - field: metadata.public_agent_chat_upload_sandbox_disabled
+      op: equals
+      value: true
+    - field: metadata.public_agent_chat_upload_scan_disabled
+      op: equals
+      value: true
+    - field: metadata.public_agent_chat_upload_instruction_stripping_disabled
+      op: equals
+      value: true
+    - field: metadata.public_agent_chat_untrusted_input
+      op: equals
+      value: true
+    - field: metadata.public_agent_chat_auto_tool_invocation
+      op: equals
+      value: true
+    - field: metadata.public_agent_chat_tool_authority_categories
+      op: contains_any
+      value:
+        - database_write
+        - external_response
+        - memory_write
+        - secret_manager_access
+    - field: metadata.public_agent_chat_write_authority
+      op: equals
+      value: true
+    - field: metadata.public_agent_chat_external_response
+      op: equals
+      value: true
+    - field: metadata.public_agent_chat_memory_write
+      op: equals
+      value: true
+    - field: metadata.public_agent_chat_secret_access
+      op: equals
+      value: true
+    - field: metadata.public_agent_chat_sensitive_context
+      op: equals
+      value: true
+    - field: metadata.public_agent_chat_pii_context
+      op: equals
+      value: true
+    - field: metadata.public_agent_chat_redaction_disabled
+      op: equals
+      value: true
+    - field: metadata.public_agent_chat_approval_required
+      op: equals
+      value: false
+    - field: data_classes
+      op: contains_any
+      value:
+        - credential
+    - field: data_classes
+      op: contains_any
+      value:
+        - pii
+    - field: secret_exposure
+      op: equals
+      value: true
+    - field: untrusted_to_privileged
+      op: equals
+      value: true
+recommendation:
+  control: quarantine
+  text: Quarantine public chat uploads before agent invocation; parse files in an isolated sandbox, scan and inspect uploaded content before text extraction, strip prompt-like instructions from extracted content, redact sensitive data, and require approval before uploaded context can reach database, messaging, memory, or secret-manager tools.

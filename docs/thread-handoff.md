@@ -1395,6 +1395,15 @@ The current iteration adds:
 - rule `AGENTCSP-RUNTIME-120` for unsandboxed inbound attachment parsing that can drive privileged agent tools with credential-backed authority
 - regression coverage proving raw attachment filenames, mail endpoints, mailbox names, agent names, tool names, source labels, data labels, and token placeholders stay redacted
 
+## Public Chat Upload Parser Boundary Pass
+
+The current iteration adds:
+
+- first-class public-chat upload metadata for raw uploaded content extraction, sandbox posture, malware/content scanning posture, and prompt-instruction stripping posture
+- fixture coverage for an anonymous public support widget that accepts PDF, HTML, archive, and OCR image uploads, extracts raw content, disables sandboxing/scanning/instruction stripping, and routes upload-derived context into database, external-response, memory, and secret-manager tools without approval
+- rule `AGENTCSP-RUNTIME-121` for unsandboxed public chat upload parsing that can drive privileged agent tools with credential-backed authority
+- regression coverage proving raw upload filenames, public endpoints, visitor labels, tool names, context labels, data labels, and token placeholders stay redacted
+
 ## Automation Shell-Argument Boundary Pass
 
 The current iteration adds:

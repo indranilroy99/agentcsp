@@ -11,6 +11,21 @@ csrf_protection: false
 rate_limit: false
 abuse_protection: false
 file_uploads: true
+upload_processing:
+  enabled: true
+  accepted_types:
+    - public_chat_invoice.pdf
+    - public_chat_export.html
+    - public_chat_support_bundle.zip
+    - public_chat_screenshot_ocr.png
+  extract_text: true
+  preserve_html: true
+  pass_raw_to_agent: true
+  sandbox: false
+  malware_scan: false
+  content_inspection: false
+  strip_instructions: false
+  prompt_injection_filter: false
 input_sources:
   - anonymous_website_visitor
   - public_chat_message

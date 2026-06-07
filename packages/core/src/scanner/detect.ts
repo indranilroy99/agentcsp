@@ -5698,6 +5698,10 @@ interface AgentPublicChatPosture {
   public_agent_chat_rate_limit_missing: boolean;
   public_agent_chat_abuse_protection_disabled: boolean;
   public_agent_chat_file_upload_enabled: boolean;
+  public_agent_chat_upload_raw_text: boolean;
+  public_agent_chat_upload_sandbox_disabled: boolean;
+  public_agent_chat_upload_scan_disabled: boolean;
+  public_agent_chat_upload_instruction_stripping_disabled: boolean;
   public_agent_chat_untrusted_input: boolean;
   public_agent_chat_auto_tool_invocation: boolean;
   public_agent_chat_tool_authority_categories: string[];
@@ -8336,6 +8340,10 @@ function classifyAgentPublicChatConfig(value: unknown): AgentPublicChatPosture {
     public_agent_chat_rate_limit_missing: hasAgentPublicChatRateLimitMissingSignal(fields),
     public_agent_chat_abuse_protection_disabled: hasAgentPublicChatAbuseProtectionDisabledSignal(fields),
     public_agent_chat_file_upload_enabled: hasAgentPublicChatFileUploadSignal(fields),
+    public_agent_chat_upload_raw_text: hasAgentPublicChatUploadRawTextSignal(fields),
+    public_agent_chat_upload_sandbox_disabled: hasAgentPublicChatUploadSandboxDisabledSignal(fields),
+    public_agent_chat_upload_scan_disabled: hasAgentPublicChatUploadScanDisabledSignal(fields),
+    public_agent_chat_upload_instruction_stripping_disabled: hasAgentPublicChatUploadInstructionStrippingDisabledSignal(fields),
     public_agent_chat_untrusted_input: hasAgentPublicChatUntrustedInputSignal(fields),
     public_agent_chat_auto_tool_invocation: hasAgentPublicChatAutoToolInvocationSignal(fields),
     public_agent_chat_tool_authority_categories: toolAuthorityCategories,
@@ -8450,6 +8458,74 @@ function hasAgentPublicChatFileUploadSignal(fields: RuntimeField[]): boolean {
     /\b(file upload|upload|attachment|attachments|image upload|document upload|user files?)\b/iu.test(agentPublicChatText(field)) &&
     truthyConfigValue(field.value)
   );
+}
+
+function hasAgentPublicChatUploadRawTextSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => {
+    const text = agentPublicChatText(field);
+    if (!/(?:^|[_\W])(upload|uploads|attachment|attachments|file|files|document|extract|extracted|text|raw|ocr|html|pdf|archive)(?:[_\W]|$)/iu.test(text)) {
+      return false;
+    }
+    if (
+      /(?:^|\.)(pass_raw_to_agent|raw_text_to_agent|include_raw_upload_text|include_raw_attachment_text|extract_text|extract_ocr|preserve_html|raw_html|raw_content)(?:\.|$)/iu.test(
+        field.path
+      )
+    ) {
+      return truthyConfigValue(field.value);
+    }
+    return /\b(pass raw|raw upload|raw attachment|raw text|extract text|preserve html|uploaded html|ocr text)\b/iu.test(text) &&
+      truthyConfigValue(field.value);
+  });
+}
+
+function hasAgentPublicChatUploadSandboxDisabledSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => {
+    const text = agentPublicChatText(field);
+    if (!/\b(upload|uploads|attachment|attachments|file|files|document|parser|sandbox|isolation|detonate|preview)\b/iu.test(text)) {
+      return false;
+    }
+    if (/(?:^|\.)(sandbox|sandboxed|isolation|isolated_parser|detonation|safe_preview)(?:\.|$)/iu.test(field.path)) {
+      return disabledConfigValue(field.value);
+    }
+    return /\b(no sandbox|sandbox disabled|unsandboxed|no isolation|parser not isolated)\b/iu.test(text) &&
+      truthyConfigValue(field.value);
+  });
+}
+
+function hasAgentPublicChatUploadScanDisabledSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => {
+    const text = agentPublicChatText(field);
+    if (!/\b(upload|uploads|attachment|attachments|file|files|document|scan|scanner|malware|virus|av|antivirus|content inspection)\b/iu.test(text)) {
+      return false;
+    }
+    if (
+      /(?:^|\.)(malware_scan|virus_scan|av_scan|antivirus|content_inspection|security_scan|scan_before_parse)(?:\.|$)/iu.test(
+        field.path
+      )
+    ) {
+      return disabledConfigValue(field.value);
+    }
+    return /\b(no scan|scan disabled|malware scan disabled|skip scan|no content inspection)\b/iu.test(text) &&
+      truthyConfigValue(field.value);
+  });
+}
+
+function hasAgentPublicChatUploadInstructionStrippingDisabledSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => {
+    const text = agentPublicChatText(field);
+    if (!/(?:^|[_\W])(upload|uploads|attachment|attachments|file|files|document|instruction|prompt|html|ocr|sanitize|strip)(?:[_\W]|$)/iu.test(text)) {
+      return false;
+    }
+    if (
+      /(?:^|\.)(strip_instructions|instruction_stripping|prompt_injection_filter|sanitize_prompt_instructions|remove_prompt_instructions)(?:\.|$)/iu.test(
+        field.path
+      )
+    ) {
+      return disabledConfigValue(field.value);
+    }
+    return /\b(strip instructions disabled|instruction stripping disabled|prompt filter disabled|preserve instructions)\b/iu.test(text) &&
+      truthyConfigValue(field.value);
+  });
 }
 
 function hasAgentPublicChatUntrustedInputSignal(fields: RuntimeField[]): boolean {
@@ -8598,7 +8674,7 @@ function isAgentPublicChatControlField(fieldPath: string): boolean {
 }
 
 function isAgentPublicChatSecurityField(fieldPath: string): boolean {
-  return /enabled|active|public|chat|widget|web|agent|endpoint|url|uri|host|route|api|auth|anonymous|guest|cors|origin|csrf|rate|quota|throttle|abuse|captcha|moderation|guardrail|upload|attachment|input|prompt|message|customer|visitor|ticket|tool|mcp|function|browser|database|db|slack|email|webhook|secret|vault|credential|token|memory|shell|filesystem|redaction|approval|pii|sensitive|confidential/iu.test(
+  return /enabled|active|public|chat|widget|web|agent|endpoint|url|uri|host|route|api|auth|anonymous|guest|cors|origin|csrf|rate|quota|throttle|abuse|captcha|moderation|guardrail|upload|attachment|file|document|extract|parser|sandbox|scan|malware|virus|sanitize|instruction|input|prompt|message|customer|visitor|ticket|tool|mcp|function|browser|database|db|slack|email|webhook|secret|vault|credential|token|memory|shell|filesystem|redaction|approval|pii|sensitive|confidential/iu.test(
     fieldPath
   );
 }

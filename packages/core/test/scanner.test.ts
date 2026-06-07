@@ -1865,6 +1865,10 @@ describe("scanner", () => {
       public_agent_chat_rate_limit_missing: true,
       public_agent_chat_abuse_protection_disabled: true,
       public_agent_chat_file_upload_enabled: true,
+      public_agent_chat_upload_raw_text: true,
+      public_agent_chat_upload_sandbox_disabled: true,
+      public_agent_chat_upload_scan_disabled: true,
+      public_agent_chat_upload_instruction_stripping_disabled: true,
       public_agent_chat_untrusted_input: true,
       public_agent_chat_auto_tool_invocation: true,
       public_agent_chat_privileged_tool_authority: true,
@@ -1898,6 +1902,10 @@ describe("scanner", () => {
     expect(JSON.stringify(publicChatConfig)).not.toContain("public_chat_customer_email");
     expect(JSON.stringify(publicChatConfig)).not.toContain("public_chat_account_number");
     expect(JSON.stringify(publicChatConfig)).not.toContain("confidential_public_chat_notes");
+    expect(JSON.stringify(publicChatConfig)).not.toContain("public_chat_invoice.pdf");
+    expect(JSON.stringify(publicChatConfig)).not.toContain("public_chat_export.html");
+    expect(JSON.stringify(publicChatConfig)).not.toContain("public_chat_support_bundle.zip");
+    expect(JSON.stringify(publicChatConfig)).not.toContain("public_chat_screenshot_ocr.png");
     const debugConsoleConfig = surfaces.runtime_config.find((surface) => surface.path === "debug/agent-playground.yaml");
     expect(debugConsoleConfig).toBeDefined();
     expect(debugConsoleConfig).toMatchObject({
@@ -5315,6 +5323,10 @@ describe("scanner", () => {
       public_agent_chat_rate_limit_missing: false,
       public_agent_chat_abuse_protection_disabled: false,
       public_agent_chat_file_upload_enabled: false,
+      public_agent_chat_upload_raw_text: false,
+      public_agent_chat_upload_sandbox_disabled: false,
+      public_agent_chat_upload_scan_disabled: false,
+      public_agent_chat_upload_instruction_stripping_disabled: false,
       public_agent_chat_untrusted_input: false,
       public_agent_chat_auto_tool_invocation: false,
       public_agent_chat_privileged_tool_authority: false,

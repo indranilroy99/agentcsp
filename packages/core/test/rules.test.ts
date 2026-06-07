@@ -116,6 +116,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-061")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-062")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-092")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-121")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-063")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-076")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-064")).toBe(true);
@@ -1571,6 +1572,7 @@ describe("rule engine", () => {
     expect(JSON.stringify(runtimePublicChatFindings[0])).not.toContain("memory.write_customer_summary");
     expect(JSON.stringify(runtimePublicChatFindings[0])).not.toContain("anonymous_website_visitor");
     expect(JSON.stringify(runtimePublicChatFindings[0])).not.toContain("public_chat_customer_email");
+    expect(JSON.stringify(runtimePublicChatFindings[0])).not.toContain("public_chat_account_number");
     expect(JSON.stringify(runtimePublicChatFindings[0])).not.toContain("confidential_public_chat_notes");
     const runtimePublicChatUploadFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-RUNTIME-092");
     expect(runtimePublicChatUploadFindings).toHaveLength(1);
@@ -1586,6 +1588,10 @@ describe("rule engine", () => {
       public_agent_chat_rate_limit_missing: true,
       public_agent_chat_abuse_protection_disabled: true,
       public_agent_chat_file_upload_enabled: true,
+      public_agent_chat_upload_raw_text: true,
+      public_agent_chat_upload_sandbox_disabled: true,
+      public_agent_chat_upload_scan_disabled: true,
+      public_agent_chat_upload_instruction_stripping_disabled: true,
       public_agent_chat_untrusted_input: true,
       public_agent_chat_auto_tool_invocation: true,
       public_agent_chat_write_authority: true,
@@ -1616,7 +1622,68 @@ describe("rule engine", () => {
     expect(JSON.stringify(runtimePublicChatUploadFindings[0])).not.toContain("anonymous_website_visitor");
     expect(JSON.stringify(runtimePublicChatUploadFindings[0])).not.toContain("customer_uploaded_attachment");
     expect(JSON.stringify(runtimePublicChatUploadFindings[0])).not.toContain("public_chat_customer_email");
+    expect(JSON.stringify(runtimePublicChatUploadFindings[0])).not.toContain("public_chat_account_number");
     expect(JSON.stringify(runtimePublicChatUploadFindings[0])).not.toContain("confidential_public_chat_notes");
+    expect(JSON.stringify(runtimePublicChatUploadFindings[0])).not.toContain("public_chat_invoice.pdf");
+    expect(JSON.stringify(runtimePublicChatUploadFindings[0])).not.toContain("public_chat_export.html");
+    expect(JSON.stringify(runtimePublicChatUploadFindings[0])).not.toContain("public_chat_support_bundle.zip");
+    expect(JSON.stringify(runtimePublicChatUploadFindings[0])).not.toContain("public_chat_screenshot_ocr.png");
+    const runtimePublicChatUploadParserFindings = findings.filter(
+      (finding) => finding.rule_id === "AGENTCSP-RUNTIME-121"
+    );
+    expect(runtimePublicChatUploadParserFindings).toHaveLength(1);
+    expect(runtimePublicChatUploadParserFindings[0]?.matched_object.path).toBe("public-chat/support-widget.yaml");
+    expect(runtimePublicChatUploadParserFindings[0]?.matched_object.metadata).toMatchObject({
+      parsed_public_agent_chat_config: true,
+      public_agent_chat_enabled: true,
+      public_agent_chat_public_endpoint: true,
+      public_agent_chat_anonymous_access: true,
+      public_agent_chat_auth_disabled: true,
+      public_agent_chat_cors_broad: true,
+      public_agent_chat_csrf_disabled: true,
+      public_agent_chat_rate_limit_missing: true,
+      public_agent_chat_abuse_protection_disabled: true,
+      public_agent_chat_file_upload_enabled: true,
+      public_agent_chat_upload_raw_text: true,
+      public_agent_chat_upload_sandbox_disabled: true,
+      public_agent_chat_upload_scan_disabled: true,
+      public_agent_chat_upload_instruction_stripping_disabled: true,
+      public_agent_chat_untrusted_input: true,
+      public_agent_chat_auto_tool_invocation: true,
+      public_agent_chat_write_authority: true,
+      public_agent_chat_external_response: true,
+      public_agent_chat_memory_write: true,
+      public_agent_chat_secret_access: true,
+      public_agent_chat_sensitive_context: true,
+      public_agent_chat_pii_context: true,
+      public_agent_chat_redaction_disabled: true,
+      public_agent_chat_approval_required: false
+    });
+    expect(runtimePublicChatUploadParserFindings[0]?.matched_object.metadata.public_agent_chat_tool_authority_categories).toEqual([
+      "database_write",
+      "external_response",
+      "memory_write",
+      "secret_manager_access",
+      "tool_call"
+    ]);
+    expect(runtimePublicChatUploadParserFindings[0]?.severity).toBe("critical");
+    expect(runtimePublicChatUploadParserFindings[0]?.confidence).toBe("very_high");
+    expect(runtimePublicChatUploadParserFindings[0]?.recommended_control).toBe("quarantine");
+    expect(JSON.stringify(runtimePublicChatUploadParserFindings[0])).not.toContain("${PUBLIC_CHAT_AGENT_TOKEN}");
+    expect(JSON.stringify(runtimePublicChatUploadParserFindings[0])).not.toContain("support.example.invalid");
+    expect(JSON.stringify(runtimePublicChatUploadParserFindings[0])).not.toContain("support_db.update_customer_record");
+    expect(JSON.stringify(runtimePublicChatUploadParserFindings[0])).not.toContain("slack.post_customer_reply");
+    expect(JSON.stringify(runtimePublicChatUploadParserFindings[0])).not.toContain("vault_secret_lookup.read_support_token");
+    expect(JSON.stringify(runtimePublicChatUploadParserFindings[0])).not.toContain("memory.write_customer_summary");
+    expect(JSON.stringify(runtimePublicChatUploadParserFindings[0])).not.toContain("anonymous_website_visitor");
+    expect(JSON.stringify(runtimePublicChatUploadParserFindings[0])).not.toContain("customer_uploaded_attachment");
+    expect(JSON.stringify(runtimePublicChatUploadParserFindings[0])).not.toContain("public_chat_customer_email");
+    expect(JSON.stringify(runtimePublicChatUploadParserFindings[0])).not.toContain("public_chat_account_number");
+    expect(JSON.stringify(runtimePublicChatUploadParserFindings[0])).not.toContain("confidential_public_chat_notes");
+    expect(JSON.stringify(runtimePublicChatUploadParserFindings[0])).not.toContain("public_chat_invoice.pdf");
+    expect(JSON.stringify(runtimePublicChatUploadParserFindings[0])).not.toContain("public_chat_export.html");
+    expect(JSON.stringify(runtimePublicChatUploadParserFindings[0])).not.toContain("public_chat_support_bundle.zip");
+    expect(JSON.stringify(runtimePublicChatUploadParserFindings[0])).not.toContain("public_chat_screenshot_ocr.png");
     const runtimeDebugConsoleFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-RUNTIME-063");
     expect(runtimeDebugConsoleFindings).toHaveLength(1);
     expect(runtimeDebugConsoleFindings[0]?.matched_object.path).toBe("debug/agent-playground.yaml");
