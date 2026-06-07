@@ -112,6 +112,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-037")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-038")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-039")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-079")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-040")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-041")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-075")).toBe(true);
@@ -2173,6 +2174,57 @@ describe("rule engine", () => {
     expect(JSON.stringify(runtimeToolOutputFindings[0])).not.toContain("support_db.update_customer_record");
     expect(JSON.stringify(runtimeToolOutputFindings[0])).not.toContain("slack.post_escalation_reply");
     expect(JSON.stringify(runtimeToolOutputFindings[0])).not.toContain("tool_output_customer_email");
+    const runtimeToolOutputApprovalFindings = findings.filter(
+      (finding) => finding.rule_id === "AGENTCSP-RUNTIME-079"
+    );
+    expect(runtimeToolOutputApprovalFindings).toHaveLength(1);
+    expect(runtimeToolOutputApprovalFindings[0]?.matched_object.path).toBe("tool-results/result-policy.yaml");
+    expect(runtimeToolOutputApprovalFindings[0]?.matched_object.metadata).toMatchObject({
+      parsed_tool_output_policy_config: true,
+      tool_output_untrusted_sources: true,
+      tool_output_raw_output_enabled: true,
+      tool_output_system_or_developer_context: true,
+      tool_output_approval_input: true,
+      tool_output_sanitization_disabled: true,
+      tool_output_prompt_injection_filter_disabled: true,
+      tool_output_delimiter_disabled: true,
+      tool_output_followup_tool_calls: true,
+      tool_output_write_authority: true,
+      tool_output_external_reach: true,
+      tool_output_secret_access: true,
+      tool_output_approval_required: false
+    });
+    expect(runtimeToolOutputApprovalFindings[0]?.matched_object.metadata.tool_output_source_categories).toEqual([
+      "api_response",
+      "browser_output",
+      "database_result",
+      "mcp_result",
+      "shell_output"
+    ]);
+    expect(runtimeToolOutputApprovalFindings[0]?.matched_object.metadata.tool_output_tool_authority_categories).toEqual([
+      "database_access",
+      "external_response",
+      "memory_write",
+      "secret_manager_access",
+      "shell_execution",
+      "tool_call"
+    ]);
+    expect(runtimeToolOutputApprovalFindings[0]?.severity).toBe("critical");
+    expect(runtimeToolOutputApprovalFindings[0]?.confidence).toBe("very_high");
+    expect(runtimeToolOutputApprovalFindings[0]?.recommended_control).toBe("require_approval");
+    expect(JSON.stringify(runtimeToolOutputApprovalFindings[0])).not.toContain("${TOOL_OUTPUT_POLICY_TOKEN}");
+    expect(JSON.stringify(runtimeToolOutputApprovalFindings[0])).not.toContain("browser_tool_output");
+    expect(JSON.stringify(runtimeToolOutputApprovalFindings[0])).not.toContain("shell_command_output");
+    expect(JSON.stringify(runtimeToolOutputApprovalFindings[0])).not.toContain("mcp_filesystem_result");
+    expect(JSON.stringify(runtimeToolOutputApprovalFindings[0])).not.toContain("api_connector_response");
+    expect(JSON.stringify(runtimeToolOutputApprovalFindings[0])).not.toContain("customer_uploaded_html");
+    expect(JSON.stringify(runtimeToolOutputApprovalFindings[0])).not.toContain("support_db.update_customer_record");
+    expect(JSON.stringify(runtimeToolOutputApprovalFindings[0])).not.toContain("slack.post_escalation_reply");
+    expect(JSON.stringify(runtimeToolOutputApprovalFindings[0])).not.toContain("memory.write_long_term_summary");
+    expect(JSON.stringify(runtimeToolOutputApprovalFindings[0])).not.toContain("vault_secret_lookup.read_support_token");
+    expect(JSON.stringify(runtimeToolOutputApprovalFindings[0])).not.toContain("tool_output_customer_email");
+    expect(JSON.stringify(runtimeToolOutputApprovalFindings[0])).not.toContain("tool_output_account_number");
+    expect(JSON.stringify(runtimeToolOutputApprovalFindings[0])).not.toContain("confidential_tool_trace");
     const runtimeVisualContextFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-RUNTIME-040");
     expect(runtimeVisualContextFindings).toHaveLength(1);
     expect(runtimeVisualContextFindings[0]?.matched_object.path).toBe("vision/screenshot-policy.yaml");

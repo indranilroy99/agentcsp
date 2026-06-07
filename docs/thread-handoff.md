@@ -969,6 +969,7 @@ The current iteration adds:
 - first-class redacted metadata for tool-output policy posture, including browser/shell/MCP/API/customer source categories, raw-output handling, prompt-context injection, delimiter posture, sanitization posture, prompt-injection filtering, follow-up tool authority, memory writes, shell authority, external reach, secret access, and approval posture
 - vulnerable fixture coverage for raw tool observations that can enter developer prompt context, request follow-up tools, write customer records, send Slack replies, persist memory, run shell commands, and access a secret lookup tool without approval
 - rule `AGENTCSP-RUNTIME-039` for tool-output injection boundaries that combine untrusted raw observations, disabled sanitization and prompt-injection filtering, privileged follow-up action authority, credential exposure, and no approval
+- rule `AGENTCSP-RUNTIME-079` for tool-output approval poisoning where raw untrusted tool observations become approval decision context and can trigger privileged write, external, shell, memory, or secret-backed follow-up actions without approval
 - scanner, rule, fixture verifier, and redaction coverage proving raw observation labels, tool names, data-scope labels, and token placeholders stay redacted
 
 ## Visual Context Injection Boundary Pass

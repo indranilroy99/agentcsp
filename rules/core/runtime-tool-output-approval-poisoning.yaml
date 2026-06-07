@@ -1,0 +1,72 @@
+id: AGENTCSP-RUNTIME-079
+name: Tool output can poison approval decisions and trigger privileged actions
+description: A tool-output policy allows untrusted raw browser, shell, MCP, API, or customer outputs to become approval decision context while follow-up write, external, shell, memory, or secret-backed actions can execute without sanitization, prompt-injection filtering, delimiters, or approval.
+category: tool_output_approval_poisoning
+severity: critical
+maps_to:
+  owasp:
+    - LLM01:2025 Prompt Injection
+    - LLM02:2025 Sensitive Information Disclosure
+    - LLM06:2025 Excessive Agency
+  mitre_atlas:
+    - AML.T0051 LLM Prompt Injection
+    - AML.T0057 Exfiltration via Cyber Means
+  nist_ai_rmf:
+    - GOVERN 1.5
+    - MAP 5.1
+    - MANAGE 2.4
+match:
+  object_type: runtime_config
+  where:
+    - field: metadata.parsed_tool_output_policy_config
+      op: equals
+      value: true
+    - field: metadata.tool_output_untrusted_sources
+      op: equals
+      value: true
+    - field: metadata.tool_output_raw_output_enabled
+      op: equals
+      value: true
+    - field: metadata.tool_output_system_or_developer_context
+      op: equals
+      value: true
+    - field: metadata.tool_output_approval_input
+      op: equals
+      value: true
+    - field: metadata.tool_output_sanitization_disabled
+      op: equals
+      value: true
+    - field: metadata.tool_output_prompt_injection_filter_disabled
+      op: equals
+      value: true
+    - field: metadata.tool_output_delimiter_disabled
+      op: equals
+      value: true
+    - field: metadata.tool_output_followup_tool_calls
+      op: equals
+      value: true
+    - field: metadata.tool_output_write_authority
+      op: equals
+      value: true
+    - field: metadata.tool_output_external_reach
+      op: equals
+      value: true
+    - field: metadata.tool_output_secret_access
+      op: equals
+      value: true
+    - field: metadata.tool_output_approval_required
+      op: equals
+      value: false
+    - field: metadata.tool_output_source_categories
+      op: contains_any
+      value:
+        - api_response
+        - browser_output
+        - mcp_result
+        - shell_output
+    - field: untrusted_to_privileged
+      op: equals
+      value: true
+recommendation:
+  control: require_approval
+  text: Keep raw tool outputs out of approval decision context, sanitize and delimit all tool observations, block tool-output-requested follow-up actions, and require independent approval before tool results can trigger writes, external sends, shell execution, memory persistence, or secret access.
