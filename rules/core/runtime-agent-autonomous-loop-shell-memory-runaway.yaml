@@ -1,0 +1,124 @@
+id: AGENTCSP-RUNTIME-112
+name: Autonomous loop can recurse through shell and memory without stop controls
+description: An autonomous agent loop accepts untrusted goals, feeds tool outputs and memory back into planning, can execute shell, secret-manager, write, and external-response tools, and has no runtime budget, stop condition, dry-run, kill switch, or approval gate.
+category: autonomous_agent_loop
+severity: critical
+maps_to:
+  owasp:
+    - LLM01:2025 Prompt Injection
+    - LLM06:2025 Excessive Agency
+    - LLM08:2025 Vector and Embedding Weaknesses
+  mitre_atlas:
+    - AML.T0051 LLM Prompt Injection
+    - AML.T0057 Exfiltration via Cyber Means
+    - AML.T0059 Data from Information Repositories
+  nist_ai_rmf:
+    - MAP 5.1
+    - MEASURE 2.7
+    - MANAGE 2.4
+match:
+  object_type: runtime_config
+  where:
+    - field: metadata.parsed_agent_autonomous_loop_config
+      op: equals
+      value: true
+    - field: metadata.agent_autonomous_loop_enabled
+      op: equals
+      value: true
+    - field: metadata.agent_autonomous_loop_autonomous_mode
+      op: equals
+      value: true
+    - field: metadata.agent_autonomous_loop_loop_enabled
+      op: equals
+      value: true
+    - field: metadata.agent_autonomous_loop_auto_execute
+      op: equals
+      value: true
+    - field: metadata.agent_autonomous_loop_untrusted_goal
+      op: equals
+      value: true
+    - field: metadata.agent_autonomous_loop_privileged_tool_authority
+      op: equals
+      value: true
+    - field: metadata.agent_autonomous_loop_write_authority
+      op: equals
+      value: true
+    - field: metadata.agent_autonomous_loop_external_authority
+      op: equals
+      value: true
+    - field: metadata.agent_autonomous_loop_secret_authority
+      op: equals
+      value: true
+    - field: metadata.agent_autonomous_loop_shell_authority
+      op: equals
+      value: true
+    - field: metadata.agent_autonomous_loop_memory_feedback
+      op: equals
+      value: true
+    - field: metadata.agent_autonomous_loop_tool_output_feedback
+      op: equals
+      value: true
+    - field: metadata.agent_autonomous_loop_unbounded_iterations
+      op: equals
+      value: true
+    - field: metadata.agent_autonomous_loop_runtime_budget_missing
+      op: equals
+      value: true
+    - field: metadata.agent_autonomous_loop_stop_condition_missing
+      op: equals
+      value: true
+    - field: metadata.agent_autonomous_loop_kill_switch_disabled
+      op: equals
+      value: true
+    - field: metadata.agent_autonomous_loop_dry_run_disabled
+      op: equals
+      value: true
+    - field: metadata.agent_autonomous_loop_approval_required
+      op: equals
+      value: false
+    - field: metadata.agent_autonomous_loop_goal_source_categories
+      op: contains_any
+      value:
+        - customer_goal
+        - untrusted_prompt
+    - field: metadata.agent_autonomous_loop_tool_authority_categories
+      op: contains_any
+      value:
+        - shell_execution
+    - field: metadata.agent_autonomous_loop_tool_authority_categories
+      op: contains_any
+      value:
+        - secret_manager_access
+    - field: metadata.agent_autonomous_loop_tool_authority_categories
+      op: contains_any
+      value:
+        - memory_write
+    - field: data_classes
+      op: contains_any
+      value:
+        - secret
+    - field: data_classes
+      op: contains_any
+      value:
+        - pii
+    - field: actions
+      op: contains_any
+      value:
+        - execute
+    - field: actions
+      op: contains_any
+      value:
+        - remember
+    - field: actions
+      op: contains_any
+      value:
+        - write
+    - field: secret_exposure
+      op: equals
+      value: true
+    - field: untrusted_to_privileged
+      op: equals
+      value: true
+recommendation:
+  control: deny
+  text: Deny autonomous loop execution until shell and secret-manager tools are removed from self-directed plans, memory and tool-output feedback are separated from the next action, deterministic iteration/runtime budgets and stop conditions are enforced, dry-run and kill-switch controls are enabled, and approval is required before privileged actions.

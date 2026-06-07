@@ -109,6 +109,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-059")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-100")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-060")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-112")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-061")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-062")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-092")).toBe(true);
@@ -4015,6 +4016,71 @@ describe("rule engine", () => {
     expect(JSON.stringify(runtimeAutonomousLoopFindings[0])).not.toContain("loop_customer_email");
     expect(JSON.stringify(runtimeAutonomousLoopFindings[0])).not.toContain("loop_account_number");
     expect(JSON.stringify(runtimeAutonomousLoopFindings[0])).not.toContain("confidential_loop_notes");
+    const runtimeAutonomousLoopRunawayFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-RUNTIME-112");
+    expect(runtimeAutonomousLoopRunawayFindings).toHaveLength(1);
+    expect(runtimeAutonomousLoopRunawayFindings[0]?.matched_object.path).toBe("autonomy/agent-loop.yaml");
+    expect(runtimeAutonomousLoopRunawayFindings[0]?.matched_object.data_classes).toEqual([
+      "confidential",
+      "credential",
+      "pii",
+      "secret"
+    ]);
+    expect(runtimeAutonomousLoopRunawayFindings[0]?.matched_object.actions).toEqual([
+      "call",
+      "execute",
+      "publish",
+      "read",
+      "remember",
+      "send",
+      "write"
+    ]);
+    expect(runtimeAutonomousLoopRunawayFindings[0]?.matched_object.metadata).toMatchObject({
+      parsed_agent_autonomous_loop_config: true,
+      agent_autonomous_loop_enabled: true,
+      agent_autonomous_loop_autonomous_mode: true,
+      agent_autonomous_loop_loop_enabled: true,
+      agent_autonomous_loop_auto_execute: true,
+      agent_autonomous_loop_untrusted_goal: true,
+      agent_autonomous_loop_privileged_tool_authority: true,
+      agent_autonomous_loop_write_authority: true,
+      agent_autonomous_loop_external_authority: true,
+      agent_autonomous_loop_secret_authority: true,
+      agent_autonomous_loop_shell_authority: true,
+      agent_autonomous_loop_memory_feedback: true,
+      agent_autonomous_loop_tool_output_feedback: true,
+      agent_autonomous_loop_unbounded_iterations: true,
+      agent_autonomous_loop_runtime_budget_missing: true,
+      agent_autonomous_loop_stop_condition_missing: true,
+      agent_autonomous_loop_kill_switch_disabled: true,
+      agent_autonomous_loop_dry_run_disabled: true,
+      agent_autonomous_loop_approval_required: false
+    });
+    expect(runtimeAutonomousLoopRunawayFindings[0]?.matched_object.metadata.agent_autonomous_loop_goal_source_categories).toEqual([
+      "customer_goal",
+      "untrusted_prompt"
+    ]);
+    expect(runtimeAutonomousLoopRunawayFindings[0]?.matched_object.metadata.agent_autonomous_loop_tool_authority_categories).toEqual([
+      "browser_action",
+      "database_write",
+      "external_response",
+      "memory_write",
+      "secret_manager_access",
+      "shell_execution",
+      "tool_call"
+    ]);
+    expect(runtimeAutonomousLoopRunawayFindings[0]?.severity).toBe("critical");
+    expect(runtimeAutonomousLoopRunawayFindings[0]?.confidence).toBe("very_high");
+    expect(runtimeAutonomousLoopRunawayFindings[0]?.recommended_control).toBe("deny");
+    expect(JSON.stringify(runtimeAutonomousLoopRunawayFindings[0])).not.toContain("${AGENT_LOOP_TOKEN}");
+    expect(JSON.stringify(runtimeAutonomousLoopRunawayFindings[0])).not.toContain("customer_ticket_prompt");
+    expect(JSON.stringify(runtimeAutonomousLoopRunawayFindings[0])).not.toContain("support_db.update_customer_record");
+    expect(JSON.stringify(runtimeAutonomousLoopRunawayFindings[0])).not.toContain("slack.post_customer_reply");
+    expect(JSON.stringify(runtimeAutonomousLoopRunawayFindings[0])).not.toContain("vault_secret_lookup.read_support_token");
+    expect(JSON.stringify(runtimeAutonomousLoopRunawayFindings[0])).not.toContain("browser.submit_refund_form");
+    expect(JSON.stringify(runtimeAutonomousLoopRunawayFindings[0])).not.toContain("shell.run_remediation");
+    expect(JSON.stringify(runtimeAutonomousLoopRunawayFindings[0])).not.toContain("loop_customer_email");
+    expect(JSON.stringify(runtimeAutonomousLoopRunawayFindings[0])).not.toContain("loop_account_number");
+    expect(JSON.stringify(runtimeAutonomousLoopRunawayFindings[0])).not.toContain("confidential_loop_notes");
     const runtimeAgentSafetyFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-RUNTIME-016");
     expect(runtimeAgentSafetyFindings).toHaveLength(1);
     expect(runtimeAgentSafetyFindings[0]?.matched_object.path).toBe("guardrails/agent-safety.yaml");

@@ -3667,7 +3667,7 @@ describe("scanner", () => {
     expect(autonomousLoopConfig).toBeDefined();
     expect(autonomousLoopConfig).toMatchObject({
       trust_level: "project",
-      data_classes: ["confidential", "credential", "pii"],
+      data_classes: ["confidential", "credential", "pii", "secret"],
       actions: ["call", "execute", "publish", "read", "remember", "send", "write"],
       external_reach: true,
       secret_exposure: true,

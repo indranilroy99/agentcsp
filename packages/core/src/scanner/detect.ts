@@ -2469,6 +2469,7 @@ function detectAgentAutonomousLoopConfig(file: WalkedFile, text: string | undefi
     posture.secret_ref_key_names.length > 0
   ) {
     dataClasses.add("credential");
+    dataClasses.add("secret");
   }
   if (posture.agent_autonomous_loop_sensitive_context || posture.agent_autonomous_loop_untrusted_goal) {
     dataClasses.add("confidential");
