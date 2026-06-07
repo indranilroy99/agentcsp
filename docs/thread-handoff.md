@@ -1054,6 +1054,16 @@ The current iteration adds:
 - rule `AGENTCSP-RAG-006` for RAG ingestion poisoning that combines remote credential-backed vector ingestion, untrusted auto-indexed sources, trusted namespace writes, disabled ingestion controls, missing provenance, and no approval
 - scanner, rule, fixture verifier, and redaction coverage proving raw ingestion source labels, trusted namespace labels, vector endpoints, collection names, and token placeholders stay redacted
 
+## RAG Remote Fetch Boundary Pass
+
+The current iteration adds:
+
+- first-class redacted metadata for RAG/vector remote-fetch posture, including user or model-selected URL sources, redirect following, private-network reach, metadata-service reach, network allowlist posture, credential forwarding, and approval posture
+- vulnerable fixture coverage for a remote vector-store ingestion pipeline that auto-fetches untrusted URLs, follows redirects, permits private and metadata-service targets, forwards credential-bearing cookies, lacks a network allowlist, and writes into a trusted retrieval pipeline without approval
+- safe fixture coverage for a local read-only vector-store config with remote fetch disabled, private and metadata destinations blocked, explicit network allowlisting, provenance, sanitization, and approval
+- rule `AGENTCSP-RAG-007` for RAG ingestion SSRF exposure that combines untrusted/model-selected URL fetch, redirects, internal-network and metadata-service reach, credential forwarding, missing allowlist, credential exposure, and no approval
+- scanner, rule, fixture verifier, and redaction coverage proving fetched URL source labels, vector endpoints, collection names, and token placeholders stay redacted
+
 ## Repository Security Automation Pass
 
 The current iteration adds:

@@ -15,6 +15,15 @@ ingestion:
   enabled: true
   auto_index_on_upload: true
   auto_ingest_customer_uploads: true
+  remote_fetch:
+    enabled: true
+    url_source: user_uploaded_url
+    model_selected_urls: true
+    follow_redirects: true
+    allow_private_network: true
+    allow_metadata_service: true
+    network_allowlist: disabled
+    include_cookies: true
   sources:
     - customer_uploaded_docs
     - support_ticket_attachments

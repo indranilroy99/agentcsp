@@ -1,0 +1,44 @@
+provider: qdrant
+endpoint: http://localhost:6333
+index: internal-readonly-runbooks
+mode: read_only
+sync:
+  enabled: false
+sources:
+  - internal_runbooks
+ingestion:
+  enabled: false
+  auto_index_on_upload: false
+  remote_fetch:
+    enabled: false
+    url_source: approved_admin_url
+    model_selected_urls: false
+    follow_redirects: false
+    block_private_network: true
+    block_metadata_service: true
+    network_allowlist:
+      - docs.internal.example.invalid
+    include_cookies: false
+  quarantine: enabled
+  moderation: enabled
+  instruction_stripping: enabled
+  sanitization: enabled
+  provenance_required: true
+  approval_required: true
+retrieval:
+  enabled: true
+  query_from: internal_review_prompt
+  filters:
+    namespace: internal-readonly-runbooks
+  top_k: 5
+  include_metadata: true
+  include_raw_chunks: false
+  inject_into_prompt: user_context
+  pass_to_tools: false
+security:
+  acl: enabled
+  provenance_filter: enabled
+  trust_filter: trusted_sources_only
+  prompt_injection_filter: enabled
+  citation_required: true
+  approval_required: true

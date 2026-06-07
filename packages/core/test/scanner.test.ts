@@ -4162,6 +4162,14 @@ describe("scanner", () => {
       vector_store_ingestion_sanitization_disabled: true,
       vector_store_ingestion_provenance_required: false,
       vector_store_ingestion_approval_required: false,
+      vector_store_remote_fetch_enabled: true,
+      vector_store_fetch_url_source_redacted: true,
+      vector_store_fetch_user_or_model_selected_url: true,
+      vector_store_fetch_follows_redirects: true,
+      vector_store_fetch_private_network_allowed: true,
+      vector_store_fetch_metadata_service_allowed: true,
+      vector_store_fetch_network_allowlist_missing: true,
+      vector_store_fetch_credential_forwarding: true,
       vector_store_sensitive_collection: true,
       vector_store_pii_collection: true,
       vector_store_namespace_redacted: true
@@ -4205,6 +4213,7 @@ describe("scanner", () => {
     expect(JSON.stringify(vectorStore)).not.toContain("support_ticket_attachments");
     expect(JSON.stringify(vectorStore)).not.toContain("shared_inbox_messages");
     expect(JSON.stringify(vectorStore)).not.toContain("trusted_internal_runbooks");
+    expect(JSON.stringify(vectorStore)).not.toContain("user_uploaded_url");
     expect(JSON.stringify(vectorStore)).not.toContain("customer_ticket_message");
     expect(JSON.stringify(vectorStore)).not.toContain("customer_account_id");
     expect(JSON.stringify(vectorStore)).not.toContain("internal_runbooks");

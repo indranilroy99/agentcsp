@@ -191,6 +191,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RAG-004")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RAG-005")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RAG-006")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RAG-007")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-SKILL-001")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-SUPPLYCHAIN-001")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-SUPPLYCHAIN-002")).toBe(true);
@@ -5627,6 +5628,28 @@ describe("rule engine", () => {
     expect(JSON.stringify(ragIngestionFindings[0])).not.toContain("support_ticket_attachments");
     expect(JSON.stringify(ragIngestionFindings[0])).not.toContain("shared_inbox_messages");
     expect(JSON.stringify(ragIngestionFindings[0])).not.toContain("trusted_internal_runbooks");
+    const ragRemoteFetchFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-RAG-007");
+    expect(ragRemoteFetchFindings).toHaveLength(1);
+    expect(ragRemoteFetchFindings[0]?.matched_object.path).toBe("rag/vector-store.yaml");
+    expect(ragRemoteFetchFindings[0]?.matched_object.metadata).toMatchObject({
+      vector_store_provider: "pinecone",
+      vector_store_ingestion_enabled: true,
+      vector_store_auto_ingest_enabled: true,
+      vector_store_remote_fetch_enabled: true,
+      vector_store_fetch_user_or_model_selected_url: true,
+      vector_store_fetch_follows_redirects: true,
+      vector_store_fetch_private_network_allowed: true,
+      vector_store_fetch_metadata_service_allowed: true,
+      vector_store_fetch_network_allowlist_missing: true,
+      vector_store_fetch_credential_forwarding: true,
+      vector_store_ingestion_approval_required: false
+    });
+    expect(ragRemoteFetchFindings[0]?.severity).toBe("critical");
+    expect(ragRemoteFetchFindings[0]?.confidence).toBe("very_high");
+    expect(ragRemoteFetchFindings[0]?.recommended_control).toBe("quarantine");
+    expect(JSON.stringify(ragRemoteFetchFindings[0])).not.toContain("${PINECONE_API_KEY}");
+    expect(JSON.stringify(ragRemoteFetchFindings[0])).not.toContain("agentcsp-demo-vector.example.invalid");
+    expect(JSON.stringify(ragRemoteFetchFindings[0])).not.toContain("user_uploaded_url");
     const ragRetrievalFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-RAG-005");
     expect(ragRetrievalFindings).toHaveLength(1);
     expect(ragRetrievalFindings[0]?.matched_object.path).toBe("rag/vector-store.yaml");
@@ -5850,7 +5873,20 @@ describe("rule engine", () => {
     const surfaces = await detectSurfaces(files);
     const rules = await loadRules(path.resolve("rules"));
     const findings = runRules(surfaces, rules);
+    const safeVectorStore = surfaces.rag_sources.find((surface) => surface.path === "vector-config/vector-store.yaml");
 
+    expect(safeVectorStore?.metadata).toMatchObject({
+      parsed_rag_connector_config: true,
+      vector_store_remote_fetch_enabled: false,
+      vector_store_fetch_user_or_model_selected_url: false,
+      vector_store_fetch_follows_redirects: false,
+      vector_store_fetch_private_network_allowed: false,
+      vector_store_fetch_metadata_service_allowed: false,
+      vector_store_fetch_network_allowlist_missing: false,
+      vector_store_fetch_credential_forwarding: false,
+      vector_store_ingestion_approval_required: true
+    });
+    expect(findings.filter((finding) => finding.rule_id === "AGENTCSP-RAG-007")).toHaveLength(0);
     expect(findings.filter((finding) => finding.severity === "critical" || finding.severity === "high")).toHaveLength(0);
   });
 

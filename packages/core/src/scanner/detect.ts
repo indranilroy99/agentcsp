@@ -579,7 +579,7 @@ function detectRagConnectorConfig(file: WalkedFile, text: string | undefined, su
     type: "rag_source",
     name: path.basename(file.relativePath),
     path: file.relativePath,
-    trust_level: posture.vector_store_remote ? "third_party" : inferTrustLevel(file.relativePath),
+    trust_level: posture.vector_store_remote ? "third_party" : "project",
     data_classes: uniqueDataClasses([...dataClasses] as SurfaceObject["data_classes"]),
     actions: uniqueActions([...actions]),
     side_effect: posture.vector_store_write_enabled || posture.vector_store_sync_enabled,
@@ -5512,6 +5512,14 @@ interface RagConnectorPosture {
   vector_store_ingestion_sanitization_disabled: boolean;
   vector_store_ingestion_provenance_required: boolean;
   vector_store_ingestion_approval_required: boolean;
+  vector_store_remote_fetch_enabled: boolean;
+  vector_store_fetch_url_source_redacted: boolean;
+  vector_store_fetch_user_or_model_selected_url: boolean;
+  vector_store_fetch_follows_redirects: boolean;
+  vector_store_fetch_private_network_allowed: boolean;
+  vector_store_fetch_metadata_service_allowed: boolean;
+  vector_store_fetch_network_allowlist_missing: boolean;
+  vector_store_fetch_credential_forwarding: boolean;
   vector_store_sensitive_collection: boolean;
   vector_store_pii_collection: boolean;
   vector_store_namespace_redacted: boolean;
@@ -21900,6 +21908,8 @@ function classifyRagConnectorConfig(value: unknown, filePath: string): RagConnec
   const promptInjectionPassthrough = hasVectorPromptInjectionPassthroughSignal(fields);
   const toolContextInjection = hasVectorToolContextInjectionSignal(fields);
   const namespaceRedacted = fields.some((field) => /(^|\.)(collection|collections|namespace|index|indexes|table|bucket|corpus|dataset)$/iu.test(field.path));
+  const remoteFetchEnabled = hasVectorRemoteFetchEnabledSignal(fields);
+  const networkAllowlistRequired = hasVectorFetchNetworkAllowlistRequiredSignal(fields);
 
   return {
     rag_connector_fields: fields
@@ -21926,6 +21936,14 @@ function classifyRagConnectorConfig(value: unknown, filePath: string): RagConnec
     vector_store_ingestion_sanitization_disabled: hasVectorIngestionSanitizationDisabledSignal(fields),
     vector_store_ingestion_provenance_required: hasVectorIngestionProvenanceRequiredSignal(fields),
     vector_store_ingestion_approval_required: hasVectorIngestionApprovalRequiredSignal(fields),
+    vector_store_remote_fetch_enabled: remoteFetchEnabled,
+    vector_store_fetch_url_source_redacted: hasVectorFetchUrlSourceSignal(fields),
+    vector_store_fetch_user_or_model_selected_url: hasVectorFetchUserOrModelSelectedUrlSignal(fields),
+    vector_store_fetch_follows_redirects: hasVectorFetchFollowsRedirectsSignal(fields),
+    vector_store_fetch_private_network_allowed: hasVectorFetchPrivateNetworkAllowedSignal(fields),
+    vector_store_fetch_metadata_service_allowed: hasVectorFetchMetadataServiceAllowedSignal(fields),
+    vector_store_fetch_network_allowlist_missing: remoteFetchEnabled && !networkAllowlistRequired,
+    vector_store_fetch_credential_forwarding: hasVectorFetchCredentialForwardingSignal(fields),
     vector_store_sensitive_collection: sensitiveCollection,
     vector_store_pii_collection: piiCollection,
     vector_store_namespace_redacted: namespaceRedacted,
@@ -22171,6 +22189,122 @@ function hasVectorIngestionApprovalRequiredSignal(fields: RuntimeField[]): boole
   );
 }
 
+function hasVectorRemoteFetchEnabledSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => {
+    const text = `${field.path} ${fieldValueText(field)}`;
+    if (
+      /\b(remote[_\s.-]?fetch|url[_\s.-]?fetch|fetch[_\s.-]?url|web[_\s.-]?loader|url[_\s.-]?loader|crawler|crawl|scrape|scraper|browser[_\s.-]?fetch|http[_\s.-]?loader)\b/iu.test(
+        field.path
+      )
+    ) {
+      return /(?:^|\.)(enabled|enable|active|allow|allowed|auto|run|execute)$/iu.test(field.path) && truthyConfigValue(field.value);
+    }
+    return /\b(fetch|crawl|scrape|load)\b[\s\S]{0,50}\b(url|uri|web|http|https|remote[_\s.-]?document|remote[_\s.-]?source)\b/iu.test(
+      text
+    );
+  });
+}
+
+function hasVectorFetchUrlSourceSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /(?:^|[_\W])(url|uri|web[_\s.-]?page|webpage|link|remote[_\s.-]?document|remote[_\s.-]?source|crawler|scraper|browser[_\s.-]?fetch)(?:[_\W]|$)/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    )
+  );
+}
+
+function hasVectorFetchUserOrModelSelectedUrlSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => {
+    const text = `${field.path} ${fieldValueText(field)}`;
+    if (/(?:^|[_\W])model[_\s.-]?selected[_\s.-]?urls?(?:[_\W]|$)/iu.test(field.path)) return truthyConfigValue(field.value);
+    if (
+      /(?:^|[_\W])(url|uri|link|web[_\s.-]?page|remote[_\s.-]?source|remote[_\s.-]?document)[_\s.-]?(from|source)(?:[_\W]|$)/iu.test(
+        field.path
+      ) &&
+      /(?:^|[_\W])(user|customer|client|ticket|message|email|chat|upload|uploaded|attachment|browser|public|external|model|llm|agent|prompt|query)(?:[_\W]|$)/iu.test(
+        fieldValueText(field)
+      )
+    ) {
+      return true;
+    }
+    return (
+      /(?:^|[_\W])(user|customer|client|ticket|message|email|chat|upload|uploaded|attachment|browser|public|external|model|llm|agent|prompt|query)[_\s.-]?(selected|provided|supplied|controlled|input|generated|uploaded)?[_\s.-]?(url|uri|link|web[_\s.-]?page|remote[_\s.-]?source|remote[_\s.-]?document)(?:[_\W]|$)/iu.test(
+        text
+      ) ||
+      /(?:^|[_\W])(url|uri|link|web[_\s.-]?page|remote[_\s.-]?source|remote[_\s.-]?document)[_\s.-]?(from|source)[_\s.-]?(user|customer|client|ticket|message|email|chat|upload|uploaded|attachment|browser|public|external|model|llm|agent|prompt|query)(?:[_\W]|$)/iu.test(
+        text
+      )
+    );
+  });
+}
+
+function hasVectorFetchFollowsRedirectsSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => {
+    const text = `${field.path} ${fieldValueText(field)}`;
+    if (/\b(follow[_\s.-]?redirects?|redirects?|max[_\s.-]?redirects?)\b/iu.test(field.path)) {
+      return truthyConfigValue(field.value) || /\b(follow|allow|enabled|true|on|[1-9][0-9]*)\b/iu.test(text);
+    }
+    return /\b(follow|allow)[_\s.-]?redirects?\b/iu.test(text);
+  });
+}
+
+function hasVectorFetchPrivateNetworkAllowedSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => {
+    const text = `${field.path} ${fieldValueText(field)}`;
+    if (/\b(allow|permit|enable)[_\s.-]?(private|internal|local|localhost|loopback|link[_\s.-]?local|rfc1918)[_\s.-]?(network|ip|host|address|url|range)?\b/iu.test(text)) {
+      return truthyConfigValue(field.value);
+    }
+    if (/\b(block|deny|reject)[_\s.-]?(private|internal|local|localhost|loopback|link[_\s.-]?local|rfc1918)[_\s.-]?(network|ip|host|address|url|range)?\b/iu.test(field.path)) {
+      return disabledConfigValue(field.value);
+    }
+    return /\b(private[_\s.-]?network|internal[_\s.-]?network|localhost|loopback|link[_\s.-]?local|rfc1918|10\.0\.0\.0|172\.16\.0\.0|192\.168\.0\.0)\b[\s\S]{0,40}\b(allow|allowed|enabled|true|permit)\b/iu.test(
+      text
+    );
+  });
+}
+
+function hasVectorFetchMetadataServiceAllowedSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => {
+    const text = `${field.path} ${fieldValueText(field)}`;
+    if (/(?:^|[_\W])(block|deny|reject)[_\s.-]?(metadata|imds|metadata[_\s.-]?service|cloud[_\s.-]?metadata)(?:[_\W]|$)/iu.test(field.path)) {
+      return disabledConfigValue(field.value);
+    }
+    if (/(?:^|[_\W])(allow|permit|enable)[_\s.-]?(metadata|imds|metadata[_\s.-]?service|cloud[_\s.-]?metadata)(?:[_\W]|$)/iu.test(field.path)) {
+      return truthyConfigValue(field.value);
+    }
+    return (
+      /(?:^|[_\W])(169\.254\.169\.254|metadata\.google\.internal|metadata[_\s.-]?service|cloud[_\s.-]?metadata|aws[_\s.-]?imds|gcp[_\s.-]?metadata|azure[_\s.-]?imds|imds)(?:[_\W]|$)/iu.test(
+        text
+      ) && /\b(allow|allowed|enabled|true|permit|reachable)\b/iu.test(text)
+    );
+  });
+}
+
+function hasVectorFetchNetworkAllowlistRequiredSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => {
+    const text = `${field.path} ${fieldValueText(field)}`;
+    if (
+      /\b(network|fetch|url|uri|host|domain|origin|egress|remote)[_\s.-]?(allowlist|allow[_\s.-]?list|denylist|deny[_\s.-]?list|blocked[_\s.-]?cidrs?|blocked[_\s.-]?hosts?|private[_\s.-]?network[_\s.-]?block|metadata[_\s.-]?block|safe[_\s.-]?hosts?|trusted[_\s.-]?domains?)\b/iu.test(
+        field.path
+      )
+    ) {
+      return truthyConfigValue(field.value);
+    }
+    return /\b(allowlist|required[_\s.-]?hosts|trusted[_\s.-]?domains|block[_\s.-]?private|deny[_\s.-]?private|block[_\s.-]?metadata|deny[_\s.-]?metadata|safe[_\s.-]?url|ssrf[_\s.-]?protection)\b[\s\S]{0,50}\b(enabled|true|required|on)\b/iu.test(
+      text
+    );
+  });
+}
+
+function hasVectorFetchCredentialForwardingSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /(?:^|[_\W])(forward|include|send|attach)[_\s.-]?(auth|authorization|cookies?|headers?|credentials?|bearer|token|session|oauth)(?:[_\W]|$)/iu.test(
+      `${field.path} ${fieldValueText(field)}`
+    ) &&
+    truthyConfigValue(field.value)
+  );
+}
+
 function hasVectorSensitiveCollectionSignal(fields: RuntimeField[]): boolean {
   return fields.some((field) =>
     /\b(customer|client|ticket|support|internal|confidential|private|proprietary|sensitive|account|record|case)\b/iu.test(
@@ -22321,7 +22455,7 @@ function truthyConfigValue(value: unknown): boolean {
 }
 
 function isRagConnectorSecurityField(fieldPath: string): boolean {
-  return /provider|endpoint|url|uri|host|dsn|connection|secret|token|api[_-]?key|credential|auth|env|collection|namespace|index|table|bucket|corpus|dataset|write|upsert|insert|ingest|sync|source|document|upload|attachment|loader|embedding|vector|retriev|query|filters?|acl|provenance|trust|citation|quarantine|moderation|sanitize|instruction|prompt[_-]?injection|approval|raw[_-]?chunks?|tools?/iu.test(
+  return /provider|endpoint|url|uri|host|dsn|connection|secret|token|api[_-]?key|credential|auth|env|collection|namespace|index|table|bucket|corpus|dataset|write|upsert|insert|ingest|sync|source|document|upload|attachment|loader|embedding|vector|retriev|query|filters?|acl|provenance|trust|citation|quarantine|moderation|sanitize|instruction|prompt[_-]?injection|approval|raw[_-]?chunks?|tools?|fetch|crawl|scrape|redirect|allowlist|denylist|private[_-]?network|metadata[_-]?service|imds|ssrf|cookie|header/iu.test(
     fieldPath
   );
 }
