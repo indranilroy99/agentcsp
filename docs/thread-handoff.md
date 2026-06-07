@@ -610,6 +610,7 @@ The current iteration adds:
 - database connection URL placeholders treated as credential-bearing references in database connector fields without emitting connection strings or hostnames
 - vulnerable fixture coverage for a remote Postgres-style support database that allows agent-driven SQL writes over sensitive customer/support data
 - rule `AGENTCSP-RUNTIME-010` for credential-backed database connectors that combine write/query authority, untrusted query input, and sensitive data scope
+- rule `AGENTCSP-RUNTIME-083` for remote database connectors where untrusted natural-language SQL can execute write and delete operations against sensitive PII-bearing records without approval
 - static graph regression coverage proving retrievable untrusted context can influence the database authority path while raw retrieval text, hostnames, table names, usernames, and secret placeholders stay redacted
 
 ## Browser Session Authority Pass

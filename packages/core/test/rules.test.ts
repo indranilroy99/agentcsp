@@ -56,6 +56,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-008")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-009")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-010")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-083")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-011")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-012")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-013")).toBe(true);
@@ -1306,7 +1307,8 @@ describe("rule engine", () => {
       database_query_execution_enabled: true,
       database_untrusted_query_input: true,
       database_sensitive_data: true,
-      database_pii_data: true
+      database_pii_data: true,
+      database_approval_required: false
     });
     expect(runtimeDatabaseFindings[0]?.severity).toBe("critical");
     expect(runtimeDatabaseFindings[0]?.confidence).toBe("very_high");
@@ -1315,6 +1317,39 @@ describe("rule engine", () => {
     expect(JSON.stringify(runtimeDatabaseFindings[0])).not.toContain("${SUPPORT_DB_PASSWORD}");
     expect(JSON.stringify(runtimeDatabaseFindings[0])).not.toContain("support-db.example.invalid");
     expect(JSON.stringify(runtimeDatabaseFindings[0])).not.toContain("customer_profiles");
+    const runtimeDatabaseDeleteFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-RUNTIME-083");
+    expect(runtimeDatabaseDeleteFindings).toHaveLength(1);
+    expect(runtimeDatabaseDeleteFindings[0]?.matched_object.path).toBe("database/support-db.yaml");
+    expect(runtimeDatabaseDeleteFindings[0]?.matched_object.metadata).toMatchObject({
+      parsed_database_connector_config: true,
+      database_provider: "postgres",
+      database_remote: true,
+      database_write_enabled: true,
+      database_delete_enabled: true,
+      database_query_execution_enabled: true,
+      database_untrusted_query_input: true,
+      database_sensitive_data: true,
+      database_pii_data: true,
+      database_table_names_redacted: true,
+      database_approval_required: false
+    });
+    expect(runtimeDatabaseDeleteFindings[0]?.matched_object.metadata.database_remote_destination_kinds).toEqual([
+      "database_host"
+    ]);
+    expect(runtimeDatabaseDeleteFindings[0]?.severity).toBe("critical");
+    expect(runtimeDatabaseDeleteFindings[0]?.confidence).toBe("very_high");
+    expect(runtimeDatabaseDeleteFindings[0]?.recommended_control).toBe("deny");
+    expect(JSON.stringify(runtimeDatabaseDeleteFindings[0])).not.toContain("${SUPPORT_DB_URL}");
+    expect(JSON.stringify(runtimeDatabaseDeleteFindings[0])).not.toContain("${SUPPORT_DB_PASSWORD}");
+    expect(JSON.stringify(runtimeDatabaseDeleteFindings[0])).not.toContain("support-db.example.invalid");
+    expect(JSON.stringify(runtimeDatabaseDeleteFindings[0])).not.toContain("customer_support");
+    expect(JSON.stringify(runtimeDatabaseDeleteFindings[0])).not.toContain("agent_writer");
+    expect(JSON.stringify(runtimeDatabaseDeleteFindings[0])).not.toContain("customer_profiles");
+    expect(JSON.stringify(runtimeDatabaseDeleteFindings[0])).not.toContain("support_tickets");
+    expect(JSON.stringify(runtimeDatabaseDeleteFindings[0])).not.toContain("billing_contacts");
+    expect(JSON.stringify(runtimeDatabaseDeleteFindings[0])).not.toContain("customer_ticket");
+    expect(JSON.stringify(runtimeDatabaseDeleteFindings[0])).not.toContain("support_chat");
+    expect(JSON.stringify(runtimeDatabaseDeleteFindings[0])).not.toContain("retrieved_context");
     const runtimeBrowserSessionFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-RUNTIME-011");
     expect(runtimeBrowserSessionFindings).toHaveLength(1);
     expect(runtimeBrowserSessionFindings[0]?.matched_object.path).toBe("browser/session.yaml");

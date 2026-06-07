@@ -1,0 +1,59 @@
+id: AGENTCSP-RUNTIME-083
+name: Database connector allows untrusted natural-language SQL to delete sensitive records
+description: A credentialed remote database connector lets untrusted or natural-language query input execute write and delete operations over sensitive PII-bearing data without an approval gate.
+category: database_destructive_query_boundary
+severity: critical
+maps_to:
+  owasp:
+    - LLM01:2025 Prompt Injection
+    - LLM02:2025 Sensitive Information Disclosure
+    - LLM06:2025 Excessive Agency
+  mitre_atlas:
+    - AML.T0051 LLM Prompt Injection
+    - AML.T0057 Exfiltration via Cyber Means
+  nist_ai_rmf:
+    - MAP 5.1
+    - MEASURE 2.9
+    - MANAGE 2.4
+match:
+  object_type: runtime_config
+  where:
+    - field: metadata.parsed_database_connector_config
+      op: equals
+      value: true
+    - field: metadata.database_remote
+      op: equals
+      value: true
+    - field: metadata.database_query_execution_enabled
+      op: equals
+      value: true
+    - field: metadata.database_untrusted_query_input
+      op: equals
+      value: true
+    - field: metadata.database_write_enabled
+      op: equals
+      value: true
+    - field: metadata.database_delete_enabled
+      op: equals
+      value: true
+    - field: metadata.database_sensitive_data
+      op: equals
+      value: true
+    - field: metadata.database_pii_data
+      op: equals
+      value: true
+    - field: metadata.database_table_names_redacted
+      op: equals
+      value: true
+    - field: metadata.database_approval_required
+      op: equals
+      value: false
+    - field: secret_exposure
+      op: equals
+      value: true
+    - field: untrusted_to_privileged
+      op: equals
+      value: true
+recommendation:
+  control: deny
+  text: Deny natural-language SQL writes and deletes from untrusted context. Use read-only credentials by default, expose only approved parameterized query templates, isolate sensitive tables behind separate service accounts, and require human approval for any database mutation.

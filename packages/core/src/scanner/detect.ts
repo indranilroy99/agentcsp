@@ -5560,6 +5560,7 @@ interface DatabaseConnectorPosture {
   database_sensitive_data: boolean;
   database_pii_data: boolean;
   database_table_names_redacted: boolean;
+  database_approval_required: boolean;
   env_key_names: string[];
   secret_ref_key_names: string[];
 }
@@ -7029,6 +7030,7 @@ function classifyDatabaseConnectorConfig(value: unknown, filePath: string): Data
     database_sensitive_data: hasDatabaseSensitiveDataSignal(fields),
     database_pii_data: hasDatabasePiiDataSignal(fields),
     database_table_names_redacted: hasDatabaseTableNameSignal(fields),
+    database_approval_required: hasDatabaseApprovalRequiredSignal(fields),
     env_key_names: envKeys,
     secret_ref_key_names: secretRefKeys
   };
@@ -7162,8 +7164,16 @@ function hasDatabaseTableNameSignal(fields: RuntimeField[]): boolean {
   return fields.some((field) => /(^|\.)(tables?|schemas?|collections?|datasets?|views?)$/iu.test(field.path));
 }
 
+function hasDatabaseApprovalRequiredSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /approval|required[_-]?approval|human[_-]?approval|confirm|confirmation|review|human[_-]?in[_-]?the[_-]?loop/iu.test(
+      field.path
+    ) && truthyConfigValue(field.value)
+  );
+}
+
 function isDatabaseSecurityField(fieldPath: string): boolean {
-  return /provider|database|db|sql|query|host|hostname|server|endpoint|dsn|connection|url|uri|credential|secret|token|password|api[_-]?key|auth|env|user|role|permission|access|read|write|insert|update|delete|table|schema|dataset|view|source|input/iu.test(
+  return /provider|database|db|sql|query|host|hostname|server|endpoint|dsn|connection|url|uri|credential|secret|token|password|api[_-]?key|auth|env|user|role|permission|access|read|write|insert|update|delete|table|schema|dataset|view|source|input|approval/iu.test(
     fieldPath
   );
 }

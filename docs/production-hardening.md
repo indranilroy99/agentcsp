@@ -88,6 +88,7 @@ A finding should be considered production-grade when it includes:
 - SaaS/API connector metadata for broad credential-backed write scopes without emitting raw OAuth scopes, endpoints, workspaces, channels, queues, or customer-system names
 - secret-manager metadata for read/list credential-broker authority, prompt/context materialization, redaction posture, and approval boundaries without emitting vault URLs, secret paths, policy names, role names, prompt targets, model-context labels, aliases, or resource IDs
 - database connector metadata for credential-backed read/write/query authority without emitting hosts, connection strings, usernames, or table names
+- database destructive-query metadata for natural-language or untrusted query input, remote credentialed execution, write/delete authority, sensitive/PII scope, table-name redaction, and approval posture without emitting hosts, connection strings, usernames, table names, source labels, or token placeholders
 - AI model endpoint metadata for prompt, tool-output, retrieval, and memory egress without emitting model gateway URLs or model names
 - AI model router and fallback metadata for sensitive context failover, provider-routing, redaction posture, output recording, and approval boundaries without emitting provider endpoints, model aliases, routing strategy values, source labels, or token placeholders
 - AI embedding and indexing metadata for third-party embedding egress, vector writes, source capture, redaction posture, retention, and approval boundaries without emitting embedding endpoints, model aliases, vector namespaces, source labels, document chunks, or token placeholders
@@ -210,6 +211,7 @@ Examples:
 - secret manager connector with read/list scope plus tool injection plus untrusted input plus no approval gate
 - secret manager connector with broad read/list scope plus raw secret values materialized into system or model prompt context from untrusted selectors plus disabled redaction and no approval gate
 - database connector with credentials plus write/query authority plus sensitive data plus untrusted input
+- database connector with natural-language or untrusted SQL input plus remote credentialed query execution, write/delete authority, sensitive PII scope, and no approval gate
 - AI model endpoint with plaintext transport plus sensitive context plus credential reference
 - AI model router with automatic third-party fallback plus sensitive context, disabled redaction, untrusted input, credential reference, and no approval gate
 - AI embedding pipeline with third-party embedding, vector writes, sensitive capture, disabled redaction, untrusted input, credential reference, and no approval gate
