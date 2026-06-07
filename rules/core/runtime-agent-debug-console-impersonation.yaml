@@ -1,0 +1,75 @@
+id: AGENTCSP-RUNTIME-076
+name: Public agent debug console can impersonate users and run tools
+description: A public agent debug or playground console allows prompt editing, user impersonation, and live privileged tool invocation while exposing secret or sensitive context with redaction, audit logging, and approval disabled.
+category: agent_debug_console_impersonation
+severity: critical
+maps_to:
+  owasp:
+    - LLM01:2025 Prompt Injection
+    - LLM02:2025 Sensitive Information Disclosure
+    - LLM06:2025 Excessive Agency
+  mitre_atlas:
+    - AML.T0051 LLM Prompt Injection
+    - AML.T0057 Exfiltration via Cyber Means
+  nist_ai_rmf:
+    - GOVERN 1.5
+    - MAP 5.1
+    - MANAGE 2.4
+match:
+  object_type: runtime_config
+  where:
+    - field: metadata.parsed_agent_debug_console_config
+      op: equals
+      value: true
+    - field: metadata.agent_debug_console_enabled
+      op: equals
+      value: true
+    - field: metadata.agent_debug_console_public_endpoint
+      op: equals
+      value: true
+    - field: metadata.agent_debug_console_auth_disabled
+      op: equals
+      value: true
+    - field: metadata.agent_debug_console_prompt_edit_enabled
+      op: equals
+      value: true
+    - field: metadata.agent_debug_console_impersonation_enabled
+      op: equals
+      value: true
+    - field: metadata.agent_debug_console_tool_invocation_enabled
+      op: equals
+      value: true
+    - field: metadata.agent_debug_console_privileged_tool_authority
+      op: equals
+      value: true
+    - field: metadata.agent_debug_console_write_authority
+      op: equals
+      value: true
+    - field: metadata.agent_debug_console_external_authority
+      op: equals
+      value: true
+    - field: metadata.agent_debug_console_secret_context_visible
+      op: equals
+      value: true
+    - field: metadata.agent_debug_console_redaction_disabled
+      op: equals
+      value: true
+    - field: metadata.agent_debug_console_audit_logging_disabled
+      op: equals
+      value: true
+    - field: metadata.agent_debug_console_approval_required
+      op: equals
+      value: false
+    - field: data_classes
+      op: contains_any
+      value:
+        - credential
+        - confidential
+        - pii
+        - secret
+    - field: untrusted_to_privileged
+      op: equals
+      value: true
+recommendation:
+  control: deny
+  text: Disable public debug-console impersonation and prompt editing, block live privileged tool invocation from diagnostic sessions, require SSO and approval for any debug action that can mutate data or call secret-backed tools, and keep redaction and audit logging enforced.

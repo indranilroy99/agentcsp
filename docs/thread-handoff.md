@@ -1242,6 +1242,7 @@ The current iteration adds:
 - vulnerable fixture coverage for a public agent playground that exposes system and developer prompts, raw context, traces, memory, and tool schemas while allowing prompt editing, impersonation, and database, Slack, memory, and secret-manager tool invocation without redaction, audit logging, or approval
 - safe fixture coverage for an SSO-protected internal prompt inspector that keeps system/developer prompts, raw context, traces, memory, prompt editing, impersonation, and live tool invocation disabled while requiring approval and audit logging
 - rule `AGENTCSP-RUNTIME-063` for public debug/playground consoles that expose prompt/context internals and privileged tool invocation without redaction, audit logging, or approval
+- rule `AGENTCSP-RUNTIME-076` for public debug/playground consoles that combine prompt editing, user impersonation, live privileged tool invocation, external/write authority, secret context exposure, disabled audit logging, disabled redaction, and no approval gate
 - scanner, rule, fixture verifier, and redaction coverage proving raw endpoints, prompt labels, trace labels, memory labels, context labels, tool names, and token placeholders stay redacted
 
 ## Agent Response Stream Disclosure Pass

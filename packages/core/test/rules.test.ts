@@ -91,6 +91,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-061")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-062")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-063")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-076")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-064")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-065")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-066")).toBe(true);
@@ -899,6 +900,50 @@ describe("rule engine", () => {
     expect(JSON.stringify(runtimeDebugConsoleFindings[0])).not.toContain("confidential_debug_trace");
     expect(JSON.stringify(runtimeDebugConsoleFindings[0])).not.toContain("support_db.update_customer_record");
     expect(JSON.stringify(runtimeDebugConsoleFindings[0])).not.toContain("memory.write_debug_summary");
+    const runtimeDebugConsoleImpersonationFindings = findings.filter(
+      (finding) => finding.rule_id === "AGENTCSP-RUNTIME-076"
+    );
+    expect(runtimeDebugConsoleImpersonationFindings).toHaveLength(1);
+    expect(runtimeDebugConsoleImpersonationFindings[0]?.matched_object.path).toBe("debug/agent-playground.yaml");
+    expect(runtimeDebugConsoleImpersonationFindings[0]?.matched_object.metadata).toMatchObject({
+      parsed_agent_debug_console_config: true,
+      agent_debug_console_enabled: true,
+      agent_debug_console_public_endpoint: true,
+      agent_debug_console_auth_disabled: true,
+      agent_debug_console_prompt_edit_enabled: true,
+      agent_debug_console_impersonation_enabled: true,
+      agent_debug_console_tool_invocation_enabled: true,
+      agent_debug_console_privileged_tool_authority: true,
+      agent_debug_console_write_authority: true,
+      agent_debug_console_external_authority: true,
+      agent_debug_console_secret_context_visible: true,
+      agent_debug_console_redaction_disabled: true,
+      agent_debug_console_audit_logging_disabled: true,
+      agent_debug_console_approval_required: false
+    });
+    expect(
+      runtimeDebugConsoleImpersonationFindings[0]?.matched_object.metadata.agent_debug_console_tool_authority_categories
+    ).toEqual(["database_write", "external_response", "memory_write", "prompt_write", "secret_manager_access", "tool_call"]);
+    expect(runtimeDebugConsoleImpersonationFindings[0]?.severity).toBe("critical");
+    expect(runtimeDebugConsoleImpersonationFindings[0]?.confidence).toBe("very_high");
+    expect(runtimeDebugConsoleImpersonationFindings[0]?.recommended_control).toBe("deny");
+    expect(JSON.stringify(runtimeDebugConsoleImpersonationFindings[0])).not.toContain("${DEBUG_CONSOLE_TOKEN}");
+    expect(JSON.stringify(runtimeDebugConsoleImpersonationFindings[0])).not.toContain(
+      "debug.agentcsp-demo.example.invalid"
+    );
+    expect(JSON.stringify(runtimeDebugConsoleImpersonationFindings[0])).not.toContain("support_agent_system_prompt");
+    expect(JSON.stringify(runtimeDebugConsoleImpersonationFindings[0])).not.toContain("developer_override_prompt");
+    expect(JSON.stringify(runtimeDebugConsoleImpersonationFindings[0])).not.toContain("debug_customer_email");
+    expect(JSON.stringify(runtimeDebugConsoleImpersonationFindings[0])).not.toContain("debug_account_number");
+    expect(JSON.stringify(runtimeDebugConsoleImpersonationFindings[0])).not.toContain("confidential_debug_trace");
+    expect(JSON.stringify(runtimeDebugConsoleImpersonationFindings[0])).not.toContain(
+      "support_db.update_customer_record"
+    );
+    expect(JSON.stringify(runtimeDebugConsoleImpersonationFindings[0])).not.toContain("slack.post_customer_reply");
+    expect(JSON.stringify(runtimeDebugConsoleImpersonationFindings[0])).not.toContain(
+      "vault_secret_lookup.read_support_token"
+    );
+    expect(JSON.stringify(runtimeDebugConsoleImpersonationFindings[0])).not.toContain("memory.write_debug_summary");
     const runtimeResponseStreamFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-RUNTIME-064");
     expect(runtimeResponseStreamFindings).toHaveLength(1);
     expect(runtimeResponseStreamFindings[0]?.matched_object.path).toBe("responses/public-stream.yaml");
