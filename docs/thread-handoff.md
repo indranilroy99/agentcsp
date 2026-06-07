@@ -953,6 +953,7 @@ The current iteration adds:
 - first-class redacted metadata for remote prompt-registry posture, including registry destination categories, prompt reference counts and kinds, auto-sync, unpinned references, signature/provenance verification, untrusted selectors, privileged role injection, tool/memory/external directives, and approval posture
 - vulnerable fixture coverage for a remote prompt registry that auto-syncs unpinned system and developer prompts selected by untrusted customer and retrieval context
 - rule `AGENTCSP-RUNTIME-035` for prompt registries that combine remote auto-sync, unpinned prompt refs, disabled verification, untrusted selectors, privileged role injection, tool directives, and no approval gate
+- rule `AGENTCSP-RUNTIME-117` for prompt registries that combine remote unpinned privileged prompts with memory and external-response directives over sensitive context without approval
 - scanner, rule, fixture verifier, and redaction coverage proving raw registry URLs, prompt IDs, selector fields, directive strings, data-scope labels, and token placeholders stay redacted
 
 ## Public Agent-Card Exposure Pass

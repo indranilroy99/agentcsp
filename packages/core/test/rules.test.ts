@@ -139,6 +139,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-034")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-116")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-035")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-117")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-036")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-114")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-037")).toBe(true);
@@ -1252,6 +1253,79 @@ describe("rule engine", () => {
     expect(JSON.stringify(runtimePromptRegistryFindings[0])).not.toContain("prompt_registry_customer_email");
     expect(JSON.stringify(runtimePromptRegistryFindings[0])).not.toContain("confidential_prompt_context");
     expect(JSON.stringify(runtimePromptRegistryFindings[0])).not.toContain("support_db.update_customer_record");
+    const runtimePromptRegistryPersistentEgressFindings = findings.filter(
+      (finding) => finding.rule_id === "AGENTCSP-RUNTIME-117"
+    );
+    expect(runtimePromptRegistryPersistentEgressFindings).toHaveLength(1);
+    expect(runtimePromptRegistryPersistentEgressFindings[0]?.matched_object.path).toBe(
+      "prompt-registry/remote-prompts.yaml"
+    );
+    expect(runtimePromptRegistryPersistentEgressFindings[0]?.matched_object.metadata).toMatchObject({
+      parsed_agent_prompt_registry_config: true,
+      agent_prompt_registry_provider: "agent_prompt_registry",
+      agent_prompt_registry_remote: true,
+      agent_prompt_registry_auto_sync_enabled: true,
+      agent_prompt_registry_unpinned_reference: true,
+      agent_prompt_registry_signature_verification_disabled: true,
+      agent_prompt_registry_provenance_verification_missing: true,
+      agent_prompt_registry_untrusted_selector: true,
+      agent_prompt_registry_privileged_role_injection: true,
+      agent_prompt_registry_tool_directive: true,
+      agent_prompt_registry_memory_directive: true,
+      agent_prompt_registry_external_directive: true,
+      agent_prompt_registry_sensitive_context: true,
+      agent_prompt_registry_pii_context: true,
+      agent_prompt_registry_approval_required: false
+    });
+    expect(runtimePromptRegistryPersistentEgressFindings[0]?.matched_object.metadata.agent_prompt_registry_prompt_kinds).toEqual([
+      "developer_prompt",
+      "prompt_template",
+      "runbook",
+      "system_prompt",
+      "tool_instruction"
+    ]);
+    expect(runtimePromptRegistryPersistentEgressFindings[0]?.matched_object.data_classes).toEqual([
+      "confidential",
+      "credential",
+      "pii"
+    ]);
+    expect(runtimePromptRegistryPersistentEgressFindings[0]?.matched_object.actions).toEqual([
+      "call",
+      "execute",
+      "publish",
+      "read",
+      "remember",
+      "send",
+      "write"
+    ]);
+    expect(runtimePromptRegistryPersistentEgressFindings[0]?.severity).toBe("critical");
+    expect(runtimePromptRegistryPersistentEgressFindings[0]?.confidence).toBe("very_high");
+    expect(runtimePromptRegistryPersistentEgressFindings[0]?.recommended_control).toBe("quarantine");
+    expect(JSON.stringify(runtimePromptRegistryPersistentEgressFindings[0])).not.toContain("${PROMPT_REGISTRY_TOKEN}");
+    expect(JSON.stringify(runtimePromptRegistryPersistentEgressFindings[0])).not.toContain(
+      "prompts.agentcsp-demo.example.invalid"
+    );
+    expect(JSON.stringify(runtimePromptRegistryPersistentEgressFindings[0])).not.toContain(
+      "customer-escalation-system-vLatest"
+    );
+    expect(JSON.stringify(runtimePromptRegistryPersistentEgressFindings[0])).not.toContain(
+      "support-agent-developer-policy"
+    );
+    expect(JSON.stringify(runtimePromptRegistryPersistentEgressFindings[0])).not.toContain("customer_requested_prompt");
+    expect(JSON.stringify(runtimePromptRegistryPersistentEgressFindings[0])).not.toContain("untrusted_customer_ticket");
+    expect(JSON.stringify(runtimePromptRegistryPersistentEgressFindings[0])).not.toContain("retrieved_customer_context");
+    expect(JSON.stringify(runtimePromptRegistryPersistentEgressFindings[0])).not.toContain("browser_tool_output");
+    expect(JSON.stringify(runtimePromptRegistryPersistentEgressFindings[0])).not.toContain("prompt_registry_customer_email");
+    expect(JSON.stringify(runtimePromptRegistryPersistentEgressFindings[0])).not.toContain("prompt_registry_account_number");
+    expect(JSON.stringify(runtimePromptRegistryPersistentEgressFindings[0])).not.toContain("confidential_prompt_context");
+    expect(JSON.stringify(runtimePromptRegistryPersistentEgressFindings[0])).not.toContain("support_db.update_customer_record");
+    expect(JSON.stringify(runtimePromptRegistryPersistentEgressFindings[0])).not.toContain("browser.submit_customer_form");
+    expect(JSON.stringify(runtimePromptRegistryPersistentEgressFindings[0])).not.toContain("support_memory_summary");
+    expect(JSON.stringify(runtimePromptRegistryPersistentEgressFindings[0])).not.toContain("post customer update to webhook");
+    expect(JSON.stringify(runtimePromptRegistryPersistentEgressFindings[0])).not.toContain(
+      "vault_secret_lookup.read_support_token"
+    );
+    expect(JSON.stringify(runtimePromptRegistryPersistentEgressFindings[0])).not.toContain("slack.post_escalation_reply");
     const runtimeRemoteInstructionFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-RUNTIME-067");
     expect(runtimeRemoteInstructionFindings).toHaveLength(1);
     expect(runtimeRemoteInstructionFindings[0]?.matched_object.path).toBe("instruction-loader/remote-instructions.yaml");

@@ -1,0 +1,101 @@
+id: AGENTCSP-RUNTIME-117
+name: Remote prompt registry persists privileged external directives
+description: A remote prompt registry auto-syncs unpinned system or developer prompts selected by untrusted context while verification is disabled and the prompts can direct tool use, memory writes, and external responses over sensitive context without approval.
+category: agent_prompt_registry_persistent_egress
+severity: critical
+maps_to:
+  owasp:
+    - LLM01:2025 Prompt Injection
+    - LLM02:2025 Sensitive Information Disclosure
+    - LLM05:2025 Supply Chain Vulnerabilities
+    - LLM06:2025 Excessive Agency
+  mitre_atlas:
+    - AML.T0051 LLM Prompt Injection
+    - AML.T0018 Supply Chain Compromise
+    - AML.T0057 Exfiltration via Cyber Means
+  nist_ai_rmf:
+    - MAP 5.1
+    - MEASURE 2.9
+    - MANAGE 2.4
+match:
+  object_type: runtime_config
+  where:
+    - field: metadata.parsed_agent_prompt_registry_config
+      op: equals
+      value: true
+    - field: metadata.agent_prompt_registry_remote
+      op: equals
+      value: true
+    - field: metadata.agent_prompt_registry_auto_sync_enabled
+      op: equals
+      value: true
+    - field: metadata.agent_prompt_registry_unpinned_reference
+      op: equals
+      value: true
+    - field: metadata.agent_prompt_registry_signature_verification_disabled
+      op: equals
+      value: true
+    - field: metadata.agent_prompt_registry_provenance_verification_missing
+      op: equals
+      value: true
+    - field: metadata.agent_prompt_registry_untrusted_selector
+      op: equals
+      value: true
+    - field: metadata.agent_prompt_registry_privileged_role_injection
+      op: equals
+      value: true
+    - field: metadata.agent_prompt_registry_tool_directive
+      op: equals
+      value: true
+    - field: metadata.agent_prompt_registry_memory_directive
+      op: equals
+      value: true
+    - field: metadata.agent_prompt_registry_external_directive
+      op: equals
+      value: true
+    - field: metadata.agent_prompt_registry_sensitive_context
+      op: equals
+      value: true
+    - field: metadata.agent_prompt_registry_pii_context
+      op: equals
+      value: true
+    - field: metadata.agent_prompt_registry_approval_required
+      op: equals
+      value: false
+    - field: metadata.agent_prompt_registry_prompt_kinds
+      op: contains_any
+      value:
+        - system_prompt
+    - field: metadata.agent_prompt_registry_prompt_kinds
+      op: contains_any
+      value:
+        - developer_prompt
+    - field: data_classes
+      op: contains_any
+      value:
+        - credential
+    - field: data_classes
+      op: contains_any
+      value:
+        - pii
+    - field: actions
+      op: contains_any
+      value:
+        - execute
+    - field: actions
+      op: contains_any
+      value:
+        - remember
+    - field: actions
+      op: contains_any
+      value:
+        - publish
+    - field: secret_exposure
+      op: equals
+      value: true
+    - field: untrusted_to_privileged
+      op: equals
+      value: true
+recommendation:
+  control: quarantine
+  text: Quarantine auto-synced prompt registry content until prompt revisions are pinned and signed, untrusted selectors are removed, memory and external-response directives are stripped, and approval is required before remote system or developer prompts can affect privileged tools.
