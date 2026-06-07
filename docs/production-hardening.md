@@ -211,6 +211,7 @@ Examples:
 - multi-agent shared memory plus automatic handoff from untrusted intake into a secret-backed privileged executor with browser, database, filesystem, messaging, and memory-write authority
 - autonomous agent loop plus untrusted goals, automatic execution, privileged tool authority, tool-output feedback, missing iteration/runtime budgets or stop conditions, disabled kill switch, credentials, and no approval gate
 - disabled agent safety controls plus untrusted input plus privileged tools plus credentials plus no approval gate
+- fail-open agent safety fallback plus default-allow, timeout-allow, error-allow, monitor-only execution, missing deterministic pre-tool enforcement, database/external-response/secret-manager authority, credentials, and no approval gate
 - model-only guardrails plus prompt-only, LLM-judge, or self-review enforcement, missing deterministic pre-tool policy, untrusted input, privileged tool authority, credentials, and no approval gate
 - live eval harness plus adversarial prompts plus production agent target plus privileged tools plus credentials plus no approval gate
 - agent identity delegation plus credential issuance plus service-account impersonation plus broad scopes plus untrusted subject inputs plus no approval gate

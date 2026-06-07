@@ -1096,6 +1096,7 @@ The current iteration adds:
 - vulnerable fixture coverage for an otherwise enabled guardrail policy that allows by default, allows on timeout and error, runs monitor-only, and can reach database, secret-manager, and external-response tools without approval
 - safe fixture coverage for an approval-gated default-deny safety policy that blocks timeout and error paths
 - rule `AGENTCSP-RUNTIME-045` for safety policies that fail open around privileged tools when untrusted input, credentials, and missing approval are present
+- rule `AGENTCSP-RUNTIME-105` for enabled safety policies whose default, timeout, error, and monitor-only paths can release secret-backed database and external-response authority without deterministic pre-tool enforcement or approval
 - scanner, rule, fixture verifier, graph tie-break, and redaction coverage proving raw policy names, fallback tokens, tool names, and data-scope labels stay redacted
 
 ## Background Agent Task Queue Pass
