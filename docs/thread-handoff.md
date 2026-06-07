@@ -1246,6 +1246,7 @@ The current iteration adds:
 - vulnerable fixture coverage for a public support widget that accepts anonymous messages and attachments, disables auth and abuse controls, auto-invokes database, Slack, memory, and secret-manager tools, disables redaction, and lacks approval
 - safe fixture coverage for an authenticated internal read-only chat that requires SSO and approval, disables automatic tool invocation, keeps rate limits and redaction enabled, and exposes no credentials
 - rule `AGENTCSP-RUNTIME-062` for public chat ingress that routes anonymous prompt input into privileged tools without abuse controls, redaction, or approval
+- rule `AGENTCSP-RUNTIME-092` for public chat uploads that can automatically trigger database, external-response, memory, and secret-manager tools when CSRF, rate limits, abuse protection, redaction, and approval are disabled
 - scanner, rule, fixture verifier, and redaction coverage proving raw endpoints, allowed origins, visitor labels, upload labels, tool names, context labels, and token placeholders stay redacted
 
 ## Agent Debug Console Exposure Pass
