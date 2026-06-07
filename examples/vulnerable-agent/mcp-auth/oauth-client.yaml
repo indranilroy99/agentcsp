@@ -7,6 +7,13 @@ dynamic_client_registration:
   registration_endpoint: https://authz.agentcsp-demo.example.invalid/register
   client_type: public
   client_secret: ${MCP_OAUTH_CLIENT_SECRET}
+device_authorization:
+  enabled: true
+  device_authorization_endpoint: https://authz.agentcsp-demo.example.invalid/device_authorization
+  expose_user_code_to_agent_context: true
+  verification_uri_source: untrusted_mcp_metadata
+  poll_without_approval: true
+  user_code_label: customer_device_user_code
 redirect_uris:
   - wildcard_customer_callback
   - customer_provided_redirect_uri

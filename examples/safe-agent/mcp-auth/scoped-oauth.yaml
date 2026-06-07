@@ -4,6 +4,11 @@ protected_resource_metadata_url: https://safe-mcp.example.invalid/.well-known/oa
 authorization_server_metadata_url: https://auth-safe.example.invalid/.well-known/oauth-authorization-server
 dynamic_client_registration:
   enabled: false
+device_authorization:
+  enabled: false
+  expose_user_code_to_agent_context: false
+  verification_uri_source: registered_authorization_server
+  poll_without_approval: false
 redirect_uris:
   - https://safe-mcp.example.invalid/oauth/callback
 redirect_validation:

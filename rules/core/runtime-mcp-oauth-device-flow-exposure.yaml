@@ -1,0 +1,95 @@
+id: AGENTCSP-RUNTIME-128
+name: MCP OAuth device flow exposes codes to agent context
+description: An MCP OAuth client uses device authorization flow while user or device codes and verification URI material can enter agent or model context, broad delegated scopes are requested, refresh tokens are persisted, tokens are forwarded to untrusted MCP servers, and approval is missing.
+category: mcp_oauth_device_flow_exposure
+severity: critical
+maps_to:
+  owasp:
+    - LLM01:2025 Prompt Injection
+    - LLM02:2025 Sensitive Information Disclosure
+    - LLM05:2025 Supply Chain Vulnerabilities
+    - LLM06:2025 Excessive Agency
+  mitre_atlas:
+    - AML.T0018 Supply Chain Compromise
+    - AML.T0051 LLM Prompt Injection
+    - AML.T0057 Exfiltration via Cyber Means
+  nist_ai_rmf:
+    - MAP 5.1
+    - MEASURE 2.9
+    - MANAGE 2.4
+match:
+  object_type: runtime_config
+  where:
+    - field: metadata.parsed_mcp_authorization_config
+      op: equals
+      value: true
+    - field: metadata.mcp_authorization_provider
+      op: equals
+      value: mcp_oauth
+    - field: metadata.mcp_authorization_remote
+      op: equals
+      value: true
+    - field: metadata.mcp_authorization_public_client
+      op: equals
+      value: true
+    - field: metadata.mcp_authorization_device_flow_enabled
+      op: equals
+      value: true
+    - field: metadata.mcp_authorization_device_endpoint_redacted
+      op: equals
+      value: true
+    - field: metadata.mcp_authorization_device_code_context_exposure
+      op: equals
+      value: true
+    - field: metadata.mcp_authorization_device_verification_uri_untrusted
+      op: equals
+      value: true
+    - field: metadata.mcp_authorization_device_polling_without_approval
+      op: equals
+      value: true
+    - field: metadata.mcp_authorization_broad_scope
+      op: equals
+      value: true
+    - field: metadata.mcp_authorization_sensitive_scope
+      op: equals
+      value: true
+    - field: metadata.mcp_authorization_pii_scope
+      op: equals
+      value: true
+    - field: metadata.mcp_authorization_refresh_token_storage
+      op: equals
+      value: true
+    - field: metadata.mcp_authorization_token_forwarding
+      op: equals
+      value: true
+    - field: metadata.mcp_authorization_untrusted_server
+      op: equals
+      value: true
+    - field: metadata.mcp_authorization_approval_required
+      op: equals
+      value: false
+    - field: data_classes
+      op: contains_any
+      value:
+        - secret
+    - field: data_classes
+      op: contains_any
+      value:
+        - pii
+    - field: actions
+      op: contains_any
+      value:
+        - remember
+    - field: actions
+      op: contains_any
+      value:
+        - send
+    - field: secret_exposure
+      op: equals
+      value: true
+    - field: untrusted_to_privileged
+      op: equals
+      value: true
+recommendation:
+  control: quarantine
+  text: Quarantine MCP OAuth device-flow clients that expose user or device codes to agent/model context; keep verification URIs and user codes outside model-visible context, bind device authorization to trusted MCP resources, disable token forwarding, avoid persisted refresh tokens, and require approval before delegated credentials are issued.

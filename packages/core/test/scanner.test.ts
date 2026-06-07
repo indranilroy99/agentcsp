@@ -2196,13 +2196,18 @@ describe("scanner", () => {
       mcp_authorization_provider: "mcp_oauth",
       mcp_authorization_remote: true,
       mcp_authorization_destination_redacted: true,
-      mcp_authorization_destination_count: 4,
+      mcp_authorization_destination_count: 5,
       mcp_authorization_plaintext_endpoint: true,
       mcp_authorization_plaintext_oauth_endpoint: true,
       mcp_authorization_plaintext_mcp_resource_endpoint: true,
       mcp_authorization_dynamic_client_registration: true,
       mcp_authorization_client_secret_exposure: true,
       mcp_authorization_public_client: true,
+      mcp_authorization_device_flow_enabled: true,
+      mcp_authorization_device_endpoint_redacted: true,
+      mcp_authorization_device_code_context_exposure: true,
+      mcp_authorization_device_verification_uri_untrusted: true,
+      mcp_authorization_device_polling_without_approval: true,
       mcp_authorization_redirect_uri_redacted: true,
       mcp_authorization_redirect_uri_count: 7,
       mcp_authorization_wildcard_redirect_uri: true,
@@ -2222,6 +2227,7 @@ describe("scanner", () => {
     });
     expect(mcpAuthorizationConfig?.metadata.mcp_authorization_destination_kinds).toEqual([
       "authorization_server_metadata",
+      "device_authorization_endpoint",
       "dynamic_client_registration_endpoint",
       "mcp_authorization_config",
       "plaintext_mcp_resource_endpoint",
@@ -2249,6 +2255,8 @@ describe("scanner", () => {
     expect(JSON.stringify(mcpAuthorizationConfig)).not.toContain("support_db.write");
     expect(JSON.stringify(mcpAuthorizationConfig)).not.toContain("wildcard_customer_callback");
     expect(JSON.stringify(mcpAuthorizationConfig)).not.toContain("customer_provided_redirect_uri");
+    expect(JSON.stringify(mcpAuthorizationConfig)).not.toContain("customer_device_user_code");
+    expect(JSON.stringify(mcpAuthorizationConfig)).not.toContain("untrusted_mcp_metadata");
     expect(JSON.stringify(mcpAuthorizationConfig)).not.toContain("customer_requested_mcp_server");
     expect(JSON.stringify(mcpAuthorizationConfig)).not.toContain("mcp_oauth_customer_email");
     expect(JSON.stringify(mcpAuthorizationConfig)).not.toContain(".auth/mcp-oauth-tokens.json");
@@ -4615,6 +4623,11 @@ describe("scanner", () => {
       mcp_authorization_dynamic_client_registration: false,
       mcp_authorization_client_secret_exposure: false,
       mcp_authorization_public_client: false,
+      mcp_authorization_device_flow_enabled: false,
+      mcp_authorization_device_endpoint_redacted: false,
+      mcp_authorization_device_code_context_exposure: false,
+      mcp_authorization_device_verification_uri_untrusted: false,
+      mcp_authorization_device_polling_without_approval: false,
       mcp_authorization_redirect_uri_redacted: true,
       mcp_authorization_redirect_uri_count: 1,
       mcp_authorization_wildcard_redirect_uri: false,

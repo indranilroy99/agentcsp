@@ -5868,6 +5868,11 @@ interface McpAuthorizationPosture {
   mcp_authorization_dynamic_client_registration: boolean;
   mcp_authorization_client_secret_exposure: boolean;
   mcp_authorization_public_client: boolean;
+  mcp_authorization_device_flow_enabled: boolean;
+  mcp_authorization_device_endpoint_redacted: boolean;
+  mcp_authorization_device_code_context_exposure: boolean;
+  mcp_authorization_device_verification_uri_untrusted: boolean;
+  mcp_authorization_device_polling_without_approval: boolean;
   mcp_authorization_redirect_uri_redacted: boolean;
   mcp_authorization_redirect_uri_count: number;
   mcp_authorization_redirect_uri_kinds: string[];
@@ -9988,6 +9993,7 @@ function classifyMcpAuthorizationConfig(value: unknown, filePath: string): McpAu
   const plaintextDestinationKinds = destinations.destinationKinds.filter((kind) => kind.startsWith("plaintext_"));
   const scopes = collectMcpAuthorizationScopeKinds(fields);
   const redirectUris = classifyMcpAuthorizationRedirectUris(fields);
+  const deviceFlow = classifyMcpAuthorizationDeviceFlow(fields, destinations.destinationKinds);
   const envKeys = uniqueStrings([
     ...collectEnvKeyNamesFromConfig(value).filter(isLikelyEnvKeyName),
     ...extractEnvironmentReferenceKeys(stringValues)
@@ -10014,6 +10020,11 @@ function classifyMcpAuthorizationConfig(value: unknown, filePath: string): McpAu
     mcp_authorization_dynamic_client_registration: hasMcpAuthorizationDynamicClientRegistrationSignal(fields),
     mcp_authorization_client_secret_exposure: hasMcpAuthorizationClientSecretExposureSignal(fields),
     mcp_authorization_public_client: hasMcpAuthorizationPublicClientSignal(fields),
+    mcp_authorization_device_flow_enabled: deviceFlow.deviceFlowEnabled,
+    mcp_authorization_device_endpoint_redacted: deviceFlow.deviceEndpointRedacted,
+    mcp_authorization_device_code_context_exposure: deviceFlow.deviceCodeContextExposure,
+    mcp_authorization_device_verification_uri_untrusted: deviceFlow.deviceVerificationUriUntrusted,
+    mcp_authorization_device_polling_without_approval: deviceFlow.devicePollingWithoutApproval,
     mcp_authorization_redirect_uri_redacted: redirectUris.redirectUriCount > 0,
     mcp_authorization_redirect_uri_count: redirectUris.redirectUriCount,
     mcp_authorization_redirect_uri_kinds: redirectUris.redirectUriKinds,
@@ -10219,6 +10230,9 @@ function parseMcpAuthorizationDestination(value: string): { kind: string } | und
     if (/\.well-known\/(oauth-authorization-server|openid-configuration)/iu.test(pathName)) {
       return { kind: plaintext ? "plaintext_authorization_server_metadata" : "authorization_server_metadata" };
     }
+    if (/\bdevice[_\s-]?(authorization|code)?\b|device_authorization/iu.test(pathName)) {
+      return { kind: plaintext ? "plaintext_device_authorization_endpoint" : "device_authorization_endpoint" };
+    }
     if (/\bregister|registration\b/iu.test(pathName)) {
       return { kind: plaintext ? "plaintext_dynamic_client_registration_endpoint" : "dynamic_client_registration_endpoint" };
     }
@@ -10237,8 +10251,69 @@ function looksLikeRemoteMcpAuthorizationEndpoint(value: string): boolean {
   const trimmed = value.trim().toLowerCase();
   if (!trimmed || trimmed.startsWith("${")) return false;
   if (isLocalHost(trimmed)) return false;
-  return /\b(oauth|oidc|openid|auth|token|issuer|mcp|resource|register)\b/iu.test(trimmed) ||
+  return /\b(oauth|oidc|openid|auth|token|issuer|mcp|resource|register|device)\b/iu.test(trimmed) ||
     /^[a-z0-9.-]+\.[a-z]{2,}(?::\d+)?$/iu.test(trimmed);
+}
+
+function classifyMcpAuthorizationDeviceFlow(
+  fields: RuntimeField[],
+  destinationKinds: string[]
+): {
+  deviceFlowEnabled: boolean;
+  deviceEndpointRedacted: boolean;
+  deviceCodeContextExposure: boolean;
+  deviceVerificationUriUntrusted: boolean;
+  devicePollingWithoutApproval: boolean;
+} {
+  const explicitEnabled = fields.some((field) => {
+    const text = `${field.path} ${fieldValueText(field)}`;
+    if (/(?:^|\.)(device_authorization|deviceAuthorization|device_flow|deviceFlow)\.(enabled|active)$/iu.test(field.path)) {
+      return truthyConfigValue(field.value);
+    }
+    return /\b(urn:ietf:params:oauth:grant-type:device_code|device[_\s-]?authorization[_\s-]?grant|device[_\s-]?code[_\s-]?grant|oauth[_\s-]?device[_\s-]?flow)\b/iu.test(text) &&
+      truthyConfigValue(field.value);
+  });
+  const endpointRedacted = destinationKinds.some((kind) => kind.includes("device_authorization_endpoint")) ||
+    fields.some((field) => {
+      if (!/(?:^|\.)(device_authorization_endpoint|deviceAuthorizationEndpoint|device_endpoint|deviceEndpoint|verification_uri|verificationUri)(?:\.|$)/iu.test(field.path)) {
+        return false;
+      }
+      return fieldStringValues(field).some((value) => parseMcpAuthorizationDestination(value)?.kind.includes("device_authorization_endpoint"));
+    });
+  const codeContextExposure = fields.some((field) => {
+    const text = `${field.path} ${fieldValueText(field)}`;
+    if (!/(?:^|[_\W])(user[_\s-]?code|device[_\s-]?code|verification[_\s-]?uri|device[_\s-]?authorization)(?:[_\W]|$)/iu.test(text)) {
+      return false;
+    }
+    return /(?:^|[_\W])(expose|show|display|include|copy|paste|render|pass|send|log|trace|prompt|context|agent|model|llm|assistant)(?:[_\W]|$)/iu.test(text) &&
+      truthyConfigValue(field.value);
+  });
+  const verificationUriUntrusted = fields.some((field) => {
+    const text = `${field.path} ${fieldValueText(field)}`;
+    if (!/(?:^|[_\W])(verification[_\s-]?uri|device[_\s-]?authorization[_\s-]?metadata|device[_\s-]?flow|user[_\s-]?code)(?:[_\W]|$)/iu.test(text)) {
+      return false;
+    }
+    return /(?:^|[_\W])(untrusted|third[_\s-]?party|remote|mcp[_\s-]?metadata|server[_\s-]?metadata|dynamic|user|customer|model|prompt|agent[_\s-]?selected|unknown)(?:[_\W]|$)/iu.test(
+      text
+    ) && truthyConfigValue(field.value);
+  });
+  const pollingWithoutApproval = fields.some((field) => {
+    const text = `${field.path} ${fieldValueText(field)}`;
+    if (/(?:^|\.)(poll_without_approval|pollWithoutApproval|auto_poll|autoPoll|polling_without_approval|pollingWithoutApproval)(?:\.|$)/iu.test(field.path)) {
+      return truthyConfigValue(field.value);
+    }
+    return /\b(device[_\s-]?poll|poll[_\s-]?device|polling|auto[_\s-]?poll)\b/iu.test(text) &&
+      /\b(without[_\s-]?approval|no[_\s-]?approval|approval[_\s-]?disabled|auto)\b/iu.test(text) &&
+      truthyConfigValue(field.value);
+  });
+
+  return {
+    deviceFlowEnabled: explicitEnabled || endpointRedacted,
+    deviceEndpointRedacted: endpointRedacted,
+    deviceCodeContextExposure: codeContextExposure,
+    deviceVerificationUriUntrusted: verificationUriUntrusted,
+    devicePollingWithoutApproval: pollingWithoutApproval
+  };
 }
 
 function hasMcpAuthorizationDynamicClientRegistrationSignal(fields: RuntimeField[]): boolean {
@@ -10395,12 +10470,13 @@ function hasMcpAuthorizationUntrustedServerSignal(fields: RuntimeField[]): boole
 function hasMcpAuthorizationApprovalRequiredSignal(fields: RuntimeField[]): boolean {
   return fields.some((field) =>
     /approval|required[_-]?approval|human[_-]?approval|confirm|confirmation|review|human[_-]?in[_-]?the[_-]?loop|consent/iu.test(field.path) &&
+    !/without[_-]?approval|no[_-]?approval|approval[_-]?disabled|skip[_-]?approval|bypass[_-]?approval/iu.test(field.path) &&
     truthyConfigValue(field.value)
   );
 }
 
 function isMcpAuthorizationSecurityField(fieldPath: string): boolean {
-  return /mcp|oauth|oidc|openid|auth|authorization|protected|resource|metadata|issuer|client|registration|dcr|pkce|code|challenge|state|csrf|nonce|audience|scope|permission|claim|token|refresh|storage|cache|forward|header|bearer|credential|secret|env|redirect|callback|uri|url|endpoint|server|untrusted|third|remote|dynamic|approval|consent/iu.test(
+  return /mcp|oauth|oidc|openid|auth|authorization|protected|resource|metadata|issuer|client|registration|dcr|pkce|code|challenge|device|verification|user[_-]?code|state|csrf|nonce|audience|scope|permission|claim|token|refresh|storage|cache|forward|header|bearer|credential|secret|env|redirect|callback|uri|url|endpoint|server|untrusted|third|remote|dynamic|approval|consent|poll/iu.test(
     fieldPath
   );
 }

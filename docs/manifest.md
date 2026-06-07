@@ -188,6 +188,11 @@ MCP authorization metadata may include:
 - `mcp_authorization_dynamic_client_registration`
 - `mcp_authorization_client_secret_exposure`
 - `mcp_authorization_public_client`
+- `mcp_authorization_device_flow_enabled`
+- `mcp_authorization_device_endpoint_redacted`
+- `mcp_authorization_device_code_context_exposure`
+- `mcp_authorization_device_verification_uri_untrusted`
+- `mcp_authorization_device_polling_without_approval`
 - `mcp_authorization_redirect_uri_redacted`
 - `mcp_authorization_redirect_uri_count`
 - `mcp_authorization_redirect_uri_kinds`
@@ -209,7 +214,7 @@ MCP authorization metadata may include:
 - `env_key_names`
 - `secret_ref_key_names`
 
-Raw authorization endpoints, MCP server URLs, registration endpoints, OAuth redirect URIs, callback selectors, OAuth scopes, selector values, token-cache paths, data-scope labels, and secret placeholders are not emitted. Provider names, destination categories, plaintext endpoint posture, redirect and callback categories, wildcard or user-selected callback posture, scope categories, DCR posture, PKCE/state/resource-indicator controls, refresh-token storage, token forwarding, untrusted server-selection posture, approval posture, and credential key names let rules detect unsafe token delegation into MCP servers without copying authorization material into the manifest.
+Raw authorization endpoints, MCP server URLs, registration endpoints, OAuth redirect URIs, callback selectors, device-flow endpoints, user-code labels, verification URI selectors, OAuth scopes, selector values, token-cache paths, data-scope labels, and secret placeholders are not emitted. Provider names, destination categories, plaintext endpoint posture, device-flow posture, device-code context exposure, redirect and callback categories, wildcard or user-selected callback posture, scope categories, DCR posture, PKCE/state/resource-indicator controls, refresh-token storage, token forwarding, untrusted server-selection posture, approval posture, and credential key names let rules detect unsafe token delegation into MCP servers without copying authorization material into the manifest.
 
 ## Instruction Context Signals
 

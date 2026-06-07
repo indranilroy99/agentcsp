@@ -155,6 +155,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-038")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-118")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-127")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-128")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-039")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-079")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-040")).toBe(true);
@@ -2232,6 +2233,59 @@ describe("rule engine", () => {
     expect(JSON.stringify(runtimeMcpOauthRedirectFindings[0])).not.toContain("mcp_oauth_account_number");
     expect(JSON.stringify(runtimeMcpOauthRedirectFindings[0])).not.toContain("confidential_mcp_oauth_context");
     expect(JSON.stringify(runtimeMcpOauthRedirectFindings[0])).not.toContain(".auth/mcp-oauth-tokens.json");
+    const runtimeMcpOauthDeviceFlowFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-RUNTIME-128");
+    expect(runtimeMcpOauthDeviceFlowFindings).toHaveLength(1);
+    expect(runtimeMcpOauthDeviceFlowFindings[0]?.matched_object.path).toBe("mcp-auth/oauth-client.yaml");
+    expect(runtimeMcpOauthDeviceFlowFindings[0]?.matched_object.metadata).toMatchObject({
+      parsed_mcp_authorization_config: true,
+      mcp_authorization_provider: "mcp_oauth",
+      mcp_authorization_remote: true,
+      mcp_authorization_public_client: true,
+      mcp_authorization_device_flow_enabled: true,
+      mcp_authorization_device_endpoint_redacted: true,
+      mcp_authorization_device_code_context_exposure: true,
+      mcp_authorization_device_verification_uri_untrusted: true,
+      mcp_authorization_device_polling_without_approval: true,
+      mcp_authorization_broad_scope: true,
+      mcp_authorization_sensitive_scope: true,
+      mcp_authorization_pii_scope: true,
+      mcp_authorization_refresh_token_storage: true,
+      mcp_authorization_token_forwarding: true,
+      mcp_authorization_untrusted_server: true,
+      mcp_authorization_approval_required: false
+    });
+    expect(runtimeMcpOauthDeviceFlowFindings[0]?.matched_object.metadata.mcp_authorization_destination_kinds).toEqual([
+      "authorization_server_metadata",
+      "device_authorization_endpoint",
+      "dynamic_client_registration_endpoint",
+      "mcp_authorization_config",
+      "plaintext_mcp_resource_endpoint",
+      "plaintext_protected_resource_metadata"
+    ]);
+    expect(runtimeMcpOauthDeviceFlowFindings[0]?.matched_object.data_classes).toEqual([
+      "confidential",
+      "credential",
+      "pii",
+      "secret"
+    ]);
+    expect(runtimeMcpOauthDeviceFlowFindings[0]?.severity).toBe("critical");
+    expect(runtimeMcpOauthDeviceFlowFindings[0]?.confidence).toBe("very_high");
+    expect(runtimeMcpOauthDeviceFlowFindings[0]?.recommended_control).toBe("quarantine");
+    expect(JSON.stringify(runtimeMcpOauthDeviceFlowFindings[0])).not.toContain("${MCP_OAUTH_CLIENT_SECRET}");
+    expect(JSON.stringify(runtimeMcpOauthDeviceFlowFindings[0])).not.toContain("oauth-mcp.agentcsp-demo.example.invalid");
+    expect(JSON.stringify(runtimeMcpOauthDeviceFlowFindings[0])).not.toContain("authz.agentcsp-demo.example.invalid");
+    expect(JSON.stringify(runtimeMcpOauthDeviceFlowFindings[0])).not.toContain("offline_access");
+    expect(JSON.stringify(runtimeMcpOauthDeviceFlowFindings[0])).not.toContain("mcp:tools:*");
+    expect(JSON.stringify(runtimeMcpOauthDeviceFlowFindings[0])).not.toContain("support_db.write");
+    expect(JSON.stringify(runtimeMcpOauthDeviceFlowFindings[0])).not.toContain("browser.actions");
+    expect(JSON.stringify(runtimeMcpOauthDeviceFlowFindings[0])).not.toContain("customer.email");
+    expect(JSON.stringify(runtimeMcpOauthDeviceFlowFindings[0])).not.toContain("customer_device_user_code");
+    expect(JSON.stringify(runtimeMcpOauthDeviceFlowFindings[0])).not.toContain("untrusted_mcp_metadata");
+    expect(JSON.stringify(runtimeMcpOauthDeviceFlowFindings[0])).not.toContain("customer_requested_mcp_server");
+    expect(JSON.stringify(runtimeMcpOauthDeviceFlowFindings[0])).not.toContain("mcp_oauth_customer_email");
+    expect(JSON.stringify(runtimeMcpOauthDeviceFlowFindings[0])).not.toContain("mcp_oauth_account_number");
+    expect(JSON.stringify(runtimeMcpOauthDeviceFlowFindings[0])).not.toContain("confidential_mcp_oauth_context");
+    expect(JSON.stringify(runtimeMcpOauthDeviceFlowFindings[0])).not.toContain(".auth/mcp-oauth-tokens.json");
     const runtimeMcpOauthPlaintextFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-RUNTIME-125");
     expect(runtimeMcpOauthPlaintextFindings).toHaveLength(1);
     expect(runtimeMcpOauthPlaintextFindings[0]?.matched_object.path).toBe("mcp-auth/oauth-client.yaml");
@@ -2251,6 +2305,7 @@ describe("rule engine", () => {
     });
     expect(runtimeMcpOauthPlaintextFindings[0]?.matched_object.metadata.mcp_authorization_destination_kinds).toEqual([
       "authorization_server_metadata",
+      "device_authorization_endpoint",
       "dynamic_client_registration_endpoint",
       "mcp_authorization_config",
       "plaintext_mcp_resource_endpoint",
@@ -5979,6 +6034,11 @@ describe("rule engine", () => {
       parsed_mcp_authorization_config: true,
       mcp_authorization_dynamic_client_registration: false,
       mcp_authorization_public_client: false,
+      mcp_authorization_device_flow_enabled: false,
+      mcp_authorization_device_endpoint_redacted: false,
+      mcp_authorization_device_code_context_exposure: false,
+      mcp_authorization_device_verification_uri_untrusted: false,
+      mcp_authorization_device_polling_without_approval: false,
       mcp_authorization_redirect_uri_redacted: true,
       mcp_authorization_redirect_uri_count: 1,
       mcp_authorization_wildcard_redirect_uri: false,
@@ -5993,6 +6053,7 @@ describe("rule engine", () => {
     });
     expect(safeMcpAuthorization?.metadata.mcp_authorization_redirect_uri_kinds).toEqual(["remote_redirect_uri"]);
     expect(findings.filter((finding) => finding.rule_id === "AGENTCSP-RUNTIME-127")).toHaveLength(0);
+    expect(findings.filter((finding) => finding.rule_id === "AGENTCSP-RUNTIME-128")).toHaveLength(0);
     expect(safeSaasConnector?.metadata).toMatchObject({
       parsed_saas_connector_config: true,
       saas_connector_external_write_enabled: false,
