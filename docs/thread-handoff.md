@@ -828,6 +828,7 @@ The current iteration adds:
 - first-class redacted metadata for AI training, fine-tuning, distillation, feedback-training, RLHF, and dataset-export configs
 - vulnerable fixture coverage for a model-update dataset pipeline that captures raw prompts, completions, tool outputs, retrieval context, memory, browser context, PII, and secrets from untrusted customer sources, uploads to a managed provider, retains data, and has no approval gate
 - rule `AGENTCSP-RUNTIME-028` for training dataset boundaries that combine model-update authority, remote upload, sensitive capture, disabled redaction, untrusted input, credential exposure, and missing approval
+- rule `AGENTCSP-RUNTIME-089` for retained raw production traces in fine-tuning pipelines where prompts, completions, tool outputs, retrieval context, memory, browser context, PII, and secrets cross from untrusted sources into durable model-update storage
 - scanner, rule, fixture verifier, and redaction coverage proving endpoints, dataset names, record labels, source labels, training records, and token placeholders stay redacted
 
 ## LLM Prompt Cache Boundary Pass

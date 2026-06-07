@@ -82,6 +82,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-027")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-081")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-028")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-089")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-029")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-050")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-051")).toBe(true);
@@ -474,6 +475,48 @@ describe("rule engine", () => {
     expect(JSON.stringify(runtimeTrainingDatasetFindings[0])).not.toContain("training_account_number");
     expect(JSON.stringify(runtimeTrainingDatasetFindings[0])).not.toContain("training_confidential_agent_notes");
     expect(JSON.stringify(runtimeTrainingDatasetFindings[0])).not.toContain("support_memory_summary");
+    const runtimeTrainingRetentionFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-RUNTIME-089");
+    expect(runtimeTrainingRetentionFindings).toHaveLength(1);
+    expect(runtimeTrainingRetentionFindings[0]?.matched_object.path).toBe("training/fine-tune-dataset.yaml");
+    expect(runtimeTrainingRetentionFindings[0]?.matched_object.metadata).toMatchObject({
+      parsed_ai_training_dataset_config: true,
+      ai_training_dataset_provider: "openai",
+      ai_training_dataset_model_update_enabled: true,
+      ai_training_dataset_remote_upload: true,
+      ai_training_dataset_prompt_capture: true,
+      ai_training_dataset_completion_capture: true,
+      ai_training_dataset_tool_output_capture: true,
+      ai_training_dataset_retrieval_capture: true,
+      ai_training_dataset_memory_capture: true,
+      ai_training_dataset_browser_capture: true,
+      ai_training_dataset_secret_capture: true,
+      ai_training_dataset_pii_capture: true,
+      ai_training_dataset_untrusted_input: true,
+      ai_training_dataset_redaction_disabled: true,
+      ai_training_dataset_retention_enabled: true,
+      ai_training_dataset_approval_required: false
+    });
+    expect(runtimeTrainingRetentionFindings[0]?.matched_object.metadata.ai_training_dataset_capture_categories).toEqual([
+      "browser_context",
+      "completion_context",
+      "memory_context",
+      "pii_data",
+      "prompt_context",
+      "retrieval_context",
+      "secret_material",
+      "tool_output"
+    ]);
+    expect(runtimeTrainingRetentionFindings[0]?.severity).toBe("critical");
+    expect(runtimeTrainingRetentionFindings[0]?.confidence).toBe("very_high");
+    expect(runtimeTrainingRetentionFindings[0]?.recommended_control).toBe("quarantine");
+    expect(JSON.stringify(runtimeTrainingRetentionFindings[0])).not.toContain("${FINE_TUNE_TOKEN}");
+    expect(JSON.stringify(runtimeTrainingRetentionFindings[0])).not.toContain("${OPENAI_API_KEY}");
+    expect(JSON.stringify(runtimeTrainingRetentionFindings[0])).not.toContain("api.openai.example.invalid");
+    expect(JSON.stringify(runtimeTrainingRetentionFindings[0])).not.toContain("support-escalation-finetune");
+    expect(JSON.stringify(runtimeTrainingRetentionFindings[0])).not.toContain("training_customer_email");
+    expect(JSON.stringify(runtimeTrainingRetentionFindings[0])).not.toContain("training_account_number");
+    expect(JSON.stringify(runtimeTrainingRetentionFindings[0])).not.toContain("training_confidential_agent_notes");
+    expect(JSON.stringify(runtimeTrainingRetentionFindings[0])).not.toContain("support_memory_summary");
     const runtimeFeedbackPipelineFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-RUNTIME-044");
     expect(runtimeFeedbackPipelineFindings).toHaveLength(1);
     expect(runtimeFeedbackPipelineFindings[0]?.matched_object.path).toBe("feedback/support-feedback-loop.yaml");
