@@ -14,6 +14,7 @@ export async function runScanCommand(targetPath: string, options: Record<string,
   }
   const baselinePath = options.baseline ? path.resolve(String(options.baseline)) : undefined;
   const failOnNew = Boolean(options.failOnNew);
+  const failOnExpiredSuppressions = Boolean(options.failOnExpiredSuppressions);
   const failOnDiagnostics = Boolean(options.failOnDiagnostics);
   if (failOnNew && !failOn) {
     throw new Error("--fail-on-new requires --fail-on");
@@ -38,7 +39,8 @@ export async function runScanCommand(targetPath: string, options: Record<string,
     fail_on: failOn,
     fail_on_confidence: failOnConfidence,
     baseline_path: baselinePath,
-    fail_on_new: failOnNew
+    fail_on_new: failOnNew,
+    fail_on_expired_suppressions: failOnExpiredSuppressions
   });
 
   if (!quiet) {
@@ -46,6 +48,9 @@ export async function runScanCommand(targetPath: string, options: Record<string,
     console.log(`AgentCSP scan complete: ${result.findings.length} finding(s)`);
     console.log(
       `Suppressed findings: ${result.findings.filter((finding) => finding.suppression?.status === "active").length}`
+    );
+    console.log(
+      `Expired suppressions: ${result.findings.filter((finding) => finding.suppression?.status === "expired").length}`
     );
     console.log(
       `Attack paths: ${result.manifest.attack_paths.length} (${result.manifest.static_blast_radius?.critical_attack_paths ?? 0} critical)`

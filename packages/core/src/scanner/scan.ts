@@ -66,9 +66,12 @@ export async function scanProject(rawConfig: Partial<ScanConfig> & { root_path: 
     : undefined;
   const findings = baselineResult?.findings ?? suppressedFindings;
   const activeFindings = findings.filter((finding) => finding.suppression?.status !== "active");
+  const expiredSuppressionCount = findings.filter((finding) => finding.suppression?.status === "expired").length;
   const failGateFindings = config.fail_on_new
     ? findings.filter((finding) => finding.baseline_status === "new")
     : findings;
+  const severityGateFailed = shouldFail(failGateFindings, config.fail_on, config.fail_on_confidence);
+  const expiredSuppressionGateFailed = config.fail_on_expired_suppressions && expiredSuppressionCount > 0;
   const graph = buildStaticGraph(surfaces, activeFindings);
   const staticBlastRadius = buildStaticBlastRadiusSummary(surfaces, findings, graph.relationships, graph.attackPaths);
   const triageSummary = buildTriageSummary(findings);
@@ -108,7 +111,7 @@ export async function scanProject(rawConfig: Partial<ScanConfig> & { root_path: 
     findings,
     reportMarkdown,
     outputFiles,
-    shouldFail: shouldFail(failGateFindings, config.fail_on, config.fail_on_confidence)
+    shouldFail: severityGateFailed || expiredSuppressionGateFailed
   };
 }
 

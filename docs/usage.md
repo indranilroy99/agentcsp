@@ -57,6 +57,12 @@ Supported confidence values are `very_high`, `high`, `medium`, and `low`. If no 
 
 Active suppressions in `agentcsp.yaml` are excluded from `--fail-on` gates. Expired suppressions are not excluded.
 
+Use `--fail-on-expired-suppressions` when CI should fail on stale accepted-risk records even without a severity gate:
+
+```bash
+agentcsp scan . --fail-on-expired-suppressions
+```
+
 Policy `recommended_controls` can change the recommended control shown in JSON, Markdown, and SARIF, but they do not suppress findings or change `--fail-on` behavior.
 
 Use `--fail-on-diagnostics` when parse failures in security-relevant files should fail CI:

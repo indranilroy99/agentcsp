@@ -71,7 +71,7 @@ Dotted fields are also supported for exact matches against finding fields, such 
 
 ## Suppressions
 
-Suppressions are explicit accepted-risk records. They do not delete findings from JSON, Markdown, or SARIF output. Active suppressions are excluded from `--fail-on` gates, while expired suppressions remain active risk.
+Suppressions are explicit accepted-risk records. They do not delete findings from JSON, Markdown, or SARIF output. Active suppressions are excluded from `--fail-on` gates, while expired suppressions remain active risk. Use `--fail-on-expired-suppressions` when CI should block stale waivers even when no severity threshold is configured.
 
 Every suppression requires:
 

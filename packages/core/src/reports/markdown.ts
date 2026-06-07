@@ -280,9 +280,16 @@ function renderFindings(findings: Finding[]): string {
   }
   const activeFindings = findings.filter((finding) => finding.suppression?.status !== "active");
   const suppressedFindings = findings.filter((finding) => finding.suppression?.status === "active");
+  const expiredSuppressionFindings = findings.filter((finding) => finding.suppression?.status === "expired");
 
   return [
     "## Findings",
+    "",
+    "### Expired Suppressions",
+    "",
+    expiredSuppressionFindings.length > 0
+      ? renderSuppressedFindingTable(expiredSuppressionFindings)
+      : "No expired suppressions were applied.",
     "",
     "### Active Findings",
     "",
@@ -314,11 +321,11 @@ function renderFindingTable(findings: Finding[]): string {
 
 function renderSuppressedFindingTable(findings: Finding[]): string {
   return [
-    "| Severity | Confidence | Rule | Object | Recommended control | Suppression | Expires | Owner |",
-    "| --- | --- | --- | --- | --- | --- | --- | --- |",
+    "| Severity | Confidence | Rule | Object | Recommended control | Suppression ID | Suppression | Expires | Owner |",
+    "| --- | --- | --- | --- | --- | --- | --- | --- | --- |",
     ...findings.map((finding) => {
       const suppression = finding.suppression;
-      return `| ${finding.severity} | ${finding.confidence} | ${finding.rule_id} | \`${finding.matched_object.type}:${finding.matched_object.name}\` | ${finding.recommended_control.replaceAll("_", " ")} | ${escapeTable(suppression?.reason ?? "suppressed")} | ${suppression?.expires_at ?? "unknown"} | ${escapeTable(suppression?.owner ?? "unknown")} |`;
+      return `| ${finding.severity} | ${finding.confidence} | ${finding.rule_id} | \`${finding.matched_object.type}:${finding.matched_object.name}\` | ${finding.recommended_control.replaceAll("_", " ")} | ${escapeTable(suppression?.id ?? "unknown")} | ${escapeTable(suppression?.reason ?? "suppressed")} | ${suppression?.expires_at ?? "unknown"} | ${escapeTable(suppression?.owner ?? "unknown")} |`;
     })
   ].join("\n");
 }

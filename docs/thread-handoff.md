@@ -1490,6 +1490,15 @@ The current iteration adds:
 - rule `AGENTCSP-AUTOMATION-004` for issue, pull request, or repository-dispatch text passed as an argument to a secret-backed agent package script running with write permissions
 - regression coverage proving raw GitHub event expressions and raw agent shell command text stay redacted while the normalized environment-key data flow remains available for triage
 
+## Expired Suppression CI Gate Pass
+
+The current iteration adds:
+
+- an opt-in `--fail-on-expired-suppressions` CLI gate so SOC and platform teams can block stale accepted-risk records independently of severity thresholds
+- core scan-config support for expired-suppression gating while preserving default exit-code behavior for adoption-friendly scans
+- Markdown report visibility for findings matched by expired suppressions, keeping stale waivers visible as active risk
+- regression coverage proving expired suppressions can fail CI without a `--fail-on` severity gate and remain non-failing unless the gate is explicitly enabled
+
 ## Initial Build Recommendation
 
 Start with a CLI-first MVP before building the dashboard:

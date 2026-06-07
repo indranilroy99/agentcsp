@@ -79,6 +79,47 @@ describe("policy suppressions", () => {
     expect(result.manifest.static_blast_radius?.expired_suppressions).toBe(expired.length);
     expect(result.manifest.static_blast_radius?.active_suppressions).toBe(0);
     expect(result.shouldFail).toBe(true);
+    expect(result.reportMarkdown).toContain("### Expired Suppressions");
+    expect(result.reportMarkdown).toContain("expired-critical-demo-risk");
+  });
+
+  it("can fail CI on expired suppressions without a severity gate", async () => {
+    const policyPath = await writePolicy("expired-waiver", "2000-01-01T00:00:00.000Z");
+    const result = await scanProject({
+      root_path: fixtureRoot,
+      output_path: "/private/tmp/agentcsp-suppression-expired-gate",
+      config_path: policyPath,
+      formats: ["json", "md", "sarif"],
+      include_hidden: true,
+      include_logs: false,
+      max_file_size_bytes: 1024 * 1024,
+      max_files: 5000,
+      quiet: true,
+      fail_on_expired_suppressions: true
+    });
+
+    const expired = result.findings.filter((finding) => finding.suppression?.status === "expired");
+    expect(expired.length).toBeGreaterThan(0);
+    expect(result.shouldFail).toBe(true);
+  });
+
+  it("keeps expired suppression failures opt-in", async () => {
+    const policyPath = await writePolicy("expired-observed", "2000-01-01T00:00:00.000Z");
+    const result = await scanProject({
+      root_path: fixtureRoot,
+      output_path: "/private/tmp/agentcsp-suppression-expired-observed",
+      config_path: policyPath,
+      formats: ["json", "md", "sarif"],
+      include_hidden: true,
+      include_logs: false,
+      max_file_size_bytes: 1024 * 1024,
+      max_files: 5000,
+      quiet: true
+    });
+
+    const expired = result.findings.filter((finding) => finding.suppression?.status === "expired");
+    expect(expired.length).toBeGreaterThan(0);
+    expect(result.shouldFail).toBe(false);
   });
 });
 

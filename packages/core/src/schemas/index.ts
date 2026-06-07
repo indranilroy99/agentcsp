@@ -455,7 +455,8 @@ export const ScanConfigSchema = z
     fail_on: SeveritySchema.optional(),
     fail_on_confidence: ConfidenceSchema.optional(),
     baseline_path: z.string().optional(),
-    fail_on_new: z.boolean().default(false)
+    fail_on_new: z.boolean().default(false),
+    fail_on_expired_suppressions: z.boolean().default(false)
   })
   .superRefine((config, context) => {
     if (config.fail_on_confidence && !config.fail_on) {

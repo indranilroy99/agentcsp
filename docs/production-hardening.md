@@ -330,6 +330,7 @@ Every production change should pass:
 - AgentCSP SARIF upload to GitHub code scanning on default-branch pushes
 - SARIF rules and results include GitHub-compatible `security-severity`, precision, tags, ranks, and help metadata
 - documented security disclosure policy for scanner, evidence, CI, and packaged artifact vulnerabilities
+- optional CI gate for expired suppressions so accepted-risk records cannot silently outlive their review window
 - fixture scan
 - SARIF validation
 - fixture artifact validation

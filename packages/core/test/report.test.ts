@@ -90,6 +90,7 @@ describe("scanProject", () => {
     expect(result.reportMarkdown).toContain("### Top Active Risks");
     expect(result.reportMarkdown).toContain("| Severity | Confidence | Risk | Rule | Object | Path | Recommended control |");
     expect(result.reportMarkdown).toContain("## Scan Coverage");
+    expect(result.reportMarkdown).toContain("### Expired Suppressions");
     expect(result.reportMarkdown).toContain("PII external reach paths");
     expect(result.reportMarkdown).toContain("PII attack paths");
     expect(result.reportMarkdown).toContain("Recommended Controls");

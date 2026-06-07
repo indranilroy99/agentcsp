@@ -147,6 +147,8 @@ Use `--fail-on-confidence high` or `--fail-on-confidence very_high` with `--fail
 
 Use `--baseline` with a previous `findings.json` or `agent-manifest.json` to distinguish new, existing, and resolved findings. Add `--fail-on-new` when CI should fail only on new findings that meet the configured severity and confidence thresholds.
 
+Use `--fail-on-expired-suppressions` when stale accepted-risk records should fail CI even without a severity threshold. Active suppressions still remain visible in JSON, Markdown, and SARIF, but are excluded from severity gates until they expire.
+
 Use `--fail-on-diagnostics` when malformed security-relevant configs should fail CI even if findings are otherwise below the configured severity gate. Malformed `agentcsp.yaml` files are reported as redacted diagnostics and scans continue with empty advisory policy so JSON, Markdown, and SARIF evidence are still emitted.
 
 The terminal banner animates only in interactive terminals. It is suppressed by `--quiet`, disabled in CI and piped output, and can be turned off with `AGENTCSP_NO_ANIMATION=1`.
