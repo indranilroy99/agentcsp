@@ -1167,6 +1167,7 @@ The current iteration adds:
 - vulnerable fixture coverage for a computer-use desktop agent that can observe a signed-in support desktop, use OCR, type/click, read/write clipboard, upload/download files, control desktop apps, and act on untrusted customer/browser context while redaction and approval are disabled
 - safe fixture coverage for a local read-only desktop review config with no signed-in session, screen capture, clipboard, keyboard/mouse, file transfer, app control, credential store, or untrusted input
 - rule `AGENTCSP-RUNTIME-054` for computer-use agents that combine authenticated desktop state, screen capture, keyboard/mouse control, clipboard and file authority, untrusted input, disabled redaction, credential exposure, and missing approval
+- rule `AGENTCSP-RUNTIME-099` for computer-use agents where credential-store or autofill state, OCR capture, clipboard writes, file transfer, auto-accepted downloads, untrusted input, disabled redaction, and missing approval create a direct credential-transfer boundary
 - graph candidate-window hardening so the Static Blast-Radius Summary keeps earlier high-signal context-to-capability paths as the runtime posture inventory grows, while the final attack-path output remains bounded
 - scanner, rule, fixture verifier, and redaction coverage proving raw remote desktop endpoints, app names, window titles, local transfer paths, data-scope labels, and token placeholders stay redacted
 

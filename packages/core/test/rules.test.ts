@@ -95,6 +95,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-078")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-053")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-054")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-099")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-055")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-056")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-057")).toBe(true);
@@ -2383,6 +2384,49 @@ describe("rule engine", () => {
     expect(JSON.stringify(runtimeComputerUseFindings[0])).not.toContain("desktop.agentcsp-demo.example.invalid");
     expect(JSON.stringify(runtimeComputerUseFindings[0])).not.toContain("support-crm-admin");
     expect(JSON.stringify(runtimeComputerUseFindings[0])).not.toContain("desktop_customer_email");
+    const runtimeComputerUseCredentialTransferFindings = findings.filter(
+      (finding) => finding.rule_id === "AGENTCSP-RUNTIME-099"
+    );
+    expect(runtimeComputerUseCredentialTransferFindings).toHaveLength(1);
+    expect(runtimeComputerUseCredentialTransferFindings[0]?.matched_object.path).toBe("computer/desktop-agent.yaml");
+    expect(runtimeComputerUseCredentialTransferFindings[0]?.matched_object.metadata).toMatchObject({
+      parsed_agent_computer_use_config: true,
+      agent_computer_use_enabled: true,
+      agent_computer_use_remote_session: true,
+      agent_computer_use_authenticated_session: true,
+      agent_computer_use_credential_store_access: true,
+      agent_computer_use_screen_capture: true,
+      agent_computer_use_ocr_capture: true,
+      agent_computer_use_clipboard_write: true,
+      agent_computer_use_file_transfer: true,
+      agent_computer_use_download_auto_accept: true,
+      agent_computer_use_local_path_redacted: true,
+      agent_computer_use_untrusted_input: true,
+      agent_computer_use_sensitive_context: true,
+      agent_computer_use_pii_context: true,
+      agent_computer_use_redaction_disabled: true,
+      agent_computer_use_approval_required: false
+    });
+    expect(runtimeComputerUseCredentialTransferFindings[0]?.matched_object.data_classes).toContain("credential");
+    expect(runtimeComputerUseCredentialTransferFindings[0]?.matched_object.secret_exposure).toBe(true);
+    expect(runtimeComputerUseCredentialTransferFindings[0]?.matched_object.untrusted_to_privileged).toBe(true);
+    expect(runtimeComputerUseCredentialTransferFindings[0]?.severity).toBe("critical");
+    expect(runtimeComputerUseCredentialTransferFindings[0]?.confidence).toBe("very_high");
+    expect(runtimeComputerUseCredentialTransferFindings[0]?.recommended_control).toBe("quarantine");
+    expect(JSON.stringify(runtimeComputerUseCredentialTransferFindings[0])).not.toContain("${DESKTOP_AGENT_TOKEN}");
+    expect(JSON.stringify(runtimeComputerUseCredentialTransferFindings[0])).not.toContain("desktop.agentcsp-demo.example.invalid");
+    expect(JSON.stringify(runtimeComputerUseCredentialTransferFindings[0])).not.toContain("support-crm-admin");
+    expect(JSON.stringify(runtimeComputerUseCredentialTransferFindings[0])).not.toContain("billing-console-prod");
+    expect(JSON.stringify(runtimeComputerUseCredentialTransferFindings[0])).not.toContain("password-manager-desktop");
+    expect(JSON.stringify(runtimeComputerUseCredentialTransferFindings[0])).not.toContain("customer-crm-window");
+    expect(JSON.stringify(runtimeComputerUseCredentialTransferFindings[0])).not.toContain("billing-admin-window");
+    expect(JSON.stringify(runtimeComputerUseCredentialTransferFindings[0])).not.toContain("/Users/support/customer_exports/export.csv");
+    expect(JSON.stringify(runtimeComputerUseCredentialTransferFindings[0])).not.toContain("/tmp/agent-desktop-downloads");
+    expect(JSON.stringify(runtimeComputerUseCredentialTransferFindings[0])).not.toContain("untrusted_customer_ticket");
+    expect(JSON.stringify(runtimeComputerUseCredentialTransferFindings[0])).not.toContain("browser_tool_output");
+    expect(JSON.stringify(runtimeComputerUseCredentialTransferFindings[0])).not.toContain("desktop_customer_email");
+    expect(JSON.stringify(runtimeComputerUseCredentialTransferFindings[0])).not.toContain("desktop_account_number");
+    expect(JSON.stringify(runtimeComputerUseCredentialTransferFindings[0])).not.toContain("confidential_desktop_notes");
     const runtimeContextWindowFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-RUNTIME-055");
     expect(runtimeContextWindowFindings).toHaveLength(1);
     expect(runtimeContextWindowFindings[0]?.matched_object.path).toBe("context-window/truncation-policy.yaml");
