@@ -1,0 +1,35 @@
+framework: openai
+policy_name: support-agent-model-only-guardrail
+env:
+  MODEL_GUARDRAIL_TOKEN: ${MODEL_GUARDRAIL_TOKEN}
+inputs:
+  - untrusted_customer_ticket
+  - retrieved_customer_context
+  - browser_tool_output
+guardrails:
+  enabled: true
+  enforcement_mode: prompt_only
+  policy_prompt: support-agent-self-review-policy
+  llm_judge: true
+  model_reviewer: support-approval-model
+  self_review: true
+  deterministic_policy_engine: false
+  schema_enforcement: false
+  allowlist_enforcement: false
+  pre_tool_enforcement: false
+  post_hoc_review_only: true
+runtime_authority:
+  approval_required: false
+  tools:
+    - support_db.update_customer_record
+    - vault_secret_lookup.read_support_token
+    - slack.post_customer_reply
+    - browser.submit_customer_form
+  actions:
+    - update_customer_record
+    - publish_customer_reply
+    - read_support_secret
+data_scope:
+  - model_guardrail_customer_email
+  - model_guardrail_account_number
+  - confidential_model_guardrail_notes

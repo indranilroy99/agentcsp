@@ -1287,6 +1287,16 @@ The current iteration adds:
 - rule `AGENTCSP-RUNTIME-067` for remote instruction loaders that combine remote auto-refresh, unpinned instructions, disabled verification, untrusted selectors, privileged role injection, privileged tool authority, and missing approval
 - scanner, rule, fixture verifier, and redaction coverage proving raw instruction URLs, instruction IDs, selector labels, tool names, data-scope labels, and token placeholders stay redacted
 
+## Model-Only Guardrail Enforcement Pass
+
+The current iteration adds:
+
+- first-class redacted metadata for safety policies that rely on prompt-only, LLM-judge, model-reviewer, self-review, or post-hoc guardrails while deterministic pre-tool enforcement is missing
+- vulnerable fixture coverage for a model-only guardrail that accepts untrusted customer, retrieval, and browser context, lacks deterministic schema or allowlist enforcement before tool calls, and protects credential-backed database, browser, Slack, and secret-manager tools only through model review
+- safe fixture coverage for a default-deny deterministic pre-tool safety policy that explicitly disables model reviewers and self-review while requiring approval
+- rule `AGENTCSP-RUNTIME-068` for model-only guardrails that combine missing deterministic pre-tool policy, untrusted input, privileged tool authority, credential exposure, and missing approval
+- scanner, rule, fixture verifier, and redaction coverage proving raw policy names, model-reviewer labels, policy-prompt labels, source labels, tool names, data-scope labels, and token placeholders stay redacted
+
 ## Initial Build Recommendation
 
 Start with a CLI-first MVP before building the dashboard:

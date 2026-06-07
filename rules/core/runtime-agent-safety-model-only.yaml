@@ -1,0 +1,47 @@
+id: AGENTCSP-RUNTIME-068
+name: Model-only guardrail controls privileged tools
+description: An agent safety policy relies on prompt-only, LLM-judge, or self-review enforcement while deterministic pre-tool controls are missing and untrusted context can reach privileged tools without approval.
+category: agent_safety_model_only_enforcement
+severity: critical
+maps_to:
+  owasp:
+    - LLM01:2025 Prompt Injection
+    - LLM02:2025 Sensitive Information Disclosure
+    - LLM06:2025 Excessive Agency
+  mitre_atlas:
+    - AML.T0051 LLM Prompt Injection
+    - AML.T0057 Exfiltration via Cyber Means
+  nist_ai_rmf:
+    - MAP 5.1
+    - MEASURE 2.9
+    - MANAGE 2.4
+match:
+  object_type: runtime_config
+  where:
+    - field: metadata.parsed_agent_safety_config
+      op: equals
+      value: true
+    - field: metadata.agent_safety_model_only_enforcement
+      op: equals
+      value: true
+    - field: metadata.agent_safety_pre_tool_enforcement_missing
+      op: equals
+      value: true
+    - field: metadata.agent_safety_deterministic_policy_missing
+      op: equals
+      value: true
+    - field: metadata.agent_safety_untrusted_input
+      op: equals
+      value: true
+    - field: metadata.agent_safety_privileged_tool_authority
+      op: equals
+      value: true
+    - field: metadata.agent_safety_approval_required
+      op: equals
+      value: false
+    - field: secret_exposure
+      op: equals
+      value: true
+recommendation:
+  control: require_approval
+  text: Move privileged tool authorization to deterministic pre-tool policy checks, keep model self-review advisory only, require schema or allowlist enforcement before tool calls, and require human approval until model-only guardrails cannot directly release privileged actions.

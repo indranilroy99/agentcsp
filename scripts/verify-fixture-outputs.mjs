@@ -47,6 +47,7 @@ const leakPatterns = [
   /\$\{LLM_CACHE_URL\}/u,
   /\$\{MCP_OAUTH_CLIENT_SECRET\}/u,
   /\$\{MCP_TOOL_CATALOG_TOKEN\}/u,
+  /\$\{MODEL_GUARDRAIL_TOKEN\}/u,
   /\$\{MODEL_ROUTER_TOKEN\}/u,
   /\$\{NETWORK_EGRESS_TOKEN\}/u,
   /\$\{OPENAI_API_KEY\}/u,
@@ -155,6 +156,9 @@ const leakPatterns = [
   /internal_support_notes/u,
   /customer-support-disabled-safety/u,
   /customer-support-fail-open-guardrail/u,
+  /support-agent-model-only-guardrail/u,
+  /support-agent-self-review-policy/u,
+  /support-approval-model/u,
   /customer_ticket_message/u,
   /retrieved_customer_context/u,
   /browser_tool_output/u,
@@ -170,6 +174,9 @@ const leakPatterns = [
   /failopen_customer_email/u,
   /failopen_account_number/u,
   /failopen_confidential_case_notes/u,
+  /model_guardrail_customer_email/u,
+  /model_guardrail_account_number/u,
+  /confidential_model_guardrail_notes/u,
   /\$\{AGENT_TASK_QUEUE_URL\}/u,
   /customer-support-agent-jobs/u,
   /support-agent-dlq/u,
@@ -557,8 +564,8 @@ const leakPatterns = [
 const vulnerable = await readScanOutput(vulnerableOutput, { sarifRequired: true });
 const safe = await readScanOutput(safeOutput, { sarifRequired: false });
 
-assertEqual(vulnerable.manifest.findings.length, 171, "vulnerable manifest finding count");
-assertEqual(vulnerable.findings.length, 171, "vulnerable findings.json count");
+assertEqual(vulnerable.manifest.findings.length, 172, "vulnerable manifest finding count");
+assertEqual(vulnerable.findings.length, 172, "vulnerable findings.json count");
 assertEqual(vulnerable.manifest.attack_paths.length, 15, "vulnerable attack path count");
 assertEqual(vulnerable.manifest.static_blast_radius?.critical_attack_paths, 15, "vulnerable critical attack path count");
 assertEqual(vulnerable.manifest.diagnostics.length, 0, "vulnerable diagnostics count");
@@ -629,6 +636,7 @@ for (const ruleId of [
   "AGENTCSP-RUNTIME-065",
   "AGENTCSP-RUNTIME-066",
   "AGENTCSP-RUNTIME-067",
+  "AGENTCSP-RUNTIME-068",
   "AGENTCSP-AUTOMATION-003",
   "AGENTCSP-RUNTIME-006",
   "AGENTCSP-MCP-006",

@@ -2579,7 +2579,10 @@ function detectAgentSafetyConfig(file: WalkedFile, text: string | undefined, sur
   surfaces.runtime_config.push({
     ...object,
     untrusted_to_privileged:
-      ((posture.agent_safety_controls_disabled || posture.agent_safety_fail_open || posture.agent_safety_monitor_only) &&
+      ((posture.agent_safety_controls_disabled ||
+        posture.agent_safety_fail_open ||
+        posture.agent_safety_monitor_only ||
+        posture.agent_safety_model_only_enforcement) &&
         posture.agent_safety_untrusted_input &&
         (posture.agent_safety_privileged_tool_authority ||
           posture.agent_safety_write_authority ||
@@ -4511,6 +4514,15 @@ function isAiModelEndpointConfigPath(relativePath: string, basename: string): bo
   const lowerBase = basename.toLowerCase();
   if (!/\.(json|ya?ml|toml)$/iu.test(lowerBase)) return false;
   const segments = normalized.split("/").slice(0, -1);
+  if (
+    segments.some((segment) =>
+      /^(guardrails?|safety|safety-controls|safety_controls|policy|policies|runtime-policy|runtime_policy|evaluators?|validators?|moderation|controls|redaction)$/iu.test(
+        segment
+      )
+    )
+  ) {
+    return false;
+  }
   const modelDirectory = segments.some((segment) =>
     /^(models?|llms?|ai|inference|providers?|model-providers?|model-gateway|gateways?|litellm|openai|anthropic)$/iu.test(segment)
   );
@@ -6062,6 +6074,11 @@ interface AgentSafetyPosture {
   agent_safety_timeout_allows: boolean;
   agent_safety_error_allows: boolean;
   agent_safety_monitor_only: boolean;
+  agent_safety_model_only_enforcement: boolean;
+  agent_safety_model_only_categories: string[];
+  agent_safety_pre_tool_enforcement_missing: boolean;
+  agent_safety_deterministic_policy_missing: boolean;
+  agent_safety_post_hoc_only: boolean;
   agent_safety_untrusted_input: boolean;
   agent_safety_privileged_tool_authority: boolean;
   agent_safety_tool_authority_categories: string[];
@@ -11929,6 +11946,7 @@ function classifyAgentSafetyConfig(value: unknown, filePath: string): AgentSafet
   const framework = inferAgentSafetyFramework([filePath, ...fields.map((field) => field.path), ...stringValues]);
   const disabledControls = collectAgentSafetyDisabledControls(fields);
   const failOpenCategories = collectAgentSafetyFailOpenCategories(fields);
+  const modelOnlyCategories = collectAgentSafetyModelOnlyCategories(fields);
   const toolAuthorityCategories = collectAgentSafetyToolAuthorityCategories(fields);
   const envKeys = uniqueStrings([
     ...collectEnvKeyNamesFromConfig(value).filter(isLikelyEnvKeyName),
@@ -11957,6 +11975,11 @@ function classifyAgentSafetyConfig(value: unknown, filePath: string): AgentSafet
     agent_safety_timeout_allows: failOpenCategories.includes("timeout_allow"),
     agent_safety_error_allows: failOpenCategories.includes("error_allow"),
     agent_safety_monitor_only: failOpenCategories.includes("monitor_only"),
+    agent_safety_model_only_enforcement: modelOnlyCategories.length > 0,
+    agent_safety_model_only_categories: modelOnlyCategories,
+    agent_safety_pre_tool_enforcement_missing: hasAgentSafetyPreToolEnforcementMissingSignal(fields),
+    agent_safety_deterministic_policy_missing: hasAgentSafetyDeterministicPolicyMissingSignal(fields),
+    agent_safety_post_hoc_only: hasAgentSafetyPostHocOnlySignal(fields),
     agent_safety_untrusted_input: hasAgentSafetyUntrustedInputSignal(fields),
     agent_safety_privileged_tool_authority: isAgentSafetyPrivileged(toolAuthorityCategories) || hasAgentSafetyToolAuthoritySignal(fields),
     agent_safety_tool_authority_categories: toolAuthorityCategories,
@@ -12024,6 +12047,70 @@ function collectAgentSafetyFailOpenCategories(fields: RuntimeField[]): string[] 
     if (isAgentSafetyMonitorOnlySignal(field)) categories.add("monitor_only");
   }
   return [...categories].sort((a, b) => a.localeCompare(b));
+}
+
+function collectAgentSafetyModelOnlyCategories(fields: RuntimeField[]): string[] {
+  const categories = new Set<string>();
+  for (const field of fields) {
+    const text = agentSafetySignalText(field);
+    if (
+      /\b(prompt only|prompt-only|system prompt|developer prompt|instruction only|instruction-only|policy prompt)\b/iu.test(text) &&
+      truthyConfigValue(field.value)
+    ) {
+      categories.add("prompt_only_policy");
+    }
+    if (
+      /\b(llm judge|llm-as-judge|model judge|model reviewer|ai reviewer|classifier model|policy model)\b/iu.test(text) &&
+      truthyConfigValue(field.value)
+    ) {
+      categories.add("llm_judge");
+    }
+    if (
+      /\b(self review|self-review|self critique|self-critique|ask the model|model decides|assistant decides|same model)\b/iu.test(text) &&
+      truthyConfigValue(field.value)
+    ) {
+      categories.add("self_review");
+    }
+    if (
+      /\b(post hoc|post-hoc|after tool|after-tool|after execution|after-execution|review after|audit after)\b/iu.test(text) &&
+      truthyConfigValue(field.value)
+    ) {
+      categories.add("post_hoc_review");
+    }
+    if (hasAgentSafetyPreToolEnforcementMissingSignal([field])) categories.add("pre_tool_enforcement_missing");
+    if (hasAgentSafetyDeterministicPolicyMissingSignal([field])) categories.add("deterministic_policy_missing");
+  }
+  return [...categories].sort((a, b) => a.localeCompare(b));
+}
+
+function hasAgentSafetyPreToolEnforcementMissingSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => {
+    const text = agentSafetySignalText(field);
+    if (!/\b(pre tool|pre-tool|before tool|before-tool|pre execution|pre-execution|before execution|tool gate|enforcement)\b/iu.test(text)) {
+      return false;
+    }
+    return disabledConfigValue(field.value) || /\b(disabled|off|false|none|missing|not required|not enforced|post hoc|after execution)\b/iu.test(text);
+  });
+}
+
+function hasAgentSafetyDeterministicPolicyMissingSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => {
+    const text = agentSafetySignalText(field);
+    if (!/\b(deterministic|schema|allowlist|denylist|policy engine|rule engine|non model|non-model|code enforced|code-enforced)\b/iu.test(text)) {
+      return false;
+    }
+    return disabledConfigValue(field.value) || /\b(disabled|off|false|none|missing|not required|not enforced|model only|prompt only)\b/iu.test(text);
+  });
+}
+
+function hasAgentSafetyPostHocOnlySignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => {
+    const text = agentSafetySignalText(field);
+    if (!/\b(post hoc|post-hoc|after tool|after-tool|after execution|after-execution|review after|audit after)\b/iu.test(text)) {
+      return false;
+    }
+    return truthyConfigValue(field.value);
+  });
 }
 
 function isAgentSafetyDefaultAllowSignal(field: RuntimeField): boolean {
@@ -12197,13 +12284,15 @@ function hasAgentSafetyPiiDataSignal(fields: RuntimeField[]): boolean {
 
 function hasAgentSafetyApprovalRequiredSignal(fields: RuntimeField[]): boolean {
   return fields.some((field) =>
-    /approval|required[_-]?approval|human[_-]?approval|confirm|confirmation|review|human[_-]?in[_-]?the[_-]?loop/iu.test(field.path) &&
+    /approval|required[_-]?approval|human[_-]?approval|confirm|confirmation|human[_-]?review|manual[_-]?review|human[_-]?in[_-]?the[_-]?loop/iu.test(
+      field.path
+    ) &&
     truthyConfigValue(field.value)
   );
 }
 
 function isAgentSafetySecurityField(fieldPath: string): boolean {
-  return /framework|provider|guardrail|safety|policy|control|moderation|filter|injection|jailbreak|validation|validator|sanitize|sanitiz|redact|mask|secret|pii|tool|mcp|function|output|input|source|customer|ticket|email|browser|database|memory|write|send|publish|approval|auth|token|credential|env|permission|scope|default|fallback|timeout|error|exception|fail[_-]?open|monitor|warn|shadow|dry[_-]?run|enforcement/iu.test(
+  return /framework|provider|guardrail|safety|policy|control|moderation|filter|injection|jailbreak|validation|validator|sanitize|sanitiz|redact|mask|secret|pii|tool|mcp|function|output|input|source|customer|ticket|email|browser|database|memory|write|send|publish|approval|auth|token|credential|env|permission|scope|default|fallback|timeout|error|exception|fail[_-]?open|monitor|warn|shadow|dry[_-]?run|enforcement|deterministic|schema|allowlist|denylist|llm|model|judge|review|pre[_-]?tool|post[_-]?hoc/iu.test(
     fieldPath
   );
 }

@@ -41,7 +41,7 @@
 - Add agent web/network egress posture for private network, localhost, cloud metadata service, wildcard destination, untrusted URL source, credential/header forwarding, redirects, DNS rebinding, response capture, and approval boundaries.
 - Add computer-use and desktop automation posture for signed-in host sessions, screen/OCR capture, keyboard/mouse control, clipboard access, file transfer, remote desktop endpoints, credential-store exposure, redaction posture, and approval boundaries.
 - Add agent authorization-broker posture for model-selected tool grants, dynamic resource scopes, default-allow/fail-open decisions, audit posture, credential exposure, and approval boundaries.
-- Add runtime posture inventory for sandbox, approval, network, tool authority, disabled safety controls, and fail-open agent safety fallback posture.
+- Add runtime posture inventory for sandbox, approval, network, tool authority, disabled safety controls, fail-open agent safety fallback posture, and model-only guardrail enforcement.
 - Add browser extension/profile and file-transfer posture for privileged extensions, password-manager/autofill exposure, upload/download authority, approval gates, and download/upload path redaction.
 - Add identity delegation posture for agent OAuth, OIDC, service-account, workload-identity, and token-broker authority.
 - Add cloud control-plane authority posture for agent IAM, compute, storage, secret, audit-log, IaC, and auto-remediation authority.

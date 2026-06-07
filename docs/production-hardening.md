@@ -170,6 +170,7 @@ Examples:
 - multi-agent delegation plus untrusted input plus shared memory plus privileged specialist tools plus credentials plus no approval gate
 - autonomous agent loop plus untrusted goals, automatic execution, privileged tool authority, tool-output feedback, missing iteration/runtime budgets or stop conditions, disabled kill switch, credentials, and no approval gate
 - disabled agent safety controls plus untrusted input plus privileged tools plus credentials plus no approval gate
+- model-only guardrails plus prompt-only, LLM-judge, or self-review enforcement, missing deterministic pre-tool policy, untrusted input, privileged tool authority, credentials, and no approval gate
 - live eval harness plus adversarial prompts plus production agent target plus privileged tools plus credentials plus no approval gate
 - agent identity delegation plus credential issuance plus service-account impersonation plus broad scopes plus untrusted subject inputs plus no approval gate
 - cloud control-plane agent plus broad admin/write scope, IAM authority, secret access, compute/storage mutation, untrusted input, credential exposure, and no approval gate

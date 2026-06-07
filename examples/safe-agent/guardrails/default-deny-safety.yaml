@@ -4,6 +4,15 @@ inputs:
   - internal_review_summary
 guardrails:
   enabled: true
+  enforcement_mode: deterministic_pre_tool
+  llm_judge: false
+  model_reviewer: false
+  self_review: false
+  deterministic_policy_engine: true
+  schema_enforcement: true
+  allowlist_enforcement: true
+  pre_tool_enforcement: true
+  post_hoc_review_only: false
   prompt_injection_filter:
     enabled: true
   output_validation:

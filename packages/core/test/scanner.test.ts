@@ -56,6 +56,7 @@ describe("scanner", () => {
       "MCP_OAUTH_CLIENT_SECRET",
       "MCP_TOOL_CATALOG_TOKEN",
       "MEMORY_STORE_TOKEN",
+      "MODEL_GUARDRAIL_TOKEN",
       "MODEL_ROUTER_TOKEN",
       "NETWORK_EGRESS_TOKEN",
       "OPENAI_API_KEY",
@@ -3789,6 +3790,64 @@ describe("scanner", () => {
     expect(JSON.stringify(failOpenSafetyConfig)).not.toContain("failopen_customer_email");
     expect(JSON.stringify(failOpenSafetyConfig)).not.toContain("failopen_account_number");
     expect(JSON.stringify(failOpenSafetyConfig)).not.toContain("failopen_confidential_case_notes");
+    const modelOnlySafetyConfig = surfaces.runtime_config.find((surface) => surface.path === "guardrails/model-only-safety.yaml");
+    expect(modelOnlySafetyConfig).toBeDefined();
+    expect(modelOnlySafetyConfig).toMatchObject({
+      trust_level: "project",
+      external_reach: true,
+      secret_exposure: true,
+      side_effect: true,
+      reversible: false,
+      untrusted_to_privileged: true
+    });
+    expect(modelOnlySafetyConfig?.metadata).toMatchObject({
+      content_redacted: true,
+      values_collected: false,
+      parsed_agent_safety_config: true,
+      agent_safety_framework: "openai",
+      agent_safety_controls_declared: true,
+      agent_safety_controls_disabled: false,
+      agent_safety_fail_open: false,
+      agent_safety_model_only_enforcement: true,
+      agent_safety_pre_tool_enforcement_missing: true,
+      agent_safety_deterministic_policy_missing: true,
+      agent_safety_post_hoc_only: true,
+      agent_safety_untrusted_input: true,
+      agent_safety_privileged_tool_authority: true,
+      agent_safety_write_authority: true,
+      agent_safety_external_authority: true,
+      agent_safety_secret_exposure: true,
+      agent_safety_sensitive_data: true,
+      agent_safety_pii_data: true,
+      agent_safety_approval_required: false
+    });
+    expect(modelOnlySafetyConfig?.metadata.agent_safety_model_only_categories).toEqual([
+      "deterministic_policy_missing",
+      "llm_judge",
+      "post_hoc_review",
+      "pre_tool_enforcement_missing",
+      "prompt_only_policy",
+      "self_review"
+    ]);
+    expect(modelOnlySafetyConfig?.metadata.agent_safety_tool_authority_categories).toEqual([
+      "browser_action",
+      "database_access",
+      "external_response",
+      "secret_manager_access",
+      "tool_call"
+    ]);
+    expect(modelOnlySafetyConfig?.metadata.env_key_names).toEqual(["MODEL_GUARDRAIL_TOKEN"]);
+    expect(modelOnlySafetyConfig?.metadata.secret_ref_key_names).toEqual(["MODEL_GUARDRAIL_TOKEN"]);
+    expect(modelOnlySafetyConfig?.data_classes).toEqual(["confidential", "credential", "pii"]);
+    expect(modelOnlySafetyConfig?.actions).toEqual(["call", "execute", "publish", "read", "send", "write"]);
+    expect(JSON.stringify(modelOnlySafetyConfig)).not.toContain("${MODEL_GUARDRAIL_TOKEN}");
+    expect(JSON.stringify(modelOnlySafetyConfig)).not.toContain("support-agent-model-only-guardrail");
+    expect(JSON.stringify(modelOnlySafetyConfig)).not.toContain("support-agent-self-review-policy");
+    expect(JSON.stringify(modelOnlySafetyConfig)).not.toContain("support-approval-model");
+    expect(JSON.stringify(modelOnlySafetyConfig)).not.toContain("untrusted_customer_ticket");
+    expect(JSON.stringify(modelOnlySafetyConfig)).not.toContain("support_db.update_customer_record");
+    expect(JSON.stringify(modelOnlySafetyConfig)).not.toContain("model_guardrail_customer_email");
+    expect(JSON.stringify(modelOnlySafetyConfig)).not.toContain("confidential_model_guardrail_notes");
     const aiEvalHarnessConfig = surfaces.runtime_config.find((surface) => surface.path === "evals/live-redteam.yaml");
     expect(aiEvalHarnessConfig).toBeDefined();
     expect(aiEvalHarnessConfig).toMatchObject({
@@ -4925,6 +4984,10 @@ describe("scanner", () => {
       agent_safety_timeout_allows: false,
       agent_safety_error_allows: false,
       agent_safety_monitor_only: false,
+      agent_safety_model_only_enforcement: false,
+      agent_safety_pre_tool_enforcement_missing: false,
+      agent_safety_deterministic_policy_missing: false,
+      agent_safety_post_hoc_only: false,
       agent_safety_untrusted_input: false,
       agent_safety_privileged_tool_authority: true,
       agent_safety_write_authority: false,
@@ -4937,6 +5000,7 @@ describe("scanner", () => {
     });
     expect(safetyPolicy?.metadata.agent_safety_disabled_controls).toEqual([]);
     expect(safetyPolicy?.metadata.agent_safety_fail_open_categories).toEqual([]);
+    expect(safetyPolicy?.metadata.agent_safety_model_only_categories).toEqual([]);
     expect(safetyPolicy?.metadata.agent_safety_tool_authority_categories).toEqual(["tool_call"]);
     expect(JSON.stringify(safetyPolicy)).not.toContain("internal-readonly-default-deny");
     expect(JSON.stringify(safetyPolicy)).not.toContain("readonly_docs.search");
