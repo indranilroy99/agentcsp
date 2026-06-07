@@ -1315,6 +1315,15 @@ The current iteration adds:
 - SARIF rule and result ranks, precision, tags, result-level rule tags, automation details, and rule help markdown so CI and code-scanning platforms can triage AgentCSP findings without parsing Markdown reports
 - report and fixture-output regression coverage proving SARIF emits scan-level triage, coverage, blast-radius context, security severity, precision, tags, ranks, and help metadata
 
+## Package Tarball Verification Pass
+
+The current iteration adds:
+
+- `pnpm verify:packages` now runs `pnpm pack` for both `@agentcsp/core` and `agentcsp`
+- tarball inspection proving the core package ships the compiled entrypoint, schemas export, scanner, rule engine, and the full copied built-in rule pack
+- tarball inspection proving the CLI package ships the executable entrypoint, banner module, and scan command implementation
+- package metadata checks for the core exports and the `agentcsp` CLI bin target
+
 ## Initial Build Recommendation
 
 Start with a CLI-first MVP before building the dashboard:
