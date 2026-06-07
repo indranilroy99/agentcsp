@@ -30,6 +30,7 @@ A finding should be considered production-grade when it includes:
 - fixture artifact verification for manifest/finding schema validity, SARIF structure, expected signal, safe-fixture quietness, and redaction invariants
 - agent package-manifest supply-chain metadata for agent/MCP/model/RAG dependencies, risky dependency reference kinds, lifecycle scripts, and credential exposure without emitting dependency names, specs, remote URLs, Git refs, lifecycle commands, or local script paths
 - agent deployment image-provenance metadata for mutable remote images, digest pinning, pull policy, privileged runtime, service accounts, host mounts, and credential exposure without emitting image names, registry paths, service-account names, secret names, host paths, or token placeholders
+- agent deployment host-escape metadata for privileged root workloads, host networking, Docker socket or host mounts, credential mounts, service-account authority, secret-backed env, and approval posture without emitting image names, service-account names, secret names, host paths, mount names, or token placeholders
 - redacted project-local rule diagnostics for malformed, schema-invalid, or duplicate custom rules
 - optional CI failure on diagnostics when malformed agent configuration should block release
 - negation-aware action classification so safety policy text is not treated as granted authority
@@ -143,6 +144,7 @@ Examples:
 - package-runner MCP server plus unpinned package version plus credential exposure
 - agent package manifest plus risky agent dependency references, credentialed lifecycle scripts, and external dependency reach
 - agent deployment manifest plus mutable remote image provenance, privileged host authority, credential exposure, and no approval gate
+- agent deployment manifest plus privileged root workload, host network, Docker socket or host mounts, credential mounts, service-account authority, secret-backed env, and no approval gate
 - runtime allowlist plus secret-backed MCP server plus approval bypass
 - auto-approved destructive MCP tool plus credential-backed server
 - auto-approved privileged runtime permissions plus credential key exposure
