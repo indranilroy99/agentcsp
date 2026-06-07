@@ -8,3 +8,16 @@ request_context:
   include_retrieval_context: true
   include_memory: true
   include_customer_ticket_context: true
+logging:
+  enabled: true
+  log_raw_requests: true
+  log_prompts: true
+  log_tool_outputs: true
+  log_retrieval_context: true
+  log_memory: true
+  retain_requests: true
+redaction:
+  enabled: false
+  pii: false
+  secrets: false
+approval_required: false

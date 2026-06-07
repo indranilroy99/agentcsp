@@ -589,8 +589,9 @@ The current iteration adds:
 The current iteration adds:
 
 - first-class redacted metadata for AI model provider, gateway, router, proxy, and inference configs, including provider, remote destination categories, plaintext/encrypted transport, prompt/tool-output/retrieval/memory context, PII context, and credential key references
-- vulnerable fixture coverage for an OpenAI-compatible model gateway over plaintext HTTP without emitting raw endpoint URLs, model names, or secret placeholders
+- vulnerable fixture coverage for an OpenAI-compatible model gateway over plaintext HTTP with raw request logging and disabled redaction without emitting raw endpoint URLs, model names, request payloads, or secret placeholders
 - rule `AGENTCSP-RUNTIME-009` for credential-backed model endpoints that send sensitive agent context over plaintext transport
+- rule `AGENTCSP-RUNTIME-086` for remote or custom model gateways that log unredacted prompts, tool outputs, retrieval context, memory, and PII from untrusted agent context without approval
 - scanner, rule, fixture verifier, and redaction coverage proving the finding is high-confidence while the safe fixture remains quiet
 
 ## Prompt Role Boundary Pass

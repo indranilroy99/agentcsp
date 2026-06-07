@@ -55,6 +55,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-007")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-008")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-009")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-086")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-010")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-083")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-011")).toBe(true);
@@ -1345,7 +1346,9 @@ describe("rule engine", () => {
       ai_model_sensitive_context: true,
       ai_model_sends_tool_outputs: true,
       ai_model_sends_retrieval_context: true,
-      ai_model_sends_memory: true
+      ai_model_sends_memory: true,
+      ai_model_request_logging_enabled: true,
+      ai_model_redaction_disabled: true
     });
     expect(runtimeModelEndpointFindings[0]?.severity).toBe("critical");
     expect(runtimeModelEndpointFindings[0]?.confidence).toBe("very_high");
@@ -1353,6 +1356,35 @@ describe("rule engine", () => {
     expect(JSON.stringify(runtimeModelEndpointFindings[0])).not.toContain("${OPENAI_API_KEY}");
     expect(JSON.stringify(runtimeModelEndpointFindings[0])).not.toContain("llm-gateway.example.invalid");
     expect(JSON.stringify(runtimeModelEndpointFindings[0])).not.toContain("agentcsp-support-ops");
+    const runtimeModelGatewayLoggingFindings = findings.filter(
+      (finding) => finding.rule_id === "AGENTCSP-RUNTIME-086"
+    );
+    expect(runtimeModelGatewayLoggingFindings).toHaveLength(1);
+    expect(runtimeModelGatewayLoggingFindings[0]?.matched_object.path).toBe("models/model-gateway.yaml");
+    expect(runtimeModelGatewayLoggingFindings[0]?.matched_object.metadata).toMatchObject({
+      parsed_ai_model_config: true,
+      ai_model_provider: "openai_compatible",
+      ai_model_remote_endpoint: true,
+      ai_model_custom_endpoint: true,
+      ai_model_public_endpoint: false,
+      ai_model_auth_disabled: false,
+      ai_model_sends_prompts: true,
+      ai_model_sends_tool_outputs: true,
+      ai_model_sends_retrieval_context: true,
+      ai_model_sends_memory: true,
+      ai_model_sensitive_context: true,
+      ai_model_pii_context: true,
+      ai_model_untrusted_input: true,
+      ai_model_request_logging_enabled: true,
+      ai_model_redaction_disabled: true,
+      ai_model_approval_required: false
+    });
+    expect(runtimeModelGatewayLoggingFindings[0]?.severity).toBe("critical");
+    expect(runtimeModelGatewayLoggingFindings[0]?.confidence).toBe("very_high");
+    expect(runtimeModelGatewayLoggingFindings[0]?.recommended_control).toBe("redact");
+    expect(JSON.stringify(runtimeModelGatewayLoggingFindings[0])).not.toContain("${OPENAI_API_KEY}");
+    expect(JSON.stringify(runtimeModelGatewayLoggingFindings[0])).not.toContain("llm-gateway.example.invalid");
+    expect(JSON.stringify(runtimeModelGatewayLoggingFindings[0])).not.toContain("agentcsp-support-ops");
     const runtimePublicModelGatewayFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-RUNTIME-051");
     expect(runtimePublicModelGatewayFindings).toHaveLength(1);
     expect(runtimePublicModelGatewayFindings[0]?.matched_object.path).toBe("models/public-gateway.yaml");

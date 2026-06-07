@@ -91,6 +91,7 @@ A finding should be considered production-grade when it includes:
 - database connector metadata for credential-backed read/write/query authority without emitting hosts, connection strings, usernames, or table names
 - database destructive-query metadata for natural-language or untrusted query input, remote credentialed execution, write/delete authority, sensitive/PII scope, table-name redaction, and approval posture without emitting hosts, connection strings, usernames, table names, source labels, or token placeholders
 - AI model endpoint metadata for prompt, tool-output, retrieval, and memory egress without emitting model gateway URLs or model names
+- AI model gateway request-logging metadata for prompts, tool outputs, retrieval context, memory, PII, untrusted input, redaction posture, approval state, and credential references without emitting gateway URLs, model names, request payloads, source labels, or token placeholders
 - AI model router and fallback metadata for sensitive context failover, provider-routing, redaction posture, output recording, and approval boundaries without emitting provider endpoints, model aliases, routing strategy values, source labels, or token placeholders
 - AI embedding and indexing metadata for third-party embedding egress, vector writes, source capture, redaction posture, retention, and approval boundaries without emitting embedding endpoints, model aliases, vector namespaces, source labels, document chunks, or token placeholders
 - AI telemetry export metadata for prompt, completion, tool-output, retrieval, and memory capture without emitting trace payloads or endpoints
@@ -217,6 +218,7 @@ Examples:
 - database connector with natural-language or untrusted SQL input plus remote credentialed query execution, write/delete authority, sensitive PII scope, and no approval gate
 - AI model endpoint with plaintext transport plus sensitive context plus credential reference
 - AI model router with automatic third-party fallback plus sensitive context, disabled redaction, untrusted input, credential reference, and no approval gate
+- AI model gateway request logging plus prompts, tool outputs, retrieval context, memory, PII, disabled redaction, untrusted input, credential reference, and no approval gate
 - AI embedding pipeline with third-party embedding, vector writes, sensitive capture, disabled redaction, untrusted input, credential reference, and no approval gate
 - AI telemetry remote export plus sensitive agent-context capture plus disabled redaction plus credential reference
 - cloud auto-remediation plus untrusted runbook or customer context plus admin scope, IAM mutation, secret write, compute/storage mutation, cloud CLI or IaC apply authority, credentials, and no approval gate

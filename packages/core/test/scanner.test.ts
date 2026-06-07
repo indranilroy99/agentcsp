@@ -1491,8 +1491,8 @@ describe("scanner", () => {
       ai_model_sensitive_context: true,
       ai_model_pii_context: true,
       ai_model_untrusted_input: true,
-      ai_model_request_logging_enabled: false,
-      ai_model_redaction_disabled: false,
+      ai_model_request_logging_enabled: true,
+      ai_model_redaction_disabled: true,
       ai_model_tool_calling_enabled: false,
       ai_model_approval_required: false
     });
@@ -1502,7 +1502,7 @@ describe("scanner", () => {
     ]);
     expect(modelConfig?.metadata.secret_ref_key_names).toEqual(["OPENAI_API_KEY"]);
     expect(modelConfig?.data_classes).toEqual(["confidential", "credential", "pii"]);
-    expect(modelConfig?.actions).toEqual(["call", "read", "send"]);
+    expect(modelConfig?.actions).toEqual(["call", "read", "remember", "send"]);
     expect(JSON.stringify(modelConfig)).not.toContain("${OPENAI_API_KEY}");
     expect(JSON.stringify(modelConfig)).not.toContain("llm-gateway.example.invalid");
     expect(JSON.stringify(modelConfig)).not.toContain("agentcsp-support-ops");
