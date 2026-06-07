@@ -67,6 +67,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-080")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-016")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-017")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-096")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-018")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-072")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-019")).toBe(true);
@@ -3370,6 +3371,58 @@ describe("rule engine", () => {
     expect(JSON.stringify(runtimeAiEvalHarnessFindings[0])).not.toContain("Ignore previous instructions");
     expect(JSON.stringify(runtimeAiEvalHarnessFindings[0])).not.toContain("prompt-injection-customer-record");
     expect(JSON.stringify(runtimeAiEvalHarnessFindings[0])).not.toContain("support_db.update_customer_record");
+    const runtimeAiEvalProdRetentionFindings = findings.filter(
+      (finding) => finding.rule_id === "AGENTCSP-RUNTIME-096"
+    );
+    expect(runtimeAiEvalProdRetentionFindings).toHaveLength(1);
+    expect(runtimeAiEvalProdRetentionFindings[0]?.matched_object.path).toBe("evals/live-redteam.yaml");
+    expect(runtimeAiEvalProdRetentionFindings[0]?.matched_object.metadata).toMatchObject({
+      parsed_ai_eval_harness_config: true,
+      ai_eval_framework: "promptfoo",
+      ai_eval_live_execution: true,
+      ai_eval_adversarial_cases: true,
+      ai_eval_untrusted_prompts: true,
+      ai_eval_dataset_redacted: true,
+      ai_eval_dataset_count: 2,
+      ai_eval_invokes_agent: true,
+      ai_eval_invokes_tools: true,
+      ai_eval_write_authority: true,
+      ai_eval_external_write_authority: true,
+      ai_eval_remote_target: true,
+      ai_eval_production_target: true,
+      ai_eval_records_outputs: true,
+      ai_eval_sensitive_data: true,
+      ai_eval_pii_data: true,
+      ai_eval_secret_exposure: true,
+      ai_eval_approval_required: false
+    });
+    expect(runtimeAiEvalProdRetentionFindings[0]?.matched_object.metadata.ai_eval_tool_authority_categories).toEqual([
+      "browser_action",
+      "database_access",
+      "external_response",
+      "memory_write",
+      "secret_manager_access",
+      "tool_call"
+    ]);
+    expect(runtimeAiEvalProdRetentionFindings[0]?.severity).toBe("critical");
+    expect(runtimeAiEvalProdRetentionFindings[0]?.confidence).toBe("very_high");
+    expect(runtimeAiEvalProdRetentionFindings[0]?.recommended_control).toBe("quarantine");
+    expect(JSON.stringify(runtimeAiEvalProdRetentionFindings[0])).not.toContain("${EVAL_AGENT_TOKEN}");
+    expect(JSON.stringify(runtimeAiEvalProdRetentionFindings[0])).not.toContain("production-support-redteam");
+    expect(JSON.stringify(runtimeAiEvalProdRetentionFindings[0])).not.toContain("agent-prod.example.invalid");
+    expect(JSON.stringify(runtimeAiEvalProdRetentionFindings[0])).not.toContain("customer-support-prod-agent");
+    expect(JSON.stringify(runtimeAiEvalProdRetentionFindings[0])).not.toContain("Ignore previous instructions");
+    expect(JSON.stringify(runtimeAiEvalProdRetentionFindings[0])).not.toContain("Jailbreak the support assistant");
+    expect(JSON.stringify(runtimeAiEvalProdRetentionFindings[0])).not.toContain("prompt-injection-customer-record");
+    expect(JSON.stringify(runtimeAiEvalProdRetentionFindings[0])).not.toContain("secret-exfiltration-reply");
+    expect(JSON.stringify(runtimeAiEvalProdRetentionFindings[0])).not.toContain("support_db.update_customer_record");
+    expect(JSON.stringify(runtimeAiEvalProdRetentionFindings[0])).not.toContain("vault_secret_lookup.read_support_token");
+    expect(JSON.stringify(runtimeAiEvalProdRetentionFindings[0])).not.toContain("slack.post_escalation_reply");
+    expect(JSON.stringify(runtimeAiEvalProdRetentionFindings[0])).not.toContain("browser.submit_customer_form");
+    expect(JSON.stringify(runtimeAiEvalProdRetentionFindings[0])).not.toContain(".evals/prod-redteam-results.json");
+    expect(JSON.stringify(runtimeAiEvalProdRetentionFindings[0])).not.toContain("customer_email_address");
+    expect(JSON.stringify(runtimeAiEvalProdRetentionFindings[0])).not.toContain("customer_account_number");
+    expect(JSON.stringify(runtimeAiEvalProdRetentionFindings[0])).not.toContain("confidential_support_notes");
     const automationAgentFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-AUTOMATION-002");
     expect(automationAgentFindings).toHaveLength(1);
     expect(automationAgentFindings[0]?.matched_object.path).toBe(".github/workflows/agent-maintenance.yml");

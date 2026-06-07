@@ -686,6 +686,7 @@ The current iteration adds:
 - first-class redacted metadata for AI eval, red-team, adversarial scenario, and prompt test harness configs
 - vulnerable fixture coverage for a promptfoo-style live production red-team suite that sends adversarial prompts to a production support agent with browser/database/secret/messaging authority, credentials, output retention, and no approval gate
 - rule `AGENTCSP-RUNTIME-017` for live eval harnesses that run adversarial prompts against privileged agents
+- rule `AGENTCSP-RUNTIME-096` for live production red-team evals that retain sensitive privileged tool outputs and results while external writes, credentials, and no approval are present
 - static graph regression coverage proving retrievable untrusted context can influence the live eval harness authority path
 - scanner, rule, fixture verifier, and redaction coverage proving raw suite names, scenario names, prompts, target URLs, agent names, tool strings, assertion values, output paths, data-field labels, and token placeholders stay redacted
 
