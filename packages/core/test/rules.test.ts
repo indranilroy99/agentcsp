@@ -170,6 +170,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-AUTOMATION-001")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-AUTOMATION-002")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-AUTOMATION-003")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-AUTOMATION-004")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-CURSOR-001")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-INSTRUCTION-001")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-PROMPT-001")).toBe(true);
@@ -4937,6 +4938,8 @@ describe("rule engine", () => {
       untrusted_event_trigger: true,
       untrusted_event_payload_used: true,
       untrusted_event_agent_input: true,
+      untrusted_event_shell_argument: true,
+      untrusted_event_shell_argument_env_key_count: 1,
       agent_package_script_bridge: true,
       write_permissions: true,
       mentions_secrets_context: true
@@ -4957,6 +4960,40 @@ describe("rule engine", () => {
     expect(JSON.stringify(automationUntrustedEventFindings[0])).not.toContain("github.event.comment.body");
     expect(JSON.stringify(automationUntrustedEventFindings[0])).not.toContain("github.event.client_payload.prompt");
     expect(JSON.stringify(automationUntrustedEventFindings[0])).not.toContain("github.event.pull_request.body");
+    expect(JSON.stringify(automationUntrustedEventFindings[0])).not.toContain("--ticket \"$AGENTCSP_TICKET_CONTEXT\"");
+    const automationShellArgumentFindings = findings.filter(
+      (finding) => finding.rule_id === "AGENTCSP-AUTOMATION-004"
+    );
+    expect(automationShellArgumentFindings).toHaveLength(1);
+    expect(automationShellArgumentFindings[0]?.matched_object.path).toBe(".github/workflows/agent-maintenance.yml");
+    expect(automationShellArgumentFindings[0]?.matched_object.metadata).toMatchObject({
+      untrusted_event_trigger: true,
+      untrusted_event_payload_used: true,
+      untrusted_event_agent_input: true,
+      untrusted_event_shell_argument: true,
+      untrusted_event_shell_argument_env_key_count: 1,
+      package_manager_run: true,
+      agent_run_command: true,
+      agent_package_script_bridge: true,
+      write_permissions: true,
+      mentions_secrets_context: true
+    });
+    expect(automationShellArgumentFindings[0]?.matched_object.metadata.untrusted_event_shell_argument_env_keys).toEqual([
+      "AGENTCSP_TICKET_CONTEXT"
+    ]);
+    expect(automationShellArgumentFindings[0]?.matched_object.metadata.untrusted_event_payload_sources).toEqual([
+      "issue_comment_body",
+      "pull_request_text",
+      "repository_dispatch_payload"
+    ]);
+    expect(automationShellArgumentFindings[0]?.severity).toBe("critical");
+    expect(automationShellArgumentFindings[0]?.confidence).toBe("very_high");
+    expect(automationShellArgumentFindings[0]?.recommended_control).toBe("quarantine");
+    expect(JSON.stringify(automationShellArgumentFindings[0])).not.toContain("github.event.comment.body");
+    expect(JSON.stringify(automationShellArgumentFindings[0])).not.toContain("github.event.client_payload.prompt");
+    expect(JSON.stringify(automationShellArgumentFindings[0])).not.toContain("github.event.pull_request.body");
+    expect(JSON.stringify(automationShellArgumentFindings[0])).not.toContain("--ticket \"$AGENTCSP_TICKET_CONTEXT\"");
+    expect(JSON.stringify(automationShellArgumentFindings[0])).not.toContain("pnpm agent:run");
     expect(findings.find((finding) => finding.rule_id === "AGENTCSP-MCP-004")?.matched_object.name).toBe(
       "ticketing-package-runner"
     );

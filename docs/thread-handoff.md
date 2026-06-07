@@ -1395,6 +1395,14 @@ The current iteration adds:
 - rule `AGENTCSP-RUNTIME-120` for unsandboxed inbound attachment parsing that can drive privileged agent tools with credential-backed authority
 - regression coverage proving raw attachment filenames, mail endpoints, mailbox names, agent names, tool names, source labels, data labels, and token placeholders stay redacted
 
+## Automation Shell-Argument Boundary Pass
+
+The current iteration adds:
+
+- first-class GitHub Actions metadata for untrusted event payloads that are mapped into environment variables and then used as shell command arguments
+- rule `AGENTCSP-AUTOMATION-004` for issue, pull request, or repository-dispatch text passed as an argument to a secret-backed agent package script running with write permissions
+- regression coverage proving raw GitHub event expressions and raw agent shell command text stay redacted while the normalized environment-key data flow remains available for triage
+
 ## Initial Build Recommendation
 
 Start with a CLI-first MVP before building the dashboard:

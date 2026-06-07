@@ -287,6 +287,7 @@ Examples:
 - read-only tool hint plus destructive or external write behavior
 - scheduled or externally dispatched automation plus secrets and write authority
 - issue/comment/repository-dispatch event payloads passed into secret-backed agent automation with write authority
+- issue/comment/pull-request/repository-dispatch payloads mapped into environment variables and passed as shell arguments to secret-backed agent package scripts with write permissions
 - package publish/release authority plus agent-influenced workflow
 - attack paths that connect specific context-risk signals to concrete privileged capabilities
 - source-anchored RAG data-egress paths that preserve the retrieval finding as the reason for the blast radius

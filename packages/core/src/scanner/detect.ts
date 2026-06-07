@@ -22938,8 +22938,9 @@ function detectWorkflow(file: WalkedFile, text: string | undefined, surfaces: De
   const triggerNames = extractWorkflowTriggers(parsed.on);
   const writePermissions = hasWritePermissions(permissions);
   const mentionsSecretsContext = /secrets\./i.test(content);
-  const commandSignals = classifyWorkflowRunCommands(collectWorkflowRunCommands(parsed));
-  const eventSignals = classifyWorkflowEventInput(triggerNames, parsed, content, commandSignals);
+  const runCommands = collectWorkflowRunCommands(parsed);
+  const commandSignals = classifyWorkflowRunCommands(runCommands);
+  const eventSignals = classifyWorkflowEventInput(triggerNames, parsed, content, commandSignals, runCommands);
   const untrustedEventPrivilegedBridge =
     eventSignals.untrusted_event_agent_input && (writePermissions || mentionsSecretsContext || commandSignals.agent_package_script_names.length > 0);
   const object = createSurfaceObject({
@@ -23523,6 +23524,9 @@ interface WorkflowEventInputSignals {
   untrusted_event_context_env_keys: string[];
   untrusted_event_context_env_key_count: number;
   untrusted_event_agent_input: boolean;
+  untrusted_event_shell_argument: boolean;
+  untrusted_event_shell_argument_env_keys: string[];
+  untrusted_event_shell_argument_env_key_count: number;
 }
 
 function collectWorkflowRunCommands(value: unknown): string[] {
@@ -23566,12 +23570,14 @@ function classifyWorkflowEventInput(
   triggerNames: string[],
   parsedWorkflow: unknown,
   content: string,
-  commandSignals: WorkflowCommandSignals
+  commandSignals: WorkflowCommandSignals,
+  runCommands: string[]
 ): WorkflowEventInputSignals {
   const eventTriggers = triggerNames.filter(isUntrustedWorkflowEventTrigger);
   const payloadSources = classifyWorkflowEventPayloadSources(content);
   const untrustedPayloadSources = payloadSources.filter((source) => source !== "workflow_dispatch_input");
   const eventEnvKeys = collectWorkflowEventInputEnvKeys(parsedWorkflow);
+  const shellArgumentEnvKeys = collectWorkflowEventShellArgumentEnvKeys(runCommands, eventEnvKeys);
   const payloadUsed = untrustedPayloadSources.length > 0;
   return {
     untrusted_event_trigger: eventTriggers.length > 0,
@@ -23582,7 +23588,10 @@ function classifyWorkflowEventInput(
     untrusted_event_payload_redacted: payloadUsed,
     untrusted_event_context_env_keys: eventEnvKeys,
     untrusted_event_context_env_key_count: eventEnvKeys.length,
-    untrusted_event_agent_input: payloadUsed && commandSignals.agent_run_command
+    untrusted_event_agent_input: payloadUsed && commandSignals.agent_run_command,
+    untrusted_event_shell_argument: shellArgumentEnvKeys.length > 0,
+    untrusted_event_shell_argument_env_keys: shellArgumentEnvKeys,
+    untrusted_event_shell_argument_env_key_count: shellArgumentEnvKeys.length
   };
 }
 
@@ -23617,6 +23626,22 @@ function collectWorkflowEventInputEnvKeys(value: unknown): string[] {
   const keys = new Set<string>();
   collectWorkflowEventInputEnvKeysInto(value, keys);
   return [...keys].sort((a, b) => a.localeCompare(b));
+}
+
+function collectWorkflowEventShellArgumentEnvKeys(runCommands: string[], envKeys: string[]): string[] {
+  if (runCommands.length === 0 || envKeys.length === 0) return [];
+  const commandText = runCommands.join("\n");
+  const matched = envKeys.filter((envKey) => {
+    const escaped = escapeRegExp(envKey);
+    return new RegExp(String.raw`(?:^|[\s"'=])--?[A-Za-z0-9][\w-]*(?:[=\s]+["']?\$\{?${escaped}\}?|\s+["']?\$\{?${escaped}\}?)`, "u").test(
+      commandText
+    ) || new RegExp(String.raw`(?:^|[\s"'])\$\{?${escaped}\}?(?:[\s"']|$)`, "u").test(commandText);
+  });
+  return matched.sort((a, b) => a.localeCompare(b));
+}
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&");
 }
 
 function collectWorkflowEventInputEnvKeysInto(value: unknown, keys: Set<string>): void {
