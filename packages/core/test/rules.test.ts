@@ -103,6 +103,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-063")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-076")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-064")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-091")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-065")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-066")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-067")).toBe(true);
@@ -1249,6 +1250,47 @@ describe("rule engine", () => {
     expect(JSON.stringify(runtimeResponseStreamFindings[0])).not.toContain("response_stream_account_number");
     expect(JSON.stringify(runtimeResponseStreamFindings[0])).not.toContain("confidential_response_stream_notes");
     expect(JSON.stringify(runtimeResponseStreamFindings[0])).not.toContain("response_stream_api_token");
+    const runtimeResponseStreamPromptBoundaryFindings = findings.filter(
+      (finding) => finding.rule_id === "AGENTCSP-RUNTIME-091"
+    );
+    expect(runtimeResponseStreamPromptBoundaryFindings).toHaveLength(1);
+    expect(runtimeResponseStreamPromptBoundaryFindings[0]?.matched_object.path).toBe("responses/public-stream.yaml");
+    expect(runtimeResponseStreamPromptBoundaryFindings[0]?.matched_object.metadata).toMatchObject({
+      parsed_agent_response_exposure_config: true,
+      agent_response_exposure_enabled: true,
+      agent_response_exposure_public_endpoint: true,
+      agent_response_exposure_anonymous_access: true,
+      agent_response_exposure_auth_disabled: true,
+      agent_response_exposure_cors_broad: true,
+      agent_response_exposure_streaming_enabled: true,
+      agent_response_exposure_reasoning_visible: true,
+      agent_response_exposure_system_prompt_visible: true,
+      agent_response_exposure_developer_prompt_visible: true,
+      agent_response_exposure_tool_output_visible: true,
+      agent_response_exposure_tool_argument_visible: true,
+      agent_response_exposure_retrieval_visible: true,
+      agent_response_exposure_memory_visible: true,
+      agent_response_exposure_secret_context_visible: true,
+      agent_response_exposure_redaction_disabled: true,
+      agent_response_exposure_approval_required: false
+    });
+    expect(runtimeResponseStreamPromptBoundaryFindings[0]?.severity).toBe("critical");
+    expect(runtimeResponseStreamPromptBoundaryFindings[0]?.confidence).toBe("very_high");
+    expect(runtimeResponseStreamPromptBoundaryFindings[0]?.recommended_control).toBe("deny");
+    expect(JSON.stringify(runtimeResponseStreamPromptBoundaryFindings[0])).not.toContain("${RESPONSE_STREAM_TOKEN}");
+    expect(JSON.stringify(runtimeResponseStreamPromptBoundaryFindings[0])).not.toContain(
+      "stream.agentcsp-demo.example.invalid"
+    );
+    expect(JSON.stringify(runtimeResponseStreamPromptBoundaryFindings[0])).not.toContain(
+      "response_stream_customer_email"
+    );
+    expect(JSON.stringify(runtimeResponseStreamPromptBoundaryFindings[0])).not.toContain(
+      "response_stream_account_number"
+    );
+    expect(JSON.stringify(runtimeResponseStreamPromptBoundaryFindings[0])).not.toContain(
+      "confidential_response_stream_notes"
+    );
+    expect(JSON.stringify(runtimeResponseStreamPromptBoundaryFindings[0])).not.toContain("response_stream_api_token");
     const runtimeActionRouterFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-RUNTIME-065");
     expect(runtimeActionRouterFindings).toHaveLength(1);
     expect(runtimeActionRouterFindings[0]?.matched_object.path).toBe("action-router/model-actions.yaml");

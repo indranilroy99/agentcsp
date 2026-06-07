@@ -1267,6 +1267,7 @@ The current iteration adds:
 - vulnerable fixture coverage for a public response stream that exposes chain-of-thought, reasoning traces, planner scratchpad, system/developer prompts, raw tool outputs, tool arguments, retrieved chunks, memory context, PII, and secret-bearing fields without redaction or approval
 - safe fixture coverage for an SSO-protected internal event stream that keeps reasoning, prompt internals, tool outputs, tool arguments, retrieval chunks, memory, and secrets redacted while requiring approval
 - rule `AGENTCSP-RUNTIME-064` for public response streams that expose model internals, tool data, RAG context, memory, and secrets to clients without redaction or approval
+- rule `AGENTCSP-RUNTIME-091` for anonymous broad-CORS response streams that leak system/developer prompts, reasoning traces, raw tool outputs, and tool arguments across the public client boundary
 - scanner, rule, fixture verifier, and redaction coverage proving raw stream endpoints, response field labels, reasoning labels, retrieval labels, memory labels, data-scope labels, and token placeholders stay redacted
 
 ## Agent Action Router Auto-Execution Pass
