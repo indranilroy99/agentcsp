@@ -1,0 +1,51 @@
+id: AGENTCSP-RUNTIME-069
+name: Realtime agent records external callers without redaction
+description: A realtime or voice agent accepts external audio, captures transcripts and recordings, disables transcript sanitization and recording redaction, handles sensitive caller context, and lacks an approval boundary.
+category: realtime_recording_exposure
+severity: critical
+maps_to:
+  owasp:
+    - LLM02:2025 Sensitive Information Disclosure
+    - LLM06:2025 Excessive Agency
+  mitre_atlas:
+    - AML.T0057 Exfiltration via Cyber Means
+  nist_ai_rmf:
+    - MAP 4.1
+    - MEASURE 2.7
+    - MANAGE 2.4
+match:
+  object_type: runtime_config
+  where:
+    - field: metadata.parsed_realtime_agent_session_config
+      op: equals
+      value: true
+    - field: metadata.realtime_agent_external_caller
+      op: equals
+      value: true
+    - field: metadata.realtime_agent_voice_or_audio_input
+      op: equals
+      value: true
+    - field: metadata.realtime_agent_transcript_capture
+      op: equals
+      value: true
+    - field: metadata.realtime_agent_recording_enabled
+      op: equals
+      value: true
+    - field: metadata.realtime_agent_transcript_sanitization_disabled
+      op: equals
+      value: true
+    - field: metadata.realtime_agent_recording_redaction_disabled
+      op: equals
+      value: true
+    - field: metadata.realtime_agent_approval_required
+      op: equals
+      value: false
+    - field: data_classes
+      op: contains_any
+      value:
+        - credential
+        - confidential
+        - pii
+recommendation:
+  control: redact
+  text: Disable raw audio retention by default, redact PII and credentials before recording or transcript storage, sanitize caller transcripts before model use, separate recording retention from tool execution, and require approval before external caller context is persisted.

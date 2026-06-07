@@ -94,6 +94,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-066")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-067")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-068")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-069")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-030")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-031")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-032")).toBe(true);
@@ -1991,6 +1992,28 @@ describe("rule engine", () => {
     expect(JSON.stringify(runtimeRealtimeAgentFindings[0])).not.toContain("realtime_secret_lookup");
     expect(JSON.stringify(runtimeRealtimeAgentFindings[0])).not.toContain("pstn_customer_phone");
     expect(JSON.stringify(runtimeRealtimeAgentFindings[0])).not.toContain("anonymous_support_caller");
+    const runtimeRealtimeRecordingFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-RUNTIME-069");
+    expect(runtimeRealtimeRecordingFindings).toHaveLength(1);
+    expect(runtimeRealtimeRecordingFindings[0]?.matched_object.path).toBe("realtime/support-voice-agent.yaml");
+    expect(runtimeRealtimeRecordingFindings[0]?.matched_object.metadata).toMatchObject({
+      parsed_realtime_agent_session_config: true,
+      realtime_agent_external_caller: true,
+      realtime_agent_voice_or_audio_input: true,
+      realtime_agent_transcript_capture: true,
+      realtime_agent_recording_enabled: true,
+      realtime_agent_recording_redaction_disabled: true,
+      realtime_agent_transcript_sanitization_disabled: true,
+      realtime_agent_sensitive_context: true,
+      realtime_agent_pii_context: true,
+      realtime_agent_approval_required: false
+    });
+    expect(runtimeRealtimeRecordingFindings[0]?.severity).toBe("critical");
+    expect(runtimeRealtimeRecordingFindings[0]?.confidence).toBe("very_high");
+    expect(runtimeRealtimeRecordingFindings[0]?.recommended_control).toBe("redact");
+    expect(JSON.stringify(runtimeRealtimeRecordingFindings[0])).not.toContain("support_voice_recordings_private");
+    expect(JSON.stringify(runtimeRealtimeRecordingFindings[0])).not.toContain("realtime_caller_phone_number");
+    expect(JSON.stringify(runtimeRealtimeRecordingFindings[0])).not.toContain("realtime_customer_account_id");
+    expect(JSON.stringify(runtimeRealtimeRecordingFindings[0])).not.toContain("confidential_live_support_notes");
     const runtimeAgentOrchestrationFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-RUNTIME-015");
     expect(runtimeAgentOrchestrationFindings).toHaveLength(1);
     expect(runtimeAgentOrchestrationFindings[0]?.matched_object.path).toBe("agents/support-crew.yaml");
