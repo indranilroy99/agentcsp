@@ -657,6 +657,7 @@ The current iteration adds:
 - first-class redacted metadata for inbound email, chat, ticket, webhook, and queue triggers that pass external message content into agent execution
 - vulnerable fixture coverage for a support inbox trigger that can invoke agent tools, reply externally, write customer state, persist memory, and access browser/database/secret-manager authority with credentials and no approval gate
 - rule `AGENTCSP-RUNTIME-014` for inbound untrusted messages that can drive privileged agent tools
+- rule `AGENTCSP-RUNTIME-094` for inbound attachments that can reach browser, database, external response, memory, and secret-manager tools without approval
 - scanner, rule, fixture verifier, and redaction coverage proving raw mailbox names, webhook URLs, sender addresses, labels, agent names, prompt fields, and token placeholders stay redacted
 
 ## Multi-Agent Orchestration Authority Pass

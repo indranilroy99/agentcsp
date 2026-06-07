@@ -1,0 +1,75 @@
+id: AGENTCSP-RUNTIME-094
+name: Inbound attachments can trigger privileged agent tools
+description: An external email, chat, ticket, or webhook trigger includes attachments and automatically routes that content into an agent with browser, database, external response, memory, or secret-manager authority without an approval gate.
+category: inbound_attachment_tool_execution
+severity: critical
+maps_to:
+  owasp:
+    - LLM01:2025 Prompt Injection
+    - LLM02:2025 Sensitive Information Disclosure
+    - LLM06:2025 Excessive Agency
+  mitre_atlas:
+    - AML.T0051 LLM Prompt Injection
+    - AML.T0057 Exfiltration via Cyber Means
+    - AML.T0059 Data from Information Repositories
+  nist_ai_rmf:
+    - MAP 5.1
+    - MEASURE 2.9
+    - MANAGE 2.4
+match:
+  object_type: runtime_config
+  where:
+    - field: metadata.parsed_inbound_trigger_config
+      op: equals
+      value: true
+    - field: metadata.inbound_trigger_external_source
+      op: equals
+      value: true
+    - field: metadata.inbound_trigger_invokes_agent
+      op: equals
+      value: true
+    - field: metadata.inbound_trigger_invokes_tools
+      op: equals
+      value: true
+    - field: metadata.inbound_trigger_attachment_context
+      op: equals
+      value: true
+    - field: metadata.inbound_trigger_payload_categories
+      op: contains_any
+      value:
+        - attachment
+    - field: metadata.inbound_trigger_tool_authority_categories
+      op: contains_any
+      value:
+        - browser_action
+        - database_access
+        - external_response
+        - memory_write
+        - secret_manager_access
+    - field: metadata.inbound_trigger_write_authority
+      op: equals
+      value: true
+    - field: metadata.inbound_trigger_external_response
+      op: equals
+      value: true
+    - field: metadata.inbound_trigger_memory_write
+      op: equals
+      value: true
+    - field: metadata.inbound_trigger_sensitive_context
+      op: equals
+      value: true
+    - field: metadata.inbound_trigger_pii_context
+      op: equals
+      value: true
+    - field: metadata.inbound_trigger_approval_required
+      op: equals
+      value: false
+    - field: secret_exposure
+      op: equals
+      value: true
+    - field: untrusted_to_privileged
+      op: equals
+      value: true
+recommendation:
+  control: quarantine
+  text: Quarantine inbound attachments before agent invocation, strip prompt-like instructions from attachment text, scan and sandbox attachment parsing, and require approval before attachment-derived context can reach browser, database, external response, memory, or secret-manager tools.

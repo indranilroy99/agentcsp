@@ -62,6 +62,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-012")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-013")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-014")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-094")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-015")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-080")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-016")).toBe(true);
@@ -2848,6 +2849,55 @@ describe("rule engine", () => {
     expect(JSON.stringify(runtimeInboundTriggerFindings[0])).not.toContain("mail-router.example.invalid");
     expect(JSON.stringify(runtimeInboundTriggerFindings[0])).not.toContain("secops-support@example.invalid");
     expect(JSON.stringify(runtimeInboundTriggerFindings[0])).not.toContain("support-triage-agent");
+    const runtimeInboundAttachmentFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-RUNTIME-094");
+    expect(runtimeInboundAttachmentFindings).toHaveLength(1);
+    expect(runtimeInboundAttachmentFindings[0]?.matched_object.path).toBe("inbox/support-triage.yaml");
+    expect(runtimeInboundAttachmentFindings[0]?.matched_object.metadata).toMatchObject({
+      parsed_inbound_trigger_config: true,
+      inbound_trigger_provider: "gmail",
+      inbound_trigger_external_source: true,
+      inbound_trigger_invokes_agent: true,
+      inbound_trigger_invokes_tools: true,
+      inbound_trigger_attachment_context: true,
+      inbound_trigger_write_authority: true,
+      inbound_trigger_external_response: true,
+      inbound_trigger_memory_write: true,
+      inbound_trigger_sensitive_context: true,
+      inbound_trigger_pii_context: true,
+      inbound_trigger_approval_required: false
+    });
+    expect(runtimeInboundAttachmentFindings[0]?.matched_object.metadata.inbound_trigger_payload_categories).toEqual([
+      "attachment",
+      "message_body",
+      "message_title",
+      "sender_identity"
+    ]);
+    expect(runtimeInboundAttachmentFindings[0]?.matched_object.metadata.inbound_trigger_tool_authority_categories).toEqual([
+      "browser_action",
+      "database_access",
+      "external_response",
+      "memory_write",
+      "secret_manager_access",
+      "state_write",
+      "tool_call"
+    ]);
+    expect(runtimeInboundAttachmentFindings[0]?.severity).toBe("critical");
+    expect(runtimeInboundAttachmentFindings[0]?.confidence).toBe("very_high");
+    expect(runtimeInboundAttachmentFindings[0]?.recommended_control).toBe("quarantine");
+    expect(JSON.stringify(runtimeInboundAttachmentFindings[0])).not.toContain("${SUPPORT_INBOX_TOKEN}");
+    expect(JSON.stringify(runtimeInboundAttachmentFindings[0])).not.toContain("mail-router.example.invalid");
+    expect(JSON.stringify(runtimeInboundAttachmentFindings[0])).not.toContain("secops-support@example.invalid");
+    expect(JSON.stringify(runtimeInboundAttachmentFindings[0])).not.toContain("support-triage-agent");
+    expect(JSON.stringify(runtimeInboundAttachmentFindings[0])).not.toContain("message.body");
+    expect(JSON.stringify(runtimeInboundAttachmentFindings[0])).not.toContain("support mailbox");
+    expect(JSON.stringify(runtimeInboundAttachmentFindings[0])).not.toContain("inbound customer email");
+    expect(JSON.stringify(runtimeInboundAttachmentFindings[0])).not.toContain("slack escalation message");
+    expect(JSON.stringify(runtimeInboundAttachmentFindings[0])).not.toContain("ticket comment");
+    expect(JSON.stringify(runtimeInboundAttachmentFindings[0])).not.toContain("sender_email");
+    expect(JSON.stringify(runtimeInboundAttachmentFindings[0])).not.toContain("customer_account_id");
+    expect(JSON.stringify(runtimeInboundAttachmentFindings[0])).not.toContain("support_db");
+    expect(JSON.stringify(runtimeInboundAttachmentFindings[0])).not.toContain("slack_reply");
+    expect(JSON.stringify(runtimeInboundAttachmentFindings[0])).not.toContain("vault_secret_lookup");
     const runtimeHostedAssistantFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-RUNTIME-042");
     expect(runtimeHostedAssistantFindings).toHaveLength(1);
     expect(runtimeHostedAssistantFindings[0]?.matched_object.path).toBe("assistants/support-assistant.yaml");
