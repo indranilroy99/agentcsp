@@ -1128,6 +1128,7 @@ The current iteration adds:
 - vulnerable fixture coverage for a Slack-style approval webhook that accepts broad public channel approvals from unverified/requester-controlled approvers, disables signature and replay checks, and auto-executes database, browser, Slack, and secret-manager actions
 - safe fixture coverage for an internal SSO/RBAC-backed review console with signature checks, replay protection, approver allowlists, no raw untrusted context, and no auto-execution
 - rule `AGENTCSP-RUNTIME-052` for spoofable approval channels that combine external approval ingress, disabled channel authentication, unverified approver identity, disabled replay protection, broad approver scope, privileged action authority, and auto-execution
+- rule `AGENTCSP-RUNTIME-078` for approval requests that forward raw untrusted customer, retrieval, or tool context into an external human review channel and then auto-execute privileged write, browser, external, or secret-backed actions
 - scanner, rule, fixture verifier, and redaction coverage proving raw approval URLs, channel names, approver labels, action names, data-scope labels, and token placeholders stay redacted
 
 ## Live Agent Session-Sharing Pass

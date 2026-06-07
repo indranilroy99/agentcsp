@@ -188,6 +188,7 @@ Examples:
 - agent self-modification plus untrusted inputs, persistent policy/runtime/tool rewrites, post-update execution or reload, disabled rollback, and no approval gate
 - model-mediated approval gate plus untrusted approval context plus default-allow behavior plus auto-executed privileged actions and no required human reviewer
 - external ChatOps, webhook, email, ticket, or comment approval channel plus disabled authentication, unverified approver identity, disabled replay protection, broad approver scope, and auto-executed privileged actions
+- approval requests that forward raw untrusted customer, retrieval, browser, or tool context into external human review and then auto-execute privileged write, browser, external, or secret-backed actions
 - background agent queue plus untrusted prompt/tool-output jobs, retry, dead-letter redrive, replay, privileged tool authority, credentials, and no approval gate
 - public or external shared live agent session plus disabled authentication, collaborator prompt injection, tool or approval control, sensitive context capture, disabled redaction, credential references, and no independent approval gate
 - computer-use agent plus signed-in desktop session, screen capture, keyboard/mouse and clipboard/file authority, untrusted instructions, disabled redaction, credential-store access, and no approval gate

@@ -6184,6 +6184,7 @@ interface AgentApprovalGatePosture {
   agent_approval_replay_protection_disabled: boolean;
   agent_approval_broad_approver_scope: boolean;
   agent_approval_context_untrusted: boolean;
+  agent_approval_raw_context_included: boolean;
   agent_approval_decision_model_driven: boolean;
   agent_approval_uses_untrusted_summary: boolean;
   agent_approval_human_required: boolean;
@@ -13063,6 +13064,7 @@ function classifyAgentApprovalGateConfig(value: unknown, filePath: string): Agen
     agent_approval_context_untrusted: hasAgentApprovalUntrustedContextSignal(fields) || promptSourceCategories.some((category) =>
       ["retrieval_context", "tool_output", "untrusted_user_input"].includes(category)
     ),
+    agent_approval_raw_context_included: hasAgentApprovalRawContextIncludedSignal(fields),
     agent_approval_decision_model_driven: hasAgentApprovalModelDrivenDecisionSignal(fields),
     agent_approval_uses_untrusted_summary: hasAgentApprovalUntrustedSummarySignal(fields, promptSourceCategories),
     agent_approval_human_required: hasAgentApprovalHumanRequiredSignal(fields),
@@ -13229,6 +13231,25 @@ function hasAgentApprovalUntrustedContextSignal(fields: RuntimeField[]): boolean
       `${field.path} ${fieldValueText(field)}`
     )
   );
+}
+
+function hasAgentApprovalRawContextIncludedSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => {
+    const path = field.path.toLowerCase();
+    const text = `${field.path} ${fieldValueText(field)}`;
+    if (
+      /(?:^|\.)(include_raw_context|raw_context|raw_prompt_context|include_context|include_sources|include_tool_output|include_retrieval_context)(?:\.|$)/iu.test(
+        path
+      )
+    ) {
+      return truthyConfigValue(field.value);
+    }
+    return /(?:^|[_\W])(include|attach|forward|send|show|pass[_\s-]?through)(?:[_\W]|$)/iu.test(text) &&
+      /(?:^|[_\W])(raw[_\s-]?context|raw[_\s-]?prompt|raw[_\s-]?source|full[_\s-]?context|unsanitized[_\s-]?context|tool[_\s-]?output|retrieval[_\s-]?context|browser[_\s-]?output)(?:[_\W]|$)/iu.test(
+        text
+      ) &&
+      truthyConfigValue(field.value);
+  });
 }
 
 function hasAgentApprovalModelDrivenDecisionSignal(fields: RuntimeField[]): boolean {

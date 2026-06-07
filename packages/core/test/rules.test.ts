@@ -80,6 +80,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-050")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-051")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-052")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-078")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-053")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-054")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-055")).toBe(true);
@@ -1600,6 +1601,8 @@ describe("rule engine", () => {
       agent_approval_approver_identity_unverified: true,
       agent_approval_replay_protection_disabled: true,
       agent_approval_broad_approver_scope: true,
+      agent_approval_context_untrusted: true,
+      agent_approval_raw_context_included: true,
       agent_approval_privileged_actions: true,
       agent_approval_auto_execute_after_approval: true
     });
@@ -1615,6 +1618,49 @@ describe("rule engine", () => {
     expect(JSON.stringify(runtimeApprovalChannelFindings[0])).not.toContain("#customer-support");
     expect(JSON.stringify(runtimeApprovalChannelFindings[0])).not.toContain("support_db.update_customer_record");
     expect(JSON.stringify(runtimeApprovalChannelFindings[0])).not.toContain("chatops_approval_customer_email");
+    const runtimeApprovalRawContextFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-RUNTIME-078");
+    expect(runtimeApprovalRawContextFindings).toHaveLength(1);
+    expect(runtimeApprovalRawContextFindings[0]?.matched_object.path).toBe("approvals/chatops-approval.yaml");
+    expect(runtimeApprovalRawContextFindings[0]?.matched_object.metadata).toMatchObject({
+      parsed_agent_approval_config: true,
+      agent_approval_human_required: true,
+      agent_approval_external_channel: true,
+      agent_approval_context_untrusted: true,
+      agent_approval_raw_context_included: true,
+      agent_approval_auto_execute_after_approval: true,
+      agent_approval_privileged_actions: true,
+      agent_approval_write_actions: true,
+      agent_approval_external_actions: true,
+      agent_approval_secret_access: true
+    });
+    expect(runtimeApprovalRawContextFindings[0]?.matched_object.metadata.agent_approval_prompt_source_categories).toEqual([
+      "retrieval_context",
+      "tool_output",
+      "untrusted_user_input"
+    ]);
+    expect(runtimeApprovalRawContextFindings[0]?.matched_object.metadata.agent_approval_action_categories).toEqual([
+      "browser_action",
+      "database_write",
+      "external_response",
+      "secret_manager_access",
+      "tool_call"
+    ]);
+    expect(runtimeApprovalRawContextFindings[0]?.severity).toBe("critical");
+    expect(runtimeApprovalRawContextFindings[0]?.confidence).toBe("very_high");
+    expect(runtimeApprovalRawContextFindings[0]?.recommended_control).toBe("require_approval");
+    expect(JSON.stringify(runtimeApprovalRawContextFindings[0])).not.toContain("${CHATOPS_APPROVAL_TOKEN}");
+    expect(JSON.stringify(runtimeApprovalRawContextFindings[0])).not.toContain("hooks.slack.example.invalid");
+    expect(JSON.stringify(runtimeApprovalRawContextFindings[0])).not.toContain("#customer-support");
+    expect(JSON.stringify(runtimeApprovalRawContextFindings[0])).not.toContain("/approve");
+    expect(JSON.stringify(runtimeApprovalRawContextFindings[0])).not.toContain("customer_ticket_message");
+    expect(JSON.stringify(runtimeApprovalRawContextFindings[0])).not.toContain("retrieved_account_context");
+    expect(JSON.stringify(runtimeApprovalRawContextFindings[0])).not.toContain("browser_tool_output");
+    expect(JSON.stringify(runtimeApprovalRawContextFindings[0])).not.toContain("support_db.update_customer_record");
+    expect(JSON.stringify(runtimeApprovalRawContextFindings[0])).not.toContain("vault_secret_lookup.read_support_token");
+    expect(JSON.stringify(runtimeApprovalRawContextFindings[0])).not.toContain("browser.submit_customer_form");
+    expect(JSON.stringify(runtimeApprovalRawContextFindings[0])).not.toContain("chatops_approval_customer_email");
+    expect(JSON.stringify(runtimeApprovalRawContextFindings[0])).not.toContain("chatops_approval_account_number");
+    expect(JSON.stringify(runtimeApprovalRawContextFindings[0])).not.toContain("confidential_chatops_approval_notes");
     const runtimeSharedSessionFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-RUNTIME-053");
     expect(runtimeSharedSessionFindings).toHaveLength(1);
     expect(runtimeSharedSessionFindings[0]?.matched_object.path).toBe("sessions/shared-copilot.yaml");

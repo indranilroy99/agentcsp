@@ -869,6 +869,7 @@ Agent approval-gate metadata may include:
 - `agent_approval_replay_protection_disabled`
 - `agent_approval_broad_approver_scope`
 - `agent_approval_context_untrusted`
+- `agent_approval_raw_context_included`
 - `agent_approval_decision_model_driven`
 - `agent_approval_uses_untrusted_summary`
 - `agent_approval_human_required`
