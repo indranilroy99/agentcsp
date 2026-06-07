@@ -1237,6 +1237,16 @@ The current iteration adds:
 - rule `AGENTCSP-RUNTIME-063` for public debug/playground consoles that expose prompt/context internals and privileged tool invocation without redaction, audit logging, or approval
 - scanner, rule, fixture verifier, and redaction coverage proving raw endpoints, prompt labels, trace labels, memory labels, context labels, tool names, and token placeholders stay redacted
 
+## Agent Response Stream Disclosure Pass
+
+The current iteration adds:
+
+- first-class redacted metadata for agent response, output-stream, SSE/event-stream, and client-visible output policies, including endpoint categories, anonymous access, auth/CORS posture, streaming posture, reasoning visibility, system/developer prompt visibility, raw tool-output and tool-argument visibility, retrieval chunk visibility, memory visibility, redaction posture, approval posture, and credential exposure
+- vulnerable fixture coverage for a public response stream that exposes chain-of-thought, reasoning traces, planner scratchpad, system/developer prompts, raw tool outputs, tool arguments, retrieved chunks, memory context, PII, and secret-bearing fields without redaction or approval
+- safe fixture coverage for an SSO-protected internal event stream that keeps reasoning, prompt internals, tool outputs, tool arguments, retrieval chunks, memory, and secrets redacted while requiring approval
+- rule `AGENTCSP-RUNTIME-064` for public response streams that expose model internals, tool data, RAG context, memory, and secrets to clients without redaction or approval
+- scanner, rule, fixture verifier, and redaction coverage proving raw stream endpoints, response field labels, reasoning labels, retrieval labels, memory labels, data-scope labels, and token placeholders stay redacted
+
 ## Initial Build Recommendation
 
 Start with a CLI-first MVP before building the dashboard:

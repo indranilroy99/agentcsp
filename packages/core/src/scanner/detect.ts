@@ -128,6 +128,11 @@ export async function detectSurfaces(files: WalkedFile[]): Promise<DetectedSurfa
       continue;
     }
 
+    if (isAgentResponseExposureConfigPath(file.relativePath, basename)) {
+      detectAgentResponseExposureConfig(file, text, surfaces);
+      continue;
+    }
+
     if (isAgentPromptRegistryConfigPath(file.relativePath, basename)) {
       detectAgentPromptRegistryConfig(file, text, surfaces);
       continue;
@@ -1628,6 +1633,71 @@ function detectAgentDebugConsoleConfig(file: WalkedFile, text: string | undefine
         posture.agent_debug_console_privileged_tool_authority &&
         !posture.agent_debug_console_approval_required) ||
       isUntrustedToPrivileged(object)
+  });
+}
+
+function detectAgentResponseExposureConfig(file: WalkedFile, text: string | undefined, surfaces: DetectedSurfaces): void {
+  const parsed = parseStructuredConfig(text ?? "", file.relativePath);
+  if (parsed.parseFailed) {
+    addDiagnostic(surfaces, file, {
+      parser: parsed.parser ?? "structured_config",
+      code: "AGENT_RESPONSE_EXPOSURE_CONFIG_PARSE_FAILED",
+      reason: "Agent response, streaming, or output exposure configuration could not be parsed. Raw content was redacted."
+    });
+  }
+
+  const posture = classifyAgentResponseExposureConfig(parsed.value);
+  const actions = new Set<ActionType>(["read"]);
+  if (posture.agent_response_exposure_public_endpoint || posture.agent_response_exposure_external_response) actions.add("send");
+  if (posture.agent_response_exposure_public_endpoint || posture.agent_response_exposure_external_response) actions.add("publish");
+
+  const dataClasses = new Set<SurfaceObject["data_classes"][number]>(["unknown"]);
+  if (
+    posture.agent_response_exposure_secret_context_visible ||
+    posture.env_key_names.some(isCredentialLikeKeyName) ||
+    posture.secret_ref_key_names.length > 0
+  ) {
+    dataClasses.add("credential");
+    if (posture.agent_response_exposure_secret_context_visible) dataClasses.add("secret");
+  }
+  if (
+    posture.agent_response_exposure_reasoning_visible ||
+    posture.agent_response_exposure_tool_output_visible ||
+    posture.agent_response_exposure_retrieval_visible ||
+    posture.agent_response_exposure_memory_visible ||
+    posture.agent_response_exposure_sensitive_context
+  ) {
+    dataClasses.add("confidential");
+  }
+  if (posture.agent_response_exposure_pii_context) dataClasses.add("pii");
+  if (dataClasses.size > 1) dataClasses.delete("unknown");
+
+  const object = createSurfaceObject({
+    type: "runtime_config",
+    name: path.basename(file.relativePath),
+    path: file.relativePath,
+    trust_level: posture.agent_response_exposure_public_endpoint || posture.agent_response_exposure_anonymous_access ? "third_party" : inferTrustLevel(file.relativePath),
+    data_classes: uniqueDataClasses([...dataClasses] as SurfaceObject["data_classes"]),
+    actions: uniqueActions([...actions]),
+    side_effect: false,
+    reversible: true,
+    external_reach: posture.agent_response_exposure_public_endpoint || posture.agent_response_exposure_external_response,
+    secret_exposure:
+      posture.agent_response_exposure_secret_context_visible ||
+      posture.env_key_names.some(isCredentialLikeKeyName) ||
+      posture.secret_ref_key_names.length > 0,
+    reason: "Agent response exposure policy discovered as model-context and tool-output disclosure posture.",
+    metadata: {
+      content_redacted: true,
+      values_collected: false,
+      parsed_agent_response_exposure_config: Boolean(parsed.value) && !parsed.parseFailed,
+      parse_error: parsed.parseFailed,
+      ...posture
+    }
+  });
+  surfaces.runtime_config.push({
+    ...object,
+    untrusted_to_privileged: false
   });
 }
 
@@ -5047,6 +5117,25 @@ function isAgentDebugConsoleConfigPath(relativePath: string, basename: string): 
   return debugName || (debugDirectory && configName);
 }
 
+function isAgentResponseExposureConfigPath(relativePath: string, basename: string): boolean {
+  const normalized = relativePath.replaceAll("\\", "/").toLowerCase();
+  const lowerBase = basename.toLowerCase();
+  if (!/\.(json|ya?ml|toml)$/iu.test(lowerBase)) return false;
+  if (normalized.startsWith(".github/workflows/")) return false;
+  if (normalized.startsWith("rules/")) return false;
+  const segments = normalized.split("/").slice(0, -1);
+  const responseDirectory = segments.some((segment) =>
+    /^(responses?|response-stream|response_stream|streaming|streams?|output-stream|output_stream|agent-output|agent_output|event-stream|event_stream|sse|events)$/iu.test(
+      segment
+    )
+  );
+  const responseName = /(?:response[-_]?stream|streaming[-_]?response|output[-_]?stream|agent[-_]?output|event[-_]?stream|sse[-_]?events|response[-_]?policy|output[-_]?policy)/iu.test(
+    lowerBase
+  );
+  const configName = /(?:config|settings|policy|response|output|stream|events?|endpoint|route|api|agent|public|auth|cors|redact)/iu.test(lowerBase);
+  return responseName || (responseDirectory && configName);
+}
+
 function isAgentFederationConfigPath(relativePath: string, basename: string): boolean {
   const normalized = relativePath.replaceAll("\\", "/").toLowerCase();
   const lowerBase = basename.toLowerCase();
@@ -5393,6 +5482,34 @@ interface AgentDebugConsolePosture {
   agent_debug_console_redaction_disabled: boolean;
   agent_debug_console_audit_logging_disabled: boolean;
   agent_debug_console_approval_required: boolean;
+  env_key_names: string[];
+  secret_ref_key_names: string[];
+}
+
+interface AgentResponseExposurePosture {
+  agent_response_exposure_fields: string[];
+  agent_response_exposure_enabled: boolean;
+  agent_response_exposure_endpoint_redacted: boolean;
+  agent_response_exposure_endpoint_count: number;
+  agent_response_exposure_endpoint_kinds: string[];
+  agent_response_exposure_public_endpoint: boolean;
+  agent_response_exposure_anonymous_access: boolean;
+  agent_response_exposure_auth_disabled: boolean;
+  agent_response_exposure_cors_broad: boolean;
+  agent_response_exposure_streaming_enabled: boolean;
+  agent_response_exposure_reasoning_visible: boolean;
+  agent_response_exposure_system_prompt_visible: boolean;
+  agent_response_exposure_developer_prompt_visible: boolean;
+  agent_response_exposure_tool_output_visible: boolean;
+  agent_response_exposure_tool_argument_visible: boolean;
+  agent_response_exposure_retrieval_visible: boolean;
+  agent_response_exposure_memory_visible: boolean;
+  agent_response_exposure_secret_context_visible: boolean;
+  agent_response_exposure_sensitive_context: boolean;
+  agent_response_exposure_pii_context: boolean;
+  agent_response_exposure_redaction_disabled: boolean;
+  agent_response_exposure_external_response: boolean;
+  agent_response_exposure_approval_required: boolean;
   env_key_names: string[];
   secret_ref_key_names: string[];
 }
@@ -8163,6 +8280,264 @@ function isAgentDebugConsoleSecurityField(fieldPath: string): boolean {
 }
 
 function agentDebugConsoleText(field: RuntimeField): string {
+  return `${field.path} ${fieldValueText(field)}`.toLowerCase().replaceAll("_", " ").replaceAll("-", " ");
+}
+
+function classifyAgentResponseExposureConfig(value: unknown): AgentResponseExposurePosture {
+  const fields = flattenRuntimeFields(value);
+  const stringValues = collectFieldStringValues(fields);
+  const endpoints = classifyAgentResponseExposureEndpoints(fields);
+  const envKeys = uniqueStrings([
+    ...collectEnvKeyNamesFromConfig(value).filter(isLikelyEnvKeyName),
+    ...extractEnvironmentReferenceKeys(stringValues)
+  ]);
+  const secretRefKeys = extractSecretReferenceKeys(stringValues);
+  const authDisabled = hasAgentResponseExposureAuthDisabledSignal(fields);
+  const anonymousAccess = authDisabled || hasAgentResponseExposureAnonymousAccessSignal(fields);
+
+  return {
+    agent_response_exposure_fields: fields
+      .map((field) => field.path)
+      .filter((fieldPath) => isAgentResponseExposureSecurityField(fieldPath))
+      .sort((a, b) => a.localeCompare(b)),
+    agent_response_exposure_enabled: !hasAgentResponseExposureDisabledSignal(fields),
+    agent_response_exposure_endpoint_redacted: endpoints.endpointCount > 0,
+    agent_response_exposure_endpoint_count: endpoints.endpointCount,
+    agent_response_exposure_endpoint_kinds: endpoints.endpointKinds,
+    agent_response_exposure_public_endpoint:
+      endpoints.publicEndpoint || hasAgentResponseExposurePublicEndpointSignal(fields) || anonymousAccess,
+    agent_response_exposure_anonymous_access: anonymousAccess,
+    agent_response_exposure_auth_disabled: authDisabled,
+    agent_response_exposure_cors_broad: hasAgentResponseExposureBroadCorsSignal(fields),
+    agent_response_exposure_streaming_enabled: hasAgentResponseExposureStreamingSignal(fields),
+    agent_response_exposure_reasoning_visible: hasAgentResponseExposureReasoningSignal(fields),
+    agent_response_exposure_system_prompt_visible: hasAgentResponseExposureSystemPromptSignal(fields),
+    agent_response_exposure_developer_prompt_visible: hasAgentResponseExposureDeveloperPromptSignal(fields),
+    agent_response_exposure_tool_output_visible: hasAgentResponseExposureToolOutputSignal(fields),
+    agent_response_exposure_tool_argument_visible: hasAgentResponseExposureToolArgumentSignal(fields),
+    agent_response_exposure_retrieval_visible: hasAgentResponseExposureRetrievalSignal(fields),
+    agent_response_exposure_memory_visible: hasAgentResponseExposureMemorySignal(fields),
+    agent_response_exposure_secret_context_visible:
+      hasAgentResponseExposureSecretSignal(fields) ||
+      envKeys.some(isCredentialLikeKeyName) ||
+      secretRefKeys.length > 0,
+    agent_response_exposure_sensitive_context: hasAgentResponseExposureSensitiveContextSignal(fields),
+    agent_response_exposure_pii_context: hasAgentResponseExposurePiiContextSignal(fields),
+    agent_response_exposure_redaction_disabled: hasAgentResponseExposureRedactionDisabledSignal(fields),
+    agent_response_exposure_external_response: hasAgentResponseExposureExternalResponseSignal(fields),
+    agent_response_exposure_approval_required: hasAgentResponseExposureApprovalRequiredSignal(fields),
+    env_key_names: envKeys,
+    secret_ref_key_names: secretRefKeys
+  };
+}
+
+function classifyAgentResponseExposureEndpoints(fields: RuntimeField[]): { publicEndpoint: boolean; endpointCount: number; endpointKinds: string[] } {
+  const endpointKinds = new Set<string>();
+  let endpointCount = 0;
+  for (const field of fields) {
+    if (!/(^|\.)(endpoints?|url|uri|host|base_url|baseUrl|route|api|stream_url|streamUrl|response_url|responseUrl|event_url|eventUrl|server)$/iu.test(field.path)) continue;
+    if (/(?:^|\.)(cors|origin|origins|allowed_origins|allowedOrigins)(?:\.|$)/iu.test(field.path)) continue;
+    for (const value of fieldStringValues(field)) {
+      const endpoint = parseAgentResponseExposureEndpoint(value);
+      if (!endpoint) continue;
+      endpointKinds.add(endpoint.kind);
+      endpointCount += 1;
+    }
+  }
+  return {
+    publicEndpoint: endpointCount > 0,
+    endpointCount,
+    endpointKinds: [...endpointKinds].sort((a, b) => a.localeCompare(b))
+  };
+}
+
+function parseAgentResponseExposureEndpoint(value: string): { kind: string } | undefined {
+  try {
+    const parsed = new URL(value);
+    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return undefined;
+    if (isLocalHost(parsed.hostname.toLowerCase())) return undefined;
+    return { kind: parsed.protocol === "http:" ? "plaintext_response_stream_endpoint" : "response_stream_endpoint" };
+  } catch {
+    return undefined;
+  }
+}
+
+function hasAgentResponseExposureDisabledSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => /(?:^|\.)(enabled|active)(?:\.|$)/iu.test(field.path) && disabledConfigValue(field.value));
+}
+
+function hasAgentResponseExposurePublicEndpointSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /\b(public|internet|external|anonymous|public stream|public response|client visible|browser visible)\b/iu.test(agentResponseExposureText(field)) &&
+    truthyConfigValue(field.value)
+  );
+}
+
+function hasAgentResponseExposureAnonymousAccessSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /\b(anonymous|unauthenticated|guest|public users?|no login|no auth|public access)\b/iu.test(agentResponseExposureText(field)) &&
+    truthyConfigValue(field.value)
+  );
+}
+
+function hasAgentResponseExposureAuthDisabledSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => {
+    const text = agentResponseExposureText(field);
+    if (/(?:^|\.)(auth|authentication|authorization|security|login)\.(required|enabled|enforced)$/iu.test(field.path)) {
+      return disabledConfigValue(field.value);
+    }
+    return /\b(no auth|no login|auth disabled|authentication disabled|anonymous|unauthenticated|public access|optional auth)\b/iu.test(text) &&
+      truthyConfigValue(field.value);
+  });
+}
+
+function hasAgentResponseExposureBroadCorsSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => {
+    const text = agentResponseExposureText(field);
+    if (!/\b(cors|origin|origins|allowed origins|allowed origin|cross origin)\b/iu.test(text)) return false;
+    return /\*|all origins|any origin|wildcard|allow all|public web/iu.test(text) && !disabledConfigValue(field.value);
+  });
+}
+
+function hasAgentResponseExposureStreamingSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    !disabledConfigValue(field.value) &&
+    /\b(stream|streaming|server sent events|server_sent_events|sse|event stream|websocket|web socket|realtime|events)\b/iu.test(
+      agentResponseExposureText(field)
+    )
+  );
+}
+
+function hasAgentResponseExposureReasoningSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    !isAgentResponseExposureControlField(field.path) &&
+    !disabledConfigValue(field.value) &&
+    /\b(chain of thought|chain_of_thought|reasoning|thoughts?|scratchpad|planner trace|planner_scratchpad|rationale|hidden state)\b/iu.test(
+      agentResponseExposureText(field)
+    )
+  );
+}
+
+function hasAgentResponseExposureSystemPromptSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    !isAgentResponseExposureControlField(field.path) &&
+    !disabledConfigValue(field.value) &&
+    /\b(system prompt|system_prompt|system instructions?|root instructions?)\b/iu.test(agentResponseExposureText(field))
+  );
+}
+
+function hasAgentResponseExposureDeveloperPromptSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    !isAgentResponseExposureControlField(field.path) &&
+    !disabledConfigValue(field.value) &&
+    /\b(developer prompt|developer_prompt|developer instructions?|policy prompt|tool instructions?)\b/iu.test(agentResponseExposureText(field))
+  );
+}
+
+function hasAgentResponseExposureToolOutputSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    !isAgentResponseExposureControlField(field.path) &&
+    !disabledConfigValue(field.value) &&
+    /\b(raw tool outputs?|raw_tool_outputs?|tool outputs?|tool results?|tool traces?|function results?|mcp results?|browser output|shell output)\b/iu.test(
+      agentResponseExposureText(field)
+    )
+  );
+}
+
+function hasAgentResponseExposureToolArgumentSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    !isAgentResponseExposureControlField(field.path) &&
+    !disabledConfigValue(field.value) &&
+    /\b(tool arguments?|tool args?|function arguments?|function args?|tool calls?|request payloads?)\b/iu.test(
+      agentResponseExposureText(field)
+    )
+  );
+}
+
+function hasAgentResponseExposureRetrievalSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    !isAgentResponseExposureControlField(field.path) &&
+    !disabledConfigValue(field.value) &&
+    /\b(retrieved chunks?|retrieval chunks?|raw chunks?|rag context|source documents?|citations?|vector results?|document snippets?)\b/iu.test(
+      agentResponseExposureText(field)
+    )
+  );
+}
+
+function hasAgentResponseExposureMemorySignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    !isAgentResponseExposureControlField(field.path) &&
+    !disabledConfigValue(field.value) &&
+    /\b(memory context|memory|memories|conversation memory|long term memory|session state|stored context)\b/iu.test(
+      agentResponseExposureText(field)
+    )
+  );
+}
+
+function hasAgentResponseExposureSecretSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    !isAgentResponseExposureControlField(field.path) &&
+    /\b(secret|token|credential|api key|password|authorization|bearer|vault)\b/iu.test(agentResponseExposureText(field))
+  );
+}
+
+function hasAgentResponseExposureSensitiveContextSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    !isAgentResponseExposureControlField(field.path) &&
+    /\b(system prompt|developer prompt|reasoning|scratchpad|tool output|retrieval|memory|customer|client|ticket|support|internal|confidential|private|proprietary|sensitive|account|billing|payment|case|record|profile|incident)\b/iu.test(
+      agentResponseExposureText(field)
+    )
+  );
+}
+
+function hasAgentResponseExposurePiiContextSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    !isAgentResponseExposureControlField(field.path) &&
+    /(?:^|[_\W])(pii|email|phone|address|ssn|passport|dob|date of birth|customer id|user id|account id|account number)(?:[_\W]|$)/iu.test(
+      agentResponseExposureText(field)
+    )
+  );
+}
+
+function hasAgentResponseExposureRedactionDisabledSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /\b(redaction|redact|mask|sanitize|reasoning redaction|tool output redaction|retrieval redaction|secret redaction|dlp)\b/iu.test(
+      agentResponseExposureText(field)
+    ) && disabledConfigValue(field.value)
+  );
+}
+
+function hasAgentResponseExposureExternalResponseSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    !isAgentResponseExposureControlField(field.path) &&
+    /\b(public response|client response|browser response|send to client|external response|stream to client|sse|websocket|webhook)\b/iu.test(
+      agentResponseExposureText(field)
+    ) &&
+    !disabledConfigValue(field.value)
+  );
+}
+
+function hasAgentResponseExposureApprovalRequiredSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /\b(approval|required approval|human approval|manual review|confirm|confirmation|human in the loop|human-in-the-loop)\b/iu.test(
+      agentResponseExposureText(field)
+    ) && truthyConfigValue(field.value)
+  );
+}
+
+function isAgentResponseExposureControlField(fieldPath: string): boolean {
+  return /(?:^|\.)(auth|authentication|authorization|security|cors|origin|origins|allowed_origins|redaction|redact|mask|sanitize|approval|human_review)(?:\.|$)/iu.test(
+    fieldPath
+  );
+}
+
+function isAgentResponseExposureSecurityField(fieldPath: string): boolean {
+  return /enabled|active|public|response|output|stream|event|sse|endpoint|url|uri|host|route|api|auth|anonymous|guest|cors|origin|expose|visible|reasoning|thought|scratchpad|prompt|system|developer|tool|argument|result|retrieval|rag|chunk|memory|secret|credential|token|data|customer|account|redaction|approval|pii|sensitive|confidential/iu.test(
+    fieldPath
+  );
+}
+
+function agentResponseExposureText(field: RuntimeField): string {
   return `${field.path} ${fieldValueText(field)}`.toLowerCase().replaceAll("_", " ").replaceAll("-", " ");
 }
 

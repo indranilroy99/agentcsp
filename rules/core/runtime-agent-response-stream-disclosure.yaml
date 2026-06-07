@@ -1,0 +1,66 @@
+id: AGENTCSP-RUNTIME-064
+name: Public agent response stream exposes internal reasoning and tool data
+description: A public or anonymous agent response stream exposes reasoning traces, prompts, tool outputs, tool arguments, retrieval chunks, memory, or secrets to clients while redaction and approval controls are disabled.
+category: agent_response_stream_disclosure
+severity: critical
+maps_to:
+  owasp:
+    - LLM02:2025 Sensitive Information Disclosure
+    - LLM05:2025 Improper Output Handling
+  mitre_atlas:
+    - AML.T0057 Exfiltration via Cyber Means
+  nist_ai_rmf:
+    - MAP 5.1
+    - MEASURE 2.9
+    - MANAGE 2.4
+match:
+  object_type: runtime_config
+  where:
+    - field: metadata.parsed_agent_response_exposure_config
+      op: equals
+      value: true
+    - field: metadata.agent_response_exposure_enabled
+      op: equals
+      value: true
+    - field: metadata.agent_response_exposure_public_endpoint
+      op: equals
+      value: true
+    - field: metadata.agent_response_exposure_anonymous_access
+      op: equals
+      value: true
+    - field: metadata.agent_response_exposure_auth_disabled
+      op: equals
+      value: true
+    - field: metadata.agent_response_exposure_streaming_enabled
+      op: equals
+      value: true
+    - field: metadata.agent_response_exposure_reasoning_visible
+      op: equals
+      value: true
+    - field: metadata.agent_response_exposure_tool_output_visible
+      op: equals
+      value: true
+    - field: metadata.agent_response_exposure_tool_argument_visible
+      op: equals
+      value: true
+    - field: metadata.agent_response_exposure_retrieval_visible
+      op: equals
+      value: true
+    - field: metadata.agent_response_exposure_memory_visible
+      op: equals
+      value: true
+    - field: metadata.agent_response_exposure_secret_context_visible
+      op: equals
+      value: true
+    - field: metadata.agent_response_exposure_redaction_disabled
+      op: equals
+      value: true
+    - field: metadata.agent_response_exposure_approval_required
+      op: equals
+      value: false
+    - field: secret_exposure
+      op: equals
+      value: true
+recommendation:
+  control: redact
+  text: Do not stream reasoning traces, system or developer prompts, raw tool outputs, tool arguments, retrieval chunks, memory, or secrets to public clients. Require authentication, redact internal context before response streaming, and require approval before sensitive agent internals can leave the runtime boundary.

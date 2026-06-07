@@ -60,6 +60,7 @@ describe("scanner", () => {
       "PROMPT_REGISTRY_TOKEN",
       "PUBLIC_CHAT_AGENT_TOKEN",
       "REASONING_STATE_TOKEN",
+      "RESPONSE_STREAM_TOKEN",
       "SAFETY_RUNTIME_TOKEN",
       "SLACK_WEBHOOK_URL",
       "SUPPORT_DB_PASSWORD",
@@ -1762,6 +1763,53 @@ describe("scanner", () => {
     expect(JSON.stringify(debugConsoleConfig)).not.toContain("slack.post_customer_reply");
     expect(JSON.stringify(debugConsoleConfig)).not.toContain("vault_secret_lookup.read_support_token");
     expect(JSON.stringify(debugConsoleConfig)).not.toContain("memory.write_debug_summary");
+    const responseStreamConfig = surfaces.runtime_config.find((surface) => surface.path === "responses/public-stream.yaml");
+    expect(responseStreamConfig).toBeDefined();
+    expect(responseStreamConfig).toMatchObject({
+      trust_level: "third_party",
+      data_classes: ["confidential", "credential", "pii", "secret"],
+      actions: ["publish", "read", "send"],
+      external_reach: true,
+      secret_exposure: true,
+      side_effect: false,
+      reversible: true,
+      untrusted_to_privileged: false
+    });
+    expect(responseStreamConfig?.metadata).toMatchObject({
+      content_redacted: true,
+      values_collected: false,
+      parsed_agent_response_exposure_config: true,
+      agent_response_exposure_enabled: true,
+      agent_response_exposure_endpoint_redacted: true,
+      agent_response_exposure_endpoint_count: 1,
+      agent_response_exposure_public_endpoint: true,
+      agent_response_exposure_anonymous_access: true,
+      agent_response_exposure_auth_disabled: true,
+      agent_response_exposure_cors_broad: true,
+      agent_response_exposure_streaming_enabled: true,
+      agent_response_exposure_reasoning_visible: true,
+      agent_response_exposure_system_prompt_visible: true,
+      agent_response_exposure_developer_prompt_visible: true,
+      agent_response_exposure_tool_output_visible: true,
+      agent_response_exposure_tool_argument_visible: true,
+      agent_response_exposure_retrieval_visible: true,
+      agent_response_exposure_memory_visible: true,
+      agent_response_exposure_secret_context_visible: true,
+      agent_response_exposure_sensitive_context: true,
+      agent_response_exposure_pii_context: true,
+      agent_response_exposure_redaction_disabled: true,
+      agent_response_exposure_external_response: false,
+      agent_response_exposure_approval_required: false
+    });
+    expect(responseStreamConfig?.metadata.agent_response_exposure_endpoint_kinds).toEqual(["response_stream_endpoint"]);
+    expect(responseStreamConfig?.metadata.env_key_names).toEqual(["RESPONSE_STREAM_TOKEN"]);
+    expect(responseStreamConfig?.metadata.secret_ref_key_names).toEqual(["RESPONSE_STREAM_TOKEN"]);
+    expect(JSON.stringify(responseStreamConfig)).not.toContain("${RESPONSE_STREAM_TOKEN}");
+    expect(JSON.stringify(responseStreamConfig)).not.toContain("stream.agentcsp-demo.example.invalid");
+    expect(JSON.stringify(responseStreamConfig)).not.toContain("response_stream_customer_email");
+    expect(JSON.stringify(responseStreamConfig)).not.toContain("response_stream_account_number");
+    expect(JSON.stringify(responseStreamConfig)).not.toContain("confidential_response_stream_notes");
+    expect(JSON.stringify(responseStreamConfig)).not.toContain("response_stream_api_token");
     const agentFederationConfig = surfaces.runtime_config.find((surface) => surface.path === "agent-federation/remote-agents.yaml");
     expect(agentFederationConfig).toBeDefined();
     expect(agentFederationConfig).toMatchObject({
@@ -4767,6 +4815,62 @@ describe("scanner", () => {
     expect(inspector?.metadata.secret_ref_key_names).toEqual([]);
     expect(JSON.stringify(inspector)).not.toContain("approved_internal_prompt_summary");
     expect(JSON.stringify(inspector)).not.toContain("readonly_docs.search");
+  });
+
+  it("keeps internal redacted response streams scoped", async () => {
+    const files = await walkProject({
+      root_path: safeFixtureRoot,
+      output_path: ".agentcsp",
+      formats: ["json", "md"],
+      include_hidden: true,
+      include_logs: false,
+      max_file_size_bytes: 1024 * 1024,
+      max_files: 5000,
+      quiet: true
+    });
+    const surfaces = await detectSurfaces(files);
+    const stream = surfaces.runtime_config.find((surface) => surface.path === "responses/internal-stream.yaml");
+
+    expect(stream).toMatchObject({
+      trust_level: "project",
+      data_classes: ["confidential"],
+      actions: ["read"],
+      side_effect: false,
+      external_reach: false,
+      secret_exposure: false,
+      reversible: true,
+      untrusted_to_privileged: false
+    });
+    expect(stream?.metadata).toMatchObject({
+      content_redacted: true,
+      values_collected: false,
+      parsed_agent_response_exposure_config: true,
+      agent_response_exposure_enabled: true,
+      agent_response_exposure_endpoint_redacted: false,
+      agent_response_exposure_endpoint_count: 0,
+      agent_response_exposure_public_endpoint: false,
+      agent_response_exposure_anonymous_access: false,
+      agent_response_exposure_auth_disabled: false,
+      agent_response_exposure_cors_broad: false,
+      agent_response_exposure_streaming_enabled: true,
+      agent_response_exposure_reasoning_visible: false,
+      agent_response_exposure_system_prompt_visible: false,
+      agent_response_exposure_developer_prompt_visible: false,
+      agent_response_exposure_tool_output_visible: false,
+      agent_response_exposure_tool_argument_visible: false,
+      agent_response_exposure_retrieval_visible: false,
+      agent_response_exposure_memory_visible: false,
+      agent_response_exposure_secret_context_visible: false,
+      agent_response_exposure_sensitive_context: true,
+      agent_response_exposure_pii_context: false,
+      agent_response_exposure_redaction_disabled: false,
+      agent_response_exposure_external_response: false,
+      agent_response_exposure_approval_required: true
+    });
+    expect(stream?.metadata.agent_response_exposure_endpoint_kinds).toEqual([]);
+    expect(stream?.metadata.env_key_names).toEqual([]);
+    expect(stream?.metadata.secret_ref_key_names).toEqual([]);
+    expect(JSON.stringify(stream)).not.toContain("approved_internal_status");
   });
 
   it("keeps local tenant-scoped prompt caches quiet", async () => {

@@ -2225,6 +2225,41 @@ Agent debug console metadata may include:
 
 Raw console endpoints, prompt names, prompt bodies, trace names, memory labels, context field names, tool names, allowed origins, and token placeholders are not emitted. Endpoint categories, authentication posture, visible-context categories, authority categories, redaction posture, audit posture, approval posture, and credential key names let rules detect exposed diagnostic control planes without publishing the debug configuration body.
 
+## Agent Response Exposure Posture
+
+Agent response policies, response-stream configs, event-stream configs, public output streams, and client-visible event policies are normalized into `runtime_config` objects when discovered. This models the boundary where model internals, tool results, retrieval context, memory, or secrets can leave the runtime through client-visible responses.
+
+Agent response exposure metadata may include:
+
+- `parsed_agent_response_exposure_config`
+- `agent_response_exposure_fields`
+- `agent_response_exposure_enabled`
+- `agent_response_exposure_endpoint_redacted`
+- `agent_response_exposure_endpoint_count`
+- `agent_response_exposure_endpoint_kinds`
+- `agent_response_exposure_public_endpoint`
+- `agent_response_exposure_anonymous_access`
+- `agent_response_exposure_auth_disabled`
+- `agent_response_exposure_cors_broad`
+- `agent_response_exposure_streaming_enabled`
+- `agent_response_exposure_reasoning_visible`
+- `agent_response_exposure_system_prompt_visible`
+- `agent_response_exposure_developer_prompt_visible`
+- `agent_response_exposure_tool_output_visible`
+- `agent_response_exposure_tool_argument_visible`
+- `agent_response_exposure_retrieval_visible`
+- `agent_response_exposure_memory_visible`
+- `agent_response_exposure_secret_context_visible`
+- `agent_response_exposure_sensitive_context`
+- `agent_response_exposure_pii_context`
+- `agent_response_exposure_redaction_disabled`
+- `agent_response_exposure_external_response`
+- `agent_response_exposure_approval_required`
+- `env_key_names`
+- `secret_ref_key_names`
+
+Raw response endpoints, event-stream URLs, output field names, reasoning labels, tool-output labels, retrieval labels, memory labels, prompt names, data-scope labels, and token placeholders are not emitted. Endpoint categories, authentication posture, visible internal-context categories, redaction posture, approval posture, and credential key names let rules detect response-stream disclosure without copying model or tool internals into evidence.
+
 ## Agent Federation Posture
 
 Outbound A2A clients, remote-agent federation configs, agent registries, peer-agent catalogs, and agent handoff routing configs are normalized into `runtime_config` objects when discovered. This models the boundary where a local agent delegates work or forwards context to third-party agents.

@@ -1,0 +1,37 @@
+enabled: true
+surface: public_agent_response_stream
+endpoint: https://stream.agentcsp-demo.example.invalid/v1/events
+auth:
+  required: false
+  anonymous: true
+cors:
+  allowed_origins:
+    - "*"
+streaming:
+  enabled: true
+  transport: server_sent_events
+expose:
+  chain_of_thought: true
+  reasoning_trace: true
+  planner_scratchpad: true
+  raw_tool_outputs: true
+  tool_arguments: true
+  retrieved_chunks: true
+  memory_context: true
+  system_prompt: true
+  developer_prompt: true
+data:
+  - response_stream_customer_email
+  - response_stream_account_number
+  - confidential_response_stream_notes
+  - response_stream_api_token
+controls:
+  approval_required: false
+  human_review: false
+redaction:
+  reasoning: false
+  tool_outputs: false
+  retrieval: false
+  secrets: false
+credentials:
+  env: ${RESPONSE_STREAM_TOKEN}

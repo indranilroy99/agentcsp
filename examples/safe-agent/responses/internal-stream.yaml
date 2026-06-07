@@ -1,0 +1,30 @@
+enabled: true
+surface: internal_agent_response_stream
+endpoint: local-only
+auth:
+  required: true
+  sso: true
+  anonymous: false
+streaming:
+  enabled: true
+  transport: internal_event_bus
+expose:
+  chain_of_thought: false
+  reasoning_trace: false
+  planner_scratchpad: false
+  raw_tool_outputs: false
+  tool_arguments: false
+  retrieved_chunks: false
+  memory_context: false
+  system_prompt: false
+  developer_prompt: false
+data:
+  - approved_internal_status
+controls:
+  approval_required: true
+  human_review: true
+redaction:
+  reasoning: true
+  tool_outputs: true
+  retrieval: true
+  secrets: true
