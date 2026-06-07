@@ -64,6 +64,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-013")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-014")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-094")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-120")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-015")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-080")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-016")).toBe(true);
@@ -4100,6 +4101,10 @@ describe("rule engine", () => {
       inbound_trigger_invokes_agent: true,
       inbound_trigger_invokes_tools: true,
       inbound_trigger_attachment_context: true,
+      inbound_trigger_attachment_raw_text: true,
+      inbound_trigger_attachment_sandbox_disabled: true,
+      inbound_trigger_attachment_scan_disabled: true,
+      inbound_trigger_attachment_instruction_stripping_disabled: true,
       inbound_trigger_write_authority: true,
       inbound_trigger_external_response: true,
       inbound_trigger_memory_write: true,
@@ -4139,6 +4144,69 @@ describe("rule engine", () => {
     expect(JSON.stringify(runtimeInboundAttachmentFindings[0])).not.toContain("support_db");
     expect(JSON.stringify(runtimeInboundAttachmentFindings[0])).not.toContain("slack_reply");
     expect(JSON.stringify(runtimeInboundAttachmentFindings[0])).not.toContain("vault_secret_lookup");
+    expect(JSON.stringify(runtimeInboundAttachmentFindings[0])).not.toContain("customer_invoice.pdf");
+    expect(JSON.stringify(runtimeInboundAttachmentFindings[0])).not.toContain("customer_export.html");
+    expect(JSON.stringify(runtimeInboundAttachmentFindings[0])).not.toContain("support_bundle.zip");
+    expect(JSON.stringify(runtimeInboundAttachmentFindings[0])).not.toContain("screenshot_with_ocr.png");
+    const runtimeInboundAttachmentParserFindings = findings.filter(
+      (finding) => finding.rule_id === "AGENTCSP-RUNTIME-120"
+    );
+    expect(runtimeInboundAttachmentParserFindings).toHaveLength(1);
+    expect(runtimeInboundAttachmentParserFindings[0]?.matched_object.path).toBe("inbox/support-triage.yaml");
+    expect(runtimeInboundAttachmentParserFindings[0]?.matched_object.metadata).toMatchObject({
+      parsed_inbound_trigger_config: true,
+      inbound_trigger_provider: "gmail",
+      inbound_trigger_external_source: true,
+      inbound_trigger_invokes_agent: true,
+      inbound_trigger_invokes_tools: true,
+      inbound_trigger_attachment_context: true,
+      inbound_trigger_attachment_raw_text: true,
+      inbound_trigger_attachment_sandbox_disabled: true,
+      inbound_trigger_attachment_scan_disabled: true,
+      inbound_trigger_attachment_instruction_stripping_disabled: true,
+      inbound_trigger_write_authority: true,
+      inbound_trigger_external_response: true,
+      inbound_trigger_memory_write: true,
+      inbound_trigger_sensitive_context: true,
+      inbound_trigger_pii_context: true,
+      inbound_trigger_approval_required: false
+    });
+    expect(runtimeInboundAttachmentParserFindings[0]?.matched_object.metadata.inbound_trigger_payload_categories).toEqual([
+      "attachment",
+      "message_body",
+      "message_title",
+      "sender_identity"
+    ]);
+    expect(runtimeInboundAttachmentParserFindings[0]?.matched_object.metadata.inbound_trigger_tool_authority_categories).toEqual([
+      "browser_action",
+      "database_access",
+      "external_response",
+      "memory_write",
+      "secret_manager_access",
+      "state_write",
+      "tool_call"
+    ]);
+    expect(runtimeInboundAttachmentParserFindings[0]?.severity).toBe("critical");
+    expect(runtimeInboundAttachmentParserFindings[0]?.confidence).toBe("very_high");
+    expect(runtimeInboundAttachmentParserFindings[0]?.recommended_control).toBe("quarantine");
+    expect(JSON.stringify(runtimeInboundAttachmentParserFindings[0])).not.toContain("${SUPPORT_INBOX_TOKEN}");
+    expect(JSON.stringify(runtimeInboundAttachmentParserFindings[0])).not.toContain("mail-router.example.invalid");
+    expect(JSON.stringify(runtimeInboundAttachmentParserFindings[0])).not.toContain("secops-support@example.invalid");
+    expect(JSON.stringify(runtimeInboundAttachmentParserFindings[0])).not.toContain("support-triage-agent");
+    expect(JSON.stringify(runtimeInboundAttachmentParserFindings[0])).not.toContain("message.body");
+    expect(JSON.stringify(runtimeInboundAttachmentParserFindings[0])).not.toContain("support mailbox");
+    expect(JSON.stringify(runtimeInboundAttachmentParserFindings[0])).not.toContain("inbound customer email");
+    expect(JSON.stringify(runtimeInboundAttachmentParserFindings[0])).not.toContain("slack escalation message");
+    expect(JSON.stringify(runtimeInboundAttachmentParserFindings[0])).not.toContain("ticket comment");
+    expect(JSON.stringify(runtimeInboundAttachmentParserFindings[0])).not.toContain("sender_email");
+    expect(JSON.stringify(runtimeInboundAttachmentParserFindings[0])).not.toContain("customer_account_id");
+    expect(JSON.stringify(runtimeInboundAttachmentParserFindings[0])).not.toContain("support_db");
+    expect(JSON.stringify(runtimeInboundAttachmentParserFindings[0])).not.toContain("slack_reply");
+    expect(JSON.stringify(runtimeInboundAttachmentParserFindings[0])).not.toContain("vault_secret_lookup");
+    expect(JSON.stringify(runtimeInboundAttachmentParserFindings[0])).not.toContain("customer_invoice.pdf");
+    expect(JSON.stringify(runtimeInboundAttachmentParserFindings[0])).not.toContain("customer_export.html");
+    expect(JSON.stringify(runtimeInboundAttachmentParserFindings[0])).not.toContain("support_bundle.zip");
+    expect(JSON.stringify(runtimeInboundAttachmentParserFindings[0])).not.toContain("screenshot_with_ocr.png");
     const runtimeHostedAssistantFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-RUNTIME-042");
     expect(runtimeHostedAssistantFindings).toHaveLength(1);
     expect(runtimeHostedAssistantFindings[0]?.matched_object.path).toBe("assistants/support-assistant.yaml");

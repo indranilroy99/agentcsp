@@ -13,6 +13,21 @@ payload_fields:
   - message_body
   - attachments
   - customer_account_id
+attachment_processing:
+  enabled: true
+  accepted_types:
+    - customer_invoice.pdf
+    - customer_export.html
+    - support_bundle.zip
+    - screenshot_with_ocr.png
+  extract_text: true
+  preserve_html: true
+  pass_raw_to_agent: true
+  sandbox: false
+  malware_scan: false
+  content_inspection: false
+  strip_instructions: false
+  prompt_injection_filter: false
 agent:
   name: support-triage-agent
   prompt_source: message.body

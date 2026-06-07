@@ -1386,6 +1386,15 @@ The current iteration adds:
 - rule `AGENTCSP-RUNTIME-119` for human approval gates where an unauthenticated external channel allows requester self-approval, lacks replay protection, includes raw untrusted context, and auto-executes privileged write, external, or secret-backed actions
 - regression coverage proving the vulnerable ChatOps approval fixture produces the finding while raw webhook URLs, channel names, action names, source labels, data labels, and token placeholders stay redacted
 
+## Inbound Attachment Parser Boundary Pass
+
+The current iteration adds:
+
+- first-class inbound-trigger metadata for raw attachment text extraction, sandbox posture, malware/content scanning posture, and prompt-instruction stripping posture
+- fixture coverage for an inbound support mailbox that accepts PDF, HTML, archive, and OCR image attachments, extracts raw content, disables sandboxing/scanning/instruction stripping, and routes attachment-derived context into browser, database, external-response, memory, and secret-manager tools without approval
+- rule `AGENTCSP-RUNTIME-120` for unsandboxed inbound attachment parsing that can drive privileged agent tools with credential-backed authority
+- regression coverage proving raw attachment filenames, mail endpoints, mailbox names, agent names, tool names, source labels, data labels, and token placeholders stay redacted
+
 ## Initial Build Recommendation
 
 Start with a CLI-first MVP before building the dashboard:

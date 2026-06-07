@@ -210,6 +210,7 @@ Examples:
 - authenticated browser session plus privileged browser extensions or password-manager/autofill state plus broad untrusted navigation and browser action authority
 - inbound email/chat/ticket/webhook payload plus agent invocation plus tool authority plus secrets plus no approval gate
 - inbound email/chat/ticket/webhook attachments plus agent invocation plus browser/database/external-response/memory/secret-manager authority plus sensitive and PII context plus no approval gate
+- inbound attachment parsing with raw extracted text, disabled sandboxing, disabled malware/content scanning, disabled prompt-instruction stripping, privileged tool authority, credentials, and no approval gate
 - multi-agent delegation plus untrusted input plus shared memory plus privileged specialist tools plus credentials plus no approval gate
 - multi-agent shared memory plus automatic handoff from untrusted intake into a secret-backed privileged executor with browser, database, filesystem, messaging, and memory-write authority
 - autonomous agent loop plus untrusted goals, automatic execution, shell and secret-manager authority, memory/tool-output feedback, missing iteration/runtime budgets or stop conditions, disabled dry-run and kill-switch controls, credentials, and no approval gate

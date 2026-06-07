@@ -5942,6 +5942,10 @@ interface InboundAgentTriggerPosture {
   inbound_trigger_sensitive_context: boolean;
   inbound_trigger_pii_context: boolean;
   inbound_trigger_attachment_context: boolean;
+  inbound_trigger_attachment_raw_text: boolean;
+  inbound_trigger_attachment_sandbox_disabled: boolean;
+  inbound_trigger_attachment_scan_disabled: boolean;
+  inbound_trigger_attachment_instruction_stripping_disabled: boolean;
   inbound_trigger_approval_required: boolean;
   env_key_names: string[];
   secret_ref_key_names: string[];
@@ -10747,6 +10751,10 @@ function classifyInboundAgentTriggerConfig(value: unknown, filePath: string): In
     inbound_trigger_sensitive_context: hasInboundTriggerSensitiveContextSignal(fields),
     inbound_trigger_pii_context: hasInboundTriggerPiiContextSignal(fields),
     inbound_trigger_attachment_context: hasInboundTriggerAttachmentSignal(fields),
+    inbound_trigger_attachment_raw_text: hasInboundTriggerAttachmentRawTextSignal(fields),
+    inbound_trigger_attachment_sandbox_disabled: hasInboundTriggerAttachmentSandboxDisabledSignal(fields),
+    inbound_trigger_attachment_scan_disabled: hasInboundTriggerAttachmentScanDisabledSignal(fields),
+    inbound_trigger_attachment_instruction_stripping_disabled: hasInboundTriggerAttachmentInstructionStrippingDisabledSignal(fields),
     inbound_trigger_approval_required: hasInboundTriggerApprovalRequiredSignal(fields),
     env_key_names: envKeys,
     secret_ref_key_names: secretRefKeys
@@ -10902,6 +10910,78 @@ function hasInboundTriggerAttachmentSignal(fields: RuntimeField[]): boolean {
   );
 }
 
+function hasInboundTriggerAttachmentRawTextSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => {
+    const text = `${field.path} ${fieldValueText(field)}`.toLowerCase();
+    if (!/(?:^|[_\W])(attachment|attachments|file|files|upload|document|extract|extracted|text|raw|ocr|html|pdf|archive)(?:[_\W]|$)/iu.test(text)) {
+      return false;
+    }
+    if (
+      /(?:^|\.)(pass_raw_to_agent|raw_text_to_agent|include_raw_attachment_text|extract_text|extract_ocr|preserve_html|raw_html|raw_content)(?:\.|$)/iu.test(
+        field.path
+      )
+    ) {
+      return truthyConfigValue(field.value);
+    }
+    return /\b(pass[_\s-]?raw|raw[_\s-]?attachment|raw[_\s-]?text|extract[_\s-]?text|preserve[_\s-]?html|attachment[_\s-]?html|ocr[_\s-]?text)\b/iu.test(
+      text
+    ) && truthyConfigValue(field.value);
+  });
+}
+
+function hasInboundTriggerAttachmentSandboxDisabledSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => {
+    const text = `${field.path} ${fieldValueText(field)}`.toLowerCase();
+    if (!/\b(attachment|attachments|file|files|upload|document|parser|sandbox|isolation|detonate|preview)\b/iu.test(text)) {
+      return false;
+    }
+    if (/(?:^|\.)(sandbox|sandboxed|isolation|isolated_parser|detonation|safe_preview)(?:\.|$)/iu.test(field.path)) {
+      return disabledConfigValue(field.value);
+    }
+    return /\b(no[_\s-]?sandbox|sandbox[_\s-]?disabled|unsandboxed|no[_\s-]?isolation|parser[_\s-]?not[_\s-]?isolated)\b/iu.test(
+      text
+    ) && truthyConfigValue(field.value);
+  });
+}
+
+function hasInboundTriggerAttachmentScanDisabledSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => {
+    const text = `${field.path} ${fieldValueText(field)}`.toLowerCase();
+    if (!/\b(attachment|attachments|file|files|upload|document|scan|scanner|malware|virus|av|antivirus|content[_\s-]?inspection)\b/iu.test(text)) {
+      return false;
+    }
+    if (
+      /(?:^|\.)(malware_scan|virus_scan|av_scan|antivirus|content_inspection|security_scan|scan_before_parse)(?:\.|$)/iu.test(
+        field.path
+      )
+    ) {
+      return disabledConfigValue(field.value);
+    }
+    return /\b(no[_\s-]?scan|scan[_\s-]?disabled|malware[_\s-]?scan[_\s-]?disabled|skip[_\s-]?scan|no[_\s-]?content[_\s-]?inspection)\b/iu.test(
+      text
+    ) && truthyConfigValue(field.value);
+  });
+}
+
+function hasInboundTriggerAttachmentInstructionStrippingDisabledSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => {
+    const text = `${field.path} ${fieldValueText(field)}`.toLowerCase();
+    if (!/(?:^|[_\W])(attachment|attachments|file|files|upload|document|instruction|prompt|html|ocr|sanitize|strip)(?:[_\W]|$)/iu.test(text)) {
+      return false;
+    }
+    if (
+      /(?:^|\.)(strip_instructions|instruction_stripping|prompt_injection_filter|sanitize_prompt_instructions|remove_prompt_instructions)(?:\.|$)/iu.test(
+        field.path
+      )
+    ) {
+      return disabledConfigValue(field.value);
+    }
+    return /\b(strip[_\s-]?instructions?[_\s-]?disabled|instruction[_\s-]?stripping[_\s-]?disabled|prompt[_\s-]?filter[_\s-]?disabled|preserve[_\s-]?instructions?)\b/iu.test(
+      text
+    ) && truthyConfigValue(field.value);
+  });
+}
+
 function hasInboundTriggerApprovalRequiredSignal(fields: RuntimeField[]): boolean {
   return fields.some((field) =>
     /approval|required[_-]?approval|human[_-]?approval|confirm|confirmation|moderation|review/iu.test(field.path) &&
@@ -10910,7 +10990,7 @@ function hasInboundTriggerApprovalRequiredSignal(fields: RuntimeField[]): boolea
 }
 
 function isInboundTriggerSecurityField(fieldPath: string): boolean {
-  return /provider|source|input|event|trigger|webhook|listener|receiver|mail|email|message|chat|ticket|issue|comment|payload|body|attachment|agent|assistant|bot|tool|mcp|browser|database|secret|memory|reply|respond|send|write|post|publish|approval|auth|token|credential|scope|permission|url|host|endpoint|queue|topic|subscription/iu.test(
+  return /provider|source|input|event|trigger|webhook|listener|receiver|mail|email|message|chat|ticket|issue|comment|payload|body|attachment|file|upload|document|extract|parser|sandbox|scan|malware|virus|sanitize|instruction|agent|assistant|bot|tool|mcp|browser|database|secret|memory|reply|respond|send|write|post|publish|approval|auth|token|credential|scope|permission|url|host|endpoint|queue|topic|subscription/iu.test(
     fieldPath
   );
 }
