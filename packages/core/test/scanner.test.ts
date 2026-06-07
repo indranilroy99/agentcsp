@@ -213,8 +213,8 @@ describe("scanner", () => {
     expect(JSON.stringify(remoteMcp)).not.toContain("/sse");
     expect(remoteContextBrokerMcp).toMatchObject({
       trust_level: "third_party",
-      data_classes: ["confidential", "credential", "pii"],
-      actions: ["call", "read", "send"],
+      data_classes: ["confidential", "credential", "pii", "secret"],
+      actions: ["call", "read", "remember", "send", "write"],
       external_reach: true,
       secret_exposure: true,
       untrusted_to_privileged: true
@@ -241,6 +241,28 @@ describe("scanner", () => {
       mcp_elicitation_sensitive_fields: true,
       mcp_context_request_authority: true,
       mcp_client_context_exposure: true,
+      mcp_resource_subscription_detected: true,
+      mcp_resource_subscription_enabled: true,
+      mcp_resource_subscription_source_redacted: true,
+      mcp_resource_subscription_source_count: 2,
+      mcp_resource_subscription_dynamic_updates: true,
+      mcp_resource_subscription_auto_refresh: true,
+      mcp_resource_subscription_auto_include_context: true,
+      mcp_resource_subscription_model_visible_context: true,
+      mcp_resource_subscription_raw_content_passthrough: true,
+      mcp_resource_subscription_untrusted_source: true,
+      mcp_resource_subscription_sanitization_disabled: true,
+      mcp_resource_subscription_redaction_disabled: true,
+      mcp_resource_subscription_prompt_injection_filter_disabled: true,
+      mcp_resource_subscription_provenance_verification_disabled: true,
+      mcp_resource_subscription_privileged_bridge: true,
+      mcp_resource_subscription_write_authority: true,
+      mcp_resource_subscription_external_authority: true,
+      mcp_resource_subscription_memory_authority: true,
+      mcp_resource_subscription_secret_context: true,
+      mcp_resource_subscription_sensitive_context: true,
+      mcp_resource_subscription_pii_context: true,
+      mcp_resource_subscription_approval_required: false,
       values_collected: false,
       content_redacted: true
     });
@@ -250,8 +272,34 @@ describe("scanner", () => {
       "sensitive_prefix",
       "wildcard"
     ]);
+    expect(remoteContextBrokerMcp?.metadata.mcp_resource_subscription_source_kinds).toEqual([
+      "browser_output",
+      "customer_stream",
+      "dynamic_subscription",
+      "remote_resource",
+      "tool_output"
+    ]);
+    expect(remoteContextBrokerMcp?.metadata.mcp_resource_subscription_authority_categories).toEqual([
+      "database_write",
+      "external_response",
+      "memory_write",
+      "secret_manager_access",
+      "tool_call"
+    ]);
     expect(JSON.stringify(remoteContextBrokerMcp)).not.toContain("${CONTEXT_BROKER_TOKEN}");
     expect(JSON.stringify(remoteContextBrokerMcp)).not.toContain("context-broker.example.invalid/mcp");
+    expect(JSON.stringify(remoteContextBrokerMcp)).not.toContain("context-broker.example.invalid/live/customer-ticket-stream");
+    expect(JSON.stringify(remoteContextBrokerMcp)).not.toContain("mcp://browser-observations/tool-output");
+    expect(JSON.stringify(remoteContextBrokerMcp)).not.toContain("untrusted_customer_stream");
+    expect(JSON.stringify(remoteContextBrokerMcp)).not.toContain("ticket_attachments");
+    expect(JSON.stringify(remoteContextBrokerMcp)).not.toContain("subscription_customer_email");
+    expect(JSON.stringify(remoteContextBrokerMcp)).not.toContain("subscription_account_number");
+    expect(JSON.stringify(remoteContextBrokerMcp)).not.toContain("confidential_subscription_notes");
+    expect(JSON.stringify(remoteContextBrokerMcp)).not.toContain("subscription_support_api_token");
+    expect(JSON.stringify(remoteContextBrokerMcp)).not.toContain("support_db.update_customer_record");
+    expect(JSON.stringify(remoteContextBrokerMcp)).not.toContain("slack.post_subscription_reply");
+    expect(JSON.stringify(remoteContextBrokerMcp)).not.toContain("memory.write_customer_summary");
+    expect(JSON.stringify(remoteContextBrokerMcp)).not.toContain("vault_secret_lookup.read_support_token");
     expect(JSON.stringify(remoteContextBrokerMcp)).not.toContain("process.env");
     expect(JSON.stringify(remoteContextBrokerMcp)).not.toContain("AWS_*");
     expect(JSON.stringify(remoteContextBrokerMcp)).not.toContain("OPENAI_*");
@@ -4339,16 +4387,44 @@ describe("scanner", () => {
       mcp_tool_catalog_sensitive_context: true,
       mcp_tool_catalog_pii_context: false,
       mcp_tool_catalog_approval_required: true,
+      mcp_resource_subscription_detected: true,
+      mcp_resource_subscription_enabled: true,
+      mcp_resource_subscription_source_redacted: true,
+      mcp_resource_subscription_source_count: 1,
+      mcp_resource_subscription_dynamic_updates: false,
+      mcp_resource_subscription_auto_refresh: false,
+      mcp_resource_subscription_auto_include_context: false,
+      mcp_resource_subscription_model_visible_context: false,
+      mcp_resource_subscription_raw_content_passthrough: false,
+      mcp_resource_subscription_untrusted_source: false,
+      mcp_resource_subscription_sanitization_disabled: false,
+      mcp_resource_subscription_redaction_disabled: false,
+      mcp_resource_subscription_prompt_injection_filter_disabled: false,
+      mcp_resource_subscription_provenance_verification_disabled: false,
+      mcp_resource_subscription_privileged_bridge: false,
+      mcp_resource_subscription_write_authority: false,
+      mcp_resource_subscription_external_authority: false,
+      mcp_resource_subscription_memory_authority: false,
+      mcp_resource_subscription_secret_context: false,
+      mcp_resource_subscription_shell_authority: false,
+      mcp_resource_subscription_sensitive_context: true,
+      mcp_resource_subscription_pii_context: false,
+      mcp_resource_subscription_approval_required: true,
       values_collected: false,
       content_redacted: true
     });
     expect(catalogMcp?.metadata.mcp_tool_catalog_source_kinds).toEqual(["static_manifest", "tool_catalog"]);
     expect(catalogMcp?.metadata.mcp_tool_catalog_tool_authority_categories).toEqual(["tool_call"]);
+    expect(catalogMcp?.metadata.mcp_resource_subscription_source_kinds).toEqual(["filesystem_resource"]);
+    expect(catalogMcp?.metadata.mcp_resource_subscription_authority_categories).toEqual(["tool_call"]);
     expect(catalogMcp?.metadata.env_key_names).toEqual([]);
     expect(catalogMcp?.metadata.secret_ref_key_names).toEqual([]);
     expect(JSON.stringify(catalogMcp)).not.toContain("static_local_manifest");
     expect(JSON.stringify(catalogMcp)).not.toContain("readonly_docs.search");
     expect(JSON.stringify(catalogMcp)).not.toContain("approved_internal_summary");
+    expect(JSON.stringify(catalogMcp)).not.toContain("file:///workspace/docs/approved-internal-digest.json");
+    expect(JSON.stringify(catalogMcp)).not.toContain("trusted_internal");
+    expect(JSON.stringify(catalogMcp)).not.toContain("approved_internal_docs");
   });
 
   it("keeps scoped context composers from materializing env secrets", async () => {

@@ -1,0 +1,72 @@
+id: AGENTCSP-MCP-011
+name: Remote MCP resource subscription feeds privileged context without controls
+description: A remote credential-backed MCP server auto-refreshes live resource subscriptions into model-visible context from untrusted or sensitive sources, passes raw content without redaction or prompt-injection filtering, and exposes privileged follow-up authority without approval.
+category: mcp_resource_subscription_context_bridge
+severity: critical
+maps_to:
+  owasp:
+    - LLM01:2025 Prompt Injection
+    - LLM02:2025 Sensitive Information Disclosure
+    - LLM05:2025 Improper Output Handling
+    - LLM06:2025 Excessive Agency
+  mitre_atlas:
+    - AML.T0051 LLM Prompt Injection
+    - AML.T0054 LLM Plugin Compromise
+  nist_ai_rmf:
+    - MAP 4.1
+    - MEASURE 2.7
+    - MANAGE 2.3
+match:
+  object_type: mcp_server
+  where:
+    - field: metadata.remote
+      op: equals
+      value: true
+    - field: metadata.mcp_resource_subscription_detected
+      op: equals
+      value: true
+    - field: metadata.mcp_resource_subscription_enabled
+      op: equals
+      value: true
+    - field: metadata.mcp_resource_subscription_dynamic_updates
+      op: equals
+      value: true
+    - field: metadata.mcp_resource_subscription_auto_refresh
+      op: equals
+      value: true
+    - field: metadata.mcp_resource_subscription_auto_include_context
+      op: equals
+      value: true
+    - field: metadata.mcp_resource_subscription_model_visible_context
+      op: equals
+      value: true
+    - field: metadata.mcp_resource_subscription_raw_content_passthrough
+      op: equals
+      value: true
+    - field: metadata.mcp_resource_subscription_untrusted_source
+      op: equals
+      value: true
+    - field: metadata.mcp_resource_subscription_sanitization_disabled
+      op: equals
+      value: true
+    - field: metadata.mcp_resource_subscription_redaction_disabled
+      op: equals
+      value: true
+    - field: metadata.mcp_resource_subscription_prompt_injection_filter_disabled
+      op: equals
+      value: true
+    - field: metadata.mcp_resource_subscription_privileged_bridge
+      op: equals
+      value: true
+    - field: metadata.mcp_resource_subscription_approval_required
+      op: equals
+      value: false
+    - field: secret_exposure
+      op: equals
+      value: true
+    - field: external_reach
+      op: equals
+      value: true
+recommendation:
+  control: quarantine
+  text: Quarantine live MCP resource subscriptions until subscribed sources are pinned, provenance-verified, sanitized, redacted, treated as untrusted context, and separately approved before they can influence write, external-response, memory, secret, or shell-capable tools.

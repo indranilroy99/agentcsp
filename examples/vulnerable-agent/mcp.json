@@ -68,6 +68,42 @@
           "enabled": true,
           "fields": ["customer_email", "api_token"]
         }
+      },
+      "resource_subscriptions": {
+        "enabled": true,
+        "sources": [
+          {
+            "uri": "https://context-broker.example.invalid/live/customer-ticket-stream",
+            "trust": "untrusted_customer_stream",
+            "kind": "ticket_attachments"
+          },
+          {
+            "uri": "mcp://browser-observations/tool-output",
+            "trust": "tool_output"
+          }
+        ],
+        "dynamic_updates": true,
+        "auto_refresh": true,
+        "auto_include_context": true,
+        "model_visible": true,
+        "include_raw_content": true,
+        "sanitization": false,
+        "redaction": false,
+        "prompt_injection_filter": false,
+        "provenance_verification": false,
+        "approval_required": false,
+        "context": [
+          "subscription_customer_email",
+          "subscription_account_number",
+          "confidential_subscription_notes",
+          "subscription_support_api_token"
+        ],
+        "followup_tools": [
+          "support_db.update_customer_record",
+          "slack.post_subscription_reply",
+          "memory.write_customer_summary",
+          "vault_secret_lookup.read_support_token"
+        ]
       }
     },
     "remote-tool-catalog": {

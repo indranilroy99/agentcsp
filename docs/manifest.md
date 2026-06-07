@@ -101,6 +101,31 @@ MCP metadata may include:
 - `mcp_tool_catalog_sensitive_context`
 - `mcp_tool_catalog_pii_context`
 - `mcp_tool_catalog_approval_required`
+- `mcp_resource_subscription_detected`
+- `mcp_resource_subscription_enabled`
+- `mcp_resource_subscription_source_redacted`
+- `mcp_resource_subscription_source_count`
+- `mcp_resource_subscription_source_kinds`
+- `mcp_resource_subscription_dynamic_updates`
+- `mcp_resource_subscription_auto_refresh`
+- `mcp_resource_subscription_auto_include_context`
+- `mcp_resource_subscription_model_visible_context`
+- `mcp_resource_subscription_raw_content_passthrough`
+- `mcp_resource_subscription_untrusted_source`
+- `mcp_resource_subscription_sanitization_disabled`
+- `mcp_resource_subscription_redaction_disabled`
+- `mcp_resource_subscription_prompt_injection_filter_disabled`
+- `mcp_resource_subscription_provenance_verification_disabled`
+- `mcp_resource_subscription_authority_categories`
+- `mcp_resource_subscription_privileged_bridge`
+- `mcp_resource_subscription_write_authority`
+- `mcp_resource_subscription_external_authority`
+- `mcp_resource_subscription_memory_authority`
+- `mcp_resource_subscription_secret_context`
+- `mcp_resource_subscription_shell_authority`
+- `mcp_resource_subscription_sensitive_context`
+- `mcp_resource_subscription_pii_context`
+- `mcp_resource_subscription_approval_required`
 - `values_collected`
 - `content_redacted`
 
@@ -109,6 +134,8 @@ Remote third-party MCP servers are treated as external trust boundaries. Credent
 MCP client roots, sampling, and elicitation are represented as coarse posture metadata. Raw root URIs, filesystem paths, root names, sampling prompts, elicitation schemas, requested field names, and secret placeholders are not emitted. Root scopes are reduced to categories such as `workspace`, `home`, `host_root`, `credential_path`, `absolute_path`, `file_uri`, and `wildcard` so rules can detect remote servers that can request broad client context without copying sensitive client paths into evidence.
 
 MCP tool catalogs are represented as posture metadata when an MCP server declares dynamic discovery, remote registries, tool manifests, marketplace entries, or model-visible tool descriptions. Raw catalog URLs, registry values, tool names, action names, context labels, and secret placeholders are not emitted. Source kinds such as `remote_registry`, `dynamic_discovery`, `tool_catalog`, `marketplace`, and `static_manifest`, combined with pinning, signature/provenance verification, review, approval, and authority categories, let rules distinguish risky mutable tool supply from pinned reviewed catalogs.
+
+MCP resource subscriptions are represented as posture metadata when an MCP server declares live resource watches, streams, notifications, resource sync, or resource update feeds. Raw subscribed resource URIs, stream names, trust labels, context labels, action names, and secret placeholders are not emitted. Source kinds such as `remote_resource`, `dynamic_subscription`, `customer_stream`, `browser_output`, `tool_output`, `memory_resource`, `retrieval_resource`, `public_web`, and `filesystem_resource`, combined with model-visibility, raw-content passthrough, sanitization, redaction, prompt-injection filtering, provenance, approval, and authority categories, let rules detect live MCP context that can cross from untrusted resources into privileged tool action.
 
 MCP prompts and resources declared in MCP configuration are normalized as `prompt` objects when their model-visible context can be inspected safely. Additional metadata may include:
 

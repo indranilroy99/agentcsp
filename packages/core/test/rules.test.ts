@@ -45,6 +45,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-008")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-009")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-010")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-011")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-001")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-002")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-003")).toBe(true);
@@ -2408,6 +2409,63 @@ describe("rule engine", () => {
     expect(JSON.stringify(mcpToolCatalogFindings[0])).not.toContain("catalog_customer_email");
     expect(JSON.stringify(mcpToolCatalogFindings[0])).not.toContain("catalog_account_number");
     expect(JSON.stringify(mcpToolCatalogFindings[0])).not.toContain("confidential_catalog_notes");
+    const mcpResourceSubscriptionFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-MCP-011");
+    expect(mcpResourceSubscriptionFindings).toHaveLength(1);
+    expect(mcpResourceSubscriptionFindings[0]?.matched_object.name).toBe("remote-context-broker");
+    expect(mcpResourceSubscriptionFindings[0]?.matched_object.path).toBe("mcp.json");
+    expect(mcpResourceSubscriptionFindings[0]?.matched_object.metadata).toMatchObject({
+      remote: true,
+      remote_scheme: "https",
+      encrypted_remote_transport: true,
+      auth_header_names: ["Authorization"],
+      secret_ref_key_names: ["CONTEXT_BROKER_TOKEN"],
+      mcp_resource_subscription_detected: true,
+      mcp_resource_subscription_enabled: true,
+      mcp_resource_subscription_dynamic_updates: true,
+      mcp_resource_subscription_auto_refresh: true,
+      mcp_resource_subscription_auto_include_context: true,
+      mcp_resource_subscription_model_visible_context: true,
+      mcp_resource_subscription_raw_content_passthrough: true,
+      mcp_resource_subscription_untrusted_source: true,
+      mcp_resource_subscription_sanitization_disabled: true,
+      mcp_resource_subscription_redaction_disabled: true,
+      mcp_resource_subscription_prompt_injection_filter_disabled: true,
+      mcp_resource_subscription_privileged_bridge: true,
+      mcp_resource_subscription_approval_required: false
+    });
+    expect(mcpResourceSubscriptionFindings[0]?.matched_object.metadata.mcp_resource_subscription_source_kinds).toEqual([
+      "browser_output",
+      "customer_stream",
+      "dynamic_subscription",
+      "remote_resource",
+      "tool_output"
+    ]);
+    expect(mcpResourceSubscriptionFindings[0]?.matched_object.metadata.mcp_resource_subscription_authority_categories).toEqual([
+      "database_write",
+      "external_response",
+      "memory_write",
+      "secret_manager_access",
+      "tool_call"
+    ]);
+    expect(mcpResourceSubscriptionFindings[0]?.severity).toBe("critical");
+    expect(mcpResourceSubscriptionFindings[0]?.confidence).toBe("very_high");
+    expect(mcpResourceSubscriptionFindings[0]?.recommended_control).toBe("quarantine");
+    expect(JSON.stringify(mcpResourceSubscriptionFindings[0])).not.toContain("${CONTEXT_BROKER_TOKEN}");
+    expect(JSON.stringify(mcpResourceSubscriptionFindings[0])).not.toContain("context-broker.example.invalid/mcp");
+    expect(JSON.stringify(mcpResourceSubscriptionFindings[0])).not.toContain(
+      "context-broker.example.invalid/live/customer-ticket-stream"
+    );
+    expect(JSON.stringify(mcpResourceSubscriptionFindings[0])).not.toContain("mcp://browser-observations/tool-output");
+    expect(JSON.stringify(mcpResourceSubscriptionFindings[0])).not.toContain("untrusted_customer_stream");
+    expect(JSON.stringify(mcpResourceSubscriptionFindings[0])).not.toContain("ticket_attachments");
+    expect(JSON.stringify(mcpResourceSubscriptionFindings[0])).not.toContain("subscription_customer_email");
+    expect(JSON.stringify(mcpResourceSubscriptionFindings[0])).not.toContain("subscription_account_number");
+    expect(JSON.stringify(mcpResourceSubscriptionFindings[0])).not.toContain("confidential_subscription_notes");
+    expect(JSON.stringify(mcpResourceSubscriptionFindings[0])).not.toContain("subscription_support_api_token");
+    expect(JSON.stringify(mcpResourceSubscriptionFindings[0])).not.toContain("support_db.update_customer_record");
+    expect(JSON.stringify(mcpResourceSubscriptionFindings[0])).not.toContain("slack.post_subscription_reply");
+    expect(JSON.stringify(mcpResourceSubscriptionFindings[0])).not.toContain("memory.write_customer_summary");
+    expect(JSON.stringify(mcpResourceSubscriptionFindings[0])).not.toContain("vault_secret_lookup.read_support_token");
     expect(findings.find((finding) => finding.rule_id === "AGENTCSP-PROMPT-001")?.matched_object.path).toBe(
       "prompts/support-ticket.prompt.md"
     );

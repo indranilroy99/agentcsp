@@ -1297,6 +1297,16 @@ The current iteration adds:
 - rule `AGENTCSP-RUNTIME-068` for model-only guardrails that combine missing deterministic pre-tool policy, untrusted input, privileged tool authority, credential exposure, and missing approval
 - scanner, rule, fixture verifier, and redaction coverage proving raw policy names, model-reviewer labels, policy-prompt labels, source labels, tool names, data-scope labels, and token placeholders stay redacted
 
+## MCP Resource Subscription Context Bridge Pass
+
+The current iteration adds:
+
+- first-class redacted metadata for MCP resource subscriptions, live resource watches, server-pushed updates, model-visible context auto-inclusion, raw-content passthrough, untrusted source posture, sanitization/redaction/prompt-injection filtering, provenance verification, privileged follow-up authority categories, approval posture, and credential exposure
+- vulnerable fixture coverage for a remote credential-backed MCP context broker that subscribes to untrusted customer-ticket and tool-output resources, auto-refreshes raw model-visible context, disables sanitization, redaction, prompt-injection filtering, and provenance verification, and allows database, Slack, memory, and secret-manager follow-up authority without approval
+- safe fixture coverage for a local reviewed docs MCP server that keeps resource subscriptions non-dynamic, non-model-visible, sanitized, redacted, provenance-verified, read-only, and approval-gated
+- rule `AGENTCSP-MCP-011` for remote MCP resource subscriptions that combine live untrusted context, raw model-visible injection, disabled controls, privileged authority, credentials, and missing approval
+- scanner, rule, fixture verifier, and redaction coverage proving raw subscribed resource URIs, stream labels, trust labels, context labels, action names, safe resource paths, and token placeholders stay redacted
+
 ## Initial Build Recommendation
 
 Start with a CLI-first MVP before building the dashboard:

@@ -76,6 +76,16 @@ const leakPatterns = [
   /support:\/\/customer-escalation-runbook/u,
   /Retrieved support runbook/u,
   /context-broker\.example\.invalid\/mcp/u,
+  /context-broker\.example\.invalid\/live\/customer-ticket-stream/u,
+  /mcp:\/\/browser-observations\/tool-output/u,
+  /untrusted_customer_stream/u,
+  /ticket_attachments/u,
+  /subscription_customer_email/u,
+  /subscription_account_number/u,
+  /confidential_subscription_notes/u,
+  /subscription_support_api_token/u,
+  /slack\.post_subscription_reply/u,
+  /memory\.write_customer_summary/u,
   /process\.env/u,
   /AWS_\*/u,
   /OPENAI_\*/u,
@@ -553,6 +563,8 @@ const leakPatterns = [
   /catalog_account_number/u,
   /confidential_catalog_notes/u,
   /static_local_manifest/u,
+  /file:\/\/\/workspace\/docs\/approved-internal-digest\.json/u,
+  /trusted_internal/u,
   /action_router_customer_email/u,
   /action_router_account_number/u,
   /confidential_action_router_notes/u,
@@ -564,8 +576,8 @@ const leakPatterns = [
 const vulnerable = await readScanOutput(vulnerableOutput, { sarifRequired: true });
 const safe = await readScanOutput(safeOutput, { sarifRequired: false });
 
-assertEqual(vulnerable.manifest.findings.length, 172, "vulnerable manifest finding count");
-assertEqual(vulnerable.findings.length, 172, "vulnerable findings.json count");
+assertEqual(vulnerable.manifest.findings.length, 173, "vulnerable manifest finding count");
+assertEqual(vulnerable.findings.length, 173, "vulnerable findings.json count");
 assertEqual(vulnerable.manifest.attack_paths.length, 15, "vulnerable attack path count");
 assertEqual(vulnerable.manifest.static_blast_radius?.critical_attack_paths, 15, "vulnerable critical attack path count");
 assertEqual(vulnerable.manifest.diagnostics.length, 0, "vulnerable diagnostics count");
@@ -644,6 +656,7 @@ for (const ruleId of [
   "AGENTCSP-MCP-008",
   "AGENTCSP-MCP-009",
   "AGENTCSP-MCP-010",
+  "AGENTCSP-MCP-011",
   "AGENTCSP-CURSOR-001",
   "AGENTCSP-MEMORY-003",
   "AGENTCSP-MEMORY-004",

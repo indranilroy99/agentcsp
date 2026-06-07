@@ -34,6 +34,7 @@
 - Add MCP environment-inheritance posture for ambient process env, wildcard env passthrough, sensitive env patterns, and external MCP boundaries.
 - Add MCP OAuth authorization posture for dynamic client registration, PKCE/state/resource-indicator controls, broad scopes, refresh-token storage, token forwarding, and untrusted server selection.
 - Add MCP dynamic tool-catalog posture for mutable remote tool discovery, model-visible descriptions, remote schema trust, pinning, signature/provenance verification, review posture, privileged tool categories, and approval boundaries.
+- Add MCP resource-subscription posture for live resource watches, server-pushed updates, model-visible context injection, raw-content passthrough, sanitization/redaction controls, provenance verification, privileged follow-up authority, and approval boundaries.
 - Add OpenAPI and Swagger tool-import posture for authenticated external API writes, user-controlled request schemas, sensitive data categories, and approval boundaries.
 - Add hosted assistant and deployable agent-definition posture for automatic tool choice, parallel privileged tool fanout, hosted code/file/vector/function resources, sensitive context, guardrail posture, and approval boundaries.
 - Add realtime and voice agent session posture for external callers, raw audio and transcript capture, recording redaction, prompt-injection filtering, privileged tool authority, and approval boundaries.

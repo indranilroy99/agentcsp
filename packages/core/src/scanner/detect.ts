@@ -22255,6 +22255,7 @@ async function detectMcpConfig(
     const packageRunner = server.packageRunner;
     const clientContext = server.clientContext;
     const toolCatalog = server.toolCatalog;
+    const resourceSubscriptions = server.resourceSubscriptions;
     const localImplementationPaths = server.localCommandPaths ?? [];
     const localImplementationPathsFound = localImplementationPaths.filter((pathRef) => projectFilePaths.has(pathRef));
     const localImplementationPathsMissing = localImplementationPaths.filter((pathRef) => !projectFilePaths.has(pathRef));
@@ -22269,6 +22270,12 @@ async function detectMcpConfig(
       dataClasses.add("credential");
       dataClasses.add("secret");
     }
+    if (resourceSubscriptions.sensitiveContext || resourceSubscriptions.rawContentPassthrough) dataClasses.add("confidential");
+    if (resourceSubscriptions.piiContext) dataClasses.add("pii");
+    if (resourceSubscriptions.secretContext) {
+      dataClasses.add("credential");
+      dataClasses.add("secret");
+    }
     if (dataClasses.size > 1) dataClasses.delete("unknown");
     const mcpActions: ActionType[] = [
       ...baseActions,
@@ -22280,7 +22287,13 @@ async function detectMcpConfig(
       ...(toolCatalog.writeAuthority ? (["write"] as ActionType[]) : []),
       ...(toolCatalog.externalAuthority ? (["send"] as ActionType[]) : []),
       ...(toolCatalog.memoryAuthority ? (["remember"] as ActionType[]) : []),
-      ...(toolCatalog.shellAuthority ? (["execute"] as ActionType[]) : [])
+      ...(toolCatalog.shellAuthority ? (["execute"] as ActionType[]) : []),
+      ...(resourceSubscriptions.detected ? (["read"] as ActionType[]) : []),
+      ...(resourceSubscriptions.autoIncludeContext || resourceSubscriptions.modelVisibleContext ? (["call"] as ActionType[]) : []),
+      ...(resourceSubscriptions.writeAuthority ? (["write"] as ActionType[]) : []),
+      ...(resourceSubscriptions.externalAuthority ? (["send"] as ActionType[]) : []),
+      ...(resourceSubscriptions.memoryAuthority ? (["remember"] as ActionType[]) : []),
+      ...(resourceSubscriptions.shellAuthority ? (["execute"] as ActionType[]) : [])
     ];
     const object = createSurfaceObject({
       type: "mcp_server",
@@ -22291,8 +22304,12 @@ async function detectMcpConfig(
       actions: uniqueActions(mcpActions),
       side_effect: true,
       external_reach: externalRemote || Boolean(packageRunner) || hasExternalReach(signalText),
-      secret_exposure: secretKeys.some(isCredentialLikeKeyName) || server.envExposure.passthroughSecretRisk || toolCatalog.secretContext,
-      reversible: !toolCatalog.privilegedToolAuthority && isReversible(signalText),
+      secret_exposure:
+        secretKeys.some(isCredentialLikeKeyName) ||
+        server.envExposure.passthroughSecretRisk ||
+        toolCatalog.secretContext ||
+        resourceSubscriptions.secretContext,
+      reversible: !toolCatalog.privilegedToolAuthority && !resourceSubscriptions.privilegedBridge && isReversible(signalText),
       reason: "MCP server configuration exposes agent-callable tools and authority.",
       metadata: {
         command_name: server.command ? path.basename(server.command) : undefined,
@@ -22358,13 +22375,43 @@ async function detectMcpConfig(
         mcp_tool_catalog_sensitive_context: toolCatalog.sensitiveContext,
         mcp_tool_catalog_pii_context: toolCatalog.piiContext,
         mcp_tool_catalog_approval_required: toolCatalog.approvalRequired,
+        mcp_resource_subscription_detected: resourceSubscriptions.detected,
+        mcp_resource_subscription_enabled: resourceSubscriptions.enabled,
+        mcp_resource_subscription_source_redacted: resourceSubscriptions.sourceRedacted,
+        mcp_resource_subscription_source_count: resourceSubscriptions.sourceCount,
+        mcp_resource_subscription_source_kinds: resourceSubscriptions.sourceKinds,
+        mcp_resource_subscription_dynamic_updates: resourceSubscriptions.dynamicUpdates,
+        mcp_resource_subscription_auto_refresh: resourceSubscriptions.autoRefresh,
+        mcp_resource_subscription_auto_include_context: resourceSubscriptions.autoIncludeContext,
+        mcp_resource_subscription_model_visible_context: resourceSubscriptions.modelVisibleContext,
+        mcp_resource_subscription_raw_content_passthrough: resourceSubscriptions.rawContentPassthrough,
+        mcp_resource_subscription_untrusted_source: resourceSubscriptions.untrustedSource,
+        mcp_resource_subscription_sanitization_disabled: resourceSubscriptions.sanitizationDisabled,
+        mcp_resource_subscription_redaction_disabled: resourceSubscriptions.redactionDisabled,
+        mcp_resource_subscription_prompt_injection_filter_disabled: resourceSubscriptions.promptInjectionFilterDisabled,
+        mcp_resource_subscription_provenance_verification_disabled: resourceSubscriptions.provenanceVerificationDisabled,
+        mcp_resource_subscription_authority_categories: resourceSubscriptions.authorityCategories,
+        mcp_resource_subscription_privileged_bridge: resourceSubscriptions.privilegedBridge,
+        mcp_resource_subscription_write_authority: resourceSubscriptions.writeAuthority,
+        mcp_resource_subscription_external_authority: resourceSubscriptions.externalAuthority,
+        mcp_resource_subscription_memory_authority: resourceSubscriptions.memoryAuthority,
+        mcp_resource_subscription_secret_context: resourceSubscriptions.secretContext,
+        mcp_resource_subscription_shell_authority: resourceSubscriptions.shellAuthority,
+        mcp_resource_subscription_sensitive_context: resourceSubscriptions.sensitiveContext,
+        mcp_resource_subscription_pii_context: resourceSubscriptions.piiContext,
+        mcp_resource_subscription_approval_required: resourceSubscriptions.approvalRequired,
         values_collected: false,
         content_redacted: true
       }
     });
     const mcpSurface = {
       ...object,
-      untrusted_to_privileged: isUntrustedToPrivileged(object)
+      untrusted_to_privileged:
+        (resourceSubscriptions.untrustedSource &&
+          resourceSubscriptions.modelVisibleContext &&
+          resourceSubscriptions.privilegedBridge &&
+          !resourceSubscriptions.approvalRequired) ||
+        isUntrustedToPrivileged(object)
     };
     surfaces.mcp_servers.push(mcpSurface);
     detectMcpContextSurfaces(file, server, mcpSurface, surfaces);
@@ -23447,6 +23494,7 @@ interface ExtractedMcpServer {
   localCommandPaths?: string[];
   clientContext: McpClientContextPosture;
   toolCatalog: McpToolCatalogPosture;
+  resourceSubscriptions: McpResourceSubscriptionPosture;
   contextSurfaces: McpContextDefinition[];
 }
 
@@ -23488,6 +23536,34 @@ interface McpToolCatalogPosture {
   unreviewedToolsAllowed: boolean;
   toolAuthorityCategories: string[];
   privilegedToolAuthority: boolean;
+  writeAuthority: boolean;
+  externalAuthority: boolean;
+  memoryAuthority: boolean;
+  secretContext: boolean;
+  shellAuthority: boolean;
+  sensitiveContext: boolean;
+  piiContext: boolean;
+  approvalRequired: boolean;
+}
+
+interface McpResourceSubscriptionPosture {
+  detected: boolean;
+  enabled: boolean;
+  sourceRedacted: boolean;
+  sourceCount: number;
+  sourceKinds: string[];
+  dynamicUpdates: boolean;
+  autoRefresh: boolean;
+  autoIncludeContext: boolean;
+  modelVisibleContext: boolean;
+  rawContentPassthrough: boolean;
+  untrustedSource: boolean;
+  sanitizationDisabled: boolean;
+  redactionDisabled: boolean;
+  promptInjectionFilterDisabled: boolean;
+  provenanceVerificationDisabled: boolean;
+  authorityCategories: string[];
+  privilegedBridge: boolean;
   writeAuthority: boolean;
   externalAuthority: boolean;
   memoryAuthority: boolean;
@@ -23620,6 +23696,7 @@ function extractMcpServers(value: unknown): ExtractedMcpServer[] {
       localCommandPaths,
       clientContext: classifyMcpClientContext(serverConfig),
       toolCatalog: classifyMcpToolCatalog(serverConfig),
+      resourceSubscriptions: classifyMcpResourceSubscriptions(serverConfig),
       contextSurfaces: extractMcpContextDefinitions(serverConfig)
     };
   });
@@ -23994,6 +24071,303 @@ function hasMcpToolCatalogApprovalRequiredSignal(fields: RuntimeField[]): boolea
 }
 
 function mcpToolCatalogText(field: RuntimeField): string {
+  return `${field.path} ${fieldValueText(field)}`.toLowerCase().replaceAll("_", " ").replaceAll("-", " ");
+}
+
+function classifyMcpResourceSubscriptions(serverConfig: Record<string, unknown>): McpResourceSubscriptionPosture {
+  const fields = flattenRuntimeFields(serverConfig).filter(isMcpResourceSubscriptionField);
+  const detected = fields.length > 0;
+  const authorityCategories = collectMcpResourceSubscriptionAuthorityCategories(fields);
+
+  return {
+    detected,
+    enabled: detected && !hasMcpResourceSubscriptionDisabledSignal(fields),
+    sourceRedacted: hasMcpResourceSubscriptionSourceSignal(fields),
+    sourceCount: countMcpResourceSubscriptionSources(fields),
+    sourceKinds: collectMcpResourceSubscriptionSourceKinds(fields),
+    dynamicUpdates: hasMcpResourceSubscriptionDynamicUpdateSignal(fields),
+    autoRefresh: hasMcpResourceSubscriptionAutoRefreshSignal(fields),
+    autoIncludeContext: hasMcpResourceSubscriptionAutoIncludeSignal(fields),
+    modelVisibleContext: hasMcpResourceSubscriptionModelVisibleSignal(fields),
+    rawContentPassthrough: hasMcpResourceSubscriptionRawContentSignal(fields),
+    untrustedSource: hasMcpResourceSubscriptionUntrustedSourceSignal(fields),
+    sanitizationDisabled: hasMcpResourceSubscriptionControlDisabledSignal(fields, /sanitize|sanitization|clean|strip/i),
+    redactionDisabled: hasMcpResourceSubscriptionControlDisabledSignal(fields, /redact|redaction|mask/i),
+    promptInjectionFilterDisabled: hasMcpResourceSubscriptionControlDisabledSignal(
+      fields,
+      /prompt[_\s-]?injection|instruction[_\s-]?(?:strip|filter)|jailbreak/i
+    ),
+    provenanceVerificationDisabled: hasMcpResourceSubscriptionControlDisabledSignal(
+      fields,
+      /provenance|attestation|source[_\s-]?verification|origin|verify|verification/i
+    ),
+    authorityCategories,
+    privilegedBridge: isMcpResourceSubscriptionPrivileged(authorityCategories),
+    writeAuthority: hasMcpResourceSubscriptionWriteAuthoritySignal(fields, authorityCategories),
+    externalAuthority: hasMcpResourceSubscriptionExternalAuthoritySignal(fields, authorityCategories),
+    memoryAuthority: hasMcpResourceSubscriptionMemoryAuthoritySignal(fields, authorityCategories),
+    secretContext: hasMcpResourceSubscriptionSecretSignal(fields, authorityCategories),
+    shellAuthority: hasMcpResourceSubscriptionShellSignal(fields, authorityCategories),
+    sensitiveContext: hasMcpResourceSubscriptionSensitiveContextSignal(fields),
+    piiContext: hasMcpResourceSubscriptionPiiContextSignal(fields),
+    approvalRequired: hasMcpResourceSubscriptionApprovalRequiredSignal(fields)
+  };
+}
+
+function isMcpResourceSubscriptionField(field: RuntimeField): boolean {
+  const text = mcpResourceSubscriptionText(field);
+  return /(?:^|\.)(resource_subscriptions?|resourceSubscriptions?|resource_watches?|resourceWatches?|resource_sync|resourceSync|resource_updates?|resourceUpdates?|resource_notifications?|resourceNotifications?|subscribe_resources?|subscribeResources?|watch_resources?|watchResources?|subscriptions?)(?:\.|$)/u.test(
+    field.path
+  ) || (/\b(resource|resources)\b/iu.test(text) && /\b(subscribe|subscription|watch|stream|sync|notification|notify|update feed|live update)\b/iu.test(text));
+}
+
+function hasMcpResourceSubscriptionDisabledSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => /(?:^|\.)(enabled|active)(?:\.|$)/iu.test(field.path) && disabledConfigValue(field.value));
+}
+
+function hasMcpResourceSubscriptionSourceSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /(?:^|\.)(source|sources?|url|uri|endpoint|stream|feed|channel|resources?|resource_uris|resourceUris)(?:\.|$)/iu.test(field.path) ||
+    /\b(remote|resource|subscription|stream|feed|channel|webhook|ticket|browser|tool output|memory|retrieval|vector)\b/iu.test(
+      mcpResourceSubscriptionText(field)
+    )
+  );
+}
+
+function countMcpResourceSubscriptionSources(fields: RuntimeField[]): number {
+  const entries = new Set<string>();
+  for (const field of fields) {
+    if (!/(?:^|\.)(source|sources?|url|uri|endpoint|stream|feed|channel|resources?|resource_uris|resourceUris)(?:\.|$)/iu.test(field.path)) {
+      continue;
+    }
+    const sourceEntry = field.path.match(/((?:^|\.)(?:source|sources)\.(?:\d+|[^.]+))/iu);
+    entries.add(sourceEntry?.[1]?.replace(/^\./u, "") ?? field.path);
+  }
+  return entries.size;
+}
+
+function collectMcpResourceSubscriptionSourceKinds(fields: RuntimeField[]): string[] {
+  const kinds = new Set<string>();
+  for (const field of fields) {
+    if (isMcpResourceSubscriptionAuthorityField(field.path)) continue;
+    const text = mcpResourceSubscriptionText(field);
+    const valueText = fieldValueText(field).toLowerCase().replaceAll("_", " ").replaceAll("-", " ");
+    if (/\b(remote|http|https|server|mcp server)\b/iu.test(text)) kinds.add("remote_resource");
+    if (
+      (/(?:^|\.)(dynamic|live|watch|stream|sync|subscribe|notifications?|updates?|auto_update|autoUpdate)(?:\.|$)/iu.test(field.path) &&
+        !disabledConfigValue(field.value)) ||
+      /\b(subscribe|watch|stream|sync|notification|notify|dynamic|live update|auto update)\b/iu.test(valueText)
+    ) {
+      kinds.add("dynamic_subscription");
+    }
+    if (/\b(customer|ticket|case|email|chat|slack|message|webhook|attachment|upload|user supplied|user-supplied|untrusted)\b/iu.test(text)) {
+      kinds.add("customer_stream");
+    }
+    if (/\b(browser|screenshot|ocr|dom|page content|navigation|web page)\b/iu.test(text)) kinds.add("browser_output");
+    if (/\b(tool output|tool result|mcp output|api response|command output|shell output)\b/iu.test(text)) kinds.add("tool_output");
+    if (/\b(memory|conversation state|session state|long term|long-term|summary)\b/iu.test(text)) kinds.add("memory_resource");
+    if (/\b(retrieval|rag|vector|embedding|document chunk|knowledge base)\b/iu.test(text)) kinds.add("retrieval_resource");
+    if (/\b(public web|external web|internet|crawler|rss|feed)\b/iu.test(text)) kinds.add("public_web");
+    if (/\b(filesystem|file system|file:\/\/|workspace|repo|repository|path|directory)\b/iu.test(text)) kinds.add("filesystem_resource");
+  }
+  return [...kinds].sort((a, b) => a.localeCompare(b));
+}
+
+function hasMcpResourceSubscriptionDynamicUpdateSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => {
+    const valueText = fieldValueText(field).toLowerCase().replaceAll("_", " ").replaceAll("-", " ");
+    if (/(?:^|\.)(dynamic|live|watch|stream|sync|notifications?|updates?|auto_update|autoUpdate)(?:\.|$)/iu.test(field.path)) {
+      return !disabledConfigValue(field.value);
+    }
+    return /\b(dynamic|live update|subscribe|watch|stream|sync|notification|server push|resource update)\b/iu.test(valueText);
+  });
+}
+
+function hasMcpResourceSubscriptionAutoRefreshSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => {
+    const text = mcpResourceSubscriptionText(field);
+    if (/(?:^|\.)(auto_refresh|autoRefresh|refresh_interval|refreshInterval|auto_sync|autoSync|poll|poll_interval|pollInterval|sync_interval|syncInterval)(?:\.|$)/u.test(field.path)) {
+      return truthyConfigValue(field.value);
+    }
+    return /\b(auto refresh|auto-refresh|auto sync|auto-sync|poll|polling|refresh interval|sync interval|continuous refresh)\b/iu.test(text);
+  });
+}
+
+function hasMcpResourceSubscriptionAutoIncludeSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => {
+    const text = mcpResourceSubscriptionText(field);
+    if (/(?:^|\.)(auto_include_context|autoIncludeContext|auto_inject|autoInject|inject_into_context|injectIntoContext|append_to_messages|appendToMessages|include_in_prompt|includeInPrompt)(?:\.|$)/u.test(field.path)) {
+      return truthyConfigValue(field.value);
+    }
+    return /\b(auto include|auto-includ|auto inject|inject into context|append to messages|include in prompt|promote to context)\b/iu.test(text);
+  });
+}
+
+function hasMcpResourceSubscriptionModelVisibleSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => {
+    const text = mcpResourceSubscriptionText(field);
+    if (/(?:^|\.)(model_visible|modelVisible|visible_to_model|visibleToModel|expose_to_model|exposeToModel|context_visible|contextVisible)(?:\.|$)/u.test(field.path)) {
+      return truthyConfigValue(field.value);
+    }
+    return /\b(model visible|visible to model|model reads|expose to model|context visible|prompt context)\b/iu.test(text);
+  });
+}
+
+function hasMcpResourceSubscriptionRawContentSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => {
+    const text = mcpResourceSubscriptionText(field);
+    if (/(?:^|\.)(include_raw_content|includeRawContent|raw_content|rawContent|raw_chunks|rawChunks|passthrough|pass_through|raw_passthrough|rawPassthrough)(?:\.|$)/u.test(field.path)) {
+      return truthyConfigValue(field.value);
+    }
+    return /\b(raw content|raw chunks|raw output|passthrough|pass-through|unfiltered content|unmodified content)\b/iu.test(text);
+  });
+}
+
+function hasMcpResourceSubscriptionUntrustedSourceSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /\b(untrusted|customer|user supplied|user-supplied|user upload|external|public|internet|ticket|case|email|chat|slack|webhook|browser|tool output|api response|attachment)\b/iu.test(
+      mcpResourceSubscriptionText(field)
+    )
+  );
+}
+
+function hasMcpResourceSubscriptionControlDisabledSignal(fields: RuntimeField[], controlPattern: RegExp): boolean {
+  return fields.some((field) => {
+    const text = mcpResourceSubscriptionText(field);
+    if (!controlPattern.test(text)) return false;
+    if (/(?:^|\.)(enabled|enforced|required|verification|verify|validation|validate|filter|sanitize|redact)(?:\.|$)/iu.test(field.path)) {
+      return disabledConfigValue(field.value);
+    }
+    return /\b(disabled|off|false|none|skip|bypass|not required|unverified|no verification|no validation|no redaction|no sanitization|unfiltered)\b/iu.test(
+      text
+    );
+  });
+}
+
+function collectMcpResourceSubscriptionAuthorityCategories(fields: RuntimeField[]): string[] {
+  const categories = new Set<string>();
+  for (const field of fields) {
+    if (!isMcpResourceSubscriptionAuthorityField(field.path)) continue;
+    if (disabledConfigValue(field.value)) continue;
+    const text = mcpResourceSubscriptionText(field);
+    if (!/\b(tool|tools|function|capability|action|command|database|db|sql|slack|email|webhook|secret|vault|memory|shell|filesystem|browser|customer|reply)\b/iu.test(text)) {
+      continue;
+    }
+    if (/\b(tool|tools|function|capability|action|command)\b/iu.test(text)) categories.add("tool_call");
+    if (/\b(database|db|sql|query|crm|support db|warehouse|record|update customer|customer record)\b/iu.test(text)) {
+      categories.add("database_write");
+    }
+    if (/\b(slack|email|sms|message|webhook|ticket|jira|zendesk|reply|respond|send|post|publish|customer reply)\b/iu.test(text)) {
+      categories.add("external_response");
+    }
+    if (/\b(browser|playwright|puppeteer|click|form|navigate|submit)\b/iu.test(text)) categories.add("browser_action");
+    if (/(?:^|[_\W])(vault|secret|secrets|secret manager|key vault|credential|api key|token)(?:[_\W]|$)/iu.test(text)) {
+      categories.add("secret_manager_access");
+    }
+    if (/(?:^|[_\W])(memory|remember|store|persist|summary|session state|conversation state)(?:[_\W]|$)/iu.test(text)) {
+      categories.add("memory_write");
+    }
+    if (/\b(shell|bash|command|exec|terminal|python|node|subprocess|code interpreter|remediation)\b/iu.test(text)) {
+      categories.add("shell_execution");
+    }
+    if (/\b(filesystem|file write|workspace|repo|repository|github|gitlab|commit|push|merge)\b/iu.test(text)) {
+      categories.add("filesystem_write");
+    }
+  }
+  return [...categories].sort((a, b) => a.localeCompare(b));
+}
+
+function isMcpResourceSubscriptionAuthorityField(fieldPath: string): boolean {
+  return /(?:^|\.)(tools?|allowed_tools|allowedTools|target_tools|targetTools|followup_tools|followupTools|downstream_tools|downstreamTools|tool_names|toolNames|actions?|commands?|capabilities?|functions?|permissions?|routes?|handlers?|on_update|onUpdate|on_notification|onNotification|authority|privileged_authority|privilegedAuthority)(?:\.|$)/iu.test(
+    fieldPath
+  );
+}
+
+function isMcpResourceSubscriptionPrivileged(categories: string[]): boolean {
+  return categories.some((category) =>
+    [
+      "browser_action",
+      "database_write",
+      "external_response",
+      "filesystem_write",
+      "memory_write",
+      "secret_manager_access",
+      "shell_execution"
+    ].includes(category)
+  );
+}
+
+function hasMcpResourceSubscriptionWriteAuthoritySignal(fields: RuntimeField[], categories: string[]): boolean {
+  return categories.some((category) =>
+    ["browser_action", "database_write", "external_response", "filesystem_write", "memory_write", "shell_execution"].includes(category)
+  ) || fields.some((field) =>
+    isMcpResourceSubscriptionAuthorityField(field.path) &&
+    /\b(write|update|create|delete|reply|respond|send|post|publish|comment|commit|push|merge|submit|remember|persist|execute|run)\b/iu.test(
+      mcpResourceSubscriptionText(field)
+    )
+  );
+}
+
+function hasMcpResourceSubscriptionExternalAuthoritySignal(fields: RuntimeField[], categories: string[]): boolean {
+  return categories.includes("external_response") ||
+    fields.some((field) =>
+      isMcpResourceSubscriptionAuthorityField(field.path) &&
+      /\b(reply|respond|send|post|publish|slack|email|sms|webhook|ticket|external response|customer reply)\b/iu.test(
+        mcpResourceSubscriptionText(field)
+      )
+    );
+}
+
+function hasMcpResourceSubscriptionMemoryAuthoritySignal(fields: RuntimeField[], categories: string[]): boolean {
+  return categories.includes("memory_write") ||
+    fields.some((field) =>
+      isMcpResourceSubscriptionAuthorityField(field.path) &&
+      /\b(memory|remember|persist|store|conversation state|session state|long term|long-term|summary)\b/iu.test(
+        mcpResourceSubscriptionText(field)
+      )
+    );
+}
+
+function hasMcpResourceSubscriptionSecretSignal(fields: RuntimeField[], categories: string[]): boolean {
+  return categories.includes("secret_manager_access") ||
+    fields.some((field) =>
+      /\b(secret|token|credential|api key|password|vault|key vault|authorization|bearer)\b/iu.test(mcpResourceSubscriptionText(field))
+    );
+}
+
+function hasMcpResourceSubscriptionShellSignal(fields: RuntimeField[], categories: string[]): boolean {
+  return categories.includes("shell_execution") ||
+    fields.some((field) =>
+      isMcpResourceSubscriptionAuthorityField(field.path) &&
+      /\b(shell|bash|command|exec|terminal|subprocess|python|node|remediation)\b/iu.test(mcpResourceSubscriptionText(field))
+    );
+}
+
+function hasMcpResourceSubscriptionSensitiveContextSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /\b(customer|client|ticket|support|internal|confidential|private|proprietary|sensitive|account|billing|payment|case|record|profile|incident|notes?)\b/iu.test(
+      mcpResourceSubscriptionText(field)
+    )
+  );
+}
+
+function hasMcpResourceSubscriptionPiiContextSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /(?:^|[_\W])(pii|email|phone|address|ssn|passport|dob|date of birth|customer id|user id|account id|account number)(?:[_\W]|$)/iu.test(
+      mcpResourceSubscriptionText(field)
+    )
+  );
+}
+
+function hasMcpResourceSubscriptionApprovalRequiredSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /\b(approval|required approval|human approval|manual review|review required|confirm|confirmation|human in the loop|human-in-the-loop)\b/iu.test(
+      mcpResourceSubscriptionText(field)
+    ) && truthyConfigValue(field.value)
+  );
+}
+
+function mcpResourceSubscriptionText(field: RuntimeField): string {
   return `${field.path} ${fieldValueText(field)}`.toLowerCase().replaceAll("_", " ").replaceAll("-", " ");
 }
 

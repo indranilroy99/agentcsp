@@ -20,6 +20,31 @@
         "context": [
           "approved_internal_summary"
         ]
+      },
+      "resource_subscriptions": {
+        "enabled": true,
+        "sources": [
+          {
+            "uri": "file:///workspace/docs/approved-internal-digest.json",
+            "trust": "trusted_internal"
+          }
+        ],
+        "dynamic_updates": false,
+        "auto_refresh": false,
+        "auto_include_context": false,
+        "model_visible": false,
+        "include_raw_content": false,
+        "sanitization": true,
+        "redaction": true,
+        "prompt_injection_filter": true,
+        "provenance_verification": true,
+        "approval_required": true,
+        "context": [
+          "approved_internal_docs"
+        ],
+        "followup_tools": [
+          "readonly_docs.search"
+        ]
       }
     }
   }
