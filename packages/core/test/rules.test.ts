@@ -72,6 +72,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-020")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-077")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-021")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-090")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-022")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-023")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-024")).toBe(true);
@@ -1964,6 +1965,56 @@ describe("rule engine", () => {
     expect(JSON.stringify(runtimeApprovalGateFindings[0])).not.toContain("Summarize the customer request");
     expect(JSON.stringify(runtimeApprovalGateFindings[0])).not.toContain("support_db.update_customer_record");
     expect(JSON.stringify(runtimeApprovalGateFindings[0])).not.toContain("customer_email_address");
+    const runtimeModelApprovalBridgeFindings = findings.filter(
+      (finding) => finding.rule_id === "AGENTCSP-RUNTIME-090"
+    );
+    expect(runtimeModelApprovalBridgeFindings).toHaveLength(1);
+    expect(runtimeModelApprovalBridgeFindings[0]?.matched_object.path).toBe("approvals/model-reviewer.yaml");
+    expect(runtimeModelApprovalBridgeFindings[0]?.matched_object.metadata).toMatchObject({
+      parsed_agent_approval_config: true,
+      agent_approval_context_untrusted: true,
+      agent_approval_raw_context_included: true,
+      agent_approval_decision_model_driven: true,
+      agent_approval_uses_untrusted_summary: true,
+      agent_approval_human_required: false,
+      agent_approval_default_allow: true,
+      agent_approval_auto_execute_after_approval: true,
+      agent_approval_privileged_actions: true,
+      agent_approval_write_actions: true,
+      agent_approval_external_actions: true,
+      agent_approval_memory_write: true,
+      agent_approval_secret_access: true,
+      agent_approval_sensitive_data: true,
+      agent_approval_pii_data: true
+    });
+    expect(runtimeModelApprovalBridgeFindings[0]?.matched_object.metadata.agent_approval_prompt_source_categories).toEqual(
+      ["memory_context", "retrieval_context", "tool_output", "untrusted_user_input"]
+    );
+    expect(runtimeModelApprovalBridgeFindings[0]?.matched_object.metadata.agent_approval_action_categories).toEqual([
+      "browser_action",
+      "database_write",
+      "external_response",
+      "memory_write",
+      "secret_manager_access",
+      "tool_call"
+    ]);
+    expect(runtimeModelApprovalBridgeFindings[0]?.severity).toBe("critical");
+    expect(runtimeModelApprovalBridgeFindings[0]?.confidence).toBe("very_high");
+    expect(runtimeModelApprovalBridgeFindings[0]?.recommended_control).toBe("require_approval");
+    expect(JSON.stringify(runtimeModelApprovalBridgeFindings[0])).not.toContain("${APPROVAL_GATE_TOKEN}");
+    expect(JSON.stringify(runtimeModelApprovalBridgeFindings[0])).not.toContain("support-approval-classifier");
+    expect(JSON.stringify(runtimeModelApprovalBridgeFindings[0])).not.toContain("Summarize the customer request");
+    expect(JSON.stringify(runtimeModelApprovalBridgeFindings[0])).not.toContain("approve_and_execute");
+    expect(JSON.stringify(runtimeModelApprovalBridgeFindings[0])).not.toContain("customer_ticket_message");
+    expect(JSON.stringify(runtimeModelApprovalBridgeFindings[0])).not.toContain("retrieved_account_context");
+    expect(JSON.stringify(runtimeModelApprovalBridgeFindings[0])).not.toContain("browser_tool_output");
+    expect(JSON.stringify(runtimeModelApprovalBridgeFindings[0])).not.toContain("support_db.update_customer_record");
+    expect(JSON.stringify(runtimeModelApprovalBridgeFindings[0])).not.toContain("vault_secret_lookup.read_support_token");
+    expect(JSON.stringify(runtimeModelApprovalBridgeFindings[0])).not.toContain("browser.submit_customer_form");
+    expect(JSON.stringify(runtimeModelApprovalBridgeFindings[0])).not.toContain("memory.write_long_term_summary");
+    expect(JSON.stringify(runtimeModelApprovalBridgeFindings[0])).not.toContain("customer_email_address");
+    expect(JSON.stringify(runtimeModelApprovalBridgeFindings[0])).not.toContain("customer_account_number");
+    expect(JSON.stringify(runtimeModelApprovalBridgeFindings[0])).not.toContain("confidential_support_notes");
     const runtimeApprovalChannelFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-RUNTIME-052");
     expect(runtimeApprovalChannelFindings).toHaveLength(1);
     expect(runtimeApprovalChannelFindings[0]?.matched_object.path).toBe("approvals/chatops-approval.yaml");

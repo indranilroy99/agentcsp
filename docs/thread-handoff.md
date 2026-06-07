@@ -763,6 +763,7 @@ The current iteration adds:
 - first-class redacted metadata for agent approval, review, human-in-the-loop, model-reviewer, and decision-gate configs
 - vulnerable fixture coverage for an LLM-driven approval gate where customer/retrieval/browser context shapes the approval prompt, human review is not required, default behavior approves, and privileged actions auto-execute
 - rule `AGENTCSP-RUNTIME-021` for model-mediated approval gates that combine untrusted approval context, default-allow behavior, auto-executed privileged actions, credential exposure, and no required human reviewer
+- rule `AGENTCSP-RUNTIME-090` for LLM-driven approval prompts that include raw untrusted customer, retrieval, memory, or tool context before automatically executing database, browser, external response, memory, or secret-manager actions
 - scanner, rule, fixture verifier, and redaction coverage proving approval prompts, model names, action strings, source labels, data-field labels, and token placeholders stay redacted
 
 ## Agent Context-Composer Role Boundary Pass
