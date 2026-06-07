@@ -1134,7 +1134,6 @@ describe("scanner", () => {
       "webhook_endpoint",
       "webhook_provider"
     ]);
-    expect(webhookEgressConfig?.metadata.agent_webhook_egress_auth_header_names).toEqual(["Authorization"]);
     expect(webhookEgressConfig?.metadata.agent_webhook_egress_payload_categories).toEqual([
       "browser_context",
       "memory_context",

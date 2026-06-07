@@ -797,6 +797,7 @@ The current iteration adds:
 - first-class redacted metadata for agent webhook, callback, outbound sink, event-sink, response-hook, reply-hook, and notification-sink configs
 - vulnerable fixture coverage for model-generated callback delivery that posts prompts, completions, tool outputs, browser context, retrieval context, memory, PII, and secrets to a remote endpoint with disabled redaction, retry queues, credentials, and no approval gate
 - rule `AGENTCSP-RUNTIME-025` for webhook/callback egress that combines remote delivery, model-generated or untrusted payloads, sensitive context, disabled redaction, credential exposure, and missing approval
+- rule `AGENTCSP-RUNTIME-085` for webhook retry queues that can replay unredacted model, tool-output, retrieval, memory, browser, PII, and secret payloads from untrusted context to credentialed remote endpoints without approval
 - scanner, rule, fixture verifier, and redaction coverage proving callback endpoints, payload bodies, source labels, data-field labels, and token placeholders stay redacted
 
 ## Agent Container Isolation Boundary Pass

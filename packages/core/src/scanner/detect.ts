@@ -6559,7 +6559,6 @@ interface AgentWebhookEgressPosture {
   agent_webhook_egress_destination_kinds: string[];
   agent_webhook_egress_plaintext_endpoint: boolean;
   agent_webhook_egress_auth_header_redacted: boolean;
-  agent_webhook_egress_auth_header_names: string[];
   agent_webhook_egress_payload_categories: string[];
   agent_webhook_egress_model_output_payload: boolean;
   agent_webhook_egress_prompt_payload: boolean;
@@ -16967,7 +16966,6 @@ function classifyAgentWebhookEgressConfig(value: unknown, filePath: string): Age
     agent_webhook_egress_destination_kinds: destination.destinationKinds,
     agent_webhook_egress_plaintext_endpoint: destination.plaintextEndpoint,
     agent_webhook_egress_auth_header_redacted: authHeaderNames.length > 0,
-    agent_webhook_egress_auth_header_names: authHeaderNames,
     agent_webhook_egress_payload_categories: payloadCategories,
     agent_webhook_egress_model_output_payload: payloadCategories.includes("model_output"),
     agent_webhook_egress_prompt_payload: payloadCategories.includes("prompt_context"),

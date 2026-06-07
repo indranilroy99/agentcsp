@@ -75,6 +75,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-023")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-024")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-025")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-085")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-026")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-084")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-027")).toBe(true);
@@ -291,6 +292,48 @@ describe("rule engine", () => {
     expect(JSON.stringify(runtimeWebhookEgressFindings[0])).not.toContain("webhook_customer_email");
     expect(JSON.stringify(runtimeWebhookEgressFindings[0])).not.toContain("webhook_account_number");
     expect(JSON.stringify(runtimeWebhookEgressFindings[0])).not.toContain("confidential_callback_summary");
+    const runtimeWebhookRetryFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-RUNTIME-085");
+    expect(runtimeWebhookRetryFindings).toHaveLength(1);
+    expect(runtimeWebhookRetryFindings[0]?.matched_object.path).toBe("webhooks/model-callbacks.yaml");
+    expect(runtimeWebhookRetryFindings[0]?.matched_object.metadata).toMatchObject({
+      parsed_agent_webhook_egress_config: true,
+      agent_webhook_egress_provider: "generic_webhook",
+      agent_webhook_egress_remote: true,
+      agent_webhook_egress_external_write_enabled: true,
+      agent_webhook_egress_auth_header_redacted: true,
+      agent_webhook_egress_model_output_payload: true,
+      agent_webhook_egress_tool_output_payload: true,
+      agent_webhook_egress_retrieval_payload: true,
+      agent_webhook_egress_memory_payload: true,
+      agent_webhook_egress_browser_payload: true,
+      agent_webhook_egress_secret_payload: true,
+      agent_webhook_egress_sensitive_payload: true,
+      agent_webhook_egress_pii_payload: true,
+      agent_webhook_egress_untrusted_input: true,
+      agent_webhook_egress_redaction_disabled: true,
+      agent_webhook_egress_retry_enabled: true,
+      agent_webhook_egress_approval_required: false
+    });
+    expect(runtimeWebhookRetryFindings[0]?.matched_object.metadata.agent_webhook_egress_payload_categories).toEqual([
+      "browser_context",
+      "memory_context",
+      "model_output",
+      "prompt_context",
+      "retrieval_context",
+      "secret_material",
+      "tool_output"
+    ]);
+    expect(runtimeWebhookRetryFindings[0]?.severity).toBe("critical");
+    expect(runtimeWebhookRetryFindings[0]?.confidence).toBe("very_high");
+    expect(runtimeWebhookRetryFindings[0]?.recommended_control).toBe("quarantine");
+    expect(JSON.stringify(runtimeWebhookRetryFindings[0])).not.toContain("${AGENT_WEBHOOK_TOKEN}");
+    expect(JSON.stringify(runtimeWebhookRetryFindings[0])).not.toContain("Authorization");
+    expect(JSON.stringify(runtimeWebhookRetryFindings[0])).not.toContain("callback.agentcsp-demo.example.invalid");
+    expect(JSON.stringify(runtimeWebhookRetryFindings[0])).not.toContain("model_generated_response");
+    expect(JSON.stringify(runtimeWebhookRetryFindings[0])).not.toContain("untrusted_customer_ticket");
+    expect(JSON.stringify(runtimeWebhookRetryFindings[0])).not.toContain("webhook_customer_email");
+    expect(JSON.stringify(runtimeWebhookRetryFindings[0])).not.toContain("webhook_account_number");
+    expect(JSON.stringify(runtimeWebhookRetryFindings[0])).not.toContain("confidential_callback_summary");
     const runtimeContainerFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-RUNTIME-026");
     expect(runtimeContainerFindings).toHaveLength(1);
     expect(runtimeContainerFindings[0]?.matched_object.path).toBe("runtime/agent-container.yaml");

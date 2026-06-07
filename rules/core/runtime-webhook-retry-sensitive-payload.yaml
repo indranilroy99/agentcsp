@@ -1,0 +1,84 @@
+id: AGENTCSP-RUNTIME-085
+name: Webhook retry queue persists unredacted agent payloads for replay
+description: An agent webhook or callback egress path retries and queues failed remote deliveries that contain untrusted model output, prompts, tool outputs, retrieval context, memory, browser context, PII, or secrets while redaction and approval are disabled.
+category: webhook_retry_exfiltration
+severity: critical
+maps_to:
+  owasp:
+    - LLM02:2025 Sensitive Information Disclosure
+    - LLM06:2025 Excessive Agency
+  mitre_atlas:
+    - AML.T0057 Exfiltration via Cyber Means
+  nist_ai_rmf:
+    - MAP 5.1
+    - MEASURE 2.9
+    - MANAGE 2.4
+match:
+  object_type: runtime_config
+  where:
+    - field: metadata.parsed_agent_webhook_egress_config
+      op: equals
+      value: true
+    - field: metadata.agent_webhook_egress_remote
+      op: equals
+      value: true
+    - field: metadata.agent_webhook_egress_external_write_enabled
+      op: equals
+      value: true
+    - field: metadata.agent_webhook_egress_auth_header_redacted
+      op: equals
+      value: true
+    - field: metadata.agent_webhook_egress_model_output_payload
+      op: equals
+      value: true
+    - field: metadata.agent_webhook_egress_prompt_payload
+      op: equals
+      value: true
+    - field: metadata.agent_webhook_egress_tool_output_payload
+      op: equals
+      value: true
+    - field: metadata.agent_webhook_egress_retrieval_payload
+      op: equals
+      value: true
+    - field: metadata.agent_webhook_egress_memory_payload
+      op: equals
+      value: true
+    - field: metadata.agent_webhook_egress_secret_payload
+      op: equals
+      value: true
+    - field: metadata.agent_webhook_egress_sensitive_payload
+      op: equals
+      value: true
+    - field: metadata.agent_webhook_egress_pii_payload
+      op: equals
+      value: true
+    - field: metadata.agent_webhook_egress_untrusted_input
+      op: equals
+      value: true
+    - field: metadata.agent_webhook_egress_redaction_disabled
+      op: equals
+      value: true
+    - field: metadata.agent_webhook_egress_retry_enabled
+      op: equals
+      value: true
+    - field: metadata.agent_webhook_egress_approval_required
+      op: equals
+      value: false
+    - field: metadata.agent_webhook_egress_payload_categories
+      op: contains_any
+      value:
+        - browser_context
+        - memory_context
+        - prompt_context
+        - retrieval_context
+        - secret_material
+        - tool_output
+    - field: secret_exposure
+      op: equals
+      value: true
+    - field: untrusted_to_privileged
+      op: equals
+      value: true
+recommendation:
+  control: quarantine
+  text: Quarantine failed webhook payload queues, disable retries for unredacted agent payloads, redact prompts, tool outputs, retrieval context, memory, browser context, PII, and secrets before enqueueing or retrying callbacks, and require approval before replaying sensitive webhook deliveries.

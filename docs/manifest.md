@@ -1616,7 +1616,6 @@ Webhook egress metadata may include:
 - `agent_webhook_egress_destination_kinds`
 - `agent_webhook_egress_plaintext_endpoint`
 - `agent_webhook_egress_auth_header_redacted`
-- `agent_webhook_egress_auth_header_names`
 - `agent_webhook_egress_payload_categories`
 - `agent_webhook_egress_model_output_payload`
 - `agent_webhook_egress_prompt_payload`
@@ -1635,7 +1634,7 @@ Webhook egress metadata may include:
 - `env_key_names`
 - `secret_ref_key_names`
 
-Raw callback endpoints, token placeholders, payload bodies, source labels, and data-field labels are not emitted. Provider names, redacted endpoint categories, auth-header names, payload categories, write posture, retry posture, approval posture, redaction posture, and credential key names let rules detect sensitive model-output callbacks without copying webhook payloads into the manifest.
+Raw callback endpoints, token placeholders, auth-header names, payload bodies, source labels, and data-field labels are not emitted. Provider names, redacted endpoint categories, auth-header presence, payload categories, write posture, retry posture, approval posture, redaction posture, and credential key names let rules detect sensitive model-output callbacks without copying webhook payloads into the manifest.
 
 ## Agent Container Runtime
 
