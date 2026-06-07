@@ -54,6 +54,7 @@ describe("scanner", () => {
       "LLM_CACHE_TOKEN",
       "LLM_CACHE_URL",
       "MCP_OAUTH_CLIENT_SECRET",
+      "MCP_TOOL_CATALOG_TOKEN",
       "MEMORY_STORE_TOKEN",
       "MODEL_ROUTER_TOKEN",
       "NETWORK_EGRESS_TOKEN",
@@ -154,6 +155,7 @@ describe("scanner", () => {
     const browserPublisherMcp = surfaces.mcp_servers.find((surface) => surface.name === "browser-publisher");
     const remoteMcp = surfaces.mcp_servers.find((surface) => surface.name === "remote-ticketing");
     const remoteContextBrokerMcp = surfaces.mcp_servers.find((surface) => surface.name === "remote-context-broker");
+    const remoteToolCatalogMcp = surfaces.mcp_servers.find((surface) => surface.name === "remote-tool-catalog");
     const packageRunnerMcp = surfaces.mcp_servers.find((surface) => surface.name === "ticketing-package-runner");
     expect(localMcp).toMatchObject({
       trust_level: "project",
@@ -261,6 +263,71 @@ describe("scanner", () => {
     expect(JSON.stringify(remoteContextBrokerMcp)).not.toContain("host-root");
     expect(JSON.stringify(remoteContextBrokerMcp)).not.toContain("customer_email");
     expect(JSON.stringify(remoteContextBrokerMcp)).not.toContain("api_token");
+    expect(remoteToolCatalogMcp).toMatchObject({
+      trust_level: "third_party",
+      data_classes: ["confidential", "credential", "pii", "secret"],
+      actions: ["call", "execute", "read", "remember", "send", "write"],
+      side_effect: true,
+      reversible: false,
+      external_reach: true,
+      secret_exposure: true,
+      untrusted_to_privileged: true
+    });
+    expect(remoteToolCatalogMcp?.metadata).toMatchObject({
+      remote: true,
+      remote_host: "tool-catalog.agentcsp-demo.example.invalid",
+      remote_scheme: "https",
+      encrypted_remote_transport: true,
+      auth_header_names: ["Authorization"],
+      secret_ref_key_names: ["MCP_TOOL_CATALOG_TOKEN"],
+      mcp_tool_catalog_detected: true,
+      mcp_tool_catalog_enabled: true,
+      mcp_tool_catalog_source_redacted: true,
+      mcp_tool_catalog_source_count: 1,
+      mcp_tool_catalog_dynamic: true,
+      mcp_tool_catalog_auto_refresh: true,
+      mcp_tool_catalog_model_visible_descriptions: true,
+      mcp_tool_catalog_remote_schema_trust: true,
+      mcp_tool_catalog_unpinned_tools: true,
+      mcp_tool_catalog_signature_verification_disabled: true,
+      mcp_tool_catalog_provenance_verification_disabled: true,
+      mcp_tool_catalog_unreviewed_tools_allowed: true,
+      mcp_tool_catalog_privileged_tool_authority: true,
+      mcp_tool_catalog_write_authority: true,
+      mcp_tool_catalog_external_authority: true,
+      mcp_tool_catalog_memory_authority: true,
+      mcp_tool_catalog_secret_context: true,
+      mcp_tool_catalog_shell_authority: true,
+      mcp_tool_catalog_sensitive_context: true,
+      mcp_tool_catalog_pii_context: true,
+      mcp_tool_catalog_approval_required: false,
+      values_collected: false,
+      content_redacted: true
+    });
+    expect(remoteToolCatalogMcp?.metadata.mcp_tool_catalog_source_kinds).toEqual([
+      "dynamic_discovery",
+      "remote_registry",
+      "tool_catalog"
+    ]);
+    expect(remoteToolCatalogMcp?.metadata.mcp_tool_catalog_tool_authority_categories).toEqual([
+      "database_write",
+      "external_response",
+      "memory_write",
+      "secret_manager_access",
+      "shell_execution",
+      "tool_call"
+    ]);
+    expect(JSON.stringify(remoteToolCatalogMcp)).not.toContain("${MCP_TOOL_CATALOG_TOKEN}");
+    expect(JSON.stringify(remoteToolCatalogMcp)).not.toContain("tool-catalog.agentcsp-demo.example.invalid/mcp");
+    expect(JSON.stringify(remoteToolCatalogMcp)).not.toContain("remote_dynamic_registry");
+    expect(JSON.stringify(remoteToolCatalogMcp)).not.toContain("support_db.update_customer_record");
+    expect(JSON.stringify(remoteToolCatalogMcp)).not.toContain("slack.post_customer_reply");
+    expect(JSON.stringify(remoteToolCatalogMcp)).not.toContain("shell.run_remediation");
+    expect(JSON.stringify(remoteToolCatalogMcp)).not.toContain("vault_secret_lookup.read_support_token");
+    expect(JSON.stringify(remoteToolCatalogMcp)).not.toContain("memory.write_catalog_summary");
+    expect(JSON.stringify(remoteToolCatalogMcp)).not.toContain("catalog_customer_email");
+    expect(JSON.stringify(remoteToolCatalogMcp)).not.toContain("catalog_account_number");
+    expect(JSON.stringify(remoteToolCatalogMcp)).not.toContain("confidential_catalog_notes");
     expect(packageRunnerMcp).toMatchObject({
       trust_level: "third_party",
       external_reach: true,
@@ -4070,6 +4137,69 @@ describe("scanner", () => {
     expect(contextWindowConfig?.metadata.agent_context_window_tool_authority_categories).toEqual([]);
     expect(contextWindowConfig?.metadata.env_key_names).toEqual([]);
     expect(contextWindowConfig?.metadata.secret_ref_key_names).toEqual([]);
+  });
+
+  it("keeps pinned reviewed MCP tool catalogs scoped", async () => {
+    const files = await walkProject({
+      root_path: safeFixtureRoot,
+      output_path: ".agentcsp",
+      formats: ["json", "md"],
+      include_hidden: true,
+      include_logs: false,
+      max_file_size_bytes: 1024 * 1024,
+      max_files: 5000,
+      quiet: true
+    });
+    const surfaces = await detectSurfaces(files);
+    const catalogMcp = surfaces.mcp_servers.find((surface) => surface.name === "internal-docs-catalog");
+
+    expect(catalogMcp).toMatchObject({
+      trust_level: "project",
+      data_classes: ["confidential"],
+      actions: ["call", "read"],
+      side_effect: true,
+      reversible: true,
+      external_reach: false,
+      secret_exposure: false,
+      untrusted_to_privileged: false
+    });
+    expect(catalogMcp?.metadata).toMatchObject({
+      remote: true,
+      remote_host: "localhost",
+      remote_scheme: "http",
+      plaintext_remote_transport: false,
+      encrypted_remote_transport: false,
+      mcp_tool_catalog_detected: true,
+      mcp_tool_catalog_enabled: true,
+      mcp_tool_catalog_source_redacted: true,
+      mcp_tool_catalog_source_count: 1,
+      mcp_tool_catalog_dynamic: false,
+      mcp_tool_catalog_auto_refresh: false,
+      mcp_tool_catalog_model_visible_descriptions: true,
+      mcp_tool_catalog_remote_schema_trust: false,
+      mcp_tool_catalog_unpinned_tools: false,
+      mcp_tool_catalog_signature_verification_disabled: false,
+      mcp_tool_catalog_provenance_verification_disabled: false,
+      mcp_tool_catalog_unreviewed_tools_allowed: false,
+      mcp_tool_catalog_privileged_tool_authority: false,
+      mcp_tool_catalog_write_authority: false,
+      mcp_tool_catalog_external_authority: false,
+      mcp_tool_catalog_memory_authority: false,
+      mcp_tool_catalog_secret_context: false,
+      mcp_tool_catalog_shell_authority: false,
+      mcp_tool_catalog_sensitive_context: true,
+      mcp_tool_catalog_pii_context: false,
+      mcp_tool_catalog_approval_required: true,
+      values_collected: false,
+      content_redacted: true
+    });
+    expect(catalogMcp?.metadata.mcp_tool_catalog_source_kinds).toEqual(["static_manifest", "tool_catalog"]);
+    expect(catalogMcp?.metadata.mcp_tool_catalog_tool_authority_categories).toEqual(["tool_call"]);
+    expect(catalogMcp?.metadata.env_key_names).toEqual([]);
+    expect(catalogMcp?.metadata.secret_ref_key_names).toEqual([]);
+    expect(JSON.stringify(catalogMcp)).not.toContain("static_local_manifest");
+    expect(JSON.stringify(catalogMcp)).not.toContain("readonly_docs.search");
+    expect(JSON.stringify(catalogMcp)).not.toContain("approved_internal_summary");
   });
 
   it("keeps idempotent approval-gated tool retry policies scoped", async () => {

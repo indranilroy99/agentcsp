@@ -78,12 +78,37 @@ MCP metadata may include:
 - `mcp_elicitation_sensitive_fields`
 - `mcp_context_request_authority`
 - `mcp_client_context_exposure`
+- `mcp_tool_catalog_detected`
+- `mcp_tool_catalog_enabled`
+- `mcp_tool_catalog_source_redacted`
+- `mcp_tool_catalog_source_count`
+- `mcp_tool_catalog_source_kinds`
+- `mcp_tool_catalog_dynamic`
+- `mcp_tool_catalog_auto_refresh`
+- `mcp_tool_catalog_model_visible_descriptions`
+- `mcp_tool_catalog_remote_schema_trust`
+- `mcp_tool_catalog_unpinned_tools`
+- `mcp_tool_catalog_signature_verification_disabled`
+- `mcp_tool_catalog_provenance_verification_disabled`
+- `mcp_tool_catalog_unreviewed_tools_allowed`
+- `mcp_tool_catalog_tool_authority_categories`
+- `mcp_tool_catalog_privileged_tool_authority`
+- `mcp_tool_catalog_write_authority`
+- `mcp_tool_catalog_external_authority`
+- `mcp_tool_catalog_memory_authority`
+- `mcp_tool_catalog_secret_context`
+- `mcp_tool_catalog_shell_authority`
+- `mcp_tool_catalog_sensitive_context`
+- `mcp_tool_catalog_pii_context`
+- `mcp_tool_catalog_approval_required`
 - `values_collected`
 - `content_redacted`
 
 Remote third-party MCP servers are treated as external trust boundaries. Credential references and auth headers are represented as key names only. Plaintext remote transport is represented as a boolean posture signal without emitting the raw URL. Ambient environment inheritance is reduced to source categories such as `process_env`, `inherit_env`, `wildcard`, and `sensitive_prefix`; raw env passthrough expressions and wildcard patterns are not emitted. For local MCP launchers, AgentCSP records project-local implementation path references such as `tools/server.js` and whether those files were present in the scan; raw command arguments and secret placeholders remain redacted.
 
 MCP client roots, sampling, and elicitation are represented as coarse posture metadata. Raw root URIs, filesystem paths, root names, sampling prompts, elicitation schemas, requested field names, and secret placeholders are not emitted. Root scopes are reduced to categories such as `workspace`, `home`, `host_root`, `credential_path`, `absolute_path`, `file_uri`, and `wildcard` so rules can detect remote servers that can request broad client context without copying sensitive client paths into evidence.
+
+MCP tool catalogs are represented as posture metadata when an MCP server declares dynamic discovery, remote registries, tool manifests, marketplace entries, or model-visible tool descriptions. Raw catalog URLs, registry values, tool names, action names, context labels, and secret placeholders are not emitted. Source kinds such as `remote_registry`, `dynamic_discovery`, `tool_catalog`, `marketplace`, and `static_manifest`, combined with pinning, signature/provenance verification, review, approval, and authority categories, let rules distinguish risky mutable tool supply from pinned reviewed catalogs.
 
 MCP prompts and resources declared in MCP configuration are normalized as `prompt` objects when their model-visible context can be inspected safely. Additional metadata may include:
 

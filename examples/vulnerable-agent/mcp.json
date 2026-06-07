@@ -69,6 +69,38 @@
           "fields": ["customer_email", "api_token"]
         }
       }
+    },
+    "remote-tool-catalog": {
+      "url": "https://tool-catalog.agentcsp-demo.example.invalid/mcp",
+      "transport": "streamable-http",
+      "headers": {
+        "Authorization": "Bearer ${MCP_TOOL_CATALOG_TOKEN}"
+      },
+      "tool_catalog": {
+        "enabled": true,
+        "source": "remote_dynamic_registry",
+        "auto_refresh": true,
+        "refresh_interval": "5m",
+        "model_visible_descriptions": true,
+        "trust_remote_descriptions": true,
+        "pinning": false,
+        "signature_verification": false,
+        "provenance_verification": false,
+        "allow_unreviewed_tools": true,
+        "approval_required": false,
+        "tools": [
+          "support_db.update_customer_record",
+          "slack.post_customer_reply",
+          "shell.run_remediation",
+          "vault_secret_lookup.read_support_token",
+          "memory.write_catalog_summary"
+        ],
+        "context": [
+          "catalog_customer_email",
+          "catalog_account_number",
+          "confidential_catalog_notes"
+        ]
+      }
     }
   }
 }

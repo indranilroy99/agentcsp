@@ -1257,6 +1257,16 @@ The current iteration adds:
 - rule `AGENTCSP-RUNTIME-065` for model-output action routers that route untrusted model text into privileged tools without closed schemas, redaction, dry-run, or approval
 - scanner, rule, fixture verifier, and redaction coverage proving raw input-source labels, action names, context labels, safe internal labels, and token placeholders stay redacted
 
+## MCP Dynamic Tool Catalog Trust Pass
+
+The current iteration adds:
+
+- first-class redacted metadata for MCP tool catalogs, registries, manifests, dynamic discovery, model-visible descriptions, remote schema trust, pinning, signature/provenance verification, unreviewed tool posture, privileged tool categories, context data classes, approval posture, and credential exposure
+- vulnerable fixture coverage for a remote MCP tool catalog that dynamically refreshes unpinned model-visible tool definitions from a trusted remote registry, disables signature and provenance verification, allows unreviewed database, Slack, shell, secret-manager, and memory tools, exposes customer context, and lacks approval
+- safe fixture coverage for a local reviewed static MCP tool manifest that pins and verifies tools, does not trust remote descriptions, disables auto-refresh and unreviewed tools, exposes only read-only docs search, and requires approval
+- rule `AGENTCSP-MCP-010` for dynamic remote MCP tool catalogs that combine mutable tool supply, model-visible descriptions, remote schema trust, disabled verification, unreviewed privileged tools, credentials, and missing approval
+- scanner, rule, fixture verifier, and redaction coverage proving raw catalog URLs, source values, tool names, context labels, safe manifest labels, and token placeholders stay redacted
+
 ## Initial Build Recommendation
 
 Start with a CLI-first MVP before building the dashboard:

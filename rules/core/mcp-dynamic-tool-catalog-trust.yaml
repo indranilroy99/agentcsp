@@ -1,0 +1,68 @@
+id: AGENTCSP-MCP-010
+name: Remote MCP tool catalog is trusted without pinning or review
+description: A remote MCP server dynamically refreshes model-visible tool descriptions from an unpinned and unsigned catalog, trusts the remote schema, allows unreviewed tools, and exposes privileged tool authority with credentials.
+category: mcp_tool_catalog_trust
+severity: critical
+maps_to:
+  owasp:
+    - LLM01:2025 Prompt Injection
+    - LLM05:2025 Improper Output Handling
+    - LLM06:2025 Excessive Agency
+  mitre_atlas:
+    - AML.T0051 LLM Prompt Injection
+    - AML.T0054 LLM Plugin Compromise
+  nist_ai_rmf:
+    - MAP 4.1
+    - MEASURE 2.7
+    - MANAGE 2.3
+match:
+  object_type: mcp_server
+  where:
+    - field: metadata.remote
+      op: equals
+      value: true
+    - field: metadata.mcp_tool_catalog_detected
+      op: equals
+      value: true
+    - field: metadata.mcp_tool_catalog_enabled
+      op: equals
+      value: true
+    - field: metadata.mcp_tool_catalog_dynamic
+      op: equals
+      value: true
+    - field: metadata.mcp_tool_catalog_auto_refresh
+      op: equals
+      value: true
+    - field: metadata.mcp_tool_catalog_model_visible_descriptions
+      op: equals
+      value: true
+    - field: metadata.mcp_tool_catalog_remote_schema_trust
+      op: equals
+      value: true
+    - field: metadata.mcp_tool_catalog_unpinned_tools
+      op: equals
+      value: true
+    - field: metadata.mcp_tool_catalog_signature_verification_disabled
+      op: equals
+      value: true
+    - field: metadata.mcp_tool_catalog_provenance_verification_disabled
+      op: equals
+      value: true
+    - field: metadata.mcp_tool_catalog_unreviewed_tools_allowed
+      op: equals
+      value: true
+    - field: metadata.mcp_tool_catalog_privileged_tool_authority
+      op: equals
+      value: true
+    - field: metadata.mcp_tool_catalog_approval_required
+      op: equals
+      value: false
+    - field: secret_exposure
+      op: equals
+      value: true
+    - field: external_reach
+      op: equals
+      value: true
+recommendation:
+  control: quarantine
+  text: Quarantine dynamic remote MCP tool catalogs until tool manifests are pinned, signed, provenance-verified, reviewed before model exposure, and approved before newly discovered write, shell, memory, secret, or external-response tools become callable.

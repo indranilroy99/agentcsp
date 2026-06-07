@@ -21533,6 +21533,7 @@ async function detectMcpConfig(
     const baseActions: ActionType[] = actions.length > 0 ? actions : ["call"];
     const packageRunner = server.packageRunner;
     const clientContext = server.clientContext;
+    const toolCatalog = server.toolCatalog;
     const localImplementationPaths = server.localCommandPaths ?? [];
     const localImplementationPathsFound = localImplementationPaths.filter((pathRef) => projectFilePaths.has(pathRef));
     const localImplementationPathsMissing = localImplementationPaths.filter((pathRef) => !projectFilePaths.has(pathRef));
@@ -21541,13 +21542,24 @@ async function detectMcpConfig(
     );
     if (clientContext.rootsRedacted || clientContext.samplingIncludesContext) dataClasses.add("confidential");
     if (clientContext.elicitationSensitiveFields) dataClasses.add("pii");
+    if (toolCatalog.sensitiveContext) dataClasses.add("confidential");
+    if (toolCatalog.piiContext) dataClasses.add("pii");
+    if (toolCatalog.secretContext) {
+      dataClasses.add("credential");
+      dataClasses.add("secret");
+    }
     if (dataClasses.size > 1) dataClasses.delete("unknown");
     const mcpActions: ActionType[] = [
       ...baseActions,
       ...(clientContext.rootsRedacted ? (["read"] as ActionType[]) : []),
       ...(clientContext.contextRequestAuthority ? (["call"] as ActionType[]) : []),
       ...(externalRemote ? (["send"] as ActionType[]) : []),
-      ...(packageRunner ? (["execute"] as ActionType[]) : [])
+      ...(packageRunner ? (["execute"] as ActionType[]) : []),
+      ...(toolCatalog.detected ? (["read"] as ActionType[]) : []),
+      ...(toolCatalog.writeAuthority ? (["write"] as ActionType[]) : []),
+      ...(toolCatalog.externalAuthority ? (["send"] as ActionType[]) : []),
+      ...(toolCatalog.memoryAuthority ? (["remember"] as ActionType[]) : []),
+      ...(toolCatalog.shellAuthority ? (["execute"] as ActionType[]) : [])
     ];
     const object = createSurfaceObject({
       type: "mcp_server",
@@ -21558,8 +21570,8 @@ async function detectMcpConfig(
       actions: uniqueActions(mcpActions),
       side_effect: true,
       external_reach: externalRemote || Boolean(packageRunner) || hasExternalReach(signalText),
-      secret_exposure: secretKeys.some(isCredentialLikeKeyName) || server.envExposure.passthroughSecretRisk,
-      reversible: isReversible(signalText),
+      secret_exposure: secretKeys.some(isCredentialLikeKeyName) || server.envExposure.passthroughSecretRisk || toolCatalog.secretContext,
+      reversible: !toolCatalog.privilegedToolAuthority && isReversible(signalText),
       reason: "MCP server configuration exposes agent-callable tools and authority.",
       metadata: {
         command_name: server.command ? path.basename(server.command) : undefined,
@@ -21602,6 +21614,29 @@ async function detectMcpConfig(
         mcp_elicitation_sensitive_fields: clientContext.elicitationSensitiveFields,
         mcp_context_request_authority: clientContext.contextRequestAuthority,
         mcp_client_context_exposure: clientContext.clientContextExposure,
+        mcp_tool_catalog_detected: toolCatalog.detected,
+        mcp_tool_catalog_enabled: toolCatalog.enabled,
+        mcp_tool_catalog_source_redacted: toolCatalog.sourceRedacted,
+        mcp_tool_catalog_source_count: toolCatalog.sourceCount,
+        mcp_tool_catalog_source_kinds: toolCatalog.sourceKinds,
+        mcp_tool_catalog_dynamic: toolCatalog.dynamicDiscovery,
+        mcp_tool_catalog_auto_refresh: toolCatalog.autoRefresh,
+        mcp_tool_catalog_model_visible_descriptions: toolCatalog.modelVisibleDescriptions,
+        mcp_tool_catalog_remote_schema_trust: toolCatalog.remoteSchemaTrust,
+        mcp_tool_catalog_unpinned_tools: toolCatalog.unpinnedTools,
+        mcp_tool_catalog_signature_verification_disabled: toolCatalog.signatureVerificationDisabled,
+        mcp_tool_catalog_provenance_verification_disabled: toolCatalog.provenanceVerificationDisabled,
+        mcp_tool_catalog_unreviewed_tools_allowed: toolCatalog.unreviewedToolsAllowed,
+        mcp_tool_catalog_tool_authority_categories: toolCatalog.toolAuthorityCategories,
+        mcp_tool_catalog_privileged_tool_authority: toolCatalog.privilegedToolAuthority,
+        mcp_tool_catalog_write_authority: toolCatalog.writeAuthority,
+        mcp_tool_catalog_external_authority: toolCatalog.externalAuthority,
+        mcp_tool_catalog_memory_authority: toolCatalog.memoryAuthority,
+        mcp_tool_catalog_secret_context: toolCatalog.secretContext,
+        mcp_tool_catalog_shell_authority: toolCatalog.shellAuthority,
+        mcp_tool_catalog_sensitive_context: toolCatalog.sensitiveContext,
+        mcp_tool_catalog_pii_context: toolCatalog.piiContext,
+        mcp_tool_catalog_approval_required: toolCatalog.approvalRequired,
         values_collected: false,
         content_redacted: true
       }
@@ -22690,6 +22725,7 @@ interface ExtractedMcpServer {
   packageRunner?: McpPackageRunnerSignal;
   localCommandPaths?: string[];
   clientContext: McpClientContextPosture;
+  toolCatalog: McpToolCatalogPosture;
   contextSurfaces: McpContextDefinition[];
 }
 
@@ -22713,6 +22749,32 @@ interface McpClientContextPosture {
   elicitationSensitiveFields: boolean;
   contextRequestAuthority: boolean;
   clientContextExposure: boolean;
+}
+
+interface McpToolCatalogPosture {
+  detected: boolean;
+  enabled: boolean;
+  sourceRedacted: boolean;
+  sourceCount: number;
+  sourceKinds: string[];
+  dynamicDiscovery: boolean;
+  autoRefresh: boolean;
+  modelVisibleDescriptions: boolean;
+  remoteSchemaTrust: boolean;
+  unpinnedTools: boolean;
+  signatureVerificationDisabled: boolean;
+  provenanceVerificationDisabled: boolean;
+  unreviewedToolsAllowed: boolean;
+  toolAuthorityCategories: string[];
+  privilegedToolAuthority: boolean;
+  writeAuthority: boolean;
+  externalAuthority: boolean;
+  memoryAuthority: boolean;
+  secretContext: boolean;
+  shellAuthority: boolean;
+  sensitiveContext: boolean;
+  piiContext: boolean;
+  approvalRequired: boolean;
 }
 
 interface McpContextDefinition {
@@ -22836,6 +22898,7 @@ function extractMcpServers(value: unknown): ExtractedMcpServer[] {
       packageRunner,
       localCommandPaths,
       clientContext: classifyMcpClientContext(serverConfig),
+      toolCatalog: classifyMcpToolCatalog(serverConfig),
       contextSurfaces: extractMcpContextDefinitions(serverConfig)
     };
   });
@@ -22945,6 +23008,272 @@ function classifyMcpClientContext(serverConfig: Record<string, unknown>): McpCli
     contextRequestAuthority,
     clientContextExposure: rootFields.length > 0 || contextRequestAuthority
   };
+}
+
+function classifyMcpToolCatalog(serverConfig: Record<string, unknown>): McpToolCatalogPosture {
+  const fields = flattenRuntimeFields(serverConfig);
+  const catalogFields = fields.filter(isMcpToolCatalogField);
+  const detected = catalogFields.length > 0;
+  const authorityCategories = collectMcpToolCatalogAuthorityCategories(catalogFields);
+
+  return {
+    detected,
+    enabled: detected && !hasMcpToolCatalogDisabledSignal(catalogFields),
+    sourceRedacted: hasMcpToolCatalogSourceSignal(catalogFields),
+    sourceCount: countMcpToolCatalogSources(catalogFields),
+    sourceKinds: collectMcpToolCatalogSourceKinds(catalogFields),
+    dynamicDiscovery: hasMcpToolCatalogDynamicSignal(catalogFields),
+    autoRefresh: hasMcpToolCatalogAutoRefreshSignal(catalogFields),
+    modelVisibleDescriptions: hasMcpToolCatalogModelVisibleDescriptionSignal(catalogFields),
+    remoteSchemaTrust: hasMcpToolCatalogRemoteSchemaTrustSignal(catalogFields),
+    unpinnedTools: hasMcpToolCatalogUnpinnedSignal(catalogFields),
+    signatureVerificationDisabled: hasMcpToolCatalogVerificationDisabledSignal(catalogFields, /signature|signing|signed|checksum|digest|hash/iu),
+    provenanceVerificationDisabled: hasMcpToolCatalogVerificationDisabledSignal(catalogFields, /provenance|attestation|source|origin/iu),
+    unreviewedToolsAllowed: hasMcpToolCatalogUnreviewedAllowedSignal(catalogFields),
+    toolAuthorityCategories: authorityCategories,
+    privilegedToolAuthority: isMcpToolCatalogPrivileged(authorityCategories),
+    writeAuthority: hasMcpToolCatalogWriteAuthoritySignal(catalogFields, authorityCategories),
+    externalAuthority: hasMcpToolCatalogExternalAuthoritySignal(catalogFields, authorityCategories),
+    memoryAuthority: hasMcpToolCatalogMemoryAuthoritySignal(catalogFields, authorityCategories),
+    secretContext: hasMcpToolCatalogSecretSignal(catalogFields, authorityCategories),
+    shellAuthority: hasMcpToolCatalogShellSignal(catalogFields, authorityCategories),
+    sensitiveContext: hasMcpToolCatalogSensitiveContextSignal(catalogFields),
+    piiContext: hasMcpToolCatalogPiiContextSignal(catalogFields),
+    approvalRequired: hasMcpToolCatalogApprovalRequiredSignal(catalogFields)
+  };
+}
+
+function isMcpToolCatalogField(field: RuntimeField): boolean {
+  return /(?:^|\.)(tool_catalog|toolCatalog|tools_catalog|toolsCatalog|tool_registry|toolRegistry|tools_registry|toolsRegistry|tool_discovery|toolDiscovery|catalog|registry|marketplace|list_tools|listTools|discover_tools|discoverTools|remote_tools|remoteTools|model_visible_descriptions|modelVisibleDescriptions|trust_remote_descriptions|trustRemoteDescriptions|allow_unreviewed_tools|allowUnreviewedTools|tool_manifest|toolManifest)(?:\.|$)/u.test(
+    field.path
+  );
+}
+
+function hasMcpToolCatalogDisabledSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => /(?:^|\.)(enabled|active)(?:\.|$)/iu.test(field.path) && disabledConfigValue(field.value));
+}
+
+function hasMcpToolCatalogSourceSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /(?:^|\.)(source|sources?|url|uri|endpoint|registry|marketplace|manifest)(?:\.|$)/iu.test(field.path) ||
+    /\b(remote|registry|catalog|marketplace|manifest|mcp server|tool source|tool catalog)\b/iu.test(mcpToolCatalogText(field))
+  );
+}
+
+function countMcpToolCatalogSources(fields: RuntimeField[]): number {
+  return fields.filter((field) =>
+    /(?:^|\.)(source|sources?|url|uri|endpoint|registry|marketplace|manifest)(?:\.|$)/iu.test(field.path)
+  ).length;
+}
+
+function collectMcpToolCatalogSourceKinds(fields: RuntimeField[]): string[] {
+  const kinds = new Set<string>();
+  for (const field of fields) {
+    if (!/(?:^|\.)(source|sources?|url|uri|endpoint|registry|marketplace|manifest)(?:\.|$)/iu.test(field.path)) continue;
+    const text = mcpToolCatalogText(field);
+    if (/\b(remote|http|https|server|mcp server)\b/iu.test(text)) kinds.add("remote_registry");
+    if (/\b(dynamic|discover|list tools|list_tools|tool discovery)\b/iu.test(text)) kinds.add("dynamic_discovery");
+    if (/\b(catalog|registry|tool catalog|tool registry)\b/iu.test(text)) kinds.add("tool_catalog");
+    if (/\b(marketplace|hub|store)\b/iu.test(text)) kinds.add("marketplace");
+    if (/\b(static|local|manifest|pinned)\b/iu.test(text)) kinds.add("static_manifest");
+  }
+  return [...kinds].sort((a, b) => a.localeCompare(b));
+}
+
+function hasMcpToolCatalogDynamicSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /\b(dynamic|discover|discovery|list tools|list_tools|refresh tools|remote dynamic|runtime catalog|server supplied tools)\b/iu.test(
+      mcpToolCatalogText(field)
+    ) && !disabledConfigValue(field.value)
+  );
+}
+
+function hasMcpToolCatalogAutoRefreshSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => {
+    const text = mcpToolCatalogText(field);
+    if (/(?:^|\.)(auto_refresh|autoRefresh|refresh_interval|refreshInterval|sync|auto_sync|autoSync|poll|update_interval|updateInterval)(?:\.|$)/u.test(field.path)) {
+      return truthyConfigValue(field.value);
+    }
+    return /\b(auto refresh|auto-refresh|auto sync|auto-sync|poll catalog|refresh interval|refresh tools automatically|runtime refresh)\b/iu.test(text);
+  });
+}
+
+function hasMcpToolCatalogModelVisibleDescriptionSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => {
+    const text = mcpToolCatalogText(field);
+    if (/(?:^|\.)(model_visible_descriptions|modelVisibleDescriptions|tool_descriptions|toolDescriptions|descriptions_to_model|descriptionsToModel|expose_to_model|exposeToModel)(?:\.|$)/u.test(field.path)) {
+      return truthyConfigValue(field.value);
+    }
+    return /\b(model visible|visible to model|tool descriptions? to model|expose descriptions?|model reads descriptions?)\b/iu.test(text);
+  });
+}
+
+function hasMcpToolCatalogRemoteSchemaTrustSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => {
+    const text = mcpToolCatalogText(field);
+    if (/(?:^|\.)(trust_remote_descriptions|trustRemoteDescriptions|trust_remote_schema|trustRemoteSchema|trust_server_tools|trustServerTools|trust_catalog|trustCatalog)(?:\.|$)/u.test(field.path)) {
+      return truthyConfigValue(field.value);
+    }
+    return /\b(trust remote descriptions?|trust remote schemas?|trust server tools?|trust catalog|trusted from server|server supplied descriptions trusted)\b/iu.test(
+      text
+    );
+  });
+}
+
+function hasMcpToolCatalogUnpinnedSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => {
+    const text = mcpToolCatalogText(field);
+    if (/(?:^|\.)(pinning|pinned|pinned_tools|pinnedTools|version_pinned|versionPinned|digest_pinned|digestPinned|lockfile|tool_hashes|toolHashes)(?:\.|$)/u.test(field.path)) {
+      return disabledConfigValue(field.value);
+    }
+    return /\b(unpinned|floating|latest|mutable|no pinning|pinning disabled|without digest|no digest|no lockfile)\b/iu.test(text);
+  });
+}
+
+function hasMcpToolCatalogVerificationDisabledSignal(fields: RuntimeField[], verificationPattern: RegExp): boolean {
+  return fields.some((field) => {
+    const text = mcpToolCatalogText(field);
+    if (!verificationPattern.test(text)) return false;
+    if (/(?:^|\.)(enabled|enforced|required|verification|verify|validation|validate)(?:\.|$)/iu.test(field.path)) {
+      return disabledConfigValue(field.value);
+    }
+    return /\b(disabled|off|false|none|skip|bypass|not required|unsigned|unverified|no verification|no validation)\b/iu.test(text);
+  });
+}
+
+function hasMcpToolCatalogUnreviewedAllowedSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => {
+    const text = mcpToolCatalogText(field);
+    if (/(?:^|\.)(allow_unreviewed_tools|allowUnreviewedTools|allow_unapproved_tools|allowUnapprovedTools|review_required|reviewRequired|approval_required|approvalRequired)(?:\.|$)/u.test(field.path)) {
+      if (/(?:review_required|reviewRequired|approval_required|approvalRequired)$/u.test(field.path)) return disabledConfigValue(field.value);
+      return truthyConfigValue(field.value);
+    }
+    return /\b(allow unreviewed tools|allow unapproved tools|auto accept tools|trust new tools|no review required|review disabled)\b/iu.test(text);
+  });
+}
+
+function collectMcpToolCatalogAuthorityCategories(fields: RuntimeField[]): string[] {
+  const categories = new Set<string>();
+  for (const field of fields) {
+    if (!isMcpToolCatalogAuthorityField(field.path)) continue;
+    const text = mcpToolCatalogText(field);
+    if (disabledConfigValue(field.value)) continue;
+    if (!/\b(tool|tools|function|capability|action|command|database|db|sql|slack|email|webhook|secret|vault|memory|shell|filesystem|browser|customer|reply)\b/iu.test(text)) {
+      continue;
+    }
+    if (/\b(tool|tools|function|capability|action|command)\b/iu.test(text)) categories.add("tool_call");
+    if (/\b(database|db|sql|query|crm|support db|warehouse|record|update customer|customer record)\b/iu.test(text)) {
+      categories.add("database_write");
+    }
+    if (/\b(slack|email|sms|message|webhook|ticket|jira|zendesk|reply|respond|send|post|publish|customer reply)\b/iu.test(text)) {
+      categories.add("external_response");
+    }
+    if (/\b(browser|playwright|puppeteer|click|form|navigate|submit)\b/iu.test(text)) categories.add("browser_action");
+    if (/(?:^|[_\W])(vault|secret|secrets|secret manager|key vault|credential|api key|token)(?:[_\W]|$)/iu.test(text)) {
+      categories.add("secret_manager_access");
+    }
+    if (/(?:^|[_\W])(memory|remember|store|persist|summary|session state|conversation state)(?:[_\W]|$)/iu.test(text)) {
+      categories.add("memory_write");
+    }
+    if (/\b(shell|bash|command|exec|terminal|python|node|subprocess|code interpreter|remediation)\b/iu.test(text)) {
+      categories.add("shell_execution");
+    }
+    if (/\b(filesystem|file write|workspace|repo|repository|github|gitlab|commit|push|merge)\b/iu.test(text)) {
+      categories.add("filesystem_write");
+    }
+  }
+  return [...categories].sort((a, b) => a.localeCompare(b));
+}
+
+function isMcpToolCatalogPrivileged(categories: string[]): boolean {
+  return categories.some((category) =>
+    [
+      "browser_action",
+      "database_write",
+      "external_response",
+      "filesystem_write",
+      "memory_write",
+      "secret_manager_access",
+      "shell_execution"
+    ].includes(category)
+  );
+}
+
+function hasMcpToolCatalogWriteAuthoritySignal(fields: RuntimeField[], categories: string[]): boolean {
+  return categories.some((category) =>
+    ["browser_action", "database_write", "external_response", "filesystem_write", "memory_write", "shell_execution"].includes(category)
+  ) || fields.some((field) =>
+    isMcpToolCatalogAuthorityField(field.path) &&
+    /\b(write|update|create|delete|reply|respond|send|post|publish|comment|commit|push|merge|submit|remember|persist|execute|run)\b/iu.test(
+      mcpToolCatalogText(field)
+    )
+  );
+}
+
+function hasMcpToolCatalogExternalAuthoritySignal(fields: RuntimeField[], categories: string[]): boolean {
+  return categories.includes("external_response") ||
+    fields.some((field) =>
+      isMcpToolCatalogAuthorityField(field.path) &&
+      /\b(reply|respond|send|post|publish|slack|email|sms|webhook|ticket|external response|customer reply)\b/iu.test(mcpToolCatalogText(field))
+    );
+}
+
+function hasMcpToolCatalogMemoryAuthoritySignal(fields: RuntimeField[], categories: string[]): boolean {
+  return categories.includes("memory_write") ||
+    fields.some((field) =>
+      isMcpToolCatalogAuthorityField(field.path) &&
+      /\b(memory|remember|persist|store|conversation state|session state|long term|long-term|summary)\b/iu.test(mcpToolCatalogText(field))
+    );
+}
+
+function hasMcpToolCatalogSecretSignal(fields: RuntimeField[], categories: string[]): boolean {
+  return categories.includes("secret_manager_access") ||
+    fields.some((field) =>
+      isMcpToolCatalogAuthorityField(field.path) &&
+      /\b(secret|token|credential|api key|password|vault|key vault|authorization|bearer)\b/iu.test(mcpToolCatalogText(field))
+    );
+}
+
+function hasMcpToolCatalogShellSignal(fields: RuntimeField[], categories: string[]): boolean {
+  return categories.includes("shell_execution") ||
+    fields.some((field) =>
+      isMcpToolCatalogAuthorityField(field.path) &&
+      /\b(shell|bash|command|exec|terminal|subprocess|python|node|remediation)\b/iu.test(mcpToolCatalogText(field))
+    );
+}
+
+function isMcpToolCatalogAuthorityField(fieldPath: string): boolean {
+  return /(?:^|\.)(tools?|allowed_tools|allowedTools|tool_names|toolNames|actions?|commands?|capabilities?|functions?|permissions?|routes?|handlers?)(?:\.|$)/iu.test(
+    fieldPath
+  );
+}
+
+function hasMcpToolCatalogSensitiveContextSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /\b(customer|client|ticket|support|internal|confidential|private|proprietary|sensitive|account|billing|payment|case|record|profile|incident|notes?)\b/iu.test(
+      mcpToolCatalogText(field)
+    )
+  );
+}
+
+function hasMcpToolCatalogPiiContextSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /(?:^|[_\W])(pii|email|phone|address|ssn|passport|dob|date of birth|customer id|user id|account id|account number)(?:[_\W]|$)/iu.test(
+      mcpToolCatalogText(field)
+    )
+  );
+}
+
+function hasMcpToolCatalogApprovalRequiredSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /\b(approval|required approval|human approval|manual review|review required|confirm|confirmation|human in the loop|human-in-the-loop)\b/iu.test(
+      mcpToolCatalogText(field)
+    ) && truthyConfigValue(field.value)
+  );
+}
+
+function mcpToolCatalogText(field: RuntimeField): string {
+  return `${field.path} ${fieldValueText(field)}`.toLowerCase().replaceAll("_", " ").replaceAll("-", " ");
 }
 
 function isMcpRootField(field: RuntimeField): boolean {

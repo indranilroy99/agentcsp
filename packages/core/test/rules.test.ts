@@ -44,6 +44,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-007")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-008")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-009")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-010")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-001")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-002")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-003")).toBe(true);
@@ -2237,6 +2238,56 @@ describe("rule engine", () => {
     expect(JSON.stringify(mcpEnvPassthroughFindings[0])).not.toContain("OPENAI_*");
     expect(JSON.stringify(mcpEnvPassthroughFindings[0])).not.toContain("SLACK_*");
     expect(JSON.stringify(mcpEnvPassthroughFindings[0])).not.toContain("*_TOKEN");
+    const mcpToolCatalogFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-MCP-010");
+    expect(mcpToolCatalogFindings).toHaveLength(1);
+    expect(mcpToolCatalogFindings[0]?.matched_object.name).toBe("remote-tool-catalog");
+    expect(mcpToolCatalogFindings[0]?.matched_object.path).toBe("mcp.json");
+    expect(mcpToolCatalogFindings[0]?.matched_object.metadata).toMatchObject({
+      remote: true,
+      remote_scheme: "https",
+      encrypted_remote_transport: true,
+      auth_header_names: ["Authorization"],
+      secret_ref_key_names: ["MCP_TOOL_CATALOG_TOKEN"],
+      mcp_tool_catalog_detected: true,
+      mcp_tool_catalog_enabled: true,
+      mcp_tool_catalog_dynamic: true,
+      mcp_tool_catalog_auto_refresh: true,
+      mcp_tool_catalog_model_visible_descriptions: true,
+      mcp_tool_catalog_remote_schema_trust: true,
+      mcp_tool_catalog_unpinned_tools: true,
+      mcp_tool_catalog_signature_verification_disabled: true,
+      mcp_tool_catalog_provenance_verification_disabled: true,
+      mcp_tool_catalog_unreviewed_tools_allowed: true,
+      mcp_tool_catalog_privileged_tool_authority: true,
+      mcp_tool_catalog_approval_required: false
+    });
+    expect(mcpToolCatalogFindings[0]?.matched_object.metadata.mcp_tool_catalog_source_kinds).toEqual([
+      "dynamic_discovery",
+      "remote_registry",
+      "tool_catalog"
+    ]);
+    expect(mcpToolCatalogFindings[0]?.matched_object.metadata.mcp_tool_catalog_tool_authority_categories).toEqual([
+      "database_write",
+      "external_response",
+      "memory_write",
+      "secret_manager_access",
+      "shell_execution",
+      "tool_call"
+    ]);
+    expect(mcpToolCatalogFindings[0]?.severity).toBe("critical");
+    expect(mcpToolCatalogFindings[0]?.confidence).toBe("very_high");
+    expect(mcpToolCatalogFindings[0]?.recommended_control).toBe("quarantine");
+    expect(JSON.stringify(mcpToolCatalogFindings[0])).not.toContain("${MCP_TOOL_CATALOG_TOKEN}");
+    expect(JSON.stringify(mcpToolCatalogFindings[0])).not.toContain("tool-catalog.agentcsp-demo.example.invalid/mcp");
+    expect(JSON.stringify(mcpToolCatalogFindings[0])).not.toContain("remote_dynamic_registry");
+    expect(JSON.stringify(mcpToolCatalogFindings[0])).not.toContain("support_db.update_customer_record");
+    expect(JSON.stringify(mcpToolCatalogFindings[0])).not.toContain("slack.post_customer_reply");
+    expect(JSON.stringify(mcpToolCatalogFindings[0])).not.toContain("shell.run_remediation");
+    expect(JSON.stringify(mcpToolCatalogFindings[0])).not.toContain("vault_secret_lookup.read_support_token");
+    expect(JSON.stringify(mcpToolCatalogFindings[0])).not.toContain("memory.write_catalog_summary");
+    expect(JSON.stringify(mcpToolCatalogFindings[0])).not.toContain("catalog_customer_email");
+    expect(JSON.stringify(mcpToolCatalogFindings[0])).not.toContain("catalog_account_number");
+    expect(JSON.stringify(mcpToolCatalogFindings[0])).not.toContain("confidential_catalog_notes");
     expect(findings.find((finding) => finding.rule_id === "AGENTCSP-PROMPT-001")?.matched_object.path).toBe(
       "prompts/support-ticket.prompt.md"
     );

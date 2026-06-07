@@ -1,0 +1,26 @@
+{
+  "mcpServers": {
+    "internal-docs-catalog": {
+      "url": "http://localhost:7331/mcp",
+      "transport": "streamable-http",
+      "tool_catalog": {
+        "enabled": true,
+        "source": "static_local_manifest",
+        "auto_refresh": false,
+        "model_visible_descriptions": true,
+        "trust_remote_descriptions": false,
+        "pinning": true,
+        "signature_verification": true,
+        "provenance_verification": true,
+        "allow_unreviewed_tools": false,
+        "approval_required": true,
+        "tools": [
+          "readonly_docs.search"
+        ],
+        "context": [
+          "approved_internal_summary"
+        ]
+      }
+    }
+  }
+}
