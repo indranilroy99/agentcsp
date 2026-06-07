@@ -1042,6 +1042,7 @@ Agent reasoning-state metadata may include:
 - `agent_reasoning_state_destination_kinds`
 - `agent_reasoning_state_replay_enabled`
 - `agent_reasoning_state_planner_uses_state`
+- `agent_reasoning_state_system_prompt_injection`
 - `agent_reasoning_state_redaction_disabled`
 - `agent_reasoning_state_access_control_disabled`
 - `agent_reasoning_state_retention_enabled`
@@ -1049,7 +1050,7 @@ Agent reasoning-state metadata may include:
 - `env_key_names`
 - `secret_ref_key_names`
 
-Raw reasoning text, chain-of-thought, scratchpad entries, planner traces, destination URLs, workspace names, source labels, tool names, data-field labels, and token placeholders are not emitted. Capture categories, destination categories, persistence and replay posture, planner-use posture, redaction and access-control posture, approval posture, data-class booleans, and credential key names let rules detect cases where sensitive agent reasoning state can be stored remotely and replayed into future privileged decisions.
+Raw reasoning text, chain-of-thought, scratchpad entries, planner traces, destination URLs, workspace names, source labels, tool names, data-field labels, and token placeholders are not emitted. Capture categories, destination categories, persistence and replay posture, planner-use and system-prompt hydration posture, redaction and access-control posture, approval posture, data-class booleans, and credential key names let rules detect cases where sensitive agent reasoning state can be stored remotely and replayed into future privileged decisions.
 
 ## Agent Network Egress Posture
 

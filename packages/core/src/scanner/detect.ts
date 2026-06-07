@@ -3297,6 +3297,7 @@ function detectAgentReasoningStateConfig(file: WalkedFile, text: string | undefi
     posture.secret_ref_key_names.length > 0
   ) {
     dataClasses.add("credential");
+    dataClasses.add("secret");
   }
   if (posture.agent_reasoning_state_sensitive_capture || posture.agent_reasoning_state_untrusted_input) {
     dataClasses.add("confidential");
@@ -6415,6 +6416,7 @@ interface AgentReasoningStatePosture {
   agent_reasoning_state_destination_kinds: string[];
   agent_reasoning_state_replay_enabled: boolean;
   agent_reasoning_state_planner_uses_state: boolean;
+  agent_reasoning_state_system_prompt_injection: boolean;
   agent_reasoning_state_redaction_disabled: boolean;
   agent_reasoning_state_access_control_disabled: boolean;
   agent_reasoning_state_retention_enabled: boolean;
@@ -14996,6 +14998,7 @@ function classifyAgentReasoningStateConfig(value: unknown, filePath: string): Ag
     agent_reasoning_state_destination_kinds: destination.destinationKinds,
     agent_reasoning_state_replay_enabled: hasAgentReasoningStateReplaySignal(fields),
     agent_reasoning_state_planner_uses_state: hasAgentReasoningStatePlannerUseSignal(fields),
+    agent_reasoning_state_system_prompt_injection: hasAgentReasoningStateSystemPromptInjectionSignal(fields),
     agent_reasoning_state_redaction_disabled: hasAgentReasoningStateRedactionDisabledSignal(fields),
     agent_reasoning_state_access_control_disabled: hasAgentReasoningStateAccessControlDisabledSignal(fields),
     agent_reasoning_state_retention_enabled: hasAgentReasoningStateRetentionSignal(fields),
@@ -15183,6 +15186,18 @@ function hasAgentReasoningStatePlannerUseSignal(fields: RuntimeField[]): boolean
       agentReasoningStateFieldText(field)
     ) && truthyConfigValue(field.value)
   );
+}
+
+function hasAgentReasoningStateSystemPromptInjectionSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => {
+    const text = agentReasoningStateFieldText(field);
+    if (/(^|\.)(inject_into_system_prompt|inject_system_prompt|system_prompt|developer_prompt|hydrate_future_context)$/iu.test(field.path)) {
+      return truthyConfigValue(field.value);
+    }
+    return /\b(inject into system prompt|hydrate future context|future system prompt|developer prompt|system prompt hydration|prompt injection)\b/iu.test(
+      text
+    ) && truthyConfigValue(field.value);
+  });
 }
 
 function hasAgentReasoningStateRedactionDisabledSignal(fields: RuntimeField[]): boolean {

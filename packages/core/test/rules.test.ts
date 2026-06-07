@@ -104,6 +104,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-056")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-101")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-057")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-113")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-058")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-074")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-059")).toBe(true);
@@ -3112,6 +3113,61 @@ describe("rule engine", () => {
     expect(JSON.stringify(runtimeReasoningStatePublicFindings[0])).not.toContain("scratchpad_customer_email");
     expect(JSON.stringify(runtimeReasoningStatePublicFindings[0])).not.toContain("scratchpad_account_number");
     expect(JSON.stringify(runtimeReasoningStatePublicFindings[0])).not.toContain("confidential_reasoning_notes");
+    const runtimeReasoningStateReplayFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-RUNTIME-113");
+    expect(runtimeReasoningStateReplayFindings).toHaveLength(1);
+    expect(runtimeReasoningStateReplayFindings[0]?.matched_object.path).toBe("reasoning/scratchpad-policy.yaml");
+    expect(runtimeReasoningStateReplayFindings[0]?.matched_object.data_classes).toEqual([
+      "confidential",
+      "credential",
+      "pii",
+      "secret"
+    ]);
+    expect(runtimeReasoningStateReplayFindings[0]?.matched_object.actions).toEqual([
+      "call",
+      "publish",
+      "read",
+      "remember",
+      "send",
+      "write"
+    ]);
+    expect(runtimeReasoningStateReplayFindings[0]?.matched_object.metadata).toMatchObject({
+      parsed_agent_reasoning_state_config: true,
+      agent_reasoning_state_enabled: true,
+      agent_reasoning_state_capture_enabled: true,
+      agent_reasoning_state_untrusted_input: true,
+      agent_reasoning_state_remote: true,
+      agent_reasoning_state_shared: true,
+      agent_reasoning_state_public_access: true,
+      agent_reasoning_state_replay_enabled: true,
+      agent_reasoning_state_planner_uses_state: true,
+      agent_reasoning_state_system_prompt_injection: true,
+      agent_reasoning_state_secret_capture: true,
+      agent_reasoning_state_pii_capture: true,
+      agent_reasoning_state_redaction_disabled: true,
+      agent_reasoning_state_access_control_disabled: true,
+      agent_reasoning_state_approval_required: false
+    });
+    expect(runtimeReasoningStateReplayFindings[0]?.matched_object.metadata.agent_reasoning_state_capture_categories).toEqual([
+      "memory_context",
+      "plan_context",
+      "prompt_context",
+      "reasoning_trace",
+      "retrieval_context",
+      "secret_material",
+      "tool_observation"
+    ]);
+    expect(runtimeReasoningStateReplayFindings[0]?.severity).toBe("critical");
+    expect(runtimeReasoningStateReplayFindings[0]?.confidence).toBe("very_high");
+    expect(runtimeReasoningStateReplayFindings[0]?.recommended_control).toBe("quarantine");
+    expect(JSON.stringify(runtimeReasoningStateReplayFindings[0])).not.toContain("${REASONING_STATE_TOKEN}");
+    expect(JSON.stringify(runtimeReasoningStateReplayFindings[0])).not.toContain("scratchpad.agentcsp-demo.example.invalid");
+    expect(JSON.stringify(runtimeReasoningStateReplayFindings[0])).not.toContain("customer-support-reasoning");
+    expect(JSON.stringify(runtimeReasoningStateReplayFindings[0])).not.toContain("scratchpad_customer_email");
+    expect(JSON.stringify(runtimeReasoningStateReplayFindings[0])).not.toContain("scratchpad_account_number");
+    expect(JSON.stringify(runtimeReasoningStateReplayFindings[0])).not.toContain("confidential_reasoning_notes");
+    expect(JSON.stringify(runtimeReasoningStateReplayFindings[0])).not.toContain("untrusted_customer_ticket");
+    expect(JSON.stringify(runtimeReasoningStateReplayFindings[0])).not.toContain("browser_tool_output");
+    expect(JSON.stringify(runtimeReasoningStateReplayFindings[0])).not.toContain("retrieved_customer_context");
     const runtimeNetworkEgressFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-RUNTIME-058");
     expect(runtimeNetworkEgressFindings).toHaveLength(1);
     expect(runtimeNetworkEgressFindings[0]?.matched_object.path).toBe("network/egress-policy.yaml");

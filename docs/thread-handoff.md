@@ -1206,11 +1206,12 @@ The current iteration adds:
 
 The current iteration adds:
 
-- first-class redacted metadata for agent reasoning-state, scratchpad, planner-state, run-state, chain-of-thought, and thought-log posture, including capture categories, persistent/shared/remote destinations, public access, replay into future model context, planner use, redaction, access control, retention, credential exposure, and approval boundaries
+- first-class redacted metadata for agent reasoning-state, scratchpad, planner-state, run-state, chain-of-thought, and thought-log posture, including capture categories, persistent/shared/remote destinations, public access, replay into future model context, planner/system-prompt hydration, redaction, access control, retention, credential exposure, and approval boundaries
 - vulnerable fixture coverage for a remote shared scratchpad that captures reasoning steps, plans, tool observations, prompts, retrieval, memory, PII, and secrets from untrusted context, replays the state into future planner context, disables redaction and access controls, and lacks approval
 - safe fixture coverage for a local ephemeral scratchpad with capture, persistence, sharing, remote storage, replay, and secret collection disabled while redaction, access controls, and approval remain enabled
 - rule `AGENTCSP-RUNTIME-057` for persisted and replayed reasoning state that combines remote persistence, untrusted sensitive capture, disabled redaction/access controls, credential exposure, and missing approval
 - rule `AGENTCSP-RUNTIME-070` for public or shared reasoning scratchpads that capture reasoning traces, prompt context, or tool observations while redaction, access controls, and approval are disabled
+- rule `AGENTCSP-RUNTIME-113` for public reasoning state that captures untrusted scratchpad, prompt, retrieval, memory, tool-observation, PII, and secret context, then hydrates future planner or system-prompt context without redaction, access controls, or approval
 - scanner, rule, fixture verifier, and redaction coverage proving raw reasoning destinations, workspace names, source labels, data-scope labels, and token placeholders stay redacted
 
 ## Agent Tool Retry Replay Pass

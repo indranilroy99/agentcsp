@@ -3130,6 +3130,7 @@ describe("scanner", () => {
       agent_reasoning_state_destination_count: 3,
       agent_reasoning_state_replay_enabled: true,
       agent_reasoning_state_planner_uses_state: true,
+      agent_reasoning_state_system_prompt_injection: true,
       agent_reasoning_state_redaction_disabled: true,
       agent_reasoning_state_access_control_disabled: true,
       agent_reasoning_state_retention_enabled: true,
@@ -3150,7 +3151,7 @@ describe("scanner", () => {
     ]);
     expect(reasoningStateConfig?.metadata.env_key_names).toEqual(["REASONING_STATE_TOKEN"]);
     expect(reasoningStateConfig?.metadata.secret_ref_key_names).toEqual(["REASONING_STATE_TOKEN"]);
-    expect(reasoningStateConfig?.data_classes).toEqual(["confidential", "credential", "pii"]);
+    expect(reasoningStateConfig?.data_classes).toEqual(["confidential", "credential", "pii", "secret"]);
     expect(reasoningStateConfig?.actions).toEqual(["call", "publish", "read", "remember", "send", "write"]);
     expect(JSON.stringify(reasoningStateConfig)).not.toContain("${REASONING_STATE_TOKEN}");
     expect(JSON.stringify(reasoningStateConfig)).not.toContain("scratchpad.agentcsp-demo.example.invalid");
@@ -4627,6 +4628,7 @@ describe("scanner", () => {
       agent_reasoning_state_destination_count: 0,
       agent_reasoning_state_replay_enabled: false,
       agent_reasoning_state_planner_uses_state: false,
+      agent_reasoning_state_system_prompt_injection: false,
       agent_reasoning_state_redaction_disabled: false,
       agent_reasoning_state_access_control_disabled: false,
       agent_reasoning_state_retention_enabled: false,
