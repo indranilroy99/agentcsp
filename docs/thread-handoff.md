@@ -1040,6 +1040,7 @@ The current iteration adds:
 - safe fixture coverage for a scoped local policy engine that denies by default, disables dynamic grants, requires review, audits decisions, and sets a grant TTL
 - rule `AGENTCSP-RUNTIME-041` for authorization brokers that combines dynamic grants, model-selected scope, untrusted subjects, broad privileged tool/resource authority, default-open behavior, credential exposure, and missing approval
 - rule `AGENTCSP-RUNTIME-075` for fail-open authorization brokers that issue dynamic wildcard grants without TTL, audit logging, or approval while destructive and secret-backed authority is available
+- rule `AGENTCSP-RUNTIME-115` for model-selected authorization bypass where untrusted context can request wildcard tool/resource grants with default-open behavior, disabled audit logging, missing TTLs, database/browser/external-response/secret-manager authority, and no approval
 - scanner, rule, fixture verifier, and redaction coverage proving raw broker endpoints, tool names, wildcard tenant/resource scopes, data-scope labels, and token placeholders stay redacted
 
 ## OpenAPI Tool Import Pass

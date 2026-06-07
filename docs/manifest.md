@@ -889,6 +889,52 @@ Agent approval-gate metadata may include:
 
 Raw approval prompts, model names, approval summaries, approval channel URLs, channel names, action names, reviewer labels, approver allowlists, source labels, data-field labels, and secret placeholders are not emitted. Prompt-source categories, approval-channel categories, channel authentication posture, approver identity posture, replay-protection posture, action-authority categories, model-driven decision posture, default-allow posture, human-review posture, auto-execution posture, data-class booleans, and credential key names let rules detect approval gates where untrusted context or spoofable approval channels can influence privileged execution.
 
+## Agent Authorization-Broker Posture
+
+Agent authorization brokers, permission brokers, capability brokers, policy engines, and dynamic grant configs are also normalized into `runtime_config` objects when common authorization directories or filenames are discovered. This models the boundary where agent context can request access to tools, resources, tenants, records, or external systems.
+
+Agent authorization-broker metadata may include:
+
+- `parsed_agent_authorization_broker_config`
+- `agent_authorization_fields`
+- `agent_authorization_provider`
+- `agent_authorization_remote`
+- `agent_authorization_destination_redacted`
+- `agent_authorization_destination_count`
+- `agent_authorization_destination_kinds`
+- `agent_authorization_policy_redacted`
+- `agent_authorization_policy_count`
+- `agent_authorization_enabled`
+- `agent_authorization_dynamic_grants_enabled`
+- `agent_authorization_model_selected_scope`
+- `agent_authorization_untrusted_subject`
+- `agent_authorization_untrusted_resource`
+- `agent_authorization_default_allow`
+- `agent_authorization_fail_open`
+- `agent_authorization_default_allow_or_fail_open`
+- `agent_authorization_tool_scope_redacted`
+- `agent_authorization_resource_scope_redacted`
+- `agent_authorization_wildcard_tool_scope`
+- `agent_authorization_wildcard_resource_scope`
+- `agent_authorization_broad_scope`
+- `agent_authorization_tool_authority_categories`
+- `agent_authorization_privileged_tool_authority`
+- `agent_authorization_write_authority`
+- `agent_authorization_external_authority`
+- `agent_authorization_memory_write`
+- `agent_authorization_shell_authority`
+- `agent_authorization_destructive_authority`
+- `agent_authorization_secret_authority`
+- `agent_authorization_sensitive_data`
+- `agent_authorization_pii_data`
+- `agent_authorization_audit_disabled`
+- `agent_authorization_grant_ttl_missing`
+- `agent_authorization_approval_required`
+- `env_key_names`
+- `secret_ref_key_names`
+
+Raw broker endpoints, policy expressions, tool names, wildcard scope values, tenant or resource selectors, model names, source labels, data-scope labels, and secret placeholders are not emitted. Destination categories, grant posture, model-selected scope posture, untrusted subject/resource posture, default-open posture, scope categories, authority categories, audit and TTL posture, approval posture, data-class booleans, and credential key names let rules detect when untrusted context can bypass authorization boundaries without copying the broker policy body into evidence.
+
 ## Agent Session-Sharing Posture
 
 Live session-sharing, shared-copilot, collaboration, co-browse, and handoff configs are also normalized into `runtime_config` objects when common session-sharing directories or filenames are discovered.
