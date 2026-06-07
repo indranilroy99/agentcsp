@@ -1223,6 +1223,7 @@ The current iteration adds:
 - vulnerable fixture coverage for an automatic remote workspace context sync that can ingest `.env`, SSH, AWS, kubeconfig, git history, private repository paths, and untrusted selectors into prompt, RAG, memory, and remote context while redaction and approval are disabled
 - safe fixture coverage for a local scoped context loader that only reads explicit docs/source folders, respects `.agentcspignore`, excludes credential paths, keeps redaction enabled, and requires approval
 - rule `AGENTCSP-RUNTIME-059` for workspace context sync exposure that combines automatic sync, sensitive local source categories, credential exposure, remote sync, untrusted selectors, disabled redaction, and missing approval
+- rule `AGENTCSP-RUNTIME-100` for workspace context sync that persists env files, SSH keys, cloud credentials, kubeconfig, git history, home-directory, and private-repository sources into remote prompt, RAG, and memory sinks while bypassing `.agentcspignore`
 - scanner, rule, fixture verifier, and redaction coverage proving raw local paths, home-directory paths, credential paths, remote context URLs, data-field labels, and token placeholders stay redacted
 
 ## Autonomous Agent Loop Authority Pass

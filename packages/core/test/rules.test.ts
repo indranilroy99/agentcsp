@@ -102,6 +102,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-058")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-074")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-059")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-100")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-060")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-061")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-062")).toBe(true);
@@ -2703,6 +2704,82 @@ describe("rule engine", () => {
     expect(JSON.stringify(runtimeWorkspaceContextFindings[0])).not.toContain("workspace_customer_email");
     expect(JSON.stringify(runtimeWorkspaceContextFindings[0])).not.toContain("workspace_account_number");
     expect(JSON.stringify(runtimeWorkspaceContextFindings[0])).not.toContain("confidential_repo_notes");
+    const runtimeWorkspaceCredentialPersistenceFindings = findings.filter(
+      (finding) => finding.rule_id === "AGENTCSP-RUNTIME-100"
+    );
+    expect(runtimeWorkspaceCredentialPersistenceFindings).toHaveLength(1);
+    expect(runtimeWorkspaceCredentialPersistenceFindings[0]?.matched_object.path).toBe(
+      "workspace-context/context-sync.yaml"
+    );
+    expect(runtimeWorkspaceCredentialPersistenceFindings[0]?.matched_object.metadata).toMatchObject({
+      parsed_agent_workspace_context_config: true,
+      agent_workspace_context_enabled: true,
+      agent_workspace_context_auto_sync_enabled: true,
+      agent_workspace_context_remote_sync: true,
+      agent_workspace_context_prompt_context: true,
+      agent_workspace_context_rag_indexing: true,
+      agent_workspace_context_memory_persistence: true,
+      agent_workspace_context_env_file_access: true,
+      agent_workspace_context_ssh_key_access: true,
+      agent_workspace_context_cloud_credential_access: true,
+      agent_workspace_context_kubeconfig_access: true,
+      agent_workspace_context_home_directory_access: true,
+      agent_workspace_context_git_history_access: true,
+      agent_workspace_context_untrusted_input: true,
+      agent_workspace_context_redaction_disabled: true,
+      agent_workspace_context_agentcspignore_bypassed: true,
+      agent_workspace_context_approval_required: false
+    });
+    expect(
+      runtimeWorkspaceCredentialPersistenceFindings[0]?.matched_object.metadata.agent_workspace_context_source_categories
+    ).toEqual([
+      "cloud_credential",
+      "env_file",
+      "git_history",
+      "home_directory",
+      "kubeconfig",
+      "private_repo",
+      "ssh_key",
+      "untrusted_selector",
+      "workspace_file"
+    ]);
+    expect(
+      runtimeWorkspaceCredentialPersistenceFindings[0]?.matched_object.metadata
+        .agent_workspace_context_destination_kinds
+    ).toEqual([
+      "http_destination",
+      "memory_store",
+      "prompt_context",
+      "rag_index",
+      "remote_context_index",
+      "shared_workspace"
+    ]);
+    expect(runtimeWorkspaceCredentialPersistenceFindings[0]?.matched_object.data_classes).toContain("credential");
+    expect(runtimeWorkspaceCredentialPersistenceFindings[0]?.matched_object.secret_exposure).toBe(true);
+    expect(runtimeWorkspaceCredentialPersistenceFindings[0]?.matched_object.untrusted_to_privileged).toBe(true);
+    expect(runtimeWorkspaceCredentialPersistenceFindings[0]?.severity).toBe("critical");
+    expect(runtimeWorkspaceCredentialPersistenceFindings[0]?.confidence).toBe("very_high");
+    expect(runtimeWorkspaceCredentialPersistenceFindings[0]?.recommended_control).toBe("quarantine");
+    expect(JSON.stringify(runtimeWorkspaceCredentialPersistenceFindings[0])).not.toContain("${WORKSPACE_CONTEXT_TOKEN}");
+    expect(JSON.stringify(runtimeWorkspaceCredentialPersistenceFindings[0])).not.toContain(
+      "context-sync.agentcsp-demo.example.invalid"
+    );
+    expect(JSON.stringify(runtimeWorkspaceCredentialPersistenceFindings[0])).not.toContain("customer_private_repo");
+    expect(JSON.stringify(runtimeWorkspaceCredentialPersistenceFindings[0])).not.toContain(
+      "/workspace/customer_private_repo"
+    );
+    expect(JSON.stringify(runtimeWorkspaceCredentialPersistenceFindings[0])).not.toContain(
+      "/Users/support/.ssh/id_rsa"
+    );
+    expect(JSON.stringify(runtimeWorkspaceCredentialPersistenceFindings[0])).not.toContain(
+      "/Users/support/.aws/credentials"
+    );
+    expect(JSON.stringify(runtimeWorkspaceCredentialPersistenceFindings[0])).not.toContain(
+      "/Users/support/.kube/config"
+    );
+    expect(JSON.stringify(runtimeWorkspaceCredentialPersistenceFindings[0])).not.toContain("workspace_customer_email");
+    expect(JSON.stringify(runtimeWorkspaceCredentialPersistenceFindings[0])).not.toContain("workspace_account_number");
+    expect(JSON.stringify(runtimeWorkspaceCredentialPersistenceFindings[0])).not.toContain("confidential_repo_notes");
     const runtimeAuthorizationBrokerFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-RUNTIME-041");
     expect(runtimeAuthorizationBrokerFindings).toHaveLength(1);
     expect(runtimeAuthorizationBrokerFindings[0]?.matched_object.path).toBe("authz/tool-broker.yaml");
