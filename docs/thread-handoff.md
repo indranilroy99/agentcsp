@@ -935,6 +935,15 @@ The current iteration adds:
 - rule `AGENTCSP-MCP-013` for remote MCP servers that can process sensitive client context through server-initiated sampling without redaction, prompt-injection filtering, or approval
 - regression coverage proving raw sampling context labels, remote MCP URLs, and token placeholders stay redacted
 
+## MCP Client Root Boundary Pass
+
+The current iteration adds:
+
+- first-class redacted metadata for MCP client-root credential-path scope, host-root scope, sensitive-root scope, and approval posture
+- vulnerable fixture coverage for a remote credential-backed MCP context broker configured with `.ssh`, workspace, and host-root client roots
+- rule `AGENTCSP-MCP-014` for remote MCP servers that receive credential-path and host-root client roots without approval
+- regression coverage proving raw root URIs, root names, remote MCP URLs, and token placeholders stay redacted
+
 ## MCP Ambient Environment Exposure Pass
 
 The current iteration adds:

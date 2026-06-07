@@ -22928,6 +22928,10 @@ async function detectMcpConfig(
         mcp_root_count: clientContext.rootCount,
         mcp_root_scope_kinds: clientContext.rootScopeKinds,
         mcp_root_broad_scope: clientContext.rootBroadScope,
+        mcp_root_credential_scope: clientContext.rootCredentialScope,
+        mcp_root_host_scope: clientContext.rootHostScope,
+        mcp_root_sensitive_scope: clientContext.rootSensitiveScope,
+        mcp_root_approval_required: clientContext.rootApprovalRequired,
         mcp_sampling_enabled: clientContext.samplingEnabled,
         mcp_sampling_includes_context: clientContext.samplingIncludesContext,
         mcp_sampling_context_kinds: clientContext.samplingContextKinds,
@@ -24132,6 +24136,10 @@ interface McpClientContextPosture {
   rootCount: number;
   rootScopeKinds: string[];
   rootBroadScope: boolean;
+  rootCredentialScope: boolean;
+  rootHostScope: boolean;
+  rootSensitiveScope: boolean;
+  rootApprovalRequired: boolean;
   samplingEnabled: boolean;
   samplingIncludesContext: boolean;
   samplingContextKinds: string[];
@@ -24430,6 +24438,10 @@ function classifyMcpClientContext(serverConfig: Record<string, unknown>): McpCli
     rootBroadScope: rootScopeKinds.some((kind) =>
       ["absolute_path", "credential_path", "file_uri", "home", "host_root", "workspace", "wildcard"].includes(kind)
     ),
+    rootCredentialScope: rootScopeKinds.includes("credential_path"),
+    rootHostScope: rootScopeKinds.includes("host_root"),
+    rootSensitiveScope: rootScopeKinds.some((kind) => ["credential_path", "home", "host_root"].includes(kind)),
+    rootApprovalRequired: hasMcpRootApprovalRequiredSignal(fields),
     samplingEnabled,
     samplingIncludesContext,
     samplingContextKinds,
@@ -25133,10 +25145,9 @@ function mcpResourceSubscriptionText(field: RuntimeField): string {
 }
 
 function isMcpRootField(field: RuntimeField): boolean {
-  const text = `${field.path} ${fieldValueText(field)}`;
   return /(^|\.)(roots?|root_uris|rootUris|client_roots|clientRoots|workspace_roots|workspaceRoots|allowed_paths|allowedPaths|filesystem|fs_roots|mounts?)(\.|$)/iu.test(
     field.path
-  ) || /\bfile:\/\/|(^|[\s,])(~\/|\/workspace|\/home\/|\/Users\/|\/root\/|\/var\/|\/etc\/|\/)(?=\S*)/iu.test(text);
+  );
 }
 
 function collectMcpRootScopeKinds(fields: RuntimeField[]): string[] {
@@ -25163,6 +25174,16 @@ function countMcpRootEntries(fields: RuntimeField[]): number {
     entries.add(match?.[1]?.replace(/^\./u, "") ?? field.path);
   }
   return entries.size;
+}
+
+function hasMcpRootApprovalRequiredSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => {
+    const text = `${field.path} ${fieldValueText(field)}`.toLowerCase().replaceAll("_", " ").replaceAll("-", " ");
+    if (!/\b(root|roots|client root|filesystem|file system|workspace|mount|allowed path)\b/iu.test(text)) return false;
+    return /\b(approval|required approval|human approval|manual review|review required|confirm|confirmation|human in the loop|human-in-the-loop)\b/iu.test(
+      text
+    ) && truthyConfigValue(field.value);
+  });
 }
 
 function hasMcpCapabilityEnabled(fields: RuntimeField[], pathPattern: RegExp): boolean {

@@ -235,6 +235,10 @@ describe("scanner", () => {
       mcp_root_count: 3,
       mcp_root_scope_kinds: ["absolute_path", "credential_path", "file_uri", "home", "host_root", "workspace"],
       mcp_root_broad_scope: true,
+      mcp_root_credential_scope: true,
+      mcp_root_host_scope: true,
+      mcp_root_sensitive_scope: true,
+      mcp_root_approval_required: false,
       mcp_sampling_enabled: true,
       mcp_sampling_includes_context: true,
       mcp_sampling_sensitive_context: true,
@@ -4470,6 +4474,13 @@ describe("scanner", () => {
       mcp_tool_catalog_sensitive_context: true,
       mcp_tool_catalog_pii_context: false,
       mcp_tool_catalog_approval_required: true,
+      mcp_roots_redacted: false,
+      mcp_root_count: 0,
+      mcp_root_broad_scope: false,
+      mcp_root_credential_scope: false,
+      mcp_root_host_scope: false,
+      mcp_root_sensitive_scope: false,
+      mcp_root_approval_required: false,
       mcp_sampling_enabled: false,
       mcp_sampling_includes_context: false,
       mcp_sampling_sensitive_context: false,
@@ -4510,6 +4521,7 @@ describe("scanner", () => {
     });
     expect(catalogMcp?.metadata.mcp_tool_catalog_source_kinds).toEqual(["static_manifest", "tool_catalog"]);
     expect(catalogMcp?.metadata.mcp_tool_catalog_tool_authority_categories).toEqual(["tool_call"]);
+    expect(catalogMcp?.metadata.mcp_root_scope_kinds).toEqual([]);
     expect(catalogMcp?.metadata.mcp_resource_subscription_source_kinds).toEqual(["filesystem_resource"]);
     expect(catalogMcp?.metadata.mcp_resource_subscription_authority_categories).toEqual(["tool_call"]);
     expect(catalogMcp?.metadata.mcp_sampling_context_kinds).toEqual([]);
