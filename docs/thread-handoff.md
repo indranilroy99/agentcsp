@@ -1168,6 +1168,7 @@ The current iteration adds:
 - vulnerable fixture coverage for a web egress policy that lets untrusted customer, browser, and retrieval links drive WebFetch/browser/http tools to metadata, localhost, private/internal, and wildcard destinations while forwarding credentials, following redirects, disabling DNS-rebinding protection, and lacking approval
 - safe fixture coverage for an approval-gated public-documentation egress policy that blocks metadata, private ranges, localhost, redirects, credential forwarding, and response capture
 - rule `AGENTCSP-RUNTIME-058` for model-steered web egress to cloud metadata/private network destinations with credential forwarding and no approval
+- rule `AGENTCSP-RUNTIME-074` for untrusted or model-selected web egress that follows redirects across wildcard/private destinations while forwarding authorization headers or credentials and capturing sensitive responses without approval
 - scanner, rule, fixture verifier, and redaction coverage proving raw URLs, hostnames, IP addresses, source labels, response data labels, and token placeholders stay redacted
 
 ## Agent Reasoning State Exposure Pass

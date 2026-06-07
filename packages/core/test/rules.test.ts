@@ -85,6 +85,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-056")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-057")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-058")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-074")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-059")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-060")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-061")).toBe(true);
@@ -1773,6 +1774,46 @@ describe("rule engine", () => {
     expect(JSON.stringify(runtimeNetworkEgressFindings[0])).not.toContain("egress_customer_email");
     expect(JSON.stringify(runtimeNetworkEgressFindings[0])).not.toContain("confidential_internal_response");
     expect(JSON.stringify(runtimeNetworkEgressFindings[0])).not.toContain("untrusted_customer_ticket_url");
+    const runtimeNetworkRedirectFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-RUNTIME-074");
+    expect(runtimeNetworkRedirectFindings).toHaveLength(1);
+    expect(runtimeNetworkRedirectFindings[0]?.matched_object.path).toBe("network/egress-policy.yaml");
+    expect(runtimeNetworkRedirectFindings[0]?.matched_object.metadata).toMatchObject({
+      parsed_agent_network_egress_config: true,
+      agent_network_egress_enabled: true,
+      agent_network_egress_web_tool_authority: true,
+      agent_network_egress_untrusted_input: true,
+      agent_network_egress_user_controlled_url: true,
+      agent_network_egress_wildcard_destination: true,
+      agent_network_egress_redirects_allowed: true,
+      agent_network_egress_dns_rebinding_protection_disabled: true,
+      agent_network_egress_private_network_access: true,
+      agent_network_egress_request_headers_forwarded: true,
+      agent_network_egress_credential_forwarding: true,
+      agent_network_egress_response_capture: true,
+      agent_network_egress_sensitive_response_capture: true,
+      agent_network_egress_approval_required: false
+    });
+    expect(runtimeNetworkRedirectFindings[0]?.matched_object.metadata.agent_network_egress_destination_kinds).toEqual([
+      "cloud_metadata_service",
+      "http_destination",
+      "localhost_or_cluster_service",
+      "private_network_range",
+      "wildcard_destination"
+    ]);
+    expect(runtimeNetworkRedirectFindings[0]?.severity).toBe("critical");
+    expect(runtimeNetworkRedirectFindings[0]?.confidence).toBe("very_high");
+    expect(runtimeNetworkRedirectFindings[0]?.recommended_control).toBe("deny");
+    expect(JSON.stringify(runtimeNetworkRedirectFindings[0])).not.toContain("${NETWORK_EGRESS_TOKEN}");
+    expect(JSON.stringify(runtimeNetworkRedirectFindings[0])).not.toContain("169.254.169.254");
+    expect(JSON.stringify(runtimeNetworkRedirectFindings[0])).not.toContain("metadata.google.internal");
+    expect(JSON.stringify(runtimeNetworkRedirectFindings[0])).not.toContain("127.0.0.1");
+    expect(JSON.stringify(runtimeNetworkRedirectFindings[0])).not.toContain("admin.internal.local");
+    expect(JSON.stringify(runtimeNetworkRedirectFindings[0])).not.toContain("Authorization");
+    expect(JSON.stringify(runtimeNetworkRedirectFindings[0])).not.toContain("X-API-Key");
+    expect(JSON.stringify(runtimeNetworkRedirectFindings[0])).not.toContain("egress_metadata_token");
+    expect(JSON.stringify(runtimeNetworkRedirectFindings[0])).not.toContain("egress_customer_email");
+    expect(JSON.stringify(runtimeNetworkRedirectFindings[0])).not.toContain("confidential_internal_response");
+    expect(JSON.stringify(runtimeNetworkRedirectFindings[0])).not.toContain("untrusted_customer_ticket_url");
     const runtimeWorkspaceContextFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-RUNTIME-059");
     expect(runtimeWorkspaceContextFindings).toHaveLength(1);
     expect(runtimeWorkspaceContextFindings[0]?.matched_object.path).toBe("workspace-context/context-sync.yaml");

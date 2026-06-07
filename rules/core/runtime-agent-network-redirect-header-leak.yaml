@@ -1,0 +1,75 @@
+id: AGENTCSP-RUNTIME-074
+name: Agent web egress forwards credentials across untrusted redirects
+description: An agent web egress policy lets untrusted or model-selected URLs use wildcard destinations, follow redirects into private or local networks, forward authorization headers or ambient credentials, and capture sensitive responses without approval.
+category: network_egress_redirect_header_leak
+severity: critical
+maps_to:
+  owasp:
+    - LLM01:2025 Prompt Injection
+    - LLM02:2025 Sensitive Information Disclosure
+    - LLM05:2025 Improper Output Handling
+    - LLM06:2025 Excessive Agency
+  mitre_atlas:
+    - AML.T0051 LLM Prompt Injection
+    - AML.T0057 Exfiltration via Cyber Means
+  nist_ai_rmf:
+    - MAP 5.1
+    - MEASURE 2.7
+    - MANAGE 2.4
+match:
+  object_type: runtime_config
+  where:
+    - field: metadata.parsed_agent_network_egress_config
+      op: equals
+      value: true
+    - field: metadata.agent_network_egress_enabled
+      op: equals
+      value: true
+    - field: metadata.agent_network_egress_web_tool_authority
+      op: equals
+      value: true
+    - field: metadata.agent_network_egress_untrusted_input
+      op: equals
+      value: true
+    - field: metadata.agent_network_egress_user_controlled_url
+      op: equals
+      value: true
+    - field: metadata.agent_network_egress_wildcard_destination
+      op: equals
+      value: true
+    - field: metadata.agent_network_egress_redirects_allowed
+      op: equals
+      value: true
+    - field: metadata.agent_network_egress_dns_rebinding_protection_disabled
+      op: equals
+      value: true
+    - field: metadata.agent_network_egress_private_network_access
+      op: equals
+      value: true
+    - field: metadata.agent_network_egress_request_headers_forwarded
+      op: equals
+      value: true
+    - field: metadata.agent_network_egress_credential_forwarding
+      op: equals
+      value: true
+    - field: metadata.agent_network_egress_response_capture
+      op: equals
+      value: true
+    - field: metadata.agent_network_egress_sensitive_response_capture
+      op: equals
+      value: true
+    - field: metadata.agent_network_egress_approval_required
+      op: equals
+      value: false
+    - field: data_classes
+      op: contains_any
+      value:
+        - credential
+        - confidential
+        - pii
+    - field: secret_exposure
+      op: equals
+      value: true
+recommendation:
+  control: deny
+  text: Deny credential/header forwarding for untrusted or model-selected URLs, block wildcard destinations and private-network redirects, re-resolve DNS after redirects, strip response bodies from tool context by default, and require approval before captured responses can enter agent context.
