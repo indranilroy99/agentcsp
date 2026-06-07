@@ -6193,6 +6193,7 @@ interface AgentApprovalGatePosture {
   agent_approval_external_channel: boolean;
   agent_approval_channel_auth_disabled: boolean;
   agent_approval_approver_identity_unverified: boolean;
+  agent_approval_requester_self_approval: boolean;
   agent_approval_replay_protection_disabled: boolean;
   agent_approval_broad_approver_scope: boolean;
   agent_approval_context_untrusted: boolean;
@@ -13105,6 +13106,7 @@ function classifyAgentApprovalGateConfig(value: unknown, filePath: string): Agen
     agent_approval_external_channel: hasAgentApprovalExternalChannelSignal(fields, channelCategories),
     agent_approval_channel_auth_disabled: hasAgentApprovalChannelAuthDisabledSignal(fields),
     agent_approval_approver_identity_unverified: hasAgentApprovalApproverIdentityUnverifiedSignal(fields, channelCategories),
+    agent_approval_requester_self_approval: hasAgentApprovalRequesterSelfApprovalSignal(fields),
     agent_approval_replay_protection_disabled: hasAgentApprovalReplayProtectionDisabledSignal(fields),
     agent_approval_broad_approver_scope: hasAgentApprovalBroadApproverScopeSignal(fields),
     agent_approval_context_untrusted: hasAgentApprovalUntrustedContextSignal(fields) || promptSourceCategories.some((category) =>
@@ -13213,6 +13215,22 @@ function hasAgentApprovalApproverIdentityUnverifiedSignal(fields: RuntimeField[]
   if (explicitSignal) return true;
   return channelCategories.some((category) => ["chatops", "email", "webhook", "scm_comment", "ticketing"].includes(category)) &&
     hasAgentApprovalChannelAuthDisabledSignal(fields);
+}
+
+function hasAgentApprovalRequesterSelfApprovalSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => {
+    const text = `${field.path} ${fieldValueText(field)}`.toLowerCase();
+    if (
+      /(^|\.)(allow_requester_approval|requester_can_approve|requester_self_approval|allow_self_approval|self_approval|same_actor_approval|requester_approval_allowed)$/iu.test(
+        field.path
+      )
+    ) {
+      return truthyConfigValue(field.value);
+    }
+    return /\b(allow[_\s-]?requester[_\s-]?approval|requester[_\s-]?can[_\s-]?approve|requester[_\s-]?self[_\s-]?approval|self[_\s-]?approval|self[_\s-]?approve|same[_\s-]?actor[_\s-]?approval|requester[_\s-]?approval[_\s-]?allowed)\b/iu.test(
+      text
+    ) && truthyConfigValue(field.value);
+  });
 }
 
 function hasAgentApprovalReplayProtectionDisabledSignal(fields: RuntimeField[]): boolean {

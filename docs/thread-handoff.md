@@ -1378,6 +1378,14 @@ The current iteration adds:
 - package metadata checks for the core exports and the `agentcsp` CLI bin target
 - installed-tree package smoke testing that combines packed AgentCSP artifacts with runtime dependencies, validates publish-compatible CLI-to-core package metadata, and runs `agentcsp scan` from the packed CLI entrypoint against the safe fixture
 
+## Approval Self-Authorization Bypass Pass
+
+The current iteration adds:
+
+- first-class approval-gate metadata for requester or same-actor self-approval, separate from broad approver scope
+- rule `AGENTCSP-RUNTIME-119` for human approval gates where an unauthenticated external channel allows requester self-approval, lacks replay protection, includes raw untrusted context, and auto-executes privileged write, external, or secret-backed actions
+- regression coverage proving the vulnerable ChatOps approval fixture produces the finding while raw webhook URLs, channel names, action names, source labels, data labels, and token placeholders stay redacted
+
 ## Initial Build Recommendation
 
 Start with a CLI-first MVP before building the dashboard:
