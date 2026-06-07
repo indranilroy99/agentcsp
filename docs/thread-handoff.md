@@ -664,6 +664,7 @@ The current iteration adds:
 - first-class redacted metadata for CrewAI, AutoGen, LangGraph, Semantic Kernel, swarm-style, and related multi-agent orchestration configs
 - vulnerable fixture coverage for a support crew where untrusted intake delegates automatically into a privileged executor with shared memory, browser/database/secret/messaging/filesystem authority, credentials, and no approval gate
 - rule `AGENTCSP-RUNTIME-015` for multi-agent delegation that routes untrusted context to privileged agents
+- rule `AGENTCSP-RUNTIME-080` for shared-memory bridges where untrusted intake can seed context consumed by privileged executor agents with external, write, filesystem, memory, and secret-manager authority
 - scanner, rule, fixture verifier, and redaction coverage proving raw crew names, agent names, role prompts, memory namespaces, graph labels, raw tool lists, and token placeholders stay redacted
 
 ## Agent Safety-Control Posture Pass

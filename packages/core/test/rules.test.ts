@@ -61,6 +61,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-013")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-014")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-015")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-080")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-016")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-017")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-018")).toBe(true);
@@ -2462,6 +2463,54 @@ describe("rule engine", () => {
     expect(JSON.stringify(runtimeAgentOrchestrationFindings[0])).not.toContain("support-escalation-crew");
     expect(JSON.stringify(runtimeAgentOrchestrationFindings[0])).not.toContain("production-support-memory");
     expect(JSON.stringify(runtimeAgentOrchestrationFindings[0])).not.toContain("operations-executor");
+    const runtimeAgentOrchestrationMemoryFindings = findings.filter(
+      (finding) => finding.rule_id === "AGENTCSP-RUNTIME-080"
+    );
+    expect(runtimeAgentOrchestrationMemoryFindings).toHaveLength(1);
+    expect(runtimeAgentOrchestrationMemoryFindings[0]?.matched_object.path).toBe("agents/support-crew.yaml");
+    expect(runtimeAgentOrchestrationMemoryFindings[0]?.matched_object.metadata).toMatchObject({
+      parsed_agent_orchestration_config: true,
+      agent_orchestration_framework: "crewai",
+      agent_orchestration_multi_agent: true,
+      agent_orchestration_agent_count: 2,
+      agent_orchestration_delegation_enabled: true,
+      agent_orchestration_untrusted_input: true,
+      agent_orchestration_shared_memory: true,
+      agent_orchestration_memory_redacted: true,
+      agent_orchestration_invokes_tools: true,
+      agent_orchestration_privileged_agent: true,
+      agent_orchestration_write_authority: true,
+      agent_orchestration_external_authority: true,
+      agent_orchestration_secret_authority: true,
+      agent_orchestration_approval_required: false
+    });
+    expect(
+      runtimeAgentOrchestrationMemoryFindings[0]?.matched_object.metadata.agent_orchestration_delegation_categories
+    ).toEqual(["agent_delegation", "automatic_delegation", "peer_handoff", "supervisor_routing"]);
+    expect(
+      runtimeAgentOrchestrationMemoryFindings[0]?.matched_object.metadata.agent_orchestration_tool_authority_categories
+    ).toEqual([
+      "browser_action",
+      "database_access",
+      "external_response",
+      "memory_write",
+      "repo_or_filesystem_write",
+      "secret_manager_access",
+      "tool_call"
+    ]);
+    expect(runtimeAgentOrchestrationMemoryFindings[0]?.severity).toBe("critical");
+    expect(runtimeAgentOrchestrationMemoryFindings[0]?.confidence).toBe("very_high");
+    expect(runtimeAgentOrchestrationMemoryFindings[0]?.recommended_control).toBe("quarantine");
+    expect(JSON.stringify(runtimeAgentOrchestrationMemoryFindings[0])).not.toContain("${CREW_AGENT_TOKEN}");
+    expect(JSON.stringify(runtimeAgentOrchestrationMemoryFindings[0])).not.toContain("support-escalation-crew");
+    expect(JSON.stringify(runtimeAgentOrchestrationMemoryFindings[0])).not.toContain("production-support-memory");
+    expect(JSON.stringify(runtimeAgentOrchestrationMemoryFindings[0])).not.toContain("intake-router");
+    expect(JSON.stringify(runtimeAgentOrchestrationMemoryFindings[0])).not.toContain("operations-executor");
+    expect(JSON.stringify(runtimeAgentOrchestrationMemoryFindings[0])).not.toContain("customer_email");
+    expect(JSON.stringify(runtimeAgentOrchestrationMemoryFindings[0])).not.toContain("customer_account_id");
+    expect(JSON.stringify(runtimeAgentOrchestrationMemoryFindings[0])).not.toContain("internal_support_notes");
+    expect(JSON.stringify(runtimeAgentOrchestrationMemoryFindings[0])).not.toContain("vault_secret_lookup");
+    expect(JSON.stringify(runtimeAgentOrchestrationMemoryFindings[0])).not.toContain("filesystem-admin");
     const runtimeAutonomousLoopFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-RUNTIME-060");
     expect(runtimeAutonomousLoopFindings).toHaveLength(1);
     expect(runtimeAutonomousLoopFindings[0]?.matched_object.path).toBe("autonomy/agent-loop.yaml");
