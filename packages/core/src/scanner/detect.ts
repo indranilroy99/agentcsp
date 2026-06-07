@@ -5875,6 +5875,11 @@ interface BrowserSessionPosture {
   browser_click_or_form_authority: boolean;
   browser_download_upload_enabled: boolean;
   browser_download_auto_accept: boolean;
+  browser_download_raw_content: boolean;
+  browser_download_passes_to_agent_context: boolean;
+  browser_download_sandbox_disabled: boolean;
+  browser_download_scan_disabled: boolean;
+  browser_download_instruction_stripping_disabled: boolean;
   browser_file_chooser_enabled: boolean;
   browser_extensions_redacted: boolean;
   browser_extension_count: number;
@@ -10217,6 +10222,11 @@ function classifyBrowserSessionConfig(value: unknown, filePath: string): Browser
     browser_click_or_form_authority: hasBrowserClickOrFormAuthoritySignal(fields),
     browser_download_upload_enabled: hasBrowserDownloadUploadSignal(fields),
     browser_download_auto_accept: hasBrowserDownloadAutoAcceptSignal(fields),
+    browser_download_raw_content: hasBrowserDownloadRawContentSignal(fields),
+    browser_download_passes_to_agent_context: hasBrowserDownloadPassesToAgentSignal(fields),
+    browser_download_sandbox_disabled: hasBrowserDownloadSandboxDisabledSignal(fields),
+    browser_download_scan_disabled: hasBrowserDownloadScanDisabledSignal(fields),
+    browser_download_instruction_stripping_disabled: hasBrowserDownloadInstructionStrippingDisabledSignal(fields),
     browser_file_chooser_enabled: hasBrowserFileChooserSignal(fields),
     browser_extensions_redacted: hasBrowserExtensionSignal(fields),
     browser_extension_count: countBrowserExtensions(fields),
@@ -10374,6 +10384,84 @@ function hasBrowserDownloadAutoAcceptSignal(fields: RuntimeField[]): boolean {
   );
 }
 
+function hasBrowserDownloadRawContentSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => {
+    const text = browserSessionText(field);
+    if (!/\b(download|downloads|downloaded|file|files|extract|text|raw|pdf|html|csv|office|archive|ocr)\b/iu.test(text)) return false;
+    if (
+      /(?:^|\.)(extract_text|extract_download_text|parse_downloads|parse_downloaded_files|preserve_html|raw_content|raw_download_content|include_raw_download_text)(?:\.|$)/iu.test(
+        field.path
+      )
+    ) {
+      return truthyConfigValue(field.value);
+    }
+    return /\b(extract text|parse downloads|raw download|raw content|preserve html|downloaded html|ocr text)\b/iu.test(text) &&
+      truthyConfigValue(field.value);
+  });
+}
+
+function hasBrowserDownloadPassesToAgentSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => {
+    const text = browserSessionText(field);
+    if (!/\b(download|downloads|downloaded|file|files|agent|context|prompt|tool|memory|summary)\b/iu.test(text)) return false;
+    if (
+      /(?:^|\.)(pass_to_agent|pass_raw_to_agent|send_to_agent|add_to_context|agent_context|prompt_context|tool_context|memory_write)(?:\.|$)/iu.test(
+        field.path
+      )
+    ) {
+      return truthyConfigValue(field.value);
+    }
+    return /\b(pass to agent|raw to agent|agent context|prompt context|tool context|add to context|write to memory)\b/iu.test(text) &&
+      truthyConfigValue(field.value);
+  });
+}
+
+function hasBrowserDownloadSandboxDisabledSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => {
+    const text = browserSessionText(field);
+    if (!/\b(download|downloads|downloaded|file|files|parser|sandbox|isolation|detonate|preview)\b/iu.test(text)) return false;
+    if (/(?:^|\.)(sandbox|sandboxed|isolation|isolated_parser|detonation|safe_preview)(?:\.|$)/iu.test(field.path)) {
+      return disabledConfigValue(field.value);
+    }
+    return /\b(no sandbox|sandbox disabled|unsandboxed|no isolation|parser not isolated)\b/iu.test(text) &&
+      truthyConfigValue(field.value);
+  });
+}
+
+function hasBrowserDownloadScanDisabledSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => {
+    const text = browserSessionText(field);
+    if (!/\b(download|downloads|downloaded|file|files|scan|scanner|malware|virus|av|antivirus|content inspection)\b/iu.test(text)) {
+      return false;
+    }
+    if (
+      /(?:^|\.)(malware_scan|virus_scan|av_scan|antivirus|content_inspection|security_scan|scan_before_parse)(?:\.|$)/iu.test(
+        field.path
+      )
+    ) {
+      return disabledConfigValue(field.value);
+    }
+    return /\b(no scan|scan disabled|malware scan disabled|skip scan|no content inspection)\b/iu.test(text) &&
+      truthyConfigValue(field.value);
+  });
+}
+
+function hasBrowserDownloadInstructionStrippingDisabledSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => {
+    const text = browserSessionText(field);
+    if (!/\b(download|downloads|downloaded|file|files|document|instruction|prompt|html|ocr|sanitize|strip)\b/iu.test(text)) return false;
+    if (
+      /(?:^|\.)(strip_instructions|instruction_stripping|prompt_injection_filter|sanitize_prompt_instructions|remove_prompt_instructions)(?:\.|$)/iu.test(
+        field.path
+      )
+    ) {
+      return disabledConfigValue(field.value);
+    }
+    return /\b(strip instructions disabled|instruction stripping disabled|prompt filter disabled|preserve instructions)\b/iu.test(text) &&
+      truthyConfigValue(field.value);
+  });
+}
+
 function hasBrowserFileChooserSignal(fields: RuntimeField[]): boolean {
   return fields.some((field) =>
     /\b(file[_-]?chooser|allow[_-]?file[_-]?chooser|uploads?|attach|attachment)\b/iu.test(`${field.path} ${fieldValueText(field)}`) &&
@@ -10491,9 +10579,13 @@ function hasBrowserApprovalRequiredSignal(fields: RuntimeField[]): boolean {
 }
 
 function isBrowserSessionSecurityField(fieldPath: string): boolean {
-  return /provider|browser|playwright|puppeteer|selenium|profile|user[_-]?data|storage|session|cookie|auth|token|credential|password|origin|domain|host|url|debug|cdp|devtools|extension|addon|plugin|autofill|wallet|payment|navigation|action|click|form|submit|upload|download|source|input|data|scope|permission|approval/iu.test(
+  return /provider|browser|playwright|puppeteer|selenium|profile|user[_-]?data|storage|session|cookie|auth|token|credential|password|origin|domain|host|url|debug|cdp|devtools|extension|addon|plugin|autofill|wallet|payment|navigation|action|click|form|submit|upload|download|extract|parser|sandbox|scan|malware|virus|sanitize|instruction|prompt|context|source|input|data|scope|permission|approval/iu.test(
     fieldPath
   );
+}
+
+function browserSessionText(field: RuntimeField): string {
+  return `${field.path} ${fieldValueText(field)}`.toLowerCase().replaceAll("_", " ").replaceAll("-", " ");
 }
 
 function classifyAgentComputerUseConfig(value: unknown, filePath: string): AgentComputerUsePosture {

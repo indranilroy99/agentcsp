@@ -409,6 +409,11 @@ Browser session metadata may include:
 - `browser_click_or_form_authority`
 - `browser_download_upload_enabled`
 - `browser_download_auto_accept`
+- `browser_download_raw_content`
+- `browser_download_passes_to_agent_context`
+- `browser_download_sandbox_disabled`
+- `browser_download_scan_disabled`
+- `browser_download_instruction_stripping_disabled`
 - `browser_file_chooser_enabled`
 - `browser_extensions_redacted`
 - `browser_extension_count`
@@ -431,7 +436,9 @@ Browser session metadata may include:
 - `env_key_names`
 - `secret_ref_key_names`
 
-Raw cookie files, storage-state files, profile paths, extension names, extension IDs, extension paths, download/upload paths, origins, browser endpoints, hostnames, autofill labels, and secret placeholders are not emitted. Provider names, broad-origin categories, authenticated-session booleans, untrusted-navigation signals, click/form authority, file-transfer posture, extension counts and categories, autofill/password-manager posture, path-redaction flags, approval posture, and credential key names let rules detect browser-agent account-action and sensitive file-transfer risk without copying browser state into the manifest.
+Raw cookie files, storage-state files, profile paths, extension names, extension IDs, extension paths, downloaded filenames, extracted download content, download/upload paths, origins, browser endpoints, hostnames, autofill labels, and secret placeholders are not emitted. Provider names, broad-origin categories, authenticated-session booleans, untrusted-navigation signals, click/form authority, file-transfer posture, download parser posture, extension counts and categories, autofill/password-manager posture, path-redaction flags, approval posture, and credential key names let rules detect browser-agent account-action and sensitive file-transfer risk without copying browser state into the manifest.
+
+Download parser posture tracks whether downloads are automatically accepted, raw downloaded content is extracted, extracted content can enter agent context, parser sandboxing is disabled, malware or content scanning is disabled, and prompt-like instruction stripping is disabled. This lets rules distinguish ordinary browser file-transfer posture from the higher-risk path where untrusted web content becomes privileged agent context.
 
 ## Computer-Use And Desktop Automation Posture
 

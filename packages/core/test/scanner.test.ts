@@ -2236,6 +2236,11 @@ describe("scanner", () => {
       browser_click_or_form_authority: true,
       browser_download_upload_enabled: true,
       browser_download_auto_accept: true,
+      browser_download_raw_content: true,
+      browser_download_passes_to_agent_context: true,
+      browser_download_sandbox_disabled: true,
+      browser_download_scan_disabled: true,
+      browser_download_instruction_stripping_disabled: true,
       browser_file_chooser_enabled: true,
       browser_extensions_redacted: true,
       browser_extension_count: 2,
@@ -2279,6 +2284,10 @@ describe("scanner", () => {
     expect(JSON.stringify(browserSessionConfig)).not.toContain("Customer Payment Wallet");
     expect(JSON.stringify(browserSessionConfig)).not.toContain(".browser/downloads/customer-exports");
     expect(JSON.stringify(browserSessionConfig)).not.toContain("export.csv");
+    expect(JSON.stringify(browserSessionConfig)).not.toContain("browser_customer_invoice.pdf");
+    expect(JSON.stringify(browserSessionConfig)).not.toContain("browser_support_export.html");
+    expect(JSON.stringify(browserSessionConfig)).not.toContain("browser_case_bundle.zip");
+    expect(JSON.stringify(browserSessionConfig)).not.toContain("browser_statement_ocr.png");
     const computerUseConfig = surfaces.runtime_config.find((surface) => surface.path === "computer/desktop-agent.yaml");
     expect(computerUseConfig).toBeDefined();
     expect(computerUseConfig).toMatchObject({
@@ -4948,6 +4957,11 @@ describe("scanner", () => {
       browser_click_or_form_authority: false,
       browser_download_upload_enabled: false,
       browser_download_auto_accept: false,
+      browser_download_raw_content: false,
+      browser_download_passes_to_agent_context: false,
+      browser_download_sandbox_disabled: false,
+      browser_download_scan_disabled: false,
+      browser_download_instruction_stripping_disabled: false,
       browser_file_chooser_enabled: false,
       browser_extensions_redacted: false,
       browser_extension_count: 0,

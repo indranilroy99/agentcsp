@@ -168,6 +168,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-073")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-047")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-048")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-124")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-049")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-CICD-002")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-AUTOMATION-001")).toBe(true);
@@ -2597,6 +2598,50 @@ describe("rule engine", () => {
     expect(JSON.stringify(runtimeBrowserFileTransferFindings[0])).not.toContain("export.csv");
     expect(JSON.stringify(runtimeBrowserFileTransferFindings[0])).not.toContain("support.example.invalid");
     expect(JSON.stringify(runtimeBrowserFileTransferFindings[0])).not.toContain("browser_customer_email");
+    const runtimeBrowserDownloadParserFindings = findings.filter(
+      (finding) => finding.rule_id === "AGENTCSP-RUNTIME-124"
+    );
+    expect(runtimeBrowserDownloadParserFindings).toHaveLength(1);
+    expect(runtimeBrowserDownloadParserFindings[0]?.matched_object.path).toBe("browser/session.yaml");
+    expect(runtimeBrowserDownloadParserFindings[0]?.matched_object.metadata).toMatchObject({
+      parsed_browser_session_config: true,
+      browser_provider: "playwright",
+      browser_authenticated_session: true,
+      browser_untrusted_navigation: true,
+      browser_download_upload_enabled: true,
+      browser_download_auto_accept: true,
+      browser_download_raw_content: true,
+      browser_download_passes_to_agent_context: true,
+      browser_download_sandbox_disabled: true,
+      browser_download_scan_disabled: true,
+      browser_download_instruction_stripping_disabled: true,
+      browser_broad_origin_access: true,
+      browser_sensitive_data: true,
+      browser_pii_data: true,
+      browser_approval_required: false
+    });
+    expect(runtimeBrowserDownloadParserFindings[0]?.severity).toBe("critical");
+    expect(runtimeBrowserDownloadParserFindings[0]?.confidence).toBe("very_high");
+    expect(runtimeBrowserDownloadParserFindings[0]?.recommended_control).toBe("quarantine");
+    expect(JSON.stringify(runtimeBrowserDownloadParserFindings[0])).not.toContain("${BROWSER_SESSION_TOKEN}");
+    expect(JSON.stringify(runtimeBrowserDownloadParserFindings[0])).not.toContain(".browser/support-profile");
+    expect(JSON.stringify(runtimeBrowserDownloadParserFindings[0])).not.toContain(".auth/support-browser-state.json");
+    expect(JSON.stringify(runtimeBrowserDownloadParserFindings[0])).not.toContain(".auth/customer-support-cookies.json");
+    expect(JSON.stringify(runtimeBrowserDownloadParserFindings[0])).not.toContain("support.example.invalid");
+    expect(JSON.stringify(runtimeBrowserDownloadParserFindings[0])).not.toContain(
+      ".browser/extensions/password-manager"
+    );
+    expect(JSON.stringify(runtimeBrowserDownloadParserFindings[0])).not.toContain("Support Password Manager");
+    expect(JSON.stringify(runtimeBrowserDownloadParserFindings[0])).not.toContain("wallet-extension-prod");
+    expect(JSON.stringify(runtimeBrowserDownloadParserFindings[0])).not.toContain("Customer Payment Wallet");
+    expect(JSON.stringify(runtimeBrowserDownloadParserFindings[0])).not.toContain(
+      ".browser/downloads/customer-exports"
+    );
+    expect(JSON.stringify(runtimeBrowserDownloadParserFindings[0])).not.toContain("export.csv");
+    expect(JSON.stringify(runtimeBrowserDownloadParserFindings[0])).not.toContain("browser_customer_invoice.pdf");
+    expect(JSON.stringify(runtimeBrowserDownloadParserFindings[0])).not.toContain("browser_support_export.html");
+    expect(JSON.stringify(runtimeBrowserDownloadParserFindings[0])).not.toContain("browser_case_bundle.zip");
+    expect(JSON.stringify(runtimeBrowserDownloadParserFindings[0])).not.toContain("browser_statement_ocr.png");
     const runtimeSaasConnectorFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-RUNTIME-012");
     expect(runtimeSaasConnectorFindings).toHaveLength(1);
     expect(runtimeSaasConnectorFindings[0]?.matched_object.path).toBe("connectors/slack-customer-success.yaml");

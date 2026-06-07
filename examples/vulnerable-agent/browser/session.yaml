@@ -23,6 +23,23 @@ autofill:
 downloads:
   path: .browser/downloads/customer-exports
   auto_accept: true
+download_processing:
+  enabled: true
+  accepted_types:
+    - browser_customer_invoice.pdf
+    - browser_support_export.html
+    - browser_case_bundle.zip
+    - browser_statement_ocr.png
+  extract_text: true
+  preserve_html: true
+  parse_downloaded_files: true
+  pass_raw_to_agent: true
+  agent_context: true
+  sandbox: false
+  malware_scan: false
+  content_inspection: false
+  strip_instructions: false
+  prompt_injection_filter: false
 uploads:
   allow_file_chooser: true
   paths:

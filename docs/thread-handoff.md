@@ -1422,6 +1422,15 @@ The current iteration adds:
 - rule `AGENTCSP-RUNTIME-123` for retained sensitive AI telemetry traces that can replay into agent, eval, or training paths with public access, disabled access controls, disabled redaction, credentials, and no approval gate
 - regression coverage proving raw telemetry endpoints, project names, workspace names, vendor labels, replay source labels, replay target labels, and token placeholders stay redacted
 
+## Browser Download Parser Boundary Pass
+
+The current iteration adds:
+
+- first-class browser download parser metadata for raw downloaded content extraction, agent-context ingestion, parser sandbox posture, malware/content scanning posture, and prompt-instruction stripping posture
+- fixture coverage for an authenticated Playwright browser session that auto-accepts untrusted downloads, extracts raw PDF/HTML/ZIP/OCR content into agent context, disables parser sandboxing and scanning, and lacks approval
+- rule `AGENTCSP-RUNTIME-124` for untrusted browser downloads that can become privileged agent context without sandboxing, scanning, prompt-instruction stripping, or approval
+- regression coverage proving raw browser profile paths, cookie files, extension names, extension IDs, download paths, downloaded filenames, origins, and token placeholders stay redacted
+
 ## Automation Shell-Argument Boundary Pass
 
 The current iteration adds:

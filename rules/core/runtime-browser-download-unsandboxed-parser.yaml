@@ -1,0 +1,80 @@
+id: AGENTCSP-RUNTIME-124
+name: Browser downloads are parsed unsafely into agent context
+description: An authenticated browser-agent session auto-accepts downloads from untrusted navigation, extracts raw downloaded content, passes it into agent context, and disables sandboxing, malware or content scanning, and prompt-instruction stripping while approval is missing.
+category: browser_download_parser_boundary
+severity: critical
+maps_to:
+  owasp:
+    - LLM01:2025 Prompt Injection
+    - LLM02:2025 Sensitive Information Disclosure
+    - LLM06:2025 Excessive Agency
+  mitre_atlas:
+    - AML.T0051 LLM Prompt Injection
+    - AML.T0057 Exfiltration via Cyber Means
+    - AML.T0059 Data from Information Repositories
+  nist_ai_rmf:
+    - MAP 5.1
+    - MEASURE 2.9
+    - MANAGE 2.4
+match:
+  object_type: runtime_config
+  where:
+    - field: metadata.parsed_browser_session_config
+      op: equals
+      value: true
+    - field: metadata.browser_authenticated_session
+      op: equals
+      value: true
+    - field: metadata.browser_untrusted_navigation
+      op: equals
+      value: true
+    - field: metadata.browser_download_upload_enabled
+      op: equals
+      value: true
+    - field: metadata.browser_download_auto_accept
+      op: equals
+      value: true
+    - field: metadata.browser_download_raw_content
+      op: equals
+      value: true
+    - field: metadata.browser_download_passes_to_agent_context
+      op: equals
+      value: true
+    - field: metadata.browser_download_sandbox_disabled
+      op: equals
+      value: true
+    - field: metadata.browser_download_scan_disabled
+      op: equals
+      value: true
+    - field: metadata.browser_download_instruction_stripping_disabled
+      op: equals
+      value: true
+    - field: metadata.browser_broad_origin_access
+      op: equals
+      value: true
+    - field: metadata.browser_sensitive_data
+      op: equals
+      value: true
+    - field: metadata.browser_pii_data
+      op: equals
+      value: true
+    - field: metadata.browser_approval_required
+      op: equals
+      value: false
+    - field: data_classes
+      op: contains_any
+      value:
+        - credential
+    - field: data_classes
+      op: contains_any
+      value:
+        - pii
+    - field: secret_exposure
+      op: equals
+      value: true
+    - field: untrusted_to_privileged
+      op: equals
+      value: true
+recommendation:
+  control: quarantine
+  text: Quarantine browser downloads before agent context ingestion, disable automatic downloads for untrusted navigation, parse downloaded files in an isolated sandbox, scan and inspect files before extraction, strip prompt-like instructions from extracted content, and require approval before downloaded content can influence authenticated browser sessions or downstream tools.
