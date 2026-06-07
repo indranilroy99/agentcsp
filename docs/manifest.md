@@ -1535,7 +1535,7 @@ Package-manifest metadata may include:
 - `env_key_names`
 - `secret_ref_key_names`
 
-Raw dependency names, dependency specs, remote package URLs, Git references, lifecycle commands, local script paths, and token placeholders are not emitted. AgentCSP records dependency categories, reference-kind categories, lifecycle-script names, command capability booleans, and credential key names so rules can detect install-time agent supply-chain risk without becoming a noisy generic SCA scanner.
+Raw dependency names, dependency specs, remote package URLs, Git references, lifecycle commands, local script paths, and token placeholders are not emitted. AgentCSP records dependency categories, reference-kind categories, lifecycle-script names, command capability booleans, secret-bearing install posture, and credential key names so rules can detect install-time agent supply-chain risk without becoming a noisy generic SCA scanner.
 
 ## Agent Deployment Image Provenance
 

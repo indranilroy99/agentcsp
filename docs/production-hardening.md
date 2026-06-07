@@ -172,6 +172,7 @@ Examples:
 - model-visible tool-description injection plus external write and side-effect authority
 - workflow automation plus agent package script plus secrets and write authority
 - workflow automation plus untrusted event payload plus agent package script plus secrets and write authority
+- mutable remote agent dependencies plus credentialed install-time plugin bootstrap
 - instruction file plus untrusted context reference plus tool and memory bridge
 - always-applied broad Cursor project rule plus untrusted-to-privileged context bridge
 - tool-name collision plus different authority signatures and a privileged peer

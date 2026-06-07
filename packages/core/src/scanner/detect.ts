@@ -22669,7 +22669,10 @@ function detectAgentPackageManifestConfig(file: WalkedFile, manifest: PackageJso
   if (posture.package_manifest_lifecycle_script) actions.add("write");
 
   const dataClasses = new Set<SurfaceObject["data_classes"][number]>(["internal"]);
-  if (posture.package_manifest_lifecycle_secret_env || posture.secret_ref_key_names.length > 0) dataClasses.add("credential");
+  if (posture.package_manifest_lifecycle_secret_env || posture.secret_ref_key_names.length > 0) {
+    dataClasses.add("credential");
+    dataClasses.add("secret");
+  }
 
   const object = createSurfaceObject({
     type: "runtime_config",

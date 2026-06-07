@@ -178,6 +178,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-SKILL-001")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-SUPPLYCHAIN-001")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-SUPPLYCHAIN-002")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-SUPPLYCHAIN-003")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MEMORY-002")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MEMORY-003")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MEMORY-004")).toBe(true);
@@ -1868,6 +1869,47 @@ describe("rule engine", () => {
     expect(JSON.stringify(supplyChainFindings[0])).not.toContain("openai-agents-fork");
     expect(JSON.stringify(supplyChainFindings[0])).not.toContain("packages.example.invalid");
     expect(JSON.stringify(supplyChainFindings[0])).not.toContain("scripts/install-agent-plugins.js");
+    const supplyChainBootstrapFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-SUPPLYCHAIN-003");
+    expect(supplyChainBootstrapFindings).toHaveLength(1);
+    expect(supplyChainBootstrapFindings[0]?.matched_object.path).toBe("package.json");
+    expect(supplyChainBootstrapFindings[0]?.matched_object.data_classes).toEqual(["credential", "internal", "secret"]);
+    expect(supplyChainBootstrapFindings[0]?.matched_object.actions).toEqual(["execute", "read", "send", "write"]);
+    expect(supplyChainBootstrapFindings[0]?.matched_object.metadata).toMatchObject({
+      parsed_agent_package_manifest_config: true,
+      package_manifest_dependency_names_redacted: true,
+      package_manifest_dependency_specs_redacted: true,
+      package_manifest_dependency_count: 4,
+      package_manifest_agent_dependency_count: 4,
+      package_manifest_risky_dependency_count: 4,
+      package_manifest_unpinned_dependency: true,
+      package_manifest_remote_dependency: true,
+      package_manifest_lifecycle_script: true,
+      package_manifest_lifecycle_script_names: ["postinstall"],
+      package_manifest_install_script_count: 1,
+      package_manifest_lifecycle_shell_execution: true,
+      package_manifest_lifecycle_secret_env: true
+    });
+    expect(supplyChainBootstrapFindings[0]?.matched_object.metadata.package_manifest_agent_dependency_categories).toEqual([
+      "agent_framework",
+      "mcp_sdk",
+      "model_sdk",
+      "rag_vector_store"
+    ]);
+    expect(supplyChainBootstrapFindings[0]?.matched_object.metadata.package_manifest_dependency_reference_kinds).toEqual([
+      "floating_range",
+      "git_dependency",
+      "http_tarball",
+      "latest_tag"
+    ]);
+    expect(supplyChainBootstrapFindings[0]?.severity).toBe("critical");
+    expect(supplyChainBootstrapFindings[0]?.confidence).toBe("very_high");
+    expect(supplyChainBootstrapFindings[0]?.recommended_control).toBe("quarantine");
+    expect(JSON.stringify(supplyChainBootstrapFindings[0])).not.toContain("${AGENT_EXTENSION_TOKEN}");
+    expect(JSON.stringify(supplyChainBootstrapFindings[0])).not.toContain("@agentcsp-demo/remote-rag-plugin");
+    expect(JSON.stringify(supplyChainBootstrapFindings[0])).not.toContain("@openai/agents");
+    expect(JSON.stringify(supplyChainBootstrapFindings[0])).not.toContain("openai-agents-fork");
+    expect(JSON.stringify(supplyChainBootstrapFindings[0])).not.toContain("packages.example.invalid");
+    expect(JSON.stringify(supplyChainBootstrapFindings[0])).not.toContain("scripts/install-agent-plugins.js");
     const supplyChainDeploymentFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-SUPPLYCHAIN-002");
     expect(supplyChainDeploymentFindings).toHaveLength(1);
     expect(supplyChainDeploymentFindings[0]?.matched_object.path).toBe("deployments/agent-deployment.yaml");

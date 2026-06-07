@@ -495,7 +495,7 @@ describe("scanner", () => {
     ]);
     expect(packageManifestConfig?.metadata.env_key_names).toEqual(["AGENT_EXTENSION_TOKEN"]);
     expect(packageManifestConfig?.metadata.secret_ref_key_names).toEqual(["AGENT_EXTENSION_TOKEN"]);
-    expect(packageManifestConfig?.data_classes).toEqual(["credential", "internal"]);
+    expect(packageManifestConfig?.data_classes).toEqual(["credential", "internal", "secret"]);
     expect(packageManifestConfig?.actions).toEqual(["execute", "read", "send", "write"]);
     expect(JSON.stringify(packageManifestConfig)).not.toContain("${AGENT_EXTENSION_TOKEN}");
     expect(JSON.stringify(packageManifestConfig)).not.toContain("@agentcsp-demo/remote-rag-plugin");

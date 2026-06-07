@@ -876,6 +876,7 @@ The current iteration adds:
 - first-class redacted metadata for agent-relevant `package.json` manifests with agent, MCP, model, RAG, vector, or browser-automation dependencies
 - vulnerable fixture coverage for floating and remote agent dependency specs combined with a credentialed lifecycle script
 - rule `AGENTCSP-SUPPLYCHAIN-001` for package manifests that combine risky agent dependency references, install-time execution, external dependency reach, and credential exposure
+- rule `AGENTCSP-SUPPLYCHAIN-003` for mutable remote agent dependencies that are bootstrapped by credentialed install-time lifecycle scripts before the agent runtime starts
 - scanner, rule, fixture verifier, and redaction coverage proving dependency names, dependency specs, remote package URLs, Git references, lifecycle commands, local script paths, and token placeholders stay redacted
 
 ## Agent Deployment Image Provenance Pass

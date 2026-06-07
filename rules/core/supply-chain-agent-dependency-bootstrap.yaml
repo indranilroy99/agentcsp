@@ -1,0 +1,100 @@
+id: AGENTCSP-SUPPLYCHAIN-003
+name: Agent dependency bootstrap installs mutable remote code with secrets
+description: An agent package manifest pulls mutable remote agent, model, MCP, or RAG dependencies and runs a credentialed install-time lifecycle script, allowing third-party install code to execute with agent-extension secrets before the agent runtime starts.
+category: agent_supply_chain
+severity: critical
+maps_to:
+  owasp:
+    - LLM05:2025 Supply Chain Vulnerabilities
+    - LLM06:2025 Excessive Agency
+  mitre_atlas:
+    - AML.T0010 Supply Chain Compromise
+    - AML.T0054 Command and Scripting Interpreter
+    - AML.T0057 Exfiltration via Cyber Means
+  nist_ai_rmf:
+    - GOVERN 1.5
+    - MAP 5.1
+    - MANAGE 2.3
+match:
+  object_type: runtime_config
+  where:
+    - field: metadata.parsed_agent_package_manifest_config
+      op: equals
+      value: true
+    - field: metadata.package_manifest_agent_dependency_count
+      op: gt
+      value: 0
+    - field: metadata.package_manifest_risky_dependency_count
+      op: gt
+      value: 0
+    - field: metadata.package_manifest_unpinned_dependency
+      op: equals
+      value: true
+    - field: metadata.package_manifest_remote_dependency
+      op: equals
+      value: true
+    - field: metadata.package_manifest_dependency_reference_kinds
+      op: contains_any
+      value:
+        - http_tarball
+    - field: metadata.package_manifest_dependency_reference_kinds
+      op: contains_any
+      value:
+        - git_dependency
+    - field: metadata.package_manifest_dependency_reference_kinds
+      op: contains_any
+      value:
+        - floating_range
+        - latest_tag
+    - field: metadata.package_manifest_agent_dependency_categories
+      op: contains_any
+      value:
+        - model_sdk
+    - field: metadata.package_manifest_agent_dependency_categories
+      op: contains_any
+      value:
+        - rag_vector_store
+    - field: metadata.package_manifest_lifecycle_script
+      op: equals
+      value: true
+    - field: metadata.package_manifest_lifecycle_script_names
+      op: contains_any
+      value:
+        - postinstall
+    - field: metadata.package_manifest_install_script_count
+      op: gt
+      value: 0
+    - field: metadata.package_manifest_lifecycle_shell_execution
+      op: equals
+      value: true
+    - field: metadata.package_manifest_lifecycle_secret_env
+      op: equals
+      value: true
+    - field: data_classes
+      op: contains_any
+      value:
+        - secret
+    - field: actions
+      op: contains_any
+      value:
+        - execute
+    - field: actions
+      op: contains_any
+      value:
+        - send
+    - field: actions
+      op: contains_any
+      value:
+        - write
+    - field: external_reach
+      op: equals
+      value: true
+    - field: secret_exposure
+      op: equals
+      value: true
+    - field: untrusted_to_privileged
+      op: equals
+      value: true
+recommendation:
+  control: quarantine
+  text: Quarantine agent installs that combine remote or mutable agent dependencies with credentialed lifecycle scripts. Pin reviewed artifacts by digest or exact version, replace remote tarball and branch dependencies with verified packages, remove install-time secret access, and require approval before agent plugin bootstrap code can run.
