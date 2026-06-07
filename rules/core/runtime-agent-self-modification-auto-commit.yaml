@@ -1,0 +1,66 @@
+id: AGENTCSP-RUNTIME-077
+name: Agent self-modification auto-commits and executes policy changes
+description: An agent self-modification policy can take untrusted context, persist control-plane writes to policy, runtime, and tool definitions, execute a reload after update, and leave rollback disabled without an approval gate.
+category: agent_control_plane_persistence
+severity: critical
+maps_to:
+  owasp:
+    - LLM01:2025 Prompt Injection
+    - LLM06:2025 Excessive Agency
+    - LLM07:2025 System Prompt Leakage
+  mitre_atlas:
+    - AML.T0051 LLM Prompt Injection
+    - AML.T0054 LLM Plugin Compromise
+  nist_ai_rmf:
+    - GOVERN 1.5
+    - MAP 5.1
+    - MANAGE 2.4
+match:
+  object_type: runtime_config
+  where:
+    - field: metadata.parsed_agent_self_modification_config
+      op: equals
+      value: true
+    - field: metadata.agent_self_modification_write_enabled
+      op: equals
+      value: true
+    - field: metadata.agent_self_modification_auto_apply
+      op: equals
+      value: true
+    - field: metadata.agent_self_modification_persistent_change
+      op: equals
+      value: true
+    - field: metadata.agent_self_modification_executes_after_update
+      op: equals
+      value: true
+    - field: metadata.agent_self_modification_rollback_enabled
+      op: equals
+      value: false
+    - field: metadata.agent_self_modification_untrusted_input
+      op: equals
+      value: true
+    - field: metadata.agent_self_modification_policy_target
+      op: equals
+      value: true
+    - field: metadata.agent_self_modification_runtime_target
+      op: equals
+      value: true
+    - field: metadata.agent_self_modification_tool_target
+      op: equals
+      value: true
+    - field: metadata.agent_self_modification_approval_required
+      op: equals
+      value: false
+    - field: metadata.agent_self_modification_authority_categories
+      op: contains_any
+      value:
+        - control_plane_write
+        - repo_or_filesystem_write
+        - shell_execution
+        - tool_definition_write
+    - field: untrusted_to_privileged
+      op: equals
+      value: true
+recommendation:
+  control: quarantine
+  text: Quarantine agent-driven policy/runtime/tool rewrites from untrusted context, disable auto-commit and reload for self-modification flows, require human approval before applying persistent control-plane changes, and enforce rollback checkpoints.

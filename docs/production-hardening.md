@@ -185,6 +185,7 @@ Examples:
 - authorization broker plus dynamic grants, untrusted subject/resource inputs, wildcard tool and resource scopes, fail-open/default-allow behavior, missing grant TTL, disabled audit logging, destructive or secret-backed authority, and no approval gate
 - remote agent extension loader plus auto-install plus unpinned unsigned capabilities plus untrusted selector inputs plus privileged tool authority plus no approval gate
 - agent self-modification plus untrusted inputs plus auto-applied writes to instructions, policy, runtime config, and tool definitions plus no approval gate
+- agent self-modification plus untrusted inputs, persistent policy/runtime/tool rewrites, post-update execution or reload, disabled rollback, and no approval gate
 - model-mediated approval gate plus untrusted approval context plus default-allow behavior plus auto-executed privileged actions and no required human reviewer
 - external ChatOps, webhook, email, ticket, or comment approval channel plus disabled authentication, unverified approver identity, disabled replay protection, broad approver scope, and auto-executed privileged actions
 - background agent queue plus untrusted prompt/tool-output jobs, retry, dead-letter redrive, replay, privileged tool authority, credentials, and no approval gate

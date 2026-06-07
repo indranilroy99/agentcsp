@@ -67,6 +67,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-072")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-019")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-020")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-077")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-021")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-022")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-023")).toBe(true);
@@ -1505,6 +1506,59 @@ describe("rule engine", () => {
     expect(JSON.stringify(runtimeSelfModificationFindings[0])).not.toContain("agentcsp.yaml");
     expect(JSON.stringify(runtimeSelfModificationFindings[0])).not.toContain("system_prompt");
     expect(JSON.stringify(runtimeSelfModificationFindings[0])).not.toContain("npm run agent:run");
+    const runtimeSelfModificationPersistenceFindings = findings.filter(
+      (finding) => finding.rule_id === "AGENTCSP-RUNTIME-077"
+    );
+    expect(runtimeSelfModificationPersistenceFindings).toHaveLength(1);
+    expect(runtimeSelfModificationPersistenceFindings[0]?.matched_object.path).toBe(
+      "self-modification/policy-writer.yaml"
+    );
+    expect(runtimeSelfModificationPersistenceFindings[0]?.matched_object.metadata).toMatchObject({
+      parsed_agent_self_modification_config: true,
+      agent_self_modification_write_enabled: true,
+      agent_self_modification_auto_apply: true,
+      agent_self_modification_persistent_change: true,
+      agent_self_modification_executes_after_update: true,
+      agent_self_modification_rollback_enabled: false,
+      agent_self_modification_untrusted_input: true,
+      agent_self_modification_policy_target: true,
+      agent_self_modification_runtime_target: true,
+      agent_self_modification_tool_target: true,
+      agent_self_modification_approval_required: false
+    });
+    expect(
+      runtimeSelfModificationPersistenceFindings[0]?.matched_object.metadata
+        .agent_self_modification_authority_categories
+    ).toEqual([
+      "control_plane_write",
+      "external_response",
+      "memory_write",
+      "repo_or_filesystem_write",
+      "shell_execution",
+      "tool_definition_write"
+    ]);
+    expect(runtimeSelfModificationPersistenceFindings[0]?.severity).toBe("critical");
+    expect(runtimeSelfModificationPersistenceFindings[0]?.confidence).toBe("very_high");
+    expect(runtimeSelfModificationPersistenceFindings[0]?.recommended_control).toBe("quarantine");
+    expect(JSON.stringify(runtimeSelfModificationPersistenceFindings[0])).not.toContain("${AGENT_SELF_MOD_TOKEN}");
+    expect(JSON.stringify(runtimeSelfModificationPersistenceFindings[0])).not.toContain("AGENTS.md");
+    expect(JSON.stringify(runtimeSelfModificationPersistenceFindings[0])).not.toContain("support-ticket.prompt.md");
+    expect(JSON.stringify(runtimeSelfModificationPersistenceFindings[0])).not.toContain("agentcsp.yaml");
+    expect(JSON.stringify(runtimeSelfModificationPersistenceFindings[0])).not.toContain(".codex/config.toml");
+    expect(JSON.stringify(runtimeSelfModificationPersistenceFindings[0])).not.toContain("tools/agent-tools.json");
+    expect(JSON.stringify(runtimeSelfModificationPersistenceFindings[0])).not.toContain("memory/release-notes.md");
+    expect(JSON.stringify(runtimeSelfModificationPersistenceFindings[0])).not.toContain("approval_policy");
+    expect(JSON.stringify(runtimeSelfModificationPersistenceFindings[0])).not.toContain("npm run agent:run");
+    expect(JSON.stringify(runtimeSelfModificationPersistenceFindings[0])).not.toContain(
+      "slack.post_escalation_reply"
+    );
+    expect(JSON.stringify(runtimeSelfModificationPersistenceFindings[0])).not.toContain("untrusted_customer_message");
+    expect(JSON.stringify(runtimeSelfModificationPersistenceFindings[0])).not.toContain("retrieved_customer_context");
+    expect(JSON.stringify(runtimeSelfModificationPersistenceFindings[0])).not.toContain("browser_tool_output");
+    expect(JSON.stringify(runtimeSelfModificationPersistenceFindings[0])).not.toContain("customer_self_mod_email");
+    expect(JSON.stringify(runtimeSelfModificationPersistenceFindings[0])).not.toContain(
+      "confidential_policy_context"
+    );
     const runtimeApprovalGateFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-RUNTIME-021");
     expect(runtimeApprovalGateFindings).toHaveLength(1);
     expect(runtimeApprovalGateFindings[0]?.matched_object.path).toBe("approvals/model-reviewer.yaml");
