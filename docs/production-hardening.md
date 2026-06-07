@@ -39,7 +39,7 @@ A finding should be considered production-grade when it includes:
 - local MCP implementation presence checks for secret-backed agent-callable servers
 - MCP prompt/resource context metadata for server-supplied model context that can steer privileged or secret-backed MCP authority without emitting prompt/resource text, names, descriptions, URIs, URLs, or token placeholders
 - MCP client root, sampling, and elicitation metadata for remote context requests, credential-path and host-root scope, sampling context categories, sensitive field categories, redaction/sanitization/filtering posture, and approval posture without emitting raw root paths, root names, sampling prompts, sampling labels, elicitation schemas, requested field names, or token placeholders
-- MCP OAuth authorization metadata for remote authorization endpoints, plaintext endpoint posture, dynamic client registration, PKCE/state/resource-indicator posture, scope categories, refresh-token storage, token forwarding, and untrusted server selection without emitting endpoints, raw scopes, selectors, token-cache paths, data labels, or token placeholders
+- MCP OAuth authorization metadata for remote authorization endpoints, plaintext endpoint posture, dynamic client registration, redirect/callback capture posture, PKCE/state/resource-indicator posture, scope categories, refresh-token storage, token forwarding, and untrusted server selection without emitting endpoints, redirect URIs, callback selectors, raw scopes, selectors, token-cache paths, data labels, or token placeholders
 - MCP tool-catalog metadata for dynamic remote tool supply, model-visible descriptions, pinning, signature/provenance verification, review posture, approval gates, privileged authority categories, and sensitive context without emitting catalog URLs, source values, tool names, context labels, or token placeholders
 - tool-name collision metadata for authority ambiguity and shadowing
 - tool-schema integrity signals for open-world privileged arguments and read-only hint conflicts
@@ -166,6 +166,7 @@ Examples:
 - remote credential-backed MCP server plus sensitive credential/PII elicitation, disabled local redaction and sanitization, external reach, and no approval gate
 - remote credential-backed MCP server plus sensitive sampling over workspace, prompt, tool-output, or secret context, disabled redaction and prompt-injection filtering, external reach, and no approval gate
 - MCP OAuth client plus remote dynamic client registration, disabled PKCE/state/resource indicators, broad scopes, refresh-token storage, token forwarding, untrusted server selection, credential exposure, and no approval gate
+- MCP OAuth client plus dynamic public-client registration, wildcard or user-selected redirect callbacks, disabled redirect validation, disabled PKCE/state checks, broad delegated scopes, persisted refresh tokens, token forwarding, and no approval gate
 - MCP OAuth client plus plaintext MCP resource transport, persisted refresh tokens, forwarded authorization material, broad sensitive scopes, credential exposure, and no approval gate
 - remote MCP tool catalog plus dynamic refresh, model-visible descriptions, remote schema trust, disabled pinning or verification, unreviewed privileged tools, credential exposure, and no approval gate
 - package-runner MCP server plus unpinned package version plus credential exposure
@@ -207,6 +208,7 @@ Examples:
 - remote agent federation plus dynamic discovery, untrusted agent selection, sensitive context and credential forwarding, disabled identity verification, missing allowlists, and no approval
 - A2A federation plus dynamic discovery, untrusted peer selection, auto-delegation, prompt/retrieval/tool-result/browser/memory forwarding, authorization-header or token forwarding, disabled signature and identity verification, missing allowlists, credential exposure, and no approval gate
 - MCP OAuth client plus remote dynamic registration, public-client/client-secret exposure, disabled PKCE/state/resource binding, persisted refresh tokens, broad write/PII scopes, token forwarding to untrusted MCP servers, and no approval gate
+- MCP OAuth client plus wildcard or externally selected callback handling that can capture authorization codes or refreshable delegated credentials before they are bound to a trusted MCP resource
 - MCP OAuth client plus plaintext protected-resource or MCP endpoints, persisted refresh tokens, token forwarding, broad sensitive scopes, and missing approval
 - remote prompt registry plus auto-synced unpinned system or developer prompts, disabled signature/provenance checks, untrusted selectors, privileged tool, memory, and external-response directives, sensitive context, and no approval gate
 - remote instruction loader plus auto-refreshed unpinned system or developer instructions, disabled signature/provenance checks, untrusted selectors, privileged tool authority, credentials, and no approval gate

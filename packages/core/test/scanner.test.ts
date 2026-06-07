@@ -2203,6 +2203,11 @@ describe("scanner", () => {
       mcp_authorization_dynamic_client_registration: true,
       mcp_authorization_client_secret_exposure: true,
       mcp_authorization_public_client: true,
+      mcp_authorization_redirect_uri_redacted: true,
+      mcp_authorization_redirect_uri_count: 7,
+      mcp_authorization_wildcard_redirect_uri: true,
+      mcp_authorization_user_or_model_selected_redirect_uri: true,
+      mcp_authorization_redirect_validation_disabled: true,
       mcp_authorization_pkce_disabled: true,
       mcp_authorization_state_validation_disabled: true,
       mcp_authorization_resource_indicator_missing: true,
@@ -2222,6 +2227,11 @@ describe("scanner", () => {
       "plaintext_mcp_resource_endpoint",
       "plaintext_protected_resource_metadata"
     ]);
+    expect(mcpAuthorizationConfig?.metadata.mcp_authorization_redirect_uri_kinds).toEqual([
+      "unvalidated_redirect_uri",
+      "user_or_model_selected_redirect_uri",
+      "wildcard_redirect_uri"
+    ]);
     expect(mcpAuthorizationConfig?.metadata.mcp_authorization_scope_kinds).toEqual([
       "agent_resource_scope",
       "broad_scope",
@@ -2237,6 +2247,8 @@ describe("scanner", () => {
     expect(JSON.stringify(mcpAuthorizationConfig)).not.toContain("authz.agentcsp-demo.example.invalid");
     expect(JSON.stringify(mcpAuthorizationConfig)).not.toContain("mcp:tools:*");
     expect(JSON.stringify(mcpAuthorizationConfig)).not.toContain("support_db.write");
+    expect(JSON.stringify(mcpAuthorizationConfig)).not.toContain("wildcard_customer_callback");
+    expect(JSON.stringify(mcpAuthorizationConfig)).not.toContain("customer_provided_redirect_uri");
     expect(JSON.stringify(mcpAuthorizationConfig)).not.toContain("customer_requested_mcp_server");
     expect(JSON.stringify(mcpAuthorizationConfig)).not.toContain("mcp_oauth_customer_email");
     expect(JSON.stringify(mcpAuthorizationConfig)).not.toContain(".auth/mcp-oauth-tokens.json");
@@ -4603,6 +4615,11 @@ describe("scanner", () => {
       mcp_authorization_dynamic_client_registration: false,
       mcp_authorization_client_secret_exposure: false,
       mcp_authorization_public_client: false,
+      mcp_authorization_redirect_uri_redacted: true,
+      mcp_authorization_redirect_uri_count: 1,
+      mcp_authorization_wildcard_redirect_uri: false,
+      mcp_authorization_user_or_model_selected_redirect_uri: false,
+      mcp_authorization_redirect_validation_disabled: false,
       mcp_authorization_pkce_disabled: false,
       mcp_authorization_state_validation_disabled: false,
       mcp_authorization_resource_indicator_missing: false,
@@ -4621,6 +4638,7 @@ describe("scanner", () => {
       "mcp_resource_endpoint",
       "protected_resource_metadata"
     ]);
+    expect(mcpAuthorization?.metadata.mcp_authorization_redirect_uri_kinds).toEqual(["remote_redirect_uri"]);
     expect(mcpAuthorization?.metadata.mcp_authorization_scope_kinds).toEqual(["read_scope"]);
     expect(mcpAuthorization?.metadata.env_key_names).toEqual([]);
     expect(mcpAuthorization?.metadata.secret_ref_key_names).toEqual([]);

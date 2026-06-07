@@ -7,6 +7,13 @@ dynamic_client_registration:
   registration_endpoint: https://authz.agentcsp-demo.example.invalid/register
   client_type: public
   client_secret: ${MCP_OAUTH_CLIENT_SECRET}
+redirect_uris:
+  - wildcard_customer_callback
+  - customer_provided_redirect_uri
+redirect_validation:
+  allow_wildcards: true
+  enforce_registered_redirects: false
+  allow_user_supplied_redirect: true
 security:
   pkce: false
   state_validation: false

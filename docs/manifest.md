@@ -188,6 +188,12 @@ MCP authorization metadata may include:
 - `mcp_authorization_dynamic_client_registration`
 - `mcp_authorization_client_secret_exposure`
 - `mcp_authorization_public_client`
+- `mcp_authorization_redirect_uri_redacted`
+- `mcp_authorization_redirect_uri_count`
+- `mcp_authorization_redirect_uri_kinds`
+- `mcp_authorization_wildcard_redirect_uri`
+- `mcp_authorization_user_or_model_selected_redirect_uri`
+- `mcp_authorization_redirect_validation_disabled`
 - `mcp_authorization_pkce_disabled`
 - `mcp_authorization_state_validation_disabled`
 - `mcp_authorization_resource_indicator_missing`
@@ -203,7 +209,7 @@ MCP authorization metadata may include:
 - `env_key_names`
 - `secret_ref_key_names`
 
-Raw authorization endpoints, MCP server URLs, registration endpoints, OAuth scopes, selector values, token-cache paths, data-scope labels, and secret placeholders are not emitted. Provider names, destination categories, plaintext endpoint posture, scope categories, DCR posture, PKCE/state/resource-indicator controls, refresh-token storage, token forwarding, untrusted server-selection posture, approval posture, and credential key names let rules detect unsafe token delegation into MCP servers without copying authorization material into the manifest.
+Raw authorization endpoints, MCP server URLs, registration endpoints, OAuth redirect URIs, callback selectors, OAuth scopes, selector values, token-cache paths, data-scope labels, and secret placeholders are not emitted. Provider names, destination categories, plaintext endpoint posture, redirect and callback categories, wildcard or user-selected callback posture, scope categories, DCR posture, PKCE/state/resource-indicator controls, refresh-token storage, token forwarding, untrusted server-selection posture, approval posture, and credential key names let rules detect unsafe token delegation into MCP servers without copying authorization material into the manifest.
 
 ## Instruction Context Signals
 

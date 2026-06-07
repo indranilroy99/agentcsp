@@ -5868,6 +5868,12 @@ interface McpAuthorizationPosture {
   mcp_authorization_dynamic_client_registration: boolean;
   mcp_authorization_client_secret_exposure: boolean;
   mcp_authorization_public_client: boolean;
+  mcp_authorization_redirect_uri_redacted: boolean;
+  mcp_authorization_redirect_uri_count: number;
+  mcp_authorization_redirect_uri_kinds: string[];
+  mcp_authorization_wildcard_redirect_uri: boolean;
+  mcp_authorization_user_or_model_selected_redirect_uri: boolean;
+  mcp_authorization_redirect_validation_disabled: boolean;
   mcp_authorization_pkce_disabled: boolean;
   mcp_authorization_state_validation_disabled: boolean;
   mcp_authorization_resource_indicator_missing: boolean;
@@ -9981,6 +9987,7 @@ function classifyMcpAuthorizationConfig(value: unknown, filePath: string): McpAu
   const destinations = classifyMcpAuthorizationDestinations(fields, provider);
   const plaintextDestinationKinds = destinations.destinationKinds.filter((kind) => kind.startsWith("plaintext_"));
   const scopes = collectMcpAuthorizationScopeKinds(fields);
+  const redirectUris = classifyMcpAuthorizationRedirectUris(fields);
   const envKeys = uniqueStrings([
     ...collectEnvKeyNamesFromConfig(value).filter(isLikelyEnvKeyName),
     ...extractEnvironmentReferenceKeys(stringValues)
@@ -10007,6 +10014,14 @@ function classifyMcpAuthorizationConfig(value: unknown, filePath: string): McpAu
     mcp_authorization_dynamic_client_registration: hasMcpAuthorizationDynamicClientRegistrationSignal(fields),
     mcp_authorization_client_secret_exposure: hasMcpAuthorizationClientSecretExposureSignal(fields),
     mcp_authorization_public_client: hasMcpAuthorizationPublicClientSignal(fields),
+    mcp_authorization_redirect_uri_redacted: redirectUris.redirectUriCount > 0,
+    mcp_authorization_redirect_uri_count: redirectUris.redirectUriCount,
+    mcp_authorization_redirect_uri_kinds: redirectUris.redirectUriKinds,
+    mcp_authorization_wildcard_redirect_uri: redirectUris.redirectUriKinds.includes("wildcard_redirect_uri"),
+    mcp_authorization_user_or_model_selected_redirect_uri: redirectUris.redirectUriKinds.includes(
+      "user_or_model_selected_redirect_uri"
+    ),
+    mcp_authorization_redirect_validation_disabled: hasMcpAuthorizationRedirectValidationDisabledSignal(fields),
     mcp_authorization_pkce_disabled: hasMcpAuthorizationPkceDisabledSignal(fields),
     mcp_authorization_state_validation_disabled: hasMcpAuthorizationStateValidationDisabledSignal(fields),
     mcp_authorization_resource_indicator_missing: hasMcpAuthorizationResourceIndicatorMissingSignal(fields),
@@ -10044,6 +10059,7 @@ function classifyMcpAuthorizationDestinations(
   }
 
   for (const field of fields) {
+    if (isMcpAuthorizationRedirectField(field.path)) continue;
     const values = fieldStringValues(field);
     let matched = false;
     for (const value of values) {
@@ -10068,6 +10084,126 @@ function classifyMcpAuthorizationDestinations(
     destinationCount,
     destinationKinds: [...destinationKinds].sort((a, b) => a.localeCompare(b))
   };
+}
+
+function classifyMcpAuthorizationRedirectUris(
+  fields: RuntimeField[]
+): { redirectUriCount: number; redirectUriKinds: string[] } {
+  const redirectUriKinds = new Set<string>();
+  let redirectUriCount = 0;
+
+  for (const field of fields) {
+    const text = `${field.path} ${fieldValueText(field)}`;
+    const redirectField = isMcpAuthorizationRedirectField(field.path);
+    const redirectControlField = isMcpAuthorizationRedirectControlField(field.path);
+    const redirectText = /\b(redirect[_\s-]?uri|redirect[_\s-]?uris|callback[_\s-]?url|callback[_\s-]?uri|oauth[_\s-]?callback)\b/iu.test(
+      text
+    );
+    const openRedirectText = /\b(open[_\s-]?redirect|allow[_\s-]?any[_\s-]?redirect|any[_\s-]?redirect|wildcard[_\s-]?redirect)\b/iu.test(
+      text
+    );
+
+    if (!redirectField && !redirectControlField && !redirectText && !openRedirectText) continue;
+
+    if (/(?:^|\.)(allow_wildcards|allowWildcards)(?:\.|$)/iu.test(field.path) && truthyConfigValue(field.value)) {
+      redirectUriCount += 1;
+      redirectUriKinds.add("wildcard_redirect_uri");
+    }
+    if (
+      /(?:^|\.)(allow_user_supplied_redirect|allowUserSuppliedRedirect)(?:\.|$)/iu.test(field.path) &&
+      truthyConfigValue(field.value)
+    ) {
+      redirectUriCount += 1;
+      redirectUriKinds.add("user_or_model_selected_redirect_uri");
+    }
+    if (
+      /(?:^|\.)(enforce_registered_redirects|enforceRegisteredRedirects|registered_redirects_only|registeredRedirectsOnly|validate_redirects|validateRedirects)(?:\.|$)/iu.test(
+        field.path
+      ) &&
+      disabledConfigValue(field.value)
+    ) {
+      redirectUriCount += 1;
+      redirectUriKinds.add("unvalidated_redirect_uri");
+    }
+
+    if (openRedirectText && truthyConfigValue(field.value)) {
+      redirectUriCount += 1;
+      redirectUriKinds.add("wildcard_redirect_uri");
+      redirectUriKinds.add("unvalidated_redirect_uri");
+    }
+
+    if (hasMcpAuthorizationUserOrModelSelectedRedirectText(text) && truthyConfigValue(field.value)) {
+      redirectUriCount += 1;
+      redirectUriKinds.add("user_or_model_selected_redirect_uri");
+    }
+
+    for (const value of fieldStringValues(field)) {
+      const trimmed = value.trim();
+      if (!trimmed || trimmed.startsWith("${")) continue;
+      const normalized = trimmed.toLowerCase();
+      if (/\b(false|disabled|off|none)\b/iu.test(normalized) && !/\*/u.test(normalized)) continue;
+
+      let counted = false;
+      if (
+        /\*/u.test(trimmed) ||
+        /\b(any|all|wildcard|allow[_\s-]?any|unrestricted)\b/iu.test(normalized)
+      ) {
+        redirectUriKinds.add("wildcard_redirect_uri");
+        counted = true;
+      }
+      if (/\b(open[_\s-]?redirect|unvalidated|unverified|not[_\s-]?verified|skip[_\s-]?validation)\b/iu.test(normalized)) {
+        redirectUriKinds.add("unvalidated_redirect_uri");
+        counted = true;
+      }
+      if (hasMcpAuthorizationUserOrModelSelectedRedirectText(normalized)) {
+        redirectUriKinds.add("user_or_model_selected_redirect_uri");
+        counted = true;
+      }
+
+      try {
+        const parsed = new URL(trimmed);
+        if (parsed.protocol === "http:" || parsed.protocol === "https:") {
+          redirectUriKinds.add(isLocalHost(parsed.hostname.toLowerCase()) ? "loopback_redirect_uri" : "remote_redirect_uri");
+          counted = true;
+        } else if (/^[a-z][a-z0-9+.-]*:$/iu.test(parsed.protocol)) {
+          redirectUriKinds.add("custom_scheme_redirect_uri");
+          counted = true;
+        }
+      } catch {
+        if (
+          redirectField &&
+          /\b(uri|url|callback|redirect|customer|user|model|prompt|dynamic|selected)\b/iu.test(normalized)
+        ) {
+          counted = true;
+        }
+      }
+
+      if (counted) redirectUriCount += 1;
+    }
+  }
+
+  return {
+    redirectUriCount,
+    redirectUriKinds: [...redirectUriKinds].sort((a, b) => a.localeCompare(b))
+  };
+}
+
+function isMcpAuthorizationRedirectField(fieldPath: string): boolean {
+  return /(?:^|\.)(redirect_uris?|redirectUris?|allowed_redirect_uris?|allowedRedirectUris?|redirect_uri_patterns?|redirectUriPatterns?|redirect_patterns?|callback_uris?|callbackUris?|callback_urls?|callbackUrls?|oauth_callback|oauthCallback|post_login_redirect|postLoginRedirect)(?:\.|$)/iu.test(
+    fieldPath
+  );
+}
+
+function isMcpAuthorizationRedirectControlField(fieldPath: string): boolean {
+  return /(?:^|\.)(redirect_validation|redirectValidation|validate_redirects|validateRedirects|registered_redirects_only|registeredRedirectsOnly|enforce_registered_redirects|enforceRegisteredRedirects|allow_wildcards|allowWildcards|allow_user_supplied_redirect|allowUserSuppliedRedirect|allow_any_redirect|allowAnyRedirect)(?:\.|$)/iu.test(
+    fieldPath
+  );
+}
+
+function hasMcpAuthorizationUserOrModelSelectedRedirectText(text: string): boolean {
+  return /(?:^|[_\W])(user|customer|client|model|llm|agent|prompt|ticket|message|dynamic)[_\s.-]?(selected|provided|supplied|controlled|generated|input)?[_\s.-]?(redirect|callback|redirect[_\s-]?uri|callback[_\s-]?url)(?:[_\W]|$)/iu.test(
+    text
+  );
 }
 
 function parseMcpAuthorizationDestination(value: string): { kind: string } | undefined {
@@ -10147,6 +10283,34 @@ function hasMcpAuthorizationStateValidationDisabledSignal(fields: RuntimeField[]
     if (/(?:^|[_\W])(state|csrf|nonce)(?:[_\W]|$)/iu.test(field.path)) return disabledConfigValue(field.value);
     return /\b(skip[_\s-]?(state|csrf|nonce)|state[_\s-]?validation[_\s-]?disabled|csrf[_\s-]?disabled|no[_\s-]?state)\b/iu.test(text) &&
       truthyConfigValue(field.value);
+  });
+}
+
+function hasMcpAuthorizationRedirectValidationDisabledSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => {
+    const text = `${field.path} ${fieldValueText(field)}`;
+    if (
+      /(?:^|\.)(allow_wildcards|allowWildcards|allow_user_supplied_redirect|allowUserSuppliedRedirect|allow_any_redirect|allowAnyRedirect)(?:\.|$)/iu.test(
+        field.path
+      )
+    ) {
+      return truthyConfigValue(field.value);
+    }
+    if (
+      /(?:^|\.)(enforce_registered_redirects|enforceRegisteredRedirects|registered_redirects_only|registeredRedirectsOnly|validate_redirects|validateRedirects)(?:\.|$)/iu.test(
+        field.path
+      )
+    ) {
+      return disabledConfigValue(field.value);
+    }
+    if (
+      /\b(allow[_\s-]?any[_\s-]?redirect|any[_\s-]?redirect|wildcard[_\s-]?redirect|open[_\s-]?redirect|unvalidated[_\s-]?redirect|skip[_\s-]?redirect[_\s-]?validation|redirect[_\s-]?validation[_\s-]?disabled)\b/iu.test(
+        text
+      )
+    ) {
+      return truthyConfigValue(field.value);
+    }
+    return false;
   });
 }
 
@@ -10236,7 +10400,7 @@ function hasMcpAuthorizationApprovalRequiredSignal(fields: RuntimeField[]): bool
 }
 
 function isMcpAuthorizationSecurityField(fieldPath: string): boolean {
-  return /mcp|oauth|oidc|openid|auth|authorization|protected|resource|metadata|issuer|client|registration|dcr|pkce|code|challenge|state|csrf|nonce|audience|scope|permission|claim|token|refresh|storage|cache|forward|header|bearer|credential|secret|env|redirect|uri|url|endpoint|server|untrusted|third|remote|dynamic|approval|consent/iu.test(
+  return /mcp|oauth|oidc|openid|auth|authorization|protected|resource|metadata|issuer|client|registration|dcr|pkce|code|challenge|state|csrf|nonce|audience|scope|permission|claim|token|refresh|storage|cache|forward|header|bearer|credential|secret|env|redirect|callback|uri|url|endpoint|server|untrusted|third|remote|dynamic|approval|consent/iu.test(
     fieldPath
   );
 }
