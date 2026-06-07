@@ -1413,6 +1413,15 @@ The current iteration adds:
 - rule `AGENTCSP-RUNTIME-122` for unsigned or replayable inbound webhooks that can drive privileged agent tools with credential-backed authority
 - regression coverage proving raw webhook header names, delivery identifiers, source labels, endpoints, mailbox names, agent names, prompt fields, and token placeholders stay redacted
 
+## AI Telemetry Trace Replay Pass
+
+The current iteration adds:
+
+- first-class AI telemetry metadata for retained trace replay, replay target categories, eval promotion, and training promotion
+- fixture coverage for a remote shared LangSmith-style trace exporter that captures prompts, completions, tool outputs, retrieval context, memory, PII, and secrets, then allows public shared traces to replay into future agent context, red-team eval datasets, fine-tuning candidates, and debugging prompt replay without redaction or approval
+- rule `AGENTCSP-RUNTIME-123` for retained sensitive AI telemetry traces that can replay into agent, eval, or training paths with public access, disabled access controls, disabled redaction, credentials, and no approval gate
+- regression coverage proving raw telemetry endpoints, project names, workspace names, vendor labels, replay source labels, replay target labels, and token placeholders stay redacted
+
 ## Automation Shell-Argument Boundary Pass
 
 The current iteration adds:

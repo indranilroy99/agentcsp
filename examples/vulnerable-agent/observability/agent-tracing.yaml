@@ -20,6 +20,25 @@ redaction:
 retention:
   store_traces: true
   days: 90
+trace_replay:
+  enabled: true
+  source: shared_public_traces
+  replay_targets:
+    - future_agent_context
+    - redteam_eval_dataset
+    - fine_tune_candidate_records
+    - debugging_prompt_replay
+  include_prompts: true
+  include_tool_outputs: true
+  include_retrieval_context: true
+  include_memory: true
+  include_secrets: true
+  require_redaction: false
+  approval_required: false
+dataset_promotion:
+  evals: true
+  fine_tuning: true
+  feedback_training: true
 sharing:
   workspace: customer-support-observability
   shared_with: external_support_vendor

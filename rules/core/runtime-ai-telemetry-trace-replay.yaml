@@ -1,0 +1,77 @@
+id: AGENTCSP-RUNTIME-123
+name: AI telemetry traces can replay sensitive agent context
+description: A remote AI observability configuration captures prompts, completions, tool outputs, retrieval context, memory, PII, or secrets into retained traces and allows those traces to be replayed into future agent context, eval datasets, or training datasets while redaction, access controls, and approval are disabled.
+category: ai_telemetry_trace_replay
+severity: critical
+maps_to:
+  owasp:
+    - LLM01:2025 Prompt Injection
+    - LLM02:2025 Sensitive Information Disclosure
+    - LLM06:2025 Excessive Agency
+  mitre_atlas:
+    - AML.T0051 LLM Prompt Injection
+    - AML.T0057 Exfiltration via Cyber Means
+    - AML.T0059 Data from Information Repositories
+  nist_ai_rmf:
+    - MAP 5.1
+    - MEASURE 2.9
+    - MANAGE 2.4
+match:
+  object_type: runtime_config
+  where:
+    - field: metadata.parsed_ai_telemetry_config
+      op: equals
+      value: true
+    - field: metadata.ai_telemetry_remote_export
+      op: equals
+      value: true
+    - field: metadata.ai_telemetry_sensitive_capture
+      op: equals
+      value: true
+    - field: metadata.ai_telemetry_secret_capture_signal
+      op: equals
+      value: true
+    - field: metadata.ai_telemetry_retention_enabled
+      op: equals
+      value: true
+    - field: metadata.ai_telemetry_trace_replay_enabled
+      op: equals
+      value: true
+    - field: metadata.ai_telemetry_replay_target_categories
+      op: contains_any
+      value:
+        - agent_context_replay
+        - eval_dataset
+        - training_dataset
+    - field: metadata.ai_telemetry_eval_promotion_enabled
+      op: equals
+      value: true
+    - field: metadata.ai_telemetry_training_promotion_enabled
+      op: equals
+      value: true
+    - field: metadata.ai_telemetry_redaction_disabled
+      op: equals
+      value: true
+    - field: metadata.ai_telemetry_public_access
+      op: equals
+      value: true
+    - field: metadata.ai_telemetry_access_control_disabled
+      op: equals
+      value: true
+    - field: metadata.ai_telemetry_approval_required
+      op: equals
+      value: false
+    - field: data_classes
+      op: contains_any
+      value:
+        - credential
+    - field: data_classes
+      op: contains_any
+      value:
+        - pii
+    - field: secret_exposure
+      op: equals
+      value: true
+recommendation:
+  control: quarantine
+  text: Quarantine retained AI traces before replay, disable trace replay into future agents by default, prevent unredacted trace promotion into eval or training datasets, require SSO/RBAC on observability workspaces, redact prompts, tool outputs, retrieval, memory, PII, and secrets before retention, and require approval before trace-derived context can seed agent runs or model-update pipelines.

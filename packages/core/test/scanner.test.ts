@@ -751,8 +751,18 @@ describe("scanner", () => {
       ai_telemetry_public_access: true,
       ai_telemetry_shared_workspace: true,
       ai_telemetry_access_control_disabled: true,
-      ai_telemetry_retention_enabled: true
+      ai_telemetry_retention_enabled: true,
+      ai_telemetry_trace_replay_enabled: true,
+      ai_telemetry_eval_promotion_enabled: true,
+      ai_telemetry_training_promotion_enabled: true
     });
+    expect(telemetryConfig?.metadata.ai_telemetry_replay_target_categories).toEqual([
+      "agent_context_replay",
+      "context_replay",
+      "eval_dataset",
+      "tool_output_replay",
+      "training_dataset"
+    ]);
     expect(telemetryConfig?.metadata.ai_telemetry_remote_destination_kinds).toEqual([
       "configured_endpoint",
       "http_endpoint",
@@ -766,6 +776,11 @@ describe("scanner", () => {
     expect(JSON.stringify(telemetryConfig)).not.toContain("customer-support-agent");
     expect(JSON.stringify(telemetryConfig)).not.toContain("customer-support-observability");
     expect(JSON.stringify(telemetryConfig)).not.toContain("external_support_vendor");
+    expect(JSON.stringify(telemetryConfig)).not.toContain("shared_public_traces");
+    expect(JSON.stringify(telemetryConfig)).not.toContain("future_agent_context");
+    expect(JSON.stringify(telemetryConfig)).not.toContain("redteam_eval_dataset");
+    expect(JSON.stringify(telemetryConfig)).not.toContain("fine_tune_candidate_records");
+    expect(JSON.stringify(telemetryConfig)).not.toContain("debugging_prompt_replay");
     const trainingDatasetConfig = surfaces.runtime_config.find(
       (surface) => surface.path === "training/fine-tune-dataset.yaml"
     );
@@ -5979,9 +5994,13 @@ describe("scanner", () => {
       ai_telemetry_shared_workspace: false,
       ai_telemetry_access_control_disabled: false,
       ai_telemetry_retention_enabled: true,
+      ai_telemetry_trace_replay_enabled: false,
+      ai_telemetry_eval_promotion_enabled: false,
+      ai_telemetry_training_promotion_enabled: false,
       ai_telemetry_approval_required: true
     });
     expect(telemetryConfig?.metadata.ai_telemetry_remote_destination_kinds).toEqual([]);
+    expect(telemetryConfig?.metadata.ai_telemetry_replay_target_categories).toEqual([]);
     expect(telemetryConfig?.metadata.env_key_names).toEqual([]);
     expect(telemetryConfig?.metadata.secret_ref_key_names).toEqual([]);
     expect(JSON.stringify(telemetryConfig)).not.toContain("internal_private_agent_traces");

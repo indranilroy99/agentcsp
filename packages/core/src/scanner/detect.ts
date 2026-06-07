@@ -6789,6 +6789,10 @@ interface AiTelemetryPosture {
   ai_telemetry_shared_workspace: boolean;
   ai_telemetry_access_control_disabled: boolean;
   ai_telemetry_retention_enabled: boolean;
+  ai_telemetry_trace_replay_enabled: boolean;
+  ai_telemetry_replay_target_categories: string[];
+  ai_telemetry_eval_promotion_enabled: boolean;
+  ai_telemetry_training_promotion_enabled: boolean;
   ai_telemetry_approval_required: boolean;
   env_key_names: string[];
   secret_ref_key_names: string[];
@@ -20930,6 +20934,7 @@ function classifyAiTelemetryConfig(value: unknown, filePath: string): AiTelemetr
   const capturesMemory = hasTelemetryCaptureSignal(fields, /\b(memory|memories|session|state|history|transcript|trace)\b/iu);
   const secretCapture = hasTelemetrySecretCaptureSignal(fields);
   const piiCapture = hasTelemetryPiiCaptureSignal(fields);
+  const replayTargetCategories = collectTelemetryReplayTargetCategories(fields);
   const sensitiveCapture =
     capturesPrompts ||
     capturesCompletions ||
@@ -20963,6 +20968,10 @@ function classifyAiTelemetryConfig(value: unknown, filePath: string): AiTelemetr
     ai_telemetry_shared_workspace: hasTelemetrySharedWorkspaceSignal(fields),
     ai_telemetry_access_control_disabled: hasTelemetryAccessControlDisabledSignal(fields),
     ai_telemetry_retention_enabled: hasTelemetryRetentionSignal(fields),
+    ai_telemetry_trace_replay_enabled: hasTelemetryTraceReplaySignal(fields, replayTargetCategories),
+    ai_telemetry_replay_target_categories: replayTargetCategories,
+    ai_telemetry_eval_promotion_enabled: replayTargetCategories.includes("eval_dataset"),
+    ai_telemetry_training_promotion_enabled: replayTargetCategories.includes("training_dataset"),
     ai_telemetry_approval_required: hasTelemetryApprovalRequiredSignal(fields),
     env_key_names: envKeys,
     secret_ref_key_names: secretRefKeys
@@ -21104,6 +21113,46 @@ function hasTelemetryRetentionSignal(fields: RuntimeField[]): boolean {
   return fields.some((field) => /retention|store|persist|dataset|history|trace_archive|ttl|days/iu.test(field.path) && truthyConfigValue(field.value));
 }
 
+function hasTelemetryTraceReplaySignal(fields: RuntimeField[], targetCategories: string[]): boolean {
+  if (targetCategories.length > 0) return true;
+  return fields.some((field) => {
+    const text = `${field.path} ${fieldValueText(field)}`.toLowerCase().replaceAll("_", " ").replaceAll("-", " ");
+    if (/(?:^|\.)(redaction|redact|mask|sanitize|access_control|approval)(?:\.|$)/iu.test(field.path)) return false;
+    return /\b(replay|rerun|replayable|hydrate|restore|promote|export to dataset|use as dataset|seed eval|fine tune|fine tuning|model update)\b/iu.test(
+      text
+    ) && truthyConfigValue(field.value);
+  });
+}
+
+function collectTelemetryReplayTargetCategories(fields: RuntimeField[]): string[] {
+  const categories = new Set<string>();
+  for (const field of fields) {
+    if (disabledConfigValue(field.value)) continue;
+    if (/(?:^|\.)(redaction|redact|mask|sanitize|access_control|approval)(?:\.|$)/iu.test(field.path)) continue;
+    const text = `${field.path} ${fieldValueText(field)}`.toLowerCase().replaceAll("_", " ").replaceAll("-", " ");
+    const replayContext = /\b(replay|rerun|replayable|hydrate|restore|promote|promotion|dataset|fine tune|fine tuning|training|eval|evaluation|redteam|red team|debug|future agent)\b/iu.test(
+      text
+    );
+    if (!replayContext) continue;
+    if (/\b(agent context|future agent|future run|prompt replay|hydrate prompt|debugging prompt|debug session)\b/iu.test(text)) {
+      categories.add("agent_context_replay");
+    }
+    if (/\b(eval|evaluation|redteam|red team|test case|test dataset|benchmark|scenario)\b/iu.test(text)) {
+      categories.add("eval_dataset");
+    }
+    if (/\b(fine tune|fine tuning|training|train|model update|feedback training|distillation|rlhf)\b/iu.test(text)) {
+      categories.add("training_dataset");
+    }
+    if (/\b(tool output|tool outputs|observation|function output|mcp output)\b/iu.test(text)) {
+      categories.add("tool_output_replay");
+    }
+    if (/\b(memory|retrieval|rag|context|prompt|completion|trace)\b/iu.test(text)) {
+      categories.add("context_replay");
+    }
+  }
+  return [...categories].sort((a, b) => a.localeCompare(b));
+}
+
 function hasTelemetryApprovalRequiredSignal(fields: RuntimeField[]): boolean {
   return fields.some((field) =>
     /(?:^|[_\W])(approval|approval[_\s-]?required|required[_\s-]?approval|human[_\s-]?approval|review|security[_\s-]?review|privacy[_\s-]?review|confirm|confirmation)(?:[_\W]|$)/iu.test(field.path) &&
@@ -21112,7 +21161,7 @@ function hasTelemetryApprovalRequiredSignal(fields: RuntimeField[]): boolean {
 }
 
 function isAiTelemetrySecurityField(fieldPath: string): boolean {
-  return /provider|endpoint|url|uri|host|dsn|api[_-]?key|token|secret|credential|auth|env|export|remote|trace|span|prompt|input|output|completion|message|tool|retrieval|rag|context|memory|redact|mask|pii|retention|store|persist|sample|project|public|anonymous|guest|viewer|share|shared|workspace|team|tenant|access|acl|rbac|sso|approval|review/iu.test(
+  return /provider|endpoint|url|uri|host|dsn|api[_-]?key|token|secret|credential|auth|env|export|remote|trace|span|prompt|input|output|completion|message|tool|retrieval|rag|context|memory|redact|mask|pii|retention|store|persist|sample|project|public|anonymous|guest|viewer|share|shared|workspace|team|tenant|access|acl|rbac|sso|approval|review|replay|rerun|hydrate|restore|promote|promotion|eval|evaluation|redteam|training|fine[_-]?tune|dataset|debug/iu.test(
     fieldPath
   );
 }

@@ -54,6 +54,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-006")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-007")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-008")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-123")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-009")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-086")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-010")).toBe(true);
@@ -272,6 +273,44 @@ describe("rule engine", () => {
     expect(JSON.stringify(runtimePublicTelemetryFindings[0])).not.toContain("customer-support-agent");
     expect(JSON.stringify(runtimePublicTelemetryFindings[0])).not.toContain("customer-support-observability");
     expect(JSON.stringify(runtimePublicTelemetryFindings[0])).not.toContain("external_support_vendor");
+    const runtimeTelemetryReplayFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-RUNTIME-123");
+    expect(runtimeTelemetryReplayFindings).toHaveLength(1);
+    expect(runtimeTelemetryReplayFindings[0]?.matched_object.path).toBe("observability/agent-tracing.yaml");
+    expect(runtimeTelemetryReplayFindings[0]?.matched_object.metadata).toMatchObject({
+      parsed_ai_telemetry_config: true,
+      ai_telemetry_provider: "langsmith",
+      ai_telemetry_remote_export: true,
+      ai_telemetry_sensitive_capture: true,
+      ai_telemetry_secret_capture_signal: true,
+      ai_telemetry_redaction_disabled: true,
+      ai_telemetry_public_access: true,
+      ai_telemetry_access_control_disabled: true,
+      ai_telemetry_retention_enabled: true,
+      ai_telemetry_trace_replay_enabled: true,
+      ai_telemetry_eval_promotion_enabled: true,
+      ai_telemetry_training_promotion_enabled: true,
+      ai_telemetry_approval_required: false
+    });
+    expect(runtimeTelemetryReplayFindings[0]?.matched_object.metadata.ai_telemetry_replay_target_categories).toEqual([
+      "agent_context_replay",
+      "context_replay",
+      "eval_dataset",
+      "tool_output_replay",
+      "training_dataset"
+    ]);
+    expect(runtimeTelemetryReplayFindings[0]?.severity).toBe("critical");
+    expect(runtimeTelemetryReplayFindings[0]?.confidence).toBe("very_high");
+    expect(runtimeTelemetryReplayFindings[0]?.recommended_control).toBe("quarantine");
+    expect(JSON.stringify(runtimeTelemetryReplayFindings[0])).not.toContain("${LANGSMITH_API_KEY}");
+    expect(JSON.stringify(runtimeTelemetryReplayFindings[0])).not.toContain("api.smith.langchain.com");
+    expect(JSON.stringify(runtimeTelemetryReplayFindings[0])).not.toContain("customer-support-agent");
+    expect(JSON.stringify(runtimeTelemetryReplayFindings[0])).not.toContain("customer-support-observability");
+    expect(JSON.stringify(runtimeTelemetryReplayFindings[0])).not.toContain("external_support_vendor");
+    expect(JSON.stringify(runtimeTelemetryReplayFindings[0])).not.toContain("shared_public_traces");
+    expect(JSON.stringify(runtimeTelemetryReplayFindings[0])).not.toContain("future_agent_context");
+    expect(JSON.stringify(runtimeTelemetryReplayFindings[0])).not.toContain("redteam_eval_dataset");
+    expect(JSON.stringify(runtimeTelemetryReplayFindings[0])).not.toContain("fine_tune_candidate_records");
+    expect(JSON.stringify(runtimeTelemetryReplayFindings[0])).not.toContain("debugging_prompt_replay");
     const runtimeArtifactExportFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-RUNTIME-024");
     expect(runtimeArtifactExportFindings).toHaveLength(1);
     expect(runtimeArtifactExportFindings[0]?.matched_object.path).toBe("artifacts/run-export.yaml");

@@ -1866,11 +1866,15 @@ Telemetry metadata may include:
 - `ai_telemetry_shared_workspace`
 - `ai_telemetry_access_control_disabled`
 - `ai_telemetry_retention_enabled`
+- `ai_telemetry_trace_replay_enabled`
+- `ai_telemetry_replay_target_categories`
+- `ai_telemetry_eval_promotion_enabled`
+- `ai_telemetry_training_promotion_enabled`
 - `ai_telemetry_approval_required`
 - `env_key_names`
 - `secret_ref_key_names`
 
-Raw telemetry endpoints, project names, workspace names, share links, viewer or collaborator labels, trace payloads, sampled content, and secret placeholders are not emitted. Provider names, redacted destination categories, field paths, capture booleans, access-control posture, retention signals, redaction posture, and credential key names let rules detect sensitive trace export and public trace-sharing risk without copying observability configuration values into the manifest.
+Raw telemetry endpoints, project names, workspace names, share links, viewer or collaborator labels, trace payloads, sampled content, replay source labels, replay target labels, dataset names, and secret placeholders are not emitted. Provider names, redacted destination categories, field paths, capture booleans, access-control posture, retention signals, trace-replay target categories, redaction posture, approval posture, and credential key names let rules detect sensitive trace export, public trace-sharing, and trace-replay risk without copying observability configuration values into the manifest.
 
 ## Prompt Template Signals
 
