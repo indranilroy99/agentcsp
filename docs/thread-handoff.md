@@ -1212,6 +1212,7 @@ The current iteration adds:
 - vulnerable fixture coverage for an automatic retry/replay policy that can re-run support database, messaging, and vault-backed tool calls from untrusted customer, browser, retrieval, and tool-output context while idempotency, deduplication, exactly-once controls, backoff, and approval are disabled
 - safe fixture coverage for an approval-gated read-only retry policy with one attempt, replay disabled, idempotency and duplicate suppression enabled, and no credential exposure
 - rule `AGENTCSP-RUNTIME-056` for automatic replay of non-idempotent privileged tools from untrusted context when idempotency controls and approval are missing
+- rule `AGENTCSP-RUNTIME-101` for model-selected retry/replay that reuses tool arguments and tool outputs across database, external-response, and secret-manager actions while backoff, idempotency, deduplication, exactly-once controls, and approval are disabled
 - scanner, rule, fixture verifier, and redaction coverage proving raw tool names, retry argument labels, source labels, data-scope labels, and token placeholders stay redacted
 
 ## Workspace Context Sync Exposure Pass

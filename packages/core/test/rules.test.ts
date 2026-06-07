@@ -98,6 +98,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-099")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-055")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-056")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-101")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-057")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-058")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-074")).toBe(true);
@@ -2527,6 +2528,59 @@ describe("rule engine", () => {
     expect(JSON.stringify(runtimeToolRetryFindings[0])).not.toContain("browser_tool_output");
     expect(JSON.stringify(runtimeToolRetryFindings[0])).not.toContain("retrieved_customer_context");
     expect(JSON.stringify(runtimeToolRetryFindings[0])).not.toContain("retry_customer_email");
+    const runtimeToolRetryModelSelectedReplayFindings = findings.filter(
+      (finding) => finding.rule_id === "AGENTCSP-RUNTIME-101"
+    );
+    expect(runtimeToolRetryModelSelectedReplayFindings).toHaveLength(1);
+    expect(runtimeToolRetryModelSelectedReplayFindings[0]?.matched_object.path).toBe("tool-retry/retry-policy.yaml");
+    expect(runtimeToolRetryModelSelectedReplayFindings[0]?.matched_object.metadata).toMatchObject({
+      parsed_agent_tool_retry_policy_config: true,
+      agent_tool_retry_enabled: true,
+      agent_tool_retry_automatic_retry: true,
+      agent_tool_retry_replay_enabled: true,
+      agent_tool_retry_retry_on_failure: true,
+      agent_tool_retry_retry_on_timeout: true,
+      agent_tool_retry_retry_on_rate_limit: true,
+      agent_tool_retry_retry_on_validation_error: true,
+      agent_tool_retry_max_attempts_gt_one: true,
+      agent_tool_retry_backoff_disabled: true,
+      agent_tool_retry_idempotency_disabled: true,
+      agent_tool_retry_deduplication_disabled: true,
+      agent_tool_retry_exactly_once_disabled: true,
+      agent_tool_retry_non_idempotent_actions: true,
+      agent_tool_retry_untrusted_input: true,
+      agent_tool_retry_tool_output_replay: true,
+      agent_tool_retry_model_selected_retry: true,
+      agent_tool_retry_write_authority: true,
+      agent_tool_retry_external_authority: true,
+      agent_tool_retry_secret_context: true,
+      agent_tool_retry_sensitive_context: true,
+      agent_tool_retry_pii_context: true,
+      agent_tool_retry_approval_required: false
+    });
+    expect(
+      runtimeToolRetryModelSelectedReplayFindings[0]?.matched_object.metadata.agent_tool_retry_action_categories
+    ).toEqual(["database_write", "external_response", "secret_manager_access", "tool_call"]);
+    expect(runtimeToolRetryModelSelectedReplayFindings[0]?.matched_object.data_classes).toContain("credential");
+    expect(runtimeToolRetryModelSelectedReplayFindings[0]?.matched_object.secret_exposure).toBe(true);
+    expect(runtimeToolRetryModelSelectedReplayFindings[0]?.matched_object.untrusted_to_privileged).toBe(true);
+    expect(runtimeToolRetryModelSelectedReplayFindings[0]?.severity).toBe("critical");
+    expect(runtimeToolRetryModelSelectedReplayFindings[0]?.confidence).toBe("very_high");
+    expect(runtimeToolRetryModelSelectedReplayFindings[0]?.recommended_control).toBe("quarantine");
+    expect(JSON.stringify(runtimeToolRetryModelSelectedReplayFindings[0])).not.toContain("${TOOL_RETRY_POLICY_TOKEN}");
+    expect(JSON.stringify(runtimeToolRetryModelSelectedReplayFindings[0])).not.toContain(
+      "support_db.update_customer_record"
+    );
+    expect(JSON.stringify(runtimeToolRetryModelSelectedReplayFindings[0])).not.toContain("slack.post_customer_reply");
+    expect(JSON.stringify(runtimeToolRetryModelSelectedReplayFindings[0])).not.toContain(
+      "vault_secret_lookup.read_support_token"
+    );
+    expect(JSON.stringify(runtimeToolRetryModelSelectedReplayFindings[0])).not.toContain("untrusted_customer_ticket");
+    expect(JSON.stringify(runtimeToolRetryModelSelectedReplayFindings[0])).not.toContain("browser_tool_output");
+    expect(JSON.stringify(runtimeToolRetryModelSelectedReplayFindings[0])).not.toContain("retrieved_customer_context");
+    expect(JSON.stringify(runtimeToolRetryModelSelectedReplayFindings[0])).not.toContain("retry_customer_email");
+    expect(JSON.stringify(runtimeToolRetryModelSelectedReplayFindings[0])).not.toContain("retry_account_number");
+    expect(JSON.stringify(runtimeToolRetryModelSelectedReplayFindings[0])).not.toContain("confidential_retry_notes");
     const runtimeReasoningStateFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-RUNTIME-057");
     expect(runtimeReasoningStateFindings).toHaveLength(1);
     expect(runtimeReasoningStateFindings[0]?.matched_object.path).toBe("reasoning/scratchpad-policy.yaml");

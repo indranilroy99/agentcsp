@@ -1,0 +1,107 @@
+id: AGENTCSP-RUNTIME-101
+name: Model-selected retry replays secret-backed agent actions
+description: A model-selected retry policy can replay original tool arguments and tool outputs into database, external-response, and secret-manager actions from untrusted context while backoff, idempotency, deduplication, exactly-once controls, and approval are disabled.
+category: tool_retry_model_selected_replay
+severity: critical
+maps_to:
+  owasp:
+    - LLM01:2025 Prompt Injection
+    - LLM05:2025 Improper Output Handling
+    - LLM06:2025 Excessive Agency
+  mitre_atlas:
+    - AML.T0051 LLM Prompt Injection
+    - AML.T0057 Exfiltration via Cyber Means
+  nist_ai_rmf:
+    - MAP 5.1
+    - MEASURE 2.7
+    - MANAGE 2.4
+match:
+  object_type: runtime_config
+  where:
+    - field: metadata.parsed_agent_tool_retry_policy_config
+      op: equals
+      value: true
+    - field: metadata.agent_tool_retry_enabled
+      op: equals
+      value: true
+    - field: metadata.agent_tool_retry_automatic_retry
+      op: equals
+      value: true
+    - field: metadata.agent_tool_retry_replay_enabled
+      op: equals
+      value: true
+    - field: metadata.agent_tool_retry_retry_on_failure
+      op: equals
+      value: true
+    - field: metadata.agent_tool_retry_retry_on_timeout
+      op: equals
+      value: true
+    - field: metadata.agent_tool_retry_retry_on_rate_limit
+      op: equals
+      value: true
+    - field: metadata.agent_tool_retry_retry_on_validation_error
+      op: equals
+      value: true
+    - field: metadata.agent_tool_retry_max_attempts_gt_one
+      op: equals
+      value: true
+    - field: metadata.agent_tool_retry_backoff_disabled
+      op: equals
+      value: true
+    - field: metadata.agent_tool_retry_idempotency_disabled
+      op: equals
+      value: true
+    - field: metadata.agent_tool_retry_deduplication_disabled
+      op: equals
+      value: true
+    - field: metadata.agent_tool_retry_exactly_once_disabled
+      op: equals
+      value: true
+    - field: metadata.agent_tool_retry_non_idempotent_actions
+      op: equals
+      value: true
+    - field: metadata.agent_tool_retry_untrusted_input
+      op: equals
+      value: true
+    - field: metadata.agent_tool_retry_tool_output_replay
+      op: equals
+      value: true
+    - field: metadata.agent_tool_retry_model_selected_retry
+      op: equals
+      value: true
+    - field: metadata.agent_tool_retry_action_categories
+      op: contains_any
+      value:
+        - database_write
+        - external_response
+        - secret_manager_access
+    - field: metadata.agent_tool_retry_write_authority
+      op: equals
+      value: true
+    - field: metadata.agent_tool_retry_external_authority
+      op: equals
+      value: true
+    - field: metadata.agent_tool_retry_secret_context
+      op: equals
+      value: true
+    - field: metadata.agent_tool_retry_sensitive_context
+      op: equals
+      value: true
+    - field: metadata.agent_tool_retry_pii_context
+      op: equals
+      value: true
+    - field: metadata.agent_tool_retry_approval_required
+      op: equals
+      value: false
+    - field: data_classes
+      op: includes
+      value: credential
+    - field: secret_exposure
+      op: equals
+      value: true
+    - field: untrusted_to_privileged
+      op: equals
+      value: true
+recommendation:
+  control: quarantine
+  text: Quarantine model-selected retry and replay for side-effecting agent tools until original tool arguments are not reused from untrusted context, idempotency keys, deduplication, exactly-once controls, bounded backoff, and explicit approval are enforced for database, external-response, and secret-manager actions.
