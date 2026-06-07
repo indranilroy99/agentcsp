@@ -1,0 +1,16 @@
+provider: slack
+api_endpoint: https://slack.com/api
+oauth_scopes:
+  - channels:history
+  - users:read
+agent_access:
+  input_sources:
+    - approved_digest
+  actions:
+    - fetch_history
+    - lookup_user
+  approval_required: true
+destinations:
+  workspace: approved-security-workspace
+data_scope:
+  - approved_digest

@@ -60,6 +60,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-083")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-011")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-012")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-110")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-013")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-014")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-094")).toBe(true);
@@ -2235,6 +2236,62 @@ describe("rule engine", () => {
     expect(JSON.stringify(runtimeSaasConnectorFindings[0])).not.toContain("hooks.slack.example.invalid");
     expect(JSON.stringify(runtimeSaasConnectorFindings[0])).not.toContain("chat:write");
     expect(JSON.stringify(runtimeSaasConnectorFindings[0])).not.toContain("#customer-escalations");
+    const runtimeSaasCustomerPublicationFindings = findings.filter(
+      (finding) => finding.rule_id === "AGENTCSP-RUNTIME-110"
+    );
+    expect(runtimeSaasCustomerPublicationFindings).toHaveLength(1);
+    expect(runtimeSaasCustomerPublicationFindings[0]?.matched_object.path).toBe(
+      "connectors/slack-customer-success.yaml"
+    );
+    expect(runtimeSaasCustomerPublicationFindings[0]?.matched_object.metadata).toMatchObject({
+      parsed_saas_connector_config: true,
+      saas_connector_provider: "slack",
+      saas_connector_external_reach: true,
+      saas_connector_destination_redacted: true,
+      saas_connector_scope_redacted: true,
+      saas_connector_broad_scope: true,
+      saas_connector_admin_scope: false,
+      saas_connector_read_enabled: true,
+      saas_connector_external_write_enabled: true,
+      saas_connector_untrusted_input: true,
+      saas_connector_sensitive_data: true,
+      saas_connector_pii_data: true,
+      saas_connector_approval_required: false
+    });
+    expect(runtimeSaasCustomerPublicationFindings[0]?.matched_object.metadata.saas_connector_scope_categories).toEqual([
+      "messaging_read",
+      "messaging_write",
+      "read_scope"
+    ]);
+    expect(runtimeSaasCustomerPublicationFindings[0]?.matched_object.data_classes).toEqual([
+      "confidential",
+      "credential",
+      "pii"
+    ]);
+    expect(runtimeSaasCustomerPublicationFindings[0]?.matched_object.actions).toEqual([
+      "call",
+      "publish",
+      "read",
+      "send",
+      "write"
+    ]);
+    expect(runtimeSaasCustomerPublicationFindings[0]?.matched_object.secret_exposure).toBe(true);
+    expect(runtimeSaasCustomerPublicationFindings[0]?.matched_object.untrusted_to_privileged).toBe(true);
+    expect(runtimeSaasCustomerPublicationFindings[0]?.severity).toBe("critical");
+    expect(runtimeSaasCustomerPublicationFindings[0]?.confidence).toBe("very_high");
+    expect(runtimeSaasCustomerPublicationFindings[0]?.recommended_control).toBe("require_approval");
+    expect(JSON.stringify(runtimeSaasCustomerPublicationFindings[0])).not.toContain(
+      "${CUSTOMER_SUCCESS_SLACK_BOT_TOKEN}"
+    );
+    expect(JSON.stringify(runtimeSaasCustomerPublicationFindings[0])).not.toContain("hooks.slack.example.invalid");
+    expect(JSON.stringify(runtimeSaasCustomerPublicationFindings[0])).not.toContain("chat:write");
+    expect(JSON.stringify(runtimeSaasCustomerPublicationFindings[0])).not.toContain("channels:history");
+    expect(JSON.stringify(runtimeSaasCustomerPublicationFindings[0])).not.toContain("users:read.email");
+    expect(JSON.stringify(runtimeSaasCustomerPublicationFindings[0])).not.toContain("#customer-escalations");
+    expect(JSON.stringify(runtimeSaasCustomerPublicationFindings[0])).not.toContain("agentcsp-demo-workspace");
+    expect(JSON.stringify(runtimeSaasCustomerPublicationFindings[0])).not.toContain("saas_customer_email");
+    expect(JSON.stringify(runtimeSaasCustomerPublicationFindings[0])).not.toContain("saas_ticket_summary");
+    expect(JSON.stringify(runtimeSaasCustomerPublicationFindings[0])).not.toContain("saas_internal_note");
     const runtimeSecretManagerFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-RUNTIME-013");
     expect(runtimeSecretManagerFindings).toHaveLength(1);
     expect(runtimeSecretManagerFindings[0]?.matched_object.path).toBe("secrets/vault-agent.yaml");

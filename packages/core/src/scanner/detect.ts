@@ -16761,7 +16761,7 @@ function classifySaasConnectorConfig(value: unknown, filePath: string): SaasConn
   const destinations = classifySaasConnectorDestinations(fields, provider);
   const scopeCategories = collectSaasScopeCategories(fields);
   const envKeys = uniqueStrings([
-    ...collectEnvKeyNamesFromConfig(value),
+    ...collectEnvKeyNamesFromConfig(value).filter(isLikelyEnvKeyName),
     ...extractEnvironmentReferenceKeys(stringValues)
   ]);
   const secretRefKeys = extractSecretReferenceKeys(stringValues);
@@ -16918,11 +16918,14 @@ function hasSaasExternalWriteSignal(fields: RuntimeField[], scopeCategories: str
 }
 
 function hasSaasUntrustedInputSignal(fields: RuntimeField[]): boolean {
-  return fields.some((field) =>
-    /\b(untrusted|user|customer|client|ticket|support|issue|comment|message|prompt|retrieved|rag|document|email|slack|browser|web[_-]?page|chat)\b/iu.test(
+  return fields.some((field) => {
+    if (!/(^|\.)(inputs?|input_sources?|sources?|payload|payloads|context|contexts|messages?|events?|triggers?|documents?|attachments?)(\.|$)/iu.test(field.path)) {
+      return false;
+    }
+    return /(?:^|[_\W])(untrusted|user|customer|client|ticket|support|issue|comment|message|prompt|retrieved|rag|document|email|slack|browser|web[_-]?page|chat)(?:[_\W]|$)/iu.test(
       `${field.path} ${fieldValueText(field)}`
-    )
-  );
+    );
+  });
 }
 
 function hasSaasSensitiveDataSignal(fields: RuntimeField[]): boolean {

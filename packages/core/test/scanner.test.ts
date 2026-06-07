@@ -2431,6 +2431,8 @@ describe("scanner", () => {
     expect(JSON.stringify(saasConnectorConfig)).not.toContain("#customer-escalations");
     expect(JSON.stringify(saasConnectorConfig)).not.toContain("agentcsp-demo-workspace");
     expect(JSON.stringify(saasConnectorConfig)).not.toContain("saas_customer_email");
+    expect(JSON.stringify(saasConnectorConfig)).not.toContain("saas_ticket_summary");
+    expect(JSON.stringify(saasConnectorConfig)).not.toContain("saas_internal_note");
     const secretManagerConfig = surfaces.runtime_config.find((surface) => surface.path === "secrets/vault-agent.yaml");
     expect(secretManagerConfig).toBeDefined();
     expect(secretManagerConfig).toMatchObject({
@@ -5036,6 +5038,61 @@ describe("scanner", () => {
     });
     expect(feedbackPipeline?.metadata.ai_feedback_capture_categories).toEqual(["feedback_label"]);
     expect(JSON.stringify(feedbackPipeline)).not.toContain("local_feedback");
+  });
+
+  it("keeps approval-gated read-only SaaS connectors out of publication risk", async () => {
+    const files = await walkProject({
+      root_path: safeFixtureRoot,
+      output_path: ".agentcsp",
+      formats: ["json", "md"],
+      include_hidden: true,
+      include_logs: false,
+      max_file_size_bytes: 1024 * 1024,
+      max_files: 5000,
+      quiet: true
+    });
+    const surfaces = await detectSurfaces(files);
+    const saasConnector = surfaces.runtime_config.find(
+      (surface) => surface.path === "connectors/internal-slack-digest.yaml"
+    );
+
+    expect(saasConnector).toMatchObject({
+      trust_level: "third_party",
+      data_classes: ["unknown"],
+      actions: ["call", "read", "send"],
+      side_effect: false,
+      external_reach: true,
+      secret_exposure: false,
+      reversible: true
+    });
+    expect(saasConnector?.metadata).toMatchObject({
+      content_redacted: true,
+      values_collected: false,
+      parsed_saas_connector_config: true,
+      saas_connector_provider: "slack",
+      saas_connector_external_reach: true,
+      saas_connector_destination_redacted: true,
+      saas_connector_scope_redacted: true,
+      saas_connector_broad_scope: false,
+      saas_connector_admin_scope: false,
+      saas_connector_read_enabled: true,
+      saas_connector_external_write_enabled: false,
+      saas_connector_untrusted_input: false,
+      saas_connector_sensitive_data: false,
+      saas_connector_pii_data: false,
+      saas_connector_approval_required: true
+    });
+    expect(saasConnector?.metadata.saas_connector_destination_kinds).toEqual([
+      "api_endpoint",
+      "managed_saas_provider"
+    ]);
+    expect(saasConnector?.metadata.saas_connector_scope_categories).toEqual(["messaging_read", "read_scope"]);
+    expect(saasConnector?.metadata.env_key_names).toEqual([]);
+    expect(saasConnector?.metadata.secret_ref_key_names).toEqual([]);
+    expect(JSON.stringify(saasConnector)).not.toContain("channels:history");
+    expect(JSON.stringify(saasConnector)).not.toContain("users:read");
+    expect(JSON.stringify(saasConnector)).not.toContain("approved-security-workspace");
+    expect(JSON.stringify(saasConnector)).not.toContain("approved_digest");
   });
 
   it("keeps default-deny approval-gated safety policies scoped", async () => {

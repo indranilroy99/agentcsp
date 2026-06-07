@@ -629,7 +629,9 @@ The current iteration adds:
 
 - first-class redacted metadata for SaaS/API connector configs, including provider, destination categories, normalized OAuth/API scope categories, broad/admin scope posture, read/write authority, untrusted input, sensitive/PII scope, approval posture, and credential key references
 - vulnerable fixture coverage for a Slack-style customer-success connector with broad write scopes, untrusted customer/retrieval inputs, and no approval gate
+- safe fixture coverage for an approval-gated read-only Slack-style connector using approved source context and no external write scope
 - rule `AGENTCSP-RUNTIME-012` for SaaS connectors that combine broad credential-backed external write authority, untrusted input, and missing approval
+- rule `AGENTCSP-RUNTIME-110` for messaging SaaS connectors that combine credential-backed read/write scopes, untrusted customer or retrieval context, sensitive PII-bearing data, external publication authority, and no approval
 - scanner, rule, fixture verifier, and redaction coverage proving raw OAuth scopes, webhook URLs, workspace names, channel names, customer-system labels, and secret placeholders stay redacted
 
 ## Secret Manager Authority Pass
