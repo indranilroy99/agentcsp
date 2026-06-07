@@ -64,6 +64,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-016")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-017")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-018")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-072")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-019")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-020")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-021")).toBe(true);
@@ -1325,6 +1326,38 @@ describe("rule engine", () => {
     expect(JSON.stringify(runtimeAgentIdentityFindings[0])).not.toContain("support-agent-prod");
     expect(JSON.stringify(runtimeAgentIdentityFindings[0])).not.toContain("cloud-platform");
     expect(JSON.stringify(runtimeAgentIdentityFindings[0])).not.toContain("roles/owner");
+    const runtimeAgentIdentityRefreshFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-RUNTIME-072");
+    expect(runtimeAgentIdentityRefreshFindings).toHaveLength(1);
+    expect(runtimeAgentIdentityRefreshFindings[0]?.matched_object.path).toBe("identity/agent-oauth.yaml");
+    expect(runtimeAgentIdentityRefreshFindings[0]?.matched_object.metadata).toMatchObject({
+      parsed_agent_identity_config: true,
+      agent_identity_provider: "google_workload_identity",
+      agent_identity_credential_issuance_enabled: true,
+      agent_identity_impersonation_enabled: true,
+      agent_identity_token_refresh_enabled: true,
+      agent_identity_broad_scope: true,
+      agent_identity_tool_injection: true,
+      agent_identity_untrusted_input: true,
+      agent_identity_approval_required: false
+    });
+    expect(runtimeAgentIdentityRefreshFindings[0]?.matched_object.metadata.agent_identity_scope_categories).toEqual([
+      "admin_scope",
+      "email_modify",
+      "iam_admin",
+      "storage_write",
+      "wildcard_scope"
+    ]);
+    expect(runtimeAgentIdentityRefreshFindings[0]?.severity).toBe("critical");
+    expect(runtimeAgentIdentityRefreshFindings[0]?.confidence).toBe("very_high");
+    expect(runtimeAgentIdentityRefreshFindings[0]?.recommended_control).toBe("require_approval");
+    expect(JSON.stringify(runtimeAgentIdentityRefreshFindings[0])).not.toContain("${AGENT_IDENTITY_TOKEN}");
+    expect(JSON.stringify(runtimeAgentIdentityRefreshFindings[0])).not.toContain("auth.agentcsp-demo.example.invalid");
+    expect(JSON.stringify(runtimeAgentIdentityRefreshFindings[0])).not.toContain("sts.googleapis.com");
+    expect(JSON.stringify(runtimeAgentIdentityRefreshFindings[0])).not.toContain("support-agent-prod");
+    expect(JSON.stringify(runtimeAgentIdentityRefreshFindings[0])).not.toContain("cloud-platform");
+    expect(JSON.stringify(runtimeAgentIdentityRefreshFindings[0])).not.toContain("roles/owner");
+    expect(JSON.stringify(runtimeAgentIdentityRefreshFindings[0])).not.toContain("support_db.update_customer_record");
+    expect(JSON.stringify(runtimeAgentIdentityRefreshFindings[0])).not.toContain("customer_oauth_email");
     const runtimeAgentExtensionFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-RUNTIME-019");
     expect(runtimeAgentExtensionFindings).toHaveLength(1);
     expect(runtimeAgentExtensionFindings[0]?.matched_object.path).toBe("extensions/remote-skills.yaml");

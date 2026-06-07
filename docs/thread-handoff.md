@@ -731,6 +731,7 @@ The current iteration adds:
 - first-class redacted metadata for OAuth, OIDC, service-account, workload-identity, IAM, token-broker, and credential-delegation configs
 - vulnerable fixture coverage for Google Workload Identity-style token issuance and service-account impersonation with broad scopes, untrusted subject inputs, token refresh, tool injection, and no approval gate
 - rule `AGENTCSP-RUNTIME-018` for identity delegation that combines credential issuance, impersonation, broad scope, untrusted input, credential exposure, and missing approval
+- rule `AGENTCSP-RUNTIME-072` for refreshable agent-issued credentials that combine impersonation, broad scope, untrusted subject input, tool injection, credential exposure, and missing approval
 - scanner, rule, fixture verifier, and redaction coverage proving issuer URLs, token endpoints, service-account IDs, raw scopes, IAM roles, subject labels, tool names, data-field labels, and token placeholders stay redacted
 
 ## Agent Extension Loader Pass
