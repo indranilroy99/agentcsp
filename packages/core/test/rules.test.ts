@@ -94,6 +94,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-052")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-078")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-053")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-106")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-054")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-099")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-055")).toBe(true);
@@ -2579,6 +2580,72 @@ describe("rule engine", () => {
     expect(JSON.stringify(runtimeSharedSessionFindings[0])).not.toContain("external_support_vendor");
     expect(JSON.stringify(runtimeSharedSessionFindings[0])).not.toContain("support_db.update_customer_record");
     expect(JSON.stringify(runtimeSharedSessionFindings[0])).not.toContain("session_share_customer_email");
+    const runtimePublicSharedSessionFindings = findings.filter(
+      (finding) => finding.rule_id === "AGENTCSP-RUNTIME-106"
+    );
+    expect(runtimePublicSharedSessionFindings).toHaveLength(1);
+    expect(runtimePublicSharedSessionFindings[0]?.matched_object.path).toBe("sessions/shared-copilot.yaml");
+    expect(runtimePublicSharedSessionFindings[0]?.matched_object.metadata).toMatchObject({
+      parsed_agent_session_sharing_config: true,
+      agent_session_sharing_enabled: true,
+      agent_session_sharing_external: true,
+      agent_session_sharing_public_access: true,
+      agent_session_sharing_anonymous_access: true,
+      agent_session_sharing_auth_disabled: true,
+      agent_session_sharing_external_collaborators: true,
+      agent_session_sharing_broad_collaborator_scope: true,
+      agent_session_sharing_live_control_enabled: true,
+      agent_session_sharing_prompt_injection_enabled: true,
+      agent_session_sharing_tool_control_enabled: true,
+      agent_session_sharing_tool_write_authority: true,
+      agent_session_sharing_approval_control_enabled: true,
+      agent_session_sharing_resume_replay_enabled: true,
+      agent_session_sharing_transcript_capture: true,
+      agent_session_sharing_sensitive_context: true,
+      agent_session_sharing_pii_context: true,
+      agent_session_sharing_secret_capture: true,
+      agent_session_sharing_redaction_disabled: true,
+      agent_session_sharing_untrusted_input: true,
+      agent_session_sharing_approval_required: false
+    });
+    expect(runtimePublicSharedSessionFindings[0]?.matched_object.metadata.agent_session_sharing_control_categories).toEqual([
+      "approval_control",
+      "database_write",
+      "live_control",
+      "prompt_injection",
+      "resume_replay",
+      "secret_manager_access",
+      "tool_call"
+    ]);
+    expect(runtimePublicSharedSessionFindings[0]?.matched_object.metadata.agent_session_sharing_capture_categories).toEqual([
+      "browser_context",
+      "completion_context",
+      "memory_context",
+      "prompt_context",
+      "retrieval_context",
+      "secret_context",
+      "tool_output",
+      "transcript"
+    ]);
+    expect(runtimePublicSharedSessionFindings[0]?.matched_object.data_classes).toContain("credential");
+    expect(runtimePublicSharedSessionFindings[0]?.matched_object.secret_exposure).toBe(true);
+    expect(runtimePublicSharedSessionFindings[0]?.matched_object.untrusted_to_privileged).toBe(true);
+    expect(runtimePublicSharedSessionFindings[0]?.severity).toBe("critical");
+    expect(runtimePublicSharedSessionFindings[0]?.confidence).toBe("very_high");
+    expect(runtimePublicSharedSessionFindings[0]?.recommended_control).toBe("quarantine");
+    expect(JSON.stringify(runtimePublicSharedSessionFindings[0])).not.toContain("${SESSION_SHARE_TOKEN}");
+    expect(JSON.stringify(runtimePublicSharedSessionFindings[0])).not.toContain("sessions.agentcsp-demo.example.invalid");
+    expect(JSON.stringify(runtimePublicSharedSessionFindings[0])).not.toContain("customer-support-live-share");
+    expect(JSON.stringify(runtimePublicSharedSessionFindings[0])).not.toContain("external_support_vendor");
+    expect(JSON.stringify(runtimePublicSharedSessionFindings[0])).not.toContain("untrusted_customer_ticket");
+    expect(JSON.stringify(runtimePublicSharedSessionFindings[0])).not.toContain("browser_tool_output");
+    expect(JSON.stringify(runtimePublicSharedSessionFindings[0])).not.toContain("support_db.update_customer_record");
+    expect(JSON.stringify(runtimePublicSharedSessionFindings[0])).not.toContain(
+      "vault_secret_lookup.read_support_token"
+    );
+    expect(JSON.stringify(runtimePublicSharedSessionFindings[0])).not.toContain("session_share_customer_email");
+    expect(JSON.stringify(runtimePublicSharedSessionFindings[0])).not.toContain("session_share_account_number");
+    expect(JSON.stringify(runtimePublicSharedSessionFindings[0])).not.toContain("confidential_session_share_notes");
     const runtimeComputerUseFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-RUNTIME-054");
     expect(runtimeComputerUseFindings).toHaveLength(1);
     expect(runtimeComputerUseFindings[0]?.matched_object.path).toBe("computer/desktop-agent.yaml");

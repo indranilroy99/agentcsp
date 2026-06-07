@@ -1159,6 +1159,7 @@ The current iteration adds:
 - vulnerable fixture coverage for a public shared-copilot session where anonymous external collaborators can inject messages, edit prompt context, approve actions, run tools, resume/replay the session, and capture browser, retrieval, memory, transcript, PII, and secret context without redaction or approval
 - safe fixture coverage for an authenticated internal read-only review session with SSO/RBAC, no external collaborators, no live control, no capture, redaction enabled, and approval required
 - rule `AGENTCSP-RUNTIME-053` for public or external shared live sessions that combine disabled authentication, live control, tool authority, sensitive context, disabled redaction, credential exposure, and missing independent approval
+- rule `AGENTCSP-RUNTIME-106` for public anonymous shared sessions that expose prompt injection, live control, tool control, approval control, resume/replay, and secret capture without redaction or approval
 - scanner, rule, fixture verifier, and redaction coverage proving raw session URLs, session names, collaborator labels, tool names, source labels, data-scope labels, and token placeholders stay redacted
 
 ## Computer-Use Desktop Control Pass
