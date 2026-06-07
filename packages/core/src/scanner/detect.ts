@@ -133,6 +133,11 @@ export async function detectSurfaces(files: WalkedFile[]): Promise<DetectedSurfa
       continue;
     }
 
+    if (isAgentActionRouterConfigPath(file.relativePath, basename)) {
+      detectAgentActionRouterConfig(file, text, surfaces);
+      continue;
+    }
+
     if (isAgentPromptRegistryConfigPath(file.relativePath, basename)) {
       detectAgentPromptRegistryConfig(file, text, surfaces);
       continue;
@@ -1698,6 +1703,85 @@ function detectAgentResponseExposureConfig(file: WalkedFile, text: string | unde
   surfaces.runtime_config.push({
     ...object,
     untrusted_to_privileged: false
+  });
+}
+
+function detectAgentActionRouterConfig(file: WalkedFile, text: string | undefined, surfaces: DetectedSurfaces): void {
+  const parsed = parseStructuredConfig(text ?? "", file.relativePath);
+  if (parsed.parseFailed) {
+    addDiagnostic(surfaces, file, {
+      parser: parsed.parser ?? "structured_config",
+      code: "AGENT_ACTION_ROUTER_CONFIG_PARSE_FAILED",
+      reason: "Agent action router or model-output command parser configuration could not be parsed. Raw content was redacted."
+    });
+  }
+
+  const posture = classifyAgentActionRouterConfig(parsed.value);
+  const actions = new Set<ActionType>(["call", "read"]);
+  if (posture.agent_action_router_auto_execute) actions.add("execute");
+  if (posture.agent_action_router_write_authority) actions.add("write");
+  if (posture.agent_action_router_external_authority) {
+    actions.add("publish");
+    actions.add("send");
+  }
+  if (posture.agent_action_router_memory_authority) actions.add("remember");
+  if (posture.agent_action_router_shell_authority) actions.add("execute");
+
+  const dataClasses = new Set<SurfaceObject["data_classes"][number]>(["unknown"]);
+  if (
+    posture.agent_action_router_secret_access ||
+    posture.env_key_names.some(isCredentialLikeKeyName) ||
+    posture.secret_ref_key_names.length > 0
+  ) {
+    dataClasses.add("credential");
+    if (posture.agent_action_router_secret_access) dataClasses.add("secret");
+  }
+  if (posture.agent_action_router_sensitive_context || posture.agent_action_router_untrusted_input) dataClasses.add("confidential");
+  if (posture.agent_action_router_pii_context) dataClasses.add("pii");
+  if (dataClasses.size > 1) dataClasses.delete("unknown");
+
+  const object = createSurfaceObject({
+    type: "runtime_config",
+    name: path.basename(file.relativePath),
+    path: file.relativePath,
+    trust_level: posture.agent_action_router_untrusted_input ? "third_party" : inferTrustLevel(file.relativePath),
+    data_classes: uniqueDataClasses([...dataClasses] as SurfaceObject["data_classes"]),
+    actions: uniqueActions([...actions]),
+    side_effect:
+      posture.agent_action_router_auto_execute ||
+      posture.agent_action_router_write_authority ||
+      posture.agent_action_router_external_authority ||
+      posture.agent_action_router_memory_authority ||
+      posture.agent_action_router_shell_authority,
+    reversible:
+      !posture.agent_action_router_write_authority &&
+      !posture.agent_action_router_external_authority &&
+      !posture.agent_action_router_memory_authority &&
+      !posture.agent_action_router_shell_authority,
+    external_reach: posture.agent_action_router_external_authority,
+    secret_exposure:
+      posture.agent_action_router_secret_access ||
+      posture.env_key_names.some(isCredentialLikeKeyName) ||
+      posture.secret_ref_key_names.length > 0,
+    reason: "Agent action router discovered as model-output-to-tool execution posture.",
+    metadata: {
+      content_redacted: true,
+      values_collected: false,
+      parsed_agent_action_router_config: Boolean(parsed.value) && !parsed.parseFailed,
+      parse_error: parsed.parseFailed,
+      ...posture
+    }
+  });
+  surfaces.runtime_config.push({
+    ...object,
+    untrusted_to_privileged:
+      (posture.agent_action_router_enabled &&
+        posture.agent_action_router_model_output_input &&
+        posture.agent_action_router_untrusted_input &&
+        posture.agent_action_router_auto_execute &&
+        posture.agent_action_router_privileged_tool_authority &&
+        !posture.agent_action_router_approval_required) ||
+      isUntrustedToPrivileged(object)
   });
 }
 
@@ -5136,6 +5220,27 @@ function isAgentResponseExposureConfigPath(relativePath: string, basename: strin
   return responseName || (responseDirectory && configName);
 }
 
+function isAgentActionRouterConfigPath(relativePath: string, basename: string): boolean {
+  const normalized = relativePath.replaceAll("\\", "/").toLowerCase();
+  const lowerBase = basename.toLowerCase();
+  if (!/\.(json|ya?ml|toml)$/iu.test(lowerBase)) return false;
+  if (normalized.startsWith(".github/workflows/")) return false;
+  if (normalized.startsWith("rules/")) return false;
+  const segments = normalized.split("/").slice(0, -1);
+  const actionRouterDirectory = segments.some((segment) =>
+    /^(action-router|action_router|tool-router|tool_router|command-router|command_router|action-parser|action_parser|output-parser|output_parser|command-parser|command_parser|model-actions?|model_actions?|action-dsl|action_dsl)$/iu.test(
+      segment
+    )
+  );
+  const actionRouterName = /(?:action[-_]?router|tool[-_]?router|command[-_]?router|action[-_]?parser|output[-_]?parser|command[-_]?parser|model[-_]?actions?|action[-_]?dsl|tool[-_]?dispatch|command[-_]?dispatch)/iu.test(
+    lowerBase
+  );
+  const configName = /(?:config|settings|policy|router|parser|actions?|commands?|tools?|dispatch|schema|validation|agent)/iu.test(
+    lowerBase
+  );
+  return actionRouterName || (actionRouterDirectory && configName);
+}
+
 function isAgentFederationConfigPath(relativePath: string, basename: string): boolean {
   const normalized = relativePath.replaceAll("\\", "/").toLowerCase();
   const lowerBase = basename.toLowerCase();
@@ -5510,6 +5615,35 @@ interface AgentResponseExposurePosture {
   agent_response_exposure_redaction_disabled: boolean;
   agent_response_exposure_external_response: boolean;
   agent_response_exposure_approval_required: boolean;
+  env_key_names: string[];
+  secret_ref_key_names: string[];
+}
+
+interface AgentActionRouterPosture {
+  agent_action_router_fields: string[];
+  agent_action_router_enabled: boolean;
+  agent_action_router_model_output_input: boolean;
+  agent_action_router_untrusted_input: boolean;
+  agent_action_router_action_format_categories: string[];
+  agent_action_router_schema_validation_disabled: boolean;
+  agent_action_router_strict_schema: boolean;
+  agent_action_router_open_action_schema: boolean;
+  agent_action_router_unknown_actions_allowed: boolean;
+  agent_action_router_json_repair_enabled: boolean;
+  agent_action_router_batch_execution_enabled: boolean;
+  agent_action_router_auto_execute: boolean;
+  agent_action_router_tool_authority_categories: string[];
+  agent_action_router_privileged_tool_authority: boolean;
+  agent_action_router_write_authority: boolean;
+  agent_action_router_external_authority: boolean;
+  agent_action_router_memory_authority: boolean;
+  agent_action_router_secret_access: boolean;
+  agent_action_router_shell_authority: boolean;
+  agent_action_router_sensitive_context: boolean;
+  agent_action_router_pii_context: boolean;
+  agent_action_router_redaction_disabled: boolean;
+  agent_action_router_dry_run_disabled: boolean;
+  agent_action_router_approval_required: boolean;
   env_key_names: string[];
   secret_ref_key_names: string[];
 }
@@ -8538,6 +8672,345 @@ function isAgentResponseExposureSecurityField(fieldPath: string): boolean {
 }
 
 function agentResponseExposureText(field: RuntimeField): string {
+  return `${field.path} ${fieldValueText(field)}`.toLowerCase().replaceAll("_", " ").replaceAll("-", " ");
+}
+
+function classifyAgentActionRouterConfig(value: unknown): AgentActionRouterPosture {
+  const fields = flattenRuntimeFields(value);
+  const stringValues = collectFieldStringValues(fields);
+  const envKeys = uniqueStrings([
+    ...collectEnvKeyNamesFromConfig(value).filter(isLikelyEnvKeyName),
+    ...extractEnvironmentReferenceKeys(stringValues)
+  ]);
+  const secretRefKeys = extractSecretReferenceKeys(stringValues);
+  const toolAuthorityCategories = collectAgentActionRouterToolAuthorityCategories(fields);
+  const schemaValidationDisabled = hasAgentActionRouterSchemaValidationDisabledSignal(fields);
+  const strictSchema = hasAgentActionRouterStrictSchemaSignal(fields);
+  const unknownActionsAllowed = hasAgentActionRouterUnknownActionsAllowedSignal(fields);
+
+  return {
+    agent_action_router_fields: fields
+      .map((field) => field.path)
+      .filter((fieldPath) => isAgentActionRouterSecurityField(fieldPath))
+      .sort((a, b) => a.localeCompare(b)),
+    agent_action_router_enabled: !hasAgentActionRouterDisabledSignal(fields),
+    agent_action_router_model_output_input: hasAgentActionRouterModelOutputSignal(fields),
+    agent_action_router_untrusted_input: hasAgentActionRouterUntrustedInputSignal(fields),
+    agent_action_router_action_format_categories: collectAgentActionRouterFormatCategories(fields),
+    agent_action_router_schema_validation_disabled: schemaValidationDisabled,
+    agent_action_router_strict_schema: strictSchema,
+    agent_action_router_open_action_schema:
+      schemaValidationDisabled || !strictSchema || unknownActionsAllowed || hasAgentActionRouterOpenSchemaSignal(fields),
+    agent_action_router_unknown_actions_allowed: unknownActionsAllowed,
+    agent_action_router_json_repair_enabled: hasAgentActionRouterJsonRepairSignal(fields),
+    agent_action_router_batch_execution_enabled: hasAgentActionRouterBatchExecutionSignal(fields),
+    agent_action_router_auto_execute: hasAgentActionRouterAutoExecuteSignal(fields),
+    agent_action_router_tool_authority_categories: toolAuthorityCategories,
+    agent_action_router_privileged_tool_authority: isAgentActionRouterPrivileged(toolAuthorityCategories),
+    agent_action_router_write_authority: hasAgentActionRouterWriteAuthoritySignal(fields, toolAuthorityCategories),
+    agent_action_router_external_authority: hasAgentActionRouterExternalAuthoritySignal(fields, toolAuthorityCategories),
+    agent_action_router_memory_authority: hasAgentActionRouterMemoryAuthoritySignal(fields, toolAuthorityCategories),
+    agent_action_router_secret_access:
+      hasAgentActionRouterSecretSignal(fields) ||
+      toolAuthorityCategories.includes("secret_manager_access") ||
+      envKeys.some(isCredentialLikeKeyName) ||
+      secretRefKeys.length > 0,
+    agent_action_router_shell_authority:
+      hasAgentActionRouterShellSignal(fields) || toolAuthorityCategories.includes("shell_execution"),
+    agent_action_router_sensitive_context: hasAgentActionRouterSensitiveContextSignal(fields),
+    agent_action_router_pii_context: hasAgentActionRouterPiiContextSignal(fields),
+    agent_action_router_redaction_disabled: hasAgentActionRouterRedactionDisabledSignal(fields),
+    agent_action_router_dry_run_disabled: hasAgentActionRouterDryRunDisabledSignal(fields),
+    agent_action_router_approval_required: hasAgentActionRouterApprovalRequiredSignal(fields),
+    env_key_names: envKeys,
+    secret_ref_key_names: secretRefKeys
+  };
+}
+
+function hasAgentActionRouterDisabledSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => /(?:^|\.)(enabled|active)(?:\.|$)/iu.test(field.path) && disabledConfigValue(field.value));
+}
+
+function hasAgentActionRouterModelOutputSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => {
+    const text = agentActionRouterText(field);
+    if (disabledConfigValue(field.value)) return false;
+    return /\b(model output|model_output|llm output|assistant message|assistant_message|completion|generation|structured tool calls?|tool calls?|function calls?|planner output|action dsl|action_dsl|markdown fenced|fenced json|json|yaml|parser|parse)\b/iu.test(
+      text
+    );
+  });
+}
+
+function hasAgentActionRouterUntrustedInputSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => {
+    if (isAgentActionRouterControlField(field.path)) return false;
+    const text = agentActionRouterText(field);
+    if (
+      /\b(approved|trusted|internal only|internal|allowlisted|reviewed|signed)\b/iu.test(text) &&
+      !/\b(untrusted|customer|external|browser|retrieved|rag|web|ticket|public|user)\b/iu.test(text)
+    ) {
+      return false;
+    }
+    return /\b(untrusted|customer|external|browser tool output|browser output|retrieved|rag|runbook|user message|user prompt|ticket|web page|public|freeform|inbound|prompt)\b/iu.test(
+      text
+    ) && !disabledConfigValue(field.value);
+  });
+}
+
+function collectAgentActionRouterFormatCategories(fields: RuntimeField[]): string[] {
+  const categories = new Set<string>();
+  for (const field of fields) {
+    const text = agentActionRouterText(field);
+    if (!/(?:^|\.)(parser|format|formats|accepted_formats|acceptedFormats|schema|input|inputs)(?:\.|$)/iu.test(field.path) && !/\b(json|yaml|markdown|dsl|tool plan|action plan)\b/iu.test(text)) {
+      continue;
+    }
+    if (/\bjson\b/iu.test(text)) categories.add("json");
+    if (/\byaml\b|\byml\b/iu.test(text)) categories.add("yaml");
+    if (/\b(markdown fenced|fenced json|fenced yaml|markdown)\b/iu.test(text)) categories.add("markdown_fenced");
+    if (/\b(freeform|free text|natural language|plain text)\b/iu.test(text)) categories.add("freeform_text");
+    if (/\b(action dsl|action_dsl|command dsl|command_dsl|dsl)\b/iu.test(text)) categories.add("action_dsl");
+    if (/\b(tool plan|action plan|planner output|plan to execute)\b/iu.test(text)) categories.add("tool_plan");
+  }
+  return [...categories].sort((a, b) => a.localeCompare(b));
+}
+
+function hasAgentActionRouterSchemaValidationDisabledSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => {
+    const text = agentActionRouterText(field);
+    if (/(?:^|\.)(schema_validation|schemaValidation|validation|validate|validator|schema\.enabled|schema\.required)(?:\.|$)/u.test(field.path)) {
+      return disabledConfigValue(field.value);
+    }
+    return /\b(schema validation disabled|schema validation off|validation disabled|no schema|without schema|schema none|schema passthrough)\b/iu.test(
+      text
+    );
+  });
+}
+
+function hasAgentActionRouterStrictSchemaSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => {
+    const text = agentActionRouterText(field);
+    if (/(?:^|\.)(strict_schema|strictSchema|closed_schema|closedSchema|additionalProperties)(?:\.|$)/u.test(field.path)) {
+      if (/(?:^|\.)(additionalProperties)$/u.test(field.path)) return disabledConfigValue(field.value);
+      return truthyConfigValue(field.value);
+    }
+    return /\b(strict schema|closed schema|additional properties false|additionalproperties false|unknown fields denied)\b/iu.test(text);
+  });
+}
+
+function hasAgentActionRouterOpenSchemaSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => {
+    const text = agentActionRouterText(field);
+    if (/(?:^|\.)(additionalProperties|allow_unknown_fields|allowUnknownFields|open_schema|openSchema)(?:\.|$)/u.test(field.path)) {
+      return truthyConfigValue(field.value);
+    }
+    return /\b(open schema|open world|allow unknown fields|additional properties true|additionalproperties true|schema passthrough)\b/iu.test(text);
+  });
+}
+
+function hasAgentActionRouterUnknownActionsAllowedSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => {
+    const text = agentActionRouterText(field);
+    if (/(?:^|\.)(allow_unknown_actions|allowUnknownActions|unknown_actions|unknownActions|fallback_action|fallbackAction)(?:\.|$)/u.test(field.path)) {
+      return truthyConfigValue(field.value);
+    }
+    return /\b(allow unknown actions|unknown actions allowed|fallback action|dispatch unknown actions|open action set)\b/iu.test(text);
+  });
+}
+
+function hasAgentActionRouterJsonRepairSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => {
+    const text = agentActionRouterText(field);
+    if (/(?:^|\.)(repair_invalid_json|repairInvalidJson|json_repair|jsonRepair|coerce_json|coerceJson|fix_invalid_json|fixInvalidJson)(?:\.|$)/u.test(field.path)) {
+      return truthyConfigValue(field.value);
+    }
+    return /\b(json repair|repair invalid json|fix invalid json|coerce json|lenient json|best effort parse|best-effort parse)\b/iu.test(text);
+  });
+}
+
+function hasAgentActionRouterBatchExecutionSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => {
+    const text = agentActionRouterText(field);
+    if (/(?:^|\.)(max_actions_per_response|maxActionsPerResponse|max_actions|maxActions|batch|batch_execution|batchExecution)(?:\.|$)/u.test(field.path)) {
+      if (typeof field.value === "number") return field.value > 1;
+      if (fieldStringValues(field).some((value) => /\b(unlimited|many|multiple|batch|parallel|fanout|fan-out)\b/iu.test(value))) {
+        return true;
+      }
+    }
+    return /\b(batch execution|multiple actions|unlimited actions|parallel actions|fanout actions|fan-out actions)\b/iu.test(text);
+  });
+}
+
+function hasAgentActionRouterAutoExecuteSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => {
+    const text = agentActionRouterText(field);
+    if (/\b(manual|approval required|disabled|off|dry run|dry-run|read only|read-only)\b/iu.test(text)) return false;
+    if (/(?:^|\.)(auto_execute|autoExecute|auto_run|autoRun|execute|run|dispatch|apply_actions|applyActions)(?:\.|$)/u.test(field.path)) {
+      return truthyConfigValue(field.value);
+    }
+    return /\b(auto execute|auto-execute|execute automatically|run automatically|dispatch automatically|apply actions automatically|execute parsed actions|autonomous action)\b/iu.test(
+      text
+    );
+  });
+}
+
+function collectAgentActionRouterToolAuthorityCategories(fields: RuntimeField[]): string[] {
+  const categories = new Set<string>();
+  for (const field of fields) {
+    if (isAgentActionRouterControlField(field.path)) continue;
+    if (!isAgentActionRouterAuthorityField(field.path)) continue;
+    if (disabledConfigValue(field.value)) continue;
+    const text = agentActionRouterText(field);
+    if (!/\b(tool|tools|function|mcp|capability|action|command|browser|database|db|sql|slack|email|webhook|secret|vault|memory|shell|filesystem|file|customer|reply)\b/iu.test(text)) {
+      continue;
+    }
+    if (/\b(tool|tools|function|mcp|capability|action|command)\b/iu.test(text)) categories.add("tool_call");
+    if (/\b(database|db|sql|query|crm|support db|warehouse|record|update customer|customer record)\b/iu.test(text)) {
+      categories.add("database_write");
+    }
+    if (/\b(slack|email|sms|message|webhook|ticket|jira|zendesk|reply|respond|send|post|publish|customer reply)\b/iu.test(text)) {
+      categories.add("external_response");
+    }
+    if (/\b(browser|playwright|puppeteer|click|form|navigate|submit)\b/iu.test(text)) categories.add("browser_action");
+    if (/(?:^|[_\W])(vault|secret|secrets|secret manager|key vault|credential|api key|token)(?:[_\W]|$)/iu.test(text)) {
+      categories.add("secret_manager_access");
+    }
+    if (/(?:^|[_\W])(memory|remember|store|persist|summary|session state|conversation state)(?:[_\W]|$)/iu.test(text)) {
+      categories.add("memory_write");
+    }
+    if (/\b(shell|bash|command|exec|terminal|python|node|subprocess|code interpreter|remediation)\b/iu.test(text)) {
+      categories.add("shell_execution");
+    }
+    if (/\b(filesystem|file write|workspace|repo|repository|github|gitlab|commit|push|merge)\b/iu.test(text)) {
+      categories.add("filesystem_write");
+    }
+  }
+  return [...categories].sort((a, b) => a.localeCompare(b));
+}
+
+function isAgentActionRouterPrivileged(categories: string[]): boolean {
+  return categories.some((category) =>
+    [
+      "browser_action",
+      "database_write",
+      "external_response",
+      "filesystem_write",
+      "memory_write",
+      "secret_manager_access",
+      "shell_execution"
+    ].includes(category)
+  );
+}
+
+function hasAgentActionRouterWriteAuthoritySignal(fields: RuntimeField[], categories: string[]): boolean {
+  return categories.some((category) =>
+    ["browser_action", "database_write", "external_response", "filesystem_write", "memory_write", "shell_execution"].includes(category)
+  ) || fields.some((field) =>
+    !isAgentActionRouterControlField(field.path) &&
+    isAgentActionRouterAuthorityField(field.path) &&
+    /\b(write|update|create|delete|reply|respond|send|post|publish|comment|commit|push|merge|submit|remember|persist|execute|run)\b/iu.test(
+      agentActionRouterText(field)
+    )
+  );
+}
+
+function hasAgentActionRouterExternalAuthoritySignal(fields: RuntimeField[], categories: string[]): boolean {
+  return categories.includes("external_response") ||
+    fields.some((field) =>
+      !isAgentActionRouterControlField(field.path) &&
+      isAgentActionRouterAuthorityField(field.path) &&
+      /\b(reply|respond|send|post|publish|slack|email|sms|webhook|ticket|external response|customer reply)\b/iu.test(
+        agentActionRouterText(field)
+      ) &&
+      !disabledConfigValue(field.value)
+    );
+}
+
+function hasAgentActionRouterMemoryAuthoritySignal(fields: RuntimeField[], categories: string[]): boolean {
+  return categories.includes("memory_write") ||
+    fields.some((field) =>
+      !isAgentActionRouterControlField(field.path) &&
+      isAgentActionRouterAuthorityField(field.path) &&
+      /\b(memory|remember|persist|store|conversation state|session state|long term|long-term|summary)\b/iu.test(agentActionRouterText(field)) &&
+      !disabledConfigValue(field.value)
+    );
+}
+
+function hasAgentActionRouterSecretSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    !isAgentActionRouterControlField(field.path) &&
+    /\b(secret|token|credential|api key|password|vault|key vault|authorization|bearer)\b/iu.test(agentActionRouterText(field))
+  );
+}
+
+function hasAgentActionRouterShellSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    !isAgentActionRouterControlField(field.path) &&
+    isAgentActionRouterAuthorityField(field.path) &&
+    /\b(shell|bash|command|exec|terminal|subprocess|python|node|remediation)\b/iu.test(agentActionRouterText(field)) &&
+    !disabledConfigValue(field.value)
+  );
+}
+
+function hasAgentActionRouterSensitiveContextSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    !isAgentActionRouterControlField(field.path) &&
+    /\b(customer|client|ticket|support|internal|confidential|private|proprietary|sensitive|account|billing|payment|case|record|profile|incident|notes?)\b/iu.test(
+      agentActionRouterText(field)
+    )
+  );
+}
+
+function hasAgentActionRouterPiiContextSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    !isAgentActionRouterControlField(field.path) &&
+    /(?:^|[_\W])(pii|email|phone|address|ssn|passport|dob|date of birth|customer id|user id|account id|account number)(?:[_\W]|$)/iu.test(
+      agentActionRouterText(field)
+    )
+  );
+}
+
+function hasAgentActionRouterRedactionDisabledSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /\b(redaction|redact|mask|sanitize|tool argument|tool arguments|secret redaction|pii redaction|dlp)\b/iu.test(agentActionRouterText(field)) &&
+    disabledConfigValue(field.value)
+  );
+}
+
+function hasAgentActionRouterDryRunDisabledSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) => {
+    const text = agentActionRouterText(field);
+    if (/(?:^|\.)(dry_run|dryRun|simulation|simulate|preview)(?:\.|$)/u.test(field.path)) return disabledConfigValue(field.value);
+    return /\b(dry run disabled|dry-run disabled|simulation disabled|preview disabled)\b/iu.test(text);
+  });
+}
+
+function hasAgentActionRouterApprovalRequiredSignal(fields: RuntimeField[]): boolean {
+  return fields.some((field) =>
+    /\b(approval|required approval|human approval|manual review|confirm|confirmation|human in the loop|human-in-the-loop)\b/iu.test(
+      agentActionRouterText(field)
+    ) && truthyConfigValue(field.value)
+  );
+}
+
+function isAgentActionRouterControlField(fieldPath: string): boolean {
+  return /(?:^|\.)(schema|schema_validation|schemaValidation|validation|validate|validator|strict_schema|strictSchema|additionalProperties|allow_unknown_actions|allowUnknownActions|allow_unknown_fields|allowUnknownFields|repair_invalid_json|repairInvalidJson|json_repair|jsonRepair|max_actions_per_response|maxActionsPerResponse|approval|human_review|humanReview|dry_run|dryRun|redaction|redact|mask|sanitize|controls|security)(?:\.|$)/iu.test(
+    fieldPath
+  );
+}
+
+function isAgentActionRouterAuthorityField(fieldPath: string): boolean {
+  return /(?:^|\.)(tools?|allowed_tools|tool_calls?|actions?|commands?|capabilities?|features|permissions?|connectors?|mcp|functions?|routes?|handlers?|dispatch|executor|executors|steps?)(?:\.|$)/iu.test(
+    fieldPath
+  );
+}
+
+function isAgentActionRouterSecurityField(fieldPath: string): boolean {
+  return /enabled|active|parser|format|schema|validation|strict|unknown|repair|batch|max|auto|execute|router|dispatch|action|command|tool|mcp|function|browser|database|db|slack|email|webhook|secret|vault|credential|token|memory|shell|filesystem|input|source|customer|browser|retriev|rag|context|redaction|approval|dry|pii|sensitive|confidential/iu.test(
+    fieldPath
+  );
+}
+
+function agentActionRouterText(field: RuntimeField): string {
   return `${field.path} ${fieldValueText(field)}`.toLowerCase().replaceAll("_", " ").replaceAll("-", " ");
 }
 

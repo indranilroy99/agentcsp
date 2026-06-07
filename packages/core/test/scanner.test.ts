@@ -25,6 +25,7 @@ describe("scanner", () => {
     expect(envSurface?.metadata.env_key_names).toEqual([
       "A2A_AGENT_TOKEN",
       "A2A_FEDERATION_TOKEN",
+      "ACTION_ROUTER_TOKEN",
       "AGENT_CONTAINER_TOKEN",
       "AGENT_DEPLOY_TOKEN",
       "AGENT_EXTENSION_TOKEN",
@@ -1810,6 +1811,72 @@ describe("scanner", () => {
     expect(JSON.stringify(responseStreamConfig)).not.toContain("response_stream_account_number");
     expect(JSON.stringify(responseStreamConfig)).not.toContain("confidential_response_stream_notes");
     expect(JSON.stringify(responseStreamConfig)).not.toContain("response_stream_api_token");
+    const actionRouterConfig = surfaces.runtime_config.find((surface) => surface.path === "action-router/model-actions.yaml");
+    expect(actionRouterConfig).toBeDefined();
+    expect(actionRouterConfig).toMatchObject({
+      trust_level: "third_party",
+      data_classes: ["confidential", "credential", "pii", "secret"],
+      actions: ["call", "execute", "publish", "read", "remember", "send", "write"],
+      external_reach: true,
+      secret_exposure: true,
+      side_effect: true,
+      reversible: false,
+      untrusted_to_privileged: true
+    });
+    expect(actionRouterConfig?.metadata).toMatchObject({
+      content_redacted: true,
+      values_collected: false,
+      parsed_agent_action_router_config: true,
+      agent_action_router_enabled: true,
+      agent_action_router_model_output_input: true,
+      agent_action_router_untrusted_input: true,
+      agent_action_router_schema_validation_disabled: true,
+      agent_action_router_strict_schema: false,
+      agent_action_router_open_action_schema: true,
+      agent_action_router_unknown_actions_allowed: true,
+      agent_action_router_json_repair_enabled: true,
+      agent_action_router_batch_execution_enabled: true,
+      agent_action_router_auto_execute: true,
+      agent_action_router_privileged_tool_authority: true,
+      agent_action_router_write_authority: true,
+      agent_action_router_external_authority: true,
+      agent_action_router_memory_authority: true,
+      agent_action_router_secret_access: true,
+      agent_action_router_shell_authority: true,
+      agent_action_router_sensitive_context: true,
+      agent_action_router_pii_context: true,
+      agent_action_router_redaction_disabled: true,
+      agent_action_router_dry_run_disabled: true,
+      agent_action_router_approval_required: false
+    });
+    expect(actionRouterConfig?.metadata.agent_action_router_action_format_categories).toEqual([
+      "action_dsl",
+      "json",
+      "markdown_fenced",
+      "yaml"
+    ]);
+    expect(actionRouterConfig?.metadata.agent_action_router_tool_authority_categories).toEqual([
+      "database_write",
+      "external_response",
+      "memory_write",
+      "secret_manager_access",
+      "shell_execution",
+      "tool_call"
+    ]);
+    expect(actionRouterConfig?.metadata.env_key_names).toEqual(["ACTION_ROUTER_TOKEN"]);
+    expect(actionRouterConfig?.metadata.secret_ref_key_names).toEqual(["ACTION_ROUTER_TOKEN"]);
+    expect(JSON.stringify(actionRouterConfig)).not.toContain("${ACTION_ROUTER_TOKEN}");
+    expect(JSON.stringify(actionRouterConfig)).not.toContain("untrusted_customer_message");
+    expect(JSON.stringify(actionRouterConfig)).not.toContain("retrieved_runbook_instruction");
+    expect(JSON.stringify(actionRouterConfig)).not.toContain("browser_tool_output");
+    expect(JSON.stringify(actionRouterConfig)).not.toContain("support_db.update_customer_record");
+    expect(JSON.stringify(actionRouterConfig)).not.toContain("slack.post_customer_reply");
+    expect(JSON.stringify(actionRouterConfig)).not.toContain("shell.run_remediation");
+    expect(JSON.stringify(actionRouterConfig)).not.toContain("vault_secret_lookup.read_support_token");
+    expect(JSON.stringify(actionRouterConfig)).not.toContain("memory.write_action_summary");
+    expect(JSON.stringify(actionRouterConfig)).not.toContain("action_router_customer_email");
+    expect(JSON.stringify(actionRouterConfig)).not.toContain("action_router_account_number");
+    expect(JSON.stringify(actionRouterConfig)).not.toContain("confidential_action_router_notes");
     const agentFederationConfig = surfaces.runtime_config.find((surface) => surface.path === "agent-federation/remote-agents.yaml");
     expect(agentFederationConfig).toBeDefined();
     expect(agentFederationConfig).toMatchObject({
@@ -4871,6 +4938,65 @@ describe("scanner", () => {
     expect(stream?.metadata.env_key_names).toEqual([]);
     expect(stream?.metadata.secret_ref_key_names).toEqual([]);
     expect(JSON.stringify(stream)).not.toContain("approved_internal_status");
+  });
+
+  it("keeps scoped approval-gated action routers quiet", async () => {
+    const files = await walkProject({
+      root_path: safeFixtureRoot,
+      output_path: ".agentcsp",
+      formats: ["json", "md"],
+      include_hidden: true,
+      include_logs: false,
+      max_file_size_bytes: 1024 * 1024,
+      max_files: 5000,
+      quiet: true
+    });
+    const surfaces = await detectSurfaces(files);
+    const router = surfaces.runtime_config.find((surface) => surface.path === "action-router/scoped-actions.yaml");
+
+    expect(router).toMatchObject({
+      trust_level: "project",
+      data_classes: ["confidential"],
+      actions: ["call", "read"],
+      side_effect: false,
+      external_reach: false,
+      secret_exposure: false,
+      reversible: true,
+      untrusted_to_privileged: false
+    });
+    expect(router?.metadata).toMatchObject({
+      content_redacted: true,
+      values_collected: false,
+      parsed_agent_action_router_config: true,
+      agent_action_router_enabled: true,
+      agent_action_router_model_output_input: true,
+      agent_action_router_untrusted_input: false,
+      agent_action_router_schema_validation_disabled: false,
+      agent_action_router_strict_schema: true,
+      agent_action_router_open_action_schema: false,
+      agent_action_router_unknown_actions_allowed: false,
+      agent_action_router_json_repair_enabled: false,
+      agent_action_router_batch_execution_enabled: false,
+      agent_action_router_auto_execute: false,
+      agent_action_router_privileged_tool_authority: false,
+      agent_action_router_write_authority: false,
+      agent_action_router_external_authority: false,
+      agent_action_router_memory_authority: false,
+      agent_action_router_secret_access: false,
+      agent_action_router_shell_authority: false,
+      agent_action_router_sensitive_context: true,
+      agent_action_router_pii_context: false,
+      agent_action_router_redaction_disabled: false,
+      agent_action_router_dry_run_disabled: false,
+      agent_action_router_approval_required: true
+    });
+    expect(router?.metadata.agent_action_router_action_format_categories).toEqual(["json"]);
+    expect(router?.metadata.agent_action_router_tool_authority_categories).toEqual([]);
+    expect(router?.metadata.env_key_names).toEqual([]);
+    expect(router?.metadata.secret_ref_key_names).toEqual([]);
+    expect(JSON.stringify(router)).not.toContain("approved_internal_task");
+    expect(JSON.stringify(router)).not.toContain("approved_internal_summary");
+    expect(JSON.stringify(router)).not.toContain("readonly_docs.search");
   });
 
   it("keeps local tenant-scoped prompt caches quiet", async () => {

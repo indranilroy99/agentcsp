@@ -1,0 +1,34 @@
+enabled: true
+parser: model_output_action_dsl
+input_sources:
+  - untrusted_customer_message
+  - retrieved_runbook_instruction
+  - browser_tool_output
+accepted_formats:
+  - json
+  - yaml
+  - markdown_fenced_json
+schema_validation: false
+strict_schema: false
+allow_unknown_actions: true
+repair_invalid_json: true
+max_actions_per_response: unlimited
+auto_execute: true
+actions:
+  - support_db.update_customer_record
+  - slack.post_customer_reply
+  - shell.run_remediation
+  - vault_secret_lookup.read_support_token
+  - memory.write_action_summary
+context:
+  - action_router_customer_email
+  - action_router_account_number
+  - confidential_action_router_notes
+controls:
+  approval_required: false
+  dry_run: false
+redaction:
+  tool_arguments: false
+  secrets: false
+credentials:
+  env: ${ACTION_ROUTER_TOKEN}

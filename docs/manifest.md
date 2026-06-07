@@ -2260,6 +2260,42 @@ Agent response exposure metadata may include:
 
 Raw response endpoints, event-stream URLs, output field names, reasoning labels, tool-output labels, retrieval labels, memory labels, prompt names, data-scope labels, and token placeholders are not emitted. Endpoint categories, authentication posture, visible internal-context categories, redaction posture, approval posture, and credential key names let rules detect response-stream disclosure without copying model or tool internals into evidence.
 
+## Agent Action Router Posture
+
+Agent action-router, command-router, tool-dispatch, model-action, output-parser, and action-DSL configs are normalized into `runtime_config` objects when discovered. This models the boundary where model output or repaired structured text is converted into tool calls, shell commands, memory writes, external responses, or secret-manager access.
+
+Agent action router metadata may include:
+
+- `parsed_agent_action_router_config`
+- `agent_action_router_fields`
+- `agent_action_router_enabled`
+- `agent_action_router_model_output_input`
+- `agent_action_router_untrusted_input`
+- `agent_action_router_action_format_categories`
+- `agent_action_router_schema_validation_disabled`
+- `agent_action_router_strict_schema`
+- `agent_action_router_open_action_schema`
+- `agent_action_router_unknown_actions_allowed`
+- `agent_action_router_json_repair_enabled`
+- `agent_action_router_batch_execution_enabled`
+- `agent_action_router_auto_execute`
+- `agent_action_router_tool_authority_categories`
+- `agent_action_router_privileged_tool_authority`
+- `agent_action_router_write_authority`
+- `agent_action_router_external_authority`
+- `agent_action_router_memory_authority`
+- `agent_action_router_secret_access`
+- `agent_action_router_shell_authority`
+- `agent_action_router_sensitive_context`
+- `agent_action_router_pii_context`
+- `agent_action_router_redaction_disabled`
+- `agent_action_router_dry_run_disabled`
+- `agent_action_router_approval_required`
+- `env_key_names`
+- `secret_ref_key_names`
+
+Raw parsed action names, command strings, input-source labels, context field names, tool arguments, credential references, and token placeholders are not emitted. Format categories, schema posture, auto-execution posture, authority categories, dry-run posture, redaction posture, approval posture, and credential key names let rules detect model-output-to-privileged-action paths without publishing action payloads.
+
 ## Agent Federation Posture
 
 Outbound A2A clients, remote-agent federation configs, agent registries, peer-agent catalogs, and agent handoff routing configs are normalized into `runtime_config` objects when discovered. This models the boundary where a local agent delegates work or forwards context to third-party agents.

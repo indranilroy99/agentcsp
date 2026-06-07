@@ -1,0 +1,68 @@
+id: AGENTCSP-RUNTIME-065
+name: Model-output action router auto-executes privileged tools
+description: A model-output action router accepts untrusted model text, repairs or loosely validates action payloads, and auto-executes privileged tools without approval, redaction, or dry-run controls.
+category: agent_action_router
+severity: critical
+maps_to:
+  owasp:
+    - LLM01:2025 Prompt Injection
+    - LLM05:2025 Improper Output Handling
+    - LLM06:2025 Excessive Agency
+  mitre_atlas:
+    - AML.T0051 LLM Prompt Injection
+    - AML.T0054 LLM Plugin Compromise
+  nist_ai_rmf:
+    - MAP 5.1
+    - MEASURE 2.9
+    - MANAGE 2.4
+match:
+  object_type: runtime_config
+  where:
+    - field: metadata.parsed_agent_action_router_config
+      op: equals
+      value: true
+    - field: metadata.agent_action_router_enabled
+      op: equals
+      value: true
+    - field: metadata.agent_action_router_model_output_input
+      op: equals
+      value: true
+    - field: metadata.agent_action_router_untrusted_input
+      op: equals
+      value: true
+    - field: metadata.agent_action_router_schema_validation_disabled
+      op: equals
+      value: true
+    - field: metadata.agent_action_router_open_action_schema
+      op: equals
+      value: true
+    - field: metadata.agent_action_router_unknown_actions_allowed
+      op: equals
+      value: true
+    - field: metadata.agent_action_router_json_repair_enabled
+      op: equals
+      value: true
+    - field: metadata.agent_action_router_batch_execution_enabled
+      op: equals
+      value: true
+    - field: metadata.agent_action_router_auto_execute
+      op: equals
+      value: true
+    - field: metadata.agent_action_router_privileged_tool_authority
+      op: equals
+      value: true
+    - field: metadata.agent_action_router_redaction_disabled
+      op: equals
+      value: true
+    - field: metadata.agent_action_router_dry_run_disabled
+      op: equals
+      value: true
+    - field: metadata.agent_action_router_approval_required
+      op: equals
+      value: false
+    - field: untrusted_to_privileged
+      op: equals
+      value: true
+recommendation:
+  control: require_approval
+  text: Treat model text as untrusted input. Replace free-form model-output action parsing with a closed, strictly validated action schema, deny unknown actions, disable JSON repair for privileged calls, limit actions per response, redact tool arguments, run in dry-run by default, and require human approval before write, shell, secret, memory, or external-response actions execute.

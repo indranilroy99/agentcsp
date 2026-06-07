@@ -1247,6 +1247,16 @@ The current iteration adds:
 - rule `AGENTCSP-RUNTIME-064` for public response streams that expose model internals, tool data, RAG context, memory, and secrets to clients without redaction or approval
 - scanner, rule, fixture verifier, and redaction coverage proving raw stream endpoints, response field labels, reasoning labels, retrieval labels, memory labels, data-scope labels, and token placeholders stay redacted
 
+## Agent Action Router Auto-Execution Pass
+
+The current iteration adds:
+
+- first-class redacted metadata for action-router, tool-dispatch, command-router, model-action, output-parser, and action-DSL configs, including model-output input posture, untrusted input sources, accepted action formats, schema validation posture, unknown-action handling, JSON repair, batch execution, auto-execution, privileged authority categories, dry-run posture, redaction posture, approval posture, and credential exposure
+- vulnerable fixture coverage for a model-output action router that accepts untrusted customer, retrieval, and browser-output inputs, disables schema validation, allows unknown actions, repairs invalid JSON, permits unlimited action batches, and auto-executes database, Slack, shell, secret-manager, and memory actions without redaction, dry-run, or approval controls
+- safe fixture coverage for a scoped structured tool-call router that uses strict schema validation, denies unknown actions, disables JSON repair and auto-execution, limits actions per response, redacts arguments and secrets, runs dry-run, and requires approval
+- rule `AGENTCSP-RUNTIME-065` for model-output action routers that route untrusted model text into privileged tools without closed schemas, redaction, dry-run, or approval
+- scanner, rule, fixture verifier, and redaction coverage proving raw input-source labels, action names, context labels, safe internal labels, and token placeholders stay redacted
+
 ## Initial Build Recommendation
 
 Start with a CLI-first MVP before building the dashboard:

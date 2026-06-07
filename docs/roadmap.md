@@ -25,6 +25,7 @@
 - Add public agent chat/widget ingress posture for anonymous messages and uploads, auth/CORS/CSRF/rate-limit/abuse controls, automatic tool invocation, privileged authority categories, redaction, credentials, and approval boundaries.
 - Add agent debug/playground console posture for exposed system/developer prompts, raw context, traces, memory, tool schemas, prompt editing, impersonation, live privileged tool invocation, redaction, audit logging, credentials, and approval boundaries.
 - Add agent response-stream disclosure posture for public client-visible reasoning, prompts, tool outputs, tool arguments, retrieval chunks, memory context, secrets, redaction, credentials, and approval boundaries.
+- Add model-output action-router posture for action DSLs, command parsers, lenient schema validation, JSON repair, batch auto-execution, privileged tool authority, dry-run controls, redaction, credentials, and approval boundaries.
 - Add outbound remote-agent federation posture for dynamic A2A discovery, model-selected peers, sensitive context forwarding, credential forwarding, peer verification, allowlists, and approval gates.
 - Add remote prompt-registry posture for auto-synced system/developer prompts, unpinned revisions, verification controls, and untrusted prompt selectors.
 - Add MCP prompt and resource context inventory for model-visible server-supplied context that can steer privileged MCP authority.

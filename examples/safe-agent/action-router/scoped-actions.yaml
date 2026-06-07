@@ -1,0 +1,22 @@
+enabled: true
+parser: structured_tool_calls
+input_sources:
+  - approved_internal_task
+accepted_formats:
+  - json
+schema_validation: true
+strict_schema: true
+allow_unknown_actions: false
+repair_invalid_json: false
+max_actions_per_response: 1
+auto_execute: false
+actions:
+  - readonly_docs.search
+context:
+  - approved_internal_summary
+controls:
+  approval_required: true
+  dry_run: true
+redaction:
+  tool_arguments: true
+  secrets: true

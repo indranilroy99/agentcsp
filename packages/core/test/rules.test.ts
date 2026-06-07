@@ -88,6 +88,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-062")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-063")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-064")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-065")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-030")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-031")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-032")).toBe(true);
@@ -837,6 +838,48 @@ describe("rule engine", () => {
     expect(JSON.stringify(runtimeResponseStreamFindings[0])).not.toContain("response_stream_account_number");
     expect(JSON.stringify(runtimeResponseStreamFindings[0])).not.toContain("confidential_response_stream_notes");
     expect(JSON.stringify(runtimeResponseStreamFindings[0])).not.toContain("response_stream_api_token");
+    const runtimeActionRouterFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-RUNTIME-065");
+    expect(runtimeActionRouterFindings).toHaveLength(1);
+    expect(runtimeActionRouterFindings[0]?.matched_object.path).toBe("action-router/model-actions.yaml");
+    expect(runtimeActionRouterFindings[0]?.matched_object.metadata).toMatchObject({
+      parsed_agent_action_router_config: true,
+      agent_action_router_enabled: true,
+      agent_action_router_model_output_input: true,
+      agent_action_router_untrusted_input: true,
+      agent_action_router_schema_validation_disabled: true,
+      agent_action_router_open_action_schema: true,
+      agent_action_router_unknown_actions_allowed: true,
+      agent_action_router_json_repair_enabled: true,
+      agent_action_router_batch_execution_enabled: true,
+      agent_action_router_auto_execute: true,
+      agent_action_router_privileged_tool_authority: true,
+      agent_action_router_redaction_disabled: true,
+      agent_action_router_dry_run_disabled: true,
+      agent_action_router_approval_required: false
+    });
+    expect(runtimeActionRouterFindings[0]?.matched_object.metadata.agent_action_router_tool_authority_categories).toEqual([
+      "database_write",
+      "external_response",
+      "memory_write",
+      "secret_manager_access",
+      "shell_execution",
+      "tool_call"
+    ]);
+    expect(runtimeActionRouterFindings[0]?.severity).toBe("critical");
+    expect(runtimeActionRouterFindings[0]?.confidence).toBe("very_high");
+    expect(runtimeActionRouterFindings[0]?.recommended_control).toBe("require_approval");
+    expect(JSON.stringify(runtimeActionRouterFindings[0])).not.toContain("${ACTION_ROUTER_TOKEN}");
+    expect(JSON.stringify(runtimeActionRouterFindings[0])).not.toContain("untrusted_customer_message");
+    expect(JSON.stringify(runtimeActionRouterFindings[0])).not.toContain("retrieved_runbook_instruction");
+    expect(JSON.stringify(runtimeActionRouterFindings[0])).not.toContain("browser_tool_output");
+    expect(JSON.stringify(runtimeActionRouterFindings[0])).not.toContain("support_db.update_customer_record");
+    expect(JSON.stringify(runtimeActionRouterFindings[0])).not.toContain("slack.post_customer_reply");
+    expect(JSON.stringify(runtimeActionRouterFindings[0])).not.toContain("shell.run_remediation");
+    expect(JSON.stringify(runtimeActionRouterFindings[0])).not.toContain("vault_secret_lookup.read_support_token");
+    expect(JSON.stringify(runtimeActionRouterFindings[0])).not.toContain("memory.write_action_summary");
+    expect(JSON.stringify(runtimeActionRouterFindings[0])).not.toContain("action_router_customer_email");
+    expect(JSON.stringify(runtimeActionRouterFindings[0])).not.toContain("action_router_account_number");
+    expect(JSON.stringify(runtimeActionRouterFindings[0])).not.toContain("confidential_action_router_notes");
     const runtimeAgentFederationFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-RUNTIME-037");
     expect(runtimeAgentFederationFindings).toHaveLength(1);
     expect(runtimeAgentFederationFindings[0]?.matched_object.path).toBe("agent-federation/remote-agents.yaml");
