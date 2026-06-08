@@ -20,7 +20,7 @@
     "verify:schemas": "tsx scripts/verify-schemas.ts"
   },
   "devDependencies": {
-    "@types/node": "^24.0.0",
+    "@types/node": "^24.13.1",
     "tsx": "^4.19.4",
     "typescript": "^5.8.3",
     "vitest": "^4.1.8",
