@@ -1,0 +1,79 @@
+id: AGENTCSP-TOOL-060
+name: Source tool handler returns raw nested tool output
+description: A source-defined agent tool handler invokes a nested tool and returns the raw tool observation into model-visible tool output, allowing privileged tool results to become unsanitized agent context or user-visible content.
+category: tool_output_to_output
+severity: critical
+maps_to:
+  owasp:
+    - LLM01:2025 Prompt Injection
+    - LLM02:2025 Sensitive Information Disclosure
+    - LLM05:2025 Improper Output Handling
+    - LLM06:2025 Excessive Agency
+  mitre_atlas:
+    - AML.T0051 LLM Plugin Compromise
+    - AML.T0057 Exfiltration via Cyber Means
+    - AML.T0059 Data from Information Repositories
+  nist_ai_rmf:
+    - MAP 4.1
+    - MEASURE 2.7
+    - MANAGE 2.4
+match:
+  object_type: tool
+  where:
+    - field: metadata.parsed_tool_schema
+      op: equals
+      value: true
+    - field: metadata.source_tool_handler_redacted
+      op: equals
+      value: true
+    - field: metadata.handler_body_analyzed
+      op: equals
+      value: true
+    - field: metadata.handler_tool_invocation
+      op: equals
+      value: true
+    - field: metadata.handler_tool_output_to_output
+      op: equals
+      value: true
+    - field: metadata.handler_model_visible_output
+      op: equals
+      value: true
+    - field: metadata.nested_tool_invocation
+      op: equals
+      value: true
+    - field: metadata.tool_output_to_output
+      op: equals
+      value: true
+    - field: metadata.accepts_content_like_input
+      op: equals
+      value: true
+    - field: metadata.accepts_customer_data_input
+      op: equals
+      value: true
+    - field: metadata.authority_classes
+      op: includes
+      value: nested_tool_invocation
+    - field: metadata.authority_classes
+      op: includes
+      value: tool_output_to_output
+    - field: metadata.handler_authority_classes
+      op: includes
+      value: handler_tool_invocation
+    - field: metadata.handler_authority_classes
+      op: includes
+      value: handler_tool_output_to_output
+    - field: actions
+      op: includes
+      value: execute
+    - field: actions
+      op: includes
+      value: send
+    - field: side_effect
+      op: equals
+      value: true
+    - field: reversible
+      op: equals
+      value: false
+recommendation:
+  control: quarantine
+  text: Quarantine source-defined nested-tool output bridges until nested tool results are provenance-labeled, policy-checked, stripped of executable instructions and secrets, summarized through a trusted sanitizer, and separated from model-visible output unless independent approval allows disclosure.

@@ -2466,7 +2466,7 @@ describe("scanner", () => {
     expect(sourceNestedToolInvocationTool).toMatchObject({
       path: "mcp-source/customer-tools.ts",
       data_classes: ["confidential", "pii"],
-      actions: ["call", "execute"],
+      actions: ["call", "execute", "send"],
       side_effect: true,
       external_reach: false,
       secret_exposure: false,
@@ -2486,6 +2486,7 @@ describe("scanner", () => {
       accepts_pii_like_input: true,
       accepts_customer_data_input: true,
       memory_write: false,
+      tool_output_to_output: true,
       agent_config_write: false,
       credential_issuance: false,
       nested_tool_invocation: true,
@@ -2504,6 +2505,7 @@ describe("scanner", () => {
       handler_database_query: false,
       handler_database_write: false,
       handler_memory_write: false,
+      handler_tool_output_to_output: true,
       handler_agent_config_write: false,
       handler_credential_issuance: false,
       handler_tool_invocation: true,
@@ -2513,18 +2515,23 @@ describe("scanner", () => {
       handler_filesystem_read: false,
       handler_filesystem_write: false,
       handler_filesystem_delete: false,
-      handler_signal_count: 1,
+      handler_signal_count: 2,
       open_world_schema: false
     });
     expect(sourceNestedToolInvocationTool?.metadata.authority_classes).toEqual([
       "content_input",
       "customer_data_input",
       "handler_tool_invocation",
+      "handler_tool_output_to_output",
       "nested_tool_invocation",
       "network_access",
-      "pii_input"
+      "pii_input",
+      "tool_output_to_output"
     ]);
-    expect(sourceNestedToolInvocationTool?.metadata.handler_authority_classes).toEqual(["handler_tool_invocation"]);
+    expect(sourceNestedToolInvocationTool?.metadata.handler_authority_classes).toEqual([
+      "handler_tool_invocation",
+      "handler_tool_output_to_output"
+    ]);
     expect(sourceNestedToolInvocationTool?.metadata.handler_env_key_names).toEqual([]);
     expect(sourceNestedToolInvocationTool?.metadata.schema_properties).toEqual([
       "approval_ticket",
@@ -2538,6 +2545,7 @@ describe("scanner", () => {
       "tool_request_body"
     ]);
     expect(JSON.stringify(sourceNestedToolInvocationTool)).not.toContain("mcpClient.callTool");
+    expect(JSON.stringify(sourceNestedToolInvocationTool)).not.toContain("JSON.stringify(result)");
     expect(JSON.stringify(sourceNestedToolInvocationTool)).not.toContain("Dispatch a caller selected privileged tool");
     expect(sourceToolOutputPromptBridgeTool).toMatchObject({
       path: "mcp-source/customer-tools.ts",
@@ -5317,7 +5325,7 @@ describe("scanner", () => {
     expect(langchainNestedToolInvocationTool).toMatchObject({
       path: "framework-tools/langchain_tools.py",
       data_classes: ["confidential", "pii"],
-      actions: ["call", "execute"],
+      actions: ["call", "execute", "send"],
       side_effect: true,
       external_reach: false,
       secret_exposure: false,
@@ -5336,6 +5344,7 @@ describe("scanner", () => {
       accepts_pii_like_input: true,
       accepts_customer_data_input: true,
       memory_write: false,
+      tool_output_to_output: true,
       agent_config_write: false,
       credential_issuance: false,
       nested_tool_invocation: true,
@@ -5354,6 +5363,7 @@ describe("scanner", () => {
       handler_database_query: false,
       handler_database_write: false,
       handler_memory_write: false,
+      handler_tool_output_to_output: true,
       handler_agent_config_write: false,
       handler_credential_issuance: false,
       handler_tool_invocation: true,
@@ -5363,19 +5373,22 @@ describe("scanner", () => {
       handler_filesystem_read: false,
       handler_filesystem_write: false,
       handler_filesystem_delete: false,
-      handler_signal_count: 1,
+      handler_signal_count: 2,
       open_world_schema: false
     });
     expect(langchainNestedToolInvocationTool?.metadata.authority_classes).toEqual([
       "content_input",
       "customer_data_input",
       "handler_tool_invocation",
+      "handler_tool_output_to_output",
       "nested_tool_invocation",
       "network_access",
-      "pii_input"
+      "pii_input",
+      "tool_output_to_output"
     ]);
     expect(langchainNestedToolInvocationTool?.metadata.handler_authority_classes).toEqual([
-      "handler_tool_invocation"
+      "handler_tool_invocation",
+      "handler_tool_output_to_output"
     ]);
     expect(langchainNestedToolInvocationTool?.metadata.handler_env_key_names).toEqual([]);
     expect(langchainNestedToolInvocationTool?.metadata.schema_properties).toEqual([
@@ -5390,6 +5403,7 @@ describe("scanner", () => {
       "tool_request_body"
     ]);
     expect(JSON.stringify(langchainNestedToolInvocationTool)).not.toContain("tool_registry.call_tool");
+    expect(JSON.stringify(langchainNestedToolInvocationTool)).not.toContain("str(result)");
     expect(JSON.stringify(langchainNestedToolInvocationTool)).not.toContain("Dispatch a caller selected privileged tool");
     expect(langchainToolOutputPromptBridgeTool).toMatchObject({
       path: "framework-tools/langchain_tools.py",

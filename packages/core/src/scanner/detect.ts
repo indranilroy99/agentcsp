@@ -24170,6 +24170,7 @@ function addToolDefinitionSurface(
       tainted_database_query_argument: authority.tainted_database_query_argument,
       memory_write: authority.memory_write,
       tool_output_memory_bridge: authority.tool_output_memory_bridge,
+      tool_output_to_output: authority.tool_output_to_output,
       tainted_memory_scope: authority.tainted_memory_scope,
       agent_config_write: authority.agent_config_write,
       credential_issuance: authority.credential_issuance,
@@ -26650,6 +26651,7 @@ interface SourceToolHandlerSignals {
   handlerTaintedDatabaseQueryArgument: boolean;
   handlerMemoryWrite: boolean;
   handlerToolOutputMemoryBridge: boolean;
+  handlerToolOutputToOutput: boolean;
   handlerTaintedMemoryScope: boolean;
   handlerAgentConfigWrite: boolean;
   handlerCredentialIssuance: boolean;
@@ -27136,6 +27138,7 @@ function sourceToolHandlerSignalMetadata(signals: SourceToolHandlerSignals | und
     handler_tainted_database_query_argument: signals.handlerTaintedDatabaseQueryArgument,
     handler_memory_write: signals.handlerMemoryWrite,
     handler_tool_output_memory_bridge: signals.handlerToolOutputMemoryBridge,
+    handler_tool_output_to_output: signals.handlerToolOutputToOutput,
     handler_tainted_memory_scope: signals.handlerTaintedMemoryScope,
     handler_agent_config_write: signals.handlerAgentConfigWrite,
     handler_credential_issuance: signals.handlerCredentialIssuance,
@@ -27318,6 +27321,9 @@ function classifySourceToolHandlerSignals(
     : /\b(?:os\s*\.\s*(?:environ|getenv)|dotenv)\b/u.test(handlerSource));
   const credentialedNetworkRead = externalNetworkCall && !externalWrite && secretEnvAccess && hasHandlerNetworkCredentialForwarding(handlerSource);
   const modelVisibleOutput = hasHandlerModelVisibleOutput(handlerSource);
+  const toolOutputToOutput = modelVisibleOutput && (language === "javascript"
+    ? hasJavaScriptHandlerToolOutputToOutput(handlerSource)
+    : hasPythonHandlerToolOutputToOutput(handlerSource));
   const networkResponseToOutput = externalNetworkCall && !externalWrite && modelVisibleOutput && (language === "javascript"
     ? hasJavaScriptHandlerNetworkResponseToOutput(handlerSource)
     : hasPythonHandlerNetworkResponseToOutput(handlerSource));
@@ -27446,6 +27452,7 @@ function classifySourceToolHandlerSignals(
   if (taintedDatabaseQueryArgument) classes.add("handler_tainted_database_query_argument");
   if (memoryWrite) classes.add("handler_memory_write");
   if (toolOutputMemoryBridge) classes.add("handler_tool_output_memory_bridge");
+  if (toolOutputToOutput) classes.add("handler_tool_output_to_output");
   if (taintedMemoryScope) classes.add("handler_tainted_memory_scope");
   if (agentConfigWrite) classes.add("handler_agent_config_write");
   if (credentialIssuance) classes.add("handler_credential_issuance");
@@ -27527,6 +27534,7 @@ function classifySourceToolHandlerSignals(
     handlerTaintedDatabaseQueryArgument: taintedDatabaseQueryArgument,
     handlerMemoryWrite: memoryWrite,
     handlerToolOutputMemoryBridge: toolOutputMemoryBridge,
+    handlerToolOutputToOutput: toolOutputToOutput,
     handlerTaintedMemoryScope: taintedMemoryScope,
     handlerAgentConfigWrite: agentConfigWrite,
     handlerCredentialIssuance: credentialIssuance,
@@ -28072,7 +28080,24 @@ function hasPythonHandlerToolOutputPromptBridge(source: string): boolean {
   );
 }
 
-function extractJavaScriptToolOutputIdentifiers(source: string): string[] {
+function hasJavaScriptHandlerToolOutputToOutput(source: string): boolean {
+  const identifiers = extractJavaScriptToolOutputIdentifiers(source, { includeGenericResultNames: true });
+  return identifiers.length > 0 && returnSegments(source).some((segment) =>
+    identifiers.some((identifier) => identifierPattern(identifier).test(segment))
+  );
+}
+
+function hasPythonHandlerToolOutputToOutput(source: string): boolean {
+  const identifiers = extractPythonToolOutputIdentifiers(source, { includeGenericResultNames: true });
+  return identifiers.length > 0 && returnSegments(source).some((segment) =>
+    identifiers.some((identifier) => identifierPattern(identifier).test(segment))
+  );
+}
+
+function extractJavaScriptToolOutputIdentifiers(
+  source: string,
+  options: { includeGenericResultNames?: boolean } = {}
+): string[] {
   const identifiers = new Set<string>();
   const assignmentPatterns = [
     /\b(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*(?:await\s+)?[^\n;]{0,240}\b(?:callTool|invokeTool|executeTool|dispatchTool|runTool)\s*\(/gu,
@@ -28084,10 +28109,15 @@ function extractJavaScriptToolOutputIdentifiers(source: string): string[] {
     source,
     identifiers
   );
-  return [...identifiers].filter((identifier) => !["result", "response", "output"].includes(identifier));
+  return [...identifiers].filter((identifier) =>
+    options.includeGenericResultNames === true || !["result", "response", "output"].includes(identifier)
+  );
 }
 
-function extractPythonToolOutputIdentifiers(source: string): string[] {
+function extractPythonToolOutputIdentifiers(
+  source: string,
+  options: { includeGenericResultNames?: boolean } = {}
+): string[] {
   const identifiers = new Set<string>();
   const assignmentPatterns = [
     /\b([A-Za-z_]\w*)\s*=\s*(?:await\s+)?[^\n]{0,240}\b(?:call_tool|invoke_tool|execute_tool|dispatch_tool|run_tool)\s*\(/gu,
@@ -28099,7 +28129,9 @@ function extractPythonToolOutputIdentifiers(source: string): string[] {
     source,
     identifiers
   );
-  return [...identifiers].filter((identifier) => !["result", "response", "output"].includes(identifier));
+  return [...identifiers].filter((identifier) =>
+    options.includeGenericResultNames === true || !["result", "response", "output"].includes(identifier)
+  );
 }
 
 function collectFirstCaptureMatches(pattern: RegExp, source: string, values: Set<string>): void {
@@ -31763,6 +31795,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   tainted_database_query_argument: boolean;
   memory_write: boolean;
   tool_output_memory_bridge: boolean;
+  tool_output_to_output: boolean;
   tainted_memory_scope: boolean;
   agent_config_write: boolean;
   credential_issuance: boolean;
@@ -31897,6 +31930,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   const handlerTaintedDatabaseQueryArgument = handler?.handlerTaintedDatabaseQueryArgument === true;
   const handlerMemoryWrite = handler?.handlerMemoryWrite === true;
   const handlerToolOutputMemoryBridge = handler?.handlerToolOutputMemoryBridge === true;
+  const handlerToolOutputToOutput = handler?.handlerToolOutputToOutput === true;
   const handlerTaintedMemoryScope = handler?.handlerTaintedMemoryScope === true;
   const handlerAgentConfigWrite = handler?.handlerAgentConfigWrite === true;
   const handlerCredentialIssuance = handler?.handlerCredentialIssuance === true;
@@ -32047,6 +32081,10 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
     classes.add("tool_output_memory_bridge");
     actions.add("remember");
     actions.add("write");
+  }
+  if (handlerToolOutputToOutput) {
+    classes.add("tool_output_to_output");
+    actions.add("send");
   }
   if (handlerTaintedMemoryScope) {
     classes.add("tainted_memory_scope");
@@ -32313,6 +32351,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerNetworkResponseToOutput ||
       handlerMemoryWrite ||
       handlerToolOutputMemoryBridge ||
+      handlerToolOutputToOutput ||
       handlerTaintedMemoryScope ||
       handlerAgentConfigWrite ||
       handlerCredentialIssuance ||
@@ -32441,6 +32480,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
     tainted_database_query_argument: handlerTaintedDatabaseQueryArgument,
     memory_write: handlerMemoryWrite,
     tool_output_memory_bridge: handlerToolOutputMemoryBridge,
+    tool_output_to_output: handlerToolOutputToOutput,
     tainted_memory_scope: handlerTaintedMemoryScope,
     agent_config_write: handlerAgentConfigWrite,
     credential_issuance: handlerCredentialIssuance,
@@ -32561,6 +32601,7 @@ function authoritySignature(tool: SurfaceObject): string {
     metadata.tainted_database_query_argument === true ? "tainted_database_query_argument" : "",
     metadata.tainted_memory_scope === true ? "tainted_memory_scope" : "",
     metadata.tool_output_memory_bridge === true ? "tool_output_memory_bridge" : "",
+    metadata.tool_output_to_output === true ? "tool_output_to_output" : "",
     metadata.model_provider_call === true ? "model_provider_call" : "",
     metadata.tainted_model_selection === true ? "tainted_model_selection" : "",
     metadata.tool_output_prompt_bridge === true ? "tool_output_prompt_bridge" : "",
@@ -32645,6 +32686,7 @@ function isPrivilegedToolSurface(tool: SurfaceObject): boolean {
     tool.metadata.tainted_database_query_argument === true ||
     tool.metadata.tainted_memory_scope === true ||
     tool.metadata.tool_output_memory_bridge === true ||
+    tool.metadata.tool_output_to_output === true ||
     tool.metadata.external_service_write === true ||
     tool.metadata.model_provider_call === true ||
     tool.metadata.tainted_model_selection === true ||

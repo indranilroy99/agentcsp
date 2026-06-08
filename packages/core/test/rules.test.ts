@@ -73,6 +73,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-057")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-058")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-059")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-060")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-001")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-002")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-003")).toBe(true);
@@ -6743,6 +6744,37 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerNestedToolInvocationFindings)).not.toContain("mcpClient.callTool");
     expect(JSON.stringify(sourceHandlerNestedToolInvocationFindings)).not.toContain("tool_registry.call_tool");
     expect(JSON.stringify(sourceHandlerNestedToolInvocationFindings)).not.toContain("Dispatch a caller selected privileged tool");
+    const sourceHandlerToolOutputReturnFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-060");
+    expect(sourceHandlerToolOutputReturnFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
+      "langchain_dispatch_privileged_tool",
+      "source_dispatch_privileged_tool"
+    ]);
+    expect(sourceHandlerToolOutputReturnFindings.every((finding) => finding.severity === "critical")).toBe(true);
+    expect(sourceHandlerToolOutputReturnFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerToolOutputReturnFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
+    expect(sourceHandlerToolOutputReturnFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
+    expect(sourceHandlerToolOutputReturnFindings.every((finding) => finding.matched_object.metadata.handler_tool_invocation === true)).toBe(true);
+    expect(sourceHandlerToolOutputReturnFindings.every((finding) => finding.matched_object.metadata.handler_tool_output_to_output === true)).toBe(true);
+    expect(sourceHandlerToolOutputReturnFindings.every((finding) => finding.matched_object.metadata.handler_model_visible_output === true)).toBe(true);
+    expect(sourceHandlerToolOutputReturnFindings.every((finding) => finding.matched_object.metadata.nested_tool_invocation === true)).toBe(true);
+    expect(sourceHandlerToolOutputReturnFindings.every((finding) => finding.matched_object.metadata.tool_output_to_output === true)).toBe(true);
+    expect(sourceHandlerToolOutputReturnFindings.every((finding) => finding.matched_object.metadata.accepts_content_like_input === true)).toBe(true);
+    expect(sourceHandlerToolOutputReturnFindings.every((finding) => finding.matched_object.metadata.accepts_customer_data_input === true)).toBe(true);
+    expect(sourceHandlerToolOutputReturnFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("nested_tool_invocation"))).toBe(true);
+    expect(sourceHandlerToolOutputReturnFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("tool_output_to_output"))).toBe(true);
+    expect(sourceHandlerToolOutputReturnFindings.every((finding) => finding.matched_object.metadata.handler_authority_classes.includes("handler_tool_invocation"))).toBe(true);
+    expect(sourceHandlerToolOutputReturnFindings.every((finding) => finding.matched_object.metadata.handler_authority_classes.includes("handler_tool_output_to_output"))).toBe(true);
+    expect(sourceHandlerToolOutputReturnFindings.every((finding) => finding.matched_object.actions.includes("execute"))).toBe(true);
+    expect(sourceHandlerToolOutputReturnFindings.every((finding) => finding.matched_object.actions.includes("send"))).toBe(true);
+    expect(sourceHandlerToolOutputReturnFindings.every((finding) => finding.matched_object.external_reach === false)).toBe(true);
+    expect(sourceHandlerToolOutputReturnFindings.every((finding) => finding.matched_object.secret_exposure === false)).toBe(true);
+    expect(sourceHandlerToolOutputReturnFindings.every((finding) => finding.matched_object.side_effect === true)).toBe(true);
+    expect(sourceHandlerToolOutputReturnFindings.every((finding) => finding.matched_object.reversible === false)).toBe(true);
+    expect(JSON.stringify(sourceHandlerToolOutputReturnFindings)).not.toContain("mcpClient.callTool");
+    expect(JSON.stringify(sourceHandlerToolOutputReturnFindings)).not.toContain("tool_registry.call_tool");
+    expect(JSON.stringify(sourceHandlerToolOutputReturnFindings)).not.toContain("JSON.stringify(result)");
+    expect(JSON.stringify(sourceHandlerToolOutputReturnFindings)).not.toContain("str(result)");
+    expect(JSON.stringify(sourceHandlerToolOutputReturnFindings)).not.toContain("Dispatch a caller selected privileged tool");
     const sourceHandlerToolOutputPromptBridgeFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-058");
     expect(sourceHandlerToolOutputPromptBridgeFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_review_privileged_tool_observation",
