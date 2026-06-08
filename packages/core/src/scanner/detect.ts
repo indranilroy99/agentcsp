@@ -24117,7 +24117,11 @@ function addToolDefinitionSurface(
     side_effect: authority.side_effect,
     external_reach: authority.external_reach,
     secret_exposure: authority.secret_exposure,
-    reversible: !authority.destructive_action && !authority.external_write && !authority.database_write,
+    reversible:
+      !authority.destructive_action &&
+      !authority.external_write &&
+      !authority.database_write &&
+      !authority.dynamic_code_execution,
     reason,
     metadata: {
       tool_name: definition.name,
@@ -24135,6 +24139,7 @@ function addToolDefinitionSurface(
       accepted_data_classes: authority.accepted_data_classes,
       database_access: authority.database_access,
       database_write: authority.database_write,
+      dynamic_code_execution: authority.dynamic_code_execution,
       external_write: authority.external_write,
       destructive_action: authority.destructive_action,
       read_only_hint: definition.annotations?.readOnlyHint,
@@ -26508,6 +26513,7 @@ interface SourceToolHandlerSignals {
   handlerDatabaseQuery: boolean;
   handlerDatabaseWrite: boolean;
   handlerShellExecution: boolean;
+  handlerDynamicCodeExecution: boolean;
   handlerFilesystemWrite: boolean;
   handlerFilesystemDelete: boolean;
   handlerAuthorityClasses: string[];
@@ -26927,6 +26933,7 @@ function sourceToolHandlerSignalMetadata(signals: SourceToolHandlerSignals | und
     handler_database_query: signals.handlerDatabaseQuery,
     handler_database_write: signals.handlerDatabaseWrite,
     handler_shell_execution: signals.handlerShellExecution,
+    handler_dynamic_code_execution: signals.handlerDynamicCodeExecution,
     handler_filesystem_write: signals.handlerFilesystemWrite,
     handler_filesystem_delete: signals.handlerFilesystemDelete,
     handler_authority_classes: signals.handlerAuthorityClasses,
@@ -26966,6 +26973,9 @@ function classifySourceToolHandlerSignals(
   const shellExecution = language === "javascript"
     ? /\b(?:child_process|execFile|spawn|execSync|exec\s*\(|spawnSync|Bun\s*\.\s*spawn|Deno\s*\.\s*Command)\b/u.test(handlerSource)
     : /\b(?:subprocess\s*\.|os\s*\.\s*system|pty\s*\.|shlex\s*\.|commands\s*\.)/u.test(handlerSource);
+  const dynamicCodeExecution = language === "javascript"
+    ? /\b(?:eval\s*\(|(?:new\s+)?Function\s*\(|vm\s*\.\s*(?:runInNewContext|runInThisContext|runInContext|compileFunction|Script)\b)/u.test(handlerSource)
+    : /\b(?:eval|exec)\s*\(/u.test(handlerSource);
   const filesystemWrite = language === "javascript"
     ? /\b(?:fs|fsPromises|promises)\s*\.\s*(?:writeFile|appendFile|copyFile|rename|mkdir|cp)\b|\bwriteFile\s*\(/u.test(handlerSource)
     : /\b(?:open\s*\([^)]*["'][wa+]|Path\s*\([^)]*\)\s*\.\s*(?:write_text|write_bytes)|shutil\s*\.\s*(?:copy|copyfile|move))\b/u.test(handlerSource);
@@ -26982,6 +26992,7 @@ function classifySourceToolHandlerSignals(
   if (databaseQuery) classes.add("handler_database_query");
   if (databaseWrite) classes.add("handler_database_write");
   if (shellExecution) classes.add("handler_shell_execution");
+  if (dynamicCodeExecution) classes.add("handler_dynamic_code_execution");
   if (filesystemWrite) classes.add("handler_filesystem_write");
   if (filesystemDelete) classes.add("handler_filesystem_delete");
 
@@ -26996,6 +27007,7 @@ function classifySourceToolHandlerSignals(
     handlerDatabaseQuery: databaseQuery,
     handlerDatabaseWrite: databaseWrite,
     handlerShellExecution: shellExecution,
+    handlerDynamicCodeExecution: dynamicCodeExecution,
     handlerFilesystemWrite: filesystemWrite,
     handlerFilesystemDelete: filesystemDelete,
     handlerAuthorityClasses: [...classes].sort((a, b) => a.localeCompare(b)),
@@ -28417,6 +28429,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   accepted_data_classes: SurfaceObject["data_classes"];
   database_access: boolean;
   database_write: boolean;
+  dynamic_code_execution: boolean;
   external_write: boolean;
   destructive_action: boolean;
   open_world_authority: boolean;
@@ -28444,6 +28457,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   const handlerDatabaseQuery = handler?.handlerDatabaseQuery === true;
   const handlerDatabaseWrite = handler?.handlerDatabaseWrite === true;
   const handlerShellExecution = handler?.handlerShellExecution === true;
+  const handlerDynamicCodeExecution = handler?.handlerDynamicCodeExecution === true;
   const handlerFilesystemWrite = handler?.handlerFilesystemWrite === true;
   const handlerFilesystemDelete = handler?.handlerFilesystemDelete === true;
   const destructive = /\b(delete|remove|drop|truncate|destroy|purge|wipe)\b/i.test(text);
@@ -28457,6 +28471,10 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
     handlerShellExecution;
   if (shellExecution) {
     classes.add("shell_execution");
+    actions.add("execute");
+  }
+  if (handlerDynamicCodeExecution) {
+    classes.add("dynamic_code_execution");
     actions.add("execute");
   }
   if (/\b(browser|navigate|click|page|dom|screenshot)\b/i.test(text)) {
@@ -28542,6 +28560,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerDatabaseWrite ||
       handlerExternalWrite ||
       handlerShellExecution ||
+      handlerDynamicCodeExecution ||
       handlerFilesystemWrite ||
       handlerFilesystemDelete ||
       acceptsPath ||
@@ -28569,6 +28588,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
     accepted_data_classes: schemaDataProfile.dataClasses,
     database_access: databaseAccess,
     database_write: databaseWrite,
+    dynamic_code_execution: handlerDynamicCodeExecution,
     external_write: externalWrite,
     destructive_action: destructive || handlerFilesystemDelete,
     open_world_authority: openWorldAuthority,

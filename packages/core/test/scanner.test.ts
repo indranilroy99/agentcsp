@@ -539,6 +539,7 @@ describe("scanner", () => {
     const sourceExportTool = surfaces.tools.find((surface) => surface.name === "source_export_customer_record");
     const sourceDeleteTool = surfaces.tools.find((surface) => surface.name === "source_readonly_delete_workspace_file");
     const sourceShellTool = surfaces.tools.find((surface) => surface.name === "source_run_remediation_command");
+    const sourceDynamicCodeTool = surfaces.tools.find((surface) => surface.name === "source_evaluate_agent_expression");
     const sourceDatabaseTool = surfaces.tools.find((surface) => surface.name === "source_apply_record_change_sql");
     const sourceSecretOutputTool = surfaces.tools.find((surface) => surface.name === "source_reveal_runtime_secret");
     const sourceCredentialedNetworkTool = surfaces.tools.find((surface) => surface.name === "source_fetch_partner_status");
@@ -547,6 +548,7 @@ describe("scanner", () => {
     const langchainExportTool = surfaces.tools.find((surface) => surface.name === "langchain_export_customer_context");
     const langchainDeleteTool = surfaces.tools.find((surface) => surface.name === "langchain_readonly_delete_workspace_path");
     const langchainShellTool = surfaces.tools.find((surface) => surface.name === "langchain_run_remediation_command");
+    const langchainDynamicCodeTool = surfaces.tools.find((surface) => surface.name === "langchain_evaluate_agent_expression");
     const langchainDatabaseTool = surfaces.tools.find((surface) => surface.name === "langchain_apply_record_change_sql");
     const langchainSecretOutputTool = surfaces.tools.find((surface) => surface.name === "langchain_reveal_runtime_secret");
     const langchainCredentialedNetworkTool = surfaces.tools.find((surface) => surface.name === "langchain_fetch_partner_status");
@@ -777,6 +779,54 @@ describe("scanner", () => {
     expect(JSON.stringify(sourceShellTool)).not.toContain("execFile");
     expect(JSON.stringify(sourceShellTool)).not.toContain("node:child_process");
     expect(JSON.stringify(sourceShellTool)).not.toContain("source shell queued");
+    expect(sourceDynamicCodeTool).toMatchObject({
+      path: "mcp-source/customer-tools.ts",
+      data_classes: ["unknown"],
+      actions: ["call", "execute"],
+      side_effect: true,
+      external_reach: false,
+      secret_exposure: false,
+      reversible: false
+    });
+    expect(sourceDynamicCodeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_mcp_source_tool: true,
+      mcp_source_tool_registration: true,
+      mcp_source_tool_registration_kind: "registerTool",
+      mcp_source_tool_argument_count: 3,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      read_only_hint: false,
+      idempotent_hint: false,
+      dynamic_code_execution: true,
+      external_write: false,
+      destructive_action: false,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_external_network_call: false,
+      handler_external_write: false,
+      handler_secret_env_access: false,
+      handler_database_query: false,
+      handler_database_write: false,
+      handler_shell_execution: false,
+      handler_dynamic_code_execution: true,
+      handler_filesystem_write: false,
+      handler_filesystem_delete: false,
+      handler_signal_count: 1,
+      open_world_schema: false
+    });
+    expect(sourceDynamicCodeTool?.metadata.authority_classes).toEqual([
+      "dynamic_code_execution",
+      "handler_dynamic_code_execution"
+    ]);
+    expect(sourceDynamicCodeTool?.metadata.handler_authority_classes).toEqual(["handler_dynamic_code_execution"]);
+    expect(sourceDynamicCodeTool?.metadata.handler_env_key_names).toEqual([]);
+    expect(sourceDynamicCodeTool?.metadata.schema_properties).toEqual(["context_json", "expression"]);
+    expect(sourceDynamicCodeTool?.metadata.required_properties).toEqual(["expression"]);
+    expect(JSON.stringify(sourceDynamicCodeTool)).not.toContain("Function(");
+    expect(JSON.stringify(sourceDynamicCodeTool)).not.toContain("return (${expression})");
+    expect(JSON.stringify(sourceDynamicCodeTool)).not.toContain("source expression evaluated");
+    expect(JSON.stringify(sourceDynamicCodeTool)).not.toContain("Evaluate a model supplied JavaScript expression");
     expect(sourceDatabaseTool).toMatchObject({
       path: "mcp-source/customer-tools.ts",
       data_classes: ["confidential", "pii"],
@@ -1213,6 +1263,52 @@ describe("scanner", () => {
     expect(JSON.stringify(langchainShellTool)).not.toContain("subprocess.run");
     expect(JSON.stringify(langchainShellTool)).not.toContain("shell=True");
     expect(JSON.stringify(langchainShellTool)).not.toContain("framework shell queued");
+    expect(langchainDynamicCodeTool).toMatchObject({
+      path: "framework-tools/langchain_tools.py",
+      data_classes: ["unknown"],
+      actions: ["call", "execute"],
+      side_effect: true,
+      external_reach: false,
+      secret_exposure: false,
+      reversible: false
+    });
+    expect(langchainDynamicCodeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_agent_framework_source_tool: true,
+      agent_framework_source_tool: true,
+      agent_framework_source_tool_framework: "langchain",
+      agent_framework_source_tool_registration_kind: "python_tool_decorator",
+      agent_framework_source_tool_argument_count: 2,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      dynamic_code_execution: true,
+      external_write: false,
+      destructive_action: false,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_external_network_call: false,
+      handler_external_write: false,
+      handler_secret_env_access: false,
+      handler_database_query: false,
+      handler_database_write: false,
+      handler_shell_execution: false,
+      handler_dynamic_code_execution: true,
+      handler_filesystem_write: false,
+      handler_filesystem_delete: false,
+      handler_signal_count: 1,
+      open_world_schema: false
+    });
+    expect(langchainDynamicCodeTool?.metadata.authority_classes).toEqual([
+      "dynamic_code_execution",
+      "handler_dynamic_code_execution"
+    ]);
+    expect(langchainDynamicCodeTool?.metadata.handler_authority_classes).toEqual(["handler_dynamic_code_execution"]);
+    expect(langchainDynamicCodeTool?.metadata.handler_env_key_names).toEqual([]);
+    expect(langchainDynamicCodeTool?.metadata.schema_properties).toEqual(["context_json", "expression"]);
+    expect(langchainDynamicCodeTool?.metadata.required_properties).toEqual(["expression"]);
+    expect(JSON.stringify(langchainDynamicCodeTool)).not.toContain("eval(");
+    expect(JSON.stringify(langchainDynamicCodeTool)).not.toContain("framework expression evaluated");
+    expect(JSON.stringify(langchainDynamicCodeTool)).not.toContain("Evaluate a model supplied Python expression");
     expect(langchainDatabaseTool).toMatchObject({
       path: "framework-tools/langchain_tools.py",
       data_classes: ["confidential", "pii"],

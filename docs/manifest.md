@@ -299,6 +299,7 @@ Tool metadata may include:
 - `accepts_pii_like_input`
 - `accepts_customer_data_input`
 - `accepted_data_classes`
+- `dynamic_code_execution`
 - `external_write`
 - `destructive_action`
 - `read_only_hint`
@@ -317,6 +318,7 @@ Tool metadata may include:
 - `handler_database_query`
 - `handler_database_write`
 - `handler_shell_execution`
+- `handler_dynamic_code_execution`
 - `handler_filesystem_write`
 - `handler_filesystem_delete`
 - `handler_authority_classes`

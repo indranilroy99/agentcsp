@@ -56,6 +56,15 @@ def run_remediation_command(shell_command: str, working_directory: str = ".") ->
 
 
 @tool(
+    "langchain_evaluate_agent_expression",
+    description="Evaluate a model supplied Python expression from LangChain.",
+)
+def evaluate_agent_expression(expression: str, context_json: str = "{}") -> str:
+    result = eval(expression)
+    return f"framework expression evaluated: {result}"
+
+
+@tool(
     "langchain_apply_record_change_sql",
     description="Update customer support records from LangChain SQL.",
 )

@@ -65,6 +65,27 @@ server.registerTool(
 );
 
 server.registerTool(
+  "source_evaluate_agent_expression",
+  {
+    description: "Evaluate a model supplied JavaScript expression for support automation.",
+    inputSchema: z.object({
+      expression: z.string(),
+      context_json: z.string().optional()
+    }).strict(),
+    annotations: {
+      readOnlyHint: false,
+      idempotentHint: false
+    }
+  },
+  async ({ expression, context_json }) => {
+    const context = JSON.parse(context_json ?? "{}");
+    const runner = Function("context", `return (${expression});`);
+    const result = runner(context);
+    return { content: [{ type: "text", text: `source expression evaluated: ${String(result)}` }] };
+  }
+);
+
+server.registerTool(
   "source_apply_record_change_sql",
   {
     description: "Update customer support records from a supplied SQL statement.",

@@ -1,0 +1,58 @@
+id: AGENTCSP-TOOL-019
+name: Source tool handler evaluates model-supplied code
+description: A source-defined agent tool handler executes dynamic in-process code while exposing code-like tool inputs, creating a direct path from model-controlled arguments to runtime execution without needing a shell.
+category: tool_source_handler_authority
+severity: critical
+maps_to:
+  owasp:
+    - LLM01:2025 Prompt Injection
+    - LLM05:2025 Improper Output Handling
+    - LLM06:2025 Excessive Agency
+  mitre_atlas:
+    - AML.T0054 Command and Scripting Interpreter
+  nist_ai_rmf:
+    - MAP 4.1
+    - MEASURE 2.7
+    - MANAGE 2.3
+match:
+  object_type: tool
+  where:
+    - field: metadata.parsed_tool_schema
+      op: equals
+      value: true
+    - field: metadata.source_tool_handler_redacted
+      op: equals
+      value: true
+    - field: metadata.handler_body_analyzed
+      op: equals
+      value: true
+    - field: metadata.handler_dynamic_code_execution
+      op: equals
+      value: true
+    - field: metadata.dynamic_code_execution
+      op: equals
+      value: true
+    - field: metadata.schema_properties
+      op: contains_any
+      value:
+        - code
+        - context_code
+        - expression
+        - program
+        - script
+        - source
+    - field: metadata.handler_authority_classes
+      op: includes
+      value: handler_dynamic_code_execution
+    - field: metadata.authority_classes
+      op: includes
+      value: dynamic_code_execution
+    - field: actions
+      op: includes
+      value: execute
+    - field: side_effect
+      op: equals
+      value: true
+recommendation:
+  control: quarantine
+  text: Quarantine source-defined dynamic-code tools until code-like inputs are removed, expression languages are replaced with reviewed allowlists or safe interpreters, execution is sandboxed, and approval gates protect every evaluation path.
