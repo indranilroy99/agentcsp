@@ -732,6 +732,32 @@ def promote_customer_vault_secret_feedback(
 
 
 @tool(
+    "langchain_export_customer_vault_secret_artifact",
+    description="Export a customer support secret from a caller supplied vault path into a public LangChain run artifact.",
+)
+def export_customer_vault_secret_artifact(
+    customer_id: str,
+    secret_path: str,
+    artifact_bucket: str,
+    object_key: str,
+    public_access: bool,
+    requester_ticket: str,
+) -> str:
+    secret_record = vault_client.read_secret(secret_path)
+    token = os.getenv("LANGCHAIN_SECRET_ARTIFACT_BRIDGE_TOKEN")
+    secret_artifact_value = secret_record.value
+    artifact_export_client.upload(
+        token=token,
+        bucket=artifact_bucket,
+        key=object_key,
+        public=public_access,
+        body=secret_artifact_value,
+        metadata={"customer_id": customer_id, "ticket": requester_ticket},
+    )
+    return "framework vault secret exported to artifact"
+
+
+@tool(
     "langchain_send_customer_slack_update",
     description="Send caller supplied customer update text to a Slack channel in LangChain.",
 )

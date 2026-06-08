@@ -24204,6 +24204,7 @@ function addToolDefinitionSurface(
       tainted_training_dataset_payload: authority.tainted_training_dataset_payload,
       feedback_pipeline_write: authority.feedback_pipeline_write,
       secret_manager_feedback_bridge: authority.secret_manager_feedback_bridge,
+      secret_manager_artifact_bridge: authority.secret_manager_artifact_bridge,
       tainted_feedback_payload: authority.tainted_feedback_payload,
       feedback_auto_promotion: authority.feedback_auto_promotion,
       tainted_feedback_routing: authority.tainted_feedback_routing,
@@ -26626,6 +26627,7 @@ interface SourceToolHandlerSignals {
   handlerTaintedTrainingDatasetPayload: boolean;
   handlerFeedbackPipelineWrite: boolean;
   handlerSecretManagerFeedbackBridge: boolean;
+  handlerSecretManagerArtifactBridge: boolean;
   handlerTaintedFeedbackPayload: boolean;
   handlerFeedbackAutoPromotion: boolean;
   handlerTaintedFeedbackRouting: boolean;
@@ -27119,6 +27121,7 @@ function sourceToolHandlerSignalMetadata(signals: SourceToolHandlerSignals | und
     handler_tainted_training_dataset_payload: signals.handlerTaintedTrainingDatasetPayload,
     handler_feedback_pipeline_write: signals.handlerFeedbackPipelineWrite,
     handler_secret_manager_feedback_bridge: signals.handlerSecretManagerFeedbackBridge,
+    handler_secret_manager_artifact_bridge: signals.handlerSecretManagerArtifactBridge,
     handler_tainted_feedback_payload: signals.handlerTaintedFeedbackPayload,
     handler_feedback_auto_promotion: signals.handlerFeedbackAutoPromotion,
     handler_tainted_feedback_routing: signals.handlerTaintedFeedbackRouting,
@@ -27430,6 +27433,9 @@ function classifySourceToolHandlerSignals(
   const secretManagerFeedbackBridge = secretManagerAccess && feedbackPipelineWrite && (language === "javascript"
     ? hasJavaScriptHandlerSecretManagerFeedbackBridge(handlerSource)
     : hasPythonHandlerSecretManagerFeedbackBridge(handlerSource));
+  const secretManagerArtifactBridge = secretManagerAccess && artifactExport && (language === "javascript"
+    ? hasJavaScriptHandlerSecretManagerArtifactBridge(handlerSource)
+    : hasPythonHandlerSecretManagerArtifactBridge(handlerSource));
   const secretManagerMemoryBridge = secretManagerAccess && memoryWrite && (language === "javascript"
     ? hasJavaScriptHandlerSecretManagerMemoryBridge(handlerSource)
     : hasPythonHandlerSecretManagerMemoryBridge(handlerSource));
@@ -27459,6 +27465,7 @@ function classifySourceToolHandlerSignals(
   if (taintedTrainingDatasetPayload) classes.add("handler_tainted_training_dataset_payload");
   if (feedbackPipelineWrite) classes.add("handler_feedback_pipeline_write");
   if (secretManagerFeedbackBridge) classes.add("handler_secret_manager_feedback_bridge");
+  if (secretManagerArtifactBridge) classes.add("handler_secret_manager_artifact_bridge");
   if (taintedFeedbackPayload) classes.add("handler_tainted_feedback_payload");
   if (feedbackAutoPromotion) classes.add("handler_feedback_auto_promotion");
   if (taintedFeedbackRouting) classes.add("handler_tainted_feedback_routing");
@@ -27546,6 +27553,7 @@ function classifySourceToolHandlerSignals(
     handlerTaintedTrainingDatasetPayload: taintedTrainingDatasetPayload,
     handlerFeedbackPipelineWrite: feedbackPipelineWrite,
     handlerSecretManagerFeedbackBridge: secretManagerFeedbackBridge,
+    handlerSecretManagerArtifactBridge: secretManagerArtifactBridge,
     handlerTaintedFeedbackPayload: taintedFeedbackPayload,
     handlerFeedbackAutoPromotion: feedbackAutoPromotion,
     handlerTaintedFeedbackRouting: taintedFeedbackRouting,
@@ -27958,6 +27966,30 @@ function hasPythonHandlerSecretManagerFeedbackBridge(source: string): boolean {
     [
       /\b(?:feedback_client|feedback_pipeline|feedback_store|review_client|annotation_client|labeling_client|preference_client|rlhf_client|reward_model_client|model_improvement_client|human_feedback_client|evaluation_client|eval_set_client)\s*(?:\.\s*[A-Za-z_]\w*){0,5}\s*\.\s*(?:record|record_feedback|submit|submit_feedback|append|append_feedback|add|add_feedback|create|create_feedback|create_annotation|annotate|label|label_example|write|write_feedback|save|store|upload|export|promote|promote_to_training|promote_to_eval|promote_to_model_update|push)\s*\(([\s\S]{0,2200})\)/giu,
       /\b(?:record_feedback|submit_feedback|write_feedback_record|append_feedback_record|promote_feedback_to_training|promote_feedback_to_eval|promote_feedback_to_model_update|create_preference_record|write_rlhf_record)\s*\(([\s\S]{0,2200})\)/giu
+    ],
+    source,
+    identifiers
+  );
+}
+
+function hasJavaScriptHandlerSecretManagerArtifactBridge(source: string): boolean {
+  const identifiers = extractJavaScriptSecretManagerIdentifiers(source);
+  return identifiers.length > 0 && callExpressionReferencesAnyIdentifier(
+    [
+      /\b(?:artifactExporter|artifactExportClient|runExporter|reportExporter|outputExporter|artifactStore|artifactStorage|s3|s3Client|gcs|storage|storageClient|bucket|blobServiceClient|r2|supabase)\s*(?:\.\s*[A-Za-z_$][\w$]*){0,5}\s*\.\s*(?:upload|uploadFile|uploadFileObj|putObject|put|save|store|write|export|publish|share|createPublicLink|makePublic|setPublic|generateSignedUrl|createPresignedUrl)\s*\(([\s\S]{0,2200})\)/giu,
+      /\b(?:uploadArtifact|exportArtifact|publishArtifact|shareArtifact|writeRunArtifact|storeRunArtifact|createPublicArtifact|writeArtifactReport)\s*\(([\s\S]{0,2200})\)/giu
+    ],
+    source,
+    identifiers
+  );
+}
+
+function hasPythonHandlerSecretManagerArtifactBridge(source: string): boolean {
+  const identifiers = extractPythonSecretManagerIdentifiers(source);
+  return identifiers.length > 0 && callExpressionReferencesAnyIdentifier(
+    [
+      /\b(?:artifact_exporter|artifact_export_client|run_exporter|report_exporter|output_exporter|artifact_store|artifact_storage|s3|s3_client|gcs|storage|storage_client|bucket|blob_service_client|r2|supabase)\s*(?:\.\s*[A-Za-z_]\w*){0,5}\s*\.\s*(?:upload|upload_file|upload_fileobj|put_object|put|save|store|write|export|publish|share|create_public_link|make_public|set_public|generate_signed_url|create_presigned_url)\s*\(([\s\S]{0,2200})\)/giu,
+      /\b(?:upload_artifact|export_artifact|publish_artifact|share_artifact|write_run_artifact|store_run_artifact|create_public_artifact|write_artifact_report)\s*\(([\s\S]{0,2200})\)/giu
     ],
     source,
     identifiers
@@ -28915,7 +28947,7 @@ function hasPythonHandlerTaintedArtifactExportPayload(source: string): boolean {
 }
 
 function hasHandlerPublicArtifactDestination(source: string): boolean {
-  return /\b(?:public[_-]?read|publicRead|acl\s*[:=]\s*(["'`])public-read\1|visibility\s*[:=]\s*(["'`])public\2|access\s*[:=]\s*(["'`])public\3|publicUrl|public_url|signedUrl|signed_url|presigned|preSigned|getSignedUrl|generate_signed_url|createPresignedUrl|create_presigned_url|createPublicLink|create_public_link|makePublic|make_public|setPublic|set_public)\b/iu.test(
+  return /\b(?:public[_-]?access|publicAccess|public\s*[:=]|public[_-]?read|publicRead|acl\s*[:=]\s*(["'`])public-read\1|visibility\s*[:=]\s*(["'`])public\2|access\s*[:=]\s*(["'`])public\3|publicUrl|public_url|signedUrl|signed_url|presigned|preSigned|getSignedUrl|generate_signed_url|createPresignedUrl|create_presigned_url|createPublicLink|create_public_link|makePublic|make_public|setPublic|set_public)\b/iu.test(
     source
   );
 }
@@ -32061,6 +32093,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   tainted_training_dataset_payload: boolean;
   feedback_pipeline_write: boolean;
   secret_manager_feedback_bridge: boolean;
+  secret_manager_artifact_bridge: boolean;
   tainted_feedback_payload: boolean;
   feedback_auto_promotion: boolean;
   tainted_feedback_routing: boolean;
@@ -32137,6 +32170,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   const handlerTaintedTrainingDatasetPayload = handler?.handlerTaintedTrainingDatasetPayload === true;
   const handlerFeedbackPipelineWrite = handler?.handlerFeedbackPipelineWrite === true;
   const handlerSecretManagerFeedbackBridge = handler?.handlerSecretManagerFeedbackBridge === true;
+  const handlerSecretManagerArtifactBridge = handler?.handlerSecretManagerArtifactBridge === true;
   const handlerTaintedFeedbackPayload = handler?.handlerTaintedFeedbackPayload === true;
   const handlerFeedbackAutoPromotion = handler?.handlerFeedbackAutoPromotion === true;
   const handlerTaintedFeedbackRouting = handler?.handlerTaintedFeedbackRouting === true;
@@ -32467,6 +32501,12 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
     actions.add("send");
     actions.add("write");
   }
+  if (handlerSecretManagerArtifactBridge) {
+    classes.add("secret_manager_artifact_bridge");
+    actions.add("send");
+    actions.add("publish");
+    actions.add("write");
+  }
   if (handlerTaintedFeedbackPayload) {
     classes.add("tainted_feedback_payload");
     actions.add("send");
@@ -32660,6 +32700,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerTaintedTrainingDatasetPayload ||
       handlerFeedbackPipelineWrite ||
       handlerSecretManagerFeedbackBridge ||
+      handlerSecretManagerArtifactBridge ||
       handlerTaintedFeedbackPayload ||
       handlerFeedbackAutoPromotion ||
       handlerTaintedFeedbackRouting ||
@@ -32733,6 +32774,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerSecretManagerTrainingDatasetBridge ||
       handlerFeedbackPipelineWrite ||
       handlerSecretManagerFeedbackBridge ||
+      handlerSecretManagerArtifactBridge ||
       handlerSafetyPolicyWrite ||
       handlerAuthorizationPolicyWrite ||
       handlerArtifactExport ||
@@ -32754,6 +32796,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerSecretManagerMemoryBridge ||
       handlerSecretManagerTrainingDatasetBridge ||
       handlerSecretManagerFeedbackBridge ||
+      handlerSecretManagerArtifactBridge ||
       (handlerToolOutputExternalServiceBridge && handlerSecretEnvAccess) ||
       (handlerSafetyPolicyWrite && handlerSecretEnvAccess) ||
       (handlerAuthorizationPolicyWrite && handlerSecretEnvAccess),
@@ -32806,6 +32849,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
     tainted_training_dataset_payload: handlerTaintedTrainingDatasetPayload,
     feedback_pipeline_write: handlerFeedbackPipelineWrite,
     secret_manager_feedback_bridge: handlerSecretManagerFeedbackBridge,
+    secret_manager_artifact_bridge: handlerSecretManagerArtifactBridge,
     tainted_feedback_payload: handlerTaintedFeedbackPayload,
     feedback_auto_promotion: handlerFeedbackAutoPromotion,
     tainted_feedback_routing: handlerTaintedFeedbackRouting,
@@ -32914,6 +32958,7 @@ function authoritySignature(tool: SurfaceObject): string {
     metadata.tainted_training_dataset_payload === true ? "tainted_training_dataset_payload" : "",
     metadata.feedback_pipeline_write === true ? "feedback_pipeline_write" : "",
     metadata.secret_manager_feedback_bridge === true ? "secret_manager_feedback_bridge" : "",
+    metadata.secret_manager_artifact_bridge === true ? "secret_manager_artifact_bridge" : "",
     metadata.tainted_feedback_payload === true ? "tainted_feedback_payload" : "",
     metadata.feedback_auto_promotion === true ? "feedback_auto_promotion" : "",
     metadata.tainted_feedback_routing === true ? "tainted_feedback_routing" : "",
@@ -33006,6 +33051,7 @@ function isPrivilegedToolSurface(tool: SurfaceObject): boolean {
     tool.metadata.tainted_training_dataset_payload === true ||
     tool.metadata.feedback_pipeline_write === true ||
     tool.metadata.secret_manager_feedback_bridge === true ||
+    tool.metadata.secret_manager_artifact_bridge === true ||
     tool.metadata.tainted_feedback_payload === true ||
     tool.metadata.feedback_auto_promotion === true ||
     tool.metadata.tainted_feedback_routing === true ||

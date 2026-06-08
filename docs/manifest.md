@@ -342,6 +342,7 @@ Tool metadata may include:
 - `tainted_training_dataset_payload`
 - `feedback_pipeline_write`
 - `secret_manager_feedback_bridge`
+- `secret_manager_artifact_bridge`
 - `tainted_feedback_payload`
 - `feedback_auto_promotion`
 - `tainted_feedback_routing`
@@ -410,6 +411,7 @@ Tool metadata may include:
 - `handler_tainted_training_dataset_payload`
 - `handler_feedback_pipeline_write`
 - `handler_secret_manager_feedback_bridge`
+- `handler_secret_manager_artifact_bridge`
 - `handler_tainted_feedback_payload`
 - `handler_feedback_auto_promotion`
 - `handler_tainted_feedback_routing`
@@ -1899,6 +1901,8 @@ Source-defined tool handlers can also emit redacted secret-manager memory bridge
 Source-defined tool handlers can also emit redacted secret-manager training-dataset bridge authority through `secret_manager_training_dataset_bridge`, `secret_manager_access`, `tainted_secret_manager_path`, `training_dataset_export`, and the corresponding `handler_*` fields when parsed MCP SDK or agent-framework tools read caller-selected vault or secret-manager paths and export the returned secret material into AI training, fine-tuning, eval, or model-improvement datasets using runtime credentials. Handler bodies, vault calls, secret paths, secret values, dataset calls, dataset IDs, training records, and return strings remain redacted.
 
 Source-defined tool handlers can also emit redacted secret-manager feedback bridge authority through `secret_manager_feedback_bridge`, `secret_manager_access`, `tainted_secret_manager_path`, `feedback_pipeline_write`, `feedback_auto_promotion`, `tainted_feedback_routing`, and the corresponding `handler_*` fields when parsed MCP SDK or agent-framework tools read caller-selected vault or secret-manager paths and record the returned secret material into feedback, RLHF, eval, reward-model, or model-improvement promotion using runtime credentials. Handler bodies, vault calls, secret paths, secret values, feedback pipeline calls, dataset IDs, eval-set IDs, promotion targets, records, and return strings remain redacted.
+
+Source-defined tool handlers can also emit redacted secret-manager artifact bridge authority through `secret_manager_artifact_bridge`, `secret_manager_access`, `tainted_secret_manager_path`, `artifact_export`, `public_artifact_destination`, and the corresponding `handler_*` fields when parsed MCP SDK or agent-framework tools read caller-selected vault or secret-manager paths and export the returned secret material into public or shareable artifact/output storage using runtime credentials. Handler bodies, vault calls, secret paths, secret values, artifact storage calls, bucket names, object keys, public URLs, artifact contents, and return strings remain redacted.
 
 Source-defined tool handlers can also emit redacted RAG retrieval authority through `rag_retrieval`, `tainted_rag_retrieval_query`, `rag_context_to_output`, and the corresponding `handler_*` fields when parsed MCP SDK or agent-framework tools run caller-selected retrieval and return raw chunks into model-visible output using runtime credentials. Handler bodies, retriever calls, query text, namespaces, filters, chunk text, document IDs, and returned retrieved context remain redacted.
 
