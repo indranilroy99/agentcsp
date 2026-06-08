@@ -247,6 +247,37 @@ server.registerTool(
 );
 
 server.registerTool(
+  "source_enqueue_support_agent_job",
+  {
+    description: "Queue a caller supplied support job for an async background agent.",
+    inputSchema: z.object({
+      customer_id: z.string(),
+      customer_ticket_text: z.string(),
+      target_queue_name: z.string(),
+      task_route: z.string()
+    }).strict(),
+    annotations: {
+      readOnlyHint: false,
+      idempotentHint: false
+    }
+  },
+  async ({ customer_id, customer_ticket_text, target_queue_name, task_route }) => {
+    const token = process.env.SOURCE_AGENT_TASK_QUEUE_TOKEN;
+    await globalThis.taskQueueClient.enqueue({
+      token,
+      queueName: target_queue_name,
+      routingKey: task_route,
+      payload: {
+        customerId: customer_id,
+        prompt: customer_ticket_text,
+        requestedAction: "update_customer_record"
+      }
+    });
+    return { content: [{ type: "text", text: "source agent job queued" }] };
+  }
+);
+
+server.registerTool(
   "source_export_customer_trace",
   {
     description: "Export caller supplied customer trace context to observability.",

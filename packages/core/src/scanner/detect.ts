@@ -24136,6 +24136,7 @@ function addToolDefinitionSurface(
       !authority.training_dataset_export &&
       !authority.artifact_export &&
       !authority.rag_context_to_output &&
+      !authority.task_queue_enqueue &&
       !authority.approval_auto_execution &&
       !authority.visual_context_capture &&
       !authority.tainted_network_destination &&
@@ -24195,6 +24196,9 @@ function addToolDefinitionSurface(
       rag_retrieval: authority.rag_retrieval,
       tainted_rag_retrieval_query: authority.tainted_rag_retrieval_query,
       rag_context_to_output: authority.rag_context_to_output,
+      task_queue_enqueue: authority.task_queue_enqueue,
+      tainted_task_payload: authority.tainted_task_payload,
+      tainted_task_routing: authority.tainted_task_routing,
       model_approval_gate: authority.model_approval_gate,
       tainted_approval_context: authority.tainted_approval_context,
       approval_auto_execution: authority.approval_auto_execution,
@@ -26596,6 +26600,9 @@ interface SourceToolHandlerSignals {
   handlerRagRetrieval: boolean;
   handlerTaintedRagRetrievalQuery: boolean;
   handlerRagContextToOutput: boolean;
+  handlerTaskQueueEnqueue: boolean;
+  handlerTaintedTaskPayload: boolean;
+  handlerTaintedTaskRouting: boolean;
   handlerModelApprovalGate: boolean;
   handlerTaintedApprovalContext: boolean;
   handlerApprovalAutoExecution: boolean;
@@ -27063,6 +27070,9 @@ function sourceToolHandlerSignalMetadata(signals: SourceToolHandlerSignals | und
     handler_rag_retrieval: signals.handlerRagRetrieval,
     handler_tainted_rag_retrieval_query: signals.handlerTaintedRagRetrievalQuery,
     handler_rag_context_to_output: signals.handlerRagContextToOutput,
+    handler_task_queue_enqueue: signals.handlerTaskQueueEnqueue,
+    handler_tainted_task_payload: signals.handlerTaintedTaskPayload,
+    handler_tainted_task_routing: signals.handlerTaintedTaskRouting,
     handler_model_approval_gate: signals.handlerModelApprovalGate,
     handler_tainted_approval_context: signals.handlerTaintedApprovalContext,
     handler_approval_auto_execution: signals.handlerApprovalAutoExecution,
@@ -27177,6 +27187,15 @@ function classifySourceToolHandlerSignals(
     ? hasJavaScriptHandlerTaintedRagRetrievalQuery(handlerSource)
     : hasPythonHandlerTaintedRagRetrievalQuery(handlerSource));
   const ragContextToOutput = ragRetrieval && hasHandlerRagContextToOutput(handlerSource);
+  const taskQueueEnqueue = language === "javascript"
+    ? hasJavaScriptHandlerTaskQueueEnqueue(handlerSource)
+    : hasPythonHandlerTaskQueueEnqueue(handlerSource);
+  const taintedTaskPayload = taskQueueEnqueue && (language === "javascript"
+    ? hasJavaScriptHandlerTaintedTaskPayload(handlerSource)
+    : hasPythonHandlerTaintedTaskPayload(handlerSource));
+  const taintedTaskRouting = taskQueueEnqueue && (language === "javascript"
+    ? hasJavaScriptHandlerTaintedTaskRouting(handlerSource)
+    : hasPythonHandlerTaintedTaskRouting(handlerSource));
   const modelApprovalGate = language === "javascript"
     ? hasJavaScriptHandlerModelApprovalGate(handlerSource)
     : hasPythonHandlerModelApprovalGate(handlerSource);
@@ -27304,6 +27323,9 @@ function classifySourceToolHandlerSignals(
   if (ragRetrieval) classes.add("handler_rag_retrieval");
   if (taintedRagRetrievalQuery) classes.add("handler_tainted_rag_retrieval_query");
   if (ragContextToOutput) classes.add("handler_rag_context_to_output");
+  if (taskQueueEnqueue) classes.add("handler_task_queue_enqueue");
+  if (taintedTaskPayload) classes.add("handler_tainted_task_payload");
+  if (taintedTaskRouting) classes.add("handler_tainted_task_routing");
   if (modelApprovalGate) classes.add("handler_model_approval_gate");
   if (taintedApprovalContext) classes.add("handler_tainted_approval_context");
   if (approvalAutoExecution) classes.add("handler_approval_auto_execution");
@@ -27365,6 +27387,9 @@ function classifySourceToolHandlerSignals(
     handlerRagRetrieval: ragRetrieval,
     handlerTaintedRagRetrievalQuery: taintedRagRetrievalQuery,
     handlerRagContextToOutput: ragContextToOutput,
+    handlerTaskQueueEnqueue: taskQueueEnqueue,
+    handlerTaintedTaskPayload: taintedTaskPayload,
+    handlerTaintedTaskRouting: taintedTaskRouting,
     handlerModelApprovalGate: modelApprovalGate,
     handlerTaintedApprovalContext: taintedApprovalContext,
     handlerApprovalAutoExecution: approvalAutoExecution,
@@ -28095,6 +28120,55 @@ function hasHandlerRagContextToOutput(source: string): boolean {
   );
 }
 
+function hasJavaScriptHandlerTaskQueueEnqueue(source: string): boolean {
+  return /\b(?:taskQueue|taskQueueClient|queueClient|jobQueue|backgroundQueue|workerQueue|agentQueue|sqs|sqsClient|pubsub|pubsubClient|eventBus|eventBridge|scheduler|jobClient|kafkaProducer|redisQueue|bullQueue|temporalClient)\b/iu.test(
+    source
+  ) && [
+    /\b(?:taskQueue|taskQueueClient|queueClient|jobQueue|backgroundQueue|workerQueue|agentQueue|sqs|sqsClient|pubsub|pubsubClient|eventBus|eventBridge|scheduler|jobClient|kafkaProducer|redisQueue|bullQueue|temporalClient)\s*(?:\.\s*[A-Za-z_$][\w$]*){0,5}\s*\.\s*(?:enqueue|enqueueTask|send|sendMessage|sendMessageBatch|publish|publishMessage|emit|putEvents|putEvent|schedule|scheduleTask|dispatch|dispatchJob|createJob|createTask|add|addJob|push|produce|startWorkflow|signalWithStart)\s*\(/iu,
+    /\bnew\s+(?:SendMessageCommand|PutEventsCommand|PublishCommand)\s*\(/u,
+    /\b(?:enqueueAgentTask|enqueueTask|dispatchAgentJob|publishAgentJob|scheduleAgentTask|sendAgentJob)\s*\(/iu
+  ].some((pattern) => pattern.test(source));
+}
+
+function hasPythonHandlerTaskQueueEnqueue(source: string): boolean {
+  return /\b(?:task_queue|task_queue_client|queue_client|job_queue|background_queue|worker_queue|agent_queue|sqs|sqs_client|pubsub|pubsub_client|event_bus|eventbridge|scheduler|job_client|kafka_producer|redis_queue|bull_queue|temporal_client)\b/iu.test(
+    source
+  ) && [
+    /\b(?:task_queue|task_queue_client|queue_client|job_queue|background_queue|worker_queue|agent_queue|sqs|sqs_client|pubsub|pubsub_client|event_bus|eventbridge|scheduler|job_client|kafka_producer|redis_queue|bull_queue|temporal_client)\s*(?:\.\s*[A-Za-z_]\w*){0,5}\s*\.\s*(?:enqueue|enqueue_task|send|send_message|send_messages|publish|publish_message|emit|put_events|put_event|schedule|schedule_task|dispatch|dispatch_job|create_job|create_task|add|add_job|push|produce|start_workflow|signal_with_start)\s*\(/iu,
+    /\b(?:enqueue_agent_task|enqueue_task|dispatch_agent_job|publish_agent_job|schedule_agent_task|send_agent_job)\s*\(/iu
+  ].some((pattern) => pattern.test(source));
+}
+
+function hasJavaScriptHandlerTaintedTaskPayload(source: string): boolean {
+  return [
+    /\b(?:taskQueue|taskQueueClient|queueClient|jobQueue|backgroundQueue|workerQueue|agentQueue|sqs|sqsClient|pubsub|pubsubClient|eventBus|eventBridge|scheduler|jobClient|kafkaProducer|redisQueue|bullQueue|temporalClient)\s*(?:\.\s*[A-Za-z_$][\w$]*){0,5}\s*\.\s*(?:enqueue|enqueueTask|send|sendMessage|sendMessageBatch|publish|publishMessage|emit|putEvents|putEvent|schedule|scheduleTask|dispatch|dispatchJob|createJob|createTask|add|addJob|push|produce|startWorkflow|signalWithStart)\s*\(([\s\S]{0,1400})\)/giu,
+    /\bnew\s+(?:SendMessageCommand|PutEventsCommand|PublishCommand)\s*\(([\s\S]{0,1400})\)/giu,
+    /\b(?:enqueueAgentTask|enqueueTask|dispatchAgentJob|publishAgentJob|scheduleAgentTask|sendAgentJob)\s*\(([\s\S]{0,1400})\)/giu
+  ].some((pattern) => expressionMatchesTaintedTaskPayload(pattern, source));
+}
+
+function hasPythonHandlerTaintedTaskPayload(source: string): boolean {
+  return [
+    /\b(?:task_queue|task_queue_client|queue_client|job_queue|background_queue|worker_queue|agent_queue|sqs|sqs_client|pubsub|pubsub_client|event_bus|eventbridge|scheduler|job_client|kafka_producer|redis_queue|bull_queue|temporal_client)\s*(?:\.\s*[A-Za-z_]\w*){0,5}\s*\.\s*(?:enqueue|enqueue_task|send|send_message|send_messages|publish|publish_message|emit|put_events|put_event|schedule|schedule_task|dispatch|dispatch_job|create_job|create_task|add|add_job|push|produce|start_workflow|signal_with_start)\s*\(([\s\S]{0,1400})\)/giu,
+    /\b(?:enqueue_agent_task|enqueue_task|dispatch_agent_job|publish_agent_job|schedule_agent_task|send_agent_job)\s*\(([\s\S]{0,1400})\)/giu
+  ].some((pattern) => expressionMatchesTaintedTaskPayload(pattern, source));
+}
+
+function hasJavaScriptHandlerTaintedTaskRouting(source: string): boolean {
+  return [
+    /\b(?:taskQueue|taskQueueClient|queueClient|jobQueue|backgroundQueue|workerQueue|agentQueue|sqs|sqsClient|pubsub|pubsubClient|eventBus|eventBridge|scheduler|jobClient|kafkaProducer|redisQueue|bullQueue|temporalClient)\s*(?:\.\s*[A-Za-z_$][\w$]*){0,5}\s*\.\s*(?:enqueue|enqueueTask|send|sendMessage|sendMessageBatch|publish|publishMessage|emit|putEvents|putEvent|schedule|scheduleTask|dispatch|dispatchJob|createJob|createTask|add|addJob|push|produce|startWorkflow|signalWithStart)\s*\(([\s\S]{0,1400})\)/giu,
+    /\bnew\s+(?:SendMessageCommand|PutEventsCommand|PublishCommand)\s*\(([\s\S]{0,1400})\)/giu,
+    /\b(?:enqueueAgentTask|enqueueTask|dispatchAgentJob|publishAgentJob|scheduleAgentTask|sendAgentJob)\s*\(([\s\S]{0,1400})\)/giu
+  ].some((pattern) => expressionMatchesTaintedTaskRouting(pattern, source));
+}
+
+function hasPythonHandlerTaintedTaskRouting(source: string): boolean {
+  return [
+    /\b(?:task_queue|task_queue_client|queue_client|job_queue|background_queue|worker_queue|agent_queue|sqs|sqs_client|pubsub|pubsub_client|event_bus|eventbridge|scheduler|job_client|kafka_producer|redis_queue|bull_queue|temporal_client)\s*(?:\.\s*[A-Za-z_]\w*){0,5}\s*\.\s*(?:enqueue|enqueue_task|send|send_message|send_messages|publish|publish_message|emit|put_events|put_event|schedule|schedule_task|dispatch|dispatch_job|create_job|create_task|add|add_job|push|produce|start_workflow|signal_with_start)\s*\(([\s\S]{0,1400})\)/giu,
+    /\b(?:enqueue_agent_task|enqueue_task|dispatch_agent_job|publish_agent_job|schedule_agent_task|send_agent_job)\s*\(([\s\S]{0,1400})\)/giu
+  ].some((pattern) => expressionMatchesTaintedTaskRouting(pattern, source));
+}
+
 function hasJavaScriptHandlerModelApprovalGate(source: string): boolean {
   return [
     /\b(?:approvalModelClient|approvalClient|modelApprovalClient|policyModelClient|riskReviewClient|guardrailModelClient|llmApprovalClient)\s*(?:\.\s*[A-Za-z_$][\w$]*){0,4}\s*\.\s*(?:evaluate|evaluateApproval|approve|approveAction|decide|review|classify|authorize|assess)\s*\(/iu,
@@ -28389,6 +28463,24 @@ function expressionMatchesTaintedRagRetrievalQuery(pattern: RegExp, source: stri
   let match: RegExpExecArray | null;
   while ((match = pattern.exec(source)) !== null) {
     if (expressionReferencesTaintedRagRetrievalQuery(match[1] ?? "", source)) return true;
+    if (match[0].length === 0) pattern.lastIndex += 1;
+  }
+  return false;
+}
+
+function expressionMatchesTaintedTaskPayload(pattern: RegExp, source: string): boolean {
+  let match: RegExpExecArray | null;
+  while ((match = pattern.exec(source)) !== null) {
+    if (expressionReferencesTaintedTaskPayload(match[1] ?? "", source)) return true;
+    if (match[0].length === 0) pattern.lastIndex += 1;
+  }
+  return false;
+}
+
+function expressionMatchesTaintedTaskRouting(pattern: RegExp, source: string): boolean {
+  let match: RegExpExecArray | null;
+  while ((match = pattern.exec(source)) !== null) {
+    if (expressionReferencesTaintedTaskRouting(match[1] ?? "", source)) return true;
     if (match[0].length === 0) pattern.lastIndex += 1;
   }
   return false;
@@ -29267,6 +29359,113 @@ function expressionReferencesTaintedRagRetrievalQuery(expression: string, source
 }
 
 function identifierAssignedFromTaintedRagRetrievalQuery(identifier: string, source: string, taintedName: RegExp): boolean {
+  const escaped = escapeRegExp(identifier);
+  const patterns = [
+    new RegExp(`\\b(?:const|let|var)\\s+${escaped}\\s*=\\s*([^;\\n]+)`, "gu"),
+    new RegExp(`\\b${escaped}\\s*=\\s*([^\\n]+)`, "gu")
+  ];
+  return patterns.some((pattern) => expressionMatchesPattern(pattern, source, taintedName));
+}
+
+function expressionReferencesTaintedTaskPayload(expression: string, source: string): boolean {
+  const templateInterpolation = /\$\{[^}]*\b(?:customerTicketText|customer_ticket_text|customerMessage|customer_message|customerEmail|customer_email|customerId|customer_id|accountId|account_id|toolOutput|tool_output|retrievalContext|retrieval_context|ragContext|rag_context|memoryContext|memory_context|jobPayload|job_payload|taskPayload|task_payload|payload|body|message|prompt|content|text|ticket|customer|account|attachment|invoice)\b/u.test(
+    expression
+  );
+  if (templateInterpolation) return true;
+  const withoutQuotedStrings = expression.replace(/(["'`])(?:\\.|(?!\1)[\s\S])*\1/gu, " ");
+  const stronglyTaintedName = /\b(?:customerTicketText|customer_ticket_text|customerMessage|customer_message|customerEmail|customer_email|customerId|customer_id|accountId|account_id|toolOutput|tool_output|retrievalContext|retrieval_context|ragContext|rag_context|memoryContext|memory_context|jobPayload|job_payload|taskPayload|task_payload)\b/u;
+  const taintedName = /\b(?:customerTicketText|customer_ticket_text|customerMessage|customer_message|customerEmail|customer_email|customerId|customer_id|accountId|account_id|toolOutput|tool_output|retrievalContext|retrieval_context|ragContext|rag_context|memoryContext|memory_context|jobPayload|job_payload|taskPayload|task_payload|payload|body|message|prompt|content|text|ticket|customer|account|attachment|invoice|note|summary|email)\b/u;
+  if (stronglyTaintedName.test(withoutQuotedStrings)) return true;
+
+  const payloadAssignment = /\b(?:payload|body|message|messageBody|message_body|input|content|text|prompt|customer|customer_id|customerId|account|account_id|accountId|ticket|ticket_text|ticketText|tool_output|toolOutput|retrieval_context|retrievalContext|metadata|attributes|args|arguments)\s*(?::|=)\s*([^,\n}\)]+)/giu;
+  if (expressionMatchesPattern(payloadAssignment, withoutQuotedStrings, taintedName)) return true;
+
+  const valueOnlyExpression = withoutQuotedStrings.replace(
+    /\b(?:payload|body|message|messageBody|message_body|input|content|text|prompt|customer|customer_id|customerId|account|account_id|accountId|ticket|ticket_text|ticketText|tool_output|toolOutput|retrieval_context|retrievalContext|metadata|attributes|args|arguments)\s*(?::|=)/giu,
+    " "
+  );
+  const identifiers = uniqueStrings(
+    [...valueOnlyExpression.matchAll(/\b[A-Za-z_$][\w$]*\b/gu)]
+      .map((match) => match[0])
+      .filter((identifier) => ![
+        "taskQueue",
+        "task_queue",
+        "taskQueueClient",
+        "task_queue_client",
+        "queueClient",
+        "queue_client",
+        "jobQueue",
+        "job_queue",
+        "backgroundQueue",
+        "background_queue",
+        "agentQueue",
+        "agent_queue",
+        "token",
+        "apiKey",
+        "api_key",
+        "metadata",
+        "attributes",
+        "delay",
+        "ttl",
+        "timeout"
+      ].includes(identifier))
+  );
+  return identifiers.some((identifier) => identifierAssignedFromTaintedTaskPayload(identifier, source, taintedName));
+}
+
+function identifierAssignedFromTaintedTaskPayload(identifier: string, source: string, taintedName: RegExp): boolean {
+  const escaped = escapeRegExp(identifier);
+  const patterns = [
+    new RegExp(`\\b(?:const|let|var)\\s+${escaped}\\s*=\\s*([^;\\n]+)`, "gu"),
+    new RegExp(`\\b${escaped}\\s*=\\s*([^\\n]+)`, "gu")
+  ];
+  return patterns.some((pattern) => expressionMatchesPattern(pattern, source, taintedName));
+}
+
+function expressionReferencesTaintedTaskRouting(expression: string, source: string): boolean {
+  const templateInterpolation = /\$\{[^}]*\b(?:targetQueueName|target_queue_name|queueName|queue_name|queueUrl|queue_url|topicName|topic_name|routingKey|routing_key|workerName|worker_name|agentName|agent_name|taskRoute|task_route|tenantId|tenant_id|customerId|customer_id|accountId|account_id|destination|target|queue|topic|route|tenant)\b/u.test(
+    expression
+  );
+  if (templateInterpolation) return true;
+  const withoutQuotedStrings = expression.replace(/(["'`])(?:\\.|(?!\1)[\s\S])*\1/gu, " ");
+  const stronglyTaintedName = /\b(?:targetQueueName|target_queue_name|queueName|queue_name|queueUrl|queue_url|topicName|topic_name|routingKey|routing_key|workerName|worker_name|agentName|agent_name|taskRoute|task_route|tenantId|tenant_id|customerId|customer_id|accountId|account_id)\b/u;
+  if (stronglyTaintedName.test(withoutQuotedStrings)) return true;
+
+  const routingAssignment = /\b(?:queue|queueName|queue_name|queueUrl|queue_url|topic|topicName|topic_name|routingKey|routing_key|route|taskRoute|task_route|worker|workerName|worker_name|agent|agentName|agent_name|tenant|tenantId|tenant_id|destination|target)\s*(?::|=)\s*([^,\n}\)]+)/giu;
+  if (expressionMatchesPattern(routingAssignment, withoutQuotedStrings, stronglyTaintedName)) return true;
+
+  const valueOnlyExpression = withoutQuotedStrings.replace(
+    /\b(?:queue|queueName|queue_name|queueUrl|queue_url|topic|topicName|topic_name|routingKey|routing_key|route|taskRoute|task_route|worker|workerName|worker_name|agent|agentName|agent_name|tenant|tenantId|tenant_id|destination|target)\s*(?::|=)/giu,
+    " "
+  );
+  const identifiers = uniqueStrings(
+    [...valueOnlyExpression.matchAll(/\b[A-Za-z_$][\w$]*\b/gu)]
+      .map((match) => match[0])
+      .filter((identifier) => ![
+        "taskQueue",
+        "task_queue",
+        "taskQueueClient",
+        "task_queue_client",
+        "queueClient",
+        "queue_client",
+        "jobQueue",
+        "job_queue",
+        "backgroundQueue",
+        "background_queue",
+        "agentQueue",
+        "agent_queue",
+        "payload",
+        "body",
+        "message",
+        "token",
+        "apiKey",
+        "api_key"
+      ].includes(identifier))
+  );
+  return identifiers.some((identifier) => identifierAssignedFromTaintedTaskRouting(identifier, source, stronglyTaintedName));
+}
+
+function identifierAssignedFromTaintedTaskRouting(identifier: string, source: string, taintedName: RegExp): boolean {
   const escaped = escapeRegExp(identifier);
   const patterns = [
     new RegExp(`\\b(?:const|let|var)\\s+${escaped}\\s*=\\s*([^;\\n]+)`, "gu"),
@@ -30723,6 +30922,9 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   rag_retrieval: boolean;
   tainted_rag_retrieval_query: boolean;
   rag_context_to_output: boolean;
+  task_queue_enqueue: boolean;
+  tainted_task_payload: boolean;
+  tainted_task_routing: boolean;
   model_approval_gate: boolean;
   tainted_approval_context: boolean;
   approval_auto_execution: boolean;
@@ -30779,6 +30981,9 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   const handlerRagRetrieval = handler?.handlerRagRetrieval === true;
   const handlerTaintedRagRetrievalQuery = handler?.handlerTaintedRagRetrievalQuery === true;
   const handlerRagContextToOutput = handler?.handlerRagContextToOutput === true;
+  const handlerTaskQueueEnqueue = handler?.handlerTaskQueueEnqueue === true;
+  const handlerTaintedTaskPayload = handler?.handlerTaintedTaskPayload === true;
+  const handlerTaintedTaskRouting = handler?.handlerTaintedTaskRouting === true;
   const handlerModelApprovalGate = handler?.handlerModelApprovalGate === true;
   const handlerTaintedApprovalContext = handler?.handlerTaintedApprovalContext === true;
   const handlerApprovalAutoExecution = handler?.handlerApprovalAutoExecution === true;
@@ -31052,6 +31257,19 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
     classes.add("rag_context_to_output");
     actions.add("send");
   }
+  if (handlerTaskQueueEnqueue) {
+    classes.add("task_queue_enqueue");
+    actions.add("send");
+    actions.add("write");
+  }
+  if (handlerTaintedTaskPayload) {
+    classes.add("tainted_task_payload");
+    actions.add("send");
+  }
+  if (handlerTaintedTaskRouting) {
+    classes.add("tainted_task_routing");
+    actions.add("send");
+  }
   if (handlerModelApprovalGate) {
     classes.add("model_approval_gate");
     actions.add("send");
@@ -31145,6 +31363,9 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerRagRetrieval ||
       handlerTaintedRagRetrievalQuery ||
       handlerRagContextToOutput ||
+      handlerTaskQueueEnqueue ||
+      handlerTaintedTaskPayload ||
+      handlerTaintedTaskRouting ||
       handlerModelApprovalGate ||
       handlerTaintedApprovalContext ||
       handlerApprovalAutoExecution ||
@@ -31192,6 +31413,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerTrainingDatasetExport ||
       handlerArtifactExport ||
       handlerRagRetrieval ||
+      handlerTaskQueueEnqueue ||
       handlerModelApprovalGate ||
       (handlerPromptCacheWrite && handlerSecretEnvAccess),
     secret_exposure: acceptsSecret || handlerSecretEnvAccess || localFileDisclosure || handlerCredentialIssuance || handlerAgentDelegation || handlerSecretManagerAccess,
@@ -31240,6 +31462,9 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
     rag_retrieval: handlerRagRetrieval,
     tainted_rag_retrieval_query: handlerTaintedRagRetrievalQuery,
     rag_context_to_output: handlerRagContextToOutput,
+    task_queue_enqueue: handlerTaskQueueEnqueue,
+    tainted_task_payload: handlerTaintedTaskPayload,
+    tainted_task_routing: handlerTaintedTaskRouting,
     model_approval_gate: handlerModelApprovalGate,
     tainted_approval_context: handlerTaintedApprovalContext,
     approval_auto_execution: handlerApprovalAutoExecution,
@@ -31325,6 +31550,9 @@ function authoritySignature(tool: SurfaceObject): string {
     metadata.rag_retrieval === true ? "rag_retrieval" : "",
     metadata.tainted_rag_retrieval_query === true ? "tainted_rag_retrieval_query" : "",
     metadata.rag_context_to_output === true ? "rag_context_to_output" : "",
+    metadata.task_queue_enqueue === true ? "task_queue_enqueue" : "",
+    metadata.tainted_task_payload === true ? "tainted_task_payload" : "",
+    metadata.tainted_task_routing === true ? "tainted_task_routing" : "",
     metadata.model_approval_gate === true ? "model_approval_gate" : "",
     metadata.tainted_approval_context === true ? "tainted_approval_context" : "",
     metadata.approval_auto_execution === true ? "approval_auto_execution" : "",
@@ -31391,6 +31619,9 @@ function isPrivilegedToolSurface(tool: SurfaceObject): boolean {
     tool.metadata.rag_retrieval === true ||
     tool.metadata.tainted_rag_retrieval_query === true ||
     tool.metadata.rag_context_to_output === true ||
+    tool.metadata.task_queue_enqueue === true ||
+    tool.metadata.tainted_task_payload === true ||
+    tool.metadata.tainted_task_routing === true ||
     tool.metadata.model_approval_gate === true ||
     tool.metadata.tainted_approval_context === true ||
     tool.metadata.approval_auto_execution === true ||

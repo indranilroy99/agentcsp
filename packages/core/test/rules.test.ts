@@ -66,6 +66,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-050")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-051")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-052")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-053")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-001")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-002")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-003")).toBe(true);
@@ -6322,6 +6323,45 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerRagRetrievalFindings)).not.toContain("retrievedContext");
     expect(JSON.stringify(sourceHandlerRagRetrievalFindings)).not.toContain("retrieved_context");
     expect(JSON.stringify(sourceHandlerRagRetrievalFindings)).not.toContain("Retrieve caller selected support context");
+    const sourceHandlerTaskQueueFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-053");
+    expect(sourceHandlerTaskQueueFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
+      "langchain_enqueue_support_agent_job",
+      "source_enqueue_support_agent_job"
+    ]);
+    expect(sourceHandlerTaskQueueFindings.every((finding) => finding.severity === "critical")).toBe(true);
+    expect(sourceHandlerTaskQueueFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerTaskQueueFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
+    expect(sourceHandlerTaskQueueFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
+    expect(sourceHandlerTaskQueueFindings.every((finding) => finding.matched_object.metadata.handler_task_queue_enqueue === true)).toBe(true);
+    expect(sourceHandlerTaskQueueFindings.every((finding) => finding.matched_object.metadata.handler_tainted_task_payload === true)).toBe(true);
+    expect(sourceHandlerTaskQueueFindings.every((finding) => finding.matched_object.metadata.handler_tainted_task_routing === true)).toBe(true);
+    expect(sourceHandlerTaskQueueFindings.every((finding) => finding.matched_object.metadata.task_queue_enqueue === true)).toBe(true);
+    expect(sourceHandlerTaskQueueFindings.every((finding) => finding.matched_object.metadata.tainted_task_payload === true)).toBe(true);
+    expect(sourceHandlerTaskQueueFindings.every((finding) => finding.matched_object.metadata.tainted_task_routing === true)).toBe(true);
+    expect(sourceHandlerTaskQueueFindings.every((finding) => finding.matched_object.metadata.handler_secret_env_access === true)).toBe(true);
+    expect(sourceHandlerTaskQueueFindings.every((finding) => finding.matched_object.metadata.handler_model_visible_output === true)).toBe(true);
+    expect(sourceHandlerTaskQueueFindings.every((finding) => finding.matched_object.metadata.accepts_content_like_input === true)).toBe(true);
+    expect(sourceHandlerTaskQueueFindings.every((finding) => finding.matched_object.metadata.accepts_customer_data_input === true)).toBe(true);
+    expect(sourceHandlerTaskQueueFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("task_queue_enqueue"))).toBe(true);
+    expect(sourceHandlerTaskQueueFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("tainted_task_payload"))).toBe(true);
+    expect(sourceHandlerTaskQueueFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("tainted_task_routing"))).toBe(true);
+    expect(sourceHandlerTaskQueueFindings.every((finding) => finding.matched_object.metadata.handler_authority_classes.includes("handler_task_queue_enqueue"))).toBe(true);
+    expect(sourceHandlerTaskQueueFindings.every((finding) => finding.matched_object.metadata.handler_authority_classes.includes("handler_tainted_task_payload"))).toBe(true);
+    expect(sourceHandlerTaskQueueFindings.every((finding) => finding.matched_object.metadata.handler_authority_classes.includes("handler_tainted_task_routing"))).toBe(true);
+    expect(sourceHandlerTaskQueueFindings.every((finding) => finding.matched_object.actions.includes("send"))).toBe(true);
+    expect(sourceHandlerTaskQueueFindings.every((finding) => finding.matched_object.actions.includes("write"))).toBe(true);
+    expect(sourceHandlerTaskQueueFindings.every((finding) => finding.matched_object.external_reach === true)).toBe(true);
+    expect(sourceHandlerTaskQueueFindings.every((finding) => finding.matched_object.secret_exposure === true)).toBe(true);
+    expect(sourceHandlerTaskQueueFindings.every((finding) => finding.matched_object.side_effect === true)).toBe(true);
+    expect(sourceHandlerTaskQueueFindings.every((finding) => finding.matched_object.reversible === false)).toBe(true);
+    expect(JSON.stringify(sourceHandlerTaskQueueFindings)).not.toContain("taskQueueClient.enqueue");
+    expect(JSON.stringify(sourceHandlerTaskQueueFindings)).not.toContain("task_queue_client.enqueue");
+    expect(JSON.stringify(sourceHandlerTaskQueueFindings)).not.toContain("requestedAction");
+    expect(JSON.stringify(sourceHandlerTaskQueueFindings)).not.toContain("requested_action");
+    expect(JSON.stringify(sourceHandlerTaskQueueFindings)).not.toContain("update_customer_record");
+    expect(JSON.stringify(sourceHandlerTaskQueueFindings)).not.toContain("source agent job queued");
+    expect(JSON.stringify(sourceHandlerTaskQueueFindings)).not.toContain("framework agent job queued");
+    expect(JSON.stringify(sourceHandlerTaskQueueFindings)).not.toContain("Queue a caller supplied support job");
     const sourceHandlerTelemetryExportFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-045");
     expect(sourceHandlerTelemetryExportFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_export_customer_trace",

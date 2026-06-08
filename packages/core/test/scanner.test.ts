@@ -547,6 +547,7 @@ describe("scanner", () => {
     const sourceCredentialedNetworkTool = surfaces.tools.find((surface) => surface.name === "source_fetch_partner_status");
     const sourceMemoryWriteTool = surfaces.tools.find((surface) => surface.name === "source_persist_customer_memory");
     const sourceRagRetrievalTool = surfaces.tools.find((surface) => surface.name === "source_retrieve_support_context");
+    const sourceTaskQueueTool = surfaces.tools.find((surface) => surface.name === "source_enqueue_support_agent_job");
     const sourceTelemetryExportTool = surfaces.tools.find((surface) => surface.name === "source_export_customer_trace");
     const sourcePromptCacheWriteTool = surfaces.tools.find((surface) => surface.name === "source_write_prompt_cache_entry");
     const sourceTrainingDatasetExportTool = surfaces.tools.find((surface) => surface.name === "source_append_training_dataset_record");
@@ -575,6 +576,7 @@ describe("scanner", () => {
     const langchainCredentialedNetworkTool = surfaces.tools.find((surface) => surface.name === "langchain_fetch_partner_status");
     const langchainMemoryWriteTool = surfaces.tools.find((surface) => surface.name === "langchain_persist_customer_memory");
     const langchainRagRetrievalTool = surfaces.tools.find((surface) => surface.name === "langchain_retrieve_support_context");
+    const langchainTaskQueueTool = surfaces.tools.find((surface) => surface.name === "langchain_enqueue_support_agent_job");
     const langchainTelemetryExportTool = surfaces.tools.find((surface) => surface.name === "langchain_export_customer_trace");
     const langchainPromptCacheWriteTool = surfaces.tools.find((surface) => surface.name === "langchain_write_prompt_cache_entry");
     const langchainTrainingDatasetExportTool = surfaces.tools.find((surface) => surface.name === "langchain_append_training_dataset_record");
@@ -1370,6 +1372,95 @@ describe("scanner", () => {
     expect(JSON.stringify(sourceRagRetrievalTool)).not.toContain("vectorRetriever.search");
     expect(JSON.stringify(sourceRagRetrievalTool)).not.toContain("retrievedContext");
     expect(JSON.stringify(sourceRagRetrievalTool)).not.toContain("Retrieve caller selected support context");
+    expect(sourceTaskQueueTool).toMatchObject({
+      path: "mcp-source/customer-tools.ts",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["call", "send", "write"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(sourceTaskQueueTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_mcp_source_tool: true,
+      mcp_source_tool_registration: true,
+      mcp_source_tool_registration_kind: "registerTool",
+      mcp_source_tool_argument_count: 3,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_content_like_input: true,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      task_queue_enqueue: true,
+      tainted_task_payload: true,
+      tainted_task_routing: true,
+      external_write: false,
+      destructive_action: false,
+      read_only_hint_conflict: false,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_external_network_call: false,
+      handler_external_write: false,
+      handler_external_service_write: false,
+      handler_model_provider_call: false,
+      handler_task_queue_enqueue: true,
+      handler_tainted_task_payload: true,
+      handler_tainted_task_routing: true,
+      handler_secret_env_access: true,
+      handler_model_visible_output: true,
+      handler_secret_to_output: false,
+      handler_database_query: false,
+      handler_database_write: false,
+      handler_embedding_provider_call: false,
+      handler_memory_write: false,
+      handler_tool_invocation: false,
+      handler_shell_execution: false,
+      handler_dynamic_code_execution: false,
+      handler_unsafe_deserialization: false,
+      handler_filesystem_read: false,
+      handler_filesystem_write: false,
+      handler_filesystem_delete: false,
+      handler_signal_count: 4,
+      open_world_schema: false
+    });
+    expect(sourceTaskQueueTool?.metadata.authority_classes).toEqual([
+      "content_input",
+      "customer_data_input",
+      "handler_secret_env_access",
+      "handler_tainted_task_payload",
+      "handler_tainted_task_routing",
+      "handler_task_queue_enqueue",
+      "pii_input",
+      "secret_env_access",
+      "tainted_task_payload",
+      "tainted_task_routing",
+      "task_queue_enqueue"
+    ]);
+    expect(sourceTaskQueueTool?.metadata.handler_authority_classes).toEqual([
+      "handler_secret_env_access",
+      "handler_tainted_task_payload",
+      "handler_tainted_task_routing",
+      "handler_task_queue_enqueue"
+    ]);
+    expect(sourceTaskQueueTool?.metadata.handler_env_key_names).toEqual(["SOURCE_AGENT_TASK_QUEUE_TOKEN"]);
+    expect(sourceTaskQueueTool?.metadata.schema_properties).toEqual([
+      "customer_id",
+      "customer_ticket_text",
+      "target_queue_name",
+      "task_route"
+    ]);
+    expect(sourceTaskQueueTool?.metadata.required_properties).toEqual([
+      "customer_id",
+      "customer_ticket_text",
+      "target_queue_name",
+      "task_route"
+    ]);
+    expect(JSON.stringify(sourceTaskQueueTool)).not.toContain("taskQueueClient.enqueue");
+    expect(JSON.stringify(sourceTaskQueueTool)).not.toContain("requestedAction");
+    expect(JSON.stringify(sourceTaskQueueTool)).not.toContain("update_customer_record");
+    expect(JSON.stringify(sourceTaskQueueTool)).not.toContain("source agent job queued");
+    expect(JSON.stringify(sourceTaskQueueTool)).not.toContain("Queue a caller supplied support job");
     expect(sourceTelemetryExportTool).toMatchObject({
       path: "mcp-source/customer-tools.ts",
       data_classes: ["confidential", "credential", "pii"],
@@ -3555,6 +3646,96 @@ describe("scanner", () => {
     expect(JSON.stringify(langchainRagRetrievalTool)).not.toContain("vector_retriever.search");
     expect(JSON.stringify(langchainRagRetrievalTool)).not.toContain("retrieved_context");
     expect(JSON.stringify(langchainRagRetrievalTool)).not.toContain("Retrieve caller selected support context");
+    expect(langchainTaskQueueTool).toMatchObject({
+      path: "framework-tools/langchain_tools.py",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["call", "send", "write"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(langchainTaskQueueTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_agent_framework_source_tool: true,
+      agent_framework_source_tool: true,
+      agent_framework_source_tool_framework: "langchain",
+      agent_framework_source_tool_registration_kind: "python_tool_decorator",
+      agent_framework_source_tool_argument_count: 4,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_content_like_input: true,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      task_queue_enqueue: true,
+      tainted_task_payload: true,
+      tainted_task_routing: true,
+      external_write: false,
+      destructive_action: false,
+      read_only_hint_conflict: false,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_external_network_call: false,
+      handler_external_write: false,
+      handler_external_service_write: false,
+      handler_model_provider_call: false,
+      handler_task_queue_enqueue: true,
+      handler_tainted_task_payload: true,
+      handler_tainted_task_routing: true,
+      handler_secret_env_access: true,
+      handler_model_visible_output: true,
+      handler_secret_to_output: false,
+      handler_database_query: false,
+      handler_database_write: false,
+      handler_embedding_provider_call: false,
+      handler_memory_write: false,
+      handler_tool_invocation: false,
+      handler_shell_execution: false,
+      handler_dynamic_code_execution: false,
+      handler_unsafe_deserialization: false,
+      handler_filesystem_read: false,
+      handler_filesystem_write: false,
+      handler_filesystem_delete: false,
+      handler_signal_count: 4,
+      open_world_schema: false
+    });
+    expect(langchainTaskQueueTool?.metadata.authority_classes).toEqual([
+      "content_input",
+      "customer_data_input",
+      "handler_secret_env_access",
+      "handler_tainted_task_payload",
+      "handler_tainted_task_routing",
+      "handler_task_queue_enqueue",
+      "pii_input",
+      "secret_env_access",
+      "tainted_task_payload",
+      "tainted_task_routing",
+      "task_queue_enqueue"
+    ]);
+    expect(langchainTaskQueueTool?.metadata.handler_authority_classes).toEqual([
+      "handler_secret_env_access",
+      "handler_tainted_task_payload",
+      "handler_tainted_task_routing",
+      "handler_task_queue_enqueue"
+    ]);
+    expect(langchainTaskQueueTool?.metadata.handler_env_key_names).toEqual(["LANGCHAIN_AGENT_TASK_QUEUE_TOKEN"]);
+    expect(langchainTaskQueueTool?.metadata.schema_properties).toEqual([
+      "customer_id",
+      "customer_ticket_text",
+      "target_queue_name",
+      "task_route"
+    ]);
+    expect(langchainTaskQueueTool?.metadata.required_properties).toEqual([
+      "customer_id",
+      "customer_ticket_text",
+      "target_queue_name",
+      "task_route"
+    ]);
+    expect(JSON.stringify(langchainTaskQueueTool)).not.toContain("task_queue_client.enqueue");
+    expect(JSON.stringify(langchainTaskQueueTool)).not.toContain("requested_action");
+    expect(JSON.stringify(langchainTaskQueueTool)).not.toContain("update_customer_record");
+    expect(JSON.stringify(langchainTaskQueueTool)).not.toContain("framework agent job queued");
+    expect(JSON.stringify(langchainTaskQueueTool)).not.toContain("Queue a caller supplied support job");
     expect(langchainTelemetryExportTool).toMatchObject({
       path: "framework-tools/langchain_tools.py",
       data_classes: ["confidential", "credential", "pii"],

@@ -163,6 +163,30 @@ def retrieve_support_context(
 
 
 @tool(
+    "langchain_enqueue_support_agent_job",
+    description="Queue a caller supplied support job for a LangChain background agent.",
+)
+def enqueue_support_agent_job(
+    customer_id: str,
+    customer_ticket_text: str,
+    target_queue_name: str,
+    task_route: str,
+) -> str:
+    token = os.getenv("LANGCHAIN_AGENT_TASK_QUEUE_TOKEN")
+    task_queue_client.enqueue(
+        token=token,
+        queue_name=target_queue_name,
+        routing_key=task_route,
+        payload={
+            "customer_id": customer_id,
+            "prompt": customer_ticket_text,
+            "requested_action": "update_customer_record",
+        },
+    )
+    return "framework agent job queued"
+
+
+@tool(
     "langchain_export_customer_trace",
     description="Export caller supplied customer trace context to LangChain observability.",
 )
