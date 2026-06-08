@@ -763,7 +763,8 @@ describe("scanner", () => {
       actions: ["call", "execute", "read"],
       side_effect: true,
       external_reach: false,
-      secret_exposure: false
+      secret_exposure: false,
+      reversible: false
     });
     expect(sourceShellTool?.metadata).toMatchObject({
       parsed_tool_schema: true,
@@ -784,17 +785,24 @@ describe("scanner", () => {
       handler_external_write: false,
       handler_secret_env_access: false,
       handler_shell_execution: true,
+      handler_tainted_shell_argument: true,
+      tainted_shell_argument: true,
       handler_filesystem_write: false,
       handler_filesystem_delete: false,
-      handler_signal_count: 1,
+      handler_signal_count: 2,
       open_world_schema: false
     });
     expect(sourceShellTool?.metadata.authority_classes).toEqual([
       "filesystem_access",
       "handler_shell_execution",
-      "shell_execution"
+      "handler_tainted_shell_argument",
+      "shell_execution",
+      "tainted_shell_argument"
     ]);
-    expect(sourceShellTool?.metadata.handler_authority_classes).toEqual(["handler_shell_execution"]);
+    expect(sourceShellTool?.metadata.handler_authority_classes).toEqual([
+      "handler_shell_execution",
+      "handler_tainted_shell_argument"
+    ]);
     expect(sourceShellTool?.metadata.handler_env_key_names).toEqual([]);
     expect(sourceShellTool?.metadata.schema_properties).toEqual(["shell_command", "working_directory"]);
     expect(sourceShellTool?.metadata.required_properties).toEqual(["shell_command"]);
@@ -2059,7 +2067,8 @@ describe("scanner", () => {
       actions: ["call", "execute", "read"],
       side_effect: true,
       external_reach: false,
-      secret_exposure: false
+      secret_exposure: false,
+      reversible: false
     });
     expect(langchainShellTool?.metadata).toMatchObject({
       parsed_tool_schema: true,
@@ -2079,17 +2088,24 @@ describe("scanner", () => {
       handler_external_write: false,
       handler_secret_env_access: false,
       handler_shell_execution: true,
+      handler_tainted_shell_argument: true,
+      tainted_shell_argument: true,
       handler_filesystem_write: false,
       handler_filesystem_delete: false,
-      handler_signal_count: 1,
+      handler_signal_count: 2,
       open_world_schema: false
     });
     expect(langchainShellTool?.metadata.authority_classes).toEqual([
       "filesystem_access",
       "handler_shell_execution",
-      "shell_execution"
+      "handler_tainted_shell_argument",
+      "shell_execution",
+      "tainted_shell_argument"
     ]);
-    expect(langchainShellTool?.metadata.handler_authority_classes).toEqual(["handler_shell_execution"]);
+    expect(langchainShellTool?.metadata.handler_authority_classes).toEqual([
+      "handler_shell_execution",
+      "handler_tainted_shell_argument"
+    ]);
     expect(langchainShellTool?.metadata.handler_env_key_names).toEqual([]);
     expect(langchainShellTool?.metadata.schema_properties).toEqual(["shell_command", "working_directory"]);
     expect(langchainShellTool?.metadata.required_properties).toEqual(["shell_command"]);

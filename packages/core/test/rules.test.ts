@@ -45,6 +45,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-029")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-030")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-031")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-032")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-001")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-002")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-003")).toBe(true);
@@ -6385,11 +6386,39 @@ describe("rule engine", () => {
     expect(sourceHandlerShellFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
     expect(sourceHandlerShellFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
     expect(sourceHandlerShellFindings.every((finding) => finding.matched_object.metadata.handler_shell_execution === true)).toBe(true);
+    expect(sourceHandlerShellFindings.every((finding) => finding.matched_object.metadata.handler_tainted_shell_argument === true)).toBe(true);
+    expect(sourceHandlerShellFindings.every((finding) => finding.matched_object.metadata.tainted_shell_argument === true)).toBe(true);
     expect(sourceHandlerShellFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("shell_execution"))).toBe(true);
     expect(JSON.stringify(sourceHandlerShellFindings)).not.toContain("execFile");
     expect(JSON.stringify(sourceHandlerShellFindings)).not.toContain("node:child_process");
     expect(JSON.stringify(sourceHandlerShellFindings)).not.toContain("subprocess.run");
     expect(JSON.stringify(sourceHandlerShellFindings)).not.toContain("shell=True");
+    const sourceHandlerTaintedShellFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-032");
+    expect(sourceHandlerTaintedShellFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
+      "langchain_run_remediation_command",
+      "source_run_remediation_command"
+    ]);
+    expect(sourceHandlerTaintedShellFindings.every((finding) => finding.severity === "critical")).toBe(true);
+    expect(sourceHandlerTaintedShellFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerTaintedShellFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
+    expect(sourceHandlerTaintedShellFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
+    expect(sourceHandlerTaintedShellFindings.every((finding) => finding.matched_object.metadata.handler_shell_execution === true)).toBe(true);
+    expect(sourceHandlerTaintedShellFindings.every((finding) => finding.matched_object.metadata.handler_tainted_shell_argument === true)).toBe(true);
+    expect(sourceHandlerTaintedShellFindings.every((finding) => finding.matched_object.metadata.tainted_shell_argument === true)).toBe(true);
+    expect(sourceHandlerTaintedShellFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("shell_execution"))).toBe(true);
+    expect(sourceHandlerTaintedShellFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("tainted_shell_argument"))).toBe(true);
+    expect(sourceHandlerTaintedShellFindings.every((finding) => finding.matched_object.metadata.handler_authority_classes.includes("handler_shell_execution"))).toBe(true);
+    expect(sourceHandlerTaintedShellFindings.every((finding) => finding.matched_object.metadata.handler_authority_classes.includes("handler_tainted_shell_argument"))).toBe(true);
+    expect(sourceHandlerTaintedShellFindings.every((finding) => finding.matched_object.metadata.schema_properties.includes("shell_command"))).toBe(true);
+    expect(sourceHandlerTaintedShellFindings.every((finding) => finding.matched_object.actions.includes("execute"))).toBe(true);
+    expect(sourceHandlerTaintedShellFindings.every((finding) => finding.matched_object.side_effect === true)).toBe(true);
+    expect(sourceHandlerTaintedShellFindings.every((finding) => finding.matched_object.reversible === false)).toBe(true);
+    expect(JSON.stringify(sourceHandlerTaintedShellFindings)).not.toContain("execFile");
+    expect(JSON.stringify(sourceHandlerTaintedShellFindings)).not.toContain("node:child_process");
+    expect(JSON.stringify(sourceHandlerTaintedShellFindings)).not.toContain("subprocess.run");
+    expect(JSON.stringify(sourceHandlerTaintedShellFindings)).not.toContain("shell=True");
+    expect(JSON.stringify(sourceHandlerTaintedShellFindings)).not.toContain("source shell queued");
+    expect(JSON.stringify(sourceHandlerTaintedShellFindings)).not.toContain("framework shell queued");
     const sourceHandlerDynamicCodeFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-019");
     expect(sourceHandlerDynamicCodeFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_evaluate_agent_expression",

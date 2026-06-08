@@ -1,0 +1,69 @@
+id: AGENTCSP-TOOL-032
+name: Source tool handler passes caller input to shell execution
+description: A source-defined agent tool handler executes a shell or subprocess call with a command-like tool argument, creating a direct path from model-controlled input to host command execution.
+category: tool_source_handler_authority
+severity: critical
+maps_to:
+  owasp:
+    - LLM01:2025 Prompt Injection
+    - LLM05:2025 Improper Output Handling
+    - LLM06:2025 Excessive Agency
+  mitre_atlas:
+    - AML.T0054 Command and Scripting Interpreter
+  nist_ai_rmf:
+    - MAP 4.1
+    - MEASURE 2.7
+    - MANAGE 2.3
+match:
+  object_type: tool
+  where:
+    - field: metadata.parsed_tool_schema
+      op: equals
+      value: true
+    - field: metadata.source_tool_handler_redacted
+      op: equals
+      value: true
+    - field: metadata.handler_body_analyzed
+      op: equals
+      value: true
+    - field: metadata.handler_shell_execution
+      op: equals
+      value: true
+    - field: metadata.handler_tainted_shell_argument
+      op: equals
+      value: true
+    - field: metadata.tainted_shell_argument
+      op: equals
+      value: true
+    - field: metadata.authority_classes
+      op: includes
+      value: shell_execution
+    - field: metadata.authority_classes
+      op: includes
+      value: tainted_shell_argument
+    - field: metadata.handler_authority_classes
+      op: includes
+      value: handler_shell_execution
+    - field: metadata.handler_authority_classes
+      op: includes
+      value: handler_tainted_shell_argument
+    - field: metadata.schema_properties
+      op: contains_any
+      value:
+        - command
+        - command_text
+        - shell_command
+        - script
+        - script_text
+    - field: actions
+      op: includes
+      value: execute
+    - field: side_effect
+      op: equals
+      value: true
+    - field: reversible
+      op: equals
+      value: false
+recommendation:
+  control: quarantine
+  text: Quarantine source-defined shell tools that pass caller-controlled command arguments into host process execution until commands are replaced with reviewed allowlists, arguments are structured and escaped without shell interpretation, execution is sandboxed, and approval gates protect every invocation.

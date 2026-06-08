@@ -311,6 +311,7 @@ Tool metadata may include:
 - `external_service_write`
 - `model_provider_call`
 - `privileged_prompt_composition`
+- `tainted_shell_argument`
 - `network_response_capture`
 - `external_write`
 - `destructive_action`
@@ -340,6 +341,7 @@ Tool metadata may include:
 - `handler_browser_automation`
 - `handler_secret_manager_access`
 - `handler_shell_execution`
+- `handler_tainted_shell_argument`
 - `handler_dynamic_code_execution`
 - `handler_unsafe_deserialization`
 - `handler_filesystem_read`
