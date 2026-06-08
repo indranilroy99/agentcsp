@@ -560,6 +560,7 @@ describe("scanner", () => {
     const sourceAgentConfigWriteTool = surfaces.tools.find((surface) => surface.name === "source_update_agent_instructions");
     const sourceCredentialIssuanceTool = surfaces.tools.find((surface) => surface.name === "source_mint_agent_session_token");
     const sourceNestedToolInvocationTool = surfaces.tools.find((surface) => surface.name === "source_dispatch_privileged_tool");
+    const sourceToolOutputPromptBridgeTool = surfaces.tools.find((surface) => surface.name === "source_review_privileged_tool_observation");
     const sourceAgentDelegationTool = surfaces.tools.find((surface) => surface.name === "source_delegate_customer_case_to_remote_agent");
     const sourceBrowserAutomationTool = surfaces.tools.find((surface) => surface.name === "source_submit_customer_browser_form");
     const sourceVisualContextCaptureTool = surfaces.tools.find((surface) => surface.name === "source_capture_authenticated_page_screenshot");
@@ -593,6 +594,7 @@ describe("scanner", () => {
     const langchainAgentConfigWriteTool = surfaces.tools.find((surface) => surface.name === "langchain_update_agent_instructions");
     const langchainCredentialIssuanceTool = surfaces.tools.find((surface) => surface.name === "langchain_mint_agent_session_token");
     const langchainNestedToolInvocationTool = surfaces.tools.find((surface) => surface.name === "langchain_dispatch_privileged_tool");
+    const langchainToolOutputPromptBridgeTool = surfaces.tools.find((surface) => surface.name === "langchain_review_privileged_tool_observation");
     const langchainAgentDelegationTool = surfaces.tools.find((surface) => surface.name === "langchain_delegate_customer_case_to_remote_agent");
     const langchainBrowserAutomationTool = surfaces.tools.find((surface) => surface.name === "langchain_submit_customer_browser_form");
     const langchainVisualContextCaptureTool = surfaces.tools.find((surface) => surface.name === "langchain_capture_authenticated_page_screenshot");
@@ -2535,6 +2537,86 @@ describe("scanner", () => {
     ]);
     expect(JSON.stringify(sourceNestedToolInvocationTool)).not.toContain("mcpClient.callTool");
     expect(JSON.stringify(sourceNestedToolInvocationTool)).not.toContain("Dispatch a caller selected privileged tool");
+    expect(sourceToolOutputPromptBridgeTool).toMatchObject({
+      path: "mcp-source/customer-tools.ts",
+      data_classes: ["credential"],
+      actions: ["call", "execute", "read", "send"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(sourceToolOutputPromptBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_mcp_source_tool: true,
+      mcp_source_tool_registration: true,
+      mcp_source_tool_registration_kind: "registerTool",
+      mcp_source_tool_argument_count: 3,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      read_only_hint: false,
+      idempotent_hint: false,
+      accepts_secret_like_input: false,
+      accepts_content_like_input: true,
+      accepts_pii_like_input: false,
+      accepts_customer_data_input: false,
+      nested_tool_invocation: true,
+      model_provider_call: true,
+      tool_output_prompt_bridge: true,
+      external_write: false,
+      destructive_action: false,
+      read_only_hint_conflict: false,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_external_network_call: false,
+      handler_external_write: false,
+      handler_secret_env_access: true,
+      handler_model_visible_output: true,
+      handler_tool_invocation: true,
+      handler_model_provider_call: true,
+      handler_tool_output_prompt_bridge: true,
+      handler_shell_execution: false,
+      handler_dynamic_code_execution: false,
+      handler_unsafe_deserialization: false,
+      handler_filesystem_read: false,
+      handler_filesystem_write: false,
+      handler_filesystem_delete: false,
+      handler_signal_count: 4,
+      open_world_schema: false
+    });
+    expect(sourceToolOutputPromptBridgeTool?.metadata.authority_classes).toEqual([
+      "content_input",
+      "handler_model_provider_call",
+      "handler_secret_env_access",
+      "handler_tool_invocation",
+      "handler_tool_output_prompt_bridge",
+      "model_provider_call",
+      "nested_tool_invocation",
+      "network_access",
+      "secret_env_access",
+      "tool_output_prompt_bridge"
+    ]);
+    expect(sourceToolOutputPromptBridgeTool?.metadata.handler_authority_classes).toEqual([
+      "handler_model_provider_call",
+      "handler_secret_env_access",
+      "handler_tool_invocation",
+      "handler_tool_output_prompt_bridge"
+    ]);
+    expect(sourceToolOutputPromptBridgeTool?.metadata.handler_env_key_names).toEqual(["SOURCE_TOOL_OBSERVATION_MODEL_TOKEN"]);
+    expect(sourceToolOutputPromptBridgeTool?.metadata.schema_properties).toEqual([
+      "review_instruction_text",
+      "target_tool_name",
+      "tool_request_body"
+    ]);
+    expect(sourceToolOutputPromptBridgeTool?.metadata.required_properties).toEqual([
+      "review_instruction_text",
+      "target_tool_name",
+      "tool_request_body"
+    ]);
+    expect(JSON.stringify(sourceToolOutputPromptBridgeTool)).not.toContain("mcpClient.callTool");
+    expect(JSON.stringify(sourceToolOutputPromptBridgeTool)).not.toContain("openai.chat.completions.create");
+    expect(JSON.stringify(sourceToolOutputPromptBridgeTool)).not.toContain("toolResult");
+    expect(JSON.stringify(sourceToolOutputPromptBridgeTool)).not.toContain("Review a raw privileged tool observation");
     expect(sourceAgentDelegationTool).toMatchObject({
       path: "mcp-source/customer-tools.ts",
       data_classes: ["confidential", "credential", "pii"],
@@ -5219,6 +5301,87 @@ describe("scanner", () => {
     ]);
     expect(JSON.stringify(langchainNestedToolInvocationTool)).not.toContain("tool_registry.call_tool");
     expect(JSON.stringify(langchainNestedToolInvocationTool)).not.toContain("Dispatch a caller selected privileged tool");
+    expect(langchainToolOutputPromptBridgeTool).toMatchObject({
+      path: "framework-tools/langchain_tools.py",
+      data_classes: ["credential"],
+      actions: ["call", "execute", "read", "send"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(langchainToolOutputPromptBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_agent_framework_source_tool: true,
+      agent_framework_source_tool: true,
+      agent_framework_source_tool_framework: "langchain",
+      agent_framework_source_tool_registration_kind: "python_tool_decorator",
+      agent_framework_source_tool_argument_count: 3,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_secret_like_input: false,
+      accepts_content_like_input: true,
+      accepts_pii_like_input: false,
+      accepts_customer_data_input: false,
+      nested_tool_invocation: true,
+      model_provider_call: true,
+      tool_output_prompt_bridge: true,
+      external_write: false,
+      destructive_action: false,
+      read_only_hint_conflict: false,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_external_network_call: false,
+      handler_external_write: false,
+      handler_secret_env_access: true,
+      handler_model_visible_output: true,
+      handler_tool_invocation: true,
+      handler_model_provider_call: true,
+      handler_tool_output_prompt_bridge: true,
+      handler_shell_execution: false,
+      handler_dynamic_code_execution: false,
+      handler_unsafe_deserialization: false,
+      handler_filesystem_read: false,
+      handler_filesystem_write: false,
+      handler_filesystem_delete: false,
+      handler_signal_count: 4,
+      open_world_schema: false
+    });
+    expect(langchainToolOutputPromptBridgeTool?.metadata.authority_classes).toEqual([
+      "content_input",
+      "handler_model_provider_call",
+      "handler_secret_env_access",
+      "handler_tool_invocation",
+      "handler_tool_output_prompt_bridge",
+      "model_provider_call",
+      "nested_tool_invocation",
+      "network_access",
+      "secret_env_access",
+      "tool_output_prompt_bridge"
+    ]);
+    expect(langchainToolOutputPromptBridgeTool?.metadata.handler_authority_classes).toEqual([
+      "handler_model_provider_call",
+      "handler_secret_env_access",
+      "handler_tool_invocation",
+      "handler_tool_output_prompt_bridge"
+    ]);
+    expect(langchainToolOutputPromptBridgeTool?.metadata.handler_env_key_names).toEqual([
+      "LANGCHAIN_TOOL_OBSERVATION_MODEL_TOKEN"
+    ]);
+    expect(langchainToolOutputPromptBridgeTool?.metadata.schema_properties).toEqual([
+      "review_instruction_text",
+      "target_tool_name",
+      "tool_request_body"
+    ]);
+    expect(langchainToolOutputPromptBridgeTool?.metadata.required_properties).toEqual([
+      "review_instruction_text",
+      "target_tool_name",
+      "tool_request_body"
+    ]);
+    expect(JSON.stringify(langchainToolOutputPromptBridgeTool)).not.toContain("tool_registry.call_tool");
+    expect(JSON.stringify(langchainToolOutputPromptBridgeTool)).not.toContain("openai_client.chat.completions.create");
+    expect(JSON.stringify(langchainToolOutputPromptBridgeTool)).not.toContain("tool_result");
+    expect(JSON.stringify(langchainToolOutputPromptBridgeTool)).not.toContain("Review a raw privileged tool observation");
     expect(langchainAgentDelegationTool).toMatchObject({
       path: "framework-tools/langchain_tools.py",
       data_classes: ["confidential", "credential", "pii"],

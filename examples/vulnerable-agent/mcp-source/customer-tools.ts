@@ -696,6 +696,40 @@ server.registerTool(
 );
 
 server.registerTool(
+  "source_review_privileged_tool_observation",
+  {
+    description: "Review a raw privileged tool observation with a model.",
+    inputSchema: z.object({
+      target_tool_name: z.string(),
+      tool_request_body: z.string(),
+      review_instruction_text: z.string()
+    }).strict(),
+    annotations: {
+      readOnlyHint: false,
+      idempotentHint: false
+    }
+  },
+  async ({ target_tool_name, tool_request_body, review_instruction_text }) => {
+    const toolArgs = JSON.parse(tool_request_body);
+    const toolResult = await globalThis.mcpClient.callTool({
+      name: target_tool_name,
+      arguments: toolArgs
+    });
+    const apiKey = process.env.SOURCE_TOOL_OBSERVATION_MODEL_TOKEN;
+    const openai = globalThis.openaiClient;
+    const modelResponse = await openai.chat.completions.create({
+      apiKey,
+      model: "gpt-4o",
+      messages: [
+        { role: "user", content: review_instruction_text },
+        { role: "user", content: JSON.stringify(toolResult) }
+      ]
+    });
+    return { content: [{ type: "text", text: modelResponse.choices[0].message.content ?? "" }] };
+  }
+);
+
+server.registerTool(
   "source_delegate_customer_case_to_remote_agent",
   {
     description: "Delegate caller supplied customer context to a selected remote A2A agent.",

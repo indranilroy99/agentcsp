@@ -24185,6 +24185,7 @@ function addToolDefinitionSurface(
       tainted_external_service_recipient: authority.tainted_external_service_recipient,
       model_provider_call: authority.model_provider_call,
       tainted_model_selection: authority.tainted_model_selection,
+      tool_output_prompt_bridge: authority.tool_output_prompt_bridge,
       embedding_provider_call: authority.embedding_provider_call,
       tainted_embedding_input: authority.tainted_embedding_input,
       telemetry_export: authority.telemetry_export,
@@ -26603,6 +26604,7 @@ interface SourceToolHandlerSignals {
   handlerExternalServiceWrite: boolean;
   handlerModelProviderCall: boolean;
   handlerTaintedModelSelection: boolean;
+  handlerToolOutputPromptBridge: boolean;
   handlerEmbeddingProviderCall: boolean;
   handlerTaintedEmbeddingInput: boolean;
   handlerTelemetryExport: boolean;
@@ -27087,6 +27089,7 @@ function sourceToolHandlerSignalMetadata(signals: SourceToolHandlerSignals | und
     handler_external_service_write: signals.handlerExternalServiceWrite,
     handler_model_provider_call: signals.handlerModelProviderCall,
     handler_tainted_model_selection: signals.handlerTaintedModelSelection,
+    handler_tool_output_prompt_bridge: signals.handlerToolOutputPromptBridge,
     handler_embedding_provider_call: signals.handlerEmbeddingProviderCall,
     handler_tainted_embedding_input: signals.handlerTaintedEmbeddingInput,
     handler_telemetry_export: signals.handlerTelemetryExport,
@@ -27192,6 +27195,9 @@ function classifySourceToolHandlerSignals(
   const taintedModelSelection = modelProviderCall && (language === "javascript"
     ? hasJavaScriptHandlerTaintedModelSelection(handlerSource)
     : hasPythonHandlerTaintedModelSelection(handlerSource));
+  const toolOutputPromptBridge = modelProviderCall && (language === "javascript"
+    ? hasJavaScriptHandlerToolOutputPromptBridge(handlerSource)
+    : hasPythonHandlerToolOutputPromptBridge(handlerSource));
   const embeddingProviderCall = language === "javascript"
     ? hasJavaScriptHandlerEmbeddingProviderCall(handlerSource)
     : hasPythonHandlerEmbeddingProviderCall(handlerSource);
@@ -27390,6 +27396,7 @@ function classifySourceToolHandlerSignals(
   if (taintedExternalServiceRecipient) classes.add("handler_tainted_external_service_recipient");
   if (modelProviderCall) classes.add("handler_model_provider_call");
   if (taintedModelSelection) classes.add("handler_tainted_model_selection");
+  if (toolOutputPromptBridge) classes.add("handler_tool_output_prompt_bridge");
   if (embeddingProviderCall) classes.add("handler_embedding_provider_call");
   if (taintedEmbeddingInput) classes.add("handler_tainted_embedding_input");
   if (telemetryExport) classes.add("handler_telemetry_export");
@@ -27468,6 +27475,7 @@ function classifySourceToolHandlerSignals(
     handlerTaintedExternalServiceRecipient: taintedExternalServiceRecipient,
     handlerModelProviderCall: modelProviderCall,
     handlerTaintedModelSelection: taintedModelSelection,
+    handlerToolOutputPromptBridge: toolOutputPromptBridge,
     handlerEmbeddingProviderCall: embeddingProviderCall,
     handlerTaintedEmbeddingInput: taintedEmbeddingInput,
     handlerTelemetryExport: telemetryExport,
@@ -28005,6 +28013,83 @@ function hasPythonHandlerTaintedModelSelection(source: string): boolean {
     /\b(?:ChatOpenAI|ChatAnthropic|OpenAI|Anthropic)\s*\(([\s\S]{0,900})\)/giu,
     /\bInvokeModelCommand\s*\(([\s\S]{0,900})\)/giu
   ].some((pattern) => expressionMatchesTaintedModelSelection(pattern, source));
+}
+
+function hasJavaScriptHandlerToolOutputPromptBridge(source: string): boolean {
+  const identifiers = extractJavaScriptToolOutputIdentifiers(source);
+  return identifiers.length > 0 && modelProviderCallReferencesAnyIdentifier(
+    [
+      /\b(?:openai|openaiClient|anthropic|anthropicClient|mistral|mistralClient|cohere|cohereClient|bedrock|bedrockClient|gemini|geminiClient|vertex|vertexClient|llm|modelClient|languageModel)\s*(?:\.\s*[A-Za-z_$][\w$]*){0,5}\s*\.\s*(?:create|stream|parse|invoke|send|complete|generateContent|generateText|doGenerate)\s*\(([\s\S]{0,2200})\)/giu,
+      /\b(?:generateText|streamText|generateObject|streamObject)\s*\(([\s\S]{0,2200})\)/giu,
+      /\bnew\s+InvokeModelCommand\s*\(([\s\S]{0,2200})\)/giu
+    ],
+    source,
+    identifiers
+  );
+}
+
+function hasPythonHandlerToolOutputPromptBridge(source: string): boolean {
+  const identifiers = extractPythonToolOutputIdentifiers(source);
+  return identifiers.length > 0 && modelProviderCallReferencesAnyIdentifier(
+    [
+      /\b(?:openai|openai_client|anthropic|anthropic_client|mistral|mistral_client|cohere|cohere_client|bedrock|bedrock_client|gemini|gemini_client|vertex|vertex_client|llm|model_client|language_model)\s*(?:\.\s*[A-Za-z_]\w*){0,5}\s*\.\s*(?:create|stream|parse|invoke|send|complete|generate_content|predict)\s*\(([\s\S]{0,2200})\)/giu,
+      /\bInvokeModelCommand\s*\(([\s\S]{0,2200})\)/giu
+    ],
+    source,
+    identifiers
+  );
+}
+
+function extractJavaScriptToolOutputIdentifiers(source: string): string[] {
+  const identifiers = new Set<string>();
+  const assignmentPatterns = [
+    /\b(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*(?:await\s+)?[^\n;]{0,240}\b(?:callTool|invokeTool|executeTool|dispatchTool|runTool)\s*\(/gu,
+    /\b(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*(?:await\s+)?[^\n;]{0,240}\b(?:toolRegistry|toolRunner|toolClient|mcpClient|functionRegistry)\s*(?:\.\s*[A-Za-z_$][\w$]*){0,4}\s*\.\s*(?:call|invoke|execute|dispatch|run)\s*\(/gu
+  ];
+  for (const pattern of assignmentPatterns) collectFirstCaptureMatches(pattern, source, identifiers);
+  collectFirstCaptureMatches(
+    /\b([A-Za-z_$][\w$]*(?:ToolResult|ToolOutput|ToolObservation|Observation|FunctionResult|McpResult|RawToolOutput|BrowserOutput|CommandOutput))\b/gu,
+    source,
+    identifiers
+  );
+  return [...identifiers].filter((identifier) => !["result", "response", "output"].includes(identifier));
+}
+
+function extractPythonToolOutputIdentifiers(source: string): string[] {
+  const identifiers = new Set<string>();
+  const assignmentPatterns = [
+    /\b([A-Za-z_]\w*)\s*=\s*(?:await\s+)?[^\n]{0,240}\b(?:call_tool|invoke_tool|execute_tool|dispatch_tool|run_tool)\s*\(/gu,
+    /\b([A-Za-z_]\w*)\s*=\s*(?:await\s+)?[^\n]{0,240}\b(?:tool_registry|tool_runner|tool_client|mcp_client|function_registry)\s*(?:\.\s*[A-Za-z_]\w*){0,4}\s*\.\s*(?:call|invoke|execute|dispatch|run)\s*\(/gu
+  ];
+  for (const pattern of assignmentPatterns) collectFirstCaptureMatches(pattern, source, identifiers);
+  collectFirstCaptureMatches(
+    /\b([A-Za-z_]\w*(?:_tool_result|_tool_output|_tool_observation|_observation|_function_result|_mcp_result|_raw_tool_output|_browser_output|_command_output))\b/gu,
+    source,
+    identifiers
+  );
+  return [...identifiers].filter((identifier) => !["result", "response", "output"].includes(identifier));
+}
+
+function collectFirstCaptureMatches(pattern: RegExp, source: string, values: Set<string>): void {
+  let match: RegExpExecArray | null;
+  while ((match = pattern.exec(source)) !== null) {
+    if (match[1]) values.add(match[1]);
+    if (match[0].length === 0) pattern.lastIndex += 1;
+  }
+}
+
+function modelProviderCallReferencesAnyIdentifier(patterns: RegExp[], source: string, identifiers: string[]): boolean {
+  for (const pattern of patterns) {
+    let match: RegExpExecArray | null;
+    while ((match = pattern.exec(source)) !== null) {
+      const expression = match[1] ?? "";
+      if (identifiers.some((identifier) => new RegExp(`\\b${escapeRegExp(identifier)}\\b`, "u").test(expression))) {
+        return true;
+      }
+      if (match[0].length === 0) pattern.lastIndex += 1;
+    }
+  }
+  return false;
 }
 
 function hasJavaScriptHandlerEmbeddingProviderCall(source: string): boolean {
@@ -31663,6 +31748,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   tainted_external_service_recipient: boolean;
   model_provider_call: boolean;
   tainted_model_selection: boolean;
+  tool_output_prompt_bridge: boolean;
   embedding_provider_call: boolean;
   tainted_embedding_input: boolean;
   telemetry_export: boolean;
@@ -31736,6 +31822,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   const handlerExternalServiceWrite = handler?.handlerExternalServiceWrite === true;
   const handlerModelProviderCall = handler?.handlerModelProviderCall === true;
   const handlerTaintedModelSelection = handler?.handlerTaintedModelSelection === true;
+  const handlerToolOutputPromptBridge = handler?.handlerToolOutputPromptBridge === true;
   const handlerEmbeddingProviderCall = handler?.handlerEmbeddingProviderCall === true;
   const handlerTaintedEmbeddingInput = handler?.handlerTaintedEmbeddingInput === true;
   const handlerTelemetryExport = handler?.handlerTelemetryExport === true;
@@ -31986,6 +32073,10 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
     classes.add("tainted_model_selection");
     actions.add("send");
   }
+  if (handlerToolOutputPromptBridge) {
+    classes.add("tool_output_prompt_bridge");
+    actions.add("send");
+  }
   if (handlerEmbeddingProviderCall) {
     classes.add("embedding_provider_call");
     actions.add("read");
@@ -32200,6 +32291,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerTaintedExternalServiceRecipient ||
       handlerModelProviderCall ||
       handlerTaintedModelSelection ||
+      handlerToolOutputPromptBridge ||
       handlerEmbeddingProviderCall ||
       handlerTaintedEmbeddingInput ||
       handlerTelemetryExport ||
@@ -32325,6 +32417,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
     tainted_external_service_recipient: handlerTaintedExternalServiceRecipient,
     model_provider_call: handlerModelProviderCall,
     tainted_model_selection: handlerTaintedModelSelection,
+    tool_output_prompt_bridge: handlerToolOutputPromptBridge,
     embedding_provider_call: handlerEmbeddingProviderCall,
     tainted_embedding_input: handlerTaintedEmbeddingInput,
     telemetry_export: handlerTelemetryExport,
@@ -32427,6 +32520,7 @@ function authoritySignature(tool: SurfaceObject): string {
     metadata.tainted_memory_scope === true ? "tainted_memory_scope" : "",
     metadata.model_provider_call === true ? "model_provider_call" : "",
     metadata.tainted_model_selection === true ? "tainted_model_selection" : "",
+    metadata.tool_output_prompt_bridge === true ? "tool_output_prompt_bridge" : "",
     metadata.embedding_provider_call === true ? "embedding_provider_call" : "",
     metadata.tainted_embedding_input === true ? "tainted_embedding_input" : "",
     metadata.telemetry_export === true ? "telemetry_export" : "",
@@ -32510,6 +32604,7 @@ function isPrivilegedToolSurface(tool: SurfaceObject): boolean {
     tool.metadata.external_service_write === true ||
     tool.metadata.model_provider_call === true ||
     tool.metadata.tainted_model_selection === true ||
+    tool.metadata.tool_output_prompt_bridge === true ||
     tool.metadata.embedding_provider_call === true ||
     tool.metadata.tainted_embedding_input === true ||
     tool.metadata.telemetry_export === true ||

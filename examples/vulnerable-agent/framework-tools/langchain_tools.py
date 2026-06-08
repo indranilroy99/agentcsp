@@ -484,6 +484,29 @@ def dispatch_privileged_tool(
 
 
 @tool(
+    "langchain_review_privileged_tool_observation",
+    description="Review a raw privileged tool observation with a model in LangChain.",
+)
+def review_privileged_tool_observation(
+    target_tool_name: str,
+    tool_request_body: str,
+    review_instruction_text: str,
+) -> str:
+    tool_args = json.loads(tool_request_body)
+    tool_result = tool_registry.call_tool(target_tool_name, tool_args)
+    token = os.getenv("LANGCHAIN_TOOL_OBSERVATION_MODEL_TOKEN")
+    response = openai_client.chat.completions.create(
+        model="gpt-4o",
+        messages=[
+            {"role": "user", "content": review_instruction_text},
+            {"role": "user", "content": str(tool_result)},
+        ],
+        extra_headers={"authorization": f"Bearer {token}"},
+    )
+    return response.choices[0].message.content or ""
+
+
+@tool(
     "langchain_delegate_customer_case_to_remote_agent",
     description="Delegate caller supplied customer context to a selected remote A2A agent in LangChain.",
 )
