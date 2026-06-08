@@ -6097,6 +6097,21 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerLocalMutationFindings)).not.toContain("node:fs/promises");
     expect(JSON.stringify(sourceHandlerLocalMutationFindings)).not.toContain("shutil.rmtree");
     expect(JSON.stringify(sourceHandlerLocalMutationFindings)).not.toContain("os.remove");
+    const sourceHandlerShellFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-015");
+    expect(sourceHandlerShellFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
+      "langchain_run_remediation_command",
+      "source_run_remediation_command"
+    ]);
+    expect(sourceHandlerShellFindings.every((finding) => finding.severity === "critical")).toBe(true);
+    expect(sourceHandlerShellFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerShellFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
+    expect(sourceHandlerShellFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
+    expect(sourceHandlerShellFindings.every((finding) => finding.matched_object.metadata.handler_shell_execution === true)).toBe(true);
+    expect(sourceHandlerShellFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("shell_execution"))).toBe(true);
+    expect(JSON.stringify(sourceHandlerShellFindings)).not.toContain("execFile");
+    expect(JSON.stringify(sourceHandlerShellFindings)).not.toContain("node:child_process");
+    expect(JSON.stringify(sourceHandlerShellFindings)).not.toContain("subprocess.run");
+    expect(JSON.stringify(sourceHandlerShellFindings)).not.toContain("shell=True");
     const toolDescriptionInjectionFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-011");
     expect(toolDescriptionInjectionFindings).toHaveLength(1);
     expect(toolDescriptionInjectionFindings[0]?.matched_object.name).toBe("publish_summary");

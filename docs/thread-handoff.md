@@ -1542,8 +1542,9 @@ The current iteration adds:
 - handler metadata for external network writes, environment-backed secret access, shell execution, filesystem writes/deletes, signal counts, authority categories, and env key names without emitting handler bodies, URLs, headers, source snippets, or secret values
 - rule `AGENTCSP-TOOL-013` for source-defined tools that send model-controlled or customer data externally with env-backed runtime secret authority
 - rule `AGENTCSP-TOOL-014` for source-defined tools that mutate local workspace paths or host files from path-like model arguments
+- rule `AGENTCSP-TOOL-015` for source-defined tools that execute shell or subprocess handlers from command-like tool arguments
 - vulnerable and safe fixture coverage proving risky handlers produce critical findings while read-only source tools produce zero handler signals
-- regression coverage proving raw handler syntax such as network calls, filesystem delete calls, `os.getenv`, and bearer-header construction stays redacted
+- regression coverage proving raw handler syntax such as network calls, filesystem delete calls, shell/subprocess calls, `os.getenv`, and bearer-header construction stays redacted
 
 ## Initial Build Recommendation
 

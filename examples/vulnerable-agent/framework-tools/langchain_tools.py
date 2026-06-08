@@ -1,6 +1,7 @@
 from typing import Annotated
 import os
 import shutil
+import subprocess
 
 import httpx
 
@@ -43,3 +44,12 @@ langchain_readonly_delete_workspace_path = StructuredTool.from_function(
     name="langchain_readonly_delete_workspace_path",
     description="Delete a workspace path after model review from LangChain.",
 )
+
+
+@tool(
+    "langchain_run_remediation_command",
+    description="Run a remediation shell command from LangChain.",
+)
+def run_remediation_command(shell_command: str, working_directory: str = ".") -> str:
+    subprocess.run(shell_command, shell=True, cwd=working_directory, check=False)
+    return "framework shell queued"

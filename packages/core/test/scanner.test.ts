@@ -538,10 +538,12 @@ describe("scanner", () => {
     const readTool = surfaces.tools.find((surface) => surface.name === "read_customer_record");
     const sourceExportTool = surfaces.tools.find((surface) => surface.name === "source_export_customer_record");
     const sourceDeleteTool = surfaces.tools.find((surface) => surface.name === "source_readonly_delete_workspace_file");
+    const sourceShellTool = surfaces.tools.find((surface) => surface.name === "source_run_remediation_command");
     const pythonExportTool = surfaces.tools.find((surface) => surface.name === "python_export_customer_record");
     const pythonDeleteTool = surfaces.tools.find((surface) => surface.name === "python_readonly_delete_workspace_file");
     const langchainExportTool = surfaces.tools.find((surface) => surface.name === "langchain_export_customer_context");
     const langchainDeleteTool = surfaces.tools.find((surface) => surface.name === "langchain_readonly_delete_workspace_path");
+    const langchainShellTool = surfaces.tools.find((surface) => surface.name === "langchain_run_remediation_command");
     const aiSdkExportTool = surfaces.tools.find((surface) => surface.name === "aiSdkExportCustomerContext");
     const tsLangchainDeleteTool = surfaces.tools.find((surface) => surface.name === "ts_langchain_delete_workspace_path");
     expect(publishTool?.metadata).toMatchObject({
@@ -726,6 +728,49 @@ describe("scanner", () => {
     ]);
     expect(JSON.stringify(sourceDeleteTool)).not.toContain("rm(");
     expect(JSON.stringify(sourceDeleteTool)).not.toContain("node:fs/promises");
+    expect(sourceShellTool).toMatchObject({
+      path: "mcp-source/customer-tools.ts",
+      actions: ["call", "execute", "read"],
+      side_effect: true,
+      external_reach: false,
+      secret_exposure: false
+    });
+    expect(sourceShellTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_mcp_source_tool: true,
+      mcp_source_tool_registration: true,
+      mcp_source_tool_registration_kind: "registerTool",
+      mcp_source_tool_argument_count: 3,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      read_only_hint: false,
+      idempotent_hint: false,
+      accepts_path_input: true,
+      external_write: false,
+      destructive_action: false,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_external_network_call: false,
+      handler_external_write: false,
+      handler_secret_env_access: false,
+      handler_shell_execution: true,
+      handler_filesystem_write: false,
+      handler_filesystem_delete: false,
+      handler_signal_count: 1,
+      open_world_schema: false
+    });
+    expect(sourceShellTool?.metadata.authority_classes).toEqual([
+      "filesystem_access",
+      "handler_shell_execution",
+      "shell_execution"
+    ]);
+    expect(sourceShellTool?.metadata.handler_authority_classes).toEqual(["handler_shell_execution"]);
+    expect(sourceShellTool?.metadata.handler_env_key_names).toEqual([]);
+    expect(sourceShellTool?.metadata.schema_properties).toEqual(["shell_command", "working_directory"]);
+    expect(sourceShellTool?.metadata.required_properties).toEqual(["shell_command"]);
+    expect(JSON.stringify(sourceShellTool)).not.toContain("execFile");
+    expect(JSON.stringify(sourceShellTool)).not.toContain("node:child_process");
+    expect(JSON.stringify(sourceShellTool)).not.toContain("source shell queued");
     expect(pythonExportTool).toMatchObject({
       path: "mcp-source/python_tools.py",
       data_classes: ["confidential", "credential", "pii"],
@@ -946,6 +991,48 @@ describe("scanner", () => {
     expect(JSON.stringify(langchainDeleteTool)).not.toContain("Delete a workspace path after model review from LangChain");
     expect(JSON.stringify(langchainDeleteTool)).not.toContain("shutil.rmtree");
     expect(JSON.stringify(langchainDeleteTool)).not.toContain("os.remove");
+    expect(langchainShellTool).toMatchObject({
+      path: "framework-tools/langchain_tools.py",
+      actions: ["call", "execute", "read"],
+      side_effect: true,
+      external_reach: false,
+      secret_exposure: false
+    });
+    expect(langchainShellTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_agent_framework_source_tool: true,
+      agent_framework_source_tool: true,
+      agent_framework_source_tool_framework: "langchain",
+      agent_framework_source_tool_registration_kind: "python_tool_decorator",
+      agent_framework_source_tool_argument_count: 2,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_path_input: true,
+      external_write: false,
+      destructive_action: false,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_external_network_call: false,
+      handler_external_write: false,
+      handler_secret_env_access: false,
+      handler_shell_execution: true,
+      handler_filesystem_write: false,
+      handler_filesystem_delete: false,
+      handler_signal_count: 1,
+      open_world_schema: false
+    });
+    expect(langchainShellTool?.metadata.authority_classes).toEqual([
+      "filesystem_access",
+      "handler_shell_execution",
+      "shell_execution"
+    ]);
+    expect(langchainShellTool?.metadata.handler_authority_classes).toEqual(["handler_shell_execution"]);
+    expect(langchainShellTool?.metadata.handler_env_key_names).toEqual([]);
+    expect(langchainShellTool?.metadata.schema_properties).toEqual(["shell_command", "working_directory"]);
+    expect(langchainShellTool?.metadata.required_properties).toEqual(["shell_command"]);
+    expect(JSON.stringify(langchainShellTool)).not.toContain("subprocess.run");
+    expect(JSON.stringify(langchainShellTool)).not.toContain("shell=True");
+    expect(JSON.stringify(langchainShellTool)).not.toContain("framework shell queued");
     expect(aiSdkExportTool).toMatchObject({
       path: "framework-tools/vercel-ai-tools.ts",
       data_classes: ["confidential", "credential", "pii"],

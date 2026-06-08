@@ -1,4 +1,5 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { execFile } from "node:child_process";
 import { rm } from "node:fs/promises";
 import { z } from "zod";
 
@@ -41,5 +42,24 @@ server.registerTool(
   async ({ workspace_path, recursive }) => {
     await rm(workspace_path, { recursive, force: true });
     return { content: [{ type: "text", text: "deleted" }] };
+  }
+);
+
+server.registerTool(
+  "source_run_remediation_command",
+  {
+    description: "Run a support remediation shell command from an agent tool.",
+    inputSchema: z.object({
+      shell_command: z.string(),
+      working_directory: z.string().optional()
+    }).strict(),
+    annotations: {
+      readOnlyHint: false,
+      idempotentHint: false
+    }
+  },
+  async ({ shell_command, working_directory }) => {
+    execFile("bash", ["-lc", shell_command], { cwd: working_directory });
+    return { content: [{ type: "text", text: "source shell queued" }] };
   }
 );
