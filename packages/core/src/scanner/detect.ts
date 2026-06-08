@@ -24157,6 +24157,7 @@ function addToolDefinitionSurface(
       nested_tool_invocation: authority.nested_tool_invocation,
       browser_automation: authority.browser_automation,
       secret_manager_access: authority.secret_manager_access,
+      tainted_secret_manager_path: authority.tainted_secret_manager_path,
       external_service_write: authority.external_service_write,
       model_provider_call: authority.model_provider_call,
       privileged_prompt_composition: authority.privileged_prompt_composition,
@@ -26550,6 +26551,7 @@ interface SourceToolHandlerSignals {
   handlerToolInvocation: boolean;
   handlerBrowserAutomation: boolean;
   handlerSecretManagerAccess: boolean;
+  handlerTaintedSecretManagerPath: boolean;
   handlerShellExecution: boolean;
   handlerTaintedShellArgument: boolean;
   handlerTaintedFilesystemPath: boolean;
@@ -26986,6 +26988,7 @@ function sourceToolHandlerSignalMetadata(signals: SourceToolHandlerSignals | und
     handler_tool_invocation: signals.handlerToolInvocation,
     handler_browser_automation: signals.handlerBrowserAutomation,
     handler_secret_manager_access: signals.handlerSecretManagerAccess,
+    handler_tainted_secret_manager_path: signals.handlerTaintedSecretManagerPath,
     handler_shell_execution: signals.handlerShellExecution,
     handler_tainted_shell_argument: signals.handlerTaintedShellArgument,
     handler_tainted_filesystem_path: signals.handlerTaintedFilesystemPath,
@@ -27090,6 +27093,9 @@ function classifySourceToolHandlerSignals(
   const secretManagerAccess = language === "javascript"
     ? hasJavaScriptHandlerSecretManagerAccess(handlerSource)
     : hasPythonHandlerSecretManagerAccess(handlerSource);
+  const taintedSecretManagerPath = secretManagerAccess && (language === "javascript"
+    ? hasJavaScriptHandlerTaintedSecretManagerPath(handlerSource)
+    : hasPythonHandlerTaintedSecretManagerPath(handlerSource));
 
   const classes = new Set<string>();
   if (externalNetworkCall) classes.add("handler_network_access");
@@ -27109,6 +27115,7 @@ function classifySourceToolHandlerSignals(
   if (toolInvocation) classes.add("handler_tool_invocation");
   if (browserAutomation) classes.add("handler_browser_automation");
   if (secretManagerAccess) classes.add("handler_secret_manager_access");
+  if (taintedSecretManagerPath) classes.add("handler_tainted_secret_manager_path");
   if (shellExecution) classes.add("handler_shell_execution");
   if (taintedShellArgument) classes.add("handler_tainted_shell_argument");
   if (taintedFilesystemPath) classes.add("handler_tainted_filesystem_path");
@@ -27140,6 +27147,7 @@ function classifySourceToolHandlerSignals(
     handlerToolInvocation: toolInvocation,
     handlerBrowserAutomation: browserAutomation,
     handlerSecretManagerAccess: secretManagerAccess,
+    handlerTaintedSecretManagerPath: taintedSecretManagerPath,
     handlerShellExecution: shellExecution,
     handlerTaintedShellArgument: taintedShellArgument,
     handlerTaintedFilesystemPath: taintedFilesystemPath,
@@ -27516,6 +27524,20 @@ function hasPythonHandlerTaintedFilesystemPath(source: string): boolean {
   ].some((pattern) => expressionMatchesTaintedFilesystemPath(pattern, source));
 }
 
+function hasJavaScriptHandlerTaintedSecretManagerPath(source: string): boolean {
+  return [
+    /\b(?:vault|vaultClient|secretManager|secretManagerClient|secretsManager|secretsManagerClient|keyVault|keyVaultClient|credentialVault)\s*\.\s*(?:read|readSecret|get|getSecret|getSecretValue|accessSecretVersion|downloadSecret|retrieveSecret)\s*\(([\s\S]{0,520})\)/giu,
+    /\bnew\s+(?:GetSecretValueCommand|AccessSecretVersionRequest)\s*\(([\s\S]{0,520})\)/giu
+  ].some((pattern) => expressionMatchesTaintedSecretManagerPath(pattern, source));
+}
+
+function hasPythonHandlerTaintedSecretManagerPath(source: string): boolean {
+  return [
+    /\b(?:vault|vault_client|secret_manager|secret_manager_client|secrets_manager|secrets_manager_client|key_vault|key_vault_client|credential_vault)\s*\.\s*(?:read|read_secret|get|get_secret|get_secret_value|access_secret_version|download_secret|retrieve_secret)\s*\(([\s\S]{0,520})\)/giu,
+    /\b(?:GetSecretValueCommand|SecretManagerServiceClient|SecretClient)\s*\(([\s\S]{0,520})\)/giu
+  ].some((pattern) => expressionMatchesTaintedSecretManagerPath(pattern, source));
+}
+
 function hasJavaScriptHandlerTaintedDynamicCodeArgument(source: string): boolean {
   return [
     /\beval\s*\(([\s\S]{0,520})\)/giu,
@@ -27566,6 +27588,15 @@ function expressionMatchesTaintedFilesystemPath(pattern: RegExp, source: string)
   let match: RegExpExecArray | null;
   while ((match = pattern.exec(source)) !== null) {
     if (expressionReferencesTaintedFilesystemPath(match[1] ?? "", source)) return true;
+    if (match[0].length === 0) pattern.lastIndex += 1;
+  }
+  return false;
+}
+
+function expressionMatchesTaintedSecretManagerPath(pattern: RegExp, source: string): boolean {
+  let match: RegExpExecArray | null;
+  while ((match = pattern.exec(source)) !== null) {
+    if (expressionReferencesTaintedSecretManagerPath(match[1] ?? "", source)) return true;
     if (match[0].length === 0) pattern.lastIndex += 1;
   }
   return false;
@@ -27630,6 +27661,35 @@ function expressionReferencesTaintedFilesystemPath(expression: string, source: s
 }
 
 function identifierAssignedFromTaintedFilesystemPathInput(identifier: string, source: string, taintedName: RegExp): boolean {
+  const escaped = escapeRegExp(identifier);
+  const patterns = [
+    new RegExp(`\\b(?:const|let|var)\\s+${escaped}\\s*=\\s*([^;\\n]+)`, "gu"),
+    new RegExp(`\\b${escaped}\\s*=\\s*([^\\n]+)`, "gu")
+  ];
+  return patterns.some((pattern) => expressionMatchesPattern(pattern, source, taintedName));
+}
+
+function expressionReferencesTaintedSecretManagerPath(expression: string, source: string): boolean {
+  const templateInterpolation = /\$\{[^}]*\b(?:secretPath|secret_path|vaultPath|vault_path|secretName|secret_name|secretId|secret_id|secretRef|secret_ref|secretUri|secret_uri|credentialPath|credential_path|keyName|key_name|path)\b/u.test(
+    expression
+  );
+  if (templateInterpolation) return true;
+  const withoutQuotedStrings = expression.replace(/(["'`])(?:\\.|(?!\1)[\s\S])*\1/gu, " ");
+  const stronglyTaintedName = /\b(?:secretPath|secret_path|vaultPath|vault_path|secretName|secret_name|secretId|secret_id|secretRef|secret_ref|secretUri|secret_uri|credentialPath|credential_path|keyName|key_name)\b/u;
+  const taintedName = /\b(?:secretPath|secret_path|vaultPath|vault_path|secretName|secret_name|secretId|secret_id|secretRef|secret_ref|secretUri|secret_uri|credentialPath|credential_path|keyName|key_name|path)\b/u;
+  if (stronglyTaintedName.test(withoutQuotedStrings) || (/\bpath\b/u.test(withoutQuotedStrings) && !/\bpath\s*\./u.test(withoutQuotedStrings))) {
+    return true;
+  }
+
+  const identifiers = uniqueStrings(
+    [...withoutQuotedStrings.matchAll(/\b[A-Za-z_$][\w$]*\b/gu)]
+      .map((match) => match[0])
+      .filter((identifier) => !["GetSecretValueCommand", "AccessSecretVersionRequest", "SecretClient", "vault", "secretManager", "path"].includes(identifier))
+  );
+  return identifiers.some((identifier) => identifierAssignedFromTaintedSecretManagerPathInput(identifier, source, taintedName));
+}
+
+function identifierAssignedFromTaintedSecretManagerPathInput(identifier: string, source: string, taintedName: RegExp): boolean {
   const escaped = escapeRegExp(identifier);
   const patterns = [
     new RegExp(`\\b(?:const|let|var)\\s+${escaped}\\s*=\\s*([^;\\n]+)`, "gu"),
@@ -28982,6 +29042,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   nested_tool_invocation: boolean;
   browser_automation: boolean;
   secret_manager_access: boolean;
+  tainted_secret_manager_path: boolean;
   external_service_write: boolean;
   model_provider_call: boolean;
   privileged_prompt_composition: boolean;
@@ -29029,6 +29090,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   const handlerToolInvocation = handler?.handlerToolInvocation === true;
   const handlerBrowserAutomation = handler?.handlerBrowserAutomation === true;
   const handlerSecretManagerAccess = handler?.handlerSecretManagerAccess === true;
+  const handlerTaintedSecretManagerPath = handler?.handlerTaintedSecretManagerPath === true;
   const handlerShellExecution = handler?.handlerShellExecution === true;
   const handlerTaintedShellArgument = handler?.handlerTaintedShellArgument === true;
   const handlerTaintedFilesystemPath = handler?.handlerTaintedFilesystemPath === true;
@@ -29157,6 +29219,9 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
     actions.add("read");
     if (handlerModelVisibleOutput) actions.add("send");
   }
+  if (handlerTaintedSecretManagerPath) {
+    classes.add("tainted_secret_manager_path");
+  }
   if (handlerExternalServiceWrite) {
     classes.add("external_service_write");
     classes.add("external_write");
@@ -29220,6 +29285,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerToolInvocation ||
       handlerBrowserAutomation ||
       handlerSecretManagerAccess ||
+      handlerTaintedSecretManagerPath ||
       handlerExternalServiceWrite ||
       handlerModelProviderCall ||
       handlerPrivilegedPromptComposition ||
@@ -29274,6 +29340,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
     nested_tool_invocation: handlerToolInvocation,
     browser_automation: handlerBrowserAutomation,
     secret_manager_access: handlerSecretManagerAccess,
+    tainted_secret_manager_path: handlerTaintedSecretManagerPath,
     external_service_write: handlerExternalServiceWrite,
     model_provider_call: handlerModelProviderCall,
     privileged_prompt_composition: handlerPrivilegedPromptComposition,
@@ -29349,6 +29416,7 @@ function authoritySignature(tool: SurfaceObject): string {
     metadata.nested_tool_invocation === true ? "nested_tool_invocation" : "",
     metadata.browser_automation === true ? "browser_automation" : "",
     metadata.secret_manager_access === true ? "secret_manager_access" : "",
+    metadata.tainted_secret_manager_path === true ? "tainted_secret_manager_path" : "",
     metadata.accepts_secret_like_input === true ? "secret_input" : "",
     metadata.accepts_content_like_input === true ? "content_input" : "",
     metadata.accepts_path_input === true ? "path_input" : "",
@@ -29384,6 +29452,7 @@ function isPrivilegedToolSurface(tool: SurfaceObject): boolean {
     tool.metadata.nested_tool_invocation === true ||
     tool.metadata.browser_automation === true ||
     tool.metadata.secret_manager_access === true ||
+    tool.metadata.tainted_secret_manager_path === true ||
     tool.metadata.open_world_authority === true ||
     tool.metadata.read_only_hint_conflict === true
   );

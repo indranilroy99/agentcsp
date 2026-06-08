@@ -1596,13 +1596,15 @@ describe("scanner", () => {
       handler_tool_invocation: false,
       handler_browser_automation: false,
       handler_secret_manager_access: true,
+      handler_tainted_secret_manager_path: true,
+      tainted_secret_manager_path: true,
       handler_shell_execution: false,
       handler_dynamic_code_execution: false,
       handler_unsafe_deserialization: false,
       handler_filesystem_read: false,
       handler_filesystem_write: false,
       handler_filesystem_delete: false,
-      handler_signal_count: 1,
+      handler_signal_count: 2,
       open_world_schema: false
     });
     expect(sourceSecretManagerAccessTool?.metadata.authority_classes).toEqual([
@@ -1611,11 +1613,14 @@ describe("scanner", () => {
       "customer_data_input",
       "filesystem_access",
       "handler_secret_manager_access",
+      "handler_tainted_secret_manager_path",
       "pii_input",
-      "secret_manager_access"
+      "secret_manager_access",
+      "tainted_secret_manager_path"
     ]);
     expect(sourceSecretManagerAccessTool?.metadata.handler_authority_classes).toEqual([
-      "handler_secret_manager_access"
+      "handler_secret_manager_access",
+      "handler_tainted_secret_manager_path"
     ]);
     expect(sourceSecretManagerAccessTool?.metadata.handler_env_key_names).toEqual([]);
     expect(sourceSecretManagerAccessTool?.metadata.schema_properties).toEqual([
@@ -3009,13 +3014,15 @@ describe("scanner", () => {
       handler_tool_invocation: false,
       handler_browser_automation: false,
       handler_secret_manager_access: true,
+      handler_tainted_secret_manager_path: true,
+      tainted_secret_manager_path: true,
       handler_shell_execution: false,
       handler_dynamic_code_execution: false,
       handler_unsafe_deserialization: false,
       handler_filesystem_read: false,
       handler_filesystem_write: false,
       handler_filesystem_delete: false,
-      handler_signal_count: 1,
+      handler_signal_count: 2,
       open_world_schema: false
     });
     expect(langchainSecretManagerAccessTool?.metadata.authority_classes).toEqual([
@@ -3024,11 +3031,14 @@ describe("scanner", () => {
       "customer_data_input",
       "filesystem_access",
       "handler_secret_manager_access",
+      "handler_tainted_secret_manager_path",
       "pii_input",
-      "secret_manager_access"
+      "secret_manager_access",
+      "tainted_secret_manager_path"
     ]);
     expect(langchainSecretManagerAccessTool?.metadata.handler_authority_classes).toEqual([
-      "handler_secret_manager_access"
+      "handler_secret_manager_access",
+      "handler_tainted_secret_manager_path"
     ]);
     expect(langchainSecretManagerAccessTool?.metadata.handler_env_key_names).toEqual([]);
     expect(langchainSecretManagerAccessTool?.metadata.schema_properties).toEqual([

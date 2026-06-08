@@ -308,6 +308,7 @@ Tool metadata may include:
 - `nested_tool_invocation`
 - `browser_automation`
 - `secret_manager_access`
+- `tainted_secret_manager_path`
 - `external_service_write`
 - `model_provider_call`
 - `privileged_prompt_composition`
@@ -343,6 +344,7 @@ Tool metadata may include:
 - `handler_tool_invocation`
 - `handler_browser_automation`
 - `handler_secret_manager_access`
+- `handler_tainted_secret_manager_path`
 - `handler_shell_execution`
 - `handler_tainted_shell_argument`
 - `handler_tainted_filesystem_path`
