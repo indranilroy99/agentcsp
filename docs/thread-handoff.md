@@ -195,7 +195,7 @@ The current iteration adds:
 - bounded Python agent-framework extraction for LangChain/LangGraph `@tool(...)`, `StructuredTool.from_function(...)`, OpenAI Agents `@function_tool`, and CrewAI-style `@tool(...)` registrations
 - bounded JavaScript/TypeScript agent-framework extraction for AI SDK `tool(...)` and LangChain `new DynamicStructuredTool(...)` registrations
 - local Python Pydantic/BaseModel request-model field extraction without emitting model class names, `Field(...)` bodies, docstrings, or handler source
-- bounded JavaScript/TypeScript Zod field-map extraction with `.optional()` posture and no raw schema or handler source emission
+- bounded JavaScript/TypeScript inline and locally referenced Zod field-map extraction with `.optional()` posture and no schema variable name, raw schema, schema description, or handler source emission
 - normalization of source-defined MCP and agent-framework tools into the same `tool` manifest objects used by JSON/YAML tool schemas
 - redacted source metadata for framework/registration kind, argument count, schema style, schema field names, required/optional posture, read-only/idempotency hints when available, and source/handler redaction posture
 - vulnerable fixture coverage for source-defined MCP, LangChain, and AI SDK tools that combine external writes, PII/customer data, credential-like inputs, open-world arguments, Python signature/Pydantic extraction, Zod field extraction, and destructive filesystem authority

@@ -907,6 +907,8 @@ describe("scanner", () => {
     ]);
     expect(JSON.stringify(aiSdkExportTool)).not.toContain("ai sdk queued");
     expect(JSON.stringify(aiSdkExportTool)).not.toContain("Send AI SDK customer context to a caller supplied webhook");
+    expect(JSON.stringify(aiSdkExportTool)).not.toContain("customerContextExportInput");
+    expect(JSON.stringify(aiSdkExportTool)).not.toContain("Sensitive partner webhook schema hint");
     expect(tsLangchainDeleteTool).toMatchObject({
       path: "framework-tools/langchain_tools.ts",
       actions: ["call", "delete", "read"],
@@ -938,6 +940,8 @@ describe("scanner", () => {
     expect(tsLangchainDeleteTool?.metadata.required_properties).toEqual(["workspace_path"]);
     expect(JSON.stringify(tsLangchainDeleteTool)).not.toContain("ts framework deleted");
     expect(JSON.stringify(tsLangchainDeleteTool)).not.toContain("Delete a workspace path from a TypeScript LangChain tool");
+    expect(JSON.stringify(tsLangchainDeleteTool)).not.toContain("deleteWorkspacePathSchema");
+    expect(JSON.stringify(tsLangchainDeleteTool)).not.toContain("Sensitive workspace deletion schema hint");
     const openApiTool = surfaces.tools.find((surface) => surface.path === "tools/support-openapi.yaml");
     expect(openApiTool).toMatchObject({
       name: "openapi:post:1",
@@ -5488,6 +5492,8 @@ describe("scanner", () => {
     expect(aiSdkSourceTool?.metadata.required_properties).toEqual(["document_id"]);
     expect(JSON.stringify(aiSdkSourceTool)).not.toContain("ai sdk approved internal summary");
     expect(JSON.stringify(aiSdkSourceTool)).not.toContain("Read approved AI SDK internal documentation");
+    expect(JSON.stringify(aiSdkSourceTool)).not.toContain("internalDocReadInput");
+    expect(JSON.stringify(aiSdkSourceTool)).not.toContain("Approved internal document schema hint");
   });
 
   it("keeps approval-gated read-only hosted assistants scoped", async () => {

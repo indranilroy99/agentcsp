@@ -27184,15 +27184,17 @@ function extractJavaScriptAgentFrameworkToolDefinitions(
   framework: AgentFrameworkSourceToolFramework
 ): ExtractedAgentFrameworkSourceToolDefinition[] {
   if (!/\.(?:cjs|js|jsx|mjs|ts|tsx)$/iu.test(filePath)) return [];
+  const schemaDefinitions = extractJavaScriptZodSchemaDefinitions(content);
   return [
-    ...extractJavaScriptToolFactoryDefinitions(content, framework),
-    ...extractJavaScriptDynamicStructuredToolDefinitions(content, framework)
+    ...extractJavaScriptToolFactoryDefinitions(content, framework, schemaDefinitions),
+    ...extractJavaScriptDynamicStructuredToolDefinitions(content, framework, schemaDefinitions)
   ].sort((a, b) => a.name.localeCompare(b.name) || a.registrationKind.localeCompare(b.registrationKind));
 }
 
 function extractJavaScriptToolFactoryDefinitions(
   content: string,
-  framework: AgentFrameworkSourceToolFramework
+  framework: AgentFrameworkSourceToolFramework,
+  schemaDefinitions: Map<string, string>
 ): ExtractedAgentFrameworkSourceToolDefinition[] {
   const definitions: ExtractedAgentFrameworkSourceToolDefinition[] = [];
   const pattern = /(?:(?:export\s+)?(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*)?\btool\s*\(/gu;
@@ -27212,7 +27214,7 @@ function extractJavaScriptToolFactoryDefinitions(
 
     const argsText = content.slice(openParenIndex + 1, closeParenIndex);
     const args = splitTopLevelCommaList(argsText);
-    const definition = normalizeJavaScriptToolFactoryDefinition(args, callText, framework, match[1]);
+    const definition = normalizeJavaScriptToolFactoryDefinition(args, callText, framework, match[1], schemaDefinitions);
     if (definition) definitions.push(definition);
     pattern.lastIndex = closeParenIndex + 1;
   }
@@ -27223,12 +27225,13 @@ function normalizeJavaScriptToolFactoryDefinition(
   args: string[],
   callText: string,
   framework: AgentFrameworkSourceToolFramework,
-  assignedName: string | undefined
+  assignedName: string | undefined,
+  schemaDefinitions: Map<string, string>
 ): ExtractedAgentFrameworkSourceToolDefinition | undefined {
   const objectArg = args.find((arg) => /\b(name|description|schema|inputSchema|parameters|execute|func)\s*:/u.test(arg));
   if (!objectArg) return undefined;
 
-  const schemaSource = extractObjectPropertyValue(objectArg, ["inputSchema", "parameters", "schema"]) ?? "";
+  const schemaSource = resolveJavaScriptSourceSchema(objectArg, ["inputSchema", "parameters", "schema"], schemaDefinitions);
   if (!looksLikeSourceSchema(schemaSource)) return undefined;
   const schema = sourceSchemaProfile(schemaSource);
   const name = extractObjectPropertyString(objectArg, ["name"]) ?? assignedName;
@@ -27249,7 +27252,8 @@ function normalizeJavaScriptToolFactoryDefinition(
 
 function extractJavaScriptDynamicStructuredToolDefinitions(
   content: string,
-  framework: AgentFrameworkSourceToolFramework
+  framework: AgentFrameworkSourceToolFramework,
+  schemaDefinitions: Map<string, string>
 ): ExtractedAgentFrameworkSourceToolDefinition[] {
   const definitions: ExtractedAgentFrameworkSourceToolDefinition[] = [];
   const pattern = /\bnew\s+DynamicStructuredTool\s*\(/gu;
@@ -27273,7 +27277,7 @@ function extractJavaScriptDynamicStructuredToolDefinitions(
       continue;
     }
 
-    const schemaSource = extractObjectPropertyValue(objectArg, ["schema", "inputSchema", "parameters"]) ?? "";
+    const schemaSource = resolveJavaScriptSourceSchema(objectArg, ["schema", "inputSchema", "parameters"], schemaDefinitions);
     const name = extractObjectPropertyString(objectArg, ["name"]);
     if (!name || !looksLikeSourceSchema(schemaSource)) {
       pattern.lastIndex = closeParenIndex + 1;
@@ -27295,6 +27299,64 @@ function extractJavaScriptDynamicStructuredToolDefinitions(
     pattern.lastIndex = closeParenIndex + 1;
   }
   return definitions.sort((a, b) => a.name.localeCompare(b.name));
+}
+
+function extractJavaScriptZodSchemaDefinitions(content: string): Map<string, string> {
+  const definitions = new Map<string, string>();
+  const assignmentPattern = /\b(?:export\s+)?(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*z\s*\.\s*(?:object|strictObject)\s*\(/gu;
+  let match: RegExpExecArray | null;
+  while ((match = assignmentPattern.exec(content)) !== null) {
+    const name = match[1];
+    if (!name) continue;
+    const openParenIndex = assignmentPattern.lastIndex - 1;
+    const closeParenIndex = findMatchingDelimiter(content, openParenIndex, "(", ")");
+    if (closeParenIndex === -1) continue;
+    const schemaStart = content.lastIndexOf("z", openParenIndex);
+    if (schemaStart < match.index) continue;
+    const schemaEnd = readJavaScriptChainedExpressionEnd(content, closeParenIndex + 1);
+    const schemaSource = content.slice(schemaStart, schemaEnd).trim();
+    if (schemaSource.length > 50000) {
+      assignmentPattern.lastIndex = closeParenIndex + 1;
+      continue;
+    }
+    definitions.set(name, schemaSource);
+    assignmentPattern.lastIndex = closeParenIndex + 1;
+  }
+  return definitions;
+}
+
+function resolveJavaScriptSourceSchema(
+  objectSource: string,
+  names: string[],
+  schemaDefinitions: Map<string, string>
+): string {
+  const schemaSource = extractObjectPropertyValue(objectSource, names) ?? "";
+  if (looksLikeSourceSchema(schemaSource)) return schemaSource;
+  const identifier = javaScriptIdentifierValue(schemaSource);
+  if (!identifier) return schemaSource;
+  return schemaDefinitions.get(identifier) ?? schemaSource;
+}
+
+function javaScriptIdentifierValue(source: string): string | undefined {
+  const match = source.trim().match(/^([A-Za-z_$][\w$]{0,200})$/u);
+  return match?.[1];
+}
+
+function readJavaScriptChainedExpressionEnd(source: string, startIndex: number): number {
+  let index = startIndex;
+  while (index < source.length) {
+    while (/\s/u.test(source[index] ?? "")) index += 1;
+    if (source[index] !== ".") break;
+    const memberMatch = source.slice(index + 1).match(/^\s*[A-Za-z_$][\w$]*/u);
+    if (!memberMatch) break;
+    index += 1 + memberMatch[0].length;
+    while (/\s/u.test(source[index] ?? "")) index += 1;
+    if (source[index] !== "(") continue;
+    const closeParenIndex = findMatchingDelimiter(source, index, "(", ")");
+    if (closeParenIndex === -1) break;
+    index = closeParenIndex + 1;
+  }
+  return index;
 }
 
 interface PythonDecoratorBlock {
