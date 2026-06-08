@@ -541,6 +541,7 @@ describe("scanner", () => {
     const sourceShellTool = surfaces.tools.find((surface) => surface.name === "source_run_remediation_command");
     const sourceDatabaseTool = surfaces.tools.find((surface) => surface.name === "source_apply_record_change_sql");
     const sourceSecretOutputTool = surfaces.tools.find((surface) => surface.name === "source_reveal_runtime_secret");
+    const sourceCredentialedNetworkTool = surfaces.tools.find((surface) => surface.name === "source_fetch_partner_status");
     const pythonExportTool = surfaces.tools.find((surface) => surface.name === "python_export_customer_record");
     const pythonDeleteTool = surfaces.tools.find((surface) => surface.name === "python_readonly_delete_workspace_file");
     const langchainExportTool = surfaces.tools.find((surface) => surface.name === "langchain_export_customer_context");
@@ -548,6 +549,7 @@ describe("scanner", () => {
     const langchainShellTool = surfaces.tools.find((surface) => surface.name === "langchain_run_remediation_command");
     const langchainDatabaseTool = surfaces.tools.find((surface) => surface.name === "langchain_apply_record_change_sql");
     const langchainSecretOutputTool = surfaces.tools.find((surface) => surface.name === "langchain_reveal_runtime_secret");
+    const langchainCredentialedNetworkTool = surfaces.tools.find((surface) => surface.name === "langchain_fetch_partner_status");
     const aiSdkExportTool = surfaces.tools.find((surface) => surface.name === "aiSdkExportCustomerContext");
     const tsLangchainDeleteTool = surfaces.tools.find((surface) => surface.name === "ts_langchain_delete_workspace_path");
     expect(publishTool?.metadata).toMatchObject({
@@ -889,6 +891,66 @@ describe("scanner", () => {
     expect(sourceSecretOutputTool?.metadata.required_properties).toEqual(["requester_ticket", "secret_purpose"]);
     expect(JSON.stringify(sourceSecretOutputTool)).not.toContain("runtime secret:");
     expect(JSON.stringify(sourceSecretOutputTool)).not.toContain("Return a runtime support secret");
+    expect(sourceCredentialedNetworkTool).toMatchObject({
+      path: "mcp-source/customer-tools.ts",
+      data_classes: ["confidential", "credential"],
+      actions: ["call", "send"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: true
+    });
+    expect(sourceCredentialedNetworkTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_mcp_source_tool: true,
+      mcp_source_tool_registration: true,
+      mcp_source_tool_registration_kind: "registerTool",
+      mcp_source_tool_argument_count: 3,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      read_only_hint: false,
+      idempotent_hint: true,
+      accepts_url_input: true,
+      accepts_customer_data_input: true,
+      external_write: false,
+      destructive_action: false,
+      read_only_hint_conflict: false,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_external_network_call: true,
+      handler_credentialed_network_read: true,
+      handler_external_write: false,
+      handler_secret_env_access: true,
+      handler_model_visible_output: true,
+      handler_secret_to_output: false,
+      handler_database_query: false,
+      handler_database_write: false,
+      handler_shell_execution: false,
+      handler_filesystem_write: false,
+      handler_filesystem_delete: false,
+      handler_signal_count: 3,
+      open_world_schema: false
+    });
+    expect(sourceCredentialedNetworkTool?.metadata.authority_classes).toEqual([
+      "credential_input",
+      "credentialed_network_read",
+      "customer_data_input",
+      "handler_credentialed_network_read",
+      "handler_network_access",
+      "handler_secret_env_access",
+      "network_access",
+      "secret_env_access"
+    ]);
+    expect(sourceCredentialedNetworkTool?.metadata.handler_authority_classes).toEqual([
+      "handler_credentialed_network_read",
+      "handler_network_access",
+      "handler_secret_env_access"
+    ]);
+    expect(sourceCredentialedNetworkTool?.metadata.handler_env_key_names).toEqual(["SOURCE_PARTNER_STATUS_TOKEN"]);
+    expect(sourceCredentialedNetworkTool?.metadata.schema_properties).toEqual(["customer_reference", "status_endpoint_url"]);
+    expect(sourceCredentialedNetworkTool?.metadata.required_properties).toEqual(["customer_reference", "status_endpoint_url"]);
+    expect(JSON.stringify(sourceCredentialedNetworkTool)).not.toContain("source partner status checked");
+    expect(JSON.stringify(sourceCredentialedNetworkTool)).not.toContain("Fetch a support partner status endpoint");
     expect(pythonExportTool).toMatchObject({
       path: "mcp-source/python_tools.py",
       data_classes: ["confidential", "credential", "pii"],
@@ -1263,6 +1325,71 @@ describe("scanner", () => {
     expect(langchainSecretOutputTool?.metadata.required_properties).toEqual(["requester_ticket", "secret_purpose"]);
     expect(JSON.stringify(langchainSecretOutputTool)).not.toContain("runtime secret:");
     expect(JSON.stringify(langchainSecretOutputTool)).not.toContain("Return a runtime support token");
+    expect(langchainCredentialedNetworkTool).toMatchObject({
+      path: "framework-tools/langchain_tools.py",
+      data_classes: ["confidential", "credential"],
+      actions: ["call", "send"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: true
+    });
+    expect(langchainCredentialedNetworkTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_agent_framework_source_tool: true,
+      agent_framework_source_tool: true,
+      agent_framework_source_tool_framework: "langchain",
+      agent_framework_source_tool_registration_kind: "python_tool_decorator",
+      agent_framework_source_tool_argument_count: 2,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_url_input: true,
+      accepts_customer_data_input: true,
+      external_write: false,
+      destructive_action: false,
+      read_only_hint_conflict: false,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_external_network_call: true,
+      handler_credentialed_network_read: true,
+      handler_external_write: false,
+      handler_secret_env_access: true,
+      handler_model_visible_output: true,
+      handler_secret_to_output: false,
+      handler_database_query: false,
+      handler_database_write: false,
+      handler_shell_execution: false,
+      handler_filesystem_write: false,
+      handler_filesystem_delete: false,
+      handler_signal_count: 3,
+      open_world_schema: false
+    });
+    expect(langchainCredentialedNetworkTool?.metadata.authority_classes).toEqual([
+      "credentialed_network_read",
+      "customer_data_input",
+      "handler_credentialed_network_read",
+      "handler_network_access",
+      "handler_secret_env_access",
+      "network_access",
+      "secret_env_access"
+    ]);
+    expect(langchainCredentialedNetworkTool?.metadata.handler_authority_classes).toEqual([
+      "handler_credentialed_network_read",
+      "handler_network_access",
+      "handler_secret_env_access"
+    ]);
+    expect(langchainCredentialedNetworkTool?.metadata.handler_env_key_names).toEqual(["LANGCHAIN_PARTNER_STATUS_TOKEN"]);
+    expect(langchainCredentialedNetworkTool?.metadata.schema_properties).toEqual([
+      "customer_reference",
+      "status_endpoint_url"
+    ]);
+    expect(langchainCredentialedNetworkTool?.metadata.required_properties).toEqual([
+      "customer_reference",
+      "status_endpoint_url"
+    ]);
+    expect(JSON.stringify(langchainCredentialedNetworkTool)).not.toContain("httpx.get");
+    expect(JSON.stringify(langchainCredentialedNetworkTool)).not.toContain("framework partner status checked");
+    expect(JSON.stringify(langchainCredentialedNetworkTool)).not.toContain("Fetch partner status from a caller supplied endpoint");
     expect(aiSdkExportTool).toMatchObject({
       path: "framework-tools/vercel-ai-tools.ts",
       data_classes: ["confidential", "credential", "pii"],

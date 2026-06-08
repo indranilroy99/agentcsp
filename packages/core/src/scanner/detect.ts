@@ -26500,6 +26500,7 @@ interface ExtractedToolDefinition {
 interface SourceToolHandlerSignals {
   handlerBodyAnalyzed: boolean;
   handlerExternalNetworkCall: boolean;
+  handlerCredentialedNetworkRead: boolean;
   handlerExternalWrite: boolean;
   handlerSecretEnvAccess: boolean;
   handlerModelVisibleOutput: boolean;
@@ -26918,6 +26919,7 @@ function sourceToolHandlerSignalMetadata(signals: SourceToolHandlerSignals | und
     handler_body_analyzed: signals.handlerBodyAnalyzed,
     handler_body_redacted: true,
     handler_external_network_call: signals.handlerExternalNetworkCall,
+    handler_credentialed_network_read: signals.handlerCredentialedNetworkRead,
     handler_external_write: signals.handlerExternalWrite,
     handler_secret_env_access: signals.handlerSecretEnvAccess,
     handler_model_visible_output: signals.handlerModelVisibleOutput,
@@ -26956,6 +26958,7 @@ function classifySourceToolHandlerSignals(
   const secretEnvAccess = envKeyNames.length > 0 || (language === "javascript"
     ? /\b(?:process|Deno|Bun)\s*\.\s*env\b/u.test(handlerSource)
     : /\b(?:os\s*\.\s*(?:environ|getenv)|dotenv)\b/u.test(handlerSource));
+  const credentialedNetworkRead = externalNetworkCall && !externalWrite && secretEnvAccess && hasHandlerNetworkCredentialForwarding(handlerSource);
   const modelVisibleOutput = hasHandlerModelVisibleOutput(handlerSource);
   const secretToOutput = secretEnvAccess && (language === "javascript"
     ? hasJavaScriptHandlerSecretToOutput(handlerSource)
@@ -26972,6 +26975,7 @@ function classifySourceToolHandlerSignals(
 
   const classes = new Set<string>();
   if (externalNetworkCall) classes.add("handler_network_access");
+  if (credentialedNetworkRead) classes.add("handler_credentialed_network_read");
   if (externalWrite) classes.add("handler_external_write");
   if (secretEnvAccess) classes.add("handler_secret_env_access");
   if (secretToOutput) classes.add("handler_secret_to_output");
@@ -26984,6 +26988,7 @@ function classifySourceToolHandlerSignals(
   return {
     handlerBodyAnalyzed: true,
     handlerExternalNetworkCall: externalNetworkCall,
+    handlerCredentialedNetworkRead: credentialedNetworkRead,
     handlerExternalWrite: externalWrite,
     handlerSecretEnvAccess: secretEnvAccess,
     handlerModelVisibleOutput: modelVisibleOutput,
@@ -27044,6 +27049,10 @@ function hasPythonHandlerNetworkCall(source: string): boolean {
   return /\b(?:requests|httpx)\s*\.\s*(?:get|post|put|patch|delete|request)\s*\(|\baiohttp\s*\.|\burllib\s*\.\s*request|\burlopen\s*\(/u.test(
     source
   );
+}
+
+function hasHandlerNetworkCredentialForwarding(source: string): boolean {
+  return /\b(headers?|authorization|bearer|api[_\s-]?key|token|auth)\b/iu.test(source);
 }
 
 function hasHandlerModelVisibleOutput(source: string): boolean {
@@ -28430,6 +28439,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   const handlerSecretEnvAccess = handler?.handlerSecretEnvAccess === true;
   const handlerSecretToOutput = handler?.handlerSecretToOutput === true;
   const handlerExternalNetworkCall = handler?.handlerExternalNetworkCall === true;
+  const handlerCredentialedNetworkRead = handler?.handlerCredentialedNetworkRead === true;
   const handlerExternalWrite = handler?.handlerExternalWrite === true;
   const handlerDatabaseQuery = handler?.handlerDatabaseQuery === true;
   const handlerDatabaseWrite = handler?.handlerDatabaseWrite === true;
@@ -28455,6 +28465,10 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   }
   if (acceptsUrl || /\b(fetch|request|http|api|network)\b/i.test(text) || handlerExternalNetworkCall) {
     classes.add("network_access");
+  }
+  if (handlerCredentialedNetworkRead) {
+    classes.add("credentialed_network_read");
+    actions.add("send");
   }
   if (acceptsPath || /\b(read\s+file|write\s+file|filesystem|fs)\b/i.test(text) || handlerFilesystemWrite || handlerFilesystemDelete) {
     classes.add("filesystem_access");
@@ -28523,6 +28537,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       acceptsSecret ||
       handlerSecretEnvAccess ||
       handlerSecretToOutput ||
+      handlerCredentialedNetworkRead ||
       handlerDatabaseQuery ||
       handlerDatabaseWrite ||
       handlerExternalWrite ||

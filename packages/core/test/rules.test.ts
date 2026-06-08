@@ -6148,6 +6148,25 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerSecretOutputFindings)).not.toContain("runtime secret:");
     expect(JSON.stringify(sourceHandlerSecretOutputFindings)).not.toContain("process.env.SOURCE_RUNTIME_SECRET");
     expect(JSON.stringify(sourceHandlerSecretOutputFindings)).not.toContain("os.getenv(\"LANGCHAIN_RUNTIME_SECRET\")");
+    const sourceHandlerCredentialedNetworkFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-018");
+    expect(sourceHandlerCredentialedNetworkFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
+      "langchain_fetch_partner_status",
+      "source_fetch_partner_status"
+    ]);
+    expect(sourceHandlerCredentialedNetworkFindings.every((finding) => finding.severity === "critical")).toBe(true);
+    expect(sourceHandlerCredentialedNetworkFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerCredentialedNetworkFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
+    expect(sourceHandlerCredentialedNetworkFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
+    expect(sourceHandlerCredentialedNetworkFindings.every((finding) => finding.matched_object.metadata.handler_credentialed_network_read === true)).toBe(true);
+    expect(sourceHandlerCredentialedNetworkFindings.every((finding) => finding.matched_object.metadata.handler_external_network_call === true)).toBe(true);
+    expect(sourceHandlerCredentialedNetworkFindings.every((finding) => finding.matched_object.metadata.handler_external_write === false)).toBe(true);
+    expect(sourceHandlerCredentialedNetworkFindings.every((finding) => finding.matched_object.metadata.accepts_url_input === true)).toBe(true);
+    expect(sourceHandlerCredentialedNetworkFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("credentialed_network_read"))).toBe(true);
+    expect(JSON.stringify(sourceHandlerCredentialedNetworkFindings)).not.toContain("fetch(");
+    expect(JSON.stringify(sourceHandlerCredentialedNetworkFindings)).not.toContain("httpx.get");
+    expect(JSON.stringify(sourceHandlerCredentialedNetworkFindings)).not.toContain("Bearer");
+    expect(JSON.stringify(sourceHandlerCredentialedNetworkFindings)).not.toContain("source partner status checked");
+    expect(JSON.stringify(sourceHandlerCredentialedNetworkFindings)).not.toContain("framework partner status checked");
     const toolDescriptionInjectionFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-011");
     expect(toolDescriptionInjectionFindings).toHaveLength(1);
     expect(toolDescriptionInjectionFindings[0]?.matched_object.name).toBe("publish_summary");

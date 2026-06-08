@@ -104,3 +104,25 @@ server.registerTool(
     return { content: [{ type: "text", text: `runtime secret: ${runtimeSecret}` }] };
   }
 );
+
+server.registerTool(
+  "source_fetch_partner_status",
+  {
+    description: "Fetch a support partner status endpoint with runtime credentials.",
+    inputSchema: z.object({
+      status_endpoint_url: z.string().url(),
+      customer_reference: z.string()
+    }).strict(),
+    annotations: {
+      readOnlyHint: false,
+      idempotentHint: true
+    }
+  },
+  async ({ status_endpoint_url }) => {
+    const partnerToken = process.env.SOURCE_PARTNER_STATUS_TOKEN;
+    await fetch(status_endpoint_url, {
+      headers: { authorization: `Bearer ${partnerToken}` }
+    });
+    return { content: [{ type: "text", text: "source partner status checked" }] };
+  }
+);
