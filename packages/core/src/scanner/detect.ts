@@ -24137,6 +24137,7 @@ function addToolDefinitionSurface(
       !authority.artifact_export &&
       !authority.rag_context_to_output &&
       !authority.task_queue_enqueue &&
+      !authority.prompt_registry_write &&
       !authority.approval_auto_execution &&
       !authority.visual_context_capture &&
       !authority.tainted_network_destination &&
@@ -24199,6 +24200,9 @@ function addToolDefinitionSurface(
       task_queue_enqueue: authority.task_queue_enqueue,
       tainted_task_payload: authority.tainted_task_payload,
       tainted_task_routing: authority.tainted_task_routing,
+      prompt_registry_write: authority.prompt_registry_write,
+      tainted_prompt_registry_payload: authority.tainted_prompt_registry_payload,
+      tainted_prompt_registry_selector: authority.tainted_prompt_registry_selector,
       model_approval_gate: authority.model_approval_gate,
       tainted_approval_context: authority.tainted_approval_context,
       approval_auto_execution: authority.approval_auto_execution,
@@ -26603,6 +26607,9 @@ interface SourceToolHandlerSignals {
   handlerTaskQueueEnqueue: boolean;
   handlerTaintedTaskPayload: boolean;
   handlerTaintedTaskRouting: boolean;
+  handlerPromptRegistryWrite: boolean;
+  handlerTaintedPromptRegistryPayload: boolean;
+  handlerTaintedPromptRegistrySelector: boolean;
   handlerModelApprovalGate: boolean;
   handlerTaintedApprovalContext: boolean;
   handlerApprovalAutoExecution: boolean;
@@ -27073,6 +27080,9 @@ function sourceToolHandlerSignalMetadata(signals: SourceToolHandlerSignals | und
     handler_task_queue_enqueue: signals.handlerTaskQueueEnqueue,
     handler_tainted_task_payload: signals.handlerTaintedTaskPayload,
     handler_tainted_task_routing: signals.handlerTaintedTaskRouting,
+    handler_prompt_registry_write: signals.handlerPromptRegistryWrite,
+    handler_tainted_prompt_registry_payload: signals.handlerTaintedPromptRegistryPayload,
+    handler_tainted_prompt_registry_selector: signals.handlerTaintedPromptRegistrySelector,
     handler_model_approval_gate: signals.handlerModelApprovalGate,
     handler_tainted_approval_context: signals.handlerTaintedApprovalContext,
     handler_approval_auto_execution: signals.handlerApprovalAutoExecution,
@@ -27196,6 +27206,15 @@ function classifySourceToolHandlerSignals(
   const taintedTaskRouting = taskQueueEnqueue && (language === "javascript"
     ? hasJavaScriptHandlerTaintedTaskRouting(handlerSource)
     : hasPythonHandlerTaintedTaskRouting(handlerSource));
+  const promptRegistryWrite = language === "javascript"
+    ? hasJavaScriptHandlerPromptRegistryWrite(handlerSource)
+    : hasPythonHandlerPromptRegistryWrite(handlerSource);
+  const taintedPromptRegistryPayload = promptRegistryWrite && (language === "javascript"
+    ? hasJavaScriptHandlerTaintedPromptRegistryPayload(handlerSource)
+    : hasPythonHandlerTaintedPromptRegistryPayload(handlerSource));
+  const taintedPromptRegistrySelector = promptRegistryWrite && (language === "javascript"
+    ? hasJavaScriptHandlerTaintedPromptRegistrySelector(handlerSource)
+    : hasPythonHandlerTaintedPromptRegistrySelector(handlerSource));
   const modelApprovalGate = language === "javascript"
     ? hasJavaScriptHandlerModelApprovalGate(handlerSource)
     : hasPythonHandlerModelApprovalGate(handlerSource);
@@ -27326,6 +27345,9 @@ function classifySourceToolHandlerSignals(
   if (taskQueueEnqueue) classes.add("handler_task_queue_enqueue");
   if (taintedTaskPayload) classes.add("handler_tainted_task_payload");
   if (taintedTaskRouting) classes.add("handler_tainted_task_routing");
+  if (promptRegistryWrite) classes.add("handler_prompt_registry_write");
+  if (taintedPromptRegistryPayload) classes.add("handler_tainted_prompt_registry_payload");
+  if (taintedPromptRegistrySelector) classes.add("handler_tainted_prompt_registry_selector");
   if (modelApprovalGate) classes.add("handler_model_approval_gate");
   if (taintedApprovalContext) classes.add("handler_tainted_approval_context");
   if (approvalAutoExecution) classes.add("handler_approval_auto_execution");
@@ -27390,6 +27412,9 @@ function classifySourceToolHandlerSignals(
     handlerTaskQueueEnqueue: taskQueueEnqueue,
     handlerTaintedTaskPayload: taintedTaskPayload,
     handlerTaintedTaskRouting: taintedTaskRouting,
+    handlerPromptRegistryWrite: promptRegistryWrite,
+    handlerTaintedPromptRegistryPayload: taintedPromptRegistryPayload,
+    handlerTaintedPromptRegistrySelector: taintedPromptRegistrySelector,
     handlerModelApprovalGate: modelApprovalGate,
     handlerTaintedApprovalContext: taintedApprovalContext,
     handlerApprovalAutoExecution: approvalAutoExecution,
@@ -28169,6 +28194,52 @@ function hasPythonHandlerTaintedTaskRouting(source: string): boolean {
   ].some((pattern) => expressionMatchesTaintedTaskRouting(pattern, source));
 }
 
+function hasJavaScriptHandlerPromptRegistryWrite(source: string): boolean {
+  return /\b(?:promptRegistry|promptRegistryClient|promptStore|promptHub|promptCatalog|instructionRegistry|instructionStore|systemPromptRegistry|developerPromptRegistry|contextRegistry)\b/iu.test(
+    source
+  ) && [
+    /\b(?:promptRegistry|promptRegistryClient|promptStore|promptHub|promptCatalog|instructionRegistry|instructionStore|systemPromptRegistry|developerPromptRegistry|contextRegistry)\s*(?:\.\s*[A-Za-z_$][\w$]*){0,5}\s*\.\s*(?:update|updatePrompt|publish|publishPrompt|set|setPrompt|put|putPrompt|upsert|upsertPrompt|write|writePrompt|save|savePrompt|create|createPrompt|register|registerPrompt|sync|push)\s*\(/iu,
+    /\b(?:updatePromptRegistry|publishPromptRegistry|writePromptRegistry|upsertSystemPrompt|publishDeveloperPrompt|syncPromptRegistry)\s*\(/iu
+  ].some((pattern) => pattern.test(source));
+}
+
+function hasPythonHandlerPromptRegistryWrite(source: string): boolean {
+  return /\b(?:prompt_registry|prompt_registry_client|prompt_store|prompt_hub|prompt_catalog|instruction_registry|instruction_store|system_prompt_registry|developer_prompt_registry|context_registry)\b/iu.test(
+    source
+  ) && [
+    /\b(?:prompt_registry|prompt_registry_client|prompt_store|prompt_hub|prompt_catalog|instruction_registry|instruction_store|system_prompt_registry|developer_prompt_registry|context_registry)\s*(?:\.\s*[A-Za-z_]\w*){0,5}\s*\.\s*(?:update|update_prompt|publish|publish_prompt|set|set_prompt|put|put_prompt|upsert|upsert_prompt|write|write_prompt|save|save_prompt|create|create_prompt|register|register_prompt|sync|push)\s*\(/iu,
+    /\b(?:update_prompt_registry|publish_prompt_registry|write_prompt_registry|upsert_system_prompt|publish_developer_prompt|sync_prompt_registry)\s*\(/iu
+  ].some((pattern) => pattern.test(source));
+}
+
+function hasJavaScriptHandlerTaintedPromptRegistryPayload(source: string): boolean {
+  return [
+    /\b(?:promptRegistry|promptRegistryClient|promptStore|promptHub|promptCatalog|instructionRegistry|instructionStore|systemPromptRegistry|developerPromptRegistry|contextRegistry)\s*(?:\.\s*[A-Za-z_$][\w$]*){0,5}\s*\.\s*(?:update|updatePrompt|publish|publishPrompt|set|setPrompt|put|putPrompt|upsert|upsertPrompt|write|writePrompt|save|savePrompt|create|createPrompt|register|registerPrompt|sync|push)\s*\(([\s\S]{0,1400})\)/giu,
+    /\b(?:updatePromptRegistry|publishPromptRegistry|writePromptRegistry|upsertSystemPrompt|publishDeveloperPrompt|syncPromptRegistry)\s*\(([\s\S]{0,1400})\)/giu
+  ].some((pattern) => expressionMatchesTaintedPromptRegistryPayload(pattern, source));
+}
+
+function hasPythonHandlerTaintedPromptRegistryPayload(source: string): boolean {
+  return [
+    /\b(?:prompt_registry|prompt_registry_client|prompt_store|prompt_hub|prompt_catalog|instruction_registry|instruction_store|system_prompt_registry|developer_prompt_registry|context_registry)\s*(?:\.\s*[A-Za-z_]\w*){0,5}\s*\.\s*(?:update|update_prompt|publish|publish_prompt|set|set_prompt|put|put_prompt|upsert|upsert_prompt|write|write_prompt|save|save_prompt|create|create_prompt|register|register_prompt|sync|push)\s*\(([\s\S]{0,1400})\)/giu,
+    /\b(?:update_prompt_registry|publish_prompt_registry|write_prompt_registry|upsert_system_prompt|publish_developer_prompt|sync_prompt_registry)\s*\(([\s\S]{0,1400})\)/giu
+  ].some((pattern) => expressionMatchesTaintedPromptRegistryPayload(pattern, source));
+}
+
+function hasJavaScriptHandlerTaintedPromptRegistrySelector(source: string): boolean {
+  return [
+    /\b(?:promptRegistry|promptRegistryClient|promptStore|promptHub|promptCatalog|instructionRegistry|instructionStore|systemPromptRegistry|developerPromptRegistry|contextRegistry)\s*(?:\.\s*[A-Za-z_$][\w$]*){0,5}\s*\.\s*(?:update|updatePrompt|publish|publishPrompt|set|setPrompt|put|putPrompt|upsert|upsertPrompt|write|writePrompt|save|savePrompt|create|createPrompt|register|registerPrompt|sync|push)\s*\(([\s\S]{0,1400})\)/giu,
+    /\b(?:updatePromptRegistry|publishPromptRegistry|writePromptRegistry|upsertSystemPrompt|publishDeveloperPrompt|syncPromptRegistry)\s*\(([\s\S]{0,1400})\)/giu
+  ].some((pattern) => expressionMatchesTaintedPromptRegistrySelector(pattern, source));
+}
+
+function hasPythonHandlerTaintedPromptRegistrySelector(source: string): boolean {
+  return [
+    /\b(?:prompt_registry|prompt_registry_client|prompt_store|prompt_hub|prompt_catalog|instruction_registry|instruction_store|system_prompt_registry|developer_prompt_registry|context_registry)\s*(?:\.\s*[A-Za-z_]\w*){0,5}\s*\.\s*(?:update|update_prompt|publish|publish_prompt|set|set_prompt|put|put_prompt|upsert|upsert_prompt|write|write_prompt|save|save_prompt|create|create_prompt|register|register_prompt|sync|push)\s*\(([\s\S]{0,1400})\)/giu,
+    /\b(?:update_prompt_registry|publish_prompt_registry|write_prompt_registry|upsert_system_prompt|publish_developer_prompt|sync_prompt_registry)\s*\(([\s\S]{0,1400})\)/giu
+  ].some((pattern) => expressionMatchesTaintedPromptRegistrySelector(pattern, source));
+}
+
 function hasJavaScriptHandlerModelApprovalGate(source: string): boolean {
   return [
     /\b(?:approvalModelClient|approvalClient|modelApprovalClient|policyModelClient|riskReviewClient|guardrailModelClient|llmApprovalClient)\s*(?:\.\s*[A-Za-z_$][\w$]*){0,4}\s*\.\s*(?:evaluate|evaluateApproval|approve|approveAction|decide|review|classify|authorize|assess)\s*\(/iu,
@@ -28481,6 +28552,24 @@ function expressionMatchesTaintedTaskRouting(pattern: RegExp, source: string): b
   let match: RegExpExecArray | null;
   while ((match = pattern.exec(source)) !== null) {
     if (expressionReferencesTaintedTaskRouting(match[1] ?? "", source)) return true;
+    if (match[0].length === 0) pattern.lastIndex += 1;
+  }
+  return false;
+}
+
+function expressionMatchesTaintedPromptRegistryPayload(pattern: RegExp, source: string): boolean {
+  let match: RegExpExecArray | null;
+  while ((match = pattern.exec(source)) !== null) {
+    if (expressionReferencesTaintedPromptRegistryPayload(match[1] ?? "", source)) return true;
+    if (match[0].length === 0) pattern.lastIndex += 1;
+  }
+  return false;
+}
+
+function expressionMatchesTaintedPromptRegistrySelector(pattern: RegExp, source: string): boolean {
+  let match: RegExpExecArray | null;
+  while ((match = pattern.exec(source)) !== null) {
+    if (expressionReferencesTaintedPromptRegistrySelector(match[1] ?? "", source)) return true;
     if (match[0].length === 0) pattern.lastIndex += 1;
   }
   return false;
@@ -29466,6 +29555,101 @@ function expressionReferencesTaintedTaskRouting(expression: string, source: stri
 }
 
 function identifierAssignedFromTaintedTaskRouting(identifier: string, source: string, taintedName: RegExp): boolean {
+  const escaped = escapeRegExp(identifier);
+  const patterns = [
+    new RegExp(`\\b(?:const|let|var)\\s+${escaped}\\s*=\\s*([^;\\n]+)`, "gu"),
+    new RegExp(`\\b${escaped}\\s*=\\s*([^\\n]+)`, "gu")
+  ];
+  return patterns.some((pattern) => expressionMatchesPattern(pattern, source, taintedName));
+}
+
+function expressionReferencesTaintedPromptRegistryPayload(expression: string, source: string): boolean {
+  const templateInterpolation = /\$\{[^}]*\b(?:instructionText|instruction_text|promptText|prompt_text|promptBody|prompt_body|systemPrompt|system_prompt|developerPrompt|developer_prompt|customerTicketText|customer_ticket_text|customerContext|customer_context|toolOutputText|tool_output_text|retrievalContext|retrieval_context|memoryContext|memory_context|content|message|prompt|instructions|text|customer|ticket|context)\b/u.test(
+    expression
+  );
+  if (templateInterpolation) return true;
+  const withoutQuotedStrings = expression.replace(/(["'`])(?:\\.|(?!\1)[\s\S])*\1/gu, " ");
+  const stronglyTaintedName = /\b(?:instructionText|instruction_text|promptText|prompt_text|promptBody|prompt_body|systemPrompt|system_prompt|developerPrompt|developer_prompt|customerTicketText|customer_ticket_text|customerContext|customer_context|toolOutputText|tool_output_text|retrievalContext|retrieval_context|memoryContext|memory_context)\b/u;
+  const taintedName = /\b(?:instructionText|instruction_text|promptText|prompt_text|promptBody|prompt_body|systemPrompt|system_prompt|developerPrompt|developer_prompt|customerTicketText|customer_ticket_text|customerContext|customer_context|toolOutputText|tool_output_text|retrievalContext|retrieval_context|memoryContext|memory_context|content|message|prompt|instructions|instruction|text|customer|ticket|context|body|payload)\b/u;
+  if (stronglyTaintedName.test(withoutQuotedStrings)) return true;
+
+  const payloadAssignment = /\b(?:prompt|promptText|prompt_text|body|content|message|instructions|instruction|system|developer|text|customer|customer_id|customerId|ticket|ticket_text|ticketText|context|customer_context|customerContext|tool_output|toolOutput|retrieval_context|retrievalContext|payload)\s*(?::|=)\s*([^,\n}\)]+)/giu;
+  if (expressionMatchesPattern(payloadAssignment, withoutQuotedStrings, taintedName)) return true;
+
+  const valueOnlyExpression = withoutQuotedStrings.replace(
+    /\b(?:prompt|promptText|prompt_text|body|content|message|instructions|instruction|system|developer|text|customer|customer_id|customerId|ticket|ticket_text|ticketText|context|customer_context|customerContext|tool_output|toolOutput|retrieval_context|retrievalContext|payload)\s*(?::|=)/giu,
+    " "
+  );
+  const identifiers = uniqueStrings(
+    [...valueOnlyExpression.matchAll(/\b[A-Za-z_$][\w$]*\b/gu)]
+      .map((match) => match[0])
+      .filter((identifier) => ![
+        "promptRegistry",
+        "prompt_registry",
+        "promptRegistryClient",
+        "prompt_registry_client",
+        "instructionRegistry",
+        "instruction_registry",
+        "promptStore",
+        "prompt_store",
+        "token",
+        "apiKey",
+        "api_key",
+        "metadata",
+        "labels"
+      ].includes(identifier))
+  );
+  return identifiers.some((identifier) => identifierAssignedFromTaintedPromptRegistryPayload(identifier, source, taintedName));
+}
+
+function identifierAssignedFromTaintedPromptRegistryPayload(identifier: string, source: string, taintedName: RegExp): boolean {
+  const escaped = escapeRegExp(identifier);
+  const patterns = [
+    new RegExp(`\\b(?:const|let|var)\\s+${escaped}\\s*=\\s*([^;\\n]+)`, "gu"),
+    new RegExp(`\\b${escaped}\\s*=\\s*([^\\n]+)`, "gu")
+  ];
+  return patterns.some((pattern) => expressionMatchesPattern(pattern, source, taintedName));
+}
+
+function expressionReferencesTaintedPromptRegistrySelector(expression: string, source: string): boolean {
+  const templateInterpolation = /\$\{[^}]*\b(?:promptId|prompt_id|promptName|prompt_name|promptRole|prompt_role|promptKind|prompt_kind|registryNamespace|registry_namespace|targetPrompt|target_prompt|promptVersion|prompt_version|environmentName|environment_name|tenantId|tenant_id|customerId|customer_id|role|namespace|tenant|environment|version)\b/u.test(
+    expression
+  );
+  if (templateInterpolation) return true;
+  const withoutQuotedStrings = expression.replace(/(["'`])(?:\\.|(?!\1)[\s\S])*\1/gu, " ");
+  const stronglyTaintedName = /\b(?:promptId|prompt_id|promptName|prompt_name|promptRole|prompt_role|promptKind|prompt_kind|registryNamespace|registry_namespace|targetPrompt|target_prompt|promptVersion|prompt_version|environmentName|environment_name|tenantId|tenant_id|customerId|customer_id)\b/u;
+  if (stronglyTaintedName.test(withoutQuotedStrings)) return true;
+
+  const selectorAssignment = /\b(?:promptId|prompt_id|promptName|prompt_name|id|name|role|kind|promptRole|prompt_role|namespace|registryNamespace|registry_namespace|target|targetPrompt|target_prompt|version|promptVersion|prompt_version|environment|environmentName|environment_name|tenant|tenantId|tenant_id)\s*(?::|=)\s*([^,\n}\)]+)/giu;
+  if (expressionMatchesPattern(selectorAssignment, withoutQuotedStrings, stronglyTaintedName)) return true;
+
+  const valueOnlyExpression = withoutQuotedStrings.replace(
+    /\b(?:promptId|prompt_id|promptName|prompt_name|id|name|role|kind|promptRole|prompt_role|namespace|registryNamespace|registry_namespace|target|targetPrompt|target_prompt|version|promptVersion|prompt_version|environment|environmentName|environment_name|tenant|tenantId|tenant_id)\s*(?::|=)/giu,
+    " "
+  );
+  const identifiers = uniqueStrings(
+    [...valueOnlyExpression.matchAll(/\b[A-Za-z_$][\w$]*\b/gu)]
+      .map((match) => match[0])
+      .filter((identifier) => ![
+        "promptRegistry",
+        "prompt_registry",
+        "promptRegistryClient",
+        "prompt_registry_client",
+        "instructionRegistry",
+        "instruction_registry",
+        "promptStore",
+        "prompt_store",
+        "payload",
+        "body",
+        "token",
+        "apiKey",
+        "api_key"
+      ].includes(identifier))
+  );
+  return identifiers.some((identifier) => identifierAssignedFromTaintedPromptRegistrySelector(identifier, source, stronglyTaintedName));
+}
+
+function identifierAssignedFromTaintedPromptRegistrySelector(identifier: string, source: string, taintedName: RegExp): boolean {
   const escaped = escapeRegExp(identifier);
   const patterns = [
     new RegExp(`\\b(?:const|let|var)\\s+${escaped}\\s*=\\s*([^;\\n]+)`, "gu"),
@@ -30925,6 +31109,9 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   task_queue_enqueue: boolean;
   tainted_task_payload: boolean;
   tainted_task_routing: boolean;
+  prompt_registry_write: boolean;
+  tainted_prompt_registry_payload: boolean;
+  tainted_prompt_registry_selector: boolean;
   model_approval_gate: boolean;
   tainted_approval_context: boolean;
   approval_auto_execution: boolean;
@@ -30984,6 +31171,9 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   const handlerTaskQueueEnqueue = handler?.handlerTaskQueueEnqueue === true;
   const handlerTaintedTaskPayload = handler?.handlerTaintedTaskPayload === true;
   const handlerTaintedTaskRouting = handler?.handlerTaintedTaskRouting === true;
+  const handlerPromptRegistryWrite = handler?.handlerPromptRegistryWrite === true;
+  const handlerTaintedPromptRegistryPayload = handler?.handlerTaintedPromptRegistryPayload === true;
+  const handlerTaintedPromptRegistrySelector = handler?.handlerTaintedPromptRegistrySelector === true;
   const handlerModelApprovalGate = handler?.handlerModelApprovalGate === true;
   const handlerTaintedApprovalContext = handler?.handlerTaintedApprovalContext === true;
   const handlerApprovalAutoExecution = handler?.handlerApprovalAutoExecution === true;
@@ -31270,6 +31460,19 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
     classes.add("tainted_task_routing");
     actions.add("send");
   }
+  if (handlerPromptRegistryWrite) {
+    classes.add("prompt_registry_write");
+    actions.add("send");
+    actions.add("write");
+  }
+  if (handlerTaintedPromptRegistryPayload) {
+    classes.add("tainted_prompt_registry_payload");
+    actions.add("send");
+  }
+  if (handlerTaintedPromptRegistrySelector) {
+    classes.add("tainted_prompt_registry_selector");
+    actions.add("send");
+  }
   if (handlerModelApprovalGate) {
     classes.add("model_approval_gate");
     actions.add("send");
@@ -31366,6 +31569,9 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerTaskQueueEnqueue ||
       handlerTaintedTaskPayload ||
       handlerTaintedTaskRouting ||
+      handlerPromptRegistryWrite ||
+      handlerTaintedPromptRegistryPayload ||
+      handlerTaintedPromptRegistrySelector ||
       handlerModelApprovalGate ||
       handlerTaintedApprovalContext ||
       handlerApprovalAutoExecution ||
@@ -31414,6 +31620,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerArtifactExport ||
       handlerRagRetrieval ||
       handlerTaskQueueEnqueue ||
+      handlerPromptRegistryWrite ||
       handlerModelApprovalGate ||
       (handlerPromptCacheWrite && handlerSecretEnvAccess),
     secret_exposure: acceptsSecret || handlerSecretEnvAccess || localFileDisclosure || handlerCredentialIssuance || handlerAgentDelegation || handlerSecretManagerAccess,
@@ -31465,6 +31672,9 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
     task_queue_enqueue: handlerTaskQueueEnqueue,
     tainted_task_payload: handlerTaintedTaskPayload,
     tainted_task_routing: handlerTaintedTaskRouting,
+    prompt_registry_write: handlerPromptRegistryWrite,
+    tainted_prompt_registry_payload: handlerTaintedPromptRegistryPayload,
+    tainted_prompt_registry_selector: handlerTaintedPromptRegistrySelector,
     model_approval_gate: handlerModelApprovalGate,
     tainted_approval_context: handlerTaintedApprovalContext,
     approval_auto_execution: handlerApprovalAutoExecution,
@@ -31553,6 +31763,9 @@ function authoritySignature(tool: SurfaceObject): string {
     metadata.task_queue_enqueue === true ? "task_queue_enqueue" : "",
     metadata.tainted_task_payload === true ? "tainted_task_payload" : "",
     metadata.tainted_task_routing === true ? "tainted_task_routing" : "",
+    metadata.prompt_registry_write === true ? "prompt_registry_write" : "",
+    metadata.tainted_prompt_registry_payload === true ? "tainted_prompt_registry_payload" : "",
+    metadata.tainted_prompt_registry_selector === true ? "tainted_prompt_registry_selector" : "",
     metadata.model_approval_gate === true ? "model_approval_gate" : "",
     metadata.tainted_approval_context === true ? "tainted_approval_context" : "",
     metadata.approval_auto_execution === true ? "approval_auto_execution" : "",
@@ -31622,6 +31835,9 @@ function isPrivilegedToolSurface(tool: SurfaceObject): boolean {
     tool.metadata.task_queue_enqueue === true ||
     tool.metadata.tainted_task_payload === true ||
     tool.metadata.tainted_task_routing === true ||
+    tool.metadata.prompt_registry_write === true ||
+    tool.metadata.tainted_prompt_registry_payload === true ||
+    tool.metadata.tainted_prompt_registry_selector === true ||
     tool.metadata.model_approval_gate === true ||
     tool.metadata.tainted_approval_context === true ||
     tool.metadata.approval_auto_execution === true ||

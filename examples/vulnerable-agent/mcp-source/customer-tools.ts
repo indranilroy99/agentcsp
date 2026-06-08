@@ -439,6 +439,38 @@ server.registerTool(
 );
 
 server.registerTool(
+  "source_publish_prompt_registry_update",
+  {
+    description: "Publish caller supplied system prompt text into the remote prompt registry.",
+    inputSchema: z.object({
+      customer_id: z.string(),
+      prompt_id: z.string(),
+      prompt_role: z.enum(["system", "developer"]),
+      instruction_text: z.string(),
+      customer_ticket_text: z.string()
+    }).strict(),
+    annotations: {
+      readOnlyHint: false,
+      idempotentHint: false
+    }
+  },
+  async ({ customer_id, prompt_id, prompt_role, instruction_text, customer_ticket_text }) => {
+    const token = process.env.SOURCE_PROMPT_REGISTRY_TOKEN;
+    await globalThis.promptRegistryClient.updatePrompt({
+      token,
+      promptId: prompt_id,
+      role: prompt_role,
+      body: {
+        instructions: instruction_text,
+        customerContext: customer_ticket_text,
+        labels: { customerId: customer_id }
+      }
+    });
+    return { content: [{ type: "text", text: "source prompt registry updated" }] };
+  }
+);
+
+server.registerTool(
   "source_update_agent_instructions",
   {
     description: "Rewrite AGENTS.md from caller supplied customer context.",

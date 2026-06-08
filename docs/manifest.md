@@ -341,6 +341,9 @@ Tool metadata may include:
 - `task_queue_enqueue`
 - `tainted_task_payload`
 - `tainted_task_routing`
+- `prompt_registry_write`
+- `tainted_prompt_registry_payload`
+- `tainted_prompt_registry_selector`
 - `model_approval_gate`
 - `tainted_approval_context`
 - `approval_auto_execution`
@@ -386,6 +389,9 @@ Tool metadata may include:
 - `handler_task_queue_enqueue`
 - `handler_tainted_task_payload`
 - `handler_tainted_task_routing`
+- `handler_prompt_registry_write`
+- `handler_tainted_prompt_registry_payload`
+- `handler_tainted_prompt_registry_selector`
 - `handler_model_approval_gate`
 - `handler_tainted_approval_context`
 - `handler_approval_auto_execution`
@@ -1845,6 +1851,8 @@ Source-defined tool handlers can also emit redacted artifact-export authority th
 Source-defined tool handlers can also emit redacted RAG retrieval authority through `rag_retrieval`, `tainted_rag_retrieval_query`, `rag_context_to_output`, and the corresponding `handler_*` fields when parsed MCP SDK or agent-framework tools run caller-selected retrieval and return raw chunks into model-visible output using runtime credentials. Handler bodies, retriever calls, query text, namespaces, filters, chunk text, document IDs, and returned retrieved context remain redacted.
 
 Source-defined tool handlers can also emit redacted async task-queue authority through `task_queue_enqueue`, `tainted_task_payload`, `tainted_task_routing`, and the corresponding `handler_*` fields when parsed MCP SDK or agent-framework tools enqueue caller/customer payloads into background agent jobs using runtime credentials. Handler bodies, queue calls, queue names, topics, routes, payload bodies, requested action labels, and returned queue summaries remain redacted.
+
+Source-defined tool handlers can also emit redacted prompt-registry write authority through `prompt_registry_write`, `tainted_prompt_registry_payload`, `tainted_prompt_registry_selector`, and the corresponding `handler_*` fields when parsed MCP SDK or agent-framework tools publish caller/customer prompt or instruction content to remote prompt registries using runtime credentials. Handler bodies, registry calls, prompt IDs, prompt names, roles, namespaces, versions, prompt bodies, customer context, and returned registry summaries remain redacted.
 
 Source-defined tool handlers can also emit redacted model-mediated approval authority through `model_approval_gate`, `tainted_approval_context`, `approval_auto_execution`, and the corresponding `handler_*` fields when parsed MCP SDK or agent-framework tools send caller/customer/tool-output context into an approval model or gate and then automatically execute a privileged action from the approval result. Handler bodies, approval model calls, decision objects, executor calls, action payloads, and returned approval summaries remain redacted.
 

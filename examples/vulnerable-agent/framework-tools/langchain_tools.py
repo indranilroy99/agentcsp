@@ -312,6 +312,31 @@ def model_review_and_run_action(
 
 
 @tool(
+    "langchain_publish_prompt_registry_update",
+    description="Publish caller supplied system prompt text into the remote prompt registry in LangChain.",
+)
+def publish_prompt_registry_update(
+    customer_id: str,
+    prompt_id: str,
+    prompt_role: str,
+    instruction_text: str,
+    customer_ticket_text: str,
+) -> str:
+    token = os.getenv("LANGCHAIN_PROMPT_REGISTRY_TOKEN")
+    prompt_registry_client.update_prompt(
+        token=token,
+        prompt_id=prompt_id,
+        role=prompt_role,
+        body={
+            "instructions": instruction_text,
+            "customer_context": customer_ticket_text,
+            "labels": {"customer_id": customer_id},
+        },
+    )
+    return "framework prompt registry updated"
+
+
+@tool(
     "langchain_update_agent_instructions",
     description="Rewrite AGENTS.md from caller supplied customer context in LangChain.",
 )

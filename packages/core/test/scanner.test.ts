@@ -553,6 +553,7 @@ describe("scanner", () => {
     const sourceTrainingDatasetExportTool = surfaces.tools.find((surface) => surface.name === "source_append_training_dataset_record");
     const sourceArtifactExportTool = surfaces.tools.find((surface) => surface.name === "source_export_agent_run_artifact");
     const sourceModelApprovalTool = surfaces.tools.find((surface) => surface.name === "source_model_review_and_run_action");
+    const sourcePromptRegistryWriteTool = surfaces.tools.find((surface) => surface.name === "source_publish_prompt_registry_update");
     const sourceAgentConfigWriteTool = surfaces.tools.find((surface) => surface.name === "source_update_agent_instructions");
     const sourceCredentialIssuanceTool = surfaces.tools.find((surface) => surface.name === "source_mint_agent_session_token");
     const sourceNestedToolInvocationTool = surfaces.tools.find((surface) => surface.name === "source_dispatch_privileged_tool");
@@ -582,6 +583,7 @@ describe("scanner", () => {
     const langchainTrainingDatasetExportTool = surfaces.tools.find((surface) => surface.name === "langchain_append_training_dataset_record");
     const langchainArtifactExportTool = surfaces.tools.find((surface) => surface.name === "langchain_export_agent_run_artifact");
     const langchainModelApprovalTool = surfaces.tools.find((surface) => surface.name === "langchain_model_review_and_run_action");
+    const langchainPromptRegistryWriteTool = surfaces.tools.find((surface) => surface.name === "langchain_publish_prompt_registry_update");
     const langchainAgentConfigWriteTool = surfaces.tools.find((surface) => surface.name === "langchain_update_agent_instructions");
     const langchainCredentialIssuanceTool = surfaces.tools.find((surface) => surface.name === "langchain_mint_agent_session_token");
     const langchainNestedToolInvocationTool = surfaces.tools.find((surface) => surface.name === "langchain_dispatch_privileged_tool");
@@ -1897,6 +1899,96 @@ describe("scanner", () => {
     expect(JSON.stringify(sourceModelApprovalTool)).not.toContain("privilegedActionExecutor.execute");
     expect(JSON.stringify(sourceModelApprovalTool)).not.toContain("source model approval executed");
     expect(JSON.stringify(sourceModelApprovalTool)).not.toContain("Approve and execute a caller supplied privileged action");
+    expect(sourcePromptRegistryWriteTool).toMatchObject({
+      path: "mcp-source/customer-tools.ts",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["call", "publish", "send", "write"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(sourcePromptRegistryWriteTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_mcp_source_tool: true,
+      mcp_source_tool_registration: true,
+      mcp_source_tool_registration_kind: "registerTool",
+      mcp_source_tool_argument_count: 3,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_content_like_input: true,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      prompt_registry_write: true,
+      tainted_prompt_registry_payload: true,
+      tainted_prompt_registry_selector: true,
+      external_write: true,
+      destructive_action: false,
+      read_only_hint_conflict: false,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_external_network_call: false,
+      handler_external_write: false,
+      handler_external_service_write: false,
+      handler_model_provider_call: false,
+      handler_prompt_registry_write: true,
+      handler_tainted_prompt_registry_payload: true,
+      handler_tainted_prompt_registry_selector: true,
+      handler_secret_env_access: true,
+      handler_model_visible_output: true,
+      handler_secret_to_output: false,
+      handler_database_query: false,
+      handler_database_write: false,
+      handler_memory_write: false,
+      handler_agent_config_write: false,
+      handler_shell_execution: false,
+      handler_dynamic_code_execution: false,
+      handler_unsafe_deserialization: false,
+      handler_filesystem_read: false,
+      handler_filesystem_write: false,
+      handler_filesystem_delete: false,
+      handler_signal_count: 4,
+      open_world_schema: false
+    });
+    expect(sourcePromptRegistryWriteTool?.metadata.authority_classes).toEqual([
+      "content_input",
+      "customer_data_input",
+      "external_write",
+      "handler_prompt_registry_write",
+      "handler_secret_env_access",
+      "handler_tainted_prompt_registry_payload",
+      "handler_tainted_prompt_registry_selector",
+      "pii_input",
+      "prompt_registry_write",
+      "secret_env_access",
+      "tainted_prompt_registry_payload",
+      "tainted_prompt_registry_selector"
+    ]);
+    expect(sourcePromptRegistryWriteTool?.metadata.handler_authority_classes).toEqual([
+      "handler_prompt_registry_write",
+      "handler_secret_env_access",
+      "handler_tainted_prompt_registry_payload",
+      "handler_tainted_prompt_registry_selector"
+    ]);
+    expect(sourcePromptRegistryWriteTool?.metadata.handler_env_key_names).toEqual(["SOURCE_PROMPT_REGISTRY_TOKEN"]);
+    expect(sourcePromptRegistryWriteTool?.metadata.schema_properties).toEqual([
+      "customer_id",
+      "customer_ticket_text",
+      "instruction_text",
+      "prompt_id",
+      "prompt_role"
+    ]);
+    expect(sourcePromptRegistryWriteTool?.metadata.required_properties).toEqual([
+      "customer_id",
+      "customer_ticket_text",
+      "instruction_text",
+      "prompt_id",
+      "prompt_role"
+    ]);
+    expect(JSON.stringify(sourcePromptRegistryWriteTool)).not.toContain("promptRegistryClient.updatePrompt");
+    expect(JSON.stringify(sourcePromptRegistryWriteTool)).not.toContain("customerContext");
+    expect(JSON.stringify(sourcePromptRegistryWriteTool)).not.toContain("source prompt registry updated");
+    expect(JSON.stringify(sourcePromptRegistryWriteTool)).not.toContain("Publish caller supplied system prompt text");
     expect(sourceAgentConfigWriteTool).toMatchObject({
       path: "mcp-source/customer-tools.ts",
       data_classes: ["confidential", "pii"],
@@ -4180,6 +4272,97 @@ describe("scanner", () => {
     expect(JSON.stringify(langchainModelApprovalTool)).not.toContain("privileged_action_executor.execute");
     expect(JSON.stringify(langchainModelApprovalTool)).not.toContain("framework model approval executed");
     expect(JSON.stringify(langchainModelApprovalTool)).not.toContain("Approve and execute a caller supplied privileged action");
+    expect(langchainPromptRegistryWriteTool).toMatchObject({
+      path: "framework-tools/langchain_tools.py",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["call", "publish", "send", "write"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(langchainPromptRegistryWriteTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_agent_framework_source_tool: true,
+      agent_framework_source_tool: true,
+      agent_framework_source_tool_framework: "langchain",
+      agent_framework_source_tool_registration_kind: "python_tool_decorator",
+      agent_framework_source_tool_argument_count: 5,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_content_like_input: true,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      prompt_registry_write: true,
+      tainted_prompt_registry_payload: true,
+      tainted_prompt_registry_selector: true,
+      external_write: true,
+      destructive_action: false,
+      read_only_hint_conflict: false,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_external_network_call: false,
+      handler_external_write: false,
+      handler_external_service_write: false,
+      handler_model_provider_call: false,
+      handler_prompt_registry_write: true,
+      handler_tainted_prompt_registry_payload: true,
+      handler_tainted_prompt_registry_selector: true,
+      handler_secret_env_access: true,
+      handler_model_visible_output: true,
+      handler_secret_to_output: false,
+      handler_database_query: false,
+      handler_database_write: false,
+      handler_memory_write: false,
+      handler_agent_config_write: false,
+      handler_shell_execution: false,
+      handler_dynamic_code_execution: false,
+      handler_unsafe_deserialization: false,
+      handler_filesystem_read: false,
+      handler_filesystem_write: false,
+      handler_filesystem_delete: false,
+      handler_signal_count: 4,
+      open_world_schema: false
+    });
+    expect(langchainPromptRegistryWriteTool?.metadata.authority_classes).toEqual([
+      "content_input",
+      "customer_data_input",
+      "external_write",
+      "handler_prompt_registry_write",
+      "handler_secret_env_access",
+      "handler_tainted_prompt_registry_payload",
+      "handler_tainted_prompt_registry_selector",
+      "pii_input",
+      "prompt_registry_write",
+      "secret_env_access",
+      "tainted_prompt_registry_payload",
+      "tainted_prompt_registry_selector"
+    ]);
+    expect(langchainPromptRegistryWriteTool?.metadata.handler_authority_classes).toEqual([
+      "handler_prompt_registry_write",
+      "handler_secret_env_access",
+      "handler_tainted_prompt_registry_payload",
+      "handler_tainted_prompt_registry_selector"
+    ]);
+    expect(langchainPromptRegistryWriteTool?.metadata.handler_env_key_names).toEqual(["LANGCHAIN_PROMPT_REGISTRY_TOKEN"]);
+    expect(langchainPromptRegistryWriteTool?.metadata.schema_properties).toEqual([
+      "customer_id",
+      "customer_ticket_text",
+      "instruction_text",
+      "prompt_id",
+      "prompt_role"
+    ]);
+    expect(langchainPromptRegistryWriteTool?.metadata.required_properties).toEqual([
+      "customer_id",
+      "customer_ticket_text",
+      "instruction_text",
+      "prompt_id",
+      "prompt_role"
+    ]);
+    expect(JSON.stringify(langchainPromptRegistryWriteTool)).not.toContain("prompt_registry_client.update_prompt");
+    expect(JSON.stringify(langchainPromptRegistryWriteTool)).not.toContain("customer_context");
+    expect(JSON.stringify(langchainPromptRegistryWriteTool)).not.toContain("framework prompt registry updated");
+    expect(JSON.stringify(langchainPromptRegistryWriteTool)).not.toContain("Publish caller supplied system prompt text");
     expect(langchainAgentConfigWriteTool).toMatchObject({
       path: "framework-tools/langchain_tools.py",
       data_classes: ["confidential", "pii"],

@@ -67,6 +67,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-051")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-052")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-053")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-054")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-001")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-002")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-003")).toBe(true);
@@ -6362,6 +6363,45 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerTaskQueueFindings)).not.toContain("source agent job queued");
     expect(JSON.stringify(sourceHandlerTaskQueueFindings)).not.toContain("framework agent job queued");
     expect(JSON.stringify(sourceHandlerTaskQueueFindings)).not.toContain("Queue a caller supplied support job");
+    const sourceHandlerPromptRegistryWriteFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-054");
+    expect(sourceHandlerPromptRegistryWriteFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
+      "langchain_publish_prompt_registry_update",
+      "source_publish_prompt_registry_update"
+    ]);
+    expect(sourceHandlerPromptRegistryWriteFindings.every((finding) => finding.severity === "critical")).toBe(true);
+    expect(sourceHandlerPromptRegistryWriteFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerPromptRegistryWriteFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
+    expect(sourceHandlerPromptRegistryWriteFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
+    expect(sourceHandlerPromptRegistryWriteFindings.every((finding) => finding.matched_object.metadata.handler_prompt_registry_write === true)).toBe(true);
+    expect(sourceHandlerPromptRegistryWriteFindings.every((finding) => finding.matched_object.metadata.handler_tainted_prompt_registry_payload === true)).toBe(true);
+    expect(sourceHandlerPromptRegistryWriteFindings.every((finding) => finding.matched_object.metadata.handler_tainted_prompt_registry_selector === true)).toBe(true);
+    expect(sourceHandlerPromptRegistryWriteFindings.every((finding) => finding.matched_object.metadata.prompt_registry_write === true)).toBe(true);
+    expect(sourceHandlerPromptRegistryWriteFindings.every((finding) => finding.matched_object.metadata.tainted_prompt_registry_payload === true)).toBe(true);
+    expect(sourceHandlerPromptRegistryWriteFindings.every((finding) => finding.matched_object.metadata.tainted_prompt_registry_selector === true)).toBe(true);
+    expect(sourceHandlerPromptRegistryWriteFindings.every((finding) => finding.matched_object.metadata.handler_secret_env_access === true)).toBe(true);
+    expect(sourceHandlerPromptRegistryWriteFindings.every((finding) => finding.matched_object.metadata.handler_model_visible_output === true)).toBe(true);
+    expect(sourceHandlerPromptRegistryWriteFindings.every((finding) => finding.matched_object.metadata.accepts_content_like_input === true)).toBe(true);
+    expect(sourceHandlerPromptRegistryWriteFindings.every((finding) => finding.matched_object.metadata.accepts_customer_data_input === true)).toBe(true);
+    expect(sourceHandlerPromptRegistryWriteFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("prompt_registry_write"))).toBe(true);
+    expect(sourceHandlerPromptRegistryWriteFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("tainted_prompt_registry_payload"))).toBe(true);
+    expect(sourceHandlerPromptRegistryWriteFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("tainted_prompt_registry_selector"))).toBe(true);
+    expect(sourceHandlerPromptRegistryWriteFindings.every((finding) => finding.matched_object.metadata.handler_authority_classes.includes("handler_prompt_registry_write"))).toBe(true);
+    expect(sourceHandlerPromptRegistryWriteFindings.every((finding) => finding.matched_object.metadata.handler_authority_classes.includes("handler_tainted_prompt_registry_payload"))).toBe(true);
+    expect(sourceHandlerPromptRegistryWriteFindings.every((finding) => finding.matched_object.metadata.handler_authority_classes.includes("handler_tainted_prompt_registry_selector"))).toBe(true);
+    expect(sourceHandlerPromptRegistryWriteFindings.every((finding) => finding.matched_object.actions.includes("send"))).toBe(true);
+    expect(sourceHandlerPromptRegistryWriteFindings.every((finding) => finding.matched_object.actions.includes("write"))).toBe(true);
+    expect(sourceHandlerPromptRegistryWriteFindings.every((finding) => finding.matched_object.actions.includes("publish"))).toBe(true);
+    expect(sourceHandlerPromptRegistryWriteFindings.every((finding) => finding.matched_object.external_reach === true)).toBe(true);
+    expect(sourceHandlerPromptRegistryWriteFindings.every((finding) => finding.matched_object.secret_exposure === true)).toBe(true);
+    expect(sourceHandlerPromptRegistryWriteFindings.every((finding) => finding.matched_object.side_effect === true)).toBe(true);
+    expect(sourceHandlerPromptRegistryWriteFindings.every((finding) => finding.matched_object.reversible === false)).toBe(true);
+    expect(JSON.stringify(sourceHandlerPromptRegistryWriteFindings)).not.toContain("promptRegistryClient.updatePrompt");
+    expect(JSON.stringify(sourceHandlerPromptRegistryWriteFindings)).not.toContain("prompt_registry_client.update_prompt");
+    expect(JSON.stringify(sourceHandlerPromptRegistryWriteFindings)).not.toContain("customerContext");
+    expect(JSON.stringify(sourceHandlerPromptRegistryWriteFindings)).not.toContain("customer_context");
+    expect(JSON.stringify(sourceHandlerPromptRegistryWriteFindings)).not.toContain("source prompt registry updated");
+    expect(JSON.stringify(sourceHandlerPromptRegistryWriteFindings)).not.toContain("framework prompt registry updated");
+    expect(JSON.stringify(sourceHandlerPromptRegistryWriteFindings)).not.toContain("Publish caller supplied system prompt text");
     const sourceHandlerTelemetryExportFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-045");
     expect(sourceHandlerTelemetryExportFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_export_customer_trace",
