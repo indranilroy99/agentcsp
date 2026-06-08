@@ -300,6 +300,7 @@ Tool metadata may include:
 - `accepts_customer_data_input`
 - `accepted_data_classes`
 - `dynamic_code_execution`
+- `unsafe_deserialization`
 - `local_file_disclosure`
 - `external_write`
 - `destructive_action`
@@ -320,6 +321,7 @@ Tool metadata may include:
 - `handler_database_write`
 - `handler_shell_execution`
 - `handler_dynamic_code_execution`
+- `handler_unsafe_deserialization`
 - `handler_filesystem_read`
 - `handler_filesystem_write`
 - `handler_filesystem_delete`

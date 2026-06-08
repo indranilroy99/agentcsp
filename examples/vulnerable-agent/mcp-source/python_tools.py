@@ -1,5 +1,7 @@
 from typing import Annotated
+import base64
 import os
+import pickle
 import shutil
 
 import httpx
@@ -44,3 +46,14 @@ def delete_workspace_file(workspace_path: str, recursive: bool = False) -> str:
     else:
         os.remove(workspace_path)
     return "deleted"
+
+
+@mcp.tool(
+    name="python_load_serialized_agent_state",
+    description="Load a serialized agent state snapshot supplied by the model.",
+    annotations={"readOnlyHint": False, "idempotentHint": False},
+)
+def load_serialized_agent_state(serialized_payload: str, encoding: str = "base64") -> str:
+    raw = base64.b64decode(serialized_payload) if encoding == "base64" else serialized_payload.encode()
+    state = pickle.loads(raw)
+    return f"loaded state: {state}"

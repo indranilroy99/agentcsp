@@ -657,6 +657,10 @@ const leakPatterns = [
   /readFile/u,
   /Function\s*\(/u,
   /eval\s*\(/u,
+  /pickle\.loads/u,
+  /base64\.b64decode/u,
+  /yaml\.load/u,
+  /yaml\.Loader/u,
   /read_text/u,
   /Path\(workspace_path\)/u,
   /shutil\.rmtree/u,
@@ -682,6 +686,10 @@ const leakPatterns = [
   /Evaluate a model supplied Python expression/u,
   /source expression evaluated/u,
   /framework expression evaluated/u,
+  /Load a serialized agent state snapshot/u,
+  /Load a serialized agent state document/u,
+  /loaded state:/u,
+  /framework state loaded/u,
   /Update customer support records from a supplied SQL statement/u,
   /Update customer support records from LangChain SQL/u,
   /source database updated/u,
@@ -703,8 +711,8 @@ const leakPatterns = [
 const vulnerable = await readScanOutput(vulnerableOutput, { sarifRequired: true });
 const safe = await readScanOutput(safeOutput, { sarifRequired: false });
 
-assertEqual(vulnerable.manifest.findings.length, 290, "vulnerable manifest finding count");
-assertEqual(vulnerable.findings.length, 290, "vulnerable findings.json count");
+assertEqual(vulnerable.manifest.findings.length, 294, "vulnerable manifest finding count");
+assertEqual(vulnerable.findings.length, 294, "vulnerable findings.json count");
 assertEqual(vulnerable.manifest.attack_paths.length, 15, "vulnerable attack path count");
 assertEqual(vulnerable.manifest.static_blast_radius?.critical_attack_paths, 15, "vulnerable critical attack path count");
 assertEqual(vulnerable.manifest.diagnostics.length, 0, "vulnerable diagnostics count");
@@ -722,6 +730,7 @@ for (const ruleId of [
   "AGENTCSP-TOOL-018",
   "AGENTCSP-TOOL-019",
   "AGENTCSP-TOOL-020",
+  "AGENTCSP-TOOL-021",
   "AGENTCSP-RUNTIME-007",
   "AGENTCSP-RUNTIME-008",
   "AGENTCSP-RUNTIME-123",

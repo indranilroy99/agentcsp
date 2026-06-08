@@ -1,0 +1,59 @@
+id: AGENTCSP-TOOL-021
+name: Source tool handler deserializes model-supplied payloads unsafely
+description: A source-defined agent tool handler passes serialized tool input into unsafe deserialization APIs, creating a concrete path from model-controlled payloads to runtime object construction or code execution.
+category: tool_source_handler_authority
+severity: critical
+maps_to:
+  owasp:
+    - LLM01:2025 Prompt Injection
+    - LLM05:2025 Improper Output Handling
+    - LLM06:2025 Excessive Agency
+  mitre_atlas:
+    - AML.T0054 Command and Scripting Interpreter
+  nist_ai_rmf:
+    - MAP 4.1
+    - MEASURE 2.7
+    - MANAGE 2.3
+match:
+  object_type: tool
+  where:
+    - field: metadata.parsed_tool_schema
+      op: equals
+      value: true
+    - field: metadata.source_tool_handler_redacted
+      op: equals
+      value: true
+    - field: metadata.handler_body_analyzed
+      op: equals
+      value: true
+    - field: metadata.handler_unsafe_deserialization
+      op: equals
+      value: true
+    - field: metadata.unsafe_deserialization
+      op: equals
+      value: true
+    - field: metadata.schema_properties
+      op: contains_any
+      value:
+        - serialized
+        - serialized_payload
+        - payload
+        - state
+        - snapshot
+        - document
+        - data
+    - field: metadata.handler_authority_classes
+      op: includes
+      value: handler_unsafe_deserialization
+    - field: metadata.authority_classes
+      op: includes
+      value: unsafe_deserialization
+    - field: actions
+      op: includes
+      value: execute
+    - field: side_effect
+      op: equals
+      value: true
+recommendation:
+  control: quarantine
+  text: Quarantine source-defined unsafe deserialization tools until serialized payload inputs are removed, parsers are replaced with safe schema-validated formats, object construction is sandboxed, and approval gates protect any importer that can instantiate runtime objects.

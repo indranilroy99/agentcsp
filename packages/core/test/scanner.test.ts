@@ -546,6 +546,7 @@ describe("scanner", () => {
     const sourceCredentialedNetworkTool = surfaces.tools.find((surface) => surface.name === "source_fetch_partner_status");
     const pythonExportTool = surfaces.tools.find((surface) => surface.name === "python_export_customer_record");
     const pythonDeleteTool = surfaces.tools.find((surface) => surface.name === "python_readonly_delete_workspace_file");
+    const pythonUnsafeDeserializationTool = surfaces.tools.find((surface) => surface.name === "python_load_serialized_agent_state");
     const langchainExportTool = surfaces.tools.find((surface) => surface.name === "langchain_export_customer_context");
     const langchainDeleteTool = surfaces.tools.find((surface) => surface.name === "langchain_readonly_delete_workspace_path");
     const langchainShellTool = surfaces.tools.find((surface) => surface.name === "langchain_run_remediation_command");
@@ -554,6 +555,7 @@ describe("scanner", () => {
     const langchainDatabaseTool = surfaces.tools.find((surface) => surface.name === "langchain_apply_record_change_sql");
     const langchainSecretOutputTool = surfaces.tools.find((surface) => surface.name === "langchain_reveal_runtime_secret");
     const langchainCredentialedNetworkTool = surfaces.tools.find((surface) => surface.name === "langchain_fetch_partner_status");
+    const langchainUnsafeDeserializationTool = surfaces.tools.find((surface) => surface.name === "langchain_load_serialized_agent_state");
     const aiSdkExportTool = surfaces.tools.find((surface) => surface.name === "aiSdkExportCustomerContext");
     const tsLangchainDeleteTool = surfaces.tools.find((surface) => surface.name === "ts_langchain_delete_workspace_path");
     expect(publishTool?.metadata).toMatchObject({
@@ -1165,6 +1167,58 @@ describe("scanner", () => {
     expect(pythonDeleteTool?.metadata.required_properties).toEqual(["workspace_path"]);
     expect(JSON.stringify(pythonDeleteTool)).not.toContain("shutil.rmtree");
     expect(JSON.stringify(pythonDeleteTool)).not.toContain("os.remove");
+    expect(pythonUnsafeDeserializationTool).toMatchObject({
+      path: "mcp-source/python_tools.py",
+      data_classes: ["unknown"],
+      actions: ["call", "execute"],
+      side_effect: true,
+      external_reach: false,
+      secret_exposure: false,
+      reversible: false
+    });
+    expect(pythonUnsafeDeserializationTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_mcp_source_tool: true,
+      mcp_source_tool_registration: true,
+      mcp_source_tool_registration_kind: "python_tool_decorator",
+      mcp_source_tool_argument_count: 2,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      read_only_hint: false,
+      idempotent_hint: false,
+      dynamic_code_execution: false,
+      unsafe_deserialization: true,
+      external_write: false,
+      destructive_action: false,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_external_network_call: false,
+      handler_external_write: false,
+      handler_secret_env_access: false,
+      handler_database_query: false,
+      handler_database_write: false,
+      handler_shell_execution: false,
+      handler_dynamic_code_execution: false,
+      handler_unsafe_deserialization: true,
+      handler_filesystem_read: false,
+      handler_filesystem_write: false,
+      handler_filesystem_delete: false,
+      handler_model_visible_output: true,
+      handler_signal_count: 1,
+      open_world_schema: false
+    });
+    expect(pythonUnsafeDeserializationTool?.metadata.authority_classes).toEqual([
+      "handler_unsafe_deserialization",
+      "unsafe_deserialization"
+    ]);
+    expect(pythonUnsafeDeserializationTool?.metadata.handler_authority_classes).toEqual(["handler_unsafe_deserialization"]);
+    expect(pythonUnsafeDeserializationTool?.metadata.handler_env_key_names).toEqual([]);
+    expect(pythonUnsafeDeserializationTool?.metadata.schema_properties).toEqual(["encoding", "serialized_payload"]);
+    expect(pythonUnsafeDeserializationTool?.metadata.required_properties).toEqual(["serialized_payload"]);
+    expect(JSON.stringify(pythonUnsafeDeserializationTool)).not.toContain("pickle.loads");
+    expect(JSON.stringify(pythonUnsafeDeserializationTool)).not.toContain("base64.b64decode");
+    expect(JSON.stringify(pythonUnsafeDeserializationTool)).not.toContain("loaded state:");
+    expect(JSON.stringify(pythonUnsafeDeserializationTool)).not.toContain("Load a serialized agent state snapshot");
     expect(langchainExportTool).toMatchObject({
       path: "framework-tools/langchain_tools.py",
       data_classes: ["confidential", "credential", "pii"],
@@ -1416,6 +1470,60 @@ describe("scanner", () => {
     expect(JSON.stringify(langchainDynamicCodeTool)).not.toContain("eval(");
     expect(JSON.stringify(langchainDynamicCodeTool)).not.toContain("framework expression evaluated");
     expect(JSON.stringify(langchainDynamicCodeTool)).not.toContain("Evaluate a model supplied Python expression");
+    expect(langchainUnsafeDeserializationTool).toMatchObject({
+      path: "framework-tools/langchain_tools.py",
+      data_classes: ["unknown"],
+      actions: ["call", "execute"],
+      side_effect: true,
+      external_reach: false,
+      secret_exposure: false,
+      reversible: false
+    });
+    expect(langchainUnsafeDeserializationTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_agent_framework_source_tool: true,
+      agent_framework_source_tool: true,
+      agent_framework_source_tool_framework: "langchain",
+      agent_framework_source_tool_registration_kind: "python_tool_decorator",
+      agent_framework_source_tool_argument_count: 2,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      dynamic_code_execution: false,
+      unsafe_deserialization: true,
+      external_write: false,
+      destructive_action: false,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_external_network_call: false,
+      handler_external_write: false,
+      handler_secret_env_access: false,
+      handler_database_query: false,
+      handler_database_write: false,
+      handler_shell_execution: false,
+      handler_dynamic_code_execution: false,
+      handler_unsafe_deserialization: true,
+      handler_filesystem_read: false,
+      handler_filesystem_write: false,
+      handler_filesystem_delete: false,
+      handler_model_visible_output: true,
+      handler_signal_count: 1,
+      open_world_schema: false
+    });
+    expect(langchainUnsafeDeserializationTool?.metadata.authority_classes).toEqual([
+      "handler_unsafe_deserialization",
+      "unsafe_deserialization"
+    ]);
+    expect(langchainUnsafeDeserializationTool?.metadata.handler_authority_classes).toEqual(["handler_unsafe_deserialization"]);
+    expect(langchainUnsafeDeserializationTool?.metadata.handler_env_key_names).toEqual([]);
+    expect(langchainUnsafeDeserializationTool?.metadata.schema_properties).toEqual([
+      "payload_format",
+      "serialized_payload"
+    ]);
+    expect(langchainUnsafeDeserializationTool?.metadata.required_properties).toEqual(["serialized_payload"]);
+    expect(JSON.stringify(langchainUnsafeDeserializationTool)).not.toContain("yaml.load");
+    expect(JSON.stringify(langchainUnsafeDeserializationTool)).not.toContain("yaml.Loader");
+    expect(JSON.stringify(langchainUnsafeDeserializationTool)).not.toContain("framework state loaded");
+    expect(JSON.stringify(langchainUnsafeDeserializationTool)).not.toContain("Load a serialized agent state document");
     expect(langchainDatabaseTool).toMatchObject({
       path: "framework-tools/langchain_tools.py",
       data_classes: ["confidential", "pii"],

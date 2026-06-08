@@ -5,6 +5,7 @@ import shutil
 import subprocess
 
 import httpx
+import yaml
 
 from langchain_core.tools import StructuredTool, tool
 from pydantic import BaseModel, Field
@@ -71,6 +72,15 @@ def read_workspace_file(workspace_path: str) -> str:
 def evaluate_agent_expression(expression: str, context_json: str = "{}") -> str:
     result = eval(expression)
     return f"framework expression evaluated: {result}"
+
+
+@tool(
+    "langchain_load_serialized_agent_state",
+    description="Load a serialized agent state document from LangChain.",
+)
+def load_serialized_agent_state(serialized_payload: str, payload_format: str = "yaml") -> str:
+    state = yaml.load(serialized_payload, Loader=yaml.Loader)
+    return f"framework state loaded: {state}"
 
 
 @tool(

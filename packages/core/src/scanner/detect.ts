@@ -24121,7 +24121,8 @@ function addToolDefinitionSurface(
       !authority.destructive_action &&
       !authority.external_write &&
       !authority.database_write &&
-      !authority.dynamic_code_execution,
+      !authority.dynamic_code_execution &&
+      !authority.unsafe_deserialization,
     reason,
     metadata: {
       tool_name: definition.name,
@@ -24140,6 +24141,7 @@ function addToolDefinitionSurface(
       database_access: authority.database_access,
       database_write: authority.database_write,
       dynamic_code_execution: authority.dynamic_code_execution,
+      unsafe_deserialization: authority.unsafe_deserialization,
       local_file_disclosure: authority.local_file_disclosure,
       external_write: authority.external_write,
       destructive_action: authority.destructive_action,
@@ -26515,6 +26517,7 @@ interface SourceToolHandlerSignals {
   handlerDatabaseWrite: boolean;
   handlerShellExecution: boolean;
   handlerDynamicCodeExecution: boolean;
+  handlerUnsafeDeserialization: boolean;
   handlerFilesystemRead: boolean;
   handlerFilesystemWrite: boolean;
   handlerFilesystemDelete: boolean;
@@ -26936,6 +26939,7 @@ function sourceToolHandlerSignalMetadata(signals: SourceToolHandlerSignals | und
     handler_database_write: signals.handlerDatabaseWrite,
     handler_shell_execution: signals.handlerShellExecution,
     handler_dynamic_code_execution: signals.handlerDynamicCodeExecution,
+    handler_unsafe_deserialization: signals.handlerUnsafeDeserialization,
     handler_filesystem_read: signals.handlerFilesystemRead,
     handler_filesystem_write: signals.handlerFilesystemWrite,
     handler_filesystem_delete: signals.handlerFilesystemDelete,
@@ -26979,6 +26983,9 @@ function classifySourceToolHandlerSignals(
   const dynamicCodeExecution = language === "javascript"
     ? /\b(?:eval\s*\(|(?:new\s+)?Function\s*\(|vm\s*\.\s*(?:runInNewContext|runInThisContext|runInContext|compileFunction|Script)\b)/u.test(handlerSource)
     : /\b(?:eval|exec)\s*\(/u.test(handlerSource);
+  const unsafeDeserialization = language === "javascript"
+    ? hasJavaScriptHandlerUnsafeDeserialization(handlerSource)
+    : hasPythonHandlerUnsafeDeserialization(handlerSource);
   const filesystemRead = language === "javascript"
     ? /\b(?:fs|fsPromises|promises)\s*\.\s*(?:readFile|readFileSync|createReadStream|readlink|stat|lstat|readdir)\b|\b(?:readFile|readFileSync|createReadStream)\s*\(/u.test(handlerSource)
     : /\b(?:Path\s*\([^)]*\)\s*\.\s*(?:read_text|read_bytes)|pathlib\s*\.\s*Path\s*\([^)]*\)\s*\.\s*(?:read_text|read_bytes)|open\s*\([^)]*["']r)/u.test(handlerSource);
@@ -26999,6 +27006,7 @@ function classifySourceToolHandlerSignals(
   if (databaseWrite) classes.add("handler_database_write");
   if (shellExecution) classes.add("handler_shell_execution");
   if (dynamicCodeExecution) classes.add("handler_dynamic_code_execution");
+  if (unsafeDeserialization) classes.add("handler_unsafe_deserialization");
   if (filesystemRead) classes.add("handler_filesystem_read");
   if (filesystemWrite) classes.add("handler_filesystem_write");
   if (filesystemDelete) classes.add("handler_filesystem_delete");
@@ -27015,6 +27023,7 @@ function classifySourceToolHandlerSignals(
     handlerDatabaseWrite: databaseWrite,
     handlerShellExecution: shellExecution,
     handlerDynamicCodeExecution: dynamicCodeExecution,
+    handlerUnsafeDeserialization: unsafeDeserialization,
     handlerFilesystemRead: filesystemRead,
     handlerFilesystemWrite: filesystemWrite,
     handlerFilesystemDelete: filesystemDelete,
@@ -27154,6 +27163,16 @@ function hasPythonHandlerDatabaseQuery(source: string): boolean {
 
 function hasHandlerDatabaseWriteSignal(source: string): boolean {
   return /\b(?:insert|update|delete|drop|truncate|alter|create|merge|upsert|replace)\b/iu.test(source);
+}
+
+function hasJavaScriptHandlerUnsafeDeserialization(source: string): boolean {
+  return /\b(?:nodeSerialize|node_serialize|serializer|serialize)\s*\.\s*unserialize\s*\(|\bunserialize\s*\(/iu.test(source);
+}
+
+function hasPythonHandlerUnsafeDeserialization(source: string): boolean {
+  const unsafeBinaryDeserializer = /\b(?:pickle|dill|cloudpickle|joblib|marshal)\s*\.\s*loads?\s*\(/iu.test(source);
+  const unsafeYamlLoad = /\byaml\s*\.\s*load\s*\(/iu.test(source) && !/\b(?:SafeLoader|safe_load)\b/u.test(source);
+  return unsafeBinaryDeserializer || unsafeYamlLoad;
 }
 
 function hasJavaScriptHandlerExternalWrite(source: string): boolean {
@@ -28438,6 +28457,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   database_access: boolean;
   database_write: boolean;
   dynamic_code_execution: boolean;
+  unsafe_deserialization: boolean;
   local_file_disclosure: boolean;
   external_write: boolean;
   destructive_action: boolean;
@@ -28467,6 +28487,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   const handlerDatabaseWrite = handler?.handlerDatabaseWrite === true;
   const handlerShellExecution = handler?.handlerShellExecution === true;
   const handlerDynamicCodeExecution = handler?.handlerDynamicCodeExecution === true;
+  const handlerUnsafeDeserialization = handler?.handlerUnsafeDeserialization === true;
   const handlerFilesystemRead = handler?.handlerFilesystemRead === true;
   const handlerFilesystemWrite = handler?.handlerFilesystemWrite === true;
   const handlerFilesystemDelete = handler?.handlerFilesystemDelete === true;
@@ -28486,6 +28507,10 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   }
   if (handlerDynamicCodeExecution) {
     classes.add("dynamic_code_execution");
+    actions.add("execute");
+  }
+  if (handlerUnsafeDeserialization) {
+    classes.add("unsafe_deserialization");
     actions.add("execute");
   }
   if (/\b(browser|navigate|click|page|dom|screenshot)\b/i.test(text)) {
@@ -28584,6 +28609,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerExternalWrite ||
       handlerShellExecution ||
       handlerDynamicCodeExecution ||
+      handlerUnsafeDeserialization ||
       handlerFilesystemRead ||
       handlerFilesystemWrite ||
       handlerFilesystemDelete ||
@@ -28614,6 +28640,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
     database_access: databaseAccess,
     database_write: databaseWrite,
     dynamic_code_execution: handlerDynamicCodeExecution,
+    unsafe_deserialization: handlerUnsafeDeserialization,
     local_file_disclosure: localFileDisclosure,
     external_write: externalWrite,
     destructive_action: destructive || handlerFilesystemDelete,

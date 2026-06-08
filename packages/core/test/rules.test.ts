@@ -6148,6 +6148,25 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerDynamicCodeFindings)).not.toContain("eval(");
     expect(JSON.stringify(sourceHandlerDynamicCodeFindings)).not.toContain("source expression evaluated");
     expect(JSON.stringify(sourceHandlerDynamicCodeFindings)).not.toContain("framework expression evaluated");
+    const sourceHandlerUnsafeDeserializationFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-021");
+    expect(sourceHandlerUnsafeDeserializationFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
+      "langchain_load_serialized_agent_state",
+      "python_load_serialized_agent_state"
+    ]);
+    expect(sourceHandlerUnsafeDeserializationFindings.every((finding) => finding.severity === "critical")).toBe(true);
+    expect(sourceHandlerUnsafeDeserializationFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerUnsafeDeserializationFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
+    expect(sourceHandlerUnsafeDeserializationFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
+    expect(sourceHandlerUnsafeDeserializationFindings.every((finding) => finding.matched_object.metadata.handler_unsafe_deserialization === true)).toBe(true);
+    expect(sourceHandlerUnsafeDeserializationFindings.every((finding) => finding.matched_object.metadata.unsafe_deserialization === true)).toBe(true);
+    expect(sourceHandlerUnsafeDeserializationFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("unsafe_deserialization"))).toBe(true);
+    expect(sourceHandlerUnsafeDeserializationFindings.every((finding) => finding.matched_object.metadata.schema_properties.includes("serialized_payload"))).toBe(true);
+    expect(JSON.stringify(sourceHandlerUnsafeDeserializationFindings)).not.toContain("pickle.loads");
+    expect(JSON.stringify(sourceHandlerUnsafeDeserializationFindings)).not.toContain("base64.b64decode");
+    expect(JSON.stringify(sourceHandlerUnsafeDeserializationFindings)).not.toContain("yaml.load");
+    expect(JSON.stringify(sourceHandlerUnsafeDeserializationFindings)).not.toContain("yaml.Loader");
+    expect(JSON.stringify(sourceHandlerUnsafeDeserializationFindings)).not.toContain("loaded state:");
+    expect(JSON.stringify(sourceHandlerUnsafeDeserializationFindings)).not.toContain("framework state loaded");
     const sourceHandlerDatabaseFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-016");
     expect(sourceHandlerDatabaseFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_apply_record_change_sql",
