@@ -1016,6 +1016,7 @@ describe("scanner", () => {
       accepts_customer_data_input: true,
       database_access: true,
       database_write: true,
+      tainted_database_query_argument: true,
       external_write: false,
       destructive_action: false,
       handler_body_analyzed: true,
@@ -1025,10 +1026,11 @@ describe("scanner", () => {
       handler_secret_env_access: false,
       handler_database_query: true,
       handler_database_write: true,
+      handler_tainted_database_query_argument: true,
       handler_shell_execution: false,
       handler_filesystem_write: false,
       handler_filesystem_delete: false,
-      handler_signal_count: 2,
+      handler_signal_count: 3,
       open_world_schema: false
     });
     expect(sourceDatabaseTool?.metadata.authority_classes).toEqual([
@@ -1037,11 +1039,14 @@ describe("scanner", () => {
       "database_write",
       "handler_database_query",
       "handler_database_write",
-      "pii_input"
+      "handler_tainted_database_query_argument",
+      "pii_input",
+      "tainted_database_query_argument"
     ]);
     expect(sourceDatabaseTool?.metadata.handler_authority_classes).toEqual([
       "handler_database_query",
-      "handler_database_write"
+      "handler_database_write",
+      "handler_tainted_database_query_argument"
     ]);
     expect(sourceDatabaseTool?.metadata.handler_env_key_names).toEqual([]);
     expect(sourceDatabaseTool?.metadata.schema_properties).toEqual(["approval_reason", "customer_id", "sql_query"]);
@@ -2431,6 +2436,7 @@ describe("scanner", () => {
       accepts_customer_data_input: true,
       database_access: true,
       database_write: true,
+      tainted_database_query_argument: true,
       external_write: false,
       destructive_action: false,
       handler_body_analyzed: true,
@@ -2440,10 +2446,11 @@ describe("scanner", () => {
       handler_secret_env_access: false,
       handler_database_query: true,
       handler_database_write: true,
+      handler_tainted_database_query_argument: true,
       handler_shell_execution: false,
       handler_filesystem_write: false,
       handler_filesystem_delete: false,
-      handler_signal_count: 2,
+      handler_signal_count: 3,
       open_world_schema: false
     });
     expect(langchainDatabaseTool?.metadata.authority_classes).toEqual([
@@ -2452,11 +2459,14 @@ describe("scanner", () => {
       "database_write",
       "handler_database_query",
       "handler_database_write",
-      "pii_input"
+      "handler_tainted_database_query_argument",
+      "pii_input",
+      "tainted_database_query_argument"
     ]);
     expect(langchainDatabaseTool?.metadata.handler_authority_classes).toEqual([
       "handler_database_query",
-      "handler_database_write"
+      "handler_database_write",
+      "handler_tainted_database_query_argument"
     ]);
     expect(langchainDatabaseTool?.metadata.handler_env_key_names).toEqual([]);
     expect(langchainDatabaseTool?.metadata.schema_properties).toEqual(["customer_id", "sql_query"]);

@@ -51,6 +51,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-035")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-036")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-037")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-038")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-001")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-002")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-003")).toBe(true);
@@ -6622,13 +6623,45 @@ describe("rule engine", () => {
     expect(sourceHandlerDatabaseFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
     expect(sourceHandlerDatabaseFindings.every((finding) => finding.matched_object.metadata.handler_database_query === true)).toBe(true);
     expect(sourceHandlerDatabaseFindings.every((finding) => finding.matched_object.metadata.handler_database_write === true)).toBe(true);
+    expect(sourceHandlerDatabaseFindings.every((finding) => finding.matched_object.metadata.handler_tainted_database_query_argument === true)).toBe(true);
     expect(sourceHandlerDatabaseFindings.every((finding) => finding.matched_object.metadata.database_write === true)).toBe(true);
+    expect(sourceHandlerDatabaseFindings.every((finding) => finding.matched_object.metadata.tainted_database_query_argument === true)).toBe(true);
     expect(sourceHandlerDatabaseFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("database_write"))).toBe(true);
+    expect(sourceHandlerDatabaseFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("tainted_database_query_argument"))).toBe(true);
+    expect(sourceHandlerDatabaseFindings.every((finding) => finding.matched_object.metadata.handler_authority_classes.includes("handler_tainted_database_query_argument"))).toBe(true);
     expect(JSON.stringify(sourceHandlerDatabaseFindings)).not.toContain("db.query");
     expect(JSON.stringify(sourceHandlerDatabaseFindings)).not.toContain("db.execute");
     expect(JSON.stringify(sourceHandlerDatabaseFindings)).not.toContain("UPDATE support_cases");
     expect(JSON.stringify(sourceHandlerDatabaseFindings)).not.toContain("source database updated");
     expect(JSON.stringify(sourceHandlerDatabaseFindings)).not.toContain("framework database updated");
+    const sourceHandlerTaintedDatabaseQueryFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-038");
+    expect(sourceHandlerTaintedDatabaseQueryFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
+      "langchain_apply_record_change_sql",
+      "source_apply_record_change_sql"
+    ]);
+    expect(sourceHandlerTaintedDatabaseQueryFindings.every((finding) => finding.severity === "critical")).toBe(true);
+    expect(sourceHandlerTaintedDatabaseQueryFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerTaintedDatabaseQueryFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
+    expect(sourceHandlerTaintedDatabaseQueryFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
+    expect(sourceHandlerTaintedDatabaseQueryFindings.every((finding) => finding.matched_object.metadata.handler_database_query === true)).toBe(true);
+    expect(sourceHandlerTaintedDatabaseQueryFindings.every((finding) => finding.matched_object.metadata.handler_database_write === true)).toBe(true);
+    expect(sourceHandlerTaintedDatabaseQueryFindings.every((finding) => finding.matched_object.metadata.handler_tainted_database_query_argument === true)).toBe(true);
+    expect(sourceHandlerTaintedDatabaseQueryFindings.every((finding) => finding.matched_object.metadata.database_write === true)).toBe(true);
+    expect(sourceHandlerTaintedDatabaseQueryFindings.every((finding) => finding.matched_object.metadata.tainted_database_query_argument === true)).toBe(true);
+    expect(sourceHandlerTaintedDatabaseQueryFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("database_write"))).toBe(true);
+    expect(sourceHandlerTaintedDatabaseQueryFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("tainted_database_query_argument"))).toBe(true);
+    expect(sourceHandlerTaintedDatabaseQueryFindings.every((finding) => finding.matched_object.metadata.handler_authority_classes.includes("handler_database_query"))).toBe(true);
+    expect(sourceHandlerTaintedDatabaseQueryFindings.every((finding) => finding.matched_object.metadata.handler_authority_classes.includes("handler_database_write"))).toBe(true);
+    expect(sourceHandlerTaintedDatabaseQueryFindings.every((finding) => finding.matched_object.metadata.handler_authority_classes.includes("handler_tainted_database_query_argument"))).toBe(true);
+    expect(sourceHandlerTaintedDatabaseQueryFindings.every((finding) => finding.matched_object.actions.includes("execute"))).toBe(true);
+    expect(sourceHandlerTaintedDatabaseQueryFindings.every((finding) => finding.matched_object.actions.includes("write"))).toBe(true);
+    expect(sourceHandlerTaintedDatabaseQueryFindings.every((finding) => finding.matched_object.side_effect === true)).toBe(true);
+    expect(sourceHandlerTaintedDatabaseQueryFindings.every((finding) => finding.matched_object.reversible === false)).toBe(true);
+    expect(JSON.stringify(sourceHandlerTaintedDatabaseQueryFindings)).not.toContain("db.query");
+    expect(JSON.stringify(sourceHandlerTaintedDatabaseQueryFindings)).not.toContain("db.execute");
+    expect(JSON.stringify(sourceHandlerTaintedDatabaseQueryFindings)).not.toContain("UPDATE support_cases");
+    expect(JSON.stringify(sourceHandlerTaintedDatabaseQueryFindings)).not.toContain("source database updated");
+    expect(JSON.stringify(sourceHandlerTaintedDatabaseQueryFindings)).not.toContain("framework database updated");
     const sourceHandlerSecretOutputFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-017");
     expect(sourceHandlerSecretOutputFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_reveal_runtime_secret",

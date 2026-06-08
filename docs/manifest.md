@@ -302,6 +302,7 @@ Tool metadata may include:
 - `dynamic_code_execution`
 - `unsafe_deserialization`
 - `local_file_disclosure`
+- `tainted_database_query_argument`
 - `memory_write`
 - `agent_config_write`
 - `credential_issuance`
@@ -340,6 +341,7 @@ Tool metadata may include:
 - `handler_secret_to_output`
 - `handler_database_query`
 - `handler_database_write`
+- `handler_tainted_database_query_argument`
 - `handler_memory_write`
 - `handler_agent_config_write`
 - `handler_credential_issuance`

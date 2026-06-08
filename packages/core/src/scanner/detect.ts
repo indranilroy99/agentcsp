@@ -24151,6 +24151,7 @@ function addToolDefinitionSurface(
       accepted_data_classes: authority.accepted_data_classes,
       database_access: authority.database_access,
       database_write: authority.database_write,
+      tainted_database_query_argument: authority.tainted_database_query_argument,
       memory_write: authority.memory_write,
       agent_config_write: authority.agent_config_write,
       credential_issuance: authority.credential_issuance,
@@ -26546,6 +26547,7 @@ interface SourceToolHandlerSignals {
   handlerSecretToOutput: boolean;
   handlerDatabaseQuery: boolean;
   handlerDatabaseWrite: boolean;
+  handlerTaintedDatabaseQueryArgument: boolean;
   handlerMemoryWrite: boolean;
   handlerAgentConfigWrite: boolean;
   handlerCredentialIssuance: boolean;
@@ -26984,6 +26986,7 @@ function sourceToolHandlerSignalMetadata(signals: SourceToolHandlerSignals | und
     handler_secret_to_output: signals.handlerSecretToOutput,
     handler_database_query: signals.handlerDatabaseQuery,
     handler_database_write: signals.handlerDatabaseWrite,
+    handler_tainted_database_query_argument: signals.handlerTaintedDatabaseQueryArgument,
     handler_memory_write: signals.handlerMemoryWrite,
     handler_agent_config_write: signals.handlerAgentConfigWrite,
     handler_credential_issuance: signals.handlerCredentialIssuance,
@@ -27040,6 +27043,9 @@ function classifySourceToolHandlerSignals(
     ? hasJavaScriptHandlerDatabaseQuery(handlerSource)
     : hasPythonHandlerDatabaseQuery(handlerSource);
   const databaseWrite = databaseQuery && hasHandlerDatabaseWriteSignal(handlerSource);
+  const taintedDatabaseQueryArgument = databaseQuery && (language === "javascript"
+    ? hasJavaScriptHandlerTaintedDatabaseQueryArgument(handlerSource)
+    : hasPythonHandlerTaintedDatabaseQueryArgument(handlerSource));
   const memoryWrite = language === "javascript"
     ? hasJavaScriptHandlerMemoryWrite(handlerSource)
     : hasPythonHandlerMemoryWrite(handlerSource);
@@ -27116,6 +27122,7 @@ function classifySourceToolHandlerSignals(
   if (secretToOutput) classes.add("handler_secret_to_output");
   if (databaseQuery) classes.add("handler_database_query");
   if (databaseWrite) classes.add("handler_database_write");
+  if (taintedDatabaseQueryArgument) classes.add("handler_tainted_database_query_argument");
   if (memoryWrite) classes.add("handler_memory_write");
   if (agentConfigWrite) classes.add("handler_agent_config_write");
   if (credentialIssuance) classes.add("handler_credential_issuance");
@@ -27149,6 +27156,7 @@ function classifySourceToolHandlerSignals(
     handlerSecretToOutput: secretToOutput,
     handlerDatabaseQuery: databaseQuery,
     handlerDatabaseWrite: databaseWrite,
+    handlerTaintedDatabaseQueryArgument: taintedDatabaseQueryArgument,
     handlerMemoryWrite: memoryWrite,
     handlerAgentConfigWrite: agentConfigWrite,
     handlerCredentialIssuance: credentialIssuance,
@@ -27363,6 +27371,19 @@ function hasPythonHandlerDatabaseQuery(source: string): boolean {
   return /\b(?:db|database|client|cursor|conn|connection|engine|session)\s*\.\s*(?:execute|executemany|executescript|query|raw|run|commit|add|delete|merge)\s*\(|\b(?:sqlite3|psycopg2?|sqlalchemy)\b/iu.test(
     source
   );
+}
+
+function hasJavaScriptHandlerTaintedDatabaseQueryArgument(source: string): boolean {
+  return [
+    /\b(?:db|database|client|pool|connection|conn|knex|prisma|sequelize|supabase|sql)\s*\.\s*(?:query|execute|raw|run|exec|update|delete|insert|upsert|create|save)\s*\(([\s\S]{0,720})\)/giu,
+    /\b(?:executeSql|executeQuery)\s*\(([\s\S]{0,720})\)/giu
+  ].some((pattern) => expressionMatchesTaintedDatabaseQueryArgument(pattern, source));
+}
+
+function hasPythonHandlerTaintedDatabaseQueryArgument(source: string): boolean {
+  return [
+    /\b(?:db|database|client|cursor|conn|connection|engine|session)\s*\.\s*(?:execute|executemany|executescript|query|raw|run|commit|add|delete|merge)\s*\(([\s\S]{0,720})\)/giu
+  ].some((pattern) => expressionMatchesTaintedDatabaseQueryArgument(pattern, source));
 }
 
 function hasHandlerDatabaseWriteSignal(source: string): boolean {
@@ -27631,6 +27652,15 @@ function expressionMatchesTaintedExternalServiceRecipient(pattern: RegExp, sourc
   return false;
 }
 
+function expressionMatchesTaintedDatabaseQueryArgument(pattern: RegExp, source: string): boolean {
+  let match: RegExpExecArray | null;
+  while ((match = pattern.exec(source)) !== null) {
+    if (expressionReferencesTaintedDatabaseQueryArgument(match[1] ?? "", source)) return true;
+    if (match[0].length === 0) pattern.lastIndex += 1;
+  }
+  return false;
+}
+
 function expressionMatchesTaintedDynamicCodeArgument(pattern: RegExp, source: string): boolean {
   let match: RegExpExecArray | null;
   while ((match = pattern.exec(source)) !== null) {
@@ -27750,6 +27780,36 @@ function expressionReferencesTaintedExternalServiceRecipient(expression: string,
 }
 
 function identifierAssignedFromTaintedExternalServiceRecipient(identifier: string, source: string, taintedName: RegExp): boolean {
+  const escaped = escapeRegExp(identifier);
+  const patterns = [
+    new RegExp(`\\b(?:const|let|var)\\s+${escaped}\\s*=\\s*([^;\\n]+)`, "gu"),
+    new RegExp(`\\b${escaped}\\s*=\\s*([^\\n]+)`, "gu")
+  ];
+  return patterns.some((pattern) => expressionMatchesPattern(pattern, source, taintedName));
+}
+
+function expressionReferencesTaintedDatabaseQueryArgument(expression: string, source: string): boolean {
+  const templateInterpolation = /\$\{[^}]*\b(?:sqlQuery|sql_query|rawSql|raw_sql|queryText|query_text|query|sql|statement|recordUpdate|record_update|updateFields|update_fields|whereClause|where_clause)\b/u.test(
+    expression
+  );
+  if (templateInterpolation) return true;
+  const withoutQuotedStrings = expression.replace(/(["'`])(?:\\.|(?!\1)[\s\S])*\1/gu, " ");
+  const stronglyTaintedName = /\b(?:sqlQuery|sql_query|rawSql|raw_sql|queryText|query_text|statement|recordUpdate|record_update|updateFields|update_fields|whereClause|where_clause)\b/u;
+  const taintedName = /\b(?:sqlQuery|sql_query|rawSql|raw_sql|queryText|query_text|query|sql|statement|recordUpdate|record_update|updateFields|update_fields|whereClause|where_clause)\b/u;
+  if (stronglyTaintedName.test(withoutQuotedStrings)) return true;
+  if (/\b(?:query|sql)\b/u.test(withoutQuotedStrings) && !/\b(?:db|database|client|pool|cursor|conn|connection)\s*\.\s*(?:query|execute|raw|run|exec)\b/u.test(withoutQuotedStrings)) {
+    return true;
+  }
+
+  const identifiers = uniqueStrings(
+    [...withoutQuotedStrings.matchAll(/\b[A-Za-z_$][\w$]*\b/gu)]
+      .map((match) => match[0])
+      .filter((identifier) => !["db", "database", "client", "pool", "cursor", "conn", "connection", "params", "values"].includes(identifier))
+  );
+  return identifiers.some((identifier) => identifierAssignedFromTaintedDatabaseQueryInput(identifier, source, taintedName));
+}
+
+function identifierAssignedFromTaintedDatabaseQueryInput(identifier: string, source: string, taintedName: RegExp): boolean {
   const escaped = escapeRegExp(identifier);
   const patterns = [
     new RegExp(`\\b(?:const|let|var)\\s+${escaped}\\s*=\\s*([^;\\n]+)`, "gu"),
@@ -29096,6 +29156,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   accepted_data_classes: SurfaceObject["data_classes"];
   database_access: boolean;
   database_write: boolean;
+  tainted_database_query_argument: boolean;
   memory_write: boolean;
   agent_config_write: boolean;
   credential_issuance: boolean;
@@ -29145,6 +29206,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   const handlerPrivilegedPromptComposition = handler?.handlerPrivilegedPromptComposition === true;
   const handlerDatabaseQuery = handler?.handlerDatabaseQuery === true;
   const handlerDatabaseWrite = handler?.handlerDatabaseWrite === true;
+  const handlerTaintedDatabaseQueryArgument = handler?.handlerTaintedDatabaseQueryArgument === true;
   const handlerMemoryWrite = handler?.handlerMemoryWrite === true;
   const handlerAgentConfigWrite = handler?.handlerAgentConfigWrite === true;
   const handlerCredentialIssuance = handler?.handlerCredentialIssuance === true;
@@ -29249,6 +29311,9 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   if (databaseWrite) {
     classes.add("database_write");
     actions.add("write");
+  }
+  if (handlerTaintedDatabaseQueryArgument) {
+    classes.add("tainted_database_query_argument");
   }
   if (/\b(memory|remember|store|recall)\b/i.test(text) || handlerMemoryWrite) {
     classes.add("memory_access");
@@ -29358,6 +29423,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerTaintedShellArgument ||
       handlerDatabaseQuery ||
       handlerDatabaseWrite ||
+      handlerTaintedDatabaseQueryArgument ||
       handlerExternalWrite ||
       handlerShellExecution ||
       handlerDynamicCodeExecution ||
@@ -29400,6 +29466,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
     accepted_data_classes: schemaDataProfile.dataClasses,
     database_access: databaseAccess,
     database_write: databaseWrite,
+    tainted_database_query_argument: handlerTaintedDatabaseQueryArgument,
     memory_write: handlerMemoryWrite,
     agent_config_write: handlerAgentConfigWrite,
     credential_issuance: handlerCredentialIssuance,
@@ -29472,6 +29539,7 @@ function authoritySignature(tool: SurfaceObject): string {
     metadata.parsed_tool_schema === true ? "parsed" : "unparsed",
     metadata.external_write === true ? "external_write" : "",
     metadata.external_service_write === true ? "external_service_write" : "",
+    metadata.tainted_database_query_argument === true ? "tainted_database_query_argument" : "",
     metadata.model_provider_call === true ? "model_provider_call" : "",
     metadata.privileged_prompt_composition === true ? "privileged_prompt_composition" : "",
     metadata.tainted_shell_argument === true ? "tainted_shell_argument" : "",
@@ -29508,6 +29576,7 @@ function isPrivilegedToolSurface(tool: SurfaceObject): boolean {
     !tool.reversible ||
     tool.actions.some((action) => ["write", "execute", "publish", "send", "delete", "remember"].includes(action)) ||
     tool.metadata.external_write === true ||
+    tool.metadata.tainted_database_query_argument === true ||
     tool.metadata.external_service_write === true ||
     tool.metadata.model_provider_call === true ||
     tool.metadata.privileged_prompt_composition === true ||
