@@ -24129,6 +24129,7 @@ function addToolDefinitionSurface(
       !authority.secret_manager_access &&
       !authority.external_service_write &&
       !authority.model_provider_call &&
+      !authority.embedding_provider_call &&
       !authority.tainted_network_destination &&
       !authority.tainted_shell_argument &&
       !authority.dynamic_code_execution &&
@@ -24168,6 +24169,8 @@ function addToolDefinitionSurface(
       tainted_external_service_recipient: authority.tainted_external_service_recipient,
       model_provider_call: authority.model_provider_call,
       tainted_model_selection: authority.tainted_model_selection,
+      embedding_provider_call: authority.embedding_provider_call,
+      tainted_embedding_input: authority.tainted_embedding_input,
       privileged_prompt_composition: authority.privileged_prompt_composition,
       tainted_shell_argument: authority.tainted_shell_argument,
       tainted_filesystem_path: authority.tainted_filesystem_path,
@@ -26549,6 +26552,8 @@ interface SourceToolHandlerSignals {
   handlerExternalServiceWrite: boolean;
   handlerModelProviderCall: boolean;
   handlerTaintedModelSelection: boolean;
+  handlerEmbeddingProviderCall: boolean;
+  handlerTaintedEmbeddingInput: boolean;
   handlerPrivilegedPromptComposition: boolean;
   handlerSecretEnvAccess: boolean;
   handlerModelVisibleOutput: boolean;
@@ -26993,6 +26998,8 @@ function sourceToolHandlerSignalMetadata(signals: SourceToolHandlerSignals | und
     handler_external_service_write: signals.handlerExternalServiceWrite,
     handler_model_provider_call: signals.handlerModelProviderCall,
     handler_tainted_model_selection: signals.handlerTaintedModelSelection,
+    handler_embedding_provider_call: signals.handlerEmbeddingProviderCall,
+    handler_tainted_embedding_input: signals.handlerTaintedEmbeddingInput,
     handler_privileged_prompt_composition: signals.handlerPrivilegedPromptComposition,
     handler_secret_env_access: signals.handlerSecretEnvAccess,
     handler_model_visible_output: signals.handlerModelVisibleOutput,
@@ -27058,6 +27065,12 @@ function classifySourceToolHandlerSignals(
   const taintedModelSelection = modelProviderCall && (language === "javascript"
     ? hasJavaScriptHandlerTaintedModelSelection(handlerSource)
     : hasPythonHandlerTaintedModelSelection(handlerSource));
+  const embeddingProviderCall = language === "javascript"
+    ? hasJavaScriptHandlerEmbeddingProviderCall(handlerSource)
+    : hasPythonHandlerEmbeddingProviderCall(handlerSource);
+  const taintedEmbeddingInput = embeddingProviderCall && (language === "javascript"
+    ? hasJavaScriptHandlerTaintedEmbeddingInput(handlerSource)
+    : hasPythonHandlerTaintedEmbeddingInput(handlerSource));
   const privilegedPromptComposition = language === "javascript"
     ? hasJavaScriptHandlerPrivilegedPromptComposition(handlerSource)
     : hasPythonHandlerPrivilegedPromptComposition(handlerSource);
@@ -27150,6 +27163,8 @@ function classifySourceToolHandlerSignals(
   if (taintedExternalServiceRecipient) classes.add("handler_tainted_external_service_recipient");
   if (modelProviderCall) classes.add("handler_model_provider_call");
   if (taintedModelSelection) classes.add("handler_tainted_model_selection");
+  if (embeddingProviderCall) classes.add("handler_embedding_provider_call");
+  if (taintedEmbeddingInput) classes.add("handler_tainted_embedding_input");
   if (privilegedPromptComposition) classes.add("handler_privileged_prompt_composition");
   if (secretEnvAccess) classes.add("handler_secret_env_access");
   if (secretToOutput) classes.add("handler_secret_to_output");
@@ -27188,6 +27203,8 @@ function classifySourceToolHandlerSignals(
     handlerTaintedExternalServiceRecipient: taintedExternalServiceRecipient,
     handlerModelProviderCall: modelProviderCall,
     handlerTaintedModelSelection: taintedModelSelection,
+    handlerEmbeddingProviderCall: embeddingProviderCall,
+    handlerTaintedEmbeddingInput: taintedEmbeddingInput,
     handlerPrivilegedPromptComposition: privilegedPromptComposition,
     handlerSecretEnvAccess: secretEnvAccess,
     handlerModelVisibleOutput: modelVisibleOutput,
@@ -27633,6 +27650,40 @@ function hasPythonHandlerTaintedModelSelection(source: string): boolean {
   ].some((pattern) => expressionMatchesTaintedModelSelection(pattern, source));
 }
 
+function hasJavaScriptHandlerEmbeddingProviderCall(source: string): boolean {
+  return /\b(?:embeddingClient|embeddingProvider|embedder|embeddings|openai|openaiClient|cohere|cohereClient|voyage|voyageClient|bedrock|bedrockClient)\b/iu.test(source) &&
+    [
+      /\b(?:embeddingClient|embeddingProvider|embedder|embeddings|cohere|cohereClient|voyage|voyageClient|bedrock|bedrockClient)\s*(?:\.\s*[A-Za-z_$][\w$]*){0,4}\s*\.\s*(?:embed|embedQuery|embedDocuments|embedMany|create|generateEmbedding|generateEmbeddings)\s*\(/iu,
+      /\b(?:openai|openaiClient)\s*\.\s*embeddings\s*\.\s*create\s*\(/iu,
+      /\bnew\s+(?:OpenAIEmbeddings|CohereEmbeddings|BedrockEmbeddings|VoyageEmbeddings)\s*\(/u
+    ].some((pattern) => pattern.test(source));
+}
+
+function hasPythonHandlerEmbeddingProviderCall(source: string): boolean {
+  return /\b(?:embedding_client|embedding_provider|embedder|embeddings|openai|openai_client|cohere|cohere_client|voyage|voyage_client|bedrock|bedrock_client)\b/iu.test(source) &&
+    [
+      /\b(?:embedding_client|embedding_provider|embedder|embeddings|cohere|cohere_client|voyage|voyage_client|bedrock|bedrock_client)\s*(?:\.\s*[A-Za-z_]\w*){0,4}\s*\.\s*(?:embed|embed_query|embed_documents|embed_many|create|generate_embedding|generate_embeddings)\s*\(/iu,
+      /\b(?:openai|openai_client)\s*\.\s*embeddings\s*\.\s*create\s*\(/iu,
+      /\b(?:OpenAIEmbeddings|CohereEmbeddings|BedrockEmbeddings|VoyageEmbeddings)\s*\(/u
+    ].some((pattern) => pattern.test(source));
+}
+
+function hasJavaScriptHandlerTaintedEmbeddingInput(source: string): boolean {
+  return [
+    /\b(?:embeddingClient|embeddingProvider|embedder|embeddings|cohere|cohereClient|voyage|voyageClient|bedrock|bedrockClient)\s*(?:\.\s*[A-Za-z_$][\w$]*){0,4}\s*\.\s*(?:embed|embedQuery|embedDocuments|embedMany|create|generateEmbedding|generateEmbeddings)\s*\(([\s\S]{0,900})\)/giu,
+    /\b(?:openai|openaiClient)\s*\.\s*embeddings\s*\.\s*create\s*\(([\s\S]{0,900})\)/giu,
+    /\bnew\s+(?:OpenAIEmbeddings|CohereEmbeddings|BedrockEmbeddings|VoyageEmbeddings)\s*\(([\s\S]{0,900})\)/giu
+  ].some((pattern) => expressionMatchesTaintedEmbeddingInput(pattern, source));
+}
+
+function hasPythonHandlerTaintedEmbeddingInput(source: string): boolean {
+  return [
+    /\b(?:embedding_client|embedding_provider|embedder|embeddings|cohere|cohere_client|voyage|voyage_client|bedrock|bedrock_client)\s*(?:\.\s*[A-Za-z_]\w*){0,4}\s*\.\s*(?:embed|embed_query|embed_documents|embed_many|create|generate_embedding|generate_embeddings)\s*\(([\s\S]{0,900})\)/giu,
+    /\b(?:openai|openai_client)\s*\.\s*embeddings\s*\.\s*create\s*\(([\s\S]{0,900})\)/giu,
+    /\b(?:OpenAIEmbeddings|CohereEmbeddings|BedrockEmbeddings|VoyageEmbeddings)\s*\(([\s\S]{0,900})\)/giu
+  ].some((pattern) => expressionMatchesTaintedEmbeddingInput(pattern, source));
+}
+
 function hasJavaScriptHandlerPrivilegedPromptComposition(source: string): boolean {
   return [
     /\brole\s*:\s*["'`](?:system|developer)["'`][\s\S]{0,260}\bcontent\s*:\s*([^,\n}\]]+)/giu,
@@ -27802,6 +27853,15 @@ function expressionMatchesTaintedModelSelection(pattern: RegExp, source: string)
   let match: RegExpExecArray | null;
   while ((match = pattern.exec(source)) !== null) {
     if (expressionReferencesTaintedModelSelection(match[1] ?? "", source)) return true;
+    if (match[0].length === 0) pattern.lastIndex += 1;
+  }
+  return false;
+}
+
+function expressionMatchesTaintedEmbeddingInput(pattern: RegExp, source: string): boolean {
+  let match: RegExpExecArray | null;
+  while ((match = pattern.exec(source)) !== null) {
+    if (expressionReferencesTaintedEmbeddingInput(match[1] ?? "", source)) return true;
     if (match[0].length === 0) pattern.lastIndex += 1;
   }
   return false;
@@ -28095,6 +28155,64 @@ function expressionReferencesTaintedModelSelection(expression: string, source: s
 }
 
 function identifierAssignedFromTaintedModelSelection(identifier: string, source: string, taintedName: RegExp): boolean {
+  const escaped = escapeRegExp(identifier);
+  const patterns = [
+    new RegExp(`\\b(?:const|let|var)\\s+${escaped}\\s*=\\s*([^;\\n]+)`, "gu"),
+    new RegExp(`\\b${escaped}\\s*=\\s*([^\\n]+)`, "gu")
+  ];
+  return patterns.some((pattern) => expressionMatchesPattern(pattern, source, taintedName));
+}
+
+function expressionReferencesTaintedEmbeddingInput(expression: string, source: string): boolean {
+  const templateInterpolation = /\$\{[^}]*\b(?:customerTicketText|customer_ticket_text|ticketText|ticket_text|customerContext|customer_context|customerMessage|customer_message|documentText|document_text|sourcePayloadText|source_payload_text|retrievedContext|retrieved_context|promptText|prompt_text|userText|user_text|inputText|input_text|content|message|query|text|document|payload)\b/u.test(
+    expression
+  );
+  if (templateInterpolation) return true;
+  const withoutQuotedStrings = expression.replace(/(["'`])(?:\\.|(?!\1)[\s\S])*\1/gu, " ");
+  const stronglyTaintedName = /\b(?:customerTicketText|customer_ticket_text|ticketText|ticket_text|customerContext|customer_context|customerMessage|customer_message|documentText|document_text|sourcePayloadText|source_payload_text|retrievedContext|retrieved_context|promptText|prompt_text|userText|user_text|inputText|input_text)\b/u;
+  const taintedName = /\b(?:customerTicketText|customer_ticket_text|ticketText|ticket_text|customerContext|customer_context|customerMessage|customer_message|documentText|document_text|sourcePayloadText|source_payload_text|retrievedContext|retrieved_context|promptText|prompt_text|userText|user_text|inputText|input_text|content|message|query|text|document|payload|customer|ticket|prompt|input)\b/u;
+  if (stronglyTaintedName.test(withoutQuotedStrings)) return true;
+
+  const embeddingInputAssignment = /\b(?:input|inputs|text|texts|document|documents|content|contents|query|queries|payload|payloads)\s*(?::|=)\s*([^,\n}\)]+)/giu;
+  if (expressionMatchesPattern(embeddingInputAssignment, withoutQuotedStrings, taintedName)) return true;
+
+  const valueOnlyExpression = withoutQuotedStrings.replace(
+    /\b(?:input|inputs|text|texts|document|documents|content|contents|query|queries|payload|payloads)\s*(?::|=)/giu,
+    " "
+  );
+  const identifiers = uniqueStrings(
+    [...valueOnlyExpression.matchAll(/\b[A-Za-z_$][\w$]*\b/gu)]
+      .map((match) => match[0])
+      .filter((identifier) => ![
+        "OpenAIEmbeddings",
+        "CohereEmbeddings",
+        "BedrockEmbeddings",
+        "VoyageEmbeddings",
+        "embeddingClient",
+        "embedding_client",
+        "embeddingProvider",
+        "embedding_provider",
+        "embedder",
+        "embeddings",
+        "openai",
+        "openaiClient",
+        "openai_client",
+        "cohere",
+        "cohereClient",
+        "cohere_client",
+        "metadata",
+        "apiKey",
+        "api_key",
+        "token",
+        "model",
+        "namespace",
+        "customer_id"
+      ].includes(identifier))
+  );
+  return identifiers.some((identifier) => identifierAssignedFromTaintedEmbeddingInput(identifier, source, taintedName));
+}
+
+function identifierAssignedFromTaintedEmbeddingInput(identifier: string, source: string, taintedName: RegExp): boolean {
   const escaped = escapeRegExp(identifier);
   const patterns = [
     new RegExp(`\\b(?:const|let|var)\\s+${escaped}\\s*=\\s*([^;\\n]+)`, "gu"),
@@ -29515,6 +29633,8 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   tainted_external_service_recipient: boolean;
   model_provider_call: boolean;
   tainted_model_selection: boolean;
+  embedding_provider_call: boolean;
+  tainted_embedding_input: boolean;
   privileged_prompt_composition: boolean;
   tainted_shell_argument: boolean;
   tainted_filesystem_path: boolean;
@@ -29553,6 +29673,8 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   const handlerExternalServiceWrite = handler?.handlerExternalServiceWrite === true;
   const handlerModelProviderCall = handler?.handlerModelProviderCall === true;
   const handlerTaintedModelSelection = handler?.handlerTaintedModelSelection === true;
+  const handlerEmbeddingProviderCall = handler?.handlerEmbeddingProviderCall === true;
+  const handlerTaintedEmbeddingInput = handler?.handlerTaintedEmbeddingInput === true;
   const handlerPrivilegedPromptComposition = handler?.handlerPrivilegedPromptComposition === true;
   const handlerDatabaseQuery = handler?.handlerDatabaseQuery === true;
   const handlerDatabaseWrite = handler?.handlerDatabaseWrite === true;
@@ -29734,6 +29856,15 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
     classes.add("tainted_model_selection");
     actions.add("send");
   }
+  if (handlerEmbeddingProviderCall) {
+    classes.add("embedding_provider_call");
+    actions.add("read");
+    actions.add("send");
+  }
+  if (handlerTaintedEmbeddingInput) {
+    classes.add("tainted_embedding_input");
+    actions.add("send");
+  }
   if (handlerPrivilegedPromptComposition) {
     classes.add("privileged_prompt_composition");
     actions.add("send");
@@ -29795,6 +29926,8 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerTaintedExternalServiceRecipient ||
       handlerModelProviderCall ||
       handlerTaintedModelSelection ||
+      handlerEmbeddingProviderCall ||
+      handlerTaintedEmbeddingInput ||
       handlerPrivilegedPromptComposition ||
       handlerTaintedShellArgument ||
       handlerDatabaseQuery ||
@@ -29831,7 +29964,8 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerExternalNetworkCall ||
       handlerBrowserAutomation ||
       handlerExternalServiceWrite ||
-      handlerModelProviderCall,
+      handlerModelProviderCall ||
+      handlerEmbeddingProviderCall,
     secret_exposure: acceptsSecret || handlerSecretEnvAccess || localFileDisclosure || handlerCredentialIssuance || handlerSecretManagerAccess,
     accepts_secret_like_input: acceptsSecret,
     accepts_content_like_input: acceptsContent,
@@ -29858,6 +29992,8 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
     tainted_external_service_recipient: handlerTaintedExternalServiceRecipient,
     model_provider_call: handlerModelProviderCall,
     tainted_model_selection: handlerTaintedModelSelection,
+    embedding_provider_call: handlerEmbeddingProviderCall,
+    tainted_embedding_input: handlerTaintedEmbeddingInput,
     privileged_prompt_composition: handlerPrivilegedPromptComposition,
     tainted_shell_argument: handlerTaintedShellArgument,
     tainted_filesystem_path: handlerTaintedFilesystemPath,
@@ -29925,6 +30061,8 @@ function authoritySignature(tool: SurfaceObject): string {
     metadata.tainted_memory_scope === true ? "tainted_memory_scope" : "",
     metadata.model_provider_call === true ? "model_provider_call" : "",
     metadata.tainted_model_selection === true ? "tainted_model_selection" : "",
+    metadata.embedding_provider_call === true ? "embedding_provider_call" : "",
+    metadata.tainted_embedding_input === true ? "tainted_embedding_input" : "",
     metadata.privileged_prompt_composition === true ? "privileged_prompt_composition" : "",
     metadata.tainted_shell_argument === true ? "tainted_shell_argument" : "",
     metadata.tainted_filesystem_path === true ? "tainted_filesystem_path" : "",
@@ -29968,6 +30106,8 @@ function isPrivilegedToolSurface(tool: SurfaceObject): boolean {
     tool.metadata.external_service_write === true ||
     tool.metadata.model_provider_call === true ||
     tool.metadata.tainted_model_selection === true ||
+    tool.metadata.embedding_provider_call === true ||
+    tool.metadata.tainted_embedding_input === true ||
     tool.metadata.privileged_prompt_composition === true ||
     tool.metadata.tainted_shell_argument === true ||
     tool.metadata.tainted_filesystem_path === true ||

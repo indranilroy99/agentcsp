@@ -203,10 +203,16 @@ server.registerTool(
   },
   async ({ customer_id, ticket_text, memory_namespace }) => {
     const namespace = memory_namespace ?? "customer-support";
+    const embeddingToken = process.env.SOURCE_EMBEDDING_TOKEN;
+    const embedding = await globalThis.embeddingClient.embedQuery({
+      apiKey: embeddingToken,
+      input: ticket_text
+    });
     await globalThis.agentMemory.upsert({
       namespace,
       customer_id,
-      text: ticket_text
+      text: ticket_text,
+      embedding
     });
     return { content: [{ type: "text", text: "source memory persisted" }] };
   }

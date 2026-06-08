@@ -128,11 +128,14 @@ def fetch_partner_status(status_endpoint_url: str, customer_reference: str) -> s
     description="Persist caller supplied customer ticket text into LangChain memory.",
 )
 def persist_customer_memory(customer_id: str, ticket_text: str, memory_namespace: str = "customer-support") -> str:
+    embedding_token = os.getenv("LANGCHAIN_EMBEDDING_TOKEN")
+    embedding = embedding_client.embed_documents([ticket_text], api_key=embedding_token)[0]
     memory_store.upsert(
         {
             "namespace": memory_namespace,
             "customer_id": customer_id,
             "text": ticket_text,
+            "embedding": embedding,
         }
     )
     return "framework memory persisted"

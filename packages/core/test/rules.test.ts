@@ -57,6 +57,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-041")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-042")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-043")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-044")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-001")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-002")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-003")).toBe(true);
@@ -6213,20 +6214,70 @@ describe("rule engine", () => {
     expect(sourceHandlerMemoryWriteFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
     expect(sourceHandlerMemoryWriteFindings.every((finding) => finding.matched_object.metadata.handler_memory_write === true)).toBe(true);
     expect(sourceHandlerMemoryWriteFindings.every((finding) => finding.matched_object.metadata.handler_tainted_memory_scope === true)).toBe(true);
+    expect(sourceHandlerMemoryWriteFindings.every((finding) => finding.matched_object.metadata.handler_embedding_provider_call === true)).toBe(true);
+    expect(sourceHandlerMemoryWriteFindings.every((finding) => finding.matched_object.metadata.handler_tainted_embedding_input === true)).toBe(true);
     expect(sourceHandlerMemoryWriteFindings.every((finding) => finding.matched_object.metadata.memory_write === true)).toBe(true);
     expect(sourceHandlerMemoryWriteFindings.every((finding) => finding.matched_object.metadata.tainted_memory_scope === true)).toBe(true);
+    expect(sourceHandlerMemoryWriteFindings.every((finding) => finding.matched_object.metadata.embedding_provider_call === true)).toBe(true);
+    expect(sourceHandlerMemoryWriteFindings.every((finding) => finding.matched_object.metadata.tainted_embedding_input === true)).toBe(true);
     expect(sourceHandlerMemoryWriteFindings.every((finding) => finding.matched_object.metadata.accepts_content_like_input === true)).toBe(true);
     expect(sourceHandlerMemoryWriteFindings.every((finding) => finding.matched_object.metadata.accepts_customer_data_input === true)).toBe(true);
     expect(sourceHandlerMemoryWriteFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("memory_write"))).toBe(true);
     expect(sourceHandlerMemoryWriteFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("tainted_memory_scope"))).toBe(true);
+    expect(sourceHandlerMemoryWriteFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("embedding_provider_call"))).toBe(true);
+    expect(sourceHandlerMemoryWriteFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("tainted_embedding_input"))).toBe(true);
+    expect(sourceHandlerMemoryWriteFindings.every((finding) => finding.matched_object.metadata.handler_authority_classes.includes("handler_embedding_provider_call"))).toBe(true);
+    expect(sourceHandlerMemoryWriteFindings.every((finding) => finding.matched_object.metadata.handler_authority_classes.includes("handler_tainted_embedding_input"))).toBe(true);
     expect(sourceHandlerMemoryWriteFindings.every((finding) => finding.matched_object.metadata.handler_authority_classes.includes("handler_tainted_memory_scope"))).toBe(true);
     expect(sourceHandlerMemoryWriteFindings.every((finding) => finding.matched_object.actions.includes("remember"))).toBe(true);
+    expect(sourceHandlerMemoryWriteFindings.every((finding) => finding.matched_object.actions.includes("send"))).toBe(true);
+    expect(sourceHandlerMemoryWriteFindings.every((finding) => finding.matched_object.external_reach === true)).toBe(true);
+    expect(sourceHandlerMemoryWriteFindings.every((finding) => finding.matched_object.secret_exposure === true)).toBe(true);
     expect(sourceHandlerMemoryWriteFindings.every((finding) => finding.matched_object.reversible === false)).toBe(true);
     expect(JSON.stringify(sourceHandlerMemoryWriteFindings)).not.toContain("agentMemory.upsert");
     expect(JSON.stringify(sourceHandlerMemoryWriteFindings)).not.toContain("memory_store.upsert");
+    expect(JSON.stringify(sourceHandlerMemoryWriteFindings)).not.toContain("embeddingClient.embedQuery");
+    expect(JSON.stringify(sourceHandlerMemoryWriteFindings)).not.toContain("embedding_client.embed_documents");
     expect(JSON.stringify(sourceHandlerMemoryWriteFindings)).not.toContain("source memory persisted");
     expect(JSON.stringify(sourceHandlerMemoryWriteFindings)).not.toContain("framework memory persisted");
     expect(JSON.stringify(sourceHandlerMemoryWriteFindings)).not.toContain("Persist caller supplied customer ticket text");
+    const sourceHandlerEmbeddingVectorWriteFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-044");
+    expect(sourceHandlerEmbeddingVectorWriteFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
+      "langchain_persist_customer_memory",
+      "source_persist_customer_memory"
+    ]);
+    expect(sourceHandlerEmbeddingVectorWriteFindings.every((finding) => finding.severity === "critical")).toBe(true);
+    expect(sourceHandlerEmbeddingVectorWriteFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerEmbeddingVectorWriteFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
+    expect(sourceHandlerEmbeddingVectorWriteFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
+    expect(sourceHandlerEmbeddingVectorWriteFindings.every((finding) => finding.matched_object.metadata.handler_embedding_provider_call === true)).toBe(true);
+    expect(sourceHandlerEmbeddingVectorWriteFindings.every((finding) => finding.matched_object.metadata.handler_tainted_embedding_input === true)).toBe(true);
+    expect(sourceHandlerEmbeddingVectorWriteFindings.every((finding) => finding.matched_object.metadata.embedding_provider_call === true)).toBe(true);
+    expect(sourceHandlerEmbeddingVectorWriteFindings.every((finding) => finding.matched_object.metadata.tainted_embedding_input === true)).toBe(true);
+    expect(sourceHandlerEmbeddingVectorWriteFindings.every((finding) => finding.matched_object.metadata.handler_memory_write === true)).toBe(true);
+    expect(sourceHandlerEmbeddingVectorWriteFindings.every((finding) => finding.matched_object.metadata.memory_write === true)).toBe(true);
+    expect(sourceHandlerEmbeddingVectorWriteFindings.every((finding) => finding.matched_object.metadata.handler_secret_env_access === true)).toBe(true);
+    expect(sourceHandlerEmbeddingVectorWriteFindings.every((finding) => finding.matched_object.metadata.accepts_content_like_input === true)).toBe(true);
+    expect(sourceHandlerEmbeddingVectorWriteFindings.every((finding) => finding.matched_object.metadata.accepts_customer_data_input === true)).toBe(true);
+    expect(sourceHandlerEmbeddingVectorWriteFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("embedding_provider_call"))).toBe(true);
+    expect(sourceHandlerEmbeddingVectorWriteFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("tainted_embedding_input"))).toBe(true);
+    expect(sourceHandlerEmbeddingVectorWriteFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("memory_write"))).toBe(true);
+    expect(sourceHandlerEmbeddingVectorWriteFindings.every((finding) => finding.matched_object.metadata.handler_authority_classes.includes("handler_embedding_provider_call"))).toBe(true);
+    expect(sourceHandlerEmbeddingVectorWriteFindings.every((finding) => finding.matched_object.metadata.handler_authority_classes.includes("handler_tainted_embedding_input"))).toBe(true);
+    expect(sourceHandlerEmbeddingVectorWriteFindings.every((finding) => finding.matched_object.metadata.handler_authority_classes.includes("handler_memory_write"))).toBe(true);
+    expect(sourceHandlerEmbeddingVectorWriteFindings.every((finding) => finding.matched_object.actions.includes("send"))).toBe(true);
+    expect(sourceHandlerEmbeddingVectorWriteFindings.every((finding) => finding.matched_object.actions.includes("remember"))).toBe(true);
+    expect(sourceHandlerEmbeddingVectorWriteFindings.every((finding) => finding.matched_object.external_reach === true)).toBe(true);
+    expect(sourceHandlerEmbeddingVectorWriteFindings.every((finding) => finding.matched_object.secret_exposure === true)).toBe(true);
+    expect(sourceHandlerEmbeddingVectorWriteFindings.every((finding) => finding.matched_object.side_effect === true)).toBe(true);
+    expect(sourceHandlerEmbeddingVectorWriteFindings.every((finding) => finding.matched_object.reversible === false)).toBe(true);
+    expect(JSON.stringify(sourceHandlerEmbeddingVectorWriteFindings)).not.toContain("agentMemory.upsert");
+    expect(JSON.stringify(sourceHandlerEmbeddingVectorWriteFindings)).not.toContain("memory_store.upsert");
+    expect(JSON.stringify(sourceHandlerEmbeddingVectorWriteFindings)).not.toContain("embeddingClient.embedQuery");
+    expect(JSON.stringify(sourceHandlerEmbeddingVectorWriteFindings)).not.toContain("embedding_client.embed_documents");
+    expect(JSON.stringify(sourceHandlerEmbeddingVectorWriteFindings)).not.toContain("source memory persisted");
+    expect(JSON.stringify(sourceHandlerEmbeddingVectorWriteFindings)).not.toContain("framework memory persisted");
+    expect(JSON.stringify(sourceHandlerEmbeddingVectorWriteFindings)).not.toContain("Persist caller supplied customer ticket text");
     const sourceHandlerTaintedMemoryScopeFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-039");
     expect(sourceHandlerTaintedMemoryScopeFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_persist_customer_memory",
