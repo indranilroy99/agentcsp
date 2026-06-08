@@ -1,0 +1,40 @@
+name: AgentCSP Code Scanning
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  agentcsp:
+    name: AgentCSP advisory scan
+    runs-on: ubuntu-latest
+    env:
+      AGENTCSP_VERSION: 0.1.0
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Run AgentCSP
+        run: >
+          npx --yes "agentcsp@${AGENTCSP_VERSION}" scan .
+          --out .agentcsp
+          --format json,md,sarif
+          --quiet
+
+      - name: Upload AgentCSP SARIF
+        if: always() && hashFiles('.agentcsp/agentcsp.sarif') != '' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+        uses: github/codeql-action/upload-sarif@v4
+        with:
+          sarif_file: .agentcsp/agentcsp.sarif
+          category: agentcsp

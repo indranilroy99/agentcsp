@@ -328,6 +328,7 @@ Every production change should pass:
 - high/critical dependency audit for the tool's own release hygiene
 - Dependabot coverage for npm/pnpm dependencies and GitHub Actions
 - AgentCSP SARIF upload to GitHub code scanning on default-branch pushes
+- verified adopter workflow examples for advisory and gated GitHub code-scanning rollout
 - SARIF rules and results include GitHub-compatible `security-severity`, precision, tags, ranks, and help metadata
 - machine-readable CI gate summaries in JSON, Markdown, and SARIF so failed scans explain the exact gate that failed
 - documented security disclosure policy for scanner, evidence, CI, and packaged artifact vulnerabilities
@@ -339,7 +340,6 @@ Every production change should pass:
 
 ## Near-Term Production Work
 
-- Add SARIF upload examples for adopters.
 - Add MCP and tool schema parsing beyond config files.
 - Continue expanding runtime configuration inventory across more agent frameworks.
 - Continue expanding graph edges between context sources, capabilities, data classes, and side effects while keeping heuristic-only paths out of prioritized attack paths.

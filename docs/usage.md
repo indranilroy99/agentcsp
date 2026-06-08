@@ -109,6 +109,8 @@ The generated SARIF file is:
 
 SARIF run properties include `agentcsp_triage_summary`, `agentcsp_ci_gate_summary`, `agentcsp_baseline_comparison`, `agentcsp_scan_coverage`, `agentcsp_diagnostics`, and `agentcsp_static_blast_radius` so CI systems can consume scan-level context without parsing Markdown. Rules and results include precision, tags, rank, and GitHub code-scanning compatible `security-severity` metadata. When a baseline is provided, SARIF results include `baselineState` values for current findings.
 
+GitHub code-scanning workflow examples are available in `examples/ci/`. See `docs/ci.md` for advisory and gated rollout patterns.
+
 ## Scanner Safety
 
 AgentCSP does not read or emit secret values by default. For `.env*` files, it records file presence and key names only. Evidence snippets are redacted, and raw file contents are not written to the manifest. RAG and memory files are reduced to normalized content signals rather than raw text.

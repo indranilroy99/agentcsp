@@ -1508,6 +1508,15 @@ The current iteration adds:
 - Markdown and SARIF `agentcsp_ci_gate_summary` output for CI, code-scanning, and future dashboard ingestion
 - regression coverage proving diagnostic gates, expired-suppression gates, and default pass behavior are explainable without raw evidence or secret values
 
+## Adopter SARIF Workflow Examples Pass
+
+The current iteration adds:
+
+- copy-pasteable GitHub code-scanning workflows under `examples/ci/` for advisory rollout and gated rollout
+- a `pnpm verify:ci-examples` verifier that parses the example workflows and enforces the expected SARIF upload, permissions, pinned CLI version, quiet output, and gated-enforcement behavior
+- CI coverage for the workflow examples so adopter documentation cannot silently drift from supported CLI flags
+- `docs/ci.md` rollout guidance for advisory scans, diagnostics and expired-suppression gates, severity/confidence gates, baseline/new-only gating, version pinning, and machine-readable `ci_gate_summary` consumption
+
 ## Initial Build Recommendation
 
 Start with a CLI-first MVP before building the dashboard:

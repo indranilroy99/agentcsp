@@ -15,6 +15,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "verify:fixtures": "node scripts/verify-fixture-outputs.mjs",
+    "verify:ci-examples": "node scripts/verify-ci-examples.mjs",
     "verify:packages": "node scripts/verify-package-artifacts.mjs",
     "verify:schemas": "tsx scripts/verify-schemas.ts"
   },
@@ -23,6 +24,7 @@
     "tsx": "^4.19.4",
     "typescript": "^5.8.3",
     "vitest": "^4.1.8",
+    "yaml": "^2.9.0",
     "zod-to-json-schema": "^3.24.5"
   },
   "pnpm": {

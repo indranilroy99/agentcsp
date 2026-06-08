@@ -161,6 +161,8 @@ agentcsp scan . --format json,md,sarif --out .agentcsp
 
 SARIF includes scan-level triage, CI gate, coverage, diagnostics, baseline, and static blast-radius properties, plus rule/result precision, rank, tags, and GitHub-compatible `security-severity` metadata.
 
+Copy-pasteable GitHub code-scanning workflows are available in `examples/ci/`, with additional rollout guidance in `docs/ci.md`.
+
 ## Repository Layout
 
 ```text

@@ -1,0 +1,50 @@
+name: AgentCSP Gated Code Scanning
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  agentcsp:
+    name: AgentCSP gated scan
+    runs-on: ubuntu-latest
+    env:
+      AGENTCSP_VERSION: 0.1.0
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Run AgentCSP
+        id: agentcsp_scan
+        continue-on-error: true
+        run: >
+          npx --yes "agentcsp@${AGENTCSP_VERSION}" scan .
+          --out .agentcsp
+          --format json,md,sarif
+          --fail-on high
+          --fail-on-confidence high
+          --fail-on-diagnostics
+          --fail-on-expired-suppressions
+          --quiet
+
+      - name: Upload AgentCSP SARIF
+        if: always() && hashFiles('.agentcsp/agentcsp.sarif') != '' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+        uses: github/codeql-action/upload-sarif@v4
+        with:
+          sarif_file: .agentcsp/agentcsp.sarif
+          category: agentcsp
+
+      - name: Enforce AgentCSP CI gate
+        if: steps.agentcsp_scan.outcome == 'failure'
+        run: exit 1
