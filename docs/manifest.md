@@ -302,6 +302,7 @@ Tool metadata may include:
 - `dynamic_code_execution`
 - `unsafe_deserialization`
 - `local_file_disclosure`
+- `tainted_network_destination`
 - `tainted_database_query_argument`
 - `memory_write`
 - `tainted_memory_scope`
@@ -331,6 +332,7 @@ Tool metadata may include:
 - `handler_body_analyzed`
 - `handler_body_redacted`
 - `handler_external_network_call`
+- `handler_tainted_network_destination`
 - `handler_credentialed_network_read`
 - `handler_network_response_to_output`
 - `handler_external_write`

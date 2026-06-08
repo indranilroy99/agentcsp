@@ -693,17 +693,20 @@ describe("scanner", () => {
       handler_body_analyzed: true,
       handler_body_redacted: true,
       handler_external_network_call: true,
+      handler_tainted_network_destination: true,
       handler_external_write: true,
       handler_secret_env_access: true,
+      tainted_network_destination: true,
       handler_shell_execution: false,
       handler_filesystem_write: false,
       handler_filesystem_delete: false,
-      handler_signal_count: 3
+      handler_signal_count: 4
     });
     expect(sourceExportTool?.metadata.handler_authority_classes).toEqual([
       "handler_external_write",
       "handler_network_access",
-      "handler_secret_env_access"
+      "handler_secret_env_access",
+      "handler_tainted_network_destination"
     ]);
     expect(sourceExportTool?.metadata.handler_env_key_names).toEqual(["SOURCE_EXPORT_TOKEN"]);
     expect(sourceExportTool?.metadata.mcp_source_tool_schema_styles).toEqual(["zod_field_map"]);
@@ -888,7 +891,7 @@ describe("scanner", () => {
       side_effect: true,
       external_reach: true,
       secret_exposure: false,
-      reversible: true
+      reversible: false
     });
     expect(sourceNetworkResponseTool?.metadata).toMatchObject({
       parsed_tool_schema: true,
@@ -907,10 +910,12 @@ describe("scanner", () => {
       handler_body_analyzed: true,
       handler_body_redacted: true,
       handler_external_network_call: true,
+      handler_tainted_network_destination: true,
       handler_credentialed_network_read: false,
       handler_network_response_to_output: true,
       handler_external_write: false,
       handler_secret_env_access: false,
+      tainted_network_destination: true,
       handler_model_visible_output: true,
       handler_shell_execution: false,
       handler_dynamic_code_execution: false,
@@ -918,19 +923,22 @@ describe("scanner", () => {
       handler_filesystem_read: false,
       handler_filesystem_write: false,
       handler_filesystem_delete: false,
-      handler_signal_count: 2,
+      handler_signal_count: 3,
       open_world_schema: false
     });
     expect(sourceNetworkResponseTool?.metadata.authority_classes).toEqual([
       "content_input",
       "handler_network_access",
       "handler_network_response_to_output",
+      "handler_tainted_network_destination",
       "network_access",
-      "network_response_capture"
+      "network_response_capture",
+      "tainted_network_destination"
     ]);
     expect(sourceNetworkResponseTool?.metadata.handler_authority_classes).toEqual([
       "handler_network_access",
-      "handler_network_response_to_output"
+      "handler_network_response_to_output",
+      "handler_tainted_network_destination"
     ]);
     expect(sourceNetworkResponseTool?.metadata.handler_env_key_names).toEqual([]);
     expect(sourceNetworkResponseTool?.metadata.schema_properties).toEqual(["expected_content_type", "target_url"]);
@@ -1119,7 +1127,7 @@ describe("scanner", () => {
       side_effect: true,
       external_reach: true,
       secret_exposure: true,
-      reversible: true
+      reversible: false
     });
     expect(sourceCredentialedNetworkTool?.metadata).toMatchObject({
       parsed_tool_schema: true,
@@ -1139,9 +1147,11 @@ describe("scanner", () => {
       handler_body_analyzed: true,
       handler_body_redacted: true,
       handler_external_network_call: true,
+      handler_tainted_network_destination: true,
       handler_credentialed_network_read: true,
       handler_external_write: false,
       handler_secret_env_access: true,
+      tainted_network_destination: true,
       handler_model_visible_output: true,
       handler_secret_to_output: false,
       handler_database_query: false,
@@ -1149,7 +1159,7 @@ describe("scanner", () => {
       handler_shell_execution: false,
       handler_filesystem_write: false,
       handler_filesystem_delete: false,
-      handler_signal_count: 3,
+      handler_signal_count: 4,
       open_world_schema: false
     });
     expect(sourceCredentialedNetworkTool?.metadata.authority_classes).toEqual([
@@ -1159,13 +1169,16 @@ describe("scanner", () => {
       "handler_credentialed_network_read",
       "handler_network_access",
       "handler_secret_env_access",
+      "handler_tainted_network_destination",
       "network_access",
-      "secret_env_access"
+      "secret_env_access",
+      "tainted_network_destination"
     ]);
     expect(sourceCredentialedNetworkTool?.metadata.handler_authority_classes).toEqual([
       "handler_credentialed_network_read",
       "handler_network_access",
-      "handler_secret_env_access"
+      "handler_secret_env_access",
+      "handler_tainted_network_destination"
     ]);
     expect(sourceCredentialedNetworkTool?.metadata.handler_env_key_names).toEqual(["SOURCE_PARTNER_STATUS_TOKEN"]);
     expect(sourceCredentialedNetworkTool?.metadata.schema_properties).toEqual(["customer_reference", "status_endpoint_url"]);
@@ -1876,17 +1889,20 @@ describe("scanner", () => {
       handler_body_analyzed: true,
       handler_body_redacted: true,
       handler_external_network_call: true,
+      handler_tainted_network_destination: true,
       handler_external_write: true,
       handler_secret_env_access: true,
+      tainted_network_destination: true,
       handler_shell_execution: false,
       handler_filesystem_write: false,
       handler_filesystem_delete: false,
-      handler_signal_count: 3
+      handler_signal_count: 4
     });
     expect(pythonExportTool?.metadata.handler_authority_classes).toEqual([
       "handler_external_write",
       "handler_network_access",
-      "handler_secret_env_access"
+      "handler_secret_env_access",
+      "handler_tainted_network_destination"
     ]);
     expect(pythonExportTool?.metadata.handler_env_key_names).toEqual(["PYTHON_EXPORT_TOKEN"]);
     expect(pythonExportTool?.metadata.mcp_source_tool_schema_styles).toEqual([
@@ -2055,17 +2071,20 @@ describe("scanner", () => {
       handler_body_analyzed: true,
       handler_body_redacted: true,
       handler_external_network_call: true,
+      handler_tainted_network_destination: true,
       handler_external_write: true,
       handler_secret_env_access: true,
+      tainted_network_destination: true,
       handler_shell_execution: false,
       handler_filesystem_write: false,
       handler_filesystem_delete: false,
-      handler_signal_count: 3
+      handler_signal_count: 4
     });
     expect(langchainExportTool?.metadata.handler_authority_classes).toEqual([
       "handler_external_write",
       "handler_network_access",
-      "handler_secret_env_access"
+      "handler_secret_env_access",
+      "handler_tainted_network_destination"
     ]);
     expect(langchainExportTool?.metadata.handler_env_key_names).toEqual(["LANGCHAIN_EXPORT_TOKEN"]);
     expect(langchainExportTool?.metadata.agent_framework_source_tool_schema_styles).toEqual([
@@ -2265,7 +2284,7 @@ describe("scanner", () => {
       side_effect: true,
       external_reach: true,
       secret_exposure: false,
-      reversible: true
+      reversible: false
     });
     expect(langchainNetworkResponseTool?.metadata).toMatchObject({
       parsed_tool_schema: true,
@@ -2283,10 +2302,12 @@ describe("scanner", () => {
       handler_body_analyzed: true,
       handler_body_redacted: true,
       handler_external_network_call: true,
+      handler_tainted_network_destination: true,
       handler_credentialed_network_read: false,
       handler_network_response_to_output: true,
       handler_external_write: false,
       handler_secret_env_access: false,
+      tainted_network_destination: true,
       handler_model_visible_output: true,
       handler_shell_execution: false,
       handler_dynamic_code_execution: false,
@@ -2294,18 +2315,21 @@ describe("scanner", () => {
       handler_filesystem_read: false,
       handler_filesystem_write: false,
       handler_filesystem_delete: false,
-      handler_signal_count: 2,
+      handler_signal_count: 3,
       open_world_schema: false
     });
     expect(langchainNetworkResponseTool?.metadata.authority_classes).toEqual([
       "handler_network_access",
       "handler_network_response_to_output",
+      "handler_tainted_network_destination",
       "network_access",
-      "network_response_capture"
+      "network_response_capture",
+      "tainted_network_destination"
     ]);
     expect(langchainNetworkResponseTool?.metadata.handler_authority_classes).toEqual([
       "handler_network_access",
-      "handler_network_response_to_output"
+      "handler_network_response_to_output",
+      "handler_tainted_network_destination"
     ]);
     expect(langchainNetworkResponseTool?.metadata.handler_env_key_names).toEqual([]);
     expect(langchainNetworkResponseTool?.metadata.schema_properties).toEqual(["target_url"]);
@@ -2551,7 +2575,7 @@ describe("scanner", () => {
       side_effect: true,
       external_reach: true,
       secret_exposure: true,
-      reversible: true
+      reversible: false
     });
     expect(langchainCredentialedNetworkTool?.metadata).toMatchObject({
       parsed_tool_schema: true,
@@ -2570,9 +2594,11 @@ describe("scanner", () => {
       handler_body_analyzed: true,
       handler_body_redacted: true,
       handler_external_network_call: true,
+      handler_tainted_network_destination: true,
       handler_credentialed_network_read: true,
       handler_external_write: false,
       handler_secret_env_access: true,
+      tainted_network_destination: true,
       handler_model_visible_output: true,
       handler_secret_to_output: false,
       handler_database_query: false,
@@ -2580,7 +2606,7 @@ describe("scanner", () => {
       handler_shell_execution: false,
       handler_filesystem_write: false,
       handler_filesystem_delete: false,
-      handler_signal_count: 3,
+      handler_signal_count: 4,
       open_world_schema: false
     });
     expect(langchainCredentialedNetworkTool?.metadata.authority_classes).toEqual([
@@ -2589,13 +2615,16 @@ describe("scanner", () => {
       "handler_credentialed_network_read",
       "handler_network_access",
       "handler_secret_env_access",
+      "handler_tainted_network_destination",
       "network_access",
-      "secret_env_access"
+      "secret_env_access",
+      "tainted_network_destination"
     ]);
     expect(langchainCredentialedNetworkTool?.metadata.handler_authority_classes).toEqual([
       "handler_credentialed_network_read",
       "handler_network_access",
-      "handler_secret_env_access"
+      "handler_secret_env_access",
+      "handler_tainted_network_destination"
     ]);
     expect(langchainCredentialedNetworkTool?.metadata.handler_env_key_names).toEqual(["LANGCHAIN_PARTNER_STATUS_TOKEN"]);
     expect(langchainCredentialedNetworkTool?.metadata.schema_properties).toEqual([
@@ -3312,17 +3341,20 @@ describe("scanner", () => {
       handler_body_analyzed: true,
       handler_body_redacted: true,
       handler_external_network_call: true,
+      handler_tainted_network_destination: true,
       handler_external_write: true,
       handler_secret_env_access: true,
+      tainted_network_destination: true,
       handler_shell_execution: false,
       handler_filesystem_write: false,
       handler_filesystem_delete: false,
-      handler_signal_count: 3
+      handler_signal_count: 4
     });
     expect(aiSdkExportTool?.metadata.handler_authority_classes).toEqual([
       "handler_external_write",
       "handler_network_access",
-      "handler_secret_env_access"
+      "handler_secret_env_access",
+      "handler_tainted_network_destination"
     ]);
     expect(aiSdkExportTool?.metadata.handler_env_key_names).toEqual(["AI_SDK_EXPORT_TOKEN"]);
     expect(aiSdkExportTool?.metadata.agent_framework_source_tool_schema_styles).toEqual([

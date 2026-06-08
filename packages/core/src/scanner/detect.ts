@@ -24129,6 +24129,7 @@ function addToolDefinitionSurface(
       !authority.secret_manager_access &&
       !authority.external_service_write &&
       !authority.model_provider_call &&
+      !authority.tainted_network_destination &&
       !authority.tainted_shell_argument &&
       !authority.dynamic_code_execution &&
       !authority.tainted_dynamic_code_argument &&
@@ -24151,6 +24152,7 @@ function addToolDefinitionSurface(
       accepted_data_classes: authority.accepted_data_classes,
       database_access: authority.database_access,
       database_write: authority.database_write,
+      tainted_network_destination: authority.tainted_network_destination,
       tainted_database_query_argument: authority.tainted_database_query_argument,
       memory_write: authority.memory_write,
       tainted_memory_scope: authority.tainted_memory_scope,
@@ -26538,6 +26540,7 @@ interface ExtractedToolDefinition {
 interface SourceToolHandlerSignals {
   handlerBodyAnalyzed: boolean;
   handlerExternalNetworkCall: boolean;
+  handlerTaintedNetworkDestination: boolean;
   handlerCredentialedNetworkRead: boolean;
   handlerNetworkResponseToOutput: boolean;
   handlerExternalWrite: boolean;
@@ -26979,6 +26982,7 @@ function sourceToolHandlerSignalMetadata(signals: SourceToolHandlerSignals | und
     handler_body_analyzed: signals.handlerBodyAnalyzed,
     handler_body_redacted: true,
     handler_external_network_call: signals.handlerExternalNetworkCall,
+    handler_tainted_network_destination: signals.handlerTaintedNetworkDestination,
     handler_credentialed_network_read: signals.handlerCredentialedNetworkRead,
     handler_network_response_to_output: signals.handlerNetworkResponseToOutput,
     handler_external_write: signals.handlerExternalWrite,
@@ -27030,6 +27034,9 @@ function classifySourceToolHandlerSignals(
   const externalNetworkCall = language === "javascript"
     ? hasJavaScriptHandlerNetworkCall(handlerSource)
     : hasPythonHandlerNetworkCall(handlerSource);
+  const taintedNetworkDestination = externalNetworkCall && (language === "javascript"
+    ? hasJavaScriptHandlerTaintedNetworkDestination(handlerSource)
+    : hasPythonHandlerTaintedNetworkDestination(handlerSource));
   const externalWrite = language === "javascript"
     ? hasJavaScriptHandlerExternalWrite(handlerSource)
     : hasPythonHandlerExternalWrite(handlerSource);
@@ -27123,6 +27130,7 @@ function classifySourceToolHandlerSignals(
 
   const classes = new Set<string>();
   if (externalNetworkCall) classes.add("handler_network_access");
+  if (taintedNetworkDestination) classes.add("handler_tainted_network_destination");
   if (credentialedNetworkRead) classes.add("handler_credentialed_network_read");
   if (networkResponseToOutput) classes.add("handler_network_response_to_output");
   if (externalWrite) classes.add("handler_external_write");
@@ -27158,6 +27166,7 @@ function classifySourceToolHandlerSignals(
   return {
     handlerBodyAnalyzed: true,
     handlerExternalNetworkCall: externalNetworkCall,
+    handlerTaintedNetworkDestination: taintedNetworkDestination,
     handlerCredentialedNetworkRead: credentialedNetworkRead,
     handlerNetworkResponseToOutput: networkResponseToOutput,
     handlerExternalWrite: externalWrite,
@@ -27241,6 +27250,27 @@ function hasPythonHandlerNetworkCall(source: string): boolean {
   return /\b(?:requests|httpx)\s*\.\s*(?:get|post|put|patch|delete|request)\s*\(|\baiohttp\s*\.|\burllib\s*\.\s*request|\burlopen\s*\(/u.test(
     source
   );
+}
+
+function hasJavaScriptHandlerTaintedNetworkDestination(source: string): boolean {
+  return [
+    /\bfetch\s*\(\s*([^,\n\)]{1,360})/giu,
+    /\b(?:axios|got|request)\s*\.\s*(?:get|post|put|patch|delete|request)\s*\(\s*([^,\n\)]{1,360})/giu,
+    /\b(?:axios|got|request)\s*\(\s*([^,\n\)]{1,360})/giu,
+    /\b(?:http|https)\s*\.\s*(?:request|get)\s*\(\s*([^,\n\)]{1,360})/giu,
+    /\bnew\s+(?:WebSocket|EventSource)\s*\(\s*([^,\n\)]{1,360})/giu,
+    /\b(?:axios|got|request)\s*\.\s*request\s*\(\s*\{[\s\S]{0,360}\b(?:url|uri|href|endpoint)\s*:\s*([^,\n}\)]+)/giu
+  ].some((pattern) => expressionMatchesTaintedNetworkDestination(pattern, source));
+}
+
+function hasPythonHandlerTaintedNetworkDestination(source: string): boolean {
+  return [
+    /\b(?:requests|httpx)\s*\.\s*(?:get|post|put|patch|delete|request)\s*\(\s*([^,\n\)]{1,360})/giu,
+    /\burlopen\s*\(\s*([^,\n\)]{1,360})/giu,
+    /\burllib\s*\.\s*request\s*\.\s*(?:urlopen|Request)\s*\(\s*([^,\n\)]{1,360})/giu,
+    /\b(?:requests|httpx)\s*\.\s*request\s*\(\s*[^,\n\)]{1,180},\s*([^,\n\)]{1,360})/giu,
+    /\b(?:requests|httpx)\s*\.\s*request\s*\([\s\S]{0,360}\burl\s*=\s*([^,\n\)]+)/giu
+  ].some((pattern) => expressionMatchesTaintedNetworkDestination(pattern, source));
 }
 
 function hasHandlerNetworkCredentialForwarding(source: string): boolean {
@@ -27739,6 +27769,15 @@ function expressionMatchesTaintedDeserializationArgument(pattern: RegExp, source
   return false;
 }
 
+function expressionMatchesTaintedNetworkDestination(pattern: RegExp, source: string): boolean {
+  let match: RegExpExecArray | null;
+  while ((match = pattern.exec(source)) !== null) {
+    if (expressionReferencesTaintedNetworkDestination(match[1] ?? "", source)) return true;
+    if (match[0].length === 0) pattern.lastIndex += 1;
+  }
+  return false;
+}
+
 function expressionMatchesTaintedContext(pattern: RegExp, source: string): boolean {
   let match: RegExpExecArray | null;
   while ((match = pattern.exec(source)) !== null) {
@@ -27928,6 +27967,36 @@ function expressionReferencesTaintedBrowserAutomationTarget(expression: string, 
 }
 
 function identifierAssignedFromTaintedBrowserAutomationTarget(identifier: string, source: string, taintedName: RegExp): boolean {
+  const escaped = escapeRegExp(identifier);
+  const patterns = [
+    new RegExp(`\\b(?:const|let|var)\\s+${escaped}\\s*=\\s*([^;\\n]+)`, "gu"),
+    new RegExp(`\\b${escaped}\\s*=\\s*([^\\n]+)`, "gu")
+  ];
+  return patterns.some((pattern) => expressionMatchesPattern(pattern, source, taintedName));
+}
+
+function expressionReferencesTaintedNetworkDestination(expression: string, source: string): boolean {
+  const templateInterpolation = /\$\{[^}]*\b(?:destinationWebhookUrl|destination_webhook_url|webhookUrl|webhook_url|targetUrl|target_url|statusEndpointUrl|status_endpoint_url|endpointUrl|endpoint_url|callbackUrl|callback_url|url|uri|href|endpoint|destination|target)\b/u.test(
+    expression
+  );
+  if (templateInterpolation) return true;
+  const withoutQuotedStrings = expression.replace(/(["'`])(?:\\.|(?!\1)[\s\S])*\1/gu, " ");
+  const stronglyTaintedName = /\b(?:destinationWebhookUrl|destination_webhook_url|webhookUrl|webhook_url|targetUrl|target_url|statusEndpointUrl|status_endpoint_url|endpointUrl|endpoint_url|callbackUrl|callback_url)\b/u;
+  const taintedName = /\b(?:destinationWebhookUrl|destination_webhook_url|webhookUrl|webhook_url|targetUrl|target_url|statusEndpointUrl|status_endpoint_url|endpointUrl|endpoint_url|callbackUrl|callback_url|url|uri|href|endpoint|destination|target)\b/u;
+  if (stronglyTaintedName.test(withoutQuotedStrings)) return true;
+  if (/\b(?:url|uri|href|endpoint|destination|target)\b/u.test(withoutQuotedStrings) && !/\b(?:URL|URI)\s*\(/u.test(withoutQuotedStrings)) {
+    return true;
+  }
+
+  const identifiers = uniqueStrings(
+    [...withoutQuotedStrings.matchAll(/\b[A-Za-z_$][\w$]*\b/gu)]
+      .map((match) => match[0])
+      .filter((identifier) => !["URL", "Request", "fetch", "axios", "got", "request", "requests", "httpx"].includes(identifier))
+  );
+  return identifiers.some((identifier) => identifierAssignedFromTaintedNetworkDestination(identifier, source, taintedName));
+}
+
+function identifierAssignedFromTaintedNetworkDestination(identifier: string, source: string, taintedName: RegExp): boolean {
   const escaped = escapeRegExp(identifier);
   const patterns = [
     new RegExp(`\\b(?:const|let|var)\\s+${escaped}\\s*=\\s*([^;\\n]+)`, "gu"),
@@ -29274,6 +29343,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   accepted_data_classes: SurfaceObject["data_classes"];
   database_access: boolean;
   database_write: boolean;
+  tainted_network_destination: boolean;
   tainted_database_query_argument: boolean;
   memory_write: boolean;
   tainted_memory_scope: boolean;
@@ -29318,6 +29388,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   const handlerSecretEnvAccess = handler?.handlerSecretEnvAccess === true;
   const handlerSecretToOutput = handler?.handlerSecretToOutput === true;
   const handlerExternalNetworkCall = handler?.handlerExternalNetworkCall === true;
+  const handlerTaintedNetworkDestination = handler?.handlerTaintedNetworkDestination === true;
   const handlerCredentialedNetworkRead = handler?.handlerCredentialedNetworkRead === true;
   const handlerNetworkResponseToOutput = handler?.handlerNetworkResponseToOutput === true;
   const handlerExternalWrite = handler?.handlerExternalWrite === true;
@@ -29398,6 +29469,10 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   }
   if (acceptsUrl || /\b(fetch|request|http|api|network)\b/i.test(text) || handlerExternalNetworkCall) {
     classes.add("network_access");
+  }
+  if (handlerTaintedNetworkDestination) {
+    classes.add("tainted_network_destination");
+    actions.add("send");
   }
   if (handlerCredentialedNetworkRead) {
     classes.add("credentialed_network_read");
@@ -29535,6 +29610,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       acceptsSecret ||
       handlerSecretEnvAccess ||
       handlerSecretToOutput ||
+      handlerTaintedNetworkDestination ||
       handlerCredentialedNetworkRead ||
       handlerNetworkResponseToOutput ||
       handlerMemoryWrite ||
@@ -29596,6 +29672,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
     accepted_data_classes: schemaDataProfile.dataClasses,
     database_access: databaseAccess,
     database_write: databaseWrite,
+    tainted_network_destination: handlerTaintedNetworkDestination,
     tainted_database_query_argument: handlerTaintedDatabaseQueryArgument,
     memory_write: handlerMemoryWrite,
     tainted_memory_scope: handlerTaintedMemoryScope,
@@ -29671,6 +29748,7 @@ function authoritySignature(tool: SurfaceObject): string {
     metadata.parsed_tool_schema === true ? "parsed" : "unparsed",
     metadata.external_write === true ? "external_write" : "",
     metadata.external_service_write === true ? "external_service_write" : "",
+    metadata.tainted_network_destination === true ? "tainted_network_destination" : "",
     metadata.tainted_database_query_argument === true ? "tainted_database_query_argument" : "",
     metadata.tainted_memory_scope === true ? "tainted_memory_scope" : "",
     metadata.model_provider_call === true ? "model_provider_call" : "",
@@ -29710,6 +29788,7 @@ function isPrivilegedToolSurface(tool: SurfaceObject): boolean {
     !tool.reversible ||
     tool.actions.some((action) => ["write", "execute", "publish", "send", "delete", "remember"].includes(action)) ||
     tool.metadata.external_write === true ||
+    tool.metadata.tainted_network_destination === true ||
     tool.metadata.tainted_database_query_argument === true ||
     tool.metadata.tainted_memory_scope === true ||
     tool.metadata.external_service_write === true ||
