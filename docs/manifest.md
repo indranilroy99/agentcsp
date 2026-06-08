@@ -304,6 +304,7 @@ Tool metadata may include:
 - `local_file_disclosure`
 - `tainted_database_query_argument`
 - `memory_write`
+- `tainted_memory_scope`
 - `agent_config_write`
 - `credential_issuance`
 - `nested_tool_invocation`
@@ -343,6 +344,7 @@ Tool metadata may include:
 - `handler_database_write`
 - `handler_tainted_database_query_argument`
 - `handler_memory_write`
+- `handler_tainted_memory_scope`
 - `handler_agent_config_write`
 - `handler_credential_issuance`
 - `handler_tool_invocation`

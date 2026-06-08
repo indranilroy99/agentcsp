@@ -1195,6 +1195,7 @@ describe("scanner", () => {
       accepts_pii_like_input: true,
       accepts_customer_data_input: true,
       memory_write: true,
+      tainted_memory_scope: true,
       external_write: false,
       destructive_action: false,
       read_only_hint_conflict: false,
@@ -1210,24 +1211,30 @@ describe("scanner", () => {
       handler_database_query: false,
       handler_database_write: false,
       handler_memory_write: true,
+      handler_tainted_memory_scope: true,
       handler_shell_execution: false,
       handler_dynamic_code_execution: false,
       handler_unsafe_deserialization: false,
       handler_filesystem_read: false,
       handler_filesystem_write: false,
       handler_filesystem_delete: false,
-      handler_signal_count: 1,
+      handler_signal_count: 2,
       open_world_schema: false
     });
     expect(sourceMemoryWriteTool?.metadata.authority_classes).toEqual([
       "content_input",
       "customer_data_input",
       "handler_memory_write",
+      "handler_tainted_memory_scope",
       "memory_access",
       "memory_write",
-      "pii_input"
+      "pii_input",
+      "tainted_memory_scope"
     ]);
-    expect(sourceMemoryWriteTool?.metadata.handler_authority_classes).toEqual(["handler_memory_write"]);
+    expect(sourceMemoryWriteTool?.metadata.handler_authority_classes).toEqual([
+      "handler_memory_write",
+      "handler_tainted_memory_scope"
+    ]);
     expect(sourceMemoryWriteTool?.metadata.handler_env_key_names).toEqual([]);
     expect(sourceMemoryWriteTool?.metadata.schema_properties).toEqual(["customer_id", "memory_namespace", "ticket_text"]);
     expect(sourceMemoryWriteTool?.metadata.required_properties).toEqual(["customer_id", "ticket_text"]);
@@ -2618,6 +2625,7 @@ describe("scanner", () => {
       accepts_pii_like_input: true,
       accepts_customer_data_input: true,
       memory_write: true,
+      tainted_memory_scope: true,
       external_write: false,
       destructive_action: false,
       read_only_hint_conflict: false,
@@ -2633,24 +2641,30 @@ describe("scanner", () => {
       handler_database_query: false,
       handler_database_write: false,
       handler_memory_write: true,
+      handler_tainted_memory_scope: true,
       handler_shell_execution: false,
       handler_dynamic_code_execution: false,
       handler_unsafe_deserialization: false,
       handler_filesystem_read: false,
       handler_filesystem_write: false,
       handler_filesystem_delete: false,
-      handler_signal_count: 1,
+      handler_signal_count: 2,
       open_world_schema: false
     });
     expect(langchainMemoryWriteTool?.metadata.authority_classes).toEqual([
       "content_input",
       "customer_data_input",
       "handler_memory_write",
+      "handler_tainted_memory_scope",
       "memory_access",
       "memory_write",
-      "pii_input"
+      "pii_input",
+      "tainted_memory_scope"
     ]);
-    expect(langchainMemoryWriteTool?.metadata.handler_authority_classes).toEqual(["handler_memory_write"]);
+    expect(langchainMemoryWriteTool?.metadata.handler_authority_classes).toEqual([
+      "handler_memory_write",
+      "handler_tainted_memory_scope"
+    ]);
     expect(langchainMemoryWriteTool?.metadata.handler_env_key_names).toEqual([]);
     expect(langchainMemoryWriteTool?.metadata.schema_properties).toEqual([
       "customer_id",

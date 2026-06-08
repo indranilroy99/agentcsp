@@ -24153,6 +24153,7 @@ function addToolDefinitionSurface(
       database_write: authority.database_write,
       tainted_database_query_argument: authority.tainted_database_query_argument,
       memory_write: authority.memory_write,
+      tainted_memory_scope: authority.tainted_memory_scope,
       agent_config_write: authority.agent_config_write,
       credential_issuance: authority.credential_issuance,
       nested_tool_invocation: authority.nested_tool_invocation,
@@ -26549,6 +26550,7 @@ interface SourceToolHandlerSignals {
   handlerDatabaseWrite: boolean;
   handlerTaintedDatabaseQueryArgument: boolean;
   handlerMemoryWrite: boolean;
+  handlerTaintedMemoryScope: boolean;
   handlerAgentConfigWrite: boolean;
   handlerCredentialIssuance: boolean;
   handlerToolInvocation: boolean;
@@ -26988,6 +26990,7 @@ function sourceToolHandlerSignalMetadata(signals: SourceToolHandlerSignals | und
     handler_database_write: signals.handlerDatabaseWrite,
     handler_tainted_database_query_argument: signals.handlerTaintedDatabaseQueryArgument,
     handler_memory_write: signals.handlerMemoryWrite,
+    handler_tainted_memory_scope: signals.handlerTaintedMemoryScope,
     handler_agent_config_write: signals.handlerAgentConfigWrite,
     handler_credential_issuance: signals.handlerCredentialIssuance,
     handler_tool_invocation: signals.handlerToolInvocation,
@@ -27049,6 +27052,9 @@ function classifySourceToolHandlerSignals(
   const memoryWrite = language === "javascript"
     ? hasJavaScriptHandlerMemoryWrite(handlerSource)
     : hasPythonHandlerMemoryWrite(handlerSource);
+  const taintedMemoryScope = memoryWrite && (language === "javascript"
+    ? hasJavaScriptHandlerTaintedMemoryScope(handlerSource)
+    : hasPythonHandlerTaintedMemoryScope(handlerSource));
   const secretEnvAccess = envKeyNames.length > 0 || (language === "javascript"
     ? /\b(?:process|Deno|Bun)\s*\.\s*env\b/u.test(handlerSource)
     : /\b(?:os\s*\.\s*(?:environ|getenv)|dotenv)\b/u.test(handlerSource));
@@ -27124,6 +27130,7 @@ function classifySourceToolHandlerSignals(
   if (databaseWrite) classes.add("handler_database_write");
   if (taintedDatabaseQueryArgument) classes.add("handler_tainted_database_query_argument");
   if (memoryWrite) classes.add("handler_memory_write");
+  if (taintedMemoryScope) classes.add("handler_tainted_memory_scope");
   if (agentConfigWrite) classes.add("handler_agent_config_write");
   if (credentialIssuance) classes.add("handler_credential_issuance");
   if (toolInvocation) classes.add("handler_tool_invocation");
@@ -27158,6 +27165,7 @@ function classifySourceToolHandlerSignals(
     handlerDatabaseWrite: databaseWrite,
     handlerTaintedDatabaseQueryArgument: taintedDatabaseQueryArgument,
     handlerMemoryWrite: memoryWrite,
+    handlerTaintedMemoryScope: taintedMemoryScope,
     handlerAgentConfigWrite: agentConfigWrite,
     handlerCredentialIssuance: credentialIssuance,
     handlerToolInvocation: toolInvocation,
@@ -27398,6 +27406,20 @@ function hasJavaScriptHandlerMemoryWrite(source: string): boolean {
 function hasPythonHandlerMemoryWrite(source: string): boolean {
   return /\b(?:[A-Za-z_]\w*memory|memory|memory_store|vector_store|vectorstore|vector_index|embedding_store|rag_store|retriever|knowledge_base|session_store|state_store)\s*\.\s*(?:add|add_documents|add_texts|append|insert|persist|put|push|remember|save|set|store|upsert|write)\s*\(/iu.test(source) ||
     /\b(?:persist_memory|remember_context|save_memory|store_memory|upsert_memory|write_memory)\s*\(/iu.test(source);
+}
+
+function hasJavaScriptHandlerTaintedMemoryScope(source: string): boolean {
+  return [
+    /\b(?:[A-Za-z_$][\w$]*memory|memory|memories|vectorStore|vectorIndex|embeddingStore|ragStore|retriever|knowledgeBase|sessionStore|stateStore)\s*\.\s*(?:add|addDocuments|addTexts|append|insert|persist|put|push|remember|save|set|store|upsert|write)\s*\(([\s\S]{0,720})\)/giu,
+    /\b(?:persistMemory|rememberContext|saveMemory|storeMemory|upsertMemory|writeMemory)\s*\(([\s\S]{0,720})\)/giu
+  ].some((pattern) => expressionMatchesTaintedMemoryScope(pattern, source));
+}
+
+function hasPythonHandlerTaintedMemoryScope(source: string): boolean {
+  return [
+    /\b(?:[A-Za-z_]\w*memory|memory|memory_store|vector_store|vectorstore|vector_index|embedding_store|rag_store|retriever|knowledge_base|session_store|state_store)\s*\.\s*(?:add|add_documents|add_texts|append|insert|persist|put|push|remember|save|set|store|upsert|write)\s*\(([\s\S]{0,720})\)/giu,
+    /\b(?:persist_memory|remember_context|save_memory|store_memory|upsert_memory|write_memory)\s*\(([\s\S]{0,720})\)/giu
+  ].some((pattern) => expressionMatchesTaintedMemoryScope(pattern, source));
 }
 
 function hasJavaScriptHandlerAgentConfigWrite(source: string): boolean {
@@ -27661,6 +27683,15 @@ function expressionMatchesTaintedDatabaseQueryArgument(pattern: RegExp, source: 
   return false;
 }
 
+function expressionMatchesTaintedMemoryScope(pattern: RegExp, source: string): boolean {
+  let match: RegExpExecArray | null;
+  while ((match = pattern.exec(source)) !== null) {
+    if (expressionReferencesTaintedMemoryScope(match[1] ?? "", source)) return true;
+    if (match[0].length === 0) pattern.lastIndex += 1;
+  }
+  return false;
+}
+
 function expressionMatchesTaintedDynamicCodeArgument(pattern: RegExp, source: string): boolean {
   let match: RegExpExecArray | null;
   while ((match = pattern.exec(source)) !== null) {
@@ -27810,6 +27841,36 @@ function expressionReferencesTaintedDatabaseQueryArgument(expression: string, so
 }
 
 function identifierAssignedFromTaintedDatabaseQueryInput(identifier: string, source: string, taintedName: RegExp): boolean {
+  const escaped = escapeRegExp(identifier);
+  const patterns = [
+    new RegExp(`\\b(?:const|let|var)\\s+${escaped}\\s*=\\s*([^;\\n]+)`, "gu"),
+    new RegExp(`\\b${escaped}\\s*=\\s*([^\\n]+)`, "gu")
+  ];
+  return patterns.some((pattern) => expressionMatchesPattern(pattern, source, taintedName));
+}
+
+function expressionReferencesTaintedMemoryScope(expression: string, source: string): boolean {
+  const templateInterpolation = /\$\{[^}]*\b(?:memoryNamespace|memory_namespace|memoryScope|memory_scope|namespace|tenantId|tenant_id|tenant|collection|collectionName|collection_name|indexName|index_name|memoryKey|memory_key)\b/u.test(
+    expression
+  );
+  if (templateInterpolation) return true;
+  const withoutQuotedStrings = expression.replace(/(["'`])(?:\\.|(?!\1)[\s\S])*\1/gu, " ");
+  const stronglyTaintedName = /\b(?:memoryNamespace|memory_namespace|memoryScope|memory_scope|tenantId|tenant_id|collectionName|collection_name|indexName|index_name|memoryKey|memory_key)\b/u;
+  const taintedName = /\b(?:memoryNamespace|memory_namespace|memoryScope|memory_scope|namespace|tenantId|tenant_id|tenant|collection|collectionName|collection_name|indexName|index_name|memoryKey|memory_key)\b/u;
+  if (stronglyTaintedName.test(withoutQuotedStrings)) return true;
+
+  const scopeAssignment = /\b(?:namespace|tenant|tenant_id|collection|collection_name|index|index_name|scope|memory_scope|memory_key)\s*(?::|=)\s*([^,\n}\)]+)/giu;
+  if (expressionMatchesPattern(scopeAssignment, withoutQuotedStrings, taintedName)) return true;
+
+  const identifiers = uniqueStrings(
+    [...withoutQuotedStrings.matchAll(/\b[A-Za-z_$][\w$]*\b/gu)]
+      .map((match) => match[0])
+      .filter((identifier) => !["memory", "memoryStore", "vectorStore", "text", "payload"].includes(identifier))
+  );
+  return identifiers.some((identifier) => identifierAssignedFromTaintedMemoryScopeInput(identifier, source, taintedName));
+}
+
+function identifierAssignedFromTaintedMemoryScopeInput(identifier: string, source: string, taintedName: RegExp): boolean {
   const escaped = escapeRegExp(identifier);
   const patterns = [
     new RegExp(`\\b(?:const|let|var)\\s+${escaped}\\s*=\\s*([^;\\n]+)`, "gu"),
@@ -29158,6 +29219,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   database_write: boolean;
   tainted_database_query_argument: boolean;
   memory_write: boolean;
+  tainted_memory_scope: boolean;
   agent_config_write: boolean;
   credential_issuance: boolean;
   nested_tool_invocation: boolean;
@@ -29208,6 +29270,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   const handlerDatabaseWrite = handler?.handlerDatabaseWrite === true;
   const handlerTaintedDatabaseQueryArgument = handler?.handlerTaintedDatabaseQueryArgument === true;
   const handlerMemoryWrite = handler?.handlerMemoryWrite === true;
+  const handlerTaintedMemoryScope = handler?.handlerTaintedMemoryScope === true;
   const handlerAgentConfigWrite = handler?.handlerAgentConfigWrite === true;
   const handlerCredentialIssuance = handler?.handlerCredentialIssuance === true;
   const handlerToolInvocation = handler?.handlerToolInvocation === true;
@@ -29323,6 +29386,9 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
     classes.add("memory_write");
     actions.add("write");
   }
+  if (handlerTaintedMemoryScope) {
+    classes.add("tainted_memory_scope");
+  }
   if (handlerAgentConfigWrite) {
     classes.add("agent_config_write");
     actions.add("write");
@@ -29410,6 +29476,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerCredentialedNetworkRead ||
       handlerNetworkResponseToOutput ||
       handlerMemoryWrite ||
+      handlerTaintedMemoryScope ||
       handlerAgentConfigWrite ||
       handlerCredentialIssuance ||
       handlerToolInvocation ||
@@ -29468,6 +29535,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
     database_write: databaseWrite,
     tainted_database_query_argument: handlerTaintedDatabaseQueryArgument,
     memory_write: handlerMemoryWrite,
+    tainted_memory_scope: handlerTaintedMemoryScope,
     agent_config_write: handlerAgentConfigWrite,
     credential_issuance: handlerCredentialIssuance,
     nested_tool_invocation: handlerToolInvocation,
@@ -29540,6 +29608,7 @@ function authoritySignature(tool: SurfaceObject): string {
     metadata.external_write === true ? "external_write" : "",
     metadata.external_service_write === true ? "external_service_write" : "",
     metadata.tainted_database_query_argument === true ? "tainted_database_query_argument" : "",
+    metadata.tainted_memory_scope === true ? "tainted_memory_scope" : "",
     metadata.model_provider_call === true ? "model_provider_call" : "",
     metadata.privileged_prompt_composition === true ? "privileged_prompt_composition" : "",
     metadata.tainted_shell_argument === true ? "tainted_shell_argument" : "",
@@ -29577,6 +29646,7 @@ function isPrivilegedToolSurface(tool: SurfaceObject): boolean {
     tool.actions.some((action) => ["write", "execute", "publish", "send", "delete", "remember"].includes(action)) ||
     tool.metadata.external_write === true ||
     tool.metadata.tainted_database_query_argument === true ||
+    tool.metadata.tainted_memory_scope === true ||
     tool.metadata.external_service_write === true ||
     tool.metadata.model_provider_call === true ||
     tool.metadata.privileged_prompt_composition === true ||
