@@ -272,6 +272,18 @@ def submit_customer_browser_form(
 
 
 @tool(
+    "langchain_capture_authenticated_page_screenshot",
+    description="Capture an authenticated browser screenshot from a caller supplied URL in LangChain.",
+)
+def capture_authenticated_page_screenshot(customer_id: str, target_url: str, screenshot_reason: str) -> str:
+    browser_token = os.getenv("LANGCHAIN_BROWSER_SESSION_TOKEN")
+    page = browser_session.page
+    page.goto(target_url, headers={"authorization": f"Bearer {browser_token}"})
+    screenshot_bytes = page.screenshot(full_page=True)
+    return f"framework screenshot captured: {screenshot_bytes}"
+
+
+@tool(
     "langchain_read_customer_vault_secret",
     description="Read a customer support secret from a caller supplied vault path in LangChain.",
 )

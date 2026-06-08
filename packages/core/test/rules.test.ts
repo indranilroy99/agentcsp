@@ -61,6 +61,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-045")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-046")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-047")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-048")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-001")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-002")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-003")).toBe(true);
@@ -6560,6 +6561,42 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerTaintedBrowserTargetFindings)).not.toContain("page.fill");
     expect(JSON.stringify(sourceHandlerTaintedBrowserTargetFindings)).not.toContain("page.click");
     expect(JSON.stringify(sourceHandlerTaintedBrowserTargetFindings)).not.toContain("Drive an authenticated browser session");
+    const sourceHandlerVisualContextCaptureFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-048");
+    expect(sourceHandlerVisualContextCaptureFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
+      "langchain_capture_authenticated_page_screenshot",
+      "source_capture_authenticated_page_screenshot"
+    ]);
+    expect(sourceHandlerVisualContextCaptureFindings.every((finding) => finding.severity === "critical")).toBe(true);
+    expect(sourceHandlerVisualContextCaptureFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerVisualContextCaptureFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
+    expect(sourceHandlerVisualContextCaptureFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
+    expect(sourceHandlerVisualContextCaptureFindings.every((finding) => finding.matched_object.metadata.handler_browser_automation === true)).toBe(true);
+    expect(sourceHandlerVisualContextCaptureFindings.every((finding) => finding.matched_object.metadata.handler_tainted_browser_automation_target === true)).toBe(true);
+    expect(sourceHandlerVisualContextCaptureFindings.every((finding) => finding.matched_object.metadata.handler_visual_context_capture === true)).toBe(true);
+    expect(sourceHandlerVisualContextCaptureFindings.every((finding) => finding.matched_object.metadata.handler_visual_context_to_output === true)).toBe(true);
+    expect(sourceHandlerVisualContextCaptureFindings.every((finding) => finding.matched_object.metadata.browser_automation === true)).toBe(true);
+    expect(sourceHandlerVisualContextCaptureFindings.every((finding) => finding.matched_object.metadata.tainted_browser_automation_target === true)).toBe(true);
+    expect(sourceHandlerVisualContextCaptureFindings.every((finding) => finding.matched_object.metadata.visual_context_capture === true)).toBe(true);
+    expect(sourceHandlerVisualContextCaptureFindings.every((finding) => finding.matched_object.metadata.visual_context_to_output === true)).toBe(true);
+    expect(sourceHandlerVisualContextCaptureFindings.every((finding) => finding.matched_object.metadata.handler_secret_env_access === true)).toBe(true);
+    expect(sourceHandlerVisualContextCaptureFindings.every((finding) => finding.matched_object.metadata.accepts_url_input === true)).toBe(true);
+    expect(sourceHandlerVisualContextCaptureFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("visual_context_capture"))).toBe(true);
+    expect(sourceHandlerVisualContextCaptureFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("visual_context_to_output"))).toBe(true);
+    expect(sourceHandlerVisualContextCaptureFindings.every((finding) => finding.matched_object.metadata.handler_authority_classes.includes("handler_visual_context_capture"))).toBe(true);
+    expect(sourceHandlerVisualContextCaptureFindings.every((finding) => finding.matched_object.metadata.handler_authority_classes.includes("handler_visual_context_to_output"))).toBe(true);
+    expect(sourceHandlerVisualContextCaptureFindings.every((finding) => finding.matched_object.actions.includes("read"))).toBe(true);
+    expect(sourceHandlerVisualContextCaptureFindings.every((finding) => finding.matched_object.actions.includes("send"))).toBe(true);
+    expect(sourceHandlerVisualContextCaptureFindings.every((finding) => finding.matched_object.external_reach === true)).toBe(true);
+    expect(sourceHandlerVisualContextCaptureFindings.every((finding) => finding.matched_object.secret_exposure === true)).toBe(true);
+    expect(sourceHandlerVisualContextCaptureFindings.every((finding) => finding.matched_object.side_effect === true)).toBe(true);
+    expect(sourceHandlerVisualContextCaptureFindings.every((finding) => finding.matched_object.reversible === false)).toBe(true);
+    expect(JSON.stringify(sourceHandlerVisualContextCaptureFindings)).not.toContain("authenticatedBrowserPage");
+    expect(JSON.stringify(sourceHandlerVisualContextCaptureFindings)).not.toContain("browser_session.page");
+    expect(JSON.stringify(sourceHandlerVisualContextCaptureFindings)).not.toContain("page.goto");
+    expect(JSON.stringify(sourceHandlerVisualContextCaptureFindings)).not.toContain("page.screenshot");
+    expect(JSON.stringify(sourceHandlerVisualContextCaptureFindings)).not.toContain("screenshot.toString");
+    expect(JSON.stringify(sourceHandlerVisualContextCaptureFindings)).not.toContain("framework screenshot captured");
+    expect(JSON.stringify(sourceHandlerVisualContextCaptureFindings)).not.toContain("Capture an authenticated browser screenshot");
     const sourceHandlerSecretManagerFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-028");
     expect(sourceHandlerSecretManagerFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_read_customer_vault_secret",

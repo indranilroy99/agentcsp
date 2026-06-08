@@ -553,6 +553,7 @@ describe("scanner", () => {
     const sourceCredentialIssuanceTool = surfaces.tools.find((surface) => surface.name === "source_mint_agent_session_token");
     const sourceNestedToolInvocationTool = surfaces.tools.find((surface) => surface.name === "source_dispatch_privileged_tool");
     const sourceBrowserAutomationTool = surfaces.tools.find((surface) => surface.name === "source_submit_customer_browser_form");
+    const sourceVisualContextCaptureTool = surfaces.tools.find((surface) => surface.name === "source_capture_authenticated_page_screenshot");
     const sourceSecretManagerAccessTool = surfaces.tools.find((surface) => surface.name === "source_read_customer_vault_secret");
     const sourceExternalServiceWriteTool = surfaces.tools.find((surface) => surface.name === "source_send_customer_slack_update");
     const sourceModelProviderCallTool = surfaces.tools.find((surface) => surface.name === "source_summarize_customer_with_model");
@@ -576,6 +577,7 @@ describe("scanner", () => {
     const langchainCredentialIssuanceTool = surfaces.tools.find((surface) => surface.name === "langchain_mint_agent_session_token");
     const langchainNestedToolInvocationTool = surfaces.tools.find((surface) => surface.name === "langchain_dispatch_privileged_tool");
     const langchainBrowserAutomationTool = surfaces.tools.find((surface) => surface.name === "langchain_submit_customer_browser_form");
+    const langchainVisualContextCaptureTool = surfaces.tools.find((surface) => surface.name === "langchain_capture_authenticated_page_screenshot");
     const langchainSecretManagerAccessTool = surfaces.tools.find((surface) => surface.name === "langchain_read_customer_vault_secret");
     const langchainExternalServiceWriteTool = surfaces.tools.find((surface) => surface.name === "langchain_send_customer_slack_update");
     const langchainModelProviderCallTool = surfaces.tools.find((surface) => surface.name === "langchain_summarize_customer_with_model");
@@ -1858,6 +1860,104 @@ describe("scanner", () => {
     expect(JSON.stringify(sourceBrowserAutomationTool)).not.toContain("page.fill");
     expect(JSON.stringify(sourceBrowserAutomationTool)).not.toContain("page.click");
     expect(JSON.stringify(sourceBrowserAutomationTool)).not.toContain("Drive an authenticated browser session");
+    expect(sourceVisualContextCaptureTool).toMatchObject({
+      path: "mcp-source/customer-tools.ts",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["call", "execute", "read", "send"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(sourceVisualContextCaptureTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_mcp_source_tool: true,
+      mcp_source_tool_registration: true,
+      mcp_source_tool_registration_kind: "registerTool",
+      mcp_source_tool_argument_count: 3,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_secret_like_input: true,
+      accepts_content_like_input: false,
+      accepts_url_input: true,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      browser_automation: true,
+      tainted_browser_automation_target: true,
+      visual_context_capture: true,
+      visual_context_to_output: true,
+      external_write: false,
+      destructive_action: false,
+      read_only_hint_conflict: false,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_external_network_call: false,
+      handler_credentialed_network_read: false,
+      handler_network_response_to_output: false,
+      handler_external_write: false,
+      handler_secret_env_access: true,
+      handler_model_visible_output: true,
+      handler_browser_automation: true,
+      handler_tainted_browser_automation_target: true,
+      handler_visual_context_capture: true,
+      handler_visual_context_to_output: true,
+      handler_secret_to_output: false,
+      handler_database_query: false,
+      handler_database_write: false,
+      handler_memory_write: false,
+      handler_agent_config_write: false,
+      handler_credential_issuance: false,
+      handler_tool_invocation: false,
+      handler_secret_manager_access: false,
+      handler_shell_execution: false,
+      handler_dynamic_code_execution: false,
+      handler_unsafe_deserialization: false,
+      handler_filesystem_read: false,
+      handler_filesystem_write: false,
+      handler_filesystem_delete: false,
+      handler_signal_count: 5,
+      open_world_schema: false
+    });
+    expect(sourceVisualContextCaptureTool?.metadata.authority_classes).toEqual([
+      "browser_automation",
+      "browser_control",
+      "credential_input",
+      "customer_data_input",
+      "handler_browser_automation",
+      "handler_secret_env_access",
+      "handler_tainted_browser_automation_target",
+      "handler_visual_context_capture",
+      "handler_visual_context_to_output",
+      "network_access",
+      "pii_input",
+      "secret_env_access",
+      "tainted_browser_automation_target",
+      "visual_context_capture",
+      "visual_context_to_output"
+    ]);
+    expect(sourceVisualContextCaptureTool?.metadata.handler_authority_classes).toEqual([
+      "handler_browser_automation",
+      "handler_secret_env_access",
+      "handler_tainted_browser_automation_target",
+      "handler_visual_context_capture",
+      "handler_visual_context_to_output"
+    ]);
+    expect(sourceVisualContextCaptureTool?.metadata.handler_env_key_names).toEqual(["SOURCE_BROWSER_SESSION_TOKEN"]);
+    expect(sourceVisualContextCaptureTool?.metadata.schema_properties).toEqual([
+      "customer_id",
+      "screenshot_reason",
+      "target_url"
+    ]);
+    expect(sourceVisualContextCaptureTool?.metadata.required_properties).toEqual([
+      "customer_id",
+      "screenshot_reason",
+      "target_url"
+    ]);
+    expect(JSON.stringify(sourceVisualContextCaptureTool)).not.toContain("authenticatedBrowserPage");
+    expect(JSON.stringify(sourceVisualContextCaptureTool)).not.toContain("page.goto");
+    expect(JSON.stringify(sourceVisualContextCaptureTool)).not.toContain("page.screenshot");
+    expect(JSON.stringify(sourceVisualContextCaptureTool)).not.toContain("screenshot.toString");
+    expect(JSON.stringify(sourceVisualContextCaptureTool)).not.toContain("Capture an authenticated browser screenshot");
     expect(sourceSecretManagerAccessTool).toMatchObject({
       path: "mcp-source/customer-tools.ts",
       data_classes: ["confidential", "credential", "pii"],
@@ -3595,6 +3695,105 @@ describe("scanner", () => {
     expect(JSON.stringify(langchainBrowserAutomationTool)).not.toContain("page.fill");
     expect(JSON.stringify(langchainBrowserAutomationTool)).not.toContain("page.click");
     expect(JSON.stringify(langchainBrowserAutomationTool)).not.toContain("Drive an authenticated browser session");
+    expect(langchainVisualContextCaptureTool).toMatchObject({
+      path: "framework-tools/langchain_tools.py",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["call", "execute", "read", "send"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(langchainVisualContextCaptureTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_agent_framework_source_tool: true,
+      agent_framework_source_tool: true,
+      agent_framework_source_tool_framework: "langchain",
+      agent_framework_source_tool_registration_kind: "python_tool_decorator",
+      agent_framework_source_tool_argument_count: 3,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_secret_like_input: true,
+      accepts_content_like_input: false,
+      accepts_url_input: true,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      browser_automation: true,
+      tainted_browser_automation_target: true,
+      visual_context_capture: true,
+      visual_context_to_output: true,
+      external_write: false,
+      destructive_action: false,
+      read_only_hint_conflict: false,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_external_network_call: false,
+      handler_credentialed_network_read: false,
+      handler_network_response_to_output: false,
+      handler_external_write: false,
+      handler_secret_env_access: true,
+      handler_model_visible_output: true,
+      handler_browser_automation: true,
+      handler_tainted_browser_automation_target: true,
+      handler_visual_context_capture: true,
+      handler_visual_context_to_output: true,
+      handler_secret_to_output: false,
+      handler_database_query: false,
+      handler_database_write: false,
+      handler_memory_write: false,
+      handler_agent_config_write: false,
+      handler_credential_issuance: false,
+      handler_tool_invocation: false,
+      handler_secret_manager_access: false,
+      handler_shell_execution: false,
+      handler_dynamic_code_execution: false,
+      handler_unsafe_deserialization: false,
+      handler_filesystem_read: false,
+      handler_filesystem_write: false,
+      handler_filesystem_delete: false,
+      handler_signal_count: 5,
+      open_world_schema: false
+    });
+    expect(langchainVisualContextCaptureTool?.metadata.authority_classes).toEqual([
+      "browser_automation",
+      "browser_control",
+      "credential_input",
+      "customer_data_input",
+      "handler_browser_automation",
+      "handler_secret_env_access",
+      "handler_tainted_browser_automation_target",
+      "handler_visual_context_capture",
+      "handler_visual_context_to_output",
+      "network_access",
+      "pii_input",
+      "secret_env_access",
+      "tainted_browser_automation_target",
+      "visual_context_capture",
+      "visual_context_to_output"
+    ]);
+    expect(langchainVisualContextCaptureTool?.metadata.handler_authority_classes).toEqual([
+      "handler_browser_automation",
+      "handler_secret_env_access",
+      "handler_tainted_browser_automation_target",
+      "handler_visual_context_capture",
+      "handler_visual_context_to_output"
+    ]);
+    expect(langchainVisualContextCaptureTool?.metadata.handler_env_key_names).toEqual(["LANGCHAIN_BROWSER_SESSION_TOKEN"]);
+    expect(langchainVisualContextCaptureTool?.metadata.schema_properties).toEqual([
+      "customer_id",
+      "screenshot_reason",
+      "target_url"
+    ]);
+    expect(langchainVisualContextCaptureTool?.metadata.required_properties).toEqual([
+      "customer_id",
+      "screenshot_reason",
+      "target_url"
+    ]);
+    expect(JSON.stringify(langchainVisualContextCaptureTool)).not.toContain("browser_session.page");
+    expect(JSON.stringify(langchainVisualContextCaptureTool)).not.toContain("page.goto");
+    expect(JSON.stringify(langchainVisualContextCaptureTool)).not.toContain("page.screenshot");
+    expect(JSON.stringify(langchainVisualContextCaptureTool)).not.toContain("framework screenshot captured");
+    expect(JSON.stringify(langchainVisualContextCaptureTool)).not.toContain("Capture an authenticated browser screenshot");
     expect(langchainSecretManagerAccessTool).toMatchObject({
       path: "framework-tools/langchain_tools.py",
       data_classes: ["confidential", "credential", "pii"],

@@ -405,6 +405,31 @@ server.registerTool(
 );
 
 server.registerTool(
+  "source_capture_authenticated_page_screenshot",
+  {
+    description: "Capture an authenticated browser screenshot from a caller supplied URL.",
+    inputSchema: z.object({
+      customer_id: z.string(),
+      target_url: z.string().url(),
+      screenshot_reason: z.string()
+    }).strict(),
+    annotations: {
+      readOnlyHint: false,
+      idempotentHint: false
+    }
+  },
+  async ({ target_url }) => {
+    const browserToken = process.env.SOURCE_BROWSER_SESSION_TOKEN;
+    const page = globalThis.authenticatedBrowserPage;
+    await page.goto(target_url, {
+      headers: { authorization: `Bearer ${browserToken}` }
+    });
+    const screenshot = await page.screenshot({ fullPage: true });
+    return { content: [{ type: "image", data: screenshot.toString("base64"), mimeType: "image/png" }] };
+  }
+);
+
+server.registerTool(
   "source_read_customer_vault_secret",
   {
     description: "Read a customer support secret from a caller supplied vault path.",
