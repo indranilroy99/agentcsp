@@ -26930,6 +26930,7 @@ function extractPythonMcpSourceToolDefinitions(content: string): ExtractedMcpSou
   if (!/^\s*@[A-Za-z_$][\w$.]*\s*\.\s*tool\b|^\s*@tool\b/mu.test(content)) return [];
 
   const definitions: ExtractedMcpSourceToolDefinition[] = [];
+  const modelDefinitions = extractPythonModelDefinitions(content);
   const lines = content.split(/\r?\n/u);
   for (let lineIndex = 0; lineIndex < lines.length; lineIndex += 1) {
     const line = lines[lineIndex] ?? "";
@@ -26945,20 +26946,20 @@ function extractPythonMcpSourceToolDefinitions(content: string): ExtractedMcpSou
 
     const name = pythonKeywordStringValue(decorator.text, ["name"]) ?? signature.name;
     const description = pythonKeywordStringValue(decorator.text, ["description"]) ?? "";
-    const properties = signature.params.map((param) => param.name);
+    const schema = pythonSignatureSchema(signature, modelDefinitions);
     definitions.push({
       name,
       description,
-      schemaProperties: uniqueStrings(properties),
-      requiredProperties: uniqueStrings(signature.params.filter((param) => !param.optional).map((param) => param.name)),
+      schemaProperties: schema.properties,
+      requiredProperties: schema.requiredProperties,
       annotations: {
         readOnlyHint: booleanPropertyValue(decorator.text, "readOnlyHint"),
         idempotentHint: booleanPropertyValue(decorator.text, "idempotentHint")
       },
-      openWorldSchema: signature.openWorldArgs,
+      openWorldSchema: schema.openWorldSchema,
       registrationKind: "python_tool_decorator",
       argumentCount: signature.params.length,
-      schemaStyles: pythonSourceSchemaStyles(decorator.text, signature)
+      schemaStyles: pythonSourceSchemaStyles(decorator.text, signature, schema)
     });
     lineIndex = signature.endLine;
   }
@@ -26973,9 +26974,24 @@ interface PythonDecoratorBlock {
 
 interface PythonFunctionSignature {
   name: string;
-  params: Array<{ name: string; optional: boolean }>;
+  params: Array<{ name: string; optional: boolean; annotation?: string }>;
   openWorldArgs: boolean;
   endLine: number;
+}
+
+interface PythonModelDefinition {
+  name: string;
+  fields: Array<{ name: string; optional: boolean }>;
+  openWorld: boolean;
+}
+
+interface PythonSignatureSchema {
+  properties: string[];
+  requiredProperties: string[];
+  openWorldSchema: boolean;
+  referencedModelCount: number;
+  referencedModelFieldCount: number;
+  pydanticExtraAllow: boolean;
 }
 
 function collectPythonDecorator(lines: string[], startLine: number): PythonDecoratorBlock | undefined {
@@ -27033,7 +27049,7 @@ function collectPythonFunctionSignature(lines: string[], startLine: number): Pyt
   if (openParenIndex < 0 || closeParenIndex < 0) return undefined;
   const paramsSource = signature.slice(openParenIndex + 1, closeParenIndex);
   const rawParams = splitTopLevelCommaList(paramsSource);
-  const params: Array<{ name: string; optional: boolean }> = [];
+  const params: Array<{ name: string; optional: boolean; annotation?: string }> = [];
   let openWorldArgs = false;
 
   for (const rawParam of rawParams) {
@@ -27043,7 +27059,7 @@ function collectPythonFunctionSignature(lines: string[], startLine: number): Pyt
       openWorldArgs = true;
       continue;
     }
-    params.push({ name: param.name, optional: param.optional });
+    params.push({ name: param.name, optional: param.optional, annotation: param.annotation });
   }
 
   return {
@@ -27054,7 +27070,7 @@ function collectPythonFunctionSignature(lines: string[], startLine: number): Pyt
   };
 }
 
-function normalizePythonParam(rawParam: string): { name: string; optional: boolean; openWorld: boolean } | undefined {
+function normalizePythonParam(rawParam: string): { name: string; optional: boolean; openWorld: boolean; annotation?: string } | undefined {
   const trimmed = rawParam.trim();
   if (!trimmed || trimmed === "*" || trimmed === "/") return undefined;
   const openWorld = trimmed.startsWith("**");
@@ -27062,14 +27078,191 @@ function normalizePythonParam(rawParam: string): { name: string; optional: boole
   const withoutPrefix = trimmed.replace(/^\*\*/, "");
   const nameMatch = withoutPrefix.match(/^([A-Za-z_]\w*)/u);
   const name = nameMatch?.[1];
-  if (!name || ["cls", "context", "ctx", "request", "self"].includes(name)) {
+  if (!name || ["cls", "context", "ctx", "self"].includes(name)) {
     return openWorld ? { name: name ?? "kwargs", optional: true, openWorld: true } : undefined;
   }
+  const annotation = pythonParamAnnotation(withoutPrefix);
   return {
     name,
-    optional: withoutPrefix.includes("="),
-    openWorld
+    optional: pythonTopLevelAssignmentIndex(withoutPrefix) !== -1,
+    openWorld,
+    annotation
   };
+}
+
+function pythonParamAnnotation(param: string): string | undefined {
+  const colonIndex = param.indexOf(":");
+  if (colonIndex === -1) return undefined;
+  const endIndex = pythonTopLevelAssignmentIndex(param, colonIndex + 1);
+  const annotation = param.slice(colonIndex + 1, endIndex === -1 ? undefined : endIndex).trim();
+  return annotation || undefined;
+}
+
+function extractPythonModelDefinitions(content: string): Map<string, PythonModelDefinition> {
+  const lines = content.split(/\r?\n/u);
+  const models = new Map<string, PythonModelDefinition>();
+  for (let lineIndex = 0; lineIndex < lines.length; lineIndex += 1) {
+    const line = lines[lineIndex] ?? "";
+    const classMatch = line.match(/^(\s*)class\s+([A-Za-z_]\w*)\s*\(([^)]*)\)\s*:/u);
+    if (!classMatch?.[2] || !classMatch[3]) continue;
+    if (!/\b(BaseModel|pydantic\.BaseModel)\b/u.test(classMatch[3])) continue;
+
+    const classIndent = classMatch[1]?.length ?? 0;
+    const fields: Array<{ name: string; optional: boolean }> = [];
+    let openWorld = false;
+    let memberIndent: number | undefined;
+    let configIndent: number | undefined;
+    for (let bodyLineIndex = lineIndex + 1; bodyLineIndex < lines.length; bodyLineIndex += 1) {
+      const bodyLine = lines[bodyLineIndex] ?? "";
+      if (!bodyLine.trim()) continue;
+      const bodyIndent = leadingWhitespaceLength(bodyLine);
+      if (bodyIndent <= classIndent) break;
+      const trimmed = bodyLine.trim();
+
+      if (memberIndent === undefined) memberIndent = bodyIndent;
+      if (configIndent !== undefined && bodyIndent <= configIndent) configIndent = undefined;
+      if (bodyIndent === memberIndent && /^class\s+Config\b/u.test(trimmed)) {
+        configIndent = bodyIndent;
+        continue;
+      }
+      if (
+        ((bodyIndent === memberIndent && /^model_config\b/u.test(trimmed)) ||
+          (configIndent !== undefined && bodyIndent > configIndent)) &&
+        /\b(extra|extra_fields)\b/u.test(trimmed) &&
+        /\ballow\b/u.test(trimmed)
+      ) {
+        openWorld = true;
+        continue;
+      }
+      if (configIndent !== undefined && bodyIndent > configIndent && /^extra\s*=\s*(["'])allow\1/u.test(trimmed)) {
+        openWorld = true;
+        continue;
+      }
+      if (bodyIndent !== memberIndent) continue;
+      const field = pythonModelField(trimmed);
+      if (field) fields.push(field);
+    }
+
+    models.set(classMatch[2], {
+      name: classMatch[2],
+      fields: uniquePythonModelFields(fields),
+      openWorld
+    });
+  }
+  return models;
+}
+
+function pythonModelField(trimmedLine: string): { name: string; optional: boolean } | undefined {
+  if (trimmedLine.startsWith("#") || trimmedLine.startsWith("@")) return undefined;
+  if (/^(class|def|async\s+def|return|if|for|while|with|try|except|finally|raise|pass)\b/u.test(trimmedLine)) return undefined;
+  const match = trimmedLine.match(/^([A-Za-z_]\w*)\s*:/u);
+  const name = match?.[1];
+  const colonIndex = trimmedLine.indexOf(":");
+  const fieldBody = colonIndex >= 0 ? trimmedLine.slice(colonIndex + 1) : "";
+  const defaultIndex = pythonTopLevelAssignmentIndex(fieldBody);
+  const annotation = (defaultIndex === -1 ? fieldBody : fieldBody.slice(0, defaultIndex)).replace(/\s*#.*$/u, "").trim();
+  if (!name || ["model_config", "Config"].includes(name)) return undefined;
+  if (/\bClassVar\b/u.test(annotation)) return undefined;
+  const defaultValue = defaultIndex === -1 ? undefined : fieldBody.slice(defaultIndex + 1).replace(/\s*#.*$/u, "").trim();
+  const optional = defaultValue !== undefined && !/^Field\s*\(\s*(?:\.\.\.|Ellipsis)(?:\s*[,)]|$)/u.test(defaultValue);
+  return { name, optional };
+}
+
+function uniquePythonModelFields(fields: Array<{ name: string; optional: boolean }>): Array<{ name: string; optional: boolean }> {
+  const byName = new Map<string, { name: string; optional: boolean }>();
+  for (const field of fields) {
+    const existing = byName.get(field.name);
+    if (!existing || (existing.optional && !field.optional)) byName.set(field.name, field);
+  }
+  return [...byName.values()].sort((a, b) => a.name.localeCompare(b.name));
+}
+
+function pythonSignatureSchema(signature: PythonFunctionSignature, models: Map<string, PythonModelDefinition>): PythonSignatureSchema {
+  const properties = new Set<string>();
+  const requiredProperties = new Set<string>();
+  let referencedModelCount = 0;
+  let referencedModelFieldCount = 0;
+  let pydanticExtraAllow = false;
+
+  for (const param of signature.params) {
+    const matchedModels = param.annotation ? pythonAnnotationModels(param.annotation, models) : [];
+    if (matchedModels.length === 0) {
+      properties.add(param.name);
+      if (!param.optional) requiredProperties.add(param.name);
+      continue;
+    }
+
+    for (const model of matchedModels) {
+      referencedModelCount += 1;
+      referencedModelFieldCount += model.fields.length;
+      if (model.openWorld) pydanticExtraAllow = true;
+      for (const field of model.fields) {
+        properties.add(field.name);
+        if (!field.optional && !param.optional) requiredProperties.add(field.name);
+      }
+    }
+  }
+
+  return {
+    properties: uniqueStrings([...properties]),
+    requiredProperties: uniqueStrings([...requiredProperties]),
+    openWorldSchema: signature.openWorldArgs || pydanticExtraAllow,
+    referencedModelCount,
+    referencedModelFieldCount,
+    pydanticExtraAllow
+  };
+}
+
+function pythonAnnotationModels(annotation: string, models: Map<string, PythonModelDefinition>): PythonModelDefinition[] {
+  const normalizedAnnotation = annotation.replace(/["']/gu, "");
+  const matchedModels: PythonModelDefinition[] = [];
+  for (const [name, model] of models) {
+    const pattern = new RegExp(`(?:^|[^A-Za-z0-9_])${escapeRegExp(name)}(?:$|[^A-Za-z0-9_])`, "u");
+    if (pattern.test(normalizedAnnotation)) matchedModels.push(model);
+  }
+  return matchedModels.sort((a, b) => a.name.localeCompare(b.name));
+}
+
+function leadingWhitespaceLength(value: string): number {
+  return value.match(/^\s*/u)?.[0].length ?? 0;
+}
+
+function pythonTopLevelAssignmentIndex(source: string, startIndex = 0): number {
+  let depth = 0;
+  let quote: string | undefined;
+  let escaped = false;
+
+  for (let index = startIndex; index < source.length; index += 1) {
+    const char = source[index];
+    if (quote) {
+      if (escaped) {
+        escaped = false;
+        continue;
+      }
+      if (char === "\\") {
+        escaped = true;
+        continue;
+      }
+      if (char === quote) quote = undefined;
+      continue;
+    }
+
+    if (char === "\"" || char === "'") {
+      quote = char;
+      continue;
+    }
+    if (char === "(" || char === "{" || char === "[") {
+      depth += 1;
+      continue;
+    }
+    if (char === ")" || char === "}" || char === "]") {
+      depth = Math.max(0, depth - 1);
+      continue;
+    }
+    if (char === "=" && depth === 0) return index;
+  }
+
+  return -1;
 }
 
 function pythonKeywordStringValue(source: string, names: string[]): string | undefined {
@@ -27078,11 +27271,13 @@ function pythonKeywordStringValue(source: string, names: string[]): string | und
   return match?.[2];
 }
 
-function pythonSourceSchemaStyles(decorator: string, signature: PythonFunctionSignature): string[] {
+function pythonSourceSchemaStyles(decorator: string, signature: PythonFunctionSignature, schema: PythonSignatureSchema): string[] {
   const styles = new Set<string>(["python_signature"]);
   if (/FastMCP|fastmcp|mcp\.server/iu.test(decorator)) styles.add("fastmcp_decorator");
   if (/annotations\s*=/u.test(decorator)) styles.add("mcp_annotations");
   if (signature.openWorldArgs) styles.add("python_kwargs");
+  if (schema.referencedModelCount > 0) styles.add("pydantic_model");
+  if (schema.pydanticExtraAllow) styles.add("pydantic_extra_allow");
   return [...styles].sort((a, b) => a.localeCompare(b));
 }
 

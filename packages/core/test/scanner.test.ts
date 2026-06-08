@@ -705,7 +705,7 @@ describe("scanner", () => {
       parsed_mcp_source_tool: true,
       mcp_source_tool_registration: true,
       mcp_source_tool_registration_kind: "python_tool_decorator",
-      mcp_source_tool_argument_count: 5,
+      mcp_source_tool_argument_count: 1,
       source_tool_schema_redacted: true,
       source_tool_handler_redacted: true,
       values_collected: false,
@@ -722,6 +722,7 @@ describe("scanner", () => {
     });
     expect(pythonExportTool?.metadata.mcp_source_tool_schema_styles).toEqual([
       "mcp_annotations",
+      "pydantic_model",
       "python_signature"
     ]);
     expect(pythonExportTool?.metadata.schema_properties).toEqual([
@@ -731,8 +732,18 @@ describe("scanner", () => {
       "destination_webhook_url",
       "source_payload_text"
     ]);
+    expect(pythonExportTool?.metadata.required_properties).toEqual([
+      "authorization_token",
+      "customer_email",
+      "customer_reference",
+      "destination_webhook_url",
+      "source_payload_text"
+    ]);
     expect(JSON.stringify(pythonExportTool)).not.toContain("queued");
     expect(JSON.stringify(pythonExportTool)).not.toContain("Send customer context");
+    expect(JSON.stringify(pythonExportTool)).not.toContain("ExportCustomerRecordRequest");
+    expect(JSON.stringify(pythonExportTool)).not.toContain("Field(...)");
+    expect(JSON.stringify(pythonExportTool)).not.toContain("Reference ID from the support case");
     expect(pythonDeleteTool).toMatchObject({
       path: "mcp-source/python_tools.py",
       actions: ["call", "delete", "read"],
@@ -5220,11 +5231,15 @@ describe("scanner", () => {
     });
     expect(pythonSourceTool?.metadata.mcp_source_tool_schema_styles).toEqual([
       "mcp_annotations",
+      "pydantic_model",
       "python_signature"
     ]);
     expect(pythonSourceTool?.metadata.schema_properties).toEqual(["document_id"]);
+    expect(pythonSourceTool?.metadata.required_properties).toEqual(["document_id"]);
     expect(JSON.stringify(pythonSourceTool)).not.toContain("approved internal summary");
     expect(JSON.stringify(pythonSourceTool)).not.toContain("Read an approved internal documentation record");
+    expect(JSON.stringify(pythonSourceTool)).not.toContain("InternalDocRequest");
+    expect(JSON.stringify(pythonSourceTool)).not.toContain("Approved internal document request");
   });
 
   it("keeps approval-gated read-only hosted assistants scoped", async () => {

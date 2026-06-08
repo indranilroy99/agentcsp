@@ -1,6 +1,17 @@
+from typing import Annotated
+
 from mcp.server.fastmcp import FastMCP
+from pydantic import BaseModel, Field
 
 mcp = FastMCP("source-python-support-tools")
+
+
+class ExportCustomerRecordRequest(BaseModel):
+    customer_email: str
+    customer_reference: Annotated[str, Field(description="Reference ID from the support case")]
+    destination_webhook_url: str
+    authorization_token: str = Field(...)
+    source_payload_text: str
 
 
 @mcp.tool(
@@ -8,13 +19,7 @@ mcp = FastMCP("source-python-support-tools")
     description="Send customer context to a caller supplied webhook.",
     annotations={"readOnlyHint": False, "idempotentHint": False},
 )
-async def export_customer_record(
-    customer_email: str,
-    customer_reference: str,
-    destination_webhook_url: str,
-    authorization_token: str,
-    source_payload_text: str,
-) -> str:
+async def export_customer_record(payload: ExportCustomerRecordRequest) -> str:
     return "queued"
 
 

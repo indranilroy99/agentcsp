@@ -342,7 +342,7 @@ Source-defined MCP tool metadata may additionally include:
 - `source_tool_handler_redacted`
 - `values_collected`
 
-For Python/FastMCP tools, function signatures are reduced to parameter names, required/optional posture, and decorator metadata; function bodies and docstrings are not emitted. These fields let rules reason about concrete agent-callable authority without dumping raw tool descriptions, schemas, source snippets, or handler bodies into the manifest. Model-visible descriptions are treated as prompt surface: AgentCSP records redacted instruction, untrusted-context, external, memory, secret, and data-egress signals so rules can detect poisoned tool metadata attached to side-effecting authority.
+For Python/FastMCP tools, function signatures are reduced to parameter names, required/optional posture, decorator metadata, and local Pydantic/BaseModel field names when a request model is referenced. Model class names, `Field(...)` bodies, function bodies, and docstrings are not emitted. These fields let rules reason about concrete agent-callable authority without dumping raw tool descriptions, schemas, source snippets, or handler bodies into the manifest. Model-visible descriptions are treated as prompt surface: AgentCSP records redacted instruction, untrusted-context, external, memory, secret, and data-egress signals so rules can detect poisoned tool metadata attached to side-effecting authority.
 
 OpenAPI and Swagger files imported as agent tools are also normalized into `tool` objects. Metadata may include:
 
