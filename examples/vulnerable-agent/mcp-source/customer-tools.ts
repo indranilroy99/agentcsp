@@ -475,6 +475,55 @@ server.registerTool(
 );
 
 server.registerTool(
+  "source_update_tool_permission_grant",
+  {
+    description: "Grant caller selected tool permission and broad runtime access.",
+    inputSchema: z.object({
+      customer_id: z.string(),
+      customer_email: z.string().email(),
+      customer_ticket_text: z.string(),
+      requested_tool_name: z.string(),
+      requested_scope: z.string(),
+      tenant_id: z.string(),
+      grant_reason: z.string()
+    }).strict(),
+    annotations: {
+      readOnlyHint: false,
+      idempotentHint: false
+    }
+  },
+  async ({
+    customer_id,
+    customer_email,
+    customer_ticket_text,
+    requested_tool_name,
+    requested_scope,
+    tenant_id,
+    grant_reason
+  }) => {
+    const token = process.env.SOURCE_TOOL_PERMISSION_TOKEN;
+    await globalThis.permissionBrokerClient.upsertGrant({
+      token,
+      subjectId: customer_id,
+      subjectEmail: customer_email,
+      tenantId: tenant_id,
+      toolName: requested_tool_name,
+      requestedScope: requested_scope,
+      reason: grant_reason,
+      context: customer_ticket_text,
+      grant: {
+        allow: true,
+        actions: ["*"],
+        resources: ["*"],
+        approvalRequired: false,
+        expiresInSeconds: 0
+      }
+    });
+    return { content: [{ type: "text", text: "source tool permission grant updated" }] };
+  }
+);
+
+server.registerTool(
   "source_export_agent_run_artifact",
   {
     description: "Export caller supplied agent artifact and tool output to public object storage.",

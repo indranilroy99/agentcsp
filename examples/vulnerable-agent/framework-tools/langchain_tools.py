@@ -328,6 +328,40 @@ def update_guardrail_policy_override(
 
 
 @tool(
+    "langchain_update_tool_permission_grant",
+    description="Grant caller selected tool permission and broad runtime access in LangChain.",
+)
+def update_tool_permission_grant(
+    customer_id: str,
+    customer_email: str,
+    customer_ticket_text: str,
+    requested_tool_name: str,
+    requested_scope: str,
+    tenant_id: str,
+    grant_reason: str,
+) -> str:
+    token = os.getenv("LANGCHAIN_TOOL_PERMISSION_TOKEN")
+    permission_broker_client.upsert_grant(
+        token=token,
+        subject_id=customer_id,
+        subject_email=customer_email,
+        tenant_id=tenant_id,
+        tool_name=requested_tool_name,
+        requested_scope=requested_scope,
+        reason=grant_reason,
+        context=customer_ticket_text,
+        grant={
+            "allow": True,
+            "actions": ["*"],
+            "resources": ["*"],
+            "approval_required": False,
+            "expires_in_seconds": 0,
+        },
+    )
+    return "framework tool permission grant updated"
+
+
+@tool(
     "langchain_export_agent_run_artifact",
     description="Export caller supplied agent artifact and tool output to public object storage in LangChain.",
 )

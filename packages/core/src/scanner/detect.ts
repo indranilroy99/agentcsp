@@ -24136,6 +24136,7 @@ function addToolDefinitionSurface(
       !authority.training_dataset_export &&
       !authority.feedback_pipeline_write &&
       !authority.safety_policy_write &&
+      !authority.authorization_policy_write &&
       !authority.artifact_export &&
       !authority.rag_context_to_output &&
       !authority.task_queue_enqueue &&
@@ -24201,6 +24202,9 @@ function addToolDefinitionSurface(
       tainted_safety_policy_payload: authority.tainted_safety_policy_payload,
       tainted_safety_policy_selector: authority.tainted_safety_policy_selector,
       safety_policy_weakening: authority.safety_policy_weakening,
+      authorization_policy_write: authority.authorization_policy_write,
+      tainted_authorization_grant_input: authority.tainted_authorization_grant_input,
+      authorization_broad_grant: authority.authorization_broad_grant,
       artifact_export: authority.artifact_export,
       tainted_artifact_export_payload: authority.tainted_artifact_export_payload,
       public_artifact_destination: authority.public_artifact_destination,
@@ -26616,6 +26620,9 @@ interface SourceToolHandlerSignals {
   handlerTaintedSafetyPolicyPayload: boolean;
   handlerTaintedSafetyPolicySelector: boolean;
   handlerSafetyPolicyWeakening: boolean;
+  handlerAuthorizationPolicyWrite: boolean;
+  handlerTaintedAuthorizationGrantInput: boolean;
+  handlerAuthorizationBroadGrant: boolean;
   handlerArtifactExport: boolean;
   handlerTaintedArtifactExportPayload: boolean;
   handlerPublicArtifactDestination: boolean;
@@ -27097,6 +27104,9 @@ function sourceToolHandlerSignalMetadata(signals: SourceToolHandlerSignals | und
     handler_tainted_safety_policy_payload: signals.handlerTaintedSafetyPolicyPayload,
     handler_tainted_safety_policy_selector: signals.handlerTaintedSafetyPolicySelector,
     handler_safety_policy_weakening: signals.handlerSafetyPolicyWeakening,
+    handler_authorization_policy_write: signals.handlerAuthorizationPolicyWrite,
+    handler_tainted_authorization_grant_input: signals.handlerTaintedAuthorizationGrantInput,
+    handler_authorization_broad_grant: signals.handlerAuthorizationBroadGrant,
     handler_artifact_export: signals.handlerArtifactExport,
     handler_tainted_artifact_export_payload: signals.handlerTaintedArtifactExportPayload,
     handler_public_artifact_destination: signals.handlerPublicArtifactDestination,
@@ -27229,6 +27239,13 @@ function classifySourceToolHandlerSignals(
     ? hasJavaScriptHandlerTaintedSafetyPolicySelector(handlerSource)
     : hasPythonHandlerTaintedSafetyPolicySelector(handlerSource));
   const safetyPolicyWeakening = safetyPolicyWrite && hasHandlerSafetyPolicyWeakening(handlerSource);
+  const authorizationPolicyWrite = language === "javascript"
+    ? hasJavaScriptHandlerAuthorizationPolicyWrite(handlerSource)
+    : hasPythonHandlerAuthorizationPolicyWrite(handlerSource);
+  const taintedAuthorizationGrantInput = authorizationPolicyWrite && (language === "javascript"
+    ? hasJavaScriptHandlerTaintedAuthorizationGrantInput(handlerSource)
+    : hasPythonHandlerTaintedAuthorizationGrantInput(handlerSource));
+  const authorizationBroadGrant = authorizationPolicyWrite && hasHandlerAuthorizationBroadGrant(handlerSource);
   const artifactExport = language === "javascript"
     ? hasJavaScriptHandlerArtifactExport(handlerSource)
     : hasPythonHandlerArtifactExport(handlerSource);
@@ -27390,6 +27407,9 @@ function classifySourceToolHandlerSignals(
   if (taintedSafetyPolicyPayload) classes.add("handler_tainted_safety_policy_payload");
   if (taintedSafetyPolicySelector) classes.add("handler_tainted_safety_policy_selector");
   if (safetyPolicyWeakening) classes.add("handler_safety_policy_weakening");
+  if (authorizationPolicyWrite) classes.add("handler_authorization_policy_write");
+  if (taintedAuthorizationGrantInput) classes.add("handler_tainted_authorization_grant_input");
+  if (authorizationBroadGrant) classes.add("handler_authorization_broad_grant");
   if (artifactExport) classes.add("handler_artifact_export");
   if (taintedArtifactExportPayload) classes.add("handler_tainted_artifact_export_payload");
   if (publicArtifactDestination) classes.add("handler_public_artifact_destination");
@@ -27465,6 +27485,9 @@ function classifySourceToolHandlerSignals(
     handlerTaintedSafetyPolicyPayload: taintedSafetyPolicyPayload,
     handlerTaintedSafetyPolicySelector: taintedSafetyPolicySelector,
     handlerSafetyPolicyWeakening: safetyPolicyWeakening,
+    handlerAuthorizationPolicyWrite: authorizationPolicyWrite,
+    handlerTaintedAuthorizationGrantInput: taintedAuthorizationGrantInput,
+    handlerAuthorizationBroadGrant: authorizationBroadGrant,
     handlerArtifactExport: artifactExport,
     handlerTaintedArtifactExportPayload: taintedArtifactExportPayload,
     handlerPublicArtifactDestination: publicArtifactDestination,
@@ -28362,6 +28385,113 @@ function expressionReferencesTaintedSafetyPolicySelector(expression: string, sou
 }
 
 function identifierAssignedFromTaintedSafetyPolicySelector(identifier: string, source: string, taintedName: RegExp): boolean {
+  const escaped = escapeRegExp(identifier);
+  const patterns = [
+    new RegExp(`\\b(?:const|let|var)\\s+${escaped}\\s*=\\s*([^;\\n]+)`, "gu"),
+    new RegExp(`\\b${escaped}\\s*=\\s*([^\\n]+)`, "gu")
+  ];
+  return patterns.some((pattern) => expressionMatchesPattern(pattern, source, taintedName));
+}
+
+function hasJavaScriptHandlerAuthorizationPolicyWrite(source: string): boolean {
+  return /\b(?:toolAuthorizationClient|authorizationPolicyClient|permissionBrokerClient|toolAuthzClient|capabilityGrantClient|accessControlClient|rbacClient|authzClient|policyEngineClient|permissionClient|entitlementClient|grantBrokerClient)\b/iu.test(
+    source
+  ) && [
+    /\b(?:toolAuthorizationClient|authorizationPolicyClient|permissionBrokerClient|toolAuthzClient|capabilityGrantClient|accessControlClient|rbacClient|authzClient|policyEngineClient|permissionClient|entitlementClient|grantBrokerClient)\s*(?:\.\s*[A-Za-z_$][\w$]*){0,5}\s*\.\s*(?:grant|grantAccess|upsertGrant|createGrant|putGrant|addGrant|allow|authorize|updatePolicy|setPolicy|setAllowlist|addPermission|addTool|assignRole|bindRole|setEntitlement|write|save|upsert|patch)\s*\(/iu,
+    /\b(?:grantToolAccess|updateToolAuthorization|upsertToolGrant|createCapabilityGrant|setToolAllowlist|assignAgentRole|setAgentEntitlement|writeAuthorizationGrant)\s*\(/iu
+  ].some((pattern) => pattern.test(source));
+}
+
+function hasPythonHandlerAuthorizationPolicyWrite(source: string): boolean {
+  return /\b(?:tool_authorization_client|authorization_policy_client|permission_broker_client|tool_authz_client|capability_grant_client|access_control_client|rbac_client|authz_client|policy_engine_client|permission_client|entitlement_client|grant_broker_client)\b/iu.test(
+    source
+  ) && [
+    /\b(?:tool_authorization_client|authorization_policy_client|permission_broker_client|tool_authz_client|capability_grant_client|access_control_client|rbac_client|authz_client|policy_engine_client|permission_client|entitlement_client|grant_broker_client)\s*(?:\.\s*[A-Za-z_]\w*){0,5}\s*\.\s*(?:grant|grant_access|upsert_grant|create_grant|put_grant|add_grant|allow|authorize|update_policy|set_policy|set_allowlist|add_permission|add_tool|assign_role|bind_role|set_entitlement|write|save|upsert|patch)\s*\(/iu,
+    /\b(?:grant_tool_access|update_tool_authorization|upsert_tool_grant|create_capability_grant|set_tool_allowlist|assign_agent_role|set_agent_entitlement|write_authorization_grant)\s*\(/iu
+  ].some((pattern) => pattern.test(source));
+}
+
+function hasJavaScriptHandlerTaintedAuthorizationGrantInput(source: string): boolean {
+  return [
+    /\b(?:toolAuthorizationClient|authorizationPolicyClient|permissionBrokerClient|toolAuthzClient|capabilityGrantClient|accessControlClient|rbacClient|authzClient|policyEngineClient|permissionClient|entitlementClient|grantBrokerClient)\s*(?:\.\s*[A-Za-z_$][\w$]*){0,5}\s*\.\s*(?:grant|grantAccess|upsertGrant|createGrant|putGrant|addGrant|allow|authorize|updatePolicy|setPolicy|setAllowlist|addPermission|addTool|assignRole|bindRole|setEntitlement|write|save|upsert|patch)\s*\(([\s\S]{0,1600})\)/giu,
+    /\b(?:grantToolAccess|updateToolAuthorization|upsertToolGrant|createCapabilityGrant|setToolAllowlist|assignAgentRole|setAgentEntitlement|writeAuthorizationGrant)\s*\(([\s\S]{0,1600})\)/giu
+  ].some((pattern) => expressionMatchesTaintedAuthorizationGrantInput(pattern, source));
+}
+
+function hasPythonHandlerTaintedAuthorizationGrantInput(source: string): boolean {
+  return [
+    /\b(?:tool_authorization_client|authorization_policy_client|permission_broker_client|tool_authz_client|capability_grant_client|access_control_client|rbac_client|authz_client|policy_engine_client|permission_client|entitlement_client|grant_broker_client)\s*(?:\.\s*[A-Za-z_]\w*){0,5}\s*\.\s*(?:grant|grant_access|upsert_grant|create_grant|put_grant|add_grant|allow|authorize|update_policy|set_policy|set_allowlist|add_permission|add_tool|assign_role|bind_role|set_entitlement|write|save|upsert|patch)\s*\(([\s\S]{0,1600})\)/giu,
+    /\b(?:grant_tool_access|update_tool_authorization|upsert_tool_grant|create_capability_grant|set_tool_allowlist|assign_agent_role|set_agent_entitlement|write_authorization_grant)\s*\(([\s\S]{0,1600})\)/giu
+  ].some((pattern) => expressionMatchesTaintedAuthorizationGrantInput(pattern, source));
+}
+
+function hasHandlerAuthorizationBroadGrant(source: string): boolean {
+  const normalized = source.replace(/(["'`])([A-Za-z_][\w]*)\1\s*:/gu, "$2:");
+  return /\b(?:allow\s*[:=]\s*true|approvalRequired\s*[:=]\s*false|approval_required\s*[:=]\s*false|requireApproval\s*[:=]\s*false|require_approval\s*[:=]\s*false|actions?\s*[:=]\s*\[\s*["'`]\*["'`]|resources?\s*[:=]\s*\[\s*["'`]\*["'`]|scopes?\s*[:=]\s*\[\s*["'`]\*["'`]|toolName\s*[:=]\s*["'`]\*["'`]|tool_name\s*[:=]\s*["'`]\*["'`]|requestedScope\s*[:=]\s*["'`](?:\*|all|admin|owner|write)["'`]|requested_scope\s*[:=]\s*["'`](?:\*|all|admin|owner|write)["'`]|role\s*[:=]\s*["'`](?:admin|owner|superuser)["'`]|ttl\s*[:=]\s*0|expiresInSeconds\s*[:=]\s*0|expires_in_seconds\s*[:=]\s*0|tenantId\s*[:=]\s*["'`]\*["'`]|tenant_id\s*[:=]\s*["'`]\*["'`]|wildcard\s*[:=]\s*true|setAllowlist|set_allowlist|assignRole|assign_role)\b/iu.test(
+    normalized
+  );
+}
+
+function expressionMatchesTaintedAuthorizationGrantInput(pattern: RegExp, source: string): boolean {
+  let match: RegExpExecArray | null;
+  while ((match = pattern.exec(source)) !== null) {
+    if (expressionReferencesTaintedAuthorizationGrantInput(match[1] ?? "", source)) return true;
+    if (match[0].length === 0) pattern.lastIndex += 1;
+  }
+  return false;
+}
+
+function expressionReferencesTaintedAuthorizationGrantInput(expression: string, source: string): boolean {
+  const templateInterpolation = /\$\{[^}]*\b(?:requestedToolName|requested_tool_name|toolName|tool_name|requestedScope|requested_scope|scopeName|scope_name|requestedRole|requested_role|roleName|role_name|resourceId|resource_id|resourcePattern|resource_pattern|tenantId|tenant_id|customerId|customer_id|subjectId|subject_id|grantReason|grant_reason|customerTicketText|customer_ticket_text|tool|scope|role|resource|tenant|customer|subject|permission|action)\b/u.test(
+    expression
+  );
+  if (templateInterpolation) return true;
+  const withoutQuotedStrings = expression.replace(/(["'`])(?:\\.|(?!\1)[\s\S])*\1/gu, " ");
+  const stronglyTaintedName = /\b(?:requestedToolName|requested_tool_name|toolName|tool_name|requestedScope|requested_scope|scopeName|scope_name|requestedRole|requested_role|roleName|role_name|resourceId|resource_id|resourcePattern|resource_pattern|tenantId|tenant_id|customerId|customer_id|subjectId|subject_id|grantReason|grant_reason|customerTicketText|customer_ticket_text)\b/u;
+  const taintedName = /\b(?:requestedToolName|requested_tool_name|toolName|tool_name|requestedScope|requested_scope|scopeName|scope_name|requestedRole|requested_role|roleName|role_name|resourceId|resource_id|resourcePattern|resource_pattern|tenantId|tenant_id|customerId|customer_id|subjectId|subject_id|grantReason|grant_reason|customerTicketText|customer_ticket_text|tool|scope|role|resource|tenant|customer|subject|permission|action|reason|payload|context|text)\b/u;
+  if (stronglyTaintedName.test(withoutQuotedStrings)) return true;
+
+  const grantAssignment = /\b(?:tool|tool_name|toolName|scope|scope_name|scopeName|role|role_name|roleName|resource|resource_id|resourceId|resource_pattern|resourcePattern|tenant|tenant_id|tenantId|customer|customer_id|customerId|subject|subject_id|subjectId|permission|action|reason|grant_reason|grantReason)\s*(?::|=)\s*([^,\n}\)]+)/giu;
+  if (expressionMatchesPattern(grantAssignment, withoutQuotedStrings, taintedName)) return true;
+
+  const valueOnlyExpression = withoutQuotedStrings.replace(
+    /\b(?:tool|tool_name|toolName|scope|scope_name|scopeName|role|role_name|roleName|resource|resource_id|resourceId|resource_pattern|resourcePattern|tenant|tenant_id|tenantId|customer|customer_id|customerId|subject|subject_id|subjectId|permission|action|reason|grant_reason|grantReason)\s*(?::|=)/giu,
+    " "
+  );
+  const identifiers = uniqueStrings(
+    [...valueOnlyExpression.matchAll(/\b[A-Za-z_$][\w$]*\b/gu)]
+      .map((match) => match[0])
+      .filter((identifier) => ![
+        "toolAuthorizationClient",
+        "tool_authorization_client",
+        "authorizationPolicyClient",
+        "authorization_policy_client",
+        "permissionBrokerClient",
+        "permission_broker_client",
+        "toolAuthzClient",
+        "tool_authz_client",
+        "capabilityGrantClient",
+        "capability_grant_client",
+        "accessControlClient",
+        "access_control_client",
+        "rbacClient",
+        "rbac_client",
+        "authzClient",
+        "authz_client",
+        "policyEngineClient",
+        "policy_engine_client",
+        "token",
+        "apiKey",
+        "api_key",
+        "metadata",
+        "grant",
+        "policy"
+      ].includes(identifier))
+  );
+  return identifiers.some((identifier) => identifierAssignedFromTaintedAuthorizationGrantInput(identifier, source, taintedName));
+}
+
+function identifierAssignedFromTaintedAuthorizationGrantInput(identifier: string, source: string, taintedName: RegExp): boolean {
   const escaped = escapeRegExp(identifier);
   const patterns = [
     new RegExp(`\\b(?:const|let|var)\\s+${escaped}\\s*=\\s*([^;\\n]+)`, "gu"),
@@ -31550,6 +31680,9 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   tainted_safety_policy_payload: boolean;
   tainted_safety_policy_selector: boolean;
   safety_policy_weakening: boolean;
+  authorization_policy_write: boolean;
+  tainted_authorization_grant_input: boolean;
+  authorization_broad_grant: boolean;
   artifact_export: boolean;
   tainted_artifact_export_payload: boolean;
   public_artifact_destination: boolean;
@@ -31620,6 +31753,9 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   const handlerTaintedSafetyPolicyPayload = handler?.handlerTaintedSafetyPolicyPayload === true;
   const handlerTaintedSafetyPolicySelector = handler?.handlerTaintedSafetyPolicySelector === true;
   const handlerSafetyPolicyWeakening = handler?.handlerSafetyPolicyWeakening === true;
+  const handlerAuthorizationPolicyWrite = handler?.handlerAuthorizationPolicyWrite === true;
+  const handlerTaintedAuthorizationGrantInput = handler?.handlerTaintedAuthorizationGrantInput === true;
+  const handlerAuthorizationBroadGrant = handler?.handlerAuthorizationBroadGrant === true;
   const handlerArtifactExport = handler?.handlerArtifactExport === true;
   const handlerTaintedArtifactExportPayload = handler?.handlerTaintedArtifactExportPayload === true;
   const handlerPublicArtifactDestination = handler?.handlerPublicArtifactDestination === true;
@@ -31676,6 +31812,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
     handlerTrainingDatasetExport ||
     handlerFeedbackPipelineWrite ||
     handlerSafetyPolicyWrite ||
+    handlerAuthorizationPolicyWrite ||
     handlerArtifactExport;
 
   const shellExecution =
@@ -31920,6 +32057,19 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
     classes.add("safety_policy_weakening");
     actions.add("write");
   }
+  if (handlerAuthorizationPolicyWrite) {
+    classes.add("authorization_policy_write");
+    actions.add("send");
+    actions.add("write");
+  }
+  if (handlerTaintedAuthorizationGrantInput) {
+    classes.add("tainted_authorization_grant_input");
+    actions.add("send");
+  }
+  if (handlerAuthorizationBroadGrant) {
+    classes.add("authorization_broad_grant");
+    actions.add("write");
+  }
   if (handlerArtifactExport) {
     classes.add("artifact_export");
     actions.add("send");
@@ -32067,6 +32217,9 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerTaintedSafetyPolicyPayload ||
       handlerTaintedSafetyPolicySelector ||
       handlerSafetyPolicyWeakening ||
+      handlerAuthorizationPolicyWrite ||
+      handlerTaintedAuthorizationGrantInput ||
+      handlerAuthorizationBroadGrant ||
       handlerArtifactExport ||
       handlerTaintedArtifactExportPayload ||
       handlerPublicArtifactDestination ||
@@ -32126,6 +32279,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerTrainingDatasetExport ||
       handlerFeedbackPipelineWrite ||
       handlerSafetyPolicyWrite ||
+      handlerAuthorizationPolicyWrite ||
       handlerArtifactExport ||
       handlerRagRetrieval ||
       handlerTaskQueueEnqueue ||
@@ -32139,7 +32293,8 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerCredentialIssuance ||
       handlerAgentDelegation ||
       handlerSecretManagerAccess ||
-      (handlerSafetyPolicyWrite && handlerSecretEnvAccess),
+      (handlerSafetyPolicyWrite && handlerSecretEnvAccess) ||
+      (handlerAuthorizationPolicyWrite && handlerSecretEnvAccess),
     accepts_secret_like_input: acceptsSecret,
     accepts_content_like_input: acceptsContent,
     accepts_path_input: acceptsPath,
@@ -32187,6 +32342,9 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
     tainted_safety_policy_payload: handlerTaintedSafetyPolicyPayload,
     tainted_safety_policy_selector: handlerTaintedSafetyPolicySelector,
     safety_policy_weakening: handlerSafetyPolicyWeakening,
+    authorization_policy_write: handlerAuthorizationPolicyWrite,
+    tainted_authorization_grant_input: handlerTaintedAuthorizationGrantInput,
+    authorization_broad_grant: handlerAuthorizationBroadGrant,
     artifact_export: handlerArtifactExport,
     tainted_artifact_export_payload: handlerTaintedArtifactExportPayload,
     public_artifact_destination: handlerPublicArtifactDestination,
@@ -32286,6 +32444,9 @@ function authoritySignature(tool: SurfaceObject): string {
     metadata.tainted_safety_policy_payload === true ? "tainted_safety_policy_payload" : "",
     metadata.tainted_safety_policy_selector === true ? "tainted_safety_policy_selector" : "",
     metadata.safety_policy_weakening === true ? "safety_policy_weakening" : "",
+    metadata.authorization_policy_write === true ? "authorization_policy_write" : "",
+    metadata.tainted_authorization_grant_input === true ? "tainted_authorization_grant_input" : "",
+    metadata.authorization_broad_grant === true ? "authorization_broad_grant" : "",
     metadata.artifact_export === true ? "artifact_export" : "",
     metadata.tainted_artifact_export_payload === true ? "tainted_artifact_export_payload" : "",
     metadata.public_artifact_destination === true ? "public_artifact_destination" : "",
@@ -32366,6 +32527,9 @@ function isPrivilegedToolSurface(tool: SurfaceObject): boolean {
     tool.metadata.tainted_safety_policy_payload === true ||
     tool.metadata.tainted_safety_policy_selector === true ||
     tool.metadata.safety_policy_weakening === true ||
+    tool.metadata.authorization_policy_write === true ||
+    tool.metadata.tainted_authorization_grant_input === true ||
+    tool.metadata.authorization_broad_grant === true ||
     tool.metadata.artifact_export === true ||
     tool.metadata.tainted_artifact_export_payload === true ||
     tool.metadata.public_artifact_destination === true ||

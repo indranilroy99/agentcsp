@@ -340,6 +340,9 @@ Tool metadata may include:
 - `tainted_safety_policy_payload`
 - `tainted_safety_policy_selector`
 - `safety_policy_weakening`
+- `authorization_policy_write`
+- `tainted_authorization_grant_input`
+- `authorization_broad_grant`
 - `artifact_export`
 - `tainted_artifact_export_payload`
 - `public_artifact_destination`
@@ -396,6 +399,9 @@ Tool metadata may include:
 - `handler_tainted_safety_policy_payload`
 - `handler_tainted_safety_policy_selector`
 - `handler_safety_policy_weakening`
+- `handler_authorization_policy_write`
+- `handler_tainted_authorization_grant_input`
+- `handler_authorization_broad_grant`
 - `handler_artifact_export`
 - `handler_tainted_artifact_export_payload`
 - `handler_public_artifact_destination`

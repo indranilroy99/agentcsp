@@ -70,6 +70,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-054")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-055")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-056")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-057")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-001")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-002")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-003")).toBe(true);
@@ -6584,6 +6585,42 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerSafetyPolicyWeakeningFindings)).not.toContain("source guardrail policy updated");
     expect(JSON.stringify(sourceHandlerSafetyPolicyWeakeningFindings)).not.toContain("framework guardrail policy updated");
     expect(JSON.stringify(sourceHandlerSafetyPolicyWeakeningFindings)).not.toContain("Update caller selected guardrail policy");
+    const sourceHandlerAuthorizationGrantFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-057");
+    expect(sourceHandlerAuthorizationGrantFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
+      "langchain_update_tool_permission_grant",
+      "source_update_tool_permission_grant"
+    ]);
+    expect(sourceHandlerAuthorizationGrantFindings.every((finding) => finding.severity === "critical")).toBe(true);
+    expect(sourceHandlerAuthorizationGrantFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerAuthorizationGrantFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
+    expect(sourceHandlerAuthorizationGrantFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
+    expect(sourceHandlerAuthorizationGrantFindings.every((finding) => finding.matched_object.metadata.handler_authorization_policy_write === true)).toBe(true);
+    expect(sourceHandlerAuthorizationGrantFindings.every((finding) => finding.matched_object.metadata.handler_tainted_authorization_grant_input === true)).toBe(true);
+    expect(sourceHandlerAuthorizationGrantFindings.every((finding) => finding.matched_object.metadata.handler_authorization_broad_grant === true)).toBe(true);
+    expect(sourceHandlerAuthorizationGrantFindings.every((finding) => finding.matched_object.metadata.authorization_policy_write === true)).toBe(true);
+    expect(sourceHandlerAuthorizationGrantFindings.every((finding) => finding.matched_object.metadata.tainted_authorization_grant_input === true)).toBe(true);
+    expect(sourceHandlerAuthorizationGrantFindings.every((finding) => finding.matched_object.metadata.authorization_broad_grant === true)).toBe(true);
+    expect(sourceHandlerAuthorizationGrantFindings.every((finding) => finding.matched_object.metadata.handler_secret_env_access === true)).toBe(true);
+    expect(sourceHandlerAuthorizationGrantFindings.every((finding) => finding.matched_object.metadata.external_write === true)).toBe(true);
+    expect(sourceHandlerAuthorizationGrantFindings.every((finding) => finding.matched_object.metadata.accepts_content_like_input === true)).toBe(true);
+    expect(sourceHandlerAuthorizationGrantFindings.every((finding) => finding.matched_object.metadata.accepts_customer_data_input === true)).toBe(true);
+    expect(sourceHandlerAuthorizationGrantFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("authorization_policy_write"))).toBe(true);
+    expect(sourceHandlerAuthorizationGrantFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("tainted_authorization_grant_input"))).toBe(true);
+    expect(sourceHandlerAuthorizationGrantFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("authorization_broad_grant"))).toBe(true);
+    expect(sourceHandlerAuthorizationGrantFindings.every((finding) => finding.matched_object.metadata.handler_authority_classes.includes("handler_authorization_policy_write"))).toBe(true);
+    expect(sourceHandlerAuthorizationGrantFindings.every((finding) => finding.matched_object.metadata.handler_authority_classes.includes("handler_tainted_authorization_grant_input"))).toBe(true);
+    expect(sourceHandlerAuthorizationGrantFindings.every((finding) => finding.matched_object.metadata.handler_authority_classes.includes("handler_authorization_broad_grant"))).toBe(true);
+    expect(sourceHandlerAuthorizationGrantFindings.every((finding) => finding.matched_object.actions.includes("send"))).toBe(true);
+    expect(sourceHandlerAuthorizationGrantFindings.every((finding) => finding.matched_object.actions.includes("write"))).toBe(true);
+    expect(sourceHandlerAuthorizationGrantFindings.every((finding) => finding.matched_object.external_reach === true)).toBe(true);
+    expect(sourceHandlerAuthorizationGrantFindings.every((finding) => finding.matched_object.secret_exposure === true)).toBe(true);
+    expect(sourceHandlerAuthorizationGrantFindings.every((finding) => finding.matched_object.side_effect === true)).toBe(true);
+    expect(sourceHandlerAuthorizationGrantFindings.every((finding) => finding.matched_object.reversible === false)).toBe(true);
+    expect(JSON.stringify(sourceHandlerAuthorizationGrantFindings)).not.toContain("permissionBrokerClient.upsertGrant");
+    expect(JSON.stringify(sourceHandlerAuthorizationGrantFindings)).not.toContain("permission_broker_client.upsert_grant");
+    expect(JSON.stringify(sourceHandlerAuthorizationGrantFindings)).not.toContain("source tool permission grant updated");
+    expect(JSON.stringify(sourceHandlerAuthorizationGrantFindings)).not.toContain("framework tool permission grant updated");
+    expect(JSON.stringify(sourceHandlerAuthorizationGrantFindings)).not.toContain("Grant caller selected tool permission");
     const sourceHandlerTaintedMemoryScopeFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-039");
     expect(sourceHandlerTaintedMemoryScopeFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_persist_customer_memory",

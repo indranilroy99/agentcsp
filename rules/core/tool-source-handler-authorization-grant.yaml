@@ -1,0 +1,102 @@
+id: AGENTCSP-TOOL-057
+name: Source tool handler grants broad agent authorization
+description: A source-defined agent tool handler uses runtime credentials to write tool authorization, permission, entitlement, or grant policy from caller-controlled tool, scope, role, resource, tenant, or subject inputs while issuing broad or approval-free grants.
+category: tool_source_handler_authority
+severity: critical
+maps_to:
+  owasp:
+    - LLM01:2025 Prompt Injection
+    - LLM02:2025 Sensitive Information Disclosure
+    - LLM03:2025 Supply Chain
+    - LLM06:2025 Excessive Agency
+  mitre_atlas:
+    - AML.T0051 LLM Plugin Compromise
+    - AML.T0053 LLM Plugin Supply Chain Compromise
+    - AML.T0056 LLM Trusted Boundary Compromise
+  nist_ai_rmf:
+    - MAP 4.1
+    - MEASURE 2.7
+    - MANAGE 2.4
+match:
+  object_type: tool
+  where:
+    - field: metadata.parsed_tool_schema
+      op: equals
+      value: true
+    - field: metadata.source_tool_handler_redacted
+      op: equals
+      value: true
+    - field: metadata.handler_body_analyzed
+      op: equals
+      value: true
+    - field: metadata.handler_authorization_policy_write
+      op: equals
+      value: true
+    - field: metadata.handler_tainted_authorization_grant_input
+      op: equals
+      value: true
+    - field: metadata.handler_authorization_broad_grant
+      op: equals
+      value: true
+    - field: metadata.authorization_policy_write
+      op: equals
+      value: true
+    - field: metadata.tainted_authorization_grant_input
+      op: equals
+      value: true
+    - field: metadata.authorization_broad_grant
+      op: equals
+      value: true
+    - field: metadata.handler_secret_env_access
+      op: equals
+      value: true
+    - field: metadata.accepts_content_like_input
+      op: equals
+      value: true
+    - field: metadata.accepts_customer_data_input
+      op: equals
+      value: true
+    - field: metadata.authority_classes
+      op: includes
+      value: authorization_policy_write
+    - field: metadata.authority_classes
+      op: includes
+      value: tainted_authorization_grant_input
+    - field: metadata.authority_classes
+      op: includes
+      value: authorization_broad_grant
+    - field: metadata.handler_authority_classes
+      op: includes
+      value: handler_authorization_policy_write
+    - field: metadata.handler_authority_classes
+      op: includes
+      value: handler_tainted_authorization_grant_input
+    - field: metadata.handler_authority_classes
+      op: includes
+      value: handler_authorization_broad_grant
+    - field: actions
+      op: includes
+      value: send
+    - field: actions
+      op: includes
+      value: write
+    - field: data_classes
+      op: contains_any
+      value:
+        - confidential
+        - pii
+    - field: external_reach
+      op: equals
+      value: true
+    - field: secret_exposure
+      op: equals
+      value: true
+    - field: side_effect
+      op: equals
+      value: true
+    - field: reversible
+      op: equals
+      value: false
+recommendation:
+  control: quarantine
+  text: Quarantine source-defined authorization and permission grant writers until tool names, scopes, roles, resources, tenants, and subjects are policy-owned or allowlisted outside the model path; wildcard and approval-free grants are rejected; runtime credentials are scoped; and security approval is required before authorization policy changes.
