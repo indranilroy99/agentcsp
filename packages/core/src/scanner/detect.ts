@@ -24158,6 +24158,7 @@ function addToolDefinitionSurface(
       credential_issuance: authority.credential_issuance,
       nested_tool_invocation: authority.nested_tool_invocation,
       browser_automation: authority.browser_automation,
+      tainted_browser_automation_target: authority.tainted_browser_automation_target,
       secret_manager_access: authority.secret_manager_access,
       tainted_secret_manager_path: authority.tainted_secret_manager_path,
       external_service_write: authority.external_service_write,
@@ -26555,6 +26556,7 @@ interface SourceToolHandlerSignals {
   handlerCredentialIssuance: boolean;
   handlerToolInvocation: boolean;
   handlerBrowserAutomation: boolean;
+  handlerTaintedBrowserAutomationTarget: boolean;
   handlerSecretManagerAccess: boolean;
   handlerTaintedSecretManagerPath: boolean;
   handlerShellExecution: boolean;
@@ -26995,6 +26997,7 @@ function sourceToolHandlerSignalMetadata(signals: SourceToolHandlerSignals | und
     handler_credential_issuance: signals.handlerCredentialIssuance,
     handler_tool_invocation: signals.handlerToolInvocation,
     handler_browser_automation: signals.handlerBrowserAutomation,
+    handler_tainted_browser_automation_target: signals.handlerTaintedBrowserAutomationTarget,
     handler_secret_manager_access: signals.handlerSecretManagerAccess,
     handler_tainted_secret_manager_path: signals.handlerTaintedSecretManagerPath,
     handler_shell_execution: signals.handlerShellExecution,
@@ -27108,6 +27111,9 @@ function classifySourceToolHandlerSignals(
   const browserAutomation = language === "javascript"
     ? hasJavaScriptHandlerBrowserAutomation(handlerSource)
     : hasPythonHandlerBrowserAutomation(handlerSource);
+  const taintedBrowserAutomationTarget = browserAutomation && (language === "javascript"
+    ? hasJavaScriptHandlerTaintedBrowserAutomationTarget(handlerSource)
+    : hasPythonHandlerTaintedBrowserAutomationTarget(handlerSource));
   const secretManagerAccess = language === "javascript"
     ? hasJavaScriptHandlerSecretManagerAccess(handlerSource)
     : hasPythonHandlerSecretManagerAccess(handlerSource);
@@ -27135,6 +27141,7 @@ function classifySourceToolHandlerSignals(
   if (credentialIssuance) classes.add("handler_credential_issuance");
   if (toolInvocation) classes.add("handler_tool_invocation");
   if (browserAutomation) classes.add("handler_browser_automation");
+  if (taintedBrowserAutomationTarget) classes.add("handler_tainted_browser_automation_target");
   if (secretManagerAccess) classes.add("handler_secret_manager_access");
   if (taintedSecretManagerPath) classes.add("handler_tainted_secret_manager_path");
   if (shellExecution) classes.add("handler_shell_execution");
@@ -27170,6 +27177,7 @@ function classifySourceToolHandlerSignals(
     handlerCredentialIssuance: credentialIssuance,
     handlerToolInvocation: toolInvocation,
     handlerBrowserAutomation: browserAutomation,
+    handlerTaintedBrowserAutomationTarget: taintedBrowserAutomationTarget,
     handlerSecretManagerAccess: secretManagerAccess,
     handlerTaintedSecretManagerPath: taintedSecretManagerPath,
     handlerShellExecution: shellExecution,
@@ -27474,6 +27482,18 @@ function hasPythonHandlerBrowserAutomation(source: string): boolean {
   ) || /\b(?:playwright|sync_playwright|async_playwright|selenium|webdriver)\s*\./u.test(source);
 }
 
+function hasJavaScriptHandlerTaintedBrowserAutomationTarget(source: string): boolean {
+  return [
+    /\b(?:browser|context|page|driver|authenticatedBrowserPage|browserPage)\s*\.\s*(?:goto|navigate|click|fill|type|press|selectOption|setInputFiles|evaluate|screenshot|pdf)\s*\(([\s\S]{0,720})\)/giu
+  ].some((pattern) => expressionMatchesTaintedBrowserAutomationTarget(pattern, source));
+}
+
+function hasPythonHandlerTaintedBrowserAutomationTarget(source: string): boolean {
+  return [
+    /\b(?:browser|context|page|driver|browser_page|authenticated_browser_page)\s*\.\s*(?:goto|navigate|click|fill|type|press|select_option|set_input_files|evaluate|screenshot|get|find_element|execute_script)\s*\(([\s\S]{0,720})\)/giu
+  ].some((pattern) => expressionMatchesTaintedBrowserAutomationTarget(pattern, source));
+}
+
 function hasJavaScriptHandlerSecretManagerAccess(source: string): boolean {
   return /\b(?:vault|vaultClient|secretManager|secretManagerClient|secretsManager|secretsManagerClient|keyVault|keyVaultClient|credentialVault)\s*\.\s*(?:read|readSecret|get|getSecret|getSecretValue|accessSecretVersion|downloadSecret|retrieveSecret)\s*\(/iu.test(
     source
@@ -27692,6 +27712,15 @@ function expressionMatchesTaintedMemoryScope(pattern: RegExp, source: string): b
   return false;
 }
 
+function expressionMatchesTaintedBrowserAutomationTarget(pattern: RegExp, source: string): boolean {
+  let match: RegExpExecArray | null;
+  while ((match = pattern.exec(source)) !== null) {
+    if (expressionReferencesTaintedBrowserAutomationTarget(match[1] ?? "", source)) return true;
+    if (match[0].length === 0) pattern.lastIndex += 1;
+  }
+  return false;
+}
+
 function expressionMatchesTaintedDynamicCodeArgument(pattern: RegExp, source: string): boolean {
   let match: RegExpExecArray | null;
   while ((match = pattern.exec(source)) !== null) {
@@ -27871,6 +27900,34 @@ function expressionReferencesTaintedMemoryScope(expression: string, source: stri
 }
 
 function identifierAssignedFromTaintedMemoryScopeInput(identifier: string, source: string, taintedName: RegExp): boolean {
+  const escaped = escapeRegExp(identifier);
+  const patterns = [
+    new RegExp(`\\b(?:const|let|var)\\s+${escaped}\\s*=\\s*([^;\\n]+)`, "gu"),
+    new RegExp(`\\b${escaped}\\s*=\\s*([^\\n]+)`, "gu")
+  ];
+  return patterns.some((pattern) => expressionMatchesPattern(pattern, source, taintedName));
+}
+
+function expressionReferencesTaintedBrowserAutomationTarget(expression: string, source: string): boolean {
+  const templateInterpolation = /\$\{[^}]*\b(?:targetUrl|target_url|browserUrl|browser_url|navigationUrl|navigation_url|url|uri|formSelector|form_selector|submitSelector|submit_selector|cssSelector|css_selector|xpathSelector|xpath_selector|selector|customerMessageText|customer_message_text|formPayload|form_payload|inputText|input_text|customerPayload|customer_payload)\b/u.test(
+    expression
+  );
+  if (templateInterpolation) return true;
+  const withoutQuotedStrings = expression.replace(/(["'`])(?:\\.|(?!\1)[\s\S])*\1/gu, " ");
+  const stronglyTaintedName = /\b(?:targetUrl|target_url|browserUrl|browser_url|navigationUrl|navigation_url|formSelector|form_selector|submitSelector|submit_selector|cssSelector|css_selector|xpathSelector|xpath_selector|customerMessageText|customer_message_text|formPayload|form_payload|inputText|input_text|customerPayload|customer_payload)\b/u;
+  const taintedName = /\b(?:targetUrl|target_url|browserUrl|browser_url|navigationUrl|navigation_url|url|uri|formSelector|form_selector|submitSelector|submit_selector|cssSelector|css_selector|xpathSelector|xpath_selector|selector|customerMessageText|customer_message_text|formPayload|form_payload|inputText|input_text|customerPayload|customer_payload)\b/u;
+  if (stronglyTaintedName.test(withoutQuotedStrings)) return true;
+  if (/\b(?:url|uri|selector)\b/u.test(withoutQuotedStrings) && !/\b(?:URL|URI)\s*\(/u.test(withoutQuotedStrings)) return true;
+
+  const identifiers = uniqueStrings(
+    [...withoutQuotedStrings.matchAll(/\b[A-Za-z_$][\w$]*\b/gu)]
+      .map((match) => match[0])
+      .filter((identifier) => !["browser", "context", "page", "driver", "options"].includes(identifier))
+  );
+  return identifiers.some((identifier) => identifierAssignedFromTaintedBrowserAutomationTarget(identifier, source, taintedName));
+}
+
+function identifierAssignedFromTaintedBrowserAutomationTarget(identifier: string, source: string, taintedName: RegExp): boolean {
   const escaped = escapeRegExp(identifier);
   const patterns = [
     new RegExp(`\\b(?:const|let|var)\\s+${escaped}\\s*=\\s*([^;\\n]+)`, "gu"),
@@ -29224,6 +29281,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   credential_issuance: boolean;
   nested_tool_invocation: boolean;
   browser_automation: boolean;
+  tainted_browser_automation_target: boolean;
   secret_manager_access: boolean;
   tainted_secret_manager_path: boolean;
   external_service_write: boolean;
@@ -29275,6 +29333,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   const handlerCredentialIssuance = handler?.handlerCredentialIssuance === true;
   const handlerToolInvocation = handler?.handlerToolInvocation === true;
   const handlerBrowserAutomation = handler?.handlerBrowserAutomation === true;
+  const handlerTaintedBrowserAutomationTarget = handler?.handlerTaintedBrowserAutomationTarget === true;
   const handlerSecretManagerAccess = handler?.handlerSecretManagerAccess === true;
   const handlerTaintedSecretManagerPath = handler?.handlerTaintedSecretManagerPath === true;
   const handlerShellExecution = handler?.handlerShellExecution === true;
@@ -29333,6 +29392,9 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
     classes.add("browser_automation");
     classes.add("browser_control");
     actions.add("execute");
+  }
+  if (handlerTaintedBrowserAutomationTarget) {
+    classes.add("tainted_browser_automation_target");
   }
   if (acceptsUrl || /\b(fetch|request|http|api|network)\b/i.test(text) || handlerExternalNetworkCall) {
     classes.add("network_access");
@@ -29481,6 +29543,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerCredentialIssuance ||
       handlerToolInvocation ||
       handlerBrowserAutomation ||
+      handlerTaintedBrowserAutomationTarget ||
       handlerSecretManagerAccess ||
       handlerTaintedSecretManagerPath ||
       handlerExternalServiceWrite ||
@@ -29540,6 +29603,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
     credential_issuance: handlerCredentialIssuance,
     nested_tool_invocation: handlerToolInvocation,
     browser_automation: handlerBrowserAutomation,
+    tainted_browser_automation_target: handlerTaintedBrowserAutomationTarget,
     secret_manager_access: handlerSecretManagerAccess,
     tainted_secret_manager_path: handlerTaintedSecretManagerPath,
     external_service_write: handlerExternalServiceWrite,
@@ -29619,6 +29683,7 @@ function authoritySignature(tool: SurfaceObject): string {
     metadata.credential_issuance === true ? "credential_issuance" : "",
     metadata.nested_tool_invocation === true ? "nested_tool_invocation" : "",
     metadata.browser_automation === true ? "browser_automation" : "",
+    metadata.tainted_browser_automation_target === true ? "tainted_browser_automation_target" : "",
     metadata.secret_manager_access === true ? "secret_manager_access" : "",
     metadata.tainted_secret_manager_path === true ? "tainted_secret_manager_path" : "",
     metadata.tainted_external_service_recipient === true ? "tainted_external_service_recipient" : "",
@@ -29658,6 +29723,7 @@ function isPrivilegedToolSurface(tool: SurfaceObject): boolean {
     tool.metadata.credential_issuance === true ||
     tool.metadata.nested_tool_invocation === true ||
     tool.metadata.browser_automation === true ||
+    tool.metadata.tainted_browser_automation_target === true ||
     tool.metadata.secret_manager_access === true ||
     tool.metadata.tainted_secret_manager_path === true ||
     tool.metadata.tainted_external_service_recipient === true ||

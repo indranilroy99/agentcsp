@@ -309,6 +309,7 @@ Tool metadata may include:
 - `credential_issuance`
 - `nested_tool_invocation`
 - `browser_automation`
+- `tainted_browser_automation_target`
 - `secret_manager_access`
 - `tainted_secret_manager_path`
 - `external_service_write`
@@ -349,6 +350,7 @@ Tool metadata may include:
 - `handler_credential_issuance`
 - `handler_tool_invocation`
 - `handler_browser_automation`
+- `handler_tainted_browser_automation_target`
 - `handler_secret_manager_access`
 - `handler_tainted_secret_manager_path`
 - `handler_shell_execution`

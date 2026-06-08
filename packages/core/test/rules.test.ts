@@ -53,6 +53,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-037")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-038")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-039")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-040")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-001")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-002")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-003")).toBe(true);
@@ -6321,12 +6322,16 @@ describe("rule engine", () => {
     expect(sourceHandlerBrowserAutomationFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
     expect(sourceHandlerBrowserAutomationFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
     expect(sourceHandlerBrowserAutomationFindings.every((finding) => finding.matched_object.metadata.handler_browser_automation === true)).toBe(true);
+    expect(sourceHandlerBrowserAutomationFindings.every((finding) => finding.matched_object.metadata.handler_tainted_browser_automation_target === true)).toBe(true);
     expect(sourceHandlerBrowserAutomationFindings.every((finding) => finding.matched_object.metadata.browser_automation === true)).toBe(true);
+    expect(sourceHandlerBrowserAutomationFindings.every((finding) => finding.matched_object.metadata.tainted_browser_automation_target === true)).toBe(true);
     expect(sourceHandlerBrowserAutomationFindings.every((finding) => finding.matched_object.metadata.accepts_url_input === true)).toBe(true);
     expect(sourceHandlerBrowserAutomationFindings.every((finding) => finding.matched_object.metadata.accepts_content_like_input === true)).toBe(true);
     expect(sourceHandlerBrowserAutomationFindings.every((finding) => finding.matched_object.metadata.accepts_customer_data_input === true)).toBe(true);
     expect(sourceHandlerBrowserAutomationFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("browser_automation"))).toBe(true);
+    expect(sourceHandlerBrowserAutomationFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("tainted_browser_automation_target"))).toBe(true);
     expect(sourceHandlerBrowserAutomationFindings.every((finding) => finding.matched_object.metadata.handler_authority_classes.includes("handler_browser_automation"))).toBe(true);
+    expect(sourceHandlerBrowserAutomationFindings.every((finding) => finding.matched_object.metadata.handler_authority_classes.includes("handler_tainted_browser_automation_target"))).toBe(true);
     expect(sourceHandlerBrowserAutomationFindings.every((finding) => finding.matched_object.actions.includes("execute"))).toBe(true);
     expect(sourceHandlerBrowserAutomationFindings.every((finding) => finding.matched_object.external_reach === true)).toBe(true);
     expect(sourceHandlerBrowserAutomationFindings.every((finding) => finding.matched_object.side_effect === true)).toBe(true);
@@ -6337,6 +6342,36 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerBrowserAutomationFindings)).not.toContain("page.fill");
     expect(JSON.stringify(sourceHandlerBrowserAutomationFindings)).not.toContain("page.click");
     expect(JSON.stringify(sourceHandlerBrowserAutomationFindings)).not.toContain("Drive an authenticated browser session");
+    const sourceHandlerTaintedBrowserTargetFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-040");
+    expect(sourceHandlerTaintedBrowserTargetFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
+      "langchain_submit_customer_browser_form",
+      "source_submit_customer_browser_form"
+    ]);
+    expect(sourceHandlerTaintedBrowserTargetFindings.every((finding) => finding.severity === "critical")).toBe(true);
+    expect(sourceHandlerTaintedBrowserTargetFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerTaintedBrowserTargetFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
+    expect(sourceHandlerTaintedBrowserTargetFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
+    expect(sourceHandlerTaintedBrowserTargetFindings.every((finding) => finding.matched_object.metadata.handler_browser_automation === true)).toBe(true);
+    expect(sourceHandlerTaintedBrowserTargetFindings.every((finding) => finding.matched_object.metadata.handler_tainted_browser_automation_target === true)).toBe(true);
+    expect(sourceHandlerTaintedBrowserTargetFindings.every((finding) => finding.matched_object.metadata.browser_automation === true)).toBe(true);
+    expect(sourceHandlerTaintedBrowserTargetFindings.every((finding) => finding.matched_object.metadata.tainted_browser_automation_target === true)).toBe(true);
+    expect(sourceHandlerTaintedBrowserTargetFindings.every((finding) => finding.matched_object.metadata.accepts_url_input === true)).toBe(true);
+    expect(sourceHandlerTaintedBrowserTargetFindings.every((finding) => finding.matched_object.metadata.accepts_content_like_input === true)).toBe(true);
+    expect(sourceHandlerTaintedBrowserTargetFindings.every((finding) => finding.matched_object.metadata.accepts_customer_data_input === true)).toBe(true);
+    expect(sourceHandlerTaintedBrowserTargetFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("browser_automation"))).toBe(true);
+    expect(sourceHandlerTaintedBrowserTargetFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("tainted_browser_automation_target"))).toBe(true);
+    expect(sourceHandlerTaintedBrowserTargetFindings.every((finding) => finding.matched_object.metadata.handler_authority_classes.includes("handler_browser_automation"))).toBe(true);
+    expect(sourceHandlerTaintedBrowserTargetFindings.every((finding) => finding.matched_object.metadata.handler_authority_classes.includes("handler_tainted_browser_automation_target"))).toBe(true);
+    expect(sourceHandlerTaintedBrowserTargetFindings.every((finding) => finding.matched_object.actions.includes("execute"))).toBe(true);
+    expect(sourceHandlerTaintedBrowserTargetFindings.every((finding) => finding.matched_object.external_reach === true)).toBe(true);
+    expect(sourceHandlerTaintedBrowserTargetFindings.every((finding) => finding.matched_object.side_effect === true)).toBe(true);
+    expect(sourceHandlerTaintedBrowserTargetFindings.every((finding) => finding.matched_object.reversible === false)).toBe(true);
+    expect(JSON.stringify(sourceHandlerTaintedBrowserTargetFindings)).not.toContain("authenticatedBrowserPage");
+    expect(JSON.stringify(sourceHandlerTaintedBrowserTargetFindings)).not.toContain("browser_session.page");
+    expect(JSON.stringify(sourceHandlerTaintedBrowserTargetFindings)).not.toContain("page.goto");
+    expect(JSON.stringify(sourceHandlerTaintedBrowserTargetFindings)).not.toContain("page.fill");
+    expect(JSON.stringify(sourceHandlerTaintedBrowserTargetFindings)).not.toContain("page.click");
+    expect(JSON.stringify(sourceHandlerTaintedBrowserTargetFindings)).not.toContain("Drive an authenticated browser session");
     const sourceHandlerSecretManagerFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-028");
     expect(sourceHandlerSecretManagerFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_read_customer_vault_secret",

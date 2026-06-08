@@ -1518,13 +1518,14 @@ describe("scanner", () => {
       handler_credential_issuance: false,
       handler_tool_invocation: false,
       handler_browser_automation: true,
+      handler_tainted_browser_automation_target: true,
       handler_shell_execution: false,
       handler_dynamic_code_execution: false,
       handler_unsafe_deserialization: false,
       handler_filesystem_read: false,
       handler_filesystem_write: false,
       handler_filesystem_delete: false,
-      handler_signal_count: 1,
+      handler_signal_count: 2,
       open_world_schema: false
     });
     expect(sourceBrowserAutomationTool?.metadata.authority_classes).toEqual([
@@ -1534,10 +1535,15 @@ describe("scanner", () => {
       "credential_input",
       "customer_data_input",
       "handler_browser_automation",
+      "handler_tainted_browser_automation_target",
       "network_access",
-      "pii_input"
+      "pii_input",
+      "tainted_browser_automation_target"
     ]);
-    expect(sourceBrowserAutomationTool?.metadata.handler_authority_classes).toEqual(["handler_browser_automation"]);
+    expect(sourceBrowserAutomationTool?.metadata.handler_authority_classes).toEqual([
+      "handler_browser_automation",
+      "handler_tainted_browser_automation_target"
+    ]);
     expect(sourceBrowserAutomationTool?.metadata.handler_env_key_names).toEqual([]);
     expect(sourceBrowserAutomationTool?.metadata.schema_properties).toEqual([
       "customer_id",
@@ -2952,13 +2958,14 @@ describe("scanner", () => {
       handler_credential_issuance: false,
       handler_tool_invocation: false,
       handler_browser_automation: true,
+      handler_tainted_browser_automation_target: true,
       handler_shell_execution: false,
       handler_dynamic_code_execution: false,
       handler_unsafe_deserialization: false,
       handler_filesystem_read: false,
       handler_filesystem_write: false,
       handler_filesystem_delete: false,
-      handler_signal_count: 1,
+      handler_signal_count: 2,
       open_world_schema: false
     });
     expect(langchainBrowserAutomationTool?.metadata.authority_classes).toEqual([
@@ -2968,11 +2975,14 @@ describe("scanner", () => {
       "credential_input",
       "customer_data_input",
       "handler_browser_automation",
+      "handler_tainted_browser_automation_target",
       "network_access",
-      "pii_input"
+      "pii_input",
+      "tainted_browser_automation_target"
     ]);
     expect(langchainBrowserAutomationTool?.metadata.handler_authority_classes).toEqual([
-      "handler_browser_automation"
+      "handler_browser_automation",
+      "handler_tainted_browser_automation_target"
     ]);
     expect(langchainBrowserAutomationTool?.metadata.handler_env_key_names).toEqual([]);
     expect(langchainBrowserAutomationTool?.metadata.schema_properties).toEqual([
