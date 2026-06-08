@@ -6112,6 +6112,24 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerShellFindings)).not.toContain("node:child_process");
     expect(JSON.stringify(sourceHandlerShellFindings)).not.toContain("subprocess.run");
     expect(JSON.stringify(sourceHandlerShellFindings)).not.toContain("shell=True");
+    const sourceHandlerDatabaseFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-016");
+    expect(sourceHandlerDatabaseFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
+      "langchain_apply_record_change_sql",
+      "source_apply_record_change_sql"
+    ]);
+    expect(sourceHandlerDatabaseFindings.every((finding) => finding.severity === "critical")).toBe(true);
+    expect(sourceHandlerDatabaseFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerDatabaseFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
+    expect(sourceHandlerDatabaseFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
+    expect(sourceHandlerDatabaseFindings.every((finding) => finding.matched_object.metadata.handler_database_query === true)).toBe(true);
+    expect(sourceHandlerDatabaseFindings.every((finding) => finding.matched_object.metadata.handler_database_write === true)).toBe(true);
+    expect(sourceHandlerDatabaseFindings.every((finding) => finding.matched_object.metadata.database_write === true)).toBe(true);
+    expect(sourceHandlerDatabaseFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("database_write"))).toBe(true);
+    expect(JSON.stringify(sourceHandlerDatabaseFindings)).not.toContain("db.query");
+    expect(JSON.stringify(sourceHandlerDatabaseFindings)).not.toContain("db.execute");
+    expect(JSON.stringify(sourceHandlerDatabaseFindings)).not.toContain("UPDATE support_cases");
+    expect(JSON.stringify(sourceHandlerDatabaseFindings)).not.toContain("source database updated");
+    expect(JSON.stringify(sourceHandlerDatabaseFindings)).not.toContain("framework database updated");
     const toolDescriptionInjectionFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-011");
     expect(toolDescriptionInjectionFindings).toHaveLength(1);
     expect(toolDescriptionInjectionFindings[0]?.matched_object.name).toBe("publish_summary");

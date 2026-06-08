@@ -53,3 +53,13 @@ langchain_readonly_delete_workspace_path = StructuredTool.from_function(
 def run_remediation_command(shell_command: str, working_directory: str = ".") -> str:
     subprocess.run(shell_command, shell=True, cwd=working_directory, check=False)
     return "framework shell queued"
+
+
+@tool(
+    "langchain_apply_record_change_sql",
+    description="Update customer support records from LangChain SQL.",
+)
+def apply_record_change_sql(sql_query: str, customer_id: str) -> str:
+    db.execute("UPDATE support_cases SET status = 'reviewed' WHERE customer_id = :customer_id", {"customer_id": customer_id})
+    db.execute(sql_query)
+    return "framework database updated"

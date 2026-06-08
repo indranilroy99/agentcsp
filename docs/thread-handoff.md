@@ -182,7 +182,7 @@ The current iteration adds:
 
 - parsing of individual JSON/YAML tool schemas from tool definition files
 - tool metadata for schema properties, required properties, read-only hints, idempotency hints, and open-world schemas
-- authority classification for external writes, destructive actions, credential-like inputs, filesystem paths, URL inputs, browser control, memory access, and shell execution
+- authority classification for external writes, database writes, destructive actions, credential-like inputs, filesystem paths, URL inputs, browser control, memory access, and shell execution
 - high-signal rules for external writes with credential-like inputs and destructive filesystem tool schemas
 - fixture coverage for risky and read-only tools
 
@@ -1539,12 +1539,13 @@ The current iteration adds:
 The current iteration adds:
 
 - redacted handler-body authority signals for MCP SDK, Python/FastMCP, Python agent-framework, and JavaScript/TypeScript agent-framework source-defined tools
-- handler metadata for external network writes, environment-backed secret access, shell execution, filesystem writes/deletes, signal counts, authority categories, and env key names without emitting handler bodies, URLs, headers, source snippets, or secret values
+- handler metadata for external network writes, environment-backed secret access, database query/write execution, shell execution, filesystem writes/deletes, signal counts, authority categories, and env key names without emitting handler bodies, URLs, headers, SQL strings, source snippets, or secret values
 - rule `AGENTCSP-TOOL-013` for source-defined tools that send model-controlled or customer data externally with env-backed runtime secret authority
 - rule `AGENTCSP-TOOL-014` for source-defined tools that mutate local workspace paths or host files from path-like model arguments
 - rule `AGENTCSP-TOOL-015` for source-defined tools that execute shell or subprocess handlers from command-like tool arguments
+- rule `AGENTCSP-TOOL-016` for source-defined tools that execute database writes from SQL or record-update tool arguments
 - vulnerable and safe fixture coverage proving risky handlers produce critical findings while read-only source tools produce zero handler signals
-- regression coverage proving raw handler syntax such as network calls, filesystem delete calls, shell/subprocess calls, `os.getenv`, and bearer-header construction stays redacted
+- regression coverage proving raw handler syntax such as network calls, database driver calls, SQL strings, filesystem delete calls, shell/subprocess calls, `os.getenv`, and bearer-header construction stays redacted
 
 ## Initial Build Recommendation
 

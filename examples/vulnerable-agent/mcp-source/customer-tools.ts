@@ -63,3 +63,25 @@ server.registerTool(
     return { content: [{ type: "text", text: "source shell queued" }] };
   }
 );
+
+server.registerTool(
+  "source_apply_record_change_sql",
+  {
+    description: "Update customer support records from a supplied SQL statement.",
+    inputSchema: z.object({
+      customer_id: z.string(),
+      sql_query: z.string(),
+      approval_reason: z.string().optional()
+    }).strict(),
+    annotations: {
+      readOnlyHint: false,
+      idempotentHint: false
+    }
+  },
+  async ({ customer_id, sql_query }) => {
+    const db = globalThis.supportDb;
+    await db.query("UPDATE support_cases SET status = 'reviewed' WHERE customer_id = $1", [customer_id]);
+    await db.query(sql_query);
+    return { content: [{ type: "text", text: "source database updated" }] };
+  }
+);

@@ -24117,7 +24117,7 @@ function addToolDefinitionSurface(
     side_effect: authority.side_effect,
     external_reach: authority.external_reach,
     secret_exposure: authority.secret_exposure,
-    reversible: !authority.destructive_action && !authority.external_write,
+    reversible: !authority.destructive_action && !authority.external_write && !authority.database_write,
     reason,
     metadata: {
       tool_name: definition.name,
@@ -24133,6 +24133,8 @@ function addToolDefinitionSurface(
       accepts_pii_like_input: authority.accepts_pii_like_input,
       accepts_customer_data_input: authority.accepts_customer_data_input,
       accepted_data_classes: authority.accepted_data_classes,
+      database_access: authority.database_access,
+      database_write: authority.database_write,
       external_write: authority.external_write,
       destructive_action: authority.destructive_action,
       read_only_hint: definition.annotations?.readOnlyHint,
@@ -26500,6 +26502,8 @@ interface SourceToolHandlerSignals {
   handlerExternalNetworkCall: boolean;
   handlerExternalWrite: boolean;
   handlerSecretEnvAccess: boolean;
+  handlerDatabaseQuery: boolean;
+  handlerDatabaseWrite: boolean;
   handlerShellExecution: boolean;
   handlerFilesystemWrite: boolean;
   handlerFilesystemDelete: boolean;
@@ -26914,6 +26918,8 @@ function sourceToolHandlerSignalMetadata(signals: SourceToolHandlerSignals | und
     handler_external_network_call: signals.handlerExternalNetworkCall,
     handler_external_write: signals.handlerExternalWrite,
     handler_secret_env_access: signals.handlerSecretEnvAccess,
+    handler_database_query: signals.handlerDatabaseQuery,
+    handler_database_write: signals.handlerDatabaseWrite,
     handler_shell_execution: signals.handlerShellExecution,
     handler_filesystem_write: signals.handlerFilesystemWrite,
     handler_filesystem_delete: signals.handlerFilesystemDelete,
@@ -26939,6 +26945,10 @@ function classifySourceToolHandlerSignals(
   const externalWrite = language === "javascript"
     ? hasJavaScriptHandlerExternalWrite(handlerSource)
     : hasPythonHandlerExternalWrite(handlerSource);
+  const databaseQuery = language === "javascript"
+    ? hasJavaScriptHandlerDatabaseQuery(handlerSource)
+    : hasPythonHandlerDatabaseQuery(handlerSource);
+  const databaseWrite = databaseQuery && hasHandlerDatabaseWriteSignal(handlerSource);
   const secretEnvAccess = envKeyNames.length > 0 || (language === "javascript"
     ? /\b(?:process|Deno|Bun)\s*\.\s*env\b/u.test(handlerSource)
     : /\b(?:os\s*\.\s*(?:environ|getenv)|dotenv)\b/u.test(handlerSource));
@@ -26956,6 +26966,8 @@ function classifySourceToolHandlerSignals(
   if (externalNetworkCall) classes.add("handler_network_access");
   if (externalWrite) classes.add("handler_external_write");
   if (secretEnvAccess) classes.add("handler_secret_env_access");
+  if (databaseQuery) classes.add("handler_database_query");
+  if (databaseWrite) classes.add("handler_database_write");
   if (shellExecution) classes.add("handler_shell_execution");
   if (filesystemWrite) classes.add("handler_filesystem_write");
   if (filesystemDelete) classes.add("handler_filesystem_delete");
@@ -26965,6 +26977,8 @@ function classifySourceToolHandlerSignals(
     handlerExternalNetworkCall: externalNetworkCall,
     handlerExternalWrite: externalWrite,
     handlerSecretEnvAccess: secretEnvAccess,
+    handlerDatabaseQuery: databaseQuery,
+    handlerDatabaseWrite: databaseWrite,
     handlerShellExecution: shellExecution,
     handlerFilesystemWrite: filesystemWrite,
     handlerFilesystemDelete: filesystemDelete,
@@ -27019,6 +27033,22 @@ function hasPythonHandlerNetworkCall(source: string): boolean {
   return /\b(?:requests|httpx)\s*\.\s*(?:get|post|put|patch|delete|request)\s*\(|\baiohttp\s*\.|\burllib\s*\.\s*request|\burlopen\s*\(/u.test(
     source
   );
+}
+
+function hasJavaScriptHandlerDatabaseQuery(source: string): boolean {
+  return /\b(?:db|database|client|pool|connection|conn|knex|prisma|sequelize|supabase|sql)\s*\.\s*(?:query|execute|raw|run|exec|update|delete|insert|upsert|create|save)\s*\(|\b(?:executeSql|executeQuery)\s*\(/iu.test(
+    source
+  );
+}
+
+function hasPythonHandlerDatabaseQuery(source: string): boolean {
+  return /\b(?:db|database|client|cursor|conn|connection|engine|session)\s*\.\s*(?:execute|executemany|executescript|query|raw|run|commit|add|delete|merge)\s*\(|\b(?:sqlite3|psycopg2?|sqlalchemy)\b/iu.test(
+    source
+  );
+}
+
+function hasHandlerDatabaseWriteSignal(source: string): boolean {
+  return /\b(?:insert|update|delete|drop|truncate|alter|create|merge|upsert|replace)\b/iu.test(source);
 }
 
 function hasJavaScriptHandlerExternalWrite(source: string): boolean {
@@ -28300,6 +28330,8 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   accepts_pii_like_input: boolean;
   accepts_customer_data_input: boolean;
   accepted_data_classes: SurfaceObject["data_classes"];
+  database_access: boolean;
+  database_write: boolean;
   external_write: boolean;
   destructive_action: boolean;
   open_world_authority: boolean;
@@ -28322,6 +28354,8 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   const handlerSecretEnvAccess = handler?.handlerSecretEnvAccess === true;
   const handlerExternalNetworkCall = handler?.handlerExternalNetworkCall === true;
   const handlerExternalWrite = handler?.handlerExternalWrite === true;
+  const handlerDatabaseQuery = handler?.handlerDatabaseQuery === true;
+  const handlerDatabaseWrite = handler?.handlerDatabaseWrite === true;
   const handlerShellExecution = handler?.handlerShellExecution === true;
   const handlerFilesystemWrite = handler?.handlerFilesystemWrite === true;
   const handlerFilesystemDelete = handler?.handlerFilesystemDelete === true;
@@ -28348,6 +28382,19 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   if (acceptsPath || /\b(read\s+file|write\s+file|filesystem|fs)\b/i.test(text) || handlerFilesystemWrite || handlerFilesystemDelete) {
     classes.add("filesystem_access");
     actions.add(/\b(write|save|update|modify)\b/i.test(text) || handlerFilesystemWrite ? "write" : "read");
+  }
+  const databaseAccess = handlerDatabaseQuery;
+  const databaseWrite =
+    handlerDatabaseWrite ||
+    (handlerDatabaseQuery && /\b(update|delete|insert|write|mutate|save|modify|create|upsert|record)\b/i.test(text));
+  if (databaseAccess) {
+    classes.add("database_access");
+    actions.add("execute");
+    actions.add(databaseWrite ? "write" : "read");
+  }
+  if (databaseWrite) {
+    classes.add("database_write");
+    actions.add("write");
   }
   if (/\b(memory|remember|store|recall)\b/i.test(text)) {
     classes.add("memory_access");
@@ -28394,6 +28441,8 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       destructive ||
       acceptsSecret ||
       handlerSecretEnvAccess ||
+      handlerDatabaseQuery ||
+      handlerDatabaseWrite ||
       handlerExternalWrite ||
       handlerShellExecution ||
       handlerFilesystemWrite ||
@@ -28421,6 +28470,8 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
     accepts_pii_like_input: schemaDataProfile.acceptsPii,
     accepts_customer_data_input: schemaDataProfile.acceptsCustomerData,
     accepted_data_classes: schemaDataProfile.dataClasses,
+    database_access: databaseAccess,
+    database_write: databaseWrite,
     external_write: externalWrite,
     destructive_action: destructive || handlerFilesystemDelete,
     open_world_authority: openWorldAuthority,

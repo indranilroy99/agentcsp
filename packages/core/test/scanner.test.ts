@@ -539,11 +539,13 @@ describe("scanner", () => {
     const sourceExportTool = surfaces.tools.find((surface) => surface.name === "source_export_customer_record");
     const sourceDeleteTool = surfaces.tools.find((surface) => surface.name === "source_readonly_delete_workspace_file");
     const sourceShellTool = surfaces.tools.find((surface) => surface.name === "source_run_remediation_command");
+    const sourceDatabaseTool = surfaces.tools.find((surface) => surface.name === "source_apply_record_change_sql");
     const pythonExportTool = surfaces.tools.find((surface) => surface.name === "python_export_customer_record");
     const pythonDeleteTool = surfaces.tools.find((surface) => surface.name === "python_readonly_delete_workspace_file");
     const langchainExportTool = surfaces.tools.find((surface) => surface.name === "langchain_export_customer_context");
     const langchainDeleteTool = surfaces.tools.find((surface) => surface.name === "langchain_readonly_delete_workspace_path");
     const langchainShellTool = surfaces.tools.find((surface) => surface.name === "langchain_run_remediation_command");
+    const langchainDatabaseTool = surfaces.tools.find((surface) => surface.name === "langchain_apply_record_change_sql");
     const aiSdkExportTool = surfaces.tools.find((surface) => surface.name === "aiSdkExportCustomerContext");
     const tsLangchainDeleteTool = surfaces.tools.find((surface) => surface.name === "ts_langchain_delete_workspace_path");
     expect(publishTool?.metadata).toMatchObject({
@@ -771,6 +773,63 @@ describe("scanner", () => {
     expect(JSON.stringify(sourceShellTool)).not.toContain("execFile");
     expect(JSON.stringify(sourceShellTool)).not.toContain("node:child_process");
     expect(JSON.stringify(sourceShellTool)).not.toContain("source shell queued");
+    expect(sourceDatabaseTool).toMatchObject({
+      path: "mcp-source/customer-tools.ts",
+      data_classes: ["confidential", "pii"],
+      actions: ["call", "execute", "write"],
+      side_effect: true,
+      external_reach: false,
+      secret_exposure: false,
+      reversible: false
+    });
+    expect(sourceDatabaseTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_mcp_source_tool: true,
+      mcp_source_tool_registration: true,
+      mcp_source_tool_registration_kind: "registerTool",
+      mcp_source_tool_argument_count: 3,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      read_only_hint: false,
+      idempotent_hint: false,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      database_access: true,
+      database_write: true,
+      external_write: false,
+      destructive_action: false,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_external_network_call: false,
+      handler_external_write: false,
+      handler_secret_env_access: false,
+      handler_database_query: true,
+      handler_database_write: true,
+      handler_shell_execution: false,
+      handler_filesystem_write: false,
+      handler_filesystem_delete: false,
+      handler_signal_count: 2,
+      open_world_schema: false
+    });
+    expect(sourceDatabaseTool?.metadata.authority_classes).toEqual([
+      "customer_data_input",
+      "database_access",
+      "database_write",
+      "handler_database_query",
+      "handler_database_write",
+      "pii_input"
+    ]);
+    expect(sourceDatabaseTool?.metadata.handler_authority_classes).toEqual([
+      "handler_database_query",
+      "handler_database_write"
+    ]);
+    expect(sourceDatabaseTool?.metadata.handler_env_key_names).toEqual([]);
+    expect(sourceDatabaseTool?.metadata.schema_properties).toEqual(["approval_reason", "customer_id", "sql_query"]);
+    expect(sourceDatabaseTool?.metadata.required_properties).toEqual(["customer_id", "sql_query"]);
+    expect(JSON.stringify(sourceDatabaseTool)).not.toContain("db.query");
+    expect(JSON.stringify(sourceDatabaseTool)).not.toContain("UPDATE support_cases");
+    expect(JSON.stringify(sourceDatabaseTool)).not.toContain("source database updated");
+    expect(JSON.stringify(sourceDatabaseTool)).not.toContain("Update customer support records from a supplied SQL statement");
     expect(pythonExportTool).toMatchObject({
       path: "mcp-source/python_tools.py",
       data_classes: ["confidential", "credential", "pii"],
@@ -1033,6 +1092,62 @@ describe("scanner", () => {
     expect(JSON.stringify(langchainShellTool)).not.toContain("subprocess.run");
     expect(JSON.stringify(langchainShellTool)).not.toContain("shell=True");
     expect(JSON.stringify(langchainShellTool)).not.toContain("framework shell queued");
+    expect(langchainDatabaseTool).toMatchObject({
+      path: "framework-tools/langchain_tools.py",
+      data_classes: ["confidential", "pii"],
+      actions: ["call", "execute", "write"],
+      side_effect: true,
+      external_reach: false,
+      secret_exposure: false,
+      reversible: false
+    });
+    expect(langchainDatabaseTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_agent_framework_source_tool: true,
+      agent_framework_source_tool: true,
+      agent_framework_source_tool_framework: "langchain",
+      agent_framework_source_tool_registration_kind: "python_tool_decorator",
+      agent_framework_source_tool_argument_count: 2,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      database_access: true,
+      database_write: true,
+      external_write: false,
+      destructive_action: false,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_external_network_call: false,
+      handler_external_write: false,
+      handler_secret_env_access: false,
+      handler_database_query: true,
+      handler_database_write: true,
+      handler_shell_execution: false,
+      handler_filesystem_write: false,
+      handler_filesystem_delete: false,
+      handler_signal_count: 2,
+      open_world_schema: false
+    });
+    expect(langchainDatabaseTool?.metadata.authority_classes).toEqual([
+      "customer_data_input",
+      "database_access",
+      "database_write",
+      "handler_database_query",
+      "handler_database_write",
+      "pii_input"
+    ]);
+    expect(langchainDatabaseTool?.metadata.handler_authority_classes).toEqual([
+      "handler_database_query",
+      "handler_database_write"
+    ]);
+    expect(langchainDatabaseTool?.metadata.handler_env_key_names).toEqual([]);
+    expect(langchainDatabaseTool?.metadata.schema_properties).toEqual(["customer_id", "sql_query"]);
+    expect(langchainDatabaseTool?.metadata.required_properties).toEqual(["customer_id", "sql_query"]);
+    expect(JSON.stringify(langchainDatabaseTool)).not.toContain("db.execute");
+    expect(JSON.stringify(langchainDatabaseTool)).not.toContain("UPDATE support_cases");
+    expect(JSON.stringify(langchainDatabaseTool)).not.toContain("framework database updated");
+    expect(JSON.stringify(langchainDatabaseTool)).not.toContain("Update customer support records from LangChain SQL");
     expect(aiSdkExportTool).toMatchObject({
       path: "framework-tools/vercel-ai-tools.ts",
       data_classes: ["confidential", "credential", "pii"],
