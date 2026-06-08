@@ -310,6 +310,7 @@ Tool metadata may include:
 - `secret_manager_access`
 - `external_service_write`
 - `model_provider_call`
+- `privileged_prompt_composition`
 - `network_response_capture`
 - `external_write`
 - `destructive_action`
@@ -326,6 +327,7 @@ Tool metadata may include:
 - `handler_external_write`
 - `handler_external_service_write`
 - `handler_model_provider_call`
+- `handler_privileged_prompt_composition`
 - `handler_secret_env_access`
 - `handler_model_visible_output`
 - `handler_secret_to_output`

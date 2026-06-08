@@ -1,0 +1,82 @@
+id: AGENTCSP-TOOL-031
+name: Source tool handler promotes customer context into privileged model role
+description: A source-defined agent tool handler places caller or customer supplied content into a system or developer model message before invoking a model-provider SDK with runtime credentials.
+category: tool_source_handler_authority
+severity: critical
+maps_to:
+  owasp:
+    - LLM01:2025 Prompt Injection
+    - LLM02:2025 Sensitive Information Disclosure
+    - LLM06:2025 Excessive Agency
+  mitre_atlas:
+    - AML.T0051 LLM Plugin Compromise
+  nist_ai_rmf:
+    - MAP 4.1
+    - MEASURE 2.7
+    - MANAGE 2.4
+match:
+  object_type: tool
+  where:
+    - field: metadata.parsed_tool_schema
+      op: equals
+      value: true
+    - field: metadata.source_tool_handler_redacted
+      op: equals
+      value: true
+    - field: metadata.handler_body_analyzed
+      op: equals
+      value: true
+    - field: metadata.handler_model_provider_call
+      op: equals
+      value: true
+    - field: metadata.model_provider_call
+      op: equals
+      value: true
+    - field: metadata.handler_privileged_prompt_composition
+      op: equals
+      value: true
+    - field: metadata.privileged_prompt_composition
+      op: equals
+      value: true
+    - field: metadata.handler_secret_env_access
+      op: equals
+      value: true
+    - field: metadata.handler_model_visible_output
+      op: equals
+      value: true
+    - field: metadata.accepts_content_like_input
+      op: equals
+      value: true
+    - field: metadata.accepts_customer_data_input
+      op: equals
+      value: true
+    - field: metadata.authority_classes
+      op: includes
+      value: privileged_prompt_composition
+    - field: metadata.authority_classes
+      op: includes
+      value: model_provider_call
+    - field: metadata.handler_authority_classes
+      op: includes
+      value: handler_privileged_prompt_composition
+    - field: metadata.handler_authority_classes
+      op: includes
+      value: handler_model_provider_call
+    - field: actions
+      op: includes
+      value: send
+    - field: side_effect
+      op: equals
+      value: true
+    - field: external_reach
+      op: equals
+      value: true
+    - field: secret_exposure
+      op: equals
+      value: true
+    - field: reversible
+      op: equals
+      value: false
+recommendation:
+  control: quarantine
+  text: Quarantine source-defined model calls that compose privileged prompt roles from caller context until untrusted content is kept in user or tool roles, sanitized before use, routed through approved prompt templates, and reviewed by policy outside the model path.

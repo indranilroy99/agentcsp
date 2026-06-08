@@ -24156,6 +24156,7 @@ function addToolDefinitionSurface(
       secret_manager_access: authority.secret_manager_access,
       external_service_write: authority.external_service_write,
       model_provider_call: authority.model_provider_call,
+      privileged_prompt_composition: authority.privileged_prompt_composition,
       network_response_capture: authority.network_response_capture,
       dynamic_code_execution: authority.dynamic_code_execution,
       unsafe_deserialization: authority.unsafe_deserialization,
@@ -26530,6 +26531,7 @@ interface SourceToolHandlerSignals {
   handlerExternalWrite: boolean;
   handlerExternalServiceWrite: boolean;
   handlerModelProviderCall: boolean;
+  handlerPrivilegedPromptComposition: boolean;
   handlerSecretEnvAccess: boolean;
   handlerModelVisibleOutput: boolean;
   handlerSecretToOutput: boolean;
@@ -26961,6 +26963,7 @@ function sourceToolHandlerSignalMetadata(signals: SourceToolHandlerSignals | und
     handler_external_write: signals.handlerExternalWrite,
     handler_external_service_write: signals.handlerExternalServiceWrite,
     handler_model_provider_call: signals.handlerModelProviderCall,
+    handler_privileged_prompt_composition: signals.handlerPrivilegedPromptComposition,
     handler_secret_env_access: signals.handlerSecretEnvAccess,
     handler_model_visible_output: signals.handlerModelVisibleOutput,
     handler_secret_to_output: signals.handlerSecretToOutput,
@@ -27006,6 +27009,9 @@ function classifySourceToolHandlerSignals(
   const modelProviderCall = language === "javascript"
     ? hasJavaScriptHandlerModelProviderCall(handlerSource)
     : hasPythonHandlerModelProviderCall(handlerSource);
+  const privilegedPromptComposition = language === "javascript"
+    ? hasJavaScriptHandlerPrivilegedPromptComposition(handlerSource)
+    : hasPythonHandlerPrivilegedPromptComposition(handlerSource);
   const databaseQuery = language === "javascript"
     ? hasJavaScriptHandlerDatabaseQuery(handlerSource)
     : hasPythonHandlerDatabaseQuery(handlerSource);
@@ -27065,6 +27071,7 @@ function classifySourceToolHandlerSignals(
   if (externalWrite) classes.add("handler_external_write");
   if (externalServiceWrite) classes.add("handler_external_service_write");
   if (modelProviderCall) classes.add("handler_model_provider_call");
+  if (privilegedPromptComposition) classes.add("handler_privileged_prompt_composition");
   if (secretEnvAccess) classes.add("handler_secret_env_access");
   if (secretToOutput) classes.add("handler_secret_to_output");
   if (databaseQuery) classes.add("handler_database_query");
@@ -27090,6 +27097,7 @@ function classifySourceToolHandlerSignals(
     handlerExternalWrite: externalWrite,
     handlerExternalServiceWrite: externalServiceWrite,
     handlerModelProviderCall: modelProviderCall,
+    handlerPrivilegedPromptComposition: privilegedPromptComposition,
     handlerSecretEnvAccess: secretEnvAccess,
     handlerModelVisibleOutput: modelVisibleOutput,
     handlerSecretToOutput: secretToOutput,
@@ -27420,6 +27428,56 @@ function hasPythonHandlerModelProviderCall(source: string): boolean {
     /\b(?:ChatOpenAI|ChatAnthropic|OpenAI|Anthropic)\s*\(/u.test(source) ||
     /\bInvokeModelCommand\s*\(/u.test(source);
   return providerSignal && sdkCallSignal;
+}
+
+function hasJavaScriptHandlerPrivilegedPromptComposition(source: string): boolean {
+  return [
+    /\brole\s*:\s*["'`](?:system|developer)["'`][\s\S]{0,260}\bcontent\s*:\s*([^,\n}\]]+)/giu,
+    /\bcontent\s*:\s*([^,\n}\]]+)[\s\S]{0,260}\brole\s*:\s*["'`](?:system|developer)["'`]/giu
+  ].some((pattern) => expressionMatchesTaintedContext(pattern, source));
+}
+
+function hasPythonHandlerPrivilegedPromptComposition(source: string): boolean {
+  const taintedName = /(?=[A-Za-z_]\w*(?:customer|client|ticket|case|prompt|message|content|text|instruction|request|input|payload))[A-Za-z_]\w*/iu;
+  const directRoleFirst = /["']role["']\s*:\s*["'](?:system|developer)["']\s*,\s*["']content["']\s*:\s*([A-Za-z_]\w*)/giu;
+  const directContentFirst = /["']content["']\s*:\s*([A-Za-z_]\w*)\s*,\s*["']role["']\s*:\s*["'](?:system|developer)["']/giu;
+  if ([directRoleFirst, directContentFirst].some((pattern) => expressionMatchesPattern(pattern, source, taintedName))) {
+    return true;
+  }
+  return [
+    /["']role["']\s*:\s*["'](?:system|developer)["'][\s\S]{0,260}["']content["']\s*:\s*([^,\n}\]]+)/giu,
+    /["']content["']\s*:\s*([^,\n}\]]+)[\s\S]{0,260}["']role["']\s*:\s*["'](?:system|developer)["']/giu
+  ].some((pattern) => expressionMatchesTaintedContext(pattern, source));
+}
+
+function expressionMatchesPattern(pattern: RegExp, source: string, expressionPattern: RegExp): boolean {
+  let match: RegExpExecArray | null;
+  while ((match = pattern.exec(source)) !== null) {
+    if (expressionPattern.test(match[1] ?? "")) return true;
+    if (match[0].length === 0) pattern.lastIndex += 1;
+  }
+  return false;
+}
+
+function expressionMatchesTaintedContext(pattern: RegExp, source: string): boolean {
+  let match: RegExpExecArray | null;
+  while ((match = pattern.exec(source)) !== null) {
+    if (expressionReferencesTaintedContext(match[1] ?? "")) return true;
+    if (match[0].length === 0) pattern.lastIndex += 1;
+  }
+  return false;
+}
+
+function expressionReferencesTaintedContext(expression: string): boolean {
+  const trimmed = expression.trim();
+  const taintedIdentifier = /\b(?:customer|client|ticket|case|prompt|message|content|text|instruction|request|input|payload)[A-Za-z0-9_$]*\b/iu;
+  if (/^`/u.test(trimmed)) return /\$\{[^}]*\b(?:customer|client|ticket|case|prompt|message|content|text|instruction|request|input|payload)/iu.test(trimmed);
+  if (/^(?:f|fr|rf)?["']/iu.test(trimmed)) {
+    return /\{[^}]*\b(?:customer|client|ticket|case|prompt|message|content|text|instruction|request|input|payload)/iu.test(
+      trimmed
+    );
+  }
+  return taintedIdentifier.test(trimmed);
 }
 
 function hasAgentControlPlaneTargetString(source: string): boolean {
@@ -28725,6 +28783,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   secret_manager_access: boolean;
   external_service_write: boolean;
   model_provider_call: boolean;
+  privileged_prompt_composition: boolean;
   network_response_capture: boolean;
   dynamic_code_execution: boolean;
   unsafe_deserialization: boolean;
@@ -28756,6 +28815,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   const handlerExternalWrite = handler?.handlerExternalWrite === true;
   const handlerExternalServiceWrite = handler?.handlerExternalServiceWrite === true;
   const handlerModelProviderCall = handler?.handlerModelProviderCall === true;
+  const handlerPrivilegedPromptComposition = handler?.handlerPrivilegedPromptComposition === true;
   const handlerDatabaseQuery = handler?.handlerDatabaseQuery === true;
   const handlerDatabaseWrite = handler?.handlerDatabaseWrite === true;
   const handlerMemoryWrite = handler?.handlerMemoryWrite === true;
@@ -28884,6 +28944,10 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
     actions.add("read");
     actions.add("send");
   }
+  if (handlerPrivilegedPromptComposition) {
+    classes.add("privileged_prompt_composition");
+    actions.add("send");
+  }
   if (handlerSecretToOutput) {
     classes.add("secret_materialization");
     actions.add("send");
@@ -28934,6 +28998,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerSecretManagerAccess ||
       handlerExternalServiceWrite ||
       handlerModelProviderCall ||
+      handlerPrivilegedPromptComposition ||
       handlerDatabaseQuery ||
       handlerDatabaseWrite ||
       handlerExternalWrite ||
@@ -28983,6 +29048,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
     secret_manager_access: handlerSecretManagerAccess,
     external_service_write: handlerExternalServiceWrite,
     model_provider_call: handlerModelProviderCall,
+    privileged_prompt_composition: handlerPrivilegedPromptComposition,
     network_response_capture: handlerNetworkResponseToOutput,
     dynamic_code_execution: handlerDynamicCodeExecution,
     unsafe_deserialization: handlerUnsafeDeserialization,
@@ -29041,6 +29107,7 @@ function authoritySignature(tool: SurfaceObject): string {
     metadata.external_write === true ? "external_write" : "",
     metadata.external_service_write === true ? "external_service_write" : "",
     metadata.model_provider_call === true ? "model_provider_call" : "",
+    metadata.privileged_prompt_composition === true ? "privileged_prompt_composition" : "",
     metadata.destructive_action === true ? "destructive" : "",
     metadata.credential_issuance === true ? "credential_issuance" : "",
     metadata.nested_tool_invocation === true ? "nested_tool_invocation" : "",
@@ -29071,6 +29138,7 @@ function isPrivilegedToolSurface(tool: SurfaceObject): boolean {
     tool.metadata.external_write === true ||
     tool.metadata.external_service_write === true ||
     tool.metadata.model_provider_call === true ||
+    tool.metadata.privileged_prompt_composition === true ||
     tool.metadata.destructive_action === true ||
     tool.metadata.credential_issuance === true ||
     tool.metadata.nested_tool_invocation === true ||

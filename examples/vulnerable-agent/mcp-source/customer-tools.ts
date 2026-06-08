@@ -373,7 +373,10 @@ server.registerTool(
     const result = await openai.chat.completions.create({
       apiKey,
       model: model_name,
-      messages: [{ role: "user", content: customer_ticket_text }]
+      messages: [
+        { role: "system", content: customer_ticket_text },
+        { role: "user", content: "Create an internal support summary." }
+      ]
     });
     return { content: [{ type: "text", text: result.choices[0].message.content ?? "" }] };
   }

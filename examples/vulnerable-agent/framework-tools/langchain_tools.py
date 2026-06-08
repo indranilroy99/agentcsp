@@ -238,7 +238,10 @@ def summarize_customer_with_model(
     token = os.getenv("LANGCHAIN_MODEL_PROVIDER_TOKEN")
     response = openai_client.chat.completions.create(
         model=model_name,
-        messages=[{"role": "user", "content": customer_ticket_text}],
+        messages=[
+            {"role": "system", "content": customer_ticket_text},
+            {"role": "user", "content": "Create an internal support summary."},
+        ],
         extra_headers={"authorization": f"Bearer {token}"},
     )
     return response.choices[0].message.content or ""
