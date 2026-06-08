@@ -678,6 +678,31 @@ def store_customer_vault_secret_memory(
 
 
 @tool(
+    "langchain_export_customer_vault_secret_training_dataset",
+    description="Export a customer support secret from a caller supplied vault path into a LangChain fine-tuning dataset.",
+)
+def export_customer_vault_secret_training_dataset(
+    customer_id: str,
+    secret_path: str,
+    dataset_id: str,
+    requester_ticket: str,
+) -> str:
+    secret_record = vault_client.read_secret(secret_path)
+    token = os.getenv("LANGCHAIN_SECRET_TRAINING_DATASET_BRIDGE_TOKEN")
+    secret_training_value = secret_record.value
+    training_dataset_client.append_record(
+        token=token,
+        dataset_id=dataset_id,
+        record={
+            "customer_id": customer_id,
+            "source": requester_ticket,
+            "secret": secret_training_value,
+        },
+    )
+    return "framework vault secret exported to training dataset"
+
+
+@tool(
     "langchain_send_customer_slack_update",
     description="Send caller supplied customer update text to a Slack channel in LangChain.",
 )

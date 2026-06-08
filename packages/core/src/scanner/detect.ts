@@ -24200,6 +24200,7 @@ function addToolDefinitionSurface(
       tainted_prompt_cache_key: authority.tainted_prompt_cache_key,
       tainted_prompt_cache_value: authority.tainted_prompt_cache_value,
       training_dataset_export: authority.training_dataset_export,
+      secret_manager_training_dataset_bridge: authority.secret_manager_training_dataset_bridge,
       tainted_training_dataset_payload: authority.tainted_training_dataset_payload,
       feedback_pipeline_write: authority.feedback_pipeline_write,
       tainted_feedback_payload: authority.tainted_feedback_payload,
@@ -26611,6 +26612,7 @@ interface SourceToolHandlerSignals {
   handlerModelProviderCall: boolean;
   handlerTaintedModelSelection: boolean;
   handlerSecretManagerPromptBridge: boolean;
+  handlerSecretManagerTrainingDatasetBridge: boolean;
   handlerToolOutputPromptBridge: boolean;
   handlerEmbeddingProviderCall: boolean;
   handlerTaintedEmbeddingInput: boolean;
@@ -27102,6 +27104,7 @@ function sourceToolHandlerSignalMetadata(signals: SourceToolHandlerSignals | und
     handler_model_provider_call: signals.handlerModelProviderCall,
     handler_tainted_model_selection: signals.handlerTaintedModelSelection,
     handler_secret_manager_prompt_bridge: signals.handlerSecretManagerPromptBridge,
+    handler_secret_manager_training_dataset_bridge: signals.handlerSecretManagerTrainingDatasetBridge,
     handler_tool_output_prompt_bridge: signals.handlerToolOutputPromptBridge,
     handler_embedding_provider_call: signals.handlerEmbeddingProviderCall,
     handler_tainted_embedding_input: signals.handlerTaintedEmbeddingInput,
@@ -27418,6 +27421,9 @@ function classifySourceToolHandlerSignals(
   const secretManagerPromptBridge = secretManagerAccess && modelProviderCall && (language === "javascript"
     ? hasJavaScriptHandlerSecretManagerPromptBridge(handlerSource)
     : hasPythonHandlerSecretManagerPromptBridge(handlerSource));
+  const secretManagerTrainingDatasetBridge = secretManagerAccess && trainingDatasetExport && (language === "javascript"
+    ? hasJavaScriptHandlerSecretManagerTrainingDatasetBridge(handlerSource)
+    : hasPythonHandlerSecretManagerTrainingDatasetBridge(handlerSource));
   const secretManagerMemoryBridge = secretManagerAccess && memoryWrite && (language === "javascript"
     ? hasJavaScriptHandlerSecretManagerMemoryBridge(handlerSource)
     : hasPythonHandlerSecretManagerMemoryBridge(handlerSource));
@@ -27434,6 +27440,7 @@ function classifySourceToolHandlerSignals(
   if (modelProviderCall) classes.add("handler_model_provider_call");
   if (taintedModelSelection) classes.add("handler_tainted_model_selection");
   if (secretManagerPromptBridge) classes.add("handler_secret_manager_prompt_bridge");
+  if (secretManagerTrainingDatasetBridge) classes.add("handler_secret_manager_training_dataset_bridge");
   if (toolOutputPromptBridge) classes.add("handler_tool_output_prompt_bridge");
   if (embeddingProviderCall) classes.add("handler_embedding_provider_call");
   if (taintedEmbeddingInput) classes.add("handler_tainted_embedding_input");
@@ -27519,6 +27526,7 @@ function classifySourceToolHandlerSignals(
     handlerModelProviderCall: modelProviderCall,
     handlerTaintedModelSelection: taintedModelSelection,
     handlerSecretManagerPromptBridge: secretManagerPromptBridge,
+    handlerSecretManagerTrainingDatasetBridge: secretManagerTrainingDatasetBridge,
     handlerToolOutputPromptBridge: toolOutputPromptBridge,
     handlerEmbeddingProviderCall: embeddingProviderCall,
     handlerTaintedEmbeddingInput: taintedEmbeddingInput,
@@ -27894,6 +27902,30 @@ function hasPythonHandlerSecretManagerMemoryBridge(source: string): boolean {
     [
       /\b(?:[A-Za-z_]\w*memory|memory|memory_store|vector_store|vectorstore|vector_index|embedding_store|rag_store|retriever|knowledge_base|session_store|state_store)\s*\.\s*(?:add|add_documents|add_texts|append|insert|persist|put|push|remember|save|set|store|upsert|write)\s*\(([\s\S]{0,1600})\)/giu,
       /\b(?:persist_memory|remember_context|save_memory|store_memory|upsert_memory|write_memory)\s*\(([\s\S]{0,1600})\)/giu
+    ],
+    source,
+    identifiers
+  );
+}
+
+function hasJavaScriptHandlerSecretManagerTrainingDatasetBridge(source: string): boolean {
+  const identifiers = extractJavaScriptSecretManagerIdentifiers(source);
+  return identifiers.length > 0 && callExpressionReferencesAnyIdentifier(
+    [
+      /\b(?:trainingDataset|trainingDatasetClient|datasetClient|fineTuneDataset|fineTuneClient|fineTuningClient|feedbackDataset|evalDataset|rlhfDataset|modelTrainingClient)\s*(?:\.\s*[A-Za-z_$][\w$]*){0,4}\s*\.\s*(?:append|appendRecord|add|addExample|create|createRecord|insert|upload|write|save|store|export|send|record|push)\s*\(([\s\S]{0,2200})\)/giu,
+      /\b(?:exportTrainingExample|writeTrainingExample|appendTrainingExample|uploadFineTuneRecord|createFineTuneRecord|recordTrainingExample)\s*\(([\s\S]{0,2200})\)/giu
+    ],
+    source,
+    identifiers
+  );
+}
+
+function hasPythonHandlerSecretManagerTrainingDatasetBridge(source: string): boolean {
+  const identifiers = extractPythonSecretManagerIdentifiers(source);
+  return identifiers.length > 0 && callExpressionReferencesAnyIdentifier(
+    [
+      /\b(?:training_dataset|training_dataset_client|dataset_client|fine_tune_dataset|fine_tune_client|fine_tuning_client|feedback_dataset|eval_dataset|rlhf_dataset|model_training_client)\s*(?:\.\s*[A-Za-z_]\w*){0,4}\s*\.\s*(?:append|append_record|add|add_example|create|create_record|insert|upload|write|save|store|export|send|record|push)\s*\(([\s\S]{0,2200})\)/giu,
+      /\b(?:export_training_example|write_training_example|append_training_example|upload_fine_tune_record|create_fine_tune_record|record_training_example)\s*\(([\s\S]{0,2200})\)/giu
     ],
     source,
     identifiers
@@ -31993,6 +32025,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   tainted_prompt_cache_key: boolean;
   tainted_prompt_cache_value: boolean;
   training_dataset_export: boolean;
+  secret_manager_training_dataset_bridge: boolean;
   tainted_training_dataset_payload: boolean;
   feedback_pipeline_write: boolean;
   tainted_feedback_payload: boolean;
@@ -32067,6 +32100,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   const handlerTaintedPromptCacheKey = handler?.handlerTaintedPromptCacheKey === true;
   const handlerTaintedPromptCacheValue = handler?.handlerTaintedPromptCacheValue === true;
   const handlerTrainingDatasetExport = handler?.handlerTrainingDatasetExport === true;
+  const handlerSecretManagerTrainingDatasetBridge = handler?.handlerSecretManagerTrainingDatasetBridge === true;
   const handlerTaintedTrainingDatasetPayload = handler?.handlerTaintedTrainingDatasetPayload === true;
   const handlerFeedbackPipelineWrite = handler?.handlerFeedbackPipelineWrite === true;
   const handlerTaintedFeedbackPayload = handler?.handlerTaintedFeedbackPayload === true;
@@ -32380,6 +32414,11 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
     actions.add("send");
     actions.add("write");
   }
+  if (handlerSecretManagerTrainingDatasetBridge) {
+    classes.add("secret_manager_training_dataset_bridge");
+    actions.add("send");
+    actions.add("write");
+  }
   if (handlerTaintedTrainingDatasetPayload) {
     classes.add("tainted_training_dataset_payload");
     actions.add("send");
@@ -32563,6 +32602,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerSecretManagerExternalServiceBridge ||
       handlerSecretManagerPromptBridge ||
       handlerSecretManagerMemoryBridge ||
+      handlerSecretManagerTrainingDatasetBridge ||
       handlerExternalServiceWrite ||
       handlerTaintedExternalServiceRecipient ||
       handlerToolOutputExternalServiceBridge ||
@@ -32577,6 +32617,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerTaintedPromptCacheKey ||
       handlerTaintedPromptCacheValue ||
       handlerTrainingDatasetExport ||
+      handlerSecretManagerTrainingDatasetBridge ||
       handlerTaintedTrainingDatasetPayload ||
       handlerFeedbackPipelineWrite ||
       handlerTaintedFeedbackPayload ||
@@ -32649,6 +32690,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerEmbeddingProviderCall ||
       handlerTelemetryExport ||
       handlerTrainingDatasetExport ||
+      handlerSecretManagerTrainingDatasetBridge ||
       handlerFeedbackPipelineWrite ||
       handlerSafetyPolicyWrite ||
       handlerAuthorizationPolicyWrite ||
@@ -32669,6 +32711,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerSecretManagerExternalServiceBridge ||
       handlerSecretManagerPromptBridge ||
       handlerSecretManagerMemoryBridge ||
+      handlerSecretManagerTrainingDatasetBridge ||
       (handlerToolOutputExternalServiceBridge && handlerSecretEnvAccess) ||
       (handlerSafetyPolicyWrite && handlerSecretEnvAccess) ||
       (handlerAuthorizationPolicyWrite && handlerSecretEnvAccess),
@@ -32717,6 +32760,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
     tainted_prompt_cache_key: handlerTaintedPromptCacheKey,
     tainted_prompt_cache_value: handlerTaintedPromptCacheValue,
     training_dataset_export: handlerTrainingDatasetExport,
+    secret_manager_training_dataset_bridge: handlerSecretManagerTrainingDatasetBridge,
     tainted_training_dataset_payload: handlerTaintedTrainingDatasetPayload,
     feedback_pipeline_write: handlerFeedbackPipelineWrite,
     tainted_feedback_payload: handlerTaintedFeedbackPayload,
@@ -32823,6 +32867,7 @@ function authoritySignature(tool: SurfaceObject): string {
     metadata.tainted_prompt_cache_key === true ? "tainted_prompt_cache_key" : "",
     metadata.tainted_prompt_cache_value === true ? "tainted_prompt_cache_value" : "",
     metadata.training_dataset_export === true ? "training_dataset_export" : "",
+    metadata.secret_manager_training_dataset_bridge === true ? "secret_manager_training_dataset_bridge" : "",
     metadata.tainted_training_dataset_payload === true ? "tainted_training_dataset_payload" : "",
     metadata.feedback_pipeline_write === true ? "feedback_pipeline_write" : "",
     metadata.tainted_feedback_payload === true ? "tainted_feedback_payload" : "",
@@ -32913,6 +32958,7 @@ function isPrivilegedToolSurface(tool: SurfaceObject): boolean {
     tool.metadata.tainted_prompt_cache_key === true ||
     tool.metadata.tainted_prompt_cache_value === true ||
     tool.metadata.training_dataset_export === true ||
+    tool.metadata.secret_manager_training_dataset_bridge === true ||
     tool.metadata.tainted_training_dataset_payload === true ||
     tool.metadata.feedback_pipeline_write === true ||
     tool.metadata.tainted_feedback_payload === true ||

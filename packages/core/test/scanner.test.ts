@@ -578,6 +578,9 @@ describe("scanner", () => {
     const sourceSecretManagerMemoryBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "source_store_customer_vault_secret_memory"
     );
+    const sourceSecretManagerTrainingDatasetBridgeTool = surfaces.tools.find(
+      (surface) => surface.name === "source_export_customer_vault_secret_training_dataset"
+    );
     const sourceExternalServiceWriteTool = surfaces.tools.find((surface) => surface.name === "source_send_customer_slack_update");
     const sourceModelProviderCallTool = surfaces.tools.find((surface) => surface.name === "source_summarize_customer_with_model");
     const pythonExportTool = surfaces.tools.find((surface) => surface.name === "python_export_customer_record");
@@ -624,6 +627,9 @@ describe("scanner", () => {
     );
     const langchainSecretManagerMemoryBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "langchain_store_customer_vault_secret_memory"
+    );
+    const langchainSecretManagerTrainingDatasetBridgeTool = surfaces.tools.find(
+      (surface) => surface.name === "langchain_export_customer_vault_secret_training_dataset"
     );
     const langchainExternalServiceWriteTool = surfaces.tools.find((surface) => surface.name === "langchain_send_customer_slack_update");
     const langchainModelProviderCallTool = surfaces.tools.find((surface) => surface.name === "langchain_summarize_customer_with_model");
@@ -3499,6 +3505,95 @@ describe("scanner", () => {
     expect(JSON.stringify(sourceSecretManagerMemoryBridgeTool)).not.toContain("secretMemoryValue");
     expect(JSON.stringify(sourceSecretManagerMemoryBridgeTool)).not.toContain("source vault secret persisted to memory");
     expect(JSON.stringify(sourceSecretManagerMemoryBridgeTool)).not.toContain("Store a customer support secret");
+    expect(sourceSecretManagerTrainingDatasetBridgeTool).toMatchObject({
+      path: "mcp-source/customer-tools.ts",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["call", "publish", "read", "send", "write"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(sourceSecretManagerTrainingDatasetBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_mcp_source_tool: true,
+      mcp_source_tool_registration: true,
+      mcp_source_tool_registration_kind: "registerTool",
+      mcp_source_tool_argument_count: 3,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      read_only_hint: false,
+      idempotent_hint: false,
+      accepts_secret_like_input: true,
+      accepts_path_input: true,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      secret_manager_access: true,
+      tainted_secret_manager_path: true,
+      training_dataset_export: true,
+      tainted_training_dataset_payload: false,
+      secret_manager_training_dataset_bridge: true,
+      external_write: true,
+      destructive_action: false,
+      read_only_hint_conflict: false,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_secret_manager_access: true,
+      handler_tainted_secret_manager_path: true,
+      handler_training_dataset_export: true,
+      handler_tainted_training_dataset_payload: false,
+      handler_secret_manager_training_dataset_bridge: true,
+      handler_secret_env_access: true,
+      handler_model_visible_output: true,
+      handler_signal_count: 5,
+      open_world_schema: false
+    });
+    expect(sourceSecretManagerTrainingDatasetBridgeTool?.metadata.authority_classes).toEqual([
+      "content_input",
+      "credential_input",
+      "customer_data_input",
+      "external_write",
+      "filesystem_access",
+      "handler_secret_env_access",
+      "handler_secret_manager_access",
+      "handler_secret_manager_training_dataset_bridge",
+      "handler_tainted_secret_manager_path",
+      "handler_training_dataset_export",
+      "pii_input",
+      "secret_env_access",
+      "secret_manager_access",
+      "secret_manager_training_dataset_bridge",
+      "tainted_secret_manager_path",
+      "training_dataset_export"
+    ]);
+    expect(sourceSecretManagerTrainingDatasetBridgeTool?.metadata.handler_authority_classes).toEqual([
+      "handler_secret_env_access",
+      "handler_secret_manager_access",
+      "handler_secret_manager_training_dataset_bridge",
+      "handler_tainted_secret_manager_path",
+      "handler_training_dataset_export"
+    ]);
+    expect(sourceSecretManagerTrainingDatasetBridgeTool?.metadata.handler_env_key_names).toEqual([
+      "SOURCE_SECRET_TRAINING_DATASET_BRIDGE_TOKEN"
+    ]);
+    expect(sourceSecretManagerTrainingDatasetBridgeTool?.metadata.schema_properties).toEqual([
+      "customer_id",
+      "dataset_id",
+      "requester_ticket",
+      "secret_path"
+    ]);
+    expect(sourceSecretManagerTrainingDatasetBridgeTool?.metadata.required_properties).toEqual([
+      "customer_id",
+      "dataset_id",
+      "requester_ticket",
+      "secret_path"
+    ]);
+    expect(JSON.stringify(sourceSecretManagerTrainingDatasetBridgeTool)).not.toContain("vaultClient.readSecret");
+    expect(JSON.stringify(sourceSecretManagerTrainingDatasetBridgeTool)).not.toContain("trainingDatasetClient.appendRecord");
+    expect(JSON.stringify(sourceSecretManagerTrainingDatasetBridgeTool)).not.toContain("secretRecord.value");
+    expect(JSON.stringify(sourceSecretManagerTrainingDatasetBridgeTool)).not.toContain("secretTrainingValue");
+    expect(JSON.stringify(sourceSecretManagerTrainingDatasetBridgeTool)).not.toContain("source vault secret exported to training dataset");
+    expect(JSON.stringify(sourceSecretManagerTrainingDatasetBridgeTool)).not.toContain("Export a customer support secret");
     expect(sourceExternalServiceWriteTool).toMatchObject({
       path: "mcp-source/customer-tools.ts",
       data_classes: ["confidential", "credential", "pii"],
@@ -6752,6 +6847,94 @@ describe("scanner", () => {
     expect(JSON.stringify(langchainSecretManagerMemoryBridgeTool)).not.toContain("secret_memory_value");
     expect(JSON.stringify(langchainSecretManagerMemoryBridgeTool)).not.toContain("framework vault secret persisted to memory");
     expect(JSON.stringify(langchainSecretManagerMemoryBridgeTool)).not.toContain("Store a customer support secret");
+    expect(langchainSecretManagerTrainingDatasetBridgeTool).toMatchObject({
+      path: "framework-tools/langchain_tools.py",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["call", "publish", "read", "send", "write"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(langchainSecretManagerTrainingDatasetBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_agent_framework_source_tool: true,
+      agent_framework_source_tool: true,
+      agent_framework_source_tool_framework: "langchain",
+      agent_framework_source_tool_registration_kind: "python_tool_decorator",
+      agent_framework_source_tool_argument_count: 4,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_secret_like_input: true,
+      accepts_path_input: true,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      secret_manager_access: true,
+      tainted_secret_manager_path: true,
+      training_dataset_export: true,
+      tainted_training_dataset_payload: false,
+      secret_manager_training_dataset_bridge: true,
+      external_write: true,
+      destructive_action: false,
+      read_only_hint_conflict: false,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_secret_manager_access: true,
+      handler_tainted_secret_manager_path: true,
+      handler_training_dataset_export: true,
+      handler_tainted_training_dataset_payload: false,
+      handler_secret_manager_training_dataset_bridge: true,
+      handler_secret_env_access: true,
+      handler_model_visible_output: true,
+      handler_signal_count: 5,
+      open_world_schema: false
+    });
+    expect(langchainSecretManagerTrainingDatasetBridgeTool?.metadata.authority_classes).toEqual([
+      "content_input",
+      "credential_input",
+      "customer_data_input",
+      "external_write",
+      "filesystem_access",
+      "handler_secret_env_access",
+      "handler_secret_manager_access",
+      "handler_secret_manager_training_dataset_bridge",
+      "handler_tainted_secret_manager_path",
+      "handler_training_dataset_export",
+      "pii_input",
+      "secret_env_access",
+      "secret_manager_access",
+      "secret_manager_training_dataset_bridge",
+      "tainted_secret_manager_path",
+      "training_dataset_export"
+    ]);
+    expect(langchainSecretManagerTrainingDatasetBridgeTool?.metadata.handler_authority_classes).toEqual([
+      "handler_secret_env_access",
+      "handler_secret_manager_access",
+      "handler_secret_manager_training_dataset_bridge",
+      "handler_tainted_secret_manager_path",
+      "handler_training_dataset_export"
+    ]);
+    expect(langchainSecretManagerTrainingDatasetBridgeTool?.metadata.handler_env_key_names).toEqual([
+      "LANGCHAIN_SECRET_TRAINING_DATASET_BRIDGE_TOKEN"
+    ]);
+    expect(langchainSecretManagerTrainingDatasetBridgeTool?.metadata.schema_properties).toEqual([
+      "customer_id",
+      "dataset_id",
+      "requester_ticket",
+      "secret_path"
+    ]);
+    expect(langchainSecretManagerTrainingDatasetBridgeTool?.metadata.required_properties).toEqual([
+      "customer_id",
+      "dataset_id",
+      "requester_ticket",
+      "secret_path"
+    ]);
+    expect(JSON.stringify(langchainSecretManagerTrainingDatasetBridgeTool)).not.toContain("vault_client.read_secret");
+    expect(JSON.stringify(langchainSecretManagerTrainingDatasetBridgeTool)).not.toContain("training_dataset_client.append_record");
+    expect(JSON.stringify(langchainSecretManagerTrainingDatasetBridgeTool)).not.toContain("secret_record.value");
+    expect(JSON.stringify(langchainSecretManagerTrainingDatasetBridgeTool)).not.toContain("secret_training_value");
+    expect(JSON.stringify(langchainSecretManagerTrainingDatasetBridgeTool)).not.toContain("framework vault secret exported to training dataset");
+    expect(JSON.stringify(langchainSecretManagerTrainingDatasetBridgeTool)).not.toContain("Export a customer support secret");
     expect(langchainExternalServiceWriteTool).toMatchObject({
       path: "framework-tools/langchain_tools.py",
       data_classes: ["confidential", "credential", "pii"],

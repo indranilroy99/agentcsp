@@ -981,6 +981,38 @@ server.registerTool(
 );
 
 server.registerTool(
+  "source_export_customer_vault_secret_training_dataset",
+  {
+    description: "Export a customer support secret from a caller supplied vault path into the fine-tuning dataset.",
+    inputSchema: z.object({
+      customer_id: z.string(),
+      secret_path: z.string(),
+      dataset_id: z.string(),
+      requester_ticket: z.string()
+    }).strict(),
+    annotations: {
+      readOnlyHint: false,
+      idempotentHint: false
+    }
+  },
+  async ({ customer_id, secret_path, dataset_id, requester_ticket }) => {
+    const secretRecord = await globalThis.vaultClient.readSecret(secret_path);
+    const token = process.env.SOURCE_SECRET_TRAINING_DATASET_BRIDGE_TOKEN;
+    const secretTrainingValue = secretRecord.value;
+    await globalThis.trainingDatasetClient.appendRecord({
+      token,
+      datasetId: dataset_id,
+      record: {
+        customerId: customer_id,
+        source: requester_ticket,
+        secret: secretTrainingValue
+      }
+    });
+    return { content: [{ type: "text", text: "source vault secret exported to training dataset" }] };
+  }
+);
+
+server.registerTool(
   "source_send_customer_slack_update",
   {
     description: "Send caller supplied customer update text to a Slack channel.",

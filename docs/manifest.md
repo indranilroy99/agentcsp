@@ -324,6 +324,7 @@ Tool metadata may include:
 - `secret_manager_external_service_bridge`
 - `secret_manager_prompt_bridge`
 - `secret_manager_memory_bridge`
+- `secret_manager_training_dataset_bridge`
 - `tool_output_external_service_bridge`
 - `model_provider_call`
 - `tainted_model_selection`
@@ -390,6 +391,7 @@ Tool metadata may include:
 - `handler_secret_manager_external_service_bridge`
 - `handler_secret_manager_prompt_bridge`
 - `handler_secret_manager_memory_bridge`
+- `handler_secret_manager_training_dataset_bridge`
 - `handler_tool_output_external_service_bridge`
 - `handler_model_provider_call`
 - `handler_tainted_model_selection`
@@ -1891,6 +1893,8 @@ Source-defined tool handlers can also emit redacted secret-manager external-serv
 Source-defined tool handlers can also emit redacted secret-manager prompt bridge authority through `secret_manager_prompt_bridge`, `secret_manager_access`, `tainted_secret_manager_path`, `model_provider_call`, and the corresponding `handler_*` fields when parsed MCP SDK or agent-framework tools read caller-selected vault or secret-manager paths and forward the returned secret material into model-provider prompts using runtime credentials. Handler bodies, vault calls, secret paths, secret values, model SDK calls, prompt payloads, model responses, and return strings remain redacted.
 
 Source-defined tool handlers can also emit redacted secret-manager memory bridge authority through `secret_manager_memory_bridge`, `secret_manager_access`, `tainted_secret_manager_path`, `memory_write`, `tainted_memory_scope`, and the corresponding `handler_*` fields when parsed MCP SDK or agent-framework tools read caller-selected vault or secret-manager paths and persist the returned secret material into memory, vector, RAG, or state stores using runtime credentials. Handler bodies, vault calls, secret paths, secret values, memory-store calls, namespaces, stored values, and return strings remain redacted.
+
+Source-defined tool handlers can also emit redacted secret-manager training-dataset bridge authority through `secret_manager_training_dataset_bridge`, `secret_manager_access`, `tainted_secret_manager_path`, `training_dataset_export`, and the corresponding `handler_*` fields when parsed MCP SDK or agent-framework tools read caller-selected vault or secret-manager paths and export the returned secret material into AI training, fine-tuning, eval, or model-improvement datasets using runtime credentials. Handler bodies, vault calls, secret paths, secret values, dataset calls, dataset IDs, training records, and return strings remain redacted.
 
 Source-defined tool handlers can also emit redacted RAG retrieval authority through `rag_retrieval`, `tainted_rag_retrieval_query`, `rag_context_to_output`, and the corresponding `handler_*` fields when parsed MCP SDK or agent-framework tools run caller-selected retrieval and return raw chunks into model-visible output using runtime credentials. Handler bodies, retriever calls, query text, namespaces, filters, chunk text, document IDs, and returned retrieved context remain redacted.
 
