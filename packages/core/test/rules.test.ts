@@ -46,6 +46,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-030")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-031")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-032")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-033")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-001")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-002")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-003")).toBe(true);
@@ -6430,12 +6431,40 @@ describe("rule engine", () => {
     expect(sourceHandlerDynamicCodeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
     expect(sourceHandlerDynamicCodeFindings.every((finding) => finding.matched_object.metadata.handler_dynamic_code_execution === true)).toBe(true);
     expect(sourceHandlerDynamicCodeFindings.every((finding) => finding.matched_object.metadata.dynamic_code_execution === true)).toBe(true);
+    expect(sourceHandlerDynamicCodeFindings.every((finding) => finding.matched_object.metadata.handler_tainted_dynamic_code_argument === true)).toBe(true);
+    expect(sourceHandlerDynamicCodeFindings.every((finding) => finding.matched_object.metadata.tainted_dynamic_code_argument === true)).toBe(true);
     expect(sourceHandlerDynamicCodeFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("dynamic_code_execution"))).toBe(true);
     expect(sourceHandlerDynamicCodeFindings.every((finding) => finding.matched_object.metadata.schema_properties.includes("expression"))).toBe(true);
     expect(JSON.stringify(sourceHandlerDynamicCodeFindings)).not.toContain("Function(");
     expect(JSON.stringify(sourceHandlerDynamicCodeFindings)).not.toContain("eval(");
     expect(JSON.stringify(sourceHandlerDynamicCodeFindings)).not.toContain("source expression evaluated");
     expect(JSON.stringify(sourceHandlerDynamicCodeFindings)).not.toContain("framework expression evaluated");
+    const sourceHandlerTaintedDynamicCodeFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-033");
+    expect(sourceHandlerTaintedDynamicCodeFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
+      "langchain_evaluate_agent_expression",
+      "source_evaluate_agent_expression"
+    ]);
+    expect(sourceHandlerTaintedDynamicCodeFindings.every((finding) => finding.severity === "critical")).toBe(true);
+    expect(sourceHandlerTaintedDynamicCodeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerTaintedDynamicCodeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
+    expect(sourceHandlerTaintedDynamicCodeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
+    expect(sourceHandlerTaintedDynamicCodeFindings.every((finding) => finding.matched_object.metadata.handler_dynamic_code_execution === true)).toBe(true);
+    expect(sourceHandlerTaintedDynamicCodeFindings.every((finding) => finding.matched_object.metadata.handler_tainted_dynamic_code_argument === true)).toBe(true);
+    expect(sourceHandlerTaintedDynamicCodeFindings.every((finding) => finding.matched_object.metadata.dynamic_code_execution === true)).toBe(true);
+    expect(sourceHandlerTaintedDynamicCodeFindings.every((finding) => finding.matched_object.metadata.tainted_dynamic_code_argument === true)).toBe(true);
+    expect(sourceHandlerTaintedDynamicCodeFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("dynamic_code_execution"))).toBe(true);
+    expect(sourceHandlerTaintedDynamicCodeFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("tainted_dynamic_code_argument"))).toBe(true);
+    expect(sourceHandlerTaintedDynamicCodeFindings.every((finding) => finding.matched_object.metadata.handler_authority_classes.includes("handler_dynamic_code_execution"))).toBe(true);
+    expect(sourceHandlerTaintedDynamicCodeFindings.every((finding) => finding.matched_object.metadata.handler_authority_classes.includes("handler_tainted_dynamic_code_argument"))).toBe(true);
+    expect(sourceHandlerTaintedDynamicCodeFindings.every((finding) => finding.matched_object.metadata.schema_properties.includes("expression"))).toBe(true);
+    expect(sourceHandlerTaintedDynamicCodeFindings.every((finding) => finding.matched_object.actions.includes("execute"))).toBe(true);
+    expect(sourceHandlerTaintedDynamicCodeFindings.every((finding) => finding.matched_object.side_effect === true)).toBe(true);
+    expect(sourceHandlerTaintedDynamicCodeFindings.every((finding) => finding.matched_object.reversible === false)).toBe(true);
+    expect(JSON.stringify(sourceHandlerTaintedDynamicCodeFindings)).not.toContain("Function(");
+    expect(JSON.stringify(sourceHandlerTaintedDynamicCodeFindings)).not.toContain("return (${expression})");
+    expect(JSON.stringify(sourceHandlerTaintedDynamicCodeFindings)).not.toContain("eval(");
+    expect(JSON.stringify(sourceHandlerTaintedDynamicCodeFindings)).not.toContain("source expression evaluated");
+    expect(JSON.stringify(sourceHandlerTaintedDynamicCodeFindings)).not.toContain("framework expression evaluated");
     const sourceHandlerUnsafeDeserializationFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-021");
     expect(sourceHandlerUnsafeDeserializationFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_load_serialized_agent_state",

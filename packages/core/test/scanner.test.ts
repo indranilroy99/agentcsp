@@ -950,16 +950,23 @@ describe("scanner", () => {
       handler_database_write: false,
       handler_shell_execution: false,
       handler_dynamic_code_execution: true,
+      handler_tainted_dynamic_code_argument: true,
+      tainted_dynamic_code_argument: true,
       handler_filesystem_write: false,
       handler_filesystem_delete: false,
-      handler_signal_count: 1,
+      handler_signal_count: 2,
       open_world_schema: false
     });
     expect(sourceDynamicCodeTool?.metadata.authority_classes).toEqual([
       "dynamic_code_execution",
-      "handler_dynamic_code_execution"
+      "handler_dynamic_code_execution",
+      "handler_tainted_dynamic_code_argument",
+      "tainted_dynamic_code_argument"
     ]);
-    expect(sourceDynamicCodeTool?.metadata.handler_authority_classes).toEqual(["handler_dynamic_code_execution"]);
+    expect(sourceDynamicCodeTool?.metadata.handler_authority_classes).toEqual([
+      "handler_dynamic_code_execution",
+      "handler_tainted_dynamic_code_argument"
+    ]);
     expect(sourceDynamicCodeTool?.metadata.handler_env_key_names).toEqual([]);
     expect(sourceDynamicCodeTool?.metadata.schema_properties).toEqual(["context_json", "expression"]);
     expect(sourceDynamicCodeTool?.metadata.required_properties).toEqual(["expression"]);
@@ -2249,16 +2256,23 @@ describe("scanner", () => {
       handler_database_write: false,
       handler_shell_execution: false,
       handler_dynamic_code_execution: true,
+      handler_tainted_dynamic_code_argument: true,
+      tainted_dynamic_code_argument: true,
       handler_filesystem_write: false,
       handler_filesystem_delete: false,
-      handler_signal_count: 1,
+      handler_signal_count: 2,
       open_world_schema: false
     });
     expect(langchainDynamicCodeTool?.metadata.authority_classes).toEqual([
       "dynamic_code_execution",
-      "handler_dynamic_code_execution"
+      "handler_dynamic_code_execution",
+      "handler_tainted_dynamic_code_argument",
+      "tainted_dynamic_code_argument"
     ]);
-    expect(langchainDynamicCodeTool?.metadata.handler_authority_classes).toEqual(["handler_dynamic_code_execution"]);
+    expect(langchainDynamicCodeTool?.metadata.handler_authority_classes).toEqual([
+      "handler_dynamic_code_execution",
+      "handler_tainted_dynamic_code_argument"
+    ]);
     expect(langchainDynamicCodeTool?.metadata.handler_env_key_names).toEqual([]);
     expect(langchainDynamicCodeTool?.metadata.schema_properties).toEqual(["context_json", "expression"]);
     expect(langchainDynamicCodeTool?.metadata.required_properties).toEqual(["expression"]);

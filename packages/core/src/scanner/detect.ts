@@ -24131,6 +24131,7 @@ function addToolDefinitionSurface(
       !authority.model_provider_call &&
       !authority.tainted_shell_argument &&
       !authority.dynamic_code_execution &&
+      !authority.tainted_dynamic_code_argument &&
       !authority.unsafe_deserialization,
     reason,
     metadata: {
@@ -24161,6 +24162,7 @@ function addToolDefinitionSurface(
       tainted_shell_argument: authority.tainted_shell_argument,
       network_response_capture: authority.network_response_capture,
       dynamic_code_execution: authority.dynamic_code_execution,
+      tainted_dynamic_code_argument: authority.tainted_dynamic_code_argument,
       unsafe_deserialization: authority.unsafe_deserialization,
       local_file_disclosure: authority.local_file_disclosure,
       external_write: authority.external_write,
@@ -26548,6 +26550,7 @@ interface SourceToolHandlerSignals {
   handlerShellExecution: boolean;
   handlerTaintedShellArgument: boolean;
   handlerDynamicCodeExecution: boolean;
+  handlerTaintedDynamicCodeArgument: boolean;
   handlerUnsafeDeserialization: boolean;
   handlerFilesystemRead: boolean;
   handlerFilesystemWrite: boolean;
@@ -26981,6 +26984,7 @@ function sourceToolHandlerSignalMetadata(signals: SourceToolHandlerSignals | und
     handler_shell_execution: signals.handlerShellExecution,
     handler_tainted_shell_argument: signals.handlerTaintedShellArgument,
     handler_dynamic_code_execution: signals.handlerDynamicCodeExecution,
+    handler_tainted_dynamic_code_argument: signals.handlerTaintedDynamicCodeArgument,
     handler_unsafe_deserialization: signals.handlerUnsafeDeserialization,
     handler_filesystem_read: signals.handlerFilesystemRead,
     handler_filesystem_write: signals.handlerFilesystemWrite,
@@ -27043,6 +27047,9 @@ function classifySourceToolHandlerSignals(
   const dynamicCodeExecution = language === "javascript"
     ? /\b(?:eval\s*\(|(?:new\s+)?Function\s*\(|vm\s*\.\s*(?:runInNewContext|runInThisContext|runInContext|compileFunction|Script)\b)/u.test(handlerSource)
     : /\b(?:eval|exec)\s*\(/u.test(handlerSource);
+  const taintedDynamicCodeArgument = dynamicCodeExecution && (language === "javascript"
+    ? hasJavaScriptHandlerTaintedDynamicCodeArgument(handlerSource)
+    : hasPythonHandlerTaintedDynamicCodeArgument(handlerSource));
   const unsafeDeserialization = language === "javascript"
     ? hasJavaScriptHandlerUnsafeDeserialization(handlerSource)
     : hasPythonHandlerUnsafeDeserialization(handlerSource);
@@ -27092,6 +27099,7 @@ function classifySourceToolHandlerSignals(
   if (shellExecution) classes.add("handler_shell_execution");
   if (taintedShellArgument) classes.add("handler_tainted_shell_argument");
   if (dynamicCodeExecution) classes.add("handler_dynamic_code_execution");
+  if (taintedDynamicCodeArgument) classes.add("handler_tainted_dynamic_code_argument");
   if (unsafeDeserialization) classes.add("handler_unsafe_deserialization");
   if (filesystemRead) classes.add("handler_filesystem_read");
   if (filesystemWrite) classes.add("handler_filesystem_write");
@@ -27120,6 +27128,7 @@ function classifySourceToolHandlerSignals(
     handlerShellExecution: shellExecution,
     handlerTaintedShellArgument: taintedShellArgument,
     handlerDynamicCodeExecution: dynamicCodeExecution,
+    handlerTaintedDynamicCodeArgument: taintedDynamicCodeArgument,
     handlerUnsafeDeserialization: unsafeDeserialization,
     handlerFilesystemRead: filesystemRead,
     handlerFilesystemWrite: filesystemWrite,
@@ -27474,6 +27483,20 @@ function hasPythonHandlerTaintedShellArgument(source: string): boolean {
   ].some((pattern) => expressionMatchesTaintedShellArgument(pattern, source));
 }
 
+function hasJavaScriptHandlerTaintedDynamicCodeArgument(source: string): boolean {
+  return [
+    /\beval\s*\(([\s\S]{0,520})\)/giu,
+    /\b(?:new\s+)?Function\s*\(([\s\S]{0,720})\)/giu,
+    /\bvm\s*\.\s*(?:runInNewContext|runInThisContext|runInContext|compileFunction|Script)\s*\(([\s\S]{0,720})\)/giu
+  ].some((pattern) => expressionMatchesTaintedDynamicCodeArgument(pattern, source));
+}
+
+function hasPythonHandlerTaintedDynamicCodeArgument(source: string): boolean {
+  return [
+    /\b(?:eval|exec)\s*\(([\s\S]{0,520})\)/giu
+  ].some((pattern) => expressionMatchesTaintedDynamicCodeArgument(pattern, source));
+}
+
 function expressionMatchesPattern(pattern: RegExp, source: string, expressionPattern: RegExp): boolean {
   let match: RegExpExecArray | null;
   while ((match = pattern.exec(source)) !== null) {
@@ -27487,6 +27510,15 @@ function expressionMatchesTaintedShellArgument(pattern: RegExp, source: string):
   let match: RegExpExecArray | null;
   while ((match = pattern.exec(source)) !== null) {
     if (expressionReferencesTaintedShellArgument(match[1] ?? "")) return true;
+    if (match[0].length === 0) pattern.lastIndex += 1;
+  }
+  return false;
+}
+
+function expressionMatchesTaintedDynamicCodeArgument(pattern: RegExp, source: string): boolean {
+  let match: RegExpExecArray | null;
+  while ((match = pattern.exec(source)) !== null) {
+    if (expressionReferencesTaintedDynamicCodeArgument(match[1] ?? "")) return true;
     if (match[0].length === 0) pattern.lastIndex += 1;
   }
   return false;
@@ -27510,6 +27542,15 @@ function expressionReferencesTaintedShellArgument(expression: string): boolean {
   return /\b(?:shellCommand|shell_command|command|commandText|command_text|script|scriptText|script_text|cmd)\b/u.test(
     withoutQuotedStrings
   );
+}
+
+function expressionReferencesTaintedDynamicCodeArgument(expression: string): boolean {
+  const templateInterpolation = /\$\{[^}]*\b(?:code|contextCode|context_code|expression|program|script|source|payload)\b/u.test(
+    expression
+  );
+  if (templateInterpolation) return true;
+  const withoutQuotedStrings = expression.replace(/(["'`])(?:\\.|(?!\1)[\s\S])*\1/gu, " ");
+  return /\b(?:code|contextCode|context_code|expression|program|script|source|payload)\b/u.test(withoutQuotedStrings);
 }
 
 function expressionReferencesTaintedContext(expression: string): boolean {
@@ -28831,6 +28872,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   tainted_shell_argument: boolean;
   network_response_capture: boolean;
   dynamic_code_execution: boolean;
+  tainted_dynamic_code_argument: boolean;
   unsafe_deserialization: boolean;
   local_file_disclosure: boolean;
   external_write: boolean;
@@ -28872,6 +28914,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   const handlerShellExecution = handler?.handlerShellExecution === true;
   const handlerTaintedShellArgument = handler?.handlerTaintedShellArgument === true;
   const handlerDynamicCodeExecution = handler?.handlerDynamicCodeExecution === true;
+  const handlerTaintedDynamicCodeArgument = handler?.handlerTaintedDynamicCodeArgument === true;
   const handlerUnsafeDeserialization = handler?.handlerUnsafeDeserialization === true;
   const handlerFilesystemRead = handler?.handlerFilesystemRead === true;
   const handlerFilesystemWrite = handler?.handlerFilesystemWrite === true;
@@ -28896,6 +28939,10 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   }
   if (handlerDynamicCodeExecution) {
     classes.add("dynamic_code_execution");
+    actions.add("execute");
+  }
+  if (handlerTaintedDynamicCodeArgument) {
+    classes.add("tainted_dynamic_code_argument");
     actions.add("execute");
   }
   if (handlerUnsafeDeserialization) {
@@ -29055,6 +29102,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerExternalWrite ||
       handlerShellExecution ||
       handlerDynamicCodeExecution ||
+      handlerTaintedDynamicCodeArgument ||
       handlerUnsafeDeserialization ||
       handlerFilesystemRead ||
       handlerFilesystemWrite ||
@@ -29103,6 +29151,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
     tainted_shell_argument: handlerTaintedShellArgument,
     network_response_capture: handlerNetworkResponseToOutput,
     dynamic_code_execution: handlerDynamicCodeExecution,
+    tainted_dynamic_code_argument: handlerTaintedDynamicCodeArgument,
     unsafe_deserialization: handlerUnsafeDeserialization,
     local_file_disclosure: localFileDisclosure,
     external_write: externalWrite,
@@ -29162,6 +29211,7 @@ function authoritySignature(tool: SurfaceObject): string {
     metadata.privileged_prompt_composition === true ? "privileged_prompt_composition" : "",
     metadata.tainted_shell_argument === true ? "tainted_shell_argument" : "",
     metadata.destructive_action === true ? "destructive" : "",
+    metadata.tainted_dynamic_code_argument === true ? "tainted_dynamic_code_argument" : "",
     metadata.credential_issuance === true ? "credential_issuance" : "",
     metadata.nested_tool_invocation === true ? "nested_tool_invocation" : "",
     metadata.browser_automation === true ? "browser_automation" : "",
@@ -29194,6 +29244,7 @@ function isPrivilegedToolSurface(tool: SurfaceObject): boolean {
     tool.metadata.privileged_prompt_composition === true ||
     tool.metadata.tainted_shell_argument === true ||
     tool.metadata.destructive_action === true ||
+    tool.metadata.tainted_dynamic_code_argument === true ||
     tool.metadata.credential_issuance === true ||
     tool.metadata.nested_tool_invocation === true ||
     tool.metadata.browser_automation === true ||
