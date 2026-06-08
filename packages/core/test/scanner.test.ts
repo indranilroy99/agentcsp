@@ -542,6 +542,8 @@ describe("scanner", () => {
     const pythonDeleteTool = surfaces.tools.find((surface) => surface.name === "python_readonly_delete_workspace_file");
     const langchainExportTool = surfaces.tools.find((surface) => surface.name === "langchain_export_customer_context");
     const langchainDeleteTool = surfaces.tools.find((surface) => surface.name === "langchain_readonly_delete_workspace_path");
+    const aiSdkExportTool = surfaces.tools.find((surface) => surface.name === "aiSdkExportCustomerContext");
+    const tsLangchainDeleteTool = surfaces.tools.find((surface) => surface.name === "ts_langchain_delete_workspace_path");
     expect(publishTool?.metadata).toMatchObject({
       parsed_tool_schema: true,
       external_write: true,
@@ -854,6 +856,88 @@ describe("scanner", () => {
     expect(langchainDeleteTool?.metadata.required_properties).toEqual(["workspace_path"]);
     expect(JSON.stringify(langchainDeleteTool)).not.toContain("framework deleted");
     expect(JSON.stringify(langchainDeleteTool)).not.toContain("Delete a workspace path after model review from LangChain");
+    expect(aiSdkExportTool).toMatchObject({
+      path: "framework-tools/vercel-ai-tools.ts",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["call", "publish", "send"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true
+    });
+    expect(aiSdkExportTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_agent_framework_source_tool: true,
+      agent_framework_source_tool: true,
+      agent_framework_source_tool_framework: "vercel_ai",
+      agent_framework_source_tool_registration_kind: "js_tool_factory",
+      agent_framework_source_tool_argument_count: 1,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      values_collected: false,
+      external_write: true,
+      accepts_secret_like_input: true,
+      accepts_content_like_input: true,
+      accepts_url_input: true,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      open_world_schema: false,
+      open_world_authority: false
+    });
+    expect(aiSdkExportTool?.metadata.agent_framework_source_tool_schema_styles).toEqual([
+      "agent_framework_source_tool",
+      "js_tool_factory",
+      "vercel_ai",
+      "zod_field_map",
+      "zod_object",
+      "zod_strict"
+    ]);
+    expect(aiSdkExportTool?.metadata.schema_properties).toEqual([
+      "authorization_token",
+      "customer_email",
+      "customer_reference",
+      "destination_webhook_url",
+      "source_payload_text"
+    ]);
+    expect(aiSdkExportTool?.metadata.required_properties).toEqual([
+      "authorization_token",
+      "customer_email",
+      "customer_reference",
+      "destination_webhook_url",
+      "source_payload_text"
+    ]);
+    expect(JSON.stringify(aiSdkExportTool)).not.toContain("ai sdk queued");
+    expect(JSON.stringify(aiSdkExportTool)).not.toContain("Send AI SDK customer context to a caller supplied webhook");
+    expect(tsLangchainDeleteTool).toMatchObject({
+      path: "framework-tools/langchain_tools.ts",
+      actions: ["call", "delete", "read"],
+      side_effect: true,
+      external_reach: false,
+      secret_exposure: false
+    });
+    expect(tsLangchainDeleteTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_agent_framework_source_tool: true,
+      agent_framework_source_tool: true,
+      agent_framework_source_tool_framework: "langchain",
+      agent_framework_source_tool_registration_kind: "js_dynamic_structured_tool",
+      agent_framework_source_tool_argument_count: 1,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      destructive_action: true,
+      accepts_path_input: true,
+      open_world_schema: false
+    });
+    expect(tsLangchainDeleteTool?.metadata.agent_framework_source_tool_schema_styles).toEqual([
+      "agent_framework_source_tool",
+      "js_dynamic_structured_tool",
+      "langchain",
+      "zod_field_map",
+      "zod_object",
+      "zod_strict"
+    ]);
+    expect(tsLangchainDeleteTool?.metadata.required_properties).toEqual(["workspace_path"]);
+    expect(JSON.stringify(tsLangchainDeleteTool)).not.toContain("ts framework deleted");
+    expect(JSON.stringify(tsLangchainDeleteTool)).not.toContain("Delete a workspace path from a TypeScript LangChain tool");
     const openApiTool = surfaces.tools.find((surface) => surface.path === "tools/support-openapi.yaml");
     expect(openApiTool).toMatchObject({
       name: "openapi:post:1",
@@ -5364,6 +5448,46 @@ describe("scanner", () => {
     expect(JSON.stringify(langchainSourceTool)).not.toContain("Read approved internal documentation from LangChain");
     expect(JSON.stringify(langchainSourceTool)).not.toContain("LangChainInternalDocRequest");
     expect(JSON.stringify(langchainSourceTool)).not.toContain("Approved documentation identifier");
+
+    const aiSdkSourceTool = surfaces.tools.find((surface) => surface.name === "aiSdkReadInternalDoc");
+    expect(aiSdkSourceTool).toMatchObject({
+      path: "framework-tools/vercel-ai-tools.ts",
+      trust_level: "project",
+      data_classes: ["unknown"],
+      actions: ["call"],
+      side_effect: false,
+      external_reach: false,
+      secret_exposure: false,
+      untrusted_to_privileged: false
+    });
+    expect(aiSdkSourceTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_agent_framework_source_tool: true,
+      agent_framework_source_tool: true,
+      agent_framework_source_tool_framework: "vercel_ai",
+      agent_framework_source_tool_registration_kind: "js_tool_factory",
+      agent_framework_source_tool_argument_count: 1,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      values_collected: false,
+      external_write: false,
+      destructive_action: false,
+      read_only_hint_conflict: false,
+      open_world_schema: false,
+      open_world_authority: false
+    });
+    expect(aiSdkSourceTool?.metadata.agent_framework_source_tool_schema_styles).toEqual([
+      "agent_framework_source_tool",
+      "js_tool_factory",
+      "vercel_ai",
+      "zod_field_map",
+      "zod_object",
+      "zod_strict"
+    ]);
+    expect(aiSdkSourceTool?.metadata.schema_properties).toEqual(["document_id"]);
+    expect(aiSdkSourceTool?.metadata.required_properties).toEqual(["document_id"]);
+    expect(JSON.stringify(aiSdkSourceTool)).not.toContain("ai sdk approved internal summary");
+    expect(JSON.stringify(aiSdkSourceTool)).not.toContain("Read approved AI SDK internal documentation");
   });
 
   it("keeps approval-gated read-only hosted assistants scoped", async () => {

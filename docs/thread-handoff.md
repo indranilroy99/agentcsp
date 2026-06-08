@@ -193,11 +193,13 @@ The current iteration adds:
 - bounded TypeScript/JavaScript source extraction for common MCP SDK `server.tool(...)` and `server.registerTool(...)` registrations
 - bounded Python/FastMCP source extraction for common `@mcp.tool(...)` decorator registrations
 - bounded Python agent-framework extraction for LangChain/LangGraph `@tool(...)`, `StructuredTool.from_function(...)`, OpenAI Agents `@function_tool`, and CrewAI-style `@tool(...)` registrations
+- bounded JavaScript/TypeScript agent-framework extraction for AI SDK `tool(...)` and LangChain `new DynamicStructuredTool(...)` registrations
 - local Python Pydantic/BaseModel request-model field extraction without emitting model class names, `Field(...)` bodies, docstrings, or handler source
+- bounded JavaScript/TypeScript Zod field-map extraction with `.optional()` posture and no raw schema or handler source emission
 - normalization of source-defined MCP and agent-framework tools into the same `tool` manifest objects used by JSON/YAML tool schemas
 - redacted source metadata for framework/registration kind, argument count, schema style, schema field names, required/optional posture, read-only/idempotency hints when available, and source/handler redaction posture
-- vulnerable fixture coverage for source-defined MCP and LangChain tools that combine external writes, PII/customer data, credential-like inputs, open-world arguments, Python signature/Pydantic extraction, and destructive filesystem authority
-- safe fixture coverage for strict read-only source-defined MCP and LangChain tools that produce no high or critical findings
+- vulnerable fixture coverage for source-defined MCP, LangChain, and AI SDK tools that combine external writes, PII/customer data, credential-like inputs, open-world arguments, Python signature/Pydantic extraction, Zod field extraction, and destructive filesystem authority
+- safe fixture coverage for strict read-only source-defined MCP, LangChain, and AI SDK tools that produce no high or critical findings
 - graph hardening so the bounded Static Blast-Radius Summary preserves coverage across runtime approval bypass, memory replay, generated-state replay, direct egress, mutable database, multi-agent, eval, inbound-trigger, and disabled-safety categories when new source-defined tool findings increase candidate volume
 - scanner, rule, fixture verifier, and docs coverage proving source handler bodies and raw source descriptions stay out of evidence
 

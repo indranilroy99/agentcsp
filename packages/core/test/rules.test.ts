@@ -5947,7 +5947,8 @@ describe("rule engine", () => {
       "langchain_readonly_delete_workspace_path",
       "python_readonly_delete_workspace_file",
       "readonly_cleanup_workspace",
-      "source_readonly_delete_workspace_file"
+      "source_readonly_delete_workspace_file",
+      "ts_langchain_delete_workspace_path"
     ]);
     expect(toolDestructiveFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
     const toolReadOnlyConflictFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-006");
@@ -5962,6 +5963,7 @@ describe("rule engine", () => {
     expect(toolPathExfilFindings[0]?.matched_object.name).toBe("customer_record");
     const toolContentExternalFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-009");
     expect(toolContentExternalFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
+      "aiSdkExportCustomerContext",
       "langchain_export_customer_context",
       "post_customer_update",
       "publish_summary",
@@ -5971,6 +5973,7 @@ describe("rule engine", () => {
     expect(toolContentExternalFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
     const toolPiiExternalFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-010");
     expect(toolPiiExternalFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
+      "aiSdkExportCustomerContext",
       "customer_record",
       "langchain_export_customer_context",
       "post_customer_update",
@@ -6031,6 +6034,24 @@ describe("rule engine", () => {
     expect(JSON.stringify(langchainExternalSecretFinding)).not.toContain("framework queued");
     expect(JSON.stringify(langchainExternalSecretFinding)).not.toContain("LangChainCustomerWebhookRequest");
     expect(JSON.stringify(langchainExternalSecretFinding)).not.toContain("Caller supplied partner webhook");
+    const aiSdkExternalSecretFinding = findings.find(
+      (finding) => finding.rule_id === "AGENTCSP-TOOL-003" && finding.matched_object.name === "aiSdkExportCustomerContext"
+    );
+    expect(aiSdkExternalSecretFinding?.matched_object.path).toBe("framework-tools/vercel-ai-tools.ts");
+    expect(aiSdkExternalSecretFinding?.matched_object.metadata).toMatchObject({
+      parsed_agent_framework_source_tool: true,
+      agent_framework_source_tool_framework: "vercel_ai",
+      agent_framework_source_tool_registration_kind: "js_tool_factory",
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      external_write: true,
+      accepts_secret_like_input: true,
+      accepts_pii_like_input: true
+    });
+    expect(aiSdkExternalSecretFinding?.severity).toBe("critical");
+    expect(aiSdkExternalSecretFinding?.confidence).toBe("very_high");
+    expect(JSON.stringify(aiSdkExternalSecretFinding)).not.toContain("ai sdk queued");
+    expect(JSON.stringify(aiSdkExternalSecretFinding)).not.toContain("Send AI SDK customer context");
     const toolDescriptionInjectionFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-011");
     expect(toolDescriptionInjectionFindings).toHaveLength(1);
     expect(toolDescriptionInjectionFindings[0]?.matched_object.name).toBe("publish_summary");

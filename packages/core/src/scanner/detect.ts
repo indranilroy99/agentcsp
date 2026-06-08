@@ -26499,11 +26499,16 @@ interface ExtractedMcpSourceToolDefinition extends ExtractedToolDefinition {
   schemaStyles: string[];
 }
 
-type AgentFrameworkSourceToolFramework = "crewai" | "langchain" | "openai_agents" | "unknown";
+type AgentFrameworkSourceToolFramework = "crewai" | "langchain" | "openai_agents" | "unknown" | "vercel_ai";
 
 interface ExtractedAgentFrameworkSourceToolDefinition extends ExtractedToolDefinition {
   framework: AgentFrameworkSourceToolFramework;
-  registrationKind: "python_function_tool_decorator" | "python_tool_decorator" | "structured_tool_from_function";
+  registrationKind:
+    | "js_dynamic_structured_tool"
+    | "js_tool_factory"
+    | "python_function_tool_decorator"
+    | "python_tool_decorator"
+    | "structured_tool_from_function";
   argumentCount: number;
   schemaStyles: string[];
 }
@@ -26897,7 +26902,7 @@ function isMcpSourceToolPath(relativePath: string, basename: string): boolean {
 function isAgentFrameworkSourceToolPath(relativePath: string, basename: string): boolean {
   const normalized = relativePath.replaceAll("\\", "/").toLowerCase();
   const lowerBase = basename.toLowerCase();
-  if (!lowerBase.endsWith(".py")) return false;
+  if (!/\.(?:cjs|js|jsx|mjs|py|ts|tsx)$/u.test(lowerBase)) return false;
   if (/(^|\/)(dist|build|coverage|vendor|\.venv|venv|__pycache__)\//u.test(normalized)) return false;
   return true;
 }
@@ -26944,7 +26949,8 @@ function extractAgentFrameworkSourceToolDefinitions(
   const functionSignatures = extractPythonFunctionSignatures(content);
   const definitions = [
     ...extractPythonAgentFrameworkDecoratorToolDefinitions(content, framework, modelDefinitions),
-    ...extractPythonStructuredToolDefinitions(content, framework, modelDefinitions, functionSignatures)
+    ...extractPythonStructuredToolDefinitions(content, framework, modelDefinitions, functionSignatures),
+    ...extractJavaScriptAgentFrameworkToolDefinitions(content, filePath, framework)
   ].sort((a, b) => a.name.localeCompare(b.name) || a.registrationKind.localeCompare(b.registrationKind));
 
   return { definitions, sourceDetected: true };
@@ -26953,20 +26959,24 @@ function extractAgentFrameworkSourceToolDefinitions(
 function hasAgentFrameworkSourceToolRegistrationSignal(content: string, filePath: string): boolean {
   const normalizedPath = filePath.replaceAll("\\", "/").toLowerCase();
   const frameworkSignal =
-    /\b(langchain|langgraph|crewai|crewai_tools|StructuredTool|BaseTool|function_tool)\b/iu.test(content) ||
+    /\b(langchain|langgraph|crewai|crewai_tools|StructuredTool|DynamicStructuredTool|BaseTool|function_tool|@openai\/agents|@ai-sdk|ai\/react)\b/iu.test(content) ||
+    /\bfrom\s+["'](?:ai|@ai-sdk\/[^"']+|@langchain\/core\/tools|langchain\/tools|@openai\/agents)["']/iu.test(content) ||
     /\bfrom\s+agents\s+import\b/iu.test(content) ||
-    /(^|\/)(agents?|agent-tools?|framework-tools?|langchain|langgraph|crewai|openai-agents)(?:\/|$)/iu.test(normalizedPath);
+    /(^|\/)(agents?|agent-tools?|framework-tools?|langchain|langgraph|crewai|openai-agents|vercel-ai)(?:\/|$)/iu.test(normalizedPath);
   if (!frameworkSignal) return false;
   return /^\s*@[A-Za-z_$][\w$.]*\s*\.\s*(?:function_tool|tool)\b/mu.test(content) ||
     /^\s*@(function_tool|tool)\b/mu.test(content) ||
-    /\bStructuredTool\s*\.\s*from_function\s*\(/u.test(content);
+    /\bStructuredTool\s*\.\s*from_function\s*\(/u.test(content) ||
+    /\bnew\s+DynamicStructuredTool\s*\(/u.test(content) ||
+    /\btool\s*\(/u.test(content);
 }
 
 function inferAgentFrameworkSourceToolFramework(content: string, filePath: string): AgentFrameworkSourceToolFramework {
   const text = `${filePath} ${content}`;
   if (/\b(crewai|crewai_tools|BaseTool)\b/iu.test(text)) return "crewai";
   if (/\b(function_tool|from\s+agents\s+import|openai[_-]?agents)\b/iu.test(text)) return "openai_agents";
-  if (/\b(langchain|langgraph|StructuredTool)\b/iu.test(text)) return "langchain";
+  if (/\b(@ai-sdk|from\s+["']ai["']|vercel[_-]?ai|ai\/react)\b/iu.test(text)) return "vercel_ai";
+  if (/\b(langchain|langgraph|StructuredTool|DynamicStructuredTool)\b/iu.test(text)) return "langchain";
   return "unknown";
 }
 
@@ -27165,6 +27175,125 @@ function extractPythonStructuredToolDefinitions(
     pattern.lastIndex = closeParenIndex + 1;
   }
 
+  return definitions.sort((a, b) => a.name.localeCompare(b.name));
+}
+
+function extractJavaScriptAgentFrameworkToolDefinitions(
+  content: string,
+  filePath: string,
+  framework: AgentFrameworkSourceToolFramework
+): ExtractedAgentFrameworkSourceToolDefinition[] {
+  if (!/\.(?:cjs|js|jsx|mjs|ts|tsx)$/iu.test(filePath)) return [];
+  return [
+    ...extractJavaScriptToolFactoryDefinitions(content, framework),
+    ...extractJavaScriptDynamicStructuredToolDefinitions(content, framework)
+  ].sort((a, b) => a.name.localeCompare(b.name) || a.registrationKind.localeCompare(b.registrationKind));
+}
+
+function extractJavaScriptToolFactoryDefinitions(
+  content: string,
+  framework: AgentFrameworkSourceToolFramework
+): ExtractedAgentFrameworkSourceToolDefinition[] {
+  const definitions: ExtractedAgentFrameworkSourceToolDefinition[] = [];
+  const pattern = /(?:(?:export\s+)?(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*)?\btool\s*\(/gu;
+  let match: RegExpExecArray | null;
+  while ((match = pattern.exec(content)) !== null) {
+    const toolNameIndex = content.indexOf("tool", match.index);
+    if (toolNameIndex < 0 || content.slice(0, toolNameIndex).trimEnd().endsWith(".")) continue;
+    const openParenIndex = pattern.lastIndex - 1;
+    const closeParenIndex = findMatchingDelimiter(content, openParenIndex, "(", ")");
+    if (closeParenIndex === -1) continue;
+
+    const callText = content.slice(match.index, closeParenIndex + 1);
+    if (callText.length > 50000) {
+      pattern.lastIndex = closeParenIndex + 1;
+      continue;
+    }
+
+    const argsText = content.slice(openParenIndex + 1, closeParenIndex);
+    const args = splitTopLevelCommaList(argsText);
+    const definition = normalizeJavaScriptToolFactoryDefinition(args, callText, framework, match[1]);
+    if (definition) definitions.push(definition);
+    pattern.lastIndex = closeParenIndex + 1;
+  }
+  return definitions.sort((a, b) => a.name.localeCompare(b.name));
+}
+
+function normalizeJavaScriptToolFactoryDefinition(
+  args: string[],
+  callText: string,
+  framework: AgentFrameworkSourceToolFramework,
+  assignedName: string | undefined
+): ExtractedAgentFrameworkSourceToolDefinition | undefined {
+  const objectArg = args.find((arg) => /\b(name|description|schema|inputSchema|parameters|execute|func)\s*:/u.test(arg));
+  if (!objectArg) return undefined;
+
+  const schemaSource = extractObjectPropertyValue(objectArg, ["inputSchema", "parameters", "schema"]) ?? "";
+  if (!looksLikeSourceSchema(schemaSource)) return undefined;
+  const schema = sourceSchemaProfile(schemaSource);
+  const name = extractObjectPropertyString(objectArg, ["name"]) ?? assignedName;
+  if (!name) return undefined;
+
+  return {
+    name,
+    description: extractObjectPropertyString(objectArg, ["description"]) ?? "",
+    schemaProperties: schema.properties,
+    requiredProperties: schema.requiredProperties,
+    openWorldSchema: schema.openWorldSchema,
+    framework,
+    registrationKind: "js_tool_factory",
+    argumentCount: args.length,
+    schemaStyles: agentFrameworkSourceSchemaStyles(framework, "js_tool_factory", undefined, schema, sourceSchemaStyles(schemaSource))
+  };
+}
+
+function extractJavaScriptDynamicStructuredToolDefinitions(
+  content: string,
+  framework: AgentFrameworkSourceToolFramework
+): ExtractedAgentFrameworkSourceToolDefinition[] {
+  const definitions: ExtractedAgentFrameworkSourceToolDefinition[] = [];
+  const pattern = /\bnew\s+DynamicStructuredTool\s*\(/gu;
+  let match: RegExpExecArray | null;
+  while ((match = pattern.exec(content)) !== null) {
+    const openParenIndex = pattern.lastIndex - 1;
+    const closeParenIndex = findMatchingDelimiter(content, openParenIndex, "(", ")");
+    if (closeParenIndex === -1) continue;
+
+    const callText = content.slice(match.index, closeParenIndex + 1);
+    if (callText.length > 50000) {
+      pattern.lastIndex = closeParenIndex + 1;
+      continue;
+    }
+
+    const argsText = content.slice(openParenIndex + 1, closeParenIndex);
+    const args = splitTopLevelCommaList(argsText);
+    const objectArg = args.find((arg) => /\b(name|description|schema|inputSchema|parameters|func)\s*:/u.test(arg));
+    if (!objectArg) {
+      pattern.lastIndex = closeParenIndex + 1;
+      continue;
+    }
+
+    const schemaSource = extractObjectPropertyValue(objectArg, ["schema", "inputSchema", "parameters"]) ?? "";
+    const name = extractObjectPropertyString(objectArg, ["name"]);
+    if (!name || !looksLikeSourceSchema(schemaSource)) {
+      pattern.lastIndex = closeParenIndex + 1;
+      continue;
+    }
+
+    const schema = sourceSchemaProfile(schemaSource);
+    definitions.push({
+      name,
+      description: extractObjectPropertyString(objectArg, ["description"]) ?? "",
+      schemaProperties: schema.properties,
+      requiredProperties: schema.requiredProperties,
+      openWorldSchema: schema.openWorldSchema,
+      framework,
+      registrationKind: "js_dynamic_structured_tool",
+      argumentCount: args.length,
+      schemaStyles: agentFrameworkSourceSchemaStyles(framework, "js_dynamic_structured_tool", undefined, schema, sourceSchemaStyles(schemaSource))
+    });
+    pattern.lastIndex = closeParenIndex + 1;
+  }
   return definitions.sort((a, b) => a.name.localeCompare(b.name));
 }
 
@@ -27439,6 +27568,18 @@ function pythonModelDefinitionSchema(model: PythonModelDefinition): PythonSignat
   };
 }
 
+function sourceSchemaProfile(schemaSource: string): PythonSignatureSchema {
+  const properties = extractSourceSchemaProperties(schemaSource);
+  return {
+    properties,
+    requiredProperties: sourceSchemaRequiredProperties(schemaSource, properties),
+    openWorldSchema: !hasClosedSourceSchemaSignal(schemaSource),
+    referencedModelCount: 0,
+    referencedModelFieldCount: 0,
+    pydanticExtraAllow: false
+  };
+}
+
 function pythonAnnotationModels(annotation: string, models: Map<string, PythonModelDefinition>): PythonModelDefinition[] {
   const normalizedAnnotation = annotation.replace(/["']/gu, "");
   const matchedModels: PythonModelDefinition[] = [];
@@ -27531,9 +27672,10 @@ function agentFrameworkSourceSchemaStyles(
   framework: AgentFrameworkSourceToolFramework,
   registrationKind: ExtractedAgentFrameworkSourceToolDefinition["registrationKind"],
   signature: PythonFunctionSignature | undefined,
-  schema: PythonSignatureSchema
+  schema: PythonSignatureSchema,
+  extraStyles: string[] = []
 ): string[] {
-  const styles = new Set<string>(["agent_framework_source_tool", framework, registrationKind]);
+  const styles = new Set<string>(["agent_framework_source_tool", framework, registrationKind, ...extraStyles]);
   if (signature) styles.add("python_signature");
   if (signature?.openWorldArgs) styles.add("python_kwargs");
   if (schema.referencedModelCount > 0) styles.add("pydantic_model");
@@ -27620,7 +27762,16 @@ function extractSourceSchemaProperties(schemaSource: string): string[] {
 function sourceSchemaRequiredProperties(schemaSource: string, fallbackProperties: string[]): string[] {
   const requiredSource = extractObjectPropertyValue(schemaSource, ["required"]);
   const required = requiredSource ? stringArrayValues(requiredSource) : [];
-  return required.length > 0 ? uniqueStrings(required) : fallbackProperties;
+  return required.length > 0 ? uniqueStrings(required) : zodRequiredProperties(schemaSource, fallbackProperties);
+}
+
+function zodRequiredProperties(schemaSource: string, fallbackProperties: string[]): string[] {
+  const optional = new Set<string>();
+  for (const property of fallbackProperties) {
+    const propertySource = extractObjectPropertyValue(schemaSource, [property]) ?? "";
+    if (/\.\s*optional\s*\(/u.test(propertySource)) optional.add(property);
+  }
+  return fallbackProperties.filter((property) => !optional.has(property));
 }
 
 function hasClosedSourceSchemaSignal(schemaSource: string): boolean {
@@ -27916,7 +28067,10 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
     text
   );
 
-  if (/\b(shell|command|exec|bash|process|terminal|script)\b/i.test(text)) {
+  const shellExecution =
+    /\b(shell|command|exec|bash|process|terminal)\b/i.test(text) ||
+    /\b(?:run|execute|package|npm|pnpm|yarn|node)\s+script\b|\bscript\s+(?:command|execution|runner|path|name)\b/i.test(text);
+  if (shellExecution) {
     classes.add("shell_execution");
     actions.add("execute");
   }

@@ -635,6 +635,12 @@ const leakPatterns = [
   /Send customer context to a caller supplied webhook from LangChain/u,
   /Delete a workspace path after model review from LangChain/u,
   /Read approved internal documentation from LangChain/u,
+  /ai sdk queued/u,
+  /ts framework deleted/u,
+  /ai sdk approved internal summary/u,
+  /Send AI SDK customer context to a caller supplied webhook/u,
+  /Delete a workspace path from a TypeScript LangChain tool/u,
+  /Read approved AI SDK internal documentation/u,
   /Post customer records and confidential support notes/u,
   /Send customer context to a caller supplied webhook/u,
   /Delete a workspace file by path after model review/u,
@@ -649,8 +655,8 @@ const leakPatterns = [
 const vulnerable = await readScanOutput(vulnerableOutput, { sarifRequired: true });
 const safe = await readScanOutput(safeOutput, { sarifRequired: false });
 
-assertEqual(vulnerable.manifest.findings.length, 259, "vulnerable manifest finding count");
-assertEqual(vulnerable.findings.length, 259, "vulnerable findings.json count");
+assertEqual(vulnerable.manifest.findings.length, 263, "vulnerable manifest finding count");
+assertEqual(vulnerable.findings.length, 263, "vulnerable findings.json count");
 assertEqual(vulnerable.manifest.attack_paths.length, 15, "vulnerable attack path count");
 assertEqual(vulnerable.manifest.static_blast_radius?.critical_attack_paths, 15, "vulnerable critical attack path count");
 assertEqual(vulnerable.manifest.diagnostics.length, 0, "vulnerable diagnostics count");

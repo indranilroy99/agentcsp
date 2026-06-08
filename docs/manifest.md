@@ -283,7 +283,7 @@ Raw skill text is not emitted. These fields let rules detect skills that bridge 
 
 ## Tool Schema Authority
 
-Tool definition files are normalized into individual `tool` objects when AgentCSP can parse JSON or YAML tool schemas. Common TypeScript and JavaScript MCP SDK registrations such as `server.tool(...)` and `server.registerTool(...)`, Python/FastMCP decorators such as `@mcp.tool(...)`, and Python agent-framework tool registrations such as LangChain/LangGraph `@tool(...)`, `StructuredTool.from_function(...)`, OpenAI Agents `@function_tool`, and CrewAI-style `@tool(...)` are also normalized into `tool` objects when AgentCSP can safely extract the registration name, input field names, read-only/idempotency hints where available, and bounded schema posture.
+Tool definition files are normalized into individual `tool` objects when AgentCSP can parse JSON or YAML tool schemas. Common TypeScript and JavaScript MCP SDK registrations such as `server.tool(...)` and `server.registerTool(...)`, Python/FastMCP decorators such as `@mcp.tool(...)`, Python agent-framework registrations such as LangChain/LangGraph `@tool(...)`, `StructuredTool.from_function(...)`, OpenAI Agents `@function_tool`, and CrewAI-style `@tool(...)`, plus JavaScript/TypeScript agent-framework registrations such as AI SDK `tool(...)` and LangChain `new DynamicStructuredTool(...)`, are also normalized into `tool` objects when AgentCSP can safely extract the registration name, input field names, read-only/idempotency hints where available, and bounded schema posture.
 
 Tool metadata may include:
 
@@ -354,7 +354,7 @@ Source-defined agent-framework tool metadata may additionally include:
 - `source_tool_handler_redacted`
 - `values_collected`
 
-For Python/FastMCP and Python agent-framework tools, function signatures are reduced to parameter names, required/optional posture, decorator metadata, and local Pydantic/BaseModel field names when a request model is referenced. Model class names, `Field(...)` bodies, function bodies, and docstrings are not emitted. These fields let rules reason about concrete agent-callable authority without dumping raw tool descriptions, schemas, source snippets, or handler bodies into the manifest. Model-visible descriptions are treated as prompt surface: AgentCSP records redacted instruction, untrusted-context, external, memory, secret, and data-egress signals so rules can detect poisoned tool metadata attached to side-effecting authority.
+For Python/FastMCP and Python agent-framework tools, function signatures are reduced to parameter names, required/optional posture, decorator metadata, and local Pydantic/BaseModel field names when a request model is referenced. For JavaScript and TypeScript agent-framework tools, bounded Zod/JSON-schema-like field maps are reduced to field names, required posture, framework, and registration kind. Model class names, `Field(...)` bodies, handler functions, function bodies, docstrings, raw schema objects, and raw descriptions are not emitted. These fields let rules reason about concrete agent-callable authority without dumping raw tool descriptions, schemas, source snippets, or handler bodies into the manifest. Model-visible descriptions are treated as prompt surface: AgentCSP records redacted instruction, untrusted-context, external, memory, secret, and data-egress signals so rules can detect poisoned tool metadata attached to side-effecting authority.
 
 OpenAPI and Swagger files imported as agent tools are also normalized into `tool` objects. Metadata may include:
 
