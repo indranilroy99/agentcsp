@@ -24167,6 +24167,7 @@ function addToolDefinitionSurface(
       external_service_write: authority.external_service_write,
       tainted_external_service_recipient: authority.tainted_external_service_recipient,
       model_provider_call: authority.model_provider_call,
+      tainted_model_selection: authority.tainted_model_selection,
       privileged_prompt_composition: authority.privileged_prompt_composition,
       tainted_shell_argument: authority.tainted_shell_argument,
       tainted_filesystem_path: authority.tainted_filesystem_path,
@@ -26547,6 +26548,7 @@ interface SourceToolHandlerSignals {
   handlerExternalWrite: boolean;
   handlerExternalServiceWrite: boolean;
   handlerModelProviderCall: boolean;
+  handlerTaintedModelSelection: boolean;
   handlerPrivilegedPromptComposition: boolean;
   handlerSecretEnvAccess: boolean;
   handlerModelVisibleOutput: boolean;
@@ -26990,6 +26992,7 @@ function sourceToolHandlerSignalMetadata(signals: SourceToolHandlerSignals | und
     handler_external_write: signals.handlerExternalWrite,
     handler_external_service_write: signals.handlerExternalServiceWrite,
     handler_model_provider_call: signals.handlerModelProviderCall,
+    handler_tainted_model_selection: signals.handlerTaintedModelSelection,
     handler_privileged_prompt_composition: signals.handlerPrivilegedPromptComposition,
     handler_secret_env_access: signals.handlerSecretEnvAccess,
     handler_model_visible_output: signals.handlerModelVisibleOutput,
@@ -27052,6 +27055,9 @@ function classifySourceToolHandlerSignals(
   const modelProviderCall = language === "javascript"
     ? hasJavaScriptHandlerModelProviderCall(handlerSource)
     : hasPythonHandlerModelProviderCall(handlerSource);
+  const taintedModelSelection = modelProviderCall && (language === "javascript"
+    ? hasJavaScriptHandlerTaintedModelSelection(handlerSource)
+    : hasPythonHandlerTaintedModelSelection(handlerSource));
   const privilegedPromptComposition = language === "javascript"
     ? hasJavaScriptHandlerPrivilegedPromptComposition(handlerSource)
     : hasPythonHandlerPrivilegedPromptComposition(handlerSource);
@@ -27143,6 +27149,7 @@ function classifySourceToolHandlerSignals(
   if (externalServiceWrite) classes.add("handler_external_service_write");
   if (taintedExternalServiceRecipient) classes.add("handler_tainted_external_service_recipient");
   if (modelProviderCall) classes.add("handler_model_provider_call");
+  if (taintedModelSelection) classes.add("handler_tainted_model_selection");
   if (privilegedPromptComposition) classes.add("handler_privileged_prompt_composition");
   if (secretEnvAccess) classes.add("handler_secret_env_access");
   if (secretToOutput) classes.add("handler_secret_to_output");
@@ -27180,6 +27187,7 @@ function classifySourceToolHandlerSignals(
     handlerExternalServiceWrite: externalServiceWrite,
     handlerTaintedExternalServiceRecipient: taintedExternalServiceRecipient,
     handlerModelProviderCall: modelProviderCall,
+    handlerTaintedModelSelection: taintedModelSelection,
     handlerPrivilegedPromptComposition: privilegedPromptComposition,
     handlerSecretEnvAccess: secretEnvAccess,
     handlerModelVisibleOutput: modelVisibleOutput,
@@ -27608,6 +27616,23 @@ function hasPythonHandlerModelProviderCall(source: string): boolean {
   return providerSignal && sdkCallSignal;
 }
 
+function hasJavaScriptHandlerTaintedModelSelection(source: string): boolean {
+  return [
+    /\b(?:openai|openaiClient|anthropic|anthropicClient|mistral|mistralClient|cohere|cohereClient|bedrock|bedrockClient|gemini|geminiClient|vertex|vertexClient|llm|modelClient|languageModel)\s*(?:\.\s*[A-Za-z_$][\w$]*){0,5}\s*\.\s*(?:create|stream|parse|invoke|send|complete|generateContent|generateText|doGenerate)\s*\(([\s\S]{0,900})\)/giu,
+    /\b(?:generateText|streamText|generateObject|streamObject)\s*\(([\s\S]{0,900})\)/giu,
+    /\bnew\s+InvokeModelCommand\s*\(([\s\S]{0,900})\)/giu,
+    /\b(?:OpenAI|AzureOpenAI|Anthropic|GoogleGenerativeAI|GenerativeModel|Mistral|CohereClient|BedrockRuntimeClient|ChatOpenAI|ChatAnthropic)\s*\(([\s\S]{0,900})\)/giu
+  ].some((pattern) => expressionMatchesTaintedModelSelection(pattern, source));
+}
+
+function hasPythonHandlerTaintedModelSelection(source: string): boolean {
+  return [
+    /\b(?:openai|openai_client|anthropic|anthropic_client|mistral|mistral_client|cohere|cohere_client|bedrock|bedrock_client|gemini|gemini_client|vertex|vertex_client|llm|model_client|language_model)\s*(?:\.\s*[A-Za-z_]\w*){0,5}\s*\.\s*(?:create|stream|parse|invoke|send|complete|generate_content|predict)\s*\(([\s\S]{0,900})\)/giu,
+    /\b(?:ChatOpenAI|ChatAnthropic|OpenAI|Anthropic)\s*\(([\s\S]{0,900})\)/giu,
+    /\bInvokeModelCommand\s*\(([\s\S]{0,900})\)/giu
+  ].some((pattern) => expressionMatchesTaintedModelSelection(pattern, source));
+}
+
 function hasJavaScriptHandlerPrivilegedPromptComposition(source: string): boolean {
   return [
     /\brole\s*:\s*["'`](?:system|developer)["'`][\s\S]{0,260}\bcontent\s*:\s*([^,\n}\]]+)/giu,
@@ -27768,6 +27793,15 @@ function expressionMatchesTaintedCredentialIssuanceInput(pattern: RegExp, source
   let match: RegExpExecArray | null;
   while ((match = pattern.exec(source)) !== null) {
     if (expressionReferencesTaintedCredentialIssuanceInput(match[1] ?? "", source)) return true;
+    if (match[0].length === 0) pattern.lastIndex += 1;
+  }
+  return false;
+}
+
+function expressionMatchesTaintedModelSelection(pattern: RegExp, source: string): boolean {
+  let match: RegExpExecArray | null;
+  while ((match = pattern.exec(source)) !== null) {
+    if (expressionReferencesTaintedModelSelection(match[1] ?? "", source)) return true;
     if (match[0].length === 0) pattern.lastIndex += 1;
   }
   return false;
@@ -28004,6 +28038,63 @@ function expressionReferencesTaintedCredentialIssuanceInput(expression: string, 
 }
 
 function identifierAssignedFromTaintedCredentialIssuanceInput(identifier: string, source: string, taintedName: RegExp): boolean {
+  const escaped = escapeRegExp(identifier);
+  const patterns = [
+    new RegExp(`\\b(?:const|let|var)\\s+${escaped}\\s*=\\s*([^;\\n]+)`, "gu"),
+    new RegExp(`\\b${escaped}\\s*=\\s*([^\\n]+)`, "gu")
+  ];
+  return patterns.some((pattern) => expressionMatchesPattern(pattern, source, taintedName));
+}
+
+function expressionReferencesTaintedModelSelection(expression: string, source: string): boolean {
+  const templateInterpolation = /\$\{[^}]*\b(?:requestedModel|requested_model|modelName|model_name|modelId|model_id|deploymentName|deployment_name|deploymentId|deployment_id|providerName|provider_name|modelProvider|model_provider|baseUrl|base_url|apiBase|api_base|endpointUrl|endpoint_url|modelEndpoint|model_endpoint|model|deployment|provider|endpoint|url|host)\b/u.test(
+    expression
+  );
+  if (templateInterpolation) return true;
+  const withoutQuotedStrings = expression.replace(/(["'`])(?:\\.|(?!\1)[\s\S])*\1/gu, " ");
+  const stronglyTaintedName = /\b(?:requestedModel|requested_model|modelName|model_name|modelId|model_id|deploymentName|deployment_name|deploymentId|deployment_id|providerName|provider_name|modelProvider|model_provider|baseUrl|base_url|apiBase|api_base|endpointUrl|endpoint_url|modelEndpoint|model_endpoint)\b/u;
+  const taintedName = /\b(?:requestedModel|requested_model|modelName|model_name|modelId|model_id|deploymentName|deployment_name|deploymentId|deployment_id|providerName|provider_name|modelProvider|model_provider|baseUrl|base_url|apiBase|api_base|endpointUrl|endpoint_url|modelEndpoint|model_endpoint|model|deployment|provider|endpoint|url|host)\b/u;
+  if (stronglyTaintedName.test(withoutQuotedStrings)) return true;
+
+  const modelSelectionAssignment = /\b(?:model|model_name|model_id|deployment|deployment_name|deployment_id|provider|provider_name|model_provider|baseUrl|base_url|apiBase|api_base|endpoint|endpoint_url|model_endpoint|url|host)\s*(?::|=)\s*([^,\n}\)]+)/giu;
+  if (expressionMatchesPattern(modelSelectionAssignment, withoutQuotedStrings, taintedName)) return true;
+
+  const valueOnlyExpression = withoutQuotedStrings.replace(
+    /\b(?:model|model_name|model_id|deployment|deployment_name|deployment_id|provider|provider_name|model_provider|baseUrl|base_url|apiBase|api_base|endpoint|endpoint_url|model_endpoint|url|host)\s*(?::|=)/giu,
+    " "
+  );
+  const identifiers = uniqueStrings(
+    [...valueOnlyExpression.matchAll(/\b[A-Za-z_$][\w$]*\b/gu)]
+      .map((match) => match[0])
+      .filter((identifier) => ![
+        "OpenAI",
+        "AzureOpenAI",
+        "Anthropic",
+        "ChatOpenAI",
+        "ChatAnthropic",
+        "InvokeModelCommand",
+        "openai",
+        "openaiClient",
+        "openai_client",
+        "anthropic",
+        "anthropicClient",
+        "anthropic_client",
+        "llm",
+        "modelClient",
+        "model_client",
+        "messages",
+        "input",
+        "prompt",
+        "content",
+        "apiKey",
+        "api_key",
+        "token"
+      ].includes(identifier))
+  );
+  return identifiers.some((identifier) => identifierAssignedFromTaintedModelSelection(identifier, source, taintedName));
+}
+
+function identifierAssignedFromTaintedModelSelection(identifier: string, source: string, taintedName: RegExp): boolean {
   const escaped = escapeRegExp(identifier);
   const patterns = [
     new RegExp(`\\b(?:const|let|var)\\s+${escaped}\\s*=\\s*([^;\\n]+)`, "gu"),
@@ -29423,6 +29514,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   external_service_write: boolean;
   tainted_external_service_recipient: boolean;
   model_provider_call: boolean;
+  tainted_model_selection: boolean;
   privileged_prompt_composition: boolean;
   tainted_shell_argument: boolean;
   tainted_filesystem_path: boolean;
@@ -29460,6 +29552,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   const handlerExternalWrite = handler?.handlerExternalWrite === true;
   const handlerExternalServiceWrite = handler?.handlerExternalServiceWrite === true;
   const handlerModelProviderCall = handler?.handlerModelProviderCall === true;
+  const handlerTaintedModelSelection = handler?.handlerTaintedModelSelection === true;
   const handlerPrivilegedPromptComposition = handler?.handlerPrivilegedPromptComposition === true;
   const handlerDatabaseQuery = handler?.handlerDatabaseQuery === true;
   const handlerDatabaseWrite = handler?.handlerDatabaseWrite === true;
@@ -29637,6 +29730,10 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
     actions.add("read");
     actions.add("send");
   }
+  if (handlerTaintedModelSelection) {
+    classes.add("tainted_model_selection");
+    actions.add("send");
+  }
   if (handlerPrivilegedPromptComposition) {
     classes.add("privileged_prompt_composition");
     actions.add("send");
@@ -29697,6 +29794,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerExternalServiceWrite ||
       handlerTaintedExternalServiceRecipient ||
       handlerModelProviderCall ||
+      handlerTaintedModelSelection ||
       handlerPrivilegedPromptComposition ||
       handlerTaintedShellArgument ||
       handlerDatabaseQuery ||
@@ -29759,6 +29857,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
     external_service_write: handlerExternalServiceWrite,
     tainted_external_service_recipient: handlerTaintedExternalServiceRecipient,
     model_provider_call: handlerModelProviderCall,
+    tainted_model_selection: handlerTaintedModelSelection,
     privileged_prompt_composition: handlerPrivilegedPromptComposition,
     tainted_shell_argument: handlerTaintedShellArgument,
     tainted_filesystem_path: handlerTaintedFilesystemPath,
@@ -29825,6 +29924,7 @@ function authoritySignature(tool: SurfaceObject): string {
     metadata.tainted_database_query_argument === true ? "tainted_database_query_argument" : "",
     metadata.tainted_memory_scope === true ? "tainted_memory_scope" : "",
     metadata.model_provider_call === true ? "model_provider_call" : "",
+    metadata.tainted_model_selection === true ? "tainted_model_selection" : "",
     metadata.privileged_prompt_composition === true ? "privileged_prompt_composition" : "",
     metadata.tainted_shell_argument === true ? "tainted_shell_argument" : "",
     metadata.tainted_filesystem_path === true ? "tainted_filesystem_path" : "",
@@ -29867,6 +29967,7 @@ function isPrivilegedToolSurface(tool: SurfaceObject): boolean {
     tool.metadata.tainted_memory_scope === true ||
     tool.metadata.external_service_write === true ||
     tool.metadata.model_provider_call === true ||
+    tool.metadata.tainted_model_selection === true ||
     tool.metadata.privileged_prompt_composition === true ||
     tool.metadata.tainted_shell_argument === true ||
     tool.metadata.tainted_filesystem_path === true ||

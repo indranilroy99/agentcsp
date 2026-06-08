@@ -56,6 +56,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-040")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-041")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-042")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-043")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-001")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-002")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-003")).toBe(true);
@@ -6529,12 +6530,16 @@ describe("rule engine", () => {
     expect(sourceHandlerModelProviderFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
     expect(sourceHandlerModelProviderFindings.every((finding) => finding.matched_object.metadata.handler_model_provider_call === true)).toBe(true);
     expect(sourceHandlerModelProviderFindings.every((finding) => finding.matched_object.metadata.model_provider_call === true)).toBe(true);
+    expect(sourceHandlerModelProviderFindings.every((finding) => finding.matched_object.metadata.handler_tainted_model_selection === true)).toBe(true);
+    expect(sourceHandlerModelProviderFindings.every((finding) => finding.matched_object.metadata.tainted_model_selection === true)).toBe(true);
     expect(sourceHandlerModelProviderFindings.every((finding) => finding.matched_object.metadata.handler_secret_env_access === true)).toBe(true);
     expect(sourceHandlerModelProviderFindings.every((finding) => finding.matched_object.metadata.handler_model_visible_output === true)).toBe(true);
     expect(sourceHandlerModelProviderFindings.every((finding) => finding.matched_object.metadata.accepts_content_like_input === true)).toBe(true);
     expect(sourceHandlerModelProviderFindings.every((finding) => finding.matched_object.metadata.accepts_customer_data_input === true)).toBe(true);
     expect(sourceHandlerModelProviderFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("model_provider_call"))).toBe(true);
+    expect(sourceHandlerModelProviderFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("tainted_model_selection"))).toBe(true);
     expect(sourceHandlerModelProviderFindings.every((finding) => finding.matched_object.metadata.handler_authority_classes.includes("handler_model_provider_call"))).toBe(true);
+    expect(sourceHandlerModelProviderFindings.every((finding) => finding.matched_object.metadata.handler_authority_classes.includes("handler_tainted_model_selection"))).toBe(true);
     expect(sourceHandlerModelProviderFindings.every((finding) => finding.matched_object.actions.includes("send"))).toBe(true);
     expect(sourceHandlerModelProviderFindings.every((finding) => finding.matched_object.actions.includes("read"))).toBe(true);
     expect(sourceHandlerModelProviderFindings.every((finding) => finding.matched_object.external_reach === true)).toBe(true);
@@ -6547,6 +6552,36 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerModelProviderFindings)).not.toContain("response.choices");
     expect(JSON.stringify(sourceHandlerModelProviderFindings)).not.toContain("Summarize caller supplied customer ticket text");
     expect(JSON.stringify(sourceHandlerModelProviderFindings)).not.toContain("Create an internal support summary");
+    const sourceHandlerTaintedModelSelectionFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-043");
+    expect(sourceHandlerTaintedModelSelectionFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
+      "langchain_summarize_customer_with_model",
+      "source_summarize_customer_with_model"
+    ]);
+    expect(sourceHandlerTaintedModelSelectionFindings.every((finding) => finding.severity === "critical")).toBe(true);
+    expect(sourceHandlerTaintedModelSelectionFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerTaintedModelSelectionFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
+    expect(sourceHandlerTaintedModelSelectionFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
+    expect(sourceHandlerTaintedModelSelectionFindings.every((finding) => finding.matched_object.metadata.handler_model_provider_call === true)).toBe(true);
+    expect(sourceHandlerTaintedModelSelectionFindings.every((finding) => finding.matched_object.metadata.model_provider_call === true)).toBe(true);
+    expect(sourceHandlerTaintedModelSelectionFindings.every((finding) => finding.matched_object.metadata.handler_tainted_model_selection === true)).toBe(true);
+    expect(sourceHandlerTaintedModelSelectionFindings.every((finding) => finding.matched_object.metadata.tainted_model_selection === true)).toBe(true);
+    expect(sourceHandlerTaintedModelSelectionFindings.every((finding) => finding.matched_object.metadata.handler_model_visible_output === true)).toBe(true);
+    expect(sourceHandlerTaintedModelSelectionFindings.every((finding) => finding.matched_object.metadata.accepts_content_like_input === true)).toBe(true);
+    expect(sourceHandlerTaintedModelSelectionFindings.every((finding) => finding.matched_object.metadata.accepts_customer_data_input === true)).toBe(true);
+    expect(sourceHandlerTaintedModelSelectionFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("model_provider_call"))).toBe(true);
+    expect(sourceHandlerTaintedModelSelectionFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("tainted_model_selection"))).toBe(true);
+    expect(sourceHandlerTaintedModelSelectionFindings.every((finding) => finding.matched_object.metadata.handler_authority_classes.includes("handler_model_provider_call"))).toBe(true);
+    expect(sourceHandlerTaintedModelSelectionFindings.every((finding) => finding.matched_object.metadata.handler_authority_classes.includes("handler_tainted_model_selection"))).toBe(true);
+    expect(sourceHandlerTaintedModelSelectionFindings.every((finding) => finding.matched_object.actions.includes("send"))).toBe(true);
+    expect(sourceHandlerTaintedModelSelectionFindings.every((finding) => finding.matched_object.external_reach === true)).toBe(true);
+    expect(sourceHandlerTaintedModelSelectionFindings.every((finding) => finding.matched_object.side_effect === true)).toBe(true);
+    expect(sourceHandlerTaintedModelSelectionFindings.every((finding) => finding.matched_object.reversible === false)).toBe(true);
+    expect(JSON.stringify(sourceHandlerTaintedModelSelectionFindings)).not.toContain("openai.chat.completions.create");
+    expect(JSON.stringify(sourceHandlerTaintedModelSelectionFindings)).not.toContain("openai_client.chat.completions.create");
+    expect(JSON.stringify(sourceHandlerTaintedModelSelectionFindings)).not.toContain("result.choices");
+    expect(JSON.stringify(sourceHandlerTaintedModelSelectionFindings)).not.toContain("response.choices");
+    expect(JSON.stringify(sourceHandlerTaintedModelSelectionFindings)).not.toContain("Summarize caller supplied customer ticket text");
+    expect(JSON.stringify(sourceHandlerTaintedModelSelectionFindings)).not.toContain("Create an internal support summary");
     const sourceHandlerPrivilegedPromptFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-031");
     expect(sourceHandlerPrivilegedPromptFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_summarize_customer_with_model",

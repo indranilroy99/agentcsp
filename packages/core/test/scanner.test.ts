@@ -1801,6 +1801,7 @@ describe("scanner", () => {
       secret_manager_access: false,
       external_service_write: false,
       model_provider_call: true,
+      tainted_model_selection: true,
       privileged_prompt_composition: true,
       network_response_capture: false,
       external_write: false,
@@ -1814,6 +1815,7 @@ describe("scanner", () => {
       handler_external_write: false,
       handler_external_service_write: false,
       handler_model_provider_call: true,
+      handler_tainted_model_selection: true,
       handler_privileged_prompt_composition: true,
       handler_secret_env_access: true,
       handler_model_visible_output: true,
@@ -1832,7 +1834,7 @@ describe("scanner", () => {
       handler_filesystem_read: false,
       handler_filesystem_write: false,
       handler_filesystem_delete: false,
-      handler_signal_count: 3,
+      handler_signal_count: 4,
       open_world_schema: false
     });
     expect(sourceModelProviderCallTool?.metadata.authority_classes).toEqual([
@@ -1841,15 +1843,18 @@ describe("scanner", () => {
       "handler_model_provider_call",
       "handler_privileged_prompt_composition",
       "handler_secret_env_access",
+      "handler_tainted_model_selection",
       "model_provider_call",
       "pii_input",
       "privileged_prompt_composition",
-      "secret_env_access"
+      "secret_env_access",
+      "tainted_model_selection"
     ]);
     expect(sourceModelProviderCallTool?.metadata.handler_authority_classes).toEqual([
       "handler_model_provider_call",
       "handler_privileged_prompt_composition",
-      "handler_secret_env_access"
+      "handler_secret_env_access",
+      "handler_tainted_model_selection"
     ]);
     expect(sourceModelProviderCallTool?.metadata.handler_env_key_names).toEqual(["SOURCE_MODEL_PROVIDER_TOKEN"]);
     expect(sourceModelProviderCallTool?.metadata.schema_properties).toEqual([
@@ -3259,6 +3264,7 @@ describe("scanner", () => {
       secret_manager_access: false,
       external_service_write: false,
       model_provider_call: true,
+      tainted_model_selection: true,
       privileged_prompt_composition: true,
       network_response_capture: false,
       external_write: false,
@@ -3272,6 +3278,7 @@ describe("scanner", () => {
       handler_external_write: false,
       handler_external_service_write: false,
       handler_model_provider_call: true,
+      handler_tainted_model_selection: true,
       handler_privileged_prompt_composition: true,
       handler_secret_env_access: true,
       handler_model_visible_output: true,
@@ -3290,7 +3297,7 @@ describe("scanner", () => {
       handler_filesystem_read: false,
       handler_filesystem_write: false,
       handler_filesystem_delete: false,
-      handler_signal_count: 3,
+      handler_signal_count: 4,
       open_world_schema: false
     });
     expect(langchainModelProviderCallTool?.metadata.authority_classes).toEqual([
@@ -3299,15 +3306,18 @@ describe("scanner", () => {
       "handler_model_provider_call",
       "handler_privileged_prompt_composition",
       "handler_secret_env_access",
+      "handler_tainted_model_selection",
       "model_provider_call",
       "pii_input",
       "privileged_prompt_composition",
-      "secret_env_access"
+      "secret_env_access",
+      "tainted_model_selection"
     ]);
     expect(langchainModelProviderCallTool?.metadata.handler_authority_classes).toEqual([
       "handler_model_provider_call",
       "handler_privileged_prompt_composition",
-      "handler_secret_env_access"
+      "handler_secret_env_access",
+      "handler_tainted_model_selection"
     ]);
     expect(langchainModelProviderCallTool?.metadata.handler_env_key_names).toEqual(["LANGCHAIN_MODEL_PROVIDER_TOKEN"]);
     expect(langchainModelProviderCallTool?.metadata.schema_properties).toEqual([

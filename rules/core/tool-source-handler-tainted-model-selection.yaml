@@ -1,0 +1,89 @@
+id: AGENTCSP-TOOL-043
+name: Source tool handler invokes caller-selected model provider target
+description: A source-defined agent tool handler passes a caller-selected model, deployment, provider, endpoint, or base URL into a model-provider SDK call while forwarding caller or customer context, creating a direct path from model-reachable input to unapproved model routing.
+category: tool_source_handler_authority
+severity: critical
+maps_to:
+  owasp:
+    - LLM01:2025 Prompt Injection
+    - LLM02:2025 Sensitive Information Disclosure
+    - LLM06:2025 Excessive Agency
+  mitre_atlas:
+    - AML.T0051 LLM Plugin Compromise
+    - AML.T0057 Exfiltration via Cyber Means
+  nist_ai_rmf:
+    - MAP 4.1
+    - MEASURE 2.7
+    - MANAGE 2.4
+match:
+  object_type: tool
+  where:
+    - field: metadata.parsed_tool_schema
+      op: equals
+      value: true
+    - field: metadata.source_tool_handler_redacted
+      op: equals
+      value: true
+    - field: metadata.handler_body_analyzed
+      op: equals
+      value: true
+    - field: metadata.handler_model_provider_call
+      op: equals
+      value: true
+    - field: metadata.handler_tainted_model_selection
+      op: equals
+      value: true
+    - field: metadata.model_provider_call
+      op: equals
+      value: true
+    - field: metadata.tainted_model_selection
+      op: equals
+      value: true
+    - field: metadata.accepts_content_like_input
+      op: equals
+      value: true
+    - field: metadata.accepts_customer_data_input
+      op: equals
+      value: true
+    - field: metadata.handler_model_visible_output
+      op: equals
+      value: true
+    - field: metadata.authority_classes
+      op: includes
+      value: model_provider_call
+    - field: metadata.authority_classes
+      op: includes
+      value: tainted_model_selection
+    - field: metadata.handler_authority_classes
+      op: includes
+      value: handler_model_provider_call
+    - field: metadata.handler_authority_classes
+      op: includes
+      value: handler_tainted_model_selection
+    - field: metadata.schema_properties
+      op: contains_any
+      value:
+        - model
+        - model_name
+        - model_id
+        - requested_model
+        - deployment
+        - deployment_name
+        - deployment_id
+        - provider
+        - provider_name
+        - model_provider
+        - base_url
+        - endpoint_url
+    - field: actions
+      op: includes
+      value: send
+    - field: external_reach
+      op: equals
+      value: true
+    - field: side_effect
+      op: equals
+      value: true
+recommendation:
+  control: quarantine
+  text: Quarantine source-defined model-provider tools that let callers select model, deployment, provider, endpoint, or base URL until model routing is resolved by policy outside the model path, constrained to approved deployments, separated from customer context, and approval-gated before sensitive prompts are sent.
