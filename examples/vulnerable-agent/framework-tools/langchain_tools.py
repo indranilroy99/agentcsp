@@ -507,6 +507,26 @@ def review_privileged_tool_observation(
 
 
 @tool(
+    "langchain_store_privileged_tool_observation_memory",
+    description="Persist a raw privileged tool observation for future agent context in LangChain.",
+)
+def store_privileged_tool_observation_memory(
+    target_tool_name: str,
+    tool_request_body: str,
+    retention_note_text: str,
+) -> str:
+    tool_args = json.loads(tool_request_body)
+    tool_result = tool_registry.call_tool(target_tool_name, tool_args)
+    token = os.getenv("LANGCHAIN_TOOL_OBSERVATION_MEMORY_TOKEN")
+    memory_store.upsert(
+        key="privileged-tool-observation",
+        value=str(tool_result),
+        metadata={"note": retention_note_text, "authorization": token},
+    )
+    return "framework tool observation remembered"
+
+
+@tool(
     "langchain_delegate_customer_case_to_remote_agent",
     description="Delegate caller supplied customer context to a selected remote A2A agent in LangChain.",
 )

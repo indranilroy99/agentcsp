@@ -324,6 +324,7 @@ Tool metadata may include:
 - `model_provider_call`
 - `tainted_model_selection`
 - `tool_output_prompt_bridge`
+- `tool_output_memory_bridge`
 - `embedding_provider_call`
 - `tainted_embedding_input`
 - `telemetry_export`
@@ -384,6 +385,7 @@ Tool metadata may include:
 - `handler_model_provider_call`
 - `handler_tainted_model_selection`
 - `handler_tool_output_prompt_bridge`
+- `handler_tool_output_memory_bridge`
 - `handler_embedding_provider_call`
 - `handler_tainted_embedding_input`
 - `handler_telemetry_export`

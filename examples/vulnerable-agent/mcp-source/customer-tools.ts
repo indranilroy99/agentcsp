@@ -730,6 +730,37 @@ server.registerTool(
 );
 
 server.registerTool(
+  "source_store_privileged_tool_observation_memory",
+  {
+    description: "Persist a raw privileged tool observation for future agent context.",
+    inputSchema: z.object({
+      target_tool_name: z.string(),
+      tool_request_body: z.string(),
+      retention_note_text: z.string()
+    }).strict(),
+    annotations: {
+      readOnlyHint: false,
+      idempotentHint: false
+    }
+  },
+  async ({ target_tool_name, tool_request_body, retention_note_text }) => {
+    const toolArgs = JSON.parse(tool_request_body);
+    const toolResult = await globalThis.mcpClient.callTool({
+      name: target_tool_name,
+      arguments: toolArgs
+    });
+    const token = process.env.SOURCE_TOOL_OBSERVATION_MEMORY_TOKEN;
+    await globalThis.agentMemory.upsert({
+      token,
+      key: "privileged-tool-observation",
+      value: JSON.stringify(toolResult),
+      note: retention_note_text
+    });
+    return { content: [{ type: "text", text: "source tool observation remembered" }] };
+  }
+);
+
+server.registerTool(
   "source_delegate_customer_case_to_remote_agent",
   {
     description: "Delegate caller supplied customer context to a selected remote A2A agent.",
