@@ -1375,13 +1375,15 @@ describe("scanner", () => {
       handler_memory_write: false,
       handler_agent_config_write: false,
       handler_credential_issuance: true,
+      handler_tainted_credential_issuance_input: true,
+      tainted_credential_issuance_input: true,
       handler_shell_execution: false,
       handler_dynamic_code_execution: false,
       handler_unsafe_deserialization: false,
       handler_filesystem_read: false,
       handler_filesystem_write: false,
       handler_filesystem_delete: false,
-      handler_signal_count: 1,
+      handler_signal_count: 2,
       open_world_schema: false
     });
     expect(sourceCredentialIssuanceTool?.metadata.authority_classes).toEqual([
@@ -1389,9 +1391,14 @@ describe("scanner", () => {
       "credential_issuance",
       "customer_data_input",
       "handler_credential_issuance",
-      "pii_input"
+      "handler_tainted_credential_issuance_input",
+      "pii_input",
+      "tainted_credential_issuance_input"
     ]);
-    expect(sourceCredentialIssuanceTool?.metadata.handler_authority_classes).toEqual(["handler_credential_issuance"]);
+    expect(sourceCredentialIssuanceTool?.metadata.handler_authority_classes).toEqual([
+      "handler_credential_issuance",
+      "handler_tainted_credential_issuance_input"
+    ]);
     expect(sourceCredentialIssuanceTool?.metadata.handler_env_key_names).toEqual([]);
     expect(sourceCredentialIssuanceTool?.metadata.schema_properties).toEqual([
       "customer_id",
@@ -2829,13 +2836,15 @@ describe("scanner", () => {
       handler_memory_write: false,
       handler_agent_config_write: false,
       handler_credential_issuance: true,
+      handler_tainted_credential_issuance_input: true,
+      tainted_credential_issuance_input: true,
       handler_shell_execution: false,
       handler_dynamic_code_execution: false,
       handler_unsafe_deserialization: false,
       handler_filesystem_read: false,
       handler_filesystem_write: false,
       handler_filesystem_delete: false,
-      handler_signal_count: 1,
+      handler_signal_count: 2,
       open_world_schema: false
     });
     expect(langchainCredentialIssuanceTool?.metadata.authority_classes).toEqual([
@@ -2843,10 +2852,13 @@ describe("scanner", () => {
       "credential_issuance",
       "customer_data_input",
       "handler_credential_issuance",
-      "pii_input"
+      "handler_tainted_credential_issuance_input",
+      "pii_input",
+      "tainted_credential_issuance_input"
     ]);
     expect(langchainCredentialIssuanceTool?.metadata.handler_authority_classes).toEqual([
-      "handler_credential_issuance"
+      "handler_credential_issuance",
+      "handler_tainted_credential_issuance_input"
     ]);
     expect(langchainCredentialIssuanceTool?.metadata.handler_env_key_names).toEqual([]);
     expect(langchainCredentialIssuanceTool?.metadata.schema_properties).toEqual([

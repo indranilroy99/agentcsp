@@ -308,6 +308,7 @@ Tool metadata may include:
 - `tainted_memory_scope`
 - `agent_config_write`
 - `credential_issuance`
+- `tainted_credential_issuance_input`
 - `nested_tool_invocation`
 - `browser_automation`
 - `tainted_browser_automation_target`
@@ -350,6 +351,7 @@ Tool metadata may include:
 - `handler_tainted_memory_scope`
 - `handler_agent_config_write`
 - `handler_credential_issuance`
+- `handler_tainted_credential_issuance_input`
 - `handler_tool_invocation`
 - `handler_browser_automation`
 - `handler_tainted_browser_automation_target`

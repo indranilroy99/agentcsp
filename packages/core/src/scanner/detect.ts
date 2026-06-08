@@ -24158,6 +24158,7 @@ function addToolDefinitionSurface(
       tainted_memory_scope: authority.tainted_memory_scope,
       agent_config_write: authority.agent_config_write,
       credential_issuance: authority.credential_issuance,
+      tainted_credential_issuance_input: authority.tainted_credential_issuance_input,
       nested_tool_invocation: authority.nested_tool_invocation,
       browser_automation: authority.browser_automation,
       tainted_browser_automation_target: authority.tainted_browser_automation_target,
@@ -26557,6 +26558,7 @@ interface SourceToolHandlerSignals {
   handlerTaintedMemoryScope: boolean;
   handlerAgentConfigWrite: boolean;
   handlerCredentialIssuance: boolean;
+  handlerTaintedCredentialIssuanceInput: boolean;
   handlerToolInvocation: boolean;
   handlerBrowserAutomation: boolean;
   handlerTaintedBrowserAutomationTarget: boolean;
@@ -26999,6 +27001,7 @@ function sourceToolHandlerSignalMetadata(signals: SourceToolHandlerSignals | und
     handler_tainted_memory_scope: signals.handlerTaintedMemoryScope,
     handler_agent_config_write: signals.handlerAgentConfigWrite,
     handler_credential_issuance: signals.handlerCredentialIssuance,
+    handler_tainted_credential_issuance_input: signals.handlerTaintedCredentialIssuanceInput,
     handler_tool_invocation: signals.handlerToolInvocation,
     handler_browser_automation: signals.handlerBrowserAutomation,
     handler_tainted_browser_automation_target: signals.handlerTaintedBrowserAutomationTarget,
@@ -27112,6 +27115,9 @@ function classifySourceToolHandlerSignals(
   const credentialIssuance = language === "javascript"
     ? hasJavaScriptHandlerCredentialIssuance(handlerSource)
     : hasPythonHandlerCredentialIssuance(handlerSource);
+  const taintedCredentialIssuanceInput = credentialIssuance && (language === "javascript"
+    ? hasJavaScriptHandlerTaintedCredentialIssuanceInput(handlerSource)
+    : hasPythonHandlerTaintedCredentialIssuanceInput(handlerSource));
   const toolInvocation = language === "javascript"
     ? hasJavaScriptHandlerToolInvocation(handlerSource)
     : hasPythonHandlerToolInvocation(handlerSource);
@@ -27147,6 +27153,7 @@ function classifySourceToolHandlerSignals(
   if (taintedMemoryScope) classes.add("handler_tainted_memory_scope");
   if (agentConfigWrite) classes.add("handler_agent_config_write");
   if (credentialIssuance) classes.add("handler_credential_issuance");
+  if (taintedCredentialIssuanceInput) classes.add("handler_tainted_credential_issuance_input");
   if (toolInvocation) classes.add("handler_tool_invocation");
   if (browserAutomation) classes.add("handler_browser_automation");
   if (taintedBrowserAutomationTarget) classes.add("handler_tainted_browser_automation_target");
@@ -27184,6 +27191,7 @@ function classifySourceToolHandlerSignals(
     handlerTaintedMemoryScope: taintedMemoryScope,
     handlerAgentConfigWrite: agentConfigWrite,
     handlerCredentialIssuance: credentialIssuance,
+    handlerTaintedCredentialIssuanceInput: taintedCredentialIssuanceInput,
     handlerToolInvocation: toolInvocation,
     handlerBrowserAutomation: browserAutomation,
     handlerTaintedBrowserAutomationTarget: taintedBrowserAutomationTarget,
@@ -27486,6 +27494,20 @@ function hasPythonHandlerCredentialIssuance(source: string): boolean {
   );
 }
 
+function hasJavaScriptHandlerTaintedCredentialIssuanceInput(source: string): boolean {
+  return [
+    /\b(?:credentialBroker|identityBroker|tokenBroker|authBroker|sts|iam|oauthClient|serviceAccount)\s*\.\s*(?:issue|mint|create|generate|sign|assumeRole|impersonate|exchange|grant|createToken|issueToken|mintToken|signJwt|signJWT|getAccessToken)\s*\(([\s\S]{0,720})\)/giu,
+    /\b(?:issue|mint|create|generate|sign|assume|impersonate)[A-Za-z0-9_$]*(?:Token|JWT|Jwt|Credential|Credentials|Session|Grant|Role)\s*\(([\s\S]{0,720})\)/giu
+  ].some((pattern) => expressionMatchesTaintedCredentialIssuanceInput(pattern, source));
+}
+
+function hasPythonHandlerTaintedCredentialIssuanceInput(source: string): boolean {
+  return [
+    /\b(?:credential_broker|identity_broker|token_broker|auth_broker|sts|iam|oauth_client|service_account)\s*\.\s*(?:issue|mint|create|generate|sign|assume_role|impersonate|exchange|grant|create_token|issue_token|mint_token|sign_jwt|get_access_token)\s*\(([\s\S]{0,720})\)/giu,
+    /\b(?:issue|mint|create|generate|sign|assume|impersonate)_(?:token|jwt|credential|credentials|session|grant|role)\s*\(([\s\S]{0,720})\)/giu
+  ].some((pattern) => expressionMatchesTaintedCredentialIssuanceInput(pattern, source));
+}
+
 function hasJavaScriptHandlerToolInvocation(source: string): boolean {
   return /\b(?:callTool|invokeTool|executeTool|runTool|dispatchTool)\s*\(/u.test(source) ||
     /\b(?:mcpClient|toolClient|toolRegistry|toolRouter|toolRunner|agentTools?|tools?)\s*\.\s*(?:callTool|invokeTool|executeTool|runTool|dispatchTool|dispatch|invoke|execute)\s*\(/u.test(
@@ -27742,6 +27764,15 @@ function expressionMatchesTaintedMemoryScope(pattern: RegExp, source: string): b
   return false;
 }
 
+function expressionMatchesTaintedCredentialIssuanceInput(pattern: RegExp, source: string): boolean {
+  let match: RegExpExecArray | null;
+  while ((match = pattern.exec(source)) !== null) {
+    if (expressionReferencesTaintedCredentialIssuanceInput(match[1] ?? "", source)) return true;
+    if (match[0].length === 0) pattern.lastIndex += 1;
+  }
+  return false;
+}
+
 function expressionMatchesTaintedBrowserAutomationTarget(pattern: RegExp, source: string): boolean {
   let match: RegExpExecArray | null;
   while ((match = pattern.exec(source)) !== null) {
@@ -27939,6 +27970,40 @@ function expressionReferencesTaintedMemoryScope(expression: string, source: stri
 }
 
 function identifierAssignedFromTaintedMemoryScopeInput(identifier: string, source: string, taintedName: RegExp): boolean {
+  const escaped = escapeRegExp(identifier);
+  const patterns = [
+    new RegExp(`\\b(?:const|let|var)\\s+${escaped}\\s*=\\s*([^;\\n]+)`, "gu"),
+    new RegExp(`\\b${escaped}\\s*=\\s*([^\\n]+)`, "gu")
+  ];
+  return patterns.some((pattern) => expressionMatchesPattern(pattern, source, taintedName));
+}
+
+function expressionReferencesTaintedCredentialIssuanceInput(expression: string, source: string): boolean {
+  const templateInterpolation = /\$\{[^}]*\b(?:requestedSubject|requested_subject|requestedScope|requested_scope|tokenAudience|token_audience|requestedRole|requested_role|delegatedUser|delegated_user|impersonatedSubject|impersonated_subject|serviceAccountSubject|service_account_subject|subjectInput|subject_input|scopeInput|scope_input|audienceInput|audience_input|roleInput|role_input|subject|scope|audience|role)\b/u.test(
+    expression
+  );
+  if (templateInterpolation) return true;
+  const withoutQuotedStrings = expression.replace(/(["'`])(?:\\.|(?!\1)[\s\S])*\1/gu, " ");
+  const stronglyTaintedName = /\b(?:requestedSubject|requested_subject|requestedScope|requested_scope|tokenAudience|token_audience|requestedRole|requested_role|delegatedUser|delegated_user|impersonatedSubject|impersonated_subject|serviceAccountSubject|service_account_subject|subjectInput|subject_input|scopeInput|scope_input|audienceInput|audience_input|roleInput|role_input)\b/u;
+  const taintedName = /\b(?:requestedSubject|requested_subject|requestedScope|requested_scope|tokenAudience|token_audience|requestedRole|requested_role|delegatedUser|delegated_user|impersonatedSubject|impersonated_subject|serviceAccountSubject|service_account_subject|subjectInput|subject_input|scopeInput|scope_input|audienceInput|audience_input|roleInput|role_input|subject|scope|audience|role|tenant|tenantId|tenant_id|customer|customerId|customer_id|user|userId|user_id|account|serviceAccount|service_account)\b/u;
+  if (stronglyTaintedName.test(withoutQuotedStrings)) return true;
+
+  const grantAssignment = /\b(?:subject|scope|audience|role|tenant|tenant_id|customer|customer_id|user|user_id|account|serviceAccount|service_account)\s*(?::|=)\s*([^,\n}\)]+)/giu;
+  if (expressionMatchesPattern(grantAssignment, withoutQuotedStrings, taintedName)) return true;
+
+  const valueOnlyExpression = withoutQuotedStrings.replace(
+    /\b(?:subject|scope|audience|role|tenant|tenant_id|customer|customer_id|user|user_id|account|serviceAccount|service_account)\s*(?::|=)/giu,
+    " "
+  );
+  const identifiers = uniqueStrings(
+    [...valueOnlyExpression.matchAll(/\b[A-Za-z_$][\w$]*\b/gu)]
+      .map((match) => match[0])
+      .filter((identifier) => !["credentialBroker", "identityBroker", "tokenBroker", "authBroker", "sts", "iam", "oauthClient", "serviceAccount", "token"].includes(identifier))
+  );
+  return identifiers.some((identifier) => identifierAssignedFromTaintedCredentialIssuanceInput(identifier, source, taintedName));
+}
+
+function identifierAssignedFromTaintedCredentialIssuanceInput(identifier: string, source: string, taintedName: RegExp): boolean {
   const escaped = escapeRegExp(identifier);
   const patterns = [
     new RegExp(`\\b(?:const|let|var)\\s+${escaped}\\s*=\\s*([^;\\n]+)`, "gu"),
@@ -29349,6 +29414,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   tainted_memory_scope: boolean;
   agent_config_write: boolean;
   credential_issuance: boolean;
+  tainted_credential_issuance_input: boolean;
   nested_tool_invocation: boolean;
   browser_automation: boolean;
   tainted_browser_automation_target: boolean;
@@ -29402,6 +29468,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   const handlerTaintedMemoryScope = handler?.handlerTaintedMemoryScope === true;
   const handlerAgentConfigWrite = handler?.handlerAgentConfigWrite === true;
   const handlerCredentialIssuance = handler?.handlerCredentialIssuance === true;
+  const handlerTaintedCredentialIssuanceInput = handler?.handlerTaintedCredentialIssuanceInput === true;
   const handlerToolInvocation = handler?.handlerToolInvocation === true;
   const handlerBrowserAutomation = handler?.handlerBrowserAutomation === true;
   const handlerTaintedBrowserAutomationTarget = handler?.handlerTaintedBrowserAutomationTarget === true;
@@ -29534,6 +29601,10 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
     classes.add("credential_issuance");
     actions.add("send");
   }
+  if (handlerTaintedCredentialIssuanceInput) {
+    classes.add("tainted_credential_issuance_input");
+    actions.add("send");
+  }
   if (handlerToolInvocation) {
     classes.add("nested_tool_invocation");
     actions.add("execute");
@@ -29617,6 +29688,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerTaintedMemoryScope ||
       handlerAgentConfigWrite ||
       handlerCredentialIssuance ||
+      handlerTaintedCredentialIssuanceInput ||
       handlerToolInvocation ||
       handlerBrowserAutomation ||
       handlerTaintedBrowserAutomationTarget ||
@@ -29678,6 +29750,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
     tainted_memory_scope: handlerTaintedMemoryScope,
     agent_config_write: handlerAgentConfigWrite,
     credential_issuance: handlerCredentialIssuance,
+    tainted_credential_issuance_input: handlerTaintedCredentialIssuanceInput,
     nested_tool_invocation: handlerToolInvocation,
     browser_automation: handlerBrowserAutomation,
     tainted_browser_automation_target: handlerTaintedBrowserAutomationTarget,
@@ -29759,6 +29832,7 @@ function authoritySignature(tool: SurfaceObject): string {
     metadata.tainted_dynamic_code_argument === true ? "tainted_dynamic_code_argument" : "",
     metadata.tainted_deserialization_argument === true ? "tainted_deserialization_argument" : "",
     metadata.credential_issuance === true ? "credential_issuance" : "",
+    metadata.tainted_credential_issuance_input === true ? "tainted_credential_issuance_input" : "",
     metadata.nested_tool_invocation === true ? "nested_tool_invocation" : "",
     metadata.browser_automation === true ? "browser_automation" : "",
     metadata.tainted_browser_automation_target === true ? "tainted_browser_automation_target" : "",
@@ -29800,6 +29874,7 @@ function isPrivilegedToolSurface(tool: SurfaceObject): boolean {
     tool.metadata.tainted_dynamic_code_argument === true ||
     tool.metadata.tainted_deserialization_argument === true ||
     tool.metadata.credential_issuance === true ||
+    tool.metadata.tainted_credential_issuance_input === true ||
     tool.metadata.nested_tool_invocation === true ||
     tool.metadata.browser_automation === true ||
     tool.metadata.tainted_browser_automation_target === true ||
