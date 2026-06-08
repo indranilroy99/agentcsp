@@ -24185,6 +24185,7 @@ function addToolDefinitionSurface(
       tainted_secret_manager_path: authority.tainted_secret_manager_path,
       external_service_write: authority.external_service_write,
       tainted_external_service_recipient: authority.tainted_external_service_recipient,
+      tool_output_external_service_bridge: authority.tool_output_external_service_bridge,
       model_provider_call: authority.model_provider_call,
       tainted_model_selection: authority.tainted_model_selection,
       tool_output_prompt_bridge: authority.tool_output_prompt_bridge,
@@ -26670,6 +26671,7 @@ interface SourceToolHandlerSignals {
   handlerTaintedShellArgument: boolean;
   handlerTaintedFilesystemPath: boolean;
   handlerTaintedExternalServiceRecipient: boolean;
+  handlerToolOutputExternalServiceBridge: boolean;
   handlerDynamicCodeExecution: boolean;
   handlerTaintedDynamicCodeArgument: boolean;
   handlerUnsafeDeserialization: boolean;
@@ -27157,6 +27159,7 @@ function sourceToolHandlerSignalMetadata(signals: SourceToolHandlerSignals | und
     handler_tainted_shell_argument: signals.handlerTaintedShellArgument,
     handler_tainted_filesystem_path: signals.handlerTaintedFilesystemPath,
     handler_tainted_external_service_recipient: signals.handlerTaintedExternalServiceRecipient,
+    handler_tool_output_external_service_bridge: signals.handlerToolOutputExternalServiceBridge,
     handler_dynamic_code_execution: signals.handlerDynamicCodeExecution,
     handler_tainted_dynamic_code_argument: signals.handlerTaintedDynamicCodeArgument,
     handler_unsafe_deserialization: signals.handlerUnsafeDeserialization,
@@ -27195,6 +27198,9 @@ function classifySourceToolHandlerSignals(
   const taintedExternalServiceRecipient = externalServiceWrite && (language === "javascript"
     ? hasJavaScriptHandlerTaintedExternalServiceRecipient(handlerSource)
     : hasPythonHandlerTaintedExternalServiceRecipient(handlerSource));
+  const toolOutputExternalServiceBridge = externalServiceWrite && (language === "javascript"
+    ? hasJavaScriptHandlerToolOutputExternalServiceBridge(handlerSource)
+    : hasPythonHandlerToolOutputExternalServiceBridge(handlerSource));
   const modelProviderCall = language === "javascript"
     ? hasJavaScriptHandlerModelProviderCall(handlerSource)
     : hasPythonHandlerModelProviderCall(handlerSource);
@@ -27406,6 +27412,7 @@ function classifySourceToolHandlerSignals(
   if (externalWrite) classes.add("handler_external_write");
   if (externalServiceWrite) classes.add("handler_external_service_write");
   if (taintedExternalServiceRecipient) classes.add("handler_tainted_external_service_recipient");
+  if (toolOutputExternalServiceBridge) classes.add("handler_tool_output_external_service_bridge");
   if (modelProviderCall) classes.add("handler_model_provider_call");
   if (taintedModelSelection) classes.add("handler_tainted_model_selection");
   if (toolOutputPromptBridge) classes.add("handler_tool_output_prompt_bridge");
@@ -27487,6 +27494,7 @@ function classifySourceToolHandlerSignals(
     handlerExternalWrite: externalWrite,
     handlerExternalServiceWrite: externalServiceWrite,
     handlerTaintedExternalServiceRecipient: taintedExternalServiceRecipient,
+    handlerToolOutputExternalServiceBridge: toolOutputExternalServiceBridge,
     handlerModelProviderCall: modelProviderCall,
     handlerTaintedModelSelection: taintedModelSelection,
     handlerToolOutputPromptBridge: toolOutputPromptBridge,
@@ -28010,6 +28018,28 @@ function hasPythonHandlerTaintedExternalServiceRecipient(source: string): boolea
   return [
     /\b(?:slack_client|slack|github|github_client|octokit|email_client|mail_client|sendgrid|twilio_client|twilio|teams_client|discord_client|notion|linear|jira|salesforce|hubspot)\s*(?:\.\s*[A-Za-z_]\w*){0,4}\s*\.\s*(?:post_message|chat_postMessage|chat_post_message|create_comment|create_issue_comment|send|send_mail|send_message|create|publish|post|reply|update|create_page|create_task|create_issue)\s*\(([\s\S]{0,720})\)/giu
   ].some((pattern) => expressionMatchesTaintedExternalServiceRecipient(pattern, source));
+}
+
+function hasJavaScriptHandlerToolOutputExternalServiceBridge(source: string): boolean {
+  const identifiers = extractJavaScriptToolOutputIdentifiers(source);
+  return identifiers.length > 0 && callExpressionReferencesAnyIdentifier(
+    [
+      /\b(?:slackClient|slack|github|githubClient|octokit|emailClient|mailClient|sendgrid|twilioClient|twilio|teamsClient|discordClient|notion|linear|jira|salesforce|hubspot)\s*(?:\.\s*[A-Za-z_$][\w$]*){0,4}\s*\.\s*(?:postMessage|createComment|createIssueComment|send|sendMail|sendMessage|create|publish|post|reply|update|createPage|createTask|createIssue)\s*\(([\s\S]{0,1800})\)/giu
+    ],
+    source,
+    identifiers
+  );
+}
+
+function hasPythonHandlerToolOutputExternalServiceBridge(source: string): boolean {
+  const identifiers = extractPythonToolOutputIdentifiers(source);
+  return identifiers.length > 0 && callExpressionReferencesAnyIdentifier(
+    [
+      /\b(?:slack_client|slack|github|github_client|octokit|email_client|mail_client|sendgrid|twilio_client|twilio|teams_client|discord_client|notion|linear|jira|salesforce|hubspot)\s*(?:\.\s*[A-Za-z_]\w*){0,4}\s*\.\s*(?:post_message|chat_postMessage|chat_post_message|create_comment|create_issue_comment|send|send_mail|send_message|create|publish|post|reply|update|create_page|create_task|create_issue)\s*\(([\s\S]{0,1800})\)/giu
+    ],
+    source,
+    identifiers
+  );
 }
 
 function hasJavaScriptHandlerModelProviderCall(source: string): boolean {
@@ -29287,12 +29317,12 @@ function identifierAssignedFromTaintedSecretManagerPathInput(identifier: string,
 }
 
 function expressionReferencesTaintedExternalServiceRecipient(expression: string, source: string): boolean {
-  const templateInterpolation = /\$\{[^}]*\b(?:slackChannelId|slack_channel_id|channelId|channel_id|channelName|channel_name|targetChannel|target_channel|destinationChannel|destination_channel|recipientId|recipient_id|recipientEmail|recipient_email|recipientAddress|recipient_address|emailAddress|email_address|userId|user_id|roomId|room_id|conversationId|conversation_id|webhookUrl|webhook_url|destinationWebhookUrl|destination_webhook_url)\b/u.test(
+  const templateInterpolation = /\$\{[^}]*\b(?:slackChannelId|slack_channel_id|externalChannelId|external_channel_id|channelId|channel_id|channelName|channel_name|targetChannel|target_channel|destinationChannel|destination_channel|recipientId|recipient_id|recipientEmail|recipient_email|recipientAddress|recipient_address|emailAddress|email_address|userId|user_id|roomId|room_id|conversationId|conversation_id|webhookUrl|webhook_url|destinationWebhookUrl|destination_webhook_url)\b/u.test(
     expression
   );
   if (templateInterpolation) return true;
   const withoutQuotedStrings = expression.replace(/(["'`])(?:\\.|(?!\1)[\s\S])*\1/gu, " ");
-  const stronglyTaintedName = /\b(?:slackChannelId|slack_channel_id|channelId|channel_id|channelName|channel_name|targetChannel|target_channel|destinationChannel|destination_channel|recipientId|recipient_id|recipientEmail|recipient_email|recipientAddress|recipient_address|emailAddress|email_address|userId|user_id|roomId|room_id|conversationId|conversation_id|webhookUrl|webhook_url|destinationWebhookUrl|destination_webhook_url)\b/u;
+  const stronglyTaintedName = /\b(?:slackChannelId|slack_channel_id|externalChannelId|external_channel_id|channelId|channel_id|channelName|channel_name|targetChannel|target_channel|destinationChannel|destination_channel|recipientId|recipient_id|recipientEmail|recipient_email|recipientAddress|recipient_address|emailAddress|email_address|userId|user_id|roomId|room_id|conversationId|conversation_id|webhookUrl|webhook_url|destinationWebhookUrl|destination_webhook_url)\b/u;
   if (stronglyTaintedName.test(withoutQuotedStrings)) return true;
 
   const recipientAssignment = /\b(?:channel|channel_id|room|room_id|conversation|conversation_id|recipient|recipient_id|to|cc|bcc|user|user_id|email|email_address|destination|target|webhook|webhook_url)\s*(?::|=)\s*([^,\n}\)]+)/giu;
@@ -31812,6 +31842,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   tainted_secret_manager_path: boolean;
   external_service_write: boolean;
   tainted_external_service_recipient: boolean;
+  tool_output_external_service_bridge: boolean;
   model_provider_call: boolean;
   tainted_model_selection: boolean;
   tool_output_prompt_bridge: boolean;
@@ -31949,6 +31980,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   const handlerTaintedShellArgument = handler?.handlerTaintedShellArgument === true;
   const handlerTaintedFilesystemPath = handler?.handlerTaintedFilesystemPath === true;
   const handlerTaintedExternalServiceRecipient = handler?.handlerTaintedExternalServiceRecipient === true;
+  const handlerToolOutputExternalServiceBridge = handler?.handlerToolOutputExternalServiceBridge === true;
   const handlerDynamicCodeExecution = handler?.handlerDynamicCodeExecution === true;
   const handlerTaintedDynamicCodeArgument = handler?.handlerTaintedDynamicCodeArgument === true;
   const handlerUnsafeDeserialization = handler?.handlerUnsafeDeserialization === true;
@@ -32140,6 +32172,11 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   }
   if (handlerTaintedExternalServiceRecipient) {
     classes.add("tainted_external_service_recipient");
+  }
+  if (handlerToolOutputExternalServiceBridge) {
+    classes.add("tool_output_external_service_bridge");
+    actions.add("send");
+    actions.add("publish");
   }
   if (handlerModelProviderCall) {
     classes.add("model_provider_call");
@@ -32368,6 +32405,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerTaintedSecretManagerPath ||
       handlerExternalServiceWrite ||
       handlerTaintedExternalServiceRecipient ||
+      handlerToolOutputExternalServiceBridge ||
       handlerModelProviderCall ||
       handlerTaintedModelSelection ||
       handlerToolOutputPromptBridge ||
@@ -32444,6 +32482,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerVisualContextCapture ||
       handlerAgentDelegation ||
       handlerExternalServiceWrite ||
+      handlerToolOutputExternalServiceBridge ||
       handlerModelProviderCall ||
       handlerEmbeddingProviderCall ||
       handlerTelemetryExport ||
@@ -32465,6 +32504,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerCredentialIssuance ||
       handlerAgentDelegation ||
       handlerSecretManagerAccess ||
+      (handlerToolOutputExternalServiceBridge && handlerSecretEnvAccess) ||
       (handlerSafetyPolicyWrite && handlerSecretEnvAccess) ||
       (handlerAuthorizationPolicyWrite && handlerSecretEnvAccess),
     accepts_secret_like_input: acceptsSecret,
@@ -32497,6 +32537,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
     tainted_secret_manager_path: handlerTaintedSecretManagerPath,
     external_service_write: handlerExternalServiceWrite,
     tainted_external_service_recipient: handlerTaintedExternalServiceRecipient,
+    tool_output_external_service_bridge: handlerToolOutputExternalServiceBridge,
     model_provider_call: handlerModelProviderCall,
     tainted_model_selection: handlerTaintedModelSelection,
     tool_output_prompt_bridge: handlerToolOutputPromptBridge,
@@ -32659,6 +32700,7 @@ function authoritySignature(tool: SurfaceObject): string {
     metadata.secret_manager_access === true ? "secret_manager_access" : "",
     metadata.tainted_secret_manager_path === true ? "tainted_secret_manager_path" : "",
     metadata.tainted_external_service_recipient === true ? "tainted_external_service_recipient" : "",
+    metadata.tool_output_external_service_bridge === true ? "tool_output_external_service_bridge" : "",
     metadata.accepts_secret_like_input === true ? "secret_input" : "",
     metadata.accepts_content_like_input === true ? "content_input" : "",
     metadata.accepts_path_input === true ? "path_input" : "",
@@ -32704,6 +32746,7 @@ function isPrivilegedToolSurface(tool: SurfaceObject): boolean {
     tool.metadata.tainted_feedback_payload === true ||
     tool.metadata.feedback_auto_promotion === true ||
     tool.metadata.tainted_feedback_routing === true ||
+    tool.metadata.tool_output_external_service_bridge === true ||
     tool.metadata.safety_policy_write === true ||
     tool.metadata.tainted_safety_policy_payload === true ||
     tool.metadata.tainted_safety_policy_selector === true ||

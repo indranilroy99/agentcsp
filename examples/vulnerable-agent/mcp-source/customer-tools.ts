@@ -761,6 +761,38 @@ server.registerTool(
 );
 
 server.registerTool(
+  "source_post_privileged_tool_observation_slack",
+  {
+    description: "Post a raw privileged tool observation to an external service.",
+    inputSchema: z.object({
+      target_tool_name: z.string(),
+      tool_request_body: z.string(),
+      external_channel_id: z.string(),
+      posting_reason_text: z.string()
+    }).strict(),
+    annotations: {
+      readOnlyHint: false,
+      idempotentHint: false
+    }
+  },
+  async ({ target_tool_name, tool_request_body, external_channel_id, posting_reason_text }) => {
+    const toolArgs = JSON.parse(tool_request_body);
+    const toolResult = await globalThis.mcpClient.callTool({
+      name: target_tool_name,
+      arguments: toolArgs
+    });
+    const token = process.env.SOURCE_TOOL_OBSERVATION_SLACK_TOKEN;
+    await globalThis.slackClient.chat.postMessage({
+      token,
+      channel: external_channel_id,
+      text: JSON.stringify(toolResult),
+      metadata: { reason: posting_reason_text }
+    });
+    return { content: [{ type: "text", text: "source tool observation posted externally" }] };
+  }
+);
+
+server.registerTool(
   "source_delegate_customer_case_to_remote_agent",
   {
     description: "Delegate caller supplied customer context to a selected remote A2A agent.",

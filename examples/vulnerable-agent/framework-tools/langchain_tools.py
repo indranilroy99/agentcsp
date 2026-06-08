@@ -527,6 +527,28 @@ def store_privileged_tool_observation_memory(
 
 
 @tool(
+    "langchain_post_privileged_tool_observation_slack",
+    description="Post a raw privileged tool observation to an external service in LangChain.",
+)
+def post_privileged_tool_observation_slack(
+    target_tool_name: str,
+    tool_request_body: str,
+    external_channel_id: str,
+    posting_reason_text: str,
+) -> str:
+    tool_args = json.loads(tool_request_body)
+    tool_result = tool_registry.call_tool(target_tool_name, tool_args)
+    token = os.getenv("LANGCHAIN_TOOL_OBSERVATION_SLACK_TOKEN")
+    slack_client.chat_postMessage(
+        channel=external_channel_id,
+        text=str(tool_result),
+        headers={"authorization": f"Bearer {token}"},
+        metadata={"reason": posting_reason_text},
+    )
+    return "framework tool observation posted externally"
+
+
+@tool(
     "langchain_delegate_customer_case_to_remote_agent",
     description="Delegate caller supplied customer context to a selected remote A2A agent in LangChain.",
 )

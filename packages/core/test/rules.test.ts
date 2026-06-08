@@ -74,6 +74,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-058")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-059")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-060")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-061")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-001")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-002")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-003")).toBe(true);
@@ -6852,6 +6853,51 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerToolOutputMemoryBridgeFindings)).not.toContain("source tool observation remembered");
     expect(JSON.stringify(sourceHandlerToolOutputMemoryBridgeFindings)).not.toContain("framework tool observation remembered");
     expect(JSON.stringify(sourceHandlerToolOutputMemoryBridgeFindings)).not.toContain("Persist a raw privileged tool observation");
+    const sourceHandlerToolOutputExternalServiceBridgeFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-061");
+    expect(sourceHandlerToolOutputExternalServiceBridgeFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
+      "langchain_post_privileged_tool_observation_slack",
+      "source_post_privileged_tool_observation_slack"
+    ]);
+    expect(sourceHandlerToolOutputExternalServiceBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
+    expect(sourceHandlerToolOutputExternalServiceBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerToolOutputExternalServiceBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
+    expect(sourceHandlerToolOutputExternalServiceBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
+    expect(sourceHandlerToolOutputExternalServiceBridgeFindings.every((finding) => finding.matched_object.metadata.handler_tool_invocation === true)).toBe(true);
+    expect(sourceHandlerToolOutputExternalServiceBridgeFindings.every((finding) => finding.matched_object.metadata.handler_external_service_write === true)).toBe(true);
+    expect(sourceHandlerToolOutputExternalServiceBridgeFindings.every((finding) => finding.matched_object.metadata.handler_tainted_external_service_recipient === true)).toBe(true);
+    expect(sourceHandlerToolOutputExternalServiceBridgeFindings.every((finding) => finding.matched_object.metadata.handler_tool_output_external_service_bridge === true)).toBe(true);
+    expect(sourceHandlerToolOutputExternalServiceBridgeFindings.every((finding) => finding.matched_object.metadata.handler_secret_env_access === true)).toBe(true);
+    expect(sourceHandlerToolOutputExternalServiceBridgeFindings.every((finding) => finding.matched_object.metadata.nested_tool_invocation === true)).toBe(true);
+    expect(sourceHandlerToolOutputExternalServiceBridgeFindings.every((finding) => finding.matched_object.metadata.external_service_write === true)).toBe(true);
+    expect(sourceHandlerToolOutputExternalServiceBridgeFindings.every((finding) => finding.matched_object.metadata.tainted_external_service_recipient === true)).toBe(true);
+    expect(sourceHandlerToolOutputExternalServiceBridgeFindings.every((finding) => finding.matched_object.metadata.tool_output_external_service_bridge === true)).toBe(true);
+    expect(sourceHandlerToolOutputExternalServiceBridgeFindings.every((finding) => finding.matched_object.metadata.external_write === true)).toBe(true);
+    expect(sourceHandlerToolOutputExternalServiceBridgeFindings.every((finding) => finding.matched_object.metadata.accepts_content_like_input === true)).toBe(true);
+    expect(sourceHandlerToolOutputExternalServiceBridgeFindings.every((finding) => finding.matched_object.metadata.accepts_customer_data_input === false)).toBe(true);
+    expect(sourceHandlerToolOutputExternalServiceBridgeFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("nested_tool_invocation"))).toBe(true);
+    expect(sourceHandlerToolOutputExternalServiceBridgeFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("external_service_write"))).toBe(true);
+    expect(sourceHandlerToolOutputExternalServiceBridgeFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("tool_output_external_service_bridge"))).toBe(true);
+    expect(sourceHandlerToolOutputExternalServiceBridgeFindings.every((finding) => finding.matched_object.metadata.handler_authority_classes.includes("handler_tool_invocation"))).toBe(true);
+    expect(sourceHandlerToolOutputExternalServiceBridgeFindings.every((finding) => finding.matched_object.metadata.handler_authority_classes.includes("handler_external_service_write"))).toBe(true);
+    expect(sourceHandlerToolOutputExternalServiceBridgeFindings.every((finding) => finding.matched_object.metadata.handler_authority_classes.includes("handler_tool_output_external_service_bridge"))).toBe(true);
+    expect(sourceHandlerToolOutputExternalServiceBridgeFindings.every((finding) => finding.matched_object.actions.includes("execute"))).toBe(true);
+    expect(sourceHandlerToolOutputExternalServiceBridgeFindings.every((finding) => finding.matched_object.actions.includes("send"))).toBe(true);
+    expect(sourceHandlerToolOutputExternalServiceBridgeFindings.every((finding) => finding.matched_object.actions.includes("publish"))).toBe(true);
+    expect(sourceHandlerToolOutputExternalServiceBridgeFindings.every((finding) => finding.matched_object.external_reach === true)).toBe(true);
+    expect(sourceHandlerToolOutputExternalServiceBridgeFindings.every((finding) => finding.matched_object.secret_exposure === true)).toBe(true);
+    expect(sourceHandlerToolOutputExternalServiceBridgeFindings.every((finding) => finding.matched_object.side_effect === true)).toBe(true);
+    expect(sourceHandlerToolOutputExternalServiceBridgeFindings.every((finding) => finding.matched_object.reversible === false)).toBe(true);
+    expect(JSON.stringify(sourceHandlerToolOutputExternalServiceBridgeFindings)).not.toContain("mcpClient.callTool");
+    expect(JSON.stringify(sourceHandlerToolOutputExternalServiceBridgeFindings)).not.toContain("tool_registry.call_tool");
+    expect(JSON.stringify(sourceHandlerToolOutputExternalServiceBridgeFindings)).not.toContain("slackClient.chat.postMessage");
+    expect(JSON.stringify(sourceHandlerToolOutputExternalServiceBridgeFindings)).not.toContain("slack_client.chat_postMessage");
+    expect(JSON.stringify(sourceHandlerToolOutputExternalServiceBridgeFindings)).not.toContain("JSON.stringify(toolResult)");
+    expect(JSON.stringify(sourceHandlerToolOutputExternalServiceBridgeFindings)).not.toContain("str(tool_result)");
+    expect(JSON.stringify(sourceHandlerToolOutputExternalServiceBridgeFindings)).not.toContain("toolResult");
+    expect(JSON.stringify(sourceHandlerToolOutputExternalServiceBridgeFindings)).not.toContain("tool_result");
+    expect(JSON.stringify(sourceHandlerToolOutputExternalServiceBridgeFindings)).not.toContain("source tool observation posted externally");
+    expect(JSON.stringify(sourceHandlerToolOutputExternalServiceBridgeFindings)).not.toContain("framework tool observation posted externally");
+    expect(JSON.stringify(sourceHandlerToolOutputExternalServiceBridgeFindings)).not.toContain("Post a raw privileged tool observation");
     const sourceHandlerAgentDelegationFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-049");
     expect(sourceHandlerAgentDelegationFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_delegate_customer_case_to_remote_agent",
