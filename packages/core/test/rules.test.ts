@@ -60,6 +60,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-044")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-045")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-046")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-047")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-001")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-002")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-003")).toBe(true);
@@ -6347,6 +6348,38 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerPromptCacheWriteFindings)).not.toContain("source prompt cache written");
     expect(JSON.stringify(sourceHandlerPromptCacheWriteFindings)).not.toContain("framework prompt cache written");
     expect(JSON.stringify(sourceHandlerPromptCacheWriteFindings)).not.toContain("Write caller supplied prompt context");
+    const sourceHandlerTrainingDatasetExportFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-047");
+    expect(sourceHandlerTrainingDatasetExportFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
+      "langchain_append_training_dataset_record",
+      "source_append_training_dataset_record"
+    ]);
+    expect(sourceHandlerTrainingDatasetExportFindings.every((finding) => finding.severity === "critical")).toBe(true);
+    expect(sourceHandlerTrainingDatasetExportFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerTrainingDatasetExportFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
+    expect(sourceHandlerTrainingDatasetExportFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
+    expect(sourceHandlerTrainingDatasetExportFindings.every((finding) => finding.matched_object.metadata.handler_training_dataset_export === true)).toBe(true);
+    expect(sourceHandlerTrainingDatasetExportFindings.every((finding) => finding.matched_object.metadata.handler_tainted_training_dataset_payload === true)).toBe(true);
+    expect(sourceHandlerTrainingDatasetExportFindings.every((finding) => finding.matched_object.metadata.training_dataset_export === true)).toBe(true);
+    expect(sourceHandlerTrainingDatasetExportFindings.every((finding) => finding.matched_object.metadata.tainted_training_dataset_payload === true)).toBe(true);
+    expect(sourceHandlerTrainingDatasetExportFindings.every((finding) => finding.matched_object.metadata.handler_secret_env_access === true)).toBe(true);
+    expect(sourceHandlerTrainingDatasetExportFindings.every((finding) => finding.matched_object.metadata.external_write === true)).toBe(true);
+    expect(sourceHandlerTrainingDatasetExportFindings.every((finding) => finding.matched_object.metadata.accepts_content_like_input === true)).toBe(true);
+    expect(sourceHandlerTrainingDatasetExportFindings.every((finding) => finding.matched_object.metadata.accepts_customer_data_input === true)).toBe(true);
+    expect(sourceHandlerTrainingDatasetExportFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("training_dataset_export"))).toBe(true);
+    expect(sourceHandlerTrainingDatasetExportFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("tainted_training_dataset_payload"))).toBe(true);
+    expect(sourceHandlerTrainingDatasetExportFindings.every((finding) => finding.matched_object.metadata.handler_authority_classes.includes("handler_training_dataset_export"))).toBe(true);
+    expect(sourceHandlerTrainingDatasetExportFindings.every((finding) => finding.matched_object.metadata.handler_authority_classes.includes("handler_tainted_training_dataset_payload"))).toBe(true);
+    expect(sourceHandlerTrainingDatasetExportFindings.every((finding) => finding.matched_object.actions.includes("send"))).toBe(true);
+    expect(sourceHandlerTrainingDatasetExportFindings.every((finding) => finding.matched_object.actions.includes("write"))).toBe(true);
+    expect(sourceHandlerTrainingDatasetExportFindings.every((finding) => finding.matched_object.external_reach === true)).toBe(true);
+    expect(sourceHandlerTrainingDatasetExportFindings.every((finding) => finding.matched_object.secret_exposure === true)).toBe(true);
+    expect(sourceHandlerTrainingDatasetExportFindings.every((finding) => finding.matched_object.side_effect === true)).toBe(true);
+    expect(sourceHandlerTrainingDatasetExportFindings.every((finding) => finding.matched_object.reversible === false)).toBe(true);
+    expect(JSON.stringify(sourceHandlerTrainingDatasetExportFindings)).not.toContain("trainingDatasetClient.appendRecord");
+    expect(JSON.stringify(sourceHandlerTrainingDatasetExportFindings)).not.toContain("training_dataset_client.append_record");
+    expect(JSON.stringify(sourceHandlerTrainingDatasetExportFindings)).not.toContain("source training record exported");
+    expect(JSON.stringify(sourceHandlerTrainingDatasetExportFindings)).not.toContain("framework training record exported");
+    expect(JSON.stringify(sourceHandlerTrainingDatasetExportFindings)).not.toContain("Export caller supplied support context");
     const sourceHandlerTaintedMemoryScopeFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-039");
     expect(sourceHandlerTaintedMemoryScopeFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_persist_customer_memory",

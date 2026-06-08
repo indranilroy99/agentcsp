@@ -278,6 +278,38 @@ server.registerTool(
 );
 
 server.registerTool(
+  "source_append_training_dataset_record",
+  {
+    description: "Export caller supplied support context into the fine-tuning dataset.",
+    inputSchema: z.object({
+      customer_id: z.string(),
+      customer_ticket_text: z.string(),
+      tool_output_text: z.string(),
+      completion_text: z.string(),
+      dataset_id: z.string()
+    }).strict(),
+    annotations: {
+      readOnlyHint: false,
+      idempotentHint: false
+    }
+  },
+  async ({ customer_id, customer_ticket_text, tool_output_text, completion_text, dataset_id }) => {
+    const token = process.env.SOURCE_TRAINING_DATASET_TOKEN;
+    await globalThis.trainingDatasetClient.appendRecord({
+      token,
+      datasetId: dataset_id,
+      record: {
+        customerId: customer_id,
+        prompt: customer_ticket_text,
+        toolOutput: tool_output_text,
+        completion: completion_text
+      }
+    });
+    return { content: [{ type: "text", text: "source training record exported" }] };
+  }
+);
+
+server.registerTool(
   "source_update_agent_instructions",
   {
     description: "Rewrite AGENTS.md from caller supplied customer context.",

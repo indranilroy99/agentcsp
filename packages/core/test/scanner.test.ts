@@ -548,6 +548,7 @@ describe("scanner", () => {
     const sourceMemoryWriteTool = surfaces.tools.find((surface) => surface.name === "source_persist_customer_memory");
     const sourceTelemetryExportTool = surfaces.tools.find((surface) => surface.name === "source_export_customer_trace");
     const sourcePromptCacheWriteTool = surfaces.tools.find((surface) => surface.name === "source_write_prompt_cache_entry");
+    const sourceTrainingDatasetExportTool = surfaces.tools.find((surface) => surface.name === "source_append_training_dataset_record");
     const sourceAgentConfigWriteTool = surfaces.tools.find((surface) => surface.name === "source_update_agent_instructions");
     const sourceCredentialIssuanceTool = surfaces.tools.find((surface) => surface.name === "source_mint_agent_session_token");
     const sourceNestedToolInvocationTool = surfaces.tools.find((surface) => surface.name === "source_dispatch_privileged_tool");
@@ -570,6 +571,7 @@ describe("scanner", () => {
     const langchainMemoryWriteTool = surfaces.tools.find((surface) => surface.name === "langchain_persist_customer_memory");
     const langchainTelemetryExportTool = surfaces.tools.find((surface) => surface.name === "langchain_export_customer_trace");
     const langchainPromptCacheWriteTool = surfaces.tools.find((surface) => surface.name === "langchain_write_prompt_cache_entry");
+    const langchainTrainingDatasetExportTool = surfaces.tools.find((surface) => surface.name === "langchain_append_training_dataset_record");
     const langchainAgentConfigWriteTool = surfaces.tools.find((surface) => surface.name === "langchain_update_agent_instructions");
     const langchainCredentialIssuanceTool = surfaces.tools.find((surface) => surface.name === "langchain_mint_agent_session_token");
     const langchainNestedToolInvocationTool = surfaces.tools.find((surface) => surface.name === "langchain_dispatch_privileged_tool");
@@ -1441,6 +1443,91 @@ describe("scanner", () => {
     expect(JSON.stringify(sourcePromptCacheWriteTool)).not.toContain("promptCache.set");
     expect(JSON.stringify(sourcePromptCacheWriteTool)).not.toContain("source prompt cache written");
     expect(JSON.stringify(sourcePromptCacheWriteTool)).not.toContain("Write caller supplied prompt context");
+    expect(sourceTrainingDatasetExportTool).toMatchObject({
+      path: "mcp-source/customer-tools.ts",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["call", "publish", "send", "write"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(sourceTrainingDatasetExportTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_mcp_source_tool: true,
+      mcp_source_tool_registration: true,
+      mcp_source_tool_registration_kind: "registerTool",
+      mcp_source_tool_argument_count: 3,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_content_like_input: true,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      training_dataset_export: true,
+      tainted_training_dataset_payload: true,
+      external_write: true,
+      destructive_action: false,
+      read_only_hint_conflict: false,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_external_network_call: false,
+      handler_external_write: false,
+      handler_external_service_write: false,
+      handler_secret_env_access: true,
+      handler_model_visible_output: true,
+      handler_secret_to_output: false,
+      handler_database_query: false,
+      handler_database_write: false,
+      handler_embedding_provider_call: false,
+      handler_memory_write: false,
+      handler_telemetry_export: false,
+      handler_prompt_cache_write: false,
+      handler_training_dataset_export: true,
+      handler_tainted_training_dataset_payload: true,
+      handler_shell_execution: false,
+      handler_dynamic_code_execution: false,
+      handler_unsafe_deserialization: false,
+      handler_filesystem_read: false,
+      handler_filesystem_write: false,
+      handler_filesystem_delete: false,
+      handler_signal_count: 3,
+      open_world_schema: false
+    });
+    expect(sourceTrainingDatasetExportTool?.metadata.authority_classes).toEqual([
+      "content_input",
+      "customer_data_input",
+      "external_write",
+      "handler_secret_env_access",
+      "handler_tainted_training_dataset_payload",
+      "handler_training_dataset_export",
+      "pii_input",
+      "secret_env_access",
+      "tainted_training_dataset_payload",
+      "training_dataset_export"
+    ]);
+    expect(sourceTrainingDatasetExportTool?.metadata.handler_authority_classes).toEqual([
+      "handler_secret_env_access",
+      "handler_tainted_training_dataset_payload",
+      "handler_training_dataset_export"
+    ]);
+    expect(sourceTrainingDatasetExportTool?.metadata.handler_env_key_names).toEqual(["SOURCE_TRAINING_DATASET_TOKEN"]);
+    expect(sourceTrainingDatasetExportTool?.metadata.schema_properties).toEqual([
+      "completion_text",
+      "customer_id",
+      "customer_ticket_text",
+      "dataset_id",
+      "tool_output_text"
+    ]);
+    expect(sourceTrainingDatasetExportTool?.metadata.required_properties).toEqual([
+      "completion_text",
+      "customer_id",
+      "customer_ticket_text",
+      "dataset_id",
+      "tool_output_text"
+    ]);
+    expect(JSON.stringify(sourceTrainingDatasetExportTool)).not.toContain("trainingDatasetClient.appendRecord");
+    expect(JSON.stringify(sourceTrainingDatasetExportTool)).not.toContain("source training record exported");
+    expect(JSON.stringify(sourceTrainingDatasetExportTool)).not.toContain("Export caller supplied support context");
     expect(sourceAgentConfigWriteTool).toMatchObject({
       path: "mcp-source/customer-tools.ts",
       data_classes: ["confidential", "pii"],
@@ -3092,6 +3179,94 @@ describe("scanner", () => {
     expect(JSON.stringify(langchainPromptCacheWriteTool)).not.toContain("prompt_cache.set");
     expect(JSON.stringify(langchainPromptCacheWriteTool)).not.toContain("framework prompt cache written");
     expect(JSON.stringify(langchainPromptCacheWriteTool)).not.toContain("Write caller supplied prompt context");
+    expect(langchainTrainingDatasetExportTool).toMatchObject({
+      path: "framework-tools/langchain_tools.py",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["call", "publish", "send", "write"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(langchainTrainingDatasetExportTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_agent_framework_source_tool: true,
+      agent_framework_source_tool: true,
+      agent_framework_source_tool_framework: "langchain",
+      agent_framework_source_tool_registration_kind: "python_tool_decorator",
+      agent_framework_source_tool_argument_count: 5,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_content_like_input: true,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      training_dataset_export: true,
+      tainted_training_dataset_payload: true,
+      external_write: true,
+      destructive_action: false,
+      read_only_hint_conflict: false,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_external_network_call: false,
+      handler_external_write: false,
+      handler_external_service_write: false,
+      handler_secret_env_access: true,
+      handler_model_visible_output: true,
+      handler_secret_to_output: false,
+      handler_database_query: false,
+      handler_database_write: false,
+      handler_embedding_provider_call: false,
+      handler_memory_write: false,
+      handler_telemetry_export: false,
+      handler_prompt_cache_write: false,
+      handler_training_dataset_export: true,
+      handler_tainted_training_dataset_payload: true,
+      handler_shell_execution: false,
+      handler_dynamic_code_execution: false,
+      handler_unsafe_deserialization: false,
+      handler_filesystem_read: false,
+      handler_filesystem_write: false,
+      handler_filesystem_delete: false,
+      handler_signal_count: 3,
+      open_world_schema: false
+    });
+    expect(langchainTrainingDatasetExportTool?.metadata.authority_classes).toEqual([
+      "content_input",
+      "customer_data_input",
+      "external_write",
+      "handler_secret_env_access",
+      "handler_tainted_training_dataset_payload",
+      "handler_training_dataset_export",
+      "pii_input",
+      "secret_env_access",
+      "tainted_training_dataset_payload",
+      "training_dataset_export"
+    ]);
+    expect(langchainTrainingDatasetExportTool?.metadata.handler_authority_classes).toEqual([
+      "handler_secret_env_access",
+      "handler_tainted_training_dataset_payload",
+      "handler_training_dataset_export"
+    ]);
+    expect(langchainTrainingDatasetExportTool?.metadata.handler_env_key_names).toEqual([
+      "LANGCHAIN_TRAINING_DATASET_TOKEN"
+    ]);
+    expect(langchainTrainingDatasetExportTool?.metadata.schema_properties).toEqual([
+      "completion_text",
+      "customer_id",
+      "customer_ticket_text",
+      "dataset_id",
+      "tool_output_text"
+    ]);
+    expect(langchainTrainingDatasetExportTool?.metadata.required_properties).toEqual([
+      "completion_text",
+      "customer_id",
+      "customer_ticket_text",
+      "dataset_id",
+      "tool_output_text"
+    ]);
+    expect(JSON.stringify(langchainTrainingDatasetExportTool)).not.toContain("training_dataset_client.append_record");
+    expect(JSON.stringify(langchainTrainingDatasetExportTool)).not.toContain("framework training record exported");
+    expect(JSON.stringify(langchainTrainingDatasetExportTool)).not.toContain("Export caller supplied support context");
     expect(langchainAgentConfigWriteTool).toMatchObject({
       path: "framework-tools/langchain_tools.py",
       data_classes: ["confidential", "pii"],

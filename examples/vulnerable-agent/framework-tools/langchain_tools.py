@@ -187,6 +187,31 @@ def write_prompt_cache_entry(
 
 
 @tool(
+    "langchain_append_training_dataset_record",
+    description="Export caller supplied support context into the fine-tuning dataset.",
+)
+def append_training_dataset_record(
+    customer_id: str,
+    customer_ticket_text: str,
+    tool_output_text: str,
+    completion_text: str,
+    dataset_id: str,
+) -> str:
+    token = os.getenv("LANGCHAIN_TRAINING_DATASET_TOKEN")
+    training_dataset_client.append_record(
+        token=token,
+        dataset_id=dataset_id,
+        record={
+            "customer_id": customer_id,
+            "prompt": customer_ticket_text,
+            "tool_output": tool_output_text,
+            "completion": completion_text,
+        },
+    )
+    return "framework training record exported"
+
+
+@tool(
     "langchain_update_agent_instructions",
     description="Rewrite AGENTS.md from caller supplied customer context in LangChain.",
 )

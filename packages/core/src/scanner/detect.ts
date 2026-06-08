@@ -24132,6 +24132,7 @@ function addToolDefinitionSurface(
       !authority.embedding_provider_call &&
       !authority.telemetry_export &&
       !authority.prompt_cache_write &&
+      !authority.training_dataset_export &&
       !authority.tainted_network_destination &&
       !authority.tainted_shell_argument &&
       !authority.dynamic_code_execution &&
@@ -24178,6 +24179,8 @@ function addToolDefinitionSurface(
       prompt_cache_write: authority.prompt_cache_write,
       tainted_prompt_cache_key: authority.tainted_prompt_cache_key,
       tainted_prompt_cache_value: authority.tainted_prompt_cache_value,
+      training_dataset_export: authority.training_dataset_export,
+      tainted_training_dataset_payload: authority.tainted_training_dataset_payload,
       privileged_prompt_composition: authority.privileged_prompt_composition,
       tainted_shell_argument: authority.tainted_shell_argument,
       tainted_filesystem_path: authority.tainted_filesystem_path,
@@ -26566,6 +26569,8 @@ interface SourceToolHandlerSignals {
   handlerPromptCacheWrite: boolean;
   handlerTaintedPromptCacheKey: boolean;
   handlerTaintedPromptCacheValue: boolean;
+  handlerTrainingDatasetExport: boolean;
+  handlerTaintedTrainingDatasetPayload: boolean;
   handlerPrivilegedPromptComposition: boolean;
   handlerSecretEnvAccess: boolean;
   handlerModelVisibleOutput: boolean;
@@ -27017,6 +27022,8 @@ function sourceToolHandlerSignalMetadata(signals: SourceToolHandlerSignals | und
     handler_prompt_cache_write: signals.handlerPromptCacheWrite,
     handler_tainted_prompt_cache_key: signals.handlerTaintedPromptCacheKey,
     handler_tainted_prompt_cache_value: signals.handlerTaintedPromptCacheValue,
+    handler_training_dataset_export: signals.handlerTrainingDatasetExport,
+    handler_tainted_training_dataset_payload: signals.handlerTaintedTrainingDatasetPayload,
     handler_privileged_prompt_composition: signals.handlerPrivilegedPromptComposition,
     handler_secret_env_access: signals.handlerSecretEnvAccess,
     handler_model_visible_output: signals.handlerModelVisibleOutput,
@@ -27103,6 +27110,12 @@ function classifySourceToolHandlerSignals(
   const taintedPromptCacheValue = promptCacheWrite && (language === "javascript"
     ? hasJavaScriptHandlerTaintedPromptCacheValue(handlerSource)
     : hasPythonHandlerTaintedPromptCacheValue(handlerSource));
+  const trainingDatasetExport = language === "javascript"
+    ? hasJavaScriptHandlerTrainingDatasetExport(handlerSource)
+    : hasPythonHandlerTrainingDatasetExport(handlerSource);
+  const taintedTrainingDatasetPayload = trainingDatasetExport && (language === "javascript"
+    ? hasJavaScriptHandlerTaintedTrainingDatasetPayload(handlerSource)
+    : hasPythonHandlerTaintedTrainingDatasetPayload(handlerSource));
   const privilegedPromptComposition = language === "javascript"
     ? hasJavaScriptHandlerPrivilegedPromptComposition(handlerSource)
     : hasPythonHandlerPrivilegedPromptComposition(handlerSource);
@@ -27202,6 +27215,8 @@ function classifySourceToolHandlerSignals(
   if (promptCacheWrite) classes.add("handler_prompt_cache_write");
   if (taintedPromptCacheKey) classes.add("handler_tainted_prompt_cache_key");
   if (taintedPromptCacheValue) classes.add("handler_tainted_prompt_cache_value");
+  if (trainingDatasetExport) classes.add("handler_training_dataset_export");
+  if (taintedTrainingDatasetPayload) classes.add("handler_tainted_training_dataset_payload");
   if (privilegedPromptComposition) classes.add("handler_privileged_prompt_composition");
   if (secretEnvAccess) classes.add("handler_secret_env_access");
   if (secretToOutput) classes.add("handler_secret_to_output");
@@ -27247,6 +27262,8 @@ function classifySourceToolHandlerSignals(
     handlerPromptCacheWrite: promptCacheWrite,
     handlerTaintedPromptCacheKey: taintedPromptCacheKey,
     handlerTaintedPromptCacheValue: taintedPromptCacheValue,
+    handlerTrainingDatasetExport: trainingDatasetExport,
+    handlerTaintedTrainingDatasetPayload: taintedTrainingDatasetPayload,
     handlerPrivilegedPromptComposition: privilegedPromptComposition,
     handlerSecretEnvAccess: secretEnvAccess,
     handlerModelVisibleOutput: modelVisibleOutput,
@@ -27808,6 +27825,38 @@ function hasPythonHandlerTaintedPromptCacheValue(source: string): boolean {
   ].some((pattern) => expressionMatchesTaintedPromptCacheValue(pattern, source));
 }
 
+function hasJavaScriptHandlerTrainingDatasetExport(source: string): boolean {
+  return /\b(?:trainingDataset|trainingDatasetClient|datasetClient|fineTuneDataset|fineTuneClient|fineTuningClient|feedbackDataset|evalDataset|rlhfDataset|modelTrainingClient)\b/iu.test(
+    source
+  ) && [
+    /\b(?:trainingDataset|trainingDatasetClient|datasetClient|fineTuneDataset|fineTuneClient|fineTuningClient|feedbackDataset|evalDataset|rlhfDataset|modelTrainingClient)\s*(?:\.\s*[A-Za-z_$][\w$]*){0,4}\s*\.\s*(?:append|appendRecord|add|addExample|create|createRecord|insert|upload|write|save|store|export|send|record|push)\s*\(/iu,
+    /\b(?:exportTrainingExample|writeTrainingExample|appendTrainingExample|uploadFineTuneRecord|createFineTuneRecord|recordTrainingExample)\s*\(/iu
+  ].some((pattern) => pattern.test(source));
+}
+
+function hasPythonHandlerTrainingDatasetExport(source: string): boolean {
+  return /\b(?:training_dataset|training_dataset_client|dataset_client|fine_tune_dataset|fine_tune_client|fine_tuning_client|feedback_dataset|eval_dataset|rlhf_dataset|model_training_client)\b/iu.test(
+    source
+  ) && [
+    /\b(?:training_dataset|training_dataset_client|dataset_client|fine_tune_dataset|fine_tune_client|fine_tuning_client|feedback_dataset|eval_dataset|rlhf_dataset|model_training_client)\s*(?:\.\s*[A-Za-z_]\w*){0,4}\s*\.\s*(?:append|append_record|add|add_example|create|create_record|insert|upload|write|save|store|export|send|record|push)\s*\(/iu,
+    /\b(?:export_training_example|write_training_example|append_training_example|upload_fine_tune_record|create_fine_tune_record|record_training_example)\s*\(/iu
+  ].some((pattern) => pattern.test(source));
+}
+
+function hasJavaScriptHandlerTaintedTrainingDatasetPayload(source: string): boolean {
+  return [
+    /\b(?:trainingDataset|trainingDatasetClient|datasetClient|fineTuneDataset|fineTuneClient|fineTuningClient|feedbackDataset|evalDataset|rlhfDataset|modelTrainingClient)\s*(?:\.\s*[A-Za-z_$][\w$]*){0,4}\s*\.\s*(?:append|appendRecord|add|addExample|create|createRecord|insert|upload|write|save|store|export|send|record|push)\s*\(([\s\S]{0,900})\)/giu,
+    /\b(?:exportTrainingExample|writeTrainingExample|appendTrainingExample|uploadFineTuneRecord|createFineTuneRecord|recordTrainingExample)\s*\(([\s\S]{0,900})\)/giu
+  ].some((pattern) => expressionMatchesTaintedTrainingDatasetPayload(pattern, source));
+}
+
+function hasPythonHandlerTaintedTrainingDatasetPayload(source: string): boolean {
+  return [
+    /\b(?:training_dataset|training_dataset_client|dataset_client|fine_tune_dataset|fine_tune_client|fine_tuning_client|feedback_dataset|eval_dataset|rlhf_dataset|model_training_client)\s*(?:\.\s*[A-Za-z_]\w*){0,4}\s*\.\s*(?:append|append_record|add|add_example|create|create_record|insert|upload|write|save|store|export|send|record|push)\s*\(([\s\S]{0,900})\)/giu,
+    /\b(?:export_training_example|write_training_example|append_training_example|upload_fine_tune_record|create_fine_tune_record|record_training_example)\s*\(([\s\S]{0,900})\)/giu
+  ].some((pattern) => expressionMatchesTaintedTrainingDatasetPayload(pattern, source));
+}
+
 function hasJavaScriptHandlerPrivilegedPromptComposition(source: string): boolean {
   return [
     /\brole\s*:\s*["'`](?:system|developer)["'`][\s\S]{0,260}\bcontent\s*:\s*([^,\n}\]]+)/giu,
@@ -28013,6 +28062,15 @@ function expressionMatchesTaintedPromptCacheValue(pattern: RegExp, source: strin
   let match: RegExpExecArray | null;
   while ((match = pattern.exec(source)) !== null) {
     if (expressionReferencesTaintedPromptCacheValue(match[1] ?? "", source)) return true;
+    if (match[0].length === 0) pattern.lastIndex += 1;
+  }
+  return false;
+}
+
+function expressionMatchesTaintedTrainingDatasetPayload(pattern: RegExp, source: string): boolean {
+  let match: RegExpExecArray | null;
+  while ((match = pattern.exec(source)) !== null) {
+    if (expressionReferencesTaintedTrainingDatasetPayload(match[1] ?? "", source)) return true;
     if (match[0].length === 0) pattern.lastIndex += 1;
   }
   return false;
@@ -28533,6 +28591,68 @@ function expressionReferencesTaintedPromptCacheValue(expression: string, source:
 }
 
 function identifierAssignedFromTaintedPromptCacheInput(identifier: string, source: string, taintedName: RegExp): boolean {
+  const escaped = escapeRegExp(identifier);
+  const patterns = [
+    new RegExp(`\\b(?:const|let|var)\\s+${escaped}\\s*=\\s*([^;\\n]+)`, "gu"),
+    new RegExp(`\\b${escaped}\\s*=\\s*([^\\n]+)`, "gu")
+  ];
+  return patterns.some((pattern) => expressionMatchesPattern(pattern, source, taintedName));
+}
+
+function expressionReferencesTaintedTrainingDatasetPayload(expression: string, source: string): boolean {
+  const templateInterpolation = /\$\{[^}]*\b(?:customerTicketText|customer_ticket_text|ticketText|ticket_text|customerContext|customer_context|customerMessage|customer_message|toolOutput|tool_output|toolTracePayload|tool_trace_payload|retrievedContext|retrieved_context|promptText|prompt_text|completionText|completion_text|responseText|response_text|modelResponse|model_response|userMessage|user_message|conversationText|conversation_text|trainingRecord|training_record|datasetRecord|dataset_record|fineTuneRecord|fine_tune_record|inputText|input_text|content|message|prompt|payload|context|output|response|completion|customer|ticket)\b/u.test(
+    expression
+  );
+  if (templateInterpolation) return true;
+  const withoutQuotedStrings = expression.replace(/(["'`])(?:\\.|(?!\1)[\s\S])*\1/gu, " ");
+  const stronglyTaintedName = /\b(?:customerTicketText|customer_ticket_text|ticketText|ticket_text|customerContext|customer_context|customerMessage|customer_message|toolOutput|tool_output|toolTracePayload|tool_trace_payload|retrievedContext|retrieved_context|promptText|prompt_text|completionText|completion_text|responseText|response_text|modelResponse|model_response|userMessage|user_message|conversationText|conversation_text|trainingRecord|training_record|datasetRecord|dataset_record|fineTuneRecord|fine_tune_record|inputText|input_text)\b/u;
+  const taintedName = /\b(?:customerTicketText|customer_ticket_text|ticketText|ticket_text|customerContext|customer_context|customerMessage|customer_message|toolOutput|tool_output|toolTracePayload|tool_trace_payload|retrievedContext|retrieved_context|promptText|prompt_text|completionText|completion_text|responseText|response_text|modelResponse|model_response|userMessage|user_message|conversationText|conversation_text|trainingRecord|training_record|datasetRecord|dataset_record|fineTuneRecord|fine_tune_record|inputText|input_text|content|message|prompt|payload|context|output|response|completion|customer|ticket|input|text|record|example)\b/u;
+  if (stronglyTaintedName.test(withoutQuotedStrings)) return true;
+
+  const payloadAssignment = /\b(?:record|example|sample|payload|prompt|messages|message|content|input|inputs|context|completion|response|output|tool_output|toolOutput|text|body|customer|customer_id|ticket|ticket_id)\s*(?::|=)\s*([^,\n}\)]+)/giu;
+  if (expressionMatchesPattern(payloadAssignment, withoutQuotedStrings, taintedName)) return true;
+
+  const valueOnlyExpression = withoutQuotedStrings.replace(
+    /\b(?:record|example|sample|payload|prompt|messages|message|content|input|inputs|context|completion|response|output|tool_output|toolOutput|text|body|customer|customer_id|ticket|ticket_id)\s*(?::|=)/giu,
+    " "
+  );
+  const identifiers = uniqueStrings(
+    [...valueOnlyExpression.matchAll(/\b[A-Za-z_$][\w$]*\b/gu)]
+      .map((match) => match[0])
+      .filter((identifier) => ![
+        "trainingDataset",
+        "training_dataset",
+        "trainingDatasetClient",
+        "training_dataset_client",
+        "datasetClient",
+        "dataset_client",
+        "fineTuneDataset",
+        "fine_tune_dataset",
+        "fineTuneClient",
+        "fine_tune_client",
+        "fineTuningClient",
+        "fine_tuning_client",
+        "feedbackDataset",
+        "feedback_dataset",
+        "evalDataset",
+        "eval_dataset",
+        "rlhfDataset",
+        "rlhf_dataset",
+        "modelTrainingClient",
+        "model_training_client",
+        "token",
+        "apiKey",
+        "api_key",
+        "metadata",
+        "dataset",
+        "datasetId",
+        "dataset_id"
+      ].includes(identifier))
+  );
+  return identifiers.some((identifier) => identifierAssignedFromTaintedTrainingDatasetPayload(identifier, source, taintedName));
+}
+
+function identifierAssignedFromTaintedTrainingDatasetPayload(identifier: string, source: string, taintedName: RegExp): boolean {
   const escaped = escapeRegExp(identifier);
   const patterns = [
     new RegExp(`\\b(?:const|let|var)\\s+${escaped}\\s*=\\s*([^;\\n]+)`, "gu"),
@@ -29960,6 +30080,8 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   prompt_cache_write: boolean;
   tainted_prompt_cache_key: boolean;
   tainted_prompt_cache_value: boolean;
+  training_dataset_export: boolean;
+  tainted_training_dataset_payload: boolean;
   privileged_prompt_composition: boolean;
   tainted_shell_argument: boolean;
   tainted_filesystem_path: boolean;
@@ -30005,6 +30127,8 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   const handlerPromptCacheWrite = handler?.handlerPromptCacheWrite === true;
   const handlerTaintedPromptCacheKey = handler?.handlerTaintedPromptCacheKey === true;
   const handlerTaintedPromptCacheValue = handler?.handlerTaintedPromptCacheValue === true;
+  const handlerTrainingDatasetExport = handler?.handlerTrainingDatasetExport === true;
+  const handlerTaintedTrainingDatasetPayload = handler?.handlerTaintedTrainingDatasetPayload === true;
   const handlerPrivilegedPromptComposition = handler?.handlerPrivilegedPromptComposition === true;
   const handlerDatabaseQuery = handler?.handlerDatabaseQuery === true;
   const handlerDatabaseWrite = handler?.handlerDatabaseWrite === true;
@@ -30034,7 +30158,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   const destructive = /\b(delete|remove|drop|truncate|destroy|purge|wipe)\b/i.test(text);
   const externalWrite = /\b(publish|post|send|webhook|slack|email|release|deploy|comment|issue|pull\s+request|upload)\b/i.test(
     text
-  ) || handlerExternalWrite || handlerExternalServiceWrite || handlerTelemetryExport;
+  ) || handlerExternalWrite || handlerExternalServiceWrite || handlerTelemetryExport || handlerTrainingDatasetExport;
 
   const shellExecution =
     /\b(shell|command|exec|bash|process|terminal)\b/i.test(text) ||
@@ -30214,6 +30338,15 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   if (handlerTaintedPromptCacheValue) {
     classes.add("tainted_prompt_cache_value");
   }
+  if (handlerTrainingDatasetExport) {
+    classes.add("training_dataset_export");
+    actions.add("send");
+    actions.add("write");
+  }
+  if (handlerTaintedTrainingDatasetPayload) {
+    classes.add("tainted_training_dataset_payload");
+    actions.add("send");
+  }
   if (handlerPrivilegedPromptComposition) {
     classes.add("privileged_prompt_composition");
     actions.add("send");
@@ -30282,6 +30415,8 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerPromptCacheWrite ||
       handlerTaintedPromptCacheKey ||
       handlerTaintedPromptCacheValue ||
+      handlerTrainingDatasetExport ||
+      handlerTaintedTrainingDatasetPayload ||
       handlerPrivilegedPromptComposition ||
       handlerTaintedShellArgument ||
       handlerDatabaseQuery ||
@@ -30321,6 +30456,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerModelProviderCall ||
       handlerEmbeddingProviderCall ||
       handlerTelemetryExport ||
+      handlerTrainingDatasetExport ||
       (handlerPromptCacheWrite && handlerSecretEnvAccess),
     secret_exposure: acceptsSecret || handlerSecretEnvAccess || localFileDisclosure || handlerCredentialIssuance || handlerSecretManagerAccess,
     accepts_secret_like_input: acceptsSecret,
@@ -30355,6 +30491,8 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
     prompt_cache_write: handlerPromptCacheWrite,
     tainted_prompt_cache_key: handlerTaintedPromptCacheKey,
     tainted_prompt_cache_value: handlerTaintedPromptCacheValue,
+    training_dataset_export: handlerTrainingDatasetExport,
+    tainted_training_dataset_payload: handlerTaintedTrainingDatasetPayload,
     privileged_prompt_composition: handlerPrivilegedPromptComposition,
     tainted_shell_argument: handlerTaintedShellArgument,
     tainted_filesystem_path: handlerTaintedFilesystemPath,
@@ -30429,6 +30567,8 @@ function authoritySignature(tool: SurfaceObject): string {
     metadata.prompt_cache_write === true ? "prompt_cache_write" : "",
     metadata.tainted_prompt_cache_key === true ? "tainted_prompt_cache_key" : "",
     metadata.tainted_prompt_cache_value === true ? "tainted_prompt_cache_value" : "",
+    metadata.training_dataset_export === true ? "training_dataset_export" : "",
+    metadata.tainted_training_dataset_payload === true ? "tainted_training_dataset_payload" : "",
     metadata.privileged_prompt_composition === true ? "privileged_prompt_composition" : "",
     metadata.tainted_shell_argument === true ? "tainted_shell_argument" : "",
     metadata.tainted_filesystem_path === true ? "tainted_filesystem_path" : "",
@@ -30479,6 +30619,8 @@ function isPrivilegedToolSurface(tool: SurfaceObject): boolean {
     tool.metadata.prompt_cache_write === true ||
     tool.metadata.tainted_prompt_cache_key === true ||
     tool.metadata.tainted_prompt_cache_value === true ||
+    tool.metadata.training_dataset_export === true ||
+    tool.metadata.tainted_training_dataset_payload === true ||
     tool.metadata.privileged_prompt_composition === true ||
     tool.metadata.tainted_shell_argument === true ||
     tool.metadata.tainted_filesystem_path === true ||
