@@ -550,6 +550,7 @@ describe("scanner", () => {
     const sourceCredentialIssuanceTool = surfaces.tools.find((surface) => surface.name === "source_mint_agent_session_token");
     const sourceNestedToolInvocationTool = surfaces.tools.find((surface) => surface.name === "source_dispatch_privileged_tool");
     const sourceBrowserAutomationTool = surfaces.tools.find((surface) => surface.name === "source_submit_customer_browser_form");
+    const sourceSecretManagerAccessTool = surfaces.tools.find((surface) => surface.name === "source_read_customer_vault_secret");
     const pythonExportTool = surfaces.tools.find((surface) => surface.name === "python_export_customer_record");
     const pythonDeleteTool = surfaces.tools.find((surface) => surface.name === "python_readonly_delete_workspace_file");
     const pythonUnsafeDeserializationTool = surfaces.tools.find((surface) => surface.name === "python_load_serialized_agent_state");
@@ -567,6 +568,7 @@ describe("scanner", () => {
     const langchainCredentialIssuanceTool = surfaces.tools.find((surface) => surface.name === "langchain_mint_agent_session_token");
     const langchainNestedToolInvocationTool = surfaces.tools.find((surface) => surface.name === "langchain_dispatch_privileged_tool");
     const langchainBrowserAutomationTool = surfaces.tools.find((surface) => surface.name === "langchain_submit_customer_browser_form");
+    const langchainSecretManagerAccessTool = surfaces.tools.find((surface) => surface.name === "langchain_read_customer_vault_secret");
     const langchainUnsafeDeserializationTool = surfaces.tools.find((surface) => surface.name === "langchain_load_serialized_agent_state");
     const aiSdkExportTool = surfaces.tools.find((surface) => surface.name === "aiSdkExportCustomerContext");
     const tsLangchainDeleteTool = surfaces.tools.find((surface) => surface.name === "ts_langchain_delete_workspace_path");
@@ -1504,6 +1506,91 @@ describe("scanner", () => {
     expect(JSON.stringify(sourceBrowserAutomationTool)).not.toContain("page.fill");
     expect(JSON.stringify(sourceBrowserAutomationTool)).not.toContain("page.click");
     expect(JSON.stringify(sourceBrowserAutomationTool)).not.toContain("Drive an authenticated browser session");
+    expect(sourceSecretManagerAccessTool).toMatchObject({
+      path: "mcp-source/customer-tools.ts",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["call", "read", "send"],
+      side_effect: true,
+      external_reach: false,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(sourceSecretManagerAccessTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_mcp_source_tool: true,
+      mcp_source_tool_registration: true,
+      mcp_source_tool_registration_kind: "registerTool",
+      mcp_source_tool_argument_count: 3,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      read_only_hint: false,
+      idempotent_hint: true,
+      accepts_secret_like_input: true,
+      accepts_content_like_input: true,
+      accepts_path_input: true,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      memory_write: false,
+      agent_config_write: false,
+      credential_issuance: false,
+      nested_tool_invocation: false,
+      browser_automation: false,
+      secret_manager_access: true,
+      external_write: false,
+      destructive_action: false,
+      read_only_hint_conflict: false,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_external_network_call: false,
+      handler_credentialed_network_read: false,
+      handler_network_response_to_output: false,
+      handler_external_write: false,
+      handler_secret_env_access: false,
+      handler_model_visible_output: true,
+      handler_secret_to_output: false,
+      handler_database_query: false,
+      handler_database_write: false,
+      handler_memory_write: false,
+      handler_agent_config_write: false,
+      handler_credential_issuance: false,
+      handler_tool_invocation: false,
+      handler_browser_automation: false,
+      handler_secret_manager_access: true,
+      handler_shell_execution: false,
+      handler_dynamic_code_execution: false,
+      handler_unsafe_deserialization: false,
+      handler_filesystem_read: false,
+      handler_filesystem_write: false,
+      handler_filesystem_delete: false,
+      handler_signal_count: 1,
+      open_world_schema: false
+    });
+    expect(sourceSecretManagerAccessTool?.metadata.authority_classes).toEqual([
+      "content_input",
+      "credential_input",
+      "customer_data_input",
+      "filesystem_access",
+      "handler_secret_manager_access",
+      "pii_input",
+      "secret_manager_access"
+    ]);
+    expect(sourceSecretManagerAccessTool?.metadata.handler_authority_classes).toEqual([
+      "handler_secret_manager_access"
+    ]);
+    expect(sourceSecretManagerAccessTool?.metadata.handler_env_key_names).toEqual([]);
+    expect(sourceSecretManagerAccessTool?.metadata.schema_properties).toEqual([
+      "customer_id",
+      "requester_ticket",
+      "secret_path"
+    ]);
+    expect(sourceSecretManagerAccessTool?.metadata.required_properties).toEqual([
+      "customer_id",
+      "requester_ticket",
+      "secret_path"
+    ]);
+    expect(JSON.stringify(sourceSecretManagerAccessTool)).not.toContain("vaultClient.readSecret");
+    expect(JSON.stringify(sourceSecretManagerAccessTool)).not.toContain("secret.value");
+    expect(JSON.stringify(sourceSecretManagerAccessTool)).not.toContain("Read a customer support secret");
     expect(pythonExportTool).toMatchObject({
       path: "mcp-source/python_tools.py",
       data_classes: ["confidential", "credential", "pii"],
@@ -2584,6 +2671,90 @@ describe("scanner", () => {
     expect(JSON.stringify(langchainBrowserAutomationTool)).not.toContain("page.fill");
     expect(JSON.stringify(langchainBrowserAutomationTool)).not.toContain("page.click");
     expect(JSON.stringify(langchainBrowserAutomationTool)).not.toContain("Drive an authenticated browser session");
+    expect(langchainSecretManagerAccessTool).toMatchObject({
+      path: "framework-tools/langchain_tools.py",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["call", "read", "send"],
+      side_effect: true,
+      external_reach: false,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(langchainSecretManagerAccessTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_agent_framework_source_tool: true,
+      agent_framework_source_tool: true,
+      agent_framework_source_tool_framework: "langchain",
+      agent_framework_source_tool_registration_kind: "python_tool_decorator",
+      agent_framework_source_tool_argument_count: 3,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_secret_like_input: true,
+      accepts_content_like_input: true,
+      accepts_path_input: true,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      memory_write: false,
+      agent_config_write: false,
+      credential_issuance: false,
+      nested_tool_invocation: false,
+      browser_automation: false,
+      secret_manager_access: true,
+      external_write: false,
+      destructive_action: false,
+      read_only_hint_conflict: false,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_external_network_call: false,
+      handler_credentialed_network_read: false,
+      handler_network_response_to_output: false,
+      handler_external_write: false,
+      handler_secret_env_access: false,
+      handler_model_visible_output: true,
+      handler_secret_to_output: false,
+      handler_database_query: false,
+      handler_database_write: false,
+      handler_memory_write: false,
+      handler_agent_config_write: false,
+      handler_credential_issuance: false,
+      handler_tool_invocation: false,
+      handler_browser_automation: false,
+      handler_secret_manager_access: true,
+      handler_shell_execution: false,
+      handler_dynamic_code_execution: false,
+      handler_unsafe_deserialization: false,
+      handler_filesystem_read: false,
+      handler_filesystem_write: false,
+      handler_filesystem_delete: false,
+      handler_signal_count: 1,
+      open_world_schema: false
+    });
+    expect(langchainSecretManagerAccessTool?.metadata.authority_classes).toEqual([
+      "content_input",
+      "credential_input",
+      "customer_data_input",
+      "filesystem_access",
+      "handler_secret_manager_access",
+      "pii_input",
+      "secret_manager_access"
+    ]);
+    expect(langchainSecretManagerAccessTool?.metadata.handler_authority_classes).toEqual([
+      "handler_secret_manager_access"
+    ]);
+    expect(langchainSecretManagerAccessTool?.metadata.handler_env_key_names).toEqual([]);
+    expect(langchainSecretManagerAccessTool?.metadata.schema_properties).toEqual([
+      "customer_id",
+      "requester_ticket",
+      "secret_path"
+    ]);
+    expect(langchainSecretManagerAccessTool?.metadata.required_properties).toEqual([
+      "customer_id",
+      "requester_ticket",
+      "secret_path"
+    ]);
+    expect(JSON.stringify(langchainSecretManagerAccessTool)).not.toContain("vault_client.read_secret");
+    expect(JSON.stringify(langchainSecretManagerAccessTool)).not.toContain("secret.value");
+    expect(JSON.stringify(langchainSecretManagerAccessTool)).not.toContain("Read a customer support secret");
     expect(aiSdkExportTool).toMatchObject({
       path: "framework-tools/vercel-ai-tools.ts",
       data_classes: ["confidential", "credential", "pii"],

@@ -24126,6 +24126,7 @@ function addToolDefinitionSurface(
       !authority.credential_issuance &&
       !authority.nested_tool_invocation &&
       !authority.browser_automation &&
+      !authority.secret_manager_access &&
       !authority.dynamic_code_execution &&
       !authority.unsafe_deserialization,
     reason,
@@ -24150,6 +24151,7 @@ function addToolDefinitionSurface(
       credential_issuance: authority.credential_issuance,
       nested_tool_invocation: authority.nested_tool_invocation,
       browser_automation: authority.browser_automation,
+      secret_manager_access: authority.secret_manager_access,
       network_response_capture: authority.network_response_capture,
       dynamic_code_execution: authority.dynamic_code_execution,
       unsafe_deserialization: authority.unsafe_deserialization,
@@ -26532,6 +26534,7 @@ interface SourceToolHandlerSignals {
   handlerCredentialIssuance: boolean;
   handlerToolInvocation: boolean;
   handlerBrowserAutomation: boolean;
+  handlerSecretManagerAccess: boolean;
   handlerShellExecution: boolean;
   handlerDynamicCodeExecution: boolean;
   handlerUnsafeDeserialization: boolean;
@@ -26960,6 +26963,7 @@ function sourceToolHandlerSignalMetadata(signals: SourceToolHandlerSignals | und
     handler_credential_issuance: signals.handlerCredentialIssuance,
     handler_tool_invocation: signals.handlerToolInvocation,
     handler_browser_automation: signals.handlerBrowserAutomation,
+    handler_secret_manager_access: signals.handlerSecretManagerAccess,
     handler_shell_execution: signals.handlerShellExecution,
     handler_dynamic_code_execution: signals.handlerDynamicCodeExecution,
     handler_unsafe_deserialization: signals.handlerUnsafeDeserialization,
@@ -27036,6 +27040,9 @@ function classifySourceToolHandlerSignals(
   const browserAutomation = language === "javascript"
     ? hasJavaScriptHandlerBrowserAutomation(handlerSource)
     : hasPythonHandlerBrowserAutomation(handlerSource);
+  const secretManagerAccess = language === "javascript"
+    ? hasJavaScriptHandlerSecretManagerAccess(handlerSource)
+    : hasPythonHandlerSecretManagerAccess(handlerSource);
 
   const classes = new Set<string>();
   if (externalNetworkCall) classes.add("handler_network_access");
@@ -27051,6 +27058,7 @@ function classifySourceToolHandlerSignals(
   if (credentialIssuance) classes.add("handler_credential_issuance");
   if (toolInvocation) classes.add("handler_tool_invocation");
   if (browserAutomation) classes.add("handler_browser_automation");
+  if (secretManagerAccess) classes.add("handler_secret_manager_access");
   if (shellExecution) classes.add("handler_shell_execution");
   if (dynamicCodeExecution) classes.add("handler_dynamic_code_execution");
   if (unsafeDeserialization) classes.add("handler_unsafe_deserialization");
@@ -27074,6 +27082,7 @@ function classifySourceToolHandlerSignals(
     handlerCredentialIssuance: credentialIssuance,
     handlerToolInvocation: toolInvocation,
     handlerBrowserAutomation: browserAutomation,
+    handlerSecretManagerAccess: secretManagerAccess,
     handlerShellExecution: shellExecution,
     handlerDynamicCodeExecution: dynamicCodeExecution,
     handlerUnsafeDeserialization: unsafeDeserialization,
@@ -27343,6 +27352,18 @@ function hasPythonHandlerBrowserAutomation(source: string): boolean {
   return /\b(?:browser|context|page|driver|browser_page|authenticated_browser_page)\s*\.\s*(?:new_page|goto|navigate|click|fill|type|press|select_option|set_input_files|evaluate|screenshot|get|find_element|execute_script)\s*\(/u.test(
     source
   ) || /\b(?:playwright|sync_playwright|async_playwright|selenium|webdriver)\s*\./u.test(source);
+}
+
+function hasJavaScriptHandlerSecretManagerAccess(source: string): boolean {
+  return /\b(?:vault|vaultClient|secretManager|secretManagerClient|secretsManager|secretsManagerClient|keyVault|keyVaultClient|credentialVault)\s*\.\s*(?:read|readSecret|get|getSecret|getSecretValue|accessSecretVersion|downloadSecret|retrieveSecret)\s*\(/iu.test(
+    source
+  ) || /\b(?:GetSecretValueCommand|AccessSecretVersionRequest|SecretClient)\b/u.test(source);
+}
+
+function hasPythonHandlerSecretManagerAccess(source: string): boolean {
+  return /\b(?:vault|vault_client|secret_manager|secret_manager_client|secrets_manager|secrets_manager_client|key_vault|key_vault_client|credential_vault)\s*\.\s*(?:read|read_secret|get|get_secret|get_secret_value|access_secret_version|download_secret|retrieve_secret)\s*\(/iu.test(
+    source
+  ) || /\b(?:GetSecretValueCommand|SecretManagerServiceClient|SecretClient)\b/u.test(source);
 }
 
 function hasAgentControlPlaneTargetString(source: string): boolean {
@@ -28645,6 +28666,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   credential_issuance: boolean;
   nested_tool_invocation: boolean;
   browser_automation: boolean;
+  secret_manager_access: boolean;
   network_response_capture: boolean;
   dynamic_code_execution: boolean;
   unsafe_deserialization: boolean;
@@ -28681,6 +28703,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   const handlerCredentialIssuance = handler?.handlerCredentialIssuance === true;
   const handlerToolInvocation = handler?.handlerToolInvocation === true;
   const handlerBrowserAutomation = handler?.handlerBrowserAutomation === true;
+  const handlerSecretManagerAccess = handler?.handlerSecretManagerAccess === true;
   const handlerShellExecution = handler?.handlerShellExecution === true;
   const handlerDynamicCodeExecution = handler?.handlerDynamicCodeExecution === true;
   const handlerUnsafeDeserialization = handler?.handlerUnsafeDeserialization === true;
@@ -28785,6 +28808,11 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   if (handlerSecretEnvAccess) {
     classes.add("secret_env_access");
   }
+  if (handlerSecretManagerAccess) {
+    classes.add("secret_manager_access");
+    actions.add("read");
+    if (handlerModelVisibleOutput) actions.add("send");
+  }
   if (handlerSecretToOutput) {
     classes.add("secret_materialization");
     actions.add("send");
@@ -28832,6 +28860,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerCredentialIssuance ||
       handlerToolInvocation ||
       handlerBrowserAutomation ||
+      handlerSecretManagerAccess ||
       handlerDatabaseQuery ||
       handlerDatabaseWrite ||
       handlerExternalWrite ||
@@ -28857,7 +28886,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
     actions: [...actions].sort((a, b) => a.localeCompare(b)),
     side_effect: sideEffect,
     external_reach: acceptsUrl || externalWrite || handlerExternalNetworkCall || handlerBrowserAutomation,
-    secret_exposure: acceptsSecret || handlerSecretEnvAccess || localFileDisclosure || handlerCredentialIssuance,
+    secret_exposure: acceptsSecret || handlerSecretEnvAccess || localFileDisclosure || handlerCredentialIssuance || handlerSecretManagerAccess,
     accepts_secret_like_input: acceptsSecret,
     accepts_content_like_input: acceptsContent,
     accepts_path_input: acceptsPath,
@@ -28872,6 +28901,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
     credential_issuance: handlerCredentialIssuance,
     nested_tool_invocation: handlerToolInvocation,
     browser_automation: handlerBrowserAutomation,
+    secret_manager_access: handlerSecretManagerAccess,
     network_response_capture: handlerNetworkResponseToOutput,
     dynamic_code_execution: handlerDynamicCodeExecution,
     unsafe_deserialization: handlerUnsafeDeserialization,
@@ -28932,6 +28962,7 @@ function authoritySignature(tool: SurfaceObject): string {
     metadata.credential_issuance === true ? "credential_issuance" : "",
     metadata.nested_tool_invocation === true ? "nested_tool_invocation" : "",
     metadata.browser_automation === true ? "browser_automation" : "",
+    metadata.secret_manager_access === true ? "secret_manager_access" : "",
     metadata.accepts_secret_like_input === true ? "secret_input" : "",
     metadata.accepts_content_like_input === true ? "content_input" : "",
     metadata.accepts_path_input === true ? "path_input" : "",
@@ -28959,6 +28990,7 @@ function isPrivilegedToolSurface(tool: SurfaceObject): boolean {
     tool.metadata.credential_issuance === true ||
     tool.metadata.nested_tool_invocation === true ||
     tool.metadata.browser_automation === true ||
+    tool.metadata.secret_manager_access === true ||
     tool.metadata.open_world_authority === true ||
     tool.metadata.read_only_hint_conflict === true
   );

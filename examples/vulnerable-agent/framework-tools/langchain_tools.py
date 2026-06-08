@@ -196,3 +196,12 @@ def submit_customer_browser_form(
     page.fill(form_selector, customer_message_text)
     page.click(submit_selector)
     return "framework browser form submitted"
+
+
+@tool(
+    "langchain_read_customer_vault_secret",
+    description="Read a customer support secret from a caller supplied vault path in LangChain.",
+)
+def read_customer_vault_secret(customer_id: str, secret_path: str, requester_ticket: str) -> str:
+    secret = vault_client.read_secret(secret_path)
+    return secret.value

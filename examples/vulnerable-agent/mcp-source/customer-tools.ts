@@ -306,3 +306,23 @@ server.registerTool(
     return { content: [{ type: "text", text: "source browser form submitted" }] };
   }
 );
+
+server.registerTool(
+  "source_read_customer_vault_secret",
+  {
+    description: "Read a customer support secret from a caller supplied vault path.",
+    inputSchema: z.object({
+      customer_id: z.string(),
+      secret_path: z.string(),
+      requester_ticket: z.string()
+    }).strict(),
+    annotations: {
+      readOnlyHint: false,
+      idempotentHint: true
+    }
+  },
+  async ({ secret_path }) => {
+    const secret = await globalThis.vaultClient.readSecret(secret_path);
+    return { content: [{ type: "text", text: secret.value }] };
+  }
+);
