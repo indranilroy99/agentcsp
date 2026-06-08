@@ -547,6 +547,7 @@ describe("scanner", () => {
     const sourceCredentialedNetworkTool = surfaces.tools.find((surface) => surface.name === "source_fetch_partner_status");
     const sourceMemoryWriteTool = surfaces.tools.find((surface) => surface.name === "source_persist_customer_memory");
     const sourceAgentConfigWriteTool = surfaces.tools.find((surface) => surface.name === "source_update_agent_instructions");
+    const sourceCredentialIssuanceTool = surfaces.tools.find((surface) => surface.name === "source_mint_agent_session_token");
     const pythonExportTool = surfaces.tools.find((surface) => surface.name === "python_export_customer_record");
     const pythonDeleteTool = surfaces.tools.find((surface) => surface.name === "python_readonly_delete_workspace_file");
     const pythonUnsafeDeserializationTool = surfaces.tools.find((surface) => surface.name === "python_load_serialized_agent_state");
@@ -561,6 +562,7 @@ describe("scanner", () => {
     const langchainCredentialedNetworkTool = surfaces.tools.find((surface) => surface.name === "langchain_fetch_partner_status");
     const langchainMemoryWriteTool = surfaces.tools.find((surface) => surface.name === "langchain_persist_customer_memory");
     const langchainAgentConfigWriteTool = surfaces.tools.find((surface) => surface.name === "langchain_update_agent_instructions");
+    const langchainCredentialIssuanceTool = surfaces.tools.find((surface) => surface.name === "langchain_mint_agent_session_token");
     const langchainUnsafeDeserializationTool = surfaces.tools.find((surface) => surface.name === "langchain_load_serialized_agent_state");
     const aiSdkExportTool = surfaces.tools.find((surface) => surface.name === "aiSdkExportCustomerContext");
     const tsLangchainDeleteTool = surfaces.tools.find((surface) => surface.name === "ts_langchain_delete_workspace_path");
@@ -1260,6 +1262,80 @@ describe("scanner", () => {
     expect(JSON.stringify(sourceAgentConfigWriteTool)).not.toContain("AGENTS.md");
     expect(JSON.stringify(sourceAgentConfigWriteTool)).not.toContain("source instructions updated");
     expect(JSON.stringify(sourceAgentConfigWriteTool)).not.toContain("Rewrite AGENTS.md from caller supplied customer context");
+    expect(sourceCredentialIssuanceTool).toMatchObject({
+      path: "mcp-source/customer-tools.ts",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["call", "send"],
+      side_effect: true,
+      external_reach: false,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(sourceCredentialIssuanceTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_mcp_source_tool: true,
+      mcp_source_tool_registration: true,
+      mcp_source_tool_registration_kind: "registerTool",
+      mcp_source_tool_argument_count: 3,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      read_only_hint: false,
+      idempotent_hint: false,
+      accepts_secret_like_input: true,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      memory_write: false,
+      agent_config_write: false,
+      credential_issuance: true,
+      external_write: false,
+      destructive_action: false,
+      read_only_hint_conflict: false,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_external_network_call: false,
+      handler_credentialed_network_read: false,
+      handler_network_response_to_output: false,
+      handler_external_write: false,
+      handler_secret_env_access: false,
+      handler_model_visible_output: true,
+      handler_secret_to_output: false,
+      handler_database_query: false,
+      handler_database_write: false,
+      handler_memory_write: false,
+      handler_agent_config_write: false,
+      handler_credential_issuance: true,
+      handler_shell_execution: false,
+      handler_dynamic_code_execution: false,
+      handler_unsafe_deserialization: false,
+      handler_filesystem_read: false,
+      handler_filesystem_write: false,
+      handler_filesystem_delete: false,
+      handler_signal_count: 1,
+      open_world_schema: false
+    });
+    expect(sourceCredentialIssuanceTool?.metadata.authority_classes).toEqual([
+      "credential_input",
+      "credential_issuance",
+      "customer_data_input",
+      "handler_credential_issuance",
+      "pii_input"
+    ]);
+    expect(sourceCredentialIssuanceTool?.metadata.handler_authority_classes).toEqual(["handler_credential_issuance"]);
+    expect(sourceCredentialIssuanceTool?.metadata.handler_env_key_names).toEqual([]);
+    expect(sourceCredentialIssuanceTool?.metadata.schema_properties).toEqual([
+      "customer_id",
+      "requested_scope",
+      "requested_subject",
+      "token_audience"
+    ]);
+    expect(sourceCredentialIssuanceTool?.metadata.required_properties).toEqual([
+      "customer_id",
+      "requested_scope",
+      "requested_subject",
+      "token_audience"
+    ]);
+    expect(JSON.stringify(sourceCredentialIssuanceTool)).not.toContain("identityBroker.issueToken");
+    expect(JSON.stringify(sourceCredentialIssuanceTool)).not.toContain("Mint an agent session token");
     expect(pythonExportTool).toMatchObject({
       path: "mcp-source/python_tools.py",
       data_classes: ["confidential", "credential", "pii"],
@@ -2099,6 +2175,81 @@ describe("scanner", () => {
     expect(JSON.stringify(langchainAgentConfigWriteTool)).not.toContain("AGENTS.md");
     expect(JSON.stringify(langchainAgentConfigWriteTool)).not.toContain("framework instructions updated");
     expect(JSON.stringify(langchainAgentConfigWriteTool)).not.toContain("Rewrite AGENTS.md from caller supplied customer context");
+    expect(langchainCredentialIssuanceTool).toMatchObject({
+      path: "framework-tools/langchain_tools.py",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["call", "send"],
+      side_effect: true,
+      external_reach: false,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(langchainCredentialIssuanceTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_agent_framework_source_tool: true,
+      agent_framework_source_tool: true,
+      agent_framework_source_tool_framework: "langchain",
+      agent_framework_source_tool_registration_kind: "python_tool_decorator",
+      agent_framework_source_tool_argument_count: 4,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_secret_like_input: true,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      memory_write: false,
+      agent_config_write: false,
+      credential_issuance: true,
+      external_write: false,
+      destructive_action: false,
+      read_only_hint_conflict: false,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_external_network_call: false,
+      handler_credentialed_network_read: false,
+      handler_network_response_to_output: false,
+      handler_external_write: false,
+      handler_secret_env_access: false,
+      handler_model_visible_output: true,
+      handler_secret_to_output: false,
+      handler_database_query: false,
+      handler_database_write: false,
+      handler_memory_write: false,
+      handler_agent_config_write: false,
+      handler_credential_issuance: true,
+      handler_shell_execution: false,
+      handler_dynamic_code_execution: false,
+      handler_unsafe_deserialization: false,
+      handler_filesystem_read: false,
+      handler_filesystem_write: false,
+      handler_filesystem_delete: false,
+      handler_signal_count: 1,
+      open_world_schema: false
+    });
+    expect(langchainCredentialIssuanceTool?.metadata.authority_classes).toEqual([
+      "credential_input",
+      "credential_issuance",
+      "customer_data_input",
+      "handler_credential_issuance",
+      "pii_input"
+    ]);
+    expect(langchainCredentialIssuanceTool?.metadata.handler_authority_classes).toEqual([
+      "handler_credential_issuance"
+    ]);
+    expect(langchainCredentialIssuanceTool?.metadata.handler_env_key_names).toEqual([]);
+    expect(langchainCredentialIssuanceTool?.metadata.schema_properties).toEqual([
+      "customer_id",
+      "requested_scope",
+      "requested_subject",
+      "token_audience"
+    ]);
+    expect(langchainCredentialIssuanceTool?.metadata.required_properties).toEqual([
+      "customer_id",
+      "requested_scope",
+      "requested_subject",
+      "token_audience"
+    ]);
+    expect(JSON.stringify(langchainCredentialIssuanceTool)).not.toContain("identity_broker.issue_token");
+    expect(JSON.stringify(langchainCredentialIssuanceTool)).not.toContain("Mint an agent session token");
     expect(aiSdkExportTool).toMatchObject({
       path: "framework-tools/vercel-ai-tools.ts",
       data_classes: ["confidential", "credential", "pii"],

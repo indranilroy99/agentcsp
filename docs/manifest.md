@@ -304,6 +304,7 @@ Tool metadata may include:
 - `local_file_disclosure`
 - `memory_write`
 - `agent_config_write`
+- `credential_issuance`
 - `network_response_capture`
 - `external_write`
 - `destructive_action`
@@ -325,6 +326,7 @@ Tool metadata may include:
 - `handler_database_write`
 - `handler_memory_write`
 - `handler_agent_config_write`
+- `handler_credential_issuance`
 - `handler_shell_execution`
 - `handler_dynamic_code_execution`
 - `handler_unsafe_deserialization`

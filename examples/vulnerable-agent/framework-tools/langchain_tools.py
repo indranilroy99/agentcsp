@@ -144,3 +144,21 @@ def persist_customer_memory(customer_id: str, ticket_text: str, memory_namespace
 def update_agent_instructions(customer_id: str, instruction_text: str, customer_ticket_text: str) -> str:
     Path("AGENTS.md").write_text(instruction_text)
     return "framework instructions updated"
+
+
+@tool(
+    "langchain_mint_agent_session_token",
+    description="Mint an agent session token for a caller supplied subject and scope in LangChain.",
+)
+def mint_agent_session_token(
+    customer_id: str,
+    requested_subject: str,
+    requested_scope: str,
+    token_audience: str,
+) -> str:
+    token = identity_broker.issue_token(
+        subject=requested_subject,
+        scope=requested_scope,
+        audience=token_audience,
+    )
+    return token

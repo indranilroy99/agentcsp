@@ -38,6 +38,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-022")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-023")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-024")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-025")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-001")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-002")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-003")).toBe(true);
@@ -6183,6 +6184,27 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerAgentConfigWriteFindings)).not.toContain("source instructions updated");
     expect(JSON.stringify(sourceHandlerAgentConfigWriteFindings)).not.toContain("framework instructions updated");
     expect(JSON.stringify(sourceHandlerAgentConfigWriteFindings)).not.toContain("Rewrite AGENTS.md from caller supplied customer context");
+    const sourceHandlerCredentialIssuanceFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-025");
+    expect(sourceHandlerCredentialIssuanceFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
+      "langchain_mint_agent_session_token",
+      "source_mint_agent_session_token"
+    ]);
+    expect(sourceHandlerCredentialIssuanceFindings.every((finding) => finding.severity === "critical")).toBe(true);
+    expect(sourceHandlerCredentialIssuanceFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerCredentialIssuanceFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
+    expect(sourceHandlerCredentialIssuanceFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
+    expect(sourceHandlerCredentialIssuanceFindings.every((finding) => finding.matched_object.metadata.handler_credential_issuance === true)).toBe(true);
+    expect(sourceHandlerCredentialIssuanceFindings.every((finding) => finding.matched_object.metadata.credential_issuance === true)).toBe(true);
+    expect(sourceHandlerCredentialIssuanceFindings.every((finding) => finding.matched_object.metadata.accepts_secret_like_input === true)).toBe(true);
+    expect(sourceHandlerCredentialIssuanceFindings.every((finding) => finding.matched_object.metadata.accepts_customer_data_input === true)).toBe(true);
+    expect(sourceHandlerCredentialIssuanceFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("credential_issuance"))).toBe(true);
+    expect(sourceHandlerCredentialIssuanceFindings.every((finding) => finding.matched_object.metadata.handler_authority_classes.includes("handler_credential_issuance"))).toBe(true);
+    expect(sourceHandlerCredentialIssuanceFindings.every((finding) => finding.matched_object.actions.includes("send"))).toBe(true);
+    expect(sourceHandlerCredentialIssuanceFindings.every((finding) => finding.matched_object.secret_exposure === true)).toBe(true);
+    expect(sourceHandlerCredentialIssuanceFindings.every((finding) => finding.matched_object.reversible === false)).toBe(true);
+    expect(JSON.stringify(sourceHandlerCredentialIssuanceFindings)).not.toContain("identityBroker.issueToken");
+    expect(JSON.stringify(sourceHandlerCredentialIssuanceFindings)).not.toContain("identity_broker.issue_token");
+    expect(JSON.stringify(sourceHandlerCredentialIssuanceFindings)).not.toContain("Mint an agent session token");
     const sourceHandlerShellFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-015");
     expect(sourceHandlerShellFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_run_remediation_command",

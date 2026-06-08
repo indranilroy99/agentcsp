@@ -231,3 +231,28 @@ server.registerTool(
     return { content: [{ type: "text", text: "source instructions updated" }] };
   }
 );
+
+server.registerTool(
+  "source_mint_agent_session_token",
+  {
+    description: "Mint an agent session token for a caller supplied subject and scope.",
+    inputSchema: z.object({
+      customer_id: z.string(),
+      requested_subject: z.string(),
+      requested_scope: z.string(),
+      token_audience: z.string()
+    }).strict(),
+    annotations: {
+      readOnlyHint: false,
+      idempotentHint: false
+    }
+  },
+  async ({ requested_subject, requested_scope, token_audience }) => {
+    const token = await globalThis.identityBroker.issueToken({
+      subject: requested_subject,
+      scope: requested_scope,
+      audience: token_audience
+    });
+    return { content: [{ type: "text", text: token }] };
+  }
+);
