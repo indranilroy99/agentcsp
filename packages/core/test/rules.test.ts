@@ -36,6 +36,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-011")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-012")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-022")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-023")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-001")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-002")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-003")).toBe(true);
@@ -6137,6 +6138,27 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerNetworkResponseFindings)).not.toContain("response.text");
     expect(JSON.stringify(sourceHandlerNetworkResponseFindings)).not.toContain("httpx.get");
     expect(JSON.stringify(sourceHandlerNetworkResponseFindings)).not.toContain("Fetch a caller supplied URL");
+    const sourceHandlerMemoryWriteFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-023");
+    expect(sourceHandlerMemoryWriteFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
+      "langchain_persist_customer_memory",
+      "source_persist_customer_memory"
+    ]);
+    expect(sourceHandlerMemoryWriteFindings.every((finding) => finding.severity === "critical")).toBe(true);
+    expect(sourceHandlerMemoryWriteFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerMemoryWriteFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
+    expect(sourceHandlerMemoryWriteFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
+    expect(sourceHandlerMemoryWriteFindings.every((finding) => finding.matched_object.metadata.handler_memory_write === true)).toBe(true);
+    expect(sourceHandlerMemoryWriteFindings.every((finding) => finding.matched_object.metadata.memory_write === true)).toBe(true);
+    expect(sourceHandlerMemoryWriteFindings.every((finding) => finding.matched_object.metadata.accepts_content_like_input === true)).toBe(true);
+    expect(sourceHandlerMemoryWriteFindings.every((finding) => finding.matched_object.metadata.accepts_customer_data_input === true)).toBe(true);
+    expect(sourceHandlerMemoryWriteFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("memory_write"))).toBe(true);
+    expect(sourceHandlerMemoryWriteFindings.every((finding) => finding.matched_object.actions.includes("remember"))).toBe(true);
+    expect(sourceHandlerMemoryWriteFindings.every((finding) => finding.matched_object.reversible === false)).toBe(true);
+    expect(JSON.stringify(sourceHandlerMemoryWriteFindings)).not.toContain("agentMemory.upsert");
+    expect(JSON.stringify(sourceHandlerMemoryWriteFindings)).not.toContain("memory_store.upsert");
+    expect(JSON.stringify(sourceHandlerMemoryWriteFindings)).not.toContain("source memory persisted");
+    expect(JSON.stringify(sourceHandlerMemoryWriteFindings)).not.toContain("framework memory persisted");
+    expect(JSON.stringify(sourceHandlerMemoryWriteFindings)).not.toContain("Persist caller supplied customer ticket text");
     const sourceHandlerShellFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-015");
     expect(sourceHandlerShellFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_run_remediation_command",

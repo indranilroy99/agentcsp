@@ -302,6 +302,7 @@ Tool metadata may include:
 - `dynamic_code_execution`
 - `unsafe_deserialization`
 - `local_file_disclosure`
+- `memory_write`
 - `network_response_capture`
 - `external_write`
 - `destructive_action`
@@ -321,6 +322,7 @@ Tool metadata may include:
 - `handler_secret_to_output`
 - `handler_database_query`
 - `handler_database_write`
+- `handler_memory_write`
 - `handler_shell_execution`
 - `handler_dynamic_code_execution`
 - `handler_unsafe_deserialization`

@@ -545,6 +545,7 @@ describe("scanner", () => {
     const sourceDatabaseTool = surfaces.tools.find((surface) => surface.name === "source_apply_record_change_sql");
     const sourceSecretOutputTool = surfaces.tools.find((surface) => surface.name === "source_reveal_runtime_secret");
     const sourceCredentialedNetworkTool = surfaces.tools.find((surface) => surface.name === "source_fetch_partner_status");
+    const sourceMemoryWriteTool = surfaces.tools.find((surface) => surface.name === "source_persist_customer_memory");
     const pythonExportTool = surfaces.tools.find((surface) => surface.name === "python_export_customer_record");
     const pythonDeleteTool = surfaces.tools.find((surface) => surface.name === "python_readonly_delete_workspace_file");
     const pythonUnsafeDeserializationTool = surfaces.tools.find((surface) => surface.name === "python_load_serialized_agent_state");
@@ -557,6 +558,7 @@ describe("scanner", () => {
     const langchainDatabaseTool = surfaces.tools.find((surface) => surface.name === "langchain_apply_record_change_sql");
     const langchainSecretOutputTool = surfaces.tools.find((surface) => surface.name === "langchain_reveal_runtime_secret");
     const langchainCredentialedNetworkTool = surfaces.tools.find((surface) => surface.name === "langchain_fetch_partner_status");
+    const langchainMemoryWriteTool = surfaces.tools.find((surface) => surface.name === "langchain_persist_customer_memory");
     const langchainUnsafeDeserializationTool = surfaces.tools.find((surface) => surface.name === "langchain_load_serialized_agent_state");
     const aiSdkExportTool = surfaces.tools.find((surface) => surface.name === "aiSdkExportCustomerContext");
     const tsLangchainDeleteTool = surfaces.tools.find((surface) => surface.name === "ts_langchain_delete_workspace_path");
@@ -1117,6 +1119,68 @@ describe("scanner", () => {
     expect(sourceCredentialedNetworkTool?.metadata.required_properties).toEqual(["customer_reference", "status_endpoint_url"]);
     expect(JSON.stringify(sourceCredentialedNetworkTool)).not.toContain("source partner status checked");
     expect(JSON.stringify(sourceCredentialedNetworkTool)).not.toContain("Fetch a support partner status endpoint");
+    expect(sourceMemoryWriteTool).toMatchObject({
+      path: "mcp-source/customer-tools.ts",
+      data_classes: ["confidential", "pii"],
+      actions: ["call", "remember", "write"],
+      side_effect: true,
+      external_reach: false,
+      secret_exposure: false,
+      reversible: false
+    });
+    expect(sourceMemoryWriteTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_mcp_source_tool: true,
+      mcp_source_tool_registration: true,
+      mcp_source_tool_registration_kind: "registerTool",
+      mcp_source_tool_argument_count: 3,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      read_only_hint: false,
+      idempotent_hint: false,
+      accepts_content_like_input: true,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      memory_write: true,
+      external_write: false,
+      destructive_action: false,
+      read_only_hint_conflict: false,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_external_network_call: false,
+      handler_credentialed_network_read: false,
+      handler_network_response_to_output: false,
+      handler_external_write: false,
+      handler_secret_env_access: false,
+      handler_model_visible_output: true,
+      handler_secret_to_output: false,
+      handler_database_query: false,
+      handler_database_write: false,
+      handler_memory_write: true,
+      handler_shell_execution: false,
+      handler_dynamic_code_execution: false,
+      handler_unsafe_deserialization: false,
+      handler_filesystem_read: false,
+      handler_filesystem_write: false,
+      handler_filesystem_delete: false,
+      handler_signal_count: 1,
+      open_world_schema: false
+    });
+    expect(sourceMemoryWriteTool?.metadata.authority_classes).toEqual([
+      "content_input",
+      "customer_data_input",
+      "handler_memory_write",
+      "memory_access",
+      "memory_write",
+      "pii_input"
+    ]);
+    expect(sourceMemoryWriteTool?.metadata.handler_authority_classes).toEqual(["handler_memory_write"]);
+    expect(sourceMemoryWriteTool?.metadata.handler_env_key_names).toEqual([]);
+    expect(sourceMemoryWriteTool?.metadata.schema_properties).toEqual(["customer_id", "memory_namespace", "ticket_text"]);
+    expect(sourceMemoryWriteTool?.metadata.required_properties).toEqual(["customer_id", "ticket_text"]);
+    expect(JSON.stringify(sourceMemoryWriteTool)).not.toContain("agentMemory.upsert");
+    expect(JSON.stringify(sourceMemoryWriteTool)).not.toContain("source memory persisted");
+    expect(JSON.stringify(sourceMemoryWriteTool)).not.toContain("Persist caller supplied customer ticket text");
     expect(pythonExportTool).toMatchObject({
       path: "mcp-source/python_tools.py",
       data_classes: ["confidential", "credential", "pii"],
@@ -1815,6 +1879,71 @@ describe("scanner", () => {
     expect(JSON.stringify(langchainCredentialedNetworkTool)).not.toContain("httpx.get");
     expect(JSON.stringify(langchainCredentialedNetworkTool)).not.toContain("framework partner status checked");
     expect(JSON.stringify(langchainCredentialedNetworkTool)).not.toContain("Fetch partner status from a caller supplied endpoint");
+    expect(langchainMemoryWriteTool).toMatchObject({
+      path: "framework-tools/langchain_tools.py",
+      data_classes: ["confidential", "pii"],
+      actions: ["call", "remember", "write"],
+      side_effect: true,
+      external_reach: false,
+      secret_exposure: false,
+      reversible: false
+    });
+    expect(langchainMemoryWriteTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_agent_framework_source_tool: true,
+      agent_framework_source_tool: true,
+      agent_framework_source_tool_framework: "langchain",
+      agent_framework_source_tool_registration_kind: "python_tool_decorator",
+      agent_framework_source_tool_argument_count: 3,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_content_like_input: true,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      memory_write: true,
+      external_write: false,
+      destructive_action: false,
+      read_only_hint_conflict: false,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_external_network_call: false,
+      handler_credentialed_network_read: false,
+      handler_network_response_to_output: false,
+      handler_external_write: false,
+      handler_secret_env_access: false,
+      handler_model_visible_output: true,
+      handler_secret_to_output: false,
+      handler_database_query: false,
+      handler_database_write: false,
+      handler_memory_write: true,
+      handler_shell_execution: false,
+      handler_dynamic_code_execution: false,
+      handler_unsafe_deserialization: false,
+      handler_filesystem_read: false,
+      handler_filesystem_write: false,
+      handler_filesystem_delete: false,
+      handler_signal_count: 1,
+      open_world_schema: false
+    });
+    expect(langchainMemoryWriteTool?.metadata.authority_classes).toEqual([
+      "content_input",
+      "customer_data_input",
+      "handler_memory_write",
+      "memory_access",
+      "memory_write",
+      "pii_input"
+    ]);
+    expect(langchainMemoryWriteTool?.metadata.handler_authority_classes).toEqual(["handler_memory_write"]);
+    expect(langchainMemoryWriteTool?.metadata.handler_env_key_names).toEqual([]);
+    expect(langchainMemoryWriteTool?.metadata.schema_properties).toEqual([
+      "customer_id",
+      "memory_namespace",
+      "ticket_text"
+    ]);
+    expect(langchainMemoryWriteTool?.metadata.required_properties).toEqual(["customer_id", "ticket_text"]);
+    expect(JSON.stringify(langchainMemoryWriteTool)).not.toContain("memory_store.upsert");
+    expect(JSON.stringify(langchainMemoryWriteTool)).not.toContain("framework memory persisted");
+    expect(JSON.stringify(langchainMemoryWriteTool)).not.toContain("Persist caller supplied customer ticket text");
     expect(aiSdkExportTool).toMatchObject({
       path: "framework-tools/vercel-ai-tools.ts",
       data_classes: ["confidential", "credential", "pii"],

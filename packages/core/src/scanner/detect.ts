@@ -24121,6 +24121,7 @@ function addToolDefinitionSurface(
       !authority.destructive_action &&
       !authority.external_write &&
       !authority.database_write &&
+      !authority.memory_write &&
       !authority.dynamic_code_execution &&
       !authority.unsafe_deserialization,
     reason,
@@ -24140,6 +24141,7 @@ function addToolDefinitionSurface(
       accepted_data_classes: authority.accepted_data_classes,
       database_access: authority.database_access,
       database_write: authority.database_write,
+      memory_write: authority.memory_write,
       network_response_capture: authority.network_response_capture,
       dynamic_code_execution: authority.dynamic_code_execution,
       unsafe_deserialization: authority.unsafe_deserialization,
@@ -26517,6 +26519,7 @@ interface SourceToolHandlerSignals {
   handlerSecretToOutput: boolean;
   handlerDatabaseQuery: boolean;
   handlerDatabaseWrite: boolean;
+  handlerMemoryWrite: boolean;
   handlerShellExecution: boolean;
   handlerDynamicCodeExecution: boolean;
   handlerUnsafeDeserialization: boolean;
@@ -26940,6 +26943,7 @@ function sourceToolHandlerSignalMetadata(signals: SourceToolHandlerSignals | und
     handler_secret_to_output: signals.handlerSecretToOutput,
     handler_database_query: signals.handlerDatabaseQuery,
     handler_database_write: signals.handlerDatabaseWrite,
+    handler_memory_write: signals.handlerMemoryWrite,
     handler_shell_execution: signals.handlerShellExecution,
     handler_dynamic_code_execution: signals.handlerDynamicCodeExecution,
     handler_unsafe_deserialization: signals.handlerUnsafeDeserialization,
@@ -26972,6 +26976,9 @@ function classifySourceToolHandlerSignals(
     ? hasJavaScriptHandlerDatabaseQuery(handlerSource)
     : hasPythonHandlerDatabaseQuery(handlerSource);
   const databaseWrite = databaseQuery && hasHandlerDatabaseWriteSignal(handlerSource);
+  const memoryWrite = language === "javascript"
+    ? hasJavaScriptHandlerMemoryWrite(handlerSource)
+    : hasPythonHandlerMemoryWrite(handlerSource);
   const secretEnvAccess = envKeyNames.length > 0 || (language === "javascript"
     ? /\b(?:process|Deno|Bun)\s*\.\s*env\b/u.test(handlerSource)
     : /\b(?:os\s*\.\s*(?:environ|getenv)|dotenv)\b/u.test(handlerSource));
@@ -27011,6 +27018,7 @@ function classifySourceToolHandlerSignals(
   if (secretToOutput) classes.add("handler_secret_to_output");
   if (databaseQuery) classes.add("handler_database_query");
   if (databaseWrite) classes.add("handler_database_write");
+  if (memoryWrite) classes.add("handler_memory_write");
   if (shellExecution) classes.add("handler_shell_execution");
   if (dynamicCodeExecution) classes.add("handler_dynamic_code_execution");
   if (unsafeDeserialization) classes.add("handler_unsafe_deserialization");
@@ -27029,6 +27037,7 @@ function classifySourceToolHandlerSignals(
     handlerSecretToOutput: secretToOutput,
     handlerDatabaseQuery: databaseQuery,
     handlerDatabaseWrite: databaseWrite,
+    handlerMemoryWrite: memoryWrite,
     handlerShellExecution: shellExecution,
     handlerDynamicCodeExecution: dynamicCodeExecution,
     handlerUnsafeDeserialization: unsafeDeserialization,
@@ -27236,6 +27245,16 @@ function hasPythonHandlerDatabaseQuery(source: string): boolean {
 
 function hasHandlerDatabaseWriteSignal(source: string): boolean {
   return /\b(?:insert|update|delete|drop|truncate|alter|create|merge|upsert|replace)\b/iu.test(source);
+}
+
+function hasJavaScriptHandlerMemoryWrite(source: string): boolean {
+  return /\b(?:[A-Za-z_$][\w$]*memory|memory|memories|vectorStore|vectorIndex|embeddingStore|ragStore|retriever|knowledgeBase|sessionStore|stateStore)\s*\.\s*(?:add|addDocuments|addTexts|append|insert|persist|put|push|remember|save|set|store|upsert|write)\s*\(/iu.test(source) ||
+    /\b(?:persistMemory|rememberContext|saveMemory|storeMemory|upsertMemory|writeMemory)\s*\(/iu.test(source);
+}
+
+function hasPythonHandlerMemoryWrite(source: string): boolean {
+  return /\b(?:[A-Za-z_]\w*memory|memory|memory_store|vector_store|vectorstore|vector_index|embedding_store|rag_store|retriever|knowledge_base|session_store|state_store)\s*\.\s*(?:add|add_documents|add_texts|append|insert|persist|put|push|remember|save|set|store|upsert|write)\s*\(/iu.test(source) ||
+    /\b(?:persist_memory|remember_context|save_memory|store_memory|upsert_memory|write_memory)\s*\(/iu.test(source);
 }
 
 function hasJavaScriptHandlerUnsafeDeserialization(source: string): boolean {
@@ -28529,6 +28548,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   accepted_data_classes: SurfaceObject["data_classes"];
   database_access: boolean;
   database_write: boolean;
+  memory_write: boolean;
   network_response_capture: boolean;
   dynamic_code_execution: boolean;
   unsafe_deserialization: boolean;
@@ -28560,6 +28580,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   const handlerExternalWrite = handler?.handlerExternalWrite === true;
   const handlerDatabaseQuery = handler?.handlerDatabaseQuery === true;
   const handlerDatabaseWrite = handler?.handlerDatabaseWrite === true;
+  const handlerMemoryWrite = handler?.handlerMemoryWrite === true;
   const handlerShellExecution = handler?.handlerShellExecution === true;
   const handlerDynamicCodeExecution = handler?.handlerDynamicCodeExecution === true;
   const handlerUnsafeDeserialization = handler?.handlerUnsafeDeserialization === true;
@@ -28633,9 +28654,13 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
     classes.add("database_write");
     actions.add("write");
   }
-  if (/\b(memory|remember|store|recall)\b/i.test(text)) {
+  if (/\b(memory|remember|store|recall)\b/i.test(text) || handlerMemoryWrite) {
     classes.add("memory_access");
     actions.add("remember");
+  }
+  if (handlerMemoryWrite) {
+    classes.add("memory_write");
+    actions.add("write");
   }
   if (acceptsSecret) {
     classes.add("credential_input");
@@ -28685,6 +28710,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerSecretToOutput ||
       handlerCredentialedNetworkRead ||
       handlerNetworkResponseToOutput ||
+      handlerMemoryWrite ||
       handlerDatabaseQuery ||
       handlerDatabaseWrite ||
       handlerExternalWrite ||
@@ -28720,6 +28746,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
     accepted_data_classes: schemaDataProfile.dataClasses,
     database_access: databaseAccess,
     database_write: databaseWrite,
+    memory_write: handlerMemoryWrite,
     network_response_capture: handlerNetworkResponseToOutput,
     dynamic_code_execution: handlerDynamicCodeExecution,
     unsafe_deserialization: handlerUnsafeDeserialization,

@@ -120,3 +120,18 @@ def fetch_partner_status(status_endpoint_url: str, customer_reference: str) -> s
     partner_token = os.getenv("LANGCHAIN_PARTNER_STATUS_TOKEN")
     httpx.get(status_endpoint_url, headers={"authorization": f"Bearer {partner_token}"})
     return "framework partner status checked"
+
+
+@tool(
+    "langchain_persist_customer_memory",
+    description="Persist caller supplied customer ticket text into LangChain memory.",
+)
+def persist_customer_memory(customer_id: str, ticket_text: str, memory_namespace: str = "customer-support") -> str:
+    memory_store.upsert(
+        {
+            "namespace": memory_namespace,
+            "customer_id": customer_id,
+            "text": ticket_text,
+        }
+    )
+    return "framework memory persisted"

@@ -186,3 +186,28 @@ server.registerTool(
     return { content: [{ type: "text", text: "source partner status checked" }] };
   }
 );
+
+server.registerTool(
+  "source_persist_customer_memory",
+  {
+    description: "Persist caller supplied customer ticket text into long-term agent memory.",
+    inputSchema: z.object({
+      customer_id: z.string(),
+      ticket_text: z.string(),
+      memory_namespace: z.string().optional()
+    }).strict(),
+    annotations: {
+      readOnlyHint: false,
+      idempotentHint: false
+    }
+  },
+  async ({ customer_id, ticket_text, memory_namespace }) => {
+    const namespace = memory_namespace ?? "customer-support";
+    await globalThis.agentMemory.upsert({
+      namespace,
+      customer_id,
+      text: ticket_text
+    });
+    return { content: [{ type: "text", text: "source memory persisted" }] };
+  }
+);
