@@ -745,11 +745,23 @@ describe("scanner", () => {
       handler_external_write: false,
       handler_secret_env_access: false,
       handler_shell_execution: false,
+      handler_tainted_filesystem_path: true,
+      tainted_filesystem_path: true,
       handler_filesystem_write: false,
       handler_filesystem_delete: true,
-      handler_signal_count: 1
+      handler_signal_count: 2
     });
-    expect(sourceDeleteTool?.metadata.handler_authority_classes).toEqual(["handler_filesystem_delete"]);
+    expect(sourceDeleteTool?.metadata.authority_classes).toEqual([
+      "destructive_action",
+      "filesystem_access",
+      "handler_filesystem_delete",
+      "handler_tainted_filesystem_path",
+      "tainted_filesystem_path"
+    ]);
+    expect(sourceDeleteTool?.metadata.handler_authority_classes).toEqual([
+      "handler_filesystem_delete",
+      "handler_tainted_filesystem_path"
+    ]);
     expect(sourceDeleteTool?.metadata.handler_env_key_names).toEqual([]);
     expect(sourceDeleteTool?.metadata.mcp_source_tool_schema_styles).toEqual([
       "zod_field_map",
@@ -843,19 +855,26 @@ describe("scanner", () => {
       handler_shell_execution: false,
       handler_dynamic_code_execution: false,
       handler_filesystem_read: true,
+      handler_tainted_filesystem_path: true,
+      tainted_filesystem_path: true,
       handler_filesystem_write: false,
       handler_filesystem_delete: false,
       handler_model_visible_output: true,
-      handler_signal_count: 1,
+      handler_signal_count: 2,
       open_world_schema: false
     });
     expect(sourceFileReadTool?.metadata.authority_classes).toEqual([
       "filesystem_access",
       "filesystem_read",
       "handler_filesystem_read",
-      "local_file_disclosure"
+      "handler_tainted_filesystem_path",
+      "local_file_disclosure",
+      "tainted_filesystem_path"
     ]);
-    expect(sourceFileReadTool?.metadata.handler_authority_classes).toEqual(["handler_filesystem_read"]);
+    expect(sourceFileReadTool?.metadata.handler_authority_classes).toEqual([
+      "handler_filesystem_read",
+      "handler_tainted_filesystem_path"
+    ]);
     expect(sourceFileReadTool?.metadata.handler_env_key_names).toEqual([]);
     expect(sourceFileReadTool?.metadata.schema_properties).toEqual(["encoding", "workspace_path"]);
     expect(sourceFileReadTool?.metadata.required_properties).toEqual(["workspace_path"]);
@@ -1251,6 +1270,8 @@ describe("scanner", () => {
       handler_memory_write: false,
       handler_agent_config_write: true,
       handler_shell_execution: false,
+      handler_tainted_filesystem_path: false,
+      tainted_filesystem_path: false,
       handler_dynamic_code_execution: false,
       handler_unsafe_deserialization: false,
       handler_filesystem_read: false,
@@ -1893,11 +1914,23 @@ describe("scanner", () => {
       handler_external_write: false,
       handler_secret_env_access: false,
       handler_shell_execution: false,
+      handler_tainted_filesystem_path: true,
+      tainted_filesystem_path: true,
       handler_filesystem_write: false,
       handler_filesystem_delete: true,
-      handler_signal_count: 1
+      handler_signal_count: 2
     });
-    expect(pythonDeleteTool?.metadata.handler_authority_classes).toEqual(["handler_filesystem_delete"]);
+    expect(pythonDeleteTool?.metadata.authority_classes).toEqual([
+      "destructive_action",
+      "filesystem_access",
+      "handler_filesystem_delete",
+      "handler_tainted_filesystem_path",
+      "tainted_filesystem_path"
+    ]);
+    expect(pythonDeleteTool?.metadata.handler_authority_classes).toEqual([
+      "handler_filesystem_delete",
+      "handler_tainted_filesystem_path"
+    ]);
     expect(pythonDeleteTool?.metadata.handler_env_key_names).toEqual([]);
     expect(pythonDeleteTool?.metadata.mcp_source_tool_schema_styles).toEqual([
       "mcp_annotations",
@@ -2059,11 +2092,23 @@ describe("scanner", () => {
       handler_external_write: false,
       handler_secret_env_access: false,
       handler_shell_execution: false,
+      handler_tainted_filesystem_path: true,
+      tainted_filesystem_path: true,
       handler_filesystem_write: false,
       handler_filesystem_delete: true,
-      handler_signal_count: 1
+      handler_signal_count: 2
     });
-    expect(langchainDeleteTool?.metadata.handler_authority_classes).toEqual(["handler_filesystem_delete"]);
+    expect(langchainDeleteTool?.metadata.authority_classes).toEqual([
+      "destructive_action",
+      "filesystem_access",
+      "handler_filesystem_delete",
+      "handler_tainted_filesystem_path",
+      "tainted_filesystem_path"
+    ]);
+    expect(langchainDeleteTool?.metadata.handler_authority_classes).toEqual([
+      "handler_filesystem_delete",
+      "handler_tainted_filesystem_path"
+    ]);
     expect(langchainDeleteTool?.metadata.handler_env_key_names).toEqual([]);
     expect(langchainDeleteTool?.metadata.agent_framework_source_tool_schema_styles).toEqual([
       "agent_framework_source_tool",
@@ -2159,19 +2204,26 @@ describe("scanner", () => {
       handler_shell_execution: false,
       handler_dynamic_code_execution: false,
       handler_filesystem_read: true,
+      handler_tainted_filesystem_path: true,
+      tainted_filesystem_path: true,
       handler_filesystem_write: false,
       handler_filesystem_delete: false,
       handler_model_visible_output: true,
-      handler_signal_count: 1,
+      handler_signal_count: 2,
       open_world_schema: false
     });
     expect(langchainFileReadTool?.metadata.authority_classes).toEqual([
       "filesystem_access",
       "filesystem_read",
       "handler_filesystem_read",
-      "local_file_disclosure"
+      "handler_tainted_filesystem_path",
+      "local_file_disclosure",
+      "tainted_filesystem_path"
     ]);
-    expect(langchainFileReadTool?.metadata.handler_authority_classes).toEqual(["handler_filesystem_read"]);
+    expect(langchainFileReadTool?.metadata.handler_authority_classes).toEqual([
+      "handler_filesystem_read",
+      "handler_tainted_filesystem_path"
+    ]);
     expect(langchainFileReadTool?.metadata.handler_env_key_names).toEqual([]);
     expect(langchainFileReadTool?.metadata.schema_properties).toEqual(["workspace_path"]);
     expect(langchainFileReadTool?.metadata.required_properties).toEqual(["workspace_path"]);
@@ -2629,6 +2681,8 @@ describe("scanner", () => {
       handler_memory_write: false,
       handler_agent_config_write: true,
       handler_shell_execution: false,
+      handler_tainted_filesystem_path: false,
+      tainted_filesystem_path: false,
       handler_dynamic_code_execution: false,
       handler_unsafe_deserialization: false,
       handler_filesystem_read: false,
@@ -3270,11 +3324,23 @@ describe("scanner", () => {
       handler_external_write: false,
       handler_secret_env_access: false,
       handler_shell_execution: false,
+      handler_tainted_filesystem_path: true,
+      tainted_filesystem_path: true,
       handler_filesystem_write: false,
       handler_filesystem_delete: true,
-      handler_signal_count: 1
+      handler_signal_count: 2
     });
-    expect(tsLangchainDeleteTool?.metadata.handler_authority_classes).toEqual(["handler_filesystem_delete"]);
+    expect(tsLangchainDeleteTool?.metadata.authority_classes).toEqual([
+      "destructive_action",
+      "filesystem_access",
+      "handler_filesystem_delete",
+      "handler_tainted_filesystem_path",
+      "tainted_filesystem_path"
+    ]);
+    expect(tsLangchainDeleteTool?.metadata.handler_authority_classes).toEqual([
+      "handler_filesystem_delete",
+      "handler_tainted_filesystem_path"
+    ]);
     expect(tsLangchainDeleteTool?.metadata.handler_env_key_names).toEqual([]);
     expect(tsLangchainDeleteTool?.metadata.agent_framework_source_tool_schema_styles).toEqual([
       "agent_framework_source_tool",

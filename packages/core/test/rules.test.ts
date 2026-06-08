@@ -48,6 +48,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-032")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-033")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-034")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-035")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-001")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-002")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-003")).toBe(true);
@@ -6113,6 +6114,8 @@ describe("rule engine", () => {
     expect(sourceHandlerLocalMutationFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
     expect(sourceHandlerLocalMutationFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
     expect(sourceHandlerLocalMutationFindings.every((finding) => finding.matched_object.metadata.handler_filesystem_delete === true)).toBe(true);
+    expect(sourceHandlerLocalMutationFindings.every((finding) => finding.matched_object.metadata.handler_tainted_filesystem_path === true)).toBe(true);
+    expect(sourceHandlerLocalMutationFindings.every((finding) => finding.matched_object.metadata.tainted_filesystem_path === true)).toBe(true);
     expect(sourceHandlerLocalMutationFindings.every((finding) => finding.matched_object.metadata.accepts_path_input === true)).toBe(true);
     expect(JSON.stringify(sourceHandlerLocalMutationFindings)).not.toContain("rm(");
     expect(JSON.stringify(sourceHandlerLocalMutationFindings)).not.toContain("node:fs/promises");
@@ -6129,13 +6132,43 @@ describe("rule engine", () => {
     expect(sourceHandlerLocalFileDisclosureFindings.every((finding) => finding.matched_object.secret_exposure === true)).toBe(true);
     expect(sourceHandlerLocalFileDisclosureFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
     expect(sourceHandlerLocalFileDisclosureFindings.every((finding) => finding.matched_object.metadata.handler_filesystem_read === true)).toBe(true);
+    expect(sourceHandlerLocalFileDisclosureFindings.every((finding) => finding.matched_object.metadata.handler_tainted_filesystem_path === true)).toBe(true);
     expect(sourceHandlerLocalFileDisclosureFindings.every((finding) => finding.matched_object.metadata.handler_model_visible_output === true)).toBe(true);
     expect(sourceHandlerLocalFileDisclosureFindings.every((finding) => finding.matched_object.metadata.local_file_disclosure === true)).toBe(true);
+    expect(sourceHandlerLocalFileDisclosureFindings.every((finding) => finding.matched_object.metadata.tainted_filesystem_path === true)).toBe(true);
     expect(sourceHandlerLocalFileDisclosureFindings.every((finding) => finding.matched_object.metadata.accepts_path_input === true)).toBe(true);
     expect(sourceHandlerLocalFileDisclosureFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("local_file_disclosure"))).toBe(true);
     expect(JSON.stringify(sourceHandlerLocalFileDisclosureFindings)).not.toContain("readFile");
     expect(JSON.stringify(sourceHandlerLocalFileDisclosureFindings)).not.toContain("read_text");
     expect(JSON.stringify(sourceHandlerLocalFileDisclosureFindings)).not.toContain("Path(workspace_path)");
+    const sourceHandlerTaintedFilesystemPathFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-035");
+    expect(sourceHandlerTaintedFilesystemPathFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
+      "langchain_read_workspace_file",
+      "langchain_readonly_delete_workspace_path",
+      "python_readonly_delete_workspace_file",
+      "source_read_workspace_file",
+      "source_readonly_delete_workspace_file",
+      "ts_langchain_delete_workspace_path"
+    ]);
+    expect(sourceHandlerTaintedFilesystemPathFindings.every((finding) => finding.severity === "critical")).toBe(true);
+    expect(sourceHandlerTaintedFilesystemPathFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerTaintedFilesystemPathFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
+    expect(sourceHandlerTaintedFilesystemPathFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
+    expect(sourceHandlerTaintedFilesystemPathFindings.every((finding) => finding.matched_object.metadata.accepts_path_input === true)).toBe(true);
+    expect(sourceHandlerTaintedFilesystemPathFindings.every((finding) => finding.matched_object.metadata.handler_tainted_filesystem_path === true)).toBe(true);
+    expect(sourceHandlerTaintedFilesystemPathFindings.every((finding) => finding.matched_object.metadata.tainted_filesystem_path === true)).toBe(true);
+    expect(sourceHandlerTaintedFilesystemPathFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("tainted_filesystem_path"))).toBe(true);
+    expect(sourceHandlerTaintedFilesystemPathFindings.every((finding) => finding.matched_object.metadata.handler_authority_classes.includes("handler_tainted_filesystem_path"))).toBe(true);
+    expect(sourceHandlerTaintedFilesystemPathFindings.every((finding) =>
+      (["read", "write", "delete"] as const).some((action) => finding.matched_object.actions.includes(action))
+    )).toBe(true);
+    expect(JSON.stringify(sourceHandlerTaintedFilesystemPathFindings)).not.toContain("readFile");
+    expect(JSON.stringify(sourceHandlerTaintedFilesystemPathFindings)).not.toContain("read_text");
+    expect(JSON.stringify(sourceHandlerTaintedFilesystemPathFindings)).not.toContain("Path(workspace_path)");
+    expect(JSON.stringify(sourceHandlerTaintedFilesystemPathFindings)).not.toContain("rm(");
+    expect(JSON.stringify(sourceHandlerTaintedFilesystemPathFindings)).not.toContain("shutil.rmtree");
+    expect(JSON.stringify(sourceHandlerTaintedFilesystemPathFindings)).not.toContain("os.remove");
+    expect(JSON.stringify(sourceHandlerTaintedFilesystemPathFindings)).not.toContain("node:fs/promises");
     const sourceHandlerNetworkResponseFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-022");
     expect(sourceHandlerNetworkResponseFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_fetch_url_content",

@@ -24161,6 +24161,7 @@ function addToolDefinitionSurface(
       model_provider_call: authority.model_provider_call,
       privileged_prompt_composition: authority.privileged_prompt_composition,
       tainted_shell_argument: authority.tainted_shell_argument,
+      tainted_filesystem_path: authority.tainted_filesystem_path,
       network_response_capture: authority.network_response_capture,
       dynamic_code_execution: authority.dynamic_code_execution,
       tainted_dynamic_code_argument: authority.tainted_dynamic_code_argument,
@@ -26551,6 +26552,7 @@ interface SourceToolHandlerSignals {
   handlerSecretManagerAccess: boolean;
   handlerShellExecution: boolean;
   handlerTaintedShellArgument: boolean;
+  handlerTaintedFilesystemPath: boolean;
   handlerDynamicCodeExecution: boolean;
   handlerTaintedDynamicCodeArgument: boolean;
   handlerUnsafeDeserialization: boolean;
@@ -26986,6 +26988,7 @@ function sourceToolHandlerSignalMetadata(signals: SourceToolHandlerSignals | und
     handler_secret_manager_access: signals.handlerSecretManagerAccess,
     handler_shell_execution: signals.handlerShellExecution,
     handler_tainted_shell_argument: signals.handlerTaintedShellArgument,
+    handler_tainted_filesystem_path: signals.handlerTaintedFilesystemPath,
     handler_dynamic_code_execution: signals.handlerDynamicCodeExecution,
     handler_tainted_dynamic_code_argument: signals.handlerTaintedDynamicCodeArgument,
     handler_unsafe_deserialization: signals.handlerUnsafeDeserialization,
@@ -27069,6 +27072,9 @@ function classifySourceToolHandlerSignals(
   const filesystemDelete = language === "javascript"
     ? /\b(?:fs|fsPromises|promises)\s*\.\s*(?:rm|unlink|rmdir)\b|\b(?:rm|unlink|rmdir)\s*\(/u.test(handlerSource)
     : /\b(?:os\s*\.\s*(?:remove|unlink|rmdir)|shutil\s*\.\s*rmtree|Path\s*\([^)]*\)\s*\.\s*(?:unlink|rmdir))\b/u.test(handlerSource);
+  const taintedFilesystemPath = (filesystemRead || filesystemWrite || filesystemDelete) && (language === "javascript"
+    ? hasJavaScriptHandlerTaintedFilesystemPath(handlerSource)
+    : hasPythonHandlerTaintedFilesystemPath(handlerSource));
   const agentConfigWrite = filesystemWrite && (language === "javascript"
     ? hasJavaScriptHandlerAgentConfigWrite(handlerSource)
     : hasPythonHandlerAgentConfigWrite(handlerSource));
@@ -27105,6 +27111,7 @@ function classifySourceToolHandlerSignals(
   if (secretManagerAccess) classes.add("handler_secret_manager_access");
   if (shellExecution) classes.add("handler_shell_execution");
   if (taintedShellArgument) classes.add("handler_tainted_shell_argument");
+  if (taintedFilesystemPath) classes.add("handler_tainted_filesystem_path");
   if (dynamicCodeExecution) classes.add("handler_dynamic_code_execution");
   if (taintedDynamicCodeArgument) classes.add("handler_tainted_dynamic_code_argument");
   if (unsafeDeserialization) classes.add("handler_unsafe_deserialization");
@@ -27135,6 +27142,7 @@ function classifySourceToolHandlerSignals(
     handlerSecretManagerAccess: secretManagerAccess,
     handlerShellExecution: shellExecution,
     handlerTaintedShellArgument: taintedShellArgument,
+    handlerTaintedFilesystemPath: taintedFilesystemPath,
     handlerDynamicCodeExecution: dynamicCodeExecution,
     handlerTaintedDynamicCodeArgument: taintedDynamicCodeArgument,
     handlerUnsafeDeserialization: unsafeDeserialization,
@@ -27492,6 +27500,22 @@ function hasPythonHandlerTaintedShellArgument(source: string): boolean {
   ].some((pattern) => expressionMatchesTaintedShellArgument(pattern, source));
 }
 
+function hasJavaScriptHandlerTaintedFilesystemPath(source: string): boolean {
+  return [
+    /\b(?:fs|fsPromises|promises)\s*\.\s*(?:readFile|readFileSync|createReadStream|writeFile|appendFile|copyFile|rename|mkdir|cp|rm|unlink|rmdir)\s*\(([\s\S]{0,520})\)/giu,
+    /\b(?:readFile|readFileSync|createReadStream|writeFile|appendFile|copyFile|rename|mkdir|cp|rm|unlink|rmdir)\s*\(([\s\S]{0,520})\)/giu
+  ].some((pattern) => expressionMatchesTaintedFilesystemPath(pattern, source));
+}
+
+function hasPythonHandlerTaintedFilesystemPath(source: string): boolean {
+  return [
+    /\b(?:Path|pathlib\s*\.\s*Path)\s*\(([\s\S]{0,260})\)\s*\.\s*(?:read_text|read_bytes|write_text|write_bytes|unlink|rmdir)\s*\(/giu,
+    /\bopen\s*\(([\s\S]{0,260})\)/giu,
+    /\bos\s*\.\s*(?:remove|unlink|rmdir)\s*\(([\s\S]{0,260})\)/giu,
+    /\bshutil\s*\.\s*(?:rmtree|copy|copyfile|move)\s*\(([\s\S]{0,260})\)/giu
+  ].some((pattern) => expressionMatchesTaintedFilesystemPath(pattern, source));
+}
+
 function hasJavaScriptHandlerTaintedDynamicCodeArgument(source: string): boolean {
   return [
     /\beval\s*\(([\s\S]{0,520})\)/giu,
@@ -27538,6 +27562,15 @@ function expressionMatchesTaintedShellArgument(pattern: RegExp, source: string):
   return false;
 }
 
+function expressionMatchesTaintedFilesystemPath(pattern: RegExp, source: string): boolean {
+  let match: RegExpExecArray | null;
+  while ((match = pattern.exec(source)) !== null) {
+    if (expressionReferencesTaintedFilesystemPath(match[1] ?? "", source)) return true;
+    if (match[0].length === 0) pattern.lastIndex += 1;
+  }
+  return false;
+}
+
 function expressionMatchesTaintedDynamicCodeArgument(pattern: RegExp, source: string): boolean {
   let match: RegExpExecArray | null;
   while ((match = pattern.exec(source)) !== null) {
@@ -27574,6 +27607,35 @@ function expressionReferencesTaintedShellArgument(expression: string): boolean {
   return /\b(?:shellCommand|shell_command|command|commandText|command_text|script|scriptText|script_text|cmd)\b/u.test(
     withoutQuotedStrings
   );
+}
+
+function expressionReferencesTaintedFilesystemPath(expression: string, source: string): boolean {
+  const templateInterpolation = /\$\{[^}]*\b(?:workspacePath|workspace_path|filePath|file_path|targetPath|target_path|sourcePath|source_path|destinationPath|destination_path|directoryPath|directory_path|dirPath|dir_path|folderPath|folder_path|repoPath|repo_path|localPath|local_path|filepath|filename|file_name|path)\b/u.test(
+    expression
+  );
+  if (templateInterpolation) return true;
+  const withoutQuotedStrings = expression.replace(/(["'`])(?:\\.|(?!\1)[\s\S])*\1/gu, " ");
+  const stronglyTaintedName = /\b(?:workspacePath|workspace_path|filePath|file_path|targetPath|target_path|sourcePath|source_path|destinationPath|destination_path|directoryPath|directory_path|dirPath|dir_path|folderPath|folder_path|repoPath|repo_path|localPath|local_path|filepath|filename|file_name)\b/u;
+  const taintedName = /\b(?:workspacePath|workspace_path|filePath|file_path|targetPath|target_path|sourcePath|source_path|destinationPath|destination_path|directoryPath|directory_path|dirPath|dir_path|folderPath|folder_path|repoPath|repo_path|localPath|local_path|filepath|filename|file_name|path)\b/u;
+  if (stronglyTaintedName.test(withoutQuotedStrings) || (/\bpath\b/u.test(withoutQuotedStrings) && !/\bpath\s*\./u.test(withoutQuotedStrings))) {
+    return true;
+  }
+
+  const identifiers = uniqueStrings(
+    [...withoutQuotedStrings.matchAll(/\b[A-Za-z_$][\w$]*\b/gu)]
+      .map((match) => match[0])
+      .filter((identifier) => !["Path", "pathlib", "fs", "fsPromises", "promises", "path", "os", "shutil"].includes(identifier))
+  );
+  return identifiers.some((identifier) => identifierAssignedFromTaintedFilesystemPathInput(identifier, source, taintedName));
+}
+
+function identifierAssignedFromTaintedFilesystemPathInput(identifier: string, source: string, taintedName: RegExp): boolean {
+  const escaped = escapeRegExp(identifier);
+  const patterns = [
+    new RegExp(`\\b(?:const|let|var)\\s+${escaped}\\s*=\\s*([^;\\n]+)`, "gu"),
+    new RegExp(`\\b${escaped}\\s*=\\s*([^\\n]+)`, "gu")
+  ];
+  return patterns.some((pattern) => expressionMatchesPattern(pattern, source, taintedName));
 }
 
 function expressionReferencesTaintedDynamicCodeArgument(expression: string): boolean {
@@ -28924,6 +28986,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   model_provider_call: boolean;
   privileged_prompt_composition: boolean;
   tainted_shell_argument: boolean;
+  tainted_filesystem_path: boolean;
   network_response_capture: boolean;
   dynamic_code_execution: boolean;
   tainted_dynamic_code_argument: boolean;
@@ -28968,6 +29031,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   const handlerSecretManagerAccess = handler?.handlerSecretManagerAccess === true;
   const handlerShellExecution = handler?.handlerShellExecution === true;
   const handlerTaintedShellArgument = handler?.handlerTaintedShellArgument === true;
+  const handlerTaintedFilesystemPath = handler?.handlerTaintedFilesystemPath === true;
   const handlerDynamicCodeExecution = handler?.handlerDynamicCodeExecution === true;
   const handlerTaintedDynamicCodeArgument = handler?.handlerTaintedDynamicCodeArgument === true;
   const handlerUnsafeDeserialization = handler?.handlerUnsafeDeserialization === true;
@@ -28992,6 +29056,9 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   if (handlerTaintedShellArgument) {
     classes.add("tainted_shell_argument");
     actions.add("execute");
+  }
+  if (handlerTaintedFilesystemPath) {
+    classes.add("tainted_filesystem_path");
   }
   if (handlerDynamicCodeExecution) {
     classes.add("dynamic_code_execution");
@@ -29165,6 +29232,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerTaintedDynamicCodeArgument ||
       handlerUnsafeDeserialization ||
       handlerTaintedDeserializationArgument ||
+      handlerTaintedFilesystemPath ||
       handlerFilesystemRead ||
       handlerFilesystemWrite ||
       handlerFilesystemDelete ||
@@ -29210,6 +29278,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
     model_provider_call: handlerModelProviderCall,
     privileged_prompt_composition: handlerPrivilegedPromptComposition,
     tainted_shell_argument: handlerTaintedShellArgument,
+    tainted_filesystem_path: handlerTaintedFilesystemPath,
     network_response_capture: handlerNetworkResponseToOutput,
     dynamic_code_execution: handlerDynamicCodeExecution,
     tainted_dynamic_code_argument: handlerTaintedDynamicCodeArgument,
@@ -29272,6 +29341,7 @@ function authoritySignature(tool: SurfaceObject): string {
     metadata.model_provider_call === true ? "model_provider_call" : "",
     metadata.privileged_prompt_composition === true ? "privileged_prompt_composition" : "",
     metadata.tainted_shell_argument === true ? "tainted_shell_argument" : "",
+    metadata.tainted_filesystem_path === true ? "tainted_filesystem_path" : "",
     metadata.destructive_action === true ? "destructive" : "",
     metadata.tainted_dynamic_code_argument === true ? "tainted_dynamic_code_argument" : "",
     metadata.tainted_deserialization_argument === true ? "tainted_deserialization_argument" : "",
@@ -29306,6 +29376,7 @@ function isPrivilegedToolSurface(tool: SurfaceObject): boolean {
     tool.metadata.model_provider_call === true ||
     tool.metadata.privileged_prompt_composition === true ||
     tool.metadata.tainted_shell_argument === true ||
+    tool.metadata.tainted_filesystem_path === true ||
     tool.metadata.destructive_action === true ||
     tool.metadata.tainted_dynamic_code_argument === true ||
     tool.metadata.tainted_deserialization_argument === true ||

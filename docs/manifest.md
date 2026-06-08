@@ -312,6 +312,7 @@ Tool metadata may include:
 - `model_provider_call`
 - `privileged_prompt_composition`
 - `tainted_shell_argument`
+- `tainted_filesystem_path`
 - `tainted_dynamic_code_argument`
 - `tainted_deserialization_argument`
 - `network_response_capture`
@@ -344,6 +345,7 @@ Tool metadata may include:
 - `handler_secret_manager_access`
 - `handler_shell_execution`
 - `handler_tainted_shell_argument`
+- `handler_tainted_filesystem_path`
 - `handler_dynamic_code_execution`
 - `handler_tainted_dynamic_code_argument`
 - `handler_unsafe_deserialization`
