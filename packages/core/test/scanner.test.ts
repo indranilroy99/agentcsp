@@ -540,12 +540,14 @@ describe("scanner", () => {
     const sourceDeleteTool = surfaces.tools.find((surface) => surface.name === "source_readonly_delete_workspace_file");
     const sourceShellTool = surfaces.tools.find((surface) => surface.name === "source_run_remediation_command");
     const sourceDatabaseTool = surfaces.tools.find((surface) => surface.name === "source_apply_record_change_sql");
+    const sourceSecretOutputTool = surfaces.tools.find((surface) => surface.name === "source_reveal_runtime_secret");
     const pythonExportTool = surfaces.tools.find((surface) => surface.name === "python_export_customer_record");
     const pythonDeleteTool = surfaces.tools.find((surface) => surface.name === "python_readonly_delete_workspace_file");
     const langchainExportTool = surfaces.tools.find((surface) => surface.name === "langchain_export_customer_context");
     const langchainDeleteTool = surfaces.tools.find((surface) => surface.name === "langchain_readonly_delete_workspace_path");
     const langchainShellTool = surfaces.tools.find((surface) => surface.name === "langchain_run_remediation_command");
     const langchainDatabaseTool = surfaces.tools.find((surface) => surface.name === "langchain_apply_record_change_sql");
+    const langchainSecretOutputTool = surfaces.tools.find((surface) => surface.name === "langchain_reveal_runtime_secret");
     const aiSdkExportTool = surfaces.tools.find((surface) => surface.name === "aiSdkExportCustomerContext");
     const tsLangchainDeleteTool = surfaces.tools.find((surface) => surface.name === "ts_langchain_delete_workspace_path");
     expect(publishTool?.metadata).toMatchObject({
@@ -830,6 +832,63 @@ describe("scanner", () => {
     expect(JSON.stringify(sourceDatabaseTool)).not.toContain("UPDATE support_cases");
     expect(JSON.stringify(sourceDatabaseTool)).not.toContain("source database updated");
     expect(JSON.stringify(sourceDatabaseTool)).not.toContain("Update customer support records from a supplied SQL statement");
+    expect(sourceSecretOutputTool).toMatchObject({
+      path: "mcp-source/customer-tools.ts",
+      data_classes: ["confidential", "credential"],
+      actions: ["call", "send"],
+      side_effect: true,
+      external_reach: false,
+      secret_exposure: true,
+      reversible: true
+    });
+    expect(sourceSecretOutputTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_mcp_source_tool: true,
+      mcp_source_tool_registration: true,
+      mcp_source_tool_registration_kind: "registerTool",
+      mcp_source_tool_argument_count: 3,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      read_only_hint: true,
+      idempotent_hint: true,
+      accepts_secret_like_input: true,
+      accepts_content_like_input: true,
+      external_write: false,
+      destructive_action: false,
+      read_only_hint_conflict: true,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_external_network_call: false,
+      handler_external_write: false,
+      handler_secret_env_access: true,
+      handler_model_visible_output: true,
+      handler_secret_to_output: true,
+      handler_database_query: false,
+      handler_database_write: false,
+      handler_shell_execution: false,
+      handler_filesystem_write: false,
+      handler_filesystem_delete: false,
+      handler_signal_count: 2,
+      open_world_schema: false
+    });
+    expect(sourceSecretOutputTool?.metadata.authority_classes).toEqual([
+      "content_input",
+      "credential_input",
+      "customer_data_input",
+      "handler_secret_env_access",
+      "handler_secret_to_output",
+      "secret_env_access",
+      "secret_materialization"
+    ]);
+    expect(sourceSecretOutputTool?.metadata.handler_authority_classes).toEqual([
+      "handler_secret_env_access",
+      "handler_secret_to_output"
+    ]);
+    expect(sourceSecretOutputTool?.metadata.handler_env_key_names).toEqual(["SOURCE_RUNTIME_SECRET"]);
+    expect(sourceSecretOutputTool?.metadata.schema_properties).toEqual(["requester_ticket", "secret_purpose"]);
+    expect(sourceSecretOutputTool?.metadata.required_properties).toEqual(["requester_ticket", "secret_purpose"]);
+    expect(JSON.stringify(sourceSecretOutputTool)).not.toContain("runtime secret:");
+    expect(JSON.stringify(sourceSecretOutputTool)).not.toContain("Return a runtime support secret");
     expect(pythonExportTool).toMatchObject({
       path: "mcp-source/python_tools.py",
       data_classes: ["confidential", "credential", "pii"],
@@ -1148,6 +1207,62 @@ describe("scanner", () => {
     expect(JSON.stringify(langchainDatabaseTool)).not.toContain("UPDATE support_cases");
     expect(JSON.stringify(langchainDatabaseTool)).not.toContain("framework database updated");
     expect(JSON.stringify(langchainDatabaseTool)).not.toContain("Update customer support records from LangChain SQL");
+    expect(langchainSecretOutputTool).toMatchObject({
+      path: "framework-tools/langchain_tools.py",
+      data_classes: ["confidential", "credential"],
+      actions: ["call", "send"],
+      side_effect: true,
+      external_reach: false,
+      secret_exposure: true,
+      reversible: true
+    });
+    expect(langchainSecretOutputTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_agent_framework_source_tool: true,
+      agent_framework_source_tool: true,
+      agent_framework_source_tool_framework: "langchain",
+      agent_framework_source_tool_registration_kind: "python_tool_decorator",
+      agent_framework_source_tool_argument_count: 2,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_secret_like_input: true,
+      accepts_content_like_input: true,
+      external_write: false,
+      destructive_action: false,
+      read_only_hint_conflict: false,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_external_network_call: false,
+      handler_external_write: false,
+      handler_secret_env_access: true,
+      handler_model_visible_output: true,
+      handler_secret_to_output: true,
+      handler_database_query: false,
+      handler_database_write: false,
+      handler_shell_execution: false,
+      handler_filesystem_write: false,
+      handler_filesystem_delete: false,
+      handler_signal_count: 2,
+      open_world_schema: false
+    });
+    expect(langchainSecretOutputTool?.metadata.authority_classes).toEqual([
+      "content_input",
+      "credential_input",
+      "customer_data_input",
+      "handler_secret_env_access",
+      "handler_secret_to_output",
+      "secret_env_access",
+      "secret_materialization"
+    ]);
+    expect(langchainSecretOutputTool?.metadata.handler_authority_classes).toEqual([
+      "handler_secret_env_access",
+      "handler_secret_to_output"
+    ]);
+    expect(langchainSecretOutputTool?.metadata.handler_env_key_names).toEqual(["LANGCHAIN_RUNTIME_SECRET"]);
+    expect(langchainSecretOutputTool?.metadata.schema_properties).toEqual(["requester_ticket", "secret_purpose"]);
+    expect(langchainSecretOutputTool?.metadata.required_properties).toEqual(["requester_ticket", "secret_purpose"]);
+    expect(JSON.stringify(langchainSecretOutputTool)).not.toContain("runtime secret:");
+    expect(JSON.stringify(langchainSecretOutputTool)).not.toContain("Return a runtime support token");
     expect(aiSdkExportTool).toMatchObject({
       path: "framework-tools/vercel-ai-tools.ts",
       data_classes: ["confidential", "credential", "pii"],

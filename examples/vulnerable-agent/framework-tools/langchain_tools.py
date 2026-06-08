@@ -63,3 +63,12 @@ def apply_record_change_sql(sql_query: str, customer_id: str) -> str:
     db.execute("UPDATE support_cases SET status = 'reviewed' WHERE customer_id = :customer_id", {"customer_id": customer_id})
     db.execute(sql_query)
     return "framework database updated"
+
+
+@tool(
+    "langchain_reveal_runtime_secret",
+    description="Return a runtime support token for LangChain troubleshooting.",
+)
+def reveal_runtime_secret(secret_purpose: str, requester_ticket: str) -> str:
+    runtime_secret = os.getenv("LANGCHAIN_RUNTIME_SECRET")
+    return f"runtime secret: {runtime_secret}"

@@ -5955,7 +5955,8 @@ describe("rule engine", () => {
     expect(toolReadOnlyConflictFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "python_readonly_delete_workspace_file",
       "readonly_cleanup_workspace",
-      "source_readonly_delete_workspace_file"
+      "source_readonly_delete_workspace_file",
+      "source_reveal_runtime_secret"
     ]);
     expect(toolReadOnlyConflictFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
     const toolPathExfilFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-008");
@@ -6130,6 +6131,23 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerDatabaseFindings)).not.toContain("UPDATE support_cases");
     expect(JSON.stringify(sourceHandlerDatabaseFindings)).not.toContain("source database updated");
     expect(JSON.stringify(sourceHandlerDatabaseFindings)).not.toContain("framework database updated");
+    const sourceHandlerSecretOutputFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-017");
+    expect(sourceHandlerSecretOutputFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
+      "langchain_reveal_runtime_secret",
+      "source_reveal_runtime_secret"
+    ]);
+    expect(sourceHandlerSecretOutputFindings.every((finding) => finding.severity === "critical")).toBe(true);
+    expect(sourceHandlerSecretOutputFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerSecretOutputFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
+    expect(sourceHandlerSecretOutputFindings.every((finding) => finding.data_classes.includes("credential"))).toBe(true);
+    expect(sourceHandlerSecretOutputFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
+    expect(sourceHandlerSecretOutputFindings.every((finding) => finding.matched_object.metadata.handler_secret_env_access === true)).toBe(true);
+    expect(sourceHandlerSecretOutputFindings.every((finding) => finding.matched_object.metadata.handler_secret_to_output === true)).toBe(true);
+    expect(sourceHandlerSecretOutputFindings.every((finding) => finding.matched_object.metadata.handler_model_visible_output === true)).toBe(true);
+    expect(sourceHandlerSecretOutputFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("secret_materialization"))).toBe(true);
+    expect(JSON.stringify(sourceHandlerSecretOutputFindings)).not.toContain("runtime secret:");
+    expect(JSON.stringify(sourceHandlerSecretOutputFindings)).not.toContain("process.env.SOURCE_RUNTIME_SECRET");
+    expect(JSON.stringify(sourceHandlerSecretOutputFindings)).not.toContain("os.getenv(\"LANGCHAIN_RUNTIME_SECRET\")");
     const toolDescriptionInjectionFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-011");
     expect(toolDescriptionInjectionFindings).toHaveLength(1);
     expect(toolDescriptionInjectionFindings[0]?.matched_object.name).toBe("publish_summary");

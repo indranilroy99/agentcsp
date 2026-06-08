@@ -26502,6 +26502,8 @@ interface SourceToolHandlerSignals {
   handlerExternalNetworkCall: boolean;
   handlerExternalWrite: boolean;
   handlerSecretEnvAccess: boolean;
+  handlerModelVisibleOutput: boolean;
+  handlerSecretToOutput: boolean;
   handlerDatabaseQuery: boolean;
   handlerDatabaseWrite: boolean;
   handlerShellExecution: boolean;
@@ -26918,6 +26920,8 @@ function sourceToolHandlerSignalMetadata(signals: SourceToolHandlerSignals | und
     handler_external_network_call: signals.handlerExternalNetworkCall,
     handler_external_write: signals.handlerExternalWrite,
     handler_secret_env_access: signals.handlerSecretEnvAccess,
+    handler_model_visible_output: signals.handlerModelVisibleOutput,
+    handler_secret_to_output: signals.handlerSecretToOutput,
     handler_database_query: signals.handlerDatabaseQuery,
     handler_database_write: signals.handlerDatabaseWrite,
     handler_shell_execution: signals.handlerShellExecution,
@@ -26952,6 +26956,10 @@ function classifySourceToolHandlerSignals(
   const secretEnvAccess = envKeyNames.length > 0 || (language === "javascript"
     ? /\b(?:process|Deno|Bun)\s*\.\s*env\b/u.test(handlerSource)
     : /\b(?:os\s*\.\s*(?:environ|getenv)|dotenv)\b/u.test(handlerSource));
+  const modelVisibleOutput = hasHandlerModelVisibleOutput(handlerSource);
+  const secretToOutput = secretEnvAccess && (language === "javascript"
+    ? hasJavaScriptHandlerSecretToOutput(handlerSource)
+    : hasPythonHandlerSecretToOutput(handlerSource));
   const shellExecution = language === "javascript"
     ? /\b(?:child_process|execFile|spawn|execSync|exec\s*\(|spawnSync|Bun\s*\.\s*spawn|Deno\s*\.\s*Command)\b/u.test(handlerSource)
     : /\b(?:subprocess\s*\.|os\s*\.\s*system|pty\s*\.|shlex\s*\.|commands\s*\.)/u.test(handlerSource);
@@ -26966,6 +26974,7 @@ function classifySourceToolHandlerSignals(
   if (externalNetworkCall) classes.add("handler_network_access");
   if (externalWrite) classes.add("handler_external_write");
   if (secretEnvAccess) classes.add("handler_secret_env_access");
+  if (secretToOutput) classes.add("handler_secret_to_output");
   if (databaseQuery) classes.add("handler_database_query");
   if (databaseWrite) classes.add("handler_database_write");
   if (shellExecution) classes.add("handler_shell_execution");
@@ -26977,6 +26986,8 @@ function classifySourceToolHandlerSignals(
     handlerExternalNetworkCall: externalNetworkCall,
     handlerExternalWrite: externalWrite,
     handlerSecretEnvAccess: secretEnvAccess,
+    handlerModelVisibleOutput: modelVisibleOutput,
+    handlerSecretToOutput: secretToOutput,
     handlerDatabaseQuery: databaseQuery,
     handlerDatabaseWrite: databaseWrite,
     handlerShellExecution: shellExecution,
@@ -27033,6 +27044,71 @@ function hasPythonHandlerNetworkCall(source: string): boolean {
   return /\b(?:requests|httpx)\s*\.\s*(?:get|post|put|patch|delete|request)\s*\(|\baiohttp\s*\.|\burllib\s*\.\s*request|\burlopen\s*\(/u.test(
     source
   );
+}
+
+function hasHandlerModelVisibleOutput(source: string): boolean {
+  return /\breturn\b/u.test(source);
+}
+
+function hasJavaScriptHandlerSecretToOutput(source: string): boolean {
+  if (/\breturn\b[\s\S]{0,800}\b(?:process|Deno|Bun)\s*\.\s*env\b/u.test(source)) return true;
+  return returnSegments(source).some((segment) =>
+    extractJavaScriptEnvBoundVariableNames(source).some((name) => identifierPattern(name).test(segment))
+  );
+}
+
+function hasPythonHandlerSecretToOutput(source: string): boolean {
+  if (/\breturn\b[^\n]*(?:os\s*\.\s*(?:environ|getenv)|dotenv)\b/u.test(source)) return true;
+  return returnSegments(source).some((segment) =>
+    extractPythonEnvBoundVariableNames(source).some((name) => identifierPattern(name).test(segment))
+  );
+}
+
+function returnSegments(source: string): string[] {
+  const segments: string[] = [];
+  const pattern = /\breturn\b([\s\S]{0,800})/gu;
+  let match: RegExpExecArray | null;
+  while ((match = pattern.exec(source)) !== null) {
+    segments.push(match[0]);
+    if (match[0].length === 0) pattern.lastIndex += 1;
+  }
+  return segments;
+}
+
+function extractJavaScriptEnvBoundVariableNames(source: string): string[] {
+  const names = new Set<string>();
+  const patterns = [
+    /\b(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*(?:process|Bun)\s*\.\s*env(?:\s*\.\s*[A-Z_][A-Z0-9_]*|\s*\[\s*(["'`])[A-Z_][A-Z0-9_]*\2\s*\])/gu,
+    /\b(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*Deno\s*\.\s*env\s*\.\s*get\s*\(\s*(["'`])[A-Z_][A-Z0-9_]*\2\s*\)/gu
+  ];
+  for (const pattern of patterns) {
+    let match: RegExpExecArray | null;
+    while ((match = pattern.exec(source)) !== null) {
+      if (match[1]) names.add(match[1]);
+      if (match[0].length === 0) pattern.lastIndex += 1;
+    }
+  }
+  return [...names].sort((a, b) => a.localeCompare(b));
+}
+
+function extractPythonEnvBoundVariableNames(source: string): string[] {
+  const names = new Set<string>();
+  const patterns = [
+    /\b([A-Za-z_]\w*)\s*=\s*os\s*\.\s*getenv\s*\(\s*(["'])[A-Z_][A-Z0-9_]*\2/gu,
+    /\b([A-Za-z_]\w*)\s*=\s*os\s*\.\s*environ\s*(?:\[\s*(["'])[A-Z_][A-Z0-9_]*\2\s*\]|\.\s*get\s*\(\s*(["'])[A-Z_][A-Z0-9_]*\3)/gu
+  ];
+  for (const pattern of patterns) {
+    let match: RegExpExecArray | null;
+    while ((match = pattern.exec(source)) !== null) {
+      if (match[1]) names.add(match[1]);
+      if (match[0].length === 0) pattern.lastIndex += 1;
+    }
+  }
+  return [...names].sort((a, b) => a.localeCompare(b));
+}
+
+function identifierPattern(name: string): RegExp {
+  return new RegExp(`(?<![A-Za-z0-9_$])${escapeRegExp(name)}(?![A-Za-z0-9_$])`, "u");
 }
 
 function hasJavaScriptHandlerDatabaseQuery(source: string): boolean {
@@ -28352,6 +28428,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   const schemaDataProfile = classifyToolSchemaDataProfile(definition);
   const handler = definition.handlerSignals;
   const handlerSecretEnvAccess = handler?.handlerSecretEnvAccess === true;
+  const handlerSecretToOutput = handler?.handlerSecretToOutput === true;
   const handlerExternalNetworkCall = handler?.handlerExternalNetworkCall === true;
   const handlerExternalWrite = handler?.handlerExternalWrite === true;
   const handlerDatabaseQuery = handler?.handlerDatabaseQuery === true;
@@ -28406,6 +28483,10 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   if (handlerSecretEnvAccess) {
     classes.add("secret_env_access");
   }
+  if (handlerSecretToOutput) {
+    classes.add("secret_materialization");
+    actions.add("send");
+  }
   if (acceptsContent) {
     classes.add("content_input");
   }
@@ -28441,6 +28522,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       destructive ||
       acceptsSecret ||
       handlerSecretEnvAccess ||
+      handlerSecretToOutput ||
       handlerDatabaseQuery ||
       handlerDatabaseWrite ||
       handlerExternalWrite ||
