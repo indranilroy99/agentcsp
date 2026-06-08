@@ -24135,6 +24135,7 @@ function addToolDefinitionSurface(
       !authority.prompt_cache_write &&
       !authority.training_dataset_export &&
       !authority.feedback_pipeline_write &&
+      !authority.safety_policy_write &&
       !authority.artifact_export &&
       !authority.rag_context_to_output &&
       !authority.task_queue_enqueue &&
@@ -24196,6 +24197,10 @@ function addToolDefinitionSurface(
       tainted_feedback_payload: authority.tainted_feedback_payload,
       feedback_auto_promotion: authority.feedback_auto_promotion,
       tainted_feedback_routing: authority.tainted_feedback_routing,
+      safety_policy_write: authority.safety_policy_write,
+      tainted_safety_policy_payload: authority.tainted_safety_policy_payload,
+      tainted_safety_policy_selector: authority.tainted_safety_policy_selector,
+      safety_policy_weakening: authority.safety_policy_weakening,
       artifact_export: authority.artifact_export,
       tainted_artifact_export_payload: authority.tainted_artifact_export_payload,
       public_artifact_destination: authority.public_artifact_destination,
@@ -26607,6 +26612,10 @@ interface SourceToolHandlerSignals {
   handlerTaintedFeedbackPayload: boolean;
   handlerFeedbackAutoPromotion: boolean;
   handlerTaintedFeedbackRouting: boolean;
+  handlerSafetyPolicyWrite: boolean;
+  handlerTaintedSafetyPolicyPayload: boolean;
+  handlerTaintedSafetyPolicySelector: boolean;
+  handlerSafetyPolicyWeakening: boolean;
   handlerArtifactExport: boolean;
   handlerTaintedArtifactExportPayload: boolean;
   handlerPublicArtifactDestination: boolean;
@@ -27084,6 +27093,10 @@ function sourceToolHandlerSignalMetadata(signals: SourceToolHandlerSignals | und
     handler_tainted_feedback_payload: signals.handlerTaintedFeedbackPayload,
     handler_feedback_auto_promotion: signals.handlerFeedbackAutoPromotion,
     handler_tainted_feedback_routing: signals.handlerTaintedFeedbackRouting,
+    handler_safety_policy_write: signals.handlerSafetyPolicyWrite,
+    handler_tainted_safety_policy_payload: signals.handlerTaintedSafetyPolicyPayload,
+    handler_tainted_safety_policy_selector: signals.handlerTaintedSafetyPolicySelector,
+    handler_safety_policy_weakening: signals.handlerSafetyPolicyWeakening,
     handler_artifact_export: signals.handlerArtifactExport,
     handler_tainted_artifact_export_payload: signals.handlerTaintedArtifactExportPayload,
     handler_public_artifact_destination: signals.handlerPublicArtifactDestination,
@@ -27206,6 +27219,16 @@ function classifySourceToolHandlerSignals(
   const taintedFeedbackRouting = feedbackPipelineWrite && (language === "javascript"
     ? hasJavaScriptHandlerTaintedFeedbackRouting(handlerSource)
     : hasPythonHandlerTaintedFeedbackRouting(handlerSource));
+  const safetyPolicyWrite = language === "javascript"
+    ? hasJavaScriptHandlerSafetyPolicyWrite(handlerSource)
+    : hasPythonHandlerSafetyPolicyWrite(handlerSource);
+  const taintedSafetyPolicyPayload = safetyPolicyWrite && (language === "javascript"
+    ? hasJavaScriptHandlerTaintedSafetyPolicyPayload(handlerSource)
+    : hasPythonHandlerTaintedSafetyPolicyPayload(handlerSource));
+  const taintedSafetyPolicySelector = safetyPolicyWrite && (language === "javascript"
+    ? hasJavaScriptHandlerTaintedSafetyPolicySelector(handlerSource)
+    : hasPythonHandlerTaintedSafetyPolicySelector(handlerSource));
+  const safetyPolicyWeakening = safetyPolicyWrite && hasHandlerSafetyPolicyWeakening(handlerSource);
   const artifactExport = language === "javascript"
     ? hasJavaScriptHandlerArtifactExport(handlerSource)
     : hasPythonHandlerArtifactExport(handlerSource);
@@ -27363,6 +27386,10 @@ function classifySourceToolHandlerSignals(
   if (taintedFeedbackPayload) classes.add("handler_tainted_feedback_payload");
   if (feedbackAutoPromotion) classes.add("handler_feedback_auto_promotion");
   if (taintedFeedbackRouting) classes.add("handler_tainted_feedback_routing");
+  if (safetyPolicyWrite) classes.add("handler_safety_policy_write");
+  if (taintedSafetyPolicyPayload) classes.add("handler_tainted_safety_policy_payload");
+  if (taintedSafetyPolicySelector) classes.add("handler_tainted_safety_policy_selector");
+  if (safetyPolicyWeakening) classes.add("handler_safety_policy_weakening");
   if (artifactExport) classes.add("handler_artifact_export");
   if (taintedArtifactExportPayload) classes.add("handler_tainted_artifact_export_payload");
   if (publicArtifactDestination) classes.add("handler_public_artifact_destination");
@@ -27434,6 +27461,10 @@ function classifySourceToolHandlerSignals(
     handlerTaintedFeedbackPayload: taintedFeedbackPayload,
     handlerFeedbackAutoPromotion: feedbackAutoPromotion,
     handlerTaintedFeedbackRouting: taintedFeedbackRouting,
+    handlerSafetyPolicyWrite: safetyPolicyWrite,
+    handlerTaintedSafetyPolicyPayload: taintedSafetyPolicyPayload,
+    handlerTaintedSafetyPolicySelector: taintedSafetyPolicySelector,
+    handlerSafetyPolicyWeakening: safetyPolicyWeakening,
     handlerArtifactExport: artifactExport,
     handlerTaintedArtifactExportPayload: taintedArtifactExportPayload,
     handlerPublicArtifactDestination: publicArtifactDestination,
@@ -28151,6 +28182,192 @@ function hasPythonHandlerTaintedFeedbackRouting(source: string): boolean {
     /\b(?:feedback_client|feedback_pipeline|feedback_store|review_client|annotation_client|labeling_client|preference_client|rlhf_client|reward_model_client|model_improvement_client|human_feedback_client|evaluation_client|eval_set_client)\s*(?:\.\s*[A-Za-z_]\w*){0,5}\s*\.\s*(?:record|record_feedback|submit|submit_feedback|append|append_feedback|add|add_feedback|create|create_feedback|create_annotation|annotate|label|label_example|write|write_feedback|save|store|upload|export|promote|promote_to_training|promote_to_eval|promote_to_model_update|push)\s*\(([\s\S]{0,1400})\)/giu,
     /\b(?:record_feedback|submit_feedback|write_feedback_record|append_feedback_record|promote_feedback_to_training|promote_feedback_to_eval|promote_feedback_to_model_update|create_preference_record|write_rlhf_record)\s*\(([\s\S]{0,1400})\)/giu
   ].some((pattern) => expressionMatchesTaintedFeedbackRouting(pattern, source));
+}
+
+function hasJavaScriptHandlerSafetyPolicyWrite(source: string): boolean {
+  return /\b(?:guardrailPolicyClient|safetyPolicyClient|safetyControlClient|policyClient|agentPolicyClient|approvalPolicyClient|moderationPolicyClient|toolApprovalClient|riskPolicyClient|controlPlaneClient|safetySettingsClient)\b/iu.test(
+    source
+  ) && [
+    /\b(?:guardrailPolicyClient|safetyPolicyClient|safetyControlClient|policyClient|agentPolicyClient|approvalPolicyClient|moderationPolicyClient|toolApprovalClient|riskPolicyClient|controlPlaneClient|safetySettingsClient)\s*(?:\.\s*[A-Za-z_$][\w$]*){0,5}\s*\.\s*(?:update|updatePolicy|set|setPolicy|put|upsert|write|save|configure|configurePolicy|patch|patchPolicy|override|applyOverride|disable|disableControl|setMode|setDefault|setDefaultAllow|setApprovalPolicy)\s*\(/iu,
+    /\b(?:updateGuardrailPolicy|updateSafetyPolicy|setSafetyPolicy|patchGuardrailPolicy|overrideSafetyPolicy|disableSafetyControl|setApprovalPolicy|setToolApprovalPolicy|setDefaultAllow)\s*\(/iu
+  ].some((pattern) => pattern.test(source));
+}
+
+function hasPythonHandlerSafetyPolicyWrite(source: string): boolean {
+  return /\b(?:guardrail_policy_client|safety_policy_client|safety_control_client|policy_client|agent_policy_client|approval_policy_client|moderation_policy_client|tool_approval_client|risk_policy_client|control_plane_client|safety_settings_client)\b/iu.test(
+    source
+  ) && [
+    /\b(?:guardrail_policy_client|safety_policy_client|safety_control_client|policy_client|agent_policy_client|approval_policy_client|moderation_policy_client|tool_approval_client|risk_policy_client|control_plane_client|safety_settings_client)\s*(?:\.\s*[A-Za-z_]\w*){0,5}\s*\.\s*(?:update|update_policy|set|set_policy|put|upsert|write|save|configure|configure_policy|patch|patch_policy|override|apply_override|disable|disable_control|set_mode|set_default|set_default_allow|set_approval_policy)\s*\(/iu,
+    /\b(?:update_guardrail_policy|update_safety_policy|set_safety_policy|patch_guardrail_policy|override_safety_policy|disable_safety_control|set_approval_policy|set_tool_approval_policy|set_default_allow)\s*\(/iu
+  ].some((pattern) => pattern.test(source));
+}
+
+function hasJavaScriptHandlerTaintedSafetyPolicyPayload(source: string): boolean {
+  return [
+    /\b(?:guardrailPolicyClient|safetyPolicyClient|safetyControlClient|policyClient|agentPolicyClient|approvalPolicyClient|moderationPolicyClient|toolApprovalClient|riskPolicyClient|controlPlaneClient|safetySettingsClient)\s*(?:\.\s*[A-Za-z_$][\w$]*){0,5}\s*\.\s*(?:update|updatePolicy|set|setPolicy|put|upsert|write|save|configure|configurePolicy|patch|patchPolicy|override|applyOverride|disable|disableControl|setMode|setDefault|setDefaultAllow|setApprovalPolicy)\s*\(([\s\S]{0,1600})\)/giu,
+    /\b(?:updateGuardrailPolicy|updateSafetyPolicy|setSafetyPolicy|patchGuardrailPolicy|overrideSafetyPolicy|disableSafetyControl|setApprovalPolicy|setToolApprovalPolicy|setDefaultAllow)\s*\(([\s\S]{0,1600})\)/giu
+  ].some((pattern) => expressionMatchesTaintedSafetyPolicyPayload(pattern, source));
+}
+
+function hasPythonHandlerTaintedSafetyPolicyPayload(source: string): boolean {
+  return [
+    /\b(?:guardrail_policy_client|safety_policy_client|safety_control_client|policy_client|agent_policy_client|approval_policy_client|moderation_policy_client|tool_approval_client|risk_policy_client|control_plane_client|safety_settings_client)\s*(?:\.\s*[A-Za-z_]\w*){0,5}\s*\.\s*(?:update|update_policy|set|set_policy|put|upsert|write|save|configure|configure_policy|patch|patch_policy|override|apply_override|disable|disable_control|set_mode|set_default|set_default_allow|set_approval_policy)\s*\(([\s\S]{0,1600})\)/giu,
+    /\b(?:update_guardrail_policy|update_safety_policy|set_safety_policy|patch_guardrail_policy|override_safety_policy|disable_safety_control|set_approval_policy|set_tool_approval_policy|set_default_allow)\s*\(([\s\S]{0,1600})\)/giu
+  ].some((pattern) => expressionMatchesTaintedSafetyPolicyPayload(pattern, source));
+}
+
+function hasJavaScriptHandlerTaintedSafetyPolicySelector(source: string): boolean {
+  return [
+    /\b(?:guardrailPolicyClient|safetyPolicyClient|safetyControlClient|policyClient|agentPolicyClient|approvalPolicyClient|moderationPolicyClient|toolApprovalClient|riskPolicyClient|controlPlaneClient|safetySettingsClient)\s*(?:\.\s*[A-Za-z_$][\w$]*){0,5}\s*\.\s*(?:update|updatePolicy|set|setPolicy|put|upsert|write|save|configure|configurePolicy|patch|patchPolicy|override|applyOverride|disable|disableControl|setMode|setDefault|setDefaultAllow|setApprovalPolicy)\s*\(([\s\S]{0,1600})\)/giu,
+    /\b(?:updateGuardrailPolicy|updateSafetyPolicy|setSafetyPolicy|patchGuardrailPolicy|overrideSafetyPolicy|disableSafetyControl|setApprovalPolicy|setToolApprovalPolicy|setDefaultAllow)\s*\(([\s\S]{0,1600})\)/giu
+  ].some((pattern) => expressionMatchesTaintedSafetyPolicySelector(pattern, source));
+}
+
+function hasPythonHandlerTaintedSafetyPolicySelector(source: string): boolean {
+  return [
+    /\b(?:guardrail_policy_client|safety_policy_client|safety_control_client|policy_client|agent_policy_client|approval_policy_client|moderation_policy_client|tool_approval_client|risk_policy_client|control_plane_client|safety_settings_client)\s*(?:\.\s*[A-Za-z_]\w*){0,5}\s*\.\s*(?:update|update_policy|set|set_policy|put|upsert|write|save|configure|configure_policy|patch|patch_policy|override|apply_override|disable|disable_control|set_mode|set_default|set_default_allow|set_approval_policy)\s*\(([\s\S]{0,1600})\)/giu,
+    /\b(?:update_guardrail_policy|update_safety_policy|set_safety_policy|patch_guardrail_policy|override_safety_policy|disable_safety_control|set_approval_policy|set_tool_approval_policy|set_default_allow)\s*\(([\s\S]{0,1600})\)/giu
+  ].some((pattern) => expressionMatchesTaintedSafetyPolicySelector(pattern, source));
+}
+
+function hasHandlerSafetyPolicyWeakening(source: string): boolean {
+  const normalized = source.replace(/(["'`])([A-Za-z_][\w]*)\1\s*:/gu, "$2:");
+  return /\b(?:enabled\s*[:=]\s*false|disabled\s*[:=]\s*true|requireHumanApproval\s*[:=]\s*false|humanApprovalRequired\s*[:=]\s*false|approvalRequired\s*[:=]\s*false|require_human_approval\s*[:=]\s*false|human_approval_required\s*[:=]\s*false|approval_required\s*[:=]\s*false|defaultAction\s*[:=]\s*(["'`])allow\1|default_action\s*[:=]\s*(["'`])allow\2|failOpen\s*[:=]\s*true|fail_open\s*[:=]\s*true|bypass\s*[:=]\s*true|setDefaultAllow|set_default_allow|disableControl|disable_control|disable\s*\(|mode\s*[:=]\s*(["'`])(?:off|disabled|allow|permissive|monitor|observe)\3|policy_mode\s*[:=]\s*(["'`])(?:off|disabled|allow|permissive|monitor|observe)\4)\b/iu.test(
+    normalized
+  );
+}
+
+function expressionMatchesTaintedSafetyPolicyPayload(pattern: RegExp, source: string): boolean {
+  let match: RegExpExecArray | null;
+  while ((match = pattern.exec(source)) !== null) {
+    if (expressionReferencesTaintedSafetyPolicyPayload(match[1] ?? "", source)) return true;
+    if (match[0].length === 0) pattern.lastIndex += 1;
+  }
+  return false;
+}
+
+function expressionMatchesTaintedSafetyPolicySelector(pattern: RegExp, source: string): boolean {
+  let match: RegExpExecArray | null;
+  while ((match = pattern.exec(source)) !== null) {
+    if (expressionReferencesTaintedSafetyPolicySelector(match[1] ?? "", source)) return true;
+    if (match[0].length === 0) pattern.lastIndex += 1;
+  }
+  return false;
+}
+
+function expressionReferencesTaintedSafetyPolicyPayload(expression: string, source: string): boolean {
+  const templateInterpolation = /\$\{[^}]*\b(?:policyPatchText|policy_patch_text|policyText|policy_text|guardrailText|guardrail_text|safetyPrompt|safety_prompt|instructionText|instruction_text|customerTicketText|customer_ticket_text|customerContext|customer_context|customerMessage|customer_message|overrideReason|override_reason|approvalReason|approval_reason|toolOutput|tool_output|promptText|prompt_text|content|message|prompt|payload|context|customer|ticket|input|text)\b/u.test(
+    expression
+  );
+  if (templateInterpolation) return true;
+  const withoutQuotedStrings = expression.replace(/(["'`])(?:\\.|(?!\1)[\s\S])*\1/gu, " ");
+  const stronglyTaintedName = /\b(?:policyPatchText|policy_patch_text|policyText|policy_text|guardrailText|guardrail_text|safetyPrompt|safety_prompt|instructionText|instruction_text|customerTicketText|customer_ticket_text|customerContext|customer_context|customerMessage|customer_message|overrideReason|override_reason|approvalReason|approval_reason|toolOutput|tool_output|promptText|prompt_text)\b/u;
+  const taintedName = /\b(?:policyPatchText|policy_patch_text|policyText|policy_text|guardrailText|guardrail_text|safetyPrompt|safety_prompt|instructionText|instruction_text|customerTicketText|customer_ticket_text|customerContext|customer_context|customerMessage|customer_message|overrideReason|override_reason|approvalReason|approval_reason|toolOutput|tool_output|promptText|prompt_text|content|message|prompt|payload|context|customer|ticket|input|text|instructions|patch|body|reason)\b/u;
+  if (stronglyTaintedName.test(withoutQuotedStrings)) return true;
+
+  const payloadAssignment = /\b(?:policy|policy_text|policyText|patch|policy_patch|policyPatch|instructions|prompt|message|content|context|payload|body|reason|override_reason|overrideReason|customer|customer_id|customerId|ticket|ticket_id|ticketId|input|text)\s*(?::|=)\s*([^,\n}\)]+)/giu;
+  if (expressionMatchesPattern(payloadAssignment, withoutQuotedStrings, taintedName)) return true;
+
+  const valueOnlyExpression = withoutQuotedStrings.replace(
+    /\b(?:policy|policy_text|policyText|patch|policy_patch|policyPatch|instructions|prompt|message|content|context|payload|body|reason|override_reason|overrideReason|customer|customer_id|customerId|ticket|ticket_id|ticketId|input|text)\s*(?::|=)/giu,
+    " "
+  );
+  const identifiers = uniqueStrings(
+    [...valueOnlyExpression.matchAll(/\b[A-Za-z_$][\w$]*\b/gu)]
+      .map((match) => match[0])
+      .filter((identifier) => ![
+        "guardrailPolicyClient",
+        "guardrail_policy_client",
+        "safetyPolicyClient",
+        "safety_policy_client",
+        "safetyControlClient",
+        "safety_control_client",
+        "policyClient",
+        "policy_client",
+        "approvalPolicyClient",
+        "approval_policy_client",
+        "moderationPolicyClient",
+        "moderation_policy_client",
+        "toolApprovalClient",
+        "tool_approval_client",
+        "token",
+        "apiKey",
+        "api_key",
+        "metadata",
+        "mode",
+        "policyMode",
+        "policy_mode",
+        "controlId",
+        "control_id"
+      ].includes(identifier))
+  );
+  return identifiers.some((identifier) => identifierAssignedFromTaintedSafetyPolicyPayload(identifier, source, taintedName));
+}
+
+function identifierAssignedFromTaintedSafetyPolicyPayload(identifier: string, source: string, taintedName: RegExp): boolean {
+  const escaped = escapeRegExp(identifier);
+  const patterns = [
+    new RegExp(`\\b(?:const|let|var)\\s+${escaped}\\s*=\\s*([^;\\n]+)`, "gu"),
+    new RegExp(`\\b${escaped}\\s*=\\s*([^\\n]+)`, "gu")
+  ];
+  return patterns.some((pattern) => expressionMatchesPattern(pattern, source, taintedName));
+}
+
+function expressionReferencesTaintedSafetyPolicySelector(expression: string, source: string): boolean {
+  const templateInterpolation = /\$\{[^}]*\b(?:controlId|control_id|policyId|policy_id|guardrailId|guardrail_id|approvalProfile|approval_profile|policyMode|policy_mode|targetControl|target_control|environmentName|environment_name|tenantId|tenant_id|customerId|customer_id|mode|profile|environment|tenant|customer|control|policy|guardrail)\b/u.test(
+    expression
+  );
+  if (templateInterpolation) return true;
+  const withoutQuotedStrings = expression.replace(/(["'`])(?:\\.|(?!\1)[\s\S])*\1/gu, " ");
+  const stronglyTaintedName = /\b(?:controlId|control_id|policyId|policy_id|guardrailId|guardrail_id|approvalProfile|approval_profile|policyMode|policy_mode|targetControl|target_control|environmentName|environment_name|tenantId|tenant_id|customerId|customer_id)\b/u;
+  const taintedName = /\b(?:controlId|control_id|policyId|policy_id|guardrailId|guardrail_id|approvalProfile|approval_profile|policyMode|policy_mode|targetControl|target_control|environmentName|environment_name|tenantId|tenant_id|customerId|customer_id|mode|profile|environment|tenant|customer|control|policy|guardrail|target)\b/u;
+  if (stronglyTaintedName.test(withoutQuotedStrings)) return true;
+
+  const selectorAssignment = /\b(?:control|control_id|controlId|policy|policy_id|policyId|guardrail|guardrail_id|guardrailId|target|target_control|targetControl|mode|policy_mode|policyMode|profile|approval_profile|approvalProfile|environment|environment_name|environmentName|tenant|tenant_id|tenantId|customer|customer_id|customerId)\s*(?::|=)\s*([^,\n}\)]+)/giu;
+  if (expressionMatchesPattern(selectorAssignment, withoutQuotedStrings, taintedName)) return true;
+
+  const valueOnlyExpression = withoutQuotedStrings.replace(
+    /\b(?:control|control_id|controlId|policy|policy_id|policyId|guardrail|guardrail_id|guardrailId|target|target_control|targetControl|mode|policy_mode|policyMode|profile|approval_profile|approvalProfile|environment|environment_name|environmentName|tenant|tenant_id|tenantId|customer|customer_id|customerId)\s*(?::|=)/giu,
+    " "
+  );
+  const identifiers = uniqueStrings(
+    [...valueOnlyExpression.matchAll(/\b[A-Za-z_$][\w$]*\b/gu)]
+      .map((match) => match[0])
+      .filter((identifier) => ![
+        "guardrailPolicyClient",
+        "guardrail_policy_client",
+        "safetyPolicyClient",
+        "safety_policy_client",
+        "safetyControlClient",
+        "safety_control_client",
+        "policyClient",
+        "policy_client",
+        "approvalPolicyClient",
+        "approval_policy_client",
+        "moderationPolicyClient",
+        "moderation_policy_client",
+        "toolApprovalClient",
+        "tool_approval_client",
+        "token",
+        "apiKey",
+        "api_key",
+        "metadata",
+        "patch",
+        "payload",
+        "content",
+        "instructions"
+      ].includes(identifier))
+  );
+  return identifiers.some((identifier) => identifierAssignedFromTaintedSafetyPolicySelector(identifier, source, taintedName));
+}
+
+function identifierAssignedFromTaintedSafetyPolicySelector(identifier: string, source: string, taintedName: RegExp): boolean {
+  const escaped = escapeRegExp(identifier);
+  const patterns = [
+    new RegExp(`\\b(?:const|let|var)\\s+${escaped}\\s*=\\s*([^;\\n]+)`, "gu"),
+    new RegExp(`\\b${escaped}\\s*=\\s*([^\\n]+)`, "gu")
+  ];
+  return patterns.some((pattern) => expressionMatchesPattern(pattern, source, taintedName));
 }
 
 function hasJavaScriptHandlerArtifactExport(source: string): boolean {
@@ -31329,6 +31546,10 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   tainted_feedback_payload: boolean;
   feedback_auto_promotion: boolean;
   tainted_feedback_routing: boolean;
+  safety_policy_write: boolean;
+  tainted_safety_policy_payload: boolean;
+  tainted_safety_policy_selector: boolean;
+  safety_policy_weakening: boolean;
   artifact_export: boolean;
   tainted_artifact_export_payload: boolean;
   public_artifact_destination: boolean;
@@ -31395,6 +31616,10 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   const handlerTaintedFeedbackPayload = handler?.handlerTaintedFeedbackPayload === true;
   const handlerFeedbackAutoPromotion = handler?.handlerFeedbackAutoPromotion === true;
   const handlerTaintedFeedbackRouting = handler?.handlerTaintedFeedbackRouting === true;
+  const handlerSafetyPolicyWrite = handler?.handlerSafetyPolicyWrite === true;
+  const handlerTaintedSafetyPolicyPayload = handler?.handlerTaintedSafetyPolicyPayload === true;
+  const handlerTaintedSafetyPolicySelector = handler?.handlerTaintedSafetyPolicySelector === true;
+  const handlerSafetyPolicyWeakening = handler?.handlerSafetyPolicyWeakening === true;
   const handlerArtifactExport = handler?.handlerArtifactExport === true;
   const handlerTaintedArtifactExportPayload = handler?.handlerTaintedArtifactExportPayload === true;
   const handlerPublicArtifactDestination = handler?.handlerPublicArtifactDestination === true;
@@ -31444,7 +31669,14 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   const destructive = /\b(delete|remove|drop|truncate|destroy|purge|wipe)\b/i.test(text);
   const externalWrite = /\b(publish|post|send|webhook|slack|email|release|deploy|comment|issue|pull\s+request|upload)\b/i.test(
     text
-  ) || handlerExternalWrite || handlerExternalServiceWrite || handlerTelemetryExport || handlerTrainingDatasetExport || handlerFeedbackPipelineWrite || handlerArtifactExport;
+  ) ||
+    handlerExternalWrite ||
+    handlerExternalServiceWrite ||
+    handlerTelemetryExport ||
+    handlerTrainingDatasetExport ||
+    handlerFeedbackPipelineWrite ||
+    handlerSafetyPolicyWrite ||
+    handlerArtifactExport;
 
   const shellExecution =
     /\b(shell|command|exec|bash|process|terminal)\b/i.test(text) ||
@@ -31671,6 +31903,23 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
     classes.add("tainted_feedback_routing");
     actions.add("send");
   }
+  if (handlerSafetyPolicyWrite) {
+    classes.add("safety_policy_write");
+    actions.add("send");
+    actions.add("write");
+  }
+  if (handlerTaintedSafetyPolicyPayload) {
+    classes.add("tainted_safety_policy_payload");
+    actions.add("send");
+  }
+  if (handlerTaintedSafetyPolicySelector) {
+    classes.add("tainted_safety_policy_selector");
+    actions.add("send");
+  }
+  if (handlerSafetyPolicyWeakening) {
+    classes.add("safety_policy_weakening");
+    actions.add("write");
+  }
   if (handlerArtifactExport) {
     classes.add("artifact_export");
     actions.add("send");
@@ -31814,6 +32063,10 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerTaintedFeedbackPayload ||
       handlerFeedbackAutoPromotion ||
       handlerTaintedFeedbackRouting ||
+      handlerSafetyPolicyWrite ||
+      handlerTaintedSafetyPolicyPayload ||
+      handlerTaintedSafetyPolicySelector ||
+      handlerSafetyPolicyWeakening ||
       handlerArtifactExport ||
       handlerTaintedArtifactExportPayload ||
       handlerPublicArtifactDestination ||
@@ -31872,13 +32125,21 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerTelemetryExport ||
       handlerTrainingDatasetExport ||
       handlerFeedbackPipelineWrite ||
+      handlerSafetyPolicyWrite ||
       handlerArtifactExport ||
       handlerRagRetrieval ||
       handlerTaskQueueEnqueue ||
       handlerPromptRegistryWrite ||
       handlerModelApprovalGate ||
       (handlerPromptCacheWrite && handlerSecretEnvAccess),
-    secret_exposure: acceptsSecret || handlerSecretEnvAccess || localFileDisclosure || handlerCredentialIssuance || handlerAgentDelegation || handlerSecretManagerAccess,
+    secret_exposure:
+      acceptsSecret ||
+      handlerSecretEnvAccess ||
+      localFileDisclosure ||
+      handlerCredentialIssuance ||
+      handlerAgentDelegation ||
+      handlerSecretManagerAccess ||
+      (handlerSafetyPolicyWrite && handlerSecretEnvAccess),
     accepts_secret_like_input: acceptsSecret,
     accepts_content_like_input: acceptsContent,
     accepts_path_input: acceptsPath,
@@ -31922,6 +32183,10 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
     tainted_feedback_payload: handlerTaintedFeedbackPayload,
     feedback_auto_promotion: handlerFeedbackAutoPromotion,
     tainted_feedback_routing: handlerTaintedFeedbackRouting,
+    safety_policy_write: handlerSafetyPolicyWrite,
+    tainted_safety_policy_payload: handlerTaintedSafetyPolicyPayload,
+    tainted_safety_policy_selector: handlerTaintedSafetyPolicySelector,
+    safety_policy_weakening: handlerSafetyPolicyWeakening,
     artifact_export: handlerArtifactExport,
     tainted_artifact_export_payload: handlerTaintedArtifactExportPayload,
     public_artifact_destination: handlerPublicArtifactDestination,
@@ -32017,6 +32282,10 @@ function authoritySignature(tool: SurfaceObject): string {
     metadata.tainted_feedback_payload === true ? "tainted_feedback_payload" : "",
     metadata.feedback_auto_promotion === true ? "feedback_auto_promotion" : "",
     metadata.tainted_feedback_routing === true ? "tainted_feedback_routing" : "",
+    metadata.safety_policy_write === true ? "safety_policy_write" : "",
+    metadata.tainted_safety_policy_payload === true ? "tainted_safety_policy_payload" : "",
+    metadata.tainted_safety_policy_selector === true ? "tainted_safety_policy_selector" : "",
+    metadata.safety_policy_weakening === true ? "safety_policy_weakening" : "",
     metadata.artifact_export === true ? "artifact_export" : "",
     metadata.tainted_artifact_export_payload === true ? "tainted_artifact_export_payload" : "",
     metadata.public_artifact_destination === true ? "public_artifact_destination" : "",
@@ -32093,6 +32362,10 @@ function isPrivilegedToolSurface(tool: SurfaceObject): boolean {
     tool.metadata.tainted_feedback_payload === true ||
     tool.metadata.feedback_auto_promotion === true ||
     tool.metadata.tainted_feedback_routing === true ||
+    tool.metadata.safety_policy_write === true ||
+    tool.metadata.tainted_safety_policy_payload === true ||
+    tool.metadata.tainted_safety_policy_selector === true ||
+    tool.metadata.safety_policy_weakening === true ||
     tool.metadata.artifact_export === true ||
     tool.metadata.tainted_artifact_export_payload === true ||
     tool.metadata.public_artifact_destination === true ||

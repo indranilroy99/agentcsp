@@ -552,6 +552,7 @@ describe("scanner", () => {
     const sourcePromptCacheWriteTool = surfaces.tools.find((surface) => surface.name === "source_write_prompt_cache_entry");
     const sourceTrainingDatasetExportTool = surfaces.tools.find((surface) => surface.name === "source_append_training_dataset_record");
     const sourceFeedbackAutoPromotionTool = surfaces.tools.find((surface) => surface.name === "source_record_feedback_auto_promotion");
+    const sourceSafetyPolicyWeakeningTool = surfaces.tools.find((surface) => surface.name === "source_update_guardrail_policy_override");
     const sourceArtifactExportTool = surfaces.tools.find((surface) => surface.name === "source_export_agent_run_artifact");
     const sourceModelApprovalTool = surfaces.tools.find((surface) => surface.name === "source_model_review_and_run_action");
     const sourcePromptRegistryWriteTool = surfaces.tools.find((surface) => surface.name === "source_publish_prompt_registry_update");
@@ -583,6 +584,7 @@ describe("scanner", () => {
     const langchainPromptCacheWriteTool = surfaces.tools.find((surface) => surface.name === "langchain_write_prompt_cache_entry");
     const langchainTrainingDatasetExportTool = surfaces.tools.find((surface) => surface.name === "langchain_append_training_dataset_record");
     const langchainFeedbackAutoPromotionTool = surfaces.tools.find((surface) => surface.name === "langchain_record_feedback_auto_promotion");
+    const langchainSafetyPolicyWeakeningTool = surfaces.tools.find((surface) => surface.name === "langchain_update_guardrail_policy_override");
     const langchainArtifactExportTool = surfaces.tools.find((surface) => surface.name === "langchain_export_agent_run_artifact");
     const langchainModelApprovalTool = surfaces.tools.find((surface) => surface.name === "langchain_model_review_and_run_action");
     const langchainPromptRegistryWriteTool = surfaces.tools.find((surface) => surface.name === "langchain_publish_prompt_registry_update");
@@ -1833,6 +1835,105 @@ describe("scanner", () => {
     expect(JSON.stringify(sourceFeedbackAutoPromotionTool)).not.toContain("feedbackPipeline.promoteToTraining");
     expect(JSON.stringify(sourceFeedbackAutoPromotionTool)).not.toContain("source feedback promoted");
     expect(JSON.stringify(sourceFeedbackAutoPromotionTool)).not.toContain("Record caller supplied feedback");
+    expect(sourceSafetyPolicyWeakeningTool).toMatchObject({
+      path: "mcp-source/customer-tools.ts",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["call", "publish", "send", "write"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(sourceSafetyPolicyWeakeningTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_mcp_source_tool: true,
+      mcp_source_tool_registration: true,
+      mcp_source_tool_registration_kind: "registerTool",
+      mcp_source_tool_argument_count: 3,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_content_like_input: true,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      feedback_pipeline_write: false,
+      tainted_feedback_payload: false,
+      safety_policy_write: true,
+      tainted_safety_policy_payload: true,
+      tainted_safety_policy_selector: true,
+      safety_policy_weakening: true,
+      external_write: true,
+      destructive_action: false,
+      read_only_hint_conflict: false,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_external_network_call: false,
+      handler_external_write: false,
+      handler_external_service_write: false,
+      handler_secret_env_access: true,
+      handler_model_visible_output: true,
+      handler_secret_to_output: false,
+      handler_database_query: false,
+      handler_database_write: false,
+      handler_safety_policy_write: true,
+      handler_tainted_safety_policy_payload: true,
+      handler_tainted_safety_policy_selector: true,
+      handler_safety_policy_weakening: true,
+      handler_shell_execution: false,
+      handler_dynamic_code_execution: false,
+      handler_unsafe_deserialization: false,
+      handler_filesystem_read: false,
+      handler_filesystem_write: false,
+      handler_filesystem_delete: false,
+      handler_signal_count: 5,
+      open_world_schema: false
+    });
+    expect(sourceSafetyPolicyWeakeningTool?.metadata.authority_classes).toEqual([
+      "content_input",
+      "customer_data_input",
+      "external_write",
+      "handler_safety_policy_weakening",
+      "handler_safety_policy_write",
+      "handler_secret_env_access",
+      "handler_tainted_safety_policy_payload",
+      "handler_tainted_safety_policy_selector",
+      "pii_input",
+      "safety_policy_weakening",
+      "safety_policy_write",
+      "secret_env_access",
+      "tainted_safety_policy_payload",
+      "tainted_safety_policy_selector"
+    ]);
+    expect(sourceSafetyPolicyWeakeningTool?.metadata.handler_authority_classes).toEqual([
+      "handler_safety_policy_weakening",
+      "handler_safety_policy_write",
+      "handler_secret_env_access",
+      "handler_tainted_safety_policy_payload",
+      "handler_tainted_safety_policy_selector"
+    ]);
+    expect(sourceSafetyPolicyWeakeningTool?.metadata.handler_env_key_names).toEqual([
+      "SOURCE_GUARDRAIL_POLICY_TOKEN"
+    ]);
+    expect(sourceSafetyPolicyWeakeningTool?.metadata.schema_properties).toEqual([
+      "approval_profile",
+      "control_id",
+      "customer_email",
+      "customer_id",
+      "customer_ticket_text",
+      "policy_mode",
+      "policy_patch_text"
+    ]);
+    expect(sourceSafetyPolicyWeakeningTool?.metadata.required_properties).toEqual([
+      "approval_profile",
+      "control_id",
+      "customer_email",
+      "customer_id",
+      "customer_ticket_text",
+      "policy_mode",
+      "policy_patch_text"
+    ]);
+    expect(JSON.stringify(sourceSafetyPolicyWeakeningTool)).not.toContain("guardrailPolicyClient.updatePolicy");
+    expect(JSON.stringify(sourceSafetyPolicyWeakeningTool)).not.toContain("source guardrail policy updated");
+    expect(JSON.stringify(sourceSafetyPolicyWeakeningTool)).not.toContain("Update caller selected guardrail policy");
     expect(sourceArtifactExportTool).toMatchObject({
       path: "mcp-source/customer-tools.ts",
       data_classes: ["confidential", "credential", "pii"],
@@ -4318,6 +4419,106 @@ describe("scanner", () => {
     expect(JSON.stringify(langchainFeedbackAutoPromotionTool)).not.toContain("feedback_pipeline.promote_to_training");
     expect(JSON.stringify(langchainFeedbackAutoPromotionTool)).not.toContain("framework feedback promoted");
     expect(JSON.stringify(langchainFeedbackAutoPromotionTool)).not.toContain("Record caller supplied feedback");
+    expect(langchainSafetyPolicyWeakeningTool).toMatchObject({
+      path: "framework-tools/langchain_tools.py",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["call", "publish", "send", "write"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(langchainSafetyPolicyWeakeningTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_agent_framework_source_tool: true,
+      agent_framework_source_tool: true,
+      agent_framework_source_tool_framework: "langchain",
+      agent_framework_source_tool_registration_kind: "python_tool_decorator",
+      agent_framework_source_tool_argument_count: 7,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_content_like_input: true,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      feedback_pipeline_write: false,
+      tainted_feedback_payload: false,
+      safety_policy_write: true,
+      tainted_safety_policy_payload: true,
+      tainted_safety_policy_selector: true,
+      safety_policy_weakening: true,
+      external_write: true,
+      destructive_action: false,
+      read_only_hint_conflict: false,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_external_network_call: false,
+      handler_external_write: false,
+      handler_external_service_write: false,
+      handler_secret_env_access: true,
+      handler_model_visible_output: true,
+      handler_secret_to_output: false,
+      handler_database_query: false,
+      handler_database_write: false,
+      handler_safety_policy_write: true,
+      handler_tainted_safety_policy_payload: true,
+      handler_tainted_safety_policy_selector: true,
+      handler_safety_policy_weakening: true,
+      handler_shell_execution: false,
+      handler_dynamic_code_execution: false,
+      handler_unsafe_deserialization: false,
+      handler_filesystem_read: false,
+      handler_filesystem_write: false,
+      handler_filesystem_delete: false,
+      handler_signal_count: 5,
+      open_world_schema: false
+    });
+    expect(langchainSafetyPolicyWeakeningTool?.metadata.authority_classes).toEqual([
+      "content_input",
+      "customer_data_input",
+      "external_write",
+      "handler_safety_policy_weakening",
+      "handler_safety_policy_write",
+      "handler_secret_env_access",
+      "handler_tainted_safety_policy_payload",
+      "handler_tainted_safety_policy_selector",
+      "pii_input",
+      "safety_policy_weakening",
+      "safety_policy_write",
+      "secret_env_access",
+      "tainted_safety_policy_payload",
+      "tainted_safety_policy_selector"
+    ]);
+    expect(langchainSafetyPolicyWeakeningTool?.metadata.handler_authority_classes).toEqual([
+      "handler_safety_policy_weakening",
+      "handler_safety_policy_write",
+      "handler_secret_env_access",
+      "handler_tainted_safety_policy_payload",
+      "handler_tainted_safety_policy_selector"
+    ]);
+    expect(langchainSafetyPolicyWeakeningTool?.metadata.handler_env_key_names).toEqual([
+      "LANGCHAIN_GUARDRAIL_POLICY_TOKEN"
+    ]);
+    expect(langchainSafetyPolicyWeakeningTool?.metadata.schema_properties).toEqual([
+      "approval_profile",
+      "control_id",
+      "customer_email",
+      "customer_id",
+      "customer_ticket_text",
+      "policy_mode",
+      "policy_patch_text"
+    ]);
+    expect(langchainSafetyPolicyWeakeningTool?.metadata.required_properties).toEqual([
+      "approval_profile",
+      "control_id",
+      "customer_email",
+      "customer_id",
+      "customer_ticket_text",
+      "policy_mode",
+      "policy_patch_text"
+    ]);
+    expect(JSON.stringify(langchainSafetyPolicyWeakeningTool)).not.toContain("guardrail_policy_client.update_policy");
+    expect(JSON.stringify(langchainSafetyPolicyWeakeningTool)).not.toContain("framework guardrail policy updated");
+    expect(JSON.stringify(langchainSafetyPolicyWeakeningTool)).not.toContain("Update caller selected guardrail policy");
     expect(langchainArtifactExportTool).toMatchObject({
       path: "framework-tools/langchain_tools.py",
       data_classes: ["confidential", "credential", "pii"],
