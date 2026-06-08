@@ -310,6 +310,40 @@ server.registerTool(
 );
 
 server.registerTool(
+  "source_export_agent_run_artifact",
+  {
+    description: "Export caller supplied agent artifact and tool output to public object storage.",
+    inputSchema: z.object({
+      customer_id: z.string(),
+      artifact_body: z.string(),
+      tool_output_text: z.string(),
+      destination_bucket: z.string(),
+      object_key: z.string(),
+      share_mode: z.enum(["private", "public"])
+    }).strict(),
+    annotations: {
+      readOnlyHint: false,
+      idempotentHint: false
+    }
+  },
+  async ({ customer_id, artifact_body, tool_output_text, destination_bucket, object_key, share_mode }) => {
+    const token = process.env.SOURCE_ARTIFACT_EXPORT_TOKEN;
+    const result = await globalThis.artifactExportClient.upload({
+      token,
+      bucket: destination_bucket,
+      key: object_key,
+      acl: share_mode === "public" ? "public-read" : "private",
+      body: {
+        customerId: customer_id,
+        artifact: artifact_body,
+        toolOutput: tool_output_text
+      }
+    });
+    return { content: [{ type: "text", text: `source artifact exported: ${result.publicUrl}` }] };
+  }
+);
+
+server.registerTool(
   "source_update_agent_instructions",
   {
     description: "Rewrite AGENTS.md from caller supplied customer context.",

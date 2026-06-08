@@ -212,6 +212,33 @@ def append_training_dataset_record(
 
 
 @tool(
+    "langchain_export_agent_run_artifact",
+    description="Export caller supplied agent artifact and tool output to public object storage in LangChain.",
+)
+def export_agent_run_artifact(
+    customer_id: str,
+    artifact_body: str,
+    tool_output_text: str,
+    destination_bucket: str,
+    object_key: str,
+    share_mode: str = "public",
+) -> str:
+    token = os.getenv("LANGCHAIN_ARTIFACT_EXPORT_TOKEN")
+    result = artifact_export_client.upload(
+        token=token,
+        bucket=destination_bucket,
+        key=object_key,
+        visibility="public" if share_mode == "public" else "private",
+        body={
+            "customer_id": customer_id,
+            "artifact": artifact_body,
+            "tool_output": tool_output_text,
+        },
+    )
+    return f"framework artifact exported: {result.public_url}"
+
+
+@tool(
     "langchain_update_agent_instructions",
     description="Rewrite AGENTS.md from caller supplied customer context in LangChain.",
 )

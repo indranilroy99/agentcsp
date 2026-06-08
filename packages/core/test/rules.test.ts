@@ -63,6 +63,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-047")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-048")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-049")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-050")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-001")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-002")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-003")).toBe(true);
@@ -6537,6 +6538,43 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerAgentDelegationFindings)).not.toContain("remote_agent_client.delegate_task");
     expect(JSON.stringify(sourceHandlerAgentDelegationFindings)).not.toContain("customerTicket");
     expect(JSON.stringify(sourceHandlerAgentDelegationFindings)).not.toContain("Delegate caller supplied customer context");
+    const sourceHandlerArtifactExportFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-050");
+    expect(sourceHandlerArtifactExportFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
+      "langchain_export_agent_run_artifact",
+      "source_export_agent_run_artifact"
+    ]);
+    expect(sourceHandlerArtifactExportFindings.every((finding) => finding.severity === "critical")).toBe(true);
+    expect(sourceHandlerArtifactExportFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerArtifactExportFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
+    expect(sourceHandlerArtifactExportFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
+    expect(sourceHandlerArtifactExportFindings.every((finding) => finding.matched_object.metadata.handler_artifact_export === true)).toBe(true);
+    expect(sourceHandlerArtifactExportFindings.every((finding) => finding.matched_object.metadata.handler_tainted_artifact_export_payload === true)).toBe(true);
+    expect(sourceHandlerArtifactExportFindings.every((finding) => finding.matched_object.metadata.handler_public_artifact_destination === true)).toBe(true);
+    expect(sourceHandlerArtifactExportFindings.every((finding) => finding.matched_object.metadata.artifact_export === true)).toBe(true);
+    expect(sourceHandlerArtifactExportFindings.every((finding) => finding.matched_object.metadata.tainted_artifact_export_payload === true)).toBe(true);
+    expect(sourceHandlerArtifactExportFindings.every((finding) => finding.matched_object.metadata.public_artifact_destination === true)).toBe(true);
+    expect(sourceHandlerArtifactExportFindings.every((finding) => finding.matched_object.metadata.handler_secret_env_access === true)).toBe(true);
+    expect(sourceHandlerArtifactExportFindings.every((finding) => finding.matched_object.metadata.external_write === true)).toBe(true);
+    expect(sourceHandlerArtifactExportFindings.every((finding) => finding.matched_object.metadata.accepts_content_like_input === true)).toBe(true);
+    expect(sourceHandlerArtifactExportFindings.every((finding) => finding.matched_object.metadata.accepts_customer_data_input === true)).toBe(true);
+    expect(sourceHandlerArtifactExportFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("artifact_export"))).toBe(true);
+    expect(sourceHandlerArtifactExportFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("tainted_artifact_export_payload"))).toBe(true);
+    expect(sourceHandlerArtifactExportFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("public_artifact_destination"))).toBe(true);
+    expect(sourceHandlerArtifactExportFindings.every((finding) => finding.matched_object.metadata.handler_authority_classes.includes("handler_artifact_export"))).toBe(true);
+    expect(sourceHandlerArtifactExportFindings.every((finding) => finding.matched_object.metadata.handler_authority_classes.includes("handler_tainted_artifact_export_payload"))).toBe(true);
+    expect(sourceHandlerArtifactExportFindings.every((finding) => finding.matched_object.metadata.handler_authority_classes.includes("handler_public_artifact_destination"))).toBe(true);
+    expect(sourceHandlerArtifactExportFindings.every((finding) => finding.matched_object.actions.includes("send"))).toBe(true);
+    expect(sourceHandlerArtifactExportFindings.every((finding) => finding.matched_object.actions.includes("write"))).toBe(true);
+    expect(sourceHandlerArtifactExportFindings.every((finding) => finding.matched_object.actions.includes("publish"))).toBe(true);
+    expect(sourceHandlerArtifactExportFindings.every((finding) => finding.matched_object.external_reach === true)).toBe(true);
+    expect(sourceHandlerArtifactExportFindings.every((finding) => finding.matched_object.secret_exposure === true)).toBe(true);
+    expect(sourceHandlerArtifactExportFindings.every((finding) => finding.matched_object.side_effect === true)).toBe(true);
+    expect(sourceHandlerArtifactExportFindings.every((finding) => finding.matched_object.reversible === false)).toBe(true);
+    expect(JSON.stringify(sourceHandlerArtifactExportFindings)).not.toContain("artifactExportClient.upload");
+    expect(JSON.stringify(sourceHandlerArtifactExportFindings)).not.toContain("artifact_export_client.upload");
+    expect(JSON.stringify(sourceHandlerArtifactExportFindings)).not.toContain("source artifact exported");
+    expect(JSON.stringify(sourceHandlerArtifactExportFindings)).not.toContain("framework artifact exported");
+    expect(JSON.stringify(sourceHandlerArtifactExportFindings)).not.toContain("Export caller supplied agent artifact");
     const sourceHandlerBrowserAutomationFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-027");
     expect(sourceHandlerBrowserAutomationFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_submit_customer_browser_form",

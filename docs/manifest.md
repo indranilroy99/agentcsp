@@ -332,6 +332,9 @@ Tool metadata may include:
 - `tainted_prompt_cache_value`
 - `training_dataset_export`
 - `tainted_training_dataset_payload`
+- `artifact_export`
+- `tainted_artifact_export_payload`
+- `public_artifact_destination`
 - `privileged_prompt_composition`
 - `tainted_shell_argument`
 - `tainted_filesystem_path`
@@ -365,6 +368,9 @@ Tool metadata may include:
 - `handler_tainted_prompt_cache_value`
 - `handler_training_dataset_export`
 - `handler_tainted_training_dataset_payload`
+- `handler_artifact_export`
+- `handler_tainted_artifact_export_payload`
+- `handler_public_artifact_destination`
 - `handler_privileged_prompt_composition`
 - `handler_secret_env_access`
 - `handler_model_visible_output`
@@ -448,7 +454,7 @@ Source-defined agent-framework tool metadata may additionally include:
 - `source_tool_handler_redacted`
 - `values_collected`
 
-For Python/FastMCP and Python agent-framework tools, function signatures are reduced to parameter names, required/optional posture, decorator metadata, and local Pydantic/BaseModel field names when a request model is referenced. For JavaScript and TypeScript agent-framework tools, bounded inline or locally referenced Zod/JSON-schema-like field maps are reduced to field names, required posture, framework, and registration kind. Source handler bodies are reduced to redacted authority signals such as external network writes, credentialed network reads, environment-backed secret access, prompt-cache writes with caller-controlled cache keys or values, AI training or fine-tuning dataset exports with caller-controlled prompt/customer/tool-output payloads, authenticated browser or screen visual-context capture returned to model-visible output, remote-agent delegation with caller-selected targets and forwarded caller/customer context, secret-to-output materialization, database query/write execution, shell execution, filesystem writes/deletes, signal counts, and environment key names. Model class names, local schema variable names, `Field(...)` bodies, handler functions, function bodies, docstrings, raw schema objects, raw URLs, header values, SQL strings, cache keys, cache values, dataset names, dataset IDs, training records, screenshot bytes, OCR text, delegated agent calls, forwarded context snippets, driver calls, returned secret-bearing text, and raw descriptions are not emitted. These fields let rules reason about concrete agent-callable authority without dumping raw tool descriptions, schemas, source snippets, or handler bodies into the manifest. Model-visible descriptions are treated as prompt surface: AgentCSP records redacted instruction, untrusted-context, external, memory, secret, and data-egress signals so rules can detect poisoned tool metadata attached to side-effecting authority.
+For Python/FastMCP and Python agent-framework tools, function signatures are reduced to parameter names, required/optional posture, decorator metadata, and local Pydantic/BaseModel field names when a request model is referenced. For JavaScript and TypeScript agent-framework tools, bounded inline or locally referenced Zod/JSON-schema-like field maps are reduced to field names, required posture, framework, and registration kind. Source handler bodies are reduced to redacted authority signals such as external network writes, credentialed network reads, environment-backed secret access, prompt-cache writes with caller-controlled cache keys or values, AI training or fine-tuning dataset exports with caller-controlled prompt/customer/tool-output payloads, public/shareable artifact exports with caller-controlled artifact/report/generated-output/tool-output payloads, authenticated browser or screen visual-context capture returned to model-visible output, remote-agent delegation with caller-selected targets and forwarded caller/customer context, secret-to-output materialization, database query/write execution, shell execution, filesystem writes/deletes, signal counts, and environment key names. Model class names, local schema variable names, `Field(...)` bodies, handler functions, function bodies, docstrings, raw schema objects, raw URLs, header values, SQL strings, cache keys, cache values, dataset names, dataset IDs, training records, artifact storage calls, public artifact URLs, object keys, bucket names, artifact contents, screenshot bytes, OCR text, delegated agent calls, forwarded context snippets, driver calls, returned secret-bearing text, and raw descriptions are not emitted. These fields let rules reason about concrete agent-callable authority without dumping raw tool descriptions, schemas, source snippets, or handler bodies into the manifest. Model-visible descriptions are treated as prompt surface: AgentCSP records redacted instruction, untrusted-context, external, memory, secret, and data-egress signals so rules can detect poisoned tool metadata attached to side-effecting authority.
 
 OpenAPI and Swagger files imported as agent tools are also normalized into `tool` objects. Metadata may include:
 
@@ -1815,6 +1821,8 @@ Artifact export metadata may include:
 - `secret_ref_key_names`
 
 Raw artifact bucket names, endpoints, paths, generated outputs, data-scope labels, and secret placeholders are not emitted. Provider names, redacted destination categories, capture categories, redaction posture, retention posture, approval posture, and credential key names let rules detect generated-output exfiltration without copying run artifacts into the manifest.
+
+Source-defined tool handlers can also emit redacted artifact-export authority through `artifact_export`, `tainted_artifact_export_payload`, `public_artifact_destination`, and the corresponding `handler_*` fields when parsed MCP SDK or agent-framework tools upload caller/customer/tool-output artifacts to public or shareable storage using runtime credentials. Handler bodies, storage calls, object keys, bucket names, public URLs, and artifact contents remain redacted.
 
 ## Agent Webhook Egress
 

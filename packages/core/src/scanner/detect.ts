@@ -24134,6 +24134,7 @@ function addToolDefinitionSurface(
       !authority.telemetry_export &&
       !authority.prompt_cache_write &&
       !authority.training_dataset_export &&
+      !authority.artifact_export &&
       !authority.visual_context_capture &&
       !authority.tainted_network_destination &&
       !authority.tainted_shell_argument &&
@@ -24186,6 +24187,9 @@ function addToolDefinitionSurface(
       tainted_prompt_cache_value: authority.tainted_prompt_cache_value,
       training_dataset_export: authority.training_dataset_export,
       tainted_training_dataset_payload: authority.tainted_training_dataset_payload,
+      artifact_export: authority.artifact_export,
+      tainted_artifact_export_payload: authority.tainted_artifact_export_payload,
+      public_artifact_destination: authority.public_artifact_destination,
       visual_context_capture: authority.visual_context_capture,
       visual_context_to_output: authority.visual_context_to_output,
       privileged_prompt_composition: authority.privileged_prompt_composition,
@@ -26578,6 +26582,9 @@ interface SourceToolHandlerSignals {
   handlerTaintedPromptCacheValue: boolean;
   handlerTrainingDatasetExport: boolean;
   handlerTaintedTrainingDatasetPayload: boolean;
+  handlerArtifactExport: boolean;
+  handlerTaintedArtifactExportPayload: boolean;
+  handlerPublicArtifactDestination: boolean;
   handlerPrivilegedPromptComposition: boolean;
   handlerSecretEnvAccess: boolean;
   handlerModelVisibleOutput: boolean;
@@ -27036,6 +27043,9 @@ function sourceToolHandlerSignalMetadata(signals: SourceToolHandlerSignals | und
     handler_tainted_prompt_cache_value: signals.handlerTaintedPromptCacheValue,
     handler_training_dataset_export: signals.handlerTrainingDatasetExport,
     handler_tainted_training_dataset_payload: signals.handlerTaintedTrainingDatasetPayload,
+    handler_artifact_export: signals.handlerArtifactExport,
+    handler_tainted_artifact_export_payload: signals.handlerTaintedArtifactExportPayload,
+    handler_public_artifact_destination: signals.handlerPublicArtifactDestination,
     handler_privileged_prompt_composition: signals.handlerPrivilegedPromptComposition,
     handler_secret_env_access: signals.handlerSecretEnvAccess,
     handler_model_visible_output: signals.handlerModelVisibleOutput,
@@ -27133,6 +27143,13 @@ function classifySourceToolHandlerSignals(
   const taintedTrainingDatasetPayload = trainingDatasetExport && (language === "javascript"
     ? hasJavaScriptHandlerTaintedTrainingDatasetPayload(handlerSource)
     : hasPythonHandlerTaintedTrainingDatasetPayload(handlerSource));
+  const artifactExport = language === "javascript"
+    ? hasJavaScriptHandlerArtifactExport(handlerSource)
+    : hasPythonHandlerArtifactExport(handlerSource);
+  const taintedArtifactExportPayload = artifactExport && (language === "javascript"
+    ? hasJavaScriptHandlerTaintedArtifactExportPayload(handlerSource)
+    : hasPythonHandlerTaintedArtifactExportPayload(handlerSource));
+  const publicArtifactDestination = artifactExport && hasHandlerPublicArtifactDestination(handlerSource);
   const privilegedPromptComposition = language === "javascript"
     ? hasJavaScriptHandlerPrivilegedPromptComposition(handlerSource)
     : hasPythonHandlerPrivilegedPromptComposition(handlerSource);
@@ -27247,6 +27264,9 @@ function classifySourceToolHandlerSignals(
   if (taintedPromptCacheValue) classes.add("handler_tainted_prompt_cache_value");
   if (trainingDatasetExport) classes.add("handler_training_dataset_export");
   if (taintedTrainingDatasetPayload) classes.add("handler_tainted_training_dataset_payload");
+  if (artifactExport) classes.add("handler_artifact_export");
+  if (taintedArtifactExportPayload) classes.add("handler_tainted_artifact_export_payload");
+  if (publicArtifactDestination) classes.add("handler_public_artifact_destination");
   if (privilegedPromptComposition) classes.add("handler_privileged_prompt_composition");
   if (secretEnvAccess) classes.add("handler_secret_env_access");
   if (secretToOutput) classes.add("handler_secret_to_output");
@@ -27299,6 +27319,9 @@ function classifySourceToolHandlerSignals(
     handlerTaintedPromptCacheValue: taintedPromptCacheValue,
     handlerTrainingDatasetExport: trainingDatasetExport,
     handlerTaintedTrainingDatasetPayload: taintedTrainingDatasetPayload,
+    handlerArtifactExport: artifactExport,
+    handlerTaintedArtifactExportPayload: taintedArtifactExportPayload,
+    handlerPublicArtifactDestination: publicArtifactDestination,
     handlerPrivilegedPromptComposition: privilegedPromptComposition,
     handlerSecretEnvAccess: secretEnvAccess,
     handlerModelVisibleOutput: modelVisibleOutput,
@@ -27951,6 +27974,47 @@ function hasPythonHandlerTaintedTrainingDatasetPayload(source: string): boolean 
   ].some((pattern) => expressionMatchesTaintedTrainingDatasetPayload(pattern, source));
 }
 
+function hasJavaScriptHandlerArtifactExport(source: string): boolean {
+  return /\b(?:artifactExporter|artifactExportClient|runExporter|reportExporter|outputExporter|artifactStore|artifactStorage|s3|s3Client|S3Client|gcs|storage|bucket|blobServiceClient|r2|supabase)\b/iu.test(
+    source
+  ) && [
+    /\b(?:artifactExporter|artifactExportClient|runExporter|reportExporter|outputExporter|artifactStore|artifactStorage|s3|s3Client|gcs|storage|bucket|blobServiceClient|r2|supabase)\s*(?:\.\s*[A-Za-z_$][\w$]*){0,5}\s*\.\s*(?:upload|uploadFile|putObject|put|save|store|write|export|publish|share|createPublicLink|makePublic|setPublic|getSignedUrl|createPresignedUrl)\s*\(/iu,
+    /\bnew\s+PutObjectCommand\s*\(/u,
+    /\b(?:getSignedUrl|createPresignedUrl|uploadArtifact|exportArtifact|publishArtifact|shareArtifact|writeArtifactReport)\s*\(/iu
+  ].some((pattern) => pattern.test(source));
+}
+
+function hasPythonHandlerArtifactExport(source: string): boolean {
+  return /\b(?:artifact_exporter|artifact_export_client|run_exporter|report_exporter|output_exporter|artifact_store|artifact_storage|s3|s3_client|boto3|gcs|storage|storage_client|bucket|blob_service_client|r2|supabase)\b/iu.test(
+    source
+  ) && [
+    /\b(?:artifact_exporter|artifact_export_client|run_exporter|report_exporter|output_exporter|artifact_store|artifact_storage|s3|s3_client|gcs|storage|storage_client|bucket|blob_service_client|r2|supabase)\s*(?:\.\s*[A-Za-z_]\w*){0,5}\s*\.\s*(?:upload|upload_file|upload_fileobj|put_object|put|save|store|write|export|publish|share|create_public_link|make_public|set_public|generate_signed_url|create_presigned_url)\s*\(/iu,
+    /\bboto3\s*\.\s*client\s*\(\s*["']s3["']\s*\)/iu,
+    /\b(?:upload_artifact|export_artifact|publish_artifact|share_artifact|write_artifact_report)\s*\(/iu
+  ].some((pattern) => pattern.test(source));
+}
+
+function hasJavaScriptHandlerTaintedArtifactExportPayload(source: string): boolean {
+  return [
+    /\b(?:artifactExporter|artifactExportClient|runExporter|reportExporter|outputExporter|artifactStore|artifactStorage|s3|s3Client|gcs|storage|bucket|blobServiceClient|r2|supabase)\s*(?:\.\s*[A-Za-z_$][\w$]*){0,5}\s*\.\s*(?:upload|uploadFile|putObject|put|save|store|write|export|publish|share|createPublicLink|makePublic|setPublic|getSignedUrl|createPresignedUrl)\s*\(([\s\S]{0,1200})\)/giu,
+    /\bnew\s+PutObjectCommand\s*\(([\s\S]{0,1200})\)/giu,
+    /\b(?:uploadArtifact|exportArtifact|publishArtifact|shareArtifact|writeArtifactReport)\s*\(([\s\S]{0,1200})\)/giu
+  ].some((pattern) => expressionMatchesTaintedArtifactExportPayload(pattern, source));
+}
+
+function hasPythonHandlerTaintedArtifactExportPayload(source: string): boolean {
+  return [
+    /\b(?:artifact_exporter|artifact_export_client|run_exporter|report_exporter|output_exporter|artifact_store|artifact_storage|s3|s3_client|gcs|storage|storage_client|bucket|blob_service_client|r2|supabase)\s*(?:\.\s*[A-Za-z_]\w*){0,5}\s*\.\s*(?:upload|upload_file|upload_fileobj|put_object|put|save|store|write|export|publish|share|create_public_link|make_public|set_public|generate_signed_url|create_presigned_url)\s*\(([\s\S]{0,1200})\)/giu,
+    /\b(?:upload_artifact|export_artifact|publish_artifact|share_artifact|write_artifact_report)\s*\(([\s\S]{0,1200})\)/giu
+  ].some((pattern) => expressionMatchesTaintedArtifactExportPayload(pattern, source));
+}
+
+function hasHandlerPublicArtifactDestination(source: string): boolean {
+  return /\b(?:public[_-]?read|publicRead|acl\s*[:=]\s*(["'`])public-read\1|visibility\s*[:=]\s*(["'`])public\2|access\s*[:=]\s*(["'`])public\3|publicUrl|public_url|signedUrl|signed_url|presigned|preSigned|getSignedUrl|generate_signed_url|createPresignedUrl|create_presigned_url|createPublicLink|create_public_link|makePublic|make_public|setPublic|set_public)\b/iu.test(
+    source
+  );
+}
+
 function hasJavaScriptHandlerPrivilegedPromptComposition(source: string): boolean {
   return [
     /\brole\s*:\s*["'`](?:system|developer)["'`][\s\S]{0,260}\bcontent\s*:\s*([^,\n}\]]+)/giu,
@@ -28183,6 +28247,15 @@ function expressionMatchesTaintedTrainingDatasetPayload(pattern: RegExp, source:
   let match: RegExpExecArray | null;
   while ((match = pattern.exec(source)) !== null) {
     if (expressionReferencesTaintedTrainingDatasetPayload(match[1] ?? "", source)) return true;
+    if (match[0].length === 0) pattern.lastIndex += 1;
+  }
+  return false;
+}
+
+function expressionMatchesTaintedArtifactExportPayload(pattern: RegExp, source: string): boolean {
+  let match: RegExpExecArray | null;
+  while ((match = pattern.exec(source)) !== null) {
+    if (expressionReferencesTaintedArtifactExportPayload(match[1] ?? "", source)) return true;
     if (match[0].length === 0) pattern.lastIndex += 1;
   }
   return false;
@@ -28871,6 +28944,78 @@ function expressionReferencesTaintedTrainingDatasetPayload(expression: string, s
 }
 
 function identifierAssignedFromTaintedTrainingDatasetPayload(identifier: string, source: string, taintedName: RegExp): boolean {
+  const escaped = escapeRegExp(identifier);
+  const patterns = [
+    new RegExp(`\\b(?:const|let|var)\\s+${escaped}\\s*=\\s*([^;\\n]+)`, "gu"),
+    new RegExp(`\\b${escaped}\\s*=\\s*([^\\n]+)`, "gu")
+  ];
+  return patterns.some((pattern) => expressionMatchesPattern(pattern, source, taintedName));
+}
+
+function expressionReferencesTaintedArtifactExportPayload(expression: string, source: string): boolean {
+  const templateInterpolation = /\$\{[^}]*\b(?:artifactBody|artifact_body|artifactContent|artifact_content|reportBody|report_body|reportMarkdown|report_markdown|generatedOutput|generated_output|runSummary|run_summary|toolOutput|tool_output|toolTracePayload|tool_trace_payload|retrievedContext|retrieved_context|memorySummary|memory_summary|promptText|prompt_text|customerTicketText|customer_ticket_text|customerContext|customer_context|customerMessage|customer_message|completionText|completion_text|responseText|response_text|modelResponse|model_response|inputText|input_text|content|message|prompt|payload|context|output|response|completion|customer|ticket)\b/u.test(
+    expression
+  );
+  if (templateInterpolation) return true;
+  const withoutQuotedStrings = expression.replace(/(["'`])(?:\\.|(?!\1)[\s\S])*\1/gu, " ");
+  const stronglyTaintedName = /\b(?:artifactBody|artifact_body|artifactContent|artifact_content|reportBody|report_body|reportMarkdown|report_markdown|generatedOutput|generated_output|runSummary|run_summary|toolOutput|tool_output|toolTracePayload|tool_trace_payload|retrievedContext|retrieved_context|memorySummary|memory_summary|promptText|prompt_text|customerTicketText|customer_ticket_text|customerContext|customer_context|customerMessage|customer_message|completionText|completion_text|responseText|response_text|modelResponse|model_response|inputText|input_text)\b/u;
+  const taintedName = /\b(?:artifactBody|artifact_body|artifactContent|artifact_content|reportBody|report_body|reportMarkdown|report_markdown|generatedOutput|generated_output|runSummary|run_summary|toolOutput|tool_output|toolTracePayload|tool_trace_payload|retrievedContext|retrieved_context|memorySummary|memory_summary|promptText|prompt_text|customerTicketText|customer_ticket_text|customerContext|customer_context|customerMessage|customer_message|completionText|completion_text|responseText|response_text|modelResponse|model_response|inputText|input_text|artifact|report|content|message|prompt|payload|context|output|response|completion|customer|ticket|input|text|body|summary)\b/u;
+  if (stronglyTaintedName.test(withoutQuotedStrings)) return true;
+
+  const payloadAssignment = /\b(?:body|artifact|artifact_body|artifactBody|report|report_body|reportBody|payload|content|input|inputs|context|prompt|message|messages|output|tool_output|toolOutput|response|completion|text|summary|customer|customer_id|ticket|ticket_id)\s*(?::|=)\s*([^,\n}\)]+)/giu;
+  if (expressionMatchesPattern(payloadAssignment, withoutQuotedStrings, taintedName)) return true;
+
+  const valueOnlyExpression = withoutQuotedStrings.replace(
+    /\b(?:body|artifact|artifact_body|artifactBody|report|report_body|reportBody|payload|content|input|inputs|context|prompt|message|messages|output|tool_output|toolOutput|response|completion|text|summary|customer|customer_id|ticket|ticket_id)\s*(?::|=)/giu,
+    " "
+  );
+  const identifiers = uniqueStrings(
+    [...valueOnlyExpression.matchAll(/\b[A-Za-z_$][\w$]*\b/gu)]
+      .map((match) => match[0])
+      .filter((identifier) => ![
+        "artifactExporter",
+        "artifact_exporter",
+        "artifactExportClient",
+        "artifact_export_client",
+        "runExporter",
+        "run_exporter",
+        "reportExporter",
+        "report_exporter",
+        "outputExporter",
+        "output_exporter",
+        "artifactStore",
+        "artifact_store",
+        "artifactStorage",
+        "artifact_storage",
+        "S3Client",
+        "PutObjectCommand",
+        "s3",
+        "s3Client",
+        "s3_client",
+        "boto3",
+        "gcs",
+        "storage",
+        "storage_client",
+        "bucket",
+        "blobServiceClient",
+        "blob_service_client",
+        "r2",
+        "supabase",
+        "token",
+        "apiKey",
+        "api_key",
+        "metadata",
+        "key",
+        "objectKey",
+        "object_key",
+        "destinationBucket",
+        "destination_bucket"
+      ].includes(identifier))
+  );
+  return identifiers.some((identifier) => identifierAssignedFromTaintedArtifactExportPayload(identifier, source, taintedName));
+}
+
+function identifierAssignedFromTaintedArtifactExportPayload(identifier: string, source: string, taintedName: RegExp): boolean {
   const escaped = escapeRegExp(identifier);
   const patterns = [
     new RegExp(`\\b(?:const|let|var)\\s+${escaped}\\s*=\\s*([^;\\n]+)`, "gu"),
@@ -30305,6 +30450,9 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   tainted_prompt_cache_value: boolean;
   training_dataset_export: boolean;
   tainted_training_dataset_payload: boolean;
+  artifact_export: boolean;
+  tainted_artifact_export_payload: boolean;
+  public_artifact_destination: boolean;
   privileged_prompt_composition: boolean;
   tainted_shell_argument: boolean;
   tainted_filesystem_path: boolean;
@@ -30352,6 +30500,9 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   const handlerTaintedPromptCacheValue = handler?.handlerTaintedPromptCacheValue === true;
   const handlerTrainingDatasetExport = handler?.handlerTrainingDatasetExport === true;
   const handlerTaintedTrainingDatasetPayload = handler?.handlerTaintedTrainingDatasetPayload === true;
+  const handlerArtifactExport = handler?.handlerArtifactExport === true;
+  const handlerTaintedArtifactExportPayload = handler?.handlerTaintedArtifactExportPayload === true;
+  const handlerPublicArtifactDestination = handler?.handlerPublicArtifactDestination === true;
   const handlerPrivilegedPromptComposition = handler?.handlerPrivilegedPromptComposition === true;
   const handlerDatabaseQuery = handler?.handlerDatabaseQuery === true;
   const handlerDatabaseWrite = handler?.handlerDatabaseWrite === true;
@@ -30386,7 +30537,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   const destructive = /\b(delete|remove|drop|truncate|destroy|purge|wipe)\b/i.test(text);
   const externalWrite = /\b(publish|post|send|webhook|slack|email|release|deploy|comment|issue|pull\s+request|upload)\b/i.test(
     text
-  ) || handlerExternalWrite || handlerExternalServiceWrite || handlerTelemetryExport || handlerTrainingDatasetExport;
+  ) || handlerExternalWrite || handlerExternalServiceWrite || handlerTelemetryExport || handlerTrainingDatasetExport || handlerArtifactExport;
 
   const shellExecution =
     /\b(shell|command|exec|bash|process|terminal)\b/i.test(text) ||
@@ -30596,6 +30747,19 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
     classes.add("tainted_training_dataset_payload");
     actions.add("send");
   }
+  if (handlerArtifactExport) {
+    classes.add("artifact_export");
+    actions.add("send");
+    actions.add("write");
+  }
+  if (handlerTaintedArtifactExportPayload) {
+    classes.add("tainted_artifact_export_payload");
+    actions.add("send");
+  }
+  if (handlerPublicArtifactDestination) {
+    classes.add("public_artifact_destination");
+    actions.add("publish");
+  }
   if (handlerPrivilegedPromptComposition) {
     classes.add("privileged_prompt_composition");
     actions.add("send");
@@ -30671,6 +30835,9 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerTaintedPromptCacheValue ||
       handlerTrainingDatasetExport ||
       handlerTaintedTrainingDatasetPayload ||
+      handlerArtifactExport ||
+      handlerTaintedArtifactExportPayload ||
+      handlerPublicArtifactDestination ||
       handlerPrivilegedPromptComposition ||
       handlerTaintedShellArgument ||
       handlerDatabaseQuery ||
@@ -30713,6 +30880,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerEmbeddingProviderCall ||
       handlerTelemetryExport ||
       handlerTrainingDatasetExport ||
+      handlerArtifactExport ||
       (handlerPromptCacheWrite && handlerSecretEnvAccess),
     secret_exposure: acceptsSecret || handlerSecretEnvAccess || localFileDisclosure || handlerCredentialIssuance || handlerAgentDelegation || handlerSecretManagerAccess,
     accepts_secret_like_input: acceptsSecret,
@@ -30754,6 +30922,9 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
     tainted_prompt_cache_value: handlerTaintedPromptCacheValue,
     training_dataset_export: handlerTrainingDatasetExport,
     tainted_training_dataset_payload: handlerTaintedTrainingDatasetPayload,
+    artifact_export: handlerArtifactExport,
+    tainted_artifact_export_payload: handlerTaintedArtifactExportPayload,
+    public_artifact_destination: handlerPublicArtifactDestination,
     privileged_prompt_composition: handlerPrivilegedPromptComposition,
     tainted_shell_argument: handlerTaintedShellArgument,
     tainted_filesystem_path: handlerTaintedFilesystemPath,
@@ -30830,6 +31001,9 @@ function authoritySignature(tool: SurfaceObject): string {
     metadata.tainted_prompt_cache_value === true ? "tainted_prompt_cache_value" : "",
     metadata.training_dataset_export === true ? "training_dataset_export" : "",
     metadata.tainted_training_dataset_payload === true ? "tainted_training_dataset_payload" : "",
+    metadata.artifact_export === true ? "artifact_export" : "",
+    metadata.tainted_artifact_export_payload === true ? "tainted_artifact_export_payload" : "",
+    metadata.public_artifact_destination === true ? "public_artifact_destination" : "",
     metadata.visual_context_capture === true ? "visual_context_capture" : "",
     metadata.visual_context_to_output === true ? "visual_context_to_output" : "",
     metadata.privileged_prompt_composition === true ? "privileged_prompt_composition" : "",
@@ -30887,6 +31061,9 @@ function isPrivilegedToolSurface(tool: SurfaceObject): boolean {
     tool.metadata.tainted_prompt_cache_value === true ||
     tool.metadata.training_dataset_export === true ||
     tool.metadata.tainted_training_dataset_payload === true ||
+    tool.metadata.artifact_export === true ||
+    tool.metadata.tainted_artifact_export_payload === true ||
+    tool.metadata.public_artifact_destination === true ||
     tool.metadata.visual_context_capture === true ||
     tool.metadata.visual_context_to_output === true ||
     tool.metadata.privileged_prompt_composition === true ||
