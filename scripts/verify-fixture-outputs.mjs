@@ -650,6 +650,8 @@ const leakPatterns = [
   /fetch\s*\(/u,
   /httpx\.post/u,
   /httpx\.get/u,
+  /responseBody/u,
+  /response\.text/u,
   /os\.getenv/u,
   /node:fs\/promises/u,
   /node:child_process/u,
@@ -698,6 +700,7 @@ const leakPatterns = [
   /Return a runtime support token/u,
   /Fetch a support partner status endpoint/u,
   /Fetch partner status from a caller supplied endpoint/u,
+  /Fetch a caller supplied URL/u,
   /source partner status checked/u,
   /framework partner status checked/u,
   /internal-readonly-source-tools/u,
@@ -711,8 +714,8 @@ const leakPatterns = [
 const vulnerable = await readScanOutput(vulnerableOutput, { sarifRequired: true });
 const safe = await readScanOutput(safeOutput, { sarifRequired: false });
 
-assertEqual(vulnerable.manifest.findings.length, 294, "vulnerable manifest finding count");
-assertEqual(vulnerable.findings.length, 294, "vulnerable findings.json count");
+assertEqual(vulnerable.manifest.findings.length, 296, "vulnerable manifest finding count");
+assertEqual(vulnerable.findings.length, 296, "vulnerable findings.json count");
 assertEqual(vulnerable.manifest.attack_paths.length, 15, "vulnerable attack path count");
 assertEqual(vulnerable.manifest.static_blast_radius?.critical_attack_paths, 15, "vulnerable critical attack path count");
 assertEqual(vulnerable.manifest.diagnostics.length, 0, "vulnerable diagnostics count");
@@ -731,6 +734,7 @@ for (const ruleId of [
   "AGENTCSP-TOOL-019",
   "AGENTCSP-TOOL-020",
   "AGENTCSP-TOOL-021",
+  "AGENTCSP-TOOL-022",
   "AGENTCSP-RUNTIME-007",
   "AGENTCSP-RUNTIME-008",
   "AGENTCSP-RUNTIME-123",

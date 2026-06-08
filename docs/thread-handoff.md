@@ -1539,7 +1539,7 @@ The current iteration adds:
 The current iteration adds:
 
 - redacted handler-body authority signals for MCP SDK, Python/FastMCP, Python agent-framework, and JavaScript/TypeScript agent-framework source-defined tools
-- handler metadata for external network writes, credentialed network reads, environment-backed secret access, secret-to-output materialization, database query/write execution, shell execution, dynamic in-process code execution, unsafe deserialization, arbitrary local file disclosure, filesystem reads/writes/deletes, signal counts, authority categories, and env key names without emitting handler bodies, URLs, headers, SQL strings, returned secret-bearing text, dynamic-code snippets, deserialization snippets, file-read snippets, source snippets, or secret values
+- handler metadata for external network writes, credentialed network reads, network response capture into model-visible output, environment-backed secret access, secret-to-output materialization, database query/write execution, shell execution, dynamic in-process code execution, unsafe deserialization, arbitrary local file disclosure, filesystem reads/writes/deletes, signal counts, authority categories, and env key names without emitting handler bodies, URLs, headers, SQL strings, returned network-response snippets, returned secret-bearing text, dynamic-code snippets, deserialization snippets, file-read snippets, source snippets, or secret values
 - rule `AGENTCSP-TOOL-013` for source-defined tools that send model-controlled or customer data externally with env-backed runtime secret authority
 - rule `AGENTCSP-TOOL-014` for source-defined tools that mutate local workspace paths or host files from path-like model arguments
 - rule `AGENTCSP-TOOL-015` for source-defined tools that execute shell or subprocess handlers from command-like tool arguments
@@ -1549,8 +1549,9 @@ The current iteration adds:
 - rule `AGENTCSP-TOOL-019` for source-defined tools that evaluate model-supplied code through dynamic in-process execution APIs
 - rule `AGENTCSP-TOOL-020` for source-defined tools that return model-selected local file contents into model-visible tool output
 - rule `AGENTCSP-TOOL-021` for source-defined tools that pass serialized model inputs into unsafe deserialization APIs
+- rule `AGENTCSP-TOOL-022` for source-defined tools that fetch caller-controlled URLs and return network responses into model-visible tool output
 - vulnerable and safe fixture coverage proving risky handlers produce critical findings while read-only source tools produce zero handler signals
-- regression coverage proving raw handler syntax such as network calls, database driver calls, SQL strings, returned secret-bearing text, filesystem read/delete calls, shell/subprocess calls, dynamic-code evaluation calls, unsafe deserialization calls, `os.getenv`, credentialed fetch calls, and bearer-header construction stays redacted
+- regression coverage proving raw handler syntax such as network calls, network response variables, database driver calls, SQL strings, returned network-response text, returned secret-bearing text, filesystem read/delete calls, shell/subprocess calls, dynamic-code evaluation calls, unsafe deserialization calls, `os.getenv`, credentialed fetch calls, and bearer-header construction stays redacted
 
 ## Initial Build Recommendation
 

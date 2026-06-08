@@ -84,6 +84,26 @@ server.registerTool(
 );
 
 server.registerTool(
+  "source_fetch_url_content",
+  {
+    description: "Fetch a caller supplied URL and return the response body.",
+    inputSchema: z.object({
+      target_url: z.string().url(),
+      expected_content_type: z.string().optional()
+    }).strict(),
+    annotations: {
+      readOnlyHint: false,
+      idempotentHint: true
+    }
+  },
+  async ({ target_url }) => {
+    const response = await fetch(target_url);
+    const responseBody = await response.text();
+    return { content: [{ type: "text", text: responseBody }] };
+  }
+);
+
+server.registerTool(
   "source_evaluate_agent_expression",
   {
     description: "Evaluate a model supplied JavaScript expression for support automation.",

@@ -24140,6 +24140,7 @@ function addToolDefinitionSurface(
       accepted_data_classes: authority.accepted_data_classes,
       database_access: authority.database_access,
       database_write: authority.database_write,
+      network_response_capture: authority.network_response_capture,
       dynamic_code_execution: authority.dynamic_code_execution,
       unsafe_deserialization: authority.unsafe_deserialization,
       local_file_disclosure: authority.local_file_disclosure,
@@ -26509,6 +26510,7 @@ interface SourceToolHandlerSignals {
   handlerBodyAnalyzed: boolean;
   handlerExternalNetworkCall: boolean;
   handlerCredentialedNetworkRead: boolean;
+  handlerNetworkResponseToOutput: boolean;
   handlerExternalWrite: boolean;
   handlerSecretEnvAccess: boolean;
   handlerModelVisibleOutput: boolean;
@@ -26931,6 +26933,7 @@ function sourceToolHandlerSignalMetadata(signals: SourceToolHandlerSignals | und
     handler_body_redacted: true,
     handler_external_network_call: signals.handlerExternalNetworkCall,
     handler_credentialed_network_read: signals.handlerCredentialedNetworkRead,
+    handler_network_response_to_output: signals.handlerNetworkResponseToOutput,
     handler_external_write: signals.handlerExternalWrite,
     handler_secret_env_access: signals.handlerSecretEnvAccess,
     handler_model_visible_output: signals.handlerModelVisibleOutput,
@@ -26974,6 +26977,9 @@ function classifySourceToolHandlerSignals(
     : /\b(?:os\s*\.\s*(?:environ|getenv)|dotenv)\b/u.test(handlerSource));
   const credentialedNetworkRead = externalNetworkCall && !externalWrite && secretEnvAccess && hasHandlerNetworkCredentialForwarding(handlerSource);
   const modelVisibleOutput = hasHandlerModelVisibleOutput(handlerSource);
+  const networkResponseToOutput = externalNetworkCall && !externalWrite && modelVisibleOutput && (language === "javascript"
+    ? hasJavaScriptHandlerNetworkResponseToOutput(handlerSource)
+    : hasPythonHandlerNetworkResponseToOutput(handlerSource));
   const secretToOutput = secretEnvAccess && (language === "javascript"
     ? hasJavaScriptHandlerSecretToOutput(handlerSource)
     : hasPythonHandlerSecretToOutput(handlerSource));
@@ -26999,6 +27005,7 @@ function classifySourceToolHandlerSignals(
   const classes = new Set<string>();
   if (externalNetworkCall) classes.add("handler_network_access");
   if (credentialedNetworkRead) classes.add("handler_credentialed_network_read");
+  if (networkResponseToOutput) classes.add("handler_network_response_to_output");
   if (externalWrite) classes.add("handler_external_write");
   if (secretEnvAccess) classes.add("handler_secret_env_access");
   if (secretToOutput) classes.add("handler_secret_to_output");
@@ -27015,6 +27022,7 @@ function classifySourceToolHandlerSignals(
     handlerBodyAnalyzed: true,
     handlerExternalNetworkCall: externalNetworkCall,
     handlerCredentialedNetworkRead: credentialedNetworkRead,
+    handlerNetworkResponseToOutput: networkResponseToOutput,
     handlerExternalWrite: externalWrite,
     handlerSecretEnvAccess: secretEnvAccess,
     handlerModelVisibleOutput: modelVisibleOutput,
@@ -27082,6 +27090,71 @@ function hasPythonHandlerNetworkCall(source: string): boolean {
 
 function hasHandlerNetworkCredentialForwarding(source: string): boolean {
   return /\b(headers?|authorization|bearer|api[_\s-]?key|token|auth)\b/iu.test(source);
+}
+
+function hasJavaScriptHandlerNetworkResponseToOutput(source: string): boolean {
+  const inlineReturnPattern = /\breturn\b(?=[\s\S]{0,500}\b(?:fetch\s*\(|axios\s*\.\s*(?:get|request)\s*\(|got\s*\(|request\s*\(|(?:http|https)\s*\.\s*(?:request|get)\s*\())(?=[\s\S]{0,500}\.\s*(?:text|json|arrayBuffer|blob)\s*\()/u;
+  if (inlineReturnPattern.test(source)) {
+    return true;
+  }
+  const networkVars = extractJavaScriptNetworkBoundVariableNames(source);
+  const outputVars = new Set<string>();
+  const derivedPattern = /\b(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*(?:await\s*)?([A-Za-z_$][\w$]*)\s*\.\s*(?:text|json|arrayBuffer|blob)\s*\(/gu;
+  let match: RegExpExecArray | null;
+  while ((match = derivedPattern.exec(source)) !== null) {
+    if (match[1] && match[2] && networkVars.includes(match[2])) outputVars.add(match[1]);
+    if (match[0].length === 0) derivedPattern.lastIndex += 1;
+  }
+  return returnSegments(source).some((segment) => {
+    const returnedDerivedBody = [...outputVars].some((name) => identifierPattern(name).test(segment));
+    const returnedNetworkBody = networkVars.some((name) =>
+      new RegExp(`(?<![A-Za-z0-9_$])${escapeRegExp(name)}(?![A-Za-z0-9_$])\\s*\\.\\s*(?:text|json|arrayBuffer|blob)\\s*\\(`, "u").test(segment)
+    );
+    return returnedDerivedBody || returnedNetworkBody;
+  });
+}
+
+function hasPythonHandlerNetworkResponseToOutput(source: string): boolean {
+  if (/\breturn\b[^\n]*(?:requests|httpx)\s*\.\s*(?:get|request)\s*\([^\n)]*\)\s*\.\s*(?:text|content|json\s*\(\))/u.test(source)) {
+    return true;
+  }
+  const networkVars = extractPythonNetworkBoundVariableNames(source);
+  const outputVars = new Set<string>();
+  const derivedPattern = /\b([A-Za-z_]\w*)\s*=\s*([A-Za-z_]\w*)\s*\.\s*(?:text|content|json\s*\(\))/gu;
+  let match: RegExpExecArray | null;
+  while ((match = derivedPattern.exec(source)) !== null) {
+    if (match[1] && match[2] && networkVars.includes(match[2])) outputVars.add(match[1]);
+    if (match[0].length === 0) derivedPattern.lastIndex += 1;
+  }
+  return returnSegments(source).some((segment) => {
+    const returnedDerivedBody = [...outputVars].some((name) => identifierPattern(name).test(segment));
+    const returnedNetworkBody = networkVars.some((name) =>
+      new RegExp(`(?<![A-Za-z0-9_])${escapeRegExp(name)}(?![A-Za-z0-9_])\\s*\\.\\s*(?:text|content|json\\s*\\(\\))`, "u").test(segment)
+    );
+    return returnedDerivedBody || returnedNetworkBody;
+  });
+}
+
+function extractJavaScriptNetworkBoundVariableNames(source: string): string[] {
+  const names = new Set<string>();
+  const pattern = /\b(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*(?:await\s*)?(?:fetch\s*\(|axios\s*\.\s*(?:get|request)\s*\(|got\s*\(|request\s*\(|(?:http|https)\s*\.\s*(?:request|get)\s*\()/gu;
+  let match: RegExpExecArray | null;
+  while ((match = pattern.exec(source)) !== null) {
+    if (match[1]) names.add(match[1]);
+    if (match[0].length === 0) pattern.lastIndex += 1;
+  }
+  return [...names].sort((a, b) => a.localeCompare(b));
+}
+
+function extractPythonNetworkBoundVariableNames(source: string): string[] {
+  const names = new Set<string>();
+  const pattern = /\b([A-Za-z_]\w*)\s*=\s*(?:await\s*)?(?:requests|httpx)\s*\.\s*(?:get|request)\s*\(/gu;
+  let match: RegExpExecArray | null;
+  while ((match = pattern.exec(source)) !== null) {
+    if (match[1]) names.add(match[1]);
+    if (match[0].length === 0) pattern.lastIndex += 1;
+  }
+  return [...names].sort((a, b) => a.localeCompare(b));
 }
 
 function hasHandlerModelVisibleOutput(source: string): boolean {
@@ -28456,6 +28529,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   accepted_data_classes: SurfaceObject["data_classes"];
   database_access: boolean;
   database_write: boolean;
+  network_response_capture: boolean;
   dynamic_code_execution: boolean;
   unsafe_deserialization: boolean;
   local_file_disclosure: boolean;
@@ -28482,6 +28556,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   const handlerSecretToOutput = handler?.handlerSecretToOutput === true;
   const handlerExternalNetworkCall = handler?.handlerExternalNetworkCall === true;
   const handlerCredentialedNetworkRead = handler?.handlerCredentialedNetworkRead === true;
+  const handlerNetworkResponseToOutput = handler?.handlerNetworkResponseToOutput === true;
   const handlerExternalWrite = handler?.handlerExternalWrite === true;
   const handlerDatabaseQuery = handler?.handlerDatabaseQuery === true;
   const handlerDatabaseWrite = handler?.handlerDatabaseWrite === true;
@@ -28522,6 +28597,11 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   }
   if (handlerCredentialedNetworkRead) {
     classes.add("credentialed_network_read");
+    actions.add("send");
+  }
+  if (handlerNetworkResponseToOutput) {
+    classes.add("network_response_capture");
+    actions.add("read");
     actions.add("send");
   }
   if (
@@ -28604,6 +28684,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerSecretEnvAccess ||
       handlerSecretToOutput ||
       handlerCredentialedNetworkRead ||
+      handlerNetworkResponseToOutput ||
       handlerDatabaseQuery ||
       handlerDatabaseWrite ||
       handlerExternalWrite ||
@@ -28639,6 +28720,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
     accepted_data_classes: schemaDataProfile.dataClasses,
     database_access: databaseAccess,
     database_write: databaseWrite,
+    network_response_capture: handlerNetworkResponseToOutput,
     dynamic_code_execution: handlerDynamicCodeExecution,
     unsafe_deserialization: handlerUnsafeDeserialization,
     local_file_disclosure: localFileDisclosure,

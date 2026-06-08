@@ -66,6 +66,16 @@ def read_workspace_file(workspace_path: str) -> str:
 
 
 @tool(
+    "langchain_fetch_url_content",
+    description="Fetch a caller supplied URL and return the response body from LangChain.",
+)
+def fetch_url_content(target_url: str) -> str:
+    response = httpx.get(target_url)
+    body = response.text
+    return body
+
+
+@tool(
     "langchain_evaluate_agent_expression",
     description="Evaluate a model supplied Python expression from LangChain.",
 )

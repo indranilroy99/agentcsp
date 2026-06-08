@@ -540,6 +540,7 @@ describe("scanner", () => {
     const sourceDeleteTool = surfaces.tools.find((surface) => surface.name === "source_readonly_delete_workspace_file");
     const sourceShellTool = surfaces.tools.find((surface) => surface.name === "source_run_remediation_command");
     const sourceFileReadTool = surfaces.tools.find((surface) => surface.name === "source_read_workspace_file");
+    const sourceNetworkResponseTool = surfaces.tools.find((surface) => surface.name === "source_fetch_url_content");
     const sourceDynamicCodeTool = surfaces.tools.find((surface) => surface.name === "source_evaluate_agent_expression");
     const sourceDatabaseTool = surfaces.tools.find((surface) => surface.name === "source_apply_record_change_sql");
     const sourceSecretOutputTool = surfaces.tools.find((surface) => surface.name === "source_reveal_runtime_secret");
@@ -551,6 +552,7 @@ describe("scanner", () => {
     const langchainDeleteTool = surfaces.tools.find((surface) => surface.name === "langchain_readonly_delete_workspace_path");
     const langchainShellTool = surfaces.tools.find((surface) => surface.name === "langchain_run_remediation_command");
     const langchainFileReadTool = surfaces.tools.find((surface) => surface.name === "langchain_read_workspace_file");
+    const langchainNetworkResponseTool = surfaces.tools.find((surface) => surface.name === "langchain_fetch_url_content");
     const langchainDynamicCodeTool = surfaces.tools.find((surface) => surface.name === "langchain_evaluate_agent_expression");
     const langchainDatabaseTool = surfaces.tools.find((surface) => surface.name === "langchain_apply_record_change_sql");
     const langchainSecretOutputTool = surfaces.tools.find((surface) => surface.name === "langchain_reveal_runtime_secret");
@@ -836,6 +838,63 @@ describe("scanner", () => {
     expect(JSON.stringify(sourceFileReadTool)).not.toContain("readFile");
     expect(JSON.stringify(sourceFileReadTool)).not.toContain("contents.toString");
     expect(JSON.stringify(sourceFileReadTool)).not.toContain("Read a workspace file by model supplied path");
+    expect(sourceNetworkResponseTool).toMatchObject({
+      path: "mcp-source/customer-tools.ts",
+      data_classes: ["unknown"],
+      actions: ["call", "read", "send"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: false,
+      reversible: true
+    });
+    expect(sourceNetworkResponseTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_mcp_source_tool: true,
+      mcp_source_tool_registration: true,
+      mcp_source_tool_registration_kind: "registerTool",
+      mcp_source_tool_argument_count: 3,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      read_only_hint: false,
+      idempotent_hint: true,
+      accepts_url_input: true,
+      network_response_capture: true,
+      external_write: false,
+      destructive_action: false,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_external_network_call: true,
+      handler_credentialed_network_read: false,
+      handler_network_response_to_output: true,
+      handler_external_write: false,
+      handler_secret_env_access: false,
+      handler_model_visible_output: true,
+      handler_shell_execution: false,
+      handler_dynamic_code_execution: false,
+      handler_unsafe_deserialization: false,
+      handler_filesystem_read: false,
+      handler_filesystem_write: false,
+      handler_filesystem_delete: false,
+      handler_signal_count: 2,
+      open_world_schema: false
+    });
+    expect(sourceNetworkResponseTool?.metadata.authority_classes).toEqual([
+      "content_input",
+      "handler_network_access",
+      "handler_network_response_to_output",
+      "network_access",
+      "network_response_capture"
+    ]);
+    expect(sourceNetworkResponseTool?.metadata.handler_authority_classes).toEqual([
+      "handler_network_access",
+      "handler_network_response_to_output"
+    ]);
+    expect(sourceNetworkResponseTool?.metadata.handler_env_key_names).toEqual([]);
+    expect(sourceNetworkResponseTool?.metadata.schema_properties).toEqual(["expected_content_type", "target_url"]);
+    expect(sourceNetworkResponseTool?.metadata.required_properties).toEqual(["target_url"]);
+    expect(JSON.stringify(sourceNetworkResponseTool)).not.toContain("responseBody");
+    expect(JSON.stringify(sourceNetworkResponseTool)).not.toContain("response.text");
+    expect(JSON.stringify(sourceNetworkResponseTool)).not.toContain("Fetch a caller supplied URL");
     expect(sourceDynamicCodeTool).toMatchObject({
       path: "mcp-source/customer-tools.ts",
       data_classes: ["unknown"],
@@ -1424,6 +1483,61 @@ describe("scanner", () => {
     expect(JSON.stringify(langchainFileReadTool)).not.toContain("Path(workspace_path)");
     expect(JSON.stringify(langchainFileReadTool)).not.toContain("read_text");
     expect(JSON.stringify(langchainFileReadTool)).not.toContain("Read a workspace file by model supplied path");
+    expect(langchainNetworkResponseTool).toMatchObject({
+      path: "framework-tools/langchain_tools.py",
+      data_classes: ["unknown"],
+      actions: ["call", "read", "send"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: false,
+      reversible: true
+    });
+    expect(langchainNetworkResponseTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_agent_framework_source_tool: true,
+      agent_framework_source_tool: true,
+      agent_framework_source_tool_framework: "langchain",
+      agent_framework_source_tool_registration_kind: "python_tool_decorator",
+      agent_framework_source_tool_argument_count: 1,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_url_input: true,
+      network_response_capture: true,
+      external_write: false,
+      destructive_action: false,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_external_network_call: true,
+      handler_credentialed_network_read: false,
+      handler_network_response_to_output: true,
+      handler_external_write: false,
+      handler_secret_env_access: false,
+      handler_model_visible_output: true,
+      handler_shell_execution: false,
+      handler_dynamic_code_execution: false,
+      handler_unsafe_deserialization: false,
+      handler_filesystem_read: false,
+      handler_filesystem_write: false,
+      handler_filesystem_delete: false,
+      handler_signal_count: 2,
+      open_world_schema: false
+    });
+    expect(langchainNetworkResponseTool?.metadata.authority_classes).toEqual([
+      "handler_network_access",
+      "handler_network_response_to_output",
+      "network_access",
+      "network_response_capture"
+    ]);
+    expect(langchainNetworkResponseTool?.metadata.handler_authority_classes).toEqual([
+      "handler_network_access",
+      "handler_network_response_to_output"
+    ]);
+    expect(langchainNetworkResponseTool?.metadata.handler_env_key_names).toEqual([]);
+    expect(langchainNetworkResponseTool?.metadata.schema_properties).toEqual(["target_url"]);
+    expect(langchainNetworkResponseTool?.metadata.required_properties).toEqual(["target_url"]);
+    expect(JSON.stringify(langchainNetworkResponseTool)).not.toContain("httpx.get");
+    expect(JSON.stringify(langchainNetworkResponseTool)).not.toContain("response.text");
+    expect(JSON.stringify(langchainNetworkResponseTool)).not.toContain("Fetch a caller supplied URL");
     expect(langchainDynamicCodeTool).toMatchObject({
       path: "framework-tools/langchain_tools.py",
       data_classes: ["unknown"],

@@ -35,6 +35,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-010")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-011")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-012")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-022")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-001")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-002")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-003")).toBe(true);
@@ -6116,6 +6117,26 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerLocalFileDisclosureFindings)).not.toContain("readFile");
     expect(JSON.stringify(sourceHandlerLocalFileDisclosureFindings)).not.toContain("read_text");
     expect(JSON.stringify(sourceHandlerLocalFileDisclosureFindings)).not.toContain("Path(workspace_path)");
+    const sourceHandlerNetworkResponseFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-022");
+    expect(sourceHandlerNetworkResponseFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
+      "langchain_fetch_url_content",
+      "source_fetch_url_content"
+    ]);
+    expect(sourceHandlerNetworkResponseFindings.every((finding) => finding.severity === "critical")).toBe(true);
+    expect(sourceHandlerNetworkResponseFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerNetworkResponseFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
+    expect(sourceHandlerNetworkResponseFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
+    expect(sourceHandlerNetworkResponseFindings.every((finding) => finding.matched_object.metadata.handler_external_network_call === true)).toBe(true);
+    expect(sourceHandlerNetworkResponseFindings.every((finding) => finding.matched_object.metadata.handler_network_response_to_output === true)).toBe(true);
+    expect(sourceHandlerNetworkResponseFindings.every((finding) => finding.matched_object.metadata.handler_model_visible_output === true)).toBe(true);
+    expect(sourceHandlerNetworkResponseFindings.every((finding) => finding.matched_object.metadata.handler_external_write === false)).toBe(true);
+    expect(sourceHandlerNetworkResponseFindings.every((finding) => finding.matched_object.metadata.accepts_url_input === true)).toBe(true);
+    expect(sourceHandlerNetworkResponseFindings.every((finding) => finding.matched_object.metadata.network_response_capture === true)).toBe(true);
+    expect(sourceHandlerNetworkResponseFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("network_response_capture"))).toBe(true);
+    expect(JSON.stringify(sourceHandlerNetworkResponseFindings)).not.toContain("responseBody");
+    expect(JSON.stringify(sourceHandlerNetworkResponseFindings)).not.toContain("response.text");
+    expect(JSON.stringify(sourceHandlerNetworkResponseFindings)).not.toContain("httpx.get");
+    expect(JSON.stringify(sourceHandlerNetworkResponseFindings)).not.toContain("Fetch a caller supplied URL");
     const sourceHandlerShellFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-015");
     expect(sourceHandlerShellFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_run_remediation_command",
