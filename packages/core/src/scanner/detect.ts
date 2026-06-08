@@ -24134,6 +24134,7 @@ function addToolDefinitionSurface(
       !authority.telemetry_export &&
       !authority.prompt_cache_write &&
       !authority.training_dataset_export &&
+      !authority.feedback_pipeline_write &&
       !authority.artifact_export &&
       !authority.rag_context_to_output &&
       !authority.task_queue_enqueue &&
@@ -24191,6 +24192,10 @@ function addToolDefinitionSurface(
       tainted_prompt_cache_value: authority.tainted_prompt_cache_value,
       training_dataset_export: authority.training_dataset_export,
       tainted_training_dataset_payload: authority.tainted_training_dataset_payload,
+      feedback_pipeline_write: authority.feedback_pipeline_write,
+      tainted_feedback_payload: authority.tainted_feedback_payload,
+      feedback_auto_promotion: authority.feedback_auto_promotion,
+      tainted_feedback_routing: authority.tainted_feedback_routing,
       artifact_export: authority.artifact_export,
       tainted_artifact_export_payload: authority.tainted_artifact_export_payload,
       public_artifact_destination: authority.public_artifact_destination,
@@ -26598,6 +26603,10 @@ interface SourceToolHandlerSignals {
   handlerTaintedPromptCacheValue: boolean;
   handlerTrainingDatasetExport: boolean;
   handlerTaintedTrainingDatasetPayload: boolean;
+  handlerFeedbackPipelineWrite: boolean;
+  handlerTaintedFeedbackPayload: boolean;
+  handlerFeedbackAutoPromotion: boolean;
+  handlerTaintedFeedbackRouting: boolean;
   handlerArtifactExport: boolean;
   handlerTaintedArtifactExportPayload: boolean;
   handlerPublicArtifactDestination: boolean;
@@ -27071,6 +27080,10 @@ function sourceToolHandlerSignalMetadata(signals: SourceToolHandlerSignals | und
     handler_tainted_prompt_cache_value: signals.handlerTaintedPromptCacheValue,
     handler_training_dataset_export: signals.handlerTrainingDatasetExport,
     handler_tainted_training_dataset_payload: signals.handlerTaintedTrainingDatasetPayload,
+    handler_feedback_pipeline_write: signals.handlerFeedbackPipelineWrite,
+    handler_tainted_feedback_payload: signals.handlerTaintedFeedbackPayload,
+    handler_feedback_auto_promotion: signals.handlerFeedbackAutoPromotion,
+    handler_tainted_feedback_routing: signals.handlerTaintedFeedbackRouting,
     handler_artifact_export: signals.handlerArtifactExport,
     handler_tainted_artifact_export_payload: signals.handlerTaintedArtifactExportPayload,
     handler_public_artifact_destination: signals.handlerPublicArtifactDestination,
@@ -27183,6 +27196,16 @@ function classifySourceToolHandlerSignals(
   const taintedTrainingDatasetPayload = trainingDatasetExport && (language === "javascript"
     ? hasJavaScriptHandlerTaintedTrainingDatasetPayload(handlerSource)
     : hasPythonHandlerTaintedTrainingDatasetPayload(handlerSource));
+  const feedbackPipelineWrite = language === "javascript"
+    ? hasJavaScriptHandlerFeedbackPipelineWrite(handlerSource)
+    : hasPythonHandlerFeedbackPipelineWrite(handlerSource);
+  const taintedFeedbackPayload = feedbackPipelineWrite && (language === "javascript"
+    ? hasJavaScriptHandlerTaintedFeedbackPayload(handlerSource)
+    : hasPythonHandlerTaintedFeedbackPayload(handlerSource));
+  const feedbackAutoPromotion = feedbackPipelineWrite && hasHandlerFeedbackAutoPromotion(handlerSource);
+  const taintedFeedbackRouting = feedbackPipelineWrite && (language === "javascript"
+    ? hasJavaScriptHandlerTaintedFeedbackRouting(handlerSource)
+    : hasPythonHandlerTaintedFeedbackRouting(handlerSource));
   const artifactExport = language === "javascript"
     ? hasJavaScriptHandlerArtifactExport(handlerSource)
     : hasPythonHandlerArtifactExport(handlerSource);
@@ -27336,6 +27359,10 @@ function classifySourceToolHandlerSignals(
   if (taintedPromptCacheValue) classes.add("handler_tainted_prompt_cache_value");
   if (trainingDatasetExport) classes.add("handler_training_dataset_export");
   if (taintedTrainingDatasetPayload) classes.add("handler_tainted_training_dataset_payload");
+  if (feedbackPipelineWrite) classes.add("handler_feedback_pipeline_write");
+  if (taintedFeedbackPayload) classes.add("handler_tainted_feedback_payload");
+  if (feedbackAutoPromotion) classes.add("handler_feedback_auto_promotion");
+  if (taintedFeedbackRouting) classes.add("handler_tainted_feedback_routing");
   if (artifactExport) classes.add("handler_artifact_export");
   if (taintedArtifactExportPayload) classes.add("handler_tainted_artifact_export_payload");
   if (publicArtifactDestination) classes.add("handler_public_artifact_destination");
@@ -27403,6 +27430,10 @@ function classifySourceToolHandlerSignals(
     handlerTaintedPromptCacheValue: taintedPromptCacheValue,
     handlerTrainingDatasetExport: trainingDatasetExport,
     handlerTaintedTrainingDatasetPayload: taintedTrainingDatasetPayload,
+    handlerFeedbackPipelineWrite: feedbackPipelineWrite,
+    handlerTaintedFeedbackPayload: taintedFeedbackPayload,
+    handlerFeedbackAutoPromotion: feedbackAutoPromotion,
+    handlerTaintedFeedbackRouting: taintedFeedbackRouting,
     handlerArtifactExport: artifactExport,
     handlerTaintedArtifactExportPayload: taintedArtifactExportPayload,
     handlerPublicArtifactDestination: publicArtifactDestination,
@@ -28070,6 +28101,58 @@ function hasPythonHandlerTaintedTrainingDatasetPayload(source: string): boolean 
   ].some((pattern) => expressionMatchesTaintedTrainingDatasetPayload(pattern, source));
 }
 
+function hasJavaScriptHandlerFeedbackPipelineWrite(source: string): boolean {
+  return /\b(?:feedbackClient|feedbackPipeline|feedbackStore|reviewClient|annotationClient|labelingClient|preferenceClient|rlhfClient|rewardModelClient|modelImprovementClient|humanFeedbackClient|evaluationClient|evalSetClient)\b/iu.test(
+    source
+  ) && [
+    /\b(?:feedbackClient|feedbackPipeline|feedbackStore|reviewClient|annotationClient|labelingClient|preferenceClient|rlhfClient|rewardModelClient|modelImprovementClient|humanFeedbackClient|evaluationClient|evalSetClient)\s*(?:\.\s*[A-Za-z_$][\w$]*){0,5}\s*\.\s*(?:record|recordFeedback|submit|submitFeedback|append|appendFeedback|add|addFeedback|create|createFeedback|createAnnotation|annotate|label|labelExample|write|writeFeedback|save|store|upload|export|promote|promoteToTraining|promoteToEval|promoteToModelUpdate|push)\s*\(/iu,
+    /\b(?:recordFeedback|submitFeedback|writeFeedbackRecord|appendFeedbackRecord|promoteFeedbackToTraining|promoteFeedbackToEval|promoteFeedbackToModelUpdate|createPreferenceRecord|writeRlhfRecord)\s*\(/iu
+  ].some((pattern) => pattern.test(source));
+}
+
+function hasPythonHandlerFeedbackPipelineWrite(source: string): boolean {
+  return /\b(?:feedback_client|feedback_pipeline|feedback_store|review_client|annotation_client|labeling_client|preference_client|rlhf_client|reward_model_client|model_improvement_client|human_feedback_client|evaluation_client|eval_set_client)\b/iu.test(
+    source
+  ) && [
+    /\b(?:feedback_client|feedback_pipeline|feedback_store|review_client|annotation_client|labeling_client|preference_client|rlhf_client|reward_model_client|model_improvement_client|human_feedback_client|evaluation_client|eval_set_client)\s*(?:\.\s*[A-Za-z_]\w*){0,5}\s*\.\s*(?:record|record_feedback|submit|submit_feedback|append|append_feedback|add|add_feedback|create|create_feedback|create_annotation|annotate|label|label_example|write|write_feedback|save|store|upload|export|promote|promote_to_training|promote_to_eval|promote_to_model_update|push)\s*\(/iu,
+    /\b(?:record_feedback|submit_feedback|write_feedback_record|append_feedback_record|promote_feedback_to_training|promote_feedback_to_eval|promote_feedback_to_model_update|create_preference_record|write_rlhf_record)\s*\(/iu
+  ].some((pattern) => pattern.test(source));
+}
+
+function hasJavaScriptHandlerTaintedFeedbackPayload(source: string): boolean {
+  return [
+    /\b(?:feedbackClient|feedbackPipeline|feedbackStore|reviewClient|annotationClient|labelingClient|preferenceClient|rlhfClient|rewardModelClient|modelImprovementClient|humanFeedbackClient|evaluationClient|evalSetClient)\s*(?:\.\s*[A-Za-z_$][\w$]*){0,5}\s*\.\s*(?:record|recordFeedback|submit|submitFeedback|append|appendFeedback|add|addFeedback|create|createFeedback|createAnnotation|annotate|label|labelExample|write|writeFeedback|save|store|upload|export|promote|promoteToTraining|promoteToEval|promoteToModelUpdate|push)\s*\(([\s\S]{0,1400})\)/giu,
+    /\b(?:recordFeedback|submitFeedback|writeFeedbackRecord|appendFeedbackRecord|promoteFeedbackToTraining|promoteFeedbackToEval|promoteFeedbackToModelUpdate|createPreferenceRecord|writeRlhfRecord)\s*\(([\s\S]{0,1400})\)/giu
+  ].some((pattern) => expressionMatchesTaintedFeedbackPayload(pattern, source));
+}
+
+function hasPythonHandlerTaintedFeedbackPayload(source: string): boolean {
+  return [
+    /\b(?:feedback_client|feedback_pipeline|feedback_store|review_client|annotation_client|labeling_client|preference_client|rlhf_client|reward_model_client|model_improvement_client|human_feedback_client|evaluation_client|eval_set_client)\s*(?:\.\s*[A-Za-z_]\w*){0,5}\s*\.\s*(?:record|record_feedback|submit|submit_feedback|append|append_feedback|add|add_feedback|create|create_feedback|create_annotation|annotate|label|label_example|write|write_feedback|save|store|upload|export|promote|promote_to_training|promote_to_eval|promote_to_model_update|push)\s*\(([\s\S]{0,1400})\)/giu,
+    /\b(?:record_feedback|submit_feedback|write_feedback_record|append_feedback_record|promote_feedback_to_training|promote_feedback_to_eval|promote_feedback_to_model_update|create_preference_record|write_rlhf_record)\s*\(([\s\S]{0,1400})\)/giu
+  ].some((pattern) => expressionMatchesTaintedFeedbackPayload(pattern, source));
+}
+
+function hasHandlerFeedbackAutoPromotion(source: string): boolean {
+  return /\b(?:promote|promotion|autoPromote|auto_promote|promoteToTraining|promote_to_training|promoteToEval|promote_to_eval|promoteToModelUpdate|promote_to_model_update|modelUpdate|model_update|fineTune|fine_tune|training|evalSet|eval_set|rlhf|rewardModel|reward_model)\b/iu.test(
+    source
+  );
+}
+
+function hasJavaScriptHandlerTaintedFeedbackRouting(source: string): boolean {
+  return [
+    /\b(?:feedbackClient|feedbackPipeline|feedbackStore|reviewClient|annotationClient|labelingClient|preferenceClient|rlhfClient|rewardModelClient|modelImprovementClient|humanFeedbackClient|evaluationClient|evalSetClient)\s*(?:\.\s*[A-Za-z_$][\w$]*){0,5}\s*\.\s*(?:record|recordFeedback|submit|submitFeedback|append|appendFeedback|add|addFeedback|create|createFeedback|createAnnotation|annotate|label|labelExample|write|writeFeedback|save|store|upload|export|promote|promoteToTraining|promoteToEval|promoteToModelUpdate|push)\s*\(([\s\S]{0,1400})\)/giu,
+    /\b(?:recordFeedback|submitFeedback|writeFeedbackRecord|appendFeedbackRecord|promoteFeedbackToTraining|promoteFeedbackToEval|promoteFeedbackToModelUpdate|createPreferenceRecord|writeRlhfRecord)\s*\(([\s\S]{0,1400})\)/giu
+  ].some((pattern) => expressionMatchesTaintedFeedbackRouting(pattern, source));
+}
+
+function hasPythonHandlerTaintedFeedbackRouting(source: string): boolean {
+  return [
+    /\b(?:feedback_client|feedback_pipeline|feedback_store|review_client|annotation_client|labeling_client|preference_client|rlhf_client|reward_model_client|model_improvement_client|human_feedback_client|evaluation_client|eval_set_client)\s*(?:\.\s*[A-Za-z_]\w*){0,5}\s*\.\s*(?:record|record_feedback|submit|submit_feedback|append|append_feedback|add|add_feedback|create|create_feedback|create_annotation|annotate|label|label_example|write|write_feedback|save|store|upload|export|promote|promote_to_training|promote_to_eval|promote_to_model_update|push)\s*\(([\s\S]{0,1400})\)/giu,
+    /\b(?:record_feedback|submit_feedback|write_feedback_record|append_feedback_record|promote_feedback_to_training|promote_feedback_to_eval|promote_feedback_to_model_update|create_preference_record|write_rlhf_record)\s*\(([\s\S]{0,1400})\)/giu
+  ].some((pattern) => expressionMatchesTaintedFeedbackRouting(pattern, source));
+}
+
 function hasJavaScriptHandlerArtifactExport(source: string): boolean {
   return /\b(?:artifactExporter|artifactExportClient|runExporter|reportExporter|outputExporter|artifactStore|artifactStorage|s3|s3Client|S3Client|gcs|storage|bucket|blobServiceClient|r2|supabase)\b/iu.test(
     source
@@ -28507,6 +28590,24 @@ function expressionMatchesTaintedTrainingDatasetPayload(pattern: RegExp, source:
   let match: RegExpExecArray | null;
   while ((match = pattern.exec(source)) !== null) {
     if (expressionReferencesTaintedTrainingDatasetPayload(match[1] ?? "", source)) return true;
+    if (match[0].length === 0) pattern.lastIndex += 1;
+  }
+  return false;
+}
+
+function expressionMatchesTaintedFeedbackPayload(pattern: RegExp, source: string): boolean {
+  let match: RegExpExecArray | null;
+  while ((match = pattern.exec(source)) !== null) {
+    if (expressionReferencesTaintedFeedbackPayload(match[1] ?? "", source)) return true;
+    if (match[0].length === 0) pattern.lastIndex += 1;
+  }
+  return false;
+}
+
+function expressionMatchesTaintedFeedbackRouting(pattern: RegExp, source: string): boolean {
+  let match: RegExpExecArray | null;
+  while ((match = pattern.exec(source)) !== null) {
+    if (expressionReferencesTaintedFeedbackRouting(match[1] ?? "", source)) return true;
     if (match[0].length === 0) pattern.lastIndex += 1;
   }
   return false;
@@ -29258,6 +29359,130 @@ function expressionReferencesTaintedTrainingDatasetPayload(expression: string, s
 }
 
 function identifierAssignedFromTaintedTrainingDatasetPayload(identifier: string, source: string, taintedName: RegExp): boolean {
+  const escaped = escapeRegExp(identifier);
+  const patterns = [
+    new RegExp(`\\b(?:const|let|var)\\s+${escaped}\\s*=\\s*([^;\\n]+)`, "gu"),
+    new RegExp(`\\b${escaped}\\s*=\\s*([^\\n]+)`, "gu")
+  ];
+  return patterns.some((pattern) => expressionMatchesPattern(pattern, source, taintedName));
+}
+
+function expressionReferencesTaintedFeedbackPayload(expression: string, source: string): boolean {
+  const templateInterpolation = /\$\{[^}]*\b(?:customerFeedbackText|customer_feedback_text|freeformFeedback|freeform_feedback|reviewerNotes|reviewer_notes|ratingValue|rating_value|feedbackLabel|feedback_label|customerTicketText|customer_ticket_text|customerContext|customer_context|customerMessage|customer_message|customerEmail|customer_email|accountNumber|account_number|toolOutput|tool_output|toolTracePayload|tool_trace_payload|retrievedContext|retrieved_context|memoryContext|memory_context|browserContext|browser_context|promptText|prompt_text|completionText|completion_text|responseText|response_text|modelResponse|model_response|userMessage|user_message|conversationText|conversation_text|feedback|rating|label|notes|content|message|prompt|payload|context|output|response|completion|customer|ticket)\b/u.test(
+    expression
+  );
+  if (templateInterpolation) return true;
+  const withoutQuotedStrings = expression.replace(/(["'`])(?:\\.|(?!\1)[\s\S])*\1/gu, " ");
+  const stronglyTaintedName = /\b(?:customerFeedbackText|customer_feedback_text|freeformFeedback|freeform_feedback|reviewerNotes|reviewer_notes|ratingValue|rating_value|feedbackLabel|feedback_label|customerTicketText|customer_ticket_text|customerContext|customer_context|customerMessage|customer_message|customerEmail|customer_email|accountNumber|account_number|toolOutput|tool_output|toolTracePayload|tool_trace_payload|retrievedContext|retrieved_context|memoryContext|memory_context|browserContext|browser_context|promptText|prompt_text|completionText|completion_text|responseText|response_text|modelResponse|model_response|userMessage|user_message|conversationText|conversation_text)\b/u;
+  const taintedName = /\b(?:customerFeedbackText|customer_feedback_text|freeformFeedback|freeform_feedback|reviewerNotes|reviewer_notes|ratingValue|rating_value|feedbackLabel|feedback_label|customerTicketText|customer_ticket_text|customerContext|customer_context|customerMessage|customer_message|customerEmail|customer_email|accountNumber|account_number|toolOutput|tool_output|toolTracePayload|tool_trace_payload|retrievedContext|retrieved_context|memoryContext|memory_context|browserContext|browser_context|promptText|prompt_text|completionText|completion_text|responseText|response_text|modelResponse|model_response|userMessage|user_message|conversationText|conversation_text|feedback|rating|label|notes|content|message|prompt|payload|context|output|response|completion|customer|ticket|input|text|record|trace|memory|retrieval|browser)\b/u;
+  if (stronglyTaintedName.test(withoutQuotedStrings)) return true;
+
+  const payloadAssignment = /\b(?:record|feedback|rating|label|notes|annotation|review|preference|payload|prompt|messages|message|content|input|inputs|context|completion|response|output|tool_output|toolOutput|retrieval|retrieval_context|retrievedContext|memory|memory_context|browser|browser_context|text|body|customer|customer_id|ticket|ticket_id)\s*(?::|=)\s*([^,\n}\)]+)/giu;
+  if (expressionMatchesPattern(payloadAssignment, withoutQuotedStrings, taintedName)) return true;
+
+  const valueOnlyExpression = withoutQuotedStrings.replace(
+    /\b(?:record|feedback|rating|label|notes|annotation|review|preference|payload|prompt|messages|message|content|input|inputs|context|completion|response|output|tool_output|toolOutput|retrieval|retrieval_context|retrievedContext|memory|memory_context|browser|browser_context|text|body|customer|customer_id|ticket|ticket_id)\s*(?::|=)/giu,
+    " "
+  );
+  const identifiers = uniqueStrings(
+    [...valueOnlyExpression.matchAll(/\b[A-Za-z_$][\w$]*\b/gu)]
+      .map((match) => match[0])
+      .filter((identifier) => ![
+        "feedbackClient",
+        "feedback_client",
+        "feedbackPipeline",
+        "feedback_pipeline",
+        "feedbackStore",
+        "feedback_store",
+        "reviewClient",
+        "review_client",
+        "annotationClient",
+        "annotation_client",
+        "labelingClient",
+        "labeling_client",
+        "preferenceClient",
+        "preference_client",
+        "rlhfClient",
+        "rlhf_client",
+        "rewardModelClient",
+        "reward_model_client",
+        "modelImprovementClient",
+        "model_improvement_client",
+        "humanFeedbackClient",
+        "human_feedback_client",
+        "evaluationClient",
+        "evaluation_client",
+        "evalSetClient",
+        "eval_set_client",
+        "token",
+        "apiKey",
+        "api_key",
+        "metadata",
+        "dataset",
+        "datasetId",
+        "dataset_id",
+        "evalSet",
+        "eval_set"
+      ].includes(identifier))
+  );
+  return identifiers.some((identifier) => identifierAssignedFromTaintedFeedbackPayload(identifier, source, taintedName));
+}
+
+function identifierAssignedFromTaintedFeedbackPayload(identifier: string, source: string, taintedName: RegExp): boolean {
+  const escaped = escapeRegExp(identifier);
+  const patterns = [
+    new RegExp(`\\b(?:const|let|var)\\s+${escaped}\\s*=\\s*([^;\\n]+)`, "gu"),
+    new RegExp(`\\b${escaped}\\s*=\\s*([^\\n]+)`, "gu")
+  ];
+  return patterns.some((pattern) => expressionMatchesPattern(pattern, source, taintedName));
+}
+
+function expressionReferencesTaintedFeedbackRouting(expression: string, source: string): boolean {
+  const templateInterpolation = /\$\{[^}]*\b(?:feedbackDatasetId|feedback_dataset_id|targetDatasetId|target_dataset_id|trainingDatasetId|training_dataset_id|evalSetId|eval_set_id|rewardModelId|reward_model_id|modelUpdateRoute|model_update_route|promotionTarget|promotion_target|sourceLabel|source_label|labelNamespace|label_namespace|projectName|project_name|experimentName|experiment_name|tenantId|tenant_id|customerId|customer_id|dataset|evalSet|eval_set|project|experiment|tenant|customer|promotion|target|namespace)\b/u.test(
+    expression
+  );
+  if (templateInterpolation) return true;
+  const withoutQuotedStrings = expression.replace(/(["'`])(?:\\.|(?!\1)[\s\S])*\1/gu, " ");
+  const stronglyTaintedName = /\b(?:feedbackDatasetId|feedback_dataset_id|targetDatasetId|target_dataset_id|trainingDatasetId|training_dataset_id|evalSetId|eval_set_id|rewardModelId|reward_model_id|modelUpdateRoute|model_update_route|promotionTarget|promotion_target|sourceLabel|source_label|labelNamespace|label_namespace|projectName|project_name|experimentName|experiment_name|tenantId|tenant_id|customerId|customer_id)\b/u;
+  if (stronglyTaintedName.test(withoutQuotedStrings)) return true;
+
+  const routingAssignment = /\b(?:dataset|dataset_id|datasetId|target_dataset|targetDataset|training_dataset|trainingDataset|eval_set|evalSet|eval_set_id|evalSetId|reward_model|rewardModel|reward_model_id|rewardModelId|model_update|modelUpdate|promotion|promotion_target|promotionTarget|source|source_label|sourceLabel|label_namespace|labelNamespace|project|project_name|projectName|experiment|experiment_name|experimentName|tenant|tenant_id|tenantId|customer|customer_id|customerId|namespace|target)\s*(?::|=)\s*([^,\n}\)]+)/giu;
+  if (expressionMatchesPattern(routingAssignment, withoutQuotedStrings, stronglyTaintedName)) return true;
+
+  const valueOnlyExpression = withoutQuotedStrings.replace(
+    /\b(?:dataset|dataset_id|datasetId|target_dataset|targetDataset|training_dataset|trainingDataset|eval_set|evalSet|eval_set_id|evalSetId|reward_model|rewardModel|reward_model_id|rewardModelId|model_update|modelUpdate|promotion|promotion_target|promotionTarget|source|source_label|sourceLabel|label_namespace|labelNamespace|project|project_name|projectName|experiment|experiment_name|experimentName|tenant|tenant_id|tenantId|customer|customer_id|customerId|namespace|target)\s*(?::|=)/giu,
+    " "
+  );
+  const identifiers = uniqueStrings(
+    [...valueOnlyExpression.matchAll(/\b[A-Za-z_$][\w$]*\b/gu)]
+      .map((match) => match[0])
+      .filter((identifier) => ![
+        "feedbackClient",
+        "feedback_client",
+        "feedbackPipeline",
+        "feedback_pipeline",
+        "feedbackStore",
+        "feedback_store",
+        "rlhfClient",
+        "rlhf_client",
+        "rewardModelClient",
+        "reward_model_client",
+        "evaluationClient",
+        "evaluation_client",
+        "evalSetClient",
+        "eval_set_client",
+        "record",
+        "payload",
+        "feedback",
+        "token",
+        "apiKey",
+        "api_key"
+      ].includes(identifier))
+  );
+  return identifiers.some((identifier) => identifierAssignedFromTaintedFeedbackRouting(identifier, source, stronglyTaintedName));
+}
+
+function identifierAssignedFromTaintedFeedbackRouting(identifier: string, source: string, taintedName: RegExp): boolean {
   const escaped = escapeRegExp(identifier);
   const patterns = [
     new RegExp(`\\b(?:const|let|var)\\s+${escaped}\\s*=\\s*([^;\\n]+)`, "gu"),
@@ -31100,6 +31325,10 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   tainted_prompt_cache_value: boolean;
   training_dataset_export: boolean;
   tainted_training_dataset_payload: boolean;
+  feedback_pipeline_write: boolean;
+  tainted_feedback_payload: boolean;
+  feedback_auto_promotion: boolean;
+  tainted_feedback_routing: boolean;
   artifact_export: boolean;
   tainted_artifact_export_payload: boolean;
   public_artifact_destination: boolean;
@@ -31162,6 +31391,10 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   const handlerTaintedPromptCacheValue = handler?.handlerTaintedPromptCacheValue === true;
   const handlerTrainingDatasetExport = handler?.handlerTrainingDatasetExport === true;
   const handlerTaintedTrainingDatasetPayload = handler?.handlerTaintedTrainingDatasetPayload === true;
+  const handlerFeedbackPipelineWrite = handler?.handlerFeedbackPipelineWrite === true;
+  const handlerTaintedFeedbackPayload = handler?.handlerTaintedFeedbackPayload === true;
+  const handlerFeedbackAutoPromotion = handler?.handlerFeedbackAutoPromotion === true;
+  const handlerTaintedFeedbackRouting = handler?.handlerTaintedFeedbackRouting === true;
   const handlerArtifactExport = handler?.handlerArtifactExport === true;
   const handlerTaintedArtifactExportPayload = handler?.handlerTaintedArtifactExportPayload === true;
   const handlerPublicArtifactDestination = handler?.handlerPublicArtifactDestination === true;
@@ -31211,7 +31444,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   const destructive = /\b(delete|remove|drop|truncate|destroy|purge|wipe)\b/i.test(text);
   const externalWrite = /\b(publish|post|send|webhook|slack|email|release|deploy|comment|issue|pull\s+request|upload)\b/i.test(
     text
-  ) || handlerExternalWrite || handlerExternalServiceWrite || handlerTelemetryExport || handlerTrainingDatasetExport || handlerArtifactExport;
+  ) || handlerExternalWrite || handlerExternalServiceWrite || handlerTelemetryExport || handlerTrainingDatasetExport || handlerFeedbackPipelineWrite || handlerArtifactExport;
 
   const shellExecution =
     /\b(shell|command|exec|bash|process|terminal)\b/i.test(text) ||
@@ -31421,6 +31654,23 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
     classes.add("tainted_training_dataset_payload");
     actions.add("send");
   }
+  if (handlerFeedbackPipelineWrite) {
+    classes.add("feedback_pipeline_write");
+    actions.add("send");
+    actions.add("write");
+  }
+  if (handlerTaintedFeedbackPayload) {
+    classes.add("tainted_feedback_payload");
+    actions.add("send");
+  }
+  if (handlerFeedbackAutoPromotion) {
+    classes.add("feedback_auto_promotion");
+    actions.add("remember");
+  }
+  if (handlerTaintedFeedbackRouting) {
+    classes.add("tainted_feedback_routing");
+    actions.add("send");
+  }
   if (handlerArtifactExport) {
     classes.add("artifact_export");
     actions.add("send");
@@ -31560,6 +31810,10 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerTaintedPromptCacheValue ||
       handlerTrainingDatasetExport ||
       handlerTaintedTrainingDatasetPayload ||
+      handlerFeedbackPipelineWrite ||
+      handlerTaintedFeedbackPayload ||
+      handlerFeedbackAutoPromotion ||
+      handlerTaintedFeedbackRouting ||
       handlerArtifactExport ||
       handlerTaintedArtifactExportPayload ||
       handlerPublicArtifactDestination ||
@@ -31617,6 +31871,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerEmbeddingProviderCall ||
       handlerTelemetryExport ||
       handlerTrainingDatasetExport ||
+      handlerFeedbackPipelineWrite ||
       handlerArtifactExport ||
       handlerRagRetrieval ||
       handlerTaskQueueEnqueue ||
@@ -31663,6 +31918,10 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
     tainted_prompt_cache_value: handlerTaintedPromptCacheValue,
     training_dataset_export: handlerTrainingDatasetExport,
     tainted_training_dataset_payload: handlerTaintedTrainingDatasetPayload,
+    feedback_pipeline_write: handlerFeedbackPipelineWrite,
+    tainted_feedback_payload: handlerTaintedFeedbackPayload,
+    feedback_auto_promotion: handlerFeedbackAutoPromotion,
+    tainted_feedback_routing: handlerTaintedFeedbackRouting,
     artifact_export: handlerArtifactExport,
     tainted_artifact_export_payload: handlerTaintedArtifactExportPayload,
     public_artifact_destination: handlerPublicArtifactDestination,
@@ -31754,6 +32013,10 @@ function authoritySignature(tool: SurfaceObject): string {
     metadata.tainted_prompt_cache_value === true ? "tainted_prompt_cache_value" : "",
     metadata.training_dataset_export === true ? "training_dataset_export" : "",
     metadata.tainted_training_dataset_payload === true ? "tainted_training_dataset_payload" : "",
+    metadata.feedback_pipeline_write === true ? "feedback_pipeline_write" : "",
+    metadata.tainted_feedback_payload === true ? "tainted_feedback_payload" : "",
+    metadata.feedback_auto_promotion === true ? "feedback_auto_promotion" : "",
+    metadata.tainted_feedback_routing === true ? "tainted_feedback_routing" : "",
     metadata.artifact_export === true ? "artifact_export" : "",
     metadata.tainted_artifact_export_payload === true ? "tainted_artifact_export_payload" : "",
     metadata.public_artifact_destination === true ? "public_artifact_destination" : "",
@@ -31826,6 +32089,10 @@ function isPrivilegedToolSurface(tool: SurfaceObject): boolean {
     tool.metadata.tainted_prompt_cache_value === true ||
     tool.metadata.training_dataset_export === true ||
     tool.metadata.tainted_training_dataset_payload === true ||
+    tool.metadata.feedback_pipeline_write === true ||
+    tool.metadata.tainted_feedback_payload === true ||
+    tool.metadata.feedback_auto_promotion === true ||
+    tool.metadata.tainted_feedback_routing === true ||
     tool.metadata.artifact_export === true ||
     tool.metadata.tainted_artifact_export_payload === true ||
     tool.metadata.public_artifact_destination === true ||

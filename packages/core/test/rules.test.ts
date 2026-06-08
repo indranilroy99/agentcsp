@@ -68,6 +68,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-052")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-053")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-054")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-055")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-001")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-002")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-003")).toBe(true);
@@ -6501,6 +6502,47 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerTrainingDatasetExportFindings)).not.toContain("source training record exported");
     expect(JSON.stringify(sourceHandlerTrainingDatasetExportFindings)).not.toContain("framework training record exported");
     expect(JSON.stringify(sourceHandlerTrainingDatasetExportFindings)).not.toContain("Export caller supplied support context");
+    const sourceHandlerFeedbackAutoPromotionFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-055");
+    expect(sourceHandlerFeedbackAutoPromotionFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
+      "langchain_record_feedback_auto_promotion",
+      "source_record_feedback_auto_promotion"
+    ]);
+    expect(sourceHandlerFeedbackAutoPromotionFindings.every((finding) => finding.severity === "critical")).toBe(true);
+    expect(sourceHandlerFeedbackAutoPromotionFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerFeedbackAutoPromotionFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
+    expect(sourceHandlerFeedbackAutoPromotionFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
+    expect(sourceHandlerFeedbackAutoPromotionFindings.every((finding) => finding.matched_object.metadata.handler_feedback_pipeline_write === true)).toBe(true);
+    expect(sourceHandlerFeedbackAutoPromotionFindings.every((finding) => finding.matched_object.metadata.handler_tainted_feedback_payload === true)).toBe(true);
+    expect(sourceHandlerFeedbackAutoPromotionFindings.every((finding) => finding.matched_object.metadata.handler_feedback_auto_promotion === true)).toBe(true);
+    expect(sourceHandlerFeedbackAutoPromotionFindings.every((finding) => finding.matched_object.metadata.handler_tainted_feedback_routing === true)).toBe(true);
+    expect(sourceHandlerFeedbackAutoPromotionFindings.every((finding) => finding.matched_object.metadata.feedback_pipeline_write === true)).toBe(true);
+    expect(sourceHandlerFeedbackAutoPromotionFindings.every((finding) => finding.matched_object.metadata.tainted_feedback_payload === true)).toBe(true);
+    expect(sourceHandlerFeedbackAutoPromotionFindings.every((finding) => finding.matched_object.metadata.feedback_auto_promotion === true)).toBe(true);
+    expect(sourceHandlerFeedbackAutoPromotionFindings.every((finding) => finding.matched_object.metadata.tainted_feedback_routing === true)).toBe(true);
+    expect(sourceHandlerFeedbackAutoPromotionFindings.every((finding) => finding.matched_object.metadata.handler_secret_env_access === true)).toBe(true);
+    expect(sourceHandlerFeedbackAutoPromotionFindings.every((finding) => finding.matched_object.metadata.external_write === true)).toBe(true);
+    expect(sourceHandlerFeedbackAutoPromotionFindings.every((finding) => finding.matched_object.metadata.accepts_content_like_input === true)).toBe(true);
+    expect(sourceHandlerFeedbackAutoPromotionFindings.every((finding) => finding.matched_object.metadata.accepts_customer_data_input === true)).toBe(true);
+    expect(sourceHandlerFeedbackAutoPromotionFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("feedback_pipeline_write"))).toBe(true);
+    expect(sourceHandlerFeedbackAutoPromotionFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("tainted_feedback_payload"))).toBe(true);
+    expect(sourceHandlerFeedbackAutoPromotionFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("feedback_auto_promotion"))).toBe(true);
+    expect(sourceHandlerFeedbackAutoPromotionFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("tainted_feedback_routing"))).toBe(true);
+    expect(sourceHandlerFeedbackAutoPromotionFindings.every((finding) => finding.matched_object.metadata.handler_authority_classes.includes("handler_feedback_pipeline_write"))).toBe(true);
+    expect(sourceHandlerFeedbackAutoPromotionFindings.every((finding) => finding.matched_object.metadata.handler_authority_classes.includes("handler_tainted_feedback_payload"))).toBe(true);
+    expect(sourceHandlerFeedbackAutoPromotionFindings.every((finding) => finding.matched_object.metadata.handler_authority_classes.includes("handler_feedback_auto_promotion"))).toBe(true);
+    expect(sourceHandlerFeedbackAutoPromotionFindings.every((finding) => finding.matched_object.metadata.handler_authority_classes.includes("handler_tainted_feedback_routing"))).toBe(true);
+    expect(sourceHandlerFeedbackAutoPromotionFindings.every((finding) => finding.matched_object.actions.includes("send"))).toBe(true);
+    expect(sourceHandlerFeedbackAutoPromotionFindings.every((finding) => finding.matched_object.actions.includes("write"))).toBe(true);
+    expect(sourceHandlerFeedbackAutoPromotionFindings.every((finding) => finding.matched_object.actions.includes("remember"))).toBe(true);
+    expect(sourceHandlerFeedbackAutoPromotionFindings.every((finding) => finding.matched_object.external_reach === true)).toBe(true);
+    expect(sourceHandlerFeedbackAutoPromotionFindings.every((finding) => finding.matched_object.secret_exposure === true)).toBe(true);
+    expect(sourceHandlerFeedbackAutoPromotionFindings.every((finding) => finding.matched_object.side_effect === true)).toBe(true);
+    expect(sourceHandlerFeedbackAutoPromotionFindings.every((finding) => finding.matched_object.reversible === false)).toBe(true);
+    expect(JSON.stringify(sourceHandlerFeedbackAutoPromotionFindings)).not.toContain("feedbackPipeline.promoteToTraining");
+    expect(JSON.stringify(sourceHandlerFeedbackAutoPromotionFindings)).not.toContain("feedback_pipeline.promote_to_training");
+    expect(JSON.stringify(sourceHandlerFeedbackAutoPromotionFindings)).not.toContain("source feedback promoted");
+    expect(JSON.stringify(sourceHandlerFeedbackAutoPromotionFindings)).not.toContain("framework feedback promoted");
+    expect(JSON.stringify(sourceHandlerFeedbackAutoPromotionFindings)).not.toContain("Record caller supplied feedback");
     const sourceHandlerTaintedMemoryScopeFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-039");
     expect(sourceHandlerTaintedMemoryScopeFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_persist_customer_memory",

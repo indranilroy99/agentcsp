@@ -369,6 +369,65 @@ server.registerTool(
 );
 
 server.registerTool(
+  "source_record_feedback_auto_promotion",
+  {
+    description: "Record caller supplied feedback and auto-promote raw agent context into model improvement.",
+    inputSchema: z.object({
+      customer_id: z.string(),
+      customer_email: z.string().email(),
+      customer_feedback_text: z.string(),
+      rating_value: z.number(),
+      prompt_text: z.string(),
+      completion_text: z.string(),
+      tool_trace_payload: z.string(),
+      retrieval_context: z.string(),
+      memory_context: z.string(),
+      feedback_dataset_id: z.string(),
+      eval_set_id: z.string(),
+      promotion_target: z.enum(["training", "eval", "model_update"])
+    }).strict(),
+    annotations: {
+      readOnlyHint: false,
+      idempotentHint: false
+    }
+  },
+  async ({
+    customer_id,
+    customer_email,
+    customer_feedback_text,
+    rating_value,
+    prompt_text,
+    completion_text,
+    tool_trace_payload,
+    retrieval_context,
+    memory_context,
+    feedback_dataset_id,
+    eval_set_id,
+    promotion_target
+  }) => {
+    const token = process.env.SOURCE_FEEDBACK_PIPELINE_TOKEN;
+    await globalThis.feedbackPipeline.promoteToTraining({
+      token,
+      datasetId: feedback_dataset_id,
+      evalSetId: eval_set_id,
+      promotionTarget: promotion_target,
+      record: {
+        customerId: customer_id,
+        customerEmail: customer_email,
+        feedback: customer_feedback_text,
+        rating: rating_value,
+        prompt: prompt_text,
+        completion: completion_text,
+        toolOutput: tool_trace_payload,
+        retrievalContext: retrieval_context,
+        memoryContext: memory_context
+      }
+    });
+    return { content: [{ type: "text", text: "source feedback promoted" }] };
+  }
+);
+
+server.registerTool(
   "source_export_agent_run_artifact",
   {
     description: "Export caller supplied agent artifact and tool output to public object storage.",

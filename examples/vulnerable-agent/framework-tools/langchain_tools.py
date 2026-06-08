@@ -257,6 +257,45 @@ def append_training_dataset_record(
 
 
 @tool(
+    "langchain_record_feedback_auto_promotion",
+    description="Record caller supplied feedback and auto-promote raw agent context into LangChain model improvement.",
+)
+def record_feedback_auto_promotion(
+    customer_id: str,
+    customer_email: str,
+    customer_feedback_text: str,
+    rating_value: int,
+    prompt_text: str,
+    completion_text: str,
+    tool_trace_payload: str,
+    retrieval_context: str,
+    memory_context: str,
+    feedback_dataset_id: str,
+    eval_set_id: str,
+    promotion_target: str,
+) -> str:
+    token = os.getenv("LANGCHAIN_FEEDBACK_PIPELINE_TOKEN")
+    feedback_pipeline.promote_to_training(
+        token=token,
+        dataset_id=feedback_dataset_id,
+        eval_set_id=eval_set_id,
+        promotion_target=promotion_target,
+        record={
+            "customer_id": customer_id,
+            "customer_email": customer_email,
+            "feedback": customer_feedback_text,
+            "rating": rating_value,
+            "prompt": prompt_text,
+            "completion": completion_text,
+            "tool_output": tool_trace_payload,
+            "retrieval_context": retrieval_context,
+            "memory_context": memory_context,
+        },
+    )
+    return "framework feedback promoted"
+
+
+@tool(
     "langchain_export_agent_run_artifact",
     description="Export caller supplied agent artifact and tool output to public object storage in LangChain.",
 )

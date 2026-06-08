@@ -551,6 +551,7 @@ describe("scanner", () => {
     const sourceTelemetryExportTool = surfaces.tools.find((surface) => surface.name === "source_export_customer_trace");
     const sourcePromptCacheWriteTool = surfaces.tools.find((surface) => surface.name === "source_write_prompt_cache_entry");
     const sourceTrainingDatasetExportTool = surfaces.tools.find((surface) => surface.name === "source_append_training_dataset_record");
+    const sourceFeedbackAutoPromotionTool = surfaces.tools.find((surface) => surface.name === "source_record_feedback_auto_promotion");
     const sourceArtifactExportTool = surfaces.tools.find((surface) => surface.name === "source_export_agent_run_artifact");
     const sourceModelApprovalTool = surfaces.tools.find((surface) => surface.name === "source_model_review_and_run_action");
     const sourcePromptRegistryWriteTool = surfaces.tools.find((surface) => surface.name === "source_publish_prompt_registry_update");
@@ -581,6 +582,7 @@ describe("scanner", () => {
     const langchainTelemetryExportTool = surfaces.tools.find((surface) => surface.name === "langchain_export_customer_trace");
     const langchainPromptCacheWriteTool = surfaces.tools.find((surface) => surface.name === "langchain_write_prompt_cache_entry");
     const langchainTrainingDatasetExportTool = surfaces.tools.find((surface) => surface.name === "langchain_append_training_dataset_record");
+    const langchainFeedbackAutoPromotionTool = surfaces.tools.find((surface) => surface.name === "langchain_record_feedback_auto_promotion");
     const langchainArtifactExportTool = surfaces.tools.find((surface) => surface.name === "langchain_export_agent_run_artifact");
     const langchainModelApprovalTool = surfaces.tools.find((surface) => surface.name === "langchain_model_review_and_run_action");
     const langchainPromptRegistryWriteTool = surfaces.tools.find((surface) => surface.name === "langchain_publish_prompt_registry_update");
@@ -1717,6 +1719,120 @@ describe("scanner", () => {
     expect(JSON.stringify(sourceTrainingDatasetExportTool)).not.toContain("trainingDatasetClient.appendRecord");
     expect(JSON.stringify(sourceTrainingDatasetExportTool)).not.toContain("source training record exported");
     expect(JSON.stringify(sourceTrainingDatasetExportTool)).not.toContain("Export caller supplied support context");
+    expect(sourceFeedbackAutoPromotionTool).toMatchObject({
+      path: "mcp-source/customer-tools.ts",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["call", "publish", "remember", "send", "write"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(sourceFeedbackAutoPromotionTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_mcp_source_tool: true,
+      mcp_source_tool_registration: true,
+      mcp_source_tool_registration_kind: "registerTool",
+      mcp_source_tool_argument_count: 3,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_content_like_input: true,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      training_dataset_export: false,
+      tainted_training_dataset_payload: false,
+      feedback_pipeline_write: true,
+      tainted_feedback_payload: true,
+      feedback_auto_promotion: true,
+      tainted_feedback_routing: true,
+      external_write: true,
+      destructive_action: false,
+      read_only_hint_conflict: false,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_external_network_call: false,
+      handler_external_write: false,
+      handler_external_service_write: false,
+      handler_secret_env_access: true,
+      handler_model_visible_output: true,
+      handler_secret_to_output: false,
+      handler_database_query: false,
+      handler_database_write: false,
+      handler_embedding_provider_call: false,
+      handler_memory_write: false,
+      handler_telemetry_export: false,
+      handler_prompt_cache_write: false,
+      handler_training_dataset_export: false,
+      handler_tainted_training_dataset_payload: false,
+      handler_feedback_pipeline_write: true,
+      handler_tainted_feedback_payload: true,
+      handler_feedback_auto_promotion: true,
+      handler_tainted_feedback_routing: true,
+      handler_shell_execution: false,
+      handler_dynamic_code_execution: false,
+      handler_unsafe_deserialization: false,
+      handler_filesystem_read: false,
+      handler_filesystem_write: false,
+      handler_filesystem_delete: false,
+      handler_signal_count: 5,
+      open_world_schema: false
+    });
+    expect(sourceFeedbackAutoPromotionTool?.metadata.authority_classes).toEqual([
+      "content_input",
+      "customer_data_input",
+      "external_write",
+      "feedback_auto_promotion",
+      "feedback_pipeline_write",
+      "handler_feedback_auto_promotion",
+      "handler_feedback_pipeline_write",
+      "handler_secret_env_access",
+      "handler_tainted_feedback_payload",
+      "handler_tainted_feedback_routing",
+      "memory_access",
+      "pii_input",
+      "secret_env_access",
+      "tainted_feedback_payload",
+      "tainted_feedback_routing"
+    ]);
+    expect(sourceFeedbackAutoPromotionTool?.metadata.handler_authority_classes).toEqual([
+      "handler_feedback_auto_promotion",
+      "handler_feedback_pipeline_write",
+      "handler_secret_env_access",
+      "handler_tainted_feedback_payload",
+      "handler_tainted_feedback_routing"
+    ]);
+    expect(sourceFeedbackAutoPromotionTool?.metadata.handler_env_key_names).toEqual(["SOURCE_FEEDBACK_PIPELINE_TOKEN"]);
+    expect(sourceFeedbackAutoPromotionTool?.metadata.schema_properties).toEqual([
+      "completion_text",
+      "customer_email",
+      "customer_feedback_text",
+      "customer_id",
+      "eval_set_id",
+      "feedback_dataset_id",
+      "memory_context",
+      "promotion_target",
+      "prompt_text",
+      "rating_value",
+      "retrieval_context",
+      "tool_trace_payload"
+    ]);
+    expect(sourceFeedbackAutoPromotionTool?.metadata.required_properties).toEqual([
+      "completion_text",
+      "customer_email",
+      "customer_feedback_text",
+      "customer_id",
+      "eval_set_id",
+      "feedback_dataset_id",
+      "memory_context",
+      "promotion_target",
+      "prompt_text",
+      "rating_value",
+      "retrieval_context",
+      "tool_trace_payload"
+    ]);
+    expect(JSON.stringify(sourceFeedbackAutoPromotionTool)).not.toContain("feedbackPipeline.promoteToTraining");
+    expect(JSON.stringify(sourceFeedbackAutoPromotionTool)).not.toContain("source feedback promoted");
+    expect(JSON.stringify(sourceFeedbackAutoPromotionTool)).not.toContain("Record caller supplied feedback");
     expect(sourceArtifactExportTool).toMatchObject({
       path: "mcp-source/customer-tools.ts",
       data_classes: ["confidential", "credential", "pii"],
@@ -4085,6 +4201,123 @@ describe("scanner", () => {
     expect(JSON.stringify(langchainTrainingDatasetExportTool)).not.toContain("training_dataset_client.append_record");
     expect(JSON.stringify(langchainTrainingDatasetExportTool)).not.toContain("framework training record exported");
     expect(JSON.stringify(langchainTrainingDatasetExportTool)).not.toContain("Export caller supplied support context");
+    expect(langchainFeedbackAutoPromotionTool).toMatchObject({
+      path: "framework-tools/langchain_tools.py",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["call", "publish", "remember", "send", "write"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(langchainFeedbackAutoPromotionTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_agent_framework_source_tool: true,
+      agent_framework_source_tool: true,
+      agent_framework_source_tool_framework: "langchain",
+      agent_framework_source_tool_registration_kind: "python_tool_decorator",
+      agent_framework_source_tool_argument_count: 12,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_content_like_input: true,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      training_dataset_export: false,
+      tainted_training_dataset_payload: false,
+      feedback_pipeline_write: true,
+      tainted_feedback_payload: true,
+      feedback_auto_promotion: true,
+      tainted_feedback_routing: true,
+      external_write: true,
+      destructive_action: false,
+      read_only_hint_conflict: false,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_external_network_call: false,
+      handler_external_write: false,
+      handler_external_service_write: false,
+      handler_secret_env_access: true,
+      handler_model_visible_output: true,
+      handler_secret_to_output: false,
+      handler_database_query: false,
+      handler_database_write: false,
+      handler_embedding_provider_call: false,
+      handler_memory_write: false,
+      handler_telemetry_export: false,
+      handler_prompt_cache_write: false,
+      handler_training_dataset_export: false,
+      handler_tainted_training_dataset_payload: false,
+      handler_feedback_pipeline_write: true,
+      handler_tainted_feedback_payload: true,
+      handler_feedback_auto_promotion: true,
+      handler_tainted_feedback_routing: true,
+      handler_shell_execution: false,
+      handler_dynamic_code_execution: false,
+      handler_unsafe_deserialization: false,
+      handler_filesystem_read: false,
+      handler_filesystem_write: false,
+      handler_filesystem_delete: false,
+      handler_signal_count: 5,
+      open_world_schema: false
+    });
+    expect(langchainFeedbackAutoPromotionTool?.metadata.authority_classes).toEqual([
+      "content_input",
+      "customer_data_input",
+      "external_write",
+      "feedback_auto_promotion",
+      "feedback_pipeline_write",
+      "handler_feedback_auto_promotion",
+      "handler_feedback_pipeline_write",
+      "handler_secret_env_access",
+      "handler_tainted_feedback_payload",
+      "handler_tainted_feedback_routing",
+      "memory_access",
+      "pii_input",
+      "secret_env_access",
+      "tainted_feedback_payload",
+      "tainted_feedback_routing"
+    ]);
+    expect(langchainFeedbackAutoPromotionTool?.metadata.handler_authority_classes).toEqual([
+      "handler_feedback_auto_promotion",
+      "handler_feedback_pipeline_write",
+      "handler_secret_env_access",
+      "handler_tainted_feedback_payload",
+      "handler_tainted_feedback_routing"
+    ]);
+    expect(langchainFeedbackAutoPromotionTool?.metadata.handler_env_key_names).toEqual([
+      "LANGCHAIN_FEEDBACK_PIPELINE_TOKEN"
+    ]);
+    expect(langchainFeedbackAutoPromotionTool?.metadata.schema_properties).toEqual([
+      "completion_text",
+      "customer_email",
+      "customer_feedback_text",
+      "customer_id",
+      "eval_set_id",
+      "feedback_dataset_id",
+      "memory_context",
+      "promotion_target",
+      "prompt_text",
+      "rating_value",
+      "retrieval_context",
+      "tool_trace_payload"
+    ]);
+    expect(langchainFeedbackAutoPromotionTool?.metadata.required_properties).toEqual([
+      "completion_text",
+      "customer_email",
+      "customer_feedback_text",
+      "customer_id",
+      "eval_set_id",
+      "feedback_dataset_id",
+      "memory_context",
+      "promotion_target",
+      "prompt_text",
+      "rating_value",
+      "retrieval_context",
+      "tool_trace_payload"
+    ]);
+    expect(JSON.stringify(langchainFeedbackAutoPromotionTool)).not.toContain("feedback_pipeline.promote_to_training");
+    expect(JSON.stringify(langchainFeedbackAutoPromotionTool)).not.toContain("framework feedback promoted");
+    expect(JSON.stringify(langchainFeedbackAutoPromotionTool)).not.toContain("Record caller supplied feedback");
     expect(langchainArtifactExportTool).toMatchObject({
       path: "framework-tools/langchain_tools.py",
       data_classes: ["confidential", "credential", "pii"],

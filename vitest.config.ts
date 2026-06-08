@@ -11,6 +11,7 @@ export default defineConfig({
     include: ["packages/**/*.test.ts"],
     globals: false,
     pool: "forks",
+    maxWorkers: 2,
     testTimeout: 15000
   }
 });
