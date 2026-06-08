@@ -540,6 +540,8 @@ describe("scanner", () => {
     const sourceDeleteTool = surfaces.tools.find((surface) => surface.name === "source_readonly_delete_workspace_file");
     const pythonExportTool = surfaces.tools.find((surface) => surface.name === "python_export_customer_record");
     const pythonDeleteTool = surfaces.tools.find((surface) => surface.name === "python_readonly_delete_workspace_file");
+    const langchainExportTool = surfaces.tools.find((surface) => surface.name === "langchain_export_customer_context");
+    const langchainDeleteTool = surfaces.tools.find((surface) => surface.name === "langchain_readonly_delete_workspace_path");
     expect(publishTool?.metadata).toMatchObject({
       parsed_tool_schema: true,
       external_write: true,
@@ -771,6 +773,87 @@ describe("scanner", () => {
       "python_signature"
     ]);
     expect(pythonDeleteTool?.metadata.required_properties).toEqual(["workspace_path"]);
+    expect(langchainExportTool).toMatchObject({
+      path: "framework-tools/langchain_tools.py",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["call", "publish", "send"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true
+    });
+    expect(langchainExportTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_agent_framework_source_tool: true,
+      agent_framework_source_tool: true,
+      agent_framework_source_tool_framework: "langchain",
+      agent_framework_source_tool_registration_kind: "python_tool_decorator",
+      agent_framework_source_tool_argument_count: 1,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      values_collected: false,
+      external_write: true,
+      accepts_secret_like_input: true,
+      accepts_content_like_input: true,
+      accepts_url_input: true,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      open_world_schema: false,
+      open_world_authority: false
+    });
+    expect(langchainExportTool?.metadata.agent_framework_source_tool_schema_styles).toEqual([
+      "agent_framework_source_tool",
+      "langchain",
+      "pydantic_model",
+      "python_signature",
+      "python_tool_decorator"
+    ]);
+    expect(langchainExportTool?.metadata.schema_properties).toEqual([
+      "authorization_token",
+      "customer_email",
+      "customer_reference",
+      "destination_webhook_url",
+      "source_payload_text"
+    ]);
+    expect(langchainExportTool?.metadata.required_properties).toEqual([
+      "authorization_token",
+      "customer_email",
+      "customer_reference",
+      "destination_webhook_url",
+      "source_payload_text"
+    ]);
+    expect(JSON.stringify(langchainExportTool)).not.toContain("framework queued");
+    expect(JSON.stringify(langchainExportTool)).not.toContain("Send customer context to a caller supplied webhook from LangChain");
+    expect(JSON.stringify(langchainExportTool)).not.toContain("LangChainCustomerWebhookRequest");
+    expect(JSON.stringify(langchainExportTool)).not.toContain("Caller supplied partner webhook");
+    expect(langchainDeleteTool).toMatchObject({
+      path: "framework-tools/langchain_tools.py",
+      actions: ["call", "delete", "read"],
+      side_effect: true,
+      external_reach: false,
+      secret_exposure: false
+    });
+    expect(langchainDeleteTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_agent_framework_source_tool: true,
+      agent_framework_source_tool: true,
+      agent_framework_source_tool_framework: "langchain",
+      agent_framework_source_tool_registration_kind: "structured_tool_from_function",
+      agent_framework_source_tool_argument_count: 2,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      destructive_action: true,
+      accepts_path_input: true,
+      open_world_schema: false
+    });
+    expect(langchainDeleteTool?.metadata.agent_framework_source_tool_schema_styles).toEqual([
+      "agent_framework_source_tool",
+      "langchain",
+      "python_signature",
+      "structured_tool_from_function"
+    ]);
+    expect(langchainDeleteTool?.metadata.required_properties).toEqual(["workspace_path"]);
+    expect(JSON.stringify(langchainDeleteTool)).not.toContain("framework deleted");
+    expect(JSON.stringify(langchainDeleteTool)).not.toContain("Delete a workspace path after model review from LangChain");
     const openApiTool = surfaces.tools.find((surface) => surface.path === "tools/support-openapi.yaml");
     expect(openApiTool).toMatchObject({
       name: "openapi:post:1",
@@ -5240,6 +5323,47 @@ describe("scanner", () => {
     expect(JSON.stringify(pythonSourceTool)).not.toContain("Read an approved internal documentation record");
     expect(JSON.stringify(pythonSourceTool)).not.toContain("InternalDocRequest");
     expect(JSON.stringify(pythonSourceTool)).not.toContain("Approved internal document request");
+
+    const langchainSourceTool = surfaces.tools.find((surface) => surface.name === "langchain_read_internal_doc");
+    expect(langchainSourceTool).toMatchObject({
+      path: "framework-tools/langchain_tools.py",
+      trust_level: "project",
+      data_classes: ["unknown"],
+      actions: ["call"],
+      side_effect: false,
+      external_reach: false,
+      secret_exposure: false,
+      untrusted_to_privileged: false
+    });
+    expect(langchainSourceTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_agent_framework_source_tool: true,
+      agent_framework_source_tool: true,
+      agent_framework_source_tool_framework: "langchain",
+      agent_framework_source_tool_registration_kind: "python_tool_decorator",
+      agent_framework_source_tool_argument_count: 1,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      values_collected: false,
+      external_write: false,
+      destructive_action: false,
+      read_only_hint_conflict: false,
+      open_world_schema: false,
+      open_world_authority: false
+    });
+    expect(langchainSourceTool?.metadata.agent_framework_source_tool_schema_styles).toEqual([
+      "agent_framework_source_tool",
+      "langchain",
+      "pydantic_model",
+      "python_signature",
+      "python_tool_decorator"
+    ]);
+    expect(langchainSourceTool?.metadata.schema_properties).toEqual(["document_id"]);
+    expect(langchainSourceTool?.metadata.required_properties).toEqual(["document_id"]);
+    expect(JSON.stringify(langchainSourceTool)).not.toContain("framework approved internal summary");
+    expect(JSON.stringify(langchainSourceTool)).not.toContain("Read approved internal documentation from LangChain");
+    expect(JSON.stringify(langchainSourceTool)).not.toContain("LangChainInternalDocRequest");
+    expect(JSON.stringify(langchainSourceTool)).not.toContain("Approved documentation identifier");
   });
 
   it("keeps approval-gated read-only hosted assistants scoped", async () => {

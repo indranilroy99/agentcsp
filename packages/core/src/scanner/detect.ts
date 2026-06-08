@@ -487,6 +487,10 @@ export async function detectSurfaces(files: WalkedFile[]): Promise<DetectedSurfa
       continue;
     }
 
+    if (isAgentFrameworkSourceToolPath(file.relativePath, basename) && detectAgentFrameworkSourceToolDefinitions(file, text, surfaces)) {
+      continue;
+    }
+
     if (isRuntimeConfigPath(file.relativePath, basename)) {
       detectRuntimeConfig(file, text, surfaces);
       continue;
@@ -24047,6 +24051,46 @@ function detectMcpSourceToolDefinitions(file: WalkedFile, text: string | undefin
   return true;
 }
 
+function detectAgentFrameworkSourceToolDefinitions(file: WalkedFile, text: string | undefined, surfaces: DetectedSurfaces): boolean {
+  const content = text ?? "";
+  if (!content.trim()) return false;
+
+  const extraction = extractAgentFrameworkSourceToolDefinitions(content, file.relativePath);
+  if (!extraction.sourceDetected) return false;
+
+  if (extraction.definitions.length === 0) {
+    addDiagnostic(surfaces, file, {
+      parser: "agent_framework_source",
+      code: "AGENT_FRAMEWORK_SOURCE_TOOL_UNPARSED",
+      reason: "Agent framework source file contained tool registration signals, but no bounded registration shape could be normalized. Raw source was redacted.",
+      severity: "info"
+    });
+    return true;
+  }
+
+  for (const definition of extraction.definitions) {
+    addToolDefinitionSurface(
+      file,
+      surfaces,
+      definition,
+      "Agent framework source-defined tool registration discovered as agent-callable capability metadata.",
+      {
+        parsed_agent_framework_source_tool: true,
+        agent_framework_source_tool: true,
+        agent_framework_source_tool_framework: definition.framework,
+        agent_framework_source_tool_registration_kind: definition.registrationKind,
+        agent_framework_source_tool_argument_count: definition.argumentCount,
+        agent_framework_source_tool_schema_styles: definition.schemaStyles,
+        source_tool_schema_redacted: true,
+        source_tool_handler_redacted: true,
+        values_collected: false
+      }
+    );
+  }
+
+  return true;
+}
+
 function addToolDefinitionSurface(
   file: WalkedFile,
   surfaces: DetectedSurfaces,
@@ -26455,6 +26499,15 @@ interface ExtractedMcpSourceToolDefinition extends ExtractedToolDefinition {
   schemaStyles: string[];
 }
 
+type AgentFrameworkSourceToolFramework = "crewai" | "langchain" | "openai_agents" | "unknown";
+
+interface ExtractedAgentFrameworkSourceToolDefinition extends ExtractedToolDefinition {
+  framework: AgentFrameworkSourceToolFramework;
+  registrationKind: "python_function_tool_decorator" | "python_tool_decorator" | "structured_tool_from_function";
+  argumentCount: number;
+  schemaStyles: string[];
+}
+
 interface OpenApiOperationPosture {
   openapi_operation_index: number;
   openapi_method: string;
@@ -26841,6 +26894,14 @@ function isMcpSourceToolPath(relativePath: string, basename: string): boolean {
   return true;
 }
 
+function isAgentFrameworkSourceToolPath(relativePath: string, basename: string): boolean {
+  const normalized = relativePath.replaceAll("\\", "/").toLowerCase();
+  const lowerBase = basename.toLowerCase();
+  if (!lowerBase.endsWith(".py")) return false;
+  if (/(^|\/)(dist|build|coverage|vendor|\.venv|venv|__pycache__)\//u.test(normalized)) return false;
+  return true;
+}
+
 function extractMcpSourceToolDefinitions(
   content: string,
   filePath: string
@@ -26868,6 +26929,45 @@ function hasMcpSourceToolRegistrationSignal(content: string, filePath: string): 
   return /\.\s*(?:registerTool|tool)\s*\(/u.test(content) ||
     /^\s*@[A-Za-z_$][\w$.]*\s*\.\s*tool\b/mu.test(content) ||
     /^\s*@tool\b/mu.test(content);
+}
+
+function extractAgentFrameworkSourceToolDefinitions(
+  content: string,
+  filePath: string
+): { definitions: ExtractedAgentFrameworkSourceToolDefinition[]; sourceDetected: boolean } {
+  if (!hasAgentFrameworkSourceToolRegistrationSignal(content, filePath)) {
+    return { definitions: [], sourceDetected: false };
+  }
+
+  const framework = inferAgentFrameworkSourceToolFramework(content, filePath);
+  const modelDefinitions = extractPythonModelDefinitions(content);
+  const functionSignatures = extractPythonFunctionSignatures(content);
+  const definitions = [
+    ...extractPythonAgentFrameworkDecoratorToolDefinitions(content, framework, modelDefinitions),
+    ...extractPythonStructuredToolDefinitions(content, framework, modelDefinitions, functionSignatures)
+  ].sort((a, b) => a.name.localeCompare(b.name) || a.registrationKind.localeCompare(b.registrationKind));
+
+  return { definitions, sourceDetected: true };
+}
+
+function hasAgentFrameworkSourceToolRegistrationSignal(content: string, filePath: string): boolean {
+  const normalizedPath = filePath.replaceAll("\\", "/").toLowerCase();
+  const frameworkSignal =
+    /\b(langchain|langgraph|crewai|crewai_tools|StructuredTool|BaseTool|function_tool)\b/iu.test(content) ||
+    /\bfrom\s+agents\s+import\b/iu.test(content) ||
+    /(^|\/)(agents?|agent-tools?|framework-tools?|langchain|langgraph|crewai|openai-agents)(?:\/|$)/iu.test(normalizedPath);
+  if (!frameworkSignal) return false;
+  return /^\s*@[A-Za-z_$][\w$.]*\s*\.\s*(?:function_tool|tool)\b/mu.test(content) ||
+    /^\s*@(function_tool|tool)\b/mu.test(content) ||
+    /\bStructuredTool\s*\.\s*from_function\s*\(/u.test(content);
+}
+
+function inferAgentFrameworkSourceToolFramework(content: string, filePath: string): AgentFrameworkSourceToolFramework {
+  const text = `${filePath} ${content}`;
+  if (/\b(crewai|crewai_tools|BaseTool)\b/iu.test(text)) return "crewai";
+  if (/\b(function_tool|from\s+agents\s+import|openai[_-]?agents)\b/iu.test(text)) return "openai_agents";
+  if (/\b(langchain|langgraph|StructuredTool)\b/iu.test(text)) return "langchain";
+  return "unknown";
 }
 
 interface McpSourceToolRegistrationBlock {
@@ -26962,6 +27062,107 @@ function extractPythonMcpSourceToolDefinitions(content: string): ExtractedMcpSou
       schemaStyles: pythonSourceSchemaStyles(decorator.text, signature, schema)
     });
     lineIndex = signature.endLine;
+  }
+
+  return definitions.sort((a, b) => a.name.localeCompare(b.name));
+}
+
+function extractPythonAgentFrameworkDecoratorToolDefinitions(
+  content: string,
+  framework: AgentFrameworkSourceToolFramework,
+  modelDefinitions: Map<string, PythonModelDefinition>
+): ExtractedAgentFrameworkSourceToolDefinition[] {
+  if (!/^\s*@\s*(?:[A-Za-z_$][\w$.]*\s*\.\s*)?(?:function_tool|tool)\b/mu.test(content)) return [];
+
+  const definitions: ExtractedAgentFrameworkSourceToolDefinition[] = [];
+  const lines = content.split(/\r?\n/u);
+  for (let lineIndex = 0; lineIndex < lines.length; lineIndex += 1) {
+    const line = lines[lineIndex] ?? "";
+    if (!/^\s*@\s*(?:[A-Za-z_$][\w$.]*\s*\.\s*)?(?:function_tool|tool)\b/u.test(line)) continue;
+
+    const decorator = collectPythonDecorator(lines, lineIndex);
+    if (!decorator) continue;
+    const signature = collectPythonFunctionSignature(lines, decorator.endLine + 1);
+    if (!signature) {
+      lineIndex = decorator.endLine;
+      continue;
+    }
+
+    const registrationKind = /\bfunction_tool\b/u.test(decorator.text)
+      ? "python_function_tool_decorator"
+      : "python_tool_decorator";
+    const name = pythonKeywordStringValue(decorator.text, ["name", "name_override"]) ??
+      pythonDecoratorFirstStringValue(decorator.text) ??
+      signature.name;
+    const description = pythonKeywordStringValue(decorator.text, ["description", "description_override"]) ?? "";
+    const schema = pythonSignatureSchema(signature, modelDefinitions);
+    definitions.push({
+      name,
+      description,
+      schemaProperties: schema.properties,
+      requiredProperties: schema.requiredProperties,
+      openWorldSchema: schema.openWorldSchema,
+      framework,
+      registrationKind,
+      argumentCount: signature.params.length,
+      schemaStyles: agentFrameworkSourceSchemaStyles(framework, registrationKind, signature, schema)
+    });
+    lineIndex = signature.endLine;
+  }
+
+  return definitions.sort((a, b) => a.name.localeCompare(b.name));
+}
+
+function extractPythonStructuredToolDefinitions(
+  content: string,
+  framework: AgentFrameworkSourceToolFramework,
+  modelDefinitions: Map<string, PythonModelDefinition>,
+  functionSignatures: Map<string, PythonFunctionSignature>
+): ExtractedAgentFrameworkSourceToolDefinition[] {
+  const definitions: ExtractedAgentFrameworkSourceToolDefinition[] = [];
+  const pattern = /\bStructuredTool\s*\.\s*from_function\s*\(/gu;
+  let match: RegExpExecArray | null;
+  while ((match = pattern.exec(content)) !== null) {
+    const openParenIndex = pattern.lastIndex - 1;
+    const closeParenIndex = findMatchingDelimiter(content, openParenIndex, "(", ")");
+    if (closeParenIndex === -1) continue;
+
+    const callText = content.slice(match.index, closeParenIndex + 1);
+    if (callText.length > 50000) {
+      pattern.lastIndex = closeParenIndex + 1;
+      continue;
+    }
+
+    const argsText = content.slice(openParenIndex + 1, closeParenIndex);
+    const args = splitTopLevelCommaList(argsText);
+    const functionName = pythonKeywordIdentifierValue(callText, ["func", "coroutine"]) ?? pythonIdentifierValue(args[0] ?? "");
+    const schemaModelName = pythonKeywordIdentifierValue(callText, ["args_schema", "schema"]);
+    const schemaModel = schemaModelName ? modelDefinitions.get(pythonIdentifierBaseName(schemaModelName)) : undefined;
+    const signature = functionName ? functionSignatures.get(pythonIdentifierBaseName(functionName)) : undefined;
+    if (!schemaModel && !signature) {
+      pattern.lastIndex = closeParenIndex + 1;
+      continue;
+    }
+
+    const schema = schemaModel ? pythonModelDefinitionSchema(schemaModel) : pythonSignatureSchema(signature as PythonFunctionSignature, modelDefinitions);
+    const name = pythonKeywordStringValue(callText, ["name"]) ?? (functionName ? pythonIdentifierBaseName(functionName) : undefined);
+    if (!name) {
+      pattern.lastIndex = closeParenIndex + 1;
+      continue;
+    }
+
+    definitions.push({
+      name,
+      description: pythonKeywordStringValue(callText, ["description"]) ?? "",
+      schemaProperties: schema.properties,
+      requiredProperties: schema.requiredProperties,
+      openWorldSchema: schema.openWorldSchema,
+      framework,
+      registrationKind: "structured_tool_from_function",
+      argumentCount: signature?.params.length ?? (schemaModel ? 1 : 0),
+      schemaStyles: agentFrameworkSourceSchemaStyles(framework, "structured_tool_from_function", signature, schema)
+    });
+    pattern.lastIndex = closeParenIndex + 1;
   }
 
   return definitions.sort((a, b) => a.name.localeCompare(b.name));
@@ -27068,6 +27269,20 @@ function collectPythonFunctionSignature(lines: string[], startLine: number): Pyt
     openWorldArgs,
     endLine
   };
+}
+
+function extractPythonFunctionSignatures(content: string): Map<string, PythonFunctionSignature> {
+  const lines = content.split(/\r?\n/u);
+  const signatures = new Map<string, PythonFunctionSignature>();
+  for (let lineIndex = 0; lineIndex < lines.length; lineIndex += 1) {
+    const line = lines[lineIndex] ?? "";
+    if (!/^\s*(?:async\s+)?def\s+[A-Za-z_]\w*\s*\(/u.test(line)) continue;
+    const signature = collectPythonFunctionSignature(lines, lineIndex);
+    if (!signature) continue;
+    signatures.set(signature.name, signature);
+    lineIndex = signature.endLine;
+  }
+  return signatures;
 }
 
 function normalizePythonParam(rawParam: string): { name: string; optional: boolean; openWorld: boolean; annotation?: string } | undefined {
@@ -27213,6 +27428,17 @@ function pythonSignatureSchema(signature: PythonFunctionSignature, models: Map<s
   };
 }
 
+function pythonModelDefinitionSchema(model: PythonModelDefinition): PythonSignatureSchema {
+  return {
+    properties: uniqueStrings(model.fields.map((field) => field.name)),
+    requiredProperties: uniqueStrings(model.fields.filter((field) => !field.optional).map((field) => field.name)),
+    openWorldSchema: model.openWorld,
+    referencedModelCount: 1,
+    referencedModelFieldCount: model.fields.length,
+    pydanticExtraAllow: model.openWorld
+  };
+}
+
 function pythonAnnotationModels(annotation: string, models: Map<string, PythonModelDefinition>): PythonModelDefinition[] {
   const normalizedAnnotation = annotation.replace(/["']/gu, "");
   const matchedModels: PythonModelDefinition[] = [];
@@ -27271,11 +27497,45 @@ function pythonKeywordStringValue(source: string, names: string[]): string | und
   return match?.[2];
 }
 
+function pythonDecoratorFirstStringValue(source: string): string | undefined {
+  const match = source.match(/@\s*(?:[A-Za-z_$][\w$.]*\s*\.\s*)?(?:function_tool|tool)\s*\(\s*(["'])([\s\S]{0,500}?)\1/u);
+  return match?.[2];
+}
+
+function pythonKeywordIdentifierValue(source: string, names: string[]): string | undefined {
+  const pattern = new RegExp(`\\b(?:${names.map(escapeRegExp).join("|")})\\s*=\\s*([A-Za-z_][\\w.]{0,200})`, "u");
+  const match = source.match(pattern);
+  return match?.[1];
+}
+
+function pythonIdentifierValue(source: string): string | undefined {
+  const match = source.trim().match(/^([A-Za-z_][\w.]{0,200})$/u);
+  return match?.[1];
+}
+
+function pythonIdentifierBaseName(identifier: string): string {
+  return identifier.split(".").pop() ?? identifier;
+}
+
 function pythonSourceSchemaStyles(decorator: string, signature: PythonFunctionSignature, schema: PythonSignatureSchema): string[] {
   const styles = new Set<string>(["python_signature"]);
   if (/FastMCP|fastmcp|mcp\.server/iu.test(decorator)) styles.add("fastmcp_decorator");
   if (/annotations\s*=/u.test(decorator)) styles.add("mcp_annotations");
   if (signature.openWorldArgs) styles.add("python_kwargs");
+  if (schema.referencedModelCount > 0) styles.add("pydantic_model");
+  if (schema.pydanticExtraAllow) styles.add("pydantic_extra_allow");
+  return [...styles].sort((a, b) => a.localeCompare(b));
+}
+
+function agentFrameworkSourceSchemaStyles(
+  framework: AgentFrameworkSourceToolFramework,
+  registrationKind: ExtractedAgentFrameworkSourceToolDefinition["registrationKind"],
+  signature: PythonFunctionSignature | undefined,
+  schema: PythonSignatureSchema
+): string[] {
+  const styles = new Set<string>(["agent_framework_source_tool", framework, registrationKind]);
+  if (signature) styles.add("python_signature");
+  if (signature?.openWorldArgs) styles.add("python_kwargs");
   if (schema.referencedModelCount > 0) styles.add("pydantic_model");
   if (schema.pydanticExtraAllow) styles.add("pydantic_extra_allow");
   return [...styles].sort((a, b) => a.localeCompare(b));

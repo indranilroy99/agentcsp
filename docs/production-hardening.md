@@ -41,7 +41,7 @@ A finding should be considered production-grade when it includes:
 - MCP client root, sampling, and elicitation metadata for remote context requests, credential-path and host-root scope, sampling context categories, sensitive field categories, redaction/sanitization/filtering posture, and approval posture without emitting raw root paths, root names, sampling prompts, sampling labels, elicitation schemas, requested field names, or token placeholders
 - MCP OAuth authorization metadata for remote authorization endpoints, plaintext endpoint posture, dynamic client registration, device authorization flow exposure, redirect/callback capture posture, PKCE/state/resource-indicator posture, scope categories, refresh-token storage, token forwarding, and untrusted server selection without emitting endpoints, redirect URIs, callback selectors, device codes, verification URI selectors, raw scopes, selectors, token-cache paths, data labels, or token placeholders
 - MCP tool-catalog metadata for dynamic remote tool supply, model-visible descriptions, pinning, signature/provenance verification, review posture, approval gates, privileged authority categories, and sensitive context without emitting catalog URLs, source values, tool names, context labels, or token placeholders
-- TypeScript/JavaScript MCP SDK and Python/FastMCP source registration metadata for bounded `server.tool(...)`, `server.registerTool(...)`, and `@mcp.tool(...)` extraction, including tool names, input field names, local Pydantic/BaseModel request-model field expansion, read-only/idempotency hints, open-world schema posture, and redacted source/handler boundaries without emitting handler bodies, source snippets, model class names, docstrings, or raw descriptions
+- TypeScript/JavaScript MCP SDK, Python/FastMCP, and Python agent-framework source registration metadata for bounded `server.tool(...)`, `server.registerTool(...)`, `@mcp.tool(...)`, LangChain/LangGraph `@tool(...)`, `StructuredTool.from_function(...)`, OpenAI Agents `@function_tool`, and CrewAI-style `@tool(...)` extraction, including tool names, input field names, local Pydantic/BaseModel request-model field expansion, read-only/idempotency hints where available, open-world schema posture, and redacted source/handler boundaries without emitting handler bodies, source snippets, model class names, docstrings, or raw descriptions
 - tool-name collision metadata for authority ambiguity and shadowing
 - tool-schema integrity signals for open-world privileged arguments and read-only hint conflicts
 - model-visible tool-description injection signals without emitting raw descriptions
@@ -342,7 +342,7 @@ Every production change should pass:
 
 ## Near-Term Production Work
 
-- Continue expanding MCP and tool schema parsing beyond config files, including more SDK registration shapes, broader Python/Pydantic schema extraction, and framework-specific adapters.
+- Continue expanding source-defined tool parsing beyond config files, including more MCP SDK registration shapes, broader Python/Pydantic schema extraction, richer framework-specific adapters, and additional agent framework languages.
 - Continue expanding runtime configuration inventory across more agent frameworks.
 - Continue expanding graph edges between context sources, capabilities, data classes, and side effects while keeping heuristic-only paths out of prioritized attack paths.
 - Add attack-path regression fixtures for common production AI architectures.
