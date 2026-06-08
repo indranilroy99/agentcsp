@@ -5992,8 +5992,11 @@ describe("rule engine", () => {
       source_tool_handler_redacted: true,
       external_write: true,
       accepts_secret_like_input: true,
-      accepts_pii_like_input: true
+      accepts_pii_like_input: true,
+      handler_external_write: true,
+      handler_secret_env_access: true
     });
+    expect(sourceExternalSecretFinding?.matched_object.metadata.handler_env_key_names).toEqual(["SOURCE_EXPORT_TOKEN"]);
     expect(sourceExternalSecretFinding?.severity).toBe("critical");
     expect(sourceExternalSecretFinding?.confidence).toBe("very_high");
     expect(JSON.stringify(sourceExternalSecretFinding)).not.toContain("queued");
@@ -6009,8 +6012,11 @@ describe("rule engine", () => {
       source_tool_handler_redacted: true,
       external_write: true,
       accepts_secret_like_input: true,
-      accepts_pii_like_input: true
+      accepts_pii_like_input: true,
+      handler_external_write: true,
+      handler_secret_env_access: true
     });
+    expect(pythonExternalSecretFinding?.matched_object.metadata.handler_env_key_names).toEqual(["PYTHON_EXPORT_TOKEN"]);
     expect(pythonExternalSecretFinding?.severity).toBe("critical");
     expect(pythonExternalSecretFinding?.confidence).toBe("very_high");
     expect(JSON.stringify(pythonExternalSecretFinding)).not.toContain("queued");
@@ -6027,8 +6033,11 @@ describe("rule engine", () => {
       source_tool_handler_redacted: true,
       external_write: true,
       accepts_secret_like_input: true,
-      accepts_pii_like_input: true
+      accepts_pii_like_input: true,
+      handler_external_write: true,
+      handler_secret_env_access: true
     });
+    expect(langchainExternalSecretFinding?.matched_object.metadata.handler_env_key_names).toEqual(["LANGCHAIN_EXPORT_TOKEN"]);
     expect(langchainExternalSecretFinding?.severity).toBe("critical");
     expect(langchainExternalSecretFinding?.confidence).toBe("very_high");
     expect(JSON.stringify(langchainExternalSecretFinding)).not.toContain("framework queued");
@@ -6046,12 +6055,31 @@ describe("rule engine", () => {
       source_tool_handler_redacted: true,
       external_write: true,
       accepts_secret_like_input: true,
-      accepts_pii_like_input: true
+      accepts_pii_like_input: true,
+      handler_external_write: true,
+      handler_secret_env_access: true
     });
+    expect(aiSdkExternalSecretFinding?.matched_object.metadata.handler_env_key_names).toEqual(["AI_SDK_EXPORT_TOKEN"]);
     expect(aiSdkExternalSecretFinding?.severity).toBe("critical");
     expect(aiSdkExternalSecretFinding?.confidence).toBe("very_high");
     expect(JSON.stringify(aiSdkExternalSecretFinding)).not.toContain("ai sdk queued");
     expect(JSON.stringify(aiSdkExternalSecretFinding)).not.toContain("Send AI SDK customer context");
+    const sourceHandlerSecretExternalFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-013");
+    expect(sourceHandlerSecretExternalFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
+      "aiSdkExportCustomerContext",
+      "langchain_export_customer_context",
+      "python_export_customer_record",
+      "source_export_customer_record"
+    ]);
+    expect(sourceHandlerSecretExternalFindings.every((finding) => finding.severity === "critical")).toBe(true);
+    expect(sourceHandlerSecretExternalFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerSecretExternalFindings.every((finding) => finding.recommended_control === "require_approval")).toBe(true);
+    expect(sourceHandlerSecretExternalFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
+    expect(sourceHandlerSecretExternalFindings.every((finding) => finding.matched_object.metadata.handler_external_write === true)).toBe(true);
+    expect(sourceHandlerSecretExternalFindings.every((finding) => finding.matched_object.metadata.handler_secret_env_access === true)).toBe(true);
+    expect(JSON.stringify(sourceHandlerSecretExternalFindings)).not.toContain("fetch(");
+    expect(JSON.stringify(sourceHandlerSecretExternalFindings)).not.toContain("httpx.post");
+    expect(JSON.stringify(sourceHandlerSecretExternalFindings)).not.toContain("Bearer");
     const toolDescriptionInjectionFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-011");
     expect(toolDescriptionInjectionFindings).toHaveLength(1);
     expect(toolDescriptionInjectionFindings[0]?.matched_object.name).toBe("publish_summary");

@@ -18,6 +18,8 @@ For authorization-broker rules, require concrete grant-risk correlation such as 
 
 For OpenAPI and Swagger tool-import rules, require concrete agent-authority correlation such as agent import, authenticated external operation, write or destructive method, user-controlled request inputs, sensitive data categories, and missing approval. Do not match on raw API text alone.
 
+For source-defined tool handler rules, require concrete handler-authority correlation such as parsed MCP SDK or agent-framework tool registration, redacted handler-body analysis, environment-backed secret access, external write or mutation authority, user-controlled content/PII/customer inputs, and no raw handler source in evidence. Do not flag a source tool merely because a handler mentions a network library or an environment lookup in isolation.
+
 For MCP environment-exposure rules, require concrete ambient-secret correlation such as broad process-environment passthrough, wildcard or sensitive env patterns, external or third-party MCP reach, credential evidence, and side-effecting agent-callable authority. Do not flag explicit least-privilege env allowlists merely because they name a single credential key.
 
 For MCP tool-catalog trust rules, require concrete mutable-tool-supply correlation such as a remote MCP server, dynamic refresh, model-visible tool descriptions, remote schema trust, disabled pinning, disabled signature or provenance verification, unreviewed tools, privileged tool categories, credential evidence, and missing approval. Do not flag pinned static manifests that keep remote descriptions untrusted, require review, and expose only read-only tools.

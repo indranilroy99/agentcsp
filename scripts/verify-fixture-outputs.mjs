@@ -647,6 +647,10 @@ const leakPatterns = [
   /Sensitive partner webhook schema hint/u,
   /Sensitive workspace deletion schema hint/u,
   /Approved internal document schema hint/u,
+  /fetch\s*\(/u,
+  /httpx\.post/u,
+  /os\.getenv/u,
+  /Bearer/u,
   /Post customer records and confidential support notes/u,
   /Send customer context to a caller supplied webhook/u,
   /Delete a workspace file by path after model review/u,
@@ -661,8 +665,8 @@ const leakPatterns = [
 const vulnerable = await readScanOutput(vulnerableOutput, { sarifRequired: true });
 const safe = await readScanOutput(safeOutput, { sarifRequired: false });
 
-assertEqual(vulnerable.manifest.findings.length, 263, "vulnerable manifest finding count");
-assertEqual(vulnerable.findings.length, 263, "vulnerable findings.json count");
+assertEqual(vulnerable.manifest.findings.length, 267, "vulnerable manifest finding count");
+assertEqual(vulnerable.findings.length, 267, "vulnerable findings.json count");
 assertEqual(vulnerable.manifest.attack_paths.length, 15, "vulnerable attack path count");
 assertEqual(vulnerable.manifest.static_blast_radius?.critical_attack_paths, 15, "vulnerable critical attack path count");
 assertEqual(vulnerable.manifest.diagnostics.length, 0, "vulnerable diagnostics count");
@@ -672,6 +676,7 @@ for (const ruleId of [
   "AGENTCSP-TOOL-010",
   "AGENTCSP-TOOL-011",
   "AGENTCSP-TOOL-012",
+  "AGENTCSP-TOOL-013",
   "AGENTCSP-RUNTIME-007",
   "AGENTCSP-RUNTIME-008",
   "AGENTCSP-RUNTIME-123",

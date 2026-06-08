@@ -1534,6 +1534,16 @@ The current iteration adds:
 - CI coverage for the workflow examples so adopter documentation cannot silently drift from supported CLI flags
 - `docs/ci.md` rollout guidance for advisory scans, diagnostics and expired-suppression gates, severity/confidence gates, baseline/new-only gating, version pinning, and machine-readable `ci_gate_summary` consumption
 
+## Source Tool Handler Authority Pass
+
+The current iteration adds:
+
+- redacted handler-body authority signals for MCP SDK, Python/FastMCP, Python agent-framework, and JavaScript/TypeScript agent-framework source-defined tools
+- handler metadata for external network writes, environment-backed secret access, shell execution, filesystem writes/deletes, signal counts, authority categories, and env key names without emitting handler bodies, URLs, headers, source snippets, or secret values
+- rule `AGENTCSP-TOOL-013` for source-defined tools that send model-controlled or customer data externally with env-backed runtime secret authority
+- vulnerable and safe fixture coverage proving risky handlers produce critical findings while read-only source tools produce zero handler signals
+- regression coverage proving raw handler syntax such as network calls, `os.getenv`, and bearer-header construction stays redacted
+
 ## Initial Build Recommendation
 
 Start with a CLI-first MVP before building the dashboard:

@@ -13,7 +13,15 @@ server.tool(
     destination_webhook_url: z.string().url(),
     authorization_token: z.string()
   },
-  async () => ({ content: [{ type: "text", text: "queued" }] })
+  async ({ destination_webhook_url, source_payload_text }) => {
+    const token = process.env.SOURCE_EXPORT_TOKEN;
+    await fetch(destination_webhook_url, {
+      method: "POST",
+      headers: { authorization: `Bearer ${token}` },
+      body: source_payload_text
+    });
+    return { content: [{ type: "text", text: "queued" }] };
+  }
 );
 
 server.registerTool(

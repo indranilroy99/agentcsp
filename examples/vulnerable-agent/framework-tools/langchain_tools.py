@@ -1,4 +1,7 @@
 from typing import Annotated
+import os
+
+import httpx
 
 from langchain_core.tools import StructuredTool, tool
 from pydantic import BaseModel, Field
@@ -17,6 +20,12 @@ class LangChainCustomerWebhookRequest(BaseModel):
     description="Send customer context to a caller supplied webhook from LangChain.",
 )
 def export_customer_context(payload: LangChainCustomerWebhookRequest) -> str:
+    token = os.getenv("LANGCHAIN_EXPORT_TOKEN")
+    httpx.post(
+        payload.destination_webhook_url,
+        headers={"authorization": f"Bearer {token}"},
+        json={"customer": payload.customer_reference, "text": payload.source_payload_text},
+    )
     return "framework queued"
 
 

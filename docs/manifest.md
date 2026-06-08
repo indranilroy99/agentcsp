@@ -306,6 +306,17 @@ Tool metadata may include:
 - `read_only_hint_conflict`
 - `open_world_authority`
 - `open_world_schema`
+- `handler_body_analyzed`
+- `handler_body_redacted`
+- `handler_external_network_call`
+- `handler_external_write`
+- `handler_secret_env_access`
+- `handler_shell_execution`
+- `handler_filesystem_write`
+- `handler_filesystem_delete`
+- `handler_authority_classes`
+- `handler_env_key_names`
+- `handler_signal_count`
 - `model_visible_description_analyzed`
 - `model_visible_description_redacted`
 - `model_visible_description_instruction_like_content`
@@ -354,7 +365,7 @@ Source-defined agent-framework tool metadata may additionally include:
 - `source_tool_handler_redacted`
 - `values_collected`
 
-For Python/FastMCP and Python agent-framework tools, function signatures are reduced to parameter names, required/optional posture, decorator metadata, and local Pydantic/BaseModel field names when a request model is referenced. For JavaScript and TypeScript agent-framework tools, bounded inline or locally referenced Zod/JSON-schema-like field maps are reduced to field names, required posture, framework, and registration kind. Model class names, local schema variable names, `Field(...)` bodies, handler functions, function bodies, docstrings, raw schema objects, and raw descriptions are not emitted. These fields let rules reason about concrete agent-callable authority without dumping raw tool descriptions, schemas, source snippets, or handler bodies into the manifest. Model-visible descriptions are treated as prompt surface: AgentCSP records redacted instruction, untrusted-context, external, memory, secret, and data-egress signals so rules can detect poisoned tool metadata attached to side-effecting authority.
+For Python/FastMCP and Python agent-framework tools, function signatures are reduced to parameter names, required/optional posture, decorator metadata, and local Pydantic/BaseModel field names when a request model is referenced. For JavaScript and TypeScript agent-framework tools, bounded inline or locally referenced Zod/JSON-schema-like field maps are reduced to field names, required posture, framework, and registration kind. Source handler bodies are reduced to redacted authority signals such as external network writes, environment-backed secret access, shell execution, filesystem writes/deletes, signal counts, and environment key names. Model class names, local schema variable names, `Field(...)` bodies, handler functions, function bodies, docstrings, raw schema objects, raw URLs, header values, and raw descriptions are not emitted. These fields let rules reason about concrete agent-callable authority without dumping raw tool descriptions, schemas, source snippets, or handler bodies into the manifest. Model-visible descriptions are treated as prompt surface: AgentCSP records redacted instruction, untrusted-context, external, memory, secret, and data-egress signals so rules can detect poisoned tool metadata attached to side-effecting authority.
 
 OpenAPI and Swagger files imported as agent tools are also normalized into `tool` objects. Metadata may include:
 

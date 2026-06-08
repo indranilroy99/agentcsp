@@ -24140,6 +24140,7 @@ function addToolDefinitionSurface(
       read_only_hint_conflict: authority.read_only_hint_conflict,
       open_world_authority: authority.open_world_authority,
       open_world_schema: definition.openWorldSchema,
+      ...sourceToolHandlerSignalMetadata(definition.handlerSignals),
       ...modelVisibleDescription,
       ...metadata
     }
@@ -26491,6 +26492,20 @@ interface ExtractedToolDefinition {
     idempotentHint?: boolean;
   };
   openWorldSchema: boolean;
+  handlerSignals?: SourceToolHandlerSignals;
+}
+
+interface SourceToolHandlerSignals {
+  handlerBodyAnalyzed: boolean;
+  handlerExternalNetworkCall: boolean;
+  handlerExternalWrite: boolean;
+  handlerSecretEnvAccess: boolean;
+  handlerShellExecution: boolean;
+  handlerFilesystemWrite: boolean;
+  handlerFilesystemDelete: boolean;
+  handlerAuthorityClasses: string[];
+  handlerEnvKeyNames: string[];
+  handlerSignalCount: number;
 }
 
 interface ExtractedMcpSourceToolDefinition extends ExtractedToolDefinition {
@@ -26891,6 +26906,135 @@ function normalizeToolDefinition(value: unknown): ExtractedToolDefinition | unde
   };
 }
 
+function sourceToolHandlerSignalMetadata(signals: SourceToolHandlerSignals | undefined): Record<string, unknown> {
+  if (!signals) return {};
+  return {
+    handler_body_analyzed: signals.handlerBodyAnalyzed,
+    handler_body_redacted: true,
+    handler_external_network_call: signals.handlerExternalNetworkCall,
+    handler_external_write: signals.handlerExternalWrite,
+    handler_secret_env_access: signals.handlerSecretEnvAccess,
+    handler_shell_execution: signals.handlerShellExecution,
+    handler_filesystem_write: signals.handlerFilesystemWrite,
+    handler_filesystem_delete: signals.handlerFilesystemDelete,
+    handler_authority_classes: signals.handlerAuthorityClasses,
+    handler_env_key_names: signals.handlerEnvKeyNames,
+    handler_signal_count: signals.handlerSignalCount
+  };
+}
+
+function classifySourceToolHandlerSignals(
+  source: string | undefined,
+  language: "javascript" | "python"
+): SourceToolHandlerSignals | undefined {
+  const handlerSource = source?.trim();
+  if (!handlerSource) return undefined;
+
+  const envKeyNames = language === "javascript"
+    ? extractJavaScriptHandlerEnvKeyNames(handlerSource)
+    : extractPythonHandlerEnvKeyNames(handlerSource);
+  const externalNetworkCall = language === "javascript"
+    ? hasJavaScriptHandlerNetworkCall(handlerSource)
+    : hasPythonHandlerNetworkCall(handlerSource);
+  const externalWrite = language === "javascript"
+    ? hasJavaScriptHandlerExternalWrite(handlerSource)
+    : hasPythonHandlerExternalWrite(handlerSource);
+  const secretEnvAccess = envKeyNames.length > 0 || (language === "javascript"
+    ? /\b(?:process|Deno|Bun)\s*\.\s*env\b/u.test(handlerSource)
+    : /\b(?:os\s*\.\s*(?:environ|getenv)|dotenv)\b/u.test(handlerSource));
+  const shellExecution = language === "javascript"
+    ? /\b(?:child_process|execFile|spawn|execSync|exec\s*\(|spawnSync|Bun\s*\.\s*spawn|Deno\s*\.\s*Command)\b/u.test(handlerSource)
+    : /\b(?:subprocess\s*\.|os\s*\.\s*system|pty\s*\.|shlex\s*\.|commands\s*\.)/u.test(handlerSource);
+  const filesystemWrite = language === "javascript"
+    ? /\b(?:fs|fsPromises|promises)\s*\.\s*(?:writeFile|appendFile|copyFile|rename|mkdir|cp)\b|\bwriteFile\s*\(/u.test(handlerSource)
+    : /\b(?:open\s*\([^)]*["'][wa+]|Path\s*\([^)]*\)\s*\.\s*(?:write_text|write_bytes)|shutil\s*\.\s*(?:copy|copyfile|move))\b/u.test(handlerSource);
+  const filesystemDelete = language === "javascript"
+    ? /\b(?:fs|fsPromises|promises)\s*\.\s*(?:rm|unlink|rmdir)\b|\b(?:rm|unlink|rmdir)\s*\(/u.test(handlerSource)
+    : /\b(?:os\s*\.\s*(?:remove|unlink|rmdir)|shutil\s*\.\s*rmtree|Path\s*\([^)]*\)\s*\.\s*(?:unlink|rmdir))\b/u.test(handlerSource);
+
+  const classes = new Set<string>();
+  if (externalNetworkCall) classes.add("handler_network_access");
+  if (externalWrite) classes.add("handler_external_write");
+  if (secretEnvAccess) classes.add("handler_secret_env_access");
+  if (shellExecution) classes.add("handler_shell_execution");
+  if (filesystemWrite) classes.add("handler_filesystem_write");
+  if (filesystemDelete) classes.add("handler_filesystem_delete");
+
+  return {
+    handlerBodyAnalyzed: true,
+    handlerExternalNetworkCall: externalNetworkCall,
+    handlerExternalWrite: externalWrite,
+    handlerSecretEnvAccess: secretEnvAccess,
+    handlerShellExecution: shellExecution,
+    handlerFilesystemWrite: filesystemWrite,
+    handlerFilesystemDelete: filesystemDelete,
+    handlerAuthorityClasses: [...classes].sort((a, b) => a.localeCompare(b)),
+    handlerEnvKeyNames: envKeyNames,
+    handlerSignalCount: classes.size
+  };
+}
+
+function extractJavaScriptHandlerEnvKeyNames(source: string): string[] {
+  const keys = new Set<string>();
+  const patterns = [
+    /\b(?:process|Bun)\s*\.\s*env\s*\.\s*([A-Z_][A-Z0-9_]*)\b/giu,
+    /\b(?:process|Bun)\s*\.\s*env\s*\[\s*(["'`])([A-Z_][A-Z0-9_]*)\1\s*\]/giu,
+    /\bDeno\s*\.\s*env\s*\.\s*get\s*\(\s*(["'`])([A-Z_][A-Z0-9_]*)\1\s*\)/giu
+  ];
+  for (const pattern of patterns) {
+    let match: RegExpExecArray | null;
+    while ((match = pattern.exec(source)) !== null) {
+      const key = match[2] ?? match[1];
+      if (key) keys.add(key);
+      if (match[0].length === 0) pattern.lastIndex += 1;
+    }
+  }
+  return [...keys].sort((a, b) => a.localeCompare(b));
+}
+
+function extractPythonHandlerEnvKeyNames(source: string): string[] {
+  const keys = new Set<string>();
+  const patterns = [
+    /\bos\s*\.\s*getenv\s*\(\s*(["'])([A-Z_][A-Z0-9_]*)\1/giu,
+    /\bos\s*\.\s*environ\s*\[\s*(["'])([A-Z_][A-Z0-9_]*)\1\s*\]/giu,
+    /\bos\s*\.\s*environ\s*\.\s*get\s*\(\s*(["'])([A-Z_][A-Z0-9_]*)\1/giu
+  ];
+  for (const pattern of patterns) {
+    let match: RegExpExecArray | null;
+    while ((match = pattern.exec(source)) !== null) {
+      if (match[2]) keys.add(match[2]);
+      if (match[0].length === 0) pattern.lastIndex += 1;
+    }
+  }
+  return [...keys].sort((a, b) => a.localeCompare(b));
+}
+
+function hasJavaScriptHandlerNetworkCall(source: string): boolean {
+  return /\b(?:fetch|axios|got|undici|request)\s*\(|\b(?:http|https)\s*\.\s*(?:request|get)\s*\(|\bnew\s+(?:WebSocket|EventSource)\s*\(/u.test(
+    source
+  );
+}
+
+function hasPythonHandlerNetworkCall(source: string): boolean {
+  return /\b(?:requests|httpx)\s*\.\s*(?:get|post|put|patch|delete|request)\s*\(|\baiohttp\s*\.|\burllib\s*\.\s*request|\burlopen\s*\(/u.test(
+    source
+  );
+}
+
+function hasJavaScriptHandlerExternalWrite(source: string): boolean {
+  return hasJavaScriptHandlerNetworkCall(source) &&
+    /\b(?:method\s*:\s*(["'`])(?:POST|PUT|PATCH|DELETE)\1|post|put|patch|delete|send|publish|upload|webhook|slack|email)\b/iu.test(
+      source
+    );
+}
+
+function hasPythonHandlerExternalWrite(source: string): boolean {
+  return hasPythonHandlerNetworkCall(source) &&
+    /\b(?:post|put|patch|delete|send|publish|upload|webhook|slack|email|method\s*=\s*(["'])(?:POST|PUT|PATCH|DELETE)\1)\b/iu.test(
+      source
+    );
+}
+
 function isMcpSourceToolPath(relativePath: string, basename: string): boolean {
   const normalized = relativePath.replaceAll("\\", "/").toLowerCase();
   const lowerBase = basename.toLowerCase();
@@ -27020,6 +27164,10 @@ function normalizeMcpSourceToolRegistration(block: McpSourceToolRegistrationBloc
   const schemaProperties = extractSourceSchemaProperties(schemaSource);
   const requiredProperties = sourceSchemaRequiredProperties(schemaSource, schemaProperties);
   const annotationsSource = sourceToolAnnotationsSource(block.registrationKind, block.args) ?? block.callText;
+  const handlerSignals = classifySourceToolHandlerSignals(
+    sourceToolHandlerSource(block.registrationKind, block.args),
+    "javascript"
+  );
   return {
     name,
     description,
@@ -27032,7 +27180,8 @@ function normalizeMcpSourceToolRegistration(block: McpSourceToolRegistrationBloc
     openWorldSchema: !hasClosedSourceSchemaSignal(schemaSource),
     registrationKind: block.registrationKind,
     argumentCount: block.args.length,
-    schemaStyles: sourceSchemaStyles(schemaSource)
+    schemaStyles: sourceSchemaStyles(schemaSource),
+    handlerSignals
   };
 }
 
@@ -27057,6 +27206,7 @@ function extractPythonMcpSourceToolDefinitions(content: string): ExtractedMcpSou
     const name = pythonKeywordStringValue(decorator.text, ["name"]) ?? signature.name;
     const description = pythonKeywordStringValue(decorator.text, ["description"]) ?? "";
     const schema = pythonSignatureSchema(signature, modelDefinitions);
+    const handlerSignals = classifySourceToolHandlerSignals(signature.bodySource, "python");
     definitions.push({
       name,
       description,
@@ -27069,7 +27219,8 @@ function extractPythonMcpSourceToolDefinitions(content: string): ExtractedMcpSou
       openWorldSchema: schema.openWorldSchema,
       registrationKind: "python_tool_decorator",
       argumentCount: signature.params.length,
-      schemaStyles: pythonSourceSchemaStyles(decorator.text, signature, schema)
+      schemaStyles: pythonSourceSchemaStyles(decorator.text, signature, schema),
+      handlerSignals
     });
     lineIndex = signature.endLine;
   }
@@ -27106,6 +27257,7 @@ function extractPythonAgentFrameworkDecoratorToolDefinitions(
       signature.name;
     const description = pythonKeywordStringValue(decorator.text, ["description", "description_override"]) ?? "";
     const schema = pythonSignatureSchema(signature, modelDefinitions);
+    const handlerSignals = classifySourceToolHandlerSignals(signature.bodySource, "python");
     definitions.push({
       name,
       description,
@@ -27115,7 +27267,8 @@ function extractPythonAgentFrameworkDecoratorToolDefinitions(
       framework,
       registrationKind,
       argumentCount: signature.params.length,
-      schemaStyles: agentFrameworkSourceSchemaStyles(framework, registrationKind, signature, schema)
+      schemaStyles: agentFrameworkSourceSchemaStyles(framework, registrationKind, signature, schema),
+      handlerSignals
     });
     lineIndex = signature.endLine;
   }
@@ -27170,7 +27323,8 @@ function extractPythonStructuredToolDefinitions(
       framework,
       registrationKind: "structured_tool_from_function",
       argumentCount: signature?.params.length ?? (schemaModel ? 1 : 0),
-      schemaStyles: agentFrameworkSourceSchemaStyles(framework, "structured_tool_from_function", signature, schema)
+      schemaStyles: agentFrameworkSourceSchemaStyles(framework, "structured_tool_from_function", signature, schema),
+      handlerSignals: classifySourceToolHandlerSignals(signature?.bodySource, "python")
     });
     pattern.lastIndex = closeParenIndex + 1;
   }
@@ -27236,6 +27390,10 @@ function normalizeJavaScriptToolFactoryDefinition(
   const schema = sourceSchemaProfile(schemaSource);
   const name = extractObjectPropertyString(objectArg, ["name"]) ?? assignedName;
   if (!name) return undefined;
+  const handlerSignals = classifySourceToolHandlerSignals(
+    extractObjectPropertyValue(objectArg, ["execute", "func", "handler"]),
+    "javascript"
+  );
 
   return {
     name,
@@ -27246,7 +27404,8 @@ function normalizeJavaScriptToolFactoryDefinition(
     framework,
     registrationKind: "js_tool_factory",
     argumentCount: args.length,
-    schemaStyles: agentFrameworkSourceSchemaStyles(framework, "js_tool_factory", undefined, schema, sourceSchemaStyles(schemaSource))
+    schemaStyles: agentFrameworkSourceSchemaStyles(framework, "js_tool_factory", undefined, schema, sourceSchemaStyles(schemaSource)),
+    handlerSignals
   };
 }
 
@@ -27285,6 +27444,10 @@ function extractJavaScriptDynamicStructuredToolDefinitions(
     }
 
     const schema = sourceSchemaProfile(schemaSource);
+    const handlerSignals = classifySourceToolHandlerSignals(
+      extractObjectPropertyValue(objectArg, ["func", "execute", "handler"]),
+      "javascript"
+    );
     definitions.push({
       name,
       description: extractObjectPropertyString(objectArg, ["description"]) ?? "",
@@ -27294,7 +27457,8 @@ function extractJavaScriptDynamicStructuredToolDefinitions(
       framework,
       registrationKind: "js_dynamic_structured_tool",
       argumentCount: args.length,
-      schemaStyles: agentFrameworkSourceSchemaStyles(framework, "js_dynamic_structured_tool", undefined, schema, sourceSchemaStyles(schemaSource))
+      schemaStyles: agentFrameworkSourceSchemaStyles(framework, "js_dynamic_structured_tool", undefined, schema, sourceSchemaStyles(schemaSource)),
+      handlerSignals
     });
     pattern.lastIndex = closeParenIndex + 1;
   }
@@ -27369,6 +27533,7 @@ interface PythonFunctionSignature {
   params: Array<{ name: string; optional: boolean; annotation?: string }>;
   openWorldArgs: boolean;
   endLine: number;
+  bodySource: string;
 }
 
 interface PythonModelDefinition {
@@ -27423,6 +27588,7 @@ function collectPythonFunctionSignature(lines: string[], startLine: number): Pyt
   if (firstLine === undefined || !/^\s*(?:async\s+)?def\s+[A-Za-z_]\w*\s*\(/u.test(firstLine)) return undefined;
 
   const collected = [firstLine.trim()];
+  const functionIndent = leadingWhitespaceLength(firstLine);
   let balance = delimiterBalance(firstLine, "(", ")");
   let endLine = lineIndex;
   while ((balance > 0 || !/:\s*(?:#.*)?$/u.test(collected.join(" "))) && endLine + 1 < lines.length && collected.join("\n").length < 12000) {
@@ -27458,8 +27624,25 @@ function collectPythonFunctionSignature(lines: string[], startLine: number): Pyt
     name: functionName,
     params: params.sort((a, b) => a.name.localeCompare(b.name)),
     openWorldArgs,
-    endLine
+    endLine,
+    bodySource: collectPythonFunctionBody(lines, endLine + 1, functionIndent)
   };
+}
+
+function collectPythonFunctionBody(lines: string[], startLine: number, functionIndent: number): string {
+  const collected: string[] = [];
+  for (let lineIndex = startLine; lineIndex < lines.length; lineIndex += 1) {
+    const line = lines[lineIndex] ?? "";
+    if (!line.trim()) {
+      if (collected.length > 0) collected.push(line);
+      continue;
+    }
+    const indent = leadingWhitespaceLength(line);
+    if (indent <= functionIndent) break;
+    collected.push(line);
+    if (collected.join("\n").length > 50000) break;
+  }
+  return collected.join("\n");
 }
 
 function extractPythonFunctionSignatures(content: string): Map<string, PythonFunctionSignature> {
@@ -27800,6 +27983,17 @@ function sourceToolAnnotationsSource(registrationKind: "tool" | "registerTool", 
   return extractObjectPropertyValue(candidate, ["annotations"]) ?? candidate;
 }
 
+function sourceToolHandlerSource(registrationKind: "tool" | "registerTool", args: string[]): string | undefined {
+  const candidates = registrationKind === "registerTool"
+    ? [args[2]]
+    : [args[3], args[2], args[args.length - 1]];
+  return candidates.find((candidate) => candidate !== undefined && looksLikeJavaScriptHandlerSource(candidate));
+}
+
+function looksLikeJavaScriptHandlerSource(source: string): boolean {
+  return /(?:^|\s)(?:async\s*)?(?:\([^)]*\)|[A-Za-z_$][\w$]*)\s*=>|\b(?:async\s+)?function\b/u.test(source.trim());
+}
+
 function looksLikeSourceSchema(value: string): boolean {
   return /\bz\s*\.\s*(?:object|strictObject)|\bproperties\s*:|\binputSchema\s*:|\bparameters\s*:|\bschema\s*:/u.test(value);
 }
@@ -28124,14 +28318,22 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   const acceptsPath = /(^|[_\W])(path|file|directory|dir|folder|repo|repository|workspace|glob)([_\W]|$)/i.test(text);
   const acceptsUrl = /\b(url|uri|webhook|endpoint|host|domain|http)\b/i.test(text);
   const schemaDataProfile = classifyToolSchemaDataProfile(definition);
+  const handler = definition.handlerSignals;
+  const handlerSecretEnvAccess = handler?.handlerSecretEnvAccess === true;
+  const handlerExternalNetworkCall = handler?.handlerExternalNetworkCall === true;
+  const handlerExternalWrite = handler?.handlerExternalWrite === true;
+  const handlerShellExecution = handler?.handlerShellExecution === true;
+  const handlerFilesystemWrite = handler?.handlerFilesystemWrite === true;
+  const handlerFilesystemDelete = handler?.handlerFilesystemDelete === true;
   const destructive = /\b(delete|remove|drop|truncate|destroy|purge|wipe)\b/i.test(text);
   const externalWrite = /\b(publish|post|send|webhook|slack|email|release|deploy|comment|issue|pull\s+request|upload)\b/i.test(
     text
-  );
+  ) || handlerExternalWrite;
 
   const shellExecution =
     /\b(shell|command|exec|bash|process|terminal)\b/i.test(text) ||
-    /\b(?:run|execute|package|npm|pnpm|yarn|node)\s+script\b|\bscript\s+(?:command|execution|runner|path|name)\b/i.test(text);
+    /\b(?:run|execute|package|npm|pnpm|yarn|node)\s+script\b|\bscript\s+(?:command|execution|runner|path|name)\b/i.test(text) ||
+    handlerShellExecution;
   if (shellExecution) {
     classes.add("shell_execution");
     actions.add("execute");
@@ -28140,12 +28342,12 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
     classes.add("browser_control");
     actions.add("call");
   }
-  if (acceptsUrl || /\b(fetch|request|http|api|network)\b/i.test(text)) {
+  if (acceptsUrl || /\b(fetch|request|http|api|network)\b/i.test(text) || handlerExternalNetworkCall) {
     classes.add("network_access");
   }
-  if (acceptsPath || /\b(read\s+file|write\s+file|filesystem|fs)\b/i.test(text)) {
+  if (acceptsPath || /\b(read\s+file|write\s+file|filesystem|fs)\b/i.test(text) || handlerFilesystemWrite || handlerFilesystemDelete) {
     classes.add("filesystem_access");
-    actions.add(/\b(write|save|update|modify)\b/i.test(text) ? "write" : "read");
+    actions.add(/\b(write|save|update|modify)\b/i.test(text) || handlerFilesystemWrite ? "write" : "read");
   }
   if (/\b(memory|remember|store|recall)\b/i.test(text)) {
     classes.add("memory_access");
@@ -28153,6 +28355,9 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   }
   if (acceptsSecret) {
     classes.add("credential_input");
+  }
+  if (handlerSecretEnvAccess) {
+    classes.add("secret_env_access");
   }
   if (acceptsContent) {
     classes.add("content_input");
@@ -28168,10 +28373,11 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
     actions.add("send");
     actions.add("publish");
   }
-  if (destructive) {
+  if (destructive || handlerFilesystemDelete) {
     classes.add("destructive_action");
     actions.add("delete");
   }
+  for (const handlerClass of handler?.handlerAuthorityClasses ?? []) classes.add(handlerClass);
   if (definition.openWorldSchema) {
     classes.add("open_world_schema");
   }
@@ -28187,6 +28393,11 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
     (externalWrite ||
       destructive ||
       acceptsSecret ||
+      handlerSecretEnvAccess ||
+      handlerExternalWrite ||
+      handlerShellExecution ||
+      handlerFilesystemWrite ||
+      handlerFilesystemDelete ||
       acceptsPath ||
       acceptsUrl ||
       classes.has("shell_execution") ||
@@ -28201,8 +28412,8 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
     authority_classes: [...classes].sort((a, b) => a.localeCompare(b)),
     actions: [...actions].sort((a, b) => a.localeCompare(b)),
     side_effect: sideEffect,
-    external_reach: acceptsUrl || externalWrite,
-    secret_exposure: acceptsSecret,
+    external_reach: acceptsUrl || externalWrite || handlerExternalNetworkCall,
+    secret_exposure: acceptsSecret || handlerSecretEnvAccess,
     accepts_secret_like_input: acceptsSecret,
     accepts_content_like_input: acceptsContent,
     accepts_path_input: acceptsPath,
@@ -28211,7 +28422,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
     accepts_customer_data_input: schemaDataProfile.acceptsCustomerData,
     accepted_data_classes: schemaDataProfile.dataClasses,
     external_write: externalWrite,
-    destructive_action: destructive,
+    destructive_action: destructive || handlerFilesystemDelete,
     open_world_authority: openWorldAuthority,
     read_only_hint_conflict: readOnlyHintConflict
   };

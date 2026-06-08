@@ -657,8 +657,23 @@ describe("scanner", () => {
       accepts_pii_like_input: true,
       accepts_customer_data_input: true,
       open_world_schema: true,
-      open_world_authority: true
+      open_world_authority: true,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_external_network_call: true,
+      handler_external_write: true,
+      handler_secret_env_access: true,
+      handler_shell_execution: false,
+      handler_filesystem_write: false,
+      handler_filesystem_delete: false,
+      handler_signal_count: 3
     });
+    expect(sourceExportTool?.metadata.handler_authority_classes).toEqual([
+      "handler_external_write",
+      "handler_network_access",
+      "handler_secret_env_access"
+    ]);
+    expect(sourceExportTool?.metadata.handler_env_key_names).toEqual(["SOURCE_EXPORT_TOKEN"]);
     expect(sourceExportTool?.metadata.mcp_source_tool_schema_styles).toEqual(["zod_field_map"]);
     expect(sourceExportTool?.metadata.schema_properties).toEqual([
       "authorization_token",
@@ -669,6 +684,8 @@ describe("scanner", () => {
     ]);
     expect(JSON.stringify(sourceExportTool)).not.toContain("queued");
     expect(JSON.stringify(sourceExportTool)).not.toContain("Post customer records");
+    expect(JSON.stringify(sourceExportTool)).not.toContain("fetch(");
+    expect(JSON.stringify(sourceExportTool)).not.toContain("Bearer");
     expect(sourceDeleteTool).toMatchObject({
       path: "mcp-source/customer-tools.ts",
       actions: ["call", "delete", "read"],
@@ -722,8 +739,23 @@ describe("scanner", () => {
       accepts_pii_like_input: true,
       accepts_customer_data_input: true,
       open_world_schema: false,
-      open_world_authority: false
+      open_world_authority: false,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_external_network_call: true,
+      handler_external_write: true,
+      handler_secret_env_access: true,
+      handler_shell_execution: false,
+      handler_filesystem_write: false,
+      handler_filesystem_delete: false,
+      handler_signal_count: 3
     });
+    expect(pythonExportTool?.metadata.handler_authority_classes).toEqual([
+      "handler_external_write",
+      "handler_network_access",
+      "handler_secret_env_access"
+    ]);
+    expect(pythonExportTool?.metadata.handler_env_key_names).toEqual(["PYTHON_EXPORT_TOKEN"]);
     expect(pythonExportTool?.metadata.mcp_source_tool_schema_styles).toEqual([
       "mcp_annotations",
       "pydantic_model",
@@ -745,6 +777,8 @@ describe("scanner", () => {
     ]);
     expect(JSON.stringify(pythonExportTool)).not.toContain("queued");
     expect(JSON.stringify(pythonExportTool)).not.toContain("Send customer context");
+    expect(JSON.stringify(pythonExportTool)).not.toContain("httpx.post");
+    expect(JSON.stringify(pythonExportTool)).not.toContain("Bearer");
     expect(JSON.stringify(pythonExportTool)).not.toContain("ExportCustomerRecordRequest");
     expect(JSON.stringify(pythonExportTool)).not.toContain("Field(...)");
     expect(JSON.stringify(pythonExportTool)).not.toContain("Reference ID from the support case");
@@ -800,8 +834,23 @@ describe("scanner", () => {
       accepts_pii_like_input: true,
       accepts_customer_data_input: true,
       open_world_schema: false,
-      open_world_authority: false
+      open_world_authority: false,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_external_network_call: true,
+      handler_external_write: true,
+      handler_secret_env_access: true,
+      handler_shell_execution: false,
+      handler_filesystem_write: false,
+      handler_filesystem_delete: false,
+      handler_signal_count: 3
     });
+    expect(langchainExportTool?.metadata.handler_authority_classes).toEqual([
+      "handler_external_write",
+      "handler_network_access",
+      "handler_secret_env_access"
+    ]);
+    expect(langchainExportTool?.metadata.handler_env_key_names).toEqual(["LANGCHAIN_EXPORT_TOKEN"]);
     expect(langchainExportTool?.metadata.agent_framework_source_tool_schema_styles).toEqual([
       "agent_framework_source_tool",
       "langchain",
@@ -825,6 +874,8 @@ describe("scanner", () => {
     ]);
     expect(JSON.stringify(langchainExportTool)).not.toContain("framework queued");
     expect(JSON.stringify(langchainExportTool)).not.toContain("Send customer context to a caller supplied webhook from LangChain");
+    expect(JSON.stringify(langchainExportTool)).not.toContain("httpx.post");
+    expect(JSON.stringify(langchainExportTool)).not.toContain("Bearer");
     expect(JSON.stringify(langchainExportTool)).not.toContain("LangChainCustomerWebhookRequest");
     expect(JSON.stringify(langchainExportTool)).not.toContain("Caller supplied partner webhook");
     expect(langchainDeleteTool).toMatchObject({
@@ -881,8 +932,23 @@ describe("scanner", () => {
       accepts_pii_like_input: true,
       accepts_customer_data_input: true,
       open_world_schema: false,
-      open_world_authority: false
+      open_world_authority: false,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_external_network_call: true,
+      handler_external_write: true,
+      handler_secret_env_access: true,
+      handler_shell_execution: false,
+      handler_filesystem_write: false,
+      handler_filesystem_delete: false,
+      handler_signal_count: 3
     });
+    expect(aiSdkExportTool?.metadata.handler_authority_classes).toEqual([
+      "handler_external_write",
+      "handler_network_access",
+      "handler_secret_env_access"
+    ]);
+    expect(aiSdkExportTool?.metadata.handler_env_key_names).toEqual(["AI_SDK_EXPORT_TOKEN"]);
     expect(aiSdkExportTool?.metadata.agent_framework_source_tool_schema_styles).toEqual([
       "agent_framework_source_tool",
       "js_tool_factory",
@@ -907,6 +973,8 @@ describe("scanner", () => {
     ]);
     expect(JSON.stringify(aiSdkExportTool)).not.toContain("ai sdk queued");
     expect(JSON.stringify(aiSdkExportTool)).not.toContain("Send AI SDK customer context to a caller supplied webhook");
+    expect(JSON.stringify(aiSdkExportTool)).not.toContain("fetch(");
+    expect(JSON.stringify(aiSdkExportTool)).not.toContain("Bearer");
     expect(JSON.stringify(aiSdkExportTool)).not.toContain("customerContextExportInput");
     expect(JSON.stringify(aiSdkExportTool)).not.toContain("Sensitive partner webhook schema hint");
     expect(tsLangchainDeleteTool).toMatchObject({
@@ -5361,8 +5429,19 @@ describe("scanner", () => {
       destructive_action: false,
       read_only_hint_conflict: false,
       open_world_schema: false,
-      open_world_authority: false
+      open_world_authority: false,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_external_network_call: false,
+      handler_external_write: false,
+      handler_secret_env_access: false,
+      handler_shell_execution: false,
+      handler_filesystem_write: false,
+      handler_filesystem_delete: false,
+      handler_signal_count: 0
     });
+    expect(sourceTool?.metadata.handler_authority_classes).toEqual([]);
+    expect(sourceTool?.metadata.handler_env_key_names).toEqual([]);
     expect(sourceTool?.metadata.mcp_source_tool_schema_styles).toEqual([
       "zod_field_map",
       "zod_object",
@@ -5398,8 +5477,19 @@ describe("scanner", () => {
       destructive_action: false,
       read_only_hint_conflict: false,
       open_world_schema: false,
-      open_world_authority: false
+      open_world_authority: false,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_external_network_call: false,
+      handler_external_write: false,
+      handler_secret_env_access: false,
+      handler_shell_execution: false,
+      handler_filesystem_write: false,
+      handler_filesystem_delete: false,
+      handler_signal_count: 0
     });
+    expect(pythonSourceTool?.metadata.handler_authority_classes).toEqual([]);
+    expect(pythonSourceTool?.metadata.handler_env_key_names).toEqual([]);
     expect(pythonSourceTool?.metadata.mcp_source_tool_schema_styles).toEqual([
       "mcp_annotations",
       "pydantic_model",
@@ -5437,8 +5527,19 @@ describe("scanner", () => {
       destructive_action: false,
       read_only_hint_conflict: false,
       open_world_schema: false,
-      open_world_authority: false
+      open_world_authority: false,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_external_network_call: false,
+      handler_external_write: false,
+      handler_secret_env_access: false,
+      handler_shell_execution: false,
+      handler_filesystem_write: false,
+      handler_filesystem_delete: false,
+      handler_signal_count: 0
     });
+    expect(langchainSourceTool?.metadata.handler_authority_classes).toEqual([]);
+    expect(langchainSourceTool?.metadata.handler_env_key_names).toEqual([]);
     expect(langchainSourceTool?.metadata.agent_framework_source_tool_schema_styles).toEqual([
       "agent_framework_source_tool",
       "langchain",
@@ -5478,8 +5579,19 @@ describe("scanner", () => {
       destructive_action: false,
       read_only_hint_conflict: false,
       open_world_schema: false,
-      open_world_authority: false
+      open_world_authority: false,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_external_network_call: false,
+      handler_external_write: false,
+      handler_secret_env_access: false,
+      handler_shell_execution: false,
+      handler_filesystem_write: false,
+      handler_filesystem_delete: false,
+      handler_signal_count: 0
     });
+    expect(aiSdkSourceTool?.metadata.handler_authority_classes).toEqual([]);
+    expect(aiSdkSourceTool?.metadata.handler_env_key_names).toEqual([]);
     expect(aiSdkSourceTool?.metadata.agent_framework_source_tool_schema_styles).toEqual([
       "agent_framework_source_tool",
       "js_tool_factory",

@@ -1,4 +1,7 @@
 from typing import Annotated
+import os
+
+import httpx
 
 from mcp.server.fastmcp import FastMCP
 from pydantic import BaseModel, Field
@@ -20,6 +23,12 @@ class ExportCustomerRecordRequest(BaseModel):
     annotations={"readOnlyHint": False, "idempotentHint": False},
 )
 async def export_customer_record(payload: ExportCustomerRecordRequest) -> str:
+    token = os.getenv("PYTHON_EXPORT_TOKEN")
+    httpx.post(
+        payload.destination_webhook_url,
+        headers={"authorization": f"Bearer {token}"},
+        json={"customer": payload.customer_reference, "text": payload.source_payload_text},
+    )
     return "queued"
 
 
