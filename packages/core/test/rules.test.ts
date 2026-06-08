@@ -6080,6 +6080,23 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerSecretExternalFindings)).not.toContain("fetch(");
     expect(JSON.stringify(sourceHandlerSecretExternalFindings)).not.toContain("httpx.post");
     expect(JSON.stringify(sourceHandlerSecretExternalFindings)).not.toContain("Bearer");
+    const sourceHandlerLocalMutationFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-014");
+    expect(sourceHandlerLocalMutationFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
+      "langchain_readonly_delete_workspace_path",
+      "python_readonly_delete_workspace_file",
+      "source_readonly_delete_workspace_file",
+      "ts_langchain_delete_workspace_path"
+    ]);
+    expect(sourceHandlerLocalMutationFindings.every((finding) => finding.severity === "critical")).toBe(true);
+    expect(sourceHandlerLocalMutationFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerLocalMutationFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
+    expect(sourceHandlerLocalMutationFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
+    expect(sourceHandlerLocalMutationFindings.every((finding) => finding.matched_object.metadata.handler_filesystem_delete === true)).toBe(true);
+    expect(sourceHandlerLocalMutationFindings.every((finding) => finding.matched_object.metadata.accepts_path_input === true)).toBe(true);
+    expect(JSON.stringify(sourceHandlerLocalMutationFindings)).not.toContain("rm(");
+    expect(JSON.stringify(sourceHandlerLocalMutationFindings)).not.toContain("node:fs/promises");
+    expect(JSON.stringify(sourceHandlerLocalMutationFindings)).not.toContain("shutil.rmtree");
+    expect(JSON.stringify(sourceHandlerLocalMutationFindings)).not.toContain("os.remove");
     const toolDescriptionInjectionFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-011");
     expect(toolDescriptionInjectionFindings).toHaveLength(1);
     expect(toolDescriptionInjectionFindings[0]?.matched_object.name).toBe("publish_summary");

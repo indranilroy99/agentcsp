@@ -706,13 +706,26 @@ describe("scanner", () => {
       destructive_action: true,
       accepts_path_input: true,
       read_only_hint_conflict: true,
-      open_world_schema: false
+      open_world_schema: false,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_external_network_call: false,
+      handler_external_write: false,
+      handler_secret_env_access: false,
+      handler_shell_execution: false,
+      handler_filesystem_write: false,
+      handler_filesystem_delete: true,
+      handler_signal_count: 1
     });
+    expect(sourceDeleteTool?.metadata.handler_authority_classes).toEqual(["handler_filesystem_delete"]);
+    expect(sourceDeleteTool?.metadata.handler_env_key_names).toEqual([]);
     expect(sourceDeleteTool?.metadata.mcp_source_tool_schema_styles).toEqual([
       "zod_field_map",
       "zod_object",
       "zod_strict"
     ]);
+    expect(JSON.stringify(sourceDeleteTool)).not.toContain("rm(");
+    expect(JSON.stringify(sourceDeleteTool)).not.toContain("node:fs/promises");
     expect(pythonExportTool).toMatchObject({
       path: "mcp-source/python_tools.py",
       data_classes: ["confidential", "credential", "pii"],
@@ -802,13 +815,26 @@ describe("scanner", () => {
       destructive_action: true,
       accepts_path_input: true,
       read_only_hint_conflict: true,
-      open_world_schema: false
+      open_world_schema: false,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_external_network_call: false,
+      handler_external_write: false,
+      handler_secret_env_access: false,
+      handler_shell_execution: false,
+      handler_filesystem_write: false,
+      handler_filesystem_delete: true,
+      handler_signal_count: 1
     });
+    expect(pythonDeleteTool?.metadata.handler_authority_classes).toEqual(["handler_filesystem_delete"]);
+    expect(pythonDeleteTool?.metadata.handler_env_key_names).toEqual([]);
     expect(pythonDeleteTool?.metadata.mcp_source_tool_schema_styles).toEqual([
       "mcp_annotations",
       "python_signature"
     ]);
     expect(pythonDeleteTool?.metadata.required_properties).toEqual(["workspace_path"]);
+    expect(JSON.stringify(pythonDeleteTool)).not.toContain("shutil.rmtree");
+    expect(JSON.stringify(pythonDeleteTool)).not.toContain("os.remove");
     expect(langchainExportTool).toMatchObject({
       path: "framework-tools/langchain_tools.py",
       data_classes: ["confidential", "credential", "pii"],
@@ -896,8 +922,19 @@ describe("scanner", () => {
       source_tool_handler_redacted: true,
       destructive_action: true,
       accepts_path_input: true,
-      open_world_schema: false
+      open_world_schema: false,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_external_network_call: false,
+      handler_external_write: false,
+      handler_secret_env_access: false,
+      handler_shell_execution: false,
+      handler_filesystem_write: false,
+      handler_filesystem_delete: true,
+      handler_signal_count: 1
     });
+    expect(langchainDeleteTool?.metadata.handler_authority_classes).toEqual(["handler_filesystem_delete"]);
+    expect(langchainDeleteTool?.metadata.handler_env_key_names).toEqual([]);
     expect(langchainDeleteTool?.metadata.agent_framework_source_tool_schema_styles).toEqual([
       "agent_framework_source_tool",
       "langchain",
@@ -907,6 +944,8 @@ describe("scanner", () => {
     expect(langchainDeleteTool?.metadata.required_properties).toEqual(["workspace_path"]);
     expect(JSON.stringify(langchainDeleteTool)).not.toContain("framework deleted");
     expect(JSON.stringify(langchainDeleteTool)).not.toContain("Delete a workspace path after model review from LangChain");
+    expect(JSON.stringify(langchainDeleteTool)).not.toContain("shutil.rmtree");
+    expect(JSON.stringify(langchainDeleteTool)).not.toContain("os.remove");
     expect(aiSdkExportTool).toMatchObject({
       path: "framework-tools/vercel-ai-tools.ts",
       data_classes: ["confidential", "credential", "pii"],
@@ -995,8 +1034,19 @@ describe("scanner", () => {
       source_tool_handler_redacted: true,
       destructive_action: true,
       accepts_path_input: true,
-      open_world_schema: false
+      open_world_schema: false,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_external_network_call: false,
+      handler_external_write: false,
+      handler_secret_env_access: false,
+      handler_shell_execution: false,
+      handler_filesystem_write: false,
+      handler_filesystem_delete: true,
+      handler_signal_count: 1
     });
+    expect(tsLangchainDeleteTool?.metadata.handler_authority_classes).toEqual(["handler_filesystem_delete"]);
+    expect(tsLangchainDeleteTool?.metadata.handler_env_key_names).toEqual([]);
     expect(tsLangchainDeleteTool?.metadata.agent_framework_source_tool_schema_styles).toEqual([
       "agent_framework_source_tool",
       "js_dynamic_structured_tool",
@@ -1008,6 +1058,8 @@ describe("scanner", () => {
     expect(tsLangchainDeleteTool?.metadata.required_properties).toEqual(["workspace_path"]);
     expect(JSON.stringify(tsLangchainDeleteTool)).not.toContain("ts framework deleted");
     expect(JSON.stringify(tsLangchainDeleteTool)).not.toContain("Delete a workspace path from a TypeScript LangChain tool");
+    expect(JSON.stringify(tsLangchainDeleteTool)).not.toContain("rm(");
+    expect(JSON.stringify(tsLangchainDeleteTool)).not.toContain("node:fs/promises");
     expect(JSON.stringify(tsLangchainDeleteTool)).not.toContain("deleteWorkspacePathSchema");
     expect(JSON.stringify(tsLangchainDeleteTool)).not.toContain("Sensitive workspace deletion schema hint");
     const openApiTool = surfaces.tools.find((surface) => surface.path === "tools/support-openapi.yaml");

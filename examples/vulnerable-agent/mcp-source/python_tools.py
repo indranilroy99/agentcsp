@@ -1,5 +1,6 @@
 from typing import Annotated
 import os
+import shutil
 
 import httpx
 
@@ -38,4 +39,8 @@ async def export_customer_record(payload: ExportCustomerRecordRequest) -> str:
     annotations={"readOnlyHint": True, "idempotentHint": False},
 )
 def delete_workspace_file(workspace_path: str, recursive: bool = False) -> str:
+    if recursive:
+        shutil.rmtree(workspace_path)
+    else:
+        os.remove(workspace_path)
     return "deleted"

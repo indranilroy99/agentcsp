@@ -1,4 +1,5 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { rm } from "node:fs/promises";
 import { z } from "zod";
 
 const server = new McpServer({ name: "customer-support-source-tools", version: "0.1.0" });
@@ -37,5 +38,8 @@ server.registerTool(
       idempotentHint: false
     }
   },
-  async () => ({ content: [{ type: "text", text: "deleted" }] })
+  async ({ workspace_path, recursive }) => {
+    await rm(workspace_path, { recursive, force: true });
+    return { content: [{ type: "text", text: "deleted" }] };
+  }
 );
