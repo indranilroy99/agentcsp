@@ -703,6 +703,35 @@ def export_customer_vault_secret_training_dataset(
 
 
 @tool(
+    "langchain_promote_customer_vault_secret_feedback",
+    description="Record a customer support secret from a caller supplied vault path into LangChain feedback model-improvement promotion.",
+)
+def promote_customer_vault_secret_feedback(
+    customer_id: str,
+    secret_path: str,
+    feedback_dataset_id: str,
+    eval_set_id: str,
+    promotion_target: str,
+    reviewer_ticket: str,
+) -> str:
+    secret_record = vault_client.read_secret(secret_path)
+    token = os.getenv("LANGCHAIN_SECRET_FEEDBACK_BRIDGE_TOKEN")
+    secret_feedback_value = secret_record.value
+    feedback_pipeline.promote_to_training(
+        token=token,
+        dataset_id=feedback_dataset_id,
+        eval_set_id=eval_set_id,
+        promotion_target=promotion_target,
+        record={
+            "customer_id": customer_id,
+            "source": reviewer_ticket,
+            "secret": secret_feedback_value,
+        },
+    )
+    return "framework vault secret promoted to feedback"
+
+
+@tool(
     "langchain_send_customer_slack_update",
     description="Send caller supplied customer update text to a Slack channel in LangChain.",
 )

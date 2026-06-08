@@ -1013,6 +1013,42 @@ server.registerTool(
 );
 
 server.registerTool(
+  "source_promote_customer_vault_secret_feedback",
+  {
+    description: "Record a customer support secret from a caller supplied vault path into feedback model-improvement promotion.",
+    inputSchema: z.object({
+      customer_id: z.string(),
+      secret_path: z.string(),
+      feedback_dataset_id: z.string(),
+      eval_set_id: z.string(),
+      promotion_target: z.enum(["training", "eval", "model_update"]),
+      reviewer_ticket: z.string()
+    }).strict(),
+    annotations: {
+      readOnlyHint: false,
+      idempotentHint: false
+    }
+  },
+  async ({ customer_id, secret_path, feedback_dataset_id, eval_set_id, promotion_target, reviewer_ticket }) => {
+    const secretRecord = await globalThis.vaultClient.readSecret(secret_path);
+    const token = process.env.SOURCE_SECRET_FEEDBACK_BRIDGE_TOKEN;
+    const secretFeedbackValue = secretRecord.value;
+    await globalThis.feedbackPipeline.promoteToTraining({
+      token,
+      datasetId: feedback_dataset_id,
+      evalSetId: eval_set_id,
+      promotionTarget: promotion_target,
+      record: {
+        customerId: customer_id,
+        source: reviewer_ticket,
+        secret: secretFeedbackValue
+      }
+    });
+    return { content: [{ type: "text", text: "source vault secret promoted to feedback" }] };
+  }
+);
+
+server.registerTool(
   "source_send_customer_slack_update",
   {
     description: "Send caller supplied customer update text to a Slack channel.",

@@ -581,6 +581,9 @@ describe("scanner", () => {
     const sourceSecretManagerTrainingDatasetBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "source_export_customer_vault_secret_training_dataset"
     );
+    const sourceSecretManagerFeedbackBridgeTool = surfaces.tools.find(
+      (surface) => surface.name === "source_promote_customer_vault_secret_feedback"
+    );
     const sourceExternalServiceWriteTool = surfaces.tools.find((surface) => surface.name === "source_send_customer_slack_update");
     const sourceModelProviderCallTool = surfaces.tools.find((surface) => surface.name === "source_summarize_customer_with_model");
     const pythonExportTool = surfaces.tools.find((surface) => surface.name === "python_export_customer_record");
@@ -630,6 +633,9 @@ describe("scanner", () => {
     );
     const langchainSecretManagerTrainingDatasetBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "langchain_export_customer_vault_secret_training_dataset"
+    );
+    const langchainSecretManagerFeedbackBridgeTool = surfaces.tools.find(
+      (surface) => surface.name === "langchain_promote_customer_vault_secret_feedback"
     );
     const langchainExternalServiceWriteTool = surfaces.tools.find((surface) => surface.name === "langchain_send_customer_slack_update");
     const langchainModelProviderCallTool = surfaces.tools.find((surface) => surface.name === "langchain_summarize_customer_with_model");
@@ -3594,6 +3600,106 @@ describe("scanner", () => {
     expect(JSON.stringify(sourceSecretManagerTrainingDatasetBridgeTool)).not.toContain("secretTrainingValue");
     expect(JSON.stringify(sourceSecretManagerTrainingDatasetBridgeTool)).not.toContain("source vault secret exported to training dataset");
     expect(JSON.stringify(sourceSecretManagerTrainingDatasetBridgeTool)).not.toContain("Export a customer support secret");
+    expect(sourceSecretManagerFeedbackBridgeTool).toMatchObject({
+      path: "mcp-source/customer-tools.ts",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["call", "publish", "read", "remember", "send", "write"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(sourceSecretManagerFeedbackBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_mcp_source_tool: true,
+      mcp_source_tool_registration: true,
+      mcp_source_tool_registration_kind: "registerTool",
+      mcp_source_tool_argument_count: 3,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      read_only_hint: false,
+      idempotent_hint: false,
+      accepts_secret_like_input: true,
+      accepts_content_like_input: true,
+      accepts_path_input: true,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      secret_manager_access: true,
+      tainted_secret_manager_path: true,
+      feedback_pipeline_write: true,
+      secret_manager_feedback_bridge: true,
+      tainted_feedback_payload: false,
+      feedback_auto_promotion: true,
+      tainted_feedback_routing: true,
+      external_write: true,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_secret_manager_access: true,
+      handler_tainted_secret_manager_path: true,
+      handler_feedback_pipeline_write: true,
+      handler_secret_manager_feedback_bridge: true,
+      handler_tainted_feedback_payload: false,
+      handler_feedback_auto_promotion: true,
+      handler_tainted_feedback_routing: true,
+      handler_secret_env_access: true,
+      handler_model_visible_output: true,
+      handler_signal_count: 7,
+      open_world_schema: false
+    });
+    expect(sourceSecretManagerFeedbackBridgeTool?.metadata.authority_classes).toEqual([
+      "content_input",
+      "credential_input",
+      "customer_data_input",
+      "external_write",
+      "feedback_auto_promotion",
+      "feedback_pipeline_write",
+      "filesystem_access",
+      "handler_feedback_auto_promotion",
+      "handler_feedback_pipeline_write",
+      "handler_secret_env_access",
+      "handler_secret_manager_access",
+      "handler_secret_manager_feedback_bridge",
+      "handler_tainted_feedback_routing",
+      "handler_tainted_secret_manager_path",
+      "pii_input",
+      "secret_env_access",
+      "secret_manager_access",
+      "secret_manager_feedback_bridge",
+      "tainted_feedback_routing",
+      "tainted_secret_manager_path"
+    ]);
+    expect(sourceSecretManagerFeedbackBridgeTool?.metadata.handler_authority_classes).toEqual([
+      "handler_feedback_auto_promotion",
+      "handler_feedback_pipeline_write",
+      "handler_secret_env_access",
+      "handler_secret_manager_access",
+      "handler_secret_manager_feedback_bridge",
+      "handler_tainted_feedback_routing",
+      "handler_tainted_secret_manager_path"
+    ]);
+    expect(sourceSecretManagerFeedbackBridgeTool?.metadata.handler_env_key_names).toEqual(["SOURCE_SECRET_FEEDBACK_BRIDGE_TOKEN"]);
+    expect(sourceSecretManagerFeedbackBridgeTool?.metadata.schema_properties).toEqual([
+      "customer_id",
+      "eval_set_id",
+      "feedback_dataset_id",
+      "promotion_target",
+      "reviewer_ticket",
+      "secret_path"
+    ]);
+    expect(sourceSecretManagerFeedbackBridgeTool?.metadata.required_properties).toEqual([
+      "customer_id",
+      "eval_set_id",
+      "feedback_dataset_id",
+      "promotion_target",
+      "reviewer_ticket",
+      "secret_path"
+    ]);
+    expect(JSON.stringify(sourceSecretManagerFeedbackBridgeTool)).not.toContain("vaultClient.readSecret");
+    expect(JSON.stringify(sourceSecretManagerFeedbackBridgeTool)).not.toContain("feedbackPipeline.promoteToTraining");
+    expect(JSON.stringify(sourceSecretManagerFeedbackBridgeTool)).not.toContain("secretRecord.value");
+    expect(JSON.stringify(sourceSecretManagerFeedbackBridgeTool)).not.toContain("secretFeedbackValue");
+    expect(JSON.stringify(sourceSecretManagerFeedbackBridgeTool)).not.toContain("source vault secret promoted to feedback");
+    expect(JSON.stringify(sourceSecretManagerFeedbackBridgeTool)).not.toContain("Record a customer support secret");
     expect(sourceExternalServiceWriteTool).toMatchObject({
       path: "mcp-source/customer-tools.ts",
       data_classes: ["confidential", "credential", "pii"],
@@ -6935,6 +7041,107 @@ describe("scanner", () => {
     expect(JSON.stringify(langchainSecretManagerTrainingDatasetBridgeTool)).not.toContain("secret_training_value");
     expect(JSON.stringify(langchainSecretManagerTrainingDatasetBridgeTool)).not.toContain("framework vault secret exported to training dataset");
     expect(JSON.stringify(langchainSecretManagerTrainingDatasetBridgeTool)).not.toContain("Export a customer support secret");
+    expect(langchainSecretManagerFeedbackBridgeTool).toMatchObject({
+      path: "framework-tools/langchain_tools.py",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["call", "publish", "read", "remember", "send", "write"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(langchainSecretManagerFeedbackBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_agent_framework_source_tool: true,
+      agent_framework_source_tool: true,
+      agent_framework_source_tool_framework: "langchain",
+      agent_framework_source_tool_registration_kind: "python_tool_decorator",
+      agent_framework_source_tool_argument_count: 6,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_secret_like_input: true,
+      accepts_content_like_input: true,
+      accepts_path_input: true,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      secret_manager_access: true,
+      tainted_secret_manager_path: true,
+      feedback_pipeline_write: true,
+      secret_manager_feedback_bridge: true,
+      tainted_feedback_payload: false,
+      feedback_auto_promotion: true,
+      tainted_feedback_routing: true,
+      external_write: true,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_secret_manager_access: true,
+      handler_tainted_secret_manager_path: true,
+      handler_feedback_pipeline_write: true,
+      handler_secret_manager_feedback_bridge: true,
+      handler_tainted_feedback_payload: false,
+      handler_feedback_auto_promotion: true,
+      handler_tainted_feedback_routing: true,
+      handler_secret_env_access: true,
+      handler_model_visible_output: true,
+      handler_signal_count: 7,
+      open_world_schema: false
+    });
+    expect(langchainSecretManagerFeedbackBridgeTool?.metadata.authority_classes).toEqual([
+      "content_input",
+      "credential_input",
+      "customer_data_input",
+      "external_write",
+      "feedback_auto_promotion",
+      "feedback_pipeline_write",
+      "filesystem_access",
+      "handler_feedback_auto_promotion",
+      "handler_feedback_pipeline_write",
+      "handler_secret_env_access",
+      "handler_secret_manager_access",
+      "handler_secret_manager_feedback_bridge",
+      "handler_tainted_feedback_routing",
+      "handler_tainted_secret_manager_path",
+      "pii_input",
+      "secret_env_access",
+      "secret_manager_access",
+      "secret_manager_feedback_bridge",
+      "tainted_feedback_routing",
+      "tainted_secret_manager_path"
+    ]);
+    expect(langchainSecretManagerFeedbackBridgeTool?.metadata.handler_authority_classes).toEqual([
+      "handler_feedback_auto_promotion",
+      "handler_feedback_pipeline_write",
+      "handler_secret_env_access",
+      "handler_secret_manager_access",
+      "handler_secret_manager_feedback_bridge",
+      "handler_tainted_feedback_routing",
+      "handler_tainted_secret_manager_path"
+    ]);
+    expect(langchainSecretManagerFeedbackBridgeTool?.metadata.handler_env_key_names).toEqual([
+      "LANGCHAIN_SECRET_FEEDBACK_BRIDGE_TOKEN"
+    ]);
+    expect(langchainSecretManagerFeedbackBridgeTool?.metadata.schema_properties).toEqual([
+      "customer_id",
+      "eval_set_id",
+      "feedback_dataset_id",
+      "promotion_target",
+      "reviewer_ticket",
+      "secret_path"
+    ]);
+    expect(langchainSecretManagerFeedbackBridgeTool?.metadata.required_properties).toEqual([
+      "customer_id",
+      "eval_set_id",
+      "feedback_dataset_id",
+      "promotion_target",
+      "reviewer_ticket",
+      "secret_path"
+    ]);
+    expect(JSON.stringify(langchainSecretManagerFeedbackBridgeTool)).not.toContain("vault_client.read_secret");
+    expect(JSON.stringify(langchainSecretManagerFeedbackBridgeTool)).not.toContain("feedback_pipeline.promote_to_training");
+    expect(JSON.stringify(langchainSecretManagerFeedbackBridgeTool)).not.toContain("secret_record.value");
+    expect(JSON.stringify(langchainSecretManagerFeedbackBridgeTool)).not.toContain("secret_feedback_value");
+    expect(JSON.stringify(langchainSecretManagerFeedbackBridgeTool)).not.toContain("framework vault secret promoted to feedback");
+    expect(JSON.stringify(langchainSecretManagerFeedbackBridgeTool)).not.toContain("Record a customer support secret");
     expect(langchainExternalServiceWriteTool).toMatchObject({
       path: "framework-tools/langchain_tools.py",
       data_classes: ["confidential", "credential", "pii"],
