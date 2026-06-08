@@ -24140,6 +24140,7 @@ function addToolDefinitionSurface(
       database_access: authority.database_access,
       database_write: authority.database_write,
       dynamic_code_execution: authority.dynamic_code_execution,
+      local_file_disclosure: authority.local_file_disclosure,
       external_write: authority.external_write,
       destructive_action: authority.destructive_action,
       read_only_hint: definition.annotations?.readOnlyHint,
@@ -26514,6 +26515,7 @@ interface SourceToolHandlerSignals {
   handlerDatabaseWrite: boolean;
   handlerShellExecution: boolean;
   handlerDynamicCodeExecution: boolean;
+  handlerFilesystemRead: boolean;
   handlerFilesystemWrite: boolean;
   handlerFilesystemDelete: boolean;
   handlerAuthorityClasses: string[];
@@ -26934,6 +26936,7 @@ function sourceToolHandlerSignalMetadata(signals: SourceToolHandlerSignals | und
     handler_database_write: signals.handlerDatabaseWrite,
     handler_shell_execution: signals.handlerShellExecution,
     handler_dynamic_code_execution: signals.handlerDynamicCodeExecution,
+    handler_filesystem_read: signals.handlerFilesystemRead,
     handler_filesystem_write: signals.handlerFilesystemWrite,
     handler_filesystem_delete: signals.handlerFilesystemDelete,
     handler_authority_classes: signals.handlerAuthorityClasses,
@@ -26976,6 +26979,9 @@ function classifySourceToolHandlerSignals(
   const dynamicCodeExecution = language === "javascript"
     ? /\b(?:eval\s*\(|(?:new\s+)?Function\s*\(|vm\s*\.\s*(?:runInNewContext|runInThisContext|runInContext|compileFunction|Script)\b)/u.test(handlerSource)
     : /\b(?:eval|exec)\s*\(/u.test(handlerSource);
+  const filesystemRead = language === "javascript"
+    ? /\b(?:fs|fsPromises|promises)\s*\.\s*(?:readFile|readFileSync|createReadStream|readlink|stat|lstat|readdir)\b|\b(?:readFile|readFileSync|createReadStream)\s*\(/u.test(handlerSource)
+    : /\b(?:Path\s*\([^)]*\)\s*\.\s*(?:read_text|read_bytes)|pathlib\s*\.\s*Path\s*\([^)]*\)\s*\.\s*(?:read_text|read_bytes)|open\s*\([^)]*["']r)/u.test(handlerSource);
   const filesystemWrite = language === "javascript"
     ? /\b(?:fs|fsPromises|promises)\s*\.\s*(?:writeFile|appendFile|copyFile|rename|mkdir|cp)\b|\bwriteFile\s*\(/u.test(handlerSource)
     : /\b(?:open\s*\([^)]*["'][wa+]|Path\s*\([^)]*\)\s*\.\s*(?:write_text|write_bytes)|shutil\s*\.\s*(?:copy|copyfile|move))\b/u.test(handlerSource);
@@ -26993,6 +26999,7 @@ function classifySourceToolHandlerSignals(
   if (databaseWrite) classes.add("handler_database_write");
   if (shellExecution) classes.add("handler_shell_execution");
   if (dynamicCodeExecution) classes.add("handler_dynamic_code_execution");
+  if (filesystemRead) classes.add("handler_filesystem_read");
   if (filesystemWrite) classes.add("handler_filesystem_write");
   if (filesystemDelete) classes.add("handler_filesystem_delete");
 
@@ -27008,6 +27015,7 @@ function classifySourceToolHandlerSignals(
     handlerDatabaseWrite: databaseWrite,
     handlerShellExecution: shellExecution,
     handlerDynamicCodeExecution: dynamicCodeExecution,
+    handlerFilesystemRead: filesystemRead,
     handlerFilesystemWrite: filesystemWrite,
     handlerFilesystemDelete: filesystemDelete,
     handlerAuthorityClasses: [...classes].sort((a, b) => a.localeCompare(b)),
@@ -28430,6 +28438,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   database_access: boolean;
   database_write: boolean;
   dynamic_code_execution: boolean;
+  local_file_disclosure: boolean;
   external_write: boolean;
   destructive_action: boolean;
   open_world_authority: boolean;
@@ -28458,8 +28467,10 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   const handlerDatabaseWrite = handler?.handlerDatabaseWrite === true;
   const handlerShellExecution = handler?.handlerShellExecution === true;
   const handlerDynamicCodeExecution = handler?.handlerDynamicCodeExecution === true;
+  const handlerFilesystemRead = handler?.handlerFilesystemRead === true;
   const handlerFilesystemWrite = handler?.handlerFilesystemWrite === true;
   const handlerFilesystemDelete = handler?.handlerFilesystemDelete === true;
+  const handlerModelVisibleOutput = handler?.handlerModelVisibleOutput === true;
   const destructive = /\b(delete|remove|drop|truncate|destroy|purge|wipe)\b/i.test(text);
   const externalWrite = /\b(publish|post|send|webhook|slack|email|release|deploy|comment|issue|pull\s+request|upload)\b/i.test(
     text
@@ -28488,9 +28499,21 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
     classes.add("credentialed_network_read");
     actions.add("send");
   }
-  if (acceptsPath || /\b(read\s+file|write\s+file|filesystem|fs)\b/i.test(text) || handlerFilesystemWrite || handlerFilesystemDelete) {
+  if (
+    acceptsPath ||
+    /\b(read\s+file|write\s+file|filesystem|fs)\b/i.test(text) ||
+    handlerFilesystemRead ||
+    handlerFilesystemWrite ||
+    handlerFilesystemDelete
+  ) {
     classes.add("filesystem_access");
     actions.add(/\b(write|save|update|modify)\b/i.test(text) || handlerFilesystemWrite ? "write" : "read");
+  }
+  const localFileDisclosure = acceptsPath && handlerFilesystemRead && handlerModelVisibleOutput;
+  if (handlerFilesystemRead) classes.add("filesystem_read");
+  if (localFileDisclosure) {
+    classes.add("local_file_disclosure");
+    actions.add("send");
   }
   const databaseAccess = handlerDatabaseQuery;
   const databaseWrite =
@@ -28547,7 +28570,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   const privilegedAction = [...actions].some((action) =>
     ["write", "execute", "publish", "send", "delete", "remember"].includes(action)
   );
-  const readOnlyHintConflict = readOnly && (externalWrite || destructive || privilegedAction);
+  const readOnlyHintConflict = readOnly && (externalWrite || destructive || (privilegedAction && !localFileDisclosure));
   const openWorldAuthority =
     definition.openWorldSchema &&
     (externalWrite ||
@@ -28561,6 +28584,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerExternalWrite ||
       handlerShellExecution ||
       handlerDynamicCodeExecution ||
+      handlerFilesystemRead ||
       handlerFilesystemWrite ||
       handlerFilesystemDelete ||
       acceptsPath ||
@@ -28569,6 +28593,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       classes.has("filesystem_access") ||
       classes.has("network_access"));
   const sideEffect =
+    localFileDisclosure ||
     readOnlyHintConflict ||
     explicitSideEffectHint ||
     (!readOnly && privilegedAction);
@@ -28578,7 +28603,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
     actions: [...actions].sort((a, b) => a.localeCompare(b)),
     side_effect: sideEffect,
     external_reach: acceptsUrl || externalWrite || handlerExternalNetworkCall,
-    secret_exposure: acceptsSecret || handlerSecretEnvAccess,
+    secret_exposure: acceptsSecret || handlerSecretEnvAccess || localFileDisclosure,
     accepts_secret_like_input: acceptsSecret,
     accepts_content_like_input: acceptsContent,
     accepts_path_input: acceptsPath,
@@ -28589,6 +28614,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
     database_access: databaseAccess,
     database_write: databaseWrite,
     dynamic_code_execution: handlerDynamicCodeExecution,
+    local_file_disclosure: localFileDisclosure,
     external_write: externalWrite,
     destructive_action: destructive || handlerFilesystemDelete,
     open_world_authority: openWorldAuthority,

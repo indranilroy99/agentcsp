@@ -539,6 +539,7 @@ describe("scanner", () => {
     const sourceExportTool = surfaces.tools.find((surface) => surface.name === "source_export_customer_record");
     const sourceDeleteTool = surfaces.tools.find((surface) => surface.name === "source_readonly_delete_workspace_file");
     const sourceShellTool = surfaces.tools.find((surface) => surface.name === "source_run_remediation_command");
+    const sourceFileReadTool = surfaces.tools.find((surface) => surface.name === "source_read_workspace_file");
     const sourceDynamicCodeTool = surfaces.tools.find((surface) => surface.name === "source_evaluate_agent_expression");
     const sourceDatabaseTool = surfaces.tools.find((surface) => surface.name === "source_apply_record_change_sql");
     const sourceSecretOutputTool = surfaces.tools.find((surface) => surface.name === "source_reveal_runtime_secret");
@@ -548,6 +549,7 @@ describe("scanner", () => {
     const langchainExportTool = surfaces.tools.find((surface) => surface.name === "langchain_export_customer_context");
     const langchainDeleteTool = surfaces.tools.find((surface) => surface.name === "langchain_readonly_delete_workspace_path");
     const langchainShellTool = surfaces.tools.find((surface) => surface.name === "langchain_run_remediation_command");
+    const langchainFileReadTool = surfaces.tools.find((surface) => surface.name === "langchain_read_workspace_file");
     const langchainDynamicCodeTool = surfaces.tools.find((surface) => surface.name === "langchain_evaluate_agent_expression");
     const langchainDatabaseTool = surfaces.tools.find((surface) => surface.name === "langchain_apply_record_change_sql");
     const langchainSecretOutputTool = surfaces.tools.find((surface) => surface.name === "langchain_reveal_runtime_secret");
@@ -779,6 +781,59 @@ describe("scanner", () => {
     expect(JSON.stringify(sourceShellTool)).not.toContain("execFile");
     expect(JSON.stringify(sourceShellTool)).not.toContain("node:child_process");
     expect(JSON.stringify(sourceShellTool)).not.toContain("source shell queued");
+    expect(sourceFileReadTool).toMatchObject({
+      path: "mcp-source/customer-tools.ts",
+      data_classes: ["credential"],
+      actions: ["call", "read", "send"],
+      side_effect: true,
+      external_reach: false,
+      secret_exposure: true,
+      reversible: true
+    });
+    expect(sourceFileReadTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_mcp_source_tool: true,
+      mcp_source_tool_registration: true,
+      mcp_source_tool_registration_kind: "registerTool",
+      mcp_source_tool_argument_count: 3,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      read_only_hint: true,
+      idempotent_hint: true,
+      accepts_path_input: true,
+      local_file_disclosure: true,
+      external_write: false,
+      destructive_action: false,
+      read_only_hint_conflict: false,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_external_network_call: false,
+      handler_external_write: false,
+      handler_secret_env_access: false,
+      handler_database_query: false,
+      handler_database_write: false,
+      handler_shell_execution: false,
+      handler_dynamic_code_execution: false,
+      handler_filesystem_read: true,
+      handler_filesystem_write: false,
+      handler_filesystem_delete: false,
+      handler_model_visible_output: true,
+      handler_signal_count: 1,
+      open_world_schema: false
+    });
+    expect(sourceFileReadTool?.metadata.authority_classes).toEqual([
+      "filesystem_access",
+      "filesystem_read",
+      "handler_filesystem_read",
+      "local_file_disclosure"
+    ]);
+    expect(sourceFileReadTool?.metadata.handler_authority_classes).toEqual(["handler_filesystem_read"]);
+    expect(sourceFileReadTool?.metadata.handler_env_key_names).toEqual([]);
+    expect(sourceFileReadTool?.metadata.schema_properties).toEqual(["encoding", "workspace_path"]);
+    expect(sourceFileReadTool?.metadata.required_properties).toEqual(["workspace_path"]);
+    expect(JSON.stringify(sourceFileReadTool)).not.toContain("readFile");
+    expect(JSON.stringify(sourceFileReadTool)).not.toContain("contents.toString");
+    expect(JSON.stringify(sourceFileReadTool)).not.toContain("Read a workspace file by model supplied path");
     expect(sourceDynamicCodeTool).toMatchObject({
       path: "mcp-source/customer-tools.ts",
       data_classes: ["unknown"],
@@ -1263,6 +1318,58 @@ describe("scanner", () => {
     expect(JSON.stringify(langchainShellTool)).not.toContain("subprocess.run");
     expect(JSON.stringify(langchainShellTool)).not.toContain("shell=True");
     expect(JSON.stringify(langchainShellTool)).not.toContain("framework shell queued");
+    expect(langchainFileReadTool).toMatchObject({
+      path: "framework-tools/langchain_tools.py",
+      data_classes: ["credential"],
+      actions: ["call", "read", "send"],
+      side_effect: true,
+      external_reach: false,
+      secret_exposure: true,
+      reversible: true
+    });
+    expect(langchainFileReadTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_agent_framework_source_tool: true,
+      agent_framework_source_tool: true,
+      agent_framework_source_tool_framework: "langchain",
+      agent_framework_source_tool_registration_kind: "python_tool_decorator",
+      agent_framework_source_tool_argument_count: 1,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_path_input: true,
+      local_file_disclosure: true,
+      external_write: false,
+      destructive_action: false,
+      read_only_hint_conflict: false,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_external_network_call: false,
+      handler_external_write: false,
+      handler_secret_env_access: false,
+      handler_database_query: false,
+      handler_database_write: false,
+      handler_shell_execution: false,
+      handler_dynamic_code_execution: false,
+      handler_filesystem_read: true,
+      handler_filesystem_write: false,
+      handler_filesystem_delete: false,
+      handler_model_visible_output: true,
+      handler_signal_count: 1,
+      open_world_schema: false
+    });
+    expect(langchainFileReadTool?.metadata.authority_classes).toEqual([
+      "filesystem_access",
+      "filesystem_read",
+      "handler_filesystem_read",
+      "local_file_disclosure"
+    ]);
+    expect(langchainFileReadTool?.metadata.handler_authority_classes).toEqual(["handler_filesystem_read"]);
+    expect(langchainFileReadTool?.metadata.handler_env_key_names).toEqual([]);
+    expect(langchainFileReadTool?.metadata.schema_properties).toEqual(["workspace_path"]);
+    expect(langchainFileReadTool?.metadata.required_properties).toEqual(["workspace_path"]);
+    expect(JSON.stringify(langchainFileReadTool)).not.toContain("Path(workspace_path)");
+    expect(JSON.stringify(langchainFileReadTool)).not.toContain("read_text");
+    expect(JSON.stringify(langchainFileReadTool)).not.toContain("Read a workspace file by model supplied path");
     expect(langchainDynamicCodeTool).toMatchObject({
       path: "framework-tools/langchain_tools.py",
       data_classes: ["unknown"],
@@ -6028,6 +6135,7 @@ describe("scanner", () => {
       handler_external_write: false,
       handler_secret_env_access: false,
       handler_shell_execution: false,
+      handler_filesystem_read: false,
       handler_filesystem_write: false,
       handler_filesystem_delete: false,
       handler_signal_count: 0
@@ -6076,6 +6184,7 @@ describe("scanner", () => {
       handler_external_write: false,
       handler_secret_env_access: false,
       handler_shell_execution: false,
+      handler_filesystem_read: false,
       handler_filesystem_write: false,
       handler_filesystem_delete: false,
       handler_signal_count: 0
@@ -6126,6 +6235,7 @@ describe("scanner", () => {
       handler_external_write: false,
       handler_secret_env_access: false,
       handler_shell_execution: false,
+      handler_filesystem_read: false,
       handler_filesystem_write: false,
       handler_filesystem_delete: false,
       handler_signal_count: 0

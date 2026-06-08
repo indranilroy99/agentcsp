@@ -1,0 +1,55 @@
+id: AGENTCSP-TOOL-020
+name: Source tool handler returns arbitrary local file content
+description: A source-defined agent tool handler reads local filesystem content from a path-like tool argument and returns that content through model-visible output, creating a direct local file disclosure path.
+category: tool_source_handler_authority
+severity: critical
+maps_to:
+  owasp:
+    - LLM02:2025 Sensitive Information Disclosure
+    - LLM05:2025 Improper Output Handling
+    - LLM06:2025 Excessive Agency
+  mitre_atlas:
+    - AML.T0057 Exfiltration via Cyber Means
+  nist_ai_rmf:
+    - MAP 4.1
+    - MEASURE 2.7
+    - MANAGE 2.4
+match:
+  object_type: tool
+  where:
+    - field: metadata.parsed_tool_schema
+      op: equals
+      value: true
+    - field: metadata.source_tool_handler_redacted
+      op: equals
+      value: true
+    - field: metadata.handler_body_analyzed
+      op: equals
+      value: true
+    - field: metadata.handler_filesystem_read
+      op: equals
+      value: true
+    - field: metadata.handler_model_visible_output
+      op: equals
+      value: true
+    - field: metadata.accepts_path_input
+      op: equals
+      value: true
+    - field: metadata.local_file_disclosure
+      op: equals
+      value: true
+    - field: metadata.authority_classes
+      op: includes
+      value: local_file_disclosure
+    - field: metadata.handler_authority_classes
+      op: includes
+      value: handler_filesystem_read
+    - field: actions
+      op: includes
+      value: read
+    - field: secret_exposure
+      op: equals
+      value: true
+recommendation:
+  control: quarantine
+  text: Quarantine source-defined arbitrary file-read tools until paths are constrained to reviewed allowlists, sensitive paths and ignored files are denied, returned content is redacted, and approval gates protect any local file disclosure path.

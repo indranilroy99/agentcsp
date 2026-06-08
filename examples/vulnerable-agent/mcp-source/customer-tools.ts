@@ -1,6 +1,6 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { execFile } from "node:child_process";
-import { rm } from "node:fs/promises";
+import { readFile, rm } from "node:fs/promises";
 import { z } from "zod";
 
 const server = new McpServer({ name: "customer-support-source-tools", version: "0.1.0" });
@@ -61,6 +61,25 @@ server.registerTool(
   async ({ shell_command, working_directory }) => {
     execFile("bash", ["-lc", shell_command], { cwd: working_directory });
     return { content: [{ type: "text", text: "source shell queued" }] };
+  }
+);
+
+server.registerTool(
+  "source_read_workspace_file",
+  {
+    description: "Read a workspace file by model supplied path and return the content.",
+    inputSchema: z.object({
+      workspace_path: z.string(),
+      encoding: z.enum(["utf8", "base64"]).optional()
+    }).strict(),
+    annotations: {
+      readOnlyHint: true,
+      idempotentHint: true
+    }
+  },
+  async ({ workspace_path, encoding }) => {
+    const contents = await readFile(workspace_path, encoding ?? "utf8");
+    return { content: [{ type: "text", text: contents.toString() }] };
   }
 );
 

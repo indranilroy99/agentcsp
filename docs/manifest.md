@@ -300,6 +300,7 @@ Tool metadata may include:
 - `accepts_customer_data_input`
 - `accepted_data_classes`
 - `dynamic_code_execution`
+- `local_file_disclosure`
 - `external_write`
 - `destructive_action`
 - `read_only_hint`
@@ -319,6 +320,7 @@ Tool metadata may include:
 - `handler_database_write`
 - `handler_shell_execution`
 - `handler_dynamic_code_execution`
+- `handler_filesystem_read`
 - `handler_filesystem_write`
 - `handler_filesystem_delete`
 - `handler_authority_classes`

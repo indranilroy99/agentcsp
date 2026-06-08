@@ -6098,6 +6098,24 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerLocalMutationFindings)).not.toContain("node:fs/promises");
     expect(JSON.stringify(sourceHandlerLocalMutationFindings)).not.toContain("shutil.rmtree");
     expect(JSON.stringify(sourceHandlerLocalMutationFindings)).not.toContain("os.remove");
+    const sourceHandlerLocalFileDisclosureFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-020");
+    expect(sourceHandlerLocalFileDisclosureFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
+      "langchain_read_workspace_file",
+      "source_read_workspace_file"
+    ]);
+    expect(sourceHandlerLocalFileDisclosureFindings.every((finding) => finding.severity === "critical")).toBe(true);
+    expect(sourceHandlerLocalFileDisclosureFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerLocalFileDisclosureFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
+    expect(sourceHandlerLocalFileDisclosureFindings.every((finding) => finding.matched_object.secret_exposure === true)).toBe(true);
+    expect(sourceHandlerLocalFileDisclosureFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
+    expect(sourceHandlerLocalFileDisclosureFindings.every((finding) => finding.matched_object.metadata.handler_filesystem_read === true)).toBe(true);
+    expect(sourceHandlerLocalFileDisclosureFindings.every((finding) => finding.matched_object.metadata.handler_model_visible_output === true)).toBe(true);
+    expect(sourceHandlerLocalFileDisclosureFindings.every((finding) => finding.matched_object.metadata.local_file_disclosure === true)).toBe(true);
+    expect(sourceHandlerLocalFileDisclosureFindings.every((finding) => finding.matched_object.metadata.accepts_path_input === true)).toBe(true);
+    expect(sourceHandlerLocalFileDisclosureFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("local_file_disclosure"))).toBe(true);
+    expect(JSON.stringify(sourceHandlerLocalFileDisclosureFindings)).not.toContain("readFile");
+    expect(JSON.stringify(sourceHandlerLocalFileDisclosureFindings)).not.toContain("read_text");
+    expect(JSON.stringify(sourceHandlerLocalFileDisclosureFindings)).not.toContain("Path(workspace_path)");
     const sourceHandlerShellFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-015");
     expect(sourceHandlerShellFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_run_remediation_command",

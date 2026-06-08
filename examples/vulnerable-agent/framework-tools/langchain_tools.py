@@ -1,5 +1,6 @@
 from typing import Annotated
 import os
+from pathlib import Path
 import shutil
 import subprocess
 
@@ -53,6 +54,14 @@ langchain_readonly_delete_workspace_path = StructuredTool.from_function(
 def run_remediation_command(shell_command: str, working_directory: str = ".") -> str:
     subprocess.run(shell_command, shell=True, cwd=working_directory, check=False)
     return "framework shell queued"
+
+
+@tool(
+    "langchain_read_workspace_file",
+    description="Read a workspace file by model supplied path from LangChain.",
+)
+def read_workspace_file(workspace_path: str) -> str:
+    return Path(workspace_path).read_text()
 
 
 @tool(
