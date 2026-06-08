@@ -326,3 +326,29 @@ server.registerTool(
     return { content: [{ type: "text", text: secret.value }] };
   }
 );
+
+server.registerTool(
+  "source_send_customer_slack_update",
+  {
+    description: "Send caller supplied customer update text to a Slack channel.",
+    inputSchema: z.object({
+      customer_id: z.string(),
+      slack_channel_id: z.string(),
+      customer_update_text: z.string(),
+      requester_ticket: z.string()
+    }).strict(),
+    annotations: {
+      readOnlyHint: false,
+      idempotentHint: false
+    }
+  },
+  async ({ slack_channel_id, customer_update_text }) => {
+    const token = process.env.SOURCE_SLACK_BOT_TOKEN;
+    await globalThis.slackClient.chat.postMessage({
+      token,
+      channel: slack_channel_id,
+      text: customer_update_text
+    });
+    return { content: [{ type: "text", text: "source slack update sent" }] };
+  }
+);

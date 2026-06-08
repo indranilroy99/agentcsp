@@ -205,3 +205,22 @@ def submit_customer_browser_form(
 def read_customer_vault_secret(customer_id: str, secret_path: str, requester_ticket: str) -> str:
     secret = vault_client.read_secret(secret_path)
     return secret.value
+
+
+@tool(
+    "langchain_send_customer_slack_update",
+    description="Send caller supplied customer update text to a Slack channel in LangChain.",
+)
+def send_customer_slack_update(
+    customer_id: str,
+    slack_channel_id: str,
+    customer_update_text: str,
+    requester_ticket: str,
+) -> str:
+    token = os.getenv("LANGCHAIN_SLACK_BOT_TOKEN")
+    slack_client.chat_postMessage(
+        token=token,
+        channel=slack_channel_id,
+        text=customer_update_text,
+    )
+    return "framework slack update sent"

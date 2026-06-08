@@ -24127,6 +24127,7 @@ function addToolDefinitionSurface(
       !authority.nested_tool_invocation &&
       !authority.browser_automation &&
       !authority.secret_manager_access &&
+      !authority.external_service_write &&
       !authority.dynamic_code_execution &&
       !authority.unsafe_deserialization,
     reason,
@@ -24152,6 +24153,7 @@ function addToolDefinitionSurface(
       nested_tool_invocation: authority.nested_tool_invocation,
       browser_automation: authority.browser_automation,
       secret_manager_access: authority.secret_manager_access,
+      external_service_write: authority.external_service_write,
       network_response_capture: authority.network_response_capture,
       dynamic_code_execution: authority.dynamic_code_execution,
       unsafe_deserialization: authority.unsafe_deserialization,
@@ -26524,6 +26526,7 @@ interface SourceToolHandlerSignals {
   handlerCredentialedNetworkRead: boolean;
   handlerNetworkResponseToOutput: boolean;
   handlerExternalWrite: boolean;
+  handlerExternalServiceWrite: boolean;
   handlerSecretEnvAccess: boolean;
   handlerModelVisibleOutput: boolean;
   handlerSecretToOutput: boolean;
@@ -26953,6 +26956,7 @@ function sourceToolHandlerSignalMetadata(signals: SourceToolHandlerSignals | und
     handler_credentialed_network_read: signals.handlerCredentialedNetworkRead,
     handler_network_response_to_output: signals.handlerNetworkResponseToOutput,
     handler_external_write: signals.handlerExternalWrite,
+    handler_external_service_write: signals.handlerExternalServiceWrite,
     handler_secret_env_access: signals.handlerSecretEnvAccess,
     handler_model_visible_output: signals.handlerModelVisibleOutput,
     handler_secret_to_output: signals.handlerSecretToOutput,
@@ -26992,6 +26996,9 @@ function classifySourceToolHandlerSignals(
   const externalWrite = language === "javascript"
     ? hasJavaScriptHandlerExternalWrite(handlerSource)
     : hasPythonHandlerExternalWrite(handlerSource);
+  const externalServiceWrite = language === "javascript"
+    ? hasJavaScriptHandlerExternalServiceWrite(handlerSource)
+    : hasPythonHandlerExternalServiceWrite(handlerSource);
   const databaseQuery = language === "javascript"
     ? hasJavaScriptHandlerDatabaseQuery(handlerSource)
     : hasPythonHandlerDatabaseQuery(handlerSource);
@@ -27049,6 +27056,7 @@ function classifySourceToolHandlerSignals(
   if (credentialedNetworkRead) classes.add("handler_credentialed_network_read");
   if (networkResponseToOutput) classes.add("handler_network_response_to_output");
   if (externalWrite) classes.add("handler_external_write");
+  if (externalServiceWrite) classes.add("handler_external_service_write");
   if (secretEnvAccess) classes.add("handler_secret_env_access");
   if (secretToOutput) classes.add("handler_secret_to_output");
   if (databaseQuery) classes.add("handler_database_query");
@@ -27072,6 +27080,7 @@ function classifySourceToolHandlerSignals(
     handlerCredentialedNetworkRead: credentialedNetworkRead,
     handlerNetworkResponseToOutput: networkResponseToOutput,
     handlerExternalWrite: externalWrite,
+    handlerExternalServiceWrite: externalServiceWrite,
     handlerSecretEnvAccess: secretEnvAccess,
     handlerModelVisibleOutput: modelVisibleOutput,
     handlerSecretToOutput: secretToOutput,
@@ -27364,6 +27373,18 @@ function hasPythonHandlerSecretManagerAccess(source: string): boolean {
   return /\b(?:vault|vault_client|secret_manager|secret_manager_client|secrets_manager|secrets_manager_client|key_vault|key_vault_client|credential_vault)\s*\.\s*(?:read|read_secret|get|get_secret|get_secret_value|access_secret_version|download_secret|retrieve_secret)\s*\(/iu.test(
     source
   ) || /\b(?:GetSecretValueCommand|SecretManagerServiceClient|SecretClient)\b/u.test(source);
+}
+
+function hasJavaScriptHandlerExternalServiceWrite(source: string): boolean {
+  return /\b(?:slackClient|slack|github|githubClient|octokit|emailClient|mailClient|sendgrid|twilioClient|twilio|teamsClient|discordClient|notion|linear|jira|salesforce|hubspot)\s*(?:\.\s*[A-Za-z_$][\w$]*){0,4}\s*\.\s*(?:postMessage|createComment|createIssueComment|send|sendMail|sendMessage|create|publish|post|reply|update|createPage|createTask|createIssue)\s*\(/iu.test(
+    source
+  );
+}
+
+function hasPythonHandlerExternalServiceWrite(source: string): boolean {
+  return /\b(?:slack_client|slack|github|github_client|octokit|email_client|mail_client|sendgrid|twilio_client|twilio|teams_client|discord_client|notion|linear|jira|salesforce|hubspot)\s*(?:\.\s*[A-Za-z_]\w*){0,4}\s*\.\s*(?:post_message|chat_postMessage|chat_post_message|create_comment|create_issue_comment|send|send_mail|send_message|create|publish|post|reply|update|create_page|create_task|create_issue)\s*\(/iu.test(
+    source
+  );
 }
 
 function hasAgentControlPlaneTargetString(source: string): boolean {
@@ -28667,6 +28688,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   nested_tool_invocation: boolean;
   browser_automation: boolean;
   secret_manager_access: boolean;
+  external_service_write: boolean;
   network_response_capture: boolean;
   dynamic_code_execution: boolean;
   unsafe_deserialization: boolean;
@@ -28696,6 +28718,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   const handlerCredentialedNetworkRead = handler?.handlerCredentialedNetworkRead === true;
   const handlerNetworkResponseToOutput = handler?.handlerNetworkResponseToOutput === true;
   const handlerExternalWrite = handler?.handlerExternalWrite === true;
+  const handlerExternalServiceWrite = handler?.handlerExternalServiceWrite === true;
   const handlerDatabaseQuery = handler?.handlerDatabaseQuery === true;
   const handlerDatabaseWrite = handler?.handlerDatabaseWrite === true;
   const handlerMemoryWrite = handler?.handlerMemoryWrite === true;
@@ -28714,7 +28737,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   const destructive = /\b(delete|remove|drop|truncate|destroy|purge|wipe)\b/i.test(text);
   const externalWrite = /\b(publish|post|send|webhook|slack|email|release|deploy|comment|issue|pull\s+request|upload)\b/i.test(
     text
-  ) || handlerExternalWrite;
+  ) || handlerExternalWrite || handlerExternalServiceWrite;
 
   const shellExecution =
     /\b(shell|command|exec|bash|process|terminal)\b/i.test(text) ||
@@ -28813,6 +28836,12 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
     actions.add("read");
     if (handlerModelVisibleOutput) actions.add("send");
   }
+  if (handlerExternalServiceWrite) {
+    classes.add("external_service_write");
+    classes.add("external_write");
+    actions.add("send");
+    actions.add("publish");
+  }
   if (handlerSecretToOutput) {
     classes.add("secret_materialization");
     actions.add("send");
@@ -28861,6 +28890,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerToolInvocation ||
       handlerBrowserAutomation ||
       handlerSecretManagerAccess ||
+      handlerExternalServiceWrite ||
       handlerDatabaseQuery ||
       handlerDatabaseWrite ||
       handlerExternalWrite ||
@@ -28885,7 +28915,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
     authority_classes: [...classes].sort((a, b) => a.localeCompare(b)),
     actions: [...actions].sort((a, b) => a.localeCompare(b)),
     side_effect: sideEffect,
-    external_reach: acceptsUrl || externalWrite || handlerExternalNetworkCall || handlerBrowserAutomation,
+    external_reach: acceptsUrl || externalWrite || handlerExternalNetworkCall || handlerBrowserAutomation || handlerExternalServiceWrite,
     secret_exposure: acceptsSecret || handlerSecretEnvAccess || localFileDisclosure || handlerCredentialIssuance || handlerSecretManagerAccess,
     accepts_secret_like_input: acceptsSecret,
     accepts_content_like_input: acceptsContent,
@@ -28902,6 +28932,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
     nested_tool_invocation: handlerToolInvocation,
     browser_automation: handlerBrowserAutomation,
     secret_manager_access: handlerSecretManagerAccess,
+    external_service_write: handlerExternalServiceWrite,
     network_response_capture: handlerNetworkResponseToOutput,
     dynamic_code_execution: handlerDynamicCodeExecution,
     unsafe_deserialization: handlerUnsafeDeserialization,
@@ -28958,6 +28989,7 @@ function authoritySignature(tool: SurfaceObject): string {
   const flags = [
     metadata.parsed_tool_schema === true ? "parsed" : "unparsed",
     metadata.external_write === true ? "external_write" : "",
+    metadata.external_service_write === true ? "external_service_write" : "",
     metadata.destructive_action === true ? "destructive" : "",
     metadata.credential_issuance === true ? "credential_issuance" : "",
     metadata.nested_tool_invocation === true ? "nested_tool_invocation" : "",
@@ -28986,6 +29018,7 @@ function isPrivilegedToolSurface(tool: SurfaceObject): boolean {
     !tool.reversible ||
     tool.actions.some((action) => ["write", "execute", "publish", "send", "delete", "remember"].includes(action)) ||
     tool.metadata.external_write === true ||
+    tool.metadata.external_service_write === true ||
     tool.metadata.destructive_action === true ||
     tool.metadata.credential_issuance === true ||
     tool.metadata.nested_tool_invocation === true ||

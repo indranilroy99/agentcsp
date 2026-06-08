@@ -42,6 +42,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-026")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-027")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-028")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-029")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-001")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-002")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-003")).toBe(true);
@@ -6286,6 +6287,32 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerSecretManagerFindings)).not.toContain("vault_client.read_secret");
     expect(JSON.stringify(sourceHandlerSecretManagerFindings)).not.toContain("secret.value");
     expect(JSON.stringify(sourceHandlerSecretManagerFindings)).not.toContain("Read a customer support secret");
+    const sourceHandlerExternalServiceWriteFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-029");
+    expect(sourceHandlerExternalServiceWriteFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
+      "langchain_send_customer_slack_update",
+      "source_send_customer_slack_update"
+    ]);
+    expect(sourceHandlerExternalServiceWriteFindings.every((finding) => finding.severity === "critical")).toBe(true);
+    expect(sourceHandlerExternalServiceWriteFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerExternalServiceWriteFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
+    expect(sourceHandlerExternalServiceWriteFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
+    expect(sourceHandlerExternalServiceWriteFindings.every((finding) => finding.matched_object.metadata.handler_external_service_write === true)).toBe(true);
+    expect(sourceHandlerExternalServiceWriteFindings.every((finding) => finding.matched_object.metadata.external_service_write === true)).toBe(true);
+    expect(sourceHandlerExternalServiceWriteFindings.every((finding) => finding.matched_object.metadata.external_write === true)).toBe(true);
+    expect(sourceHandlerExternalServiceWriteFindings.every((finding) => finding.matched_object.metadata.accepts_content_like_input === true)).toBe(true);
+    expect(sourceHandlerExternalServiceWriteFindings.every((finding) => finding.matched_object.metadata.accepts_customer_data_input === true)).toBe(true);
+    expect(sourceHandlerExternalServiceWriteFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("external_service_write"))).toBe(true);
+    expect(sourceHandlerExternalServiceWriteFindings.every((finding) => finding.matched_object.metadata.handler_authority_classes.includes("handler_external_service_write"))).toBe(true);
+    expect(sourceHandlerExternalServiceWriteFindings.every((finding) => finding.matched_object.actions.includes("send"))).toBe(true);
+    expect(sourceHandlerExternalServiceWriteFindings.every((finding) => finding.matched_object.actions.includes("publish"))).toBe(true);
+    expect(sourceHandlerExternalServiceWriteFindings.every((finding) => finding.matched_object.external_reach === true)).toBe(true);
+    expect(sourceHandlerExternalServiceWriteFindings.every((finding) => finding.matched_object.side_effect === true)).toBe(true);
+    expect(sourceHandlerExternalServiceWriteFindings.every((finding) => finding.matched_object.reversible === false)).toBe(true);
+    expect(JSON.stringify(sourceHandlerExternalServiceWriteFindings)).not.toContain("slackClient.chat.postMessage");
+    expect(JSON.stringify(sourceHandlerExternalServiceWriteFindings)).not.toContain("slack_client.chat_postMessage");
+    expect(JSON.stringify(sourceHandlerExternalServiceWriteFindings)).not.toContain("source slack update sent");
+    expect(JSON.stringify(sourceHandlerExternalServiceWriteFindings)).not.toContain("framework slack update sent");
+    expect(JSON.stringify(sourceHandlerExternalServiceWriteFindings)).not.toContain("Send caller supplied customer update text");
     const sourceHandlerShellFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-015");
     expect(sourceHandlerShellFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_run_remediation_command",

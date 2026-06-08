@@ -308,6 +308,7 @@ Tool metadata may include:
 - `nested_tool_invocation`
 - `browser_automation`
 - `secret_manager_access`
+- `external_service_write`
 - `network_response_capture`
 - `external_write`
 - `destructive_action`
@@ -322,6 +323,7 @@ Tool metadata may include:
 - `handler_credentialed_network_read`
 - `handler_network_response_to_output`
 - `handler_external_write`
+- `handler_external_service_write`
 - `handler_secret_env_access`
 - `handler_model_visible_output`
 - `handler_secret_to_output`
