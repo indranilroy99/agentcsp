@@ -24132,7 +24132,8 @@ function addToolDefinitionSurface(
       !authority.tainted_shell_argument &&
       !authority.dynamic_code_execution &&
       !authority.tainted_dynamic_code_argument &&
-      !authority.unsafe_deserialization,
+      !authority.unsafe_deserialization &&
+      !authority.tainted_deserialization_argument,
     reason,
     metadata: {
       tool_name: definition.name,
@@ -24164,6 +24165,7 @@ function addToolDefinitionSurface(
       dynamic_code_execution: authority.dynamic_code_execution,
       tainted_dynamic_code_argument: authority.tainted_dynamic_code_argument,
       unsafe_deserialization: authority.unsafe_deserialization,
+      tainted_deserialization_argument: authority.tainted_deserialization_argument,
       local_file_disclosure: authority.local_file_disclosure,
       external_write: authority.external_write,
       destructive_action: authority.destructive_action,
@@ -26552,6 +26554,7 @@ interface SourceToolHandlerSignals {
   handlerDynamicCodeExecution: boolean;
   handlerTaintedDynamicCodeArgument: boolean;
   handlerUnsafeDeserialization: boolean;
+  handlerTaintedDeserializationArgument: boolean;
   handlerFilesystemRead: boolean;
   handlerFilesystemWrite: boolean;
   handlerFilesystemDelete: boolean;
@@ -26986,6 +26989,7 @@ function sourceToolHandlerSignalMetadata(signals: SourceToolHandlerSignals | und
     handler_dynamic_code_execution: signals.handlerDynamicCodeExecution,
     handler_tainted_dynamic_code_argument: signals.handlerTaintedDynamicCodeArgument,
     handler_unsafe_deserialization: signals.handlerUnsafeDeserialization,
+    handler_tainted_deserialization_argument: signals.handlerTaintedDeserializationArgument,
     handler_filesystem_read: signals.handlerFilesystemRead,
     handler_filesystem_write: signals.handlerFilesystemWrite,
     handler_filesystem_delete: signals.handlerFilesystemDelete,
@@ -27053,6 +27057,9 @@ function classifySourceToolHandlerSignals(
   const unsafeDeserialization = language === "javascript"
     ? hasJavaScriptHandlerUnsafeDeserialization(handlerSource)
     : hasPythonHandlerUnsafeDeserialization(handlerSource);
+  const taintedDeserializationArgument = unsafeDeserialization && (language === "javascript"
+    ? hasJavaScriptHandlerTaintedDeserializationArgument(handlerSource)
+    : hasPythonHandlerTaintedDeserializationArgument(handlerSource));
   const filesystemRead = language === "javascript"
     ? /\b(?:fs|fsPromises|promises)\s*\.\s*(?:readFile|readFileSync|createReadStream|readlink|stat|lstat|readdir)\b|\b(?:readFile|readFileSync|createReadStream)\s*\(/u.test(handlerSource)
     : /\b(?:Path\s*\([^)]*\)\s*\.\s*(?:read_text|read_bytes)|pathlib\s*\.\s*Path\s*\([^)]*\)\s*\.\s*(?:read_text|read_bytes)|open\s*\([^)]*["']r)/u.test(handlerSource);
@@ -27101,6 +27108,7 @@ function classifySourceToolHandlerSignals(
   if (dynamicCodeExecution) classes.add("handler_dynamic_code_execution");
   if (taintedDynamicCodeArgument) classes.add("handler_tainted_dynamic_code_argument");
   if (unsafeDeserialization) classes.add("handler_unsafe_deserialization");
+  if (taintedDeserializationArgument) classes.add("handler_tainted_deserialization_argument");
   if (filesystemRead) classes.add("handler_filesystem_read");
   if (filesystemWrite) classes.add("handler_filesystem_write");
   if (filesystemDelete) classes.add("handler_filesystem_delete");
@@ -27130,6 +27138,7 @@ function classifySourceToolHandlerSignals(
     handlerDynamicCodeExecution: dynamicCodeExecution,
     handlerTaintedDynamicCodeArgument: taintedDynamicCodeArgument,
     handlerUnsafeDeserialization: unsafeDeserialization,
+    handlerTaintedDeserializationArgument: taintedDeserializationArgument,
     handlerFilesystemRead: filesystemRead,
     handlerFilesystemWrite: filesystemWrite,
     handlerFilesystemDelete: filesystemDelete,
@@ -27497,6 +27506,20 @@ function hasPythonHandlerTaintedDynamicCodeArgument(source: string): boolean {
   ].some((pattern) => expressionMatchesTaintedDynamicCodeArgument(pattern, source));
 }
 
+function hasJavaScriptHandlerTaintedDeserializationArgument(source: string): boolean {
+  return [
+    /\b(?:nodeSerialize|node_serialize|serializer|serialize)\s*\.\s*unserialize\s*\(([\s\S]{0,520})\)/giu,
+    /\bunserialize\s*\(([\s\S]{0,520})\)/giu
+  ].some((pattern) => expressionMatchesTaintedDeserializationArgument(pattern, source));
+}
+
+function hasPythonHandlerTaintedDeserializationArgument(source: string): boolean {
+  return [
+    /\b(?:pickle|dill|cloudpickle|joblib|marshal)\s*\.\s*loads?\s*\(([\s\S]{0,520})\)/giu,
+    /\byaml\s*\.\s*load\s*\(([\s\S]{0,520})\)/giu
+  ].some((pattern) => expressionMatchesTaintedDeserializationArgument(pattern, source));
+}
+
 function expressionMatchesPattern(pattern: RegExp, source: string, expressionPattern: RegExp): boolean {
   let match: RegExpExecArray | null;
   while ((match = pattern.exec(source)) !== null) {
@@ -27519,6 +27542,15 @@ function expressionMatchesTaintedDynamicCodeArgument(pattern: RegExp, source: st
   let match: RegExpExecArray | null;
   while ((match = pattern.exec(source)) !== null) {
     if (expressionReferencesTaintedDynamicCodeArgument(match[1] ?? "")) return true;
+    if (match[0].length === 0) pattern.lastIndex += 1;
+  }
+  return false;
+}
+
+function expressionMatchesTaintedDeserializationArgument(pattern: RegExp, source: string): boolean {
+  let match: RegExpExecArray | null;
+  while ((match = pattern.exec(source)) !== null) {
+    if (expressionReferencesTaintedDeserializationArgument(match[1] ?? "", source)) return true;
     if (match[0].length === 0) pattern.lastIndex += 1;
   }
   return false;
@@ -27551,6 +27583,28 @@ function expressionReferencesTaintedDynamicCodeArgument(expression: string): boo
   if (templateInterpolation) return true;
   const withoutQuotedStrings = expression.replace(/(["'`])(?:\\.|(?!\1)[\s\S])*\1/gu, " ");
   return /\b(?:code|contextCode|context_code|expression|program|script|source|payload)\b/u.test(withoutQuotedStrings);
+}
+
+function expressionReferencesTaintedDeserializationArgument(expression: string, source: string): boolean {
+  const withoutQuotedStrings = expression.replace(/(["'`])(?:\\.|(?!\1)[\s\S])*\1/gu, " ");
+  const taintedName = /\b(?:serializedPayload|serialized_payload|serialized|payload|state|snapshot|document|data)\b/u;
+  if (taintedName.test(withoutQuotedStrings)) return true;
+
+  const identifiers = uniqueStrings(
+    [...withoutQuotedStrings.matchAll(/\b[A-Za-z_$][\w$]*\b/gu)]
+      .map((match) => match[0])
+      .filter((identifier) => !["Loader", "SafeLoader", "base64", "pickle", "yaml"].includes(identifier))
+  );
+  return identifiers.some((identifier) => identifierAssignedFromTaintedDeserializationInput(identifier, source, taintedName));
+}
+
+function identifierAssignedFromTaintedDeserializationInput(identifier: string, source: string, taintedName: RegExp): boolean {
+  const escaped = escapeRegExp(identifier);
+  const patterns = [
+    new RegExp(`\\b(?:const|let|var)\\s+${escaped}\\s*=\\s*([^;\\n]+)`, "gu"),
+    new RegExp(`\\b${escaped}\\s*=\\s*([^\\n]+)`, "gu")
+  ];
+  return patterns.some((pattern) => expressionMatchesPattern(pattern, source, taintedName));
 }
 
 function expressionReferencesTaintedContext(expression: string): boolean {
@@ -28874,6 +28928,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   dynamic_code_execution: boolean;
   tainted_dynamic_code_argument: boolean;
   unsafe_deserialization: boolean;
+  tainted_deserialization_argument: boolean;
   local_file_disclosure: boolean;
   external_write: boolean;
   destructive_action: boolean;
@@ -28916,6 +28971,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   const handlerDynamicCodeExecution = handler?.handlerDynamicCodeExecution === true;
   const handlerTaintedDynamicCodeArgument = handler?.handlerTaintedDynamicCodeArgument === true;
   const handlerUnsafeDeserialization = handler?.handlerUnsafeDeserialization === true;
+  const handlerTaintedDeserializationArgument = handler?.handlerTaintedDeserializationArgument === true;
   const handlerFilesystemRead = handler?.handlerFilesystemRead === true;
   const handlerFilesystemWrite = handler?.handlerFilesystemWrite === true;
   const handlerFilesystemDelete = handler?.handlerFilesystemDelete === true;
@@ -28947,6 +29003,10 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   }
   if (handlerUnsafeDeserialization) {
     classes.add("unsafe_deserialization");
+    actions.add("execute");
+  }
+  if (handlerTaintedDeserializationArgument) {
+    classes.add("tainted_deserialization_argument");
     actions.add("execute");
   }
   if (/\b(browser|navigate|click|page|dom|screenshot)\b/i.test(text)) {
@@ -29104,6 +29164,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerDynamicCodeExecution ||
       handlerTaintedDynamicCodeArgument ||
       handlerUnsafeDeserialization ||
+      handlerTaintedDeserializationArgument ||
       handlerFilesystemRead ||
       handlerFilesystemWrite ||
       handlerFilesystemDelete ||
@@ -29153,6 +29214,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
     dynamic_code_execution: handlerDynamicCodeExecution,
     tainted_dynamic_code_argument: handlerTaintedDynamicCodeArgument,
     unsafe_deserialization: handlerUnsafeDeserialization,
+    tainted_deserialization_argument: handlerTaintedDeserializationArgument,
     local_file_disclosure: localFileDisclosure,
     external_write: externalWrite,
     destructive_action: destructive || handlerFilesystemDelete,
@@ -29212,6 +29274,7 @@ function authoritySignature(tool: SurfaceObject): string {
     metadata.tainted_shell_argument === true ? "tainted_shell_argument" : "",
     metadata.destructive_action === true ? "destructive" : "",
     metadata.tainted_dynamic_code_argument === true ? "tainted_dynamic_code_argument" : "",
+    metadata.tainted_deserialization_argument === true ? "tainted_deserialization_argument" : "",
     metadata.credential_issuance === true ? "credential_issuance" : "",
     metadata.nested_tool_invocation === true ? "nested_tool_invocation" : "",
     metadata.browser_automation === true ? "browser_automation" : "",
@@ -29245,6 +29308,7 @@ function isPrivilegedToolSurface(tool: SurfaceObject): boolean {
     tool.metadata.tainted_shell_argument === true ||
     tool.metadata.destructive_action === true ||
     tool.metadata.tainted_dynamic_code_argument === true ||
+    tool.metadata.tainted_deserialization_argument === true ||
     tool.metadata.credential_issuance === true ||
     tool.metadata.nested_tool_invocation === true ||
     tool.metadata.browser_automation === true ||

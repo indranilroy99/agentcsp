@@ -1939,18 +1939,25 @@ describe("scanner", () => {
       handler_shell_execution: false,
       handler_dynamic_code_execution: false,
       handler_unsafe_deserialization: true,
+      handler_tainted_deserialization_argument: true,
+      tainted_deserialization_argument: true,
       handler_filesystem_read: false,
       handler_filesystem_write: false,
       handler_filesystem_delete: false,
       handler_model_visible_output: true,
-      handler_signal_count: 1,
+      handler_signal_count: 2,
       open_world_schema: false
     });
     expect(pythonUnsafeDeserializationTool?.metadata.authority_classes).toEqual([
+      "handler_tainted_deserialization_argument",
       "handler_unsafe_deserialization",
+      "tainted_deserialization_argument",
       "unsafe_deserialization"
     ]);
-    expect(pythonUnsafeDeserializationTool?.metadata.handler_authority_classes).toEqual(["handler_unsafe_deserialization"]);
+    expect(pythonUnsafeDeserializationTool?.metadata.handler_authority_classes).toEqual([
+      "handler_tainted_deserialization_argument",
+      "handler_unsafe_deserialization"
+    ]);
     expect(pythonUnsafeDeserializationTool?.metadata.handler_env_key_names).toEqual([]);
     expect(pythonUnsafeDeserializationTool?.metadata.schema_properties).toEqual(["encoding", "serialized_payload"]);
     expect(pythonUnsafeDeserializationTool?.metadata.required_properties).toEqual(["serialized_payload"]);
@@ -2311,18 +2318,25 @@ describe("scanner", () => {
       handler_shell_execution: false,
       handler_dynamic_code_execution: false,
       handler_unsafe_deserialization: true,
+      handler_tainted_deserialization_argument: true,
+      tainted_deserialization_argument: true,
       handler_filesystem_read: false,
       handler_filesystem_write: false,
       handler_filesystem_delete: false,
       handler_model_visible_output: true,
-      handler_signal_count: 1,
+      handler_signal_count: 2,
       open_world_schema: false
     });
     expect(langchainUnsafeDeserializationTool?.metadata.authority_classes).toEqual([
+      "handler_tainted_deserialization_argument",
       "handler_unsafe_deserialization",
+      "tainted_deserialization_argument",
       "unsafe_deserialization"
     ]);
-    expect(langchainUnsafeDeserializationTool?.metadata.handler_authority_classes).toEqual(["handler_unsafe_deserialization"]);
+    expect(langchainUnsafeDeserializationTool?.metadata.handler_authority_classes).toEqual([
+      "handler_tainted_deserialization_argument",
+      "handler_unsafe_deserialization"
+    ]);
     expect(langchainUnsafeDeserializationTool?.metadata.handler_env_key_names).toEqual([]);
     expect(langchainUnsafeDeserializationTool?.metadata.schema_properties).toEqual([
       "payload_format",
