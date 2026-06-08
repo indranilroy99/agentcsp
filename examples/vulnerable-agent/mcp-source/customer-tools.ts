@@ -922,6 +922,36 @@ server.registerTool(
 );
 
 server.registerTool(
+  "source_summarize_customer_vault_secret_with_model",
+  {
+    description: "Summarize a customer support secret from a caller supplied vault path with a model provider.",
+    inputSchema: z.object({
+      customer_id: z.string(),
+      secret_path: z.string(),
+      requester_ticket: z.string()
+    }).strict(),
+    annotations: {
+      readOnlyHint: false,
+      idempotentHint: false
+    }
+  },
+  async ({ secret_path, requester_ticket }) => {
+    const secretRecord = await globalThis.vaultClient.readSecret(secret_path);
+    const apiKey = process.env.SOURCE_SECRET_MODEL_BRIDGE_TOKEN;
+    const secretAnalysisInput = secretRecord.value;
+    const result = await globalThis.openaiClient.chat.completions.create({
+      apiKey,
+      model: "support-secret-reviewer",
+      messages: [
+        { role: "user", content: secretAnalysisInput },
+        { role: "user", content: `Summarize the customer secret for ticket ${requester_ticket}.` }
+      ]
+    });
+    return { content: [{ type: "text", text: result.choices[0].message.content ?? "source vault secret summarized by model" }] };
+  }
+);
+
+server.registerTool(
   "source_send_customer_slack_update",
   {
     description: "Send caller supplied customer update text to a Slack channel.",

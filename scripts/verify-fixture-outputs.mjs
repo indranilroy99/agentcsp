@@ -811,8 +811,14 @@ const leakPatterns = [
   /framework vault secret posted externally/u,
   /Send caller supplied customer update text/u,
   /Post a customer support secret/u,
+  /openaiClient\.chat\.completions\.create/u,
   /openai\.chat\.completions\.create/u,
   /openai_client\.chat\.completions\.create/u,
+  /secretAnalysisInput/u,
+  /secret_analysis_input/u,
+  /source vault secret summarized by model/u,
+  /framework vault secret summarized by model/u,
+  /Summarize a customer support secret/u,
   /result\.choices/u,
   /response\.choices/u,
   /Summarize caller supplied customer ticket text/u,
@@ -848,8 +854,8 @@ const leakPatterns = [
 const vulnerable = await readScanOutput(vulnerableOutput, { sarifRequired: true });
 const safe = await readScanOutput(safeOutput, { sarifRequired: false });
 
-assertEqual(vulnerable.manifest.findings.length, 388, "vulnerable manifest finding count");
-assertEqual(vulnerable.findings.length, 388, "vulnerable findings.json count");
+assertEqual(vulnerable.manifest.findings.length, 396, "vulnerable manifest finding count");
+assertEqual(vulnerable.findings.length, 396, "vulnerable findings.json count");
 assertEqual(vulnerable.manifest.attack_paths.length, 15, "vulnerable attack path count");
 assertEqual(vulnerable.manifest.static_blast_radius?.critical_attack_paths, 15, "vulnerable critical attack path count");
 assertEqual(vulnerable.manifest.diagnostics.length, 0, "vulnerable diagnostics count");
@@ -909,6 +915,7 @@ for (const ruleId of [
   "AGENTCSP-TOOL-060",
   "AGENTCSP-TOOL-061",
   "AGENTCSP-TOOL-062",
+  "AGENTCSP-TOOL-063",
   "AGENTCSP-RUNTIME-007",
   "AGENTCSP-RUNTIME-008",
   "AGENTCSP-RUNTIME-123",

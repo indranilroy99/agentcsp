@@ -76,6 +76,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-060")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-061")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-062")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-063")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-001")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-002")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-003")).toBe(true);
@@ -7108,8 +7109,10 @@ describe("rule engine", () => {
     expect(sourceHandlerSecretManagerFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_post_customer_vault_secret_slack",
       "langchain_read_customer_vault_secret",
+      "langchain_summarize_customer_vault_secret_with_model",
       "source_post_customer_vault_secret_slack",
-      "source_read_customer_vault_secret"
+      "source_read_customer_vault_secret",
+      "source_summarize_customer_vault_secret_with_model"
     ]);
     expect(sourceHandlerSecretManagerFindings.every((finding) => finding.severity === "critical")).toBe(true);
     expect(sourceHandlerSecretManagerFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
@@ -7137,12 +7140,17 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerSecretManagerFindings)).not.toContain("secret_record.value");
     expect(JSON.stringify(sourceHandlerSecretManagerFindings)).not.toContain("Read a customer support secret");
     expect(JSON.stringify(sourceHandlerSecretManagerFindings)).not.toContain("Post a customer support secret");
+    expect(JSON.stringify(sourceHandlerSecretManagerFindings)).not.toContain("secretAnalysisInput");
+    expect(JSON.stringify(sourceHandlerSecretManagerFindings)).not.toContain("secret_analysis_input");
+    expect(JSON.stringify(sourceHandlerSecretManagerFindings)).not.toContain("Summarize a customer support secret");
     const sourceHandlerTaintedSecretManagerFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-036");
     expect(sourceHandlerTaintedSecretManagerFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_post_customer_vault_secret_slack",
       "langchain_read_customer_vault_secret",
+      "langchain_summarize_customer_vault_secret_with_model",
       "source_post_customer_vault_secret_slack",
-      "source_read_customer_vault_secret"
+      "source_read_customer_vault_secret",
+      "source_summarize_customer_vault_secret_with_model"
     ]);
     expect(sourceHandlerTaintedSecretManagerFindings.every((finding) => finding.severity === "critical")).toBe(true);
     expect(sourceHandlerTaintedSecretManagerFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
@@ -7167,6 +7175,9 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerTaintedSecretManagerFindings)).not.toContain("secret_record.value");
     expect(JSON.stringify(sourceHandlerTaintedSecretManagerFindings)).not.toContain("Read a customer support secret");
     expect(JSON.stringify(sourceHandlerTaintedSecretManagerFindings)).not.toContain("Post a customer support secret");
+    expect(JSON.stringify(sourceHandlerTaintedSecretManagerFindings)).not.toContain("secretAnalysisInput");
+    expect(JSON.stringify(sourceHandlerTaintedSecretManagerFindings)).not.toContain("secret_analysis_input");
+    expect(JSON.stringify(sourceHandlerTaintedSecretManagerFindings)).not.toContain("Summarize a customer support secret");
     const sourceHandlerExternalServiceWriteFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-029");
     expect(sourceHandlerExternalServiceWriteFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_post_customer_vault_secret_slack",
@@ -7285,9 +7296,57 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerSecretManagerExternalServiceBridgeFindings)).not.toContain("source vault secret posted externally");
     expect(JSON.stringify(sourceHandlerSecretManagerExternalServiceBridgeFindings)).not.toContain("framework vault secret posted externally");
     expect(JSON.stringify(sourceHandlerSecretManagerExternalServiceBridgeFindings)).not.toContain("Post a customer support secret");
+    const sourceHandlerSecretManagerPromptBridgeFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-063");
+    expect(sourceHandlerSecretManagerPromptBridgeFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
+      "langchain_summarize_customer_vault_secret_with_model",
+      "source_summarize_customer_vault_secret_with_model"
+    ]);
+    expect(sourceHandlerSecretManagerPromptBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
+    expect(sourceHandlerSecretManagerPromptBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerSecretManagerPromptBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
+    expect(sourceHandlerSecretManagerPromptBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
+    expect(sourceHandlerSecretManagerPromptBridgeFindings.every((finding) => finding.matched_object.metadata.handler_secret_manager_access === true)).toBe(true);
+    expect(sourceHandlerSecretManagerPromptBridgeFindings.every((finding) => finding.matched_object.metadata.handler_tainted_secret_manager_path === true)).toBe(true);
+    expect(sourceHandlerSecretManagerPromptBridgeFindings.every((finding) => finding.matched_object.metadata.handler_model_provider_call === true)).toBe(true);
+    expect(sourceHandlerSecretManagerPromptBridgeFindings.every((finding) => finding.matched_object.metadata.handler_secret_manager_prompt_bridge === true)).toBe(true);
+    expect(sourceHandlerSecretManagerPromptBridgeFindings.every((finding) => finding.matched_object.metadata.handler_secret_env_access === true)).toBe(true);
+    expect(sourceHandlerSecretManagerPromptBridgeFindings.every((finding) => finding.matched_object.metadata.handler_model_visible_output === true)).toBe(true);
+    expect(sourceHandlerSecretManagerPromptBridgeFindings.every((finding) => finding.matched_object.metadata.secret_manager_access === true)).toBe(true);
+    expect(sourceHandlerSecretManagerPromptBridgeFindings.every((finding) => finding.matched_object.metadata.tainted_secret_manager_path === true)).toBe(true);
+    expect(sourceHandlerSecretManagerPromptBridgeFindings.every((finding) => finding.matched_object.metadata.model_provider_call === true)).toBe(true);
+    expect(sourceHandlerSecretManagerPromptBridgeFindings.every((finding) => finding.matched_object.metadata.secret_manager_prompt_bridge === true)).toBe(true);
+    expect(sourceHandlerSecretManagerPromptBridgeFindings.every((finding) => finding.matched_object.metadata.accepts_secret_like_input === true)).toBe(true);
+    expect(sourceHandlerSecretManagerPromptBridgeFindings.every((finding) => finding.matched_object.metadata.accepts_path_input === true)).toBe(true);
+    expect(sourceHandlerSecretManagerPromptBridgeFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("secret_manager_access"))).toBe(true);
+    expect(sourceHandlerSecretManagerPromptBridgeFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("tainted_secret_manager_path"))).toBe(true);
+    expect(sourceHandlerSecretManagerPromptBridgeFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("model_provider_call"))).toBe(true);
+    expect(sourceHandlerSecretManagerPromptBridgeFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("secret_manager_prompt_bridge"))).toBe(true);
+    expect(sourceHandlerSecretManagerPromptBridgeFindings.every((finding) => finding.matched_object.metadata.handler_authority_classes.includes("handler_secret_manager_access"))).toBe(true);
+    expect(sourceHandlerSecretManagerPromptBridgeFindings.every((finding) => finding.matched_object.metadata.handler_authority_classes.includes("handler_tainted_secret_manager_path"))).toBe(true);
+    expect(sourceHandlerSecretManagerPromptBridgeFindings.every((finding) => finding.matched_object.metadata.handler_authority_classes.includes("handler_model_provider_call"))).toBe(true);
+    expect(sourceHandlerSecretManagerPromptBridgeFindings.every((finding) => finding.matched_object.metadata.handler_authority_classes.includes("handler_secret_manager_prompt_bridge"))).toBe(true);
+    expect(sourceHandlerSecretManagerPromptBridgeFindings.every((finding) => finding.matched_object.actions.includes("read"))).toBe(true);
+    expect(sourceHandlerSecretManagerPromptBridgeFindings.every((finding) => finding.matched_object.actions.includes("send"))).toBe(true);
+    expect(sourceHandlerSecretManagerPromptBridgeFindings.every((finding) => finding.matched_object.external_reach === true)).toBe(true);
+    expect(sourceHandlerSecretManagerPromptBridgeFindings.every((finding) => finding.matched_object.secret_exposure === true)).toBe(true);
+    expect(sourceHandlerSecretManagerPromptBridgeFindings.every((finding) => finding.matched_object.side_effect === true)).toBe(true);
+    expect(sourceHandlerSecretManagerPromptBridgeFindings.every((finding) => finding.matched_object.reversible === false)).toBe(true);
+    expect(JSON.stringify(sourceHandlerSecretManagerPromptBridgeFindings)).not.toContain("vaultClient.readSecret");
+    expect(JSON.stringify(sourceHandlerSecretManagerPromptBridgeFindings)).not.toContain("vault_client.read_secret");
+    expect(JSON.stringify(sourceHandlerSecretManagerPromptBridgeFindings)).not.toContain("openaiClient.chat.completions.create");
+    expect(JSON.stringify(sourceHandlerSecretManagerPromptBridgeFindings)).not.toContain("openai_client.chat.completions.create");
+    expect(JSON.stringify(sourceHandlerSecretManagerPromptBridgeFindings)).not.toContain("secretRecord.value");
+    expect(JSON.stringify(sourceHandlerSecretManagerPromptBridgeFindings)).not.toContain("secret_record.value");
+    expect(JSON.stringify(sourceHandlerSecretManagerPromptBridgeFindings)).not.toContain("secretAnalysisInput");
+    expect(JSON.stringify(sourceHandlerSecretManagerPromptBridgeFindings)).not.toContain("secret_analysis_input");
+    expect(JSON.stringify(sourceHandlerSecretManagerPromptBridgeFindings)).not.toContain("source vault secret summarized by model");
+    expect(JSON.stringify(sourceHandlerSecretManagerPromptBridgeFindings)).not.toContain("framework vault secret summarized by model");
+    expect(JSON.stringify(sourceHandlerSecretManagerPromptBridgeFindings)).not.toContain("Summarize a customer support secret");
     const sourceHandlerModelProviderFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-030");
     expect(sourceHandlerModelProviderFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
+      "langchain_summarize_customer_vault_secret_with_model",
       "langchain_summarize_customer_with_model",
+      "source_summarize_customer_vault_secret_with_model",
       "source_summarize_customer_with_model"
     ]);
     expect(sourceHandlerModelProviderFindings.every((finding) => finding.severity === "critical")).toBe(true);
@@ -7296,16 +7355,19 @@ describe("rule engine", () => {
     expect(sourceHandlerModelProviderFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
     expect(sourceHandlerModelProviderFindings.every((finding) => finding.matched_object.metadata.handler_model_provider_call === true)).toBe(true);
     expect(sourceHandlerModelProviderFindings.every((finding) => finding.matched_object.metadata.model_provider_call === true)).toBe(true);
-    expect(sourceHandlerModelProviderFindings.every((finding) => finding.matched_object.metadata.handler_tainted_model_selection === true)).toBe(true);
-    expect(sourceHandlerModelProviderFindings.every((finding) => finding.matched_object.metadata.tainted_model_selection === true)).toBe(true);
     expect(sourceHandlerModelProviderFindings.every((finding) => finding.matched_object.metadata.handler_secret_env_access === true)).toBe(true);
     expect(sourceHandlerModelProviderFindings.every((finding) => finding.matched_object.metadata.handler_model_visible_output === true)).toBe(true);
     expect(sourceHandlerModelProviderFindings.every((finding) => finding.matched_object.metadata.accepts_content_like_input === true)).toBe(true);
     expect(sourceHandlerModelProviderFindings.every((finding) => finding.matched_object.metadata.accepts_customer_data_input === true)).toBe(true);
     expect(sourceHandlerModelProviderFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("model_provider_call"))).toBe(true);
-    expect(sourceHandlerModelProviderFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("tainted_model_selection"))).toBe(true);
     expect(sourceHandlerModelProviderFindings.every((finding) => finding.matched_object.metadata.handler_authority_classes.includes("handler_model_provider_call"))).toBe(true);
-    expect(sourceHandlerModelProviderFindings.every((finding) => finding.matched_object.metadata.handler_authority_classes.includes("handler_tainted_model_selection"))).toBe(true);
+    const taintedModelProviderFindings = sourceHandlerModelProviderFindings.filter((finding) =>
+      ["langchain_summarize_customer_with_model", "source_summarize_customer_with_model"].includes(finding.matched_object.name)
+    );
+    expect(taintedModelProviderFindings.every((finding) => finding.matched_object.metadata.handler_tainted_model_selection === true)).toBe(true);
+    expect(taintedModelProviderFindings.every((finding) => finding.matched_object.metadata.tainted_model_selection === true)).toBe(true);
+    expect(taintedModelProviderFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("tainted_model_selection"))).toBe(true);
+    expect(taintedModelProviderFindings.every((finding) => finding.matched_object.metadata.handler_authority_classes.includes("handler_tainted_model_selection"))).toBe(true);
     expect(sourceHandlerModelProviderFindings.every((finding) => finding.matched_object.actions.includes("send"))).toBe(true);
     expect(sourceHandlerModelProviderFindings.every((finding) => finding.matched_object.actions.includes("read"))).toBe(true);
     expect(sourceHandlerModelProviderFindings.every((finding) => finding.matched_object.external_reach === true)).toBe(true);
@@ -7318,6 +7380,11 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerModelProviderFindings)).not.toContain("response.choices");
     expect(JSON.stringify(sourceHandlerModelProviderFindings)).not.toContain("Summarize caller supplied customer ticket text");
     expect(JSON.stringify(sourceHandlerModelProviderFindings)).not.toContain("Create an internal support summary");
+    expect(JSON.stringify(sourceHandlerModelProviderFindings)).not.toContain("secretAnalysisInput");
+    expect(JSON.stringify(sourceHandlerModelProviderFindings)).not.toContain("secret_analysis_input");
+    expect(JSON.stringify(sourceHandlerModelProviderFindings)).not.toContain("source vault secret summarized by model");
+    expect(JSON.stringify(sourceHandlerModelProviderFindings)).not.toContain("framework vault secret summarized by model");
+    expect(JSON.stringify(sourceHandlerModelProviderFindings)).not.toContain("Summarize a customer support secret");
     const sourceHandlerTaintedModelSelectionFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-043");
     expect(sourceHandlerTaintedModelSelectionFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_summarize_customer_with_model",

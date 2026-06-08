@@ -633,6 +633,29 @@ def post_customer_vault_secret_slack(
 
 
 @tool(
+    "langchain_summarize_customer_vault_secret_with_model",
+    description="Summarize a customer support secret from a caller supplied vault path with a model provider in LangChain.",
+)
+def summarize_customer_vault_secret_with_model(
+    customer_id: str,
+    secret_path: str,
+    requester_ticket: str,
+) -> str:
+    secret_record = vault_client.read_secret(secret_path)
+    token = os.getenv("LANGCHAIN_SECRET_MODEL_BRIDGE_TOKEN")
+    secret_analysis_input = secret_record.value
+    response = openai_client.chat.completions.create(
+        model="support-secret-reviewer",
+        messages=[
+            {"role": "user", "content": secret_analysis_input},
+            {"role": "user", "content": f"Summarize the customer secret for ticket {requester_ticket}."},
+        ],
+        extra_headers={"authorization": f"Bearer {token}"},
+    )
+    return response.choices[0].message.content or "framework vault secret summarized by model"
+
+
+@tool(
     "langchain_send_customer_slack_update",
     description="Send caller supplied customer update text to a Slack channel in LangChain.",
 )
