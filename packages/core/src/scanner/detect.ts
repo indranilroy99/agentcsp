@@ -24135,6 +24135,7 @@ function addToolDefinitionSurface(
       !authority.prompt_cache_write &&
       !authority.training_dataset_export &&
       !authority.artifact_export &&
+      !authority.rag_context_to_output &&
       !authority.approval_auto_execution &&
       !authority.visual_context_capture &&
       !authority.tainted_network_destination &&
@@ -24191,6 +24192,9 @@ function addToolDefinitionSurface(
       artifact_export: authority.artifact_export,
       tainted_artifact_export_payload: authority.tainted_artifact_export_payload,
       public_artifact_destination: authority.public_artifact_destination,
+      rag_retrieval: authority.rag_retrieval,
+      tainted_rag_retrieval_query: authority.tainted_rag_retrieval_query,
+      rag_context_to_output: authority.rag_context_to_output,
       model_approval_gate: authority.model_approval_gate,
       tainted_approval_context: authority.tainted_approval_context,
       approval_auto_execution: authority.approval_auto_execution,
@@ -26589,6 +26593,9 @@ interface SourceToolHandlerSignals {
   handlerArtifactExport: boolean;
   handlerTaintedArtifactExportPayload: boolean;
   handlerPublicArtifactDestination: boolean;
+  handlerRagRetrieval: boolean;
+  handlerTaintedRagRetrievalQuery: boolean;
+  handlerRagContextToOutput: boolean;
   handlerModelApprovalGate: boolean;
   handlerTaintedApprovalContext: boolean;
   handlerApprovalAutoExecution: boolean;
@@ -27053,6 +27060,9 @@ function sourceToolHandlerSignalMetadata(signals: SourceToolHandlerSignals | und
     handler_artifact_export: signals.handlerArtifactExport,
     handler_tainted_artifact_export_payload: signals.handlerTaintedArtifactExportPayload,
     handler_public_artifact_destination: signals.handlerPublicArtifactDestination,
+    handler_rag_retrieval: signals.handlerRagRetrieval,
+    handler_tainted_rag_retrieval_query: signals.handlerTaintedRagRetrievalQuery,
+    handler_rag_context_to_output: signals.handlerRagContextToOutput,
     handler_model_approval_gate: signals.handlerModelApprovalGate,
     handler_tainted_approval_context: signals.handlerTaintedApprovalContext,
     handler_approval_auto_execution: signals.handlerApprovalAutoExecution,
@@ -27160,6 +27170,13 @@ function classifySourceToolHandlerSignals(
     ? hasJavaScriptHandlerTaintedArtifactExportPayload(handlerSource)
     : hasPythonHandlerTaintedArtifactExportPayload(handlerSource));
   const publicArtifactDestination = artifactExport && hasHandlerPublicArtifactDestination(handlerSource);
+  const ragRetrieval = language === "javascript"
+    ? hasJavaScriptHandlerRagRetrieval(handlerSource)
+    : hasPythonHandlerRagRetrieval(handlerSource);
+  const taintedRagRetrievalQuery = ragRetrieval && (language === "javascript"
+    ? hasJavaScriptHandlerTaintedRagRetrievalQuery(handlerSource)
+    : hasPythonHandlerTaintedRagRetrievalQuery(handlerSource));
+  const ragContextToOutput = ragRetrieval && hasHandlerRagContextToOutput(handlerSource);
   const modelApprovalGate = language === "javascript"
     ? hasJavaScriptHandlerModelApprovalGate(handlerSource)
     : hasPythonHandlerModelApprovalGate(handlerSource);
@@ -27284,6 +27301,9 @@ function classifySourceToolHandlerSignals(
   if (artifactExport) classes.add("handler_artifact_export");
   if (taintedArtifactExportPayload) classes.add("handler_tainted_artifact_export_payload");
   if (publicArtifactDestination) classes.add("handler_public_artifact_destination");
+  if (ragRetrieval) classes.add("handler_rag_retrieval");
+  if (taintedRagRetrievalQuery) classes.add("handler_tainted_rag_retrieval_query");
+  if (ragContextToOutput) classes.add("handler_rag_context_to_output");
   if (modelApprovalGate) classes.add("handler_model_approval_gate");
   if (taintedApprovalContext) classes.add("handler_tainted_approval_context");
   if (approvalAutoExecution) classes.add("handler_approval_auto_execution");
@@ -27342,6 +27362,9 @@ function classifySourceToolHandlerSignals(
     handlerArtifactExport: artifactExport,
     handlerTaintedArtifactExportPayload: taintedArtifactExportPayload,
     handlerPublicArtifactDestination: publicArtifactDestination,
+    handlerRagRetrieval: ragRetrieval,
+    handlerTaintedRagRetrievalQuery: taintedRagRetrievalQuery,
+    handlerRagContextToOutput: ragContextToOutput,
     handlerModelApprovalGate: modelApprovalGate,
     handlerTaintedApprovalContext: taintedApprovalContext,
     handlerApprovalAutoExecution: approvalAutoExecution,
@@ -28038,6 +28061,40 @@ function hasHandlerPublicArtifactDestination(source: string): boolean {
   );
 }
 
+function hasJavaScriptHandlerRagRetrieval(source: string): boolean {
+  return /\b(?:vectorRetriever|vectorStore|vectorIndex|retriever|ragStore|ragIndex|knowledgeBase|documentIndex|searchClient|semanticSearchClient)\s*(?:\.\s*[A-Za-z_$][\w$]*){0,4}\s*\.\s*(?:search|similaritySearch|query|retrieve|getRelevantDocuments|getRelevantDocs|fetchRelevant|lookup|hybridSearch|semanticSearch|invoke)\s*\(/iu.test(
+    source
+  ) || /\b(?:retrieveContext|retrieve_context|searchRag|searchRAG|queryKnowledgeBase|queryRag|queryRAG)\s*\(/u.test(source);
+}
+
+function hasPythonHandlerRagRetrieval(source: string): boolean {
+  return /\b(?:vector_retriever|vector_store|vector_index|retriever|rag_store|rag_index|knowledge_base|document_index|search_client|semantic_search_client)\s*(?:\.\s*[A-Za-z_]\w*){0,4}\s*\.\s*(?:search|similarity_search|query|retrieve|get_relevant_documents|get_relevant_docs|fetch_relevant|lookup|hybrid_search|semantic_search|invoke)\s*\(/iu.test(
+    source
+  ) || /\b(?:retrieve_context|search_rag|query_knowledge_base|query_rag)\s*\(/u.test(source);
+}
+
+function hasJavaScriptHandlerTaintedRagRetrievalQuery(source: string): boolean {
+  return [
+    /\b(?:vectorRetriever|vectorStore|vectorIndex|retriever|ragStore|ragIndex|knowledgeBase|documentIndex|searchClient|semanticSearchClient)\s*(?:\.\s*[A-Za-z_$][\w$]*){0,4}\s*\.\s*(?:search|similaritySearch|query|retrieve|getRelevantDocuments|getRelevantDocs|fetchRelevant|lookup|hybridSearch|semanticSearch|invoke)\s*\(([\s\S]{0,1000})\)/giu,
+    /\b(?:retrieveContext|searchRag|searchRAG|queryKnowledgeBase|queryRag|queryRAG)\s*\(([\s\S]{0,1000})\)/giu
+  ].some((pattern) => expressionMatchesTaintedRagRetrievalQuery(pattern, source));
+}
+
+function hasPythonHandlerTaintedRagRetrievalQuery(source: string): boolean {
+  return [
+    /\b(?:vector_retriever|vector_store|vector_index|retriever|rag_store|rag_index|knowledge_base|document_index|search_client|semantic_search_client)\s*(?:\.\s*[A-Za-z_]\w*){0,4}\s*\.\s*(?:search|similarity_search|query|retrieve|get_relevant_documents|get_relevant_docs|fetch_relevant|lookup|hybrid_search|semantic_search|invoke)\s*\(([\s\S]{0,1000})\)/giu,
+    /\b(?:retrieve_context|search_rag|query_knowledge_base|query_rag)\s*\(([\s\S]{0,1000})\)/giu
+  ].some((pattern) => expressionMatchesTaintedRagRetrievalQuery(pattern, source));
+}
+
+function hasHandlerRagContextToOutput(source: string): boolean {
+  const retrievedVariables = extractHandlerRagRetrievalVariableNames(source);
+  return returnSegments(source).some((segment) =>
+    /\b(?:retrievedContext|retrieved_context|retrievedDocs|retrieved_docs|retrievedDocuments|retrieved_documents|ragContext|rag_context|retrievalResults|retrieval_results|sourceDocuments|source_documents|documents|chunks)\b/u.test(segment) ||
+    retrievedVariables.some((name) => identifierPattern(name).test(segment))
+  );
+}
+
 function hasJavaScriptHandlerModelApprovalGate(source: string): boolean {
   return [
     /\b(?:approvalModelClient|approvalClient|modelApprovalClient|policyModelClient|riskReviewClient|guardrailModelClient|llmApprovalClient)\s*(?:\.\s*[A-Za-z_$][\w$]*){0,4}\s*\.\s*(?:evaluate|evaluateApproval|approve|approveAction|decide|review|classify|authorize|assess)\s*\(/iu,
@@ -28323,6 +28380,15 @@ function expressionMatchesTaintedApprovalContext(pattern: RegExp, source: string
   let match: RegExpExecArray | null;
   while ((match = pattern.exec(source)) !== null) {
     if (expressionReferencesTaintedApprovalContext(match[1] ?? "", source)) return true;
+    if (match[0].length === 0) pattern.lastIndex += 1;
+  }
+  return false;
+}
+
+function expressionMatchesTaintedRagRetrievalQuery(pattern: RegExp, source: string): boolean {
+  let match: RegExpExecArray | null;
+  while ((match = pattern.exec(source)) !== null) {
+    if (expressionReferencesTaintedRagRetrievalQuery(match[1] ?? "", source)) return true;
     if (match[0].length === 0) pattern.lastIndex += 1;
   }
   return false;
@@ -29146,6 +29212,83 @@ function identifierAssignedFromTaintedApprovalContext(identifier: string, source
     new RegExp(`\\b${escaped}\\s*=\\s*([^\\n]+)`, "gu")
   ];
   return patterns.some((pattern) => expressionMatchesPattern(pattern, source, taintedName));
+}
+
+function expressionReferencesTaintedRagRetrievalQuery(expression: string, source: string): boolean {
+  const templateInterpolation = /\$\{[^}]*\b(?:retrievalQuery|retrieval_query|queryText|query_text|searchText|search_text|customerTicketText|customer_ticket_text|customerQuestion|customer_question|customerMessage|customer_message|namespace|tenantId|tenant_id|collection|collectionName|collection_name|filter|filters|metadataFilter|metadata_filter|customerId|customer_id|accountId|account_id|content|message|prompt|query|text|customer|ticket)\b/u.test(
+    expression
+  );
+  if (templateInterpolation) return true;
+  const withoutQuotedStrings = expression.replace(/(["'`])(?:\\.|(?!\1)[\s\S])*\1/gu, " ");
+  const stronglyTaintedName = /\b(?:retrievalQuery|retrieval_query|queryText|query_text|searchText|search_text|customerTicketText|customer_ticket_text|customerQuestion|customer_question|customerMessage|customer_message|tenantId|tenant_id|collectionName|collection_name|metadataFilter|metadata_filter|customerId|customer_id|accountId|account_id)\b/u;
+  const taintedName = /\b(?:retrievalQuery|retrieval_query|queryText|query_text|searchText|search_text|customerTicketText|customer_ticket_text|customerQuestion|customer_question|customerMessage|customer_message|namespace|tenantId|tenant_id|tenant|collection|collectionName|collection_name|filter|filters|metadataFilter|metadata_filter|customerId|customer_id|accountId|account_id|content|message|prompt|query|text|customer|ticket|account|input)\b/u;
+  if (stronglyTaintedName.test(withoutQuotedStrings)) return true;
+
+  const queryAssignment = /\b(?:query|query_text|queryText|search|search_text|searchText|input|text|prompt|message|namespace|tenant|tenant_id|collection|collection_name|filter|filters|metadata_filter|customer|customer_id|account|account_id)\s*(?::|=)\s*([^,\n}\)]+)/giu;
+  if (expressionMatchesPattern(queryAssignment, withoutQuotedStrings, taintedName)) return true;
+
+  const valueOnlyExpression = withoutQuotedStrings.replace(
+    /\b(?:query|query_text|queryText|search|search_text|searchText|input|text|prompt|message|namespace|tenant|tenant_id|collection|collection_name|filter|filters|metadata_filter|customer|customer_id|account|account_id)\s*(?::|=)/giu,
+    " "
+  );
+  const identifiers = uniqueStrings(
+    [...valueOnlyExpression.matchAll(/\b[A-Za-z_$][\w$]*\b/gu)]
+      .map((match) => match[0])
+      .filter((identifier) => ![
+        "vectorRetriever",
+        "vector_retriever",
+        "vectorStore",
+        "vector_store",
+        "vectorIndex",
+        "vector_index",
+        "retriever",
+        "ragStore",
+        "rag_store",
+        "ragIndex",
+        "rag_index",
+        "knowledgeBase",
+        "knowledge_base",
+        "documentIndex",
+        "document_index",
+        "searchClient",
+        "search_client",
+        "semanticSearchClient",
+        "semantic_search_client",
+        "token",
+        "apiKey",
+        "api_key",
+        "metadata",
+        "topK",
+        "top_k",
+        "limit"
+      ].includes(identifier))
+  );
+  return identifiers.some((identifier) => identifierAssignedFromTaintedRagRetrievalQuery(identifier, source, taintedName));
+}
+
+function identifierAssignedFromTaintedRagRetrievalQuery(identifier: string, source: string, taintedName: RegExp): boolean {
+  const escaped = escapeRegExp(identifier);
+  const patterns = [
+    new RegExp(`\\b(?:const|let|var)\\s+${escaped}\\s*=\\s*([^;\\n]+)`, "gu"),
+    new RegExp(`\\b${escaped}\\s*=\\s*([^\\n]+)`, "gu")
+  ];
+  return patterns.some((pattern) => expressionMatchesPattern(pattern, source, taintedName));
+}
+
+function extractHandlerRagRetrievalVariableNames(source: string): string[] {
+  const names = new Set<string>();
+  const patterns = [
+    /\b(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*(?:await\s*)?(?:[A-Za-z_$][\w$]*\s*(?:\.\s*[A-Za-z_$][\w$]*){0,4}\s*\.\s*(?:search|similaritySearch|query|retrieve|getRelevantDocuments|getRelevantDocs|fetchRelevant|lookup|hybridSearch|semanticSearch|invoke)|(?:retrieveContext|searchRag|searchRAG|queryKnowledgeBase|queryRag|queryRAG))\s*\(/gu,
+    /\b([A-Za-z_]\w*)\s*=\s*(?:await\s*)?(?:[A-Za-z_]\w*\s*(?:\.\s*[A-Za-z_]\w*){0,4}\s*\.\s*(?:search|similarity_search|query|retrieve|get_relevant_documents|get_relevant_docs|fetch_relevant|lookup|hybrid_search|semantic_search|invoke)|(?:retrieve_context|search_rag|query_knowledge_base|query_rag))\s*\(/gu
+  ];
+  for (const pattern of patterns) {
+    let match: RegExpExecArray | null;
+    while ((match = pattern.exec(source)) !== null) {
+      if (match[1]) names.add(match[1]);
+      if (match[0].length === 0) pattern.lastIndex += 1;
+    }
+  }
+  return [...names].sort((a, b) => a.localeCompare(b));
 }
 
 function expressionReferencesTaintedBrowserAutomationTarget(expression: string, source: string): boolean {
@@ -30577,6 +30720,9 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   artifact_export: boolean;
   tainted_artifact_export_payload: boolean;
   public_artifact_destination: boolean;
+  rag_retrieval: boolean;
+  tainted_rag_retrieval_query: boolean;
+  rag_context_to_output: boolean;
   model_approval_gate: boolean;
   tainted_approval_context: boolean;
   approval_auto_execution: boolean;
@@ -30630,6 +30776,9 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   const handlerArtifactExport = handler?.handlerArtifactExport === true;
   const handlerTaintedArtifactExportPayload = handler?.handlerTaintedArtifactExportPayload === true;
   const handlerPublicArtifactDestination = handler?.handlerPublicArtifactDestination === true;
+  const handlerRagRetrieval = handler?.handlerRagRetrieval === true;
+  const handlerTaintedRagRetrievalQuery = handler?.handlerTaintedRagRetrievalQuery === true;
+  const handlerRagContextToOutput = handler?.handlerRagContextToOutput === true;
   const handlerModelApprovalGate = handler?.handlerModelApprovalGate === true;
   const handlerTaintedApprovalContext = handler?.handlerTaintedApprovalContext === true;
   const handlerApprovalAutoExecution = handler?.handlerApprovalAutoExecution === true;
@@ -30890,6 +31039,19 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
     classes.add("public_artifact_destination");
     actions.add("publish");
   }
+  if (handlerRagRetrieval) {
+    classes.add("rag_retrieval");
+    actions.add("read");
+    actions.add("send");
+  }
+  if (handlerTaintedRagRetrievalQuery) {
+    classes.add("tainted_rag_retrieval_query");
+    actions.add("send");
+  }
+  if (handlerRagContextToOutput) {
+    classes.add("rag_context_to_output");
+    actions.add("send");
+  }
   if (handlerModelApprovalGate) {
     classes.add("model_approval_gate");
     actions.add("send");
@@ -30980,6 +31142,9 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerArtifactExport ||
       handlerTaintedArtifactExportPayload ||
       handlerPublicArtifactDestination ||
+      handlerRagRetrieval ||
+      handlerTaintedRagRetrievalQuery ||
+      handlerRagContextToOutput ||
       handlerModelApprovalGate ||
       handlerTaintedApprovalContext ||
       handlerApprovalAutoExecution ||
@@ -31026,6 +31191,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerTelemetryExport ||
       handlerTrainingDatasetExport ||
       handlerArtifactExport ||
+      handlerRagRetrieval ||
       handlerModelApprovalGate ||
       (handlerPromptCacheWrite && handlerSecretEnvAccess),
     secret_exposure: acceptsSecret || handlerSecretEnvAccess || localFileDisclosure || handlerCredentialIssuance || handlerAgentDelegation || handlerSecretManagerAccess,
@@ -31071,6 +31237,9 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
     artifact_export: handlerArtifactExport,
     tainted_artifact_export_payload: handlerTaintedArtifactExportPayload,
     public_artifact_destination: handlerPublicArtifactDestination,
+    rag_retrieval: handlerRagRetrieval,
+    tainted_rag_retrieval_query: handlerTaintedRagRetrievalQuery,
+    rag_context_to_output: handlerRagContextToOutput,
     model_approval_gate: handlerModelApprovalGate,
     tainted_approval_context: handlerTaintedApprovalContext,
     approval_auto_execution: handlerApprovalAutoExecution,
@@ -31153,6 +31322,9 @@ function authoritySignature(tool: SurfaceObject): string {
     metadata.artifact_export === true ? "artifact_export" : "",
     metadata.tainted_artifact_export_payload === true ? "tainted_artifact_export_payload" : "",
     metadata.public_artifact_destination === true ? "public_artifact_destination" : "",
+    metadata.rag_retrieval === true ? "rag_retrieval" : "",
+    metadata.tainted_rag_retrieval_query === true ? "tainted_rag_retrieval_query" : "",
+    metadata.rag_context_to_output === true ? "rag_context_to_output" : "",
     metadata.model_approval_gate === true ? "model_approval_gate" : "",
     metadata.tainted_approval_context === true ? "tainted_approval_context" : "",
     metadata.approval_auto_execution === true ? "approval_auto_execution" : "",
@@ -31216,6 +31388,9 @@ function isPrivilegedToolSurface(tool: SurfaceObject): boolean {
     tool.metadata.artifact_export === true ||
     tool.metadata.tainted_artifact_export_payload === true ||
     tool.metadata.public_artifact_destination === true ||
+    tool.metadata.rag_retrieval === true ||
+    tool.metadata.tainted_rag_retrieval_query === true ||
+    tool.metadata.rag_context_to_output === true ||
     tool.metadata.model_approval_gate === true ||
     tool.metadata.tainted_approval_context === true ||
     tool.metadata.approval_auto_execution === true ||

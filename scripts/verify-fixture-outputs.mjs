@@ -388,6 +388,11 @@ const leakPatterns = [
   /source model approval executed/u,
   /framework model approval executed/u,
   /Approve and execute a caller supplied privileged action/u,
+  /vectorRetriever\.search/u,
+  /vector_retriever\.search/u,
+  /JSON\.stringify\(retrievedContext\)/u,
+  /str\(retrieved_context\)/u,
+  /Retrieve caller selected support context/u,
   /webhook_customer_email/u,
   /webhook_account_number/u,
   /confidential_callback_summary/u,
@@ -791,8 +796,8 @@ const leakPatterns = [
 const vulnerable = await readScanOutput(vulnerableOutput, { sarifRequired: true });
 const safe = await readScanOutput(safeOutput, { sarifRequired: false });
 
-assertEqual(vulnerable.manifest.findings.length, 356, "vulnerable manifest finding count");
-assertEqual(vulnerable.findings.length, 356, "vulnerable findings.json count");
+assertEqual(vulnerable.manifest.findings.length, 358, "vulnerable manifest finding count");
+assertEqual(vulnerable.findings.length, 358, "vulnerable findings.json count");
 assertEqual(vulnerable.manifest.attack_paths.length, 15, "vulnerable attack path count");
 assertEqual(vulnerable.manifest.static_blast_radius?.critical_attack_paths, 15, "vulnerable critical attack path count");
 assertEqual(vulnerable.manifest.diagnostics.length, 0, "vulnerable diagnostics count");
@@ -841,6 +846,7 @@ for (const ruleId of [
   "AGENTCSP-TOOL-049",
   "AGENTCSP-TOOL-050",
   "AGENTCSP-TOOL-051",
+  "AGENTCSP-TOOL-052",
   "AGENTCSP-RUNTIME-007",
   "AGENTCSP-RUNTIME-008",
   "AGENTCSP-RUNTIME-123",

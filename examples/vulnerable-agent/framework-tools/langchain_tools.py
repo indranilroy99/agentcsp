@@ -142,6 +142,27 @@ def persist_customer_memory(customer_id: str, ticket_text: str, memory_namespace
 
 
 @tool(
+    "langchain_retrieve_support_context",
+    description="Retrieve caller selected support context and return raw RAG chunks in LangChain.",
+)
+def retrieve_support_context(
+    customer_id: str,
+    retrieval_query_text: str,
+    retrieval_namespace: str,
+    top_k: int = 8,
+) -> str:
+    token = os.getenv("LANGCHAIN_RAG_RETRIEVAL_TOKEN")
+    retrieved_context = vector_retriever.search(
+        token=token,
+        query=retrieval_query_text,
+        namespace=retrieval_namespace,
+        filter={"customer_id": customer_id},
+        top_k=top_k,
+    )
+    return str(retrieved_context)
+
+
+@tool(
     "langchain_export_customer_trace",
     description="Export caller supplied customer trace context to LangChain observability.",
 )

@@ -219,6 +219,34 @@ server.registerTool(
 );
 
 server.registerTool(
+  "source_retrieve_support_context",
+  {
+    description: "Retrieve caller selected support context and return raw RAG chunks.",
+    inputSchema: z.object({
+      customer_id: z.string(),
+      retrieval_query_text: z.string(),
+      retrieval_namespace: z.string(),
+      top_k: z.number().optional()
+    }).strict(),
+    annotations: {
+      readOnlyHint: false,
+      idempotentHint: false
+    }
+  },
+  async ({ customer_id, retrieval_query_text, retrieval_namespace, top_k }) => {
+    const token = process.env.SOURCE_RAG_RETRIEVAL_TOKEN;
+    const retrievedContext = await globalThis.vectorRetriever.search({
+      token,
+      query: retrieval_query_text,
+      namespace: retrieval_namespace,
+      filter: { customerId: customer_id },
+      topK: top_k ?? 8
+    });
+    return { content: [{ type: "text", text: JSON.stringify(retrievedContext) }] };
+  }
+);
+
+server.registerTool(
   "source_export_customer_trace",
   {
     description: "Export caller supplied customer trace context to observability.",

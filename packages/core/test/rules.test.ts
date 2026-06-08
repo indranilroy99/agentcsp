@@ -65,6 +65,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-049")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-050")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-051")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-052")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-001")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-002")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-003")).toBe(true);
@@ -6285,6 +6286,42 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerEmbeddingVectorWriteFindings)).not.toContain("source memory persisted");
     expect(JSON.stringify(sourceHandlerEmbeddingVectorWriteFindings)).not.toContain("framework memory persisted");
     expect(JSON.stringify(sourceHandlerEmbeddingVectorWriteFindings)).not.toContain("Persist caller supplied customer ticket text");
+    const sourceHandlerRagRetrievalFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-052");
+    expect(sourceHandlerRagRetrievalFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
+      "langchain_retrieve_support_context",
+      "source_retrieve_support_context"
+    ]);
+    expect(sourceHandlerRagRetrievalFindings.every((finding) => finding.severity === "critical")).toBe(true);
+    expect(sourceHandlerRagRetrievalFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerRagRetrievalFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
+    expect(sourceHandlerRagRetrievalFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
+    expect(sourceHandlerRagRetrievalFindings.every((finding) => finding.matched_object.metadata.handler_rag_retrieval === true)).toBe(true);
+    expect(sourceHandlerRagRetrievalFindings.every((finding) => finding.matched_object.metadata.handler_tainted_rag_retrieval_query === true)).toBe(true);
+    expect(sourceHandlerRagRetrievalFindings.every((finding) => finding.matched_object.metadata.handler_rag_context_to_output === true)).toBe(true);
+    expect(sourceHandlerRagRetrievalFindings.every((finding) => finding.matched_object.metadata.rag_retrieval === true)).toBe(true);
+    expect(sourceHandlerRagRetrievalFindings.every((finding) => finding.matched_object.metadata.tainted_rag_retrieval_query === true)).toBe(true);
+    expect(sourceHandlerRagRetrievalFindings.every((finding) => finding.matched_object.metadata.rag_context_to_output === true)).toBe(true);
+    expect(sourceHandlerRagRetrievalFindings.every((finding) => finding.matched_object.metadata.handler_secret_env_access === true)).toBe(true);
+    expect(sourceHandlerRagRetrievalFindings.every((finding) => finding.matched_object.metadata.handler_model_visible_output === true)).toBe(true);
+    expect(sourceHandlerRagRetrievalFindings.every((finding) => finding.matched_object.metadata.accepts_content_like_input === true)).toBe(true);
+    expect(sourceHandlerRagRetrievalFindings.every((finding) => finding.matched_object.metadata.accepts_customer_data_input === true)).toBe(true);
+    expect(sourceHandlerRagRetrievalFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("rag_retrieval"))).toBe(true);
+    expect(sourceHandlerRagRetrievalFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("tainted_rag_retrieval_query"))).toBe(true);
+    expect(sourceHandlerRagRetrievalFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("rag_context_to_output"))).toBe(true);
+    expect(sourceHandlerRagRetrievalFindings.every((finding) => finding.matched_object.metadata.handler_authority_classes.includes("handler_rag_retrieval"))).toBe(true);
+    expect(sourceHandlerRagRetrievalFindings.every((finding) => finding.matched_object.metadata.handler_authority_classes.includes("handler_tainted_rag_retrieval_query"))).toBe(true);
+    expect(sourceHandlerRagRetrievalFindings.every((finding) => finding.matched_object.metadata.handler_authority_classes.includes("handler_rag_context_to_output"))).toBe(true);
+    expect(sourceHandlerRagRetrievalFindings.every((finding) => finding.matched_object.actions.includes("read"))).toBe(true);
+    expect(sourceHandlerRagRetrievalFindings.every((finding) => finding.matched_object.actions.includes("send"))).toBe(true);
+    expect(sourceHandlerRagRetrievalFindings.every((finding) => finding.matched_object.external_reach === true)).toBe(true);
+    expect(sourceHandlerRagRetrievalFindings.every((finding) => finding.matched_object.secret_exposure === true)).toBe(true);
+    expect(sourceHandlerRagRetrievalFindings.every((finding) => finding.matched_object.side_effect === true)).toBe(true);
+    expect(sourceHandlerRagRetrievalFindings.every((finding) => finding.matched_object.reversible === false)).toBe(true);
+    expect(JSON.stringify(sourceHandlerRagRetrievalFindings)).not.toContain("vectorRetriever.search");
+    expect(JSON.stringify(sourceHandlerRagRetrievalFindings)).not.toContain("vector_retriever.search");
+    expect(JSON.stringify(sourceHandlerRagRetrievalFindings)).not.toContain("retrievedContext");
+    expect(JSON.stringify(sourceHandlerRagRetrievalFindings)).not.toContain("retrieved_context");
+    expect(JSON.stringify(sourceHandlerRagRetrievalFindings)).not.toContain("Retrieve caller selected support context");
     const sourceHandlerTelemetryExportFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-045");
     expect(sourceHandlerTelemetryExportFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_export_customer_trace",
