@@ -26450,7 +26450,7 @@ interface ExtractedToolDefinition {
 }
 
 interface ExtractedMcpSourceToolDefinition extends ExtractedToolDefinition {
-  registrationKind: "tool" | "registerTool";
+  registrationKind: "tool" | "registerTool" | "python_tool_decorator";
   argumentCount: number;
   schemaStyles: string[];
 }
@@ -26836,8 +26836,8 @@ function normalizeToolDefinition(value: unknown): ExtractedToolDefinition | unde
 function isMcpSourceToolPath(relativePath: string, basename: string): boolean {
   const normalized = relativePath.replaceAll("\\", "/").toLowerCase();
   const lowerBase = basename.toLowerCase();
-  if (!/\.(?:cjs|js|jsx|mjs|ts|tsx)$/u.test(lowerBase)) return false;
-  if (/(^|\/)(dist|build|coverage|vendor)\//u.test(normalized)) return false;
+  if (!/\.(?:cjs|js|jsx|mjs|py|ts|tsx)$/u.test(lowerBase)) return false;
+  if (/(^|\/)(dist|build|coverage|vendor|\.venv|venv|__pycache__)\//u.test(normalized)) return false;
   return true;
 }
 
@@ -26849,19 +26849,25 @@ function extractMcpSourceToolDefinitions(
     return { definitions: [], sourceDetected: false };
   }
 
-  const definitions = extractMcpSourceToolRegistrationBlocks(content)
-    .map((block) => normalizeMcpSourceToolRegistration(block))
-    .filter((definition): definition is ExtractedMcpSourceToolDefinition => Boolean(definition))
+  const definitions = [
+    ...extractMcpSourceToolRegistrationBlocks(content)
+      .map((block) => normalizeMcpSourceToolRegistration(block))
+      .filter((definition): definition is ExtractedMcpSourceToolDefinition => Boolean(definition)),
+    ...extractPythonMcpSourceToolDefinitions(content)
+  ]
     .sort((a, b) => a.name.localeCompare(b.name) || a.registrationKind.localeCompare(b.registrationKind));
 
   return { definitions, sourceDetected: true };
 }
 
 function hasMcpSourceToolRegistrationSignal(content: string, filePath: string): boolean {
-  if (!/\.\s*(?:registerTool|tool)\s*\(/u.test(content)) return false;
   const normalizedPath = filePath.replaceAll("\\", "/").toLowerCase();
-  return /@modelcontextprotocol|McpServer|mcp\s*server/iu.test(content) ||
+  const mcpSignal = /@modelcontextprotocol|McpServer|FastMCP|fastmcp|mcp\s*server|mcp\.server/iu.test(content) ||
     /(^|\/)(mcp|mcp-source|mcp-server|mcp_servers)(?:\/|$)/iu.test(normalizedPath);
+  if (!mcpSignal) return false;
+  return /\.\s*(?:registerTool|tool)\s*\(/u.test(content) ||
+    /^\s*@[A-Za-z_$][\w$.]*\s*\.\s*tool\b/mu.test(content) ||
+    /^\s*@tool\b/mu.test(content);
 }
 
 interface McpSourceToolRegistrationBlock {
@@ -26918,6 +26924,195 @@ function normalizeMcpSourceToolRegistration(block: McpSourceToolRegistrationBloc
     argumentCount: block.args.length,
     schemaStyles: sourceSchemaStyles(schemaSource)
   };
+}
+
+function extractPythonMcpSourceToolDefinitions(content: string): ExtractedMcpSourceToolDefinition[] {
+  if (!/^\s*@[A-Za-z_$][\w$.]*\s*\.\s*tool\b|^\s*@tool\b/mu.test(content)) return [];
+
+  const definitions: ExtractedMcpSourceToolDefinition[] = [];
+  const lines = content.split(/\r?\n/u);
+  for (let lineIndex = 0; lineIndex < lines.length; lineIndex += 1) {
+    const line = lines[lineIndex] ?? "";
+    if (!/^\s*(?:@[A-Za-z_$][\w$.]*\s*\.\s*tool\b|@tool\b)/u.test(line)) continue;
+
+    const decorator = collectPythonDecorator(lines, lineIndex);
+    if (!decorator) continue;
+    const signature = collectPythonFunctionSignature(lines, decorator.endLine + 1);
+    if (!signature) {
+      lineIndex = decorator.endLine;
+      continue;
+    }
+
+    const name = pythonKeywordStringValue(decorator.text, ["name"]) ?? signature.name;
+    const description = pythonKeywordStringValue(decorator.text, ["description"]) ?? "";
+    const properties = signature.params.map((param) => param.name);
+    definitions.push({
+      name,
+      description,
+      schemaProperties: uniqueStrings(properties),
+      requiredProperties: uniqueStrings(signature.params.filter((param) => !param.optional).map((param) => param.name)),
+      annotations: {
+        readOnlyHint: booleanPropertyValue(decorator.text, "readOnlyHint"),
+        idempotentHint: booleanPropertyValue(decorator.text, "idempotentHint")
+      },
+      openWorldSchema: signature.openWorldArgs,
+      registrationKind: "python_tool_decorator",
+      argumentCount: signature.params.length,
+      schemaStyles: pythonSourceSchemaStyles(decorator.text, signature)
+    });
+    lineIndex = signature.endLine;
+  }
+
+  return definitions.sort((a, b) => a.name.localeCompare(b.name));
+}
+
+interface PythonDecoratorBlock {
+  text: string;
+  endLine: number;
+}
+
+interface PythonFunctionSignature {
+  name: string;
+  params: Array<{ name: string; optional: boolean }>;
+  openWorldArgs: boolean;
+  endLine: number;
+}
+
+function collectPythonDecorator(lines: string[], startLine: number): PythonDecoratorBlock | undefined {
+  const firstLine = lines[startLine];
+  if (firstLine === undefined) return undefined;
+  const collected = [firstLine.trim()];
+  if (!firstLine.includes("(")) return { text: collected.join("\n"), endLine: startLine };
+
+  let balance = delimiterBalance(firstLine, "(", ")");
+  let endLine = startLine;
+  while (balance > 0 && endLine + 1 < lines.length && collected.join("\n").length < 10000) {
+    endLine += 1;
+    const nextLine = lines[endLine] ?? "";
+    collected.push(nextLine.trim());
+    balance += delimiterBalance(nextLine, "(", ")");
+  }
+
+  return { text: collected.join("\n"), endLine };
+}
+
+function collectPythonFunctionSignature(lines: string[], startLine: number): PythonFunctionSignature | undefined {
+  let lineIndex = startLine;
+  while (lineIndex < lines.length) {
+    const trimmed = (lines[lineIndex] ?? "").trim();
+    if (!trimmed || trimmed.startsWith("#")) {
+      lineIndex += 1;
+      continue;
+    }
+    if (trimmed.startsWith("@")) {
+      lineIndex += 1;
+      continue;
+    }
+    break;
+  }
+
+  const firstLine = lines[lineIndex];
+  if (firstLine === undefined || !/^\s*(?:async\s+)?def\s+[A-Za-z_]\w*\s*\(/u.test(firstLine)) return undefined;
+
+  const collected = [firstLine.trim()];
+  let balance = delimiterBalance(firstLine, "(", ")");
+  let endLine = lineIndex;
+  while ((balance > 0 || !/:\s*(?:#.*)?$/u.test(collected.join(" "))) && endLine + 1 < lines.length && collected.join("\n").length < 12000) {
+    endLine += 1;
+    const nextLine = lines[endLine] ?? "";
+    collected.push(nextLine.trim());
+    balance += delimiterBalance(nextLine, "(", ")");
+  }
+
+  const signature = collected.join(" ");
+  const nameMatch = signature.match(/^\s*(?:async\s+)?def\s+([A-Za-z_]\w*)\s*\(/u);
+  const functionName = nameMatch?.[1];
+  if (!functionName) return undefined;
+  const openParenIndex = signature.indexOf("(");
+  const closeParenIndex = findMatchingDelimiter(signature, openParenIndex, "(", ")");
+  if (openParenIndex < 0 || closeParenIndex < 0) return undefined;
+  const paramsSource = signature.slice(openParenIndex + 1, closeParenIndex);
+  const rawParams = splitTopLevelCommaList(paramsSource);
+  const params: Array<{ name: string; optional: boolean }> = [];
+  let openWorldArgs = false;
+
+  for (const rawParam of rawParams) {
+    const param = normalizePythonParam(rawParam);
+    if (!param) continue;
+    if (param.openWorld) {
+      openWorldArgs = true;
+      continue;
+    }
+    params.push({ name: param.name, optional: param.optional });
+  }
+
+  return {
+    name: functionName,
+    params: params.sort((a, b) => a.name.localeCompare(b.name)),
+    openWorldArgs,
+    endLine
+  };
+}
+
+function normalizePythonParam(rawParam: string): { name: string; optional: boolean; openWorld: boolean } | undefined {
+  const trimmed = rawParam.trim();
+  if (!trimmed || trimmed === "*" || trimmed === "/") return undefined;
+  const openWorld = trimmed.startsWith("**");
+  if (trimmed.startsWith("*") && !openWorld) return undefined;
+  const withoutPrefix = trimmed.replace(/^\*\*/, "");
+  const nameMatch = withoutPrefix.match(/^([A-Za-z_]\w*)/u);
+  const name = nameMatch?.[1];
+  if (!name || ["cls", "context", "ctx", "request", "self"].includes(name)) {
+    return openWorld ? { name: name ?? "kwargs", optional: true, openWorld: true } : undefined;
+  }
+  return {
+    name,
+    optional: withoutPrefix.includes("="),
+    openWorld
+  };
+}
+
+function pythonKeywordStringValue(source: string, names: string[]): string | undefined {
+  const pattern = new RegExp(`\\b(?:${names.map(escapeRegExp).join("|")})\\s*=\\s*([\"'])([\\s\\S]{0,500}?)\\1`, "u");
+  const match = source.match(pattern);
+  return match?.[2];
+}
+
+function pythonSourceSchemaStyles(decorator: string, signature: PythonFunctionSignature): string[] {
+  const styles = new Set<string>(["python_signature"]);
+  if (/FastMCP|fastmcp|mcp\.server/iu.test(decorator)) styles.add("fastmcp_decorator");
+  if (/annotations\s*=/u.test(decorator)) styles.add("mcp_annotations");
+  if (signature.openWorldArgs) styles.add("python_kwargs");
+  return [...styles].sort((a, b) => a.localeCompare(b));
+}
+
+function delimiterBalance(source: string, open: string, close: string): number {
+  let balance = 0;
+  let quote: string | undefined;
+  let escaped = false;
+  for (let index = 0; index < source.length; index += 1) {
+    const char = source[index];
+    if (quote) {
+      if (escaped) {
+        escaped = false;
+        continue;
+      }
+      if (char === "\\") {
+        escaped = true;
+        continue;
+      }
+      if (char === quote) quote = undefined;
+      continue;
+    }
+    if (char === "\"" || char === "'") {
+      quote = char;
+      continue;
+    }
+    if (char === "#") break;
+    if (char === open) balance += 1;
+    if (char === close) balance -= 1;
+  }
+  return balance;
 }
 
 function sourceToolDescription(registrationKind: "tool" | "registerTool", secondArg: string, thirdArg: string): string {
@@ -27110,10 +27305,10 @@ function stringLiteralValue(source: string | undefined): string | undefined {
 }
 
 function booleanPropertyValue(source: string, name: string): boolean | undefined {
-  const pattern = new RegExp(`\\b${escapeRegExp(name)}\\s*:\\s*(true|false)\\b`, "u");
+  const pattern = new RegExp(`(?:^|[^\\w$])['"\`]?${escapeRegExp(name)}['"\`]?\\s*(?::|=)\\s*(true|false|True|False)\\b`, "u");
   const match = source.match(pattern);
   if (!match?.[1]) return undefined;
-  return match[1] === "true";
+  return match[1].toLowerCase() === "true";
 }
 
 function splitTopLevelCommaList(source: string): string[] {

@@ -618,7 +618,10 @@ const leakPatterns = [
   /action_router_account_number/u,
   /confidential_action_router_notes/u,
   /customer-support-source-tools/u,
+  /source-python-support-tools/u,
+  /source-python-readonly-tools/u,
   /Post customer records and confidential support notes/u,
+  /Send customer context to a caller supplied webhook/u,
   /Delete a workspace file by path after model review/u,
   /internal-readonly-source-tools/u,
   /Read an approved internal documentation record/u,
@@ -631,8 +634,8 @@ const leakPatterns = [
 const vulnerable = await readScanOutput(vulnerableOutput, { sarifRequired: true });
 const safe = await readScanOutput(safeOutput, { sarifRequired: false });
 
-assertEqual(vulnerable.manifest.findings.length, 250, "vulnerable manifest finding count");
-assertEqual(vulnerable.findings.length, 250, "vulnerable findings.json count");
+assertEqual(vulnerable.manifest.findings.length, 255, "vulnerable manifest finding count");
+assertEqual(vulnerable.findings.length, 255, "vulnerable findings.json count");
 assertEqual(vulnerable.manifest.attack_paths.length, 15, "vulnerable attack path count");
 assertEqual(vulnerable.manifest.static_blast_radius?.critical_attack_paths, 15, "vulnerable critical attack path count");
 assertEqual(vulnerable.manifest.diagnostics.length, 0, "vulnerable diagnostics count");

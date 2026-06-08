@@ -5943,6 +5943,7 @@ describe("rule engine", () => {
     expect(toolOpenWorldFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
     const toolReadOnlyConflictFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-006");
     expect(toolReadOnlyConflictFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
+      "python_readonly_delete_workspace_file",
       "readonly_cleanup_workspace",
       "source_readonly_delete_workspace_file"
     ]);
@@ -5954,6 +5955,7 @@ describe("rule engine", () => {
     expect(toolContentExternalFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "post_customer_update",
       "publish_summary",
+      "python_export_customer_record",
       "source_export_customer_record"
     ]);
     expect(toolContentExternalFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
@@ -5961,6 +5963,7 @@ describe("rule engine", () => {
     expect(toolPiiExternalFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "customer_record",
       "post_customer_update",
+      "python_export_customer_record",
       "source_export_customer_record"
     ]);
     expect(toolPiiExternalFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
@@ -5981,6 +5984,23 @@ describe("rule engine", () => {
     expect(sourceExternalSecretFinding?.confidence).toBe("very_high");
     expect(JSON.stringify(sourceExternalSecretFinding)).not.toContain("queued");
     expect(JSON.stringify(sourceExternalSecretFinding)).not.toContain("Post customer records");
+    const pythonExternalSecretFinding = findings.find(
+      (finding) => finding.rule_id === "AGENTCSP-TOOL-003" && finding.matched_object.name === "python_export_customer_record"
+    );
+    expect(pythonExternalSecretFinding?.matched_object.path).toBe("mcp-source/python_tools.py");
+    expect(pythonExternalSecretFinding?.matched_object.metadata).toMatchObject({
+      parsed_mcp_source_tool: true,
+      mcp_source_tool_registration_kind: "python_tool_decorator",
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      external_write: true,
+      accepts_secret_like_input: true,
+      accepts_pii_like_input: true
+    });
+    expect(pythonExternalSecretFinding?.severity).toBe("critical");
+    expect(pythonExternalSecretFinding?.confidence).toBe("very_high");
+    expect(JSON.stringify(pythonExternalSecretFinding)).not.toContain("queued");
+    expect(JSON.stringify(pythonExternalSecretFinding)).not.toContain("Send customer context");
     const toolDescriptionInjectionFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-011");
     expect(toolDescriptionInjectionFindings).toHaveLength(1);
     expect(toolDescriptionInjectionFindings[0]?.matched_object.name).toBe("publish_summary");

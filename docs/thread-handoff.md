@@ -191,10 +191,12 @@ The current iteration adds:
 The current iteration adds:
 
 - bounded TypeScript/JavaScript source extraction for common MCP SDK `server.tool(...)` and `server.registerTool(...)` registrations
+- bounded Python/FastMCP source extraction for common `@mcp.tool(...)` decorator registrations
 - normalization of source-defined MCP tools into the same `tool` manifest objects used by JSON/YAML tool schemas
-- redacted source metadata for registration kind, argument count, schema style, schema field names, read-only/idempotency hints, and source/handler redaction posture
-- vulnerable fixture coverage for source-defined MCP tools that combine external writes, PII/customer data, credential-like inputs, open-world arguments, and destructive filesystem authority
+- redacted source metadata for registration kind, argument count, schema style, schema field names, required/optional posture, read-only/idempotency hints, and source/handler redaction posture
+- vulnerable fixture coverage for source-defined MCP tools that combine external writes, PII/customer data, credential-like inputs, open-world arguments, Python signature extraction, and destructive filesystem authority
 - safe fixture coverage for a strict read-only source-defined MCP tool that produces no high or critical findings
+- graph hardening so the bounded Static Blast-Radius Summary preserves coverage across runtime approval bypass, memory replay, generated-state replay, direct egress, mutable database, multi-agent, eval, inbound-trigger, and disabled-safety categories when new source-defined tool findings increase candidate volume
 - scanner, rule, fixture verifier, and docs coverage proving source handler bodies and raw source descriptions stay out of evidence
 
 ## Runtime Posture Pass

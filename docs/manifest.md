@@ -283,7 +283,7 @@ Raw skill text is not emitted. These fields let rules detect skills that bridge 
 
 ## Tool Schema Authority
 
-Tool definition files are normalized into individual `tool` objects when AgentCSP can parse JSON or YAML tool schemas. Common TypeScript and JavaScript MCP SDK registrations such as `server.tool(...)` and `server.registerTool(...)` are also normalized into `tool` objects when AgentCSP can safely extract the registration name, input field names, read-only/idempotency hints, and bounded schema posture.
+Tool definition files are normalized into individual `tool` objects when AgentCSP can parse JSON or YAML tool schemas. Common TypeScript and JavaScript MCP SDK registrations such as `server.tool(...)` and `server.registerTool(...)`, plus Python/FastMCP decorators such as `@mcp.tool(...)`, are also normalized into `tool` objects when AgentCSP can safely extract the registration name, input field names, read-only/idempotency hints, and bounded schema posture.
 
 Tool metadata may include:
 
@@ -342,7 +342,7 @@ Source-defined MCP tool metadata may additionally include:
 - `source_tool_handler_redacted`
 - `values_collected`
 
-These fields let rules reason about concrete agent-callable authority without dumping raw tool descriptions, schemas, source snippets, or handler bodies into the manifest. Model-visible descriptions are treated as prompt surface: AgentCSP records redacted instruction, untrusted-context, external, memory, secret, and data-egress signals so rules can detect poisoned tool metadata attached to side-effecting authority.
+For Python/FastMCP tools, function signatures are reduced to parameter names, required/optional posture, and decorator metadata; function bodies and docstrings are not emitted. These fields let rules reason about concrete agent-callable authority without dumping raw tool descriptions, schemas, source snippets, or handler bodies into the manifest. Model-visible descriptions are treated as prompt surface: AgentCSP records redacted instruction, untrusted-context, external, memory, secret, and data-egress signals so rules can detect poisoned tool metadata attached to side-effecting authority.
 
 OpenAPI and Swagger files imported as agent tools are also normalized into `tool` objects. Metadata may include:
 
@@ -2594,7 +2594,7 @@ Examples:
 
 `attack_paths` are prioritized paths that combine relationships with findings. They are designed to show security teams how context provenance can reach authority, data classes, and side effects. The list is capped and sorted toward high-impact, high-confidence, file-specific paths.
 
-Attack paths may be anchored on target findings, such as a risky tool schema, or source findings, such as retrievable content that directs sensitive context toward an external destination. Source-anchored data-egress, customer-data egress, memory replay, generated-state replay, runtime auto-approval, and untrusted-template-to-tool paths are prioritized so the Static Blast-Radius Summary preserves why the source itself is dangerous. When a context source names a discovered privileged tool or MCP server, AgentCSP prefers that exact source-to-callable path and suppresses broader speculative attack-path entries for the same source.
+Attack paths may be anchored on target findings, such as a risky tool schema, or source findings, such as retrievable content that directs sensitive context toward an external destination. Source-anchored data-egress, customer-data egress, memory replay, generated-state replay, runtime auto-approval, and untrusted-template-to-tool paths are prioritized so the Static Blast-Radius Summary preserves why the source itself is dangerous. The bounded attack-path list preserves coverage across key categories such as runtime approval bypass, direct data egress, mutable database writes, multi-agent delegation, live eval harnesses, inbound triggers, and disabled safety controls before filling remaining slots. When a context source names a discovered privileged tool or MCP server, AgentCSP prefers that exact source-to-callable path and suppresses broader speculative attack-path entries for the same source.
 
 An attack path includes:
 

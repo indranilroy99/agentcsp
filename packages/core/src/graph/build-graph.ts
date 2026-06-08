@@ -195,7 +195,53 @@ function buildAttackPaths(edges: GraphEdge[], findings: Finding[], objects: Surf
     if (!deduped.has(key)) deduped.set(key, path);
   }
 
-  return [...deduped.values()].slice(0, 15);
+  return selectBoundedAttackPaths([...deduped.values()], 15);
+}
+
+function selectBoundedAttackPaths(sortedPaths: AttackPath[], limit: number): AttackPath[] {
+  const selected = new Map<string, AttackPath>();
+  const requiredBuckets = [
+    "runtime_package_autoapproval",
+    "runtime_destructive_mcp",
+    "explicit_prompt_tool",
+    "memory_replay",
+    "generated_state_replay",
+    "direct_egress_mcp",
+    "mutable_database",
+    "multi_agent_orchestration",
+    "live_eval_harness",
+    "inbound_trigger",
+    "disabled_agent_safety"
+  ];
+
+  for (const bucket of requiredBuckets) {
+    const candidate = sortedPaths.find((path) => attackPathCoverageBucket(path) === bucket && !selected.has(path.id));
+    if (candidate) selected.set(candidate.id, candidate);
+    if (selected.size >= limit) return sortAttackPaths([...selected.values()]).slice(0, limit);
+  }
+
+  for (const path of sortedPaths) {
+    if (selected.has(path.id)) continue;
+    selected.set(path.id, path);
+    if (selected.size >= limit) break;
+  }
+
+  return sortAttackPaths([...selected.values()]).slice(0, limit);
+}
+
+function attackPathCoverageBucket(path: AttackPath): string | undefined {
+  if (path.title.includes("auto-approve package-script")) return "runtime_package_autoapproval";
+  if (path.title.includes("auto-approve destructive MCP")) return "runtime_destructive_mcp";
+  if (path.title.includes("route untrusted input")) return "explicit_prompt_tool";
+  if (path.title.includes("replay memory")) return "memory_replay";
+  if (path.title.includes("replay generated state")) return "generated_state_replay";
+  if (path.target.name === "browser-publisher" && path.reason.includes("concrete exfiltration path")) return "direct_egress_mcp";
+  if (path.reason.includes("direct path from untrusted context to mutable records")) return "mutable_database";
+  if (path.title.includes("Multi-agent delegation")) return "multi_agent_orchestration";
+  if (path.title.includes("Live eval harness")) return "live_eval_harness";
+  if (path.title.includes("Inbound untrusted message")) return "inbound_trigger";
+  if (path.title.includes("Disabled agent safety controls")) return "disabled_agent_safety";
+  return undefined;
 }
 
 function shouldSuppressBroadContextAttackPath(
@@ -599,18 +645,22 @@ function attackPathPriority(path: AttackPath): number {
   let score = 0;
   if (path.title.includes("route untrusted input")) score += 12;
   if (path.title.includes("route customer data")) score += 8;
-  if (path.title.includes("auto-approve package-script")) score += 12;
-  if (path.title.includes("auto-approve destructive MCP")) score += 12;
+  if (path.title.includes("auto-approve package-script")) score += 18;
+  if (path.title.includes("auto-approve destructive MCP")) score += 18;
+  if (path.source.type === "runtime_config" && path.edges[0]?.relation === "triggers") score += 12;
+  if (path.source.type === "runtime_config" && path.edges[0]?.relation === "calls") score += 12;
   if (path.title.includes("replay memory")) score += 12;
   if (path.title.includes("replay generated state")) score += 12;
   if (path.title.includes("route sensitive context")) score += 12;
   if (path.risk.external_reach && path.risk.data_classes.includes("pii")) score += 6;
   if (path.reason.includes("data-egress directive")) score += 3;
+  if (path.reason.includes("concrete exfiltration path")) score += 8;
   if (path.reason.includes("PII-like input")) score += 4;
   if (path.reason.includes("explicit tool reference")) score += 4;
   if (path.reason.includes("specific agent-callable capability")) score += 4;
   if (path.reason.includes("explicit privileged tool")) score += 3;
   if (path.reason.includes("RAG source directs sensitive context")) score += 3;
+  if (path.reason.includes("direct path from untrusted context to mutable records")) score += 14;
   if (path.source.path.startsWith("rag/") && path.reason.includes("direct path from untrusted context to mutable records")) {
     score += 6;
   }
@@ -621,9 +671,10 @@ function attackPathPriority(path: AttackPath): number {
       path.title.includes("Inbound untrusted message") ||
       path.title.includes("Disabled agent safety controls"))
   ) {
-    score += 10;
+    score += 20;
   }
   if (path.reason.includes("generated-state replay")) score += 5;
+  if (path.target.path.includes("mcp-source/") && path.source.path.startsWith("rag/")) score -= 8;
   return score;
 }
 

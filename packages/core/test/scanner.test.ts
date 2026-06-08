@@ -538,6 +538,8 @@ describe("scanner", () => {
     const readTool = surfaces.tools.find((surface) => surface.name === "read_customer_record");
     const sourceExportTool = surfaces.tools.find((surface) => surface.name === "source_export_customer_record");
     const sourceDeleteTool = surfaces.tools.find((surface) => surface.name === "source_readonly_delete_workspace_file");
+    const pythonExportTool = surfaces.tools.find((surface) => surface.name === "python_export_customer_record");
+    const pythonDeleteTool = surfaces.tools.find((surface) => surface.name === "python_readonly_delete_workspace_file");
     expect(publishTool?.metadata).toMatchObject({
       parsed_tool_schema: true,
       external_write: true,
@@ -690,6 +692,74 @@ describe("scanner", () => {
       "zod_object",
       "zod_strict"
     ]);
+    expect(pythonExportTool).toMatchObject({
+      path: "mcp-source/python_tools.py",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["call", "publish", "send"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true
+    });
+    expect(pythonExportTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_mcp_source_tool: true,
+      mcp_source_tool_registration: true,
+      mcp_source_tool_registration_kind: "python_tool_decorator",
+      mcp_source_tool_argument_count: 5,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      values_collected: false,
+      read_only_hint: false,
+      idempotent_hint: false,
+      external_write: true,
+      accepts_secret_like_input: true,
+      accepts_content_like_input: true,
+      accepts_url_input: true,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      open_world_schema: false,
+      open_world_authority: false
+    });
+    expect(pythonExportTool?.metadata.mcp_source_tool_schema_styles).toEqual([
+      "mcp_annotations",
+      "python_signature"
+    ]);
+    expect(pythonExportTool?.metadata.schema_properties).toEqual([
+      "authorization_token",
+      "customer_email",
+      "customer_reference",
+      "destination_webhook_url",
+      "source_payload_text"
+    ]);
+    expect(JSON.stringify(pythonExportTool)).not.toContain("queued");
+    expect(JSON.stringify(pythonExportTool)).not.toContain("Send customer context");
+    expect(pythonDeleteTool).toMatchObject({
+      path: "mcp-source/python_tools.py",
+      actions: ["call", "delete", "read"],
+      side_effect: true,
+      external_reach: false,
+      secret_exposure: false
+    });
+    expect(pythonDeleteTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_mcp_source_tool: true,
+      mcp_source_tool_registration: true,
+      mcp_source_tool_registration_kind: "python_tool_decorator",
+      mcp_source_tool_argument_count: 2,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      read_only_hint: true,
+      idempotent_hint: false,
+      destructive_action: true,
+      accepts_path_input: true,
+      read_only_hint_conflict: true,
+      open_world_schema: false
+    });
+    expect(pythonDeleteTool?.metadata.mcp_source_tool_schema_styles).toEqual([
+      "mcp_annotations",
+      "python_signature"
+    ]);
+    expect(pythonDeleteTool?.metadata.required_properties).toEqual(["workspace_path"]);
     const openApiTool = surfaces.tools.find((surface) => surface.path === "tools/support-openapi.yaml");
     expect(openApiTool).toMatchObject({
       name: "openapi:post:1",
@@ -5119,6 +5189,42 @@ describe("scanner", () => {
     expect(sourceTool?.metadata.schema_properties).toEqual(["document_id"]);
     expect(JSON.stringify(sourceTool)).not.toContain("approved internal summary");
     expect(JSON.stringify(sourceTool)).not.toContain("Read an approved internal documentation record");
+
+    const pythonSourceTool = surfaces.tools.find((surface) => surface.name === "python_read_internal_doc");
+    expect(pythonSourceTool).toMatchObject({
+      path: "mcp-source/read_only_tools.py",
+      trust_level: "project",
+      data_classes: ["unknown"],
+      actions: ["call"],
+      side_effect: false,
+      external_reach: false,
+      secret_exposure: false,
+      untrusted_to_privileged: false
+    });
+    expect(pythonSourceTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_mcp_source_tool: true,
+      mcp_source_tool_registration: true,
+      mcp_source_tool_registration_kind: "python_tool_decorator",
+      mcp_source_tool_argument_count: 1,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      values_collected: false,
+      read_only_hint: true,
+      idempotent_hint: true,
+      external_write: false,
+      destructive_action: false,
+      read_only_hint_conflict: false,
+      open_world_schema: false,
+      open_world_authority: false
+    });
+    expect(pythonSourceTool?.metadata.mcp_source_tool_schema_styles).toEqual([
+      "mcp_annotations",
+      "python_signature"
+    ]);
+    expect(pythonSourceTool?.metadata.schema_properties).toEqual(["document_id"]);
+    expect(JSON.stringify(pythonSourceTool)).not.toContain("approved internal summary");
+    expect(JSON.stringify(pythonSourceTool)).not.toContain("Read an approved internal documentation record");
   });
 
   it("keeps approval-gated read-only hosted assistants scoped", async () => {
