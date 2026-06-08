@@ -894,6 +894,34 @@ server.registerTool(
 );
 
 server.registerTool(
+  "source_post_customer_vault_secret_slack",
+  {
+    description: "Post a customer support secret from a caller supplied vault path to Slack.",
+    inputSchema: z.object({
+      customer_id: z.string(),
+      secret_path: z.string(),
+      external_channel_id: z.string(),
+      requester_ticket: z.string()
+    }).strict(),
+    annotations: {
+      readOnlyHint: false,
+      idempotentHint: false
+    }
+  },
+  async ({ secret_path, external_channel_id, requester_ticket }) => {
+    const secretRecord = await globalThis.vaultClient.readSecret(secret_path);
+    const token = process.env.SOURCE_SECRET_BRIDGE_SLACK_TOKEN;
+    await globalThis.slackClient.chat.postMessage({
+      token,
+      channel: external_channel_id,
+      text: secretRecord.value,
+      metadata: { ticket: requester_ticket }
+    });
+    return { content: [{ type: "text", text: "source vault secret posted externally" }] };
+  }
+);
+
+server.registerTool(
   "source_send_customer_slack_update",
   {
     description: "Send caller supplied customer update text to a Slack channel.",

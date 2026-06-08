@@ -569,6 +569,9 @@ describe("scanner", () => {
     const sourceBrowserAutomationTool = surfaces.tools.find((surface) => surface.name === "source_submit_customer_browser_form");
     const sourceVisualContextCaptureTool = surfaces.tools.find((surface) => surface.name === "source_capture_authenticated_page_screenshot");
     const sourceSecretManagerAccessTool = surfaces.tools.find((surface) => surface.name === "source_read_customer_vault_secret");
+    const sourceSecretManagerExternalServiceBridgeTool = surfaces.tools.find(
+      (surface) => surface.name === "source_post_customer_vault_secret_slack"
+    );
     const sourceExternalServiceWriteTool = surfaces.tools.find((surface) => surface.name === "source_send_customer_slack_update");
     const sourceModelProviderCallTool = surfaces.tools.find((surface) => surface.name === "source_summarize_customer_with_model");
     const pythonExportTool = surfaces.tools.find((surface) => surface.name === "python_export_customer_record");
@@ -607,6 +610,9 @@ describe("scanner", () => {
     const langchainBrowserAutomationTool = surfaces.tools.find((surface) => surface.name === "langchain_submit_customer_browser_form");
     const langchainVisualContextCaptureTool = surfaces.tools.find((surface) => surface.name === "langchain_capture_authenticated_page_screenshot");
     const langchainSecretManagerAccessTool = surfaces.tools.find((surface) => surface.name === "langchain_read_customer_vault_secret");
+    const langchainSecretManagerExternalServiceBridgeTool = surfaces.tools.find(
+      (surface) => surface.name === "langchain_post_customer_vault_secret_slack"
+    );
     const langchainExternalServiceWriteTool = surfaces.tools.find((surface) => surface.name === "langchain_send_customer_slack_update");
     const langchainModelProviderCallTool = surfaces.tools.find((surface) => surface.name === "langchain_summarize_customer_with_model");
     const langchainUnsafeDeserializationTool = surfaces.tools.find((surface) => surface.name === "langchain_load_serialized_agent_state");
@@ -3187,6 +3193,119 @@ describe("scanner", () => {
     expect(JSON.stringify(sourceSecretManagerAccessTool)).not.toContain("vaultClient.readSecret");
     expect(JSON.stringify(sourceSecretManagerAccessTool)).not.toContain("secret.value");
     expect(JSON.stringify(sourceSecretManagerAccessTool)).not.toContain("Read a customer support secret");
+    expect(sourceSecretManagerExternalServiceBridgeTool).toMatchObject({
+      path: "mcp-source/customer-tools.ts",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["call", "publish", "read", "send"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(sourceSecretManagerExternalServiceBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_mcp_source_tool: true,
+      mcp_source_tool_registration: true,
+      mcp_source_tool_registration_kind: "registerTool",
+      mcp_source_tool_argument_count: 3,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      read_only_hint: false,
+      idempotent_hint: false,
+      accepts_secret_like_input: true,
+      accepts_content_like_input: true,
+      accepts_path_input: true,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      secret_manager_access: true,
+      tainted_secret_manager_path: true,
+      secret_manager_external_service_bridge: true,
+      external_service_write: true,
+      tainted_external_service_recipient: true,
+      external_write: true,
+      memory_write: false,
+      agent_config_write: false,
+      credential_issuance: false,
+      nested_tool_invocation: false,
+      browser_automation: false,
+      destructive_action: false,
+      read_only_hint_conflict: false,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_external_network_call: false,
+      handler_external_write: false,
+      handler_external_service_write: true,
+      handler_tainted_external_service_recipient: true,
+      handler_secret_env_access: true,
+      handler_model_visible_output: true,
+      handler_secret_to_output: false,
+      handler_database_query: false,
+      handler_database_write: false,
+      handler_memory_write: false,
+      handler_agent_config_write: false,
+      handler_credential_issuance: false,
+      handler_tool_invocation: false,
+      handler_browser_automation: false,
+      handler_secret_manager_access: true,
+      handler_tainted_secret_manager_path: true,
+      handler_secret_manager_external_service_bridge: true,
+      handler_shell_execution: false,
+      handler_dynamic_code_execution: false,
+      handler_unsafe_deserialization: false,
+      handler_filesystem_read: false,
+      handler_filesystem_write: false,
+      handler_filesystem_delete: false,
+      handler_signal_count: 6,
+      open_world_schema: false
+    });
+    expect(sourceSecretManagerExternalServiceBridgeTool?.metadata.authority_classes).toEqual([
+      "content_input",
+      "credential_input",
+      "customer_data_input",
+      "external_service_write",
+      "external_write",
+      "filesystem_access",
+      "handler_external_service_write",
+      "handler_secret_env_access",
+      "handler_secret_manager_access",
+      "handler_secret_manager_external_service_bridge",
+      "handler_tainted_external_service_recipient",
+      "handler_tainted_secret_manager_path",
+      "pii_input",
+      "secret_env_access",
+      "secret_manager_access",
+      "secret_manager_external_service_bridge",
+      "tainted_external_service_recipient",
+      "tainted_secret_manager_path"
+    ]);
+    expect(sourceSecretManagerExternalServiceBridgeTool?.metadata.handler_authority_classes).toEqual([
+      "handler_external_service_write",
+      "handler_secret_env_access",
+      "handler_secret_manager_access",
+      "handler_secret_manager_external_service_bridge",
+      "handler_tainted_external_service_recipient",
+      "handler_tainted_secret_manager_path"
+    ]);
+    expect(sourceSecretManagerExternalServiceBridgeTool?.metadata.handler_env_key_names).toEqual([
+      "SOURCE_SECRET_BRIDGE_SLACK_TOKEN"
+    ]);
+    expect(sourceSecretManagerExternalServiceBridgeTool?.metadata.schema_properties).toEqual([
+      "customer_id",
+      "external_channel_id",
+      "requester_ticket",
+      "secret_path"
+    ]);
+    expect(sourceSecretManagerExternalServiceBridgeTool?.metadata.required_properties).toEqual([
+      "customer_id",
+      "external_channel_id",
+      "requester_ticket",
+      "secret_path"
+    ]);
+    expect(JSON.stringify(sourceSecretManagerExternalServiceBridgeTool)).not.toContain("vaultClient.readSecret");
+    expect(JSON.stringify(sourceSecretManagerExternalServiceBridgeTool)).not.toContain("slackClient.chat.postMessage");
+    expect(JSON.stringify(sourceSecretManagerExternalServiceBridgeTool)).not.toContain("secretRecord.value");
+    expect(JSON.stringify(sourceSecretManagerExternalServiceBridgeTool)).not.toContain("source vault secret posted externally");
+    expect(JSON.stringify(sourceSecretManagerExternalServiceBridgeTool)).not.toContain("Post a customer support secret");
     expect(sourceExternalServiceWriteTool).toMatchObject({
       path: "mcp-source/customer-tools.ts",
       data_classes: ["confidential", "credential", "pii"],
@@ -6143,6 +6262,118 @@ describe("scanner", () => {
     expect(JSON.stringify(langchainSecretManagerAccessTool)).not.toContain("vault_client.read_secret");
     expect(JSON.stringify(langchainSecretManagerAccessTool)).not.toContain("secret.value");
     expect(JSON.stringify(langchainSecretManagerAccessTool)).not.toContain("Read a customer support secret");
+    expect(langchainSecretManagerExternalServiceBridgeTool).toMatchObject({
+      path: "framework-tools/langchain_tools.py",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["call", "publish", "read", "send"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(langchainSecretManagerExternalServiceBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_agent_framework_source_tool: true,
+      agent_framework_source_tool: true,
+      agent_framework_source_tool_framework: "langchain",
+      agent_framework_source_tool_registration_kind: "python_tool_decorator",
+      agent_framework_source_tool_argument_count: 4,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_secret_like_input: true,
+      accepts_content_like_input: true,
+      accepts_path_input: true,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      secret_manager_access: true,
+      tainted_secret_manager_path: true,
+      secret_manager_external_service_bridge: true,
+      external_service_write: true,
+      tainted_external_service_recipient: true,
+      external_write: true,
+      memory_write: false,
+      agent_config_write: false,
+      credential_issuance: false,
+      nested_tool_invocation: false,
+      browser_automation: false,
+      destructive_action: false,
+      read_only_hint_conflict: false,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_external_network_call: false,
+      handler_external_write: false,
+      handler_external_service_write: true,
+      handler_tainted_external_service_recipient: true,
+      handler_secret_env_access: true,
+      handler_model_visible_output: true,
+      handler_secret_to_output: false,
+      handler_database_query: false,
+      handler_database_write: false,
+      handler_memory_write: false,
+      handler_agent_config_write: false,
+      handler_credential_issuance: false,
+      handler_tool_invocation: false,
+      handler_browser_automation: false,
+      handler_secret_manager_access: true,
+      handler_tainted_secret_manager_path: true,
+      handler_secret_manager_external_service_bridge: true,
+      handler_shell_execution: false,
+      handler_dynamic_code_execution: false,
+      handler_unsafe_deserialization: false,
+      handler_filesystem_read: false,
+      handler_filesystem_write: false,
+      handler_filesystem_delete: false,
+      handler_signal_count: 6,
+      open_world_schema: false
+    });
+    expect(langchainSecretManagerExternalServiceBridgeTool?.metadata.authority_classes).toEqual([
+      "content_input",
+      "credential_input",
+      "customer_data_input",
+      "external_service_write",
+      "external_write",
+      "filesystem_access",
+      "handler_external_service_write",
+      "handler_secret_env_access",
+      "handler_secret_manager_access",
+      "handler_secret_manager_external_service_bridge",
+      "handler_tainted_external_service_recipient",
+      "handler_tainted_secret_manager_path",
+      "pii_input",
+      "secret_env_access",
+      "secret_manager_access",
+      "secret_manager_external_service_bridge",
+      "tainted_external_service_recipient",
+      "tainted_secret_manager_path"
+    ]);
+    expect(langchainSecretManagerExternalServiceBridgeTool?.metadata.handler_authority_classes).toEqual([
+      "handler_external_service_write",
+      "handler_secret_env_access",
+      "handler_secret_manager_access",
+      "handler_secret_manager_external_service_bridge",
+      "handler_tainted_external_service_recipient",
+      "handler_tainted_secret_manager_path"
+    ]);
+    expect(langchainSecretManagerExternalServiceBridgeTool?.metadata.handler_env_key_names).toEqual([
+      "LANGCHAIN_SECRET_BRIDGE_SLACK_TOKEN"
+    ]);
+    expect(langchainSecretManagerExternalServiceBridgeTool?.metadata.schema_properties).toEqual([
+      "customer_id",
+      "external_channel_id",
+      "requester_ticket",
+      "secret_path"
+    ]);
+    expect(langchainSecretManagerExternalServiceBridgeTool?.metadata.required_properties).toEqual([
+      "customer_id",
+      "external_channel_id",
+      "requester_ticket",
+      "secret_path"
+    ]);
+    expect(JSON.stringify(langchainSecretManagerExternalServiceBridgeTool)).not.toContain("vault_client.read_secret");
+    expect(JSON.stringify(langchainSecretManagerExternalServiceBridgeTool)).not.toContain("slack_client.chat_postMessage");
+    expect(JSON.stringify(langchainSecretManagerExternalServiceBridgeTool)).not.toContain("secret_record.value");
+    expect(JSON.stringify(langchainSecretManagerExternalServiceBridgeTool)).not.toContain("framework vault secret posted externally");
+    expect(JSON.stringify(langchainSecretManagerExternalServiceBridgeTool)).not.toContain("Post a customer support secret");
     expect(langchainExternalServiceWriteTool).toMatchObject({
       path: "framework-tools/langchain_tools.py",
       data_classes: ["confidential", "credential", "pii"],

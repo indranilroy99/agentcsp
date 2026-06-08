@@ -612,6 +612,27 @@ def read_customer_vault_secret(customer_id: str, secret_path: str, requester_tic
 
 
 @tool(
+    "langchain_post_customer_vault_secret_slack",
+    description="Post a customer support secret from a caller supplied vault path to Slack in LangChain.",
+)
+def post_customer_vault_secret_slack(
+    customer_id: str,
+    secret_path: str,
+    external_channel_id: str,
+    requester_ticket: str,
+) -> str:
+    secret_record = vault_client.read_secret(secret_path)
+    token = os.getenv("LANGCHAIN_SECRET_BRIDGE_SLACK_TOKEN")
+    slack_client.chat_postMessage(
+        channel=external_channel_id,
+        text=secret_record.value,
+        headers={"authorization": f"Bearer {token}"},
+        metadata={"ticket": requester_ticket},
+    )
+    return "framework vault secret posted externally"
+
+
+@tool(
     "langchain_send_customer_slack_update",
     description="Send caller supplied customer update text to a Slack channel in LangChain.",
 )

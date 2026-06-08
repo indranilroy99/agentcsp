@@ -75,6 +75,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-059")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-060")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-061")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-062")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-001")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-002")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-003")).toBe(true);
@@ -7105,7 +7106,9 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerVisualContextCaptureFindings)).not.toContain("Capture an authenticated browser screenshot");
     const sourceHandlerSecretManagerFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-028");
     expect(sourceHandlerSecretManagerFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
+      "langchain_post_customer_vault_secret_slack",
       "langchain_read_customer_vault_secret",
+      "source_post_customer_vault_secret_slack",
       "source_read_customer_vault_secret"
     ]);
     expect(sourceHandlerSecretManagerFindings.every((finding) => finding.severity === "critical")).toBe(true);
@@ -7130,10 +7133,15 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerSecretManagerFindings)).not.toContain("vaultClient.readSecret");
     expect(JSON.stringify(sourceHandlerSecretManagerFindings)).not.toContain("vault_client.read_secret");
     expect(JSON.stringify(sourceHandlerSecretManagerFindings)).not.toContain("secret.value");
+    expect(JSON.stringify(sourceHandlerSecretManagerFindings)).not.toContain("secretRecord.value");
+    expect(JSON.stringify(sourceHandlerSecretManagerFindings)).not.toContain("secret_record.value");
     expect(JSON.stringify(sourceHandlerSecretManagerFindings)).not.toContain("Read a customer support secret");
+    expect(JSON.stringify(sourceHandlerSecretManagerFindings)).not.toContain("Post a customer support secret");
     const sourceHandlerTaintedSecretManagerFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-036");
     expect(sourceHandlerTaintedSecretManagerFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
+      "langchain_post_customer_vault_secret_slack",
       "langchain_read_customer_vault_secret",
+      "source_post_customer_vault_secret_slack",
       "source_read_customer_vault_secret"
     ]);
     expect(sourceHandlerTaintedSecretManagerFindings.every((finding) => finding.severity === "critical")).toBe(true);
@@ -7155,10 +7163,15 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerTaintedSecretManagerFindings)).not.toContain("vaultClient.readSecret");
     expect(JSON.stringify(sourceHandlerTaintedSecretManagerFindings)).not.toContain("vault_client.read_secret");
     expect(JSON.stringify(sourceHandlerTaintedSecretManagerFindings)).not.toContain("secret.value");
+    expect(JSON.stringify(sourceHandlerTaintedSecretManagerFindings)).not.toContain("secretRecord.value");
+    expect(JSON.stringify(sourceHandlerTaintedSecretManagerFindings)).not.toContain("secret_record.value");
     expect(JSON.stringify(sourceHandlerTaintedSecretManagerFindings)).not.toContain("Read a customer support secret");
+    expect(JSON.stringify(sourceHandlerTaintedSecretManagerFindings)).not.toContain("Post a customer support secret");
     const sourceHandlerExternalServiceWriteFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-029");
     expect(sourceHandlerExternalServiceWriteFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
+      "langchain_post_customer_vault_secret_slack",
       "langchain_send_customer_slack_update",
+      "source_post_customer_vault_secret_slack",
       "source_send_customer_slack_update"
     ]);
     expect(sourceHandlerExternalServiceWriteFindings.every((finding) => finding.severity === "critical")).toBe(true);
@@ -7185,10 +7198,15 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerExternalServiceWriteFindings)).not.toContain("slack_client.chat_postMessage");
     expect(JSON.stringify(sourceHandlerExternalServiceWriteFindings)).not.toContain("source slack update sent");
     expect(JSON.stringify(sourceHandlerExternalServiceWriteFindings)).not.toContain("framework slack update sent");
+    expect(JSON.stringify(sourceHandlerExternalServiceWriteFindings)).not.toContain("source vault secret posted externally");
+    expect(JSON.stringify(sourceHandlerExternalServiceWriteFindings)).not.toContain("framework vault secret posted externally");
     expect(JSON.stringify(sourceHandlerExternalServiceWriteFindings)).not.toContain("Send caller supplied customer update text");
+    expect(JSON.stringify(sourceHandlerExternalServiceWriteFindings)).not.toContain("Post a customer support secret");
     const sourceHandlerTaintedExternalServiceRecipientFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-037");
     expect(sourceHandlerTaintedExternalServiceRecipientFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
+      "langchain_post_customer_vault_secret_slack",
       "langchain_send_customer_slack_update",
+      "source_post_customer_vault_secret_slack",
       "source_send_customer_slack_update"
     ]);
     expect(sourceHandlerTaintedExternalServiceRecipientFindings.every((finding) => finding.severity === "critical")).toBe(true);
@@ -7214,7 +7232,59 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerTaintedExternalServiceRecipientFindings)).not.toContain("slack_client.chat_postMessage");
     expect(JSON.stringify(sourceHandlerTaintedExternalServiceRecipientFindings)).not.toContain("source slack update sent");
     expect(JSON.stringify(sourceHandlerTaintedExternalServiceRecipientFindings)).not.toContain("framework slack update sent");
+    expect(JSON.stringify(sourceHandlerTaintedExternalServiceRecipientFindings)).not.toContain("source vault secret posted externally");
+    expect(JSON.stringify(sourceHandlerTaintedExternalServiceRecipientFindings)).not.toContain("framework vault secret posted externally");
     expect(JSON.stringify(sourceHandlerTaintedExternalServiceRecipientFindings)).not.toContain("Send caller supplied customer update text");
+    expect(JSON.stringify(sourceHandlerTaintedExternalServiceRecipientFindings)).not.toContain("Post a customer support secret");
+    const sourceHandlerSecretManagerExternalServiceBridgeFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-062");
+    expect(sourceHandlerSecretManagerExternalServiceBridgeFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
+      "langchain_post_customer_vault_secret_slack",
+      "source_post_customer_vault_secret_slack"
+    ]);
+    expect(sourceHandlerSecretManagerExternalServiceBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
+    expect(sourceHandlerSecretManagerExternalServiceBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerSecretManagerExternalServiceBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
+    expect(sourceHandlerSecretManagerExternalServiceBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
+    expect(sourceHandlerSecretManagerExternalServiceBridgeFindings.every((finding) => finding.matched_object.metadata.handler_secret_manager_access === true)).toBe(true);
+    expect(sourceHandlerSecretManagerExternalServiceBridgeFindings.every((finding) => finding.matched_object.metadata.handler_tainted_secret_manager_path === true)).toBe(true);
+    expect(sourceHandlerSecretManagerExternalServiceBridgeFindings.every((finding) => finding.matched_object.metadata.handler_external_service_write === true)).toBe(true);
+    expect(sourceHandlerSecretManagerExternalServiceBridgeFindings.every((finding) => finding.matched_object.metadata.handler_tainted_external_service_recipient === true)).toBe(true);
+    expect(sourceHandlerSecretManagerExternalServiceBridgeFindings.every((finding) => finding.matched_object.metadata.handler_secret_manager_external_service_bridge === true)).toBe(true);
+    expect(sourceHandlerSecretManagerExternalServiceBridgeFindings.every((finding) => finding.matched_object.metadata.handler_secret_env_access === true)).toBe(true);
+    expect(sourceHandlerSecretManagerExternalServiceBridgeFindings.every((finding) => finding.matched_object.metadata.secret_manager_access === true)).toBe(true);
+    expect(sourceHandlerSecretManagerExternalServiceBridgeFindings.every((finding) => finding.matched_object.metadata.tainted_secret_manager_path === true)).toBe(true);
+    expect(sourceHandlerSecretManagerExternalServiceBridgeFindings.every((finding) => finding.matched_object.metadata.external_service_write === true)).toBe(true);
+    expect(sourceHandlerSecretManagerExternalServiceBridgeFindings.every((finding) => finding.matched_object.metadata.tainted_external_service_recipient === true)).toBe(true);
+    expect(sourceHandlerSecretManagerExternalServiceBridgeFindings.every((finding) => finding.matched_object.metadata.secret_manager_external_service_bridge === true)).toBe(true);
+    expect(sourceHandlerSecretManagerExternalServiceBridgeFindings.every((finding) => finding.matched_object.metadata.external_write === true)).toBe(true);
+    expect(sourceHandlerSecretManagerExternalServiceBridgeFindings.every((finding) => finding.matched_object.metadata.accepts_secret_like_input === true)).toBe(true);
+    expect(sourceHandlerSecretManagerExternalServiceBridgeFindings.every((finding) => finding.matched_object.metadata.accepts_path_input === true)).toBe(true);
+    expect(sourceHandlerSecretManagerExternalServiceBridgeFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("secret_manager_access"))).toBe(true);
+    expect(sourceHandlerSecretManagerExternalServiceBridgeFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("tainted_secret_manager_path"))).toBe(true);
+    expect(sourceHandlerSecretManagerExternalServiceBridgeFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("external_service_write"))).toBe(true);
+    expect(sourceHandlerSecretManagerExternalServiceBridgeFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("tainted_external_service_recipient"))).toBe(true);
+    expect(sourceHandlerSecretManagerExternalServiceBridgeFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("secret_manager_external_service_bridge"))).toBe(true);
+    expect(sourceHandlerSecretManagerExternalServiceBridgeFindings.every((finding) => finding.matched_object.metadata.handler_authority_classes.includes("handler_secret_manager_access"))).toBe(true);
+    expect(sourceHandlerSecretManagerExternalServiceBridgeFindings.every((finding) => finding.matched_object.metadata.handler_authority_classes.includes("handler_tainted_secret_manager_path"))).toBe(true);
+    expect(sourceHandlerSecretManagerExternalServiceBridgeFindings.every((finding) => finding.matched_object.metadata.handler_authority_classes.includes("handler_external_service_write"))).toBe(true);
+    expect(sourceHandlerSecretManagerExternalServiceBridgeFindings.every((finding) => finding.matched_object.metadata.handler_authority_classes.includes("handler_tainted_external_service_recipient"))).toBe(true);
+    expect(sourceHandlerSecretManagerExternalServiceBridgeFindings.every((finding) => finding.matched_object.metadata.handler_authority_classes.includes("handler_secret_manager_external_service_bridge"))).toBe(true);
+    expect(sourceHandlerSecretManagerExternalServiceBridgeFindings.every((finding) => finding.matched_object.actions.includes("read"))).toBe(true);
+    expect(sourceHandlerSecretManagerExternalServiceBridgeFindings.every((finding) => finding.matched_object.actions.includes("send"))).toBe(true);
+    expect(sourceHandlerSecretManagerExternalServiceBridgeFindings.every((finding) => finding.matched_object.actions.includes("publish"))).toBe(true);
+    expect(sourceHandlerSecretManagerExternalServiceBridgeFindings.every((finding) => finding.matched_object.external_reach === true)).toBe(true);
+    expect(sourceHandlerSecretManagerExternalServiceBridgeFindings.every((finding) => finding.matched_object.secret_exposure === true)).toBe(true);
+    expect(sourceHandlerSecretManagerExternalServiceBridgeFindings.every((finding) => finding.matched_object.side_effect === true)).toBe(true);
+    expect(sourceHandlerSecretManagerExternalServiceBridgeFindings.every((finding) => finding.matched_object.reversible === false)).toBe(true);
+    expect(JSON.stringify(sourceHandlerSecretManagerExternalServiceBridgeFindings)).not.toContain("vaultClient.readSecret");
+    expect(JSON.stringify(sourceHandlerSecretManagerExternalServiceBridgeFindings)).not.toContain("vault_client.read_secret");
+    expect(JSON.stringify(sourceHandlerSecretManagerExternalServiceBridgeFindings)).not.toContain("slackClient.chat.postMessage");
+    expect(JSON.stringify(sourceHandlerSecretManagerExternalServiceBridgeFindings)).not.toContain("slack_client.chat_postMessage");
+    expect(JSON.stringify(sourceHandlerSecretManagerExternalServiceBridgeFindings)).not.toContain("secretRecord.value");
+    expect(JSON.stringify(sourceHandlerSecretManagerExternalServiceBridgeFindings)).not.toContain("secret_record.value");
+    expect(JSON.stringify(sourceHandlerSecretManagerExternalServiceBridgeFindings)).not.toContain("source vault secret posted externally");
+    expect(JSON.stringify(sourceHandlerSecretManagerExternalServiceBridgeFindings)).not.toContain("framework vault secret posted externally");
+    expect(JSON.stringify(sourceHandlerSecretManagerExternalServiceBridgeFindings)).not.toContain("Post a customer support secret");
     const sourceHandlerModelProviderFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-030");
     expect(sourceHandlerModelProviderFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_summarize_customer_with_model",

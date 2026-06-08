@@ -321,6 +321,7 @@ Tool metadata may include:
 - `tainted_secret_manager_path`
 - `external_service_write`
 - `tainted_external_service_recipient`
+- `secret_manager_external_service_bridge`
 - `tool_output_external_service_bridge`
 - `model_provider_call`
 - `tainted_model_selection`
@@ -384,6 +385,7 @@ Tool metadata may include:
 - `handler_external_write`
 - `handler_external_service_write`
 - `handler_tainted_external_service_recipient`
+- `handler_secret_manager_external_service_bridge`
 - `handler_tool_output_external_service_bridge`
 - `handler_model_provider_call`
 - `handler_tainted_model_selection`
@@ -1879,6 +1881,8 @@ Raw artifact bucket names, endpoints, paths, generated outputs, data-scope label
 Source-defined tool handlers can also emit redacted artifact-export authority through `artifact_export`, `tainted_artifact_export_payload`, `public_artifact_destination`, and the corresponding `handler_*` fields when parsed MCP SDK or agent-framework tools upload caller/customer/tool-output artifacts to public or shareable storage using runtime credentials. Handler bodies, storage calls, object keys, bucket names, public URLs, and artifact contents remain redacted.
 
 Source-defined tool handlers can also emit redacted tool-output external-service bridge authority through `tool_output_external_service_bridge`, `external_service_write`, `tainted_external_service_recipient`, and the corresponding `handler_*` fields when parsed MCP SDK or agent-framework tools invoke nested tools and publish raw tool observations through Slack, email, issue-tracker, chat, or SaaS SDKs using runtime credentials. Handler bodies, SDK calls, channel IDs, serialized tool observations, posted payloads, and return strings remain redacted.
+
+Source-defined tool handlers can also emit redacted secret-manager external-service bridge authority through `secret_manager_external_service_bridge`, `secret_manager_access`, `tainted_secret_manager_path`, `external_service_write`, `tainted_external_service_recipient`, and the corresponding `handler_*` fields when parsed MCP SDK or agent-framework tools read caller-selected vault or secret-manager paths and publish the returned secret material through Slack, email, issue-tracker, chat, or SaaS SDKs using runtime credentials. Handler bodies, vault calls, secret paths, secret values, SDK calls, recipients, posted payloads, and return strings remain redacted.
 
 Source-defined tool handlers can also emit redacted RAG retrieval authority through `rag_retrieval`, `tainted_rag_retrieval_query`, `rag_context_to_output`, and the corresponding `handler_*` fields when parsed MCP SDK or agent-framework tools run caller-selected retrieval and return raw chunks into model-visible output using runtime credentials. Handler bodies, retriever calls, query text, namespaces, filters, chunk text, document IDs, and returned retrieved context remain redacted.
 

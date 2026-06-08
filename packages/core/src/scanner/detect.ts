@@ -24183,6 +24183,7 @@ function addToolDefinitionSurface(
       tainted_browser_automation_target: authority.tainted_browser_automation_target,
       secret_manager_access: authority.secret_manager_access,
       tainted_secret_manager_path: authority.tainted_secret_manager_path,
+      secret_manager_external_service_bridge: authority.secret_manager_external_service_bridge,
       external_service_write: authority.external_service_write,
       tainted_external_service_recipient: authority.tainted_external_service_recipient,
       tool_output_external_service_bridge: authority.tool_output_external_service_bridge,
@@ -26667,6 +26668,7 @@ interface SourceToolHandlerSignals {
   handlerVisualContextToOutput: boolean;
   handlerSecretManagerAccess: boolean;
   handlerTaintedSecretManagerPath: boolean;
+  handlerSecretManagerExternalServiceBridge: boolean;
   handlerShellExecution: boolean;
   handlerTaintedShellArgument: boolean;
   handlerTaintedFilesystemPath: boolean;
@@ -27155,6 +27157,7 @@ function sourceToolHandlerSignalMetadata(signals: SourceToolHandlerSignals | und
     handler_visual_context_to_output: signals.handlerVisualContextToOutput,
     handler_secret_manager_access: signals.handlerSecretManagerAccess,
     handler_tainted_secret_manager_path: signals.handlerTaintedSecretManagerPath,
+    handler_secret_manager_external_service_bridge: signals.handlerSecretManagerExternalServiceBridge,
     handler_shell_execution: signals.handlerShellExecution,
     handler_tainted_shell_argument: signals.handlerTaintedShellArgument,
     handler_tainted_filesystem_path: signals.handlerTaintedFilesystemPath,
@@ -27403,6 +27406,9 @@ function classifySourceToolHandlerSignals(
   const taintedSecretManagerPath = secretManagerAccess && (language === "javascript"
     ? hasJavaScriptHandlerTaintedSecretManagerPath(handlerSource)
     : hasPythonHandlerTaintedSecretManagerPath(handlerSource));
+  const secretManagerExternalServiceBridge = secretManagerAccess && externalServiceWrite && (language === "javascript"
+    ? hasJavaScriptHandlerSecretManagerExternalServiceBridge(handlerSource)
+    : hasPythonHandlerSecretManagerExternalServiceBridge(handlerSource));
 
   const classes = new Set<string>();
   if (externalNetworkCall) classes.add("handler_network_access");
@@ -27474,6 +27480,7 @@ function classifySourceToolHandlerSignals(
   if (visualContextToOutput) classes.add("handler_visual_context_to_output");
   if (secretManagerAccess) classes.add("handler_secret_manager_access");
   if (taintedSecretManagerPath) classes.add("handler_tainted_secret_manager_path");
+  if (secretManagerExternalServiceBridge) classes.add("handler_secret_manager_external_service_bridge");
   if (shellExecution) classes.add("handler_shell_execution");
   if (taintedShellArgument) classes.add("handler_tainted_shell_argument");
   if (taintedFilesystemPath) classes.add("handler_tainted_filesystem_path");
@@ -27557,6 +27564,7 @@ function classifySourceToolHandlerSignals(
     handlerVisualContextToOutput: visualContextToOutput,
     handlerSecretManagerAccess: secretManagerAccess,
     handlerTaintedSecretManagerPath: taintedSecretManagerPath,
+    handlerSecretManagerExternalServiceBridge: secretManagerExternalServiceBridge,
     handlerShellExecution: shellExecution,
     handlerTaintedShellArgument: taintedShellArgument,
     handlerTaintedFilesystemPath: taintedFilesystemPath,
@@ -28042,6 +28050,28 @@ function hasPythonHandlerToolOutputExternalServiceBridge(source: string): boolea
   );
 }
 
+function hasJavaScriptHandlerSecretManagerExternalServiceBridge(source: string): boolean {
+  const identifiers = extractJavaScriptSecretManagerIdentifiers(source);
+  return identifiers.length > 0 && callExpressionReferencesAnyIdentifier(
+    [
+      /\b(?:slackClient|slack|github|githubClient|octokit|emailClient|mailClient|sendgrid|twilioClient|twilio|teamsClient|discordClient|notion|linear|jira|salesforce|hubspot)\s*(?:\.\s*[A-Za-z_$][\w$]*){0,4}\s*\.\s*(?:postMessage|createComment|createIssueComment|send|sendMail|sendMessage|create|publish|post|reply|update|createPage|createTask|createIssue)\s*\(([\s\S]{0,1800})\)/giu
+    ],
+    source,
+    identifiers
+  );
+}
+
+function hasPythonHandlerSecretManagerExternalServiceBridge(source: string): boolean {
+  const identifiers = extractPythonSecretManagerIdentifiers(source);
+  return identifiers.length > 0 && callExpressionReferencesAnyIdentifier(
+    [
+      /\b(?:slack_client|slack|github|github_client|octokit|email_client|mail_client|sendgrid|twilio_client|twilio|teams_client|discord_client|notion|linear|jira|salesforce|hubspot)\s*(?:\.\s*[A-Za-z_]\w*){0,4}\s*\.\s*(?:post_message|chat_postMessage|chat_post_message|create_comment|create_issue_comment|send|send_mail|send_message|create|publish|post|reply|update|create_page|create_task|create_issue)\s*\(([\s\S]{0,1800})\)/giu
+    ],
+    source,
+    identifiers
+  );
+}
+
 function hasJavaScriptHandlerModelProviderCall(source: string): boolean {
   const providerSignal = /\b(?:OpenAI|AzureOpenAI|Anthropic|GoogleGenerativeAI|GenerativeModel|Mistral|CohereClient|BedrockRuntimeClient|InvokeModelCommand|ChatOpenAI|ChatAnthropic)\b|\b(?:openai|openaiClient|anthropic|anthropicClient|mistral|mistralClient|cohere|cohereClient|bedrock|bedrockClient|gemini|geminiClient|vertex|vertexClient|llm|modelClient|languageModel)\b/iu.test(
     source
@@ -28162,6 +28192,47 @@ function extractPythonToolOutputIdentifiers(
   return [...identifiers].filter((identifier) =>
     options.includeGenericResultNames === true || !["result", "response", "output"].includes(identifier)
   );
+}
+
+function extractJavaScriptSecretManagerIdentifiers(source: string): string[] {
+  const identifiers = new Set<string>();
+  const assignmentPatterns = [
+    /\b(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*(?:await\s+)?[^\n;]{0,240}\b(?:vault|vaultClient|secretManager|secretManagerClient|secretsManager|secretsManagerClient|keyVault|keyVaultClient|credentialVault)\s*(?:\.\s*[A-Za-z_$][\w$]*){0,4}\s*\.\s*(?:read|readSecret|get|getSecret|getSecretValue|accessSecretVersion|downloadSecret|retrieveSecret)\s*\(/gu,
+    /\b(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*(?:await\s+)?new\s+(?:GetSecretValueCommand|AccessSecretVersionRequest|SecretClient)\s*\(/gu
+  ];
+  for (const pattern of assignmentPatterns) collectFirstCaptureMatches(pattern, source, identifiers);
+  expandJavaScriptIdentifiersAssignedFromBase(source, identifiers);
+  return [...identifiers].filter((identifier) => !["secretPath", "vaultPath", "path"].includes(identifier));
+}
+
+function extractPythonSecretManagerIdentifiers(source: string): string[] {
+  const identifiers = new Set<string>();
+  const assignmentPatterns = [
+    /\b([A-Za-z_]\w*)\s*=\s*(?:await\s+)?[^\n]{0,240}\b(?:vault|vault_client|secret_manager|secret_manager_client|secrets_manager|secrets_manager_client|key_vault|key_vault_client|credential_vault)\s*(?:\.\s*[A-Za-z_]\w*){0,4}\s*\.\s*(?:read|read_secret|get|get_secret|get_secret_value|access_secret_version|download_secret|retrieve_secret)\s*\(/gu,
+    /\b([A-Za-z_]\w*)\s*=\s*(?:await\s+)?(?:GetSecretValueCommand|SecretManagerServiceClient|SecretClient)\s*\(/gu
+  ];
+  for (const pattern of assignmentPatterns) collectFirstCaptureMatches(pattern, source, identifiers);
+  expandPythonIdentifiersAssignedFromBase(source, identifiers);
+  return [...identifiers].filter((identifier) => !["secret_path", "vault_path", "path"].includes(identifier));
+}
+
+function expandJavaScriptIdentifiersAssignedFromBase(source: string, identifiers: Set<string>): void {
+  for (const baseIdentifier of [...identifiers]) {
+    const escaped = escapeRegExp(baseIdentifier);
+    const pattern = new RegExp(
+      `\\b(?:const|let|var)\\s+([A-Za-z_$][\\w$]*)\\s*=\\s*(?:await\\s+)?${escaped}\\b(?:\\s*(?:\\.|\\[)[^;\\n]*)?`,
+      "gu"
+    );
+    collectFirstCaptureMatches(pattern, source, identifiers);
+  }
+}
+
+function expandPythonIdentifiersAssignedFromBase(source: string, identifiers: Set<string>): void {
+  for (const baseIdentifier of [...identifiers]) {
+    const escaped = escapeRegExp(baseIdentifier);
+    const pattern = new RegExp(`\\b([A-Za-z_]\\w*)\\s*=\\s*(?:await\\s+)?${escaped}\\b(?:\\s*(?:\\.|\\[)[^\\n]*)?`, "gu");
+    collectFirstCaptureMatches(pattern, source, identifiers);
+  }
 }
 
 function collectFirstCaptureMatches(pattern: RegExp, source: string, values: Set<string>): void {
@@ -31840,6 +31911,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   visual_context_to_output: boolean;
   secret_manager_access: boolean;
   tainted_secret_manager_path: boolean;
+  secret_manager_external_service_bridge: boolean;
   external_service_write: boolean;
   tainted_external_service_recipient: boolean;
   tool_output_external_service_bridge: boolean;
@@ -31976,6 +32048,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   const handlerVisualContextToOutput = handler?.handlerVisualContextToOutput === true;
   const handlerSecretManagerAccess = handler?.handlerSecretManagerAccess === true;
   const handlerTaintedSecretManagerPath = handler?.handlerTaintedSecretManagerPath === true;
+  const handlerSecretManagerExternalServiceBridge = handler?.handlerSecretManagerExternalServiceBridge === true;
   const handlerShellExecution = handler?.handlerShellExecution === true;
   const handlerTaintedShellArgument = handler?.handlerTaintedShellArgument === true;
   const handlerTaintedFilesystemPath = handler?.handlerTaintedFilesystemPath === true;
@@ -32163,6 +32236,11 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   }
   if (handlerTaintedSecretManagerPath) {
     classes.add("tainted_secret_manager_path");
+  }
+  if (handlerSecretManagerExternalServiceBridge) {
+    classes.add("secret_manager_external_service_bridge");
+    actions.add("send");
+    actions.add("publish");
   }
   if (handlerExternalServiceWrite) {
     classes.add("external_service_write");
@@ -32403,6 +32481,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerVisualContextToOutput ||
       handlerSecretManagerAccess ||
       handlerTaintedSecretManagerPath ||
+      handlerSecretManagerExternalServiceBridge ||
       handlerExternalServiceWrite ||
       handlerTaintedExternalServiceRecipient ||
       handlerToolOutputExternalServiceBridge ||
@@ -32481,6 +32560,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerBrowserAutomation ||
       handlerVisualContextCapture ||
       handlerAgentDelegation ||
+      handlerSecretManagerExternalServiceBridge ||
       handlerExternalServiceWrite ||
       handlerToolOutputExternalServiceBridge ||
       handlerModelProviderCall ||
@@ -32504,6 +32584,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerCredentialIssuance ||
       handlerAgentDelegation ||
       handlerSecretManagerAccess ||
+      handlerSecretManagerExternalServiceBridge ||
       (handlerToolOutputExternalServiceBridge && handlerSecretEnvAccess) ||
       (handlerSafetyPolicyWrite && handlerSecretEnvAccess) ||
       (handlerAuthorizationPolicyWrite && handlerSecretEnvAccess),
@@ -32535,6 +32616,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
     visual_context_to_output: handlerVisualContextToOutput,
     secret_manager_access: handlerSecretManagerAccess,
     tainted_secret_manager_path: handlerTaintedSecretManagerPath,
+    secret_manager_external_service_bridge: handlerSecretManagerExternalServiceBridge,
     external_service_write: handlerExternalServiceWrite,
     tainted_external_service_recipient: handlerTaintedExternalServiceRecipient,
     tool_output_external_service_bridge: handlerToolOutputExternalServiceBridge,
@@ -32699,6 +32781,7 @@ function authoritySignature(tool: SurfaceObject): string {
     metadata.tainted_browser_automation_target === true ? "tainted_browser_automation_target" : "",
     metadata.secret_manager_access === true ? "secret_manager_access" : "",
     metadata.tainted_secret_manager_path === true ? "tainted_secret_manager_path" : "",
+    metadata.secret_manager_external_service_bridge === true ? "secret_manager_external_service_bridge" : "",
     metadata.tainted_external_service_recipient === true ? "tainted_external_service_recipient" : "",
     metadata.tool_output_external_service_bridge === true ? "tool_output_external_service_bridge" : "",
     metadata.accepts_secret_like_input === true ? "secret_input" : "",
@@ -32787,6 +32870,7 @@ function isPrivilegedToolSurface(tool: SurfaceObject): boolean {
     tool.metadata.tainted_browser_automation_target === true ||
     tool.metadata.secret_manager_access === true ||
     tool.metadata.tainted_secret_manager_path === true ||
+    tool.metadata.secret_manager_external_service_bridge === true ||
     tool.metadata.tainted_external_service_recipient === true ||
     tool.metadata.open_world_authority === true ||
     tool.metadata.read_only_hint_conflict === true
