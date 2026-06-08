@@ -1666,6 +1666,7 @@ describe("scanner", () => {
       browser_automation: false,
       secret_manager_access: false,
       external_service_write: true,
+      tainted_external_service_recipient: true,
       network_response_capture: false,
       external_write: true,
       destructive_action: false,
@@ -1677,6 +1678,7 @@ describe("scanner", () => {
       handler_network_response_to_output: false,
       handler_external_write: false,
       handler_external_service_write: true,
+      handler_tainted_external_service_recipient: true,
       handler_secret_env_access: true,
       handler_model_visible_output: true,
       handler_secret_to_output: false,
@@ -1694,7 +1696,7 @@ describe("scanner", () => {
       handler_filesystem_read: false,
       handler_filesystem_write: false,
       handler_filesystem_delete: false,
-      handler_signal_count: 2,
+      handler_signal_count: 3,
       open_world_schema: false
     });
     expect(sourceExternalServiceWriteTool?.metadata.authority_classes).toEqual([
@@ -1704,12 +1706,15 @@ describe("scanner", () => {
       "external_write",
       "handler_external_service_write",
       "handler_secret_env_access",
+      "handler_tainted_external_service_recipient",
       "pii_input",
-      "secret_env_access"
+      "secret_env_access",
+      "tainted_external_service_recipient"
     ]);
     expect(sourceExternalServiceWriteTool?.metadata.handler_authority_classes).toEqual([
       "handler_external_service_write",
-      "handler_secret_env_access"
+      "handler_secret_env_access",
+      "handler_tainted_external_service_recipient"
     ]);
     expect(sourceExternalServiceWriteTool?.metadata.handler_env_key_names).toEqual(["SOURCE_SLACK_BOT_TOKEN"]);
     expect(sourceExternalServiceWriteTool?.metadata.schema_properties).toEqual([
@@ -3083,6 +3088,7 @@ describe("scanner", () => {
       browser_automation: false,
       secret_manager_access: false,
       external_service_write: true,
+      tainted_external_service_recipient: true,
       network_response_capture: false,
       external_write: true,
       destructive_action: false,
@@ -3094,6 +3100,7 @@ describe("scanner", () => {
       handler_network_response_to_output: false,
       handler_external_write: false,
       handler_external_service_write: true,
+      handler_tainted_external_service_recipient: true,
       handler_secret_env_access: true,
       handler_model_visible_output: true,
       handler_secret_to_output: false,
@@ -3111,7 +3118,7 @@ describe("scanner", () => {
       handler_filesystem_read: false,
       handler_filesystem_write: false,
       handler_filesystem_delete: false,
-      handler_signal_count: 2,
+      handler_signal_count: 3,
       open_world_schema: false
     });
     expect(langchainExternalServiceWriteTool?.metadata.authority_classes).toEqual([
@@ -3121,12 +3128,15 @@ describe("scanner", () => {
       "external_write",
       "handler_external_service_write",
       "handler_secret_env_access",
+      "handler_tainted_external_service_recipient",
       "pii_input",
-      "secret_env_access"
+      "secret_env_access",
+      "tainted_external_service_recipient"
     ]);
     expect(langchainExternalServiceWriteTool?.metadata.handler_authority_classes).toEqual([
       "handler_external_service_write",
-      "handler_secret_env_access"
+      "handler_secret_env_access",
+      "handler_tainted_external_service_recipient"
     ]);
     expect(langchainExternalServiceWriteTool?.metadata.handler_env_key_names).toEqual(["LANGCHAIN_SLACK_BOT_TOKEN"]);
     expect(langchainExternalServiceWriteTool?.metadata.schema_properties).toEqual([

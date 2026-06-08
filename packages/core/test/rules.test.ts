@@ -50,6 +50,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-034")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-035")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-036")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-037")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-001")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-002")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-003")).toBe(true);
@@ -6365,12 +6366,16 @@ describe("rule engine", () => {
     expect(sourceHandlerExternalServiceWriteFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
     expect(sourceHandlerExternalServiceWriteFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
     expect(sourceHandlerExternalServiceWriteFindings.every((finding) => finding.matched_object.metadata.handler_external_service_write === true)).toBe(true);
+    expect(sourceHandlerExternalServiceWriteFindings.every((finding) => finding.matched_object.metadata.handler_tainted_external_service_recipient === true)).toBe(true);
     expect(sourceHandlerExternalServiceWriteFindings.every((finding) => finding.matched_object.metadata.external_service_write === true)).toBe(true);
+    expect(sourceHandlerExternalServiceWriteFindings.every((finding) => finding.matched_object.metadata.tainted_external_service_recipient === true)).toBe(true);
     expect(sourceHandlerExternalServiceWriteFindings.every((finding) => finding.matched_object.metadata.external_write === true)).toBe(true);
     expect(sourceHandlerExternalServiceWriteFindings.every((finding) => finding.matched_object.metadata.accepts_content_like_input === true)).toBe(true);
     expect(sourceHandlerExternalServiceWriteFindings.every((finding) => finding.matched_object.metadata.accepts_customer_data_input === true)).toBe(true);
     expect(sourceHandlerExternalServiceWriteFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("external_service_write"))).toBe(true);
+    expect(sourceHandlerExternalServiceWriteFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("tainted_external_service_recipient"))).toBe(true);
     expect(sourceHandlerExternalServiceWriteFindings.every((finding) => finding.matched_object.metadata.handler_authority_classes.includes("handler_external_service_write"))).toBe(true);
+    expect(sourceHandlerExternalServiceWriteFindings.every((finding) => finding.matched_object.metadata.handler_authority_classes.includes("handler_tainted_external_service_recipient"))).toBe(true);
     expect(sourceHandlerExternalServiceWriteFindings.every((finding) => finding.matched_object.actions.includes("send"))).toBe(true);
     expect(sourceHandlerExternalServiceWriteFindings.every((finding) => finding.matched_object.actions.includes("publish"))).toBe(true);
     expect(sourceHandlerExternalServiceWriteFindings.every((finding) => finding.matched_object.external_reach === true)).toBe(true);
@@ -6381,6 +6386,35 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerExternalServiceWriteFindings)).not.toContain("source slack update sent");
     expect(JSON.stringify(sourceHandlerExternalServiceWriteFindings)).not.toContain("framework slack update sent");
     expect(JSON.stringify(sourceHandlerExternalServiceWriteFindings)).not.toContain("Send caller supplied customer update text");
+    const sourceHandlerTaintedExternalServiceRecipientFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-037");
+    expect(sourceHandlerTaintedExternalServiceRecipientFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
+      "langchain_send_customer_slack_update",
+      "source_send_customer_slack_update"
+    ]);
+    expect(sourceHandlerTaintedExternalServiceRecipientFindings.every((finding) => finding.severity === "critical")).toBe(true);
+    expect(sourceHandlerTaintedExternalServiceRecipientFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerTaintedExternalServiceRecipientFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
+    expect(sourceHandlerTaintedExternalServiceRecipientFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
+    expect(sourceHandlerTaintedExternalServiceRecipientFindings.every((finding) => finding.matched_object.metadata.handler_external_service_write === true)).toBe(true);
+    expect(sourceHandlerTaintedExternalServiceRecipientFindings.every((finding) => finding.matched_object.metadata.handler_tainted_external_service_recipient === true)).toBe(true);
+    expect(sourceHandlerTaintedExternalServiceRecipientFindings.every((finding) => finding.matched_object.metadata.external_service_write === true)).toBe(true);
+    expect(sourceHandlerTaintedExternalServiceRecipientFindings.every((finding) => finding.matched_object.metadata.tainted_external_service_recipient === true)).toBe(true);
+    expect(sourceHandlerTaintedExternalServiceRecipientFindings.every((finding) => finding.matched_object.metadata.accepts_content_like_input === true)).toBe(true);
+    expect(sourceHandlerTaintedExternalServiceRecipientFindings.every((finding) => finding.matched_object.metadata.accepts_customer_data_input === true)).toBe(true);
+    expect(sourceHandlerTaintedExternalServiceRecipientFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("external_service_write"))).toBe(true);
+    expect(sourceHandlerTaintedExternalServiceRecipientFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("tainted_external_service_recipient"))).toBe(true);
+    expect(sourceHandlerTaintedExternalServiceRecipientFindings.every((finding) => finding.matched_object.metadata.handler_authority_classes.includes("handler_external_service_write"))).toBe(true);
+    expect(sourceHandlerTaintedExternalServiceRecipientFindings.every((finding) => finding.matched_object.metadata.handler_authority_classes.includes("handler_tainted_external_service_recipient"))).toBe(true);
+    expect(sourceHandlerTaintedExternalServiceRecipientFindings.every((finding) => finding.matched_object.actions.includes("send"))).toBe(true);
+    expect(sourceHandlerTaintedExternalServiceRecipientFindings.every((finding) => finding.matched_object.actions.includes("publish"))).toBe(true);
+    expect(sourceHandlerTaintedExternalServiceRecipientFindings.every((finding) => finding.matched_object.external_reach === true)).toBe(true);
+    expect(sourceHandlerTaintedExternalServiceRecipientFindings.every((finding) => finding.matched_object.side_effect === true)).toBe(true);
+    expect(sourceHandlerTaintedExternalServiceRecipientFindings.every((finding) => finding.matched_object.reversible === false)).toBe(true);
+    expect(JSON.stringify(sourceHandlerTaintedExternalServiceRecipientFindings)).not.toContain("slackClient.chat.postMessage");
+    expect(JSON.stringify(sourceHandlerTaintedExternalServiceRecipientFindings)).not.toContain("slack_client.chat_postMessage");
+    expect(JSON.stringify(sourceHandlerTaintedExternalServiceRecipientFindings)).not.toContain("source slack update sent");
+    expect(JSON.stringify(sourceHandlerTaintedExternalServiceRecipientFindings)).not.toContain("framework slack update sent");
+    expect(JSON.stringify(sourceHandlerTaintedExternalServiceRecipientFindings)).not.toContain("Send caller supplied customer update text");
     const sourceHandlerModelProviderFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-030");
     expect(sourceHandlerModelProviderFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_summarize_customer_with_model",

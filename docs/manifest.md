@@ -310,6 +310,7 @@ Tool metadata may include:
 - `secret_manager_access`
 - `tainted_secret_manager_path`
 - `external_service_write`
+- `tainted_external_service_recipient`
 - `model_provider_call`
 - `privileged_prompt_composition`
 - `tainted_shell_argument`
@@ -331,6 +332,7 @@ Tool metadata may include:
 - `handler_network_response_to_output`
 - `handler_external_write`
 - `handler_external_service_write`
+- `handler_tainted_external_service_recipient`
 - `handler_model_provider_call`
 - `handler_privileged_prompt_composition`
 - `handler_secret_env_access`

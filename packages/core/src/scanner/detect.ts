@@ -24159,6 +24159,7 @@ function addToolDefinitionSurface(
       secret_manager_access: authority.secret_manager_access,
       tainted_secret_manager_path: authority.tainted_secret_manager_path,
       external_service_write: authority.external_service_write,
+      tainted_external_service_recipient: authority.tainted_external_service_recipient,
       model_provider_call: authority.model_provider_call,
       privileged_prompt_composition: authority.privileged_prompt_composition,
       tainted_shell_argument: authority.tainted_shell_argument,
@@ -26555,6 +26556,7 @@ interface SourceToolHandlerSignals {
   handlerShellExecution: boolean;
   handlerTaintedShellArgument: boolean;
   handlerTaintedFilesystemPath: boolean;
+  handlerTaintedExternalServiceRecipient: boolean;
   handlerDynamicCodeExecution: boolean;
   handlerTaintedDynamicCodeArgument: boolean;
   handlerUnsafeDeserialization: boolean;
@@ -26992,6 +26994,7 @@ function sourceToolHandlerSignalMetadata(signals: SourceToolHandlerSignals | und
     handler_shell_execution: signals.handlerShellExecution,
     handler_tainted_shell_argument: signals.handlerTaintedShellArgument,
     handler_tainted_filesystem_path: signals.handlerTaintedFilesystemPath,
+    handler_tainted_external_service_recipient: signals.handlerTaintedExternalServiceRecipient,
     handler_dynamic_code_execution: signals.handlerDynamicCodeExecution,
     handler_tainted_dynamic_code_argument: signals.handlerTaintedDynamicCodeArgument,
     handler_unsafe_deserialization: signals.handlerUnsafeDeserialization,
@@ -27024,6 +27027,9 @@ function classifySourceToolHandlerSignals(
   const externalServiceWrite = language === "javascript"
     ? hasJavaScriptHandlerExternalServiceWrite(handlerSource)
     : hasPythonHandlerExternalServiceWrite(handlerSource);
+  const taintedExternalServiceRecipient = externalServiceWrite && (language === "javascript"
+    ? hasJavaScriptHandlerTaintedExternalServiceRecipient(handlerSource)
+    : hasPythonHandlerTaintedExternalServiceRecipient(handlerSource));
   const modelProviderCall = language === "javascript"
     ? hasJavaScriptHandlerModelProviderCall(handlerSource)
     : hasPythonHandlerModelProviderCall(handlerSource);
@@ -27103,6 +27109,7 @@ function classifySourceToolHandlerSignals(
   if (networkResponseToOutput) classes.add("handler_network_response_to_output");
   if (externalWrite) classes.add("handler_external_write");
   if (externalServiceWrite) classes.add("handler_external_service_write");
+  if (taintedExternalServiceRecipient) classes.add("handler_tainted_external_service_recipient");
   if (modelProviderCall) classes.add("handler_model_provider_call");
   if (privilegedPromptComposition) classes.add("handler_privileged_prompt_composition");
   if (secretEnvAccess) classes.add("handler_secret_env_access");
@@ -27134,6 +27141,7 @@ function classifySourceToolHandlerSignals(
     handlerNetworkResponseToOutput: networkResponseToOutput,
     handlerExternalWrite: externalWrite,
     handlerExternalServiceWrite: externalServiceWrite,
+    handlerTaintedExternalServiceRecipient: taintedExternalServiceRecipient,
     handlerModelProviderCall: modelProviderCall,
     handlerPrivilegedPromptComposition: privilegedPromptComposition,
     handlerSecretEnvAccess: secretEnvAccess,
@@ -27447,6 +27455,18 @@ function hasPythonHandlerExternalServiceWrite(source: string): boolean {
   );
 }
 
+function hasJavaScriptHandlerTaintedExternalServiceRecipient(source: string): boolean {
+  return [
+    /\b(?:slackClient|slack|github|githubClient|octokit|emailClient|mailClient|sendgrid|twilioClient|twilio|teamsClient|discordClient|notion|linear|jira|salesforce|hubspot)\s*(?:\.\s*[A-Za-z_$][\w$]*){0,4}\s*\.\s*(?:postMessage|createComment|createIssueComment|send|sendMail|sendMessage|create|publish|post|reply|update|createPage|createTask|createIssue)\s*\(([\s\S]{0,720})\)/giu
+  ].some((pattern) => expressionMatchesTaintedExternalServiceRecipient(pattern, source));
+}
+
+function hasPythonHandlerTaintedExternalServiceRecipient(source: string): boolean {
+  return [
+    /\b(?:slack_client|slack|github|github_client|octokit|email_client|mail_client|sendgrid|twilio_client|twilio|teams_client|discord_client|notion|linear|jira|salesforce|hubspot)\s*(?:\.\s*[A-Za-z_]\w*){0,4}\s*\.\s*(?:post_message|chat_postMessage|chat_post_message|create_comment|create_issue_comment|send|send_mail|send_message|create|publish|post|reply|update|create_page|create_task|create_issue)\s*\(([\s\S]{0,720})\)/giu
+  ].some((pattern) => expressionMatchesTaintedExternalServiceRecipient(pattern, source));
+}
+
 function hasJavaScriptHandlerModelProviderCall(source: string): boolean {
   const providerSignal = /\b(?:OpenAI|AzureOpenAI|Anthropic|GoogleGenerativeAI|GenerativeModel|Mistral|CohereClient|BedrockRuntimeClient|InvokeModelCommand|ChatOpenAI|ChatAnthropic)\b|\b(?:openai|openaiClient|anthropic|anthropicClient|mistral|mistralClient|cohere|cohereClient|bedrock|bedrockClient|gemini|geminiClient|vertex|vertexClient|llm|modelClient|languageModel)\b/iu.test(
     source
@@ -27602,6 +27622,15 @@ function expressionMatchesTaintedSecretManagerPath(pattern: RegExp, source: stri
   return false;
 }
 
+function expressionMatchesTaintedExternalServiceRecipient(pattern: RegExp, source: string): boolean {
+  let match: RegExpExecArray | null;
+  while ((match = pattern.exec(source)) !== null) {
+    if (expressionReferencesTaintedExternalServiceRecipient(match[1] ?? "", source)) return true;
+    if (match[0].length === 0) pattern.lastIndex += 1;
+  }
+  return false;
+}
+
 function expressionMatchesTaintedDynamicCodeArgument(pattern: RegExp, source: string): boolean {
   let match: RegExpExecArray | null;
   while ((match = pattern.exec(source)) !== null) {
@@ -27690,6 +27719,37 @@ function expressionReferencesTaintedSecretManagerPath(expression: string, source
 }
 
 function identifierAssignedFromTaintedSecretManagerPathInput(identifier: string, source: string, taintedName: RegExp): boolean {
+  const escaped = escapeRegExp(identifier);
+  const patterns = [
+    new RegExp(`\\b(?:const|let|var)\\s+${escaped}\\s*=\\s*([^;\\n]+)`, "gu"),
+    new RegExp(`\\b${escaped}\\s*=\\s*([^\\n]+)`, "gu")
+  ];
+  return patterns.some((pattern) => expressionMatchesPattern(pattern, source, taintedName));
+}
+
+function expressionReferencesTaintedExternalServiceRecipient(expression: string, source: string): boolean {
+  const templateInterpolation = /\$\{[^}]*\b(?:slackChannelId|slack_channel_id|channelId|channel_id|channelName|channel_name|targetChannel|target_channel|destinationChannel|destination_channel|recipientId|recipient_id|recipientEmail|recipient_email|recipientAddress|recipient_address|emailAddress|email_address|userId|user_id|roomId|room_id|conversationId|conversation_id|webhookUrl|webhook_url|destinationWebhookUrl|destination_webhook_url)\b/u.test(
+    expression
+  );
+  if (templateInterpolation) return true;
+  const withoutQuotedStrings = expression.replace(/(["'`])(?:\\.|(?!\1)[\s\S])*\1/gu, " ");
+  const stronglyTaintedName = /\b(?:slackChannelId|slack_channel_id|channelId|channel_id|channelName|channel_name|targetChannel|target_channel|destinationChannel|destination_channel|recipientId|recipient_id|recipientEmail|recipient_email|recipientAddress|recipient_address|emailAddress|email_address|userId|user_id|roomId|room_id|conversationId|conversation_id|webhookUrl|webhook_url|destinationWebhookUrl|destination_webhook_url)\b/u;
+  if (stronglyTaintedName.test(withoutQuotedStrings)) return true;
+
+  const recipientAssignment = /\b(?:channel|channel_id|room|room_id|conversation|conversation_id|recipient|recipient_id|to|cc|bcc|user|user_id|email|email_address|destination|target|webhook|webhook_url)\s*(?::|=)\s*([^,\n}\)]+)/giu;
+  if (expressionMatchesPattern(recipientAssignment, withoutQuotedStrings, /\b(?:channel|recipient|to|cc|bcc|email|user|room|conversation|destination|target|webhook)\b/u)) {
+    return true;
+  }
+
+  const identifiers = uniqueStrings(
+    [...withoutQuotedStrings.matchAll(/\b[A-Za-z_$][\w$]*\b/gu)]
+      .map((match) => match[0])
+      .filter((identifier) => !["token", "text", "body", "message", "content", "payload", "channel", "recipient", "to", "cc", "bcc"].includes(identifier))
+  );
+  return identifiers.some((identifier) => identifierAssignedFromTaintedExternalServiceRecipient(identifier, source, stronglyTaintedName));
+}
+
+function identifierAssignedFromTaintedExternalServiceRecipient(identifier: string, source: string, taintedName: RegExp): boolean {
   const escaped = escapeRegExp(identifier);
   const patterns = [
     new RegExp(`\\b(?:const|let|var)\\s+${escaped}\\s*=\\s*([^;\\n]+)`, "gu"),
@@ -29044,6 +29104,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   secret_manager_access: boolean;
   tainted_secret_manager_path: boolean;
   external_service_write: boolean;
+  tainted_external_service_recipient: boolean;
   model_provider_call: boolean;
   privileged_prompt_composition: boolean;
   tainted_shell_argument: boolean;
@@ -29094,6 +29155,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   const handlerShellExecution = handler?.handlerShellExecution === true;
   const handlerTaintedShellArgument = handler?.handlerTaintedShellArgument === true;
   const handlerTaintedFilesystemPath = handler?.handlerTaintedFilesystemPath === true;
+  const handlerTaintedExternalServiceRecipient = handler?.handlerTaintedExternalServiceRecipient === true;
   const handlerDynamicCodeExecution = handler?.handlerDynamicCodeExecution === true;
   const handlerTaintedDynamicCodeArgument = handler?.handlerTaintedDynamicCodeArgument === true;
   const handlerUnsafeDeserialization = handler?.handlerUnsafeDeserialization === true;
@@ -29228,6 +29290,9 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
     actions.add("send");
     actions.add("publish");
   }
+  if (handlerTaintedExternalServiceRecipient) {
+    classes.add("tainted_external_service_recipient");
+  }
   if (handlerModelProviderCall) {
     classes.add("model_provider_call");
     actions.add("read");
@@ -29287,6 +29352,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerSecretManagerAccess ||
       handlerTaintedSecretManagerPath ||
       handlerExternalServiceWrite ||
+      handlerTaintedExternalServiceRecipient ||
       handlerModelProviderCall ||
       handlerPrivilegedPromptComposition ||
       handlerTaintedShellArgument ||
@@ -29342,6 +29408,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
     secret_manager_access: handlerSecretManagerAccess,
     tainted_secret_manager_path: handlerTaintedSecretManagerPath,
     external_service_write: handlerExternalServiceWrite,
+    tainted_external_service_recipient: handlerTaintedExternalServiceRecipient,
     model_provider_call: handlerModelProviderCall,
     privileged_prompt_composition: handlerPrivilegedPromptComposition,
     tainted_shell_argument: handlerTaintedShellArgument,
@@ -29417,6 +29484,7 @@ function authoritySignature(tool: SurfaceObject): string {
     metadata.browser_automation === true ? "browser_automation" : "",
     metadata.secret_manager_access === true ? "secret_manager_access" : "",
     metadata.tainted_secret_manager_path === true ? "tainted_secret_manager_path" : "",
+    metadata.tainted_external_service_recipient === true ? "tainted_external_service_recipient" : "",
     metadata.accepts_secret_like_input === true ? "secret_input" : "",
     metadata.accepts_content_like_input === true ? "content_input" : "",
     metadata.accepts_path_input === true ? "path_input" : "",
@@ -29453,6 +29521,7 @@ function isPrivilegedToolSurface(tool: SurfaceObject): boolean {
     tool.metadata.browser_automation === true ||
     tool.metadata.secret_manager_access === true ||
     tool.metadata.tainted_secret_manager_path === true ||
+    tool.metadata.tainted_external_service_recipient === true ||
     tool.metadata.open_world_authority === true ||
     tool.metadata.read_only_hint_conflict === true
   );
