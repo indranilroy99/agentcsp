@@ -24135,6 +24135,7 @@ function addToolDefinitionSurface(
       !authority.prompt_cache_write &&
       !authority.training_dataset_export &&
       !authority.artifact_export &&
+      !authority.approval_auto_execution &&
       !authority.visual_context_capture &&
       !authority.tainted_network_destination &&
       !authority.tainted_shell_argument &&
@@ -24190,6 +24191,9 @@ function addToolDefinitionSurface(
       artifact_export: authority.artifact_export,
       tainted_artifact_export_payload: authority.tainted_artifact_export_payload,
       public_artifact_destination: authority.public_artifact_destination,
+      model_approval_gate: authority.model_approval_gate,
+      tainted_approval_context: authority.tainted_approval_context,
+      approval_auto_execution: authority.approval_auto_execution,
       visual_context_capture: authority.visual_context_capture,
       visual_context_to_output: authority.visual_context_to_output,
       privileged_prompt_composition: authority.privileged_prompt_composition,
@@ -26585,6 +26589,9 @@ interface SourceToolHandlerSignals {
   handlerArtifactExport: boolean;
   handlerTaintedArtifactExportPayload: boolean;
   handlerPublicArtifactDestination: boolean;
+  handlerModelApprovalGate: boolean;
+  handlerTaintedApprovalContext: boolean;
+  handlerApprovalAutoExecution: boolean;
   handlerPrivilegedPromptComposition: boolean;
   handlerSecretEnvAccess: boolean;
   handlerModelVisibleOutput: boolean;
@@ -27046,6 +27053,9 @@ function sourceToolHandlerSignalMetadata(signals: SourceToolHandlerSignals | und
     handler_artifact_export: signals.handlerArtifactExport,
     handler_tainted_artifact_export_payload: signals.handlerTaintedArtifactExportPayload,
     handler_public_artifact_destination: signals.handlerPublicArtifactDestination,
+    handler_model_approval_gate: signals.handlerModelApprovalGate,
+    handler_tainted_approval_context: signals.handlerTaintedApprovalContext,
+    handler_approval_auto_execution: signals.handlerApprovalAutoExecution,
     handler_privileged_prompt_composition: signals.handlerPrivilegedPromptComposition,
     handler_secret_env_access: signals.handlerSecretEnvAccess,
     handler_model_visible_output: signals.handlerModelVisibleOutput,
@@ -27150,6 +27160,13 @@ function classifySourceToolHandlerSignals(
     ? hasJavaScriptHandlerTaintedArtifactExportPayload(handlerSource)
     : hasPythonHandlerTaintedArtifactExportPayload(handlerSource));
   const publicArtifactDestination = artifactExport && hasHandlerPublicArtifactDestination(handlerSource);
+  const modelApprovalGate = language === "javascript"
+    ? hasJavaScriptHandlerModelApprovalGate(handlerSource)
+    : hasPythonHandlerModelApprovalGate(handlerSource);
+  const taintedApprovalContext = modelApprovalGate && (language === "javascript"
+    ? hasJavaScriptHandlerTaintedApprovalContext(handlerSource)
+    : hasPythonHandlerTaintedApprovalContext(handlerSource));
+  const approvalAutoExecution = modelApprovalGate && hasHandlerApprovalAutoExecution(handlerSource);
   const privilegedPromptComposition = language === "javascript"
     ? hasJavaScriptHandlerPrivilegedPromptComposition(handlerSource)
     : hasPythonHandlerPrivilegedPromptComposition(handlerSource);
@@ -27267,6 +27284,9 @@ function classifySourceToolHandlerSignals(
   if (artifactExport) classes.add("handler_artifact_export");
   if (taintedArtifactExportPayload) classes.add("handler_tainted_artifact_export_payload");
   if (publicArtifactDestination) classes.add("handler_public_artifact_destination");
+  if (modelApprovalGate) classes.add("handler_model_approval_gate");
+  if (taintedApprovalContext) classes.add("handler_tainted_approval_context");
+  if (approvalAutoExecution) classes.add("handler_approval_auto_execution");
   if (privilegedPromptComposition) classes.add("handler_privileged_prompt_composition");
   if (secretEnvAccess) classes.add("handler_secret_env_access");
   if (secretToOutput) classes.add("handler_secret_to_output");
@@ -27322,6 +27342,9 @@ function classifySourceToolHandlerSignals(
     handlerArtifactExport: artifactExport,
     handlerTaintedArtifactExportPayload: taintedArtifactExportPayload,
     handlerPublicArtifactDestination: publicArtifactDestination,
+    handlerModelApprovalGate: modelApprovalGate,
+    handlerTaintedApprovalContext: taintedApprovalContext,
+    handlerApprovalAutoExecution: approvalAutoExecution,
     handlerPrivilegedPromptComposition: privilegedPromptComposition,
     handlerSecretEnvAccess: secretEnvAccess,
     handlerModelVisibleOutput: modelVisibleOutput,
@@ -28015,6 +28038,41 @@ function hasHandlerPublicArtifactDestination(source: string): boolean {
   );
 }
 
+function hasJavaScriptHandlerModelApprovalGate(source: string): boolean {
+  return [
+    /\b(?:approvalModelClient|approvalClient|modelApprovalClient|policyModelClient|riskReviewClient|guardrailModelClient|llmApprovalClient)\s*(?:\.\s*[A-Za-z_$][\w$]*){0,4}\s*\.\s*(?:evaluate|evaluateApproval|approve|approveAction|decide|review|classify|authorize|assess)\s*\(/iu,
+    /\b(?:evaluateApproval|approveAction|modelApprove|modelApproval|llmApprove|runApprovalGate|reviewActionWithModel)\s*\(/iu
+  ].some((pattern) => pattern.test(source)) && /\b(?:approval|approve|approved|allowed|decision|gate|policyModel|policy\s+model|guardrail|riskReview|risk\s+review)\b/iu.test(source);
+}
+
+function hasPythonHandlerModelApprovalGate(source: string): boolean {
+  return [
+    /\b(?:approval_model_client|approval_client|model_approval_client|policy_model_client|risk_review_client|guardrail_model_client|llm_approval_client)\s*(?:\.\s*[A-Za-z_]\w*){0,4}\s*\.\s*(?:evaluate|evaluate_approval|approve|approve_action|decide|review|classify|authorize|assess)\s*\(/iu,
+    /\b(?:evaluate_approval|approve_action|model_approve|model_approval|llm_approve|run_approval_gate|review_action_with_model)\s*\(/iu
+  ].some((pattern) => pattern.test(source)) && /\b(?:approval|approve|approved|allowed|decision|gate|policy_model|policy\s+model|guardrail|risk_review|risk\s+review)\b/iu.test(source);
+}
+
+function hasJavaScriptHandlerTaintedApprovalContext(source: string): boolean {
+  return [
+    /\b(?:approvalModelClient|approvalClient|modelApprovalClient|policyModelClient|riskReviewClient|guardrailModelClient|llmApprovalClient)\s*(?:\.\s*[A-Za-z_$][\w$]*){0,4}\s*\.\s*(?:evaluate|evaluateApproval|approve|approveAction|decide|review|classify|authorize|assess)\s*\(([\s\S]{0,1400})\)/giu,
+    /\b(?:evaluateApproval|approveAction|modelApprove|modelApproval|llmApprove|runApprovalGate|reviewActionWithModel)\s*\(([\s\S]{0,1400})\)/giu
+  ].some((pattern) => expressionMatchesTaintedApprovalContext(pattern, source));
+}
+
+function hasPythonHandlerTaintedApprovalContext(source: string): boolean {
+  return [
+    /\b(?:approval_model_client|approval_client|model_approval_client|policy_model_client|risk_review_client|guardrail_model_client|llm_approval_client)\s*(?:\.\s*[A-Za-z_]\w*){0,4}\s*\.\s*(?:evaluate|evaluate_approval|approve|approve_action|decide|review|classify|authorize|assess)\s*\(([\s\S]{0,1400})\)/giu,
+    /\b(?:evaluate_approval|approve_action|model_approve|model_approval|llm_approve|run_approval_gate|review_action_with_model)\s*\(([\s\S]{0,1400})\)/giu
+  ].some((pattern) => expressionMatchesTaintedApprovalContext(pattern, source));
+}
+
+function hasHandlerApprovalAutoExecution(source: string): boolean {
+  return [
+    /\bif\s*\([^)]*\b(?:approved|allowed|allow|decision|approval|approve)\b[^)]*\)\s*\{?[\s\S]{0,1400}\b(?:privilegedActionExecutor|actionExecutor|automationExecutor|executor)\s*(?:\.\s*[A-Za-z_$][\w$]*){0,3}\s*\.\s*(?:execute|executeAction|run|dispatch|commit|apply|perform)\s*\(/iu,
+    /\bif\s+[^\n:]*\b(?:approved|allowed|allow|decision|approval|approve)\b[^\n:]*:\s*[\s\S]{0,1400}\b(?:privileged_action_executor|action_executor|automation_executor|executor)\s*(?:\.\s*[A-Za-z_]\w*){0,3}\s*\.\s*(?:execute|execute_action|run|dispatch|commit|apply|perform)\s*\(/iu
+  ].some((pattern) => pattern.test(source));
+}
+
 function hasJavaScriptHandlerPrivilegedPromptComposition(source: string): boolean {
   return [
     /\brole\s*:\s*["'`](?:system|developer)["'`][\s\S]{0,260}\bcontent\s*:\s*([^,\n}\]]+)/giu,
@@ -28256,6 +28314,15 @@ function expressionMatchesTaintedArtifactExportPayload(pattern: RegExp, source: 
   let match: RegExpExecArray | null;
   while ((match = pattern.exec(source)) !== null) {
     if (expressionReferencesTaintedArtifactExportPayload(match[1] ?? "", source)) return true;
+    if (match[0].length === 0) pattern.lastIndex += 1;
+  }
+  return false;
+}
+
+function expressionMatchesTaintedApprovalContext(pattern: RegExp, source: string): boolean {
+  let match: RegExpExecArray | null;
+  while ((match = pattern.exec(source)) !== null) {
+    if (expressionReferencesTaintedApprovalContext(match[1] ?? "", source)) return true;
     if (match[0].length === 0) pattern.lastIndex += 1;
   }
   return false;
@@ -29016,6 +29083,63 @@ function expressionReferencesTaintedArtifactExportPayload(expression: string, so
 }
 
 function identifierAssignedFromTaintedArtifactExportPayload(identifier: string, source: string, taintedName: RegExp): boolean {
+  const escaped = escapeRegExp(identifier);
+  const patterns = [
+    new RegExp(`\\b(?:const|let|var)\\s+${escaped}\\s*=\\s*([^;\\n]+)`, "gu"),
+    new RegExp(`\\b${escaped}\\s*=\\s*([^\\n]+)`, "gu")
+  ];
+  return patterns.some((pattern) => expressionMatchesPattern(pattern, source, taintedName));
+}
+
+function expressionReferencesTaintedApprovalContext(expression: string, source: string): boolean {
+  const templateInterpolation = /\$\{[^}]*\b(?:customerTicketText|customer_ticket_text|ticketText|ticket_text|customerContext|customer_context|customerMessage|customer_message|toolOutputText|tool_output_text|toolOutput|tool_output|retrievedContext|retrieved_context|memorySummary|memory_summary|approvalReason|approval_reason|requestedAction|requested_action|actionPayload|action_payload|promptText|prompt_text|inputText|input_text|content|message|prompt|payload|context|output|customer|ticket|action)\b/u.test(
+    expression
+  );
+  if (templateInterpolation) return true;
+  const withoutQuotedStrings = expression.replace(/(["'`])(?:\\.|(?!\1)[\s\S])*\1/gu, " ");
+  const stronglyTaintedName = /\b(?:customerTicketText|customer_ticket_text|ticketText|ticket_text|customerContext|customer_context|customerMessage|customer_message|toolOutputText|tool_output_text|toolOutput|tool_output|retrievedContext|retrieved_context|memorySummary|memory_summary|approvalReason|approval_reason|requestedAction|requested_action|actionPayload|action_payload|promptText|prompt_text|inputText|input_text)\b/u;
+  const taintedName = /\b(?:customerTicketText|customer_ticket_text|ticketText|ticket_text|customerContext|customer_context|customerMessage|customer_message|toolOutputText|tool_output_text|toolOutput|tool_output|retrievedContext|retrieved_context|memorySummary|memory_summary|approvalReason|approval_reason|requestedAction|requested_action|actionPayload|action_payload|promptText|prompt_text|inputText|input_text|content|message|prompt|payload|context|output|customer|ticket|action|request|input|text)\b/u;
+  if (stronglyTaintedName.test(withoutQuotedStrings)) return true;
+
+  const payloadAssignment = /\b(?:prompt|message|messages|content|context|input|inputs|tool_output|toolOutput|tool_output_text|toolOutputText|customer|customer_id|ticket|ticket_id|action|requested_action|requestedAction|payload|action_payload|actionPayload|reason|approval_reason|approvalReason)\s*(?::|=)\s*([^,\n}\)]+)/giu;
+  if (expressionMatchesPattern(payloadAssignment, withoutQuotedStrings, taintedName)) return true;
+
+  const valueOnlyExpression = withoutQuotedStrings.replace(
+    /\b(?:prompt|message|messages|content|context|input|inputs|tool_output|toolOutput|tool_output_text|toolOutputText|customer|customer_id|ticket|ticket_id|action|requested_action|requestedAction|payload|action_payload|actionPayload|reason|approval_reason|approvalReason)\s*(?::|=)/giu,
+    " "
+  );
+  const identifiers = uniqueStrings(
+    [...valueOnlyExpression.matchAll(/\b[A-Za-z_$][\w$]*\b/gu)]
+      .map((match) => match[0])
+      .filter((identifier) => ![
+        "approvalModelClient",
+        "approval_model_client",
+        "approvalClient",
+        "approval_client",
+        "modelApprovalClient",
+        "model_approval_client",
+        "policyModelClient",
+        "policy_model_client",
+        "riskReviewClient",
+        "risk_review_client",
+        "guardrailModelClient",
+        "guardrail_model_client",
+        "llmApprovalClient",
+        "llm_approval_client",
+        "token",
+        "apiKey",
+        "api_key",
+        "defaultDecision",
+        "default_decision",
+        "decision",
+        "approval",
+        "metadata"
+      ].includes(identifier))
+  );
+  return identifiers.some((identifier) => identifierAssignedFromTaintedApprovalContext(identifier, source, taintedName));
+}
+
+function identifierAssignedFromTaintedApprovalContext(identifier: string, source: string, taintedName: RegExp): boolean {
   const escaped = escapeRegExp(identifier);
   const patterns = [
     new RegExp(`\\b(?:const|let|var)\\s+${escaped}\\s*=\\s*([^;\\n]+)`, "gu"),
@@ -30453,6 +30577,9 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   artifact_export: boolean;
   tainted_artifact_export_payload: boolean;
   public_artifact_destination: boolean;
+  model_approval_gate: boolean;
+  tainted_approval_context: boolean;
+  approval_auto_execution: boolean;
   privileged_prompt_composition: boolean;
   tainted_shell_argument: boolean;
   tainted_filesystem_path: boolean;
@@ -30503,6 +30630,9 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   const handlerArtifactExport = handler?.handlerArtifactExport === true;
   const handlerTaintedArtifactExportPayload = handler?.handlerTaintedArtifactExportPayload === true;
   const handlerPublicArtifactDestination = handler?.handlerPublicArtifactDestination === true;
+  const handlerModelApprovalGate = handler?.handlerModelApprovalGate === true;
+  const handlerTaintedApprovalContext = handler?.handlerTaintedApprovalContext === true;
+  const handlerApprovalAutoExecution = handler?.handlerApprovalAutoExecution === true;
   const handlerPrivilegedPromptComposition = handler?.handlerPrivilegedPromptComposition === true;
   const handlerDatabaseQuery = handler?.handlerDatabaseQuery === true;
   const handlerDatabaseWrite = handler?.handlerDatabaseWrite === true;
@@ -30760,6 +30890,18 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
     classes.add("public_artifact_destination");
     actions.add("publish");
   }
+  if (handlerModelApprovalGate) {
+    classes.add("model_approval_gate");
+    actions.add("send");
+  }
+  if (handlerTaintedApprovalContext) {
+    classes.add("tainted_approval_context");
+    actions.add("send");
+  }
+  if (handlerApprovalAutoExecution) {
+    classes.add("approval_auto_execution");
+    actions.add("execute");
+  }
   if (handlerPrivilegedPromptComposition) {
     classes.add("privileged_prompt_composition");
     actions.add("send");
@@ -30838,6 +30980,9 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerArtifactExport ||
       handlerTaintedArtifactExportPayload ||
       handlerPublicArtifactDestination ||
+      handlerModelApprovalGate ||
+      handlerTaintedApprovalContext ||
+      handlerApprovalAutoExecution ||
       handlerPrivilegedPromptComposition ||
       handlerTaintedShellArgument ||
       handlerDatabaseQuery ||
@@ -30881,6 +31026,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerTelemetryExport ||
       handlerTrainingDatasetExport ||
       handlerArtifactExport ||
+      handlerModelApprovalGate ||
       (handlerPromptCacheWrite && handlerSecretEnvAccess),
     secret_exposure: acceptsSecret || handlerSecretEnvAccess || localFileDisclosure || handlerCredentialIssuance || handlerAgentDelegation || handlerSecretManagerAccess,
     accepts_secret_like_input: acceptsSecret,
@@ -30925,6 +31071,9 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
     artifact_export: handlerArtifactExport,
     tainted_artifact_export_payload: handlerTaintedArtifactExportPayload,
     public_artifact_destination: handlerPublicArtifactDestination,
+    model_approval_gate: handlerModelApprovalGate,
+    tainted_approval_context: handlerTaintedApprovalContext,
+    approval_auto_execution: handlerApprovalAutoExecution,
     privileged_prompt_composition: handlerPrivilegedPromptComposition,
     tainted_shell_argument: handlerTaintedShellArgument,
     tainted_filesystem_path: handlerTaintedFilesystemPath,
@@ -31004,6 +31153,9 @@ function authoritySignature(tool: SurfaceObject): string {
     metadata.artifact_export === true ? "artifact_export" : "",
     metadata.tainted_artifact_export_payload === true ? "tainted_artifact_export_payload" : "",
     metadata.public_artifact_destination === true ? "public_artifact_destination" : "",
+    metadata.model_approval_gate === true ? "model_approval_gate" : "",
+    metadata.tainted_approval_context === true ? "tainted_approval_context" : "",
+    metadata.approval_auto_execution === true ? "approval_auto_execution" : "",
     metadata.visual_context_capture === true ? "visual_context_capture" : "",
     metadata.visual_context_to_output === true ? "visual_context_to_output" : "",
     metadata.privileged_prompt_composition === true ? "privileged_prompt_composition" : "",
@@ -31064,6 +31216,9 @@ function isPrivilegedToolSurface(tool: SurfaceObject): boolean {
     tool.metadata.artifact_export === true ||
     tool.metadata.tainted_artifact_export_payload === true ||
     tool.metadata.public_artifact_destination === true ||
+    tool.metadata.model_approval_gate === true ||
+    tool.metadata.tainted_approval_context === true ||
+    tool.metadata.approval_auto_execution === true ||
     tool.metadata.visual_context_capture === true ||
     tool.metadata.visual_context_to_output === true ||
     tool.metadata.privileged_prompt_composition === true ||

@@ -335,6 +335,9 @@ Tool metadata may include:
 - `artifact_export`
 - `tainted_artifact_export_payload`
 - `public_artifact_destination`
+- `model_approval_gate`
+- `tainted_approval_context`
+- `approval_auto_execution`
 - `privileged_prompt_composition`
 - `tainted_shell_argument`
 - `tainted_filesystem_path`
@@ -371,6 +374,9 @@ Tool metadata may include:
 - `handler_artifact_export`
 - `handler_tainted_artifact_export_payload`
 - `handler_public_artifact_destination`
+- `handler_model_approval_gate`
+- `handler_tainted_approval_context`
+- `handler_approval_auto_execution`
 - `handler_privileged_prompt_composition`
 - `handler_secret_env_access`
 - `handler_model_visible_output`
@@ -1823,6 +1829,8 @@ Artifact export metadata may include:
 Raw artifact bucket names, endpoints, paths, generated outputs, data-scope labels, and secret placeholders are not emitted. Provider names, redacted destination categories, capture categories, redaction posture, retention posture, approval posture, and credential key names let rules detect generated-output exfiltration without copying run artifacts into the manifest.
 
 Source-defined tool handlers can also emit redacted artifact-export authority through `artifact_export`, `tainted_artifact_export_payload`, `public_artifact_destination`, and the corresponding `handler_*` fields when parsed MCP SDK or agent-framework tools upload caller/customer/tool-output artifacts to public or shareable storage using runtime credentials. Handler bodies, storage calls, object keys, bucket names, public URLs, and artifact contents remain redacted.
+
+Source-defined tool handlers can also emit redacted model-mediated approval authority through `model_approval_gate`, `tainted_approval_context`, `approval_auto_execution`, and the corresponding `handler_*` fields when parsed MCP SDK or agent-framework tools send caller/customer/tool-output context into an approval model or gate and then automatically execute a privileged action from the approval result. Handler bodies, approval model calls, decision objects, executor calls, action payloads, and returned approval summaries remain redacted.
 
 ## Agent Webhook Egress
 

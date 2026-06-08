@@ -286,6 +286,7 @@ Examples:
 - artifact/output export plus public remote destination plus prompt, tool-output, browser, retrieval, memory, PII, or secret capture plus disabled redaction
 - artifact export plus public retention of raw prompts, tool outputs, browser artifacts, retrieval context, memory, PII, and secrets with disabled redaction, credentials, and no approval gate
 - source-defined tool handler plus runtime credentials plus caller/customer artifact, report, generated-output, or tool-output payload exported to public or shareable storage
+- source-defined tool handler plus runtime credentials plus model-mediated approval over caller/customer/tool-output context followed by automatic privileged action execution
 - webhook/callback egress plus model-generated or untrusted payloads, sensitive context, disabled redaction, credential reference, and no approval gate
 - webhook retry queue plus untrusted model/tool/retrieval/memory/browser payloads, PII, secrets, disabled redaction, credentialed remote delivery, and no approval gate
 - shared semantic prompt cache plus user-controlled cache keys, broad match thresholds, cross-tenant replay, disabled tenant isolation, sensitive capture, disabled redaction, credentials, and no approval gate
@@ -343,7 +344,7 @@ Every production change should pass:
 
 ## Near-Term Production Work
 
-- Continue expanding source-defined tool parsing beyond config files, including more MCP SDK registration shapes, broader Python/Pydantic schema extraction, richer framework-specific adapters, and additional agent framework languages.
+- Continue expanding source-defined tool parsing beyond config files, including more MCP SDK registration shapes, broader Python/Pydantic schema extraction, richer framework-specific adapters, model-mediated approval gate detection, and additional agent framework languages.
 - Continue expanding runtime configuration inventory across more agent frameworks.
 - Continue expanding graph edges between context sources, capabilities, data classes, and side effects while keeping heuristic-only paths out of prioritized attack paths.
 - Add attack-path regression fixtures for common production AI architectures.

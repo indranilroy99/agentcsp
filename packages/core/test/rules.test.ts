@@ -64,6 +64,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-048")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-049")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-050")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-051")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-001")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-002")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-003")).toBe(true);
@@ -6575,6 +6576,43 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerArtifactExportFindings)).not.toContain("source artifact exported");
     expect(JSON.stringify(sourceHandlerArtifactExportFindings)).not.toContain("framework artifact exported");
     expect(JSON.stringify(sourceHandlerArtifactExportFindings)).not.toContain("Export caller supplied agent artifact");
+    const sourceHandlerModelApprovalFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-051");
+    expect(sourceHandlerModelApprovalFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
+      "langchain_model_review_and_run_action",
+      "source_model_review_and_run_action"
+    ]);
+    expect(sourceHandlerModelApprovalFindings.every((finding) => finding.severity === "critical")).toBe(true);
+    expect(sourceHandlerModelApprovalFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerModelApprovalFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
+    expect(sourceHandlerModelApprovalFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
+    expect(sourceHandlerModelApprovalFindings.every((finding) => finding.matched_object.metadata.handler_model_approval_gate === true)).toBe(true);
+    expect(sourceHandlerModelApprovalFindings.every((finding) => finding.matched_object.metadata.handler_tainted_approval_context === true)).toBe(true);
+    expect(sourceHandlerModelApprovalFindings.every((finding) => finding.matched_object.metadata.handler_approval_auto_execution === true)).toBe(true);
+    expect(sourceHandlerModelApprovalFindings.every((finding) => finding.matched_object.metadata.model_approval_gate === true)).toBe(true);
+    expect(sourceHandlerModelApprovalFindings.every((finding) => finding.matched_object.metadata.tainted_approval_context === true)).toBe(true);
+    expect(sourceHandlerModelApprovalFindings.every((finding) => finding.matched_object.metadata.approval_auto_execution === true)).toBe(true);
+    expect(sourceHandlerModelApprovalFindings.every((finding) => finding.matched_object.metadata.handler_secret_env_access === true)).toBe(true);
+    expect(sourceHandlerModelApprovalFindings.every((finding) => finding.matched_object.metadata.accepts_content_like_input === true)).toBe(true);
+    expect(sourceHandlerModelApprovalFindings.every((finding) => finding.matched_object.metadata.accepts_customer_data_input === true)).toBe(true);
+    expect(sourceHandlerModelApprovalFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("model_approval_gate"))).toBe(true);
+    expect(sourceHandlerModelApprovalFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("tainted_approval_context"))).toBe(true);
+    expect(sourceHandlerModelApprovalFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("approval_auto_execution"))).toBe(true);
+    expect(sourceHandlerModelApprovalFindings.every((finding) => finding.matched_object.metadata.handler_authority_classes.includes("handler_model_approval_gate"))).toBe(true);
+    expect(sourceHandlerModelApprovalFindings.every((finding) => finding.matched_object.metadata.handler_authority_classes.includes("handler_tainted_approval_context"))).toBe(true);
+    expect(sourceHandlerModelApprovalFindings.every((finding) => finding.matched_object.metadata.handler_authority_classes.includes("handler_approval_auto_execution"))).toBe(true);
+    expect(sourceHandlerModelApprovalFindings.every((finding) => finding.matched_object.actions.includes("send"))).toBe(true);
+    expect(sourceHandlerModelApprovalFindings.every((finding) => finding.matched_object.actions.includes("execute"))).toBe(true);
+    expect(sourceHandlerModelApprovalFindings.every((finding) => finding.matched_object.external_reach === true)).toBe(true);
+    expect(sourceHandlerModelApprovalFindings.every((finding) => finding.matched_object.secret_exposure === true)).toBe(true);
+    expect(sourceHandlerModelApprovalFindings.every((finding) => finding.matched_object.side_effect === true)).toBe(true);
+    expect(sourceHandlerModelApprovalFindings.every((finding) => finding.matched_object.reversible === false)).toBe(true);
+    expect(JSON.stringify(sourceHandlerModelApprovalFindings)).not.toContain("approvalModelClient.evaluate");
+    expect(JSON.stringify(sourceHandlerModelApprovalFindings)).not.toContain("approval_model_client.evaluate");
+    expect(JSON.stringify(sourceHandlerModelApprovalFindings)).not.toContain("privilegedActionExecutor.execute");
+    expect(JSON.stringify(sourceHandlerModelApprovalFindings)).not.toContain("privileged_action_executor.execute");
+    expect(JSON.stringify(sourceHandlerModelApprovalFindings)).not.toContain("source model approval executed");
+    expect(JSON.stringify(sourceHandlerModelApprovalFindings)).not.toContain("framework model approval executed");
+    expect(JSON.stringify(sourceHandlerModelApprovalFindings)).not.toContain("Approve and execute a caller supplied privileged action");
     const sourceHandlerBrowserAutomationFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-027");
     expect(sourceHandlerBrowserAutomationFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_submit_customer_browser_form",

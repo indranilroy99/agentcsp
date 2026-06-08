@@ -550,6 +550,7 @@ describe("scanner", () => {
     const sourcePromptCacheWriteTool = surfaces.tools.find((surface) => surface.name === "source_write_prompt_cache_entry");
     const sourceTrainingDatasetExportTool = surfaces.tools.find((surface) => surface.name === "source_append_training_dataset_record");
     const sourceArtifactExportTool = surfaces.tools.find((surface) => surface.name === "source_export_agent_run_artifact");
+    const sourceModelApprovalTool = surfaces.tools.find((surface) => surface.name === "source_model_review_and_run_action");
     const sourceAgentConfigWriteTool = surfaces.tools.find((surface) => surface.name === "source_update_agent_instructions");
     const sourceCredentialIssuanceTool = surfaces.tools.find((surface) => surface.name === "source_mint_agent_session_token");
     const sourceNestedToolInvocationTool = surfaces.tools.find((surface) => surface.name === "source_dispatch_privileged_tool");
@@ -576,6 +577,7 @@ describe("scanner", () => {
     const langchainPromptCacheWriteTool = surfaces.tools.find((surface) => surface.name === "langchain_write_prompt_cache_entry");
     const langchainTrainingDatasetExportTool = surfaces.tools.find((surface) => surface.name === "langchain_append_training_dataset_record");
     const langchainArtifactExportTool = surfaces.tools.find((surface) => surface.name === "langchain_export_agent_run_artifact");
+    const langchainModelApprovalTool = surfaces.tools.find((surface) => surface.name === "langchain_model_review_and_run_action");
     const langchainAgentConfigWriteTool = surfaces.tools.find((surface) => surface.name === "langchain_update_agent_instructions");
     const langchainCredentialIssuanceTool = surfaces.tools.find((surface) => surface.name === "langchain_mint_agent_session_token");
     const langchainNestedToolInvocationTool = surfaces.tools.find((surface) => surface.name === "langchain_dispatch_privileged_tool");
@@ -1627,6 +1629,95 @@ describe("scanner", () => {
     expect(JSON.stringify(sourceArtifactExportTool)).not.toContain("artifactExportClient.upload");
     expect(JSON.stringify(sourceArtifactExportTool)).not.toContain("source artifact exported");
     expect(JSON.stringify(sourceArtifactExportTool)).not.toContain("Export caller supplied agent artifact");
+    expect(sourceModelApprovalTool).toMatchObject({
+      path: "mcp-source/customer-tools.ts",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["call", "execute", "send"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(sourceModelApprovalTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_mcp_source_tool: true,
+      mcp_source_tool_registration: true,
+      mcp_source_tool_registration_kind: "registerTool",
+      mcp_source_tool_argument_count: 3,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_content_like_input: true,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      model_approval_gate: true,
+      tainted_approval_context: true,
+      approval_auto_execution: true,
+      external_write: false,
+      destructive_action: false,
+      read_only_hint_conflict: false,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_external_network_call: false,
+      handler_external_write: false,
+      handler_external_service_write: false,
+      handler_model_provider_call: false,
+      handler_model_approval_gate: true,
+      handler_tainted_approval_context: true,
+      handler_approval_auto_execution: true,
+      handler_secret_env_access: true,
+      handler_model_visible_output: true,
+      handler_secret_to_output: false,
+      handler_database_query: false,
+      handler_database_write: false,
+      handler_memory_write: false,
+      handler_tool_invocation: false,
+      handler_shell_execution: false,
+      handler_dynamic_code_execution: false,
+      handler_unsafe_deserialization: false,
+      handler_filesystem_read: false,
+      handler_filesystem_write: false,
+      handler_filesystem_delete: false,
+      handler_signal_count: 4,
+      open_world_schema: false
+    });
+    expect(sourceModelApprovalTool?.metadata.authority_classes).toEqual([
+      "approval_auto_execution",
+      "content_input",
+      "customer_data_input",
+      "handler_approval_auto_execution",
+      "handler_model_approval_gate",
+      "handler_secret_env_access",
+      "handler_tainted_approval_context",
+      "model_approval_gate",
+      "pii_input",
+      "secret_env_access",
+      "tainted_approval_context"
+    ]);
+    expect(sourceModelApprovalTool?.metadata.handler_authority_classes).toEqual([
+      "handler_approval_auto_execution",
+      "handler_model_approval_gate",
+      "handler_secret_env_access",
+      "handler_tainted_approval_context"
+    ]);
+    expect(sourceModelApprovalTool?.metadata.handler_env_key_names).toEqual(["SOURCE_APPROVAL_MODEL_TOKEN"]);
+    expect(sourceModelApprovalTool?.metadata.schema_properties).toEqual([
+      "action_payload",
+      "customer_id",
+      "customer_ticket_text",
+      "requested_action",
+      "tool_output_text"
+    ]);
+    expect(sourceModelApprovalTool?.metadata.required_properties).toEqual([
+      "action_payload",
+      "customer_id",
+      "customer_ticket_text",
+      "requested_action",
+      "tool_output_text"
+    ]);
+    expect(JSON.stringify(sourceModelApprovalTool)).not.toContain("approvalModelClient.evaluate");
+    expect(JSON.stringify(sourceModelApprovalTool)).not.toContain("privilegedActionExecutor.execute");
+    expect(JSON.stringify(sourceModelApprovalTool)).not.toContain("source model approval executed");
+    expect(JSON.stringify(sourceModelApprovalTool)).not.toContain("Approve and execute a caller supplied privileged action");
     expect(sourceAgentConfigWriteTool).toMatchObject({
       path: "mcp-source/customer-tools.ts",
       data_classes: ["confidential", "pii"],
@@ -3641,6 +3732,98 @@ describe("scanner", () => {
     expect(JSON.stringify(langchainArtifactExportTool)).not.toContain("artifact_export_client.upload");
     expect(JSON.stringify(langchainArtifactExportTool)).not.toContain("framework artifact exported");
     expect(JSON.stringify(langchainArtifactExportTool)).not.toContain("Export caller supplied agent artifact");
+    expect(langchainModelApprovalTool).toMatchObject({
+      path: "framework-tools/langchain_tools.py",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["call", "execute", "send"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(langchainModelApprovalTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_agent_framework_source_tool: true,
+      agent_framework_source_tool: true,
+      agent_framework_source_tool_framework: "langchain",
+      agent_framework_source_tool_registration_kind: "python_tool_decorator",
+      agent_framework_source_tool_argument_count: 5,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_content_like_input: true,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      model_approval_gate: true,
+      tainted_approval_context: true,
+      approval_auto_execution: true,
+      external_write: false,
+      destructive_action: false,
+      read_only_hint_conflict: false,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_external_network_call: false,
+      handler_external_write: false,
+      handler_external_service_write: false,
+      handler_model_provider_call: false,
+      handler_model_approval_gate: true,
+      handler_tainted_approval_context: true,
+      handler_approval_auto_execution: true,
+      handler_secret_env_access: true,
+      handler_model_visible_output: true,
+      handler_secret_to_output: false,
+      handler_database_query: false,
+      handler_database_write: false,
+      handler_memory_write: false,
+      handler_tool_invocation: false,
+      handler_shell_execution: false,
+      handler_dynamic_code_execution: false,
+      handler_unsafe_deserialization: false,
+      handler_filesystem_read: false,
+      handler_filesystem_write: false,
+      handler_filesystem_delete: false,
+      handler_signal_count: 4,
+      open_world_schema: false
+    });
+    expect(langchainModelApprovalTool?.metadata.authority_classes).toEqual([
+      "approval_auto_execution",
+      "content_input",
+      "customer_data_input",
+      "handler_approval_auto_execution",
+      "handler_model_approval_gate",
+      "handler_secret_env_access",
+      "handler_tainted_approval_context",
+      "model_approval_gate",
+      "pii_input",
+      "secret_env_access",
+      "tainted_approval_context"
+    ]);
+    expect(langchainModelApprovalTool?.metadata.handler_authority_classes).toEqual([
+      "handler_approval_auto_execution",
+      "handler_model_approval_gate",
+      "handler_secret_env_access",
+      "handler_tainted_approval_context"
+    ]);
+    expect(langchainModelApprovalTool?.metadata.handler_env_key_names).toEqual([
+      "LANGCHAIN_APPROVAL_MODEL_TOKEN"
+    ]);
+    expect(langchainModelApprovalTool?.metadata.schema_properties).toEqual([
+      "action_payload",
+      "customer_id",
+      "customer_ticket_text",
+      "requested_action",
+      "tool_output_text"
+    ]);
+    expect(langchainModelApprovalTool?.metadata.required_properties).toEqual([
+      "action_payload",
+      "customer_id",
+      "customer_ticket_text",
+      "requested_action",
+      "tool_output_text"
+    ]);
+    expect(JSON.stringify(langchainModelApprovalTool)).not.toContain("approval_model_client.evaluate");
+    expect(JSON.stringify(langchainModelApprovalTool)).not.toContain("privileged_action_executor.execute");
+    expect(JSON.stringify(langchainModelApprovalTool)).not.toContain("framework model approval executed");
+    expect(JSON.stringify(langchainModelApprovalTool)).not.toContain("Approve and execute a caller supplied privileged action");
     expect(langchainAgentConfigWriteTool).toMatchObject({
       path: "framework-tools/langchain_tools.py",
       data_classes: ["confidential", "pii"],

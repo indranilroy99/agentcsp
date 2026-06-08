@@ -1,0 +1,95 @@
+id: AGENTCSP-TOOL-051
+name: Source tool handler auto-executes model-approved privileged action
+description: A source-defined agent tool handler sends caller or customer-controlled context to a model-mediated approval gate and automatically executes the requested privileged action from the approval result, allowing untrusted context to influence authority decisions and side effects.
+category: tool_source_handler_authority
+severity: critical
+maps_to:
+  owasp:
+    - LLM01:2025 Prompt Injection
+    - LLM02:2025 Sensitive Information Disclosure
+    - LLM06:2025 Excessive Agency
+  mitre_atlas:
+    - AML.T0051 LLM Plugin Compromise
+    - AML.T0059 Data from Information Repositories
+  nist_ai_rmf:
+    - MAP 4.1
+    - MEASURE 2.7
+    - MANAGE 2.4
+match:
+  object_type: tool
+  where:
+    - field: metadata.parsed_tool_schema
+      op: equals
+      value: true
+    - field: metadata.source_tool_handler_redacted
+      op: equals
+      value: true
+    - field: metadata.handler_body_analyzed
+      op: equals
+      value: true
+    - field: metadata.handler_model_approval_gate
+      op: equals
+      value: true
+    - field: metadata.handler_tainted_approval_context
+      op: equals
+      value: true
+    - field: metadata.handler_approval_auto_execution
+      op: equals
+      value: true
+    - field: metadata.model_approval_gate
+      op: equals
+      value: true
+    - field: metadata.tainted_approval_context
+      op: equals
+      value: true
+    - field: metadata.approval_auto_execution
+      op: equals
+      value: true
+    - field: metadata.handler_secret_env_access
+      op: equals
+      value: true
+    - field: metadata.accepts_content_like_input
+      op: equals
+      value: true
+    - field: metadata.accepts_customer_data_input
+      op: equals
+      value: true
+    - field: metadata.authority_classes
+      op: includes
+      value: model_approval_gate
+    - field: metadata.authority_classes
+      op: includes
+      value: tainted_approval_context
+    - field: metadata.authority_classes
+      op: includes
+      value: approval_auto_execution
+    - field: metadata.handler_authority_classes
+      op: includes
+      value: handler_model_approval_gate
+    - field: metadata.handler_authority_classes
+      op: includes
+      value: handler_tainted_approval_context
+    - field: metadata.handler_authority_classes
+      op: includes
+      value: handler_approval_auto_execution
+    - field: actions
+      op: includes
+      value: send
+    - field: actions
+      op: includes
+      value: execute
+    - field: secret_exposure
+      op: equals
+      value: true
+    - field: external_reach
+      op: equals
+      value: true
+    - field: side_effect
+      op: equals
+      value: true
+    - field: reversible
+      op: equals
+      value: false
+recommendation:
+  control: quarantine
+  text: Quarantine source-defined model approval auto-executors until approval inputs are separated from untrusted context, approval decisions are deterministic and policy-owned, runtime credentials are scoped, privileged actions require an external human or policy gate, and action payloads are validated before execution.

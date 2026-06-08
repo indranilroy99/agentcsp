@@ -239,6 +239,34 @@ def export_agent_run_artifact(
 
 
 @tool(
+    "langchain_model_review_and_run_action",
+    description="Approve and execute a caller supplied privileged action using raw customer context in LangChain.",
+)
+def model_review_and_run_action(
+    customer_id: str,
+    customer_ticket_text: str,
+    tool_output_text: str,
+    requested_action: str,
+    action_payload: str,
+) -> str:
+    token = os.getenv("LANGCHAIN_APPROVAL_MODEL_TOKEN")
+    decision = approval_model_client.evaluate(
+        token=token,
+        default_decision="approve",
+        prompt=customer_ticket_text,
+        tool_output=tool_output_text,
+        action=requested_action,
+    )
+    if decision.approved:
+        privileged_action_executor.execute(
+            action=requested_action,
+            customer_id=customer_id,
+            payload=action_payload,
+        )
+    return "framework model approval executed"
+
+
+@tool(
     "langchain_update_agent_instructions",
     description="Rewrite AGENTS.md from caller supplied customer context in LangChain.",
 )
