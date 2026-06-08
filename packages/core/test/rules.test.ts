@@ -43,6 +43,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-027")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-028")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-029")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-030")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-001")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-002")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-003")).toBe(true);
@@ -6313,6 +6314,34 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerExternalServiceWriteFindings)).not.toContain("source slack update sent");
     expect(JSON.stringify(sourceHandlerExternalServiceWriteFindings)).not.toContain("framework slack update sent");
     expect(JSON.stringify(sourceHandlerExternalServiceWriteFindings)).not.toContain("Send caller supplied customer update text");
+    const sourceHandlerModelProviderFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-030");
+    expect(sourceHandlerModelProviderFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
+      "langchain_summarize_customer_with_model",
+      "source_summarize_customer_with_model"
+    ]);
+    expect(sourceHandlerModelProviderFindings.every((finding) => finding.severity === "critical")).toBe(true);
+    expect(sourceHandlerModelProviderFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerModelProviderFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
+    expect(sourceHandlerModelProviderFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
+    expect(sourceHandlerModelProviderFindings.every((finding) => finding.matched_object.metadata.handler_model_provider_call === true)).toBe(true);
+    expect(sourceHandlerModelProviderFindings.every((finding) => finding.matched_object.metadata.model_provider_call === true)).toBe(true);
+    expect(sourceHandlerModelProviderFindings.every((finding) => finding.matched_object.metadata.handler_secret_env_access === true)).toBe(true);
+    expect(sourceHandlerModelProviderFindings.every((finding) => finding.matched_object.metadata.handler_model_visible_output === true)).toBe(true);
+    expect(sourceHandlerModelProviderFindings.every((finding) => finding.matched_object.metadata.accepts_content_like_input === true)).toBe(true);
+    expect(sourceHandlerModelProviderFindings.every((finding) => finding.matched_object.metadata.accepts_customer_data_input === true)).toBe(true);
+    expect(sourceHandlerModelProviderFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("model_provider_call"))).toBe(true);
+    expect(sourceHandlerModelProviderFindings.every((finding) => finding.matched_object.metadata.handler_authority_classes.includes("handler_model_provider_call"))).toBe(true);
+    expect(sourceHandlerModelProviderFindings.every((finding) => finding.matched_object.actions.includes("send"))).toBe(true);
+    expect(sourceHandlerModelProviderFindings.every((finding) => finding.matched_object.actions.includes("read"))).toBe(true);
+    expect(sourceHandlerModelProviderFindings.every((finding) => finding.matched_object.external_reach === true)).toBe(true);
+    expect(sourceHandlerModelProviderFindings.every((finding) => finding.matched_object.secret_exposure === true)).toBe(true);
+    expect(sourceHandlerModelProviderFindings.every((finding) => finding.matched_object.side_effect === true)).toBe(true);
+    expect(sourceHandlerModelProviderFindings.every((finding) => finding.matched_object.reversible === false)).toBe(true);
+    expect(JSON.stringify(sourceHandlerModelProviderFindings)).not.toContain("openai.chat.completions.create");
+    expect(JSON.stringify(sourceHandlerModelProviderFindings)).not.toContain("openai_client.chat.completions.create");
+    expect(JSON.stringify(sourceHandlerModelProviderFindings)).not.toContain("result.choices");
+    expect(JSON.stringify(sourceHandlerModelProviderFindings)).not.toContain("response.choices");
+    expect(JSON.stringify(sourceHandlerModelProviderFindings)).not.toContain("Summarize caller supplied customer ticket text");
     const sourceHandlerShellFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-015");
     expect(sourceHandlerShellFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_run_remediation_command",

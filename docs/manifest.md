@@ -309,6 +309,7 @@ Tool metadata may include:
 - `browser_automation`
 - `secret_manager_access`
 - `external_service_write`
+- `model_provider_call`
 - `network_response_capture`
 - `external_write`
 - `destructive_action`
@@ -324,6 +325,7 @@ Tool metadata may include:
 - `handler_network_response_to_output`
 - `handler_external_write`
 - `handler_external_service_write`
+- `handler_model_provider_call`
 - `handler_secret_env_access`
 - `handler_model_visible_output`
 - `handler_secret_to_output`

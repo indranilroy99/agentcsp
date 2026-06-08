@@ -552,6 +552,7 @@ describe("scanner", () => {
     const sourceBrowserAutomationTool = surfaces.tools.find((surface) => surface.name === "source_submit_customer_browser_form");
     const sourceSecretManagerAccessTool = surfaces.tools.find((surface) => surface.name === "source_read_customer_vault_secret");
     const sourceExternalServiceWriteTool = surfaces.tools.find((surface) => surface.name === "source_send_customer_slack_update");
+    const sourceModelProviderCallTool = surfaces.tools.find((surface) => surface.name === "source_summarize_customer_with_model");
     const pythonExportTool = surfaces.tools.find((surface) => surface.name === "python_export_customer_record");
     const pythonDeleteTool = surfaces.tools.find((surface) => surface.name === "python_readonly_delete_workspace_file");
     const pythonUnsafeDeserializationTool = surfaces.tools.find((surface) => surface.name === "python_load_serialized_agent_state");
@@ -571,6 +572,7 @@ describe("scanner", () => {
     const langchainBrowserAutomationTool = surfaces.tools.find((surface) => surface.name === "langchain_submit_customer_browser_form");
     const langchainSecretManagerAccessTool = surfaces.tools.find((surface) => surface.name === "langchain_read_customer_vault_secret");
     const langchainExternalServiceWriteTool = surfaces.tools.find((surface) => surface.name === "langchain_send_customer_slack_update");
+    const langchainModelProviderCallTool = surfaces.tools.find((surface) => surface.name === "langchain_summarize_customer_with_model");
     const langchainUnsafeDeserializationTool = surfaces.tools.find((surface) => surface.name === "langchain_load_serialized_agent_state");
     const aiSdkExportTool = surfaces.tools.find((surface) => surface.name === "aiSdkExportCustomerContext");
     const tsLangchainDeleteTool = surfaces.tools.find((surface) => surface.name === "ts_langchain_delete_workspace_path");
@@ -1684,6 +1686,96 @@ describe("scanner", () => {
     expect(JSON.stringify(sourceExternalServiceWriteTool)).not.toContain("slackClient.chat.postMessage");
     expect(JSON.stringify(sourceExternalServiceWriteTool)).not.toContain("source slack update sent");
     expect(JSON.stringify(sourceExternalServiceWriteTool)).not.toContain("Send caller supplied customer update text");
+    expect(sourceModelProviderCallTool).toMatchObject({
+      path: "mcp-source/customer-tools.ts",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["call", "read", "send"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(sourceModelProviderCallTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_mcp_source_tool: true,
+      mcp_source_tool_registration: true,
+      mcp_source_tool_registration_kind: "registerTool",
+      mcp_source_tool_argument_count: 3,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      read_only_hint: false,
+      idempotent_hint: false,
+      accepts_secret_like_input: false,
+      accepts_content_like_input: true,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      memory_write: false,
+      agent_config_write: false,
+      credential_issuance: false,
+      nested_tool_invocation: false,
+      browser_automation: false,
+      secret_manager_access: false,
+      external_service_write: false,
+      model_provider_call: true,
+      network_response_capture: false,
+      external_write: false,
+      destructive_action: false,
+      read_only_hint_conflict: false,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_external_network_call: false,
+      handler_credentialed_network_read: false,
+      handler_network_response_to_output: false,
+      handler_external_write: false,
+      handler_external_service_write: false,
+      handler_model_provider_call: true,
+      handler_secret_env_access: true,
+      handler_model_visible_output: true,
+      handler_secret_to_output: false,
+      handler_database_query: false,
+      handler_database_write: false,
+      handler_memory_write: false,
+      handler_agent_config_write: false,
+      handler_credential_issuance: false,
+      handler_tool_invocation: false,
+      handler_browser_automation: false,
+      handler_secret_manager_access: false,
+      handler_shell_execution: false,
+      handler_dynamic_code_execution: false,
+      handler_unsafe_deserialization: false,
+      handler_filesystem_read: false,
+      handler_filesystem_write: false,
+      handler_filesystem_delete: false,
+      handler_signal_count: 2,
+      open_world_schema: false
+    });
+    expect(sourceModelProviderCallTool?.metadata.authority_classes).toEqual([
+      "content_input",
+      "customer_data_input",
+      "handler_model_provider_call",
+      "handler_secret_env_access",
+      "model_provider_call",
+      "pii_input",
+      "secret_env_access"
+    ]);
+    expect(sourceModelProviderCallTool?.metadata.handler_authority_classes).toEqual([
+      "handler_model_provider_call",
+      "handler_secret_env_access"
+    ]);
+    expect(sourceModelProviderCallTool?.metadata.handler_env_key_names).toEqual(["SOURCE_MODEL_PROVIDER_TOKEN"]);
+    expect(sourceModelProviderCallTool?.metadata.schema_properties).toEqual([
+      "customer_id",
+      "customer_ticket_text",
+      "model_name"
+    ]);
+    expect(sourceModelProviderCallTool?.metadata.required_properties).toEqual([
+      "customer_id",
+      "customer_ticket_text",
+      "model_name"
+    ]);
+    expect(JSON.stringify(sourceModelProviderCallTool)).not.toContain("openai.chat.completions.create");
+    expect(JSON.stringify(sourceModelProviderCallTool)).not.toContain("result.choices");
+    expect(JSON.stringify(sourceModelProviderCallTool)).not.toContain("Summarize caller supplied customer ticket text");
     expect(pythonExportTool).toMatchObject({
       path: "mcp-source/python_tools.py",
       data_classes: ["confidential", "credential", "pii"],
@@ -2938,6 +3030,95 @@ describe("scanner", () => {
     expect(JSON.stringify(langchainExternalServiceWriteTool)).not.toContain("slack_client.chat_postMessage");
     expect(JSON.stringify(langchainExternalServiceWriteTool)).not.toContain("framework slack update sent");
     expect(JSON.stringify(langchainExternalServiceWriteTool)).not.toContain("Send caller supplied customer update text");
+    expect(langchainModelProviderCallTool).toMatchObject({
+      path: "framework-tools/langchain_tools.py",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["call", "read", "send"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(langchainModelProviderCallTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_agent_framework_source_tool: true,
+      agent_framework_source_tool: true,
+      agent_framework_source_tool_framework: "langchain",
+      agent_framework_source_tool_registration_kind: "python_tool_decorator",
+      agent_framework_source_tool_argument_count: 3,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_secret_like_input: false,
+      accepts_content_like_input: true,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      memory_write: false,
+      agent_config_write: false,
+      credential_issuance: false,
+      nested_tool_invocation: false,
+      browser_automation: false,
+      secret_manager_access: false,
+      external_service_write: false,
+      model_provider_call: true,
+      network_response_capture: false,
+      external_write: false,
+      destructive_action: false,
+      read_only_hint_conflict: false,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_external_network_call: false,
+      handler_credentialed_network_read: false,
+      handler_network_response_to_output: false,
+      handler_external_write: false,
+      handler_external_service_write: false,
+      handler_model_provider_call: true,
+      handler_secret_env_access: true,
+      handler_model_visible_output: true,
+      handler_secret_to_output: false,
+      handler_database_query: false,
+      handler_database_write: false,
+      handler_memory_write: false,
+      handler_agent_config_write: false,
+      handler_credential_issuance: false,
+      handler_tool_invocation: false,
+      handler_browser_automation: false,
+      handler_secret_manager_access: false,
+      handler_shell_execution: false,
+      handler_dynamic_code_execution: false,
+      handler_unsafe_deserialization: false,
+      handler_filesystem_read: false,
+      handler_filesystem_write: false,
+      handler_filesystem_delete: false,
+      handler_signal_count: 2,
+      open_world_schema: false
+    });
+    expect(langchainModelProviderCallTool?.metadata.authority_classes).toEqual([
+      "content_input",
+      "customer_data_input",
+      "handler_model_provider_call",
+      "handler_secret_env_access",
+      "model_provider_call",
+      "pii_input",
+      "secret_env_access"
+    ]);
+    expect(langchainModelProviderCallTool?.metadata.handler_authority_classes).toEqual([
+      "handler_model_provider_call",
+      "handler_secret_env_access"
+    ]);
+    expect(langchainModelProviderCallTool?.metadata.handler_env_key_names).toEqual(["LANGCHAIN_MODEL_PROVIDER_TOKEN"]);
+    expect(langchainModelProviderCallTool?.metadata.schema_properties).toEqual([
+      "customer_id",
+      "customer_ticket_text",
+      "model_name"
+    ]);
+    expect(langchainModelProviderCallTool?.metadata.required_properties).toEqual([
+      "customer_id",
+      "customer_ticket_text",
+      "model_name"
+    ]);
+    expect(JSON.stringify(langchainModelProviderCallTool)).not.toContain("openai_client.chat.completions.create");
+    expect(JSON.stringify(langchainModelProviderCallTool)).not.toContain("response.choices");
+    expect(JSON.stringify(langchainModelProviderCallTool)).not.toContain("Summarize caller supplied customer ticket text");
     expect(aiSdkExportTool).toMatchObject({
       path: "framework-tools/vercel-ai-tools.ts",
       data_classes: ["confidential", "credential", "pii"],

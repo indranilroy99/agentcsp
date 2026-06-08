@@ -24128,6 +24128,7 @@ function addToolDefinitionSurface(
       !authority.browser_automation &&
       !authority.secret_manager_access &&
       !authority.external_service_write &&
+      !authority.model_provider_call &&
       !authority.dynamic_code_execution &&
       !authority.unsafe_deserialization,
     reason,
@@ -24154,6 +24155,7 @@ function addToolDefinitionSurface(
       browser_automation: authority.browser_automation,
       secret_manager_access: authority.secret_manager_access,
       external_service_write: authority.external_service_write,
+      model_provider_call: authority.model_provider_call,
       network_response_capture: authority.network_response_capture,
       dynamic_code_execution: authority.dynamic_code_execution,
       unsafe_deserialization: authority.unsafe_deserialization,
@@ -26527,6 +26529,7 @@ interface SourceToolHandlerSignals {
   handlerNetworkResponseToOutput: boolean;
   handlerExternalWrite: boolean;
   handlerExternalServiceWrite: boolean;
+  handlerModelProviderCall: boolean;
   handlerSecretEnvAccess: boolean;
   handlerModelVisibleOutput: boolean;
   handlerSecretToOutput: boolean;
@@ -26957,6 +26960,7 @@ function sourceToolHandlerSignalMetadata(signals: SourceToolHandlerSignals | und
     handler_network_response_to_output: signals.handlerNetworkResponseToOutput,
     handler_external_write: signals.handlerExternalWrite,
     handler_external_service_write: signals.handlerExternalServiceWrite,
+    handler_model_provider_call: signals.handlerModelProviderCall,
     handler_secret_env_access: signals.handlerSecretEnvAccess,
     handler_model_visible_output: signals.handlerModelVisibleOutput,
     handler_secret_to_output: signals.handlerSecretToOutput,
@@ -26999,6 +27003,9 @@ function classifySourceToolHandlerSignals(
   const externalServiceWrite = language === "javascript"
     ? hasJavaScriptHandlerExternalServiceWrite(handlerSource)
     : hasPythonHandlerExternalServiceWrite(handlerSource);
+  const modelProviderCall = language === "javascript"
+    ? hasJavaScriptHandlerModelProviderCall(handlerSource)
+    : hasPythonHandlerModelProviderCall(handlerSource);
   const databaseQuery = language === "javascript"
     ? hasJavaScriptHandlerDatabaseQuery(handlerSource)
     : hasPythonHandlerDatabaseQuery(handlerSource);
@@ -27057,6 +27064,7 @@ function classifySourceToolHandlerSignals(
   if (networkResponseToOutput) classes.add("handler_network_response_to_output");
   if (externalWrite) classes.add("handler_external_write");
   if (externalServiceWrite) classes.add("handler_external_service_write");
+  if (modelProviderCall) classes.add("handler_model_provider_call");
   if (secretEnvAccess) classes.add("handler_secret_env_access");
   if (secretToOutput) classes.add("handler_secret_to_output");
   if (databaseQuery) classes.add("handler_database_query");
@@ -27081,6 +27089,7 @@ function classifySourceToolHandlerSignals(
     handlerNetworkResponseToOutput: networkResponseToOutput,
     handlerExternalWrite: externalWrite,
     handlerExternalServiceWrite: externalServiceWrite,
+    handlerModelProviderCall: modelProviderCall,
     handlerSecretEnvAccess: secretEnvAccess,
     handlerModelVisibleOutput: modelVisibleOutput,
     handlerSecretToOutput: secretToOutput,
@@ -27385,6 +27394,32 @@ function hasPythonHandlerExternalServiceWrite(source: string): boolean {
   return /\b(?:slack_client|slack|github|github_client|octokit|email_client|mail_client|sendgrid|twilio_client|twilio|teams_client|discord_client|notion|linear|jira|salesforce|hubspot)\s*(?:\.\s*[A-Za-z_]\w*){0,4}\s*\.\s*(?:post_message|chat_postMessage|chat_post_message|create_comment|create_issue_comment|send|send_mail|send_message|create|publish|post|reply|update|create_page|create_task|create_issue)\s*\(/iu.test(
     source
   );
+}
+
+function hasJavaScriptHandlerModelProviderCall(source: string): boolean {
+  const providerSignal = /\b(?:OpenAI|AzureOpenAI|Anthropic|GoogleGenerativeAI|GenerativeModel|Mistral|CohereClient|BedrockRuntimeClient|InvokeModelCommand|ChatOpenAI|ChatAnthropic)\b|\b(?:openai|openaiClient|anthropic|anthropicClient|mistral|mistralClient|cohere|cohereClient|bedrock|bedrockClient|gemini|geminiClient|vertex|vertexClient|llm|modelClient|languageModel)\b/iu.test(
+    source
+  );
+  const sdkCallSignal =
+    /\b(?:openai|openaiClient|anthropic|anthropicClient|mistral|mistralClient|cohere|cohereClient|bedrock|bedrockClient|gemini|geminiClient|vertex|vertexClient|llm|modelClient|languageModel)\s*(?:\.\s*[A-Za-z_$][\w$]*){0,5}\s*\.\s*(?:create|stream|parse|invoke|send|complete|generateContent|generateText|doGenerate)\s*\(/iu.test(
+      source
+    ) ||
+    /\b(?:generateText|streamText|generateObject|streamObject)\s*\(/u.test(source) ||
+    /\bnew\s+InvokeModelCommand\s*\(/u.test(source);
+  return providerSignal && sdkCallSignal;
+}
+
+function hasPythonHandlerModelProviderCall(source: string): boolean {
+  const providerSignal = /\b(?:OpenAI|AzureOpenAI|Anthropic|ChatOpenAI|ChatAnthropic|BedrockRuntimeClient|InvokeModelCommand)\b|\b(?:openai|openai_client|anthropic|anthropic_client|mistral|mistral_client|cohere|cohere_client|bedrock|bedrock_client|gemini|gemini_client|vertex|vertex_client|llm|model_client|language_model)\b/iu.test(
+    source
+  );
+  const sdkCallSignal =
+    /\b(?:openai|openai_client|anthropic|anthropic_client|mistral|mistral_client|cohere|cohere_client|bedrock|bedrock_client|gemini|gemini_client|vertex|vertex_client|llm|model_client|language_model)\s*(?:\.\s*[A-Za-z_]\w*){0,5}\s*\.\s*(?:create|stream|parse|invoke|send|complete|generate_content|predict)\s*\(/iu.test(
+      source
+    ) ||
+    /\b(?:ChatOpenAI|ChatAnthropic|OpenAI|Anthropic)\s*\(/u.test(source) ||
+    /\bInvokeModelCommand\s*\(/u.test(source);
+  return providerSignal && sdkCallSignal;
 }
 
 function hasAgentControlPlaneTargetString(source: string): boolean {
@@ -28689,6 +28724,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   browser_automation: boolean;
   secret_manager_access: boolean;
   external_service_write: boolean;
+  model_provider_call: boolean;
   network_response_capture: boolean;
   dynamic_code_execution: boolean;
   unsafe_deserialization: boolean;
@@ -28719,6 +28755,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   const handlerNetworkResponseToOutput = handler?.handlerNetworkResponseToOutput === true;
   const handlerExternalWrite = handler?.handlerExternalWrite === true;
   const handlerExternalServiceWrite = handler?.handlerExternalServiceWrite === true;
+  const handlerModelProviderCall = handler?.handlerModelProviderCall === true;
   const handlerDatabaseQuery = handler?.handlerDatabaseQuery === true;
   const handlerDatabaseWrite = handler?.handlerDatabaseWrite === true;
   const handlerMemoryWrite = handler?.handlerMemoryWrite === true;
@@ -28842,6 +28879,11 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
     actions.add("send");
     actions.add("publish");
   }
+  if (handlerModelProviderCall) {
+    classes.add("model_provider_call");
+    actions.add("read");
+    actions.add("send");
+  }
   if (handlerSecretToOutput) {
     classes.add("secret_materialization");
     actions.add("send");
@@ -28891,6 +28933,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerBrowserAutomation ||
       handlerSecretManagerAccess ||
       handlerExternalServiceWrite ||
+      handlerModelProviderCall ||
       handlerDatabaseQuery ||
       handlerDatabaseWrite ||
       handlerExternalWrite ||
@@ -28915,7 +28958,13 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
     authority_classes: [...classes].sort((a, b) => a.localeCompare(b)),
     actions: [...actions].sort((a, b) => a.localeCompare(b)),
     side_effect: sideEffect,
-    external_reach: acceptsUrl || externalWrite || handlerExternalNetworkCall || handlerBrowserAutomation || handlerExternalServiceWrite,
+    external_reach:
+      acceptsUrl ||
+      externalWrite ||
+      handlerExternalNetworkCall ||
+      handlerBrowserAutomation ||
+      handlerExternalServiceWrite ||
+      handlerModelProviderCall,
     secret_exposure: acceptsSecret || handlerSecretEnvAccess || localFileDisclosure || handlerCredentialIssuance || handlerSecretManagerAccess,
     accepts_secret_like_input: acceptsSecret,
     accepts_content_like_input: acceptsContent,
@@ -28933,6 +28982,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
     browser_automation: handlerBrowserAutomation,
     secret_manager_access: handlerSecretManagerAccess,
     external_service_write: handlerExternalServiceWrite,
+    model_provider_call: handlerModelProviderCall,
     network_response_capture: handlerNetworkResponseToOutput,
     dynamic_code_execution: handlerDynamicCodeExecution,
     unsafe_deserialization: handlerUnsafeDeserialization,
@@ -28990,6 +29040,7 @@ function authoritySignature(tool: SurfaceObject): string {
     metadata.parsed_tool_schema === true ? "parsed" : "unparsed",
     metadata.external_write === true ? "external_write" : "",
     metadata.external_service_write === true ? "external_service_write" : "",
+    metadata.model_provider_call === true ? "model_provider_call" : "",
     metadata.destructive_action === true ? "destructive" : "",
     metadata.credential_issuance === true ? "credential_issuance" : "",
     metadata.nested_tool_invocation === true ? "nested_tool_invocation" : "",
@@ -29019,6 +29070,7 @@ function isPrivilegedToolSurface(tool: SurfaceObject): boolean {
     tool.actions.some((action) => ["write", "execute", "publish", "send", "delete", "remember"].includes(action)) ||
     tool.metadata.external_write === true ||
     tool.metadata.external_service_write === true ||
+    tool.metadata.model_provider_call === true ||
     tool.metadata.destructive_action === true ||
     tool.metadata.credential_issuance === true ||
     tool.metadata.nested_tool_invocation === true ||

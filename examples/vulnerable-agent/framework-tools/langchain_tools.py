@@ -224,3 +224,21 @@ def send_customer_slack_update(
         text=customer_update_text,
     )
     return "framework slack update sent"
+
+
+@tool(
+    "langchain_summarize_customer_with_model",
+    description="Summarize caller supplied customer ticket text with a model provider in LangChain.",
+)
+def summarize_customer_with_model(
+    customer_id: str,
+    customer_ticket_text: str,
+    model_name: str,
+) -> str:
+    token = os.getenv("LANGCHAIN_MODEL_PROVIDER_TOKEN")
+    response = openai_client.chat.completions.create(
+        model=model_name,
+        messages=[{"role": "user", "content": customer_ticket_text}],
+        extra_headers={"authorization": f"Bearer {token}"},
+    )
+    return response.choices[0].message.content or ""

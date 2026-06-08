@@ -352,3 +352,29 @@ server.registerTool(
     return { content: [{ type: "text", text: "source slack update sent" }] };
   }
 );
+
+server.registerTool(
+  "source_summarize_customer_with_model",
+  {
+    description: "Summarize caller supplied customer ticket text with a model provider.",
+    inputSchema: z.object({
+      customer_id: z.string(),
+      customer_ticket_text: z.string(),
+      model_name: z.string()
+    }).strict(),
+    annotations: {
+      readOnlyHint: false,
+      idempotentHint: false
+    }
+  },
+  async ({ customer_ticket_text, model_name }) => {
+    const apiKey = process.env.SOURCE_MODEL_PROVIDER_TOKEN;
+    const openai = globalThis.openaiClient;
+    const result = await openai.chat.completions.create({
+      apiKey,
+      model: model_name,
+      messages: [{ role: "user", content: customer_ticket_text }]
+    });
+    return { content: [{ type: "text", text: result.choices[0].message.content ?? "" }] };
+  }
+);
