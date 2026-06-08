@@ -536,6 +536,8 @@ describe("scanner", () => {
     const openWorldTool = surfaces.tools.find((surface) => surface.name === "post_customer_update");
     const readOnlyConflictTool = surfaces.tools.find((surface) => surface.name === "readonly_cleanup_workspace");
     const readTool = surfaces.tools.find((surface) => surface.name === "read_customer_record");
+    const sourceExportTool = surfaces.tools.find((surface) => surface.name === "source_export_customer_record");
+    const sourceDeleteTool = surfaces.tools.find((surface) => surface.name === "source_readonly_delete_workspace_file");
     expect(publishTool?.metadata).toMatchObject({
       parsed_tool_schema: true,
       external_write: true,
@@ -625,6 +627,69 @@ describe("scanner", () => {
     expect(readTool?.side_effect).toBe(false);
     expect(readTool?.metadata.accepts_content_like_input).toBe(false);
     expect(readTool?.metadata.read_only_hint_conflict).toBe(false);
+    expect(sourceExportTool).toMatchObject({
+      path: "mcp-source/customer-tools.ts",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["call", "publish", "send"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true
+    });
+    expect(sourceExportTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_mcp_source_tool: true,
+      mcp_source_tool_registration: true,
+      mcp_source_tool_registration_kind: "tool",
+      mcp_source_tool_argument_count: 4,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      values_collected: false,
+      external_write: true,
+      accepts_secret_like_input: true,
+      accepts_content_like_input: true,
+      accepts_url_input: true,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      open_world_schema: true,
+      open_world_authority: true
+    });
+    expect(sourceExportTool?.metadata.mcp_source_tool_schema_styles).toEqual(["zod_field_map"]);
+    expect(sourceExportTool?.metadata.schema_properties).toEqual([
+      "authorization_token",
+      "customer_email",
+      "customer_reference",
+      "destination_webhook_url",
+      "source_payload_text"
+    ]);
+    expect(JSON.stringify(sourceExportTool)).not.toContain("queued");
+    expect(JSON.stringify(sourceExportTool)).not.toContain("Post customer records");
+    expect(sourceDeleteTool).toMatchObject({
+      path: "mcp-source/customer-tools.ts",
+      actions: ["call", "delete", "read"],
+      side_effect: true,
+      external_reach: false,
+      secret_exposure: false
+    });
+    expect(sourceDeleteTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_mcp_source_tool: true,
+      mcp_source_tool_registration: true,
+      mcp_source_tool_registration_kind: "registerTool",
+      mcp_source_tool_argument_count: 3,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      read_only_hint: true,
+      idempotent_hint: false,
+      destructive_action: true,
+      accepts_path_input: true,
+      read_only_hint_conflict: true,
+      open_world_schema: false
+    });
+    expect(sourceDeleteTool?.metadata.mcp_source_tool_schema_styles).toEqual([
+      "zod_field_map",
+      "zod_object",
+      "zod_strict"
+    ]);
     const openApiTool = surfaces.tools.find((surface) => surface.path === "tools/support-openapi.yaml");
     expect(openApiTool).toMatchObject({
       name: "openapi:post:1",
@@ -5003,6 +5068,57 @@ describe("scanner", () => {
       openapi_approval_required: true
     });
     expect(openApiTool?.metadata.openapi_request_data_categories).toEqual(["customer_data"]);
+  });
+
+  it("keeps source-defined read-only MCP tools scoped", async () => {
+    const files = await walkProject({
+      root_path: safeFixtureRoot,
+      output_path: ".agentcsp",
+      formats: ["json", "md"],
+      include_hidden: true,
+      include_logs: false,
+      max_file_size_bytes: 1024 * 1024,
+      max_files: 5000,
+      quiet: true
+    });
+    const surfaces = await detectSurfaces(files);
+    const sourceTool = surfaces.tools.find((surface) => surface.name === "source_read_internal_doc");
+
+    expect(sourceTool).toMatchObject({
+      path: "mcp-source/read-only-tools.ts",
+      trust_level: "project",
+      data_classes: ["unknown"],
+      actions: ["call"],
+      side_effect: false,
+      external_reach: false,
+      secret_exposure: false,
+      untrusted_to_privileged: false
+    });
+    expect(sourceTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_mcp_source_tool: true,
+      mcp_source_tool_registration: true,
+      mcp_source_tool_registration_kind: "registerTool",
+      mcp_source_tool_argument_count: 3,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      values_collected: false,
+      read_only_hint: true,
+      idempotent_hint: true,
+      external_write: false,
+      destructive_action: false,
+      read_only_hint_conflict: false,
+      open_world_schema: false,
+      open_world_authority: false
+    });
+    expect(sourceTool?.metadata.mcp_source_tool_schema_styles).toEqual([
+      "zod_field_map",
+      "zod_object",
+      "zod_strict"
+    ]);
+    expect(sourceTool?.metadata.schema_properties).toEqual(["document_id"]);
+    expect(JSON.stringify(sourceTool)).not.toContain("approved internal summary");
+    expect(JSON.stringify(sourceTool)).not.toContain("Read an approved internal documentation record");
   });
 
   it("keeps approval-gated read-only hosted assistants scoped", async () => {

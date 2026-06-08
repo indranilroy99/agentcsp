@@ -283,7 +283,7 @@ Raw skill text is not emitted. These fields let rules detect skills that bridge 
 
 ## Tool Schema Authority
 
-Tool definition files are normalized into individual `tool` objects when AgentCSP can parse JSON or YAML tool schemas.
+Tool definition files are normalized into individual `tool` objects when AgentCSP can parse JSON or YAML tool schemas. Common TypeScript and JavaScript MCP SDK registrations such as `server.tool(...)` and `server.registerTool(...)` are also normalized into `tool` objects when AgentCSP can safely extract the registration name, input field names, read-only/idempotency hints, and bounded schema posture.
 
 Tool metadata may include:
 
@@ -331,7 +331,18 @@ Tool metadata may include:
 - `collision_authority_mismatch`
 - `collision_has_privileged_peer`
 
-These fields let rules reason about concrete agent-callable authority without dumping raw tool descriptions or schemas into the manifest. Model-visible descriptions are treated as prompt surface: AgentCSP records redacted instruction, untrusted-context, external, memory, secret, and data-egress signals so rules can detect poisoned tool metadata attached to side-effecting authority.
+Source-defined MCP tool metadata may additionally include:
+
+- `parsed_mcp_source_tool`
+- `mcp_source_tool_registration`
+- `mcp_source_tool_registration_kind`
+- `mcp_source_tool_argument_count`
+- `mcp_source_tool_schema_styles`
+- `source_tool_schema_redacted`
+- `source_tool_handler_redacted`
+- `values_collected`
+
+These fields let rules reason about concrete agent-callable authority without dumping raw tool descriptions, schemas, source snippets, or handler bodies into the manifest. Model-visible descriptions are treated as prompt surface: AgentCSP records redacted instruction, untrusted-context, external, memory, secret, and data-egress signals so rules can detect poisoned tool metadata attached to side-effecting authority.
 
 OpenAPI and Swagger files imported as agent tools are also normalized into `tool` objects. Metadata may include:
 

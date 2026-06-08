@@ -483,6 +483,10 @@ export async function detectSurfaces(files: WalkedFile[]): Promise<DetectedSurfa
       continue;
     }
 
+    if (isMcpSourceToolPath(file.relativePath, basename) && detectMcpSourceToolDefinitions(file, text, surfaces)) {
+      continue;
+    }
+
     if (isRuntimeConfigPath(file.relativePath, basename)) {
       detectRuntimeConfig(file, text, surfaces);
       continue;
@@ -24000,56 +24004,106 @@ function detectToolDefinition(file: WalkedFile, text: string | undefined, surfac
   }
 
   for (const definition of toolDefinitions) {
-    const authority = classifyToolAuthority(definition);
-    const modelVisibleDescription = classifyModelVisibleToolDescription(definition.description);
-    const dataClasses: SurfaceObject["data_classes"] = authority.accepted_data_classes.length > 0
-      ? uniqueDataClasses([
-          ...(authority.secret_exposure ? ["credential"] : []),
-          ...authority.accepted_data_classes
-        ] as SurfaceObject["data_classes"])
-      : authority.secret_exposure
-        ? (["credential"] as SurfaceObject["data_classes"])
-        : (["unknown"] as SurfaceObject["data_classes"]);
-    const object = createSurfaceObject({
-      type: "tool",
-      name: definition.name,
-      path: file.relativePath,
-      data_classes: dataClasses,
-      actions: authority.actions,
-      side_effect: authority.side_effect,
-      external_reach: authority.external_reach,
-      secret_exposure: authority.secret_exposure,
-      reversible: !authority.destructive_action && !authority.external_write,
-      reason: "Tool schema discovered as agent-callable capability metadata.",
-      metadata: {
-        tool_name: definition.name,
-        description_redacted: true,
-        parsed_tool_schema: true,
-        authority_classes: authority.authority_classes,
-        schema_properties: definition.schemaProperties,
-        required_properties: definition.requiredProperties,
-        accepts_secret_like_input: authority.accepts_secret_like_input,
-        accepts_content_like_input: authority.accepts_content_like_input,
-        accepts_path_input: authority.accepts_path_input,
-        accepts_url_input: authority.accepts_url_input,
-        accepts_pii_like_input: authority.accepts_pii_like_input,
-        accepts_customer_data_input: authority.accepts_customer_data_input,
-        accepted_data_classes: authority.accepted_data_classes,
-        external_write: authority.external_write,
-        destructive_action: authority.destructive_action,
-        read_only_hint: definition.annotations?.readOnlyHint,
-        idempotent_hint: definition.annotations?.idempotentHint,
-        read_only_hint_conflict: authority.read_only_hint_conflict,
-        open_world_authority: authority.open_world_authority,
-        open_world_schema: definition.openWorldSchema,
-        ...modelVisibleDescription
-      }
-    });
-    surfaces.tools.push({
-      ...object,
-      untrusted_to_privileged: isUntrustedToPrivileged(object)
-    });
+    addToolDefinitionSurface(file, surfaces, definition, "Tool schema discovered as agent-callable capability metadata.");
   }
+}
+
+function detectMcpSourceToolDefinitions(file: WalkedFile, text: string | undefined, surfaces: DetectedSurfaces): boolean {
+  const content = text ?? "";
+  if (!content.trim()) return false;
+
+  const extraction = extractMcpSourceToolDefinitions(content, file.relativePath);
+  if (!extraction.sourceDetected) return false;
+
+  if (extraction.definitions.length === 0) {
+    addDiagnostic(surfaces, file, {
+      parser: "mcp_source",
+      code: "MCP_SOURCE_TOOL_REGISTRATION_UNPARSED",
+      reason: "MCP SDK source file contained tool registration signals, but no bounded registration shape could be normalized. Raw source was redacted.",
+      severity: "info"
+    });
+    return true;
+  }
+
+  for (const definition of extraction.definitions) {
+    addToolDefinitionSurface(
+      file,
+      surfaces,
+      definition,
+      "MCP SDK source-defined tool registration discovered as agent-callable capability metadata.",
+      {
+        parsed_mcp_source_tool: true,
+        mcp_source_tool_registration: true,
+        mcp_source_tool_registration_kind: definition.registrationKind,
+        mcp_source_tool_argument_count: definition.argumentCount,
+        mcp_source_tool_schema_styles: definition.schemaStyles,
+        source_tool_schema_redacted: true,
+        source_tool_handler_redacted: true,
+        values_collected: false
+      }
+    );
+  }
+
+  return true;
+}
+
+function addToolDefinitionSurface(
+  file: WalkedFile,
+  surfaces: DetectedSurfaces,
+  definition: ExtractedToolDefinition,
+  reason: string,
+  metadata: Record<string, unknown> = {}
+): void {
+  const authority = classifyToolAuthority(definition);
+  const modelVisibleDescription = classifyModelVisibleToolDescription(definition.description);
+  const dataClasses: SurfaceObject["data_classes"] = authority.accepted_data_classes.length > 0
+    ? uniqueDataClasses([
+        ...(authority.secret_exposure ? ["credential"] : []),
+        ...authority.accepted_data_classes
+      ] as SurfaceObject["data_classes"])
+    : authority.secret_exposure
+      ? (["credential"] as SurfaceObject["data_classes"])
+      : (["unknown"] as SurfaceObject["data_classes"]);
+  const object = createSurfaceObject({
+    type: "tool",
+    name: definition.name,
+    path: file.relativePath,
+    data_classes: dataClasses,
+    actions: authority.actions,
+    side_effect: authority.side_effect,
+    external_reach: authority.external_reach,
+    secret_exposure: authority.secret_exposure,
+    reversible: !authority.destructive_action && !authority.external_write,
+    reason,
+    metadata: {
+      tool_name: definition.name,
+      description_redacted: true,
+      parsed_tool_schema: true,
+      authority_classes: authority.authority_classes,
+      schema_properties: definition.schemaProperties,
+      required_properties: definition.requiredProperties,
+      accepts_secret_like_input: authority.accepts_secret_like_input,
+      accepts_content_like_input: authority.accepts_content_like_input,
+      accepts_path_input: authority.accepts_path_input,
+      accepts_url_input: authority.accepts_url_input,
+      accepts_pii_like_input: authority.accepts_pii_like_input,
+      accepts_customer_data_input: authority.accepts_customer_data_input,
+      accepted_data_classes: authority.accepted_data_classes,
+      external_write: authority.external_write,
+      destructive_action: authority.destructive_action,
+      read_only_hint: definition.annotations?.readOnlyHint,
+      idempotent_hint: definition.annotations?.idempotentHint,
+      read_only_hint_conflict: authority.read_only_hint_conflict,
+      open_world_authority: authority.open_world_authority,
+      open_world_schema: definition.openWorldSchema,
+      ...modelVisibleDescription,
+      ...metadata
+    }
+  });
+  surfaces.tools.push({
+    ...object,
+    untrusted_to_privileged: isUntrustedToPrivileged(object)
+  });
 }
 
 function annotateToolNameCollisions(surfaces: DetectedSurfaces): void {
@@ -26395,6 +26449,12 @@ interface ExtractedToolDefinition {
   openWorldSchema: boolean;
 }
 
+interface ExtractedMcpSourceToolDefinition extends ExtractedToolDefinition {
+  registrationKind: "tool" | "registerTool";
+  argumentCount: number;
+  schemaStyles: string[];
+}
+
 interface OpenApiOperationPosture {
   openapi_operation_index: number;
   openapi_method: string;
@@ -26771,6 +26831,403 @@ function normalizeToolDefinition(value: unknown): ExtractedToolDefinition | unde
       : undefined,
     openWorldSchema: additionalProperties !== false
   };
+}
+
+function isMcpSourceToolPath(relativePath: string, basename: string): boolean {
+  const normalized = relativePath.replaceAll("\\", "/").toLowerCase();
+  const lowerBase = basename.toLowerCase();
+  if (!/\.(?:cjs|js|jsx|mjs|ts|tsx)$/u.test(lowerBase)) return false;
+  if (/(^|\/)(dist|build|coverage|vendor)\//u.test(normalized)) return false;
+  return true;
+}
+
+function extractMcpSourceToolDefinitions(
+  content: string,
+  filePath: string
+): { definitions: ExtractedMcpSourceToolDefinition[]; sourceDetected: boolean } {
+  if (!hasMcpSourceToolRegistrationSignal(content, filePath)) {
+    return { definitions: [], sourceDetected: false };
+  }
+
+  const definitions = extractMcpSourceToolRegistrationBlocks(content)
+    .map((block) => normalizeMcpSourceToolRegistration(block))
+    .filter((definition): definition is ExtractedMcpSourceToolDefinition => Boolean(definition))
+    .sort((a, b) => a.name.localeCompare(b.name) || a.registrationKind.localeCompare(b.registrationKind));
+
+  return { definitions, sourceDetected: true };
+}
+
+function hasMcpSourceToolRegistrationSignal(content: string, filePath: string): boolean {
+  if (!/\.\s*(?:registerTool|tool)\s*\(/u.test(content)) return false;
+  const normalizedPath = filePath.replaceAll("\\", "/").toLowerCase();
+  return /@modelcontextprotocol|McpServer|mcp\s*server/iu.test(content) ||
+    /(^|\/)(mcp|mcp-source|mcp-server|mcp_servers)(?:\/|$)/iu.test(normalizedPath);
+}
+
+interface McpSourceToolRegistrationBlock {
+  registrationKind: "tool" | "registerTool";
+  args: string[];
+  callText: string;
+}
+
+function extractMcpSourceToolRegistrationBlocks(content: string): McpSourceToolRegistrationBlock[] {
+  const blocks: McpSourceToolRegistrationBlock[] = [];
+  const registrationPattern = /\b((?:this\s*\.\s*)?[A-Za-z_$][\w$]*(?:\s*\.\s*[A-Za-z_$][\w$]*){0,3})\s*\.\s*(registerTool|tool)\s*\(/gu;
+  let match: RegExpExecArray | null;
+  while ((match = registrationPattern.exec(content)) !== null) {
+    const registrationKind = match[2] === "registerTool" ? "registerTool" : "tool";
+    const openParenIndex = registrationPattern.lastIndex - 1;
+    const closeParenIndex = findMatchingDelimiter(content, openParenIndex, "(", ")");
+    if (closeParenIndex === -1) continue;
+
+    const callText = content.slice(match.index, closeParenIndex + 1);
+    if (callText.length > 50000) {
+      registrationPattern.lastIndex = closeParenIndex + 1;
+      continue;
+    }
+
+    const argsText = content.slice(openParenIndex + 1, closeParenIndex);
+    const args = splitTopLevelCommaList(argsText);
+    blocks.push({ registrationKind, args, callText });
+    registrationPattern.lastIndex = closeParenIndex + 1;
+  }
+  return blocks;
+}
+
+function normalizeMcpSourceToolRegistration(block: McpSourceToolRegistrationBlock): ExtractedMcpSourceToolDefinition | undefined {
+  const [firstArg, secondArg = "", thirdArg = ""] = block.args;
+  const name = stringLiteralValue(firstArg) ?? extractObjectPropertyString(firstArg ?? "", ["name"]);
+  if (!name) return undefined;
+
+  const description = sourceToolDescription(block.registrationKind, secondArg, thirdArg);
+  const schemaSource = sourceToolSchemaSource(block.registrationKind, block.args);
+  const schemaProperties = extractSourceSchemaProperties(schemaSource);
+  const requiredProperties = sourceSchemaRequiredProperties(schemaSource, schemaProperties);
+  const annotationsSource = sourceToolAnnotationsSource(block.registrationKind, block.args) ?? block.callText;
+  return {
+    name,
+    description,
+    schemaProperties,
+    requiredProperties,
+    annotations: {
+      readOnlyHint: booleanPropertyValue(annotationsSource, "readOnlyHint"),
+      idempotentHint: booleanPropertyValue(annotationsSource, "idempotentHint")
+    },
+    openWorldSchema: !hasClosedSourceSchemaSignal(schemaSource),
+    registrationKind: block.registrationKind,
+    argumentCount: block.args.length,
+    schemaStyles: sourceSchemaStyles(schemaSource)
+  };
+}
+
+function sourceToolDescription(registrationKind: "tool" | "registerTool", secondArg: string, thirdArg: string): string {
+  if (registrationKind === "registerTool") {
+    return extractObjectPropertyString(secondArg, ["description"]) ?? stringLiteralValue(secondArg) ?? "";
+  }
+  return stringLiteralValue(secondArg) ?? extractObjectPropertyString(secondArg, ["description"]) ?? extractObjectPropertyString(thirdArg, ["description"]) ?? "";
+}
+
+function sourceToolSchemaSource(registrationKind: "tool" | "registerTool", args: string[]): string {
+  const secondArg = args[1] ?? "";
+  const thirdArg = args[2] ?? "";
+  if (registrationKind === "registerTool") {
+    return extractObjectPropertyValue(secondArg, ["inputSchema", "parameters", "schema"]) ?? secondArg;
+  }
+  if (stringLiteralValue(secondArg) !== undefined) return thirdArg;
+  const schemaFromConfig = extractObjectPropertyValue(secondArg, ["inputSchema", "parameters", "schema"]);
+  if (schemaFromConfig) return schemaFromConfig;
+  if (looksLikeSourceSchema(secondArg)) return secondArg;
+  return thirdArg;
+}
+
+function sourceToolAnnotationsSource(registrationKind: "tool" | "registerTool", args: string[]): string | undefined {
+  const candidate = registrationKind === "registerTool" ? args[1] : args.find((arg) => /\bannotations\s*:/u.test(arg));
+  if (!candidate) return undefined;
+  return extractObjectPropertyValue(candidate, ["annotations"]) ?? candidate;
+}
+
+function looksLikeSourceSchema(value: string): boolean {
+  return /\bz\s*\.\s*(?:object|strictObject)|\bproperties\s*:|\binputSchema\s*:|\bparameters\s*:|\bschema\s*:/u.test(value);
+}
+
+function extractSourceSchemaProperties(schemaSource: string): string[] {
+  const properties = new Set<string>();
+  const zodPropertyPattern = /(?:^|[,{]\s*)(?:(["'`])([^"'`]{1,160})\1|([A-Za-z_$][\w$]{0,159}))\s*:\s*z\s*\./gu;
+  let zodMatch: RegExpExecArray | null;
+  while ((zodMatch = zodPropertyPattern.exec(schemaSource)) !== null) {
+    const name = zodMatch[2] ?? zodMatch[3];
+    if (name) properties.add(name);
+  }
+
+  const propertiesSource = extractObjectPropertyValue(schemaSource, ["properties"]);
+  if (propertiesSource) {
+    for (const name of topLevelObjectKeys(propertiesSource)) properties.add(name);
+  }
+
+  return uniqueStrings([...properties]);
+}
+
+function sourceSchemaRequiredProperties(schemaSource: string, fallbackProperties: string[]): string[] {
+  const requiredSource = extractObjectPropertyValue(schemaSource, ["required"]);
+  const required = requiredSource ? stringArrayValues(requiredSource) : [];
+  return required.length > 0 ? uniqueStrings(required) : fallbackProperties;
+}
+
+function hasClosedSourceSchemaSignal(schemaSource: string): boolean {
+  return /\.\s*strict\s*\(|\bz\s*\.\s*strictObject\s*\(|\badditionalProperties\s*:\s*false\b|\bunknownKeys\s*:\s*(["'])strict\1/u.test(
+    schemaSource
+  );
+}
+
+function sourceSchemaStyles(schemaSource: string): string[] {
+  const styles = new Set<string>();
+  if (/\bz\s*\.\s*object\s*\(/u.test(schemaSource)) styles.add("zod_object");
+  if (/\bz\s*\.\s*strictObject\s*\(|\.\s*strict\s*\(/u.test(schemaSource)) styles.add("zod_strict");
+  if (/(?:^|[,{]\s*)(?:(["'`])[^"'`]{1,160}\1|[A-Za-z_$][\w$]{0,159})\s*:\s*z\s*\./u.test(schemaSource)) {
+    styles.add("zod_field_map");
+  }
+  if (/\bproperties\s*:/u.test(schemaSource)) styles.add("json_schema");
+  if (/\binputSchema\s*:/u.test(schemaSource)) styles.add("mcp_input_schema");
+  return [...styles].sort((a, b) => a.localeCompare(b));
+}
+
+function extractObjectPropertyString(source: string, names: string[]): string | undefined {
+  const value = extractObjectPropertyValue(source, names);
+  return value ? stringLiteralValue(value) : undefined;
+}
+
+function extractObjectPropertyValue(source: string, names: string[]): string | undefined {
+  const propertyPattern = new RegExp(`\\b(?:${names.map(escapeRegExp).join("|")})\\s*:\\s*`, "u");
+  const match = propertyPattern.exec(source);
+  if (!match) return undefined;
+  return readJavaScriptExpression(source, match.index + match[0].length);
+}
+
+function readJavaScriptExpression(source: string, startIndex: number): string {
+  let depth = 0;
+  let quote: string | undefined;
+  let escaped = false;
+
+  for (let index = startIndex; index < source.length; index += 1) {
+    const char = source[index];
+    const next = source[index + 1];
+
+    if (quote) {
+      if (escaped) {
+        escaped = false;
+        continue;
+      }
+      if (char === "\\") {
+        escaped = true;
+        continue;
+      }
+      if (char === quote) quote = undefined;
+      continue;
+    }
+
+    if ((char === "/" && next === "/") || (char === "/" && next === "*")) {
+      const commentEnd = skipJavaScriptComment(source, index);
+      if (commentEnd > index) {
+        index = commentEnd;
+        continue;
+      }
+    }
+
+    if (char === "\"" || char === "'" || char === "`") {
+      quote = char;
+      continue;
+    }
+    if (char === "(" || char === "{" || char === "[") {
+      depth += 1;
+      continue;
+    }
+    if (char === ")" || char === "}" || char === "]") {
+      if (depth === 0) return source.slice(startIndex, index).trim();
+      depth -= 1;
+      continue;
+    }
+    if (char === "," && depth === 0) return source.slice(startIndex, index).trim();
+  }
+
+  return source.slice(startIndex).trim();
+}
+
+function topLevelObjectKeys(source: string): string[] {
+  const trimmed = source.trim();
+  if (!trimmed.startsWith("{")) return [];
+  const closeIndex = findMatchingDelimiter(trimmed, 0, "{", "}");
+  if (closeIndex === -1) return [];
+  const body = trimmed.slice(1, closeIndex);
+  const keys = new Set<string>();
+  for (const entry of splitTopLevelCommaList(body)) {
+    const match = entry.match(/^\s*(?:(["'`])([^"'`]{1,160})\1|([A-Za-z_$][\w$]{0,159}))\s*:/u);
+    const key = match?.[2] ?? match?.[3];
+    if (key) keys.add(key);
+  }
+  return uniqueStrings([...keys]);
+}
+
+function stringArrayValues(source: string): string[] {
+  const values = new Set<string>();
+  const stringPattern = /(["'`])((?:\\.|(?!\1)[\s\S]){0,240})\1/gu;
+  let match: RegExpExecArray | null;
+  while ((match = stringPattern.exec(source)) !== null) {
+    const value = stringLiteralValue(match[0]);
+    if (value) values.add(value);
+  }
+  return uniqueStrings([...values]);
+}
+
+function stringLiteralValue(source: string | undefined): string | undefined {
+  const trimmed = source?.trim();
+  if (!trimmed) return undefined;
+  const quote = trimmed[0];
+  if (quote !== "\"" && quote !== "'" && quote !== "`") return undefined;
+  let escaped = false;
+  for (let index = 1; index < trimmed.length; index += 1) {
+    const char = trimmed[index];
+    if (escaped) {
+      escaped = false;
+      continue;
+    }
+    if (char === "\\") {
+      escaped = true;
+      continue;
+    }
+    if (char === quote) {
+      const literal = trimmed.slice(0, index + 1);
+      if (quote === "\"") {
+        try {
+          return JSON.parse(literal) as string;
+        } catch {
+          return literal.slice(1, -1);
+        }
+      }
+      return literal.slice(1, -1).replaceAll(`\\${quote}`, quote).replaceAll("\\\\", "\\");
+    }
+  }
+  return undefined;
+}
+
+function booleanPropertyValue(source: string, name: string): boolean | undefined {
+  const pattern = new RegExp(`\\b${escapeRegExp(name)}\\s*:\\s*(true|false)\\b`, "u");
+  const match = source.match(pattern);
+  if (!match?.[1]) return undefined;
+  return match[1] === "true";
+}
+
+function splitTopLevelCommaList(source: string): string[] {
+  const items: string[] = [];
+  let startIndex = 0;
+  let depth = 0;
+  let quote: string | undefined;
+  let escaped = false;
+
+  for (let index = 0; index < source.length; index += 1) {
+    const char = source[index];
+    const next = source[index + 1];
+
+    if (quote) {
+      if (escaped) {
+        escaped = false;
+        continue;
+      }
+      if (char === "\\") {
+        escaped = true;
+        continue;
+      }
+      if (char === quote) quote = undefined;
+      continue;
+    }
+
+    if ((char === "/" && next === "/") || (char === "/" && next === "*")) {
+      const commentEnd = skipJavaScriptComment(source, index);
+      if (commentEnd > index) {
+        index = commentEnd;
+        continue;
+      }
+    }
+
+    if (char === "\"" || char === "'" || char === "`") {
+      quote = char;
+      continue;
+    }
+    if (char === "(" || char === "{" || char === "[") {
+      depth += 1;
+      continue;
+    }
+    if (char === ")" || char === "}" || char === "]") {
+      depth = Math.max(0, depth - 1);
+      continue;
+    }
+    if (char === "," && depth === 0) {
+      const item = source.slice(startIndex, index).trim();
+      if (item) items.push(item);
+      startIndex = index + 1;
+    }
+  }
+
+  const finalItem = source.slice(startIndex).trim();
+  if (finalItem) items.push(finalItem);
+  return items;
+}
+
+function findMatchingDelimiter(source: string, openIndex: number, open: string, close: string): number {
+  if (source[openIndex] !== open) return -1;
+  let depth = 0;
+  let quote: string | undefined;
+  let escaped = false;
+
+  for (let index = openIndex; index < source.length; index += 1) {
+    const char = source[index];
+    const next = source[index + 1];
+
+    if (quote) {
+      if (escaped) {
+        escaped = false;
+        continue;
+      }
+      if (char === "\\") {
+        escaped = true;
+        continue;
+      }
+      if (char === quote) quote = undefined;
+      continue;
+    }
+
+    if ((char === "/" && next === "/") || (char === "/" && next === "*")) {
+      const commentEnd = skipJavaScriptComment(source, index);
+      if (commentEnd > index) {
+        index = commentEnd;
+        continue;
+      }
+    }
+
+    if (char === "\"" || char === "'" || char === "`") {
+      quote = char;
+      continue;
+    }
+    if (char === open) depth += 1;
+    if (char === close) {
+      depth -= 1;
+      if (depth === 0) return index;
+    }
+  }
+
+  return -1;
+}
+
+function skipJavaScriptComment(source: string, startIndex: number): number {
+  if (source[startIndex] !== "/") return startIndex;
+  if (source[startIndex + 1] === "/") {
+    const end = source.indexOf("\n", startIndex + 2);
+    return end === -1 ? source.length - 1 : end;
+  }
+  if (source[startIndex + 1] === "*") {
+    const end = source.indexOf("*/", startIndex + 2);
+    return end === -1 ? source.length - 1 : end + 1;
+  }
+  return startIndex;
 }
 
 function classifyToolAuthority(definition: ExtractedToolDefinition): {

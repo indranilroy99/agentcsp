@@ -186,6 +186,17 @@ The current iteration adds:
 - high-signal rules for external writes with credential-like inputs and destructive filesystem tool schemas
 - fixture coverage for risky and read-only tools
 
+## MCP Source Tool Registration Pass
+
+The current iteration adds:
+
+- bounded TypeScript/JavaScript source extraction for common MCP SDK `server.tool(...)` and `server.registerTool(...)` registrations
+- normalization of source-defined MCP tools into the same `tool` manifest objects used by JSON/YAML tool schemas
+- redacted source metadata for registration kind, argument count, schema style, schema field names, read-only/idempotency hints, and source/handler redaction posture
+- vulnerable fixture coverage for source-defined MCP tools that combine external writes, PII/customer data, credential-like inputs, open-world arguments, and destructive filesystem authority
+- safe fixture coverage for a strict read-only source-defined MCP tool that produces no high or critical findings
+- scanner, rule, fixture verifier, and docs coverage proving source handler bodies and raw source descriptions stay out of evidence
+
 ## Runtime Posture Pass
 
 The current iteration adds:
