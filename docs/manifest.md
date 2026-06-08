@@ -306,6 +306,7 @@ Tool metadata may include:
 - `agent_config_write`
 - `credential_issuance`
 - `nested_tool_invocation`
+- `browser_automation`
 - `network_response_capture`
 - `external_write`
 - `destructive_action`
@@ -329,6 +330,7 @@ Tool metadata may include:
 - `handler_agent_config_write`
 - `handler_credential_issuance`
 - `handler_tool_invocation`
+- `handler_browser_automation`
 - `handler_shell_execution`
 - `handler_dynamic_code_execution`
 - `handler_unsafe_deserialization`

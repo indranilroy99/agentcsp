@@ -24125,6 +24125,7 @@ function addToolDefinitionSurface(
       !authority.agent_config_write &&
       !authority.credential_issuance &&
       !authority.nested_tool_invocation &&
+      !authority.browser_automation &&
       !authority.dynamic_code_execution &&
       !authority.unsafe_deserialization,
     reason,
@@ -24148,6 +24149,7 @@ function addToolDefinitionSurface(
       agent_config_write: authority.agent_config_write,
       credential_issuance: authority.credential_issuance,
       nested_tool_invocation: authority.nested_tool_invocation,
+      browser_automation: authority.browser_automation,
       network_response_capture: authority.network_response_capture,
       dynamic_code_execution: authority.dynamic_code_execution,
       unsafe_deserialization: authority.unsafe_deserialization,
@@ -26529,6 +26531,7 @@ interface SourceToolHandlerSignals {
   handlerAgentConfigWrite: boolean;
   handlerCredentialIssuance: boolean;
   handlerToolInvocation: boolean;
+  handlerBrowserAutomation: boolean;
   handlerShellExecution: boolean;
   handlerDynamicCodeExecution: boolean;
   handlerUnsafeDeserialization: boolean;
@@ -26956,6 +26959,7 @@ function sourceToolHandlerSignalMetadata(signals: SourceToolHandlerSignals | und
     handler_agent_config_write: signals.handlerAgentConfigWrite,
     handler_credential_issuance: signals.handlerCredentialIssuance,
     handler_tool_invocation: signals.handlerToolInvocation,
+    handler_browser_automation: signals.handlerBrowserAutomation,
     handler_shell_execution: signals.handlerShellExecution,
     handler_dynamic_code_execution: signals.handlerDynamicCodeExecution,
     handler_unsafe_deserialization: signals.handlerUnsafeDeserialization,
@@ -27029,6 +27033,9 @@ function classifySourceToolHandlerSignals(
   const toolInvocation = language === "javascript"
     ? hasJavaScriptHandlerToolInvocation(handlerSource)
     : hasPythonHandlerToolInvocation(handlerSource);
+  const browserAutomation = language === "javascript"
+    ? hasJavaScriptHandlerBrowserAutomation(handlerSource)
+    : hasPythonHandlerBrowserAutomation(handlerSource);
 
   const classes = new Set<string>();
   if (externalNetworkCall) classes.add("handler_network_access");
@@ -27043,6 +27050,7 @@ function classifySourceToolHandlerSignals(
   if (agentConfigWrite) classes.add("handler_agent_config_write");
   if (credentialIssuance) classes.add("handler_credential_issuance");
   if (toolInvocation) classes.add("handler_tool_invocation");
+  if (browserAutomation) classes.add("handler_browser_automation");
   if (shellExecution) classes.add("handler_shell_execution");
   if (dynamicCodeExecution) classes.add("handler_dynamic_code_execution");
   if (unsafeDeserialization) classes.add("handler_unsafe_deserialization");
@@ -27065,6 +27073,7 @@ function classifySourceToolHandlerSignals(
     handlerAgentConfigWrite: agentConfigWrite,
     handlerCredentialIssuance: credentialIssuance,
     handlerToolInvocation: toolInvocation,
+    handlerBrowserAutomation: browserAutomation,
     handlerShellExecution: shellExecution,
     handlerDynamicCodeExecution: dynamicCodeExecution,
     handlerUnsafeDeserialization: unsafeDeserialization,
@@ -27322,6 +27331,18 @@ function hasPythonHandlerToolInvocation(source: string): boolean {
     /\b(?:mcp_client|tool_client|tool_registry|tool_router|tool_runner|agent_tools|tools)\s*\.\s*(?:call_tool|invoke_tool|execute_tool|run_tool|dispatch_tool|dispatch|invoke|execute)\s*\(/u.test(
       source
     );
+}
+
+function hasJavaScriptHandlerBrowserAutomation(source: string): boolean {
+  return /\b(?:chromium|firefox|webkit|puppeteer|playwright|selenium|browser|context|page|driver|authenticatedBrowserPage|browserPage)\s*\.\s*(?:launch|connect|connectOverCDP|newPage|goto|navigate|click|fill|type|press|selectOption|setInputFiles|evaluate|screenshot|pdf)\s*\(/u.test(
+    source
+  ) || /\b(?:new\s+Builder\s*\(|By\s*\.\s*(?:css|xpath|id|name)\s*\()/u.test(source);
+}
+
+function hasPythonHandlerBrowserAutomation(source: string): boolean {
+  return /\b(?:browser|context|page|driver|browser_page|authenticated_browser_page)\s*\.\s*(?:new_page|goto|navigate|click|fill|type|press|select_option|set_input_files|evaluate|screenshot|get|find_element|execute_script)\s*\(/u.test(
+    source
+  ) || /\b(?:playwright|sync_playwright|async_playwright|selenium|webdriver)\s*\./u.test(source);
 }
 
 function hasAgentControlPlaneTargetString(source: string): boolean {
@@ -28623,6 +28644,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   agent_config_write: boolean;
   credential_issuance: boolean;
   nested_tool_invocation: boolean;
+  browser_automation: boolean;
   network_response_capture: boolean;
   dynamic_code_execution: boolean;
   unsafe_deserialization: boolean;
@@ -28658,6 +28680,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   const handlerAgentConfigWrite = handler?.handlerAgentConfigWrite === true;
   const handlerCredentialIssuance = handler?.handlerCredentialIssuance === true;
   const handlerToolInvocation = handler?.handlerToolInvocation === true;
+  const handlerBrowserAutomation = handler?.handlerBrowserAutomation === true;
   const handlerShellExecution = handler?.handlerShellExecution === true;
   const handlerDynamicCodeExecution = handler?.handlerDynamicCodeExecution === true;
   const handlerUnsafeDeserialization = handler?.handlerUnsafeDeserialization === true;
@@ -28689,6 +28712,11 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   if (/\b(browser|navigate|click|page|dom|screenshot)\b/i.test(text)) {
     classes.add("browser_control");
     actions.add("call");
+  }
+  if (handlerBrowserAutomation) {
+    classes.add("browser_automation");
+    classes.add("browser_control");
+    actions.add("execute");
   }
   if (acceptsUrl || /\b(fetch|request|http|api|network)\b/i.test(text) || handlerExternalNetworkCall) {
     classes.add("network_access");
@@ -28803,6 +28831,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerAgentConfigWrite ||
       handlerCredentialIssuance ||
       handlerToolInvocation ||
+      handlerBrowserAutomation ||
       handlerDatabaseQuery ||
       handlerDatabaseWrite ||
       handlerExternalWrite ||
@@ -28827,7 +28856,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
     authority_classes: [...classes].sort((a, b) => a.localeCompare(b)),
     actions: [...actions].sort((a, b) => a.localeCompare(b)),
     side_effect: sideEffect,
-    external_reach: acceptsUrl || externalWrite || handlerExternalNetworkCall,
+    external_reach: acceptsUrl || externalWrite || handlerExternalNetworkCall || handlerBrowserAutomation,
     secret_exposure: acceptsSecret || handlerSecretEnvAccess || localFileDisclosure || handlerCredentialIssuance,
     accepts_secret_like_input: acceptsSecret,
     accepts_content_like_input: acceptsContent,
@@ -28842,6 +28871,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
     agent_config_write: handlerAgentConfigWrite,
     credential_issuance: handlerCredentialIssuance,
     nested_tool_invocation: handlerToolInvocation,
+    browser_automation: handlerBrowserAutomation,
     network_response_capture: handlerNetworkResponseToOutput,
     dynamic_code_execution: handlerDynamicCodeExecution,
     unsafe_deserialization: handlerUnsafeDeserialization,
@@ -28901,6 +28931,7 @@ function authoritySignature(tool: SurfaceObject): string {
     metadata.destructive_action === true ? "destructive" : "",
     metadata.credential_issuance === true ? "credential_issuance" : "",
     metadata.nested_tool_invocation === true ? "nested_tool_invocation" : "",
+    metadata.browser_automation === true ? "browser_automation" : "",
     metadata.accepts_secret_like_input === true ? "secret_input" : "",
     metadata.accepts_content_like_input === true ? "content_input" : "",
     metadata.accepts_path_input === true ? "path_input" : "",
@@ -28927,6 +28958,7 @@ function isPrivilegedToolSurface(tool: SurfaceObject): boolean {
     tool.metadata.destructive_action === true ||
     tool.metadata.credential_issuance === true ||
     tool.metadata.nested_tool_invocation === true ||
+    tool.metadata.browser_automation === true ||
     tool.metadata.open_world_authority === true ||
     tool.metadata.read_only_hint_conflict === true
   );

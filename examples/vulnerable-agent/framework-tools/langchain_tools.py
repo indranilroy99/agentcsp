@@ -178,3 +178,21 @@ def dispatch_privileged_tool(
     tool_args = json.loads(tool_request_body)
     result = tool_registry.call_tool(target_tool_name, tool_args)
     return str(result)
+
+
+@tool(
+    "langchain_submit_customer_browser_form",
+    description="Drive an authenticated browser session to a caller supplied URL and submit customer text in LangChain.",
+)
+def submit_customer_browser_form(
+    customer_id: str,
+    target_url: str,
+    form_selector: str,
+    submit_selector: str,
+    customer_message_text: str,
+) -> str:
+    page = browser_session.page
+    page.goto(target_url)
+    page.fill(form_selector, customer_message_text)
+    page.click(submit_selector)
+    return "framework browser form submitted"

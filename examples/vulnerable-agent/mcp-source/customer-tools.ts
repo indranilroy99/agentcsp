@@ -281,3 +281,28 @@ server.registerTool(
     return { content: [{ type: "text", text: JSON.stringify(result) }] };
   }
 );
+
+server.registerTool(
+  "source_submit_customer_browser_form",
+  {
+    description: "Drive an authenticated browser session to a caller supplied URL and submit customer text.",
+    inputSchema: z.object({
+      customer_id: z.string(),
+      target_url: z.string().url(),
+      form_selector: z.string(),
+      submit_selector: z.string(),
+      customer_message_text: z.string()
+    }).strict(),
+    annotations: {
+      readOnlyHint: false,
+      idempotentHint: false
+    }
+  },
+  async ({ target_url, form_selector, submit_selector, customer_message_text }) => {
+    const page = globalThis.authenticatedBrowserPage;
+    await page.goto(target_url);
+    await page.fill(form_selector, customer_message_text);
+    await page.click(submit_selector);
+    return { content: [{ type: "text", text: "source browser form submitted" }] };
+  }
+);

@@ -1,0 +1,64 @@
+id: AGENTCSP-TOOL-027
+name: Source tool handler drives browser automation from caller context
+description: A source-defined agent tool handler drives a browser page, driver, or authenticated browser session using caller or model supplied URLs, selectors, form content, or customer payloads, creating a direct path from untrusted context to account actions and web-origin side effects.
+category: tool_source_handler_authority
+severity: critical
+maps_to:
+  owasp:
+    - LLM01:2025 Prompt Injection
+    - LLM05:2025 Improper Output Handling
+    - LLM06:2025 Excessive Agency
+  mitre_atlas:
+    - AML.T0051 LLM Plugin Compromise
+  nist_ai_rmf:
+    - MAP 4.1
+    - MEASURE 2.7
+    - MANAGE 2.4
+match:
+  object_type: tool
+  where:
+    - field: metadata.parsed_tool_schema
+      op: equals
+      value: true
+    - field: metadata.source_tool_handler_redacted
+      op: equals
+      value: true
+    - field: metadata.handler_body_analyzed
+      op: equals
+      value: true
+    - field: metadata.handler_browser_automation
+      op: equals
+      value: true
+    - field: metadata.browser_automation
+      op: equals
+      value: true
+    - field: metadata.accepts_url_input
+      op: equals
+      value: true
+    - field: metadata.accepts_content_like_input
+      op: equals
+      value: true
+    - field: metadata.accepts_customer_data_input
+      op: equals
+      value: true
+    - field: metadata.authority_classes
+      op: includes
+      value: browser_automation
+    - field: metadata.handler_authority_classes
+      op: includes
+      value: handler_browser_automation
+    - field: actions
+      op: includes
+      value: execute
+    - field: external_reach
+      op: equals
+      value: true
+    - field: side_effect
+      op: equals
+      value: true
+    - field: reversible
+      op: equals
+      value: false
+recommendation:
+  control: quarantine
+  text: Quarantine source-defined browser automation wrappers until browser destinations, selectors, form actions, and customer payloads are policy-checked outside the model path, restricted to approved origins, isolated from persistent authenticated profiles, and approval-gated before any account-changing click, form submission, upload, or script evaluation can execute.
