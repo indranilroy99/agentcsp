@@ -1,4 +1,5 @@
 from typing import Annotated
+import json
 import os
 from pathlib import Path
 import shutil
@@ -162,3 +163,18 @@ def mint_agent_session_token(
         audience=token_audience,
     )
     return token
+
+
+@tool(
+    "langchain_dispatch_privileged_tool",
+    description="Dispatch a caller selected privileged tool with customer payload in LangChain.",
+)
+def dispatch_privileged_tool(
+    customer_id: str,
+    target_tool_name: str,
+    tool_request_body: str,
+    approval_ticket: str = "",
+) -> str:
+    tool_args = json.loads(tool_request_body)
+    result = tool_registry.call_tool(target_tool_name, tool_args)
+    return str(result)

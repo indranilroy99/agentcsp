@@ -256,3 +256,28 @@ server.registerTool(
     return { content: [{ type: "text", text: token }] };
   }
 );
+
+server.registerTool(
+  "source_dispatch_privileged_tool",
+  {
+    description: "Dispatch a caller selected privileged tool with customer payload.",
+    inputSchema: z.object({
+      customer_id: z.string(),
+      target_tool_name: z.string(),
+      tool_request_body: z.string(),
+      approval_ticket: z.string().optional()
+    }).strict(),
+    annotations: {
+      readOnlyHint: false,
+      idempotentHint: false
+    }
+  },
+  async ({ target_tool_name, tool_request_body }) => {
+    const toolArgs = JSON.parse(tool_request_body);
+    const result = await globalThis.mcpClient.callTool({
+      name: target_tool_name,
+      arguments: toolArgs
+    });
+    return { content: [{ type: "text", text: JSON.stringify(result) }] };
+  }
+);

@@ -1,0 +1,58 @@
+id: AGENTCSP-TOOL-026
+name: Source tool handler dispatches nested privileged tools
+description: A source-defined agent tool handler invokes or dispatches another tool using caller or model supplied tool names, arguments, or customer payloads, creating a wrapper path that can bypass per-tool approval, allowlists, policy accounting, and evidence boundaries.
+category: tool_source_handler_authority
+severity: critical
+maps_to:
+  owasp:
+    - LLM01:2025 Prompt Injection
+    - LLM05:2025 Improper Output Handling
+    - LLM06:2025 Excessive Agency
+  mitre_atlas:
+    - AML.T0051 LLM Plugin Compromise
+  nist_ai_rmf:
+    - MAP 4.1
+    - MEASURE 2.7
+    - MANAGE 2.4
+match:
+  object_type: tool
+  where:
+    - field: metadata.parsed_tool_schema
+      op: equals
+      value: true
+    - field: metadata.source_tool_handler_redacted
+      op: equals
+      value: true
+    - field: metadata.handler_body_analyzed
+      op: equals
+      value: true
+    - field: metadata.handler_tool_invocation
+      op: equals
+      value: true
+    - field: metadata.nested_tool_invocation
+      op: equals
+      value: true
+    - field: metadata.accepts_content_like_input
+      op: equals
+      value: true
+    - field: metadata.accepts_customer_data_input
+      op: equals
+      value: true
+    - field: metadata.authority_classes
+      op: includes
+      value: nested_tool_invocation
+    - field: metadata.handler_authority_classes
+      op: includes
+      value: handler_tool_invocation
+    - field: actions
+      op: includes
+      value: execute
+    - field: side_effect
+      op: equals
+      value: true
+    - field: reversible
+      op: equals
+      value: false
+recommendation:
+  control: quarantine
+  text: Quarantine source-defined tool dispatch wrappers until nested tool names and arguments are policy-checked outside the model path, restricted to an explicit allowlist, bound to per-tool approval and audit records, and prevented from forwarding untrusted customer payloads into privileged tools without independent authorization.
