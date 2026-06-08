@@ -24169,6 +24169,7 @@ function addToolDefinitionSurface(
       tainted_network_destination: authority.tainted_network_destination,
       tainted_database_query_argument: authority.tainted_database_query_argument,
       memory_write: authority.memory_write,
+      secret_manager_memory_bridge: authority.secret_manager_memory_bridge,
       tool_output_memory_bridge: authority.tool_output_memory_bridge,
       tool_output_to_output: authority.tool_output_to_output,
       tainted_memory_scope: authority.tainted_memory_scope,
@@ -26654,6 +26655,7 @@ interface SourceToolHandlerSignals {
   handlerDatabaseWrite: boolean;
   handlerTaintedDatabaseQueryArgument: boolean;
   handlerMemoryWrite: boolean;
+  handlerSecretManagerMemoryBridge: boolean;
   handlerToolOutputMemoryBridge: boolean;
   handlerToolOutputToOutput: boolean;
   handlerTaintedMemoryScope: boolean;
@@ -27144,6 +27146,7 @@ function sourceToolHandlerSignalMetadata(signals: SourceToolHandlerSignals | und
     handler_database_write: signals.handlerDatabaseWrite,
     handler_tainted_database_query_argument: signals.handlerTaintedDatabaseQueryArgument,
     handler_memory_write: signals.handlerMemoryWrite,
+    handler_secret_manager_memory_bridge: signals.handlerSecretManagerMemoryBridge,
     handler_tool_output_memory_bridge: signals.handlerToolOutputMemoryBridge,
     handler_tool_output_to_output: signals.handlerToolOutputToOutput,
     handler_tainted_memory_scope: signals.handlerTaintedMemoryScope,
@@ -27415,6 +27418,9 @@ function classifySourceToolHandlerSignals(
   const secretManagerPromptBridge = secretManagerAccess && modelProviderCall && (language === "javascript"
     ? hasJavaScriptHandlerSecretManagerPromptBridge(handlerSource)
     : hasPythonHandlerSecretManagerPromptBridge(handlerSource));
+  const secretManagerMemoryBridge = secretManagerAccess && memoryWrite && (language === "javascript"
+    ? hasJavaScriptHandlerSecretManagerMemoryBridge(handlerSource)
+    : hasPythonHandlerSecretManagerMemoryBridge(handlerSource));
 
   const classes = new Set<string>();
   if (externalNetworkCall) classes.add("handler_network_access");
@@ -27471,6 +27477,7 @@ function classifySourceToolHandlerSignals(
   if (databaseWrite) classes.add("handler_database_write");
   if (taintedDatabaseQueryArgument) classes.add("handler_tainted_database_query_argument");
   if (memoryWrite) classes.add("handler_memory_write");
+  if (secretManagerMemoryBridge) classes.add("handler_secret_manager_memory_bridge");
   if (toolOutputMemoryBridge) classes.add("handler_tool_output_memory_bridge");
   if (toolOutputToOutput) classes.add("handler_tool_output_to_output");
   if (taintedMemoryScope) classes.add("handler_tainted_memory_scope");
@@ -27556,6 +27563,7 @@ function classifySourceToolHandlerSignals(
     handlerDatabaseWrite: databaseWrite,
     handlerTaintedDatabaseQueryArgument: taintedDatabaseQueryArgument,
     handlerMemoryWrite: memoryWrite,
+    handlerSecretManagerMemoryBridge: secretManagerMemoryBridge,
     handlerToolOutputMemoryBridge: toolOutputMemoryBridge,
     handlerToolOutputToOutput: toolOutputToOutput,
     handlerTaintedMemoryScope: taintedMemoryScope,
@@ -27858,6 +27866,30 @@ function hasJavaScriptHandlerToolOutputMemoryBridge(source: string): boolean {
 
 function hasPythonHandlerToolOutputMemoryBridge(source: string): boolean {
   const identifiers = extractPythonToolOutputIdentifiers(source);
+  return identifiers.length > 0 && callExpressionReferencesAnyIdentifier(
+    [
+      /\b(?:[A-Za-z_]\w*memory|memory|memory_store|vector_store|vectorstore|vector_index|embedding_store|rag_store|retriever|knowledge_base|session_store|state_store)\s*\.\s*(?:add|add_documents|add_texts|append|insert|persist|put|push|remember|save|set|store|upsert|write)\s*\(([\s\S]{0,1600})\)/giu,
+      /\b(?:persist_memory|remember_context|save_memory|store_memory|upsert_memory|write_memory)\s*\(([\s\S]{0,1600})\)/giu
+    ],
+    source,
+    identifiers
+  );
+}
+
+function hasJavaScriptHandlerSecretManagerMemoryBridge(source: string): boolean {
+  const identifiers = extractJavaScriptSecretManagerIdentifiers(source);
+  return identifiers.length > 0 && callExpressionReferencesAnyIdentifier(
+    [
+      /\b(?:[A-Za-z_$][\w$]*memory|memory|memories|vectorStore|vectorIndex|embeddingStore|ragStore|retriever|knowledgeBase|sessionStore|stateStore)\s*\.\s*(?:add|addDocuments|addTexts|append|insert|persist|put|push|remember|save|set|store|upsert|write)\s*\(([\s\S]{0,1600})\)/giu,
+      /\b(?:persistMemory|rememberContext|saveMemory|storeMemory|upsertMemory|writeMemory)\s*\(([\s\S]{0,1600})\)/giu
+    ],
+    source,
+    identifiers
+  );
+}
+
+function hasPythonHandlerSecretManagerMemoryBridge(source: string): boolean {
+  const identifiers = extractPythonSecretManagerIdentifiers(source);
   return identifiers.length > 0 && callExpressionReferencesAnyIdentifier(
     [
       /\b(?:[A-Za-z_]\w*memory|memory|memory_store|vector_store|vectorstore|vector_index|embedding_store|rag_store|retriever|knowledge_base|session_store|state_store)\s*\.\s*(?:add|add_documents|add_texts|append|insert|persist|put|push|remember|save|set|store|upsert|write)\s*\(([\s\S]{0,1600})\)/giu,
@@ -31928,6 +31960,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   tainted_network_destination: boolean;
   tainted_database_query_argument: boolean;
   memory_write: boolean;
+  secret_manager_memory_bridge: boolean;
   tool_output_memory_bridge: boolean;
   tool_output_to_output: boolean;
   tainted_memory_scope: boolean;
@@ -32066,6 +32099,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   const handlerDatabaseWrite = handler?.handlerDatabaseWrite === true;
   const handlerTaintedDatabaseQueryArgument = handler?.handlerTaintedDatabaseQueryArgument === true;
   const handlerMemoryWrite = handler?.handlerMemoryWrite === true;
+  const handlerSecretManagerMemoryBridge = handler?.handlerSecretManagerMemoryBridge === true;
   const handlerToolOutputMemoryBridge = handler?.handlerToolOutputMemoryBridge === true;
   const handlerToolOutputToOutput = handler?.handlerToolOutputToOutput === true;
   const handlerTaintedMemoryScope = handler?.handlerTaintedMemoryScope === true;
@@ -32215,6 +32249,11 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   }
   if (handlerMemoryWrite) {
     classes.add("memory_write");
+    actions.add("write");
+  }
+  if (handlerSecretManagerMemoryBridge) {
+    classes.add("secret_manager_memory_bridge");
+    actions.add("remember");
     actions.add("write");
   }
   if (handlerToolOutputMemoryBridge) {
@@ -32504,6 +32543,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerCredentialedNetworkRead ||
       handlerNetworkResponseToOutput ||
       handlerMemoryWrite ||
+      handlerSecretManagerMemoryBridge ||
       handlerToolOutputMemoryBridge ||
       handlerToolOutputToOutput ||
       handlerTaintedMemoryScope ||
@@ -32522,6 +32562,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerTaintedSecretManagerPath ||
       handlerSecretManagerExternalServiceBridge ||
       handlerSecretManagerPromptBridge ||
+      handlerSecretManagerMemoryBridge ||
       handlerExternalServiceWrite ||
       handlerTaintedExternalServiceRecipient ||
       handlerToolOutputExternalServiceBridge ||
@@ -32627,6 +32668,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerSecretManagerAccess ||
       handlerSecretManagerExternalServiceBridge ||
       handlerSecretManagerPromptBridge ||
+      handlerSecretManagerMemoryBridge ||
       (handlerToolOutputExternalServiceBridge && handlerSecretEnvAccess) ||
       (handlerSafetyPolicyWrite && handlerSecretEnvAccess) ||
       (handlerAuthorizationPolicyWrite && handlerSecretEnvAccess),
@@ -32642,6 +32684,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
     tainted_network_destination: handlerTaintedNetworkDestination,
     tainted_database_query_argument: handlerTaintedDatabaseQueryArgument,
     memory_write: handlerMemoryWrite,
+    secret_manager_memory_bridge: handlerSecretManagerMemoryBridge,
     tool_output_memory_bridge: handlerToolOutputMemoryBridge,
     tool_output_to_output: handlerToolOutputToOutput,
     tainted_memory_scope: handlerTaintedMemoryScope,
@@ -32766,6 +32809,7 @@ function authoritySignature(tool: SurfaceObject): string {
     metadata.tainted_network_destination === true ? "tainted_network_destination" : "",
     metadata.tainted_database_query_argument === true ? "tainted_database_query_argument" : "",
     metadata.tainted_memory_scope === true ? "tainted_memory_scope" : "",
+    metadata.secret_manager_memory_bridge === true ? "secret_manager_memory_bridge" : "",
     metadata.tool_output_memory_bridge === true ? "tool_output_memory_bridge" : "",
     metadata.tool_output_to_output === true ? "tool_output_to_output" : "",
     metadata.model_provider_call === true ? "model_provider_call" : "",
@@ -32854,6 +32898,7 @@ function isPrivilegedToolSurface(tool: SurfaceObject): boolean {
     tool.metadata.tainted_network_destination === true ||
     tool.metadata.tainted_database_query_argument === true ||
     tool.metadata.tainted_memory_scope === true ||
+    tool.metadata.secret_manager_memory_bridge === true ||
     tool.metadata.tool_output_memory_bridge === true ||
     tool.metadata.tool_output_to_output === true ||
     tool.metadata.external_service_write === true ||

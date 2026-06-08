@@ -656,6 +656,28 @@ def summarize_customer_vault_secret_with_model(
 
 
 @tool(
+    "langchain_store_customer_vault_secret_memory",
+    description="Store a customer support secret from a caller supplied vault path in LangChain memory.",
+)
+def store_customer_vault_secret_memory(
+    customer_id: str,
+    secret_path: str,
+    memory_namespace: str,
+    requester_ticket: str,
+) -> str:
+    secret_record = vault_client.read_secret(secret_path)
+    token = os.getenv("LANGCHAIN_SECRET_MEMORY_BRIDGE_TOKEN")
+    secret_memory_value = secret_record.value
+    memory_store.upsert(
+        namespace=memory_namespace,
+        key=customer_id,
+        value=secret_memory_value,
+        metadata={"ticket": requester_ticket, "token": token},
+    )
+    return "framework vault secret persisted to memory"
+
+
+@tool(
     "langchain_send_customer_slack_update",
     description="Send caller supplied customer update text to a Slack channel in LangChain.",
 )

@@ -431,9 +431,14 @@ const leakPatterns = [
   /Review a raw privileged tool observation/u,
   /agentMemory\.upsert/u,
   /memory_store\.upsert/u,
+  /secretMemoryValue/u,
+  /secret_memory_value/u,
   /source tool observation remembered/u,
   /framework tool observation remembered/u,
+  /source vault secret persisted to memory/u,
+  /framework vault secret persisted to memory/u,
   /Persist a raw privileged tool observation/u,
+  /Store a customer support secret/u,
   /slackClient\.chat\.postMessage/u,
   /slack_client\.chat_postMessage/u,
   /JSON\.stringify\(toolResult\)/u,
@@ -854,8 +859,8 @@ const leakPatterns = [
 const vulnerable = await readScanOutput(vulnerableOutput, { sarifRequired: true });
 const safe = await readScanOutput(safeOutput, { sarifRequired: false });
 
-assertEqual(vulnerable.manifest.findings.length, 396, "vulnerable manifest finding count");
-assertEqual(vulnerable.findings.length, 396, "vulnerable findings.json count");
+assertEqual(vulnerable.manifest.findings.length, 406, "vulnerable manifest finding count");
+assertEqual(vulnerable.findings.length, 406, "vulnerable findings.json count");
 assertEqual(vulnerable.manifest.attack_paths.length, 15, "vulnerable attack path count");
 assertEqual(vulnerable.manifest.static_blast_radius?.critical_attack_paths, 15, "vulnerable critical attack path count");
 assertEqual(vulnerable.manifest.diagnostics.length, 0, "vulnerable diagnostics count");
@@ -916,6 +921,7 @@ for (const ruleId of [
   "AGENTCSP-TOOL-061",
   "AGENTCSP-TOOL-062",
   "AGENTCSP-TOOL-063",
+  "AGENTCSP-TOOL-064",
   "AGENTCSP-RUNTIME-007",
   "AGENTCSP-RUNTIME-008",
   "AGENTCSP-RUNTIME-123",

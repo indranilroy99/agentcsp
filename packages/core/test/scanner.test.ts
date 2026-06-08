@@ -575,6 +575,9 @@ describe("scanner", () => {
     const sourceSecretManagerPromptBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "source_summarize_customer_vault_secret_with_model"
     );
+    const sourceSecretManagerMemoryBridgeTool = surfaces.tools.find(
+      (surface) => surface.name === "source_store_customer_vault_secret_memory"
+    );
     const sourceExternalServiceWriteTool = surfaces.tools.find((surface) => surface.name === "source_send_customer_slack_update");
     const sourceModelProviderCallTool = surfaces.tools.find((surface) => surface.name === "source_summarize_customer_with_model");
     const pythonExportTool = surfaces.tools.find((surface) => surface.name === "python_export_customer_record");
@@ -618,6 +621,9 @@ describe("scanner", () => {
     );
     const langchainSecretManagerPromptBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "langchain_summarize_customer_vault_secret_with_model"
+    );
+    const langchainSecretManagerMemoryBridgeTool = surfaces.tools.find(
+      (surface) => surface.name === "langchain_store_customer_vault_secret_memory"
     );
     const langchainExternalServiceWriteTool = surfaces.tools.find((surface) => surface.name === "langchain_send_customer_slack_update");
     const langchainModelProviderCallTool = surfaces.tools.find((surface) => surface.name === "langchain_summarize_customer_with_model");
@@ -3399,6 +3405,100 @@ describe("scanner", () => {
     expect(JSON.stringify(sourceSecretManagerPromptBridgeTool)).not.toContain("secretAnalysisInput");
     expect(JSON.stringify(sourceSecretManagerPromptBridgeTool)).not.toContain("source vault secret summarized by model");
     expect(JSON.stringify(sourceSecretManagerPromptBridgeTool)).not.toContain("Summarize a customer support secret");
+    expect(sourceSecretManagerMemoryBridgeTool).toMatchObject({
+      path: "mcp-source/customer-tools.ts",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["call", "read", "remember", "send", "write"],
+      side_effect: true,
+      external_reach: false,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(sourceSecretManagerMemoryBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_mcp_source_tool: true,
+      mcp_source_tool_registration: true,
+      mcp_source_tool_registration_kind: "registerTool",
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      read_only_hint: false,
+      idempotent_hint: false,
+      accepts_secret_like_input: true,
+      accepts_content_like_input: true,
+      accepts_path_input: true,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      secret_manager_access: true,
+      tainted_secret_manager_path: true,
+      memory_write: true,
+      tainted_memory_scope: true,
+      secret_manager_memory_bridge: true,
+      secret_manager_prompt_bridge: false,
+      model_provider_call: false,
+      secret_manager_external_service_bridge: false,
+      external_service_write: false,
+      external_write: false,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_secret_manager_access: true,
+      handler_tainted_secret_manager_path: true,
+      handler_memory_write: true,
+      handler_tainted_memory_scope: true,
+      handler_secret_manager_memory_bridge: true,
+      handler_secret_manager_prompt_bridge: false,
+      handler_model_provider_call: false,
+      handler_secret_env_access: true,
+      handler_model_visible_output: true,
+      handler_signal_count: 6,
+      open_world_schema: false
+    });
+    expect(sourceSecretManagerMemoryBridgeTool?.metadata.authority_classes).toEqual([
+      "content_input",
+      "credential_input",
+      "customer_data_input",
+      "filesystem_access",
+      "handler_memory_write",
+      "handler_secret_env_access",
+      "handler_secret_manager_access",
+      "handler_secret_manager_memory_bridge",
+      "handler_tainted_memory_scope",
+      "handler_tainted_secret_manager_path",
+      "memory_access",
+      "memory_write",
+      "pii_input",
+      "secret_env_access",
+      "secret_manager_access",
+      "secret_manager_memory_bridge",
+      "tainted_memory_scope",
+      "tainted_secret_manager_path"
+    ]);
+    expect(sourceSecretManagerMemoryBridgeTool?.metadata.handler_authority_classes).toEqual([
+      "handler_memory_write",
+      "handler_secret_env_access",
+      "handler_secret_manager_access",
+      "handler_secret_manager_memory_bridge",
+      "handler_tainted_memory_scope",
+      "handler_tainted_secret_manager_path"
+    ]);
+    expect(sourceSecretManagerMemoryBridgeTool?.metadata.handler_env_key_names).toEqual(["SOURCE_SECRET_MEMORY_BRIDGE_TOKEN"]);
+    expect(sourceSecretManagerMemoryBridgeTool?.metadata.schema_properties).toEqual([
+      "customer_id",
+      "memory_namespace",
+      "requester_ticket",
+      "secret_path"
+    ]);
+    expect(sourceSecretManagerMemoryBridgeTool?.metadata.required_properties).toEqual([
+      "customer_id",
+      "memory_namespace",
+      "requester_ticket",
+      "secret_path"
+    ]);
+    expect(JSON.stringify(sourceSecretManagerMemoryBridgeTool)).not.toContain("vaultClient.readSecret");
+    expect(JSON.stringify(sourceSecretManagerMemoryBridgeTool)).not.toContain("agentMemory.upsert");
+    expect(JSON.stringify(sourceSecretManagerMemoryBridgeTool)).not.toContain("secretRecord.value");
+    expect(JSON.stringify(sourceSecretManagerMemoryBridgeTool)).not.toContain("secretMemoryValue");
+    expect(JSON.stringify(sourceSecretManagerMemoryBridgeTool)).not.toContain("source vault secret persisted to memory");
+    expect(JSON.stringify(sourceSecretManagerMemoryBridgeTool)).not.toContain("Store a customer support secret");
     expect(sourceExternalServiceWriteTool).toMatchObject({
       path: "mcp-source/customer-tools.ts",
       data_classes: ["confidential", "credential", "pii"],
@@ -6556,6 +6656,102 @@ describe("scanner", () => {
     expect(JSON.stringify(langchainSecretManagerPromptBridgeTool)).not.toContain("secret_analysis_input");
     expect(JSON.stringify(langchainSecretManagerPromptBridgeTool)).not.toContain("framework vault secret summarized by model");
     expect(JSON.stringify(langchainSecretManagerPromptBridgeTool)).not.toContain("Summarize a customer support secret");
+    expect(langchainSecretManagerMemoryBridgeTool).toMatchObject({
+      path: "framework-tools/langchain_tools.py",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["call", "read", "remember", "send", "write"],
+      side_effect: true,
+      external_reach: false,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(langchainSecretManagerMemoryBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_agent_framework_source_tool: true,
+      agent_framework_source_tool: true,
+      agent_framework_source_tool_framework: "langchain",
+      agent_framework_source_tool_registration_kind: "python_tool_decorator",
+      agent_framework_source_tool_argument_count: 4,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_secret_like_input: true,
+      accepts_content_like_input: true,
+      accepts_path_input: true,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      secret_manager_access: true,
+      tainted_secret_manager_path: true,
+      memory_write: true,
+      tainted_memory_scope: true,
+      secret_manager_memory_bridge: true,
+      secret_manager_prompt_bridge: false,
+      model_provider_call: false,
+      secret_manager_external_service_bridge: false,
+      external_service_write: false,
+      external_write: false,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_secret_manager_access: true,
+      handler_tainted_secret_manager_path: true,
+      handler_memory_write: true,
+      handler_tainted_memory_scope: true,
+      handler_secret_manager_memory_bridge: true,
+      handler_secret_manager_prompt_bridge: false,
+      handler_model_provider_call: false,
+      handler_secret_env_access: true,
+      handler_model_visible_output: true,
+      handler_signal_count: 6,
+      open_world_schema: false
+    });
+    expect(langchainSecretManagerMemoryBridgeTool?.metadata.authority_classes).toEqual([
+      "content_input",
+      "credential_input",
+      "customer_data_input",
+      "filesystem_access",
+      "handler_memory_write",
+      "handler_secret_env_access",
+      "handler_secret_manager_access",
+      "handler_secret_manager_memory_bridge",
+      "handler_tainted_memory_scope",
+      "handler_tainted_secret_manager_path",
+      "memory_access",
+      "memory_write",
+      "pii_input",
+      "secret_env_access",
+      "secret_manager_access",
+      "secret_manager_memory_bridge",
+      "tainted_memory_scope",
+      "tainted_secret_manager_path"
+    ]);
+    expect(langchainSecretManagerMemoryBridgeTool?.metadata.handler_authority_classes).toEqual([
+      "handler_memory_write",
+      "handler_secret_env_access",
+      "handler_secret_manager_access",
+      "handler_secret_manager_memory_bridge",
+      "handler_tainted_memory_scope",
+      "handler_tainted_secret_manager_path"
+    ]);
+    expect(langchainSecretManagerMemoryBridgeTool?.metadata.handler_env_key_names).toEqual([
+      "LANGCHAIN_SECRET_MEMORY_BRIDGE_TOKEN"
+    ]);
+    expect(langchainSecretManagerMemoryBridgeTool?.metadata.schema_properties).toEqual([
+      "customer_id",
+      "memory_namespace",
+      "requester_ticket",
+      "secret_path"
+    ]);
+    expect(langchainSecretManagerMemoryBridgeTool?.metadata.required_properties).toEqual([
+      "customer_id",
+      "memory_namespace",
+      "requester_ticket",
+      "secret_path"
+    ]);
+    expect(JSON.stringify(langchainSecretManagerMemoryBridgeTool)).not.toContain("vault_client.read_secret");
+    expect(JSON.stringify(langchainSecretManagerMemoryBridgeTool)).not.toContain("memory_store.upsert");
+    expect(JSON.stringify(langchainSecretManagerMemoryBridgeTool)).not.toContain("secret_record.value");
+    expect(JSON.stringify(langchainSecretManagerMemoryBridgeTool)).not.toContain("secret_memory_value");
+    expect(JSON.stringify(langchainSecretManagerMemoryBridgeTool)).not.toContain("framework vault secret persisted to memory");
+    expect(JSON.stringify(langchainSecretManagerMemoryBridgeTool)).not.toContain("Store a customer support secret");
     expect(langchainExternalServiceWriteTool).toMatchObject({
       path: "framework-tools/langchain_tools.py",
       data_classes: ["confidential", "credential", "pii"],

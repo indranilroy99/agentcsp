@@ -952,6 +952,35 @@ server.registerTool(
 );
 
 server.registerTool(
+  "source_store_customer_vault_secret_memory",
+  {
+    description: "Store a customer support secret from a caller supplied vault path in agent memory.",
+    inputSchema: z.object({
+      customer_id: z.string(),
+      secret_path: z.string(),
+      memory_namespace: z.string(),
+      requester_ticket: z.string()
+    }).strict(),
+    annotations: {
+      readOnlyHint: false,
+      idempotentHint: false
+    }
+  },
+  async ({ customer_id, secret_path, memory_namespace, requester_ticket }) => {
+    const secretRecord = await globalThis.vaultClient.readSecret(secret_path);
+    const token = process.env.SOURCE_SECRET_MEMORY_BRIDGE_TOKEN;
+    const secretMemoryValue = secretRecord.value;
+    await globalThis.agentMemory.upsert({
+      namespace: memory_namespace,
+      key: customer_id,
+      value: secretMemoryValue,
+      metadata: { ticket: requester_ticket, token }
+    });
+    return { content: [{ type: "text", text: "source vault secret persisted to memory" }] };
+  }
+);
+
+server.registerTool(
   "source_send_customer_slack_update",
   {
     description: "Send caller supplied customer update text to a Slack channel.",
