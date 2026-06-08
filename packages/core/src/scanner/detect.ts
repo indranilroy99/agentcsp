@@ -24130,6 +24130,7 @@ function addToolDefinitionSurface(
       !authority.external_service_write &&
       !authority.model_provider_call &&
       !authority.embedding_provider_call &&
+      !authority.telemetry_export &&
       !authority.tainted_network_destination &&
       !authority.tainted_shell_argument &&
       !authority.dynamic_code_execution &&
@@ -24171,6 +24172,8 @@ function addToolDefinitionSurface(
       tainted_model_selection: authority.tainted_model_selection,
       embedding_provider_call: authority.embedding_provider_call,
       tainted_embedding_input: authority.tainted_embedding_input,
+      telemetry_export: authority.telemetry_export,
+      tainted_telemetry_payload: authority.tainted_telemetry_payload,
       privileged_prompt_composition: authority.privileged_prompt_composition,
       tainted_shell_argument: authority.tainted_shell_argument,
       tainted_filesystem_path: authority.tainted_filesystem_path,
@@ -26554,6 +26557,8 @@ interface SourceToolHandlerSignals {
   handlerTaintedModelSelection: boolean;
   handlerEmbeddingProviderCall: boolean;
   handlerTaintedEmbeddingInput: boolean;
+  handlerTelemetryExport: boolean;
+  handlerTaintedTelemetryPayload: boolean;
   handlerPrivilegedPromptComposition: boolean;
   handlerSecretEnvAccess: boolean;
   handlerModelVisibleOutput: boolean;
@@ -27000,6 +27005,8 @@ function sourceToolHandlerSignalMetadata(signals: SourceToolHandlerSignals | und
     handler_tainted_model_selection: signals.handlerTaintedModelSelection,
     handler_embedding_provider_call: signals.handlerEmbeddingProviderCall,
     handler_tainted_embedding_input: signals.handlerTaintedEmbeddingInput,
+    handler_telemetry_export: signals.handlerTelemetryExport,
+    handler_tainted_telemetry_payload: signals.handlerTaintedTelemetryPayload,
     handler_privileged_prompt_composition: signals.handlerPrivilegedPromptComposition,
     handler_secret_env_access: signals.handlerSecretEnvAccess,
     handler_model_visible_output: signals.handlerModelVisibleOutput,
@@ -27071,6 +27078,12 @@ function classifySourceToolHandlerSignals(
   const taintedEmbeddingInput = embeddingProviderCall && (language === "javascript"
     ? hasJavaScriptHandlerTaintedEmbeddingInput(handlerSource)
     : hasPythonHandlerTaintedEmbeddingInput(handlerSource));
+  const telemetryExport = language === "javascript"
+    ? hasJavaScriptHandlerTelemetryExport(handlerSource)
+    : hasPythonHandlerTelemetryExport(handlerSource);
+  const taintedTelemetryPayload = telemetryExport && (language === "javascript"
+    ? hasJavaScriptHandlerTaintedTelemetryPayload(handlerSource)
+    : hasPythonHandlerTaintedTelemetryPayload(handlerSource));
   const privilegedPromptComposition = language === "javascript"
     ? hasJavaScriptHandlerPrivilegedPromptComposition(handlerSource)
     : hasPythonHandlerPrivilegedPromptComposition(handlerSource);
@@ -27165,6 +27178,8 @@ function classifySourceToolHandlerSignals(
   if (taintedModelSelection) classes.add("handler_tainted_model_selection");
   if (embeddingProviderCall) classes.add("handler_embedding_provider_call");
   if (taintedEmbeddingInput) classes.add("handler_tainted_embedding_input");
+  if (telemetryExport) classes.add("handler_telemetry_export");
+  if (taintedTelemetryPayload) classes.add("handler_tainted_telemetry_payload");
   if (privilegedPromptComposition) classes.add("handler_privileged_prompt_composition");
   if (secretEnvAccess) classes.add("handler_secret_env_access");
   if (secretToOutput) classes.add("handler_secret_to_output");
@@ -27205,6 +27220,8 @@ function classifySourceToolHandlerSignals(
     handlerTaintedModelSelection: taintedModelSelection,
     handlerEmbeddingProviderCall: embeddingProviderCall,
     handlerTaintedEmbeddingInput: taintedEmbeddingInput,
+    handlerTelemetryExport: telemetryExport,
+    handlerTaintedTelemetryPayload: taintedTelemetryPayload,
     handlerPrivilegedPromptComposition: privilegedPromptComposition,
     handlerSecretEnvAccess: secretEnvAccess,
     handlerModelVisibleOutput: modelVisibleOutput,
@@ -27684,6 +27701,42 @@ function hasPythonHandlerTaintedEmbeddingInput(source: string): boolean {
   ].some((pattern) => expressionMatchesTaintedEmbeddingInput(pattern, source));
 }
 
+function hasJavaScriptHandlerTelemetryExport(source: string): boolean {
+  return /\b(?:telemetryClient|traceClient|tracingClient|observabilityClient|analyticsClient|otel|otelSpan|langfuse|langsmith|sentry|honeycomb|datadog|newrelic|opentelemetry)\b/iu.test(
+    source
+  ) && [
+    /\b(?:telemetryClient|traceClient|tracingClient|observabilityClient|analyticsClient|otel|otelSpan|langfuse|langsmith|sentry|honeycomb|datadog|newrelic)\s*(?:\.\s*[A-Za-z_$][\w$]*){0,4}\s*\.\s*(?:record|recordTrace|capture|captureEvent|track|trackEvent|log|logEvent|emit|export|send|sendTrace|addEvent|setAttribute|setAttributes|span|trace)\s*\(/iu,
+    /\b(?:trace|span)\s*\.\s*(?:addEvent|setAttribute|setAttributes|recordException)\s*\(/iu,
+    /\b(?:opentelemetry)\s*(?:\.\s*[A-Za-z_$][\w$]*){0,4}\s*\.\s*(?:trace|span|record|export|send)\s*\(/iu
+  ].some((pattern) => pattern.test(source));
+}
+
+function hasPythonHandlerTelemetryExport(source: string): boolean {
+  return /\b(?:telemetry_client|trace_client|tracing_client|observability_client|analytics_client|otel|otel_span|langfuse|langsmith|sentry_sdk|honeycomb|datadog|newrelic|opentelemetry)\b/iu.test(
+    source
+  ) && [
+    /\b(?:telemetry_client|trace_client|tracing_client|observability_client|analytics_client|otel|otel_span|langfuse|langsmith|sentry_sdk|honeycomb|datadog|newrelic)\s*(?:\.\s*[A-Za-z_]\w*){0,4}\s*\.\s*(?:record|record_trace|capture|capture_event|track|track_event|log|log_event|emit|export|send|send_trace|add_event|set_attribute|set_attributes|span|trace)\s*\(/iu,
+    /\b(?:trace|span)\s*\.\s*(?:add_event|set_attribute|set_attributes|record_exception)\s*\(/iu,
+    /\b(?:opentelemetry)\s*(?:\.\s*[A-Za-z_]\w*){0,4}\s*\.\s*(?:trace|span|record|export|send)\s*\(/iu
+  ].some((pattern) => pattern.test(source));
+}
+
+function hasJavaScriptHandlerTaintedTelemetryPayload(source: string): boolean {
+  return [
+    /\b(?:telemetryClient|traceClient|tracingClient|observabilityClient|analyticsClient|otel|otelSpan|langfuse|langsmith|sentry|honeycomb|datadog|newrelic)\s*(?:\.\s*[A-Za-z_$][\w$]*){0,4}\s*\.\s*(?:record|recordTrace|capture|captureEvent|track|trackEvent|log|logEvent|emit|export|send|sendTrace|addEvent|setAttribute|setAttributes|span|trace)\s*\(([\s\S]{0,900})\)/giu,
+    /\b(?:trace|span)\s*\.\s*(?:addEvent|setAttribute|setAttributes|recordException)\s*\(([\s\S]{0,900})\)/giu,
+    /\b(?:opentelemetry)\s*(?:\.\s*[A-Za-z_$][\w$]*){0,4}\s*\.\s*(?:trace|span|record|export|send)\s*\(([\s\S]{0,900})\)/giu
+  ].some((pattern) => expressionMatchesTaintedTelemetryPayload(pattern, source));
+}
+
+function hasPythonHandlerTaintedTelemetryPayload(source: string): boolean {
+  return [
+    /\b(?:telemetry_client|trace_client|tracing_client|observability_client|analytics_client|otel|otel_span|langfuse|langsmith|sentry_sdk|honeycomb|datadog|newrelic)\s*(?:\.\s*[A-Za-z_]\w*){0,4}\s*\.\s*(?:record|record_trace|capture|capture_event|track|track_event|log|log_event|emit|export|send|send_trace|add_event|set_attribute|set_attributes|span|trace)\s*\(([\s\S]{0,900})\)/giu,
+    /\b(?:trace|span)\s*\.\s*(?:add_event|set_attribute|set_attributes|record_exception)\s*\(([\s\S]{0,900})\)/giu,
+    /\b(?:opentelemetry)\s*(?:\.\s*[A-Za-z_]\w*){0,4}\s*\.\s*(?:trace|span|record|export|send)\s*\(([\s\S]{0,900})\)/giu
+  ].some((pattern) => expressionMatchesTaintedTelemetryPayload(pattern, source));
+}
+
 function hasJavaScriptHandlerPrivilegedPromptComposition(source: string): boolean {
   return [
     /\brole\s*:\s*["'`](?:system|developer)["'`][\s\S]{0,260}\bcontent\s*:\s*([^,\n}\]]+)/giu,
@@ -27862,6 +27915,15 @@ function expressionMatchesTaintedEmbeddingInput(pattern: RegExp, source: string)
   let match: RegExpExecArray | null;
   while ((match = pattern.exec(source)) !== null) {
     if (expressionReferencesTaintedEmbeddingInput(match[1] ?? "", source)) return true;
+    if (match[0].length === 0) pattern.lastIndex += 1;
+  }
+  return false;
+}
+
+function expressionMatchesTaintedTelemetryPayload(pattern: RegExp, source: string): boolean {
+  let match: RegExpExecArray | null;
+  while ((match = pattern.exec(source)) !== null) {
+    if (expressionReferencesTaintedTelemetryPayload(match[1] ?? "", source)) return true;
     if (match[0].length === 0) pattern.lastIndex += 1;
   }
   return false;
@@ -28213,6 +28275,67 @@ function expressionReferencesTaintedEmbeddingInput(expression: string, source: s
 }
 
 function identifierAssignedFromTaintedEmbeddingInput(identifier: string, source: string, taintedName: RegExp): boolean {
+  const escaped = escapeRegExp(identifier);
+  const patterns = [
+    new RegExp(`\\b(?:const|let|var)\\s+${escaped}\\s*=\\s*([^;\\n]+)`, "gu"),
+    new RegExp(`\\b${escaped}\\s*=\\s*([^\\n]+)`, "gu")
+  ];
+  return patterns.some((pattern) => expressionMatchesPattern(pattern, source, taintedName));
+}
+
+function expressionReferencesTaintedTelemetryPayload(expression: string, source: string): boolean {
+  const templateInterpolation = /\$\{[^}]*\b(?:customerTicketText|customer_ticket_text|ticketText|ticket_text|customerContext|customer_context|customerMessage|customer_message|toolTracePayload|tool_trace_payload|tracePayload|trace_payload|toolOutput|tool_output|sourcePayloadText|source_payload_text|retrievedContext|retrieved_context|promptText|prompt_text|userMessage|user_message|conversationText|conversation_text|inputText|input_text|content|message|prompt|payload|trace|context|output|customer|ticket)\b/u.test(
+    expression
+  );
+  if (templateInterpolation) return true;
+  const withoutQuotedStrings = expression.replace(/(["'`])(?:\\.|(?!\1)[\s\S])*\1/gu, " ");
+  const stronglyTaintedName = /\b(?:customerTicketText|customer_ticket_text|ticketText|ticket_text|customerContext|customer_context|customerMessage|customer_message|toolTracePayload|tool_trace_payload|tracePayload|trace_payload|toolOutput|tool_output|sourcePayloadText|source_payload_text|retrievedContext|retrieved_context|promptText|prompt_text|userMessage|user_message|conversationText|conversation_text|inputText|input_text)\b/u;
+  const taintedName = /\b(?:customerTicketText|customer_ticket_text|ticketText|ticket_text|customerContext|customer_context|customerMessage|customer_message|toolTracePayload|tool_trace_payload|tracePayload|trace_payload|toolOutput|tool_output|sourcePayloadText|source_payload_text|retrievedContext|retrieved_context|promptText|prompt_text|userMessage|user_message|conversationText|conversation_text|inputText|input_text|content|message|prompt|payload|trace|context|output|customer|ticket|input|text)\b/u;
+  if (stronglyTaintedName.test(withoutQuotedStrings)) return true;
+
+  const telemetryPayloadAssignment = /\b(?:prompt|message|content|input|payload|trace|trace_payload|tool_output|toolOutput|output|text|context|customer|customer_id|session|session_id)\s*(?::|=)\s*([^,\n}\)]+)/giu;
+  if (expressionMatchesPattern(telemetryPayloadAssignment, withoutQuotedStrings, taintedName)) return true;
+
+  const valueOnlyExpression = withoutQuotedStrings.replace(
+    /\b(?:prompt|message|content|input|payload|trace|trace_payload|tool_output|toolOutput|output|text|context|customer|customer_id|session|session_id)\s*(?::|=)/giu,
+    " "
+  );
+  const identifiers = uniqueStrings(
+    [...valueOnlyExpression.matchAll(/\b[A-Za-z_$][\w$]*\b/gu)]
+      .map((match) => match[0])
+      .filter((identifier) => ![
+        "telemetryClient",
+        "telemetry_client",
+        "traceClient",
+        "trace_client",
+        "tracingClient",
+        "tracing_client",
+        "observabilityClient",
+        "observability_client",
+        "analyticsClient",
+        "analytics_client",
+        "otel",
+        "otelSpan",
+        "otel_span",
+        "langfuse",
+        "langsmith",
+        "sentry",
+        "sentry_sdk",
+        "honeycomb",
+        "datadog",
+        "newrelic",
+        "opentelemetry",
+        "token",
+        "apiKey",
+        "api_key",
+        "sessionId",
+        "session_id"
+      ].includes(identifier))
+  );
+  return identifiers.some((identifier) => identifierAssignedFromTaintedTelemetryPayload(identifier, source, taintedName));
+}
+
+function identifierAssignedFromTaintedTelemetryPayload(identifier: string, source: string, taintedName: RegExp): boolean {
   const escaped = escapeRegExp(identifier);
   const patterns = [
     new RegExp(`\\b(?:const|let|var)\\s+${escaped}\\s*=\\s*([^;\\n]+)`, "gu"),
@@ -29635,6 +29758,8 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   tainted_model_selection: boolean;
   embedding_provider_call: boolean;
   tainted_embedding_input: boolean;
+  telemetry_export: boolean;
+  tainted_telemetry_payload: boolean;
   privileged_prompt_composition: boolean;
   tainted_shell_argument: boolean;
   tainted_filesystem_path: boolean;
@@ -29675,6 +29800,8 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   const handlerTaintedModelSelection = handler?.handlerTaintedModelSelection === true;
   const handlerEmbeddingProviderCall = handler?.handlerEmbeddingProviderCall === true;
   const handlerTaintedEmbeddingInput = handler?.handlerTaintedEmbeddingInput === true;
+  const handlerTelemetryExport = handler?.handlerTelemetryExport === true;
+  const handlerTaintedTelemetryPayload = handler?.handlerTaintedTelemetryPayload === true;
   const handlerPrivilegedPromptComposition = handler?.handlerPrivilegedPromptComposition === true;
   const handlerDatabaseQuery = handler?.handlerDatabaseQuery === true;
   const handlerDatabaseWrite = handler?.handlerDatabaseWrite === true;
@@ -29704,7 +29831,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   const destructive = /\b(delete|remove|drop|truncate|destroy|purge|wipe)\b/i.test(text);
   const externalWrite = /\b(publish|post|send|webhook|slack|email|release|deploy|comment|issue|pull\s+request|upload)\b/i.test(
     text
-  ) || handlerExternalWrite || handlerExternalServiceWrite;
+  ) || handlerExternalWrite || handlerExternalServiceWrite || handlerTelemetryExport;
 
   const shellExecution =
     /\b(shell|command|exec|bash|process|terminal)\b/i.test(text) ||
@@ -29865,6 +29992,14 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
     classes.add("tainted_embedding_input");
     actions.add("send");
   }
+  if (handlerTelemetryExport) {
+    classes.add("telemetry_export");
+    actions.add("send");
+  }
+  if (handlerTaintedTelemetryPayload) {
+    classes.add("tainted_telemetry_payload");
+    actions.add("send");
+  }
   if (handlerPrivilegedPromptComposition) {
     classes.add("privileged_prompt_composition");
     actions.add("send");
@@ -29928,6 +30063,8 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerTaintedModelSelection ||
       handlerEmbeddingProviderCall ||
       handlerTaintedEmbeddingInput ||
+      handlerTelemetryExport ||
+      handlerTaintedTelemetryPayload ||
       handlerPrivilegedPromptComposition ||
       handlerTaintedShellArgument ||
       handlerDatabaseQuery ||
@@ -29965,7 +30102,8 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerBrowserAutomation ||
       handlerExternalServiceWrite ||
       handlerModelProviderCall ||
-      handlerEmbeddingProviderCall,
+      handlerEmbeddingProviderCall ||
+      handlerTelemetryExport,
     secret_exposure: acceptsSecret || handlerSecretEnvAccess || localFileDisclosure || handlerCredentialIssuance || handlerSecretManagerAccess,
     accepts_secret_like_input: acceptsSecret,
     accepts_content_like_input: acceptsContent,
@@ -29994,6 +30132,8 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
     tainted_model_selection: handlerTaintedModelSelection,
     embedding_provider_call: handlerEmbeddingProviderCall,
     tainted_embedding_input: handlerTaintedEmbeddingInput,
+    telemetry_export: handlerTelemetryExport,
+    tainted_telemetry_payload: handlerTaintedTelemetryPayload,
     privileged_prompt_composition: handlerPrivilegedPromptComposition,
     tainted_shell_argument: handlerTaintedShellArgument,
     tainted_filesystem_path: handlerTaintedFilesystemPath,
@@ -30063,6 +30203,8 @@ function authoritySignature(tool: SurfaceObject): string {
     metadata.tainted_model_selection === true ? "tainted_model_selection" : "",
     metadata.embedding_provider_call === true ? "embedding_provider_call" : "",
     metadata.tainted_embedding_input === true ? "tainted_embedding_input" : "",
+    metadata.telemetry_export === true ? "telemetry_export" : "",
+    metadata.tainted_telemetry_payload === true ? "tainted_telemetry_payload" : "",
     metadata.privileged_prompt_composition === true ? "privileged_prompt_composition" : "",
     metadata.tainted_shell_argument === true ? "tainted_shell_argument" : "",
     metadata.tainted_filesystem_path === true ? "tainted_filesystem_path" : "",
@@ -30108,6 +30250,8 @@ function isPrivilegedToolSurface(tool: SurfaceObject): boolean {
     tool.metadata.tainted_model_selection === true ||
     tool.metadata.embedding_provider_call === true ||
     tool.metadata.tainted_embedding_input === true ||
+    tool.metadata.telemetry_export === true ||
+    tool.metadata.tainted_telemetry_payload === true ||
     tool.metadata.privileged_prompt_composition === true ||
     tool.metadata.tainted_shell_argument === true ||
     tool.metadata.tainted_filesystem_path === true ||

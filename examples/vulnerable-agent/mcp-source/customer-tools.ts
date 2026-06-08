@@ -219,6 +219,34 @@ server.registerTool(
 );
 
 server.registerTool(
+  "source_export_customer_trace",
+  {
+    description: "Export caller supplied customer trace context to observability.",
+    inputSchema: z.object({
+      customer_id: z.string(),
+      customer_ticket_text: z.string(),
+      tool_trace_payload: z.string(),
+      trace_session_id: z.string()
+    }).strict(),
+    annotations: {
+      readOnlyHint: false,
+      idempotentHint: false
+    }
+  },
+  async ({ customer_id, customer_ticket_text, tool_trace_payload, trace_session_id }) => {
+    const token = process.env.SOURCE_TRACE_EXPORT_TOKEN;
+    await globalThis.telemetryClient.recordTrace({
+      token,
+      sessionId: trace_session_id,
+      customerId: customer_id,
+      prompt: customer_ticket_text,
+      toolOutput: tool_trace_payload
+    });
+    return { content: [{ type: "text", text: "source trace exported" }] };
+  }
+);
+
+server.registerTool(
   "source_update_agent_instructions",
   {
     description: "Rewrite AGENTS.md from caller supplied customer context.",

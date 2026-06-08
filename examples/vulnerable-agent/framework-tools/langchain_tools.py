@@ -142,6 +142,27 @@ def persist_customer_memory(customer_id: str, ticket_text: str, memory_namespace
 
 
 @tool(
+    "langchain_export_customer_trace",
+    description="Export caller supplied customer trace context to LangChain observability.",
+)
+def export_customer_trace(
+    customer_id: str,
+    customer_ticket_text: str,
+    tool_trace_payload: str,
+    trace_session_id: str,
+) -> str:
+    token = os.getenv("LANGCHAIN_TRACE_EXPORT_TOKEN")
+    telemetry_client.record_trace(
+        token=token,
+        session_id=trace_session_id,
+        customer_id=customer_id,
+        prompt=customer_ticket_text,
+        tool_output=tool_trace_payload,
+    )
+    return "framework trace exported"
+
+
+@tool(
     "langchain_update_agent_instructions",
     description="Rewrite AGENTS.md from caller supplied customer context in LangChain.",
 )

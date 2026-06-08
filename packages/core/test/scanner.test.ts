@@ -546,6 +546,7 @@ describe("scanner", () => {
     const sourceSecretOutputTool = surfaces.tools.find((surface) => surface.name === "source_reveal_runtime_secret");
     const sourceCredentialedNetworkTool = surfaces.tools.find((surface) => surface.name === "source_fetch_partner_status");
     const sourceMemoryWriteTool = surfaces.tools.find((surface) => surface.name === "source_persist_customer_memory");
+    const sourceTelemetryExportTool = surfaces.tools.find((surface) => surface.name === "source_export_customer_trace");
     const sourceAgentConfigWriteTool = surfaces.tools.find((surface) => surface.name === "source_update_agent_instructions");
     const sourceCredentialIssuanceTool = surfaces.tools.find((surface) => surface.name === "source_mint_agent_session_token");
     const sourceNestedToolInvocationTool = surfaces.tools.find((surface) => surface.name === "source_dispatch_privileged_tool");
@@ -566,6 +567,7 @@ describe("scanner", () => {
     const langchainSecretOutputTool = surfaces.tools.find((surface) => surface.name === "langchain_reveal_runtime_secret");
     const langchainCredentialedNetworkTool = surfaces.tools.find((surface) => surface.name === "langchain_fetch_partner_status");
     const langchainMemoryWriteTool = surfaces.tools.find((surface) => surface.name === "langchain_persist_customer_memory");
+    const langchainTelemetryExportTool = surfaces.tools.find((surface) => surface.name === "langchain_export_customer_trace");
     const langchainAgentConfigWriteTool = surfaces.tools.find((surface) => surface.name === "langchain_update_agent_instructions");
     const langchainCredentialIssuanceTool = surfaces.tools.find((surface) => surface.name === "langchain_mint_agent_session_token");
     const langchainNestedToolInvocationTool = surfaces.tools.find((surface) => surface.name === "langchain_dispatch_privileged_tool");
@@ -1268,6 +1270,89 @@ describe("scanner", () => {
     expect(JSON.stringify(sourceMemoryWriteTool)).not.toContain("embeddingClient.embedQuery");
     expect(JSON.stringify(sourceMemoryWriteTool)).not.toContain("source memory persisted");
     expect(JSON.stringify(sourceMemoryWriteTool)).not.toContain("Persist caller supplied customer ticket text");
+    expect(sourceTelemetryExportTool).toMatchObject({
+      path: "mcp-source/customer-tools.ts",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["call", "publish", "send"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(sourceTelemetryExportTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_mcp_source_tool: true,
+      mcp_source_tool_registration: true,
+      mcp_source_tool_registration_kind: "registerTool",
+      mcp_source_tool_argument_count: 3,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      read_only_hint: false,
+      idempotent_hint: false,
+      accepts_content_like_input: true,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      telemetry_export: true,
+      tainted_telemetry_payload: true,
+      external_write: true,
+      destructive_action: false,
+      read_only_hint_conflict: false,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_external_network_call: false,
+      handler_external_write: false,
+      handler_external_service_write: false,
+      handler_secret_env_access: true,
+      handler_model_visible_output: true,
+      handler_secret_to_output: false,
+      handler_database_query: false,
+      handler_database_write: false,
+      handler_embedding_provider_call: false,
+      handler_memory_write: false,
+      handler_telemetry_export: true,
+      handler_tainted_telemetry_payload: true,
+      handler_shell_execution: false,
+      handler_dynamic_code_execution: false,
+      handler_unsafe_deserialization: false,
+      handler_filesystem_read: false,
+      handler_filesystem_write: false,
+      handler_filesystem_delete: false,
+      handler_signal_count: 3,
+      open_world_schema: false
+    });
+    expect(sourceTelemetryExportTool?.metadata.authority_classes).toEqual([
+      "content_input",
+      "customer_data_input",
+      "external_write",
+      "handler_secret_env_access",
+      "handler_tainted_telemetry_payload",
+      "handler_telemetry_export",
+      "pii_input",
+      "secret_env_access",
+      "tainted_telemetry_payload",
+      "telemetry_export"
+    ]);
+    expect(sourceTelemetryExportTool?.metadata.handler_authority_classes).toEqual([
+      "handler_secret_env_access",
+      "handler_tainted_telemetry_payload",
+      "handler_telemetry_export"
+    ]);
+    expect(sourceTelemetryExportTool?.metadata.handler_env_key_names).toEqual(["SOURCE_TRACE_EXPORT_TOKEN"]);
+    expect(sourceTelemetryExportTool?.metadata.schema_properties).toEqual([
+      "customer_id",
+      "customer_ticket_text",
+      "tool_trace_payload",
+      "trace_session_id"
+    ]);
+    expect(sourceTelemetryExportTool?.metadata.required_properties).toEqual([
+      "customer_id",
+      "customer_ticket_text",
+      "tool_trace_payload",
+      "trace_session_id"
+    ]);
+    expect(JSON.stringify(sourceTelemetryExportTool)).not.toContain("telemetryClient.recordTrace");
+    expect(JSON.stringify(sourceTelemetryExportTool)).not.toContain("source trace exported");
+    expect(JSON.stringify(sourceTelemetryExportTool)).not.toContain("Export caller supplied customer trace context");
     expect(sourceAgentConfigWriteTool).toMatchObject({
       path: "mcp-source/customer-tools.ts",
       data_classes: ["confidential", "pii"],
@@ -2750,6 +2835,88 @@ describe("scanner", () => {
     expect(JSON.stringify(langchainMemoryWriteTool)).not.toContain("embedding_client.embed_documents");
     expect(JSON.stringify(langchainMemoryWriteTool)).not.toContain("framework memory persisted");
     expect(JSON.stringify(langchainMemoryWriteTool)).not.toContain("Persist caller supplied customer ticket text");
+    expect(langchainTelemetryExportTool).toMatchObject({
+      path: "framework-tools/langchain_tools.py",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["call", "publish", "send"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(langchainTelemetryExportTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_agent_framework_source_tool: true,
+      agent_framework_source_tool: true,
+      agent_framework_source_tool_framework: "langchain",
+      agent_framework_source_tool_registration_kind: "python_tool_decorator",
+      agent_framework_source_tool_argument_count: 4,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_content_like_input: true,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      telemetry_export: true,
+      tainted_telemetry_payload: true,
+      external_write: true,
+      destructive_action: false,
+      read_only_hint_conflict: false,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_external_network_call: false,
+      handler_external_write: false,
+      handler_external_service_write: false,
+      handler_secret_env_access: true,
+      handler_model_visible_output: true,
+      handler_secret_to_output: false,
+      handler_database_query: false,
+      handler_database_write: false,
+      handler_embedding_provider_call: false,
+      handler_memory_write: false,
+      handler_telemetry_export: true,
+      handler_tainted_telemetry_payload: true,
+      handler_shell_execution: false,
+      handler_dynamic_code_execution: false,
+      handler_unsafe_deserialization: false,
+      handler_filesystem_read: false,
+      handler_filesystem_write: false,
+      handler_filesystem_delete: false,
+      handler_signal_count: 3,
+      open_world_schema: false
+    });
+    expect(langchainTelemetryExportTool?.metadata.authority_classes).toEqual([
+      "content_input",
+      "customer_data_input",
+      "external_write",
+      "handler_secret_env_access",
+      "handler_tainted_telemetry_payload",
+      "handler_telemetry_export",
+      "pii_input",
+      "secret_env_access",
+      "tainted_telemetry_payload",
+      "telemetry_export"
+    ]);
+    expect(langchainTelemetryExportTool?.metadata.handler_authority_classes).toEqual([
+      "handler_secret_env_access",
+      "handler_tainted_telemetry_payload",
+      "handler_telemetry_export"
+    ]);
+    expect(langchainTelemetryExportTool?.metadata.handler_env_key_names).toEqual(["LANGCHAIN_TRACE_EXPORT_TOKEN"]);
+    expect(langchainTelemetryExportTool?.metadata.schema_properties).toEqual([
+      "customer_id",
+      "customer_ticket_text",
+      "tool_trace_payload",
+      "trace_session_id"
+    ]);
+    expect(langchainTelemetryExportTool?.metadata.required_properties).toEqual([
+      "customer_id",
+      "customer_ticket_text",
+      "tool_trace_payload",
+      "trace_session_id"
+    ]);
+    expect(JSON.stringify(langchainTelemetryExportTool)).not.toContain("telemetry_client.record_trace");
+    expect(JSON.stringify(langchainTelemetryExportTool)).not.toContain("framework trace exported");
+    expect(JSON.stringify(langchainTelemetryExportTool)).not.toContain("Export caller supplied customer trace context");
     expect(langchainAgentConfigWriteTool).toMatchObject({
       path: "framework-tools/langchain_tools.py",
       data_classes: ["confidential", "pii"],

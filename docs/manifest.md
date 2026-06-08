@@ -320,6 +320,8 @@ Tool metadata may include:
 - `tainted_model_selection`
 - `embedding_provider_call`
 - `tainted_embedding_input`
+- `telemetry_export`
+- `tainted_telemetry_payload`
 - `privileged_prompt_composition`
 - `tainted_shell_argument`
 - `tainted_filesystem_path`
@@ -346,6 +348,8 @@ Tool metadata may include:
 - `handler_tainted_model_selection`
 - `handler_embedding_provider_call`
 - `handler_tainted_embedding_input`
+- `handler_telemetry_export`
+- `handler_tainted_telemetry_payload`
 - `handler_privileged_prompt_composition`
 - `handler_secret_env_access`
 - `handler_model_visible_output`

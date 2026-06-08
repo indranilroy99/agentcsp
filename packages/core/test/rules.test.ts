@@ -58,6 +58,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-042")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-043")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-044")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-045")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-001")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-002")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-003")).toBe(true);
@@ -6278,6 +6279,37 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerEmbeddingVectorWriteFindings)).not.toContain("source memory persisted");
     expect(JSON.stringify(sourceHandlerEmbeddingVectorWriteFindings)).not.toContain("framework memory persisted");
     expect(JSON.stringify(sourceHandlerEmbeddingVectorWriteFindings)).not.toContain("Persist caller supplied customer ticket text");
+    const sourceHandlerTelemetryExportFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-045");
+    expect(sourceHandlerTelemetryExportFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
+      "langchain_export_customer_trace",
+      "source_export_customer_trace"
+    ]);
+    expect(sourceHandlerTelemetryExportFindings.every((finding) => finding.severity === "critical")).toBe(true);
+    expect(sourceHandlerTelemetryExportFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerTelemetryExportFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
+    expect(sourceHandlerTelemetryExportFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
+    expect(sourceHandlerTelemetryExportFindings.every((finding) => finding.matched_object.metadata.handler_telemetry_export === true)).toBe(true);
+    expect(sourceHandlerTelemetryExportFindings.every((finding) => finding.matched_object.metadata.handler_tainted_telemetry_payload === true)).toBe(true);
+    expect(sourceHandlerTelemetryExportFindings.every((finding) => finding.matched_object.metadata.telemetry_export === true)).toBe(true);
+    expect(sourceHandlerTelemetryExportFindings.every((finding) => finding.matched_object.metadata.tainted_telemetry_payload === true)).toBe(true);
+    expect(sourceHandlerTelemetryExportFindings.every((finding) => finding.matched_object.metadata.handler_secret_env_access === true)).toBe(true);
+    expect(sourceHandlerTelemetryExportFindings.every((finding) => finding.matched_object.metadata.external_write === true)).toBe(true);
+    expect(sourceHandlerTelemetryExportFindings.every((finding) => finding.matched_object.metadata.accepts_content_like_input === true)).toBe(true);
+    expect(sourceHandlerTelemetryExportFindings.every((finding) => finding.matched_object.metadata.accepts_customer_data_input === true)).toBe(true);
+    expect(sourceHandlerTelemetryExportFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("telemetry_export"))).toBe(true);
+    expect(sourceHandlerTelemetryExportFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("tainted_telemetry_payload"))).toBe(true);
+    expect(sourceHandlerTelemetryExportFindings.every((finding) => finding.matched_object.metadata.handler_authority_classes.includes("handler_telemetry_export"))).toBe(true);
+    expect(sourceHandlerTelemetryExportFindings.every((finding) => finding.matched_object.metadata.handler_authority_classes.includes("handler_tainted_telemetry_payload"))).toBe(true);
+    expect(sourceHandlerTelemetryExportFindings.every((finding) => finding.matched_object.actions.includes("send"))).toBe(true);
+    expect(sourceHandlerTelemetryExportFindings.every((finding) => finding.matched_object.external_reach === true)).toBe(true);
+    expect(sourceHandlerTelemetryExportFindings.every((finding) => finding.matched_object.secret_exposure === true)).toBe(true);
+    expect(sourceHandlerTelemetryExportFindings.every((finding) => finding.matched_object.side_effect === true)).toBe(true);
+    expect(sourceHandlerTelemetryExportFindings.every((finding) => finding.matched_object.reversible === false)).toBe(true);
+    expect(JSON.stringify(sourceHandlerTelemetryExportFindings)).not.toContain("telemetryClient.recordTrace");
+    expect(JSON.stringify(sourceHandlerTelemetryExportFindings)).not.toContain("telemetry_client.record_trace");
+    expect(JSON.stringify(sourceHandlerTelemetryExportFindings)).not.toContain("source trace exported");
+    expect(JSON.stringify(sourceHandlerTelemetryExportFindings)).not.toContain("framework trace exported");
+    expect(JSON.stringify(sourceHandlerTelemetryExportFindings)).not.toContain("Export caller supplied customer trace context");
     const sourceHandlerTaintedMemoryScopeFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-039");
     expect(sourceHandlerTaintedMemoryScopeFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_persist_customer_memory",
