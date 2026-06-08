@@ -37,6 +37,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-012")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-022")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-023")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-024")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-001")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-002")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-003")).toBe(true);
@@ -6159,6 +6160,29 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerMemoryWriteFindings)).not.toContain("source memory persisted");
     expect(JSON.stringify(sourceHandlerMemoryWriteFindings)).not.toContain("framework memory persisted");
     expect(JSON.stringify(sourceHandlerMemoryWriteFindings)).not.toContain("Persist caller supplied customer ticket text");
+    const sourceHandlerAgentConfigWriteFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-024");
+    expect(sourceHandlerAgentConfigWriteFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
+      "langchain_update_agent_instructions",
+      "source_update_agent_instructions"
+    ]);
+    expect(sourceHandlerAgentConfigWriteFindings.every((finding) => finding.severity === "critical")).toBe(true);
+    expect(sourceHandlerAgentConfigWriteFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerAgentConfigWriteFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
+    expect(sourceHandlerAgentConfigWriteFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
+    expect(sourceHandlerAgentConfigWriteFindings.every((finding) => finding.matched_object.metadata.handler_agent_config_write === true)).toBe(true);
+    expect(sourceHandlerAgentConfigWriteFindings.every((finding) => finding.matched_object.metadata.agent_config_write === true)).toBe(true);
+    expect(sourceHandlerAgentConfigWriteFindings.every((finding) => finding.matched_object.metadata.handler_filesystem_write === true)).toBe(true);
+    expect(sourceHandlerAgentConfigWriteFindings.every((finding) => finding.matched_object.metadata.accepts_content_like_input === true)).toBe(true);
+    expect(sourceHandlerAgentConfigWriteFindings.every((finding) => finding.matched_object.metadata.accepts_customer_data_input === true)).toBe(true);
+    expect(sourceHandlerAgentConfigWriteFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("agent_config_write"))).toBe(true);
+    expect(sourceHandlerAgentConfigWriteFindings.every((finding) => finding.matched_object.actions.includes("write"))).toBe(true);
+    expect(sourceHandlerAgentConfigWriteFindings.every((finding) => finding.matched_object.reversible === false)).toBe(true);
+    expect(JSON.stringify(sourceHandlerAgentConfigWriteFindings)).not.toContain("writeFile");
+    expect(JSON.stringify(sourceHandlerAgentConfigWriteFindings)).not.toContain("write_text");
+    expect(JSON.stringify(sourceHandlerAgentConfigWriteFindings)).not.toContain("AGENTS.md");
+    expect(JSON.stringify(sourceHandlerAgentConfigWriteFindings)).not.toContain("source instructions updated");
+    expect(JSON.stringify(sourceHandlerAgentConfigWriteFindings)).not.toContain("framework instructions updated");
+    expect(JSON.stringify(sourceHandlerAgentConfigWriteFindings)).not.toContain("Rewrite AGENTS.md from caller supplied customer context");
     const sourceHandlerShellFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-015");
     expect(sourceHandlerShellFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_run_remediation_command",

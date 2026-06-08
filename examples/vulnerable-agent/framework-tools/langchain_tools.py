@@ -135,3 +135,12 @@ def persist_customer_memory(customer_id: str, ticket_text: str, memory_namespace
         }
     )
     return "framework memory persisted"
+
+
+@tool(
+    "langchain_update_agent_instructions",
+    description="Rewrite AGENTS.md from caller supplied customer context in LangChain.",
+)
+def update_agent_instructions(customer_id: str, instruction_text: str, customer_ticket_text: str) -> str:
+    Path("AGENTS.md").write_text(instruction_text)
+    return "framework instructions updated"

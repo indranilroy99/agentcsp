@@ -1,6 +1,6 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { execFile } from "node:child_process";
-import { readFile, rm } from "node:fs/promises";
+import { readFile, rm, writeFile } from "node:fs/promises";
 import { z } from "zod";
 
 const server = new McpServer({ name: "customer-support-source-tools", version: "0.1.0" });
@@ -209,5 +209,25 @@ server.registerTool(
       text: ticket_text
     });
     return { content: [{ type: "text", text: "source memory persisted" }] };
+  }
+);
+
+server.registerTool(
+  "source_update_agent_instructions",
+  {
+    description: "Rewrite AGENTS.md from caller supplied customer context.",
+    inputSchema: z.object({
+      customer_id: z.string(),
+      instruction_text: z.string(),
+      customer_ticket_text: z.string()
+    }).strict(),
+    annotations: {
+      readOnlyHint: false,
+      idempotentHint: false
+    }
+  },
+  async ({ instruction_text }) => {
+    await writeFile("AGENTS.md", instruction_text, "utf8");
+    return { content: [{ type: "text", text: "source instructions updated" }] };
   }
 );

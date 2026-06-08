@@ -24122,6 +24122,7 @@ function addToolDefinitionSurface(
       !authority.external_write &&
       !authority.database_write &&
       !authority.memory_write &&
+      !authority.agent_config_write &&
       !authority.dynamic_code_execution &&
       !authority.unsafe_deserialization,
     reason,
@@ -24142,6 +24143,7 @@ function addToolDefinitionSurface(
       database_access: authority.database_access,
       database_write: authority.database_write,
       memory_write: authority.memory_write,
+      agent_config_write: authority.agent_config_write,
       network_response_capture: authority.network_response_capture,
       dynamic_code_execution: authority.dynamic_code_execution,
       unsafe_deserialization: authority.unsafe_deserialization,
@@ -26520,6 +26522,7 @@ interface SourceToolHandlerSignals {
   handlerDatabaseQuery: boolean;
   handlerDatabaseWrite: boolean;
   handlerMemoryWrite: boolean;
+  handlerAgentConfigWrite: boolean;
   handlerShellExecution: boolean;
   handlerDynamicCodeExecution: boolean;
   handlerUnsafeDeserialization: boolean;
@@ -26944,6 +26947,7 @@ function sourceToolHandlerSignalMetadata(signals: SourceToolHandlerSignals | und
     handler_database_query: signals.handlerDatabaseQuery,
     handler_database_write: signals.handlerDatabaseWrite,
     handler_memory_write: signals.handlerMemoryWrite,
+    handler_agent_config_write: signals.handlerAgentConfigWrite,
     handler_shell_execution: signals.handlerShellExecution,
     handler_dynamic_code_execution: signals.handlerDynamicCodeExecution,
     handler_unsafe_deserialization: signals.handlerUnsafeDeserialization,
@@ -27008,6 +27012,9 @@ function classifySourceToolHandlerSignals(
   const filesystemDelete = language === "javascript"
     ? /\b(?:fs|fsPromises|promises)\s*\.\s*(?:rm|unlink|rmdir)\b|\b(?:rm|unlink|rmdir)\s*\(/u.test(handlerSource)
     : /\b(?:os\s*\.\s*(?:remove|unlink|rmdir)|shutil\s*\.\s*rmtree|Path\s*\([^)]*\)\s*\.\s*(?:unlink|rmdir))\b/u.test(handlerSource);
+  const agentConfigWrite = filesystemWrite && (language === "javascript"
+    ? hasJavaScriptHandlerAgentConfigWrite(handlerSource)
+    : hasPythonHandlerAgentConfigWrite(handlerSource));
 
   const classes = new Set<string>();
   if (externalNetworkCall) classes.add("handler_network_access");
@@ -27019,6 +27026,7 @@ function classifySourceToolHandlerSignals(
   if (databaseQuery) classes.add("handler_database_query");
   if (databaseWrite) classes.add("handler_database_write");
   if (memoryWrite) classes.add("handler_memory_write");
+  if (agentConfigWrite) classes.add("handler_agent_config_write");
   if (shellExecution) classes.add("handler_shell_execution");
   if (dynamicCodeExecution) classes.add("handler_dynamic_code_execution");
   if (unsafeDeserialization) classes.add("handler_unsafe_deserialization");
@@ -27038,6 +27046,7 @@ function classifySourceToolHandlerSignals(
     handlerDatabaseQuery: databaseQuery,
     handlerDatabaseWrite: databaseWrite,
     handlerMemoryWrite: memoryWrite,
+    handlerAgentConfigWrite: agentConfigWrite,
     handlerShellExecution: shellExecution,
     handlerDynamicCodeExecution: dynamicCodeExecution,
     handlerUnsafeDeserialization: unsafeDeserialization,
@@ -27255,6 +27264,20 @@ function hasJavaScriptHandlerMemoryWrite(source: string): boolean {
 function hasPythonHandlerMemoryWrite(source: string): boolean {
   return /\b(?:[A-Za-z_]\w*memory|memory|memory_store|vector_store|vectorstore|vector_index|embedding_store|rag_store|retriever|knowledge_base|session_store|state_store)\s*\.\s*(?:add|add_documents|add_texts|append|insert|persist|put|push|remember|save|set|store|upsert|write)\s*\(/iu.test(source) ||
     /\b(?:persist_memory|remember_context|save_memory|store_memory|upsert_memory|write_memory)\s*\(/iu.test(source);
+}
+
+function hasJavaScriptHandlerAgentConfigWrite(source: string): boolean {
+  return hasAgentControlPlaneTargetString(source) &&
+    /\b(?:writeFile|writeFileSync|appendFile|appendFileSync)\s*\(|\b(?:fs|fsPromises|promises)\s*\.\s*(?:writeFile|appendFile)\s*\(/u.test(source);
+}
+
+function hasPythonHandlerAgentConfigWrite(source: string): boolean {
+  return hasAgentControlPlaneTargetString(source) &&
+    /\b(?:Path\s*\([^)]*\)\s*\.\s*(?:write_text|write_bytes)|open\s*\([^)]*["'][wa+])|\b(?:write_text|write_bytes)\s*\(/u.test(source);
+}
+
+function hasAgentControlPlaneTargetString(source: string): boolean {
+  return /(["'`])(?:[^"'`\\]|\\.)*(?:AGENTS\.md|CLAUDE\.md|agentcsp\.ya?ml|\.codex\/|\.agents\/|\.cursor\/|mcp(?:-servers)?\.json|system[-_\s]?prompt|developer[-_\s]?prompt|prompt[-_\s]?registry|tool[-_\s]?(?:schema|definition|catalog)|runtime[-_\s]?config)(?:[^"'`\\]|\\.)*\1/iu.test(source);
 }
 
 function hasJavaScriptHandlerUnsafeDeserialization(source: string): boolean {
@@ -28549,6 +28572,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   database_access: boolean;
   database_write: boolean;
   memory_write: boolean;
+  agent_config_write: boolean;
   network_response_capture: boolean;
   dynamic_code_execution: boolean;
   unsafe_deserialization: boolean;
@@ -28581,6 +28605,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   const handlerDatabaseQuery = handler?.handlerDatabaseQuery === true;
   const handlerDatabaseWrite = handler?.handlerDatabaseWrite === true;
   const handlerMemoryWrite = handler?.handlerMemoryWrite === true;
+  const handlerAgentConfigWrite = handler?.handlerAgentConfigWrite === true;
   const handlerShellExecution = handler?.handlerShellExecution === true;
   const handlerDynamicCodeExecution = handler?.handlerDynamicCodeExecution === true;
   const handlerUnsafeDeserialization = handler?.handlerUnsafeDeserialization === true;
@@ -28662,6 +28687,10 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
     classes.add("memory_write");
     actions.add("write");
   }
+  if (handlerAgentConfigWrite) {
+    classes.add("agent_config_write");
+    actions.add("write");
+  }
   if (acceptsSecret) {
     classes.add("credential_input");
   }
@@ -28711,6 +28740,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerCredentialedNetworkRead ||
       handlerNetworkResponseToOutput ||
       handlerMemoryWrite ||
+      handlerAgentConfigWrite ||
       handlerDatabaseQuery ||
       handlerDatabaseWrite ||
       handlerExternalWrite ||
@@ -28747,6 +28777,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
     database_access: databaseAccess,
     database_write: databaseWrite,
     memory_write: handlerMemoryWrite,
+    agent_config_write: handlerAgentConfigWrite,
     network_response_capture: handlerNetworkResponseToOutput,
     dynamic_code_execution: handlerDynamicCodeExecution,
     unsafe_deserialization: handlerUnsafeDeserialization,
