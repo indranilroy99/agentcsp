@@ -247,6 +247,37 @@ server.registerTool(
 );
 
 server.registerTool(
+  "source_write_prompt_cache_entry",
+  {
+    description: "Write caller supplied prompt context into the shared LLM prompt cache.",
+    inputSchema: z.object({
+      customer_id: z.string(),
+      customer_ticket_text: z.string(),
+      tool_output_text: z.string(),
+      cache_key: z.string()
+    }).strict(),
+    annotations: {
+      readOnlyHint: false,
+      idempotentHint: false
+    }
+  },
+  async ({ customer_id, customer_ticket_text, tool_output_text, cache_key }) => {
+    const token = process.env.SOURCE_PROMPT_CACHE_TOKEN;
+    await globalThis.promptCache.set({
+      token,
+      key: cache_key,
+      value: {
+        customerId: customer_id,
+        prompt: customer_ticket_text,
+        toolOutput: tool_output_text
+      },
+      ttlSeconds: 86400
+    });
+    return { content: [{ type: "text", text: "source prompt cache written" }] };
+  }
+);
+
+server.registerTool(
   "source_update_agent_instructions",
   {
     description: "Rewrite AGENTS.md from caller supplied customer context.",

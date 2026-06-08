@@ -59,6 +59,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-043")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-044")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-045")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-046")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-001")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-002")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-003")).toBe(true);
@@ -6310,6 +6311,42 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerTelemetryExportFindings)).not.toContain("source trace exported");
     expect(JSON.stringify(sourceHandlerTelemetryExportFindings)).not.toContain("framework trace exported");
     expect(JSON.stringify(sourceHandlerTelemetryExportFindings)).not.toContain("Export caller supplied customer trace context");
+    const sourceHandlerPromptCacheWriteFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-046");
+    expect(sourceHandlerPromptCacheWriteFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
+      "langchain_write_prompt_cache_entry",
+      "source_write_prompt_cache_entry"
+    ]);
+    expect(sourceHandlerPromptCacheWriteFindings.every((finding) => finding.severity === "critical")).toBe(true);
+    expect(sourceHandlerPromptCacheWriteFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerPromptCacheWriteFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
+    expect(sourceHandlerPromptCacheWriteFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
+    expect(sourceHandlerPromptCacheWriteFindings.every((finding) => finding.matched_object.metadata.handler_prompt_cache_write === true)).toBe(true);
+    expect(sourceHandlerPromptCacheWriteFindings.every((finding) => finding.matched_object.metadata.handler_tainted_prompt_cache_key === true)).toBe(true);
+    expect(sourceHandlerPromptCacheWriteFindings.every((finding) => finding.matched_object.metadata.handler_tainted_prompt_cache_value === true)).toBe(true);
+    expect(sourceHandlerPromptCacheWriteFindings.every((finding) => finding.matched_object.metadata.prompt_cache_write === true)).toBe(true);
+    expect(sourceHandlerPromptCacheWriteFindings.every((finding) => finding.matched_object.metadata.tainted_prompt_cache_key === true)).toBe(true);
+    expect(sourceHandlerPromptCacheWriteFindings.every((finding) => finding.matched_object.metadata.tainted_prompt_cache_value === true)).toBe(true);
+    expect(sourceHandlerPromptCacheWriteFindings.every((finding) => finding.matched_object.metadata.handler_secret_env_access === true)).toBe(true);
+    expect(sourceHandlerPromptCacheWriteFindings.every((finding) => finding.matched_object.metadata.external_write === false)).toBe(true);
+    expect(sourceHandlerPromptCacheWriteFindings.every((finding) => finding.matched_object.metadata.accepts_content_like_input === true)).toBe(true);
+    expect(sourceHandlerPromptCacheWriteFindings.every((finding) => finding.matched_object.metadata.accepts_customer_data_input === true)).toBe(true);
+    expect(sourceHandlerPromptCacheWriteFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("prompt_cache_write"))).toBe(true);
+    expect(sourceHandlerPromptCacheWriteFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("tainted_prompt_cache_key"))).toBe(true);
+    expect(sourceHandlerPromptCacheWriteFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("tainted_prompt_cache_value"))).toBe(true);
+    expect(sourceHandlerPromptCacheWriteFindings.every((finding) => finding.matched_object.metadata.handler_authority_classes.includes("handler_prompt_cache_write"))).toBe(true);
+    expect(sourceHandlerPromptCacheWriteFindings.every((finding) => finding.matched_object.metadata.handler_authority_classes.includes("handler_tainted_prompt_cache_key"))).toBe(true);
+    expect(sourceHandlerPromptCacheWriteFindings.every((finding) => finding.matched_object.metadata.handler_authority_classes.includes("handler_tainted_prompt_cache_value"))).toBe(true);
+    expect(sourceHandlerPromptCacheWriteFindings.every((finding) => finding.matched_object.actions.includes("remember"))).toBe(true);
+    expect(sourceHandlerPromptCacheWriteFindings.every((finding) => finding.matched_object.actions.includes("write"))).toBe(true);
+    expect(sourceHandlerPromptCacheWriteFindings.every((finding) => finding.matched_object.external_reach === true)).toBe(true);
+    expect(sourceHandlerPromptCacheWriteFindings.every((finding) => finding.matched_object.secret_exposure === true)).toBe(true);
+    expect(sourceHandlerPromptCacheWriteFindings.every((finding) => finding.matched_object.side_effect === true)).toBe(true);
+    expect(sourceHandlerPromptCacheWriteFindings.every((finding) => finding.matched_object.reversible === false)).toBe(true);
+    expect(JSON.stringify(sourceHandlerPromptCacheWriteFindings)).not.toContain("promptCache.set");
+    expect(JSON.stringify(sourceHandlerPromptCacheWriteFindings)).not.toContain("prompt_cache.set");
+    expect(JSON.stringify(sourceHandlerPromptCacheWriteFindings)).not.toContain("source prompt cache written");
+    expect(JSON.stringify(sourceHandlerPromptCacheWriteFindings)).not.toContain("framework prompt cache written");
+    expect(JSON.stringify(sourceHandlerPromptCacheWriteFindings)).not.toContain("Write caller supplied prompt context");
     const sourceHandlerTaintedMemoryScopeFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-039");
     expect(sourceHandlerTaintedMemoryScopeFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_persist_customer_memory",

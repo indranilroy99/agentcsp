@@ -547,6 +547,7 @@ describe("scanner", () => {
     const sourceCredentialedNetworkTool = surfaces.tools.find((surface) => surface.name === "source_fetch_partner_status");
     const sourceMemoryWriteTool = surfaces.tools.find((surface) => surface.name === "source_persist_customer_memory");
     const sourceTelemetryExportTool = surfaces.tools.find((surface) => surface.name === "source_export_customer_trace");
+    const sourcePromptCacheWriteTool = surfaces.tools.find((surface) => surface.name === "source_write_prompt_cache_entry");
     const sourceAgentConfigWriteTool = surfaces.tools.find((surface) => surface.name === "source_update_agent_instructions");
     const sourceCredentialIssuanceTool = surfaces.tools.find((surface) => surface.name === "source_mint_agent_session_token");
     const sourceNestedToolInvocationTool = surfaces.tools.find((surface) => surface.name === "source_dispatch_privileged_tool");
@@ -568,6 +569,7 @@ describe("scanner", () => {
     const langchainCredentialedNetworkTool = surfaces.tools.find((surface) => surface.name === "langchain_fetch_partner_status");
     const langchainMemoryWriteTool = surfaces.tools.find((surface) => surface.name === "langchain_persist_customer_memory");
     const langchainTelemetryExportTool = surfaces.tools.find((surface) => surface.name === "langchain_export_customer_trace");
+    const langchainPromptCacheWriteTool = surfaces.tools.find((surface) => surface.name === "langchain_write_prompt_cache_entry");
     const langchainAgentConfigWriteTool = surfaces.tools.find((surface) => surface.name === "langchain_update_agent_instructions");
     const langchainCredentialIssuanceTool = surfaces.tools.find((surface) => surface.name === "langchain_mint_agent_session_token");
     const langchainNestedToolInvocationTool = surfaces.tools.find((surface) => surface.name === "langchain_dispatch_privileged_tool");
@@ -1353,6 +1355,92 @@ describe("scanner", () => {
     expect(JSON.stringify(sourceTelemetryExportTool)).not.toContain("telemetryClient.recordTrace");
     expect(JSON.stringify(sourceTelemetryExportTool)).not.toContain("source trace exported");
     expect(JSON.stringify(sourceTelemetryExportTool)).not.toContain("Export caller supplied customer trace context");
+    expect(sourcePromptCacheWriteTool).toMatchObject({
+      path: "mcp-source/customer-tools.ts",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["call", "remember", "write"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(sourcePromptCacheWriteTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_mcp_source_tool: true,
+      mcp_source_tool_registration: true,
+      mcp_source_tool_registration_kind: "registerTool",
+      mcp_source_tool_argument_count: 3,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_content_like_input: true,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      prompt_cache_write: true,
+      tainted_prompt_cache_key: true,
+      tainted_prompt_cache_value: true,
+      external_write: false,
+      destructive_action: false,
+      read_only_hint_conflict: false,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_external_network_call: false,
+      handler_external_write: false,
+      handler_external_service_write: false,
+      handler_secret_env_access: true,
+      handler_model_visible_output: true,
+      handler_secret_to_output: false,
+      handler_database_query: false,
+      handler_database_write: false,
+      handler_embedding_provider_call: false,
+      handler_memory_write: false,
+      handler_telemetry_export: false,
+      handler_prompt_cache_write: true,
+      handler_tainted_prompt_cache_key: true,
+      handler_tainted_prompt_cache_value: true,
+      handler_shell_execution: false,
+      handler_dynamic_code_execution: false,
+      handler_unsafe_deserialization: false,
+      handler_filesystem_read: false,
+      handler_filesystem_write: false,
+      handler_filesystem_delete: false,
+      handler_signal_count: 4,
+      open_world_schema: false
+    });
+    expect(sourcePromptCacheWriteTool?.metadata.authority_classes).toEqual([
+      "content_input",
+      "customer_data_input",
+      "handler_prompt_cache_write",
+      "handler_secret_env_access",
+      "handler_tainted_prompt_cache_key",
+      "handler_tainted_prompt_cache_value",
+      "pii_input",
+      "prompt_cache_write",
+      "secret_env_access",
+      "tainted_prompt_cache_key",
+      "tainted_prompt_cache_value"
+    ]);
+    expect(sourcePromptCacheWriteTool?.metadata.handler_authority_classes).toEqual([
+      "handler_prompt_cache_write",
+      "handler_secret_env_access",
+      "handler_tainted_prompt_cache_key",
+      "handler_tainted_prompt_cache_value"
+    ]);
+    expect(sourcePromptCacheWriteTool?.metadata.handler_env_key_names).toEqual(["SOURCE_PROMPT_CACHE_TOKEN"]);
+    expect(sourcePromptCacheWriteTool?.metadata.schema_properties).toEqual([
+      "cache_key",
+      "customer_id",
+      "customer_ticket_text",
+      "tool_output_text"
+    ]);
+    expect(sourcePromptCacheWriteTool?.metadata.required_properties).toEqual([
+      "cache_key",
+      "customer_id",
+      "customer_ticket_text",
+      "tool_output_text"
+    ]);
+    expect(JSON.stringify(sourcePromptCacheWriteTool)).not.toContain("promptCache.set");
+    expect(JSON.stringify(sourcePromptCacheWriteTool)).not.toContain("source prompt cache written");
+    expect(JSON.stringify(sourcePromptCacheWriteTool)).not.toContain("Write caller supplied prompt context");
     expect(sourceAgentConfigWriteTool).toMatchObject({
       path: "mcp-source/customer-tools.ts",
       data_classes: ["confidential", "pii"],
@@ -2917,6 +3005,93 @@ describe("scanner", () => {
     expect(JSON.stringify(langchainTelemetryExportTool)).not.toContain("telemetry_client.record_trace");
     expect(JSON.stringify(langchainTelemetryExportTool)).not.toContain("framework trace exported");
     expect(JSON.stringify(langchainTelemetryExportTool)).not.toContain("Export caller supplied customer trace context");
+    expect(langchainPromptCacheWriteTool).toMatchObject({
+      path: "framework-tools/langchain_tools.py",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["call", "remember", "write"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(langchainPromptCacheWriteTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_agent_framework_source_tool: true,
+      agent_framework_source_tool: true,
+      agent_framework_source_tool_framework: "langchain",
+      agent_framework_source_tool_registration_kind: "python_tool_decorator",
+      agent_framework_source_tool_argument_count: 4,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_content_like_input: true,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      prompt_cache_write: true,
+      tainted_prompt_cache_key: true,
+      tainted_prompt_cache_value: true,
+      external_write: false,
+      destructive_action: false,
+      read_only_hint_conflict: false,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_external_network_call: false,
+      handler_external_write: false,
+      handler_external_service_write: false,
+      handler_secret_env_access: true,
+      handler_model_visible_output: true,
+      handler_secret_to_output: false,
+      handler_database_query: false,
+      handler_database_write: false,
+      handler_embedding_provider_call: false,
+      handler_memory_write: false,
+      handler_telemetry_export: false,
+      handler_prompt_cache_write: true,
+      handler_tainted_prompt_cache_key: true,
+      handler_tainted_prompt_cache_value: true,
+      handler_shell_execution: false,
+      handler_dynamic_code_execution: false,
+      handler_unsafe_deserialization: false,
+      handler_filesystem_read: false,
+      handler_filesystem_write: false,
+      handler_filesystem_delete: false,
+      handler_signal_count: 4,
+      open_world_schema: false
+    });
+    expect(langchainPromptCacheWriteTool?.metadata.authority_classes).toEqual([
+      "content_input",
+      "customer_data_input",
+      "handler_prompt_cache_write",
+      "handler_secret_env_access",
+      "handler_tainted_prompt_cache_key",
+      "handler_tainted_prompt_cache_value",
+      "pii_input",
+      "prompt_cache_write",
+      "secret_env_access",
+      "tainted_prompt_cache_key",
+      "tainted_prompt_cache_value"
+    ]);
+    expect(langchainPromptCacheWriteTool?.metadata.handler_authority_classes).toEqual([
+      "handler_prompt_cache_write",
+      "handler_secret_env_access",
+      "handler_tainted_prompt_cache_key",
+      "handler_tainted_prompt_cache_value"
+    ]);
+    expect(langchainPromptCacheWriteTool?.metadata.handler_env_key_names).toEqual(["LANGCHAIN_PROMPT_CACHE_TOKEN"]);
+    expect(langchainPromptCacheWriteTool?.metadata.schema_properties).toEqual([
+      "cache_key",
+      "customer_id",
+      "customer_ticket_text",
+      "tool_output_text"
+    ]);
+    expect(langchainPromptCacheWriteTool?.metadata.required_properties).toEqual([
+      "cache_key",
+      "customer_id",
+      "customer_ticket_text",
+      "tool_output_text"
+    ]);
+    expect(JSON.stringify(langchainPromptCacheWriteTool)).not.toContain("prompt_cache.set");
+    expect(JSON.stringify(langchainPromptCacheWriteTool)).not.toContain("framework prompt cache written");
+    expect(JSON.stringify(langchainPromptCacheWriteTool)).not.toContain("Write caller supplied prompt context");
     expect(langchainAgentConfigWriteTool).toMatchObject({
       path: "framework-tools/langchain_tools.py",
       data_classes: ["confidential", "pii"],

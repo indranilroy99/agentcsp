@@ -24131,6 +24131,7 @@ function addToolDefinitionSurface(
       !authority.model_provider_call &&
       !authority.embedding_provider_call &&
       !authority.telemetry_export &&
+      !authority.prompt_cache_write &&
       !authority.tainted_network_destination &&
       !authority.tainted_shell_argument &&
       !authority.dynamic_code_execution &&
@@ -24174,6 +24175,9 @@ function addToolDefinitionSurface(
       tainted_embedding_input: authority.tainted_embedding_input,
       telemetry_export: authority.telemetry_export,
       tainted_telemetry_payload: authority.tainted_telemetry_payload,
+      prompt_cache_write: authority.prompt_cache_write,
+      tainted_prompt_cache_key: authority.tainted_prompt_cache_key,
+      tainted_prompt_cache_value: authority.tainted_prompt_cache_value,
       privileged_prompt_composition: authority.privileged_prompt_composition,
       tainted_shell_argument: authority.tainted_shell_argument,
       tainted_filesystem_path: authority.tainted_filesystem_path,
@@ -26559,6 +26563,9 @@ interface SourceToolHandlerSignals {
   handlerTaintedEmbeddingInput: boolean;
   handlerTelemetryExport: boolean;
   handlerTaintedTelemetryPayload: boolean;
+  handlerPromptCacheWrite: boolean;
+  handlerTaintedPromptCacheKey: boolean;
+  handlerTaintedPromptCacheValue: boolean;
   handlerPrivilegedPromptComposition: boolean;
   handlerSecretEnvAccess: boolean;
   handlerModelVisibleOutput: boolean;
@@ -27007,6 +27014,9 @@ function sourceToolHandlerSignalMetadata(signals: SourceToolHandlerSignals | und
     handler_tainted_embedding_input: signals.handlerTaintedEmbeddingInput,
     handler_telemetry_export: signals.handlerTelemetryExport,
     handler_tainted_telemetry_payload: signals.handlerTaintedTelemetryPayload,
+    handler_prompt_cache_write: signals.handlerPromptCacheWrite,
+    handler_tainted_prompt_cache_key: signals.handlerTaintedPromptCacheKey,
+    handler_tainted_prompt_cache_value: signals.handlerTaintedPromptCacheValue,
     handler_privileged_prompt_composition: signals.handlerPrivilegedPromptComposition,
     handler_secret_env_access: signals.handlerSecretEnvAccess,
     handler_model_visible_output: signals.handlerModelVisibleOutput,
@@ -27084,6 +27094,15 @@ function classifySourceToolHandlerSignals(
   const taintedTelemetryPayload = telemetryExport && (language === "javascript"
     ? hasJavaScriptHandlerTaintedTelemetryPayload(handlerSource)
     : hasPythonHandlerTaintedTelemetryPayload(handlerSource));
+  const promptCacheWrite = language === "javascript"
+    ? hasJavaScriptHandlerPromptCacheWrite(handlerSource)
+    : hasPythonHandlerPromptCacheWrite(handlerSource);
+  const taintedPromptCacheKey = promptCacheWrite && (language === "javascript"
+    ? hasJavaScriptHandlerTaintedPromptCacheKey(handlerSource)
+    : hasPythonHandlerTaintedPromptCacheKey(handlerSource));
+  const taintedPromptCacheValue = promptCacheWrite && (language === "javascript"
+    ? hasJavaScriptHandlerTaintedPromptCacheValue(handlerSource)
+    : hasPythonHandlerTaintedPromptCacheValue(handlerSource));
   const privilegedPromptComposition = language === "javascript"
     ? hasJavaScriptHandlerPrivilegedPromptComposition(handlerSource)
     : hasPythonHandlerPrivilegedPromptComposition(handlerSource);
@@ -27180,6 +27199,9 @@ function classifySourceToolHandlerSignals(
   if (taintedEmbeddingInput) classes.add("handler_tainted_embedding_input");
   if (telemetryExport) classes.add("handler_telemetry_export");
   if (taintedTelemetryPayload) classes.add("handler_tainted_telemetry_payload");
+  if (promptCacheWrite) classes.add("handler_prompt_cache_write");
+  if (taintedPromptCacheKey) classes.add("handler_tainted_prompt_cache_key");
+  if (taintedPromptCacheValue) classes.add("handler_tainted_prompt_cache_value");
   if (privilegedPromptComposition) classes.add("handler_privileged_prompt_composition");
   if (secretEnvAccess) classes.add("handler_secret_env_access");
   if (secretToOutput) classes.add("handler_secret_to_output");
@@ -27222,6 +27244,9 @@ function classifySourceToolHandlerSignals(
     handlerTaintedEmbeddingInput: taintedEmbeddingInput,
     handlerTelemetryExport: telemetryExport,
     handlerTaintedTelemetryPayload: taintedTelemetryPayload,
+    handlerPromptCacheWrite: promptCacheWrite,
+    handlerTaintedPromptCacheKey: taintedPromptCacheKey,
+    handlerTaintedPromptCacheValue: taintedPromptCacheValue,
     handlerPrivilegedPromptComposition: privilegedPromptComposition,
     handlerSecretEnvAccess: secretEnvAccess,
     handlerModelVisibleOutput: modelVisibleOutput,
@@ -27737,6 +27762,52 @@ function hasPythonHandlerTaintedTelemetryPayload(source: string): boolean {
   ].some((pattern) => expressionMatchesTaintedTelemetryPayload(pattern, source));
 }
 
+function hasJavaScriptHandlerPromptCacheWrite(source: string): boolean {
+  return /\b(?:promptCache|llmCache|semanticCache|responseCache|completionCache|modelCache|cacheClient|redis|redisClient|momento|upstash|langchainCache)\b/iu.test(
+    source
+  ) && [
+    /\b(?:promptCache|llmCache|semanticCache|responseCache|completionCache|modelCache|cacheClient|redis|redisClient|momento|upstash|langchainCache)\s*(?:\.\s*[A-Za-z_$][\w$]*){0,4}\s*\.\s*(?:set|setEx|setex|mset|put|save|store|write|upsert|insert|add|remember|cache|populate|setValue)\s*\(/iu,
+    /\b(?:cachePrompt|cacheResponse|cacheCompletion|cacheGeneration|populatePromptCache|writePromptCache|storePromptCache)\s*\(/iu
+  ].some((pattern) => pattern.test(source));
+}
+
+function hasPythonHandlerPromptCacheWrite(source: string): boolean {
+  return /\b(?:prompt_cache|llm_cache|semantic_cache|response_cache|completion_cache|model_cache|cache_client|redis|redis_client|momento|upstash|langchain_cache)\b/iu.test(
+    source
+  ) && [
+    /\b(?:prompt_cache|llm_cache|semantic_cache|response_cache|completion_cache|model_cache|cache_client|redis|redis_client|momento|upstash|langchain_cache)\s*(?:\.\s*[A-Za-z_]\w*){0,4}\s*\.\s*(?:set|setex|mset|put|save|store|write|upsert|insert|add|remember|cache|populate|set_value)\s*\(/iu,
+    /\b(?:cache_prompt|cache_response|cache_completion|cache_generation|populate_prompt_cache|write_prompt_cache|store_prompt_cache)\s*\(/iu
+  ].some((pattern) => pattern.test(source));
+}
+
+function hasJavaScriptHandlerTaintedPromptCacheKey(source: string): boolean {
+  return [
+    /\b(?:promptCache|llmCache|semanticCache|responseCache|completionCache|modelCache|cacheClient|redis|redisClient|momento|upstash|langchainCache)\s*(?:\.\s*[A-Za-z_$][\w$]*){0,4}\s*\.\s*(?:set|setEx|setex|mset|put|save|store|write|upsert|insert|add|remember|cache|populate|setValue)\s*\(([\s\S]{0,900})\)/giu,
+    /\b(?:cachePrompt|cacheResponse|cacheCompletion|cacheGeneration|populatePromptCache|writePromptCache|storePromptCache)\s*\(([\s\S]{0,900})\)/giu
+  ].some((pattern) => expressionMatchesTaintedPromptCacheKey(pattern, source));
+}
+
+function hasPythonHandlerTaintedPromptCacheKey(source: string): boolean {
+  return [
+    /\b(?:prompt_cache|llm_cache|semantic_cache|response_cache|completion_cache|model_cache|cache_client|redis|redis_client|momento|upstash|langchain_cache)\s*(?:\.\s*[A-Za-z_]\w*){0,4}\s*\.\s*(?:set|setex|mset|put|save|store|write|upsert|insert|add|remember|cache|populate|set_value)\s*\(([\s\S]{0,900})\)/giu,
+    /\b(?:cache_prompt|cache_response|cache_completion|cache_generation|populate_prompt_cache|write_prompt_cache|store_prompt_cache)\s*\(([\s\S]{0,900})\)/giu
+  ].some((pattern) => expressionMatchesTaintedPromptCacheKey(pattern, source));
+}
+
+function hasJavaScriptHandlerTaintedPromptCacheValue(source: string): boolean {
+  return [
+    /\b(?:promptCache|llmCache|semanticCache|responseCache|completionCache|modelCache|cacheClient|redis|redisClient|momento|upstash|langchainCache)\s*(?:\.\s*[A-Za-z_$][\w$]*){0,4}\s*\.\s*(?:set|setEx|setex|mset|put|save|store|write|upsert|insert|add|remember|cache|populate|setValue)\s*\(([\s\S]{0,900})\)/giu,
+    /\b(?:cachePrompt|cacheResponse|cacheCompletion|cacheGeneration|populatePromptCache|writePromptCache|storePromptCache)\s*\(([\s\S]{0,900})\)/giu
+  ].some((pattern) => expressionMatchesTaintedPromptCacheValue(pattern, source));
+}
+
+function hasPythonHandlerTaintedPromptCacheValue(source: string): boolean {
+  return [
+    /\b(?:prompt_cache|llm_cache|semantic_cache|response_cache|completion_cache|model_cache|cache_client|redis|redis_client|momento|upstash|langchain_cache)\s*(?:\.\s*[A-Za-z_]\w*){0,4}\s*\.\s*(?:set|setex|mset|put|save|store|write|upsert|insert|add|remember|cache|populate|set_value)\s*\(([\s\S]{0,900})\)/giu,
+    /\b(?:cache_prompt|cache_response|cache_completion|cache_generation|populate_prompt_cache|write_prompt_cache|store_prompt_cache)\s*\(([\s\S]{0,900})\)/giu
+  ].some((pattern) => expressionMatchesTaintedPromptCacheValue(pattern, source));
+}
+
 function hasJavaScriptHandlerPrivilegedPromptComposition(source: string): boolean {
   return [
     /\brole\s*:\s*["'`](?:system|developer)["'`][\s\S]{0,260}\bcontent\s*:\s*([^,\n}\]]+)/giu,
@@ -27924,6 +27995,24 @@ function expressionMatchesTaintedTelemetryPayload(pattern: RegExp, source: strin
   let match: RegExpExecArray | null;
   while ((match = pattern.exec(source)) !== null) {
     if (expressionReferencesTaintedTelemetryPayload(match[1] ?? "", source)) return true;
+    if (match[0].length === 0) pattern.lastIndex += 1;
+  }
+  return false;
+}
+
+function expressionMatchesTaintedPromptCacheKey(pattern: RegExp, source: string): boolean {
+  let match: RegExpExecArray | null;
+  while ((match = pattern.exec(source)) !== null) {
+    if (expressionReferencesTaintedPromptCacheKey(match[1] ?? "", source)) return true;
+    if (match[0].length === 0) pattern.lastIndex += 1;
+  }
+  return false;
+}
+
+function expressionMatchesTaintedPromptCacheValue(pattern: RegExp, source: string): boolean {
+  let match: RegExpExecArray | null;
+  while ((match = pattern.exec(source)) !== null) {
+    if (expressionReferencesTaintedPromptCacheValue(match[1] ?? "", source)) return true;
     if (match[0].length === 0) pattern.lastIndex += 1;
   }
   return false;
@@ -28336,6 +28425,114 @@ function expressionReferencesTaintedTelemetryPayload(expression: string, source:
 }
 
 function identifierAssignedFromTaintedTelemetryPayload(identifier: string, source: string, taintedName: RegExp): boolean {
+  const escaped = escapeRegExp(identifier);
+  const patterns = [
+    new RegExp(`\\b(?:const|let|var)\\s+${escaped}\\s*=\\s*([^;\\n]+)`, "gu"),
+    new RegExp(`\\b${escaped}\\s*=\\s*([^\\n]+)`, "gu")
+  ];
+  return patterns.some((pattern) => expressionMatchesPattern(pattern, source, taintedName));
+}
+
+function expressionReferencesTaintedPromptCacheKey(expression: string, source: string): boolean {
+  const templateInterpolation = /\$\{[^}]*\b(?:customerId|customer_id|tenantId|tenant_id|accountId|account_id|userId|user_id|sessionId|session_id|conversationId|conversation_id|promptCacheKey|prompt_cache_key|cacheKey|cache_key|semanticKey|semantic_key|customerTicketText|customer_ticket_text|promptText|prompt_text|inputText|input_text|userMessage|user_message)\b/u.test(
+    expression
+  );
+  if (templateInterpolation) return true;
+  const withoutQuotedStrings = expression.replace(/(["'`])(?:\\.|(?!\1)[\s\S])*\1/gu, " ");
+  const stronglyTaintedName = /\b(?:customerId|customer_id|tenantId|tenant_id|accountId|account_id|userId|user_id|sessionId|session_id|conversationId|conversation_id|promptCacheKey|prompt_cache_key|cacheKey|cache_key|semanticKey|semantic_key|customerTicketText|customer_ticket_text|promptText|prompt_text|inputText|input_text|userMessage|user_message)\b/u;
+  const taintedName = /\b(?:customerId|customer_id|tenantId|tenant_id|accountId|account_id|userId|user_id|sessionId|session_id|conversationId|conversation_id|promptCacheKey|prompt_cache_key|cacheKey|cache_key|semanticKey|semantic_key|customerTicketText|customer_ticket_text|promptText|prompt_text|inputText|input_text|userMessage|user_message|customer|tenant|account|user|session|conversation|prompt|message|input|query|ticket|key)\b/u;
+  if (stronglyTaintedName.test(withoutQuotedStrings)) return true;
+
+  const keyAssignment = /\b(?:key|cache_key|cacheKey|prompt_key|promptKey|semantic_key|semanticKey|tenant|tenant_id|customer|customer_id|session|session_id|conversation|conversation_id)\s*(?::|=)\s*([^,\n}\)]+)/giu;
+  if (expressionMatchesPattern(keyAssignment, withoutQuotedStrings, taintedName)) return true;
+
+  const valueOnlyExpression = withoutQuotedStrings.replace(
+    /\b(?:key|cache_key|cacheKey|prompt_key|promptKey|semantic_key|semanticKey|tenant|tenant_id|customer|customer_id|session|session_id|conversation|conversation_id)\s*(?::|=)/giu,
+    " "
+  );
+  const identifiers = uniqueStrings(
+    [...valueOnlyExpression.matchAll(/\b[A-Za-z_$][\w$]*\b/gu)]
+      .map((match) => match[0])
+      .filter((identifier) => ![
+        "promptCache",
+        "prompt_cache",
+        "llmCache",
+        "llm_cache",
+        "semanticCache",
+        "semantic_cache",
+        "responseCache",
+        "response_cache",
+        "completionCache",
+        "completion_cache",
+        "modelCache",
+        "model_cache",
+        "cacheClient",
+        "cache_client",
+        "redis",
+        "redisClient",
+        "redis_client",
+        "momento",
+        "upstash",
+        "langchainCache",
+        "langchain_cache",
+        "token",
+        "ttl"
+      ].includes(identifier))
+  );
+  return identifiers.some((identifier) => identifierAssignedFromTaintedPromptCacheInput(identifier, source, taintedName));
+}
+
+function expressionReferencesTaintedPromptCacheValue(expression: string, source: string): boolean {
+  const templateInterpolation = /\$\{[^}]*\b(?:customerTicketText|customer_ticket_text|ticketText|ticket_text|customerContext|customer_context|customerMessage|customer_message|toolOutput|tool_output|toolTracePayload|tool_trace_payload|retrievedContext|retrieved_context|promptText|prompt_text|completionText|completion_text|responseText|response_text|modelResponse|model_response|userMessage|user_message|conversationText|conversation_text|inputText|input_text|content|message|prompt|payload|context|output|response|completion|customer|ticket)\b/u.test(
+    expression
+  );
+  if (templateInterpolation) return true;
+  const withoutQuotedStrings = expression.replace(/(["'`])(?:\\.|(?!\1)[\s\S])*\1/gu, " ");
+  const stronglyTaintedName = /\b(?:customerTicketText|customer_ticket_text|ticketText|ticket_text|customerContext|customer_context|customerMessage|customer_message|toolOutput|tool_output|toolTracePayload|tool_trace_payload|retrievedContext|retrieved_context|promptText|prompt_text|completionText|completion_text|responseText|response_text|modelResponse|model_response|userMessage|user_message|conversationText|conversation_text|inputText|input_text)\b/u;
+  const taintedName = /\b(?:customerTicketText|customer_ticket_text|ticketText|ticket_text|customerContext|customer_context|customerMessage|customer_message|toolOutput|tool_output|toolTracePayload|tool_trace_payload|retrievedContext|retrieved_context|promptText|prompt_text|completionText|completion_text|responseText|response_text|modelResponse|model_response|userMessage|user_message|conversationText|conversation_text|inputText|input_text|content|message|prompt|payload|context|output|response|completion|customer|ticket|input|text)\b/u;
+  if (stronglyTaintedName.test(withoutQuotedStrings)) return true;
+
+  const valueAssignment = /\b(?:value|cache_value|cacheValue|prompt|message|content|input|payload|context|output|response|completion|text|body|tool_output|toolOutput)\s*(?::|=)\s*([^,\n}\)]+)/giu;
+  if (expressionMatchesPattern(valueAssignment, withoutQuotedStrings, taintedName)) return true;
+
+  const valueOnlyExpression = withoutQuotedStrings.replace(
+    /\b(?:value|cache_value|cacheValue|prompt|message|content|input|payload|context|output|response|completion|text|body|tool_output|toolOutput)\s*(?::|=)/giu,
+    " "
+  );
+  const identifiers = uniqueStrings(
+    [...valueOnlyExpression.matchAll(/\b[A-Za-z_$][\w$]*\b/gu)]
+      .map((match) => match[0])
+      .filter((identifier) => ![
+        "promptCache",
+        "prompt_cache",
+        "llmCache",
+        "llm_cache",
+        "semanticCache",
+        "semantic_cache",
+        "responseCache",
+        "response_cache",
+        "completionCache",
+        "completion_cache",
+        "modelCache",
+        "model_cache",
+        "cacheClient",
+        "cache_client",
+        "redis",
+        "redisClient",
+        "redis_client",
+        "momento",
+        "upstash",
+        "langchainCache",
+        "langchain_cache",
+        "token",
+        "ttl",
+        "metadata"
+      ].includes(identifier))
+  );
+  return identifiers.some((identifier) => identifierAssignedFromTaintedPromptCacheInput(identifier, source, taintedName));
+}
+
+function identifierAssignedFromTaintedPromptCacheInput(identifier: string, source: string, taintedName: RegExp): boolean {
   const escaped = escapeRegExp(identifier);
   const patterns = [
     new RegExp(`\\b(?:const|let|var)\\s+${escaped}\\s*=\\s*([^;\\n]+)`, "gu"),
@@ -29760,6 +29957,9 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   tainted_embedding_input: boolean;
   telemetry_export: boolean;
   tainted_telemetry_payload: boolean;
+  prompt_cache_write: boolean;
+  tainted_prompt_cache_key: boolean;
+  tainted_prompt_cache_value: boolean;
   privileged_prompt_composition: boolean;
   tainted_shell_argument: boolean;
   tainted_filesystem_path: boolean;
@@ -29802,6 +30002,9 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   const handlerTaintedEmbeddingInput = handler?.handlerTaintedEmbeddingInput === true;
   const handlerTelemetryExport = handler?.handlerTelemetryExport === true;
   const handlerTaintedTelemetryPayload = handler?.handlerTaintedTelemetryPayload === true;
+  const handlerPromptCacheWrite = handler?.handlerPromptCacheWrite === true;
+  const handlerTaintedPromptCacheKey = handler?.handlerTaintedPromptCacheKey === true;
+  const handlerTaintedPromptCacheValue = handler?.handlerTaintedPromptCacheValue === true;
   const handlerPrivilegedPromptComposition = handler?.handlerPrivilegedPromptComposition === true;
   const handlerDatabaseQuery = handler?.handlerDatabaseQuery === true;
   const handlerDatabaseWrite = handler?.handlerDatabaseWrite === true;
@@ -30000,6 +30203,17 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
     classes.add("tainted_telemetry_payload");
     actions.add("send");
   }
+  if (handlerPromptCacheWrite) {
+    classes.add("prompt_cache_write");
+    actions.add("write");
+    actions.add("remember");
+  }
+  if (handlerTaintedPromptCacheKey) {
+    classes.add("tainted_prompt_cache_key");
+  }
+  if (handlerTaintedPromptCacheValue) {
+    classes.add("tainted_prompt_cache_value");
+  }
   if (handlerPrivilegedPromptComposition) {
     classes.add("privileged_prompt_composition");
     actions.add("send");
@@ -30065,6 +30279,9 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerTaintedEmbeddingInput ||
       handlerTelemetryExport ||
       handlerTaintedTelemetryPayload ||
+      handlerPromptCacheWrite ||
+      handlerTaintedPromptCacheKey ||
+      handlerTaintedPromptCacheValue ||
       handlerPrivilegedPromptComposition ||
       handlerTaintedShellArgument ||
       handlerDatabaseQuery ||
@@ -30103,7 +30320,8 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerExternalServiceWrite ||
       handlerModelProviderCall ||
       handlerEmbeddingProviderCall ||
-      handlerTelemetryExport,
+      handlerTelemetryExport ||
+      (handlerPromptCacheWrite && handlerSecretEnvAccess),
     secret_exposure: acceptsSecret || handlerSecretEnvAccess || localFileDisclosure || handlerCredentialIssuance || handlerSecretManagerAccess,
     accepts_secret_like_input: acceptsSecret,
     accepts_content_like_input: acceptsContent,
@@ -30134,6 +30352,9 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
     tainted_embedding_input: handlerTaintedEmbeddingInput,
     telemetry_export: handlerTelemetryExport,
     tainted_telemetry_payload: handlerTaintedTelemetryPayload,
+    prompt_cache_write: handlerPromptCacheWrite,
+    tainted_prompt_cache_key: handlerTaintedPromptCacheKey,
+    tainted_prompt_cache_value: handlerTaintedPromptCacheValue,
     privileged_prompt_composition: handlerPrivilegedPromptComposition,
     tainted_shell_argument: handlerTaintedShellArgument,
     tainted_filesystem_path: handlerTaintedFilesystemPath,
@@ -30205,6 +30426,9 @@ function authoritySignature(tool: SurfaceObject): string {
     metadata.tainted_embedding_input === true ? "tainted_embedding_input" : "",
     metadata.telemetry_export === true ? "telemetry_export" : "",
     metadata.tainted_telemetry_payload === true ? "tainted_telemetry_payload" : "",
+    metadata.prompt_cache_write === true ? "prompt_cache_write" : "",
+    metadata.tainted_prompt_cache_key === true ? "tainted_prompt_cache_key" : "",
+    metadata.tainted_prompt_cache_value === true ? "tainted_prompt_cache_value" : "",
     metadata.privileged_prompt_composition === true ? "privileged_prompt_composition" : "",
     metadata.tainted_shell_argument === true ? "tainted_shell_argument" : "",
     metadata.tainted_filesystem_path === true ? "tainted_filesystem_path" : "",
@@ -30252,6 +30476,9 @@ function isPrivilegedToolSurface(tool: SurfaceObject): boolean {
     tool.metadata.tainted_embedding_input === true ||
     tool.metadata.telemetry_export === true ||
     tool.metadata.tainted_telemetry_payload === true ||
+    tool.metadata.prompt_cache_write === true ||
+    tool.metadata.tainted_prompt_cache_key === true ||
+    tool.metadata.tainted_prompt_cache_value === true ||
     tool.metadata.privileged_prompt_composition === true ||
     tool.metadata.tainted_shell_argument === true ||
     tool.metadata.tainted_filesystem_path === true ||

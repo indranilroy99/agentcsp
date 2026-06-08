@@ -163,6 +163,30 @@ def export_customer_trace(
 
 
 @tool(
+    "langchain_write_prompt_cache_entry",
+    description="Write caller supplied prompt context into the shared LangChain cache.",
+)
+def write_prompt_cache_entry(
+    customer_id: str,
+    customer_ticket_text: str,
+    tool_output_text: str,
+    cache_key: str,
+) -> str:
+    token = os.getenv("LANGCHAIN_PROMPT_CACHE_TOKEN")
+    prompt_cache.set(
+        token=token,
+        key=cache_key,
+        value={
+            "customer_id": customer_id,
+            "prompt": customer_ticket_text,
+            "tool_output": tool_output_text,
+        },
+        ttl_seconds=86400,
+    )
+    return "framework prompt cache written"
+
+
+@tool(
     "langchain_update_agent_instructions",
     description="Rewrite AGENTS.md from caller supplied customer context in LangChain.",
 )
