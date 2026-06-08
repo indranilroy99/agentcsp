@@ -62,6 +62,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-046")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-047")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-048")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-049")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-001")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-002")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-003")).toBe(true);
@@ -6501,6 +6502,41 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerNestedToolInvocationFindings)).not.toContain("mcpClient.callTool");
     expect(JSON.stringify(sourceHandlerNestedToolInvocationFindings)).not.toContain("tool_registry.call_tool");
     expect(JSON.stringify(sourceHandlerNestedToolInvocationFindings)).not.toContain("Dispatch a caller selected privileged tool");
+    const sourceHandlerAgentDelegationFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-049");
+    expect(sourceHandlerAgentDelegationFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
+      "langchain_delegate_customer_case_to_remote_agent",
+      "source_delegate_customer_case_to_remote_agent"
+    ]);
+    expect(sourceHandlerAgentDelegationFindings.every((finding) => finding.severity === "critical")).toBe(true);
+    expect(sourceHandlerAgentDelegationFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerAgentDelegationFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
+    expect(sourceHandlerAgentDelegationFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
+    expect(sourceHandlerAgentDelegationFindings.every((finding) => finding.matched_object.metadata.handler_agent_delegation === true)).toBe(true);
+    expect(sourceHandlerAgentDelegationFindings.every((finding) => finding.matched_object.metadata.handler_tainted_agent_delegation_target === true)).toBe(true);
+    expect(sourceHandlerAgentDelegationFindings.every((finding) => finding.matched_object.metadata.handler_agent_delegation_context_forwarding === true)).toBe(true);
+    expect(sourceHandlerAgentDelegationFindings.every((finding) => finding.matched_object.metadata.agent_delegation === true)).toBe(true);
+    expect(sourceHandlerAgentDelegationFindings.every((finding) => finding.matched_object.metadata.tainted_agent_delegation_target === true)).toBe(true);
+    expect(sourceHandlerAgentDelegationFindings.every((finding) => finding.matched_object.metadata.agent_delegation_context_forwarding === true)).toBe(true);
+    expect(sourceHandlerAgentDelegationFindings.every((finding) => finding.matched_object.metadata.handler_secret_env_access === true)).toBe(true);
+    expect(sourceHandlerAgentDelegationFindings.every((finding) => finding.matched_object.metadata.accepts_url_input === true)).toBe(true);
+    expect(sourceHandlerAgentDelegationFindings.every((finding) => finding.matched_object.metadata.accepts_content_like_input === true)).toBe(true);
+    expect(sourceHandlerAgentDelegationFindings.every((finding) => finding.matched_object.metadata.accepts_customer_data_input === true)).toBe(true);
+    expect(sourceHandlerAgentDelegationFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("agent_delegation"))).toBe(true);
+    expect(sourceHandlerAgentDelegationFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("tainted_agent_delegation_target"))).toBe(true);
+    expect(sourceHandlerAgentDelegationFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("agent_delegation_context_forwarding"))).toBe(true);
+    expect(sourceHandlerAgentDelegationFindings.every((finding) => finding.matched_object.metadata.handler_authority_classes.includes("handler_agent_delegation"))).toBe(true);
+    expect(sourceHandlerAgentDelegationFindings.every((finding) => finding.matched_object.metadata.handler_authority_classes.includes("handler_tainted_agent_delegation_target"))).toBe(true);
+    expect(sourceHandlerAgentDelegationFindings.every((finding) => finding.matched_object.metadata.handler_authority_classes.includes("handler_agent_delegation_context_forwarding"))).toBe(true);
+    expect(sourceHandlerAgentDelegationFindings.every((finding) => finding.matched_object.actions.includes("execute"))).toBe(true);
+    expect(sourceHandlerAgentDelegationFindings.every((finding) => finding.matched_object.actions.includes("send"))).toBe(true);
+    expect(sourceHandlerAgentDelegationFindings.every((finding) => finding.matched_object.external_reach === true)).toBe(true);
+    expect(sourceHandlerAgentDelegationFindings.every((finding) => finding.matched_object.secret_exposure === true)).toBe(true);
+    expect(sourceHandlerAgentDelegationFindings.every((finding) => finding.matched_object.side_effect === true)).toBe(true);
+    expect(sourceHandlerAgentDelegationFindings.every((finding) => finding.matched_object.reversible === false)).toBe(true);
+    expect(JSON.stringify(sourceHandlerAgentDelegationFindings)).not.toContain("remoteAgentClient.delegateTask");
+    expect(JSON.stringify(sourceHandlerAgentDelegationFindings)).not.toContain("remote_agent_client.delegate_task");
+    expect(JSON.stringify(sourceHandlerAgentDelegationFindings)).not.toContain("customerTicket");
+    expect(JSON.stringify(sourceHandlerAgentDelegationFindings)).not.toContain("Delegate caller supplied customer context");
     const sourceHandlerBrowserAutomationFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-027");
     expect(sourceHandlerBrowserAutomationFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_submit_customer_browser_form",

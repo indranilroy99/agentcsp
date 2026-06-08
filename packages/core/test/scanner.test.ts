@@ -552,6 +552,7 @@ describe("scanner", () => {
     const sourceAgentConfigWriteTool = surfaces.tools.find((surface) => surface.name === "source_update_agent_instructions");
     const sourceCredentialIssuanceTool = surfaces.tools.find((surface) => surface.name === "source_mint_agent_session_token");
     const sourceNestedToolInvocationTool = surfaces.tools.find((surface) => surface.name === "source_dispatch_privileged_tool");
+    const sourceAgentDelegationTool = surfaces.tools.find((surface) => surface.name === "source_delegate_customer_case_to_remote_agent");
     const sourceBrowserAutomationTool = surfaces.tools.find((surface) => surface.name === "source_submit_customer_browser_form");
     const sourceVisualContextCaptureTool = surfaces.tools.find((surface) => surface.name === "source_capture_authenticated_page_screenshot");
     const sourceSecretManagerAccessTool = surfaces.tools.find((surface) => surface.name === "source_read_customer_vault_secret");
@@ -576,6 +577,7 @@ describe("scanner", () => {
     const langchainAgentConfigWriteTool = surfaces.tools.find((surface) => surface.name === "langchain_update_agent_instructions");
     const langchainCredentialIssuanceTool = surfaces.tools.find((surface) => surface.name === "langchain_mint_agent_session_token");
     const langchainNestedToolInvocationTool = surfaces.tools.find((surface) => surface.name === "langchain_dispatch_privileged_tool");
+    const langchainAgentDelegationTool = surfaces.tools.find((surface) => surface.name === "langchain_delegate_customer_case_to_remote_agent");
     const langchainBrowserAutomationTool = surfaces.tools.find((surface) => surface.name === "langchain_submit_customer_browser_form");
     const langchainVisualContextCaptureTool = surfaces.tools.find((surface) => surface.name === "langchain_capture_authenticated_page_screenshot");
     const langchainSecretManagerAccessTool = surfaces.tools.find((surface) => surface.name === "langchain_read_customer_vault_secret");
@@ -1766,6 +1768,88 @@ describe("scanner", () => {
     ]);
     expect(JSON.stringify(sourceNestedToolInvocationTool)).not.toContain("mcpClient.callTool");
     expect(JSON.stringify(sourceNestedToolInvocationTool)).not.toContain("Dispatch a caller selected privileged tool");
+    expect(sourceAgentDelegationTool).toMatchObject({
+      path: "mcp-source/customer-tools.ts",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["call", "execute", "send"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(sourceAgentDelegationTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_mcp_source_tool: true,
+      mcp_source_tool_registration: true,
+      mcp_source_tool_registration_kind: "registerTool",
+      mcp_source_tool_argument_count: 3,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      read_only_hint: false,
+      idempotent_hint: false,
+      accepts_secret_like_input: false,
+      accepts_content_like_input: true,
+      accepts_url_input: true,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      agent_delegation: true,
+      tainted_agent_delegation_target: true,
+      agent_delegation_context_forwarding: true,
+      external_write: false,
+      destructive_action: false,
+      read_only_hint_conflict: false,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_secret_env_access: true,
+      handler_model_visible_output: true,
+      handler_agent_delegation: true,
+      handler_tainted_agent_delegation_target: true,
+      handler_agent_delegation_context_forwarding: true,
+      handler_tool_invocation: false,
+      handler_browser_automation: false,
+      handler_external_service_write: false,
+      handler_model_provider_call: false,
+      handler_signal_count: 4,
+      open_world_schema: false
+    });
+    expect(sourceAgentDelegationTool?.metadata.authority_classes).toEqual([
+      "agent_delegation",
+      "agent_delegation_context_forwarding",
+      "content_input",
+      "customer_data_input",
+      "handler_agent_delegation",
+      "handler_agent_delegation_context_forwarding",
+      "handler_secret_env_access",
+      "handler_tainted_agent_delegation_target",
+      "network_access",
+      "pii_input",
+      "secret_env_access",
+      "tainted_agent_delegation_target"
+    ]);
+    expect(sourceAgentDelegationTool?.metadata.handler_authority_classes).toEqual([
+      "handler_agent_delegation",
+      "handler_agent_delegation_context_forwarding",
+      "handler_secret_env_access",
+      "handler_tainted_agent_delegation_target"
+    ]);
+    expect(sourceAgentDelegationTool?.metadata.handler_env_key_names).toEqual(["SOURCE_A2A_FEDERATION_TOKEN"]);
+    expect(sourceAgentDelegationTool?.metadata.schema_properties).toEqual([
+      "customer_id",
+      "customer_ticket_text",
+      "requested_task_type",
+      "target_agent_url",
+      "tool_output_text"
+    ]);
+    expect(sourceAgentDelegationTool?.metadata.required_properties).toEqual([
+      "customer_id",
+      "customer_ticket_text",
+      "requested_task_type",
+      "target_agent_url",
+      "tool_output_text"
+    ]);
+    expect(JSON.stringify(sourceAgentDelegationTool)).not.toContain("remoteAgentClient.delegateTask");
+    expect(JSON.stringify(sourceAgentDelegationTool)).not.toContain("Delegate caller supplied customer context");
+    expect(JSON.stringify(sourceAgentDelegationTool)).not.toContain("customerTicket");
     expect(sourceBrowserAutomationTool).toMatchObject({
       path: "mcp-source/customer-tools.ts",
       data_classes: ["confidential", "credential", "pii"],
@@ -3602,6 +3686,86 @@ describe("scanner", () => {
     ]);
     expect(JSON.stringify(langchainNestedToolInvocationTool)).not.toContain("tool_registry.call_tool");
     expect(JSON.stringify(langchainNestedToolInvocationTool)).not.toContain("Dispatch a caller selected privileged tool");
+    expect(langchainAgentDelegationTool).toMatchObject({
+      path: "framework-tools/langchain_tools.py",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["call", "execute", "send"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(langchainAgentDelegationTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_agent_framework_source_tool: true,
+      agent_framework_source_tool: true,
+      agent_framework_source_tool_framework: "langchain",
+      agent_framework_source_tool_registration_kind: "python_tool_decorator",
+      agent_framework_source_tool_argument_count: 5,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_secret_like_input: false,
+      accepts_content_like_input: true,
+      accepts_url_input: true,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      agent_delegation: true,
+      tainted_agent_delegation_target: true,
+      agent_delegation_context_forwarding: true,
+      external_write: false,
+      destructive_action: false,
+      read_only_hint_conflict: false,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_secret_env_access: true,
+      handler_model_visible_output: true,
+      handler_agent_delegation: true,
+      handler_tainted_agent_delegation_target: true,
+      handler_agent_delegation_context_forwarding: true,
+      handler_tool_invocation: false,
+      handler_browser_automation: false,
+      handler_external_service_write: false,
+      handler_model_provider_call: false,
+      handler_signal_count: 4,
+      open_world_schema: false
+    });
+    expect(langchainAgentDelegationTool?.metadata.authority_classes).toEqual([
+      "agent_delegation",
+      "agent_delegation_context_forwarding",
+      "content_input",
+      "customer_data_input",
+      "handler_agent_delegation",
+      "handler_agent_delegation_context_forwarding",
+      "handler_secret_env_access",
+      "handler_tainted_agent_delegation_target",
+      "network_access",
+      "pii_input",
+      "secret_env_access",
+      "tainted_agent_delegation_target"
+    ]);
+    expect(langchainAgentDelegationTool?.metadata.handler_authority_classes).toEqual([
+      "handler_agent_delegation",
+      "handler_agent_delegation_context_forwarding",
+      "handler_secret_env_access",
+      "handler_tainted_agent_delegation_target"
+    ]);
+    expect(langchainAgentDelegationTool?.metadata.handler_env_key_names).toEqual(["LANGCHAIN_A2A_FEDERATION_TOKEN"]);
+    expect(langchainAgentDelegationTool?.metadata.schema_properties).toEqual([
+      "customer_id",
+      "customer_ticket_text",
+      "requested_task_type",
+      "target_agent_url",
+      "tool_output_text"
+    ]);
+    expect(langchainAgentDelegationTool?.metadata.required_properties).toEqual([
+      "customer_id",
+      "customer_ticket_text",
+      "requested_task_type",
+      "target_agent_url",
+      "tool_output_text"
+    ]);
+    expect(JSON.stringify(langchainAgentDelegationTool)).not.toContain("remote_agent_client.delegate_task");
+    expect(JSON.stringify(langchainAgentDelegationTool)).not.toContain("Delegate caller supplied customer context");
     expect(langchainBrowserAutomationTool).toMatchObject({
       path: "framework-tools/langchain_tools.py",
       data_classes: ["confidential", "credential", "pii"],

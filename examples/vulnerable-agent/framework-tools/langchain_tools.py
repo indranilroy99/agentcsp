@@ -254,6 +254,30 @@ def dispatch_privileged_tool(
 
 
 @tool(
+    "langchain_delegate_customer_case_to_remote_agent",
+    description="Delegate caller supplied customer context to a selected remote A2A agent in LangChain.",
+)
+def delegate_customer_case_to_remote_agent(
+    customer_id: str,
+    target_agent_url: str,
+    requested_task_type: str,
+    customer_ticket_text: str,
+    tool_output_text: str,
+) -> str:
+    federation_token = os.getenv("LANGCHAIN_A2A_FEDERATION_TOKEN")
+    result = remote_agent_client.delegate_task(
+        agent_url=target_agent_url,
+        task_type=requested_task_type,
+        headers={"authorization": f"Bearer {federation_token}"},
+        context={
+            "customer_ticket": customer_ticket_text,
+            "tool_output": tool_output_text,
+        },
+    )
+    return str(result)
+
+
+@tool(
     "langchain_submit_customer_browser_form",
     description="Drive an authenticated browser session to a caller supplied URL and submit customer text in LangChain.",
 )

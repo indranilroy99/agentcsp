@@ -380,6 +380,37 @@ server.registerTool(
 );
 
 server.registerTool(
+  "source_delegate_customer_case_to_remote_agent",
+  {
+    description: "Delegate caller supplied customer context to a selected remote A2A agent.",
+    inputSchema: z.object({
+      customer_id: z.string(),
+      target_agent_url: z.string().url(),
+      requested_task_type: z.string(),
+      customer_ticket_text: z.string(),
+      tool_output_text: z.string()
+    }).strict(),
+    annotations: {
+      readOnlyHint: false,
+      idempotentHint: false
+    }
+  },
+  async ({ target_agent_url, requested_task_type, customer_ticket_text, tool_output_text }) => {
+    const federationToken = process.env.SOURCE_A2A_FEDERATION_TOKEN;
+    const result = await globalThis.remoteAgentClient.delegateTask({
+      agentUrl: target_agent_url,
+      taskType: requested_task_type,
+      headers: { authorization: `Bearer ${federationToken}` },
+      context: {
+        customerTicket: customer_ticket_text,
+        toolOutput: tool_output_text
+      }
+    });
+    return { content: [{ type: "text", text: JSON.stringify(result) }] };
+  }
+);
+
+server.registerTool(
   "source_submit_customer_browser_form",
   {
     description: "Drive an authenticated browser session to a caller supplied URL and submit customer text.",

@@ -24124,6 +24124,7 @@ function addToolDefinitionSurface(
       !authority.memory_write &&
       !authority.agent_config_write &&
       !authority.credential_issuance &&
+      !authority.agent_delegation &&
       !authority.nested_tool_invocation &&
       !authority.browser_automation &&
       !authority.secret_manager_access &&
@@ -24164,6 +24165,9 @@ function addToolDefinitionSurface(
       agent_config_write: authority.agent_config_write,
       credential_issuance: authority.credential_issuance,
       tainted_credential_issuance_input: authority.tainted_credential_issuance_input,
+      agent_delegation: authority.agent_delegation,
+      tainted_agent_delegation_target: authority.tainted_agent_delegation_target,
+      agent_delegation_context_forwarding: authority.agent_delegation_context_forwarding,
       nested_tool_invocation: authority.nested_tool_invocation,
       browser_automation: authority.browser_automation,
       tainted_browser_automation_target: authority.tainted_browser_automation_target,
@@ -26586,6 +26590,9 @@ interface SourceToolHandlerSignals {
   handlerAgentConfigWrite: boolean;
   handlerCredentialIssuance: boolean;
   handlerTaintedCredentialIssuanceInput: boolean;
+  handlerAgentDelegation: boolean;
+  handlerTaintedAgentDelegationTarget: boolean;
+  handlerAgentDelegationContextForwarding: boolean;
   handlerToolInvocation: boolean;
   handlerBrowserAutomation: boolean;
   handlerTaintedBrowserAutomationTarget: boolean;
@@ -27041,6 +27048,9 @@ function sourceToolHandlerSignalMetadata(signals: SourceToolHandlerSignals | und
     handler_agent_config_write: signals.handlerAgentConfigWrite,
     handler_credential_issuance: signals.handlerCredentialIssuance,
     handler_tainted_credential_issuance_input: signals.handlerTaintedCredentialIssuanceInput,
+    handler_agent_delegation: signals.handlerAgentDelegation,
+    handler_tainted_agent_delegation_target: signals.handlerTaintedAgentDelegationTarget,
+    handler_agent_delegation_context_forwarding: signals.handlerAgentDelegationContextForwarding,
     handler_tool_invocation: signals.handlerToolInvocation,
     handler_browser_automation: signals.handlerBrowserAutomation,
     handler_tainted_browser_automation_target: signals.handlerTaintedBrowserAutomationTarget,
@@ -27189,6 +27199,15 @@ function classifySourceToolHandlerSignals(
   const taintedCredentialIssuanceInput = credentialIssuance && (language === "javascript"
     ? hasJavaScriptHandlerTaintedCredentialIssuanceInput(handlerSource)
     : hasPythonHandlerTaintedCredentialIssuanceInput(handlerSource));
+  const agentDelegation = language === "javascript"
+    ? hasJavaScriptHandlerAgentDelegation(handlerSource)
+    : hasPythonHandlerAgentDelegation(handlerSource);
+  const taintedAgentDelegationTarget = agentDelegation && (language === "javascript"
+    ? hasJavaScriptHandlerTaintedAgentDelegationTarget(handlerSource)
+    : hasPythonHandlerTaintedAgentDelegationTarget(handlerSource));
+  const agentDelegationContextForwarding = agentDelegation && (language === "javascript"
+    ? hasJavaScriptHandlerAgentDelegationContextForwarding(handlerSource)
+    : hasPythonHandlerAgentDelegationContextForwarding(handlerSource));
   const toolInvocation = language === "javascript"
     ? hasJavaScriptHandlerToolInvocation(handlerSource)
     : hasPythonHandlerToolInvocation(handlerSource);
@@ -27239,6 +27258,9 @@ function classifySourceToolHandlerSignals(
   if (agentConfigWrite) classes.add("handler_agent_config_write");
   if (credentialIssuance) classes.add("handler_credential_issuance");
   if (taintedCredentialIssuanceInput) classes.add("handler_tainted_credential_issuance_input");
+  if (agentDelegation) classes.add("handler_agent_delegation");
+  if (taintedAgentDelegationTarget) classes.add("handler_tainted_agent_delegation_target");
+  if (agentDelegationContextForwarding) classes.add("handler_agent_delegation_context_forwarding");
   if (toolInvocation) classes.add("handler_tool_invocation");
   if (browserAutomation) classes.add("handler_browser_automation");
   if (taintedBrowserAutomationTarget) classes.add("handler_tainted_browser_automation_target");
@@ -27289,6 +27311,9 @@ function classifySourceToolHandlerSignals(
     handlerAgentConfigWrite: agentConfigWrite,
     handlerCredentialIssuance: credentialIssuance,
     handlerTaintedCredentialIssuanceInput: taintedCredentialIssuanceInput,
+    handlerAgentDelegation: agentDelegation,
+    handlerTaintedAgentDelegationTarget: taintedAgentDelegationTarget,
+    handlerAgentDelegationContextForwarding: agentDelegationContextForwarding,
     handlerToolInvocation: toolInvocation,
     handlerBrowserAutomation: browserAutomation,
     handlerTaintedBrowserAutomationTarget: taintedBrowserAutomationTarget,
@@ -27605,6 +27630,46 @@ function hasPythonHandlerTaintedCredentialIssuanceInput(source: string): boolean
     /\b(?:credential_broker|identity_broker|token_broker|auth_broker|sts|iam|oauth_client|service_account)\s*\.\s*(?:issue|mint|create|generate|sign|assume_role|impersonate|exchange|grant|create_token|issue_token|mint_token|sign_jwt|get_access_token)\s*\(([\s\S]{0,720})\)/giu,
     /\b(?:issue|mint|create|generate|sign|assume|impersonate)_(?:token|jwt|credential|credentials|session|grant|role)\s*\(([\s\S]{0,720})\)/giu
   ].some((pattern) => expressionMatchesTaintedCredentialIssuanceInput(pattern, source));
+}
+
+function hasJavaScriptHandlerAgentDelegation(source: string): boolean {
+  return /\b(?:a2aClient|agentClient|remoteAgentClient|agentRegistry|agentRouter|agentGateway|agentFederation|handoffClient|delegateClient)\s*(?:\.\s*[A-Za-z_$][\w$]*){0,4}\s*\.\s*(?:delegate|delegateTask|handoff|handoffToAgent|invokeAgent|runAgent|callAgent|sendTask|createTask|dispatch|route|execute)\s*\(/iu.test(
+    source
+  ) || /\b(?:delegateToAgent|handoffToAgent|invokeAgent|callAgent|sendAgentTask|dispatchAgentTask)\s*\(/u.test(source);
+}
+
+function hasPythonHandlerAgentDelegation(source: string): boolean {
+  return /\b(?:a2a_client|agent_client|remote_agent_client|agent_registry|agent_router|agent_gateway|agent_federation|handoff_client|delegate_client)\s*(?:\.\s*[A-Za-z_]\w*){0,4}\s*\.\s*(?:delegate|delegate_task|handoff|handoff_to_agent|invoke_agent|run_agent|call_agent|send_task|create_task|dispatch|route|execute)\s*\(/iu.test(
+    source
+  ) || /\b(?:delegate_to_agent|handoff_to_agent|invoke_agent|call_agent|send_agent_task|dispatch_agent_task)\s*\(/u.test(source);
+}
+
+function hasJavaScriptHandlerTaintedAgentDelegationTarget(source: string): boolean {
+  return [
+    /\b(?:a2aClient|agentClient|remoteAgentClient|agentRegistry|agentRouter|agentGateway|agentFederation|handoffClient|delegateClient)\s*(?:\.\s*[A-Za-z_$][\w$]*){0,4}\s*\.\s*(?:delegate|delegateTask|handoff|handoffToAgent|invokeAgent|runAgent|callAgent|sendTask|createTask|dispatch|route|execute)\s*\(([\s\S]{0,900})\)/giu,
+    /\b(?:delegateToAgent|handoffToAgent|invokeAgent|callAgent|sendAgentTask|dispatchAgentTask)\s*\(([\s\S]{0,900})\)/giu
+  ].some((pattern) => expressionMatchesTaintedAgentDelegationTarget(pattern, source));
+}
+
+function hasPythonHandlerTaintedAgentDelegationTarget(source: string): boolean {
+  return [
+    /\b(?:a2a_client|agent_client|remote_agent_client|agent_registry|agent_router|agent_gateway|agent_federation|handoff_client|delegate_client)\s*(?:\.\s*[A-Za-z_]\w*){0,4}\s*\.\s*(?:delegate|delegate_task|handoff|handoff_to_agent|invoke_agent|run_agent|call_agent|send_task|create_task|dispatch|route|execute)\s*\(([\s\S]{0,900})\)/giu,
+    /\b(?:delegate_to_agent|handoff_to_agent|invoke_agent|call_agent|send_agent_task|dispatch_agent_task)\s*\(([\s\S]{0,900})\)/giu
+  ].some((pattern) => expressionMatchesTaintedAgentDelegationTarget(pattern, source));
+}
+
+function hasJavaScriptHandlerAgentDelegationContextForwarding(source: string): boolean {
+  return [
+    /\b(?:a2aClient|agentClient|remoteAgentClient|agentRegistry|agentRouter|agentGateway|agentFederation|handoffClient|delegateClient)\s*(?:\.\s*[A-Za-z_$][\w$]*){0,4}\s*\.\s*(?:delegate|delegateTask|handoff|handoffToAgent|invokeAgent|runAgent|callAgent|sendTask|createTask|dispatch|route|execute)\s*\(([\s\S]{0,1200})\)/giu,
+    /\b(?:delegateToAgent|handoffToAgent|invokeAgent|callAgent|sendAgentTask|dispatchAgentTask)\s*\(([\s\S]{0,1200})\)/giu
+  ].some((pattern) => expressionMatchesAgentDelegationContextForwarding(pattern, source));
+}
+
+function hasPythonHandlerAgentDelegationContextForwarding(source: string): boolean {
+  return [
+    /\b(?:a2a_client|agent_client|remote_agent_client|agent_registry|agent_router|agent_gateway|agent_federation|handoff_client|delegate_client)\s*(?:\.\s*[A-Za-z_]\w*){0,4}\s*\.\s*(?:delegate|delegate_task|handoff|handoff_to_agent|invoke_agent|run_agent|call_agent|send_task|create_task|dispatch|route|execute)\s*\(([\s\S]{0,1200})\)/giu,
+    /\b(?:delegate_to_agent|handoff_to_agent|invoke_agent|call_agent|send_agent_task|dispatch_agent_task)\s*\(([\s\S]{0,1200})\)/giu
+  ].some((pattern) => expressionMatchesAgentDelegationContextForwarding(pattern, source));
 }
 
 function hasJavaScriptHandlerToolInvocation(source: string): boolean {
@@ -28051,6 +28116,24 @@ function expressionMatchesTaintedCredentialIssuanceInput(pattern: RegExp, source
   return false;
 }
 
+function expressionMatchesTaintedAgentDelegationTarget(pattern: RegExp, source: string): boolean {
+  let match: RegExpExecArray | null;
+  while ((match = pattern.exec(source)) !== null) {
+    if (expressionReferencesTaintedAgentDelegationTarget(match[1] ?? "", source)) return true;
+    if (match[0].length === 0) pattern.lastIndex += 1;
+  }
+  return false;
+}
+
+function expressionMatchesAgentDelegationContextForwarding(pattern: RegExp, source: string): boolean {
+  let match: RegExpExecArray | null;
+  while ((match = pattern.exec(source)) !== null) {
+    if (expressionReferencesAgentDelegationContextForwarding(match[1] ?? "", source)) return true;
+    if (match[0].length === 0) pattern.lastIndex += 1;
+  }
+  return false;
+}
+
 function expressionMatchesTaintedModelSelection(pattern: RegExp, source: string): boolean {
   let match: RegExpExecArray | null;
   while ((match = pattern.exec(source)) !== null) {
@@ -28336,6 +28419,112 @@ function expressionReferencesTaintedCredentialIssuanceInput(expression: string, 
 }
 
 function identifierAssignedFromTaintedCredentialIssuanceInput(identifier: string, source: string, taintedName: RegExp): boolean {
+  const escaped = escapeRegExp(identifier);
+  const patterns = [
+    new RegExp(`\\b(?:const|let|var)\\s+${escaped}\\s*=\\s*([^;\\n]+)`, "gu"),
+    new RegExp(`\\b${escaped}\\s*=\\s*([^\\n]+)`, "gu")
+  ];
+  return patterns.some((pattern) => expressionMatchesPattern(pattern, source, taintedName));
+}
+
+function expressionReferencesTaintedAgentDelegationTarget(expression: string, source: string): boolean {
+  const templateInterpolation = /\$\{[^}]*\b(?:targetAgent|target_agent|requestedAgent|requested_agent|agentName|agent_name|agentId|agent_id|agentUrl|agent_url|agentCardUrl|agent_card_url|remoteAgent|remote_agent|peerAgent|peer_agent|delegateTo|delegate_to|taskType|task_type|registryUrl|registry_url|endpointUrl|endpoint_url|agent|url|endpoint)\b/u.test(
+    expression
+  );
+  if (templateInterpolation) return true;
+  const withoutQuotedStrings = expression.replace(/(["'`])(?:\\.|(?!\1)[\s\S])*\1/gu, " ");
+  const stronglyTaintedName = /\b(?:targetAgent|target_agent|requestedAgent|requested_agent|agentName|agent_name|agentId|agent_id|agentUrl|agent_url|agentCardUrl|agent_card_url|remoteAgent|remote_agent|peerAgent|peer_agent|delegateTo|delegate_to|taskType|task_type|registryUrl|registry_url|endpointUrl|endpoint_url)\b/u;
+  const taintedName = /\b(?:targetAgent|target_agent|requestedAgent|requested_agent|agentName|agent_name|agentId|agent_id|agentUrl|agent_url|agentCardUrl|agent_card_url|remoteAgent|remote_agent|peerAgent|peer_agent|delegateTo|delegate_to|taskType|task_type|registryUrl|registry_url|endpointUrl|endpoint_url|agent|url|endpoint|task|route|destination)\b/u;
+  if (stronglyTaintedName.test(withoutQuotedStrings)) return true;
+
+  const targetAssignment = /\b(?:agent|agent_id|agentId|agent_name|agentName|agent_url|agentUrl|agent_card_url|agentCardUrl|target|target_agent|targetAgent|peer|peer_agent|peerAgent|task|task_type|taskType|url|endpoint|route|destination)\s*(?::|=)\s*([^,\n}\)]+)/giu;
+  if (expressionMatchesPattern(targetAssignment, withoutQuotedStrings, taintedName)) return true;
+
+  const valueOnlyExpression = withoutQuotedStrings.replace(
+    /\b(?:agent|agent_id|agentId|agent_name|agentName|agent_url|agentUrl|agent_card_url|agentCardUrl|target|target_agent|targetAgent|peer|peer_agent|peerAgent|task|task_type|taskType|url|endpoint|route|destination)\s*(?::|=)/giu,
+    " "
+  );
+  const identifiers = uniqueStrings(
+    [...valueOnlyExpression.matchAll(/\b[A-Za-z_$][\w$]*\b/gu)]
+      .map((match) => match[0])
+      .filter((identifier) => ![
+        "a2aClient",
+        "a2a_client",
+        "agentClient",
+        "agent_client",
+        "remoteAgentClient",
+        "remote_agent_client",
+        "agentRegistry",
+        "agent_registry",
+        "agentRouter",
+        "agent_router",
+        "agentGateway",
+        "agent_gateway",
+        "headers",
+        "authorization",
+        "token",
+        "context",
+        "payload"
+      ].includes(identifier))
+  );
+  return identifiers.some((identifier) => identifierAssignedFromTaintedAgentDelegationTarget(identifier, source, taintedName));
+}
+
+function identifierAssignedFromTaintedAgentDelegationTarget(identifier: string, source: string, taintedName: RegExp): boolean {
+  const escaped = escapeRegExp(identifier);
+  const patterns = [
+    new RegExp(`\\b(?:const|let|var)\\s+${escaped}\\s*=\\s*([^;\\n]+)`, "gu"),
+    new RegExp(`\\b${escaped}\\s*=\\s*([^\\n]+)`, "gu")
+  ];
+  return patterns.some((pattern) => expressionMatchesPattern(pattern, source, taintedName));
+}
+
+function expressionReferencesAgentDelegationContextForwarding(expression: string, source: string): boolean {
+  const templateInterpolation = /\$\{[^}]*\b(?:customerTicketText|customer_ticket_text|ticketText|ticket_text|customerContext|customer_context|customerMessage|customer_message|toolOutput|tool_output|toolResult|tool_result|browserOutput|browser_output|retrievedContext|retrieved_context|memorySummary|memory_summary|promptText|prompt_text|userMessage|user_message|conversationText|conversation_text|inputText|input_text|content|message|prompt|payload|context|output|customer|ticket)\b/u.test(
+    expression
+  );
+  if (templateInterpolation) return true;
+  const withoutQuotedStrings = expression.replace(/(["'`])(?:\\.|(?!\1)[\s\S])*\1/gu, " ");
+  const stronglyTaintedName = /\b(?:customerTicketText|customer_ticket_text|ticketText|ticket_text|customerContext|customer_context|customerMessage|customer_message|toolOutput|tool_output|toolResult|tool_result|browserOutput|browser_output|retrievedContext|retrieved_context|memorySummary|memory_summary|promptText|prompt_text|userMessage|user_message|conversationText|conversation_text|inputText|input_text)\b/u;
+  const taintedName = /\b(?:customerTicketText|customer_ticket_text|ticketText|ticket_text|customerContext|customer_context|customerMessage|customer_message|toolOutput|tool_output|toolResult|tool_result|browserOutput|browser_output|retrievedContext|retrieved_context|memorySummary|memory_summary|promptText|prompt_text|userMessage|user_message|conversationText|conversation_text|inputText|input_text|content|message|prompt|payload|context|output|customer|ticket|input|text)\b/u;
+  if (stronglyTaintedName.test(withoutQuotedStrings)) return true;
+
+  const contextAssignment = /\b(?:context|payload|message|messages|prompt|content|input|inputs|task|body|customer|customer_id|ticket|ticket_id|tool_output|toolOutput|browser_output|browserOutput|memory|memory_summary|memorySummary)\s*(?::|=)\s*([^,\n}\)]+)/giu;
+  if (expressionMatchesPattern(contextAssignment, withoutQuotedStrings, taintedName)) return true;
+
+  const valueOnlyExpression = withoutQuotedStrings.replace(
+    /\b(?:context|payload|message|messages|prompt|content|input|inputs|task|body|customer|customer_id|ticket|ticket_id|tool_output|toolOutput|browser_output|browserOutput|memory|memory_summary|memorySummary)\s*(?::|=)/giu,
+    " "
+  );
+  const identifiers = uniqueStrings(
+    [...valueOnlyExpression.matchAll(/\b[A-Za-z_$][\w$]*\b/gu)]
+      .map((match) => match[0])
+      .filter((identifier) => ![
+        "a2aClient",
+        "a2a_client",
+        "agentClient",
+        "agent_client",
+        "remoteAgentClient",
+        "remote_agent_client",
+        "agentRegistry",
+        "agent_registry",
+        "agentRouter",
+        "agent_router",
+        "agentGateway",
+        "agent_gateway",
+        "headers",
+        "authorization",
+        "token",
+        "agentUrl",
+        "agent_url",
+        "taskType",
+        "task_type"
+      ].includes(identifier))
+  );
+  return identifiers.some((identifier) => identifierAssignedFromAgentDelegationContextInput(identifier, source, taintedName));
+}
+
+function identifierAssignedFromAgentDelegationContextInput(identifier: string, source: string, taintedName: RegExp): boolean {
   const escaped = escapeRegExp(identifier);
   const patterns = [
     new RegExp(`\\b(?:const|let|var)\\s+${escaped}\\s*=\\s*([^;\\n]+)`, "gu"),
@@ -30093,6 +30282,9 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   agent_config_write: boolean;
   credential_issuance: boolean;
   tainted_credential_issuance_input: boolean;
+  agent_delegation: boolean;
+  tainted_agent_delegation_target: boolean;
+  agent_delegation_context_forwarding: boolean;
   nested_tool_invocation: boolean;
   browser_automation: boolean;
   tainted_browser_automation_target: boolean;
@@ -30169,6 +30361,9 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   const handlerAgentConfigWrite = handler?.handlerAgentConfigWrite === true;
   const handlerCredentialIssuance = handler?.handlerCredentialIssuance === true;
   const handlerTaintedCredentialIssuanceInput = handler?.handlerTaintedCredentialIssuanceInput === true;
+  const handlerAgentDelegation = handler?.handlerAgentDelegation === true;
+  const handlerTaintedAgentDelegationTarget = handler?.handlerTaintedAgentDelegationTarget === true;
+  const handlerAgentDelegationContextForwarding = handler?.handlerAgentDelegationContextForwarding === true;
   const handlerToolInvocation = handler?.handlerToolInvocation === true;
   const handlerBrowserAutomation = handler?.handlerBrowserAutomation === true;
   const handlerTaintedBrowserAutomationTarget = handler?.handlerTaintedBrowserAutomationTarget === true;
@@ -30315,6 +30510,19 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
     classes.add("tainted_credential_issuance_input");
     actions.add("send");
   }
+  if (handlerAgentDelegation) {
+    classes.add("agent_delegation");
+    actions.add("execute");
+    actions.add("send");
+  }
+  if (handlerTaintedAgentDelegationTarget) {
+    classes.add("tainted_agent_delegation_target");
+    actions.add("send");
+  }
+  if (handlerAgentDelegationContextForwarding) {
+    classes.add("agent_delegation_context_forwarding");
+    actions.add("send");
+  }
   if (handlerToolInvocation) {
     classes.add("nested_tool_invocation");
     actions.add("execute");
@@ -30440,6 +30648,9 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerAgentConfigWrite ||
       handlerCredentialIssuance ||
       handlerTaintedCredentialIssuanceInput ||
+      handlerAgentDelegation ||
+      handlerTaintedAgentDelegationTarget ||
+      handlerAgentDelegationContextForwarding ||
       handlerToolInvocation ||
       handlerBrowserAutomation ||
       handlerTaintedBrowserAutomationTarget ||
@@ -30496,13 +30707,14 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerExternalNetworkCall ||
       handlerBrowserAutomation ||
       handlerVisualContextCapture ||
+      handlerAgentDelegation ||
       handlerExternalServiceWrite ||
       handlerModelProviderCall ||
       handlerEmbeddingProviderCall ||
       handlerTelemetryExport ||
       handlerTrainingDatasetExport ||
       (handlerPromptCacheWrite && handlerSecretEnvAccess),
-    secret_exposure: acceptsSecret || handlerSecretEnvAccess || localFileDisclosure || handlerCredentialIssuance || handlerSecretManagerAccess,
+    secret_exposure: acceptsSecret || handlerSecretEnvAccess || localFileDisclosure || handlerCredentialIssuance || handlerAgentDelegation || handlerSecretManagerAccess,
     accepts_secret_like_input: acceptsSecret,
     accepts_content_like_input: acceptsContent,
     accepts_path_input: acceptsPath,
@@ -30519,6 +30731,9 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
     agent_config_write: handlerAgentConfigWrite,
     credential_issuance: handlerCredentialIssuance,
     tainted_credential_issuance_input: handlerTaintedCredentialIssuanceInput,
+    agent_delegation: handlerAgentDelegation,
+    tainted_agent_delegation_target: handlerTaintedAgentDelegationTarget,
+    agent_delegation_context_forwarding: handlerAgentDelegationContextForwarding,
     nested_tool_invocation: handlerToolInvocation,
     browser_automation: handlerBrowserAutomation,
     tainted_browser_automation_target: handlerTaintedBrowserAutomationTarget,
@@ -30625,6 +30840,9 @@ function authoritySignature(tool: SurfaceObject): string {
     metadata.tainted_deserialization_argument === true ? "tainted_deserialization_argument" : "",
     metadata.credential_issuance === true ? "credential_issuance" : "",
     metadata.tainted_credential_issuance_input === true ? "tainted_credential_issuance_input" : "",
+    metadata.agent_delegation === true ? "agent_delegation" : "",
+    metadata.tainted_agent_delegation_target === true ? "tainted_agent_delegation_target" : "",
+    metadata.agent_delegation_context_forwarding === true ? "agent_delegation_context_forwarding" : "",
     metadata.nested_tool_invocation === true ? "nested_tool_invocation" : "",
     metadata.browser_automation === true ? "browser_automation" : "",
     metadata.tainted_browser_automation_target === true ? "tainted_browser_automation_target" : "",
@@ -30679,6 +30897,9 @@ function isPrivilegedToolSurface(tool: SurfaceObject): boolean {
     tool.metadata.tainted_deserialization_argument === true ||
     tool.metadata.credential_issuance === true ||
     tool.metadata.tainted_credential_issuance_input === true ||
+    tool.metadata.agent_delegation === true ||
+    tool.metadata.tainted_agent_delegation_target === true ||
+    tool.metadata.agent_delegation_context_forwarding === true ||
     tool.metadata.nested_tool_invocation === true ||
     tool.metadata.browser_automation === true ||
     tool.metadata.tainted_browser_automation_target === true ||
