@@ -334,6 +334,7 @@ Tool metadata may include:
 - `embedding_provider_call`
 - `tainted_embedding_input`
 - `telemetry_export`
+- `secret_manager_telemetry_bridge`
 - `tainted_telemetry_payload`
 - `prompt_cache_write`
 - `tainted_prompt_cache_key`
@@ -403,6 +404,7 @@ Tool metadata may include:
 - `handler_embedding_provider_call`
 - `handler_tainted_embedding_input`
 - `handler_telemetry_export`
+- `handler_secret_manager_telemetry_bridge`
 - `handler_tainted_telemetry_payload`
 - `handler_prompt_cache_write`
 - `handler_tainted_prompt_cache_key`
@@ -1893,6 +1895,8 @@ Source-defined tool handlers can also emit redacted artifact-export authority th
 Source-defined tool handlers can also emit redacted tool-output external-service bridge authority through `tool_output_external_service_bridge`, `external_service_write`, `tainted_external_service_recipient`, and the corresponding `handler_*` fields when parsed MCP SDK or agent-framework tools invoke nested tools and publish raw tool observations through Slack, email, issue-tracker, chat, or SaaS SDKs using runtime credentials. Handler bodies, SDK calls, channel IDs, serialized tool observations, posted payloads, and return strings remain redacted.
 
 Source-defined tool handlers can also emit redacted secret-manager external-service bridge authority through `secret_manager_external_service_bridge`, `secret_manager_access`, `tainted_secret_manager_path`, `external_service_write`, `tainted_external_service_recipient`, and the corresponding `handler_*` fields when parsed MCP SDK or agent-framework tools read caller-selected vault or secret-manager paths and publish the returned secret material through Slack, email, issue-tracker, chat, or SaaS SDKs using runtime credentials. Handler bodies, vault calls, secret paths, secret values, SDK calls, recipients, posted payloads, and return strings remain redacted.
+
+Source-defined tool handlers can also emit redacted secret-manager telemetry bridge authority through `secret_manager_telemetry_bridge`, `secret_manager_access`, `tainted_secret_manager_path`, `telemetry_export`, `tainted_telemetry_payload`, and the corresponding `handler_*` fields when parsed MCP SDK or agent-framework tools read caller-selected vault or secret-manager paths and export the returned secret material into AI telemetry, tracing, logging, or observability systems using runtime credentials. Handler bodies, vault calls, secret paths, secret values, telemetry calls, trace IDs, trace payloads, and return strings remain redacted.
 
 Source-defined tool handlers can also emit redacted secret-manager prompt bridge authority through `secret_manager_prompt_bridge`, `secret_manager_access`, `tainted_secret_manager_path`, `model_provider_call`, and the corresponding `handler_*` fields when parsed MCP SDK or agent-framework tools read caller-selected vault or secret-manager paths and forward the returned secret material into model-provider prompts using runtime credentials. Handler bodies, vault calls, secret paths, secret values, model SDK calls, prompt payloads, model responses, and return strings remain redacted.
 

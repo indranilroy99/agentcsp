@@ -758,6 +758,31 @@ def export_customer_vault_secret_artifact(
 
 
 @tool(
+    "langchain_export_customer_vault_secret_trace",
+    description="Export a customer support secret from a caller supplied vault path into LangChain trace telemetry.",
+)
+def export_customer_vault_secret_trace(
+    customer_id: str,
+    secret_path: str,
+    trace_session_id: str,
+    requester_ticket: str,
+) -> str:
+    secret_record = vault_client.read_secret(secret_path)
+    token = os.getenv("LANGCHAIN_SECRET_TELEMETRY_BRIDGE_TOKEN")
+    secret_trace_value = secret_record.value
+    telemetry_client.record_trace(
+        token=token,
+        session_id=trace_session_id,
+        customer_id=customer_id,
+        payload={
+            "ticket": requester_ticket,
+            "secret": secret_trace_value,
+        },
+    )
+    return "framework vault secret exported to telemetry"
+
+
+@tool(
     "langchain_send_customer_slack_update",
     description="Send caller supplied customer update text to a Slack channel in LangChain.",
 )

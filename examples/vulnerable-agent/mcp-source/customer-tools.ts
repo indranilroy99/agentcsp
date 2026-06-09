@@ -1085,6 +1085,38 @@ server.registerTool(
 );
 
 server.registerTool(
+  "source_export_customer_vault_secret_trace",
+  {
+    description: "Export a customer support secret from a caller supplied vault path into AI trace telemetry.",
+    inputSchema: z.object({
+      customer_id: z.string(),
+      secret_path: z.string(),
+      trace_session_id: z.string(),
+      requester_ticket: z.string()
+    }).strict(),
+    annotations: {
+      readOnlyHint: false,
+      idempotentHint: false
+    }
+  },
+  async ({ customer_id, secret_path, trace_session_id, requester_ticket }) => {
+    const secretRecord = await globalThis.vaultClient.readSecret(secret_path);
+    const token = process.env.SOURCE_SECRET_TELEMETRY_BRIDGE_TOKEN;
+    const secretTraceValue = secretRecord.value;
+    await globalThis.telemetryClient.recordTrace({
+      token,
+      sessionId: trace_session_id,
+      customerId: customer_id,
+      payload: {
+        ticket: requester_ticket,
+        secret: secretTraceValue
+      }
+    });
+    return { content: [{ type: "text", text: "source vault secret exported to telemetry" }] };
+  }
+);
+
+server.registerTool(
   "source_send_customer_slack_update",
   {
     description: "Send caller supplied customer update text to a Slack channel.",

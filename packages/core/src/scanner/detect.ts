@@ -24195,6 +24195,7 @@ function addToolDefinitionSurface(
       embedding_provider_call: authority.embedding_provider_call,
       tainted_embedding_input: authority.tainted_embedding_input,
       telemetry_export: authority.telemetry_export,
+      secret_manager_telemetry_bridge: authority.secret_manager_telemetry_bridge,
       tainted_telemetry_payload: authority.tainted_telemetry_payload,
       prompt_cache_write: authority.prompt_cache_write,
       tainted_prompt_cache_key: authority.tainted_prompt_cache_key,
@@ -26619,6 +26620,7 @@ interface SourceToolHandlerSignals {
   handlerEmbeddingProviderCall: boolean;
   handlerTaintedEmbeddingInput: boolean;
   handlerTelemetryExport: boolean;
+  handlerSecretManagerTelemetryBridge: boolean;
   handlerTaintedTelemetryPayload: boolean;
   handlerPromptCacheWrite: boolean;
   handlerTaintedPromptCacheKey: boolean;
@@ -27113,6 +27115,7 @@ function sourceToolHandlerSignalMetadata(signals: SourceToolHandlerSignals | und
     handler_embedding_provider_call: signals.handlerEmbeddingProviderCall,
     handler_tainted_embedding_input: signals.handlerTaintedEmbeddingInput,
     handler_telemetry_export: signals.handlerTelemetryExport,
+    handler_secret_manager_telemetry_bridge: signals.handlerSecretManagerTelemetryBridge,
     handler_tainted_telemetry_payload: signals.handlerTaintedTelemetryPayload,
     handler_prompt_cache_write: signals.handlerPromptCacheWrite,
     handler_tainted_prompt_cache_key: signals.handlerTaintedPromptCacheKey,
@@ -27424,6 +27427,9 @@ function classifySourceToolHandlerSignals(
   const secretManagerExternalServiceBridge = secretManagerAccess && externalServiceWrite && (language === "javascript"
     ? hasJavaScriptHandlerSecretManagerExternalServiceBridge(handlerSource)
     : hasPythonHandlerSecretManagerExternalServiceBridge(handlerSource));
+  const secretManagerTelemetryBridge = secretManagerAccess && telemetryExport && (language === "javascript"
+    ? hasJavaScriptHandlerSecretManagerTelemetryBridge(handlerSource)
+    : hasPythonHandlerSecretManagerTelemetryBridge(handlerSource));
   const secretManagerPromptBridge = secretManagerAccess && modelProviderCall && (language === "javascript"
     ? hasJavaScriptHandlerSecretManagerPromptBridge(handlerSource)
     : hasPythonHandlerSecretManagerPromptBridge(handlerSource));
@@ -27457,6 +27463,7 @@ function classifySourceToolHandlerSignals(
   if (embeddingProviderCall) classes.add("handler_embedding_provider_call");
   if (taintedEmbeddingInput) classes.add("handler_tainted_embedding_input");
   if (telemetryExport) classes.add("handler_telemetry_export");
+  if (secretManagerTelemetryBridge) classes.add("handler_secret_manager_telemetry_bridge");
   if (taintedTelemetryPayload) classes.add("handler_tainted_telemetry_payload");
   if (promptCacheWrite) classes.add("handler_prompt_cache_write");
   if (taintedPromptCacheKey) classes.add("handler_tainted_prompt_cache_key");
@@ -27545,6 +27552,7 @@ function classifySourceToolHandlerSignals(
     handlerEmbeddingProviderCall: embeddingProviderCall,
     handlerTaintedEmbeddingInput: taintedEmbeddingInput,
     handlerTelemetryExport: telemetryExport,
+    handlerSecretManagerTelemetryBridge: secretManagerTelemetryBridge,
     handlerTaintedTelemetryPayload: taintedTelemetryPayload,
     handlerPromptCacheWrite: promptCacheWrite,
     handlerTaintedPromptCacheKey: taintedPromptCacheKey,
@@ -28486,6 +28494,32 @@ function hasPythonHandlerTaintedTelemetryPayload(source: string): boolean {
     /\b(?:trace|span)\s*\.\s*(?:add_event|set_attribute|set_attributes|record_exception)\s*\(([\s\S]{0,900})\)/giu,
     /\b(?:opentelemetry)\s*(?:\.\s*[A-Za-z_]\w*){0,4}\s*\.\s*(?:trace|span|record|export|send)\s*\(([\s\S]{0,900})\)/giu
   ].some((pattern) => expressionMatchesTaintedTelemetryPayload(pattern, source));
+}
+
+function hasJavaScriptHandlerSecretManagerTelemetryBridge(source: string): boolean {
+  const identifiers = extractJavaScriptSecretManagerIdentifiers(source);
+  return identifiers.length > 0 && callExpressionReferencesAnyIdentifier(
+    [
+      /\b(?:telemetryClient|traceClient|tracingClient|observabilityClient|analyticsClient|otel|otelSpan|langfuse|langsmith|sentry|honeycomb|datadog|newrelic)\s*(?:\.\s*[A-Za-z_$][\w$]*){0,4}\s*\.\s*(?:record|recordTrace|capture|captureEvent|track|trackEvent|log|logEvent|emit|export|send|sendTrace|addEvent|setAttribute|setAttributes|span|trace)\s*\(([\s\S]{0,2200})\)/giu,
+      /\b(?:trace|span)\s*\.\s*(?:addEvent|setAttribute|setAttributes|recordException)\s*\(([\s\S]{0,2200})\)/giu,
+      /\b(?:opentelemetry)\s*(?:\.\s*[A-Za-z_$][\w$]*){0,4}\s*\.\s*(?:trace|span|record|export|send)\s*\(([\s\S]{0,2200})\)/giu
+    ],
+    source,
+    identifiers
+  );
+}
+
+function hasPythonHandlerSecretManagerTelemetryBridge(source: string): boolean {
+  const identifiers = extractPythonSecretManagerIdentifiers(source);
+  return identifiers.length > 0 && callExpressionReferencesAnyIdentifier(
+    [
+      /\b(?:telemetry_client|trace_client|tracing_client|observability_client|analytics_client|otel|otel_span|langfuse|langsmith|sentry_sdk|honeycomb|datadog|newrelic)\s*(?:\.\s*[A-Za-z_]\w*){0,4}\s*\.\s*(?:record|record_trace|capture|capture_event|track|track_event|log|log_event|emit|export|send|send_trace|add_event|set_attribute|set_attributes|span|trace)\s*\(([\s\S]{0,2200})\)/giu,
+      /\b(?:trace|span)\s*\.\s*(?:add_event|set_attribute|set_attributes|record_exception)\s*\(([\s\S]{0,2200})\)/giu,
+      /\b(?:opentelemetry)\s*(?:\.\s*[A-Za-z_]\w*){0,4}\s*\.\s*(?:trace|span|record|export|send)\s*\(([\s\S]{0,2200})\)/giu
+    ],
+    source,
+    identifiers
+  );
 }
 
 function hasJavaScriptHandlerPromptCacheWrite(source: string): boolean {
@@ -29899,6 +29933,13 @@ function expressionReferencesTaintedTelemetryPayload(expression: string, source:
     expression
   );
   if (templateInterpolation) return true;
+  const secretManagerIdentifiers = uniqueStrings([
+    ...extractJavaScriptSecretManagerIdentifiers(source),
+    ...extractPythonSecretManagerIdentifiers(source)
+  ]);
+  if (secretManagerIdentifiers.some((identifier) => new RegExp(`\\b${escapeRegExp(identifier)}\\b`, "u").test(expression))) {
+    return true;
+  }
   const withoutQuotedStrings = expression.replace(/(["'`])(?:\\.|(?!\1)[\s\S])*\1/gu, " ");
   const stronglyTaintedName = /\b(?:customerTicketText|customer_ticket_text|ticketText|ticket_text|customerContext|customer_context|customerMessage|customer_message|toolTracePayload|tool_trace_payload|tracePayload|trace_payload|toolOutput|tool_output|sourcePayloadText|source_payload_text|retrievedContext|retrieved_context|promptText|prompt_text|userMessage|user_message|conversationText|conversation_text|inputText|input_text)\b/u;
   const taintedName = /\b(?:customerTicketText|customer_ticket_text|ticketText|ticket_text|customerContext|customer_context|customerMessage|customer_message|toolTracePayload|tool_trace_payload|tracePayload|trace_payload|toolOutput|tool_output|sourcePayloadText|source_payload_text|retrievedContext|retrieved_context|promptText|prompt_text|userMessage|user_message|conversationText|conversation_text|inputText|input_text|content|message|prompt|payload|trace|context|output|customer|ticket|input|text)\b/u;
@@ -32084,6 +32125,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   embedding_provider_call: boolean;
   tainted_embedding_input: boolean;
   telemetry_export: boolean;
+  secret_manager_telemetry_bridge: boolean;
   tainted_telemetry_payload: boolean;
   prompt_cache_write: boolean;
   tainted_prompt_cache_key: boolean;
@@ -32161,6 +32203,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   const handlerEmbeddingProviderCall = handler?.handlerEmbeddingProviderCall === true;
   const handlerTaintedEmbeddingInput = handler?.handlerTaintedEmbeddingInput === true;
   const handlerTelemetryExport = handler?.handlerTelemetryExport === true;
+  const handlerSecretManagerTelemetryBridge = handler?.handlerSecretManagerTelemetryBridge === true;
   const handlerTaintedTelemetryPayload = handler?.handlerTaintedTelemetryPayload === true;
   const handlerPromptCacheWrite = handler?.handlerPromptCacheWrite === true;
   const handlerTaintedPromptCacheKey = handler?.handlerTaintedPromptCacheKey === true;
@@ -32462,6 +32505,11 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
     classes.add("telemetry_export");
     actions.add("send");
   }
+  if (handlerSecretManagerTelemetryBridge) {
+    classes.add("secret_manager_telemetry_bridge");
+    actions.add("send");
+    actions.add("publish");
+  }
   if (handlerTaintedTelemetryPayload) {
     classes.add("tainted_telemetry_payload");
     actions.add("send");
@@ -32691,6 +32739,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerEmbeddingProviderCall ||
       handlerTaintedEmbeddingInput ||
       handlerTelemetryExport ||
+      handlerSecretManagerTelemetryBridge ||
       handlerTaintedTelemetryPayload ||
       handlerPromptCacheWrite ||
       handlerTaintedPromptCacheKey ||
@@ -32770,6 +32819,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerModelProviderCall ||
       handlerEmbeddingProviderCall ||
       handlerTelemetryExport ||
+      handlerSecretManagerTelemetryBridge ||
       handlerTrainingDatasetExport ||
       handlerSecretManagerTrainingDatasetBridge ||
       handlerFeedbackPipelineWrite ||
@@ -32793,6 +32843,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerSecretManagerAccess ||
       handlerSecretManagerExternalServiceBridge ||
       handlerSecretManagerPromptBridge ||
+      handlerSecretManagerTelemetryBridge ||
       handlerSecretManagerMemoryBridge ||
       handlerSecretManagerTrainingDatasetBridge ||
       handlerSecretManagerFeedbackBridge ||
@@ -32840,6 +32891,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
     embedding_provider_call: handlerEmbeddingProviderCall,
     tainted_embedding_input: handlerTaintedEmbeddingInput,
     telemetry_export: handlerTelemetryExport,
+    secret_manager_telemetry_bridge: handlerSecretManagerTelemetryBridge,
     tainted_telemetry_payload: handlerTaintedTelemetryPayload,
     prompt_cache_write: handlerPromptCacheWrite,
     tainted_prompt_cache_key: handlerTaintedPromptCacheKey,
@@ -32949,6 +33001,7 @@ function authoritySignature(tool: SurfaceObject): string {
     metadata.embedding_provider_call === true ? "embedding_provider_call" : "",
     metadata.tainted_embedding_input === true ? "tainted_embedding_input" : "",
     metadata.telemetry_export === true ? "telemetry_export" : "",
+    metadata.secret_manager_telemetry_bridge === true ? "secret_manager_telemetry_bridge" : "",
     metadata.tainted_telemetry_payload === true ? "tainted_telemetry_payload" : "",
     metadata.prompt_cache_write === true ? "prompt_cache_write" : "",
     metadata.tainted_prompt_cache_key === true ? "tainted_prompt_cache_key" : "",
@@ -33042,6 +33095,7 @@ function isPrivilegedToolSurface(tool: SurfaceObject): boolean {
     tool.metadata.embedding_provider_call === true ||
     tool.metadata.tainted_embedding_input === true ||
     tool.metadata.telemetry_export === true ||
+    tool.metadata.secret_manager_telemetry_bridge === true ||
     tool.metadata.tainted_telemetry_payload === true ||
     tool.metadata.prompt_cache_write === true ||
     tool.metadata.tainted_prompt_cache_key === true ||

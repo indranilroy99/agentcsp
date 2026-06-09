@@ -587,6 +587,9 @@ describe("scanner", () => {
     const sourceSecretManagerArtifactBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "source_export_customer_vault_secret_artifact"
     );
+    const sourceSecretManagerTelemetryBridgeTool = surfaces.tools.find(
+      (surface) => surface.name === "source_export_customer_vault_secret_trace"
+    );
     const sourceExternalServiceWriteTool = surfaces.tools.find((surface) => surface.name === "source_send_customer_slack_update");
     const sourceModelProviderCallTool = surfaces.tools.find((surface) => surface.name === "source_summarize_customer_with_model");
     const pythonExportTool = surfaces.tools.find((surface) => surface.name === "python_export_customer_record");
@@ -642,6 +645,9 @@ describe("scanner", () => {
     );
     const langchainSecretManagerArtifactBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "langchain_export_customer_vault_secret_artifact"
+    );
+    const langchainSecretManagerTelemetryBridgeTool = surfaces.tools.find(
+      (surface) => surface.name === "langchain_export_customer_vault_secret_trace"
     );
     const langchainExternalServiceWriteTool = surfaces.tools.find((surface) => surface.name === "langchain_send_customer_slack_update");
     const langchainModelProviderCallTool = surfaces.tools.find((surface) => surface.name === "langchain_summarize_customer_with_model");
@@ -3801,6 +3807,95 @@ describe("scanner", () => {
     expect(JSON.stringify(sourceSecretManagerArtifactBridgeTool)).not.toContain("secretArtifactValue");
     expect(JSON.stringify(sourceSecretManagerArtifactBridgeTool)).not.toContain("source vault secret exported to artifact");
     expect(JSON.stringify(sourceSecretManagerArtifactBridgeTool)).not.toContain("Export a customer support secret");
+    expect(sourceSecretManagerTelemetryBridgeTool).toMatchObject({
+      path: "mcp-source/customer-tools.ts",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["call", "publish", "read", "send"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(sourceSecretManagerTelemetryBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_mcp_source_tool: true,
+      mcp_source_tool_registration: true,
+      mcp_source_tool_registration_kind: "registerTool",
+      mcp_source_tool_argument_count: 3,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      read_only_hint: false,
+      idempotent_hint: false,
+      accepts_secret_like_input: true,
+      accepts_content_like_input: true,
+      accepts_path_input: true,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      secret_manager_access: true,
+      tainted_secret_manager_path: true,
+      telemetry_export: true,
+      secret_manager_telemetry_bridge: true,
+      tainted_telemetry_payload: true,
+      external_write: true,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_secret_manager_access: true,
+      handler_tainted_secret_manager_path: true,
+      handler_telemetry_export: true,
+      handler_secret_manager_telemetry_bridge: true,
+      handler_tainted_telemetry_payload: true,
+      handler_secret_env_access: true,
+      handler_model_visible_output: true,
+      handler_signal_count: 6,
+      open_world_schema: false
+    });
+    expect(sourceSecretManagerTelemetryBridgeTool?.metadata.authority_classes).toEqual([
+      "content_input",
+      "credential_input",
+      "customer_data_input",
+      "external_write",
+      "filesystem_access",
+      "handler_secret_env_access",
+      "handler_secret_manager_access",
+      "handler_secret_manager_telemetry_bridge",
+      "handler_tainted_secret_manager_path",
+      "handler_tainted_telemetry_payload",
+      "handler_telemetry_export",
+      "pii_input",
+      "secret_env_access",
+      "secret_manager_access",
+      "secret_manager_telemetry_bridge",
+      "tainted_secret_manager_path",
+      "tainted_telemetry_payload",
+      "telemetry_export"
+    ]);
+    expect(sourceSecretManagerTelemetryBridgeTool?.metadata.handler_authority_classes).toEqual([
+      "handler_secret_env_access",
+      "handler_secret_manager_access",
+      "handler_secret_manager_telemetry_bridge",
+      "handler_tainted_secret_manager_path",
+      "handler_tainted_telemetry_payload",
+      "handler_telemetry_export"
+    ]);
+    expect(sourceSecretManagerTelemetryBridgeTool?.metadata.handler_env_key_names).toEqual(["SOURCE_SECRET_TELEMETRY_BRIDGE_TOKEN"]);
+    expect(sourceSecretManagerTelemetryBridgeTool?.metadata.schema_properties).toEqual([
+      "customer_id",
+      "requester_ticket",
+      "secret_path",
+      "trace_session_id"
+    ]);
+    expect(sourceSecretManagerTelemetryBridgeTool?.metadata.required_properties).toEqual([
+      "customer_id",
+      "requester_ticket",
+      "secret_path",
+      "trace_session_id"
+    ]);
+    expect(JSON.stringify(sourceSecretManagerTelemetryBridgeTool)).not.toContain("vaultClient.readSecret");
+    expect(JSON.stringify(sourceSecretManagerTelemetryBridgeTool)).not.toContain("telemetryClient.recordTrace");
+    expect(JSON.stringify(sourceSecretManagerTelemetryBridgeTool)).not.toContain("secretRecord.value");
+    expect(JSON.stringify(sourceSecretManagerTelemetryBridgeTool)).not.toContain("secretTraceValue");
+    expect(JSON.stringify(sourceSecretManagerTelemetryBridgeTool)).not.toContain("source vault secret exported to telemetry");
+    expect(JSON.stringify(sourceSecretManagerTelemetryBridgeTool)).not.toContain("Export a customer support secret");
     expect(sourceExternalServiceWriteTool).toMatchObject({
       path: "mcp-source/customer-tools.ts",
       data_classes: ["confidential", "credential", "pii"],
@@ -7339,6 +7434,96 @@ describe("scanner", () => {
     expect(JSON.stringify(langchainSecretManagerArtifactBridgeTool)).not.toContain("secret_artifact_value");
     expect(JSON.stringify(langchainSecretManagerArtifactBridgeTool)).not.toContain("framework vault secret exported to artifact");
     expect(JSON.stringify(langchainSecretManagerArtifactBridgeTool)).not.toContain("Export a customer support secret");
+    expect(langchainSecretManagerTelemetryBridgeTool).toMatchObject({
+      path: "framework-tools/langchain_tools.py",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["call", "publish", "read", "send"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(langchainSecretManagerTelemetryBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_agent_framework_source_tool: true,
+      agent_framework_source_tool: true,
+      agent_framework_source_tool_framework: "langchain",
+      agent_framework_source_tool_registration_kind: "python_tool_decorator",
+      agent_framework_source_tool_argument_count: 4,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_secret_like_input: true,
+      accepts_content_like_input: true,
+      accepts_path_input: true,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      secret_manager_access: true,
+      tainted_secret_manager_path: true,
+      telemetry_export: true,
+      secret_manager_telemetry_bridge: true,
+      tainted_telemetry_payload: true,
+      external_write: true,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_secret_manager_access: true,
+      handler_tainted_secret_manager_path: true,
+      handler_telemetry_export: true,
+      handler_secret_manager_telemetry_bridge: true,
+      handler_tainted_telemetry_payload: true,
+      handler_secret_env_access: true,
+      handler_model_visible_output: true,
+      handler_signal_count: 6,
+      open_world_schema: false
+    });
+    expect(langchainSecretManagerTelemetryBridgeTool?.metadata.authority_classes).toEqual([
+      "content_input",
+      "credential_input",
+      "customer_data_input",
+      "external_write",
+      "filesystem_access",
+      "handler_secret_env_access",
+      "handler_secret_manager_access",
+      "handler_secret_manager_telemetry_bridge",
+      "handler_tainted_secret_manager_path",
+      "handler_tainted_telemetry_payload",
+      "handler_telemetry_export",
+      "pii_input",
+      "secret_env_access",
+      "secret_manager_access",
+      "secret_manager_telemetry_bridge",
+      "tainted_secret_manager_path",
+      "tainted_telemetry_payload",
+      "telemetry_export"
+    ]);
+    expect(langchainSecretManagerTelemetryBridgeTool?.metadata.handler_authority_classes).toEqual([
+      "handler_secret_env_access",
+      "handler_secret_manager_access",
+      "handler_secret_manager_telemetry_bridge",
+      "handler_tainted_secret_manager_path",
+      "handler_tainted_telemetry_payload",
+      "handler_telemetry_export"
+    ]);
+    expect(langchainSecretManagerTelemetryBridgeTool?.metadata.handler_env_key_names).toEqual([
+      "LANGCHAIN_SECRET_TELEMETRY_BRIDGE_TOKEN"
+    ]);
+    expect(langchainSecretManagerTelemetryBridgeTool?.metadata.schema_properties).toEqual([
+      "customer_id",
+      "requester_ticket",
+      "secret_path",
+      "trace_session_id"
+    ]);
+    expect(langchainSecretManagerTelemetryBridgeTool?.metadata.required_properties).toEqual([
+      "customer_id",
+      "requester_ticket",
+      "secret_path",
+      "trace_session_id"
+    ]);
+    expect(JSON.stringify(langchainSecretManagerTelemetryBridgeTool)).not.toContain("vault_client.read_secret");
+    expect(JSON.stringify(langchainSecretManagerTelemetryBridgeTool)).not.toContain("telemetry_client.record_trace");
+    expect(JSON.stringify(langchainSecretManagerTelemetryBridgeTool)).not.toContain("secret_record.value");
+    expect(JSON.stringify(langchainSecretManagerTelemetryBridgeTool)).not.toContain("secret_trace_value");
+    expect(JSON.stringify(langchainSecretManagerTelemetryBridgeTool)).not.toContain("framework vault secret exported to telemetry");
+    expect(JSON.stringify(langchainSecretManagerTelemetryBridgeTool)).not.toContain("Export a customer support secret");
     expect(langchainExternalServiceWriteTool).toMatchObject({
       path: "framework-tools/langchain_tools.py",
       data_classes: ["confidential", "credential", "pii"],
