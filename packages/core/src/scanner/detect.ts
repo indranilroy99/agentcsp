@@ -24132,6 +24132,7 @@ function addToolDefinitionSurface(
       !authority.secret_manager_access &&
       !authority.external_service_write &&
       !authority.model_provider_call &&
+      !authority.model_output_dynamic_code_execution_bridge &&
       !authority.embedding_provider_call &&
       !authority.secret_manager_embedding_vector_bridge &&
       !authority.tool_output_embedding_vector_bridge &&
@@ -24225,6 +24226,7 @@ function addToolDefinitionSurface(
       tool_output_external_service_bridge: authority.tool_output_external_service_bridge,
       model_provider_call: authority.model_provider_call,
       tainted_model_selection: authority.tainted_model_selection,
+      model_output_dynamic_code_execution_bridge: authority.model_output_dynamic_code_execution_bridge,
       tool_output_prompt_bridge: authority.tool_output_prompt_bridge,
       embedding_provider_call: authority.embedding_provider_call,
       tainted_embedding_input: authority.tainted_embedding_input,
@@ -26675,6 +26677,7 @@ interface SourceToolHandlerSignals {
   handlerExternalServiceWrite: boolean;
   handlerModelProviderCall: boolean;
   handlerTaintedModelSelection: boolean;
+  handlerModelOutputDynamicCodeExecutionBridge: boolean;
   handlerSecretManagerPromptBridge: boolean;
   handlerSecretManagerTrainingDatasetBridge: boolean;
   handlerToolOutputPromptBridge: boolean;
@@ -27215,6 +27218,7 @@ function sourceToolHandlerSignalMetadata(signals: SourceToolHandlerSignals | und
     handler_external_service_write: signals.handlerExternalServiceWrite,
     handler_model_provider_call: signals.handlerModelProviderCall,
     handler_tainted_model_selection: signals.handlerTaintedModelSelection,
+    handler_model_output_dynamic_code_execution_bridge: signals.handlerModelOutputDynamicCodeExecutionBridge,
     handler_secret_manager_prompt_bridge: signals.handlerSecretManagerPromptBridge,
     handler_secret_manager_training_dataset_bridge: signals.handlerSecretManagerTrainingDatasetBridge,
     handler_tool_output_prompt_bridge: signals.handlerToolOutputPromptBridge,
@@ -27556,6 +27560,9 @@ function classifySourceToolHandlerSignals(
   const taintedDynamicCodeArgument = dynamicCodeExecution && (language === "javascript"
     ? hasJavaScriptHandlerTaintedDynamicCodeArgument(handlerSource)
     : hasPythonHandlerTaintedDynamicCodeArgument(handlerSource));
+  const modelOutputDynamicCodeExecutionBridge = modelProviderCall && dynamicCodeExecution && (language === "javascript"
+    ? hasJavaScriptHandlerModelOutputDynamicCodeExecutionBridge(handlerSource)
+    : hasPythonHandlerModelOutputDynamicCodeExecutionBridge(handlerSource));
   const unsafeDeserialization = language === "javascript"
     ? hasJavaScriptHandlerUnsafeDeserialization(handlerSource)
     : hasPythonHandlerUnsafeDeserialization(handlerSource);
@@ -27721,6 +27728,7 @@ function classifySourceToolHandlerSignals(
   if (toolOutputExternalServiceBridge) classes.add("handler_tool_output_external_service_bridge");
   if (modelProviderCall) classes.add("handler_model_provider_call");
   if (taintedModelSelection) classes.add("handler_tainted_model_selection");
+  if (modelOutputDynamicCodeExecutionBridge) classes.add("handler_model_output_dynamic_code_execution_bridge");
   if (secretManagerPromptBridge) classes.add("handler_secret_manager_prompt_bridge");
   if (secretManagerTrainingDatasetBridge) classes.add("handler_secret_manager_training_dataset_bridge");
   if (toolOutputPromptBridge) classes.add("handler_tool_output_prompt_bridge");
@@ -27849,6 +27857,7 @@ function classifySourceToolHandlerSignals(
     handlerToolOutputExternalServiceBridge: toolOutputExternalServiceBridge,
     handlerModelProviderCall: modelProviderCall,
     handlerTaintedModelSelection: taintedModelSelection,
+    handlerModelOutputDynamicCodeExecutionBridge: modelOutputDynamicCodeExecutionBridge,
     handlerSecretManagerPromptBridge: secretManagerPromptBridge,
     handlerSecretManagerTrainingDatasetBridge: secretManagerTrainingDatasetBridge,
     handlerToolOutputPromptBridge: toolOutputPromptBridge,
@@ -29227,6 +29236,30 @@ function hasPythonHandlerTaintedModelSelection(source: string): boolean {
   ].some((pattern) => expressionMatchesTaintedModelSelection(pattern, source));
 }
 
+function hasJavaScriptHandlerModelOutputDynamicCodeExecutionBridge(source: string): boolean {
+  const identifiers = extractJavaScriptModelOutputIdentifiers(source);
+  return identifiers.length > 0 && callExpressionReferencesAnyIdentifier(
+    [
+      /\beval\s*\(([\s\S]{0,720})\)/giu,
+      /\b(?:new\s+)?Function\s*\(([\s\S]{0,900})\)/giu,
+      /\bvm\s*\.\s*(?:runInNewContext|runInThisContext|runInContext|compileFunction|Script)\s*\(([\s\S]{0,900})\)/giu
+    ],
+    source,
+    identifiers
+  );
+}
+
+function hasPythonHandlerModelOutputDynamicCodeExecutionBridge(source: string): boolean {
+  const identifiers = extractPythonModelOutputIdentifiers(source);
+  return identifiers.length > 0 && callExpressionReferencesAnyIdentifier(
+    [
+      /\b(?:eval|exec)\s*\(([\s\S]{0,720})\)/giu
+    ],
+    source,
+    identifiers
+  );
+}
+
 function hasJavaScriptHandlerToolOutputPromptBridge(source: string): boolean {
   const identifiers = extractJavaScriptToolOutputIdentifiers(source);
   return identifiers.length > 0 && callExpressionReferencesAnyIdentifier(
@@ -29377,6 +29410,43 @@ function extractPythonToolOutputIdentifiers(
   expandPythonIdentifiersAssignedFromBase(source, identifiers);
   return [...identifiers].filter((identifier) =>
     options.includeGenericResultNames === true || !["result", "response", "output"].includes(identifier)
+  );
+}
+
+function extractJavaScriptModelOutputIdentifiers(source: string): string[] {
+  const identifiers = new Set<string>();
+  const assignmentPatterns = [
+    /\b(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*(?:await\s+)?[^\n;]{0,260}\b(?:openai|openaiClient|anthropic|anthropicClient|mistral|mistralClient|cohere|cohereClient|bedrock|bedrockClient|gemini|geminiClient|vertex|vertexClient|llm|modelClient|languageModel)\s*(?:\.\s*[A-Za-z_$][\w$]*){0,5}\s*\.\s*(?:create|stream|parse|invoke|send|complete|generateContent|generateText|doGenerate)\s*\(/gu,
+    /\b(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*(?:await\s+)?\b(?:generateText|streamText|generateObject|streamObject)\s*\(/gu,
+    /\b(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*(?:await\s+)?new\s+InvokeModelCommand\s*\(/gu
+  ];
+  for (const pattern of assignmentPatterns) collectFirstCaptureMatches(pattern, source, identifiers);
+  collectFirstCaptureMatches(
+    /\b([A-Za-z_$][\w$]*(?:ModelResult|ModelResponse|ModelOutput|ModelCompletion|CompletionText|GeneratedCode|GeneratedScript|LLMOutput|LLMResponse))\b/gu,
+    source,
+    identifiers
+  );
+  expandJavaScriptIdentifiersAssignedFromBase(source, identifiers);
+  return [...identifiers].filter((identifier) =>
+    !["openai", "openaiClient", "anthropic", "modelClient", "languageModel", "llm"].includes(identifier)
+  );
+}
+
+function extractPythonModelOutputIdentifiers(source: string): string[] {
+  const identifiers = new Set<string>();
+  const assignmentPatterns = [
+    /\b([A-Za-z_]\w*)\s*=\s*(?:await\s+)?[^\n]{0,260}\b(?:openai|openai_client|anthropic|anthropic_client|mistral|mistral_client|cohere|cohere_client|bedrock|bedrock_client|gemini|gemini_client|vertex|vertex_client|llm|model_client|language_model)\s*(?:\.\s*[A-Za-z_]\w*){0,5}\s*\.\s*(?:create|stream|parse|invoke|send|complete|generate_content|predict)\s*\(/gu,
+    /\b([A-Za-z_]\w*)\s*=\s*(?:await\s+)?InvokeModelCommand\s*\(/gu
+  ];
+  for (const pattern of assignmentPatterns) collectFirstCaptureMatches(pattern, source, identifiers);
+  collectFirstCaptureMatches(
+    /\b([A-Za-z_]\w*(?:_model_result|_model_response|_model_output|_model_completion|_completion_text|_generated_code|_generated_script|_llm_output|_llm_response))\b/gu,
+    source,
+    identifiers
+  );
+  expandPythonIdentifiersAssignedFromBase(source, identifiers);
+  return [...identifiers].filter((identifier) =>
+    !["openai", "openai_client", "anthropic", "model_client", "language_model", "llm"].includes(identifier)
   );
 }
 
@@ -33668,6 +33738,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   tool_output_external_service_bridge: boolean;
   model_provider_call: boolean;
   tainted_model_selection: boolean;
+  model_output_dynamic_code_execution_bridge: boolean;
   tool_output_prompt_bridge: boolean;
   embedding_provider_call: boolean;
   tainted_embedding_input: boolean;
@@ -33764,6 +33835,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   const handlerExternalServiceWrite = handler?.handlerExternalServiceWrite === true;
   const handlerModelProviderCall = handler?.handlerModelProviderCall === true;
   const handlerTaintedModelSelection = handler?.handlerTaintedModelSelection === true;
+  const handlerModelOutputDynamicCodeExecutionBridge = handler?.handlerModelOutputDynamicCodeExecutionBridge === true;
   const handlerToolOutputPromptBridge = handler?.handlerToolOutputPromptBridge === true;
   const handlerEmbeddingProviderCall = handler?.handlerEmbeddingProviderCall === true;
   const handlerTaintedEmbeddingInput = handler?.handlerTaintedEmbeddingInput === true;
@@ -34214,6 +34286,12 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
     classes.add("tainted_model_selection");
     actions.add("send");
   }
+  if (handlerModelOutputDynamicCodeExecutionBridge) {
+    classes.add("model_output_dynamic_code_execution_bridge");
+    actions.add("execute");
+    actions.add("read");
+    actions.add("send");
+  }
   if (handlerToolOutputPromptBridge) {
     classes.add("tool_output_prompt_bridge");
     actions.add("send");
@@ -34588,6 +34666,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerToolOutputExternalServiceBridge ||
       handlerModelProviderCall ||
       handlerTaintedModelSelection ||
+      handlerModelOutputDynamicCodeExecutionBridge ||
       handlerToolOutputPromptBridge ||
       handlerEmbeddingProviderCall ||
       handlerTaintedEmbeddingInput ||
@@ -34711,6 +34790,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerExternalServiceWrite ||
       handlerToolOutputExternalServiceBridge ||
       handlerModelProviderCall ||
+      handlerModelOutputDynamicCodeExecutionBridge ||
       handlerEmbeddingProviderCall ||
       handlerSecretManagerEmbeddingVectorBridge ||
       handlerToolOutputEmbeddingVectorBridge ||
@@ -34789,6 +34869,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       (handlerToolOutputTaskQueueBridge && handlerSecretEnvAccess) ||
       (handlerToolOutputPromptRegistryBridge && handlerSecretEnvAccess) ||
       (handlerToolOutputExternalServiceBridge && handlerSecretEnvAccess) ||
+      handlerModelOutputDynamicCodeExecutionBridge ||
       (handlerRagRetrievalPromptBridge && handlerSecretEnvAccess) ||
       (handlerRagRetrievalExternalServiceBridge && handlerSecretEnvAccess) ||
       (handlerVisualContextExternalServiceBridge && handlerSecretEnvAccess) ||
@@ -34862,6 +34943,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
     tool_output_external_service_bridge: handlerToolOutputExternalServiceBridge,
     model_provider_call: handlerModelProviderCall,
     tainted_model_selection: handlerTaintedModelSelection,
+    model_output_dynamic_code_execution_bridge: handlerModelOutputDynamicCodeExecutionBridge,
     tool_output_prompt_bridge: handlerToolOutputPromptBridge,
     embedding_provider_call: handlerEmbeddingProviderCall,
     tainted_embedding_input: handlerTaintedEmbeddingInput,
@@ -34992,6 +35074,7 @@ function authoritySignature(tool: SurfaceObject): string {
     metadata.tool_output_to_output === true ? "tool_output_to_output" : "",
     metadata.model_provider_call === true ? "model_provider_call" : "",
     metadata.tainted_model_selection === true ? "tainted_model_selection" : "",
+    metadata.model_output_dynamic_code_execution_bridge === true ? "model_output_dynamic_code_execution_bridge" : "",
     metadata.tool_output_prompt_bridge === true ? "tool_output_prompt_bridge" : "",
     metadata.embedding_provider_call === true ? "embedding_provider_call" : "",
     metadata.tainted_embedding_input === true ? "tainted_embedding_input" : "",
@@ -35125,6 +35208,7 @@ function isPrivilegedToolSurface(tool: SurfaceObject): boolean {
     tool.metadata.external_service_write === true ||
     tool.metadata.model_provider_call === true ||
     tool.metadata.tainted_model_selection === true ||
+    tool.metadata.model_output_dynamic_code_execution_bridge === true ||
     tool.metadata.tool_output_prompt_bridge === true ||
     tool.metadata.embedding_provider_call === true ||
     tool.metadata.tainted_embedding_input === true ||

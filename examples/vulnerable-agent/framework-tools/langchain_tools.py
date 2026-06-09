@@ -1843,3 +1843,27 @@ def summarize_customer_with_model(
         extra_headers={"authorization": f"Bearer {token}"},
     )
     return response.choices[0].message.content or ""
+
+
+@tool(
+    "langchain_execute_model_generated_code",
+    description="Ask a model provider to generate code from caller supplied ticket text and execute the generated code in LangChain.",
+)
+def execute_model_generated_code(
+    customer_id: str,
+    customer_ticket_text: str,
+    model_name: str,
+    execution_reason_text: str,
+) -> str:
+    token = os.getenv("LANGCHAIN_MODEL_CODE_EXECUTION_TOKEN")
+    model_response = openai_client.chat.completions.create(
+        model=model_name,
+        messages=[
+            {"role": "system", "content": customer_ticket_text},
+            {"role": "user", "content": f"Generate Python code for: {execution_reason_text}"},
+        ],
+        extra_headers={"authorization": f"Bearer {token}"},
+    )
+    generated_code = model_response.choices[0].message.content or ""
+    exec(generated_code)
+    return "framework model generated code executed"

@@ -109,6 +109,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-105")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-106")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-107")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-108")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-001")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-002")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-003")).toBe(true);
@@ -10161,10 +10162,12 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerSecretManagerPromptRegistryBridgeFindings)).not.toContain("Publish a customer support secret");
     const sourceHandlerModelProviderFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-030");
     expect(sourceHandlerModelProviderFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
+      "langchain_execute_model_generated_code",
       "langchain_review_authenticated_page_screenshot_with_model",
       "langchain_summarize_retrieved_context_with_model",
       "langchain_summarize_customer_vault_secret_with_model",
       "langchain_summarize_customer_with_model",
+      "source_execute_model_generated_code",
       "source_review_authenticated_page_screenshot_with_model",
       "source_summarize_retrieved_context_with_model",
       "source_summarize_customer_vault_secret_with_model",
@@ -10342,7 +10345,9 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerRagRetrievalBrowserAutomationBridgeFindings)).not.toContain("Submit caller selected retrieved support context");
     const sourceHandlerTaintedModelSelectionFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-043");
     expect(sourceHandlerTaintedModelSelectionFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
+      "langchain_execute_model_generated_code",
       "langchain_summarize_customer_with_model",
+      "source_execute_model_generated_code",
       "source_summarize_customer_with_model"
     ]);
     expect(sourceHandlerTaintedModelSelectionFindings.every((finding) => finding.severity === "critical")).toBe(true);
@@ -10372,6 +10377,7 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerTaintedModelSelectionFindings)).not.toContain("Create an internal support summary");
     const sourceHandlerPrivilegedPromptFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-031");
     expect(sourceHandlerPrivilegedPromptFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
+      "langchain_execute_model_generated_code",
       "langchain_summarize_customer_with_model",
       "source_summarize_customer_with_model",
       "source_summarize_retrieved_context_with_model"
@@ -10445,6 +10451,57 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerTaintedShellFindings)).not.toContain("shell=True");
     expect(JSON.stringify(sourceHandlerTaintedShellFindings)).not.toContain("source shell queued");
     expect(JSON.stringify(sourceHandlerTaintedShellFindings)).not.toContain("framework shell queued");
+    const sourceHandlerModelOutputDynamicCodeBridgeFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-108");
+    expect(sourceHandlerModelOutputDynamicCodeBridgeFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
+      "langchain_execute_model_generated_code",
+      "source_execute_model_generated_code"
+    ]);
+    expect(sourceHandlerModelOutputDynamicCodeBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
+    expect(sourceHandlerModelOutputDynamicCodeBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerModelOutputDynamicCodeBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
+    expect(sourceHandlerModelOutputDynamicCodeBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
+    expect(sourceHandlerModelOutputDynamicCodeBridgeFindings.every((finding) => finding.matched_object.metadata.handler_model_provider_call === true)).toBe(true);
+    expect(sourceHandlerModelOutputDynamicCodeBridgeFindings.every((finding) => finding.matched_object.metadata.handler_dynamic_code_execution === true)).toBe(true);
+    expect(sourceHandlerModelOutputDynamicCodeBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.handler_model_output_dynamic_code_execution_bridge === true
+    )).toBe(true);
+    expect(sourceHandlerModelOutputDynamicCodeBridgeFindings.every((finding) => finding.matched_object.metadata.handler_secret_env_access === true)).toBe(true);
+    expect(sourceHandlerModelOutputDynamicCodeBridgeFindings.every((finding) => finding.matched_object.metadata.model_provider_call === true)).toBe(true);
+    expect(sourceHandlerModelOutputDynamicCodeBridgeFindings.every((finding) => finding.matched_object.metadata.dynamic_code_execution === true)).toBe(true);
+    expect(sourceHandlerModelOutputDynamicCodeBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.model_output_dynamic_code_execution_bridge === true
+    )).toBe(true);
+    expect(sourceHandlerModelOutputDynamicCodeBridgeFindings.every((finding) => finding.matched_object.metadata.accepts_content_like_input === true)).toBe(true);
+    expect(sourceHandlerModelOutputDynamicCodeBridgeFindings.every((finding) => finding.matched_object.metadata.accepts_customer_data_input === true)).toBe(true);
+    expect(sourceHandlerModelOutputDynamicCodeBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.authority_classes.includes("model_provider_call")
+    )).toBe(true);
+    expect(sourceHandlerModelOutputDynamicCodeBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.authority_classes.includes("dynamic_code_execution")
+    )).toBe(true);
+    expect(sourceHandlerModelOutputDynamicCodeBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.authority_classes.includes("model_output_dynamic_code_execution_bridge")
+    )).toBe(true);
+    expect(sourceHandlerModelOutputDynamicCodeBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.handler_authority_classes.includes("handler_model_output_dynamic_code_execution_bridge")
+    )).toBe(true);
+    expect(sourceHandlerModelOutputDynamicCodeBridgeFindings.every((finding) => finding.matched_object.actions.includes("execute"))).toBe(true);
+    expect(sourceHandlerModelOutputDynamicCodeBridgeFindings.every((finding) => finding.matched_object.actions.includes("read"))).toBe(true);
+    expect(sourceHandlerModelOutputDynamicCodeBridgeFindings.every((finding) => finding.matched_object.actions.includes("send"))).toBe(true);
+    expect(sourceHandlerModelOutputDynamicCodeBridgeFindings.every((finding) => finding.matched_object.external_reach === true)).toBe(true);
+    expect(sourceHandlerModelOutputDynamicCodeBridgeFindings.every((finding) => finding.matched_object.secret_exposure === true)).toBe(true);
+    expect(sourceHandlerModelOutputDynamicCodeBridgeFindings.every((finding) => finding.matched_object.side_effect === true)).toBe(true);
+    expect(sourceHandlerModelOutputDynamicCodeBridgeFindings.every((finding) => finding.matched_object.reversible === false)).toBe(true);
+    expect(JSON.stringify(sourceHandlerModelOutputDynamicCodeBridgeFindings)).not.toContain("openai.chat.completions.create");
+    expect(JSON.stringify(sourceHandlerModelOutputDynamicCodeBridgeFindings)).not.toContain("openai_client.chat.completions.create");
+    expect(JSON.stringify(sourceHandlerModelOutputDynamicCodeBridgeFindings)).not.toContain("modelResult");
+    expect(JSON.stringify(sourceHandlerModelOutputDynamicCodeBridgeFindings)).not.toContain("model_response");
+    expect(JSON.stringify(sourceHandlerModelOutputDynamicCodeBridgeFindings)).not.toContain("generatedCode");
+    expect(JSON.stringify(sourceHandlerModelOutputDynamicCodeBridgeFindings)).not.toContain("new Function");
+    expect(JSON.stringify(sourceHandlerModelOutputDynamicCodeBridgeFindings)).not.toContain("exec(");
+    expect(JSON.stringify(sourceHandlerModelOutputDynamicCodeBridgeFindings)).not.toContain("source model generated code executed");
+    expect(JSON.stringify(sourceHandlerModelOutputDynamicCodeBridgeFindings)).not.toContain("framework model generated code executed");
+    expect(JSON.stringify(sourceHandlerModelOutputDynamicCodeBridgeFindings)).not.toContain("Ask a model provider to generate code");
     const sourceHandlerDynamicCodeFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-019");
     expect(sourceHandlerDynamicCodeFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_evaluate_agent_expression",

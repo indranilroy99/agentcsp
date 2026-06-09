@@ -706,6 +706,9 @@ describe("scanner", () => {
     );
     const sourceExternalServiceWriteTool = surfaces.tools.find((surface) => surface.name === "source_send_customer_slack_update");
     const sourceModelProviderCallTool = surfaces.tools.find((surface) => surface.name === "source_summarize_customer_with_model");
+    const sourceModelOutputDynamicCodeBridgeTool = surfaces.tools.find(
+      (surface) => surface.name === "source_execute_model_generated_code"
+    );
     const pythonExportTool = surfaces.tools.find((surface) => surface.name === "python_export_customer_record");
     const pythonDeleteTool = surfaces.tools.find((surface) => surface.name === "python_readonly_delete_workspace_file");
     const pythonUnsafeDeserializationTool = surfaces.tools.find((surface) => surface.name === "python_load_serialized_agent_state");
@@ -879,6 +882,9 @@ describe("scanner", () => {
     );
     const langchainExternalServiceWriteTool = surfaces.tools.find((surface) => surface.name === "langchain_send_customer_slack_update");
     const langchainModelProviderCallTool = surfaces.tools.find((surface) => surface.name === "langchain_summarize_customer_with_model");
+    const langchainModelOutputDynamicCodeBridgeTool = surfaces.tools.find(
+      (surface) => surface.name === "langchain_execute_model_generated_code"
+    );
     const langchainUnsafeDeserializationTool = surfaces.tools.find((surface) => surface.name === "langchain_load_serialized_agent_state");
     const aiSdkExportTool = surfaces.tools.find((surface) => surface.name === "aiSdkExportCustomerContext");
     const tsLangchainDeleteTool = surfaces.tools.find((surface) => surface.name === "ts_langchain_delete_workspace_path");
@@ -7713,6 +7719,77 @@ describe("scanner", () => {
     expect(JSON.stringify(sourceModelProviderCallTool)).not.toContain("result.choices");
     expect(JSON.stringify(sourceModelProviderCallTool)).not.toContain("Summarize caller supplied customer ticket text");
     expect(JSON.stringify(sourceModelProviderCallTool)).not.toContain("Create an internal support summary");
+    expect(sourceModelOutputDynamicCodeBridgeTool).toMatchObject({
+      path: "mcp-source/customer-tools.ts",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["call", "execute", "read", "send"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(sourceModelOutputDynamicCodeBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_mcp_source_tool: true,
+      mcp_source_tool_registration: true,
+      mcp_source_tool_registration_kind: "registerTool",
+      mcp_source_tool_argument_count: 3,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_content_like_input: true,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      model_provider_call: true,
+      tainted_model_selection: true,
+      dynamic_code_execution: true,
+      model_output_dynamic_code_execution_bridge: true,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_model_provider_call: true,
+      handler_tainted_model_selection: true,
+      handler_dynamic_code_execution: true,
+      handler_model_output_dynamic_code_execution_bridge: true,
+      handler_secret_env_access: true,
+      handler_signal_count: 5,
+      open_world_schema: false
+    });
+    expect(sourceModelOutputDynamicCodeBridgeTool?.metadata.authority_classes).toEqual(expect.arrayContaining([
+      "dynamic_code_execution",
+      "handler_dynamic_code_execution",
+      "handler_model_output_dynamic_code_execution_bridge",
+      "handler_model_provider_call",
+      "handler_secret_env_access",
+      "handler_tainted_model_selection",
+      "model_output_dynamic_code_execution_bridge",
+      "model_provider_call",
+      "tainted_model_selection"
+    ]));
+    expect(sourceModelOutputDynamicCodeBridgeTool?.metadata.handler_authority_classes).toEqual([
+      "handler_dynamic_code_execution",
+      "handler_model_output_dynamic_code_execution_bridge",
+      "handler_model_provider_call",
+      "handler_secret_env_access",
+      "handler_tainted_model_selection"
+    ]);
+    expect(sourceModelOutputDynamicCodeBridgeTool?.metadata.handler_env_key_names).toEqual(["SOURCE_MODEL_CODE_EXECUTION_TOKEN"]);
+    expect(sourceModelOutputDynamicCodeBridgeTool?.metadata.schema_properties).toEqual([
+      "customer_id",
+      "customer_ticket_text",
+      "execution_reason_text",
+      "model_name"
+    ]);
+    expect(sourceModelOutputDynamicCodeBridgeTool?.metadata.required_properties).toEqual([
+      "customer_id",
+      "customer_ticket_text",
+      "execution_reason_text",
+      "model_name"
+    ]);
+    expect(JSON.stringify(sourceModelOutputDynamicCodeBridgeTool)).not.toContain("openai.chat.completions.create");
+    expect(JSON.stringify(sourceModelOutputDynamicCodeBridgeTool)).not.toContain("modelResult");
+    expect(JSON.stringify(sourceModelOutputDynamicCodeBridgeTool)).not.toContain("generatedCode");
+    expect(JSON.stringify(sourceModelOutputDynamicCodeBridgeTool)).not.toContain("new Function");
+    expect(JSON.stringify(sourceModelOutputDynamicCodeBridgeTool)).not.toContain("source model generated code executed");
+    expect(JSON.stringify(sourceModelOutputDynamicCodeBridgeTool)).not.toContain("Ask a model provider to generate code");
     expect(pythonExportTool).toMatchObject({
       path: "mcp-source/python_tools.py",
       data_classes: ["confidential", "credential", "pii"],
@@ -14768,6 +14845,80 @@ describe("scanner", () => {
     expect(JSON.stringify(langchainModelProviderCallTool)).not.toContain("response.choices");
     expect(JSON.stringify(langchainModelProviderCallTool)).not.toContain("Summarize caller supplied customer ticket text");
     expect(JSON.stringify(langchainModelProviderCallTool)).not.toContain("Create an internal support summary");
+    expect(langchainModelOutputDynamicCodeBridgeTool).toMatchObject({
+      path: "framework-tools/langchain_tools.py",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["call", "execute", "read", "send"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(langchainModelOutputDynamicCodeBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_agent_framework_source_tool: true,
+      agent_framework_source_tool: true,
+      agent_framework_source_tool_framework: "langchain",
+      agent_framework_source_tool_registration_kind: "python_tool_decorator",
+      agent_framework_source_tool_argument_count: 4,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_content_like_input: true,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      model_provider_call: true,
+      tainted_model_selection: true,
+      dynamic_code_execution: true,
+      model_output_dynamic_code_execution_bridge: true,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_model_provider_call: true,
+      handler_tainted_model_selection: true,
+      handler_dynamic_code_execution: true,
+      handler_model_output_dynamic_code_execution_bridge: true,
+      handler_privileged_prompt_composition: true,
+      handler_secret_env_access: true,
+      handler_signal_count: 6,
+      open_world_schema: false
+    });
+    expect(langchainModelOutputDynamicCodeBridgeTool?.metadata.authority_classes).toEqual(expect.arrayContaining([
+      "dynamic_code_execution",
+      "handler_dynamic_code_execution",
+      "handler_model_output_dynamic_code_execution_bridge",
+      "handler_model_provider_call",
+      "handler_privileged_prompt_composition",
+      "handler_secret_env_access",
+      "handler_tainted_model_selection",
+      "model_output_dynamic_code_execution_bridge",
+      "model_provider_call",
+      "tainted_model_selection"
+    ]));
+    expect(langchainModelOutputDynamicCodeBridgeTool?.metadata.handler_authority_classes).toEqual([
+      "handler_dynamic_code_execution",
+      "handler_model_output_dynamic_code_execution_bridge",
+      "handler_model_provider_call",
+      "handler_privileged_prompt_composition",
+      "handler_secret_env_access",
+      "handler_tainted_model_selection"
+    ]);
+    expect(langchainModelOutputDynamicCodeBridgeTool?.metadata.handler_env_key_names).toEqual(["LANGCHAIN_MODEL_CODE_EXECUTION_TOKEN"]);
+    expect(langchainModelOutputDynamicCodeBridgeTool?.metadata.schema_properties).toEqual([
+      "customer_id",
+      "customer_ticket_text",
+      "execution_reason_text",
+      "model_name"
+    ]);
+    expect(langchainModelOutputDynamicCodeBridgeTool?.metadata.required_properties).toEqual([
+      "customer_id",
+      "customer_ticket_text",
+      "execution_reason_text",
+      "model_name"
+    ]);
+    expect(JSON.stringify(langchainModelOutputDynamicCodeBridgeTool)).not.toContain("openai_client.chat.completions.create");
+    expect(JSON.stringify(langchainModelOutputDynamicCodeBridgeTool)).not.toContain("model_response");
+    expect(JSON.stringify(langchainModelOutputDynamicCodeBridgeTool)).not.toContain("exec(");
+    expect(JSON.stringify(langchainModelOutputDynamicCodeBridgeTool)).not.toContain("framework model generated code executed");
+    expect(JSON.stringify(langchainModelOutputDynamicCodeBridgeTool)).not.toContain("Ask a model provider to generate code");
     expect(aiSdkExportTool).toMatchObject({
       path: "framework-tools/vercel-ai-tools.ts",
       data_classes: ["confidential", "credential", "pii"],

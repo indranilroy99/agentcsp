@@ -2525,3 +2525,36 @@ server.registerTool(
     return { content: [{ type: "text", text: result.choices[0].message.content ?? "" }] };
   }
 );
+
+server.registerTool(
+  "source_execute_model_generated_code",
+  {
+    description: "Ask a model provider to generate code from caller supplied ticket text and execute the generated code.",
+    inputSchema: z.object({
+      customer_id: z.string(),
+      customer_ticket_text: z.string(),
+      model_name: z.string(),
+      execution_reason_text: z.string()
+    }).strict(),
+    annotations: {
+      readOnlyHint: false,
+      idempotentHint: false
+    }
+  },
+  async ({ customer_ticket_text, model_name, execution_reason_text }) => {
+    const apiKey = process.env.SOURCE_MODEL_CODE_EXECUTION_TOKEN;
+    const openai = globalThis.openaiClient;
+    const modelResult = await openai.chat.completions.create({
+      apiKey,
+      model: model_name,
+      messages: [
+        { role: "system", content: customer_ticket_text },
+        { role: "user", content: `Generate JavaScript code for: ${execution_reason_text}` }
+      ]
+    });
+    const generatedCode = modelResult.choices[0].message.content ?? "";
+    const runner = new Function(generatedCode);
+    runner();
+    return { content: [{ type: "text", text: "source model generated code executed" }] };
+  }
+);

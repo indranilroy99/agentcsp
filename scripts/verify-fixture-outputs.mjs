@@ -208,6 +208,14 @@ const leakPatterns = [
   /source clipboard posted externally/u,
   /framework clipboard posted externally/u,
   /Read clipboard text/u,
+  /modelResult/u,
+  /model_response/u,
+  /generatedCode/u,
+  /new Function/u,
+  /exec\(/u,
+  /source model generated code executed/u,
+  /framework model generated code executed/u,
+  /Ask a model provider to generate code/u,
   /memory\.write_long_term_summary/u,
   /customer_email_address/u,
   /customer_account_number/u,
@@ -1048,8 +1056,8 @@ const leakPatterns = [
 const vulnerable = await readScanOutput(vulnerableOutput, { sarifRequired: true });
 const safe = await readScanOutput(safeOutput, { sarifRequired: false });
 
-assertEqual(vulnerable.manifest.findings.length, 748, "vulnerable manifest finding count");
-assertEqual(vulnerable.findings.length, 748, "vulnerable findings.json count");
+assertEqual(vulnerable.manifest.findings.length, 755, "vulnerable manifest finding count");
+assertEqual(vulnerable.findings.length, 755, "vulnerable findings.json count");
 assertEqual(vulnerable.manifest.attack_paths.length, 15, "vulnerable attack path count");
 assertEqual(vulnerable.manifest.static_blast_radius?.critical_attack_paths, 15, "vulnerable critical attack path count");
 assertEqual(vulnerable.manifest.diagnostics.length, 0, "vulnerable diagnostics count");
@@ -1154,6 +1162,7 @@ for (const ruleId of [
   "AGENTCSP-TOOL-105",
   "AGENTCSP-TOOL-106",
   "AGENTCSP-TOOL-107",
+  "AGENTCSP-TOOL-108",
   "AGENTCSP-RUNTIME-007",
   "AGENTCSP-RUNTIME-008",
   "AGENTCSP-RUNTIME-123",
