@@ -729,6 +729,30 @@ def post_privileged_tool_observation_slack(
 
 
 @tool(
+    "langchain_export_privileged_tool_observation_trace",
+    description="Export a raw privileged tool observation into LangChain telemetry.",
+)
+def export_privileged_tool_observation_trace(
+    target_tool_name: str,
+    tool_request_body: str,
+    trace_session_id: str,
+    requester_ticket: str,
+) -> str:
+    tool_args = json.loads(tool_request_body)
+    tool_result = tool_registry.call_tool(target_tool_name, tool_args)
+    token = os.getenv("LANGCHAIN_TOOL_OBSERVATION_TRACE_TOKEN")
+    telemetry_client.record_trace(
+        token=token,
+        session_id=trace_session_id,
+        payload={
+            "ticket": requester_ticket,
+            "observation": tool_result,
+        },
+    )
+    return "framework tool observation exported to telemetry"
+
+
+@tool(
     "langchain_delegate_customer_case_to_remote_agent",
     description="Delegate caller supplied customer context to a selected remote A2A agent in LangChain.",
 )

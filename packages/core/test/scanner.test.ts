@@ -583,6 +583,9 @@ describe("scanner", () => {
     const sourceToolOutputExternalServiceBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "source_post_privileged_tool_observation_slack"
     );
+    const sourceToolOutputTelemetryBridgeTool = surfaces.tools.find(
+      (surface) => surface.name === "source_export_privileged_tool_observation_trace"
+    );
     const sourceAgentDelegationTool = surfaces.tools.find((surface) => surface.name === "source_delegate_customer_case_to_remote_agent");
     const sourceBrowserAutomationTool = surfaces.tools.find((surface) => surface.name === "source_submit_customer_browser_form");
     const sourceVisualContextCaptureTool = surfaces.tools.find((surface) => surface.name === "source_capture_authenticated_page_screenshot");
@@ -668,6 +671,9 @@ describe("scanner", () => {
     );
     const langchainToolOutputExternalServiceBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "langchain_post_privileged_tool_observation_slack"
+    );
+    const langchainToolOutputTelemetryBridgeTool = surfaces.tools.find(
+      (surface) => surface.name === "langchain_export_privileged_tool_observation_trace"
     );
     const langchainAgentDelegationTool = surfaces.tools.find((surface) => surface.name === "langchain_delegate_customer_case_to_remote_agent");
     const langchainBrowserAutomationTool = surfaces.tools.find((surface) => surface.name === "langchain_submit_customer_browser_form");
@@ -3490,6 +3496,78 @@ describe("scanner", () => {
     expect(JSON.stringify(sourceToolOutputExternalServiceBridgeTool)).not.toContain("toolResult");
     expect(JSON.stringify(sourceToolOutputExternalServiceBridgeTool)).not.toContain("source tool observation posted externally");
     expect(JSON.stringify(sourceToolOutputExternalServiceBridgeTool)).not.toContain("Post a raw privileged tool observation");
+    expect(sourceToolOutputTelemetryBridgeTool).toMatchObject({
+      path: "mcp-source/customer-tools.ts",
+      data_classes: ["confidential", "credential"],
+      actions: ["call", "execute", "publish", "send"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(sourceToolOutputTelemetryBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_mcp_source_tool: true,
+      mcp_source_tool_registration: true,
+      mcp_source_tool_registration_kind: "registerTool",
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_content_like_input: true,
+      nested_tool_invocation: true,
+      telemetry_export: true,
+      tool_output_telemetry_bridge: true,
+      tainted_telemetry_payload: false,
+      external_write: true,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_tool_invocation: true,
+      handler_telemetry_export: true,
+      handler_tool_output_telemetry_bridge: true,
+      handler_tainted_telemetry_payload: false,
+      handler_secret_env_access: true,
+      handler_signal_count: 4,
+      open_world_schema: false
+    });
+    expect(sourceToolOutputTelemetryBridgeTool?.metadata.authority_classes).toEqual([
+      "content_input",
+      "customer_data_input",
+      "external_write",
+      "handler_secret_env_access",
+      "handler_telemetry_export",
+      "handler_tool_invocation",
+      "handler_tool_output_telemetry_bridge",
+      "nested_tool_invocation",
+      "network_access",
+      "secret_env_access",
+      "telemetry_export",
+      "tool_output_telemetry_bridge"
+    ]);
+    expect(sourceToolOutputTelemetryBridgeTool?.metadata.handler_authority_classes).toEqual([
+      "handler_secret_env_access",
+      "handler_telemetry_export",
+      "handler_tool_invocation",
+      "handler_tool_output_telemetry_bridge"
+    ]);
+    expect(sourceToolOutputTelemetryBridgeTool?.metadata.handler_env_key_names).toEqual([
+      "SOURCE_TOOL_OBSERVATION_TRACE_TOKEN"
+    ]);
+    expect(sourceToolOutputTelemetryBridgeTool?.metadata.schema_properties).toEqual([
+      "requester_ticket",
+      "target_tool_name",
+      "tool_request_body",
+      "trace_session_id"
+    ]);
+    expect(sourceToolOutputTelemetryBridgeTool?.metadata.required_properties).toEqual([
+      "requester_ticket",
+      "target_tool_name",
+      "tool_request_body",
+      "trace_session_id"
+    ]);
+    expect(JSON.stringify(sourceToolOutputTelemetryBridgeTool)).not.toContain("mcpClient.callTool");
+    expect(JSON.stringify(sourceToolOutputTelemetryBridgeTool)).not.toContain("telemetryClient.recordTrace");
+    expect(JSON.stringify(sourceToolOutputTelemetryBridgeTool)).not.toContain("toolResult");
+    expect(JSON.stringify(sourceToolOutputTelemetryBridgeTool)).not.toContain("source tool observation exported to telemetry");
+    expect(JSON.stringify(sourceToolOutputTelemetryBridgeTool)).not.toContain("Export a raw privileged tool observation");
     expect(sourceAgentDelegationTool).toMatchObject({
       path: "mcp-source/customer-tools.ts",
       data_classes: ["confidential", "credential", "pii"],
@@ -7972,6 +8050,80 @@ describe("scanner", () => {
     expect(JSON.stringify(langchainToolOutputExternalServiceBridgeTool)).not.toContain("tool_result");
     expect(JSON.stringify(langchainToolOutputExternalServiceBridgeTool)).not.toContain("framework tool observation posted externally");
     expect(JSON.stringify(langchainToolOutputExternalServiceBridgeTool)).not.toContain("Post a raw privileged tool observation");
+    expect(langchainToolOutputTelemetryBridgeTool).toMatchObject({
+      path: "framework-tools/langchain_tools.py",
+      data_classes: ["confidential", "credential"],
+      actions: ["call", "execute", "publish", "send"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(langchainToolOutputTelemetryBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_agent_framework_source_tool: true,
+      agent_framework_source_tool: true,
+      agent_framework_source_tool_framework: "langchain",
+      agent_framework_source_tool_registration_kind: "python_tool_decorator",
+      agent_framework_source_tool_argument_count: 4,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_content_like_input: true,
+      nested_tool_invocation: true,
+      telemetry_export: true,
+      tool_output_telemetry_bridge: true,
+      tainted_telemetry_payload: false,
+      external_write: true,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_tool_invocation: true,
+      handler_telemetry_export: true,
+      handler_tool_output_telemetry_bridge: true,
+      handler_tainted_telemetry_payload: false,
+      handler_secret_env_access: true,
+      handler_signal_count: 4,
+      open_world_schema: false
+    });
+    expect(langchainToolOutputTelemetryBridgeTool?.metadata.authority_classes).toEqual([
+      "content_input",
+      "customer_data_input",
+      "external_write",
+      "handler_secret_env_access",
+      "handler_telemetry_export",
+      "handler_tool_invocation",
+      "handler_tool_output_telemetry_bridge",
+      "nested_tool_invocation",
+      "network_access",
+      "secret_env_access",
+      "telemetry_export",
+      "tool_output_telemetry_bridge"
+    ]);
+    expect(langchainToolOutputTelemetryBridgeTool?.metadata.handler_authority_classes).toEqual([
+      "handler_secret_env_access",
+      "handler_telemetry_export",
+      "handler_tool_invocation",
+      "handler_tool_output_telemetry_bridge"
+    ]);
+    expect(langchainToolOutputTelemetryBridgeTool?.metadata.handler_env_key_names).toEqual([
+      "LANGCHAIN_TOOL_OBSERVATION_TRACE_TOKEN"
+    ]);
+    expect(langchainToolOutputTelemetryBridgeTool?.metadata.schema_properties).toEqual([
+      "requester_ticket",
+      "target_tool_name",
+      "tool_request_body",
+      "trace_session_id"
+    ]);
+    expect(langchainToolOutputTelemetryBridgeTool?.metadata.required_properties).toEqual([
+      "requester_ticket",
+      "target_tool_name",
+      "tool_request_body",
+      "trace_session_id"
+    ]);
+    expect(JSON.stringify(langchainToolOutputTelemetryBridgeTool)).not.toContain("tool_registry.call_tool");
+    expect(JSON.stringify(langchainToolOutputTelemetryBridgeTool)).not.toContain("telemetry_client.record_trace");
+    expect(JSON.stringify(langchainToolOutputTelemetryBridgeTool)).not.toContain("tool_result");
+    expect(JSON.stringify(langchainToolOutputTelemetryBridgeTool)).not.toContain("framework tool observation exported to telemetry");
+    expect(JSON.stringify(langchainToolOutputTelemetryBridgeTool)).not.toContain("Export a raw privileged tool observation");
     expect(langchainAgentDelegationTool).toMatchObject({
       path: "framework-tools/langchain_tools.py",
       data_classes: ["confidential", "credential", "pii"],

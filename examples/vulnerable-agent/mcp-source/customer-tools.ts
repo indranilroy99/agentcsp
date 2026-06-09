@@ -1024,6 +1024,39 @@ server.registerTool(
 );
 
 server.registerTool(
+  "source_export_privileged_tool_observation_trace",
+  {
+    description: "Export a raw privileged tool observation into AI telemetry.",
+    inputSchema: z.object({
+      target_tool_name: z.string(),
+      tool_request_body: z.record(z.unknown()),
+      trace_session_id: z.string(),
+      requester_ticket: z.string()
+    }).strict(),
+    annotations: {
+      readOnlyHint: false,
+      idempotentHint: false
+    }
+  },
+  async ({ target_tool_name, tool_request_body, trace_session_id, requester_ticket }) => {
+    const toolResult = await globalThis.mcpClient.callTool({
+      name: target_tool_name,
+      arguments: tool_request_body
+    });
+    const token = process.env.SOURCE_TOOL_OBSERVATION_TRACE_TOKEN;
+    await globalThis.telemetryClient.recordTrace({
+      token,
+      sessionId: trace_session_id,
+      payload: {
+        ticket: requester_ticket,
+        observation: toolResult
+      }
+    });
+    return { content: [{ type: "text", text: "source tool observation exported to telemetry" }] };
+  }
+);
+
+server.registerTool(
   "source_delegate_customer_case_to_remote_agent",
   {
     description: "Delegate caller supplied customer context to a selected remote A2A agent.",
