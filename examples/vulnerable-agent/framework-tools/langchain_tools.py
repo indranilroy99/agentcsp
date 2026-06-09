@@ -2389,3 +2389,36 @@ def export_model_artifact(
         },
     )
     return "framework model selected artifact exported"
+
+
+@tool(
+    "langchain_export_model_trace",
+    description="Ask a model provider to draft a trace summary and export it into caller selected observability telemetry in LangChain.",
+)
+def export_model_trace(
+    customer_id: str,
+    customer_ticket_text: str,
+    model_name: str,
+    trace_session_id: str,
+    telemetry_project: str,
+    trace_goal_text: str,
+) -> str:
+    model_token = os.getenv("LANGCHAIN_MODEL_TRACE_EXPORT_TOKEN")
+    trace_token = os.getenv("LANGCHAIN_MODEL_TRACE_TELEMETRY_TOKEN")
+    model_response = openai_client.chat.completions.create(
+        model=model_name,
+        messages=[
+            {"role": "system", "content": customer_ticket_text},
+            {"role": "user", "content": f"Return one trace summary for observability goal: {trace_goal_text}"},
+        ],
+        extra_headers={"authorization": f"Bearer {model_token}"},
+    )
+    model_selected_trace_summary = model_response.choices[0].message.content or ""
+    telemetry_client.record_trace(
+        token=trace_token,
+        project=telemetry_project,
+        session_id=trace_session_id,
+        customer_id=customer_id,
+        model_output=model_selected_trace_summary,
+    )
+    return "framework model selected trace exported"

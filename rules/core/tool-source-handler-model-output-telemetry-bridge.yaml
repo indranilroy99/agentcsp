@@ -1,0 +1,127 @@
+id: AGENTCSP-TOOL-126
+name: Source tool handler exports model output to telemetry
+description: A source-defined agent tool handler calls a model provider, extracts model output, and writes that output into telemetry, tracing, logging, or observability systems using runtime credentials and caller-selected trace routing.
+category: model_output_telemetry_bridge
+severity: critical
+maps_to:
+  owasp:
+    - LLM01:2025 Prompt Injection
+    - LLM02:2025 Sensitive Information Disclosure
+    - LLM05:2025 Improper Output Handling
+    - LLM06:2025 Excessive Agency
+  mitre_atlas:
+    - AML.T0051 LLM Plugin Compromise
+    - AML.T0056 LLM Trusted Boundary Compromise
+    - AML.T0057 Exfiltration via Cyber Means
+    - AML.T0060 LLM Prompt Injection
+  nist_ai_rmf:
+    - MAP 4.1
+    - MEASURE 2.7
+    - MANAGE 2.4
+match:
+  object_type: tool
+  where:
+    - field: metadata.parsed_tool_schema
+      op: equals
+      value: true
+    - field: metadata.source_tool_handler_redacted
+      op: equals
+      value: true
+    - field: metadata.handler_body_analyzed
+      op: equals
+      value: true
+    - field: metadata.handler_model_provider_call
+      op: equals
+      value: true
+    - field: metadata.handler_telemetry_export
+      op: equals
+      value: true
+    - field: metadata.handler_tainted_telemetry_payload
+      op: equals
+      value: true
+    - field: metadata.handler_model_output_telemetry_bridge
+      op: equals
+      value: true
+    - field: metadata.handler_secret_env_access
+      op: equals
+      value: true
+    - field: metadata.model_provider_call
+      op: equals
+      value: true
+    - field: metadata.telemetry_export
+      op: equals
+      value: true
+    - field: metadata.tainted_telemetry_payload
+      op: equals
+      value: true
+    - field: metadata.model_output_telemetry_bridge
+      op: equals
+      value: true
+    - field: metadata.accepts_content_like_input
+      op: equals
+      value: true
+    - field: metadata.accepts_customer_data_input
+      op: equals
+      value: true
+    - field: metadata.authority_classes
+      op: includes
+      value: model_provider_call
+    - field: metadata.authority_classes
+      op: includes
+      value: telemetry_export
+    - field: metadata.authority_classes
+      op: includes
+      value: tainted_telemetry_payload
+    - field: metadata.authority_classes
+      op: includes
+      value: model_output_telemetry_bridge
+    - field: metadata.handler_authority_classes
+      op: includes
+      value: handler_model_provider_call
+    - field: metadata.handler_authority_classes
+      op: includes
+      value: handler_telemetry_export
+    - field: metadata.handler_authority_classes
+      op: includes
+      value: handler_tainted_telemetry_payload
+    - field: metadata.handler_authority_classes
+      op: includes
+      value: handler_model_output_telemetry_bridge
+    - field: metadata.schema_properties
+      op: contains_any
+      value:
+        - customer_ticket_text
+        - model_name
+        - telemetry_project
+        - trace_goal_text
+        - trace_session_id
+    - field: metadata.external_write
+      op: equals
+      value: true
+    - field: actions
+      op: includes
+      value: send
+    - field: actions
+      op: includes
+      value: publish
+    - field: data_classes
+      op: contains_any
+      value:
+        - confidential
+        - credential
+        - pii
+    - field: external_reach
+      op: equals
+      value: true
+    - field: secret_exposure
+      op: equals
+      value: true
+    - field: side_effect
+      op: equals
+      value: true
+    - field: reversible
+      op: equals
+      value: false
+recommendation:
+  control: quarantine
+  text: Quarantine model-output-to-telemetry handlers until model responses are classified and redacted before trace export, observability projects and sessions are policy-owned, trace replay into future agent context is blocked by default, telemetry credentials are scoped, and approval is required before generated content leaves the agent boundary.

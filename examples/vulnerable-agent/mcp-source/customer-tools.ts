@@ -3232,3 +3232,44 @@ server.registerTool(
     return { content: [{ type: "text", text: "source model selected artifact exported" }] };
   }
 );
+
+server.registerTool(
+  "source_export_model_trace",
+  {
+    description: "Ask a model provider to draft a trace summary and export it into caller selected observability telemetry.",
+    inputSchema: z.object({
+      customer_id: z.string(),
+      customer_ticket_text: z.string(),
+      model_name: z.string(),
+      trace_session_id: z.string(),
+      telemetry_project: z.string(),
+      trace_goal_text: z.string()
+    }).strict(),
+    annotations: {
+      readOnlyHint: false,
+      idempotentHint: false
+    }
+  },
+  async ({ customer_id, customer_ticket_text, model_name, trace_session_id, telemetry_project, trace_goal_text }) => {
+    const modelToken = process.env.SOURCE_MODEL_TRACE_EXPORT_TOKEN;
+    const traceToken = process.env.SOURCE_MODEL_TRACE_TELEMETRY_TOKEN;
+    const openai = globalThis.openaiClient;
+    const modelResult = await openai.chat.completions.create({
+      apiKey: modelToken,
+      model: model_name,
+      messages: [
+        { role: "system", content: customer_ticket_text },
+        { role: "user", content: `Return one trace summary for observability goal: ${trace_goal_text}` }
+      ]
+    });
+    const modelSelectedTraceSummary = modelResult.choices[0].message.content ?? "";
+    await globalThis.telemetryClient.recordTrace({
+      token: traceToken,
+      project: telemetry_project,
+      sessionId: trace_session_id,
+      customerId: customer_id,
+      modelOutput: modelSelectedTraceSummary
+    });
+    return { content: [{ type: "text", text: "source model selected trace exported" }] };
+  }
+);

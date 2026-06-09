@@ -357,6 +357,7 @@ Tool metadata may include:
 - `tool_output_embedding_vector_bridge`
 - `telemetry_export`
 - `secret_manager_telemetry_bridge`
+- `model_output_telemetry_bridge`
 - `tool_output_telemetry_bridge`
 - `tainted_telemetry_payload`
 - `prompt_cache_write`
@@ -462,6 +463,7 @@ Tool metadata may include:
 - `handler_tool_output_embedding_vector_bridge`
 - `handler_telemetry_export`
 - `handler_secret_manager_telemetry_bridge`
+- `handler_model_output_telemetry_bridge`
 - `handler_tool_output_telemetry_bridge`
 - `handler_tainted_telemetry_payload`
 - `handler_prompt_cache_write`
@@ -2073,6 +2075,8 @@ Source-defined tool handlers can also emit redacted model-output external-servic
 Source-defined tool handlers can also emit redacted model-output memory bridge authority through `model_output_memory_bridge`, `model_provider_call`, `memory_write`, `tainted_memory_scope`, and the corresponding `handler_*` fields when parsed MCP SDK or agent-framework tools call model providers and persist model responses into durable memory, RAG, vector, or state stores using runtime credentials and caller-selected memory scope. Handler bodies, model SDK calls, prompts, completions, memory-store calls, namespaces, keys, stored payloads, model-derived memory variables, and return strings remain redacted.
 
 Source-defined tool handlers can also emit redacted model-output training-dataset bridge authority through `model_output_training_dataset_bridge`, `model_provider_call`, `training_dataset_export`, `tainted_training_dataset_payload`, and the corresponding `handler_*` fields when parsed MCP SDK or agent-framework tools call model providers and export model responses into training, fine-tuning, eval, or model-improvement datasets using runtime credentials and caller-selected dataset routing. Handler bodies, model SDK calls, prompts, completions, dataset client calls, dataset IDs, split names, training records, model-derived dataset variables, and return strings remain redacted.
+
+Source-defined tool handlers can also emit redacted model-output telemetry bridge authority through `model_output_telemetry_bridge`, `model_provider_call`, `telemetry_export`, `tainted_telemetry_payload`, and the corresponding `handler_*` fields when parsed MCP SDK or agent-framework tools call model providers and export model responses into telemetry, tracing, logging, or observability systems using runtime credentials and caller-selected trace routing. Handler bodies, model SDK calls, prompts, completions, telemetry calls, trace IDs, project labels, trace payloads, model-derived trace variables, and return strings remain redacted.
 
 Source-defined tool handlers can also emit redacted model-output artifact bridge authority through `model_output_artifact_bridge`, `model_provider_call`, `artifact_export`, `tainted_artifact_export_payload`, `public_artifact_destination`, and the corresponding `handler_*` fields when parsed MCP SDK or agent-framework tools call model providers and export model responses into public or shareable artifact storage using runtime credentials and caller-selected object routing. Handler bodies, model SDK calls, prompts, completions, artifact storage calls, bucket names, object keys, public URLs, model-derived artifact variables, artifact contents, and return strings remain redacted.
 

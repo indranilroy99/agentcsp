@@ -760,6 +760,9 @@ describe("scanner", () => {
     const sourceModelOutputArtifactBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "source_export_model_artifact"
     );
+    const sourceModelOutputTelemetryBridgeTool = surfaces.tools.find(
+      (surface) => surface.name === "source_export_model_trace"
+    );
     const pythonExportTool = surfaces.tools.find((surface) => surface.name === "python_export_customer_record");
     const pythonDeleteTool = surfaces.tools.find((surface) => surface.name === "python_readonly_delete_workspace_file");
     const pythonUnsafeDeserializationTool = surfaces.tools.find((surface) => surface.name === "python_load_serialized_agent_state");
@@ -986,6 +989,9 @@ describe("scanner", () => {
     );
     const langchainModelOutputArtifactBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "langchain_export_model_artifact"
+    );
+    const langchainModelOutputTelemetryBridgeTool = surfaces.tools.find(
+      (surface) => surface.name === "langchain_export_model_trace"
     );
     const langchainUnsafeDeserializationTool = surfaces.tools.find((surface) => surface.name === "langchain_load_serialized_agent_state");
     const aiSdkExportTool = surfaces.tools.find((surface) => surface.name === "aiSdkExportCustomerContext");
@@ -2567,6 +2573,74 @@ describe("scanner", () => {
     expect(JSON.stringify(sourceTelemetryExportTool)).not.toContain("telemetryClient.recordTrace");
     expect(JSON.stringify(sourceTelemetryExportTool)).not.toContain("source trace exported");
     expect(JSON.stringify(sourceTelemetryExportTool)).not.toContain("Export caller supplied customer trace context");
+    expect(sourceModelOutputTelemetryBridgeTool).toMatchObject({
+      path: "mcp-source/customer-tools.ts",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["call", "publish", "read", "send"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(sourceModelOutputTelemetryBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_mcp_source_tool: true,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      telemetry_export: true,
+      tainted_telemetry_payload: true,
+      model_output_telemetry_bridge: true,
+      model_provider_call: true,
+      tainted_model_selection: true,
+      handler_telemetry_export: true,
+      handler_tainted_telemetry_payload: true,
+      handler_model_output_telemetry_bridge: true,
+      handler_model_provider_call: true,
+      handler_tainted_model_selection: true,
+      handler_secret_env_access: true,
+      handler_signal_count: 6,
+      external_write: true,
+      open_world_schema: false
+    });
+    expect(sourceModelOutputTelemetryBridgeTool?.metadata.authority_classes).toEqual(expect.arrayContaining([
+      "handler_model_output_telemetry_bridge",
+      "handler_model_provider_call",
+      "handler_secret_env_access",
+      "handler_tainted_model_selection",
+      "handler_tainted_telemetry_payload",
+      "handler_telemetry_export",
+      "model_output_telemetry_bridge",
+      "model_provider_call",
+      "tainted_model_selection",
+      "tainted_telemetry_payload",
+      "telemetry_export"
+    ]));
+    expect(sourceModelOutputTelemetryBridgeTool?.metadata.handler_authority_classes).toEqual([
+      "handler_model_output_telemetry_bridge",
+      "handler_model_provider_call",
+      "handler_secret_env_access",
+      "handler_tainted_model_selection",
+      "handler_tainted_telemetry_payload",
+      "handler_telemetry_export"
+    ]);
+    expect(sourceModelOutputTelemetryBridgeTool?.metadata.handler_env_key_names).toEqual([
+      "SOURCE_MODEL_TRACE_EXPORT_TOKEN",
+      "SOURCE_MODEL_TRACE_TELEMETRY_TOKEN"
+    ]);
+    expect(sourceModelOutputTelemetryBridgeTool?.metadata.schema_properties).toEqual([
+      "customer_id",
+      "customer_ticket_text",
+      "model_name",
+      "telemetry_project",
+      "trace_goal_text",
+      "trace_session_id"
+    ]);
+    expect(JSON.stringify(sourceModelOutputTelemetryBridgeTool)).not.toContain("openai.chat.completions.create");
+    expect(JSON.stringify(sourceModelOutputTelemetryBridgeTool)).not.toContain("telemetryClient.recordTrace");
+    expect(JSON.stringify(sourceModelOutputTelemetryBridgeTool)).not.toContain("modelSelectedTraceSummary");
+    expect(JSON.stringify(sourceModelOutputTelemetryBridgeTool)).not.toContain("source model selected trace exported");
+    expect(JSON.stringify(sourceModelOutputTelemetryBridgeTool)).not.toContain("Ask a model provider to draft a trace summary");
+    expect(JSON.stringify(sourceModelOutputTelemetryBridgeTool)).not.toContain("Return one trace summary");
     expect(sourcePromptCacheWriteTool).toMatchObject({
       path: "mcp-source/customer-tools.ts",
       data_classes: ["confidential", "credential", "pii"],
@@ -11011,6 +11085,80 @@ describe("scanner", () => {
     expect(JSON.stringify(langchainTelemetryExportTool)).not.toContain("telemetry_client.record_trace");
     expect(JSON.stringify(langchainTelemetryExportTool)).not.toContain("framework trace exported");
     expect(JSON.stringify(langchainTelemetryExportTool)).not.toContain("Export caller supplied customer trace context");
+    expect(langchainModelOutputTelemetryBridgeTool).toMatchObject({
+      path: "framework-tools/langchain_tools.py",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["call", "publish", "read", "send"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(langchainModelOutputTelemetryBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_agent_framework_source_tool: true,
+      agent_framework_source_tool_framework: "langchain",
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      telemetry_export: true,
+      tainted_telemetry_payload: true,
+      model_output_telemetry_bridge: true,
+      model_provider_call: true,
+      tainted_model_selection: true,
+      privileged_prompt_composition: true,
+      handler_telemetry_export: true,
+      handler_tainted_telemetry_payload: true,
+      handler_model_output_telemetry_bridge: true,
+      handler_model_provider_call: true,
+      handler_tainted_model_selection: true,
+      handler_privileged_prompt_composition: true,
+      handler_secret_env_access: true,
+      handler_signal_count: 7,
+      external_write: true,
+      open_world_schema: false
+    });
+    expect(langchainModelOutputTelemetryBridgeTool?.metadata.authority_classes).toEqual(expect.arrayContaining([
+      "handler_model_output_telemetry_bridge",
+      "handler_model_provider_call",
+      "handler_privileged_prompt_composition",
+      "handler_secret_env_access",
+      "handler_tainted_model_selection",
+      "handler_tainted_telemetry_payload",
+      "handler_telemetry_export",
+      "model_output_telemetry_bridge",
+      "model_provider_call",
+      "privileged_prompt_composition",
+      "tainted_model_selection",
+      "tainted_telemetry_payload",
+      "telemetry_export"
+    ]));
+    expect(langchainModelOutputTelemetryBridgeTool?.metadata.handler_authority_classes).toEqual([
+      "handler_model_output_telemetry_bridge",
+      "handler_model_provider_call",
+      "handler_privileged_prompt_composition",
+      "handler_secret_env_access",
+      "handler_tainted_model_selection",
+      "handler_tainted_telemetry_payload",
+      "handler_telemetry_export"
+    ]);
+    expect(langchainModelOutputTelemetryBridgeTool?.metadata.handler_env_key_names).toEqual([
+      "LANGCHAIN_MODEL_TRACE_EXPORT_TOKEN",
+      "LANGCHAIN_MODEL_TRACE_TELEMETRY_TOKEN"
+    ]);
+    expect(langchainModelOutputTelemetryBridgeTool?.metadata.schema_properties).toEqual([
+      "customer_id",
+      "customer_ticket_text",
+      "model_name",
+      "telemetry_project",
+      "trace_goal_text",
+      "trace_session_id"
+    ]);
+    expect(JSON.stringify(langchainModelOutputTelemetryBridgeTool)).not.toContain("openai_client.chat.completions.create");
+    expect(JSON.stringify(langchainModelOutputTelemetryBridgeTool)).not.toContain("telemetry_client.record_trace");
+    expect(JSON.stringify(langchainModelOutputTelemetryBridgeTool)).not.toContain("model_selected_trace_summary");
+    expect(JSON.stringify(langchainModelOutputTelemetryBridgeTool)).not.toContain("framework model selected trace exported");
+    expect(JSON.stringify(langchainModelOutputTelemetryBridgeTool)).not.toContain("Ask a model provider to draft a trace summary");
+    expect(JSON.stringify(langchainModelOutputTelemetryBridgeTool)).not.toContain("Return one trace summary");
     expect(langchainPromptCacheWriteTool).toMatchObject({
       path: "framework-tools/langchain_tools.py",
       data_classes: ["confidential", "credential", "pii"],

@@ -127,6 +127,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-123")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-124")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-125")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-126")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-001")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-002")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-003")).toBe(true);
@@ -6823,8 +6824,10 @@ describe("rule engine", () => {
     expect(sourceHandlerTelemetryExportFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_export_customer_trace",
       "langchain_export_customer_vault_secret_trace",
+      "langchain_export_model_trace",
       "source_export_customer_trace",
-      "source_export_customer_vault_secret_trace"
+      "source_export_customer_vault_secret_trace",
+      "source_export_model_trace"
     ]);
     expect(sourceHandlerTelemetryExportFindings.every((finding) => finding.severity === "critical")).toBe(true);
     expect(sourceHandlerTelemetryExportFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
@@ -10401,6 +10404,7 @@ describe("rule engine", () => {
       "langchain_execute_model_browser_action",
       "langchain_execute_model_generated_code",
       "langchain_export_model_artifact",
+      "langchain_export_model_trace",
       "langchain_export_model_training_dataset",
       "langchain_fetch_model_selected_url",
       "langchain_grant_model_selected_authorization",
@@ -10420,6 +10424,7 @@ describe("rule engine", () => {
       "source_execute_model_browser_action",
       "source_execute_model_generated_code",
       "source_export_model_artifact",
+      "source_export_model_trace",
       "source_export_model_training_dataset",
       "source_fetch_model_selected_url",
       "source_grant_model_selected_authorization",
@@ -10633,6 +10638,7 @@ describe("rule engine", () => {
       "langchain_execute_model_browser_action",
       "langchain_execute_model_generated_code",
       "langchain_export_model_artifact",
+      "langchain_export_model_trace",
       "langchain_export_model_training_dataset",
       "langchain_fetch_model_selected_url",
       "langchain_grant_model_selected_authorization",
@@ -10649,6 +10655,7 @@ describe("rule engine", () => {
       "source_execute_model_browser_action",
       "source_execute_model_generated_code",
       "source_export_model_artifact",
+      "source_export_model_trace",
       "source_export_model_training_dataset",
       "source_fetch_model_selected_url",
       "source_grant_model_selected_authorization",
@@ -10712,6 +10719,7 @@ describe("rule engine", () => {
       "langchain_execute_model_browser_action",
       "langchain_execute_model_generated_code",
       "langchain_export_model_artifact",
+      "langchain_export_model_trace",
       "langchain_export_model_training_dataset",
       "langchain_fetch_model_selected_url",
       "langchain_grant_model_selected_authorization",
@@ -11668,6 +11676,64 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerModelOutputArtifactBridgeFindings)).not.toContain("framework model selected artifact exported");
     expect(JSON.stringify(sourceHandlerModelOutputArtifactBridgeFindings)).not.toContain("Ask a model provider to draft an artifact");
     expect(JSON.stringify(sourceHandlerModelOutputArtifactBridgeFindings)).not.toContain("Return one artifact body");
+    const sourceHandlerModelOutputTelemetryBridgeFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-126");
+    expect(sourceHandlerModelOutputTelemetryBridgeFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
+      "langchain_export_model_trace",
+      "source_export_model_trace"
+    ]);
+    expect(sourceHandlerModelOutputTelemetryBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
+    expect(sourceHandlerModelOutputTelemetryBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerModelOutputTelemetryBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
+    expect(sourceHandlerModelOutputTelemetryBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
+    expect(sourceHandlerModelOutputTelemetryBridgeFindings.every((finding) => finding.matched_object.metadata.handler_model_provider_call === true)).toBe(true);
+    expect(sourceHandlerModelOutputTelemetryBridgeFindings.every((finding) => finding.matched_object.metadata.handler_telemetry_export === true)).toBe(true);
+    expect(sourceHandlerModelOutputTelemetryBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.handler_tainted_telemetry_payload === true
+    )).toBe(true);
+    expect(sourceHandlerModelOutputTelemetryBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.handler_model_output_telemetry_bridge === true
+    )).toBe(true);
+    expect(sourceHandlerModelOutputTelemetryBridgeFindings.every((finding) => finding.matched_object.metadata.handler_secret_env_access === true)).toBe(true);
+    expect(sourceHandlerModelOutputTelemetryBridgeFindings.every((finding) => finding.matched_object.metadata.model_provider_call === true)).toBe(true);
+    expect(sourceHandlerModelOutputTelemetryBridgeFindings.every((finding) => finding.matched_object.metadata.telemetry_export === true)).toBe(true);
+    expect(sourceHandlerModelOutputTelemetryBridgeFindings.every((finding) => finding.matched_object.metadata.tainted_telemetry_payload === true)).toBe(true);
+    expect(sourceHandlerModelOutputTelemetryBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.model_output_telemetry_bridge === true
+    )).toBe(true);
+    expect(sourceHandlerModelOutputTelemetryBridgeFindings.every((finding) => finding.matched_object.metadata.external_write === true)).toBe(true);
+    expect(sourceHandlerModelOutputTelemetryBridgeFindings.every((finding) => finding.matched_object.metadata.accepts_content_like_input === true)).toBe(true);
+    expect(sourceHandlerModelOutputTelemetryBridgeFindings.every((finding) => finding.matched_object.metadata.accepts_customer_data_input === true)).toBe(true);
+    expect(sourceHandlerModelOutputTelemetryBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.authority_classes.includes("model_output_telemetry_bridge")
+    )).toBe(true);
+    expect(sourceHandlerModelOutputTelemetryBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.authority_classes.includes("telemetry_export")
+    )).toBe(true);
+    expect(sourceHandlerModelOutputTelemetryBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.authority_classes.includes("tainted_telemetry_payload")
+    )).toBe(true);
+    expect(sourceHandlerModelOutputTelemetryBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.handler_authority_classes.includes("handler_model_output_telemetry_bridge")
+    )).toBe(true);
+    expect(sourceHandlerModelOutputTelemetryBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.handler_authority_classes.includes("handler_telemetry_export")
+    )).toBe(true);
+    expect(sourceHandlerModelOutputTelemetryBridgeFindings.every((finding) => finding.matched_object.actions.includes("send"))).toBe(true);
+    expect(sourceHandlerModelOutputTelemetryBridgeFindings.every((finding) => finding.matched_object.actions.includes("publish"))).toBe(true);
+    expect(sourceHandlerModelOutputTelemetryBridgeFindings.every((finding) => finding.matched_object.external_reach === true)).toBe(true);
+    expect(sourceHandlerModelOutputTelemetryBridgeFindings.every((finding) => finding.matched_object.secret_exposure === true)).toBe(true);
+    expect(sourceHandlerModelOutputTelemetryBridgeFindings.every((finding) => finding.matched_object.side_effect === true)).toBe(true);
+    expect(sourceHandlerModelOutputTelemetryBridgeFindings.every((finding) => finding.matched_object.reversible === false)).toBe(true);
+    expect(JSON.stringify(sourceHandlerModelOutputTelemetryBridgeFindings)).not.toContain("openai.chat.completions.create");
+    expect(JSON.stringify(sourceHandlerModelOutputTelemetryBridgeFindings)).not.toContain("openai_client.chat.completions.create");
+    expect(JSON.stringify(sourceHandlerModelOutputTelemetryBridgeFindings)).not.toContain("telemetryClient.recordTrace");
+    expect(JSON.stringify(sourceHandlerModelOutputTelemetryBridgeFindings)).not.toContain("telemetry_client.record_trace");
+    expect(JSON.stringify(sourceHandlerModelOutputTelemetryBridgeFindings)).not.toContain("modelSelectedTraceSummary");
+    expect(JSON.stringify(sourceHandlerModelOutputTelemetryBridgeFindings)).not.toContain("model_selected_trace_summary");
+    expect(JSON.stringify(sourceHandlerModelOutputTelemetryBridgeFindings)).not.toContain("source model selected trace exported");
+    expect(JSON.stringify(sourceHandlerModelOutputTelemetryBridgeFindings)).not.toContain("framework model selected trace exported");
+    expect(JSON.stringify(sourceHandlerModelOutputTelemetryBridgeFindings)).not.toContain("Ask a model provider to draft a trace summary");
+    expect(JSON.stringify(sourceHandlerModelOutputTelemetryBridgeFindings)).not.toContain("Return one trace summary");
     const sourceHandlerDynamicCodeFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-019");
     expect(sourceHandlerDynamicCodeFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_evaluate_agent_expression",
