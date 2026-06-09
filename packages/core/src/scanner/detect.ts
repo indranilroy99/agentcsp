@@ -24138,6 +24138,7 @@ function addToolDefinitionSurface(
       !authority.feedback_pipeline_write &&
       !authority.safety_policy_write &&
       !authority.authorization_policy_write &&
+      !authority.secret_manager_authorization_grant_bridge &&
       !authority.artifact_export &&
       !authority.rag_context_to_output &&
       !authority.task_queue_enqueue &&
@@ -24221,6 +24222,7 @@ function addToolDefinitionSurface(
       authorization_policy_write: authority.authorization_policy_write,
       tainted_authorization_grant_input: authority.tainted_authorization_grant_input,
       authorization_broad_grant: authority.authorization_broad_grant,
+      secret_manager_authorization_grant_bridge: authority.secret_manager_authorization_grant_bridge,
       artifact_export: authority.artifact_export,
       tainted_artifact_export_payload: authority.tainted_artifact_export_payload,
       public_artifact_destination: authority.public_artifact_destination,
@@ -26647,6 +26649,7 @@ interface SourceToolHandlerSignals {
   handlerAuthorizationPolicyWrite: boolean;
   handlerTaintedAuthorizationGrantInput: boolean;
   handlerAuthorizationBroadGrant: boolean;
+  handlerSecretManagerAuthorizationGrantBridge: boolean;
   handlerArtifactExport: boolean;
   handlerTaintedArtifactExportPayload: boolean;
   handlerPublicArtifactDestination: boolean;
@@ -27146,6 +27149,7 @@ function sourceToolHandlerSignalMetadata(signals: SourceToolHandlerSignals | und
     handler_authorization_policy_write: signals.handlerAuthorizationPolicyWrite,
     handler_tainted_authorization_grant_input: signals.handlerTaintedAuthorizationGrantInput,
     handler_authorization_broad_grant: signals.handlerAuthorizationBroadGrant,
+    handler_secret_manager_authorization_grant_bridge: signals.handlerSecretManagerAuthorizationGrantBridge,
     handler_artifact_export: signals.handlerArtifactExport,
     handler_tainted_artifact_export_payload: signals.handlerTaintedArtifactExportPayload,
     handler_public_artifact_destination: signals.handlerPublicArtifactDestination,
@@ -27298,6 +27302,9 @@ function classifySourceToolHandlerSignals(
     ? hasJavaScriptHandlerTaintedAuthorizationGrantInput(handlerSource)
     : hasPythonHandlerTaintedAuthorizationGrantInput(handlerSource));
   const authorizationBroadGrant = authorizationPolicyWrite && hasHandlerAuthorizationBroadGrant(handlerSource);
+  const secretManagerAuthorizationGrantBridge = authorizationPolicyWrite && (language === "javascript"
+    ? hasJavaScriptHandlerSecretManagerAuthorizationGrantBridge(handlerSource)
+    : hasPythonHandlerSecretManagerAuthorizationGrantBridge(handlerSource));
   const artifactExport = language === "javascript"
     ? hasJavaScriptHandlerArtifactExport(handlerSource)
     : hasPythonHandlerArtifactExport(handlerSource);
@@ -27510,6 +27517,7 @@ function classifySourceToolHandlerSignals(
   if (authorizationPolicyWrite) classes.add("handler_authorization_policy_write");
   if (taintedAuthorizationGrantInput) classes.add("handler_tainted_authorization_grant_input");
   if (authorizationBroadGrant) classes.add("handler_authorization_broad_grant");
+  if (secretManagerAuthorizationGrantBridge) classes.add("handler_secret_manager_authorization_grant_bridge");
   if (artifactExport) classes.add("handler_artifact_export");
   if (taintedArtifactExportPayload) classes.add("handler_tainted_artifact_export_payload");
   if (publicArtifactDestination) classes.add("handler_public_artifact_destination");
@@ -27603,6 +27611,7 @@ function classifySourceToolHandlerSignals(
     handlerAuthorizationPolicyWrite: authorizationPolicyWrite,
     handlerTaintedAuthorizationGrantInput: taintedAuthorizationGrantInput,
     handlerAuthorizationBroadGrant: authorizationBroadGrant,
+    handlerSecretManagerAuthorizationGrantBridge: secretManagerAuthorizationGrantBridge,
     handlerArtifactExport: artifactExport,
     handlerTaintedArtifactExportPayload: taintedArtifactExportPayload,
     handlerPublicArtifactDestination: publicArtifactDestination,
@@ -29028,6 +29037,30 @@ function hasHandlerAuthorizationBroadGrant(source: string): boolean {
   );
 }
 
+function hasJavaScriptHandlerSecretManagerAuthorizationGrantBridge(source: string): boolean {
+  const identifiers = extractJavaScriptSecretManagerIdentifiers(source);
+  return identifiers.length > 0 && callExpressionReferencesAnyIdentifier(
+    [
+      /\b(?:toolAuthorizationClient|authorizationPolicyClient|permissionBrokerClient|toolAuthzClient|capabilityGrantClient|accessControlClient|rbacClient|authzClient|policyEngineClient|permissionClient|entitlementClient|grantBrokerClient)\s*(?:\.\s*[A-Za-z_$][\w$]*){0,5}\s*\.\s*(?:grant|grantAccess|upsertGrant|createGrant|putGrant|addGrant|allow|authorize|updatePolicy|setPolicy|setAllowlist|addPermission|addTool|assignRole|bindRole|setEntitlement|write|save|upsert|patch)\s*\(([\s\S]{0,2200})\)/giu,
+      /\b(?:grantToolAccess|updateToolAuthorization|upsertToolGrant|createCapabilityGrant|setToolAllowlist|assignAgentRole|setAgentEntitlement|writeAuthorizationGrant)\s*\(([\s\S]{0,2200})\)/giu
+    ],
+    source,
+    identifiers
+  );
+}
+
+function hasPythonHandlerSecretManagerAuthorizationGrantBridge(source: string): boolean {
+  const identifiers = extractPythonSecretManagerIdentifiers(source);
+  return identifiers.length > 0 && callExpressionReferencesAnyIdentifier(
+    [
+      /\b(?:tool_authorization_client|authorization_policy_client|permission_broker_client|tool_authz_client|capability_grant_client|access_control_client|rbac_client|authz_client|policy_engine_client|permission_client|entitlement_client|grant_broker_client)\s*(?:\.\s*[A-Za-z_]\w*){0,5}\s*\.\s*(?:grant|grant_access|upsert_grant|create_grant|put_grant|add_grant|allow|authorize|update_policy|set_policy|set_allowlist|add_permission|add_tool|assign_role|bind_role|set_entitlement|write|save|upsert|patch)\s*\(([\s\S]{0,2200})\)/giu,
+      /\b(?:grant_tool_access|update_tool_authorization|upsert_tool_grant|create_capability_grant|set_tool_allowlist|assign_agent_role|set_agent_entitlement|write_authorization_grant)\s*\(([\s\S]{0,2200})\)/giu
+    ],
+    source,
+    identifiers
+  );
+}
+
 function expressionMatchesTaintedAuthorizationGrantInput(pattern: RegExp, source: string): boolean {
   let match: RegExpExecArray | null;
   while ((match = pattern.exec(source)) !== null) {
@@ -29042,6 +29075,13 @@ function expressionReferencesTaintedAuthorizationGrantInput(expression: string, 
     expression
   );
   if (templateInterpolation) return true;
+  const secretManagerIdentifiers = uniqueStrings([
+    ...extractJavaScriptSecretManagerIdentifiers(source),
+    ...extractPythonSecretManagerIdentifiers(source)
+  ]);
+  if (secretManagerIdentifiers.some((identifier) => new RegExp(`\\b${escapeRegExp(identifier)}\\b`, "u").test(expression))) {
+    return true;
+  }
   const withoutQuotedStrings = expression.replace(/(["'`])(?:\\.|(?!\1)[\s\S])*\1/gu, " ");
   const stronglyTaintedName = /\b(?:requestedToolName|requested_tool_name|toolName|tool_name|requestedScope|requested_scope|scopeName|scope_name|requestedRole|requested_role|roleName|role_name|resourceId|resource_id|resourcePattern|resource_pattern|tenantId|tenant_id|customerId|customer_id|subjectId|subject_id|grantReason|grant_reason|customerTicketText|customer_ticket_text)\b/u;
   const taintedName = /\b(?:requestedToolName|requested_tool_name|toolName|tool_name|requestedScope|requested_scope|scopeName|scope_name|requestedRole|requested_role|roleName|role_name|resourceId|resource_id|resourcePattern|resource_pattern|tenantId|tenant_id|customerId|customer_id|subjectId|subject_id|grantReason|grant_reason|customerTicketText|customer_ticket_text|tool|scope|role|resource|tenant|customer|subject|permission|action|reason|payload|context|text)\b/u;
@@ -32353,6 +32393,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   authorization_policy_write: boolean;
   tainted_authorization_grant_input: boolean;
   authorization_broad_grant: boolean;
+  secret_manager_authorization_grant_bridge: boolean;
   artifact_export: boolean;
   tainted_artifact_export_payload: boolean;
   public_artifact_destination: boolean;
@@ -32433,6 +32474,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   const handlerAuthorizationPolicyWrite = handler?.handlerAuthorizationPolicyWrite === true;
   const handlerTaintedAuthorizationGrantInput = handler?.handlerTaintedAuthorizationGrantInput === true;
   const handlerAuthorizationBroadGrant = handler?.handlerAuthorizationBroadGrant === true;
+  const handlerSecretManagerAuthorizationGrantBridge = handler?.handlerSecretManagerAuthorizationGrantBridge === true;
   const handlerArtifactExport = handler?.handlerArtifactExport === true;
   const handlerTaintedArtifactExportPayload = handler?.handlerTaintedArtifactExportPayload === true;
   const handlerPublicArtifactDestination = handler?.handlerPublicArtifactDestination === true;
@@ -32820,6 +32862,12 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
     classes.add("authorization_broad_grant");
     actions.add("write");
   }
+  if (handlerSecretManagerAuthorizationGrantBridge) {
+    classes.add("secret_manager_authorization_grant_bridge");
+    actions.add("read");
+    actions.add("send");
+    actions.add("write");
+  }
   if (handlerArtifactExport) {
     classes.add("artifact_export");
     actions.add("send");
@@ -32997,6 +33045,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerAuthorizationPolicyWrite ||
       handlerTaintedAuthorizationGrantInput ||
       handlerAuthorizationBroadGrant ||
+      handlerSecretManagerAuthorizationGrantBridge ||
       handlerArtifactExport ||
       handlerTaintedArtifactExportPayload ||
       handlerPublicArtifactDestination ||
@@ -33068,6 +33117,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerSecretManagerArtifactBridge ||
       handlerSafetyPolicyWrite ||
       handlerAuthorizationPolicyWrite ||
+      handlerSecretManagerAuthorizationGrantBridge ||
       handlerArtifactExport ||
       handlerRagRetrieval ||
       handlerTaskQueueEnqueue ||
@@ -33089,6 +33139,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerSecretManagerTelemetryBridge ||
       handlerSecretManagerPromptCacheBridge ||
       handlerSecretManagerPromptRegistryBridge ||
+      handlerSecretManagerAuthorizationGrantBridge ||
       handlerSecretManagerMemoryBridge ||
       handlerSecretManagerTrainingDatasetBridge ||
       handlerSecretManagerFeedbackBridge ||
@@ -33162,6 +33213,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
     authorization_policy_write: handlerAuthorizationPolicyWrite,
     tainted_authorization_grant_input: handlerTaintedAuthorizationGrantInput,
     authorization_broad_grant: handlerAuthorizationBroadGrant,
+    secret_manager_authorization_grant_bridge: handlerSecretManagerAuthorizationGrantBridge,
     artifact_export: handlerArtifactExport,
     tainted_artifact_export_payload: handlerTaintedArtifactExportPayload,
     public_artifact_destination: handlerPublicArtifactDestination,
@@ -33276,6 +33328,7 @@ function authoritySignature(tool: SurfaceObject): string {
     metadata.authorization_policy_write === true ? "authorization_policy_write" : "",
     metadata.tainted_authorization_grant_input === true ? "tainted_authorization_grant_input" : "",
     metadata.authorization_broad_grant === true ? "authorization_broad_grant" : "",
+    metadata.secret_manager_authorization_grant_bridge === true ? "secret_manager_authorization_grant_bridge" : "",
     metadata.artifact_export === true ? "artifact_export" : "",
     metadata.tainted_artifact_export_payload === true ? "tainted_artifact_export_payload" : "",
     metadata.public_artifact_destination === true ? "public_artifact_destination" : "",
@@ -33375,6 +33428,7 @@ function isPrivilegedToolSurface(tool: SurfaceObject): boolean {
     tool.metadata.authorization_policy_write === true ||
     tool.metadata.tainted_authorization_grant_input === true ||
     tool.metadata.authorization_broad_grant === true ||
+    tool.metadata.secret_manager_authorization_grant_bridge === true ||
     tool.metadata.artifact_export === true ||
     tool.metadata.tainted_artifact_export_payload === true ||
     tool.metadata.public_artifact_destination === true ||

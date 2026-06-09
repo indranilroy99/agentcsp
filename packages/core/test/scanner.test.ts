@@ -554,6 +554,9 @@ describe("scanner", () => {
     const sourceFeedbackAutoPromotionTool = surfaces.tools.find((surface) => surface.name === "source_record_feedback_auto_promotion");
     const sourceSafetyPolicyWeakeningTool = surfaces.tools.find((surface) => surface.name === "source_update_guardrail_policy_override");
     const sourceAuthorizationGrantTool = surfaces.tools.find((surface) => surface.name === "source_update_tool_permission_grant");
+    const sourceSecretManagerAuthorizationGrantBridgeTool = surfaces.tools.find(
+      (surface) => surface.name === "source_grant_customer_vault_secret_authorization"
+    );
     const sourceArtifactExportTool = surfaces.tools.find((surface) => surface.name === "source_export_agent_run_artifact");
     const sourceModelApprovalTool = surfaces.tools.find((surface) => surface.name === "source_model_review_and_run_action");
     const sourcePromptRegistryWriteTool = surfaces.tools.find((surface) => surface.name === "source_publish_prompt_registry_update");
@@ -625,6 +628,9 @@ describe("scanner", () => {
     const langchainFeedbackAutoPromotionTool = surfaces.tools.find((surface) => surface.name === "langchain_record_feedback_auto_promotion");
     const langchainSafetyPolicyWeakeningTool = surfaces.tools.find((surface) => surface.name === "langchain_update_guardrail_policy_override");
     const langchainAuthorizationGrantTool = surfaces.tools.find((surface) => surface.name === "langchain_update_tool_permission_grant");
+    const langchainSecretManagerAuthorizationGrantBridgeTool = surfaces.tools.find(
+      (surface) => surface.name === "langchain_grant_customer_vault_secret_authorization"
+    );
     const langchainArtifactExportTool = surfaces.tools.find((surface) => surface.name === "langchain_export_agent_run_artifact");
     const langchainModelApprovalTool = surfaces.tools.find((surface) => surface.name === "langchain_model_review_and_run_action");
     const langchainPromptRegistryWriteTool = surfaces.tools.find((surface) => surface.name === "langchain_publish_prompt_registry_update");
@@ -2103,6 +2109,89 @@ describe("scanner", () => {
     expect(JSON.stringify(sourceAuthorizationGrantTool)).not.toContain("permissionBrokerClient.upsertGrant");
     expect(JSON.stringify(sourceAuthorizationGrantTool)).not.toContain("source tool permission grant updated");
     expect(JSON.stringify(sourceAuthorizationGrantTool)).not.toContain("Grant caller selected tool permission");
+    expect(sourceSecretManagerAuthorizationGrantBridgeTool).toMatchObject({
+      path: "mcp-source/customer-tools.ts",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["call", "publish", "read", "send", "write"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(sourceSecretManagerAuthorizationGrantBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_mcp_source_tool: true,
+      mcp_source_tool_registration: true,
+      mcp_source_tool_registration_kind: "registerTool",
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_secret_like_input: true,
+      accepts_content_like_input: true,
+      accepts_path_input: true,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      secret_manager_access: true,
+      tainted_secret_manager_path: true,
+      authorization_policy_write: true,
+      tainted_authorization_grant_input: true,
+      authorization_broad_grant: true,
+      secret_manager_authorization_grant_bridge: true,
+      external_write: true,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_secret_manager_access: true,
+      handler_tainted_secret_manager_path: true,
+      handler_authorization_policy_write: true,
+      handler_tainted_authorization_grant_input: true,
+      handler_authorization_broad_grant: true,
+      handler_secret_manager_authorization_grant_bridge: true,
+      handler_secret_env_access: true,
+      handler_signal_count: 7,
+      open_world_schema: false
+    });
+    for (const authorityClass of [
+      "secret_manager_access",
+      "tainted_secret_manager_path",
+      "authorization_policy_write",
+      "tainted_authorization_grant_input",
+      "authorization_broad_grant",
+      "secret_manager_authorization_grant_bridge"
+    ]) {
+      expect(sourceSecretManagerAuthorizationGrantBridgeTool?.metadata.authority_classes).toContain(authorityClass);
+    }
+    for (const handlerClass of [
+      "handler_secret_manager_access",
+      "handler_tainted_secret_manager_path",
+      "handler_authorization_policy_write",
+      "handler_tainted_authorization_grant_input",
+      "handler_authorization_broad_grant",
+      "handler_secret_manager_authorization_grant_bridge"
+    ]) {
+      expect(sourceSecretManagerAuthorizationGrantBridgeTool?.metadata.handler_authority_classes).toContain(handlerClass);
+    }
+    expect(sourceSecretManagerAuthorizationGrantBridgeTool?.metadata.handler_env_key_names).toEqual([
+      "SOURCE_SECRET_AUTHZ_GRANT_TOKEN"
+    ]);
+    expect(sourceSecretManagerAuthorizationGrantBridgeTool?.metadata.schema_properties).toEqual([
+      "customer_id",
+      "requested_tool_name",
+      "requester_ticket",
+      "secret_path",
+      "tenant_id"
+    ]);
+    expect(sourceSecretManagerAuthorizationGrantBridgeTool?.metadata.required_properties).toEqual([
+      "customer_id",
+      "requested_tool_name",
+      "requester_ticket",
+      "secret_path",
+      "tenant_id"
+    ]);
+    expect(JSON.stringify(sourceSecretManagerAuthorizationGrantBridgeTool)).not.toContain("vaultClient.readSecret");
+    expect(JSON.stringify(sourceSecretManagerAuthorizationGrantBridgeTool)).not.toContain("permissionBrokerClient.upsertGrant");
+    expect(JSON.stringify(sourceSecretManagerAuthorizationGrantBridgeTool)).not.toContain("secretRecord.value");
+    expect(JSON.stringify(sourceSecretManagerAuthorizationGrantBridgeTool)).not.toContain("secretGrantRole");
+    expect(JSON.stringify(sourceSecretManagerAuthorizationGrantBridgeTool)).not.toContain("source vault secret granted broad authorization");
+    expect(JSON.stringify(sourceSecretManagerAuthorizationGrantBridgeTool)).not.toContain("Grant broad tool authorization");
     expect(sourceArtifactExportTool).toMatchObject({
       path: "mcp-source/customer-tools.ts",
       data_classes: ["confidential", "credential", "pii"],
@@ -6124,6 +6213,91 @@ describe("scanner", () => {
     expect(JSON.stringify(langchainAuthorizationGrantTool)).not.toContain("permission_broker_client.upsert_grant");
     expect(JSON.stringify(langchainAuthorizationGrantTool)).not.toContain("framework tool permission grant updated");
     expect(JSON.stringify(langchainAuthorizationGrantTool)).not.toContain("Grant caller selected tool permission");
+    expect(langchainSecretManagerAuthorizationGrantBridgeTool).toMatchObject({
+      path: "framework-tools/langchain_tools.py",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["call", "publish", "read", "send", "write"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(langchainSecretManagerAuthorizationGrantBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_agent_framework_source_tool: true,
+      agent_framework_source_tool: true,
+      agent_framework_source_tool_framework: "langchain",
+      agent_framework_source_tool_registration_kind: "python_tool_decorator",
+      agent_framework_source_tool_argument_count: 5,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_secret_like_input: true,
+      accepts_content_like_input: true,
+      accepts_path_input: true,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      secret_manager_access: true,
+      tainted_secret_manager_path: true,
+      authorization_policy_write: true,
+      tainted_authorization_grant_input: true,
+      authorization_broad_grant: true,
+      secret_manager_authorization_grant_bridge: true,
+      external_write: true,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_secret_manager_access: true,
+      handler_tainted_secret_manager_path: true,
+      handler_authorization_policy_write: true,
+      handler_tainted_authorization_grant_input: true,
+      handler_authorization_broad_grant: true,
+      handler_secret_manager_authorization_grant_bridge: true,
+      handler_secret_env_access: true,
+      handler_signal_count: 7,
+      open_world_schema: false
+    });
+    for (const authorityClass of [
+      "secret_manager_access",
+      "tainted_secret_manager_path",
+      "authorization_policy_write",
+      "tainted_authorization_grant_input",
+      "authorization_broad_grant",
+      "secret_manager_authorization_grant_bridge"
+    ]) {
+      expect(langchainSecretManagerAuthorizationGrantBridgeTool?.metadata.authority_classes).toContain(authorityClass);
+    }
+    for (const handlerClass of [
+      "handler_secret_manager_access",
+      "handler_tainted_secret_manager_path",
+      "handler_authorization_policy_write",
+      "handler_tainted_authorization_grant_input",
+      "handler_authorization_broad_grant",
+      "handler_secret_manager_authorization_grant_bridge"
+    ]) {
+      expect(langchainSecretManagerAuthorizationGrantBridgeTool?.metadata.handler_authority_classes).toContain(handlerClass);
+    }
+    expect(langchainSecretManagerAuthorizationGrantBridgeTool?.metadata.handler_env_key_names).toEqual([
+      "LANGCHAIN_SECRET_AUTHZ_GRANT_TOKEN"
+    ]);
+    expect(langchainSecretManagerAuthorizationGrantBridgeTool?.metadata.schema_properties).toEqual([
+      "customer_id",
+      "requested_tool_name",
+      "requester_ticket",
+      "secret_path",
+      "tenant_id"
+    ]);
+    expect(langchainSecretManagerAuthorizationGrantBridgeTool?.metadata.required_properties).toEqual([
+      "customer_id",
+      "requested_tool_name",
+      "requester_ticket",
+      "secret_path",
+      "tenant_id"
+    ]);
+    expect(JSON.stringify(langchainSecretManagerAuthorizationGrantBridgeTool)).not.toContain("vault_client.read_secret");
+    expect(JSON.stringify(langchainSecretManagerAuthorizationGrantBridgeTool)).not.toContain("permission_broker_client.upsert_grant");
+    expect(JSON.stringify(langchainSecretManagerAuthorizationGrantBridgeTool)).not.toContain("secret_record.value");
+    expect(JSON.stringify(langchainSecretManagerAuthorizationGrantBridgeTool)).not.toContain("secret_grant_role");
+    expect(JSON.stringify(langchainSecretManagerAuthorizationGrantBridgeTool)).not.toContain("framework vault secret granted broad authorization");
+    expect(JSON.stringify(langchainSecretManagerAuthorizationGrantBridgeTool)).not.toContain("Grant broad tool authorization");
     expect(langchainArtifactExportTool).toMatchObject({
       path: "framework-tools/langchain_tools.py",
       data_classes: ["confidential", "credential", "pii"],

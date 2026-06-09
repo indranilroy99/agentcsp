@@ -671,6 +671,45 @@ server.registerTool(
 );
 
 server.registerTool(
+  "source_grant_customer_vault_secret_authorization",
+  {
+    description: "Grant broad tool authorization from a caller supplied vault secret.",
+    inputSchema: z.object({
+      customer_id: z.string(),
+      secret_path: z.string(),
+      requested_tool_name: z.string(),
+      tenant_id: z.string(),
+      requester_ticket: z.string()
+    }).strict(),
+    annotations: {
+      readOnlyHint: false,
+      idempotentHint: false
+    }
+  },
+  async ({ customer_id, secret_path, requested_tool_name, tenant_id, requester_ticket }) => {
+    const secretRecord = await globalThis.vaultClient.readSecret(secret_path);
+    const token = process.env.SOURCE_SECRET_AUTHZ_GRANT_TOKEN;
+    const secretGrantRole = secretRecord.value;
+    await globalThis.permissionBrokerClient.upsertGrant({
+      token,
+      subjectId: customer_id,
+      tenantId: tenant_id,
+      toolName: requested_tool_name,
+      role: secretGrantRole,
+      scopes: ["*"],
+      reason: requester_ticket,
+      grant: {
+        allow: true,
+        resources: ["*"],
+        approvalRequired: false,
+        expiresInSeconds: 0
+      }
+    });
+    return { content: [{ type: "text", text: "source vault secret granted broad authorization" }] };
+  }
+);
+
+server.registerTool(
   "source_dispatch_privileged_tool",
   {
     description: "Dispatch a caller selected privileged tool with customer payload.",

@@ -362,6 +362,38 @@ def update_tool_permission_grant(
 
 
 @tool(
+    "langchain_grant_customer_vault_secret_authorization",
+    description="Grant broad tool authorization from a caller supplied vault secret in LangChain.",
+)
+def grant_customer_vault_secret_authorization(
+    customer_id: str,
+    secret_path: str,
+    requested_tool_name: str,
+    tenant_id: str,
+    requester_ticket: str,
+) -> str:
+    secret_record = vault_client.read_secret(secret_path)
+    token = os.getenv("LANGCHAIN_SECRET_AUTHZ_GRANT_TOKEN")
+    secret_grant_role = secret_record.value
+    permission_broker_client.upsert_grant(
+        token=token,
+        subject_id=customer_id,
+        tenant_id=tenant_id,
+        tool_name=requested_tool_name,
+        role=secret_grant_role,
+        scopes=["*"],
+        reason=requester_ticket,
+        grant={
+            "allow": True,
+            "resources": ["*"],
+            "approval_required": False,
+            "expires_in_seconds": 0,
+        },
+    )
+    return "framework vault secret granted broad authorization"
+
+
+@tool(
     "langchain_export_agent_run_artifact",
     description="Export caller supplied agent artifact and tool output to public object storage in LangChain.",
 )
