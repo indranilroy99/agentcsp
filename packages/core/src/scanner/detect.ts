@@ -24272,6 +24272,7 @@ function addToolDefinitionSurface(
       approval_auto_execution: authority.approval_auto_execution,
       visual_context_capture: authority.visual_context_capture,
       visual_context_to_output: authority.visual_context_to_output,
+      visual_context_prompt_bridge: authority.visual_context_prompt_bridge,
       privileged_prompt_composition: authority.privileged_prompt_composition,
       tainted_shell_argument: authority.tainted_shell_argument,
       tainted_filesystem_path: authority.tainted_filesystem_path,
@@ -26744,6 +26745,7 @@ interface SourceToolHandlerSignals {
   handlerRagRetrievalBrowserAutomationBridge: boolean;
   handlerVisualContextCapture: boolean;
   handlerVisualContextToOutput: boolean;
+  handlerVisualContextPromptBridge: boolean;
   handlerSecretManagerAccess: boolean;
   handlerTaintedSecretManagerPath: boolean;
   handlerSecretManagerExternalServiceBridge: boolean;
@@ -27272,6 +27274,7 @@ function sourceToolHandlerSignalMetadata(signals: SourceToolHandlerSignals | und
     handler_rag_retrieval_browser_automation_bridge: signals.handlerRagRetrievalBrowserAutomationBridge,
     handler_visual_context_capture: signals.handlerVisualContextCapture,
     handler_visual_context_to_output: signals.handlerVisualContextToOutput,
+    handler_visual_context_prompt_bridge: signals.handlerVisualContextPromptBridge,
     handler_secret_manager_access: signals.handlerSecretManagerAccess,
     handler_tainted_secret_manager_path: signals.handlerTaintedSecretManagerPath,
     handler_secret_manager_external_service_bridge: signals.handlerSecretManagerExternalServiceBridge,
@@ -27574,6 +27577,9 @@ function classifySourceToolHandlerSignals(
     ? hasJavaScriptHandlerVisualContextCapture(handlerSource)
     : hasPythonHandlerVisualContextCapture(handlerSource));
   const visualContextToOutput = visualContextCapture && modelVisibleOutput;
+  const visualContextPromptBridge = visualContextCapture && modelProviderCall && (language === "javascript"
+    ? hasJavaScriptHandlerVisualContextPromptBridge(handlerSource)
+    : hasPythonHandlerVisualContextPromptBridge(handlerSource));
   const secretManagerAccess = language === "javascript"
     ? hasJavaScriptHandlerSecretManagerAccess(handlerSource)
     : hasPythonHandlerSecretManagerAccess(handlerSource);
@@ -27727,6 +27733,7 @@ function classifySourceToolHandlerSignals(
   if (ragRetrievalBrowserAutomationBridge) classes.add("handler_rag_retrieval_browser_automation_bridge");
   if (visualContextCapture) classes.add("handler_visual_context_capture");
   if (visualContextToOutput) classes.add("handler_visual_context_to_output");
+  if (visualContextPromptBridge) classes.add("handler_visual_context_prompt_bridge");
   if (secretManagerAccess) classes.add("handler_secret_manager_access");
   if (taintedSecretManagerPath) classes.add("handler_tainted_secret_manager_path");
   if (secretManagerExternalServiceBridge) classes.add("handler_secret_manager_external_service_bridge");
@@ -27844,6 +27851,7 @@ function classifySourceToolHandlerSignals(
     handlerRagRetrievalBrowserAutomationBridge: ragRetrievalBrowserAutomationBridge,
     handlerVisualContextCapture: visualContextCapture,
     handlerVisualContextToOutput: visualContextToOutput,
+    handlerVisualContextPromptBridge: visualContextPromptBridge,
     handlerSecretManagerAccess: secretManagerAccess,
     handlerTaintedSecretManagerPath: taintedSecretManagerPath,
     handlerSecretManagerExternalServiceBridge: secretManagerExternalServiceBridge,
@@ -28698,6 +28706,31 @@ function hasPythonHandlerVisualContextCapture(source: string): boolean {
   ].some((pattern) => pattern.test(source));
 }
 
+function hasJavaScriptHandlerVisualContextPromptBridge(source: string): boolean {
+  const identifiers = extractJavaScriptVisualContextIdentifiers(source);
+  return identifiers.length > 0 && callExpressionReferencesAnyIdentifier(
+    [
+      /\b(?:openai|openaiClient|anthropic|anthropicClient|mistral|mistralClient|cohere|cohereClient|bedrock|bedrockClient|gemini|geminiClient|vertex|vertexClient|llm|modelClient|languageModel)\s*(?:\.\s*[A-Za-z_$][\w$]*){0,5}\s*\.\s*(?:create|stream|parse|invoke|send|complete|generateContent|generateText|doGenerate)\s*\(([\s\S]{0,3200})\)/giu,
+      /\b(?:generateText|streamText|generateObject|streamObject)\s*\(([\s\S]{0,3200})\)/giu,
+      /\bnew\s+InvokeModelCommand\s*\(([\s\S]{0,3200})\)/giu
+    ],
+    source,
+    identifiers
+  );
+}
+
+function hasPythonHandlerVisualContextPromptBridge(source: string): boolean {
+  const identifiers = extractPythonVisualContextIdentifiers(source);
+  return identifiers.length > 0 && callExpressionReferencesAnyIdentifier(
+    [
+      /\b(?:openai|openai_client|anthropic|anthropic_client|mistral|mistral_client|cohere|cohere_client|bedrock|bedrock_client|gemini|gemini_client|vertex|vertex_client|llm|model_client|language_model)\s*(?:\.\s*[A-Za-z_]\w*){0,5}\s*\.\s*(?:create|stream|parse|invoke|send|complete|generate_content|predict)\s*\(([\s\S]{0,3200})\)/giu,
+      /\bInvokeModelCommand\s*\(([\s\S]{0,3200})\)/giu
+    ],
+    source,
+    identifiers
+  );
+}
+
 function hasJavaScriptHandlerSecretManagerAccess(source: string): boolean {
   return /\b(?:vault|vaultClient|secretManager|secretManagerClient|secretsManager|secretsManagerClient|keyVault|keyVaultClient|credentialVault)\s*\.\s*(?:read|readSecret|get|getSecret|getSecretValue|accessSecretVersion|downloadSecret|retrieveSecret)\s*\(/iu.test(
     source
@@ -29014,6 +29047,38 @@ function extractPythonEmbeddingOutputIdentifiers(source: string): string[] {
   for (const pattern of assignmentPatterns) collectFirstCaptureMatches(pattern, source, identifiers);
   expandPythonIdentifiersAssignedFromBase(source, identifiers);
   return [...identifiers].filter((identifier) => !["embedding_client", "embedding_provider", "embedder", "embeddings"].includes(identifier));
+}
+
+function extractJavaScriptVisualContextIdentifiers(source: string): string[] {
+  const identifiers = new Set<string>();
+  const assignmentPatterns = [
+    /\b(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*(?:await\s+)?[^\n;]{0,240}\b(?:page|browserPage|authenticatedBrowserPage|driver|screen|desktop|computerUse|visionClient|ocrClient)\s*(?:\.\s*[A-Za-z_$][\w$]*){0,4}\s*\.\s*(?:screenshot|takeScreenshot|captureScreenshot|captureScreen|captureImage|captureFrame|snapshot|ocr|extractText|recognizeText|readScreen|readScreenshot)\s*\(/gu,
+    /\b(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*(?:await\s+)?\b(?:takeScreenshot|captureScreenshot|captureScreen|captureImage|extractOcrText|extractOCRText|runOcr|runOCR|recognizeText)\s*\(/gu
+  ];
+  for (const pattern of assignmentPatterns) collectFirstCaptureMatches(pattern, source, identifiers);
+  collectFirstCaptureMatches(
+    /\b([A-Za-z_$][\w$]*(?:Screenshot|ScreenCapture|VisualContext|ImageCapture|ImageBytes|OcrText|OCRText|VisionContext))\b/gu,
+    source,
+    identifiers
+  );
+  expandJavaScriptIdentifiersAssignedFromBase(source, identifiers);
+  return [...identifiers].filter((identifier) => !["page", "screen", "driver"].includes(identifier));
+}
+
+function extractPythonVisualContextIdentifiers(source: string): string[] {
+  const identifiers = new Set<string>();
+  const assignmentPatterns = [
+    /\b([A-Za-z_]\w*)\s*=\s*(?:await\s+)?[^\n]{0,240}\b(?:page|browser_page|authenticated_browser_page|driver|screen|desktop|computer_use|vision_client|ocr_client)\s*(?:\.\s*[A-Za-z_]\w*){0,4}\s*\.\s*(?:screenshot|take_screenshot|capture_screenshot|capture_screen|capture_image|capture_frame|snapshot|ocr|extract_text|recognize_text|read_screen|read_screenshot)\s*\(/gu,
+    /\b([A-Za-z_]\w*)\s*=\s*(?:await\s+)?\b(?:take_screenshot|capture_screenshot|capture_screen|capture_image|extract_ocr_text|run_ocr|recognize_text)\s*\(/gu
+  ];
+  for (const pattern of assignmentPatterns) collectFirstCaptureMatches(pattern, source, identifiers);
+  collectFirstCaptureMatches(
+    /\b([A-Za-z_]\w*(?:_screenshot|_screen_capture|_visual_context|_image_capture|_image_bytes|_ocr_text|_vision_context))\b/gu,
+    source,
+    identifiers
+  );
+  expandPythonIdentifiersAssignedFromBase(source, identifiers);
+  return [...identifiers].filter((identifier) => !["page", "screen", "driver"].includes(identifier));
 }
 
 function expandJavaScriptIdentifiersAssignedFromBase(source: string, identifiers: Set<string>): void {
@@ -33131,6 +33196,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   rag_retrieval_browser_automation_bridge: boolean;
   visual_context_capture: boolean;
   visual_context_to_output: boolean;
+  visual_context_prompt_bridge: boolean;
   secret_manager_access: boolean;
   tainted_secret_manager_path: boolean;
   secret_manager_external_service_bridge: boolean;
@@ -33323,6 +33389,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   const handlerRagRetrievalBrowserAutomationBridge = handler?.handlerRagRetrievalBrowserAutomationBridge === true;
   const handlerVisualContextCapture = handler?.handlerVisualContextCapture === true;
   const handlerVisualContextToOutput = handler?.handlerVisualContextToOutput === true;
+  const handlerVisualContextPromptBridge = handler?.handlerVisualContextPromptBridge === true;
   const handlerSecretManagerAccess = handler?.handlerSecretManagerAccess === true;
   const handlerTaintedSecretManagerPath = handler?.handlerTaintedSecretManagerPath === true;
   const handlerSecretManagerExternalServiceBridge = handler?.handlerSecretManagerExternalServiceBridge === true;
@@ -33419,6 +33486,11 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   }
   if (handlerVisualContextToOutput) {
     classes.add("visual_context_to_output");
+    actions.add("send");
+  }
+  if (handlerVisualContextPromptBridge) {
+    classes.add("visual_context_prompt_bridge");
+    actions.add("read");
     actions.add("send");
   }
   if (acceptsUrl || /\b(fetch|request|http|api|network)\b/i.test(text) || handlerExternalNetworkCall) {
@@ -33953,6 +34025,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerSecretManagerBrowserAutomationBridge ||
       handlerVisualContextCapture ||
       handlerVisualContextToOutput ||
+      handlerVisualContextPromptBridge ||
       handlerSecretManagerAccess ||
       handlerTaintedSecretManagerPath ||
       handlerSecretManagerExternalServiceBridge ||
@@ -34061,6 +34134,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerBrowserAutomation ||
       handlerToolOutputBrowserAutomationBridge ||
       handlerVisualContextCapture ||
+      handlerVisualContextPromptBridge ||
       handlerSecretManagerBrowserAutomationBridge ||
       handlerRagRetrievalBrowserAutomationBridge ||
       handlerAgentDelegation ||
@@ -34188,6 +34262,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
     rag_retrieval_browser_automation_bridge: handlerRagRetrievalBrowserAutomationBridge,
     visual_context_capture: handlerVisualContextCapture,
     visual_context_to_output: handlerVisualContextToOutput,
+    visual_context_prompt_bridge: handlerVisualContextPromptBridge,
     secret_manager_access: handlerSecretManagerAccess,
     tainted_secret_manager_path: handlerTaintedSecretManagerPath,
     secret_manager_external_service_bridge: handlerSecretManagerExternalServiceBridge,
@@ -34387,6 +34462,7 @@ function authoritySignature(tool: SurfaceObject): string {
     metadata.approval_auto_execution === true ? "approval_auto_execution" : "",
     metadata.visual_context_capture === true ? "visual_context_capture" : "",
     metadata.visual_context_to_output === true ? "visual_context_to_output" : "",
+    metadata.visual_context_prompt_bridge === true ? "visual_context_prompt_bridge" : "",
     metadata.privileged_prompt_composition === true ? "privileged_prompt_composition" : "",
     metadata.tainted_shell_argument === true ? "tainted_shell_argument" : "",
     metadata.tainted_filesystem_path === true ? "tainted_filesystem_path" : "",
@@ -34509,6 +34585,7 @@ function isPrivilegedToolSurface(tool: SurfaceObject): boolean {
     tool.metadata.approval_auto_execution === true ||
     tool.metadata.visual_context_capture === true ||
     tool.metadata.visual_context_to_output === true ||
+    tool.metadata.visual_context_prompt_bridge === true ||
     tool.metadata.privileged_prompt_composition === true ||
     tool.metadata.tainted_shell_argument === true ||
     tool.metadata.tainted_filesystem_path === true ||

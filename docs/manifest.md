@@ -325,6 +325,7 @@ Tool metadata may include:
 - `secret_manager_browser_automation_bridge`
 - `visual_context_capture`
 - `visual_context_to_output`
+- `visual_context_prompt_bridge`
 - `secret_manager_access`
 - `tainted_secret_manager_path`
 - `external_service_write`
@@ -511,6 +512,7 @@ Tool metadata may include:
 - `handler_secret_manager_browser_automation_bridge`
 - `handler_visual_context_capture`
 - `handler_visual_context_to_output`
+- `handler_visual_context_prompt_bridge`
 - `handler_secret_manager_access`
 - `handler_tainted_secret_manager_path`
 - `handler_shell_execution`

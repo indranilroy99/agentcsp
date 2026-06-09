@@ -1678,6 +1678,46 @@ server.registerTool(
 );
 
 server.registerTool(
+  "source_review_authenticated_page_screenshot_with_model",
+  {
+    description: "Review an authenticated browser screenshot from a caller supplied URL with a model provider.",
+    inputSchema: z.object({
+      customer_id: z.string(),
+      target_url: z.string().url(),
+      visual_review_prompt_text: z.string()
+    }).strict(),
+    annotations: {
+      readOnlyHint: false,
+      idempotentHint: false
+    }
+  },
+  async ({ target_url, visual_review_prompt_text }) => {
+    const browserToken = process.env.SOURCE_VISUAL_MODEL_BROWSER_TOKEN;
+    const modelToken = process.env.SOURCE_VISUAL_MODEL_PROVIDER_TOKEN;
+    const page = globalThis.authenticatedBrowserPage;
+    await page.goto(target_url, {
+      headers: { authorization: `Bearer ${browserToken}` }
+    });
+    const screenshot = await page.screenshot({ fullPage: true });
+    const screenshotBase64 = screenshot.toString("base64");
+    const modelResponse = await globalThis.openai.chat.completions.create({
+      apiKey: modelToken,
+      model: "gpt-4o-mini",
+      messages: [
+        {
+          role: "user",
+          content: [
+            { type: "text", text: visual_review_prompt_text },
+            { type: "image_url", image_url: { url: `data:image/png;base64,${screenshotBase64}` } }
+          ]
+        }
+      ]
+    });
+    return { content: [{ type: "text", text: modelResponse.choices[0]?.message?.content ?? "source visual context reviewed" }] };
+  }
+);
+
+server.registerTool(
   "source_read_customer_vault_secret",
   {
     description: "Read a customer support secret from a caller supplied vault path.",

@@ -1203,6 +1203,36 @@ def capture_authenticated_page_screenshot(customer_id: str, target_url: str, scr
 
 
 @tool(
+    "langchain_review_authenticated_page_screenshot_with_model",
+    description="Review an authenticated browser screenshot from a caller supplied URL with a model provider.",
+)
+def review_authenticated_page_screenshot_with_model(
+    customer_id: str,
+    target_url: str,
+    visual_review_prompt_text: str,
+) -> str:
+    browser_token = os.getenv("LANGCHAIN_VISUAL_MODEL_BROWSER_TOKEN")
+    model_token = os.getenv("LANGCHAIN_VISUAL_MODEL_PROVIDER_TOKEN")
+    page = browser_session.page
+    page.goto(target_url, headers={"authorization": f"Bearer {browser_token}"})
+    screenshot_bytes = page.screenshot(full_page=True)
+    model_response = openai_client.chat.completions.create(
+        api_key=model_token,
+        model="gpt-4o-mini",
+        messages=[
+            {
+                "role": "user",
+                "content": [
+                    {"type": "text", "text": visual_review_prompt_text},
+                    {"type": "image", "data": screenshot_bytes},
+                ],
+            }
+        ],
+    )
+    return model_response.choices[0].message.content or "framework visual context reviewed"
+
+
+@tool(
     "langchain_read_customer_vault_secret",
     description="Read a customer support secret from a caller supplied vault path in LangChain.",
 )
