@@ -1,0 +1,132 @@
+id: AGENTCSP-TOOL-120
+name: Model output written to prompt registry
+description: Flags source-defined tools that call a model provider and publish model-derived output into a prompt or instruction registry with runtime credentials and caller-controlled selectors.
+category: tool_handler
+severity: critical
+maps_to:
+  owasp:
+    - LLM01 Prompt Injection
+    - LLM02 Sensitive Information Disclosure
+    - LLM06 Excessive Agency
+    - LLM08 Vector and Embedding Weaknesses
+  mitre_atlas:
+    - AML.T0051 LLM Prompt Injection
+    - AML.T0054 LLM Plugin Compromise
+    - AML.T0057 LLM Data Leakage
+  nist_ai_rmf:
+    - GV-1.1
+    - GV-1.2
+    - MP-5.1
+    - MG-3.2
+match:
+  object_type: tool
+  where:
+    - field: metadata.parsed_tool_schema
+      op: equals
+      value: true
+    - field: metadata.source_tool_handler_redacted
+      op: equals
+      value: true
+    - field: metadata.handler_body_analyzed
+      op: equals
+      value: true
+    - field: metadata.handler_model_provider_call
+      op: equals
+      value: true
+    - field: metadata.handler_prompt_registry_write
+      op: equals
+      value: true
+    - field: metadata.handler_model_output_prompt_registry_bridge
+      op: equals
+      value: true
+    - field: metadata.handler_tainted_prompt_registry_payload
+      op: equals
+      value: true
+    - field: metadata.handler_tainted_prompt_registry_selector
+      op: equals
+      value: true
+    - field: metadata.handler_secret_env_access
+      op: equals
+      value: true
+    - field: metadata.model_provider_call
+      op: equals
+      value: true
+    - field: metadata.prompt_registry_write
+      op: equals
+      value: true
+    - field: metadata.model_output_prompt_registry_bridge
+      op: equals
+      value: true
+    - field: metadata.tainted_prompt_registry_payload
+      op: equals
+      value: true
+    - field: metadata.tainted_prompt_registry_selector
+      op: equals
+      value: true
+    - field: metadata.accepts_content_like_input
+      op: equals
+      value: true
+    - field: metadata.accepts_customer_data_input
+      op: equals
+      value: true
+    - field: external_reach
+      op: equals
+      value: true
+    - field: secret_exposure
+      op: equals
+      value: true
+    - field: side_effect
+      op: equals
+      value: true
+    - field: reversible
+      op: equals
+      value: false
+    - field: metadata.schema_properties
+      op: contains_any
+      value:
+        - customer_ticket_text
+        - prompt_goal_text
+        - prompt_id
+        - prompt_role
+        - prompt_namespace
+    - field: metadata.authority_classes
+      op: includes
+      value: model_provider_call
+    - field: metadata.authority_classes
+      op: includes
+      value: prompt_registry_write
+    - field: metadata.authority_classes
+      op: includes
+      value: model_output_prompt_registry_bridge
+    - field: metadata.authority_classes
+      op: includes
+      value: tainted_prompt_registry_payload
+    - field: metadata.authority_classes
+      op: includes
+      value: tainted_prompt_registry_selector
+    - field: metadata.handler_authority_classes
+      op: includes
+      value: handler_model_provider_call
+    - field: metadata.handler_authority_classes
+      op: includes
+      value: handler_prompt_registry_write
+    - field: metadata.handler_authority_classes
+      op: includes
+      value: handler_model_output_prompt_registry_bridge
+    - field: actions
+      op: includes
+      value: send
+    - field: actions
+      op: includes
+      value: write
+    - field: actions
+      op: includes
+      value: publish
+    - field: data_classes
+      op: contains_any
+      value:
+        - confidential
+        - pii
+recommendation:
+  control: quarantine
+  text: Quarantine model-output prompt-registry publishers until model responses cannot become system or developer prompt content without review, prompt identifiers, roles, namespaces, and registry destinations are policy-owned, and registry publication requires approval with signing, version pinning, rollback, and audit trails.

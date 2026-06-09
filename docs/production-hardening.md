@@ -255,6 +255,7 @@ Examples:
 - MCP OAuth client plus wildcard or externally selected callback handling that can capture authorization codes or refreshable delegated credentials before they are bound to a trusted MCP resource
 - MCP OAuth client plus plaintext protected-resource or MCP endpoints, persisted refresh tokens, token forwarding, broad sensitive scopes, and missing approval
 - remote prompt registry plus auto-synced unpinned system or developer prompts, disabled signature/provenance checks, untrusted selectors, privileged tool, memory, and external-response directives, sensitive context, and no approval gate
+- source-defined tools that call model providers and publish model-derived output into prompt or instruction registries using runtime credentials and caller-controlled prompt IDs, roles, namespaces, or destinations
 - remote instruction loader plus auto-refreshed unpinned system or developer instructions, disabled signature/provenance checks, untrusted selectors, privileged tool authority, credentials, and no approval gate
 - remote instruction refresh plus unpinned system and developer instructions selected by untrusted context, disabled signature/provenance checks, browser/database/external-response/memory/secret-manager authority, sensitive or PII context, credentials, and no approval gate
 - remote extension loader plus auto-installed and auto-updated unpinned unsigned skills or plugins, untrusted selectors, browser/database/filesystem/memory/external-response/secret-manager authority, credentials, and no approval gate

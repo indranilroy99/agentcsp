@@ -518,14 +518,20 @@ const leakPatterns = [
   /prompt_registry_client\.update_prompt/u,
   /secretPromptRegistryValue/u,
   /secret_prompt_registry_value/u,
+  /modelSelectedPromptRegistryValue/u,
+  /model_selected_prompt_registry_value/u,
   /source prompt registry updated/u,
   /framework prompt registry updated/u,
   /source tool observation published to prompt registry/u,
   /framework tool observation published to prompt registry/u,
   /source vault secret published to prompt registry/u,
   /framework vault secret published to prompt registry/u,
+  /source model selected prompt registry entry published/u,
+  /framework model selected prompt registry entry published/u,
   /Publish caller supplied system prompt text/u,
   /Publish a customer support secret/u,
+  /Ask a model provider to draft a prompt-registry entry/u,
+  /Return one prompt-registry entry/u,
   /feedbackPipeline\.promoteToTraining/u,
   /feedback_pipeline\.promote_to_training/u,
   /source feedback promoted/u,
@@ -1120,8 +1126,8 @@ const leakPatterns = [
 const vulnerable = await readScanOutput(vulnerableOutput, { sarifRequired: true });
 const safe = await readScanOutput(safeOutput, { sarifRequired: false });
 
-assertEqual(vulnerable.manifest.findings.length, 840, "vulnerable manifest finding count");
-assertEqual(vulnerable.findings.length, 840, "vulnerable findings.json count");
+assertEqual(vulnerable.manifest.findings.length, 850, "vulnerable manifest finding count");
+assertEqual(vulnerable.findings.length, 850, "vulnerable findings.json count");
 assertEqual(vulnerable.manifest.attack_paths.length, 15, "vulnerable attack path count");
 assertEqual(vulnerable.manifest.static_blast_radius?.critical_attack_paths, 15, "vulnerable critical attack path count");
 assertEqual(vulnerable.manifest.diagnostics.length, 0, "vulnerable diagnostics count");
@@ -1238,6 +1244,7 @@ for (const ruleId of [
   "AGENTCSP-TOOL-117",
   "AGENTCSP-TOOL-118",
   "AGENTCSP-TOOL-119",
+  "AGENTCSP-TOOL-120",
   "AGENTCSP-RUNTIME-007",
   "AGENTCSP-RUNTIME-008",
   "AGENTCSP-RUNTIME-123",

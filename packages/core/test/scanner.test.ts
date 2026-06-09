@@ -742,6 +742,9 @@ describe("scanner", () => {
     const sourceModelOutputAgentDelegationBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "source_delegate_model_selected_remote_agent_task"
     );
+    const sourceModelOutputPromptRegistryBridgeTool = surfaces.tools.find(
+      (surface) => surface.name === "source_publish_model_selected_prompt_registry_entry"
+    );
     const pythonExportTool = surfaces.tools.find((surface) => surface.name === "python_export_customer_record");
     const pythonDeleteTool = surfaces.tools.find((surface) => surface.name === "python_readonly_delete_workspace_file");
     const pythonUnsafeDeserializationTool = surfaces.tools.find((surface) => surface.name === "python_load_serialized_agent_state");
@@ -950,6 +953,9 @@ describe("scanner", () => {
     );
     const langchainModelOutputAgentDelegationBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "langchain_delegate_model_selected_remote_agent_task"
+    );
+    const langchainModelOutputPromptRegistryBridgeTool = surfaces.tools.find(
+      (surface) => surface.name === "langchain_publish_model_selected_prompt_registry_entry"
     );
     const langchainUnsafeDeserializationTool = surfaces.tools.find((surface) => surface.name === "langchain_load_serialized_agent_state");
     const aiSdkExportTool = surfaces.tools.find((surface) => surface.name === "aiSdkExportCustomerContext");
@@ -8718,6 +8724,101 @@ describe("scanner", () => {
     expect(JSON.stringify(sourceModelOutputAgentDelegationBridgeTool)).not.toContain("remoteAgentClient.delegateTask");
     expect(JSON.stringify(sourceModelOutputAgentDelegationBridgeTool)).not.toContain("source model selected remote-agent task delegated");
     expect(JSON.stringify(sourceModelOutputAgentDelegationBridgeTool)).not.toContain("Ask a model provider to draft a remote-agent task");
+    expect(sourceModelOutputPromptRegistryBridgeTool).toMatchObject({
+      path: "mcp-source/customer-tools.ts",
+      actions: ["call", "publish", "read", "send", "write"],
+      data_classes: ["confidential", "credential", "pii"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(sourceModelOutputPromptRegistryBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_mcp_source_tool: true,
+      mcp_source_tool_registration: true,
+      mcp_source_tool_registration_kind: "registerTool",
+      mcp_source_tool_argument_count: 3,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_content_like_input: true,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      model_provider_call: true,
+      tainted_model_selection: true,
+      prompt_registry_write: true,
+      model_output_prompt_registry_bridge: true,
+      tainted_prompt_registry_payload: true,
+      tainted_prompt_registry_selector: true,
+      privileged_prompt_composition: true,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_model_provider_call: true,
+      handler_tainted_model_selection: true,
+      handler_prompt_registry_write: true,
+      handler_model_output_prompt_registry_bridge: true,
+      handler_tainted_prompt_registry_payload: true,
+      handler_tainted_prompt_registry_selector: true,
+      handler_privileged_prompt_composition: true,
+      handler_secret_env_access: true,
+      handler_signal_count: 8,
+      open_world_schema: false
+    });
+    expect(sourceModelOutputPromptRegistryBridgeTool?.metadata.authority_classes).toEqual(expect.arrayContaining([
+      "handler_model_output_prompt_registry_bridge",
+      "handler_model_provider_call",
+      "handler_privileged_prompt_composition",
+      "handler_prompt_registry_write",
+      "handler_secret_env_access",
+      "handler_tainted_model_selection",
+      "handler_tainted_prompt_registry_payload",
+      "handler_tainted_prompt_registry_selector",
+      "model_output_prompt_registry_bridge",
+      "model_provider_call",
+      "privileged_prompt_composition",
+      "prompt_registry_write",
+      "tainted_model_selection",
+      "tainted_prompt_registry_payload",
+      "tainted_prompt_registry_selector"
+    ]));
+    expect(sourceModelOutputPromptRegistryBridgeTool?.metadata.handler_authority_classes).toEqual([
+      "handler_model_output_prompt_registry_bridge",
+      "handler_model_provider_call",
+      "handler_privileged_prompt_composition",
+      "handler_prompt_registry_write",
+      "handler_secret_env_access",
+      "handler_tainted_model_selection",
+      "handler_tainted_prompt_registry_payload",
+      "handler_tainted_prompt_registry_selector"
+    ]);
+    expect(sourceModelOutputPromptRegistryBridgeTool?.metadata.handler_env_key_names).toEqual([
+      "SOURCE_MODEL_PROMPT_REGISTRY_TOKEN",
+      "SOURCE_PROMPT_REGISTRY_WRITE_TOKEN"
+    ]);
+    expect(sourceModelOutputPromptRegistryBridgeTool?.metadata.schema_properties).toEqual([
+      "customer_id",
+      "customer_ticket_text",
+      "model_name",
+      "prompt_goal_text",
+      "prompt_id",
+      "prompt_namespace",
+      "prompt_role"
+    ]);
+    expect(sourceModelOutputPromptRegistryBridgeTool?.metadata.required_properties).toEqual([
+      "customer_id",
+      "customer_ticket_text",
+      "model_name",
+      "prompt_goal_text",
+      "prompt_id",
+      "prompt_namespace",
+      "prompt_role"
+    ]);
+    expect(JSON.stringify(sourceModelOutputPromptRegistryBridgeTool)).not.toContain("openai.chat.completions.create");
+    expect(JSON.stringify(sourceModelOutputPromptRegistryBridgeTool)).not.toContain("modelResult");
+    expect(JSON.stringify(sourceModelOutputPromptRegistryBridgeTool)).not.toContain("modelSelectedPromptRegistryValue");
+    expect(JSON.stringify(sourceModelOutputPromptRegistryBridgeTool)).not.toContain("promptRegistryClient.updatePrompt");
+    expect(JSON.stringify(sourceModelOutputPromptRegistryBridgeTool)).not.toContain("source model selected prompt registry entry published");
+    expect(JSON.stringify(sourceModelOutputPromptRegistryBridgeTool)).not.toContain("Ask a model provider to draft a prompt-registry entry");
     expect(pythonExportTool).toMatchObject({
       path: "mcp-source/python_tools.py",
       data_classes: ["confidential", "credential", "pii"],
@@ -16747,6 +16848,102 @@ describe("scanner", () => {
     expect(JSON.stringify(langchainModelOutputAgentDelegationBridgeTool)).not.toContain("remote_agent_client.delegate_task");
     expect(JSON.stringify(langchainModelOutputAgentDelegationBridgeTool)).not.toContain("framework model selected remote-agent task delegated");
     expect(JSON.stringify(langchainModelOutputAgentDelegationBridgeTool)).not.toContain("Ask a model provider to draft a remote-agent task");
+    expect(langchainModelOutputPromptRegistryBridgeTool).toMatchObject({
+      path: "framework-tools/langchain_tools.py",
+      actions: ["call", "publish", "read", "send", "write"],
+      data_classes: ["confidential", "credential", "pii"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(langchainModelOutputPromptRegistryBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_agent_framework_source_tool: true,
+      agent_framework_source_tool: true,
+      agent_framework_source_tool_framework: "langchain",
+      agent_framework_source_tool_registration_kind: "python_tool_decorator",
+      agent_framework_source_tool_argument_count: 7,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_content_like_input: true,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      model_provider_call: true,
+      tainted_model_selection: true,
+      prompt_registry_write: true,
+      model_output_prompt_registry_bridge: true,
+      tainted_prompt_registry_payload: true,
+      tainted_prompt_registry_selector: true,
+      privileged_prompt_composition: true,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_model_provider_call: true,
+      handler_tainted_model_selection: true,
+      handler_prompt_registry_write: true,
+      handler_model_output_prompt_registry_bridge: true,
+      handler_tainted_prompt_registry_payload: true,
+      handler_tainted_prompt_registry_selector: true,
+      handler_privileged_prompt_composition: true,
+      handler_secret_env_access: true,
+      handler_signal_count: 8,
+      open_world_schema: false
+    });
+    expect(langchainModelOutputPromptRegistryBridgeTool?.metadata.authority_classes).toEqual(expect.arrayContaining([
+      "handler_model_output_prompt_registry_bridge",
+      "handler_model_provider_call",
+      "handler_privileged_prompt_composition",
+      "handler_prompt_registry_write",
+      "handler_secret_env_access",
+      "handler_tainted_model_selection",
+      "handler_tainted_prompt_registry_payload",
+      "handler_tainted_prompt_registry_selector",
+      "model_output_prompt_registry_bridge",
+      "model_provider_call",
+      "privileged_prompt_composition",
+      "prompt_registry_write",
+      "tainted_model_selection",
+      "tainted_prompt_registry_payload",
+      "tainted_prompt_registry_selector"
+    ]));
+    expect(langchainModelOutputPromptRegistryBridgeTool?.metadata.handler_authority_classes).toEqual([
+      "handler_model_output_prompt_registry_bridge",
+      "handler_model_provider_call",
+      "handler_privileged_prompt_composition",
+      "handler_prompt_registry_write",
+      "handler_secret_env_access",
+      "handler_tainted_model_selection",
+      "handler_tainted_prompt_registry_payload",
+      "handler_tainted_prompt_registry_selector"
+    ]);
+    expect(langchainModelOutputPromptRegistryBridgeTool?.metadata.handler_env_key_names).toEqual([
+      "LANGCHAIN_MODEL_PROMPT_REGISTRY_TOKEN",
+      "LANGCHAIN_PROMPT_REGISTRY_WRITE_TOKEN"
+    ]);
+    expect(langchainModelOutputPromptRegistryBridgeTool?.metadata.schema_properties).toEqual([
+      "customer_id",
+      "customer_ticket_text",
+      "model_name",
+      "prompt_goal_text",
+      "prompt_id",
+      "prompt_namespace",
+      "prompt_role"
+    ]);
+    expect(langchainModelOutputPromptRegistryBridgeTool?.metadata.required_properties).toEqual([
+      "customer_id",
+      "customer_ticket_text",
+      "model_name",
+      "prompt_goal_text",
+      "prompt_id",
+      "prompt_namespace",
+      "prompt_role"
+    ]);
+    expect(JSON.stringify(langchainModelOutputPromptRegistryBridgeTool)).not.toContain("openai_client.chat.completions.create");
+    expect(JSON.stringify(langchainModelOutputPromptRegistryBridgeTool)).not.toContain("model_response");
+    expect(JSON.stringify(langchainModelOutputPromptRegistryBridgeTool)).not.toContain("model_selected_prompt_registry_value");
+    expect(JSON.stringify(langchainModelOutputPromptRegistryBridgeTool)).not.toContain("prompt_registry_client.update_prompt");
+    expect(JSON.stringify(langchainModelOutputPromptRegistryBridgeTool)).not.toContain("framework model selected prompt registry entry published");
+    expect(JSON.stringify(langchainModelOutputPromptRegistryBridgeTool)).not.toContain("Ask a model provider to draft a prompt-registry entry");
     expect(aiSdkExportTool).toMatchObject({
       path: "framework-tools/vercel-ai-tools.ts",
       data_classes: ["confidential", "credential", "pii"],

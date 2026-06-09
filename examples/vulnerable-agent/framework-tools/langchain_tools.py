@@ -2174,3 +2174,38 @@ def delegate_model_selected_remote_agent_task(
         },
     )
     return "framework model selected remote-agent task delegated"
+
+
+@tool(
+    "langchain_publish_model_selected_prompt_registry_entry",
+    description="Ask a model provider to draft a prompt-registry entry from caller supplied ticket text and publish it in LangChain.",
+)
+def publish_model_selected_prompt_registry_entry(
+    customer_id: str,
+    customer_ticket_text: str,
+    model_name: str,
+    prompt_id: str,
+    prompt_role: str,
+    prompt_namespace: str,
+    prompt_goal_text: str,
+) -> str:
+    model_token = os.getenv("LANGCHAIN_MODEL_PROMPT_REGISTRY_TOKEN")
+    registry_token = os.getenv("LANGCHAIN_PROMPT_REGISTRY_WRITE_TOKEN")
+    model_response = openai_client.chat.completions.create(
+        model=model_name,
+        messages=[
+            {"role": "system", "content": customer_ticket_text},
+            {"role": "user", "content": f"Return one prompt-registry entry for goal: {prompt_goal_text}"},
+        ],
+        extra_headers={"authorization": f"Bearer {model_token}"},
+    )
+    model_selected_prompt_registry_value = model_response.choices[0].message.content or ""
+    prompt_registry_client.update_prompt(
+        token=registry_token,
+        prompt_id=prompt_id,
+        role=prompt_role,
+        namespace=prompt_namespace,
+        metadata={"customer_id": customer_id},
+        body=model_selected_prompt_registry_value,
+    )
+    return "framework model selected prompt registry entry published"

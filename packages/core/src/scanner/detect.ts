@@ -24299,6 +24299,7 @@ function addToolDefinitionSurface(
       model_output_task_queue_bridge: authority.model_output_task_queue_bridge,
       tool_output_task_queue_bridge: authority.tool_output_task_queue_bridge,
       prompt_registry_write: authority.prompt_registry_write,
+      model_output_prompt_registry_bridge: authority.model_output_prompt_registry_bridge,
       tainted_prompt_registry_payload: authority.tainted_prompt_registry_payload,
       tainted_prompt_registry_selector: authority.tainted_prompt_registry_selector,
       model_approval_gate: authority.model_approval_gate,
@@ -26757,6 +26758,7 @@ interface SourceToolHandlerSignals {
   handlerModelOutputTaskQueueBridge: boolean;
   handlerToolOutputTaskQueueBridge: boolean;
   handlerPromptRegistryWrite: boolean;
+  handlerModelOutputPromptRegistryBridge: boolean;
   handlerToolOutputPromptRegistryBridge: boolean;
   handlerSecretManagerPromptRegistryBridge: boolean;
   handlerTaintedPromptRegistryPayload: boolean;
@@ -27309,6 +27311,7 @@ function sourceToolHandlerSignalMetadata(signals: SourceToolHandlerSignals | und
     handler_model_output_task_queue_bridge: signals.handlerModelOutputTaskQueueBridge,
     handler_tool_output_task_queue_bridge: signals.handlerToolOutputTaskQueueBridge,
     handler_prompt_registry_write: signals.handlerPromptRegistryWrite,
+    handler_model_output_prompt_registry_bridge: signals.handlerModelOutputPromptRegistryBridge,
     handler_tool_output_prompt_registry_bridge: signals.handlerToolOutputPromptRegistryBridge,
     handler_secret_manager_prompt_registry_bridge: signals.handlerSecretManagerPromptRegistryBridge,
     handler_tainted_prompt_registry_payload: signals.handlerTaintedPromptRegistryPayload,
@@ -27767,6 +27770,9 @@ function classifySourceToolHandlerSignals(
   const toolOutputPromptCacheBridge = toolInvocation && promptCacheWrite && (language === "javascript"
     ? hasJavaScriptHandlerToolOutputPromptCacheBridge(handlerSource)
     : hasPythonHandlerToolOutputPromptCacheBridge(handlerSource));
+  const modelOutputPromptRegistryBridge = modelProviderCall && promptRegistryWrite && (language === "javascript"
+    ? hasJavaScriptHandlerModelOutputPromptRegistryBridge(handlerSource)
+    : hasPythonHandlerModelOutputPromptRegistryBridge(handlerSource));
   const secretManagerPromptRegistryBridge = secretManagerAccess && promptRegistryWrite && (language === "javascript"
     ? hasJavaScriptHandlerSecretManagerPromptRegistryBridge(handlerSource)
     : hasPythonHandlerSecretManagerPromptRegistryBridge(handlerSource));
@@ -27863,6 +27869,7 @@ function classifySourceToolHandlerSignals(
   if (modelOutputTaskQueueBridge) classes.add("handler_model_output_task_queue_bridge");
   if (toolOutputTaskQueueBridge) classes.add("handler_tool_output_task_queue_bridge");
   if (promptRegistryWrite) classes.add("handler_prompt_registry_write");
+  if (modelOutputPromptRegistryBridge) classes.add("handler_model_output_prompt_registry_bridge");
   if (toolOutputPromptRegistryBridge) classes.add("handler_tool_output_prompt_registry_bridge");
   if (secretManagerPromptRegistryBridge) classes.add("handler_secret_manager_prompt_registry_bridge");
   if (taintedPromptRegistryPayload) classes.add("handler_tainted_prompt_registry_payload");
@@ -28003,6 +28010,7 @@ function classifySourceToolHandlerSignals(
     handlerModelOutputTaskQueueBridge: modelOutputTaskQueueBridge,
     handlerToolOutputTaskQueueBridge: toolOutputTaskQueueBridge,
     handlerPromptRegistryWrite: promptRegistryWrite,
+    handlerModelOutputPromptRegistryBridge: modelOutputPromptRegistryBridge,
     handlerToolOutputPromptRegistryBridge: toolOutputPromptRegistryBridge,
     handlerSecretManagerPromptRegistryBridge: secretManagerPromptRegistryBridge,
     handlerTaintedPromptRegistryPayload: taintedPromptRegistryPayload,
@@ -30989,6 +30997,30 @@ function hasPythonHandlerPromptRegistryWrite(source: string): boolean {
     /\b(?:prompt_registry|prompt_registry_client|prompt_store|prompt_hub|prompt_catalog|instruction_registry|instruction_store|system_prompt_registry|developer_prompt_registry|context_registry)\s*(?:\.\s*[A-Za-z_]\w*){0,5}\s*\.\s*(?:update|update_prompt|publish|publish_prompt|set|set_prompt|put|put_prompt|upsert|upsert_prompt|write|write_prompt|save|save_prompt|create|create_prompt|register|register_prompt|sync|push)\s*\(/iu,
     /\b(?:update_prompt_registry|publish_prompt_registry|write_prompt_registry|upsert_system_prompt|publish_developer_prompt|sync_prompt_registry)\s*\(/iu
   ].some((pattern) => pattern.test(source));
+}
+
+function hasJavaScriptHandlerModelOutputPromptRegistryBridge(source: string): boolean {
+  const identifiers = extractJavaScriptModelOutputIdentifiers(source);
+  return identifiers.length > 0 && callExpressionReferencesAnyIdentifier(
+    [
+      /\b(?:promptRegistry|promptRegistryClient|promptStore|promptHub|promptCatalog|instructionRegistry|instructionStore|systemPromptRegistry|developerPromptRegistry|contextRegistry)\s*(?:\.\s*[A-Za-z_$][\w$]*){0,5}\s*\.\s*(?:update|updatePrompt|publish|publishPrompt|set|setPrompt|put|putPrompt|upsert|upsertPrompt|write|writePrompt|save|savePrompt|create|createPrompt|register|registerPrompt|sync|push)\s*\(([\s\S]{0,2200})\)/giu,
+      /\b(?:updatePromptRegistry|publishPromptRegistry|writePromptRegistry|upsertSystemPrompt|publishDeveloperPrompt|syncPromptRegistry)\s*\(([\s\S]{0,2200})\)/giu
+    ],
+    source,
+    identifiers
+  );
+}
+
+function hasPythonHandlerModelOutputPromptRegistryBridge(source: string): boolean {
+  const identifiers = extractPythonModelOutputIdentifiers(source);
+  return identifiers.length > 0 && callExpressionReferencesAnyIdentifier(
+    [
+      /\b(?:prompt_registry|prompt_registry_client|prompt_store|prompt_hub|prompt_catalog|instruction_registry|instruction_store|system_prompt_registry|developer_prompt_registry|context_registry)\s*(?:\.\s*[A-Za-z_]\w*){0,5}\s*\.\s*(?:update|update_prompt|publish|publish_prompt|set|set_prompt|put|put_prompt|upsert|upsert_prompt|write|write_prompt|save|save_prompt|create|create_prompt|register|register_prompt|sync|push)\s*\(([\s\S]{0,2200})\)/giu,
+      /\b(?:update_prompt_registry|publish_prompt_registry|write_prompt_registry|upsert_system_prompt|publish_developer_prompt|sync_prompt_registry)\s*\(([\s\S]{0,2200})\)/giu
+    ],
+    source,
+    identifiers
+  );
 }
 
 function hasJavaScriptHandlerToolOutputPromptRegistryBridge(source: string): boolean {
@@ -34142,6 +34174,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   prompt_cache_write: boolean;
   secret_manager_prompt_cache_bridge: boolean;
   tool_output_prompt_cache_bridge: boolean;
+  model_output_prompt_registry_bridge: boolean;
   secret_manager_prompt_registry_bridge: boolean;
   tool_output_prompt_registry_bridge: boolean;
   tainted_prompt_cache_key: boolean;
@@ -34247,6 +34280,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   const handlerPromptCacheWrite = handler?.handlerPromptCacheWrite === true;
   const handlerSecretManagerPromptCacheBridge = handler?.handlerSecretManagerPromptCacheBridge === true;
   const handlerToolOutputPromptCacheBridge = handler?.handlerToolOutputPromptCacheBridge === true;
+  const handlerModelOutputPromptRegistryBridge = handler?.handlerModelOutputPromptRegistryBridge === true;
   const handlerTaintedPromptCacheKey = handler?.handlerTaintedPromptCacheKey === true;
   const handlerTaintedPromptCacheValue = handler?.handlerTaintedPromptCacheValue === true;
   const handlerTrainingDatasetExport = handler?.handlerTrainingDatasetExport === true;
@@ -35010,6 +35044,13 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
     actions.add("send");
     actions.add("write");
   }
+  if (handlerModelOutputPromptRegistryBridge) {
+    classes.add("model_output_prompt_registry_bridge");
+    actions.add("read");
+    actions.add("send");
+    actions.add("write");
+    actions.add("publish");
+  }
   if (handlerToolOutputPromptRegistryBridge) {
     classes.add("tool_output_prompt_registry_bridge");
     actions.add("send");
@@ -35196,6 +35237,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerModelOutputTaskQueueBridge ||
       handlerToolOutputTaskQueueBridge ||
       handlerPromptRegistryWrite ||
+      handlerModelOutputPromptRegistryBridge ||
       handlerToolOutputPromptRegistryBridge ||
       handlerSecretManagerPromptRegistryBridge ||
       handlerTaintedPromptRegistryPayload ||
@@ -35318,6 +35360,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerModelOutputTaskQueueBridge ||
       handlerToolOutputTaskQueueBridge ||
       handlerPromptRegistryWrite ||
+      handlerModelOutputPromptRegistryBridge ||
       handlerToolOutputPromptRegistryBridge ||
       handlerSecretManagerPromptRegistryBridge ||
       handlerModelApprovalGate ||
@@ -35361,6 +35404,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       (handlerToolOutputArtifactBridge && handlerSecretEnvAccess) ||
       (handlerModelOutputTaskQueueBridge && handlerSecretEnvAccess) ||
       (handlerToolOutputTaskQueueBridge && handlerSecretEnvAccess) ||
+      (handlerModelOutputPromptRegistryBridge && handlerSecretEnvAccess) ||
       (handlerToolOutputPromptRegistryBridge && handlerSecretEnvAccess) ||
       (handlerToolOutputExternalServiceBridge && handlerSecretEnvAccess) ||
       (handlerModelOutputNetworkDestinationBridge && handlerSecretEnvAccess) ||
@@ -35467,6 +35511,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
     prompt_cache_write: handlerPromptCacheWrite,
     secret_manager_prompt_cache_bridge: handlerSecretManagerPromptCacheBridge,
     tool_output_prompt_cache_bridge: handlerToolOutputPromptCacheBridge,
+    model_output_prompt_registry_bridge: handlerModelOutputPromptRegistryBridge,
     secret_manager_prompt_registry_bridge: handlerSecretManagerPromptRegistryBridge,
     tool_output_prompt_registry_bridge: handlerToolOutputPromptRegistryBridge,
     tainted_prompt_cache_key: handlerTaintedPromptCacheKey,
@@ -35607,6 +35652,7 @@ function authoritySignature(tool: SurfaceObject): string {
     metadata.prompt_cache_write === true ? "prompt_cache_write" : "",
     metadata.secret_manager_prompt_cache_bridge === true ? "secret_manager_prompt_cache_bridge" : "",
     metadata.tool_output_prompt_cache_bridge === true ? "tool_output_prompt_cache_bridge" : "",
+    metadata.model_output_prompt_registry_bridge === true ? "model_output_prompt_registry_bridge" : "",
     metadata.secret_manager_prompt_registry_bridge === true ? "secret_manager_prompt_registry_bridge" : "",
     metadata.tool_output_prompt_registry_bridge === true ? "tool_output_prompt_registry_bridge" : "",
     metadata.tainted_prompt_cache_key === true ? "tainted_prompt_cache_key" : "",
@@ -35753,6 +35799,7 @@ function isPrivilegedToolSurface(tool: SurfaceObject): boolean {
     tool.metadata.prompt_cache_write === true ||
     tool.metadata.secret_manager_prompt_cache_bridge === true ||
     tool.metadata.tool_output_prompt_cache_bridge === true ||
+    tool.metadata.model_output_prompt_registry_bridge === true ||
     tool.metadata.secret_manager_prompt_registry_bridge === true ||
     tool.metadata.tool_output_prompt_registry_bridge === true ||
     tool.metadata.tainted_prompt_cache_key === true ||

@@ -2969,3 +2969,48 @@ server.registerTool(
     return { content: [{ type: "text", text: "source model selected remote-agent task delegated" }] };
   }
 );
+
+server.registerTool(
+  "source_publish_model_selected_prompt_registry_entry",
+  {
+    description: "Ask a model provider to draft a prompt-registry entry from caller supplied ticket text and publish it.",
+    inputSchema: z.object({
+      customer_id: z.string(),
+      customer_ticket_text: z.string(),
+      model_name: z.string(),
+      prompt_id: z.string(),
+      prompt_role: z.string(),
+      prompt_namespace: z.string(),
+      prompt_goal_text: z.string()
+    }).strict(),
+    annotations: {
+      readOnlyHint: false,
+      idempotentHint: false
+    }
+  },
+  async ({ customer_id, customer_ticket_text, model_name, prompt_id, prompt_role, prompt_namespace, prompt_goal_text }) => {
+    const modelToken = process.env.SOURCE_MODEL_PROMPT_REGISTRY_TOKEN;
+    const registryToken = process.env.SOURCE_PROMPT_REGISTRY_WRITE_TOKEN;
+    const openai = globalThis.openaiClient;
+    const modelResult = await openai.chat.completions.create({
+      apiKey: modelToken,
+      model: model_name,
+      messages: [
+        { role: "system", content: customer_ticket_text },
+        { role: "user", content: `Return one prompt-registry entry for goal: ${prompt_goal_text}` }
+      ]
+    });
+    const modelSelectedPromptRegistryValue = modelResult.choices[0].message.content ?? "";
+    await globalThis.promptRegistryClient.updatePrompt({
+      token: registryToken,
+      promptId: prompt_id,
+      role: prompt_role,
+      namespace: prompt_namespace,
+      metadata: {
+        customerId: customer_id
+      },
+      body: modelSelectedPromptRegistryValue
+    });
+    return { content: [{ type: "text", text: "source model selected prompt registry entry published" }] };
+  }
+);

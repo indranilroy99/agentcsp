@@ -121,6 +121,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-117")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-118")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-119")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-120")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-001")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-002")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-003")).toBe(true);
@@ -6753,9 +6754,11 @@ describe("rule engine", () => {
     const sourceHandlerPromptRegistryWriteFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-054");
     expect(sourceHandlerPromptRegistryWriteFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_publish_customer_vault_secret_prompt_registry",
+      "langchain_publish_model_selected_prompt_registry_entry",
       "langchain_publish_privileged_tool_observation_prompt_registry",
       "langchain_publish_prompt_registry_update",
       "source_publish_customer_vault_secret_prompt_registry",
+      "source_publish_model_selected_prompt_registry_entry",
       "source_publish_privileged_tool_observation_prompt_registry",
       "source_publish_prompt_registry_update"
     ]);
@@ -6802,8 +6805,13 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerPromptRegistryWriteFindings)).not.toContain("framework tool observation published to prompt registry");
     expect(JSON.stringify(sourceHandlerPromptRegistryWriteFindings)).not.toContain("source vault secret published to prompt registry");
     expect(JSON.stringify(sourceHandlerPromptRegistryWriteFindings)).not.toContain("framework vault secret published to prompt registry");
+    expect(JSON.stringify(sourceHandlerPromptRegistryWriteFindings)).not.toContain("modelSelectedPromptRegistryValue");
+    expect(JSON.stringify(sourceHandlerPromptRegistryWriteFindings)).not.toContain("model_selected_prompt_registry_value");
+    expect(JSON.stringify(sourceHandlerPromptRegistryWriteFindings)).not.toContain("source model selected prompt registry entry published");
+    expect(JSON.stringify(sourceHandlerPromptRegistryWriteFindings)).not.toContain("framework model selected prompt registry entry published");
     expect(JSON.stringify(sourceHandlerPromptRegistryWriteFindings)).not.toContain("Publish caller supplied system prompt text");
     expect(JSON.stringify(sourceHandlerPromptRegistryWriteFindings)).not.toContain("Publish a customer support secret");
+    expect(JSON.stringify(sourceHandlerPromptRegistryWriteFindings)).not.toContain("Ask a model provider to draft a prompt-registry entry");
     const sourceHandlerTelemetryExportFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-045");
     expect(sourceHandlerTelemetryExportFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_export_customer_trace",
@@ -10363,6 +10371,7 @@ describe("rule engine", () => {
       "langchain_fetch_model_selected_url",
       "langchain_grant_model_selected_authorization",
       "langchain_issue_model_selected_credential",
+      "langchain_publish_model_selected_prompt_registry_entry",
       "langchain_enqueue_model_selected_background_job",
       "langchain_run_model_generated_command",
       "langchain_review_authenticated_page_screenshot_with_model",
@@ -10376,6 +10385,7 @@ describe("rule engine", () => {
       "source_fetch_model_selected_url",
       "source_grant_model_selected_authorization",
       "source_issue_model_selected_credential",
+      "source_publish_model_selected_prompt_registry_entry",
       "source_enqueue_model_selected_background_job",
       "source_run_model_generated_command",
       "source_review_authenticated_page_screenshot_with_model",
@@ -10439,6 +10449,11 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerModelProviderFindings)).not.toContain("source model selected remote-agent task delegated");
     expect(JSON.stringify(sourceHandlerModelProviderFindings)).not.toContain("framework model selected remote-agent task delegated");
     expect(JSON.stringify(sourceHandlerModelProviderFindings)).not.toContain("Ask a model provider to draft a remote-agent task");
+    expect(JSON.stringify(sourceHandlerModelProviderFindings)).not.toContain("modelSelectedPromptRegistryValue");
+    expect(JSON.stringify(sourceHandlerModelProviderFindings)).not.toContain("model_selected_prompt_registry_value");
+    expect(JSON.stringify(sourceHandlerModelProviderFindings)).not.toContain("source model selected prompt registry entry published");
+    expect(JSON.stringify(sourceHandlerModelProviderFindings)).not.toContain("framework model selected prompt registry entry published");
+    expect(JSON.stringify(sourceHandlerModelProviderFindings)).not.toContain("Ask a model provider to draft a prompt-registry entry");
     const sourceHandlerRagRetrievalPromptBridgeFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-094");
     expect(sourceHandlerRagRetrievalPromptBridgeFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_summarize_retrieved_context_with_model",
@@ -10573,6 +10588,7 @@ describe("rule engine", () => {
       "langchain_fetch_model_selected_url",
       "langchain_grant_model_selected_authorization",
       "langchain_issue_model_selected_credential",
+      "langchain_publish_model_selected_prompt_registry_entry",
       "langchain_run_model_generated_command",
       "langchain_summarize_customer_with_model",
       "source_apply_model_database_update",
@@ -10583,6 +10599,7 @@ describe("rule engine", () => {
       "source_fetch_model_selected_url",
       "source_grant_model_selected_authorization",
       "source_issue_model_selected_credential",
+      "source_publish_model_selected_prompt_registry_entry",
       "source_run_model_generated_command",
       "source_summarize_customer_with_model"
     ]);
@@ -10621,6 +10638,11 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerTaintedModelSelectionFindings)).not.toContain("source model selected remote-agent task delegated");
     expect(JSON.stringify(sourceHandlerTaintedModelSelectionFindings)).not.toContain("framework model selected remote-agent task delegated");
     expect(JSON.stringify(sourceHandlerTaintedModelSelectionFindings)).not.toContain("Ask a model provider to draft a remote-agent task");
+    expect(JSON.stringify(sourceHandlerTaintedModelSelectionFindings)).not.toContain("modelSelectedPromptRegistryValue");
+    expect(JSON.stringify(sourceHandlerTaintedModelSelectionFindings)).not.toContain("model_selected_prompt_registry_value");
+    expect(JSON.stringify(sourceHandlerTaintedModelSelectionFindings)).not.toContain("source model selected prompt registry entry published");
+    expect(JSON.stringify(sourceHandlerTaintedModelSelectionFindings)).not.toContain("framework model selected prompt registry entry published");
+    expect(JSON.stringify(sourceHandlerTaintedModelSelectionFindings)).not.toContain("Ask a model provider to draft a prompt-registry entry");
     const sourceHandlerPrivilegedPromptFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-031");
     expect(sourceHandlerPrivilegedPromptFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_apply_model_database_update",
@@ -10631,8 +10653,10 @@ describe("rule engine", () => {
       "langchain_grant_model_selected_authorization",
       "langchain_issue_model_selected_credential",
       "langchain_enqueue_model_selected_background_job",
+      "langchain_publish_model_selected_prompt_registry_entry",
       "langchain_run_model_generated_command",
       "langchain_summarize_customer_with_model",
+      "source_publish_model_selected_prompt_registry_entry",
       "source_summarize_customer_with_model",
       "source_issue_model_selected_credential",
       "source_summarize_retrieved_context_with_model"
@@ -11212,6 +11236,77 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerModelOutputAgentDelegationBridgeFindings)).not.toContain("source model selected remote-agent task delegated");
     expect(JSON.stringify(sourceHandlerModelOutputAgentDelegationBridgeFindings)).not.toContain("framework model selected remote-agent task delegated");
     expect(JSON.stringify(sourceHandlerModelOutputAgentDelegationBridgeFindings)).not.toContain("Ask a model provider to draft a remote-agent task");
+    const sourceHandlerModelOutputPromptRegistryBridgeFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-120");
+    expect(sourceHandlerModelOutputPromptRegistryBridgeFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
+      "langchain_publish_model_selected_prompt_registry_entry",
+      "source_publish_model_selected_prompt_registry_entry"
+    ]);
+    expect(sourceHandlerModelOutputPromptRegistryBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
+    expect(sourceHandlerModelOutputPromptRegistryBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerModelOutputPromptRegistryBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
+    expect(sourceHandlerModelOutputPromptRegistryBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
+    expect(sourceHandlerModelOutputPromptRegistryBridgeFindings.every((finding) => finding.matched_object.metadata.handler_model_provider_call === true)).toBe(true);
+    expect(sourceHandlerModelOutputPromptRegistryBridgeFindings.every((finding) => finding.matched_object.metadata.handler_prompt_registry_write === true)).toBe(true);
+    expect(sourceHandlerModelOutputPromptRegistryBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.handler_model_output_prompt_registry_bridge === true
+    )).toBe(true);
+    expect(sourceHandlerModelOutputPromptRegistryBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.handler_tainted_prompt_registry_payload === true
+    )).toBe(true);
+    expect(sourceHandlerModelOutputPromptRegistryBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.handler_tainted_prompt_registry_selector === true
+    )).toBe(true);
+    expect(sourceHandlerModelOutputPromptRegistryBridgeFindings.every((finding) => finding.matched_object.metadata.handler_secret_env_access === true)).toBe(true);
+    expect(sourceHandlerModelOutputPromptRegistryBridgeFindings.every((finding) => finding.matched_object.metadata.model_provider_call === true)).toBe(true);
+    expect(sourceHandlerModelOutputPromptRegistryBridgeFindings.every((finding) => finding.matched_object.metadata.prompt_registry_write === true)).toBe(true);
+    expect(sourceHandlerModelOutputPromptRegistryBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.model_output_prompt_registry_bridge === true
+    )).toBe(true);
+    expect(sourceHandlerModelOutputPromptRegistryBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.tainted_prompt_registry_payload === true
+    )).toBe(true);
+    expect(sourceHandlerModelOutputPromptRegistryBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.tainted_prompt_registry_selector === true
+    )).toBe(true);
+    expect(sourceHandlerModelOutputPromptRegistryBridgeFindings.every((finding) => finding.matched_object.metadata.accepts_content_like_input === true)).toBe(true);
+    expect(sourceHandlerModelOutputPromptRegistryBridgeFindings.every((finding) => finding.matched_object.metadata.accepts_customer_data_input === true)).toBe(true);
+    expect(sourceHandlerModelOutputPromptRegistryBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.authority_classes.includes("model_provider_call")
+    )).toBe(true);
+    expect(sourceHandlerModelOutputPromptRegistryBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.authority_classes.includes("prompt_registry_write")
+    )).toBe(true);
+    expect(sourceHandlerModelOutputPromptRegistryBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.authority_classes.includes("model_output_prompt_registry_bridge")
+    )).toBe(true);
+    expect(sourceHandlerModelOutputPromptRegistryBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.authority_classes.includes("tainted_prompt_registry_payload")
+    )).toBe(true);
+    expect(sourceHandlerModelOutputPromptRegistryBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.authority_classes.includes("tainted_prompt_registry_selector")
+    )).toBe(true);
+    expect(sourceHandlerModelOutputPromptRegistryBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.handler_authority_classes.includes("handler_model_output_prompt_registry_bridge")
+    )).toBe(true);
+    expect(sourceHandlerModelOutputPromptRegistryBridgeFindings.every((finding) => finding.matched_object.actions.includes("read"))).toBe(true);
+    expect(sourceHandlerModelOutputPromptRegistryBridgeFindings.every((finding) => finding.matched_object.actions.includes("send"))).toBe(true);
+    expect(sourceHandlerModelOutputPromptRegistryBridgeFindings.every((finding) => finding.matched_object.actions.includes("write"))).toBe(true);
+    expect(sourceHandlerModelOutputPromptRegistryBridgeFindings.every((finding) => finding.matched_object.actions.includes("publish"))).toBe(true);
+    expect(sourceHandlerModelOutputPromptRegistryBridgeFindings.every((finding) => finding.matched_object.external_reach === true)).toBe(true);
+    expect(sourceHandlerModelOutputPromptRegistryBridgeFindings.every((finding) => finding.matched_object.secret_exposure === true)).toBe(true);
+    expect(sourceHandlerModelOutputPromptRegistryBridgeFindings.every((finding) => finding.matched_object.side_effect === true)).toBe(true);
+    expect(sourceHandlerModelOutputPromptRegistryBridgeFindings.every((finding) => finding.matched_object.reversible === false)).toBe(true);
+    expect(JSON.stringify(sourceHandlerModelOutputPromptRegistryBridgeFindings)).not.toContain("openai.chat.completions.create");
+    expect(JSON.stringify(sourceHandlerModelOutputPromptRegistryBridgeFindings)).not.toContain("openai_client.chat.completions.create");
+    expect(JSON.stringify(sourceHandlerModelOutputPromptRegistryBridgeFindings)).not.toContain("modelResult");
+    expect(JSON.stringify(sourceHandlerModelOutputPromptRegistryBridgeFindings)).not.toContain("model_response");
+    expect(JSON.stringify(sourceHandlerModelOutputPromptRegistryBridgeFindings)).not.toContain("modelSelectedPromptRegistryValue");
+    expect(JSON.stringify(sourceHandlerModelOutputPromptRegistryBridgeFindings)).not.toContain("model_selected_prompt_registry_value");
+    expect(JSON.stringify(sourceHandlerModelOutputPromptRegistryBridgeFindings)).not.toContain("promptRegistryClient.updatePrompt");
+    expect(JSON.stringify(sourceHandlerModelOutputPromptRegistryBridgeFindings)).not.toContain("prompt_registry_client.update_prompt");
+    expect(JSON.stringify(sourceHandlerModelOutputPromptRegistryBridgeFindings)).not.toContain("source model selected prompt registry entry published");
+    expect(JSON.stringify(sourceHandlerModelOutputPromptRegistryBridgeFindings)).not.toContain("framework model selected prompt registry entry published");
+    expect(JSON.stringify(sourceHandlerModelOutputPromptRegistryBridgeFindings)).not.toContain("Ask a model provider to draft a prompt-registry entry");
     const sourceHandlerDynamicCodeFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-019");
     expect(sourceHandlerDynamicCodeFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_evaluate_agent_expression",
