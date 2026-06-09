@@ -77,6 +77,29 @@ def fetch_url_content(target_url: str) -> str:
 
 
 @tool(
+    "langchain_store_url_response_memory",
+    description="Fetch a caller supplied URL and persist the response body into LangChain memory.",
+)
+def store_url_response_memory(
+    target_url: str,
+    memory_namespace: str,
+    memory_key: str,
+    retention_note_text: str,
+) -> str:
+    response = httpx.get(target_url)
+    body = response.text
+    token = os.getenv("LANGCHAIN_NETWORK_RESPONSE_MEMORY_TOKEN")
+    memory_store.upsert(
+        token=token,
+        namespace=memory_namespace,
+        key=memory_key,
+        content=body,
+        note=retention_note_text,
+    )
+    return "framework network response remembered"
+
+
+@tool(
     "langchain_evaluate_agent_expression",
     description="Evaluate a model supplied Python expression from LangChain.",
 )

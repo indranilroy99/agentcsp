@@ -24123,6 +24123,7 @@ function addToolDefinitionSurface(
       !authority.database_write &&
       !authority.memory_write &&
       !authority.model_output_memory_bridge &&
+      !authority.network_response_memory_bridge &&
       !authority.agent_config_write &&
       !authority.credential_issuance &&
       !authority.secret_manager_credential_issuance_bridge &&
@@ -24213,6 +24214,7 @@ function addToolDefinitionSurface(
       memory_write: authority.memory_write,
       secret_manager_memory_bridge: authority.secret_manager_memory_bridge,
       model_output_memory_bridge: authority.model_output_memory_bridge,
+      network_response_memory_bridge: authority.network_response_memory_bridge,
       tool_output_memory_bridge: authority.tool_output_memory_bridge,
       tool_output_to_output: authority.tool_output_to_output,
       tainted_memory_scope: authority.tainted_memory_scope,
@@ -26803,6 +26805,7 @@ interface SourceToolHandlerSignals {
   handlerMemoryWrite: boolean;
   handlerSecretManagerMemoryBridge: boolean;
   handlerModelOutputMemoryBridge: boolean;
+  handlerNetworkResponseMemoryBridge: boolean;
   handlerToolOutputMemoryBridge: boolean;
   handlerToolOutputToOutput: boolean;
   handlerTaintedMemoryScope: boolean;
@@ -27273,6 +27276,7 @@ function sourceToolHandlerSignalMetadata(signals: SourceToolHandlerSignals | und
     handler_tainted_network_destination: signals.handlerTaintedNetworkDestination,
     handler_credentialed_network_read: signals.handlerCredentialedNetworkRead,
     handler_network_response_to_output: signals.handlerNetworkResponseToOutput,
+    handler_network_response_memory_bridge: signals.handlerNetworkResponseMemoryBridge,
     handler_external_write: signals.handlerExternalWrite,
     handler_external_service_write: signals.handlerExternalServiceWrite,
     handler_model_provider_call: signals.handlerModelProviderCall,
@@ -27647,6 +27651,9 @@ function classifySourceToolHandlerSignals(
   const toolOutputMemoryBridge = memoryWrite && (language === "javascript"
     ? hasJavaScriptHandlerToolOutputMemoryBridge(handlerSource)
     : hasPythonHandlerToolOutputMemoryBridge(handlerSource));
+  const networkResponseMemoryBridge = externalNetworkCall && memoryWrite && (language === "javascript"
+    ? hasJavaScriptHandlerNetworkResponseMemoryBridge(handlerSource)
+    : hasPythonHandlerNetworkResponseMemoryBridge(handlerSource));
   const taintedMemoryScope = memoryWrite && (language === "javascript"
     ? hasJavaScriptHandlerTaintedMemoryScope(handlerSource)
     : hasPythonHandlerTaintedMemoryScope(handlerSource));
@@ -27865,6 +27872,7 @@ function classifySourceToolHandlerSignals(
   if (taintedNetworkDestination) classes.add("handler_tainted_network_destination");
   if (credentialedNetworkRead) classes.add("handler_credentialed_network_read");
   if (networkResponseToOutput) classes.add("handler_network_response_to_output");
+  if (networkResponseMemoryBridge) classes.add("handler_network_response_memory_bridge");
   if (externalWrite) classes.add("handler_external_write");
   if (externalServiceWrite) classes.add("handler_external_service_write");
   if (taintedExternalServiceRecipient) classes.add("handler_tainted_external_service_recipient");
@@ -28015,6 +28023,7 @@ function classifySourceToolHandlerSignals(
     handlerTaintedNetworkDestination: taintedNetworkDestination,
     handlerCredentialedNetworkRead: credentialedNetworkRead,
     handlerNetworkResponseToOutput: networkResponseToOutput,
+    handlerNetworkResponseMemoryBridge: networkResponseMemoryBridge,
     handlerExternalWrite: externalWrite,
     handlerExternalServiceWrite: externalServiceWrite,
     handlerTaintedExternalServiceRecipient: taintedExternalServiceRecipient,
@@ -28291,6 +28300,18 @@ function extractJavaScriptNetworkBoundVariableNames(source: string): string[] {
   return [...names].sort((a, b) => a.localeCompare(b));
 }
 
+function extractJavaScriptNetworkResponseIdentifiers(source: string): string[] {
+  const names = new Set<string>(extractJavaScriptNetworkBoundVariableNames(source));
+  const networkVars = extractJavaScriptNetworkBoundVariableNames(source);
+  const derivedPattern = /\b(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*(?:await\s*)?([A-Za-z_$][\w$]*)\s*\.\s*(?:text|json|arrayBuffer|blob)\s*\(/gu;
+  let match: RegExpExecArray | null;
+  while ((match = derivedPattern.exec(source)) !== null) {
+    if (match[1] && match[2] && networkVars.includes(match[2])) names.add(match[1]);
+    if (match[0].length === 0) derivedPattern.lastIndex += 1;
+  }
+  return [...names].sort((a, b) => a.localeCompare(b));
+}
+
 function extractPythonNetworkBoundVariableNames(source: string): string[] {
   const names = new Set<string>();
   const pattern = /\b([A-Za-z_]\w*)\s*=\s*(?:await\s*)?(?:requests|httpx)\s*\.\s*(?:get|request)\s*\(/gu;
@@ -28298,6 +28319,18 @@ function extractPythonNetworkBoundVariableNames(source: string): string[] {
   while ((match = pattern.exec(source)) !== null) {
     if (match[1]) names.add(match[1]);
     if (match[0].length === 0) pattern.lastIndex += 1;
+  }
+  return [...names].sort((a, b) => a.localeCompare(b));
+}
+
+function extractPythonNetworkResponseIdentifiers(source: string): string[] {
+  const names = new Set<string>(extractPythonNetworkBoundVariableNames(source));
+  const networkVars = extractPythonNetworkBoundVariableNames(source);
+  const derivedPattern = /\b([A-Za-z_]\w*)\s*=\s*([A-Za-z_]\w*)\s*\.\s*(?:text|content|json\s*\(\))/gu;
+  let match: RegExpExecArray | null;
+  while ((match = derivedPattern.exec(source)) !== null) {
+    if (match[1] && match[2] && networkVars.includes(match[2])) names.add(match[1]);
+    if (match[0].length === 0) derivedPattern.lastIndex += 1;
   }
   return [...names].sort((a, b) => a.localeCompare(b));
 }
@@ -28507,6 +28540,30 @@ function hasPythonHandlerToolOutputMemoryBridge(source: string): boolean {
     [
       /\b(?:[A-Za-z_]\w*memory|memory|memory_store|vector_store|vectorstore|vector_index|embedding_store|rag_store|retriever|knowledge_base|session_store|state_store)\s*\.\s*(?:add|add_documents|add_texts|append|insert|persist|put|push|remember|save|set|store|upsert|write)\s*\(([\s\S]{0,1600})\)/giu,
       /\b(?:persist_memory|remember_context|save_memory|store_memory|upsert_memory|write_memory)\s*\(([\s\S]{0,1600})\)/giu
+    ],
+    source,
+    identifiers
+  );
+}
+
+function hasJavaScriptHandlerNetworkResponseMemoryBridge(source: string): boolean {
+  const identifiers = extractJavaScriptNetworkResponseIdentifiers(source);
+  return identifiers.length > 0 && callExpressionReferencesAnyIdentifier(
+    [
+      /\b(?:[A-Za-z_$][\w$]*memory|memory|memories|vectorStore|vectorIndex|embeddingStore|ragStore|retriever|knowledgeBase|sessionStore|stateStore)\s*\.\s*(?:add|addDocuments|addTexts|append|insert|persist|put|push|remember|save|set|store|upsert|write)\s*\(([\s\S]{0,2200})\)/giu,
+      /\b(?:persistMemory|rememberContext|saveMemory|storeMemory|upsertMemory|writeMemory)\s*\(([\s\S]{0,2200})\)/giu
+    ],
+    source,
+    identifiers
+  );
+}
+
+function hasPythonHandlerNetworkResponseMemoryBridge(source: string): boolean {
+  const identifiers = extractPythonNetworkResponseIdentifiers(source);
+  return identifiers.length > 0 && callExpressionReferencesAnyIdentifier(
+    [
+      /\b(?:[A-Za-z_]\w*memory|memory|memory_store|vector_store|vectorstore|vector_index|embedding_store|rag_store|retriever|knowledge_base|session_store|state_store)\s*\.\s*(?:add|add_documents|add_texts|append|insert|persist|put|push|remember|save|set|store|upsert|write)\s*\(([\s\S]{0,2200})\)/giu,
+      /\b(?:persist_memory|remember_context|save_memory|store_memory|upsert_memory|write_memory)\s*\(([\s\S]{0,2200})\)/giu
     ],
     source,
     identifiers
@@ -34408,6 +34465,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   memory_write: boolean;
   secret_manager_memory_bridge: boolean;
   model_output_memory_bridge: boolean;
+  network_response_memory_bridge: boolean;
   tool_output_memory_bridge: boolean;
   tool_output_to_output: boolean;
   tainted_memory_scope: boolean;
@@ -34651,6 +34709,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   const handlerMemoryWrite = handler?.handlerMemoryWrite === true;
   const handlerSecretManagerMemoryBridge = handler?.handlerSecretManagerMemoryBridge === true;
   const handlerModelOutputMemoryBridge = handler?.handlerModelOutputMemoryBridge === true;
+  const handlerNetworkResponseMemoryBridge = handler?.handlerNetworkResponseMemoryBridge === true;
   const handlerToolOutputMemoryBridge = handler?.handlerToolOutputMemoryBridge === true;
   const handlerToolOutputToOutput = handler?.handlerToolOutputToOutput === true;
   const handlerTaintedMemoryScope = handler?.handlerTaintedMemoryScope === true;
@@ -34943,6 +35002,12 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   }
   if (handlerModelOutputMemoryBridge) {
     classes.add("model_output_memory_bridge");
+    actions.add("remember");
+    actions.add("write");
+  }
+  if (handlerNetworkResponseMemoryBridge) {
+    classes.add("network_response_memory_bridge");
+    actions.add("read");
     actions.add("remember");
     actions.add("write");
   }
@@ -35502,6 +35567,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerMemoryWrite ||
       handlerSecretManagerMemoryBridge ||
       handlerModelOutputMemoryBridge ||
+      handlerNetworkResponseMemoryBridge ||
       handlerToolOutputMemoryBridge ||
       handlerToolOutputToOutput ||
       handlerTaintedMemoryScope ||
@@ -35690,6 +35756,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerSecretManagerDatabaseWriteBridge ||
       handlerModelOutputDatabaseWriteBridge ||
       handlerModelOutputMemoryBridge ||
+      handlerNetworkResponseMemoryBridge ||
       handlerExternalServiceWrite ||
       handlerModelOutputExternalServiceBridge ||
       handlerToolOutputExternalServiceBridge ||
@@ -35785,6 +35852,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       (handlerToolOutputAuthorizationGrantBridge && handlerSecretEnvAccess) ||
       handlerSecretManagerMemoryBridge ||
       (handlerModelOutputMemoryBridge && handlerSecretEnvAccess) ||
+      (handlerNetworkResponseMemoryBridge && handlerSecretEnvAccess) ||
       handlerSecretManagerTrainingDatasetBridge ||
       (handlerModelOutputTrainingDatasetBridge && handlerSecretEnvAccess) ||
       (handlerToolOutputTrainingDatasetBridge && handlerSecretEnvAccess) ||
@@ -35845,6 +35913,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
     memory_write: handlerMemoryWrite,
     secret_manager_memory_bridge: handlerSecretManagerMemoryBridge,
     model_output_memory_bridge: handlerModelOutputMemoryBridge,
+    network_response_memory_bridge: handlerNetworkResponseMemoryBridge,
     tool_output_memory_bridge: handlerToolOutputMemoryBridge,
     tool_output_to_output: handlerToolOutputToOutput,
     tainted_memory_scope: handlerTaintedMemoryScope,
@@ -36038,6 +36107,7 @@ function authoritySignature(tool: SurfaceObject): string {
     metadata.tainted_memory_scope === true ? "tainted_memory_scope" : "",
     metadata.secret_manager_memory_bridge === true ? "secret_manager_memory_bridge" : "",
     metadata.model_output_memory_bridge === true ? "model_output_memory_bridge" : "",
+    metadata.network_response_memory_bridge === true ? "network_response_memory_bridge" : "",
     metadata.tool_output_memory_bridge === true ? "tool_output_memory_bridge" : "",
     metadata.tool_output_to_output === true ? "tool_output_to_output" : "",
     metadata.model_provider_call === true ? "model_provider_call" : "",
@@ -36193,6 +36263,7 @@ function isPrivilegedToolSurface(tool: SurfaceObject): boolean {
     tool.metadata.tainted_memory_scope === true ||
     tool.metadata.secret_manager_memory_bridge === true ||
     tool.metadata.model_output_memory_bridge === true ||
+    tool.metadata.network_response_memory_bridge === true ||
     tool.metadata.tool_output_memory_bridge === true ||
     tool.metadata.tool_output_to_output === true ||
     tool.metadata.external_service_write === true ||

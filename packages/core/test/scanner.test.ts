@@ -550,6 +550,7 @@ describe("scanner", () => {
     );
     const sourceFileReadTool = surfaces.tools.find((surface) => surface.name === "source_read_workspace_file");
     const sourceNetworkResponseTool = surfaces.tools.find((surface) => surface.name === "source_fetch_url_content");
+    const sourceNetworkResponseMemoryBridgeTool = surfaces.tools.find((surface) => surface.name === "source_store_url_response_memory");
     const sourceDynamicCodeTool = surfaces.tools.find((surface) => surface.name === "source_evaluate_agent_expression");
     const sourceDatabaseTool = surfaces.tools.find((surface) => surface.name === "source_apply_record_change_sql");
     const sourceSecretOutputTool = surfaces.tools.find((surface) => surface.name === "source_reveal_runtime_secret");
@@ -789,6 +790,7 @@ describe("scanner", () => {
     );
     const langchainFileReadTool = surfaces.tools.find((surface) => surface.name === "langchain_read_workspace_file");
     const langchainNetworkResponseTool = surfaces.tools.find((surface) => surface.name === "langchain_fetch_url_content");
+    const langchainNetworkResponseMemoryBridgeTool = surfaces.tools.find((surface) => surface.name === "langchain_store_url_response_memory");
     const langchainDynamicCodeTool = surfaces.tools.find((surface) => surface.name === "langchain_evaluate_agent_expression");
     const langchainDatabaseTool = surfaces.tools.find((surface) => surface.name === "langchain_apply_record_change_sql");
     const langchainSecretOutputTool = surfaces.tools.find((surface) => surface.name === "langchain_reveal_runtime_secret");
@@ -1586,6 +1588,89 @@ describe("scanner", () => {
     expect(JSON.stringify(sourceNetworkResponseTool)).not.toContain("responseBody");
     expect(JSON.stringify(sourceNetworkResponseTool)).not.toContain("response.text");
     expect(JSON.stringify(sourceNetworkResponseTool)).not.toContain("Fetch a caller supplied URL");
+    expect(sourceNetworkResponseMemoryBridgeTool).toMatchObject({
+      path: "mcp-source/customer-tools.ts",
+      data_classes: ["credential"],
+      actions: ["call", "read", "remember", "send", "write"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(sourceNetworkResponseMemoryBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_mcp_source_tool: true,
+      mcp_source_tool_registration: true,
+      mcp_source_tool_registration_kind: "registerTool",
+      mcp_source_tool_argument_count: 3,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      read_only_hint: false,
+      idempotent_hint: false,
+      accepts_url_input: true,
+      accepts_content_like_input: true,
+      tainted_network_destination: true,
+      credentialed_network_read: true,
+      memory_write: true,
+      network_response_memory_bridge: true,
+      tainted_memory_scope: true,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_external_network_call: true,
+      handler_tainted_network_destination: true,
+      handler_credentialed_network_read: true,
+      handler_network_response_memory_bridge: true,
+      handler_memory_write: true,
+      handler_tainted_memory_scope: true,
+      handler_secret_env_access: true,
+      handler_signal_count: 7,
+      open_world_schema: false
+    });
+    expect(sourceNetworkResponseMemoryBridgeTool?.metadata.authority_classes).toEqual([
+      "content_input",
+      "credentialed_network_read",
+      "handler_credentialed_network_read",
+      "handler_memory_write",
+      "handler_network_access",
+      "handler_network_response_memory_bridge",
+      "handler_secret_env_access",
+      "handler_tainted_memory_scope",
+      "handler_tainted_network_destination",
+      "memory_access",
+      "memory_write",
+      "network_access",
+      "network_response_memory_bridge",
+      "secret_env_access",
+      "tainted_memory_scope",
+      "tainted_network_destination"
+    ]);
+    expect(sourceNetworkResponseMemoryBridgeTool?.metadata.handler_authority_classes).toEqual([
+      "handler_credentialed_network_read",
+      "handler_memory_write",
+      "handler_network_access",
+      "handler_network_response_memory_bridge",
+      "handler_secret_env_access",
+      "handler_tainted_memory_scope",
+      "handler_tainted_network_destination"
+    ]);
+    expect(sourceNetworkResponseMemoryBridgeTool?.metadata.handler_env_key_names).toEqual(["SOURCE_NETWORK_RESPONSE_MEMORY_TOKEN"]);
+    expect(sourceNetworkResponseMemoryBridgeTool?.metadata.schema_properties).toEqual([
+      "memory_key",
+      "memory_namespace",
+      "retention_note_text",
+      "target_url"
+    ]);
+    expect(sourceNetworkResponseMemoryBridgeTool?.metadata.required_properties).toEqual([
+      "memory_key",
+      "memory_namespace",
+      "retention_note_text",
+      "target_url"
+    ]);
+    expect(JSON.stringify(sourceNetworkResponseMemoryBridgeTool)).not.toContain("responseBody");
+    expect(JSON.stringify(sourceNetworkResponseMemoryBridgeTool)).not.toContain("response.text");
+    expect(JSON.stringify(sourceNetworkResponseMemoryBridgeTool)).not.toContain("agentMemory.upsert");
+    expect(JSON.stringify(sourceNetworkResponseMemoryBridgeTool)).not.toContain("source network response remembered");
+    expect(JSON.stringify(sourceNetworkResponseMemoryBridgeTool)).not.toContain("Fetch a caller supplied URL");
     expect(sourceDynamicCodeTool).toMatchObject({
       path: "mcp-source/customer-tools.ts",
       data_classes: ["unknown"],
@@ -10305,6 +10390,88 @@ describe("scanner", () => {
     expect(JSON.stringify(langchainNetworkResponseTool)).not.toContain("httpx.get");
     expect(JSON.stringify(langchainNetworkResponseTool)).not.toContain("response.text");
     expect(JSON.stringify(langchainNetworkResponseTool)).not.toContain("Fetch a caller supplied URL");
+    expect(langchainNetworkResponseMemoryBridgeTool).toMatchObject({
+      path: "framework-tools/langchain_tools.py",
+      data_classes: ["credential"],
+      actions: ["call", "read", "remember", "send", "write"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(langchainNetworkResponseMemoryBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_agent_framework_source_tool: true,
+      agent_framework_source_tool: true,
+      agent_framework_source_tool_framework: "langchain",
+      agent_framework_source_tool_registration_kind: "python_tool_decorator",
+      agent_framework_source_tool_argument_count: 4,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_url_input: true,
+      accepts_content_like_input: true,
+      tainted_network_destination: true,
+      credentialed_network_read: true,
+      memory_write: true,
+      network_response_memory_bridge: true,
+      tainted_memory_scope: true,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_external_network_call: true,
+      handler_tainted_network_destination: true,
+      handler_credentialed_network_read: true,
+      handler_network_response_memory_bridge: true,
+      handler_memory_write: true,
+      handler_tainted_memory_scope: true,
+      handler_secret_env_access: true,
+      handler_signal_count: 7,
+      open_world_schema: false
+    });
+    expect(langchainNetworkResponseMemoryBridgeTool?.metadata.authority_classes).toEqual([
+      "content_input",
+      "credentialed_network_read",
+      "handler_credentialed_network_read",
+      "handler_memory_write",
+      "handler_network_access",
+      "handler_network_response_memory_bridge",
+      "handler_secret_env_access",
+      "handler_tainted_memory_scope",
+      "handler_tainted_network_destination",
+      "memory_access",
+      "memory_write",
+      "network_access",
+      "network_response_memory_bridge",
+      "secret_env_access",
+      "tainted_memory_scope",
+      "tainted_network_destination"
+    ]);
+    expect(langchainNetworkResponseMemoryBridgeTool?.metadata.handler_authority_classes).toEqual([
+      "handler_credentialed_network_read",
+      "handler_memory_write",
+      "handler_network_access",
+      "handler_network_response_memory_bridge",
+      "handler_secret_env_access",
+      "handler_tainted_memory_scope",
+      "handler_tainted_network_destination"
+    ]);
+    expect(langchainNetworkResponseMemoryBridgeTool?.metadata.handler_env_key_names).toEqual(["LANGCHAIN_NETWORK_RESPONSE_MEMORY_TOKEN"]);
+    expect(langchainNetworkResponseMemoryBridgeTool?.metadata.schema_properties).toEqual([
+      "memory_key",
+      "memory_namespace",
+      "retention_note_text",
+      "target_url"
+    ]);
+    expect(langchainNetworkResponseMemoryBridgeTool?.metadata.required_properties).toEqual([
+      "memory_key",
+      "memory_namespace",
+      "retention_note_text",
+      "target_url"
+    ]);
+    expect(JSON.stringify(langchainNetworkResponseMemoryBridgeTool)).not.toContain("httpx.get");
+    expect(JSON.stringify(langchainNetworkResponseMemoryBridgeTool)).not.toContain("response.text");
+    expect(JSON.stringify(langchainNetworkResponseMemoryBridgeTool)).not.toContain("memory_store.upsert");
+    expect(JSON.stringify(langchainNetworkResponseMemoryBridgeTool)).not.toContain("framework network response remembered");
+    expect(JSON.stringify(langchainNetworkResponseMemoryBridgeTool)).not.toContain("Fetch a caller supplied URL");
     expect(langchainDynamicCodeTool).toMatchObject({
       path: "framework-tools/langchain_tools.py",
       data_classes: ["unknown"],
