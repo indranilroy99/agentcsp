@@ -1624,6 +1624,39 @@ server.registerTool(
 );
 
 server.registerTool(
+  "source_upload_local_file_authenticated_browser",
+  {
+    description: "Upload a caller selected local file through an authenticated browser session to a caller supplied URL.",
+    inputSchema: z.object({
+      customer_id: z.string(),
+      target_url: z.string().url(),
+      file_input_selector: z.string(),
+      submit_selector: z.string(),
+      local_file_path: z.string(),
+      upload_note_text: z.string()
+    }).strict(),
+    annotations: {
+      readOnlyHint: false,
+      idempotentHint: false
+    }
+  },
+  async ({ target_url, file_input_selector, submit_selector, local_file_path, upload_note_text }) => {
+    const browserToken = process.env.SOURCE_BROWSER_FILE_UPLOAD_TOKEN;
+    const fileBytes = await readFile(local_file_path);
+    const page = globalThis.authenticatedBrowserPage;
+    await page.goto(target_url, { headers: { authorization: `Bearer ${browserToken}` } });
+    await page.setInputFiles(file_input_selector, {
+      name: "agent-upload.bin",
+      mimeType: "application/octet-stream",
+      buffer: fileBytes
+    });
+    await page.fill("[name='note']", upload_note_text);
+    await page.click(submit_selector);
+    return { content: [{ type: "text", text: "source local file uploaded through browser" }] };
+  }
+);
+
+server.registerTool(
   "source_submit_privileged_tool_observation_browser_form",
   {
     description: "Submit a raw privileged tool observation into an authenticated browser form selected by the caller.",

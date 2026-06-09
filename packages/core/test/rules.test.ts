@@ -104,6 +104,10 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-100")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-101")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-102")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-103")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-104")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-105")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-106")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-001")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-002")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-003")).toBe(true);
@@ -6102,8 +6106,11 @@ describe("rule engine", () => {
     ]);
     expect(toolReadOnlyConflictFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
     const toolPathExfilFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-008");
-    expect(toolPathExfilFindings).toHaveLength(1);
-    expect(toolPathExfilFindings[0]?.matched_object.name).toBe("customer_record");
+    expect(toolPathExfilFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
+      "customer_record",
+      "langchain_upload_local_file_authenticated_browser",
+      "source_upload_local_file_authenticated_browser"
+    ]);
     const toolContentExternalFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-009");
     expect(toolContentExternalFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "aiSdkExportCustomerContext",
@@ -6112,6 +6119,7 @@ describe("rule engine", () => {
       "langchain_export_authenticated_page_screenshot_training_dataset",
       "langchain_export_customer_context",
       "langchain_post_authenticated_page_screenshot_external",
+      "langchain_upload_local_file_authenticated_browser",
       "post_customer_update",
       "publish_summary",
       "python_export_customer_record",
@@ -6119,7 +6127,8 @@ describe("rule engine", () => {
       "source_export_authenticated_page_screenshot_trace",
       "source_export_authenticated_page_screenshot_training_dataset",
       "source_export_customer_record",
-      "source_post_authenticated_page_screenshot_external"
+      "source_post_authenticated_page_screenshot_external",
+      "source_upload_local_file_authenticated_browser"
     ]);
     expect(toolContentExternalFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
     const toolPiiExternalFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-010");
@@ -6131,13 +6140,15 @@ describe("rule engine", () => {
       "langchain_export_authenticated_page_screenshot_training_dataset",
       "langchain_export_customer_context",
       "langchain_post_authenticated_page_screenshot_external",
+      "langchain_upload_local_file_authenticated_browser",
       "post_customer_update",
       "python_export_customer_record",
       "source_export_authenticated_page_screenshot_artifact",
       "source_export_authenticated_page_screenshot_trace",
       "source_export_authenticated_page_screenshot_training_dataset",
       "source_export_customer_record",
-      "source_post_authenticated_page_screenshot_external"
+      "source_post_authenticated_page_screenshot_external",
+      "source_upload_local_file_authenticated_browser"
     ]);
     expect(toolPiiExternalFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
     expect(toolPiiExternalFindings.every((finding) => finding.data_classes.includes("pii"))).toBe(true);
@@ -6263,7 +6274,9 @@ describe("rule engine", () => {
     const sourceHandlerLocalFileDisclosureFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-020");
     expect(sourceHandlerLocalFileDisclosureFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_read_workspace_file",
-      "source_read_workspace_file"
+      "langchain_upload_local_file_authenticated_browser",
+      "source_read_workspace_file",
+      "source_upload_local_file_authenticated_browser"
     ]);
     expect(sourceHandlerLocalFileDisclosureFindings.every((finding) => finding.severity === "critical")).toBe(true);
     expect(sourceHandlerLocalFileDisclosureFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
@@ -6284,9 +6297,11 @@ describe("rule engine", () => {
     expect(sourceHandlerTaintedFilesystemPathFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_read_workspace_file",
       "langchain_readonly_delete_workspace_path",
+      "langchain_upload_local_file_authenticated_browser",
       "python_readonly_delete_workspace_file",
       "source_read_workspace_file",
       "source_readonly_delete_workspace_file",
+      "source_upload_local_file_authenticated_browser",
       "ts_langchain_delete_workspace_path"
     ]);
     expect(sourceHandlerTaintedFilesystemPathFindings.every((finding) => finding.severity === "critical")).toBe(true);
@@ -8148,6 +8163,7 @@ describe("rule engine", () => {
       "langchain_export_authenticated_page_screenshot_trace",
       "langchain_export_authenticated_page_screenshot_training_dataset",
       "langchain_fill_customer_vault_secret_browser_form",
+      "langchain_upload_local_file_authenticated_browser",
       "langchain_post_authenticated_page_screenshot_external",
       "langchain_review_authenticated_page_screenshot_with_model",
       "langchain_store_authenticated_page_screenshot_memory",
@@ -8160,6 +8176,7 @@ describe("rule engine", () => {
       "source_export_authenticated_page_screenshot_trace",
       "source_export_authenticated_page_screenshot_training_dataset",
       "source_fill_customer_vault_secret_browser_form",
+      "source_upload_local_file_authenticated_browser",
       "source_post_authenticated_page_screenshot_external",
       "source_review_authenticated_page_screenshot_with_model",
       "source_store_authenticated_page_screenshot_memory",
@@ -8194,6 +8211,8 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerBrowserAutomationFindings)).not.toContain("secret_browser_value");
     expect(JSON.stringify(sourceHandlerBrowserAutomationFindings)).not.toContain("source vault secret submitted through browser");
     expect(JSON.stringify(sourceHandlerBrowserAutomationFindings)).not.toContain("framework vault secret submitted through browser");
+    expect(JSON.stringify(sourceHandlerBrowserAutomationFindings)).not.toContain("source local file uploaded through browser");
+    expect(JSON.stringify(sourceHandlerBrowserAutomationFindings)).not.toContain("framework local file uploaded through browser");
     expect(JSON.stringify(sourceHandlerBrowserAutomationFindings)).not.toContain("source tool observation submitted through browser");
     expect(JSON.stringify(sourceHandlerBrowserAutomationFindings)).not.toContain("framework tool observation submitted through browser");
     expect(JSON.stringify(sourceHandlerBrowserAutomationFindings)).not.toContain("source retrieved context submitted through browser");
@@ -8226,6 +8245,7 @@ describe("rule engine", () => {
       "langchain_export_authenticated_page_screenshot_trace",
       "langchain_export_authenticated_page_screenshot_training_dataset",
       "langchain_fill_customer_vault_secret_browser_form",
+      "langchain_upload_local_file_authenticated_browser",
       "langchain_post_authenticated_page_screenshot_external",
       "langchain_review_authenticated_page_screenshot_with_model",
       "langchain_store_authenticated_page_screenshot_memory",
@@ -8238,6 +8258,7 @@ describe("rule engine", () => {
       "source_export_authenticated_page_screenshot_trace",
       "source_export_authenticated_page_screenshot_training_dataset",
       "source_fill_customer_vault_secret_browser_form",
+      "source_upload_local_file_authenticated_browser",
       "source_post_authenticated_page_screenshot_external",
       "source_review_authenticated_page_screenshot_with_model",
       "source_store_authenticated_page_screenshot_memory",
@@ -9083,6 +9104,67 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerVisualContextAgentDelegationBridgeFindings)).not.toContain("source visual context delegated to remote agent");
     expect(JSON.stringify(sourceHandlerVisualContextAgentDelegationBridgeFindings)).not.toContain("framework visual context delegated to remote agent");
     expect(JSON.stringify(sourceHandlerVisualContextAgentDelegationBridgeFindings)).not.toContain("Delegate an authenticated browser screenshot");
+    const sourceHandlerLocalFileBrowserAutomationBridgeFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-106");
+    expect(sourceHandlerLocalFileBrowserAutomationBridgeFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
+      "langchain_upload_local_file_authenticated_browser",
+      "source_upload_local_file_authenticated_browser"
+    ]);
+    expect(sourceHandlerLocalFileBrowserAutomationBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
+    expect(sourceHandlerLocalFileBrowserAutomationBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerLocalFileBrowserAutomationBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
+    expect(sourceHandlerLocalFileBrowserAutomationBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
+    expect(sourceHandlerLocalFileBrowserAutomationBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.source_tool_handler_redacted === true
+    )).toBe(true);
+    expect(sourceHandlerLocalFileBrowserAutomationBridgeFindings.every((finding) => finding.matched_object.metadata.handler_filesystem_read === true)).toBe(true);
+    expect(sourceHandlerLocalFileBrowserAutomationBridgeFindings.every((finding) => finding.matched_object.metadata.handler_tainted_filesystem_path === true)).toBe(true);
+    expect(sourceHandlerLocalFileBrowserAutomationBridgeFindings.every((finding) => finding.matched_object.metadata.handler_browser_automation === true)).toBe(true);
+    expect(sourceHandlerLocalFileBrowserAutomationBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.handler_tainted_browser_automation_target === true
+    )).toBe(true);
+    expect(sourceHandlerLocalFileBrowserAutomationBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.handler_local_file_browser_automation_bridge === true
+    )).toBe(true);
+    expect(sourceHandlerLocalFileBrowserAutomationBridgeFindings.every((finding) => finding.matched_object.metadata.handler_secret_env_access === true)).toBe(true);
+    expect(sourceHandlerLocalFileBrowserAutomationBridgeFindings.every((finding) => finding.matched_object.metadata.browser_automation === true)).toBe(true);
+    expect(sourceHandlerLocalFileBrowserAutomationBridgeFindings.every((finding) => finding.matched_object.metadata.tainted_browser_automation_target === true)).toBe(true);
+    expect(sourceHandlerLocalFileBrowserAutomationBridgeFindings.every((finding) => finding.matched_object.metadata.tainted_filesystem_path === true)).toBe(true);
+    expect(sourceHandlerLocalFileBrowserAutomationBridgeFindings.every((finding) => finding.matched_object.metadata.local_file_browser_automation_bridge === true)).toBe(true);
+    expect(sourceHandlerLocalFileBrowserAutomationBridgeFindings.every((finding) => finding.matched_object.metadata.accepts_path_input === true)).toBe(true);
+    expect(sourceHandlerLocalFileBrowserAutomationBridgeFindings.every((finding) => finding.matched_object.metadata.accepts_url_input === true)).toBe(true);
+    expect(sourceHandlerLocalFileBrowserAutomationBridgeFindings.every((finding) => finding.matched_object.metadata.accepts_content_like_input === true)).toBe(true);
+    expect(sourceHandlerLocalFileBrowserAutomationBridgeFindings.every((finding) => finding.matched_object.metadata.accepts_customer_data_input === true)).toBe(true);
+    expect(sourceHandlerLocalFileBrowserAutomationBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.authority_classes.includes("local_file_browser_automation_bridge")
+    )).toBe(true);
+    expect(sourceHandlerLocalFileBrowserAutomationBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.authority_classes.includes("tainted_filesystem_path")
+    )).toBe(true);
+    expect(sourceHandlerLocalFileBrowserAutomationBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.handler_authority_classes.includes("handler_local_file_browser_automation_bridge")
+    )).toBe(true);
+    expect(sourceHandlerLocalFileBrowserAutomationBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.handler_authority_classes.includes("handler_tainted_filesystem_path")
+    )).toBe(true);
+    expect(sourceHandlerLocalFileBrowserAutomationBridgeFindings.every((finding) => finding.matched_object.actions.includes("read"))).toBe(true);
+    expect(sourceHandlerLocalFileBrowserAutomationBridgeFindings.every((finding) => finding.matched_object.actions.includes("send"))).toBe(true);
+    expect(sourceHandlerLocalFileBrowserAutomationBridgeFindings.every((finding) => finding.matched_object.actions.includes("execute"))).toBe(true);
+    expect(sourceHandlerLocalFileBrowserAutomationBridgeFindings.every((finding) => finding.matched_object.external_reach === true)).toBe(true);
+    expect(sourceHandlerLocalFileBrowserAutomationBridgeFindings.every((finding) => finding.matched_object.secret_exposure === true)).toBe(true);
+    expect(sourceHandlerLocalFileBrowserAutomationBridgeFindings.every((finding) => finding.matched_object.side_effect === true)).toBe(true);
+    expect(sourceHandlerLocalFileBrowserAutomationBridgeFindings.every((finding) => finding.matched_object.reversible === false)).toBe(true);
+    expect(JSON.stringify(sourceHandlerLocalFileBrowserAutomationBridgeFindings)).not.toContain("readFile");
+    expect(JSON.stringify(sourceHandlerLocalFileBrowserAutomationBridgeFindings)).not.toContain("read_bytes");
+    expect(JSON.stringify(sourceHandlerLocalFileBrowserAutomationBridgeFindings)).not.toContain("authenticatedBrowserPage");
+    expect(JSON.stringify(sourceHandlerLocalFileBrowserAutomationBridgeFindings)).not.toContain("browser_session.page");
+    expect(JSON.stringify(sourceHandlerLocalFileBrowserAutomationBridgeFindings)).not.toContain("page.goto");
+    expect(JSON.stringify(sourceHandlerLocalFileBrowserAutomationBridgeFindings)).not.toContain("page.setInputFiles");
+    expect(JSON.stringify(sourceHandlerLocalFileBrowserAutomationBridgeFindings)).not.toContain("page.set_input_files");
+    expect(JSON.stringify(sourceHandlerLocalFileBrowserAutomationBridgeFindings)).not.toContain("fileBytes");
+    expect(JSON.stringify(sourceHandlerLocalFileBrowserAutomationBridgeFindings)).not.toContain("file_bytes");
+    expect(JSON.stringify(sourceHandlerLocalFileBrowserAutomationBridgeFindings)).not.toContain("source local file uploaded through browser");
+    expect(JSON.stringify(sourceHandlerLocalFileBrowserAutomationBridgeFindings)).not.toContain("framework local file uploaded through browser");
+    expect(JSON.stringify(sourceHandlerLocalFileBrowserAutomationBridgeFindings)).not.toContain("Upload a caller selected local file");
     const sourceHandlerSecretManagerFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-028");
     expect(sourceHandlerSecretManagerFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_apply_vault_secret_guardrail_override",

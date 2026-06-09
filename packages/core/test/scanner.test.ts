@@ -636,6 +636,9 @@ describe("scanner", () => {
     const sourceSecretManagerBrowserAutomationBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "source_fill_customer_vault_secret_browser_form"
     );
+    const sourceLocalFileBrowserAutomationBridgeTool = surfaces.tools.find(
+      (surface) => surface.name === "source_upload_local_file_authenticated_browser"
+    );
     const sourceVisualContextCaptureTool = surfaces.tools.find((surface) => surface.name === "source_capture_authenticated_page_screenshot");
     const sourceVisualContextPromptBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "source_review_authenticated_page_screenshot_with_model"
@@ -802,6 +805,9 @@ describe("scanner", () => {
     );
     const langchainSecretManagerBrowserAutomationBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "langchain_fill_customer_vault_secret_browser_form"
+    );
+    const langchainLocalFileBrowserAutomationBridgeTool = surfaces.tools.find(
+      (surface) => surface.name === "langchain_upload_local_file_authenticated_browser"
     );
     const langchainVisualContextCaptureTool = surfaces.tools.find((surface) => surface.name === "langchain_capture_authenticated_page_screenshot");
     const langchainVisualContextPromptBridgeTool = surfaces.tools.find(
@@ -5203,6 +5209,98 @@ describe("scanner", () => {
     expect(JSON.stringify(sourceSecretManagerBrowserAutomationBridgeTool)).not.toContain("secretBrowserValue");
     expect(JSON.stringify(sourceSecretManagerBrowserAutomationBridgeTool)).not.toContain("source vault secret submitted through browser");
     expect(JSON.stringify(sourceSecretManagerBrowserAutomationBridgeTool)).not.toContain("Fill a customer support secret");
+    expect(sourceLocalFileBrowserAutomationBridgeTool).toMatchObject({
+      path: "mcp-source/customer-tools.ts",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["call", "execute", "publish", "read", "send"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(sourceLocalFileBrowserAutomationBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_mcp_source_tool: true,
+      mcp_source_tool_registration: true,
+      mcp_source_tool_registration_kind: "registerTool",
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_secret_like_input: true,
+      accepts_content_like_input: true,
+      accepts_path_input: true,
+      accepts_url_input: true,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      external_write: true,
+      browser_automation: true,
+      tainted_browser_automation_target: true,
+      tainted_filesystem_path: true,
+      local_file_browser_automation_bridge: true,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_secret_env_access: true,
+      handler_browser_automation: true,
+      handler_tainted_browser_automation_target: true,
+      handler_filesystem_read: true,
+      handler_tainted_filesystem_path: true,
+      handler_local_file_browser_automation_bridge: true,
+      handler_signal_count: 6,
+      open_world_schema: false
+    });
+    expect(sourceLocalFileBrowserAutomationBridgeTool?.metadata.authority_classes).toEqual(expect.arrayContaining([
+      "browser_automation",
+      "browser_control",
+      "content_input",
+      "credential_input",
+      "customer_data_input",
+      "external_write",
+      "filesystem_access",
+      "handler_browser_automation",
+      "handler_filesystem_read",
+      "handler_local_file_browser_automation_bridge",
+      "handler_secret_env_access",
+      "handler_tainted_browser_automation_target",
+      "handler_tainted_filesystem_path",
+      "local_file_browser_automation_bridge",
+      "network_access",
+      "pii_input",
+      "tainted_browser_automation_target",
+      "tainted_filesystem_path"
+    ]));
+    expect(sourceLocalFileBrowserAutomationBridgeTool?.metadata.handler_authority_classes).toEqual([
+      "handler_browser_automation",
+      "handler_filesystem_read",
+      "handler_local_file_browser_automation_bridge",
+      "handler_secret_env_access",
+      "handler_tainted_browser_automation_target",
+      "handler_tainted_filesystem_path"
+    ]);
+    expect(sourceLocalFileBrowserAutomationBridgeTool?.metadata.handler_env_key_names).toEqual(["SOURCE_BROWSER_FILE_UPLOAD_TOKEN"]);
+    expect(sourceLocalFileBrowserAutomationBridgeTool?.metadata.schema_properties).toEqual([
+      "customer_id",
+      "file_input_selector",
+      "local_file_path",
+      "submit_selector",
+      "target_url",
+      "upload_note_text"
+    ]);
+    expect(sourceLocalFileBrowserAutomationBridgeTool?.metadata.required_properties).toEqual([
+      "customer_id",
+      "file_input_selector",
+      "local_file_path",
+      "submit_selector",
+      "target_url",
+      "upload_note_text"
+    ]);
+    expect(JSON.stringify(sourceLocalFileBrowserAutomationBridgeTool)).not.toContain("readFile");
+    expect(JSON.stringify(sourceLocalFileBrowserAutomationBridgeTool)).not.toContain("authenticatedBrowserPage");
+    expect(JSON.stringify(sourceLocalFileBrowserAutomationBridgeTool)).not.toContain("page.goto");
+    expect(JSON.stringify(sourceLocalFileBrowserAutomationBridgeTool)).not.toContain("page.setInputFiles");
+    expect(JSON.stringify(sourceLocalFileBrowserAutomationBridgeTool)).not.toContain("page.fill");
+    expect(JSON.stringify(sourceLocalFileBrowserAutomationBridgeTool)).not.toContain("page.click");
+    expect(JSON.stringify(sourceLocalFileBrowserAutomationBridgeTool)).not.toContain("fileBytes");
+    expect(JSON.stringify(sourceLocalFileBrowserAutomationBridgeTool)).not.toContain("source local file uploaded through browser");
+    expect(JSON.stringify(sourceLocalFileBrowserAutomationBridgeTool)).not.toContain("Upload a caller selected local file");
     expect(sourceVisualContextCaptureTool).toMatchObject({
       path: "mcp-source/customer-tools.ts",
       data_classes: ["confidential", "credential", "pii"],
@@ -12079,6 +12177,101 @@ describe("scanner", () => {
     expect(JSON.stringify(langchainSecretManagerBrowserAutomationBridgeTool)).not.toContain("secret_browser_value");
     expect(JSON.stringify(langchainSecretManagerBrowserAutomationBridgeTool)).not.toContain("framework vault secret submitted through browser");
     expect(JSON.stringify(langchainSecretManagerBrowserAutomationBridgeTool)).not.toContain("Fill a customer support secret");
+    expect(langchainLocalFileBrowserAutomationBridgeTool).toMatchObject({
+      path: "framework-tools/langchain_tools.py",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["call", "execute", "publish", "read", "send"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(langchainLocalFileBrowserAutomationBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_agent_framework_source_tool: true,
+      agent_framework_source_tool: true,
+      agent_framework_source_tool_framework: "langchain",
+      agent_framework_source_tool_registration_kind: "python_tool_decorator",
+      agent_framework_source_tool_argument_count: 6,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_secret_like_input: true,
+      accepts_content_like_input: true,
+      accepts_path_input: true,
+      accepts_url_input: true,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      external_write: true,
+      browser_automation: true,
+      tainted_browser_automation_target: true,
+      tainted_filesystem_path: true,
+      local_file_browser_automation_bridge: true,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_secret_env_access: true,
+      handler_browser_automation: true,
+      handler_tainted_browser_automation_target: true,
+      handler_filesystem_read: true,
+      handler_tainted_filesystem_path: true,
+      handler_local_file_browser_automation_bridge: true,
+      handler_signal_count: 6,
+      open_world_schema: false
+    });
+    expect(langchainLocalFileBrowserAutomationBridgeTool?.metadata.authority_classes).toEqual(expect.arrayContaining([
+      "browser_automation",
+      "browser_control",
+      "content_input",
+      "credential_input",
+      "customer_data_input",
+      "external_write",
+      "filesystem_access",
+      "handler_browser_automation",
+      "handler_filesystem_read",
+      "handler_local_file_browser_automation_bridge",
+      "handler_secret_env_access",
+      "handler_tainted_browser_automation_target",
+      "handler_tainted_filesystem_path",
+      "local_file_browser_automation_bridge",
+      "network_access",
+      "pii_input",
+      "tainted_browser_automation_target",
+      "tainted_filesystem_path"
+    ]));
+    expect(langchainLocalFileBrowserAutomationBridgeTool?.metadata.handler_authority_classes).toEqual([
+      "handler_browser_automation",
+      "handler_filesystem_read",
+      "handler_local_file_browser_automation_bridge",
+      "handler_secret_env_access",
+      "handler_tainted_browser_automation_target",
+      "handler_tainted_filesystem_path"
+    ]);
+    expect(langchainLocalFileBrowserAutomationBridgeTool?.metadata.handler_env_key_names).toEqual(["LANGCHAIN_BROWSER_FILE_UPLOAD_TOKEN"]);
+    expect(langchainLocalFileBrowserAutomationBridgeTool?.metadata.schema_properties).toEqual([
+      "customer_id",
+      "file_input_selector",
+      "local_file_path",
+      "submit_selector",
+      "target_url",
+      "upload_note_text"
+    ]);
+    expect(langchainLocalFileBrowserAutomationBridgeTool?.metadata.required_properties).toEqual([
+      "customer_id",
+      "file_input_selector",
+      "local_file_path",
+      "submit_selector",
+      "target_url",
+      "upload_note_text"
+    ]);
+    expect(JSON.stringify(langchainLocalFileBrowserAutomationBridgeTool)).not.toContain("Path(local_file_path)");
+    expect(JSON.stringify(langchainLocalFileBrowserAutomationBridgeTool)).not.toContain("read_bytes");
+    expect(JSON.stringify(langchainLocalFileBrowserAutomationBridgeTool)).not.toContain("browser_session.page");
+    expect(JSON.stringify(langchainLocalFileBrowserAutomationBridgeTool)).not.toContain("page.goto");
+    expect(JSON.stringify(langchainLocalFileBrowserAutomationBridgeTool)).not.toContain("page.set_input_files");
+    expect(JSON.stringify(langchainLocalFileBrowserAutomationBridgeTool)).not.toContain("page.fill");
+    expect(JSON.stringify(langchainLocalFileBrowserAutomationBridgeTool)).not.toContain("page.click");
+    expect(JSON.stringify(langchainLocalFileBrowserAutomationBridgeTool)).not.toContain("file_bytes");
+    expect(JSON.stringify(langchainLocalFileBrowserAutomationBridgeTool)).not.toContain("framework local file uploaded through browser");
+    expect(JSON.stringify(langchainLocalFileBrowserAutomationBridgeTool)).not.toContain("Upload a caller selected local file");
     expect(langchainVisualContextCaptureTool).toMatchObject({
       path: "framework-tools/langchain_tools.py",
       data_classes: ["confidential", "credential", "pii"],

@@ -24211,6 +24211,7 @@ function addToolDefinitionSurface(
       tool_output_browser_automation_bridge: authority.tool_output_browser_automation_bridge,
       secret_manager_browser_automation_bridge: authority.secret_manager_browser_automation_bridge,
       rag_retrieval_browser_automation_bridge: authority.rag_retrieval_browser_automation_bridge,
+      local_file_browser_automation_bridge: authority.local_file_browser_automation_bridge,
       secret_manager_access: authority.secret_manager_access,
       tainted_secret_manager_path: authority.tainted_secret_manager_path,
       secret_manager_external_service_bridge: authority.secret_manager_external_service_bridge,
@@ -26759,6 +26760,7 @@ interface SourceToolHandlerSignals {
   handlerToolOutputBrowserAutomationBridge: boolean;
   handlerSecretManagerBrowserAutomationBridge: boolean;
   handlerRagRetrievalBrowserAutomationBridge: boolean;
+  handlerLocalFileBrowserAutomationBridge: boolean;
   handlerVisualContextCapture: boolean;
   handlerVisualContextToOutput: boolean;
   handlerVisualContextPromptBridge: boolean;
@@ -27296,6 +27298,7 @@ function sourceToolHandlerSignalMetadata(signals: SourceToolHandlerSignals | und
     handler_tool_output_browser_automation_bridge: signals.handlerToolOutputBrowserAutomationBridge,
     handler_secret_manager_browser_automation_bridge: signals.handlerSecretManagerBrowserAutomationBridge,
     handler_rag_retrieval_browser_automation_bridge: signals.handlerRagRetrievalBrowserAutomationBridge,
+    handler_local_file_browser_automation_bridge: signals.handlerLocalFileBrowserAutomationBridge,
     handler_visual_context_capture: signals.handlerVisualContextCapture,
     handler_visual_context_to_output: signals.handlerVisualContextToOutput,
     handler_visual_context_prompt_bridge: signals.handlerVisualContextPromptBridge,
@@ -27605,6 +27608,9 @@ function classifySourceToolHandlerSignals(
   const ragRetrievalBrowserAutomationBridge = ragRetrieval && browserAutomation && (language === "javascript"
     ? hasJavaScriptHandlerRagRetrievalBrowserAutomationBridge(handlerSource)
     : hasPythonHandlerRagRetrievalBrowserAutomationBridge(handlerSource));
+  const localFileBrowserAutomationBridge = browserAutomation && (filesystemRead || taintedFilesystemPath) && (language === "javascript"
+    ? hasJavaScriptHandlerLocalFileBrowserAutomationBridge(handlerSource)
+    : hasPythonHandlerLocalFileBrowserAutomationBridge(handlerSource));
   const visualContextCapture = browserAutomation && (language === "javascript"
     ? hasJavaScriptHandlerVisualContextCapture(handlerSource)
     : hasPythonHandlerVisualContextCapture(handlerSource));
@@ -27789,6 +27795,7 @@ function classifySourceToolHandlerSignals(
   if (toolOutputBrowserAutomationBridge) classes.add("handler_tool_output_browser_automation_bridge");
   if (secretManagerBrowserAutomationBridge) classes.add("handler_secret_manager_browser_automation_bridge");
   if (ragRetrievalBrowserAutomationBridge) classes.add("handler_rag_retrieval_browser_automation_bridge");
+  if (localFileBrowserAutomationBridge) classes.add("handler_local_file_browser_automation_bridge");
   if (visualContextCapture) classes.add("handler_visual_context_capture");
   if (visualContextToOutput) classes.add("handler_visual_context_to_output");
   if (visualContextPromptBridge) classes.add("handler_visual_context_prompt_bridge");
@@ -27915,6 +27922,7 @@ function classifySourceToolHandlerSignals(
     handlerToolOutputBrowserAutomationBridge: toolOutputBrowserAutomationBridge,
     handlerSecretManagerBrowserAutomationBridge: secretManagerBrowserAutomationBridge,
     handlerRagRetrievalBrowserAutomationBridge: ragRetrievalBrowserAutomationBridge,
+    handlerLocalFileBrowserAutomationBridge: localFileBrowserAutomationBridge,
     handlerVisualContextCapture: visualContextCapture,
     handlerVisualContextToOutput: visualContextToOutput,
     handlerVisualContextPromptBridge: visualContextPromptBridge,
@@ -28790,6 +28798,30 @@ function hasPythonHandlerRagRetrievalBrowserAutomationBridge(source: string): bo
   );
 }
 
+function hasJavaScriptHandlerLocalFileBrowserAutomationBridge(source: string): boolean {
+  const identifiers = extractJavaScriptLocalFileIdentifiers(source);
+  return identifiers.length > 0 && callExpressionReferencesAnyIdentifier(
+    [
+      /\b(?:browser|context|page|driver|authenticatedBrowserPage|browserPage)\s*\.\s*(?:fill|type|press|selectOption|setInputFiles|evaluate|click|goto|navigate)\s*\(([\s\S]{0,2400})\)/giu,
+      /\b(?:fileChooser|chooser)\s*\.\s*(?:setFiles|setInputFiles|accept)\s*\(([\s\S]{0,1800})\)/giu
+    ],
+    source,
+    identifiers
+  );
+}
+
+function hasPythonHandlerLocalFileBrowserAutomationBridge(source: string): boolean {
+  const identifiers = extractPythonLocalFileIdentifiers(source);
+  return identifiers.length > 0 && callExpressionReferencesAnyIdentifier(
+    [
+      /\b(?:browser|context|page|driver|browser_page|authenticated_browser_page)\s*\.\s*(?:fill|type|press|select_option|set_input_files|evaluate|click|goto|navigate|get|execute_script)\s*\(([\s\S]{0,2400})\)/giu,
+      /\b(?:file_chooser|chooser)\s*\.\s*(?:set_files|set_input_files|accept)\s*\(([\s\S]{0,1800})\)/giu
+    ],
+    source,
+    identifiers
+  );
+}
+
 function hasJavaScriptHandlerVisualContextCapture(source: string): boolean {
   return [
     /\b(?:page|browserPage|authenticatedBrowserPage|driver|screen|desktop|computerUse|visionClient|ocrClient)\s*(?:\.\s*[A-Za-z_$][\w$]*){0,4}\s*\.\s*(?:screenshot|takeScreenshot|captureScreenshot|captureScreen|captureImage|captureFrame|snapshot|ocr|extractText|recognizeText|readScreen|readScreenshot)\s*\(/iu,
@@ -29368,6 +29400,49 @@ function extractPythonVisualContextIdentifiers(source: string): string[] {
   );
   expandPythonIdentifiersAssignedFromBase(source, identifiers);
   return [...identifiers].filter((identifier) => !["page", "screen", "driver"].includes(identifier));
+}
+
+function extractJavaScriptLocalFileIdentifiers(source: string): string[] {
+  const identifiers = new Set<string>();
+  const assignmentPatterns = [
+    /\b(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*(?:await\s+)?(?:fs|fsPromises|promises)\s*\.\s*(?:readFile|readFileSync|createReadStream)\s*\(/gu,
+    /\b(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*(?:await\s+)?\b(?:readFile|readFileSync|createReadStream)\s*\(/gu
+  ];
+  for (const pattern of assignmentPatterns) collectFirstCaptureMatches(pattern, source, identifiers);
+  collectFirstCaptureMatches(
+    /\b([A-Za-z_$][\w$]*(?:FileBytes|FileBuffer|FileContent|FileStream|UploadFile|UploadedFile|LocalFile|AttachmentBytes|AttachmentFile|DocumentBytes))\b/gu,
+    source,
+    identifiers
+  );
+  collectFirstCaptureMatches(
+    /\b([A-Za-z_$][\w$]*(?:filePath|FilePath|localFilePath|LocalFilePath|uploadPath|UploadPath|attachmentPath|AttachmentPath))\b/gu,
+    source,
+    identifiers
+  );
+  expandJavaScriptIdentifiersAssignedFromBase(source, identifiers);
+  return [...identifiers].filter((identifier) => !["fs", "fsPromises", "promises", "path"].includes(identifier));
+}
+
+function extractPythonLocalFileIdentifiers(source: string): string[] {
+  const identifiers = new Set<string>();
+  const assignmentPatterns = [
+    /\b([A-Za-z_]\w*)\s*=\s*(?:await\s+)?(?:Path|pathlib\s*\.\s*Path)\s*\([^)]*\)\s*\.\s*(?:read_text|read_bytes)\s*\(/gu,
+    /\b([A-Za-z_]\w*)\s*=\s*(?:await\s+)?open\s*\([^)]*["']r/gu,
+    /\b([A-Za-z_]\w*)\s*=\s*(?:await\s+)?[A-Za-z_]\w*\s*\.\s*read\s*\(/gu
+  ];
+  for (const pattern of assignmentPatterns) collectFirstCaptureMatches(pattern, source, identifiers);
+  collectFirstCaptureMatches(
+    /\b([A-Za-z_]\w*(?:_file_bytes|_file_buffer|_file_content|_file_stream|_upload_file|_uploaded_file|_local_file|_attachment_bytes|_attachment_file|_document_bytes))\b/gu,
+    source,
+    identifiers
+  );
+  collectFirstCaptureMatches(
+    /\b([A-Za-z_]\w*(?:file_path|local_file_path|upload_path|attachment_path))\b/gu,
+    source,
+    identifiers
+  );
+  expandPythonIdentifiersAssignedFromBase(source, identifiers);
+  return [...identifiers].filter((identifier) => !["path", "Path", "pathlib"].includes(identifier));
 }
 
 function expandJavaScriptIdentifiersAssignedFromBase(source: string, identifiers: Set<string>): void {
@@ -30840,13 +30915,13 @@ function expressionReferencesTaintedShellArgument(expression: string): boolean {
 }
 
 function expressionReferencesTaintedFilesystemPath(expression: string, source: string): boolean {
-  const templateInterpolation = /\$\{[^}]*\b(?:workspacePath|workspace_path|filePath|file_path|targetPath|target_path|sourcePath|source_path|destinationPath|destination_path|directoryPath|directory_path|dirPath|dir_path|folderPath|folder_path|repoPath|repo_path|localPath|local_path|filepath|filename|file_name|path)\b/u.test(
+  const templateInterpolation = /\$\{[^}]*\b(?:workspacePath|workspace_path|filePath|file_path|localFilePath|local_file_path|uploadFilePath|upload_file_path|attachmentPath|attachment_path|targetPath|target_path|sourcePath|source_path|destinationPath|destination_path|directoryPath|directory_path|dirPath|dir_path|folderPath|folder_path|repoPath|repo_path|localPath|local_path|uploadPath|upload_path|filepath|filename|file_name|path)\b/u.test(
     expression
   );
   if (templateInterpolation) return true;
   const withoutQuotedStrings = expression.replace(/(["'`])(?:\\.|(?!\1)[\s\S])*\1/gu, " ");
-  const stronglyTaintedName = /\b(?:workspacePath|workspace_path|filePath|file_path|targetPath|target_path|sourcePath|source_path|destinationPath|destination_path|directoryPath|directory_path|dirPath|dir_path|folderPath|folder_path|repoPath|repo_path|localPath|local_path|filepath|filename|file_name)\b/u;
-  const taintedName = /\b(?:workspacePath|workspace_path|filePath|file_path|targetPath|target_path|sourcePath|source_path|destinationPath|destination_path|directoryPath|directory_path|dirPath|dir_path|folderPath|folder_path|repoPath|repo_path|localPath|local_path|filepath|filename|file_name|path)\b/u;
+  const stronglyTaintedName = /\b(?:workspacePath|workspace_path|filePath|file_path|localFilePath|local_file_path|uploadFilePath|upload_file_path|attachmentPath|attachment_path|targetPath|target_path|sourcePath|source_path|destinationPath|destination_path|directoryPath|directory_path|dirPath|dir_path|folderPath|folder_path|repoPath|repo_path|localPath|local_path|uploadPath|upload_path|filepath|filename|file_name)\b/u;
+  const taintedName = /\b(?:workspacePath|workspace_path|filePath|file_path|localFilePath|local_file_path|uploadFilePath|upload_file_path|attachmentPath|attachment_path|targetPath|target_path|sourcePath|source_path|destinationPath|destination_path|directoryPath|directory_path|dirPath|dir_path|folderPath|folder_path|repoPath|repo_path|localPath|local_path|uploadPath|upload_path|filepath|filename|file_name|path)\b/u;
   if (stronglyTaintedName.test(withoutQuotedStrings) || (/\bpath\b/u.test(withoutQuotedStrings) && !/\bpath\s*\./u.test(withoutQuotedStrings))) {
     return true;
   }
@@ -33483,6 +33558,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   tool_output_browser_automation_bridge: boolean;
   secret_manager_browser_automation_bridge: boolean;
   rag_retrieval_browser_automation_bridge: boolean;
+  local_file_browser_automation_bridge: boolean;
   visual_context_capture: boolean;
   visual_context_to_output: boolean;
   visual_context_prompt_bridge: boolean;
@@ -33684,6 +33760,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   const handlerToolOutputBrowserAutomationBridge = handler?.handlerToolOutputBrowserAutomationBridge === true;
   const handlerSecretManagerBrowserAutomationBridge = handler?.handlerSecretManagerBrowserAutomationBridge === true;
   const handlerRagRetrievalBrowserAutomationBridge = handler?.handlerRagRetrievalBrowserAutomationBridge === true;
+  const handlerLocalFileBrowserAutomationBridge = handler?.handlerLocalFileBrowserAutomationBridge === true;
   const handlerVisualContextCapture = handler?.handlerVisualContextCapture === true;
   const handlerVisualContextToOutput = handler?.handlerVisualContextToOutput === true;
   const handlerVisualContextPromptBridge = handler?.handlerVisualContextPromptBridge === true;
@@ -33781,6 +33858,12 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   }
   if (handlerRagRetrievalBrowserAutomationBridge) {
     classes.add("rag_retrieval_browser_automation_bridge");
+    actions.add("execute");
+    actions.add("read");
+    actions.add("send");
+  }
+  if (handlerLocalFileBrowserAutomationBridge) {
+    classes.add("local_file_browser_automation_bridge");
     actions.add("execute");
     actions.add("read");
     actions.add("send");
@@ -34379,6 +34462,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerTaintedBrowserAutomationTarget ||
       handlerToolOutputBrowserAutomationBridge ||
       handlerSecretManagerBrowserAutomationBridge ||
+      handlerLocalFileBrowserAutomationBridge ||
       handlerVisualContextCapture ||
       handlerVisualContextToOutput ||
       handlerVisualContextPromptBridge ||
@@ -34483,6 +34567,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       classes.has("network_access"));
   const sideEffect =
     localFileDisclosure ||
+    handlerLocalFileBrowserAutomationBridge ||
     readOnlyHintConflict ||
     explicitSideEffectHint ||
     (!readOnly && privilegedAction);
@@ -34497,6 +34582,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerExternalNetworkCall ||
       handlerBrowserAutomation ||
       handlerToolOutputBrowserAutomationBridge ||
+      handlerLocalFileBrowserAutomationBridge ||
       handlerVisualContextCapture ||
       handlerVisualContextPromptBridge ||
       handlerVisualContextExternalServiceBridge ||
@@ -34509,6 +34595,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerVisualContextAgentDelegationBridge ||
       handlerSecretManagerBrowserAutomationBridge ||
       handlerRagRetrievalBrowserAutomationBridge ||
+      handlerLocalFileBrowserAutomationBridge ||
       handlerAgentDelegation ||
       (handlerToolOutputBrowserAutomationBridge && handlerSecretEnvAccess) ||
       handlerSecretManagerAgentDelegationBridge ||
@@ -34565,6 +34652,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       acceptsSecret ||
       handlerSecretEnvAccess ||
       localFileDisclosure ||
+      handlerLocalFileBrowserAutomationBridge ||
       handlerCredentialIssuance ||
       handlerAgentDelegation ||
       handlerSecretManagerAgentDelegationBridge ||
@@ -34645,6 +34733,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
     tool_output_browser_automation_bridge: handlerToolOutputBrowserAutomationBridge,
     secret_manager_browser_automation_bridge: handlerSecretManagerBrowserAutomationBridge,
     rag_retrieval_browser_automation_bridge: handlerRagRetrievalBrowserAutomationBridge,
+    local_file_browser_automation_bridge: handlerLocalFileBrowserAutomationBridge,
     visual_context_capture: handlerVisualContextCapture,
     visual_context_to_output: handlerVisualContextToOutput,
     visual_context_prompt_bridge: handlerVisualContextPromptBridge,
@@ -34885,6 +34974,7 @@ function authoritySignature(tool: SurfaceObject): string {
     metadata.tool_output_browser_automation_bridge === true ? "tool_output_browser_automation_bridge" : "",
     metadata.secret_manager_browser_automation_bridge === true ? "secret_manager_browser_automation_bridge" : "",
     metadata.rag_retrieval_browser_automation_bridge === true ? "rag_retrieval_browser_automation_bridge" : "",
+    metadata.local_file_browser_automation_bridge === true ? "local_file_browser_automation_bridge" : "",
     metadata.secret_manager_access === true ? "secret_manager_access" : "",
     metadata.tainted_secret_manager_path === true ? "tainted_secret_manager_path" : "",
     metadata.secret_manager_external_service_bridge === true ? "secret_manager_external_service_bridge" : "",
@@ -35016,6 +35106,7 @@ function isPrivilegedToolSurface(tool: SurfaceObject): boolean {
     tool.metadata.tool_output_browser_automation_bridge === true ||
     tool.metadata.secret_manager_browser_automation_bridge === true ||
     tool.metadata.rag_retrieval_browser_automation_bridge === true ||
+    tool.metadata.local_file_browser_automation_bridge === true ||
     tool.metadata.secret_manager_access === true ||
     tool.metadata.tainted_secret_manager_path === true ||
     tool.metadata.secret_manager_external_service_bridge === true ||

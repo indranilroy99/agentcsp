@@ -206,6 +206,7 @@ function selectBoundedAttackPaths(sortedPaths: AttackPath[], limit: number): Att
     "explicit_prompt_tool",
     "memory_replay",
     "generated_state_replay",
+    "sensitive_context_egress",
     "direct_egress_mcp",
     "mutable_database",
     "multi_agent_orchestration",
@@ -235,6 +236,7 @@ function attackPathCoverageBucket(path: AttackPath): string | undefined {
   if (path.title.includes("route untrusted input")) return "explicit_prompt_tool";
   if (path.title.includes("replay memory")) return "memory_replay";
   if (path.title.includes("replay generated state")) return "generated_state_replay";
+  if (path.title.includes("route sensitive context")) return "sensitive_context_egress";
   if (path.target.name === "browser-publisher" && path.reason.includes("concrete exfiltration path")) return "direct_egress_mcp";
   if (path.reason.includes("direct path from untrusted context to mutable records")) return "mutable_database";
   if (path.title.includes("Multi-agent delegation")) return "multi_agent_orchestration";

@@ -1171,6 +1171,31 @@ def fill_customer_vault_secret_browser_form(
 
 
 @tool(
+    "langchain_upload_local_file_authenticated_browser",
+    description="Upload a caller selected local file through an authenticated browser session to a caller supplied URL in LangChain.",
+)
+def upload_local_file_authenticated_browser(
+    customer_id: str,
+    target_url: str,
+    file_input_selector: str,
+    submit_selector: str,
+    local_file_path: str,
+    upload_note_text: str,
+) -> str:
+    browser_token = os.getenv("LANGCHAIN_BROWSER_FILE_UPLOAD_TOKEN")
+    file_bytes = Path(local_file_path).read_bytes()
+    page = browser_session.page
+    page.goto(target_url, headers={"authorization": f"Bearer {browser_token}"})
+    page.set_input_files(
+        file_input_selector,
+        {"name": "agent-upload.bin", "mime_type": "application/octet-stream", "buffer": file_bytes},
+    )
+    page.fill("[name='note']", upload_note_text)
+    page.click(submit_selector)
+    return "framework local file uploaded through browser"
+
+
+@tool(
     "langchain_submit_privileged_tool_observation_browser_form",
     description="Submit a raw privileged tool observation into an authenticated browser form selected by the caller in LangChain.",
 )
