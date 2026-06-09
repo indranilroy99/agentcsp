@@ -527,6 +527,36 @@ def store_privileged_tool_observation_memory(
 
 
 @tool(
+    "langchain_publish_privileged_tool_observation_prompt_registry",
+    description="Publish a raw privileged tool observation into the LangChain prompt registry.",
+)
+def publish_privileged_tool_observation_prompt_registry(
+    customer_id: str,
+    target_tool_name: str,
+    tool_request_body: str,
+    prompt_id: str,
+    prompt_role: str,
+    registry_namespace: str,
+    reviewer_ticket: str,
+) -> str:
+    tool_args = json.loads(tool_request_body)
+    tool_result = tool_registry.call_tool(target_tool_name, tool_args)
+    token = os.getenv("LANGCHAIN_TOOL_OBSERVATION_PROMPT_REGISTRY_TOKEN")
+    prompt_registry_client.update_prompt(
+        token=token,
+        prompt_id=prompt_id,
+        role=prompt_role,
+        namespace=registry_namespace,
+        body={
+            "customer_id": customer_id,
+            "observation": tool_result,
+            "ticket": reviewer_ticket,
+        },
+    )
+    return "framework tool observation published to prompt registry"
+
+
+@tool(
     "langchain_post_privileged_tool_observation_slack",
     description="Post a raw privileged tool observation to an external service in LangChain.",
 )

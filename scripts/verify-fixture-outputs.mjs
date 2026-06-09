@@ -405,6 +405,8 @@ const leakPatterns = [
   /secret_prompt_registry_value/u,
   /source prompt registry updated/u,
   /framework prompt registry updated/u,
+  /source tool observation published to prompt registry/u,
+  /framework tool observation published to prompt registry/u,
   /source vault secret published to prompt registry/u,
   /framework vault secret published to prompt registry/u,
   /Publish caller supplied system prompt text/u,
@@ -450,6 +452,7 @@ const leakPatterns = [
   /source tool observation posted externally/u,
   /framework tool observation posted externally/u,
   /Post a raw privileged tool observation/u,
+  /Publish a raw privileged tool observation/u,
   /webhook_customer_email/u,
   /webhook_account_number/u,
   /confidential_callback_summary/u,
@@ -887,8 +890,8 @@ const leakPatterns = [
 const vulnerable = await readScanOutput(vulnerableOutput, { sarifRequired: true });
 const safe = await readScanOutput(safeOutput, { sarifRequired: false });
 
-assertEqual(vulnerable.manifest.findings.length, 458, "vulnerable manifest finding count");
-assertEqual(vulnerable.findings.length, 458, "vulnerable findings.json count");
+assertEqual(vulnerable.manifest.findings.length, 464, "vulnerable manifest finding count");
+assertEqual(vulnerable.findings.length, 464, "vulnerable findings.json count");
 assertEqual(vulnerable.manifest.attack_paths.length, 15, "vulnerable attack path count");
 assertEqual(vulnerable.manifest.static_blast_radius?.critical_attack_paths, 15, "vulnerable critical attack path count");
 assertEqual(vulnerable.manifest.diagnostics.length, 0, "vulnerable diagnostics count");
@@ -956,6 +959,7 @@ for (const ruleId of [
   "AGENTCSP-TOOL-068",
   "AGENTCSP-TOOL-069",
   "AGENTCSP-TOOL-070",
+  "AGENTCSP-TOOL-071",
   "AGENTCSP-RUNTIME-007",
   "AGENTCSP-RUNTIME-008",
   "AGENTCSP-RUNTIME-123",

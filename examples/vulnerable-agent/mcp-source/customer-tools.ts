@@ -761,6 +761,46 @@ server.registerTool(
 );
 
 server.registerTool(
+  "source_publish_privileged_tool_observation_prompt_registry",
+  {
+    description: "Publish a raw privileged tool observation into the remote prompt registry.",
+    inputSchema: z.object({
+      customer_id: z.string(),
+      target_tool_name: z.string(),
+      tool_request_body: z.string(),
+      prompt_id: z.string(),
+      prompt_role: z.enum(["system", "developer"]),
+      registry_namespace: z.string(),
+      reviewer_ticket: z.string()
+    }).strict(),
+    annotations: {
+      readOnlyHint: false,
+      idempotentHint: false
+    }
+  },
+  async ({ customer_id, target_tool_name, tool_request_body, prompt_id, prompt_role, registry_namespace, reviewer_ticket }) => {
+    const toolArgs = JSON.parse(tool_request_body);
+    const toolResult = await globalThis.mcpClient.callTool({
+      name: target_tool_name,
+      arguments: toolArgs
+    });
+    const token = process.env.SOURCE_TOOL_OBSERVATION_PROMPT_REGISTRY_TOKEN;
+    await globalThis.promptRegistryClient.updatePrompt({
+      token,
+      promptId: prompt_id,
+      role: prompt_role,
+      namespace: registry_namespace,
+      body: {
+        customerId: customer_id,
+        observation: toolResult,
+        ticket: reviewer_ticket
+      }
+    });
+    return { content: [{ type: "text", text: "source tool observation published to prompt registry" }] };
+  }
+);
+
+server.registerTool(
   "source_post_privileged_tool_observation_slack",
   {
     description: "Post a raw privileged tool observation to an external service.",

@@ -24200,6 +24200,7 @@ function addToolDefinitionSurface(
       prompt_cache_write: authority.prompt_cache_write,
       secret_manager_prompt_cache_bridge: authority.secret_manager_prompt_cache_bridge,
       secret_manager_prompt_registry_bridge: authority.secret_manager_prompt_registry_bridge,
+      tool_output_prompt_registry_bridge: authority.tool_output_prompt_registry_bridge,
       tainted_prompt_cache_key: authority.tainted_prompt_cache_key,
       tainted_prompt_cache_value: authority.tainted_prompt_cache_value,
       training_dataset_export: authority.training_dataset_export,
@@ -26653,6 +26654,7 @@ interface SourceToolHandlerSignals {
   handlerTaintedTaskPayload: boolean;
   handlerTaintedTaskRouting: boolean;
   handlerPromptRegistryWrite: boolean;
+  handlerToolOutputPromptRegistryBridge: boolean;
   handlerSecretManagerPromptRegistryBridge: boolean;
   handlerTaintedPromptRegistryPayload: boolean;
   handlerTaintedPromptRegistrySelector: boolean;
@@ -27150,6 +27152,7 @@ function sourceToolHandlerSignalMetadata(signals: SourceToolHandlerSignals | und
     handler_tainted_task_payload: signals.handlerTaintedTaskPayload,
     handler_tainted_task_routing: signals.handlerTaintedTaskRouting,
     handler_prompt_registry_write: signals.handlerPromptRegistryWrite,
+    handler_tool_output_prompt_registry_bridge: signals.handlerToolOutputPromptRegistryBridge,
     handler_secret_manager_prompt_registry_bridge: signals.handlerSecretManagerPromptRegistryBridge,
     handler_tainted_prompt_registry_payload: signals.handlerTaintedPromptRegistryPayload,
     handler_tainted_prompt_registry_selector: signals.handlerTaintedPromptRegistrySelector,
@@ -27317,6 +27320,9 @@ function classifySourceToolHandlerSignals(
   const promptRegistryWrite = language === "javascript"
     ? hasJavaScriptHandlerPromptRegistryWrite(handlerSource)
     : hasPythonHandlerPromptRegistryWrite(handlerSource);
+  const toolOutputPromptRegistryBridge = promptRegistryWrite && (language === "javascript"
+    ? hasJavaScriptHandlerToolOutputPromptRegistryBridge(handlerSource)
+    : hasPythonHandlerToolOutputPromptRegistryBridge(handlerSource));
   const taintedPromptRegistryPayload = promptRegistryWrite && (language === "javascript"
     ? hasJavaScriptHandlerTaintedPromptRegistryPayload(handlerSource)
     : hasPythonHandlerTaintedPromptRegistryPayload(handlerSource));
@@ -27506,6 +27512,7 @@ function classifySourceToolHandlerSignals(
   if (taintedTaskPayload) classes.add("handler_tainted_task_payload");
   if (taintedTaskRouting) classes.add("handler_tainted_task_routing");
   if (promptRegistryWrite) classes.add("handler_prompt_registry_write");
+  if (toolOutputPromptRegistryBridge) classes.add("handler_tool_output_prompt_registry_bridge");
   if (secretManagerPromptRegistryBridge) classes.add("handler_secret_manager_prompt_registry_bridge");
   if (taintedPromptRegistryPayload) classes.add("handler_tainted_prompt_registry_payload");
   if (taintedPromptRegistrySelector) classes.add("handler_tainted_prompt_registry_selector");
@@ -27597,6 +27604,7 @@ function classifySourceToolHandlerSignals(
     handlerTaintedTaskPayload: taintedTaskPayload,
     handlerTaintedTaskRouting: taintedTaskRouting,
     handlerPromptRegistryWrite: promptRegistryWrite,
+    handlerToolOutputPromptRegistryBridge: toolOutputPromptRegistryBridge,
     handlerSecretManagerPromptRegistryBridge: secretManagerPromptRegistryBridge,
     handlerTaintedPromptRegistryPayload: taintedPromptRegistryPayload,
     handlerTaintedPromptRegistrySelector: taintedPromptRegistrySelector,
@@ -28354,6 +28362,7 @@ function extractJavaScriptToolOutputIdentifiers(
     source,
     identifiers
   );
+  expandJavaScriptIdentifiersAssignedFromBase(source, identifiers);
   return [...identifiers].filter((identifier) =>
     options.includeGenericResultNames === true || !["result", "response", "output"].includes(identifier)
   );
@@ -28374,6 +28383,7 @@ function extractPythonToolOutputIdentifiers(
     source,
     identifiers
   );
+  expandPythonIdentifiersAssignedFromBase(source, identifiers);
   return [...identifiers].filter((identifier) =>
     options.includeGenericResultNames === true || !["result", "response", "output"].includes(identifier)
   );
@@ -29151,17 +29161,41 @@ function hasPythonHandlerPromptRegistryWrite(source: string): boolean {
   ].some((pattern) => pattern.test(source));
 }
 
+function hasJavaScriptHandlerToolOutputPromptRegistryBridge(source: string): boolean {
+  const identifiers = extractJavaScriptToolOutputIdentifiers(source);
+  return identifiers.length > 0 && callExpressionReferencesAnyIdentifier(
+    [
+      /\b(?:promptRegistry|promptRegistryClient|promptStore|promptHub|promptCatalog|instructionRegistry|instructionStore|systemPromptRegistry|developerPromptRegistry|contextRegistry)\s*(?:\.\s*[A-Za-z_$][\w$]*){0,5}\s*\.\s*(?:update|updatePrompt|publish|publishPrompt|set|setPrompt|put|putPrompt|upsert|upsertPrompt|write|writePrompt|save|savePrompt|create|createPrompt|register|registerPrompt|sync|push)\s*\(([\s\S]{0,2200})\)/giu,
+      /\b(?:updatePromptRegistry|publishPromptRegistry|writePromptRegistry|upsertSystemPrompt|publishDeveloperPrompt|syncPromptRegistry)\s*\(([\s\S]{0,2200})\)/giu
+    ],
+    source,
+    identifiers
+  );
+}
+
+function hasPythonHandlerToolOutputPromptRegistryBridge(source: string): boolean {
+  const identifiers = extractPythonToolOutputIdentifiers(source);
+  return identifiers.length > 0 && callExpressionReferencesAnyIdentifier(
+    [
+      /\b(?:prompt_registry|prompt_registry_client|prompt_store|prompt_hub|prompt_catalog|instruction_registry|instruction_store|system_prompt_registry|developer_prompt_registry|context_registry)\s*(?:\.\s*[A-Za-z_]\w*){0,5}\s*\.\s*(?:update|update_prompt|publish|publish_prompt|set|set_prompt|put|put_prompt|upsert|upsert_prompt|write|write_prompt|save|save_prompt|create|create_prompt|register|register_prompt|sync|push)\s*\(([\s\S]{0,2200})\)/giu,
+      /\b(?:update_prompt_registry|publish_prompt_registry|write_prompt_registry|upsert_system_prompt|publish_developer_prompt|sync_prompt_registry)\s*\(([\s\S]{0,2200})\)/giu
+    ],
+    source,
+    identifiers
+  );
+}
+
 function hasJavaScriptHandlerTaintedPromptRegistryPayload(source: string): boolean {
   return [
-    /\b(?:promptRegistry|promptRegistryClient|promptStore|promptHub|promptCatalog|instructionRegistry|instructionStore|systemPromptRegistry|developerPromptRegistry|contextRegistry)\s*(?:\.\s*[A-Za-z_$][\w$]*){0,5}\s*\.\s*(?:update|updatePrompt|publish|publishPrompt|set|setPrompt|put|putPrompt|upsert|upsertPrompt|write|writePrompt|save|savePrompt|create|createPrompt|register|registerPrompt|sync|push)\s*\(([\s\S]{0,1400})\)/giu,
-    /\b(?:updatePromptRegistry|publishPromptRegistry|writePromptRegistry|upsertSystemPrompt|publishDeveloperPrompt|syncPromptRegistry)\s*\(([\s\S]{0,1400})\)/giu
+    /\b(?:promptRegistry|promptRegistryClient|promptStore|promptHub|promptCatalog|instructionRegistry|instructionStore|systemPromptRegistry|developerPromptRegistry|contextRegistry)\s*(?:\.\s*[A-Za-z_$][\w$]*){0,5}\s*\.\s*(?:update|updatePrompt|publish|publishPrompt|set|setPrompt|put|putPrompt|upsert|upsertPrompt|write|writePrompt|save|savePrompt|create|createPrompt|register|registerPrompt|sync|push)\s*\(([\s\S]{0,2200})\)/giu,
+    /\b(?:updatePromptRegistry|publishPromptRegistry|writePromptRegistry|upsertSystemPrompt|publishDeveloperPrompt|syncPromptRegistry)\s*\(([\s\S]{0,2200})\)/giu
   ].some((pattern) => expressionMatchesTaintedPromptRegistryPayload(pattern, source));
 }
 
 function hasPythonHandlerTaintedPromptRegistryPayload(source: string): boolean {
   return [
-    /\b(?:prompt_registry|prompt_registry_client|prompt_store|prompt_hub|prompt_catalog|instruction_registry|instruction_store|system_prompt_registry|developer_prompt_registry|context_registry)\s*(?:\.\s*[A-Za-z_]\w*){0,5}\s*\.\s*(?:update|update_prompt|publish|publish_prompt|set|set_prompt|put|put_prompt|upsert|upsert_prompt|write|write_prompt|save|save_prompt|create|create_prompt|register|register_prompt|sync|push)\s*\(([\s\S]{0,1400})\)/giu,
-    /\b(?:update_prompt_registry|publish_prompt_registry|write_prompt_registry|upsert_system_prompt|publish_developer_prompt|sync_prompt_registry)\s*\(([\s\S]{0,1400})\)/giu
+    /\b(?:prompt_registry|prompt_registry_client|prompt_store|prompt_hub|prompt_catalog|instruction_registry|instruction_store|system_prompt_registry|developer_prompt_registry|context_registry)\s*(?:\.\s*[A-Za-z_]\w*){0,5}\s*\.\s*(?:update|update_prompt|publish|publish_prompt|set|set_prompt|put|put_prompt|upsert|upsert_prompt|write|write_prompt|save|save_prompt|create|create_prompt|register|register_prompt|sync|push)\s*\(([\s\S]{0,2200})\)/giu,
+    /\b(?:update_prompt_registry|publish_prompt_registry|write_prompt_registry|upsert_system_prompt|publish_developer_prompt|sync_prompt_registry)\s*\(([\s\S]{0,2200})\)/giu
   ].some((pattern) => expressionMatchesTaintedPromptRegistryPayload(pattern, source));
 }
 
@@ -30668,6 +30702,13 @@ function expressionReferencesTaintedPromptRegistryPayload(expression: string, so
     ...extractPythonSecretManagerIdentifiers(source)
   ]);
   if (secretManagerIdentifiers.some((identifier) => new RegExp(`\\b${escapeRegExp(identifier)}\\b`, "u").test(expression))) {
+    return true;
+  }
+  const toolOutputIdentifiers = uniqueStrings([
+    ...extractJavaScriptToolOutputIdentifiers(source),
+    ...extractPythonToolOutputIdentifiers(source)
+  ]);
+  if (toolOutputIdentifiers.some((identifier) => new RegExp(`\\b${escapeRegExp(identifier)}\\b`, "u").test(expression))) {
     return true;
   }
   const withoutQuotedStrings = expression.replace(/(["'`])(?:\\.|(?!\1)[\s\S])*\1/gu, " ");
@@ -32208,6 +32249,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   prompt_cache_write: boolean;
   secret_manager_prompt_cache_bridge: boolean;
   secret_manager_prompt_registry_bridge: boolean;
+  tool_output_prompt_registry_bridge: boolean;
   tainted_prompt_cache_key: boolean;
   tainted_prompt_cache_value: boolean;
   training_dataset_export: boolean;
@@ -32315,6 +32357,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   const handlerTaintedTaskPayload = handler?.handlerTaintedTaskPayload === true;
   const handlerTaintedTaskRouting = handler?.handlerTaintedTaskRouting === true;
   const handlerPromptRegistryWrite = handler?.handlerPromptRegistryWrite === true;
+  const handlerToolOutputPromptRegistryBridge = handler?.handlerToolOutputPromptRegistryBridge === true;
   const handlerSecretManagerPromptRegistryBridge = handler?.handlerSecretManagerPromptRegistryBridge === true;
   const handlerTaintedPromptRegistryPayload = handler?.handlerTaintedPromptRegistryPayload === true;
   const handlerTaintedPromptRegistrySelector = handler?.handlerTaintedPromptRegistrySelector === true;
@@ -32728,6 +32771,12 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
     actions.add("send");
     actions.add("write");
   }
+  if (handlerToolOutputPromptRegistryBridge) {
+    classes.add("tool_output_prompt_registry_bridge");
+    actions.add("send");
+    actions.add("write");
+    actions.add("publish");
+  }
   if (handlerSecretManagerPromptRegistryBridge) {
     classes.add("secret_manager_prompt_registry_bridge");
     actions.add("send");
@@ -32864,6 +32913,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerTaintedTaskPayload ||
       handlerTaintedTaskRouting ||
       handlerPromptRegistryWrite ||
+      handlerToolOutputPromptRegistryBridge ||
       handlerSecretManagerPromptRegistryBridge ||
       handlerTaintedPromptRegistryPayload ||
       handlerTaintedPromptRegistrySelector ||
@@ -32927,6 +32977,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerRagRetrieval ||
       handlerTaskQueueEnqueue ||
       handlerPromptRegistryWrite ||
+      handlerToolOutputPromptRegistryBridge ||
       handlerSecretManagerPromptRegistryBridge ||
       handlerModelApprovalGate ||
       handlerToolOutputMemoryBridge ||
@@ -32947,6 +32998,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerSecretManagerTrainingDatasetBridge ||
       handlerSecretManagerFeedbackBridge ||
       handlerSecretManagerArtifactBridge ||
+      (handlerToolOutputPromptRegistryBridge && handlerSecretEnvAccess) ||
       (handlerToolOutputExternalServiceBridge && handlerSecretEnvAccess) ||
       (handlerSafetyPolicyWrite && handlerSecretEnvAccess) ||
       (handlerAuthorizationPolicyWrite && handlerSecretEnvAccess),
@@ -32995,6 +33047,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
     prompt_cache_write: handlerPromptCacheWrite,
     secret_manager_prompt_cache_bridge: handlerSecretManagerPromptCacheBridge,
     secret_manager_prompt_registry_bridge: handlerSecretManagerPromptRegistryBridge,
+    tool_output_prompt_registry_bridge: handlerToolOutputPromptRegistryBridge,
     tainted_prompt_cache_key: handlerTaintedPromptCacheKey,
     tainted_prompt_cache_value: handlerTaintedPromptCacheValue,
     training_dataset_export: handlerTrainingDatasetExport,
@@ -33107,6 +33160,7 @@ function authoritySignature(tool: SurfaceObject): string {
     metadata.prompt_cache_write === true ? "prompt_cache_write" : "",
     metadata.secret_manager_prompt_cache_bridge === true ? "secret_manager_prompt_cache_bridge" : "",
     metadata.secret_manager_prompt_registry_bridge === true ? "secret_manager_prompt_registry_bridge" : "",
+    metadata.tool_output_prompt_registry_bridge === true ? "tool_output_prompt_registry_bridge" : "",
     metadata.tainted_prompt_cache_key === true ? "tainted_prompt_cache_key" : "",
     metadata.tainted_prompt_cache_value === true ? "tainted_prompt_cache_value" : "",
     metadata.training_dataset_export === true ? "training_dataset_export" : "",
@@ -33203,6 +33257,7 @@ function isPrivilegedToolSurface(tool: SurfaceObject): boolean {
     tool.metadata.prompt_cache_write === true ||
     tool.metadata.secret_manager_prompt_cache_bridge === true ||
     tool.metadata.secret_manager_prompt_registry_bridge === true ||
+    tool.metadata.tool_output_prompt_registry_bridge === true ||
     tool.metadata.tainted_prompt_cache_key === true ||
     tool.metadata.tainted_prompt_cache_value === true ||
     tool.metadata.training_dataset_export === true ||
