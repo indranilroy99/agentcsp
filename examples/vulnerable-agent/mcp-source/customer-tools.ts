@@ -1228,6 +1228,42 @@ server.registerTool(
 );
 
 server.registerTool(
+  "source_delegate_customer_vault_secret_remote_agent",
+  {
+    description: "Delegate a customer support secret from a caller supplied vault path to a selected remote A2A agent.",
+    inputSchema: z.object({
+      customer_id: z.string(),
+      secret_path: z.string(),
+      target_agent_url: z.string().url(),
+      requested_task_type: z.string(),
+      delegation_reason: z.string(),
+      requester_ticket: z.string()
+    }).strict(),
+    annotations: {
+      readOnlyHint: false,
+      idempotentHint: false
+    }
+  },
+  async ({ customer_id, secret_path, target_agent_url, requested_task_type, delegation_reason, requester_ticket }) => {
+    const secretRecord = await globalThis.vaultClient.readSecret(secret_path);
+    const federationToken = process.env.SOURCE_SECRET_A2A_TOKEN;
+    const secretDelegationValue = secretRecord.value;
+    const result = await globalThis.remoteAgentClient.delegateTask({
+      agentUrl: target_agent_url,
+      taskType: requested_task_type,
+      headers: { authorization: `Bearer ${federationToken}` },
+      context: {
+        customerId: customer_id,
+        ticket: requester_ticket,
+        reason: delegation_reason,
+        secret: secretDelegationValue
+      }
+    });
+    return { content: [{ type: "text", text: "source vault secret delegated to remote agent" }] };
+  }
+);
+
+server.registerTool(
   "source_submit_customer_browser_form",
   {
     description: "Drive an authenticated browser session to a caller supplied URL and submit customer text.",

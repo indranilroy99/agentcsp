@@ -6503,6 +6503,62 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerSecretManagerTaskQueueBridgeFindings)).not.toContain("source vault secret queued for background agent");
     expect(JSON.stringify(sourceHandlerSecretManagerTaskQueueBridgeFindings)).not.toContain("framework vault secret queued for background agent");
     expect(JSON.stringify(sourceHandlerSecretManagerTaskQueueBridgeFindings)).not.toContain("Enqueue a customer support secret");
+    const sourceHandlerSecretManagerAgentDelegationBridgeFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-085");
+    expect(sourceHandlerSecretManagerAgentDelegationBridgeFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
+      "langchain_delegate_customer_vault_secret_remote_agent",
+      "source_delegate_customer_vault_secret_remote_agent"
+    ]);
+    expect(sourceHandlerSecretManagerAgentDelegationBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
+    expect(sourceHandlerSecretManagerAgentDelegationBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerSecretManagerAgentDelegationBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
+    expect(sourceHandlerSecretManagerAgentDelegationBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
+    expect(sourceHandlerSecretManagerAgentDelegationBridgeFindings.every((finding) => finding.matched_object.metadata.source_tool_handler_redacted === true)).toBe(true);
+    expect(sourceHandlerSecretManagerAgentDelegationBridgeFindings.every((finding) => finding.matched_object.metadata.handler_secret_manager_access === true)).toBe(true);
+    expect(sourceHandlerSecretManagerAgentDelegationBridgeFindings.every((finding) => finding.matched_object.metadata.handler_tainted_secret_manager_path === true)).toBe(true);
+    expect(sourceHandlerSecretManagerAgentDelegationBridgeFindings.every((finding) => finding.matched_object.metadata.handler_agent_delegation === true)).toBe(true);
+    expect(sourceHandlerSecretManagerAgentDelegationBridgeFindings.every((finding) => finding.matched_object.metadata.handler_tainted_agent_delegation_target === true)).toBe(true);
+    expect(sourceHandlerSecretManagerAgentDelegationBridgeFindings.every((finding) => finding.matched_object.metadata.handler_agent_delegation_context_forwarding === true)).toBe(true);
+    expect(sourceHandlerSecretManagerAgentDelegationBridgeFindings.every((finding) => finding.matched_object.metadata.handler_secret_manager_agent_delegation_bridge === true)).toBe(true);
+    expect(sourceHandlerSecretManagerAgentDelegationBridgeFindings.every((finding) => finding.matched_object.metadata.handler_secret_env_access === true)).toBe(true);
+    expect(sourceHandlerSecretManagerAgentDelegationBridgeFindings.every((finding) => finding.matched_object.metadata.secret_manager_access === true)).toBe(true);
+    expect(sourceHandlerSecretManagerAgentDelegationBridgeFindings.every((finding) => finding.matched_object.metadata.tainted_secret_manager_path === true)).toBe(true);
+    expect(sourceHandlerSecretManagerAgentDelegationBridgeFindings.every((finding) => finding.matched_object.metadata.agent_delegation === true)).toBe(true);
+    expect(sourceHandlerSecretManagerAgentDelegationBridgeFindings.every((finding) => finding.matched_object.metadata.tainted_agent_delegation_target === true)).toBe(true);
+    expect(sourceHandlerSecretManagerAgentDelegationBridgeFindings.every((finding) => finding.matched_object.metadata.agent_delegation_context_forwarding === true)).toBe(true);
+    expect(sourceHandlerSecretManagerAgentDelegationBridgeFindings.every((finding) => finding.matched_object.metadata.secret_manager_agent_delegation_bridge === true)).toBe(true);
+    expect(sourceHandlerSecretManagerAgentDelegationBridgeFindings.every((finding) => finding.matched_object.metadata.accepts_secret_like_input === true)).toBe(true);
+    expect(sourceHandlerSecretManagerAgentDelegationBridgeFindings.every((finding) => finding.matched_object.metadata.accepts_path_input === true)).toBe(true);
+    expect(sourceHandlerSecretManagerAgentDelegationBridgeFindings.every((finding) => finding.matched_object.metadata.accepts_url_input === true)).toBe(true);
+    expect(sourceHandlerSecretManagerAgentDelegationBridgeFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("secret_manager_access"))).toBe(true);
+    expect(sourceHandlerSecretManagerAgentDelegationBridgeFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("tainted_secret_manager_path"))).toBe(true);
+    expect(sourceHandlerSecretManagerAgentDelegationBridgeFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("agent_delegation"))).toBe(true);
+    expect(sourceHandlerSecretManagerAgentDelegationBridgeFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("tainted_agent_delegation_target"))).toBe(true);
+    expect(sourceHandlerSecretManagerAgentDelegationBridgeFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("agent_delegation_context_forwarding"))).toBe(true);
+    expect(sourceHandlerSecretManagerAgentDelegationBridgeFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("secret_manager_agent_delegation_bridge"))).toBe(true);
+    expect(sourceHandlerSecretManagerAgentDelegationBridgeFindings.every((finding) => finding.matched_object.metadata.handler_authority_classes.includes("handler_secret_manager_access"))).toBe(true);
+    expect(sourceHandlerSecretManagerAgentDelegationBridgeFindings.every((finding) => finding.matched_object.metadata.handler_authority_classes.includes("handler_tainted_secret_manager_path"))).toBe(true);
+    expect(sourceHandlerSecretManagerAgentDelegationBridgeFindings.every((finding) => finding.matched_object.metadata.handler_authority_classes.includes("handler_agent_delegation"))).toBe(true);
+    expect(sourceHandlerSecretManagerAgentDelegationBridgeFindings.every((finding) => finding.matched_object.metadata.handler_authority_classes.includes("handler_tainted_agent_delegation_target"))).toBe(true);
+    expect(sourceHandlerSecretManagerAgentDelegationBridgeFindings.every((finding) => finding.matched_object.metadata.handler_authority_classes.includes("handler_agent_delegation_context_forwarding"))).toBe(true);
+    expect(sourceHandlerSecretManagerAgentDelegationBridgeFindings.every((finding) => finding.matched_object.metadata.handler_authority_classes.includes("handler_secret_manager_agent_delegation_bridge"))).toBe(true);
+    expect(sourceHandlerSecretManagerAgentDelegationBridgeFindings.every((finding) => finding.matched_object.actions.includes("read"))).toBe(true);
+    expect(sourceHandlerSecretManagerAgentDelegationBridgeFindings.every((finding) => finding.matched_object.actions.includes("send"))).toBe(true);
+    expect(sourceHandlerSecretManagerAgentDelegationBridgeFindings.every((finding) => finding.matched_object.actions.includes("execute"))).toBe(true);
+    expect(sourceHandlerSecretManagerAgentDelegationBridgeFindings.every((finding) => finding.matched_object.external_reach === true)).toBe(true);
+    expect(sourceHandlerSecretManagerAgentDelegationBridgeFindings.every((finding) => finding.matched_object.secret_exposure === true)).toBe(true);
+    expect(sourceHandlerSecretManagerAgentDelegationBridgeFindings.every((finding) => finding.matched_object.side_effect === true)).toBe(true);
+    expect(sourceHandlerSecretManagerAgentDelegationBridgeFindings.every((finding) => finding.matched_object.reversible === false)).toBe(true);
+    expect(JSON.stringify(sourceHandlerSecretManagerAgentDelegationBridgeFindings)).not.toContain("vaultClient.readSecret");
+    expect(JSON.stringify(sourceHandlerSecretManagerAgentDelegationBridgeFindings)).not.toContain("vault_client.read_secret");
+    expect(JSON.stringify(sourceHandlerSecretManagerAgentDelegationBridgeFindings)).not.toContain("remoteAgentClient.delegateTask");
+    expect(JSON.stringify(sourceHandlerSecretManagerAgentDelegationBridgeFindings)).not.toContain("remote_agent_client.delegate_task");
+    expect(JSON.stringify(sourceHandlerSecretManagerAgentDelegationBridgeFindings)).not.toContain("secretRecord.value");
+    expect(JSON.stringify(sourceHandlerSecretManagerAgentDelegationBridgeFindings)).not.toContain("secret_record.value");
+    expect(JSON.stringify(sourceHandlerSecretManagerAgentDelegationBridgeFindings)).not.toContain("secretDelegationValue");
+    expect(JSON.stringify(sourceHandlerSecretManagerAgentDelegationBridgeFindings)).not.toContain("secret_delegation_value");
+    expect(JSON.stringify(sourceHandlerSecretManagerAgentDelegationBridgeFindings)).not.toContain("source vault secret delegated to remote agent");
+    expect(JSON.stringify(sourceHandlerSecretManagerAgentDelegationBridgeFindings)).not.toContain("framework vault secret delegated to remote agent");
+    expect(JSON.stringify(sourceHandlerSecretManagerAgentDelegationBridgeFindings)).not.toContain("Delegate a customer support secret");
     const sourceHandlerPromptRegistryWriteFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-054");
     expect(sourceHandlerPromptRegistryWriteFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_publish_customer_vault_secret_prompt_registry",
@@ -7694,7 +7750,9 @@ describe("rule engine", () => {
     const sourceHandlerAgentDelegationFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-049");
     expect(sourceHandlerAgentDelegationFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_delegate_customer_case_to_remote_agent",
-      "source_delegate_customer_case_to_remote_agent"
+      "langchain_delegate_customer_vault_secret_remote_agent",
+      "source_delegate_customer_case_to_remote_agent",
+      "source_delegate_customer_vault_secret_remote_agent"
     ]);
     expect(sourceHandlerAgentDelegationFindings.every((finding) => finding.severity === "critical")).toBe(true);
     expect(sourceHandlerAgentDelegationFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
@@ -7899,6 +7957,7 @@ describe("rule engine", () => {
     const sourceHandlerSecretManagerFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-028");
     expect(sourceHandlerSecretManagerFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_cache_customer_vault_secret_prompt",
+      "langchain_delegate_customer_vault_secret_remote_agent",
       "langchain_embed_customer_vault_secret_vector_memory",
       "langchain_enqueue_customer_vault_secret_job",
       "langchain_export_customer_vault_secret_artifact",
@@ -7913,6 +7972,7 @@ describe("rule engine", () => {
       "langchain_store_customer_vault_secret_memory",
       "langchain_summarize_customer_vault_secret_with_model",
       "source_cache_customer_vault_secret_prompt",
+      "source_delegate_customer_vault_secret_remote_agent",
       "source_embed_customer_vault_secret_vector_memory",
       "source_enqueue_customer_vault_secret_job",
       "source_export_customer_vault_secret_artifact",
@@ -7971,6 +8031,8 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerSecretManagerFindings)).not.toContain("secret_prompt_registry_value");
     expect(JSON.stringify(sourceHandlerSecretManagerFindings)).not.toContain("secretQueueValue");
     expect(JSON.stringify(sourceHandlerSecretManagerFindings)).not.toContain("secret_queue_value");
+    expect(JSON.stringify(sourceHandlerSecretManagerFindings)).not.toContain("secretDelegationValue");
+    expect(JSON.stringify(sourceHandlerSecretManagerFindings)).not.toContain("secret_delegation_value");
     expect(JSON.stringify(sourceHandlerSecretManagerFindings)).not.toContain("Read a customer support secret");
     expect(JSON.stringify(sourceHandlerSecretManagerFindings)).not.toContain("Post a customer support secret");
     expect(JSON.stringify(sourceHandlerSecretManagerFindings)).not.toContain("Store a customer support secret");
@@ -7990,6 +8052,8 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerSecretManagerFindings)).not.toContain("framework vault secret exported to telemetry");
     expect(JSON.stringify(sourceHandlerSecretManagerFindings)).not.toContain("source vault secret queued for background agent");
     expect(JSON.stringify(sourceHandlerSecretManagerFindings)).not.toContain("framework vault secret queued for background agent");
+    expect(JSON.stringify(sourceHandlerSecretManagerFindings)).not.toContain("source vault secret delegated to remote agent");
+    expect(JSON.stringify(sourceHandlerSecretManagerFindings)).not.toContain("framework vault secret delegated to remote agent");
     expect(JSON.stringify(sourceHandlerSecretManagerFindings)).not.toContain("source vault secret cached for prompts");
     expect(JSON.stringify(sourceHandlerSecretManagerFindings)).not.toContain("framework vault secret cached for prompts");
     expect(JSON.stringify(sourceHandlerSecretManagerFindings)).not.toContain("source vault secret published to prompt registry");
@@ -8007,6 +8071,7 @@ describe("rule engine", () => {
     const sourceHandlerTaintedSecretManagerFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-036");
     expect(sourceHandlerTaintedSecretManagerFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_cache_customer_vault_secret_prompt",
+      "langchain_delegate_customer_vault_secret_remote_agent",
       "langchain_embed_customer_vault_secret_vector_memory",
       "langchain_enqueue_customer_vault_secret_job",
       "langchain_export_customer_vault_secret_artifact",
@@ -8021,6 +8086,7 @@ describe("rule engine", () => {
       "langchain_store_customer_vault_secret_memory",
       "langchain_summarize_customer_vault_secret_with_model",
       "source_cache_customer_vault_secret_prompt",
+      "source_delegate_customer_vault_secret_remote_agent",
       "source_embed_customer_vault_secret_vector_memory",
       "source_enqueue_customer_vault_secret_job",
       "source_export_customer_vault_secret_artifact",

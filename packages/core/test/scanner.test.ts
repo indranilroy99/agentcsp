@@ -551,6 +551,9 @@ describe("scanner", () => {
     const sourceSecretManagerTaskQueueBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "source_enqueue_customer_vault_secret_job"
     );
+    const sourceSecretManagerAgentDelegationBridgeTool = surfaces.tools.find(
+      (surface) => surface.name === "source_delegate_customer_vault_secret_remote_agent"
+    );
     const sourceTelemetryExportTool = surfaces.tools.find((surface) => surface.name === "source_export_customer_trace");
     const sourcePromptCacheWriteTool = surfaces.tools.find((surface) => surface.name === "source_write_prompt_cache_entry");
     const sourceTrainingDatasetExportTool = surfaces.tools.find((surface) => surface.name === "source_append_training_dataset_record");
@@ -654,6 +657,9 @@ describe("scanner", () => {
     const langchainTaskQueueTool = surfaces.tools.find((surface) => surface.name === "langchain_enqueue_support_agent_job");
     const langchainSecretManagerTaskQueueBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "langchain_enqueue_customer_vault_secret_job"
+    );
+    const langchainSecretManagerAgentDelegationBridgeTool = surfaces.tools.find(
+      (surface) => surface.name === "langchain_delegate_customer_vault_secret_remote_agent"
     );
     const langchainTelemetryExportTool = surfaces.tools.find((surface) => surface.name === "langchain_export_customer_trace");
     const langchainPromptCacheWriteTool = surfaces.tools.find((surface) => surface.name === "langchain_write_prompt_cache_entry");
@@ -3970,6 +3976,102 @@ describe("scanner", () => {
     expect(JSON.stringify(sourceAgentDelegationTool)).not.toContain("remoteAgentClient.delegateTask");
     expect(JSON.stringify(sourceAgentDelegationTool)).not.toContain("Delegate caller supplied customer context");
     expect(JSON.stringify(sourceAgentDelegationTool)).not.toContain("customerTicket");
+    expect(sourceSecretManagerAgentDelegationBridgeTool).toMatchObject({
+      path: "mcp-source/customer-tools.ts",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["call", "execute", "read", "send"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(sourceSecretManagerAgentDelegationBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_mcp_source_tool: true,
+      mcp_source_tool_registration: true,
+      mcp_source_tool_registration_kind: "registerTool",
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      read_only_hint: false,
+      idempotent_hint: false,
+      accepts_secret_like_input: true,
+      accepts_content_like_input: true,
+      accepts_path_input: true,
+      accepts_url_input: true,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      secret_manager_access: true,
+      tainted_secret_manager_path: true,
+      agent_delegation: true,
+      tainted_agent_delegation_target: true,
+      agent_delegation_context_forwarding: true,
+      secret_manager_agent_delegation_bridge: true,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_secret_env_access: true,
+      handler_secret_manager_access: true,
+      handler_tainted_secret_manager_path: true,
+      handler_agent_delegation: true,
+      handler_tainted_agent_delegation_target: true,
+      handler_agent_delegation_context_forwarding: true,
+      handler_secret_manager_agent_delegation_bridge: true,
+      handler_signal_count: 7,
+      open_world_schema: false
+    });
+    expect(sourceSecretManagerAgentDelegationBridgeTool?.metadata.authority_classes).toEqual([
+      "agent_delegation",
+      "agent_delegation_context_forwarding",
+      "content_input",
+      "credential_input",
+      "customer_data_input",
+      "filesystem_access",
+      "handler_agent_delegation",
+      "handler_agent_delegation_context_forwarding",
+      "handler_secret_env_access",
+      "handler_secret_manager_access",
+      "handler_secret_manager_agent_delegation_bridge",
+      "handler_tainted_agent_delegation_target",
+      "handler_tainted_secret_manager_path",
+      "network_access",
+      "pii_input",
+      "secret_env_access",
+      "secret_manager_access",
+      "secret_manager_agent_delegation_bridge",
+      "tainted_agent_delegation_target",
+      "tainted_secret_manager_path"
+    ]);
+    expect(sourceSecretManagerAgentDelegationBridgeTool?.metadata.handler_authority_classes).toEqual([
+      "handler_agent_delegation",
+      "handler_agent_delegation_context_forwarding",
+      "handler_secret_env_access",
+      "handler_secret_manager_access",
+      "handler_secret_manager_agent_delegation_bridge",
+      "handler_tainted_agent_delegation_target",
+      "handler_tainted_secret_manager_path"
+    ]);
+    expect(sourceSecretManagerAgentDelegationBridgeTool?.metadata.handler_env_key_names).toEqual(["SOURCE_SECRET_A2A_TOKEN"]);
+    expect(sourceSecretManagerAgentDelegationBridgeTool?.metadata.schema_properties).toEqual([
+      "customer_id",
+      "delegation_reason",
+      "requested_task_type",
+      "requester_ticket",
+      "secret_path",
+      "target_agent_url"
+    ]);
+    expect(sourceSecretManagerAgentDelegationBridgeTool?.metadata.required_properties).toEqual([
+      "customer_id",
+      "delegation_reason",
+      "requested_task_type",
+      "requester_ticket",
+      "secret_path",
+      "target_agent_url"
+    ]);
+    expect(JSON.stringify(sourceSecretManagerAgentDelegationBridgeTool)).not.toContain("vaultClient.readSecret");
+    expect(JSON.stringify(sourceSecretManagerAgentDelegationBridgeTool)).not.toContain("remoteAgentClient.delegateTask");
+    expect(JSON.stringify(sourceSecretManagerAgentDelegationBridgeTool)).not.toContain("secretRecord.value");
+    expect(JSON.stringify(sourceSecretManagerAgentDelegationBridgeTool)).not.toContain("secretDelegationValue");
+    expect(JSON.stringify(sourceSecretManagerAgentDelegationBridgeTool)).not.toContain("source vault secret delegated to remote agent");
+    expect(JSON.stringify(sourceSecretManagerAgentDelegationBridgeTool)).not.toContain("Delegate a customer support secret");
     expect(sourceToolOutputAgentDelegationBridgeTool).toMatchObject({
       path: "mcp-source/customer-tools.ts",
       data_classes: ["credential"],
@@ -8904,6 +9006,102 @@ describe("scanner", () => {
     ]);
     expect(JSON.stringify(langchainAgentDelegationTool)).not.toContain("remote_agent_client.delegate_task");
     expect(JSON.stringify(langchainAgentDelegationTool)).not.toContain("Delegate caller supplied customer context");
+    expect(langchainSecretManagerAgentDelegationBridgeTool).toMatchObject({
+      path: "framework-tools/langchain_tools.py",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["call", "execute", "read", "send"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(langchainSecretManagerAgentDelegationBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_agent_framework_source_tool: true,
+      agent_framework_source_tool: true,
+      agent_framework_source_tool_framework: "langchain",
+      agent_framework_source_tool_registration_kind: "python_tool_decorator",
+      agent_framework_source_tool_argument_count: 6,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_secret_like_input: true,
+      accepts_content_like_input: true,
+      accepts_path_input: true,
+      accepts_url_input: true,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      secret_manager_access: true,
+      tainted_secret_manager_path: true,
+      agent_delegation: true,
+      tainted_agent_delegation_target: true,
+      agent_delegation_context_forwarding: true,
+      secret_manager_agent_delegation_bridge: true,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_secret_env_access: true,
+      handler_secret_manager_access: true,
+      handler_tainted_secret_manager_path: true,
+      handler_agent_delegation: true,
+      handler_tainted_agent_delegation_target: true,
+      handler_agent_delegation_context_forwarding: true,
+      handler_secret_manager_agent_delegation_bridge: true,
+      handler_signal_count: 7,
+      open_world_schema: false
+    });
+    expect(langchainSecretManagerAgentDelegationBridgeTool?.metadata.authority_classes).toEqual([
+      "agent_delegation",
+      "agent_delegation_context_forwarding",
+      "content_input",
+      "credential_input",
+      "customer_data_input",
+      "filesystem_access",
+      "handler_agent_delegation",
+      "handler_agent_delegation_context_forwarding",
+      "handler_secret_env_access",
+      "handler_secret_manager_access",
+      "handler_secret_manager_agent_delegation_bridge",
+      "handler_tainted_agent_delegation_target",
+      "handler_tainted_secret_manager_path",
+      "network_access",
+      "pii_input",
+      "secret_env_access",
+      "secret_manager_access",
+      "secret_manager_agent_delegation_bridge",
+      "tainted_agent_delegation_target",
+      "tainted_secret_manager_path"
+    ]);
+    expect(langchainSecretManagerAgentDelegationBridgeTool?.metadata.handler_authority_classes).toEqual([
+      "handler_agent_delegation",
+      "handler_agent_delegation_context_forwarding",
+      "handler_secret_env_access",
+      "handler_secret_manager_access",
+      "handler_secret_manager_agent_delegation_bridge",
+      "handler_tainted_agent_delegation_target",
+      "handler_tainted_secret_manager_path"
+    ]);
+    expect(langchainSecretManagerAgentDelegationBridgeTool?.metadata.handler_env_key_names).toEqual(["LANGCHAIN_SECRET_A2A_TOKEN"]);
+    expect(langchainSecretManagerAgentDelegationBridgeTool?.metadata.schema_properties).toEqual([
+      "customer_id",
+      "delegation_reason",
+      "requested_task_type",
+      "requester_ticket",
+      "secret_path",
+      "target_agent_url"
+    ]);
+    expect(langchainSecretManagerAgentDelegationBridgeTool?.metadata.required_properties).toEqual([
+      "customer_id",
+      "delegation_reason",
+      "requested_task_type",
+      "requester_ticket",
+      "secret_path",
+      "target_agent_url"
+    ]);
+    expect(JSON.stringify(langchainSecretManagerAgentDelegationBridgeTool)).not.toContain("vault_client.read_secret");
+    expect(JSON.stringify(langchainSecretManagerAgentDelegationBridgeTool)).not.toContain("remote_agent_client.delegate_task");
+    expect(JSON.stringify(langchainSecretManagerAgentDelegationBridgeTool)).not.toContain("secret_record.value");
+    expect(JSON.stringify(langchainSecretManagerAgentDelegationBridgeTool)).not.toContain("secret_delegation_value");
+    expect(JSON.stringify(langchainSecretManagerAgentDelegationBridgeTool)).not.toContain("framework vault secret delegated to remote agent");
+    expect(JSON.stringify(langchainSecretManagerAgentDelegationBridgeTool)).not.toContain("Delegate a customer support secret");
     expect(langchainToolOutputAgentDelegationBridgeTool).toMatchObject({
       path: "framework-tools/langchain_tools.py",
       data_classes: ["credential"],

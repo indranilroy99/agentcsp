@@ -24188,6 +24188,7 @@ function addToolDefinitionSurface(
       agent_delegation: authority.agent_delegation,
       tainted_agent_delegation_target: authority.tainted_agent_delegation_target,
       agent_delegation_context_forwarding: authority.agent_delegation_context_forwarding,
+      secret_manager_agent_delegation_bridge: authority.secret_manager_agent_delegation_bridge,
       tool_output_agent_delegation_bridge: authority.tool_output_agent_delegation_bridge,
       nested_tool_invocation: authority.nested_tool_invocation,
       browser_automation: authority.browser_automation,
@@ -26708,6 +26709,7 @@ interface SourceToolHandlerSignals {
   handlerAgentDelegation: boolean;
   handlerTaintedAgentDelegationTarget: boolean;
   handlerAgentDelegationContextForwarding: boolean;
+  handlerSecretManagerAgentDelegationBridge: boolean;
   handlerToolOutputAgentDelegationBridge: boolean;
   handlerToolInvocation: boolean;
   handlerBrowserAutomation: boolean;
@@ -27224,6 +27226,7 @@ function sourceToolHandlerSignalMetadata(signals: SourceToolHandlerSignals | und
     handler_agent_delegation: signals.handlerAgentDelegation,
     handler_tainted_agent_delegation_target: signals.handlerTaintedAgentDelegationTarget,
     handler_agent_delegation_context_forwarding: signals.handlerAgentDelegationContextForwarding,
+    handler_secret_manager_agent_delegation_bridge: signals.handlerSecretManagerAgentDelegationBridge,
     handler_tool_output_agent_delegation_bridge: signals.handlerToolOutputAgentDelegationBridge,
     handler_tool_invocation: signals.handlerToolInvocation,
     handler_browser_automation: signals.handlerBrowserAutomation,
@@ -27517,6 +27520,9 @@ function classifySourceToolHandlerSignals(
   const taintedSecretManagerPath = secretManagerAccess && (language === "javascript"
     ? hasJavaScriptHandlerTaintedSecretManagerPath(handlerSource)
     : hasPythonHandlerTaintedSecretManagerPath(handlerSource));
+  const secretManagerAgentDelegationBridge = secretManagerAccess && agentDelegation && (language === "javascript"
+    ? hasJavaScriptHandlerSecretManagerAgentDelegationBridge(handlerSource)
+    : hasPythonHandlerSecretManagerAgentDelegationBridge(handlerSource));
   const secretManagerExternalServiceBridge = secretManagerAccess && externalServiceWrite && (language === "javascript"
     ? hasJavaScriptHandlerSecretManagerExternalServiceBridge(handlerSource)
     : hasPythonHandlerSecretManagerExternalServiceBridge(handlerSource));
@@ -27631,6 +27637,7 @@ function classifySourceToolHandlerSignals(
   if (agentDelegation) classes.add("handler_agent_delegation");
   if (taintedAgentDelegationTarget) classes.add("handler_tainted_agent_delegation_target");
   if (agentDelegationContextForwarding) classes.add("handler_agent_delegation_context_forwarding");
+  if (secretManagerAgentDelegationBridge) classes.add("handler_secret_manager_agent_delegation_bridge");
   if (toolOutputAgentDelegationBridge) classes.add("handler_tool_output_agent_delegation_bridge");
   if (toolInvocation) classes.add("handler_tool_invocation");
   if (browserAutomation) classes.add("handler_browser_automation");
@@ -27736,6 +27743,7 @@ function classifySourceToolHandlerSignals(
     handlerAgentDelegation: agentDelegation,
     handlerTaintedAgentDelegationTarget: taintedAgentDelegationTarget,
     handlerAgentDelegationContextForwarding: agentDelegationContextForwarding,
+    handlerSecretManagerAgentDelegationBridge: secretManagerAgentDelegationBridge,
     handlerToolOutputAgentDelegationBridge: toolOutputAgentDelegationBridge,
     handlerToolInvocation: toolInvocation,
     handlerBrowserAutomation: browserAutomation,
@@ -28373,6 +28381,30 @@ function hasJavaScriptHandlerToolOutputAgentDelegationBridge(source: string): bo
 
 function hasPythonHandlerToolOutputAgentDelegationBridge(source: string): boolean {
   const identifiers = extractPythonToolOutputIdentifiers(source);
+  return identifiers.length > 0 && callExpressionReferencesAnyIdentifier(
+    [
+      /\b(?:a2a_client|agent_client|remote_agent_client|agent_registry|agent_router|agent_gateway|agent_federation|handoff_client|delegate_client)\s*(?:\.\s*[A-Za-z_]\w*){0,4}\s*\.\s*(?:delegate|delegate_task|handoff|handoff_to_agent|invoke_agent|run_agent|call_agent|send_task|create_task|dispatch|route|execute)\s*\(([\s\S]{0,2200})\)/giu,
+      /\b(?:delegate_to_agent|handoff_to_agent|invoke_agent|call_agent|send_agent_task|dispatch_agent_task)\s*\(([\s\S]{0,2200})\)/giu
+    ],
+    source,
+    identifiers
+  );
+}
+
+function hasJavaScriptHandlerSecretManagerAgentDelegationBridge(source: string): boolean {
+  const identifiers = extractJavaScriptSecretManagerIdentifiers(source);
+  return identifiers.length > 0 && callExpressionReferencesAnyIdentifier(
+    [
+      /\b(?:a2aClient|agentClient|remoteAgentClient|agentRegistry|agentRouter|agentGateway|agentFederation|handoffClient|delegateClient)\s*(?:\.\s*[A-Za-z_$][\w$]*){0,4}\s*\.\s*(?:delegate|delegateTask|handoff|handoffToAgent|invokeAgent|runAgent|callAgent|sendTask|createTask|dispatch|route|execute)\s*\(([\s\S]{0,2200})\)/giu,
+      /\b(?:delegateToAgent|handoffToAgent|invokeAgent|callAgent|sendAgentTask|dispatchAgentTask)\s*\(([\s\S]{0,2200})\)/giu
+    ],
+    source,
+    identifiers
+  );
+}
+
+function hasPythonHandlerSecretManagerAgentDelegationBridge(source: string): boolean {
+  const identifiers = extractPythonSecretManagerIdentifiers(source);
   return identifiers.length > 0 && callExpressionReferencesAnyIdentifier(
     [
       /\b(?:a2a_client|agent_client|remote_agent_client|agent_registry|agent_router|agent_gateway|agent_federation|handoff_client|delegate_client)\s*(?:\.\s*[A-Za-z_]\w*){0,4}\s*\.\s*(?:delegate|delegate_task|handoff|handoff_to_agent|invoke_agent|run_agent|call_agent|send_task|create_task|dispatch|route|execute)\s*\(([\s\S]{0,2200})\)/giu,
@@ -30329,20 +30361,27 @@ function identifierAssignedFromTaintedAgentDelegationTarget(identifier: string, 
 }
 
 function expressionReferencesAgentDelegationContextForwarding(expression: string, source: string): boolean {
-  const templateInterpolation = /\$\{[^}]*\b(?:customerTicketText|customer_ticket_text|ticketText|ticket_text|customerContext|customer_context|customerMessage|customer_message|toolOutput|tool_output|toolResult|tool_result|browserOutput|browser_output|retrievedContext|retrieved_context|memorySummary|memory_summary|promptText|prompt_text|userMessage|user_message|conversationText|conversation_text|inputText|input_text|content|message|prompt|payload|context|output|customer|ticket)\b/u.test(
+  const templateInterpolation = /\$\{[^}]*\b(?:customerTicketText|customer_ticket_text|ticketText|ticket_text|customerContext|customer_context|customerMessage|customer_message|toolOutput|tool_output|toolResult|tool_result|browserOutput|browser_output|retrievedContext|retrieved_context|memorySummary|memory_summary|promptText|prompt_text|userMessage|user_message|conversationText|conversation_text|inputText|input_text|secretRecord|secret_record|secretValue|secret_value|vaultSecret|vault_secret|content|message|prompt|payload|context|output|customer|ticket|secret|vault)\b/u.test(
     expression
   );
   if (templateInterpolation) return true;
+  const secretManagerIdentifiers = uniqueStrings([
+    ...extractJavaScriptSecretManagerIdentifiers(source),
+    ...extractPythonSecretManagerIdentifiers(source)
+  ]);
+  if (secretManagerIdentifiers.some((identifier) => new RegExp(`\\b${escapeRegExp(identifier)}\\b`, "u").test(expression))) {
+    return true;
+  }
   const withoutQuotedStrings = expression.replace(/(["'`])(?:\\.|(?!\1)[\s\S])*\1/gu, " ");
-  const stronglyTaintedName = /\b(?:customerTicketText|customer_ticket_text|ticketText|ticket_text|customerContext|customer_context|customerMessage|customer_message|toolOutput|tool_output|toolResult|tool_result|browserOutput|browser_output|retrievedContext|retrieved_context|memorySummary|memory_summary|promptText|prompt_text|userMessage|user_message|conversationText|conversation_text|inputText|input_text)\b/u;
-  const taintedName = /\b(?:customerTicketText|customer_ticket_text|ticketText|ticket_text|customerContext|customer_context|customerMessage|customer_message|toolOutput|tool_output|toolResult|tool_result|browserOutput|browser_output|retrievedContext|retrieved_context|memorySummary|memory_summary|promptText|prompt_text|userMessage|user_message|conversationText|conversation_text|inputText|input_text|content|message|prompt|payload|context|output|customer|ticket|input|text)\b/u;
+  const stronglyTaintedName = /\b(?:customerTicketText|customer_ticket_text|ticketText|ticket_text|customerContext|customer_context|customerMessage|customer_message|toolOutput|tool_output|toolResult|tool_result|browserOutput|browser_output|retrievedContext|retrieved_context|memorySummary|memory_summary|promptText|prompt_text|userMessage|user_message|conversationText|conversation_text|inputText|input_text|secretRecord|secret_record|secretValue|secret_value|vaultSecret|vault_secret)\b/u;
+  const taintedName = /\b(?:customerTicketText|customer_ticket_text|ticketText|ticket_text|customerContext|customer_context|customerMessage|customer_message|toolOutput|tool_output|toolResult|tool_result|browserOutput|browser_output|retrievedContext|retrieved_context|memorySummary|memory_summary|promptText|prompt_text|userMessage|user_message|conversationText|conversation_text|inputText|input_text|secretRecord|secret_record|secretValue|secret_value|vaultSecret|vault_secret|content|message|prompt|payload|context|output|customer|ticket|input|text|secret|vault)\b/u;
   if (stronglyTaintedName.test(withoutQuotedStrings)) return true;
 
-  const contextAssignment = /\b(?:context|payload|message|messages|prompt|content|input|inputs|task|body|customer|customer_id|ticket|ticket_id|tool_output|toolOutput|browser_output|browserOutput|memory|memory_summary|memorySummary)\s*(?::|=)\s*([^,\n}\)]+)/giu;
+  const contextAssignment = /\b(?:context|payload|message|messages|prompt|content|input|inputs|task|body|customer|customer_id|ticket|ticket_id|tool_output|toolOutput|browser_output|browserOutput|memory|memory_summary|memorySummary|secret|secret_value|secretValue|vault|vault_secret|vaultSecret)\s*(?::|=)\s*([^,\n}\)]+)/giu;
   if (expressionMatchesPattern(contextAssignment, withoutQuotedStrings, taintedName)) return true;
 
   const valueOnlyExpression = withoutQuotedStrings.replace(
-    /\b(?:context|payload|message|messages|prompt|content|input|inputs|task|body|customer|customer_id|ticket|ticket_id|tool_output|toolOutput|browser_output|browserOutput|memory|memory_summary|memorySummary)\s*(?::|=)/giu,
+    /\b(?:context|payload|message|messages|prompt|content|input|inputs|task|body|customer|customer_id|ticket|ticket_id|tool_output|toolOutput|browser_output|browserOutput|memory|memory_summary|memorySummary|secret|secret_value|secretValue|vault|vault_secret|vaultSecret)\s*(?::|=)/giu,
     " "
   );
   const identifiers = uniqueStrings(
@@ -32707,6 +32746,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   agent_delegation: boolean;
   tainted_agent_delegation_target: boolean;
   agent_delegation_context_forwarding: boolean;
+  secret_manager_agent_delegation_bridge: boolean;
   tool_output_agent_delegation_bridge: boolean;
   nested_tool_invocation: boolean;
   browser_automation: boolean;
@@ -32880,6 +32920,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   const handlerAgentDelegation = handler?.handlerAgentDelegation === true;
   const handlerTaintedAgentDelegationTarget = handler?.handlerTaintedAgentDelegationTarget === true;
   const handlerAgentDelegationContextForwarding = handler?.handlerAgentDelegationContextForwarding === true;
+  const handlerSecretManagerAgentDelegationBridge = handler?.handlerSecretManagerAgentDelegationBridge === true;
   const handlerToolOutputAgentDelegationBridge = handler?.handlerToolOutputAgentDelegationBridge === true;
   const handlerToolInvocation = handler?.handlerToolInvocation === true;
   const handlerBrowserAutomation = handler?.handlerBrowserAutomation === true;
@@ -33085,6 +33126,12 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   if (handlerToolOutputAgentDelegationBridge) {
     classes.add("tool_output_agent_delegation_bridge");
     actions.add("execute");
+    actions.add("send");
+  }
+  if (handlerSecretManagerAgentDelegationBridge) {
+    classes.add("secret_manager_agent_delegation_bridge");
+    actions.add("execute");
+    actions.add("read");
     actions.add("send");
   }
   if (handlerToolInvocation) {
@@ -33440,6 +33487,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerAgentDelegation ||
       handlerTaintedAgentDelegationTarget ||
       handlerAgentDelegationContextForwarding ||
+      handlerSecretManagerAgentDelegationBridge ||
       handlerToolOutputAgentDelegationBridge ||
       handlerToolInvocation ||
       handlerBrowserAutomation ||
@@ -33546,6 +33594,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerBrowserAutomation ||
       handlerVisualContextCapture ||
       handlerAgentDelegation ||
+      handlerSecretManagerAgentDelegationBridge ||
       handlerToolOutputAgentDelegationBridge ||
       handlerSecretManagerExternalServiceBridge ||
       handlerSecretManagerPromptBridge ||
@@ -33588,6 +33637,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       localFileDisclosure ||
       handlerCredentialIssuance ||
       handlerAgentDelegation ||
+      handlerSecretManagerAgentDelegationBridge ||
       (handlerToolOutputAgentDelegationBridge && handlerSecretEnvAccess) ||
       handlerSecretManagerAccess ||
       handlerSecretManagerCredentialIssuanceBridge ||
@@ -33637,6 +33687,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
     agent_delegation: handlerAgentDelegation,
     tainted_agent_delegation_target: handlerTaintedAgentDelegationTarget,
     agent_delegation_context_forwarding: handlerAgentDelegationContextForwarding,
+    secret_manager_agent_delegation_bridge: handlerSecretManagerAgentDelegationBridge,
     tool_output_agent_delegation_bridge: handlerToolOutputAgentDelegationBridge,
     nested_tool_invocation: handlerToolInvocation,
     browser_automation: handlerBrowserAutomation,
@@ -33840,6 +33891,7 @@ function authoritySignature(tool: SurfaceObject): string {
     metadata.agent_delegation === true ? "agent_delegation" : "",
     metadata.tainted_agent_delegation_target === true ? "tainted_agent_delegation_target" : "",
     metadata.agent_delegation_context_forwarding === true ? "agent_delegation_context_forwarding" : "",
+    metadata.secret_manager_agent_delegation_bridge === true ? "secret_manager_agent_delegation_bridge" : "",
     metadata.tool_output_agent_delegation_bridge === true ? "tool_output_agent_delegation_bridge" : "",
     metadata.nested_tool_invocation === true ? "nested_tool_invocation" : "",
     metadata.browser_automation === true ? "browser_automation" : "",
@@ -33950,6 +34002,7 @@ function isPrivilegedToolSurface(tool: SurfaceObject): boolean {
     tool.metadata.agent_delegation === true ||
     tool.metadata.tainted_agent_delegation_target === true ||
     tool.metadata.agent_delegation_context_forwarding === true ||
+    tool.metadata.secret_manager_agent_delegation_bridge === true ||
     tool.metadata.tool_output_agent_delegation_bridge === true ||
     tool.metadata.nested_tool_invocation === true ||
     tool.metadata.browser_automation === true ||

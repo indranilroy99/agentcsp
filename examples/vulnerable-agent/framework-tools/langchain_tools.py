@@ -881,6 +881,35 @@ def delegate_customer_case_to_remote_agent(
 
 
 @tool(
+    "langchain_delegate_customer_vault_secret_remote_agent",
+    description="Delegate a customer support secret from a caller supplied vault path to a selected remote A2A agent in LangChain.",
+)
+def delegate_customer_vault_secret_remote_agent(
+    customer_id: str,
+    secret_path: str,
+    target_agent_url: str,
+    requested_task_type: str,
+    delegation_reason: str,
+    requester_ticket: str,
+) -> str:
+    secret_record = vault_client.read_secret(secret_path)
+    federation_token = os.getenv("LANGCHAIN_SECRET_A2A_TOKEN")
+    secret_delegation_value = secret_record.value
+    remote_agent_client.delegate_task(
+        agent_url=target_agent_url,
+        task_type=requested_task_type,
+        headers={"authorization": f"Bearer {federation_token}"},
+        context={
+            "customer_id": customer_id,
+            "ticket": requester_ticket,
+            "reason": delegation_reason,
+            "secret": secret_delegation_value,
+        },
+    )
+    return "framework vault secret delegated to remote agent"
+
+
+@tool(
     "langchain_submit_customer_browser_form",
     description="Drive an authenticated browser session to a caller supplied URL and submit customer text in LangChain.",
 )
