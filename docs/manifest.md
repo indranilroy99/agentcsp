@@ -310,6 +310,7 @@ Tool metadata may include:
 - `credential_issuance`
 - `tainted_credential_issuance_input`
 - `secret_manager_credential_issuance_bridge`
+- `tool_output_credential_issuance_bridge`
 - `agent_delegation`
 - `tainted_agent_delegation_target`
 - `agent_delegation_context_forwarding`
@@ -463,6 +464,7 @@ Tool metadata may include:
 - `handler_credential_issuance`
 - `handler_tainted_credential_issuance_input`
 - `handler_secret_manager_credential_issuance_bridge`
+- `handler_tool_output_credential_issuance_bridge`
 - `handler_agent_delegation`
 - `handler_tainted_agent_delegation_target`
 - `handler_agent_delegation_context_forwarding`
@@ -1911,6 +1913,8 @@ Source-defined tool handlers can also emit redacted tool-output external-service
 Source-defined tool handlers can also emit redacted tool-output prompt-registry bridge authority through `tool_output_prompt_registry_bridge`, `nested_tool_invocation`, `prompt_registry_write`, `tainted_prompt_registry_payload`, `tainted_prompt_registry_selector`, and the corresponding `handler_*` fields when parsed MCP SDK or agent-framework tools invoke nested tools and publish raw tool observations into prompt or instruction registries using runtime credentials and caller-selected prompt metadata. Handler bodies, nested tool calls, tool names, arguments, registry calls, prompt IDs, prompt roles, prompt bodies, raw observations, and return strings remain redacted.
 
 Source-defined tool handlers can also emit redacted tool-output authorization-grant bridge authority through `tool_output_authorization_grant_bridge`, `nested_tool_invocation`, `authorization_policy_write`, `tainted_authorization_grant_input`, `authorization_broad_grant`, and the corresponding `handler_*` fields when parsed MCP SDK or agent-framework tools invoke nested tools and use raw tool observations to write broad, wildcard, approval-free, or long-lived authorization, permission, entitlement, or tool-grant policy using runtime credentials. Handler bodies, nested tool calls, tool names, arguments, grant calls, roles, scopes, subjects, resources, tenant selectors, raw observations, grant reasons, and return strings remain redacted.
+
+Source-defined tool handlers can also emit redacted tool-output credential-issuance bridge authority through `tool_output_credential_issuance_bridge`, `nested_tool_invocation`, `credential_issuance`, `tainted_credential_issuance_input`, and the corresponding `handler_*` fields when parsed MCP SDK or agent-framework tools invoke nested tools and use raw tool observations to mint, sign, assume, impersonate, or issue agent credentials using runtime broker credentials. Handler bodies, nested tool calls, tool names, arguments, credential broker calls, grant material, token templates, subjects, scopes, roles, audiences, impersonation selectors, issued credentials, and return strings remain redacted.
 
 Source-defined tool handlers can also emit redacted secret-manager external-service bridge authority through `secret_manager_external_service_bridge`, `secret_manager_access`, `tainted_secret_manager_path`, `external_service_write`, `tainted_external_service_recipient`, and the corresponding `handler_*` fields when parsed MCP SDK or agent-framework tools read caller-selected vault or secret-manager paths and publish the returned secret material through Slack, email, issue-tracker, chat, or SaaS SDKs using runtime credentials. Handler bodies, vault calls, secret paths, secret values, SDK calls, recipients, posted payloads, and return strings remain redacted.
 
