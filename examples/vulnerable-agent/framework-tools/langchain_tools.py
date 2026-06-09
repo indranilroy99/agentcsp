@@ -499,6 +499,23 @@ def execute_tool_observation_code(
 
 
 @tool(
+    "langchain_fetch_tool_observation_url",
+    description="Fetch a URL returned by a caller selected privileged tool observation with LangChain runtime credentials.",
+)
+def fetch_tool_observation_url(
+    customer_id: str,
+    requester_ticket: str,
+    target_tool_name: str,
+    tool_request_body: dict,
+    investigation_reason_text: str,
+) -> str:
+    tool_result = tool_registry.call_tool(target_tool_name, tool_request_body)
+    token = os.getenv("LANGCHAIN_TOOL_OBSERVATION_FETCH_TOKEN")
+    httpx.get(str(tool_result), headers={"authorization": f"Bearer {token}"})
+    return "framework tool observation URL fetched"
+
+
+@tool(
     "langchain_apply_vault_secret_guardrail_override",
     description="Apply a customer vault secret to a guardrail override in LangChain.",
 )
