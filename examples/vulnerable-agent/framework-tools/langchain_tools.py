@@ -2280,3 +2280,39 @@ def post_model_selected_external_update(
         text=model_selected_external_message,
     )
     return "framework model selected external update posted"
+
+
+@tool(
+    "langchain_store_model_selected_memory",
+    description="Ask a model provider to draft durable support memory and persist it to a caller selected memory namespace in LangChain.",
+)
+def store_model_selected_memory(
+    customer_id: str,
+    customer_ticket_text: str,
+    model_name: str,
+    memory_namespace: str,
+    memory_key: str,
+    retention_goal_text: str,
+) -> str:
+    model_token = os.getenv("LANGCHAIN_MODEL_MEMORY_TOKEN")
+    memory_token = os.getenv("LANGCHAIN_AGENT_MEMORY_WRITE_TOKEN")
+    model_response = openai_client.chat.completions.create(
+        model=model_name,
+        messages=[
+            {"role": "system", "content": customer_ticket_text},
+            {"role": "user", "content": f"Return one long-term memory record for retention goal: {retention_goal_text}"},
+        ],
+        extra_headers={"authorization": f"Bearer {model_token}"},
+    )
+    model_selected_memory_record = model_response.choices[0].message.content or ""
+    memory_store.upsert(
+        {
+            "token": memory_token,
+            "namespace": memory_namespace,
+            "key": memory_key,
+            "customer_id": customer_id,
+            "text": model_selected_memory_record,
+            "retention": "long_term",
+        }
+    )
+    return "framework model selected memory persisted"

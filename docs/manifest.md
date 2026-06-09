@@ -348,6 +348,7 @@ Tool metadata may include:
 - `tool_output_external_service_bridge`
 - `model_provider_call`
 - `tainted_model_selection`
+- `model_output_memory_bridge`
 - `tool_output_prompt_bridge`
 - `tool_output_memory_bridge`
 - `tool_output_to_output`
@@ -445,6 +446,7 @@ Tool metadata may include:
 - `handler_model_output_network_destination_bridge`
 - `handler_model_output_browser_automation_bridge`
 - `handler_model_output_database_write_bridge`
+- `handler_model_output_memory_bridge`
 - `handler_model_output_shell_execution_bridge`
 - `handler_model_output_dynamic_code_execution_bridge`
 - `handler_tool_output_network_destination_bridge`
@@ -2063,6 +2065,8 @@ Source-defined tool handlers can also emit redacted model-output remote-agent de
 Source-defined tool handlers can also emit redacted model-output prompt-registry bridge authority through `model_output_prompt_registry_bridge`, `model_provider_call`, `prompt_registry_write`, `tainted_prompt_registry_payload`, `tainted_prompt_registry_selector`, and the corresponding `handler_*` fields when parsed MCP SDK or agent-framework tools call model providers and publish model responses into prompt or instruction registries using runtime credentials and caller-selected prompt IDs, roles, namespaces, or registry destinations. Handler bodies, model SDK calls, prompts, completions, registry calls, prompt selectors, prompt bodies, model-derived prompt-registry variables, and return strings remain redacted.
 
 Source-defined tool handlers can also emit redacted model-output external-service bridge authority through `model_output_external_service_bridge`, `model_provider_call`, `external_service_write`, `tainted_external_service_recipient`, and the corresponding `handler_*` fields when parsed MCP SDK or agent-framework tools call model providers and publish model responses through Slack, email, ticketing, webhook, or SaaS connectors using runtime credentials and caller-selected recipients. Handler bodies, model SDK calls, prompts, completions, outbound SDK calls, recipient values, message bodies, model-derived message variables, and return strings remain redacted.
+
+Source-defined tool handlers can also emit redacted model-output memory bridge authority through `model_output_memory_bridge`, `model_provider_call`, `memory_write`, `tainted_memory_scope`, and the corresponding `handler_*` fields when parsed MCP SDK or agent-framework tools call model providers and persist model responses into durable memory, RAG, vector, or state stores using runtime credentials and caller-selected memory scope. Handler bodies, model SDK calls, prompts, completions, memory-store calls, namespaces, keys, stored payloads, model-derived memory variables, and return strings remain redacted.
 
 Source-defined tool handlers can also emit redacted secret-manager credential-issuance bridge authority through `secret_manager_credential_issuance_bridge`, `secret_manager_access`, `tainted_secret_manager_path`, `credential_issuance`, `tainted_credential_issuance_input`, and the corresponding `handler_*` fields when parsed MCP SDK or agent-framework tools read caller-selected vault or secret-manager paths and use the returned secret material to mint, sign, assume, impersonate, or issue agent credentials using runtime broker credentials. Handler bodies, vault calls, secret paths, secret values, credential broker calls, signing keys, token templates, subjects, scopes, roles, audiences, impersonation selectors, issued credentials, and return strings remain redacted.
 

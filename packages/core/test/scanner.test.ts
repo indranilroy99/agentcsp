@@ -751,6 +751,9 @@ describe("scanner", () => {
     const sourceModelOutputExternalServiceBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "source_post_model_selected_external_update"
     );
+    const sourceModelOutputMemoryBridgeTool = surfaces.tools.find(
+      (surface) => surface.name === "source_store_model_selected_memory"
+    );
     const pythonExportTool = surfaces.tools.find((surface) => surface.name === "python_export_customer_record");
     const pythonDeleteTool = surfaces.tools.find((surface) => surface.name === "python_readonly_delete_workspace_file");
     const pythonUnsafeDeserializationTool = surfaces.tools.find((surface) => surface.name === "python_load_serialized_agent_state");
@@ -968,6 +971,9 @@ describe("scanner", () => {
     );
     const langchainModelOutputExternalServiceBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "langchain_post_model_selected_external_update"
+    );
+    const langchainModelOutputMemoryBridgeTool = surfaces.tools.find(
+      (surface) => surface.name === "langchain_store_model_selected_memory"
     );
     const langchainUnsafeDeserializationTool = surfaces.tools.find((surface) => surface.name === "langchain_load_serialized_agent_state");
     const aiSdkExportTool = surfaces.tools.find((surface) => surface.name === "aiSdkExportCustomerContext");
@@ -9002,6 +9008,81 @@ describe("scanner", () => {
     expect(JSON.stringify(sourceModelOutputExternalServiceBridgeTool)).not.toContain("slackClient.chat.postMessage");
     expect(JSON.stringify(sourceModelOutputExternalServiceBridgeTool)).not.toContain("source model selected external update posted");
     expect(JSON.stringify(sourceModelOutputExternalServiceBridgeTool)).not.toContain("Ask a model provider to draft an external customer update");
+    expect(sourceModelOutputMemoryBridgeTool).toMatchObject({
+      path: "mcp-source/customer-tools.ts",
+      actions: ["call", "read", "remember", "send", "write"],
+      data_classes: ["confidential", "credential", "pii"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(sourceModelOutputMemoryBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_mcp_source_tool: true,
+      mcp_source_tool_registration: true,
+      mcp_source_tool_registration_kind: "registerTool",
+      mcp_source_tool_argument_count: 3,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_content_like_input: true,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      memory_write: true,
+      tainted_memory_scope: true,
+      model_provider_call: true,
+      tainted_model_selection: true,
+      model_output_memory_bridge: true,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_memory_write: true,
+      handler_tainted_memory_scope: true,
+      handler_model_provider_call: true,
+      handler_tainted_model_selection: true,
+      handler_model_output_memory_bridge: true,
+      handler_secret_env_access: true,
+      handler_signal_count: 6,
+      open_world_schema: false
+    });
+    expect(sourceModelOutputMemoryBridgeTool?.metadata.authority_classes).toEqual(expect.arrayContaining([
+      "handler_memory_write",
+      "handler_model_output_memory_bridge",
+      "handler_model_provider_call",
+      "handler_secret_env_access",
+      "handler_tainted_memory_scope",
+      "handler_tainted_model_selection",
+      "memory_write",
+      "model_output_memory_bridge",
+      "model_provider_call",
+      "tainted_memory_scope",
+      "tainted_model_selection"
+    ]));
+    expect(sourceModelOutputMemoryBridgeTool?.metadata.handler_authority_classes).toEqual([
+      "handler_memory_write",
+      "handler_model_output_memory_bridge",
+      "handler_model_provider_call",
+      "handler_secret_env_access",
+      "handler_tainted_memory_scope",
+      "handler_tainted_model_selection"
+    ]);
+    expect(sourceModelOutputMemoryBridgeTool?.metadata.handler_env_key_names).toEqual([
+      "SOURCE_AGENT_MEMORY_WRITE_TOKEN",
+      "SOURCE_MODEL_MEMORY_TOKEN"
+    ]);
+    expect(sourceModelOutputMemoryBridgeTool?.metadata.schema_properties).toEqual([
+      "customer_id",
+      "customer_ticket_text",
+      "memory_key",
+      "memory_namespace",
+      "model_name",
+      "retention_goal_text"
+    ]);
+    expect(JSON.stringify(sourceModelOutputMemoryBridgeTool)).not.toContain("openai.chat.completions.create");
+    expect(JSON.stringify(sourceModelOutputMemoryBridgeTool)).not.toContain("modelResult");
+    expect(JSON.stringify(sourceModelOutputMemoryBridgeTool)).not.toContain("modelSelectedMemoryRecord");
+    expect(JSON.stringify(sourceModelOutputMemoryBridgeTool)).not.toContain("globalThis.agentMemory.upsert");
+    expect(JSON.stringify(sourceModelOutputMemoryBridgeTool)).not.toContain("source model selected memory persisted");
+    expect(JSON.stringify(sourceModelOutputMemoryBridgeTool)).not.toContain("Ask a model provider to draft durable support memory");
     expect(pythonExportTool).toMatchObject({
       path: "mcp-source/python_tools.py",
       data_classes: ["confidential", "credential", "pii"],
@@ -17305,6 +17386,87 @@ describe("scanner", () => {
     expect(JSON.stringify(langchainModelOutputExternalServiceBridgeTool)).not.toContain("slack_client.chat_postMessage");
     expect(JSON.stringify(langchainModelOutputExternalServiceBridgeTool)).not.toContain("framework model selected external update posted");
     expect(JSON.stringify(langchainModelOutputExternalServiceBridgeTool)).not.toContain("Ask a model provider to draft an external customer update");
+    expect(langchainModelOutputMemoryBridgeTool).toMatchObject({
+      path: "framework-tools/langchain_tools.py",
+      actions: ["call", "read", "remember", "send", "write"],
+      data_classes: ["confidential", "credential", "pii"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(langchainModelOutputMemoryBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_agent_framework_source_tool: true,
+      agent_framework_source_tool: true,
+      agent_framework_source_tool_framework: "langchain",
+      agent_framework_source_tool_registration_kind: "python_tool_decorator",
+      agent_framework_source_tool_argument_count: 6,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_content_like_input: true,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      memory_write: true,
+      tainted_memory_scope: true,
+      model_provider_call: true,
+      tainted_model_selection: true,
+      model_output_memory_bridge: true,
+      privileged_prompt_composition: true,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_memory_write: true,
+      handler_tainted_memory_scope: true,
+      handler_model_provider_call: true,
+      handler_tainted_model_selection: true,
+      handler_model_output_memory_bridge: true,
+      handler_privileged_prompt_composition: true,
+      handler_secret_env_access: true,
+      handler_signal_count: 7,
+      open_world_schema: false
+    });
+    expect(langchainModelOutputMemoryBridgeTool?.metadata.authority_classes).toEqual(expect.arrayContaining([
+      "handler_memory_write",
+      "handler_model_output_memory_bridge",
+      "handler_model_provider_call",
+      "handler_privileged_prompt_composition",
+      "handler_secret_env_access",
+      "handler_tainted_memory_scope",
+      "handler_tainted_model_selection",
+      "memory_write",
+      "model_output_memory_bridge",
+      "model_provider_call",
+      "privileged_prompt_composition",
+      "tainted_memory_scope",
+      "tainted_model_selection"
+    ]));
+    expect(langchainModelOutputMemoryBridgeTool?.metadata.handler_authority_classes).toEqual([
+      "handler_memory_write",
+      "handler_model_output_memory_bridge",
+      "handler_model_provider_call",
+      "handler_privileged_prompt_composition",
+      "handler_secret_env_access",
+      "handler_tainted_memory_scope",
+      "handler_tainted_model_selection"
+    ]);
+    expect(langchainModelOutputMemoryBridgeTool?.metadata.handler_env_key_names).toEqual([
+      "LANGCHAIN_AGENT_MEMORY_WRITE_TOKEN",
+      "LANGCHAIN_MODEL_MEMORY_TOKEN"
+    ]);
+    expect(langchainModelOutputMemoryBridgeTool?.metadata.schema_properties).toEqual([
+      "customer_id",
+      "customer_ticket_text",
+      "memory_key",
+      "memory_namespace",
+      "model_name",
+      "retention_goal_text"
+    ]);
+    expect(JSON.stringify(langchainModelOutputMemoryBridgeTool)).not.toContain("openai_client.chat.completions.create");
+    expect(JSON.stringify(langchainModelOutputMemoryBridgeTool)).not.toContain("model_response");
+    expect(JSON.stringify(langchainModelOutputMemoryBridgeTool)).not.toContain("model_selected_memory_record");
+    expect(JSON.stringify(langchainModelOutputMemoryBridgeTool)).not.toContain("memory_store.upsert");
+    expect(JSON.stringify(langchainModelOutputMemoryBridgeTool)).not.toContain("framework model selected memory persisted");
+    expect(JSON.stringify(langchainModelOutputMemoryBridgeTool)).not.toContain("Ask a model provider to draft durable support memory");
     expect(aiSdkExportTool).toMatchObject({
       path: "framework-tools/vercel-ai-tools.ts",
       data_classes: ["confidential", "credential", "pii"],

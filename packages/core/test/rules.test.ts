@@ -124,6 +124,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-120")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-121")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-122")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-123")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-001")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-002")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-003")).toBe(true);
@@ -6369,12 +6370,14 @@ describe("rule engine", () => {
       "langchain_persist_customer_memory",
       "langchain_store_authenticated_page_screenshot_memory",
       "langchain_store_customer_vault_secret_memory",
+      "langchain_store_model_selected_memory",
       "langchain_store_retrieved_context_memory",
       "source_embed_customer_vault_secret_vector_memory",
       "source_embed_privileged_tool_observation_vector_memory",
       "source_persist_customer_memory",
       "source_store_authenticated_page_screenshot_memory",
       "source_store_customer_vault_secret_memory",
+      "source_store_model_selected_memory",
       "source_store_retrieved_context_memory"
     ]);
     const sourceHandlerEmbeddingMemoryWriteFindings = sourceHandlerMemoryWriteFindings.filter((finding) =>
@@ -7168,10 +7171,12 @@ describe("rule engine", () => {
       "langchain_persist_customer_memory",
       "langchain_store_authenticated_page_screenshot_memory",
       "langchain_store_customer_vault_secret_memory",
+      "langchain_store_model_selected_memory",
       "langchain_store_retrieved_context_memory",
       "source_persist_customer_memory",
       "source_store_authenticated_page_screenshot_memory",
       "source_store_customer_vault_secret_memory",
+      "source_store_model_selected_memory",
       "source_store_retrieved_context_memory"
     ]);
     const sourceHandlerSecretTaintedMemoryScopeFindings = sourceHandlerTaintedMemoryScopeFindings.filter((finding) =>
@@ -7182,10 +7187,17 @@ describe("rule engine", () => {
       "source_store_customer_vault_secret_memory"
     ]);
     expect(sourceHandlerTaintedMemoryScopeFindings.filter((finding) =>
-      ["langchain_persist_customer_memory", "source_persist_customer_memory"].includes(finding.matched_object.name)
+      [
+        "langchain_persist_customer_memory",
+        "langchain_store_model_selected_memory",
+        "source_persist_customer_memory",
+        "source_store_model_selected_memory"
+      ].includes(finding.matched_object.name)
     ).map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_persist_customer_memory",
-      "source_persist_customer_memory"
+      "langchain_store_model_selected_memory",
+      "source_persist_customer_memory",
+      "source_store_model_selected_memory"
     ]);
     expect(sourceHandlerTaintedMemoryScopeFindings.every((finding) => finding.severity === "critical")).toBe(true);
     expect(sourceHandlerTaintedMemoryScopeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
@@ -10390,6 +10402,7 @@ describe("rule engine", () => {
       "langchain_enqueue_model_selected_background_job",
       "langchain_run_model_generated_command",
       "langchain_review_authenticated_page_screenshot_with_model",
+      "langchain_store_model_selected_memory",
       "langchain_summarize_retrieved_context_with_model",
       "langchain_summarize_customer_vault_secret_with_model",
       "langchain_summarize_customer_with_model",
@@ -10406,6 +10419,7 @@ describe("rule engine", () => {
       "source_enqueue_model_selected_background_job",
       "source_run_model_generated_command",
       "source_review_authenticated_page_screenshot_with_model",
+      "source_store_model_selected_memory",
       "source_summarize_retrieved_context_with_model",
       "source_summarize_customer_vault_secret_with_model",
       "source_summarize_customer_with_model"
@@ -10614,6 +10628,7 @@ describe("rule engine", () => {
       "langchain_post_model_selected_external_update",
       "langchain_publish_model_selected_prompt_registry_entry",
       "langchain_run_model_generated_command",
+      "langchain_store_model_selected_memory",
       "langchain_summarize_customer_with_model",
       "source_apply_model_database_update",
       "source_apply_model_selected_guardrail_policy_override",
@@ -10627,6 +10642,7 @@ describe("rule engine", () => {
       "source_post_model_selected_external_update",
       "source_publish_model_selected_prompt_registry_entry",
       "source_run_model_generated_command",
+      "source_store_model_selected_memory",
       "source_summarize_customer_with_model"
     ]);
     expect(sourceHandlerTaintedModelSelectionFindings.every((finding) => finding.severity === "critical")).toBe(true);
@@ -10688,6 +10704,7 @@ describe("rule engine", () => {
       "langchain_post_model_selected_external_update",
       "langchain_publish_model_selected_prompt_registry_entry",
       "langchain_run_model_generated_command",
+      "langchain_store_model_selected_memory",
       "langchain_summarize_customer_with_model",
       "source_publish_model_selected_prompt_registry_entry",
       "source_post_model_selected_external_update",
@@ -11464,6 +11481,60 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerModelOutputExternalServiceBridgeFindings)).not.toContain("source model selected external update posted");
     expect(JSON.stringify(sourceHandlerModelOutputExternalServiceBridgeFindings)).not.toContain("framework model selected external update posted");
     expect(JSON.stringify(sourceHandlerModelOutputExternalServiceBridgeFindings)).not.toContain("Ask a model provider to draft an external customer update");
+    const sourceHandlerModelOutputMemoryBridgeFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-123");
+    expect(sourceHandlerModelOutputMemoryBridgeFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
+      "langchain_store_model_selected_memory",
+      "source_store_model_selected_memory"
+    ]);
+    expect(sourceHandlerModelOutputMemoryBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
+    expect(sourceHandlerModelOutputMemoryBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerModelOutputMemoryBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
+    expect(sourceHandlerModelOutputMemoryBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
+    expect(sourceHandlerModelOutputMemoryBridgeFindings.every((finding) => finding.matched_object.metadata.handler_model_provider_call === true)).toBe(true);
+    expect(sourceHandlerModelOutputMemoryBridgeFindings.every((finding) => finding.matched_object.metadata.handler_memory_write === true)).toBe(true);
+    expect(sourceHandlerModelOutputMemoryBridgeFindings.every((finding) => finding.matched_object.metadata.handler_tainted_memory_scope === true)).toBe(true);
+    expect(sourceHandlerModelOutputMemoryBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.handler_model_output_memory_bridge === true
+    )).toBe(true);
+    expect(sourceHandlerModelOutputMemoryBridgeFindings.every((finding) => finding.matched_object.metadata.handler_secret_env_access === true)).toBe(true);
+    expect(sourceHandlerModelOutputMemoryBridgeFindings.every((finding) => finding.matched_object.metadata.model_provider_call === true)).toBe(true);
+    expect(sourceHandlerModelOutputMemoryBridgeFindings.every((finding) => finding.matched_object.metadata.memory_write === true)).toBe(true);
+    expect(sourceHandlerModelOutputMemoryBridgeFindings.every((finding) => finding.matched_object.metadata.tainted_memory_scope === true)).toBe(true);
+    expect(sourceHandlerModelOutputMemoryBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.model_output_memory_bridge === true
+    )).toBe(true);
+    expect(sourceHandlerModelOutputMemoryBridgeFindings.every((finding) => finding.matched_object.metadata.accepts_content_like_input === true)).toBe(true);
+    expect(sourceHandlerModelOutputMemoryBridgeFindings.every((finding) => finding.matched_object.metadata.accepts_customer_data_input === true)).toBe(true);
+    expect(sourceHandlerModelOutputMemoryBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.authority_classes.includes("model_output_memory_bridge")
+    )).toBe(true);
+    expect(sourceHandlerModelOutputMemoryBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.authority_classes.includes("tainted_memory_scope")
+    )).toBe(true);
+    expect(sourceHandlerModelOutputMemoryBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.handler_authority_classes.includes("handler_model_output_memory_bridge")
+    )).toBe(true);
+    expect(sourceHandlerModelOutputMemoryBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.handler_authority_classes.includes("handler_tainted_memory_scope")
+    )).toBe(true);
+    expect(sourceHandlerModelOutputMemoryBridgeFindings.every((finding) => finding.matched_object.actions.includes("remember"))).toBe(true);
+    expect(sourceHandlerModelOutputMemoryBridgeFindings.every((finding) => finding.matched_object.actions.includes("write"))).toBe(true);
+    expect(sourceHandlerModelOutputMemoryBridgeFindings.every((finding) => finding.matched_object.actions.includes("send"))).toBe(true);
+    expect(sourceHandlerModelOutputMemoryBridgeFindings.every((finding) => finding.matched_object.external_reach === true)).toBe(true);
+    expect(sourceHandlerModelOutputMemoryBridgeFindings.every((finding) => finding.matched_object.secret_exposure === true)).toBe(true);
+    expect(sourceHandlerModelOutputMemoryBridgeFindings.every((finding) => finding.matched_object.side_effect === true)).toBe(true);
+    expect(sourceHandlerModelOutputMemoryBridgeFindings.every((finding) => finding.matched_object.reversible === false)).toBe(true);
+    expect(JSON.stringify(sourceHandlerModelOutputMemoryBridgeFindings)).not.toContain("openai.chat.completions.create");
+    expect(JSON.stringify(sourceHandlerModelOutputMemoryBridgeFindings)).not.toContain("openai_client.chat.completions.create");
+    expect(JSON.stringify(sourceHandlerModelOutputMemoryBridgeFindings)).not.toContain("modelResult");
+    expect(JSON.stringify(sourceHandlerModelOutputMemoryBridgeFindings)).not.toContain("model_response");
+    expect(JSON.stringify(sourceHandlerModelOutputMemoryBridgeFindings)).not.toContain("modelSelectedMemoryRecord");
+    expect(JSON.stringify(sourceHandlerModelOutputMemoryBridgeFindings)).not.toContain("model_selected_memory_record");
+    expect(JSON.stringify(sourceHandlerModelOutputMemoryBridgeFindings)).not.toContain("globalThis.agentMemory.upsert");
+    expect(JSON.stringify(sourceHandlerModelOutputMemoryBridgeFindings)).not.toContain("memory_store.upsert");
+    expect(JSON.stringify(sourceHandlerModelOutputMemoryBridgeFindings)).not.toContain("source model selected memory persisted");
+    expect(JSON.stringify(sourceHandlerModelOutputMemoryBridgeFindings)).not.toContain("framework model selected memory persisted");
+    expect(JSON.stringify(sourceHandlerModelOutputMemoryBridgeFindings)).not.toContain("Ask a model provider to draft durable support memory");
     const sourceHandlerDynamicCodeFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-019");
     expect(sourceHandlerDynamicCodeFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_evaluate_agent_expression",

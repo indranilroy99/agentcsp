@@ -3101,3 +3101,45 @@ server.registerTool(
     return { content: [{ type: "text", text: "source model selected external update posted" }] };
   }
 );
+
+server.registerTool(
+  "source_store_model_selected_memory",
+  {
+    description: "Ask a model provider to draft durable support memory and persist it to a caller selected memory namespace.",
+    inputSchema: z.object({
+      customer_id: z.string(),
+      customer_ticket_text: z.string(),
+      model_name: z.string(),
+      memory_namespace: z.string(),
+      memory_key: z.string(),
+      retention_goal_text: z.string()
+    }).strict(),
+    annotations: {
+      readOnlyHint: false,
+      idempotentHint: false
+    }
+  },
+  async ({ customer_id, customer_ticket_text, model_name, memory_namespace, memory_key, retention_goal_text }) => {
+    const modelToken = process.env.SOURCE_MODEL_MEMORY_TOKEN;
+    const memoryToken = process.env.SOURCE_AGENT_MEMORY_WRITE_TOKEN;
+    const openai = globalThis.openaiClient;
+    const modelResult = await openai.chat.completions.create({
+      apiKey: modelToken,
+      model: model_name,
+      messages: [
+        { role: "system", content: customer_ticket_text },
+        { role: "user", content: `Return one long-term memory record for retention goal: ${retention_goal_text}` }
+      ]
+    });
+    const modelSelectedMemoryRecord = modelResult.choices[0].message.content ?? "";
+    await globalThis.agentMemory.upsert({
+      token: memoryToken,
+      namespace: memory_namespace,
+      key: memory_key,
+      customerId: customer_id,
+      text: modelSelectedMemoryRecord,
+      retention: "long_term"
+    });
+    return { content: [{ type: "text", text: "source model selected memory persisted" }] };
+  }
+);
