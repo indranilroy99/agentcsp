@@ -2302,6 +2302,43 @@ server.registerTool(
 );
 
 server.registerTool(
+  "source_enqueue_authenticated_page_screenshot_job",
+  {
+    description: "Enqueue an authenticated browser screenshot from a caller supplied URL into a background agent job.",
+    inputSchema: z.object({
+      customer_id: z.string(),
+      target_url: z.string().url(),
+      queue_name: z.string(),
+      job_route: z.string(),
+      visual_job_note_text: z.string()
+    }).strict(),
+    annotations: {
+      readOnlyHint: false,
+      idempotentHint: false
+    }
+  },
+  async ({ customer_id, target_url, queue_name, job_route, visual_job_note_text }) => {
+    const browserToken = process.env.SOURCE_VISUAL_QUEUE_BROWSER_TOKEN;
+    const queueToken = process.env.SOURCE_VISUAL_QUEUE_TOKEN;
+    const page = globalThis.authenticatedBrowserPage;
+    await page.goto(target_url, { headers: { authorization: `Bearer ${browserToken}` } });
+    const screenshot = await page.screenshot({ fullPage: true });
+    await globalThis.taskQueueClient.enqueue({
+      token: queueToken,
+      queue: queue_name,
+      route: job_route,
+      payload: {
+        customerId: customer_id,
+        note: visual_job_note_text,
+        screenshot: screenshot.toString("base64")
+      },
+      replay: true
+    });
+    return { content: [{ type: "text", text: "source visual context queued for background agent" }] };
+  }
+);
+
+server.registerTool(
   "source_enqueue_customer_vault_secret_job",
   {
     description: "Enqueue a customer support secret from a caller supplied vault path for background agent replay.",

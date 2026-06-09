@@ -658,6 +658,9 @@ describe("scanner", () => {
     const sourceVisualContextPromptCacheBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "source_cache_authenticated_page_screenshot_prompt"
     );
+    const sourceVisualContextTaskQueueBridgeTool = surfaces.tools.find(
+      (surface) => surface.name === "source_enqueue_authenticated_page_screenshot_job"
+    );
     const sourceSecretManagerAccessTool = surfaces.tools.find((surface) => surface.name === "source_read_customer_vault_secret");
     const sourceSecretManagerExternalServiceBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "source_post_customer_vault_secret_slack"
@@ -818,6 +821,9 @@ describe("scanner", () => {
     );
     const langchainVisualContextPromptCacheBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "langchain_cache_authenticated_page_screenshot_prompt"
+    );
+    const langchainVisualContextTaskQueueBridgeTool = surfaces.tools.find(
+      (surface) => surface.name === "langchain_enqueue_authenticated_page_screenshot_job"
     );
     const langchainSecretManagerAccessTool = surfaces.tools.find((surface) => surface.name === "langchain_read_customer_vault_secret");
     const langchainSecretManagerExternalServiceBridgeTool = surfaces.tools.find(
@@ -5990,6 +5996,107 @@ describe("scanner", () => {
     expect(JSON.stringify(sourceVisualContextPromptCacheBridgeTool)).not.toContain("screenshot.toString");
     expect(JSON.stringify(sourceVisualContextPromptCacheBridgeTool)).not.toContain("promptCache.set");
     expect(JSON.stringify(sourceVisualContextPromptCacheBridgeTool)).not.toContain("source visual context cached for prompts");
+    expect(sourceVisualContextTaskQueueBridgeTool).toMatchObject({
+      path: "mcp-source/customer-tools.ts",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["call", "execute", "read", "remember", "send", "write"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(sourceVisualContextTaskQueueBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_mcp_source_tool: true,
+      mcp_source_tool_registration: true,
+      mcp_source_tool_registration_kind: "registerTool",
+      mcp_source_tool_argument_count: 3,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_secret_like_input: true,
+      accepts_content_like_input: true,
+      accepts_url_input: true,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      browser_automation: true,
+      tainted_browser_automation_target: true,
+      visual_context_capture: true,
+      visual_context_task_queue_bridge: true,
+      task_queue_enqueue: true,
+      tainted_task_payload: true,
+      tainted_task_routing: true,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_task_queue_enqueue: true,
+      handler_tainted_task_payload: true,
+      handler_tainted_task_routing: true,
+      handler_secret_env_access: true,
+      handler_model_visible_output: true,
+      handler_browser_automation: true,
+      handler_tainted_browser_automation_target: true,
+      handler_visual_context_capture: true,
+      handler_visual_context_task_queue_bridge: true,
+      handler_signal_count: 8,
+      open_world_schema: false
+    });
+    expect(sourceVisualContextTaskQueueBridgeTool?.metadata.authority_classes).toEqual([
+      "browser_automation",
+      "browser_control",
+      "content_input",
+      "credential_input",
+      "customer_data_input",
+      "handler_browser_automation",
+      "handler_secret_env_access",
+      "handler_tainted_browser_automation_target",
+      "handler_tainted_task_payload",
+      "handler_tainted_task_routing",
+      "handler_task_queue_enqueue",
+      "handler_visual_context_capture",
+      "handler_visual_context_task_queue_bridge",
+      "network_access",
+      "pii_input",
+      "secret_env_access",
+      "tainted_browser_automation_target",
+      "tainted_task_payload",
+      "tainted_task_routing",
+      "task_queue_enqueue",
+      "visual_context_capture",
+      "visual_context_task_queue_bridge"
+    ]);
+    expect(sourceVisualContextTaskQueueBridgeTool?.metadata.handler_authority_classes).toEqual([
+      "handler_browser_automation",
+      "handler_secret_env_access",
+      "handler_tainted_browser_automation_target",
+      "handler_tainted_task_payload",
+      "handler_tainted_task_routing",
+      "handler_task_queue_enqueue",
+      "handler_visual_context_capture",
+      "handler_visual_context_task_queue_bridge"
+    ]);
+    expect(sourceVisualContextTaskQueueBridgeTool?.metadata.handler_env_key_names).toEqual([
+      "SOURCE_VISUAL_QUEUE_BROWSER_TOKEN",
+      "SOURCE_VISUAL_QUEUE_TOKEN"
+    ]);
+    expect(sourceVisualContextTaskQueueBridgeTool?.metadata.schema_properties).toEqual([
+      "customer_id",
+      "job_route",
+      "queue_name",
+      "target_url",
+      "visual_job_note_text"
+    ]);
+    expect(sourceVisualContextTaskQueueBridgeTool?.metadata.required_properties).toEqual([
+      "customer_id",
+      "job_route",
+      "queue_name",
+      "target_url",
+      "visual_job_note_text"
+    ]);
+    expect(JSON.stringify(sourceVisualContextTaskQueueBridgeTool)).not.toContain("authenticatedBrowserPage");
+    expect(JSON.stringify(sourceVisualContextTaskQueueBridgeTool)).not.toContain("page.goto");
+    expect(JSON.stringify(sourceVisualContextTaskQueueBridgeTool)).not.toContain("page.screenshot");
+    expect(JSON.stringify(sourceVisualContextTaskQueueBridgeTool)).not.toContain("screenshot.toString");
+    expect(JSON.stringify(sourceVisualContextTaskQueueBridgeTool)).not.toContain("taskQueueClient.enqueue");
+    expect(JSON.stringify(sourceVisualContextTaskQueueBridgeTool)).not.toContain("source visual context queued for background agent");
     expect(JSON.stringify(sourceVisualContextPromptCacheBridgeTool)).not.toContain("Write an authenticated browser screenshot");
     expect(sourceSecretManagerAccessTool).toMatchObject({
       path: "mcp-source/customer-tools.ts",
@@ -12671,6 +12778,108 @@ describe("scanner", () => {
     expect(JSON.stringify(langchainVisualContextPromptCacheBridgeTool)).not.toContain("prompt_cache.set");
     expect(JSON.stringify(langchainVisualContextPromptCacheBridgeTool)).not.toContain("framework visual context cached for prompts");
     expect(JSON.stringify(langchainVisualContextPromptCacheBridgeTool)).not.toContain("Write an authenticated browser screenshot");
+    expect(langchainVisualContextTaskQueueBridgeTool).toMatchObject({
+      path: "framework-tools/langchain_tools.py",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["call", "execute", "read", "remember", "send", "write"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(langchainVisualContextTaskQueueBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_agent_framework_source_tool: true,
+      agent_framework_source_tool: true,
+      agent_framework_source_tool_framework: "langchain",
+      agent_framework_source_tool_registration_kind: "python_tool_decorator",
+      agent_framework_source_tool_argument_count: 5,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_secret_like_input: true,
+      accepts_content_like_input: true,
+      accepts_url_input: true,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      browser_automation: true,
+      tainted_browser_automation_target: true,
+      visual_context_capture: true,
+      visual_context_task_queue_bridge: true,
+      task_queue_enqueue: true,
+      tainted_task_payload: true,
+      tainted_task_routing: true,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_task_queue_enqueue: true,
+      handler_tainted_task_payload: true,
+      handler_tainted_task_routing: true,
+      handler_secret_env_access: true,
+      handler_model_visible_output: true,
+      handler_browser_automation: true,
+      handler_tainted_browser_automation_target: true,
+      handler_visual_context_capture: true,
+      handler_visual_context_task_queue_bridge: true,
+      handler_signal_count: 8,
+      open_world_schema: false
+    });
+    expect(langchainVisualContextTaskQueueBridgeTool?.metadata.authority_classes).toEqual([
+      "browser_automation",
+      "browser_control",
+      "content_input",
+      "credential_input",
+      "customer_data_input",
+      "handler_browser_automation",
+      "handler_secret_env_access",
+      "handler_tainted_browser_automation_target",
+      "handler_tainted_task_payload",
+      "handler_tainted_task_routing",
+      "handler_task_queue_enqueue",
+      "handler_visual_context_capture",
+      "handler_visual_context_task_queue_bridge",
+      "network_access",
+      "pii_input",
+      "secret_env_access",
+      "tainted_browser_automation_target",
+      "tainted_task_payload",
+      "tainted_task_routing",
+      "task_queue_enqueue",
+      "visual_context_capture",
+      "visual_context_task_queue_bridge"
+    ]);
+    expect(langchainVisualContextTaskQueueBridgeTool?.metadata.handler_authority_classes).toEqual([
+      "handler_browser_automation",
+      "handler_secret_env_access",
+      "handler_tainted_browser_automation_target",
+      "handler_tainted_task_payload",
+      "handler_tainted_task_routing",
+      "handler_task_queue_enqueue",
+      "handler_visual_context_capture",
+      "handler_visual_context_task_queue_bridge"
+    ]);
+    expect(langchainVisualContextTaskQueueBridgeTool?.metadata.handler_env_key_names).toEqual([
+      "LANGCHAIN_VISUAL_QUEUE_BROWSER_TOKEN",
+      "LANGCHAIN_VISUAL_QUEUE_TOKEN"
+    ]);
+    expect(langchainVisualContextTaskQueueBridgeTool?.metadata.schema_properties).toEqual([
+      "customer_id",
+      "job_route",
+      "queue_name",
+      "target_url",
+      "visual_job_note_text"
+    ]);
+    expect(langchainVisualContextTaskQueueBridgeTool?.metadata.required_properties).toEqual([
+      "customer_id",
+      "job_route",
+      "queue_name",
+      "target_url",
+      "visual_job_note_text"
+    ]);
+    expect(JSON.stringify(langchainVisualContextTaskQueueBridgeTool)).not.toContain("browser_session.page");
+    expect(JSON.stringify(langchainVisualContextTaskQueueBridgeTool)).not.toContain("page.goto");
+    expect(JSON.stringify(langchainVisualContextTaskQueueBridgeTool)).not.toContain("page.screenshot");
+    expect(JSON.stringify(langchainVisualContextTaskQueueBridgeTool)).not.toContain("screenshot_bytes");
+    expect(JSON.stringify(langchainVisualContextTaskQueueBridgeTool)).not.toContain("task_queue_client.enqueue");
+    expect(JSON.stringify(langchainVisualContextTaskQueueBridgeTool)).not.toContain("framework visual context queued for background agent");
     expect(langchainSecretManagerAccessTool).toMatchObject({
       path: "framework-tools/langchain_tools.py",
       data_classes: ["confidential", "credential", "pii"],

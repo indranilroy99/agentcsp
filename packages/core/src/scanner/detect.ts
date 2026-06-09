@@ -24161,6 +24161,7 @@ function addToolDefinitionSurface(
       !authority.visual_context_training_dataset_bridge &&
       !authority.visual_context_telemetry_bridge &&
       !authority.visual_context_prompt_cache_bridge &&
+      !authority.visual_context_task_queue_bridge &&
       !authority.tainted_network_destination &&
       !authority.tainted_shell_argument &&
       !authority.dynamic_code_execution &&
@@ -24285,6 +24286,7 @@ function addToolDefinitionSurface(
       visual_context_training_dataset_bridge: authority.visual_context_training_dataset_bridge,
       visual_context_telemetry_bridge: authority.visual_context_telemetry_bridge,
       visual_context_prompt_cache_bridge: authority.visual_context_prompt_cache_bridge,
+      visual_context_task_queue_bridge: authority.visual_context_task_queue_bridge,
       privileged_prompt_composition: authority.privileged_prompt_composition,
       tainted_shell_argument: authority.tainted_shell_argument,
       tainted_filesystem_path: authority.tainted_filesystem_path,
@@ -26764,6 +26766,7 @@ interface SourceToolHandlerSignals {
   handlerVisualContextTrainingDatasetBridge: boolean;
   handlerVisualContextTelemetryBridge: boolean;
   handlerVisualContextPromptCacheBridge: boolean;
+  handlerVisualContextTaskQueueBridge: boolean;
   handlerSecretManagerAccess: boolean;
   handlerTaintedSecretManagerPath: boolean;
   handlerSecretManagerExternalServiceBridge: boolean;
@@ -27299,6 +27302,7 @@ function sourceToolHandlerSignalMetadata(signals: SourceToolHandlerSignals | und
     handler_visual_context_training_dataset_bridge: signals.handlerVisualContextTrainingDatasetBridge,
     handler_visual_context_telemetry_bridge: signals.handlerVisualContextTelemetryBridge,
     handler_visual_context_prompt_cache_bridge: signals.handlerVisualContextPromptCacheBridge,
+    handler_visual_context_task_queue_bridge: signals.handlerVisualContextTaskQueueBridge,
     handler_secret_manager_access: signals.handlerSecretManagerAccess,
     handler_tainted_secret_manager_path: signals.handlerTaintedSecretManagerPath,
     handler_secret_manager_external_service_bridge: signals.handlerSecretManagerExternalServiceBridge,
@@ -27624,6 +27628,9 @@ function classifySourceToolHandlerSignals(
   const visualContextPromptCacheBridge = visualContextCapture && promptCacheWrite && (language === "javascript"
     ? hasJavaScriptHandlerVisualContextPromptCacheBridge(handlerSource)
     : hasPythonHandlerVisualContextPromptCacheBridge(handlerSource));
+  const visualContextTaskQueueBridge = visualContextCapture && taskQueueEnqueue && (language === "javascript"
+    ? hasJavaScriptHandlerVisualContextTaskQueueBridge(handlerSource)
+    : hasPythonHandlerVisualContextTaskQueueBridge(handlerSource));
   const secretManagerAccess = language === "javascript"
     ? hasJavaScriptHandlerSecretManagerAccess(handlerSource)
     : hasPythonHandlerSecretManagerAccess(handlerSource);
@@ -27784,6 +27791,7 @@ function classifySourceToolHandlerSignals(
   if (visualContextTrainingDatasetBridge) classes.add("handler_visual_context_training_dataset_bridge");
   if (visualContextTelemetryBridge) classes.add("handler_visual_context_telemetry_bridge");
   if (visualContextPromptCacheBridge) classes.add("handler_visual_context_prompt_cache_bridge");
+  if (visualContextTaskQueueBridge) classes.add("handler_visual_context_task_queue_bridge");
   if (secretManagerAccess) classes.add("handler_secret_manager_access");
   if (taintedSecretManagerPath) classes.add("handler_tainted_secret_manager_path");
   if (secretManagerExternalServiceBridge) classes.add("handler_secret_manager_external_service_bridge");
@@ -27908,6 +27916,7 @@ function classifySourceToolHandlerSignals(
     handlerVisualContextTrainingDatasetBridge: visualContextTrainingDatasetBridge,
     handlerVisualContextTelemetryBridge: visualContextTelemetryBridge,
     handlerVisualContextPromptCacheBridge: visualContextPromptCacheBridge,
+    handlerVisualContextTaskQueueBridge: visualContextTaskQueueBridge,
     handlerSecretManagerAccess: secretManagerAccess,
     handlerTaintedSecretManagerPath: taintedSecretManagerPath,
     handlerSecretManagerExternalServiceBridge: secretManagerExternalServiceBridge,
@@ -28948,6 +28957,30 @@ function hasPythonHandlerVisualContextPromptCacheBridge(source: string): boolean
     [
       /\b(?:prompt_cache|semantic_cache|llm_cache|response_cache|cache_client|cache|redis|upstash)\s*(?:\.\s*[A-Za-z_]\w*){0,4}\s*\.\s*(?:set|put|write|save|store|upsert|remember|add|insert)\s*\(([\s\S]{0,2400})\)/giu,
       /\b(?:write_prompt_cache|cache_prompt_context|store_prompt_cache_entry|upsert_semantic_cache_entry|write_semantic_cache)\s*\(([\s\S]{0,2400})\)/giu
+    ],
+    source,
+    identifiers
+  );
+}
+
+function hasJavaScriptHandlerVisualContextTaskQueueBridge(source: string): boolean {
+  const identifiers = extractJavaScriptVisualContextIdentifiers(source);
+  return identifiers.length > 0 && callExpressionReferencesAnyIdentifier(
+    [
+      /\b(?:taskQueueClient|taskQueue|queueClient|jobQueue|backgroundQueue|bullQueue|bullmq|workerQueue|agentQueue|workflowQueue|temporalClient|inngest|qstash|sqs|sqsClient|pubsub|pubSub|publisher|eventBus)\s*(?:\.\s*[A-Za-z_$][\w$]*){0,4}\s*\.\s*(?:enqueue|add|addJob|publish|send|sendMessage|dispatch|schedule|createJob|push|submit)\s*\(([\s\S]{0,2400})\)/giu,
+      /\b(?:enqueueAgentJob|enqueueTask|dispatchBackgroundAgent|scheduleAgentRun|queueAgentTask)\s*\(([\s\S]{0,2400})\)/giu
+    ],
+    source,
+    identifiers
+  );
+}
+
+function hasPythonHandlerVisualContextTaskQueueBridge(source: string): boolean {
+  const identifiers = extractPythonVisualContextIdentifiers(source);
+  return identifiers.length > 0 && callExpressionReferencesAnyIdentifier(
+    [
+      /\b(?:task_queue_client|task_queue|queue_client|job_queue|background_queue|bull_queue|worker_queue|agent_queue|workflow_queue|temporal_client|inngest|qstash|sqs|sqs_client|pubsub|pub_sub|publisher|event_bus)\s*(?:\.\s*[A-Za-z_]\w*){0,4}\s*\.\s*(?:enqueue|add|add_job|publish|send|send_message|dispatch|schedule|create_job|push|submit)\s*\(([\s\S]{0,2400})\)/giu,
+      /\b(?:enqueue_agent_job|enqueue_task|dispatch_background_agent|schedule_agent_run|queue_agent_task)\s*\(([\s\S]{0,2400})\)/giu
     ],
     source,
     identifiers
@@ -33426,6 +33459,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   visual_context_training_dataset_bridge: boolean;
   visual_context_telemetry_bridge: boolean;
   visual_context_prompt_cache_bridge: boolean;
+  visual_context_task_queue_bridge: boolean;
   secret_manager_access: boolean;
   tainted_secret_manager_path: boolean;
   secret_manager_external_service_bridge: boolean;
@@ -33625,6 +33659,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   const handlerVisualContextTrainingDatasetBridge = handler?.handlerVisualContextTrainingDatasetBridge === true;
   const handlerVisualContextTelemetryBridge = handler?.handlerVisualContextTelemetryBridge === true;
   const handlerVisualContextPromptCacheBridge = handler?.handlerVisualContextPromptCacheBridge === true;
+  const handlerVisualContextTaskQueueBridge = handler?.handlerVisualContextTaskQueueBridge === true;
   const handlerSecretManagerAccess = handler?.handlerSecretManagerAccess === true;
   const handlerTaintedSecretManagerPath = handler?.handlerTaintedSecretManagerPath === true;
   const handlerSecretManagerExternalServiceBridge = handler?.handlerSecretManagerExternalServiceBridge === true;
@@ -33763,6 +33798,13 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   if (handlerVisualContextPromptCacheBridge) {
     classes.add("visual_context_prompt_cache_bridge");
     actions.add("read");
+    actions.add("write");
+    actions.add("remember");
+  }
+  if (handlerVisualContextTaskQueueBridge) {
+    classes.add("visual_context_task_queue_bridge");
+    actions.add("read");
+    actions.add("send");
     actions.add("write");
     actions.add("remember");
   }
@@ -34305,6 +34347,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerVisualContextTrainingDatasetBridge ||
       handlerVisualContextTelemetryBridge ||
       handlerVisualContextPromptCacheBridge ||
+      handlerVisualContextTaskQueueBridge ||
       handlerSecretManagerAccess ||
       handlerTaintedSecretManagerPath ||
       handlerSecretManagerExternalServiceBridge ||
@@ -34420,6 +34463,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerVisualContextTrainingDatasetBridge ||
       handlerVisualContextTelemetryBridge ||
       handlerVisualContextPromptCacheBridge ||
+      handlerVisualContextTaskQueueBridge ||
       handlerSecretManagerBrowserAutomationBridge ||
       handlerRagRetrievalBrowserAutomationBridge ||
       handlerAgentDelegation ||
@@ -34440,6 +34484,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerToolOutputTelemetryBridge ||
       handlerVisualContextTelemetryBridge ||
       handlerVisualContextPromptCacheBridge ||
+      handlerVisualContextTaskQueueBridge ||
       handlerSecretManagerPromptCacheBridge ||
       handlerToolOutputPromptCacheBridge ||
       handlerTrainingDatasetExport ||
@@ -34514,6 +34559,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       (handlerVisualContextTrainingDatasetBridge && handlerSecretEnvAccess) ||
       (handlerVisualContextTelemetryBridge && handlerSecretEnvAccess) ||
       (handlerVisualContextPromptCacheBridge && handlerSecretEnvAccess) ||
+      (handlerVisualContextTaskQueueBridge && handlerSecretEnvAccess) ||
       (handlerRagRetrievalBrowserAutomationBridge && handlerSecretEnvAccess) ||
       (handlerRagRetrievalMemoryBridge && handlerSecretEnvAccess) ||
       (handlerSafetyPolicyWrite && handlerSecretEnvAccess) ||
@@ -34563,6 +34609,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
     visual_context_training_dataset_bridge: handlerVisualContextTrainingDatasetBridge,
     visual_context_telemetry_bridge: handlerVisualContextTelemetryBridge,
     visual_context_prompt_cache_bridge: handlerVisualContextPromptCacheBridge,
+    visual_context_task_queue_bridge: handlerVisualContextTaskQueueBridge,
     secret_manager_access: handlerSecretManagerAccess,
     tainted_secret_manager_path: handlerTaintedSecretManagerPath,
     secret_manager_external_service_bridge: handlerSecretManagerExternalServiceBridge,
@@ -34769,6 +34816,7 @@ function authoritySignature(tool: SurfaceObject): string {
     metadata.visual_context_training_dataset_bridge === true ? "visual_context_training_dataset_bridge" : "",
     metadata.visual_context_telemetry_bridge === true ? "visual_context_telemetry_bridge" : "",
     metadata.visual_context_prompt_cache_bridge === true ? "visual_context_prompt_cache_bridge" : "",
+    metadata.visual_context_task_queue_bridge === true ? "visual_context_task_queue_bridge" : "",
     metadata.privileged_prompt_composition === true ? "privileged_prompt_composition" : "",
     metadata.tainted_shell_argument === true ? "tainted_shell_argument" : "",
     metadata.tainted_filesystem_path === true ? "tainted_filesystem_path" : "",
@@ -34898,6 +34946,7 @@ function isPrivilegedToolSurface(tool: SurfaceObject): boolean {
     tool.metadata.visual_context_training_dataset_bridge === true ||
     tool.metadata.visual_context_telemetry_bridge === true ||
     tool.metadata.visual_context_prompt_cache_bridge === true ||
+    tool.metadata.visual_context_task_queue_bridge === true ||
     tool.metadata.privileged_prompt_composition === true ||
     tool.metadata.tainted_shell_argument === true ||
     tool.metadata.tainted_filesystem_path === true ||

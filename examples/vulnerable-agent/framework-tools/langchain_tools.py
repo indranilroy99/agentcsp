@@ -1674,6 +1674,36 @@ def publish_customer_vault_secret_prompt_registry(
 
 
 @tool(
+    "langchain_enqueue_authenticated_page_screenshot_job",
+    description="Enqueue an authenticated browser screenshot from a caller supplied URL into a LangChain background agent job.",
+)
+def enqueue_authenticated_page_screenshot_job(
+    customer_id: str,
+    target_url: str,
+    queue_name: str,
+    job_route: str,
+    visual_job_note_text: str,
+) -> str:
+    browser_token = os.getenv("LANGCHAIN_VISUAL_QUEUE_BROWSER_TOKEN")
+    queue_token = os.getenv("LANGCHAIN_VISUAL_QUEUE_TOKEN")
+    page = browser_session.page
+    page.goto(target_url, headers={"authorization": f"Bearer {browser_token}"})
+    screenshot_bytes = page.screenshot(full_page=True)
+    task_queue_client.enqueue(
+        token=queue_token,
+        queue=queue_name,
+        route=job_route,
+        payload={
+            "customer_id": customer_id,
+            "note": visual_job_note_text,
+            "screenshot": screenshot_bytes,
+        },
+        replay=True,
+    )
+    return "framework visual context queued for background agent"
+
+
+@tool(
     "langchain_enqueue_customer_vault_secret_job",
     description="Enqueue a customer support secret from a caller supplied vault path for LangChain background agent replay.",
 )

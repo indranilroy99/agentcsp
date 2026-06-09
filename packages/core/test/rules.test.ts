@@ -6570,8 +6570,10 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerRagRetrievalMemoryBridgeFindings)).not.toContain("framework retrieved context remembered");
     const sourceHandlerTaskQueueFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-053");
     expect(sourceHandlerTaskQueueFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
+      "langchain_enqueue_authenticated_page_screenshot_job",
       "langchain_enqueue_customer_vault_secret_job",
       "langchain_enqueue_support_agent_job",
+      "source_enqueue_authenticated_page_screenshot_job",
       "source_enqueue_customer_vault_secret_job",
       "source_enqueue_support_agent_job"
     ]);
@@ -8136,6 +8138,7 @@ describe("rule engine", () => {
     const sourceHandlerBrowserAutomationFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-027");
     expect(sourceHandlerBrowserAutomationFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_cache_authenticated_page_screenshot_prompt",
+      "langchain_enqueue_authenticated_page_screenshot_job",
       "langchain_export_authenticated_page_screenshot_artifact",
       "langchain_export_authenticated_page_screenshot_trace",
       "langchain_export_authenticated_page_screenshot_training_dataset",
@@ -8146,6 +8149,7 @@ describe("rule engine", () => {
       "langchain_submit_retrieved_context_browser",
       "langchain_submit_customer_browser_form",
       "source_cache_authenticated_page_screenshot_prompt",
+      "source_enqueue_authenticated_page_screenshot_job",
       "source_export_authenticated_page_screenshot_artifact",
       "source_export_authenticated_page_screenshot_trace",
       "source_export_authenticated_page_screenshot_training_dataset",
@@ -8202,10 +8206,13 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerBrowserAutomationFindings)).not.toContain("framework visual context exported to telemetry");
     expect(JSON.stringify(sourceHandlerBrowserAutomationFindings)).not.toContain("source visual context cached for prompts");
     expect(JSON.stringify(sourceHandlerBrowserAutomationFindings)).not.toContain("framework visual context cached for prompts");
+    expect(JSON.stringify(sourceHandlerBrowserAutomationFindings)).not.toContain("source visual context queued for background agent");
+    expect(JSON.stringify(sourceHandlerBrowserAutomationFindings)).not.toContain("framework visual context queued for background agent");
     expect(JSON.stringify(sourceHandlerBrowserAutomationFindings)).not.toContain("Drive an authenticated browser session");
     const sourceHandlerTaintedBrowserTargetFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-040");
     expect(sourceHandlerTaintedBrowserTargetFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_cache_authenticated_page_screenshot_prompt",
+      "langchain_enqueue_authenticated_page_screenshot_job",
       "langchain_export_authenticated_page_screenshot_artifact",
       "langchain_export_authenticated_page_screenshot_trace",
       "langchain_export_authenticated_page_screenshot_training_dataset",
@@ -8216,6 +8223,7 @@ describe("rule engine", () => {
       "langchain_submit_retrieved_context_browser",
       "langchain_submit_customer_browser_form",
       "source_cache_authenticated_page_screenshot_prompt",
+      "source_enqueue_authenticated_page_screenshot_job",
       "source_export_authenticated_page_screenshot_artifact",
       "source_export_authenticated_page_screenshot_trace",
       "source_export_authenticated_page_screenshot_training_dataset",
@@ -8896,6 +8904,85 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerVisualContextPromptCacheBridgeFindings)).not.toContain("source visual context cached for prompts");
     expect(JSON.stringify(sourceHandlerVisualContextPromptCacheBridgeFindings)).not.toContain("framework visual context cached for prompts");
     expect(JSON.stringify(sourceHandlerVisualContextPromptCacheBridgeFindings)).not.toContain("Write an authenticated browser screenshot");
+    const sourceHandlerVisualContextTaskQueueBridgeFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-104");
+    expect(sourceHandlerVisualContextTaskQueueBridgeFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
+      "langchain_enqueue_authenticated_page_screenshot_job",
+      "source_enqueue_authenticated_page_screenshot_job"
+    ]);
+    expect(sourceHandlerVisualContextTaskQueueBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
+    expect(sourceHandlerVisualContextTaskQueueBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerVisualContextTaskQueueBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
+    expect(sourceHandlerVisualContextTaskQueueBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
+    expect(sourceHandlerVisualContextTaskQueueBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.source_tool_handler_redacted === true
+    )).toBe(true);
+    expect(sourceHandlerVisualContextTaskQueueBridgeFindings.every((finding) => finding.matched_object.metadata.handler_browser_automation === true)).toBe(true);
+    expect(sourceHandlerVisualContextTaskQueueBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.handler_tainted_browser_automation_target === true
+    )).toBe(true);
+    expect(sourceHandlerVisualContextTaskQueueBridgeFindings.every((finding) => finding.matched_object.metadata.handler_visual_context_capture === true)).toBe(true);
+    expect(sourceHandlerVisualContextTaskQueueBridgeFindings.every((finding) => finding.matched_object.metadata.handler_task_queue_enqueue === true)).toBe(true);
+    expect(sourceHandlerVisualContextTaskQueueBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.handler_visual_context_task_queue_bridge === true
+    )).toBe(true);
+    expect(sourceHandlerVisualContextTaskQueueBridgeFindings.every((finding) => finding.matched_object.metadata.handler_tainted_task_payload === true)).toBe(true);
+    expect(sourceHandlerVisualContextTaskQueueBridgeFindings.every((finding) => finding.matched_object.metadata.handler_tainted_task_routing === true)).toBe(true);
+    expect(sourceHandlerVisualContextTaskQueueBridgeFindings.every((finding) => finding.matched_object.metadata.browser_automation === true)).toBe(true);
+    expect(sourceHandlerVisualContextTaskQueueBridgeFindings.every((finding) => finding.matched_object.metadata.tainted_browser_automation_target === true)).toBe(true);
+    expect(sourceHandlerVisualContextTaskQueueBridgeFindings.every((finding) => finding.matched_object.metadata.visual_context_capture === true)).toBe(true);
+    expect(sourceHandlerVisualContextTaskQueueBridgeFindings.every((finding) => finding.matched_object.metadata.task_queue_enqueue === true)).toBe(true);
+    expect(sourceHandlerVisualContextTaskQueueBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.visual_context_task_queue_bridge === true
+    )).toBe(true);
+    expect(sourceHandlerVisualContextTaskQueueBridgeFindings.every((finding) => finding.matched_object.metadata.tainted_task_payload === true)).toBe(true);
+    expect(sourceHandlerVisualContextTaskQueueBridgeFindings.every((finding) => finding.matched_object.metadata.tainted_task_routing === true)).toBe(true);
+    expect(sourceHandlerVisualContextTaskQueueBridgeFindings.every((finding) => finding.matched_object.metadata.handler_secret_env_access === true)).toBe(true);
+    expect(sourceHandlerVisualContextTaskQueueBridgeFindings.every((finding) => finding.matched_object.metadata.accepts_url_input === true)).toBe(true);
+    expect(sourceHandlerVisualContextTaskQueueBridgeFindings.every((finding) => finding.matched_object.metadata.accepts_content_like_input === true)).toBe(true);
+    expect(sourceHandlerVisualContextTaskQueueBridgeFindings.every((finding) => finding.matched_object.metadata.accepts_customer_data_input === true)).toBe(true);
+    expect(sourceHandlerVisualContextTaskQueueBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.authority_classes.includes("visual_context_capture")
+    )).toBe(true);
+    expect(sourceHandlerVisualContextTaskQueueBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.authority_classes.includes("task_queue_enqueue")
+    )).toBe(true);
+    expect(sourceHandlerVisualContextTaskQueueBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.authority_classes.includes("visual_context_task_queue_bridge")
+    )).toBe(true);
+    expect(sourceHandlerVisualContextTaskQueueBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.authority_classes.includes("tainted_task_routing")
+    )).toBe(true);
+    expect(sourceHandlerVisualContextTaskQueueBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.handler_authority_classes.includes("handler_visual_context_capture")
+    )).toBe(true);
+    expect(sourceHandlerVisualContextTaskQueueBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.handler_authority_classes.includes("handler_task_queue_enqueue")
+    )).toBe(true);
+    expect(sourceHandlerVisualContextTaskQueueBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.handler_authority_classes.includes("handler_visual_context_task_queue_bridge")
+    )).toBe(true);
+    expect(sourceHandlerVisualContextTaskQueueBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.handler_authority_classes.includes("handler_tainted_task_routing")
+    )).toBe(true);
+    expect(sourceHandlerVisualContextTaskQueueBridgeFindings.every((finding) => finding.matched_object.actions.includes("read"))).toBe(true);
+    expect(sourceHandlerVisualContextTaskQueueBridgeFindings.every((finding) => finding.matched_object.actions.includes("send"))).toBe(true);
+    expect(sourceHandlerVisualContextTaskQueueBridgeFindings.every((finding) => finding.matched_object.actions.includes("write"))).toBe(true);
+    expect(sourceHandlerVisualContextTaskQueueBridgeFindings.every((finding) => finding.matched_object.actions.includes("remember"))).toBe(true);
+    expect(sourceHandlerVisualContextTaskQueueBridgeFindings.every((finding) => finding.matched_object.external_reach === true)).toBe(true);
+    expect(sourceHandlerVisualContextTaskQueueBridgeFindings.every((finding) => finding.matched_object.secret_exposure === true)).toBe(true);
+    expect(sourceHandlerVisualContextTaskQueueBridgeFindings.every((finding) => finding.matched_object.side_effect === true)).toBe(true);
+    expect(sourceHandlerVisualContextTaskQueueBridgeFindings.every((finding) => finding.matched_object.reversible === false)).toBe(true);
+    expect(JSON.stringify(sourceHandlerVisualContextTaskQueueBridgeFindings)).not.toContain("authenticatedBrowserPage");
+    expect(JSON.stringify(sourceHandlerVisualContextTaskQueueBridgeFindings)).not.toContain("browser_session.page");
+    expect(JSON.stringify(sourceHandlerVisualContextTaskQueueBridgeFindings)).not.toContain("page.goto");
+    expect(JSON.stringify(sourceHandlerVisualContextTaskQueueBridgeFindings)).not.toContain("page.screenshot");
+    expect(JSON.stringify(sourceHandlerVisualContextTaskQueueBridgeFindings)).not.toContain("screenshot.toString");
+    expect(JSON.stringify(sourceHandlerVisualContextTaskQueueBridgeFindings)).not.toContain("screenshot_bytes");
+    expect(JSON.stringify(sourceHandlerVisualContextTaskQueueBridgeFindings)).not.toContain("taskQueueClient.enqueue");
+    expect(JSON.stringify(sourceHandlerVisualContextTaskQueueBridgeFindings)).not.toContain("task_queue_client.enqueue");
+    expect(JSON.stringify(sourceHandlerVisualContextTaskQueueBridgeFindings)).not.toContain("source visual context queued for background agent");
+    expect(JSON.stringify(sourceHandlerVisualContextTaskQueueBridgeFindings)).not.toContain("framework visual context queued for background agent");
+    expect(JSON.stringify(sourceHandlerVisualContextTaskQueueBridgeFindings)).not.toContain("Enqueue an authenticated browser screenshot");
     const sourceHandlerSecretManagerFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-028");
     expect(sourceHandlerSecretManagerFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_apply_vault_secret_guardrail_override",
