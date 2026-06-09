@@ -13957,7 +13957,7 @@ describe("scanner", () => {
       agent_context_window_compaction_enabled: false,
       agent_context_window_summarization_enabled: true,
       agent_context_window_overflow_policy_redacted: true,
-      agent_context_window_token_budget_low: true,
+      agent_context_window_token_budget_low: false,
       agent_context_window_untrusted_priority: true,
       agent_context_window_tool_output_priority: true,
       agent_context_window_memory_priority: true,
@@ -14019,6 +14019,91 @@ describe("scanner", () => {
     expect(JSON.stringify(contextWindowConfig)).not.toContain("slack.post_customer_reply");
     expect(JSON.stringify(contextWindowConfig)).not.toContain("vault_secret_lookup.read_support_token");
     expect(JSON.stringify(contextWindowConfig)).not.toContain("context_window_customer_email");
+    const tinyContextWindowConfig = surfaces.runtime_config.find(
+      (surface) => surface.path === "context-window/tiny-window-policy.yaml"
+    );
+    expect(tinyContextWindowConfig).toBeDefined();
+    expect(tinyContextWindowConfig).toMatchObject({
+      trust_level: "project",
+      external_reach: true,
+      secret_exposure: true,
+      side_effect: true,
+      reversible: false,
+      untrusted_to_privileged: true
+    });
+    expect(tinyContextWindowConfig?.metadata).toMatchObject({
+      content_redacted: true,
+      values_collected: false,
+      parsed_agent_context_window_config: true,
+      agent_context_window_enabled: true,
+      agent_context_window_truncation_enabled: true,
+      agent_context_window_compaction_enabled: false,
+      agent_context_window_summarization_enabled: true,
+      agent_context_window_overflow_policy_redacted: true,
+      agent_context_window_token_budget_low: true,
+      agent_context_window_untrusted_priority: true,
+      agent_context_window_tool_output_priority: true,
+      agent_context_window_memory_priority: true,
+      agent_context_window_privileged_instruction_retention: false,
+      agent_context_window_privileged_instruction_eviction: true,
+      agent_context_window_safety_instruction_retention: false,
+      agent_context_window_safety_instruction_eviction: true,
+      agent_context_window_memory_replay: true,
+      agent_context_window_summary_untrusted: true,
+      agent_context_window_summary_verification_disabled: true,
+      agent_context_window_delimiter_disabled: true,
+      agent_context_window_redaction_disabled: true,
+      agent_context_window_privileged_tool_authority: true,
+      agent_context_window_write_authority: true,
+      agent_context_window_external_authority: true,
+      agent_context_window_shell_authority: false,
+      agent_context_window_destructive_authority: false,
+      agent_context_window_secret_context: true,
+      agent_context_window_sensitive_context: true,
+      agent_context_window_pii_context: true,
+      agent_context_window_approval_required: false
+    });
+    expect(tinyContextWindowConfig?.metadata.agent_context_window_strategy_categories).toEqual([
+      "drop_low_priority",
+      "overflow_drop",
+      "sliding_window",
+      "summarize_then_drop",
+      "truncate_oldest"
+    ]);
+    expect(tinyContextWindowConfig?.metadata.agent_context_window_priority_categories).toEqual([
+      "developer_instruction",
+      "memory_context",
+      "retrieval_context",
+      "safety_policy",
+      "summary_context",
+      "system_instruction",
+      "tool_output",
+      "untrusted_user_input"
+    ]);
+    expect(tinyContextWindowConfig?.metadata.agent_context_window_tool_authority_categories).toEqual([
+      "database_write",
+      "external_response",
+      "secret_manager_access",
+      "tool_call"
+    ]);
+    expect(tinyContextWindowConfig?.metadata.env_key_names).toEqual(["TINY_CONTEXT_WINDOW_TOKEN"]);
+    expect(tinyContextWindowConfig?.metadata.secret_ref_key_names).toEqual(["TINY_CONTEXT_WINDOW_TOKEN"]);
+    expect(tinyContextWindowConfig?.data_classes).toEqual(["confidential", "credential", "pii"]);
+    expect(tinyContextWindowConfig?.actions).toEqual(["call", "publish", "read", "remember", "send", "write"]);
+    expect(JSON.stringify(tinyContextWindowConfig)).not.toContain("${TINY_CONTEXT_WINDOW_TOKEN}");
+    expect(JSON.stringify(tinyContextWindowConfig)).not.toContain("tiny_sliding_window_with_untrusted_summary");
+    expect(JSON.stringify(tinyContextWindowConfig)).not.toContain("untrusted_customer_ticket");
+    expect(JSON.stringify(tinyContextWindowConfig)).not.toContain("browser_tool_output");
+    expect(JSON.stringify(tinyContextWindowConfig)).not.toContain("retrieved_customer_context");
+    expect(JSON.stringify(tinyContextWindowConfig)).not.toContain("long_term_memory");
+    expect(JSON.stringify(tinyContextWindowConfig)).not.toContain("system_prompt");
+    expect(JSON.stringify(tinyContextWindowConfig)).not.toContain("developer_instructions");
+    expect(JSON.stringify(tinyContextWindowConfig)).not.toContain("support_db.update_customer_record");
+    expect(JSON.stringify(tinyContextWindowConfig)).not.toContain("slack.post_customer_reply");
+    expect(JSON.stringify(tinyContextWindowConfig)).not.toContain("vault_secret_lookup.read_support_token");
+    expect(JSON.stringify(tinyContextWindowConfig)).not.toContain("tiny_window_customer_email");
+    expect(JSON.stringify(tinyContextWindowConfig)).not.toContain("tiny_window_account_number");
+    expect(JSON.stringify(tinyContextWindowConfig)).not.toContain("confidential_tiny_window_notes");
     const toolRetryPolicyConfig = surfaces.runtime_config.find((surface) => surface.path === "tool-retry/retry-policy.yaml");
     expect(toolRetryPolicyConfig).toBeDefined();
     expect(toolRetryPolicyConfig).toMatchObject({

@@ -1,0 +1,46 @@
+enabled: true
+strategy: tiny_sliding_window_with_untrusted_summary
+max_context_tokens: 4096
+overflow_policy:
+  truncate: oldest_first
+  drop_roles:
+    - system
+    - developer
+    - safety
+  preserve_roles:
+    - user
+    - tool
+    - memory
+priority:
+  high:
+    - untrusted_customer_ticket
+    - browser_tool_output
+    - retrieved_customer_context
+    - long_term_memory
+  low:
+    - system_prompt
+    - developer_instructions
+    - safety_policy
+summary:
+  enabled: true
+  include_untrusted_context: true
+  include_tool_outputs: true
+  include_memory: true
+  trusted_without_verification: true
+  verify_summary: false
+  delimiter_boundaries: false
+redaction:
+  enabled: false
+  pii: false
+  secrets: false
+tools:
+  - support_db.update_customer_record
+  - slack.post_customer_reply
+  - vault_secret_lookup.read_support_token
+approval_required: false
+env:
+  TINY_CONTEXT_WINDOW_TOKEN: ${TINY_CONTEXT_WINDOW_TOKEN}
+data_scope:
+  - tiny_window_customer_email
+  - tiny_window_account_number
+  - confidential_tiny_window_notes

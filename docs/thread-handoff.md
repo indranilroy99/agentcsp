@@ -1260,11 +1260,12 @@ The current iteration adds:
 
 The current iteration adds:
 
-- first-class redacted metadata for context-window, token-budget, truncation, compaction, summarization, and overflow-policy posture, including strategy categories, priority categories, privileged instruction retention or eviction, safety-policy retention or eviction, summary verification, delimiter/redaction posture, privileged tool categories, credential exposure, and approval boundaries
+- first-class redacted metadata for context-window, token-budget, truncation, compaction, summarization, and overflow-policy posture, including low token-budget detection, strategy categories, priority categories, privileged instruction retention or eviction, safety-policy retention or eviction, summary verification, delimiter/redaction posture, privileged tool categories, credential exposure, and approval boundaries
 - vulnerable fixture coverage for a sliding-window support-agent policy that preserves untrusted customer, tool-output, retrieval, and memory context while dropping system, developer, and safety instructions, trusting summaries without verification, disabling delimiters and redaction, and allowing database, Slack, and vault tool authority without approval
 - safe fixture coverage for a pinned-system-first context-window policy that preserves system, developer, and safety instructions, drops lower-trust user/tool context first, verifies summaries, keeps delimiters and redaction enabled, and requires approval
 - rule `AGENTCSP-RUNTIME-055` for context-window instruction eviction that combines enabled truncation, untrusted/tool/memory priority, privileged instruction eviction, safety-policy eviction, unverified summaries, privileged tool authority, credential exposure, and missing approval
 - rule `AGENTCSP-RUNTIME-071` for unverified context-window summaries that replay untrusted, tool, retrieval, or memory context into privileged tools while delimiters, redaction, and approval are disabled
+- rule `AGENTCSP-RUNTIME-129` for tiny context windows that let untrusted, tool, retrieval, or memory context force privileged and safety instruction eviction while privileged tools, credentials, disabled verification/redaction, and missing approval are present
 - scanner, rule, fixture verifier, and redaction coverage proving raw priority labels, summary strategy names, tool names, data-scope labels, and token placeholders stay redacted
 
 ## Agent Network Egress Metadata Pass

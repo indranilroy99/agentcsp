@@ -1318,6 +1318,8 @@ Agent context-window metadata may include:
 - `agent_context_window_redaction_disabled`
 - `agent_context_window_tool_authority_categories`
 - `agent_context_window_privileged_tool_authority`
+
+`agent_context_window_token_budget_low` is set only for aggressive context windows at or below 8,192 tokens. AgentCSP uses that signal to separate normal bounded context management from tiny-window policies where untrusted, tool, retrieval, or memory content can force system, developer, or safety instructions out of scope.
 - `agent_context_window_write_authority`
 - `agent_context_window_external_authority`
 - `agent_context_window_shell_authority`

@@ -200,6 +200,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-111")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-070")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-071")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-129")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-030")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-088")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-RUNTIME-031")).toBe(true);
@@ -3629,9 +3630,16 @@ describe("rule engine", () => {
     expect(JSON.stringify(runtimeComputerUseCredentialTransferFindings[0])).not.toContain("desktop_account_number");
     expect(JSON.stringify(runtimeComputerUseCredentialTransferFindings[0])).not.toContain("confidential_desktop_notes");
     const runtimeContextWindowFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-RUNTIME-055");
-    expect(runtimeContextWindowFindings).toHaveLength(1);
-    expect(runtimeContextWindowFindings[0]?.matched_object.path).toBe("context-window/truncation-policy.yaml");
-    expect(runtimeContextWindowFindings[0]?.matched_object.metadata).toMatchObject({
+    expect(runtimeContextWindowFindings).toHaveLength(2);
+    expect(runtimeContextWindowFindings.map((finding) => finding.matched_object.path).sort()).toEqual([
+      "context-window/tiny-window-policy.yaml",
+      "context-window/truncation-policy.yaml"
+    ]);
+    const truncationContextWindowFinding = runtimeContextWindowFindings.find(
+      (finding) => finding.matched_object.path === "context-window/truncation-policy.yaml"
+    );
+    expect(truncationContextWindowFinding).toBeDefined();
+    expect(truncationContextWindowFinding?.matched_object.metadata).toMatchObject({
       parsed_agent_context_window_config: true,
       agent_context_window_enabled: true,
       agent_context_window_truncation_enabled: true,
@@ -3642,30 +3650,37 @@ describe("rule engine", () => {
       agent_context_window_summary_verification_disabled: true,
       agent_context_window_approval_required: false
     });
-    expect(runtimeContextWindowFindings[0]?.matched_object.metadata.agent_context_window_tool_authority_categories).toEqual([
+    expect(truncationContextWindowFinding?.matched_object.metadata.agent_context_window_tool_authority_categories).toEqual([
       "database_write",
       "external_response",
       "secret_manager_access",
       "tool_call"
     ]);
-    expect(runtimeContextWindowFindings[0]?.severity).toBe("critical");
-    expect(runtimeContextWindowFindings[0]?.confidence).toBe("very_high");
-    expect(runtimeContextWindowFindings[0]?.recommended_control).toBe("require_approval");
-    expect(JSON.stringify(runtimeContextWindowFindings[0])).not.toContain("${CONTEXT_WINDOW_TOKEN}");
-    expect(JSON.stringify(runtimeContextWindowFindings[0])).not.toContain("sliding_window_with_summary");
-    expect(JSON.stringify(runtimeContextWindowFindings[0])).not.toContain("untrusted_customer_ticket");
-    expect(JSON.stringify(runtimeContextWindowFindings[0])).not.toContain("browser_tool_output");
-    expect(JSON.stringify(runtimeContextWindowFindings[0])).not.toContain("retrieved_customer_context");
-    expect(JSON.stringify(runtimeContextWindowFindings[0])).not.toContain("long_term_memory");
-    expect(JSON.stringify(runtimeContextWindowFindings[0])).not.toContain("system_prompt");
-    expect(JSON.stringify(runtimeContextWindowFindings[0])).not.toContain("developer_instructions");
-    expect(JSON.stringify(runtimeContextWindowFindings[0])).not.toContain("support_db.update_customer_record");
-    expect(JSON.stringify(runtimeContextWindowFindings[0])).not.toContain("slack.post_customer_reply");
-    expect(JSON.stringify(runtimeContextWindowFindings[0])).not.toContain("context_window_customer_email");
+    expect(truncationContextWindowFinding?.severity).toBe("critical");
+    expect(truncationContextWindowFinding?.confidence).toBe("very_high");
+    expect(truncationContextWindowFinding?.recommended_control).toBe("require_approval");
+    expect(JSON.stringify(truncationContextWindowFinding)).not.toContain("${CONTEXT_WINDOW_TOKEN}");
+    expect(JSON.stringify(truncationContextWindowFinding)).not.toContain("sliding_window_with_summary");
+    expect(JSON.stringify(truncationContextWindowFinding)).not.toContain("untrusted_customer_ticket");
+    expect(JSON.stringify(truncationContextWindowFinding)).not.toContain("browser_tool_output");
+    expect(JSON.stringify(truncationContextWindowFinding)).not.toContain("retrieved_customer_context");
+    expect(JSON.stringify(truncationContextWindowFinding)).not.toContain("long_term_memory");
+    expect(JSON.stringify(truncationContextWindowFinding)).not.toContain("system_prompt");
+    expect(JSON.stringify(truncationContextWindowFinding)).not.toContain("developer_instructions");
+    expect(JSON.stringify(truncationContextWindowFinding)).not.toContain("support_db.update_customer_record");
+    expect(JSON.stringify(truncationContextWindowFinding)).not.toContain("slack.post_customer_reply");
+    expect(JSON.stringify(truncationContextWindowFinding)).not.toContain("context_window_customer_email");
     const runtimeContextWindowSummaryFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-RUNTIME-071");
-    expect(runtimeContextWindowSummaryFindings).toHaveLength(1);
-    expect(runtimeContextWindowSummaryFindings[0]?.matched_object.path).toBe("context-window/truncation-policy.yaml");
-    expect(runtimeContextWindowSummaryFindings[0]?.matched_object.metadata).toMatchObject({
+    expect(runtimeContextWindowSummaryFindings).toHaveLength(2);
+    expect(runtimeContextWindowSummaryFindings.map((finding) => finding.matched_object.path).sort()).toEqual([
+      "context-window/tiny-window-policy.yaml",
+      "context-window/truncation-policy.yaml"
+    ]);
+    const truncationContextWindowSummaryFinding = runtimeContextWindowSummaryFindings.find(
+      (finding) => finding.matched_object.path === "context-window/truncation-policy.yaml"
+    );
+    expect(truncationContextWindowSummaryFinding).toBeDefined();
+    expect(truncationContextWindowSummaryFinding?.matched_object.metadata).toMatchObject({
       parsed_agent_context_window_config: true,
       agent_context_window_summarization_enabled: true,
       agent_context_window_summary_untrusted: true,
@@ -3676,7 +3691,7 @@ describe("rule engine", () => {
       agent_context_window_privileged_tool_authority: true,
       agent_context_window_approval_required: false
     });
-    expect(runtimeContextWindowSummaryFindings[0]?.matched_object.metadata.agent_context_window_priority_categories).toEqual([
+    expect(truncationContextWindowSummaryFinding?.matched_object.metadata.agent_context_window_priority_categories).toEqual([
       "developer_instruction",
       "memory_context",
       "retrieval_context",
@@ -3686,16 +3701,67 @@ describe("rule engine", () => {
       "tool_output",
       "untrusted_user_input"
     ]);
-    expect(runtimeContextWindowSummaryFindings[0]?.severity).toBe("critical");
-    expect(runtimeContextWindowSummaryFindings[0]?.confidence).toBe("very_high");
-    expect(runtimeContextWindowSummaryFindings[0]?.recommended_control).toBe("redact");
-    expect(JSON.stringify(runtimeContextWindowSummaryFindings[0])).not.toContain("${CONTEXT_WINDOW_TOKEN}");
-    expect(JSON.stringify(runtimeContextWindowSummaryFindings[0])).not.toContain("sliding_window_with_summary");
-    expect(JSON.stringify(runtimeContextWindowSummaryFindings[0])).not.toContain("untrusted_customer_ticket");
-    expect(JSON.stringify(runtimeContextWindowSummaryFindings[0])).not.toContain("browser_tool_output");
-    expect(JSON.stringify(runtimeContextWindowSummaryFindings[0])).not.toContain("retrieved_customer_context");
-    expect(JSON.stringify(runtimeContextWindowSummaryFindings[0])).not.toContain("long_term_memory");
-    expect(JSON.stringify(runtimeContextWindowSummaryFindings[0])).not.toContain("context_window_customer_email");
+    expect(truncationContextWindowSummaryFinding?.severity).toBe("critical");
+    expect(truncationContextWindowSummaryFinding?.confidence).toBe("very_high");
+    expect(truncationContextWindowSummaryFinding?.recommended_control).toBe("redact");
+    expect(JSON.stringify(truncationContextWindowSummaryFinding)).not.toContain("${CONTEXT_WINDOW_TOKEN}");
+    expect(JSON.stringify(truncationContextWindowSummaryFinding)).not.toContain("sliding_window_with_summary");
+    expect(JSON.stringify(truncationContextWindowSummaryFinding)).not.toContain("untrusted_customer_ticket");
+    expect(JSON.stringify(truncationContextWindowSummaryFinding)).not.toContain("browser_tool_output");
+    expect(JSON.stringify(truncationContextWindowSummaryFinding)).not.toContain("retrieved_customer_context");
+    expect(JSON.stringify(truncationContextWindowSummaryFinding)).not.toContain("long_term_memory");
+    expect(JSON.stringify(truncationContextWindowSummaryFinding)).not.toContain("context_window_customer_email");
+    const runtimeLowBudgetContextWindowFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-RUNTIME-129");
+    expect(runtimeLowBudgetContextWindowFindings).toHaveLength(1);
+    expect(runtimeLowBudgetContextWindowFindings[0]?.matched_object.path).toBe("context-window/tiny-window-policy.yaml");
+    expect(runtimeLowBudgetContextWindowFindings[0]?.matched_object.metadata).toMatchObject({
+      parsed_agent_context_window_config: true,
+      agent_context_window_enabled: true,
+      agent_context_window_token_budget_low: true,
+      agent_context_window_truncation_enabled: true,
+      agent_context_window_untrusted_priority: true,
+      agent_context_window_tool_output_priority: true,
+      agent_context_window_memory_priority: true,
+      agent_context_window_privileged_instruction_eviction: true,
+      agent_context_window_safety_instruction_eviction: true,
+      agent_context_window_summary_verification_disabled: true,
+      agent_context_window_delimiter_disabled: true,
+      agent_context_window_redaction_disabled: true,
+      agent_context_window_privileged_tool_authority: true,
+      agent_context_window_secret_context: true,
+      agent_context_window_approval_required: false
+    });
+    expect(runtimeLowBudgetContextWindowFindings[0]?.matched_object.metadata.agent_context_window_tool_authority_categories).toEqual([
+      "database_write",
+      "external_response",
+      "secret_manager_access",
+      "tool_call"
+    ]);
+    expect(runtimeLowBudgetContextWindowFindings[0]?.matched_object.data_classes).toEqual([
+      "confidential",
+      "credential",
+      "pii"
+    ]);
+    expect(runtimeLowBudgetContextWindowFindings[0]?.matched_object.actions).toContain("write");
+    expect(runtimeLowBudgetContextWindowFindings[0]?.matched_object.external_reach).toBe(true);
+    expect(runtimeLowBudgetContextWindowFindings[0]?.matched_object.secret_exposure).toBe(true);
+    expect(runtimeLowBudgetContextWindowFindings[0]?.matched_object.side_effect).toBe(true);
+    expect(runtimeLowBudgetContextWindowFindings[0]?.matched_object.untrusted_to_privileged).toBe(true);
+    expect(runtimeLowBudgetContextWindowFindings[0]?.severity).toBe("critical");
+    expect(runtimeLowBudgetContextWindowFindings[0]?.confidence).toBe("very_high");
+    expect(runtimeLowBudgetContextWindowFindings[0]?.recommended_control).toBe("require_approval");
+    expect(JSON.stringify(runtimeLowBudgetContextWindowFindings[0])).not.toContain("${TINY_CONTEXT_WINDOW_TOKEN}");
+    expect(JSON.stringify(runtimeLowBudgetContextWindowFindings[0])).not.toContain("tiny_sliding_window_with_untrusted_summary");
+    expect(JSON.stringify(runtimeLowBudgetContextWindowFindings[0])).not.toContain("untrusted_customer_ticket");
+    expect(JSON.stringify(runtimeLowBudgetContextWindowFindings[0])).not.toContain("browser_tool_output");
+    expect(JSON.stringify(runtimeLowBudgetContextWindowFindings[0])).not.toContain("retrieved_customer_context");
+    expect(JSON.stringify(runtimeLowBudgetContextWindowFindings[0])).not.toContain("long_term_memory");
+    expect(JSON.stringify(runtimeLowBudgetContextWindowFindings[0])).not.toContain("support_db.update_customer_record");
+    expect(JSON.stringify(runtimeLowBudgetContextWindowFindings[0])).not.toContain("slack.post_customer_reply");
+    expect(JSON.stringify(runtimeLowBudgetContextWindowFindings[0])).not.toContain("vault_secret_lookup.read_support_token");
+    expect(JSON.stringify(runtimeLowBudgetContextWindowFindings[0])).not.toContain("tiny_window_customer_email");
+    expect(JSON.stringify(runtimeLowBudgetContextWindowFindings[0])).not.toContain("tiny_window_account_number");
+    expect(JSON.stringify(runtimeLowBudgetContextWindowFindings[0])).not.toContain("confidential_tiny_window_notes");
     const runtimeToolRetryFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-RUNTIME-056");
     expect(runtimeToolRetryFindings).toHaveLength(1);
     expect(runtimeToolRetryFindings[0]?.matched_object.path).toBe("tool-retry/retry-policy.yaml");

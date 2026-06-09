@@ -15029,9 +15029,9 @@ function hasAgentContextWindowOverflowPolicySignal(fields: RuntimeField[]): bool
 function hasAgentContextWindowLowTokenBudgetSignal(fields: RuntimeField[]): boolean {
   return fields.some((field) => {
     if (!/\b(max context tokens|max tokens|context budget|token budget|window tokens)\b/iu.test(agentContextWindowFieldText(field))) return false;
-    if (typeof field.value === "number") return field.value > 0 && field.value <= 64000;
+    if (typeof field.value === "number") return field.value > 0 && field.value <= 8192;
     const numeric = Number(String(field.value).replace(/[^0-9.]/gu, ""));
-    return Number.isFinite(numeric) && numeric > 0 && numeric <= 64000;
+    return Number.isFinite(numeric) && numeric > 0 && numeric <= 8192;
   });
 }
 
