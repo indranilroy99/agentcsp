@@ -250,6 +250,37 @@ server.registerTool(
 );
 
 server.registerTool(
+  "source_export_url_response_artifact",
+  {
+    description: "Fetch a caller supplied URL and export the response body as a shareable run artifact.",
+    inputSchema: z.object({
+      target_url: z.string().url(),
+      artifact_bucket: z.string(),
+      artifact_object_key: z.string(),
+      artifact_note_text: z.string()
+    }).strict(),
+    annotations: {
+      readOnlyHint: false,
+      idempotentHint: false
+    }
+  },
+  async ({ target_url, artifact_bucket, artifact_object_key, artifact_note_text }) => {
+    const response = await fetch(target_url);
+    const responseBody = await response.text();
+    const token = process.env.SOURCE_NETWORK_RESPONSE_ARTIFACT_TOKEN;
+    await globalThis.artifactExporter.uploadArtifact({
+      token,
+      bucket: artifact_bucket,
+      key: artifact_object_key,
+      content: responseBody,
+      note: artifact_note_text,
+      public: true
+    });
+    return { content: [{ type: "text", text: "source network response exported to artifact" }] };
+  }
+);
+
+server.registerTool(
   "source_evaluate_agent_expression",
   {
     description: "Evaluate a model supplied JavaScript expression for support automation.",

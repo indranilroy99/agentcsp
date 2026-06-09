@@ -304,6 +304,7 @@ Examples:
 - source-defined tool handler plus caller-selected URL fetch plus runtime prompt-cache credentials plus untrusted network response persisted into replayable prompt, LLM, response, or semantic caches with caller-selected cache keys or namespaces
 - source-defined tool handler plus caller-selected URL fetch plus runtime training credentials plus untrusted network response exported into fine-tuning, eval, or model-improvement datasets with caller-selected dataset routes
 - source-defined tool handler plus caller-selected URL fetch plus runtime telemetry credentials plus untrusted network response exported into tracing, logging, or observability systems with caller-selected trace routing
+- source-defined tool handler plus caller-selected URL fetch plus runtime artifact credentials plus untrusted network response exported into public or shareable run artifacts with caller-selected artifact routing
 - source-defined tool handler plus caller-selected secret-manager path plus runtime A2A credentials plus returned secret material delegated to caller-selected remote agents or A2A peers
 - source-defined tool handler plus caller-selected secret-manager path plus authenticated browser automation plus returned secret material injected into caller-selected browser targets or selectors
 - source-defined tool handler plus caller-selected secret-manager path plus runtime authorization credentials plus returned secret material used to create broad, wildcard, long-lived, or approval-free tool grants

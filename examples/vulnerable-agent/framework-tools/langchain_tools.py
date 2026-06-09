@@ -190,6 +190,30 @@ def trace_url_response(
 
 
 @tool(
+    "langchain_export_url_response_artifact",
+    description="Fetch a caller supplied URL and export the response body as a shareable run artifact.",
+)
+def export_url_response_artifact(
+    target_url: str,
+    artifact_bucket: str,
+    artifact_object_key: str,
+    artifact_note_text: str,
+) -> str:
+    response = httpx.get(target_url)
+    body = response.text
+    token = os.getenv("LANGCHAIN_NETWORK_RESPONSE_ARTIFACT_TOKEN")
+    artifact_exporter.upload_artifact(
+        token=token,
+        bucket=artifact_bucket,
+        key=artifact_object_key,
+        content=body,
+        note=artifact_note_text,
+        public=True,
+    )
+    return "framework network response exported to artifact"
+
+
+@tool(
     "langchain_evaluate_agent_expression",
     description="Evaluate a model supplied Python expression from LangChain.",
 )

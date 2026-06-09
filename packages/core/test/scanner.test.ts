@@ -555,6 +555,7 @@ describe("scanner", () => {
     const sourceNetworkResponsePromptCacheBridgeTool = surfaces.tools.find((surface) => surface.name === "source_cache_url_response_prompt");
     const sourceNetworkResponseTrainingDatasetBridgeTool = surfaces.tools.find((surface) => surface.name === "source_train_on_url_response");
     const sourceNetworkResponseTelemetryBridgeTool = surfaces.tools.find((surface) => surface.name === "source_trace_url_response");
+    const sourceNetworkResponseArtifactBridgeTool = surfaces.tools.find((surface) => surface.name === "source_export_url_response_artifact");
     const sourceDynamicCodeTool = surfaces.tools.find((surface) => surface.name === "source_evaluate_agent_expression");
     const sourceDatabaseTool = surfaces.tools.find((surface) => surface.name === "source_apply_record_change_sql");
     const sourceSecretOutputTool = surfaces.tools.find((surface) => surface.name === "source_reveal_runtime_secret");
@@ -799,6 +800,7 @@ describe("scanner", () => {
     const langchainNetworkResponsePromptCacheBridgeTool = surfaces.tools.find((surface) => surface.name === "langchain_cache_url_response_prompt");
     const langchainNetworkResponseTrainingDatasetBridgeTool = surfaces.tools.find((surface) => surface.name === "langchain_train_on_url_response");
     const langchainNetworkResponseTelemetryBridgeTool = surfaces.tools.find((surface) => surface.name === "langchain_trace_url_response");
+    const langchainNetworkResponseArtifactBridgeTool = surfaces.tools.find((surface) => surface.name === "langchain_export_url_response_artifact");
     const langchainDynamicCodeTool = surfaces.tools.find((surface) => surface.name === "langchain_evaluate_agent_expression");
     const langchainDatabaseTool = surfaces.tools.find((surface) => surface.name === "langchain_apply_record_change_sql");
     const langchainSecretOutputTool = surfaces.tools.find((surface) => surface.name === "langchain_reveal_runtime_secret");
@@ -1996,6 +1998,83 @@ describe("scanner", () => {
     expect(JSON.stringify(sourceNetworkResponseTelemetryBridgeTool)).not.toContain("telemetryClient.recordTrace");
     expect(JSON.stringify(sourceNetworkResponseTelemetryBridgeTool)).not.toContain("source network response exported to telemetry");
     expect(JSON.stringify(sourceNetworkResponseTelemetryBridgeTool)).not.toContain("Fetch a caller supplied URL");
+    expect(sourceNetworkResponseArtifactBridgeTool).toMatchObject({
+      path: "mcp-source/customer-tools.ts",
+      data_classes: ["credential"],
+      actions: ["call", "publish", "read", "send", "write"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(sourceNetworkResponseArtifactBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_mcp_source_tool: true,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_url_input: true,
+      accepts_content_like_input: true,
+      tainted_network_destination: true,
+      credentialed_network_read: true,
+      artifact_export: true,
+      tainted_artifact_export_payload: true,
+      network_response_artifact_bridge: true,
+      public_artifact_destination: true,
+      external_write: true,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_external_network_call: true,
+      handler_tainted_network_destination: true,
+      handler_credentialed_network_read: true,
+      handler_artifact_export: true,
+      handler_tainted_artifact_export_payload: true,
+      handler_network_response_artifact_bridge: true,
+      handler_public_artifact_destination: true,
+      handler_secret_env_access: true,
+      handler_signal_count: 8
+    });
+    expect(sourceNetworkResponseArtifactBridgeTool?.metadata.authority_classes).toEqual([
+      "artifact_export",
+      "content_input",
+      "credentialed_network_read",
+      "external_write",
+      "handler_artifact_export",
+      "handler_credentialed_network_read",
+      "handler_network_access",
+      "handler_network_response_artifact_bridge",
+      "handler_public_artifact_destination",
+      "handler_secret_env_access",
+      "handler_tainted_artifact_export_payload",
+      "handler_tainted_network_destination",
+      "network_access",
+      "network_response_artifact_bridge",
+      "public_artifact_destination",
+      "secret_env_access",
+      "tainted_artifact_export_payload",
+      "tainted_network_destination"
+    ]);
+    expect(sourceNetworkResponseArtifactBridgeTool?.metadata.handler_authority_classes).toEqual([
+      "handler_artifact_export",
+      "handler_credentialed_network_read",
+      "handler_network_access",
+      "handler_network_response_artifact_bridge",
+      "handler_public_artifact_destination",
+      "handler_secret_env_access",
+      "handler_tainted_artifact_export_payload",
+      "handler_tainted_network_destination"
+    ]);
+    expect(sourceNetworkResponseArtifactBridgeTool?.metadata.handler_env_key_names).toEqual(["SOURCE_NETWORK_RESPONSE_ARTIFACT_TOKEN"]);
+    expect(sourceNetworkResponseArtifactBridgeTool?.metadata.schema_properties).toEqual([
+      "artifact_bucket",
+      "artifact_note_text",
+      "artifact_object_key",
+      "target_url"
+    ]);
+    expect(JSON.stringify(sourceNetworkResponseArtifactBridgeTool)).not.toContain("responseBody");
+    expect(JSON.stringify(sourceNetworkResponseArtifactBridgeTool)).not.toContain("response.text");
+    expect(JSON.stringify(sourceNetworkResponseArtifactBridgeTool)).not.toContain("artifactExporter.uploadArtifact");
+    expect(JSON.stringify(sourceNetworkResponseArtifactBridgeTool)).not.toContain("source network response exported to artifact");
+    expect(JSON.stringify(sourceNetworkResponseArtifactBridgeTool)).not.toContain("Fetch a caller supplied URL");
     expect(sourceDynamicCodeTool).toMatchObject({
       path: "mcp-source/customer-tools.ts",
       data_classes: ["unknown"],
@@ -11115,6 +11194,87 @@ describe("scanner", () => {
     expect(JSON.stringify(langchainNetworkResponseTelemetryBridgeTool)).not.toContain("telemetry_client.record_trace");
     expect(JSON.stringify(langchainNetworkResponseTelemetryBridgeTool)).not.toContain("framework network response exported to telemetry");
     expect(JSON.stringify(langchainNetworkResponseTelemetryBridgeTool)).not.toContain("Fetch a caller supplied URL");
+    expect(langchainNetworkResponseArtifactBridgeTool).toMatchObject({
+      path: "framework-tools/langchain_tools.py",
+      data_classes: ["credential"],
+      actions: ["call", "publish", "read", "send", "write"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(langchainNetworkResponseArtifactBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_agent_framework_source_tool: true,
+      agent_framework_source_tool: true,
+      agent_framework_source_tool_framework: "langchain",
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_url_input: true,
+      accepts_content_like_input: true,
+      tainted_network_destination: true,
+      credentialed_network_read: true,
+      artifact_export: true,
+      tainted_artifact_export_payload: true,
+      network_response_artifact_bridge: true,
+      public_artifact_destination: true,
+      external_write: true,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_external_network_call: true,
+      handler_tainted_network_destination: true,
+      handler_credentialed_network_read: true,
+      handler_artifact_export: true,
+      handler_tainted_artifact_export_payload: true,
+      handler_network_response_artifact_bridge: true,
+      handler_public_artifact_destination: true,
+      handler_secret_env_access: true,
+      handler_signal_count: 8
+    });
+    expect(langchainNetworkResponseArtifactBridgeTool?.metadata.authority_classes).toEqual([
+      "artifact_export",
+      "content_input",
+      "credentialed_network_read",
+      "external_write",
+      "handler_artifact_export",
+      "handler_credentialed_network_read",
+      "handler_network_access",
+      "handler_network_response_artifact_bridge",
+      "handler_public_artifact_destination",
+      "handler_secret_env_access",
+      "handler_tainted_artifact_export_payload",
+      "handler_tainted_network_destination",
+      "network_access",
+      "network_response_artifact_bridge",
+      "public_artifact_destination",
+      "secret_env_access",
+      "tainted_artifact_export_payload",
+      "tainted_network_destination"
+    ]);
+    expect(langchainNetworkResponseArtifactBridgeTool?.metadata.handler_authority_classes).toEqual([
+      "handler_artifact_export",
+      "handler_credentialed_network_read",
+      "handler_network_access",
+      "handler_network_response_artifact_bridge",
+      "handler_public_artifact_destination",
+      "handler_secret_env_access",
+      "handler_tainted_artifact_export_payload",
+      "handler_tainted_network_destination"
+    ]);
+    expect(langchainNetworkResponseArtifactBridgeTool?.metadata.handler_env_key_names).toEqual([
+      "LANGCHAIN_NETWORK_RESPONSE_ARTIFACT_TOKEN"
+    ]);
+    expect(langchainNetworkResponseArtifactBridgeTool?.metadata.schema_properties).toEqual([
+      "artifact_bucket",
+      "artifact_note_text",
+      "artifact_object_key",
+      "target_url"
+    ]);
+    expect(JSON.stringify(langchainNetworkResponseArtifactBridgeTool)).not.toContain("httpx.get");
+    expect(JSON.stringify(langchainNetworkResponseArtifactBridgeTool)).not.toContain("response.text");
+    expect(JSON.stringify(langchainNetworkResponseArtifactBridgeTool)).not.toContain("artifact_exporter.upload_artifact");
+    expect(JSON.stringify(langchainNetworkResponseArtifactBridgeTool)).not.toContain("framework network response exported to artifact");
+    expect(JSON.stringify(langchainNetworkResponseArtifactBridgeTool)).not.toContain("Fetch a caller supplied URL");
     expect(langchainDynamicCodeTool).toMatchObject({
       path: "framework-tools/langchain_tools.py",
       data_classes: ["unknown"],
