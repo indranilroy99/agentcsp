@@ -592,6 +592,9 @@ describe("scanner", () => {
     const sourceToolOutputTaskQueueBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "source_enqueue_privileged_tool_observation_job"
     );
+    const sourceToolOutputTrainingDatasetBridgeTool = surfaces.tools.find(
+      (surface) => surface.name === "source_export_privileged_tool_observation_training_dataset"
+    );
     const sourceAgentDelegationTool = surfaces.tools.find((surface) => surface.name === "source_delegate_customer_case_to_remote_agent");
     const sourceBrowserAutomationTool = surfaces.tools.find((surface) => surface.name === "source_submit_customer_browser_form");
     const sourceVisualContextCaptureTool = surfaces.tools.find((surface) => surface.name === "source_capture_authenticated_page_screenshot");
@@ -686,6 +689,9 @@ describe("scanner", () => {
     );
     const langchainToolOutputTaskQueueBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "langchain_enqueue_privileged_tool_observation_job"
+    );
+    const langchainToolOutputTrainingDatasetBridgeTool = surfaces.tools.find(
+      (surface) => surface.name === "langchain_export_privileged_tool_observation_training_dataset"
     );
     const langchainAgentDelegationTool = surfaces.tools.find((surface) => surface.name === "langchain_delegate_customer_case_to_remote_agent");
     const langchainBrowserAutomationTool = surfaces.tools.find((surface) => surface.name === "langchain_submit_customer_browser_form");
@@ -3741,6 +3747,81 @@ describe("scanner", () => {
     expect(JSON.stringify(sourceToolOutputTaskQueueBridgeTool)).not.toContain("toolResult");
     expect(JSON.stringify(sourceToolOutputTaskQueueBridgeTool)).not.toContain("source tool observation queued for background agent");
     expect(JSON.stringify(sourceToolOutputTaskQueueBridgeTool)).not.toContain("Enqueue a raw privileged tool observation");
+    expect(sourceToolOutputTrainingDatasetBridgeTool).toMatchObject({
+      path: "mcp-source/customer-tools.ts",
+      data_classes: ["confidential", "credential"],
+      actions: ["call", "execute", "publish", "remember", "send", "write"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(sourceToolOutputTrainingDatasetBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_mcp_source_tool: true,
+      mcp_source_tool_registration: true,
+      mcp_source_tool_registration_kind: "registerTool",
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_content_like_input: true,
+      accepts_customer_data_input: true,
+      nested_tool_invocation: true,
+      training_dataset_export: true,
+      tool_output_training_dataset_bridge: true,
+      tainted_training_dataset_payload: false,
+      external_write: true,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_tool_invocation: true,
+      handler_training_dataset_export: true,
+      handler_tool_output_training_dataset_bridge: true,
+      handler_tainted_training_dataset_payload: false,
+      handler_secret_env_access: true,
+      handler_signal_count: 4,
+      open_world_schema: false
+    });
+    expect(sourceToolOutputTrainingDatasetBridgeTool?.metadata.authority_classes).toEqual([
+      "content_input",
+      "customer_data_input",
+      "external_write",
+      "handler_secret_env_access",
+      "handler_tool_invocation",
+      "handler_tool_output_training_dataset_bridge",
+      "handler_training_dataset_export",
+      "nested_tool_invocation",
+      "network_access",
+      "secret_env_access",
+      "tool_output_training_dataset_bridge",
+      "training_dataset_export"
+    ]);
+    expect(sourceToolOutputTrainingDatasetBridgeTool?.metadata.handler_authority_classes).toEqual([
+      "handler_secret_env_access",
+      "handler_tool_invocation",
+      "handler_tool_output_training_dataset_bridge",
+      "handler_training_dataset_export"
+    ]);
+    expect(sourceToolOutputTrainingDatasetBridgeTool?.metadata.handler_env_key_names).toEqual([
+      "SOURCE_TOOL_OBSERVATION_TRAINING_TOKEN"
+    ]);
+    expect(sourceToolOutputTrainingDatasetBridgeTool?.metadata.schema_properties).toEqual([
+      "requester_ticket",
+      "source_label",
+      "target_tool_name",
+      "tool_request_body",
+      "training_dataset_id"
+    ]);
+    expect(sourceToolOutputTrainingDatasetBridgeTool?.metadata.required_properties).toEqual([
+      "requester_ticket",
+      "source_label",
+      "target_tool_name",
+      "tool_request_body",
+      "training_dataset_id"
+    ]);
+    expect(JSON.stringify(sourceToolOutputTrainingDatasetBridgeTool)).not.toContain("mcpClient.callTool");
+    expect(JSON.stringify(sourceToolOutputTrainingDatasetBridgeTool)).not.toContain("trainingDatasetClient.appendRecord");
+    expect(JSON.stringify(sourceToolOutputTrainingDatasetBridgeTool)).not.toContain("toolResult");
+    expect(JSON.stringify(sourceToolOutputTrainingDatasetBridgeTool)).not.toContain("source tool observation exported to training dataset");
+    expect(JSON.stringify(sourceToolOutputTrainingDatasetBridgeTool)).not.toContain("Export a raw privileged tool observation");
     expect(sourceAgentDelegationTool).toMatchObject({
       path: "mcp-source/customer-tools.ts",
       data_classes: ["confidential", "credential", "pii"],
@@ -8462,6 +8543,83 @@ describe("scanner", () => {
     expect(JSON.stringify(langchainToolOutputTaskQueueBridgeTool)).not.toContain("tool_result");
     expect(JSON.stringify(langchainToolOutputTaskQueueBridgeTool)).not.toContain("framework tool observation queued for background agent");
     expect(JSON.stringify(langchainToolOutputTaskQueueBridgeTool)).not.toContain("Enqueue a raw privileged tool observation");
+    expect(langchainToolOutputTrainingDatasetBridgeTool).toMatchObject({
+      path: "framework-tools/langchain_tools.py",
+      data_classes: ["confidential", "credential"],
+      actions: ["call", "execute", "publish", "remember", "send", "write"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(langchainToolOutputTrainingDatasetBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_agent_framework_source_tool: true,
+      agent_framework_source_tool: true,
+      agent_framework_source_tool_framework: "langchain",
+      agent_framework_source_tool_registration_kind: "python_tool_decorator",
+      agent_framework_source_tool_argument_count: 5,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_content_like_input: true,
+      accepts_customer_data_input: true,
+      nested_tool_invocation: true,
+      training_dataset_export: true,
+      tool_output_training_dataset_bridge: true,
+      tainted_training_dataset_payload: false,
+      external_write: true,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_tool_invocation: true,
+      handler_training_dataset_export: true,
+      handler_tool_output_training_dataset_bridge: true,
+      handler_tainted_training_dataset_payload: false,
+      handler_secret_env_access: true,
+      handler_signal_count: 4,
+      open_world_schema: false
+    });
+    expect(langchainToolOutputTrainingDatasetBridgeTool?.metadata.authority_classes).toEqual([
+      "content_input",
+      "customer_data_input",
+      "external_write",
+      "handler_secret_env_access",
+      "handler_tool_invocation",
+      "handler_tool_output_training_dataset_bridge",
+      "handler_training_dataset_export",
+      "nested_tool_invocation",
+      "network_access",
+      "secret_env_access",
+      "tool_output_training_dataset_bridge",
+      "training_dataset_export"
+    ]);
+    expect(langchainToolOutputTrainingDatasetBridgeTool?.metadata.handler_authority_classes).toEqual([
+      "handler_secret_env_access",
+      "handler_tool_invocation",
+      "handler_tool_output_training_dataset_bridge",
+      "handler_training_dataset_export"
+    ]);
+    expect(langchainToolOutputTrainingDatasetBridgeTool?.metadata.handler_env_key_names).toEqual([
+      "LANGCHAIN_TOOL_OBSERVATION_TRAINING_TOKEN"
+    ]);
+    expect(langchainToolOutputTrainingDatasetBridgeTool?.metadata.schema_properties).toEqual([
+      "requester_ticket",
+      "source_label",
+      "target_tool_name",
+      "tool_request_body",
+      "training_dataset_id"
+    ]);
+    expect(langchainToolOutputTrainingDatasetBridgeTool?.metadata.required_properties).toEqual([
+      "requester_ticket",
+      "source_label",
+      "target_tool_name",
+      "tool_request_body",
+      "training_dataset_id"
+    ]);
+    expect(JSON.stringify(langchainToolOutputTrainingDatasetBridgeTool)).not.toContain("tool_registry.call_tool");
+    expect(JSON.stringify(langchainToolOutputTrainingDatasetBridgeTool)).not.toContain("training_dataset_client.append_record");
+    expect(JSON.stringify(langchainToolOutputTrainingDatasetBridgeTool)).not.toContain("tool_result");
+    expect(JSON.stringify(langchainToolOutputTrainingDatasetBridgeTool)).not.toContain("framework tool observation exported to training dataset");
+    expect(JSON.stringify(langchainToolOutputTrainingDatasetBridgeTool)).not.toContain("Export a raw privileged tool observation");
     expect(langchainAgentDelegationTool).toMatchObject({
       path: "framework-tools/langchain_tools.py",
       data_classes: ["confidential", "credential", "pii"],

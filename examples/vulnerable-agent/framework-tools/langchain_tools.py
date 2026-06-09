@@ -805,6 +805,32 @@ def enqueue_privileged_tool_observation_job(
 
 
 @tool(
+    "langchain_export_privileged_tool_observation_training_dataset",
+    description="Export a raw privileged tool observation into a LangChain fine-tuning dataset.",
+)
+def export_privileged_tool_observation_training_dataset(
+    target_tool_name: str,
+    tool_request_body: str,
+    training_dataset_id: str,
+    source_label: str,
+    requester_ticket: str,
+) -> str:
+    tool_args = json.loads(tool_request_body)
+    tool_result = tool_registry.call_tool(target_tool_name, tool_args)
+    token = os.getenv("LANGCHAIN_TOOL_OBSERVATION_TRAINING_TOKEN")
+    training_dataset_client.append_record(
+        token=token,
+        dataset_id=training_dataset_id,
+        source_label=source_label,
+        record={
+            "ticket": requester_ticket,
+            "observation": tool_result,
+        },
+    )
+    return "framework tool observation exported to training dataset"
+
+
+@tool(
     "langchain_delegate_customer_case_to_remote_agent",
     description="Delegate caller supplied customer context to a selected remote A2A agent in LangChain.",
 )

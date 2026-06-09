@@ -7065,6 +7065,7 @@ describe("rule engine", () => {
       "langchain_enqueue_privileged_tool_observation_job",
       "langchain_export_privileged_tool_observation_artifact",
       "langchain_export_privileged_tool_observation_trace",
+      "langchain_export_privileged_tool_observation_training_dataset",
       "langchain_grant_privileged_tool_observation_authorization",
       "langchain_issue_privileged_tool_observation_credential",
       "langchain_publish_privileged_tool_observation_prompt_registry",
@@ -7073,6 +7074,7 @@ describe("rule engine", () => {
       "source_enqueue_privileged_tool_observation_job",
       "source_export_privileged_tool_observation_artifact",
       "source_export_privileged_tool_observation_trace",
+      "source_export_privileged_tool_observation_training_dataset",
       "source_grant_privileged_tool_observation_authorization",
       "source_issue_privileged_tool_observation_credential",
       "source_publish_privileged_tool_observation_prompt_registry",
@@ -7399,6 +7401,48 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerToolOutputTaskQueueBridgeFindings)).not.toContain("source tool observation queued for background agent");
     expect(JSON.stringify(sourceHandlerToolOutputTaskQueueBridgeFindings)).not.toContain("framework tool observation queued for background agent");
     expect(JSON.stringify(sourceHandlerToolOutputTaskQueueBridgeFindings)).not.toContain("Enqueue a raw privileged tool observation");
+    const sourceHandlerToolOutputTrainingDatasetBridgeFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-082");
+    expect(sourceHandlerToolOutputTrainingDatasetBridgeFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
+      "langchain_export_privileged_tool_observation_training_dataset",
+      "source_export_privileged_tool_observation_training_dataset"
+    ]);
+    expect(sourceHandlerToolOutputTrainingDatasetBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
+    expect(sourceHandlerToolOutputTrainingDatasetBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerToolOutputTrainingDatasetBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
+    expect(sourceHandlerToolOutputTrainingDatasetBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
+    expect(sourceHandlerToolOutputTrainingDatasetBridgeFindings.every((finding) => finding.matched_object.metadata.handler_tool_invocation === true)).toBe(true);
+    expect(sourceHandlerToolOutputTrainingDatasetBridgeFindings.every((finding) => finding.matched_object.metadata.handler_training_dataset_export === true)).toBe(true);
+    expect(sourceHandlerToolOutputTrainingDatasetBridgeFindings.every((finding) => finding.matched_object.metadata.handler_tool_output_training_dataset_bridge === true)).toBe(true);
+    expect(sourceHandlerToolOutputTrainingDatasetBridgeFindings.every((finding) => finding.matched_object.metadata.handler_tainted_training_dataset_payload === false)).toBe(true);
+    expect(sourceHandlerToolOutputTrainingDatasetBridgeFindings.every((finding) => finding.matched_object.metadata.handler_secret_env_access === true)).toBe(true);
+    expect(sourceHandlerToolOutputTrainingDatasetBridgeFindings.every((finding) => finding.matched_object.metadata.nested_tool_invocation === true)).toBe(true);
+    expect(sourceHandlerToolOutputTrainingDatasetBridgeFindings.every((finding) => finding.matched_object.metadata.training_dataset_export === true)).toBe(true);
+    expect(sourceHandlerToolOutputTrainingDatasetBridgeFindings.every((finding) => finding.matched_object.metadata.tool_output_training_dataset_bridge === true)).toBe(true);
+    expect(sourceHandlerToolOutputTrainingDatasetBridgeFindings.every((finding) => finding.matched_object.metadata.tainted_training_dataset_payload === false)).toBe(true);
+    expect(sourceHandlerToolOutputTrainingDatasetBridgeFindings.every((finding) => finding.matched_object.metadata.accepts_content_like_input === true)).toBe(true);
+    expect(sourceHandlerToolOutputTrainingDatasetBridgeFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("nested_tool_invocation"))).toBe(true);
+    expect(sourceHandlerToolOutputTrainingDatasetBridgeFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("training_dataset_export"))).toBe(true);
+    expect(sourceHandlerToolOutputTrainingDatasetBridgeFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("tool_output_training_dataset_bridge"))).toBe(true);
+    expect(sourceHandlerToolOutputTrainingDatasetBridgeFindings.every((finding) => finding.matched_object.metadata.handler_authority_classes.includes("handler_tool_invocation"))).toBe(true);
+    expect(sourceHandlerToolOutputTrainingDatasetBridgeFindings.every((finding) => finding.matched_object.metadata.handler_authority_classes.includes("handler_training_dataset_export"))).toBe(true);
+    expect(sourceHandlerToolOutputTrainingDatasetBridgeFindings.every((finding) => finding.matched_object.metadata.handler_authority_classes.includes("handler_tool_output_training_dataset_bridge"))).toBe(true);
+    expect(sourceHandlerToolOutputTrainingDatasetBridgeFindings.every((finding) => finding.matched_object.actions.includes("execute"))).toBe(true);
+    expect(sourceHandlerToolOutputTrainingDatasetBridgeFindings.every((finding) => finding.matched_object.actions.includes("send"))).toBe(true);
+    expect(sourceHandlerToolOutputTrainingDatasetBridgeFindings.every((finding) => finding.matched_object.actions.includes("write"))).toBe(true);
+    expect(sourceHandlerToolOutputTrainingDatasetBridgeFindings.every((finding) => finding.matched_object.actions.includes("remember"))).toBe(true);
+    expect(sourceHandlerToolOutputTrainingDatasetBridgeFindings.every((finding) => finding.matched_object.external_reach === true)).toBe(true);
+    expect(sourceHandlerToolOutputTrainingDatasetBridgeFindings.every((finding) => finding.matched_object.secret_exposure === true)).toBe(true);
+    expect(sourceHandlerToolOutputTrainingDatasetBridgeFindings.every((finding) => finding.matched_object.side_effect === true)).toBe(true);
+    expect(sourceHandlerToolOutputTrainingDatasetBridgeFindings.every((finding) => finding.matched_object.reversible === false)).toBe(true);
+    expect(JSON.stringify(sourceHandlerToolOutputTrainingDatasetBridgeFindings)).not.toContain("mcpClient.callTool");
+    expect(JSON.stringify(sourceHandlerToolOutputTrainingDatasetBridgeFindings)).not.toContain("tool_registry.call_tool");
+    expect(JSON.stringify(sourceHandlerToolOutputTrainingDatasetBridgeFindings)).not.toContain("trainingDatasetClient.appendRecord");
+    expect(JSON.stringify(sourceHandlerToolOutputTrainingDatasetBridgeFindings)).not.toContain("training_dataset_client.append_record");
+    expect(JSON.stringify(sourceHandlerToolOutputTrainingDatasetBridgeFindings)).not.toContain("toolResult");
+    expect(JSON.stringify(sourceHandlerToolOutputTrainingDatasetBridgeFindings)).not.toContain("tool_result");
+    expect(JSON.stringify(sourceHandlerToolOutputTrainingDatasetBridgeFindings)).not.toContain("source tool observation exported to training dataset");
+    expect(JSON.stringify(sourceHandlerToolOutputTrainingDatasetBridgeFindings)).not.toContain("framework tool observation exported to training dataset");
+    expect(JSON.stringify(sourceHandlerToolOutputTrainingDatasetBridgeFindings)).not.toContain("Export a raw privileged tool observation");
     const sourceHandlerToolOutputPromptRegistryBridgeFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-071");
     expect(sourceHandlerToolOutputPromptRegistryBridgeFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_publish_privileged_tool_observation_prompt_registry",

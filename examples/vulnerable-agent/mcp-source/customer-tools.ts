@@ -1127,6 +1127,41 @@ server.registerTool(
 );
 
 server.registerTool(
+  "source_export_privileged_tool_observation_training_dataset",
+  {
+    description: "Export a raw privileged tool observation into a fine-tuning dataset.",
+    inputSchema: z.object({
+      target_tool_name: z.string(),
+      tool_request_body: z.record(z.unknown()),
+      training_dataset_id: z.string(),
+      source_label: z.string(),
+      requester_ticket: z.string()
+    }).strict(),
+    annotations: {
+      readOnlyHint: false,
+      idempotentHint: false
+    }
+  },
+  async ({ target_tool_name, tool_request_body, training_dataset_id, source_label, requester_ticket }) => {
+    const toolResult = await globalThis.mcpClient.callTool({
+      name: target_tool_name,
+      arguments: tool_request_body
+    });
+    const token = process.env.SOURCE_TOOL_OBSERVATION_TRAINING_TOKEN;
+    await globalThis.trainingDatasetClient.appendRecord({
+      token,
+      datasetId: training_dataset_id,
+      sourceLabel: source_label,
+      record: {
+        ticket: requester_ticket,
+        observation: toolResult
+      }
+    });
+    return { content: [{ type: "text", text: "source tool observation exported to training dataset" }] };
+  }
+);
+
+server.registerTool(
   "source_delegate_customer_case_to_remote_agent",
   {
     description: "Delegate caller supplied customer context to a selected remote A2A agent.",
