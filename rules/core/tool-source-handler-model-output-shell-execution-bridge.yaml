@@ -1,0 +1,113 @@
+id: AGENTCSP-TOOL-110
+name: Source tool handler runs model-generated shell command
+description: A source-defined agent tool handler calls a model provider, extracts the model response, and passes that response into shell or subprocess execution under the tool runtime authority.
+category: model_output_shell_execution_bridge
+severity: critical
+maps_to:
+  owasp:
+    - LLM01:2025 Prompt Injection
+    - LLM02:2025 Sensitive Information Disclosure
+    - LLM05:2025 Improper Output Handling
+    - LLM06:2025 Excessive Agency
+  mitre_atlas:
+    - AML.T0051 LLM Plugin Compromise
+    - AML.T0054 Command and Scripting Interpreter
+    - AML.T0056 LLM Trusted Boundary Compromise
+    - AML.T0060 LLM Prompt Injection
+  nist_ai_rmf:
+    - MAP 4.1
+    - MEASURE 2.7
+    - MANAGE 2.4
+match:
+  object_type: tool
+  where:
+    - field: metadata.parsed_tool_schema
+      op: equals
+      value: true
+    - field: metadata.source_tool_handler_redacted
+      op: equals
+      value: true
+    - field: metadata.handler_body_analyzed
+      op: equals
+      value: true
+    - field: metadata.handler_model_provider_call
+      op: equals
+      value: true
+    - field: metadata.handler_shell_execution
+      op: equals
+      value: true
+    - field: metadata.handler_model_output_shell_execution_bridge
+      op: equals
+      value: true
+    - field: metadata.handler_secret_env_access
+      op: equals
+      value: true
+    - field: metadata.model_provider_call
+      op: equals
+      value: true
+    - field: metadata.shell_execution
+      op: equals
+      value: true
+    - field: metadata.model_output_shell_execution_bridge
+      op: equals
+      value: true
+    - field: metadata.accepts_content_like_input
+      op: equals
+      value: true
+    - field: metadata.accepts_customer_data_input
+      op: equals
+      value: true
+    - field: metadata.authority_classes
+      op: includes
+      value: model_provider_call
+    - field: metadata.authority_classes
+      op: includes
+      value: shell_execution
+    - field: metadata.authority_classes
+      op: includes
+      value: model_output_shell_execution_bridge
+    - field: metadata.handler_authority_classes
+      op: includes
+      value: handler_model_provider_call
+    - field: metadata.handler_authority_classes
+      op: includes
+      value: handler_shell_execution
+    - field: metadata.handler_authority_classes
+      op: includes
+      value: handler_model_output_shell_execution_bridge
+    - field: metadata.schema_properties
+      op: contains_any
+      value:
+        - customer_ticket_text
+        - remediation_goal_text
+        - model_name
+    - field: actions
+      op: includes
+      value: execute
+    - field: actions
+      op: includes
+      value: read
+    - field: actions
+      op: includes
+      value: send
+    - field: data_classes
+      op: contains_any
+      value:
+        - confidential
+        - credential
+        - pii
+    - field: external_reach
+      op: equals
+      value: true
+    - field: secret_exposure
+      op: equals
+      value: true
+    - field: side_effect
+      op: equals
+      value: true
+    - field: reversible
+      op: equals
+      value: false
+recommendation:
+  control: quarantine
+  text: Quarantine model-output-to-shell-execution handlers until model responses cannot control commands, operations are replaced by reviewed allowlisted actions, execution runs in a constrained sandbox without runtime secrets, and approval plus audit provenance protect every generated action.

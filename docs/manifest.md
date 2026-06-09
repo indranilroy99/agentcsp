@@ -434,6 +434,7 @@ Tool metadata may include:
 - `handler_model_provider_call`
 - `handler_tainted_model_selection`
 - `handler_model_output_network_destination_bridge`
+- `handler_model_output_shell_execution_bridge`
 - `handler_model_output_dynamic_code_execution_bridge`
 - `handler_tool_output_prompt_bridge`
 - `handler_tool_output_memory_bridge`
@@ -587,6 +588,7 @@ Source-defined MCP tool metadata may additionally include:
 - source handler clipboard metadata for local, desktop, or browser clipboard reads and clipboard-to-external-service bridge posture without emitting clipboard contents, clipboard helper calls, SDK calls, derived variable names, or handler source snippets
 - source handler model-output dynamic-execution metadata for model/provider responses that flow into `eval`, `Function`, `vm`, or Python `exec`/`eval` sinks without emitting model SDK calls, generated code variables, dynamic execution snippets, prompts, completions, or handler source
 - source handler model-output network-destination metadata for model/provider responses that flow into fetch/request URL destinations with runtime credential access without emitting model SDK calls, selected endpoint variables, request snippets, prompts, completions, return strings, or handler source
+- source handler model-output shell-execution metadata for model/provider responses that flow into shell, process, or subprocess execution sinks without emitting model SDK calls, generated command variables, shell snippets, prompts, completions, return strings, or handler source
 
 Source-defined agent-framework tool metadata may additionally include:
 

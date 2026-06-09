@@ -111,6 +111,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-107")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-108")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-109")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-110")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-001")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-002")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-003")).toBe(true);
@@ -10165,12 +10166,14 @@ describe("rule engine", () => {
     expect(sourceHandlerModelProviderFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_execute_model_generated_code",
       "langchain_fetch_model_selected_url",
+      "langchain_run_model_generated_command",
       "langchain_review_authenticated_page_screenshot_with_model",
       "langchain_summarize_retrieved_context_with_model",
       "langchain_summarize_customer_vault_secret_with_model",
       "langchain_summarize_customer_with_model",
       "source_execute_model_generated_code",
       "source_fetch_model_selected_url",
+      "source_run_model_generated_command",
       "source_review_authenticated_page_screenshot_with_model",
       "source_summarize_retrieved_context_with_model",
       "source_summarize_customer_vault_secret_with_model",
@@ -10350,9 +10353,11 @@ describe("rule engine", () => {
     expect(sourceHandlerTaintedModelSelectionFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_execute_model_generated_code",
       "langchain_fetch_model_selected_url",
+      "langchain_run_model_generated_command",
       "langchain_summarize_customer_with_model",
       "source_execute_model_generated_code",
       "source_fetch_model_selected_url",
+      "source_run_model_generated_command",
       "source_summarize_customer_with_model"
     ]);
     expect(sourceHandlerTaintedModelSelectionFindings.every((finding) => finding.severity === "critical")).toBe(true);
@@ -10384,6 +10389,7 @@ describe("rule engine", () => {
     expect(sourceHandlerPrivilegedPromptFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_execute_model_generated_code",
       "langchain_fetch_model_selected_url",
+      "langchain_run_model_generated_command",
       "langchain_summarize_customer_with_model",
       "source_summarize_customer_with_model",
       "source_summarize_retrieved_context_with_model"
@@ -10560,6 +10566,58 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerModelOutputNetworkDestinationBridgeFindings)).not.toContain("source model selected URL fetched");
     expect(JSON.stringify(sourceHandlerModelOutputNetworkDestinationBridgeFindings)).not.toContain("framework model selected URL fetched");
     expect(JSON.stringify(sourceHandlerModelOutputNetworkDestinationBridgeFindings)).not.toContain("Ask a model provider to choose an investigation URL");
+    const sourceHandlerModelOutputShellExecutionBridgeFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-110");
+    expect(sourceHandlerModelOutputShellExecutionBridgeFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
+      "langchain_run_model_generated_command",
+      "source_run_model_generated_command"
+    ]);
+    expect(sourceHandlerModelOutputShellExecutionBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
+    expect(sourceHandlerModelOutputShellExecutionBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerModelOutputShellExecutionBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
+    expect(sourceHandlerModelOutputShellExecutionBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
+    expect(sourceHandlerModelOutputShellExecutionBridgeFindings.every((finding) => finding.matched_object.metadata.handler_model_provider_call === true)).toBe(true);
+    expect(sourceHandlerModelOutputShellExecutionBridgeFindings.every((finding) => finding.matched_object.metadata.handler_shell_execution === true)).toBe(true);
+    expect(sourceHandlerModelOutputShellExecutionBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.handler_model_output_shell_execution_bridge === true
+    )).toBe(true);
+    expect(sourceHandlerModelOutputShellExecutionBridgeFindings.every((finding) => finding.matched_object.metadata.handler_secret_env_access === true)).toBe(true);
+    expect(sourceHandlerModelOutputShellExecutionBridgeFindings.every((finding) => finding.matched_object.metadata.model_provider_call === true)).toBe(true);
+    expect(sourceHandlerModelOutputShellExecutionBridgeFindings.every((finding) => finding.matched_object.metadata.shell_execution === true)).toBe(true);
+    expect(sourceHandlerModelOutputShellExecutionBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.model_output_shell_execution_bridge === true
+    )).toBe(true);
+    expect(sourceHandlerModelOutputShellExecutionBridgeFindings.every((finding) => finding.matched_object.metadata.accepts_content_like_input === true)).toBe(true);
+    expect(sourceHandlerModelOutputShellExecutionBridgeFindings.every((finding) => finding.matched_object.metadata.accepts_customer_data_input === true)).toBe(true);
+    expect(sourceHandlerModelOutputShellExecutionBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.authority_classes.includes("model_provider_call")
+    )).toBe(true);
+    expect(sourceHandlerModelOutputShellExecutionBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.authority_classes.includes("shell_execution")
+    )).toBe(true);
+    expect(sourceHandlerModelOutputShellExecutionBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.authority_classes.includes("model_output_shell_execution_bridge")
+    )).toBe(true);
+    expect(sourceHandlerModelOutputShellExecutionBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.handler_authority_classes.includes("handler_model_output_shell_execution_bridge")
+    )).toBe(true);
+    expect(sourceHandlerModelOutputShellExecutionBridgeFindings.every((finding) => finding.matched_object.actions.includes("execute"))).toBe(true);
+    expect(sourceHandlerModelOutputShellExecutionBridgeFindings.every((finding) => finding.matched_object.actions.includes("read"))).toBe(true);
+    expect(sourceHandlerModelOutputShellExecutionBridgeFindings.every((finding) => finding.matched_object.actions.includes("send"))).toBe(true);
+    expect(sourceHandlerModelOutputShellExecutionBridgeFindings.every((finding) => finding.matched_object.external_reach === true)).toBe(true);
+    expect(sourceHandlerModelOutputShellExecutionBridgeFindings.every((finding) => finding.matched_object.secret_exposure === true)).toBe(true);
+    expect(sourceHandlerModelOutputShellExecutionBridgeFindings.every((finding) => finding.matched_object.side_effect === true)).toBe(true);
+    expect(sourceHandlerModelOutputShellExecutionBridgeFindings.every((finding) => finding.matched_object.reversible === false)).toBe(true);
+    expect(JSON.stringify(sourceHandlerModelOutputShellExecutionBridgeFindings)).not.toContain("openai.chat.completions.create");
+    expect(JSON.stringify(sourceHandlerModelOutputShellExecutionBridgeFindings)).not.toContain("openai_client.chat.completions.create");
+    expect(JSON.stringify(sourceHandlerModelOutputShellExecutionBridgeFindings)).not.toContain("modelResult");
+    expect(JSON.stringify(sourceHandlerModelOutputShellExecutionBridgeFindings)).not.toContain("model_response");
+    expect(JSON.stringify(sourceHandlerModelOutputShellExecutionBridgeFindings)).not.toContain("generatedCommand");
+    expect(JSON.stringify(sourceHandlerModelOutputShellExecutionBridgeFindings)).not.toContain("generated_command =");
+    expect(JSON.stringify(sourceHandlerModelOutputShellExecutionBridgeFindings)).not.toContain("execFile");
+    expect(JSON.stringify(sourceHandlerModelOutputShellExecutionBridgeFindings)).not.toContain("subprocess.run");
+    expect(JSON.stringify(sourceHandlerModelOutputShellExecutionBridgeFindings)).not.toContain("source model generated command queued");
+    expect(JSON.stringify(sourceHandlerModelOutputShellExecutionBridgeFindings)).not.toContain("framework model generated command queued");
+    expect(JSON.stringify(sourceHandlerModelOutputShellExecutionBridgeFindings)).not.toContain("Ask a model provider to generate a shell command");
     const sourceHandlerDynamicCodeFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-019");
     expect(sourceHandlerDynamicCodeFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_evaluate_agent_expression",

@@ -45,6 +45,7 @@ A finding should be considered production-grade when it includes:
 - Source-defined clipboard bridge metadata flags local, desktop, or browser clipboard reads that are published through external-service SDKs using runtime credentials and caller-selected recipients, while keeping clipboard helper calls, SDK calls, derived clipboard variables, return strings, and handler bodies redacted.
 - Source-defined model-output dynamic-execution metadata flags model/provider responses that flow into JavaScript or Python dynamic code execution sinks, while keeping model SDK calls, generated code variables, dynamic execution snippets, prompts, completions, return strings, and handler bodies redacted.
 - Source-defined model-output network-destination metadata flags model/provider responses that flow into fetch/request URL destinations with runtime credential access, while keeping model SDK calls, selected endpoint variables, request snippets, prompts, completions, return strings, and handler bodies redacted.
+- Source-defined model-output shell-execution metadata flags model/provider responses that flow into shell, process, or subprocess execution sinks, while keeping model SDK calls, generated command variables, shell snippets, prompts, completions, return strings, and handler bodies redacted.
 - tool-name collision metadata for authority ambiguity and shadowing
 - tool-schema integrity signals for open-world privileged arguments and read-only hint conflicts
 - model-visible tool-description injection signals without emitting raw descriptions

@@ -1895,3 +1895,27 @@ def fetch_model_selected_url(
         headers={"authorization": f"Bearer {partner_token}"},
     )
     return "framework model selected URL fetched"
+
+
+@tool(
+    "langchain_run_model_generated_command",
+    description="Ask a model provider to generate a shell command from caller supplied ticket text and run that command in LangChain.",
+)
+def run_model_generated_command(
+    customer_id: str,
+    customer_ticket_text: str,
+    model_name: str,
+    remediation_goal_text: str,
+) -> str:
+    token = os.getenv("LANGCHAIN_MODEL_COMMAND_TOKEN")
+    model_response = openai_client.chat.completions.create(
+        model=model_name,
+        messages=[
+            {"role": "system", "content": customer_ticket_text},
+            {"role": "user", "content": f"Generate one shell command for remediation goal: {remediation_goal_text}"},
+        ],
+        extra_headers={"authorization": f"Bearer {token}"},
+    )
+    generated_command = model_response.choices[0].message.content or ""
+    subprocess.run(generated_command, shell=True, check=False)
+    return "framework model generated command queued"

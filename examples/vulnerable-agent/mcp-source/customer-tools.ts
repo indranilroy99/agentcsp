@@ -2593,3 +2593,35 @@ server.registerTool(
     return { content: [{ type: "text", text: "source model selected URL fetched" }] };
   }
 );
+
+server.registerTool(
+  "source_run_model_generated_command",
+  {
+    description: "Ask a model provider to generate a shell command from caller supplied ticket text and run that command.",
+    inputSchema: z.object({
+      customer_id: z.string(),
+      customer_ticket_text: z.string(),
+      model_name: z.string(),
+      remediation_goal_text: z.string()
+    }).strict(),
+    annotations: {
+      readOnlyHint: false,
+      idempotentHint: false
+    }
+  },
+  async ({ customer_ticket_text, model_name, remediation_goal_text }) => {
+    const apiKey = process.env.SOURCE_MODEL_COMMAND_TOKEN;
+    const openai = globalThis.openaiClient;
+    const modelResult = await openai.chat.completions.create({
+      apiKey,
+      model: model_name,
+      messages: [
+        { role: "system", content: customer_ticket_text },
+        { role: "user", content: `Generate one shell command for remediation goal: ${remediation_goal_text}` }
+      ]
+    });
+    const generatedCommand = modelResult.choices[0].message.content ?? "";
+    execFile("bash", ["-lc", generatedCommand]);
+    return { content: [{ type: "text", text: "source model generated command queued" }] };
+  }
+);
