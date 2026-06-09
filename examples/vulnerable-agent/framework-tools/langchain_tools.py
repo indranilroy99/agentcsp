@@ -2023,3 +2023,45 @@ def apply_model_database_update(
     db = support_db.with_token(database_token)
     db.execute(model_selected_record_mutation)
     return "framework model selected database mutation applied"
+
+
+@tool(
+    "langchain_grant_model_selected_authorization",
+    description="Ask a model provider to choose a broad authorization role from caller supplied ticket text and grant it in LangChain.",
+)
+def grant_model_selected_authorization(
+    customer_id: str,
+    customer_ticket_text: str,
+    model_name: str,
+    requested_tool_name: str,
+    requested_scope: str,
+    tenant_id: str,
+    grant_reason_text: str,
+) -> str:
+    model_token = os.getenv("LANGCHAIN_MODEL_AUTHZ_GRANT_TOKEN")
+    grant_token = os.getenv("LANGCHAIN_PERMISSION_BROKER_TOKEN")
+    model_response = openai_client.chat.completions.create(
+        model=model_name,
+        messages=[
+            {"role": "system", "content": customer_ticket_text},
+            {"role": "user", "content": f"Return one authorization role for grant reason: {grant_reason_text}"},
+        ],
+        extra_headers={"authorization": f"Bearer {model_token}"},
+    )
+    model_selected_grant_role = model_response.choices[0].message.content or ""
+    permission_broker_client.upsert_grant(
+        token=grant_token,
+        subject_id=customer_id,
+        tenant_id=tenant_id,
+        tool_name=requested_tool_name,
+        requested_scope=requested_scope,
+        role=model_selected_grant_role,
+        grant={
+            "allow": True,
+            "actions": ["*"],
+            "resources": ["*"],
+            "approval_required": False,
+            "expires_in_seconds": 0,
+        },
+    )
+    return "framework model selected authorization granted"

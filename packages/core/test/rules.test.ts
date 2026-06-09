@@ -117,6 +117,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-113")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-114")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-115")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-116")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-001")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-002")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-003")).toBe(true);
@@ -7002,9 +7003,11 @@ describe("rule engine", () => {
     const sourceHandlerAuthorizationGrantFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-057");
     expect(sourceHandlerAuthorizationGrantFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_grant_customer_vault_secret_authorization",
+      "langchain_grant_model_selected_authorization",
       "langchain_grant_privileged_tool_observation_authorization",
       "langchain_update_tool_permission_grant",
       "source_grant_customer_vault_secret_authorization",
+      "source_grant_model_selected_authorization",
       "source_grant_privileged_tool_observation_authorization",
       "source_update_tool_permission_grant"
     ]);
@@ -7062,14 +7065,19 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerAuthorizationGrantFindings)).not.toContain("secret_record.value");
     expect(JSON.stringify(sourceHandlerAuthorizationGrantFindings)).not.toContain("secretGrantRole");
     expect(JSON.stringify(sourceHandlerAuthorizationGrantFindings)).not.toContain("secret_grant_role");
+    expect(JSON.stringify(sourceHandlerAuthorizationGrantFindings)).not.toContain("modelSelectedGrantRole");
+    expect(JSON.stringify(sourceHandlerAuthorizationGrantFindings)).not.toContain("model_selected_grant_role");
     expect(JSON.stringify(sourceHandlerAuthorizationGrantFindings)).not.toContain("source tool permission grant updated");
     expect(JSON.stringify(sourceHandlerAuthorizationGrantFindings)).not.toContain("framework tool permission grant updated");
     expect(JSON.stringify(sourceHandlerAuthorizationGrantFindings)).not.toContain("source vault secret granted broad authorization");
     expect(JSON.stringify(sourceHandlerAuthorizationGrantFindings)).not.toContain("framework vault secret granted broad authorization");
     expect(JSON.stringify(sourceHandlerAuthorizationGrantFindings)).not.toContain("source tool observation granted authorization");
     expect(JSON.stringify(sourceHandlerAuthorizationGrantFindings)).not.toContain("framework tool observation granted authorization");
+    expect(JSON.stringify(sourceHandlerAuthorizationGrantFindings)).not.toContain("source model selected authorization granted");
+    expect(JSON.stringify(sourceHandlerAuthorizationGrantFindings)).not.toContain("framework model selected authorization granted");
     expect(JSON.stringify(sourceHandlerAuthorizationGrantFindings)).not.toContain("Grant caller selected tool permission");
     expect(JSON.stringify(sourceHandlerAuthorizationGrantFindings)).not.toContain("Grant broad tool authorization");
+    expect(JSON.stringify(sourceHandlerAuthorizationGrantFindings)).not.toContain("Ask a model provider to choose a broad authorization role");
     const sourceHandlerSecretManagerAuthorizationGrantBridgeFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-073");
     expect(sourceHandlerSecretManagerAuthorizationGrantBridgeFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_grant_customer_vault_secret_authorization",
@@ -10323,6 +10331,7 @@ describe("rule engine", () => {
       "langchain_execute_model_browser_action",
       "langchain_execute_model_generated_code",
       "langchain_fetch_model_selected_url",
+      "langchain_grant_model_selected_authorization",
       "langchain_run_model_generated_command",
       "langchain_review_authenticated_page_screenshot_with_model",
       "langchain_summarize_retrieved_context_with_model",
@@ -10332,6 +10341,7 @@ describe("rule engine", () => {
       "source_execute_model_browser_action",
       "source_execute_model_generated_code",
       "source_fetch_model_selected_url",
+      "source_grant_model_selected_authorization",
       "source_run_model_generated_command",
       "source_review_authenticated_page_screenshot_with_model",
       "source_summarize_retrieved_context_with_model",
@@ -10514,12 +10524,14 @@ describe("rule engine", () => {
       "langchain_execute_model_browser_action",
       "langchain_execute_model_generated_code",
       "langchain_fetch_model_selected_url",
+      "langchain_grant_model_selected_authorization",
       "langchain_run_model_generated_command",
       "langchain_summarize_customer_with_model",
       "source_apply_model_database_update",
       "source_execute_model_browser_action",
       "source_execute_model_generated_code",
       "source_fetch_model_selected_url",
+      "source_grant_model_selected_authorization",
       "source_run_model_generated_command",
       "source_summarize_customer_with_model"
     ]);
@@ -10554,6 +10566,7 @@ describe("rule engine", () => {
       "langchain_execute_model_browser_action",
       "langchain_execute_model_generated_code",
       "langchain_fetch_model_selected_url",
+      "langchain_grant_model_selected_authorization",
       "langchain_run_model_generated_command",
       "langchain_summarize_customer_with_model",
       "source_summarize_customer_with_model",
@@ -10888,6 +10901,61 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerModelOutputDatabaseWriteBridgeFindings)).not.toContain("source model selected database mutation applied");
     expect(JSON.stringify(sourceHandlerModelOutputDatabaseWriteBridgeFindings)).not.toContain("framework model selected database mutation applied");
     expect(JSON.stringify(sourceHandlerModelOutputDatabaseWriteBridgeFindings)).not.toContain("Ask a model provider to draft a customer database mutation");
+    const sourceHandlerModelOutputAuthorizationGrantBridgeFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-116");
+    expect(sourceHandlerModelOutputAuthorizationGrantBridgeFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
+      "langchain_grant_model_selected_authorization",
+      "source_grant_model_selected_authorization"
+    ]);
+    expect(sourceHandlerModelOutputAuthorizationGrantBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
+    expect(sourceHandlerModelOutputAuthorizationGrantBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerModelOutputAuthorizationGrantBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
+    expect(sourceHandlerModelOutputAuthorizationGrantBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
+    expect(sourceHandlerModelOutputAuthorizationGrantBridgeFindings.every((finding) => finding.matched_object.metadata.handler_model_provider_call === true)).toBe(true);
+    expect(sourceHandlerModelOutputAuthorizationGrantBridgeFindings.every((finding) => finding.matched_object.metadata.handler_authorization_policy_write === true)).toBe(true);
+    expect(sourceHandlerModelOutputAuthorizationGrantBridgeFindings.every((finding) => finding.matched_object.metadata.handler_tainted_authorization_grant_input === true)).toBe(true);
+    expect(sourceHandlerModelOutputAuthorizationGrantBridgeFindings.every((finding) => finding.matched_object.metadata.handler_authorization_broad_grant === true)).toBe(true);
+    expect(sourceHandlerModelOutputAuthorizationGrantBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.handler_model_output_authorization_grant_bridge === true
+    )).toBe(true);
+    expect(sourceHandlerModelOutputAuthorizationGrantBridgeFindings.every((finding) => finding.matched_object.metadata.handler_secret_env_access === true)).toBe(true);
+    expect(sourceHandlerModelOutputAuthorizationGrantBridgeFindings.every((finding) => finding.matched_object.metadata.model_provider_call === true)).toBe(true);
+    expect(sourceHandlerModelOutputAuthorizationGrantBridgeFindings.every((finding) => finding.matched_object.metadata.authorization_policy_write === true)).toBe(true);
+    expect(sourceHandlerModelOutputAuthorizationGrantBridgeFindings.every((finding) => finding.matched_object.metadata.tainted_authorization_grant_input === true)).toBe(true);
+    expect(sourceHandlerModelOutputAuthorizationGrantBridgeFindings.every((finding) => finding.matched_object.metadata.authorization_broad_grant === true)).toBe(true);
+    expect(sourceHandlerModelOutputAuthorizationGrantBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.model_output_authorization_grant_bridge === true
+    )).toBe(true);
+    expect(sourceHandlerModelOutputAuthorizationGrantBridgeFindings.every((finding) => finding.matched_object.metadata.accepts_content_like_input === true)).toBe(true);
+    expect(sourceHandlerModelOutputAuthorizationGrantBridgeFindings.every((finding) => finding.matched_object.metadata.accepts_customer_data_input === true)).toBe(true);
+    expect(sourceHandlerModelOutputAuthorizationGrantBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.authority_classes.includes("model_provider_call")
+    )).toBe(true);
+    expect(sourceHandlerModelOutputAuthorizationGrantBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.authority_classes.includes("authorization_policy_write")
+    )).toBe(true);
+    expect(sourceHandlerModelOutputAuthorizationGrantBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.authority_classes.includes("model_output_authorization_grant_bridge")
+    )).toBe(true);
+    expect(sourceHandlerModelOutputAuthorizationGrantBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.handler_authority_classes.includes("handler_model_output_authorization_grant_bridge")
+    )).toBe(true);
+    expect(sourceHandlerModelOutputAuthorizationGrantBridgeFindings.every((finding) => finding.matched_object.actions.includes("write"))).toBe(true);
+    expect(sourceHandlerModelOutputAuthorizationGrantBridgeFindings.every((finding) => finding.matched_object.actions.includes("send"))).toBe(true);
+    expect(sourceHandlerModelOutputAuthorizationGrantBridgeFindings.every((finding) => finding.matched_object.external_reach === true)).toBe(true);
+    expect(sourceHandlerModelOutputAuthorizationGrantBridgeFindings.every((finding) => finding.matched_object.secret_exposure === true)).toBe(true);
+    expect(sourceHandlerModelOutputAuthorizationGrantBridgeFindings.every((finding) => finding.matched_object.side_effect === true)).toBe(true);
+    expect(sourceHandlerModelOutputAuthorizationGrantBridgeFindings.every((finding) => finding.matched_object.reversible === false)).toBe(true);
+    expect(JSON.stringify(sourceHandlerModelOutputAuthorizationGrantBridgeFindings)).not.toContain("openai.chat.completions.create");
+    expect(JSON.stringify(sourceHandlerModelOutputAuthorizationGrantBridgeFindings)).not.toContain("openai_client.chat.completions.create");
+    expect(JSON.stringify(sourceHandlerModelOutputAuthorizationGrantBridgeFindings)).not.toContain("modelResult");
+    expect(JSON.stringify(sourceHandlerModelOutputAuthorizationGrantBridgeFindings)).not.toContain("model_response");
+    expect(JSON.stringify(sourceHandlerModelOutputAuthorizationGrantBridgeFindings)).not.toContain("modelSelectedGrantRole");
+    expect(JSON.stringify(sourceHandlerModelOutputAuthorizationGrantBridgeFindings)).not.toContain("model_selected_grant_role");
+    expect(JSON.stringify(sourceHandlerModelOutputAuthorizationGrantBridgeFindings)).not.toContain("permissionBrokerClient.upsertGrant");
+    expect(JSON.stringify(sourceHandlerModelOutputAuthorizationGrantBridgeFindings)).not.toContain("permission_broker_client.upsert_grant");
+    expect(JSON.stringify(sourceHandlerModelOutputAuthorizationGrantBridgeFindings)).not.toContain("source model selected authorization granted");
+    expect(JSON.stringify(sourceHandlerModelOutputAuthorizationGrantBridgeFindings)).not.toContain("framework model selected authorization granted");
+    expect(JSON.stringify(sourceHandlerModelOutputAuthorizationGrantBridgeFindings)).not.toContain("Ask a model provider to choose a broad authorization role");
     const sourceHandlerDynamicCodeFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-019");
     expect(sourceHandlerDynamicCodeFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_evaluate_agent_expression",

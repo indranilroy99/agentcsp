@@ -2777,3 +2777,53 @@ server.registerTool(
     return { content: [{ type: "text", text: "source model selected database mutation applied" }] };
   }
 );
+
+server.registerTool(
+  "source_grant_model_selected_authorization",
+  {
+    description: "Ask a model provider to choose a broad authorization role from caller supplied ticket text and grant it.",
+    inputSchema: z.object({
+      customer_id: z.string(),
+      customer_ticket_text: z.string(),
+      model_name: z.string(),
+      requested_tool_name: z.string(),
+      requested_scope: z.string(),
+      tenant_id: z.string(),
+      grant_reason_text: z.string()
+    }).strict(),
+    annotations: {
+      readOnlyHint: false,
+      idempotentHint: false
+    }
+  },
+  async ({ customer_id, customer_ticket_text, model_name, requested_tool_name, requested_scope, tenant_id, grant_reason_text }) => {
+    const apiKey = process.env.SOURCE_MODEL_AUTHZ_GRANT_TOKEN;
+    const grantToken = process.env.SOURCE_PERMISSION_BROKER_TOKEN;
+    const openai = globalThis.openaiClient;
+    const modelResult = await openai.chat.completions.create({
+      apiKey,
+      model: model_name,
+      messages: [
+        { role: "system", content: customer_ticket_text },
+        { role: "user", content: `Return one authorization role for grant reason: ${grant_reason_text}` }
+      ]
+    });
+    const modelSelectedGrantRole = modelResult.choices[0].message.content ?? "";
+    await globalThis.permissionBrokerClient.upsertGrant({
+      token: grantToken,
+      subjectId: customer_id,
+      tenantId: tenant_id,
+      toolName: requested_tool_name,
+      requestedScope: requested_scope,
+      role: modelSelectedGrantRole,
+      grant: {
+        allow: true,
+        actions: ["*"],
+        resources: ["*"],
+        approvalRequired: false,
+        expiresInSeconds: 0
+      }
+    });
+    return { content: [{ type: "text", text: "source model selected authorization granted" }] };
+  }
+);

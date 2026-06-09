@@ -216,8 +216,12 @@ const leakPatterns = [
   /model_selected_browser_target/u,
   /modelSelectedRecordMutation/u,
   /model_selected_record_mutation/u,
+  /modelSelectedGrantRole/u,
+  /model_selected_grant_role/u,
   /supportDb\.query/u,
   /support_db\.with_token/u,
+  /permissionBrokerClient\.upsertGrant/u,
+  /permission_broker_client\.upsert_grant/u,
   /selectedEndpointUrl/u,
   /selected_endpoint_url/u,
   /generated_command =/u,
@@ -233,8 +237,12 @@ const leakPatterns = [
   /framework model selected browser action executed/u,
   /source model selected database mutation applied/u,
   /framework model selected database mutation applied/u,
+  /source model selected authorization granted/u,
+  /framework model selected authorization granted/u,
   /Ask a model provider to draft a customer database mutation/u,
+  /Ask a model provider to choose a broad authorization role/u,
   /Return one SQL update for record goal/u,
+  /Return one authorization role for grant reason/u,
   /source model generated command queued/u,
   /framework model generated command queued/u,
   /source tool observation command queued/u,
@@ -1090,8 +1098,8 @@ const leakPatterns = [
 const vulnerable = await readScanOutput(vulnerableOutput, { sarifRequired: true });
 const safe = await readScanOutput(safeOutput, { sarifRequired: false });
 
-assertEqual(vulnerable.manifest.findings.length, 797, "vulnerable manifest finding count");
-assertEqual(vulnerable.findings.length, 797, "vulnerable findings.json count");
+assertEqual(vulnerable.manifest.findings.length, 808, "vulnerable manifest finding count");
+assertEqual(vulnerable.findings.length, 808, "vulnerable findings.json count");
 assertEqual(vulnerable.manifest.attack_paths.length, 15, "vulnerable attack path count");
 assertEqual(vulnerable.manifest.static_blast_radius?.critical_attack_paths, 15, "vulnerable critical attack path count");
 assertEqual(vulnerable.manifest.diagnostics.length, 0, "vulnerable diagnostics count");
@@ -1204,6 +1212,7 @@ for (const ruleId of [
   "AGENTCSP-TOOL-113",
   "AGENTCSP-TOOL-114",
   "AGENTCSP-TOOL-115",
+  "AGENTCSP-TOOL-116",
   "AGENTCSP-RUNTIME-007",
   "AGENTCSP-RUNTIME-008",
   "AGENTCSP-RUNTIME-123",
