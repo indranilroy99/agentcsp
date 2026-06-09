@@ -586,6 +586,9 @@ describe("scanner", () => {
     const sourceToolOutputTelemetryBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "source_export_privileged_tool_observation_trace"
     );
+    const sourceToolOutputArtifactBridgeTool = surfaces.tools.find(
+      (surface) => surface.name === "source_export_privileged_tool_observation_artifact"
+    );
     const sourceAgentDelegationTool = surfaces.tools.find((surface) => surface.name === "source_delegate_customer_case_to_remote_agent");
     const sourceBrowserAutomationTool = surfaces.tools.find((surface) => surface.name === "source_submit_customer_browser_form");
     const sourceVisualContextCaptureTool = surfaces.tools.find((surface) => surface.name === "source_capture_authenticated_page_screenshot");
@@ -674,6 +677,9 @@ describe("scanner", () => {
     );
     const langchainToolOutputTelemetryBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "langchain_export_privileged_tool_observation_trace"
+    );
+    const langchainToolOutputArtifactBridgeTool = surfaces.tools.find(
+      (surface) => surface.name === "langchain_export_privileged_tool_observation_artifact"
     );
     const langchainAgentDelegationTool = surfaces.tools.find((surface) => surface.name === "langchain_delegate_customer_case_to_remote_agent");
     const langchainBrowserAutomationTool = surfaces.tools.find((surface) => surface.name === "langchain_submit_customer_browser_form");
@@ -3568,6 +3574,86 @@ describe("scanner", () => {
     expect(JSON.stringify(sourceToolOutputTelemetryBridgeTool)).not.toContain("toolResult");
     expect(JSON.stringify(sourceToolOutputTelemetryBridgeTool)).not.toContain("source tool observation exported to telemetry");
     expect(JSON.stringify(sourceToolOutputTelemetryBridgeTool)).not.toContain("Export a raw privileged tool observation");
+    expect(sourceToolOutputArtifactBridgeTool).toMatchObject({
+      path: "mcp-source/customer-tools.ts",
+      data_classes: ["confidential", "credential"],
+      actions: ["call", "execute", "publish", "send", "write"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(sourceToolOutputArtifactBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_mcp_source_tool: true,
+      mcp_source_tool_registration: true,
+      mcp_source_tool_registration_kind: "registerTool",
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_content_like_input: true,
+      nested_tool_invocation: true,
+      artifact_export: true,
+      tool_output_artifact_bridge: true,
+      public_artifact_destination: true,
+      tainted_artifact_export_payload: false,
+      external_write: true,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_tool_invocation: true,
+      handler_artifact_export: true,
+      handler_tool_output_artifact_bridge: true,
+      handler_public_artifact_destination: true,
+      handler_tainted_artifact_export_payload: false,
+      handler_secret_env_access: true,
+      handler_signal_count: 5,
+      open_world_schema: false
+    });
+    expect(sourceToolOutputArtifactBridgeTool?.metadata.authority_classes).toEqual([
+      "artifact_export",
+      "content_input",
+      "customer_data_input",
+      "external_write",
+      "handler_artifact_export",
+      "handler_public_artifact_destination",
+      "handler_secret_env_access",
+      "handler_tool_invocation",
+      "handler_tool_output_artifact_bridge",
+      "nested_tool_invocation",
+      "network_access",
+      "public_artifact_destination",
+      "secret_env_access",
+      "tool_output_artifact_bridge"
+    ]);
+    expect(sourceToolOutputArtifactBridgeTool?.metadata.handler_authority_classes).toEqual([
+      "handler_artifact_export",
+      "handler_public_artifact_destination",
+      "handler_secret_env_access",
+      "handler_tool_invocation",
+      "handler_tool_output_artifact_bridge"
+    ]);
+    expect(sourceToolOutputArtifactBridgeTool?.metadata.handler_env_key_names).toEqual([
+      "SOURCE_TOOL_OBSERVATION_ARTIFACT_TOKEN"
+    ]);
+    expect(sourceToolOutputArtifactBridgeTool?.metadata.schema_properties).toEqual([
+      "object_key",
+      "public_access",
+      "requester_ticket",
+      "target_tool_name",
+      "tool_request_body"
+    ]);
+    expect(sourceToolOutputArtifactBridgeTool?.metadata.required_properties).toEqual([
+      "object_key",
+      "public_access",
+      "requester_ticket",
+      "target_tool_name",
+      "tool_request_body"
+    ]);
+    expect(JSON.stringify(sourceToolOutputArtifactBridgeTool)).not.toContain("mcpClient.callTool");
+    expect(JSON.stringify(sourceToolOutputArtifactBridgeTool)).not.toContain("artifactExportClient.upload");
+    expect(JSON.stringify(sourceToolOutputArtifactBridgeTool)).not.toContain("JSON.stringify(toolResult)");
+    expect(JSON.stringify(sourceToolOutputArtifactBridgeTool)).not.toContain("toolResult");
+    expect(JSON.stringify(sourceToolOutputArtifactBridgeTool)).not.toContain("source tool observation exported to artifact");
+    expect(JSON.stringify(sourceToolOutputArtifactBridgeTool)).not.toContain("Export a raw privileged tool observation");
     expect(sourceAgentDelegationTool).toMatchObject({
       path: "mcp-source/customer-tools.ts",
       data_classes: ["confidential", "credential", "pii"],
@@ -8124,6 +8210,88 @@ describe("scanner", () => {
     expect(JSON.stringify(langchainToolOutputTelemetryBridgeTool)).not.toContain("tool_result");
     expect(JSON.stringify(langchainToolOutputTelemetryBridgeTool)).not.toContain("framework tool observation exported to telemetry");
     expect(JSON.stringify(langchainToolOutputTelemetryBridgeTool)).not.toContain("Export a raw privileged tool observation");
+    expect(langchainToolOutputArtifactBridgeTool).toMatchObject({
+      path: "framework-tools/langchain_tools.py",
+      data_classes: ["confidential", "credential"],
+      actions: ["call", "execute", "publish", "send", "write"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(langchainToolOutputArtifactBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_agent_framework_source_tool: true,
+      agent_framework_source_tool: true,
+      agent_framework_source_tool_framework: "langchain",
+      agent_framework_source_tool_registration_kind: "python_tool_decorator",
+      agent_framework_source_tool_argument_count: 5,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_content_like_input: true,
+      nested_tool_invocation: true,
+      artifact_export: true,
+      tool_output_artifact_bridge: true,
+      public_artifact_destination: true,
+      tainted_artifact_export_payload: false,
+      external_write: true,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_tool_invocation: true,
+      handler_artifact_export: true,
+      handler_tool_output_artifact_bridge: true,
+      handler_public_artifact_destination: true,
+      handler_tainted_artifact_export_payload: false,
+      handler_secret_env_access: true,
+      handler_signal_count: 5,
+      open_world_schema: false
+    });
+    expect(langchainToolOutputArtifactBridgeTool?.metadata.authority_classes).toEqual([
+      "artifact_export",
+      "content_input",
+      "customer_data_input",
+      "external_write",
+      "handler_artifact_export",
+      "handler_public_artifact_destination",
+      "handler_secret_env_access",
+      "handler_tool_invocation",
+      "handler_tool_output_artifact_bridge",
+      "nested_tool_invocation",
+      "network_access",
+      "public_artifact_destination",
+      "secret_env_access",
+      "tool_output_artifact_bridge"
+    ]);
+    expect(langchainToolOutputArtifactBridgeTool?.metadata.handler_authority_classes).toEqual([
+      "handler_artifact_export",
+      "handler_public_artifact_destination",
+      "handler_secret_env_access",
+      "handler_tool_invocation",
+      "handler_tool_output_artifact_bridge"
+    ]);
+    expect(langchainToolOutputArtifactBridgeTool?.metadata.handler_env_key_names).toEqual([
+      "LANGCHAIN_TOOL_OBSERVATION_ARTIFACT_TOKEN"
+    ]);
+    expect(langchainToolOutputArtifactBridgeTool?.metadata.schema_properties).toEqual([
+      "object_key",
+      "public_access",
+      "requester_ticket",
+      "target_tool_name",
+      "tool_request_body"
+    ]);
+    expect(langchainToolOutputArtifactBridgeTool?.metadata.required_properties).toEqual([
+      "object_key",
+      "public_access",
+      "requester_ticket",
+      "target_tool_name",
+      "tool_request_body"
+    ]);
+    expect(JSON.stringify(langchainToolOutputArtifactBridgeTool)).not.toContain("tool_registry.call_tool");
+    expect(JSON.stringify(langchainToolOutputArtifactBridgeTool)).not.toContain("artifact_export_client.upload");
+    expect(JSON.stringify(langchainToolOutputArtifactBridgeTool)).not.toContain("str(tool_result)");
+    expect(JSON.stringify(langchainToolOutputArtifactBridgeTool)).not.toContain("tool_result");
+    expect(JSON.stringify(langchainToolOutputArtifactBridgeTool)).not.toContain("framework tool observation exported to artifact");
+    expect(JSON.stringify(langchainToolOutputArtifactBridgeTool)).not.toContain("Export a raw privileged tool observation");
     expect(langchainAgentDelegationTool).toMatchObject({
       path: "framework-tools/langchain_tools.py",
       data_classes: ["confidential", "credential", "pii"],

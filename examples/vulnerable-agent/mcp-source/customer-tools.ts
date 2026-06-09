@@ -1057,6 +1057,39 @@ server.registerTool(
 );
 
 server.registerTool(
+  "source_export_privileged_tool_observation_artifact",
+  {
+    description: "Export a raw privileged tool observation into a public run artifact.",
+    inputSchema: z.object({
+      target_tool_name: z.string(),
+      tool_request_body: z.record(z.unknown()),
+      object_key: z.string(),
+      public_access: z.boolean(),
+      requester_ticket: z.string()
+    }).strict(),
+    annotations: {
+      readOnlyHint: false,
+      idempotentHint: false
+    }
+  },
+  async ({ target_tool_name, tool_request_body, object_key, public_access, requester_ticket }) => {
+    const toolResult = await globalThis.mcpClient.callTool({
+      name: target_tool_name,
+      arguments: tool_request_body
+    });
+    const token = process.env.SOURCE_TOOL_OBSERVATION_ARTIFACT_TOKEN;
+    await globalThis.artifactExportClient.upload({
+      token,
+      key: object_key,
+      public: public_access,
+      body: JSON.stringify(toolResult),
+      metadata: { ticket: requester_ticket }
+    });
+    return { content: [{ type: "text", text: "source tool observation exported to artifact" }] };
+  }
+);
+
+server.registerTool(
   "source_delegate_customer_case_to_remote_agent",
   {
     description: "Delegate caller supplied customer context to a selected remote A2A agent.",

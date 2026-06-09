@@ -753,6 +753,30 @@ def export_privileged_tool_observation_trace(
 
 
 @tool(
+    "langchain_export_privileged_tool_observation_artifact",
+    description="Export a raw privileged tool observation into a public LangChain artifact.",
+)
+def export_privileged_tool_observation_artifact(
+    target_tool_name: str,
+    tool_request_body: str,
+    object_key: str,
+    public_access: bool,
+    requester_ticket: str,
+) -> str:
+    tool_args = json.loads(tool_request_body)
+    tool_result = tool_registry.call_tool(target_tool_name, tool_args)
+    token = os.getenv("LANGCHAIN_TOOL_OBSERVATION_ARTIFACT_TOKEN")
+    artifact_export_client.upload(
+        token=token,
+        key=object_key,
+        public=public_access,
+        body=str(tool_result),
+        metadata={"ticket": requester_ticket},
+    )
+    return "framework tool observation exported to artifact"
+
+
+@tool(
     "langchain_delegate_customer_case_to_remote_agent",
     description="Delegate caller supplied customer context to a selected remote A2A agent in LangChain.",
 )

@@ -312,6 +312,7 @@ Examples:
 - source-defined tool handler plus nested tool dispatch plus runtime authorization-grant credentials plus raw tool observations used to create broad or approval-free grants for caller-selected tools, roles, scopes, subjects, resources, or tenants
 - source-defined tool handler plus nested tool dispatch plus runtime credential-broker credentials plus raw tool observations used to issue, mint, sign, assume, or impersonate agent credentials for caller-selected subjects, scopes, roles, or audiences
 - source-defined tool handler plus nested tool dispatch plus runtime telemetry credentials plus raw tool observations exported into AI traces, logs, or observability systems
+- source-defined tool handler plus nested tool dispatch plus runtime artifact credentials plus raw tool observations exported into public or shareable artifact storage
 - source-defined tool handler plus runtime feedback/RLHF credentials plus caller/customer feedback and raw agent context auto-promoted to caller-selected training, eval, reward-model, or model-update destinations
 - source-defined tool handler plus runtime credentials plus model-mediated approval over caller/customer/tool-output context followed by automatic privileged action execution
 - source-defined tool handler plus nested tool dispatch plus runtime service credentials plus raw tool observations published through Slack, email, chat, issue-tracker, or SaaS SDKs

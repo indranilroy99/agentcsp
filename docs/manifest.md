@@ -365,6 +365,7 @@ Tool metadata may include:
 - `tool_output_authorization_grant_bridge`
 - `artifact_export`
 - `tainted_artifact_export_payload`
+- `tool_output_artifact_bridge`
 - `public_artifact_destination`
 - `rag_retrieval`
 - `tainted_rag_retrieval_query`
@@ -441,6 +442,7 @@ Tool metadata may include:
 - `handler_tool_output_authorization_grant_bridge`
 - `handler_artifact_export`
 - `handler_tainted_artifact_export_payload`
+- `handler_tool_output_artifact_bridge`
 - `handler_public_artifact_destination`
 - `handler_rag_retrieval`
 - `handler_tainted_rag_retrieval_query`
@@ -1915,6 +1917,8 @@ Source-defined tool handlers can also emit redacted artifact-export authority th
 Source-defined tool handlers can also emit redacted tool-output external-service bridge authority through `tool_output_external_service_bridge`, `external_service_write`, `tainted_external_service_recipient`, and the corresponding `handler_*` fields when parsed MCP SDK or agent-framework tools invoke nested tools and publish raw tool observations through Slack, email, issue-tracker, chat, or SaaS SDKs using runtime credentials. Handler bodies, SDK calls, channel IDs, serialized tool observations, posted payloads, and return strings remain redacted.
 
 Source-defined tool handlers can also emit redacted tool-output telemetry bridge authority through `tool_output_telemetry_bridge`, `nested_tool_invocation`, `telemetry_export`, `tainted_telemetry_payload`, and the corresponding `handler_*` fields when parsed MCP SDK or agent-framework tools invoke nested tools and export raw tool observations into AI telemetry, tracing, logging, or observability systems using runtime credentials. Handler bodies, nested tool calls, telemetry calls, trace IDs, trace payloads, raw observations, and return strings remain redacted.
+
+Source-defined tool handlers can also emit redacted tool-output artifact bridge authority through `tool_output_artifact_bridge`, `nested_tool_invocation`, `artifact_export`, `public_artifact_destination`, and the corresponding `handler_*` fields when parsed MCP SDK or agent-framework tools invoke nested tools and export raw tool observations into public or shareable artifact/output storage using runtime credentials. Handler bodies, nested tool calls, artifact calls, object keys, bucket names, public URLs, raw observations, artifact contents, and return strings remain redacted.
 
 Source-defined tool handlers can also emit redacted tool-output prompt-registry bridge authority through `tool_output_prompt_registry_bridge`, `nested_tool_invocation`, `prompt_registry_write`, `tainted_prompt_registry_payload`, `tainted_prompt_registry_selector`, and the corresponding `handler_*` fields when parsed MCP SDK or agent-framework tools invoke nested tools and publish raw tool observations into prompt or instruction registries using runtime credentials and caller-selected prompt metadata. Handler bodies, nested tool calls, tool names, arguments, registry calls, prompt IDs, prompt roles, prompt bodies, raw observations, and return strings remain redacted.
 

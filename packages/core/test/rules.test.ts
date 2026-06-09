@@ -7062,12 +7062,14 @@ describe("rule engine", () => {
     const sourceHandlerNestedToolInvocationFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-026");
     expect(sourceHandlerNestedToolInvocationFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_dispatch_privileged_tool",
+      "langchain_export_privileged_tool_observation_artifact",
       "langchain_export_privileged_tool_observation_trace",
       "langchain_grant_privileged_tool_observation_authorization",
       "langchain_issue_privileged_tool_observation_credential",
       "langchain_publish_privileged_tool_observation_prompt_registry",
       "langchain_store_privileged_tool_observation_database",
       "source_dispatch_privileged_tool",
+      "source_export_privileged_tool_observation_artifact",
       "source_export_privileged_tool_observation_trace",
       "source_grant_privileged_tool_observation_authorization",
       "source_issue_privileged_tool_observation_credential",
@@ -7302,6 +7304,55 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerToolOutputTelemetryBridgeFindings)).not.toContain("source tool observation exported to telemetry");
     expect(JSON.stringify(sourceHandlerToolOutputTelemetryBridgeFindings)).not.toContain("framework tool observation exported to telemetry");
     expect(JSON.stringify(sourceHandlerToolOutputTelemetryBridgeFindings)).not.toContain("Export a raw privileged tool observation");
+    const sourceHandlerToolOutputArtifactBridgeFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-080");
+    expect(sourceHandlerToolOutputArtifactBridgeFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
+      "langchain_export_privileged_tool_observation_artifact",
+      "source_export_privileged_tool_observation_artifact"
+    ]);
+    expect(sourceHandlerToolOutputArtifactBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
+    expect(sourceHandlerToolOutputArtifactBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerToolOutputArtifactBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
+    expect(sourceHandlerToolOutputArtifactBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
+    expect(sourceHandlerToolOutputArtifactBridgeFindings.every((finding) => finding.matched_object.metadata.handler_tool_invocation === true)).toBe(true);
+    expect(sourceHandlerToolOutputArtifactBridgeFindings.every((finding) => finding.matched_object.metadata.handler_artifact_export === true)).toBe(true);
+    expect(sourceHandlerToolOutputArtifactBridgeFindings.every((finding) => finding.matched_object.metadata.handler_tool_output_artifact_bridge === true)).toBe(true);
+    expect(sourceHandlerToolOutputArtifactBridgeFindings.every((finding) => finding.matched_object.metadata.handler_public_artifact_destination === true)).toBe(true);
+    expect(sourceHandlerToolOutputArtifactBridgeFindings.every((finding) => finding.matched_object.metadata.handler_tainted_artifact_export_payload === false)).toBe(true);
+    expect(sourceHandlerToolOutputArtifactBridgeFindings.every((finding) => finding.matched_object.metadata.handler_secret_env_access === true)).toBe(true);
+    expect(sourceHandlerToolOutputArtifactBridgeFindings.every((finding) => finding.matched_object.metadata.nested_tool_invocation === true)).toBe(true);
+    expect(sourceHandlerToolOutputArtifactBridgeFindings.every((finding) => finding.matched_object.metadata.artifact_export === true)).toBe(true);
+    expect(sourceHandlerToolOutputArtifactBridgeFindings.every((finding) => finding.matched_object.metadata.tool_output_artifact_bridge === true)).toBe(true);
+    expect(sourceHandlerToolOutputArtifactBridgeFindings.every((finding) => finding.matched_object.metadata.public_artifact_destination === true)).toBe(true);
+    expect(sourceHandlerToolOutputArtifactBridgeFindings.every((finding) => finding.matched_object.metadata.tainted_artifact_export_payload === false)).toBe(true);
+    expect(sourceHandlerToolOutputArtifactBridgeFindings.every((finding) => finding.matched_object.metadata.external_write === true)).toBe(true);
+    expect(sourceHandlerToolOutputArtifactBridgeFindings.every((finding) => finding.matched_object.metadata.accepts_content_like_input === true)).toBe(true);
+    expect(sourceHandlerToolOutputArtifactBridgeFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("nested_tool_invocation"))).toBe(true);
+    expect(sourceHandlerToolOutputArtifactBridgeFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("artifact_export"))).toBe(true);
+    expect(sourceHandlerToolOutputArtifactBridgeFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("tool_output_artifact_bridge"))).toBe(true);
+    expect(sourceHandlerToolOutputArtifactBridgeFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("public_artifact_destination"))).toBe(true);
+    expect(sourceHandlerToolOutputArtifactBridgeFindings.every((finding) => finding.matched_object.metadata.handler_authority_classes.includes("handler_tool_invocation"))).toBe(true);
+    expect(sourceHandlerToolOutputArtifactBridgeFindings.every((finding) => finding.matched_object.metadata.handler_authority_classes.includes("handler_artifact_export"))).toBe(true);
+    expect(sourceHandlerToolOutputArtifactBridgeFindings.every((finding) => finding.matched_object.metadata.handler_authority_classes.includes("handler_tool_output_artifact_bridge"))).toBe(true);
+    expect(sourceHandlerToolOutputArtifactBridgeFindings.every((finding) => finding.matched_object.metadata.handler_authority_classes.includes("handler_public_artifact_destination"))).toBe(true);
+    expect(sourceHandlerToolOutputArtifactBridgeFindings.every((finding) => finding.matched_object.actions.includes("execute"))).toBe(true);
+    expect(sourceHandlerToolOutputArtifactBridgeFindings.every((finding) => finding.matched_object.actions.includes("send"))).toBe(true);
+    expect(sourceHandlerToolOutputArtifactBridgeFindings.every((finding) => finding.matched_object.actions.includes("write"))).toBe(true);
+    expect(sourceHandlerToolOutputArtifactBridgeFindings.every((finding) => finding.matched_object.actions.includes("publish"))).toBe(true);
+    expect(sourceHandlerToolOutputArtifactBridgeFindings.every((finding) => finding.matched_object.external_reach === true)).toBe(true);
+    expect(sourceHandlerToolOutputArtifactBridgeFindings.every((finding) => finding.matched_object.secret_exposure === true)).toBe(true);
+    expect(sourceHandlerToolOutputArtifactBridgeFindings.every((finding) => finding.matched_object.side_effect === true)).toBe(true);
+    expect(sourceHandlerToolOutputArtifactBridgeFindings.every((finding) => finding.matched_object.reversible === false)).toBe(true);
+    expect(JSON.stringify(sourceHandlerToolOutputArtifactBridgeFindings)).not.toContain("mcpClient.callTool");
+    expect(JSON.stringify(sourceHandlerToolOutputArtifactBridgeFindings)).not.toContain("tool_registry.call_tool");
+    expect(JSON.stringify(sourceHandlerToolOutputArtifactBridgeFindings)).not.toContain("artifactExportClient.upload");
+    expect(JSON.stringify(sourceHandlerToolOutputArtifactBridgeFindings)).not.toContain("artifact_export_client.upload");
+    expect(JSON.stringify(sourceHandlerToolOutputArtifactBridgeFindings)).not.toContain("JSON.stringify(toolResult)");
+    expect(JSON.stringify(sourceHandlerToolOutputArtifactBridgeFindings)).not.toContain("str(tool_result)");
+    expect(JSON.stringify(sourceHandlerToolOutputArtifactBridgeFindings)).not.toContain("toolResult");
+    expect(JSON.stringify(sourceHandlerToolOutputArtifactBridgeFindings)).not.toContain("tool_result");
+    expect(JSON.stringify(sourceHandlerToolOutputArtifactBridgeFindings)).not.toContain("source tool observation exported to artifact");
+    expect(JSON.stringify(sourceHandlerToolOutputArtifactBridgeFindings)).not.toContain("framework tool observation exported to artifact");
+    expect(JSON.stringify(sourceHandlerToolOutputArtifactBridgeFindings)).not.toContain("Export a raw privileged tool observation");
     const sourceHandlerToolOutputPromptRegistryBridgeFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-071");
     expect(sourceHandlerToolOutputPromptRegistryBridgeFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_publish_privileged_tool_observation_prompt_registry",
