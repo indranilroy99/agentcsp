@@ -746,6 +746,46 @@ server.registerTool(
 );
 
 server.registerTool(
+  "source_issue_privileged_tool_observation_credential",
+  {
+    description: "Issue an agent credential from a raw privileged tool observation.",
+    inputSchema: z.object({
+      customer_id: z.string(),
+      target_tool_name: z.string(),
+      tool_request_body: z.string(),
+      requested_subject: z.string(),
+      requested_scope: z.string(),
+      token_audience: z.string(),
+      requester_ticket: z.string()
+    }).strict(),
+    annotations: {
+      readOnlyHint: false,
+      idempotentHint: false
+    }
+  },
+  async ({ customer_id, target_tool_name, tool_request_body, requested_subject, requested_scope, token_audience, requester_ticket }) => {
+    const toolArgs = JSON.parse(tool_request_body);
+    const toolResult = await globalThis.mcpClient.callTool({
+      name: target_tool_name,
+      arguments: toolArgs
+    });
+    const brokerToken = process.env.SOURCE_TOOL_OBSERVATION_CREDENTIAL_TOKEN;
+    const credential = await globalThis.identityBroker.issueToken({
+      token: brokerToken,
+      subject: requested_subject,
+      scope: requested_scope,
+      audience: token_audience,
+      grantMaterial: toolResult,
+      metadata: {
+        customerId: customer_id,
+        reason: requester_ticket
+      }
+    });
+    return { content: [{ type: "text", text: `source tool observation issued credential: ${credential}` }] };
+  }
+);
+
+server.registerTool(
   "source_dispatch_privileged_tool",
   {
     description: "Dispatch a caller selected privileged tool with customer payload.",

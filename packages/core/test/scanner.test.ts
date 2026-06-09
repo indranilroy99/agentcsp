@@ -565,6 +565,9 @@ describe("scanner", () => {
     const sourceSecretManagerCredentialIssuanceBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "source_issue_vault_backed_agent_credential"
     );
+    const sourceToolOutputCredentialIssuanceBridgeTool = surfaces.tools.find(
+      (surface) => surface.name === "source_issue_privileged_tool_observation_credential"
+    );
     const sourceNestedToolInvocationTool = surfaces.tools.find((surface) => surface.name === "source_dispatch_privileged_tool");
     const sourceToolOutputPromptBridgeTool = surfaces.tools.find((surface) => surface.name === "source_review_privileged_tool_observation");
     const sourceToolOutputMemoryBridgeTool = surfaces.tools.find((surface) => surface.name === "source_store_privileged_tool_observation_memory");
@@ -644,6 +647,9 @@ describe("scanner", () => {
     const langchainCredentialIssuanceTool = surfaces.tools.find((surface) => surface.name === "langchain_mint_agent_session_token");
     const langchainSecretManagerCredentialIssuanceBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "langchain_issue_vault_backed_agent_credential"
+    );
+    const langchainToolOutputCredentialIssuanceBridgeTool = surfaces.tools.find(
+      (surface) => surface.name === "langchain_issue_privileged_tool_observation_credential"
     );
     const langchainNestedToolInvocationTool = surfaces.tools.find((surface) => surface.name === "langchain_dispatch_privileged_tool");
     const langchainToolOutputPromptBridgeTool = surfaces.tools.find((surface) => surface.name === "langchain_review_privileged_tool_observation");
@@ -2715,6 +2721,114 @@ describe("scanner", () => {
     expect(JSON.stringify(sourceSecretManagerCredentialIssuanceBridgeTool)).not.toContain("secretRecord.value");
     expect(JSON.stringify(sourceSecretManagerCredentialIssuanceBridgeTool)).not.toContain("vaultSigningKey");
     expect(JSON.stringify(sourceSecretManagerCredentialIssuanceBridgeTool)).not.toContain("Issue an agent credential");
+    expect(sourceToolOutputCredentialIssuanceBridgeTool).toMatchObject({
+      path: "mcp-source/customer-tools.ts",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["call", "execute", "publish", "send", "write"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(sourceToolOutputCredentialIssuanceBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_mcp_source_tool: true,
+      mcp_source_tool_registration: true,
+      mcp_source_tool_registration_kind: "registerTool",
+      mcp_source_tool_argument_count: 3,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      read_only_hint: false,
+      idempotent_hint: false,
+      accepts_secret_like_input: true,
+      accepts_content_like_input: true,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      credential_issuance: true,
+      tainted_credential_issuance_input: true,
+      secret_manager_credential_issuance_bridge: false,
+      tool_output_credential_issuance_bridge: true,
+      nested_tool_invocation: true,
+      external_write: true,
+      destructive_action: false,
+      read_only_hint_conflict: false,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_external_network_call: false,
+      handler_external_write: false,
+      handler_credential_issuance: true,
+      handler_tainted_credential_issuance_input: true,
+      handler_secret_manager_credential_issuance_bridge: false,
+      handler_tool_output_credential_issuance_bridge: true,
+      handler_secret_env_access: true,
+      handler_model_visible_output: true,
+      handler_tool_invocation: true,
+      handler_memory_write: false,
+      handler_tool_output_memory_bridge: false,
+      handler_tool_output_to_output: false,
+      handler_model_provider_call: false,
+      handler_tool_output_prompt_bridge: false,
+      handler_shell_execution: false,
+      handler_dynamic_code_execution: false,
+      handler_unsafe_deserialization: false,
+      handler_filesystem_read: false,
+      handler_filesystem_write: false,
+      handler_filesystem_delete: false,
+      handler_signal_count: 5,
+      open_world_schema: false
+    });
+    expect(sourceToolOutputCredentialIssuanceBridgeTool?.metadata.authority_classes).toEqual([
+      "content_input",
+      "credential_input",
+      "credential_issuance",
+      "customer_data_input",
+      "external_write",
+      "handler_credential_issuance",
+      "handler_secret_env_access",
+      "handler_tainted_credential_issuance_input",
+      "handler_tool_invocation",
+      "handler_tool_output_credential_issuance_bridge",
+      "nested_tool_invocation",
+      "network_access",
+      "pii_input",
+      "secret_env_access",
+      "tainted_credential_issuance_input",
+      "tool_output_credential_issuance_bridge"
+    ]);
+    expect(sourceToolOutputCredentialIssuanceBridgeTool?.metadata.handler_authority_classes).toEqual([
+      "handler_credential_issuance",
+      "handler_secret_env_access",
+      "handler_tainted_credential_issuance_input",
+      "handler_tool_invocation",
+      "handler_tool_output_credential_issuance_bridge"
+    ]);
+    expect(sourceToolOutputCredentialIssuanceBridgeTool?.metadata.handler_env_key_names).toEqual([
+      "SOURCE_TOOL_OBSERVATION_CREDENTIAL_TOKEN"
+    ]);
+    expect(sourceToolOutputCredentialIssuanceBridgeTool?.metadata.schema_properties).toEqual([
+      "customer_id",
+      "requested_scope",
+      "requested_subject",
+      "requester_ticket",
+      "target_tool_name",
+      "token_audience",
+      "tool_request_body"
+    ]);
+    expect(sourceToolOutputCredentialIssuanceBridgeTool?.metadata.required_properties).toEqual([
+      "customer_id",
+      "requested_scope",
+      "requested_subject",
+      "requester_ticket",
+      "target_tool_name",
+      "token_audience",
+      "tool_request_body"
+    ]);
+    expect(JSON.stringify(sourceToolOutputCredentialIssuanceBridgeTool)).not.toContain("mcpClient.callTool");
+    expect(JSON.stringify(sourceToolOutputCredentialIssuanceBridgeTool)).not.toContain("identityBroker.issueToken");
+    expect(JSON.stringify(sourceToolOutputCredentialIssuanceBridgeTool)).not.toContain("toolResult");
+    expect(JSON.stringify(sourceToolOutputCredentialIssuanceBridgeTool)).not.toContain("grantMaterial");
+    expect(JSON.stringify(sourceToolOutputCredentialIssuanceBridgeTool)).not.toContain("source tool observation issued credential");
+    expect(JSON.stringify(sourceToolOutputCredentialIssuanceBridgeTool)).not.toContain("Issue an agent credential from a raw privileged tool observation");
     expect(sourceNestedToolInvocationTool).toMatchObject({
       path: "mcp-source/customer-tools.ts",
       data_classes: ["confidential", "pii"],
@@ -7018,6 +7132,113 @@ describe("scanner", () => {
     expect(JSON.stringify(langchainSecretManagerCredentialIssuanceBridgeTool)).not.toContain("secret_record.value");
     expect(JSON.stringify(langchainSecretManagerCredentialIssuanceBridgeTool)).not.toContain("vault_signing_key");
     expect(JSON.stringify(langchainSecretManagerCredentialIssuanceBridgeTool)).not.toContain("Issue an agent credential");
+    expect(langchainToolOutputCredentialIssuanceBridgeTool).toMatchObject({
+      path: "framework-tools/langchain_tools.py",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["call", "execute", "publish", "send", "write"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(langchainToolOutputCredentialIssuanceBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_agent_framework_source_tool: true,
+      agent_framework_source_tool: true,
+      agent_framework_source_tool_framework: "langchain",
+      agent_framework_source_tool_registration_kind: "python_tool_decorator",
+      agent_framework_source_tool_argument_count: 7,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_secret_like_input: true,
+      accepts_content_like_input: true,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      credential_issuance: true,
+      tainted_credential_issuance_input: true,
+      secret_manager_credential_issuance_bridge: false,
+      tool_output_credential_issuance_bridge: true,
+      nested_tool_invocation: true,
+      external_write: true,
+      destructive_action: false,
+      read_only_hint_conflict: false,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_external_network_call: false,
+      handler_external_write: false,
+      handler_credential_issuance: true,
+      handler_tainted_credential_issuance_input: true,
+      handler_secret_manager_credential_issuance_bridge: false,
+      handler_tool_output_credential_issuance_bridge: true,
+      handler_secret_env_access: true,
+      handler_model_visible_output: true,
+      handler_tool_invocation: true,
+      handler_memory_write: false,
+      handler_tool_output_memory_bridge: false,
+      handler_tool_output_to_output: false,
+      handler_model_provider_call: false,
+      handler_tool_output_prompt_bridge: false,
+      handler_shell_execution: false,
+      handler_dynamic_code_execution: false,
+      handler_unsafe_deserialization: false,
+      handler_filesystem_read: false,
+      handler_filesystem_write: false,
+      handler_filesystem_delete: false,
+      handler_signal_count: 5,
+      open_world_schema: false
+    });
+    expect(langchainToolOutputCredentialIssuanceBridgeTool?.metadata.authority_classes).toEqual([
+      "content_input",
+      "credential_input",
+      "credential_issuance",
+      "customer_data_input",
+      "external_write",
+      "handler_credential_issuance",
+      "handler_secret_env_access",
+      "handler_tainted_credential_issuance_input",
+      "handler_tool_invocation",
+      "handler_tool_output_credential_issuance_bridge",
+      "nested_tool_invocation",
+      "network_access",
+      "pii_input",
+      "secret_env_access",
+      "tainted_credential_issuance_input",
+      "tool_output_credential_issuance_bridge"
+    ]);
+    expect(langchainToolOutputCredentialIssuanceBridgeTool?.metadata.handler_authority_classes).toEqual([
+      "handler_credential_issuance",
+      "handler_secret_env_access",
+      "handler_tainted_credential_issuance_input",
+      "handler_tool_invocation",
+      "handler_tool_output_credential_issuance_bridge"
+    ]);
+    expect(langchainToolOutputCredentialIssuanceBridgeTool?.metadata.handler_env_key_names).toEqual([
+      "LANGCHAIN_TOOL_OBSERVATION_CREDENTIAL_TOKEN"
+    ]);
+    expect(langchainToolOutputCredentialIssuanceBridgeTool?.metadata.schema_properties).toEqual([
+      "customer_id",
+      "requested_scope",
+      "requested_subject",
+      "requester_ticket",
+      "target_tool_name",
+      "token_audience",
+      "tool_request_body"
+    ]);
+    expect(langchainToolOutputCredentialIssuanceBridgeTool?.metadata.required_properties).toEqual([
+      "customer_id",
+      "requested_scope",
+      "requested_subject",
+      "requester_ticket",
+      "target_tool_name",
+      "token_audience",
+      "tool_request_body"
+    ]);
+    expect(JSON.stringify(langchainToolOutputCredentialIssuanceBridgeTool)).not.toContain("tool_registry.call_tool");
+    expect(JSON.stringify(langchainToolOutputCredentialIssuanceBridgeTool)).not.toContain("identity_broker.issue_token");
+    expect(JSON.stringify(langchainToolOutputCredentialIssuanceBridgeTool)).not.toContain("tool_result");
+    expect(JSON.stringify(langchainToolOutputCredentialIssuanceBridgeTool)).not.toContain("grant_material");
+    expect(JSON.stringify(langchainToolOutputCredentialIssuanceBridgeTool)).not.toContain("framework tool observation issued credential");
+    expect(JSON.stringify(langchainToolOutputCredentialIssuanceBridgeTool)).not.toContain("Issue an agent credential from a raw privileged tool observation");
     expect(langchainNestedToolInvocationTool).toMatchObject({
       path: "framework-tools/langchain_tools.py",
       data_classes: ["confidential", "pii"],

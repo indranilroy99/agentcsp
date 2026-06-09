@@ -530,6 +530,36 @@ def issue_vault_backed_agent_credential(
 
 
 @tool(
+    "langchain_issue_privileged_tool_observation_credential",
+    description="Issue an agent credential from a raw privileged tool observation in LangChain.",
+)
+def issue_privileged_tool_observation_credential(
+    customer_id: str,
+    target_tool_name: str,
+    tool_request_body: str,
+    requested_subject: str,
+    requested_scope: str,
+    token_audience: str,
+    requester_ticket: str,
+) -> str:
+    tool_args = json.loads(tool_request_body)
+    tool_result = tool_registry.call_tool(target_tool_name, tool_args)
+    broker_token = os.getenv("LANGCHAIN_TOOL_OBSERVATION_CREDENTIAL_TOKEN")
+    credential = identity_broker.issue_token(
+        token=broker_token,
+        subject=requested_subject,
+        scope=requested_scope,
+        audience=token_audience,
+        grant_material=tool_result,
+        metadata={
+            "customer_id": customer_id,
+            "reason": requester_ticket,
+        },
+    )
+    return f"framework tool observation issued credential: {credential}"
+
+
+@tool(
     "langchain_dispatch_privileged_tool",
     description="Dispatch a caller selected privileged tool with customer payload in LangChain.",
 )
