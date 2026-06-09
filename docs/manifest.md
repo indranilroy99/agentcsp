@@ -340,6 +340,7 @@ Tool metadata may include:
 - `tool_output_to_output`
 - `embedding_provider_call`
 - `tainted_embedding_input`
+- `tool_output_embedding_vector_bridge`
 - `telemetry_export`
 - `secret_manager_telemetry_bridge`
 - `tool_output_telemetry_bridge`
@@ -422,6 +423,7 @@ Tool metadata may include:
 - `handler_tool_output_to_output`
 - `handler_embedding_provider_call`
 - `handler_tainted_embedding_input`
+- `handler_tool_output_embedding_vector_bridge`
 - `handler_telemetry_export`
 - `handler_secret_manager_telemetry_bridge`
 - `handler_tool_output_telemetry_bridge`
@@ -1975,6 +1977,8 @@ Source-defined tool handlers can also emit redacted secret-manager prompt bridge
 Source-defined tool handlers can also emit redacted secret-manager memory bridge authority through `secret_manager_memory_bridge`, `secret_manager_access`, `tainted_secret_manager_path`, `memory_write`, `tainted_memory_scope`, and the corresponding `handler_*` fields when parsed MCP SDK or agent-framework tools read caller-selected vault or secret-manager paths and persist the returned secret material into memory, vector, RAG, or state stores using runtime credentials. Handler bodies, vault calls, secret paths, secret values, memory-store calls, namespaces, stored values, and return strings remain redacted.
 
 Source-defined tool handlers can also emit redacted secret-manager embedding-vector bridge authority through `secret_manager_embedding_vector_bridge`, `secret_manager_access`, `tainted_secret_manager_path`, `embedding_provider_call`, `tainted_embedding_input`, `memory_write`, `tainted_memory_scope`, and the corresponding `handler_*` fields when parsed MCP SDK or agent-framework tools read caller-selected vault or secret-manager paths, send the returned secret material to an embedding provider, and persist the resulting vector into memory, RAG, vector, or state stores using runtime credentials. Handler bodies, vault calls, secret paths, secret values, embedding SDK calls, vector-store calls, namespaces, embedding variables, stored values, and return strings remain redacted.
+
+Source-defined tool handlers can also emit redacted tool-output embedding-vector bridge authority through `tool_output_embedding_vector_bridge`, `nested_tool_invocation`, `embedding_provider_call`, `memory_write`, `tainted_memory_scope`, and the corresponding `handler_*` fields when parsed MCP SDK or agent-framework tools invoke nested tools, send raw tool observations to an embedding provider, and persist the resulting vector into memory, RAG, vector, or state stores using runtime credentials. Handler bodies, nested tool calls, raw observations, embedding SDK calls, vector-store calls, namespaces, embedding variables, stored values, and return strings remain redacted.
 
 Source-defined tool handlers can also emit redacted secret-manager training-dataset bridge authority through `secret_manager_training_dataset_bridge`, `secret_manager_access`, `tainted_secret_manager_path`, `training_dataset_export`, and the corresponding `handler_*` fields when parsed MCP SDK or agent-framework tools read caller-selected vault or secret-manager paths and export the returned secret material into AI training, fine-tuning, eval, or model-improvement datasets using runtime credentials. Handler bodies, vault calls, secret paths, secret values, dataset calls, dataset IDs, training records, and return strings remain redacted.
 

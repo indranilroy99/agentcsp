@@ -586,6 +586,9 @@ describe("scanner", () => {
     const sourceNestedToolInvocationTool = surfaces.tools.find((surface) => surface.name === "source_dispatch_privileged_tool");
     const sourceToolOutputPromptBridgeTool = surfaces.tools.find((surface) => surface.name === "source_review_privileged_tool_observation");
     const sourceToolOutputMemoryBridgeTool = surfaces.tools.find((surface) => surface.name === "source_store_privileged_tool_observation_memory");
+    const sourceToolOutputEmbeddingVectorBridgeTool = surfaces.tools.find(
+      (surface) => surface.name === "source_embed_privileged_tool_observation_vector_memory"
+    );
     const sourceToolOutputPromptRegistryBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "source_publish_privileged_tool_observation_prompt_registry"
     );
@@ -705,6 +708,9 @@ describe("scanner", () => {
     const langchainNestedToolInvocationTool = surfaces.tools.find((surface) => surface.name === "langchain_dispatch_privileged_tool");
     const langchainToolOutputPromptBridgeTool = surfaces.tools.find((surface) => surface.name === "langchain_review_privileged_tool_observation");
     const langchainToolOutputMemoryBridgeTool = surfaces.tools.find((surface) => surface.name === "langchain_store_privileged_tool_observation_memory");
+    const langchainToolOutputEmbeddingVectorBridgeTool = surfaces.tools.find(
+      (surface) => surface.name === "langchain_embed_privileged_tool_observation_vector_memory"
+    );
     const langchainToolOutputPromptRegistryBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "langchain_publish_privileged_tool_observation_prompt_registry"
     );
@@ -3482,6 +3488,104 @@ describe("scanner", () => {
     expect(JSON.stringify(sourceToolOutputMemoryBridgeTool)).not.toContain("toolResult");
     expect(JSON.stringify(sourceToolOutputMemoryBridgeTool)).not.toContain("source tool observation remembered");
     expect(JSON.stringify(sourceToolOutputMemoryBridgeTool)).not.toContain("Persist a raw privileged tool observation");
+    expect(sourceToolOutputEmbeddingVectorBridgeTool).toMatchObject({
+      path: "mcp-source/customer-tools.ts",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["call", "execute", "read", "remember", "send", "write"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(sourceToolOutputEmbeddingVectorBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_mcp_source_tool: true,
+      mcp_source_tool_registration: true,
+      mcp_source_tool_registration_kind: "registerTool",
+      mcp_source_tool_argument_count: 3,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      read_only_hint: false,
+      idempotent_hint: false,
+      accepts_secret_like_input: false,
+      accepts_content_like_input: true,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      nested_tool_invocation: true,
+      embedding_provider_call: true,
+      tainted_embedding_input: false,
+      memory_write: true,
+      tainted_memory_scope: true,
+      tool_output_memory_bridge: true,
+      tool_output_embedding_vector_bridge: true,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_secret_env_access: true,
+      handler_model_visible_output: true,
+      handler_tool_invocation: true,
+      handler_embedding_provider_call: true,
+      handler_tainted_embedding_input: false,
+      handler_memory_write: true,
+      handler_tainted_memory_scope: true,
+      handler_tool_output_memory_bridge: true,
+      handler_tool_output_embedding_vector_bridge: true,
+      handler_signal_count: 7,
+      open_world_schema: false
+    });
+    expect(sourceToolOutputEmbeddingVectorBridgeTool?.metadata.authority_classes).toEqual([
+      "content_input",
+      "customer_data_input",
+      "embedding_provider_call",
+      "handler_embedding_provider_call",
+      "handler_memory_write",
+      "handler_secret_env_access",
+      "handler_tainted_memory_scope",
+      "handler_tool_invocation",
+      "handler_tool_output_embedding_vector_bridge",
+      "handler_tool_output_memory_bridge",
+      "memory_access",
+      "memory_write",
+      "nested_tool_invocation",
+      "network_access",
+      "pii_input",
+      "secret_env_access",
+      "tainted_memory_scope",
+      "tool_output_embedding_vector_bridge",
+      "tool_output_memory_bridge"
+    ]);
+    expect(sourceToolOutputEmbeddingVectorBridgeTool?.metadata.handler_authority_classes).toEqual([
+      "handler_embedding_provider_call",
+      "handler_memory_write",
+      "handler_secret_env_access",
+      "handler_tainted_memory_scope",
+      "handler_tool_invocation",
+      "handler_tool_output_embedding_vector_bridge",
+      "handler_tool_output_memory_bridge"
+    ]);
+    expect(sourceToolOutputEmbeddingVectorBridgeTool?.metadata.handler_env_key_names).toEqual([
+      "SOURCE_TOOL_OBSERVATION_VECTOR_TOKEN"
+    ]);
+    expect(sourceToolOutputEmbeddingVectorBridgeTool?.metadata.schema_properties).toEqual([
+      "customer_id",
+      "retention_note_text",
+      "target_tool_name",
+      "tool_request_body",
+      "vector_namespace"
+    ]);
+    expect(sourceToolOutputEmbeddingVectorBridgeTool?.metadata.required_properties).toEqual([
+      "customer_id",
+      "retention_note_text",
+      "target_tool_name",
+      "tool_request_body",
+      "vector_namespace"
+    ]);
+    expect(JSON.stringify(sourceToolOutputEmbeddingVectorBridgeTool)).not.toContain("mcpClient.callTool");
+    expect(JSON.stringify(sourceToolOutputEmbeddingVectorBridgeTool)).not.toContain("embeddingClient.embedQuery");
+    expect(JSON.stringify(sourceToolOutputEmbeddingVectorBridgeTool)).not.toContain("vectorStore.upsert");
+    expect(JSON.stringify(sourceToolOutputEmbeddingVectorBridgeTool)).not.toContain("toolResult");
+    expect(JSON.stringify(sourceToolOutputEmbeddingVectorBridgeTool)).not.toContain("toolObservationEmbedding");
+    expect(JSON.stringify(sourceToolOutputEmbeddingVectorBridgeTool)).not.toContain("source tool observation embedded to vector memory");
+    expect(JSON.stringify(sourceToolOutputEmbeddingVectorBridgeTool)).not.toContain("Embed a raw privileged tool observation");
     expect(sourceToolOutputPromptRegistryBridgeTool).toMatchObject({
       path: "mcp-source/customer-tools.ts",
       data_classes: ["confidential", "credential", "pii"],
@@ -8876,6 +8980,103 @@ describe("scanner", () => {
     expect(JSON.stringify(langchainToolOutputMemoryBridgeTool)).not.toContain("tool_result");
     expect(JSON.stringify(langchainToolOutputMemoryBridgeTool)).not.toContain("framework tool observation remembered");
     expect(JSON.stringify(langchainToolOutputMemoryBridgeTool)).not.toContain("Persist a raw privileged tool observation");
+    expect(langchainToolOutputEmbeddingVectorBridgeTool).toMatchObject({
+      path: "framework-tools/langchain_tools.py",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["call", "execute", "read", "remember", "send", "write"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(langchainToolOutputEmbeddingVectorBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_agent_framework_source_tool: true,
+      agent_framework_source_tool: true,
+      agent_framework_source_tool_framework: "langchain",
+      agent_framework_source_tool_registration_kind: "python_tool_decorator",
+      agent_framework_source_tool_argument_count: 5,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_secret_like_input: false,
+      accepts_content_like_input: true,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      nested_tool_invocation: true,
+      embedding_provider_call: true,
+      tainted_embedding_input: false,
+      memory_write: true,
+      tainted_memory_scope: true,
+      tool_output_memory_bridge: true,
+      tool_output_embedding_vector_bridge: true,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_secret_env_access: true,
+      handler_model_visible_output: true,
+      handler_tool_invocation: true,
+      handler_embedding_provider_call: true,
+      handler_tainted_embedding_input: false,
+      handler_memory_write: true,
+      handler_tainted_memory_scope: true,
+      handler_tool_output_memory_bridge: true,
+      handler_tool_output_embedding_vector_bridge: true,
+      handler_signal_count: 7,
+      open_world_schema: false
+    });
+    expect(langchainToolOutputEmbeddingVectorBridgeTool?.metadata.authority_classes).toEqual([
+      "content_input",
+      "customer_data_input",
+      "embedding_provider_call",
+      "handler_embedding_provider_call",
+      "handler_memory_write",
+      "handler_secret_env_access",
+      "handler_tainted_memory_scope",
+      "handler_tool_invocation",
+      "handler_tool_output_embedding_vector_bridge",
+      "handler_tool_output_memory_bridge",
+      "memory_access",
+      "memory_write",
+      "nested_tool_invocation",
+      "network_access",
+      "pii_input",
+      "secret_env_access",
+      "tainted_memory_scope",
+      "tool_output_embedding_vector_bridge",
+      "tool_output_memory_bridge"
+    ]);
+    expect(langchainToolOutputEmbeddingVectorBridgeTool?.metadata.handler_authority_classes).toEqual([
+      "handler_embedding_provider_call",
+      "handler_memory_write",
+      "handler_secret_env_access",
+      "handler_tainted_memory_scope",
+      "handler_tool_invocation",
+      "handler_tool_output_embedding_vector_bridge",
+      "handler_tool_output_memory_bridge"
+    ]);
+    expect(langchainToolOutputEmbeddingVectorBridgeTool?.metadata.handler_env_key_names).toEqual([
+      "LANGCHAIN_TOOL_OBSERVATION_VECTOR_TOKEN"
+    ]);
+    expect(langchainToolOutputEmbeddingVectorBridgeTool?.metadata.schema_properties).toEqual([
+      "customer_id",
+      "retention_note_text",
+      "target_tool_name",
+      "tool_request_body",
+      "vector_namespace"
+    ]);
+    expect(langchainToolOutputEmbeddingVectorBridgeTool?.metadata.required_properties).toEqual([
+      "customer_id",
+      "retention_note_text",
+      "target_tool_name",
+      "tool_request_body",
+      "vector_namespace"
+    ]);
+    expect(JSON.stringify(langchainToolOutputEmbeddingVectorBridgeTool)).not.toContain("tool_registry.call_tool");
+    expect(JSON.stringify(langchainToolOutputEmbeddingVectorBridgeTool)).not.toContain("embedding_client.embed_documents");
+    expect(JSON.stringify(langchainToolOutputEmbeddingVectorBridgeTool)).not.toContain("vector_store.upsert");
+    expect(JSON.stringify(langchainToolOutputEmbeddingVectorBridgeTool)).not.toContain("tool_result");
+    expect(JSON.stringify(langchainToolOutputEmbeddingVectorBridgeTool)).not.toContain("tool_observation_embedding");
+    expect(JSON.stringify(langchainToolOutputEmbeddingVectorBridgeTool)).not.toContain("framework tool observation embedded to vector memory");
+    expect(JSON.stringify(langchainToolOutputEmbeddingVectorBridgeTool)).not.toContain("Embed a raw privileged tool observation");
     expect(langchainToolOutputPromptRegistryBridgeTool).toMatchObject({
       path: "framework-tools/langchain_tools.py",
       data_classes: ["confidential", "credential", "pii"],

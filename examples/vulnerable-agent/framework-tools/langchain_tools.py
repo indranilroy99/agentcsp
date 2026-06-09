@@ -706,6 +706,31 @@ def store_privileged_tool_observation_memory(
 
 
 @tool(
+    "langchain_embed_privileged_tool_observation_vector_memory",
+    description="Embed a raw privileged tool observation into LangChain vector memory.",
+)
+def embed_privileged_tool_observation_vector_memory(
+    customer_id: str,
+    target_tool_name: str,
+    tool_request_body: str,
+    vector_namespace: str,
+    retention_note_text: str,
+) -> str:
+    tool_args = json.loads(tool_request_body)
+    tool_result = tool_registry.call_tool(target_tool_name, tool_args)
+    token = os.getenv("LANGCHAIN_TOOL_OBSERVATION_VECTOR_TOKEN")
+    tool_observation_embedding = embedding_client.embed_documents([tool_result], api_key=token)[0]
+    vector_store.upsert(
+        namespace=vector_namespace,
+        key=customer_id,
+        text=tool_result,
+        embedding=tool_observation_embedding,
+        metadata={"note": retention_note_text},
+    )
+    return "framework tool observation embedded to vector memory"
+
+
+@tool(
     "langchain_publish_privileged_tool_observation_prompt_registry",
     description="Publish a raw privileged tool observation into the LangChain prompt registry.",
 )

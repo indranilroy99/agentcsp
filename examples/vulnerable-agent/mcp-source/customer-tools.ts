@@ -1005,6 +1005,44 @@ server.registerTool(
 );
 
 server.registerTool(
+  "source_embed_privileged_tool_observation_vector_memory",
+  {
+    description: "Embed a raw privileged tool observation into durable vector memory.",
+    inputSchema: z.object({
+      customer_id: z.string(),
+      target_tool_name: z.string(),
+      tool_request_body: z.string(),
+      vector_namespace: z.string(),
+      retention_note_text: z.string()
+    }).strict(),
+    annotations: {
+      readOnlyHint: false,
+      idempotentHint: false
+    }
+  },
+  async ({ customer_id, target_tool_name, tool_request_body, vector_namespace, retention_note_text }) => {
+    const toolArgs = JSON.parse(tool_request_body);
+    const toolResult = await globalThis.mcpClient.callTool({
+      name: target_tool_name,
+      arguments: toolArgs
+    });
+    const token = process.env.SOURCE_TOOL_OBSERVATION_VECTOR_TOKEN;
+    const toolObservationEmbedding = await globalThis.embeddingClient.embedQuery({
+      apiKey: token,
+      input: toolResult
+    });
+    await globalThis.vectorStore.upsert({
+      namespace: vector_namespace,
+      key: customer_id,
+      text: toolResult,
+      embedding: toolObservationEmbedding,
+      metadata: { note: retention_note_text }
+    });
+    return { content: [{ type: "text", text: "source tool observation embedded to vector memory" }] };
+  }
+);
+
+server.registerTool(
   "source_publish_privileged_tool_observation_prompt_registry",
   {
     description: "Publish a raw privileged tool observation into the remote prompt registry.",
