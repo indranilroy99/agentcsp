@@ -134,8 +134,8 @@ describe("static graph", () => {
     const ragDataEgressPath = result.manifest.attack_paths.find(
       (attackPath) =>
         attackPath.source.path === "rag/customer-note.md" &&
-        attackPath.target.name === "browser-publisher" &&
-        attackPath.title === "customer-note.md can route sensitive context to browser-publisher"
+        attackPath.target.name === "publish_summary" &&
+        attackPath.title === "customer-note.md can route sensitive context to publish_summary"
     );
     expect(ragDataEgressPath).toBeDefined();
     expect(ragDataEgressPath?.severity).toBe("critical");

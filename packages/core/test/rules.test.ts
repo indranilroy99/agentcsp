@@ -93,6 +93,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-077")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-090")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-091")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-092")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-001")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-002")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-003")).toBe(true);
@@ -7262,6 +7263,7 @@ describe("rule engine", () => {
     const sourceHandlerNestedToolInvocationFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-026");
     expect(sourceHandlerNestedToolInvocationFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_apply_tool_observation_guardrail_override",
+      "langchain_cache_privileged_tool_observation_prompt",
       "langchain_dispatch_privileged_tool",
       "langchain_embed_privileged_tool_observation_vector_memory",
       "langchain_enqueue_privileged_tool_observation_job",
@@ -7273,6 +7275,7 @@ describe("rule engine", () => {
       "langchain_publish_privileged_tool_observation_prompt_registry",
       "langchain_store_privileged_tool_observation_database",
       "source_apply_tool_observation_guardrail_override",
+      "source_cache_privileged_tool_observation_prompt",
       "source_dispatch_privileged_tool",
       "source_embed_privileged_tool_observation_vector_memory",
       "source_enqueue_privileged_tool_observation_job",
@@ -7431,6 +7434,51 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerToolOutputMemoryBridgeFindings)).not.toContain("Persist a raw privileged tool observation");
     expect(JSON.stringify(sourceHandlerToolOutputMemoryBridgeFindings)).not.toContain("source tool observation embedded to vector memory");
     expect(JSON.stringify(sourceHandlerToolOutputMemoryBridgeFindings)).not.toContain("framework tool observation embedded to vector memory");
+    const sourceHandlerToolOutputPromptCacheBridgeFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-092");
+    expect(sourceHandlerToolOutputPromptCacheBridgeFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
+      "langchain_cache_privileged_tool_observation_prompt",
+      "source_cache_privileged_tool_observation_prompt"
+    ]);
+    expect(sourceHandlerToolOutputPromptCacheBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
+    expect(sourceHandlerToolOutputPromptCacheBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerToolOutputPromptCacheBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
+    expect(sourceHandlerToolOutputPromptCacheBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
+    expect(sourceHandlerToolOutputPromptCacheBridgeFindings.every((finding) => finding.matched_object.metadata.source_tool_handler_redacted === true)).toBe(true);
+    expect(sourceHandlerToolOutputPromptCacheBridgeFindings.every((finding) => finding.matched_object.metadata.handler_tool_invocation === true)).toBe(true);
+    expect(sourceHandlerToolOutputPromptCacheBridgeFindings.every((finding) => finding.matched_object.metadata.handler_prompt_cache_write === true)).toBe(true);
+    expect(sourceHandlerToolOutputPromptCacheBridgeFindings.every((finding) => finding.matched_object.metadata.handler_tool_output_prompt_cache_bridge === true)).toBe(true);
+    expect(sourceHandlerToolOutputPromptCacheBridgeFindings.every((finding) => finding.matched_object.metadata.handler_tainted_prompt_cache_key === true)).toBe(true);
+    expect(sourceHandlerToolOutputPromptCacheBridgeFindings.every((finding) => finding.matched_object.metadata.handler_secret_env_access === true)).toBe(true);
+    expect(sourceHandlerToolOutputPromptCacheBridgeFindings.every((finding) => finding.matched_object.metadata.nested_tool_invocation === true)).toBe(true);
+    expect(sourceHandlerToolOutputPromptCacheBridgeFindings.every((finding) => finding.matched_object.metadata.prompt_cache_write === true)).toBe(true);
+    expect(sourceHandlerToolOutputPromptCacheBridgeFindings.every((finding) => finding.matched_object.metadata.tool_output_prompt_cache_bridge === true)).toBe(true);
+    expect(sourceHandlerToolOutputPromptCacheBridgeFindings.every((finding) => finding.matched_object.metadata.tainted_prompt_cache_key === true)).toBe(true);
+    expect(sourceHandlerToolOutputPromptCacheBridgeFindings.every((finding) => finding.matched_object.metadata.accepts_content_like_input === true)).toBe(true);
+    expect(sourceHandlerToolOutputPromptCacheBridgeFindings.every((finding) => finding.matched_object.metadata.accepts_customer_data_input === true)).toBe(true);
+    expect(sourceHandlerToolOutputPromptCacheBridgeFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("nested_tool_invocation"))).toBe(true);
+    expect(sourceHandlerToolOutputPromptCacheBridgeFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("prompt_cache_write"))).toBe(true);
+    expect(sourceHandlerToolOutputPromptCacheBridgeFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("tool_output_prompt_cache_bridge"))).toBe(true);
+    expect(sourceHandlerToolOutputPromptCacheBridgeFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("tainted_prompt_cache_key"))).toBe(true);
+    expect(sourceHandlerToolOutputPromptCacheBridgeFindings.every((finding) => finding.matched_object.metadata.handler_authority_classes.includes("handler_tool_invocation"))).toBe(true);
+    expect(sourceHandlerToolOutputPromptCacheBridgeFindings.every((finding) => finding.matched_object.metadata.handler_authority_classes.includes("handler_prompt_cache_write"))).toBe(true);
+    expect(sourceHandlerToolOutputPromptCacheBridgeFindings.every((finding) => finding.matched_object.metadata.handler_authority_classes.includes("handler_tool_output_prompt_cache_bridge"))).toBe(true);
+    expect(sourceHandlerToolOutputPromptCacheBridgeFindings.every((finding) => finding.matched_object.metadata.handler_authority_classes.includes("handler_tainted_prompt_cache_key"))).toBe(true);
+    expect(sourceHandlerToolOutputPromptCacheBridgeFindings.every((finding) => finding.matched_object.actions.includes("execute"))).toBe(true);
+    expect(sourceHandlerToolOutputPromptCacheBridgeFindings.every((finding) => finding.matched_object.actions.includes("remember"))).toBe(true);
+    expect(sourceHandlerToolOutputPromptCacheBridgeFindings.every((finding) => finding.matched_object.actions.includes("write"))).toBe(true);
+    expect(sourceHandlerToolOutputPromptCacheBridgeFindings.every((finding) => finding.matched_object.external_reach === true)).toBe(true);
+    expect(sourceHandlerToolOutputPromptCacheBridgeFindings.every((finding) => finding.matched_object.secret_exposure === true)).toBe(true);
+    expect(sourceHandlerToolOutputPromptCacheBridgeFindings.every((finding) => finding.matched_object.side_effect === true)).toBe(true);
+    expect(sourceHandlerToolOutputPromptCacheBridgeFindings.every((finding) => finding.matched_object.reversible === false)).toBe(true);
+    expect(JSON.stringify(sourceHandlerToolOutputPromptCacheBridgeFindings)).not.toContain("mcpClient.callTool");
+    expect(JSON.stringify(sourceHandlerToolOutputPromptCacheBridgeFindings)).not.toContain("tool_registry.call_tool");
+    expect(JSON.stringify(sourceHandlerToolOutputPromptCacheBridgeFindings)).not.toContain("promptCache.set");
+    expect(JSON.stringify(sourceHandlerToolOutputPromptCacheBridgeFindings)).not.toContain("prompt_cache.set");
+    expect(JSON.stringify(sourceHandlerToolOutputPromptCacheBridgeFindings)).not.toContain("toolResult");
+    expect(JSON.stringify(sourceHandlerToolOutputPromptCacheBridgeFindings)).not.toContain("tool_result");
+    expect(JSON.stringify(sourceHandlerToolOutputPromptCacheBridgeFindings)).not.toContain("source tool observation cached for prompts");
+    expect(JSON.stringify(sourceHandlerToolOutputPromptCacheBridgeFindings)).not.toContain("framework tool observation cached for prompts");
+    expect(JSON.stringify(sourceHandlerToolOutputPromptCacheBridgeFindings)).not.toContain("Write a raw privileged tool observation");
     const sourceHandlerToolOutputEmbeddingVectorBridgeFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-090");
     expect(sourceHandlerToolOutputEmbeddingVectorBridgeFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_embed_privileged_tool_observation_vector_memory",

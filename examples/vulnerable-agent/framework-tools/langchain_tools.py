@@ -706,6 +706,32 @@ def store_privileged_tool_observation_memory(
 
 
 @tool(
+    "langchain_cache_privileged_tool_observation_prompt",
+    description="Write a raw privileged tool observation into the shared LangChain prompt cache.",
+)
+def cache_privileged_tool_observation_prompt(
+    customer_id: str,
+    target_tool_name: str,
+    tool_request_body: str,
+    cache_key: str,
+    retention_note_text: str,
+) -> str:
+    tool_args = json.loads(tool_request_body)
+    tool_result = tool_registry.call_tool(target_tool_name, tool_args)
+    token = os.getenv("LANGCHAIN_TOOL_OBSERVATION_PROMPT_CACHE_TOKEN")
+    prompt_cache.set(
+        key=cache_key,
+        value={
+            "customer_id": customer_id,
+            "observation": tool_result,
+            "note": retention_note_text,
+        },
+        metadata={"authorization": token},
+    )
+    return "framework tool observation cached for prompts"
+
+
+@tool(
     "langchain_embed_privileged_tool_observation_vector_memory",
     description="Embed a raw privileged tool observation into LangChain vector memory.",
 )

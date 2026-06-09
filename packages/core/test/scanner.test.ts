@@ -586,6 +586,9 @@ describe("scanner", () => {
     const sourceNestedToolInvocationTool = surfaces.tools.find((surface) => surface.name === "source_dispatch_privileged_tool");
     const sourceToolOutputPromptBridgeTool = surfaces.tools.find((surface) => surface.name === "source_review_privileged_tool_observation");
     const sourceToolOutputMemoryBridgeTool = surfaces.tools.find((surface) => surface.name === "source_store_privileged_tool_observation_memory");
+    const sourceToolOutputPromptCacheBridgeTool = surfaces.tools.find(
+      (surface) => surface.name === "source_cache_privileged_tool_observation_prompt"
+    );
     const sourceToolOutputEmbeddingVectorBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "source_embed_privileged_tool_observation_vector_memory"
     );
@@ -711,6 +714,9 @@ describe("scanner", () => {
     const langchainNestedToolInvocationTool = surfaces.tools.find((surface) => surface.name === "langchain_dispatch_privileged_tool");
     const langchainToolOutputPromptBridgeTool = surfaces.tools.find((surface) => surface.name === "langchain_review_privileged_tool_observation");
     const langchainToolOutputMemoryBridgeTool = surfaces.tools.find((surface) => surface.name === "langchain_store_privileged_tool_observation_memory");
+    const langchainToolOutputPromptCacheBridgeTool = surfaces.tools.find(
+      (surface) => surface.name === "langchain_cache_privileged_tool_observation_prompt"
+    );
     const langchainToolOutputEmbeddingVectorBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "langchain_embed_privileged_tool_observation_vector_memory"
     );
@@ -3494,6 +3500,81 @@ describe("scanner", () => {
     expect(JSON.stringify(sourceToolOutputMemoryBridgeTool)).not.toContain("toolResult");
     expect(JSON.stringify(sourceToolOutputMemoryBridgeTool)).not.toContain("source tool observation remembered");
     expect(JSON.stringify(sourceToolOutputMemoryBridgeTool)).not.toContain("Persist a raw privileged tool observation");
+    expect(sourceToolOutputPromptCacheBridgeTool).toMatchObject({
+      path: "mcp-source/customer-tools.ts",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["call", "execute", "remember", "write"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(sourceToolOutputPromptCacheBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_mcp_source_tool: true,
+      mcp_source_tool_registration_kind: "registerTool",
+      mcp_source_tool_argument_count: 3,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      read_only_hint: false,
+      idempotent_hint: false,
+      accepts_content_like_input: true,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      nested_tool_invocation: true,
+      prompt_cache_write: true,
+      tool_output_prompt_cache_bridge: true,
+      tainted_prompt_cache_key: true,
+      tainted_prompt_cache_value: false,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_prompt_cache_write: true,
+      handler_tool_output_prompt_cache_bridge: true,
+      handler_tainted_prompt_cache_key: true,
+      handler_tainted_prompt_cache_value: false,
+      handler_secret_env_access: true,
+      handler_tool_invocation: true,
+      handler_signal_count: 5,
+      open_world_schema: false
+    });
+    expect(sourceToolOutputPromptCacheBridgeTool?.metadata.authority_classes).toEqual([
+      "content_input",
+      "customer_data_input",
+      "handler_prompt_cache_write",
+      "handler_secret_env_access",
+      "handler_tainted_prompt_cache_key",
+      "handler_tool_invocation",
+      "handler_tool_output_prompt_cache_bridge",
+      "nested_tool_invocation",
+      "network_access",
+      "pii_input",
+      "prompt_cache_write",
+      "secret_env_access",
+      "tainted_prompt_cache_key",
+      "tool_output_prompt_cache_bridge"
+    ]);
+    expect(sourceToolOutputPromptCacheBridgeTool?.metadata.handler_authority_classes).toEqual([
+      "handler_prompt_cache_write",
+      "handler_secret_env_access",
+      "handler_tainted_prompt_cache_key",
+      "handler_tool_invocation",
+      "handler_tool_output_prompt_cache_bridge"
+    ]);
+    expect(sourceToolOutputPromptCacheBridgeTool?.metadata.handler_env_key_names).toEqual([
+      "SOURCE_TOOL_OBSERVATION_PROMPT_CACHE_TOKEN"
+    ]);
+    expect(sourceToolOutputPromptCacheBridgeTool?.metadata.schema_properties).toEqual([
+      "cache_key",
+      "customer_id",
+      "retention_note_text",
+      "target_tool_name",
+      "tool_request_body"
+    ]);
+    expect(JSON.stringify(sourceToolOutputPromptCacheBridgeTool)).not.toContain("mcpClient.callTool");
+    expect(JSON.stringify(sourceToolOutputPromptCacheBridgeTool)).not.toContain("promptCache.set");
+    expect(JSON.stringify(sourceToolOutputPromptCacheBridgeTool)).not.toContain("toolResult");
+    expect(JSON.stringify(sourceToolOutputPromptCacheBridgeTool)).not.toContain("source tool observation cached for prompts");
+    expect(JSON.stringify(sourceToolOutputPromptCacheBridgeTool)).not.toContain("Write a raw privileged tool observation");
     expect(sourceToolOutputEmbeddingVectorBridgeTool).toMatchObject({
       path: "mcp-source/customer-tools.ts",
       data_classes: ["confidential", "credential", "pii"],
@@ -9080,6 +9161,81 @@ describe("scanner", () => {
     expect(JSON.stringify(langchainToolOutputMemoryBridgeTool)).not.toContain("tool_result");
     expect(JSON.stringify(langchainToolOutputMemoryBridgeTool)).not.toContain("framework tool observation remembered");
     expect(JSON.stringify(langchainToolOutputMemoryBridgeTool)).not.toContain("Persist a raw privileged tool observation");
+    expect(langchainToolOutputPromptCacheBridgeTool).toMatchObject({
+      path: "framework-tools/langchain_tools.py",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["call", "execute", "remember", "write"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(langchainToolOutputPromptCacheBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_agent_framework_source_tool: true,
+      agent_framework_source_tool: true,
+      agent_framework_source_tool_framework: "langchain",
+      agent_framework_source_tool_registration_kind: "python_tool_decorator",
+      agent_framework_source_tool_argument_count: 5,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_content_like_input: true,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      nested_tool_invocation: true,
+      prompt_cache_write: true,
+      tool_output_prompt_cache_bridge: true,
+      tainted_prompt_cache_key: true,
+      tainted_prompt_cache_value: false,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_prompt_cache_write: true,
+      handler_tool_output_prompt_cache_bridge: true,
+      handler_tainted_prompt_cache_key: true,
+      handler_tainted_prompt_cache_value: false,
+      handler_secret_env_access: true,
+      handler_tool_invocation: true,
+      handler_signal_count: 5,
+      open_world_schema: false
+    });
+    expect(langchainToolOutputPromptCacheBridgeTool?.metadata.authority_classes).toEqual([
+      "content_input",
+      "customer_data_input",
+      "handler_prompt_cache_write",
+      "handler_secret_env_access",
+      "handler_tainted_prompt_cache_key",
+      "handler_tool_invocation",
+      "handler_tool_output_prompt_cache_bridge",
+      "nested_tool_invocation",
+      "network_access",
+      "pii_input",
+      "prompt_cache_write",
+      "secret_env_access",
+      "tainted_prompt_cache_key",
+      "tool_output_prompt_cache_bridge"
+    ]);
+    expect(langchainToolOutputPromptCacheBridgeTool?.metadata.handler_authority_classes).toEqual([
+      "handler_prompt_cache_write",
+      "handler_secret_env_access",
+      "handler_tainted_prompt_cache_key",
+      "handler_tool_invocation",
+      "handler_tool_output_prompt_cache_bridge"
+    ]);
+    expect(langchainToolOutputPromptCacheBridgeTool?.metadata.handler_env_key_names).toEqual([
+      "LANGCHAIN_TOOL_OBSERVATION_PROMPT_CACHE_TOKEN"
+    ]);
+    expect(langchainToolOutputPromptCacheBridgeTool?.metadata.schema_properties).toEqual([
+      "cache_key",
+      "customer_id",
+      "retention_note_text",
+      "target_tool_name",
+      "tool_request_body"
+    ]);
+    expect(JSON.stringify(langchainToolOutputPromptCacheBridgeTool)).not.toContain("tool_registry.call_tool");
+    expect(JSON.stringify(langchainToolOutputPromptCacheBridgeTool)).not.toContain("prompt_cache.set");
+    expect(JSON.stringify(langchainToolOutputPromptCacheBridgeTool)).not.toContain("tool_result");
+    expect(JSON.stringify(langchainToolOutputPromptCacheBridgeTool)).not.toContain("framework tool observation cached for prompts");
+    expect(JSON.stringify(langchainToolOutputPromptCacheBridgeTool)).not.toContain("Write a raw privileged tool observation");
     expect(langchainToolOutputEmbeddingVectorBridgeTool).toMatchObject({
       path: "framework-tools/langchain_tools.py",
       data_classes: ["confidential", "credential", "pii"],

@@ -24219,6 +24219,7 @@ function addToolDefinitionSurface(
       tainted_telemetry_payload: authority.tainted_telemetry_payload,
       prompt_cache_write: authority.prompt_cache_write,
       secret_manager_prompt_cache_bridge: authority.secret_manager_prompt_cache_bridge,
+      tool_output_prompt_cache_bridge: authority.tool_output_prompt_cache_bridge,
       secret_manager_prompt_registry_bridge: authority.secret_manager_prompt_registry_bridge,
       tool_output_prompt_registry_bridge: authority.tool_output_prompt_registry_bridge,
       tainted_prompt_cache_key: authority.tainted_prompt_cache_key,
@@ -26658,6 +26659,7 @@ interface SourceToolHandlerSignals {
   handlerTaintedTelemetryPayload: boolean;
   handlerPromptCacheWrite: boolean;
   handlerSecretManagerPromptCacheBridge: boolean;
+  handlerToolOutputPromptCacheBridge: boolean;
   handlerTaintedPromptCacheKey: boolean;
   handlerTaintedPromptCacheValue: boolean;
   handlerTrainingDatasetExport: boolean;
@@ -27181,6 +27183,7 @@ function sourceToolHandlerSignalMetadata(signals: SourceToolHandlerSignals | und
     handler_tainted_telemetry_payload: signals.handlerTaintedTelemetryPayload,
     handler_prompt_cache_write: signals.handlerPromptCacheWrite,
     handler_secret_manager_prompt_cache_bridge: signals.handlerSecretManagerPromptCacheBridge,
+    handler_tool_output_prompt_cache_bridge: signals.handlerToolOutputPromptCacheBridge,
     handler_tainted_prompt_cache_key: signals.handlerTaintedPromptCacheKey,
     handler_tainted_prompt_cache_value: signals.handlerTaintedPromptCacheValue,
     handler_training_dataset_export: signals.handlerTrainingDatasetExport,
@@ -27568,6 +27571,9 @@ function classifySourceToolHandlerSignals(
   const secretManagerPromptCacheBridge = secretManagerAccess && promptCacheWrite && (language === "javascript"
     ? hasJavaScriptHandlerSecretManagerPromptCacheBridge(handlerSource)
     : hasPythonHandlerSecretManagerPromptCacheBridge(handlerSource));
+  const toolOutputPromptCacheBridge = toolInvocation && promptCacheWrite && (language === "javascript"
+    ? hasJavaScriptHandlerToolOutputPromptCacheBridge(handlerSource)
+    : hasPythonHandlerToolOutputPromptCacheBridge(handlerSource));
   const secretManagerPromptRegistryBridge = secretManagerAccess && promptRegistryWrite && (language === "javascript"
     ? hasJavaScriptHandlerSecretManagerPromptRegistryBridge(handlerSource)
     : hasPythonHandlerSecretManagerPromptRegistryBridge(handlerSource));
@@ -27617,6 +27623,7 @@ function classifySourceToolHandlerSignals(
   if (taintedTelemetryPayload) classes.add("handler_tainted_telemetry_payload");
   if (promptCacheWrite) classes.add("handler_prompt_cache_write");
   if (secretManagerPromptCacheBridge) classes.add("handler_secret_manager_prompt_cache_bridge");
+  if (toolOutputPromptCacheBridge) classes.add("handler_tool_output_prompt_cache_bridge");
   if (taintedPromptCacheKey) classes.add("handler_tainted_prompt_cache_key");
   if (taintedPromptCacheValue) classes.add("handler_tainted_prompt_cache_value");
   if (trainingDatasetExport) classes.add("handler_training_dataset_export");
@@ -27728,6 +27735,7 @@ function classifySourceToolHandlerSignals(
     handlerTaintedTelemetryPayload: taintedTelemetryPayload,
     handlerPromptCacheWrite: promptCacheWrite,
     handlerSecretManagerPromptCacheBridge: secretManagerPromptCacheBridge,
+    handlerToolOutputPromptCacheBridge: toolOutputPromptCacheBridge,
     handlerTaintedPromptCacheKey: taintedPromptCacheKey,
     handlerTaintedPromptCacheValue: taintedPromptCacheValue,
     handlerTrainingDatasetExport: trainingDatasetExport,
@@ -29127,6 +29135,30 @@ function hasJavaScriptHandlerSecretManagerPromptCacheBridge(source: string): boo
 
 function hasPythonHandlerSecretManagerPromptCacheBridge(source: string): boolean {
   const identifiers = extractPythonSecretManagerIdentifiers(source);
+  return identifiers.length > 0 && callExpressionReferencesAnyIdentifier(
+    [
+      /\b(?:prompt_cache|llm_cache|semantic_cache|response_cache|completion_cache|model_cache|cache_client|redis|redis_client|momento|upstash|langchain_cache)\s*(?:\.\s*[A-Za-z_]\w*){0,4}\s*\.\s*(?:set|setex|mset|put|save|store|write|upsert|insert|add|remember|cache|populate|set_value)\s*\(([\s\S]{0,2200})\)/giu,
+      /\b(?:cache_prompt|cache_response|cache_completion|cache_generation|populate_prompt_cache|write_prompt_cache|store_prompt_cache)\s*\(([\s\S]{0,2200})\)/giu
+    ],
+    source,
+    identifiers
+  );
+}
+
+function hasJavaScriptHandlerToolOutputPromptCacheBridge(source: string): boolean {
+  const identifiers = extractJavaScriptToolOutputIdentifiers(source);
+  return identifiers.length > 0 && callExpressionReferencesAnyIdentifier(
+    [
+      /\b(?:promptCache|llmCache|semanticCache|responseCache|completionCache|modelCache|cacheClient|redis|redisClient|momento|upstash|langchainCache)\s*(?:\.\s*[A-Za-z_$][\w$]*){0,4}\s*\.\s*(?:set|setEx|setex|mset|put|save|store|write|upsert|insert|add|remember|cache|populate|setValue)\s*\(([\s\S]{0,2200})\)/giu,
+      /\b(?:cachePrompt|cacheResponse|cacheCompletion|cacheGeneration|populatePromptCache|writePromptCache|storePromptCache)\s*\(([\s\S]{0,2200})\)/giu
+    ],
+    source,
+    identifiers
+  );
+}
+
+function hasPythonHandlerToolOutputPromptCacheBridge(source: string): boolean {
+  const identifiers = extractPythonToolOutputIdentifiers(source);
   return identifiers.length > 0 && callExpressionReferencesAnyIdentifier(
     [
       /\b(?:prompt_cache|llm_cache|semantic_cache|response_cache|completion_cache|model_cache|cache_client|redis|redis_client|momento|upstash|langchain_cache)\s*(?:\.\s*[A-Za-z_]\w*){0,4}\s*\.\s*(?:set|setex|mset|put|save|store|write|upsert|insert|add|remember|cache|populate|set_value)\s*\(([\s\S]{0,2200})\)/giu,
@@ -32990,6 +33022,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   tainted_telemetry_payload: boolean;
   prompt_cache_write: boolean;
   secret_manager_prompt_cache_bridge: boolean;
+  tool_output_prompt_cache_bridge: boolean;
   secret_manager_prompt_registry_bridge: boolean;
   tool_output_prompt_registry_bridge: boolean;
   tainted_prompt_cache_key: boolean;
@@ -33082,6 +33115,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   const handlerTaintedTelemetryPayload = handler?.handlerTaintedTelemetryPayload === true;
   const handlerPromptCacheWrite = handler?.handlerPromptCacheWrite === true;
   const handlerSecretManagerPromptCacheBridge = handler?.handlerSecretManagerPromptCacheBridge === true;
+  const handlerToolOutputPromptCacheBridge = handler?.handlerToolOutputPromptCacheBridge === true;
   const handlerTaintedPromptCacheKey = handler?.handlerTaintedPromptCacheKey === true;
   const handlerTaintedPromptCacheValue = handler?.handlerTaintedPromptCacheValue === true;
   const handlerTrainingDatasetExport = handler?.handlerTrainingDatasetExport === true;
@@ -33482,6 +33516,12 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
     actions.add("write");
     actions.add("remember");
   }
+  if (handlerToolOutputPromptCacheBridge) {
+    classes.add("tool_output_prompt_cache_bridge");
+    actions.add("execute");
+    actions.add("write");
+    actions.add("remember");
+  }
   if (handlerTaintedPromptCacheKey) {
     classes.add("tainted_prompt_cache_key");
   }
@@ -33779,6 +33819,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerTaintedTelemetryPayload ||
       handlerPromptCacheWrite ||
       handlerSecretManagerPromptCacheBridge ||
+      handlerToolOutputPromptCacheBridge ||
       handlerTaintedPromptCacheKey ||
       handlerTaintedPromptCacheValue ||
       handlerTrainingDatasetExport ||
@@ -33879,6 +33920,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerSecretManagerTelemetryBridge ||
       handlerToolOutputTelemetryBridge ||
       handlerSecretManagerPromptCacheBridge ||
+      handlerToolOutputPromptCacheBridge ||
       handlerTrainingDatasetExport ||
       handlerSecretManagerTrainingDatasetBridge ||
       handlerToolOutputTrainingDatasetBridge ||
@@ -33923,6 +33965,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerSecretManagerTelemetryBridge ||
       (handlerToolOutputTelemetryBridge && handlerSecretEnvAccess) ||
       handlerSecretManagerPromptCacheBridge ||
+      (handlerToolOutputPromptCacheBridge && handlerSecretEnvAccess) ||
       handlerSecretManagerPromptRegistryBridge ||
       handlerSecretManagerSafetyPolicyBridge ||
       handlerSecretManagerAuthorizationGrantBridge ||
@@ -33997,6 +34040,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
     tainted_telemetry_payload: handlerTaintedTelemetryPayload,
     prompt_cache_write: handlerPromptCacheWrite,
     secret_manager_prompt_cache_bridge: handlerSecretManagerPromptCacheBridge,
+    tool_output_prompt_cache_bridge: handlerToolOutputPromptCacheBridge,
     secret_manager_prompt_registry_bridge: handlerSecretManagerPromptRegistryBridge,
     tool_output_prompt_registry_bridge: handlerToolOutputPromptRegistryBridge,
     tainted_prompt_cache_key: handlerTaintedPromptCacheKey,
@@ -34123,6 +34167,7 @@ function authoritySignature(tool: SurfaceObject): string {
     metadata.tainted_telemetry_payload === true ? "tainted_telemetry_payload" : "",
     metadata.prompt_cache_write === true ? "prompt_cache_write" : "",
     metadata.secret_manager_prompt_cache_bridge === true ? "secret_manager_prompt_cache_bridge" : "",
+    metadata.tool_output_prompt_cache_bridge === true ? "tool_output_prompt_cache_bridge" : "",
     metadata.secret_manager_prompt_registry_bridge === true ? "secret_manager_prompt_registry_bridge" : "",
     metadata.tool_output_prompt_registry_bridge === true ? "tool_output_prompt_registry_bridge" : "",
     metadata.tainted_prompt_cache_key === true ? "tainted_prompt_cache_key" : "",
@@ -34239,6 +34284,7 @@ function isPrivilegedToolSurface(tool: SurfaceObject): boolean {
     tool.metadata.tainted_telemetry_payload === true ||
     tool.metadata.prompt_cache_write === true ||
     tool.metadata.secret_manager_prompt_cache_bridge === true ||
+    tool.metadata.tool_output_prompt_cache_bridge === true ||
     tool.metadata.secret_manager_prompt_registry_bridge === true ||
     tool.metadata.tool_output_prompt_registry_bridge === true ||
     tool.metadata.tainted_prompt_cache_key === true ||

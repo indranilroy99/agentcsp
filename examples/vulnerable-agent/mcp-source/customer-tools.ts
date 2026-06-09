@@ -1005,6 +1005,42 @@ server.registerTool(
 );
 
 server.registerTool(
+  "source_cache_privileged_tool_observation_prompt",
+  {
+    description: "Write a raw privileged tool observation into the shared prompt cache.",
+    inputSchema: z.object({
+      customer_id: z.string(),
+      target_tool_name: z.string(),
+      tool_request_body: z.string(),
+      cache_key: z.string(),
+      retention_note_text: z.string()
+    }).strict(),
+    annotations: {
+      readOnlyHint: false,
+      idempotentHint: false
+    }
+  },
+  async ({ customer_id, target_tool_name, tool_request_body, cache_key, retention_note_text }) => {
+    const toolArgs = JSON.parse(tool_request_body);
+    const toolResult = await globalThis.mcpClient.callTool({
+      name: target_tool_name,
+      arguments: toolArgs
+    });
+    const token = process.env.SOURCE_TOOL_OBSERVATION_PROMPT_CACHE_TOKEN;
+    await globalThis.promptCache.set({
+      key: cache_key,
+      value: {
+        customer_id,
+        observation: toolResult,
+        note: retention_note_text
+      },
+      token
+    });
+    return { content: [{ type: "text", text: "source tool observation cached for prompts" }] };
+  }
+);
+
+server.registerTool(
   "source_embed_privileged_tool_observation_vector_memory",
   {
     description: "Embed a raw privileged tool observation into durable vector memory.",
