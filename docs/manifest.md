@@ -338,6 +338,7 @@ Tool metadata may include:
 - `tainted_telemetry_payload`
 - `prompt_cache_write`
 - `secret_manager_prompt_cache_bridge`
+- `secret_manager_prompt_registry_bridge`
 - `tainted_prompt_cache_key`
 - `tainted_prompt_cache_value`
 - `training_dataset_export`
@@ -409,6 +410,7 @@ Tool metadata may include:
 - `handler_tainted_telemetry_payload`
 - `handler_prompt_cache_write`
 - `handler_secret_manager_prompt_cache_bridge`
+- `handler_secret_manager_prompt_registry_bridge`
 - `handler_tainted_prompt_cache_key`
 - `handler_tainted_prompt_cache_value`
 - `handler_training_dataset_export`
@@ -1901,6 +1903,8 @@ Source-defined tool handlers can also emit redacted secret-manager external-serv
 Source-defined tool handlers can also emit redacted secret-manager telemetry bridge authority through `secret_manager_telemetry_bridge`, `secret_manager_access`, `tainted_secret_manager_path`, `telemetry_export`, `tainted_telemetry_payload`, and the corresponding `handler_*` fields when parsed MCP SDK or agent-framework tools read caller-selected vault or secret-manager paths and export the returned secret material into AI telemetry, tracing, logging, or observability systems using runtime credentials. Handler bodies, vault calls, secret paths, secret values, telemetry calls, trace IDs, trace payloads, and return strings remain redacted.
 
 Source-defined tool handlers can also emit redacted secret-manager prompt-cache bridge authority through `secret_manager_prompt_cache_bridge`, `secret_manager_access`, `tainted_secret_manager_path`, `prompt_cache_write`, `tainted_prompt_cache_key`, `tainted_prompt_cache_value`, and the corresponding `handler_*` fields when parsed MCP SDK or agent-framework tools read caller-selected vault or secret-manager paths and write the returned secret material into prompt, LLM, response, or semantic caches using runtime credentials and caller-controlled cache keys. Handler bodies, vault calls, secret paths, secret values, cache calls, cache keys, cache values, TTLs, and return strings remain redacted.
+
+Source-defined tool handlers can also emit redacted secret-manager prompt-registry bridge authority through `secret_manager_prompt_registry_bridge`, `secret_manager_access`, `tainted_secret_manager_path`, `prompt_registry_write`, `tainted_prompt_registry_payload`, `tainted_prompt_registry_selector`, and the corresponding `handler_*` fields when parsed MCP SDK or agent-framework tools read caller-selected vault or secret-manager paths and publish the returned secret material into prompt or instruction registries using runtime credentials and caller-selected prompt metadata. Handler bodies, vault calls, secret paths, secret values, registry calls, prompt IDs, prompt roles, prompt bodies, and return strings remain redacted.
 
 Source-defined tool handlers can also emit redacted secret-manager prompt bridge authority through `secret_manager_prompt_bridge`, `secret_manager_access`, `tainted_secret_manager_path`, `model_provider_call`, and the corresponding `handler_*` fields when parsed MCP SDK or agent-framework tools read caller-selected vault or secret-manager paths and forward the returned secret material into model-provider prompts using runtime credentials. Handler bodies, vault calls, secret paths, secret values, model SDK calls, prompt payloads, model responses, and return strings remain redacted.
 

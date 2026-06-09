@@ -593,6 +593,9 @@ describe("scanner", () => {
     const sourceSecretManagerPromptCacheBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "source_cache_customer_vault_secret_prompt"
     );
+    const sourceSecretManagerPromptRegistryBridgeTool = surfaces.tools.find(
+      (surface) => surface.name === "source_publish_customer_vault_secret_prompt_registry"
+    );
     const sourceExternalServiceWriteTool = surfaces.tools.find((surface) => surface.name === "source_send_customer_slack_update");
     const sourceModelProviderCallTool = surfaces.tools.find((surface) => surface.name === "source_summarize_customer_with_model");
     const pythonExportTool = surfaces.tools.find((surface) => surface.name === "python_export_customer_record");
@@ -654,6 +657,9 @@ describe("scanner", () => {
     );
     const langchainSecretManagerPromptCacheBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "langchain_cache_customer_vault_secret_prompt"
+    );
+    const langchainSecretManagerPromptRegistryBridgeTool = surfaces.tools.find(
+      (surface) => surface.name === "langchain_publish_customer_vault_secret_prompt_registry"
     );
     const langchainExternalServiceWriteTool = surfaces.tools.find((surface) => surface.name === "langchain_send_customer_slack_update");
     const langchainModelProviderCallTool = surfaces.tools.find((surface) => surface.name === "langchain_summarize_customer_with_model");
@@ -3996,6 +4002,104 @@ describe("scanner", () => {
     expect(JSON.stringify(sourceSecretManagerPromptCacheBridgeTool)).not.toContain("secretPromptCacheValue");
     expect(JSON.stringify(sourceSecretManagerPromptCacheBridgeTool)).not.toContain("source vault secret cached for prompts");
     expect(JSON.stringify(sourceSecretManagerPromptCacheBridgeTool)).not.toContain("Write a customer support secret");
+    expect(sourceSecretManagerPromptRegistryBridgeTool).toMatchObject({
+      path: "mcp-source/customer-tools.ts",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["call", "publish", "read", "send", "write"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(sourceSecretManagerPromptRegistryBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_mcp_source_tool: true,
+      mcp_source_tool_registration: true,
+      mcp_source_tool_registration_kind: "registerTool",
+      mcp_source_tool_argument_count: 3,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      read_only_hint: false,
+      idempotent_hint: false,
+      accepts_secret_like_input: true,
+      accepts_content_like_input: true,
+      accepts_path_input: true,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      secret_manager_access: true,
+      tainted_secret_manager_path: true,
+      prompt_registry_write: true,
+      secret_manager_prompt_registry_bridge: true,
+      tainted_prompt_registry_payload: true,
+      tainted_prompt_registry_selector: true,
+      external_write: true,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_secret_manager_access: true,
+      handler_tainted_secret_manager_path: true,
+      handler_prompt_registry_write: true,
+      handler_secret_manager_prompt_registry_bridge: true,
+      handler_tainted_prompt_registry_payload: true,
+      handler_tainted_prompt_registry_selector: true,
+      handler_secret_env_access: true,
+      handler_model_visible_output: true,
+      handler_signal_count: 7,
+      open_world_schema: false
+    });
+    expect(sourceSecretManagerPromptRegistryBridgeTool?.metadata.authority_classes).toEqual([
+      "content_input",
+      "credential_input",
+      "customer_data_input",
+      "external_write",
+      "filesystem_access",
+      "handler_prompt_registry_write",
+      "handler_secret_env_access",
+      "handler_secret_manager_access",
+      "handler_secret_manager_prompt_registry_bridge",
+      "handler_tainted_prompt_registry_payload",
+      "handler_tainted_prompt_registry_selector",
+      "handler_tainted_secret_manager_path",
+      "pii_input",
+      "prompt_registry_write",
+      "secret_env_access",
+      "secret_manager_access",
+      "secret_manager_prompt_registry_bridge",
+      "tainted_prompt_registry_payload",
+      "tainted_prompt_registry_selector",
+      "tainted_secret_manager_path"
+    ]);
+    expect(sourceSecretManagerPromptRegistryBridgeTool?.metadata.handler_authority_classes).toEqual([
+      "handler_prompt_registry_write",
+      "handler_secret_env_access",
+      "handler_secret_manager_access",
+      "handler_secret_manager_prompt_registry_bridge",
+      "handler_tainted_prompt_registry_payload",
+      "handler_tainted_prompt_registry_selector",
+      "handler_tainted_secret_manager_path"
+    ]);
+    expect(sourceSecretManagerPromptRegistryBridgeTool?.metadata.handler_env_key_names).toEqual([
+      "SOURCE_SECRET_PROMPT_REGISTRY_BRIDGE_TOKEN"
+    ]);
+    expect(sourceSecretManagerPromptRegistryBridgeTool?.metadata.schema_properties).toEqual([
+      "customer_id",
+      "prompt_id",
+      "prompt_role",
+      "requester_ticket",
+      "secret_path"
+    ]);
+    expect(sourceSecretManagerPromptRegistryBridgeTool?.metadata.required_properties).toEqual([
+      "customer_id",
+      "prompt_id",
+      "prompt_role",
+      "requester_ticket",
+      "secret_path"
+    ]);
+    expect(JSON.stringify(sourceSecretManagerPromptRegistryBridgeTool)).not.toContain("vaultClient.readSecret");
+    expect(JSON.stringify(sourceSecretManagerPromptRegistryBridgeTool)).not.toContain("promptRegistryClient.updatePrompt");
+    expect(JSON.stringify(sourceSecretManagerPromptRegistryBridgeTool)).not.toContain("secretRecord.value");
+    expect(JSON.stringify(sourceSecretManagerPromptRegistryBridgeTool)).not.toContain("secretPromptRegistryValue");
+    expect(JSON.stringify(sourceSecretManagerPromptRegistryBridgeTool)).not.toContain("source vault secret published to prompt registry");
+    expect(JSON.stringify(sourceSecretManagerPromptRegistryBridgeTool)).not.toContain("Publish a customer support secret");
     expect(sourceExternalServiceWriteTool).toMatchObject({
       path: "mcp-source/customer-tools.ts",
       data_classes: ["confidential", "credential", "pii"],
@@ -7717,6 +7821,103 @@ describe("scanner", () => {
     expect(JSON.stringify(langchainSecretManagerPromptCacheBridgeTool)).not.toContain("secret_prompt_cache_value");
     expect(JSON.stringify(langchainSecretManagerPromptCacheBridgeTool)).not.toContain("framework vault secret cached for prompts");
     expect(JSON.stringify(langchainSecretManagerPromptCacheBridgeTool)).not.toContain("Write a customer support secret");
+    expect(langchainSecretManagerPromptRegistryBridgeTool).toMatchObject({
+      path: "framework-tools/langchain_tools.py",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["call", "publish", "read", "send", "write"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(langchainSecretManagerPromptRegistryBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_agent_framework_source_tool: true,
+      agent_framework_source_tool: true,
+      agent_framework_source_tool_framework: "langchain",
+      agent_framework_source_tool_registration_kind: "python_tool_decorator",
+      agent_framework_source_tool_argument_count: 5,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_secret_like_input: true,
+      accepts_content_like_input: true,
+      accepts_path_input: true,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      secret_manager_access: true,
+      tainted_secret_manager_path: true,
+      prompt_registry_write: true,
+      secret_manager_prompt_registry_bridge: true,
+      tainted_prompt_registry_payload: true,
+      tainted_prompt_registry_selector: true,
+      external_write: true,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_secret_manager_access: true,
+      handler_tainted_secret_manager_path: true,
+      handler_prompt_registry_write: true,
+      handler_secret_manager_prompt_registry_bridge: true,
+      handler_tainted_prompt_registry_payload: true,
+      handler_tainted_prompt_registry_selector: true,
+      handler_secret_env_access: true,
+      handler_model_visible_output: true,
+      handler_signal_count: 7,
+      open_world_schema: false
+    });
+    expect(langchainSecretManagerPromptRegistryBridgeTool?.metadata.authority_classes).toEqual([
+      "content_input",
+      "credential_input",
+      "customer_data_input",
+      "external_write",
+      "filesystem_access",
+      "handler_prompt_registry_write",
+      "handler_secret_env_access",
+      "handler_secret_manager_access",
+      "handler_secret_manager_prompt_registry_bridge",
+      "handler_tainted_prompt_registry_payload",
+      "handler_tainted_prompt_registry_selector",
+      "handler_tainted_secret_manager_path",
+      "pii_input",
+      "prompt_registry_write",
+      "secret_env_access",
+      "secret_manager_access",
+      "secret_manager_prompt_registry_bridge",
+      "tainted_prompt_registry_payload",
+      "tainted_prompt_registry_selector",
+      "tainted_secret_manager_path"
+    ]);
+    expect(langchainSecretManagerPromptRegistryBridgeTool?.metadata.handler_authority_classes).toEqual([
+      "handler_prompt_registry_write",
+      "handler_secret_env_access",
+      "handler_secret_manager_access",
+      "handler_secret_manager_prompt_registry_bridge",
+      "handler_tainted_prompt_registry_payload",
+      "handler_tainted_prompt_registry_selector",
+      "handler_tainted_secret_manager_path"
+    ]);
+    expect(langchainSecretManagerPromptRegistryBridgeTool?.metadata.handler_env_key_names).toEqual([
+      "LANGCHAIN_SECRET_PROMPT_REGISTRY_BRIDGE_TOKEN"
+    ]);
+    expect(langchainSecretManagerPromptRegistryBridgeTool?.metadata.schema_properties).toEqual([
+      "customer_id",
+      "prompt_id",
+      "prompt_role",
+      "requester_ticket",
+      "secret_path"
+    ]);
+    expect(langchainSecretManagerPromptRegistryBridgeTool?.metadata.required_properties).toEqual([
+      "customer_id",
+      "prompt_id",
+      "prompt_role",
+      "requester_ticket",
+      "secret_path"
+    ]);
+    expect(JSON.stringify(langchainSecretManagerPromptRegistryBridgeTool)).not.toContain("vault_client.read_secret");
+    expect(JSON.stringify(langchainSecretManagerPromptRegistryBridgeTool)).not.toContain("prompt_registry_client.update_prompt");
+    expect(JSON.stringify(langchainSecretManagerPromptRegistryBridgeTool)).not.toContain("secret_record.value");
+    expect(JSON.stringify(langchainSecretManagerPromptRegistryBridgeTool)).not.toContain("secret_prompt_registry_value");
+    expect(JSON.stringify(langchainSecretManagerPromptRegistryBridgeTool)).not.toContain("framework vault secret published to prompt registry");
+    expect(JSON.stringify(langchainSecretManagerPromptRegistryBridgeTool)).not.toContain("Publish a customer support secret");
     expect(langchainExternalServiceWriteTool).toMatchObject({
       path: "framework-tools/langchain_tools.py",
       data_classes: ["confidential", "credential", "pii"],

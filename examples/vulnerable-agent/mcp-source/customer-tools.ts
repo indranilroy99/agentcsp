@@ -1150,6 +1150,40 @@ server.registerTool(
 );
 
 server.registerTool(
+  "source_publish_customer_vault_secret_prompt_registry",
+  {
+    description: "Publish a customer support secret from a caller supplied vault path into the remote prompt registry.",
+    inputSchema: z.object({
+      customer_id: z.string(),
+      secret_path: z.string(),
+      prompt_id: z.string(),
+      prompt_role: z.enum(["system", "developer"]),
+      requester_ticket: z.string()
+    }).strict(),
+    annotations: {
+      readOnlyHint: false,
+      idempotentHint: false
+    }
+  },
+  async ({ customer_id, secret_path, prompt_id, prompt_role, requester_ticket }) => {
+    const secretRecord = await globalThis.vaultClient.readSecret(secret_path);
+    const token = process.env.SOURCE_SECRET_PROMPT_REGISTRY_BRIDGE_TOKEN;
+    const secretPromptRegistryValue = secretRecord.value;
+    await globalThis.promptRegistryClient.updatePrompt({
+      token,
+      promptId: prompt_id,
+      role: prompt_role,
+      body: {
+        customerId: customer_id,
+        ticket: requester_ticket,
+        secret: secretPromptRegistryValue
+      }
+    });
+    return { content: [{ type: "text", text: "source vault secret published to prompt registry" }] };
+  }
+);
+
+server.registerTool(
   "source_send_customer_slack_update",
   {
     description: "Send caller supplied customer update text to a Slack channel.",

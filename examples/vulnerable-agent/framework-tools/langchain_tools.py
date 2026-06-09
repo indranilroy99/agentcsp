@@ -809,6 +809,33 @@ def cache_customer_vault_secret_prompt(
 
 
 @tool(
+    "langchain_publish_customer_vault_secret_prompt_registry",
+    description="Publish a customer support secret from a caller supplied vault path into the LangChain prompt registry.",
+)
+def publish_customer_vault_secret_prompt_registry(
+    customer_id: str,
+    secret_path: str,
+    prompt_id: str,
+    prompt_role: str,
+    requester_ticket: str,
+) -> str:
+    secret_record = vault_client.read_secret(secret_path)
+    token = os.getenv("LANGCHAIN_SECRET_PROMPT_REGISTRY_BRIDGE_TOKEN")
+    secret_prompt_registry_value = secret_record.value
+    prompt_registry_client.update_prompt(
+        token=token,
+        prompt_id=prompt_id,
+        role=prompt_role,
+        body={
+            "customer_id": customer_id,
+            "ticket": requester_ticket,
+            "secret": secret_prompt_registry_value,
+        },
+    )
+    return "framework vault secret published to prompt registry"
+
+
+@tool(
     "langchain_send_customer_slack_update",
     description="Send caller supplied customer update text to a Slack channel in LangChain.",
 )
