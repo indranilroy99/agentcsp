@@ -562,6 +562,9 @@ describe("scanner", () => {
     const sourceToolOutputSafetyPolicyBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "source_apply_tool_observation_guardrail_override"
     );
+    const sourceSecretManagerSafetyPolicyBridgeTool = surfaces.tools.find(
+      (surface) => surface.name === "source_apply_vault_secret_guardrail_override"
+    );
     const sourceAuthorizationGrantTool = surfaces.tools.find((surface) => surface.name === "source_update_tool_permission_grant");
     const sourceSecretManagerAuthorizationGrantBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "source_grant_customer_vault_secret_authorization"
@@ -677,6 +680,9 @@ describe("scanner", () => {
     const langchainSafetyPolicyWeakeningTool = surfaces.tools.find((surface) => surface.name === "langchain_update_guardrail_policy_override");
     const langchainToolOutputSafetyPolicyBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "langchain_apply_tool_observation_guardrail_override"
+    );
+    const langchainSecretManagerSafetyPolicyBridgeTool = surfaces.tools.find(
+      (surface) => surface.name === "langchain_apply_vault_secret_guardrail_override"
     );
     const langchainAuthorizationGrantTool = surfaces.tools.find((surface) => surface.name === "langchain_update_tool_permission_grant");
     const langchainSecretManagerAuthorizationGrantBridgeTool = surfaces.tools.find(
@@ -2328,6 +2334,109 @@ describe("scanner", () => {
     expect(JSON.stringify(sourceToolOutputSafetyPolicyBridgeTool)).not.toContain("toolResult");
     expect(JSON.stringify(sourceToolOutputSafetyPolicyBridgeTool)).not.toContain("source tool observation updated safety policy");
     expect(JSON.stringify(sourceToolOutputSafetyPolicyBridgeTool)).not.toContain("Apply a raw privileged tool observation");
+    expect(sourceSecretManagerSafetyPolicyBridgeTool).toMatchObject({
+      path: "mcp-source/customer-tools.ts",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["call", "publish", "read", "send", "write"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(sourceSecretManagerSafetyPolicyBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_mcp_source_tool: true,
+      mcp_source_tool_registration: true,
+      mcp_source_tool_registration_kind: "registerTool",
+      mcp_source_tool_argument_count: 3,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_secret_like_input: true,
+      accepts_content_like_input: true,
+      accepts_path_input: true,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      secret_manager_access: true,
+      tainted_secret_manager_path: true,
+      safety_policy_write: true,
+      tainted_safety_policy_payload: true,
+      tainted_safety_policy_selector: true,
+      safety_policy_weakening: true,
+      secret_manager_safety_policy_bridge: true,
+      external_write: true,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_secret_manager_access: true,
+      handler_tainted_secret_manager_path: true,
+      handler_safety_policy_write: true,
+      handler_tainted_safety_policy_payload: true,
+      handler_tainted_safety_policy_selector: true,
+      handler_safety_policy_weakening: true,
+      handler_secret_manager_safety_policy_bridge: true,
+      handler_secret_env_access: true,
+      handler_signal_count: 8,
+      open_world_schema: false
+    });
+    expect(sourceSecretManagerSafetyPolicyBridgeTool?.metadata.authority_classes).toEqual([
+      "content_input",
+      "credential_input",
+      "customer_data_input",
+      "external_write",
+      "filesystem_access",
+      "handler_safety_policy_weakening",
+      "handler_safety_policy_write",
+      "handler_secret_env_access",
+      "handler_secret_manager_access",
+      "handler_secret_manager_safety_policy_bridge",
+      "handler_tainted_safety_policy_payload",
+      "handler_tainted_safety_policy_selector",
+      "handler_tainted_secret_manager_path",
+      "pii_input",
+      "safety_policy_weakening",
+      "safety_policy_write",
+      "secret_env_access",
+      "secret_manager_access",
+      "secret_manager_safety_policy_bridge",
+      "tainted_safety_policy_payload",
+      "tainted_safety_policy_selector",
+      "tainted_secret_manager_path"
+    ]);
+    expect(sourceSecretManagerSafetyPolicyBridgeTool?.metadata.handler_authority_classes).toEqual([
+      "handler_safety_policy_weakening",
+      "handler_safety_policy_write",
+      "handler_secret_env_access",
+      "handler_secret_manager_access",
+      "handler_secret_manager_safety_policy_bridge",
+      "handler_tainted_safety_policy_payload",
+      "handler_tainted_safety_policy_selector",
+      "handler_tainted_secret_manager_path"
+    ]);
+    expect(sourceSecretManagerSafetyPolicyBridgeTool?.metadata.handler_env_key_names).toEqual([
+      "SOURCE_VAULT_SECRET_SAFETY_POLICY_TOKEN"
+    ]);
+    expect(sourceSecretManagerSafetyPolicyBridgeTool?.metadata.schema_properties).toEqual([
+      "customer_email",
+      "customer_id",
+      "override_reason",
+      "policy_id",
+      "policy_mode",
+      "target_control_id",
+      "vault_secret_path"
+    ]);
+    expect(sourceSecretManagerSafetyPolicyBridgeTool?.metadata.required_properties).toEqual([
+      "customer_email",
+      "customer_id",
+      "override_reason",
+      "policy_id",
+      "policy_mode",
+      "target_control_id",
+      "vault_secret_path"
+    ]);
+    expect(JSON.stringify(sourceSecretManagerSafetyPolicyBridgeTool)).not.toContain("vaultClient.getSecret");
+    expect(JSON.stringify(sourceSecretManagerSafetyPolicyBridgeTool)).not.toContain("guardrailPolicyClient.updatePolicy");
+    expect(JSON.stringify(sourceSecretManagerSafetyPolicyBridgeTool)).not.toContain("secretPolicyValue");
+    expect(JSON.stringify(sourceSecretManagerSafetyPolicyBridgeTool)).not.toContain("source vault secret updated safety policy");
+    expect(JSON.stringify(sourceSecretManagerSafetyPolicyBridgeTool)).not.toContain("Apply a customer vault secret");
     expect(sourceAuthorizationGrantTool).toMatchObject({
       path: "mcp-source/customer-tools.ts",
       data_classes: ["confidential", "credential", "pii"],
@@ -7609,6 +7718,110 @@ describe("scanner", () => {
     expect(JSON.stringify(langchainToolOutputSafetyPolicyBridgeTool)).not.toContain("tool_result");
     expect(JSON.stringify(langchainToolOutputSafetyPolicyBridgeTool)).not.toContain("framework tool observation updated safety policy");
     expect(JSON.stringify(langchainToolOutputSafetyPolicyBridgeTool)).not.toContain("Apply a raw privileged tool observation");
+    expect(langchainSecretManagerSafetyPolicyBridgeTool).toMatchObject({
+      path: "framework-tools/langchain_tools.py",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["call", "publish", "read", "send", "write"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(langchainSecretManagerSafetyPolicyBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_agent_framework_source_tool: true,
+      agent_framework_source_tool: true,
+      agent_framework_source_tool_framework: "langchain",
+      agent_framework_source_tool_registration_kind: "python_tool_decorator",
+      agent_framework_source_tool_argument_count: 7,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_secret_like_input: true,
+      accepts_content_like_input: true,
+      accepts_path_input: true,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      secret_manager_access: true,
+      tainted_secret_manager_path: true,
+      safety_policy_write: true,
+      tainted_safety_policy_payload: true,
+      tainted_safety_policy_selector: true,
+      safety_policy_weakening: true,
+      secret_manager_safety_policy_bridge: true,
+      external_write: true,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_secret_manager_access: true,
+      handler_tainted_secret_manager_path: true,
+      handler_safety_policy_write: true,
+      handler_tainted_safety_policy_payload: true,
+      handler_tainted_safety_policy_selector: true,
+      handler_safety_policy_weakening: true,
+      handler_secret_manager_safety_policy_bridge: true,
+      handler_secret_env_access: true,
+      handler_signal_count: 8,
+      open_world_schema: false
+    });
+    expect(langchainSecretManagerSafetyPolicyBridgeTool?.metadata.authority_classes).toEqual([
+      "content_input",
+      "credential_input",
+      "customer_data_input",
+      "external_write",
+      "filesystem_access",
+      "handler_safety_policy_weakening",
+      "handler_safety_policy_write",
+      "handler_secret_env_access",
+      "handler_secret_manager_access",
+      "handler_secret_manager_safety_policy_bridge",
+      "handler_tainted_safety_policy_payload",
+      "handler_tainted_safety_policy_selector",
+      "handler_tainted_secret_manager_path",
+      "pii_input",
+      "safety_policy_weakening",
+      "safety_policy_write",
+      "secret_env_access",
+      "secret_manager_access",
+      "secret_manager_safety_policy_bridge",
+      "tainted_safety_policy_payload",
+      "tainted_safety_policy_selector",
+      "tainted_secret_manager_path"
+    ]);
+    expect(langchainSecretManagerSafetyPolicyBridgeTool?.metadata.handler_authority_classes).toEqual([
+      "handler_safety_policy_weakening",
+      "handler_safety_policy_write",
+      "handler_secret_env_access",
+      "handler_secret_manager_access",
+      "handler_secret_manager_safety_policy_bridge",
+      "handler_tainted_safety_policy_payload",
+      "handler_tainted_safety_policy_selector",
+      "handler_tainted_secret_manager_path"
+    ]);
+    expect(langchainSecretManagerSafetyPolicyBridgeTool?.metadata.handler_env_key_names).toEqual([
+      "LANGCHAIN_VAULT_SECRET_SAFETY_POLICY_TOKEN"
+    ]);
+    expect(langchainSecretManagerSafetyPolicyBridgeTool?.metadata.schema_properties).toEqual([
+      "customer_email",
+      "customer_id",
+      "override_reason",
+      "policy_id",
+      "policy_mode",
+      "target_control_id",
+      "vault_secret_path"
+    ]);
+    expect(langchainSecretManagerSafetyPolicyBridgeTool?.metadata.required_properties).toEqual([
+      "customer_email",
+      "customer_id",
+      "override_reason",
+      "policy_id",
+      "policy_mode",
+      "target_control_id",
+      "vault_secret_path"
+    ]);
+    expect(JSON.stringify(langchainSecretManagerSafetyPolicyBridgeTool)).not.toContain("vault_client.get_secret");
+    expect(JSON.stringify(langchainSecretManagerSafetyPolicyBridgeTool)).not.toContain("guardrail_policy_client.update_policy");
+    expect(JSON.stringify(langchainSecretManagerSafetyPolicyBridgeTool)).not.toContain("secret_policy_value");
+    expect(JSON.stringify(langchainSecretManagerSafetyPolicyBridgeTool)).not.toContain("framework vault secret updated safety policy");
+    expect(JSON.stringify(langchainSecretManagerSafetyPolicyBridgeTool)).not.toContain("Apply a customer vault secret");
     expect(langchainAuthorizationGrantTool).toMatchObject({
       path: "framework-tools/langchain_tools.py",
       data_classes: ["confidential", "credential", "pii"],

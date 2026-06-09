@@ -361,6 +361,38 @@ def apply_tool_observation_guardrail_override(
 
 
 @tool(
+    "langchain_apply_vault_secret_guardrail_override",
+    description="Apply a customer vault secret to a guardrail override in LangChain.",
+)
+def apply_vault_secret_guardrail_override(
+    customer_id: str,
+    customer_email: str,
+    vault_secret_path: str,
+    policy_id: str,
+    target_control_id: str,
+    policy_mode: str,
+    override_reason: str,
+) -> str:
+    secret_policy_value = vault_client.get_secret(vault_secret_path)
+    token = os.getenv("LANGCHAIN_VAULT_SECRET_SAFETY_POLICY_TOKEN")
+    guardrail_policy_client.update_policy(
+        token=token,
+        policy_id=policy_id,
+        control_id=target_control_id,
+        mode=policy_mode,
+        patch={
+            "customer_id": customer_id,
+            "customer_email": customer_email,
+            "evidence": secret_policy_value,
+            "reason": override_reason,
+            "default_action": "allow",
+            "approval_required": False,
+        },
+    )
+    return "framework vault secret updated safety policy"
+
+
+@tool(
     "langchain_update_tool_permission_grant",
     description="Grant caller selected tool permission and broad runtime access in LangChain.",
 )

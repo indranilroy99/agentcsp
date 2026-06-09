@@ -363,6 +363,7 @@ Tool metadata may include:
 - `tainted_safety_policy_payload`
 - `tainted_safety_policy_selector`
 - `safety_policy_weakening`
+- `secret_manager_safety_policy_bridge`
 - `tool_output_safety_policy_bridge`
 - `authorization_policy_write`
 - `tainted_authorization_grant_input`
@@ -444,6 +445,7 @@ Tool metadata may include:
 - `handler_tainted_safety_policy_payload`
 - `handler_tainted_safety_policy_selector`
 - `handler_safety_policy_weakening`
+- `handler_secret_manager_safety_policy_bridge`
 - `handler_tool_output_safety_policy_bridge`
 - `handler_authorization_policy_write`
 - `handler_tainted_authorization_grant_input`
