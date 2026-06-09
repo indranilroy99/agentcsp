@@ -1997,3 +1997,29 @@ def execute_model_browser_action(
         headers={"authorization": f"Bearer {session_token}"},
     )
     return "framework model selected browser action executed"
+
+
+@tool(
+    "langchain_apply_model_database_update",
+    description="Ask a model provider to draft a customer database mutation from caller supplied ticket text and apply that mutation in LangChain.",
+)
+def apply_model_database_update(
+    customer_id: str,
+    customer_ticket_text: str,
+    model_name: str,
+    record_update_goal_text: str,
+) -> str:
+    model_token = os.getenv("LANGCHAIN_MODEL_DATABASE_UPDATE_TOKEN")
+    database_token = os.getenv("LANGCHAIN_SUPPORT_DATABASE_TOKEN")
+    model_response = openai_client.chat.completions.create(
+        model=model_name,
+        messages=[
+            {"role": "system", "content": customer_ticket_text},
+            {"role": "user", "content": f"Return one SQL update for record goal: {record_update_goal_text}"},
+        ],
+        extra_headers={"authorization": f"Bearer {model_token}"},
+    )
+    model_selected_record_mutation = model_response.choices[0].message.content or ""
+    db = support_db.with_token(database_token)
+    db.execute(model_selected_record_mutation)
+    return "framework model selected database mutation applied"

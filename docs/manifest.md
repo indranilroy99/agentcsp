@@ -435,6 +435,7 @@ Tool metadata may include:
 - `handler_tainted_model_selection`
 - `handler_model_output_network_destination_bridge`
 - `handler_model_output_browser_automation_bridge`
+- `handler_model_output_database_write_bridge`
 - `handler_model_output_shell_execution_bridge`
 - `handler_model_output_dynamic_code_execution_bridge`
 - `handler_tool_output_network_destination_bridge`
@@ -593,6 +594,7 @@ Source-defined MCP tool metadata may additionally include:
 - source handler model-output dynamic-execution metadata for model/provider responses that flow into `eval`, `Function`, `vm`, or Python `exec`/`eval` sinks without emitting model SDK calls, generated code variables, dynamic execution snippets, prompts, completions, or handler source
 - source handler model-output network-destination metadata for model/provider responses that flow into fetch/request URL destinations with runtime credential access without emitting model SDK calls, selected endpoint variables, request snippets, prompts, completions, return strings, or handler source
 - source handler model-output browser-automation metadata for model/provider responses that flow into authenticated browser navigation or action sinks with runtime credential access without emitting model SDK calls, selected browser target variables, browser action snippets, prompts, completions, return strings, or handler source
+- source handler model-output database-write metadata for model/provider responses that flow into database query, execute, update, insert, or mutation sinks with runtime credential access without emitting model SDK calls, generated SQL or update variables, database snippets, prompts, completions, return strings, or handler source
 - source handler model-output shell-execution metadata for model/provider responses that flow into shell, process, or subprocess execution sinks without emitting model SDK calls, generated command variables, shell snippets, prompts, completions, return strings, or handler source
 - source handler tool-output network-destination metadata for raw nested tool observations that flow into fetch/request URL destinations with runtime credential access without emitting nested tool calls, selected endpoint variables, request snippets, return strings, or handler source
 - source handler tool-output shell-execution metadata for raw nested tool observations that flow into shell, process, or subprocess execution sinks without emitting nested tool calls, tool-result variables, command snippets, return strings, or handler source

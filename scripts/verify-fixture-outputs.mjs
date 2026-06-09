@@ -214,6 +214,10 @@ const leakPatterns = [
   /generatedCommand/u,
   /modelSelectedBrowserTarget/u,
   /model_selected_browser_target/u,
+  /modelSelectedRecordMutation/u,
+  /model_selected_record_mutation/u,
+  /supportDb\.query/u,
+  /support_db\.with_token/u,
   /selectedEndpointUrl/u,
   /selected_endpoint_url/u,
   /generated_command =/u,
@@ -227,6 +231,10 @@ const leakPatterns = [
   /framework model selected URL fetched/u,
   /source model selected browser action executed/u,
   /framework model selected browser action executed/u,
+  /source model selected database mutation applied/u,
+  /framework model selected database mutation applied/u,
+  /Ask a model provider to draft a customer database mutation/u,
+  /Return one SQL update for record goal/u,
   /source model generated command queued/u,
   /framework model generated command queued/u,
   /source tool observation command queued/u,
@@ -1082,8 +1090,8 @@ const leakPatterns = [
 const vulnerable = await readScanOutput(vulnerableOutput, { sarifRequired: true });
 const safe = await readScanOutput(safeOutput, { sarifRequired: false });
 
-assertEqual(vulnerable.manifest.findings.length, 788, "vulnerable manifest finding count");
-assertEqual(vulnerable.findings.length, 788, "vulnerable findings.json count");
+assertEqual(vulnerable.manifest.findings.length, 797, "vulnerable manifest finding count");
+assertEqual(vulnerable.findings.length, 797, "vulnerable findings.json count");
 assertEqual(vulnerable.manifest.attack_paths.length, 15, "vulnerable attack path count");
 assertEqual(vulnerable.manifest.static_blast_radius?.critical_attack_paths, 15, "vulnerable critical attack path count");
 assertEqual(vulnerable.manifest.diagnostics.length, 0, "vulnerable diagnostics count");
@@ -1195,6 +1203,7 @@ for (const ruleId of [
   "AGENTCSP-TOOL-112",
   "AGENTCSP-TOOL-113",
   "AGENTCSP-TOOL-114",
+  "AGENTCSP-TOOL-115",
   "AGENTCSP-RUNTIME-007",
   "AGENTCSP-RUNTIME-008",
   "AGENTCSP-RUNTIME-123",

@@ -116,6 +116,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-112")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-113")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-114")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-115")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-001")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-002")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-003")).toBe(true);
@@ -10318,6 +10319,7 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerSecretManagerPromptRegistryBridgeFindings)).not.toContain("Publish a customer support secret");
     const sourceHandlerModelProviderFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-030");
     expect(sourceHandlerModelProviderFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
+      "langchain_apply_model_database_update",
       "langchain_execute_model_browser_action",
       "langchain_execute_model_generated_code",
       "langchain_fetch_model_selected_url",
@@ -10326,6 +10328,7 @@ describe("rule engine", () => {
       "langchain_summarize_retrieved_context_with_model",
       "langchain_summarize_customer_vault_secret_with_model",
       "langchain_summarize_customer_with_model",
+      "source_apply_model_database_update",
       "source_execute_model_browser_action",
       "source_execute_model_generated_code",
       "source_fetch_model_selected_url",
@@ -10507,11 +10510,13 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerRagRetrievalBrowserAutomationBridgeFindings)).not.toContain("Submit caller selected retrieved support context");
     const sourceHandlerTaintedModelSelectionFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-043");
     expect(sourceHandlerTaintedModelSelectionFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
+      "langchain_apply_model_database_update",
       "langchain_execute_model_browser_action",
       "langchain_execute_model_generated_code",
       "langchain_fetch_model_selected_url",
       "langchain_run_model_generated_command",
       "langchain_summarize_customer_with_model",
+      "source_apply_model_database_update",
       "source_execute_model_browser_action",
       "source_execute_model_generated_code",
       "source_fetch_model_selected_url",
@@ -10545,6 +10550,7 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerTaintedModelSelectionFindings)).not.toContain("Create an internal support summary");
     const sourceHandlerPrivilegedPromptFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-031");
     expect(sourceHandlerPrivilegedPromptFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
+      "langchain_apply_model_database_update",
       "langchain_execute_model_browser_action",
       "langchain_execute_model_generated_code",
       "langchain_fetch_model_selected_url",
@@ -10830,6 +10836,58 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerModelOutputBrowserAutomationBridgeFindings)).not.toContain("source model selected browser action executed");
     expect(JSON.stringify(sourceHandlerModelOutputBrowserAutomationBridgeFindings)).not.toContain("framework model selected browser action executed");
     expect(JSON.stringify(sourceHandlerModelOutputBrowserAutomationBridgeFindings)).not.toContain("Ask a model provider to choose an authenticated browser destination");
+    const sourceHandlerModelOutputDatabaseWriteBridgeFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-115");
+    expect(sourceHandlerModelOutputDatabaseWriteBridgeFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
+      "langchain_apply_model_database_update",
+      "source_apply_model_database_update"
+    ]);
+    expect(sourceHandlerModelOutputDatabaseWriteBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
+    expect(sourceHandlerModelOutputDatabaseWriteBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerModelOutputDatabaseWriteBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
+    expect(sourceHandlerModelOutputDatabaseWriteBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
+    expect(sourceHandlerModelOutputDatabaseWriteBridgeFindings.every((finding) => finding.matched_object.metadata.handler_model_provider_call === true)).toBe(true);
+    expect(sourceHandlerModelOutputDatabaseWriteBridgeFindings.every((finding) => finding.matched_object.metadata.handler_database_query === true)).toBe(true);
+    expect(sourceHandlerModelOutputDatabaseWriteBridgeFindings.every((finding) => finding.matched_object.metadata.handler_database_write === true)).toBe(true);
+    expect(sourceHandlerModelOutputDatabaseWriteBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.handler_model_output_database_write_bridge === true
+    )).toBe(true);
+    expect(sourceHandlerModelOutputDatabaseWriteBridgeFindings.every((finding) => finding.matched_object.metadata.handler_secret_env_access === true)).toBe(true);
+    expect(sourceHandlerModelOutputDatabaseWriteBridgeFindings.every((finding) => finding.matched_object.metadata.model_provider_call === true)).toBe(true);
+    expect(sourceHandlerModelOutputDatabaseWriteBridgeFindings.every((finding) => finding.matched_object.metadata.database_access === true)).toBe(true);
+    expect(sourceHandlerModelOutputDatabaseWriteBridgeFindings.every((finding) => finding.matched_object.metadata.database_write === true)).toBe(true);
+    expect(sourceHandlerModelOutputDatabaseWriteBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.model_output_database_write_bridge === true
+    )).toBe(true);
+    expect(sourceHandlerModelOutputDatabaseWriteBridgeFindings.every((finding) => finding.matched_object.metadata.accepts_content_like_input === true)).toBe(true);
+    expect(sourceHandlerModelOutputDatabaseWriteBridgeFindings.every((finding) => finding.matched_object.metadata.accepts_customer_data_input === true)).toBe(true);
+    expect(sourceHandlerModelOutputDatabaseWriteBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.authority_classes.includes("model_provider_call")
+    )).toBe(true);
+    expect(sourceHandlerModelOutputDatabaseWriteBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.authority_classes.includes("database_write")
+    )).toBe(true);
+    expect(sourceHandlerModelOutputDatabaseWriteBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.authority_classes.includes("model_output_database_write_bridge")
+    )).toBe(true);
+    expect(sourceHandlerModelOutputDatabaseWriteBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.handler_authority_classes.includes("handler_model_output_database_write_bridge")
+    )).toBe(true);
+    expect(sourceHandlerModelOutputDatabaseWriteBridgeFindings.every((finding) => finding.matched_object.actions.includes("write"))).toBe(true);
+    expect(sourceHandlerModelOutputDatabaseWriteBridgeFindings.every((finding) => finding.matched_object.actions.includes("send"))).toBe(true);
+    expect(sourceHandlerModelOutputDatabaseWriteBridgeFindings.every((finding) => finding.matched_object.secret_exposure === true)).toBe(true);
+    expect(sourceHandlerModelOutputDatabaseWriteBridgeFindings.every((finding) => finding.matched_object.side_effect === true)).toBe(true);
+    expect(sourceHandlerModelOutputDatabaseWriteBridgeFindings.every((finding) => finding.matched_object.reversible === false)).toBe(true);
+    expect(JSON.stringify(sourceHandlerModelOutputDatabaseWriteBridgeFindings)).not.toContain("openai.chat.completions.create");
+    expect(JSON.stringify(sourceHandlerModelOutputDatabaseWriteBridgeFindings)).not.toContain("openai_client.chat.completions.create");
+    expect(JSON.stringify(sourceHandlerModelOutputDatabaseWriteBridgeFindings)).not.toContain("modelResult");
+    expect(JSON.stringify(sourceHandlerModelOutputDatabaseWriteBridgeFindings)).not.toContain("model_response");
+    expect(JSON.stringify(sourceHandlerModelOutputDatabaseWriteBridgeFindings)).not.toContain("modelSelectedRecordMutation");
+    expect(JSON.stringify(sourceHandlerModelOutputDatabaseWriteBridgeFindings)).not.toContain("model_selected_record_mutation");
+    expect(JSON.stringify(sourceHandlerModelOutputDatabaseWriteBridgeFindings)).not.toContain("supportDb.query");
+    expect(JSON.stringify(sourceHandlerModelOutputDatabaseWriteBridgeFindings)).not.toContain("support_db.with_token");
+    expect(JSON.stringify(sourceHandlerModelOutputDatabaseWriteBridgeFindings)).not.toContain("source model selected database mutation applied");
+    expect(JSON.stringify(sourceHandlerModelOutputDatabaseWriteBridgeFindings)).not.toContain("framework model selected database mutation applied");
+    expect(JSON.stringify(sourceHandlerModelOutputDatabaseWriteBridgeFindings)).not.toContain("Ask a model provider to draft a customer database mutation");
     const sourceHandlerDynamicCodeFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-019");
     expect(sourceHandlerDynamicCodeFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_evaluate_agent_expression",
@@ -10925,9 +10983,11 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerTaintedDeserializationFindings)).not.toContain("framework state loaded");
     const sourceHandlerDatabaseFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-016");
     expect(sourceHandlerDatabaseFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
+      "langchain_apply_model_database_update",
       "langchain_apply_record_change_sql",
       "langchain_store_customer_vault_secret_database",
       "langchain_store_privileged_tool_observation_database",
+      "source_apply_model_database_update",
       "source_apply_record_change_sql",
       "source_store_customer_vault_secret_database",
       "source_store_privileged_tool_observation_database"

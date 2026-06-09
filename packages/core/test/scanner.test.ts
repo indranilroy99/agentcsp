@@ -727,6 +727,9 @@ describe("scanner", () => {
     const sourceModelOutputBrowserAutomationBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "source_execute_model_browser_action"
     );
+    const sourceModelOutputDatabaseWriteBridgeTool = surfaces.tools.find(
+      (surface) => surface.name === "source_apply_model_database_update"
+    );
     const pythonExportTool = surfaces.tools.find((surface) => surface.name === "python_export_customer_record");
     const pythonDeleteTool = surfaces.tools.find((surface) => surface.name === "python_readonly_delete_workspace_file");
     const pythonUnsafeDeserializationTool = surfaces.tools.find((surface) => surface.name === "python_load_serialized_agent_state");
@@ -920,6 +923,9 @@ describe("scanner", () => {
     );
     const langchainModelOutputBrowserAutomationBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "langchain_execute_model_browser_action"
+    );
+    const langchainModelOutputDatabaseWriteBridgeTool = surfaces.tools.find(
+      (surface) => surface.name === "langchain_apply_model_database_update"
     );
     const langchainUnsafeDeserializationTool = surfaces.tools.find((surface) => surface.name === "langchain_load_serialized_agent_state");
     const aiSdkExportTool = surfaces.tools.find((surface) => surface.name === "aiSdkExportCustomerContext");
@@ -8252,6 +8258,85 @@ describe("scanner", () => {
     expect(JSON.stringify(sourceModelOutputBrowserAutomationBridgeTool)).not.toContain("page.goto");
     expect(JSON.stringify(sourceModelOutputBrowserAutomationBridgeTool)).not.toContain("source model selected browser action executed");
     expect(JSON.stringify(sourceModelOutputBrowserAutomationBridgeTool)).not.toContain("Ask a model provider to choose an authenticated browser destination");
+    expect(sourceModelOutputDatabaseWriteBridgeTool).toMatchObject({
+      path: "mcp-source/customer-tools.ts",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["call", "execute", "read", "send", "write"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(sourceModelOutputDatabaseWriteBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_mcp_source_tool: true,
+      mcp_source_tool_registration: true,
+      mcp_source_tool_registration_kind: "registerTool",
+      mcp_source_tool_argument_count: 3,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_content_like_input: true,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      model_provider_call: true,
+      tainted_model_selection: true,
+      database_access: true,
+      database_write: true,
+      model_output_database_write_bridge: true,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_model_provider_call: true,
+      handler_tainted_model_selection: true,
+      handler_database_query: true,
+      handler_database_write: true,
+      handler_model_output_database_write_bridge: true,
+      handler_secret_env_access: true,
+      handler_signal_count: 6,
+      open_world_schema: false
+    });
+    expect(sourceModelOutputDatabaseWriteBridgeTool?.metadata.authority_classes).toEqual(expect.arrayContaining([
+      "database_access",
+      "database_write",
+      "handler_database_query",
+      "handler_database_write",
+      "handler_model_output_database_write_bridge",
+      "handler_model_provider_call",
+      "handler_secret_env_access",
+      "handler_tainted_model_selection",
+      "model_output_database_write_bridge",
+      "model_provider_call",
+      "tainted_model_selection"
+    ]));
+    expect(sourceModelOutputDatabaseWriteBridgeTool?.metadata.handler_authority_classes).toEqual([
+      "handler_database_query",
+      "handler_database_write",
+      "handler_model_output_database_write_bridge",
+      "handler_model_provider_call",
+      "handler_secret_env_access",
+      "handler_tainted_model_selection"
+    ]);
+    expect(sourceModelOutputDatabaseWriteBridgeTool?.metadata.handler_env_key_names).toEqual([
+      "SOURCE_MODEL_DATABASE_UPDATE_TOKEN",
+      "SOURCE_SUPPORT_DATABASE_TOKEN"
+    ]);
+    expect(sourceModelOutputDatabaseWriteBridgeTool?.metadata.schema_properties).toEqual([
+      "customer_id",
+      "customer_ticket_text",
+      "model_name",
+      "record_update_goal_text"
+    ]);
+    expect(sourceModelOutputDatabaseWriteBridgeTool?.metadata.required_properties).toEqual([
+      "customer_id",
+      "customer_ticket_text",
+      "model_name",
+      "record_update_goal_text"
+    ]);
+    expect(JSON.stringify(sourceModelOutputDatabaseWriteBridgeTool)).not.toContain("openai.chat.completions.create");
+    expect(JSON.stringify(sourceModelOutputDatabaseWriteBridgeTool)).not.toContain("modelResult");
+    expect(JSON.stringify(sourceModelOutputDatabaseWriteBridgeTool)).not.toContain("modelSelectedRecordMutation");
+    expect(JSON.stringify(sourceModelOutputDatabaseWriteBridgeTool)).not.toContain("supportDb.query");
+    expect(JSON.stringify(sourceModelOutputDatabaseWriteBridgeTool)).not.toContain("source model selected database mutation applied");
+    expect(JSON.stringify(sourceModelOutputDatabaseWriteBridgeTool)).not.toContain("Ask a model provider to draft a customer database mutation");
     expect(pythonExportTool).toMatchObject({
       path: "mcp-source/python_tools.py",
       data_classes: ["confidential", "credential", "pii"],
@@ -15823,6 +15908,90 @@ describe("scanner", () => {
     expect(JSON.stringify(langchainModelOutputBrowserAutomationBridgeTool)).not.toContain("page.goto");
     expect(JSON.stringify(langchainModelOutputBrowserAutomationBridgeTool)).not.toContain("framework model selected browser action executed");
     expect(JSON.stringify(langchainModelOutputBrowserAutomationBridgeTool)).not.toContain("Ask a model provider to choose an authenticated browser destination");
+    expect(langchainModelOutputDatabaseWriteBridgeTool).toMatchObject({
+      path: "framework-tools/langchain_tools.py",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["call", "execute", "read", "send", "write"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(langchainModelOutputDatabaseWriteBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_agent_framework_source_tool: true,
+      agent_framework_source_tool: true,
+      agent_framework_source_tool_framework: "langchain",
+      agent_framework_source_tool_registration_kind: "python_tool_decorator",
+      agent_framework_source_tool_argument_count: 4,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_content_like_input: true,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      model_provider_call: true,
+      tainted_model_selection: true,
+      database_access: true,
+      database_write: true,
+      model_output_database_write_bridge: true,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_model_provider_call: true,
+      handler_tainted_model_selection: true,
+      handler_database_query: true,
+      handler_database_write: true,
+      handler_model_output_database_write_bridge: true,
+      handler_privileged_prompt_composition: true,
+      handler_secret_env_access: true,
+      handler_signal_count: 7,
+      open_world_schema: false
+    });
+    expect(langchainModelOutputDatabaseWriteBridgeTool?.metadata.authority_classes).toEqual(expect.arrayContaining([
+      "database_access",
+      "database_write",
+      "handler_database_query",
+      "handler_database_write",
+      "handler_model_output_database_write_bridge",
+      "handler_model_provider_call",
+      "handler_privileged_prompt_composition",
+      "handler_secret_env_access",
+      "handler_tainted_model_selection",
+      "model_output_database_write_bridge",
+      "model_provider_call",
+      "privileged_prompt_composition",
+      "tainted_model_selection"
+    ]));
+    expect(langchainModelOutputDatabaseWriteBridgeTool?.metadata.handler_authority_classes).toEqual([
+      "handler_database_query",
+      "handler_database_write",
+      "handler_model_output_database_write_bridge",
+      "handler_model_provider_call",
+      "handler_privileged_prompt_composition",
+      "handler_secret_env_access",
+      "handler_tainted_model_selection"
+    ]);
+    expect(langchainModelOutputDatabaseWriteBridgeTool?.metadata.handler_env_key_names).toEqual([
+      "LANGCHAIN_MODEL_DATABASE_UPDATE_TOKEN",
+      "LANGCHAIN_SUPPORT_DATABASE_TOKEN"
+    ]);
+    expect(langchainModelOutputDatabaseWriteBridgeTool?.metadata.schema_properties).toEqual([
+      "customer_id",
+      "customer_ticket_text",
+      "model_name",
+      "record_update_goal_text"
+    ]);
+    expect(langchainModelOutputDatabaseWriteBridgeTool?.metadata.required_properties).toEqual([
+      "customer_id",
+      "customer_ticket_text",
+      "model_name",
+      "record_update_goal_text"
+    ]);
+    expect(JSON.stringify(langchainModelOutputDatabaseWriteBridgeTool)).not.toContain("openai_client.chat.completions.create");
+    expect(JSON.stringify(langchainModelOutputDatabaseWriteBridgeTool)).not.toContain("model_response");
+    expect(JSON.stringify(langchainModelOutputDatabaseWriteBridgeTool)).not.toContain("model_selected_record_mutation");
+    expect(JSON.stringify(langchainModelOutputDatabaseWriteBridgeTool)).not.toContain("support_db.with_token");
+    expect(JSON.stringify(langchainModelOutputDatabaseWriteBridgeTool)).not.toContain("framework model selected database mutation applied");
+    expect(JSON.stringify(langchainModelOutputDatabaseWriteBridgeTool)).not.toContain("Ask a model provider to draft a customer database mutation");
     expect(aiSdkExportTool).toMatchObject({
       path: "framework-tools/vercel-ai-tools.ts",
       data_classes: ["confidential", "credential", "pii"],

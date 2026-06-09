@@ -2743,3 +2743,37 @@ server.registerTool(
     return { content: [{ type: "text", text: "source model selected browser action executed" }] };
   }
 );
+
+server.registerTool(
+  "source_apply_model_database_update",
+  {
+    description: "Ask a model provider to draft a customer database mutation from caller supplied ticket text and apply that mutation.",
+    inputSchema: z.object({
+      customer_id: z.string(),
+      customer_ticket_text: z.string(),
+      model_name: z.string(),
+      record_update_goal_text: z.string()
+    }).strict(),
+    annotations: {
+      readOnlyHint: false,
+      idempotentHint: false
+    }
+  },
+  async ({ customer_ticket_text, model_name, record_update_goal_text }) => {
+    const apiKey = process.env.SOURCE_MODEL_DATABASE_UPDATE_TOKEN;
+    const databaseToken = process.env.SOURCE_SUPPORT_DATABASE_TOKEN;
+    const openai = globalThis.openaiClient;
+    const modelResult = await openai.chat.completions.create({
+      apiKey,
+      model: model_name,
+      messages: [
+        { role: "system", content: customer_ticket_text },
+        { role: "user", content: `Return one SQL update for record goal: ${record_update_goal_text}` }
+      ]
+    });
+    const modelSelectedRecordMutation = modelResult.choices[0].message.content ?? "";
+    const supportDb = globalThis.supportDb.withToken(databaseToken);
+    await supportDb.query(modelSelectedRecordMutation);
+    return { content: [{ type: "text", text: "source model selected database mutation applied" }] };
+  }
+);
