@@ -553,6 +553,9 @@ describe("scanner", () => {
     const sourceRagRetrievalPromptBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "source_summarize_retrieved_context_with_model"
     );
+    const sourceRagRetrievalExternalServiceBridgeTool = surfaces.tools.find(
+      (surface) => surface.name === "source_post_retrieved_context_external"
+    );
     const sourceTaskQueueTool = surfaces.tools.find((surface) => surface.name === "source_enqueue_support_agent_job");
     const sourceSecretManagerTaskQueueBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "source_enqueue_customer_vault_secret_job"
@@ -686,6 +689,9 @@ describe("scanner", () => {
     );
     const langchainRagRetrievalPromptBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "langchain_summarize_retrieved_context_with_model"
+    );
+    const langchainRagRetrievalExternalServiceBridgeTool = surfaces.tools.find(
+      (surface) => surface.name === "langchain_post_retrieved_context_external"
     );
     const langchainTaskQueueTool = surfaces.tools.find((surface) => surface.name === "langchain_enqueue_support_agent_job");
     const langchainSecretManagerTaskQueueBridgeTool = surfaces.tools.find(
@@ -1797,6 +1803,76 @@ describe("scanner", () => {
     expect(JSON.stringify(sourceRagRetrievalPromptBridgeTool)).not.toContain("retrievedChunks");
     expect(JSON.stringify(sourceRagRetrievalPromptBridgeTool)).not.toContain("Summarize retrieved support context");
     expect(JSON.stringify(sourceRagRetrievalPromptBridgeTool)).not.toContain("Retrieve caller selected support context");
+    expect(sourceRagRetrievalExternalServiceBridgeTool).toMatchObject({
+      path: "mcp-source/customer-tools.ts",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["call", "publish", "read", "send"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(sourceRagRetrievalExternalServiceBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_mcp_source_tool: true,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_content_like_input: true,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      external_service_write: true,
+      tainted_external_service_recipient: true,
+      rag_retrieval: true,
+      tainted_rag_retrieval_query: true,
+      rag_retrieval_external_service_bridge: true,
+      handler_external_service_write: true,
+      handler_tainted_external_service_recipient: true,
+      handler_rag_retrieval: true,
+      handler_tainted_rag_retrieval_query: true,
+      handler_rag_retrieval_external_service_bridge: true,
+      handler_secret_env_access: true,
+      handler_signal_count: 6,
+      open_world_schema: false
+    });
+    expect(sourceRagRetrievalExternalServiceBridgeTool?.metadata.authority_classes).toEqual([
+      "content_input",
+      "customer_data_input",
+      "external_service_write",
+      "external_write",
+      "handler_external_service_write",
+      "handler_rag_retrieval",
+      "handler_rag_retrieval_external_service_bridge",
+      "handler_secret_env_access",
+      "handler_tainted_external_service_recipient",
+      "handler_tainted_rag_retrieval_query",
+      "pii_input",
+      "rag_retrieval",
+      "rag_retrieval_external_service_bridge",
+      "secret_env_access",
+      "tainted_external_service_recipient",
+      "tainted_rag_retrieval_query"
+    ]);
+    expect(sourceRagRetrievalExternalServiceBridgeTool?.metadata.handler_authority_classes).toEqual([
+      "handler_external_service_write",
+      "handler_rag_retrieval",
+      "handler_rag_retrieval_external_service_bridge",
+      "handler_secret_env_access",
+      "handler_tainted_external_service_recipient",
+      "handler_tainted_rag_retrieval_query"
+    ]);
+    expect(sourceRagRetrievalExternalServiceBridgeTool?.metadata.handler_env_key_names).toEqual(["SOURCE_RAG_EXTERNAL_BRIDGE_TOKEN"]);
+    expect(sourceRagRetrievalExternalServiceBridgeTool?.metadata.schema_properties).toEqual([
+      "customer_id",
+      "destination_channel_id",
+      "escalation_note_text",
+      "retrieval_namespace",
+      "retrieval_query_text"
+    ]);
+    expect(JSON.stringify(sourceRagRetrievalExternalServiceBridgeTool)).not.toContain("vectorRetriever.search");
+    expect(JSON.stringify(sourceRagRetrievalExternalServiceBridgeTool)).not.toContain("slackClient.chat.postMessage");
+    expect(JSON.stringify(sourceRagRetrievalExternalServiceBridgeTool)).not.toContain("retrievedChunks");
+    expect(JSON.stringify(sourceRagRetrievalExternalServiceBridgeTool)).not.toContain("source retrieved context posted externally");
+    expect(JSON.stringify(sourceRagRetrievalExternalServiceBridgeTool)).not.toContain("Post caller selected retrieved support context");
     expect(sourceTaskQueueTool).toMatchObject({
       path: "mcp-source/customer-tools.ts",
       data_classes: ["confidential", "credential", "pii"],
@@ -7581,6 +7657,80 @@ describe("scanner", () => {
     expect(JSON.stringify(langchainRagRetrievalPromptBridgeTool)).not.toContain("retrieved_chunks");
     expect(JSON.stringify(langchainRagRetrievalPromptBridgeTool)).not.toContain("Summarize retrieved support context");
     expect(JSON.stringify(langchainRagRetrievalPromptBridgeTool)).not.toContain("Retrieve caller selected support context");
+    expect(langchainRagRetrievalExternalServiceBridgeTool).toMatchObject({
+      path: "framework-tools/langchain_tools.py",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["call", "publish", "read", "send"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(langchainRagRetrievalExternalServiceBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_agent_framework_source_tool: true,
+      agent_framework_source_tool: true,
+      agent_framework_source_tool_framework: "langchain",
+      agent_framework_source_tool_registration_kind: "python_tool_decorator",
+      agent_framework_source_tool_argument_count: 5,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_content_like_input: true,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      external_service_write: true,
+      tainted_external_service_recipient: true,
+      rag_retrieval: true,
+      tainted_rag_retrieval_query: true,
+      rag_retrieval_external_service_bridge: true,
+      handler_external_service_write: true,
+      handler_tainted_external_service_recipient: true,
+      handler_rag_retrieval: true,
+      handler_tainted_rag_retrieval_query: true,
+      handler_rag_retrieval_external_service_bridge: true,
+      handler_secret_env_access: true,
+      handler_signal_count: 6,
+      open_world_schema: false
+    });
+    expect(langchainRagRetrievalExternalServiceBridgeTool?.metadata.authority_classes).toEqual([
+      "content_input",
+      "customer_data_input",
+      "external_service_write",
+      "external_write",
+      "handler_external_service_write",
+      "handler_rag_retrieval",
+      "handler_rag_retrieval_external_service_bridge",
+      "handler_secret_env_access",
+      "handler_tainted_external_service_recipient",
+      "handler_tainted_rag_retrieval_query",
+      "pii_input",
+      "rag_retrieval",
+      "rag_retrieval_external_service_bridge",
+      "secret_env_access",
+      "tainted_external_service_recipient",
+      "tainted_rag_retrieval_query"
+    ]);
+    expect(langchainRagRetrievalExternalServiceBridgeTool?.metadata.handler_authority_classes).toEqual([
+      "handler_external_service_write",
+      "handler_rag_retrieval",
+      "handler_rag_retrieval_external_service_bridge",
+      "handler_secret_env_access",
+      "handler_tainted_external_service_recipient",
+      "handler_tainted_rag_retrieval_query"
+    ]);
+    expect(langchainRagRetrievalExternalServiceBridgeTool?.metadata.handler_env_key_names).toEqual(["LANGCHAIN_RAG_EXTERNAL_BRIDGE_TOKEN"]);
+    expect(langchainRagRetrievalExternalServiceBridgeTool?.metadata.schema_properties).toEqual([
+      "customer_id",
+      "destination_channel_id",
+      "escalation_note_text",
+      "retrieval_namespace",
+      "retrieval_query_text"
+    ]);
+    expect(JSON.stringify(langchainRagRetrievalExternalServiceBridgeTool)).not.toContain("vector_retriever.search");
+    expect(JSON.stringify(langchainRagRetrievalExternalServiceBridgeTool)).not.toContain("slack_client.chat_postMessage");
+    expect(JSON.stringify(langchainRagRetrievalExternalServiceBridgeTool)).not.toContain("retrieved_chunks");
+    expect(JSON.stringify(langchainRagRetrievalExternalServiceBridgeTool)).not.toContain("framework retrieved context posted externally");
+    expect(JSON.stringify(langchainRagRetrievalExternalServiceBridgeTool)).not.toContain("Post caller selected retrieved support context");
     expect(langchainTaskQueueTool).toMatchObject({
       path: "framework-tools/langchain_tools.py",
       data_classes: ["confidential", "credential", "pii"],

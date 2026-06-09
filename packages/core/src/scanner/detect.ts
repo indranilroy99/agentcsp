@@ -24149,6 +24149,7 @@ function addToolDefinitionSurface(
       !authority.artifact_export &&
       !authority.rag_context_to_output &&
       !authority.rag_retrieval_prompt_bridge &&
+      !authority.rag_retrieval_external_service_bridge &&
       !authority.rag_retrieval_memory_bridge &&
       !authority.task_queue_enqueue &&
       !authority.prompt_registry_write &&
@@ -24255,6 +24256,7 @@ function addToolDefinitionSurface(
       tainted_rag_retrieval_query: authority.tainted_rag_retrieval_query,
       rag_context_to_output: authority.rag_context_to_output,
       rag_retrieval_prompt_bridge: authority.rag_retrieval_prompt_bridge,
+      rag_retrieval_external_service_bridge: authority.rag_retrieval_external_service_bridge,
       rag_retrieval_memory_bridge: authority.rag_retrieval_memory_bridge,
       task_queue_enqueue: authority.task_queue_enqueue,
       tainted_task_payload: authority.tainted_task_payload,
@@ -26694,6 +26696,7 @@ interface SourceToolHandlerSignals {
   handlerTaintedRagRetrievalQuery: boolean;
   handlerRagContextToOutput: boolean;
   handlerRagRetrievalPromptBridge: boolean;
+  handlerRagRetrievalExternalServiceBridge: boolean;
   handlerRagRetrievalMemoryBridge: boolean;
   handlerTaskQueueEnqueue: boolean;
   handlerTaintedTaskPayload: boolean;
@@ -27220,6 +27223,7 @@ function sourceToolHandlerSignalMetadata(signals: SourceToolHandlerSignals | und
     handler_tainted_rag_retrieval_query: signals.handlerTaintedRagRetrievalQuery,
     handler_rag_context_to_output: signals.handlerRagContextToOutput,
     handler_rag_retrieval_prompt_bridge: signals.handlerRagRetrievalPromptBridge,
+    handler_rag_retrieval_external_service_bridge: signals.handlerRagRetrievalExternalServiceBridge,
     handler_rag_retrieval_memory_bridge: signals.handlerRagRetrievalMemoryBridge,
     handler_task_queue_enqueue: signals.handlerTaskQueueEnqueue,
     handler_tainted_task_payload: signals.handlerTaintedTaskPayload,
@@ -27415,6 +27419,9 @@ function classifySourceToolHandlerSignals(
   const ragRetrievalPromptBridge = ragRetrieval && modelProviderCall && (language === "javascript"
     ? hasJavaScriptHandlerRagRetrievalPromptBridge(handlerSource)
     : hasPythonHandlerRagRetrievalPromptBridge(handlerSource));
+  const ragRetrievalExternalServiceBridge = ragRetrieval && externalServiceWrite && (language === "javascript"
+    ? hasJavaScriptHandlerRagRetrievalExternalServiceBridge(handlerSource)
+    : hasPythonHandlerRagRetrievalExternalServiceBridge(handlerSource));
   const ragRetrievalMemoryBridge = ragRetrieval && (language === "javascript"
     ? hasJavaScriptHandlerRagRetrievalMemoryBridge(handlerSource)
     : hasPythonHandlerRagRetrievalMemoryBridge(handlerSource));
@@ -27668,6 +27675,7 @@ function classifySourceToolHandlerSignals(
   if (taintedRagRetrievalQuery) classes.add("handler_tainted_rag_retrieval_query");
   if (ragContextToOutput) classes.add("handler_rag_context_to_output");
   if (ragRetrievalPromptBridge) classes.add("handler_rag_retrieval_prompt_bridge");
+  if (ragRetrievalExternalServiceBridge) classes.add("handler_rag_retrieval_external_service_bridge");
   if (ragRetrievalMemoryBridge) classes.add("handler_rag_retrieval_memory_bridge");
   if (taskQueueEnqueue) classes.add("handler_task_queue_enqueue");
   if (taintedTaskPayload) classes.add("handler_tainted_task_payload");
@@ -27782,6 +27790,7 @@ function classifySourceToolHandlerSignals(
     handlerTaintedRagRetrievalQuery: taintedRagRetrievalQuery,
     handlerRagContextToOutput: ragContextToOutput,
     handlerRagRetrievalPromptBridge: ragRetrievalPromptBridge,
+    handlerRagRetrievalExternalServiceBridge: ragRetrievalExternalServiceBridge,
     handlerRagRetrievalMemoryBridge: ragRetrievalMemoryBridge,
     handlerTaskQueueEnqueue: taskQueueEnqueue,
     handlerTaintedTaskPayload: taintedTaskPayload,
@@ -28851,6 +28860,28 @@ function hasPythonHandlerRagRetrievalPromptBridge(source: string): boolean {
     [
       /\b(?:openai|openai_client|anthropic|anthropic_client|mistral|mistral_client|cohere|cohere_client|bedrock|bedrock_client|gemini|gemini_client|vertex|vertex_client|llm|model_client|language_model)\s*(?:\.\s*[A-Za-z_]\w*){0,5}\s*\.\s*(?:create|stream|parse|invoke|send|complete|generate_content|predict)\s*\(([\s\S]{0,2600})\)/giu,
       /\bInvokeModelCommand\s*\(([\s\S]{0,2600})\)/giu
+    ],
+    source,
+    identifiers
+  );
+}
+
+function hasJavaScriptHandlerRagRetrievalExternalServiceBridge(source: string): boolean {
+  const identifiers = extractHandlerRagRetrievalVariableNames(source);
+  return identifiers.length > 0 && callExpressionReferencesAnyIdentifier(
+    [
+      /\b(?:slackClient|slack|github|githubClient|octokit|emailClient|mailClient|sendgrid|twilioClient|twilio|teamsClient|discordClient|notion|linear|jira|salesforce|hubspot)\s*(?:\.\s*[A-Za-z_$][\w$]*){0,4}\s*\.\s*(?:postMessage|createComment|createIssueComment|send|sendMail|sendMessage|create|publish|post|reply|update|createPage|createTask|createIssue)\s*\(([\s\S]{0,2200})\)/giu
+    ],
+    source,
+    identifiers
+  );
+}
+
+function hasPythonHandlerRagRetrievalExternalServiceBridge(source: string): boolean {
+  const identifiers = extractHandlerRagRetrievalVariableNames(source);
+  return identifiers.length > 0 && callExpressionReferencesAnyIdentifier(
+    [
+      /\b(?:slack_client|slack|github|github_client|octokit|email_client|mail_client|sendgrid|twilio_client|twilio|teams_client|discord_client|notion|linear|jira|salesforce|hubspot)\s*(?:\.\s*[A-Za-z_]\w*){0,4}\s*\.\s*(?:post_message|chat_postMessage|chat_post_message|create_comment|create_issue_comment|send|send_mail|send_message|create|publish|post|reply|update|create_page|create_task|create_issue)\s*\(([\s\S]{0,2200})\)/giu
     ],
     source,
     identifiers
@@ -30483,12 +30514,12 @@ function identifierAssignedFromTaintedSecretManagerPathInput(identifier: string,
 }
 
 function expressionReferencesTaintedExternalServiceRecipient(expression: string, source: string): boolean {
-  const templateInterpolation = /\$\{[^}]*\b(?:slackChannelId|slack_channel_id|externalChannelId|external_channel_id|channelId|channel_id|channelName|channel_name|targetChannel|target_channel|destinationChannel|destination_channel|recipientId|recipient_id|recipientEmail|recipient_email|recipientAddress|recipient_address|emailAddress|email_address|userId|user_id|roomId|room_id|conversationId|conversation_id|webhookUrl|webhook_url|destinationWebhookUrl|destination_webhook_url)\b/u.test(
+  const templateInterpolation = /\$\{[^}]*\b(?:slackChannelId|slack_channel_id|externalChannelId|external_channel_id|channelId|channel_id|channelName|channel_name|targetChannel|target_channel|destinationChannel|destination_channel|destinationChannelId|destination_channel_id|recipientId|recipient_id|recipientEmail|recipient_email|recipientAddress|recipient_address|emailAddress|email_address|userId|user_id|roomId|room_id|conversationId|conversation_id|webhookUrl|webhook_url|destinationWebhookUrl|destination_webhook_url)\b/u.test(
     expression
   );
   if (templateInterpolation) return true;
   const withoutQuotedStrings = expression.replace(/(["'`])(?:\\.|(?!\1)[\s\S])*\1/gu, " ");
-  const stronglyTaintedName = /\b(?:slackChannelId|slack_channel_id|externalChannelId|external_channel_id|channelId|channel_id|channelName|channel_name|targetChannel|target_channel|destinationChannel|destination_channel|recipientId|recipient_id|recipientEmail|recipient_email|recipientAddress|recipient_address|emailAddress|email_address|userId|user_id|roomId|room_id|conversationId|conversation_id|webhookUrl|webhook_url|destinationWebhookUrl|destination_webhook_url)\b/u;
+  const stronglyTaintedName = /\b(?:slackChannelId|slack_channel_id|externalChannelId|external_channel_id|channelId|channel_id|channelName|channel_name|targetChannel|target_channel|destinationChannel|destination_channel|destinationChannelId|destination_channel_id|recipientId|recipient_id|recipientEmail|recipient_email|recipientAddress|recipient_address|emailAddress|email_address|userId|user_id|roomId|room_id|conversationId|conversation_id|webhookUrl|webhook_url|destinationWebhookUrl|destination_webhook_url)\b/u;
   if (stronglyTaintedName.test(withoutQuotedStrings)) return true;
 
   const recipientAssignment = /\b(?:channel|channel_id|room|room_id|conversation|conversation_id|recipient|recipient_id|to|cc|bcc|user|user_id|email|email_address|destination|target|webhook|webhook_url)\s*(?::|=)\s*([^,\n}\)]+)/giu;
@@ -33123,6 +33154,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   tainted_rag_retrieval_query: boolean;
   rag_context_to_output: boolean;
   rag_retrieval_prompt_bridge: boolean;
+  rag_retrieval_external_service_bridge: boolean;
   rag_retrieval_memory_bridge: boolean;
   task_queue_enqueue: boolean;
   tainted_task_payload: boolean;
@@ -33216,6 +33248,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   const handlerTaintedRagRetrievalQuery = handler?.handlerTaintedRagRetrievalQuery === true;
   const handlerRagContextToOutput = handler?.handlerRagContextToOutput === true;
   const handlerRagRetrievalPromptBridge = handler?.handlerRagRetrievalPromptBridge === true;
+  const handlerRagRetrievalExternalServiceBridge = handler?.handlerRagRetrievalExternalServiceBridge === true;
   const handlerRagRetrievalMemoryBridge = handler?.handlerRagRetrievalMemoryBridge === true;
   const handlerTaskQueueEnqueue = handler?.handlerTaskQueueEnqueue === true;
   const handlerTaintedTaskPayload = handler?.handlerTaintedTaskPayload === true;
@@ -33739,6 +33772,11 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
     classes.add("rag_retrieval_prompt_bridge");
     actions.add("send");
   }
+  if (handlerRagRetrievalExternalServiceBridge) {
+    classes.add("rag_retrieval_external_service_bridge");
+    actions.add("send");
+    actions.add("publish");
+  }
   if (handlerRagRetrievalMemoryBridge) {
     classes.add("rag_retrieval_memory_bridge");
     actions.add("remember");
@@ -33931,6 +33969,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerTaintedRagRetrievalQuery ||
       handlerRagContextToOutput ||
       handlerRagRetrievalPromptBridge ||
+      handlerRagRetrievalExternalServiceBridge ||
       handlerRagRetrievalMemoryBridge ||
       handlerTaskQueueEnqueue ||
       handlerTaintedTaskPayload ||
@@ -34021,6 +34060,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerToolOutputArtifactBridge ||
       handlerRagRetrieval ||
       handlerRagRetrievalPromptBridge ||
+      handlerRagRetrievalExternalServiceBridge ||
       handlerRagRetrievalMemoryBridge ||
       handlerTaskQueueEnqueue ||
       handlerSecretManagerTaskQueueBridge ||
@@ -34066,6 +34106,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       (handlerToolOutputPromptRegistryBridge && handlerSecretEnvAccess) ||
       (handlerToolOutputExternalServiceBridge && handlerSecretEnvAccess) ||
       (handlerRagRetrievalPromptBridge && handlerSecretEnvAccess) ||
+      (handlerRagRetrievalExternalServiceBridge && handlerSecretEnvAccess) ||
       (handlerRagRetrievalMemoryBridge && handlerSecretEnvAccess) ||
       (handlerSafetyPolicyWrite && handlerSecretEnvAccess) ||
       handlerSecretManagerSafetyPolicyBridge ||
@@ -34160,6 +34201,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
     tainted_rag_retrieval_query: handlerTaintedRagRetrievalQuery,
     rag_context_to_output: handlerRagContextToOutput,
     rag_retrieval_prompt_bridge: handlerRagRetrievalPromptBridge,
+    rag_retrieval_external_service_bridge: handlerRagRetrievalExternalServiceBridge,
     rag_retrieval_memory_bridge: handlerRagRetrievalMemoryBridge,
     task_queue_enqueue: handlerTaskQueueEnqueue,
     tainted_task_payload: handlerTaintedTaskPayload,
@@ -34289,6 +34331,7 @@ function authoritySignature(tool: SurfaceObject): string {
     metadata.tainted_rag_retrieval_query === true ? "tainted_rag_retrieval_query" : "",
     metadata.rag_context_to_output === true ? "rag_context_to_output" : "",
     metadata.rag_retrieval_prompt_bridge === true ? "rag_retrieval_prompt_bridge" : "",
+    metadata.rag_retrieval_external_service_bridge === true ? "rag_retrieval_external_service_bridge" : "",
     metadata.rag_retrieval_memory_bridge === true ? "rag_retrieval_memory_bridge" : "",
     metadata.task_queue_enqueue === true ? "task_queue_enqueue" : "",
     metadata.tainted_task_payload === true ? "tainted_task_payload" : "",
@@ -34409,6 +34452,7 @@ function isPrivilegedToolSurface(tool: SurfaceObject): boolean {
     tool.metadata.tainted_rag_retrieval_query === true ||
     tool.metadata.rag_context_to_output === true ||
     tool.metadata.rag_retrieval_prompt_bridge === true ||
+    tool.metadata.rag_retrieval_external_service_bridge === true ||
     tool.metadata.rag_retrieval_memory_bridge === true ||
     tool.metadata.task_queue_enqueue === true ||
     tool.metadata.tainted_task_payload === true ||

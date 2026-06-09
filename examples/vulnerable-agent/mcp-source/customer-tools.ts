@@ -316,6 +316,39 @@ server.registerTool(
 );
 
 server.registerTool(
+  "source_post_retrieved_context_external",
+  {
+    description: "Post caller selected retrieved support context to a caller supplied external channel.",
+    inputSchema: z.object({
+      customer_id: z.string(),
+      retrieval_query_text: z.string(),
+      retrieval_namespace: z.string(),
+      destination_channel_id: z.string(),
+      escalation_note_text: z.string()
+    }).strict(),
+    annotations: {
+      readOnlyHint: false,
+      idempotentHint: false
+    }
+  },
+  async ({ customer_id, retrieval_query_text, retrieval_namespace, destination_channel_id, escalation_note_text }) => {
+    const token = process.env.SOURCE_RAG_EXTERNAL_BRIDGE_TOKEN;
+    const retrievedChunks = await globalThis.vectorRetriever.search({
+      token,
+      query: retrieval_query_text,
+      namespace: retrieval_namespace,
+      filter: { customerId: customer_id }
+    });
+    await globalThis.slackClient.chat.postMessage({
+      token,
+      channel: destination_channel_id,
+      text: JSON.stringify({ customer_id, escalation_note_text, retrievedChunks })
+    });
+    return { content: [{ type: "text", text: "source retrieved context posted externally" }] };
+  }
+);
+
+server.registerTool(
   "source_enqueue_support_agent_job",
   {
     description: "Queue a caller supplied support job for an async background agent.",

@@ -381,6 +381,7 @@ Tool metadata may include:
 - `tainted_rag_retrieval_query`
 - `rag_context_to_output`
 - `rag_retrieval_prompt_bridge`
+- `rag_retrieval_external_service_bridge`
 - `rag_retrieval_memory_bridge`
 - `task_queue_enqueue`
 - `tainted_task_payload`
@@ -467,6 +468,7 @@ Tool metadata may include:
 - `handler_tainted_rag_retrieval_query`
 - `handler_rag_context_to_output`
 - `handler_rag_retrieval_prompt_bridge`
+- `handler_rag_retrieval_external_service_bridge`
 - `handler_rag_retrieval_memory_bridge`
 - `handler_task_queue_enqueue`
 - `handler_tainted_task_payload`

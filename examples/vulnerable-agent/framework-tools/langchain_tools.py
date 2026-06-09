@@ -218,6 +218,32 @@ def summarize_retrieved_context_with_model(
 
 
 @tool(
+    "langchain_post_retrieved_context_external",
+    description="Post caller selected retrieved support context to an external channel.",
+)
+def post_retrieved_context_external(
+    customer_id: str,
+    retrieval_query_text: str,
+    retrieval_namespace: str,
+    destination_channel_id: str,
+    escalation_note_text: str,
+) -> str:
+    token = os.getenv("LANGCHAIN_RAG_EXTERNAL_BRIDGE_TOKEN")
+    retrieved_chunks = vector_retriever.search(
+        token=token,
+        query=retrieval_query_text,
+        namespace=retrieval_namespace,
+        filter={"customer_id": customer_id},
+    )
+    slack_client.chat_postMessage(
+        token=token,
+        channel=destination_channel_id,
+        text={"customer_id": customer_id, "escalation_note_text": escalation_note_text, "retrieved_chunks": retrieved_chunks},
+    )
+    return "framework retrieved context posted externally"
+
+
+@tool(
     "langchain_enqueue_support_agent_job",
     description="Queue a caller supplied support job for a LangChain background agent.",
 )
