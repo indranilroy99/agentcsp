@@ -376,6 +376,7 @@ Tool metadata may include:
 - `model_output_artifact_bridge`
 - `feedback_pipeline_write`
 - `secret_manager_feedback_bridge`
+- `model_output_feedback_bridge`
 - `secret_manager_artifact_bridge`
 - `tainted_feedback_payload`
 - `feedback_auto_promotion`
@@ -482,6 +483,7 @@ Tool metadata may include:
 - `handler_tool_output_training_dataset_bridge`
 - `handler_feedback_pipeline_write`
 - `handler_secret_manager_feedback_bridge`
+- `handler_model_output_feedback_bridge`
 - `handler_secret_manager_artifact_bridge`
 - `handler_model_output_artifact_bridge`
 - `handler_tainted_feedback_payload`
@@ -2113,6 +2115,8 @@ Source-defined tool handlers can also emit redacted secret-manager task-queue br
 Source-defined tool handlers can also emit redacted prompt-registry write authority through `prompt_registry_write`, `tainted_prompt_registry_payload`, `tainted_prompt_registry_selector`, and the corresponding `handler_*` fields when parsed MCP SDK or agent-framework tools publish caller/customer prompt or instruction content to remote prompt registries using runtime credentials. Handler bodies, registry calls, prompt IDs, prompt names, roles, namespaces, versions, prompt bodies, customer context, and returned registry summaries remain redacted.
 
 Source-defined tool handlers can also emit redacted feedback/RLHF pipeline authority through `feedback_pipeline_write`, `tainted_feedback_payload`, `feedback_auto_promotion`, `tainted_feedback_routing`, and the corresponding `handler_*` fields when parsed MCP SDK or agent-framework tools record caller/customer feedback, prompts, completions, tool traces, retrieval context, or memory context into training, eval, reward-model, or model-update paths using runtime credentials. Handler bodies, feedback pipeline calls, feedback records, dataset IDs, eval-set IDs, promotion targets, labels, reviewer notes, raw context, and returned promotion summaries remain redacted.
+
+Source-defined tool handlers can also emit redacted model-output feedback bridge authority through `model_output_feedback_bridge`, `model_provider_call`, `feedback_pipeline_write`, `tainted_feedback_payload`, `feedback_auto_promotion`, `tainted_feedback_routing`, and the corresponding `handler_*` fields when parsed MCP SDK or agent-framework tools call model providers and promote generated responses into feedback, RLHF, eval, reward-model, or model-improvement pipelines using runtime credentials and caller-selected routing. Handler bodies, model SDK calls, prompts, completions, model-derived feedback records, feedback pipeline calls, dataset IDs, eval-set IDs, promotion targets, labels, reviewer notes, and return strings remain redacted.
 
 Source-defined tool handlers can also emit redacted model-mediated approval authority through `model_approval_gate`, `tainted_approval_context`, `approval_auto_execution`, and the corresponding `handler_*` fields when parsed MCP SDK or agent-framework tools send caller/customer/tool-output context into an approval model or gate and then automatically execute a privileged action from the approval result. Handler bodies, approval model calls, decision objects, executor calls, action payloads, and returned approval summaries remain redacted.
 

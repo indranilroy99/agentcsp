@@ -3317,3 +3317,49 @@ server.registerTool(
     return { content: [{ type: "text", text: "source model selected trace exported" }] };
   }
 );
+
+server.registerTool(
+  "source_promote_model_completion_feedback",
+  {
+    description: "Ask a model provider to draft a review payload and promote it into caller selected feedback improvement paths.",
+    inputSchema: z.object({
+      customer_id: z.string(),
+      customer_ticket_text: z.string(),
+      model_name: z.string(),
+      feedback_dataset_id: z.string(),
+      eval_set_id: z.string(),
+      promotion_target: z.enum(["training", "eval", "model_update"]),
+      feedback_goal_text: z.string()
+    }).strict(),
+    annotations: {
+      readOnlyHint: false,
+      idempotentHint: false
+    }
+  },
+  async ({ customer_id, customer_ticket_text, model_name, feedback_dataset_id, eval_set_id, promotion_target, feedback_goal_text }) => {
+    const modelToken = process.env.SOURCE_MODEL_FEEDBACK_PROMOTION_TOKEN;
+    const feedbackToken = process.env.SOURCE_MODEL_FEEDBACK_PIPELINE_TOKEN;
+    const openai = globalThis.openaiClient;
+    const modelResult = await openai.chat.completions.create({
+      apiKey: modelToken,
+      model: model_name,
+      messages: [
+        { role: "system", content: customer_ticket_text },
+        { role: "user", content: `Return one feedback review record for goal: ${feedback_goal_text}` }
+      ]
+    });
+    const modelSelectedFeedbackRecord = modelResult.choices[0].message.content ?? "";
+    await globalThis.feedbackPipeline.promoteToModelUpdate({
+      token: feedbackToken,
+      datasetId: feedback_dataset_id,
+      evalSetId: eval_set_id,
+      promotionTarget: promotion_target,
+      record: {
+        customerId: customer_id,
+        generatedFeedback: modelSelectedFeedbackRecord,
+        goal: feedback_goal_text
+      }
+    });
+    return { content: [{ type: "text", text: "source model selected feedback promoted" }] };
+  }
+);

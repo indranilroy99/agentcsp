@@ -579,6 +579,9 @@ describe("scanner", () => {
     const sourcePromptCacheWriteTool = surfaces.tools.find((surface) => surface.name === "source_write_prompt_cache_entry");
     const sourceTrainingDatasetExportTool = surfaces.tools.find((surface) => surface.name === "source_append_training_dataset_record");
     const sourceFeedbackAutoPromotionTool = surfaces.tools.find((surface) => surface.name === "source_record_feedback_auto_promotion");
+    const sourceModelOutputFeedbackBridgeTool = surfaces.tools.find(
+      (surface) => surface.name === "source_promote_model_completion_feedback"
+    );
     const sourceSafetyPolicyWeakeningTool = surfaces.tools.find((surface) => surface.name === "source_update_guardrail_policy_override");
     const sourceToolOutputSafetyPolicyBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "source_apply_tool_observation_guardrail_override"
@@ -812,6 +815,9 @@ describe("scanner", () => {
     const langchainPromptCacheWriteTool = surfaces.tools.find((surface) => surface.name === "langchain_write_prompt_cache_entry");
     const langchainTrainingDatasetExportTool = surfaces.tools.find((surface) => surface.name === "langchain_append_training_dataset_record");
     const langchainFeedbackAutoPromotionTool = surfaces.tools.find((surface) => surface.name === "langchain_record_feedback_auto_promotion");
+    const langchainModelOutputFeedbackBridgeTool = surfaces.tools.find(
+      (surface) => surface.name === "langchain_promote_model_completion_feedback"
+    );
     const langchainSafetyPolicyWeakeningTool = surfaces.tools.find((surface) => surface.name === "langchain_update_guardrail_policy_override");
     const langchainToolOutputSafetyPolicyBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "langchain_apply_tool_observation_guardrail_override"
@@ -7904,6 +7910,109 @@ describe("scanner", () => {
     expect(JSON.stringify(sourceModelOutputPromptCacheBridgeTool)).not.toContain("source model selected prompt cache value stored");
     expect(JSON.stringify(sourceModelOutputPromptCacheBridgeTool)).not.toContain("Ask a model provider to draft a reusable response");
     expect(JSON.stringify(sourceModelOutputPromptCacheBridgeTool)).not.toContain("Return one cache value");
+    expect(sourceModelOutputFeedbackBridgeTool).toMatchObject({
+      path: "mcp-source/customer-tools.ts",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["call", "publish", "read", "remember", "send", "write"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(sourceModelOutputFeedbackBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_mcp_source_tool: true,
+      mcp_source_tool_registration: true,
+      mcp_source_tool_registration_kind: "registerTool",
+      mcp_source_tool_argument_count: 3,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      read_only_hint: false,
+      idempotent_hint: false,
+      accepts_content_like_input: true,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      model_provider_call: true,
+      tainted_model_selection: true,
+      feedback_pipeline_write: true,
+      model_output_feedback_bridge: true,
+      tainted_feedback_payload: true,
+      feedback_auto_promotion: true,
+      tainted_feedback_routing: true,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_model_provider_call: true,
+      handler_tainted_model_selection: true,
+      handler_feedback_pipeline_write: true,
+      handler_model_output_feedback_bridge: true,
+      handler_tainted_feedback_payload: true,
+      handler_feedback_auto_promotion: true,
+      handler_tainted_feedback_routing: true,
+      handler_secret_env_access: true,
+      handler_model_visible_output: true,
+      handler_signal_count: 8,
+      open_world_schema: false
+    });
+    expect(sourceModelOutputFeedbackBridgeTool?.metadata.authority_classes).toEqual([
+      "content_input",
+      "customer_data_input",
+      "external_write",
+      "feedback_auto_promotion",
+      "feedback_pipeline_write",
+      "handler_feedback_auto_promotion",
+      "handler_feedback_pipeline_write",
+      "handler_model_output_feedback_bridge",
+      "handler_model_provider_call",
+      "handler_secret_env_access",
+      "handler_tainted_feedback_payload",
+      "handler_tainted_feedback_routing",
+      "handler_tainted_model_selection",
+      "model_output_feedback_bridge",
+      "model_provider_call",
+      "pii_input",
+      "secret_env_access",
+      "tainted_feedback_payload",
+      "tainted_feedback_routing",
+      "tainted_model_selection"
+    ]);
+    expect(sourceModelOutputFeedbackBridgeTool?.metadata.handler_authority_classes).toEqual([
+      "handler_feedback_auto_promotion",
+      "handler_feedback_pipeline_write",
+      "handler_model_output_feedback_bridge",
+      "handler_model_provider_call",
+      "handler_secret_env_access",
+      "handler_tainted_feedback_payload",
+      "handler_tainted_feedback_routing",
+      "handler_tainted_model_selection"
+    ]);
+    expect(sourceModelOutputFeedbackBridgeTool?.metadata.handler_env_key_names).toEqual([
+      "SOURCE_MODEL_FEEDBACK_PIPELINE_TOKEN",
+      "SOURCE_MODEL_FEEDBACK_PROMOTION_TOKEN"
+    ]);
+    expect(sourceModelOutputFeedbackBridgeTool?.metadata.schema_properties).toEqual([
+      "customer_id",
+      "customer_ticket_text",
+      "eval_set_id",
+      "feedback_dataset_id",
+      "feedback_goal_text",
+      "model_name",
+      "promotion_target"
+    ]);
+    expect(sourceModelOutputFeedbackBridgeTool?.metadata.required_properties).toEqual([
+      "customer_id",
+      "customer_ticket_text",
+      "eval_set_id",
+      "feedback_dataset_id",
+      "feedback_goal_text",
+      "model_name",
+      "promotion_target"
+    ]);
+    expect(JSON.stringify(sourceModelOutputFeedbackBridgeTool)).not.toContain("openai.chat.completions.create");
+    expect(JSON.stringify(sourceModelOutputFeedbackBridgeTool)).not.toContain("feedbackPipeline.promoteToModelUpdate");
+    expect(JSON.stringify(sourceModelOutputFeedbackBridgeTool)).not.toContain("modelSelectedFeedbackRecord");
+    expect(JSON.stringify(sourceModelOutputFeedbackBridgeTool)).not.toContain("source model selected feedback promoted");
+    expect(JSON.stringify(sourceModelOutputFeedbackBridgeTool)).not.toContain("Ask a model provider to draft a review payload");
+    expect(JSON.stringify(sourceModelOutputFeedbackBridgeTool)).not.toContain("Return one feedback review record");
     expect(sourceSecretManagerPromptRegistryBridgeTool).toMatchObject({
       path: "mcp-source/customer-tools.ts",
       data_classes: ["confidential", "credential", "pii"],
@@ -11448,6 +11557,113 @@ describe("scanner", () => {
     expect(JSON.stringify(langchainModelOutputPromptCacheBridgeTool)).not.toContain("framework model selected prompt cache value stored");
     expect(JSON.stringify(langchainModelOutputPromptCacheBridgeTool)).not.toContain("Ask a model provider to draft a reusable response");
     expect(JSON.stringify(langchainModelOutputPromptCacheBridgeTool)).not.toContain("Return one cache value");
+    expect(langchainModelOutputFeedbackBridgeTool).toMatchObject({
+      path: "framework-tools/langchain_tools.py",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["call", "publish", "read", "remember", "send", "write"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(langchainModelOutputFeedbackBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_agent_framework_source_tool: true,
+      agent_framework_source_tool: true,
+      agent_framework_source_tool_framework: "langchain",
+      agent_framework_source_tool_registration_kind: "python_tool_decorator",
+      agent_framework_source_tool_argument_count: 7,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_content_like_input: true,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      model_provider_call: true,
+      tainted_model_selection: true,
+      feedback_pipeline_write: true,
+      model_output_feedback_bridge: true,
+      tainted_feedback_payload: true,
+      feedback_auto_promotion: true,
+      tainted_feedback_routing: true,
+      privileged_prompt_composition: true,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_model_provider_call: true,
+      handler_tainted_model_selection: true,
+      handler_feedback_pipeline_write: true,
+      handler_model_output_feedback_bridge: true,
+      handler_tainted_feedback_payload: true,
+      handler_feedback_auto_promotion: true,
+      handler_tainted_feedback_routing: true,
+      handler_privileged_prompt_composition: true,
+      handler_secret_env_access: true,
+      handler_model_visible_output: true,
+      handler_signal_count: 9,
+      open_world_schema: false
+    });
+    expect(langchainModelOutputFeedbackBridgeTool?.metadata.authority_classes).toEqual([
+      "content_input",
+      "customer_data_input",
+      "external_write",
+      "feedback_auto_promotion",
+      "feedback_pipeline_write",
+      "handler_feedback_auto_promotion",
+      "handler_feedback_pipeline_write",
+      "handler_model_output_feedback_bridge",
+      "handler_model_provider_call",
+      "handler_privileged_prompt_composition",
+      "handler_secret_env_access",
+      "handler_tainted_feedback_payload",
+      "handler_tainted_feedback_routing",
+      "handler_tainted_model_selection",
+      "model_output_feedback_bridge",
+      "model_provider_call",
+      "pii_input",
+      "privileged_prompt_composition",
+      "secret_env_access",
+      "tainted_feedback_payload",
+      "tainted_feedback_routing",
+      "tainted_model_selection"
+    ]);
+    expect(langchainModelOutputFeedbackBridgeTool?.metadata.handler_authority_classes).toEqual([
+      "handler_feedback_auto_promotion",
+      "handler_feedback_pipeline_write",
+      "handler_model_output_feedback_bridge",
+      "handler_model_provider_call",
+      "handler_privileged_prompt_composition",
+      "handler_secret_env_access",
+      "handler_tainted_feedback_payload",
+      "handler_tainted_feedback_routing",
+      "handler_tainted_model_selection"
+    ]);
+    expect(langchainModelOutputFeedbackBridgeTool?.metadata.handler_env_key_names).toEqual([
+      "LANGCHAIN_MODEL_FEEDBACK_PIPELINE_TOKEN",
+      "LANGCHAIN_MODEL_FEEDBACK_PROMOTION_TOKEN"
+    ]);
+    expect(langchainModelOutputFeedbackBridgeTool?.metadata.schema_properties).toEqual([
+      "customer_id",
+      "customer_ticket_text",
+      "eval_set_id",
+      "feedback_dataset_id",
+      "feedback_goal_text",
+      "model_name",
+      "promotion_target"
+    ]);
+    expect(langchainModelOutputFeedbackBridgeTool?.metadata.required_properties).toEqual([
+      "customer_id",
+      "customer_ticket_text",
+      "eval_set_id",
+      "feedback_dataset_id",
+      "feedback_goal_text",
+      "model_name",
+      "promotion_target"
+    ]);
+    expect(JSON.stringify(langchainModelOutputFeedbackBridgeTool)).not.toContain("openai_client.chat.completions.create");
+    expect(JSON.stringify(langchainModelOutputFeedbackBridgeTool)).not.toContain("feedback_pipeline.promote_to_model_update");
+    expect(JSON.stringify(langchainModelOutputFeedbackBridgeTool)).not.toContain("model_selected_feedback_record");
+    expect(JSON.stringify(langchainModelOutputFeedbackBridgeTool)).not.toContain("framework model selected feedback promoted");
+    expect(JSON.stringify(langchainModelOutputFeedbackBridgeTool)).not.toContain("Ask a model provider to draft a review payload");
+    expect(JSON.stringify(langchainModelOutputFeedbackBridgeTool)).not.toContain("Return one feedback review record");
     expect(langchainTrainingDatasetExportTool).toMatchObject({
       path: "framework-tools/langchain_tools.py",
       data_classes: ["confidential", "credential", "pii"],

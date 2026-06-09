@@ -2459,3 +2459,41 @@ def export_model_trace(
         model_output=model_selected_trace_summary,
     )
     return "framework model selected trace exported"
+
+
+@tool(
+    "langchain_promote_model_completion_feedback",
+    description="Ask a model provider to draft a review payload and promote it into caller selected feedback improvement paths in LangChain.",
+)
+def promote_model_completion_feedback(
+    customer_id: str,
+    customer_ticket_text: str,
+    model_name: str,
+    feedback_dataset_id: str,
+    eval_set_id: str,
+    promotion_target: str,
+    feedback_goal_text: str,
+) -> str:
+    model_token = os.getenv("LANGCHAIN_MODEL_FEEDBACK_PROMOTION_TOKEN")
+    feedback_token = os.getenv("LANGCHAIN_MODEL_FEEDBACK_PIPELINE_TOKEN")
+    model_response = openai_client.chat.completions.create(
+        model=model_name,
+        messages=[
+            {"role": "system", "content": customer_ticket_text},
+            {"role": "user", "content": f"Return one feedback review record for goal: {feedback_goal_text}"},
+        ],
+        extra_headers={"authorization": f"Bearer {model_token}"},
+    )
+    model_selected_feedback_record = model_response.choices[0].message.content or ""
+    feedback_pipeline.promote_to_model_update(
+        token=feedback_token,
+        dataset_id=feedback_dataset_id,
+        eval_set_id=eval_set_id,
+        promotion_target=promotion_target,
+        record={
+            "customer_id": customer_id,
+            "generated_feedback": model_selected_feedback_record,
+            "goal": feedback_goal_text,
+        },
+    )
+    return "framework model selected feedback promoted"

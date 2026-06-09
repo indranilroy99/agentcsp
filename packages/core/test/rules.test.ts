@@ -129,6 +129,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-125")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-126")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-127")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-128")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-001")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-002")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-003")).toBe(true);
@@ -6946,7 +6947,9 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerTrainingDatasetExportFindings)).not.toContain("Export caller supplied support context");
     const sourceHandlerFeedbackAutoPromotionFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-055");
     expect(sourceHandlerFeedbackAutoPromotionFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
+      "langchain_promote_model_completion_feedback",
       "langchain_record_feedback_auto_promotion",
+      "source_promote_model_completion_feedback",
       "source_record_feedback_auto_promotion"
     ]);
     expect(sourceHandlerFeedbackAutoPromotionFindings.every((finding) => finding.severity === "critical")).toBe(true);
@@ -6982,9 +6985,17 @@ describe("rule engine", () => {
     expect(sourceHandlerFeedbackAutoPromotionFindings.every((finding) => finding.matched_object.reversible === false)).toBe(true);
     expect(JSON.stringify(sourceHandlerFeedbackAutoPromotionFindings)).not.toContain("feedbackPipeline.promoteToTraining");
     expect(JSON.stringify(sourceHandlerFeedbackAutoPromotionFindings)).not.toContain("feedback_pipeline.promote_to_training");
+    expect(JSON.stringify(sourceHandlerFeedbackAutoPromotionFindings)).not.toContain("feedbackPipeline.promoteToModelUpdate");
+    expect(JSON.stringify(sourceHandlerFeedbackAutoPromotionFindings)).not.toContain("feedback_pipeline.promote_to_model_update");
+    expect(JSON.stringify(sourceHandlerFeedbackAutoPromotionFindings)).not.toContain("modelSelectedFeedbackRecord");
+    expect(JSON.stringify(sourceHandlerFeedbackAutoPromotionFindings)).not.toContain("model_selected_feedback_record");
     expect(JSON.stringify(sourceHandlerFeedbackAutoPromotionFindings)).not.toContain("source feedback promoted");
     expect(JSON.stringify(sourceHandlerFeedbackAutoPromotionFindings)).not.toContain("framework feedback promoted");
+    expect(JSON.stringify(sourceHandlerFeedbackAutoPromotionFindings)).not.toContain("source model selected feedback promoted");
+    expect(JSON.stringify(sourceHandlerFeedbackAutoPromotionFindings)).not.toContain("framework model selected feedback promoted");
     expect(JSON.stringify(sourceHandlerFeedbackAutoPromotionFindings)).not.toContain("Record caller supplied feedback");
+    expect(JSON.stringify(sourceHandlerFeedbackAutoPromotionFindings)).not.toContain("Ask a model provider to draft a review payload");
+    expect(JSON.stringify(sourceHandlerFeedbackAutoPromotionFindings)).not.toContain("Return one feedback review record");
     const sourceHandlerSafetyPolicyWeakeningFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-056");
     expect(sourceHandlerSafetyPolicyWeakeningFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_apply_model_selected_guardrail_policy_override",
@@ -10418,6 +10429,7 @@ describe("rule engine", () => {
       "langchain_grant_model_selected_authorization",
       "langchain_issue_model_selected_credential",
       "langchain_post_model_selected_external_update",
+      "langchain_promote_model_completion_feedback",
       "langchain_publish_model_selected_prompt_registry_entry",
       "langchain_enqueue_model_selected_background_job",
       "langchain_run_model_generated_command",
@@ -10439,6 +10451,7 @@ describe("rule engine", () => {
       "source_grant_model_selected_authorization",
       "source_issue_model_selected_credential",
       "source_post_model_selected_external_update",
+      "source_promote_model_completion_feedback",
       "source_publish_model_selected_prompt_registry_entry",
       "source_enqueue_model_selected_background_job",
       "source_run_model_generated_command",
@@ -10659,6 +10672,7 @@ describe("rule engine", () => {
       "langchain_grant_model_selected_authorization",
       "langchain_issue_model_selected_credential",
       "langchain_post_model_selected_external_update",
+      "langchain_promote_model_completion_feedback",
       "langchain_publish_model_selected_prompt_registry_entry",
       "langchain_run_model_generated_command",
       "langchain_store_model_selected_memory",
@@ -10677,6 +10691,7 @@ describe("rule engine", () => {
       "source_grant_model_selected_authorization",
       "source_issue_model_selected_credential",
       "source_post_model_selected_external_update",
+      "source_promote_model_completion_feedback",
       "source_publish_model_selected_prompt_registry_entry",
       "source_run_model_generated_command",
       "source_store_model_selected_memory",
@@ -10732,6 +10747,12 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerTaintedModelSelectionFindings)).not.toContain("source model selected prompt cache value stored");
     expect(JSON.stringify(sourceHandlerTaintedModelSelectionFindings)).not.toContain("framework model selected prompt cache value stored");
     expect(JSON.stringify(sourceHandlerTaintedModelSelectionFindings)).not.toContain("Ask a model provider to draft a reusable response");
+    expect(JSON.stringify(sourceHandlerTaintedModelSelectionFindings)).not.toContain("modelSelectedFeedbackRecord");
+    expect(JSON.stringify(sourceHandlerTaintedModelSelectionFindings)).not.toContain("model_selected_feedback_record");
+    expect(JSON.stringify(sourceHandlerTaintedModelSelectionFindings)).not.toContain("source model selected feedback promoted");
+    expect(JSON.stringify(sourceHandlerTaintedModelSelectionFindings)).not.toContain("framework model selected feedback promoted");
+    expect(JSON.stringify(sourceHandlerTaintedModelSelectionFindings)).not.toContain("Ask a model provider to draft a review payload");
+    expect(JSON.stringify(sourceHandlerTaintedModelSelectionFindings)).not.toContain("Return one feedback review record");
     const sourceHandlerPrivilegedPromptFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-031");
     expect(sourceHandlerPrivilegedPromptFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_apply_model_database_update",
@@ -10748,6 +10769,7 @@ describe("rule engine", () => {
       "langchain_issue_model_selected_credential",
       "langchain_enqueue_model_selected_background_job",
       "langchain_post_model_selected_external_update",
+      "langchain_promote_model_completion_feedback",
       "langchain_publish_model_selected_prompt_registry_entry",
       "langchain_run_model_generated_command",
       "langchain_store_model_selected_memory",
@@ -11826,6 +11848,84 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerModelOutputPromptCacheBridgeFindings)).not.toContain("framework model selected prompt cache value stored");
     expect(JSON.stringify(sourceHandlerModelOutputPromptCacheBridgeFindings)).not.toContain("Ask a model provider to draft a reusable response");
     expect(JSON.stringify(sourceHandlerModelOutputPromptCacheBridgeFindings)).not.toContain("Return one cache value");
+    const sourceHandlerModelOutputFeedbackBridgeFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-128");
+    expect(sourceHandlerModelOutputFeedbackBridgeFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
+      "langchain_promote_model_completion_feedback",
+      "source_promote_model_completion_feedback"
+    ]);
+    expect(sourceHandlerModelOutputFeedbackBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
+    expect(sourceHandlerModelOutputFeedbackBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerModelOutputFeedbackBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
+    expect(sourceHandlerModelOutputFeedbackBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
+    expect(sourceHandlerModelOutputFeedbackBridgeFindings.every((finding) => finding.matched_object.metadata.source_tool_handler_redacted === true)).toBe(true);
+    expect(sourceHandlerModelOutputFeedbackBridgeFindings.every((finding) => finding.matched_object.metadata.handler_model_provider_call === true)).toBe(true);
+    expect(sourceHandlerModelOutputFeedbackBridgeFindings.every((finding) => finding.matched_object.metadata.handler_feedback_pipeline_write === true)).toBe(true);
+    expect(sourceHandlerModelOutputFeedbackBridgeFindings.every((finding) => finding.matched_object.metadata.handler_tainted_feedback_payload === true)).toBe(true);
+    expect(sourceHandlerModelOutputFeedbackBridgeFindings.every((finding) => finding.matched_object.metadata.handler_feedback_auto_promotion === true)).toBe(true);
+    expect(sourceHandlerModelOutputFeedbackBridgeFindings.every((finding) => finding.matched_object.metadata.handler_tainted_feedback_routing === true)).toBe(true);
+    expect(sourceHandlerModelOutputFeedbackBridgeFindings.every((finding) => finding.matched_object.metadata.handler_model_output_feedback_bridge === true)).toBe(true);
+    expect(sourceHandlerModelOutputFeedbackBridgeFindings.every((finding) => finding.matched_object.metadata.handler_secret_env_access === true)).toBe(true);
+    expect(sourceHandlerModelOutputFeedbackBridgeFindings.every((finding) => finding.matched_object.metadata.model_provider_call === true)).toBe(true);
+    expect(sourceHandlerModelOutputFeedbackBridgeFindings.every((finding) => finding.matched_object.metadata.feedback_pipeline_write === true)).toBe(true);
+    expect(sourceHandlerModelOutputFeedbackBridgeFindings.every((finding) => finding.matched_object.metadata.tainted_feedback_payload === true)).toBe(true);
+    expect(sourceHandlerModelOutputFeedbackBridgeFindings.every((finding) => finding.matched_object.metadata.feedback_auto_promotion === true)).toBe(true);
+    expect(sourceHandlerModelOutputFeedbackBridgeFindings.every((finding) => finding.matched_object.metadata.tainted_feedback_routing === true)).toBe(true);
+    expect(sourceHandlerModelOutputFeedbackBridgeFindings.every((finding) => finding.matched_object.metadata.model_output_feedback_bridge === true)).toBe(true);
+    expect(sourceHandlerModelOutputFeedbackBridgeFindings.every((finding) => finding.matched_object.metadata.accepts_content_like_input === true)).toBe(true);
+    expect(sourceHandlerModelOutputFeedbackBridgeFindings.every((finding) => finding.matched_object.metadata.accepts_customer_data_input === true)).toBe(true);
+    expect(sourceHandlerModelOutputFeedbackBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.authority_classes.includes("model_provider_call")
+    )).toBe(true);
+    expect(sourceHandlerModelOutputFeedbackBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.authority_classes.includes("feedback_pipeline_write")
+    )).toBe(true);
+    expect(sourceHandlerModelOutputFeedbackBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.authority_classes.includes("tainted_feedback_payload")
+    )).toBe(true);
+    expect(sourceHandlerModelOutputFeedbackBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.authority_classes.includes("feedback_auto_promotion")
+    )).toBe(true);
+    expect(sourceHandlerModelOutputFeedbackBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.authority_classes.includes("tainted_feedback_routing")
+    )).toBe(true);
+    expect(sourceHandlerModelOutputFeedbackBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.authority_classes.includes("model_output_feedback_bridge")
+    )).toBe(true);
+    expect(sourceHandlerModelOutputFeedbackBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.handler_authority_classes.includes("handler_model_provider_call")
+    )).toBe(true);
+    expect(sourceHandlerModelOutputFeedbackBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.handler_authority_classes.includes("handler_feedback_pipeline_write")
+    )).toBe(true);
+    expect(sourceHandlerModelOutputFeedbackBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.handler_authority_classes.includes("handler_tainted_feedback_payload")
+    )).toBe(true);
+    expect(sourceHandlerModelOutputFeedbackBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.handler_authority_classes.includes("handler_feedback_auto_promotion")
+    )).toBe(true);
+    expect(sourceHandlerModelOutputFeedbackBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.handler_authority_classes.includes("handler_tainted_feedback_routing")
+    )).toBe(true);
+    expect(sourceHandlerModelOutputFeedbackBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.handler_authority_classes.includes("handler_model_output_feedback_bridge")
+    )).toBe(true);
+    expect(sourceHandlerModelOutputFeedbackBridgeFindings.every((finding) => finding.matched_object.actions.includes("send"))).toBe(true);
+    expect(sourceHandlerModelOutputFeedbackBridgeFindings.every((finding) => finding.matched_object.actions.includes("write"))).toBe(true);
+    expect(sourceHandlerModelOutputFeedbackBridgeFindings.every((finding) => finding.matched_object.actions.includes("remember"))).toBe(true);
+    expect(sourceHandlerModelOutputFeedbackBridgeFindings.every((finding) => finding.matched_object.external_reach === true)).toBe(true);
+    expect(sourceHandlerModelOutputFeedbackBridgeFindings.every((finding) => finding.matched_object.secret_exposure === true)).toBe(true);
+    expect(sourceHandlerModelOutputFeedbackBridgeFindings.every((finding) => finding.matched_object.side_effect === true)).toBe(true);
+    expect(sourceHandlerModelOutputFeedbackBridgeFindings.every((finding) => finding.matched_object.reversible === false)).toBe(true);
+    expect(JSON.stringify(sourceHandlerModelOutputFeedbackBridgeFindings)).not.toContain("openai.chat.completions.create");
+    expect(JSON.stringify(sourceHandlerModelOutputFeedbackBridgeFindings)).not.toContain("openai_client.chat.completions.create");
+    expect(JSON.stringify(sourceHandlerModelOutputFeedbackBridgeFindings)).not.toContain("feedbackPipeline.promoteToModelUpdate");
+    expect(JSON.stringify(sourceHandlerModelOutputFeedbackBridgeFindings)).not.toContain("feedback_pipeline.promote_to_model_update");
+    expect(JSON.stringify(sourceHandlerModelOutputFeedbackBridgeFindings)).not.toContain("modelSelectedFeedbackRecord");
+    expect(JSON.stringify(sourceHandlerModelOutputFeedbackBridgeFindings)).not.toContain("model_selected_feedback_record");
+    expect(JSON.stringify(sourceHandlerModelOutputFeedbackBridgeFindings)).not.toContain("source model selected feedback promoted");
+    expect(JSON.stringify(sourceHandlerModelOutputFeedbackBridgeFindings)).not.toContain("framework model selected feedback promoted");
+    expect(JSON.stringify(sourceHandlerModelOutputFeedbackBridgeFindings)).not.toContain("Ask a model provider to draft a review payload");
+    expect(JSON.stringify(sourceHandlerModelOutputFeedbackBridgeFindings)).not.toContain("Return one feedback review record");
     const sourceHandlerDynamicCodeFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-019");
     expect(sourceHandlerDynamicCodeFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_evaluate_agent_expression",
