@@ -99,6 +99,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-095")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-096")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-097")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-098")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-001")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-002")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-003")).toBe(true);
@@ -6103,10 +6104,12 @@ describe("rule engine", () => {
     expect(toolContentExternalFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "aiSdkExportCustomerContext",
       "langchain_export_customer_context",
+      "langchain_post_authenticated_page_screenshot_external",
       "post_customer_update",
       "publish_summary",
       "python_export_customer_record",
-      "source_export_customer_record"
+      "source_export_customer_record",
+      "source_post_authenticated_page_screenshot_external"
     ]);
     expect(toolContentExternalFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
     const toolPiiExternalFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-010");
@@ -6114,9 +6117,11 @@ describe("rule engine", () => {
       "aiSdkExportCustomerContext",
       "customer_record",
       "langchain_export_customer_context",
+      "langchain_post_authenticated_page_screenshot_external",
       "post_customer_update",
       "python_export_customer_record",
-      "source_export_customer_record"
+      "source_export_customer_record",
+      "source_post_authenticated_page_screenshot_external"
     ]);
     expect(toolPiiExternalFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
     expect(toolPiiExternalFindings.every((finding) => finding.data_classes.includes("pii"))).toBe(true);
@@ -8109,10 +8114,12 @@ describe("rule engine", () => {
     const sourceHandlerBrowserAutomationFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-027");
     expect(sourceHandlerBrowserAutomationFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_fill_customer_vault_secret_browser_form",
+      "langchain_post_authenticated_page_screenshot_external",
       "langchain_review_authenticated_page_screenshot_with_model",
       "langchain_submit_retrieved_context_browser",
       "langchain_submit_customer_browser_form",
       "source_fill_customer_vault_secret_browser_form",
+      "source_post_authenticated_page_screenshot_external",
       "source_review_authenticated_page_screenshot_with_model",
       "source_submit_retrieved_context_browser",
       "source_submit_customer_browser_form"
@@ -8151,14 +8158,18 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerBrowserAutomationFindings)).not.toContain("framework retrieved context submitted through browser");
     expect(JSON.stringify(sourceHandlerBrowserAutomationFindings)).not.toContain("source visual context reviewed");
     expect(JSON.stringify(sourceHandlerBrowserAutomationFindings)).not.toContain("framework visual context reviewed");
+    expect(JSON.stringify(sourceHandlerBrowserAutomationFindings)).not.toContain("source visual context posted externally");
+    expect(JSON.stringify(sourceHandlerBrowserAutomationFindings)).not.toContain("framework visual context posted externally");
     expect(JSON.stringify(sourceHandlerBrowserAutomationFindings)).not.toContain("Drive an authenticated browser session");
     const sourceHandlerTaintedBrowserTargetFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-040");
     expect(sourceHandlerTaintedBrowserTargetFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_fill_customer_vault_secret_browser_form",
+      "langchain_post_authenticated_page_screenshot_external",
       "langchain_review_authenticated_page_screenshot_with_model",
       "langchain_submit_retrieved_context_browser",
       "langchain_submit_customer_browser_form",
       "source_fill_customer_vault_secret_browser_form",
+      "source_post_authenticated_page_screenshot_external",
       "source_review_authenticated_page_screenshot_with_model",
       "source_submit_retrieved_context_browser",
       "source_submit_customer_browser_form"
@@ -8404,8 +8415,6 @@ describe("rule engine", () => {
     const sourceHandlerVisualContextCaptureFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-048");
     expect(sourceHandlerVisualContextCaptureFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_capture_authenticated_page_screenshot",
-      "langchain_review_authenticated_page_screenshot_with_model",
-      "source_review_authenticated_page_screenshot_with_model",
       "source_capture_authenticated_page_screenshot"
     ].sort());
     expect(sourceHandlerVisualContextCaptureFindings.every((finding) => finding.severity === "critical")).toBe(true);
@@ -8495,6 +8504,59 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerVisualContextPromptBridgeFindings)).not.toContain("source visual context reviewed");
     expect(JSON.stringify(sourceHandlerVisualContextPromptBridgeFindings)).not.toContain("framework visual context reviewed");
     expect(JSON.stringify(sourceHandlerVisualContextPromptBridgeFindings)).not.toContain("Review an authenticated browser screenshot");
+    const sourceHandlerVisualContextExternalServiceBridgeFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-098");
+    expect(sourceHandlerVisualContextExternalServiceBridgeFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
+      "langchain_post_authenticated_page_screenshot_external",
+      "source_post_authenticated_page_screenshot_external"
+    ]);
+    expect(sourceHandlerVisualContextExternalServiceBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
+    expect(sourceHandlerVisualContextExternalServiceBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerVisualContextExternalServiceBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
+    expect(sourceHandlerVisualContextExternalServiceBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
+    expect(sourceHandlerVisualContextExternalServiceBridgeFindings.every((finding) => finding.matched_object.metadata.source_tool_handler_redacted === true)).toBe(true);
+    expect(sourceHandlerVisualContextExternalServiceBridgeFindings.every((finding) => finding.matched_object.metadata.handler_browser_automation === true)).toBe(true);
+    expect(sourceHandlerVisualContextExternalServiceBridgeFindings.every((finding) => finding.matched_object.metadata.handler_tainted_browser_automation_target === true)).toBe(true);
+    expect(sourceHandlerVisualContextExternalServiceBridgeFindings.every((finding) => finding.matched_object.metadata.handler_visual_context_capture === true)).toBe(true);
+    expect(sourceHandlerVisualContextExternalServiceBridgeFindings.every((finding) => finding.matched_object.metadata.handler_external_service_write === true)).toBe(true);
+    expect(sourceHandlerVisualContextExternalServiceBridgeFindings.every((finding) => finding.matched_object.metadata.handler_tainted_external_service_recipient === true)).toBe(true);
+    expect(sourceHandlerVisualContextExternalServiceBridgeFindings.every((finding) => finding.matched_object.metadata.handler_visual_context_external_service_bridge === true)).toBe(true);
+    expect(sourceHandlerVisualContextExternalServiceBridgeFindings.every((finding) => finding.matched_object.metadata.browser_automation === true)).toBe(true);
+    expect(sourceHandlerVisualContextExternalServiceBridgeFindings.every((finding) => finding.matched_object.metadata.tainted_browser_automation_target === true)).toBe(true);
+    expect(sourceHandlerVisualContextExternalServiceBridgeFindings.every((finding) => finding.matched_object.metadata.visual_context_capture === true)).toBe(true);
+    expect(sourceHandlerVisualContextExternalServiceBridgeFindings.every((finding) => finding.matched_object.metadata.external_service_write === true)).toBe(true);
+    expect(sourceHandlerVisualContextExternalServiceBridgeFindings.every((finding) => finding.matched_object.metadata.tainted_external_service_recipient === true)).toBe(true);
+    expect(sourceHandlerVisualContextExternalServiceBridgeFindings.every((finding) => finding.matched_object.metadata.visual_context_external_service_bridge === true)).toBe(true);
+    expect(sourceHandlerVisualContextExternalServiceBridgeFindings.every((finding) => finding.matched_object.metadata.handler_secret_env_access === true)).toBe(true);
+    expect(sourceHandlerVisualContextExternalServiceBridgeFindings.every((finding) => finding.matched_object.metadata.accepts_url_input === true)).toBe(true);
+    expect(sourceHandlerVisualContextExternalServiceBridgeFindings.every((finding) => finding.matched_object.metadata.accepts_content_like_input === true)).toBe(true);
+    expect(sourceHandlerVisualContextExternalServiceBridgeFindings.every((finding) => finding.matched_object.metadata.accepts_customer_data_input === true)).toBe(true);
+    expect(sourceHandlerVisualContextExternalServiceBridgeFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("visual_context_capture"))).toBe(true);
+    expect(sourceHandlerVisualContextExternalServiceBridgeFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("external_service_write"))).toBe(true);
+    expect(sourceHandlerVisualContextExternalServiceBridgeFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("tainted_external_service_recipient"))).toBe(true);
+    expect(sourceHandlerVisualContextExternalServiceBridgeFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("visual_context_external_service_bridge"))).toBe(true);
+    expect(sourceHandlerVisualContextExternalServiceBridgeFindings.every((finding) => finding.matched_object.metadata.handler_authority_classes.includes("handler_visual_context_capture"))).toBe(true);
+    expect(sourceHandlerVisualContextExternalServiceBridgeFindings.every((finding) => finding.matched_object.metadata.handler_authority_classes.includes("handler_external_service_write"))).toBe(true);
+    expect(sourceHandlerVisualContextExternalServiceBridgeFindings.every((finding) => finding.matched_object.metadata.handler_authority_classes.includes("handler_tainted_external_service_recipient"))).toBe(true);
+    expect(sourceHandlerVisualContextExternalServiceBridgeFindings.every((finding) => finding.matched_object.metadata.handler_authority_classes.includes("handler_visual_context_external_service_bridge"))).toBe(true);
+    expect(sourceHandlerVisualContextExternalServiceBridgeFindings.every((finding) => finding.matched_object.actions.includes("read"))).toBe(true);
+    expect(sourceHandlerVisualContextExternalServiceBridgeFindings.every((finding) => finding.matched_object.actions.includes("send"))).toBe(true);
+    expect(sourceHandlerVisualContextExternalServiceBridgeFindings.every((finding) => finding.matched_object.actions.includes("publish"))).toBe(true);
+    expect(sourceHandlerVisualContextExternalServiceBridgeFindings.every((finding) => finding.matched_object.external_reach === true)).toBe(true);
+    expect(sourceHandlerVisualContextExternalServiceBridgeFindings.every((finding) => finding.matched_object.secret_exposure === true)).toBe(true);
+    expect(sourceHandlerVisualContextExternalServiceBridgeFindings.every((finding) => finding.matched_object.side_effect === true)).toBe(true);
+    expect(sourceHandlerVisualContextExternalServiceBridgeFindings.every((finding) => finding.matched_object.reversible === false)).toBe(true);
+    expect(JSON.stringify(sourceHandlerVisualContextExternalServiceBridgeFindings)).not.toContain("authenticatedBrowserPage");
+    expect(JSON.stringify(sourceHandlerVisualContextExternalServiceBridgeFindings)).not.toContain("browser_session.page");
+    expect(JSON.stringify(sourceHandlerVisualContextExternalServiceBridgeFindings)).not.toContain("page.goto");
+    expect(JSON.stringify(sourceHandlerVisualContextExternalServiceBridgeFindings)).not.toContain("page.screenshot");
+    expect(JSON.stringify(sourceHandlerVisualContextExternalServiceBridgeFindings)).not.toContain("screenshot.toString");
+    expect(JSON.stringify(sourceHandlerVisualContextExternalServiceBridgeFindings)).not.toContain("screenshot_bytes");
+    expect(JSON.stringify(sourceHandlerVisualContextExternalServiceBridgeFindings)).not.toContain("slackClient.chat.postMessage");
+    expect(JSON.stringify(sourceHandlerVisualContextExternalServiceBridgeFindings)).not.toContain("slack_client.chat_postMessage");
+    expect(JSON.stringify(sourceHandlerVisualContextExternalServiceBridgeFindings)).not.toContain("authenticated-page.png");
+    expect(JSON.stringify(sourceHandlerVisualContextExternalServiceBridgeFindings)).not.toContain("source visual context posted externally");
+    expect(JSON.stringify(sourceHandlerVisualContextExternalServiceBridgeFindings)).not.toContain("framework visual context posted externally");
+    expect(JSON.stringify(sourceHandlerVisualContextExternalServiceBridgeFindings)).not.toContain("Post an authenticated browser screenshot");
     const sourceHandlerSecretManagerFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-028");
     expect(sourceHandlerSecretManagerFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_apply_vault_secret_guardrail_override",
@@ -8742,9 +8804,11 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerTaintedSecretManagerFindings)).not.toContain("Grant broad tool authorization");
     const sourceHandlerExternalServiceWriteFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-029");
     expect(sourceHandlerExternalServiceWriteFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
+      "langchain_post_authenticated_page_screenshot_external",
       "langchain_post_customer_vault_secret_slack",
       "langchain_post_retrieved_context_external",
       "langchain_send_customer_slack_update",
+      "source_post_authenticated_page_screenshot_external",
       "source_post_customer_vault_secret_slack",
       "source_post_retrieved_context_external",
       "source_send_customer_slack_update"
@@ -8777,16 +8841,22 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerExternalServiceWriteFindings)).not.toContain("framework vault secret posted externally");
     expect(JSON.stringify(sourceHandlerExternalServiceWriteFindings)).not.toContain("source retrieved context posted externally");
     expect(JSON.stringify(sourceHandlerExternalServiceWriteFindings)).not.toContain("framework retrieved context posted externally");
+    expect(JSON.stringify(sourceHandlerExternalServiceWriteFindings)).not.toContain("source visual context posted externally");
+    expect(JSON.stringify(sourceHandlerExternalServiceWriteFindings)).not.toContain("framework visual context posted externally");
+    expect(JSON.stringify(sourceHandlerExternalServiceWriteFindings)).not.toContain("authenticated-page.png");
     expect(JSON.stringify(sourceHandlerExternalServiceWriteFindings)).not.toContain("retrievedChunks");
     expect(JSON.stringify(sourceHandlerExternalServiceWriteFindings)).not.toContain("retrieved_chunks");
     expect(JSON.stringify(sourceHandlerExternalServiceWriteFindings)).not.toContain("Send caller supplied customer update text");
     expect(JSON.stringify(sourceHandlerExternalServiceWriteFindings)).not.toContain("Post a customer support secret");
     expect(JSON.stringify(sourceHandlerExternalServiceWriteFindings)).not.toContain("Post caller selected retrieved support context");
+    expect(JSON.stringify(sourceHandlerExternalServiceWriteFindings)).not.toContain("Post an authenticated browser screenshot");
     const sourceHandlerTaintedExternalServiceRecipientFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-037");
     expect(sourceHandlerTaintedExternalServiceRecipientFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
+      "langchain_post_authenticated_page_screenshot_external",
       "langchain_post_customer_vault_secret_slack",
       "langchain_post_retrieved_context_external",
       "langchain_send_customer_slack_update",
+      "source_post_authenticated_page_screenshot_external",
       "source_post_customer_vault_secret_slack",
       "source_post_retrieved_context_external",
       "source_send_customer_slack_update"
@@ -8818,11 +8888,15 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerTaintedExternalServiceRecipientFindings)).not.toContain("framework vault secret posted externally");
     expect(JSON.stringify(sourceHandlerTaintedExternalServiceRecipientFindings)).not.toContain("source retrieved context posted externally");
     expect(JSON.stringify(sourceHandlerTaintedExternalServiceRecipientFindings)).not.toContain("framework retrieved context posted externally");
+    expect(JSON.stringify(sourceHandlerTaintedExternalServiceRecipientFindings)).not.toContain("source visual context posted externally");
+    expect(JSON.stringify(sourceHandlerTaintedExternalServiceRecipientFindings)).not.toContain("framework visual context posted externally");
+    expect(JSON.stringify(sourceHandlerTaintedExternalServiceRecipientFindings)).not.toContain("authenticated-page.png");
     expect(JSON.stringify(sourceHandlerTaintedExternalServiceRecipientFindings)).not.toContain("retrievedChunks");
     expect(JSON.stringify(sourceHandlerTaintedExternalServiceRecipientFindings)).not.toContain("retrieved_chunks");
     expect(JSON.stringify(sourceHandlerTaintedExternalServiceRecipientFindings)).not.toContain("Send caller supplied customer update text");
     expect(JSON.stringify(sourceHandlerTaintedExternalServiceRecipientFindings)).not.toContain("Post a customer support secret");
     expect(JSON.stringify(sourceHandlerTaintedExternalServiceRecipientFindings)).not.toContain("Post caller selected retrieved support context");
+    expect(JSON.stringify(sourceHandlerTaintedExternalServiceRecipientFindings)).not.toContain("Post an authenticated browser screenshot");
     const sourceHandlerSecretManagerExternalServiceBridgeFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-062");
     expect(sourceHandlerSecretManagerExternalServiceBridgeFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_post_customer_vault_secret_slack",

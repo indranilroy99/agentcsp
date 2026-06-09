@@ -640,6 +640,9 @@ describe("scanner", () => {
     const sourceVisualContextPromptBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "source_review_authenticated_page_screenshot_with_model"
     );
+    const sourceVisualContextExternalServiceBridgeTool = surfaces.tools.find(
+      (surface) => surface.name === "source_post_authenticated_page_screenshot_external"
+    );
     const sourceSecretManagerAccessTool = surfaces.tools.find((surface) => surface.name === "source_read_customer_vault_secret");
     const sourceSecretManagerExternalServiceBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "source_post_customer_vault_secret_slack"
@@ -782,6 +785,9 @@ describe("scanner", () => {
     const langchainVisualContextCaptureTool = surfaces.tools.find((surface) => surface.name === "langchain_capture_authenticated_page_screenshot");
     const langchainVisualContextPromptBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "langchain_review_authenticated_page_screenshot_with_model"
+    );
+    const langchainVisualContextExternalServiceBridgeTool = surfaces.tools.find(
+      (surface) => surface.name === "langchain_post_authenticated_page_screenshot_external"
     );
     const langchainSecretManagerAccessTool = surfaces.tools.find((surface) => surface.name === "langchain_read_customer_vault_secret");
     const langchainSecretManagerExternalServiceBridgeTool = surfaces.tools.find(
@@ -5278,7 +5284,7 @@ describe("scanner", () => {
       browser_automation: true,
       tainted_browser_automation_target: true,
       visual_context_capture: true,
-      visual_context_to_output: true,
+      visual_context_to_output: false,
       visual_context_prompt_bridge: true,
       model_provider_call: true,
       external_write: false,
@@ -5292,9 +5298,9 @@ describe("scanner", () => {
       handler_browser_automation: true,
       handler_tainted_browser_automation_target: true,
       handler_visual_context_capture: true,
-      handler_visual_context_to_output: true,
+      handler_visual_context_to_output: false,
       handler_visual_context_prompt_bridge: true,
-      handler_signal_count: 7,
+      handler_signal_count: 6,
       open_world_schema: false
     });
     expect(sourceVisualContextPromptBridgeTool?.metadata.authority_classes).toEqual([
@@ -5309,15 +5315,13 @@ describe("scanner", () => {
       "handler_tainted_browser_automation_target",
       "handler_visual_context_capture",
       "handler_visual_context_prompt_bridge",
-      "handler_visual_context_to_output",
       "model_provider_call",
       "network_access",
       "pii_input",
       "secret_env_access",
       "tainted_browser_automation_target",
       "visual_context_capture",
-      "visual_context_prompt_bridge",
-      "visual_context_to_output"
+      "visual_context_prompt_bridge"
     ]);
     expect(sourceVisualContextPromptBridgeTool?.metadata.handler_authority_classes).toEqual([
       "handler_browser_automation",
@@ -5325,8 +5329,7 @@ describe("scanner", () => {
       "handler_secret_env_access",
       "handler_tainted_browser_automation_target",
       "handler_visual_context_capture",
-      "handler_visual_context_prompt_bridge",
-      "handler_visual_context_to_output"
+      "handler_visual_context_prompt_bridge"
     ]);
     expect(sourceVisualContextPromptBridgeTool?.metadata.handler_env_key_names).toEqual([
       "SOURCE_VISUAL_MODEL_BROWSER_TOKEN",
@@ -5351,6 +5354,108 @@ describe("scanner", () => {
     expect(JSON.stringify(sourceVisualContextPromptBridgeTool)).not.toContain("modelResponse.choices");
     expect(JSON.stringify(sourceVisualContextPromptBridgeTool)).not.toContain("source visual context reviewed");
     expect(JSON.stringify(sourceVisualContextPromptBridgeTool)).not.toContain("Review an authenticated browser screenshot");
+    expect(sourceVisualContextExternalServiceBridgeTool).toMatchObject({
+      path: "mcp-source/customer-tools.ts",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["call", "execute", "publish", "read", "send"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(sourceVisualContextExternalServiceBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_mcp_source_tool: true,
+      mcp_source_tool_registration: true,
+      mcp_source_tool_registration_kind: "registerTool",
+      mcp_source_tool_argument_count: 3,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_secret_like_input: true,
+      accepts_content_like_input: true,
+      accepts_url_input: true,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      browser_automation: true,
+      tainted_browser_automation_target: true,
+      visual_context_capture: true,
+      visual_context_to_output: false,
+      visual_context_external_service_bridge: true,
+      external_service_write: true,
+      tainted_external_service_recipient: true,
+      external_write: true,
+      destructive_action: false,
+      read_only_hint_conflict: false,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_external_service_write: true,
+      handler_tainted_external_service_recipient: true,
+      handler_secret_env_access: true,
+      handler_model_visible_output: true,
+      handler_browser_automation: true,
+      handler_tainted_browser_automation_target: true,
+      handler_visual_context_capture: true,
+      handler_visual_context_to_output: false,
+      handler_visual_context_external_service_bridge: true,
+      handler_signal_count: 7,
+      open_world_schema: false
+    });
+    expect(sourceVisualContextExternalServiceBridgeTool?.metadata.authority_classes).toEqual([
+      "browser_automation",
+      "browser_control",
+      "content_input",
+      "credential_input",
+      "customer_data_input",
+      "external_service_write",
+      "external_write",
+      "handler_browser_automation",
+      "handler_external_service_write",
+      "handler_secret_env_access",
+      "handler_tainted_browser_automation_target",
+      "handler_tainted_external_service_recipient",
+      "handler_visual_context_capture",
+      "handler_visual_context_external_service_bridge",
+      "network_access",
+      "pii_input",
+      "secret_env_access",
+      "tainted_browser_automation_target",
+      "tainted_external_service_recipient",
+      "visual_context_capture",
+      "visual_context_external_service_bridge"
+    ]);
+    expect(sourceVisualContextExternalServiceBridgeTool?.metadata.handler_authority_classes).toEqual([
+      "handler_browser_automation",
+      "handler_external_service_write",
+      "handler_secret_env_access",
+      "handler_tainted_browser_automation_target",
+      "handler_tainted_external_service_recipient",
+      "handler_visual_context_capture",
+      "handler_visual_context_external_service_bridge"
+    ]);
+    expect(sourceVisualContextExternalServiceBridgeTool?.metadata.handler_env_key_names).toEqual([
+      "SOURCE_VISUAL_EXTERNAL_BROWSER_TOKEN",
+      "SOURCE_VISUAL_EXTERNAL_SLACK_TOKEN"
+    ]);
+    expect(sourceVisualContextExternalServiceBridgeTool?.metadata.schema_properties).toEqual([
+      "customer_id",
+      "destination_channel_id",
+      "target_url",
+      "visual_note_text"
+    ]);
+    expect(sourceVisualContextExternalServiceBridgeTool?.metadata.required_properties).toEqual([
+      "customer_id",
+      "destination_channel_id",
+      "target_url",
+      "visual_note_text"
+    ]);
+    expect(JSON.stringify(sourceVisualContextExternalServiceBridgeTool)).not.toContain("authenticatedBrowserPage");
+    expect(JSON.stringify(sourceVisualContextExternalServiceBridgeTool)).not.toContain("page.goto");
+    expect(JSON.stringify(sourceVisualContextExternalServiceBridgeTool)).not.toContain("page.screenshot");
+    expect(JSON.stringify(sourceVisualContextExternalServiceBridgeTool)).not.toContain("screenshot.toString");
+    expect(JSON.stringify(sourceVisualContextExternalServiceBridgeTool)).not.toContain("slackClient.chat.postMessage");
+    expect(JSON.stringify(sourceVisualContextExternalServiceBridgeTool)).not.toContain("authenticated-page.png");
+    expect(JSON.stringify(sourceVisualContextExternalServiceBridgeTool)).not.toContain("source visual context posted externally");
+    expect(JSON.stringify(sourceVisualContextExternalServiceBridgeTool)).not.toContain("Post an authenticated browser screenshot");
     expect(sourceSecretManagerAccessTool).toMatchObject({
       path: "mcp-source/customer-tools.ts",
       data_classes: ["confidential", "credential", "pii"],
@@ -11350,7 +11455,7 @@ describe("scanner", () => {
       browser_automation: true,
       tainted_browser_automation_target: true,
       visual_context_capture: true,
-      visual_context_to_output: true,
+      visual_context_to_output: false,
       visual_context_prompt_bridge: true,
       model_provider_call: true,
       external_write: false,
@@ -11364,9 +11469,9 @@ describe("scanner", () => {
       handler_browser_automation: true,
       handler_tainted_browser_automation_target: true,
       handler_visual_context_capture: true,
-      handler_visual_context_to_output: true,
+      handler_visual_context_to_output: false,
       handler_visual_context_prompt_bridge: true,
-      handler_signal_count: 7,
+      handler_signal_count: 6,
       open_world_schema: false
     });
     expect(langchainVisualContextPromptBridgeTool?.metadata.authority_classes).toEqual([
@@ -11381,15 +11486,13 @@ describe("scanner", () => {
       "handler_tainted_browser_automation_target",
       "handler_visual_context_capture",
       "handler_visual_context_prompt_bridge",
-      "handler_visual_context_to_output",
       "model_provider_call",
       "network_access",
       "pii_input",
       "secret_env_access",
       "tainted_browser_automation_target",
       "visual_context_capture",
-      "visual_context_prompt_bridge",
-      "visual_context_to_output"
+      "visual_context_prompt_bridge"
     ]);
     expect(langchainVisualContextPromptBridgeTool?.metadata.handler_authority_classes).toEqual([
       "handler_browser_automation",
@@ -11397,8 +11500,7 @@ describe("scanner", () => {
       "handler_secret_env_access",
       "handler_tainted_browser_automation_target",
       "handler_visual_context_capture",
-      "handler_visual_context_prompt_bridge",
-      "handler_visual_context_to_output"
+      "handler_visual_context_prompt_bridge"
     ]);
     expect(langchainVisualContextPromptBridgeTool?.metadata.handler_env_key_names).toEqual([
       "LANGCHAIN_VISUAL_MODEL_BROWSER_TOKEN",
@@ -11422,6 +11524,109 @@ describe("scanner", () => {
     expect(JSON.stringify(langchainVisualContextPromptBridgeTool)).not.toContain("model_response.choices");
     expect(JSON.stringify(langchainVisualContextPromptBridgeTool)).not.toContain("framework visual context reviewed");
     expect(JSON.stringify(langchainVisualContextPromptBridgeTool)).not.toContain("Review an authenticated browser screenshot");
+    expect(langchainVisualContextExternalServiceBridgeTool).toMatchObject({
+      path: "framework-tools/langchain_tools.py",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["call", "execute", "publish", "read", "send"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(langchainVisualContextExternalServiceBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_agent_framework_source_tool: true,
+      agent_framework_source_tool: true,
+      agent_framework_source_tool_framework: "langchain",
+      agent_framework_source_tool_registration_kind: "python_tool_decorator",
+      agent_framework_source_tool_argument_count: 4,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_secret_like_input: true,
+      accepts_content_like_input: true,
+      accepts_url_input: true,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      browser_automation: true,
+      tainted_browser_automation_target: true,
+      visual_context_capture: true,
+      visual_context_to_output: false,
+      visual_context_external_service_bridge: true,
+      external_service_write: true,
+      tainted_external_service_recipient: true,
+      external_write: true,
+      destructive_action: false,
+      read_only_hint_conflict: false,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_external_service_write: true,
+      handler_tainted_external_service_recipient: true,
+      handler_secret_env_access: true,
+      handler_model_visible_output: true,
+      handler_browser_automation: true,
+      handler_tainted_browser_automation_target: true,
+      handler_visual_context_capture: true,
+      handler_visual_context_to_output: false,
+      handler_visual_context_external_service_bridge: true,
+      handler_signal_count: 7,
+      open_world_schema: false
+    });
+    expect(langchainVisualContextExternalServiceBridgeTool?.metadata.authority_classes).toEqual([
+      "browser_automation",
+      "browser_control",
+      "content_input",
+      "credential_input",
+      "customer_data_input",
+      "external_service_write",
+      "external_write",
+      "handler_browser_automation",
+      "handler_external_service_write",
+      "handler_secret_env_access",
+      "handler_tainted_browser_automation_target",
+      "handler_tainted_external_service_recipient",
+      "handler_visual_context_capture",
+      "handler_visual_context_external_service_bridge",
+      "network_access",
+      "pii_input",
+      "secret_env_access",
+      "tainted_browser_automation_target",
+      "tainted_external_service_recipient",
+      "visual_context_capture",
+      "visual_context_external_service_bridge"
+    ]);
+    expect(langchainVisualContextExternalServiceBridgeTool?.metadata.handler_authority_classes).toEqual([
+      "handler_browser_automation",
+      "handler_external_service_write",
+      "handler_secret_env_access",
+      "handler_tainted_browser_automation_target",
+      "handler_tainted_external_service_recipient",
+      "handler_visual_context_capture",
+      "handler_visual_context_external_service_bridge"
+    ]);
+    expect(langchainVisualContextExternalServiceBridgeTool?.metadata.handler_env_key_names).toEqual([
+      "LANGCHAIN_VISUAL_EXTERNAL_BROWSER_TOKEN",
+      "LANGCHAIN_VISUAL_EXTERNAL_SLACK_TOKEN"
+    ]);
+    expect(langchainVisualContextExternalServiceBridgeTool?.metadata.schema_properties).toEqual([
+      "customer_id",
+      "destination_channel_id",
+      "target_url",
+      "visual_note_text"
+    ]);
+    expect(langchainVisualContextExternalServiceBridgeTool?.metadata.required_properties).toEqual([
+      "customer_id",
+      "destination_channel_id",
+      "target_url",
+      "visual_note_text"
+    ]);
+    expect(JSON.stringify(langchainVisualContextExternalServiceBridgeTool)).not.toContain("browser_session.page");
+    expect(JSON.stringify(langchainVisualContextExternalServiceBridgeTool)).not.toContain("page.goto");
+    expect(JSON.stringify(langchainVisualContextExternalServiceBridgeTool)).not.toContain("page.screenshot");
+    expect(JSON.stringify(langchainVisualContextExternalServiceBridgeTool)).not.toContain("screenshot_bytes");
+    expect(JSON.stringify(langchainVisualContextExternalServiceBridgeTool)).not.toContain("slack_client.chat_postMessage");
+    expect(JSON.stringify(langchainVisualContextExternalServiceBridgeTool)).not.toContain("authenticated-page.png");
+    expect(JSON.stringify(langchainVisualContextExternalServiceBridgeTool)).not.toContain("framework visual context posted externally");
+    expect(JSON.stringify(langchainVisualContextExternalServiceBridgeTool)).not.toContain("Post an authenticated browser screenshot");
     expect(langchainSecretManagerAccessTool).toMatchObject({
       path: "framework-tools/langchain_tools.py",
       data_classes: ["confidential", "credential", "pii"],

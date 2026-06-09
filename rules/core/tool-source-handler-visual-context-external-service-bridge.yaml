@@ -1,0 +1,147 @@
+id: AGENTCSP-TOOL-098
+name: Source tool handler publishes authenticated visual context externally
+description: A source-defined agent tool handler captures authenticated browser or screen visual context from a caller-selected target and publishes that screenshot or OCR context through an external-service SDK using runtime credentials and a caller-selected destination.
+category: visual_context_external_service_bridge
+severity: critical
+maps_to:
+  owasp:
+    - LLM01:2025 Prompt Injection
+    - LLM02:2025 Sensitive Information Disclosure
+    - LLM05:2025 Improper Output Handling
+    - LLM06:2025 Excessive Agency
+  mitre_atlas:
+    - AML.T0051 LLM Plugin Compromise
+    - AML.T0057 Exfiltration via Cyber Means
+    - AML.T0059 Data from Information Repositories
+  nist_ai_rmf:
+    - MAP 4.1
+    - MEASURE 2.7
+    - MANAGE 2.4
+match:
+  object_type: tool
+  where:
+    - field: metadata.parsed_tool_schema
+      op: equals
+      value: true
+    - field: metadata.source_tool_handler_redacted
+      op: equals
+      value: true
+    - field: metadata.handler_body_analyzed
+      op: equals
+      value: true
+    - field: metadata.handler_browser_automation
+      op: equals
+      value: true
+    - field: metadata.handler_tainted_browser_automation_target
+      op: equals
+      value: true
+    - field: metadata.handler_visual_context_capture
+      op: equals
+      value: true
+    - field: metadata.handler_external_service_write
+      op: equals
+      value: true
+    - field: metadata.handler_tainted_external_service_recipient
+      op: equals
+      value: true
+    - field: metadata.handler_visual_context_external_service_bridge
+      op: equals
+      value: true
+    - field: metadata.browser_automation
+      op: equals
+      value: true
+    - field: metadata.tainted_browser_automation_target
+      op: equals
+      value: true
+    - field: metadata.visual_context_capture
+      op: equals
+      value: true
+    - field: metadata.external_service_write
+      op: equals
+      value: true
+    - field: metadata.tainted_external_service_recipient
+      op: equals
+      value: true
+    - field: metadata.visual_context_external_service_bridge
+      op: equals
+      value: true
+    - field: metadata.handler_secret_env_access
+      op: equals
+      value: true
+    - field: metadata.accepts_url_input
+      op: equals
+      value: true
+    - field: metadata.accepts_content_like_input
+      op: equals
+      value: true
+    - field: metadata.accepts_customer_data_input
+      op: equals
+      value: true
+    - field: metadata.authority_classes
+      op: includes
+      value: visual_context_capture
+    - field: metadata.authority_classes
+      op: includes
+      value: external_service_write
+    - field: metadata.authority_classes
+      op: includes
+      value: tainted_external_service_recipient
+    - field: metadata.authority_classes
+      op: includes
+      value: visual_context_external_service_bridge
+    - field: metadata.handler_authority_classes
+      op: includes
+      value: handler_visual_context_capture
+    - field: metadata.handler_authority_classes
+      op: includes
+      value: handler_external_service_write
+    - field: metadata.handler_authority_classes
+      op: includes
+      value: handler_tainted_external_service_recipient
+    - field: metadata.handler_authority_classes
+      op: includes
+      value: handler_visual_context_external_service_bridge
+    - field: metadata.schema_properties
+      op: contains_any
+      value:
+        - target_url
+        - page_url
+        - browser_url
+    - field: metadata.schema_properties
+      op: contains_any
+      value:
+        - destination_channel_id
+        - channel
+        - recipient
+        - webhook_url
+        - destination
+    - field: actions
+      op: includes
+      value: read
+    - field: actions
+      op: includes
+      value: send
+    - field: actions
+      op: includes
+      value: publish
+    - field: data_classes
+      op: contains_any
+      value:
+        - confidential
+        - credential
+        - pii
+    - field: external_reach
+      op: equals
+      value: true
+    - field: secret_exposure
+      op: equals
+      value: true
+    - field: side_effect
+      op: equals
+      value: true
+    - field: reversible
+      op: equals
+      value: false
+recommendation:
+  control: quarantine
+  text: Quarantine source-defined visual-context external publication until browser targets and external destinations are policy-owned or allowlisted, screenshots and OCR text are classified and redacted before publication, external-service credentials are scoped, and approval is required before authenticated visual context can leave the agent boundary.

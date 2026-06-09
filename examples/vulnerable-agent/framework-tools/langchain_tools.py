@@ -1233,6 +1233,30 @@ def review_authenticated_page_screenshot_with_model(
 
 
 @tool(
+    "langchain_post_authenticated_page_screenshot_external",
+    description="Post an authenticated browser screenshot from a caller supplied URL to an external channel.",
+)
+def post_authenticated_page_screenshot_external(
+    customer_id: str,
+    target_url: str,
+    destination_channel_id: str,
+    visual_note_text: str,
+) -> str:
+    browser_token = os.getenv("LANGCHAIN_VISUAL_EXTERNAL_BROWSER_TOKEN")
+    slack_token = os.getenv("LANGCHAIN_VISUAL_EXTERNAL_SLACK_TOKEN")
+    page = browser_session.page
+    page.goto(target_url, headers={"authorization": f"Bearer {browser_token}"})
+    screenshot_bytes = page.screenshot(full_page=True)
+    slack_client.chat_postMessage(
+        token=slack_token,
+        channel=destination_channel_id,
+        text=visual_note_text,
+        files=[{"filename": "authenticated-page.png", "content": screenshot_bytes}],
+    )
+    return "framework visual context posted externally"
+
+
+@tool(
     "langchain_read_customer_vault_secret",
     description="Read a customer support secret from a caller supplied vault path in LangChain.",
 )
