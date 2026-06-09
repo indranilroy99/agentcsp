@@ -1,0 +1,128 @@
+id: AGENTCSP-TOOL-124
+name: Source tool handler exports model output to training data
+description: A source-defined agent tool handler calls a model provider, extracts model output, and writes that output into a training, fine-tuning, eval, or model-improvement dataset using runtime credentials and caller-selected dataset routing.
+category: model_output_training_dataset_bridge
+severity: critical
+maps_to:
+  owasp:
+    - LLM01:2025 Prompt Injection
+    - LLM02:2025 Sensitive Information Disclosure
+    - LLM04:2025 Data and Model Poisoning
+    - LLM05:2025 Improper Output Handling
+    - LLM06:2025 Excessive Agency
+  mitre_atlas:
+    - AML.T0051 LLM Plugin Compromise
+    - AML.T0056 LLM Trusted Boundary Compromise
+    - AML.T0059 Data from Information Repositories
+    - AML.T0060 LLM Prompt Injection
+  nist_ai_rmf:
+    - MAP 4.1
+    - MEASURE 2.7
+    - MANAGE 2.4
+match:
+  object_type: tool
+  where:
+    - field: metadata.parsed_tool_schema
+      op: equals
+      value: true
+    - field: metadata.source_tool_handler_redacted
+      op: equals
+      value: true
+    - field: metadata.handler_body_analyzed
+      op: equals
+      value: true
+    - field: metadata.handler_model_provider_call
+      op: equals
+      value: true
+    - field: metadata.handler_training_dataset_export
+      op: equals
+      value: true
+    - field: metadata.handler_tainted_training_dataset_payload
+      op: equals
+      value: true
+    - field: metadata.handler_model_output_training_dataset_bridge
+      op: equals
+      value: true
+    - field: metadata.handler_secret_env_access
+      op: equals
+      value: true
+    - field: metadata.model_provider_call
+      op: equals
+      value: true
+    - field: metadata.training_dataset_export
+      op: equals
+      value: true
+    - field: metadata.tainted_training_dataset_payload
+      op: equals
+      value: true
+    - field: metadata.model_output_training_dataset_bridge
+      op: equals
+      value: true
+    - field: metadata.accepts_content_like_input
+      op: equals
+      value: true
+    - field: metadata.accepts_customer_data_input
+      op: equals
+      value: true
+    - field: metadata.authority_classes
+      op: includes
+      value: model_provider_call
+    - field: metadata.authority_classes
+      op: includes
+      value: training_dataset_export
+    - field: metadata.authority_classes
+      op: includes
+      value: tainted_training_dataset_payload
+    - field: metadata.authority_classes
+      op: includes
+      value: model_output_training_dataset_bridge
+    - field: metadata.handler_authority_classes
+      op: includes
+      value: handler_model_provider_call
+    - field: metadata.handler_authority_classes
+      op: includes
+      value: handler_training_dataset_export
+    - field: metadata.handler_authority_classes
+      op: includes
+      value: handler_tainted_training_dataset_payload
+    - field: metadata.handler_authority_classes
+      op: includes
+      value: handler_model_output_training_dataset_bridge
+    - field: metadata.schema_properties
+      op: contains_any
+      value:
+        - customer_ticket_text
+        - dataset_split_name
+        - model_name
+        - training_dataset_id
+        - training_goal_text
+    - field: actions
+      op: includes
+      value: send
+    - field: actions
+      op: includes
+      value: write
+    - field: actions
+      op: includes
+      value: remember
+    - field: data_classes
+      op: contains_any
+      value:
+        - confidential
+        - credential
+        - pii
+    - field: external_reach
+      op: equals
+      value: true
+    - field: secret_exposure
+      op: equals
+      value: true
+    - field: side_effect
+      op: equals
+      value: true
+    - field: reversible
+      op: equals
+      value: false
+recommendation:
+  control: quarantine
+  text: Quarantine model-output-to-training handlers until model responses cannot become training, fine-tuning, eval, or model-improvement records without data classification, instruction stripping, poisoning review, customer retention controls, dataset allowlists, and scoped dataset-write credentials.

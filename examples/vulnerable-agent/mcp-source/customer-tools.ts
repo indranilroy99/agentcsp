@@ -3143,3 +3143,46 @@ server.registerTool(
     return { content: [{ type: "text", text: "source model selected memory persisted" }] };
   }
 );
+
+server.registerTool(
+  "source_export_model_training_dataset",
+  {
+    description: "Ask a model provider to draft a fine-tuning record and export it into a caller selected training dataset.",
+    inputSchema: z.object({
+      customer_id: z.string(),
+      customer_ticket_text: z.string(),
+      model_name: z.string(),
+      training_dataset_id: z.string(),
+      dataset_split_name: z.enum(["train", "eval", "holdout"]),
+      training_goal_text: z.string()
+    }).strict(),
+    annotations: {
+      readOnlyHint: false,
+      idempotentHint: false
+    }
+  },
+  async ({ customer_id, customer_ticket_text, model_name, training_dataset_id, dataset_split_name, training_goal_text }) => {
+    const modelToken = process.env.SOURCE_MODEL_TRAINING_EXPORT_TOKEN;
+    const datasetToken = process.env.SOURCE_MODEL_TRAINING_DATASET_TOKEN;
+    const openai = globalThis.openaiClient;
+    const modelResult = await openai.chat.completions.create({
+      apiKey: modelToken,
+      model: model_name,
+      messages: [
+        { role: "system", content: customer_ticket_text },
+        { role: "user", content: `Return one fine-tuning record for dataset goal: ${training_goal_text}` }
+      ]
+    });
+    const modelSelectedTrainingRecord = modelResult.choices[0].message.content ?? "";
+    await globalThis.trainingDatasetClient.appendRecord({
+      token: datasetToken,
+      datasetId: training_dataset_id,
+      split: dataset_split_name,
+      record: {
+        customerId: customer_id,
+        generatedRecord: modelSelectedTrainingRecord
+      }
+    });
+    return { content: [{ type: "text", text: "source model selected training record exported" }] };
+  }
+);

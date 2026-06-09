@@ -754,6 +754,9 @@ describe("scanner", () => {
     const sourceModelOutputMemoryBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "source_store_model_selected_memory"
     );
+    const sourceModelOutputTrainingDatasetBridgeTool = surfaces.tools.find(
+      (surface) => surface.name === "source_export_model_training_dataset"
+    );
     const pythonExportTool = surfaces.tools.find((surface) => surface.name === "python_export_customer_record");
     const pythonDeleteTool = surfaces.tools.find((surface) => surface.name === "python_readonly_delete_workspace_file");
     const pythonUnsafeDeserializationTool = surfaces.tools.find((surface) => surface.name === "python_load_serialized_agent_state");
@@ -974,6 +977,9 @@ describe("scanner", () => {
     );
     const langchainModelOutputMemoryBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "langchain_store_model_selected_memory"
+    );
+    const langchainModelOutputTrainingDatasetBridgeTool = surfaces.tools.find(
+      (surface) => surface.name === "langchain_export_model_training_dataset"
     );
     const langchainUnsafeDeserializationTool = surfaces.tools.find((surface) => surface.name === "langchain_load_serialized_agent_state");
     const aiSdkExportTool = surfaces.tools.find((surface) => surface.name === "aiSdkExportCustomerContext");
@@ -9083,6 +9089,81 @@ describe("scanner", () => {
     expect(JSON.stringify(sourceModelOutputMemoryBridgeTool)).not.toContain("globalThis.agentMemory.upsert");
     expect(JSON.stringify(sourceModelOutputMemoryBridgeTool)).not.toContain("source model selected memory persisted");
     expect(JSON.stringify(sourceModelOutputMemoryBridgeTool)).not.toContain("Ask a model provider to draft durable support memory");
+    expect(sourceModelOutputTrainingDatasetBridgeTool).toMatchObject({
+      path: "mcp-source/customer-tools.ts",
+      actions: ["call", "publish", "read", "remember", "send", "write"],
+      data_classes: ["confidential", "credential", "pii"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(sourceModelOutputTrainingDatasetBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_mcp_source_tool: true,
+      mcp_source_tool_registration: true,
+      mcp_source_tool_registration_kind: "registerTool",
+      mcp_source_tool_argument_count: 3,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_content_like_input: true,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      training_dataset_export: true,
+      tainted_training_dataset_payload: true,
+      model_provider_call: true,
+      tainted_model_selection: true,
+      model_output_training_dataset_bridge: true,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_training_dataset_export: true,
+      handler_tainted_training_dataset_payload: true,
+      handler_model_provider_call: true,
+      handler_tainted_model_selection: true,
+      handler_model_output_training_dataset_bridge: true,
+      handler_secret_env_access: true,
+      handler_signal_count: 6,
+      open_world_schema: false
+    });
+    expect(sourceModelOutputTrainingDatasetBridgeTool?.metadata.authority_classes).toEqual(expect.arrayContaining([
+      "handler_model_output_training_dataset_bridge",
+      "handler_model_provider_call",
+      "handler_secret_env_access",
+      "handler_tainted_model_selection",
+      "handler_tainted_training_dataset_payload",
+      "handler_training_dataset_export",
+      "model_output_training_dataset_bridge",
+      "model_provider_call",
+      "tainted_model_selection",
+      "tainted_training_dataset_payload",
+      "training_dataset_export"
+    ]));
+    expect(sourceModelOutputTrainingDatasetBridgeTool?.metadata.handler_authority_classes).toEqual([
+      "handler_model_output_training_dataset_bridge",
+      "handler_model_provider_call",
+      "handler_secret_env_access",
+      "handler_tainted_model_selection",
+      "handler_tainted_training_dataset_payload",
+      "handler_training_dataset_export"
+    ]);
+    expect(sourceModelOutputTrainingDatasetBridgeTool?.metadata.handler_env_key_names).toEqual([
+      "SOURCE_MODEL_TRAINING_DATASET_TOKEN",
+      "SOURCE_MODEL_TRAINING_EXPORT_TOKEN"
+    ]);
+    expect(sourceModelOutputTrainingDatasetBridgeTool?.metadata.schema_properties).toEqual([
+      "customer_id",
+      "customer_ticket_text",
+      "dataset_split_name",
+      "model_name",
+      "training_dataset_id",
+      "training_goal_text"
+    ]);
+    expect(JSON.stringify(sourceModelOutputTrainingDatasetBridgeTool)).not.toContain("openai.chat.completions.create");
+    expect(JSON.stringify(sourceModelOutputTrainingDatasetBridgeTool)).not.toContain("modelResult");
+    expect(JSON.stringify(sourceModelOutputTrainingDatasetBridgeTool)).not.toContain("modelSelectedTrainingRecord");
+    expect(JSON.stringify(sourceModelOutputTrainingDatasetBridgeTool)).not.toContain("globalThis.trainingDatasetClient.appendRecord");
+    expect(JSON.stringify(sourceModelOutputTrainingDatasetBridgeTool)).not.toContain("source model selected training record exported");
+    expect(JSON.stringify(sourceModelOutputTrainingDatasetBridgeTool)).not.toContain("Ask a model provider to draft a fine-tuning record");
     expect(pythonExportTool).toMatchObject({
       path: "mcp-source/python_tools.py",
       data_classes: ["confidential", "credential", "pii"],
@@ -17467,6 +17548,87 @@ describe("scanner", () => {
     expect(JSON.stringify(langchainModelOutputMemoryBridgeTool)).not.toContain("memory_store.upsert");
     expect(JSON.stringify(langchainModelOutputMemoryBridgeTool)).not.toContain("framework model selected memory persisted");
     expect(JSON.stringify(langchainModelOutputMemoryBridgeTool)).not.toContain("Ask a model provider to draft durable support memory");
+    expect(langchainModelOutputTrainingDatasetBridgeTool).toMatchObject({
+      path: "framework-tools/langchain_tools.py",
+      actions: ["call", "publish", "read", "remember", "send", "write"],
+      data_classes: ["confidential", "credential", "pii"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(langchainModelOutputTrainingDatasetBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_agent_framework_source_tool: true,
+      agent_framework_source_tool: true,
+      agent_framework_source_tool_framework: "langchain",
+      agent_framework_source_tool_registration_kind: "python_tool_decorator",
+      agent_framework_source_tool_argument_count: 6,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_content_like_input: true,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      training_dataset_export: true,
+      tainted_training_dataset_payload: true,
+      model_provider_call: true,
+      tainted_model_selection: true,
+      model_output_training_dataset_bridge: true,
+      privileged_prompt_composition: true,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_training_dataset_export: true,
+      handler_tainted_training_dataset_payload: true,
+      handler_model_provider_call: true,
+      handler_tainted_model_selection: true,
+      handler_model_output_training_dataset_bridge: true,
+      handler_privileged_prompt_composition: true,
+      handler_secret_env_access: true,
+      handler_signal_count: 7,
+      open_world_schema: false
+    });
+    expect(langchainModelOutputTrainingDatasetBridgeTool?.metadata.authority_classes).toEqual(expect.arrayContaining([
+      "handler_model_output_training_dataset_bridge",
+      "handler_model_provider_call",
+      "handler_privileged_prompt_composition",
+      "handler_secret_env_access",
+      "handler_tainted_model_selection",
+      "handler_tainted_training_dataset_payload",
+      "handler_training_dataset_export",
+      "model_output_training_dataset_bridge",
+      "model_provider_call",
+      "privileged_prompt_composition",
+      "tainted_model_selection",
+      "tainted_training_dataset_payload",
+      "training_dataset_export"
+    ]));
+    expect(langchainModelOutputTrainingDatasetBridgeTool?.metadata.handler_authority_classes).toEqual([
+      "handler_model_output_training_dataset_bridge",
+      "handler_model_provider_call",
+      "handler_privileged_prompt_composition",
+      "handler_secret_env_access",
+      "handler_tainted_model_selection",
+      "handler_tainted_training_dataset_payload",
+      "handler_training_dataset_export"
+    ]);
+    expect(langchainModelOutputTrainingDatasetBridgeTool?.metadata.handler_env_key_names).toEqual([
+      "LANGCHAIN_MODEL_TRAINING_DATASET_TOKEN",
+      "LANGCHAIN_MODEL_TRAINING_EXPORT_TOKEN"
+    ]);
+    expect(langchainModelOutputTrainingDatasetBridgeTool?.metadata.schema_properties).toEqual([
+      "customer_id",
+      "customer_ticket_text",
+      "dataset_split_name",
+      "model_name",
+      "training_dataset_id",
+      "training_goal_text"
+    ]);
+    expect(JSON.stringify(langchainModelOutputTrainingDatasetBridgeTool)).not.toContain("openai_client.chat.completions.create");
+    expect(JSON.stringify(langchainModelOutputTrainingDatasetBridgeTool)).not.toContain("model_response");
+    expect(JSON.stringify(langchainModelOutputTrainingDatasetBridgeTool)).not.toContain("model_selected_training_record");
+    expect(JSON.stringify(langchainModelOutputTrainingDatasetBridgeTool)).not.toContain("training_dataset_client.append_record");
+    expect(JSON.stringify(langchainModelOutputTrainingDatasetBridgeTool)).not.toContain("framework model selected training record exported");
+    expect(JSON.stringify(langchainModelOutputTrainingDatasetBridgeTool)).not.toContain("Ask a model provider to draft a fine-tuning record");
     expect(aiSdkExportTool).toMatchObject({
       path: "framework-tools/vercel-ai-tools.ts",
       data_classes: ["confidential", "credential", "pii"],

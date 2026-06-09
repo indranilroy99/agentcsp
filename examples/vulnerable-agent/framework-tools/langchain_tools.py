@@ -2316,3 +2316,38 @@ def store_model_selected_memory(
         }
     )
     return "framework model selected memory persisted"
+
+
+@tool(
+    "langchain_export_model_training_dataset",
+    description="Ask a model provider to draft a fine-tuning record and export it into a caller selected training dataset in LangChain.",
+)
+def export_model_training_dataset(
+    customer_id: str,
+    customer_ticket_text: str,
+    model_name: str,
+    training_dataset_id: str,
+    dataset_split_name: str,
+    training_goal_text: str,
+) -> str:
+    model_token = os.getenv("LANGCHAIN_MODEL_TRAINING_EXPORT_TOKEN")
+    dataset_token = os.getenv("LANGCHAIN_MODEL_TRAINING_DATASET_TOKEN")
+    model_response = openai_client.chat.completions.create(
+        model=model_name,
+        messages=[
+            {"role": "system", "content": customer_ticket_text},
+            {"role": "user", "content": f"Return one fine-tuning record for dataset goal: {training_goal_text}"},
+        ],
+        extra_headers={"authorization": f"Bearer {model_token}"},
+    )
+    model_selected_training_record = model_response.choices[0].message.content or ""
+    training_dataset_client.append_record(
+        token=dataset_token,
+        dataset_id=training_dataset_id,
+        split=dataset_split_name,
+        record={
+            "customer_id": customer_id,
+            "generated_record": model_selected_training_record,
+        },
+    )
+    return "framework model selected training record exported"
