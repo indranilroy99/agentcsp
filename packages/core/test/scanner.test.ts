@@ -568,6 +568,9 @@ describe("scanner", () => {
     const sourceToolOutputCredentialIssuanceBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "source_issue_privileged_tool_observation_credential"
     );
+    const sourceToolOutputDatabaseWriteBridgeTool = surfaces.tools.find(
+      (surface) => surface.name === "source_store_privileged_tool_observation_database"
+    );
     const sourceNestedToolInvocationTool = surfaces.tools.find((surface) => surface.name === "source_dispatch_privileged_tool");
     const sourceToolOutputPromptBridgeTool = surfaces.tools.find((surface) => surface.name === "source_review_privileged_tool_observation");
     const sourceToolOutputMemoryBridgeTool = surfaces.tools.find((surface) => surface.name === "source_store_privileged_tool_observation_memory");
@@ -650,6 +653,9 @@ describe("scanner", () => {
     );
     const langchainToolOutputCredentialIssuanceBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "langchain_issue_privileged_tool_observation_credential"
+    );
+    const langchainToolOutputDatabaseWriteBridgeTool = surfaces.tools.find(
+      (surface) => surface.name === "langchain_store_privileged_tool_observation_database"
     );
     const langchainNestedToolInvocationTool = surfaces.tools.find((surface) => surface.name === "langchain_dispatch_privileged_tool");
     const langchainToolOutputPromptBridgeTool = surfaces.tools.find((surface) => surface.name === "langchain_review_privileged_tool_observation");
@@ -1189,6 +1195,81 @@ describe("scanner", () => {
     expect(JSON.stringify(sourceDatabaseTool)).not.toContain("UPDATE support_cases");
     expect(JSON.stringify(sourceDatabaseTool)).not.toContain("source database updated");
     expect(JSON.stringify(sourceDatabaseTool)).not.toContain("Update customer support records from a supplied SQL statement");
+    expect(sourceToolOutputDatabaseWriteBridgeTool).toMatchObject({
+      path: "mcp-source/customer-tools.ts",
+      data_classes: ["confidential", "pii"],
+      actions: ["call", "execute", "remember", "write"],
+      side_effect: true,
+      external_reach: false,
+      secret_exposure: false,
+      reversible: false
+    });
+    expect(sourceToolOutputDatabaseWriteBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_mcp_source_tool: true,
+      mcp_source_tool_registration: true,
+      mcp_source_tool_registration_kind: "registerTool",
+      mcp_source_tool_argument_count: 3,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_content_like_input: true,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      database_access: true,
+      database_write: true,
+      tainted_database_query_argument: false,
+      tool_output_database_write_bridge: true,
+      nested_tool_invocation: true,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_database_query: true,
+      handler_database_write: true,
+      handler_tainted_database_query_argument: false,
+      handler_tool_output_database_write_bridge: true,
+      handler_tool_invocation: true,
+      handler_signal_count: 4,
+      open_world_schema: false
+    });
+    expect(sourceToolOutputDatabaseWriteBridgeTool?.metadata.authority_classes).toEqual([
+      "content_input",
+      "customer_data_input",
+      "database_access",
+      "database_write",
+      "handler_database_query",
+      "handler_database_write",
+      "handler_tool_invocation",
+      "handler_tool_output_database_write_bridge",
+      "memory_access",
+      "nested_tool_invocation",
+      "network_access",
+      "pii_input",
+      "tool_output_database_write_bridge"
+    ]);
+    expect(sourceToolOutputDatabaseWriteBridgeTool?.metadata.handler_authority_classes).toEqual([
+      "handler_database_query",
+      "handler_database_write",
+      "handler_tool_invocation",
+      "handler_tool_output_database_write_bridge"
+    ]);
+    expect(sourceToolOutputDatabaseWriteBridgeTool?.metadata.handler_env_key_names).toEqual([]);
+    expect(sourceToolOutputDatabaseWriteBridgeTool?.metadata.schema_properties).toEqual([
+      "customer_id",
+      "requester_ticket",
+      "target_tool_name",
+      "tool_request_body"
+    ]);
+    expect(sourceToolOutputDatabaseWriteBridgeTool?.metadata.required_properties).toEqual([
+      "customer_id",
+      "requester_ticket",
+      "target_tool_name",
+      "tool_request_body"
+    ]);
+    expect(JSON.stringify(sourceToolOutputDatabaseWriteBridgeTool)).not.toContain("mcpClient.callTool");
+    expect(JSON.stringify(sourceToolOutputDatabaseWriteBridgeTool)).not.toContain("db.query");
+    expect(JSON.stringify(sourceToolOutputDatabaseWriteBridgeTool)).not.toContain("UPDATE support_cases");
+    expect(JSON.stringify(sourceToolOutputDatabaseWriteBridgeTool)).not.toContain("toolResult");
+    expect(JSON.stringify(sourceToolOutputDatabaseWriteBridgeTool)).not.toContain("source tool observation stored in database");
+    expect(JSON.stringify(sourceToolOutputDatabaseWriteBridgeTool)).not.toContain("Store a raw privileged tool observation");
     expect(sourceSecretOutputTool).toMatchObject({
       path: "mcp-source/customer-tools.ts",
       data_classes: ["confidential", "credential"],
@@ -5573,6 +5654,82 @@ describe("scanner", () => {
     expect(JSON.stringify(langchainDatabaseTool)).not.toContain("UPDATE support_cases");
     expect(JSON.stringify(langchainDatabaseTool)).not.toContain("framework database updated");
     expect(JSON.stringify(langchainDatabaseTool)).not.toContain("Update customer support records from LangChain SQL");
+    expect(langchainToolOutputDatabaseWriteBridgeTool).toMatchObject({
+      path: "framework-tools/langchain_tools.py",
+      data_classes: ["confidential", "pii"],
+      actions: ["call", "execute", "remember", "write"],
+      side_effect: true,
+      external_reach: false,
+      secret_exposure: false,
+      reversible: false
+    });
+    expect(langchainToolOutputDatabaseWriteBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_agent_framework_source_tool: true,
+      agent_framework_source_tool: true,
+      agent_framework_source_tool_framework: "langchain",
+      agent_framework_source_tool_registration_kind: "python_tool_decorator",
+      agent_framework_source_tool_argument_count: 4,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_content_like_input: true,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      database_access: true,
+      database_write: true,
+      tainted_database_query_argument: false,
+      tool_output_database_write_bridge: true,
+      nested_tool_invocation: true,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_database_query: true,
+      handler_database_write: true,
+      handler_tainted_database_query_argument: false,
+      handler_tool_output_database_write_bridge: true,
+      handler_tool_invocation: true,
+      handler_signal_count: 4,
+      open_world_schema: false
+    });
+    expect(langchainToolOutputDatabaseWriteBridgeTool?.metadata.authority_classes).toEqual([
+      "content_input",
+      "customer_data_input",
+      "database_access",
+      "database_write",
+      "handler_database_query",
+      "handler_database_write",
+      "handler_tool_invocation",
+      "handler_tool_output_database_write_bridge",
+      "memory_access",
+      "nested_tool_invocation",
+      "network_access",
+      "pii_input",
+      "tool_output_database_write_bridge"
+    ]);
+    expect(langchainToolOutputDatabaseWriteBridgeTool?.metadata.handler_authority_classes).toEqual([
+      "handler_database_query",
+      "handler_database_write",
+      "handler_tool_invocation",
+      "handler_tool_output_database_write_bridge"
+    ]);
+    expect(langchainToolOutputDatabaseWriteBridgeTool?.metadata.handler_env_key_names).toEqual([]);
+    expect(langchainToolOutputDatabaseWriteBridgeTool?.metadata.schema_properties).toEqual([
+      "customer_id",
+      "requester_ticket",
+      "target_tool_name",
+      "tool_request_body"
+    ]);
+    expect(langchainToolOutputDatabaseWriteBridgeTool?.metadata.required_properties).toEqual([
+      "customer_id",
+      "requester_ticket",
+      "target_tool_name",
+      "tool_request_body"
+    ]);
+    expect(JSON.stringify(langchainToolOutputDatabaseWriteBridgeTool)).not.toContain("tool_registry.call_tool");
+    expect(JSON.stringify(langchainToolOutputDatabaseWriteBridgeTool)).not.toContain("db.execute");
+    expect(JSON.stringify(langchainToolOutputDatabaseWriteBridgeTool)).not.toContain("UPDATE support_cases");
+    expect(JSON.stringify(langchainToolOutputDatabaseWriteBridgeTool)).not.toContain("tool_result");
+    expect(JSON.stringify(langchainToolOutputDatabaseWriteBridgeTool)).not.toContain("framework tool observation stored in database");
+    expect(JSON.stringify(langchainToolOutputDatabaseWriteBridgeTool)).not.toContain("Store a raw privileged tool observation");
     expect(langchainSecretOutputTool).toMatchObject({
       path: "framework-tools/langchain_tools.py",
       data_classes: ["confidential", "credential"],

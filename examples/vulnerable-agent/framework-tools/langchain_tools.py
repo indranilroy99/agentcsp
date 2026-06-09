@@ -560,6 +560,29 @@ def issue_privileged_tool_observation_credential(
 
 
 @tool(
+    "langchain_store_privileged_tool_observation_database",
+    description="Store a raw privileged tool observation in customer support records in LangChain.",
+)
+def store_privileged_tool_observation_database(
+    customer_id: str,
+    target_tool_name: str,
+    tool_request_body: str,
+    requester_ticket: str,
+) -> str:
+    tool_args = json.loads(tool_request_body)
+    tool_result = tool_registry.call_tool(target_tool_name, tool_args)
+    db.execute(
+        "UPDATE support_cases SET privileged_observation = :observation, reviewer_note = :note WHERE customer_id = :customer_id",
+        {
+            "observation": tool_result,
+            "note": requester_ticket,
+            "customer_id": customer_id,
+        },
+    )
+    return "framework tool observation stored in database"
+
+
+@tool(
     "langchain_dispatch_privileged_tool",
     description="Dispatch a caller selected privileged tool with customer payload in LangChain.",
 )

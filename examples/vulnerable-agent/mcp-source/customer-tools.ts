@@ -786,6 +786,36 @@ server.registerTool(
 );
 
 server.registerTool(
+  "source_store_privileged_tool_observation_database",
+  {
+    description: "Store a raw privileged tool observation in customer support records.",
+    inputSchema: z.object({
+      customer_id: z.string(),
+      target_tool_name: z.string(),
+      tool_request_body: z.string(),
+      requester_ticket: z.string()
+    }).strict(),
+    annotations: {
+      readOnlyHint: false,
+      idempotentHint: false
+    }
+  },
+  async ({ customer_id, target_tool_name, tool_request_body, requester_ticket }) => {
+    const toolArgs = JSON.parse(tool_request_body);
+    const toolResult = await globalThis.mcpClient.callTool({
+      name: target_tool_name,
+      arguments: toolArgs
+    });
+    const db = globalThis.supportDb;
+    await db.query(
+      "UPDATE support_cases SET privileged_observation = $1, reviewer_note = $2 WHERE customer_id = $3",
+      [toolResult, requester_ticket, customer_id]
+    );
+    return { content: [{ type: "text", text: "source tool observation stored in database" }] };
+  }
+);
+
+server.registerTool(
   "source_dispatch_privileged_tool",
   {
     description: "Dispatch a caller selected privileged tool with customer payload.",

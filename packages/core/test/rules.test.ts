@@ -7065,10 +7065,12 @@ describe("rule engine", () => {
       "langchain_grant_privileged_tool_observation_authorization",
       "langchain_issue_privileged_tool_observation_credential",
       "langchain_publish_privileged_tool_observation_prompt_registry",
+      "langchain_store_privileged_tool_observation_database",
       "source_dispatch_privileged_tool",
       "source_grant_privileged_tool_observation_authorization",
       "source_issue_privileged_tool_observation_credential",
-      "source_publish_privileged_tool_observation_prompt_registry"
+      "source_publish_privileged_tool_observation_prompt_registry",
+      "source_store_privileged_tool_observation_database"
     ]);
     expect(sourceHandlerNestedToolInvocationFindings.every((finding) => finding.severity === "critical")).toBe(true);
     expect(sourceHandlerNestedToolInvocationFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
@@ -8716,20 +8718,60 @@ describe("rule engine", () => {
     const sourceHandlerDatabaseFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-016");
     expect(sourceHandlerDatabaseFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_apply_record_change_sql",
-      "source_apply_record_change_sql"
+      "langchain_store_privileged_tool_observation_database",
+      "source_apply_record_change_sql",
+      "source_store_privileged_tool_observation_database"
     ]);
+    const sourceHandlerToolOutputDatabaseWriteFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-078");
+    expect(sourceHandlerToolOutputDatabaseWriteFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
+      "langchain_store_privileged_tool_observation_database",
+      "source_store_privileged_tool_observation_database"
+    ]);
+    expect(sourceHandlerToolOutputDatabaseWriteFindings.every((finding) => finding.severity === "critical")).toBe(true);
+    expect(sourceHandlerToolOutputDatabaseWriteFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerToolOutputDatabaseWriteFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
+    expect(sourceHandlerToolOutputDatabaseWriteFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
+    expect(sourceHandlerToolOutputDatabaseWriteFindings.every((finding) => finding.matched_object.metadata.source_tool_handler_redacted === true)).toBe(true);
+    expect(sourceHandlerToolOutputDatabaseWriteFindings.every((finding) => finding.matched_object.metadata.handler_tool_invocation === true)).toBe(true);
+    expect(sourceHandlerToolOutputDatabaseWriteFindings.every((finding) => finding.matched_object.metadata.handler_database_query === true)).toBe(true);
+    expect(sourceHandlerToolOutputDatabaseWriteFindings.every((finding) => finding.matched_object.metadata.handler_database_write === true)).toBe(true);
+    expect(sourceHandlerToolOutputDatabaseWriteFindings.every((finding) => finding.matched_object.metadata.handler_tool_output_database_write_bridge === true)).toBe(true);
+    expect(sourceHandlerToolOutputDatabaseWriteFindings.every((finding) => finding.matched_object.metadata.nested_tool_invocation === true)).toBe(true);
+    expect(sourceHandlerToolOutputDatabaseWriteFindings.every((finding) => finding.matched_object.metadata.database_access === true)).toBe(true);
+    expect(sourceHandlerToolOutputDatabaseWriteFindings.every((finding) => finding.matched_object.metadata.database_write === true)).toBe(true);
+    expect(sourceHandlerToolOutputDatabaseWriteFindings.every((finding) => finding.matched_object.metadata.tool_output_database_write_bridge === true)).toBe(true);
+    expect(sourceHandlerToolOutputDatabaseWriteFindings.every((finding) => finding.matched_object.metadata.tainted_database_query_argument === false)).toBe(true);
+    expect(sourceHandlerToolOutputDatabaseWriteFindings.every((finding) => finding.matched_object.metadata.accepts_content_like_input === true)).toBe(true);
+    expect(sourceHandlerToolOutputDatabaseWriteFindings.every((finding) => finding.matched_object.metadata.accepts_customer_data_input === true)).toBe(true);
+    expect(sourceHandlerToolOutputDatabaseWriteFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("nested_tool_invocation"))).toBe(true);
+    expect(sourceHandlerToolOutputDatabaseWriteFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("database_write"))).toBe(true);
+    expect(sourceHandlerToolOutputDatabaseWriteFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("tool_output_database_write_bridge"))).toBe(true);
+    expect(sourceHandlerToolOutputDatabaseWriteFindings.every((finding) => finding.matched_object.metadata.handler_authority_classes.includes("handler_tool_invocation"))).toBe(true);
+    expect(sourceHandlerToolOutputDatabaseWriteFindings.every((finding) => finding.matched_object.metadata.handler_authority_classes.includes("handler_database_query"))).toBe(true);
+    expect(sourceHandlerToolOutputDatabaseWriteFindings.every((finding) => finding.matched_object.metadata.handler_authority_classes.includes("handler_database_write"))).toBe(true);
+    expect(sourceHandlerToolOutputDatabaseWriteFindings.every((finding) => finding.matched_object.metadata.handler_authority_classes.includes("handler_tool_output_database_write_bridge"))).toBe(true);
+    expect(sourceHandlerToolOutputDatabaseWriteFindings.every((finding) => finding.matched_object.actions.includes("execute"))).toBe(true);
+    expect(sourceHandlerToolOutputDatabaseWriteFindings.every((finding) => finding.matched_object.actions.includes("write"))).toBe(true);
+    expect(sourceHandlerToolOutputDatabaseWriteFindings.every((finding) => finding.matched_object.side_effect === true)).toBe(true);
+    expect(sourceHandlerToolOutputDatabaseWriteFindings.every((finding) => finding.matched_object.reversible === false)).toBe(true);
+    expect(JSON.stringify(sourceHandlerToolOutputDatabaseWriteFindings)).not.toContain("mcpClient.callTool");
+    expect(JSON.stringify(sourceHandlerToolOutputDatabaseWriteFindings)).not.toContain("tool_registry.call_tool");
+    expect(JSON.stringify(sourceHandlerToolOutputDatabaseWriteFindings)).not.toContain("db.query");
+    expect(JSON.stringify(sourceHandlerToolOutputDatabaseWriteFindings)).not.toContain("db.execute");
+    expect(JSON.stringify(sourceHandlerToolOutputDatabaseWriteFindings)).not.toContain("UPDATE support_cases");
+    expect(JSON.stringify(sourceHandlerToolOutputDatabaseWriteFindings)).not.toContain("toolResult");
+    expect(JSON.stringify(sourceHandlerToolOutputDatabaseWriteFindings)).not.toContain("tool_result");
+    expect(JSON.stringify(sourceHandlerToolOutputDatabaseWriteFindings)).not.toContain("source tool observation stored in database");
+    expect(JSON.stringify(sourceHandlerToolOutputDatabaseWriteFindings)).not.toContain("framework tool observation stored in database");
+    expect(JSON.stringify(sourceHandlerToolOutputDatabaseWriteFindings)).not.toContain("Store a raw privileged tool observation");
     expect(sourceHandlerDatabaseFindings.every((finding) => finding.severity === "critical")).toBe(true);
     expect(sourceHandlerDatabaseFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
     expect(sourceHandlerDatabaseFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
     expect(sourceHandlerDatabaseFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
     expect(sourceHandlerDatabaseFindings.every((finding) => finding.matched_object.metadata.handler_database_query === true)).toBe(true);
     expect(sourceHandlerDatabaseFindings.every((finding) => finding.matched_object.metadata.handler_database_write === true)).toBe(true);
-    expect(sourceHandlerDatabaseFindings.every((finding) => finding.matched_object.metadata.handler_tainted_database_query_argument === true)).toBe(true);
     expect(sourceHandlerDatabaseFindings.every((finding) => finding.matched_object.metadata.database_write === true)).toBe(true);
-    expect(sourceHandlerDatabaseFindings.every((finding) => finding.matched_object.metadata.tainted_database_query_argument === true)).toBe(true);
     expect(sourceHandlerDatabaseFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("database_write"))).toBe(true);
-    expect(sourceHandlerDatabaseFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("tainted_database_query_argument"))).toBe(true);
-    expect(sourceHandlerDatabaseFindings.every((finding) => finding.matched_object.metadata.handler_authority_classes.includes("handler_tainted_database_query_argument"))).toBe(true);
     expect(JSON.stringify(sourceHandlerDatabaseFindings)).not.toContain("db.query");
     expect(JSON.stringify(sourceHandlerDatabaseFindings)).not.toContain("db.execute");
     expect(JSON.stringify(sourceHandlerDatabaseFindings)).not.toContain("UPDATE support_cases");
