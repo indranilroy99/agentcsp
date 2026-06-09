@@ -87,6 +87,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-071")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-072")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-073")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-074")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-001")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-002")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-003")).toBe(true);
@@ -6897,8 +6898,17 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerAgentConfigWriteFindings)).not.toContain("Rewrite AGENTS.md from caller supplied customer context");
     const sourceHandlerCredentialIssuanceFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-025");
     expect(sourceHandlerCredentialIssuanceFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
+      "langchain_issue_vault_backed_agent_credential",
       "langchain_mint_agent_session_token",
+      "source_issue_vault_backed_agent_credential",
       "source_mint_agent_session_token"
+    ]);
+    const sourceHandlerSecretCredentialIssuanceBridgeFindings = sourceHandlerCredentialIssuanceFindings.filter((finding) =>
+      ["langchain_issue_vault_backed_agent_credential", "source_issue_vault_backed_agent_credential"].includes(finding.matched_object.name)
+    );
+    expect(sourceHandlerSecretCredentialIssuanceBridgeFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
+      "langchain_issue_vault_backed_agent_credential",
+      "source_issue_vault_backed_agent_credential"
     ]);
     expect(sourceHandlerCredentialIssuanceFindings.every((finding) => finding.severity === "critical")).toBe(true);
     expect(sourceHandlerCredentialIssuanceFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
@@ -6915,14 +6925,35 @@ describe("rule engine", () => {
     expect(sourceHandlerCredentialIssuanceFindings.every((finding) => finding.matched_object.metadata.handler_authority_classes.includes("handler_credential_issuance"))).toBe(true);
     expect(sourceHandlerCredentialIssuanceFindings.every((finding) => finding.matched_object.metadata.handler_authority_classes.includes("handler_tainted_credential_issuance_input"))).toBe(true);
     expect(sourceHandlerCredentialIssuanceFindings.every((finding) => finding.matched_object.actions.includes("send"))).toBe(true);
+    expect(sourceHandlerSecretCredentialIssuanceBridgeFindings.every((finding) => finding.matched_object.metadata.handler_secret_manager_access === true)).toBe(true);
+    expect(sourceHandlerSecretCredentialIssuanceBridgeFindings.every((finding) => finding.matched_object.metadata.handler_tainted_secret_manager_path === true)).toBe(true);
+    expect(sourceHandlerSecretCredentialIssuanceBridgeFindings.every((finding) => finding.matched_object.metadata.handler_secret_manager_credential_issuance_bridge === true)).toBe(true);
+    expect(sourceHandlerSecretCredentialIssuanceBridgeFindings.every((finding) => finding.matched_object.metadata.secret_manager_access === true)).toBe(true);
+    expect(sourceHandlerSecretCredentialIssuanceBridgeFindings.every((finding) => finding.matched_object.metadata.tainted_secret_manager_path === true)).toBe(true);
+    expect(sourceHandlerSecretCredentialIssuanceBridgeFindings.every((finding) => finding.matched_object.metadata.secret_manager_credential_issuance_bridge === true)).toBe(true);
+    expect(sourceHandlerSecretCredentialIssuanceBridgeFindings.every((finding) => finding.matched_object.metadata.handler_secret_env_access === true)).toBe(true);
+    expect(sourceHandlerSecretCredentialIssuanceBridgeFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("secret_manager_credential_issuance_bridge"))).toBe(true);
+    expect(sourceHandlerSecretCredentialIssuanceBridgeFindings.every((finding) => finding.matched_object.metadata.handler_authority_classes.includes("handler_secret_manager_credential_issuance_bridge"))).toBe(true);
+    expect(sourceHandlerSecretCredentialIssuanceBridgeFindings.every((finding) => finding.matched_object.actions.includes("read"))).toBe(true);
+    expect(sourceHandlerSecretCredentialIssuanceBridgeFindings.every((finding) => finding.matched_object.actions.includes("write"))).toBe(true);
+    expect(sourceHandlerSecretCredentialIssuanceBridgeFindings.every((finding) => finding.matched_object.external_reach === true)).toBe(true);
     expect(sourceHandlerCredentialIssuanceFindings.every((finding) => finding.matched_object.secret_exposure === true)).toBe(true);
     expect(sourceHandlerCredentialIssuanceFindings.every((finding) => finding.matched_object.reversible === false)).toBe(true);
+    expect(JSON.stringify(sourceHandlerCredentialIssuanceFindings)).not.toContain("vaultClient.readSecret");
+    expect(JSON.stringify(sourceHandlerCredentialIssuanceFindings)).not.toContain("vault_client.read_secret");
     expect(JSON.stringify(sourceHandlerCredentialIssuanceFindings)).not.toContain("identityBroker.issueToken");
     expect(JSON.stringify(sourceHandlerCredentialIssuanceFindings)).not.toContain("identity_broker.issue_token");
+    expect(JSON.stringify(sourceHandlerCredentialIssuanceFindings)).not.toContain("secretRecord.value");
+    expect(JSON.stringify(sourceHandlerCredentialIssuanceFindings)).not.toContain("secret_record.value");
+    expect(JSON.stringify(sourceHandlerCredentialIssuanceFindings)).not.toContain("vaultSigningKey");
+    expect(JSON.stringify(sourceHandlerCredentialIssuanceFindings)).not.toContain("vault_signing_key");
     expect(JSON.stringify(sourceHandlerCredentialIssuanceFindings)).not.toContain("Mint an agent session token");
+    expect(JSON.stringify(sourceHandlerCredentialIssuanceFindings)).not.toContain("Issue an agent credential");
     const sourceHandlerTaintedCredentialIssuanceFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-042");
     expect(sourceHandlerTaintedCredentialIssuanceFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
+      "langchain_issue_vault_backed_agent_credential",
       "langchain_mint_agent_session_token",
+      "source_issue_vault_backed_agent_credential",
       "source_mint_agent_session_token"
     ]);
     expect(sourceHandlerTaintedCredentialIssuanceFindings.every((finding) => finding.severity === "critical")).toBe(true);
@@ -6940,9 +6971,63 @@ describe("rule engine", () => {
     expect(sourceHandlerTaintedCredentialIssuanceFindings.every((finding) => finding.matched_object.actions.includes("send"))).toBe(true);
     expect(sourceHandlerTaintedCredentialIssuanceFindings.every((finding) => finding.matched_object.secret_exposure === true)).toBe(true);
     expect(sourceHandlerTaintedCredentialIssuanceFindings.every((finding) => finding.matched_object.reversible === false)).toBe(true);
+    expect(JSON.stringify(sourceHandlerTaintedCredentialIssuanceFindings)).not.toContain("vaultClient.readSecret");
+    expect(JSON.stringify(sourceHandlerTaintedCredentialIssuanceFindings)).not.toContain("vault_client.read_secret");
     expect(JSON.stringify(sourceHandlerTaintedCredentialIssuanceFindings)).not.toContain("identityBroker.issueToken");
     expect(JSON.stringify(sourceHandlerTaintedCredentialIssuanceFindings)).not.toContain("identity_broker.issue_token");
+    expect(JSON.stringify(sourceHandlerTaintedCredentialIssuanceFindings)).not.toContain("secretRecord.value");
+    expect(JSON.stringify(sourceHandlerTaintedCredentialIssuanceFindings)).not.toContain("secret_record.value");
+    expect(JSON.stringify(sourceHandlerTaintedCredentialIssuanceFindings)).not.toContain("vaultSigningKey");
+    expect(JSON.stringify(sourceHandlerTaintedCredentialIssuanceFindings)).not.toContain("vault_signing_key");
     expect(JSON.stringify(sourceHandlerTaintedCredentialIssuanceFindings)).not.toContain("Mint an agent session token");
+    expect(JSON.stringify(sourceHandlerTaintedCredentialIssuanceFindings)).not.toContain("Issue an agent credential");
+    const sourceHandlerSecretManagerCredentialIssuanceBridgeFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-074");
+    expect(sourceHandlerSecretManagerCredentialIssuanceBridgeFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
+      "langchain_issue_vault_backed_agent_credential",
+      "source_issue_vault_backed_agent_credential"
+    ]);
+    expect(sourceHandlerSecretManagerCredentialIssuanceBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
+    expect(sourceHandlerSecretManagerCredentialIssuanceBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerSecretManagerCredentialIssuanceBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
+    expect(sourceHandlerSecretManagerCredentialIssuanceBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
+    expect(sourceHandlerSecretManagerCredentialIssuanceBridgeFindings.every((finding) => finding.matched_object.metadata.source_tool_handler_redacted === true)).toBe(true);
+    expect(sourceHandlerSecretManagerCredentialIssuanceBridgeFindings.every((finding) => finding.matched_object.metadata.handler_secret_manager_access === true)).toBe(true);
+    expect(sourceHandlerSecretManagerCredentialIssuanceBridgeFindings.every((finding) => finding.matched_object.metadata.handler_tainted_secret_manager_path === true)).toBe(true);
+    expect(sourceHandlerSecretManagerCredentialIssuanceBridgeFindings.every((finding) => finding.matched_object.metadata.handler_credential_issuance === true)).toBe(true);
+    expect(sourceHandlerSecretManagerCredentialIssuanceBridgeFindings.every((finding) => finding.matched_object.metadata.handler_tainted_credential_issuance_input === true)).toBe(true);
+    expect(sourceHandlerSecretManagerCredentialIssuanceBridgeFindings.every((finding) => finding.matched_object.metadata.handler_secret_manager_credential_issuance_bridge === true)).toBe(true);
+    expect(sourceHandlerSecretManagerCredentialIssuanceBridgeFindings.every((finding) => finding.matched_object.metadata.handler_secret_env_access === true)).toBe(true);
+    expect(sourceHandlerSecretManagerCredentialIssuanceBridgeFindings.every((finding) => finding.matched_object.metadata.secret_manager_access === true)).toBe(true);
+    expect(sourceHandlerSecretManagerCredentialIssuanceBridgeFindings.every((finding) => finding.matched_object.metadata.tainted_secret_manager_path === true)).toBe(true);
+    expect(sourceHandlerSecretManagerCredentialIssuanceBridgeFindings.every((finding) => finding.matched_object.metadata.credential_issuance === true)).toBe(true);
+    expect(sourceHandlerSecretManagerCredentialIssuanceBridgeFindings.every((finding) => finding.matched_object.metadata.tainted_credential_issuance_input === true)).toBe(true);
+    expect(sourceHandlerSecretManagerCredentialIssuanceBridgeFindings.every((finding) => finding.matched_object.metadata.secret_manager_credential_issuance_bridge === true)).toBe(true);
+    expect(sourceHandlerSecretManagerCredentialIssuanceBridgeFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("secret_manager_access"))).toBe(true);
+    expect(sourceHandlerSecretManagerCredentialIssuanceBridgeFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("tainted_secret_manager_path"))).toBe(true);
+    expect(sourceHandlerSecretManagerCredentialIssuanceBridgeFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("credential_issuance"))).toBe(true);
+    expect(sourceHandlerSecretManagerCredentialIssuanceBridgeFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("tainted_credential_issuance_input"))).toBe(true);
+    expect(sourceHandlerSecretManagerCredentialIssuanceBridgeFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("secret_manager_credential_issuance_bridge"))).toBe(true);
+    expect(sourceHandlerSecretManagerCredentialIssuanceBridgeFindings.every((finding) => finding.matched_object.metadata.handler_authority_classes.includes("handler_secret_manager_access"))).toBe(true);
+    expect(sourceHandlerSecretManagerCredentialIssuanceBridgeFindings.every((finding) => finding.matched_object.metadata.handler_authority_classes.includes("handler_tainted_secret_manager_path"))).toBe(true);
+    expect(sourceHandlerSecretManagerCredentialIssuanceBridgeFindings.every((finding) => finding.matched_object.metadata.handler_authority_classes.includes("handler_credential_issuance"))).toBe(true);
+    expect(sourceHandlerSecretManagerCredentialIssuanceBridgeFindings.every((finding) => finding.matched_object.metadata.handler_authority_classes.includes("handler_tainted_credential_issuance_input"))).toBe(true);
+    expect(sourceHandlerSecretManagerCredentialIssuanceBridgeFindings.every((finding) => finding.matched_object.metadata.handler_authority_classes.includes("handler_secret_manager_credential_issuance_bridge"))).toBe(true);
+    expect(sourceHandlerSecretManagerCredentialIssuanceBridgeFindings.every((finding) => finding.matched_object.actions.includes("read"))).toBe(true);
+    expect(sourceHandlerSecretManagerCredentialIssuanceBridgeFindings.every((finding) => finding.matched_object.actions.includes("send"))).toBe(true);
+    expect(sourceHandlerSecretManagerCredentialIssuanceBridgeFindings.every((finding) => finding.matched_object.actions.includes("write"))).toBe(true);
+    expect(sourceHandlerSecretManagerCredentialIssuanceBridgeFindings.every((finding) => finding.matched_object.external_reach === true)).toBe(true);
+    expect(sourceHandlerSecretManagerCredentialIssuanceBridgeFindings.every((finding) => finding.matched_object.secret_exposure === true)).toBe(true);
+    expect(sourceHandlerSecretManagerCredentialIssuanceBridgeFindings.every((finding) => finding.matched_object.side_effect === true)).toBe(true);
+    expect(sourceHandlerSecretManagerCredentialIssuanceBridgeFindings.every((finding) => finding.matched_object.reversible === false)).toBe(true);
+    expect(JSON.stringify(sourceHandlerSecretManagerCredentialIssuanceBridgeFindings)).not.toContain("vaultClient.readSecret");
+    expect(JSON.stringify(sourceHandlerSecretManagerCredentialIssuanceBridgeFindings)).not.toContain("vault_client.read_secret");
+    expect(JSON.stringify(sourceHandlerSecretManagerCredentialIssuanceBridgeFindings)).not.toContain("identityBroker.issueToken");
+    expect(JSON.stringify(sourceHandlerSecretManagerCredentialIssuanceBridgeFindings)).not.toContain("identity_broker.issue_token");
+    expect(JSON.stringify(sourceHandlerSecretManagerCredentialIssuanceBridgeFindings)).not.toContain("secretRecord.value");
+    expect(JSON.stringify(sourceHandlerSecretManagerCredentialIssuanceBridgeFindings)).not.toContain("secret_record.value");
+    expect(JSON.stringify(sourceHandlerSecretManagerCredentialIssuanceBridgeFindings)).not.toContain("vaultSigningKey");
+    expect(JSON.stringify(sourceHandlerSecretManagerCredentialIssuanceBridgeFindings)).not.toContain("vault_signing_key");
+    expect(JSON.stringify(sourceHandlerSecretManagerCredentialIssuanceBridgeFindings)).not.toContain("Issue an agent credential");
     const sourceHandlerNestedToolInvocationFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-026");
     expect(sourceHandlerNestedToolInvocationFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_dispatch_privileged_tool",
@@ -7390,6 +7475,7 @@ describe("rule engine", () => {
       "langchain_export_customer_vault_secret_trace",
       "langchain_export_customer_vault_secret_training_dataset",
       "langchain_grant_customer_vault_secret_authorization",
+      "langchain_issue_vault_backed_agent_credential",
       "langchain_post_customer_vault_secret_slack",
       "langchain_promote_customer_vault_secret_feedback",
       "langchain_publish_customer_vault_secret_prompt_registry",
@@ -7402,6 +7488,7 @@ describe("rule engine", () => {
       "source_export_customer_vault_secret_trace",
       "source_export_customer_vault_secret_training_dataset",
       "source_grant_customer_vault_secret_authorization",
+      "source_issue_vault_backed_agent_credential",
       "source_post_customer_vault_secret_slack",
       "source_promote_customer_vault_secret_feedback",
       "source_publish_customer_vault_secret_prompt_registry",
@@ -7435,6 +7522,8 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerSecretManagerFindings)).not.toContain("secret_record.value");
     expect(JSON.stringify(sourceHandlerSecretManagerFindings)).not.toContain("secretGrantRole");
     expect(JSON.stringify(sourceHandlerSecretManagerFindings)).not.toContain("secret_grant_role");
+    expect(JSON.stringify(sourceHandlerSecretManagerFindings)).not.toContain("vaultSigningKey");
+    expect(JSON.stringify(sourceHandlerSecretManagerFindings)).not.toContain("vault_signing_key");
     expect(JSON.stringify(sourceHandlerSecretManagerFindings)).not.toContain("secretMemoryValue");
     expect(JSON.stringify(sourceHandlerSecretManagerFindings)).not.toContain("secret_memory_value");
     expect(JSON.stringify(sourceHandlerSecretManagerFindings)).not.toContain("secretTrainingValue");
@@ -7474,6 +7563,7 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerSecretManagerFindings)).not.toContain("framework vault secret embedded to vector memory");
     expect(JSON.stringify(sourceHandlerSecretManagerFindings)).not.toContain("source vault secret granted broad authorization");
     expect(JSON.stringify(sourceHandlerSecretManagerFindings)).not.toContain("framework vault secret granted broad authorization");
+    expect(JSON.stringify(sourceHandlerSecretManagerFindings)).not.toContain("Issue an agent credential");
     expect(JSON.stringify(sourceHandlerSecretManagerFindings)).not.toContain("Summarize a customer support secret");
     expect(JSON.stringify(sourceHandlerSecretManagerFindings)).not.toContain("Write a customer support secret");
     expect(JSON.stringify(sourceHandlerSecretManagerFindings)).not.toContain("Publish a customer support secret");
@@ -7487,6 +7577,7 @@ describe("rule engine", () => {
       "langchain_export_customer_vault_secret_trace",
       "langchain_export_customer_vault_secret_training_dataset",
       "langchain_grant_customer_vault_secret_authorization",
+      "langchain_issue_vault_backed_agent_credential",
       "langchain_post_customer_vault_secret_slack",
       "langchain_promote_customer_vault_secret_feedback",
       "langchain_publish_customer_vault_secret_prompt_registry",
@@ -7499,6 +7590,7 @@ describe("rule engine", () => {
       "source_export_customer_vault_secret_trace",
       "source_export_customer_vault_secret_training_dataset",
       "source_grant_customer_vault_secret_authorization",
+      "source_issue_vault_backed_agent_credential",
       "source_post_customer_vault_secret_slack",
       "source_promote_customer_vault_secret_feedback",
       "source_publish_customer_vault_secret_prompt_registry",
@@ -7529,6 +7621,8 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerTaintedSecretManagerFindings)).not.toContain("secret_record.value");
     expect(JSON.stringify(sourceHandlerTaintedSecretManagerFindings)).not.toContain("secretGrantRole");
     expect(JSON.stringify(sourceHandlerTaintedSecretManagerFindings)).not.toContain("secret_grant_role");
+    expect(JSON.stringify(sourceHandlerTaintedSecretManagerFindings)).not.toContain("vaultSigningKey");
+    expect(JSON.stringify(sourceHandlerTaintedSecretManagerFindings)).not.toContain("vault_signing_key");
     expect(JSON.stringify(sourceHandlerTaintedSecretManagerFindings)).not.toContain("secretMemoryValue");
     expect(JSON.stringify(sourceHandlerTaintedSecretManagerFindings)).not.toContain("secret_memory_value");
     expect(JSON.stringify(sourceHandlerTaintedSecretManagerFindings)).not.toContain("secretVectorValue");
@@ -7572,6 +7666,7 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerTaintedSecretManagerFindings)).not.toContain("framework vault secret published to prompt registry");
     expect(JSON.stringify(sourceHandlerTaintedSecretManagerFindings)).not.toContain("source vault secret granted broad authorization");
     expect(JSON.stringify(sourceHandlerTaintedSecretManagerFindings)).not.toContain("framework vault secret granted broad authorization");
+    expect(JSON.stringify(sourceHandlerTaintedSecretManagerFindings)).not.toContain("Issue an agent credential");
     expect(JSON.stringify(sourceHandlerTaintedSecretManagerFindings)).not.toContain("Summarize a customer support secret");
     expect(JSON.stringify(sourceHandlerTaintedSecretManagerFindings)).not.toContain("Write a customer support secret");
     expect(JSON.stringify(sourceHandlerTaintedSecretManagerFindings)).not.toContain("Publish a customer support secret");

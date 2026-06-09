@@ -562,6 +562,9 @@ describe("scanner", () => {
     const sourcePromptRegistryWriteTool = surfaces.tools.find((surface) => surface.name === "source_publish_prompt_registry_update");
     const sourceAgentConfigWriteTool = surfaces.tools.find((surface) => surface.name === "source_update_agent_instructions");
     const sourceCredentialIssuanceTool = surfaces.tools.find((surface) => surface.name === "source_mint_agent_session_token");
+    const sourceSecretManagerCredentialIssuanceBridgeTool = surfaces.tools.find(
+      (surface) => surface.name === "source_issue_vault_backed_agent_credential"
+    );
     const sourceNestedToolInvocationTool = surfaces.tools.find((surface) => surface.name === "source_dispatch_privileged_tool");
     const sourceToolOutputPromptBridgeTool = surfaces.tools.find((surface) => surface.name === "source_review_privileged_tool_observation");
     const sourceToolOutputMemoryBridgeTool = surfaces.tools.find((surface) => surface.name === "source_store_privileged_tool_observation_memory");
@@ -636,6 +639,9 @@ describe("scanner", () => {
     const langchainPromptRegistryWriteTool = surfaces.tools.find((surface) => surface.name === "langchain_publish_prompt_registry_update");
     const langchainAgentConfigWriteTool = surfaces.tools.find((surface) => surface.name === "langchain_update_agent_instructions");
     const langchainCredentialIssuanceTool = surfaces.tools.find((surface) => surface.name === "langchain_mint_agent_session_token");
+    const langchainSecretManagerCredentialIssuanceBridgeTool = surfaces.tools.find(
+      (surface) => surface.name === "langchain_issue_vault_backed_agent_credential"
+    );
     const langchainNestedToolInvocationTool = surfaces.tools.find((surface) => surface.name === "langchain_dispatch_privileged_tool");
     const langchainToolOutputPromptBridgeTool = surfaces.tools.find((surface) => surface.name === "langchain_review_privileged_tool_observation");
     const langchainToolOutputMemoryBridgeTool = surfaces.tools.find((surface) => surface.name === "langchain_store_privileged_tool_observation_memory");
@@ -2624,6 +2630,85 @@ describe("scanner", () => {
     ]);
     expect(JSON.stringify(sourceCredentialIssuanceTool)).not.toContain("identityBroker.issueToken");
     expect(JSON.stringify(sourceCredentialIssuanceTool)).not.toContain("Mint an agent session token");
+    expect(sourceSecretManagerCredentialIssuanceBridgeTool).toMatchObject({
+      path: "mcp-source/customer-tools.ts",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["call", "publish", "read", "send", "write"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(sourceSecretManagerCredentialIssuanceBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_mcp_source_tool: true,
+      mcp_source_tool_registration: true,
+      mcp_source_tool_registration_kind: "registerTool",
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_secret_like_input: true,
+      accepts_content_like_input: true,
+      accepts_path_input: true,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      credential_issuance: true,
+      tainted_credential_issuance_input: true,
+      secret_manager_credential_issuance_bridge: true,
+      secret_manager_access: true,
+      tainted_secret_manager_path: true,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_credential_issuance: true,
+      handler_tainted_credential_issuance_input: true,
+      handler_secret_manager_credential_issuance_bridge: true,
+      handler_secret_manager_access: true,
+      handler_tainted_secret_manager_path: true,
+      handler_secret_env_access: true,
+      handler_signal_count: 6,
+      open_world_schema: false
+    });
+    for (const authorityClass of [
+      "credential_issuance",
+      "tainted_credential_issuance_input",
+      "secret_manager_credential_issuance_bridge",
+      "secret_manager_access",
+      "tainted_secret_manager_path"
+    ]) {
+      expect(sourceSecretManagerCredentialIssuanceBridgeTool?.metadata.authority_classes).toContain(authorityClass);
+    }
+    for (const handlerClass of [
+      "handler_credential_issuance",
+      "handler_tainted_credential_issuance_input",
+      "handler_secret_manager_credential_issuance_bridge",
+      "handler_secret_manager_access",
+      "handler_tainted_secret_manager_path"
+    ]) {
+      expect(sourceSecretManagerCredentialIssuanceBridgeTool?.metadata.handler_authority_classes).toContain(handlerClass);
+    }
+    expect(sourceSecretManagerCredentialIssuanceBridgeTool?.metadata.handler_env_key_names).toEqual([
+      "SOURCE_SECRET_CREDENTIAL_ISSUER_TOKEN"
+    ]);
+    expect(sourceSecretManagerCredentialIssuanceBridgeTool?.metadata.schema_properties).toEqual([
+      "customer_id",
+      "requested_scope",
+      "requested_subject",
+      "requester_ticket",
+      "secret_path",
+      "token_audience"
+    ]);
+    expect(sourceSecretManagerCredentialIssuanceBridgeTool?.metadata.required_properties).toEqual([
+      "customer_id",
+      "requested_scope",
+      "requested_subject",
+      "requester_ticket",
+      "secret_path",
+      "token_audience"
+    ]);
+    expect(JSON.stringify(sourceSecretManagerCredentialIssuanceBridgeTool)).not.toContain("vaultClient.readSecret");
+    expect(JSON.stringify(sourceSecretManagerCredentialIssuanceBridgeTool)).not.toContain("identityBroker.issueToken");
+    expect(JSON.stringify(sourceSecretManagerCredentialIssuanceBridgeTool)).not.toContain("secretRecord.value");
+    expect(JSON.stringify(sourceSecretManagerCredentialIssuanceBridgeTool)).not.toContain("vaultSigningKey");
+    expect(JSON.stringify(sourceSecretManagerCredentialIssuanceBridgeTool)).not.toContain("Issue an agent credential");
     expect(sourceNestedToolInvocationTool).toMatchObject({
       path: "mcp-source/customer-tools.ts",
       data_classes: ["confidential", "pii"],
@@ -6734,6 +6819,87 @@ describe("scanner", () => {
     ]);
     expect(JSON.stringify(langchainCredentialIssuanceTool)).not.toContain("identity_broker.issue_token");
     expect(JSON.stringify(langchainCredentialIssuanceTool)).not.toContain("Mint an agent session token");
+    expect(langchainSecretManagerCredentialIssuanceBridgeTool).toMatchObject({
+      path: "framework-tools/langchain_tools.py",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["call", "publish", "read", "send", "write"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(langchainSecretManagerCredentialIssuanceBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_agent_framework_source_tool: true,
+      agent_framework_source_tool: true,
+      agent_framework_source_tool_framework: "langchain",
+      agent_framework_source_tool_registration_kind: "python_tool_decorator",
+      agent_framework_source_tool_argument_count: 6,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_secret_like_input: true,
+      accepts_content_like_input: true,
+      accepts_path_input: true,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      credential_issuance: true,
+      tainted_credential_issuance_input: true,
+      secret_manager_credential_issuance_bridge: true,
+      secret_manager_access: true,
+      tainted_secret_manager_path: true,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_credential_issuance: true,
+      handler_tainted_credential_issuance_input: true,
+      handler_secret_manager_credential_issuance_bridge: true,
+      handler_secret_manager_access: true,
+      handler_tainted_secret_manager_path: true,
+      handler_secret_env_access: true,
+      handler_signal_count: 6,
+      open_world_schema: false
+    });
+    for (const authorityClass of [
+      "credential_issuance",
+      "tainted_credential_issuance_input",
+      "secret_manager_credential_issuance_bridge",
+      "secret_manager_access",
+      "tainted_secret_manager_path"
+    ]) {
+      expect(langchainSecretManagerCredentialIssuanceBridgeTool?.metadata.authority_classes).toContain(authorityClass);
+    }
+    for (const handlerClass of [
+      "handler_credential_issuance",
+      "handler_tainted_credential_issuance_input",
+      "handler_secret_manager_credential_issuance_bridge",
+      "handler_secret_manager_access",
+      "handler_tainted_secret_manager_path"
+    ]) {
+      expect(langchainSecretManagerCredentialIssuanceBridgeTool?.metadata.handler_authority_classes).toContain(handlerClass);
+    }
+    expect(langchainSecretManagerCredentialIssuanceBridgeTool?.metadata.handler_env_key_names).toEqual([
+      "LANGCHAIN_SECRET_CREDENTIAL_ISSUER_TOKEN"
+    ]);
+    expect(langchainSecretManagerCredentialIssuanceBridgeTool?.metadata.schema_properties).toEqual([
+      "customer_id",
+      "requested_scope",
+      "requested_subject",
+      "requester_ticket",
+      "secret_path",
+      "token_audience"
+    ]);
+    expect(langchainSecretManagerCredentialIssuanceBridgeTool?.metadata.required_properties).toEqual([
+      "customer_id",
+      "requested_scope",
+      "requested_subject",
+      "requester_ticket",
+      "secret_path",
+      "token_audience"
+    ]);
+    expect(JSON.stringify(langchainSecretManagerCredentialIssuanceBridgeTool)).not.toContain("vault_client.read_secret");
+    expect(JSON.stringify(langchainSecretManagerCredentialIssuanceBridgeTool)).not.toContain("identity_broker.issue_token");
+    expect(JSON.stringify(langchainSecretManagerCredentialIssuanceBridgeTool)).not.toContain("secret_record.value");
+    expect(JSON.stringify(langchainSecretManagerCredentialIssuanceBridgeTool)).not.toContain("vault_signing_key");
+    expect(JSON.stringify(langchainSecretManagerCredentialIssuanceBridgeTool)).not.toContain("Issue an agent credential");
     expect(langchainNestedToolInvocationTool).toMatchObject({
       path: "framework-tools/langchain_tools.py",
       data_classes: ["confidential", "pii"],

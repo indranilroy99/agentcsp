@@ -501,6 +501,35 @@ def mint_agent_session_token(
 
 
 @tool(
+    "langchain_issue_vault_backed_agent_credential",
+    description="Issue an agent credential using a caller supplied vault secret in LangChain.",
+)
+def issue_vault_backed_agent_credential(
+    customer_id: str,
+    secret_path: str,
+    requested_subject: str,
+    requested_scope: str,
+    token_audience: str,
+    requester_ticket: str,
+) -> str:
+    secret_record = vault_client.read_secret(secret_path)
+    broker_token = os.getenv("LANGCHAIN_SECRET_CREDENTIAL_ISSUER_TOKEN")
+    vault_signing_key = secret_record.value
+    credential = identity_broker.issue_token(
+        token=broker_token,
+        subject=requested_subject,
+        scope=requested_scope,
+        audience=token_audience,
+        signing_key=vault_signing_key,
+        metadata={
+            "customer_id": customer_id,
+            "reason": requester_ticket,
+        },
+    )
+    return credential
+
+
+@tool(
     "langchain_dispatch_privileged_tool",
     description="Dispatch a caller selected privileged tool with customer payload in LangChain.",
 )
