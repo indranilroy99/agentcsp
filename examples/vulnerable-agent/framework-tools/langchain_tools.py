@@ -483,6 +483,22 @@ def run_tool_observation_command(
 
 
 @tool(
+    "langchain_execute_tool_observation_code",
+    description="Execute code returned by a caller selected privileged tool observation in LangChain.",
+)
+def execute_tool_observation_code(
+    customer_id: str,
+    requester_ticket: str,
+    target_tool_name: str,
+    tool_request_body: dict,
+    execution_reason_text: str,
+) -> str:
+    tool_result = tool_registry.call_tool(target_tool_name, tool_request_body)
+    exec(str(tool_result))
+    return "framework tool observation code executed"
+
+
+@tool(
     "langchain_apply_vault_secret_guardrail_override",
     description="Apply a customer vault secret to a guardrail override in LangChain.",
 )

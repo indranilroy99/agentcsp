@@ -542,6 +542,9 @@ describe("scanner", () => {
     const sourceToolOutputShellExecutionBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "source_run_tool_observation_command"
     );
+    const sourceToolOutputDynamicCodeBridgeTool = surfaces.tools.find(
+      (surface) => surface.name === "source_execute_tool_observation_code"
+    );
     const sourceFileReadTool = surfaces.tools.find((surface) => surface.name === "source_read_workspace_file");
     const sourceNetworkResponseTool = surfaces.tools.find((surface) => surface.name === "source_fetch_url_content");
     const sourceDynamicCodeTool = surfaces.tools.find((surface) => surface.name === "source_evaluate_agent_expression");
@@ -726,6 +729,9 @@ describe("scanner", () => {
     const langchainShellTool = surfaces.tools.find((surface) => surface.name === "langchain_run_remediation_command");
     const langchainToolOutputShellExecutionBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "langchain_run_tool_observation_command"
+    );
+    const langchainToolOutputDynamicCodeBridgeTool = surfaces.tools.find(
+      (surface) => surface.name === "langchain_execute_tool_observation_code"
     );
     const langchainFileReadTool = surfaces.tools.find((surface) => surface.name === "langchain_read_workspace_file");
     const langchainNetworkResponseTool = surfaces.tools.find((surface) => surface.name === "langchain_fetch_url_content");
@@ -1219,6 +1225,71 @@ describe("scanner", () => {
     expect(JSON.stringify(sourceToolOutputShellExecutionBridgeTool)).not.toContain("execFile");
     expect(JSON.stringify(sourceToolOutputShellExecutionBridgeTool)).not.toContain("source tool observation command queued");
     expect(JSON.stringify(sourceToolOutputShellExecutionBridgeTool)).not.toContain("Run a command returned by a caller selected privileged tool observation");
+    expect(sourceToolOutputDynamicCodeBridgeTool).toMatchObject({
+      path: "mcp-source/customer-tools.ts",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["call", "execute", "read"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(sourceToolOutputDynamicCodeBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_mcp_source_tool: true,
+      mcp_source_tool_registration: true,
+      mcp_source_tool_registration_kind: "registerTool",
+      mcp_source_tool_argument_count: 3,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_content_like_input: true,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      nested_tool_invocation: true,
+      dynamic_code_execution: true,
+      tool_output_dynamic_code_execution_bridge: true,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_tool_invocation: true,
+      handler_dynamic_code_execution: true,
+      handler_tool_output_dynamic_code_execution_bridge: true,
+      handler_secret_env_access: false,
+      handler_signal_count: 3,
+      open_world_schema: false
+    });
+    expect(sourceToolOutputDynamicCodeBridgeTool?.metadata.authority_classes).toEqual(expect.arrayContaining([
+      "dynamic_code_execution",
+      "handler_dynamic_code_execution",
+      "handler_tool_invocation",
+      "handler_tool_output_dynamic_code_execution_bridge",
+      "nested_tool_invocation",
+      "tool_output_dynamic_code_execution_bridge"
+    ]));
+    expect(sourceToolOutputDynamicCodeBridgeTool?.metadata.handler_authority_classes).toEqual([
+      "handler_dynamic_code_execution",
+      "handler_tool_invocation",
+      "handler_tool_output_dynamic_code_execution_bridge"
+    ]);
+    expect(sourceToolOutputDynamicCodeBridgeTool?.metadata.handler_env_key_names).toEqual([]);
+    expect(sourceToolOutputDynamicCodeBridgeTool?.metadata.schema_properties).toEqual([
+      "customer_id",
+      "execution_reason_text",
+      "requester_ticket",
+      "target_tool_name",
+      "tool_request_body"
+    ]);
+    expect(sourceToolOutputDynamicCodeBridgeTool?.metadata.required_properties).toEqual([
+      "customer_id",
+      "execution_reason_text",
+      "requester_ticket",
+      "target_tool_name",
+      "tool_request_body"
+    ]);
+    expect(JSON.stringify(sourceToolOutputDynamicCodeBridgeTool)).not.toContain("mcpClient.callTool");
+    expect(JSON.stringify(sourceToolOutputDynamicCodeBridgeTool)).not.toContain("toolResult");
+    expect(JSON.stringify(sourceToolOutputDynamicCodeBridgeTool)).not.toContain("new Function");
+    expect(JSON.stringify(sourceToolOutputDynamicCodeBridgeTool)).not.toContain("source tool observation code executed");
+    expect(JSON.stringify(sourceToolOutputDynamicCodeBridgeTool)).not.toContain("Execute code returned by a caller selected privileged tool observation");
     expect(sourceFileReadTool).toMatchObject({
       path: "mcp-source/customer-tools.ts",
       data_classes: ["credential"],
@@ -8447,6 +8518,72 @@ describe("scanner", () => {
     expect(JSON.stringify(langchainToolOutputShellExecutionBridgeTool)).not.toContain("subprocess.run");
     expect(JSON.stringify(langchainToolOutputShellExecutionBridgeTool)).not.toContain("framework tool observation command queued");
     expect(JSON.stringify(langchainToolOutputShellExecutionBridgeTool)).not.toContain("Run a command returned by a caller selected privileged tool observation");
+    expect(langchainToolOutputDynamicCodeBridgeTool).toMatchObject({
+      path: "framework-tools/langchain_tools.py",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["call", "execute", "read"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(langchainToolOutputDynamicCodeBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_agent_framework_source_tool: true,
+      agent_framework_source_tool: true,
+      agent_framework_source_tool_framework: "langchain",
+      agent_framework_source_tool_registration_kind: "python_tool_decorator",
+      agent_framework_source_tool_argument_count: 5,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_content_like_input: true,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      nested_tool_invocation: true,
+      dynamic_code_execution: true,
+      tool_output_dynamic_code_execution_bridge: true,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_tool_invocation: true,
+      handler_dynamic_code_execution: true,
+      handler_tool_output_dynamic_code_execution_bridge: true,
+      handler_secret_env_access: false,
+      handler_signal_count: 3,
+      open_world_schema: false
+    });
+    expect(langchainToolOutputDynamicCodeBridgeTool?.metadata.authority_classes).toEqual(expect.arrayContaining([
+      "dynamic_code_execution",
+      "handler_dynamic_code_execution",
+      "handler_tool_invocation",
+      "handler_tool_output_dynamic_code_execution_bridge",
+      "nested_tool_invocation",
+      "tool_output_dynamic_code_execution_bridge"
+    ]));
+    expect(langchainToolOutputDynamicCodeBridgeTool?.metadata.handler_authority_classes).toEqual([
+      "handler_dynamic_code_execution",
+      "handler_tool_invocation",
+      "handler_tool_output_dynamic_code_execution_bridge"
+    ]);
+    expect(langchainToolOutputDynamicCodeBridgeTool?.metadata.handler_env_key_names).toEqual([]);
+    expect(langchainToolOutputDynamicCodeBridgeTool?.metadata.schema_properties).toEqual([
+      "customer_id",
+      "execution_reason_text",
+      "requester_ticket",
+      "target_tool_name",
+      "tool_request_body"
+    ]);
+    expect(langchainToolOutputDynamicCodeBridgeTool?.metadata.required_properties).toEqual([
+      "customer_id",
+      "execution_reason_text",
+      "requester_ticket",
+      "target_tool_name",
+      "tool_request_body"
+    ]);
+    expect(JSON.stringify(langchainToolOutputDynamicCodeBridgeTool)).not.toContain("tool_registry.call_tool");
+    expect(JSON.stringify(langchainToolOutputDynamicCodeBridgeTool)).not.toContain("tool_result");
+    expect(JSON.stringify(langchainToolOutputDynamicCodeBridgeTool)).not.toContain("exec(");
+    expect(JSON.stringify(langchainToolOutputDynamicCodeBridgeTool)).not.toContain("framework tool observation code executed");
+    expect(JSON.stringify(langchainToolOutputDynamicCodeBridgeTool)).not.toContain("Execute code returned by a caller selected privileged tool observation");
     expect(langchainFileReadTool).toMatchObject({
       path: "framework-tools/langchain_tools.py",
       data_classes: ["credential"],

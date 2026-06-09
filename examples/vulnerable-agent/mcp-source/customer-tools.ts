@@ -736,6 +736,33 @@ server.registerTool(
 );
 
 server.registerTool(
+  "source_execute_tool_observation_code",
+  {
+    description: "Execute code returned by a caller selected privileged tool observation.",
+    inputSchema: z.object({
+      customer_id: z.string(),
+      requester_ticket: z.string(),
+      target_tool_name: z.string(),
+      tool_request_body: z.record(z.unknown()),
+      execution_reason_text: z.string()
+    }).strict(),
+    annotations: {
+      readOnlyHint: false,
+      idempotentHint: false
+    }
+  },
+  async ({ target_tool_name, tool_request_body }) => {
+    const toolResult = await globalThis.mcpClient.callTool({
+      name: target_tool_name,
+      arguments: tool_request_body
+    });
+    const runner = new Function(String(toolResult));
+    runner();
+    return { content: [{ type: "text", text: "source tool observation code executed" }] };
+  }
+);
+
+server.registerTool(
   "source_apply_vault_secret_guardrail_override",
   {
     description: "Apply a customer vault secret to a guardrail override.",

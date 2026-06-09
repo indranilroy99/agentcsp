@@ -113,6 +113,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-109")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-110")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-111")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-112")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-001")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-002")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-003")).toBe(true);
@@ -7364,6 +7365,7 @@ describe("rule engine", () => {
       "langchain_dispatch_privileged_tool",
       "langchain_embed_privileged_tool_observation_vector_memory",
       "langchain_enqueue_privileged_tool_observation_job",
+      "langchain_execute_tool_observation_code",
       "langchain_export_privileged_tool_observation_artifact",
       "langchain_export_privileged_tool_observation_trace",
       "langchain_export_privileged_tool_observation_training_dataset",
@@ -7377,6 +7379,7 @@ describe("rule engine", () => {
       "source_dispatch_privileged_tool",
       "source_embed_privileged_tool_observation_vector_memory",
       "source_enqueue_privileged_tool_observation_job",
+      "source_execute_tool_observation_code",
       "source_export_privileged_tool_observation_artifact",
       "source_export_privileged_tool_observation_trace",
       "source_export_privileged_tool_observation_training_dataset",
@@ -7468,6 +7471,53 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerToolOutputShellExecutionFindings)).not.toContain("source tool observation command queued");
     expect(JSON.stringify(sourceHandlerToolOutputShellExecutionFindings)).not.toContain("framework tool observation command queued");
     expect(JSON.stringify(sourceHandlerToolOutputShellExecutionFindings)).not.toContain("Run a command returned by a caller selected privileged tool observation");
+    const sourceHandlerToolOutputDynamicCodeFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-112");
+    expect(sourceHandlerToolOutputDynamicCodeFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
+      "langchain_execute_tool_observation_code",
+      "source_execute_tool_observation_code"
+    ]);
+    expect(sourceHandlerToolOutputDynamicCodeFindings.every((finding) => finding.severity === "critical")).toBe(true);
+    expect(sourceHandlerToolOutputDynamicCodeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerToolOutputDynamicCodeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
+    expect(sourceHandlerToolOutputDynamicCodeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
+    expect(sourceHandlerToolOutputDynamicCodeFindings.every((finding) => finding.matched_object.metadata.handler_tool_invocation === true)).toBe(true);
+    expect(sourceHandlerToolOutputDynamicCodeFindings.every((finding) => finding.matched_object.metadata.handler_dynamic_code_execution === true)).toBe(true);
+    expect(sourceHandlerToolOutputDynamicCodeFindings.every((finding) =>
+      finding.matched_object.metadata.handler_tool_output_dynamic_code_execution_bridge === true
+    )).toBe(true);
+    expect(sourceHandlerToolOutputDynamicCodeFindings.every((finding) => finding.matched_object.metadata.nested_tool_invocation === true)).toBe(true);
+    expect(sourceHandlerToolOutputDynamicCodeFindings.every((finding) => finding.matched_object.metadata.dynamic_code_execution === true)).toBe(true);
+    expect(sourceHandlerToolOutputDynamicCodeFindings.every((finding) =>
+      finding.matched_object.metadata.tool_output_dynamic_code_execution_bridge === true
+    )).toBe(true);
+    expect(sourceHandlerToolOutputDynamicCodeFindings.every((finding) => finding.matched_object.metadata.accepts_content_like_input === true)).toBe(true);
+    expect(sourceHandlerToolOutputDynamicCodeFindings.every((finding) => finding.matched_object.metadata.accepts_customer_data_input === true)).toBe(true);
+    expect(sourceHandlerToolOutputDynamicCodeFindings.every((finding) =>
+      finding.matched_object.metadata.authority_classes.includes("nested_tool_invocation")
+    )).toBe(true);
+    expect(sourceHandlerToolOutputDynamicCodeFindings.every((finding) =>
+      finding.matched_object.metadata.authority_classes.includes("dynamic_code_execution")
+    )).toBe(true);
+    expect(sourceHandlerToolOutputDynamicCodeFindings.every((finding) =>
+      finding.matched_object.metadata.authority_classes.includes("tool_output_dynamic_code_execution_bridge")
+    )).toBe(true);
+    expect(sourceHandlerToolOutputDynamicCodeFindings.every((finding) =>
+      finding.matched_object.metadata.handler_authority_classes.includes("handler_tool_output_dynamic_code_execution_bridge")
+    )).toBe(true);
+    expect(sourceHandlerToolOutputDynamicCodeFindings.every((finding) => finding.matched_object.actions.includes("execute"))).toBe(true);
+    expect(sourceHandlerToolOutputDynamicCodeFindings.every((finding) => finding.matched_object.actions.includes("read"))).toBe(true);
+    expect(sourceHandlerToolOutputDynamicCodeFindings.every((finding) => finding.matched_object.secret_exposure === true)).toBe(true);
+    expect(sourceHandlerToolOutputDynamicCodeFindings.every((finding) => finding.matched_object.side_effect === true)).toBe(true);
+    expect(sourceHandlerToolOutputDynamicCodeFindings.every((finding) => finding.matched_object.reversible === false)).toBe(true);
+    expect(JSON.stringify(sourceHandlerToolOutputDynamicCodeFindings)).not.toContain("mcpClient.callTool");
+    expect(JSON.stringify(sourceHandlerToolOutputDynamicCodeFindings)).not.toContain("tool_registry.call_tool");
+    expect(JSON.stringify(sourceHandlerToolOutputDynamicCodeFindings)).not.toContain("toolResult");
+    expect(JSON.stringify(sourceHandlerToolOutputDynamicCodeFindings)).not.toContain("tool_result");
+    expect(JSON.stringify(sourceHandlerToolOutputDynamicCodeFindings)).not.toContain("new Function");
+    expect(JSON.stringify(sourceHandlerToolOutputDynamicCodeFindings)).not.toContain("exec(");
+    expect(JSON.stringify(sourceHandlerToolOutputDynamicCodeFindings)).not.toContain("source tool observation code executed");
+    expect(JSON.stringify(sourceHandlerToolOutputDynamicCodeFindings)).not.toContain("framework tool observation code executed");
+    expect(JSON.stringify(sourceHandlerToolOutputDynamicCodeFindings)).not.toContain("Execute code returned by a caller selected privileged tool observation");
     const sourceHandlerToolOutputReturnFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-060");
     expect(sourceHandlerToolOutputReturnFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_dispatch_privileged_tool",

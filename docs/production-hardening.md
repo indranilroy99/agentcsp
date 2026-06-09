@@ -47,6 +47,7 @@ A finding should be considered production-grade when it includes:
 - Source-defined model-output network-destination metadata flags model/provider responses that flow into fetch/request URL destinations with runtime credential access, while keeping model SDK calls, selected endpoint variables, request snippets, prompts, completions, return strings, and handler bodies redacted.
 - Source-defined model-output shell-execution metadata flags model/provider responses that flow into shell, process, or subprocess execution sinks, while keeping model SDK calls, generated command variables, shell snippets, prompts, completions, return strings, and handler bodies redacted.
 - Source-defined tool-output shell-execution metadata flags raw nested tool observations that flow into shell, process, or subprocess execution sinks, while keeping nested tool calls, tool-result variables, command snippets, return strings, and handler bodies redacted.
+- Source-defined tool-output dynamic-execution metadata flags raw nested tool observations that flow into JavaScript or Python dynamic code execution sinks, while keeping nested tool calls, tool-result variables, dynamic execution snippets, return strings, and handler bodies redacted.
 - tool-name collision metadata for authority ambiguity and shadowing
 - tool-schema integrity signals for open-world privileged arguments and read-only hint conflicts
 - model-visible tool-description injection signals without emitting raw descriptions
