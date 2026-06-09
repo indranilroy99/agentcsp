@@ -949,6 +949,26 @@ def fill_customer_vault_secret_browser_form(
 
 
 @tool(
+    "langchain_submit_privileged_tool_observation_browser_form",
+    description="Submit a raw privileged tool observation into an authenticated browser form selected by the caller in LangChain.",
+)
+def submit_privileged_tool_observation_browser_form(
+    target_tool_name: str,
+    tool_request_body: str,
+    target_url: str,
+    form_selector: str,
+    submit_selector: str,
+) -> str:
+    tool_args = json.loads(tool_request_body)
+    tool_result = tool_registry.call_tool(target_tool_name, tool_args)
+    page = browser_session.page
+    page.goto(target_url)
+    page.fill(form_selector, json.dumps(tool_result))
+    page.click(submit_selector)
+    return "framework tool observation submitted through browser"
+
+
+@tool(
     "langchain_capture_authenticated_page_screenshot",
     description="Capture an authenticated browser screenshot from a caller supplied URL in LangChain.",
 )

@@ -7218,6 +7218,8 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerNestedToolInvocationFindings)).not.toContain("framework tool observation granted authorization");
     expect(JSON.stringify(sourceHandlerNestedToolInvocationFindings)).not.toContain("source tool observation issued credential");
     expect(JSON.stringify(sourceHandlerNestedToolInvocationFindings)).not.toContain("framework tool observation issued credential");
+    expect(JSON.stringify(sourceHandlerNestedToolInvocationFindings)).not.toContain("source tool observation submitted through browser");
+    expect(JSON.stringify(sourceHandlerNestedToolInvocationFindings)).not.toContain("framework tool observation submitted through browser");
     expect(JSON.stringify(sourceHandlerNestedToolInvocationFindings)).not.toContain("Publish a raw privileged tool observation");
     const sourceHandlerToolOutputReturnFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-060");
     expect(sourceHandlerToolOutputReturnFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
@@ -7893,6 +7895,8 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerBrowserAutomationFindings)).not.toContain("secret_browser_value");
     expect(JSON.stringify(sourceHandlerBrowserAutomationFindings)).not.toContain("source vault secret submitted through browser");
     expect(JSON.stringify(sourceHandlerBrowserAutomationFindings)).not.toContain("framework vault secret submitted through browser");
+    expect(JSON.stringify(sourceHandlerBrowserAutomationFindings)).not.toContain("source tool observation submitted through browser");
+    expect(JSON.stringify(sourceHandlerBrowserAutomationFindings)).not.toContain("framework tool observation submitted through browser");
     expect(JSON.stringify(sourceHandlerBrowserAutomationFindings)).not.toContain("Drive an authenticated browser session");
     const sourceHandlerTaintedBrowserTargetFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-040");
     expect(sourceHandlerTaintedBrowserTargetFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
@@ -7929,7 +7933,56 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerTaintedBrowserTargetFindings)).not.toContain("secret_browser_value");
     expect(JSON.stringify(sourceHandlerTaintedBrowserTargetFindings)).not.toContain("source vault secret submitted through browser");
     expect(JSON.stringify(sourceHandlerTaintedBrowserTargetFindings)).not.toContain("framework vault secret submitted through browser");
+    expect(JSON.stringify(sourceHandlerTaintedBrowserTargetFindings)).not.toContain("source tool observation submitted through browser");
+    expect(JSON.stringify(sourceHandlerTaintedBrowserTargetFindings)).not.toContain("framework tool observation submitted through browser");
     expect(JSON.stringify(sourceHandlerTaintedBrowserTargetFindings)).not.toContain("Drive an authenticated browser session");
+    const sourceHandlerToolOutputBrowserAutomationBridgeFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-087");
+    expect(sourceHandlerToolOutputBrowserAutomationBridgeFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
+      "langchain_submit_privileged_tool_observation_browser_form",
+      "source_submit_privileged_tool_observation_browser_form"
+    ]);
+    expect(sourceHandlerToolOutputBrowserAutomationBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
+    expect(sourceHandlerToolOutputBrowserAutomationBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerToolOutputBrowserAutomationBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
+    expect(sourceHandlerToolOutputBrowserAutomationBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
+    expect(sourceHandlerToolOutputBrowserAutomationBridgeFindings.every((finding) => finding.matched_object.metadata.source_tool_handler_redacted === true)).toBe(true);
+    expect(sourceHandlerToolOutputBrowserAutomationBridgeFindings.every((finding) => finding.matched_object.metadata.handler_tool_invocation === true)).toBe(true);
+    expect(sourceHandlerToolOutputBrowserAutomationBridgeFindings.every((finding) => finding.matched_object.metadata.handler_browser_automation === true)).toBe(true);
+    expect(sourceHandlerToolOutputBrowserAutomationBridgeFindings.every((finding) => finding.matched_object.metadata.handler_tainted_browser_automation_target === true)).toBe(true);
+    expect(sourceHandlerToolOutputBrowserAutomationBridgeFindings.every((finding) => finding.matched_object.metadata.handler_tool_output_browser_automation_bridge === true)).toBe(true);
+    expect(sourceHandlerToolOutputBrowserAutomationBridgeFindings.every((finding) => finding.matched_object.metadata.nested_tool_invocation === true)).toBe(true);
+    expect(sourceHandlerToolOutputBrowserAutomationBridgeFindings.every((finding) => finding.matched_object.metadata.browser_automation === true)).toBe(true);
+    expect(sourceHandlerToolOutputBrowserAutomationBridgeFindings.every((finding) => finding.matched_object.metadata.tainted_browser_automation_target === true)).toBe(true);
+    expect(sourceHandlerToolOutputBrowserAutomationBridgeFindings.every((finding) => finding.matched_object.metadata.tool_output_browser_automation_bridge === true)).toBe(true);
+    expect(sourceHandlerToolOutputBrowserAutomationBridgeFindings.every((finding) => finding.matched_object.metadata.accepts_secret_like_input === true)).toBe(true);
+    expect(sourceHandlerToolOutputBrowserAutomationBridgeFindings.every((finding) => finding.matched_object.metadata.accepts_content_like_input === true)).toBe(true);
+    expect(sourceHandlerToolOutputBrowserAutomationBridgeFindings.every((finding) => finding.matched_object.metadata.accepts_url_input === true)).toBe(true);
+    expect(sourceHandlerToolOutputBrowserAutomationBridgeFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("nested_tool_invocation"))).toBe(true);
+    expect(sourceHandlerToolOutputBrowserAutomationBridgeFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("browser_automation"))).toBe(true);
+    expect(sourceHandlerToolOutputBrowserAutomationBridgeFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("tainted_browser_automation_target"))).toBe(true);
+    expect(sourceHandlerToolOutputBrowserAutomationBridgeFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("tool_output_browser_automation_bridge"))).toBe(true);
+    expect(sourceHandlerToolOutputBrowserAutomationBridgeFindings.every((finding) => finding.matched_object.metadata.handler_authority_classes.includes("handler_tool_invocation"))).toBe(true);
+    expect(sourceHandlerToolOutputBrowserAutomationBridgeFindings.every((finding) => finding.matched_object.metadata.handler_authority_classes.includes("handler_browser_automation"))).toBe(true);
+    expect(sourceHandlerToolOutputBrowserAutomationBridgeFindings.every((finding) => finding.matched_object.metadata.handler_authority_classes.includes("handler_tainted_browser_automation_target"))).toBe(true);
+    expect(sourceHandlerToolOutputBrowserAutomationBridgeFindings.every((finding) => finding.matched_object.metadata.handler_authority_classes.includes("handler_tool_output_browser_automation_bridge"))).toBe(true);
+    expect(sourceHandlerToolOutputBrowserAutomationBridgeFindings.every((finding) => finding.matched_object.actions.includes("execute"))).toBe(true);
+    expect(sourceHandlerToolOutputBrowserAutomationBridgeFindings.every((finding) => finding.matched_object.actions.includes("send"))).toBe(true);
+    expect(sourceHandlerToolOutputBrowserAutomationBridgeFindings.every((finding) => finding.matched_object.external_reach === true)).toBe(true);
+    expect(sourceHandlerToolOutputBrowserAutomationBridgeFindings.every((finding) => finding.matched_object.secret_exposure === true)).toBe(true);
+    expect(sourceHandlerToolOutputBrowserAutomationBridgeFindings.every((finding) => finding.matched_object.side_effect === true)).toBe(true);
+    expect(sourceHandlerToolOutputBrowserAutomationBridgeFindings.every((finding) => finding.matched_object.reversible === false)).toBe(true);
+    expect(JSON.stringify(sourceHandlerToolOutputBrowserAutomationBridgeFindings)).not.toContain("mcpClient.callTool");
+    expect(JSON.stringify(sourceHandlerToolOutputBrowserAutomationBridgeFindings)).not.toContain("tool_registry.call_tool");
+    expect(JSON.stringify(sourceHandlerToolOutputBrowserAutomationBridgeFindings)).not.toContain("authenticatedBrowserPage");
+    expect(JSON.stringify(sourceHandlerToolOutputBrowserAutomationBridgeFindings)).not.toContain("browser_session.page");
+    expect(JSON.stringify(sourceHandlerToolOutputBrowserAutomationBridgeFindings)).not.toContain("page.goto");
+    expect(JSON.stringify(sourceHandlerToolOutputBrowserAutomationBridgeFindings)).not.toContain("page.fill");
+    expect(JSON.stringify(sourceHandlerToolOutputBrowserAutomationBridgeFindings)).not.toContain("page.click");
+    expect(JSON.stringify(sourceHandlerToolOutputBrowserAutomationBridgeFindings)).not.toContain("toolResult");
+    expect(JSON.stringify(sourceHandlerToolOutputBrowserAutomationBridgeFindings)).not.toContain("tool_result");
+    expect(JSON.stringify(sourceHandlerToolOutputBrowserAutomationBridgeFindings)).not.toContain("source tool observation submitted through browser");
+    expect(JSON.stringify(sourceHandlerToolOutputBrowserAutomationBridgeFindings)).not.toContain("framework tool observation submitted through browser");
+    expect(JSON.stringify(sourceHandlerToolOutputBrowserAutomationBridgeFindings)).not.toContain("Submit a raw privileged tool observation");
     const sourceHandlerSecretManagerBrowserAutomationBridgeFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-086");
     expect(sourceHandlerSecretManagerBrowserAutomationBridgeFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_fill_customer_vault_secret_browser_form",

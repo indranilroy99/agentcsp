@@ -606,6 +606,9 @@ describe("scanner", () => {
       (surface) => surface.name === "source_delegate_privileged_tool_observation_remote_agent"
     );
     const sourceBrowserAutomationTool = surfaces.tools.find((surface) => surface.name === "source_submit_customer_browser_form");
+    const sourceToolOutputBrowserAutomationBridgeTool = surfaces.tools.find(
+      (surface) => surface.name === "source_submit_privileged_tool_observation_browser_form"
+    );
     const sourceSecretManagerBrowserAutomationBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "source_fill_customer_vault_secret_browser_form"
     );
@@ -716,6 +719,9 @@ describe("scanner", () => {
       (surface) => surface.name === "langchain_delegate_privileged_tool_observation_remote_agent"
     );
     const langchainBrowserAutomationTool = surfaces.tools.find((surface) => surface.name === "langchain_submit_customer_browser_form");
+    const langchainToolOutputBrowserAutomationBridgeTool = surfaces.tools.find(
+      (surface) => surface.name === "langchain_submit_privileged_tool_observation_browser_form"
+    );
     const langchainSecretManagerBrowserAutomationBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "langchain_fill_customer_vault_secret_browser_form"
     );
@@ -4255,6 +4261,82 @@ describe("scanner", () => {
     expect(JSON.stringify(sourceBrowserAutomationTool)).not.toContain("page.fill");
     expect(JSON.stringify(sourceBrowserAutomationTool)).not.toContain("page.click");
     expect(JSON.stringify(sourceBrowserAutomationTool)).not.toContain("Drive an authenticated browser session");
+    expect(sourceToolOutputBrowserAutomationBridgeTool).toMatchObject({
+      path: "mcp-source/customer-tools.ts",
+      data_classes: ["credential"],
+      actions: ["call", "execute", "send"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(sourceToolOutputBrowserAutomationBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_mcp_source_tool: true,
+      mcp_source_tool_registration: true,
+      mcp_source_tool_registration_kind: "registerTool",
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_secret_like_input: true,
+      accepts_content_like_input: true,
+      accepts_url_input: true,
+      nested_tool_invocation: true,
+      browser_automation: true,
+      tainted_browser_automation_target: true,
+      tool_output_browser_automation_bridge: true,
+      secret_manager_browser_automation_bridge: false,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_tool_invocation: true,
+      handler_browser_automation: true,
+      handler_tainted_browser_automation_target: true,
+      handler_tool_output_browser_automation_bridge: true,
+      handler_signal_count: 4,
+      open_world_schema: false
+    });
+    expect(sourceToolOutputBrowserAutomationBridgeTool?.metadata.authority_classes).toEqual([
+      "browser_automation",
+      "browser_control",
+      "content_input",
+      "credential_input",
+      "handler_browser_automation",
+      "handler_tainted_browser_automation_target",
+      "handler_tool_invocation",
+      "handler_tool_output_browser_automation_bridge",
+      "nested_tool_invocation",
+      "network_access",
+      "tainted_browser_automation_target",
+      "tool_output_browser_automation_bridge"
+    ]);
+    expect(sourceToolOutputBrowserAutomationBridgeTool?.metadata.handler_authority_classes).toEqual([
+      "handler_browser_automation",
+      "handler_tainted_browser_automation_target",
+      "handler_tool_invocation",
+      "handler_tool_output_browser_automation_bridge"
+    ]);
+    expect(sourceToolOutputBrowserAutomationBridgeTool?.metadata.handler_env_key_names).toEqual([]);
+    expect(sourceToolOutputBrowserAutomationBridgeTool?.metadata.schema_properties).toEqual([
+      "form_selector",
+      "submit_selector",
+      "target_tool_name",
+      "target_url",
+      "tool_request_body"
+    ]);
+    expect(sourceToolOutputBrowserAutomationBridgeTool?.metadata.required_properties).toEqual([
+      "form_selector",
+      "submit_selector",
+      "target_tool_name",
+      "target_url",
+      "tool_request_body"
+    ]);
+    expect(JSON.stringify(sourceToolOutputBrowserAutomationBridgeTool)).not.toContain("mcpClient.callTool");
+    expect(JSON.stringify(sourceToolOutputBrowserAutomationBridgeTool)).not.toContain("authenticatedBrowserPage");
+    expect(JSON.stringify(sourceToolOutputBrowserAutomationBridgeTool)).not.toContain("page.goto");
+    expect(JSON.stringify(sourceToolOutputBrowserAutomationBridgeTool)).not.toContain("page.fill");
+    expect(JSON.stringify(sourceToolOutputBrowserAutomationBridgeTool)).not.toContain("page.click");
+    expect(JSON.stringify(sourceToolOutputBrowserAutomationBridgeTool)).not.toContain("toolResult");
+    expect(JSON.stringify(sourceToolOutputBrowserAutomationBridgeTool)).not.toContain("source tool observation submitted through browser");
+    expect(JSON.stringify(sourceToolOutputBrowserAutomationBridgeTool)).not.toContain("Submit a raw privileged tool observation");
     expect(sourceSecretManagerBrowserAutomationBridgeTool).toMatchObject({
       path: "mcp-source/customer-tools.ts",
       data_classes: ["confidential", "credential", "pii"],
@@ -9372,6 +9454,84 @@ describe("scanner", () => {
     expect(JSON.stringify(langchainBrowserAutomationTool)).not.toContain("page.fill");
     expect(JSON.stringify(langchainBrowserAutomationTool)).not.toContain("page.click");
     expect(JSON.stringify(langchainBrowserAutomationTool)).not.toContain("Drive an authenticated browser session");
+    expect(langchainToolOutputBrowserAutomationBridgeTool).toMatchObject({
+      path: "framework-tools/langchain_tools.py",
+      data_classes: ["credential"],
+      actions: ["call", "execute", "send"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(langchainToolOutputBrowserAutomationBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_agent_framework_source_tool: true,
+      agent_framework_source_tool: true,
+      agent_framework_source_tool_framework: "langchain",
+      agent_framework_source_tool_registration_kind: "python_tool_decorator",
+      agent_framework_source_tool_argument_count: 5,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_secret_like_input: true,
+      accepts_content_like_input: true,
+      accepts_url_input: true,
+      nested_tool_invocation: true,
+      browser_automation: true,
+      tainted_browser_automation_target: true,
+      tool_output_browser_automation_bridge: true,
+      secret_manager_browser_automation_bridge: false,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_tool_invocation: true,
+      handler_browser_automation: true,
+      handler_tainted_browser_automation_target: true,
+      handler_tool_output_browser_automation_bridge: true,
+      handler_signal_count: 4,
+      open_world_schema: false
+    });
+    expect(langchainToolOutputBrowserAutomationBridgeTool?.metadata.authority_classes).toEqual([
+      "browser_automation",
+      "browser_control",
+      "content_input",
+      "credential_input",
+      "handler_browser_automation",
+      "handler_tainted_browser_automation_target",
+      "handler_tool_invocation",
+      "handler_tool_output_browser_automation_bridge",
+      "nested_tool_invocation",
+      "network_access",
+      "tainted_browser_automation_target",
+      "tool_output_browser_automation_bridge"
+    ]);
+    expect(langchainToolOutputBrowserAutomationBridgeTool?.metadata.handler_authority_classes).toEqual([
+      "handler_browser_automation",
+      "handler_tainted_browser_automation_target",
+      "handler_tool_invocation",
+      "handler_tool_output_browser_automation_bridge"
+    ]);
+    expect(langchainToolOutputBrowserAutomationBridgeTool?.metadata.handler_env_key_names).toEqual([]);
+    expect(langchainToolOutputBrowserAutomationBridgeTool?.metadata.schema_properties).toEqual([
+      "form_selector",
+      "submit_selector",
+      "target_tool_name",
+      "target_url",
+      "tool_request_body"
+    ]);
+    expect(langchainToolOutputBrowserAutomationBridgeTool?.metadata.required_properties).toEqual([
+      "form_selector",
+      "submit_selector",
+      "target_tool_name",
+      "target_url",
+      "tool_request_body"
+    ]);
+    expect(JSON.stringify(langchainToolOutputBrowserAutomationBridgeTool)).not.toContain("tool_registry.call_tool");
+    expect(JSON.stringify(langchainToolOutputBrowserAutomationBridgeTool)).not.toContain("browser_session.page");
+    expect(JSON.stringify(langchainToolOutputBrowserAutomationBridgeTool)).not.toContain("page.goto");
+    expect(JSON.stringify(langchainToolOutputBrowserAutomationBridgeTool)).not.toContain("page.fill");
+    expect(JSON.stringify(langchainToolOutputBrowserAutomationBridgeTool)).not.toContain("page.click");
+    expect(JSON.stringify(langchainToolOutputBrowserAutomationBridgeTool)).not.toContain("tool_result");
+    expect(JSON.stringify(langchainToolOutputBrowserAutomationBridgeTool)).not.toContain("framework tool observation submitted through browser");
+    expect(JSON.stringify(langchainToolOutputBrowserAutomationBridgeTool)).not.toContain("Submit a raw privileged tool observation");
     expect(langchainSecretManagerBrowserAutomationBridgeTool).toMatchObject({
       path: "framework-tools/langchain_tools.py",
       data_classes: ["confidential", "credential", "pii"],

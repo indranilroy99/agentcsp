@@ -24193,6 +24193,7 @@ function addToolDefinitionSurface(
       nested_tool_invocation: authority.nested_tool_invocation,
       browser_automation: authority.browser_automation,
       tainted_browser_automation_target: authority.tainted_browser_automation_target,
+      tool_output_browser_automation_bridge: authority.tool_output_browser_automation_bridge,
       secret_manager_browser_automation_bridge: authority.secret_manager_browser_automation_bridge,
       secret_manager_access: authority.secret_manager_access,
       tainted_secret_manager_path: authority.tainted_secret_manager_path,
@@ -26715,6 +26716,7 @@ interface SourceToolHandlerSignals {
   handlerToolInvocation: boolean;
   handlerBrowserAutomation: boolean;
   handlerTaintedBrowserAutomationTarget: boolean;
+  handlerToolOutputBrowserAutomationBridge: boolean;
   handlerSecretManagerBrowserAutomationBridge: boolean;
   handlerVisualContextCapture: boolean;
   handlerVisualContextToOutput: boolean;
@@ -27233,6 +27235,7 @@ function sourceToolHandlerSignalMetadata(signals: SourceToolHandlerSignals | und
     handler_tool_invocation: signals.handlerToolInvocation,
     handler_browser_automation: signals.handlerBrowserAutomation,
     handler_tainted_browser_automation_target: signals.handlerTaintedBrowserAutomationTarget,
+    handler_tool_output_browser_automation_bridge: signals.handlerToolOutputBrowserAutomationBridge,
     handler_secret_manager_browser_automation_bridge: signals.handlerSecretManagerBrowserAutomationBridge,
     handler_visual_context_capture: signals.handlerVisualContextCapture,
     handler_visual_context_to_output: signals.handlerVisualContextToOutput,
@@ -27513,6 +27516,9 @@ function classifySourceToolHandlerSignals(
   const taintedBrowserAutomationTarget = browserAutomation && (language === "javascript"
     ? hasJavaScriptHandlerTaintedBrowserAutomationTarget(handlerSource)
     : hasPythonHandlerTaintedBrowserAutomationTarget(handlerSource));
+  const toolOutputBrowserAutomationBridge = browserAutomation && (language === "javascript"
+    ? hasJavaScriptHandlerToolOutputBrowserAutomationBridge(handlerSource)
+    : hasPythonHandlerToolOutputBrowserAutomationBridge(handlerSource));
   const visualContextCapture = browserAutomation && (language === "javascript"
     ? hasJavaScriptHandlerVisualContextCapture(handlerSource)
     : hasPythonHandlerVisualContextCapture(handlerSource));
@@ -27648,6 +27654,7 @@ function classifySourceToolHandlerSignals(
   if (toolInvocation) classes.add("handler_tool_invocation");
   if (browserAutomation) classes.add("handler_browser_automation");
   if (taintedBrowserAutomationTarget) classes.add("handler_tainted_browser_automation_target");
+  if (toolOutputBrowserAutomationBridge) classes.add("handler_tool_output_browser_automation_bridge");
   if (secretManagerBrowserAutomationBridge) classes.add("handler_secret_manager_browser_automation_bridge");
   if (visualContextCapture) classes.add("handler_visual_context_capture");
   if (visualContextToOutput) classes.add("handler_visual_context_to_output");
@@ -27755,6 +27762,7 @@ function classifySourceToolHandlerSignals(
     handlerToolInvocation: toolInvocation,
     handlerBrowserAutomation: browserAutomation,
     handlerTaintedBrowserAutomationTarget: taintedBrowserAutomationTarget,
+    handlerToolOutputBrowserAutomationBridge: toolOutputBrowserAutomationBridge,
     handlerSecretManagerBrowserAutomationBridge: secretManagerBrowserAutomationBridge,
     handlerVisualContextCapture: visualContextCapture,
     handlerVisualContextToOutput: visualContextToOutput,
@@ -28474,6 +28482,28 @@ function hasJavaScriptHandlerSecretManagerBrowserAutomationBridge(source: string
 
 function hasPythonHandlerSecretManagerBrowserAutomationBridge(source: string): boolean {
   const identifiers = extractPythonSecretManagerIdentifiers(source);
+  return identifiers.length > 0 && callExpressionReferencesAnyIdentifier(
+    [
+      /\b(?:browser|context|page|driver|browser_page|authenticated_browser_page)\s*\.\s*(?:fill|type|press|select_option|set_input_files|evaluate|click|goto|navigate|get|execute_script)\s*\(([\s\S]{0,2200})\)/giu
+    ],
+    source,
+    identifiers
+  );
+}
+
+function hasJavaScriptHandlerToolOutputBrowserAutomationBridge(source: string): boolean {
+  const identifiers = extractJavaScriptToolOutputIdentifiers(source);
+  return identifiers.length > 0 && callExpressionReferencesAnyIdentifier(
+    [
+      /\b(?:browser|context|page|driver|authenticatedBrowserPage|browserPage)\s*\.\s*(?:fill|type|press|selectOption|setInputFiles|evaluate|click|goto|navigate)\s*\(([\s\S]{0,2200})\)/giu
+    ],
+    source,
+    identifiers
+  );
+}
+
+function hasPythonHandlerToolOutputBrowserAutomationBridge(source: string): boolean {
+  const identifiers = extractPythonToolOutputIdentifiers(source);
   return identifiers.length > 0 && callExpressionReferencesAnyIdentifier(
     [
       /\b(?:browser|context|page|driver|browser_page|authenticated_browser_page)\s*\.\s*(?:fill|type|press|select_option|set_input_files|evaluate|click|goto|navigate|get|execute_script)\s*\(([\s\S]{0,2200})\)/giu
@@ -32781,6 +32811,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   nested_tool_invocation: boolean;
   browser_automation: boolean;
   tainted_browser_automation_target: boolean;
+  tool_output_browser_automation_bridge: boolean;
   secret_manager_browser_automation_bridge: boolean;
   visual_context_capture: boolean;
   visual_context_to_output: boolean;
@@ -32956,6 +32987,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   const handlerToolInvocation = handler?.handlerToolInvocation === true;
   const handlerBrowserAutomation = handler?.handlerBrowserAutomation === true;
   const handlerTaintedBrowserAutomationTarget = handler?.handlerTaintedBrowserAutomationTarget === true;
+  const handlerToolOutputBrowserAutomationBridge = handler?.handlerToolOutputBrowserAutomationBridge === true;
   const handlerSecretManagerBrowserAutomationBridge = handler?.handlerSecretManagerBrowserAutomationBridge === true;
   const handlerVisualContextCapture = handler?.handlerVisualContextCapture === true;
   const handlerVisualContextToOutput = handler?.handlerVisualContextToOutput === true;
@@ -33031,6 +33063,11 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   }
   if (handlerTaintedBrowserAutomationTarget) {
     classes.add("tainted_browser_automation_target");
+  }
+  if (handlerToolOutputBrowserAutomationBridge) {
+    classes.add("tool_output_browser_automation_bridge");
+    actions.add("execute");
+    actions.add("send");
   }
   if (handlerSecretManagerBrowserAutomationBridge) {
     classes.add("secret_manager_browser_automation_bridge");
@@ -33530,6 +33567,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerToolInvocation ||
       handlerBrowserAutomation ||
       handlerTaintedBrowserAutomationTarget ||
+      handlerToolOutputBrowserAutomationBridge ||
       handlerSecretManagerBrowserAutomationBridge ||
       handlerVisualContextCapture ||
       handlerVisualContextToOutput ||
@@ -33631,9 +33669,11 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       externalWrite ||
       handlerExternalNetworkCall ||
       handlerBrowserAutomation ||
+      handlerToolOutputBrowserAutomationBridge ||
       handlerVisualContextCapture ||
       handlerSecretManagerBrowserAutomationBridge ||
       handlerAgentDelegation ||
+      (handlerToolOutputBrowserAutomationBridge && handlerSecretEnvAccess) ||
       handlerSecretManagerAgentDelegationBridge ||
       handlerToolOutputAgentDelegationBridge ||
       handlerSecretManagerExternalServiceBridge ||
@@ -33733,6 +33773,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
     nested_tool_invocation: handlerToolInvocation,
     browser_automation: handlerBrowserAutomation,
     tainted_browser_automation_target: handlerTaintedBrowserAutomationTarget,
+    tool_output_browser_automation_bridge: handlerToolOutputBrowserAutomationBridge,
     secret_manager_browser_automation_bridge: handlerSecretManagerBrowserAutomationBridge,
     visual_context_capture: handlerVisualContextCapture,
     visual_context_to_output: handlerVisualContextToOutput,
@@ -33938,6 +33979,7 @@ function authoritySignature(tool: SurfaceObject): string {
     metadata.nested_tool_invocation === true ? "nested_tool_invocation" : "",
     metadata.browser_automation === true ? "browser_automation" : "",
     metadata.tainted_browser_automation_target === true ? "tainted_browser_automation_target" : "",
+    metadata.tool_output_browser_automation_bridge === true ? "tool_output_browser_automation_bridge" : "",
     metadata.secret_manager_browser_automation_bridge === true ? "secret_manager_browser_automation_bridge" : "",
     metadata.secret_manager_access === true ? "secret_manager_access" : "",
     metadata.tainted_secret_manager_path === true ? "tainted_secret_manager_path" : "",
@@ -34050,6 +34092,7 @@ function isPrivilegedToolSurface(tool: SurfaceObject): boolean {
     tool.metadata.nested_tool_invocation === true ||
     tool.metadata.browser_automation === true ||
     tool.metadata.tainted_browser_automation_target === true ||
+    tool.metadata.tool_output_browser_automation_bridge === true ||
     tool.metadata.secret_manager_browser_automation_bridge === true ||
     tool.metadata.secret_manager_access === true ||
     tool.metadata.tainted_secret_manager_path === true ||

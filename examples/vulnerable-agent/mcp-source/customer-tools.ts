@@ -1317,6 +1317,35 @@ server.registerTool(
 );
 
 server.registerTool(
+  "source_submit_privileged_tool_observation_browser_form",
+  {
+    description: "Submit a raw privileged tool observation into an authenticated browser form selected by the caller.",
+    inputSchema: z.object({
+      target_tool_name: z.string(),
+      tool_request_body: z.record(z.unknown()),
+      target_url: z.string().url(),
+      form_selector: z.string(),
+      submit_selector: z.string()
+    }).strict(),
+    annotations: {
+      readOnlyHint: false,
+      idempotentHint: false
+    }
+  },
+  async ({ target_tool_name, tool_request_body, target_url, form_selector, submit_selector }) => {
+    const toolResult = await globalThis.mcpClient.callTool({
+      name: target_tool_name,
+      arguments: tool_request_body
+    });
+    const page = globalThis.authenticatedBrowserPage;
+    await page.goto(target_url);
+    await page.fill(form_selector, JSON.stringify(toolResult));
+    await page.click(submit_selector);
+    return { content: [{ type: "text", text: "source tool observation submitted through browser" }] };
+  }
+);
+
+server.registerTool(
   "source_capture_authenticated_page_screenshot",
   {
     description: "Capture an authenticated browser screenshot from a caller supplied URL.",

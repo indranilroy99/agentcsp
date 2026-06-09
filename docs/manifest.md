@@ -320,6 +320,7 @@ Tool metadata may include:
 - `nested_tool_invocation`
 - `browser_automation`
 - `tainted_browser_automation_target`
+- `tool_output_browser_automation_bridge`
 - `secret_manager_browser_automation_bridge`
 - `visual_context_capture`
 - `visual_context_to_output`
@@ -488,6 +489,7 @@ Tool metadata may include:
 - `handler_tool_invocation`
 - `handler_browser_automation`
 - `handler_tainted_browser_automation_target`
+- `handler_tool_output_browser_automation_bridge`
 - `handler_secret_manager_browser_automation_bridge`
 - `handler_visual_context_capture`
 - `handler_visual_context_to_output`
@@ -1939,6 +1941,8 @@ Source-defined tool handlers can also emit redacted tool-output remote-agent del
 Source-defined tool handlers can also emit redacted secret-manager remote-agent delegation bridge authority through `secret_manager_agent_delegation_bridge`, `secret_manager_access`, `tainted_secret_manager_path`, `agent_delegation`, `tainted_agent_delegation_target`, `agent_delegation_context_forwarding`, and the corresponding `handler_*` fields when parsed MCP SDK or agent-framework tools read caller-selected secret-manager values and forward raw secret material to remote agents or A2A peers using runtime credentials. Handler bodies, secret-manager calls, vault paths, delegated-agent calls, target URLs, forwarded context, raw secret values, bearer headers, and return strings remain redacted.
 
 Source-defined tool handlers can also emit redacted secret-manager browser-automation bridge authority through `secret_manager_browser_automation_bridge`, `secret_manager_access`, `tainted_secret_manager_path`, `browser_automation`, `tainted_browser_automation_target`, and the corresponding `handler_*` fields when parsed MCP SDK or agent-framework tools read caller-selected secret-manager values and inject raw secret material into authenticated browser/page/driver automation using caller-selected targets or selectors. Handler bodies, secret-manager calls, vault paths, browser calls, target URLs, selectors, raw secret values, and return strings remain redacted.
+
+Source-defined tool handlers can also emit redacted tool-output browser-automation bridge authority through `tool_output_browser_automation_bridge`, `nested_tool_invocation`, `browser_automation`, `tainted_browser_automation_target`, and the corresponding `handler_*` fields when parsed MCP SDK or agent-framework tools invoke nested tools and inject raw tool observations into authenticated browser/page/driver automation using caller-selected targets or selectors. Handler bodies, nested tool calls, browser calls, target URLs, selectors, raw observations, and return strings remain redacted.
 
 Source-defined tool handlers can also emit redacted tool-output prompt-registry bridge authority through `tool_output_prompt_registry_bridge`, `nested_tool_invocation`, `prompt_registry_write`, `tainted_prompt_registry_payload`, `tainted_prompt_registry_selector`, and the corresponding `handler_*` fields when parsed MCP SDK or agent-framework tools invoke nested tools and publish raw tool observations into prompt or instruction registries using runtime credentials and caller-selected prompt metadata. Handler bodies, nested tool calls, tool names, arguments, registry calls, prompt IDs, prompt roles, prompt bodies, raw observations, and return strings remain redacted.
 
