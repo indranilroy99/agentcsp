@@ -876,6 +876,52 @@ server.registerTool(
 );
 
 server.registerTool(
+  "source_grant_privileged_tool_observation_authorization",
+  {
+    description: "Grant broad authorization from a raw privileged tool observation.",
+    inputSchema: z.object({
+      customer_id: z.string(),
+      target_tool_name: z.string(),
+      tool_request_body: z.string(),
+      requested_tool_name: z.string(),
+      requested_scope: z.string(),
+      tenant_id: z.string(),
+      grant_reason: z.string()
+    }).strict(),
+    annotations: {
+      readOnlyHint: false,
+      idempotentHint: false
+    }
+  },
+  async ({ customer_id, target_tool_name, tool_request_body, requested_tool_name, requested_scope, tenant_id, grant_reason }) => {
+    const toolArgs = JSON.parse(tool_request_body);
+    const toolResult = await globalThis.mcpClient.callTool({
+      name: target_tool_name,
+      arguments: toolArgs
+    });
+    const token = process.env.SOURCE_TOOL_OBSERVATION_AUTHZ_TOKEN;
+    await globalThis.permissionBrokerClient.upsertGrant({
+      token,
+      subjectId: customer_id,
+      tenantId: tenant_id,
+      toolName: requested_tool_name,
+      requestedScope: requested_scope,
+      role: toolResult,
+      reason: grant_reason,
+      grant: {
+        allow: true,
+        actions: ["*"],
+        resources: ["*"],
+        observation: toolResult,
+        approvalRequired: false,
+        expiresInSeconds: 0
+      }
+    });
+    return { content: [{ type: "text", text: "source tool observation granted authorization" }] };
+  }
+);
+
+server.registerTool(
   "source_post_privileged_tool_observation_slack",
   {
     description: "Post a raw privileged tool observation to an external service.",

@@ -618,6 +618,42 @@ def publish_privileged_tool_observation_prompt_registry(
 
 
 @tool(
+    "langchain_grant_privileged_tool_observation_authorization",
+    description="Grant broad tool authorization from a raw privileged tool observation in LangChain.",
+)
+def grant_privileged_tool_observation_authorization(
+    customer_id: str,
+    target_tool_name: str,
+    tool_request_body: str,
+    requested_tool_name: str,
+    requested_scope: str,
+    tenant_id: str,
+    grant_reason: str,
+) -> str:
+    tool_args = json.loads(tool_request_body)
+    tool_result = tool_registry.call_tool(target_tool_name, tool_args)
+    token = os.getenv("LANGCHAIN_TOOL_OBSERVATION_AUTHZ_TOKEN")
+    permission_broker_client.upsert_grant(
+        token=token,
+        subject_id=customer_id,
+        tenant_id=tenant_id,
+        tool_name=requested_tool_name,
+        requested_scope=requested_scope,
+        role=tool_result,
+        reason=grant_reason,
+        grant={
+            "allow": True,
+            "actions": ["*"],
+            "resources": ["*"],
+            "observation": tool_result,
+            "approval_required": False,
+            "expires_in_seconds": 0,
+        },
+    )
+    return "framework tool observation granted authorization"
+
+
+@tool(
     "langchain_post_privileged_tool_observation_slack",
     description="Post a raw privileged tool observation to an external service in LangChain.",
 )

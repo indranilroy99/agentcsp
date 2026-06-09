@@ -571,6 +571,9 @@ describe("scanner", () => {
     const sourceToolOutputPromptRegistryBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "source_publish_privileged_tool_observation_prompt_registry"
     );
+    const sourceToolOutputAuthorizationGrantBridgeTool = surfaces.tools.find(
+      (surface) => surface.name === "source_grant_privileged_tool_observation_authorization"
+    );
     const sourceToolOutputExternalServiceBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "source_post_privileged_tool_observation_slack"
     );
@@ -647,6 +650,9 @@ describe("scanner", () => {
     const langchainToolOutputMemoryBridgeTool = surfaces.tools.find((surface) => surface.name === "langchain_store_privileged_tool_observation_memory");
     const langchainToolOutputPromptRegistryBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "langchain_publish_privileged_tool_observation_prompt_registry"
+    );
+    const langchainToolOutputAuthorizationGrantBridgeTool = surfaces.tools.find(
+      (surface) => surface.name === "langchain_grant_privileged_tool_observation_authorization"
     );
     const langchainToolOutputExternalServiceBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "langchain_post_privileged_tool_observation_slack"
@@ -3075,6 +3081,118 @@ describe("scanner", () => {
     expect(JSON.stringify(sourceToolOutputPromptRegistryBridgeTool)).not.toContain("toolResult");
     expect(JSON.stringify(sourceToolOutputPromptRegistryBridgeTool)).not.toContain("source tool observation published to prompt registry");
     expect(JSON.stringify(sourceToolOutputPromptRegistryBridgeTool)).not.toContain("Publish a raw privileged tool observation");
+    expect(sourceToolOutputAuthorizationGrantBridgeTool).toMatchObject({
+      path: "mcp-source/customer-tools.ts",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["call", "execute", "publish", "send", "write"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(sourceToolOutputAuthorizationGrantBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_mcp_source_tool: true,
+      mcp_source_tool_registration: true,
+      mcp_source_tool_registration_kind: "registerTool",
+      mcp_source_tool_argument_count: 3,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      read_only_hint: false,
+      idempotent_hint: false,
+      accepts_secret_like_input: true,
+      accepts_content_like_input: true,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      nested_tool_invocation: true,
+      authorization_policy_write: true,
+      tainted_authorization_grant_input: true,
+      authorization_broad_grant: true,
+      secret_manager_authorization_grant_bridge: false,
+      tool_output_authorization_grant_bridge: true,
+      external_write: true,
+      destructive_action: false,
+      read_only_hint_conflict: false,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_external_network_call: false,
+      handler_external_write: false,
+      handler_authorization_policy_write: true,
+      handler_tainted_authorization_grant_input: true,
+      handler_authorization_broad_grant: true,
+      handler_secret_manager_authorization_grant_bridge: false,
+      handler_tool_output_authorization_grant_bridge: true,
+      handler_secret_env_access: true,
+      handler_model_visible_output: true,
+      handler_tool_invocation: true,
+      handler_memory_write: false,
+      handler_tool_output_memory_bridge: false,
+      handler_tool_output_to_output: false,
+      handler_model_provider_call: false,
+      handler_tool_output_prompt_bridge: false,
+      handler_shell_execution: false,
+      handler_dynamic_code_execution: false,
+      handler_unsafe_deserialization: false,
+      handler_filesystem_read: false,
+      handler_filesystem_write: false,
+      handler_filesystem_delete: false,
+      handler_signal_count: 6,
+      open_world_schema: false
+    });
+    expect(sourceToolOutputAuthorizationGrantBridgeTool?.metadata.authority_classes).toEqual([
+      "authorization_broad_grant",
+      "authorization_policy_write",
+      "content_input",
+      "credential_input",
+      "customer_data_input",
+      "external_write",
+      "handler_authorization_broad_grant",
+      "handler_authorization_policy_write",
+      "handler_secret_env_access",
+      "handler_tainted_authorization_grant_input",
+      "handler_tool_invocation",
+      "handler_tool_output_authorization_grant_bridge",
+      "nested_tool_invocation",
+      "network_access",
+      "pii_input",
+      "secret_env_access",
+      "tainted_authorization_grant_input",
+      "tool_output_authorization_grant_bridge"
+    ]);
+    expect(sourceToolOutputAuthorizationGrantBridgeTool?.metadata.handler_authority_classes).toEqual([
+      "handler_authorization_broad_grant",
+      "handler_authorization_policy_write",
+      "handler_secret_env_access",
+      "handler_tainted_authorization_grant_input",
+      "handler_tool_invocation",
+      "handler_tool_output_authorization_grant_bridge"
+    ]);
+    expect(sourceToolOutputAuthorizationGrantBridgeTool?.metadata.handler_env_key_names).toEqual([
+      "SOURCE_TOOL_OBSERVATION_AUTHZ_TOKEN"
+    ]);
+    expect(sourceToolOutputAuthorizationGrantBridgeTool?.metadata.schema_properties).toEqual([
+      "customer_id",
+      "grant_reason",
+      "requested_scope",
+      "requested_tool_name",
+      "target_tool_name",
+      "tenant_id",
+      "tool_request_body"
+    ]);
+    expect(sourceToolOutputAuthorizationGrantBridgeTool?.metadata.required_properties).toEqual([
+      "customer_id",
+      "grant_reason",
+      "requested_scope",
+      "requested_tool_name",
+      "target_tool_name",
+      "tenant_id",
+      "tool_request_body"
+    ]);
+    expect(JSON.stringify(sourceToolOutputAuthorizationGrantBridgeTool)).not.toContain("mcpClient.callTool");
+    expect(JSON.stringify(sourceToolOutputAuthorizationGrantBridgeTool)).not.toContain("permissionBrokerClient.upsertGrant");
+    expect(JSON.stringify(sourceToolOutputAuthorizationGrantBridgeTool)).not.toContain("toolResult");
+    expect(JSON.stringify(sourceToolOutputAuthorizationGrantBridgeTool)).not.toContain("source tool observation granted authorization");
+    expect(JSON.stringify(sourceToolOutputAuthorizationGrantBridgeTool)).not.toContain("Grant broad authorization from a raw privileged tool observation");
     expect(sourceToolOutputExternalServiceBridgeTool).toMatchObject({
       path: "mcp-source/customer-tools.ts",
       data_classes: ["credential"],
@@ -7264,6 +7382,117 @@ describe("scanner", () => {
     expect(JSON.stringify(langchainToolOutputPromptRegistryBridgeTool)).not.toContain("tool_result");
     expect(JSON.stringify(langchainToolOutputPromptRegistryBridgeTool)).not.toContain("framework tool observation published to prompt registry");
     expect(JSON.stringify(langchainToolOutputPromptRegistryBridgeTool)).not.toContain("Publish a raw privileged tool observation");
+    expect(langchainToolOutputAuthorizationGrantBridgeTool).toMatchObject({
+      path: "framework-tools/langchain_tools.py",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["call", "execute", "publish", "send", "write"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(langchainToolOutputAuthorizationGrantBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_agent_framework_source_tool: true,
+      agent_framework_source_tool: true,
+      agent_framework_source_tool_framework: "langchain",
+      agent_framework_source_tool_registration_kind: "python_tool_decorator",
+      agent_framework_source_tool_argument_count: 7,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_secret_like_input: true,
+      accepts_content_like_input: true,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      nested_tool_invocation: true,
+      authorization_policy_write: true,
+      tainted_authorization_grant_input: true,
+      authorization_broad_grant: true,
+      secret_manager_authorization_grant_bridge: false,
+      tool_output_authorization_grant_bridge: true,
+      external_write: true,
+      destructive_action: false,
+      read_only_hint_conflict: false,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_external_network_call: false,
+      handler_external_write: false,
+      handler_authorization_policy_write: true,
+      handler_tainted_authorization_grant_input: true,
+      handler_authorization_broad_grant: true,
+      handler_secret_manager_authorization_grant_bridge: false,
+      handler_tool_output_authorization_grant_bridge: true,
+      handler_secret_env_access: true,
+      handler_model_visible_output: true,
+      handler_tool_invocation: true,
+      handler_memory_write: false,
+      handler_tool_output_memory_bridge: false,
+      handler_tool_output_to_output: false,
+      handler_model_provider_call: false,
+      handler_tool_output_prompt_bridge: false,
+      handler_shell_execution: false,
+      handler_dynamic_code_execution: false,
+      handler_unsafe_deserialization: false,
+      handler_filesystem_read: false,
+      handler_filesystem_write: false,
+      handler_filesystem_delete: false,
+      handler_signal_count: 6,
+      open_world_schema: false
+    });
+    expect(langchainToolOutputAuthorizationGrantBridgeTool?.metadata.authority_classes).toEqual([
+      "authorization_broad_grant",
+      "authorization_policy_write",
+      "content_input",
+      "credential_input",
+      "customer_data_input",
+      "external_write",
+      "handler_authorization_broad_grant",
+      "handler_authorization_policy_write",
+      "handler_secret_env_access",
+      "handler_tainted_authorization_grant_input",
+      "handler_tool_invocation",
+      "handler_tool_output_authorization_grant_bridge",
+      "nested_tool_invocation",
+      "network_access",
+      "pii_input",
+      "secret_env_access",
+      "tainted_authorization_grant_input",
+      "tool_output_authorization_grant_bridge"
+    ]);
+    expect(langchainToolOutputAuthorizationGrantBridgeTool?.metadata.handler_authority_classes).toEqual([
+      "handler_authorization_broad_grant",
+      "handler_authorization_policy_write",
+      "handler_secret_env_access",
+      "handler_tainted_authorization_grant_input",
+      "handler_tool_invocation",
+      "handler_tool_output_authorization_grant_bridge"
+    ]);
+    expect(langchainToolOutputAuthorizationGrantBridgeTool?.metadata.handler_env_key_names).toEqual([
+      "LANGCHAIN_TOOL_OBSERVATION_AUTHZ_TOKEN"
+    ]);
+    expect(langchainToolOutputAuthorizationGrantBridgeTool?.metadata.schema_properties).toEqual([
+      "customer_id",
+      "grant_reason",
+      "requested_scope",
+      "requested_tool_name",
+      "target_tool_name",
+      "tenant_id",
+      "tool_request_body"
+    ]);
+    expect(langchainToolOutputAuthorizationGrantBridgeTool?.metadata.required_properties).toEqual([
+      "customer_id",
+      "grant_reason",
+      "requested_scope",
+      "requested_tool_name",
+      "target_tool_name",
+      "tenant_id",
+      "tool_request_body"
+    ]);
+    expect(JSON.stringify(langchainToolOutputAuthorizationGrantBridgeTool)).not.toContain("tool_registry.call_tool");
+    expect(JSON.stringify(langchainToolOutputAuthorizationGrantBridgeTool)).not.toContain("permission_broker_client.upsert_grant");
+    expect(JSON.stringify(langchainToolOutputAuthorizationGrantBridgeTool)).not.toContain("tool_result");
+    expect(JSON.stringify(langchainToolOutputAuthorizationGrantBridgeTool)).not.toContain("framework tool observation granted authorization");
+    expect(JSON.stringify(langchainToolOutputAuthorizationGrantBridgeTool)).not.toContain("Grant broad tool authorization from a raw privileged tool observation");
     expect(langchainToolOutputExternalServiceBridgeTool).toMatchObject({
       path: "framework-tools/langchain_tools.py",
       data_classes: ["credential"],
