@@ -9038,6 +9038,8 @@ describe("scanner", () => {
       openapi_user_controlled_input: true,
       openapi_accepts_pii_like_input: true,
       openapi_accepts_customer_data_input: true,
+      openapi_prompt_content_input: true,
+      openapi_prompt_content_external_write: true,
       openapi_sensitive_input: true,
       openapi_write_operation: true,
       openapi_destructive_operation: false,
@@ -13381,6 +13383,8 @@ describe("scanner", () => {
       openapi_write_operation: false,
       openapi_destructive_operation: false,
       openapi_external_operation: false,
+      openapi_prompt_content_input: false,
+      openapi_prompt_content_external_write: false,
       openapi_broad_or_sensitive_scope: true,
       openapi_approval_required: true
     });

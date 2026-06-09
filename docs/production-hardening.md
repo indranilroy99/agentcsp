@@ -46,6 +46,7 @@ A finding should be considered production-grade when it includes:
 - tool-schema integrity signals for open-world privileged arguments and read-only hint conflicts
 - model-visible tool-description injection signals without emitting raw descriptions
 - tool-schema content-input signals for prompt-like text sent to external destinations
+- OpenAPI and Swagger prompt-content egress metadata for agent-imported authenticated external write operations that accept prompt-like or freeform request bodies without emitting API paths, operation IDs, summaries, server URLs, schemas, or field names
 - tool-schema path-to-external data-flow signals for exfiltration risk
 - instruction-file context bridge signals for untrusted inputs routed into tool or memory authority
 - Cursor project-rule metadata for always-applied broad workspace rules without emitting rule descriptions, globs, or body text

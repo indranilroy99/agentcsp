@@ -1,0 +1,73 @@
+id: AGENTCSP-TOOL-075
+name: OpenAPI tool import sends prompt content through authenticated write
+description: An agent-imported OpenAPI or Swagger operation accepts prompt-like or freeform content and can send it through an authenticated external write API without approval.
+category: api_prompt_content_egress
+severity: critical
+maps_to:
+  owasp:
+    - LLM01:2025 Prompt Injection
+    - LLM02:2025 Sensitive Information Disclosure
+    - LLM05:2025 Improper Output Handling
+    - LLM06:2025 Excessive Agency
+  mitre_atlas:
+    - AML.T0051 LLM Plugin Compromise
+    - AML.T0057 Exfiltration via Cyber Means
+    - AML.T0059 Data from Information Repositories
+  nist_ai_rmf:
+    - MAP 4.1
+    - MEASURE 2.7
+    - MANAGE 2.4
+match:
+  object_type: tool
+  where:
+    - field: metadata.parsed_openapi_tool_spec
+      op: equals
+      value: true
+    - field: metadata.openapi_agent_tool_import
+      op: equals
+      value: true
+    - field: metadata.openapi_external_operation
+      op: equals
+      value: true
+    - field: metadata.openapi_authenticated_operation
+      op: equals
+      value: true
+    - field: metadata.openapi_write_operation
+      op: equals
+      value: true
+    - field: metadata.openapi_request_body_present
+      op: equals
+      value: true
+    - field: metadata.openapi_prompt_content_input
+      op: equals
+      value: true
+    - field: metadata.openapi_prompt_content_external_write
+      op: equals
+      value: true
+    - field: metadata.openapi_approval_required
+      op: equals
+      value: false
+    - field: metadata.openapi_request_data_categories
+      op: includes
+      value: freeform_content
+    - field: actions
+      op: includes
+      value: send
+    - field: actions
+      op: includes
+      value: write
+    - field: external_reach
+      op: equals
+      value: true
+    - field: secret_exposure
+      op: equals
+      value: true
+    - field: side_effect
+      op: equals
+      value: true
+    - field: untrusted_to_privileged
+      op: equals
+      value: true
+recommendation:
+  control: require_approval
+  text: Require approval before agent-imported API tools can send prompt-like or freeform content through authenticated external writes. Restrict operation allowlists, separate generated/user text from privileged API bodies, and add redaction plus provenance checks before external delivery.

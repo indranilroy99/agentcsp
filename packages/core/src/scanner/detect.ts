@@ -26756,6 +26756,8 @@ interface OpenApiOperationPosture {
   openapi_user_controlled_input: boolean;
   openapi_accepts_pii_like_input: boolean;
   openapi_accepts_customer_data_input: boolean;
+  openapi_prompt_content_input: boolean;
+  openapi_prompt_content_external_write: boolean;
   openapi_sensitive_input: boolean;
   openapi_write_operation: boolean;
   openapi_destructive_operation: boolean;
@@ -26808,9 +26810,11 @@ function extractOpenApiOperations(value: unknown, filePath: string): OpenApiOper
       ]);
       const secretRefKeys = extractSecretReferenceKeys([...stringValues, ...operationStrings]);
       const schemeTypes = uniqueStrings([...rootSecurityTypes, ...operationSecurityTypes]);
+      const promptContentInput = requestProfile.dataCategories.includes("freeform_content");
       const sensitiveInput = requestProfile.dataCategories.some((category) =>
         ["credential_input", "customer_data", "freeform_content", "pii_input"].includes(category)
       );
+      const authenticatedOperation = securityRequired || schemeTypes.length > 0 || envKeys.some(isCredentialLikeKeyName);
 
       operations.push({
         openapi_operation_index: operationIndex,
@@ -26826,7 +26830,7 @@ function extractOpenApiOperations(value: unknown, filePath: string): OpenApiOper
         openapi_server_kinds: servers.serverKinds,
         openapi_security_required: securityRequired,
         openapi_security_scheme_types: schemeTypes,
-        openapi_authenticated_operation: securityRequired || schemeTypes.length > 0 || envKeys.some(isCredentialLikeKeyName),
+        openapi_authenticated_operation: authenticatedOperation,
         openapi_parameter_count: requestProfile.parameterCount,
         openapi_request_body_present: requestProfile.requestBodyPresent,
         openapi_request_schema_redacted: requestProfile.requestFieldCount > 0,
@@ -26835,6 +26839,8 @@ function extractOpenApiOperations(value: unknown, filePath: string): OpenApiOper
         openapi_user_controlled_input: requestProfile.parameterCount > 0 || requestProfile.requestBodyPresent,
         openapi_accepts_pii_like_input: requestProfile.dataCategories.includes("pii_input"),
         openapi_accepts_customer_data_input: requestProfile.dataCategories.includes("customer_data"),
+        openapi_prompt_content_input: promptContentInput,
+        openapi_prompt_content_external_write: promptContentInput && servers.remote && authenticatedOperation && writeOperation,
         openapi_sensitive_input: sensitiveInput,
         openapi_write_operation: writeOperation,
         openapi_destructive_operation: destructiveOperation,

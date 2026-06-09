@@ -1119,9 +1119,11 @@ The current iteration adds:
 The current iteration adds:
 
 - first-class redacted metadata for OpenAPI and Swagger tool imports, including agent-import signals, method class, server category, authentication posture, request-input posture, sensitive data categories, write/destructive authority, external reach, and approval posture
+- redacted OpenAPI prompt-content egress metadata for authenticated external write operations that accept prompt-like or freeform request bodies without exposing API paths, operation IDs, summaries, server URLs, schemas, or field names
 - vulnerable fixture coverage for an agent-imported OpenAPI spec that exposes an authenticated external support API write with user-controlled sensitive request inputs and no approval boundary
 - safe fixture coverage for an approval-gated read-only OpenAPI import against a relative/internal API server
 - rule `AGENTCSP-TOOL-012` for OpenAPI tool imports that combine authenticated external writes, user-controlled inputs, sensitive scope, and missing approval
+- rule `AGENTCSP-TOOL-075` for OpenAPI tool imports that send prompt-like or freeform request content through authenticated external writes without approval
 - scanner, rule, fixture verifier, and redaction coverage proving raw API server URLs, paths, operation IDs, summaries, request schemas, request field names, and token placeholders stay redacted
 
 ## Hosted Assistant Definition Pass

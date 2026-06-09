@@ -544,13 +544,15 @@ OpenAPI and Swagger files imported as agent tools are also normalized into `tool
 - `openapi_authenticated_operation`
 - `openapi_user_controlled_input`
 - `openapi_request_data_categories`
+- `openapi_prompt_content_input`
+- `openapi_prompt_content_external_write`
 - `openapi_write_operation`
 - `openapi_destructive_operation`
 - `openapi_external_operation`
 - `openapi_broad_or_sensitive_scope`
 - `openapi_approval_required`
 
-Raw OpenAPI paths, operation IDs, summaries, descriptions, server URLs, request schemas, and request field names are not emitted. AgentCSP records redacted operation posture so rules can detect agent-imported API tools that combine authenticated external writes, user-controlled inputs, sensitive data classes, and missing approval boundaries.
+Raw OpenAPI paths, operation IDs, summaries, descriptions, server URLs, request schemas, and request field names are not emitted. AgentCSP records redacted operation posture so rules can detect agent-imported API tools that combine authenticated external writes, prompt-like or freeform request content, user-controlled inputs, sensitive data classes, and missing approval boundaries.
 
 ## Runtime Configuration
 
