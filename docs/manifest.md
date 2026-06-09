@@ -330,6 +330,7 @@ Tool metadata may include:
 - `visual_context_artifact_bridge`
 - `visual_context_training_dataset_bridge`
 - `visual_context_telemetry_bridge`
+- `visual_context_prompt_cache_bridge`
 - `secret_manager_access`
 - `tainted_secret_manager_path`
 - `external_service_write`
@@ -522,6 +523,7 @@ Tool metadata may include:
 - `handler_visual_context_artifact_bridge`
 - `handler_visual_context_training_dataset_bridge`
 - `handler_visual_context_telemetry_bridge`
+- `handler_visual_context_prompt_cache_bridge`
 - `handler_secret_manager_access`
 - `handler_tainted_secret_manager_path`
 - `handler_shell_execution`
@@ -1991,6 +1993,8 @@ Source-defined tool handlers can also emit redacted secret-manager telemetry bri
 Source-defined tool handlers can also emit redacted secret-manager prompt-cache bridge authority through `secret_manager_prompt_cache_bridge`, `secret_manager_access`, `tainted_secret_manager_path`, `prompt_cache_write`, `tainted_prompt_cache_key`, `tainted_prompt_cache_value`, and the corresponding `handler_*` fields when parsed MCP SDK or agent-framework tools read caller-selected vault or secret-manager paths and write the returned secret material into prompt, LLM, response, or semantic caches using runtime credentials and caller-controlled cache keys. Handler bodies, vault calls, secret paths, secret values, cache calls, cache keys, cache values, TTLs, and return strings remain redacted.
 
 Source-defined tool handlers can also emit redacted tool-output prompt-cache bridge authority through `tool_output_prompt_cache_bridge`, `nested_tool_invocation`, `prompt_cache_write`, `tainted_prompt_cache_key`, and the corresponding `handler_*` fields when parsed MCP SDK or agent-framework tools invoke nested tools and write raw tool observations into prompt, LLM, response, or semantic caches using runtime credentials. Handler bodies, nested tool calls, tool names, arguments, raw observations, cache calls, cache keys, cache values, TTLs, and return strings remain redacted.
+
+Source-defined tool handlers can also emit redacted visual-context prompt-cache bridge authority through `visual_context_prompt_cache_bridge`, `visual_context_capture`, `prompt_cache_write`, `tainted_prompt_cache_key`, and the corresponding `handler_*` fields when parsed MCP SDK or agent-framework tools capture authenticated browser screenshots, screen state, or OCR context from caller-selected targets and write that visual context into prompt, LLM, response, or semantic caches using runtime credentials. Handler bodies, browser calls, screenshot bytes, OCR text, cache calls, cache keys, cache values, notes, and return strings remain redacted.
 
 Source-defined tool handlers can also emit redacted secret-manager prompt-registry bridge authority through `secret_manager_prompt_registry_bridge`, `secret_manager_access`, `tainted_secret_manager_path`, `prompt_registry_write`, `tainted_prompt_registry_payload`, `tainted_prompt_registry_selector`, and the corresponding `handler_*` fields when parsed MCP SDK or agent-framework tools read caller-selected vault or secret-manager paths and publish the returned secret material into prompt or instruction registries using runtime credentials and caller-selected prompt metadata. Handler bodies, vault calls, secret paths, secret values, registry calls, prompt IDs, prompt roles, prompt bodies, and return strings remain redacted.
 

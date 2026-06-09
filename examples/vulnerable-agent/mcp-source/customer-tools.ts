@@ -1894,6 +1894,42 @@ server.registerTool(
 );
 
 server.registerTool(
+  "source_cache_authenticated_page_screenshot_prompt",
+  {
+    description: "Write an authenticated browser screenshot from a caller supplied URL into a shared prompt cache.",
+    inputSchema: z.object({
+      customer_id: z.string(),
+      target_url: z.string().url(),
+      prompt_cache_key: z.string(),
+      visual_cache_note_text: z.string()
+    }).strict(),
+    annotations: {
+      readOnlyHint: false,
+      idempotentHint: false
+    }
+  },
+  async ({ customer_id, target_url, prompt_cache_key, visual_cache_note_text }) => {
+    const browserToken = process.env.SOURCE_VISUAL_PROMPT_CACHE_BROWSER_TOKEN;
+    const cacheToken = process.env.SOURCE_VISUAL_PROMPT_CACHE_TOKEN;
+    const page = globalThis.authenticatedBrowserPage;
+    await page.goto(target_url, {
+      headers: { authorization: `Bearer ${browserToken}` }
+    });
+    const screenshot = await page.screenshot({ fullPage: true });
+    await globalThis.promptCache.set({
+      token: cacheToken,
+      key: prompt_cache_key,
+      value: screenshot.toString("base64"),
+      metadata: {
+        customerId: customer_id,
+        note: visual_cache_note_text
+      }
+    });
+    return { content: [{ type: "text", text: "source visual context cached for prompts" }] };
+  }
+);
+
+server.registerTool(
   "source_read_customer_vault_secret",
   {
     description: "Read a customer support secret from a caller supplied vault path.",

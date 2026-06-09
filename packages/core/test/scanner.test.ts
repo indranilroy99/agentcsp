@@ -655,6 +655,9 @@ describe("scanner", () => {
     const sourceVisualContextTelemetryBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "source_export_authenticated_page_screenshot_trace"
     );
+    const sourceVisualContextPromptCacheBridgeTool = surfaces.tools.find(
+      (surface) => surface.name === "source_cache_authenticated_page_screenshot_prompt"
+    );
     const sourceSecretManagerAccessTool = surfaces.tools.find((surface) => surface.name === "source_read_customer_vault_secret");
     const sourceSecretManagerExternalServiceBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "source_post_customer_vault_secret_slack"
@@ -812,6 +815,9 @@ describe("scanner", () => {
     );
     const langchainVisualContextTelemetryBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "langchain_export_authenticated_page_screenshot_trace"
+    );
+    const langchainVisualContextPromptCacheBridgeTool = surfaces.tools.find(
+      (surface) => surface.name === "langchain_cache_authenticated_page_screenshot_prompt"
     );
     const langchainSecretManagerAccessTool = surfaces.tools.find((surface) => surface.name === "langchain_read_customer_vault_secret");
     const langchainSecretManagerExternalServiceBridgeTool = surfaces.tools.find(
@@ -5883,6 +5889,108 @@ describe("scanner", () => {
     expect(JSON.stringify(sourceVisualContextTelemetryBridgeTool)).not.toContain("telemetryClient.recordTrace");
     expect(JSON.stringify(sourceVisualContextTelemetryBridgeTool)).not.toContain("source visual context exported to telemetry");
     expect(JSON.stringify(sourceVisualContextTelemetryBridgeTool)).not.toContain("Export an authenticated browser screenshot");
+    expect(sourceVisualContextPromptCacheBridgeTool).toMatchObject({
+      path: "mcp-source/customer-tools.ts",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["call", "execute", "read", "remember", "write"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(sourceVisualContextPromptCacheBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_mcp_source_tool: true,
+      mcp_source_tool_registration: true,
+      mcp_source_tool_registration_kind: "registerTool",
+      mcp_source_tool_argument_count: 3,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_secret_like_input: true,
+      accepts_content_like_input: true,
+      accepts_url_input: true,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      browser_automation: true,
+      tainted_browser_automation_target: true,
+      visual_context_capture: true,
+      visual_context_to_output: false,
+      visual_context_prompt_cache_bridge: true,
+      prompt_cache_write: true,
+      tainted_prompt_cache_key: true,
+      tainted_prompt_cache_value: false,
+      external_write: false,
+      destructive_action: false,
+      read_only_hint_conflict: false,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_prompt_cache_write: true,
+      handler_tainted_prompt_cache_key: true,
+      handler_tainted_prompt_cache_value: false,
+      handler_secret_env_access: true,
+      handler_model_visible_output: true,
+      handler_browser_automation: true,
+      handler_tainted_browser_automation_target: true,
+      handler_visual_context_capture: true,
+      handler_visual_context_to_output: false,
+      handler_visual_context_prompt_cache_bridge: true,
+      handler_signal_count: 7,
+      open_world_schema: false
+    });
+    expect(sourceVisualContextPromptCacheBridgeTool?.metadata.authority_classes).toEqual([
+      "browser_automation",
+      "browser_control",
+      "content_input",
+      "credential_input",
+      "customer_data_input",
+      "handler_browser_automation",
+      "handler_prompt_cache_write",
+      "handler_secret_env_access",
+      "handler_tainted_browser_automation_target",
+      "handler_tainted_prompt_cache_key",
+      "handler_visual_context_capture",
+      "handler_visual_context_prompt_cache_bridge",
+      "network_access",
+      "pii_input",
+      "prompt_cache_write",
+      "secret_env_access",
+      "tainted_browser_automation_target",
+      "tainted_prompt_cache_key",
+      "visual_context_capture",
+      "visual_context_prompt_cache_bridge"
+    ]);
+    expect(sourceVisualContextPromptCacheBridgeTool?.metadata.handler_authority_classes).toEqual([
+      "handler_browser_automation",
+      "handler_prompt_cache_write",
+      "handler_secret_env_access",
+      "handler_tainted_browser_automation_target",
+      "handler_tainted_prompt_cache_key",
+      "handler_visual_context_capture",
+      "handler_visual_context_prompt_cache_bridge"
+    ]);
+    expect(sourceVisualContextPromptCacheBridgeTool?.metadata.handler_env_key_names).toEqual([
+      "SOURCE_VISUAL_PROMPT_CACHE_BROWSER_TOKEN",
+      "SOURCE_VISUAL_PROMPT_CACHE_TOKEN"
+    ]);
+    expect(sourceVisualContextPromptCacheBridgeTool?.metadata.schema_properties).toEqual([
+      "customer_id",
+      "prompt_cache_key",
+      "target_url",
+      "visual_cache_note_text"
+    ]);
+    expect(sourceVisualContextPromptCacheBridgeTool?.metadata.required_properties).toEqual([
+      "customer_id",
+      "prompt_cache_key",
+      "target_url",
+      "visual_cache_note_text"
+    ]);
+    expect(JSON.stringify(sourceVisualContextPromptCacheBridgeTool)).not.toContain("authenticatedBrowserPage");
+    expect(JSON.stringify(sourceVisualContextPromptCacheBridgeTool)).not.toContain("page.goto");
+    expect(JSON.stringify(sourceVisualContextPromptCacheBridgeTool)).not.toContain("page.screenshot");
+    expect(JSON.stringify(sourceVisualContextPromptCacheBridgeTool)).not.toContain("screenshot.toString");
+    expect(JSON.stringify(sourceVisualContextPromptCacheBridgeTool)).not.toContain("promptCache.set");
+    expect(JSON.stringify(sourceVisualContextPromptCacheBridgeTool)).not.toContain("source visual context cached for prompts");
+    expect(JSON.stringify(sourceVisualContextPromptCacheBridgeTool)).not.toContain("Write an authenticated browser screenshot");
     expect(sourceSecretManagerAccessTool).toMatchObject({
       path: "mcp-source/customer-tools.ts",
       data_classes: ["confidential", "credential", "pii"],
@@ -12460,6 +12568,109 @@ describe("scanner", () => {
     expect(JSON.stringify(langchainVisualContextTelemetryBridgeTool)).not.toContain("telemetry_client.record_trace");
     expect(JSON.stringify(langchainVisualContextTelemetryBridgeTool)).not.toContain("framework visual context exported to telemetry");
     expect(JSON.stringify(langchainVisualContextTelemetryBridgeTool)).not.toContain("Export an authenticated browser screenshot");
+    expect(langchainVisualContextPromptCacheBridgeTool).toMatchObject({
+      path: "framework-tools/langchain_tools.py",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["call", "execute", "read", "remember", "write"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(langchainVisualContextPromptCacheBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_agent_framework_source_tool: true,
+      agent_framework_source_tool: true,
+      agent_framework_source_tool_framework: "langchain",
+      agent_framework_source_tool_registration_kind: "python_tool_decorator",
+      agent_framework_source_tool_argument_count: 4,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_secret_like_input: true,
+      accepts_content_like_input: true,
+      accepts_url_input: true,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      browser_automation: true,
+      tainted_browser_automation_target: true,
+      visual_context_capture: true,
+      visual_context_to_output: false,
+      visual_context_prompt_cache_bridge: true,
+      prompt_cache_write: true,
+      tainted_prompt_cache_key: true,
+      tainted_prompt_cache_value: false,
+      external_write: false,
+      destructive_action: false,
+      read_only_hint_conflict: false,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_prompt_cache_write: true,
+      handler_tainted_prompt_cache_key: true,
+      handler_tainted_prompt_cache_value: false,
+      handler_secret_env_access: true,
+      handler_model_visible_output: true,
+      handler_browser_automation: true,
+      handler_tainted_browser_automation_target: true,
+      handler_visual_context_capture: true,
+      handler_visual_context_to_output: false,
+      handler_visual_context_prompt_cache_bridge: true,
+      handler_signal_count: 7,
+      open_world_schema: false
+    });
+    expect(langchainVisualContextPromptCacheBridgeTool?.metadata.authority_classes).toEqual([
+      "browser_automation",
+      "browser_control",
+      "content_input",
+      "credential_input",
+      "customer_data_input",
+      "handler_browser_automation",
+      "handler_prompt_cache_write",
+      "handler_secret_env_access",
+      "handler_tainted_browser_automation_target",
+      "handler_tainted_prompt_cache_key",
+      "handler_visual_context_capture",
+      "handler_visual_context_prompt_cache_bridge",
+      "network_access",
+      "pii_input",
+      "prompt_cache_write",
+      "secret_env_access",
+      "tainted_browser_automation_target",
+      "tainted_prompt_cache_key",
+      "visual_context_capture",
+      "visual_context_prompt_cache_bridge"
+    ]);
+    expect(langchainVisualContextPromptCacheBridgeTool?.metadata.handler_authority_classes).toEqual([
+      "handler_browser_automation",
+      "handler_prompt_cache_write",
+      "handler_secret_env_access",
+      "handler_tainted_browser_automation_target",
+      "handler_tainted_prompt_cache_key",
+      "handler_visual_context_capture",
+      "handler_visual_context_prompt_cache_bridge"
+    ]);
+    expect(langchainVisualContextPromptCacheBridgeTool?.metadata.handler_env_key_names).toEqual([
+      "LANGCHAIN_VISUAL_PROMPT_CACHE_BROWSER_TOKEN",
+      "LANGCHAIN_VISUAL_PROMPT_CACHE_TOKEN"
+    ]);
+    expect(langchainVisualContextPromptCacheBridgeTool?.metadata.schema_properties).toEqual([
+      "customer_id",
+      "prompt_cache_key",
+      "target_url",
+      "visual_cache_note_text"
+    ]);
+    expect(langchainVisualContextPromptCacheBridgeTool?.metadata.required_properties).toEqual([
+      "customer_id",
+      "prompt_cache_key",
+      "target_url",
+      "visual_cache_note_text"
+    ]);
+    expect(JSON.stringify(langchainVisualContextPromptCacheBridgeTool)).not.toContain("browser_session.page");
+    expect(JSON.stringify(langchainVisualContextPromptCacheBridgeTool)).not.toContain("page.goto");
+    expect(JSON.stringify(langchainVisualContextPromptCacheBridgeTool)).not.toContain("page.screenshot");
+    expect(JSON.stringify(langchainVisualContextPromptCacheBridgeTool)).not.toContain("screenshot_bytes");
+    expect(JSON.stringify(langchainVisualContextPromptCacheBridgeTool)).not.toContain("prompt_cache.set");
+    expect(JSON.stringify(langchainVisualContextPromptCacheBridgeTool)).not.toContain("framework visual context cached for prompts");
+    expect(JSON.stringify(langchainVisualContextPromptCacheBridgeTool)).not.toContain("Write an authenticated browser screenshot");
     expect(langchainSecretManagerAccessTool).toMatchObject({
       path: "framework-tools/langchain_tools.py",
       data_classes: ["confidential", "credential", "pii"],
