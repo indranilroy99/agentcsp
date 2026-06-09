@@ -128,6 +128,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-124")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-125")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-126")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-127")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-001")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-002")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-003")).toBe(true);
@@ -6863,8 +6864,10 @@ describe("rule engine", () => {
     const sourceHandlerPromptCacheWriteFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-046");
     expect(sourceHandlerPromptCacheWriteFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_cache_customer_vault_secret_prompt",
+      "langchain_cache_model_completion",
       "langchain_write_prompt_cache_entry",
       "source_cache_customer_vault_secret_prompt",
+      "source_cache_model_completion",
       "source_write_prompt_cache_entry"
     ]);
     expect(sourceHandlerPromptCacheWriteFindings.every((finding) => finding.severity === "critical")).toBe(true);
@@ -6901,6 +6904,10 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerPromptCacheWriteFindings)).not.toContain("framework prompt cache written");
     expect(JSON.stringify(sourceHandlerPromptCacheWriteFindings)).not.toContain("source vault secret cached for prompts");
     expect(JSON.stringify(sourceHandlerPromptCacheWriteFindings)).not.toContain("framework vault secret cached for prompts");
+    expect(JSON.stringify(sourceHandlerPromptCacheWriteFindings)).not.toContain("modelSelectedCacheValue");
+    expect(JSON.stringify(sourceHandlerPromptCacheWriteFindings)).not.toContain("model_selected_cache_value");
+    expect(JSON.stringify(sourceHandlerPromptCacheWriteFindings)).not.toContain("source model selected prompt cache value stored");
+    expect(JSON.stringify(sourceHandlerPromptCacheWriteFindings)).not.toContain("framework model selected prompt cache value stored");
     expect(JSON.stringify(sourceHandlerPromptCacheWriteFindings)).not.toContain("Write caller supplied prompt context");
     expect(JSON.stringify(sourceHandlerPromptCacheWriteFindings)).not.toContain("Write a customer support secret");
     const sourceHandlerTrainingDatasetExportFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-047");
@@ -10400,6 +10407,7 @@ describe("rule engine", () => {
     expect(sourceHandlerModelProviderFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_apply_model_database_update",
       "langchain_apply_model_selected_guardrail_policy_override",
+      "langchain_cache_model_completion",
       "langchain_delegate_model_selected_remote_agent_task",
       "langchain_execute_model_browser_action",
       "langchain_execute_model_generated_code",
@@ -10420,6 +10428,7 @@ describe("rule engine", () => {
       "langchain_summarize_customer_with_model",
       "source_apply_model_database_update",
       "source_apply_model_selected_guardrail_policy_override",
+      "source_cache_model_completion",
       "source_delegate_model_selected_remote_agent_task",
       "source_execute_model_browser_action",
       "source_execute_model_generated_code",
@@ -10505,6 +10514,11 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerModelProviderFindings)).not.toContain("source model selected guardrail policy override applied");
     expect(JSON.stringify(sourceHandlerModelProviderFindings)).not.toContain("framework model selected guardrail policy override applied");
     expect(JSON.stringify(sourceHandlerModelProviderFindings)).not.toContain("Ask a model provider to draft a guardrail policy override");
+    expect(JSON.stringify(sourceHandlerModelProviderFindings)).not.toContain("modelSelectedCacheValue");
+    expect(JSON.stringify(sourceHandlerModelProviderFindings)).not.toContain("model_selected_cache_value");
+    expect(JSON.stringify(sourceHandlerModelProviderFindings)).not.toContain("source model selected prompt cache value stored");
+    expect(JSON.stringify(sourceHandlerModelProviderFindings)).not.toContain("framework model selected prompt cache value stored");
+    expect(JSON.stringify(sourceHandlerModelProviderFindings)).not.toContain("Ask a model provider to draft a reusable response");
     const sourceHandlerRagRetrievalPromptBridgeFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-094");
     expect(sourceHandlerRagRetrievalPromptBridgeFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_summarize_retrieved_context_with_model",
@@ -10633,6 +10647,7 @@ describe("rule engine", () => {
     expect(sourceHandlerTaintedModelSelectionFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_apply_model_database_update",
       "langchain_apply_model_selected_guardrail_policy_override",
+      "langchain_cache_model_completion",
       "langchain_delegate_model_selected_remote_agent_task",
       "langchain_enqueue_model_selected_background_job",
       "langchain_execute_model_browser_action",
@@ -10650,6 +10665,7 @@ describe("rule engine", () => {
       "langchain_summarize_customer_with_model",
       "source_apply_model_database_update",
       "source_apply_model_selected_guardrail_policy_override",
+      "source_cache_model_completion",
       "source_delegate_model_selected_remote_agent_task",
       "source_enqueue_model_selected_background_job",
       "source_execute_model_browser_action",
@@ -10711,10 +10727,16 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerTaintedModelSelectionFindings)).not.toContain("source model selected guardrail policy override applied");
     expect(JSON.stringify(sourceHandlerTaintedModelSelectionFindings)).not.toContain("framework model selected guardrail policy override applied");
     expect(JSON.stringify(sourceHandlerTaintedModelSelectionFindings)).not.toContain("Ask a model provider to draft a guardrail policy override");
+    expect(JSON.stringify(sourceHandlerTaintedModelSelectionFindings)).not.toContain("modelSelectedCacheValue");
+    expect(JSON.stringify(sourceHandlerTaintedModelSelectionFindings)).not.toContain("model_selected_cache_value");
+    expect(JSON.stringify(sourceHandlerTaintedModelSelectionFindings)).not.toContain("source model selected prompt cache value stored");
+    expect(JSON.stringify(sourceHandlerTaintedModelSelectionFindings)).not.toContain("framework model selected prompt cache value stored");
+    expect(JSON.stringify(sourceHandlerTaintedModelSelectionFindings)).not.toContain("Ask a model provider to draft a reusable response");
     const sourceHandlerPrivilegedPromptFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-031");
     expect(sourceHandlerPrivilegedPromptFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_apply_model_database_update",
       "langchain_apply_model_selected_guardrail_policy_override",
+      "langchain_cache_model_completion",
       "langchain_delegate_model_selected_remote_agent_task",
       "langchain_execute_model_browser_action",
       "langchain_execute_model_generated_code",
@@ -11734,6 +11756,76 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerModelOutputTelemetryBridgeFindings)).not.toContain("framework model selected trace exported");
     expect(JSON.stringify(sourceHandlerModelOutputTelemetryBridgeFindings)).not.toContain("Ask a model provider to draft a trace summary");
     expect(JSON.stringify(sourceHandlerModelOutputTelemetryBridgeFindings)).not.toContain("Return one trace summary");
+    const sourceHandlerModelOutputPromptCacheBridgeFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-127");
+    expect(sourceHandlerModelOutputPromptCacheBridgeFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
+      "langchain_cache_model_completion",
+      "source_cache_model_completion"
+    ]);
+    expect(sourceHandlerModelOutputPromptCacheBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
+    expect(sourceHandlerModelOutputPromptCacheBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerModelOutputPromptCacheBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
+    expect(sourceHandlerModelOutputPromptCacheBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
+    expect(sourceHandlerModelOutputPromptCacheBridgeFindings.every((finding) => finding.matched_object.metadata.source_tool_handler_redacted === true)).toBe(true);
+    expect(sourceHandlerModelOutputPromptCacheBridgeFindings.every((finding) => finding.matched_object.metadata.handler_model_provider_call === true)).toBe(true);
+    expect(sourceHandlerModelOutputPromptCacheBridgeFindings.every((finding) => finding.matched_object.metadata.handler_prompt_cache_write === true)).toBe(true);
+    expect(sourceHandlerModelOutputPromptCacheBridgeFindings.every((finding) => finding.matched_object.metadata.handler_tainted_prompt_cache_key === true)).toBe(true);
+    expect(sourceHandlerModelOutputPromptCacheBridgeFindings.every((finding) => finding.matched_object.metadata.handler_tainted_prompt_cache_value === true)).toBe(true);
+    expect(sourceHandlerModelOutputPromptCacheBridgeFindings.every((finding) => finding.matched_object.metadata.handler_model_output_prompt_cache_bridge === true)).toBe(true);
+    expect(sourceHandlerModelOutputPromptCacheBridgeFindings.every((finding) => finding.matched_object.metadata.handler_secret_env_access === true)).toBe(true);
+    expect(sourceHandlerModelOutputPromptCacheBridgeFindings.every((finding) => finding.matched_object.metadata.model_provider_call === true)).toBe(true);
+    expect(sourceHandlerModelOutputPromptCacheBridgeFindings.every((finding) => finding.matched_object.metadata.prompt_cache_write === true)).toBe(true);
+    expect(sourceHandlerModelOutputPromptCacheBridgeFindings.every((finding) => finding.matched_object.metadata.tainted_prompt_cache_key === true)).toBe(true);
+    expect(sourceHandlerModelOutputPromptCacheBridgeFindings.every((finding) => finding.matched_object.metadata.tainted_prompt_cache_value === true)).toBe(true);
+    expect(sourceHandlerModelOutputPromptCacheBridgeFindings.every((finding) => finding.matched_object.metadata.model_output_prompt_cache_bridge === true)).toBe(true);
+    expect(sourceHandlerModelOutputPromptCacheBridgeFindings.every((finding) => finding.matched_object.metadata.accepts_content_like_input === true)).toBe(true);
+    expect(sourceHandlerModelOutputPromptCacheBridgeFindings.every((finding) => finding.matched_object.metadata.accepts_customer_data_input === true)).toBe(true);
+    expect(sourceHandlerModelOutputPromptCacheBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.authority_classes.includes("model_provider_call")
+    )).toBe(true);
+    expect(sourceHandlerModelOutputPromptCacheBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.authority_classes.includes("prompt_cache_write")
+    )).toBe(true);
+    expect(sourceHandlerModelOutputPromptCacheBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.authority_classes.includes("tainted_prompt_cache_key")
+    )).toBe(true);
+    expect(sourceHandlerModelOutputPromptCacheBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.authority_classes.includes("tainted_prompt_cache_value")
+    )).toBe(true);
+    expect(sourceHandlerModelOutputPromptCacheBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.authority_classes.includes("model_output_prompt_cache_bridge")
+    )).toBe(true);
+    expect(sourceHandlerModelOutputPromptCacheBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.handler_authority_classes.includes("handler_model_provider_call")
+    )).toBe(true);
+    expect(sourceHandlerModelOutputPromptCacheBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.handler_authority_classes.includes("handler_prompt_cache_write")
+    )).toBe(true);
+    expect(sourceHandlerModelOutputPromptCacheBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.handler_authority_classes.includes("handler_tainted_prompt_cache_key")
+    )).toBe(true);
+    expect(sourceHandlerModelOutputPromptCacheBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.handler_authority_classes.includes("handler_tainted_prompt_cache_value")
+    )).toBe(true);
+    expect(sourceHandlerModelOutputPromptCacheBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.handler_authority_classes.includes("handler_model_output_prompt_cache_bridge")
+    )).toBe(true);
+    expect(sourceHandlerModelOutputPromptCacheBridgeFindings.every((finding) => finding.matched_object.actions.includes("send"))).toBe(true);
+    expect(sourceHandlerModelOutputPromptCacheBridgeFindings.every((finding) => finding.matched_object.actions.includes("write"))).toBe(true);
+    expect(sourceHandlerModelOutputPromptCacheBridgeFindings.every((finding) => finding.matched_object.actions.includes("remember"))).toBe(true);
+    expect(sourceHandlerModelOutputPromptCacheBridgeFindings.every((finding) => finding.matched_object.external_reach === true)).toBe(true);
+    expect(sourceHandlerModelOutputPromptCacheBridgeFindings.every((finding) => finding.matched_object.secret_exposure === true)).toBe(true);
+    expect(sourceHandlerModelOutputPromptCacheBridgeFindings.every((finding) => finding.matched_object.side_effect === true)).toBe(true);
+    expect(sourceHandlerModelOutputPromptCacheBridgeFindings.every((finding) => finding.matched_object.reversible === false)).toBe(true);
+    expect(JSON.stringify(sourceHandlerModelOutputPromptCacheBridgeFindings)).not.toContain("openai.chat.completions.create");
+    expect(JSON.stringify(sourceHandlerModelOutputPromptCacheBridgeFindings)).not.toContain("openai_client.chat.completions.create");
+    expect(JSON.stringify(sourceHandlerModelOutputPromptCacheBridgeFindings)).not.toContain("promptCache.set");
+    expect(JSON.stringify(sourceHandlerModelOutputPromptCacheBridgeFindings)).not.toContain("prompt_cache.set");
+    expect(JSON.stringify(sourceHandlerModelOutputPromptCacheBridgeFindings)).not.toContain("modelSelectedCacheValue");
+    expect(JSON.stringify(sourceHandlerModelOutputPromptCacheBridgeFindings)).not.toContain("model_selected_cache_value");
+    expect(JSON.stringify(sourceHandlerModelOutputPromptCacheBridgeFindings)).not.toContain("source model selected prompt cache value stored");
+    expect(JSON.stringify(sourceHandlerModelOutputPromptCacheBridgeFindings)).not.toContain("framework model selected prompt cache value stored");
+    expect(JSON.stringify(sourceHandlerModelOutputPromptCacheBridgeFindings)).not.toContain("Ask a model provider to draft a reusable response");
+    expect(JSON.stringify(sourceHandlerModelOutputPromptCacheBridgeFindings)).not.toContain("Return one cache value");
     const sourceHandlerDynamicCodeFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-019");
     expect(sourceHandlerDynamicCodeFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_evaluate_agent_expression",

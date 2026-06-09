@@ -710,6 +710,9 @@ describe("scanner", () => {
     const sourceSecretManagerPromptCacheBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "source_cache_customer_vault_secret_prompt"
     );
+    const sourceModelOutputPromptCacheBridgeTool = surfaces.tools.find(
+      (surface) => surface.name === "source_cache_model_completion"
+    );
     const sourceSecretManagerPromptRegistryBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "source_publish_customer_vault_secret_prompt_registry"
     );
@@ -939,6 +942,9 @@ describe("scanner", () => {
     );
     const langchainSecretManagerPromptCacheBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "langchain_cache_customer_vault_secret_prompt"
+    );
+    const langchainModelOutputPromptCacheBridgeTool = surfaces.tools.find(
+      (surface) => surface.name === "langchain_cache_model_completion"
     );
     const langchainSecretManagerPromptRegistryBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "langchain_publish_customer_vault_secret_prompt_registry"
@@ -7802,6 +7808,102 @@ describe("scanner", () => {
     expect(JSON.stringify(sourceSecretManagerPromptCacheBridgeTool)).not.toContain("secretPromptCacheValue");
     expect(JSON.stringify(sourceSecretManagerPromptCacheBridgeTool)).not.toContain("source vault secret cached for prompts");
     expect(JSON.stringify(sourceSecretManagerPromptCacheBridgeTool)).not.toContain("Write a customer support secret");
+    expect(sourceModelOutputPromptCacheBridgeTool).toMatchObject({
+      path: "mcp-source/customer-tools.ts",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["call", "read", "remember", "send", "write"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(sourceModelOutputPromptCacheBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_mcp_source_tool: true,
+      mcp_source_tool_registration: true,
+      mcp_source_tool_registration_kind: "registerTool",
+      mcp_source_tool_argument_count: 3,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      read_only_hint: false,
+      idempotent_hint: false,
+      accepts_content_like_input: true,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      model_provider_call: true,
+      tainted_model_selection: true,
+      prompt_cache_write: true,
+      model_output_prompt_cache_bridge: true,
+      tainted_prompt_cache_key: true,
+      tainted_prompt_cache_value: true,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_model_provider_call: true,
+      handler_tainted_model_selection: true,
+      handler_prompt_cache_write: true,
+      handler_model_output_prompt_cache_bridge: true,
+      handler_tainted_prompt_cache_key: true,
+      handler_tainted_prompt_cache_value: true,
+      handler_secret_env_access: true,
+      handler_model_visible_output: true,
+      handler_signal_count: 7,
+      open_world_schema: false
+    });
+    expect(sourceModelOutputPromptCacheBridgeTool?.metadata.authority_classes).toEqual([
+      "content_input",
+      "customer_data_input",
+      "handler_model_output_prompt_cache_bridge",
+      "handler_model_provider_call",
+      "handler_prompt_cache_write",
+      "handler_secret_env_access",
+      "handler_tainted_model_selection",
+      "handler_tainted_prompt_cache_key",
+      "handler_tainted_prompt_cache_value",
+      "memory_access",
+      "model_output_prompt_cache_bridge",
+      "model_provider_call",
+      "pii_input",
+      "prompt_cache_write",
+      "secret_env_access",
+      "tainted_model_selection",
+      "tainted_prompt_cache_key",
+      "tainted_prompt_cache_value"
+    ]);
+    expect(sourceModelOutputPromptCacheBridgeTool?.metadata.handler_authority_classes).toEqual([
+      "handler_model_output_prompt_cache_bridge",
+      "handler_model_provider_call",
+      "handler_prompt_cache_write",
+      "handler_secret_env_access",
+      "handler_tainted_model_selection",
+      "handler_tainted_prompt_cache_key",
+      "handler_tainted_prompt_cache_value"
+    ]);
+    expect(sourceModelOutputPromptCacheBridgeTool?.metadata.handler_env_key_names).toEqual([
+      "SOURCE_MODEL_PROMPT_CACHE_TOKEN",
+      "SOURCE_MODEL_PROMPT_CACHE_WRITE_TOKEN"
+    ]);
+    expect(sourceModelOutputPromptCacheBridgeTool?.metadata.schema_properties).toEqual([
+      "cache_goal_text",
+      "cache_namespace",
+      "customer_id",
+      "customer_ticket_text",
+      "model_name",
+      "prompt_cache_key"
+    ]);
+    expect(sourceModelOutputPromptCacheBridgeTool?.metadata.required_properties).toEqual([
+      "cache_goal_text",
+      "cache_namespace",
+      "customer_id",
+      "customer_ticket_text",
+      "model_name",
+      "prompt_cache_key"
+    ]);
+    expect(JSON.stringify(sourceModelOutputPromptCacheBridgeTool)).not.toContain("openai.chat.completions.create");
+    expect(JSON.stringify(sourceModelOutputPromptCacheBridgeTool)).not.toContain("promptCache.set");
+    expect(JSON.stringify(sourceModelOutputPromptCacheBridgeTool)).not.toContain("modelSelectedCacheValue");
+    expect(JSON.stringify(sourceModelOutputPromptCacheBridgeTool)).not.toContain("source model selected prompt cache value stored");
+    expect(JSON.stringify(sourceModelOutputPromptCacheBridgeTool)).not.toContain("Ask a model provider to draft a reusable response");
+    expect(JSON.stringify(sourceModelOutputPromptCacheBridgeTool)).not.toContain("Return one cache value");
     expect(sourceSecretManagerPromptRegistryBridgeTool).toMatchObject({
       path: "mcp-source/customer-tools.ts",
       data_classes: ["confidential", "credential", "pii"],
@@ -11246,6 +11348,106 @@ describe("scanner", () => {
     expect(JSON.stringify(langchainPromptCacheWriteTool)).not.toContain("prompt_cache.set");
     expect(JSON.stringify(langchainPromptCacheWriteTool)).not.toContain("framework prompt cache written");
     expect(JSON.stringify(langchainPromptCacheWriteTool)).not.toContain("Write caller supplied prompt context");
+    expect(langchainModelOutputPromptCacheBridgeTool).toMatchObject({
+      path: "framework-tools/langchain_tools.py",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["call", "read", "remember", "send", "write"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(langchainModelOutputPromptCacheBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_agent_framework_source_tool: true,
+      agent_framework_source_tool: true,
+      agent_framework_source_tool_framework: "langchain",
+      agent_framework_source_tool_registration_kind: "python_tool_decorator",
+      agent_framework_source_tool_argument_count: 6,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_content_like_input: true,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      model_provider_call: true,
+      tainted_model_selection: true,
+      prompt_cache_write: true,
+      model_output_prompt_cache_bridge: true,
+      tainted_prompt_cache_key: true,
+      tainted_prompt_cache_value: true,
+      privileged_prompt_composition: true,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_model_provider_call: true,
+      handler_tainted_model_selection: true,
+      handler_prompt_cache_write: true,
+      handler_model_output_prompt_cache_bridge: true,
+      handler_tainted_prompt_cache_key: true,
+      handler_tainted_prompt_cache_value: true,
+      handler_privileged_prompt_composition: true,
+      handler_secret_env_access: true,
+      handler_model_visible_output: true,
+      handler_signal_count: 8,
+      open_world_schema: false
+    });
+    expect(langchainModelOutputPromptCacheBridgeTool?.metadata.authority_classes).toEqual([
+      "content_input",
+      "customer_data_input",
+      "handler_model_output_prompt_cache_bridge",
+      "handler_model_provider_call",
+      "handler_privileged_prompt_composition",
+      "handler_prompt_cache_write",
+      "handler_secret_env_access",
+      "handler_tainted_model_selection",
+      "handler_tainted_prompt_cache_key",
+      "handler_tainted_prompt_cache_value",
+      "memory_access",
+      "model_output_prompt_cache_bridge",
+      "model_provider_call",
+      "pii_input",
+      "privileged_prompt_composition",
+      "prompt_cache_write",
+      "secret_env_access",
+      "tainted_model_selection",
+      "tainted_prompt_cache_key",
+      "tainted_prompt_cache_value"
+    ]);
+    expect(langchainModelOutputPromptCacheBridgeTool?.metadata.handler_authority_classes).toEqual([
+      "handler_model_output_prompt_cache_bridge",
+      "handler_model_provider_call",
+      "handler_privileged_prompt_composition",
+      "handler_prompt_cache_write",
+      "handler_secret_env_access",
+      "handler_tainted_model_selection",
+      "handler_tainted_prompt_cache_key",
+      "handler_tainted_prompt_cache_value"
+    ]);
+    expect(langchainModelOutputPromptCacheBridgeTool?.metadata.handler_env_key_names).toEqual([
+      "LANGCHAIN_MODEL_PROMPT_CACHE_TOKEN",
+      "LANGCHAIN_MODEL_PROMPT_CACHE_WRITE_TOKEN"
+    ]);
+    expect(langchainModelOutputPromptCacheBridgeTool?.metadata.schema_properties).toEqual([
+      "cache_goal_text",
+      "cache_namespace",
+      "customer_id",
+      "customer_ticket_text",
+      "model_name",
+      "prompt_cache_key"
+    ]);
+    expect(langchainModelOutputPromptCacheBridgeTool?.metadata.required_properties).toEqual([
+      "cache_goal_text",
+      "cache_namespace",
+      "customer_id",
+      "customer_ticket_text",
+      "model_name",
+      "prompt_cache_key"
+    ]);
+    expect(JSON.stringify(langchainModelOutputPromptCacheBridgeTool)).not.toContain("openai_client.chat.completions.create");
+    expect(JSON.stringify(langchainModelOutputPromptCacheBridgeTool)).not.toContain("prompt_cache.set");
+    expect(JSON.stringify(langchainModelOutputPromptCacheBridgeTool)).not.toContain("model_selected_cache_value");
+    expect(JSON.stringify(langchainModelOutputPromptCacheBridgeTool)).not.toContain("framework model selected prompt cache value stored");
+    expect(JSON.stringify(langchainModelOutputPromptCacheBridgeTool)).not.toContain("Ask a model provider to draft a reusable response");
+    expect(JSON.stringify(langchainModelOutputPromptCacheBridgeTool)).not.toContain("Return one cache value");
     expect(langchainTrainingDatasetExportTool).toMatchObject({
       path: "framework-tools/langchain_tools.py",
       data_classes: ["confidential", "credential", "pii"],

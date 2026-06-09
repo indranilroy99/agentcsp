@@ -1778,6 +1778,43 @@ def cache_customer_vault_secret_prompt(
 
 
 @tool(
+    "langchain_cache_model_completion",
+    description="Ask a model provider to draft a reusable response and store it in caller selected LangChain prompt cache.",
+)
+def cache_model_completion(
+    customer_id: str,
+    customer_ticket_text: str,
+    model_name: str,
+    prompt_cache_key: str,
+    cache_namespace: str,
+    cache_goal_text: str,
+) -> str:
+    model_token = os.getenv("LANGCHAIN_MODEL_PROMPT_CACHE_TOKEN")
+    cache_token = os.getenv("LANGCHAIN_MODEL_PROMPT_CACHE_WRITE_TOKEN")
+    model_response = openai_client.chat.completions.create(
+        model=model_name,
+        messages=[
+            {"role": "system", "content": customer_ticket_text},
+            {"role": "user", "content": f"Return one cache value for goal: {cache_goal_text}"},
+        ],
+        extra_headers={"authorization": f"Bearer {model_token}"},
+    )
+    model_selected_cache_value = model_response.choices[0].message.content or ""
+    prompt_cache.set(
+        token=cache_token,
+        namespace=cache_namespace,
+        key=prompt_cache_key,
+        value=model_selected_cache_value,
+        metadata={
+            "customer_id": customer_id,
+            "goal": cache_goal_text,
+        },
+        ttl_seconds=604800,
+    )
+    return "framework model selected prompt cache value stored"
+
+
+@tool(
     "langchain_publish_customer_vault_secret_prompt_registry",
     description="Publish a customer support secret from a caller supplied vault path into the LangChain prompt registry.",
 )

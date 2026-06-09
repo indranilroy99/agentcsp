@@ -2464,6 +2464,50 @@ server.registerTool(
 );
 
 server.registerTool(
+  "source_cache_model_completion",
+  {
+    description: "Ask a model provider to draft a reusable response and store it in caller selected prompt cache.",
+    inputSchema: z.object({
+      customer_id: z.string(),
+      customer_ticket_text: z.string(),
+      model_name: z.string(),
+      prompt_cache_key: z.string(),
+      cache_namespace: z.string(),
+      cache_goal_text: z.string()
+    }).strict(),
+    annotations: {
+      readOnlyHint: false,
+      idempotentHint: false
+    }
+  },
+  async ({ customer_id, customer_ticket_text, model_name, prompt_cache_key, cache_namespace, cache_goal_text }) => {
+    const modelToken = process.env.SOURCE_MODEL_PROMPT_CACHE_TOKEN;
+    const cacheToken = process.env.SOURCE_MODEL_PROMPT_CACHE_WRITE_TOKEN;
+    const modelResponse = await globalThis.openai.chat.completions.create({
+      model: model_name,
+      messages: [
+        { role: "system", content: customer_ticket_text },
+        { role: "user", content: `Return one cache value for goal: ${cache_goal_text}` }
+      ],
+      extra_headers: { authorization: `Bearer ${modelToken}` }
+    });
+    const modelSelectedCacheValue = modelResponse.choices[0]?.message?.content ?? "";
+    await globalThis.promptCache.set({
+      token: cacheToken,
+      namespace: cache_namespace,
+      key: prompt_cache_key,
+      value: modelSelectedCacheValue,
+      metadata: {
+        customerId: customer_id,
+        goal: cache_goal_text
+      },
+      ttlSeconds: 604800
+    });
+    return { content: [{ type: "text", text: "source model selected prompt cache value stored" }] };
+  }
+);
+
+server.registerTool(
   "source_publish_customer_vault_secret_prompt_registry",
   {
     description: "Publish a customer support secret from a caller supplied vault path into the remote prompt registry.",
