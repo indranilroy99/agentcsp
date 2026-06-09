@@ -118,6 +118,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-114")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-115")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-116")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-117")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-001")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-002")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-003")).toBe(true);
@@ -7219,9 +7220,11 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerAgentConfigWriteFindings)).not.toContain("Rewrite AGENTS.md from caller supplied customer context");
     const sourceHandlerCredentialIssuanceFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-025");
     expect(sourceHandlerCredentialIssuanceFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
+      "langchain_issue_model_selected_credential",
       "langchain_issue_privileged_tool_observation_credential",
       "langchain_issue_vault_backed_agent_credential",
       "langchain_mint_agent_session_token",
+      "source_issue_model_selected_credential",
       "source_issue_privileged_tool_observation_credential",
       "source_issue_vault_backed_agent_credential",
       "source_mint_agent_session_token"
@@ -7276,15 +7279,21 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerCredentialIssuanceFindings)).not.toContain("secret_record.value");
     expect(JSON.stringify(sourceHandlerCredentialIssuanceFindings)).not.toContain("vaultSigningKey");
     expect(JSON.stringify(sourceHandlerCredentialIssuanceFindings)).not.toContain("vault_signing_key");
+    expect(JSON.stringify(sourceHandlerCredentialIssuanceFindings)).not.toContain("modelSelectedCredentialGrant");
+    expect(JSON.stringify(sourceHandlerCredentialIssuanceFindings)).not.toContain("model_selected_credential_grant");
     expect(JSON.stringify(sourceHandlerCredentialIssuanceFindings)).not.toContain("Mint an agent session token");
     expect(JSON.stringify(sourceHandlerCredentialIssuanceFindings)).not.toContain("Issue an agent credential");
     expect(JSON.stringify(sourceHandlerCredentialIssuanceFindings)).not.toContain("source tool observation issued credential");
     expect(JSON.stringify(sourceHandlerCredentialIssuanceFindings)).not.toContain("framework tool observation issued credential");
+    expect(JSON.stringify(sourceHandlerCredentialIssuanceFindings)).not.toContain("source model selected credential issued");
+    expect(JSON.stringify(sourceHandlerCredentialIssuanceFindings)).not.toContain("framework model selected credential issued");
     const sourceHandlerTaintedCredentialIssuanceFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-042");
     expect(sourceHandlerTaintedCredentialIssuanceFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
+      "langchain_issue_model_selected_credential",
       "langchain_issue_privileged_tool_observation_credential",
       "langchain_issue_vault_backed_agent_credential",
       "langchain_mint_agent_session_token",
+      "source_issue_model_selected_credential",
       "source_issue_privileged_tool_observation_credential",
       "source_issue_vault_backed_agent_credential",
       "source_mint_agent_session_token"
@@ -7318,10 +7327,14 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerTaintedCredentialIssuanceFindings)).not.toContain("secret_record.value");
     expect(JSON.stringify(sourceHandlerTaintedCredentialIssuanceFindings)).not.toContain("vaultSigningKey");
     expect(JSON.stringify(sourceHandlerTaintedCredentialIssuanceFindings)).not.toContain("vault_signing_key");
+    expect(JSON.stringify(sourceHandlerTaintedCredentialIssuanceFindings)).not.toContain("modelSelectedCredentialGrant");
+    expect(JSON.stringify(sourceHandlerTaintedCredentialIssuanceFindings)).not.toContain("model_selected_credential_grant");
     expect(JSON.stringify(sourceHandlerTaintedCredentialIssuanceFindings)).not.toContain("Mint an agent session token");
     expect(JSON.stringify(sourceHandlerTaintedCredentialIssuanceFindings)).not.toContain("Issue an agent credential");
     expect(JSON.stringify(sourceHandlerTaintedCredentialIssuanceFindings)).not.toContain("source tool observation issued credential");
     expect(JSON.stringify(sourceHandlerTaintedCredentialIssuanceFindings)).not.toContain("framework tool observation issued credential");
+    expect(JSON.stringify(sourceHandlerTaintedCredentialIssuanceFindings)).not.toContain("source model selected credential issued");
+    expect(JSON.stringify(sourceHandlerTaintedCredentialIssuanceFindings)).not.toContain("framework model selected credential issued");
     const sourceHandlerSecretManagerCredentialIssuanceBridgeFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-074");
     expect(sourceHandlerSecretManagerCredentialIssuanceBridgeFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_issue_vault_backed_agent_credential",
@@ -10332,6 +10345,7 @@ describe("rule engine", () => {
       "langchain_execute_model_generated_code",
       "langchain_fetch_model_selected_url",
       "langchain_grant_model_selected_authorization",
+      "langchain_issue_model_selected_credential",
       "langchain_run_model_generated_command",
       "langchain_review_authenticated_page_screenshot_with_model",
       "langchain_summarize_retrieved_context_with_model",
@@ -10342,6 +10356,7 @@ describe("rule engine", () => {
       "source_execute_model_generated_code",
       "source_fetch_model_selected_url",
       "source_grant_model_selected_authorization",
+      "source_issue_model_selected_credential",
       "source_run_model_generated_command",
       "source_review_authenticated_page_screenshot_with_model",
       "source_summarize_retrieved_context_with_model",
@@ -10525,6 +10540,7 @@ describe("rule engine", () => {
       "langchain_execute_model_generated_code",
       "langchain_fetch_model_selected_url",
       "langchain_grant_model_selected_authorization",
+      "langchain_issue_model_selected_credential",
       "langchain_run_model_generated_command",
       "langchain_summarize_customer_with_model",
       "source_apply_model_database_update",
@@ -10532,6 +10548,7 @@ describe("rule engine", () => {
       "source_execute_model_generated_code",
       "source_fetch_model_selected_url",
       "source_grant_model_selected_authorization",
+      "source_issue_model_selected_credential",
       "source_run_model_generated_command",
       "source_summarize_customer_with_model"
     ]);
@@ -10567,9 +10584,11 @@ describe("rule engine", () => {
       "langchain_execute_model_generated_code",
       "langchain_fetch_model_selected_url",
       "langchain_grant_model_selected_authorization",
+      "langchain_issue_model_selected_credential",
       "langchain_run_model_generated_command",
       "langchain_summarize_customer_with_model",
       "source_summarize_customer_with_model",
+      "source_issue_model_selected_credential",
       "source_summarize_retrieved_context_with_model"
     ].sort());
     expect(sourceHandlerPrivilegedPromptFindings.every((finding) => finding.severity === "critical")).toBe(true);
@@ -10956,6 +10975,64 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerModelOutputAuthorizationGrantBridgeFindings)).not.toContain("source model selected authorization granted");
     expect(JSON.stringify(sourceHandlerModelOutputAuthorizationGrantBridgeFindings)).not.toContain("framework model selected authorization granted");
     expect(JSON.stringify(sourceHandlerModelOutputAuthorizationGrantBridgeFindings)).not.toContain("Ask a model provider to choose a broad authorization role");
+    const sourceHandlerModelOutputCredentialIssuanceBridgeFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-117");
+    expect(sourceHandlerModelOutputCredentialIssuanceBridgeFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
+      "langchain_issue_model_selected_credential",
+      "source_issue_model_selected_credential"
+    ]);
+    expect(sourceHandlerModelOutputCredentialIssuanceBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
+    expect(sourceHandlerModelOutputCredentialIssuanceBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerModelOutputCredentialIssuanceBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
+    expect(sourceHandlerModelOutputCredentialIssuanceBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
+    expect(sourceHandlerModelOutputCredentialIssuanceBridgeFindings.every((finding) => finding.matched_object.metadata.handler_model_provider_call === true)).toBe(true);
+    expect(sourceHandlerModelOutputCredentialIssuanceBridgeFindings.every((finding) => finding.matched_object.metadata.handler_credential_issuance === true)).toBe(true);
+    expect(sourceHandlerModelOutputCredentialIssuanceBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.handler_tainted_credential_issuance_input === true
+    )).toBe(true);
+    expect(sourceHandlerModelOutputCredentialIssuanceBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.handler_model_output_credential_issuance_bridge === true
+    )).toBe(true);
+    expect(sourceHandlerModelOutputCredentialIssuanceBridgeFindings.every((finding) => finding.matched_object.metadata.handler_secret_env_access === true)).toBe(true);
+    expect(sourceHandlerModelOutputCredentialIssuanceBridgeFindings.every((finding) => finding.matched_object.metadata.model_provider_call === true)).toBe(true);
+    expect(sourceHandlerModelOutputCredentialIssuanceBridgeFindings.every((finding) => finding.matched_object.metadata.credential_issuance === true)).toBe(true);
+    expect(sourceHandlerModelOutputCredentialIssuanceBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.tainted_credential_issuance_input === true
+    )).toBe(true);
+    expect(sourceHandlerModelOutputCredentialIssuanceBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.model_output_credential_issuance_bridge === true
+    )).toBe(true);
+    expect(sourceHandlerModelOutputCredentialIssuanceBridgeFindings.every((finding) => finding.matched_object.metadata.accepts_content_like_input === true)).toBe(true);
+    expect(sourceHandlerModelOutputCredentialIssuanceBridgeFindings.every((finding) => finding.matched_object.metadata.accepts_customer_data_input === true)).toBe(true);
+    expect(sourceHandlerModelOutputCredentialIssuanceBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.authority_classes.includes("model_provider_call")
+    )).toBe(true);
+    expect(sourceHandlerModelOutputCredentialIssuanceBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.authority_classes.includes("credential_issuance")
+    )).toBe(true);
+    expect(sourceHandlerModelOutputCredentialIssuanceBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.authority_classes.includes("model_output_credential_issuance_bridge")
+    )).toBe(true);
+    expect(sourceHandlerModelOutputCredentialIssuanceBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.handler_authority_classes.includes("handler_model_output_credential_issuance_bridge")
+    )).toBe(true);
+    expect(sourceHandlerModelOutputCredentialIssuanceBridgeFindings.every((finding) => finding.matched_object.actions.includes("read"))).toBe(true);
+    expect(sourceHandlerModelOutputCredentialIssuanceBridgeFindings.every((finding) => finding.matched_object.actions.includes("send"))).toBe(true);
+    expect(sourceHandlerModelOutputCredentialIssuanceBridgeFindings.every((finding) => finding.matched_object.actions.includes("write"))).toBe(true);
+    expect(sourceHandlerModelOutputCredentialIssuanceBridgeFindings.every((finding) => finding.matched_object.external_reach === true)).toBe(true);
+    expect(sourceHandlerModelOutputCredentialIssuanceBridgeFindings.every((finding) => finding.matched_object.secret_exposure === true)).toBe(true);
+    expect(sourceHandlerModelOutputCredentialIssuanceBridgeFindings.every((finding) => finding.matched_object.side_effect === true)).toBe(true);
+    expect(sourceHandlerModelOutputCredentialIssuanceBridgeFindings.every((finding) => finding.matched_object.reversible === false)).toBe(true);
+    expect(JSON.stringify(sourceHandlerModelOutputCredentialIssuanceBridgeFindings)).not.toContain("openai.chat.completions.create");
+    expect(JSON.stringify(sourceHandlerModelOutputCredentialIssuanceBridgeFindings)).not.toContain("openai_client.chat.completions.create");
+    expect(JSON.stringify(sourceHandlerModelOutputCredentialIssuanceBridgeFindings)).not.toContain("modelResult");
+    expect(JSON.stringify(sourceHandlerModelOutputCredentialIssuanceBridgeFindings)).not.toContain("model_response");
+    expect(JSON.stringify(sourceHandlerModelOutputCredentialIssuanceBridgeFindings)).not.toContain("modelSelectedCredentialGrant");
+    expect(JSON.stringify(sourceHandlerModelOutputCredentialIssuanceBridgeFindings)).not.toContain("model_selected_credential_grant");
+    expect(JSON.stringify(sourceHandlerModelOutputCredentialIssuanceBridgeFindings)).not.toContain("identityBroker.issueToken");
+    expect(JSON.stringify(sourceHandlerModelOutputCredentialIssuanceBridgeFindings)).not.toContain("identity_broker.issue_token");
+    expect(JSON.stringify(sourceHandlerModelOutputCredentialIssuanceBridgeFindings)).not.toContain("source model selected credential issued");
+    expect(JSON.stringify(sourceHandlerModelOutputCredentialIssuanceBridgeFindings)).not.toContain("framework model selected credential issued");
+    expect(JSON.stringify(sourceHandlerModelOutputCredentialIssuanceBridgeFindings)).not.toContain("Ask a model provider to choose credential grant material");
     const sourceHandlerDynamicCodeFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-019");
     expect(sourceHandlerDynamicCodeFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_evaluate_agent_expression",

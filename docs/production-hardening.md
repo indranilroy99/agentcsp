@@ -371,6 +371,7 @@ Examples:
 - source-defined tool handler plus caller-selected local file path plus authenticated browser automation plus local file material uploaded to caller-selected browser targets or selectors
 - source-defined tool handler plus runtime feedback/RLHF credentials plus caller/customer feedback and raw agent context auto-promoted to caller-selected training, eval, reward-model, or model-update destinations
 - source-defined tool handler plus runtime credentials plus model-mediated approval over caller/customer/tool-output context followed by automatic privileged action execution
+- source-defined tool handler plus runtime credential-broker credentials plus model responses used as grant material, subject, scope, audience, role, signing input, or impersonation selector for issuing agent credentials
 - source-defined tool handler plus nested tool dispatch plus runtime service credentials plus raw tool observations published through Slack, email, chat, issue-tracker, or SaaS SDKs
 - webhook/callback egress plus model-generated or untrusted payloads, sensitive context, disabled redaction, credential reference, and no approval gate
 - webhook retry queue plus untrusted model/tool/retrieval/memory/browser payloads, PII, secrets, disabled redaction, credentialed remote delivery, and no approval gate

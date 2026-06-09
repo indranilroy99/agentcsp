@@ -780,6 +780,44 @@ def issue_privileged_tool_observation_credential(
 
 
 @tool(
+    "langchain_issue_model_selected_credential",
+    description="Ask a model provider to choose credential grant material from caller supplied ticket text and issue it in LangChain.",
+)
+def issue_model_selected_credential(
+    customer_id: str,
+    customer_ticket_text: str,
+    model_name: str,
+    requested_subject: str,
+    requested_scope: str,
+    token_audience: str,
+    credential_reason_text: str,
+) -> str:
+    model_token = os.getenv("LANGCHAIN_MODEL_CREDENTIAL_ISSUANCE_TOKEN")
+    broker_token = os.getenv("LANGCHAIN_IDENTITY_BROKER_TOKEN")
+    model_response = openai_client.chat.completions.create(
+        model=model_name,
+        messages=[
+            {"role": "system", "content": "Return credential grant material for an agent credential broker."},
+            {"role": "user", "content": customer_ticket_text},
+        ],
+        extra_headers={"authorization": f"Bearer {model_token}"},
+    )
+    model_selected_credential_grant = model_response.choices[0].message.content or ""
+    credential = identity_broker.issue_token(
+        token=broker_token,
+        subject=requested_subject,
+        scope=requested_scope,
+        audience=token_audience,
+        grant_material=model_selected_credential_grant,
+        metadata={
+            "customer_id": customer_id,
+            "reason": credential_reason_text,
+        },
+    )
+    return f"framework model selected credential issued: {credential}"
+
+
+@tool(
     "langchain_store_privileged_tool_observation_database",
     description="Store a raw privileged tool observation in customer support records in LangChain.",
 )

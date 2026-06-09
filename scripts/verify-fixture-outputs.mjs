@@ -218,6 +218,8 @@ const leakPatterns = [
   /model_selected_record_mutation/u,
   /modelSelectedGrantRole/u,
   /model_selected_grant_role/u,
+  /modelSelectedCredentialGrant/u,
+  /model_selected_credential_grant/u,
   /supportDb\.query/u,
   /support_db\.with_token/u,
   /permissionBrokerClient\.upsertGrant/u,
@@ -239,10 +241,14 @@ const leakPatterns = [
   /framework model selected database mutation applied/u,
   /source model selected authorization granted/u,
   /framework model selected authorization granted/u,
+  /source model selected credential issued/u,
+  /framework model selected credential issued/u,
   /Ask a model provider to draft a customer database mutation/u,
   /Ask a model provider to choose a broad authorization role/u,
+  /Ask a model provider to choose credential grant material/u,
   /Return one SQL update for record goal/u,
   /Return one authorization role for grant reason/u,
+  /Return credential grant material/u,
   /source model generated command queued/u,
   /framework model generated command queued/u,
   /source tool observation command queued/u,
@@ -936,12 +942,16 @@ const leakPatterns = [
   /identity_broker\.issue_token/u,
   /grantMaterial/u,
   /grant_material/u,
+  /modelSelectedCredentialGrant/u,
+  /model_selected_credential_grant/u,
   /vaultSigningKey/u,
   /vault_signing_key/u,
   /Issue an agent credential/u,
   /Mint an agent session token/u,
   /source tool observation issued credential/u,
   /framework tool observation issued credential/u,
+  /source model selected credential issued/u,
+  /framework model selected credential issued/u,
   /mcpClient\.callTool/u,
   /tool_registry\.call_tool/u,
   /Dispatch a caller selected privileged tool/u,
@@ -1098,8 +1108,8 @@ const leakPatterns = [
 const vulnerable = await readScanOutput(vulnerableOutput, { sarifRequired: true });
 const safe = await readScanOutput(safeOutput, { sarifRequired: false });
 
-assertEqual(vulnerable.manifest.findings.length, 808, "vulnerable manifest finding count");
-assertEqual(vulnerable.findings.length, 808, "vulnerable findings.json count");
+assertEqual(vulnerable.manifest.findings.length, 822, "vulnerable manifest finding count");
+assertEqual(vulnerable.findings.length, 822, "vulnerable findings.json count");
 assertEqual(vulnerable.manifest.attack_paths.length, 15, "vulnerable attack path count");
 assertEqual(vulnerable.manifest.static_blast_radius?.critical_attack_paths, 15, "vulnerable critical attack path count");
 assertEqual(vulnerable.manifest.diagnostics.length, 0, "vulnerable diagnostics count");
@@ -1213,6 +1223,7 @@ for (const ruleId of [
   "AGENTCSP-TOOL-114",
   "AGENTCSP-TOOL-115",
   "AGENTCSP-TOOL-116",
+  "AGENTCSP-TOOL-117",
   "AGENTCSP-RUNTIME-007",
   "AGENTCSP-RUNTIME-008",
   "AGENTCSP-RUNTIME-123",

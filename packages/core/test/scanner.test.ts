@@ -733,6 +733,9 @@ describe("scanner", () => {
     const sourceModelOutputAuthorizationGrantBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "source_grant_model_selected_authorization"
     );
+    const sourceModelOutputCredentialIssuanceBridgeTool = surfaces.tools.find(
+      (surface) => surface.name === "source_issue_model_selected_credential"
+    );
     const pythonExportTool = surfaces.tools.find((surface) => surface.name === "python_export_customer_record");
     const pythonDeleteTool = surfaces.tools.find((surface) => surface.name === "python_readonly_delete_workspace_file");
     const pythonUnsafeDeserializationTool = surfaces.tools.find((surface) => surface.name === "python_load_serialized_agent_state");
@@ -932,6 +935,9 @@ describe("scanner", () => {
     );
     const langchainModelOutputAuthorizationGrantBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "langchain_grant_model_selected_authorization"
+    );
+    const langchainModelOutputCredentialIssuanceBridgeTool = surfaces.tools.find(
+      (surface) => surface.name === "langchain_issue_model_selected_credential"
     );
     const langchainUnsafeDeserializationTool = surfaces.tools.find((surface) => surface.name === "langchain_load_serialized_agent_state");
     const aiSdkExportTool = surfaces.tools.find((surface) => surface.name === "aiSdkExportCustomerContext");
@@ -8433,6 +8439,96 @@ describe("scanner", () => {
     expect(JSON.stringify(sourceModelOutputAuthorizationGrantBridgeTool)).not.toContain("permissionBrokerClient.upsertGrant");
     expect(JSON.stringify(sourceModelOutputAuthorizationGrantBridgeTool)).not.toContain("source model selected authorization granted");
     expect(JSON.stringify(sourceModelOutputAuthorizationGrantBridgeTool)).not.toContain("Ask a model provider to choose a broad authorization role");
+    expect(sourceModelOutputCredentialIssuanceBridgeTool).toMatchObject({
+      path: "mcp-source/customer-tools.ts",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["call", "publish", "read", "send", "write"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(sourceModelOutputCredentialIssuanceBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_mcp_source_tool: true,
+      mcp_source_tool_registration: true,
+      mcp_source_tool_registration_kind: "registerTool",
+      mcp_source_tool_argument_count: 3,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_secret_like_input: true,
+      accepts_content_like_input: true,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      model_provider_call: true,
+      tainted_model_selection: true,
+      credential_issuance: true,
+      tainted_credential_issuance_input: true,
+      model_output_credential_issuance_bridge: true,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_model_provider_call: true,
+      handler_tainted_model_selection: true,
+      handler_credential_issuance: true,
+      handler_tainted_credential_issuance_input: true,
+      handler_model_output_credential_issuance_bridge: true,
+      handler_privileged_prompt_composition: true,
+      handler_secret_env_access: true,
+      handler_signal_count: 7,
+      open_world_schema: false
+    });
+    expect(sourceModelOutputCredentialIssuanceBridgeTool?.metadata.authority_classes).toEqual(expect.arrayContaining([
+      "credential_issuance",
+      "handler_credential_issuance",
+      "handler_model_output_credential_issuance_bridge",
+      "handler_model_provider_call",
+      "handler_privileged_prompt_composition",
+      "handler_secret_env_access",
+      "handler_tainted_credential_issuance_input",
+      "handler_tainted_model_selection",
+      "model_output_credential_issuance_bridge",
+      "model_provider_call",
+      "privileged_prompt_composition",
+      "tainted_credential_issuance_input",
+      "tainted_model_selection"
+    ]));
+    expect(sourceModelOutputCredentialIssuanceBridgeTool?.metadata.handler_authority_classes).toEqual([
+      "handler_credential_issuance",
+      "handler_model_output_credential_issuance_bridge",
+      "handler_model_provider_call",
+      "handler_privileged_prompt_composition",
+      "handler_secret_env_access",
+      "handler_tainted_credential_issuance_input",
+      "handler_tainted_model_selection"
+    ]);
+    expect(sourceModelOutputCredentialIssuanceBridgeTool?.metadata.handler_env_key_names).toEqual([
+      "SOURCE_IDENTITY_BROKER_TOKEN",
+      "SOURCE_MODEL_CREDENTIAL_ISSUANCE_TOKEN"
+    ]);
+    expect(sourceModelOutputCredentialIssuanceBridgeTool?.metadata.schema_properties).toEqual([
+      "credential_reason_text",
+      "customer_id",
+      "customer_ticket_text",
+      "model_name",
+      "requested_scope",
+      "requested_subject",
+      "token_audience"
+    ]);
+    expect(sourceModelOutputCredentialIssuanceBridgeTool?.metadata.required_properties).toEqual([
+      "credential_reason_text",
+      "customer_id",
+      "customer_ticket_text",
+      "model_name",
+      "requested_scope",
+      "requested_subject",
+      "token_audience"
+    ]);
+    expect(JSON.stringify(sourceModelOutputCredentialIssuanceBridgeTool)).not.toContain("openai.chat.completions.create");
+    expect(JSON.stringify(sourceModelOutputCredentialIssuanceBridgeTool)).not.toContain("modelResult");
+    expect(JSON.stringify(sourceModelOutputCredentialIssuanceBridgeTool)).not.toContain("modelSelectedCredentialGrant");
+    expect(JSON.stringify(sourceModelOutputCredentialIssuanceBridgeTool)).not.toContain("identityBroker.issueToken");
+    expect(JSON.stringify(sourceModelOutputCredentialIssuanceBridgeTool)).not.toContain("source model selected credential issued");
+    expect(JSON.stringify(sourceModelOutputCredentialIssuanceBridgeTool)).not.toContain("Ask a model provider to choose credential grant material");
     expect(pythonExportTool).toMatchObject({
       path: "mcp-source/python_tools.py",
       data_classes: ["confidential", "credential", "pii"],
@@ -16183,6 +16279,97 @@ describe("scanner", () => {
     expect(JSON.stringify(langchainModelOutputAuthorizationGrantBridgeTool)).not.toContain("permission_broker_client.upsert_grant");
     expect(JSON.stringify(langchainModelOutputAuthorizationGrantBridgeTool)).not.toContain("framework model selected authorization granted");
     expect(JSON.stringify(langchainModelOutputAuthorizationGrantBridgeTool)).not.toContain("Ask a model provider to choose a broad authorization role");
+    expect(langchainModelOutputCredentialIssuanceBridgeTool).toMatchObject({
+      path: "framework-tools/langchain_tools.py",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["call", "publish", "read", "send", "write"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(langchainModelOutputCredentialIssuanceBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_agent_framework_source_tool: true,
+      agent_framework_source_tool: true,
+      agent_framework_source_tool_framework: "langchain",
+      agent_framework_source_tool_registration_kind: "python_tool_decorator",
+      agent_framework_source_tool_argument_count: 7,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_secret_like_input: true,
+      accepts_content_like_input: true,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      model_provider_call: true,
+      tainted_model_selection: true,
+      credential_issuance: true,
+      tainted_credential_issuance_input: true,
+      model_output_credential_issuance_bridge: true,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_model_provider_call: true,
+      handler_tainted_model_selection: true,
+      handler_credential_issuance: true,
+      handler_tainted_credential_issuance_input: true,
+      handler_model_output_credential_issuance_bridge: true,
+      handler_privileged_prompt_composition: true,
+      handler_secret_env_access: true,
+      handler_signal_count: 7,
+      open_world_schema: false
+    });
+    expect(langchainModelOutputCredentialIssuanceBridgeTool?.metadata.authority_classes).toEqual(expect.arrayContaining([
+      "credential_issuance",
+      "handler_credential_issuance",
+      "handler_model_output_credential_issuance_bridge",
+      "handler_model_provider_call",
+      "handler_privileged_prompt_composition",
+      "handler_secret_env_access",
+      "handler_tainted_credential_issuance_input",
+      "handler_tainted_model_selection",
+      "model_output_credential_issuance_bridge",
+      "model_provider_call",
+      "privileged_prompt_composition",
+      "tainted_credential_issuance_input",
+      "tainted_model_selection"
+    ]));
+    expect(langchainModelOutputCredentialIssuanceBridgeTool?.metadata.handler_authority_classes).toEqual([
+      "handler_credential_issuance",
+      "handler_model_output_credential_issuance_bridge",
+      "handler_model_provider_call",
+      "handler_privileged_prompt_composition",
+      "handler_secret_env_access",
+      "handler_tainted_credential_issuance_input",
+      "handler_tainted_model_selection"
+    ]);
+    expect(langchainModelOutputCredentialIssuanceBridgeTool?.metadata.handler_env_key_names).toEqual([
+      "LANGCHAIN_IDENTITY_BROKER_TOKEN",
+      "LANGCHAIN_MODEL_CREDENTIAL_ISSUANCE_TOKEN"
+    ]);
+    expect(langchainModelOutputCredentialIssuanceBridgeTool?.metadata.schema_properties).toEqual([
+      "credential_reason_text",
+      "customer_id",
+      "customer_ticket_text",
+      "model_name",
+      "requested_scope",
+      "requested_subject",
+      "token_audience"
+    ]);
+    expect(langchainModelOutputCredentialIssuanceBridgeTool?.metadata.required_properties).toEqual([
+      "credential_reason_text",
+      "customer_id",
+      "customer_ticket_text",
+      "model_name",
+      "requested_scope",
+      "requested_subject",
+      "token_audience"
+    ]);
+    expect(JSON.stringify(langchainModelOutputCredentialIssuanceBridgeTool)).not.toContain("openai_client.chat.completions.create");
+    expect(JSON.stringify(langchainModelOutputCredentialIssuanceBridgeTool)).not.toContain("model_response");
+    expect(JSON.stringify(langchainModelOutputCredentialIssuanceBridgeTool)).not.toContain("model_selected_credential_grant");
+    expect(JSON.stringify(langchainModelOutputCredentialIssuanceBridgeTool)).not.toContain("identity_broker.issue_token");
+    expect(JSON.stringify(langchainModelOutputCredentialIssuanceBridgeTool)).not.toContain("framework model selected credential issued");
+    expect(JSON.stringify(langchainModelOutputCredentialIssuanceBridgeTool)).not.toContain("Ask a model provider to choose credential grant material");
     expect(aiSdkExportTool).toMatchObject({
       path: "framework-tools/vercel-ai-tools.ts",
       data_classes: ["confidential", "credential", "pii"],

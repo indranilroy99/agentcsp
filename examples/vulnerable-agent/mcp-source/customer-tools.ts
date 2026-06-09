@@ -1101,6 +1101,61 @@ server.registerTool(
 );
 
 server.registerTool(
+  "source_issue_model_selected_credential",
+  {
+    description: "Ask a model provider to choose credential grant material from caller supplied ticket text and issue it.",
+    inputSchema: z.object({
+      customer_id: z.string(),
+      customer_ticket_text: z.string(),
+      model_name: z.string(),
+      requested_subject: z.string(),
+      requested_scope: z.string(),
+      token_audience: z.string(),
+      credential_reason_text: z.string()
+    }).strict(),
+    annotations: {
+      readOnlyHint: false,
+      idempotentHint: false
+    }
+  },
+  async ({
+    customer_id,
+    customer_ticket_text,
+    model_name,
+    requested_subject,
+    requested_scope,
+    token_audience,
+    credential_reason_text
+  }) => {
+    const modelToken = process.env.SOURCE_MODEL_CREDENTIAL_ISSUANCE_TOKEN;
+    const brokerToken = process.env.SOURCE_IDENTITY_BROKER_TOKEN;
+    const modelResult = await globalThis.openai.chat.completions.create({
+      model: model_name,
+      messages: [
+        { role: "system", content: "Return credential grant material for an agent credential broker." },
+        { role: "user", content: customer_ticket_text }
+      ],
+      extra_headers: {
+        authorization: `Bearer ${modelToken}`
+      }
+    });
+    const modelSelectedCredentialGrant = modelResult.choices[0].message.content ?? "";
+    const credential = await globalThis.identityBroker.issueToken({
+      token: brokerToken,
+      subject: requested_subject,
+      scope: requested_scope,
+      audience: token_audience,
+      grantMaterial: modelSelectedCredentialGrant,
+      metadata: {
+        customerId: customer_id,
+        reason: credential_reason_text
+      }
+    });
+    return { content: [{ type: "text", text: `source model selected credential issued: ${credential}` }] };
+  }
+);
+
+server.registerTool(
   "source_store_privileged_tool_observation_database",
   {
     description: "Store a raw privileged tool observation in customer support records.",
