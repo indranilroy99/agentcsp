@@ -494,7 +494,7 @@ describe("scanner", () => {
       package_manifest_dependency_specs_redacted: true,
       package_manifest_dependency_count: 4,
       package_manifest_agent_dependency_count: 4,
-      package_manifest_risky_dependency_count: 4,
+      package_manifest_risky_dependency_count: 3,
       package_manifest_unpinned_dependency: true,
       package_manifest_remote_dependency: true,
       package_manifest_lifecycle_script: true,
@@ -513,10 +513,10 @@ describe("scanner", () => {
       "rag_vector_store"
     ]);
     expect(packageManifestConfig?.metadata.package_manifest_dependency_reference_kinds).toEqual([
+      "exact_semver",
       "floating_range",
       "git_dependency",
-      "http_tarball",
-      "latest_tag"
+      "http_tarball"
     ]);
     expect(packageManifestConfig?.metadata.env_key_names).toEqual(["AGENT_EXTENSION_TOKEN"]);
     expect(packageManifestConfig?.metadata.secret_ref_key_names).toEqual(["AGENT_EXTENSION_TOKEN"]);

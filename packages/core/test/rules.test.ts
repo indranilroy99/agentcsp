@@ -2399,7 +2399,7 @@ describe("rule engine", () => {
       package_manifest_dependency_specs_redacted: true,
       package_manifest_dependency_count: 4,
       package_manifest_agent_dependency_count: 4,
-      package_manifest_risky_dependency_count: 4,
+      package_manifest_risky_dependency_count: 3,
       package_manifest_unpinned_dependency: true,
       package_manifest_remote_dependency: true,
       package_manifest_lifecycle_script: true,
@@ -2413,10 +2413,10 @@ describe("rule engine", () => {
       "rag_vector_store"
     ]);
     expect(supplyChainFindings[0]?.matched_object.metadata.package_manifest_dependency_reference_kinds).toEqual([
+      "exact_semver",
       "floating_range",
       "git_dependency",
-      "http_tarball",
-      "latest_tag"
+      "http_tarball"
     ]);
     expect(supplyChainFindings[0]?.severity).toBe("critical");
     expect(supplyChainFindings[0]?.confidence).toBe("very_high");
@@ -2438,7 +2438,7 @@ describe("rule engine", () => {
       package_manifest_dependency_specs_redacted: true,
       package_manifest_dependency_count: 4,
       package_manifest_agent_dependency_count: 4,
-      package_manifest_risky_dependency_count: 4,
+      package_manifest_risky_dependency_count: 3,
       package_manifest_unpinned_dependency: true,
       package_manifest_remote_dependency: true,
       package_manifest_lifecycle_script: true,
@@ -2454,10 +2454,10 @@ describe("rule engine", () => {
       "rag_vector_store"
     ]);
     expect(supplyChainBootstrapFindings[0]?.matched_object.metadata.package_manifest_dependency_reference_kinds).toEqual([
+      "exact_semver",
       "floating_range",
       "git_dependency",
-      "http_tarball",
-      "latest_tag"
+      "http_tarball"
     ]);
     expect(supplyChainBootstrapFindings[0]?.severity).toBe("critical");
     expect(supplyChainBootstrapFindings[0]?.confidence).toBe("very_high");

@@ -12,6 +12,6 @@
     "@agentcsp-demo/remote-rag-plugin": "https://packages.example.invalid/remote-rag-plugin.tgz",
     "@modelcontextprotocol/sdk": "^1.0.0",
     "@openai/agents": "github:agentcsp-demo/openai-agents-fork#main",
-    "langchain": "latest"
+    "langchain": "0.3.37"
   }
 }
