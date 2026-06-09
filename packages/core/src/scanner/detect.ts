@@ -24131,6 +24131,7 @@ function addToolDefinitionSurface(
       !authority.external_service_write &&
       !authority.model_provider_call &&
       !authority.embedding_provider_call &&
+      !authority.secret_manager_embedding_vector_bridge &&
       !authority.telemetry_export &&
       !authority.prompt_cache_write &&
       !authority.training_dataset_export &&
@@ -24194,6 +24195,7 @@ function addToolDefinitionSurface(
       tool_output_prompt_bridge: authority.tool_output_prompt_bridge,
       embedding_provider_call: authority.embedding_provider_call,
       tainted_embedding_input: authority.tainted_embedding_input,
+      secret_manager_embedding_vector_bridge: authority.secret_manager_embedding_vector_bridge,
       telemetry_export: authority.telemetry_export,
       secret_manager_telemetry_bridge: authority.secret_manager_telemetry_bridge,
       tainted_telemetry_payload: authority.tainted_telemetry_payload,
@@ -26622,6 +26624,7 @@ interface SourceToolHandlerSignals {
   handlerToolOutputPromptBridge: boolean;
   handlerEmbeddingProviderCall: boolean;
   handlerTaintedEmbeddingInput: boolean;
+  handlerSecretManagerEmbeddingVectorBridge: boolean;
   handlerTelemetryExport: boolean;
   handlerSecretManagerTelemetryBridge: boolean;
   handlerTaintedTelemetryPayload: boolean;
@@ -27120,6 +27123,7 @@ function sourceToolHandlerSignalMetadata(signals: SourceToolHandlerSignals | und
     handler_tool_output_prompt_bridge: signals.handlerToolOutputPromptBridge,
     handler_embedding_provider_call: signals.handlerEmbeddingProviderCall,
     handler_tainted_embedding_input: signals.handlerTaintedEmbeddingInput,
+    handler_secret_manager_embedding_vector_bridge: signals.handlerSecretManagerEmbeddingVectorBridge,
     handler_telemetry_export: signals.handlerTelemetryExport,
     handler_secret_manager_telemetry_bridge: signals.handlerSecretManagerTelemetryBridge,
     handler_tainted_telemetry_payload: signals.handlerTaintedTelemetryPayload,
@@ -27463,6 +27467,9 @@ function classifySourceToolHandlerSignals(
   const secretManagerMemoryBridge = secretManagerAccess && memoryWrite && (language === "javascript"
     ? hasJavaScriptHandlerSecretManagerMemoryBridge(handlerSource)
     : hasPythonHandlerSecretManagerMemoryBridge(handlerSource));
+  const secretManagerEmbeddingVectorBridge = secretManagerAccess && embeddingProviderCall && memoryWrite && (language === "javascript"
+    ? hasJavaScriptHandlerSecretManagerEmbeddingVectorBridge(handlerSource)
+    : hasPythonHandlerSecretManagerEmbeddingVectorBridge(handlerSource));
 
   const classes = new Set<string>();
   if (externalNetworkCall) classes.add("handler_network_access");
@@ -27480,6 +27487,7 @@ function classifySourceToolHandlerSignals(
   if (toolOutputPromptBridge) classes.add("handler_tool_output_prompt_bridge");
   if (embeddingProviderCall) classes.add("handler_embedding_provider_call");
   if (taintedEmbeddingInput) classes.add("handler_tainted_embedding_input");
+  if (secretManagerEmbeddingVectorBridge) classes.add("handler_secret_manager_embedding_vector_bridge");
   if (telemetryExport) classes.add("handler_telemetry_export");
   if (secretManagerTelemetryBridge) classes.add("handler_secret_manager_telemetry_bridge");
   if (taintedTelemetryPayload) classes.add("handler_tainted_telemetry_payload");
@@ -27572,6 +27580,7 @@ function classifySourceToolHandlerSignals(
     handlerToolOutputPromptBridge: toolOutputPromptBridge,
     handlerEmbeddingProviderCall: embeddingProviderCall,
     handlerTaintedEmbeddingInput: taintedEmbeddingInput,
+    handlerSecretManagerEmbeddingVectorBridge: secretManagerEmbeddingVectorBridge,
     handlerTelemetryExport: telemetryExport,
     handlerSecretManagerTelemetryBridge: secretManagerTelemetryBridge,
     handlerTaintedTelemetryPayload: taintedTelemetryPayload,
@@ -27953,6 +27962,54 @@ function hasPythonHandlerSecretManagerMemoryBridge(source: string): boolean {
     ],
     source,
     identifiers
+  );
+}
+
+function hasJavaScriptHandlerSecretManagerEmbeddingVectorBridge(source: string): boolean {
+  const secretIdentifiers = extractJavaScriptSecretManagerIdentifiers(source);
+  if (secretIdentifiers.length === 0) return false;
+  const secretEmbedded = callExpressionReferencesAnyIdentifier(
+    [
+      /\b(?:embeddingClient|embeddingProvider|embedder|embeddings|cohere|cohereClient|voyage|voyageClient|bedrock|bedrockClient)\s*(?:\.\s*[A-Za-z_$][\w$]*){0,4}\s*\.\s*(?:embed|embedQuery|embedDocuments|embedMany|create|generateEmbedding|generateEmbeddings)\s*\(([\s\S]{0,2200})\)/giu,
+      /\b(?:openai|openaiClient)\s*\.\s*embeddings\s*\.\s*create\s*\(([\s\S]{0,2200})\)/giu
+    ],
+    source,
+    secretIdentifiers
+  );
+  if (!secretEmbedded) return false;
+
+  const embeddingIdentifiers = extractJavaScriptEmbeddingOutputIdentifiers(source);
+  return callExpressionReferencesAnyIdentifier(
+    [
+      /\b(?:[A-Za-z_$][\w$]*memory|memory|memories|vectorStore|vectorIndex|embeddingStore|ragStore|retriever|knowledgeBase|sessionStore|stateStore)\s*\.\s*(?:add|addDocuments|addTexts|append|insert|persist|put|push|remember|save|set|store|upsert|write)\s*\(([\s\S]{0,2200})\)/giu,
+      /\b(?:persistMemory|rememberContext|saveMemory|storeMemory|upsertMemory|writeMemory)\s*\(([\s\S]{0,2200})\)/giu
+    ],
+    source,
+    uniqueStrings([...embeddingIdentifiers, ...secretIdentifiers])
+  );
+}
+
+function hasPythonHandlerSecretManagerEmbeddingVectorBridge(source: string): boolean {
+  const secretIdentifiers = extractPythonSecretManagerIdentifiers(source);
+  if (secretIdentifiers.length === 0) return false;
+  const secretEmbedded = callExpressionReferencesAnyIdentifier(
+    [
+      /\b(?:embedding_client|embedding_provider|embedder|embeddings|cohere|cohere_client|voyage|voyage_client|bedrock|bedrock_client)\s*(?:\.\s*[A-Za-z_]\w*){0,4}\s*\.\s*(?:embed|embed_query|embed_documents|embed_many|create|generate_embedding|generate_embeddings)\s*\(([\s\S]{0,2200})\)/giu,
+      /\b(?:openai|openai_client)\s*\.\s*embeddings\s*\.\s*create\s*\(([\s\S]{0,2200})\)/giu
+    ],
+    source,
+    secretIdentifiers
+  );
+  if (!secretEmbedded) return false;
+
+  const embeddingIdentifiers = extractPythonEmbeddingOutputIdentifiers(source);
+  return callExpressionReferencesAnyIdentifier(
+    [
+      /\b(?:[A-Za-z_]\w*memory|memory|memory_store|vector_store|vectorstore|vector_index|embedding_store|rag_store|retriever|knowledge_base|session_store|state_store)\s*\.\s*(?:add|add_documents|add_texts|append|insert|persist|put|push|remember|save|set|store|upsert|write)\s*\(([\s\S]{0,2200})\)/giu,
+      /\b(?:persist_memory|remember_context|save_memory|store_memory|upsert_memory|write_memory)\s*\(([\s\S]{0,2200})\)/giu
+    ],
+    source,
+    uniqueStrings([...embeddingIdentifiers, ...secretIdentifiers])
   );
 }
 
@@ -28409,6 +28466,26 @@ function extractPythonSecretManagerIdentifiers(source: string): string[] {
   for (const pattern of assignmentPatterns) collectFirstCaptureMatches(pattern, source, identifiers);
   expandPythonIdentifiersAssignedFromBase(source, identifiers);
   return [...identifiers].filter((identifier) => !["secret_path", "vault_path", "path"].includes(identifier));
+}
+
+function extractJavaScriptEmbeddingOutputIdentifiers(source: string): string[] {
+  const identifiers = new Set<string>();
+  const assignmentPatterns = [
+    /\b(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*(?:await\s+)?(?:[^\n;]{0,180}\b(?:embeddingClient|embeddingProvider|embedder|embeddings|cohere|cohereClient|voyage|voyageClient|bedrock|bedrockClient)\s*(?:\.\s*[A-Za-z_$][\w$]*){0,4}\s*\.\s*(?:embed|embedQuery|embedDocuments|embedMany|create|generateEmbedding|generateEmbeddings)|[^\n;]{0,180}\b(?:openai|openaiClient)\s*\.\s*embeddings\s*\.\s*create)\s*\(/gu
+  ];
+  for (const pattern of assignmentPatterns) collectFirstCaptureMatches(pattern, source, identifiers);
+  expandJavaScriptIdentifiersAssignedFromBase(source, identifiers);
+  return [...identifiers].filter((identifier) => !["embeddingClient", "embeddingProvider", "embedder", "embeddings"].includes(identifier));
+}
+
+function extractPythonEmbeddingOutputIdentifiers(source: string): string[] {
+  const identifiers = new Set<string>();
+  const assignmentPatterns = [
+    /\b([A-Za-z_]\w*)\s*=\s*(?:await\s+)?(?:[^\n]{0,180}\b(?:embedding_client|embedding_provider|embedder|embeddings|cohere|cohere_client|voyage|voyage_client|bedrock|bedrock_client)\s*(?:\.\s*[A-Za-z_]\w*){0,4}\s*\.\s*(?:embed|embed_query|embed_documents|embed_many|create|generate_embedding|generate_embeddings)|[^\n]{0,180}\b(?:openai|openai_client)\s*\.\s*embeddings\s*\.\s*create)\s*\(/gu
+  ];
+  for (const pattern of assignmentPatterns) collectFirstCaptureMatches(pattern, source, identifiers);
+  expandPythonIdentifiersAssignedFromBase(source, identifiers);
+  return [...identifiers].filter((identifier) => !["embedding_client", "embedding_provider", "embedder", "embeddings"].includes(identifier));
 }
 
 function expandJavaScriptIdentifiersAssignedFromBase(source: string, identifiers: Set<string>): void {
@@ -29742,16 +29819,16 @@ function identifierAssignedFromTaintedDatabaseQueryInput(identifier: string, sou
 }
 
 function expressionReferencesTaintedMemoryScope(expression: string, source: string): boolean {
-  const templateInterpolation = /\$\{[^}]*\b(?:memoryNamespace|memory_namespace|memoryScope|memory_scope|namespace|tenantId|tenant_id|tenant|collection|collectionName|collection_name|indexName|index_name|memoryKey|memory_key)\b/u.test(
+  const templateInterpolation = /\$\{[^}]*\b(?:memoryNamespace|memory_namespace|memoryScope|memory_scope|vectorNamespace|vector_namespace|namespace|tenantId|tenant_id|tenant|collection|collectionName|collection_name|indexName|index_name|memoryKey|memory_key)\b/u.test(
     expression
   );
   if (templateInterpolation) return true;
   const withoutQuotedStrings = expression.replace(/(["'`])(?:\\.|(?!\1)[\s\S])*\1/gu, " ");
-  const stronglyTaintedName = /\b(?:memoryNamespace|memory_namespace|memoryScope|memory_scope|tenantId|tenant_id|collectionName|collection_name|indexName|index_name|memoryKey|memory_key)\b/u;
-  const taintedName = /\b(?:memoryNamespace|memory_namespace|memoryScope|memory_scope|namespace|tenantId|tenant_id|tenant|collection|collectionName|collection_name|indexName|index_name|memoryKey|memory_key)\b/u;
+  const stronglyTaintedName = /\b(?:memoryNamespace|memory_namespace|memoryScope|memory_scope|vectorNamespace|vector_namespace|tenantId|tenant_id|collectionName|collection_name|indexName|index_name|memoryKey|memory_key)\b/u;
+  const taintedName = /\b(?:memoryNamespace|memory_namespace|memoryScope|memory_scope|vectorNamespace|vector_namespace|namespace|tenantId|tenant_id|tenant|collection|collectionName|collection_name|indexName|index_name|memoryKey|memory_key)\b/u;
   if (stronglyTaintedName.test(withoutQuotedStrings)) return true;
 
-  const scopeAssignment = /\b(?:namespace|tenant|tenant_id|collection|collection_name|index|index_name|scope|memory_scope|memory_key)\s*(?::|=)\s*([^,\n}\)]+)/giu;
+  const scopeAssignment = /\b(?:namespace|vector_namespace|tenant|tenant_id|collection|collection_name|index|index_name|scope|memory_scope|memory_key)\s*(?::|=)\s*([^,\n}\)]+)/giu;
   if (expressionMatchesPattern(scopeAssignment, withoutQuotedStrings, taintedName)) return true;
 
   const identifiers = uniqueStrings(
@@ -29973,6 +30050,13 @@ function expressionReferencesTaintedEmbeddingInput(expression: string, source: s
     expression
   );
   if (templateInterpolation) return true;
+  const secretManagerIdentifiers = uniqueStrings([
+    ...extractJavaScriptSecretManagerIdentifiers(source),
+    ...extractPythonSecretManagerIdentifiers(source)
+  ]);
+  if (secretManagerIdentifiers.some((identifier) => new RegExp(`\\b${escapeRegExp(identifier)}\\b`, "u").test(expression))) {
+    return true;
+  }
   const withoutQuotedStrings = expression.replace(/(["'`])(?:\\.|(?!\1)[\s\S])*\1/gu, " ");
   const stronglyTaintedName = /\b(?:customerTicketText|customer_ticket_text|ticketText|ticket_text|customerContext|customer_context|customerMessage|customer_message|documentText|document_text|sourcePayloadText|source_payload_text|retrievedContext|retrieved_context|promptText|prompt_text|userText|user_text|inputText|input_text)\b/u;
   const taintedName = /\b(?:customerTicketText|customer_ticket_text|ticketText|ticket_text|customerContext|customer_context|customerMessage|customer_message|documentText|document_text|sourcePayloadText|source_payload_text|retrievedContext|retrieved_context|promptText|prompt_text|userText|user_text|inputText|input_text|content|message|query|text|document|payload|customer|ticket|prompt|input)\b/u;
@@ -32243,6 +32327,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   tool_output_prompt_bridge: boolean;
   embedding_provider_call: boolean;
   tainted_embedding_input: boolean;
+  secret_manager_embedding_vector_bridge: boolean;
   telemetry_export: boolean;
   secret_manager_telemetry_bridge: boolean;
   tainted_telemetry_payload: boolean;
@@ -32324,6 +32409,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   const handlerToolOutputPromptBridge = handler?.handlerToolOutputPromptBridge === true;
   const handlerEmbeddingProviderCall = handler?.handlerEmbeddingProviderCall === true;
   const handlerTaintedEmbeddingInput = handler?.handlerTaintedEmbeddingInput === true;
+  const handlerSecretManagerEmbeddingVectorBridge = handler?.handlerSecretManagerEmbeddingVectorBridge === true;
   const handlerTelemetryExport = handler?.handlerTelemetryExport === true;
   const handlerSecretManagerTelemetryBridge = handler?.handlerSecretManagerTelemetryBridge === true;
   const handlerTaintedTelemetryPayload = handler?.handlerTaintedTelemetryPayload === true;
@@ -32626,6 +32712,13 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
     classes.add("tainted_embedding_input");
     actions.add("send");
   }
+  if (handlerSecretManagerEmbeddingVectorBridge) {
+    classes.add("secret_manager_embedding_vector_bridge");
+    actions.add("read");
+    actions.add("remember");
+    actions.add("send");
+    actions.add("write");
+  }
   if (handlerTelemetryExport) {
     classes.add("telemetry_export");
     actions.add("send");
@@ -32880,6 +32973,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerToolOutputPromptBridge ||
       handlerEmbeddingProviderCall ||
       handlerTaintedEmbeddingInput ||
+      handlerSecretManagerEmbeddingVectorBridge ||
       handlerTelemetryExport ||
       handlerSecretManagerTelemetryBridge ||
       handlerTaintedTelemetryPayload ||
@@ -32963,6 +33057,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerToolOutputExternalServiceBridge ||
       handlerModelProviderCall ||
       handlerEmbeddingProviderCall ||
+      handlerSecretManagerEmbeddingVectorBridge ||
       handlerTelemetryExport ||
       handlerSecretManagerTelemetryBridge ||
       handlerSecretManagerPromptCacheBridge ||
@@ -33041,6 +33136,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
     tool_output_prompt_bridge: handlerToolOutputPromptBridge,
     embedding_provider_call: handlerEmbeddingProviderCall,
     tainted_embedding_input: handlerTaintedEmbeddingInput,
+    secret_manager_embedding_vector_bridge: handlerSecretManagerEmbeddingVectorBridge,
     telemetry_export: handlerTelemetryExport,
     secret_manager_telemetry_bridge: handlerSecretManagerTelemetryBridge,
     tainted_telemetry_payload: handlerTaintedTelemetryPayload,
@@ -33154,6 +33250,7 @@ function authoritySignature(tool: SurfaceObject): string {
     metadata.tool_output_prompt_bridge === true ? "tool_output_prompt_bridge" : "",
     metadata.embedding_provider_call === true ? "embedding_provider_call" : "",
     metadata.tainted_embedding_input === true ? "tainted_embedding_input" : "",
+    metadata.secret_manager_embedding_vector_bridge === true ? "secret_manager_embedding_vector_bridge" : "",
     metadata.telemetry_export === true ? "telemetry_export" : "",
     metadata.secret_manager_telemetry_bridge === true ? "secret_manager_telemetry_bridge" : "",
     metadata.tainted_telemetry_payload === true ? "tainted_telemetry_payload" : "",
@@ -33251,6 +33348,7 @@ function isPrivilegedToolSurface(tool: SurfaceObject): boolean {
     tool.metadata.tool_output_prompt_bridge === true ||
     tool.metadata.embedding_provider_call === true ||
     tool.metadata.tainted_embedding_input === true ||
+    tool.metadata.secret_manager_embedding_vector_bridge === true ||
     tool.metadata.telemetry_export === true ||
     tool.metadata.secret_manager_telemetry_bridge === true ||
     tool.metadata.tainted_telemetry_payload === true ||

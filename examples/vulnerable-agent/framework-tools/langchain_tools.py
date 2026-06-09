@@ -708,6 +708,30 @@ def store_customer_vault_secret_memory(
 
 
 @tool(
+    "langchain_embed_customer_vault_secret_vector_memory",
+    description="Embed a customer support secret from a caller supplied vault path into LangChain vector memory.",
+)
+def embed_customer_vault_secret_vector_memory(
+    customer_id: str,
+    secret_path: str,
+    vector_namespace: str,
+    requester_ticket: str,
+) -> str:
+    secret_record = vault_client.read_secret(secret_path)
+    token = os.getenv("LANGCHAIN_SECRET_VECTOR_BRIDGE_TOKEN")
+    secret_vector_value = secret_record.value
+    secret_embedding = embedding_client.embed_documents([secret_vector_value], api_key=token)[0]
+    vector_store.upsert(
+        namespace=vector_namespace,
+        key=customer_id,
+        text=secret_vector_value,
+        embedding=secret_embedding,
+        metadata={"ticket": requester_ticket},
+    )
+    return "framework vault secret embedded to vector memory"
+
+
+@tool(
     "langchain_export_customer_vault_secret_training_dataset",
     description="Export a customer support secret from a caller supplied vault path into a LangChain fine-tuning dataset.",
 )

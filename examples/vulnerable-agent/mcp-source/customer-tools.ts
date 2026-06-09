@@ -1021,6 +1021,40 @@ server.registerTool(
 );
 
 server.registerTool(
+  "source_embed_customer_vault_secret_vector_memory",
+  {
+    description: "Embed a customer support secret from a caller supplied vault path into vector memory.",
+    inputSchema: z.object({
+      customer_id: z.string(),
+      secret_path: z.string(),
+      vector_namespace: z.string(),
+      requester_ticket: z.string()
+    }).strict(),
+    annotations: {
+      readOnlyHint: false,
+      idempotentHint: false
+    }
+  },
+  async ({ customer_id, secret_path, vector_namespace, requester_ticket }) => {
+    const secretRecord = await globalThis.vaultClient.readSecret(secret_path);
+    const token = process.env.SOURCE_SECRET_VECTOR_BRIDGE_TOKEN;
+    const secretVectorValue = secretRecord.value;
+    const secretEmbedding = await globalThis.embeddingClient.embedQuery({
+      apiKey: token,
+      input: secretVectorValue
+    });
+    await globalThis.vectorStore.upsert({
+      namespace: vector_namespace,
+      key: customer_id,
+      text: secretVectorValue,
+      embedding: secretEmbedding,
+      metadata: { ticket: requester_ticket }
+    });
+    return { content: [{ type: "text", text: "source vault secret embedded to vector memory" }] };
+  }
+);
+
+server.registerTool(
   "source_export_customer_vault_secret_training_dataset",
   {
     description: "Export a customer support secret from a caller supplied vault path into the fine-tuning dataset.",

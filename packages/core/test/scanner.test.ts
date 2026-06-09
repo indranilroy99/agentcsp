@@ -581,6 +581,9 @@ describe("scanner", () => {
     const sourceSecretManagerMemoryBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "source_store_customer_vault_secret_memory"
     );
+    const sourceSecretManagerEmbeddingVectorBridgeTool = surfaces.tools.find(
+      (surface) => surface.name === "source_embed_customer_vault_secret_vector_memory"
+    );
     const sourceSecretManagerTrainingDatasetBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "source_export_customer_vault_secret_training_dataset"
     );
@@ -648,6 +651,9 @@ describe("scanner", () => {
     );
     const langchainSecretManagerMemoryBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "langchain_store_customer_vault_secret_memory"
+    );
+    const langchainSecretManagerEmbeddingVectorBridgeTool = surfaces.tools.find(
+      (surface) => surface.name === "langchain_embed_customer_vault_secret_vector_memory"
     );
     const langchainSecretManagerTrainingDatasetBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "langchain_export_customer_vault_secret_training_dataset"
@@ -3655,6 +3661,97 @@ describe("scanner", () => {
     expect(JSON.stringify(sourceSecretManagerMemoryBridgeTool)).not.toContain("secretMemoryValue");
     expect(JSON.stringify(sourceSecretManagerMemoryBridgeTool)).not.toContain("source vault secret persisted to memory");
     expect(JSON.stringify(sourceSecretManagerMemoryBridgeTool)).not.toContain("Store a customer support secret");
+    expect(sourceSecretManagerEmbeddingVectorBridgeTool).toMatchObject({
+      path: "mcp-source/customer-tools.ts",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["call", "read", "remember", "send", "write"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(sourceSecretManagerEmbeddingVectorBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_mcp_source_tool: true,
+      mcp_source_tool_registration: true,
+      mcp_source_tool_registration_kind: "registerTool",
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_secret_like_input: true,
+      accepts_content_like_input: true,
+      accepts_path_input: true,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      secret_manager_access: true,
+      tainted_secret_manager_path: true,
+      embedding_provider_call: true,
+      tainted_embedding_input: true,
+      memory_write: true,
+      tainted_memory_scope: true,
+      secret_manager_memory_bridge: true,
+      secret_manager_embedding_vector_bridge: true,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_secret_manager_access: true,
+      handler_tainted_secret_manager_path: true,
+      handler_embedding_provider_call: true,
+      handler_tainted_embedding_input: true,
+      handler_memory_write: true,
+      handler_tainted_memory_scope: true,
+      handler_secret_manager_memory_bridge: true,
+      handler_secret_manager_embedding_vector_bridge: true,
+      handler_secret_env_access: true,
+      handler_model_visible_output: true,
+      handler_signal_count: 9,
+      open_world_schema: false
+    });
+    for (const authorityClass of [
+      "secret_manager_access",
+      "tainted_secret_manager_path",
+      "embedding_provider_call",
+      "tainted_embedding_input",
+      "memory_write",
+      "tainted_memory_scope",
+      "secret_manager_memory_bridge",
+      "secret_manager_embedding_vector_bridge"
+    ]) {
+      expect(sourceSecretManagerEmbeddingVectorBridgeTool?.metadata.authority_classes).toContain(authorityClass);
+    }
+    for (const handlerClass of [
+      "handler_secret_manager_access",
+      "handler_tainted_secret_manager_path",
+      "handler_embedding_provider_call",
+      "handler_tainted_embedding_input",
+      "handler_memory_write",
+      "handler_tainted_memory_scope",
+      "handler_secret_manager_memory_bridge",
+      "handler_secret_manager_embedding_vector_bridge"
+    ]) {
+      expect(sourceSecretManagerEmbeddingVectorBridgeTool?.metadata.handler_authority_classes).toContain(handlerClass);
+    }
+    expect(sourceSecretManagerEmbeddingVectorBridgeTool?.metadata.handler_env_key_names).toEqual([
+      "SOURCE_SECRET_VECTOR_BRIDGE_TOKEN"
+    ]);
+    expect(sourceSecretManagerEmbeddingVectorBridgeTool?.metadata.schema_properties).toEqual([
+      "customer_id",
+      "requester_ticket",
+      "secret_path",
+      "vector_namespace"
+    ]);
+    expect(sourceSecretManagerEmbeddingVectorBridgeTool?.metadata.required_properties).toEqual([
+      "customer_id",
+      "requester_ticket",
+      "secret_path",
+      "vector_namespace"
+    ]);
+    expect(JSON.stringify(sourceSecretManagerEmbeddingVectorBridgeTool)).not.toContain("vaultClient.readSecret");
+    expect(JSON.stringify(sourceSecretManagerEmbeddingVectorBridgeTool)).not.toContain("embeddingClient.embedQuery");
+    expect(JSON.stringify(sourceSecretManagerEmbeddingVectorBridgeTool)).not.toContain("vectorStore.upsert");
+    expect(JSON.stringify(sourceSecretManagerEmbeddingVectorBridgeTool)).not.toContain("secretRecord.value");
+    expect(JSON.stringify(sourceSecretManagerEmbeddingVectorBridgeTool)).not.toContain("secretVectorValue");
+    expect(JSON.stringify(sourceSecretManagerEmbeddingVectorBridgeTool)).not.toContain("secretEmbedding");
+    expect(JSON.stringify(sourceSecretManagerEmbeddingVectorBridgeTool)).not.toContain("source vault secret embedded to vector memory");
+    expect(JSON.stringify(sourceSecretManagerEmbeddingVectorBridgeTool)).not.toContain("Embed a customer support secret");
     expect(sourceSecretManagerTrainingDatasetBridgeTool).toMatchObject({
       path: "mcp-source/customer-tools.ts",
       data_classes: ["confidential", "credential", "pii"],
@@ -7586,6 +7683,99 @@ describe("scanner", () => {
     expect(JSON.stringify(langchainSecretManagerMemoryBridgeTool)).not.toContain("secret_memory_value");
     expect(JSON.stringify(langchainSecretManagerMemoryBridgeTool)).not.toContain("framework vault secret persisted to memory");
     expect(JSON.stringify(langchainSecretManagerMemoryBridgeTool)).not.toContain("Store a customer support secret");
+    expect(langchainSecretManagerEmbeddingVectorBridgeTool).toMatchObject({
+      path: "framework-tools/langchain_tools.py",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["call", "read", "remember", "send", "write"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(langchainSecretManagerEmbeddingVectorBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_agent_framework_source_tool: true,
+      agent_framework_source_tool: true,
+      agent_framework_source_tool_framework: "langchain",
+      agent_framework_source_tool_registration_kind: "python_tool_decorator",
+      agent_framework_source_tool_argument_count: 4,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_secret_like_input: true,
+      accepts_content_like_input: true,
+      accepts_path_input: true,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      secret_manager_access: true,
+      tainted_secret_manager_path: true,
+      embedding_provider_call: true,
+      tainted_embedding_input: true,
+      memory_write: true,
+      tainted_memory_scope: true,
+      secret_manager_memory_bridge: true,
+      secret_manager_embedding_vector_bridge: true,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_secret_manager_access: true,
+      handler_tainted_secret_manager_path: true,
+      handler_embedding_provider_call: true,
+      handler_tainted_embedding_input: true,
+      handler_memory_write: true,
+      handler_tainted_memory_scope: true,
+      handler_secret_manager_memory_bridge: true,
+      handler_secret_manager_embedding_vector_bridge: true,
+      handler_secret_env_access: true,
+      handler_model_visible_output: true,
+      handler_signal_count: 9,
+      open_world_schema: false
+    });
+    for (const authorityClass of [
+      "secret_manager_access",
+      "tainted_secret_manager_path",
+      "embedding_provider_call",
+      "tainted_embedding_input",
+      "memory_write",
+      "tainted_memory_scope",
+      "secret_manager_memory_bridge",
+      "secret_manager_embedding_vector_bridge"
+    ]) {
+      expect(langchainSecretManagerEmbeddingVectorBridgeTool?.metadata.authority_classes).toContain(authorityClass);
+    }
+    for (const handlerClass of [
+      "handler_secret_manager_access",
+      "handler_tainted_secret_manager_path",
+      "handler_embedding_provider_call",
+      "handler_tainted_embedding_input",
+      "handler_memory_write",
+      "handler_tainted_memory_scope",
+      "handler_secret_manager_memory_bridge",
+      "handler_secret_manager_embedding_vector_bridge"
+    ]) {
+      expect(langchainSecretManagerEmbeddingVectorBridgeTool?.metadata.handler_authority_classes).toContain(handlerClass);
+    }
+    expect(langchainSecretManagerEmbeddingVectorBridgeTool?.metadata.handler_env_key_names).toEqual([
+      "LANGCHAIN_SECRET_VECTOR_BRIDGE_TOKEN"
+    ]);
+    expect(langchainSecretManagerEmbeddingVectorBridgeTool?.metadata.schema_properties).toEqual([
+      "customer_id",
+      "requester_ticket",
+      "secret_path",
+      "vector_namespace"
+    ]);
+    expect(langchainSecretManagerEmbeddingVectorBridgeTool?.metadata.required_properties).toEqual([
+      "customer_id",
+      "requester_ticket",
+      "secret_path",
+      "vector_namespace"
+    ]);
+    expect(JSON.stringify(langchainSecretManagerEmbeddingVectorBridgeTool)).not.toContain("vault_client.read_secret");
+    expect(JSON.stringify(langchainSecretManagerEmbeddingVectorBridgeTool)).not.toContain("embedding_client.embed_documents");
+    expect(JSON.stringify(langchainSecretManagerEmbeddingVectorBridgeTool)).not.toContain("vector_store.upsert");
+    expect(JSON.stringify(langchainSecretManagerEmbeddingVectorBridgeTool)).not.toContain("secret_record.value");
+    expect(JSON.stringify(langchainSecretManagerEmbeddingVectorBridgeTool)).not.toContain("secret_vector_value");
+    expect(JSON.stringify(langchainSecretManagerEmbeddingVectorBridgeTool)).not.toContain("secret_embedding");
+    expect(JSON.stringify(langchainSecretManagerEmbeddingVectorBridgeTool)).not.toContain("framework vault secret embedded to vector memory");
+    expect(JSON.stringify(langchainSecretManagerEmbeddingVectorBridgeTool)).not.toContain("Embed a customer support secret");
     expect(langchainSecretManagerTrainingDatasetBridgeTool).toMatchObject({
       path: "framework-tools/langchain_tools.py",
       data_classes: ["confidential", "credential", "pii"],
