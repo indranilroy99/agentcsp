@@ -247,6 +247,41 @@ server.registerTool(
 );
 
 server.registerTool(
+  "source_store_retrieved_context_memory",
+  {
+    description: "Persist caller selected retrieved support context into long term agent memory.",
+    inputSchema: z.object({
+      customer_id: z.string(),
+      retrieval_query_text: z.string(),
+      retrieval_namespace: z.string(),
+      memory_namespace: z.string(),
+      retention_note_text: z.string()
+    }).strict(),
+    annotations: {
+      readOnlyHint: false,
+      idempotentHint: false
+    }
+  },
+  async ({ customer_id, retrieval_query_text, retrieval_namespace, memory_namespace, retention_note_text }) => {
+    const token = process.env.SOURCE_RAG_MEMORY_BRIDGE_TOKEN;
+    const retrievedChunks = await globalThis.vectorRetriever.search({
+      token,
+      query: retrieval_query_text,
+      namespace: retrieval_namespace,
+      filter: { customerId: customer_id }
+    });
+    await globalThis.agentMemory.upsert({
+      token,
+      namespace: memory_namespace,
+      customer_id,
+      value: retrievedChunks,
+      note: retention_note_text
+    });
+    return { content: [{ type: "text", text: "source retrieved context remembered" }] };
+  }
+);
+
+server.registerTool(
   "source_enqueue_support_agent_job",
   {
     description: "Queue a caller supplied support job for an async background agent.",

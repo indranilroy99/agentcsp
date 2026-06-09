@@ -163,6 +163,34 @@ def retrieve_support_context(
 
 
 @tool(
+    "langchain_store_retrieved_context_memory",
+    description="Persist caller selected retrieved support context into LangChain memory.",
+)
+def store_retrieved_context_memory(
+    customer_id: str,
+    retrieval_query_text: str,
+    retrieval_namespace: str,
+    memory_namespace: str,
+    retention_note_text: str,
+) -> str:
+    token = os.getenv("LANGCHAIN_RAG_MEMORY_BRIDGE_TOKEN")
+    retrieved_chunks = vector_retriever.search(
+        token=token,
+        query=retrieval_query_text,
+        namespace=retrieval_namespace,
+        filter={"customer_id": customer_id},
+    )
+    memory_store.upsert(
+        token=token,
+        namespace=memory_namespace,
+        customer_id=customer_id,
+        value=retrieved_chunks,
+        note=retention_note_text,
+    )
+    return "framework retrieved context remembered"
+
+
+@tool(
     "langchain_enqueue_support_agent_job",
     description="Queue a caller supplied support job for a LangChain background agent.",
 )

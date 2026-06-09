@@ -547,6 +547,9 @@ describe("scanner", () => {
     const sourceCredentialedNetworkTool = surfaces.tools.find((surface) => surface.name === "source_fetch_partner_status");
     const sourceMemoryWriteTool = surfaces.tools.find((surface) => surface.name === "source_persist_customer_memory");
     const sourceRagRetrievalTool = surfaces.tools.find((surface) => surface.name === "source_retrieve_support_context");
+    const sourceRagRetrievalMemoryBridgeTool = surfaces.tools.find(
+      (surface) => surface.name === "source_store_retrieved_context_memory"
+    );
     const sourceTaskQueueTool = surfaces.tools.find((surface) => surface.name === "source_enqueue_support_agent_job");
     const sourceSecretManagerTaskQueueBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "source_enqueue_customer_vault_secret_job"
@@ -675,6 +678,9 @@ describe("scanner", () => {
     const langchainCredentialedNetworkTool = surfaces.tools.find((surface) => surface.name === "langchain_fetch_partner_status");
     const langchainMemoryWriteTool = surfaces.tools.find((surface) => surface.name === "langchain_persist_customer_memory");
     const langchainRagRetrievalTool = surfaces.tools.find((surface) => surface.name === "langchain_retrieve_support_context");
+    const langchainRagRetrievalMemoryBridgeTool = surfaces.tools.find(
+      (surface) => surface.name === "langchain_store_retrieved_context_memory"
+    );
     const langchainTaskQueueTool = surfaces.tools.find((surface) => surface.name === "langchain_enqueue_support_agent_job");
     const langchainSecretManagerTaskQueueBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "langchain_enqueue_customer_vault_secret_job"
@@ -1645,6 +1651,80 @@ describe("scanner", () => {
     expect(JSON.stringify(sourceRagRetrievalTool)).not.toContain("vectorRetriever.search");
     expect(JSON.stringify(sourceRagRetrievalTool)).not.toContain("retrievedContext");
     expect(JSON.stringify(sourceRagRetrievalTool)).not.toContain("Retrieve caller selected support context");
+    expect(sourceRagRetrievalMemoryBridgeTool).toMatchObject({
+      path: "mcp-source/customer-tools.ts",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["call", "read", "remember", "send", "write"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(sourceRagRetrievalMemoryBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_mcp_source_tool: true,
+      mcp_source_tool_registration: true,
+      mcp_source_tool_registration_kind: "registerTool",
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_content_like_input: true,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      rag_retrieval: true,
+      tainted_rag_retrieval_query: true,
+      rag_context_to_output: false,
+      memory_write: true,
+      tainted_memory_scope: true,
+      rag_retrieval_memory_bridge: true,
+      handler_rag_retrieval: true,
+      handler_tainted_rag_retrieval_query: true,
+      handler_rag_context_to_output: false,
+      handler_memory_write: true,
+      handler_tainted_memory_scope: true,
+      handler_rag_retrieval_memory_bridge: true,
+      handler_secret_env_access: true,
+      handler_signal_count: 6,
+      open_world_schema: false
+    });
+    expect(sourceRagRetrievalMemoryBridgeTool?.metadata.authority_classes).toEqual([
+      "content_input",
+      "customer_data_input",
+      "handler_memory_write",
+      "handler_rag_retrieval",
+      "handler_rag_retrieval_memory_bridge",
+      "handler_secret_env_access",
+      "handler_tainted_memory_scope",
+      "handler_tainted_rag_retrieval_query",
+      "memory_access",
+      "memory_write",
+      "pii_input",
+      "rag_retrieval",
+      "rag_retrieval_memory_bridge",
+      "secret_env_access",
+      "tainted_memory_scope",
+      "tainted_rag_retrieval_query"
+    ]);
+    expect(sourceRagRetrievalMemoryBridgeTool?.metadata.handler_authority_classes).toEqual([
+      "handler_memory_write",
+      "handler_rag_retrieval",
+      "handler_rag_retrieval_memory_bridge",
+      "handler_secret_env_access",
+      "handler_tainted_memory_scope",
+      "handler_tainted_rag_retrieval_query"
+    ]);
+    expect(sourceRagRetrievalMemoryBridgeTool?.metadata.handler_env_key_names).toEqual(["SOURCE_RAG_MEMORY_BRIDGE_TOKEN"]);
+    expect(sourceRagRetrievalMemoryBridgeTool?.metadata.schema_properties).toEqual([
+      "customer_id",
+      "memory_namespace",
+      "retention_note_text",
+      "retrieval_namespace",
+      "retrieval_query_text"
+    ]);
+    expect(JSON.stringify(sourceRagRetrievalMemoryBridgeTool)).not.toContain("vectorRetriever.search");
+    expect(JSON.stringify(sourceRagRetrievalMemoryBridgeTool)).not.toContain("agentMemory.upsert");
+    expect(JSON.stringify(sourceRagRetrievalMemoryBridgeTool)).not.toContain("retrievedChunks");
+    expect(JSON.stringify(sourceRagRetrievalMemoryBridgeTool)).not.toContain("source retrieved context remembered");
+    expect(JSON.stringify(sourceRagRetrievalMemoryBridgeTool)).not.toContain("Persist caller selected retrieved support context");
     expect(sourceTaskQueueTool).toMatchObject({
       path: "mcp-source/customer-tools.ts",
       data_classes: ["confidential", "credential", "pii"],
@@ -7286,6 +7366,82 @@ describe("scanner", () => {
     expect(JSON.stringify(langchainRagRetrievalTool)).not.toContain("vector_retriever.search");
     expect(JSON.stringify(langchainRagRetrievalTool)).not.toContain("retrieved_context");
     expect(JSON.stringify(langchainRagRetrievalTool)).not.toContain("Retrieve caller selected support context");
+    expect(langchainRagRetrievalMemoryBridgeTool).toMatchObject({
+      path: "framework-tools/langchain_tools.py",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["call", "read", "remember", "send", "write"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(langchainRagRetrievalMemoryBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_agent_framework_source_tool: true,
+      agent_framework_source_tool: true,
+      agent_framework_source_tool_framework: "langchain",
+      agent_framework_source_tool_registration_kind: "python_tool_decorator",
+      agent_framework_source_tool_argument_count: 5,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_content_like_input: true,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      rag_retrieval: true,
+      tainted_rag_retrieval_query: true,
+      rag_context_to_output: false,
+      memory_write: true,
+      tainted_memory_scope: true,
+      rag_retrieval_memory_bridge: true,
+      handler_rag_retrieval: true,
+      handler_tainted_rag_retrieval_query: true,
+      handler_rag_context_to_output: false,
+      handler_memory_write: true,
+      handler_tainted_memory_scope: true,
+      handler_rag_retrieval_memory_bridge: true,
+      handler_secret_env_access: true,
+      handler_signal_count: 6,
+      open_world_schema: false
+    });
+    expect(langchainRagRetrievalMemoryBridgeTool?.metadata.authority_classes).toEqual([
+      "content_input",
+      "customer_data_input",
+      "handler_memory_write",
+      "handler_rag_retrieval",
+      "handler_rag_retrieval_memory_bridge",
+      "handler_secret_env_access",
+      "handler_tainted_memory_scope",
+      "handler_tainted_rag_retrieval_query",
+      "memory_access",
+      "memory_write",
+      "pii_input",
+      "rag_retrieval",
+      "rag_retrieval_memory_bridge",
+      "secret_env_access",
+      "tainted_memory_scope",
+      "tainted_rag_retrieval_query"
+    ]);
+    expect(langchainRagRetrievalMemoryBridgeTool?.metadata.handler_authority_classes).toEqual([
+      "handler_memory_write",
+      "handler_rag_retrieval",
+      "handler_rag_retrieval_memory_bridge",
+      "handler_secret_env_access",
+      "handler_tainted_memory_scope",
+      "handler_tainted_rag_retrieval_query"
+    ]);
+    expect(langchainRagRetrievalMemoryBridgeTool?.metadata.handler_env_key_names).toEqual(["LANGCHAIN_RAG_MEMORY_BRIDGE_TOKEN"]);
+    expect(langchainRagRetrievalMemoryBridgeTool?.metadata.schema_properties).toEqual([
+      "customer_id",
+      "memory_namespace",
+      "retention_note_text",
+      "retrieval_namespace",
+      "retrieval_query_text"
+    ]);
+    expect(JSON.stringify(langchainRagRetrievalMemoryBridgeTool)).not.toContain("vector_retriever.search");
+    expect(JSON.stringify(langchainRagRetrievalMemoryBridgeTool)).not.toContain("memory_store.upsert");
+    expect(JSON.stringify(langchainRagRetrievalMemoryBridgeTool)).not.toContain("retrieved_chunks");
+    expect(JSON.stringify(langchainRagRetrievalMemoryBridgeTool)).not.toContain("framework retrieved context remembered");
+    expect(JSON.stringify(langchainRagRetrievalMemoryBridgeTool)).not.toContain("Persist caller selected retrieved support context");
     expect(langchainTaskQueueTool).toMatchObject({
       path: "framework-tools/langchain_tools.py",
       data_classes: ["confidential", "credential", "pii"],
