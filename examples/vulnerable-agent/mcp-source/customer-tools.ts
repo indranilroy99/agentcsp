@@ -2926,3 +2926,46 @@ server.registerTool(
     return { content: [{ type: "text", text: "source model selected background job queued" }] };
   }
 );
+
+server.registerTool(
+  "source_delegate_model_selected_remote_agent_task",
+  {
+    description: "Ask a model provider to draft a remote-agent task from caller supplied ticket text and delegate it.",
+    inputSchema: z.object({
+      customer_id: z.string(),
+      customer_ticket_text: z.string(),
+      model_name: z.string(),
+      target_agent_url: z.string(),
+      requested_task_type: z.string(),
+      delegation_goal_text: z.string()
+    }).strict(),
+    annotations: {
+      readOnlyHint: false,
+      idempotentHint: false
+    }
+  },
+  async ({ customer_id, customer_ticket_text, model_name, target_agent_url, requested_task_type, delegation_goal_text }) => {
+    const modelToken = process.env.SOURCE_MODEL_AGENT_DELEGATION_TOKEN;
+    const delegationToken = process.env.SOURCE_REMOTE_AGENT_DELEGATION_TOKEN;
+    const openai = globalThis.openaiClient;
+    const modelResult = await openai.chat.completions.create({
+      apiKey: modelToken,
+      model: model_name,
+      messages: [
+        { role: "system", content: customer_ticket_text },
+        { role: "user", content: `Return one remote-agent task payload for goal: ${delegation_goal_text}` }
+      ]
+    });
+    const modelSelectedDelegatedTask = modelResult.choices[0].message.content ?? "";
+    await globalThis.remoteAgentClient.delegateTask({
+      token: delegationToken,
+      targetAgentUrl: target_agent_url,
+      taskType: requested_task_type,
+      context: {
+        customerId: customer_id,
+        delegatedTask: modelSelectedDelegatedTask
+      }
+    });
+    return { content: [{ type: "text", text: "source model selected remote-agent task delegated" }] };
+  }
+);

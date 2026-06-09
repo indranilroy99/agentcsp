@@ -120,6 +120,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-116")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-117")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-118")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-119")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-001")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-002")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-003")).toBe(true);
@@ -8232,9 +8233,11 @@ describe("rule engine", () => {
       "langchain_delegate_authenticated_page_screenshot_remote_agent",
       "langchain_delegate_customer_case_to_remote_agent",
       "langchain_delegate_customer_vault_secret_remote_agent",
+      "langchain_delegate_model_selected_remote_agent_task",
       "source_delegate_authenticated_page_screenshot_remote_agent",
       "source_delegate_customer_case_to_remote_agent",
-      "source_delegate_customer_vault_secret_remote_agent"
+      "source_delegate_customer_vault_secret_remote_agent",
+      "source_delegate_model_selected_remote_agent_task"
     ]);
     expect(sourceHandlerAgentDelegationFindings.every((finding) => finding.severity === "critical")).toBe(true);
     expect(sourceHandlerAgentDelegationFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
@@ -8265,8 +8268,13 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerAgentDelegationFindings)).not.toContain("remoteAgentClient.delegateTask");
     expect(JSON.stringify(sourceHandlerAgentDelegationFindings)).not.toContain("remote_agent_client.delegate_task");
     expect(JSON.stringify(sourceHandlerAgentDelegationFindings)).not.toContain("customerTicket");
+    expect(JSON.stringify(sourceHandlerAgentDelegationFindings)).not.toContain("modelSelectedDelegatedTask");
+    expect(JSON.stringify(sourceHandlerAgentDelegationFindings)).not.toContain("model_selected_delegated_task");
+    expect(JSON.stringify(sourceHandlerAgentDelegationFindings)).not.toContain("source model selected remote-agent task delegated");
+    expect(JSON.stringify(sourceHandlerAgentDelegationFindings)).not.toContain("framework model selected remote-agent task delegated");
     expect(JSON.stringify(sourceHandlerAgentDelegationFindings)).not.toContain("source visual context delegated to remote agent");
     expect(JSON.stringify(sourceHandlerAgentDelegationFindings)).not.toContain("framework visual context delegated to remote agent");
+    expect(JSON.stringify(sourceHandlerAgentDelegationFindings)).not.toContain("Ask a model provider to draft a remote-agent task");
     expect(JSON.stringify(sourceHandlerAgentDelegationFindings)).not.toContain("Delegate caller supplied customer context");
     const sourceHandlerArtifactExportFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-050");
     expect(sourceHandlerArtifactExportFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
@@ -10349,6 +10357,7 @@ describe("rule engine", () => {
     const sourceHandlerModelProviderFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-030");
     expect(sourceHandlerModelProviderFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_apply_model_database_update",
+      "langchain_delegate_model_selected_remote_agent_task",
       "langchain_execute_model_browser_action",
       "langchain_execute_model_generated_code",
       "langchain_fetch_model_selected_url",
@@ -10361,6 +10370,7 @@ describe("rule engine", () => {
       "langchain_summarize_customer_vault_secret_with_model",
       "langchain_summarize_customer_with_model",
       "source_apply_model_database_update",
+      "source_delegate_model_selected_remote_agent_task",
       "source_execute_model_browser_action",
       "source_execute_model_generated_code",
       "source_fetch_model_selected_url",
@@ -10424,6 +10434,11 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerModelProviderFindings)).not.toContain("source model selected background job queued");
     expect(JSON.stringify(sourceHandlerModelProviderFindings)).not.toContain("framework model selected background job queued");
     expect(JSON.stringify(sourceHandlerModelProviderFindings)).not.toContain("Ask a model provider to draft a background-agent job");
+    expect(JSON.stringify(sourceHandlerModelProviderFindings)).not.toContain("modelSelectedDelegatedTask");
+    expect(JSON.stringify(sourceHandlerModelProviderFindings)).not.toContain("model_selected_delegated_task");
+    expect(JSON.stringify(sourceHandlerModelProviderFindings)).not.toContain("source model selected remote-agent task delegated");
+    expect(JSON.stringify(sourceHandlerModelProviderFindings)).not.toContain("framework model selected remote-agent task delegated");
+    expect(JSON.stringify(sourceHandlerModelProviderFindings)).not.toContain("Ask a model provider to draft a remote-agent task");
     const sourceHandlerRagRetrievalPromptBridgeFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-094");
     expect(sourceHandlerRagRetrievalPromptBridgeFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_summarize_retrieved_context_with_model",
@@ -10551,6 +10566,7 @@ describe("rule engine", () => {
     const sourceHandlerTaintedModelSelectionFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-043");
     expect(sourceHandlerTaintedModelSelectionFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_apply_model_database_update",
+      "langchain_delegate_model_selected_remote_agent_task",
       "langchain_enqueue_model_selected_background_job",
       "langchain_execute_model_browser_action",
       "langchain_execute_model_generated_code",
@@ -10560,6 +10576,7 @@ describe("rule engine", () => {
       "langchain_run_model_generated_command",
       "langchain_summarize_customer_with_model",
       "source_apply_model_database_update",
+      "source_delegate_model_selected_remote_agent_task",
       "source_enqueue_model_selected_background_job",
       "source_execute_model_browser_action",
       "source_execute_model_generated_code",
@@ -10599,9 +10616,15 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerTaintedModelSelectionFindings)).not.toContain("source model selected background job queued");
     expect(JSON.stringify(sourceHandlerTaintedModelSelectionFindings)).not.toContain("framework model selected background job queued");
     expect(JSON.stringify(sourceHandlerTaintedModelSelectionFindings)).not.toContain("Ask a model provider to draft a background-agent job");
+    expect(JSON.stringify(sourceHandlerTaintedModelSelectionFindings)).not.toContain("modelSelectedDelegatedTask");
+    expect(JSON.stringify(sourceHandlerTaintedModelSelectionFindings)).not.toContain("model_selected_delegated_task");
+    expect(JSON.stringify(sourceHandlerTaintedModelSelectionFindings)).not.toContain("source model selected remote-agent task delegated");
+    expect(JSON.stringify(sourceHandlerTaintedModelSelectionFindings)).not.toContain("framework model selected remote-agent task delegated");
+    expect(JSON.stringify(sourceHandlerTaintedModelSelectionFindings)).not.toContain("Ask a model provider to draft a remote-agent task");
     const sourceHandlerPrivilegedPromptFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-031");
     expect(sourceHandlerPrivilegedPromptFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_apply_model_database_update",
+      "langchain_delegate_model_selected_remote_agent_task",
       "langchain_execute_model_browser_action",
       "langchain_execute_model_generated_code",
       "langchain_fetch_model_selected_url",
@@ -11119,6 +11142,76 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerModelOutputTaskQueueBridgeFindings)).not.toContain("source model selected background job queued");
     expect(JSON.stringify(sourceHandlerModelOutputTaskQueueBridgeFindings)).not.toContain("framework model selected background job queued");
     expect(JSON.stringify(sourceHandlerModelOutputTaskQueueBridgeFindings)).not.toContain("Ask a model provider to draft a background-agent job");
+    const sourceHandlerModelOutputAgentDelegationBridgeFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-119");
+    expect(sourceHandlerModelOutputAgentDelegationBridgeFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
+      "langchain_delegate_model_selected_remote_agent_task",
+      "source_delegate_model_selected_remote_agent_task"
+    ]);
+    expect(sourceHandlerModelOutputAgentDelegationBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
+    expect(sourceHandlerModelOutputAgentDelegationBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerModelOutputAgentDelegationBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
+    expect(sourceHandlerModelOutputAgentDelegationBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
+    expect(sourceHandlerModelOutputAgentDelegationBridgeFindings.every((finding) => finding.matched_object.metadata.handler_model_provider_call === true)).toBe(true);
+    expect(sourceHandlerModelOutputAgentDelegationBridgeFindings.every((finding) => finding.matched_object.metadata.handler_agent_delegation === true)).toBe(true);
+    expect(sourceHandlerModelOutputAgentDelegationBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.handler_tainted_agent_delegation_target === true
+    )).toBe(true);
+    expect(sourceHandlerModelOutputAgentDelegationBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.handler_agent_delegation_context_forwarding === true
+    )).toBe(true);
+    expect(sourceHandlerModelOutputAgentDelegationBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.handler_model_output_agent_delegation_bridge === true
+    )).toBe(true);
+    expect(sourceHandlerModelOutputAgentDelegationBridgeFindings.every((finding) => finding.matched_object.metadata.handler_secret_env_access === true)).toBe(true);
+    expect(sourceHandlerModelOutputAgentDelegationBridgeFindings.every((finding) => finding.matched_object.metadata.model_provider_call === true)).toBe(true);
+    expect(sourceHandlerModelOutputAgentDelegationBridgeFindings.every((finding) => finding.matched_object.metadata.agent_delegation === true)).toBe(true);
+    expect(sourceHandlerModelOutputAgentDelegationBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.tainted_agent_delegation_target === true
+    )).toBe(true);
+    expect(sourceHandlerModelOutputAgentDelegationBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.agent_delegation_context_forwarding === true
+    )).toBe(true);
+    expect(sourceHandlerModelOutputAgentDelegationBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.model_output_agent_delegation_bridge === true
+    )).toBe(true);
+    expect(sourceHandlerModelOutputAgentDelegationBridgeFindings.every((finding) => finding.matched_object.metadata.accepts_content_like_input === true)).toBe(true);
+    expect(sourceHandlerModelOutputAgentDelegationBridgeFindings.every((finding) => finding.matched_object.metadata.accepts_customer_data_input === true)).toBe(true);
+    expect(sourceHandlerModelOutputAgentDelegationBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.authority_classes.includes("model_provider_call")
+    )).toBe(true);
+    expect(sourceHandlerModelOutputAgentDelegationBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.authority_classes.includes("agent_delegation")
+    )).toBe(true);
+    expect(sourceHandlerModelOutputAgentDelegationBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.authority_classes.includes("tainted_agent_delegation_target")
+    )).toBe(true);
+    expect(sourceHandlerModelOutputAgentDelegationBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.authority_classes.includes("agent_delegation_context_forwarding")
+    )).toBe(true);
+    expect(sourceHandlerModelOutputAgentDelegationBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.authority_classes.includes("model_output_agent_delegation_bridge")
+    )).toBe(true);
+    expect(sourceHandlerModelOutputAgentDelegationBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.handler_authority_classes.includes("handler_model_output_agent_delegation_bridge")
+    )).toBe(true);
+    expect(sourceHandlerModelOutputAgentDelegationBridgeFindings.every((finding) => finding.matched_object.actions.includes("execute"))).toBe(true);
+    expect(sourceHandlerModelOutputAgentDelegationBridgeFindings.every((finding) => finding.matched_object.actions.includes("read"))).toBe(true);
+    expect(sourceHandlerModelOutputAgentDelegationBridgeFindings.every((finding) => finding.matched_object.actions.includes("send"))).toBe(true);
+    expect(sourceHandlerModelOutputAgentDelegationBridgeFindings.every((finding) => finding.matched_object.external_reach === true)).toBe(true);
+    expect(sourceHandlerModelOutputAgentDelegationBridgeFindings.every((finding) => finding.matched_object.secret_exposure === true)).toBe(true);
+    expect(sourceHandlerModelOutputAgentDelegationBridgeFindings.every((finding) => finding.matched_object.side_effect === true)).toBe(true);
+    expect(sourceHandlerModelOutputAgentDelegationBridgeFindings.every((finding) => finding.matched_object.reversible === false)).toBe(true);
+    expect(JSON.stringify(sourceHandlerModelOutputAgentDelegationBridgeFindings)).not.toContain("openai.chat.completions.create");
+    expect(JSON.stringify(sourceHandlerModelOutputAgentDelegationBridgeFindings)).not.toContain("openai_client.chat.completions.create");
+    expect(JSON.stringify(sourceHandlerModelOutputAgentDelegationBridgeFindings)).not.toContain("modelResult");
+    expect(JSON.stringify(sourceHandlerModelOutputAgentDelegationBridgeFindings)).not.toContain("model_response");
+    expect(JSON.stringify(sourceHandlerModelOutputAgentDelegationBridgeFindings)).not.toContain("modelSelectedDelegatedTask");
+    expect(JSON.stringify(sourceHandlerModelOutputAgentDelegationBridgeFindings)).not.toContain("model_selected_delegated_task");
+    expect(JSON.stringify(sourceHandlerModelOutputAgentDelegationBridgeFindings)).not.toContain("remoteAgentClient.delegateTask");
+    expect(JSON.stringify(sourceHandlerModelOutputAgentDelegationBridgeFindings)).not.toContain("remote_agent_client.delegate_task");
+    expect(JSON.stringify(sourceHandlerModelOutputAgentDelegationBridgeFindings)).not.toContain("source model selected remote-agent task delegated");
+    expect(JSON.stringify(sourceHandlerModelOutputAgentDelegationBridgeFindings)).not.toContain("framework model selected remote-agent task delegated");
+    expect(JSON.stringify(sourceHandlerModelOutputAgentDelegationBridgeFindings)).not.toContain("Ask a model provider to draft a remote-agent task");
     const sourceHandlerDynamicCodeFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-019");
     expect(sourceHandlerDynamicCodeFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_evaluate_agent_expression",

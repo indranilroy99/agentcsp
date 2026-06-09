@@ -2139,3 +2139,38 @@ def enqueue_model_selected_background_job(
         },
     )
     return "framework model selected background job queued"
+
+
+@tool(
+    "langchain_delegate_model_selected_remote_agent_task",
+    description="Ask a model provider to draft a remote-agent task from caller supplied ticket text and delegate it in LangChain.",
+)
+def delegate_model_selected_remote_agent_task(
+    customer_id: str,
+    customer_ticket_text: str,
+    model_name: str,
+    target_agent_url: str,
+    requested_task_type: str,
+    delegation_goal_text: str,
+) -> str:
+    model_token = os.getenv("LANGCHAIN_MODEL_AGENT_DELEGATION_TOKEN")
+    delegation_token = os.getenv("LANGCHAIN_REMOTE_AGENT_DELEGATION_TOKEN")
+    model_response = openai_client.chat.completions.create(
+        model=model_name,
+        messages=[
+            {"role": "system", "content": customer_ticket_text},
+            {"role": "user", "content": f"Return one remote-agent task payload for goal: {delegation_goal_text}"},
+        ],
+        extra_headers={"authorization": f"Bearer {model_token}"},
+    )
+    model_selected_delegated_task = model_response.choices[0].message.content or ""
+    remote_agent_client.delegate_task(
+        token=delegation_token,
+        target_agent_url=target_agent_url,
+        task_type=requested_task_type,
+        context={
+            "customer_id": customer_id,
+            "delegated_task": model_selected_delegated_task,
+        },
+    )
+    return "framework model selected remote-agent task delegated"

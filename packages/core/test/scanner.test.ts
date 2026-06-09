@@ -739,6 +739,9 @@ describe("scanner", () => {
     const sourceModelOutputTaskQueueBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "source_enqueue_model_selected_background_job"
     );
+    const sourceModelOutputAgentDelegationBridgeTool = surfaces.tools.find(
+      (surface) => surface.name === "source_delegate_model_selected_remote_agent_task"
+    );
     const pythonExportTool = surfaces.tools.find((surface) => surface.name === "python_export_customer_record");
     const pythonDeleteTool = surfaces.tools.find((surface) => surface.name === "python_readonly_delete_workspace_file");
     const pythonUnsafeDeserializationTool = surfaces.tools.find((surface) => surface.name === "python_load_serialized_agent_state");
@@ -944,6 +947,9 @@ describe("scanner", () => {
     );
     const langchainModelOutputTaskQueueBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "langchain_enqueue_model_selected_background_job"
+    );
+    const langchainModelOutputAgentDelegationBridgeTool = surfaces.tools.find(
+      (surface) => surface.name === "langchain_delegate_model_selected_remote_agent_task"
     );
     const langchainUnsafeDeserializationTool = surfaces.tools.find((surface) => surface.name === "langchain_load_serialized_agent_state");
     const aiSdkExportTool = surfaces.tools.find((surface) => surface.name === "aiSdkExportCustomerContext");
@@ -8623,6 +8629,95 @@ describe("scanner", () => {
     expect(JSON.stringify(sourceModelOutputTaskQueueBridgeTool)).not.toContain("taskQueueClient.enqueue");
     expect(JSON.stringify(sourceModelOutputTaskQueueBridgeTool)).not.toContain("source model selected background job queued");
     expect(JSON.stringify(sourceModelOutputTaskQueueBridgeTool)).not.toContain("Ask a model provider to draft a background-agent job");
+    expect(sourceModelOutputAgentDelegationBridgeTool).toMatchObject({
+      path: "mcp-source/customer-tools.ts",
+      actions: ["call", "execute", "read", "send"],
+      data_classes: ["confidential", "credential", "pii"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(sourceModelOutputAgentDelegationBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_mcp_source_tool: true,
+      mcp_source_tool_registration: true,
+      mcp_source_tool_registration_kind: "registerTool",
+      mcp_source_tool_argument_count: 3,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_content_like_input: true,
+      accepts_url_input: true,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      model_provider_call: true,
+      tainted_model_selection: true,
+      agent_delegation: true,
+      tainted_agent_delegation_target: true,
+      agent_delegation_context_forwarding: true,
+      model_output_agent_delegation_bridge: true,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_model_provider_call: true,
+      handler_tainted_model_selection: true,
+      handler_agent_delegation: true,
+      handler_tainted_agent_delegation_target: true,
+      handler_agent_delegation_context_forwarding: true,
+      handler_model_output_agent_delegation_bridge: true,
+      handler_secret_env_access: true,
+      handler_signal_count: 7,
+      open_world_schema: false
+    });
+    expect(sourceModelOutputAgentDelegationBridgeTool?.metadata.authority_classes).toEqual(expect.arrayContaining([
+      "agent_delegation",
+      "agent_delegation_context_forwarding",
+      "handler_agent_delegation",
+      "handler_agent_delegation_context_forwarding",
+      "handler_model_output_agent_delegation_bridge",
+      "handler_model_provider_call",
+      "handler_secret_env_access",
+      "handler_tainted_agent_delegation_target",
+      "handler_tainted_model_selection",
+      "model_output_agent_delegation_bridge",
+      "model_provider_call",
+      "tainted_agent_delegation_target",
+      "tainted_model_selection"
+    ]));
+    expect(sourceModelOutputAgentDelegationBridgeTool?.metadata.handler_authority_classes).toEqual([
+      "handler_agent_delegation",
+      "handler_agent_delegation_context_forwarding",
+      "handler_model_output_agent_delegation_bridge",
+      "handler_model_provider_call",
+      "handler_secret_env_access",
+      "handler_tainted_agent_delegation_target",
+      "handler_tainted_model_selection"
+    ]);
+    expect(sourceModelOutputAgentDelegationBridgeTool?.metadata.handler_env_key_names).toEqual([
+      "SOURCE_MODEL_AGENT_DELEGATION_TOKEN",
+      "SOURCE_REMOTE_AGENT_DELEGATION_TOKEN"
+    ]);
+    expect(sourceModelOutputAgentDelegationBridgeTool?.metadata.schema_properties).toEqual([
+      "customer_id",
+      "customer_ticket_text",
+      "delegation_goal_text",
+      "model_name",
+      "requested_task_type",
+      "target_agent_url"
+    ]);
+    expect(sourceModelOutputAgentDelegationBridgeTool?.metadata.required_properties).toEqual([
+      "customer_id",
+      "customer_ticket_text",
+      "delegation_goal_text",
+      "model_name",
+      "requested_task_type",
+      "target_agent_url"
+    ]);
+    expect(JSON.stringify(sourceModelOutputAgentDelegationBridgeTool)).not.toContain("openai.chat.completions.create");
+    expect(JSON.stringify(sourceModelOutputAgentDelegationBridgeTool)).not.toContain("modelResult");
+    expect(JSON.stringify(sourceModelOutputAgentDelegationBridgeTool)).not.toContain("modelSelectedDelegatedTask");
+    expect(JSON.stringify(sourceModelOutputAgentDelegationBridgeTool)).not.toContain("remoteAgentClient.delegateTask");
+    expect(JSON.stringify(sourceModelOutputAgentDelegationBridgeTool)).not.toContain("source model selected remote-agent task delegated");
+    expect(JSON.stringify(sourceModelOutputAgentDelegationBridgeTool)).not.toContain("Ask a model provider to draft a remote-agent task");
     expect(pythonExportTool).toMatchObject({
       path: "mcp-source/python_tools.py",
       data_classes: ["confidential", "credential", "pii"],
@@ -16557,6 +16652,101 @@ describe("scanner", () => {
     expect(JSON.stringify(langchainModelOutputTaskQueueBridgeTool)).not.toContain("task_queue_client.enqueue");
     expect(JSON.stringify(langchainModelOutputTaskQueueBridgeTool)).not.toContain("framework model selected background job queued");
     expect(JSON.stringify(langchainModelOutputTaskQueueBridgeTool)).not.toContain("Ask a model provider to draft a background-agent job");
+    expect(langchainModelOutputAgentDelegationBridgeTool).toMatchObject({
+      path: "framework-tools/langchain_tools.py",
+      actions: ["call", "execute", "read", "send"],
+      data_classes: ["confidential", "credential", "pii"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(langchainModelOutputAgentDelegationBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_agent_framework_source_tool: true,
+      agent_framework_source_tool: true,
+      agent_framework_source_tool_framework: "langchain",
+      agent_framework_source_tool_registration_kind: "python_tool_decorator",
+      agent_framework_source_tool_argument_count: 6,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_content_like_input: true,
+      accepts_url_input: true,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      model_provider_call: true,
+      tainted_model_selection: true,
+      agent_delegation: true,
+      tainted_agent_delegation_target: true,
+      agent_delegation_context_forwarding: true,
+      model_output_agent_delegation_bridge: true,
+      privileged_prompt_composition: true,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_model_provider_call: true,
+      handler_tainted_model_selection: true,
+      handler_agent_delegation: true,
+      handler_tainted_agent_delegation_target: true,
+      handler_agent_delegation_context_forwarding: true,
+      handler_model_output_agent_delegation_bridge: true,
+      handler_privileged_prompt_composition: true,
+      handler_secret_env_access: true,
+      handler_signal_count: 8,
+      open_world_schema: false
+    });
+    expect(langchainModelOutputAgentDelegationBridgeTool?.metadata.authority_classes).toEqual(expect.arrayContaining([
+      "agent_delegation",
+      "agent_delegation_context_forwarding",
+      "handler_agent_delegation",
+      "handler_agent_delegation_context_forwarding",
+      "handler_model_output_agent_delegation_bridge",
+      "handler_model_provider_call",
+      "handler_privileged_prompt_composition",
+      "handler_secret_env_access",
+      "handler_tainted_agent_delegation_target",
+      "handler_tainted_model_selection",
+      "model_output_agent_delegation_bridge",
+      "model_provider_call",
+      "privileged_prompt_composition",
+      "tainted_agent_delegation_target",
+      "tainted_model_selection"
+    ]));
+    expect(langchainModelOutputAgentDelegationBridgeTool?.metadata.handler_authority_classes).toEqual([
+      "handler_agent_delegation",
+      "handler_agent_delegation_context_forwarding",
+      "handler_model_output_agent_delegation_bridge",
+      "handler_model_provider_call",
+      "handler_privileged_prompt_composition",
+      "handler_secret_env_access",
+      "handler_tainted_agent_delegation_target",
+      "handler_tainted_model_selection"
+    ]);
+    expect(langchainModelOutputAgentDelegationBridgeTool?.metadata.handler_env_key_names).toEqual([
+      "LANGCHAIN_MODEL_AGENT_DELEGATION_TOKEN",
+      "LANGCHAIN_REMOTE_AGENT_DELEGATION_TOKEN"
+    ]);
+    expect(langchainModelOutputAgentDelegationBridgeTool?.metadata.schema_properties).toEqual([
+      "customer_id",
+      "customer_ticket_text",
+      "delegation_goal_text",
+      "model_name",
+      "requested_task_type",
+      "target_agent_url"
+    ]);
+    expect(langchainModelOutputAgentDelegationBridgeTool?.metadata.required_properties).toEqual([
+      "customer_id",
+      "customer_ticket_text",
+      "delegation_goal_text",
+      "model_name",
+      "requested_task_type",
+      "target_agent_url"
+    ]);
+    expect(JSON.stringify(langchainModelOutputAgentDelegationBridgeTool)).not.toContain("openai_client.chat.completions.create");
+    expect(JSON.stringify(langchainModelOutputAgentDelegationBridgeTool)).not.toContain("model_response");
+    expect(JSON.stringify(langchainModelOutputAgentDelegationBridgeTool)).not.toContain("model_selected_delegated_task");
+    expect(JSON.stringify(langchainModelOutputAgentDelegationBridgeTool)).not.toContain("remote_agent_client.delegate_task");
+    expect(JSON.stringify(langchainModelOutputAgentDelegationBridgeTool)).not.toContain("framework model selected remote-agent task delegated");
+    expect(JSON.stringify(langchainModelOutputAgentDelegationBridgeTool)).not.toContain("Ask a model provider to draft a remote-agent task");
     expect(aiSdkExportTool).toMatchObject({
       path: "framework-tools/vercel-ai-tools.ts",
       data_classes: ["confidential", "credential", "pii"],
