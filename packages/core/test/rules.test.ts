@@ -135,6 +135,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-131")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-132")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-133")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-134")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-001")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-002")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-003")).toBe(true);
@@ -6147,6 +6148,7 @@ describe("rule engine", () => {
       "langchain_export_customer_context",
       "langchain_post_authenticated_page_screenshot_external",
       "langchain_post_url_response_external",
+      "langchain_trace_url_response",
       "langchain_upload_local_file_authenticated_browser",
       "post_customer_update",
       "publish_summary",
@@ -6157,11 +6159,14 @@ describe("rule engine", () => {
       "source_export_customer_record",
       "source_post_authenticated_page_screenshot_external",
       "source_post_url_response_external",
+      "source_trace_url_response",
       "source_upload_local_file_authenticated_browser"
     ]);
     expect(toolContentExternalFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
     expect(JSON.stringify(toolContentExternalFindings)).not.toContain("source network response posted externally");
     expect(JSON.stringify(toolContentExternalFindings)).not.toContain("framework network response posted externally");
+    expect(JSON.stringify(toolContentExternalFindings)).not.toContain("source network response exported to telemetry");
+    expect(JSON.stringify(toolContentExternalFindings)).not.toContain("framework network response exported to telemetry");
     const toolPiiExternalFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-010");
     expect(toolPiiExternalFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "aiSdkExportCustomerContext",
@@ -6631,6 +6636,51 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerNetworkResponseTrainingDatasetBridgeFindings)).not.toContain("source network response exported to training data");
     expect(JSON.stringify(sourceHandlerNetworkResponseTrainingDatasetBridgeFindings)).not.toContain("framework network response exported to training data");
     expect(JSON.stringify(sourceHandlerNetworkResponseTrainingDatasetBridgeFindings)).not.toContain("Fetch a caller supplied URL");
+    const sourceHandlerNetworkResponseTelemetryBridgeFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-134");
+    expect(sourceHandlerNetworkResponseTelemetryBridgeFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
+      "langchain_trace_url_response",
+      "source_trace_url_response"
+    ]);
+    expect(sourceHandlerNetworkResponseTelemetryBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
+    expect(sourceHandlerNetworkResponseTelemetryBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerNetworkResponseTelemetryBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
+    expect(sourceHandlerNetworkResponseTelemetryBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
+    expect(sourceHandlerNetworkResponseTelemetryBridgeFindings.every((finding) => finding.matched_object.metadata.source_tool_handler_redacted === true)).toBe(true);
+    expect(sourceHandlerNetworkResponseTelemetryBridgeFindings.every((finding) => finding.matched_object.metadata.handler_external_network_call === true)).toBe(true);
+    expect(sourceHandlerNetworkResponseTelemetryBridgeFindings.every((finding) => finding.matched_object.metadata.handler_tainted_network_destination === true)).toBe(true);
+    expect(sourceHandlerNetworkResponseTelemetryBridgeFindings.every((finding) => finding.matched_object.metadata.handler_credentialed_network_read === true)).toBe(true);
+    expect(sourceHandlerNetworkResponseTelemetryBridgeFindings.every((finding) => finding.matched_object.metadata.handler_telemetry_export === true)).toBe(true);
+    expect(sourceHandlerNetworkResponseTelemetryBridgeFindings.every((finding) => finding.matched_object.metadata.handler_tainted_telemetry_payload === true)).toBe(true);
+    expect(sourceHandlerNetworkResponseTelemetryBridgeFindings.every((finding) => finding.matched_object.metadata.handler_network_response_telemetry_bridge === true)).toBe(true);
+    expect(sourceHandlerNetworkResponseTelemetryBridgeFindings.every((finding) => finding.matched_object.metadata.handler_secret_env_access === true)).toBe(true);
+    expect(sourceHandlerNetworkResponseTelemetryBridgeFindings.every((finding) => finding.matched_object.metadata.tainted_network_destination === true)).toBe(true);
+    expect(sourceHandlerNetworkResponseTelemetryBridgeFindings.every((finding) => finding.matched_object.metadata.credentialed_network_read === true)).toBe(true);
+    expect(sourceHandlerNetworkResponseTelemetryBridgeFindings.every((finding) => finding.matched_object.metadata.telemetry_export === true)).toBe(true);
+    expect(sourceHandlerNetworkResponseTelemetryBridgeFindings.every((finding) => finding.matched_object.metadata.tainted_telemetry_payload === true)).toBe(true);
+    expect(sourceHandlerNetworkResponseTelemetryBridgeFindings.every((finding) => finding.matched_object.metadata.network_response_telemetry_bridge === true)).toBe(true);
+    expect(sourceHandlerNetworkResponseTelemetryBridgeFindings.every((finding) => finding.matched_object.metadata.external_write === true)).toBe(true);
+    expect(sourceHandlerNetworkResponseTelemetryBridgeFindings.every((finding) => finding.matched_object.metadata.accepts_url_input === true)).toBe(true);
+    expect(sourceHandlerNetworkResponseTelemetryBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.authority_classes.includes("network_response_telemetry_bridge")
+    )).toBe(true);
+    expect(sourceHandlerNetworkResponseTelemetryBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.handler_authority_classes.includes("handler_network_response_telemetry_bridge")
+    )).toBe(true);
+    expect(sourceHandlerNetworkResponseTelemetryBridgeFindings.every((finding) => finding.matched_object.actions.includes("read"))).toBe(true);
+    expect(sourceHandlerNetworkResponseTelemetryBridgeFindings.every((finding) => finding.matched_object.actions.includes("send"))).toBe(true);
+    expect(sourceHandlerNetworkResponseTelemetryBridgeFindings.every((finding) => finding.matched_object.actions.includes("publish"))).toBe(true);
+    expect(sourceHandlerNetworkResponseTelemetryBridgeFindings.every((finding) => finding.matched_object.external_reach === true)).toBe(true);
+    expect(sourceHandlerNetworkResponseTelemetryBridgeFindings.every((finding) => finding.matched_object.secret_exposure === true)).toBe(true);
+    expect(sourceHandlerNetworkResponseTelemetryBridgeFindings.every((finding) => finding.matched_object.side_effect === true)).toBe(true);
+    expect(sourceHandlerNetworkResponseTelemetryBridgeFindings.every((finding) => finding.matched_object.reversible === false)).toBe(true);
+    expect(JSON.stringify(sourceHandlerNetworkResponseTelemetryBridgeFindings)).not.toContain("responseBody");
+    expect(JSON.stringify(sourceHandlerNetworkResponseTelemetryBridgeFindings)).not.toContain("response.text");
+    expect(JSON.stringify(sourceHandlerNetworkResponseTelemetryBridgeFindings)).not.toContain("httpx.get");
+    expect(JSON.stringify(sourceHandlerNetworkResponseTelemetryBridgeFindings)).not.toContain("telemetryClient.recordTrace");
+    expect(JSON.stringify(sourceHandlerNetworkResponseTelemetryBridgeFindings)).not.toContain("telemetry_client.record_trace");
+    expect(JSON.stringify(sourceHandlerNetworkResponseTelemetryBridgeFindings)).not.toContain("source network response exported to telemetry");
+    expect(JSON.stringify(sourceHandlerNetworkResponseTelemetryBridgeFindings)).not.toContain("framework network response exported to telemetry");
+    expect(JSON.stringify(sourceHandlerNetworkResponseTelemetryBridgeFindings)).not.toContain("Fetch a caller supplied URL");
     const sourceHandlerMemoryWriteFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-023");
     expect(sourceHandlerMemoryWriteFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_embed_customer_vault_secret_vector_memory",
@@ -12573,6 +12623,7 @@ describe("rule engine", () => {
       "langchain_fetch_url_content",
       "langchain_post_url_response_external",
       "langchain_store_url_response_memory",
+      "langchain_trace_url_response",
       "langchain_train_on_url_response",
       "python_export_customer_record",
       "source_cache_url_response_prompt",
@@ -12581,6 +12632,7 @@ describe("rule engine", () => {
       "source_fetch_url_content",
       "source_post_url_response_external",
       "source_store_url_response_memory",
+      "source_trace_url_response",
       "source_train_on_url_response"
     ]);
     expect(sourceHandlerTaintedNetworkDestinationFindings.every((finding) => finding.severity === "critical")).toBe(true);
@@ -12611,6 +12663,8 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerTaintedNetworkDestinationFindings)).not.toContain("framework network response cached for prompts");
     expect(JSON.stringify(sourceHandlerTaintedNetworkDestinationFindings)).not.toContain("source network response exported to training data");
     expect(JSON.stringify(sourceHandlerTaintedNetworkDestinationFindings)).not.toContain("framework network response exported to training data");
+    expect(JSON.stringify(sourceHandlerTaintedNetworkDestinationFindings)).not.toContain("source network response exported to telemetry");
+    expect(JSON.stringify(sourceHandlerTaintedNetworkDestinationFindings)).not.toContain("framework network response exported to telemetry");
     expect(JSON.stringify(sourceHandlerTaintedNetworkDestinationFindings)).not.toContain("Fetch a caller supplied URL");
     const toolDescriptionInjectionFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-011");
     expect(toolDescriptionInjectionFindings).toHaveLength(1);

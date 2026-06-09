@@ -24148,6 +24148,7 @@ function addToolDefinitionSurface(
       !authority.tool_output_embedding_vector_bridge &&
       !authority.telemetry_export &&
       !authority.model_output_telemetry_bridge &&
+      !authority.network_response_telemetry_bridge &&
       !authority.tool_output_telemetry_bridge &&
       !authority.prompt_cache_write &&
       !authority.model_output_prompt_cache_bridge &&
@@ -24268,6 +24269,7 @@ function addToolDefinitionSurface(
       telemetry_export: authority.telemetry_export,
       secret_manager_telemetry_bridge: authority.secret_manager_telemetry_bridge,
       model_output_telemetry_bridge: authority.model_output_telemetry_bridge,
+      network_response_telemetry_bridge: authority.network_response_telemetry_bridge,
       tool_output_telemetry_bridge: authority.tool_output_telemetry_bridge,
       tainted_telemetry_payload: authority.tainted_telemetry_payload,
       prompt_cache_write: authority.prompt_cache_write,
@@ -26739,6 +26741,7 @@ interface SourceToolHandlerSignals {
   handlerTelemetryExport: boolean;
   handlerSecretManagerTelemetryBridge: boolean;
   handlerModelOutputTelemetryBridge: boolean;
+  handlerNetworkResponseTelemetryBridge: boolean;
   handlerToolOutputTelemetryBridge: boolean;
   handlerTaintedTelemetryPayload: boolean;
   handlerPromptCacheWrite: boolean;
@@ -27306,6 +27309,7 @@ function sourceToolHandlerSignalMetadata(signals: SourceToolHandlerSignals | und
     handler_telemetry_export: signals.handlerTelemetryExport,
     handler_secret_manager_telemetry_bridge: signals.handlerSecretManagerTelemetryBridge,
     handler_model_output_telemetry_bridge: signals.handlerModelOutputTelemetryBridge,
+    handler_network_response_telemetry_bridge: signals.handlerNetworkResponseTelemetryBridge,
     handler_tool_output_telemetry_bridge: signals.handlerToolOutputTelemetryBridge,
     handler_tainted_telemetry_payload: signals.handlerTaintedTelemetryPayload,
     handler_prompt_cache_write: signals.handlerPromptCacheWrite,
@@ -27503,6 +27507,9 @@ function classifySourceToolHandlerSignals(
   const modelOutputTelemetryBridge = modelProviderCall && telemetryExport && (language === "javascript"
     ? hasJavaScriptHandlerModelOutputTelemetryBridge(handlerSource)
     : hasPythonHandlerModelOutputTelemetryBridge(handlerSource));
+  const networkResponseTelemetryBridge = externalNetworkCall && telemetryExport && (language === "javascript"
+    ? hasJavaScriptHandlerNetworkResponseTelemetryBridge(handlerSource)
+    : hasPythonHandlerNetworkResponseTelemetryBridge(handlerSource));
   const promptCacheWrite = language === "javascript"
     ? hasJavaScriptHandlerPromptCacheWrite(handlerSource)
     : hasPythonHandlerPromptCacheWrite(handlerSource);
@@ -27918,6 +27925,7 @@ function classifySourceToolHandlerSignals(
   if (telemetryExport) classes.add("handler_telemetry_export");
   if (secretManagerTelemetryBridge) classes.add("handler_secret_manager_telemetry_bridge");
   if (modelOutputTelemetryBridge) classes.add("handler_model_output_telemetry_bridge");
+  if (networkResponseTelemetryBridge) classes.add("handler_network_response_telemetry_bridge");
   if (toolOutputTelemetryBridge) classes.add("handler_tool_output_telemetry_bridge");
   if (taintedTelemetryPayload) classes.add("handler_tainted_telemetry_payload");
   if (promptCacheWrite) classes.add("handler_prompt_cache_write");
@@ -28072,6 +28080,7 @@ function classifySourceToolHandlerSignals(
     handlerTelemetryExport: telemetryExport,
     handlerSecretManagerTelemetryBridge: secretManagerTelemetryBridge,
     handlerModelOutputTelemetryBridge: modelOutputTelemetryBridge,
+    handlerNetworkResponseTelemetryBridge: networkResponseTelemetryBridge,
     handlerToolOutputTelemetryBridge: toolOutputTelemetryBridge,
     handlerTaintedTelemetryPayload: taintedTelemetryPayload,
     handlerPromptCacheWrite: promptCacheWrite,
@@ -30350,6 +30359,32 @@ function hasJavaScriptHandlerModelOutputTelemetryBridge(source: string): boolean
 
 function hasPythonHandlerModelOutputTelemetryBridge(source: string): boolean {
   const identifiers = extractPythonModelOutputIdentifiers(source);
+  return identifiers.length > 0 && callExpressionReferencesAnyIdentifier(
+    [
+      /\b(?:telemetry_client|trace_client|tracing_client|observability_client|analytics_client|otel|otel_span|langfuse|langsmith|sentry_sdk|honeycomb|datadog|newrelic)\s*(?:\.\s*[A-Za-z_]\w*){0,4}\s*\.\s*(?:record|record_trace|capture|capture_event|track|track_event|log|log_event|emit|export|send|send_trace|add_event|set_attribute|set_attributes|span|trace)\s*\(([\s\S]{0,2200})\)/giu,
+      /\b(?:trace|span)\s*\.\s*(?:add_event|set_attribute|set_attributes|record_exception)\s*\(([\s\S]{0,2200})\)/giu,
+      /\b(?:opentelemetry)\s*(?:\.\s*[A-Za-z_]\w*){0,4}\s*\.\s*(?:trace|span|record|export|send)\s*\(([\s\S]{0,2200})\)/giu
+    ],
+    source,
+    identifiers
+  );
+}
+
+function hasJavaScriptHandlerNetworkResponseTelemetryBridge(source: string): boolean {
+  const identifiers = extractJavaScriptNetworkResponseIdentifiers(source);
+  return identifiers.length > 0 && callExpressionReferencesAnyIdentifier(
+    [
+      /\b(?:telemetryClient|traceClient|tracingClient|observabilityClient|analyticsClient|otel|otelSpan|langfuse|langsmith|sentry|honeycomb|datadog|newrelic)\s*(?:\.\s*[A-Za-z_$][\w$]*){0,4}\s*\.\s*(?:record|recordTrace|capture|captureEvent|track|trackEvent|log|logEvent|emit|export|send|sendTrace|addEvent|setAttribute|setAttributes|span|trace)\s*\(([\s\S]{0,2200})\)/giu,
+      /\b(?:trace|span)\s*\.\s*(?:addEvent|setAttribute|setAttributes|recordException)\s*\(([\s\S]{0,2200})\)/giu,
+      /\b(?:opentelemetry)\s*(?:\.\s*[A-Za-z_$][\w$]*){0,4}\s*\.\s*(?:trace|span|record|export|send)\s*\(([\s\S]{0,2200})\)/giu
+    ],
+    source,
+    identifiers
+  );
+}
+
+function hasPythonHandlerNetworkResponseTelemetryBridge(source: string): boolean {
+  const identifiers = extractPythonNetworkResponseIdentifiers(source);
   return identifiers.length > 0 && callExpressionReferencesAnyIdentifier(
     [
       /\b(?:telemetry_client|trace_client|tracing_client|observability_client|analytics_client|otel|otel_span|langfuse|langsmith|sentry_sdk|honeycomb|datadog|newrelic)\s*(?:\.\s*[A-Za-z_]\w*){0,4}\s*\.\s*(?:record|record_trace|capture|capture_event|track|track_event|log|log_event|emit|export|send|send_trace|add_event|set_attribute|set_attributes|span|trace)\s*\(([\s\S]{0,2200})\)/giu,
@@ -34624,6 +34659,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   telemetry_export: boolean;
   secret_manager_telemetry_bridge: boolean;
   model_output_telemetry_bridge: boolean;
+  network_response_telemetry_bridge: boolean;
   tool_output_telemetry_bridge: boolean;
   tainted_telemetry_payload: boolean;
   prompt_cache_write: boolean;
@@ -34739,6 +34775,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   const handlerTelemetryExport = handler?.handlerTelemetryExport === true;
   const handlerSecretManagerTelemetryBridge = handler?.handlerSecretManagerTelemetryBridge === true;
   const handlerModelOutputTelemetryBridge = handler?.handlerModelOutputTelemetryBridge === true;
+  const handlerNetworkResponseTelemetryBridge = handler?.handlerNetworkResponseTelemetryBridge === true;
   const handlerToolOutputTelemetryBridge = handler?.handlerToolOutputTelemetryBridge === true;
   const handlerTaintedTelemetryPayload = handler?.handlerTaintedTelemetryPayload === true;
   const handlerPromptCacheWrite = handler?.handlerPromptCacheWrite === true;
@@ -35322,6 +35359,12 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
     actions.add("send");
     actions.add("publish");
   }
+  if (handlerNetworkResponseTelemetryBridge) {
+    classes.add("network_response_telemetry_bridge");
+    actions.add("read");
+    actions.add("send");
+    actions.add("publish");
+  }
   if (handlerToolOutputTelemetryBridge) {
     classes.add("tool_output_telemetry_bridge");
     actions.add("execute");
@@ -35753,6 +35796,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerTelemetryExport ||
       handlerSecretManagerTelemetryBridge ||
       handlerModelOutputTelemetryBridge ||
+      handlerNetworkResponseTelemetryBridge ||
       handlerToolOutputTelemetryBridge ||
       handlerTaintedTelemetryPayload ||
       handlerPromptCacheWrite ||
@@ -35900,6 +35944,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerTelemetryExport ||
       handlerSecretManagerTelemetryBridge ||
       handlerModelOutputTelemetryBridge ||
+      handlerNetworkResponseTelemetryBridge ||
       handlerToolOutputTelemetryBridge ||
       handlerVisualContextTelemetryBridge ||
       handlerVisualContextPromptCacheBridge ||
@@ -35970,6 +36015,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerSecretManagerDatabaseWriteBridge ||
       handlerSecretManagerTelemetryBridge ||
       (handlerModelOutputTelemetryBridge && handlerSecretEnvAccess) ||
+      (handlerNetworkResponseTelemetryBridge && handlerSecretEnvAccess) ||
       (handlerToolOutputTelemetryBridge && handlerSecretEnvAccess) ||
       handlerSecretManagerPromptCacheBridge ||
       handlerModelOutputPromptCacheBridge ||
@@ -36107,6 +36153,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
     telemetry_export: handlerTelemetryExport,
     secret_manager_telemetry_bridge: handlerSecretManagerTelemetryBridge,
     model_output_telemetry_bridge: handlerModelOutputTelemetryBridge,
+    network_response_telemetry_bridge: handlerNetworkResponseTelemetryBridge,
     tool_output_telemetry_bridge: handlerToolOutputTelemetryBridge,
     tainted_telemetry_payload: handlerTaintedTelemetryPayload,
     prompt_cache_write: handlerPromptCacheWrite,
@@ -36259,6 +36306,7 @@ function authoritySignature(tool: SurfaceObject): string {
     metadata.telemetry_export === true ? "telemetry_export" : "",
     metadata.secret_manager_telemetry_bridge === true ? "secret_manager_telemetry_bridge" : "",
     metadata.model_output_telemetry_bridge === true ? "model_output_telemetry_bridge" : "",
+    metadata.network_response_telemetry_bridge === true ? "network_response_telemetry_bridge" : "",
     metadata.tool_output_telemetry_bridge === true ? "tool_output_telemetry_bridge" : "",
     metadata.tainted_telemetry_payload === true ? "tainted_telemetry_payload" : "",
     metadata.prompt_cache_write === true ? "prompt_cache_write" : "",
@@ -36419,6 +36467,7 @@ function isPrivilegedToolSurface(tool: SurfaceObject): boolean {
     tool.metadata.telemetry_export === true ||
     tool.metadata.secret_manager_telemetry_bridge === true ||
     tool.metadata.model_output_telemetry_bridge === true ||
+    tool.metadata.network_response_telemetry_bridge === true ||
     tool.metadata.tool_output_telemetry_bridge === true ||
     tool.metadata.tainted_telemetry_payload === true ||
     tool.metadata.prompt_cache_write === true ||

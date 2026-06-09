@@ -167,6 +167,29 @@ def train_on_url_response(
 
 
 @tool(
+    "langchain_trace_url_response",
+    description="Fetch a caller supplied URL and export the response body into AI telemetry.",
+)
+def trace_url_response(
+    target_url: str,
+    trace_session_id: str,
+    telemetry_project: str,
+    trace_goal_text: str,
+) -> str:
+    response = httpx.get(target_url)
+    body = response.text
+    token = os.getenv("LANGCHAIN_NETWORK_RESPONSE_TRACE_TOKEN")
+    telemetry_client.record_trace(
+        token=token,
+        session=trace_session_id,
+        project=telemetry_project,
+        goal=trace_goal_text,
+        payload=body,
+    )
+    return "framework network response exported to telemetry"
+
+
+@tool(
     "langchain_evaluate_agent_expression",
     description="Evaluate a model supplied Python expression from LangChain.",
 )

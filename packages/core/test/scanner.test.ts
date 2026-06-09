@@ -554,6 +554,7 @@ describe("scanner", () => {
     const sourceNetworkResponseExternalServiceBridgeTool = surfaces.tools.find((surface) => surface.name === "source_post_url_response_external");
     const sourceNetworkResponsePromptCacheBridgeTool = surfaces.tools.find((surface) => surface.name === "source_cache_url_response_prompt");
     const sourceNetworkResponseTrainingDatasetBridgeTool = surfaces.tools.find((surface) => surface.name === "source_train_on_url_response");
+    const sourceNetworkResponseTelemetryBridgeTool = surfaces.tools.find((surface) => surface.name === "source_trace_url_response");
     const sourceDynamicCodeTool = surfaces.tools.find((surface) => surface.name === "source_evaluate_agent_expression");
     const sourceDatabaseTool = surfaces.tools.find((surface) => surface.name === "source_apply_record_change_sql");
     const sourceSecretOutputTool = surfaces.tools.find((surface) => surface.name === "source_reveal_runtime_secret");
@@ -797,6 +798,7 @@ describe("scanner", () => {
     const langchainNetworkResponseExternalServiceBridgeTool = surfaces.tools.find((surface) => surface.name === "langchain_post_url_response_external");
     const langchainNetworkResponsePromptCacheBridgeTool = surfaces.tools.find((surface) => surface.name === "langchain_cache_url_response_prompt");
     const langchainNetworkResponseTrainingDatasetBridgeTool = surfaces.tools.find((surface) => surface.name === "langchain_train_on_url_response");
+    const langchainNetworkResponseTelemetryBridgeTool = surfaces.tools.find((surface) => surface.name === "langchain_trace_url_response");
     const langchainDynamicCodeTool = surfaces.tools.find((surface) => surface.name === "langchain_evaluate_agent_expression");
     const langchainDatabaseTool = surfaces.tools.find((surface) => surface.name === "langchain_apply_record_change_sql");
     const langchainSecretOutputTool = surfaces.tools.find((surface) => surface.name === "langchain_reveal_runtime_secret");
@@ -1922,6 +1924,78 @@ describe("scanner", () => {
     expect(JSON.stringify(sourceNetworkResponseTrainingDatasetBridgeTool)).not.toContain("trainingDatasetClient.appendRecord");
     expect(JSON.stringify(sourceNetworkResponseTrainingDatasetBridgeTool)).not.toContain("source network response exported to training data");
     expect(JSON.stringify(sourceNetworkResponseTrainingDatasetBridgeTool)).not.toContain("Fetch a caller supplied URL");
+    expect(sourceNetworkResponseTelemetryBridgeTool).toMatchObject({
+      path: "mcp-source/customer-tools.ts",
+      data_classes: ["credential"],
+      actions: ["call", "publish", "read", "send"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(sourceNetworkResponseTelemetryBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_mcp_source_tool: true,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_url_input: true,
+      accepts_content_like_input: true,
+      tainted_network_destination: true,
+      credentialed_network_read: true,
+      telemetry_export: true,
+      tainted_telemetry_payload: true,
+      network_response_telemetry_bridge: true,
+      external_write: true,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_external_network_call: true,
+      handler_tainted_network_destination: true,
+      handler_credentialed_network_read: true,
+      handler_telemetry_export: true,
+      handler_tainted_telemetry_payload: true,
+      handler_network_response_telemetry_bridge: true,
+      handler_secret_env_access: true,
+      handler_signal_count: 7
+    });
+    expect(sourceNetworkResponseTelemetryBridgeTool?.metadata.authority_classes).toEqual([
+      "content_input",
+      "credentialed_network_read",
+      "external_write",
+      "handler_credentialed_network_read",
+      "handler_network_access",
+      "handler_network_response_telemetry_bridge",
+      "handler_secret_env_access",
+      "handler_tainted_network_destination",
+      "handler_tainted_telemetry_payload",
+      "handler_telemetry_export",
+      "network_access",
+      "network_response_telemetry_bridge",
+      "secret_env_access",
+      "tainted_network_destination",
+      "tainted_telemetry_payload",
+      "telemetry_export"
+    ]);
+    expect(sourceNetworkResponseTelemetryBridgeTool?.metadata.handler_authority_classes).toEqual([
+      "handler_credentialed_network_read",
+      "handler_network_access",
+      "handler_network_response_telemetry_bridge",
+      "handler_secret_env_access",
+      "handler_tainted_network_destination",
+      "handler_tainted_telemetry_payload",
+      "handler_telemetry_export"
+    ]);
+    expect(sourceNetworkResponseTelemetryBridgeTool?.metadata.handler_env_key_names).toEqual(["SOURCE_NETWORK_RESPONSE_TRACE_TOKEN"]);
+    expect(sourceNetworkResponseTelemetryBridgeTool?.metadata.schema_properties).toEqual([
+      "target_url",
+      "telemetry_project",
+      "trace_goal_text",
+      "trace_session_id"
+    ]);
+    expect(JSON.stringify(sourceNetworkResponseTelemetryBridgeTool)).not.toContain("responseBody");
+    expect(JSON.stringify(sourceNetworkResponseTelemetryBridgeTool)).not.toContain("response.text");
+    expect(JSON.stringify(sourceNetworkResponseTelemetryBridgeTool)).not.toContain("telemetryClient.recordTrace");
+    expect(JSON.stringify(sourceNetworkResponseTelemetryBridgeTool)).not.toContain("source network response exported to telemetry");
+    expect(JSON.stringify(sourceNetworkResponseTelemetryBridgeTool)).not.toContain("Fetch a caller supplied URL");
     expect(sourceDynamicCodeTool).toMatchObject({
       path: "mcp-source/customer-tools.ts",
       data_classes: ["unknown"],
@@ -10967,6 +11041,80 @@ describe("scanner", () => {
     expect(JSON.stringify(langchainNetworkResponseTrainingDatasetBridgeTool)).not.toContain("training_dataset_client.append_record");
     expect(JSON.stringify(langchainNetworkResponseTrainingDatasetBridgeTool)).not.toContain("framework network response exported to training data");
     expect(JSON.stringify(langchainNetworkResponseTrainingDatasetBridgeTool)).not.toContain("Fetch a caller supplied URL");
+    expect(langchainNetworkResponseTelemetryBridgeTool).toMatchObject({
+      path: "framework-tools/langchain_tools.py",
+      data_classes: ["credential"],
+      actions: ["call", "publish", "read", "send"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(langchainNetworkResponseTelemetryBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_agent_framework_source_tool: true,
+      agent_framework_source_tool: true,
+      agent_framework_source_tool_framework: "langchain",
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_url_input: true,
+      accepts_content_like_input: true,
+      tainted_network_destination: true,
+      credentialed_network_read: true,
+      telemetry_export: true,
+      tainted_telemetry_payload: true,
+      network_response_telemetry_bridge: true,
+      external_write: true,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_external_network_call: true,
+      handler_tainted_network_destination: true,
+      handler_credentialed_network_read: true,
+      handler_telemetry_export: true,
+      handler_tainted_telemetry_payload: true,
+      handler_network_response_telemetry_bridge: true,
+      handler_secret_env_access: true,
+      handler_signal_count: 7
+    });
+    expect(langchainNetworkResponseTelemetryBridgeTool?.metadata.authority_classes).toEqual([
+      "content_input",
+      "credentialed_network_read",
+      "external_write",
+      "handler_credentialed_network_read",
+      "handler_network_access",
+      "handler_network_response_telemetry_bridge",
+      "handler_secret_env_access",
+      "handler_tainted_network_destination",
+      "handler_tainted_telemetry_payload",
+      "handler_telemetry_export",
+      "network_access",
+      "network_response_telemetry_bridge",
+      "secret_env_access",
+      "tainted_network_destination",
+      "tainted_telemetry_payload",
+      "telemetry_export"
+    ]);
+    expect(langchainNetworkResponseTelemetryBridgeTool?.metadata.handler_authority_classes).toEqual([
+      "handler_credentialed_network_read",
+      "handler_network_access",
+      "handler_network_response_telemetry_bridge",
+      "handler_secret_env_access",
+      "handler_tainted_network_destination",
+      "handler_tainted_telemetry_payload",
+      "handler_telemetry_export"
+    ]);
+    expect(langchainNetworkResponseTelemetryBridgeTool?.metadata.handler_env_key_names).toEqual(["LANGCHAIN_NETWORK_RESPONSE_TRACE_TOKEN"]);
+    expect(langchainNetworkResponseTelemetryBridgeTool?.metadata.schema_properties).toEqual([
+      "target_url",
+      "telemetry_project",
+      "trace_goal_text",
+      "trace_session_id"
+    ]);
+    expect(JSON.stringify(langchainNetworkResponseTelemetryBridgeTool)).not.toContain("httpx.get");
+    expect(JSON.stringify(langchainNetworkResponseTelemetryBridgeTool)).not.toContain("response.text");
+    expect(JSON.stringify(langchainNetworkResponseTelemetryBridgeTool)).not.toContain("telemetry_client.record_trace");
+    expect(JSON.stringify(langchainNetworkResponseTelemetryBridgeTool)).not.toContain("framework network response exported to telemetry");
+    expect(JSON.stringify(langchainNetworkResponseTelemetryBridgeTool)).not.toContain("Fetch a caller supplied URL");
     expect(langchainDynamicCodeTool).toMatchObject({
       path: "framework-tools/langchain_tools.py",
       data_classes: ["unknown"],

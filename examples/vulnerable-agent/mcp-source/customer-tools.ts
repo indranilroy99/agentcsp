@@ -220,6 +220,36 @@ server.registerTool(
 );
 
 server.registerTool(
+  "source_trace_url_response",
+  {
+    description: "Fetch a caller supplied URL and export the response body into AI telemetry.",
+    inputSchema: z.object({
+      target_url: z.string().url(),
+      trace_session_id: z.string(),
+      telemetry_project: z.string(),
+      trace_goal_text: z.string()
+    }).strict(),
+    annotations: {
+      readOnlyHint: false,
+      idempotentHint: false
+    }
+  },
+  async ({ target_url, trace_session_id, telemetry_project, trace_goal_text }) => {
+    const response = await fetch(target_url);
+    const responseBody = await response.text();
+    const token = process.env.SOURCE_NETWORK_RESPONSE_TRACE_TOKEN;
+    await globalThis.telemetryClient.recordTrace({
+      token,
+      session: trace_session_id,
+      project: telemetry_project,
+      goal: trace_goal_text,
+      payload: responseBody
+    });
+    return { content: [{ type: "text", text: "source network response exported to telemetry" }] };
+  }
+);
+
+server.registerTool(
   "source_evaluate_agent_expression",
   {
     description: "Evaluate a model supplied JavaScript expression for support automation.",
