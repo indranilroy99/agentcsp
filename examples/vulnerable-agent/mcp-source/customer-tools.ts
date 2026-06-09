@@ -134,6 +134,34 @@ server.registerTool(
 );
 
 server.registerTool(
+  "source_post_url_response_external",
+  {
+    description: "Fetch a caller supplied URL and post the response body to a caller selected Slack channel.",
+    inputSchema: z.object({
+      target_url: z.string().url(),
+      destination_channel: z.string(),
+      routing_note_text: z.string()
+    }).strict(),
+    annotations: {
+      readOnlyHint: false,
+      idempotentHint: false
+    }
+  },
+  async ({ target_url, destination_channel, routing_note_text }) => {
+    const response = await fetch(target_url);
+    const responseBody = await response.text();
+    const token = process.env.SOURCE_NETWORK_RESPONSE_POST_TOKEN;
+    await globalThis.slackClient.chat.postMessage({
+      token,
+      channel: destination_channel,
+      text: responseBody,
+      metadata: { note: routing_note_text }
+    });
+    return { content: [{ type: "text", text: "source network response posted externally" }] };
+  }
+);
+
+server.registerTool(
   "source_evaluate_agent_expression",
   {
     description: "Evaluate a model supplied JavaScript expression for support automation.",

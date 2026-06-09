@@ -551,6 +551,7 @@ describe("scanner", () => {
     const sourceFileReadTool = surfaces.tools.find((surface) => surface.name === "source_read_workspace_file");
     const sourceNetworkResponseTool = surfaces.tools.find((surface) => surface.name === "source_fetch_url_content");
     const sourceNetworkResponseMemoryBridgeTool = surfaces.tools.find((surface) => surface.name === "source_store_url_response_memory");
+    const sourceNetworkResponseExternalServiceBridgeTool = surfaces.tools.find((surface) => surface.name === "source_post_url_response_external");
     const sourceDynamicCodeTool = surfaces.tools.find((surface) => surface.name === "source_evaluate_agent_expression");
     const sourceDatabaseTool = surfaces.tools.find((surface) => surface.name === "source_apply_record_change_sql");
     const sourceSecretOutputTool = surfaces.tools.find((surface) => surface.name === "source_reveal_runtime_secret");
@@ -791,6 +792,7 @@ describe("scanner", () => {
     const langchainFileReadTool = surfaces.tools.find((surface) => surface.name === "langchain_read_workspace_file");
     const langchainNetworkResponseTool = surfaces.tools.find((surface) => surface.name === "langchain_fetch_url_content");
     const langchainNetworkResponseMemoryBridgeTool = surfaces.tools.find((surface) => surface.name === "langchain_store_url_response_memory");
+    const langchainNetworkResponseExternalServiceBridgeTool = surfaces.tools.find((surface) => surface.name === "langchain_post_url_response_external");
     const langchainDynamicCodeTool = surfaces.tools.find((surface) => surface.name === "langchain_evaluate_agent_expression");
     const langchainDatabaseTool = surfaces.tools.find((surface) => surface.name === "langchain_apply_record_change_sql");
     const langchainSecretOutputTool = surfaces.tools.find((surface) => surface.name === "langchain_reveal_runtime_secret");
@@ -1671,6 +1673,88 @@ describe("scanner", () => {
     expect(JSON.stringify(sourceNetworkResponseMemoryBridgeTool)).not.toContain("agentMemory.upsert");
     expect(JSON.stringify(sourceNetworkResponseMemoryBridgeTool)).not.toContain("source network response remembered");
     expect(JSON.stringify(sourceNetworkResponseMemoryBridgeTool)).not.toContain("Fetch a caller supplied URL");
+    expect(sourceNetworkResponseExternalServiceBridgeTool).toMatchObject({
+      path: "mcp-source/customer-tools.ts",
+      data_classes: ["credential"],
+      actions: ["call", "publish", "read", "send"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(sourceNetworkResponseExternalServiceBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_mcp_source_tool: true,
+      mcp_source_tool_registration: true,
+      mcp_source_tool_registration_kind: "registerTool",
+      mcp_source_tool_argument_count: 3,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      read_only_hint: false,
+      idempotent_hint: false,
+      accepts_url_input: true,
+      accepts_content_like_input: true,
+      tainted_network_destination: true,
+      credentialed_network_read: true,
+      external_service_write: true,
+      external_write: true,
+      tainted_external_service_recipient: true,
+      network_response_external_service_bridge: true,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_external_network_call: true,
+      handler_tainted_network_destination: true,
+      handler_credentialed_network_read: true,
+      handler_external_service_write: true,
+      handler_tainted_external_service_recipient: true,
+      handler_network_response_external_service_bridge: true,
+      handler_secret_env_access: true,
+      handler_signal_count: 7,
+      open_world_schema: false
+    });
+    expect(sourceNetworkResponseExternalServiceBridgeTool?.metadata.authority_classes).toEqual([
+      "content_input",
+      "credentialed_network_read",
+      "external_service_write",
+      "external_write",
+      "handler_credentialed_network_read",
+      "handler_external_service_write",
+      "handler_network_access",
+      "handler_network_response_external_service_bridge",
+      "handler_secret_env_access",
+      "handler_tainted_external_service_recipient",
+      "handler_tainted_network_destination",
+      "network_access",
+      "network_response_external_service_bridge",
+      "secret_env_access",
+      "tainted_external_service_recipient",
+      "tainted_network_destination"
+    ]);
+    expect(sourceNetworkResponseExternalServiceBridgeTool?.metadata.handler_authority_classes).toEqual([
+      "handler_credentialed_network_read",
+      "handler_external_service_write",
+      "handler_network_access",
+      "handler_network_response_external_service_bridge",
+      "handler_secret_env_access",
+      "handler_tainted_external_service_recipient",
+      "handler_tainted_network_destination"
+    ]);
+    expect(sourceNetworkResponseExternalServiceBridgeTool?.metadata.handler_env_key_names).toEqual(["SOURCE_NETWORK_RESPONSE_POST_TOKEN"]);
+    expect(sourceNetworkResponseExternalServiceBridgeTool?.metadata.schema_properties).toEqual([
+      "destination_channel",
+      "routing_note_text",
+      "target_url"
+    ]);
+    expect(sourceNetworkResponseExternalServiceBridgeTool?.metadata.required_properties).toEqual([
+      "destination_channel",
+      "routing_note_text",
+      "target_url"
+    ]);
+    expect(JSON.stringify(sourceNetworkResponseExternalServiceBridgeTool)).not.toContain("responseBody");
+    expect(JSON.stringify(sourceNetworkResponseExternalServiceBridgeTool)).not.toContain("response.text");
+    expect(JSON.stringify(sourceNetworkResponseExternalServiceBridgeTool)).not.toContain("slackClient.chat.postMessage");
+    expect(JSON.stringify(sourceNetworkResponseExternalServiceBridgeTool)).not.toContain("source network response posted externally");
+    expect(JSON.stringify(sourceNetworkResponseExternalServiceBridgeTool)).not.toContain("Fetch a caller supplied URL");
     expect(sourceDynamicCodeTool).toMatchObject({
       path: "mcp-source/customer-tools.ts",
       data_classes: ["unknown"],
@@ -10472,6 +10556,87 @@ describe("scanner", () => {
     expect(JSON.stringify(langchainNetworkResponseMemoryBridgeTool)).not.toContain("memory_store.upsert");
     expect(JSON.stringify(langchainNetworkResponseMemoryBridgeTool)).not.toContain("framework network response remembered");
     expect(JSON.stringify(langchainNetworkResponseMemoryBridgeTool)).not.toContain("Fetch a caller supplied URL");
+    expect(langchainNetworkResponseExternalServiceBridgeTool).toMatchObject({
+      path: "framework-tools/langchain_tools.py",
+      data_classes: ["credential"],
+      actions: ["call", "publish", "read", "send"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(langchainNetworkResponseExternalServiceBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_agent_framework_source_tool: true,
+      agent_framework_source_tool: true,
+      agent_framework_source_tool_framework: "langchain",
+      agent_framework_source_tool_registration_kind: "python_tool_decorator",
+      agent_framework_source_tool_argument_count: 3,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_url_input: true,
+      accepts_content_like_input: true,
+      tainted_network_destination: true,
+      credentialed_network_read: true,
+      external_service_write: true,
+      external_write: true,
+      tainted_external_service_recipient: true,
+      network_response_external_service_bridge: true,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_external_network_call: true,
+      handler_tainted_network_destination: true,
+      handler_credentialed_network_read: true,
+      handler_external_service_write: true,
+      handler_tainted_external_service_recipient: true,
+      handler_network_response_external_service_bridge: true,
+      handler_secret_env_access: true,
+      handler_signal_count: 7,
+      open_world_schema: false
+    });
+    expect(langchainNetworkResponseExternalServiceBridgeTool?.metadata.authority_classes).toEqual([
+      "content_input",
+      "credentialed_network_read",
+      "external_service_write",
+      "external_write",
+      "handler_credentialed_network_read",
+      "handler_external_service_write",
+      "handler_network_access",
+      "handler_network_response_external_service_bridge",
+      "handler_secret_env_access",
+      "handler_tainted_external_service_recipient",
+      "handler_tainted_network_destination",
+      "network_access",
+      "network_response_external_service_bridge",
+      "secret_env_access",
+      "tainted_external_service_recipient",
+      "tainted_network_destination"
+    ]);
+    expect(langchainNetworkResponseExternalServiceBridgeTool?.metadata.handler_authority_classes).toEqual([
+      "handler_credentialed_network_read",
+      "handler_external_service_write",
+      "handler_network_access",
+      "handler_network_response_external_service_bridge",
+      "handler_secret_env_access",
+      "handler_tainted_external_service_recipient",
+      "handler_tainted_network_destination"
+    ]);
+    expect(langchainNetworkResponseExternalServiceBridgeTool?.metadata.handler_env_key_names).toEqual(["LANGCHAIN_NETWORK_RESPONSE_POST_TOKEN"]);
+    expect(langchainNetworkResponseExternalServiceBridgeTool?.metadata.schema_properties).toEqual([
+      "destination_channel",
+      "routing_note_text",
+      "target_url"
+    ]);
+    expect(langchainNetworkResponseExternalServiceBridgeTool?.metadata.required_properties).toEqual([
+      "destination_channel",
+      "routing_note_text",
+      "target_url"
+    ]);
+    expect(JSON.stringify(langchainNetworkResponseExternalServiceBridgeTool)).not.toContain("httpx.get");
+    expect(JSON.stringify(langchainNetworkResponseExternalServiceBridgeTool)).not.toContain("response.text");
+    expect(JSON.stringify(langchainNetworkResponseExternalServiceBridgeTool)).not.toContain("slack_client.chat_postMessage");
+    expect(JSON.stringify(langchainNetworkResponseExternalServiceBridgeTool)).not.toContain("framework network response posted externally");
+    expect(JSON.stringify(langchainNetworkResponseExternalServiceBridgeTool)).not.toContain("Fetch a caller supplied URL");
     expect(langchainDynamicCodeTool).toMatchObject({
       path: "framework-tools/langchain_tools.py",
       data_classes: ["unknown"],

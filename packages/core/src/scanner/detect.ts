@@ -24135,6 +24135,7 @@ function addToolDefinitionSurface(
       !authority.secret_manager_access &&
       !authority.external_service_write &&
       !authority.model_output_external_service_bridge &&
+      !authority.network_response_external_service_bridge &&
       !authority.model_provider_call &&
       !authority.model_output_network_destination_bridge &&
       !authority.tool_output_network_destination_bridge &&
@@ -24247,6 +24248,7 @@ function addToolDefinitionSurface(
       external_service_write: authority.external_service_write,
       tainted_external_service_recipient: authority.tainted_external_service_recipient,
       model_output_external_service_bridge: authority.model_output_external_service_bridge,
+      network_response_external_service_bridge: authority.network_response_external_service_bridge,
       tool_output_external_service_bridge: authority.tool_output_external_service_bridge,
       model_provider_call: authority.model_provider_call,
       tainted_model_selection: authority.tainted_model_selection,
@@ -26850,6 +26852,7 @@ interface SourceToolHandlerSignals {
   handlerTaintedFilesystemPath: boolean;
   handlerTaintedExternalServiceRecipient: boolean;
   handlerModelOutputExternalServiceBridge: boolean;
+  handlerNetworkResponseExternalServiceBridge: boolean;
   handlerToolOutputExternalServiceBridge: boolean;
   handlerDynamicCodeExecution: boolean;
   handlerTaintedDynamicCodeArgument: boolean;
@@ -27413,6 +27416,7 @@ function sourceToolHandlerSignalMetadata(signals: SourceToolHandlerSignals | und
     handler_tainted_filesystem_path: signals.handlerTaintedFilesystemPath,
     handler_tainted_external_service_recipient: signals.handlerTaintedExternalServiceRecipient,
     handler_model_output_external_service_bridge: signals.handlerModelOutputExternalServiceBridge,
+    handler_network_response_external_service_bridge: signals.handlerNetworkResponseExternalServiceBridge,
     handler_tool_output_external_service_bridge: signals.handlerToolOutputExternalServiceBridge,
     handler_dynamic_code_execution: signals.handlerDynamicCodeExecution,
     handler_tainted_dynamic_code_argument: signals.handlerTaintedDynamicCodeArgument,
@@ -27461,6 +27465,9 @@ function classifySourceToolHandlerSignals(
   const modelOutputExternalServiceBridge = modelProviderCall && externalServiceWrite && (language === "javascript"
     ? hasJavaScriptHandlerModelOutputExternalServiceBridge(handlerSource)
     : hasPythonHandlerModelOutputExternalServiceBridge(handlerSource));
+  const networkResponseExternalServiceBridge = externalNetworkCall && externalServiceWrite && (language === "javascript"
+    ? hasJavaScriptHandlerNetworkResponseExternalServiceBridge(handlerSource)
+    : hasPythonHandlerNetworkResponseExternalServiceBridge(handlerSource));
   const taintedModelSelection = modelProviderCall && (language === "javascript"
     ? hasJavaScriptHandlerTaintedModelSelection(handlerSource)
     : hasPythonHandlerTaintedModelSelection(handlerSource));
@@ -27877,6 +27884,7 @@ function classifySourceToolHandlerSignals(
   if (externalServiceWrite) classes.add("handler_external_service_write");
   if (taintedExternalServiceRecipient) classes.add("handler_tainted_external_service_recipient");
   if (modelOutputExternalServiceBridge) classes.add("handler_model_output_external_service_bridge");
+  if (networkResponseExternalServiceBridge) classes.add("handler_network_response_external_service_bridge");
   if (toolOutputExternalServiceBridge) classes.add("handler_tool_output_external_service_bridge");
   if (modelProviderCall) classes.add("handler_model_provider_call");
   if (taintedModelSelection) classes.add("handler_tainted_model_selection");
@@ -28028,6 +28036,7 @@ function classifySourceToolHandlerSignals(
     handlerExternalServiceWrite: externalServiceWrite,
     handlerTaintedExternalServiceRecipient: taintedExternalServiceRecipient,
     handlerModelOutputExternalServiceBridge: modelOutputExternalServiceBridge,
+    handlerNetworkResponseExternalServiceBridge: networkResponseExternalServiceBridge,
     handlerToolOutputExternalServiceBridge: toolOutputExternalServiceBridge,
     handlerModelProviderCall: modelProviderCall,
     handlerTaintedModelSelection: taintedModelSelection,
@@ -29536,6 +29545,28 @@ function hasPythonHandlerModelOutputExternalServiceBridge(source: string): boole
   return identifiers.length > 0 && callExpressionReferencesAnyIdentifier(
     [
       /\b(?:slack_client|slack|github|github_client|octokit|email_client|mail_client|sendgrid|twilio_client|twilio|teams_client|discord_client|notion|linear|jira|salesforce|hubspot)\s*(?:\.\s*[A-Za-z_]\w*){0,4}\s*\.\s*(?:post_message|chat_postMessage|chat_post_message|create_comment|create_issue_comment|send|send_mail|send_message|create|publish|post|reply|update|create_page|create_task|create_issue)\s*\(([\s\S]{0,2200})\)/giu
+    ],
+    source,
+    identifiers
+  );
+}
+
+function hasJavaScriptHandlerNetworkResponseExternalServiceBridge(source: string): boolean {
+  const identifiers = extractJavaScriptNetworkResponseIdentifiers(source);
+  return identifiers.length > 0 && callExpressionReferencesAnyIdentifier(
+    [
+      /\b(?:slackClient|slack|github|githubClient|octokit|emailClient|mailClient|sendgrid|twilioClient|twilio|teamsClient|discordClient|notion|linear|jira|salesforce|hubspot)\s*(?:\.\s*[A-Za-z_$][\w$]*){0,4}\s*\.\s*(?:postMessage|createComment|createIssueComment|send|sendMail|sendMessage|create|publish|post|reply|update|createPage|createTask|createIssue)\s*\(([\s\S]{0,2400})\)/giu
+    ],
+    source,
+    identifiers
+  );
+}
+
+function hasPythonHandlerNetworkResponseExternalServiceBridge(source: string): boolean {
+  const identifiers = extractPythonNetworkResponseIdentifiers(source);
+  return identifiers.length > 0 && callExpressionReferencesAnyIdentifier(
+    [
+      /\b(?:slack_client|slack|github|github_client|octokit|email_client|mail_client|sendgrid|twilio_client|twilio|teams_client|discord_client|notion|linear|jira|salesforce|hubspot)\s*(?:\.\s*[A-Za-z_]\w*){0,4}\s*\.\s*(?:post_message|chat_postMessage|chat_post_message|create_comment|create_issue_comment|send|send_mail|send_message|create|publish|post|reply|update|create_page|create_task|create_issue)\s*\(([\s\S]{0,2400})\)/giu
     ],
     source,
     identifiers
@@ -34509,6 +34540,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   external_service_write: boolean;
   tainted_external_service_recipient: boolean;
   model_output_external_service_bridge: boolean;
+  network_response_external_service_bridge: boolean;
   tool_output_external_service_bridge: boolean;
   model_provider_call: boolean;
   tainted_model_selection: boolean;
@@ -34755,6 +34787,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   const handlerTaintedFilesystemPath = handler?.handlerTaintedFilesystemPath === true;
   const handlerTaintedExternalServiceRecipient = handler?.handlerTaintedExternalServiceRecipient === true;
   const handlerModelOutputExternalServiceBridge = handler?.handlerModelOutputExternalServiceBridge === true;
+  const handlerNetworkResponseExternalServiceBridge = handler?.handlerNetworkResponseExternalServiceBridge === true;
   const handlerToolOutputExternalServiceBridge = handler?.handlerToolOutputExternalServiceBridge === true;
   const handlerDynamicCodeExecution = handler?.handlerDynamicCodeExecution === true;
   const handlerTaintedDynamicCodeArgument = handler?.handlerTaintedDynamicCodeArgument === true;
@@ -35121,6 +35154,12 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   }
   if (handlerModelOutputExternalServiceBridge) {
     classes.add("model_output_external_service_bridge");
+    actions.add("send");
+    actions.add("publish");
+  }
+  if (handlerNetworkResponseExternalServiceBridge) {
+    classes.add("network_response_external_service_bridge");
+    actions.add("read");
     actions.add("send");
     actions.add("publish");
   }
@@ -35612,6 +35651,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerExternalServiceWrite ||
       handlerTaintedExternalServiceRecipient ||
       handlerModelOutputExternalServiceBridge ||
+      handlerNetworkResponseExternalServiceBridge ||
       handlerToolOutputExternalServiceBridge ||
       handlerModelProviderCall ||
       handlerTaintedModelSelection ||
@@ -35759,6 +35799,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerNetworkResponseMemoryBridge ||
       handlerExternalServiceWrite ||
       handlerModelOutputExternalServiceBridge ||
+      handlerNetworkResponseExternalServiceBridge ||
       handlerToolOutputExternalServiceBridge ||
       handlerModelProviderCall ||
       handlerModelOutputNetworkDestinationBridge ||
@@ -35869,6 +35910,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       (handlerModelOutputPromptRegistryBridge && handlerSecretEnvAccess) ||
       (handlerToolOutputPromptRegistryBridge && handlerSecretEnvAccess) ||
       (handlerModelOutputExternalServiceBridge && handlerSecretEnvAccess) ||
+      (handlerNetworkResponseExternalServiceBridge && handlerSecretEnvAccess) ||
       (handlerToolOutputExternalServiceBridge && handlerSecretEnvAccess) ||
       (handlerModelOutputNetworkDestinationBridge && handlerSecretEnvAccess) ||
       (handlerModelOutputBrowserAutomationBridge && handlerSecretEnvAccess) ||
@@ -35957,6 +35999,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
     external_service_write: handlerExternalServiceWrite,
     tainted_external_service_recipient: handlerTaintedExternalServiceRecipient,
     model_output_external_service_bridge: handlerModelOutputExternalServiceBridge,
+    network_response_external_service_bridge: handlerNetworkResponseExternalServiceBridge,
     tool_output_external_service_bridge: handlerToolOutputExternalServiceBridge,
     model_provider_call: handlerModelProviderCall,
     tainted_model_selection: handlerTaintedModelSelection,
@@ -36228,6 +36271,7 @@ function authoritySignature(tool: SurfaceObject): string {
     metadata.secret_manager_external_service_bridge === true ? "secret_manager_external_service_bridge" : "",
     metadata.secret_manager_prompt_bridge === true ? "secret_manager_prompt_bridge" : "",
     metadata.model_output_external_service_bridge === true ? "model_output_external_service_bridge" : "",
+    metadata.network_response_external_service_bridge === true ? "network_response_external_service_bridge" : "",
     metadata.tainted_external_service_recipient === true ? "tainted_external_service_recipient" : "",
     metadata.tool_output_external_service_bridge === true ? "tool_output_external_service_bridge" : "",
     metadata.accepts_secret_like_input === true ? "secret_input" : "",
@@ -36305,6 +36349,7 @@ function isPrivilegedToolSurface(tool: SurfaceObject): boolean {
     tool.metadata.tainted_feedback_payload === true ||
     tool.metadata.feedback_auto_promotion === true ||
     tool.metadata.tainted_feedback_routing === true ||
+    tool.metadata.network_response_external_service_bridge === true ||
     tool.metadata.tool_output_external_service_bridge === true ||
     tool.metadata.safety_policy_write === true ||
     tool.metadata.tainted_safety_policy_payload === true ||
@@ -36386,6 +36431,7 @@ function isPrivilegedToolSurface(tool: SurfaceObject): boolean {
     tool.metadata.secret_manager_external_service_bridge === true ||
     tool.metadata.secret_manager_prompt_bridge === true ||
     tool.metadata.model_output_external_service_bridge === true ||
+    tool.metadata.network_response_external_service_bridge === true ||
     tool.metadata.tainted_external_service_recipient === true ||
     tool.metadata.open_world_authority === true ||
     tool.metadata.read_only_hint_conflict === true

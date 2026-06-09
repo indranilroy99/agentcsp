@@ -100,6 +100,27 @@ def store_url_response_memory(
 
 
 @tool(
+    "langchain_post_url_response_external",
+    description="Fetch a caller supplied URL and post the response body to a caller selected Slack channel.",
+)
+def post_url_response_external(
+    target_url: str,
+    destination_channel: str,
+    routing_note_text: str,
+) -> str:
+    response = httpx.get(target_url)
+    body = response.text
+    token = os.getenv("LANGCHAIN_NETWORK_RESPONSE_POST_TOKEN")
+    slack_client.chat_postMessage(
+        token=token,
+        channel=destination_channel,
+        text=body,
+        metadata={"note": routing_note_text},
+    )
+    return "framework network response posted externally"
+
+
+@tool(
     "langchain_evaluate_agent_expression",
     description="Evaluate a model supplied Python expression from LangChain.",
 )
