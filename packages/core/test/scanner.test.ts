@@ -632,6 +632,9 @@ describe("scanner", () => {
     const sourceSecretManagerMemoryBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "source_store_customer_vault_secret_memory"
     );
+    const sourceSecretManagerDatabaseWriteBridgeTool = surfaces.tools.find(
+      (surface) => surface.name === "source_store_customer_vault_secret_database"
+    );
     const sourceSecretManagerEmbeddingVectorBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "source_embed_customer_vault_secret_vector_memory"
     );
@@ -753,6 +756,9 @@ describe("scanner", () => {
     );
     const langchainSecretManagerMemoryBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "langchain_store_customer_vault_secret_memory"
+    );
+    const langchainSecretManagerDatabaseWriteBridgeTool = surfaces.tools.find(
+      (surface) => surface.name === "langchain_store_customer_vault_secret_database"
     );
     const langchainSecretManagerEmbeddingVectorBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "langchain_embed_customer_vault_secret_vector_memory"
@@ -5224,6 +5230,100 @@ describe("scanner", () => {
     expect(JSON.stringify(sourceSecretManagerMemoryBridgeTool)).not.toContain("secretMemoryValue");
     expect(JSON.stringify(sourceSecretManagerMemoryBridgeTool)).not.toContain("source vault secret persisted to memory");
     expect(JSON.stringify(sourceSecretManagerMemoryBridgeTool)).not.toContain("Store a customer support secret");
+    expect(sourceSecretManagerDatabaseWriteBridgeTool).toMatchObject({
+      path: "mcp-source/customer-tools.ts",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["call", "execute", "read", "remember", "send", "write"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(sourceSecretManagerDatabaseWriteBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_mcp_source_tool: true,
+      mcp_source_tool_registration: true,
+      mcp_source_tool_registration_kind: "registerTool",
+      mcp_source_tool_argument_count: 3,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      read_only_hint: false,
+      idempotent_hint: false,
+      accepts_secret_like_input: true,
+      accepts_content_like_input: true,
+      accepts_path_input: true,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      database_access: true,
+      database_write: true,
+      tainted_database_query_argument: false,
+      secret_manager_database_write_bridge: true,
+      secret_manager_access: true,
+      tainted_secret_manager_path: true,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_secret_env_access: true,
+      handler_model_visible_output: true,
+      handler_database_query: true,
+      handler_database_write: true,
+      handler_tainted_database_query_argument: false,
+      handler_secret_manager_database_write_bridge: true,
+      handler_secret_manager_access: true,
+      handler_tainted_secret_manager_path: true,
+      handler_signal_count: 6,
+      open_world_schema: false
+    });
+    expect(sourceSecretManagerDatabaseWriteBridgeTool?.metadata.authority_classes).toEqual([
+      "content_input",
+      "credential_input",
+      "customer_data_input",
+      "database_access",
+      "database_write",
+      "filesystem_access",
+      "handler_database_query",
+      "handler_database_write",
+      "handler_secret_env_access",
+      "handler_secret_manager_access",
+      "handler_secret_manager_database_write_bridge",
+      "handler_tainted_secret_manager_path",
+      "memory_access",
+      "pii_input",
+      "secret_env_access",
+      "secret_manager_access",
+      "secret_manager_database_write_bridge",
+      "tainted_secret_manager_path"
+    ]);
+    expect(sourceSecretManagerDatabaseWriteBridgeTool?.metadata.handler_authority_classes).toEqual([
+      "handler_database_query",
+      "handler_database_write",
+      "handler_secret_env_access",
+      "handler_secret_manager_access",
+      "handler_secret_manager_database_write_bridge",
+      "handler_tainted_secret_manager_path"
+    ]);
+    expect(sourceSecretManagerDatabaseWriteBridgeTool?.metadata.handler_env_key_names).toEqual([
+      "SOURCE_SECRET_DATABASE_BRIDGE_TOKEN"
+    ]);
+    expect(sourceSecretManagerDatabaseWriteBridgeTool?.metadata.schema_properties).toEqual([
+      "customer_id",
+      "database_record_id",
+      "requester_ticket",
+      "secret_path"
+    ]);
+    expect(sourceSecretManagerDatabaseWriteBridgeTool?.metadata.required_properties).toEqual([
+      "customer_id",
+      "database_record_id",
+      "requester_ticket",
+      "secret_path"
+    ]);
+    expect(JSON.stringify(sourceSecretManagerDatabaseWriteBridgeTool)).not.toContain("vaultClient.readSecret");
+    expect(JSON.stringify(sourceSecretManagerDatabaseWriteBridgeTool)).not.toContain("supportDb.query");
+    expect(JSON.stringify(sourceSecretManagerDatabaseWriteBridgeTool)).not.toContain("UPDATE support_cases");
+    expect(JSON.stringify(sourceSecretManagerDatabaseWriteBridgeTool)).not.toContain("vault_secret_material");
+    expect(JSON.stringify(sourceSecretManagerDatabaseWriteBridgeTool)).not.toContain("secretRecord.value");
+    expect(JSON.stringify(sourceSecretManagerDatabaseWriteBridgeTool)).not.toContain("secretDatabaseValue");
+    expect(JSON.stringify(sourceSecretManagerDatabaseWriteBridgeTool)).not.toContain("source vault secret stored in database");
+    expect(JSON.stringify(sourceSecretManagerDatabaseWriteBridgeTool)).not.toContain("Store a customer support secret");
     expect(sourceSecretManagerEmbeddingVectorBridgeTool).toMatchObject({
       path: "mcp-source/customer-tools.ts",
       data_classes: ["confidential", "credential", "pii"],
@@ -10723,6 +10823,99 @@ describe("scanner", () => {
     expect(JSON.stringify(langchainSecretManagerMemoryBridgeTool)).not.toContain("secret_memory_value");
     expect(JSON.stringify(langchainSecretManagerMemoryBridgeTool)).not.toContain("framework vault secret persisted to memory");
     expect(JSON.stringify(langchainSecretManagerMemoryBridgeTool)).not.toContain("Store a customer support secret");
+    expect(langchainSecretManagerDatabaseWriteBridgeTool).toMatchObject({
+      path: "framework-tools/langchain_tools.py",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["call", "execute", "read", "remember", "send", "write"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(langchainSecretManagerDatabaseWriteBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_agent_framework_source_tool: true,
+      agent_framework_source_tool: true,
+      agent_framework_source_tool_framework: "langchain",
+      agent_framework_source_tool_registration_kind: "python_tool_decorator",
+      agent_framework_source_tool_argument_count: 4,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_secret_like_input: true,
+      accepts_content_like_input: true,
+      accepts_path_input: true,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      database_access: true,
+      database_write: true,
+      tainted_database_query_argument: false,
+      secret_manager_database_write_bridge: true,
+      secret_manager_access: true,
+      tainted_secret_manager_path: true,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_secret_env_access: true,
+      handler_model_visible_output: true,
+      handler_database_query: true,
+      handler_database_write: true,
+      handler_tainted_database_query_argument: false,
+      handler_secret_manager_database_write_bridge: true,
+      handler_secret_manager_access: true,
+      handler_tainted_secret_manager_path: true,
+      handler_signal_count: 6,
+      open_world_schema: false
+    });
+    expect(langchainSecretManagerDatabaseWriteBridgeTool?.metadata.authority_classes).toEqual([
+      "content_input",
+      "credential_input",
+      "customer_data_input",
+      "database_access",
+      "database_write",
+      "filesystem_access",
+      "handler_database_query",
+      "handler_database_write",
+      "handler_secret_env_access",
+      "handler_secret_manager_access",
+      "handler_secret_manager_database_write_bridge",
+      "handler_tainted_secret_manager_path",
+      "memory_access",
+      "pii_input",
+      "secret_env_access",
+      "secret_manager_access",
+      "secret_manager_database_write_bridge",
+      "tainted_secret_manager_path"
+    ]);
+    expect(langchainSecretManagerDatabaseWriteBridgeTool?.metadata.handler_authority_classes).toEqual([
+      "handler_database_query",
+      "handler_database_write",
+      "handler_secret_env_access",
+      "handler_secret_manager_access",
+      "handler_secret_manager_database_write_bridge",
+      "handler_tainted_secret_manager_path"
+    ]);
+    expect(langchainSecretManagerDatabaseWriteBridgeTool?.metadata.handler_env_key_names).toEqual([
+      "LANGCHAIN_SECRET_DATABASE_BRIDGE_TOKEN"
+    ]);
+    expect(langchainSecretManagerDatabaseWriteBridgeTool?.metadata.schema_properties).toEqual([
+      "customer_id",
+      "database_record_id",
+      "requester_ticket",
+      "secret_path"
+    ]);
+    expect(langchainSecretManagerDatabaseWriteBridgeTool?.metadata.required_properties).toEqual([
+      "customer_id",
+      "database_record_id",
+      "requester_ticket",
+      "secret_path"
+    ]);
+    expect(JSON.stringify(langchainSecretManagerDatabaseWriteBridgeTool)).not.toContain("vault_client.read_secret");
+    expect(JSON.stringify(langchainSecretManagerDatabaseWriteBridgeTool)).not.toContain("support_db.execute");
+    expect(JSON.stringify(langchainSecretManagerDatabaseWriteBridgeTool)).not.toContain("UPDATE support_cases");
+    expect(JSON.stringify(langchainSecretManagerDatabaseWriteBridgeTool)).not.toContain("vault_secret_material");
+    expect(JSON.stringify(langchainSecretManagerDatabaseWriteBridgeTool)).not.toContain("secret_record.value");
+    expect(JSON.stringify(langchainSecretManagerDatabaseWriteBridgeTool)).not.toContain("secret_database_value");
+    expect(JSON.stringify(langchainSecretManagerDatabaseWriteBridgeTool)).not.toContain("framework vault secret stored in database");
+    expect(JSON.stringify(langchainSecretManagerDatabaseWriteBridgeTool)).not.toContain("Store a customer support secret");
     expect(langchainSecretManagerEmbeddingVectorBridgeTool).toMatchObject({
       path: "framework-tools/langchain_tools.py",
       data_classes: ["confidential", "credential", "pii"],

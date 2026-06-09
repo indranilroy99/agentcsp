@@ -92,6 +92,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-076")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-077")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-090")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-091")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-001")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-002")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-003")).toBe(true);
@@ -8341,6 +8342,7 @@ describe("rule engine", () => {
       "langchain_promote_customer_vault_secret_feedback",
       "langchain_publish_customer_vault_secret_prompt_registry",
       "langchain_read_customer_vault_secret",
+      "langchain_store_customer_vault_secret_database",
       "langchain_store_customer_vault_secret_memory",
       "langchain_summarize_customer_vault_secret_with_model",
       "source_apply_vault_secret_guardrail_override",
@@ -8358,6 +8360,7 @@ describe("rule engine", () => {
       "source_promote_customer_vault_secret_feedback",
       "source_publish_customer_vault_secret_prompt_registry",
       "source_read_customer_vault_secret",
+      "source_store_customer_vault_secret_database",
       "source_store_customer_vault_secret_memory",
       "source_summarize_customer_vault_secret_with_model"
     ]);
@@ -8467,6 +8470,7 @@ describe("rule engine", () => {
       "langchain_promote_customer_vault_secret_feedback",
       "langchain_publish_customer_vault_secret_prompt_registry",
       "langchain_read_customer_vault_secret",
+      "langchain_store_customer_vault_secret_database",
       "langchain_store_customer_vault_secret_memory",
       "langchain_summarize_customer_vault_secret_with_model",
       "source_apply_vault_secret_guardrail_override",
@@ -8484,6 +8488,7 @@ describe("rule engine", () => {
       "source_promote_customer_vault_secret_feedback",
       "source_publish_customer_vault_secret_prompt_registry",
       "source_read_customer_vault_secret",
+      "source_store_customer_vault_secret_database",
       "source_store_customer_vault_secret_memory",
       "source_summarize_customer_vault_secret_with_model"
     ]);
@@ -9461,8 +9466,10 @@ describe("rule engine", () => {
     const sourceHandlerDatabaseFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-016");
     expect(sourceHandlerDatabaseFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_apply_record_change_sql",
+      "langchain_store_customer_vault_secret_database",
       "langchain_store_privileged_tool_observation_database",
       "source_apply_record_change_sql",
+      "source_store_customer_vault_secret_database",
       "source_store_privileged_tool_observation_database"
     ]);
     const sourceHandlerToolOutputDatabaseWriteFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-078");
@@ -9507,6 +9514,58 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerToolOutputDatabaseWriteFindings)).not.toContain("source tool observation stored in database");
     expect(JSON.stringify(sourceHandlerToolOutputDatabaseWriteFindings)).not.toContain("framework tool observation stored in database");
     expect(JSON.stringify(sourceHandlerToolOutputDatabaseWriteFindings)).not.toContain("Store a raw privileged tool observation");
+    const sourceHandlerSecretManagerDatabaseWriteFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-091");
+    expect(sourceHandlerSecretManagerDatabaseWriteFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
+      "langchain_store_customer_vault_secret_database",
+      "source_store_customer_vault_secret_database"
+    ]);
+    expect(sourceHandlerSecretManagerDatabaseWriteFindings.every((finding) => finding.severity === "critical")).toBe(true);
+    expect(sourceHandlerSecretManagerDatabaseWriteFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerSecretManagerDatabaseWriteFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
+    expect(sourceHandlerSecretManagerDatabaseWriteFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
+    expect(sourceHandlerSecretManagerDatabaseWriteFindings.every((finding) => finding.matched_object.metadata.source_tool_handler_redacted === true)).toBe(true);
+    expect(sourceHandlerSecretManagerDatabaseWriteFindings.every((finding) => finding.matched_object.metadata.handler_secret_manager_access === true)).toBe(true);
+    expect(sourceHandlerSecretManagerDatabaseWriteFindings.every((finding) => finding.matched_object.metadata.handler_tainted_secret_manager_path === true)).toBe(true);
+    expect(sourceHandlerSecretManagerDatabaseWriteFindings.every((finding) => finding.matched_object.metadata.handler_database_query === true)).toBe(true);
+    expect(sourceHandlerSecretManagerDatabaseWriteFindings.every((finding) => finding.matched_object.metadata.handler_database_write === true)).toBe(true);
+    expect(sourceHandlerSecretManagerDatabaseWriteFindings.every((finding) => finding.matched_object.metadata.handler_secret_manager_database_write_bridge === true)).toBe(true);
+    expect(sourceHandlerSecretManagerDatabaseWriteFindings.every((finding) => finding.matched_object.metadata.handler_secret_env_access === true)).toBe(true);
+    expect(sourceHandlerSecretManagerDatabaseWriteFindings.every((finding) => finding.matched_object.metadata.secret_manager_access === true)).toBe(true);
+    expect(sourceHandlerSecretManagerDatabaseWriteFindings.every((finding) => finding.matched_object.metadata.tainted_secret_manager_path === true)).toBe(true);
+    expect(sourceHandlerSecretManagerDatabaseWriteFindings.every((finding) => finding.matched_object.metadata.database_access === true)).toBe(true);
+    expect(sourceHandlerSecretManagerDatabaseWriteFindings.every((finding) => finding.matched_object.metadata.database_write === true)).toBe(true);
+    expect(sourceHandlerSecretManagerDatabaseWriteFindings.every((finding) => finding.matched_object.metadata.secret_manager_database_write_bridge === true)).toBe(true);
+    expect(sourceHandlerSecretManagerDatabaseWriteFindings.every((finding) => finding.matched_object.metadata.tainted_database_query_argument === false)).toBe(true);
+    expect(sourceHandlerSecretManagerDatabaseWriteFindings.every((finding) => finding.matched_object.metadata.accepts_secret_like_input === true)).toBe(true);
+    expect(sourceHandlerSecretManagerDatabaseWriteFindings.every((finding) => finding.matched_object.metadata.accepts_path_input === true)).toBe(true);
+    expect(sourceHandlerSecretManagerDatabaseWriteFindings.every((finding) => finding.matched_object.metadata.accepts_customer_data_input === true)).toBe(true);
+    expect(sourceHandlerSecretManagerDatabaseWriteFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("secret_manager_access"))).toBe(true);
+    expect(sourceHandlerSecretManagerDatabaseWriteFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("tainted_secret_manager_path"))).toBe(true);
+    expect(sourceHandlerSecretManagerDatabaseWriteFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("database_write"))).toBe(true);
+    expect(sourceHandlerSecretManagerDatabaseWriteFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("secret_manager_database_write_bridge"))).toBe(true);
+    expect(sourceHandlerSecretManagerDatabaseWriteFindings.every((finding) => finding.matched_object.metadata.handler_authority_classes.includes("handler_secret_manager_access"))).toBe(true);
+    expect(sourceHandlerSecretManagerDatabaseWriteFindings.every((finding) => finding.matched_object.metadata.handler_authority_classes.includes("handler_tainted_secret_manager_path"))).toBe(true);
+    expect(sourceHandlerSecretManagerDatabaseWriteFindings.every((finding) => finding.matched_object.metadata.handler_authority_classes.includes("handler_database_query"))).toBe(true);
+    expect(sourceHandlerSecretManagerDatabaseWriteFindings.every((finding) => finding.matched_object.metadata.handler_authority_classes.includes("handler_database_write"))).toBe(true);
+    expect(sourceHandlerSecretManagerDatabaseWriteFindings.every((finding) => finding.matched_object.metadata.handler_authority_classes.includes("handler_secret_manager_database_write_bridge"))).toBe(true);
+    expect(sourceHandlerSecretManagerDatabaseWriteFindings.every((finding) => finding.matched_object.actions.includes("read"))).toBe(true);
+    expect(sourceHandlerSecretManagerDatabaseWriteFindings.every((finding) => finding.matched_object.actions.includes("write"))).toBe(true);
+    expect(sourceHandlerSecretManagerDatabaseWriteFindings.every((finding) => finding.matched_object.secret_exposure === true)).toBe(true);
+    expect(sourceHandlerSecretManagerDatabaseWriteFindings.every((finding) => finding.matched_object.side_effect === true)).toBe(true);
+    expect(sourceHandlerSecretManagerDatabaseWriteFindings.every((finding) => finding.matched_object.reversible === false)).toBe(true);
+    expect(JSON.stringify(sourceHandlerSecretManagerDatabaseWriteFindings)).not.toContain("vaultClient.readSecret");
+    expect(JSON.stringify(sourceHandlerSecretManagerDatabaseWriteFindings)).not.toContain("vault_client.read_secret");
+    expect(JSON.stringify(sourceHandlerSecretManagerDatabaseWriteFindings)).not.toContain("supportDb.query");
+    expect(JSON.stringify(sourceHandlerSecretManagerDatabaseWriteFindings)).not.toContain("support_db.execute");
+    expect(JSON.stringify(sourceHandlerSecretManagerDatabaseWriteFindings)).not.toContain("UPDATE support_cases");
+    expect(JSON.stringify(sourceHandlerSecretManagerDatabaseWriteFindings)).not.toContain("vault_secret_material");
+    expect(JSON.stringify(sourceHandlerSecretManagerDatabaseWriteFindings)).not.toContain("secretRecord.value");
+    expect(JSON.stringify(sourceHandlerSecretManagerDatabaseWriteFindings)).not.toContain("secret_record.value");
+    expect(JSON.stringify(sourceHandlerSecretManagerDatabaseWriteFindings)).not.toContain("secretDatabaseValue");
+    expect(JSON.stringify(sourceHandlerSecretManagerDatabaseWriteFindings)).not.toContain("secret_database_value");
+    expect(JSON.stringify(sourceHandlerSecretManagerDatabaseWriteFindings)).not.toContain("source vault secret stored in database");
+    expect(JSON.stringify(sourceHandlerSecretManagerDatabaseWriteFindings)).not.toContain("framework vault secret stored in database");
+    expect(JSON.stringify(sourceHandlerSecretManagerDatabaseWriteFindings)).not.toContain("Store a customer support secret");
     expect(sourceHandlerDatabaseFindings.every((finding) => finding.severity === "critical")).toBe(true);
     expect(sourceHandlerDatabaseFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
     expect(sourceHandlerDatabaseFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
@@ -9517,7 +9576,10 @@ describe("rule engine", () => {
     expect(sourceHandlerDatabaseFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("database_write"))).toBe(true);
     expect(JSON.stringify(sourceHandlerDatabaseFindings)).not.toContain("db.query");
     expect(JSON.stringify(sourceHandlerDatabaseFindings)).not.toContain("db.execute");
+    expect(JSON.stringify(sourceHandlerDatabaseFindings)).not.toContain("supportDb.query");
+    expect(JSON.stringify(sourceHandlerDatabaseFindings)).not.toContain("support_db.execute");
     expect(JSON.stringify(sourceHandlerDatabaseFindings)).not.toContain("UPDATE support_cases");
+    expect(JSON.stringify(sourceHandlerDatabaseFindings)).not.toContain("vault_secret_material");
     expect(JSON.stringify(sourceHandlerDatabaseFindings)).not.toContain("source database updated");
     expect(JSON.stringify(sourceHandlerDatabaseFindings)).not.toContain("framework database updated");
     const sourceHandlerTaintedDatabaseQueryFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-038");

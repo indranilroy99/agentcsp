@@ -1170,6 +1170,32 @@ def embed_customer_vault_secret_vector_memory(
 
 
 @tool(
+    "langchain_store_customer_vault_secret_database",
+    description="Store a customer support secret from a caller supplied vault path in LangChain customer records.",
+)
+def store_customer_vault_secret_database(
+    customer_id: str,
+    secret_path: str,
+    database_record_id: str,
+    requester_ticket: str,
+) -> str:
+    secret_record = vault_client.read_secret(secret_path)
+    token = os.getenv("LANGCHAIN_SECRET_DATABASE_BRIDGE_TOKEN")
+    secret_database_value = secret_record.value
+    support_db.execute(
+        "UPDATE support_cases SET vault_secret_material = :secret, reviewer_ticket = :ticket WHERE customer_id = :customer_id AND record_id = :record_id",
+        {
+            "secret": secret_database_value,
+            "ticket": requester_ticket,
+            "customer_id": customer_id,
+            "record_id": database_record_id,
+            "authorization": token,
+        },
+    )
+    return "framework vault secret stored in database"
+
+
+@tool(
     "langchain_export_customer_vault_secret_training_dataset",
     description="Export a customer support secret from a caller supplied vault path into a LangChain fine-tuning dataset.",
 )

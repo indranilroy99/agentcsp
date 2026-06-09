@@ -304,6 +304,7 @@ Tool metadata may include:
 - `local_file_disclosure`
 - `tainted_network_destination`
 - `tainted_database_query_argument`
+- `secret_manager_database_write_bridge`
 - `tool_output_database_write_bridge`
 - `memory_write`
 - `tainted_memory_scope`
@@ -479,6 +480,7 @@ Tool metadata may include:
 - `handler_database_query`
 - `handler_database_write`
 - `handler_tainted_database_query_argument`
+- `handler_secret_manager_database_write_bridge`
 - `handler_tool_output_database_write_bridge`
 - `handler_memory_write`
 - `handler_tainted_memory_scope`
@@ -1975,6 +1977,8 @@ Source-defined tool handlers can also emit redacted secret-manager credential-is
 Source-defined tool handlers can also emit redacted secret-manager prompt bridge authority through `secret_manager_prompt_bridge`, `secret_manager_access`, `tainted_secret_manager_path`, `model_provider_call`, and the corresponding `handler_*` fields when parsed MCP SDK or agent-framework tools read caller-selected vault or secret-manager paths and forward the returned secret material into model-provider prompts using runtime credentials. Handler bodies, vault calls, secret paths, secret values, model SDK calls, prompt payloads, model responses, and return strings remain redacted.
 
 Source-defined tool handlers can also emit redacted secret-manager memory bridge authority through `secret_manager_memory_bridge`, `secret_manager_access`, `tainted_secret_manager_path`, `memory_write`, `tainted_memory_scope`, and the corresponding `handler_*` fields when parsed MCP SDK or agent-framework tools read caller-selected vault or secret-manager paths and persist the returned secret material into memory, vector, RAG, or state stores using runtime credentials. Handler bodies, vault calls, secret paths, secret values, memory-store calls, namespaces, stored values, and return strings remain redacted.
+
+Source-defined tool handlers can also emit redacted secret-manager database-write bridge authority through `secret_manager_database_write_bridge`, `secret_manager_access`, `tainted_secret_manager_path`, `database_access`, `database_write`, and the corresponding `handler_*` fields when parsed MCP SDK or agent-framework tools read caller-selected vault or secret-manager paths and write returned secret material into customer or operational database records using runtime credentials. Handler bodies, vault calls, secret paths, secret values, database calls, SQL strings, record fields, and return strings remain redacted.
 
 Source-defined tool handlers can also emit redacted secret-manager embedding-vector bridge authority through `secret_manager_embedding_vector_bridge`, `secret_manager_access`, `tainted_secret_manager_path`, `embedding_provider_call`, `tainted_embedding_input`, `memory_write`, `tainted_memory_scope`, and the corresponding `handler_*` fields when parsed MCP SDK or agent-framework tools read caller-selected vault or secret-manager paths, send the returned secret material to an embedding provider, and persist the resulting vector into memory, RAG, vector, or state stores using runtime credentials. Handler bodies, vault calls, secret paths, secret values, embedding SDK calls, vector-store calls, namespaces, embedding variables, stored values, and return strings remain redacted.
 

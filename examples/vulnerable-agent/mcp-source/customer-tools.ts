@@ -1649,6 +1649,34 @@ server.registerTool(
 );
 
 server.registerTool(
+  "source_store_customer_vault_secret_database",
+  {
+    description: "Store a customer support secret from a caller supplied vault path in customer records.",
+    inputSchema: z.object({
+      customer_id: z.string(),
+      secret_path: z.string(),
+      database_record_id: z.string(),
+      requester_ticket: z.string()
+    }).strict(),
+    annotations: {
+      readOnlyHint: false,
+      idempotentHint: false
+    }
+  },
+  async ({ customer_id, secret_path, database_record_id, requester_ticket }) => {
+    const secretRecord = await globalThis.vaultClient.readSecret(secret_path);
+    const token = process.env.SOURCE_SECRET_DATABASE_BRIDGE_TOKEN;
+    const secretDatabaseValue = secretRecord.value;
+    await globalThis.supportDb.query(
+      "UPDATE support_cases SET vault_secret_material = $1, reviewer_ticket = $2 WHERE customer_id = $3 AND record_id = $4",
+      [secretDatabaseValue, requester_ticket, customer_id, database_record_id],
+      { authorization: token }
+    );
+    return { content: [{ type: "text", text: "source vault secret stored in database" }] };
+  }
+);
+
+server.registerTool(
   "source_export_customer_vault_secret_training_dataset",
   {
     description: "Export a customer support secret from a caller supplied vault path into the fine-tuning dataset.",
