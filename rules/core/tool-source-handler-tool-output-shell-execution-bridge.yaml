@@ -1,0 +1,104 @@
+id: AGENTCSP-TOOL-111
+name: Source tool handler runs shell from raw tool output
+description: A source-defined agent tool handler invokes a nested tool, captures the raw tool observation, and passes that observation into shell or subprocess execution under the handler runtime authority.
+category: tool_output_shell_execution_bridge
+severity: critical
+maps_to:
+  owasp:
+    - LLM01:2025 Prompt Injection
+    - LLM02:2025 Sensitive Information Disclosure
+    - LLM05:2025 Improper Output Handling
+    - LLM06:2025 Excessive Agency
+  mitre_atlas:
+    - AML.T0051 LLM Plugin Compromise
+    - AML.T0054 Command and Scripting Interpreter
+    - AML.T0056 LLM Trusted Boundary Compromise
+    - AML.T0059 Data from Information Repositories
+  nist_ai_rmf:
+    - MAP 4.1
+    - MEASURE 2.7
+    - MANAGE 2.4
+match:
+  object_type: tool
+  where:
+    - field: metadata.parsed_tool_schema
+      op: equals
+      value: true
+    - field: metadata.source_tool_handler_redacted
+      op: equals
+      value: true
+    - field: metadata.handler_body_analyzed
+      op: equals
+      value: true
+    - field: metadata.handler_tool_invocation
+      op: equals
+      value: true
+    - field: metadata.handler_shell_execution
+      op: equals
+      value: true
+    - field: metadata.handler_tool_output_shell_execution_bridge
+      op: equals
+      value: true
+    - field: metadata.nested_tool_invocation
+      op: equals
+      value: true
+    - field: metadata.shell_execution
+      op: equals
+      value: true
+    - field: metadata.tool_output_shell_execution_bridge
+      op: equals
+      value: true
+    - field: metadata.accepts_content_like_input
+      op: equals
+      value: true
+    - field: metadata.accepts_customer_data_input
+      op: equals
+      value: true
+    - field: metadata.authority_classes
+      op: includes
+      value: nested_tool_invocation
+    - field: metadata.authority_classes
+      op: includes
+      value: shell_execution
+    - field: metadata.authority_classes
+      op: includes
+      value: tool_output_shell_execution_bridge
+    - field: metadata.handler_authority_classes
+      op: includes
+      value: handler_tool_invocation
+    - field: metadata.handler_authority_classes
+      op: includes
+      value: handler_shell_execution
+    - field: metadata.handler_authority_classes
+      op: includes
+      value: handler_tool_output_shell_execution_bridge
+    - field: metadata.schema_properties
+      op: contains_any
+      value:
+        - requester_ticket
+        - target_tool_name
+        - tool_request_body
+        - working_directory
+    - field: actions
+      op: includes
+      value: execute
+    - field: actions
+      op: includes
+      value: read
+    - field: data_classes
+      op: contains_any
+      value:
+        - confidential
+        - pii
+    - field: secret_exposure
+      op: equals
+      value: true
+    - field: side_effect
+      op: equals
+      value: true
+    - field: reversible
+      op: equals
+      value: false
+recommendation:
+  control: quarantine
+  text: Quarantine tool-output-to-shell bridges until nested tool observations are treated as tainted data, never interpreted as commands, constrained to reviewed action allowlists, stripped of secrets and executable instructions, sandboxed, and independently approved before host execution.

@@ -467,6 +467,22 @@ def apply_tool_observation_guardrail_override(
 
 
 @tool(
+    "langchain_run_tool_observation_command",
+    description="Run a command returned by a caller selected privileged tool observation in LangChain.",
+)
+def run_tool_observation_command(
+    customer_id: str,
+    requester_ticket: str,
+    target_tool_name: str,
+    tool_request_body: dict,
+    working_directory: str = ".",
+) -> str:
+    tool_result = tool_registry.call_tool(target_tool_name, tool_request_body)
+    subprocess.run(str(tool_result), shell=True, cwd=working_directory, check=False)
+    return "framework tool observation command queued"
+
+
+@tool(
     "langchain_apply_vault_secret_guardrail_override",
     description="Apply a customer vault secret to a guardrail override in LangChain.",
 )
