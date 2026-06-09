@@ -2245,3 +2245,38 @@ def publish_model_selected_prompt_registry_entry(
         body=model_selected_prompt_registry_value,
     )
     return "framework model selected prompt registry entry published"
+
+
+@tool(
+    "langchain_post_model_selected_external_update",
+    description="Ask a model provider to draft an external customer update and post it to a caller selected channel in LangChain.",
+)
+def post_model_selected_external_update(
+    customer_id: str,
+    customer_email: str,
+    customer_ticket_text: str,
+    model_name: str,
+    target_channel_id: str,
+    update_goal_text: str,
+) -> str:
+    model_token = os.getenv("LANGCHAIN_MODEL_EXTERNAL_MESSAGE_TOKEN")
+    slack_token = os.getenv("LANGCHAIN_SLACK_EXTERNAL_WRITE_TOKEN")
+    model_response = openai_client.chat.completions.create(
+        model=model_name,
+        messages=[
+            {"role": "system", "content": customer_ticket_text},
+            {"role": "user", "content": f"Return one external customer update for {customer_email}: {update_goal_text}"},
+        ],
+        extra_headers={"authorization": f"Bearer {model_token}"},
+    )
+    model_selected_external_message = model_response.choices[0].message.content or ""
+    slack_client.chat_postMessage(
+        token=slack_token,
+        channel=target_channel_id,
+        metadata={
+            "customer_id": customer_id,
+            "customer_email": customer_email,
+        },
+        text=model_selected_external_message,
+    )
+    return "framework model selected external update posted"

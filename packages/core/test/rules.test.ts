@@ -123,6 +123,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-119")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-120")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-121")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-122")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-001")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-002")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-003")).toBe(true);
@@ -9692,11 +9693,13 @@ describe("rule engine", () => {
       "langchain_post_authenticated_page_screenshot_external",
       "langchain_post_clipboard_to_slack",
       "langchain_post_customer_vault_secret_slack",
+      "langchain_post_model_selected_external_update",
       "langchain_post_retrieved_context_external",
       "langchain_send_customer_slack_update",
       "source_post_authenticated_page_screenshot_external",
       "source_post_clipboard_to_slack",
       "source_post_customer_vault_secret_slack",
+      "source_post_model_selected_external_update",
       "source_post_retrieved_context_external",
       "source_send_customer_slack_update"
     ].sort());
@@ -9742,11 +9745,13 @@ describe("rule engine", () => {
       "langchain_post_authenticated_page_screenshot_external",
       "langchain_post_clipboard_to_slack",
       "langchain_post_customer_vault_secret_slack",
+      "langchain_post_model_selected_external_update",
       "langchain_post_retrieved_context_external",
       "langchain_send_customer_slack_update",
       "source_post_authenticated_page_screenshot_external",
       "source_post_clipboard_to_slack",
       "source_post_customer_vault_secret_slack",
+      "source_post_model_selected_external_update",
       "source_post_retrieved_context_external",
       "source_send_customer_slack_update"
     ].sort());
@@ -10380,6 +10385,7 @@ describe("rule engine", () => {
       "langchain_fetch_model_selected_url",
       "langchain_grant_model_selected_authorization",
       "langchain_issue_model_selected_credential",
+      "langchain_post_model_selected_external_update",
       "langchain_publish_model_selected_prompt_registry_entry",
       "langchain_enqueue_model_selected_background_job",
       "langchain_run_model_generated_command",
@@ -10395,6 +10401,7 @@ describe("rule engine", () => {
       "source_fetch_model_selected_url",
       "source_grant_model_selected_authorization",
       "source_issue_model_selected_credential",
+      "source_post_model_selected_external_update",
       "source_publish_model_selected_prompt_registry_entry",
       "source_enqueue_model_selected_background_job",
       "source_run_model_generated_command",
@@ -10604,6 +10611,7 @@ describe("rule engine", () => {
       "langchain_fetch_model_selected_url",
       "langchain_grant_model_selected_authorization",
       "langchain_issue_model_selected_credential",
+      "langchain_post_model_selected_external_update",
       "langchain_publish_model_selected_prompt_registry_entry",
       "langchain_run_model_generated_command",
       "langchain_summarize_customer_with_model",
@@ -10616,6 +10624,7 @@ describe("rule engine", () => {
       "source_fetch_model_selected_url",
       "source_grant_model_selected_authorization",
       "source_issue_model_selected_credential",
+      "source_post_model_selected_external_update",
       "source_publish_model_selected_prompt_registry_entry",
       "source_run_model_generated_command",
       "source_summarize_customer_with_model"
@@ -10676,10 +10685,12 @@ describe("rule engine", () => {
       "langchain_grant_model_selected_authorization",
       "langchain_issue_model_selected_credential",
       "langchain_enqueue_model_selected_background_job",
+      "langchain_post_model_selected_external_update",
       "langchain_publish_model_selected_prompt_registry_entry",
       "langchain_run_model_generated_command",
       "langchain_summarize_customer_with_model",
       "source_publish_model_selected_prompt_registry_entry",
+      "source_post_model_selected_external_update",
       "source_summarize_customer_with_model",
       "source_issue_model_selected_credential",
       "source_summarize_retrieved_context_with_model"
@@ -11401,6 +11412,58 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerModelOutputSafetyPolicyBridgeFindings)).not.toContain("source model selected guardrail policy override applied");
     expect(JSON.stringify(sourceHandlerModelOutputSafetyPolicyBridgeFindings)).not.toContain("framework model selected guardrail policy override applied");
     expect(JSON.stringify(sourceHandlerModelOutputSafetyPolicyBridgeFindings)).not.toContain("Ask a model provider to draft a guardrail policy override");
+    const sourceHandlerModelOutputExternalServiceBridgeFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-122");
+    expect(sourceHandlerModelOutputExternalServiceBridgeFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
+      "langchain_post_model_selected_external_update",
+      "source_post_model_selected_external_update"
+    ]);
+    expect(sourceHandlerModelOutputExternalServiceBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
+    expect(sourceHandlerModelOutputExternalServiceBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerModelOutputExternalServiceBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
+    expect(sourceHandlerModelOutputExternalServiceBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
+    expect(sourceHandlerModelOutputExternalServiceBridgeFindings.every((finding) => finding.matched_object.metadata.handler_model_provider_call === true)).toBe(true);
+    expect(sourceHandlerModelOutputExternalServiceBridgeFindings.every((finding) => finding.matched_object.metadata.handler_external_service_write === true)).toBe(true);
+    expect(sourceHandlerModelOutputExternalServiceBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.handler_tainted_external_service_recipient === true
+    )).toBe(true);
+    expect(sourceHandlerModelOutputExternalServiceBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.handler_model_output_external_service_bridge === true
+    )).toBe(true);
+    expect(sourceHandlerModelOutputExternalServiceBridgeFindings.every((finding) => finding.matched_object.metadata.handler_secret_env_access === true)).toBe(true);
+    expect(sourceHandlerModelOutputExternalServiceBridgeFindings.every((finding) => finding.matched_object.metadata.model_provider_call === true)).toBe(true);
+    expect(sourceHandlerModelOutputExternalServiceBridgeFindings.every((finding) => finding.matched_object.metadata.external_service_write === true)).toBe(true);
+    expect(sourceHandlerModelOutputExternalServiceBridgeFindings.every((finding) => finding.matched_object.metadata.tainted_external_service_recipient === true)).toBe(true);
+    expect(sourceHandlerModelOutputExternalServiceBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.model_output_external_service_bridge === true
+    )).toBe(true);
+    expect(sourceHandlerModelOutputExternalServiceBridgeFindings.every((finding) => finding.matched_object.metadata.accepts_content_like_input === true)).toBe(true);
+    expect(sourceHandlerModelOutputExternalServiceBridgeFindings.every((finding) => finding.matched_object.metadata.accepts_customer_data_input === true)).toBe(true);
+    expect(sourceHandlerModelOutputExternalServiceBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.authority_classes.includes("model_output_external_service_bridge")
+    )).toBe(true);
+    expect(sourceHandlerModelOutputExternalServiceBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.authority_classes.includes("tainted_external_service_recipient")
+    )).toBe(true);
+    expect(sourceHandlerModelOutputExternalServiceBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.handler_authority_classes.includes("handler_model_output_external_service_bridge")
+    )).toBe(true);
+    expect(sourceHandlerModelOutputExternalServiceBridgeFindings.every((finding) => finding.matched_object.actions.includes("send"))).toBe(true);
+    expect(sourceHandlerModelOutputExternalServiceBridgeFindings.every((finding) => finding.matched_object.actions.includes("publish"))).toBe(true);
+    expect(sourceHandlerModelOutputExternalServiceBridgeFindings.every((finding) => finding.matched_object.external_reach === true)).toBe(true);
+    expect(sourceHandlerModelOutputExternalServiceBridgeFindings.every((finding) => finding.matched_object.secret_exposure === true)).toBe(true);
+    expect(sourceHandlerModelOutputExternalServiceBridgeFindings.every((finding) => finding.matched_object.side_effect === true)).toBe(true);
+    expect(sourceHandlerModelOutputExternalServiceBridgeFindings.every((finding) => finding.matched_object.reversible === false)).toBe(true);
+    expect(JSON.stringify(sourceHandlerModelOutputExternalServiceBridgeFindings)).not.toContain("openai.chat.completions.create");
+    expect(JSON.stringify(sourceHandlerModelOutputExternalServiceBridgeFindings)).not.toContain("openai_client.chat.completions.create");
+    expect(JSON.stringify(sourceHandlerModelOutputExternalServiceBridgeFindings)).not.toContain("modelResult");
+    expect(JSON.stringify(sourceHandlerModelOutputExternalServiceBridgeFindings)).not.toContain("model_response");
+    expect(JSON.stringify(sourceHandlerModelOutputExternalServiceBridgeFindings)).not.toContain("modelSelectedExternalMessage");
+    expect(JSON.stringify(sourceHandlerModelOutputExternalServiceBridgeFindings)).not.toContain("model_selected_external_message");
+    expect(JSON.stringify(sourceHandlerModelOutputExternalServiceBridgeFindings)).not.toContain("slackClient.chat.postMessage");
+    expect(JSON.stringify(sourceHandlerModelOutputExternalServiceBridgeFindings)).not.toContain("slack_client.chat_postMessage");
+    expect(JSON.stringify(sourceHandlerModelOutputExternalServiceBridgeFindings)).not.toContain("source model selected external update posted");
+    expect(JSON.stringify(sourceHandlerModelOutputExternalServiceBridgeFindings)).not.toContain("framework model selected external update posted");
+    expect(JSON.stringify(sourceHandlerModelOutputExternalServiceBridgeFindings)).not.toContain("Ask a model provider to draft an external customer update");
     const sourceHandlerDynamicCodeFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-019");
     expect(sourceHandlerDynamicCodeFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_evaluate_agent_expression",

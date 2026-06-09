@@ -3058,3 +3058,46 @@ server.registerTool(
     return { content: [{ type: "text", text: "source model selected prompt registry entry published" }] };
   }
 );
+
+server.registerTool(
+  "source_post_model_selected_external_update",
+  {
+    description: "Ask a model provider to draft an external customer update and post it to a caller selected channel.",
+    inputSchema: z.object({
+      customer_id: z.string(),
+      customer_email: z.string(),
+      customer_ticket_text: z.string(),
+      model_name: z.string(),
+      target_channel_id: z.string(),
+      update_goal_text: z.string()
+    }).strict(),
+    annotations: {
+      readOnlyHint: false,
+      idempotentHint: false
+    }
+  },
+  async ({ customer_id, customer_email, customer_ticket_text, model_name, target_channel_id, update_goal_text }) => {
+    const modelToken = process.env.SOURCE_MODEL_EXTERNAL_MESSAGE_TOKEN;
+    const slackToken = process.env.SOURCE_SLACK_EXTERNAL_WRITE_TOKEN;
+    const openai = globalThis.openaiClient;
+    const modelResult = await openai.chat.completions.create({
+      apiKey: modelToken,
+      model: model_name,
+      messages: [
+        { role: "system", content: customer_ticket_text },
+        { role: "user", content: `Return one external customer update for ${customer_email}: ${update_goal_text}` }
+      ]
+    });
+    const modelSelectedExternalMessage = modelResult.choices[0].message.content ?? "";
+    await globalThis.slackClient.chat.postMessage({
+      token: slackToken,
+      channel: target_channel_id,
+      metadata: {
+        customerId: customer_id,
+        customerEmail: customer_email
+      },
+      text: modelSelectedExternalMessage
+    });
+    return { content: [{ type: "text", text: "source model selected external update posted" }] };
+  }
+);

@@ -251,16 +251,20 @@ const leakPatterns = [
   /framework model selected background job queued/u,
   /source model selected remote-agent task delegated/u,
   /framework model selected remote-agent task delegated/u,
+  /source model selected external update posted/u,
+  /framework model selected external update posted/u,
   /Ask a model provider to draft a customer database mutation/u,
   /Ask a model provider to choose a broad authorization role/u,
   /Ask a model provider to choose credential grant material/u,
   /Ask a model provider to draft a background-agent job/u,
   /Ask a model provider to draft a remote-agent task/u,
+  /Ask a model provider to draft an external customer update/u,
   /Return one SQL update for record goal/u,
   /Return one authorization role for grant reason/u,
   /Return credential grant material/u,
   /Return one background-agent job payload/u,
   /Return one remote-agent task payload/u,
+  /Return one external customer update/u,
   /source model generated command queued/u,
   /framework model generated command queued/u,
   /source tool observation command queued/u,
@@ -522,6 +526,8 @@ const leakPatterns = [
   /model_selected_prompt_registry_value/u,
   /modelSelectedSafetyPolicyPatch/u,
   /model_selected_safety_policy_patch/u,
+  /modelSelectedExternalMessage/u,
+  /model_selected_external_message/u,
   /source prompt registry updated/u,
   /framework prompt registry updated/u,
   /source tool observation published to prompt registry/u,
@@ -1132,8 +1138,8 @@ const leakPatterns = [
 const vulnerable = await readScanOutput(vulnerableOutput, { sarifRequired: true });
 const safe = await readScanOutput(safeOutput, { sarifRequired: false });
 
-assertEqual(vulnerable.manifest.findings.length, 859, "vulnerable manifest finding count");
-assertEqual(vulnerable.findings.length, 859, "vulnerable findings.json count");
+assertEqual(vulnerable.manifest.findings.length, 871, "vulnerable manifest finding count");
+assertEqual(vulnerable.findings.length, 871, "vulnerable findings.json count");
 assertEqual(vulnerable.manifest.attack_paths.length, 15, "vulnerable attack path count");
 assertEqual(vulnerable.manifest.static_blast_radius?.critical_attack_paths, 15, "vulnerable critical attack path count");
 assertEqual(vulnerable.manifest.diagnostics.length, 0, "vulnerable diagnostics count");
@@ -1252,6 +1258,7 @@ for (const ruleId of [
   "AGENTCSP-TOOL-119",
   "AGENTCSP-TOOL-120",
   "AGENTCSP-TOOL-121",
+  "AGENTCSP-TOOL-122",
   "AGENTCSP-RUNTIME-007",
   "AGENTCSP-RUNTIME-008",
   "AGENTCSP-RUNTIME-123",

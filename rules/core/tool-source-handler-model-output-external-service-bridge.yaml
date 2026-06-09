@@ -1,0 +1,124 @@
+id: AGENTCSP-TOOL-122
+name: Source tool handler posts model output externally
+description: A source-defined agent tool handler calls a model provider, extracts model output, and publishes that output through an external service SDK using runtime credentials and caller-controlled recipient routing.
+category: model_output_external_service_bridge
+severity: critical
+maps_to:
+  owasp:
+    - LLM01:2025 Prompt Injection
+    - LLM02:2025 Sensitive Information Disclosure
+    - LLM05:2025 Improper Output Handling
+    - LLM06:2025 Excessive Agency
+  mitre_atlas:
+    - AML.T0051 LLM Plugin Compromise
+    - AML.T0056 LLM Trusted Boundary Compromise
+    - AML.T0057 Exfiltration via Cyber Means
+  nist_ai_rmf:
+    - MAP 4.1
+    - MEASURE 2.7
+    - MANAGE 2.4
+match:
+  object_type: tool
+  where:
+    - field: metadata.parsed_tool_schema
+      op: equals
+      value: true
+    - field: metadata.source_tool_handler_redacted
+      op: equals
+      value: true
+    - field: metadata.handler_body_analyzed
+      op: equals
+      value: true
+    - field: metadata.handler_model_provider_call
+      op: equals
+      value: true
+    - field: metadata.handler_external_service_write
+      op: equals
+      value: true
+    - field: metadata.handler_tainted_external_service_recipient
+      op: equals
+      value: true
+    - field: metadata.handler_model_output_external_service_bridge
+      op: equals
+      value: true
+    - field: metadata.handler_secret_env_access
+      op: equals
+      value: true
+    - field: metadata.model_provider_call
+      op: equals
+      value: true
+    - field: metadata.external_service_write
+      op: equals
+      value: true
+    - field: metadata.tainted_external_service_recipient
+      op: equals
+      value: true
+    - field: metadata.model_output_external_service_bridge
+      op: equals
+      value: true
+    - field: metadata.external_write
+      op: equals
+      value: true
+    - field: metadata.accepts_content_like_input
+      op: equals
+      value: true
+    - field: metadata.accepts_customer_data_input
+      op: equals
+      value: true
+    - field: metadata.authority_classes
+      op: includes
+      value: model_provider_call
+    - field: metadata.authority_classes
+      op: includes
+      value: external_service_write
+    - field: metadata.authority_classes
+      op: includes
+      value: tainted_external_service_recipient
+    - field: metadata.authority_classes
+      op: includes
+      value: model_output_external_service_bridge
+    - field: metadata.handler_authority_classes
+      op: includes
+      value: handler_model_provider_call
+    - field: metadata.handler_authority_classes
+      op: includes
+      value: handler_external_service_write
+    - field: metadata.handler_authority_classes
+      op: includes
+      value: handler_tainted_external_service_recipient
+    - field: metadata.handler_authority_classes
+      op: includes
+      value: handler_model_output_external_service_bridge
+    - field: metadata.schema_properties
+      op: contains_any
+      value:
+        - customer_ticket_text
+        - target_channel_id
+        - update_goal_text
+        - customer_email
+    - field: actions
+      op: includes
+      value: send
+    - field: actions
+      op: includes
+      value: publish
+    - field: data_classes
+      op: contains_any
+      value:
+        - confidential
+        - pii
+    - field: external_reach
+      op: equals
+      value: true
+    - field: secret_exposure
+      op: equals
+      value: true
+    - field: side_effect
+      op: equals
+      value: true
+    - field: reversible
+      op: equals
+      value: false
+recommendation:
+  control: quarantine
+  text: Quarantine model-output-to-external-service handlers until model responses cannot become Slack, email, ticket, webhook, or SaaS message bodies; recipients are policy-owned; outbound content is redacted and instruction-stripped; service credentials are scoped; and human approval is required for customer-facing or third-party publication.

@@ -748,6 +748,9 @@ describe("scanner", () => {
     const sourceModelOutputPromptRegistryBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "source_publish_model_selected_prompt_registry_entry"
     );
+    const sourceModelOutputExternalServiceBridgeTool = surfaces.tools.find(
+      (surface) => surface.name === "source_post_model_selected_external_update"
+    );
     const pythonExportTool = surfaces.tools.find((surface) => surface.name === "python_export_customer_record");
     const pythonDeleteTool = surfaces.tools.find((surface) => surface.name === "python_readonly_delete_workspace_file");
     const pythonUnsafeDeserializationTool = surfaces.tools.find((surface) => surface.name === "python_load_serialized_agent_state");
@@ -962,6 +965,9 @@ describe("scanner", () => {
     );
     const langchainModelOutputPromptRegistryBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "langchain_publish_model_selected_prompt_registry_entry"
+    );
+    const langchainModelOutputExternalServiceBridgeTool = surfaces.tools.find(
+      (surface) => surface.name === "langchain_post_model_selected_external_update"
     );
     const langchainUnsafeDeserializationTool = surfaces.tools.find((surface) => surface.name === "langchain_load_serialized_agent_state");
     const aiSdkExportTool = surfaces.tools.find((surface) => surface.name === "aiSdkExportCustomerContext");
@@ -8918,6 +8924,84 @@ describe("scanner", () => {
     expect(JSON.stringify(sourceModelOutputPromptRegistryBridgeTool)).not.toContain("promptRegistryClient.updatePrompt");
     expect(JSON.stringify(sourceModelOutputPromptRegistryBridgeTool)).not.toContain("source model selected prompt registry entry published");
     expect(JSON.stringify(sourceModelOutputPromptRegistryBridgeTool)).not.toContain("Ask a model provider to draft a prompt-registry entry");
+    expect(sourceModelOutputExternalServiceBridgeTool).toMatchObject({
+      path: "mcp-source/customer-tools.ts",
+      actions: ["call", "publish", "read", "send"],
+      data_classes: ["confidential", "credential", "pii"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(sourceModelOutputExternalServiceBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_mcp_source_tool: true,
+      mcp_source_tool_registration: true,
+      mcp_source_tool_registration_kind: "registerTool",
+      mcp_source_tool_argument_count: 3,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_content_like_input: true,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      external_service_write: true,
+      tainted_external_service_recipient: true,
+      model_provider_call: true,
+      tainted_model_selection: true,
+      model_output_external_service_bridge: true,
+      privileged_prompt_composition: true,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_external_service_write: true,
+      handler_tainted_external_service_recipient: true,
+      handler_model_provider_call: true,
+      handler_tainted_model_selection: true,
+      handler_model_output_external_service_bridge: true,
+      handler_privileged_prompt_composition: true,
+      handler_secret_env_access: true,
+      handler_signal_count: 7,
+      open_world_schema: false
+    });
+    expect(sourceModelOutputExternalServiceBridgeTool?.metadata.authority_classes).toEqual(expect.arrayContaining([
+      "external_service_write",
+      "handler_external_service_write",
+      "handler_model_output_external_service_bridge",
+      "handler_model_provider_call",
+      "handler_secret_env_access",
+      "handler_tainted_external_service_recipient",
+      "handler_tainted_model_selection",
+      "model_output_external_service_bridge",
+      "model_provider_call",
+      "tainted_external_service_recipient",
+      "tainted_model_selection"
+    ]));
+    expect(sourceModelOutputExternalServiceBridgeTool?.metadata.handler_authority_classes).toEqual([
+      "handler_external_service_write",
+      "handler_model_output_external_service_bridge",
+      "handler_model_provider_call",
+      "handler_privileged_prompt_composition",
+      "handler_secret_env_access",
+      "handler_tainted_external_service_recipient",
+      "handler_tainted_model_selection"
+    ]);
+    expect(sourceModelOutputExternalServiceBridgeTool?.metadata.handler_env_key_names).toEqual([
+      "SOURCE_MODEL_EXTERNAL_MESSAGE_TOKEN",
+      "SOURCE_SLACK_EXTERNAL_WRITE_TOKEN"
+    ]);
+    expect(sourceModelOutputExternalServiceBridgeTool?.metadata.schema_properties).toEqual([
+      "customer_email",
+      "customer_id",
+      "customer_ticket_text",
+      "model_name",
+      "target_channel_id",
+      "update_goal_text"
+    ]);
+    expect(JSON.stringify(sourceModelOutputExternalServiceBridgeTool)).not.toContain("openai.chat.completions.create");
+    expect(JSON.stringify(sourceModelOutputExternalServiceBridgeTool)).not.toContain("modelResult");
+    expect(JSON.stringify(sourceModelOutputExternalServiceBridgeTool)).not.toContain("modelSelectedExternalMessage");
+    expect(JSON.stringify(sourceModelOutputExternalServiceBridgeTool)).not.toContain("slackClient.chat.postMessage");
+    expect(JSON.stringify(sourceModelOutputExternalServiceBridgeTool)).not.toContain("source model selected external update posted");
+    expect(JSON.stringify(sourceModelOutputExternalServiceBridgeTool)).not.toContain("Ask a model provider to draft an external customer update");
     expect(pythonExportTool).toMatchObject({
       path: "mcp-source/python_tools.py",
       data_classes: ["confidential", "credential", "pii"],
@@ -17142,6 +17226,85 @@ describe("scanner", () => {
     expect(JSON.stringify(langchainModelOutputPromptRegistryBridgeTool)).not.toContain("prompt_registry_client.update_prompt");
     expect(JSON.stringify(langchainModelOutputPromptRegistryBridgeTool)).not.toContain("framework model selected prompt registry entry published");
     expect(JSON.stringify(langchainModelOutputPromptRegistryBridgeTool)).not.toContain("Ask a model provider to draft a prompt-registry entry");
+    expect(langchainModelOutputExternalServiceBridgeTool).toMatchObject({
+      path: "framework-tools/langchain_tools.py",
+      actions: ["call", "publish", "read", "send"],
+      data_classes: ["confidential", "credential", "pii"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(langchainModelOutputExternalServiceBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_agent_framework_source_tool: true,
+      agent_framework_source_tool: true,
+      agent_framework_source_tool_framework: "langchain",
+      agent_framework_source_tool_registration_kind: "python_tool_decorator",
+      agent_framework_source_tool_argument_count: 6,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_content_like_input: true,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      external_service_write: true,
+      tainted_external_service_recipient: true,
+      model_provider_call: true,
+      tainted_model_selection: true,
+      model_output_external_service_bridge: true,
+      privileged_prompt_composition: true,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_external_service_write: true,
+      handler_tainted_external_service_recipient: true,
+      handler_model_provider_call: true,
+      handler_tainted_model_selection: true,
+      handler_model_output_external_service_bridge: true,
+      handler_privileged_prompt_composition: true,
+      handler_secret_env_access: true,
+      handler_signal_count: 7,
+      open_world_schema: false
+    });
+    expect(langchainModelOutputExternalServiceBridgeTool?.metadata.authority_classes).toEqual(expect.arrayContaining([
+      "external_service_write",
+      "handler_external_service_write",
+      "handler_model_output_external_service_bridge",
+      "handler_model_provider_call",
+      "handler_secret_env_access",
+      "handler_tainted_external_service_recipient",
+      "handler_tainted_model_selection",
+      "model_output_external_service_bridge",
+      "model_provider_call",
+      "tainted_external_service_recipient",
+      "tainted_model_selection"
+    ]));
+    expect(langchainModelOutputExternalServiceBridgeTool?.metadata.handler_authority_classes).toEqual([
+      "handler_external_service_write",
+      "handler_model_output_external_service_bridge",
+      "handler_model_provider_call",
+      "handler_privileged_prompt_composition",
+      "handler_secret_env_access",
+      "handler_tainted_external_service_recipient",
+      "handler_tainted_model_selection"
+    ]);
+    expect(langchainModelOutputExternalServiceBridgeTool?.metadata.handler_env_key_names).toEqual([
+      "LANGCHAIN_MODEL_EXTERNAL_MESSAGE_TOKEN",
+      "LANGCHAIN_SLACK_EXTERNAL_WRITE_TOKEN"
+    ]);
+    expect(langchainModelOutputExternalServiceBridgeTool?.metadata.schema_properties).toEqual([
+      "customer_email",
+      "customer_id",
+      "customer_ticket_text",
+      "model_name",
+      "target_channel_id",
+      "update_goal_text"
+    ]);
+    expect(JSON.stringify(langchainModelOutputExternalServiceBridgeTool)).not.toContain("openai_client.chat.completions.create");
+    expect(JSON.stringify(langchainModelOutputExternalServiceBridgeTool)).not.toContain("model_response");
+    expect(JSON.stringify(langchainModelOutputExternalServiceBridgeTool)).not.toContain("model_selected_external_message");
+    expect(JSON.stringify(langchainModelOutputExternalServiceBridgeTool)).not.toContain("slack_client.chat_postMessage");
+    expect(JSON.stringify(langchainModelOutputExternalServiceBridgeTool)).not.toContain("framework model selected external update posted");
+    expect(JSON.stringify(langchainModelOutputExternalServiceBridgeTool)).not.toContain("Ask a model provider to draft an external customer update");
     expect(aiSdkExportTool).toMatchObject({
       path: "framework-tools/vercel-ai-tools.ts",
       data_classes: ["confidential", "credential", "pii"],
