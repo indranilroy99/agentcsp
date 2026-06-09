@@ -8026,8 +8026,10 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerToolOutputCredentialIssuanceBridgeFindings)).not.toContain("Issue an agent credential from a raw privileged tool observation");
     const sourceHandlerAgentDelegationFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-049");
     expect(sourceHandlerAgentDelegationFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
+      "langchain_delegate_authenticated_page_screenshot_remote_agent",
       "langchain_delegate_customer_case_to_remote_agent",
       "langchain_delegate_customer_vault_secret_remote_agent",
+      "source_delegate_authenticated_page_screenshot_remote_agent",
       "source_delegate_customer_case_to_remote_agent",
       "source_delegate_customer_vault_secret_remote_agent"
     ]);
@@ -8060,6 +8062,8 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerAgentDelegationFindings)).not.toContain("remoteAgentClient.delegateTask");
     expect(JSON.stringify(sourceHandlerAgentDelegationFindings)).not.toContain("remote_agent_client.delegate_task");
     expect(JSON.stringify(sourceHandlerAgentDelegationFindings)).not.toContain("customerTicket");
+    expect(JSON.stringify(sourceHandlerAgentDelegationFindings)).not.toContain("source visual context delegated to remote agent");
+    expect(JSON.stringify(sourceHandlerAgentDelegationFindings)).not.toContain("framework visual context delegated to remote agent");
     expect(JSON.stringify(sourceHandlerAgentDelegationFindings)).not.toContain("Delegate caller supplied customer context");
     const sourceHandlerArtifactExportFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-050");
     expect(sourceHandlerArtifactExportFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
@@ -8138,6 +8142,7 @@ describe("rule engine", () => {
     const sourceHandlerBrowserAutomationFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-027");
     expect(sourceHandlerBrowserAutomationFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_cache_authenticated_page_screenshot_prompt",
+      "langchain_delegate_authenticated_page_screenshot_remote_agent",
       "langchain_enqueue_authenticated_page_screenshot_job",
       "langchain_export_authenticated_page_screenshot_artifact",
       "langchain_export_authenticated_page_screenshot_trace",
@@ -8149,6 +8154,7 @@ describe("rule engine", () => {
       "langchain_submit_retrieved_context_browser",
       "langchain_submit_customer_browser_form",
       "source_cache_authenticated_page_screenshot_prompt",
+      "source_delegate_authenticated_page_screenshot_remote_agent",
       "source_enqueue_authenticated_page_screenshot_job",
       "source_export_authenticated_page_screenshot_artifact",
       "source_export_authenticated_page_screenshot_trace",
@@ -8208,10 +8214,13 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerBrowserAutomationFindings)).not.toContain("framework visual context cached for prompts");
     expect(JSON.stringify(sourceHandlerBrowserAutomationFindings)).not.toContain("source visual context queued for background agent");
     expect(JSON.stringify(sourceHandlerBrowserAutomationFindings)).not.toContain("framework visual context queued for background agent");
+    expect(JSON.stringify(sourceHandlerBrowserAutomationFindings)).not.toContain("source visual context delegated to remote agent");
+    expect(JSON.stringify(sourceHandlerBrowserAutomationFindings)).not.toContain("framework visual context delegated to remote agent");
     expect(JSON.stringify(sourceHandlerBrowserAutomationFindings)).not.toContain("Drive an authenticated browser session");
     const sourceHandlerTaintedBrowserTargetFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-040");
     expect(sourceHandlerTaintedBrowserTargetFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_cache_authenticated_page_screenshot_prompt",
+      "langchain_delegate_authenticated_page_screenshot_remote_agent",
       "langchain_enqueue_authenticated_page_screenshot_job",
       "langchain_export_authenticated_page_screenshot_artifact",
       "langchain_export_authenticated_page_screenshot_trace",
@@ -8223,6 +8232,7 @@ describe("rule engine", () => {
       "langchain_submit_retrieved_context_browser",
       "langchain_submit_customer_browser_form",
       "source_cache_authenticated_page_screenshot_prompt",
+      "source_delegate_authenticated_page_screenshot_remote_agent",
       "source_enqueue_authenticated_page_screenshot_job",
       "source_export_authenticated_page_screenshot_artifact",
       "source_export_authenticated_page_screenshot_trace",
@@ -8983,6 +8993,96 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerVisualContextTaskQueueBridgeFindings)).not.toContain("source visual context queued for background agent");
     expect(JSON.stringify(sourceHandlerVisualContextTaskQueueBridgeFindings)).not.toContain("framework visual context queued for background agent");
     expect(JSON.stringify(sourceHandlerVisualContextTaskQueueBridgeFindings)).not.toContain("Enqueue an authenticated browser screenshot");
+    const sourceHandlerVisualContextAgentDelegationBridgeFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-105");
+    expect(sourceHandlerVisualContextAgentDelegationBridgeFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
+      "langchain_delegate_authenticated_page_screenshot_remote_agent",
+      "source_delegate_authenticated_page_screenshot_remote_agent"
+    ]);
+    expect(sourceHandlerVisualContextAgentDelegationBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
+    expect(sourceHandlerVisualContextAgentDelegationBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerVisualContextAgentDelegationBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
+    expect(sourceHandlerVisualContextAgentDelegationBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
+    expect(sourceHandlerVisualContextAgentDelegationBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.source_tool_handler_redacted === true
+    )).toBe(true);
+    expect(sourceHandlerVisualContextAgentDelegationBridgeFindings.every((finding) => finding.matched_object.metadata.handler_browser_automation === true)).toBe(true);
+    expect(sourceHandlerVisualContextAgentDelegationBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.handler_tainted_browser_automation_target === true
+    )).toBe(true);
+    expect(sourceHandlerVisualContextAgentDelegationBridgeFindings.every((finding) => finding.matched_object.metadata.handler_visual_context_capture === true)).toBe(true);
+    expect(sourceHandlerVisualContextAgentDelegationBridgeFindings.every((finding) => finding.matched_object.metadata.handler_agent_delegation === true)).toBe(true);
+    expect(sourceHandlerVisualContextAgentDelegationBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.handler_tainted_agent_delegation_target === true
+    )).toBe(true);
+    expect(sourceHandlerVisualContextAgentDelegationBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.handler_agent_delegation_context_forwarding === true
+    )).toBe(true);
+    expect(sourceHandlerVisualContextAgentDelegationBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.handler_visual_context_agent_delegation_bridge === true
+    )).toBe(true);
+    expect(sourceHandlerVisualContextAgentDelegationBridgeFindings.every((finding) => finding.matched_object.metadata.browser_automation === true)).toBe(true);
+    expect(sourceHandlerVisualContextAgentDelegationBridgeFindings.every((finding) => finding.matched_object.metadata.tainted_browser_automation_target === true)).toBe(true);
+    expect(sourceHandlerVisualContextAgentDelegationBridgeFindings.every((finding) => finding.matched_object.metadata.visual_context_capture === true)).toBe(true);
+    expect(sourceHandlerVisualContextAgentDelegationBridgeFindings.every((finding) => finding.matched_object.metadata.agent_delegation === true)).toBe(true);
+    expect(sourceHandlerVisualContextAgentDelegationBridgeFindings.every((finding) => finding.matched_object.metadata.tainted_agent_delegation_target === true)).toBe(true);
+    expect(sourceHandlerVisualContextAgentDelegationBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.agent_delegation_context_forwarding === true
+    )).toBe(true);
+    expect(sourceHandlerVisualContextAgentDelegationBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.visual_context_agent_delegation_bridge === true
+    )).toBe(true);
+    expect(sourceHandlerVisualContextAgentDelegationBridgeFindings.every((finding) => finding.matched_object.metadata.handler_secret_env_access === true)).toBe(true);
+    expect(sourceHandlerVisualContextAgentDelegationBridgeFindings.every((finding) => finding.matched_object.metadata.accepts_url_input === true)).toBe(true);
+    expect(sourceHandlerVisualContextAgentDelegationBridgeFindings.every((finding) => finding.matched_object.metadata.accepts_content_like_input === true)).toBe(true);
+    expect(sourceHandlerVisualContextAgentDelegationBridgeFindings.every((finding) => finding.matched_object.metadata.accepts_customer_data_input === true)).toBe(true);
+    expect(sourceHandlerVisualContextAgentDelegationBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.authority_classes.includes("visual_context_capture")
+    )).toBe(true);
+    expect(sourceHandlerVisualContextAgentDelegationBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.authority_classes.includes("agent_delegation")
+    )).toBe(true);
+    expect(sourceHandlerVisualContextAgentDelegationBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.authority_classes.includes("tainted_agent_delegation_target")
+    )).toBe(true);
+    expect(sourceHandlerVisualContextAgentDelegationBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.authority_classes.includes("agent_delegation_context_forwarding")
+    )).toBe(true);
+    expect(sourceHandlerVisualContextAgentDelegationBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.authority_classes.includes("visual_context_agent_delegation_bridge")
+    )).toBe(true);
+    expect(sourceHandlerVisualContextAgentDelegationBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.handler_authority_classes.includes("handler_visual_context_capture")
+    )).toBe(true);
+    expect(sourceHandlerVisualContextAgentDelegationBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.handler_authority_classes.includes("handler_agent_delegation")
+    )).toBe(true);
+    expect(sourceHandlerVisualContextAgentDelegationBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.handler_authority_classes.includes("handler_tainted_agent_delegation_target")
+    )).toBe(true);
+    expect(sourceHandlerVisualContextAgentDelegationBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.handler_authority_classes.includes("handler_agent_delegation_context_forwarding")
+    )).toBe(true);
+    expect(sourceHandlerVisualContextAgentDelegationBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.handler_authority_classes.includes("handler_visual_context_agent_delegation_bridge")
+    )).toBe(true);
+    expect(sourceHandlerVisualContextAgentDelegationBridgeFindings.every((finding) => finding.matched_object.actions.includes("read"))).toBe(true);
+    expect(sourceHandlerVisualContextAgentDelegationBridgeFindings.every((finding) => finding.matched_object.actions.includes("send"))).toBe(true);
+    expect(sourceHandlerVisualContextAgentDelegationBridgeFindings.every((finding) => finding.matched_object.actions.includes("execute"))).toBe(true);
+    expect(sourceHandlerVisualContextAgentDelegationBridgeFindings.every((finding) => finding.matched_object.external_reach === true)).toBe(true);
+    expect(sourceHandlerVisualContextAgentDelegationBridgeFindings.every((finding) => finding.matched_object.secret_exposure === true)).toBe(true);
+    expect(sourceHandlerVisualContextAgentDelegationBridgeFindings.every((finding) => finding.matched_object.side_effect === true)).toBe(true);
+    expect(sourceHandlerVisualContextAgentDelegationBridgeFindings.every((finding) => finding.matched_object.reversible === false)).toBe(true);
+    expect(JSON.stringify(sourceHandlerVisualContextAgentDelegationBridgeFindings)).not.toContain("authenticatedBrowserPage");
+    expect(JSON.stringify(sourceHandlerVisualContextAgentDelegationBridgeFindings)).not.toContain("browser_session.page");
+    expect(JSON.stringify(sourceHandlerVisualContextAgentDelegationBridgeFindings)).not.toContain("page.goto");
+    expect(JSON.stringify(sourceHandlerVisualContextAgentDelegationBridgeFindings)).not.toContain("page.screenshot");
+    expect(JSON.stringify(sourceHandlerVisualContextAgentDelegationBridgeFindings)).not.toContain("screenshot.toString");
+    expect(JSON.stringify(sourceHandlerVisualContextAgentDelegationBridgeFindings)).not.toContain("screenshot_bytes");
+    expect(JSON.stringify(sourceHandlerVisualContextAgentDelegationBridgeFindings)).not.toContain("remoteAgentClient.delegateTask");
+    expect(JSON.stringify(sourceHandlerVisualContextAgentDelegationBridgeFindings)).not.toContain("remote_agent_client.delegate_task");
+    expect(JSON.stringify(sourceHandlerVisualContextAgentDelegationBridgeFindings)).not.toContain("source visual context delegated to remote agent");
+    expect(JSON.stringify(sourceHandlerVisualContextAgentDelegationBridgeFindings)).not.toContain("framework visual context delegated to remote agent");
+    expect(JSON.stringify(sourceHandlerVisualContextAgentDelegationBridgeFindings)).not.toContain("Delegate an authenticated browser screenshot");
     const sourceHandlerSecretManagerFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-028");
     expect(sourceHandlerSecretManagerFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_apply_vault_secret_guardrail_override",

@@ -658,6 +658,9 @@ describe("scanner", () => {
     const sourceVisualContextPromptCacheBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "source_cache_authenticated_page_screenshot_prompt"
     );
+    const sourceVisualContextAgentDelegationBridgeTool = surfaces.tools.find(
+      (surface) => surface.name === "source_delegate_authenticated_page_screenshot_remote_agent"
+    );
     const sourceVisualContextTaskQueueBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "source_enqueue_authenticated_page_screenshot_job"
     );
@@ -821,6 +824,9 @@ describe("scanner", () => {
     );
     const langchainVisualContextPromptCacheBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "langchain_cache_authenticated_page_screenshot_prompt"
+    );
+    const langchainVisualContextAgentDelegationBridgeTool = surfaces.tools.find(
+      (surface) => surface.name === "langchain_delegate_authenticated_page_screenshot_remote_agent"
     );
     const langchainVisualContextTaskQueueBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "langchain_enqueue_authenticated_page_screenshot_job"
@@ -5996,6 +6002,107 @@ describe("scanner", () => {
     expect(JSON.stringify(sourceVisualContextPromptCacheBridgeTool)).not.toContain("screenshot.toString");
     expect(JSON.stringify(sourceVisualContextPromptCacheBridgeTool)).not.toContain("promptCache.set");
     expect(JSON.stringify(sourceVisualContextPromptCacheBridgeTool)).not.toContain("source visual context cached for prompts");
+    expect(sourceVisualContextAgentDelegationBridgeTool).toMatchObject({
+      path: "mcp-source/customer-tools.ts",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["call", "execute", "read", "send"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(sourceVisualContextAgentDelegationBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_mcp_source_tool: true,
+      mcp_source_tool_registration: true,
+      mcp_source_tool_registration_kind: "registerTool",
+      mcp_source_tool_argument_count: 3,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_secret_like_input: true,
+      accepts_content_like_input: true,
+      accepts_url_input: true,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      browser_automation: true,
+      tainted_browser_automation_target: true,
+      visual_context_capture: true,
+      agent_delegation: true,
+      tainted_agent_delegation_target: true,
+      agent_delegation_context_forwarding: true,
+      visual_context_agent_delegation_bridge: true,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_agent_delegation: true,
+      handler_tainted_agent_delegation_target: true,
+      handler_agent_delegation_context_forwarding: true,
+      handler_secret_env_access: true,
+      handler_model_visible_output: true,
+      handler_browser_automation: true,
+      handler_tainted_browser_automation_target: true,
+      handler_visual_context_capture: true,
+      handler_visual_context_agent_delegation_bridge: true,
+      handler_signal_count: 8,
+      open_world_schema: false
+    });
+    expect(sourceVisualContextAgentDelegationBridgeTool?.metadata.authority_classes).toEqual([
+      "agent_delegation",
+      "agent_delegation_context_forwarding",
+      "browser_automation",
+      "browser_control",
+      "content_input",
+      "credential_input",
+      "customer_data_input",
+      "handler_agent_delegation",
+      "handler_agent_delegation_context_forwarding",
+      "handler_browser_automation",
+      "handler_secret_env_access",
+      "handler_tainted_agent_delegation_target",
+      "handler_tainted_browser_automation_target",
+      "handler_visual_context_agent_delegation_bridge",
+      "handler_visual_context_capture",
+      "network_access",
+      "pii_input",
+      "secret_env_access",
+      "tainted_agent_delegation_target",
+      "tainted_browser_automation_target",
+      "visual_context_agent_delegation_bridge",
+      "visual_context_capture"
+    ]);
+    expect(sourceVisualContextAgentDelegationBridgeTool?.metadata.handler_authority_classes).toEqual([
+      "handler_agent_delegation",
+      "handler_agent_delegation_context_forwarding",
+      "handler_browser_automation",
+      "handler_secret_env_access",
+      "handler_tainted_agent_delegation_target",
+      "handler_tainted_browser_automation_target",
+      "handler_visual_context_agent_delegation_bridge",
+      "handler_visual_context_capture"
+    ]);
+    expect(sourceVisualContextAgentDelegationBridgeTool?.metadata.handler_env_key_names).toEqual([
+      "SOURCE_VISUAL_A2A_BROWSER_TOKEN",
+      "SOURCE_VISUAL_A2A_TOKEN"
+    ]);
+    expect(sourceVisualContextAgentDelegationBridgeTool?.metadata.schema_properties).toEqual([
+      "customer_id",
+      "requested_task_type",
+      "target_agent_url",
+      "target_url",
+      "visual_delegation_note_text"
+    ]);
+    expect(sourceVisualContextAgentDelegationBridgeTool?.metadata.required_properties).toEqual([
+      "customer_id",
+      "requested_task_type",
+      "target_agent_url",
+      "target_url",
+      "visual_delegation_note_text"
+    ]);
+    expect(JSON.stringify(sourceVisualContextAgentDelegationBridgeTool)).not.toContain("authenticatedBrowserPage");
+    expect(JSON.stringify(sourceVisualContextAgentDelegationBridgeTool)).not.toContain("page.goto");
+    expect(JSON.stringify(sourceVisualContextAgentDelegationBridgeTool)).not.toContain("page.screenshot");
+    expect(JSON.stringify(sourceVisualContextAgentDelegationBridgeTool)).not.toContain("screenshot.toString");
+    expect(JSON.stringify(sourceVisualContextAgentDelegationBridgeTool)).not.toContain("remoteAgentClient.delegateTask");
+    expect(JSON.stringify(sourceVisualContextAgentDelegationBridgeTool)).not.toContain("source visual context delegated to remote agent");
     expect(sourceVisualContextTaskQueueBridgeTool).toMatchObject({
       path: "mcp-source/customer-tools.ts",
       data_classes: ["confidential", "credential", "pii"],
@@ -12778,6 +12885,108 @@ describe("scanner", () => {
     expect(JSON.stringify(langchainVisualContextPromptCacheBridgeTool)).not.toContain("prompt_cache.set");
     expect(JSON.stringify(langchainVisualContextPromptCacheBridgeTool)).not.toContain("framework visual context cached for prompts");
     expect(JSON.stringify(langchainVisualContextPromptCacheBridgeTool)).not.toContain("Write an authenticated browser screenshot");
+    expect(langchainVisualContextAgentDelegationBridgeTool).toMatchObject({
+      path: "framework-tools/langchain_tools.py",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["call", "execute", "read", "send"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(langchainVisualContextAgentDelegationBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_agent_framework_source_tool: true,
+      agent_framework_source_tool: true,
+      agent_framework_source_tool_framework: "langchain",
+      agent_framework_source_tool_registration_kind: "python_tool_decorator",
+      agent_framework_source_tool_argument_count: 5,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_secret_like_input: true,
+      accepts_content_like_input: true,
+      accepts_url_input: true,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      browser_automation: true,
+      tainted_browser_automation_target: true,
+      visual_context_capture: true,
+      agent_delegation: true,
+      tainted_agent_delegation_target: true,
+      agent_delegation_context_forwarding: true,
+      visual_context_agent_delegation_bridge: true,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_agent_delegation: true,
+      handler_tainted_agent_delegation_target: true,
+      handler_agent_delegation_context_forwarding: true,
+      handler_secret_env_access: true,
+      handler_model_visible_output: true,
+      handler_browser_automation: true,
+      handler_tainted_browser_automation_target: true,
+      handler_visual_context_capture: true,
+      handler_visual_context_agent_delegation_bridge: true,
+      handler_signal_count: 8,
+      open_world_schema: false
+    });
+    expect(langchainVisualContextAgentDelegationBridgeTool?.metadata.authority_classes).toEqual([
+      "agent_delegation",
+      "agent_delegation_context_forwarding",
+      "browser_automation",
+      "browser_control",
+      "content_input",
+      "credential_input",
+      "customer_data_input",
+      "handler_agent_delegation",
+      "handler_agent_delegation_context_forwarding",
+      "handler_browser_automation",
+      "handler_secret_env_access",
+      "handler_tainted_agent_delegation_target",
+      "handler_tainted_browser_automation_target",
+      "handler_visual_context_agent_delegation_bridge",
+      "handler_visual_context_capture",
+      "network_access",
+      "pii_input",
+      "secret_env_access",
+      "tainted_agent_delegation_target",
+      "tainted_browser_automation_target",
+      "visual_context_agent_delegation_bridge",
+      "visual_context_capture"
+    ]);
+    expect(langchainVisualContextAgentDelegationBridgeTool?.metadata.handler_authority_classes).toEqual([
+      "handler_agent_delegation",
+      "handler_agent_delegation_context_forwarding",
+      "handler_browser_automation",
+      "handler_secret_env_access",
+      "handler_tainted_agent_delegation_target",
+      "handler_tainted_browser_automation_target",
+      "handler_visual_context_agent_delegation_bridge",
+      "handler_visual_context_capture"
+    ]);
+    expect(langchainVisualContextAgentDelegationBridgeTool?.metadata.handler_env_key_names).toEqual([
+      "LANGCHAIN_VISUAL_A2A_BROWSER_TOKEN",
+      "LANGCHAIN_VISUAL_A2A_TOKEN"
+    ]);
+    expect(langchainVisualContextAgentDelegationBridgeTool?.metadata.schema_properties).toEqual([
+      "customer_id",
+      "requested_task_type",
+      "target_agent_url",
+      "target_url",
+      "visual_delegation_note_text"
+    ]);
+    expect(langchainVisualContextAgentDelegationBridgeTool?.metadata.required_properties).toEqual([
+      "customer_id",
+      "requested_task_type",
+      "target_agent_url",
+      "target_url",
+      "visual_delegation_note_text"
+    ]);
+    expect(JSON.stringify(langchainVisualContextAgentDelegationBridgeTool)).not.toContain("browser_session.page");
+    expect(JSON.stringify(langchainVisualContextAgentDelegationBridgeTool)).not.toContain("page.goto");
+    expect(JSON.stringify(langchainVisualContextAgentDelegationBridgeTool)).not.toContain("page.screenshot");
+    expect(JSON.stringify(langchainVisualContextAgentDelegationBridgeTool)).not.toContain("screenshot_bytes");
+    expect(JSON.stringify(langchainVisualContextAgentDelegationBridgeTool)).not.toContain("remote_agent_client.delegate_task");
+    expect(JSON.stringify(langchainVisualContextAgentDelegationBridgeTool)).not.toContain("framework visual context delegated to remote agent");
     expect(langchainVisualContextTaskQueueBridgeTool).toMatchObject({
       path: "framework-tools/langchain_tools.py",
       data_classes: ["confidential", "credential", "pii"],

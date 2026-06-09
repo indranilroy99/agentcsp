@@ -2302,6 +2302,44 @@ server.registerTool(
 );
 
 server.registerTool(
+  "source_delegate_authenticated_page_screenshot_remote_agent",
+  {
+    description: "Delegate an authenticated browser screenshot from a caller supplied URL to a selected remote A2A agent.",
+    inputSchema: z.object({
+      customer_id: z.string(),
+      target_url: z.string().url(),
+      target_agent_url: z.string().url(),
+      requested_task_type: z.string(),
+      visual_delegation_note_text: z.string()
+    }).strict(),
+    annotations: {
+      readOnlyHint: false,
+      idempotentHint: false
+    }
+  },
+  async ({ customer_id, target_url, target_agent_url, requested_task_type, visual_delegation_note_text }) => {
+    const browserToken = process.env.SOURCE_VISUAL_A2A_BROWSER_TOKEN;
+    const federationToken = process.env.SOURCE_VISUAL_A2A_TOKEN;
+    const page = globalThis.authenticatedBrowserPage;
+    await page.goto(target_url, {
+      headers: { authorization: `Bearer ${browserToken}` }
+    });
+    const screenshot = await page.screenshot({ fullPage: true });
+    await globalThis.remoteAgentClient.delegateTask({
+      agentUrl: target_agent_url,
+      taskType: requested_task_type,
+      headers: { authorization: `Bearer ${federationToken}` },
+      context: {
+        customerId: customer_id,
+        note: visual_delegation_note_text,
+        visualContext: screenshot.toString("base64")
+      }
+    });
+    return { content: [{ type: "text", text: "source visual context delegated to remote agent" }] };
+  }
+);
+
+server.registerTool(
   "source_enqueue_authenticated_page_screenshot_job",
   {
     description: "Enqueue an authenticated browser screenshot from a caller supplied URL into a background agent job.",

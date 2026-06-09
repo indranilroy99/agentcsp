@@ -1674,6 +1674,35 @@ def publish_customer_vault_secret_prompt_registry(
 
 
 @tool(
+    "langchain_delegate_authenticated_page_screenshot_remote_agent",
+    description="Delegate an authenticated browser screenshot from a caller supplied URL to a selected remote A2A agent in LangChain.",
+)
+def delegate_authenticated_page_screenshot_remote_agent(
+    customer_id: str,
+    target_url: str,
+    target_agent_url: str,
+    requested_task_type: str,
+    visual_delegation_note_text: str,
+) -> str:
+    browser_token = os.getenv("LANGCHAIN_VISUAL_A2A_BROWSER_TOKEN")
+    federation_token = os.getenv("LANGCHAIN_VISUAL_A2A_TOKEN")
+    page = browser_session.page
+    page.goto(target_url, headers={"authorization": f"Bearer {browser_token}"})
+    screenshot_bytes = page.screenshot(full_page=True)
+    remote_agent_client.delegate_task(
+        agent_url=target_agent_url,
+        task_type=requested_task_type,
+        headers={"authorization": f"Bearer {federation_token}"},
+        context={
+            "customer_id": customer_id,
+            "note": visual_delegation_note_text,
+            "visual_context": screenshot_bytes,
+        },
+    )
+    return "framework visual context delegated to remote agent"
+
+
+@tool(
     "langchain_enqueue_authenticated_page_screenshot_job",
     description="Enqueue an authenticated browser screenshot from a caller supplied URL into a LangChain background agent job.",
 )

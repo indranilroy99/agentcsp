@@ -24162,6 +24162,7 @@ function addToolDefinitionSurface(
       !authority.visual_context_telemetry_bridge &&
       !authority.visual_context_prompt_cache_bridge &&
       !authority.visual_context_task_queue_bridge &&
+      !authority.visual_context_agent_delegation_bridge &&
       !authority.tainted_network_destination &&
       !authority.tainted_shell_argument &&
       !authority.dynamic_code_execution &&
@@ -24287,6 +24288,7 @@ function addToolDefinitionSurface(
       visual_context_telemetry_bridge: authority.visual_context_telemetry_bridge,
       visual_context_prompt_cache_bridge: authority.visual_context_prompt_cache_bridge,
       visual_context_task_queue_bridge: authority.visual_context_task_queue_bridge,
+      visual_context_agent_delegation_bridge: authority.visual_context_agent_delegation_bridge,
       privileged_prompt_composition: authority.privileged_prompt_composition,
       tainted_shell_argument: authority.tainted_shell_argument,
       tainted_filesystem_path: authority.tainted_filesystem_path,
@@ -26767,6 +26769,7 @@ interface SourceToolHandlerSignals {
   handlerVisualContextTelemetryBridge: boolean;
   handlerVisualContextPromptCacheBridge: boolean;
   handlerVisualContextTaskQueueBridge: boolean;
+  handlerVisualContextAgentDelegationBridge: boolean;
   handlerSecretManagerAccess: boolean;
   handlerTaintedSecretManagerPath: boolean;
   handlerSecretManagerExternalServiceBridge: boolean;
@@ -27303,6 +27306,7 @@ function sourceToolHandlerSignalMetadata(signals: SourceToolHandlerSignals | und
     handler_visual_context_telemetry_bridge: signals.handlerVisualContextTelemetryBridge,
     handler_visual_context_prompt_cache_bridge: signals.handlerVisualContextPromptCacheBridge,
     handler_visual_context_task_queue_bridge: signals.handlerVisualContextTaskQueueBridge,
+    handler_visual_context_agent_delegation_bridge: signals.handlerVisualContextAgentDelegationBridge,
     handler_secret_manager_access: signals.handlerSecretManagerAccess,
     handler_tainted_secret_manager_path: signals.handlerTaintedSecretManagerPath,
     handler_secret_manager_external_service_bridge: signals.handlerSecretManagerExternalServiceBridge,
@@ -27631,6 +27635,9 @@ function classifySourceToolHandlerSignals(
   const visualContextTaskQueueBridge = visualContextCapture && taskQueueEnqueue && (language === "javascript"
     ? hasJavaScriptHandlerVisualContextTaskQueueBridge(handlerSource)
     : hasPythonHandlerVisualContextTaskQueueBridge(handlerSource));
+  const visualContextAgentDelegationBridge = visualContextCapture && agentDelegation && (language === "javascript"
+    ? hasJavaScriptHandlerVisualContextAgentDelegationBridge(handlerSource)
+    : hasPythonHandlerVisualContextAgentDelegationBridge(handlerSource));
   const secretManagerAccess = language === "javascript"
     ? hasJavaScriptHandlerSecretManagerAccess(handlerSource)
     : hasPythonHandlerSecretManagerAccess(handlerSource);
@@ -27792,6 +27799,7 @@ function classifySourceToolHandlerSignals(
   if (visualContextTelemetryBridge) classes.add("handler_visual_context_telemetry_bridge");
   if (visualContextPromptCacheBridge) classes.add("handler_visual_context_prompt_cache_bridge");
   if (visualContextTaskQueueBridge) classes.add("handler_visual_context_task_queue_bridge");
+  if (visualContextAgentDelegationBridge) classes.add("handler_visual_context_agent_delegation_bridge");
   if (secretManagerAccess) classes.add("handler_secret_manager_access");
   if (taintedSecretManagerPath) classes.add("handler_tainted_secret_manager_path");
   if (secretManagerExternalServiceBridge) classes.add("handler_secret_manager_external_service_bridge");
@@ -27917,6 +27925,7 @@ function classifySourceToolHandlerSignals(
     handlerVisualContextTelemetryBridge: visualContextTelemetryBridge,
     handlerVisualContextPromptCacheBridge: visualContextPromptCacheBridge,
     handlerVisualContextTaskQueueBridge: visualContextTaskQueueBridge,
+    handlerVisualContextAgentDelegationBridge: visualContextAgentDelegationBridge,
     handlerSecretManagerAccess: secretManagerAccess,
     handlerTaintedSecretManagerPath: taintedSecretManagerPath,
     handlerSecretManagerExternalServiceBridge: secretManagerExternalServiceBridge,
@@ -28623,6 +28632,30 @@ function hasPythonHandlerToolOutputAgentDelegationBridge(source: string): boolea
     [
       /\b(?:a2a_client|agent_client|remote_agent_client|agent_registry|agent_router|agent_gateway|agent_federation|handoff_client|delegate_client)\s*(?:\.\s*[A-Za-z_]\w*){0,4}\s*\.\s*(?:delegate|delegate_task|handoff|handoff_to_agent|invoke_agent|run_agent|call_agent|send_task|create_task|dispatch|route|execute)\s*\(([\s\S]{0,2200})\)/giu,
       /\b(?:delegate_to_agent|handoff_to_agent|invoke_agent|call_agent|send_agent_task|dispatch_agent_task)\s*\(([\s\S]{0,2200})\)/giu
+    ],
+    source,
+    identifiers
+  );
+}
+
+function hasJavaScriptHandlerVisualContextAgentDelegationBridge(source: string): boolean {
+  const identifiers = extractJavaScriptVisualContextIdentifiers(source);
+  return identifiers.length > 0 && callExpressionReferencesAnyIdentifier(
+    [
+      /\b(?:a2aClient|agentClient|remoteAgentClient|agentRegistry|agentRouter|agentGateway|agentFederation|handoffClient|delegateClient)\s*(?:\.\s*[A-Za-z_$][\w$]*){0,4}\s*\.\s*(?:delegate|delegateTask|handoff|handoffToAgent|invokeAgent|runAgent|callAgent|sendTask|createTask|dispatch|route|execute)\s*\(([\s\S]{0,2400})\)/giu,
+      /\b(?:delegateToAgent|handoffToAgent|invokeAgent|callAgent|sendAgentTask|dispatchAgentTask)\s*\(([\s\S]{0,2400})\)/giu
+    ],
+    source,
+    identifiers
+  );
+}
+
+function hasPythonHandlerVisualContextAgentDelegationBridge(source: string): boolean {
+  const identifiers = extractPythonVisualContextIdentifiers(source);
+  return identifiers.length > 0 && callExpressionReferencesAnyIdentifier(
+    [
+      /\b(?:a2a_client|agent_client|remote_agent_client|agent_registry|agent_router|agent_gateway|agent_federation|handoff_client|delegate_client)\s*(?:\.\s*[A-Za-z_]\w*){0,4}\s*\.\s*(?:delegate|delegate_task|handoff|handoff_to_agent|invoke_agent|run_agent|call_agent|send_task|create_task|dispatch|route|execute)\s*\(([\s\S]{0,2400})\)/giu,
+      /\b(?:delegate_to_agent|handoff_to_agent|invoke_agent|call_agent|send_agent_task|dispatch_agent_task)\s*\(([\s\S]{0,2400})\)/giu
     ],
     source,
     identifiers
@@ -31056,7 +31089,7 @@ function identifierAssignedFromTaintedAgentDelegationTarget(identifier: string, 
 }
 
 function expressionReferencesAgentDelegationContextForwarding(expression: string, source: string): boolean {
-  const templateInterpolation = /\$\{[^}]*\b(?:customerTicketText|customer_ticket_text|ticketText|ticket_text|customerContext|customer_context|customerMessage|customer_message|toolOutput|tool_output|toolResult|tool_result|browserOutput|browser_output|retrievedContext|retrieved_context|memorySummary|memory_summary|promptText|prompt_text|userMessage|user_message|conversationText|conversation_text|inputText|input_text|secretRecord|secret_record|secretValue|secret_value|vaultSecret|vault_secret|content|message|prompt|payload|context|output|customer|ticket|secret|vault)\b/u.test(
+  const templateInterpolation = /\$\{[^}]*\b(?:customerTicketText|customer_ticket_text|ticketText|ticket_text|customerContext|customer_context|customerMessage|customer_message|toolOutput|tool_output|toolResult|tool_result|browserOutput|browser_output|visualContext|visual_context|screenshot|screenshotBytes|screenshot_bytes|screenCapture|screen_capture|ocrText|ocr_text|retrievedContext|retrieved_context|memorySummary|memory_summary|promptText|prompt_text|userMessage|user_message|conversationText|conversation_text|inputText|input_text|secretRecord|secret_record|secretValue|secret_value|vaultSecret|vault_secret|content|message|prompt|payload|context|output|customer|ticket|secret|vault)\b/u.test(
     expression
   );
   if (templateInterpolation) return true;
@@ -31068,15 +31101,15 @@ function expressionReferencesAgentDelegationContextForwarding(expression: string
     return true;
   }
   const withoutQuotedStrings = expression.replace(/(["'`])(?:\\.|(?!\1)[\s\S])*\1/gu, " ");
-  const stronglyTaintedName = /\b(?:customerTicketText|customer_ticket_text|ticketText|ticket_text|customerContext|customer_context|customerMessage|customer_message|toolOutput|tool_output|toolResult|tool_result|browserOutput|browser_output|retrievedContext|retrieved_context|memorySummary|memory_summary|promptText|prompt_text|userMessage|user_message|conversationText|conversation_text|inputText|input_text|secretRecord|secret_record|secretValue|secret_value|vaultSecret|vault_secret)\b/u;
-  const taintedName = /\b(?:customerTicketText|customer_ticket_text|ticketText|ticket_text|customerContext|customer_context|customerMessage|customer_message|toolOutput|tool_output|toolResult|tool_result|browserOutput|browser_output|retrievedContext|retrieved_context|memorySummary|memory_summary|promptText|prompt_text|userMessage|user_message|conversationText|conversation_text|inputText|input_text|secretRecord|secret_record|secretValue|secret_value|vaultSecret|vault_secret|content|message|prompt|payload|context|output|customer|ticket|input|text|secret|vault)\b/u;
+  const stronglyTaintedName = /\b(?:customerTicketText|customer_ticket_text|ticketText|ticket_text|customerContext|customer_context|customerMessage|customer_message|toolOutput|tool_output|toolResult|tool_result|browserOutput|browser_output|visualContext|visual_context|screenshot|screenshotBytes|screenshot_bytes|screenCapture|screen_capture|ocrText|ocr_text|retrievedContext|retrieved_context|memorySummary|memory_summary|promptText|prompt_text|userMessage|user_message|conversationText|conversation_text|inputText|input_text|secretRecord|secret_record|secretValue|secret_value|vaultSecret|vault_secret)\b/u;
+  const taintedName = /\b(?:customerTicketText|customer_ticket_text|ticketText|ticket_text|customerContext|customer_context|customerMessage|customer_message|toolOutput|tool_output|toolResult|tool_result|browserOutput|browser_output|visualContext|visual_context|screenshot|screenshotBytes|screenshot_bytes|screenCapture|screen_capture|ocrText|ocr_text|retrievedContext|retrieved_context|memorySummary|memory_summary|promptText|prompt_text|userMessage|user_message|conversationText|conversation_text|inputText|input_text|secretRecord|secret_record|secretValue|secret_value|vaultSecret|vault_secret|content|message|prompt|payload|context|output|customer|ticket|input|text|secret|vault)\b/u;
   if (stronglyTaintedName.test(withoutQuotedStrings)) return true;
 
-  const contextAssignment = /\b(?:context|payload|message|messages|prompt|content|input|inputs|task|body|customer|customer_id|ticket|ticket_id|tool_output|toolOutput|browser_output|browserOutput|memory|memory_summary|memorySummary|secret|secret_value|secretValue|vault|vault_secret|vaultSecret)\s*(?::|=)\s*([^,\n}\)]+)/giu;
+  const contextAssignment = /\b(?:context|payload|message|messages|prompt|content|input|inputs|task|body|customer|customer_id|ticket|ticket_id|tool_output|toolOutput|browser_output|browserOutput|visual_context|visualContext|screenshot|screenshot_bytes|screenshotBytes|screen_capture|screenCapture|ocr_text|ocrText|memory|memory_summary|memorySummary|secret|secret_value|secretValue|vault|vault_secret|vaultSecret)\s*(?::|=)\s*([^,\n}\)]+)/giu;
   if (expressionMatchesPattern(contextAssignment, withoutQuotedStrings, taintedName)) return true;
 
   const valueOnlyExpression = withoutQuotedStrings.replace(
-    /\b(?:context|payload|message|messages|prompt|content|input|inputs|task|body|customer|customer_id|ticket|ticket_id|tool_output|toolOutput|browser_output|browserOutput|memory|memory_summary|memorySummary|secret|secret_value|secretValue|vault|vault_secret|vaultSecret)\s*(?::|=)/giu,
+    /\b(?:context|payload|message|messages|prompt|content|input|inputs|task|body|customer|customer_id|ticket|ticket_id|tool_output|toolOutput|browser_output|browserOutput|visual_context|visualContext|screenshot|screenshot_bytes|screenshotBytes|screen_capture|screenCapture|ocr_text|ocrText|memory|memory_summary|memorySummary|secret|secret_value|secretValue|vault|vault_secret|vaultSecret)\s*(?::|=)/giu,
     " "
   );
   const identifiers = uniqueStrings(
@@ -33460,6 +33493,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   visual_context_telemetry_bridge: boolean;
   visual_context_prompt_cache_bridge: boolean;
   visual_context_task_queue_bridge: boolean;
+  visual_context_agent_delegation_bridge: boolean;
   secret_manager_access: boolean;
   tainted_secret_manager_path: boolean;
   secret_manager_external_service_bridge: boolean;
@@ -33660,6 +33694,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   const handlerVisualContextTelemetryBridge = handler?.handlerVisualContextTelemetryBridge === true;
   const handlerVisualContextPromptCacheBridge = handler?.handlerVisualContextPromptCacheBridge === true;
   const handlerVisualContextTaskQueueBridge = handler?.handlerVisualContextTaskQueueBridge === true;
+  const handlerVisualContextAgentDelegationBridge = handler?.handlerVisualContextAgentDelegationBridge === true;
   const handlerSecretManagerAccess = handler?.handlerSecretManagerAccess === true;
   const handlerTaintedSecretManagerPath = handler?.handlerTaintedSecretManagerPath === true;
   const handlerSecretManagerExternalServiceBridge = handler?.handlerSecretManagerExternalServiceBridge === true;
@@ -33807,6 +33842,12 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
     actions.add("send");
     actions.add("write");
     actions.add("remember");
+  }
+  if (handlerVisualContextAgentDelegationBridge) {
+    classes.add("visual_context_agent_delegation_bridge");
+    actions.add("execute");
+    actions.add("read");
+    actions.add("send");
   }
   if (acceptsUrl || /\b(fetch|request|http|api|network)\b/i.test(text) || handlerExternalNetworkCall) {
     classes.add("network_access");
@@ -34348,6 +34389,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerVisualContextTelemetryBridge ||
       handlerVisualContextPromptCacheBridge ||
       handlerVisualContextTaskQueueBridge ||
+      handlerVisualContextAgentDelegationBridge ||
       handlerSecretManagerAccess ||
       handlerTaintedSecretManagerPath ||
       handlerSecretManagerExternalServiceBridge ||
@@ -34464,6 +34506,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerVisualContextTelemetryBridge ||
       handlerVisualContextPromptCacheBridge ||
       handlerVisualContextTaskQueueBridge ||
+      handlerVisualContextAgentDelegationBridge ||
       handlerSecretManagerBrowserAutomationBridge ||
       handlerRagRetrievalBrowserAutomationBridge ||
       handlerAgentDelegation ||
@@ -34485,6 +34528,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerVisualContextTelemetryBridge ||
       handlerVisualContextPromptCacheBridge ||
       handlerVisualContextTaskQueueBridge ||
+      handlerVisualContextAgentDelegationBridge ||
       handlerSecretManagerPromptCacheBridge ||
       handlerToolOutputPromptCacheBridge ||
       handlerTrainingDatasetExport ||
@@ -34560,6 +34604,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       (handlerVisualContextTelemetryBridge && handlerSecretEnvAccess) ||
       (handlerVisualContextPromptCacheBridge && handlerSecretEnvAccess) ||
       (handlerVisualContextTaskQueueBridge && handlerSecretEnvAccess) ||
+      (handlerVisualContextAgentDelegationBridge && handlerSecretEnvAccess) ||
       (handlerRagRetrievalBrowserAutomationBridge && handlerSecretEnvAccess) ||
       (handlerRagRetrievalMemoryBridge && handlerSecretEnvAccess) ||
       (handlerSafetyPolicyWrite && handlerSecretEnvAccess) ||
@@ -34610,6 +34655,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
     visual_context_telemetry_bridge: handlerVisualContextTelemetryBridge,
     visual_context_prompt_cache_bridge: handlerVisualContextPromptCacheBridge,
     visual_context_task_queue_bridge: handlerVisualContextTaskQueueBridge,
+    visual_context_agent_delegation_bridge: handlerVisualContextAgentDelegationBridge,
     secret_manager_access: handlerSecretManagerAccess,
     tainted_secret_manager_path: handlerTaintedSecretManagerPath,
     secret_manager_external_service_bridge: handlerSecretManagerExternalServiceBridge,
@@ -34817,6 +34863,7 @@ function authoritySignature(tool: SurfaceObject): string {
     metadata.visual_context_telemetry_bridge === true ? "visual_context_telemetry_bridge" : "",
     metadata.visual_context_prompt_cache_bridge === true ? "visual_context_prompt_cache_bridge" : "",
     metadata.visual_context_task_queue_bridge === true ? "visual_context_task_queue_bridge" : "",
+    metadata.visual_context_agent_delegation_bridge === true ? "visual_context_agent_delegation_bridge" : "",
     metadata.privileged_prompt_composition === true ? "privileged_prompt_composition" : "",
     metadata.tainted_shell_argument === true ? "tainted_shell_argument" : "",
     metadata.tainted_filesystem_path === true ? "tainted_filesystem_path" : "",
@@ -34947,6 +34994,7 @@ function isPrivilegedToolSurface(tool: SurfaceObject): boolean {
     tool.metadata.visual_context_telemetry_bridge === true ||
     tool.metadata.visual_context_prompt_cache_bridge === true ||
     tool.metadata.visual_context_task_queue_bridge === true ||
+    tool.metadata.visual_context_agent_delegation_bridge === true ||
     tool.metadata.privileged_prompt_composition === true ||
     tool.metadata.tainted_shell_argument === true ||
     tool.metadata.tainted_filesystem_path === true ||
