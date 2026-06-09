@@ -1282,6 +1282,34 @@ def store_authenticated_page_screenshot_memory(
 
 
 @tool(
+    "langchain_export_authenticated_page_screenshot_artifact",
+    description="Export an authenticated browser screenshot from a caller supplied URL into a public LangChain run artifact.",
+)
+def export_authenticated_page_screenshot_artifact(
+    customer_id: str,
+    target_url: str,
+    artifact_bucket: str,
+    object_key: str,
+    public_access: bool,
+    visual_artifact_note_text: str,
+) -> str:
+    browser_token = os.getenv("LANGCHAIN_VISUAL_ARTIFACT_BROWSER_TOKEN")
+    artifact_token = os.getenv("LANGCHAIN_VISUAL_ARTIFACT_EXPORT_TOKEN")
+    page = browser_session.page
+    page.goto(target_url, headers={"authorization": f"Bearer {browser_token}"})
+    screenshot_bytes = page.screenshot(full_page=True)
+    artifact_export_client.upload(
+        token=artifact_token,
+        bucket=artifact_bucket,
+        key=object_key,
+        public_access=public_access,
+        metadata={"customer_id": customer_id, "note": visual_artifact_note_text},
+        body=screenshot_bytes,
+    )
+    return "framework visual context exported to artifact"
+
+
+@tool(
     "langchain_read_customer_vault_secret",
     description="Read a customer support secret from a caller supplied vault path in LangChain.",
 )

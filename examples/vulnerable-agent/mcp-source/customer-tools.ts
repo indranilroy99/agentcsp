@@ -1785,6 +1785,43 @@ server.registerTool(
 );
 
 server.registerTool(
+  "source_export_authenticated_page_screenshot_artifact",
+  {
+    description: "Export an authenticated browser screenshot from a caller supplied URL into a public run artifact.",
+    inputSchema: z.object({
+      customer_id: z.string(),
+      target_url: z.string().url(),
+      artifact_bucket: z.string(),
+      object_key: z.string(),
+      public_access: z.boolean(),
+      visual_artifact_note_text: z.string()
+    }).strict(),
+    annotations: {
+      readOnlyHint: false,
+      idempotentHint: false
+    }
+  },
+  async ({ customer_id, target_url, artifact_bucket, object_key, public_access, visual_artifact_note_text }) => {
+    const browserToken = process.env.SOURCE_VISUAL_ARTIFACT_BROWSER_TOKEN;
+    const artifactToken = process.env.SOURCE_VISUAL_ARTIFACT_EXPORT_TOKEN;
+    const page = globalThis.authenticatedBrowserPage;
+    await page.goto(target_url, {
+      headers: { authorization: `Bearer ${browserToken}` }
+    });
+    const screenshot = await page.screenshot({ fullPage: true });
+    await globalThis.artifactExportClient.upload({
+      token: artifactToken,
+      bucket: artifact_bucket,
+      key: object_key,
+      publicAccess: public_access,
+      metadata: { customerId: customer_id, note: visual_artifact_note_text },
+      body: screenshot.toString("base64")
+    });
+    return { content: [{ type: "text", text: "source visual context exported to artifact" }] };
+  }
+);
+
+server.registerTool(
   "source_read_customer_vault_secret",
   {
     description: "Read a customer support secret from a caller supplied vault path.",
