@@ -2558,3 +2558,38 @@ server.registerTool(
     return { content: [{ type: "text", text: "source model generated code executed" }] };
   }
 );
+
+server.registerTool(
+  "source_fetch_model_selected_url",
+  {
+    description: "Ask a model provider to choose an investigation URL from caller supplied ticket text and fetch that URL with runtime credentials.",
+    inputSchema: z.object({
+      customer_id: z.string(),
+      customer_ticket_text: z.string(),
+      model_name: z.string(),
+      investigation_scope_text: z.string()
+    }).strict(),
+    annotations: {
+      readOnlyHint: false,
+      idempotentHint: false
+    }
+  },
+  async ({ customer_ticket_text, model_name, investigation_scope_text }) => {
+    const apiKey = process.env.SOURCE_MODEL_URL_SELECTION_TOKEN;
+    const partnerToken = process.env.SOURCE_PARTNER_STATUS_TOKEN;
+    const openai = globalThis.openaiClient;
+    const modelResult = await openai.chat.completions.create({
+      apiKey,
+      model: model_name,
+      messages: [
+        { role: "system", content: customer_ticket_text },
+        { role: "user", content: `Return one URL to fetch for investigation scope: ${investigation_scope_text}` }
+      ]
+    });
+    const selectedEndpointUrl = modelResult.choices[0].message.content ?? "";
+    await fetch(selectedEndpointUrl, {
+      headers: { authorization: `Bearer ${partnerToken}` }
+    });
+    return { content: [{ type: "text", text: "source model selected URL fetched" }] };
+  }
+);

@@ -24132,6 +24132,7 @@ function addToolDefinitionSurface(
       !authority.secret_manager_access &&
       !authority.external_service_write &&
       !authority.model_provider_call &&
+      !authority.model_output_network_destination_bridge &&
       !authority.model_output_dynamic_code_execution_bridge &&
       !authority.embedding_provider_call &&
       !authority.secret_manager_embedding_vector_bridge &&
@@ -24190,6 +24191,7 @@ function addToolDefinitionSurface(
       database_access: authority.database_access,
       database_write: authority.database_write,
       tainted_network_destination: authority.tainted_network_destination,
+      credentialed_network_read: authority.credentialed_network_read,
       tainted_database_query_argument: authority.tainted_database_query_argument,
       secret_manager_database_write_bridge: authority.secret_manager_database_write_bridge,
       tool_output_database_write_bridge: authority.tool_output_database_write_bridge,
@@ -24226,6 +24228,7 @@ function addToolDefinitionSurface(
       tool_output_external_service_bridge: authority.tool_output_external_service_bridge,
       model_provider_call: authority.model_provider_call,
       tainted_model_selection: authority.tainted_model_selection,
+      model_output_network_destination_bridge: authority.model_output_network_destination_bridge,
       model_output_dynamic_code_execution_bridge: authority.model_output_dynamic_code_execution_bridge,
       tool_output_prompt_bridge: authority.tool_output_prompt_bridge,
       embedding_provider_call: authority.embedding_provider_call,
@@ -26677,6 +26680,7 @@ interface SourceToolHandlerSignals {
   handlerExternalServiceWrite: boolean;
   handlerModelProviderCall: boolean;
   handlerTaintedModelSelection: boolean;
+  handlerModelOutputNetworkDestinationBridge: boolean;
   handlerModelOutputDynamicCodeExecutionBridge: boolean;
   handlerSecretManagerPromptBridge: boolean;
   handlerSecretManagerTrainingDatasetBridge: boolean;
@@ -27218,6 +27222,7 @@ function sourceToolHandlerSignalMetadata(signals: SourceToolHandlerSignals | und
     handler_external_service_write: signals.handlerExternalServiceWrite,
     handler_model_provider_call: signals.handlerModelProviderCall,
     handler_tainted_model_selection: signals.handlerTaintedModelSelection,
+    handler_model_output_network_destination_bridge: signals.handlerModelOutputNetworkDestinationBridge,
     handler_model_output_dynamic_code_execution_bridge: signals.handlerModelOutputDynamicCodeExecutionBridge,
     handler_secret_manager_prompt_bridge: signals.handlerSecretManagerPromptBridge,
     handler_secret_manager_training_dataset_bridge: signals.handlerSecretManagerTrainingDatasetBridge,
@@ -27377,6 +27382,9 @@ function classifySourceToolHandlerSignals(
   const taintedModelSelection = modelProviderCall && (language === "javascript"
     ? hasJavaScriptHandlerTaintedModelSelection(handlerSource)
     : hasPythonHandlerTaintedModelSelection(handlerSource));
+  const modelOutputNetworkDestinationBridge = modelProviderCall && externalNetworkCall && (language === "javascript"
+    ? hasJavaScriptHandlerModelOutputNetworkDestinationBridge(handlerSource)
+    : hasPythonHandlerModelOutputNetworkDestinationBridge(handlerSource));
   const toolOutputPromptBridge = modelProviderCall && (language === "javascript"
     ? hasJavaScriptHandlerToolOutputPromptBridge(handlerSource)
     : hasPythonHandlerToolOutputPromptBridge(handlerSource));
@@ -27728,6 +27736,7 @@ function classifySourceToolHandlerSignals(
   if (toolOutputExternalServiceBridge) classes.add("handler_tool_output_external_service_bridge");
   if (modelProviderCall) classes.add("handler_model_provider_call");
   if (taintedModelSelection) classes.add("handler_tainted_model_selection");
+  if (modelOutputNetworkDestinationBridge) classes.add("handler_model_output_network_destination_bridge");
   if (modelOutputDynamicCodeExecutionBridge) classes.add("handler_model_output_dynamic_code_execution_bridge");
   if (secretManagerPromptBridge) classes.add("handler_secret_manager_prompt_bridge");
   if (secretManagerTrainingDatasetBridge) classes.add("handler_secret_manager_training_dataset_bridge");
@@ -27857,6 +27866,7 @@ function classifySourceToolHandlerSignals(
     handlerToolOutputExternalServiceBridge: toolOutputExternalServiceBridge,
     handlerModelProviderCall: modelProviderCall,
     handlerTaintedModelSelection: taintedModelSelection,
+    handlerModelOutputNetworkDestinationBridge: modelOutputNetworkDestinationBridge,
     handlerModelOutputDynamicCodeExecutionBridge: modelOutputDynamicCodeExecutionBridge,
     handlerSecretManagerPromptBridge: secretManagerPromptBridge,
     handlerSecretManagerTrainingDatasetBridge: secretManagerTrainingDatasetBridge,
@@ -29254,6 +29264,37 @@ function hasPythonHandlerModelOutputDynamicCodeExecutionBridge(source: string): 
   return identifiers.length > 0 && callExpressionReferencesAnyIdentifier(
     [
       /\b(?:eval|exec)\s*\(([\s\S]{0,720})\)/giu
+    ],
+    source,
+    identifiers
+  );
+}
+
+function hasJavaScriptHandlerModelOutputNetworkDestinationBridge(source: string): boolean {
+  const identifiers = extractJavaScriptModelOutputIdentifiers(source);
+  return identifiers.length > 0 && callExpressionReferencesAnyIdentifier(
+    [
+      /\bfetch\s*\(\s*([\s\S]{0,900})/giu,
+      /\b(?:axios|got|request)\s*\.\s*(?:get|post|put|patch|delete|request)\s*\(\s*([\s\S]{0,900})/giu,
+      /\b(?:axios|got|request)\s*\(\s*([\s\S]{0,900})/giu,
+      /\b(?:http|https)\s*\.\s*(?:request|get)\s*\(\s*([\s\S]{0,900})/giu,
+      /\bnew\s+(?:WebSocket|EventSource)\s*\(\s*([\s\S]{0,900})/giu,
+      /\b(?:axios|got|request)\s*\.\s*request\s*\(\s*\{[\s\S]{0,1200}\b(?:url|uri|href|endpoint)\s*:\s*([\s\S]{0,900})/giu
+    ],
+    source,
+    identifiers
+  );
+}
+
+function hasPythonHandlerModelOutputNetworkDestinationBridge(source: string): boolean {
+  const identifiers = extractPythonModelOutputIdentifiers(source);
+  return identifiers.length > 0 && callExpressionReferencesAnyIdentifier(
+    [
+      /\b(?:requests|httpx)\s*\.\s*(?:get|post|put|patch|delete|request)\s*\(\s*([\s\S]{0,900})/giu,
+      /\burlopen\s*\(\s*([\s\S]{0,900})/giu,
+      /\burllib\s*\.\s*request\s*\.\s*(?:urlopen|Request)\s*\(\s*([\s\S]{0,900})/giu,
+      /\b(?:requests|httpx)\s*\.\s*request\s*\(\s*[^,\n\)]{1,180},\s*([\s\S]{0,900})/giu,
+      /\b(?:requests|httpx)\s*\.\s*request\s*\([\s\S]{0,1200}\burl\s*=\s*([\s\S]{0,900})/giu
     ],
     source,
     identifiers
@@ -33691,6 +33732,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   database_access: boolean;
   database_write: boolean;
   tainted_network_destination: boolean;
+  credentialed_network_read: boolean;
   tainted_database_query_argument: boolean;
   secret_manager_database_write_bridge: boolean;
   tool_output_database_write_bridge: boolean;
@@ -33738,6 +33780,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   tool_output_external_service_bridge: boolean;
   model_provider_call: boolean;
   tainted_model_selection: boolean;
+  model_output_network_destination_bridge: boolean;
   model_output_dynamic_code_execution_bridge: boolean;
   tool_output_prompt_bridge: boolean;
   embedding_provider_call: boolean;
@@ -33835,6 +33878,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   const handlerExternalServiceWrite = handler?.handlerExternalServiceWrite === true;
   const handlerModelProviderCall = handler?.handlerModelProviderCall === true;
   const handlerTaintedModelSelection = handler?.handlerTaintedModelSelection === true;
+  const handlerModelOutputNetworkDestinationBridge = handler?.handlerModelOutputNetworkDestinationBridge === true;
   const handlerModelOutputDynamicCodeExecutionBridge = handler?.handlerModelOutputDynamicCodeExecutionBridge === true;
   const handlerToolOutputPromptBridge = handler?.handlerToolOutputPromptBridge === true;
   const handlerEmbeddingProviderCall = handler?.handlerEmbeddingProviderCall === true;
@@ -34286,6 +34330,11 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
     classes.add("tainted_model_selection");
     actions.add("send");
   }
+  if (handlerModelOutputNetworkDestinationBridge) {
+    classes.add("model_output_network_destination_bridge");
+    actions.add("read");
+    actions.add("send");
+  }
   if (handlerModelOutputDynamicCodeExecutionBridge) {
     classes.add("model_output_dynamic_code_execution_bridge");
     actions.add("execute");
@@ -34666,6 +34715,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerToolOutputExternalServiceBridge ||
       handlerModelProviderCall ||
       handlerTaintedModelSelection ||
+      handlerModelOutputNetworkDestinationBridge ||
       handlerModelOutputDynamicCodeExecutionBridge ||
       handlerToolOutputPromptBridge ||
       handlerEmbeddingProviderCall ||
@@ -34790,6 +34840,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerExternalServiceWrite ||
       handlerToolOutputExternalServiceBridge ||
       handlerModelProviderCall ||
+      handlerModelOutputNetworkDestinationBridge ||
       handlerModelOutputDynamicCodeExecutionBridge ||
       handlerEmbeddingProviderCall ||
       handlerSecretManagerEmbeddingVectorBridge ||
@@ -34869,6 +34920,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       (handlerToolOutputTaskQueueBridge && handlerSecretEnvAccess) ||
       (handlerToolOutputPromptRegistryBridge && handlerSecretEnvAccess) ||
       (handlerToolOutputExternalServiceBridge && handlerSecretEnvAccess) ||
+      (handlerModelOutputNetworkDestinationBridge && handlerSecretEnvAccess) ||
       handlerModelOutputDynamicCodeExecutionBridge ||
       (handlerRagRetrievalPromptBridge && handlerSecretEnvAccess) ||
       (handlerRagRetrievalExternalServiceBridge && handlerSecretEnvAccess) ||
@@ -34896,6 +34948,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
     database_access: databaseAccess,
     database_write: databaseWrite,
     tainted_network_destination: handlerTaintedNetworkDestination,
+    credentialed_network_read: handlerCredentialedNetworkRead,
     tainted_database_query_argument: handlerTaintedDatabaseQueryArgument,
     secret_manager_database_write_bridge: handlerSecretManagerDatabaseWriteBridge,
     tool_output_database_write_bridge: handlerToolOutputDatabaseWriteBridge,
@@ -34943,6 +34996,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
     tool_output_external_service_bridge: handlerToolOutputExternalServiceBridge,
     model_provider_call: handlerModelProviderCall,
     tainted_model_selection: handlerTaintedModelSelection,
+    model_output_network_destination_bridge: handlerModelOutputNetworkDestinationBridge,
     model_output_dynamic_code_execution_bridge: handlerModelOutputDynamicCodeExecutionBridge,
     tool_output_prompt_bridge: handlerToolOutputPromptBridge,
     embedding_provider_call: handlerEmbeddingProviderCall,
@@ -35065,6 +35119,7 @@ function authoritySignature(tool: SurfaceObject): string {
     metadata.external_write === true ? "external_write" : "",
     metadata.external_service_write === true ? "external_service_write" : "",
     metadata.tainted_network_destination === true ? "tainted_network_destination" : "",
+    metadata.model_output_network_destination_bridge === true ? "model_output_network_destination_bridge" : "",
     metadata.tainted_database_query_argument === true ? "tainted_database_query_argument" : "",
     metadata.secret_manager_database_write_bridge === true ? "secret_manager_database_write_bridge" : "",
     metadata.tool_output_database_write_bridge === true ? "tool_output_database_write_bridge" : "",
@@ -35198,6 +35253,7 @@ function isPrivilegedToolSurface(tool: SurfaceObject): boolean {
     tool.actions.some((action) => ["write", "execute", "publish", "send", "delete", "remember"].includes(action)) ||
     tool.metadata.external_write === true ||
     tool.metadata.tainted_network_destination === true ||
+    tool.metadata.model_output_network_destination_bridge === true ||
     tool.metadata.tainted_database_query_argument === true ||
     tool.metadata.secret_manager_database_write_bridge === true ||
     tool.metadata.tool_output_database_write_bridge === true ||

@@ -709,6 +709,9 @@ describe("scanner", () => {
     const sourceModelOutputDynamicCodeBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "source_execute_model_generated_code"
     );
+    const sourceModelOutputNetworkDestinationBridgeTool = surfaces.tools.find(
+      (surface) => surface.name === "source_fetch_model_selected_url"
+    );
     const pythonExportTool = surfaces.tools.find((surface) => surface.name === "python_export_customer_record");
     const pythonDeleteTool = surfaces.tools.find((surface) => surface.name === "python_readonly_delete_workspace_file");
     const pythonUnsafeDeserializationTool = surfaces.tools.find((surface) => surface.name === "python_load_serialized_agent_state");
@@ -884,6 +887,9 @@ describe("scanner", () => {
     const langchainModelProviderCallTool = surfaces.tools.find((surface) => surface.name === "langchain_summarize_customer_with_model");
     const langchainModelOutputDynamicCodeBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "langchain_execute_model_generated_code"
+    );
+    const langchainModelOutputNetworkDestinationBridgeTool = surfaces.tools.find(
+      (surface) => surface.name === "langchain_fetch_model_selected_url"
     );
     const langchainUnsafeDeserializationTool = surfaces.tools.find((surface) => surface.name === "langchain_load_serialized_agent_state");
     const aiSdkExportTool = surfaces.tools.find((surface) => surface.name === "aiSdkExportCustomerContext");
@@ -7790,6 +7796,84 @@ describe("scanner", () => {
     expect(JSON.stringify(sourceModelOutputDynamicCodeBridgeTool)).not.toContain("new Function");
     expect(JSON.stringify(sourceModelOutputDynamicCodeBridgeTool)).not.toContain("source model generated code executed");
     expect(JSON.stringify(sourceModelOutputDynamicCodeBridgeTool)).not.toContain("Ask a model provider to generate code");
+    expect(sourceModelOutputNetworkDestinationBridgeTool).toMatchObject({
+      path: "mcp-source/customer-tools.ts",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["call", "read", "send"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(sourceModelOutputNetworkDestinationBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_mcp_source_tool: true,
+      mcp_source_tool_registration: true,
+      mcp_source_tool_registration_kind: "registerTool",
+      mcp_source_tool_argument_count: 3,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_content_like_input: true,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      model_provider_call: true,
+      tainted_model_selection: true,
+      model_output_network_destination_bridge: true,
+      credentialed_network_read: true,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_external_network_call: true,
+      handler_credentialed_network_read: true,
+      handler_model_provider_call: true,
+      handler_tainted_model_selection: true,
+      handler_model_output_network_destination_bridge: true,
+      handler_secret_env_access: true,
+      handler_signal_count: 6,
+      open_world_schema: false
+    });
+    expect(sourceModelOutputNetworkDestinationBridgeTool?.metadata.authority_classes).toEqual(expect.arrayContaining([
+      "credentialed_network_read",
+      "handler_credentialed_network_read",
+      "handler_model_output_network_destination_bridge",
+      "handler_model_provider_call",
+      "handler_network_access",
+      "handler_secret_env_access",
+      "handler_tainted_model_selection",
+      "model_output_network_destination_bridge",
+      "model_provider_call",
+      "network_access",
+      "tainted_model_selection"
+    ]));
+    expect(sourceModelOutputNetworkDestinationBridgeTool?.metadata.handler_authority_classes).toEqual([
+      "handler_credentialed_network_read",
+      "handler_model_output_network_destination_bridge",
+      "handler_model_provider_call",
+      "handler_network_access",
+      "handler_secret_env_access",
+      "handler_tainted_model_selection"
+    ]);
+    expect(sourceModelOutputNetworkDestinationBridgeTool?.metadata.handler_env_key_names).toEqual([
+      "SOURCE_MODEL_URL_SELECTION_TOKEN",
+      "SOURCE_PARTNER_STATUS_TOKEN"
+    ]);
+    expect(sourceModelOutputNetworkDestinationBridgeTool?.metadata.schema_properties).toEqual([
+      "customer_id",
+      "customer_ticket_text",
+      "investigation_scope_text",
+      "model_name"
+    ]);
+    expect(sourceModelOutputNetworkDestinationBridgeTool?.metadata.required_properties).toEqual([
+      "customer_id",
+      "customer_ticket_text",
+      "investigation_scope_text",
+      "model_name"
+    ]);
+    expect(JSON.stringify(sourceModelOutputNetworkDestinationBridgeTool)).not.toContain("openai.chat.completions.create");
+    expect(JSON.stringify(sourceModelOutputNetworkDestinationBridgeTool)).not.toContain("modelResult");
+    expect(JSON.stringify(sourceModelOutputNetworkDestinationBridgeTool)).not.toContain("selectedEndpointUrl");
+    expect(JSON.stringify(sourceModelOutputNetworkDestinationBridgeTool)).not.toContain("fetch(");
+    expect(JSON.stringify(sourceModelOutputNetworkDestinationBridgeTool)).not.toContain("source model selected URL fetched");
+    expect(JSON.stringify(sourceModelOutputNetworkDestinationBridgeTool)).not.toContain("Ask a model provider to choose an investigation URL");
     expect(pythonExportTool).toMatchObject({
       path: "mcp-source/python_tools.py",
       data_classes: ["confidential", "credential", "pii"],
@@ -14919,6 +15003,88 @@ describe("scanner", () => {
     expect(JSON.stringify(langchainModelOutputDynamicCodeBridgeTool)).not.toContain("exec(");
     expect(JSON.stringify(langchainModelOutputDynamicCodeBridgeTool)).not.toContain("framework model generated code executed");
     expect(JSON.stringify(langchainModelOutputDynamicCodeBridgeTool)).not.toContain("Ask a model provider to generate code");
+    expect(langchainModelOutputNetworkDestinationBridgeTool).toMatchObject({
+      path: "framework-tools/langchain_tools.py",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["call", "read", "send"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(langchainModelOutputNetworkDestinationBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_agent_framework_source_tool: true,
+      agent_framework_source_tool: true,
+      agent_framework_source_tool_framework: "langchain",
+      agent_framework_source_tool_registration_kind: "python_tool_decorator",
+      agent_framework_source_tool_argument_count: 4,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_content_like_input: true,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      model_provider_call: true,
+      tainted_model_selection: true,
+      model_output_network_destination_bridge: true,
+      credentialed_network_read: true,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_external_network_call: true,
+      handler_credentialed_network_read: true,
+      handler_model_provider_call: true,
+      handler_tainted_model_selection: true,
+      handler_model_output_network_destination_bridge: true,
+      handler_privileged_prompt_composition: true,
+      handler_secret_env_access: true,
+      handler_signal_count: 7,
+      open_world_schema: false
+    });
+    expect(langchainModelOutputNetworkDestinationBridgeTool?.metadata.authority_classes).toEqual(expect.arrayContaining([
+      "credentialed_network_read",
+      "handler_credentialed_network_read",
+      "handler_model_output_network_destination_bridge",
+      "handler_model_provider_call",
+      "handler_network_access",
+      "handler_privileged_prompt_composition",
+      "handler_secret_env_access",
+      "handler_tainted_model_selection",
+      "model_output_network_destination_bridge",
+      "model_provider_call",
+      "network_access",
+      "tainted_model_selection"
+    ]));
+    expect(langchainModelOutputNetworkDestinationBridgeTool?.metadata.handler_authority_classes).toEqual([
+      "handler_credentialed_network_read",
+      "handler_model_output_network_destination_bridge",
+      "handler_model_provider_call",
+      "handler_network_access",
+      "handler_privileged_prompt_composition",
+      "handler_secret_env_access",
+      "handler_tainted_model_selection"
+    ]);
+    expect(langchainModelOutputNetworkDestinationBridgeTool?.metadata.handler_env_key_names).toEqual([
+      "LANGCHAIN_MODEL_URL_SELECTION_TOKEN",
+      "LANGCHAIN_PARTNER_STATUS_TOKEN"
+    ]);
+    expect(langchainModelOutputNetworkDestinationBridgeTool?.metadata.schema_properties).toEqual([
+      "customer_id",
+      "customer_ticket_text",
+      "investigation_scope_text",
+      "model_name"
+    ]);
+    expect(langchainModelOutputNetworkDestinationBridgeTool?.metadata.required_properties).toEqual([
+      "customer_id",
+      "customer_ticket_text",
+      "investigation_scope_text",
+      "model_name"
+    ]);
+    expect(JSON.stringify(langchainModelOutputNetworkDestinationBridgeTool)).not.toContain("openai_client.chat.completions.create");
+    expect(JSON.stringify(langchainModelOutputNetworkDestinationBridgeTool)).not.toContain("model_response");
+    expect(JSON.stringify(langchainModelOutputNetworkDestinationBridgeTool)).not.toContain("selected_endpoint_url");
+    expect(JSON.stringify(langchainModelOutputNetworkDestinationBridgeTool)).not.toContain("httpx.get");
+    expect(JSON.stringify(langchainModelOutputNetworkDestinationBridgeTool)).not.toContain("framework model selected URL fetched");
+    expect(JSON.stringify(langchainModelOutputNetworkDestinationBridgeTool)).not.toContain("Ask a model provider to choose an investigation URL");
     expect(aiSdkExportTool).toMatchObject({
       path: "framework-tools/vercel-ai-tools.ts",
       data_classes: ["confidential", "credential", "pii"],

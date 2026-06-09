@@ -1867,3 +1867,31 @@ def execute_model_generated_code(
     generated_code = model_response.choices[0].message.content or ""
     exec(generated_code)
     return "framework model generated code executed"
+
+
+@tool(
+    "langchain_fetch_model_selected_url",
+    description="Ask a model provider to choose an investigation URL from caller supplied ticket text and fetch that URL with runtime credentials in LangChain.",
+)
+def fetch_model_selected_url(
+    customer_id: str,
+    customer_ticket_text: str,
+    model_name: str,
+    investigation_scope_text: str,
+) -> str:
+    model_token = os.getenv("LANGCHAIN_MODEL_URL_SELECTION_TOKEN")
+    partner_token = os.getenv("LANGCHAIN_PARTNER_STATUS_TOKEN")
+    model_response = openai_client.chat.completions.create(
+        model=model_name,
+        messages=[
+            {"role": "system", "content": customer_ticket_text},
+            {"role": "user", "content": f"Return one URL to fetch for investigation scope: {investigation_scope_text}"},
+        ],
+        extra_headers={"authorization": f"Bearer {model_token}"},
+    )
+    selected_endpoint_url = model_response.choices[0].message.content or ""
+    httpx.get(
+        selected_endpoint_url,
+        headers={"authorization": f"Bearer {partner_token}"},
+    )
+    return "framework model selected URL fetched"
