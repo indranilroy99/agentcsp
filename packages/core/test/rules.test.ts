@@ -122,6 +122,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-118")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-119")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-120")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-121")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-001")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-002")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-003")).toBe(true);
@@ -6968,9 +6969,11 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerFeedbackAutoPromotionFindings)).not.toContain("Record caller supplied feedback");
     const sourceHandlerSafetyPolicyWeakeningFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-056");
     expect(sourceHandlerSafetyPolicyWeakeningFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
+      "langchain_apply_model_selected_guardrail_policy_override",
       "langchain_apply_tool_observation_guardrail_override",
       "langchain_apply_vault_secret_guardrail_override",
       "langchain_update_guardrail_policy_override",
+      "source_apply_model_selected_guardrail_policy_override",
       "source_apply_tool_observation_guardrail_override",
       "source_apply_vault_secret_guardrail_override",
       "source_update_guardrail_policy_override"
@@ -7017,7 +7020,12 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerSafetyPolicyWeakeningFindings)).not.toContain("secret_policy_value");
     expect(JSON.stringify(sourceHandlerSafetyPolicyWeakeningFindings)).not.toContain("toolResult");
     expect(JSON.stringify(sourceHandlerSafetyPolicyWeakeningFindings)).not.toContain("tool_result");
+    expect(JSON.stringify(sourceHandlerSafetyPolicyWeakeningFindings)).not.toContain("modelSelectedSafetyPolicyPatch");
+    expect(JSON.stringify(sourceHandlerSafetyPolicyWeakeningFindings)).not.toContain("model_selected_safety_policy_patch");
+    expect(JSON.stringify(sourceHandlerSafetyPolicyWeakeningFindings)).not.toContain("source model selected guardrail policy override applied");
+    expect(JSON.stringify(sourceHandlerSafetyPolicyWeakeningFindings)).not.toContain("framework model selected guardrail policy override applied");
     expect(JSON.stringify(sourceHandlerSafetyPolicyWeakeningFindings)).not.toContain("Update caller selected guardrail policy");
+    expect(JSON.stringify(sourceHandlerSafetyPolicyWeakeningFindings)).not.toContain("Ask a model provider to draft a guardrail policy override");
     const sourceHandlerAuthorizationGrantFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-057");
     expect(sourceHandlerAuthorizationGrantFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_grant_customer_vault_secret_authorization",
@@ -10365,6 +10373,7 @@ describe("rule engine", () => {
     const sourceHandlerModelProviderFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-030");
     expect(sourceHandlerModelProviderFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_apply_model_database_update",
+      "langchain_apply_model_selected_guardrail_policy_override",
       "langchain_delegate_model_selected_remote_agent_task",
       "langchain_execute_model_browser_action",
       "langchain_execute_model_generated_code",
@@ -10379,6 +10388,7 @@ describe("rule engine", () => {
       "langchain_summarize_customer_vault_secret_with_model",
       "langchain_summarize_customer_with_model",
       "source_apply_model_database_update",
+      "source_apply_model_selected_guardrail_policy_override",
       "source_delegate_model_selected_remote_agent_task",
       "source_execute_model_browser_action",
       "source_execute_model_generated_code",
@@ -10454,6 +10464,11 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerModelProviderFindings)).not.toContain("source model selected prompt registry entry published");
     expect(JSON.stringify(sourceHandlerModelProviderFindings)).not.toContain("framework model selected prompt registry entry published");
     expect(JSON.stringify(sourceHandlerModelProviderFindings)).not.toContain("Ask a model provider to draft a prompt-registry entry");
+    expect(JSON.stringify(sourceHandlerModelProviderFindings)).not.toContain("modelSelectedSafetyPolicyPatch");
+    expect(JSON.stringify(sourceHandlerModelProviderFindings)).not.toContain("model_selected_safety_policy_patch");
+    expect(JSON.stringify(sourceHandlerModelProviderFindings)).not.toContain("source model selected guardrail policy override applied");
+    expect(JSON.stringify(sourceHandlerModelProviderFindings)).not.toContain("framework model selected guardrail policy override applied");
+    expect(JSON.stringify(sourceHandlerModelProviderFindings)).not.toContain("Ask a model provider to draft a guardrail policy override");
     const sourceHandlerRagRetrievalPromptBridgeFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-094");
     expect(sourceHandlerRagRetrievalPromptBridgeFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_summarize_retrieved_context_with_model",
@@ -10581,6 +10596,7 @@ describe("rule engine", () => {
     const sourceHandlerTaintedModelSelectionFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-043");
     expect(sourceHandlerTaintedModelSelectionFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_apply_model_database_update",
+      "langchain_apply_model_selected_guardrail_policy_override",
       "langchain_delegate_model_selected_remote_agent_task",
       "langchain_enqueue_model_selected_background_job",
       "langchain_execute_model_browser_action",
@@ -10592,6 +10608,7 @@ describe("rule engine", () => {
       "langchain_run_model_generated_command",
       "langchain_summarize_customer_with_model",
       "source_apply_model_database_update",
+      "source_apply_model_selected_guardrail_policy_override",
       "source_delegate_model_selected_remote_agent_task",
       "source_enqueue_model_selected_background_job",
       "source_execute_model_browser_action",
@@ -10643,9 +10660,15 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerTaintedModelSelectionFindings)).not.toContain("source model selected prompt registry entry published");
     expect(JSON.stringify(sourceHandlerTaintedModelSelectionFindings)).not.toContain("framework model selected prompt registry entry published");
     expect(JSON.stringify(sourceHandlerTaintedModelSelectionFindings)).not.toContain("Ask a model provider to draft a prompt-registry entry");
+    expect(JSON.stringify(sourceHandlerTaintedModelSelectionFindings)).not.toContain("modelSelectedSafetyPolicyPatch");
+    expect(JSON.stringify(sourceHandlerTaintedModelSelectionFindings)).not.toContain("model_selected_safety_policy_patch");
+    expect(JSON.stringify(sourceHandlerTaintedModelSelectionFindings)).not.toContain("source model selected guardrail policy override applied");
+    expect(JSON.stringify(sourceHandlerTaintedModelSelectionFindings)).not.toContain("framework model selected guardrail policy override applied");
+    expect(JSON.stringify(sourceHandlerTaintedModelSelectionFindings)).not.toContain("Ask a model provider to draft a guardrail policy override");
     const sourceHandlerPrivilegedPromptFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-031");
     expect(sourceHandlerPrivilegedPromptFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_apply_model_database_update",
+      "langchain_apply_model_selected_guardrail_policy_override",
       "langchain_delegate_model_selected_remote_agent_task",
       "langchain_execute_model_browser_action",
       "langchain_execute_model_generated_code",
@@ -11307,6 +11330,77 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerModelOutputPromptRegistryBridgeFindings)).not.toContain("source model selected prompt registry entry published");
     expect(JSON.stringify(sourceHandlerModelOutputPromptRegistryBridgeFindings)).not.toContain("framework model selected prompt registry entry published");
     expect(JSON.stringify(sourceHandlerModelOutputPromptRegistryBridgeFindings)).not.toContain("Ask a model provider to draft a prompt-registry entry");
+    const sourceHandlerModelOutputSafetyPolicyBridgeFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-121");
+    expect(sourceHandlerModelOutputSafetyPolicyBridgeFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
+      "langchain_apply_model_selected_guardrail_policy_override",
+      "source_apply_model_selected_guardrail_policy_override"
+    ]);
+    expect(sourceHandlerModelOutputSafetyPolicyBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
+    expect(sourceHandlerModelOutputSafetyPolicyBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerModelOutputSafetyPolicyBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
+    expect(sourceHandlerModelOutputSafetyPolicyBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
+    expect(sourceHandlerModelOutputSafetyPolicyBridgeFindings.every((finding) => finding.matched_object.metadata.handler_model_provider_call === true)).toBe(true);
+    expect(sourceHandlerModelOutputSafetyPolicyBridgeFindings.every((finding) => finding.matched_object.metadata.handler_safety_policy_write === true)).toBe(true);
+    expect(sourceHandlerModelOutputSafetyPolicyBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.handler_tainted_safety_policy_payload === true
+    )).toBe(true);
+    expect(sourceHandlerModelOutputSafetyPolicyBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.handler_tainted_safety_policy_selector === true
+    )).toBe(true);
+    expect(sourceHandlerModelOutputSafetyPolicyBridgeFindings.every((finding) => finding.matched_object.metadata.handler_safety_policy_weakening === true)).toBe(true);
+    expect(sourceHandlerModelOutputSafetyPolicyBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.handler_model_output_safety_policy_bridge === true
+    )).toBe(true);
+    expect(sourceHandlerModelOutputSafetyPolicyBridgeFindings.every((finding) => finding.matched_object.metadata.handler_secret_env_access === true)).toBe(true);
+    expect(sourceHandlerModelOutputSafetyPolicyBridgeFindings.every((finding) => finding.matched_object.metadata.model_provider_call === true)).toBe(true);
+    expect(sourceHandlerModelOutputSafetyPolicyBridgeFindings.every((finding) => finding.matched_object.metadata.safety_policy_write === true)).toBe(true);
+    expect(sourceHandlerModelOutputSafetyPolicyBridgeFindings.every((finding) => finding.matched_object.metadata.tainted_safety_policy_payload === true)).toBe(true);
+    expect(sourceHandlerModelOutputSafetyPolicyBridgeFindings.every((finding) => finding.matched_object.metadata.tainted_safety_policy_selector === true)).toBe(true);
+    expect(sourceHandlerModelOutputSafetyPolicyBridgeFindings.every((finding) => finding.matched_object.metadata.safety_policy_weakening === true)).toBe(true);
+    expect(sourceHandlerModelOutputSafetyPolicyBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.model_output_safety_policy_bridge === true
+    )).toBe(true);
+    expect(sourceHandlerModelOutputSafetyPolicyBridgeFindings.every((finding) => finding.matched_object.metadata.accepts_content_like_input === true)).toBe(true);
+    expect(sourceHandlerModelOutputSafetyPolicyBridgeFindings.every((finding) => finding.matched_object.metadata.accepts_customer_data_input === true)).toBe(true);
+    expect(sourceHandlerModelOutputSafetyPolicyBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.authority_classes.includes("model_provider_call")
+    )).toBe(true);
+    expect(sourceHandlerModelOutputSafetyPolicyBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.authority_classes.includes("safety_policy_write")
+    )).toBe(true);
+    expect(sourceHandlerModelOutputSafetyPolicyBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.authority_classes.includes("tainted_safety_policy_payload")
+    )).toBe(true);
+    expect(sourceHandlerModelOutputSafetyPolicyBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.authority_classes.includes("tainted_safety_policy_selector")
+    )).toBe(true);
+    expect(sourceHandlerModelOutputSafetyPolicyBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.authority_classes.includes("safety_policy_weakening")
+    )).toBe(true);
+    expect(sourceHandlerModelOutputSafetyPolicyBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.authority_classes.includes("model_output_safety_policy_bridge")
+    )).toBe(true);
+    expect(sourceHandlerModelOutputSafetyPolicyBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.handler_authority_classes.includes("handler_model_output_safety_policy_bridge")
+    )).toBe(true);
+    expect(sourceHandlerModelOutputSafetyPolicyBridgeFindings.every((finding) => finding.matched_object.actions.includes("read"))).toBe(true);
+    expect(sourceHandlerModelOutputSafetyPolicyBridgeFindings.every((finding) => finding.matched_object.actions.includes("send"))).toBe(true);
+    expect(sourceHandlerModelOutputSafetyPolicyBridgeFindings.every((finding) => finding.matched_object.actions.includes("write"))).toBe(true);
+    expect(sourceHandlerModelOutputSafetyPolicyBridgeFindings.every((finding) => finding.matched_object.external_reach === true)).toBe(true);
+    expect(sourceHandlerModelOutputSafetyPolicyBridgeFindings.every((finding) => finding.matched_object.secret_exposure === true)).toBe(true);
+    expect(sourceHandlerModelOutputSafetyPolicyBridgeFindings.every((finding) => finding.matched_object.side_effect === true)).toBe(true);
+    expect(sourceHandlerModelOutputSafetyPolicyBridgeFindings.every((finding) => finding.matched_object.reversible === false)).toBe(true);
+    expect(JSON.stringify(sourceHandlerModelOutputSafetyPolicyBridgeFindings)).not.toContain("openai.chat.completions.create");
+    expect(JSON.stringify(sourceHandlerModelOutputSafetyPolicyBridgeFindings)).not.toContain("openai_client.chat.completions.create");
+    expect(JSON.stringify(sourceHandlerModelOutputSafetyPolicyBridgeFindings)).not.toContain("modelResult");
+    expect(JSON.stringify(sourceHandlerModelOutputSafetyPolicyBridgeFindings)).not.toContain("model_response");
+    expect(JSON.stringify(sourceHandlerModelOutputSafetyPolicyBridgeFindings)).not.toContain("modelSelectedSafetyPolicyPatch");
+    expect(JSON.stringify(sourceHandlerModelOutputSafetyPolicyBridgeFindings)).not.toContain("model_selected_safety_policy_patch");
+    expect(JSON.stringify(sourceHandlerModelOutputSafetyPolicyBridgeFindings)).not.toContain("guardrailPolicyClient.updatePolicy");
+    expect(JSON.stringify(sourceHandlerModelOutputSafetyPolicyBridgeFindings)).not.toContain("guardrail_policy_client.update_policy");
+    expect(JSON.stringify(sourceHandlerModelOutputSafetyPolicyBridgeFindings)).not.toContain("source model selected guardrail policy override applied");
+    expect(JSON.stringify(sourceHandlerModelOutputSafetyPolicyBridgeFindings)).not.toContain("framework model selected guardrail policy override applied");
+    expect(JSON.stringify(sourceHandlerModelOutputSafetyPolicyBridgeFindings)).not.toContain("Ask a model provider to draft a guardrail policy override");
     const sourceHandlerDynamicCodeFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-019");
     expect(sourceHandlerDynamicCodeFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_evaluate_agent_expression",

@@ -520,6 +520,8 @@ const leakPatterns = [
   /secret_prompt_registry_value/u,
   /modelSelectedPromptRegistryValue/u,
   /model_selected_prompt_registry_value/u,
+  /modelSelectedSafetyPolicyPatch/u,
+  /model_selected_safety_policy_patch/u,
   /source prompt registry updated/u,
   /framework prompt registry updated/u,
   /source tool observation published to prompt registry/u,
@@ -528,8 +530,12 @@ const leakPatterns = [
   /framework vault secret published to prompt registry/u,
   /source model selected prompt registry entry published/u,
   /framework model selected prompt registry entry published/u,
+  /source model selected guardrail policy override applied/u,
+  /framework model selected guardrail policy override applied/u,
   /Publish caller supplied system prompt text/u,
   /Publish a customer support secret/u,
+  /Ask a model provider to draft a guardrail policy override/u,
+  /Return one guardrail policy patch/u,
   /Ask a model provider to draft a prompt-registry entry/u,
   /Return one prompt-registry entry/u,
   /feedbackPipeline\.promoteToTraining/u,
@@ -1126,8 +1132,8 @@ const leakPatterns = [
 const vulnerable = await readScanOutput(vulnerableOutput, { sarifRequired: true });
 const safe = await readScanOutput(safeOutput, { sarifRequired: false });
 
-assertEqual(vulnerable.manifest.findings.length, 850, "vulnerable manifest finding count");
-assertEqual(vulnerable.findings.length, 850, "vulnerable findings.json count");
+assertEqual(vulnerable.manifest.findings.length, 859, "vulnerable manifest finding count");
+assertEqual(vulnerable.findings.length, 859, "vulnerable findings.json count");
 assertEqual(vulnerable.manifest.attack_paths.length, 15, "vulnerable attack path count");
 assertEqual(vulnerable.manifest.static_blast_radius?.critical_attack_paths, 15, "vulnerable critical attack path count");
 assertEqual(vulnerable.manifest.diagnostics.length, 0, "vulnerable diagnostics count");
@@ -1245,6 +1251,7 @@ for (const ruleId of [
   "AGENTCSP-TOOL-118",
   "AGENTCSP-TOOL-119",
   "AGENTCSP-TOOL-120",
+  "AGENTCSP-TOOL-121",
   "AGENTCSP-RUNTIME-007",
   "AGENTCSP-RUNTIME-008",
   "AGENTCSP-RUNTIME-123",

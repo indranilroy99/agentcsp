@@ -742,6 +742,9 @@ describe("scanner", () => {
     const sourceModelOutputAgentDelegationBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "source_delegate_model_selected_remote_agent_task"
     );
+    const sourceModelOutputSafetyPolicyBridgeTool = surfaces.tools.find(
+      (surface) => surface.name === "source_apply_model_selected_guardrail_policy_override"
+    );
     const sourceModelOutputPromptRegistryBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "source_publish_model_selected_prompt_registry_entry"
     );
@@ -953,6 +956,9 @@ describe("scanner", () => {
     );
     const langchainModelOutputAgentDelegationBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "langchain_delegate_model_selected_remote_agent_task"
+    );
+    const langchainModelOutputSafetyPolicyBridgeTool = surfaces.tools.find(
+      (surface) => surface.name === "langchain_apply_model_selected_guardrail_policy_override"
     );
     const langchainModelOutputPromptRegistryBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "langchain_publish_model_selected_prompt_registry_entry"
@@ -8724,6 +8730,99 @@ describe("scanner", () => {
     expect(JSON.stringify(sourceModelOutputAgentDelegationBridgeTool)).not.toContain("remoteAgentClient.delegateTask");
     expect(JSON.stringify(sourceModelOutputAgentDelegationBridgeTool)).not.toContain("source model selected remote-agent task delegated");
     expect(JSON.stringify(sourceModelOutputAgentDelegationBridgeTool)).not.toContain("Ask a model provider to draft a remote-agent task");
+    expect(sourceModelOutputSafetyPolicyBridgeTool).toMatchObject({
+      path: "mcp-source/customer-tools.ts",
+      actions: ["call", "publish", "read", "send", "write"],
+      data_classes: ["confidential", "credential", "pii"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(sourceModelOutputSafetyPolicyBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_mcp_source_tool: true,
+      mcp_source_tool_registration: true,
+      mcp_source_tool_registration_kind: "registerTool",
+      mcp_source_tool_argument_count: 3,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_content_like_input: true,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      model_provider_call: true,
+      tainted_model_selection: true,
+      safety_policy_write: true,
+      tainted_safety_policy_payload: true,
+      tainted_safety_policy_selector: true,
+      safety_policy_weakening: true,
+      model_output_safety_policy_bridge: true,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_model_provider_call: true,
+      handler_tainted_model_selection: true,
+      handler_safety_policy_write: true,
+      handler_tainted_safety_policy_payload: true,
+      handler_tainted_safety_policy_selector: true,
+      handler_safety_policy_weakening: true,
+      handler_model_output_safety_policy_bridge: true,
+      handler_secret_env_access: true,
+      handler_signal_count: 8,
+      open_world_schema: false
+    });
+    expect(sourceModelOutputSafetyPolicyBridgeTool?.metadata.authority_classes).toEqual(expect.arrayContaining([
+      "handler_model_output_safety_policy_bridge",
+      "handler_model_provider_call",
+      "handler_safety_policy_weakening",
+      "handler_safety_policy_write",
+      "handler_secret_env_access",
+      "handler_tainted_model_selection",
+      "handler_tainted_safety_policy_payload",
+      "handler_tainted_safety_policy_selector",
+      "model_output_safety_policy_bridge",
+      "model_provider_call",
+      "safety_policy_weakening",
+      "safety_policy_write",
+      "tainted_model_selection",
+      "tainted_safety_policy_payload",
+      "tainted_safety_policy_selector"
+    ]));
+    expect(sourceModelOutputSafetyPolicyBridgeTool?.metadata.handler_authority_classes).toEqual([
+      "handler_model_output_safety_policy_bridge",
+      "handler_model_provider_call",
+      "handler_safety_policy_weakening",
+      "handler_safety_policy_write",
+      "handler_secret_env_access",
+      "handler_tainted_model_selection",
+      "handler_tainted_safety_policy_payload",
+      "handler_tainted_safety_policy_selector"
+    ]);
+    expect(sourceModelOutputSafetyPolicyBridgeTool?.metadata.handler_env_key_names).toEqual([
+      "SOURCE_GUARDRAIL_POLICY_TOKEN",
+      "SOURCE_MODEL_SAFETY_POLICY_TOKEN"
+    ]);
+    expect(sourceModelOutputSafetyPolicyBridgeTool?.metadata.schema_properties).toEqual([
+      "customer_id",
+      "customer_ticket_text",
+      "model_name",
+      "override_reason",
+      "policy_id",
+      "target_control_id"
+    ]);
+    expect(sourceModelOutputSafetyPolicyBridgeTool?.metadata.required_properties).toEqual([
+      "customer_id",
+      "customer_ticket_text",
+      "model_name",
+      "override_reason",
+      "policy_id",
+      "target_control_id"
+    ]);
+    expect(JSON.stringify(sourceModelOutputSafetyPolicyBridgeTool)).not.toContain("openai.chat.completions.create");
+    expect(JSON.stringify(sourceModelOutputSafetyPolicyBridgeTool)).not.toContain("modelResult");
+    expect(JSON.stringify(sourceModelOutputSafetyPolicyBridgeTool)).not.toContain("modelSelectedSafetyPolicyPatch");
+    expect(JSON.stringify(sourceModelOutputSafetyPolicyBridgeTool)).not.toContain("guardrailPolicyClient.updatePolicy");
+    expect(JSON.stringify(sourceModelOutputSafetyPolicyBridgeTool)).not.toContain("source model selected guardrail policy override applied");
+    expect(JSON.stringify(sourceModelOutputSafetyPolicyBridgeTool)).not.toContain("Ask a model provider to draft a guardrail policy override");
     expect(sourceModelOutputPromptRegistryBridgeTool).toMatchObject({
       path: "mcp-source/customer-tools.ts",
       actions: ["call", "publish", "read", "send", "write"],
@@ -16848,6 +16947,105 @@ describe("scanner", () => {
     expect(JSON.stringify(langchainModelOutputAgentDelegationBridgeTool)).not.toContain("remote_agent_client.delegate_task");
     expect(JSON.stringify(langchainModelOutputAgentDelegationBridgeTool)).not.toContain("framework model selected remote-agent task delegated");
     expect(JSON.stringify(langchainModelOutputAgentDelegationBridgeTool)).not.toContain("Ask a model provider to draft a remote-agent task");
+    expect(langchainModelOutputSafetyPolicyBridgeTool).toMatchObject({
+      path: "framework-tools/langchain_tools.py",
+      actions: ["call", "publish", "read", "send", "write"],
+      data_classes: ["confidential", "credential", "pii"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(langchainModelOutputSafetyPolicyBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_agent_framework_source_tool: true,
+      agent_framework_source_tool: true,
+      agent_framework_source_tool_framework: "langchain",
+      agent_framework_source_tool_registration_kind: "python_tool_decorator",
+      agent_framework_source_tool_argument_count: 6,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_content_like_input: true,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      model_provider_call: true,
+      tainted_model_selection: true,
+      safety_policy_write: true,
+      tainted_safety_policy_payload: true,
+      tainted_safety_policy_selector: true,
+      safety_policy_weakening: true,
+      model_output_safety_policy_bridge: true,
+      privileged_prompt_composition: true,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_model_provider_call: true,
+      handler_tainted_model_selection: true,
+      handler_safety_policy_write: true,
+      handler_tainted_safety_policy_payload: true,
+      handler_tainted_safety_policy_selector: true,
+      handler_safety_policy_weakening: true,
+      handler_model_output_safety_policy_bridge: true,
+      handler_privileged_prompt_composition: true,
+      handler_secret_env_access: true,
+      handler_signal_count: 9,
+      open_world_schema: false
+    });
+    expect(langchainModelOutputSafetyPolicyBridgeTool?.metadata.authority_classes).toEqual(expect.arrayContaining([
+      "handler_model_output_safety_policy_bridge",
+      "handler_model_provider_call",
+      "handler_privileged_prompt_composition",
+      "handler_safety_policy_weakening",
+      "handler_safety_policy_write",
+      "handler_secret_env_access",
+      "handler_tainted_model_selection",
+      "handler_tainted_safety_policy_payload",
+      "handler_tainted_safety_policy_selector",
+      "model_output_safety_policy_bridge",
+      "model_provider_call",
+      "privileged_prompt_composition",
+      "safety_policy_weakening",
+      "safety_policy_write",
+      "tainted_model_selection",
+      "tainted_safety_policy_payload",
+      "tainted_safety_policy_selector"
+    ]));
+    expect(langchainModelOutputSafetyPolicyBridgeTool?.metadata.handler_authority_classes).toEqual([
+      "handler_model_output_safety_policy_bridge",
+      "handler_model_provider_call",
+      "handler_privileged_prompt_composition",
+      "handler_safety_policy_weakening",
+      "handler_safety_policy_write",
+      "handler_secret_env_access",
+      "handler_tainted_model_selection",
+      "handler_tainted_safety_policy_payload",
+      "handler_tainted_safety_policy_selector"
+    ]);
+    expect(langchainModelOutputSafetyPolicyBridgeTool?.metadata.handler_env_key_names).toEqual([
+      "LANGCHAIN_GUARDRAIL_POLICY_TOKEN",
+      "LANGCHAIN_MODEL_SAFETY_POLICY_TOKEN"
+    ]);
+    expect(langchainModelOutputSafetyPolicyBridgeTool?.metadata.schema_properties).toEqual([
+      "customer_id",
+      "customer_ticket_text",
+      "model_name",
+      "override_reason",
+      "policy_id",
+      "target_control_id"
+    ]);
+    expect(langchainModelOutputSafetyPolicyBridgeTool?.metadata.required_properties).toEqual([
+      "customer_id",
+      "customer_ticket_text",
+      "model_name",
+      "override_reason",
+      "policy_id",
+      "target_control_id"
+    ]);
+    expect(JSON.stringify(langchainModelOutputSafetyPolicyBridgeTool)).not.toContain("openai_client.chat.completions.create");
+    expect(JSON.stringify(langchainModelOutputSafetyPolicyBridgeTool)).not.toContain("model_response");
+    expect(JSON.stringify(langchainModelOutputSafetyPolicyBridgeTool)).not.toContain("model_selected_safety_policy_patch");
+    expect(JSON.stringify(langchainModelOutputSafetyPolicyBridgeTool)).not.toContain("guardrail_policy_client.update_policy");
+    expect(JSON.stringify(langchainModelOutputSafetyPolicyBridgeTool)).not.toContain("framework model selected guardrail policy override applied");
+    expect(JSON.stringify(langchainModelOutputSafetyPolicyBridgeTool)).not.toContain("Ask a model provider to draft a guardrail policy override");
     expect(langchainModelOutputPromptRegistryBridgeTool).toMatchObject({
       path: "framework-tools/langchain_tools.py",
       actions: ["call", "publish", "read", "send", "write"],

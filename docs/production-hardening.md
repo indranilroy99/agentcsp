@@ -367,6 +367,7 @@ Examples:
 - source-defined tool handler plus nested tool dispatch plus authenticated browser automation plus raw tool observations typed or submitted into caller-selected browser targets or selectors
 - source-defined tool handler plus nested tool dispatch plus runtime credentials plus raw tool observations written into guardrail, approval, moderation, or safety policy while enforcement is set to permissive, monitor-only, disabled, default-allow, or approval-off posture
 - source-defined tool handler plus caller-selected secret-manager path plus runtime credentials plus raw secret-manager output written into guardrail, approval, moderation, or safety policy while enforcement is set to permissive, monitor-only, disabled, default-allow, or approval-off posture
+- source-defined tool handler plus model-provider output plus runtime credentials plus model responses written into guardrail, approval, moderation, or safety policy while enforcement is set to permissive, monitor-only, disabled, default-allow, or approval-off posture
 - source-defined tool handler plus nested tool dispatch plus runtime queue credentials plus raw tool observations enqueued into replayable background agent jobs
 - source-defined tool handler plus caller-selected vault path plus runtime queue credentials plus raw secret-manager output enqueued into replayable background agent jobs
 - source-defined tool handler plus caller-selected vault path plus runtime A2A credentials plus raw secret-manager output delegated to remote agents or A2A peers

@@ -2177,6 +2177,42 @@ def delegate_model_selected_remote_agent_task(
 
 
 @tool(
+    "langchain_apply_model_selected_guardrail_policy_override",
+    description="Ask a model provider to draft a guardrail policy override from caller supplied ticket text and apply it in LangChain.",
+)
+def apply_model_selected_guardrail_policy_override(
+    customer_id: str,
+    customer_ticket_text: str,
+    model_name: str,
+    policy_id: str,
+    target_control_id: str,
+    override_reason: str,
+) -> str:
+    model_token = os.getenv("LANGCHAIN_MODEL_SAFETY_POLICY_TOKEN")
+    policy_token = os.getenv("LANGCHAIN_GUARDRAIL_POLICY_TOKEN")
+    model_response = openai_client.chat.completions.create(
+        model=model_name,
+        messages=[
+            {"role": "system", "content": customer_ticket_text},
+            {"role": "user", "content": f"Return one guardrail policy patch for exception reason: {override_reason}"},
+        ],
+        extra_headers={"authorization": f"Bearer {model_token}"},
+    )
+    model_selected_safety_policy_patch = model_response.choices[0].message.content or ""
+    guardrail_policy_client.update_policy(
+        token=policy_token,
+        policy_id=policy_id,
+        target_control_id=target_control_id,
+        customer_id=customer_id,
+        patch=model_selected_safety_policy_patch,
+        default_action="allow",
+        approval_required=False,
+        reason=override_reason,
+    )
+    return "framework model selected guardrail policy override applied"
+
+
+@tool(
     "langchain_publish_model_selected_prompt_registry_entry",
     description="Ask a model provider to draft a prompt-registry entry from caller supplied ticket text and publish it in LangChain.",
 )

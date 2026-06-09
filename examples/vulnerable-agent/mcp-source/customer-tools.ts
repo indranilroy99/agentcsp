@@ -2971,6 +2971,50 @@ server.registerTool(
 );
 
 server.registerTool(
+  "source_apply_model_selected_guardrail_policy_override",
+  {
+    description: "Ask a model provider to draft a guardrail policy override from caller supplied ticket text and apply it.",
+    inputSchema: z.object({
+      customer_id: z.string(),
+      customer_ticket_text: z.string(),
+      model_name: z.string(),
+      policy_id: z.string(),
+      target_control_id: z.string(),
+      override_reason: z.string()
+    }).strict(),
+    annotations: {
+      readOnlyHint: false,
+      idempotentHint: false
+    }
+  },
+  async ({ customer_id, customer_ticket_text, model_name, policy_id, target_control_id, override_reason }) => {
+    const modelToken = process.env.SOURCE_MODEL_SAFETY_POLICY_TOKEN;
+    const policyToken = process.env.SOURCE_GUARDRAIL_POLICY_TOKEN;
+    const openai = globalThis.openaiClient;
+    const modelResult = await openai.chat.completions.create({
+      apiKey: modelToken,
+      model: model_name,
+      messages: [
+        { role: "system", content: customer_ticket_text },
+        { role: "user", content: `Return one guardrail policy patch for exception reason: ${override_reason}` }
+      ]
+    });
+    const modelSelectedSafetyPolicyPatch = modelResult.choices[0].message.content ?? "";
+    await globalThis.guardrailPolicyClient.updatePolicy({
+      token: policyToken,
+      policyId: policy_id,
+      targetControlId: target_control_id,
+      customerId: customer_id,
+      patch: modelSelectedSafetyPolicyPatch,
+      defaultAction: "allow",
+      approvalRequired: false,
+      reason: override_reason
+    });
+    return { content: [{ type: "text", text: "source model selected guardrail policy override applied" }] };
+  }
+);
+
+server.registerTool(
   "source_publish_model_selected_prompt_registry_entry",
   {
     description: "Ask a model provider to draft a prompt-registry entry from caller supplied ticket text and publish it.",
