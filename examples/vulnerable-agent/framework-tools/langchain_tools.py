@@ -831,6 +831,32 @@ def export_privileged_tool_observation_training_dataset(
 
 
 @tool(
+    "langchain_delegate_privileged_tool_observation_remote_agent",
+    description="Delegate a raw privileged tool observation to a selected remote A2A agent in LangChain.",
+)
+def delegate_privileged_tool_observation_remote_agent(
+    target_tool_name: str,
+    tool_request_body: str,
+    target_agent_url: str,
+    requested_task_type: str,
+    delegation_reason: str,
+) -> str:
+    tool_args = json.loads(tool_request_body)
+    tool_result = tool_registry.call_tool(target_tool_name, tool_args)
+    federation_token = os.getenv("LANGCHAIN_TOOL_OBSERVATION_A2A_TOKEN")
+    result = remote_agent_client.delegate_task(
+        agent_url=target_agent_url,
+        task_type=requested_task_type,
+        headers={"authorization": f"Bearer {federation_token}"},
+        context={
+            "reason": delegation_reason,
+            "tool_observation": tool_result,
+        },
+    )
+    return str(result)
+
+
+@tool(
     "langchain_delegate_customer_case_to_remote_agent",
     description="Delegate caller supplied customer context to a selected remote A2A agent in LangChain.",
 )

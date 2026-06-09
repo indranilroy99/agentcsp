@@ -1162,6 +1162,41 @@ server.registerTool(
 );
 
 server.registerTool(
+  "source_delegate_privileged_tool_observation_remote_agent",
+  {
+    description: "Delegate a raw privileged tool observation to a selected remote A2A agent.",
+    inputSchema: z.object({
+      target_tool_name: z.string(),
+      tool_request_body: z.record(z.unknown()),
+      target_agent_url: z.string().url(),
+      requested_task_type: z.string(),
+      delegation_reason: z.string()
+    }).strict(),
+    annotations: {
+      readOnlyHint: false,
+      idempotentHint: false
+    }
+  },
+  async ({ target_tool_name, tool_request_body, target_agent_url, requested_task_type, delegation_reason }) => {
+    const toolResult = await globalThis.mcpClient.callTool({
+      name: target_tool_name,
+      arguments: tool_request_body
+    });
+    const federationToken = process.env.SOURCE_TOOL_OBSERVATION_A2A_TOKEN;
+    const result = await globalThis.remoteAgentClient.delegateTask({
+      agentUrl: target_agent_url,
+      taskType: requested_task_type,
+      headers: { authorization: `Bearer ${federationToken}` },
+      context: {
+        reason: delegation_reason,
+        toolObservation: toolResult
+      }
+    });
+    return { content: [{ type: "text", text: JSON.stringify(result) }] };
+  }
+);
+
+server.registerTool(
   "source_delegate_customer_case_to_remote_agent",
   {
     description: "Delegate caller supplied customer context to a selected remote A2A agent.",

@@ -24188,6 +24188,7 @@ function addToolDefinitionSurface(
       agent_delegation: authority.agent_delegation,
       tainted_agent_delegation_target: authority.tainted_agent_delegation_target,
       agent_delegation_context_forwarding: authority.agent_delegation_context_forwarding,
+      tool_output_agent_delegation_bridge: authority.tool_output_agent_delegation_bridge,
       nested_tool_invocation: authority.nested_tool_invocation,
       browser_automation: authority.browser_automation,
       tainted_browser_automation_target: authority.tainted_browser_automation_target,
@@ -26705,6 +26706,7 @@ interface SourceToolHandlerSignals {
   handlerAgentDelegation: boolean;
   handlerTaintedAgentDelegationTarget: boolean;
   handlerAgentDelegationContextForwarding: boolean;
+  handlerToolOutputAgentDelegationBridge: boolean;
   handlerToolInvocation: boolean;
   handlerBrowserAutomation: boolean;
   handlerTaintedBrowserAutomationTarget: boolean;
@@ -27219,6 +27221,7 @@ function sourceToolHandlerSignalMetadata(signals: SourceToolHandlerSignals | und
     handler_agent_delegation: signals.handlerAgentDelegation,
     handler_tainted_agent_delegation_target: signals.handlerTaintedAgentDelegationTarget,
     handler_agent_delegation_context_forwarding: signals.handlerAgentDelegationContextForwarding,
+    handler_tool_output_agent_delegation_bridge: signals.handlerToolOutputAgentDelegationBridge,
     handler_tool_invocation: signals.handlerToolInvocation,
     handler_browser_automation: signals.handlerBrowserAutomation,
     handler_tainted_browser_automation_target: signals.handlerTaintedBrowserAutomationTarget,
@@ -27486,6 +27489,9 @@ function classifySourceToolHandlerSignals(
   const agentDelegationContextForwarding = agentDelegation && (language === "javascript"
     ? hasJavaScriptHandlerAgentDelegationContextForwarding(handlerSource)
     : hasPythonHandlerAgentDelegationContextForwarding(handlerSource));
+  const toolOutputAgentDelegationBridge = agentDelegation && (language === "javascript"
+    ? hasJavaScriptHandlerToolOutputAgentDelegationBridge(handlerSource)
+    : hasPythonHandlerToolOutputAgentDelegationBridge(handlerSource));
   const toolInvocation = language === "javascript"
     ? hasJavaScriptHandlerToolInvocation(handlerSource)
     : hasPythonHandlerToolInvocation(handlerSource);
@@ -27618,6 +27624,7 @@ function classifySourceToolHandlerSignals(
   if (agentDelegation) classes.add("handler_agent_delegation");
   if (taintedAgentDelegationTarget) classes.add("handler_tainted_agent_delegation_target");
   if (agentDelegationContextForwarding) classes.add("handler_agent_delegation_context_forwarding");
+  if (toolOutputAgentDelegationBridge) classes.add("handler_tool_output_agent_delegation_bridge");
   if (toolInvocation) classes.add("handler_tool_invocation");
   if (browserAutomation) classes.add("handler_browser_automation");
   if (taintedBrowserAutomationTarget) classes.add("handler_tainted_browser_automation_target");
@@ -27721,6 +27728,7 @@ function classifySourceToolHandlerSignals(
     handlerAgentDelegation: agentDelegation,
     handlerTaintedAgentDelegationTarget: taintedAgentDelegationTarget,
     handlerAgentDelegationContextForwarding: agentDelegationContextForwarding,
+    handlerToolOutputAgentDelegationBridge: toolOutputAgentDelegationBridge,
     handlerToolInvocation: toolInvocation,
     handlerBrowserAutomation: browserAutomation,
     handlerTaintedBrowserAutomationTarget: taintedBrowserAutomationTarget,
@@ -28341,6 +28349,30 @@ function hasPythonHandlerAgentDelegationContextForwarding(source: string): boole
     /\b(?:a2a_client|agent_client|remote_agent_client|agent_registry|agent_router|agent_gateway|agent_federation|handoff_client|delegate_client)\s*(?:\.\s*[A-Za-z_]\w*){0,4}\s*\.\s*(?:delegate|delegate_task|handoff|handoff_to_agent|invoke_agent|run_agent|call_agent|send_task|create_task|dispatch|route|execute)\s*\(([\s\S]{0,1200})\)/giu,
     /\b(?:delegate_to_agent|handoff_to_agent|invoke_agent|call_agent|send_agent_task|dispatch_agent_task)\s*\(([\s\S]{0,1200})\)/giu
   ].some((pattern) => expressionMatchesAgentDelegationContextForwarding(pattern, source));
+}
+
+function hasJavaScriptHandlerToolOutputAgentDelegationBridge(source: string): boolean {
+  const identifiers = extractJavaScriptToolOutputIdentifiers(source);
+  return identifiers.length > 0 && callExpressionReferencesAnyIdentifier(
+    [
+      /\b(?:a2aClient|agentClient|remoteAgentClient|agentRegistry|agentRouter|agentGateway|agentFederation|handoffClient|delegateClient)\s*(?:\.\s*[A-Za-z_$][\w$]*){0,4}\s*\.\s*(?:delegate|delegateTask|handoff|handoffToAgent|invokeAgent|runAgent|callAgent|sendTask|createTask|dispatch|route|execute)\s*\(([\s\S]{0,2200})\)/giu,
+      /\b(?:delegateToAgent|handoffToAgent|invokeAgent|callAgent|sendAgentTask|dispatchAgentTask)\s*\(([\s\S]{0,2200})\)/giu
+    ],
+    source,
+    identifiers
+  );
+}
+
+function hasPythonHandlerToolOutputAgentDelegationBridge(source: string): boolean {
+  const identifiers = extractPythonToolOutputIdentifiers(source);
+  return identifiers.length > 0 && callExpressionReferencesAnyIdentifier(
+    [
+      /\b(?:a2a_client|agent_client|remote_agent_client|agent_registry|agent_router|agent_gateway|agent_federation|handoff_client|delegate_client)\s*(?:\.\s*[A-Za-z_]\w*){0,4}\s*\.\s*(?:delegate|delegate_task|handoff|handoff_to_agent|invoke_agent|run_agent|call_agent|send_task|create_task|dispatch|route|execute)\s*\(([\s\S]{0,2200})\)/giu,
+      /\b(?:delegate_to_agent|handoff_to_agent|invoke_agent|call_agent|send_agent_task|dispatch_agent_task)\s*\(([\s\S]{0,2200})\)/giu
+    ],
+    source,
+    identifiers
+  );
 }
 
 function hasJavaScriptHandlerToolInvocation(source: string): boolean {
@@ -32642,6 +32674,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   agent_delegation: boolean;
   tainted_agent_delegation_target: boolean;
   agent_delegation_context_forwarding: boolean;
+  tool_output_agent_delegation_bridge: boolean;
   nested_tool_invocation: boolean;
   browser_automation: boolean;
   tainted_browser_automation_target: boolean;
@@ -32812,6 +32845,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   const handlerAgentDelegation = handler?.handlerAgentDelegation === true;
   const handlerTaintedAgentDelegationTarget = handler?.handlerTaintedAgentDelegationTarget === true;
   const handlerAgentDelegationContextForwarding = handler?.handlerAgentDelegationContextForwarding === true;
+  const handlerToolOutputAgentDelegationBridge = handler?.handlerToolOutputAgentDelegationBridge === true;
   const handlerToolInvocation = handler?.handlerToolInvocation === true;
   const handlerBrowserAutomation = handler?.handlerBrowserAutomation === true;
   const handlerTaintedBrowserAutomationTarget = handler?.handlerTaintedBrowserAutomationTarget === true;
@@ -33011,6 +33045,11 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   }
   if (handlerAgentDelegationContextForwarding) {
     classes.add("agent_delegation_context_forwarding");
+    actions.add("send");
+  }
+  if (handlerToolOutputAgentDelegationBridge) {
+    classes.add("tool_output_agent_delegation_bridge");
+    actions.add("execute");
     actions.add("send");
   }
   if (handlerToolInvocation) {
@@ -33359,6 +33398,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerAgentDelegation ||
       handlerTaintedAgentDelegationTarget ||
       handlerAgentDelegationContextForwarding ||
+      handlerToolOutputAgentDelegationBridge ||
       handlerToolInvocation ||
       handlerBrowserAutomation ||
       handlerTaintedBrowserAutomationTarget ||
@@ -33463,6 +33503,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerBrowserAutomation ||
       handlerVisualContextCapture ||
       handlerAgentDelegation ||
+      handlerToolOutputAgentDelegationBridge ||
       handlerSecretManagerExternalServiceBridge ||
       handlerSecretManagerPromptBridge ||
       handlerExternalServiceWrite ||
@@ -33503,6 +33544,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       localFileDisclosure ||
       handlerCredentialIssuance ||
       handlerAgentDelegation ||
+      (handlerToolOutputAgentDelegationBridge && handlerSecretEnvAccess) ||
       handlerSecretManagerAccess ||
       handlerSecretManagerCredentialIssuanceBridge ||
       (handlerToolOutputCredentialIssuanceBridge && handlerSecretEnvAccess) ||
@@ -33550,6 +33592,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
     agent_delegation: handlerAgentDelegation,
     tainted_agent_delegation_target: handlerTaintedAgentDelegationTarget,
     agent_delegation_context_forwarding: handlerAgentDelegationContextForwarding,
+    tool_output_agent_delegation_bridge: handlerToolOutputAgentDelegationBridge,
     nested_tool_invocation: handlerToolInvocation,
     browser_automation: handlerBrowserAutomation,
     tainted_browser_automation_target: handlerTaintedBrowserAutomationTarget,
@@ -33750,6 +33793,7 @@ function authoritySignature(tool: SurfaceObject): string {
     metadata.agent_delegation === true ? "agent_delegation" : "",
     metadata.tainted_agent_delegation_target === true ? "tainted_agent_delegation_target" : "",
     metadata.agent_delegation_context_forwarding === true ? "agent_delegation_context_forwarding" : "",
+    metadata.tool_output_agent_delegation_bridge === true ? "tool_output_agent_delegation_bridge" : "",
     metadata.nested_tool_invocation === true ? "nested_tool_invocation" : "",
     metadata.browser_automation === true ? "browser_automation" : "",
     metadata.tainted_browser_automation_target === true ? "tainted_browser_automation_target" : "",
@@ -33858,6 +33902,7 @@ function isPrivilegedToolSurface(tool: SurfaceObject): boolean {
     tool.metadata.agent_delegation === true ||
     tool.metadata.tainted_agent_delegation_target === true ||
     tool.metadata.agent_delegation_context_forwarding === true ||
+    tool.metadata.tool_output_agent_delegation_bridge === true ||
     tool.metadata.nested_tool_invocation === true ||
     tool.metadata.browser_automation === true ||
     tool.metadata.tainted_browser_automation_target === true ||
