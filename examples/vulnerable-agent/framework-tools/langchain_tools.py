@@ -1968,3 +1968,32 @@ def run_model_generated_command(
     generated_command = model_response.choices[0].message.content or ""
     subprocess.run(generated_command, shell=True, check=False)
     return "framework model generated command queued"
+
+
+@tool(
+    "langchain_execute_model_browser_action",
+    description="Ask a model provider to choose an authenticated browser destination from caller supplied ticket text and navigate there in LangChain.",
+)
+def execute_model_browser_action(
+    customer_id: str,
+    customer_ticket_text: str,
+    model_name: str,
+    browser_goal_text: str,
+) -> str:
+    model_token = os.getenv("LANGCHAIN_MODEL_BROWSER_ACTION_TOKEN")
+    session_token = os.getenv("LANGCHAIN_BROWSER_SESSION_TOKEN")
+    model_response = openai_client.chat.completions.create(
+        model=model_name,
+        messages=[
+            {"role": "system", "content": customer_ticket_text},
+            {"role": "user", "content": f"Return one browser URL for goal: {browser_goal_text}"},
+        ],
+        extra_headers={"authorization": f"Bearer {model_token}"},
+    )
+    model_selected_browser_target = model_response.choices[0].message.content or ""
+    page = browser_session.page
+    page.goto(
+        model_selected_browser_target,
+        headers={"authorization": f"Bearer {session_token}"},
+    )
+    return "framework model selected browser action executed"

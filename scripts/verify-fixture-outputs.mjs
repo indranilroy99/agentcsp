@@ -212,6 +212,8 @@ const leakPatterns = [
   /model_response/u,
   /generatedCode/u,
   /generatedCommand/u,
+  /modelSelectedBrowserTarget/u,
+  /model_selected_browser_target/u,
   /selectedEndpointUrl/u,
   /selected_endpoint_url/u,
   /generated_command =/u,
@@ -223,6 +225,8 @@ const leakPatterns = [
   /framework model generated code executed/u,
   /source model selected URL fetched/u,
   /framework model selected URL fetched/u,
+  /source model selected browser action executed/u,
+  /framework model selected browser action executed/u,
   /source model generated command queued/u,
   /framework model generated command queued/u,
   /source tool observation command queued/u,
@@ -233,6 +237,7 @@ const leakPatterns = [
   /framework tool observation URL fetched/u,
   /Ask a model provider to generate code/u,
   /Ask a model provider to choose an investigation URL/u,
+  /Ask a model provider to choose an authenticated browser destination/u,
   /Ask a model provider to generate a shell command/u,
   /Run a command returned by a caller selected privileged tool observation/u,
   /Execute code returned by a caller selected privileged tool observation/u,
@@ -1077,8 +1082,8 @@ const leakPatterns = [
 const vulnerable = await readScanOutput(vulnerableOutput, { sarifRequired: true });
 const safe = await readScanOutput(safeOutput, { sarifRequired: false });
 
-assertEqual(vulnerable.manifest.findings.length, 781, "vulnerable manifest finding count");
-assertEqual(vulnerable.findings.length, 781, "vulnerable findings.json count");
+assertEqual(vulnerable.manifest.findings.length, 788, "vulnerable manifest finding count");
+assertEqual(vulnerable.findings.length, 788, "vulnerable findings.json count");
 assertEqual(vulnerable.manifest.attack_paths.length, 15, "vulnerable attack path count");
 assertEqual(vulnerable.manifest.static_blast_radius?.critical_attack_paths, 15, "vulnerable critical attack path count");
 assertEqual(vulnerable.manifest.diagnostics.length, 0, "vulnerable diagnostics count");
@@ -1189,6 +1194,7 @@ for (const ruleId of [
   "AGENTCSP-TOOL-111",
   "AGENTCSP-TOOL-112",
   "AGENTCSP-TOOL-113",
+  "AGENTCSP-TOOL-114",
   "AGENTCSP-RUNTIME-007",
   "AGENTCSP-RUNTIME-008",
   "AGENTCSP-RUNTIME-123",

@@ -2707,3 +2707,39 @@ server.registerTool(
     return { content: [{ type: "text", text: "source model generated command queued" }] };
   }
 );
+
+server.registerTool(
+  "source_execute_model_browser_action",
+  {
+    description: "Ask a model provider to choose an authenticated browser destination from caller supplied ticket text and navigate there.",
+    inputSchema: z.object({
+      customer_id: z.string(),
+      customer_ticket_text: z.string(),
+      model_name: z.string(),
+      browser_goal_text: z.string()
+    }).strict(),
+    annotations: {
+      readOnlyHint: false,
+      idempotentHint: false
+    }
+  },
+  async ({ customer_ticket_text, model_name, browser_goal_text }) => {
+    const apiKey = process.env.SOURCE_MODEL_BROWSER_ACTION_TOKEN;
+    const sessionToken = process.env.SOURCE_BROWSER_SESSION_TOKEN;
+    const openai = globalThis.openaiClient;
+    const modelResult = await openai.chat.completions.create({
+      apiKey,
+      model: model_name,
+      messages: [
+        { role: "system", content: customer_ticket_text },
+        { role: "user", content: `Return one browser URL for goal: ${browser_goal_text}` }
+      ]
+    });
+    const modelSelectedBrowserTarget = modelResult.choices[0].message.content ?? "";
+    const page = globalThis.authenticatedBrowserPage;
+    await page.goto(modelSelectedBrowserTarget, {
+      headers: { authorization: `Bearer ${sessionToken}` }
+    });
+    return { content: [{ type: "text", text: "source model selected browser action executed" }] };
+  }
+);
