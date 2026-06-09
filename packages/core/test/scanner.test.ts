@@ -548,6 +548,9 @@ describe("scanner", () => {
     const sourceMemoryWriteTool = surfaces.tools.find((surface) => surface.name === "source_persist_customer_memory");
     const sourceRagRetrievalTool = surfaces.tools.find((surface) => surface.name === "source_retrieve_support_context");
     const sourceTaskQueueTool = surfaces.tools.find((surface) => surface.name === "source_enqueue_support_agent_job");
+    const sourceSecretManagerTaskQueueBridgeTool = surfaces.tools.find(
+      (surface) => surface.name === "source_enqueue_customer_vault_secret_job"
+    );
     const sourceTelemetryExportTool = surfaces.tools.find((surface) => surface.name === "source_export_customer_trace");
     const sourcePromptCacheWriteTool = surfaces.tools.find((surface) => surface.name === "source_write_prompt_cache_entry");
     const sourceTrainingDatasetExportTool = surfaces.tools.find((surface) => surface.name === "source_append_training_dataset_record");
@@ -649,6 +652,9 @@ describe("scanner", () => {
     const langchainMemoryWriteTool = surfaces.tools.find((surface) => surface.name === "langchain_persist_customer_memory");
     const langchainRagRetrievalTool = surfaces.tools.find((surface) => surface.name === "langchain_retrieve_support_context");
     const langchainTaskQueueTool = surfaces.tools.find((surface) => surface.name === "langchain_enqueue_support_agent_job");
+    const langchainSecretManagerTaskQueueBridgeTool = surfaces.tools.find(
+      (surface) => surface.name === "langchain_enqueue_customer_vault_secret_job"
+    );
     const langchainTelemetryExportTool = surfaces.tools.find((surface) => surface.name === "langchain_export_customer_trace");
     const langchainPromptCacheWriteTool = surfaces.tools.find((surface) => surface.name === "langchain_write_prompt_cache_entry");
     const langchainTrainingDatasetExportTool = surfaces.tools.find((surface) => surface.name === "langchain_append_training_dataset_record");
@@ -1680,6 +1686,60 @@ describe("scanner", () => {
     expect(JSON.stringify(sourceTaskQueueTool)).not.toContain("update_customer_record");
     expect(JSON.stringify(sourceTaskQueueTool)).not.toContain("source agent job queued");
     expect(JSON.stringify(sourceTaskQueueTool)).not.toContain("Queue a caller supplied support job");
+    expect(sourceSecretManagerTaskQueueBridgeTool).toMatchObject({
+      path: "mcp-source/customer-tools.ts",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["call", "read", "remember", "send", "write"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(sourceSecretManagerTaskQueueBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_mcp_source_tool: true,
+      mcp_source_tool_registration: true,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_secret_like_input: true,
+      accepts_content_like_input: true,
+      accepts_path_input: true,
+      accepts_customer_data_input: true,
+      secret_manager_access: true,
+      tainted_secret_manager_path: true,
+      task_queue_enqueue: true,
+      tainted_task_payload: true,
+      tainted_task_routing: true,
+      secret_manager_task_queue_bridge: true,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_secret_env_access: true,
+      handler_secret_manager_access: true,
+      handler_tainted_secret_manager_path: true,
+      handler_task_queue_enqueue: true,
+      handler_tainted_task_payload: true,
+      handler_tainted_task_routing: true,
+      handler_secret_manager_task_queue_bridge: true,
+      handler_signal_count: 7,
+      open_world_schema: false
+    });
+    expect(sourceSecretManagerTaskQueueBridgeTool?.metadata.authority_classes).toContain("secret_manager_task_queue_bridge");
+    expect(sourceSecretManagerTaskQueueBridgeTool?.metadata.handler_authority_classes).toContain("handler_secret_manager_task_queue_bridge");
+    expect(sourceSecretManagerTaskQueueBridgeTool?.metadata.handler_env_key_names).toEqual(["SOURCE_SECRET_TASK_QUEUE_TOKEN"]);
+    expect(sourceSecretManagerTaskQueueBridgeTool?.metadata.schema_properties).toEqual([
+      "customer_id",
+      "replay_on_failure",
+      "requester_ticket",
+      "secret_path",
+      "target_queue_name",
+      "task_route"
+    ]);
+    expect(JSON.stringify(sourceSecretManagerTaskQueueBridgeTool)).not.toContain("vaultClient.readSecret");
+    expect(JSON.stringify(sourceSecretManagerTaskQueueBridgeTool)).not.toContain("taskQueueClient.enqueue");
+    expect(JSON.stringify(sourceSecretManagerTaskQueueBridgeTool)).not.toContain("secretRecord.value");
+    expect(JSON.stringify(sourceSecretManagerTaskQueueBridgeTool)).not.toContain("secretQueueValue");
+    expect(JSON.stringify(sourceSecretManagerTaskQueueBridgeTool)).not.toContain("source vault secret queued for background agent");
+    expect(JSON.stringify(sourceSecretManagerTaskQueueBridgeTool)).not.toContain("Enqueue a customer support secret");
     expect(sourceTelemetryExportTool).toMatchObject({
       path: "mcp-source/customer-tools.ts",
       data_classes: ["confidential", "credential", "pii"],
@@ -6540,6 +6600,61 @@ describe("scanner", () => {
     expect(JSON.stringify(langchainTaskQueueTool)).not.toContain("update_customer_record");
     expect(JSON.stringify(langchainTaskQueueTool)).not.toContain("framework agent job queued");
     expect(JSON.stringify(langchainTaskQueueTool)).not.toContain("Queue a caller supplied support job");
+    expect(langchainSecretManagerTaskQueueBridgeTool).toMatchObject({
+      path: "framework-tools/langchain_tools.py",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["call", "read", "remember", "send", "write"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(langchainSecretManagerTaskQueueBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_agent_framework_source_tool: true,
+      agent_framework_source_tool: true,
+      agent_framework_source_tool_framework: "langchain",
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_secret_like_input: true,
+      accepts_content_like_input: true,
+      accepts_path_input: true,
+      accepts_customer_data_input: true,
+      secret_manager_access: true,
+      tainted_secret_manager_path: true,
+      task_queue_enqueue: true,
+      tainted_task_payload: true,
+      tainted_task_routing: true,
+      secret_manager_task_queue_bridge: true,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_secret_env_access: true,
+      handler_secret_manager_access: true,
+      handler_tainted_secret_manager_path: true,
+      handler_task_queue_enqueue: true,
+      handler_tainted_task_payload: true,
+      handler_tainted_task_routing: true,
+      handler_secret_manager_task_queue_bridge: true,
+      handler_signal_count: 7,
+      open_world_schema: false
+    });
+    expect(langchainSecretManagerTaskQueueBridgeTool?.metadata.authority_classes).toContain("secret_manager_task_queue_bridge");
+    expect(langchainSecretManagerTaskQueueBridgeTool?.metadata.handler_authority_classes).toContain("handler_secret_manager_task_queue_bridge");
+    expect(langchainSecretManagerTaskQueueBridgeTool?.metadata.handler_env_key_names).toEqual(["LANGCHAIN_SECRET_TASK_QUEUE_TOKEN"]);
+    expect(langchainSecretManagerTaskQueueBridgeTool?.metadata.schema_properties).toEqual([
+      "customer_id",
+      "replay_on_failure",
+      "requester_ticket",
+      "secret_path",
+      "target_queue_name",
+      "task_route"
+    ]);
+    expect(JSON.stringify(langchainSecretManagerTaskQueueBridgeTool)).not.toContain("vault_client.read_secret");
+    expect(JSON.stringify(langchainSecretManagerTaskQueueBridgeTool)).not.toContain("task_queue_client.enqueue");
+    expect(JSON.stringify(langchainSecretManagerTaskQueueBridgeTool)).not.toContain("secret_record.value");
+    expect(JSON.stringify(langchainSecretManagerTaskQueueBridgeTool)).not.toContain("secret_queue_value");
+    expect(JSON.stringify(langchainSecretManagerTaskQueueBridgeTool)).not.toContain("framework vault secret queued for background agent");
+    expect(JSON.stringify(langchainSecretManagerTaskQueueBridgeTool)).not.toContain("Enqueue a customer support secret");
     expect(langchainTelemetryExportTool).toMatchObject({
       path: "framework-tools/langchain_tools.py",
       data_classes: ["confidential", "credential", "pii"],

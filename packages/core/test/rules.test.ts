@@ -6416,7 +6416,9 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerRagRetrievalFindings)).not.toContain("Retrieve caller selected support context");
     const sourceHandlerTaskQueueFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-053");
     expect(sourceHandlerTaskQueueFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
+      "langchain_enqueue_customer_vault_secret_job",
       "langchain_enqueue_support_agent_job",
+      "source_enqueue_customer_vault_secret_job",
       "source_enqueue_support_agent_job"
     ]);
     expect(sourceHandlerTaskQueueFindings.every((finding) => finding.severity === "critical")).toBe(true);
@@ -6452,7 +6454,55 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerTaskQueueFindings)).not.toContain("update_customer_record");
     expect(JSON.stringify(sourceHandlerTaskQueueFindings)).not.toContain("source agent job queued");
     expect(JSON.stringify(sourceHandlerTaskQueueFindings)).not.toContain("framework agent job queued");
+    expect(JSON.stringify(sourceHandlerTaskQueueFindings)).not.toContain("source vault secret queued for background agent");
+    expect(JSON.stringify(sourceHandlerTaskQueueFindings)).not.toContain("framework vault secret queued for background agent");
     expect(JSON.stringify(sourceHandlerTaskQueueFindings)).not.toContain("Queue a caller supplied support job");
+    const sourceHandlerSecretManagerTaskQueueBridgeFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-084");
+    expect(sourceHandlerSecretManagerTaskQueueBridgeFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
+      "langchain_enqueue_customer_vault_secret_job",
+      "source_enqueue_customer_vault_secret_job"
+    ]);
+    expect(sourceHandlerSecretManagerTaskQueueBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
+    expect(sourceHandlerSecretManagerTaskQueueBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerSecretManagerTaskQueueBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
+    expect(sourceHandlerSecretManagerTaskQueueBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
+    expect(sourceHandlerSecretManagerTaskQueueBridgeFindings.every((finding) => finding.matched_object.metadata.source_tool_handler_redacted === true)).toBe(true);
+    expect(sourceHandlerSecretManagerTaskQueueBridgeFindings.every((finding) => finding.matched_object.metadata.handler_secret_manager_access === true)).toBe(true);
+    expect(sourceHandlerSecretManagerTaskQueueBridgeFindings.every((finding) => finding.matched_object.metadata.handler_tainted_secret_manager_path === true)).toBe(true);
+    expect(sourceHandlerSecretManagerTaskQueueBridgeFindings.every((finding) => finding.matched_object.metadata.handler_task_queue_enqueue === true)).toBe(true);
+    expect(sourceHandlerSecretManagerTaskQueueBridgeFindings.every((finding) => finding.matched_object.metadata.handler_tainted_task_payload === true)).toBe(true);
+    expect(sourceHandlerSecretManagerTaskQueueBridgeFindings.every((finding) => finding.matched_object.metadata.handler_tainted_task_routing === true)).toBe(true);
+    expect(sourceHandlerSecretManagerTaskQueueBridgeFindings.every((finding) => finding.matched_object.metadata.handler_secret_manager_task_queue_bridge === true)).toBe(true);
+    expect(sourceHandlerSecretManagerTaskQueueBridgeFindings.every((finding) => finding.matched_object.metadata.handler_secret_env_access === true)).toBe(true);
+    expect(sourceHandlerSecretManagerTaskQueueBridgeFindings.every((finding) => finding.matched_object.metadata.secret_manager_access === true)).toBe(true);
+    expect(sourceHandlerSecretManagerTaskQueueBridgeFindings.every((finding) => finding.matched_object.metadata.tainted_secret_manager_path === true)).toBe(true);
+    expect(sourceHandlerSecretManagerTaskQueueBridgeFindings.every((finding) => finding.matched_object.metadata.task_queue_enqueue === true)).toBe(true);
+    expect(sourceHandlerSecretManagerTaskQueueBridgeFindings.every((finding) => finding.matched_object.metadata.tainted_task_payload === true)).toBe(true);
+    expect(sourceHandlerSecretManagerTaskQueueBridgeFindings.every((finding) => finding.matched_object.metadata.tainted_task_routing === true)).toBe(true);
+    expect(sourceHandlerSecretManagerTaskQueueBridgeFindings.every((finding) => finding.matched_object.metadata.secret_manager_task_queue_bridge === true)).toBe(true);
+    expect(sourceHandlerSecretManagerTaskQueueBridgeFindings.every((finding) => finding.matched_object.metadata.accepts_secret_like_input === true)).toBe(true);
+    expect(sourceHandlerSecretManagerTaskQueueBridgeFindings.every((finding) => finding.matched_object.metadata.accepts_path_input === true)).toBe(true);
+    expect(sourceHandlerSecretManagerTaskQueueBridgeFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("secret_manager_task_queue_bridge"))).toBe(true);
+    expect(sourceHandlerSecretManagerTaskQueueBridgeFindings.every((finding) => finding.matched_object.metadata.handler_authority_classes.includes("handler_secret_manager_task_queue_bridge"))).toBe(true);
+    expect(sourceHandlerSecretManagerTaskQueueBridgeFindings.every((finding) => finding.matched_object.actions.includes("read"))).toBe(true);
+    expect(sourceHandlerSecretManagerTaskQueueBridgeFindings.every((finding) => finding.matched_object.actions.includes("send"))).toBe(true);
+    expect(sourceHandlerSecretManagerTaskQueueBridgeFindings.every((finding) => finding.matched_object.actions.includes("write"))).toBe(true);
+    expect(sourceHandlerSecretManagerTaskQueueBridgeFindings.every((finding) => finding.matched_object.actions.includes("remember"))).toBe(true);
+    expect(sourceHandlerSecretManagerTaskQueueBridgeFindings.every((finding) => finding.matched_object.external_reach === true)).toBe(true);
+    expect(sourceHandlerSecretManagerTaskQueueBridgeFindings.every((finding) => finding.matched_object.secret_exposure === true)).toBe(true);
+    expect(sourceHandlerSecretManagerTaskQueueBridgeFindings.every((finding) => finding.matched_object.side_effect === true)).toBe(true);
+    expect(sourceHandlerSecretManagerTaskQueueBridgeFindings.every((finding) => finding.matched_object.reversible === false)).toBe(true);
+    expect(JSON.stringify(sourceHandlerSecretManagerTaskQueueBridgeFindings)).not.toContain("vaultClient.readSecret");
+    expect(JSON.stringify(sourceHandlerSecretManagerTaskQueueBridgeFindings)).not.toContain("vault_client.read_secret");
+    expect(JSON.stringify(sourceHandlerSecretManagerTaskQueueBridgeFindings)).not.toContain("taskQueueClient.enqueue");
+    expect(JSON.stringify(sourceHandlerSecretManagerTaskQueueBridgeFindings)).not.toContain("task_queue_client.enqueue");
+    expect(JSON.stringify(sourceHandlerSecretManagerTaskQueueBridgeFindings)).not.toContain("secretRecord.value");
+    expect(JSON.stringify(sourceHandlerSecretManagerTaskQueueBridgeFindings)).not.toContain("secret_record.value");
+    expect(JSON.stringify(sourceHandlerSecretManagerTaskQueueBridgeFindings)).not.toContain("secretQueueValue");
+    expect(JSON.stringify(sourceHandlerSecretManagerTaskQueueBridgeFindings)).not.toContain("secret_queue_value");
+    expect(JSON.stringify(sourceHandlerSecretManagerTaskQueueBridgeFindings)).not.toContain("source vault secret queued for background agent");
+    expect(JSON.stringify(sourceHandlerSecretManagerTaskQueueBridgeFindings)).not.toContain("framework vault secret queued for background agent");
+    expect(JSON.stringify(sourceHandlerSecretManagerTaskQueueBridgeFindings)).not.toContain("Enqueue a customer support secret");
     const sourceHandlerPromptRegistryWriteFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-054");
     expect(sourceHandlerPromptRegistryWriteFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_publish_customer_vault_secret_prompt_registry",
@@ -7850,6 +7900,7 @@ describe("rule engine", () => {
     expect(sourceHandlerSecretManagerFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_cache_customer_vault_secret_prompt",
       "langchain_embed_customer_vault_secret_vector_memory",
+      "langchain_enqueue_customer_vault_secret_job",
       "langchain_export_customer_vault_secret_artifact",
       "langchain_export_customer_vault_secret_trace",
       "langchain_export_customer_vault_secret_training_dataset",
@@ -7863,6 +7914,7 @@ describe("rule engine", () => {
       "langchain_summarize_customer_vault_secret_with_model",
       "source_cache_customer_vault_secret_prompt",
       "source_embed_customer_vault_secret_vector_memory",
+      "source_enqueue_customer_vault_secret_job",
       "source_export_customer_vault_secret_artifact",
       "source_export_customer_vault_secret_trace",
       "source_export_customer_vault_secret_training_dataset",
@@ -7917,6 +7969,8 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerSecretManagerFindings)).not.toContain("secret_prompt_cache_value");
     expect(JSON.stringify(sourceHandlerSecretManagerFindings)).not.toContain("secretPromptRegistryValue");
     expect(JSON.stringify(sourceHandlerSecretManagerFindings)).not.toContain("secret_prompt_registry_value");
+    expect(JSON.stringify(sourceHandlerSecretManagerFindings)).not.toContain("secretQueueValue");
+    expect(JSON.stringify(sourceHandlerSecretManagerFindings)).not.toContain("secret_queue_value");
     expect(JSON.stringify(sourceHandlerSecretManagerFindings)).not.toContain("Read a customer support secret");
     expect(JSON.stringify(sourceHandlerSecretManagerFindings)).not.toContain("Post a customer support secret");
     expect(JSON.stringify(sourceHandlerSecretManagerFindings)).not.toContain("Store a customer support secret");
@@ -7934,6 +7988,8 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerSecretManagerFindings)).not.toContain("framework vault secret exported to artifact");
     expect(JSON.stringify(sourceHandlerSecretManagerFindings)).not.toContain("source vault secret exported to telemetry");
     expect(JSON.stringify(sourceHandlerSecretManagerFindings)).not.toContain("framework vault secret exported to telemetry");
+    expect(JSON.stringify(sourceHandlerSecretManagerFindings)).not.toContain("source vault secret queued for background agent");
+    expect(JSON.stringify(sourceHandlerSecretManagerFindings)).not.toContain("framework vault secret queued for background agent");
     expect(JSON.stringify(sourceHandlerSecretManagerFindings)).not.toContain("source vault secret cached for prompts");
     expect(JSON.stringify(sourceHandlerSecretManagerFindings)).not.toContain("framework vault secret cached for prompts");
     expect(JSON.stringify(sourceHandlerSecretManagerFindings)).not.toContain("source vault secret published to prompt registry");
@@ -7952,6 +8008,7 @@ describe("rule engine", () => {
     expect(sourceHandlerTaintedSecretManagerFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_cache_customer_vault_secret_prompt",
       "langchain_embed_customer_vault_secret_vector_memory",
+      "langchain_enqueue_customer_vault_secret_job",
       "langchain_export_customer_vault_secret_artifact",
       "langchain_export_customer_vault_secret_trace",
       "langchain_export_customer_vault_secret_training_dataset",
@@ -7965,6 +8022,7 @@ describe("rule engine", () => {
       "langchain_summarize_customer_vault_secret_with_model",
       "source_cache_customer_vault_secret_prompt",
       "source_embed_customer_vault_secret_vector_memory",
+      "source_enqueue_customer_vault_secret_job",
       "source_export_customer_vault_secret_artifact",
       "source_export_customer_vault_secret_trace",
       "source_export_customer_vault_secret_training_dataset",
@@ -8020,6 +8078,8 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerTaintedSecretManagerFindings)).not.toContain("secret_prompt_cache_value");
     expect(JSON.stringify(sourceHandlerTaintedSecretManagerFindings)).not.toContain("secretPromptRegistryValue");
     expect(JSON.stringify(sourceHandlerTaintedSecretManagerFindings)).not.toContain("secret_prompt_registry_value");
+    expect(JSON.stringify(sourceHandlerTaintedSecretManagerFindings)).not.toContain("secretQueueValue");
+    expect(JSON.stringify(sourceHandlerTaintedSecretManagerFindings)).not.toContain("secret_queue_value");
     expect(JSON.stringify(sourceHandlerTaintedSecretManagerFindings)).not.toContain("Read a customer support secret");
     expect(JSON.stringify(sourceHandlerTaintedSecretManagerFindings)).not.toContain("Post a customer support secret");
     expect(JSON.stringify(sourceHandlerTaintedSecretManagerFindings)).not.toContain("Store a customer support secret");
@@ -8043,6 +8103,8 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerTaintedSecretManagerFindings)).not.toContain("framework vault secret cached for prompts");
     expect(JSON.stringify(sourceHandlerTaintedSecretManagerFindings)).not.toContain("source vault secret published to prompt registry");
     expect(JSON.stringify(sourceHandlerTaintedSecretManagerFindings)).not.toContain("framework vault secret published to prompt registry");
+    expect(JSON.stringify(sourceHandlerTaintedSecretManagerFindings)).not.toContain("source vault secret queued for background agent");
+    expect(JSON.stringify(sourceHandlerTaintedSecretManagerFindings)).not.toContain("framework vault secret queued for background agent");
     expect(JSON.stringify(sourceHandlerTaintedSecretManagerFindings)).not.toContain("source vault secret granted broad authorization");
     expect(JSON.stringify(sourceHandlerTaintedSecretManagerFindings)).not.toContain("framework vault secret granted broad authorization");
     expect(JSON.stringify(sourceHandlerTaintedSecretManagerFindings)).not.toContain("Issue an agent credential");

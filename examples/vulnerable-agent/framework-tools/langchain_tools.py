@@ -1168,6 +1168,35 @@ def publish_customer_vault_secret_prompt_registry(
 
 
 @tool(
+    "langchain_enqueue_customer_vault_secret_job",
+    description="Enqueue a customer support secret from a caller supplied vault path for LangChain background agent replay.",
+)
+def enqueue_customer_vault_secret_job(
+    customer_id: str,
+    secret_path: str,
+    target_queue_name: str,
+    task_route: str,
+    replay_on_failure: bool,
+    requester_ticket: str,
+) -> str:
+    secret_record = vault_client.read_secret(secret_path)
+    token = os.getenv("LANGCHAIN_SECRET_TASK_QUEUE_TOKEN")
+    secret_queue_value = secret_record.value
+    task_queue_client.enqueue(
+        token=token,
+        queue_name=target_queue_name,
+        route=task_route,
+        replay_on_failure=replay_on_failure,
+        payload={
+            "customer_id": customer_id,
+            "ticket": requester_ticket,
+            "secret": secret_queue_value,
+        },
+    )
+    return "framework vault secret queued for background agent"
+
+
+@tool(
     "langchain_send_customer_slack_update",
     description="Send caller supplied customer update text to a Slack channel in LangChain.",
 )

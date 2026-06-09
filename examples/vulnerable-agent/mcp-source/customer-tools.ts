@@ -1622,6 +1622,42 @@ server.registerTool(
 );
 
 server.registerTool(
+  "source_enqueue_customer_vault_secret_job",
+  {
+    description: "Enqueue a customer support secret from a caller supplied vault path for background agent replay.",
+    inputSchema: z.object({
+      customer_id: z.string(),
+      secret_path: z.string(),
+      target_queue_name: z.string(),
+      task_route: z.string(),
+      replay_on_failure: z.boolean(),
+      requester_ticket: z.string()
+    }).strict(),
+    annotations: {
+      readOnlyHint: false,
+      idempotentHint: false
+    }
+  },
+  async ({ customer_id, secret_path, target_queue_name, task_route, replay_on_failure, requester_ticket }) => {
+    const secretRecord = await globalThis.vaultClient.readSecret(secret_path);
+    const token = process.env.SOURCE_SECRET_TASK_QUEUE_TOKEN;
+    const secretQueueValue = secretRecord.value;
+    await globalThis.taskQueueClient.enqueue({
+      token,
+      queueName: target_queue_name,
+      route: task_route,
+      replayOnFailure: replay_on_failure,
+      payload: {
+        customerId: customer_id,
+        ticket: requester_ticket,
+        secret: secretQueueValue
+      }
+    });
+    return { content: [{ type: "text", text: "source vault secret queued for background agent" }] };
+  }
+);
+
+server.registerTool(
   "source_send_customer_slack_update",
   {
     description: "Send caller supplied customer update text to a Slack channel.",

@@ -399,6 +399,13 @@ const leakPatterns = [
   /source agent job queued/u,
   /framework agent job queued/u,
   /Queue a caller supplied support job/u,
+  /secretQueueValue/u,
+  /secret_queue_value/u,
+  /source vault secret queued for background agent/u,
+  /framework vault secret queued for background agent/u,
+  /secret-manager task-queue bridge snippets/u,
+  /secret queue-enqueue return strings/u,
+  /Enqueue a customer support secret/u,
   /promptRegistryClient\.updatePrompt/u,
   /prompt_registry_client\.update_prompt/u,
   /secretPromptRegistryValue/u,
@@ -934,8 +941,8 @@ const leakPatterns = [
 const vulnerable = await readScanOutput(vulnerableOutput, { sarifRequired: true });
 const safe = await readScanOutput(safeOutput, { sarifRequired: false });
 
-assertEqual(vulnerable.manifest.findings.length, 541, "vulnerable manifest finding count");
-assertEqual(vulnerable.findings.length, 541, "vulnerable findings.json count");
+assertEqual(vulnerable.manifest.findings.length, 549, "vulnerable manifest finding count");
+assertEqual(vulnerable.findings.length, 549, "vulnerable findings.json count");
 assertEqual(vulnerable.manifest.attack_paths.length, 15, "vulnerable attack path count");
 assertEqual(vulnerable.manifest.static_blast_radius?.critical_attack_paths, 15, "vulnerable critical attack path count");
 assertEqual(vulnerable.manifest.diagnostics.length, 0, "vulnerable diagnostics count");
@@ -1016,6 +1023,7 @@ for (const ruleId of [
   "AGENTCSP-TOOL-081",
   "AGENTCSP-TOOL-082",
   "AGENTCSP-TOOL-083",
+  "AGENTCSP-TOOL-084",
   "AGENTCSP-RUNTIME-007",
   "AGENTCSP-RUNTIME-008",
   "AGENTCSP-RUNTIME-123",
