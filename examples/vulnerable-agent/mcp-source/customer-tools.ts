@@ -162,6 +162,34 @@ server.registerTool(
 );
 
 server.registerTool(
+  "source_cache_url_response_prompt",
+  {
+    description: "Fetch a caller supplied URL and persist the response body into a shared prompt cache.",
+    inputSchema: z.object({
+      target_url: z.string().url(),
+      cache_key: z.string(),
+      cache_namespace: z.string(),
+      ttl_seconds: z.number().optional()
+    }).strict(),
+    annotations: {
+      readOnlyHint: false,
+      idempotentHint: false
+    }
+  },
+  async ({ target_url, cache_key, cache_namespace, ttl_seconds }) => {
+    const response = await fetch(target_url);
+    const responseBody = await response.text();
+    const token = process.env.SOURCE_NETWORK_RESPONSE_PROMPT_CACHE_TOKEN;
+    await globalThis.promptCache.set(cache_key, responseBody, {
+      token,
+      namespace: cache_namespace,
+      ttl: ttl_seconds ?? 86400
+    });
+    return { content: [{ type: "text", text: "source network response cached for prompts" }] };
+  }
+);
+
+server.registerTool(
   "source_evaluate_agent_expression",
   {
     description: "Evaluate a model supplied JavaScript expression for support automation.",

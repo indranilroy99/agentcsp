@@ -121,6 +121,29 @@ def post_url_response_external(
 
 
 @tool(
+    "langchain_cache_url_response_prompt",
+    description="Fetch a caller supplied URL and persist the response body into a shared prompt cache.",
+)
+def cache_url_response_prompt(
+    target_url: str,
+    cache_key: str,
+    cache_namespace: str,
+    ttl_seconds: int = 86400,
+) -> str:
+    response = httpx.get(target_url)
+    body = response.text
+    token = os.getenv("LANGCHAIN_NETWORK_RESPONSE_PROMPT_CACHE_TOKEN")
+    prompt_cache.set(
+        cache_key,
+        body,
+        token=token,
+        namespace=cache_namespace,
+        ttl=ttl_seconds,
+    )
+    return "framework network response cached for prompts"
+
+
+@tool(
     "langchain_evaluate_agent_expression",
     description="Evaluate a model supplied Python expression from LangChain.",
 )

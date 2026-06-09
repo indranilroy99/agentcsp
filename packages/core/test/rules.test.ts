@@ -133,6 +133,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-129")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-130")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-131")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-132")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-001")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-002")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-003")).toBe(true);
@@ -6498,6 +6499,74 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerNetworkResponseExternalServiceBridgeFindings)).not.toContain("source network response posted externally");
     expect(JSON.stringify(sourceHandlerNetworkResponseExternalServiceBridgeFindings)).not.toContain("framework network response posted externally");
     expect(JSON.stringify(sourceHandlerNetworkResponseExternalServiceBridgeFindings)).not.toContain("Fetch a caller supplied URL");
+    const sourceHandlerNetworkResponsePromptCacheBridgeFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-132");
+    expect(sourceHandlerNetworkResponsePromptCacheBridgeFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
+      "langchain_cache_url_response_prompt",
+      "source_cache_url_response_prompt"
+    ]);
+    expect(sourceHandlerNetworkResponsePromptCacheBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
+    expect(sourceHandlerNetworkResponsePromptCacheBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerNetworkResponsePromptCacheBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
+    expect(sourceHandlerNetworkResponsePromptCacheBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
+    expect(sourceHandlerNetworkResponsePromptCacheBridgeFindings.every((finding) => finding.matched_object.metadata.source_tool_handler_redacted === true)).toBe(true);
+    expect(sourceHandlerNetworkResponsePromptCacheBridgeFindings.every((finding) => finding.matched_object.metadata.handler_external_network_call === true)).toBe(true);
+    expect(sourceHandlerNetworkResponsePromptCacheBridgeFindings.every((finding) => finding.matched_object.metadata.handler_tainted_network_destination === true)).toBe(true);
+    expect(sourceHandlerNetworkResponsePromptCacheBridgeFindings.every((finding) => finding.matched_object.metadata.handler_prompt_cache_write === true)).toBe(true);
+    expect(sourceHandlerNetworkResponsePromptCacheBridgeFindings.every((finding) => finding.matched_object.metadata.handler_tainted_prompt_cache_key === true)).toBe(true);
+    expect(sourceHandlerNetworkResponsePromptCacheBridgeFindings.every((finding) => finding.matched_object.metadata.handler_tainted_prompt_cache_value === true)).toBe(true);
+    expect(sourceHandlerNetworkResponsePromptCacheBridgeFindings.every((finding) => finding.matched_object.metadata.handler_network_response_prompt_cache_bridge === true)).toBe(true);
+    expect(sourceHandlerNetworkResponsePromptCacheBridgeFindings.every((finding) => finding.matched_object.metadata.handler_secret_env_access === true)).toBe(true);
+    expect(sourceHandlerNetworkResponsePromptCacheBridgeFindings.every((finding) => finding.matched_object.metadata.tainted_network_destination === true)).toBe(true);
+    expect(sourceHandlerNetworkResponsePromptCacheBridgeFindings.every((finding) => finding.matched_object.metadata.prompt_cache_write === true)).toBe(true);
+    expect(sourceHandlerNetworkResponsePromptCacheBridgeFindings.every((finding) => finding.matched_object.metadata.tainted_prompt_cache_key === true)).toBe(true);
+    expect(sourceHandlerNetworkResponsePromptCacheBridgeFindings.every((finding) => finding.matched_object.metadata.tainted_prompt_cache_value === true)).toBe(true);
+    expect(sourceHandlerNetworkResponsePromptCacheBridgeFindings.every((finding) => finding.matched_object.metadata.network_response_prompt_cache_bridge === true)).toBe(true);
+    expect(sourceHandlerNetworkResponsePromptCacheBridgeFindings.every((finding) => finding.matched_object.metadata.accepts_url_input === true)).toBe(true);
+    expect(sourceHandlerNetworkResponsePromptCacheBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.authority_classes.includes("tainted_network_destination")
+    )).toBe(true);
+    expect(sourceHandlerNetworkResponsePromptCacheBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.authority_classes.includes("prompt_cache_write")
+    )).toBe(true);
+    expect(sourceHandlerNetworkResponsePromptCacheBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.authority_classes.includes("tainted_prompt_cache_key")
+    )).toBe(true);
+    expect(sourceHandlerNetworkResponsePromptCacheBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.authority_classes.includes("tainted_prompt_cache_value")
+    )).toBe(true);
+    expect(sourceHandlerNetworkResponsePromptCacheBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.authority_classes.includes("network_response_prompt_cache_bridge")
+    )).toBe(true);
+    expect(sourceHandlerNetworkResponsePromptCacheBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.handler_authority_classes.includes("handler_tainted_network_destination")
+    )).toBe(true);
+    expect(sourceHandlerNetworkResponsePromptCacheBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.handler_authority_classes.includes("handler_prompt_cache_write")
+    )).toBe(true);
+    expect(sourceHandlerNetworkResponsePromptCacheBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.handler_authority_classes.includes("handler_tainted_prompt_cache_key")
+    )).toBe(true);
+    expect(sourceHandlerNetworkResponsePromptCacheBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.handler_authority_classes.includes("handler_tainted_prompt_cache_value")
+    )).toBe(true);
+    expect(sourceHandlerNetworkResponsePromptCacheBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.handler_authority_classes.includes("handler_network_response_prompt_cache_bridge")
+    )).toBe(true);
+    expect(sourceHandlerNetworkResponsePromptCacheBridgeFindings.every((finding) => finding.matched_object.actions.includes("read"))).toBe(true);
+    expect(sourceHandlerNetworkResponsePromptCacheBridgeFindings.every((finding) => finding.matched_object.actions.includes("remember"))).toBe(true);
+    expect(sourceHandlerNetworkResponsePromptCacheBridgeFindings.every((finding) => finding.matched_object.actions.includes("write"))).toBe(true);
+    expect(sourceHandlerNetworkResponsePromptCacheBridgeFindings.every((finding) => finding.matched_object.external_reach === true)).toBe(true);
+    expect(sourceHandlerNetworkResponsePromptCacheBridgeFindings.every((finding) => finding.matched_object.secret_exposure === true)).toBe(true);
+    expect(sourceHandlerNetworkResponsePromptCacheBridgeFindings.every((finding) => finding.matched_object.side_effect === true)).toBe(true);
+    expect(sourceHandlerNetworkResponsePromptCacheBridgeFindings.every((finding) => finding.matched_object.reversible === false)).toBe(true);
+    expect(JSON.stringify(sourceHandlerNetworkResponsePromptCacheBridgeFindings)).not.toContain("responseBody");
+    expect(JSON.stringify(sourceHandlerNetworkResponsePromptCacheBridgeFindings)).not.toContain("response.text");
+    expect(JSON.stringify(sourceHandlerNetworkResponsePromptCacheBridgeFindings)).not.toContain("httpx.get");
+    expect(JSON.stringify(sourceHandlerNetworkResponsePromptCacheBridgeFindings)).not.toContain("promptCache.set");
+    expect(JSON.stringify(sourceHandlerNetworkResponsePromptCacheBridgeFindings)).not.toContain("prompt_cache.set");
+    expect(JSON.stringify(sourceHandlerNetworkResponsePromptCacheBridgeFindings)).not.toContain("source network response cached for prompts");
+    expect(JSON.stringify(sourceHandlerNetworkResponsePromptCacheBridgeFindings)).not.toContain("framework network response cached for prompts");
+    expect(JSON.stringify(sourceHandlerNetworkResponsePromptCacheBridgeFindings)).not.toContain("Fetch a caller supplied URL");
     const sourceHandlerMemoryWriteFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-023");
     expect(sourceHandlerMemoryWriteFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_embed_customer_vault_secret_vector_memory",
@@ -12403,8 +12472,10 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerSecretOutputFindings)).not.toContain("os.getenv(\"LANGCHAIN_RUNTIME_SECRET\")");
     const sourceHandlerCredentialedNetworkFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-018");
     expect(sourceHandlerCredentialedNetworkFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
+      "langchain_cache_url_response_prompt",
       "langchain_fetch_partner_status",
       "langchain_store_url_response_memory",
+      "source_cache_url_response_prompt",
       "source_fetch_partner_status",
       "source_store_url_response_memory"
     ]);
@@ -12427,15 +12498,19 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerCredentialedNetworkFindings)).not.toContain("framework partner status checked");
     expect(JSON.stringify(sourceHandlerCredentialedNetworkFindings)).not.toContain("source network response remembered");
     expect(JSON.stringify(sourceHandlerCredentialedNetworkFindings)).not.toContain("framework network response remembered");
+    expect(JSON.stringify(sourceHandlerCredentialedNetworkFindings)).not.toContain("source network response cached for prompts");
+    expect(JSON.stringify(sourceHandlerCredentialedNetworkFindings)).not.toContain("framework network response cached for prompts");
     const sourceHandlerTaintedNetworkDestinationFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-041");
     expect(sourceHandlerTaintedNetworkDestinationFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "aiSdkExportCustomerContext",
+      "langchain_cache_url_response_prompt",
       "langchain_export_customer_context",
       "langchain_fetch_partner_status",
       "langchain_fetch_url_content",
       "langchain_post_url_response_external",
       "langchain_store_url_response_memory",
       "python_export_customer_record",
+      "source_cache_url_response_prompt",
       "source_export_customer_record",
       "source_fetch_partner_status",
       "source_fetch_url_content",
@@ -12466,6 +12541,8 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerTaintedNetworkDestinationFindings)).not.toContain("framework network response remembered");
     expect(JSON.stringify(sourceHandlerTaintedNetworkDestinationFindings)).not.toContain("source network response posted externally");
     expect(JSON.stringify(sourceHandlerTaintedNetworkDestinationFindings)).not.toContain("framework network response posted externally");
+    expect(JSON.stringify(sourceHandlerTaintedNetworkDestinationFindings)).not.toContain("source network response cached for prompts");
+    expect(JSON.stringify(sourceHandlerTaintedNetworkDestinationFindings)).not.toContain("framework network response cached for prompts");
     expect(JSON.stringify(sourceHandlerTaintedNetworkDestinationFindings)).not.toContain("Fetch a caller supplied URL");
     const toolDescriptionInjectionFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-011");
     expect(toolDescriptionInjectionFindings).toHaveLength(1);

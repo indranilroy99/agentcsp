@@ -365,6 +365,7 @@ Tool metadata may include:
 - `prompt_cache_write`
 - `secret_manager_prompt_cache_bridge`
 - `model_output_prompt_cache_bridge`
+- `network_response_prompt_cache_bridge`
 - `tool_output_prompt_cache_bridge`
 - `secret_manager_prompt_registry_bridge`
 - `model_output_prompt_registry_bridge`
@@ -476,6 +477,7 @@ Tool metadata may include:
 - `handler_prompt_cache_write`
 - `handler_secret_manager_prompt_cache_bridge`
 - `handler_model_output_prompt_cache_bridge`
+- `handler_network_response_prompt_cache_bridge`
 - `handler_tool_output_prompt_cache_bridge`
 - `handler_secret_manager_prompt_registry_bridge`
 - `handler_model_output_prompt_registry_bridge`
@@ -2059,6 +2061,8 @@ Source-defined tool handlers can also emit redacted secret-manager telemetry bri
 Source-defined tool handlers can also emit redacted secret-manager prompt-cache bridge authority through `secret_manager_prompt_cache_bridge`, `secret_manager_access`, `tainted_secret_manager_path`, `prompt_cache_write`, `tainted_prompt_cache_key`, `tainted_prompt_cache_value`, and the corresponding `handler_*` fields when parsed MCP SDK or agent-framework tools read caller-selected vault or secret-manager paths and write the returned secret material into prompt, LLM, response, or semantic caches using runtime credentials and caller-controlled cache keys. Handler bodies, vault calls, secret paths, secret values, cache calls, cache keys, cache values, TTLs, and return strings remain redacted.
 
 Source-defined tool handlers can also emit redacted model-output prompt-cache bridge authority through `model_output_prompt_cache_bridge`, `model_provider_call`, `prompt_cache_write`, `tainted_prompt_cache_key`, `tainted_prompt_cache_value`, and the corresponding `handler_*` fields when parsed MCP SDK or agent-framework tools call model providers and persist generated responses into prompt, LLM, response, or semantic caches using runtime credentials and caller-controlled cache routing. Handler bodies, model calls, prompts, generated outputs, cache calls, cache keys, namespaces, cache values, TTLs, and return strings remain redacted.
+
+Source-defined tool handlers can also emit redacted network-response prompt-cache bridge authority through `network_response_prompt_cache_bridge`, `credentialed_network_read`, `prompt_cache_write`, `tainted_network_destination`, `tainted_prompt_cache_key`, `tainted_prompt_cache_value`, and the corresponding `handler_*` fields when parsed MCP SDK or agent-framework tools fetch caller-selected URLs and persist returned network content into prompt, LLM, response, or semantic caches using runtime credentials and caller-controlled cache routing. Handler bodies, network calls, response variables, response text, cache calls, cache keys, namespaces, cache values, TTLs, and return strings remain redacted.
 
 Source-defined tool handlers can also emit redacted tool-output prompt-cache bridge authority through `tool_output_prompt_cache_bridge`, `nested_tool_invocation`, `prompt_cache_write`, `tainted_prompt_cache_key`, and the corresponding `handler_*` fields when parsed MCP SDK or agent-framework tools invoke nested tools and write raw tool observations into prompt, LLM, response, or semantic caches using runtime credentials. Handler bodies, nested tool calls, tool names, arguments, raw observations, cache calls, cache keys, cache values, TTLs, and return strings remain redacted.
 

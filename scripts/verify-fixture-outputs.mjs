@@ -90,6 +90,8 @@ const leakPatterns = [
   /framework network response remembered/u,
   /source network response posted externally/u,
   /framework network response posted externally/u,
+  /source network response cached for prompts/u,
+  /framework network response cached for prompts/u,
   /Promote a raw privileged tool observation/u,
   /agentMemory\.upsert/u,
   /memory_store\.upsert/u,
@@ -1115,6 +1117,8 @@ const leakPatterns = [
   /framework vault secret cached for prompts/u,
   /source model selected prompt cache value stored/u,
   /framework model selected prompt cache value stored/u,
+  /source network response cached for prompts/u,
+  /framework network response cached for prompts/u,
   /Ask a model provider to draft a reusable response/u,
   /Return one cache value/u,
   /modelSelectedCacheValue/u,
@@ -1185,8 +1189,8 @@ const leakPatterns = [
 const vulnerable = await readScanOutput(vulnerableOutput, { sarifRequired: true });
 const safe = await readScanOutput(safeOutput, { sarifRequired: false });
 
-assertEqual(vulnerable.manifest.findings.length, 943, "vulnerable manifest finding count");
-assertEqual(vulnerable.findings.length, 943, "vulnerable findings.json count");
+assertEqual(vulnerable.manifest.findings.length, 949, "vulnerable manifest finding count");
+assertEqual(vulnerable.findings.length, 949, "vulnerable findings.json count");
 assertEqual(vulnerable.manifest.attack_paths.length, 15, "vulnerable attack path count");
 assertEqual(vulnerable.manifest.static_blast_radius?.critical_attack_paths, 15, "vulnerable critical attack path count");
 assertEqual(vulnerable.manifest.diagnostics.length, 0, "vulnerable diagnostics count");
@@ -1315,6 +1319,7 @@ for (const ruleId of [
   "AGENTCSP-TOOL-129",
   "AGENTCSP-TOOL-130",
   "AGENTCSP-TOOL-131",
+  "AGENTCSP-TOOL-132",
   "AGENTCSP-RUNTIME-007",
   "AGENTCSP-RUNTIME-008",
   "AGENTCSP-RUNTIME-123",
