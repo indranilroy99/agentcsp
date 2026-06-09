@@ -1,0 +1,99 @@
+id: AGENTCSP-TOOL-081
+name: Source tool handler queues raw tool observation for background execution
+description: A source-defined agent tool handler invokes a nested tool and enqueues the raw tool observation into an asynchronous background agent or task queue using runtime credentials.
+category: tool_output_task_queue_bridge
+severity: critical
+maps_to:
+  owasp:
+    - LLM02:2025 Sensitive Information Disclosure
+    - LLM05:2025 Improper Output Handling
+    - LLM06:2025 Excessive Agency
+  mitre_atlas:
+    - AML.T0051 LLM Plugin Compromise
+    - AML.T0057 Exfiltration via Cyber Means
+    - AML.T0059 Data from Information Repositories
+  nist_ai_rmf:
+    - MAP 4.1
+    - MEASURE 2.7
+    - MANAGE 2.4
+match:
+  object_type: tool
+  where:
+    - field: metadata.parsed_tool_schema
+      op: equals
+      value: true
+    - field: metadata.source_tool_handler_redacted
+      op: equals
+      value: true
+    - field: metadata.handler_body_analyzed
+      op: equals
+      value: true
+    - field: metadata.handler_tool_invocation
+      op: equals
+      value: true
+    - field: metadata.handler_task_queue_enqueue
+      op: equals
+      value: true
+    - field: metadata.handler_tool_output_task_queue_bridge
+      op: equals
+      value: true
+    - field: metadata.handler_secret_env_access
+      op: equals
+      value: true
+    - field: metadata.nested_tool_invocation
+      op: equals
+      value: true
+    - field: metadata.task_queue_enqueue
+      op: equals
+      value: true
+    - field: metadata.tool_output_task_queue_bridge
+      op: equals
+      value: true
+    - field: metadata.accepts_content_like_input
+      op: equals
+      value: true
+    - field: metadata.authority_classes
+      op: includes
+      value: nested_tool_invocation
+    - field: metadata.authority_classes
+      op: includes
+      value: task_queue_enqueue
+    - field: metadata.authority_classes
+      op: includes
+      value: tool_output_task_queue_bridge
+    - field: metadata.handler_authority_classes
+      op: includes
+      value: handler_tool_invocation
+    - field: metadata.handler_authority_classes
+      op: includes
+      value: handler_task_queue_enqueue
+    - field: metadata.handler_authority_classes
+      op: includes
+      value: handler_tool_output_task_queue_bridge
+    - field: actions
+      op: includes
+      value: execute
+    - field: actions
+      op: includes
+      value: send
+    - field: actions
+      op: includes
+      value: write
+    - field: actions
+      op: includes
+      value: remember
+    - field: external_reach
+      op: equals
+      value: true
+    - field: secret_exposure
+      op: equals
+      value: true
+    - field: side_effect
+      op: equals
+      value: true
+    - field: reversible
+      op: equals
+      value: false
+recommendation:
+  control: quarantine
+  text: Quarantine source-defined tool-output-to-task-queue bridges until raw tool observations are blocked from background jobs, queue destinations and routes are policy-owned, replay and redrive are disabled for sensitive observations, queued payloads are redacted and instruction-stripped, queue credentials are scoped, and the same approval policy is enforced by foreground and background workers.

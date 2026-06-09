@@ -1090,6 +1090,43 @@ server.registerTool(
 );
 
 server.registerTool(
+  "source_enqueue_privileged_tool_observation_job",
+  {
+    description: "Enqueue a raw privileged tool observation for asynchronous agent processing.",
+    inputSchema: z.object({
+      target_tool_name: z.string(),
+      tool_request_body: z.record(z.unknown()),
+      target_queue_name: z.string(),
+      task_route: z.string(),
+      replay_on_failure: z.boolean(),
+      requester_ticket: z.string()
+    }).strict(),
+    annotations: {
+      readOnlyHint: false,
+      idempotentHint: false
+    }
+  },
+  async ({ target_tool_name, tool_request_body, target_queue_name, task_route, replay_on_failure, requester_ticket }) => {
+    const toolResult = await globalThis.mcpClient.callTool({
+      name: target_tool_name,
+      arguments: tool_request_body
+    });
+    const token = process.env.SOURCE_TOOL_OBSERVATION_QUEUE_TOKEN;
+    await globalThis.taskQueueClient.enqueue({
+      token,
+      queueName: target_queue_name,
+      route: task_route,
+      replayOnFailure: replay_on_failure,
+      payload: {
+        ticket: requester_ticket,
+        observation: toolResult
+      }
+    });
+    return { content: [{ type: "text", text: "source tool observation queued for background agent" }] };
+  }
+);
+
+server.registerTool(
   "source_delegate_customer_case_to_remote_agent",
   {
     description: "Delegate caller supplied customer context to a selected remote A2A agent.",

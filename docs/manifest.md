@@ -373,6 +373,7 @@ Tool metadata may include:
 - `task_queue_enqueue`
 - `tainted_task_payload`
 - `tainted_task_routing`
+- `tool_output_task_queue_bridge`
 - `prompt_registry_write`
 - `tainted_prompt_registry_payload`
 - `tainted_prompt_registry_selector`
@@ -450,6 +451,7 @@ Tool metadata may include:
 - `handler_task_queue_enqueue`
 - `handler_tainted_task_payload`
 - `handler_tainted_task_routing`
+- `handler_tool_output_task_queue_bridge`
 - `handler_prompt_registry_write`
 - `handler_tainted_prompt_registry_payload`
 - `handler_tainted_prompt_registry_selector`
@@ -1955,6 +1957,8 @@ Source-defined tool handlers can also emit redacted secret-manager artifact brid
 Source-defined tool handlers can also emit redacted RAG retrieval authority through `rag_retrieval`, `tainted_rag_retrieval_query`, `rag_context_to_output`, and the corresponding `handler_*` fields when parsed MCP SDK or agent-framework tools run caller-selected retrieval and return raw chunks into model-visible output using runtime credentials. Handler bodies, retriever calls, query text, namespaces, filters, chunk text, document IDs, and returned retrieved context remain redacted.
 
 Source-defined tool handlers can also emit redacted async task-queue authority through `task_queue_enqueue`, `tainted_task_payload`, `tainted_task_routing`, and the corresponding `handler_*` fields when parsed MCP SDK or agent-framework tools enqueue caller/customer payloads into background agent jobs using runtime credentials. Handler bodies, queue calls, queue names, topics, routes, payload bodies, requested action labels, and returned queue summaries remain redacted.
+
+Source-defined tool handlers can also emit redacted tool-output task-queue bridge authority through `tool_output_task_queue_bridge`, `nested_tool_invocation`, `task_queue_enqueue`, `tainted_task_routing`, and the corresponding `handler_*` fields when parsed MCP SDK or agent-framework tools invoke nested tools and enqueue raw tool observations into asynchronous background-agent jobs using runtime credentials. Handler bodies, nested tool calls, queue calls, queue names, routes, replay flags, payload bodies, raw observations, and return strings remain redacted.
 
 Source-defined tool handlers can also emit redacted prompt-registry write authority through `prompt_registry_write`, `tainted_prompt_registry_payload`, `tainted_prompt_registry_selector`, and the corresponding `handler_*` fields when parsed MCP SDK or agent-framework tools publish caller/customer prompt or instruction content to remote prompt registries using runtime credentials. Handler bodies, registry calls, prompt IDs, prompt names, roles, namespaces, versions, prompt bodies, customer context, and returned registry summaries remain redacted.
 

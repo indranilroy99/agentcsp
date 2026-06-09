@@ -24242,6 +24242,7 @@ function addToolDefinitionSurface(
       task_queue_enqueue: authority.task_queue_enqueue,
       tainted_task_payload: authority.tainted_task_payload,
       tainted_task_routing: authority.tainted_task_routing,
+      tool_output_task_queue_bridge: authority.tool_output_task_queue_bridge,
       prompt_registry_write: authority.prompt_registry_write,
       tainted_prompt_registry_payload: authority.tainted_prompt_registry_payload,
       tainted_prompt_registry_selector: authority.tainted_prompt_registry_selector,
@@ -26672,6 +26673,7 @@ interface SourceToolHandlerSignals {
   handlerTaskQueueEnqueue: boolean;
   handlerTaintedTaskPayload: boolean;
   handlerTaintedTaskRouting: boolean;
+  handlerToolOutputTaskQueueBridge: boolean;
   handlerPromptRegistryWrite: boolean;
   handlerToolOutputPromptRegistryBridge: boolean;
   handlerSecretManagerPromptRegistryBridge: boolean;
@@ -27184,6 +27186,7 @@ function sourceToolHandlerSignalMetadata(signals: SourceToolHandlerSignals | und
     handler_task_queue_enqueue: signals.handlerTaskQueueEnqueue,
     handler_tainted_task_payload: signals.handlerTaintedTaskPayload,
     handler_tainted_task_routing: signals.handlerTaintedTaskRouting,
+    handler_tool_output_task_queue_bridge: signals.handlerToolOutputTaskQueueBridge,
     handler_prompt_registry_write: signals.handlerPromptRegistryWrite,
     handler_tool_output_prompt_registry_bridge: signals.handlerToolOutputPromptRegistryBridge,
     handler_secret_manager_prompt_registry_bridge: signals.handlerSecretManagerPromptRegistryBridge,
@@ -27365,6 +27368,9 @@ function classifySourceToolHandlerSignals(
   const taintedTaskRouting = taskQueueEnqueue && (language === "javascript"
     ? hasJavaScriptHandlerTaintedTaskRouting(handlerSource)
     : hasPythonHandlerTaintedTaskRouting(handlerSource));
+  const toolOutputTaskQueueBridge = taskQueueEnqueue && (language === "javascript"
+    ? hasJavaScriptHandlerToolOutputTaskQueueBridge(handlerSource)
+    : hasPythonHandlerToolOutputTaskQueueBridge(handlerSource));
   const promptRegistryWrite = language === "javascript"
     ? hasJavaScriptHandlerPromptRegistryWrite(handlerSource)
     : hasPythonHandlerPromptRegistryWrite(handlerSource);
@@ -27576,6 +27582,7 @@ function classifySourceToolHandlerSignals(
   if (taskQueueEnqueue) classes.add("handler_task_queue_enqueue");
   if (taintedTaskPayload) classes.add("handler_tainted_task_payload");
   if (taintedTaskRouting) classes.add("handler_tainted_task_routing");
+  if (toolOutputTaskQueueBridge) classes.add("handler_tool_output_task_queue_bridge");
   if (promptRegistryWrite) classes.add("handler_prompt_registry_write");
   if (toolOutputPromptRegistryBridge) classes.add("handler_tool_output_prompt_registry_bridge");
   if (secretManagerPromptRegistryBridge) classes.add("handler_secret_manager_prompt_registry_bridge");
@@ -27676,6 +27683,7 @@ function classifySourceToolHandlerSignals(
     handlerTaskQueueEnqueue: taskQueueEnqueue,
     handlerTaintedTaskPayload: taintedTaskPayload,
     handlerTaintedTaskRouting: taintedTaskRouting,
+    handlerToolOutputTaskQueueBridge: toolOutputTaskQueueBridge,
     handlerPromptRegistryWrite: promptRegistryWrite,
     handlerToolOutputPromptRegistryBridge: toolOutputPromptRegistryBridge,
     handlerSecretManagerPromptRegistryBridge: secretManagerPromptRegistryBridge,
@@ -29468,6 +29476,31 @@ function hasPythonHandlerTaintedTaskRouting(source: string): boolean {
     /\b(?:task_queue|task_queue_client|queue_client|job_queue|background_queue|worker_queue|agent_queue|sqs|sqs_client|pubsub|pubsub_client|event_bus|eventbridge|scheduler|job_client|kafka_producer|redis_queue|bull_queue|temporal_client)\s*(?:\.\s*[A-Za-z_]\w*){0,5}\s*\.\s*(?:enqueue|enqueue_task|send|send_message|send_messages|publish|publish_message|emit|put_events|put_event|schedule|schedule_task|dispatch|dispatch_job|create_job|create_task|add|add_job|push|produce|start_workflow|signal_with_start)\s*\(([\s\S]{0,1400})\)/giu,
     /\b(?:enqueue_agent_task|enqueue_task|dispatch_agent_job|publish_agent_job|schedule_agent_task|send_agent_job)\s*\(([\s\S]{0,1400})\)/giu
   ].some((pattern) => expressionMatchesTaintedTaskRouting(pattern, source));
+}
+
+function hasJavaScriptHandlerToolOutputTaskQueueBridge(source: string): boolean {
+  const identifiers = extractJavaScriptToolOutputIdentifiers(source);
+  return identifiers.length > 0 && callExpressionReferencesAnyIdentifier(
+    [
+      /\b(?:taskQueue|taskQueueClient|queueClient|jobQueue|backgroundQueue|workerQueue|agentQueue|sqs|sqsClient|pubsub|pubsubClient|eventBus|eventBridge|scheduler|jobClient|kafkaProducer|redisQueue|bullQueue|temporalClient)\s*(?:\.\s*[A-Za-z_$][\w$]*){0,5}\s*\.\s*(?:enqueue|enqueueTask|send|sendMessage|sendMessageBatch|publish|publishMessage|emit|putEvents|putEvent|schedule|scheduleTask|dispatch|dispatchJob|createJob|createTask|add|addJob|push|produce|startWorkflow|signalWithStart)\s*\(([\s\S]{0,2200})\)/giu,
+      /\bnew\s+(?:SendMessageCommand|PutEventsCommand|PublishCommand)\s*\(([\s\S]{0,2200})\)/giu,
+      /\b(?:enqueueAgentTask|enqueueTask|dispatchAgentJob|publishAgentJob|scheduleAgentTask|sendAgentJob)\s*\(([\s\S]{0,2200})\)/giu
+    ],
+    source,
+    identifiers
+  );
+}
+
+function hasPythonHandlerToolOutputTaskQueueBridge(source: string): boolean {
+  const identifiers = extractPythonToolOutputIdentifiers(source);
+  return identifiers.length > 0 && callExpressionReferencesAnyIdentifier(
+    [
+      /\b(?:task_queue|task_queue_client|queue_client|job_queue|background_queue|worker_queue|agent_queue|sqs|sqs_client|pubsub|pubsub_client|event_bus|eventbridge|scheduler|job_client|kafka_producer|redis_queue|bull_queue|temporal_client)\s*(?:\.\s*[A-Za-z_]\w*){0,5}\s*\.\s*(?:enqueue|enqueue_task|send|send_message|send_messages|publish|publish_message|emit|put_events|put_event|schedule|schedule_task|dispatch|dispatch_job|create_job|create_task|add|add_job|push|produce|start_workflow|signal_with_start)\s*\(([\s\S]{0,2200})\)/giu,
+      /\b(?:enqueue_agent_task|enqueue_task|dispatch_agent_job|publish_agent_job|schedule_agent_task|send_agent_job)\s*\(([\s\S]{0,2200})\)/giu
+    ],
+    source,
+    identifiers
+  );
 }
 
 function hasJavaScriptHandlerPromptRegistryWrite(source: string): boolean {
@@ -32633,6 +32666,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   task_queue_enqueue: boolean;
   tainted_task_payload: boolean;
   tainted_task_routing: boolean;
+  tool_output_task_queue_bridge: boolean;
   prompt_registry_write: boolean;
   tainted_prompt_registry_payload: boolean;
   tainted_prompt_registry_selector: boolean;
@@ -32717,6 +32751,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   const handlerTaskQueueEnqueue = handler?.handlerTaskQueueEnqueue === true;
   const handlerTaintedTaskPayload = handler?.handlerTaintedTaskPayload === true;
   const handlerTaintedTaskRouting = handler?.handlerTaintedTaskRouting === true;
+  const handlerToolOutputTaskQueueBridge = handler?.handlerToolOutputTaskQueueBridge === true;
   const handlerPromptRegistryWrite = handler?.handlerPromptRegistryWrite === true;
   const handlerToolOutputPromptRegistryBridge = handler?.handlerToolOutputPromptRegistryBridge === true;
   const handlerSecretManagerPromptRegistryBridge = handler?.handlerSecretManagerPromptRegistryBridge === true;
@@ -33179,6 +33214,13 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
     classes.add("tainted_task_routing");
     actions.add("send");
   }
+  if (handlerToolOutputTaskQueueBridge) {
+    classes.add("tool_output_task_queue_bridge");
+    actions.add("execute");
+    actions.add("send");
+    actions.add("write");
+    actions.add("remember");
+  }
   if (handlerPromptRegistryWrite) {
     classes.add("prompt_registry_write");
     actions.add("send");
@@ -33332,6 +33374,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerTaskQueueEnqueue ||
       handlerTaintedTaskPayload ||
       handlerTaintedTaskRouting ||
+      handlerToolOutputTaskQueueBridge ||
       handlerPromptRegistryWrite ||
       handlerToolOutputPromptRegistryBridge ||
       handlerSecretManagerPromptRegistryBridge ||
@@ -33404,6 +33447,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerToolOutputArtifactBridge ||
       handlerRagRetrieval ||
       handlerTaskQueueEnqueue ||
+      handlerToolOutputTaskQueueBridge ||
       handlerPromptRegistryWrite ||
       handlerToolOutputPromptRegistryBridge ||
       handlerSecretManagerPromptRegistryBridge ||
@@ -33432,6 +33476,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerSecretManagerFeedbackBridge ||
       handlerSecretManagerArtifactBridge ||
       (handlerToolOutputArtifactBridge && handlerSecretEnvAccess) ||
+      (handlerToolOutputTaskQueueBridge && handlerSecretEnvAccess) ||
       (handlerToolOutputPromptRegistryBridge && handlerSecretEnvAccess) ||
       (handlerToolOutputExternalServiceBridge && handlerSecretEnvAccess) ||
       (handlerSafetyPolicyWrite && handlerSecretEnvAccess) ||
@@ -33517,6 +33562,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
     task_queue_enqueue: handlerTaskQueueEnqueue,
     tainted_task_payload: handlerTaintedTaskPayload,
     tainted_task_routing: handlerTaintedTaskRouting,
+    tool_output_task_queue_bridge: handlerToolOutputTaskQueueBridge,
     prompt_registry_write: handlerPromptRegistryWrite,
     tainted_prompt_registry_payload: handlerTaintedPromptRegistryPayload,
     tainted_prompt_registry_selector: handlerTaintedPromptRegistrySelector,
@@ -33636,6 +33682,7 @@ function authoritySignature(tool: SurfaceObject): string {
     metadata.task_queue_enqueue === true ? "task_queue_enqueue" : "",
     metadata.tainted_task_payload === true ? "tainted_task_payload" : "",
     metadata.tainted_task_routing === true ? "tainted_task_routing" : "",
+    metadata.tool_output_task_queue_bridge === true ? "tool_output_task_queue_bridge" : "",
     metadata.prompt_registry_write === true ? "prompt_registry_write" : "",
     metadata.tainted_prompt_registry_payload === true ? "tainted_prompt_registry_payload" : "",
     metadata.tainted_prompt_registry_selector === true ? "tainted_prompt_registry_selector" : "",
@@ -33742,6 +33789,7 @@ function isPrivilegedToolSurface(tool: SurfaceObject): boolean {
     tool.metadata.task_queue_enqueue === true ||
     tool.metadata.tainted_task_payload === true ||
     tool.metadata.tainted_task_routing === true ||
+    tool.metadata.tool_output_task_queue_bridge === true ||
     tool.metadata.prompt_registry_write === true ||
     tool.metadata.tainted_prompt_registry_payload === true ||
     tool.metadata.tainted_prompt_registry_selector === true ||

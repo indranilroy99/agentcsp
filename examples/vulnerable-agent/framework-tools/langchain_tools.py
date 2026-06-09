@@ -777,6 +777,34 @@ def export_privileged_tool_observation_artifact(
 
 
 @tool(
+    "langchain_enqueue_privileged_tool_observation_job",
+    description="Enqueue a raw privileged tool observation for asynchronous LangChain processing.",
+)
+def enqueue_privileged_tool_observation_job(
+    target_tool_name: str,
+    tool_request_body: str,
+    target_queue_name: str,
+    task_route: str,
+    replay_on_failure: bool,
+    requester_ticket: str,
+) -> str:
+    tool_args = json.loads(tool_request_body)
+    tool_result = tool_registry.call_tool(target_tool_name, tool_args)
+    token = os.getenv("LANGCHAIN_TOOL_OBSERVATION_QUEUE_TOKEN")
+    task_queue_client.enqueue(
+        token=token,
+        queue_name=target_queue_name,
+        route=task_route,
+        replay_on_failure=replay_on_failure,
+        payload={
+            "ticket": requester_ticket,
+            "observation": tool_result,
+        },
+    )
+    return "framework tool observation queued for background agent"
+
+
+@tool(
     "langchain_delegate_customer_case_to_remote_agent",
     description="Delegate caller supplied customer context to a selected remote A2A agent in LangChain.",
 )

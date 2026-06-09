@@ -589,6 +589,9 @@ describe("scanner", () => {
     const sourceToolOutputArtifactBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "source_export_privileged_tool_observation_artifact"
     );
+    const sourceToolOutputTaskQueueBridgeTool = surfaces.tools.find(
+      (surface) => surface.name === "source_enqueue_privileged_tool_observation_job"
+    );
     const sourceAgentDelegationTool = surfaces.tools.find((surface) => surface.name === "source_delegate_customer_case_to_remote_agent");
     const sourceBrowserAutomationTool = surfaces.tools.find((surface) => surface.name === "source_submit_customer_browser_form");
     const sourceVisualContextCaptureTool = surfaces.tools.find((surface) => surface.name === "source_capture_authenticated_page_screenshot");
@@ -680,6 +683,9 @@ describe("scanner", () => {
     );
     const langchainToolOutputArtifactBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "langchain_export_privileged_tool_observation_artifact"
+    );
+    const langchainToolOutputTaskQueueBridgeTool = surfaces.tools.find(
+      (surface) => surface.name === "langchain_enqueue_privileged_tool_observation_job"
     );
     const langchainAgentDelegationTool = surfaces.tools.find((surface) => surface.name === "langchain_delegate_customer_case_to_remote_agent");
     const langchainBrowserAutomationTool = surfaces.tools.find((surface) => surface.name === "langchain_submit_customer_browser_form");
@@ -3654,6 +3660,87 @@ describe("scanner", () => {
     expect(JSON.stringify(sourceToolOutputArtifactBridgeTool)).not.toContain("toolResult");
     expect(JSON.stringify(sourceToolOutputArtifactBridgeTool)).not.toContain("source tool observation exported to artifact");
     expect(JSON.stringify(sourceToolOutputArtifactBridgeTool)).not.toContain("Export a raw privileged tool observation");
+    expect(sourceToolOutputTaskQueueBridgeTool).toMatchObject({
+      path: "mcp-source/customer-tools.ts",
+      data_classes: ["confidential", "credential"],
+      actions: ["call", "execute", "remember", "send", "write"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(sourceToolOutputTaskQueueBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_mcp_source_tool: true,
+      mcp_source_tool_registration: true,
+      mcp_source_tool_registration_kind: "registerTool",
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_content_like_input: true,
+      accepts_customer_data_input: true,
+      nested_tool_invocation: true,
+      task_queue_enqueue: true,
+      tool_output_task_queue_bridge: true,
+      tainted_task_payload: false,
+      tainted_task_routing: true,
+      external_write: false,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_tool_invocation: true,
+      handler_task_queue_enqueue: true,
+      handler_tool_output_task_queue_bridge: true,
+      handler_tainted_task_payload: false,
+      handler_tainted_task_routing: true,
+      handler_secret_env_access: true,
+      handler_signal_count: 5,
+      open_world_schema: false
+    });
+    expect(sourceToolOutputTaskQueueBridgeTool?.metadata.authority_classes).toEqual([
+      "content_input",
+      "customer_data_input",
+      "handler_secret_env_access",
+      "handler_tainted_task_routing",
+      "handler_task_queue_enqueue",
+      "handler_tool_invocation",
+      "handler_tool_output_task_queue_bridge",
+      "nested_tool_invocation",
+      "network_access",
+      "secret_env_access",
+      "tainted_task_routing",
+      "task_queue_enqueue",
+      "tool_output_task_queue_bridge"
+    ]);
+    expect(sourceToolOutputTaskQueueBridgeTool?.metadata.handler_authority_classes).toEqual([
+      "handler_secret_env_access",
+      "handler_tainted_task_routing",
+      "handler_task_queue_enqueue",
+      "handler_tool_invocation",
+      "handler_tool_output_task_queue_bridge"
+    ]);
+    expect(sourceToolOutputTaskQueueBridgeTool?.metadata.handler_env_key_names).toEqual([
+      "SOURCE_TOOL_OBSERVATION_QUEUE_TOKEN"
+    ]);
+    expect(sourceToolOutputTaskQueueBridgeTool?.metadata.schema_properties).toEqual([
+      "replay_on_failure",
+      "requester_ticket",
+      "target_queue_name",
+      "target_tool_name",
+      "task_route",
+      "tool_request_body"
+    ]);
+    expect(sourceToolOutputTaskQueueBridgeTool?.metadata.required_properties).toEqual([
+      "replay_on_failure",
+      "requester_ticket",
+      "target_queue_name",
+      "target_tool_name",
+      "task_route",
+      "tool_request_body"
+    ]);
+    expect(JSON.stringify(sourceToolOutputTaskQueueBridgeTool)).not.toContain("mcpClient.callTool");
+    expect(JSON.stringify(sourceToolOutputTaskQueueBridgeTool)).not.toContain("taskQueueClient.enqueue");
+    expect(JSON.stringify(sourceToolOutputTaskQueueBridgeTool)).not.toContain("toolResult");
+    expect(JSON.stringify(sourceToolOutputTaskQueueBridgeTool)).not.toContain("source tool observation queued for background agent");
+    expect(JSON.stringify(sourceToolOutputTaskQueueBridgeTool)).not.toContain("Enqueue a raw privileged tool observation");
     expect(sourceAgentDelegationTool).toMatchObject({
       path: "mcp-source/customer-tools.ts",
       data_classes: ["confidential", "credential", "pii"],
@@ -8292,6 +8379,89 @@ describe("scanner", () => {
     expect(JSON.stringify(langchainToolOutputArtifactBridgeTool)).not.toContain("tool_result");
     expect(JSON.stringify(langchainToolOutputArtifactBridgeTool)).not.toContain("framework tool observation exported to artifact");
     expect(JSON.stringify(langchainToolOutputArtifactBridgeTool)).not.toContain("Export a raw privileged tool observation");
+    expect(langchainToolOutputTaskQueueBridgeTool).toMatchObject({
+      path: "framework-tools/langchain_tools.py",
+      data_classes: ["confidential", "credential"],
+      actions: ["call", "execute", "remember", "send", "write"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(langchainToolOutputTaskQueueBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_agent_framework_source_tool: true,
+      agent_framework_source_tool: true,
+      agent_framework_source_tool_framework: "langchain",
+      agent_framework_source_tool_registration_kind: "python_tool_decorator",
+      agent_framework_source_tool_argument_count: 6,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_content_like_input: true,
+      accepts_customer_data_input: true,
+      nested_tool_invocation: true,
+      task_queue_enqueue: true,
+      tool_output_task_queue_bridge: true,
+      tainted_task_payload: false,
+      tainted_task_routing: true,
+      external_write: false,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_tool_invocation: true,
+      handler_task_queue_enqueue: true,
+      handler_tool_output_task_queue_bridge: true,
+      handler_tainted_task_payload: false,
+      handler_tainted_task_routing: true,
+      handler_secret_env_access: true,
+      handler_signal_count: 5,
+      open_world_schema: false
+    });
+    expect(langchainToolOutputTaskQueueBridgeTool?.metadata.authority_classes).toEqual([
+      "content_input",
+      "customer_data_input",
+      "handler_secret_env_access",
+      "handler_tainted_task_routing",
+      "handler_task_queue_enqueue",
+      "handler_tool_invocation",
+      "handler_tool_output_task_queue_bridge",
+      "nested_tool_invocation",
+      "network_access",
+      "secret_env_access",
+      "tainted_task_routing",
+      "task_queue_enqueue",
+      "tool_output_task_queue_bridge"
+    ]);
+    expect(langchainToolOutputTaskQueueBridgeTool?.metadata.handler_authority_classes).toEqual([
+      "handler_secret_env_access",
+      "handler_tainted_task_routing",
+      "handler_task_queue_enqueue",
+      "handler_tool_invocation",
+      "handler_tool_output_task_queue_bridge"
+    ]);
+    expect(langchainToolOutputTaskQueueBridgeTool?.metadata.handler_env_key_names).toEqual([
+      "LANGCHAIN_TOOL_OBSERVATION_QUEUE_TOKEN"
+    ]);
+    expect(langchainToolOutputTaskQueueBridgeTool?.metadata.schema_properties).toEqual([
+      "replay_on_failure",
+      "requester_ticket",
+      "target_queue_name",
+      "target_tool_name",
+      "task_route",
+      "tool_request_body"
+    ]);
+    expect(langchainToolOutputTaskQueueBridgeTool?.metadata.required_properties).toEqual([
+      "replay_on_failure",
+      "requester_ticket",
+      "target_queue_name",
+      "target_tool_name",
+      "task_route",
+      "tool_request_body"
+    ]);
+    expect(JSON.stringify(langchainToolOutputTaskQueueBridgeTool)).not.toContain("tool_registry.call_tool");
+    expect(JSON.stringify(langchainToolOutputTaskQueueBridgeTool)).not.toContain("task_queue_client.enqueue");
+    expect(JSON.stringify(langchainToolOutputTaskQueueBridgeTool)).not.toContain("tool_result");
+    expect(JSON.stringify(langchainToolOutputTaskQueueBridgeTool)).not.toContain("framework tool observation queued for background agent");
+    expect(JSON.stringify(langchainToolOutputTaskQueueBridgeTool)).not.toContain("Enqueue a raw privileged tool observation");
     expect(langchainAgentDelegationTool).toMatchObject({
       path: "framework-tools/langchain_tools.py",
       data_classes: ["confidential", "credential", "pii"],
