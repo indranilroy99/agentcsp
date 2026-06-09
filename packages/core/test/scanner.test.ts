@@ -553,6 +553,7 @@ describe("scanner", () => {
     const sourceNetworkResponseMemoryBridgeTool = surfaces.tools.find((surface) => surface.name === "source_store_url_response_memory");
     const sourceNetworkResponseExternalServiceBridgeTool = surfaces.tools.find((surface) => surface.name === "source_post_url_response_external");
     const sourceNetworkResponsePromptCacheBridgeTool = surfaces.tools.find((surface) => surface.name === "source_cache_url_response_prompt");
+    const sourceNetworkResponseTrainingDatasetBridgeTool = surfaces.tools.find((surface) => surface.name === "source_train_on_url_response");
     const sourceDynamicCodeTool = surfaces.tools.find((surface) => surface.name === "source_evaluate_agent_expression");
     const sourceDatabaseTool = surfaces.tools.find((surface) => surface.name === "source_apply_record_change_sql");
     const sourceSecretOutputTool = surfaces.tools.find((surface) => surface.name === "source_reveal_runtime_secret");
@@ -795,6 +796,7 @@ describe("scanner", () => {
     const langchainNetworkResponseMemoryBridgeTool = surfaces.tools.find((surface) => surface.name === "langchain_store_url_response_memory");
     const langchainNetworkResponseExternalServiceBridgeTool = surfaces.tools.find((surface) => surface.name === "langchain_post_url_response_external");
     const langchainNetworkResponsePromptCacheBridgeTool = surfaces.tools.find((surface) => surface.name === "langchain_cache_url_response_prompt");
+    const langchainNetworkResponseTrainingDatasetBridgeTool = surfaces.tools.find((surface) => surface.name === "langchain_train_on_url_response");
     const langchainDynamicCodeTool = surfaces.tools.find((surface) => surface.name === "langchain_evaluate_agent_expression");
     const langchainDatabaseTool = surfaces.tools.find((surface) => surface.name === "langchain_apply_record_change_sql");
     const langchainSecretOutputTool = surfaces.tools.find((surface) => surface.name === "langchain_reveal_runtime_secret");
@@ -1842,6 +1844,84 @@ describe("scanner", () => {
     expect(JSON.stringify(sourceNetworkResponsePromptCacheBridgeTool)).not.toContain("promptCache.set");
     expect(JSON.stringify(sourceNetworkResponsePromptCacheBridgeTool)).not.toContain("source network response cached for prompts");
     expect(JSON.stringify(sourceNetworkResponsePromptCacheBridgeTool)).not.toContain("Fetch a caller supplied URL");
+    expect(sourceNetworkResponseTrainingDatasetBridgeTool).toMatchObject({
+      path: "mcp-source/customer-tools.ts",
+      data_classes: ["credential"],
+      actions: ["call", "publish", "read", "remember", "send", "write"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(sourceNetworkResponseTrainingDatasetBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_mcp_source_tool: true,
+      mcp_source_tool_registration: true,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_url_input: true,
+      accepts_content_like_input: false,
+      tainted_network_destination: true,
+      credentialed_network_read: true,
+      training_dataset_export: true,
+      tainted_training_dataset_payload: true,
+      network_response_training_dataset_bridge: true,
+      external_write: true,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_external_network_call: true,
+      handler_tainted_network_destination: true,
+      handler_credentialed_network_read: true,
+      handler_training_dataset_export: true,
+      handler_tainted_training_dataset_payload: true,
+      handler_network_response_training_dataset_bridge: true,
+      handler_secret_env_access: true,
+      handler_signal_count: 7
+    });
+    expect(sourceNetworkResponseTrainingDatasetBridgeTool?.metadata.authority_classes).toEqual([
+      "credentialed_network_read",
+      "external_write",
+      "handler_credentialed_network_read",
+      "handler_network_access",
+      "handler_network_response_training_dataset_bridge",
+      "handler_secret_env_access",
+      "handler_tainted_network_destination",
+      "handler_tainted_training_dataset_payload",
+      "handler_training_dataset_export",
+      "network_access",
+      "network_response_training_dataset_bridge",
+      "secret_env_access",
+      "tainted_network_destination",
+      "tainted_training_dataset_payload",
+      "training_dataset_export"
+    ]);
+    expect(sourceNetworkResponseTrainingDatasetBridgeTool?.metadata.handler_authority_classes).toEqual([
+      "handler_credentialed_network_read",
+      "handler_network_access",
+      "handler_network_response_training_dataset_bridge",
+      "handler_secret_env_access",
+      "handler_tainted_network_destination",
+      "handler_tainted_training_dataset_payload",
+      "handler_training_dataset_export"
+    ]);
+    expect(sourceNetworkResponseTrainingDatasetBridgeTool?.metadata.handler_env_key_names).toEqual(["SOURCE_NETWORK_RESPONSE_TRAINING_TOKEN"]);
+    expect(sourceNetworkResponseTrainingDatasetBridgeTool?.metadata.schema_properties).toEqual([
+      "dataset_split_name",
+      "source_label",
+      "target_url",
+      "training_dataset_id"
+    ]);
+    expect(sourceNetworkResponseTrainingDatasetBridgeTool?.metadata.required_properties).toEqual([
+      "dataset_split_name",
+      "source_label",
+      "target_url",
+      "training_dataset_id"
+    ]);
+    expect(JSON.stringify(sourceNetworkResponseTrainingDatasetBridgeTool)).not.toContain("responseBody");
+    expect(JSON.stringify(sourceNetworkResponseTrainingDatasetBridgeTool)).not.toContain("response.text");
+    expect(JSON.stringify(sourceNetworkResponseTrainingDatasetBridgeTool)).not.toContain("trainingDatasetClient.appendRecord");
+    expect(JSON.stringify(sourceNetworkResponseTrainingDatasetBridgeTool)).not.toContain("source network response exported to training data");
+    expect(JSON.stringify(sourceNetworkResponseTrainingDatasetBridgeTool)).not.toContain("Fetch a caller supplied URL");
     expect(sourceDynamicCodeTool).toMatchObject({
       path: "mcp-source/customer-tools.ts",
       data_classes: ["unknown"],
@@ -10808,6 +10888,85 @@ describe("scanner", () => {
     expect(JSON.stringify(langchainNetworkResponsePromptCacheBridgeTool)).not.toContain("prompt_cache.set");
     expect(JSON.stringify(langchainNetworkResponsePromptCacheBridgeTool)).not.toContain("framework network response cached for prompts");
     expect(JSON.stringify(langchainNetworkResponsePromptCacheBridgeTool)).not.toContain("Fetch a caller supplied URL");
+    expect(langchainNetworkResponseTrainingDatasetBridgeTool).toMatchObject({
+      path: "framework-tools/langchain_tools.py",
+      data_classes: ["credential"],
+      actions: ["call", "publish", "read", "remember", "send", "write"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(langchainNetworkResponseTrainingDatasetBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_agent_framework_source_tool: true,
+      agent_framework_source_tool: true,
+      agent_framework_source_tool_framework: "langchain",
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_url_input: true,
+      accepts_content_like_input: false,
+      tainted_network_destination: true,
+      credentialed_network_read: true,
+      training_dataset_export: true,
+      tainted_training_dataset_payload: true,
+      network_response_training_dataset_bridge: true,
+      external_write: true,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_external_network_call: true,
+      handler_tainted_network_destination: true,
+      handler_credentialed_network_read: true,
+      handler_training_dataset_export: true,
+      handler_tainted_training_dataset_payload: true,
+      handler_network_response_training_dataset_bridge: true,
+      handler_secret_env_access: true,
+      handler_signal_count: 7
+    });
+    expect(langchainNetworkResponseTrainingDatasetBridgeTool?.metadata.authority_classes).toEqual([
+      "credentialed_network_read",
+      "external_write",
+      "handler_credentialed_network_read",
+      "handler_network_access",
+      "handler_network_response_training_dataset_bridge",
+      "handler_secret_env_access",
+      "handler_tainted_network_destination",
+      "handler_tainted_training_dataset_payload",
+      "handler_training_dataset_export",
+      "network_access",
+      "network_response_training_dataset_bridge",
+      "secret_env_access",
+      "tainted_network_destination",
+      "tainted_training_dataset_payload",
+      "training_dataset_export"
+    ]);
+    expect(langchainNetworkResponseTrainingDatasetBridgeTool?.metadata.handler_authority_classes).toEqual([
+      "handler_credentialed_network_read",
+      "handler_network_access",
+      "handler_network_response_training_dataset_bridge",
+      "handler_secret_env_access",
+      "handler_tainted_network_destination",
+      "handler_tainted_training_dataset_payload",
+      "handler_training_dataset_export"
+    ]);
+    expect(langchainNetworkResponseTrainingDatasetBridgeTool?.metadata.handler_env_key_names).toEqual(["LANGCHAIN_NETWORK_RESPONSE_TRAINING_TOKEN"]);
+    expect(langchainNetworkResponseTrainingDatasetBridgeTool?.metadata.schema_properties).toEqual([
+      "dataset_split_name",
+      "source_label",
+      "target_url",
+      "training_dataset_id"
+    ]);
+    expect(langchainNetworkResponseTrainingDatasetBridgeTool?.metadata.required_properties).toEqual([
+      "dataset_split_name",
+      "source_label",
+      "target_url",
+      "training_dataset_id"
+    ]);
+    expect(JSON.stringify(langchainNetworkResponseTrainingDatasetBridgeTool)).not.toContain("httpx.get");
+    expect(JSON.stringify(langchainNetworkResponseTrainingDatasetBridgeTool)).not.toContain("response.text");
+    expect(JSON.stringify(langchainNetworkResponseTrainingDatasetBridgeTool)).not.toContain("training_dataset_client.append_record");
+    expect(JSON.stringify(langchainNetworkResponseTrainingDatasetBridgeTool)).not.toContain("framework network response exported to training data");
+    expect(JSON.stringify(langchainNetworkResponseTrainingDatasetBridgeTool)).not.toContain("Fetch a caller supplied URL");
     expect(langchainDynamicCodeTool).toMatchObject({
       path: "framework-tools/langchain_tools.py",
       data_classes: ["unknown"],

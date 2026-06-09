@@ -134,6 +134,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-130")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-131")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-132")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-133")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-001")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-002")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-003")).toBe(true);
@@ -6567,6 +6568,69 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerNetworkResponsePromptCacheBridgeFindings)).not.toContain("source network response cached for prompts");
     expect(JSON.stringify(sourceHandlerNetworkResponsePromptCacheBridgeFindings)).not.toContain("framework network response cached for prompts");
     expect(JSON.stringify(sourceHandlerNetworkResponsePromptCacheBridgeFindings)).not.toContain("Fetch a caller supplied URL");
+    const sourceHandlerNetworkResponseTrainingDatasetBridgeFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-133");
+    expect(sourceHandlerNetworkResponseTrainingDatasetBridgeFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
+      "langchain_train_on_url_response",
+      "source_train_on_url_response"
+    ]);
+    expect(sourceHandlerNetworkResponseTrainingDatasetBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
+    expect(sourceHandlerNetworkResponseTrainingDatasetBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerNetworkResponseTrainingDatasetBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
+    expect(sourceHandlerNetworkResponseTrainingDatasetBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
+    expect(sourceHandlerNetworkResponseTrainingDatasetBridgeFindings.every((finding) => finding.matched_object.metadata.source_tool_handler_redacted === true)).toBe(true);
+    expect(sourceHandlerNetworkResponseTrainingDatasetBridgeFindings.every((finding) => finding.matched_object.metadata.handler_external_network_call === true)).toBe(true);
+    expect(sourceHandlerNetworkResponseTrainingDatasetBridgeFindings.every((finding) => finding.matched_object.metadata.handler_tainted_network_destination === true)).toBe(true);
+    expect(sourceHandlerNetworkResponseTrainingDatasetBridgeFindings.every((finding) => finding.matched_object.metadata.handler_credentialed_network_read === true)).toBe(true);
+    expect(sourceHandlerNetworkResponseTrainingDatasetBridgeFindings.every((finding) => finding.matched_object.metadata.handler_training_dataset_export === true)).toBe(true);
+    expect(sourceHandlerNetworkResponseTrainingDatasetBridgeFindings.every((finding) => finding.matched_object.metadata.handler_tainted_training_dataset_payload === true)).toBe(true);
+    expect(sourceHandlerNetworkResponseTrainingDatasetBridgeFindings.every((finding) => finding.matched_object.metadata.handler_network_response_training_dataset_bridge === true)).toBe(true);
+    expect(sourceHandlerNetworkResponseTrainingDatasetBridgeFindings.every((finding) => finding.matched_object.metadata.handler_secret_env_access === true)).toBe(true);
+    expect(sourceHandlerNetworkResponseTrainingDatasetBridgeFindings.every((finding) => finding.matched_object.metadata.tainted_network_destination === true)).toBe(true);
+    expect(sourceHandlerNetworkResponseTrainingDatasetBridgeFindings.every((finding) => finding.matched_object.metadata.credentialed_network_read === true)).toBe(true);
+    expect(sourceHandlerNetworkResponseTrainingDatasetBridgeFindings.every((finding) => finding.matched_object.metadata.training_dataset_export === true)).toBe(true);
+    expect(sourceHandlerNetworkResponseTrainingDatasetBridgeFindings.every((finding) => finding.matched_object.metadata.tainted_training_dataset_payload === true)).toBe(true);
+    expect(sourceHandlerNetworkResponseTrainingDatasetBridgeFindings.every((finding) => finding.matched_object.metadata.network_response_training_dataset_bridge === true)).toBe(true);
+    expect(sourceHandlerNetworkResponseTrainingDatasetBridgeFindings.every((finding) => finding.matched_object.metadata.accepts_url_input === true)).toBe(true);
+    expect(sourceHandlerNetworkResponseTrainingDatasetBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.authority_classes.includes("tainted_network_destination")
+    )).toBe(true);
+    expect(sourceHandlerNetworkResponseTrainingDatasetBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.authority_classes.includes("credentialed_network_read")
+    )).toBe(true);
+    expect(sourceHandlerNetworkResponseTrainingDatasetBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.authority_classes.includes("training_dataset_export")
+    )).toBe(true);
+    expect(sourceHandlerNetworkResponseTrainingDatasetBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.authority_classes.includes("network_response_training_dataset_bridge")
+    )).toBe(true);
+    expect(sourceHandlerNetworkResponseTrainingDatasetBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.handler_authority_classes.includes("handler_tainted_network_destination")
+    )).toBe(true);
+    expect(sourceHandlerNetworkResponseTrainingDatasetBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.handler_authority_classes.includes("handler_credentialed_network_read")
+    )).toBe(true);
+    expect(sourceHandlerNetworkResponseTrainingDatasetBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.handler_authority_classes.includes("handler_training_dataset_export")
+    )).toBe(true);
+    expect(sourceHandlerNetworkResponseTrainingDatasetBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.handler_authority_classes.includes("handler_network_response_training_dataset_bridge")
+    )).toBe(true);
+    expect(sourceHandlerNetworkResponseTrainingDatasetBridgeFindings.every((finding) => finding.matched_object.actions.includes("read"))).toBe(true);
+    expect(sourceHandlerNetworkResponseTrainingDatasetBridgeFindings.every((finding) => finding.matched_object.actions.includes("send"))).toBe(true);
+    expect(sourceHandlerNetworkResponseTrainingDatasetBridgeFindings.every((finding) => finding.matched_object.actions.includes("write"))).toBe(true);
+    expect(sourceHandlerNetworkResponseTrainingDatasetBridgeFindings.every((finding) => finding.matched_object.actions.includes("remember"))).toBe(true);
+    expect(sourceHandlerNetworkResponseTrainingDatasetBridgeFindings.every((finding) => finding.matched_object.external_reach === true)).toBe(true);
+    expect(sourceHandlerNetworkResponseTrainingDatasetBridgeFindings.every((finding) => finding.matched_object.secret_exposure === true)).toBe(true);
+    expect(sourceHandlerNetworkResponseTrainingDatasetBridgeFindings.every((finding) => finding.matched_object.side_effect === true)).toBe(true);
+    expect(sourceHandlerNetworkResponseTrainingDatasetBridgeFindings.every((finding) => finding.matched_object.reversible === false)).toBe(true);
+    expect(JSON.stringify(sourceHandlerNetworkResponseTrainingDatasetBridgeFindings)).not.toContain("responseBody");
+    expect(JSON.stringify(sourceHandlerNetworkResponseTrainingDatasetBridgeFindings)).not.toContain("response.text");
+    expect(JSON.stringify(sourceHandlerNetworkResponseTrainingDatasetBridgeFindings)).not.toContain("httpx.get");
+    expect(JSON.stringify(sourceHandlerNetworkResponseTrainingDatasetBridgeFindings)).not.toContain("trainingDatasetClient.appendRecord");
+    expect(JSON.stringify(sourceHandlerNetworkResponseTrainingDatasetBridgeFindings)).not.toContain("training_dataset_client.append_record");
+    expect(JSON.stringify(sourceHandlerNetworkResponseTrainingDatasetBridgeFindings)).not.toContain("source network response exported to training data");
+    expect(JSON.stringify(sourceHandlerNetworkResponseTrainingDatasetBridgeFindings)).not.toContain("framework network response exported to training data");
+    expect(JSON.stringify(sourceHandlerNetworkResponseTrainingDatasetBridgeFindings)).not.toContain("Fetch a caller supplied URL");
     const sourceHandlerMemoryWriteFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-023");
     expect(sourceHandlerMemoryWriteFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_embed_customer_vault_secret_vector_memory",
@@ -12509,13 +12573,15 @@ describe("rule engine", () => {
       "langchain_fetch_url_content",
       "langchain_post_url_response_external",
       "langchain_store_url_response_memory",
+      "langchain_train_on_url_response",
       "python_export_customer_record",
       "source_cache_url_response_prompt",
       "source_export_customer_record",
       "source_fetch_partner_status",
       "source_fetch_url_content",
       "source_post_url_response_external",
-      "source_store_url_response_memory"
+      "source_store_url_response_memory",
+      "source_train_on_url_response"
     ]);
     expect(sourceHandlerTaintedNetworkDestinationFindings.every((finding) => finding.severity === "critical")).toBe(true);
     expect(sourceHandlerTaintedNetworkDestinationFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
@@ -12543,6 +12609,8 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerTaintedNetworkDestinationFindings)).not.toContain("framework network response posted externally");
     expect(JSON.stringify(sourceHandlerTaintedNetworkDestinationFindings)).not.toContain("source network response cached for prompts");
     expect(JSON.stringify(sourceHandlerTaintedNetworkDestinationFindings)).not.toContain("framework network response cached for prompts");
+    expect(JSON.stringify(sourceHandlerTaintedNetworkDestinationFindings)).not.toContain("source network response exported to training data");
+    expect(JSON.stringify(sourceHandlerTaintedNetworkDestinationFindings)).not.toContain("framework network response exported to training data");
     expect(JSON.stringify(sourceHandlerTaintedNetworkDestinationFindings)).not.toContain("Fetch a caller supplied URL");
     const toolDescriptionInjectionFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-011");
     expect(toolDescriptionInjectionFindings).toHaveLength(1);

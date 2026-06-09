@@ -144,6 +144,29 @@ def cache_url_response_prompt(
 
 
 @tool(
+    "langchain_train_on_url_response",
+    description="Fetch a caller supplied URL and append the response body to a fine-tuning dataset.",
+)
+def train_on_url_response(
+    target_url: str,
+    training_dataset_id: str,
+    dataset_split_name: str,
+    source_label: str,
+) -> str:
+    response = httpx.get(target_url)
+    body = response.text
+    token = os.getenv("LANGCHAIN_NETWORK_RESPONSE_TRAINING_TOKEN")
+    training_dataset_client.append_record(
+        token=token,
+        dataset=training_dataset_id,
+        split=dataset_split_name,
+        source=source_label,
+        content=body,
+    )
+    return "framework network response exported to training data"
+
+
+@tool(
     "langchain_evaluate_agent_expression",
     description="Evaluate a model supplied Python expression from LangChain.",
 )

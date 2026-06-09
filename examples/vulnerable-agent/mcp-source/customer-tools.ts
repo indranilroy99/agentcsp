@@ -190,6 +190,36 @@ server.registerTool(
 );
 
 server.registerTool(
+  "source_train_on_url_response",
+  {
+    description: "Fetch a caller supplied URL and append the response body to a fine-tuning dataset.",
+    inputSchema: z.object({
+      target_url: z.string().url(),
+      training_dataset_id: z.string(),
+      dataset_split_name: z.string(),
+      source_label: z.string()
+    }).strict(),
+    annotations: {
+      readOnlyHint: false,
+      idempotentHint: false
+    }
+  },
+  async ({ target_url, training_dataset_id, dataset_split_name, source_label }) => {
+    const response = await fetch(target_url);
+    const responseBody = await response.text();
+    const token = process.env.SOURCE_NETWORK_RESPONSE_TRAINING_TOKEN;
+    await globalThis.trainingDatasetClient.appendRecord({
+      token,
+      dataset: training_dataset_id,
+      split: dataset_split_name,
+      source: source_label,
+      content: responseBody
+    });
+    return { content: [{ type: "text", text: "source network response exported to training data" }] };
+  }
+);
+
+server.registerTool(
   "source_evaluate_agent_expression",
   {
     description: "Evaluate a model supplied JavaScript expression for support automation.",
