@@ -757,6 +757,9 @@ describe("scanner", () => {
     const sourceModelOutputTrainingDatasetBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "source_export_model_training_dataset"
     );
+    const sourceModelOutputArtifactBridgeTool = surfaces.tools.find(
+      (surface) => surface.name === "source_export_model_artifact"
+    );
     const pythonExportTool = surfaces.tools.find((surface) => surface.name === "python_export_customer_record");
     const pythonDeleteTool = surfaces.tools.find((surface) => surface.name === "python_readonly_delete_workspace_file");
     const pythonUnsafeDeserializationTool = surfaces.tools.find((surface) => surface.name === "python_load_serialized_agent_state");
@@ -980,6 +983,9 @@ describe("scanner", () => {
     );
     const langchainModelOutputTrainingDatasetBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "langchain_export_model_training_dataset"
+    );
+    const langchainModelOutputArtifactBridgeTool = surfaces.tools.find(
+      (surface) => surface.name === "langchain_export_model_artifact"
     );
     const langchainUnsafeDeserializationTool = surfaces.tools.find((surface) => surface.name === "langchain_load_serialized_agent_state");
     const aiSdkExportTool = surfaces.tools.find((surface) => surface.name === "aiSdkExportCustomerContext");
@@ -9164,6 +9170,80 @@ describe("scanner", () => {
     expect(JSON.stringify(sourceModelOutputTrainingDatasetBridgeTool)).not.toContain("globalThis.trainingDatasetClient.appendRecord");
     expect(JSON.stringify(sourceModelOutputTrainingDatasetBridgeTool)).not.toContain("source model selected training record exported");
     expect(JSON.stringify(sourceModelOutputTrainingDatasetBridgeTool)).not.toContain("Ask a model provider to draft a fine-tuning record");
+    expect(sourceModelOutputArtifactBridgeTool).toMatchObject({
+      path: "mcp-source/customer-tools.ts",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["call", "publish", "read", "send", "write"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(sourceModelOutputArtifactBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_mcp_source_tool: true,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      artifact_export: true,
+      tainted_artifact_export_payload: true,
+      model_output_artifact_bridge: true,
+      public_artifact_destination: true,
+      model_provider_call: true,
+      tainted_model_selection: true,
+      handler_artifact_export: true,
+      handler_tainted_artifact_export_payload: true,
+      handler_model_output_artifact_bridge: true,
+      handler_public_artifact_destination: true,
+      handler_model_provider_call: true,
+      handler_tainted_model_selection: true,
+      handler_secret_env_access: true,
+      handler_signal_count: 7,
+      external_write: true,
+      open_world_schema: false
+    });
+    expect(sourceModelOutputArtifactBridgeTool?.metadata.authority_classes).toEqual(expect.arrayContaining([
+      "artifact_export",
+      "handler_artifact_export",
+      "handler_model_output_artifact_bridge",
+      "handler_model_provider_call",
+      "handler_public_artifact_destination",
+      "handler_secret_env_access",
+      "handler_tainted_artifact_export_payload",
+      "handler_tainted_model_selection",
+      "model_output_artifact_bridge",
+      "model_provider_call",
+      "public_artifact_destination",
+      "tainted_artifact_export_payload",
+      "tainted_model_selection"
+    ]));
+    expect(sourceModelOutputArtifactBridgeTool?.metadata.handler_authority_classes).toEqual([
+      "handler_artifact_export",
+      "handler_model_output_artifact_bridge",
+      "handler_model_provider_call",
+      "handler_public_artifact_destination",
+      "handler_secret_env_access",
+      "handler_tainted_artifact_export_payload",
+      "handler_tainted_model_selection"
+    ]);
+    expect(sourceModelOutputArtifactBridgeTool?.metadata.handler_env_key_names).toEqual([
+      "SOURCE_MODEL_ARTIFACT_EXPORT_TOKEN",
+      "SOURCE_MODEL_ARTIFACT_STORAGE_TOKEN"
+    ]);
+    expect(sourceModelOutputArtifactBridgeTool?.metadata.schema_properties).toEqual([
+      "artifact_bucket",
+      "artifact_goal_text",
+      "customer_id",
+      "customer_ticket_text",
+      "model_name",
+      "object_key",
+      "share_mode"
+    ]);
+    expect(JSON.stringify(sourceModelOutputArtifactBridgeTool)).not.toContain("openai.chat.completions.create");
+    expect(JSON.stringify(sourceModelOutputArtifactBridgeTool)).not.toContain("modelSelectedArtifactBody");
+    expect(JSON.stringify(sourceModelOutputArtifactBridgeTool)).not.toContain("globalThis.artifactExportClient.upload");
+    expect(JSON.stringify(sourceModelOutputArtifactBridgeTool)).not.toContain("source model selected artifact exported");
+    expect(JSON.stringify(sourceModelOutputArtifactBridgeTool)).not.toContain("Ask a model provider to draft an artifact");
+    expect(JSON.stringify(sourceModelOutputArtifactBridgeTool)).not.toContain("Return one artifact body");
     expect(pythonExportTool).toMatchObject({
       path: "mcp-source/python_tools.py",
       data_classes: ["confidential", "credential", "pii"],
@@ -17629,6 +17709,86 @@ describe("scanner", () => {
     expect(JSON.stringify(langchainModelOutputTrainingDatasetBridgeTool)).not.toContain("training_dataset_client.append_record");
     expect(JSON.stringify(langchainModelOutputTrainingDatasetBridgeTool)).not.toContain("framework model selected training record exported");
     expect(JSON.stringify(langchainModelOutputTrainingDatasetBridgeTool)).not.toContain("Ask a model provider to draft a fine-tuning record");
+    expect(langchainModelOutputArtifactBridgeTool).toMatchObject({
+      path: "framework-tools/langchain_tools.py",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["call", "publish", "read", "send", "write"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(langchainModelOutputArtifactBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_agent_framework_source_tool: true,
+      agent_framework_source_tool_framework: "langchain",
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      artifact_export: true,
+      tainted_artifact_export_payload: true,
+      model_output_artifact_bridge: true,
+      public_artifact_destination: true,
+      model_provider_call: true,
+      tainted_model_selection: true,
+      privileged_prompt_composition: true,
+      handler_artifact_export: true,
+      handler_tainted_artifact_export_payload: true,
+      handler_model_output_artifact_bridge: true,
+      handler_public_artifact_destination: true,
+      handler_model_provider_call: true,
+      handler_tainted_model_selection: true,
+      handler_privileged_prompt_composition: true,
+      handler_secret_env_access: true,
+      handler_signal_count: 8,
+      external_write: true,
+      open_world_schema: false
+    });
+    expect(langchainModelOutputArtifactBridgeTool?.metadata.authority_classes).toEqual(expect.arrayContaining([
+      "artifact_export",
+      "handler_artifact_export",
+      "handler_model_output_artifact_bridge",
+      "handler_model_provider_call",
+      "handler_privileged_prompt_composition",
+      "handler_public_artifact_destination",
+      "handler_secret_env_access",
+      "handler_tainted_artifact_export_payload",
+      "handler_tainted_model_selection",
+      "model_output_artifact_bridge",
+      "model_provider_call",
+      "privileged_prompt_composition",
+      "public_artifact_destination",
+      "tainted_artifact_export_payload",
+      "tainted_model_selection"
+    ]));
+    expect(langchainModelOutputArtifactBridgeTool?.metadata.handler_authority_classes).toEqual([
+      "handler_artifact_export",
+      "handler_model_output_artifact_bridge",
+      "handler_model_provider_call",
+      "handler_privileged_prompt_composition",
+      "handler_public_artifact_destination",
+      "handler_secret_env_access",
+      "handler_tainted_artifact_export_payload",
+      "handler_tainted_model_selection"
+    ]);
+    expect(langchainModelOutputArtifactBridgeTool?.metadata.handler_env_key_names).toEqual([
+      "LANGCHAIN_MODEL_ARTIFACT_EXPORT_TOKEN",
+      "LANGCHAIN_MODEL_ARTIFACT_STORAGE_TOKEN"
+    ]);
+    expect(langchainModelOutputArtifactBridgeTool?.metadata.schema_properties).toEqual([
+      "artifact_bucket",
+      "artifact_goal_text",
+      "customer_id",
+      "customer_ticket_text",
+      "model_name",
+      "object_key",
+      "share_mode"
+    ]);
+    expect(JSON.stringify(langchainModelOutputArtifactBridgeTool)).not.toContain("openai_client.chat.completions.create");
+    expect(JSON.stringify(langchainModelOutputArtifactBridgeTool)).not.toContain("model_selected_artifact_body");
+    expect(JSON.stringify(langchainModelOutputArtifactBridgeTool)).not.toContain("artifact_export_client.upload");
+    expect(JSON.stringify(langchainModelOutputArtifactBridgeTool)).not.toContain("framework model selected artifact exported");
+    expect(JSON.stringify(langchainModelOutputArtifactBridgeTool)).not.toContain("Ask a model provider to draft an artifact");
+    expect(JSON.stringify(langchainModelOutputArtifactBridgeTool)).not.toContain("Return one artifact body");
     expect(aiSdkExportTool).toMatchObject({
       path: "framework-tools/vercel-ai-tools.ts",
       data_classes: ["confidential", "credential", "pii"],

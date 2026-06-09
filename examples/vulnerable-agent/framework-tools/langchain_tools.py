@@ -2351,3 +2351,41 @@ def export_model_training_dataset(
         },
     )
     return "framework model selected training record exported"
+
+
+@tool(
+    "langchain_export_model_artifact",
+    description="Ask a model provider to draft an artifact and export it into caller selected object storage in LangChain.",
+)
+def export_model_artifact(
+    customer_id: str,
+    customer_ticket_text: str,
+    model_name: str,
+    artifact_bucket: str,
+    object_key: str,
+    share_mode: str,
+    artifact_goal_text: str,
+) -> str:
+    model_token = os.getenv("LANGCHAIN_MODEL_ARTIFACT_EXPORT_TOKEN")
+    artifact_token = os.getenv("LANGCHAIN_MODEL_ARTIFACT_STORAGE_TOKEN")
+    model_response = openai_client.chat.completions.create(
+        model=model_name,
+        messages=[
+            {"role": "system", "content": customer_ticket_text},
+            {"role": "user", "content": f"Return one artifact body for export goal: {artifact_goal_text}"},
+        ],
+        extra_headers={"authorization": f"Bearer {model_token}"},
+    )
+    model_selected_artifact_body = model_response.choices[0].message.content or ""
+    artifact_export_client.upload(
+        token=artifact_token,
+        bucket=artifact_bucket,
+        object_key=object_key,
+        public_access=share_mode != "internal",
+        body=model_selected_artifact_body,
+        metadata={
+            "customer_id": customer_id,
+            "share_mode": share_mode,
+        },
+    )
+    return "framework model selected artifact exported"

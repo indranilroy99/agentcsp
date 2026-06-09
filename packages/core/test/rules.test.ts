@@ -126,6 +126,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-122")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-123")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-124")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-125")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-001")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-002")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-003")).toBe(true);
@@ -8311,7 +8312,9 @@ describe("rule engine", () => {
     const sourceHandlerArtifactExportFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-050");
     expect(sourceHandlerArtifactExportFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_export_agent_run_artifact",
-      "source_export_agent_run_artifact"
+      "langchain_export_model_artifact",
+      "source_export_agent_run_artifact",
+      "source_export_model_artifact"
     ]);
     expect(sourceHandlerArtifactExportFindings.every((finding) => finding.severity === "critical")).toBe(true);
     expect(sourceHandlerArtifactExportFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
@@ -10397,6 +10400,7 @@ describe("rule engine", () => {
       "langchain_delegate_model_selected_remote_agent_task",
       "langchain_execute_model_browser_action",
       "langchain_execute_model_generated_code",
+      "langchain_export_model_artifact",
       "langchain_export_model_training_dataset",
       "langchain_fetch_model_selected_url",
       "langchain_grant_model_selected_authorization",
@@ -10415,6 +10419,7 @@ describe("rule engine", () => {
       "source_delegate_model_selected_remote_agent_task",
       "source_execute_model_browser_action",
       "source_execute_model_generated_code",
+      "source_export_model_artifact",
       "source_export_model_training_dataset",
       "source_fetch_model_selected_url",
       "source_grant_model_selected_authorization",
@@ -10627,6 +10632,7 @@ describe("rule engine", () => {
       "langchain_enqueue_model_selected_background_job",
       "langchain_execute_model_browser_action",
       "langchain_execute_model_generated_code",
+      "langchain_export_model_artifact",
       "langchain_export_model_training_dataset",
       "langchain_fetch_model_selected_url",
       "langchain_grant_model_selected_authorization",
@@ -10642,6 +10648,7 @@ describe("rule engine", () => {
       "source_enqueue_model_selected_background_job",
       "source_execute_model_browser_action",
       "source_execute_model_generated_code",
+      "source_export_model_artifact",
       "source_export_model_training_dataset",
       "source_fetch_model_selected_url",
       "source_grant_model_selected_authorization",
@@ -10704,6 +10711,7 @@ describe("rule engine", () => {
       "langchain_delegate_model_selected_remote_agent_task",
       "langchain_execute_model_browser_action",
       "langchain_execute_model_generated_code",
+      "langchain_export_model_artifact",
       "langchain_export_model_training_dataset",
       "langchain_fetch_model_selected_url",
       "langchain_grant_model_selected_authorization",
@@ -11599,6 +11607,67 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerModelOutputTrainingDatasetBridgeFindings)).not.toContain("source model selected training record exported");
     expect(JSON.stringify(sourceHandlerModelOutputTrainingDatasetBridgeFindings)).not.toContain("framework model selected training record exported");
     expect(JSON.stringify(sourceHandlerModelOutputTrainingDatasetBridgeFindings)).not.toContain("Ask a model provider to draft a fine-tuning record");
+    const sourceHandlerModelOutputArtifactBridgeFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-125");
+    expect(sourceHandlerModelOutputArtifactBridgeFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
+      "langchain_export_model_artifact",
+      "source_export_model_artifact"
+    ]);
+    expect(sourceHandlerModelOutputArtifactBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
+    expect(sourceHandlerModelOutputArtifactBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerModelOutputArtifactBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
+    expect(sourceHandlerModelOutputArtifactBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
+    expect(sourceHandlerModelOutputArtifactBridgeFindings.every((finding) => finding.matched_object.metadata.handler_model_provider_call === true)).toBe(true);
+    expect(sourceHandlerModelOutputArtifactBridgeFindings.every((finding) => finding.matched_object.metadata.handler_artifact_export === true)).toBe(true);
+    expect(sourceHandlerModelOutputArtifactBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.handler_tainted_artifact_export_payload === true
+    )).toBe(true);
+    expect(sourceHandlerModelOutputArtifactBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.handler_model_output_artifact_bridge === true
+    )).toBe(true);
+    expect(sourceHandlerModelOutputArtifactBridgeFindings.every((finding) => finding.matched_object.metadata.handler_public_artifact_destination === true)).toBe(true);
+    expect(sourceHandlerModelOutputArtifactBridgeFindings.every((finding) => finding.matched_object.metadata.handler_secret_env_access === true)).toBe(true);
+    expect(sourceHandlerModelOutputArtifactBridgeFindings.every((finding) => finding.matched_object.metadata.model_provider_call === true)).toBe(true);
+    expect(sourceHandlerModelOutputArtifactBridgeFindings.every((finding) => finding.matched_object.metadata.artifact_export === true)).toBe(true);
+    expect(sourceHandlerModelOutputArtifactBridgeFindings.every((finding) => finding.matched_object.metadata.tainted_artifact_export_payload === true)).toBe(true);
+    expect(sourceHandlerModelOutputArtifactBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.model_output_artifact_bridge === true
+    )).toBe(true);
+    expect(sourceHandlerModelOutputArtifactBridgeFindings.every((finding) => finding.matched_object.metadata.public_artifact_destination === true)).toBe(true);
+    expect(sourceHandlerModelOutputArtifactBridgeFindings.every((finding) => finding.matched_object.metadata.external_write === true)).toBe(true);
+    expect(sourceHandlerModelOutputArtifactBridgeFindings.every((finding) => finding.matched_object.metadata.accepts_content_like_input === true)).toBe(true);
+    expect(sourceHandlerModelOutputArtifactBridgeFindings.every((finding) => finding.matched_object.metadata.accepts_customer_data_input === true)).toBe(true);
+    expect(sourceHandlerModelOutputArtifactBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.authority_classes.includes("model_output_artifact_bridge")
+    )).toBe(true);
+    expect(sourceHandlerModelOutputArtifactBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.authority_classes.includes("artifact_export")
+    )).toBe(true);
+    expect(sourceHandlerModelOutputArtifactBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.authority_classes.includes("public_artifact_destination")
+    )).toBe(true);
+    expect(sourceHandlerModelOutputArtifactBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.handler_authority_classes.includes("handler_model_output_artifact_bridge")
+    )).toBe(true);
+    expect(sourceHandlerModelOutputArtifactBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.handler_authority_classes.includes("handler_artifact_export")
+    )).toBe(true);
+    expect(sourceHandlerModelOutputArtifactBridgeFindings.every((finding) => finding.matched_object.actions.includes("send"))).toBe(true);
+    expect(sourceHandlerModelOutputArtifactBridgeFindings.every((finding) => finding.matched_object.actions.includes("write"))).toBe(true);
+    expect(sourceHandlerModelOutputArtifactBridgeFindings.every((finding) => finding.matched_object.actions.includes("publish"))).toBe(true);
+    expect(sourceHandlerModelOutputArtifactBridgeFindings.every((finding) => finding.matched_object.external_reach === true)).toBe(true);
+    expect(sourceHandlerModelOutputArtifactBridgeFindings.every((finding) => finding.matched_object.secret_exposure === true)).toBe(true);
+    expect(sourceHandlerModelOutputArtifactBridgeFindings.every((finding) => finding.matched_object.side_effect === true)).toBe(true);
+    expect(sourceHandlerModelOutputArtifactBridgeFindings.every((finding) => finding.matched_object.reversible === false)).toBe(true);
+    expect(JSON.stringify(sourceHandlerModelOutputArtifactBridgeFindings)).not.toContain("openai.chat.completions.create");
+    expect(JSON.stringify(sourceHandlerModelOutputArtifactBridgeFindings)).not.toContain("openai_client.chat.completions.create");
+    expect(JSON.stringify(sourceHandlerModelOutputArtifactBridgeFindings)).not.toContain("modelSelectedArtifactBody");
+    expect(JSON.stringify(sourceHandlerModelOutputArtifactBridgeFindings)).not.toContain("model_selected_artifact_body");
+    expect(JSON.stringify(sourceHandlerModelOutputArtifactBridgeFindings)).not.toContain("globalThis.artifactExportClient.upload");
+    expect(JSON.stringify(sourceHandlerModelOutputArtifactBridgeFindings)).not.toContain("artifact_export_client.upload");
+    expect(JSON.stringify(sourceHandlerModelOutputArtifactBridgeFindings)).not.toContain("source model selected artifact exported");
+    expect(JSON.stringify(sourceHandlerModelOutputArtifactBridgeFindings)).not.toContain("framework model selected artifact exported");
+    expect(JSON.stringify(sourceHandlerModelOutputArtifactBridgeFindings)).not.toContain("Ask a model provider to draft an artifact");
+    expect(JSON.stringify(sourceHandlerModelOutputArtifactBridgeFindings)).not.toContain("Return one artifact body");
     const sourceHandlerDynamicCodeFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-019");
     expect(sourceHandlerDynamicCodeFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_evaluate_agent_expression",

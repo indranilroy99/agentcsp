@@ -24157,6 +24157,7 @@ function addToolDefinitionSurface(
       !authority.secret_manager_authorization_grant_bridge &&
       !authority.tool_output_authorization_grant_bridge &&
       !authority.artifact_export &&
+      !authority.model_output_artifact_bridge &&
       !authority.rag_context_to_output &&
       !authority.rag_retrieval_prompt_bridge &&
       !authority.rag_retrieval_external_service_bridge &&
@@ -24291,6 +24292,7 @@ function addToolDefinitionSurface(
       tool_output_authorization_grant_bridge: authority.tool_output_authorization_grant_bridge,
       artifact_export: authority.artifact_export,
       tainted_artifact_export_payload: authority.tainted_artifact_export_payload,
+      model_output_artifact_bridge: authority.model_output_artifact_bridge,
       tool_output_artifact_bridge: authority.tool_output_artifact_bridge,
       public_artifact_destination: authority.public_artifact_destination,
       rag_retrieval: authority.rag_retrieval,
@@ -26734,6 +26736,7 @@ interface SourceToolHandlerSignals {
   handlerFeedbackPipelineWrite: boolean;
   handlerSecretManagerFeedbackBridge: boolean;
   handlerSecretManagerArtifactBridge: boolean;
+  handlerModelOutputArtifactBridge: boolean;
   handlerToolOutputArtifactBridge: boolean;
   handlerTaintedFeedbackPayload: boolean;
   handlerFeedbackAutoPromotion: boolean;
@@ -27291,6 +27294,7 @@ function sourceToolHandlerSignalMetadata(signals: SourceToolHandlerSignals | und
     handler_feedback_pipeline_write: signals.handlerFeedbackPipelineWrite,
     handler_secret_manager_feedback_bridge: signals.handlerSecretManagerFeedbackBridge,
     handler_secret_manager_artifact_bridge: signals.handlerSecretManagerArtifactBridge,
+    handler_model_output_artifact_bridge: signals.handlerModelOutputArtifactBridge,
     handler_tool_output_artifact_bridge: signals.handlerToolOutputArtifactBridge,
     handler_tainted_feedback_payload: signals.handlerTaintedFeedbackPayload,
     handler_feedback_auto_promotion: signals.handlerFeedbackAutoPromotion,
@@ -27536,6 +27540,9 @@ function classifySourceToolHandlerSignals(
   const toolOutputArtifactBridge = artifactExport && (language === "javascript"
     ? hasJavaScriptHandlerToolOutputArtifactBridge(handlerSource)
     : hasPythonHandlerToolOutputArtifactBridge(handlerSource));
+  const modelOutputArtifactBridge = modelProviderCall && artifactExport && (language === "javascript"
+    ? hasJavaScriptHandlerModelOutputArtifactBridge(handlerSource)
+    : hasPythonHandlerModelOutputArtifactBridge(handlerSource));
   const publicArtifactDestination = artifactExport && hasHandlerPublicArtifactDestination(handlerSource);
   const ragRetrieval = language === "javascript"
     ? hasJavaScriptHandlerRagRetrieval(handlerSource)
@@ -27866,6 +27873,7 @@ function classifySourceToolHandlerSignals(
   if (feedbackPipelineWrite) classes.add("handler_feedback_pipeline_write");
   if (secretManagerFeedbackBridge) classes.add("handler_secret_manager_feedback_bridge");
   if (secretManagerArtifactBridge) classes.add("handler_secret_manager_artifact_bridge");
+  if (modelOutputArtifactBridge) classes.add("handler_model_output_artifact_bridge");
   if (toolOutputArtifactBridge) classes.add("handler_tool_output_artifact_bridge");
   if (taintedFeedbackPayload) classes.add("handler_tainted_feedback_payload");
   if (feedbackAutoPromotion) classes.add("handler_feedback_auto_promotion");
@@ -28011,6 +28019,7 @@ function classifySourceToolHandlerSignals(
     handlerFeedbackPipelineWrite: feedbackPipelineWrite,
     handlerSecretManagerFeedbackBridge: secretManagerFeedbackBridge,
     handlerSecretManagerArtifactBridge: secretManagerArtifactBridge,
+    handlerModelOutputArtifactBridge: modelOutputArtifactBridge,
     handlerToolOutputArtifactBridge: toolOutputArtifactBridge,
     handlerTaintedFeedbackPayload: taintedFeedbackPayload,
     handlerFeedbackAutoPromotion: feedbackAutoPromotion,
@@ -28674,6 +28683,30 @@ function hasJavaScriptHandlerSecretManagerArtifactBridge(source: string): boolea
 
 function hasPythonHandlerSecretManagerArtifactBridge(source: string): boolean {
   const identifiers = extractPythonSecretManagerIdentifiers(source);
+  return identifiers.length > 0 && callExpressionReferencesAnyIdentifier(
+    [
+      /\b(?:artifact_exporter|artifact_export_client|run_exporter|report_exporter|output_exporter|artifact_store|artifact_storage|s3|s3_client|gcs|storage|storage_client|bucket|blob_service_client|r2|supabase)\s*(?:\.\s*[A-Za-z_]\w*){0,5}\s*\.\s*(?:upload|upload_file|upload_fileobj|put_object|put|save|store|write|export|publish|share|create_public_link|make_public|set_public|generate_signed_url|create_presigned_url)\s*\(([\s\S]{0,2200})\)/giu,
+      /\b(?:upload_artifact|export_artifact|publish_artifact|share_artifact|write_run_artifact|store_run_artifact|create_public_artifact|write_artifact_report)\s*\(([\s\S]{0,2200})\)/giu
+    ],
+    source,
+    identifiers
+  );
+}
+
+function hasJavaScriptHandlerModelOutputArtifactBridge(source: string): boolean {
+  const identifiers = extractJavaScriptModelOutputIdentifiers(source);
+  return identifiers.length > 0 && callExpressionReferencesAnyIdentifier(
+    [
+      /\b(?:artifactExporter|artifactExportClient|runExporter|reportExporter|outputExporter|artifactStore|artifactStorage|s3|s3Client|gcs|storage|storageClient|bucket|blobServiceClient|r2|supabase)\s*(?:\.\s*[A-Za-z_$][\w$]*){0,5}\s*\.\s*(?:upload|uploadFile|uploadFileObj|putObject|put|save|store|write|export|publish|share|createPublicLink|makePublic|setPublic|generateSignedUrl|createPresignedUrl)\s*\(([\s\S]{0,2200})\)/giu,
+      /\b(?:uploadArtifact|exportArtifact|publishArtifact|shareArtifact|writeRunArtifact|storeRunArtifact|createPublicArtifact|writeArtifactReport)\s*\(([\s\S]{0,2200})\)/giu
+    ],
+    source,
+    identifiers
+  );
+}
+
+function hasPythonHandlerModelOutputArtifactBridge(source: string): boolean {
+  const identifiers = extractPythonModelOutputIdentifiers(source);
   return identifiers.length > 0 && callExpressionReferencesAnyIdentifier(
     [
       /\b(?:artifact_exporter|artifact_export_client|run_exporter|report_exporter|output_exporter|artifact_store|artifact_storage|s3|s3_client|gcs|storage|storage_client|bucket|blob_service_client|r2|supabase)\s*(?:\.\s*[A-Za-z_]\w*){0,5}\s*\.\s*(?:upload|upload_file|upload_fileobj|put_object|put|save|store|write|export|publish|share|create_public_link|make_public|set_public|generate_signed_url|create_presigned_url)\s*\(([\s\S]{0,2200})\)/giu,
@@ -34336,6 +34369,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   tool_output_authorization_grant_bridge: boolean;
   artifact_export: boolean;
   tainted_artifact_export_payload: boolean;
+  model_output_artifact_bridge: boolean;
   tool_output_artifact_bridge: boolean;
   public_artifact_destination: boolean;
   rag_retrieval: boolean;
@@ -34442,6 +34476,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   const handlerToolOutputAuthorizationGrantBridge = handler?.handlerToolOutputAuthorizationGrantBridge === true;
   const handlerArtifactExport = handler?.handlerArtifactExport === true;
   const handlerTaintedArtifactExportPayload = handler?.handlerTaintedArtifactExportPayload === true;
+  const handlerModelOutputArtifactBridge = handler?.handlerModelOutputArtifactBridge === true;
   const handlerToolOutputArtifactBridge = handler?.handlerToolOutputArtifactBridge === true;
   const handlerPublicArtifactDestination = handler?.handlerPublicArtifactDestination === true;
   const handlerRagRetrieval = handler?.handlerRagRetrieval === true;
@@ -35126,6 +35161,13 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
     classes.add("tainted_artifact_export_payload");
     actions.add("send");
   }
+  if (handlerModelOutputArtifactBridge) {
+    classes.add("model_output_artifact_bridge");
+    actions.add("read");
+    actions.add("send");
+    actions.add("write");
+    actions.add("publish");
+  }
   if (handlerToolOutputArtifactBridge) {
     classes.add("tool_output_artifact_bridge");
     actions.add("execute");
@@ -35367,6 +35409,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerFeedbackPipelineWrite ||
       handlerSecretManagerFeedbackBridge ||
       handlerSecretManagerArtifactBridge ||
+      handlerModelOutputArtifactBridge ||
       handlerTaintedFeedbackPayload ||
       handlerFeedbackAutoPromotion ||
       handlerTaintedFeedbackRouting ||
@@ -35517,6 +35560,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerModelOutputCredentialIssuanceBridge ||
       handlerToolOutputCredentialIssuanceBridge ||
       handlerArtifactExport ||
+      handlerModelOutputArtifactBridge ||
       handlerToolOutputArtifactBridge ||
       handlerRagRetrieval ||
       handlerRagRetrievalPromptBridge ||
@@ -35568,6 +35612,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       (handlerToolOutputTrainingDatasetBridge && handlerSecretEnvAccess) ||
       handlerSecretManagerFeedbackBridge ||
       handlerSecretManagerArtifactBridge ||
+      (handlerModelOutputArtifactBridge && handlerSecretEnvAccess) ||
       (handlerToolOutputEmbeddingVectorBridge && handlerSecretEnvAccess) ||
       handlerSecretManagerTaskQueueBridge ||
       (handlerToolOutputArtifactBridge && handlerSecretEnvAccess) ||
@@ -35715,6 +35760,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
     tool_output_authorization_grant_bridge: handlerToolOutputAuthorizationGrantBridge,
     artifact_export: handlerArtifactExport,
     tainted_artifact_export_payload: handlerTaintedArtifactExportPayload,
+    model_output_artifact_bridge: handlerModelOutputArtifactBridge,
     tool_output_artifact_bridge: handlerToolOutputArtifactBridge,
     public_artifact_destination: handlerPublicArtifactDestination,
     rag_retrieval: handlerRagRetrieval,
@@ -35859,6 +35905,7 @@ function authoritySignature(tool: SurfaceObject): string {
     metadata.tool_output_authorization_grant_bridge === true ? "tool_output_authorization_grant_bridge" : "",
     metadata.artifact_export === true ? "artifact_export" : "",
     metadata.tainted_artifact_export_payload === true ? "tainted_artifact_export_payload" : "",
+    metadata.model_output_artifact_bridge === true ? "model_output_artifact_bridge" : "",
     metadata.tool_output_artifact_bridge === true ? "tool_output_artifact_bridge" : "",
     metadata.public_artifact_destination === true ? "public_artifact_destination" : "",
     metadata.rag_retrieval === true ? "rag_retrieval" : "",
@@ -36011,6 +36058,7 @@ function isPrivilegedToolSurface(tool: SurfaceObject): boolean {
     tool.metadata.tool_output_authorization_grant_bridge === true ||
     tool.metadata.artifact_export === true ||
     tool.metadata.tainted_artifact_export_payload === true ||
+    tool.metadata.model_output_artifact_bridge === true ||
     tool.metadata.tool_output_artifact_bridge === true ||
     tool.metadata.public_artifact_destination === true ||
     tool.metadata.rag_retrieval === true ||
