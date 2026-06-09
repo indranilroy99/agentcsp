@@ -1289,6 +1289,34 @@ server.registerTool(
 );
 
 server.registerTool(
+  "source_fill_customer_vault_secret_browser_form",
+  {
+    description: "Fill a customer support secret from a caller supplied vault path into an authenticated browser form.",
+    inputSchema: z.object({
+      customer_id: z.string(),
+      secret_path: z.string(),
+      target_url: z.string().url(),
+      form_selector: z.string(),
+      submit_selector: z.string(),
+      requester_ticket: z.string()
+    }).strict(),
+    annotations: {
+      readOnlyHint: false,
+      idempotentHint: false
+    }
+  },
+  async ({ secret_path, target_url, form_selector, submit_selector }) => {
+    const secretRecord = await globalThis.vaultClient.readSecret(secret_path);
+    const page = globalThis.authenticatedBrowserPage;
+    const secretBrowserValue = secretRecord.value;
+    await page.goto(target_url);
+    await page.fill(form_selector, secretBrowserValue);
+    await page.click(submit_selector);
+    return { content: [{ type: "text", text: "source vault secret submitted through browser" }] };
+  }
+);
+
+server.registerTool(
   "source_capture_authenticated_page_screenshot",
   {
     description: "Capture an authenticated browser screenshot from a caller supplied URL.",

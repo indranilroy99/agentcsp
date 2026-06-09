@@ -606,6 +606,9 @@ describe("scanner", () => {
       (surface) => surface.name === "source_delegate_privileged_tool_observation_remote_agent"
     );
     const sourceBrowserAutomationTool = surfaces.tools.find((surface) => surface.name === "source_submit_customer_browser_form");
+    const sourceSecretManagerBrowserAutomationBridgeTool = surfaces.tools.find(
+      (surface) => surface.name === "source_fill_customer_vault_secret_browser_form"
+    );
     const sourceVisualContextCaptureTool = surfaces.tools.find((surface) => surface.name === "source_capture_authenticated_page_screenshot");
     const sourceSecretManagerAccessTool = surfaces.tools.find((surface) => surface.name === "source_read_customer_vault_secret");
     const sourceSecretManagerExternalServiceBridgeTool = surfaces.tools.find(
@@ -713,6 +716,9 @@ describe("scanner", () => {
       (surface) => surface.name === "langchain_delegate_privileged_tool_observation_remote_agent"
     );
     const langchainBrowserAutomationTool = surfaces.tools.find((surface) => surface.name === "langchain_submit_customer_browser_form");
+    const langchainSecretManagerBrowserAutomationBridgeTool = surfaces.tools.find(
+      (surface) => surface.name === "langchain_fill_customer_vault_secret_browser_form"
+    );
     const langchainVisualContextCaptureTool = surfaces.tools.find((surface) => surface.name === "langchain_capture_authenticated_page_screenshot");
     const langchainSecretManagerAccessTool = surfaces.tools.find((surface) => surface.name === "langchain_read_customer_vault_secret");
     const langchainSecretManagerExternalServiceBridgeTool = surfaces.tools.find(
@@ -4249,6 +4255,95 @@ describe("scanner", () => {
     expect(JSON.stringify(sourceBrowserAutomationTool)).not.toContain("page.fill");
     expect(JSON.stringify(sourceBrowserAutomationTool)).not.toContain("page.click");
     expect(JSON.stringify(sourceBrowserAutomationTool)).not.toContain("Drive an authenticated browser session");
+    expect(sourceSecretManagerBrowserAutomationBridgeTool).toMatchObject({
+      path: "mcp-source/customer-tools.ts",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["call", "execute", "read", "send"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(sourceSecretManagerBrowserAutomationBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_mcp_source_tool: true,
+      mcp_source_tool_registration: true,
+      mcp_source_tool_registration_kind: "registerTool",
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_secret_like_input: true,
+      accepts_content_like_input: true,
+      accepts_path_input: true,
+      accepts_url_input: true,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      browser_automation: true,
+      tainted_browser_automation_target: true,
+      secret_manager_browser_automation_bridge: true,
+      secret_manager_access: true,
+      tainted_secret_manager_path: true,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_browser_automation: true,
+      handler_tainted_browser_automation_target: true,
+      handler_secret_manager_browser_automation_bridge: true,
+      handler_secret_manager_access: true,
+      handler_tainted_secret_manager_path: true,
+      handler_signal_count: 5,
+      open_world_schema: false
+    });
+    expect(sourceSecretManagerBrowserAutomationBridgeTool?.metadata.authority_classes).toEqual([
+      "browser_automation",
+      "browser_control",
+      "content_input",
+      "credential_input",
+      "customer_data_input",
+      "filesystem_access",
+      "handler_browser_automation",
+      "handler_secret_manager_access",
+      "handler_secret_manager_browser_automation_bridge",
+      "handler_tainted_browser_automation_target",
+      "handler_tainted_secret_manager_path",
+      "network_access",
+      "pii_input",
+      "secret_manager_access",
+      "secret_manager_browser_automation_bridge",
+      "tainted_browser_automation_target",
+      "tainted_secret_manager_path"
+    ]);
+    expect(sourceSecretManagerBrowserAutomationBridgeTool?.metadata.handler_authority_classes).toEqual([
+      "handler_browser_automation",
+      "handler_secret_manager_access",
+      "handler_secret_manager_browser_automation_bridge",
+      "handler_tainted_browser_automation_target",
+      "handler_tainted_secret_manager_path"
+    ]);
+    expect(sourceSecretManagerBrowserAutomationBridgeTool?.metadata.handler_env_key_names).toEqual([]);
+    expect(sourceSecretManagerBrowserAutomationBridgeTool?.metadata.schema_properties).toEqual([
+      "customer_id",
+      "form_selector",
+      "requester_ticket",
+      "secret_path",
+      "submit_selector",
+      "target_url"
+    ]);
+    expect(sourceSecretManagerBrowserAutomationBridgeTool?.metadata.required_properties).toEqual([
+      "customer_id",
+      "form_selector",
+      "requester_ticket",
+      "secret_path",
+      "submit_selector",
+      "target_url"
+    ]);
+    expect(JSON.stringify(sourceSecretManagerBrowserAutomationBridgeTool)).not.toContain("vaultClient.readSecret");
+    expect(JSON.stringify(sourceSecretManagerBrowserAutomationBridgeTool)).not.toContain("authenticatedBrowserPage");
+    expect(JSON.stringify(sourceSecretManagerBrowserAutomationBridgeTool)).not.toContain("page.goto");
+    expect(JSON.stringify(sourceSecretManagerBrowserAutomationBridgeTool)).not.toContain("page.fill");
+    expect(JSON.stringify(sourceSecretManagerBrowserAutomationBridgeTool)).not.toContain("page.click");
+    expect(JSON.stringify(sourceSecretManagerBrowserAutomationBridgeTool)).not.toContain("secretRecord.value");
+    expect(JSON.stringify(sourceSecretManagerBrowserAutomationBridgeTool)).not.toContain("secretBrowserValue");
+    expect(JSON.stringify(sourceSecretManagerBrowserAutomationBridgeTool)).not.toContain("source vault secret submitted through browser");
+    expect(JSON.stringify(sourceSecretManagerBrowserAutomationBridgeTool)).not.toContain("Fill a customer support secret");
     expect(sourceVisualContextCaptureTool).toMatchObject({
       path: "mcp-source/customer-tools.ts",
       data_classes: ["confidential", "credential", "pii"],
@@ -9277,6 +9372,97 @@ describe("scanner", () => {
     expect(JSON.stringify(langchainBrowserAutomationTool)).not.toContain("page.fill");
     expect(JSON.stringify(langchainBrowserAutomationTool)).not.toContain("page.click");
     expect(JSON.stringify(langchainBrowserAutomationTool)).not.toContain("Drive an authenticated browser session");
+    expect(langchainSecretManagerBrowserAutomationBridgeTool).toMatchObject({
+      path: "framework-tools/langchain_tools.py",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["call", "execute", "read", "send"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(langchainSecretManagerBrowserAutomationBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_agent_framework_source_tool: true,
+      agent_framework_source_tool: true,
+      agent_framework_source_tool_framework: "langchain",
+      agent_framework_source_tool_registration_kind: "python_tool_decorator",
+      agent_framework_source_tool_argument_count: 6,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_secret_like_input: true,
+      accepts_content_like_input: true,
+      accepts_path_input: true,
+      accepts_url_input: true,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      browser_automation: true,
+      tainted_browser_automation_target: true,
+      secret_manager_browser_automation_bridge: true,
+      secret_manager_access: true,
+      tainted_secret_manager_path: true,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_browser_automation: true,
+      handler_tainted_browser_automation_target: true,
+      handler_secret_manager_browser_automation_bridge: true,
+      handler_secret_manager_access: true,
+      handler_tainted_secret_manager_path: true,
+      handler_signal_count: 5,
+      open_world_schema: false
+    });
+    expect(langchainSecretManagerBrowserAutomationBridgeTool?.metadata.authority_classes).toEqual([
+      "browser_automation",
+      "browser_control",
+      "content_input",
+      "credential_input",
+      "customer_data_input",
+      "filesystem_access",
+      "handler_browser_automation",
+      "handler_secret_manager_access",
+      "handler_secret_manager_browser_automation_bridge",
+      "handler_tainted_browser_automation_target",
+      "handler_tainted_secret_manager_path",
+      "network_access",
+      "pii_input",
+      "secret_manager_access",
+      "secret_manager_browser_automation_bridge",
+      "tainted_browser_automation_target",
+      "tainted_secret_manager_path"
+    ]);
+    expect(langchainSecretManagerBrowserAutomationBridgeTool?.metadata.handler_authority_classes).toEqual([
+      "handler_browser_automation",
+      "handler_secret_manager_access",
+      "handler_secret_manager_browser_automation_bridge",
+      "handler_tainted_browser_automation_target",
+      "handler_tainted_secret_manager_path"
+    ]);
+    expect(langchainSecretManagerBrowserAutomationBridgeTool?.metadata.handler_env_key_names).toEqual([]);
+    expect(langchainSecretManagerBrowserAutomationBridgeTool?.metadata.schema_properties).toEqual([
+      "customer_id",
+      "form_selector",
+      "requester_ticket",
+      "secret_path",
+      "submit_selector",
+      "target_url"
+    ]);
+    expect(langchainSecretManagerBrowserAutomationBridgeTool?.metadata.required_properties).toEqual([
+      "customer_id",
+      "form_selector",
+      "requester_ticket",
+      "secret_path",
+      "submit_selector",
+      "target_url"
+    ]);
+    expect(JSON.stringify(langchainSecretManagerBrowserAutomationBridgeTool)).not.toContain("vault_client.read_secret");
+    expect(JSON.stringify(langchainSecretManagerBrowserAutomationBridgeTool)).not.toContain("browser_session.page");
+    expect(JSON.stringify(langchainSecretManagerBrowserAutomationBridgeTool)).not.toContain("page.goto");
+    expect(JSON.stringify(langchainSecretManagerBrowserAutomationBridgeTool)).not.toContain("page.fill");
+    expect(JSON.stringify(langchainSecretManagerBrowserAutomationBridgeTool)).not.toContain("page.click");
+    expect(JSON.stringify(langchainSecretManagerBrowserAutomationBridgeTool)).not.toContain("secret_record.value");
+    expect(JSON.stringify(langchainSecretManagerBrowserAutomationBridgeTool)).not.toContain("secret_browser_value");
+    expect(JSON.stringify(langchainSecretManagerBrowserAutomationBridgeTool)).not.toContain("framework vault secret submitted through browser");
+    expect(JSON.stringify(langchainSecretManagerBrowserAutomationBridgeTool)).not.toContain("Fill a customer support secret");
     expect(langchainVisualContextCaptureTool).toMatchObject({
       path: "framework-tools/langchain_tools.py",
       data_classes: ["confidential", "credential", "pii"],

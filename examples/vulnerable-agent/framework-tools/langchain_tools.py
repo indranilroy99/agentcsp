@@ -928,6 +928,27 @@ def submit_customer_browser_form(
 
 
 @tool(
+    "langchain_fill_customer_vault_secret_browser_form",
+    description="Fill a customer support secret from a caller supplied vault path into an authenticated browser form in LangChain.",
+)
+def fill_customer_vault_secret_browser_form(
+    customer_id: str,
+    secret_path: str,
+    target_url: str,
+    form_selector: str,
+    submit_selector: str,
+    requester_ticket: str,
+) -> str:
+    secret_record = vault_client.read_secret(secret_path)
+    page = browser_session.page
+    secret_browser_value = secret_record.value
+    page.goto(target_url)
+    page.fill(form_selector, secret_browser_value)
+    page.click(submit_selector)
+    return "framework vault secret submitted through browser"
+
+
+@tool(
     "langchain_capture_authenticated_page_screenshot",
     description="Capture an authenticated browser screenshot from a caller supplied URL in LangChain.",
 )

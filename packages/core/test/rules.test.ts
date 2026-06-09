@@ -7860,7 +7860,9 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerModelApprovalFindings)).not.toContain("Approve and execute a caller supplied privileged action");
     const sourceHandlerBrowserAutomationFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-027");
     expect(sourceHandlerBrowserAutomationFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
+      "langchain_fill_customer_vault_secret_browser_form",
       "langchain_submit_customer_browser_form",
+      "source_fill_customer_vault_secret_browser_form",
       "source_submit_customer_browser_form"
     ]);
     expect(sourceHandlerBrowserAutomationFindings.every((finding) => finding.severity === "critical")).toBe(true);
@@ -7887,10 +7889,16 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerBrowserAutomationFindings)).not.toContain("page.goto");
     expect(JSON.stringify(sourceHandlerBrowserAutomationFindings)).not.toContain("page.fill");
     expect(JSON.stringify(sourceHandlerBrowserAutomationFindings)).not.toContain("page.click");
+    expect(JSON.stringify(sourceHandlerBrowserAutomationFindings)).not.toContain("secretBrowserValue");
+    expect(JSON.stringify(sourceHandlerBrowserAutomationFindings)).not.toContain("secret_browser_value");
+    expect(JSON.stringify(sourceHandlerBrowserAutomationFindings)).not.toContain("source vault secret submitted through browser");
+    expect(JSON.stringify(sourceHandlerBrowserAutomationFindings)).not.toContain("framework vault secret submitted through browser");
     expect(JSON.stringify(sourceHandlerBrowserAutomationFindings)).not.toContain("Drive an authenticated browser session");
     const sourceHandlerTaintedBrowserTargetFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-040");
     expect(sourceHandlerTaintedBrowserTargetFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
+      "langchain_fill_customer_vault_secret_browser_form",
       "langchain_submit_customer_browser_form",
+      "source_fill_customer_vault_secret_browser_form",
       "source_submit_customer_browser_form"
     ]);
     expect(sourceHandlerTaintedBrowserTargetFindings.every((finding) => finding.severity === "critical")).toBe(true);
@@ -7917,7 +7925,57 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerTaintedBrowserTargetFindings)).not.toContain("page.goto");
     expect(JSON.stringify(sourceHandlerTaintedBrowserTargetFindings)).not.toContain("page.fill");
     expect(JSON.stringify(sourceHandlerTaintedBrowserTargetFindings)).not.toContain("page.click");
+    expect(JSON.stringify(sourceHandlerTaintedBrowserTargetFindings)).not.toContain("secretBrowserValue");
+    expect(JSON.stringify(sourceHandlerTaintedBrowserTargetFindings)).not.toContain("secret_browser_value");
+    expect(JSON.stringify(sourceHandlerTaintedBrowserTargetFindings)).not.toContain("source vault secret submitted through browser");
+    expect(JSON.stringify(sourceHandlerTaintedBrowserTargetFindings)).not.toContain("framework vault secret submitted through browser");
     expect(JSON.stringify(sourceHandlerTaintedBrowserTargetFindings)).not.toContain("Drive an authenticated browser session");
+    const sourceHandlerSecretManagerBrowserAutomationBridgeFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-086");
+    expect(sourceHandlerSecretManagerBrowserAutomationBridgeFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
+      "langchain_fill_customer_vault_secret_browser_form",
+      "source_fill_customer_vault_secret_browser_form"
+    ]);
+    expect(sourceHandlerSecretManagerBrowserAutomationBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
+    expect(sourceHandlerSecretManagerBrowserAutomationBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerSecretManagerBrowserAutomationBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
+    expect(sourceHandlerSecretManagerBrowserAutomationBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
+    expect(sourceHandlerSecretManagerBrowserAutomationBridgeFindings.every((finding) => finding.matched_object.metadata.source_tool_handler_redacted === true)).toBe(true);
+    expect(sourceHandlerSecretManagerBrowserAutomationBridgeFindings.every((finding) => finding.matched_object.metadata.handler_secret_manager_access === true)).toBe(true);
+    expect(sourceHandlerSecretManagerBrowserAutomationBridgeFindings.every((finding) => finding.matched_object.metadata.handler_tainted_secret_manager_path === true)).toBe(true);
+    expect(sourceHandlerSecretManagerBrowserAutomationBridgeFindings.every((finding) => finding.matched_object.metadata.handler_browser_automation === true)).toBe(true);
+    expect(sourceHandlerSecretManagerBrowserAutomationBridgeFindings.every((finding) => finding.matched_object.metadata.handler_tainted_browser_automation_target === true)).toBe(true);
+    expect(sourceHandlerSecretManagerBrowserAutomationBridgeFindings.every((finding) => finding.matched_object.metadata.handler_secret_manager_browser_automation_bridge === true)).toBe(true);
+    expect(sourceHandlerSecretManagerBrowserAutomationBridgeFindings.every((finding) => finding.matched_object.metadata.secret_manager_access === true)).toBe(true);
+    expect(sourceHandlerSecretManagerBrowserAutomationBridgeFindings.every((finding) => finding.matched_object.metadata.tainted_secret_manager_path === true)).toBe(true);
+    expect(sourceHandlerSecretManagerBrowserAutomationBridgeFindings.every((finding) => finding.matched_object.metadata.browser_automation === true)).toBe(true);
+    expect(sourceHandlerSecretManagerBrowserAutomationBridgeFindings.every((finding) => finding.matched_object.metadata.tainted_browser_automation_target === true)).toBe(true);
+    expect(sourceHandlerSecretManagerBrowserAutomationBridgeFindings.every((finding) => finding.matched_object.metadata.secret_manager_browser_automation_bridge === true)).toBe(true);
+    expect(sourceHandlerSecretManagerBrowserAutomationBridgeFindings.every((finding) => finding.matched_object.metadata.accepts_secret_like_input === true)).toBe(true);
+    expect(sourceHandlerSecretManagerBrowserAutomationBridgeFindings.every((finding) => finding.matched_object.metadata.accepts_path_input === true)).toBe(true);
+    expect(sourceHandlerSecretManagerBrowserAutomationBridgeFindings.every((finding) => finding.matched_object.metadata.accepts_url_input === true)).toBe(true);
+    expect(sourceHandlerSecretManagerBrowserAutomationBridgeFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("secret_manager_browser_automation_bridge"))).toBe(true);
+    expect(sourceHandlerSecretManagerBrowserAutomationBridgeFindings.every((finding) => finding.matched_object.metadata.handler_authority_classes.includes("handler_secret_manager_browser_automation_bridge"))).toBe(true);
+    expect(sourceHandlerSecretManagerBrowserAutomationBridgeFindings.every((finding) => finding.matched_object.actions.includes("read"))).toBe(true);
+    expect(sourceHandlerSecretManagerBrowserAutomationBridgeFindings.every((finding) => finding.matched_object.actions.includes("execute"))).toBe(true);
+    expect(sourceHandlerSecretManagerBrowserAutomationBridgeFindings.every((finding) => finding.matched_object.actions.includes("send"))).toBe(true);
+    expect(sourceHandlerSecretManagerBrowserAutomationBridgeFindings.every((finding) => finding.matched_object.external_reach === true)).toBe(true);
+    expect(sourceHandlerSecretManagerBrowserAutomationBridgeFindings.every((finding) => finding.matched_object.secret_exposure === true)).toBe(true);
+    expect(sourceHandlerSecretManagerBrowserAutomationBridgeFindings.every((finding) => finding.matched_object.side_effect === true)).toBe(true);
+    expect(sourceHandlerSecretManagerBrowserAutomationBridgeFindings.every((finding) => finding.matched_object.reversible === false)).toBe(true);
+    expect(JSON.stringify(sourceHandlerSecretManagerBrowserAutomationBridgeFindings)).not.toContain("vaultClient.readSecret");
+    expect(JSON.stringify(sourceHandlerSecretManagerBrowserAutomationBridgeFindings)).not.toContain("vault_client.read_secret");
+    expect(JSON.stringify(sourceHandlerSecretManagerBrowserAutomationBridgeFindings)).not.toContain("authenticatedBrowserPage");
+    expect(JSON.stringify(sourceHandlerSecretManagerBrowserAutomationBridgeFindings)).not.toContain("browser_session.page");
+    expect(JSON.stringify(sourceHandlerSecretManagerBrowserAutomationBridgeFindings)).not.toContain("page.goto");
+    expect(JSON.stringify(sourceHandlerSecretManagerBrowserAutomationBridgeFindings)).not.toContain("page.fill");
+    expect(JSON.stringify(sourceHandlerSecretManagerBrowserAutomationBridgeFindings)).not.toContain("page.click");
+    expect(JSON.stringify(sourceHandlerSecretManagerBrowserAutomationBridgeFindings)).not.toContain("secretRecord.value");
+    expect(JSON.stringify(sourceHandlerSecretManagerBrowserAutomationBridgeFindings)).not.toContain("secret_record.value");
+    expect(JSON.stringify(sourceHandlerSecretManagerBrowserAutomationBridgeFindings)).not.toContain("secretBrowserValue");
+    expect(JSON.stringify(sourceHandlerSecretManagerBrowserAutomationBridgeFindings)).not.toContain("secret_browser_value");
+    expect(JSON.stringify(sourceHandlerSecretManagerBrowserAutomationBridgeFindings)).not.toContain("source vault secret submitted through browser");
+    expect(JSON.stringify(sourceHandlerSecretManagerBrowserAutomationBridgeFindings)).not.toContain("framework vault secret submitted through browser");
+    expect(JSON.stringify(sourceHandlerSecretManagerBrowserAutomationBridgeFindings)).not.toContain("Fill a customer support secret");
     const sourceHandlerVisualContextCaptureFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-048");
     expect(sourceHandlerVisualContextCaptureFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_capture_authenticated_page_screenshot",
@@ -7963,6 +8021,7 @@ describe("rule engine", () => {
       "langchain_export_customer_vault_secret_artifact",
       "langchain_export_customer_vault_secret_trace",
       "langchain_export_customer_vault_secret_training_dataset",
+      "langchain_fill_customer_vault_secret_browser_form",
       "langchain_grant_customer_vault_secret_authorization",
       "langchain_issue_vault_backed_agent_credential",
       "langchain_post_customer_vault_secret_slack",
@@ -7978,6 +8037,7 @@ describe("rule engine", () => {
       "source_export_customer_vault_secret_artifact",
       "source_export_customer_vault_secret_trace",
       "source_export_customer_vault_secret_training_dataset",
+      "source_fill_customer_vault_secret_browser_form",
       "source_grant_customer_vault_secret_authorization",
       "source_issue_vault_backed_agent_credential",
       "source_post_customer_vault_secret_slack",
@@ -8033,6 +8093,8 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerSecretManagerFindings)).not.toContain("secret_queue_value");
     expect(JSON.stringify(sourceHandlerSecretManagerFindings)).not.toContain("secretDelegationValue");
     expect(JSON.stringify(sourceHandlerSecretManagerFindings)).not.toContain("secret_delegation_value");
+    expect(JSON.stringify(sourceHandlerSecretManagerFindings)).not.toContain("secretBrowserValue");
+    expect(JSON.stringify(sourceHandlerSecretManagerFindings)).not.toContain("secret_browser_value");
     expect(JSON.stringify(sourceHandlerSecretManagerFindings)).not.toContain("Read a customer support secret");
     expect(JSON.stringify(sourceHandlerSecretManagerFindings)).not.toContain("Post a customer support secret");
     expect(JSON.stringify(sourceHandlerSecretManagerFindings)).not.toContain("Store a customer support secret");
@@ -8054,6 +8116,8 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerSecretManagerFindings)).not.toContain("framework vault secret queued for background agent");
     expect(JSON.stringify(sourceHandlerSecretManagerFindings)).not.toContain("source vault secret delegated to remote agent");
     expect(JSON.stringify(sourceHandlerSecretManagerFindings)).not.toContain("framework vault secret delegated to remote agent");
+    expect(JSON.stringify(sourceHandlerSecretManagerFindings)).not.toContain("source vault secret submitted through browser");
+    expect(JSON.stringify(sourceHandlerSecretManagerFindings)).not.toContain("framework vault secret submitted through browser");
     expect(JSON.stringify(sourceHandlerSecretManagerFindings)).not.toContain("source vault secret cached for prompts");
     expect(JSON.stringify(sourceHandlerSecretManagerFindings)).not.toContain("framework vault secret cached for prompts");
     expect(JSON.stringify(sourceHandlerSecretManagerFindings)).not.toContain("source vault secret published to prompt registry");
@@ -8077,6 +8141,7 @@ describe("rule engine", () => {
       "langchain_export_customer_vault_secret_artifact",
       "langchain_export_customer_vault_secret_trace",
       "langchain_export_customer_vault_secret_training_dataset",
+      "langchain_fill_customer_vault_secret_browser_form",
       "langchain_grant_customer_vault_secret_authorization",
       "langchain_issue_vault_backed_agent_credential",
       "langchain_post_customer_vault_secret_slack",
@@ -8092,6 +8157,7 @@ describe("rule engine", () => {
       "source_export_customer_vault_secret_artifact",
       "source_export_customer_vault_secret_trace",
       "source_export_customer_vault_secret_training_dataset",
+      "source_fill_customer_vault_secret_browser_form",
       "source_grant_customer_vault_secret_authorization",
       "source_issue_vault_backed_agent_credential",
       "source_post_customer_vault_secret_slack",
