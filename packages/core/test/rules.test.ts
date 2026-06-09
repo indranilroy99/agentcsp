@@ -82,6 +82,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-066")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-067")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-068")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-069")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-001")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-002")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-003")).toBe(true);
@@ -6489,7 +6490,9 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerTelemetryExportFindings)).not.toContain("Export a customer support secret");
     const sourceHandlerPromptCacheWriteFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-046");
     expect(sourceHandlerPromptCacheWriteFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
+      "langchain_cache_customer_vault_secret_prompt",
       "langchain_write_prompt_cache_entry",
+      "source_cache_customer_vault_secret_prompt",
       "source_write_prompt_cache_entry"
     ]);
     expect(sourceHandlerPromptCacheWriteFindings.every((finding) => finding.severity === "critical")).toBe(true);
@@ -6520,9 +6523,14 @@ describe("rule engine", () => {
     expect(sourceHandlerPromptCacheWriteFindings.every((finding) => finding.matched_object.reversible === false)).toBe(true);
     expect(JSON.stringify(sourceHandlerPromptCacheWriteFindings)).not.toContain("promptCache.set");
     expect(JSON.stringify(sourceHandlerPromptCacheWriteFindings)).not.toContain("prompt_cache.set");
+    expect(JSON.stringify(sourceHandlerPromptCacheWriteFindings)).not.toContain("secretPromptCacheValue");
+    expect(JSON.stringify(sourceHandlerPromptCacheWriteFindings)).not.toContain("secret_prompt_cache_value");
     expect(JSON.stringify(sourceHandlerPromptCacheWriteFindings)).not.toContain("source prompt cache written");
     expect(JSON.stringify(sourceHandlerPromptCacheWriteFindings)).not.toContain("framework prompt cache written");
+    expect(JSON.stringify(sourceHandlerPromptCacheWriteFindings)).not.toContain("source vault secret cached for prompts");
+    expect(JSON.stringify(sourceHandlerPromptCacheWriteFindings)).not.toContain("framework vault secret cached for prompts");
     expect(JSON.stringify(sourceHandlerPromptCacheWriteFindings)).not.toContain("Write caller supplied prompt context");
+    expect(JSON.stringify(sourceHandlerPromptCacheWriteFindings)).not.toContain("Write a customer support secret");
     const sourceHandlerTrainingDatasetExportFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-047");
     expect(sourceHandlerTrainingDatasetExportFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_append_training_dataset_record",
@@ -7178,6 +7186,7 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerVisualContextCaptureFindings)).not.toContain("Capture an authenticated browser screenshot");
     const sourceHandlerSecretManagerFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-028");
     expect(sourceHandlerSecretManagerFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
+      "langchain_cache_customer_vault_secret_prompt",
       "langchain_export_customer_vault_secret_artifact",
       "langchain_export_customer_vault_secret_trace",
       "langchain_export_customer_vault_secret_training_dataset",
@@ -7186,6 +7195,7 @@ describe("rule engine", () => {
       "langchain_read_customer_vault_secret",
       "langchain_store_customer_vault_secret_memory",
       "langchain_summarize_customer_vault_secret_with_model",
+      "source_cache_customer_vault_secret_prompt",
       "source_export_customer_vault_secret_artifact",
       "source_export_customer_vault_secret_trace",
       "source_export_customer_vault_secret_training_dataset",
@@ -7229,6 +7239,8 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerSecretManagerFindings)).not.toContain("secret_artifact_value");
     expect(JSON.stringify(sourceHandlerSecretManagerFindings)).not.toContain("secretTraceValue");
     expect(JSON.stringify(sourceHandlerSecretManagerFindings)).not.toContain("secret_trace_value");
+    expect(JSON.stringify(sourceHandlerSecretManagerFindings)).not.toContain("secretPromptCacheValue");
+    expect(JSON.stringify(sourceHandlerSecretManagerFindings)).not.toContain("secret_prompt_cache_value");
     expect(JSON.stringify(sourceHandlerSecretManagerFindings)).not.toContain("Read a customer support secret");
     expect(JSON.stringify(sourceHandlerSecretManagerFindings)).not.toContain("Post a customer support secret");
     expect(JSON.stringify(sourceHandlerSecretManagerFindings)).not.toContain("Store a customer support secret");
@@ -7246,9 +7258,13 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerSecretManagerFindings)).not.toContain("framework vault secret exported to artifact");
     expect(JSON.stringify(sourceHandlerSecretManagerFindings)).not.toContain("source vault secret exported to telemetry");
     expect(JSON.stringify(sourceHandlerSecretManagerFindings)).not.toContain("framework vault secret exported to telemetry");
+    expect(JSON.stringify(sourceHandlerSecretManagerFindings)).not.toContain("source vault secret cached for prompts");
+    expect(JSON.stringify(sourceHandlerSecretManagerFindings)).not.toContain("framework vault secret cached for prompts");
     expect(JSON.stringify(sourceHandlerSecretManagerFindings)).not.toContain("Summarize a customer support secret");
+    expect(JSON.stringify(sourceHandlerSecretManagerFindings)).not.toContain("Write a customer support secret");
     const sourceHandlerTaintedSecretManagerFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-036");
     expect(sourceHandlerTaintedSecretManagerFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
+      "langchain_cache_customer_vault_secret_prompt",
       "langchain_export_customer_vault_secret_artifact",
       "langchain_export_customer_vault_secret_trace",
       "langchain_export_customer_vault_secret_training_dataset",
@@ -7257,6 +7273,7 @@ describe("rule engine", () => {
       "langchain_read_customer_vault_secret",
       "langchain_store_customer_vault_secret_memory",
       "langchain_summarize_customer_vault_secret_with_model",
+      "source_cache_customer_vault_secret_prompt",
       "source_export_customer_vault_secret_artifact",
       "source_export_customer_vault_secret_trace",
       "source_export_customer_vault_secret_training_dataset",
@@ -7297,6 +7314,8 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerTaintedSecretManagerFindings)).not.toContain("secret_artifact_value");
     expect(JSON.stringify(sourceHandlerTaintedSecretManagerFindings)).not.toContain("secretTraceValue");
     expect(JSON.stringify(sourceHandlerTaintedSecretManagerFindings)).not.toContain("secret_trace_value");
+    expect(JSON.stringify(sourceHandlerTaintedSecretManagerFindings)).not.toContain("secretPromptCacheValue");
+    expect(JSON.stringify(sourceHandlerTaintedSecretManagerFindings)).not.toContain("secret_prompt_cache_value");
     expect(JSON.stringify(sourceHandlerTaintedSecretManagerFindings)).not.toContain("Read a customer support secret");
     expect(JSON.stringify(sourceHandlerTaintedSecretManagerFindings)).not.toContain("Post a customer support secret");
     expect(JSON.stringify(sourceHandlerTaintedSecretManagerFindings)).not.toContain("Store a customer support secret");
@@ -7314,7 +7333,10 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerTaintedSecretManagerFindings)).not.toContain("framework vault secret exported to artifact");
     expect(JSON.stringify(sourceHandlerTaintedSecretManagerFindings)).not.toContain("source vault secret exported to telemetry");
     expect(JSON.stringify(sourceHandlerTaintedSecretManagerFindings)).not.toContain("framework vault secret exported to telemetry");
+    expect(JSON.stringify(sourceHandlerTaintedSecretManagerFindings)).not.toContain("source vault secret cached for prompts");
+    expect(JSON.stringify(sourceHandlerTaintedSecretManagerFindings)).not.toContain("framework vault secret cached for prompts");
     expect(JSON.stringify(sourceHandlerTaintedSecretManagerFindings)).not.toContain("Summarize a customer support secret");
+    expect(JSON.stringify(sourceHandlerTaintedSecretManagerFindings)).not.toContain("Write a customer support secret");
     const sourceHandlerExternalServiceWriteFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-029");
     expect(sourceHandlerExternalServiceWriteFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_post_customer_vault_secret_slack",
@@ -7745,6 +7767,63 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerSecretManagerTelemetryBridgeFindings)).not.toContain("source vault secret exported to telemetry");
     expect(JSON.stringify(sourceHandlerSecretManagerTelemetryBridgeFindings)).not.toContain("framework vault secret exported to telemetry");
     expect(JSON.stringify(sourceHandlerSecretManagerTelemetryBridgeFindings)).not.toContain("Export a customer support secret");
+    const sourceHandlerSecretManagerPromptCacheBridgeFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-069");
+    expect(sourceHandlerSecretManagerPromptCacheBridgeFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
+      "langchain_cache_customer_vault_secret_prompt",
+      "source_cache_customer_vault_secret_prompt"
+    ]);
+    expect(sourceHandlerSecretManagerPromptCacheBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
+    expect(sourceHandlerSecretManagerPromptCacheBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerSecretManagerPromptCacheBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
+    expect(sourceHandlerSecretManagerPromptCacheBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
+    expect(sourceHandlerSecretManagerPromptCacheBridgeFindings.every((finding) => finding.matched_object.metadata.source_tool_handler_redacted === true)).toBe(true);
+    expect(sourceHandlerSecretManagerPromptCacheBridgeFindings.every((finding) => finding.matched_object.metadata.handler_secret_manager_access === true)).toBe(true);
+    expect(sourceHandlerSecretManagerPromptCacheBridgeFindings.every((finding) => finding.matched_object.metadata.handler_tainted_secret_manager_path === true)).toBe(true);
+    expect(sourceHandlerSecretManagerPromptCacheBridgeFindings.every((finding) => finding.matched_object.metadata.handler_prompt_cache_write === true)).toBe(true);
+    expect(sourceHandlerSecretManagerPromptCacheBridgeFindings.every((finding) => finding.matched_object.metadata.handler_secret_manager_prompt_cache_bridge === true)).toBe(true);
+    expect(sourceHandlerSecretManagerPromptCacheBridgeFindings.every((finding) => finding.matched_object.metadata.handler_tainted_prompt_cache_key === true)).toBe(true);
+    expect(sourceHandlerSecretManagerPromptCacheBridgeFindings.every((finding) => finding.matched_object.metadata.handler_tainted_prompt_cache_value === true)).toBe(true);
+    expect(sourceHandlerSecretManagerPromptCacheBridgeFindings.every((finding) => finding.matched_object.metadata.handler_secret_env_access === true)).toBe(true);
+    expect(sourceHandlerSecretManagerPromptCacheBridgeFindings.every((finding) => finding.matched_object.metadata.secret_manager_access === true)).toBe(true);
+    expect(sourceHandlerSecretManagerPromptCacheBridgeFindings.every((finding) => finding.matched_object.metadata.tainted_secret_manager_path === true)).toBe(true);
+    expect(sourceHandlerSecretManagerPromptCacheBridgeFindings.every((finding) => finding.matched_object.metadata.prompt_cache_write === true)).toBe(true);
+    expect(sourceHandlerSecretManagerPromptCacheBridgeFindings.every((finding) => finding.matched_object.metadata.secret_manager_prompt_cache_bridge === true)).toBe(true);
+    expect(sourceHandlerSecretManagerPromptCacheBridgeFindings.every((finding) => finding.matched_object.metadata.tainted_prompt_cache_key === true)).toBe(true);
+    expect(sourceHandlerSecretManagerPromptCacheBridgeFindings.every((finding) => finding.matched_object.metadata.tainted_prompt_cache_value === true)).toBe(true);
+    expect(sourceHandlerSecretManagerPromptCacheBridgeFindings.every((finding) => finding.matched_object.metadata.accepts_secret_like_input === true)).toBe(true);
+    expect(sourceHandlerSecretManagerPromptCacheBridgeFindings.every((finding) => finding.matched_object.metadata.accepts_path_input === true)).toBe(true);
+    expect(sourceHandlerSecretManagerPromptCacheBridgeFindings.every((finding) => finding.matched_object.metadata.accepts_customer_data_input === true)).toBe(true);
+    expect(sourceHandlerSecretManagerPromptCacheBridgeFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("secret_manager_access"))).toBe(true);
+    expect(sourceHandlerSecretManagerPromptCacheBridgeFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("tainted_secret_manager_path"))).toBe(true);
+    expect(sourceHandlerSecretManagerPromptCacheBridgeFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("prompt_cache_write"))).toBe(true);
+    expect(sourceHandlerSecretManagerPromptCacheBridgeFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("secret_manager_prompt_cache_bridge"))).toBe(true);
+    expect(sourceHandlerSecretManagerPromptCacheBridgeFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("tainted_prompt_cache_key"))).toBe(true);
+    expect(sourceHandlerSecretManagerPromptCacheBridgeFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("tainted_prompt_cache_value"))).toBe(true);
+    expect(sourceHandlerSecretManagerPromptCacheBridgeFindings.every((finding) => finding.matched_object.metadata.handler_authority_classes.includes("handler_secret_manager_access"))).toBe(true);
+    expect(sourceHandlerSecretManagerPromptCacheBridgeFindings.every((finding) => finding.matched_object.metadata.handler_authority_classes.includes("handler_tainted_secret_manager_path"))).toBe(true);
+    expect(sourceHandlerSecretManagerPromptCacheBridgeFindings.every((finding) => finding.matched_object.metadata.handler_authority_classes.includes("handler_prompt_cache_write"))).toBe(true);
+    expect(sourceHandlerSecretManagerPromptCacheBridgeFindings.every((finding) => finding.matched_object.metadata.handler_authority_classes.includes("handler_secret_manager_prompt_cache_bridge"))).toBe(true);
+    expect(sourceHandlerSecretManagerPromptCacheBridgeFindings.every((finding) => finding.matched_object.metadata.handler_authority_classes.includes("handler_tainted_prompt_cache_key"))).toBe(true);
+    expect(sourceHandlerSecretManagerPromptCacheBridgeFindings.every((finding) => finding.matched_object.metadata.handler_authority_classes.includes("handler_tainted_prompt_cache_value"))).toBe(true);
+    expect(sourceHandlerSecretManagerPromptCacheBridgeFindings.every((finding) => finding.matched_object.actions.includes("read"))).toBe(true);
+    expect(sourceHandlerSecretManagerPromptCacheBridgeFindings.every((finding) => finding.matched_object.actions.includes("write"))).toBe(true);
+    expect(sourceHandlerSecretManagerPromptCacheBridgeFindings.every((finding) => finding.matched_object.actions.includes("remember"))).toBe(true);
+    expect(sourceHandlerSecretManagerPromptCacheBridgeFindings.every((finding) => finding.matched_object.actions.includes("send"))).toBe(true);
+    expect(sourceHandlerSecretManagerPromptCacheBridgeFindings.every((finding) => finding.matched_object.external_reach === true)).toBe(true);
+    expect(sourceHandlerSecretManagerPromptCacheBridgeFindings.every((finding) => finding.matched_object.secret_exposure === true)).toBe(true);
+    expect(sourceHandlerSecretManagerPromptCacheBridgeFindings.every((finding) => finding.matched_object.side_effect === true)).toBe(true);
+    expect(sourceHandlerSecretManagerPromptCacheBridgeFindings.every((finding) => finding.matched_object.reversible === false)).toBe(true);
+    expect(JSON.stringify(sourceHandlerSecretManagerPromptCacheBridgeFindings)).not.toContain("vaultClient.readSecret");
+    expect(JSON.stringify(sourceHandlerSecretManagerPromptCacheBridgeFindings)).not.toContain("vault_client.read_secret");
+    expect(JSON.stringify(sourceHandlerSecretManagerPromptCacheBridgeFindings)).not.toContain("promptCache.set");
+    expect(JSON.stringify(sourceHandlerSecretManagerPromptCacheBridgeFindings)).not.toContain("prompt_cache.set");
+    expect(JSON.stringify(sourceHandlerSecretManagerPromptCacheBridgeFindings)).not.toContain("secretRecord.value");
+    expect(JSON.stringify(sourceHandlerSecretManagerPromptCacheBridgeFindings)).not.toContain("secret_record.value");
+    expect(JSON.stringify(sourceHandlerSecretManagerPromptCacheBridgeFindings)).not.toContain("secretPromptCacheValue");
+    expect(JSON.stringify(sourceHandlerSecretManagerPromptCacheBridgeFindings)).not.toContain("secret_prompt_cache_value");
+    expect(JSON.stringify(sourceHandlerSecretManagerPromptCacheBridgeFindings)).not.toContain("source vault secret cached for prompts");
+    expect(JSON.stringify(sourceHandlerSecretManagerPromptCacheBridgeFindings)).not.toContain("framework vault secret cached for prompts");
+    expect(JSON.stringify(sourceHandlerSecretManagerPromptCacheBridgeFindings)).not.toContain("Write a customer support secret");
     const sourceHandlerModelProviderFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-030");
     expect(sourceHandlerModelProviderFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_summarize_customer_vault_secret_with_model",

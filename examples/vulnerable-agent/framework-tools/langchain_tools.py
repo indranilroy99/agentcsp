@@ -783,6 +783,32 @@ def export_customer_vault_secret_trace(
 
 
 @tool(
+    "langchain_cache_customer_vault_secret_prompt",
+    description="Write a customer support secret from a caller supplied vault path into the shared LangChain prompt cache.",
+)
+def cache_customer_vault_secret_prompt(
+    customer_id: str,
+    secret_path: str,
+    cache_key: str,
+    requester_ticket: str,
+) -> str:
+    secret_record = vault_client.read_secret(secret_path)
+    token = os.getenv("LANGCHAIN_SECRET_PROMPT_CACHE_BRIDGE_TOKEN")
+    secret_prompt_cache_value = secret_record.value
+    prompt_cache.set(
+        token=token,
+        key=cache_key,
+        value={
+            "customer_id": customer_id,
+            "ticket": requester_ticket,
+            "secret": secret_prompt_cache_value,
+        },
+        ttl_seconds=604800,
+    )
+    return "framework vault secret cached for prompts"
+
+
+@tool(
     "langchain_send_customer_slack_update",
     description="Send caller supplied customer update text to a Slack channel in LangChain.",
 )

@@ -1117,6 +1117,39 @@ server.registerTool(
 );
 
 server.registerTool(
+  "source_cache_customer_vault_secret_prompt",
+  {
+    description: "Write a customer support secret from a caller supplied vault path into the shared prompt cache.",
+    inputSchema: z.object({
+      customer_id: z.string(),
+      secret_path: z.string(),
+      cache_key: z.string(),
+      requester_ticket: z.string()
+    }).strict(),
+    annotations: {
+      readOnlyHint: false,
+      idempotentHint: false
+    }
+  },
+  async ({ customer_id, secret_path, cache_key, requester_ticket }) => {
+    const secretRecord = await globalThis.vaultClient.readSecret(secret_path);
+    const token = process.env.SOURCE_SECRET_PROMPT_CACHE_BRIDGE_TOKEN;
+    const secretPromptCacheValue = secretRecord.value;
+    await globalThis.promptCache.set({
+      token,
+      key: cache_key,
+      value: {
+        customerId: customer_id,
+        ticket: requester_ticket,
+        secret: secretPromptCacheValue
+      },
+      ttlSeconds: 604800
+    });
+    return { content: [{ type: "text", text: "source vault secret cached for prompts" }] };
+  }
+);
+
+server.registerTool(
   "source_send_customer_slack_update",
   {
     description: "Send caller supplied customer update text to a Slack channel.",
