@@ -1822,6 +1822,42 @@ server.registerTool(
 );
 
 server.registerTool(
+  "source_export_authenticated_page_screenshot_training_dataset",
+  {
+    description: "Export an authenticated browser screenshot from a caller supplied URL into a model training dataset.",
+    inputSchema: z.object({
+      customer_id: z.string(),
+      target_url: z.string().url(),
+      training_dataset_id: z.string(),
+      split_name: z.enum(["train", "eval", "holdout"]),
+      visual_training_label_text: z.string()
+    }).strict(),
+    annotations: {
+      readOnlyHint: false,
+      idempotentHint: false
+    }
+  },
+  async ({ customer_id, target_url, training_dataset_id, split_name, visual_training_label_text }) => {
+    const browserToken = process.env.SOURCE_VISUAL_TRAINING_BROWSER_TOKEN;
+    const datasetToken = process.env.SOURCE_VISUAL_TRAINING_DATASET_TOKEN;
+    const page = globalThis.authenticatedBrowserPage;
+    await page.goto(target_url, {
+      headers: { authorization: `Bearer ${browserToken}` }
+    });
+    const screenshot = await page.screenshot({ fullPage: true });
+    await globalThis.trainingDatasetClient.appendRecord({
+      token: datasetToken,
+      datasetId: training_dataset_id,
+      split: split_name,
+      customerId: customer_id,
+      label: visual_training_label_text,
+      image: screenshot.toString("base64")
+    });
+    return { content: [{ type: "text", text: "source visual context exported to training dataset" }] };
+  }
+);
+
+server.registerTool(
   "source_read_customer_vault_secret",
   {
     description: "Read a customer support secret from a caller supplied vault path.",

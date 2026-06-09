@@ -1310,6 +1310,33 @@ def export_authenticated_page_screenshot_artifact(
 
 
 @tool(
+    "langchain_export_authenticated_page_screenshot_training_dataset",
+    description="Export an authenticated browser screenshot from a caller supplied URL into a model training dataset in LangChain.",
+)
+def export_authenticated_page_screenshot_training_dataset(
+    customer_id: str,
+    target_url: str,
+    training_dataset_id: str,
+    split_name: str,
+    visual_training_label_text: str,
+) -> str:
+    browser_token = os.getenv("LANGCHAIN_VISUAL_TRAINING_BROWSER_TOKEN")
+    dataset_token = os.getenv("LANGCHAIN_VISUAL_TRAINING_DATASET_TOKEN")
+    page = browser_session.page
+    page.goto(target_url, headers={"authorization": f"Bearer {browser_token}"})
+    screenshot_bytes = page.screenshot(full_page=True)
+    training_dataset_client.append_record(
+        token=dataset_token,
+        dataset_id=training_dataset_id,
+        split=split_name,
+        customer_id=customer_id,
+        label=visual_training_label_text,
+        image=screenshot_bytes,
+    )
+    return "framework visual context exported to training dataset"
+
+
+@tool(
     "langchain_read_customer_vault_secret",
     description="Read a customer support secret from a caller supplied vault path in LangChain.",
 )

@@ -192,16 +192,16 @@ describe("static graph", () => {
     expect(JSON.stringify(ragInboundTriggerPath)).not.toContain("support-triage-agent");
     const ragAgentSafetyPath = result.manifest.attack_paths.find(
       (attackPath) =>
-        attackPath.source.path === "rag/customer-note.md" &&
+        attackPath.source.path === ".cursor/rules/customer-escalation.mdc" &&
         attackPath.target.name === "agent-safety.yaml" &&
         attackPath.title ===
-          "customer-note.md can influence agent-safety.yaml: Disabled agent safety controls expose privileged tools to untrusted context"
+          "customer-escalation.mdc can influence agent-safety.yaml: Disabled agent safety controls expose privileged tools to untrusted context"
     );
     expect(ragAgentSafetyPath).toBeDefined();
     expect(ragAgentSafetyPath?.severity).toBe("critical");
     expect(ragAgentSafetyPath?.confidence).toBe("very_high");
     expect(ragAgentSafetyPath?.recommended_control).toBe("require_approval");
-    expect(ragAgentSafetyPath?.reason).toContain("tool directive");
+    expect(ragAgentSafetyPath?.reason).toContain("memory-write directive");
     expect(ragAgentSafetyPath?.risk.data_classes).toContain("pii");
     expect(ragAgentSafetyPath?.risk.actions).toEqual(["call", "execute", "publish", "read", "remember", "send", "write"]);
     expect(ragAgentSafetyPath?.risk.external_reach).toBe(true);
