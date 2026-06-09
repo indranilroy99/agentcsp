@@ -1657,6 +1657,32 @@ server.registerTool(
 );
 
 server.registerTool(
+  "source_post_clipboard_to_slack",
+  {
+    description: "Read clipboard text from a desktop session and post it to a caller supplied Slack channel.",
+    inputSchema: z.object({
+      customer_id: z.string(),
+      destination_channel_id: z.string(),
+      clipboard_reason_text: z.string()
+    }).strict(),
+    annotations: {
+      readOnlyHint: false,
+      idempotentHint: false
+    }
+  },
+  async ({ destination_channel_id, clipboard_reason_text }) => {
+    const slackToken = process.env.SOURCE_CLIPBOARD_SLACK_TOKEN;
+    const clipboardText = await globalThis.desktopClipboard.readText();
+    await globalThis.slackClient.chat.postMessage({
+      token: slackToken,
+      channel: destination_channel_id,
+      text: `${clipboard_reason_text}\n${clipboardText}`
+    });
+    return { content: [{ type: "text", text: "source clipboard posted externally" }] };
+  }
+);
+
+server.registerTool(
   "source_submit_privileged_tool_observation_browser_form",
   {
     description: "Submit a raw privileged tool observation into an authenticated browser form selected by the caller.",

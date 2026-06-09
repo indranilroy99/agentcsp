@@ -639,6 +639,9 @@ describe("scanner", () => {
     const sourceLocalFileBrowserAutomationBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "source_upload_local_file_authenticated_browser"
     );
+    const sourceClipboardExternalServiceBridgeTool = surfaces.tools.find(
+      (surface) => surface.name === "source_post_clipboard_to_slack"
+    );
     const sourceVisualContextCaptureTool = surfaces.tools.find((surface) => surface.name === "source_capture_authenticated_page_screenshot");
     const sourceVisualContextPromptBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "source_review_authenticated_page_screenshot_with_model"
@@ -808,6 +811,9 @@ describe("scanner", () => {
     );
     const langchainLocalFileBrowserAutomationBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "langchain_upload_local_file_authenticated_browser"
+    );
+    const langchainClipboardExternalServiceBridgeTool = surfaces.tools.find(
+      (surface) => surface.name === "langchain_post_clipboard_to_slack"
     );
     const langchainVisualContextCaptureTool = surfaces.tools.find((surface) => surface.name === "langchain_capture_authenticated_page_screenshot");
     const langchainVisualContextPromptBridgeTool = surfaces.tools.find(
@@ -5301,6 +5307,79 @@ describe("scanner", () => {
     expect(JSON.stringify(sourceLocalFileBrowserAutomationBridgeTool)).not.toContain("fileBytes");
     expect(JSON.stringify(sourceLocalFileBrowserAutomationBridgeTool)).not.toContain("source local file uploaded through browser");
     expect(JSON.stringify(sourceLocalFileBrowserAutomationBridgeTool)).not.toContain("Upload a caller selected local file");
+    expect(sourceClipboardExternalServiceBridgeTool).toMatchObject({
+      path: "mcp-source/customer-tools.ts",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["call", "publish", "read", "send"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(sourceClipboardExternalServiceBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_mcp_source_tool: true,
+      mcp_source_tool_registration: true,
+      mcp_source_tool_registration_kind: "registerTool",
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_secret_like_input: false,
+      accepts_content_like_input: true,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      external_write: true,
+      external_service_write: true,
+      tainted_external_service_recipient: true,
+      clipboard_read: true,
+      clipboard_external_service_bridge: true,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_secret_env_access: true,
+      handler_external_service_write: true,
+      handler_tainted_external_service_recipient: true,
+      handler_clipboard_read: true,
+      handler_clipboard_external_service_bridge: true,
+      handler_signal_count: 5,
+      open_world_schema: false
+    });
+    expect(sourceClipboardExternalServiceBridgeTool?.metadata.authority_classes).toEqual(expect.arrayContaining([
+      "clipboard_external_service_bridge",
+      "clipboard_read",
+      "content_input",
+      "customer_data_input",
+      "external_service_write",
+      "external_write",
+      "handler_clipboard_external_service_bridge",
+      "handler_clipboard_read",
+      "handler_external_service_write",
+      "handler_secret_env_access",
+      "handler_tainted_external_service_recipient",
+      "pii_input",
+      "tainted_external_service_recipient"
+    ]));
+    expect(sourceClipboardExternalServiceBridgeTool?.metadata.handler_authority_classes).toEqual([
+      "handler_clipboard_external_service_bridge",
+      "handler_clipboard_read",
+      "handler_external_service_write",
+      "handler_secret_env_access",
+      "handler_tainted_external_service_recipient"
+    ]);
+    expect(sourceClipboardExternalServiceBridgeTool?.metadata.handler_env_key_names).toEqual(["SOURCE_CLIPBOARD_SLACK_TOKEN"]);
+    expect(sourceClipboardExternalServiceBridgeTool?.metadata.schema_properties).toEqual([
+      "clipboard_reason_text",
+      "customer_id",
+      "destination_channel_id"
+    ]);
+    expect(sourceClipboardExternalServiceBridgeTool?.metadata.required_properties).toEqual([
+      "clipboard_reason_text",
+      "customer_id",
+      "destination_channel_id"
+    ]);
+    expect(JSON.stringify(sourceClipboardExternalServiceBridgeTool)).not.toContain("desktopClipboard.readText");
+    expect(JSON.stringify(sourceClipboardExternalServiceBridgeTool)).not.toContain("slackClient.chat.postMessage");
+    expect(JSON.stringify(sourceClipboardExternalServiceBridgeTool)).not.toContain("clipboardText");
+    expect(JSON.stringify(sourceClipboardExternalServiceBridgeTool)).not.toContain("source clipboard posted externally");
+    expect(JSON.stringify(sourceClipboardExternalServiceBridgeTool)).not.toContain("Read clipboard text");
     expect(sourceVisualContextCaptureTool).toMatchObject({
       path: "mcp-source/customer-tools.ts",
       data_classes: ["confidential", "credential", "pii"],
@@ -12272,6 +12351,81 @@ describe("scanner", () => {
     expect(JSON.stringify(langchainLocalFileBrowserAutomationBridgeTool)).not.toContain("file_bytes");
     expect(JSON.stringify(langchainLocalFileBrowserAutomationBridgeTool)).not.toContain("framework local file uploaded through browser");
     expect(JSON.stringify(langchainLocalFileBrowserAutomationBridgeTool)).not.toContain("Upload a caller selected local file");
+    expect(langchainClipboardExternalServiceBridgeTool).toMatchObject({
+      path: "framework-tools/langchain_tools.py",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["call", "publish", "read", "send"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(langchainClipboardExternalServiceBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_agent_framework_source_tool: true,
+      agent_framework_source_tool: true,
+      agent_framework_source_tool_framework: "langchain",
+      agent_framework_source_tool_registration_kind: "python_tool_decorator",
+      agent_framework_source_tool_argument_count: 3,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_secret_like_input: false,
+      accepts_content_like_input: true,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      external_write: true,
+      external_service_write: true,
+      tainted_external_service_recipient: true,
+      clipboard_read: true,
+      clipboard_external_service_bridge: true,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_secret_env_access: true,
+      handler_external_service_write: true,
+      handler_tainted_external_service_recipient: true,
+      handler_clipboard_read: true,
+      handler_clipboard_external_service_bridge: true,
+      handler_signal_count: 5,
+      open_world_schema: false
+    });
+    expect(langchainClipboardExternalServiceBridgeTool?.metadata.authority_classes).toEqual(expect.arrayContaining([
+      "clipboard_external_service_bridge",
+      "clipboard_read",
+      "content_input",
+      "customer_data_input",
+      "external_service_write",
+      "external_write",
+      "handler_clipboard_external_service_bridge",
+      "handler_clipboard_read",
+      "handler_external_service_write",
+      "handler_secret_env_access",
+      "handler_tainted_external_service_recipient",
+      "pii_input",
+      "tainted_external_service_recipient"
+    ]));
+    expect(langchainClipboardExternalServiceBridgeTool?.metadata.handler_authority_classes).toEqual([
+      "handler_clipboard_external_service_bridge",
+      "handler_clipboard_read",
+      "handler_external_service_write",
+      "handler_secret_env_access",
+      "handler_tainted_external_service_recipient"
+    ]);
+    expect(langchainClipboardExternalServiceBridgeTool?.metadata.handler_env_key_names).toEqual(["LANGCHAIN_CLIPBOARD_SLACK_TOKEN"]);
+    expect(langchainClipboardExternalServiceBridgeTool?.metadata.schema_properties).toEqual([
+      "clipboard_reason_text",
+      "customer_id",
+      "destination_channel_id"
+    ]);
+    expect(langchainClipboardExternalServiceBridgeTool?.metadata.required_properties).toEqual([
+      "clipboard_reason_text",
+      "customer_id",
+      "destination_channel_id"
+    ]);
+    expect(JSON.stringify(langchainClipboardExternalServiceBridgeTool)).not.toContain("desktop_clipboard.read_text");
+    expect(JSON.stringify(langchainClipboardExternalServiceBridgeTool)).not.toContain("slack_client.chat_postMessage");
+    expect(JSON.stringify(langchainClipboardExternalServiceBridgeTool)).not.toContain("clipboard_text");
+    expect(JSON.stringify(langchainClipboardExternalServiceBridgeTool)).not.toContain("framework clipboard posted externally");
+    expect(JSON.stringify(langchainClipboardExternalServiceBridgeTool)).not.toContain("Read clipboard text");
     expect(langchainVisualContextCaptureTool).toMatchObject({
       path: "framework-tools/langchain_tools.py",
       data_classes: ["confidential", "credential", "pii"],

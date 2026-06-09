@@ -108,6 +108,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-104")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-105")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-106")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-107")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-001")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-002")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-003")).toBe(true);
@@ -9165,6 +9166,71 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerLocalFileBrowserAutomationBridgeFindings)).not.toContain("source local file uploaded through browser");
     expect(JSON.stringify(sourceHandlerLocalFileBrowserAutomationBridgeFindings)).not.toContain("framework local file uploaded through browser");
     expect(JSON.stringify(sourceHandlerLocalFileBrowserAutomationBridgeFindings)).not.toContain("Upload a caller selected local file");
+    const sourceHandlerClipboardExternalServiceBridgeFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-107");
+    expect(sourceHandlerClipboardExternalServiceBridgeFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
+      "langchain_post_clipboard_to_slack",
+      "source_post_clipboard_to_slack"
+    ]);
+    expect(sourceHandlerClipboardExternalServiceBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
+    expect(sourceHandlerClipboardExternalServiceBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerClipboardExternalServiceBridgeFindings.every((finding) => finding.recommended_control === "require_approval")).toBe(true);
+    expect(sourceHandlerClipboardExternalServiceBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
+    expect(sourceHandlerClipboardExternalServiceBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.source_tool_handler_redacted === true
+    )).toBe(true);
+    expect(sourceHandlerClipboardExternalServiceBridgeFindings.every((finding) => finding.matched_object.metadata.handler_clipboard_read === true)).toBe(true);
+    expect(sourceHandlerClipboardExternalServiceBridgeFindings.every((finding) => finding.matched_object.metadata.handler_external_service_write === true)).toBe(true);
+    expect(sourceHandlerClipboardExternalServiceBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.handler_tainted_external_service_recipient === true
+    )).toBe(true);
+    expect(sourceHandlerClipboardExternalServiceBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.handler_clipboard_external_service_bridge === true
+    )).toBe(true);
+    expect(sourceHandlerClipboardExternalServiceBridgeFindings.every((finding) => finding.matched_object.metadata.handler_secret_env_access === true)).toBe(true);
+    expect(sourceHandlerClipboardExternalServiceBridgeFindings.every((finding) => finding.matched_object.metadata.clipboard_read === true)).toBe(true);
+    expect(sourceHandlerClipboardExternalServiceBridgeFindings.every((finding) => finding.matched_object.metadata.external_service_write === true)).toBe(true);
+    expect(sourceHandlerClipboardExternalServiceBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.tainted_external_service_recipient === true
+    )).toBe(true);
+    expect(sourceHandlerClipboardExternalServiceBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.clipboard_external_service_bridge === true
+    )).toBe(true);
+    expect(sourceHandlerClipboardExternalServiceBridgeFindings.every((finding) => finding.matched_object.metadata.accepts_content_like_input === true)).toBe(true);
+    expect(sourceHandlerClipboardExternalServiceBridgeFindings.every((finding) => finding.matched_object.metadata.accepts_customer_data_input === true)).toBe(true);
+    expect(sourceHandlerClipboardExternalServiceBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.authority_classes.includes("clipboard_read")
+    )).toBe(true);
+    expect(sourceHandlerClipboardExternalServiceBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.authority_classes.includes("external_service_write")
+    )).toBe(true);
+    expect(sourceHandlerClipboardExternalServiceBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.authority_classes.includes("tainted_external_service_recipient")
+    )).toBe(true);
+    expect(sourceHandlerClipboardExternalServiceBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.authority_classes.includes("clipboard_external_service_bridge")
+    )).toBe(true);
+    expect(sourceHandlerClipboardExternalServiceBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.handler_authority_classes.includes("handler_clipboard_read")
+    )).toBe(true);
+    expect(sourceHandlerClipboardExternalServiceBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.handler_authority_classes.includes("handler_clipboard_external_service_bridge")
+    )).toBe(true);
+    expect(sourceHandlerClipboardExternalServiceBridgeFindings.every((finding) => finding.matched_object.actions.includes("read"))).toBe(true);
+    expect(sourceHandlerClipboardExternalServiceBridgeFindings.every((finding) => finding.matched_object.actions.includes("send"))).toBe(true);
+    expect(sourceHandlerClipboardExternalServiceBridgeFindings.every((finding) => finding.matched_object.actions.includes("publish"))).toBe(true);
+    expect(sourceHandlerClipboardExternalServiceBridgeFindings.every((finding) => finding.matched_object.external_reach === true)).toBe(true);
+    expect(sourceHandlerClipboardExternalServiceBridgeFindings.every((finding) => finding.matched_object.secret_exposure === true)).toBe(true);
+    expect(sourceHandlerClipboardExternalServiceBridgeFindings.every((finding) => finding.matched_object.side_effect === true)).toBe(true);
+    expect(sourceHandlerClipboardExternalServiceBridgeFindings.every((finding) => finding.matched_object.reversible === false)).toBe(true);
+    expect(JSON.stringify(sourceHandlerClipboardExternalServiceBridgeFindings)).not.toContain("desktopClipboard.readText");
+    expect(JSON.stringify(sourceHandlerClipboardExternalServiceBridgeFindings)).not.toContain("desktop_clipboard.read_text");
+    expect(JSON.stringify(sourceHandlerClipboardExternalServiceBridgeFindings)).not.toContain("slackClient.chat.postMessage");
+    expect(JSON.stringify(sourceHandlerClipboardExternalServiceBridgeFindings)).not.toContain("slack_client.chat_postMessage");
+    expect(JSON.stringify(sourceHandlerClipboardExternalServiceBridgeFindings)).not.toContain("clipboardText");
+    expect(JSON.stringify(sourceHandlerClipboardExternalServiceBridgeFindings)).not.toContain("clipboard_text");
+    expect(JSON.stringify(sourceHandlerClipboardExternalServiceBridgeFindings)).not.toContain("source clipboard posted externally");
+    expect(JSON.stringify(sourceHandlerClipboardExternalServiceBridgeFindings)).not.toContain("framework clipboard posted externally");
+    expect(JSON.stringify(sourceHandlerClipboardExternalServiceBridgeFindings)).not.toContain("Read clipboard text");
     const sourceHandlerSecretManagerFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-028");
     expect(sourceHandlerSecretManagerFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_apply_vault_secret_guardrail_override",
@@ -9413,10 +9479,12 @@ describe("rule engine", () => {
     const sourceHandlerExternalServiceWriteFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-029");
     expect(sourceHandlerExternalServiceWriteFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_post_authenticated_page_screenshot_external",
+      "langchain_post_clipboard_to_slack",
       "langchain_post_customer_vault_secret_slack",
       "langchain_post_retrieved_context_external",
       "langchain_send_customer_slack_update",
       "source_post_authenticated_page_screenshot_external",
+      "source_post_clipboard_to_slack",
       "source_post_customer_vault_secret_slack",
       "source_post_retrieved_context_external",
       "source_send_customer_slack_update"
@@ -9461,10 +9529,12 @@ describe("rule engine", () => {
     const sourceHandlerTaintedExternalServiceRecipientFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-037");
     expect(sourceHandlerTaintedExternalServiceRecipientFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_post_authenticated_page_screenshot_external",
+      "langchain_post_clipboard_to_slack",
       "langchain_post_customer_vault_secret_slack",
       "langchain_post_retrieved_context_external",
       "langchain_send_customer_slack_update",
       "source_post_authenticated_page_screenshot_external",
+      "source_post_clipboard_to_slack",
       "source_post_customer_vault_secret_slack",
       "source_post_retrieved_context_external",
       "source_send_customer_slack_update"

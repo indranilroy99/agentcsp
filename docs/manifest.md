@@ -519,6 +519,8 @@ Tool metadata may include:
 - `handler_tool_output_browser_automation_bridge`
 - `handler_secret_manager_browser_automation_bridge`
 - `handler_local_file_browser_automation_bridge`
+- `handler_clipboard_read`
+- `handler_clipboard_external_service_bridge`
 - `handler_visual_context_capture`
 - `handler_visual_context_to_output`
 - `handler_visual_context_prompt_bridge`
@@ -580,6 +582,7 @@ Source-defined MCP tool metadata may additionally include:
 - `source_tool_schema_redacted`
 - `source_tool_handler_redacted`
 - `values_collected`
+- source handler clipboard metadata for local, desktop, or browser clipboard reads and clipboard-to-external-service bridge posture without emitting clipboard contents, clipboard helper calls, SDK calls, derived variable names, or handler source snippets
 
 Source-defined agent-framework tool metadata may additionally include:
 

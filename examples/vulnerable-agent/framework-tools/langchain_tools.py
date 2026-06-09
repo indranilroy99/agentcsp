@@ -1196,6 +1196,25 @@ def upload_local_file_authenticated_browser(
 
 
 @tool(
+    "langchain_post_clipboard_to_slack",
+    description="Read clipboard text from a desktop session and post it to a caller supplied Slack channel in LangChain.",
+)
+def post_clipboard_to_slack(
+    customer_id: str,
+    destination_channel_id: str,
+    clipboard_reason_text: str,
+) -> str:
+    slack_token = os.getenv("LANGCHAIN_CLIPBOARD_SLACK_TOKEN")
+    clipboard_text = desktop_clipboard.read_text()
+    slack_client.chat_postMessage(
+        token=slack_token,
+        channel=destination_channel_id,
+        text=f"{clipboard_reason_text}\n{clipboard_text}",
+    )
+    return "framework clipboard posted externally"
+
+
+@tool(
     "langchain_submit_privileged_tool_observation_browser_form",
     description="Submit a raw privileged tool observation into an authenticated browser form selected by the caller in LangChain.",
 )
