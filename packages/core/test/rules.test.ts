@@ -97,6 +97,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-093")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-094")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-095")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-096")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-001")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-002")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-003")).toBe(true);
@@ -8107,10 +8108,12 @@ describe("rule engine", () => {
     const sourceHandlerBrowserAutomationFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-027");
     expect(sourceHandlerBrowserAutomationFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_fill_customer_vault_secret_browser_form",
+      "langchain_submit_retrieved_context_browser",
       "langchain_submit_customer_browser_form",
       "source_fill_customer_vault_secret_browser_form",
+      "source_submit_retrieved_context_browser",
       "source_submit_customer_browser_form"
-    ]);
+    ].sort());
     expect(sourceHandlerBrowserAutomationFindings.every((finding) => finding.severity === "critical")).toBe(true);
     expect(sourceHandlerBrowserAutomationFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
     expect(sourceHandlerBrowserAutomationFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
@@ -8141,14 +8144,18 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerBrowserAutomationFindings)).not.toContain("framework vault secret submitted through browser");
     expect(JSON.stringify(sourceHandlerBrowserAutomationFindings)).not.toContain("source tool observation submitted through browser");
     expect(JSON.stringify(sourceHandlerBrowserAutomationFindings)).not.toContain("framework tool observation submitted through browser");
+    expect(JSON.stringify(sourceHandlerBrowserAutomationFindings)).not.toContain("source retrieved context submitted through browser");
+    expect(JSON.stringify(sourceHandlerBrowserAutomationFindings)).not.toContain("framework retrieved context submitted through browser");
     expect(JSON.stringify(sourceHandlerBrowserAutomationFindings)).not.toContain("Drive an authenticated browser session");
     const sourceHandlerTaintedBrowserTargetFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-040");
     expect(sourceHandlerTaintedBrowserTargetFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_fill_customer_vault_secret_browser_form",
+      "langchain_submit_retrieved_context_browser",
       "langchain_submit_customer_browser_form",
       "source_fill_customer_vault_secret_browser_form",
+      "source_submit_retrieved_context_browser",
       "source_submit_customer_browser_form"
-    ]);
+    ].sort());
     expect(sourceHandlerTaintedBrowserTargetFindings.every((finding) => finding.severity === "critical")).toBe(true);
     expect(sourceHandlerTaintedBrowserTargetFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
     expect(sourceHandlerTaintedBrowserTargetFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
@@ -8179,6 +8186,8 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerTaintedBrowserTargetFindings)).not.toContain("framework vault secret submitted through browser");
     expect(JSON.stringify(sourceHandlerTaintedBrowserTargetFindings)).not.toContain("source tool observation submitted through browser");
     expect(JSON.stringify(sourceHandlerTaintedBrowserTargetFindings)).not.toContain("framework tool observation submitted through browser");
+    expect(JSON.stringify(sourceHandlerTaintedBrowserTargetFindings)).not.toContain("source retrieved context submitted through browser");
+    expect(JSON.stringify(sourceHandlerTaintedBrowserTargetFindings)).not.toContain("framework retrieved context submitted through browser");
     expect(JSON.stringify(sourceHandlerTaintedBrowserTargetFindings)).not.toContain("Drive an authenticated browser session");
     const sourceHandlerToolOutputBrowserAutomationBridgeFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-087");
     expect(sourceHandlerToolOutputBrowserAutomationBridgeFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
@@ -9455,6 +9464,54 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerRagRetrievalExternalServiceBridgeFindings)).not.toContain("source retrieved context posted externally");
     expect(JSON.stringify(sourceHandlerRagRetrievalExternalServiceBridgeFindings)).not.toContain("framework retrieved context posted externally");
     expect(JSON.stringify(sourceHandlerRagRetrievalExternalServiceBridgeFindings)).not.toContain("Post caller selected retrieved support context");
+    const sourceHandlerRagRetrievalBrowserAutomationBridgeFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-096");
+    expect(sourceHandlerRagRetrievalBrowserAutomationBridgeFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
+      "langchain_submit_retrieved_context_browser",
+      "source_submit_retrieved_context_browser"
+    ]);
+    expect(sourceHandlerRagRetrievalBrowserAutomationBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
+    expect(sourceHandlerRagRetrievalBrowserAutomationBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerRagRetrievalBrowserAutomationBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
+    expect(sourceHandlerRagRetrievalBrowserAutomationBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
+    expect(sourceHandlerRagRetrievalBrowserAutomationBridgeFindings.every((finding) => finding.matched_object.metadata.handler_rag_retrieval === true)).toBe(true);
+    expect(sourceHandlerRagRetrievalBrowserAutomationBridgeFindings.every((finding) => finding.matched_object.metadata.handler_tainted_rag_retrieval_query === true)).toBe(true);
+    expect(sourceHandlerRagRetrievalBrowserAutomationBridgeFindings.every((finding) => finding.matched_object.metadata.handler_browser_automation === true)).toBe(true);
+    expect(sourceHandlerRagRetrievalBrowserAutomationBridgeFindings.every((finding) => finding.matched_object.metadata.handler_tainted_browser_automation_target === true)).toBe(true);
+    expect(sourceHandlerRagRetrievalBrowserAutomationBridgeFindings.every((finding) => finding.matched_object.metadata.handler_rag_retrieval_browser_automation_bridge === true)).toBe(true);
+    expect(sourceHandlerRagRetrievalBrowserAutomationBridgeFindings.every((finding) => finding.matched_object.metadata.rag_retrieval === true)).toBe(true);
+    expect(sourceHandlerRagRetrievalBrowserAutomationBridgeFindings.every((finding) => finding.matched_object.metadata.tainted_rag_retrieval_query === true)).toBe(true);
+    expect(sourceHandlerRagRetrievalBrowserAutomationBridgeFindings.every((finding) => finding.matched_object.metadata.browser_automation === true)).toBe(true);
+    expect(sourceHandlerRagRetrievalBrowserAutomationBridgeFindings.every((finding) => finding.matched_object.metadata.tainted_browser_automation_target === true)).toBe(true);
+    expect(sourceHandlerRagRetrievalBrowserAutomationBridgeFindings.every((finding) => finding.matched_object.metadata.rag_retrieval_browser_automation_bridge === true)).toBe(true);
+    expect(sourceHandlerRagRetrievalBrowserAutomationBridgeFindings.every((finding) => finding.matched_object.metadata.handler_secret_env_access === true)).toBe(true);
+    expect(sourceHandlerRagRetrievalBrowserAutomationBridgeFindings.every((finding) => finding.matched_object.metadata.accepts_content_like_input === true)).toBe(true);
+    expect(sourceHandlerRagRetrievalBrowserAutomationBridgeFindings.every((finding) => finding.matched_object.metadata.accepts_url_input === true)).toBe(true);
+    expect(sourceHandlerRagRetrievalBrowserAutomationBridgeFindings.every((finding) => finding.matched_object.metadata.accepts_customer_data_input === true)).toBe(true);
+    expect(sourceHandlerRagRetrievalBrowserAutomationBridgeFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("rag_retrieval"))).toBe(true);
+    expect(sourceHandlerRagRetrievalBrowserAutomationBridgeFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("rag_retrieval_browser_automation_bridge"))).toBe(true);
+    expect(sourceHandlerRagRetrievalBrowserAutomationBridgeFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("browser_automation"))).toBe(true);
+    expect(sourceHandlerRagRetrievalBrowserAutomationBridgeFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("tainted_browser_automation_target"))).toBe(true);
+    expect(sourceHandlerRagRetrievalBrowserAutomationBridgeFindings.every((finding) => finding.matched_object.metadata.handler_authority_classes.includes("handler_rag_retrieval_browser_automation_bridge"))).toBe(true);
+    expect(sourceHandlerRagRetrievalBrowserAutomationBridgeFindings.every((finding) => finding.matched_object.actions.includes("read"))).toBe(true);
+    expect(sourceHandlerRagRetrievalBrowserAutomationBridgeFindings.every((finding) => finding.matched_object.actions.includes("execute"))).toBe(true);
+    expect(sourceHandlerRagRetrievalBrowserAutomationBridgeFindings.every((finding) => finding.matched_object.actions.includes("send"))).toBe(true);
+    expect(sourceHandlerRagRetrievalBrowserAutomationBridgeFindings.every((finding) => finding.matched_object.external_reach === true)).toBe(true);
+    expect(sourceHandlerRagRetrievalBrowserAutomationBridgeFindings.every((finding) => finding.matched_object.secret_exposure === true)).toBe(true);
+    expect(sourceHandlerRagRetrievalBrowserAutomationBridgeFindings.every((finding) => finding.matched_object.side_effect === true)).toBe(true);
+    expect(sourceHandlerRagRetrievalBrowserAutomationBridgeFindings.every((finding) => finding.matched_object.reversible === false)).toBe(true);
+    expect(JSON.stringify(sourceHandlerRagRetrievalBrowserAutomationBridgeFindings)).not.toContain("vectorRetriever.search");
+    expect(JSON.stringify(sourceHandlerRagRetrievalBrowserAutomationBridgeFindings)).not.toContain("vector_retriever.search");
+    expect(JSON.stringify(sourceHandlerRagRetrievalBrowserAutomationBridgeFindings)).not.toContain("authenticatedBrowserPage.goto");
+    expect(JSON.stringify(sourceHandlerRagRetrievalBrowserAutomationBridgeFindings)).not.toContain("authenticatedBrowserPage.fill");
+    expect(JSON.stringify(sourceHandlerRagRetrievalBrowserAutomationBridgeFindings)).not.toContain("authenticatedBrowserPage.click");
+    expect(JSON.stringify(sourceHandlerRagRetrievalBrowserAutomationBridgeFindings)).not.toContain("authenticated_browser_page.goto");
+    expect(JSON.stringify(sourceHandlerRagRetrievalBrowserAutomationBridgeFindings)).not.toContain("authenticated_browser_page.fill");
+    expect(JSON.stringify(sourceHandlerRagRetrievalBrowserAutomationBridgeFindings)).not.toContain("authenticated_browser_page.click");
+    expect(JSON.stringify(sourceHandlerRagRetrievalBrowserAutomationBridgeFindings)).not.toContain("retrievedChunks");
+    expect(JSON.stringify(sourceHandlerRagRetrievalBrowserAutomationBridgeFindings)).not.toContain("retrieved_chunks");
+    expect(JSON.stringify(sourceHandlerRagRetrievalBrowserAutomationBridgeFindings)).not.toContain("source retrieved context submitted through browser");
+    expect(JSON.stringify(sourceHandlerRagRetrievalBrowserAutomationBridgeFindings)).not.toContain("framework retrieved context submitted through browser");
+    expect(JSON.stringify(sourceHandlerRagRetrievalBrowserAutomationBridgeFindings)).not.toContain("Submit caller selected retrieved support context");
     const sourceHandlerTaintedModelSelectionFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-043");
     expect(sourceHandlerTaintedModelSelectionFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_summarize_customer_with_model",

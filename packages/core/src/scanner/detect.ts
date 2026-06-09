@@ -24202,6 +24202,7 @@ function addToolDefinitionSurface(
       tainted_browser_automation_target: authority.tainted_browser_automation_target,
       tool_output_browser_automation_bridge: authority.tool_output_browser_automation_bridge,
       secret_manager_browser_automation_bridge: authority.secret_manager_browser_automation_bridge,
+      rag_retrieval_browser_automation_bridge: authority.rag_retrieval_browser_automation_bridge,
       secret_manager_access: authority.secret_manager_access,
       tainted_secret_manager_path: authority.tainted_secret_manager_path,
       secret_manager_external_service_bridge: authority.secret_manager_external_service_bridge,
@@ -26740,6 +26741,7 @@ interface SourceToolHandlerSignals {
   handlerTaintedBrowserAutomationTarget: boolean;
   handlerToolOutputBrowserAutomationBridge: boolean;
   handlerSecretManagerBrowserAutomationBridge: boolean;
+  handlerRagRetrievalBrowserAutomationBridge: boolean;
   handlerVisualContextCapture: boolean;
   handlerVisualContextToOutput: boolean;
   handlerSecretManagerAccess: boolean;
@@ -27267,6 +27269,7 @@ function sourceToolHandlerSignalMetadata(signals: SourceToolHandlerSignals | und
     handler_tainted_browser_automation_target: signals.handlerTaintedBrowserAutomationTarget,
     handler_tool_output_browser_automation_bridge: signals.handlerToolOutputBrowserAutomationBridge,
     handler_secret_manager_browser_automation_bridge: signals.handlerSecretManagerBrowserAutomationBridge,
+    handler_rag_retrieval_browser_automation_bridge: signals.handlerRagRetrievalBrowserAutomationBridge,
     handler_visual_context_capture: signals.handlerVisualContextCapture,
     handler_visual_context_to_output: signals.handlerVisualContextToOutput,
     handler_secret_manager_access: signals.handlerSecretManagerAccess,
@@ -27564,6 +27567,9 @@ function classifySourceToolHandlerSignals(
   const toolOutputBrowserAutomationBridge = browserAutomation && (language === "javascript"
     ? hasJavaScriptHandlerToolOutputBrowserAutomationBridge(handlerSource)
     : hasPythonHandlerToolOutputBrowserAutomationBridge(handlerSource));
+  const ragRetrievalBrowserAutomationBridge = ragRetrieval && browserAutomation && (language === "javascript"
+    ? hasJavaScriptHandlerRagRetrievalBrowserAutomationBridge(handlerSource)
+    : hasPythonHandlerRagRetrievalBrowserAutomationBridge(handlerSource));
   const visualContextCapture = browserAutomation && (language === "javascript"
     ? hasJavaScriptHandlerVisualContextCapture(handlerSource)
     : hasPythonHandlerVisualContextCapture(handlerSource));
@@ -27718,6 +27724,7 @@ function classifySourceToolHandlerSignals(
   if (taintedBrowserAutomationTarget) classes.add("handler_tainted_browser_automation_target");
   if (toolOutputBrowserAutomationBridge) classes.add("handler_tool_output_browser_automation_bridge");
   if (secretManagerBrowserAutomationBridge) classes.add("handler_secret_manager_browser_automation_bridge");
+  if (ragRetrievalBrowserAutomationBridge) classes.add("handler_rag_retrieval_browser_automation_bridge");
   if (visualContextCapture) classes.add("handler_visual_context_capture");
   if (visualContextToOutput) classes.add("handler_visual_context_to_output");
   if (secretManagerAccess) classes.add("handler_secret_manager_access");
@@ -27834,6 +27841,7 @@ function classifySourceToolHandlerSignals(
     handlerTaintedBrowserAutomationTarget: taintedBrowserAutomationTarget,
     handlerToolOutputBrowserAutomationBridge: toolOutputBrowserAutomationBridge,
     handlerSecretManagerBrowserAutomationBridge: secretManagerBrowserAutomationBridge,
+    handlerRagRetrievalBrowserAutomationBridge: ragRetrievalBrowserAutomationBridge,
     handlerVisualContextCapture: visualContextCapture,
     handlerVisualContextToOutput: visualContextToOutput,
     handlerSecretManagerAccess: secretManagerAccess,
@@ -28645,6 +28653,28 @@ function hasJavaScriptHandlerToolOutputBrowserAutomationBridge(source: string): 
 
 function hasPythonHandlerToolOutputBrowserAutomationBridge(source: string): boolean {
   const identifiers = extractPythonToolOutputIdentifiers(source);
+  return identifiers.length > 0 && callExpressionReferencesAnyIdentifier(
+    [
+      /\b(?:browser|context|page|driver|browser_page|authenticated_browser_page)\s*\.\s*(?:fill|type|press|select_option|set_input_files|evaluate|click|goto|navigate|get|execute_script)\s*\(([\s\S]{0,2200})\)/giu
+    ],
+    source,
+    identifiers
+  );
+}
+
+function hasJavaScriptHandlerRagRetrievalBrowserAutomationBridge(source: string): boolean {
+  const identifiers = extractHandlerRagRetrievalVariableNames(source);
+  return identifiers.length > 0 && callExpressionReferencesAnyIdentifier(
+    [
+      /\b(?:browser|context|page|driver|authenticatedBrowserPage|browserPage)\s*\.\s*(?:fill|type|press|selectOption|setInputFiles|evaluate|click|goto|navigate)\s*\(([\s\S]{0,2200})\)/giu
+    ],
+    source,
+    identifiers
+  );
+}
+
+function hasPythonHandlerRagRetrievalBrowserAutomationBridge(source: string): boolean {
+  const identifiers = extractHandlerRagRetrievalVariableNames(source);
   return identifiers.length > 0 && callExpressionReferencesAnyIdentifier(
     [
       /\b(?:browser|context|page|driver|browser_page|authenticated_browser_page)\s*\.\s*(?:fill|type|press|select_option|set_input_files|evaluate|click|goto|navigate|get|execute_script)\s*\(([\s\S]{0,2200})\)/giu
@@ -33098,6 +33128,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   tainted_browser_automation_target: boolean;
   tool_output_browser_automation_bridge: boolean;
   secret_manager_browser_automation_bridge: boolean;
+  rag_retrieval_browser_automation_bridge: boolean;
   visual_context_capture: boolean;
   visual_context_to_output: boolean;
   secret_manager_access: boolean;
@@ -33289,6 +33320,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   const handlerTaintedBrowserAutomationTarget = handler?.handlerTaintedBrowserAutomationTarget === true;
   const handlerToolOutputBrowserAutomationBridge = handler?.handlerToolOutputBrowserAutomationBridge === true;
   const handlerSecretManagerBrowserAutomationBridge = handler?.handlerSecretManagerBrowserAutomationBridge === true;
+  const handlerRagRetrievalBrowserAutomationBridge = handler?.handlerRagRetrievalBrowserAutomationBridge === true;
   const handlerVisualContextCapture = handler?.handlerVisualContextCapture === true;
   const handlerVisualContextToOutput = handler?.handlerVisualContextToOutput === true;
   const handlerSecretManagerAccess = handler?.handlerSecretManagerAccess === true;
@@ -33371,6 +33403,12 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   }
   if (handlerSecretManagerBrowserAutomationBridge) {
     classes.add("secret_manager_browser_automation_bridge");
+    actions.add("execute");
+    actions.add("read");
+    actions.add("send");
+  }
+  if (handlerRagRetrievalBrowserAutomationBridge) {
+    classes.add("rag_retrieval_browser_automation_bridge");
     actions.add("execute");
     actions.add("read");
     actions.add("send");
@@ -34024,6 +34062,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerToolOutputBrowserAutomationBridge ||
       handlerVisualContextCapture ||
       handlerSecretManagerBrowserAutomationBridge ||
+      handlerRagRetrievalBrowserAutomationBridge ||
       handlerAgentDelegation ||
       (handlerToolOutputBrowserAutomationBridge && handlerSecretEnvAccess) ||
       handlerSecretManagerAgentDelegationBridge ||
@@ -34107,6 +34146,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       (handlerToolOutputExternalServiceBridge && handlerSecretEnvAccess) ||
       (handlerRagRetrievalPromptBridge && handlerSecretEnvAccess) ||
       (handlerRagRetrievalExternalServiceBridge && handlerSecretEnvAccess) ||
+      (handlerRagRetrievalBrowserAutomationBridge && handlerSecretEnvAccess) ||
       (handlerRagRetrievalMemoryBridge && handlerSecretEnvAccess) ||
       (handlerSafetyPolicyWrite && handlerSecretEnvAccess) ||
       handlerSecretManagerSafetyPolicyBridge ||
@@ -34145,6 +34185,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
     tainted_browser_automation_target: handlerTaintedBrowserAutomationTarget,
     tool_output_browser_automation_bridge: handlerToolOutputBrowserAutomationBridge,
     secret_manager_browser_automation_bridge: handlerSecretManagerBrowserAutomationBridge,
+    rag_retrieval_browser_automation_bridge: handlerRagRetrievalBrowserAutomationBridge,
     visual_context_capture: handlerVisualContextCapture,
     visual_context_to_output: handlerVisualContextToOutput,
     secret_manager_access: handlerSecretManagerAccess,
@@ -34366,6 +34407,7 @@ function authoritySignature(tool: SurfaceObject): string {
     metadata.tainted_browser_automation_target === true ? "tainted_browser_automation_target" : "",
     metadata.tool_output_browser_automation_bridge === true ? "tool_output_browser_automation_bridge" : "",
     metadata.secret_manager_browser_automation_bridge === true ? "secret_manager_browser_automation_bridge" : "",
+    metadata.rag_retrieval_browser_automation_bridge === true ? "rag_retrieval_browser_automation_bridge" : "",
     metadata.secret_manager_access === true ? "secret_manager_access" : "",
     metadata.tainted_secret_manager_path === true ? "tainted_secret_manager_path" : "",
     metadata.secret_manager_external_service_bridge === true ? "secret_manager_external_service_bridge" : "",
@@ -34487,6 +34529,7 @@ function isPrivilegedToolSurface(tool: SurfaceObject): boolean {
     tool.metadata.tainted_browser_automation_target === true ||
     tool.metadata.tool_output_browser_automation_bridge === true ||
     tool.metadata.secret_manager_browser_automation_bridge === true ||
+    tool.metadata.rag_retrieval_browser_automation_bridge === true ||
     tool.metadata.secret_manager_access === true ||
     tool.metadata.tainted_secret_manager_path === true ||
     tool.metadata.secret_manager_external_service_bridge === true ||

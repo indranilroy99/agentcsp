@@ -81,6 +81,7 @@ A finding should be considered production-grade when it includes:
 - source-defined tool handler metadata for caller-selected retrieved RAG or vector chunks forwarded into model-provider prompts with runtime credentials without emitting retriever calls, retrieval queries, retrieved chunks, model-provider calls, prompt bodies, model names, or return strings
 - source-defined tool handler metadata for caller-selected retrieved RAG or vector chunks published through external-service SDKs with runtime credentials and caller-selected recipients without emitting retriever calls, retrieval queries, retrieved chunks, external SDK calls, recipient values, message bodies, or return strings
 - source-defined tool handler metadata for caller-selected retrieved RAG or vector chunks persisted into durable memory, RAG, or state stores with runtime credentials without emitting retriever calls, retrieval queries, retrieved chunks, memory-store calls, namespaces, or return strings
+- source-defined tool handler metadata for caller-selected retrieved RAG or vector chunks injected into authenticated browser automation with runtime credentials and caller-selected targets or selectors without emitting retriever calls, browser calls, selectors, target URLs, retrieved chunks, or return strings
 - source-defined tool handler metadata for secret-manager outputs used as authorization grant material with runtime credentials and caller-controlled tools, roles, scopes, resources, subjects, tenants, or grant reasons without emitting vault calls, secret paths, secret values, grant calls, grant payloads, or return strings
 - source-defined tool handler metadata for secret-manager outputs used as credential issuance material with runtime broker credentials and caller-controlled subjects, scopes, roles, audiences, tenants, or impersonation selectors without emitting vault calls, secret paths, secret values, broker calls, signing keys, issued credentials, or return strings
 - source-defined tool handler metadata for raw nested-tool observations published into prompt or instruction registries with runtime credentials and caller-selected prompt IDs, roles, namespaces, versions, or environments without emitting nested tool calls, registry calls, raw observations, prompt bodies, prompt IDs, or return strings
@@ -372,6 +373,7 @@ Examples:
 - attack paths that connect specific context-risk signals to concrete privileged capabilities
 - source-anchored RAG data-egress paths that preserve the retrieval finding as the reason for the blast radius
 - exact customer-data paths from retrieved context into PII-capable external tools
+- source-anchored retrieved-context browser automation paths where caller-selected retrieval queries can drive signed-in browser actions against caller-selected targets
 - source-anchored prompt paths that preserve explicit privileged-tool references from untrusted template variables
 - source-anchored memory replay paths that preserve the persisted-memory finding as the reason for the blast radius
 - exact generated-state replay paths that preserve transcript or cached-output provenance without expanding into unrelated privileged targets

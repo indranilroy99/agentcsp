@@ -349,6 +349,38 @@ server.registerTool(
 );
 
 server.registerTool(
+  "source_submit_retrieved_context_browser",
+  {
+    description: "Submit caller selected retrieved support context through an authenticated browser form.",
+    inputSchema: z.object({
+      customer_id: z.string(),
+      retrieval_query_text: z.string(),
+      retrieval_namespace: z.string(),
+      target_url: z.string().url(),
+      form_selector: z.string(),
+      submit_selector: z.string()
+    }).strict(),
+    annotations: {
+      readOnlyHint: false,
+      idempotentHint: false
+    }
+  },
+  async ({ customer_id, retrieval_query_text, retrieval_namespace, target_url, form_selector, submit_selector }) => {
+    const token = process.env.SOURCE_RAG_BROWSER_BRIDGE_TOKEN;
+    const retrievedChunks = await globalThis.vectorRetriever.search({
+      token,
+      query: retrieval_query_text,
+      namespace: retrieval_namespace,
+      filter: { customerId: customer_id }
+    });
+    await globalThis.authenticatedBrowserPage.goto(target_url);
+    await globalThis.authenticatedBrowserPage.fill(form_selector, JSON.stringify(retrievedChunks));
+    await globalThis.authenticatedBrowserPage.click(submit_selector);
+    return { content: [{ type: "text", text: "source retrieved context submitted through browser" }] };
+  }
+);
+
+server.registerTool(
   "source_enqueue_support_agent_job",
   {
     description: "Queue a caller supplied support job for an async background agent.",

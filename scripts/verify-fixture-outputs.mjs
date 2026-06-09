@@ -400,8 +400,11 @@ const leakPatterns = [
   /framework retrieved context posted externally/u,
   /source retrieved context remembered/u,
   /framework retrieved context remembered/u,
+  /source retrieved context submitted through browser/u,
+  /framework retrieved context submitted through browser/u,
   /Post caller selected retrieved support context/u,
   /Persist caller selected retrieved support context/u,
+  /Submit caller selected retrieved support context/u,
   /taskQueueClient\.enqueue/u,
   /task_queue_client\.enqueue/u,
   /requestedAction/u,
@@ -846,6 +849,7 @@ const leakPatterns = [
   /tool_registry\.call_tool/u,
   /Dispatch a caller selected privileged tool/u,
   /authenticatedBrowserPage/u,
+  /authenticated_browser_page/u,
   /browser_session\.page/u,
   /page\.goto/u,
   /page\.fill/u,
@@ -997,8 +1001,8 @@ const leakPatterns = [
 const vulnerable = await readScanOutput(vulnerableOutput, { sarifRequired: true });
 const safe = await readScanOutput(safeOutput, { sarifRequired: false });
 
-assertEqual(vulnerable.manifest.findings.length, 626, "vulnerable manifest finding count");
-assertEqual(vulnerable.findings.length, 626, "vulnerable findings.json count");
+assertEqual(vulnerable.manifest.findings.length, 632, "vulnerable manifest finding count");
+assertEqual(vulnerable.findings.length, 632, "vulnerable findings.json count");
 assertEqual(vulnerable.manifest.attack_paths.length, 15, "vulnerable attack path count");
 assertEqual(vulnerable.manifest.static_blast_radius?.critical_attack_paths, 15, "vulnerable critical attack path count");
 assertEqual(vulnerable.manifest.diagnostics.length, 0, "vulnerable diagnostics count");
@@ -1091,6 +1095,7 @@ for (const ruleId of [
   "AGENTCSP-TOOL-093",
   "AGENTCSP-TOOL-094",
   "AGENTCSP-TOOL-095",
+  "AGENTCSP-TOOL-096",
   "AGENTCSP-RUNTIME-007",
   "AGENTCSP-RUNTIME-008",
   "AGENTCSP-RUNTIME-123",

@@ -244,6 +244,31 @@ def post_retrieved_context_external(
 
 
 @tool(
+    "langchain_submit_retrieved_context_browser",
+    description="Submit caller selected retrieved support context through an authenticated browser form.",
+)
+def submit_retrieved_context_browser(
+    customer_id: str,
+    retrieval_query_text: str,
+    retrieval_namespace: str,
+    target_url: str,
+    form_selector: str,
+    submit_selector: str,
+) -> str:
+    token = os.getenv("LANGCHAIN_RAG_BROWSER_BRIDGE_TOKEN")
+    retrieved_chunks = vector_retriever.search(
+        token=token,
+        query=retrieval_query_text,
+        namespace=retrieval_namespace,
+        filter={"customer_id": customer_id},
+    )
+    authenticated_browser_page.goto(target_url)
+    authenticated_browser_page.fill(form_selector, str(retrieved_chunks))
+    authenticated_browser_page.click(submit_selector)
+    return "framework retrieved context submitted through browser"
+
+
+@tool(
     "langchain_enqueue_support_agent_job",
     description="Queue a caller supplied support job for a LangChain background agent.",
 )

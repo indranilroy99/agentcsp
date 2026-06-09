@@ -556,6 +556,9 @@ describe("scanner", () => {
     const sourceRagRetrievalExternalServiceBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "source_post_retrieved_context_external"
     );
+    const sourceRagRetrievalBrowserAutomationBridgeTool = surfaces.tools.find(
+      (surface) => surface.name === "source_submit_retrieved_context_browser"
+    );
     const sourceTaskQueueTool = surfaces.tools.find((surface) => surface.name === "source_enqueue_support_agent_job");
     const sourceSecretManagerTaskQueueBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "source_enqueue_customer_vault_secret_job"
@@ -692,6 +695,9 @@ describe("scanner", () => {
     );
     const langchainRagRetrievalExternalServiceBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "langchain_post_retrieved_context_external"
+    );
+    const langchainRagRetrievalBrowserAutomationBridgeTool = surfaces.tools.find(
+      (surface) => surface.name === "langchain_submit_retrieved_context_browser"
     );
     const langchainTaskQueueTool = surfaces.tools.find((surface) => surface.name === "langchain_enqueue_support_agent_job");
     const langchainSecretManagerTaskQueueBridgeTool = surfaces.tools.find(
@@ -1873,6 +1879,92 @@ describe("scanner", () => {
     expect(JSON.stringify(sourceRagRetrievalExternalServiceBridgeTool)).not.toContain("retrievedChunks");
     expect(JSON.stringify(sourceRagRetrievalExternalServiceBridgeTool)).not.toContain("source retrieved context posted externally");
     expect(JSON.stringify(sourceRagRetrievalExternalServiceBridgeTool)).not.toContain("Post caller selected retrieved support context");
+    expect(sourceRagRetrievalBrowserAutomationBridgeTool).toMatchObject({
+      path: "mcp-source/customer-tools.ts",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["call", "execute", "read", "send"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(sourceRagRetrievalBrowserAutomationBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_mcp_source_tool: true,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_content_like_input: true,
+      accepts_url_input: true,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      browser_automation: true,
+      tainted_browser_automation_target: true,
+      rag_retrieval: true,
+      tainted_rag_retrieval_query: true,
+      rag_retrieval_browser_automation_bridge: true,
+      handler_browser_automation: true,
+      handler_tainted_browser_automation_target: true,
+      handler_rag_retrieval: true,
+      handler_tainted_rag_retrieval_query: true,
+      handler_rag_retrieval_browser_automation_bridge: true,
+      handler_secret_env_access: true,
+      handler_signal_count: 6,
+      open_world_schema: false
+    });
+    expect(sourceRagRetrievalBrowserAutomationBridgeTool?.metadata.authority_classes).toEqual([
+      "browser_automation",
+      "browser_control",
+      "content_input",
+      "credential_input",
+      "customer_data_input",
+      "handler_browser_automation",
+      "handler_rag_retrieval",
+      "handler_rag_retrieval_browser_automation_bridge",
+      "handler_secret_env_access",
+      "handler_tainted_browser_automation_target",
+      "handler_tainted_rag_retrieval_query",
+      "network_access",
+      "pii_input",
+      "rag_retrieval",
+      "rag_retrieval_browser_automation_bridge",
+      "secret_env_access",
+      "tainted_browser_automation_target",
+      "tainted_rag_retrieval_query"
+    ]);
+    expect(sourceRagRetrievalBrowserAutomationBridgeTool?.metadata.handler_authority_classes).toEqual([
+      "handler_browser_automation",
+      "handler_rag_retrieval",
+      "handler_rag_retrieval_browser_automation_bridge",
+      "handler_secret_env_access",
+      "handler_tainted_browser_automation_target",
+      "handler_tainted_rag_retrieval_query"
+    ]);
+    expect(sourceRagRetrievalBrowserAutomationBridgeTool?.metadata.handler_env_key_names).toEqual([
+      "SOURCE_RAG_BROWSER_BRIDGE_TOKEN"
+    ]);
+    expect(sourceRagRetrievalBrowserAutomationBridgeTool?.metadata.schema_properties).toEqual([
+      "customer_id",
+      "form_selector",
+      "retrieval_namespace",
+      "retrieval_query_text",
+      "submit_selector",
+      "target_url"
+    ]);
+    expect(sourceRagRetrievalBrowserAutomationBridgeTool?.metadata.required_properties).toEqual([
+      "customer_id",
+      "form_selector",
+      "retrieval_namespace",
+      "retrieval_query_text",
+      "submit_selector",
+      "target_url"
+    ]);
+    expect(JSON.stringify(sourceRagRetrievalBrowserAutomationBridgeTool)).not.toContain("vectorRetriever.search");
+    expect(JSON.stringify(sourceRagRetrievalBrowserAutomationBridgeTool)).not.toContain("authenticatedBrowserPage.goto");
+    expect(JSON.stringify(sourceRagRetrievalBrowserAutomationBridgeTool)).not.toContain("authenticatedBrowserPage.fill");
+    expect(JSON.stringify(sourceRagRetrievalBrowserAutomationBridgeTool)).not.toContain("authenticatedBrowserPage.click");
+    expect(JSON.stringify(sourceRagRetrievalBrowserAutomationBridgeTool)).not.toContain("retrievedChunks");
+    expect(JSON.stringify(sourceRagRetrievalBrowserAutomationBridgeTool)).not.toContain("source retrieved context submitted through browser");
+    expect(JSON.stringify(sourceRagRetrievalBrowserAutomationBridgeTool)).not.toContain("Submit caller selected retrieved support context");
     expect(sourceTaskQueueTool).toMatchObject({
       path: "mcp-source/customer-tools.ts",
       data_classes: ["confidential", "credential", "pii"],
@@ -7731,6 +7823,96 @@ describe("scanner", () => {
     expect(JSON.stringify(langchainRagRetrievalExternalServiceBridgeTool)).not.toContain("retrieved_chunks");
     expect(JSON.stringify(langchainRagRetrievalExternalServiceBridgeTool)).not.toContain("framework retrieved context posted externally");
     expect(JSON.stringify(langchainRagRetrievalExternalServiceBridgeTool)).not.toContain("Post caller selected retrieved support context");
+    expect(langchainRagRetrievalBrowserAutomationBridgeTool).toMatchObject({
+      path: "framework-tools/langchain_tools.py",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["call", "execute", "read", "send"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(langchainRagRetrievalBrowserAutomationBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_agent_framework_source_tool: true,
+      agent_framework_source_tool: true,
+      agent_framework_source_tool_framework: "langchain",
+      agent_framework_source_tool_registration_kind: "python_tool_decorator",
+      agent_framework_source_tool_argument_count: 6,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_content_like_input: true,
+      accepts_url_input: true,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      browser_automation: true,
+      tainted_browser_automation_target: true,
+      rag_retrieval: true,
+      tainted_rag_retrieval_query: true,
+      rag_retrieval_browser_automation_bridge: true,
+      handler_browser_automation: true,
+      handler_tainted_browser_automation_target: true,
+      handler_rag_retrieval: true,
+      handler_tainted_rag_retrieval_query: true,
+      handler_rag_retrieval_browser_automation_bridge: true,
+      handler_secret_env_access: true,
+      handler_signal_count: 6,
+      open_world_schema: false
+    });
+    expect(langchainRagRetrievalBrowserAutomationBridgeTool?.metadata.authority_classes).toEqual([
+      "browser_automation",
+      "browser_control",
+      "content_input",
+      "credential_input",
+      "customer_data_input",
+      "handler_browser_automation",
+      "handler_rag_retrieval",
+      "handler_rag_retrieval_browser_automation_bridge",
+      "handler_secret_env_access",
+      "handler_tainted_browser_automation_target",
+      "handler_tainted_rag_retrieval_query",
+      "network_access",
+      "pii_input",
+      "rag_retrieval",
+      "rag_retrieval_browser_automation_bridge",
+      "secret_env_access",
+      "tainted_browser_automation_target",
+      "tainted_rag_retrieval_query"
+    ]);
+    expect(langchainRagRetrievalBrowserAutomationBridgeTool?.metadata.handler_authority_classes).toEqual([
+      "handler_browser_automation",
+      "handler_rag_retrieval",
+      "handler_rag_retrieval_browser_automation_bridge",
+      "handler_secret_env_access",
+      "handler_tainted_browser_automation_target",
+      "handler_tainted_rag_retrieval_query"
+    ]);
+    expect(langchainRagRetrievalBrowserAutomationBridgeTool?.metadata.handler_env_key_names).toEqual([
+      "LANGCHAIN_RAG_BROWSER_BRIDGE_TOKEN"
+    ]);
+    expect(langchainRagRetrievalBrowserAutomationBridgeTool?.metadata.schema_properties).toEqual([
+      "customer_id",
+      "form_selector",
+      "retrieval_namespace",
+      "retrieval_query_text",
+      "submit_selector",
+      "target_url"
+    ]);
+    expect(langchainRagRetrievalBrowserAutomationBridgeTool?.metadata.required_properties).toEqual([
+      "customer_id",
+      "form_selector",
+      "retrieval_namespace",
+      "retrieval_query_text",
+      "submit_selector",
+      "target_url"
+    ]);
+    expect(JSON.stringify(langchainRagRetrievalBrowserAutomationBridgeTool)).not.toContain("vector_retriever.search");
+    expect(JSON.stringify(langchainRagRetrievalBrowserAutomationBridgeTool)).not.toContain("authenticated_browser_page.goto");
+    expect(JSON.stringify(langchainRagRetrievalBrowserAutomationBridgeTool)).not.toContain("authenticated_browser_page.fill");
+    expect(JSON.stringify(langchainRagRetrievalBrowserAutomationBridgeTool)).not.toContain("authenticated_browser_page.click");
+    expect(JSON.stringify(langchainRagRetrievalBrowserAutomationBridgeTool)).not.toContain("retrieved_chunks");
+    expect(JSON.stringify(langchainRagRetrievalBrowserAutomationBridgeTool)).not.toContain("framework retrieved context submitted through browser");
+    expect(JSON.stringify(langchainRagRetrievalBrowserAutomationBridgeTool)).not.toContain("Submit caller selected retrieved support context");
     expect(langchainTaskQueueTool).toMatchObject({
       path: "framework-tools/langchain_tools.py",
       data_classes: ["confidential", "credential", "pii"],
