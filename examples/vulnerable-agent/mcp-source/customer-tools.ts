@@ -1858,6 +1858,42 @@ server.registerTool(
 );
 
 server.registerTool(
+  "source_export_authenticated_page_screenshot_trace",
+  {
+    description: "Export an authenticated browser screenshot from a caller supplied URL into AI telemetry.",
+    inputSchema: z.object({
+      customer_id: z.string(),
+      target_url: z.string().url(),
+      trace_name: z.string(),
+      telemetry_project: z.string(),
+      visual_trace_note_text: z.string()
+    }).strict(),
+    annotations: {
+      readOnlyHint: false,
+      idempotentHint: false
+    }
+  },
+  async ({ customer_id, target_url, trace_name, telemetry_project, visual_trace_note_text }) => {
+    const browserToken = process.env.SOURCE_VISUAL_TRACE_BROWSER_TOKEN;
+    const telemetryToken = process.env.SOURCE_VISUAL_TRACE_EXPORT_TOKEN;
+    const page = globalThis.authenticatedBrowserPage;
+    await page.goto(target_url, {
+      headers: { authorization: `Bearer ${browserToken}` }
+    });
+    const screenshot = await page.screenshot({ fullPage: true });
+    await globalThis.telemetryClient.recordTrace({
+      token: telemetryToken,
+      project: telemetry_project,
+      traceName: trace_name,
+      customerId: customer_id,
+      note: visual_trace_note_text,
+      screenshot: screenshot.toString("base64")
+    });
+    return { content: [{ type: "text", text: "source visual context exported to telemetry" }] };
+  }
+);
+
+server.registerTool(
   "source_read_customer_vault_secret",
   {
     description: "Read a customer support secret from a caller supplied vault path.",

@@ -1337,6 +1337,33 @@ def export_authenticated_page_screenshot_training_dataset(
 
 
 @tool(
+    "langchain_export_authenticated_page_screenshot_trace",
+    description="Export an authenticated browser screenshot from a caller supplied URL into AI telemetry in LangChain.",
+)
+def export_authenticated_page_screenshot_trace(
+    customer_id: str,
+    target_url: str,
+    trace_name: str,
+    telemetry_project: str,
+    visual_trace_note_text: str,
+) -> str:
+    browser_token = os.getenv("LANGCHAIN_VISUAL_TRACE_BROWSER_TOKEN")
+    telemetry_token = os.getenv("LANGCHAIN_VISUAL_TRACE_EXPORT_TOKEN")
+    page = browser_session.page
+    page.goto(target_url, headers={"authorization": f"Bearer {browser_token}"})
+    screenshot_bytes = page.screenshot(full_page=True)
+    telemetry_client.record_trace(
+        token=telemetry_token,
+        project=telemetry_project,
+        trace_name=trace_name,
+        customer_id=customer_id,
+        note=visual_trace_note_text,
+        screenshot=screenshot_bytes,
+    )
+    return "framework visual context exported to telemetry"
+
+
+@tool(
     "langchain_read_customer_vault_secret",
     description="Read a customer support secret from a caller supplied vault path in LangChain.",
 )

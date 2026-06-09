@@ -652,6 +652,9 @@ describe("scanner", () => {
     const sourceVisualContextTrainingDatasetBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "source_export_authenticated_page_screenshot_training_dataset"
     );
+    const sourceVisualContextTelemetryBridgeTool = surfaces.tools.find(
+      (surface) => surface.name === "source_export_authenticated_page_screenshot_trace"
+    );
     const sourceSecretManagerAccessTool = surfaces.tools.find((surface) => surface.name === "source_read_customer_vault_secret");
     const sourceSecretManagerExternalServiceBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "source_post_customer_vault_secret_slack"
@@ -806,6 +809,9 @@ describe("scanner", () => {
     );
     const langchainVisualContextTrainingDatasetBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "langchain_export_authenticated_page_screenshot_training_dataset"
+    );
+    const langchainVisualContextTelemetryBridgeTool = surfaces.tools.find(
+      (surface) => surface.name === "langchain_export_authenticated_page_screenshot_trace"
     );
     const langchainSecretManagerAccessTool = surfaces.tools.find((surface) => surface.name === "langchain_read_customer_vault_secret");
     const langchainSecretManagerExternalServiceBridgeTool = surfaces.tools.find(
@@ -5779,6 +5785,104 @@ describe("scanner", () => {
     expect(JSON.stringify(sourceVisualContextTrainingDatasetBridgeTool)).not.toContain("trainingDatasetClient.appendRecord");
     expect(JSON.stringify(sourceVisualContextTrainingDatasetBridgeTool)).not.toContain("source visual context exported to training dataset");
     expect(JSON.stringify(sourceVisualContextTrainingDatasetBridgeTool)).not.toContain("Export an authenticated browser screenshot");
+    expect(sourceVisualContextTelemetryBridgeTool).toMatchObject({
+      path: "mcp-source/customer-tools.ts",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["call", "execute", "publish", "read", "send"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(sourceVisualContextTelemetryBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_mcp_source_tool: true,
+      mcp_source_tool_registration: true,
+      mcp_source_tool_registration_kind: "registerTool",
+      mcp_source_tool_argument_count: 3,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_secret_like_input: true,
+      accepts_content_like_input: true,
+      accepts_url_input: true,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      browser_automation: true,
+      tainted_browser_automation_target: true,
+      visual_context_capture: true,
+      visual_context_to_output: false,
+      visual_context_telemetry_bridge: true,
+      telemetry_export: true,
+      external_write: true,
+      destructive_action: false,
+      read_only_hint_conflict: false,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_telemetry_export: true,
+      handler_secret_env_access: true,
+      handler_model_visible_output: true,
+      handler_browser_automation: true,
+      handler_tainted_browser_automation_target: true,
+      handler_visual_context_capture: true,
+      handler_visual_context_to_output: false,
+      handler_visual_context_telemetry_bridge: true,
+      handler_signal_count: 6,
+      open_world_schema: false
+    });
+    expect(sourceVisualContextTelemetryBridgeTool?.metadata.authority_classes).toEqual([
+      "browser_automation",
+      "browser_control",
+      "content_input",
+      "credential_input",
+      "customer_data_input",
+      "external_write",
+      "handler_browser_automation",
+      "handler_secret_env_access",
+      "handler_tainted_browser_automation_target",
+      "handler_telemetry_export",
+      "handler_visual_context_capture",
+      "handler_visual_context_telemetry_bridge",
+      "network_access",
+      "pii_input",
+      "secret_env_access",
+      "tainted_browser_automation_target",
+      "telemetry_export",
+      "visual_context_capture",
+      "visual_context_telemetry_bridge"
+    ]);
+    expect(sourceVisualContextTelemetryBridgeTool?.metadata.handler_authority_classes).toEqual([
+      "handler_browser_automation",
+      "handler_secret_env_access",
+      "handler_tainted_browser_automation_target",
+      "handler_telemetry_export",
+      "handler_visual_context_capture",
+      "handler_visual_context_telemetry_bridge"
+    ]);
+    expect(sourceVisualContextTelemetryBridgeTool?.metadata.handler_env_key_names).toEqual([
+      "SOURCE_VISUAL_TRACE_BROWSER_TOKEN",
+      "SOURCE_VISUAL_TRACE_EXPORT_TOKEN"
+    ]);
+    expect(sourceVisualContextTelemetryBridgeTool?.metadata.schema_properties).toEqual([
+      "customer_id",
+      "target_url",
+      "telemetry_project",
+      "trace_name",
+      "visual_trace_note_text"
+    ]);
+    expect(sourceVisualContextTelemetryBridgeTool?.metadata.required_properties).toEqual([
+      "customer_id",
+      "target_url",
+      "telemetry_project",
+      "trace_name",
+      "visual_trace_note_text"
+    ]);
+    expect(JSON.stringify(sourceVisualContextTelemetryBridgeTool)).not.toContain("authenticatedBrowserPage");
+    expect(JSON.stringify(sourceVisualContextTelemetryBridgeTool)).not.toContain("page.goto");
+    expect(JSON.stringify(sourceVisualContextTelemetryBridgeTool)).not.toContain("page.screenshot");
+    expect(JSON.stringify(sourceVisualContextTelemetryBridgeTool)).not.toContain("screenshot.toString");
+    expect(JSON.stringify(sourceVisualContextTelemetryBridgeTool)).not.toContain("telemetryClient.recordTrace");
+    expect(JSON.stringify(sourceVisualContextTelemetryBridgeTool)).not.toContain("source visual context exported to telemetry");
+    expect(JSON.stringify(sourceVisualContextTelemetryBridgeTool)).not.toContain("Export an authenticated browser screenshot");
     expect(sourceSecretManagerAccessTool).toMatchObject({
       path: "mcp-source/customer-tools.ts",
       data_classes: ["confidential", "credential", "pii"],
@@ -12257,6 +12361,105 @@ describe("scanner", () => {
     expect(JSON.stringify(langchainVisualContextTrainingDatasetBridgeTool)).not.toContain("training_dataset_client.append_record");
     expect(JSON.stringify(langchainVisualContextTrainingDatasetBridgeTool)).not.toContain("framework visual context exported to training dataset");
     expect(JSON.stringify(langchainVisualContextTrainingDatasetBridgeTool)).not.toContain("Export an authenticated browser screenshot");
+    expect(langchainVisualContextTelemetryBridgeTool).toMatchObject({
+      path: "framework-tools/langchain_tools.py",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["call", "execute", "publish", "read", "send"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(langchainVisualContextTelemetryBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_agent_framework_source_tool: true,
+      agent_framework_source_tool: true,
+      agent_framework_source_tool_framework: "langchain",
+      agent_framework_source_tool_registration_kind: "python_tool_decorator",
+      agent_framework_source_tool_argument_count: 5,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_secret_like_input: true,
+      accepts_content_like_input: true,
+      accepts_url_input: true,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      browser_automation: true,
+      tainted_browser_automation_target: true,
+      visual_context_capture: true,
+      visual_context_to_output: false,
+      visual_context_telemetry_bridge: true,
+      telemetry_export: true,
+      external_write: true,
+      destructive_action: false,
+      read_only_hint_conflict: false,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_telemetry_export: true,
+      handler_secret_env_access: true,
+      handler_model_visible_output: true,
+      handler_browser_automation: true,
+      handler_tainted_browser_automation_target: true,
+      handler_visual_context_capture: true,
+      handler_visual_context_to_output: false,
+      handler_visual_context_telemetry_bridge: true,
+      handler_signal_count: 6,
+      open_world_schema: false
+    });
+    expect(langchainVisualContextTelemetryBridgeTool?.metadata.authority_classes).toEqual([
+      "browser_automation",
+      "browser_control",
+      "content_input",
+      "credential_input",
+      "customer_data_input",
+      "external_write",
+      "handler_browser_automation",
+      "handler_secret_env_access",
+      "handler_tainted_browser_automation_target",
+      "handler_telemetry_export",
+      "handler_visual_context_capture",
+      "handler_visual_context_telemetry_bridge",
+      "network_access",
+      "pii_input",
+      "secret_env_access",
+      "tainted_browser_automation_target",
+      "telemetry_export",
+      "visual_context_capture",
+      "visual_context_telemetry_bridge"
+    ]);
+    expect(langchainVisualContextTelemetryBridgeTool?.metadata.handler_authority_classes).toEqual([
+      "handler_browser_automation",
+      "handler_secret_env_access",
+      "handler_tainted_browser_automation_target",
+      "handler_telemetry_export",
+      "handler_visual_context_capture",
+      "handler_visual_context_telemetry_bridge"
+    ]);
+    expect(langchainVisualContextTelemetryBridgeTool?.metadata.handler_env_key_names).toEqual([
+      "LANGCHAIN_VISUAL_TRACE_BROWSER_TOKEN",
+      "LANGCHAIN_VISUAL_TRACE_EXPORT_TOKEN"
+    ]);
+    expect(langchainVisualContextTelemetryBridgeTool?.metadata.schema_properties).toEqual([
+      "customer_id",
+      "target_url",
+      "telemetry_project",
+      "trace_name",
+      "visual_trace_note_text"
+    ]);
+    expect(langchainVisualContextTelemetryBridgeTool?.metadata.required_properties).toEqual([
+      "customer_id",
+      "target_url",
+      "telemetry_project",
+      "trace_name",
+      "visual_trace_note_text"
+    ]);
+    expect(JSON.stringify(langchainVisualContextTelemetryBridgeTool)).not.toContain("browser_session.page");
+    expect(JSON.stringify(langchainVisualContextTelemetryBridgeTool)).not.toContain("page.goto");
+    expect(JSON.stringify(langchainVisualContextTelemetryBridgeTool)).not.toContain("page.screenshot");
+    expect(JSON.stringify(langchainVisualContextTelemetryBridgeTool)).not.toContain("screenshot_bytes");
+    expect(JSON.stringify(langchainVisualContextTelemetryBridgeTool)).not.toContain("telemetry_client.record_trace");
+    expect(JSON.stringify(langchainVisualContextTelemetryBridgeTool)).not.toContain("framework visual context exported to telemetry");
+    expect(JSON.stringify(langchainVisualContextTelemetryBridgeTool)).not.toContain("Export an authenticated browser screenshot");
     expect(langchainSecretManagerAccessTool).toMatchObject({
       path: "framework-tools/langchain_tools.py",
       data_classes: ["confidential", "credential", "pii"],

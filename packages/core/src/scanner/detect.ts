@@ -24159,6 +24159,7 @@ function addToolDefinitionSurface(
       !authority.visual_context_memory_bridge &&
       !authority.visual_context_artifact_bridge &&
       !authority.visual_context_training_dataset_bridge &&
+      !authority.visual_context_telemetry_bridge &&
       !authority.tainted_network_destination &&
       !authority.tainted_shell_argument &&
       !authority.dynamic_code_execution &&
@@ -24281,6 +24282,7 @@ function addToolDefinitionSurface(
       visual_context_memory_bridge: authority.visual_context_memory_bridge,
       visual_context_artifact_bridge: authority.visual_context_artifact_bridge,
       visual_context_training_dataset_bridge: authority.visual_context_training_dataset_bridge,
+      visual_context_telemetry_bridge: authority.visual_context_telemetry_bridge,
       privileged_prompt_composition: authority.privileged_prompt_composition,
       tainted_shell_argument: authority.tainted_shell_argument,
       tainted_filesystem_path: authority.tainted_filesystem_path,
@@ -26758,6 +26760,7 @@ interface SourceToolHandlerSignals {
   handlerVisualContextMemoryBridge: boolean;
   handlerVisualContextArtifactBridge: boolean;
   handlerVisualContextTrainingDatasetBridge: boolean;
+  handlerVisualContextTelemetryBridge: boolean;
   handlerSecretManagerAccess: boolean;
   handlerTaintedSecretManagerPath: boolean;
   handlerSecretManagerExternalServiceBridge: boolean;
@@ -27291,6 +27294,7 @@ function sourceToolHandlerSignalMetadata(signals: SourceToolHandlerSignals | und
     handler_visual_context_memory_bridge: signals.handlerVisualContextMemoryBridge,
     handler_visual_context_artifact_bridge: signals.handlerVisualContextArtifactBridge,
     handler_visual_context_training_dataset_bridge: signals.handlerVisualContextTrainingDatasetBridge,
+    handler_visual_context_telemetry_bridge: signals.handlerVisualContextTelemetryBridge,
     handler_secret_manager_access: signals.handlerSecretManagerAccess,
     handler_tainted_secret_manager_path: signals.handlerTaintedSecretManagerPath,
     handler_secret_manager_external_service_bridge: signals.handlerSecretManagerExternalServiceBridge,
@@ -27610,6 +27614,9 @@ function classifySourceToolHandlerSignals(
   const visualContextTrainingDatasetBridge = visualContextCapture && trainingDatasetExport && (language === "javascript"
     ? hasJavaScriptHandlerVisualContextTrainingDatasetBridge(handlerSource)
     : hasPythonHandlerVisualContextTrainingDatasetBridge(handlerSource));
+  const visualContextTelemetryBridge = visualContextCapture && telemetryExport && (language === "javascript"
+    ? hasJavaScriptHandlerVisualContextTelemetryBridge(handlerSource)
+    : hasPythonHandlerVisualContextTelemetryBridge(handlerSource));
   const secretManagerAccess = language === "javascript"
     ? hasJavaScriptHandlerSecretManagerAccess(handlerSource)
     : hasPythonHandlerSecretManagerAccess(handlerSource);
@@ -27768,6 +27775,7 @@ function classifySourceToolHandlerSignals(
   if (visualContextMemoryBridge) classes.add("handler_visual_context_memory_bridge");
   if (visualContextArtifactBridge) classes.add("handler_visual_context_artifact_bridge");
   if (visualContextTrainingDatasetBridge) classes.add("handler_visual_context_training_dataset_bridge");
+  if (visualContextTelemetryBridge) classes.add("handler_visual_context_telemetry_bridge");
   if (secretManagerAccess) classes.add("handler_secret_manager_access");
   if (taintedSecretManagerPath) classes.add("handler_tainted_secret_manager_path");
   if (secretManagerExternalServiceBridge) classes.add("handler_secret_manager_external_service_bridge");
@@ -27890,6 +27898,7 @@ function classifySourceToolHandlerSignals(
     handlerVisualContextMemoryBridge: visualContextMemoryBridge,
     handlerVisualContextArtifactBridge: visualContextArtifactBridge,
     handlerVisualContextTrainingDatasetBridge: visualContextTrainingDatasetBridge,
+    handlerVisualContextTelemetryBridge: visualContextTelemetryBridge,
     handlerSecretManagerAccess: secretManagerAccess,
     handlerTaintedSecretManagerPath: taintedSecretManagerPath,
     handlerSecretManagerExternalServiceBridge: secretManagerExternalServiceBridge,
@@ -28880,6 +28889,32 @@ function hasPythonHandlerVisualContextTrainingDatasetBridge(source: string): boo
     [
       /\b(?:training_dataset|training_dataset_client|dataset_client|fine_tune_dataset|fine_tune_client|fine_tuning_client|feedback_dataset|eval_dataset|rlhf_dataset|model_training_client)\s*(?:\.\s*[A-Za-z_]\w*){0,4}\s*\.\s*(?:append|append_record|add|add_example|create|create_record|insert|upload|write|save|store|export|send|record|push)\s*\(([\s\S]{0,2400})\)/giu,
       /\b(?:export_training_example|write_training_example|append_training_example|upload_fine_tune_record|create_fine_tune_record|record_training_example)\s*\(([\s\S]{0,2400})\)/giu
+    ],
+    source,
+    identifiers
+  );
+}
+
+function hasJavaScriptHandlerVisualContextTelemetryBridge(source: string): boolean {
+  const identifiers = extractJavaScriptVisualContextIdentifiers(source);
+  return identifiers.length > 0 && callExpressionReferencesAnyIdentifier(
+    [
+      /\b(?:telemetryClient|traceClient|tracingClient|observabilityClient|analyticsClient|otel|otelSpan|langfuse|langsmith|sentry|honeycomb|datadog|newrelic)\s*(?:\.\s*[A-Za-z_$][\w$]*){0,4}\s*\.\s*(?:record|recordTrace|capture|captureEvent|track|trackEvent|log|logEvent|emit|export|send|sendTrace|addEvent|setAttribute|setAttributes|span|trace)\s*\(([\s\S]{0,2400})\)/giu,
+      /\b(?:trace|span)\s*\.\s*(?:addEvent|setAttribute|setAttributes|recordException)\s*\(([\s\S]{0,2400})\)/giu,
+      /\b(?:opentelemetry)\s*(?:\.\s*[A-Za-z_$][\w$]*){0,4}\s*\.\s*(?:trace|span|record|export|send)\s*\(([\s\S]{0,2400})\)/giu
+    ],
+    source,
+    identifiers
+  );
+}
+
+function hasPythonHandlerVisualContextTelemetryBridge(source: string): boolean {
+  const identifiers = extractPythonVisualContextIdentifiers(source);
+  return identifiers.length > 0 && callExpressionReferencesAnyIdentifier(
+    [
+      /\b(?:telemetry_client|trace_client|tracing_client|observability_client|analytics_client|otel|otel_span|langfuse|langsmith|sentry_sdk|honeycomb|datadog|newrelic)\s*(?:\.\s*[A-Za-z_]\w*){0,4}\s*\.\s*(?:record|record_trace|capture|capture_event|track|track_event|log|log_event|emit|export|send|send_trace|add_event|set_attribute|set_attributes|span|trace)\s*\(([\s\S]{0,2400})\)/giu,
+      /\b(?:trace|span)\s*\.\s*(?:add_event|set_attribute|set_attributes|record_exception)\s*\(([\s\S]{0,2400})\)/giu,
+      /\b(?:opentelemetry)\s*(?:\.\s*[A-Za-z_]\w*){0,4}\s*\.\s*(?:trace|span|record|export|send)\s*\(([\s\S]{0,2400})\)/giu
     ],
     source,
     identifiers
@@ -33356,6 +33391,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   visual_context_memory_bridge: boolean;
   visual_context_artifact_bridge: boolean;
   visual_context_training_dataset_bridge: boolean;
+  visual_context_telemetry_bridge: boolean;
   secret_manager_access: boolean;
   tainted_secret_manager_path: boolean;
   secret_manager_external_service_bridge: boolean;
@@ -33553,6 +33589,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   const handlerVisualContextMemoryBridge = handler?.handlerVisualContextMemoryBridge === true;
   const handlerVisualContextArtifactBridge = handler?.handlerVisualContextArtifactBridge === true;
   const handlerVisualContextTrainingDatasetBridge = handler?.handlerVisualContextTrainingDatasetBridge === true;
+  const handlerVisualContextTelemetryBridge = handler?.handlerVisualContextTelemetryBridge === true;
   const handlerSecretManagerAccess = handler?.handlerSecretManagerAccess === true;
   const handlerTaintedSecretManagerPath = handler?.handlerTaintedSecretManagerPath === true;
   const handlerSecretManagerExternalServiceBridge = handler?.handlerSecretManagerExternalServiceBridge === true;
@@ -33681,6 +33718,12 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
     actions.add("send");
     actions.add("write");
     actions.add("remember");
+  }
+  if (handlerVisualContextTelemetryBridge) {
+    classes.add("visual_context_telemetry_bridge");
+    actions.add("read");
+    actions.add("send");
+    actions.add("publish");
   }
   if (acceptsUrl || /\b(fetch|request|http|api|network)\b/i.test(text) || handlerExternalNetworkCall) {
     classes.add("network_access");
@@ -34219,6 +34262,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerVisualContextMemoryBridge ||
       handlerVisualContextArtifactBridge ||
       handlerVisualContextTrainingDatasetBridge ||
+      handlerVisualContextTelemetryBridge ||
       handlerSecretManagerAccess ||
       handlerTaintedSecretManagerPath ||
       handlerSecretManagerExternalServiceBridge ||
@@ -34332,6 +34376,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerVisualContextMemoryBridge ||
       handlerVisualContextArtifactBridge ||
       handlerVisualContextTrainingDatasetBridge ||
+      handlerVisualContextTelemetryBridge ||
       handlerSecretManagerBrowserAutomationBridge ||
       handlerRagRetrievalBrowserAutomationBridge ||
       handlerAgentDelegation ||
@@ -34350,6 +34395,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerTelemetryExport ||
       handlerSecretManagerTelemetryBridge ||
       handlerToolOutputTelemetryBridge ||
+      handlerVisualContextTelemetryBridge ||
       handlerSecretManagerPromptCacheBridge ||
       handlerToolOutputPromptCacheBridge ||
       handlerTrainingDatasetExport ||
@@ -34422,6 +34468,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       (handlerVisualContextMemoryBridge && handlerSecretEnvAccess) ||
       (handlerVisualContextArtifactBridge && handlerSecretEnvAccess) ||
       (handlerVisualContextTrainingDatasetBridge && handlerSecretEnvAccess) ||
+      (handlerVisualContextTelemetryBridge && handlerSecretEnvAccess) ||
       (handlerRagRetrievalBrowserAutomationBridge && handlerSecretEnvAccess) ||
       (handlerRagRetrievalMemoryBridge && handlerSecretEnvAccess) ||
       (handlerSafetyPolicyWrite && handlerSecretEnvAccess) ||
@@ -34469,6 +34516,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
     visual_context_memory_bridge: handlerVisualContextMemoryBridge,
     visual_context_artifact_bridge: handlerVisualContextArtifactBridge,
     visual_context_training_dataset_bridge: handlerVisualContextTrainingDatasetBridge,
+    visual_context_telemetry_bridge: handlerVisualContextTelemetryBridge,
     secret_manager_access: handlerSecretManagerAccess,
     tainted_secret_manager_path: handlerTaintedSecretManagerPath,
     secret_manager_external_service_bridge: handlerSecretManagerExternalServiceBridge,
@@ -34673,6 +34721,7 @@ function authoritySignature(tool: SurfaceObject): string {
     metadata.visual_context_memory_bridge === true ? "visual_context_memory_bridge" : "",
     metadata.visual_context_artifact_bridge === true ? "visual_context_artifact_bridge" : "",
     metadata.visual_context_training_dataset_bridge === true ? "visual_context_training_dataset_bridge" : "",
+    metadata.visual_context_telemetry_bridge === true ? "visual_context_telemetry_bridge" : "",
     metadata.privileged_prompt_composition === true ? "privileged_prompt_composition" : "",
     metadata.tainted_shell_argument === true ? "tainted_shell_argument" : "",
     metadata.tainted_filesystem_path === true ? "tainted_filesystem_path" : "",
@@ -34800,6 +34849,7 @@ function isPrivilegedToolSurface(tool: SurfaceObject): boolean {
     tool.metadata.visual_context_memory_bridge === true ||
     tool.metadata.visual_context_artifact_bridge === true ||
     tool.metadata.visual_context_training_dataset_bridge === true ||
+    tool.metadata.visual_context_telemetry_bridge === true ||
     tool.metadata.privileged_prompt_composition === true ||
     tool.metadata.tainted_shell_argument === true ||
     tool.metadata.tainted_filesystem_path === true ||

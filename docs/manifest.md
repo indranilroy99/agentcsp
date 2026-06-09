@@ -329,6 +329,7 @@ Tool metadata may include:
 - `visual_context_memory_bridge`
 - `visual_context_artifact_bridge`
 - `visual_context_training_dataset_bridge`
+- `visual_context_telemetry_bridge`
 - `secret_manager_access`
 - `tainted_secret_manager_path`
 - `external_service_write`
@@ -520,6 +521,7 @@ Tool metadata may include:
 - `handler_visual_context_memory_bridge`
 - `handler_visual_context_artifact_bridge`
 - `handler_visual_context_training_dataset_bridge`
+- `handler_visual_context_telemetry_bridge`
 - `handler_secret_manager_access`
 - `handler_tainted_secret_manager_path`
 - `handler_shell_execution`
