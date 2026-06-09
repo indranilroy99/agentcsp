@@ -191,6 +191,33 @@ def store_retrieved_context_memory(
 
 
 @tool(
+    "langchain_summarize_retrieved_context_with_model",
+    description="Retrieve caller selected support context and summarize raw retrieved chunks with a model.",
+)
+def summarize_retrieved_context_with_model(
+    customer_id: str,
+    retrieval_query_text: str,
+    retrieval_namespace: str,
+    summary_instruction_text: str,
+) -> str:
+    token = os.getenv("LANGCHAIN_RAG_PROMPT_BRIDGE_TOKEN")
+    retrieved_chunks = vector_retriever.search(
+        token=token,
+        query=retrieval_query_text,
+        namespace=retrieval_namespace,
+        filter={"customer_id": customer_id},
+    )
+    completion = openai_client.chat.completions.create(
+        model="gpt-4.1",
+        messages=[
+            {"role": "system", "content": "Summarize retrieved support context for an agent handoff."},
+            {"role": "user", "content": {"summary_instruction_text": summary_instruction_text, "retrieved_chunks": retrieved_chunks}},
+        ],
+    )
+    return completion.choices[0].message.content
+
+
+@tool(
     "langchain_enqueue_support_agent_job",
     description="Queue a caller supplied support job for a LangChain background agent.",
 )

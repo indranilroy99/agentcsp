@@ -1,0 +1,127 @@
+id: AGENTCSP-TOOL-094
+name: Source tool handler forwards retrieved RAG context into model prompt
+description: A source-defined agent tool handler retrieves caller-selected RAG or vector content and forwards the raw retrieved chunks into a model-provider prompt using runtime credentials, allowing retrieved prompt-injection or sensitive context to steer a privileged model call.
+category: rag_retrieval_prompt_bridge
+severity: critical
+maps_to:
+  owasp:
+    - LLM01:2025 Prompt Injection
+    - LLM02:2025 Sensitive Information Disclosure
+    - LLM05:2025 Improper Output Handling
+    - LLM06:2025 Excessive Agency
+  mitre_atlas:
+    - AML.T0051 LLM Plugin Compromise
+    - AML.T0059 Data from Information Repositories
+  nist_ai_rmf:
+    - MAP 4.1
+    - MEASURE 2.7
+    - MANAGE 2.4
+match:
+  object_type: tool
+  where:
+    - field: metadata.parsed_tool_schema
+      op: equals
+      value: true
+    - field: metadata.source_tool_handler_redacted
+      op: equals
+      value: true
+    - field: metadata.handler_body_analyzed
+      op: equals
+      value: true
+    - field: metadata.handler_rag_retrieval
+      op: equals
+      value: true
+    - field: metadata.handler_tainted_rag_retrieval_query
+      op: equals
+      value: true
+    - field: metadata.handler_model_provider_call
+      op: equals
+      value: true
+    - field: metadata.handler_rag_retrieval_prompt_bridge
+      op: equals
+      value: true
+    - field: metadata.rag_retrieval
+      op: equals
+      value: true
+    - field: metadata.tainted_rag_retrieval_query
+      op: equals
+      value: true
+    - field: metadata.model_provider_call
+      op: equals
+      value: true
+    - field: metadata.rag_retrieval_prompt_bridge
+      op: equals
+      value: true
+    - field: metadata.handler_secret_env_access
+      op: equals
+      value: true
+    - field: metadata.accepts_content_like_input
+      op: equals
+      value: true
+    - field: metadata.accepts_customer_data_input
+      op: equals
+      value: true
+    - field: metadata.authority_classes
+      op: includes
+      value: rag_retrieval
+    - field: metadata.authority_classes
+      op: includes
+      value: tainted_rag_retrieval_query
+    - field: metadata.authority_classes
+      op: includes
+      value: model_provider_call
+    - field: metadata.authority_classes
+      op: includes
+      value: rag_retrieval_prompt_bridge
+    - field: metadata.handler_authority_classes
+      op: includes
+      value: handler_rag_retrieval
+    - field: metadata.handler_authority_classes
+      op: includes
+      value: handler_tainted_rag_retrieval_query
+    - field: metadata.handler_authority_classes
+      op: includes
+      value: handler_model_provider_call
+    - field: metadata.handler_authority_classes
+      op: includes
+      value: handler_rag_retrieval_prompt_bridge
+    - field: metadata.schema_properties
+      op: contains_any
+      value:
+        - retrieval_query_text
+        - query
+        - search_query
+    - field: metadata.schema_properties
+      op: contains_any
+      value:
+        - retrieval_namespace
+        - vector_namespace
+        - collection
+        - collection_name
+        - index_name
+    - field: actions
+      op: includes
+      value: read
+    - field: actions
+      op: includes
+      value: send
+    - field: data_classes
+      op: contains_any
+      value:
+        - confidential
+        - pii
+    - field: external_reach
+      op: equals
+      value: true
+    - field: secret_exposure
+      op: equals
+      value: true
+    - field: side_effect
+      op: equals
+      value: true
+    - field: reversible
+      op: equals
+      value: false
+recommendation:
+  control: quarantine
+  text: Quarantine retrieved-context-to-model bridges until retrieval queries and namespaces are policy-owned or allowlisted, retrieved chunks carry provenance and trust labels, prompt-injection and secret sanitization run before any model-provider prompt, model credentials are scoped, and approval is required before retrieved context can steer downstream model calls.

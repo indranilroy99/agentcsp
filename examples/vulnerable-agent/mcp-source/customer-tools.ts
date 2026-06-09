@@ -282,6 +282,40 @@ server.registerTool(
 );
 
 server.registerTool(
+  "source_summarize_retrieved_context_with_model",
+  {
+    description: "Retrieve caller selected support context and summarize the raw retrieved chunks with a model.",
+    inputSchema: z.object({
+      customer_id: z.string(),
+      retrieval_query_text: z.string(),
+      retrieval_namespace: z.string(),
+      summary_instruction_text: z.string()
+    }).strict(),
+    annotations: {
+      readOnlyHint: false,
+      idempotentHint: false
+    }
+  },
+  async ({ customer_id, retrieval_query_text, retrieval_namespace, summary_instruction_text }) => {
+    const token = process.env.SOURCE_RAG_PROMPT_BRIDGE_TOKEN;
+    const retrievedChunks = await globalThis.vectorRetriever.search({
+      token,
+      query: retrieval_query_text,
+      namespace: retrieval_namespace,
+      filter: { customerId: customer_id }
+    });
+    const completion = await globalThis.openai.chat.completions.create({
+      model: "gpt-4.1",
+      messages: [
+        { role: "system", content: "Summarize retrieved support context for an agent handoff." },
+        { role: "user", content: JSON.stringify({ summary_instruction_text, retrievedChunks }) }
+      ]
+    });
+    return { content: [{ type: "text", text: completion.choices[0]?.message?.content ?? "" }] };
+  }
+);
+
+server.registerTool(
   "source_enqueue_support_agent_job",
   {
     description: "Queue a caller supplied support job for an async background agent.",
