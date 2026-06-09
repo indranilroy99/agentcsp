@@ -130,6 +130,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-126")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-127")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-128")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-129")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-001")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-002")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-003")).toBe(true);
@@ -6989,11 +6990,20 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerFeedbackAutoPromotionFindings)).not.toContain("feedback_pipeline.promote_to_model_update");
     expect(JSON.stringify(sourceHandlerFeedbackAutoPromotionFindings)).not.toContain("modelSelectedFeedbackRecord");
     expect(JSON.stringify(sourceHandlerFeedbackAutoPromotionFindings)).not.toContain("model_selected_feedback_record");
+    expect(JSON.stringify(sourceHandlerFeedbackAutoPromotionFindings)).not.toContain("mcpClient.callTool");
+    expect(JSON.stringify(sourceHandlerFeedbackAutoPromotionFindings)).not.toContain("tool_registry.call_tool");
+    expect(JSON.stringify(sourceHandlerFeedbackAutoPromotionFindings)).not.toContain("feedbackPipeline.promoteToEval");
+    expect(JSON.stringify(sourceHandlerFeedbackAutoPromotionFindings)).not.toContain("feedback_pipeline.promote_to_eval");
+    expect(JSON.stringify(sourceHandlerFeedbackAutoPromotionFindings)).not.toContain("toolResult");
+    expect(JSON.stringify(sourceHandlerFeedbackAutoPromotionFindings)).not.toContain("tool_result");
     expect(JSON.stringify(sourceHandlerFeedbackAutoPromotionFindings)).not.toContain("source feedback promoted");
     expect(JSON.stringify(sourceHandlerFeedbackAutoPromotionFindings)).not.toContain("framework feedback promoted");
     expect(JSON.stringify(sourceHandlerFeedbackAutoPromotionFindings)).not.toContain("source model selected feedback promoted");
     expect(JSON.stringify(sourceHandlerFeedbackAutoPromotionFindings)).not.toContain("framework model selected feedback promoted");
+    expect(JSON.stringify(sourceHandlerFeedbackAutoPromotionFindings)).not.toContain("source tool observation promoted to feedback");
+    expect(JSON.stringify(sourceHandlerFeedbackAutoPromotionFindings)).not.toContain("framework tool observation promoted to feedback");
     expect(JSON.stringify(sourceHandlerFeedbackAutoPromotionFindings)).not.toContain("Record caller supplied feedback");
+    expect(JSON.stringify(sourceHandlerFeedbackAutoPromotionFindings)).not.toContain("Promote a raw privileged tool observation");
     expect(JSON.stringify(sourceHandlerFeedbackAutoPromotionFindings)).not.toContain("Ask a model provider to draft a review payload");
     expect(JSON.stringify(sourceHandlerFeedbackAutoPromotionFindings)).not.toContain("Return one feedback review record");
     const sourceHandlerSafetyPolicyWeakeningFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-056");
@@ -7459,6 +7469,7 @@ describe("rule engine", () => {
       "langchain_fetch_tool_observation_url",
       "langchain_grant_privileged_tool_observation_authorization",
       "langchain_issue_privileged_tool_observation_credential",
+      "langchain_promote_privileged_tool_observation_feedback",
       "langchain_publish_privileged_tool_observation_prompt_registry",
       "langchain_run_tool_observation_command",
       "langchain_store_privileged_tool_observation_database",
@@ -7474,6 +7485,7 @@ describe("rule engine", () => {
       "source_fetch_tool_observation_url",
       "source_grant_privileged_tool_observation_authorization",
       "source_issue_privileged_tool_observation_credential",
+      "source_promote_privileged_tool_observation_feedback",
       "source_publish_privileged_tool_observation_prompt_registry",
       "source_run_tool_observation_command",
       "source_store_privileged_tool_observation_database"
@@ -7497,6 +7509,8 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerNestedToolInvocationFindings)).not.toContain("prompt_registry_client.update_prompt");
     expect(JSON.stringify(sourceHandlerNestedToolInvocationFindings)).not.toContain("permissionBrokerClient.upsertGrant");
     expect(JSON.stringify(sourceHandlerNestedToolInvocationFindings)).not.toContain("permission_broker_client.upsert_grant");
+    expect(JSON.stringify(sourceHandlerNestedToolInvocationFindings)).not.toContain("feedbackPipeline.promoteToEval");
+    expect(JSON.stringify(sourceHandlerNestedToolInvocationFindings)).not.toContain("feedback_pipeline.promote_to_eval");
     expect(JSON.stringify(sourceHandlerNestedToolInvocationFindings)).not.toContain("identityBroker.issueToken");
     expect(JSON.stringify(sourceHandlerNestedToolInvocationFindings)).not.toContain("identity_broker.issue_token");
     expect(JSON.stringify(sourceHandlerNestedToolInvocationFindings)).not.toContain("toolResult");
@@ -7510,9 +7524,12 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerNestedToolInvocationFindings)).not.toContain("framework tool observation granted authorization");
     expect(JSON.stringify(sourceHandlerNestedToolInvocationFindings)).not.toContain("source tool observation issued credential");
     expect(JSON.stringify(sourceHandlerNestedToolInvocationFindings)).not.toContain("framework tool observation issued credential");
+    expect(JSON.stringify(sourceHandlerNestedToolInvocationFindings)).not.toContain("source tool observation promoted to feedback");
+    expect(JSON.stringify(sourceHandlerNestedToolInvocationFindings)).not.toContain("framework tool observation promoted to feedback");
     expect(JSON.stringify(sourceHandlerNestedToolInvocationFindings)).not.toContain("source tool observation submitted through browser");
     expect(JSON.stringify(sourceHandlerNestedToolInvocationFindings)).not.toContain("framework tool observation submitted through browser");
     expect(JSON.stringify(sourceHandlerNestedToolInvocationFindings)).not.toContain("Publish a raw privileged tool observation");
+    expect(JSON.stringify(sourceHandlerNestedToolInvocationFindings)).not.toContain("Promote a raw privileged tool observation");
     const sourceHandlerToolOutputShellExecutionFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-111");
     expect(sourceHandlerToolOutputShellExecutionFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_run_tool_observation_command",
@@ -11926,6 +11943,76 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerModelOutputFeedbackBridgeFindings)).not.toContain("framework model selected feedback promoted");
     expect(JSON.stringify(sourceHandlerModelOutputFeedbackBridgeFindings)).not.toContain("Ask a model provider to draft a review payload");
     expect(JSON.stringify(sourceHandlerModelOutputFeedbackBridgeFindings)).not.toContain("Return one feedback review record");
+    const sourceHandlerToolOutputFeedbackBridgeFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-129");
+    expect(sourceHandlerToolOutputFeedbackBridgeFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
+      "langchain_promote_privileged_tool_observation_feedback",
+      "source_promote_privileged_tool_observation_feedback"
+    ]);
+    expect(sourceHandlerToolOutputFeedbackBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
+    expect(sourceHandlerToolOutputFeedbackBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerToolOutputFeedbackBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
+    expect(sourceHandlerToolOutputFeedbackBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
+    expect(sourceHandlerToolOutputFeedbackBridgeFindings.every((finding) => finding.matched_object.metadata.source_tool_handler_redacted === true)).toBe(true);
+    expect(sourceHandlerToolOutputFeedbackBridgeFindings.every((finding) => finding.matched_object.metadata.handler_tool_invocation === true)).toBe(true);
+    expect(sourceHandlerToolOutputFeedbackBridgeFindings.every((finding) => finding.matched_object.metadata.handler_feedback_pipeline_write === true)).toBe(true);
+    expect(sourceHandlerToolOutputFeedbackBridgeFindings.every((finding) => finding.matched_object.metadata.handler_feedback_auto_promotion === true)).toBe(true);
+    expect(sourceHandlerToolOutputFeedbackBridgeFindings.every((finding) => finding.matched_object.metadata.handler_tainted_feedback_routing === true)).toBe(true);
+    expect(sourceHandlerToolOutputFeedbackBridgeFindings.every((finding) => finding.matched_object.metadata.handler_tool_output_feedback_bridge === true)).toBe(true);
+    expect(sourceHandlerToolOutputFeedbackBridgeFindings.every((finding) => finding.matched_object.metadata.handler_secret_env_access === true)).toBe(true);
+    expect(sourceHandlerToolOutputFeedbackBridgeFindings.every((finding) => finding.matched_object.metadata.nested_tool_invocation === true)).toBe(true);
+    expect(sourceHandlerToolOutputFeedbackBridgeFindings.every((finding) => finding.matched_object.metadata.feedback_pipeline_write === true)).toBe(true);
+    expect(sourceHandlerToolOutputFeedbackBridgeFindings.every((finding) => finding.matched_object.metadata.feedback_auto_promotion === true)).toBe(true);
+    expect(sourceHandlerToolOutputFeedbackBridgeFindings.every((finding) => finding.matched_object.metadata.tainted_feedback_routing === true)).toBe(true);
+    expect(sourceHandlerToolOutputFeedbackBridgeFindings.every((finding) => finding.matched_object.metadata.tool_output_feedback_bridge === true)).toBe(true);
+    expect(sourceHandlerToolOutputFeedbackBridgeFindings.every((finding) => finding.matched_object.metadata.accepts_content_like_input === true)).toBe(true);
+    expect(sourceHandlerToolOutputFeedbackBridgeFindings.every((finding) => finding.matched_object.metadata.accepts_customer_data_input === true)).toBe(true);
+    expect(sourceHandlerToolOutputFeedbackBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.authority_classes.includes("nested_tool_invocation")
+    )).toBe(true);
+    expect(sourceHandlerToolOutputFeedbackBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.authority_classes.includes("feedback_pipeline_write")
+    )).toBe(true);
+    expect(sourceHandlerToolOutputFeedbackBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.authority_classes.includes("feedback_auto_promotion")
+    )).toBe(true);
+    expect(sourceHandlerToolOutputFeedbackBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.authority_classes.includes("tainted_feedback_routing")
+    )).toBe(true);
+    expect(sourceHandlerToolOutputFeedbackBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.authority_classes.includes("tool_output_feedback_bridge")
+    )).toBe(true);
+    expect(sourceHandlerToolOutputFeedbackBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.handler_authority_classes.includes("handler_tool_invocation")
+    )).toBe(true);
+    expect(sourceHandlerToolOutputFeedbackBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.handler_authority_classes.includes("handler_feedback_pipeline_write")
+    )).toBe(true);
+    expect(sourceHandlerToolOutputFeedbackBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.handler_authority_classes.includes("handler_feedback_auto_promotion")
+    )).toBe(true);
+    expect(sourceHandlerToolOutputFeedbackBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.handler_authority_classes.includes("handler_tainted_feedback_routing")
+    )).toBe(true);
+    expect(sourceHandlerToolOutputFeedbackBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.handler_authority_classes.includes("handler_tool_output_feedback_bridge")
+    )).toBe(true);
+    expect(sourceHandlerToolOutputFeedbackBridgeFindings.every((finding) => finding.matched_object.actions.includes("execute"))).toBe(true);
+    expect(sourceHandlerToolOutputFeedbackBridgeFindings.every((finding) => finding.matched_object.actions.includes("send"))).toBe(true);
+    expect(sourceHandlerToolOutputFeedbackBridgeFindings.every((finding) => finding.matched_object.actions.includes("write"))).toBe(true);
+    expect(sourceHandlerToolOutputFeedbackBridgeFindings.every((finding) => finding.matched_object.actions.includes("remember"))).toBe(true);
+    expect(sourceHandlerToolOutputFeedbackBridgeFindings.every((finding) => finding.matched_object.external_reach === true)).toBe(true);
+    expect(sourceHandlerToolOutputFeedbackBridgeFindings.every((finding) => finding.matched_object.secret_exposure === true)).toBe(true);
+    expect(sourceHandlerToolOutputFeedbackBridgeFindings.every((finding) => finding.matched_object.side_effect === true)).toBe(true);
+    expect(sourceHandlerToolOutputFeedbackBridgeFindings.every((finding) => finding.matched_object.reversible === false)).toBe(true);
+    expect(JSON.stringify(sourceHandlerToolOutputFeedbackBridgeFindings)).not.toContain("mcpClient.callTool");
+    expect(JSON.stringify(sourceHandlerToolOutputFeedbackBridgeFindings)).not.toContain("tool_registry.call_tool");
+    expect(JSON.stringify(sourceHandlerToolOutputFeedbackBridgeFindings)).not.toContain("feedbackPipeline.promoteToEval");
+    expect(JSON.stringify(sourceHandlerToolOutputFeedbackBridgeFindings)).not.toContain("feedback_pipeline.promote_to_eval");
+    expect(JSON.stringify(sourceHandlerToolOutputFeedbackBridgeFindings)).not.toContain("toolResult");
+    expect(JSON.stringify(sourceHandlerToolOutputFeedbackBridgeFindings)).not.toContain("tool_result");
+    expect(JSON.stringify(sourceHandlerToolOutputFeedbackBridgeFindings)).not.toContain("source tool observation promoted to feedback");
+    expect(JSON.stringify(sourceHandlerToolOutputFeedbackBridgeFindings)).not.toContain("framework tool observation promoted to feedback");
+    expect(JSON.stringify(sourceHandlerToolOutputFeedbackBridgeFindings)).not.toContain("Promote a raw privileged tool observation");
     const sourceHandlerDynamicCodeFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-019");
     expect(sourceHandlerDynamicCodeFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_evaluate_agent_expression",

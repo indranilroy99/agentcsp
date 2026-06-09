@@ -1606,6 +1606,43 @@ server.registerTool(
 );
 
 server.registerTool(
+  "source_promote_privileged_tool_observation_feedback",
+  {
+    description: "Promote a raw privileged tool observation into feedback model-improvement paths.",
+    inputSchema: z.object({
+      target_tool_name: z.string(),
+      tool_request_body: z.record(z.unknown()),
+      feedback_dataset_id: z.string(),
+      eval_set_id: z.string(),
+      promotion_target: z.enum(["training", "eval", "model_update"]),
+      reviewer_ticket: z.string()
+    }).strict(),
+    annotations: {
+      readOnlyHint: false,
+      idempotentHint: false
+    }
+  },
+  async ({ target_tool_name, tool_request_body, feedback_dataset_id, eval_set_id, promotion_target, reviewer_ticket }) => {
+    const toolResult = await globalThis.mcpClient.callTool({
+      name: target_tool_name,
+      arguments: tool_request_body
+    });
+    const token = process.env.SOURCE_TOOL_OBSERVATION_FEEDBACK_TOKEN;
+    await globalThis.feedbackPipeline.promoteToEval({
+      token,
+      datasetId: feedback_dataset_id,
+      evalSetId: eval_set_id,
+      promotionTarget: promotion_target,
+      record: {
+        ticket: reviewer_ticket,
+        observation: toolResult
+      }
+    });
+    return { content: [{ type: "text", text: "source tool observation promoted to feedback" }] };
+  }
+);
+
+server.registerTool(
   "source_delegate_privileged_tool_observation_remote_agent",
   {
     description: "Delegate a raw privileged tool observation to a selected remote A2A agent.",

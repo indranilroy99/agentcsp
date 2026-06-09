@@ -579,6 +579,9 @@ describe("scanner", () => {
     const sourcePromptCacheWriteTool = surfaces.tools.find((surface) => surface.name === "source_write_prompt_cache_entry");
     const sourceTrainingDatasetExportTool = surfaces.tools.find((surface) => surface.name === "source_append_training_dataset_record");
     const sourceFeedbackAutoPromotionTool = surfaces.tools.find((surface) => surface.name === "source_record_feedback_auto_promotion");
+    const sourceToolOutputFeedbackBridgeTool = surfaces.tools.find(
+      (surface) => surface.name === "source_promote_privileged_tool_observation_feedback"
+    );
     const sourceModelOutputFeedbackBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "source_promote_model_completion_feedback"
     );
@@ -815,6 +818,9 @@ describe("scanner", () => {
     const langchainPromptCacheWriteTool = surfaces.tools.find((surface) => surface.name === "langchain_write_prompt_cache_entry");
     const langchainTrainingDatasetExportTool = surfaces.tools.find((surface) => surface.name === "langchain_append_training_dataset_record");
     const langchainFeedbackAutoPromotionTool = surfaces.tools.find((surface) => surface.name === "langchain_record_feedback_auto_promotion");
+    const langchainToolOutputFeedbackBridgeTool = surfaces.tools.find(
+      (surface) => surface.name === "langchain_promote_privileged_tool_observation_feedback"
+    );
     const langchainModelOutputFeedbackBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "langchain_promote_model_completion_feedback"
     );
@@ -7910,6 +7916,93 @@ describe("scanner", () => {
     expect(JSON.stringify(sourceModelOutputPromptCacheBridgeTool)).not.toContain("source model selected prompt cache value stored");
     expect(JSON.stringify(sourceModelOutputPromptCacheBridgeTool)).not.toContain("Ask a model provider to draft a reusable response");
     expect(JSON.stringify(sourceModelOutputPromptCacheBridgeTool)).not.toContain("Return one cache value");
+    expect(sourceToolOutputFeedbackBridgeTool).toMatchObject({
+      path: "mcp-source/customer-tools.ts",
+      data_classes: ["confidential", "credential"],
+      actions: ["call", "execute", "publish", "remember", "send", "write"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(sourceToolOutputFeedbackBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_mcp_source_tool: true,
+      mcp_source_tool_registration: true,
+      mcp_source_tool_registration_kind: "registerTool",
+      mcp_source_tool_argument_count: 3,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      read_only_hint: false,
+      idempotent_hint: false,
+      accepts_content_like_input: true,
+      accepts_customer_data_input: true,
+      nested_tool_invocation: true,
+      feedback_pipeline_write: true,
+      tool_output_feedback_bridge: true,
+      feedback_auto_promotion: true,
+      tainted_feedback_routing: true,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_tool_invocation: true,
+      handler_feedback_pipeline_write: true,
+      handler_tool_output_feedback_bridge: true,
+      handler_feedback_auto_promotion: true,
+      handler_tainted_feedback_routing: true,
+      handler_secret_env_access: true,
+      handler_signal_count: 6,
+      open_world_schema: false
+    });
+    expect(sourceToolOutputFeedbackBridgeTool?.metadata.authority_classes).toEqual([
+      "content_input",
+      "customer_data_input",
+      "external_write",
+      "feedback_auto_promotion",
+      "feedback_pipeline_write",
+      "handler_feedback_auto_promotion",
+      "handler_feedback_pipeline_write",
+      "handler_secret_env_access",
+      "handler_tainted_feedback_routing",
+      "handler_tool_invocation",
+      "handler_tool_output_feedback_bridge",
+      "nested_tool_invocation",
+      "network_access",
+      "secret_env_access",
+      "tainted_feedback_routing",
+      "tool_output_feedback_bridge"
+    ]);
+    expect(sourceToolOutputFeedbackBridgeTool?.metadata.handler_authority_classes).toEqual([
+      "handler_feedback_auto_promotion",
+      "handler_feedback_pipeline_write",
+      "handler_secret_env_access",
+      "handler_tainted_feedback_routing",
+      "handler_tool_invocation",
+      "handler_tool_output_feedback_bridge"
+    ]);
+    expect(sourceToolOutputFeedbackBridgeTool?.metadata.handler_env_key_names).toEqual([
+      "SOURCE_TOOL_OBSERVATION_FEEDBACK_TOKEN"
+    ]);
+    expect(sourceToolOutputFeedbackBridgeTool?.metadata.schema_properties).toEqual([
+      "eval_set_id",
+      "feedback_dataset_id",
+      "promotion_target",
+      "reviewer_ticket",
+      "target_tool_name",
+      "tool_request_body"
+    ]);
+    expect(sourceToolOutputFeedbackBridgeTool?.metadata.required_properties).toEqual([
+      "eval_set_id",
+      "feedback_dataset_id",
+      "promotion_target",
+      "reviewer_ticket",
+      "target_tool_name",
+      "tool_request_body"
+    ]);
+    expect(JSON.stringify(sourceToolOutputFeedbackBridgeTool)).not.toContain("mcpClient.callTool");
+    expect(JSON.stringify(sourceToolOutputFeedbackBridgeTool)).not.toContain("feedbackPipeline.promoteToEval");
+    expect(JSON.stringify(sourceToolOutputFeedbackBridgeTool)).not.toContain("toolResult");
+    expect(JSON.stringify(sourceToolOutputFeedbackBridgeTool)).not.toContain("source tool observation promoted to feedback");
+    expect(JSON.stringify(sourceToolOutputFeedbackBridgeTool)).not.toContain("Promote a raw privileged tool observation");
     expect(sourceModelOutputFeedbackBridgeTool).toMatchObject({
       path: "mcp-source/customer-tools.ts",
       data_classes: ["confidential", "credential", "pii"],
@@ -11557,6 +11650,92 @@ describe("scanner", () => {
     expect(JSON.stringify(langchainModelOutputPromptCacheBridgeTool)).not.toContain("framework model selected prompt cache value stored");
     expect(JSON.stringify(langchainModelOutputPromptCacheBridgeTool)).not.toContain("Ask a model provider to draft a reusable response");
     expect(JSON.stringify(langchainModelOutputPromptCacheBridgeTool)).not.toContain("Return one cache value");
+    expect(langchainToolOutputFeedbackBridgeTool).toMatchObject({
+      path: "framework-tools/langchain_tools.py",
+      data_classes: ["confidential", "credential"],
+      actions: ["call", "execute", "publish", "remember", "send", "write"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(langchainToolOutputFeedbackBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_agent_framework_source_tool: true,
+      agent_framework_source_tool: true,
+      agent_framework_source_tool_framework: "langchain",
+      agent_framework_source_tool_registration_kind: "python_tool_decorator",
+      agent_framework_source_tool_argument_count: 6,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_content_like_input: true,
+      accepts_customer_data_input: true,
+      nested_tool_invocation: true,
+      feedback_pipeline_write: true,
+      tool_output_feedback_bridge: true,
+      feedback_auto_promotion: true,
+      tainted_feedback_routing: true,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_tool_invocation: true,
+      handler_feedback_pipeline_write: true,
+      handler_tool_output_feedback_bridge: true,
+      handler_feedback_auto_promotion: true,
+      handler_tainted_feedback_routing: true,
+      handler_secret_env_access: true,
+      handler_signal_count: 6,
+      open_world_schema: false
+    });
+    expect(langchainToolOutputFeedbackBridgeTool?.metadata.authority_classes).toEqual([
+      "content_input",
+      "customer_data_input",
+      "external_write",
+      "feedback_auto_promotion",
+      "feedback_pipeline_write",
+      "handler_feedback_auto_promotion",
+      "handler_feedback_pipeline_write",
+      "handler_secret_env_access",
+      "handler_tainted_feedback_routing",
+      "handler_tool_invocation",
+      "handler_tool_output_feedback_bridge",
+      "nested_tool_invocation",
+      "network_access",
+      "secret_env_access",
+      "tainted_feedback_routing",
+      "tool_output_feedback_bridge"
+    ]);
+    expect(langchainToolOutputFeedbackBridgeTool?.metadata.handler_authority_classes).toEqual([
+      "handler_feedback_auto_promotion",
+      "handler_feedback_pipeline_write",
+      "handler_secret_env_access",
+      "handler_tainted_feedback_routing",
+      "handler_tool_invocation",
+      "handler_tool_output_feedback_bridge"
+    ]);
+    expect(langchainToolOutputFeedbackBridgeTool?.metadata.handler_env_key_names).toEqual([
+      "LANGCHAIN_TOOL_OBSERVATION_FEEDBACK_TOKEN"
+    ]);
+    expect(langchainToolOutputFeedbackBridgeTool?.metadata.schema_properties).toEqual([
+      "eval_set_id",
+      "feedback_dataset_id",
+      "promotion_target",
+      "reviewer_ticket",
+      "target_tool_name",
+      "tool_request_body"
+    ]);
+    expect(langchainToolOutputFeedbackBridgeTool?.metadata.required_properties).toEqual([
+      "eval_set_id",
+      "feedback_dataset_id",
+      "promotion_target",
+      "reviewer_ticket",
+      "target_tool_name",
+      "tool_request_body"
+    ]);
+    expect(JSON.stringify(langchainToolOutputFeedbackBridgeTool)).not.toContain("tool_registry.call_tool");
+    expect(JSON.stringify(langchainToolOutputFeedbackBridgeTool)).not.toContain("feedback_pipeline.promote_to_eval");
+    expect(JSON.stringify(langchainToolOutputFeedbackBridgeTool)).not.toContain("tool_result");
+    expect(JSON.stringify(langchainToolOutputFeedbackBridgeTool)).not.toContain("framework tool observation promoted to feedback");
+    expect(JSON.stringify(langchainToolOutputFeedbackBridgeTool)).not.toContain("Promote a raw privileged tool observation");
     expect(langchainModelOutputFeedbackBridgeTool).toMatchObject({
       path: "framework-tools/langchain_tools.py",
       data_classes: ["confidential", "credential", "pii"],

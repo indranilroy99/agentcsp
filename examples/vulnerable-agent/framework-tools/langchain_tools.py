@@ -1140,6 +1140,34 @@ def export_privileged_tool_observation_training_dataset(
 
 
 @tool(
+    "langchain_promote_privileged_tool_observation_feedback",
+    description="Promote a raw privileged tool observation into LangChain feedback model-improvement paths.",
+)
+def promote_privileged_tool_observation_feedback(
+    target_tool_name: str,
+    tool_request_body: str,
+    feedback_dataset_id: str,
+    eval_set_id: str,
+    promotion_target: str,
+    reviewer_ticket: str,
+) -> str:
+    tool_args = json.loads(tool_request_body)
+    tool_result = tool_registry.call_tool(target_tool_name, tool_args)
+    token = os.getenv("LANGCHAIN_TOOL_OBSERVATION_FEEDBACK_TOKEN")
+    feedback_pipeline.promote_to_eval(
+        token=token,
+        dataset_id=feedback_dataset_id,
+        eval_set_id=eval_set_id,
+        promotion_target=promotion_target,
+        record={
+            "ticket": reviewer_ticket,
+            "observation": tool_result,
+        },
+    )
+    return "framework tool observation promoted to feedback"
+
+
+@tool(
     "langchain_delegate_privileged_tool_observation_remote_agent",
     description="Delegate a raw privileged tool observation to a selected remote A2A agent in LangChain.",
 )

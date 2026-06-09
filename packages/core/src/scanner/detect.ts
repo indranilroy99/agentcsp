@@ -24153,6 +24153,7 @@ function addToolDefinitionSurface(
       !authority.model_output_training_dataset_bridge &&
       !authority.feedback_pipeline_write &&
       !authority.model_output_feedback_bridge &&
+      !authority.tool_output_feedback_bridge &&
       !authority.safety_policy_write &&
       !authority.secret_manager_safety_policy_bridge &&
       !authority.tool_output_safety_policy_bridge &&
@@ -24279,6 +24280,7 @@ function addToolDefinitionSurface(
       feedback_pipeline_write: authority.feedback_pipeline_write,
       secret_manager_feedback_bridge: authority.secret_manager_feedback_bridge,
       model_output_feedback_bridge: authority.model_output_feedback_bridge,
+      tool_output_feedback_bridge: authority.tool_output_feedback_bridge,
       secret_manager_artifact_bridge: authority.secret_manager_artifact_bridge,
       tainted_feedback_payload: authority.tainted_feedback_payload,
       feedback_auto_promotion: authority.feedback_auto_promotion,
@@ -26744,6 +26746,7 @@ interface SourceToolHandlerSignals {
   handlerFeedbackPipelineWrite: boolean;
   handlerSecretManagerFeedbackBridge: boolean;
   handlerModelOutputFeedbackBridge: boolean;
+  handlerToolOutputFeedbackBridge: boolean;
   handlerSecretManagerArtifactBridge: boolean;
   handlerModelOutputArtifactBridge: boolean;
   handlerToolOutputArtifactBridge: boolean;
@@ -27305,6 +27308,7 @@ function sourceToolHandlerSignalMetadata(signals: SourceToolHandlerSignals | und
     handler_feedback_pipeline_write: signals.handlerFeedbackPipelineWrite,
     handler_secret_manager_feedback_bridge: signals.handlerSecretManagerFeedbackBridge,
     handler_model_output_feedback_bridge: signals.handlerModelOutputFeedbackBridge,
+    handler_tool_output_feedback_bridge: signals.handlerToolOutputFeedbackBridge,
     handler_secret_manager_artifact_bridge: signals.handlerSecretManagerArtifactBridge,
     handler_model_output_artifact_bridge: signals.handlerModelOutputArtifactBridge,
     handler_tool_output_artifact_bridge: signals.handlerToolOutputArtifactBridge,
@@ -27514,6 +27518,9 @@ function classifySourceToolHandlerSignals(
   const modelOutputFeedbackBridge = modelProviderCall && feedbackPipelineWrite && (language === "javascript"
     ? hasJavaScriptHandlerModelOutputFeedbackBridge(handlerSource)
     : hasPythonHandlerModelOutputFeedbackBridge(handlerSource));
+  const toolOutputFeedbackBridge = feedbackPipelineWrite && (language === "javascript"
+    ? hasJavaScriptHandlerToolOutputFeedbackBridge(handlerSource)
+    : hasPythonHandlerToolOutputFeedbackBridge(handlerSource));
   const safetyPolicyWrite = language === "javascript"
     ? hasJavaScriptHandlerSafetyPolicyWrite(handlerSource)
     : hasPythonHandlerSafetyPolicyWrite(handlerSource);
@@ -27896,6 +27903,7 @@ function classifySourceToolHandlerSignals(
   if (feedbackPipelineWrite) classes.add("handler_feedback_pipeline_write");
   if (secretManagerFeedbackBridge) classes.add("handler_secret_manager_feedback_bridge");
   if (modelOutputFeedbackBridge) classes.add("handler_model_output_feedback_bridge");
+  if (toolOutputFeedbackBridge) classes.add("handler_tool_output_feedback_bridge");
   if (secretManagerArtifactBridge) classes.add("handler_secret_manager_artifact_bridge");
   if (modelOutputArtifactBridge) classes.add("handler_model_output_artifact_bridge");
   if (toolOutputArtifactBridge) classes.add("handler_tool_output_artifact_bridge");
@@ -28045,6 +28053,7 @@ function classifySourceToolHandlerSignals(
     handlerFeedbackPipelineWrite: feedbackPipelineWrite,
     handlerSecretManagerFeedbackBridge: secretManagerFeedbackBridge,
     handlerModelOutputFeedbackBridge: modelOutputFeedbackBridge,
+    handlerToolOutputFeedbackBridge: toolOutputFeedbackBridge,
     handlerSecretManagerArtifactBridge: secretManagerArtifactBridge,
     handlerModelOutputArtifactBridge: modelOutputArtifactBridge,
     handlerToolOutputArtifactBridge: toolOutputArtifactBridge,
@@ -30560,6 +30569,30 @@ function hasJavaScriptHandlerModelOutputFeedbackBridge(source: string): boolean 
 
 function hasPythonHandlerModelOutputFeedbackBridge(source: string): boolean {
   const identifiers = extractPythonModelOutputIdentifiers(source);
+  return identifiers.length > 0 && callExpressionReferencesAnyIdentifier(
+    [
+      /\b(?:feedback_client|feedback_pipeline|feedback_store|review_client|annotation_client|labeling_client|preference_client|rlhf_client|reward_model_client|model_improvement_client|human_feedback_client|evaluation_client|eval_set_client)\s*(?:\.\s*[A-Za-z_]\w*){0,5}\s*\.\s*(?:record|record_feedback|submit|submit_feedback|append|append_feedback|add|add_feedback|create|create_feedback|create_annotation|annotate|label|label_example|write|write_feedback|save|store|upload|export|promote|promote_to_training|promote_to_eval|promote_to_model_update|push)\s*\(([\s\S]{0,2200})\)/giu,
+      /\b(?:record_feedback|submit_feedback|write_feedback_record|append_feedback_record|promote_feedback_to_training|promote_feedback_to_eval|promote_feedback_to_model_update|create_preference_record|write_rlhf_record)\s*\(([\s\S]{0,2200})\)/giu
+    ],
+    source,
+    identifiers
+  );
+}
+
+function hasJavaScriptHandlerToolOutputFeedbackBridge(source: string): boolean {
+  const identifiers = extractJavaScriptToolOutputIdentifiers(source);
+  return identifiers.length > 0 && callExpressionReferencesAnyIdentifier(
+    [
+      /\b(?:feedbackClient|feedbackPipeline|feedbackStore|reviewClient|annotationClient|labelingClient|preferenceClient|rlhfClient|rewardModelClient|modelImprovementClient|humanFeedbackClient|evaluationClient|evalSetClient)\s*(?:\.\s*[A-Za-z_$][\w$]*){0,5}\s*\.\s*(?:record|recordFeedback|submit|submitFeedback|append|appendFeedback|add|addFeedback|create|createFeedback|createAnnotation|annotate|label|labelExample|write|writeFeedback|save|store|upload|export|promote|promoteToTraining|promoteToEval|promoteToModelUpdate|push)\s*\(([\s\S]{0,2200})\)/giu,
+      /\b(?:recordFeedback|submitFeedback|writeFeedbackRecord|appendFeedbackRecord|promoteFeedbackToTraining|promoteFeedbackToEval|promoteFeedbackToModelUpdate|createPreferenceRecord|writeRlhfRecord)\s*\(([\s\S]{0,2200})\)/giu
+    ],
+    source,
+    identifiers
+  );
+}
+
+function hasPythonHandlerToolOutputFeedbackBridge(source: string): boolean {
+  const identifiers = extractPythonToolOutputIdentifiers(source);
   return identifiers.length > 0 && callExpressionReferencesAnyIdentifier(
     [
       /\b(?:feedback_client|feedback_pipeline|feedback_store|review_client|annotation_client|labeling_client|preference_client|rlhf_client|reward_model_client|model_improvement_client|human_feedback_client|evaluation_client|eval_set_client)\s*(?:\.\s*[A-Za-z_]\w*){0,5}\s*\.\s*(?:record|record_feedback|submit|submit_feedback|append|append_feedback|add|add_feedback|create|create_feedback|create_annotation|annotate|label|label_example|write|write_feedback|save|store|upload|export|promote|promote_to_training|promote_to_eval|promote_to_model_update|push)\s*\(([\s\S]{0,2200})\)/giu,
@@ -34454,6 +34487,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   feedback_pipeline_write: boolean;
   secret_manager_feedback_bridge: boolean;
   model_output_feedback_bridge: boolean;
+  tool_output_feedback_bridge: boolean;
   secret_manager_artifact_bridge: boolean;
   tainted_feedback_payload: boolean;
   feedback_auto_promotion: boolean;
@@ -34564,6 +34598,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   const handlerFeedbackPipelineWrite = handler?.handlerFeedbackPipelineWrite === true;
   const handlerSecretManagerFeedbackBridge = handler?.handlerSecretManagerFeedbackBridge === true;
   const handlerModelOutputFeedbackBridge = handler?.handlerModelOutputFeedbackBridge === true;
+  const handlerToolOutputFeedbackBridge = handler?.handlerToolOutputFeedbackBridge === true;
   const handlerSecretManagerArtifactBridge = handler?.handlerSecretManagerArtifactBridge === true;
   const handlerTaintedFeedbackPayload = handler?.handlerTaintedFeedbackPayload === true;
   const handlerFeedbackAutoPromotion = handler?.handlerFeedbackAutoPromotion === true;
@@ -35194,6 +35229,13 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
     actions.add("write");
     actions.add("remember");
   }
+  if (handlerToolOutputFeedbackBridge) {
+    classes.add("tool_output_feedback_bridge");
+    actions.add("execute");
+    actions.add("send");
+    actions.add("write");
+    actions.add("remember");
+  }
   if (handlerSecretManagerArtifactBridge) {
     classes.add("secret_manager_artifact_bridge");
     actions.add("send");
@@ -35537,6 +35579,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerFeedbackPipelineWrite ||
       handlerSecretManagerFeedbackBridge ||
       handlerModelOutputFeedbackBridge ||
+      handlerToolOutputFeedbackBridge ||
       handlerSecretManagerArtifactBridge ||
       handlerModelOutputArtifactBridge ||
       handlerTaintedFeedbackPayload ||
@@ -35679,6 +35722,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerFeedbackPipelineWrite ||
       handlerSecretManagerFeedbackBridge ||
       handlerModelOutputFeedbackBridge ||
+      handlerToolOutputFeedbackBridge ||
       handlerSecretManagerArtifactBridge ||
       handlerSafetyPolicyWrite ||
       handlerModelOutputSafetyPolicyBridge ||
@@ -35746,6 +35790,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       (handlerToolOutputTrainingDatasetBridge && handlerSecretEnvAccess) ||
       handlerSecretManagerFeedbackBridge ||
       (handlerModelOutputFeedbackBridge && handlerSecretEnvAccess) ||
+      (handlerToolOutputFeedbackBridge && handlerSecretEnvAccess) ||
       handlerSecretManagerArtifactBridge ||
       (handlerModelOutputArtifactBridge && handlerSecretEnvAccess) ||
       (handlerToolOutputEmbeddingVectorBridge && handlerSecretEnvAccess) ||
@@ -35879,6 +35924,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
     feedback_pipeline_write: handlerFeedbackPipelineWrite,
     secret_manager_feedback_bridge: handlerSecretManagerFeedbackBridge,
     model_output_feedback_bridge: handlerModelOutputFeedbackBridge,
+    tool_output_feedback_bridge: handlerToolOutputFeedbackBridge,
     secret_manager_artifact_bridge: handlerSecretManagerArtifactBridge,
     tainted_feedback_payload: handlerTaintedFeedbackPayload,
     feedback_auto_promotion: handlerFeedbackAutoPromotion,
@@ -36027,6 +36073,7 @@ function authoritySignature(tool: SurfaceObject): string {
     metadata.feedback_pipeline_write === true ? "feedback_pipeline_write" : "",
     metadata.secret_manager_feedback_bridge === true ? "secret_manager_feedback_bridge" : "",
     metadata.model_output_feedback_bridge === true ? "model_output_feedback_bridge" : "",
+    metadata.tool_output_feedback_bridge === true ? "tool_output_feedback_bridge" : "",
     metadata.secret_manager_artifact_bridge === true ? "secret_manager_artifact_bridge" : "",
     metadata.tainted_feedback_payload === true ? "tainted_feedback_payload" : "",
     metadata.feedback_auto_promotion === true ? "feedback_auto_promotion" : "",
@@ -36182,6 +36229,7 @@ function isPrivilegedToolSurface(tool: SurfaceObject): boolean {
     tool.metadata.feedback_pipeline_write === true ||
     tool.metadata.secret_manager_feedback_bridge === true ||
     tool.metadata.model_output_feedback_bridge === true ||
+    tool.metadata.tool_output_feedback_bridge === true ||
     tool.metadata.secret_manager_artifact_bridge === true ||
     tool.metadata.tainted_feedback_payload === true ||
     tool.metadata.feedback_auto_promotion === true ||
