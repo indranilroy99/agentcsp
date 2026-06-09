@@ -119,6 +119,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-115")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-116")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-117")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-118")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-001")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-002")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-003")).toBe(true);
@@ -6598,9 +6599,11 @@ describe("rule engine", () => {
     expect(sourceHandlerTaskQueueFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_enqueue_authenticated_page_screenshot_job",
       "langchain_enqueue_customer_vault_secret_job",
+      "langchain_enqueue_model_selected_background_job",
       "langchain_enqueue_support_agent_job",
       "source_enqueue_authenticated_page_screenshot_job",
       "source_enqueue_customer_vault_secret_job",
+      "source_enqueue_model_selected_background_job",
       "source_enqueue_support_agent_job"
     ]);
     expect(sourceHandlerTaskQueueFindings.every((finding) => finding.severity === "critical")).toBe(true);
@@ -6638,6 +6641,11 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerTaskQueueFindings)).not.toContain("framework agent job queued");
     expect(JSON.stringify(sourceHandlerTaskQueueFindings)).not.toContain("source vault secret queued for background agent");
     expect(JSON.stringify(sourceHandlerTaskQueueFindings)).not.toContain("framework vault secret queued for background agent");
+    expect(JSON.stringify(sourceHandlerTaskQueueFindings)).not.toContain("modelSelectedJobPayload");
+    expect(JSON.stringify(sourceHandlerTaskQueueFindings)).not.toContain("model_selected_job_payload");
+    expect(JSON.stringify(sourceHandlerTaskQueueFindings)).not.toContain("source model selected background job queued");
+    expect(JSON.stringify(sourceHandlerTaskQueueFindings)).not.toContain("framework model selected background job queued");
+    expect(JSON.stringify(sourceHandlerTaskQueueFindings)).not.toContain("Ask a model provider to draft a background-agent job");
     expect(JSON.stringify(sourceHandlerTaskQueueFindings)).not.toContain("Queue a caller supplied support job");
     const sourceHandlerSecretManagerTaskQueueBridgeFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-084");
     expect(sourceHandlerSecretManagerTaskQueueBridgeFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
@@ -10346,6 +10354,7 @@ describe("rule engine", () => {
       "langchain_fetch_model_selected_url",
       "langchain_grant_model_selected_authorization",
       "langchain_issue_model_selected_credential",
+      "langchain_enqueue_model_selected_background_job",
       "langchain_run_model_generated_command",
       "langchain_review_authenticated_page_screenshot_with_model",
       "langchain_summarize_retrieved_context_with_model",
@@ -10357,6 +10366,7 @@ describe("rule engine", () => {
       "source_fetch_model_selected_url",
       "source_grant_model_selected_authorization",
       "source_issue_model_selected_credential",
+      "source_enqueue_model_selected_background_job",
       "source_run_model_generated_command",
       "source_review_authenticated_page_screenshot_with_model",
       "source_summarize_retrieved_context_with_model",
@@ -10409,6 +10419,11 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerModelProviderFindings)).not.toContain("source visual context reviewed");
     expect(JSON.stringify(sourceHandlerModelProviderFindings)).not.toContain("framework visual context reviewed");
     expect(JSON.stringify(sourceHandlerModelProviderFindings)).not.toContain("Review an authenticated browser screenshot");
+    expect(JSON.stringify(sourceHandlerModelProviderFindings)).not.toContain("modelSelectedJobPayload");
+    expect(JSON.stringify(sourceHandlerModelProviderFindings)).not.toContain("model_selected_job_payload");
+    expect(JSON.stringify(sourceHandlerModelProviderFindings)).not.toContain("source model selected background job queued");
+    expect(JSON.stringify(sourceHandlerModelProviderFindings)).not.toContain("framework model selected background job queued");
+    expect(JSON.stringify(sourceHandlerModelProviderFindings)).not.toContain("Ask a model provider to draft a background-agent job");
     const sourceHandlerRagRetrievalPromptBridgeFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-094");
     expect(sourceHandlerRagRetrievalPromptBridgeFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_summarize_retrieved_context_with_model",
@@ -10536,6 +10551,7 @@ describe("rule engine", () => {
     const sourceHandlerTaintedModelSelectionFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-043");
     expect(sourceHandlerTaintedModelSelectionFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_apply_model_database_update",
+      "langchain_enqueue_model_selected_background_job",
       "langchain_execute_model_browser_action",
       "langchain_execute_model_generated_code",
       "langchain_fetch_model_selected_url",
@@ -10544,6 +10560,7 @@ describe("rule engine", () => {
       "langchain_run_model_generated_command",
       "langchain_summarize_customer_with_model",
       "source_apply_model_database_update",
+      "source_enqueue_model_selected_background_job",
       "source_execute_model_browser_action",
       "source_execute_model_generated_code",
       "source_fetch_model_selected_url",
@@ -10577,6 +10594,11 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerTaintedModelSelectionFindings)).not.toContain("response.choices");
     expect(JSON.stringify(sourceHandlerTaintedModelSelectionFindings)).not.toContain("Summarize caller supplied customer ticket text");
     expect(JSON.stringify(sourceHandlerTaintedModelSelectionFindings)).not.toContain("Create an internal support summary");
+    expect(JSON.stringify(sourceHandlerTaintedModelSelectionFindings)).not.toContain("modelSelectedJobPayload");
+    expect(JSON.stringify(sourceHandlerTaintedModelSelectionFindings)).not.toContain("model_selected_job_payload");
+    expect(JSON.stringify(sourceHandlerTaintedModelSelectionFindings)).not.toContain("source model selected background job queued");
+    expect(JSON.stringify(sourceHandlerTaintedModelSelectionFindings)).not.toContain("framework model selected background job queued");
+    expect(JSON.stringify(sourceHandlerTaintedModelSelectionFindings)).not.toContain("Ask a model provider to draft a background-agent job");
     const sourceHandlerPrivilegedPromptFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-031");
     expect(sourceHandlerPrivilegedPromptFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_apply_model_database_update",
@@ -10585,6 +10607,7 @@ describe("rule engine", () => {
       "langchain_fetch_model_selected_url",
       "langchain_grant_model_selected_authorization",
       "langchain_issue_model_selected_credential",
+      "langchain_enqueue_model_selected_background_job",
       "langchain_run_model_generated_command",
       "langchain_summarize_customer_with_model",
       "source_summarize_customer_with_model",
@@ -11033,6 +11056,69 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerModelOutputCredentialIssuanceBridgeFindings)).not.toContain("source model selected credential issued");
     expect(JSON.stringify(sourceHandlerModelOutputCredentialIssuanceBridgeFindings)).not.toContain("framework model selected credential issued");
     expect(JSON.stringify(sourceHandlerModelOutputCredentialIssuanceBridgeFindings)).not.toContain("Ask a model provider to choose credential grant material");
+    const sourceHandlerModelOutputTaskQueueBridgeFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-118");
+    expect(sourceHandlerModelOutputTaskQueueBridgeFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
+      "langchain_enqueue_model_selected_background_job",
+      "source_enqueue_model_selected_background_job"
+    ]);
+    expect(sourceHandlerModelOutputTaskQueueBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
+    expect(sourceHandlerModelOutputTaskQueueBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerModelOutputTaskQueueBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
+    expect(sourceHandlerModelOutputTaskQueueBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
+    expect(sourceHandlerModelOutputTaskQueueBridgeFindings.every((finding) => finding.matched_object.metadata.handler_model_provider_call === true)).toBe(true);
+    expect(sourceHandlerModelOutputTaskQueueBridgeFindings.every((finding) => finding.matched_object.metadata.handler_task_queue_enqueue === true)).toBe(true);
+    expect(sourceHandlerModelOutputTaskQueueBridgeFindings.every((finding) => finding.matched_object.metadata.handler_tainted_task_payload === true)).toBe(true);
+    expect(sourceHandlerModelOutputTaskQueueBridgeFindings.every((finding) => finding.matched_object.metadata.handler_tainted_task_routing === true)).toBe(true);
+    expect(sourceHandlerModelOutputTaskQueueBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.handler_model_output_task_queue_bridge === true
+    )).toBe(true);
+    expect(sourceHandlerModelOutputTaskQueueBridgeFindings.every((finding) => finding.matched_object.metadata.handler_secret_env_access === true)).toBe(true);
+    expect(sourceHandlerModelOutputTaskQueueBridgeFindings.every((finding) => finding.matched_object.metadata.model_provider_call === true)).toBe(true);
+    expect(sourceHandlerModelOutputTaskQueueBridgeFindings.every((finding) => finding.matched_object.metadata.task_queue_enqueue === true)).toBe(true);
+    expect(sourceHandlerModelOutputTaskQueueBridgeFindings.every((finding) => finding.matched_object.metadata.tainted_task_payload === true)).toBe(true);
+    expect(sourceHandlerModelOutputTaskQueueBridgeFindings.every((finding) => finding.matched_object.metadata.tainted_task_routing === true)).toBe(true);
+    expect(sourceHandlerModelOutputTaskQueueBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.model_output_task_queue_bridge === true
+    )).toBe(true);
+    expect(sourceHandlerModelOutputTaskQueueBridgeFindings.every((finding) => finding.matched_object.metadata.accepts_content_like_input === true)).toBe(true);
+    expect(sourceHandlerModelOutputTaskQueueBridgeFindings.every((finding) => finding.matched_object.metadata.accepts_customer_data_input === true)).toBe(true);
+    expect(sourceHandlerModelOutputTaskQueueBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.authority_classes.includes("model_provider_call")
+    )).toBe(true);
+    expect(sourceHandlerModelOutputTaskQueueBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.authority_classes.includes("task_queue_enqueue")
+    )).toBe(true);
+    expect(sourceHandlerModelOutputTaskQueueBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.authority_classes.includes("tainted_task_payload")
+    )).toBe(true);
+    expect(sourceHandlerModelOutputTaskQueueBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.authority_classes.includes("tainted_task_routing")
+    )).toBe(true);
+    expect(sourceHandlerModelOutputTaskQueueBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.authority_classes.includes("model_output_task_queue_bridge")
+    )).toBe(true);
+    expect(sourceHandlerModelOutputTaskQueueBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.handler_authority_classes.includes("handler_model_output_task_queue_bridge")
+    )).toBe(true);
+    expect(sourceHandlerModelOutputTaskQueueBridgeFindings.every((finding) => finding.matched_object.actions.includes("read"))).toBe(true);
+    expect(sourceHandlerModelOutputTaskQueueBridgeFindings.every((finding) => finding.matched_object.actions.includes("send"))).toBe(true);
+    expect(sourceHandlerModelOutputTaskQueueBridgeFindings.every((finding) => finding.matched_object.actions.includes("write"))).toBe(true);
+    expect(sourceHandlerModelOutputTaskQueueBridgeFindings.every((finding) => finding.matched_object.actions.includes("remember"))).toBe(true);
+    expect(sourceHandlerModelOutputTaskQueueBridgeFindings.every((finding) => finding.matched_object.external_reach === true)).toBe(true);
+    expect(sourceHandlerModelOutputTaskQueueBridgeFindings.every((finding) => finding.matched_object.secret_exposure === true)).toBe(true);
+    expect(sourceHandlerModelOutputTaskQueueBridgeFindings.every((finding) => finding.matched_object.side_effect === true)).toBe(true);
+    expect(sourceHandlerModelOutputTaskQueueBridgeFindings.every((finding) => finding.matched_object.reversible === false)).toBe(true);
+    expect(JSON.stringify(sourceHandlerModelOutputTaskQueueBridgeFindings)).not.toContain("openai.chat.completions.create");
+    expect(JSON.stringify(sourceHandlerModelOutputTaskQueueBridgeFindings)).not.toContain("openai_client.chat.completions.create");
+    expect(JSON.stringify(sourceHandlerModelOutputTaskQueueBridgeFindings)).not.toContain("modelResult");
+    expect(JSON.stringify(sourceHandlerModelOutputTaskQueueBridgeFindings)).not.toContain("model_response");
+    expect(JSON.stringify(sourceHandlerModelOutputTaskQueueBridgeFindings)).not.toContain("modelSelectedJobPayload");
+    expect(JSON.stringify(sourceHandlerModelOutputTaskQueueBridgeFindings)).not.toContain("model_selected_job_payload");
+    expect(JSON.stringify(sourceHandlerModelOutputTaskQueueBridgeFindings)).not.toContain("taskQueueClient.enqueue");
+    expect(JSON.stringify(sourceHandlerModelOutputTaskQueueBridgeFindings)).not.toContain("task_queue_client.enqueue");
+    expect(JSON.stringify(sourceHandlerModelOutputTaskQueueBridgeFindings)).not.toContain("source model selected background job queued");
+    expect(JSON.stringify(sourceHandlerModelOutputTaskQueueBridgeFindings)).not.toContain("framework model selected background job queued");
+    expect(JSON.stringify(sourceHandlerModelOutputTaskQueueBridgeFindings)).not.toContain("Ask a model provider to draft a background-agent job");
     const sourceHandlerDynamicCodeFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-019");
     expect(sourceHandlerDynamicCodeFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_evaluate_agent_expression",

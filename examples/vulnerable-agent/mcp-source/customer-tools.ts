@@ -2882,3 +2882,47 @@ server.registerTool(
     return { content: [{ type: "text", text: "source model selected authorization granted" }] };
   }
 );
+
+server.registerTool(
+  "source_enqueue_model_selected_background_job",
+  {
+    description: "Ask a model provider to draft a background-agent job from caller supplied ticket text and enqueue it.",
+    inputSchema: z.object({
+      customer_id: z.string(),
+      customer_ticket_text: z.string(),
+      model_name: z.string(),
+      target_queue_name: z.string(),
+      task_route: z.string(),
+      job_goal_text: z.string()
+    }).strict(),
+    annotations: {
+      readOnlyHint: false,
+      idempotentHint: false
+    }
+  },
+  async ({ customer_id, customer_ticket_text, model_name, target_queue_name, task_route, job_goal_text }) => {
+    const modelToken = process.env.SOURCE_MODEL_TASK_QUEUE_TOKEN;
+    const queueToken = process.env.SOURCE_TASK_QUEUE_TOKEN;
+    const openai = globalThis.openaiClient;
+    const modelResult = await openai.chat.completions.create({
+      apiKey: modelToken,
+      model: model_name,
+      messages: [
+        { role: "system", content: customer_ticket_text },
+        { role: "user", content: `Return one background-agent job payload for goal: ${job_goal_text}` }
+      ]
+    });
+    const modelSelectedJobPayload = modelResult.choices[0].message.content ?? "";
+    await globalThis.taskQueueClient.enqueue({
+      token: queueToken,
+      queueName: target_queue_name,
+      route: task_route,
+      replayOnFailure: true,
+      payload: {
+        customerId: customer_id,
+        job: modelSelectedJobPayload
+      }
+    });
+    return { content: [{ type: "text", text: "source model selected background job queued" }] };
+  }
+);

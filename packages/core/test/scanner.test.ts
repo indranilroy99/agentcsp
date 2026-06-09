@@ -736,6 +736,9 @@ describe("scanner", () => {
     const sourceModelOutputCredentialIssuanceBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "source_issue_model_selected_credential"
     );
+    const sourceModelOutputTaskQueueBridgeTool = surfaces.tools.find(
+      (surface) => surface.name === "source_enqueue_model_selected_background_job"
+    );
     const pythonExportTool = surfaces.tools.find((surface) => surface.name === "python_export_customer_record");
     const pythonDeleteTool = surfaces.tools.find((surface) => surface.name === "python_readonly_delete_workspace_file");
     const pythonUnsafeDeserializationTool = surfaces.tools.find((surface) => surface.name === "python_load_serialized_agent_state");
@@ -938,6 +941,9 @@ describe("scanner", () => {
     );
     const langchainModelOutputCredentialIssuanceBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "langchain_issue_model_selected_credential"
+    );
+    const langchainModelOutputTaskQueueBridgeTool = surfaces.tools.find(
+      (surface) => surface.name === "langchain_enqueue_model_selected_background_job"
     );
     const langchainUnsafeDeserializationTool = surfaces.tools.find((surface) => surface.name === "langchain_load_serialized_agent_state");
     const aiSdkExportTool = surfaces.tools.find((surface) => surface.name === "aiSdkExportCustomerContext");
@@ -8529,6 +8535,94 @@ describe("scanner", () => {
     expect(JSON.stringify(sourceModelOutputCredentialIssuanceBridgeTool)).not.toContain("identityBroker.issueToken");
     expect(JSON.stringify(sourceModelOutputCredentialIssuanceBridgeTool)).not.toContain("source model selected credential issued");
     expect(JSON.stringify(sourceModelOutputCredentialIssuanceBridgeTool)).not.toContain("Ask a model provider to choose credential grant material");
+    expect(sourceModelOutputTaskQueueBridgeTool).toMatchObject({
+      path: "mcp-source/customer-tools.ts",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["call", "read", "remember", "send", "write"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(sourceModelOutputTaskQueueBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_mcp_source_tool: true,
+      mcp_source_tool_registration: true,
+      mcp_source_tool_registration_kind: "registerTool",
+      mcp_source_tool_argument_count: 3,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_content_like_input: true,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      model_provider_call: true,
+      tainted_model_selection: true,
+      task_queue_enqueue: true,
+      tainted_task_payload: true,
+      tainted_task_routing: true,
+      model_output_task_queue_bridge: true,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_model_provider_call: true,
+      handler_tainted_model_selection: true,
+      handler_task_queue_enqueue: true,
+      handler_tainted_task_payload: true,
+      handler_tainted_task_routing: true,
+      handler_model_output_task_queue_bridge: true,
+      handler_secret_env_access: true,
+      handler_signal_count: 7,
+      open_world_schema: false
+    });
+    expect(sourceModelOutputTaskQueueBridgeTool?.metadata.authority_classes).toEqual(expect.arrayContaining([
+      "handler_model_output_task_queue_bridge",
+      "handler_model_provider_call",
+      "handler_secret_env_access",
+      "handler_tainted_model_selection",
+      "handler_tainted_task_payload",
+      "handler_tainted_task_routing",
+      "handler_task_queue_enqueue",
+      "model_output_task_queue_bridge",
+      "model_provider_call",
+      "tainted_model_selection",
+      "tainted_task_payload",
+      "tainted_task_routing",
+      "task_queue_enqueue"
+    ]));
+    expect(sourceModelOutputTaskQueueBridgeTool?.metadata.handler_authority_classes).toEqual([
+      "handler_model_output_task_queue_bridge",
+      "handler_model_provider_call",
+      "handler_secret_env_access",
+      "handler_tainted_model_selection",
+      "handler_tainted_task_payload",
+      "handler_tainted_task_routing",
+      "handler_task_queue_enqueue"
+    ]);
+    expect(sourceModelOutputTaskQueueBridgeTool?.metadata.handler_env_key_names).toEqual([
+      "SOURCE_MODEL_TASK_QUEUE_TOKEN",
+      "SOURCE_TASK_QUEUE_TOKEN"
+    ]);
+    expect(sourceModelOutputTaskQueueBridgeTool?.metadata.schema_properties).toEqual([
+      "customer_id",
+      "customer_ticket_text",
+      "job_goal_text",
+      "model_name",
+      "target_queue_name",
+      "task_route"
+    ]);
+    expect(sourceModelOutputTaskQueueBridgeTool?.metadata.required_properties).toEqual([
+      "customer_id",
+      "customer_ticket_text",
+      "job_goal_text",
+      "model_name",
+      "target_queue_name",
+      "task_route"
+    ]);
+    expect(JSON.stringify(sourceModelOutputTaskQueueBridgeTool)).not.toContain("openai.chat.completions.create");
+    expect(JSON.stringify(sourceModelOutputTaskQueueBridgeTool)).not.toContain("modelResult");
+    expect(JSON.stringify(sourceModelOutputTaskQueueBridgeTool)).not.toContain("modelSelectedJobPayload");
+    expect(JSON.stringify(sourceModelOutputTaskQueueBridgeTool)).not.toContain("taskQueueClient.enqueue");
+    expect(JSON.stringify(sourceModelOutputTaskQueueBridgeTool)).not.toContain("source model selected background job queued");
+    expect(JSON.stringify(sourceModelOutputTaskQueueBridgeTool)).not.toContain("Ask a model provider to draft a background-agent job");
     expect(pythonExportTool).toMatchObject({
       path: "mcp-source/python_tools.py",
       data_classes: ["confidential", "credential", "pii"],
@@ -16370,6 +16464,99 @@ describe("scanner", () => {
     expect(JSON.stringify(langchainModelOutputCredentialIssuanceBridgeTool)).not.toContain("identity_broker.issue_token");
     expect(JSON.stringify(langchainModelOutputCredentialIssuanceBridgeTool)).not.toContain("framework model selected credential issued");
     expect(JSON.stringify(langchainModelOutputCredentialIssuanceBridgeTool)).not.toContain("Ask a model provider to choose credential grant material");
+    expect(langchainModelOutputTaskQueueBridgeTool).toMatchObject({
+      path: "framework-tools/langchain_tools.py",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["call", "read", "remember", "send", "write"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(langchainModelOutputTaskQueueBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_agent_framework_source_tool: true,
+      agent_framework_source_tool: true,
+      agent_framework_source_tool_framework: "langchain",
+      agent_framework_source_tool_registration_kind: "python_tool_decorator",
+      agent_framework_source_tool_argument_count: 6,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_content_like_input: true,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      model_provider_call: true,
+      tainted_model_selection: true,
+      task_queue_enqueue: true,
+      tainted_task_payload: true,
+      tainted_task_routing: true,
+      model_output_task_queue_bridge: true,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_model_provider_call: true,
+      handler_tainted_model_selection: true,
+      handler_task_queue_enqueue: true,
+      handler_tainted_task_payload: true,
+      handler_tainted_task_routing: true,
+      handler_model_output_task_queue_bridge: true,
+      handler_privileged_prompt_composition: true,
+      handler_secret_env_access: true,
+      handler_signal_count: 8,
+      open_world_schema: false
+    });
+    expect(langchainModelOutputTaskQueueBridgeTool?.metadata.authority_classes).toEqual(expect.arrayContaining([
+      "handler_model_output_task_queue_bridge",
+      "handler_model_provider_call",
+      "handler_privileged_prompt_composition",
+      "handler_secret_env_access",
+      "handler_tainted_model_selection",
+      "handler_tainted_task_payload",
+      "handler_tainted_task_routing",
+      "handler_task_queue_enqueue",
+      "model_output_task_queue_bridge",
+      "model_provider_call",
+      "privileged_prompt_composition",
+      "tainted_model_selection",
+      "tainted_task_payload",
+      "tainted_task_routing",
+      "task_queue_enqueue"
+    ]));
+    expect(langchainModelOutputTaskQueueBridgeTool?.metadata.handler_authority_classes).toEqual([
+      "handler_model_output_task_queue_bridge",
+      "handler_model_provider_call",
+      "handler_privileged_prompt_composition",
+      "handler_secret_env_access",
+      "handler_tainted_model_selection",
+      "handler_tainted_task_payload",
+      "handler_tainted_task_routing",
+      "handler_task_queue_enqueue"
+    ]);
+    expect(langchainModelOutputTaskQueueBridgeTool?.metadata.handler_env_key_names).toEqual([
+      "LANGCHAIN_MODEL_TASK_QUEUE_TOKEN",
+      "LANGCHAIN_TASK_QUEUE_TOKEN"
+    ]);
+    expect(langchainModelOutputTaskQueueBridgeTool?.metadata.schema_properties).toEqual([
+      "customer_id",
+      "customer_ticket_text",
+      "job_goal_text",
+      "model_name",
+      "target_queue_name",
+      "task_route"
+    ]);
+    expect(langchainModelOutputTaskQueueBridgeTool?.metadata.required_properties).toEqual([
+      "customer_id",
+      "customer_ticket_text",
+      "job_goal_text",
+      "model_name",
+      "target_queue_name",
+      "task_route"
+    ]);
+    expect(JSON.stringify(langchainModelOutputTaskQueueBridgeTool)).not.toContain("openai_client.chat.completions.create");
+    expect(JSON.stringify(langchainModelOutputTaskQueueBridgeTool)).not.toContain("model_response");
+    expect(JSON.stringify(langchainModelOutputTaskQueueBridgeTool)).not.toContain("model_selected_job_payload");
+    expect(JSON.stringify(langchainModelOutputTaskQueueBridgeTool)).not.toContain("task_queue_client.enqueue");
+    expect(JSON.stringify(langchainModelOutputTaskQueueBridgeTool)).not.toContain("framework model selected background job queued");
+    expect(JSON.stringify(langchainModelOutputTaskQueueBridgeTool)).not.toContain("Ask a model provider to draft a background-agent job");
     expect(aiSdkExportTool).toMatchObject({
       path: "framework-tools/vercel-ai-tools.ts",
       data_classes: ["confidential", "credential", "pii"],

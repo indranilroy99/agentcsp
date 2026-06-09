@@ -314,6 +314,7 @@ Tool metadata may include:
 - `secret_manager_credential_issuance_bridge`
 - `model_output_credential_issuance_bridge`
 - `tool_output_credential_issuance_bridge`
+- `model_output_task_queue_bridge`
 - `agent_delegation`
 - `tainted_agent_delegation_target`
 - `agent_delegation_context_forwarding`
@@ -398,6 +399,7 @@ Tool metadata may include:
 - `task_queue_enqueue`
 - `tainted_task_payload`
 - `tainted_task_routing`
+- `model_output_task_queue_bridge`
 - `secret_manager_task_queue_bridge`
 - `tool_output_task_queue_bridge`
 - `prompt_registry_write`
@@ -481,6 +483,7 @@ Tool metadata may include:
 - `handler_secret_manager_authorization_grant_bridge`
 - `handler_model_output_authorization_grant_bridge`
 - `handler_tool_output_authorization_grant_bridge`
+- `handler_model_output_task_queue_bridge`
 - `handler_artifact_export`
 - `handler_tainted_artifact_export_payload`
 - `handler_tool_output_artifact_bridge`
@@ -495,6 +498,7 @@ Tool metadata may include:
 - `handler_task_queue_enqueue`
 - `handler_tainted_task_payload`
 - `handler_tainted_task_routing`
+- `handler_model_output_task_queue_bridge`
 - `handler_secret_manager_task_queue_bridge`
 - `handler_tool_output_task_queue_bridge`
 - `handler_prompt_registry_write`
@@ -2038,6 +2042,8 @@ Source-defined tool handlers can also emit redacted secret-manager authorization
 Source-defined tool handlers can also emit redacted model-output authorization-grant bridge authority through `model_output_authorization_grant_bridge`, `model_provider_call`, `authorization_policy_write`, `tainted_authorization_grant_input`, `authorization_broad_grant`, and the corresponding `handler_*` fields when parsed MCP SDK or agent-framework tools call model providers and use model responses to write broad, wildcard, approval-free, or long-lived authorization, permission, entitlement, or tool-grant policy using runtime credentials. Handler bodies, model SDK calls, prompts, completions, model-derived grant variables, grant calls, tool names, roles, scopes, subjects, resources, tenant selectors, grant reasons, and return strings remain redacted.
 
 Source-defined tool handlers can also emit redacted model-output credential-issuance bridge authority through `model_output_credential_issuance_bridge`, `model_provider_call`, `credential_issuance`, `tainted_credential_issuance_input`, and the corresponding `handler_*` fields when parsed MCP SDK or agent-framework tools call model providers and use model responses as grant material, token templates, subjects, scopes, roles, audiences, signing inputs, or impersonation selectors for minting, signing, assuming, impersonating, or issuing agent credentials using runtime broker credentials. Handler bodies, model SDK calls, prompts, completions, model-derived credential grant variables, credential broker calls, issued credentials, and return strings remain redacted.
+
+Source-defined tool handlers can also emit redacted model-output task-queue bridge authority through `model_output_task_queue_bridge`, `model_provider_call`, `task_queue_enqueue`, `tainted_task_payload`, `tainted_task_routing`, and the corresponding `handler_*` fields when parsed MCP SDK or agent-framework tools call model providers and enqueue model responses into asynchronous or replayable background-agent jobs using runtime queue credentials and caller-selected routing. Handler bodies, model SDK calls, prompts, completions, queue calls, queue names, routes, replay flags, payload bodies, model-derived job variables, and return strings remain redacted.
 
 Source-defined tool handlers can also emit redacted secret-manager credential-issuance bridge authority through `secret_manager_credential_issuance_bridge`, `secret_manager_access`, `tainted_secret_manager_path`, `credential_issuance`, `tainted_credential_issuance_input`, and the corresponding `handler_*` fields when parsed MCP SDK or agent-framework tools read caller-selected vault or secret-manager paths and use the returned secret material to mint, sign, assume, impersonate, or issue agent credentials using runtime broker credentials. Handler bodies, vault calls, secret paths, secret values, credential broker calls, signing keys, token templates, subjects, scopes, roles, audiences, impersonation selectors, issued credentials, and return strings remain redacted.
 

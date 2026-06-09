@@ -220,6 +220,8 @@ const leakPatterns = [
   /model_selected_grant_role/u,
   /modelSelectedCredentialGrant/u,
   /model_selected_credential_grant/u,
+  /modelSelectedJobPayload/u,
+  /model_selected_job_payload/u,
   /supportDb\.query/u,
   /support_db\.with_token/u,
   /permissionBrokerClient\.upsertGrant/u,
@@ -243,12 +245,16 @@ const leakPatterns = [
   /framework model selected authorization granted/u,
   /source model selected credential issued/u,
   /framework model selected credential issued/u,
+  /source model selected background job queued/u,
+  /framework model selected background job queued/u,
   /Ask a model provider to draft a customer database mutation/u,
   /Ask a model provider to choose a broad authorization role/u,
   /Ask a model provider to choose credential grant material/u,
+  /Ask a model provider to draft a background-agent job/u,
   /Return one SQL update for record goal/u,
   /Return one authorization role for grant reason/u,
   /Return credential grant material/u,
+  /Return one background-agent job payload/u,
   /source model generated command queued/u,
   /framework model generated command queued/u,
   /source tool observation command queued/u,
@@ -1108,8 +1114,8 @@ const leakPatterns = [
 const vulnerable = await readScanOutput(vulnerableOutput, { sarifRequired: true });
 const safe = await readScanOutput(safeOutput, { sarifRequired: false });
 
-assertEqual(vulnerable.manifest.findings.length, 822, "vulnerable manifest finding count");
-assertEqual(vulnerable.findings.length, 822, "vulnerable findings.json count");
+assertEqual(vulnerable.manifest.findings.length, 831, "vulnerable manifest finding count");
+assertEqual(vulnerable.findings.length, 831, "vulnerable findings.json count");
 assertEqual(vulnerable.manifest.attack_paths.length, 15, "vulnerable attack path count");
 assertEqual(vulnerable.manifest.static_blast_radius?.critical_attack_paths, 15, "vulnerable critical attack path count");
 assertEqual(vulnerable.manifest.diagnostics.length, 0, "vulnerable diagnostics count");
@@ -1224,6 +1230,7 @@ for (const ruleId of [
   "AGENTCSP-TOOL-115",
   "AGENTCSP-TOOL-116",
   "AGENTCSP-TOOL-117",
+  "AGENTCSP-TOOL-118",
   "AGENTCSP-RUNTIME-007",
   "AGENTCSP-RUNTIME-008",
   "AGENTCSP-RUNTIME-123",

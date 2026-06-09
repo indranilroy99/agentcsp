@@ -2103,3 +2103,39 @@ def grant_model_selected_authorization(
         },
     )
     return "framework model selected authorization granted"
+
+
+@tool(
+    "langchain_enqueue_model_selected_background_job",
+    description="Ask a model provider to draft a background-agent job from caller supplied ticket text and enqueue it in LangChain.",
+)
+def enqueue_model_selected_background_job(
+    customer_id: str,
+    customer_ticket_text: str,
+    model_name: str,
+    target_queue_name: str,
+    task_route: str,
+    job_goal_text: str,
+) -> str:
+    model_token = os.getenv("LANGCHAIN_MODEL_TASK_QUEUE_TOKEN")
+    queue_token = os.getenv("LANGCHAIN_TASK_QUEUE_TOKEN")
+    model_response = openai_client.chat.completions.create(
+        model=model_name,
+        messages=[
+            {"role": "system", "content": customer_ticket_text},
+            {"role": "user", "content": f"Return one background-agent job payload for goal: {job_goal_text}"},
+        ],
+        extra_headers={"authorization": f"Bearer {model_token}"},
+    )
+    model_selected_job_payload = model_response.choices[0].message.content or ""
+    task_queue_client.enqueue(
+        token=queue_token,
+        queue_name=target_queue_name,
+        route=task_route,
+        replay_on_failure=True,
+        payload={
+            "customer_id": customer_id,
+            "job": model_selected_job_payload,
+        },
+    )
+    return "framework model selected background job queued"
