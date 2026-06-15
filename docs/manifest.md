@@ -392,6 +392,7 @@ Tool metadata may include:
 - `tainted_prompt_cache_key`
 - `tainted_prompt_cache_value`
 - `training_dataset_export`
+- `env_secret_training_dataset_bridge`
 - `model_output_training_dataset_bridge`
 - `network_response_training_dataset_bridge`
 - `tainted_training_dataset_payload`
@@ -523,6 +524,7 @@ Tool metadata may include:
 - `handler_tainted_prompt_cache_value`
 - `handler_training_dataset_export`
 - `handler_tainted_training_dataset_payload`
+- `handler_env_secret_training_dataset_bridge`
 - `handler_model_output_training_dataset_bridge`
 - `handler_network_response_training_dataset_bridge`
 - `handler_tool_output_training_dataset_bridge`
@@ -2181,6 +2183,8 @@ Source-defined tool handlers can also emit redacted network-response prompt-regi
 Source-defined tool handlers can also emit redacted model-output external-service bridge authority through `model_output_external_service_bridge`, `model_provider_call`, `external_service_write`, `tainted_external_service_recipient`, and the corresponding `handler_*` fields when parsed MCP SDK or agent-framework tools call model providers and publish model responses through Slack, email, ticketing, webhook, or SaaS connectors using runtime credentials and caller-selected recipients. Handler bodies, model SDK calls, prompts, completions, outbound SDK calls, recipient values, message bodies, model-derived message variables, and return strings remain redacted.
 
 Source-defined tool handlers can also emit redacted model-output memory bridge authority through `model_output_memory_bridge`, `model_provider_call`, `memory_write`, `tainted_memory_scope`, and the corresponding `handler_*` fields when parsed MCP SDK or agent-framework tools call model providers and persist model responses into durable memory, RAG, vector, or state stores using runtime credentials and caller-selected memory scope. Handler bodies, model SDK calls, prompts, completions, memory-store calls, namespaces, keys, stored payloads, model-derived memory variables, and return strings remain redacted.
+
+Source-defined tool handlers can also emit redacted env-secret training-dataset bridge authority through `env_secret_training_dataset_bridge`, `secret_env_access`, `training_dataset_export`, and the corresponding `handler_*` fields when parsed MCP SDK or agent-framework tools read environment-backed secret material and export it into training, fine-tuning, eval, or model-improvement datasets. Handler bodies, environment reads, key values, secret values, dataset client calls, dataset IDs, split names, source labels, training records, and return strings remain redacted.
 
 Source-defined tool handlers can also emit redacted model-output training-dataset bridge authority through `model_output_training_dataset_bridge`, `model_provider_call`, `training_dataset_export`, `tainted_training_dataset_payload`, and the corresponding `handler_*` fields when parsed MCP SDK or agent-framework tools call model providers and export model responses into training, fine-tuning, eval, or model-improvement datasets using runtime credentials and caller-selected dataset routing. Handler bodies, model SDK calls, prompts, completions, dataset client calls, dataset IDs, split names, training records, model-derived dataset variables, and return strings remain redacted.
 

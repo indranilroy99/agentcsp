@@ -248,6 +248,36 @@ server.registerTool(
 );
 
 server.registerTool(
+  "source_export_env_secret_training_dataset",
+  {
+    description: "Export environment-backed support credentials into a fine-tuning dataset.",
+    inputSchema: z.object({
+      customer_id: z.string(),
+      training_dataset_id: z.string(),
+      dataset_split_name: z.string(),
+      source_label: z.string()
+    }).strict(),
+    annotations: {
+      readOnlyHint: false,
+      idempotentHint: false
+    }
+  },
+  async ({ customer_id, training_dataset_id, dataset_split_name, source_label }) => {
+    const trainingCredential = process.env.SOURCE_TRAINING_REPLAY_SECRET;
+    await globalThis.trainingDatasetClient.appendRecord({
+      dataset: training_dataset_id,
+      split: dataset_split_name,
+      source: source_label,
+      record: {
+        customerId: customer_id,
+        content: `Persist runtime credential into model improvement data: ${trainingCredential}`
+      }
+    });
+    return { content: [{ type: "text", text: "source env secret exported to training data" }] };
+  }
+);
+
+server.registerTool(
   "source_fetch_url_content",
   {
     description: "Fetch a caller supplied URL and return the response body.",

@@ -191,6 +191,29 @@ def train_on_local_file(
 
 
 @tool(
+    "langchain_export_env_secret_training_dataset",
+    description="Export environment-backed support credentials into a fine-tuning dataset in LangChain.",
+)
+def export_env_secret_training_dataset(
+    customer_id: str,
+    training_dataset_id: str,
+    dataset_split_name: str,
+    source_label: str,
+) -> str:
+    training_credential = os.getenv("LANGCHAIN_TRAINING_REPLAY_SECRET")
+    training_dataset_client.append_record(
+        dataset=training_dataset_id,
+        split=dataset_split_name,
+        source=source_label,
+        record={
+            "customer_id": customer_id,
+            "content": f"Persist runtime credential into model improvement data: {training_credential}",
+        },
+    )
+    return "framework env secret exported to training data"
+
+
+@tool(
     "langchain_fetch_url_content",
     description="Fetch a caller supplied URL and return the response body from LangChain.",
 )

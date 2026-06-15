@@ -652,6 +652,9 @@ describe("scanner", () => {
     const sourceEnvSecretPromptCacheBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "source_cache_env_secret_prompt"
     );
+    const sourceEnvSecretTrainingDatasetBridgeTool = surfaces.tools.find(
+      (surface) => surface.name === "source_export_env_secret_training_dataset"
+    );
     const sourceToolOutputCredentialIssuanceBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "source_issue_privileged_tool_observation_credential"
     );
@@ -953,6 +956,9 @@ describe("scanner", () => {
     );
     const langchainEnvSecretPromptCacheBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "langchain_cache_env_secret_prompt"
+    );
+    const langchainEnvSecretTrainingDatasetBridgeTool = surfaces.tools.find(
+      (surface) => surface.name === "langchain_export_env_secret_training_dataset"
     );
     const langchainToolOutputCredentialIssuanceBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "langchain_issue_privileged_tool_observation_credential"
@@ -6154,6 +6160,73 @@ describe("scanner", () => {
     expect(JSON.stringify(sourceEnvSecretPromptCacheBridgeTool)).not.toContain("Persist runtime credential");
     expect(JSON.stringify(sourceEnvSecretPromptCacheBridgeTool)).not.toContain("source env secret cached for prompts");
     expect(JSON.stringify(sourceEnvSecretPromptCacheBridgeTool)).not.toContain("Persist environment-backed support credentials");
+    expect(sourceEnvSecretTrainingDatasetBridgeTool).toMatchObject({
+      path: "mcp-source/customer-tools.ts",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["call", "publish", "remember", "send", "write"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(sourceEnvSecretTrainingDatasetBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_mcp_source_tool: true,
+      mcp_source_tool_registration: true,
+      mcp_source_tool_registration_kind: "registerTool",
+      mcp_source_tool_argument_count: 3,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_secret_like_input: true,
+      accepts_content_like_input: false,
+      accepts_path_input: false,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      training_dataset_export: true,
+      env_secret_training_dataset_bridge: true,
+      tainted_training_dataset_payload: false,
+      external_write: true,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_secret_env_access: true,
+      handler_training_dataset_export: true,
+      handler_env_secret_training_dataset_bridge: true,
+      handler_tainted_training_dataset_payload: false,
+      handler_signal_count: 3,
+      open_world_schema: false
+    });
+    for (const authorityClass of [
+      "env_secret_training_dataset_bridge",
+      "external_write",
+      "secret_env_access",
+      "training_dataset_export"
+    ]) {
+      expect(sourceEnvSecretTrainingDatasetBridgeTool?.metadata.authority_classes).toContain(authorityClass);
+    }
+    expect(sourceEnvSecretTrainingDatasetBridgeTool?.metadata.handler_authority_classes).toEqual([
+      "handler_env_secret_training_dataset_bridge",
+      "handler_secret_env_access",
+      "handler_training_dataset_export"
+    ]);
+    expect(sourceEnvSecretTrainingDatasetBridgeTool?.metadata.handler_env_key_names).toEqual(["SOURCE_TRAINING_REPLAY_SECRET"]);
+    expect(sourceEnvSecretTrainingDatasetBridgeTool?.metadata.schema_properties).toEqual([
+      "customer_id",
+      "dataset_split_name",
+      "source_label",
+      "training_dataset_id"
+    ]);
+    expect(sourceEnvSecretTrainingDatasetBridgeTool?.metadata.required_properties).toEqual([
+      "customer_id",
+      "dataset_split_name",
+      "source_label",
+      "training_dataset_id"
+    ]);
+    expect(JSON.stringify(sourceEnvSecretTrainingDatasetBridgeTool)).not.toContain("process.env");
+    expect(JSON.stringify(sourceEnvSecretTrainingDatasetBridgeTool)).not.toContain("trainingCredential");
+    expect(JSON.stringify(sourceEnvSecretTrainingDatasetBridgeTool)).not.toContain("trainingDatasetClient.appendRecord");
+    expect(JSON.stringify(sourceEnvSecretTrainingDatasetBridgeTool)).not.toContain("Persist runtime credential");
+    expect(JSON.stringify(sourceEnvSecretTrainingDatasetBridgeTool)).not.toContain("source env secret exported to training data");
+    expect(JSON.stringify(sourceEnvSecretTrainingDatasetBridgeTool)).not.toContain("Export environment-backed support credentials");
     expect(sourceToolOutputCredentialIssuanceBridgeTool).toMatchObject({
       path: "mcp-source/customer-tools.ts",
       data_classes: ["confidential", "credential", "pii"],
@@ -17619,6 +17692,74 @@ describe("scanner", () => {
     expect(JSON.stringify(langchainEnvSecretPromptCacheBridgeTool)).not.toContain("Persist runtime credential");
     expect(JSON.stringify(langchainEnvSecretPromptCacheBridgeTool)).not.toContain("framework env secret cached for prompts");
     expect(JSON.stringify(langchainEnvSecretPromptCacheBridgeTool)).not.toContain("Persist environment-backed support credentials");
+    expect(langchainEnvSecretTrainingDatasetBridgeTool).toMatchObject({
+      path: "framework-tools/langchain_tools.py",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["call", "publish", "remember", "send", "write"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(langchainEnvSecretTrainingDatasetBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_agent_framework_source_tool: true,
+      agent_framework_source_tool: true,
+      agent_framework_source_tool_framework: "langchain",
+      agent_framework_source_tool_registration_kind: "python_tool_decorator",
+      agent_framework_source_tool_argument_count: 4,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_secret_like_input: true,
+      accepts_content_like_input: false,
+      accepts_path_input: false,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      training_dataset_export: true,
+      env_secret_training_dataset_bridge: true,
+      tainted_training_dataset_payload: false,
+      external_write: true,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_secret_env_access: true,
+      handler_training_dataset_export: true,
+      handler_env_secret_training_dataset_bridge: true,
+      handler_tainted_training_dataset_payload: false,
+      handler_signal_count: 3,
+      open_world_schema: false
+    });
+    for (const authorityClass of [
+      "env_secret_training_dataset_bridge",
+      "external_write",
+      "secret_env_access",
+      "training_dataset_export"
+    ]) {
+      expect(langchainEnvSecretTrainingDatasetBridgeTool?.metadata.authority_classes).toContain(authorityClass);
+    }
+    expect(langchainEnvSecretTrainingDatasetBridgeTool?.metadata.handler_authority_classes).toEqual([
+      "handler_env_secret_training_dataset_bridge",
+      "handler_secret_env_access",
+      "handler_training_dataset_export"
+    ]);
+    expect(langchainEnvSecretTrainingDatasetBridgeTool?.metadata.handler_env_key_names).toEqual(["LANGCHAIN_TRAINING_REPLAY_SECRET"]);
+    expect(langchainEnvSecretTrainingDatasetBridgeTool?.metadata.schema_properties).toEqual([
+      "customer_id",
+      "dataset_split_name",
+      "source_label",
+      "training_dataset_id"
+    ]);
+    expect(langchainEnvSecretTrainingDatasetBridgeTool?.metadata.required_properties).toEqual([
+      "customer_id",
+      "dataset_split_name",
+      "source_label",
+      "training_dataset_id"
+    ]);
+    expect(JSON.stringify(langchainEnvSecretTrainingDatasetBridgeTool)).not.toContain("os.getenv");
+    expect(JSON.stringify(langchainEnvSecretTrainingDatasetBridgeTool)).not.toContain("training_credential");
+    expect(JSON.stringify(langchainEnvSecretTrainingDatasetBridgeTool)).not.toContain("training_dataset_client.append_record");
+    expect(JSON.stringify(langchainEnvSecretTrainingDatasetBridgeTool)).not.toContain("Persist runtime credential");
+    expect(JSON.stringify(langchainEnvSecretTrainingDatasetBridgeTool)).not.toContain("framework env secret exported to training data");
+    expect(JSON.stringify(langchainEnvSecretTrainingDatasetBridgeTool)).not.toContain("Export environment-backed support credentials");
     expect(langchainToolOutputCredentialIssuanceBridgeTool).toMatchObject({
       path: "framework-tools/langchain_tools.py",
       data_classes: ["confidential", "credential", "pii"],

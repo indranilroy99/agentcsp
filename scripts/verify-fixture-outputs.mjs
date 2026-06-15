@@ -1305,6 +1305,11 @@ const leakPatterns = [
   /framework env secret cached for prompts/u,
   /cacheCredential/u,
   /cache_credential/u,
+  /source env secret exported to training data/u,
+  /framework env secret exported to training data/u,
+  /trainingCredential/u,
+  /training_credential/u,
+  /Persist runtime credential into model improvement data/u,
   /promptCache\.set/u,
   /prompt_cache\.set/u,
   /source chatops approval executed/u,
@@ -1317,8 +1322,8 @@ const leakPatterns = [
 const vulnerable = await readScanOutput(vulnerableOutput, { sarifRequired: true });
 const safe = await readScanOutput(safeOutput, { sarifRequired: false });
 
-assertEqual(vulnerable.manifest.findings.length, 1133, "vulnerable manifest finding count");
-assertEqual(vulnerable.findings.length, 1133, "vulnerable findings.json count");
+assertEqual(vulnerable.manifest.findings.length, 1137, "vulnerable manifest finding count");
+assertEqual(vulnerable.findings.length, 1137, "vulnerable findings.json count");
 assertEqual(vulnerable.manifest.attack_paths.length, 15, "vulnerable attack path count");
 assertEqual(vulnerable.manifest.static_blast_radius?.critical_attack_paths, 15, "vulnerable critical attack path count");
 assertEqual(vulnerable.manifest.diagnostics.length, 0, "vulnerable diagnostics count");
@@ -1475,6 +1480,7 @@ for (const ruleId of [
   "AGENTCSP-TOOL-157",
   "AGENTCSP-TOOL-158",
   "AGENTCSP-TOOL-159",
+  "AGENTCSP-TOOL-160",
   "AGENTCSP-RUNTIME-007",
   "AGENTCSP-RUNTIME-008",
   "AGENTCSP-RUNTIME-123",

@@ -24321,6 +24321,7 @@ function addToolDefinitionSurface(
       tainted_prompt_cache_key: authority.tainted_prompt_cache_key,
       tainted_prompt_cache_value: authority.tainted_prompt_cache_value,
       training_dataset_export: authority.training_dataset_export,
+      env_secret_training_dataset_bridge: authority.env_secret_training_dataset_bridge,
       model_output_training_dataset_bridge: authority.model_output_training_dataset_bridge,
       network_response_training_dataset_bridge: authority.network_response_training_dataset_bridge,
       local_file_training_dataset_bridge: authority.local_file_training_dataset_bridge,
@@ -26804,6 +26805,7 @@ interface SourceToolHandlerSignals {
   handlerTaintedPromptCacheValue: boolean;
   handlerTrainingDatasetExport: boolean;
   handlerTaintedTrainingDatasetPayload: boolean;
+  handlerEnvSecretTrainingDatasetBridge: boolean;
   handlerModelOutputTrainingDatasetBridge: boolean;
   handlerNetworkResponseTrainingDatasetBridge: boolean;
   handlerLocalFileTrainingDatasetBridge: boolean;
@@ -27398,6 +27400,7 @@ function sourceToolHandlerSignalMetadata(signals: SourceToolHandlerSignals | und
     handler_tainted_prompt_cache_value: signals.handlerTaintedPromptCacheValue,
     handler_training_dataset_export: signals.handlerTrainingDatasetExport,
     handler_tainted_training_dataset_payload: signals.handlerTaintedTrainingDatasetPayload,
+    handler_env_secret_training_dataset_bridge: signals.handlerEnvSecretTrainingDatasetBridge,
     handler_model_output_training_dataset_bridge: signals.handlerModelOutputTrainingDatasetBridge,
     handler_network_response_training_dataset_bridge: signals.handlerNetworkResponseTrainingDatasetBridge,
     handler_local_file_training_dataset_bridge: signals.handlerLocalFileTrainingDatasetBridge,
@@ -28069,6 +28072,17 @@ function classifySourceToolHandlerSignals(
   const secretManagerTrainingDatasetBridge = secretManagerAccess && trainingDatasetExport && (language === "javascript"
     ? hasJavaScriptHandlerSecretManagerTrainingDatasetBridge(handlerSource)
     : hasPythonHandlerSecretManagerTrainingDatasetBridge(handlerSource));
+  const envSecretTrainingDatasetBridge = secretEnvAccess &&
+    trainingDatasetExport &&
+    !secretManagerTrainingDatasetBridge &&
+    !modelOutputTrainingDatasetBridge &&
+    !networkResponseTrainingDatasetBridge &&
+    !localFileTrainingDatasetBridge &&
+    !toolOutputTrainingDatasetBridge &&
+    !visualContextTrainingDatasetBridge &&
+    (language === "javascript"
+      ? hasJavaScriptHandlerEnvSecretTrainingDatasetBridge(handlerSource)
+      : hasPythonHandlerEnvSecretTrainingDatasetBridge(handlerSource));
   const secretManagerFeedbackBridge = secretManagerAccess && feedbackPipelineWrite && (language === "javascript"
     ? hasJavaScriptHandlerSecretManagerFeedbackBridge(handlerSource)
     : hasPythonHandlerSecretManagerFeedbackBridge(handlerSource));
@@ -28146,6 +28160,7 @@ function classifySourceToolHandlerSignals(
   if (taintedPromptCacheValue) classes.add("handler_tainted_prompt_cache_value");
   if (trainingDatasetExport) classes.add("handler_training_dataset_export");
   if (taintedTrainingDatasetPayload) classes.add("handler_tainted_training_dataset_payload");
+  if (envSecretTrainingDatasetBridge) classes.add("handler_env_secret_training_dataset_bridge");
   if (modelOutputTrainingDatasetBridge) classes.add("handler_model_output_training_dataset_bridge");
   if (networkResponseTrainingDatasetBridge) classes.add("handler_network_response_training_dataset_bridge");
   if (localFileTrainingDatasetBridge) classes.add("handler_local_file_training_dataset_bridge");
@@ -28326,6 +28341,7 @@ function classifySourceToolHandlerSignals(
     handlerTaintedPromptCacheValue: taintedPromptCacheValue,
     handlerTrainingDatasetExport: trainingDatasetExport,
     handlerTaintedTrainingDatasetPayload: taintedTrainingDatasetPayload,
+    handlerEnvSecretTrainingDatasetBridge: envSecretTrainingDatasetBridge,
     handlerModelOutputTrainingDatasetBridge: modelOutputTrainingDatasetBridge,
     handlerNetworkResponseTrainingDatasetBridge: networkResponseTrainingDatasetBridge,
     handlerLocalFileTrainingDatasetBridge: localFileTrainingDatasetBridge,
@@ -31459,6 +31475,30 @@ function hasPythonHandlerNetworkResponseTrainingDatasetBridge(source: string): b
   );
 }
 
+function hasJavaScriptHandlerEnvSecretTrainingDatasetBridge(source: string): boolean {
+  const identifiers = extractJavaScriptEnvSecretIdentifiers(source);
+  return identifiers.length > 0 && trainingDatasetWriteCallReferencesPayloadIdentifier(
+    [
+      /\b(?:trainingDataset|trainingDatasetClient|datasetClient|fineTuneDataset|fineTuneClient|fineTuningClient|feedbackDataset|evalDataset|rlhfDataset|modelTrainingClient)\s*(?:\.\s*[A-Za-z_$][\w$]*){0,4}\s*\.\s*(?:append|appendRecord|add|addExample|create|createRecord|insert|upload|write|save|store|export|send|record|push)\s*\(([\s\S]{0,2200})\)/giu,
+      /\b(?:exportTrainingExample|writeTrainingExample|appendTrainingExample|uploadFineTuneRecord|createFineTuneRecord|recordTrainingExample)\s*\(([\s\S]{0,2200})\)/giu
+    ],
+    source,
+    identifiers
+  );
+}
+
+function hasPythonHandlerEnvSecretTrainingDatasetBridge(source: string): boolean {
+  const identifiers = extractPythonEnvSecretIdentifiers(source);
+  return identifiers.length > 0 && trainingDatasetWriteCallReferencesPayloadIdentifier(
+    [
+      /\b(?:training_dataset|training_dataset_client|dataset_client|fine_tune_dataset|fine_tune_client|fine_tuning_client|feedback_dataset|eval_dataset|rlhf_dataset|model_training_client)\s*(?:\.\s*[A-Za-z_]\w*){0,4}\s*\.\s*(?:append|append_record|add|add_example|create|create_record|insert|upload|write|save|store|export|send|record|push)\s*\(([\s\S]{0,2200})\)/giu,
+      /\b(?:export_training_example|write_training_example|append_training_example|upload_fine_tune_record|create_fine_tune_record|record_training_example)\s*\(([\s\S]{0,2200})\)/giu
+    ],
+    source,
+    identifiers
+  );
+}
+
 function hasJavaScriptHandlerLocalFileTrainingDatasetBridge(source: string): boolean {
   const identifiers = extractJavaScriptLocalFileIdentifiers(source);
   return identifiers.length > 0 && callExpressionReferencesAnyIdentifier(
@@ -32209,6 +32249,24 @@ function memoryWriteCallReferencesPayloadIdentifier(patterns: RegExp[], source: 
 function promptCacheWriteCallReferencesPayloadIdentifier(patterns: RegExp[], source: string, identifiers: string[]): boolean {
   const payloadField =
     /(?:^|[{\s,(])["']?(?:value|values|content|contents|text|texts|body|payload|payloads|prompt|prompts|completion|completions|response|responses|message|messages|toolOutput|tool_output|document|documents|metadata|summary|note|notes)["']?\s*[:=]/u;
+  for (const pattern of patterns) {
+    let match: RegExpExecArray | null;
+    while ((match = pattern.exec(source)) !== null) {
+      const expression = match[1] ?? "";
+      if (expression.split(/\r?\n/u).some((line) =>
+        payloadField.test(line) && identifiers.some((identifier) => new RegExp(`\\b${escapeRegExp(identifier)}\\b`, "u").test(line))
+      )) {
+        return true;
+      }
+      if (match[0].length === 0) pattern.lastIndex += 1;
+    }
+  }
+  return false;
+}
+
+function trainingDatasetWriteCallReferencesPayloadIdentifier(patterns: RegExp[], source: string, identifiers: string[]): boolean {
+  const payloadField =
+    /(?:^|[{\s,(])["']?(?:record|records|example|examples|sample|samples|content|contents|text|texts|body|payload|payloads|prompt|prompts|completion|completions|response|responses|message|messages|toolOutput|tool_output|input|inputs|output|outputs|label|labels|metadata|summary|note|notes)["']?\s*[:=]/u;
   for (const pattern of patterns) {
     let match: RegExpExecArray | null;
     while ((match = pattern.exec(source)) !== null) {
@@ -35691,6 +35749,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   tainted_prompt_cache_key: boolean;
   tainted_prompt_cache_value: boolean;
   training_dataset_export: boolean;
+  env_secret_training_dataset_bridge: boolean;
   model_output_training_dataset_bridge: boolean;
   network_response_training_dataset_bridge: boolean;
   local_file_training_dataset_bridge: boolean;
@@ -35817,6 +35876,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   const handlerTaintedPromptCacheKey = handler?.handlerTaintedPromptCacheKey === true;
   const handlerTaintedPromptCacheValue = handler?.handlerTaintedPromptCacheValue === true;
   const handlerTrainingDatasetExport = handler?.handlerTrainingDatasetExport === true;
+  const handlerEnvSecretTrainingDatasetBridge = handler?.handlerEnvSecretTrainingDatasetBridge === true;
   const handlerModelOutputTrainingDatasetBridge = handler?.handlerModelOutputTrainingDatasetBridge === true;
   const handlerNetworkResponseTrainingDatasetBridge = handler?.handlerNetworkResponseTrainingDatasetBridge === true;
   const handlerLocalFileTrainingDatasetBridge = handler?.handlerLocalFileTrainingDatasetBridge === true;
@@ -36564,6 +36624,12 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
     actions.add("send");
     actions.add("write");
   }
+  if (handlerEnvSecretTrainingDatasetBridge) {
+    classes.add("env_secret_training_dataset_bridge");
+    actions.add("send");
+    actions.add("write");
+    actions.add("remember");
+  }
   if (handlerModelOutputTrainingDatasetBridge) {
     classes.add("model_output_training_dataset_bridge");
     actions.add("send");
@@ -37025,6 +37091,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerTaintedPromptCacheKey ||
       handlerTaintedPromptCacheValue ||
       handlerTrainingDatasetExport ||
+      handlerEnvSecretTrainingDatasetBridge ||
       handlerModelOutputTrainingDatasetBridge ||
       handlerNetworkResponseTrainingDatasetBridge ||
       handlerLocalFileTrainingDatasetBridge ||
@@ -37204,6 +37271,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerLocalFilePromptCacheBridge ||
       handlerToolOutputPromptCacheBridge ||
       handlerTrainingDatasetExport ||
+      handlerEnvSecretTrainingDatasetBridge ||
       handlerModelOutputTrainingDatasetBridge ||
       handlerNetworkResponseTrainingDatasetBridge ||
       handlerLocalFileTrainingDatasetBridge ||
@@ -37309,6 +37377,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       (handlerNetworkResponseMemoryBridge && handlerSecretEnvAccess) ||
       (handlerLocalFileMemoryBridge && handlerSecretEnvAccess) ||
       handlerSecretManagerTrainingDatasetBridge ||
+      handlerEnvSecretTrainingDatasetBridge ||
       (handlerModelOutputTrainingDatasetBridge && handlerSecretEnvAccess) ||
       (handlerNetworkResponseTrainingDatasetBridge && handlerSecretEnvAccess) ||
       (handlerLocalFileTrainingDatasetBridge && handlerSecretEnvAccess) ||
@@ -37472,6 +37541,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
     tainted_prompt_cache_key: handlerTaintedPromptCacheKey,
     tainted_prompt_cache_value: handlerTaintedPromptCacheValue,
     training_dataset_export: handlerTrainingDatasetExport,
+    env_secret_training_dataset_bridge: handlerEnvSecretTrainingDatasetBridge,
     model_output_training_dataset_bridge: handlerModelOutputTrainingDatasetBridge,
     network_response_training_dataset_bridge: handlerNetworkResponseTrainingDatasetBridge,
     local_file_training_dataset_bridge: handlerLocalFileTrainingDatasetBridge,
@@ -37642,6 +37712,7 @@ function authoritySignature(tool: SurfaceObject): string {
     metadata.tainted_prompt_cache_key === true ? "tainted_prompt_cache_key" : "",
     metadata.tainted_prompt_cache_value === true ? "tainted_prompt_cache_value" : "",
     metadata.training_dataset_export === true ? "training_dataset_export" : "",
+    metadata.env_secret_training_dataset_bridge === true ? "env_secret_training_dataset_bridge" : "",
     metadata.model_output_training_dataset_bridge === true ? "model_output_training_dataset_bridge" : "",
     metadata.network_response_training_dataset_bridge === true ? "network_response_training_dataset_bridge" : "",
     metadata.local_file_training_dataset_bridge === true ? "local_file_training_dataset_bridge" : "",
@@ -37833,6 +37904,7 @@ function isPrivilegedToolSurface(tool: SurfaceObject): boolean {
     tool.metadata.tainted_prompt_cache_key === true ||
     tool.metadata.tainted_prompt_cache_value === true ||
     tool.metadata.training_dataset_export === true ||
+    tool.metadata.env_secret_training_dataset_bridge === true ||
     tool.metadata.model_output_training_dataset_bridge === true ||
     tool.metadata.network_response_training_dataset_bridge === true ||
     tool.metadata.local_file_training_dataset_bridge === true ||
