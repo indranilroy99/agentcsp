@@ -166,6 +166,31 @@ server.registerTool(
 );
 
 server.registerTool(
+  "source_store_env_secret_database",
+  {
+    description: "Persist environment-backed support credentials into a customer database record.",
+    inputSchema: z.object({
+      customer_id: z.string(),
+      database_record_id: z.string(),
+      reviewer_note: z.string()
+    }).strict(),
+    annotations: {
+      readOnlyHint: false,
+      idempotentHint: false
+    }
+  },
+  async ({ customer_id, database_record_id, reviewer_note }) => {
+    const databaseCredential = process.env.SOURCE_DATABASE_REPLAY_SECRET;
+    const db = globalThis.supportDb.withToken(process.env.SOURCE_ENV_SECRET_DATABASE_TOKEN);
+    await db.query(
+      "UPDATE support_cases SET credential_review = $1, reviewer_note = $2 WHERE id = $3",
+      [`Persist runtime credential for database replay ${customer_id}: ${databaseCredential}`, reviewer_note, database_record_id]
+    );
+    return { content: [{ type: "text", text: "source env secret stored in database" }] };
+  }
+);
+
+server.registerTool(
   "source_cache_env_secret_prompt",
   {
     description: "Persist environment-backed support credentials into a shared prompt cache.",

@@ -649,6 +649,9 @@ describe("scanner", () => {
     const sourceEnvSecretMemoryBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "source_store_env_secret_memory"
     );
+    const sourceEnvSecretDatabaseWriteBridgeTool = surfaces.tools.find(
+      (surface) => surface.name === "source_store_env_secret_database"
+    );
     const sourceEnvSecretPromptCacheBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "source_cache_env_secret_prompt"
     );
@@ -968,6 +971,9 @@ describe("scanner", () => {
     );
     const langchainEnvSecretMemoryBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "langchain_store_env_secret_memory"
+    );
+    const langchainEnvSecretDatabaseWriteBridgeTool = surfaces.tools.find(
+      (surface) => surface.name === "langchain_store_env_secret_database"
     );
     const langchainEnvSecretPromptCacheBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "langchain_cache_env_secret_prompt"
@@ -6123,6 +6129,77 @@ describe("scanner", () => {
     expect(JSON.stringify(sourceEnvSecretMemoryBridgeTool)).not.toContain("Persist runtime credential");
     expect(JSON.stringify(sourceEnvSecretMemoryBridgeTool)).not.toContain("source env secret persisted to memory");
     expect(JSON.stringify(sourceEnvSecretMemoryBridgeTool)).not.toContain("Persist environment-backed support credentials");
+    expect(sourceEnvSecretDatabaseWriteBridgeTool).toMatchObject({
+      path: "mcp-source/customer-tools.ts",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["call", "execute", "remember", "write"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(sourceEnvSecretDatabaseWriteBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_mcp_source_tool: true,
+      mcp_source_tool_registration: true,
+      mcp_source_tool_registration_kind: "registerTool",
+      mcp_source_tool_argument_count: 3,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_secret_like_input: true,
+      accepts_content_like_input: true,
+      accepts_path_input: false,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      database_access: true,
+      database_write: true,
+      env_secret_database_write_bridge: true,
+      tainted_database_query_argument: false,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_secret_env_access: true,
+      handler_database_query: true,
+      handler_database_write: true,
+      handler_env_secret_database_write_bridge: true,
+      handler_tainted_database_query_argument: false,
+      handler_signal_count: 4,
+      open_world_schema: false
+    });
+    for (const authorityClass of [
+      "database_write",
+      "env_secret_database_write_bridge",
+      "secret_env_access"
+    ]) {
+      expect(sourceEnvSecretDatabaseWriteBridgeTool?.metadata.authority_classes).toContain(authorityClass);
+    }
+    expect(sourceEnvSecretDatabaseWriteBridgeTool?.metadata.handler_authority_classes).toEqual([
+      "handler_database_query",
+      "handler_database_write",
+      "handler_env_secret_database_write_bridge",
+      "handler_secret_env_access"
+    ]);
+    expect(sourceEnvSecretDatabaseWriteBridgeTool?.metadata.handler_env_key_names).toEqual([
+      "SOURCE_DATABASE_REPLAY_SECRET",
+      "SOURCE_ENV_SECRET_DATABASE_TOKEN"
+    ]);
+    expect(sourceEnvSecretDatabaseWriteBridgeTool?.metadata.schema_properties).toEqual([
+      "customer_id",
+      "database_record_id",
+      "reviewer_note"
+    ]);
+    expect(sourceEnvSecretDatabaseWriteBridgeTool?.metadata.required_properties).toEqual([
+      "customer_id",
+      "database_record_id",
+      "reviewer_note"
+    ]);
+    expect(JSON.stringify(sourceEnvSecretDatabaseWriteBridgeTool)).not.toContain("process.env");
+    expect(JSON.stringify(sourceEnvSecretDatabaseWriteBridgeTool)).not.toContain("databaseCredential");
+    expect(JSON.stringify(sourceEnvSecretDatabaseWriteBridgeTool)).not.toContain("supportDb.withToken");
+    expect(JSON.stringify(sourceEnvSecretDatabaseWriteBridgeTool)).not.toContain("db.query");
+    expect(JSON.stringify(sourceEnvSecretDatabaseWriteBridgeTool)).not.toContain("UPDATE support_cases");
+    expect(JSON.stringify(sourceEnvSecretDatabaseWriteBridgeTool)).not.toContain("Persist runtime credential");
+    expect(JSON.stringify(sourceEnvSecretDatabaseWriteBridgeTool)).not.toContain("source env secret stored in database");
+    expect(JSON.stringify(sourceEnvSecretDatabaseWriteBridgeTool)).not.toContain("Persist environment-backed support credentials");
     expect(sourceEnvSecretPromptCacheBridgeTool).toMatchObject({
       path: "mcp-source/customer-tools.ts",
       data_classes: ["confidential", "credential", "pii"],
@@ -17998,6 +18075,78 @@ describe("scanner", () => {
     expect(JSON.stringify(langchainEnvSecretMemoryBridgeTool)).not.toContain("Persist runtime credential");
     expect(JSON.stringify(langchainEnvSecretMemoryBridgeTool)).not.toContain("framework env secret persisted to memory");
     expect(JSON.stringify(langchainEnvSecretMemoryBridgeTool)).not.toContain("Persist environment-backed support credentials");
+    expect(langchainEnvSecretDatabaseWriteBridgeTool).toMatchObject({
+      path: "framework-tools/langchain_tools.py",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["call", "execute", "remember", "write"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(langchainEnvSecretDatabaseWriteBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_agent_framework_source_tool: true,
+      agent_framework_source_tool: true,
+      agent_framework_source_tool_framework: "langchain",
+      agent_framework_source_tool_registration_kind: "python_tool_decorator",
+      agent_framework_source_tool_argument_count: 3,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_secret_like_input: true,
+      accepts_content_like_input: true,
+      accepts_path_input: false,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      database_access: true,
+      database_write: true,
+      env_secret_database_write_bridge: true,
+      tainted_database_query_argument: false,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_secret_env_access: true,
+      handler_database_query: true,
+      handler_database_write: true,
+      handler_env_secret_database_write_bridge: true,
+      handler_tainted_database_query_argument: false,
+      handler_signal_count: 4,
+      open_world_schema: false
+    });
+    for (const authorityClass of [
+      "database_write",
+      "env_secret_database_write_bridge",
+      "secret_env_access"
+    ]) {
+      expect(langchainEnvSecretDatabaseWriteBridgeTool?.metadata.authority_classes).toContain(authorityClass);
+    }
+    expect(langchainEnvSecretDatabaseWriteBridgeTool?.metadata.handler_authority_classes).toEqual([
+      "handler_database_query",
+      "handler_database_write",
+      "handler_env_secret_database_write_bridge",
+      "handler_secret_env_access"
+    ]);
+    expect(langchainEnvSecretDatabaseWriteBridgeTool?.metadata.handler_env_key_names).toEqual([
+      "LANGCHAIN_DATABASE_REPLAY_SECRET",
+      "LANGCHAIN_ENV_SECRET_DATABASE_TOKEN"
+    ]);
+    expect(langchainEnvSecretDatabaseWriteBridgeTool?.metadata.schema_properties).toEqual([
+      "customer_id",
+      "database_record_id",
+      "reviewer_note"
+    ]);
+    expect(langchainEnvSecretDatabaseWriteBridgeTool?.metadata.required_properties).toEqual([
+      "customer_id",
+      "database_record_id",
+      "reviewer_note"
+    ]);
+    expect(JSON.stringify(langchainEnvSecretDatabaseWriteBridgeTool)).not.toContain("os.getenv");
+    expect(JSON.stringify(langchainEnvSecretDatabaseWriteBridgeTool)).not.toContain("database_credential");
+    expect(JSON.stringify(langchainEnvSecretDatabaseWriteBridgeTool)).not.toContain("support_db.with_token");
+    expect(JSON.stringify(langchainEnvSecretDatabaseWriteBridgeTool)).not.toContain("db.execute");
+    expect(JSON.stringify(langchainEnvSecretDatabaseWriteBridgeTool)).not.toContain("UPDATE support_cases");
+    expect(JSON.stringify(langchainEnvSecretDatabaseWriteBridgeTool)).not.toContain("Persist runtime credential");
+    expect(JSON.stringify(langchainEnvSecretDatabaseWriteBridgeTool)).not.toContain("framework env secret stored in database");
+    expect(JSON.stringify(langchainEnvSecretDatabaseWriteBridgeTool)).not.toContain("Persist environment-backed support credentials");
     expect(langchainEnvSecretPromptCacheBridgeTool).toMatchObject({
       path: "framework-tools/langchain_tools.py",
       data_classes: ["confidential", "credential", "pii"],

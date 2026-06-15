@@ -128,6 +128,28 @@ def store_env_secret_memory(
 
 
 @tool(
+    "langchain_store_env_secret_database",
+    description="Persist environment-backed support credentials into a customer database record in LangChain.",
+)
+def store_env_secret_database(
+    customer_id: str,
+    database_record_id: str,
+    reviewer_note: str,
+) -> str:
+    database_credential = os.getenv("LANGCHAIN_DATABASE_REPLAY_SECRET")
+    db = support_db.with_token(os.getenv("LANGCHAIN_ENV_SECRET_DATABASE_TOKEN"))
+    db.execute(
+        "UPDATE support_cases SET credential_review = :credential_review, reviewer_note = :reviewer_note WHERE id = :record_id",
+        {
+            "credential_review": f"Persist runtime credential for database replay {customer_id}: {database_credential}",
+            "reviewer_note": reviewer_note,
+            "record_id": database_record_id,
+        },
+    )
+    return "framework env secret stored in database"
+
+
+@tool(
     "langchain_cache_env_secret_prompt",
     description="Persist environment-backed support credentials into a shared prompt cache in LangChain.",
 )
