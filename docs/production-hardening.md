@@ -437,6 +437,7 @@ Examples:
 - source-anchored authenticated visual-context paths where caller-selected browser targets can send screenshots or OCR context into model-provider prompts
 - source-anchored local-file artifact export paths where caller-selected filesystem reads can publish file material into public or shareable storage under runtime artifact credentials
 - source-anchored local-file telemetry paths where caller-selected filesystem reads can persist file material into observability traces with broad retention or viewer access
+- source-anchored local-file task-queue paths where caller-selected filesystem reads can persist file material into replayable async jobs, dead-letter queues, or background-agent workers
 - source-anchored prompt paths that preserve explicit privileged-tool references from untrusted template variables
 - source-anchored memory replay paths that preserve the persisted-memory finding as the reason for the blast radius
 - exact generated-state replay paths that preserve transcript or cached-output provenance without expanding into unrelated privileged targets

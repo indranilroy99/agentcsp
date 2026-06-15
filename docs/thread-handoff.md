@@ -1716,6 +1716,8 @@ The current iteration adds:
 - rule `AGENTCSP-TOOL-146` for source-defined tools that read caller-selected local files and export file material into public or shareable artifact storage under runtime artifact authority and caller-selected artifact routing
 - source-defined tool handler metadata for caller-selected local files exported into telemetry, tracing, logging, or observability systems with runtime credentials and caller-selected trace routing, without emitting file contents, file-read calls, telemetry calls, trace IDs, project names, trace payloads, or return strings
 - rule `AGENTCSP-TOOL-147` for source-defined tools that read caller-selected local files and export file material into telemetry or observability traces under runtime telemetry authority and caller-selected trace routing
+- source-defined tool handler metadata for caller-selected local files enqueued into background agents or task queues with runtime credentials and caller-selected queue/routing, without emitting file contents, file-read calls, queue calls, queue names, routes, job goals, queued payloads, or return strings
+- rule `AGENTCSP-TOOL-148` for source-defined tools that read caller-selected local files and enqueue file material into background-agent or task-queue work under runtime queue authority and caller-selected routing
 
 ## Initial Build Recommendation
 

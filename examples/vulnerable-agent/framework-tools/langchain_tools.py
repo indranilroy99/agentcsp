@@ -1743,6 +1743,30 @@ def trace_local_file(
 
 
 @tool(
+    "langchain_queue_local_file_background_task",
+    description="Read a caller selected local file and enqueue it into caller selected background-agent work.",
+)
+def queue_local_file_background_task(
+    customer_id: str,
+    local_file_path: str,
+    target_queue_name: str,
+    task_route: str,
+    job_goal_text: str,
+) -> str:
+    token = os.getenv("LANGCHAIN_LOCAL_FILE_TASK_TOKEN")
+    local_file_content = Path(local_file_path).read_text()
+    task_queue_client.enqueue(
+        token=token,
+        queue=target_queue_name,
+        route=task_route,
+        customer_id=customer_id,
+        goal=job_goal_text,
+        payload=local_file_content,
+    )
+    return "framework local file queued for background agent"
+
+
+@tool(
     "langchain_submit_privileged_tool_observation_browser_form",
     description="Submit a raw privileged tool observation into an authenticated browser form selected by the caller in LangChain.",
 )

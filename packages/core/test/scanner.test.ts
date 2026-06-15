@@ -557,6 +557,7 @@ describe("scanner", () => {
     const sourceLocalFileMemoryBridgeTool = surfaces.tools.find((surface) => surface.name === "source_store_local_file_memory");
     const sourceLocalFileArtifactBridgeTool = surfaces.tools.find((surface) => surface.name === "source_export_local_file_artifact");
     const sourceLocalFileTelemetryBridgeTool = surfaces.tools.find((surface) => surface.name === "source_trace_local_file");
+    const sourceLocalFileTaskQueueBridgeTool = surfaces.tools.find((surface) => surface.name === "source_queue_local_file_background_task");
     const sourceNetworkResponseTool = surfaces.tools.find((surface) => surface.name === "source_fetch_url_content");
     const sourceNetworkResponseMemoryBridgeTool = surfaces.tools.find((surface) => surface.name === "source_store_url_response_memory");
     const sourceNetworkResponseExternalServiceBridgeTool = surfaces.tools.find((surface) => surface.name === "source_post_url_response_external");
@@ -830,6 +831,9 @@ describe("scanner", () => {
       (surface) => surface.name === "langchain_export_local_file_artifact"
     );
     const langchainLocalFileTelemetryBridgeTool = surfaces.tools.find((surface) => surface.name === "langchain_trace_local_file");
+    const langchainLocalFileTaskQueueBridgeTool = surfaces.tools.find(
+      (surface) => surface.name === "langchain_queue_local_file_background_task"
+    );
     const langchainNetworkResponseTool = surfaces.tools.find((surface) => surface.name === "langchain_fetch_url_content");
     const langchainNetworkResponseMemoryBridgeTool = surfaces.tools.find((surface) => surface.name === "langchain_store_url_response_memory");
     const langchainNetworkResponseExternalServiceBridgeTool = surfaces.tools.find((surface) => surface.name === "langchain_post_url_response_external");
@@ -2272,6 +2276,97 @@ describe("scanner", () => {
     expect(JSON.stringify(sourceLocalFileTelemetryBridgeTool)).not.toContain("telemetryClient.recordTrace");
     expect(JSON.stringify(sourceLocalFileTelemetryBridgeTool)).not.toContain("source local file exported to telemetry");
     expect(JSON.stringify(sourceLocalFileTelemetryBridgeTool)).not.toContain("Read a caller selected local file");
+    expect(sourceLocalFileTaskQueueBridgeTool).toMatchObject({
+      path: "mcp-source/customer-tools.ts",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["call", "read", "remember", "send", "write"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(sourceLocalFileTaskQueueBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_mcp_source_tool: true,
+      mcp_source_tool_registration: true,
+      mcp_source_tool_registration_kind: "registerTool",
+      mcp_source_tool_argument_count: 3,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      read_only_hint: false,
+      idempotent_hint: false,
+      accepts_content_like_input: true,
+      accepts_path_input: true,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      task_queue_enqueue: true,
+      tainted_task_payload: true,
+      tainted_task_routing: true,
+      local_file_task_queue_bridge: true,
+      local_file_disclosure: true,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_task_queue_enqueue: true,
+      handler_tainted_task_payload: true,
+      handler_tainted_task_routing: true,
+      handler_local_file_task_queue_bridge: true,
+      handler_filesystem_read: true,
+      handler_tainted_filesystem_path: true,
+      handler_secret_env_access: true,
+      handler_model_visible_output: true,
+      handler_signal_count: 7,
+      open_world_schema: false
+    });
+    expect(sourceLocalFileTaskQueueBridgeTool?.metadata.authority_classes).toEqual([
+      "content_input",
+      "customer_data_input",
+      "filesystem_access",
+      "filesystem_read",
+      "handler_filesystem_read",
+      "handler_local_file_task_queue_bridge",
+      "handler_secret_env_access",
+      "handler_tainted_filesystem_path",
+      "handler_tainted_task_payload",
+      "handler_tainted_task_routing",
+      "handler_task_queue_enqueue",
+      "local_file_disclosure",
+      "local_file_task_queue_bridge",
+      "pii_input",
+      "secret_env_access",
+      "tainted_filesystem_path",
+      "tainted_task_payload",
+      "tainted_task_routing",
+      "task_queue_enqueue"
+    ]);
+    expect(sourceLocalFileTaskQueueBridgeTool?.metadata.handler_authority_classes).toEqual([
+      "handler_filesystem_read",
+      "handler_local_file_task_queue_bridge",
+      "handler_secret_env_access",
+      "handler_tainted_filesystem_path",
+      "handler_tainted_task_payload",
+      "handler_tainted_task_routing",
+      "handler_task_queue_enqueue"
+    ]);
+    expect(sourceLocalFileTaskQueueBridgeTool?.metadata.handler_env_key_names).toEqual(["SOURCE_LOCAL_FILE_TASK_TOKEN"]);
+    expect(sourceLocalFileTaskQueueBridgeTool?.metadata.schema_properties).toEqual([
+      "customer_id",
+      "job_goal_text",
+      "local_file_path",
+      "target_queue_name",
+      "task_route"
+    ]);
+    expect(sourceLocalFileTaskQueueBridgeTool?.metadata.required_properties).toEqual([
+      "customer_id",
+      "job_goal_text",
+      "local_file_path",
+      "target_queue_name",
+      "task_route"
+    ]);
+    expect(JSON.stringify(sourceLocalFileTaskQueueBridgeTool)).not.toContain("readFile");
+    expect(JSON.stringify(sourceLocalFileTaskQueueBridgeTool)).not.toContain("localFileContent");
+    expect(JSON.stringify(sourceLocalFileTaskQueueBridgeTool)).not.toContain("taskQueueClient.enqueue");
+    expect(JSON.stringify(sourceLocalFileTaskQueueBridgeTool)).not.toContain("source local file queued for background agent");
+    expect(JSON.stringify(sourceLocalFileTaskQueueBridgeTool)).not.toContain("Read a caller selected local file");
     expect(sourceNetworkResponseTool).toMatchObject({
       path: "mcp-source/customer-tools.ts",
       data_classes: ["unknown"],
@@ -12473,6 +12568,95 @@ describe("scanner", () => {
     expect(JSON.stringify(langchainLocalFileTelemetryBridgeTool)).not.toContain("telemetry_client.record_trace");
     expect(JSON.stringify(langchainLocalFileTelemetryBridgeTool)).not.toContain("framework local file exported to telemetry");
     expect(JSON.stringify(langchainLocalFileTelemetryBridgeTool)).not.toContain("Read a caller selected local file");
+    expect(langchainLocalFileTaskQueueBridgeTool).toMatchObject({
+      path: "framework-tools/langchain_tools.py",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["call", "read", "remember", "send", "write"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(langchainLocalFileTaskQueueBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_agent_framework_source_tool: true,
+      agent_framework_source_tool_framework: "langchain",
+      agent_framework_source_tool_registration_kind: "python_tool_decorator",
+      agent_framework_source_tool_argument_count: 5,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_content_like_input: true,
+      accepts_path_input: true,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      task_queue_enqueue: true,
+      tainted_task_payload: true,
+      tainted_task_routing: true,
+      local_file_task_queue_bridge: true,
+      local_file_disclosure: true,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_task_queue_enqueue: true,
+      handler_tainted_task_payload: true,
+      handler_tainted_task_routing: true,
+      handler_local_file_task_queue_bridge: true,
+      handler_filesystem_read: true,
+      handler_tainted_filesystem_path: true,
+      handler_secret_env_access: true,
+      handler_model_visible_output: true,
+      handler_signal_count: 7,
+      open_world_schema: false
+    });
+    expect(langchainLocalFileTaskQueueBridgeTool?.metadata.authority_classes).toEqual([
+      "content_input",
+      "customer_data_input",
+      "filesystem_access",
+      "filesystem_read",
+      "handler_filesystem_read",
+      "handler_local_file_task_queue_bridge",
+      "handler_secret_env_access",
+      "handler_tainted_filesystem_path",
+      "handler_tainted_task_payload",
+      "handler_tainted_task_routing",
+      "handler_task_queue_enqueue",
+      "local_file_disclosure",
+      "local_file_task_queue_bridge",
+      "pii_input",
+      "secret_env_access",
+      "tainted_filesystem_path",
+      "tainted_task_payload",
+      "tainted_task_routing",
+      "task_queue_enqueue"
+    ]);
+    expect(langchainLocalFileTaskQueueBridgeTool?.metadata.handler_authority_classes).toEqual([
+      "handler_filesystem_read",
+      "handler_local_file_task_queue_bridge",
+      "handler_secret_env_access",
+      "handler_tainted_filesystem_path",
+      "handler_tainted_task_payload",
+      "handler_tainted_task_routing",
+      "handler_task_queue_enqueue"
+    ]);
+    expect(langchainLocalFileTaskQueueBridgeTool?.metadata.handler_env_key_names).toEqual(["LANGCHAIN_LOCAL_FILE_TASK_TOKEN"]);
+    expect(langchainLocalFileTaskQueueBridgeTool?.metadata.schema_properties).toEqual([
+      "customer_id",
+      "job_goal_text",
+      "local_file_path",
+      "target_queue_name",
+      "task_route"
+    ]);
+    expect(langchainLocalFileTaskQueueBridgeTool?.metadata.required_properties).toEqual([
+      "customer_id",
+      "job_goal_text",
+      "local_file_path",
+      "target_queue_name",
+      "task_route"
+    ]);
+    expect(JSON.stringify(langchainLocalFileTaskQueueBridgeTool)).not.toContain("Path(local_file_path)");
+    expect(JSON.stringify(langchainLocalFileTaskQueueBridgeTool)).not.toContain("local_file_content");
+    expect(JSON.stringify(langchainLocalFileTaskQueueBridgeTool)).not.toContain("task_queue_client.enqueue");
+    expect(JSON.stringify(langchainLocalFileTaskQueueBridgeTool)).not.toContain("framework local file queued for background agent");
+    expect(JSON.stringify(langchainLocalFileTaskQueueBridgeTool)).not.toContain("Read a caller selected local file");
     expect(langchainNetworkResponseTool).toMatchObject({
       path: "framework-tools/langchain_tools.py",
       data_classes: ["unknown"],

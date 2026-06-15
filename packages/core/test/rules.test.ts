@@ -149,6 +149,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-145")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-146")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-147")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-148")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-001")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-002")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-003")).toBe(true);
@@ -6335,6 +6336,7 @@ describe("rule engine", () => {
       "langchain_cache_local_file_prompt",
       "langchain_export_local_file_artifact",
       "langchain_post_local_file_to_slack",
+      "langchain_queue_local_file_background_task",
       "langchain_read_workspace_file",
       "langchain_store_local_file_database",
       "langchain_store_local_file_memory",
@@ -6345,6 +6347,7 @@ describe("rule engine", () => {
       "source_cache_local_file_prompt",
       "source_export_local_file_artifact",
       "source_post_local_file_to_slack",
+      "source_queue_local_file_background_task",
       "source_read_workspace_file",
       "source_store_local_file_database",
       "source_store_local_file_memory",
@@ -6742,11 +6745,64 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerLocalFileTelemetryBridgeFindings)).not.toContain("source local file exported to telemetry");
     expect(JSON.stringify(sourceHandlerLocalFileTelemetryBridgeFindings)).not.toContain("framework local file exported to telemetry");
     expect(JSON.stringify(sourceHandlerLocalFileTelemetryBridgeFindings)).not.toContain("Read a caller selected local file");
+    const sourceHandlerLocalFileTaskQueueBridgeFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-148");
+    expect(sourceHandlerLocalFileTaskQueueBridgeFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
+      "langchain_queue_local_file_background_task",
+      "source_queue_local_file_background_task"
+    ]);
+    expect(sourceHandlerLocalFileTaskQueueBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
+    expect(sourceHandlerLocalFileTaskQueueBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerLocalFileTaskQueueBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
+    expect(sourceHandlerLocalFileTaskQueueBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
+    expect(sourceHandlerLocalFileTaskQueueBridgeFindings.every((finding) => finding.matched_object.metadata.source_tool_handler_redacted === true)).toBe(true);
+    expect(sourceHandlerLocalFileTaskQueueBridgeFindings.every((finding) => finding.matched_object.metadata.handler_filesystem_read === true)).toBe(true);
+    expect(sourceHandlerLocalFileTaskQueueBridgeFindings.every((finding) => finding.matched_object.metadata.handler_tainted_filesystem_path === true)).toBe(true);
+    expect(sourceHandlerLocalFileTaskQueueBridgeFindings.every((finding) => finding.matched_object.metadata.handler_task_queue_enqueue === true)).toBe(true);
+    expect(sourceHandlerLocalFileTaskQueueBridgeFindings.every((finding) => finding.matched_object.metadata.handler_tainted_task_payload === true)).toBe(true);
+    expect(sourceHandlerLocalFileTaskQueueBridgeFindings.every((finding) => finding.matched_object.metadata.handler_tainted_task_routing === true)).toBe(true);
+    expect(sourceHandlerLocalFileTaskQueueBridgeFindings.every((finding) => finding.matched_object.metadata.handler_local_file_task_queue_bridge === true)).toBe(true);
+    expect(sourceHandlerLocalFileTaskQueueBridgeFindings.every((finding) => finding.matched_object.metadata.handler_secret_env_access === true)).toBe(true);
+    expect(sourceHandlerLocalFileTaskQueueBridgeFindings.every((finding) => finding.matched_object.metadata.task_queue_enqueue === true)).toBe(true);
+    expect(sourceHandlerLocalFileTaskQueueBridgeFindings.every((finding) => finding.matched_object.metadata.tainted_task_payload === true)).toBe(true);
+    expect(sourceHandlerLocalFileTaskQueueBridgeFindings.every((finding) => finding.matched_object.metadata.tainted_task_routing === true)).toBe(true);
+    expect(sourceHandlerLocalFileTaskQueueBridgeFindings.every((finding) => finding.matched_object.metadata.local_file_task_queue_bridge === true)).toBe(true);
+    expect(sourceHandlerLocalFileTaskQueueBridgeFindings.every((finding) => finding.matched_object.metadata.tainted_filesystem_path === true)).toBe(true);
+    expect(sourceHandlerLocalFileTaskQueueBridgeFindings.every((finding) => finding.matched_object.metadata.accepts_path_input === true)).toBe(true);
+    expect(sourceHandlerLocalFileTaskQueueBridgeFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("filesystem_read"))).toBe(true);
+    expect(sourceHandlerLocalFileTaskQueueBridgeFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("tainted_filesystem_path"))).toBe(true);
+    expect(sourceHandlerLocalFileTaskQueueBridgeFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("task_queue_enqueue"))).toBe(true);
+    expect(sourceHandlerLocalFileTaskQueueBridgeFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("tainted_task_payload"))).toBe(true);
+    expect(sourceHandlerLocalFileTaskQueueBridgeFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("tainted_task_routing"))).toBe(true);
+    expect(sourceHandlerLocalFileTaskQueueBridgeFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("local_file_task_queue_bridge"))).toBe(true);
+    expect(sourceHandlerLocalFileTaskQueueBridgeFindings.every((finding) => finding.matched_object.metadata.handler_authority_classes.includes("handler_filesystem_read"))).toBe(true);
+    expect(sourceHandlerLocalFileTaskQueueBridgeFindings.every((finding) => finding.matched_object.metadata.handler_authority_classes.includes("handler_tainted_filesystem_path"))).toBe(true);
+    expect(sourceHandlerLocalFileTaskQueueBridgeFindings.every((finding) => finding.matched_object.metadata.handler_authority_classes.includes("handler_task_queue_enqueue"))).toBe(true);
+    expect(sourceHandlerLocalFileTaskQueueBridgeFindings.every((finding) => finding.matched_object.metadata.handler_authority_classes.includes("handler_tainted_task_payload"))).toBe(true);
+    expect(sourceHandlerLocalFileTaskQueueBridgeFindings.every((finding) => finding.matched_object.metadata.handler_authority_classes.includes("handler_tainted_task_routing"))).toBe(true);
+    expect(sourceHandlerLocalFileTaskQueueBridgeFindings.every((finding) => finding.matched_object.metadata.handler_authority_classes.includes("handler_local_file_task_queue_bridge"))).toBe(true);
+    expect(sourceHandlerLocalFileTaskQueueBridgeFindings.every((finding) => finding.matched_object.actions.includes("read"))).toBe(true);
+    expect(sourceHandlerLocalFileTaskQueueBridgeFindings.every((finding) => finding.matched_object.actions.includes("send"))).toBe(true);
+    expect(sourceHandlerLocalFileTaskQueueBridgeFindings.every((finding) => finding.matched_object.actions.includes("write"))).toBe(true);
+    expect(sourceHandlerLocalFileTaskQueueBridgeFindings.every((finding) => finding.matched_object.actions.includes("remember"))).toBe(true);
+    expect(sourceHandlerLocalFileTaskQueueBridgeFindings.every((finding) => finding.matched_object.external_reach === true)).toBe(true);
+    expect(sourceHandlerLocalFileTaskQueueBridgeFindings.every((finding) => finding.matched_object.secret_exposure === true)).toBe(true);
+    expect(sourceHandlerLocalFileTaskQueueBridgeFindings.every((finding) => finding.matched_object.side_effect === true)).toBe(true);
+    expect(sourceHandlerLocalFileTaskQueueBridgeFindings.every((finding) => finding.matched_object.reversible === false)).toBe(true);
+    expect(JSON.stringify(sourceHandlerLocalFileTaskQueueBridgeFindings)).not.toContain("readFile");
+    expect(JSON.stringify(sourceHandlerLocalFileTaskQueueBridgeFindings)).not.toContain("Path(local_file_path)");
+    expect(JSON.stringify(sourceHandlerLocalFileTaskQueueBridgeFindings)).not.toContain("localFileContent");
+    expect(JSON.stringify(sourceHandlerLocalFileTaskQueueBridgeFindings)).not.toContain("local_file_content");
+    expect(JSON.stringify(sourceHandlerLocalFileTaskQueueBridgeFindings)).not.toContain("taskQueueClient.enqueue");
+    expect(JSON.stringify(sourceHandlerLocalFileTaskQueueBridgeFindings)).not.toContain("task_queue_client.enqueue");
+    expect(JSON.stringify(sourceHandlerLocalFileTaskQueueBridgeFindings)).not.toContain("source local file queued for background agent");
+    expect(JSON.stringify(sourceHandlerLocalFileTaskQueueBridgeFindings)).not.toContain("framework local file queued for background agent");
+    expect(JSON.stringify(sourceHandlerLocalFileTaskQueueBridgeFindings)).not.toContain("Read a caller selected local file");
     const sourceHandlerTaintedFilesystemPathFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-035");
     expect(sourceHandlerTaintedFilesystemPathFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_cache_local_file_prompt",
       "langchain_export_local_file_artifact",
       "langchain_post_local_file_to_slack",
+      "langchain_queue_local_file_background_task",
       "langchain_read_workspace_file",
       "langchain_readonly_delete_workspace_path",
       "langchain_store_local_file_database",
@@ -6759,6 +6815,7 @@ describe("rule engine", () => {
       "source_cache_local_file_prompt",
       "source_export_local_file_artifact",
       "source_post_local_file_to_slack",
+      "source_queue_local_file_background_task",
       "source_read_workspace_file",
       "source_readonly_delete_workspace_file",
       "source_store_local_file_database",
@@ -7670,10 +7727,12 @@ describe("rule engine", () => {
       "langchain_enqueue_customer_vault_secret_job",
       "langchain_enqueue_model_selected_background_job",
       "langchain_enqueue_support_agent_job",
+      "langchain_queue_local_file_background_task",
       "source_enqueue_authenticated_page_screenshot_job",
       "source_enqueue_customer_vault_secret_job",
       "source_enqueue_model_selected_background_job",
-      "source_enqueue_support_agent_job"
+      "source_enqueue_support_agent_job",
+      "source_queue_local_file_background_task"
     ]);
     expect(sourceHandlerTaskQueueFindings.every((finding) => finding.severity === "critical")).toBe(true);
     expect(sourceHandlerTaskQueueFindings.every((finding) => finding.confidence === "very_high")).toBe(true);

@@ -2416,6 +2416,37 @@ server.registerTool(
 );
 
 server.registerTool(
+  "source_queue_local_file_background_task",
+  {
+    description: "Read a caller selected local file and enqueue it into caller selected background-agent work.",
+    inputSchema: z.object({
+      customer_id: z.string(),
+      local_file_path: z.string(),
+      target_queue_name: z.string(),
+      task_route: z.string(),
+      job_goal_text: z.string()
+    }).strict(),
+    annotations: {
+      readOnlyHint: false,
+      idempotentHint: false
+    }
+  },
+  async ({ customer_id, local_file_path, target_queue_name, task_route, job_goal_text }) => {
+    const token = process.env.SOURCE_LOCAL_FILE_TASK_TOKEN;
+    const localFileContent = await readFile(local_file_path, "utf8");
+    await globalThis.taskQueueClient.enqueue({
+      token,
+      queue: target_queue_name,
+      route: task_route,
+      customer_id,
+      goal: job_goal_text,
+      payload: localFileContent.toString()
+    });
+    return { content: [{ type: "text", text: "source local file queued for background agent" }] };
+  }
+);
+
+server.registerTool(
   "source_capture_authenticated_page_screenshot",
   {
     description: "Capture an authenticated browser screenshot from a caller supplied URL.",
