@@ -172,6 +172,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-168")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-169")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-170")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-171")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-001")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-002")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-003")).toBe(true);
@@ -6391,6 +6392,7 @@ describe("rule engine", () => {
       "langchain_export_local_file_artifact",
       "langchain_issue_local_key_agent_credential",
       "langchain_post_local_file_to_slack",
+      "langchain_publish_local_file_prompt_registry",
       "langchain_queue_local_file_background_task",
       "langchain_read_workspace_file",
       "langchain_store_local_file_database",
@@ -6404,6 +6406,7 @@ describe("rule engine", () => {
       "source_export_local_file_artifact",
       "source_issue_local_key_agent_credential",
       "source_post_local_file_to_slack",
+      "source_publish_local_file_prompt_registry",
       "source_queue_local_file_background_task",
       "source_read_workspace_file",
       "source_store_local_file_database",
@@ -6917,6 +6920,7 @@ describe("rule engine", () => {
       "langchain_export_local_file_artifact",
       "langchain_issue_local_key_agent_credential",
       "langchain_post_local_file_to_slack",
+      "langchain_publish_local_file_prompt_registry",
       "langchain_queue_local_file_background_task",
       "langchain_read_workspace_file",
       "langchain_readonly_delete_workspace_path",
@@ -6932,6 +6936,7 @@ describe("rule engine", () => {
       "source_export_local_file_artifact",
       "source_issue_local_key_agent_credential",
       "source_post_local_file_to_slack",
+      "source_publish_local_file_prompt_registry",
       "source_queue_local_file_background_task",
       "source_read_workspace_file",
       "source_readonly_delete_workspace_file",
@@ -12200,6 +12205,75 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerEnvSecretPromptRegistryBridgeFindings)).not.toContain("source env secret published to prompt registry");
     expect(JSON.stringify(sourceHandlerEnvSecretPromptRegistryBridgeFindings)).not.toContain("framework env secret published to prompt registry");
     expect(JSON.stringify(sourceHandlerEnvSecretPromptRegistryBridgeFindings)).not.toContain("Publish environment-backed secret material");
+    const sourceHandlerLocalFilePromptRegistryBridgeFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-171");
+    expect(sourceHandlerLocalFilePromptRegistryBridgeFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
+      "langchain_publish_local_file_prompt_registry",
+      "source_publish_local_file_prompt_registry"
+    ]);
+    expect(sourceHandlerLocalFilePromptRegistryBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
+    expect(sourceHandlerLocalFilePromptRegistryBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerLocalFilePromptRegistryBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
+    expect(sourceHandlerLocalFilePromptRegistryBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
+    expect(sourceHandlerLocalFilePromptRegistryBridgeFindings.every((finding) => finding.matched_object.metadata.source_tool_handler_redacted === true)).toBe(true);
+    expect(sourceHandlerLocalFilePromptRegistryBridgeFindings.every((finding) => finding.matched_object.metadata.handler_secret_env_access === true)).toBe(true);
+    expect(sourceHandlerLocalFilePromptRegistryBridgeFindings.every((finding) => finding.matched_object.metadata.handler_filesystem_read === true)).toBe(true);
+    expect(sourceHandlerLocalFilePromptRegistryBridgeFindings.every((finding) => finding.matched_object.metadata.handler_tainted_filesystem_path === true)).toBe(true);
+    expect(sourceHandlerLocalFilePromptRegistryBridgeFindings.every((finding) => finding.matched_object.metadata.handler_prompt_registry_write === true)).toBe(true);
+    expect(sourceHandlerLocalFilePromptRegistryBridgeFindings.every((finding) => finding.matched_object.metadata.handler_local_file_prompt_registry_bridge === true)).toBe(true);
+    expect(sourceHandlerLocalFilePromptRegistryBridgeFindings.every((finding) => finding.matched_object.metadata.handler_tainted_prompt_registry_payload === false)).toBe(true);
+    expect(sourceHandlerLocalFilePromptRegistryBridgeFindings.every((finding) => finding.matched_object.metadata.handler_tainted_prompt_registry_selector === true)).toBe(true);
+    expect(sourceHandlerLocalFilePromptRegistryBridgeFindings.every((finding) => finding.matched_object.metadata.tainted_filesystem_path === true)).toBe(true);
+    expect(sourceHandlerLocalFilePromptRegistryBridgeFindings.every((finding) => finding.matched_object.metadata.prompt_registry_write === true)).toBe(true);
+    expect(sourceHandlerLocalFilePromptRegistryBridgeFindings.every((finding) => finding.matched_object.metadata.local_file_prompt_registry_bridge === true)).toBe(true);
+    expect(sourceHandlerLocalFilePromptRegistryBridgeFindings.every((finding) => finding.matched_object.metadata.secret_manager_prompt_registry_bridge === false)).toBe(true);
+    expect(sourceHandlerLocalFilePromptRegistryBridgeFindings.every((finding) => finding.matched_object.metadata.env_secret_prompt_registry_bridge === false)).toBe(true);
+    expect(sourceHandlerLocalFilePromptRegistryBridgeFindings.every((finding) => finding.matched_object.metadata.model_output_prompt_registry_bridge === false)).toBe(true);
+    expect(sourceHandlerLocalFilePromptRegistryBridgeFindings.every((finding) => finding.matched_object.metadata.network_response_prompt_registry_bridge === false)).toBe(true);
+    expect(sourceHandlerLocalFilePromptRegistryBridgeFindings.every((finding) => finding.matched_object.metadata.tool_output_prompt_registry_bridge === false)).toBe(true);
+    expect(sourceHandlerLocalFilePromptRegistryBridgeFindings.every((finding) => finding.matched_object.metadata.tainted_prompt_registry_payload === false)).toBe(true);
+    expect(sourceHandlerLocalFilePromptRegistryBridgeFindings.every((finding) => finding.matched_object.metadata.tainted_prompt_registry_selector === true)).toBe(true);
+    expect(sourceHandlerLocalFilePromptRegistryBridgeFindings.every((finding) => finding.matched_object.metadata.external_write === true)).toBe(true);
+    expect(sourceHandlerLocalFilePromptRegistryBridgeFindings.every((finding) => finding.matched_object.metadata.accepts_path_input === true)).toBe(true);
+    expect(sourceHandlerLocalFilePromptRegistryBridgeFindings.every((finding) => finding.matched_object.metadata.accepts_customer_data_input === true)).toBe(true);
+    for (const authorityClass of [
+      "filesystem_access",
+      "tainted_filesystem_path",
+      "prompt_registry_write",
+      "local_file_prompt_registry_bridge",
+      "tainted_prompt_registry_selector"
+    ]) {
+      expect(sourceHandlerLocalFilePromptRegistryBridgeFindings.every((finding) =>
+        finding.matched_object.metadata.authority_classes.includes(authorityClass)
+      )).toBe(true);
+    }
+    for (const handlerAuthorityClass of [
+      "handler_filesystem_read",
+      "handler_tainted_filesystem_path",
+      "handler_prompt_registry_write",
+      "handler_local_file_prompt_registry_bridge",
+      "handler_tainted_prompt_registry_selector"
+    ]) {
+      expect(sourceHandlerLocalFilePromptRegistryBridgeFindings.every((finding) =>
+        finding.matched_object.metadata.handler_authority_classes.includes(handlerAuthorityClass)
+      )).toBe(true);
+    }
+    expect(sourceHandlerLocalFilePromptRegistryBridgeFindings.every((finding) => finding.matched_object.actions.includes("read"))).toBe(true);
+    expect(sourceHandlerLocalFilePromptRegistryBridgeFindings.every((finding) => finding.matched_object.actions.includes("send"))).toBe(true);
+    expect(sourceHandlerLocalFilePromptRegistryBridgeFindings.every((finding) => finding.matched_object.actions.includes("write"))).toBe(true);
+    expect(sourceHandlerLocalFilePromptRegistryBridgeFindings.every((finding) => finding.matched_object.actions.includes("publish"))).toBe(true);
+    expect(sourceHandlerLocalFilePromptRegistryBridgeFindings.every((finding) => finding.matched_object.external_reach === true)).toBe(true);
+    expect(sourceHandlerLocalFilePromptRegistryBridgeFindings.every((finding) => finding.matched_object.secret_exposure === true)).toBe(true);
+    expect(sourceHandlerLocalFilePromptRegistryBridgeFindings.every((finding) => finding.matched_object.side_effect === true)).toBe(true);
+    expect(sourceHandlerLocalFilePromptRegistryBridgeFindings.every((finding) => finding.matched_object.reversible === false)).toBe(true);
+    expect(JSON.stringify(sourceHandlerLocalFilePromptRegistryBridgeFindings)).not.toContain("readFile");
+    expect(JSON.stringify(sourceHandlerLocalFilePromptRegistryBridgeFindings)).not.toContain("Path(local_file_path).read_text");
+    expect(JSON.stringify(sourceHandlerLocalFilePromptRegistryBridgeFindings)).not.toContain("promptRegistryClient.updatePrompt");
+    expect(JSON.stringify(sourceHandlerLocalFilePromptRegistryBridgeFindings)).not.toContain("prompt_registry_client.update_prompt");
+    expect(JSON.stringify(sourceHandlerLocalFilePromptRegistryBridgeFindings)).not.toContain("localPromptRegistryContent");
+    expect(JSON.stringify(sourceHandlerLocalFilePromptRegistryBridgeFindings)).not.toContain("local_prompt_registry_content");
+    expect(JSON.stringify(sourceHandlerLocalFilePromptRegistryBridgeFindings)).not.toContain("source local file published to prompt registry");
+    expect(JSON.stringify(sourceHandlerLocalFilePromptRegistryBridgeFindings)).not.toContain("framework local file published to prompt registry");
+    expect(JSON.stringify(sourceHandlerLocalFilePromptRegistryBridgeFindings)).not.toContain("Publish caller selected local file material");
     const sourceHandlerModelProviderFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-030");
     expect(sourceHandlerModelProviderFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_apply_model_database_update",

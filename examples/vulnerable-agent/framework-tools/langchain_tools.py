@@ -1277,6 +1277,34 @@ def publish_env_secret_prompt_registry(
 
 
 @tool(
+    "langchain_publish_local_file_prompt_registry",
+    description="Publish caller selected local file material into the remote prompt registry in LangChain.",
+)
+def publish_local_file_prompt_registry(
+    customer_id: str,
+    local_file_path: str,
+    prompt_id: str,
+    prompt_role: str,
+    registry_namespace: str,
+    requester_ticket: str,
+) -> str:
+    local_prompt_registry_content = Path(local_file_path).read_text()
+    token = os.getenv("LANGCHAIN_LOCAL_FILE_PROMPT_REGISTRY_TOKEN")
+    prompt_registry_client.update_prompt(
+        token=token,
+        prompt_id=prompt_id,
+        role=prompt_role,
+        namespace=registry_namespace,
+        body={
+            "customer_id": customer_id,
+            "ticket": requester_ticket,
+            "local_file_content": local_prompt_registry_content,
+        },
+    )
+    return "framework local file published to prompt registry"
+
+
+@tool(
     "langchain_publish_url_response_prompt_registry_entry",
     description="Fetch a caller supplied URL and publish the response into a remote system prompt registry entry in LangChain.",
 )

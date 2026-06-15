@@ -394,6 +394,7 @@ Tool metadata may include:
 - `env_secret_prompt_registry_bridge`
 - `model_output_prompt_registry_bridge`
 - `network_response_prompt_registry_bridge`
+- `local_file_prompt_registry_bridge`
 - `tool_output_prompt_registry_bridge`
 - `tainted_prompt_cache_key`
 - `tainted_prompt_cache_value`
@@ -458,6 +459,7 @@ Tool metadata may include:
 - `env_secret_prompt_registry_bridge`
 - `model_output_prompt_registry_bridge`
 - `network_response_prompt_registry_bridge`
+- `local_file_prompt_registry_bridge`
 - `tainted_prompt_registry_payload`
 - `tainted_prompt_registry_selector`
 - `model_approval_gate`
@@ -534,6 +536,7 @@ Tool metadata may include:
 - `handler_env_secret_prompt_registry_bridge`
 - `handler_model_output_prompt_registry_bridge`
 - `handler_network_response_prompt_registry_bridge`
+- `handler_local_file_prompt_registry_bridge`
 - `handler_tool_output_prompt_registry_bridge`
 - `handler_tainted_prompt_cache_key`
 - `handler_tainted_prompt_cache_value`
@@ -599,6 +602,7 @@ Tool metadata may include:
 - `handler_env_secret_prompt_registry_bridge`
 - `handler_model_output_prompt_registry_bridge`
 - `handler_network_response_prompt_registry_bridge`
+- `handler_local_file_prompt_registry_bridge`
 - `handler_tainted_prompt_registry_payload`
 - `handler_tainted_prompt_registry_selector`
 - `handler_model_approval_gate`
@@ -2192,6 +2196,8 @@ Source-defined tool handlers can also emit redacted visual-context remote-agent 
 Source-defined tool handlers can also emit redacted secret-manager prompt-registry bridge authority through `secret_manager_prompt_registry_bridge`, `secret_manager_access`, `tainted_secret_manager_path`, `prompt_registry_write`, `tainted_prompt_registry_payload`, `tainted_prompt_registry_selector`, and the corresponding `handler_*` fields when parsed MCP SDK or agent-framework tools read caller-selected vault or secret-manager paths and publish the returned secret material into prompt or instruction registries using runtime credentials and caller-selected prompt metadata. Handler bodies, vault calls, secret paths, secret values, registry calls, prompt IDs, prompt roles, prompt bodies, and return strings remain redacted.
 
 Source-defined tool handlers can also emit redacted environment-secret prompt-registry bridge authority through `env_secret_prompt_registry_bridge`, `prompt_registry_write`, `tainted_prompt_registry_selector`, and the corresponding `handler_*` fields when parsed MCP SDK or agent-framework tools publish environment-derived secret material into prompt or instruction registries using runtime credentials and caller-selected prompt metadata. Handler bodies, env access calls, key values, secret values, registry calls, prompt IDs, prompt roles, prompt bodies, prompt namespaces, and return strings remain redacted.
+
+Source-defined tool handlers can also emit redacted local-file prompt-registry bridge authority through `local_file_prompt_registry_bridge`, `tainted_filesystem_path`, `prompt_registry_write`, `tainted_prompt_registry_selector`, and the corresponding `handler_*` fields when parsed MCP SDK or agent-framework tools read caller-selected local files and publish the file material into prompt or instruction registries using runtime credentials and caller-selected prompt metadata. Handler bodies, filesystem reads, local paths, file contents, registry calls, prompt IDs, prompt roles, prompt bodies, prompt namespaces, and return strings remain redacted.
 
 Source-defined tool handlers can also emit redacted secret-manager authorization-grant bridge authority through `secret_manager_authorization_grant_bridge`, `secret_manager_access`, `tainted_secret_manager_path`, `authorization_policy_write`, `tainted_authorization_grant_input`, `authorization_broad_grant`, and the corresponding `handler_*` fields when parsed MCP SDK or agent-framework tools read caller-selected vault or secret-manager paths and use the returned secret material to write broad, wildcard, approval-free, or long-lived authorization, permission, entitlement, or tool-grant policy using runtime credentials. Handler bodies, vault calls, secret paths, secret values, grant calls, tool names, roles, scopes, subjects, resources, tenant selectors, grant reasons, and return strings remain redacted.
 

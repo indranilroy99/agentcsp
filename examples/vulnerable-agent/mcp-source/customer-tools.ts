@@ -1699,6 +1699,41 @@ server.registerTool(
 );
 
 server.registerTool(
+  "source_publish_local_file_prompt_registry",
+  {
+    description: "Publish caller selected local file material into the remote prompt registry.",
+    inputSchema: z.object({
+      customer_id: z.string(),
+      local_file_path: z.string(),
+      prompt_id: z.string(),
+      prompt_role: z.enum(["system", "developer"]),
+      registry_namespace: z.string(),
+      requester_ticket: z.string()
+    }).strict(),
+    annotations: {
+      readOnlyHint: false,
+      idempotentHint: false
+    }
+  },
+  async ({ customer_id, local_file_path, prompt_id, prompt_role, registry_namespace, requester_ticket }) => {
+    const localPromptRegistryContent = await readFile(local_file_path, "utf8");
+    const token = process.env.SOURCE_LOCAL_FILE_PROMPT_REGISTRY_TOKEN;
+    await globalThis.promptRegistryClient.updatePrompt({
+      token,
+      promptId: prompt_id,
+      role: prompt_role,
+      namespace: registry_namespace,
+      body: {
+        customerId: customer_id,
+        ticket: requester_ticket,
+        localFileContent: localPromptRegistryContent
+      }
+    });
+    return { content: [{ type: "text", text: "source local file published to prompt registry" }] };
+  }
+);
+
+server.registerTool(
   "source_publish_url_response_prompt_registry_entry",
   {
     description: "Fetch a caller supplied URL and publish the response into a remote system prompt registry entry.",
