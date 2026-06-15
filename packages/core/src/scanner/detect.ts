@@ -24178,6 +24178,7 @@ function addToolDefinitionSurface(
       !authority.safety_policy_write &&
       !authority.secret_manager_safety_policy_bridge &&
       !authority.env_secret_safety_policy_bridge &&
+      !authority.network_response_safety_policy_bridge &&
       !authority.tool_output_safety_policy_bridge &&
       !authority.authorization_policy_write &&
       !authority.secret_manager_authorization_grant_bridge &&
@@ -24360,6 +24361,7 @@ function addToolDefinitionSurface(
       model_output_safety_policy_bridge: authority.model_output_safety_policy_bridge,
       secret_manager_safety_policy_bridge: authority.secret_manager_safety_policy_bridge,
       env_secret_safety_policy_bridge: authority.env_secret_safety_policy_bridge,
+      network_response_safety_policy_bridge: authority.network_response_safety_policy_bridge,
       tool_output_safety_policy_bridge: authority.tool_output_safety_policy_bridge,
       authorization_policy_write: authority.authorization_policy_write,
       tainted_authorization_grant_input: authority.tainted_authorization_grant_input,
@@ -26855,6 +26857,7 @@ interface SourceToolHandlerSignals {
   handlerModelOutputSafetyPolicyBridge: boolean;
   handlerSecretManagerSafetyPolicyBridge: boolean;
   handlerEnvSecretSafetyPolicyBridge: boolean;
+  handlerNetworkResponseSafetyPolicyBridge: boolean;
   handlerToolOutputSafetyPolicyBridge: boolean;
   handlerAuthorizationPolicyWrite: boolean;
   handlerTaintedAuthorizationGrantInput: boolean;
@@ -27463,6 +27466,7 @@ function sourceToolHandlerSignalMetadata(signals: SourceToolHandlerSignals | und
     handler_model_output_safety_policy_bridge: signals.handlerModelOutputSafetyPolicyBridge,
     handler_secret_manager_safety_policy_bridge: signals.handlerSecretManagerSafetyPolicyBridge,
     handler_env_secret_safety_policy_bridge: signals.handlerEnvSecretSafetyPolicyBridge,
+    handler_network_response_safety_policy_bridge: signals.handlerNetworkResponseSafetyPolicyBridge,
     handler_tool_output_safety_policy_bridge: signals.handlerToolOutputSafetyPolicyBridge,
     handler_authorization_policy_write: signals.handlerAuthorizationPolicyWrite,
     handler_tainted_authorization_grant_input: signals.handlerTaintedAuthorizationGrantInput,
@@ -27716,6 +27720,9 @@ function classifySourceToolHandlerSignals(
   const modelOutputSafetyPolicyBridge = modelProviderCall && safetyPolicyWrite && (language === "javascript"
     ? hasJavaScriptHandlerModelOutputSafetyPolicyBridge(handlerSource)
     : hasPythonHandlerModelOutputSafetyPolicyBridge(handlerSource));
+  const networkResponseSafetyPolicyBridge = externalNetworkCall && safetyPolicyWrite && (language === "javascript"
+    ? hasJavaScriptHandlerNetworkResponseSafetyPolicyBridge(handlerSource)
+    : hasPythonHandlerNetworkResponseSafetyPolicyBridge(handlerSource));
   const toolOutputSafetyPolicyBridge = safetyPolicyWrite && (language === "javascript"
     ? hasJavaScriptHandlerToolOutputSafetyPolicyBridge(handlerSource)
     : hasPythonHandlerToolOutputSafetyPolicyBridge(handlerSource));
@@ -27854,6 +27861,7 @@ function classifySourceToolHandlerSignals(
   const envSecretSafetyPolicyBridge = secretEnvAccess &&
     safetyPolicyWrite &&
     !secretManagerSafetyPolicyBridge &&
+    !networkResponseSafetyPolicyBridge &&
     !modelOutputSafetyPolicyBridge &&
     !toolOutputSafetyPolicyBridge &&
     (language === "javascript"
@@ -28347,6 +28355,7 @@ function classifySourceToolHandlerSignals(
   if (modelOutputSafetyPolicyBridge) classes.add("handler_model_output_safety_policy_bridge");
   if (secretManagerSafetyPolicyBridge) classes.add("handler_secret_manager_safety_policy_bridge");
   if (envSecretSafetyPolicyBridge) classes.add("handler_env_secret_safety_policy_bridge");
+  if (networkResponseSafetyPolicyBridge) classes.add("handler_network_response_safety_policy_bridge");
   if (toolOutputSafetyPolicyBridge) classes.add("handler_tool_output_safety_policy_bridge");
   if (authorizationPolicyWrite) classes.add("handler_authorization_policy_write");
   if (taintedAuthorizationGrantInput) classes.add("handler_tainted_authorization_grant_input");
@@ -28541,6 +28550,7 @@ function classifySourceToolHandlerSignals(
     handlerModelOutputSafetyPolicyBridge: modelOutputSafetyPolicyBridge,
     handlerSecretManagerSafetyPolicyBridge: secretManagerSafetyPolicyBridge,
     handlerEnvSecretSafetyPolicyBridge: envSecretSafetyPolicyBridge,
+    handlerNetworkResponseSafetyPolicyBridge: networkResponseSafetyPolicyBridge,
     handlerToolOutputSafetyPolicyBridge: toolOutputSafetyPolicyBridge,
     handlerAuthorizationPolicyWrite: authorizationPolicyWrite,
     handlerTaintedAuthorizationGrantInput: taintedAuthorizationGrantInput,
@@ -32102,6 +32112,30 @@ function hasJavaScriptHandlerEnvSecretSafetyPolicyBridge(source: string): boolea
 
 function hasPythonHandlerEnvSecretSafetyPolicyBridge(source: string): boolean {
   const identifiers = extractPythonEnvSecretIdentifiers(source);
+  return identifiers.length > 0 && safetyPolicyCallReferencesPayloadIdentifier(
+    [
+      /\b(?:guardrail_policy_client|safety_policy_client|safety_control_client|policy_client|agent_policy_client|approval_policy_client|moderation_policy_client|tool_approval_client|risk_policy_client|control_plane_client|safety_settings_client)\s*(?:\.\s*[A-Za-z_]\w*){0,5}\s*\.\s*(?:update|update_policy|set|set_policy|put|upsert|write|save|configure|configure_policy|patch|patch_policy|override|apply_override|disable|disable_control|set_mode|set_default|set_default_allow|set_approval_policy)\s*\(([\s\S]{0,2200})\)/giu,
+      /\b(?:update_guardrail_policy|update_safety_policy|set_safety_policy|patch_guardrail_policy|override_safety_policy|disable_safety_control|set_approval_policy|set_tool_approval_policy|set_default_allow)\s*\(([\s\S]{0,2200})\)/giu
+    ],
+    source,
+    identifiers
+  );
+}
+
+function hasJavaScriptHandlerNetworkResponseSafetyPolicyBridge(source: string): boolean {
+  const identifiers = extractJavaScriptNetworkResponseIdentifiers(source);
+  return identifiers.length > 0 && safetyPolicyCallReferencesPayloadIdentifier(
+    [
+      /\b(?:guardrailPolicyClient|safetyPolicyClient|safetyControlClient|policyClient|agentPolicyClient|approvalPolicyClient|moderationPolicyClient|toolApprovalClient|riskPolicyClient|controlPlaneClient|safetySettingsClient)\s*(?:\.\s*[A-Za-z_$][\w$]*){0,5}\s*\.\s*(?:update|updatePolicy|set|setPolicy|put|upsert|write|save|configure|configurePolicy|patch|patchPolicy|override|applyOverride|disable|disableControl|setMode|setDefault|setDefaultAllow|setApprovalPolicy)\s*\(([\s\S]{0,2200})\)/giu,
+      /\b(?:updateGuardrailPolicy|updateSafetyPolicy|setSafetyPolicy|patchGuardrailPolicy|overrideSafetyPolicy|disableSafetyControl|setApprovalPolicy|setToolApprovalPolicy|setDefaultAllow)\s*\(([\s\S]{0,2200})\)/giu
+    ],
+    source,
+    identifiers
+  );
+}
+
+function hasPythonHandlerNetworkResponseSafetyPolicyBridge(source: string): boolean {
+  const identifiers = extractPythonNetworkResponseIdentifiers(source);
   return identifiers.length > 0 && safetyPolicyCallReferencesPayloadIdentifier(
     [
       /\b(?:guardrail_policy_client|safety_policy_client|safety_control_client|policy_client|agent_policy_client|approval_policy_client|moderation_policy_client|tool_approval_client|risk_policy_client|control_plane_client|safety_settings_client)\s*(?:\.\s*[A-Za-z_]\w*){0,5}\s*\.\s*(?:update|update_policy|set|set_policy|put|upsert|write|save|configure|configure_policy|patch|patch_policy|override|apply_override|disable|disable_control|set_mode|set_default|set_default_allow|set_approval_policy)\s*\(([\s\S]{0,2200})\)/giu,
@@ -36423,6 +36457,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   model_output_safety_policy_bridge: boolean;
   secret_manager_safety_policy_bridge: boolean;
   env_secret_safety_policy_bridge: boolean;
+  network_response_safety_policy_bridge: boolean;
   tool_output_safety_policy_bridge: boolean;
   authorization_policy_write: boolean;
   tainted_authorization_grant_input: boolean;
@@ -36558,6 +36593,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   const handlerModelOutputSafetyPolicyBridge = handler?.handlerModelOutputSafetyPolicyBridge === true;
   const handlerSecretManagerSafetyPolicyBridge = handler?.handlerSecretManagerSafetyPolicyBridge === true;
   const handlerEnvSecretSafetyPolicyBridge = handler?.handlerEnvSecretSafetyPolicyBridge === true;
+  const handlerNetworkResponseSafetyPolicyBridge = handler?.handlerNetworkResponseSafetyPolicyBridge === true;
   const handlerToolOutputSafetyPolicyBridge = handler?.handlerToolOutputSafetyPolicyBridge === true;
   const handlerAuthorizationPolicyWrite = handler?.handlerAuthorizationPolicyWrite === true;
   const handlerTaintedAuthorizationGrantInput = handler?.handlerTaintedAuthorizationGrantInput === true;
@@ -37444,6 +37480,12 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
     actions.add("send");
     actions.add("write");
   }
+  if (handlerNetworkResponseSafetyPolicyBridge) {
+    classes.add("network_response_safety_policy_bridge");
+    actions.add("read");
+    actions.add("send");
+    actions.add("write");
+  }
   if (handlerToolOutputSafetyPolicyBridge) {
     classes.add("tool_output_safety_policy_bridge");
     actions.add("execute");
@@ -37863,6 +37905,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerModelOutputSafetyPolicyBridge ||
       handlerSecretManagerSafetyPolicyBridge ||
       handlerEnvSecretSafetyPolicyBridge ||
+      handlerNetworkResponseSafetyPolicyBridge ||
       handlerToolOutputSafetyPolicyBridge ||
       handlerAuthorizationPolicyWrite ||
       handlerTaintedAuthorizationGrantInput ||
@@ -38050,6 +38093,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerModelOutputSafetyPolicyBridge ||
       handlerSecretManagerSafetyPolicyBridge ||
       handlerEnvSecretSafetyPolicyBridge ||
+      handlerNetworkResponseSafetyPolicyBridge ||
       handlerToolOutputSafetyPolicyBridge ||
       handlerAuthorizationPolicyWrite ||
       handlerSecretManagerAuthorizationGrantBridge ||
@@ -38145,6 +38189,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerEnvSecretPromptRegistryBridge ||
       handlerSecretManagerSafetyPolicyBridge ||
       handlerEnvSecretSafetyPolicyBridge ||
+      (handlerNetworkResponseSafetyPolicyBridge && handlerSecretEnvAccess) ||
       handlerSecretManagerAuthorizationGrantBridge ||
       (handlerLocalFileAuthorizationGrantBridge && handlerSecretEnvAccess) ||
       handlerEnvSecretAuthorizationGrantBridge ||
@@ -38359,6 +38404,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
     model_output_safety_policy_bridge: handlerModelOutputSafetyPolicyBridge,
     secret_manager_safety_policy_bridge: handlerSecretManagerSafetyPolicyBridge,
     env_secret_safety_policy_bridge: handlerEnvSecretSafetyPolicyBridge,
+    network_response_safety_policy_bridge: handlerNetworkResponseSafetyPolicyBridge,
     tool_output_safety_policy_bridge: handlerToolOutputSafetyPolicyBridge,
     authorization_policy_write: handlerAuthorizationPolicyWrite,
     tainted_authorization_grant_input: handlerTaintedAuthorizationGrantInput,
@@ -38540,6 +38586,7 @@ function authoritySignature(tool: SurfaceObject): string {
     metadata.model_output_safety_policy_bridge === true ? "model_output_safety_policy_bridge" : "",
     metadata.secret_manager_safety_policy_bridge === true ? "secret_manager_safety_policy_bridge" : "",
     metadata.env_secret_safety_policy_bridge === true ? "env_secret_safety_policy_bridge" : "",
+    metadata.network_response_safety_policy_bridge === true ? "network_response_safety_policy_bridge" : "",
     metadata.tool_output_safety_policy_bridge === true ? "tool_output_safety_policy_bridge" : "",
     metadata.authorization_policy_write === true ? "authorization_policy_write" : "",
     metadata.tainted_authorization_grant_input === true ? "tainted_authorization_grant_input" : "",
@@ -38747,6 +38794,7 @@ function isPrivilegedToolSurface(tool: SurfaceObject): boolean {
     tool.metadata.model_output_safety_policy_bridge === true ||
     tool.metadata.secret_manager_safety_policy_bridge === true ||
     tool.metadata.env_secret_safety_policy_bridge === true ||
+    tool.metadata.network_response_safety_policy_bridge === true ||
     tool.metadata.tool_output_safety_policy_bridge === true ||
     tool.metadata.authorization_policy_write === true ||
     tool.metadata.tainted_authorization_grant_input === true ||
