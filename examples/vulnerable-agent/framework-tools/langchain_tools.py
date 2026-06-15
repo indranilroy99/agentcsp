@@ -1694,6 +1694,31 @@ def store_local_file_memory(
 
 
 @tool(
+    "langchain_export_local_file_artifact",
+    description="Read a caller selected local file and export it to caller selected shareable artifact storage.",
+)
+def export_local_file_artifact(
+    customer_id: str,
+    local_file_path: str,
+    artifact_bucket: str,
+    artifact_object_key: str,
+    artifact_note_text: str,
+) -> str:
+    token = os.getenv("LANGCHAIN_LOCAL_FILE_ARTIFACT_TOKEN")
+    local_file_content = Path(local_file_path).read_text()
+    artifact_exporter.upload_artifact(
+        token=token,
+        bucket=artifact_bucket,
+        key=artifact_object_key,
+        content=local_file_content,
+        customer_id=customer_id,
+        note=artifact_note_text,
+        public=True,
+    )
+    return "framework local file exported to artifact"
+
+
+@tool(
     "langchain_submit_privileged_tool_observation_browser_form",
     description="Submit a raw privileged tool observation into an authenticated browser form selected by the caller in LangChain.",
 )

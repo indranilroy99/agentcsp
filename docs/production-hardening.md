@@ -435,6 +435,7 @@ Examples:
 - exact customer-data paths from retrieved context into PII-capable external tools
 - source-anchored retrieved-context browser automation paths where caller-selected retrieval queries can drive signed-in browser actions against caller-selected targets
 - source-anchored authenticated visual-context paths where caller-selected browser targets can send screenshots or OCR context into model-provider prompts
+- source-anchored local-file artifact export paths where caller-selected filesystem reads can publish file material into public or shareable storage under runtime artifact credentials
 - source-anchored prompt paths that preserve explicit privileged-tool references from untrusted template variables
 - source-anchored memory replay paths that preserve the persisted-memory finding as the reason for the blast radius
 - exact generated-state replay paths that preserve transcript or cached-output provenance without expanding into unrelated privileged targets

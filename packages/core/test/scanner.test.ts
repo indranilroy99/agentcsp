@@ -555,6 +555,7 @@ describe("scanner", () => {
     const sourceLocalFileDatabaseWriteBridgeTool = surfaces.tools.find((surface) => surface.name === "source_store_local_file_database");
     const sourceLocalFileExternalServiceBridgeTool = surfaces.tools.find((surface) => surface.name === "source_post_local_file_to_slack");
     const sourceLocalFileMemoryBridgeTool = surfaces.tools.find((surface) => surface.name === "source_store_local_file_memory");
+    const sourceLocalFileArtifactBridgeTool = surfaces.tools.find((surface) => surface.name === "source_export_local_file_artifact");
     const sourceNetworkResponseTool = surfaces.tools.find((surface) => surface.name === "source_fetch_url_content");
     const sourceNetworkResponseMemoryBridgeTool = surfaces.tools.find((surface) => surface.name === "source_store_url_response_memory");
     const sourceNetworkResponseExternalServiceBridgeTool = surfaces.tools.find((surface) => surface.name === "source_post_url_response_external");
@@ -823,6 +824,9 @@ describe("scanner", () => {
     );
     const langchainLocalFileMemoryBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "langchain_store_local_file_memory"
+    );
+    const langchainLocalFileArtifactBridgeTool = surfaces.tools.find(
+      (surface) => surface.name === "langchain_export_local_file_artifact"
     );
     const langchainNetworkResponseTool = surfaces.tools.find((surface) => surface.name === "langchain_fetch_url_content");
     const langchainNetworkResponseMemoryBridgeTool = surfaces.tools.find((surface) => surface.name === "langchain_store_url_response_memory");
@@ -2085,6 +2089,99 @@ describe("scanner", () => {
     expect(JSON.stringify(sourceLocalFileMemoryBridgeTool)).not.toContain("agentMemory.upsert");
     expect(JSON.stringify(sourceLocalFileMemoryBridgeTool)).not.toContain("source local file persisted to memory");
     expect(JSON.stringify(sourceLocalFileMemoryBridgeTool)).not.toContain("Read a caller selected local file");
+    expect(sourceLocalFileArtifactBridgeTool).toMatchObject({
+      path: "mcp-source/customer-tools.ts",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["call", "publish", "read", "send", "write"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(sourceLocalFileArtifactBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_mcp_source_tool: true,
+      mcp_source_tool_registration: true,
+      mcp_source_tool_registration_kind: "registerTool",
+      mcp_source_tool_argument_count: 3,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      read_only_hint: false,
+      idempotent_hint: false,
+      accepts_content_like_input: true,
+      accepts_path_input: true,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      artifact_export: true,
+      tainted_artifact_export_payload: true,
+      public_artifact_destination: true,
+      local_file_artifact_bridge: true,
+      local_file_disclosure: true,
+      external_write: true,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_artifact_export: true,
+      handler_tainted_artifact_export_payload: true,
+      handler_public_artifact_destination: true,
+      handler_local_file_artifact_bridge: true,
+      handler_filesystem_read: true,
+      handler_tainted_filesystem_path: true,
+      handler_secret_env_access: true,
+      handler_model_visible_output: true,
+      handler_signal_count: 7,
+      open_world_schema: false
+    });
+    expect(sourceLocalFileArtifactBridgeTool?.metadata.authority_classes).toEqual([
+      "artifact_export",
+      "content_input",
+      "customer_data_input",
+      "external_write",
+      "filesystem_access",
+      "filesystem_read",
+      "handler_artifact_export",
+      "handler_filesystem_read",
+      "handler_local_file_artifact_bridge",
+      "handler_public_artifact_destination",
+      "handler_secret_env_access",
+      "handler_tainted_artifact_export_payload",
+      "handler_tainted_filesystem_path",
+      "local_file_artifact_bridge",
+      "local_file_disclosure",
+      "pii_input",
+      "public_artifact_destination",
+      "secret_env_access",
+      "tainted_artifact_export_payload",
+      "tainted_filesystem_path"
+    ]);
+    expect(sourceLocalFileArtifactBridgeTool?.metadata.handler_authority_classes).toEqual([
+      "handler_artifact_export",
+      "handler_filesystem_read",
+      "handler_local_file_artifact_bridge",
+      "handler_public_artifact_destination",
+      "handler_secret_env_access",
+      "handler_tainted_artifact_export_payload",
+      "handler_tainted_filesystem_path"
+    ]);
+    expect(sourceLocalFileArtifactBridgeTool?.metadata.handler_env_key_names).toEqual(["SOURCE_LOCAL_FILE_ARTIFACT_TOKEN"]);
+    expect(sourceLocalFileArtifactBridgeTool?.metadata.schema_properties).toEqual([
+      "artifact_bucket",
+      "artifact_note_text",
+      "artifact_object_key",
+      "customer_id",
+      "local_file_path"
+    ]);
+    expect(sourceLocalFileArtifactBridgeTool?.metadata.required_properties).toEqual([
+      "artifact_bucket",
+      "artifact_note_text",
+      "artifact_object_key",
+      "customer_id",
+      "local_file_path"
+    ]);
+    expect(JSON.stringify(sourceLocalFileArtifactBridgeTool)).not.toContain("readFile");
+    expect(JSON.stringify(sourceLocalFileArtifactBridgeTool)).not.toContain("localFileContent");
+    expect(JSON.stringify(sourceLocalFileArtifactBridgeTool)).not.toContain("artifactExporter.uploadArtifact");
+    expect(JSON.stringify(sourceLocalFileArtifactBridgeTool)).not.toContain("source local file exported to artifact");
+    expect(JSON.stringify(sourceLocalFileArtifactBridgeTool)).not.toContain("Read a caller selected local file");
     expect(sourceNetworkResponseTool).toMatchObject({
       path: "mcp-source/customer-tools.ts",
       data_classes: ["unknown"],
@@ -12109,6 +12206,97 @@ describe("scanner", () => {
     expect(JSON.stringify(langchainLocalFileMemoryBridgeTool)).not.toContain("memory_store.upsert");
     expect(JSON.stringify(langchainLocalFileMemoryBridgeTool)).not.toContain("framework local file persisted to memory");
     expect(JSON.stringify(langchainLocalFileMemoryBridgeTool)).not.toContain("Read a caller selected local file");
+    expect(langchainLocalFileArtifactBridgeTool).toMatchObject({
+      path: "framework-tools/langchain_tools.py",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["call", "publish", "read", "send", "write"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(langchainLocalFileArtifactBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_agent_framework_source_tool: true,
+      agent_framework_source_tool_framework: "langchain",
+      agent_framework_source_tool_registration_kind: "python_tool_decorator",
+      agent_framework_source_tool_argument_count: 5,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_content_like_input: true,
+      accepts_path_input: true,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      artifact_export: true,
+      tainted_artifact_export_payload: true,
+      public_artifact_destination: true,
+      local_file_artifact_bridge: true,
+      local_file_disclosure: true,
+      external_write: true,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_artifact_export: true,
+      handler_tainted_artifact_export_payload: true,
+      handler_public_artifact_destination: true,
+      handler_local_file_artifact_bridge: true,
+      handler_filesystem_read: true,
+      handler_tainted_filesystem_path: true,
+      handler_secret_env_access: true,
+      handler_model_visible_output: true,
+      handler_signal_count: 7,
+      open_world_schema: false
+    });
+    expect(langchainLocalFileArtifactBridgeTool?.metadata.authority_classes).toEqual([
+      "artifact_export",
+      "content_input",
+      "customer_data_input",
+      "external_write",
+      "filesystem_access",
+      "filesystem_read",
+      "handler_artifact_export",
+      "handler_filesystem_read",
+      "handler_local_file_artifact_bridge",
+      "handler_public_artifact_destination",
+      "handler_secret_env_access",
+      "handler_tainted_artifact_export_payload",
+      "handler_tainted_filesystem_path",
+      "local_file_artifact_bridge",
+      "local_file_disclosure",
+      "pii_input",
+      "public_artifact_destination",
+      "secret_env_access",
+      "tainted_artifact_export_payload",
+      "tainted_filesystem_path"
+    ]);
+    expect(langchainLocalFileArtifactBridgeTool?.metadata.handler_authority_classes).toEqual([
+      "handler_artifact_export",
+      "handler_filesystem_read",
+      "handler_local_file_artifact_bridge",
+      "handler_public_artifact_destination",
+      "handler_secret_env_access",
+      "handler_tainted_artifact_export_payload",
+      "handler_tainted_filesystem_path"
+    ]);
+    expect(langchainLocalFileArtifactBridgeTool?.metadata.handler_env_key_names).toEqual(["LANGCHAIN_LOCAL_FILE_ARTIFACT_TOKEN"]);
+    expect(langchainLocalFileArtifactBridgeTool?.metadata.schema_properties).toEqual([
+      "artifact_bucket",
+      "artifact_note_text",
+      "artifact_object_key",
+      "customer_id",
+      "local_file_path"
+    ]);
+    expect(langchainLocalFileArtifactBridgeTool?.metadata.required_properties).toEqual([
+      "artifact_bucket",
+      "artifact_note_text",
+      "artifact_object_key",
+      "customer_id",
+      "local_file_path"
+    ]);
+    expect(JSON.stringify(langchainLocalFileArtifactBridgeTool)).not.toContain("Path(local_file_path)");
+    expect(JSON.stringify(langchainLocalFileArtifactBridgeTool)).not.toContain("local_file_content");
+    expect(JSON.stringify(langchainLocalFileArtifactBridgeTool)).not.toContain("artifact_exporter.upload_artifact");
+    expect(JSON.stringify(langchainLocalFileArtifactBridgeTool)).not.toContain("framework local file exported to artifact");
+    expect(JSON.stringify(langchainLocalFileArtifactBridgeTool)).not.toContain("Read a caller selected local file");
     expect(langchainNetworkResponseTool).toMatchObject({
       path: "framework-tools/langchain_tools.py",
       data_classes: ["unknown"],

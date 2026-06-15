@@ -307,6 +307,7 @@ Tool metadata may include:
 - `secret_manager_database_write_bridge`
 - `local_file_database_write_bridge`
 - `local_file_memory_bridge`
+- `local_file_artifact_bridge`
 - `tool_output_database_write_bridge`
 - `memory_write`
 - `tainted_memory_scope`
@@ -475,6 +476,7 @@ Tool metadata may include:
 - `handler_model_output_database_write_bridge`
 - `handler_local_file_database_write_bridge`
 - `handler_local_file_memory_bridge`
+- `handler_local_file_artifact_bridge`
 - `handler_model_output_memory_bridge`
 - `handler_model_output_shell_execution_bridge`
 - `handler_model_output_dynamic_code_execution_bridge`
@@ -2095,6 +2097,8 @@ Source-defined tool handlers can also emit redacted tool-output database-write b
 Source-defined tool handlers can also emit redacted local-file database-write bridge authority through `local_file_database_write_bridge`, `filesystem_read`, `tainted_filesystem_path`, `database_access`, `database_write`, and the corresponding `handler_*` fields when parsed MCP SDK or agent-framework tools read caller-selected local file paths and write file material into customer or operational records using runtime database credentials. Handler bodies, file-read calls, local paths, file contents, database calls, SQL strings, record fields, record IDs, reviewer notes, and return strings remain redacted.
 
 Source-defined tool handlers can also emit redacted local-file memory bridge authority through `local_file_memory_bridge`, `filesystem_read`, `tainted_filesystem_path`, `memory_write`, `tainted_memory_scope`, and the corresponding `handler_*` fields when parsed MCP SDK or agent-framework tools read caller-selected local files and persist file material into durable memory, RAG, vector, or state stores using runtime credentials and caller-selected memory scope. Handler bodies, file-read calls, local paths, file contents, memory-store calls, namespaces, keys, stored payloads, notes, and return strings remain redacted.
+
+Source-defined tool handlers can also emit redacted local-file artifact bridge authority through `local_file_artifact_bridge`, `filesystem_read`, `tainted_filesystem_path`, `artifact_export`, `tainted_artifact_export_payload`, `public_artifact_destination`, and the corresponding `handler_*` fields when parsed MCP SDK or agent-framework tools read caller-selected local files and export file material into public or shareable artifact storage using runtime credentials and caller-selected artifact routing. Handler bodies, file-read calls, local paths, file contents, artifact storage calls, bucket names, object keys, public access flags, exported payloads, notes, and return strings remain redacted.
 
 Source-defined tool handlers can also emit redacted local-file external-service bridge authority through `local_file_external_service_bridge`, `filesystem_read`, `tainted_filesystem_path`, `external_service_write`, `tainted_external_service_recipient`, and the corresponding `handler_*` fields when parsed MCP SDK or agent-framework tools read caller-selected local files and publish file material through Slack, email, issue-tracker, chat, or SaaS SDKs using runtime credentials and caller-selected recipients. Handler bodies, file-read calls, local paths, file contents, SDK calls, recipient or channel IDs, message bodies, and return strings remain redacted.
 

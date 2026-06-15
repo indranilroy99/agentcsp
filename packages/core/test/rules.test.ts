@@ -147,6 +147,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-143")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-144")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-145")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-146")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-001")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-002")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-003")).toBe(true);
@@ -6331,6 +6332,7 @@ describe("rule engine", () => {
     const sourceHandlerLocalFileDisclosureFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-020");
     expect(sourceHandlerLocalFileDisclosureFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_cache_local_file_prompt",
+      "langchain_export_local_file_artifact",
       "langchain_post_local_file_to_slack",
       "langchain_read_workspace_file",
       "langchain_store_local_file_database",
@@ -6339,6 +6341,7 @@ describe("rule engine", () => {
       "langchain_train_on_local_file",
       "langchain_upload_local_file_authenticated_browser",
       "source_cache_local_file_prompt",
+      "source_export_local_file_artifact",
       "source_post_local_file_to_slack",
       "source_read_workspace_file",
       "source_store_local_file_database",
@@ -6637,9 +6640,62 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerLocalFileMemoryBridgeFindings)).not.toContain("source local file persisted to memory");
     expect(JSON.stringify(sourceHandlerLocalFileMemoryBridgeFindings)).not.toContain("framework local file persisted to memory");
     expect(JSON.stringify(sourceHandlerLocalFileMemoryBridgeFindings)).not.toContain("Read a caller selected local file");
+    const sourceHandlerLocalFileArtifactBridgeFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-146");
+    expect(sourceHandlerLocalFileArtifactBridgeFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
+      "langchain_export_local_file_artifact",
+      "source_export_local_file_artifact"
+    ]);
+    expect(sourceHandlerLocalFileArtifactBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
+    expect(sourceHandlerLocalFileArtifactBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerLocalFileArtifactBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
+    expect(sourceHandlerLocalFileArtifactBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
+    expect(sourceHandlerLocalFileArtifactBridgeFindings.every((finding) => finding.matched_object.metadata.source_tool_handler_redacted === true)).toBe(true);
+    expect(sourceHandlerLocalFileArtifactBridgeFindings.every((finding) => finding.matched_object.metadata.handler_filesystem_read === true)).toBe(true);
+    expect(sourceHandlerLocalFileArtifactBridgeFindings.every((finding) => finding.matched_object.metadata.handler_tainted_filesystem_path === true)).toBe(true);
+    expect(sourceHandlerLocalFileArtifactBridgeFindings.every((finding) => finding.matched_object.metadata.handler_artifact_export === true)).toBe(true);
+    expect(sourceHandlerLocalFileArtifactBridgeFindings.every((finding) => finding.matched_object.metadata.handler_tainted_artifact_export_payload === true)).toBe(true);
+    expect(sourceHandlerLocalFileArtifactBridgeFindings.every((finding) => finding.matched_object.metadata.handler_public_artifact_destination === true)).toBe(true);
+    expect(sourceHandlerLocalFileArtifactBridgeFindings.every((finding) => finding.matched_object.metadata.handler_local_file_artifact_bridge === true)).toBe(true);
+    expect(sourceHandlerLocalFileArtifactBridgeFindings.every((finding) => finding.matched_object.metadata.handler_secret_env_access === true)).toBe(true);
+    expect(sourceHandlerLocalFileArtifactBridgeFindings.every((finding) => finding.matched_object.metadata.artifact_export === true)).toBe(true);
+    expect(sourceHandlerLocalFileArtifactBridgeFindings.every((finding) => finding.matched_object.metadata.tainted_artifact_export_payload === true)).toBe(true);
+    expect(sourceHandlerLocalFileArtifactBridgeFindings.every((finding) => finding.matched_object.metadata.public_artifact_destination === true)).toBe(true);
+    expect(sourceHandlerLocalFileArtifactBridgeFindings.every((finding) => finding.matched_object.metadata.local_file_artifact_bridge === true)).toBe(true);
+    expect(sourceHandlerLocalFileArtifactBridgeFindings.every((finding) => finding.matched_object.metadata.tainted_filesystem_path === true)).toBe(true);
+    expect(sourceHandlerLocalFileArtifactBridgeFindings.every((finding) => finding.matched_object.metadata.accepts_path_input === true)).toBe(true);
+    expect(sourceHandlerLocalFileArtifactBridgeFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("filesystem_read"))).toBe(true);
+    expect(sourceHandlerLocalFileArtifactBridgeFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("tainted_filesystem_path"))).toBe(true);
+    expect(sourceHandlerLocalFileArtifactBridgeFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("artifact_export"))).toBe(true);
+    expect(sourceHandlerLocalFileArtifactBridgeFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("tainted_artifact_export_payload"))).toBe(true);
+    expect(sourceHandlerLocalFileArtifactBridgeFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("public_artifact_destination"))).toBe(true);
+    expect(sourceHandlerLocalFileArtifactBridgeFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("local_file_artifact_bridge"))).toBe(true);
+    expect(sourceHandlerLocalFileArtifactBridgeFindings.every((finding) => finding.matched_object.metadata.handler_authority_classes.includes("handler_filesystem_read"))).toBe(true);
+    expect(sourceHandlerLocalFileArtifactBridgeFindings.every((finding) => finding.matched_object.metadata.handler_authority_classes.includes("handler_tainted_filesystem_path"))).toBe(true);
+    expect(sourceHandlerLocalFileArtifactBridgeFindings.every((finding) => finding.matched_object.metadata.handler_authority_classes.includes("handler_artifact_export"))).toBe(true);
+    expect(sourceHandlerLocalFileArtifactBridgeFindings.every((finding) => finding.matched_object.metadata.handler_authority_classes.includes("handler_tainted_artifact_export_payload"))).toBe(true);
+    expect(sourceHandlerLocalFileArtifactBridgeFindings.every((finding) => finding.matched_object.metadata.handler_authority_classes.includes("handler_public_artifact_destination"))).toBe(true);
+    expect(sourceHandlerLocalFileArtifactBridgeFindings.every((finding) => finding.matched_object.metadata.handler_authority_classes.includes("handler_local_file_artifact_bridge"))).toBe(true);
+    expect(sourceHandlerLocalFileArtifactBridgeFindings.every((finding) => finding.matched_object.actions.includes("read"))).toBe(true);
+    expect(sourceHandlerLocalFileArtifactBridgeFindings.every((finding) => finding.matched_object.actions.includes("send"))).toBe(true);
+    expect(sourceHandlerLocalFileArtifactBridgeFindings.every((finding) => finding.matched_object.actions.includes("write"))).toBe(true);
+    expect(sourceHandlerLocalFileArtifactBridgeFindings.every((finding) => finding.matched_object.actions.includes("publish"))).toBe(true);
+    expect(sourceHandlerLocalFileArtifactBridgeFindings.every((finding) => finding.matched_object.external_reach === true)).toBe(true);
+    expect(sourceHandlerLocalFileArtifactBridgeFindings.every((finding) => finding.matched_object.secret_exposure === true)).toBe(true);
+    expect(sourceHandlerLocalFileArtifactBridgeFindings.every((finding) => finding.matched_object.side_effect === true)).toBe(true);
+    expect(sourceHandlerLocalFileArtifactBridgeFindings.every((finding) => finding.matched_object.reversible === false)).toBe(true);
+    expect(JSON.stringify(sourceHandlerLocalFileArtifactBridgeFindings)).not.toContain("readFile");
+    expect(JSON.stringify(sourceHandlerLocalFileArtifactBridgeFindings)).not.toContain("Path(local_file_path)");
+    expect(JSON.stringify(sourceHandlerLocalFileArtifactBridgeFindings)).not.toContain("localFileContent");
+    expect(JSON.stringify(sourceHandlerLocalFileArtifactBridgeFindings)).not.toContain("local_file_content");
+    expect(JSON.stringify(sourceHandlerLocalFileArtifactBridgeFindings)).not.toContain("artifactExporter.uploadArtifact");
+    expect(JSON.stringify(sourceHandlerLocalFileArtifactBridgeFindings)).not.toContain("artifact_exporter.upload_artifact");
+    expect(JSON.stringify(sourceHandlerLocalFileArtifactBridgeFindings)).not.toContain("source local file exported to artifact");
+    expect(JSON.stringify(sourceHandlerLocalFileArtifactBridgeFindings)).not.toContain("framework local file exported to artifact");
+    expect(JSON.stringify(sourceHandlerLocalFileArtifactBridgeFindings)).not.toContain("Read a caller selected local file");
     const sourceHandlerTaintedFilesystemPathFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-035");
     expect(sourceHandlerTaintedFilesystemPathFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_cache_local_file_prompt",
+      "langchain_export_local_file_artifact",
       "langchain_post_local_file_to_slack",
       "langchain_read_workspace_file",
       "langchain_readonly_delete_workspace_path",
@@ -6650,6 +6706,7 @@ describe("rule engine", () => {
       "langchain_upload_local_file_authenticated_browser",
       "python_readonly_delete_workspace_file",
       "source_cache_local_file_prompt",
+      "source_export_local_file_artifact",
       "source_post_local_file_to_slack",
       "source_read_workspace_file",
       "source_readonly_delete_workspace_file",
@@ -9312,8 +9369,10 @@ describe("rule engine", () => {
     const sourceHandlerArtifactExportFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-050");
     expect(sourceHandlerArtifactExportFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_export_agent_run_artifact",
+      "langchain_export_local_file_artifact",
       "langchain_export_model_artifact",
       "source_export_agent_run_artifact",
+      "source_export_local_file_artifact",
       "source_export_model_artifact"
     ]);
     expect(sourceHandlerArtifactExportFindings.every((finding) => finding.severity === "critical")).toBe(true);

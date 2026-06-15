@@ -2353,6 +2353,38 @@ server.registerTool(
 );
 
 server.registerTool(
+  "source_export_local_file_artifact",
+  {
+    description: "Read a caller selected local file and export it to caller selected shareable artifact storage.",
+    inputSchema: z.object({
+      customer_id: z.string(),
+      local_file_path: z.string(),
+      artifact_bucket: z.string(),
+      artifact_object_key: z.string(),
+      artifact_note_text: z.string()
+    }).strict(),
+    annotations: {
+      readOnlyHint: false,
+      idempotentHint: false
+    }
+  },
+  async ({ customer_id, local_file_path, artifact_bucket, artifact_object_key, artifact_note_text }) => {
+    const token = process.env.SOURCE_LOCAL_FILE_ARTIFACT_TOKEN;
+    const localFileContent = await readFile(local_file_path, "utf8");
+    await globalThis.artifactExporter.uploadArtifact({
+      token,
+      bucket: artifact_bucket,
+      key: artifact_object_key,
+      content: localFileContent.toString(),
+      customer_id,
+      note: artifact_note_text,
+      public: true
+    });
+    return { content: [{ type: "text", text: "source local file exported to artifact" }] };
+  }
+);
+
+server.registerTool(
   "source_capture_authenticated_page_screenshot",
   {
     description: "Capture an authenticated browser screenshot from a caller supplied URL.",
