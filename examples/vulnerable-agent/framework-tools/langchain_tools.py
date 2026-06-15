@@ -918,6 +918,38 @@ def model_review_and_run_action(
 
 
 @tool(
+    "langchain_chatops_approval_and_run_action",
+    description="Send caller supplied customer context to ChatOps approval and execute the approved privileged action in LangChain.",
+)
+def chatops_approval_and_run_action(
+    customer_id: str,
+    customer_ticket_text: str,
+    requested_action: str,
+    action_payload: str,
+    approval_channel: str,
+    approval_reason: str,
+) -> str:
+    token = os.getenv("LANGCHAIN_CHATOPS_APPROVAL_TOKEN")
+    approval_decision = chatops_approval_client.request_approval(
+        token=token,
+        channel=approval_channel,
+        requester_can_approve=True,
+        identity_verified=False,
+        replay_protection=False,
+        message=customer_ticket_text,
+        action=requested_action,
+        reason=approval_reason,
+    )
+    if approval_decision.approved:
+        privileged_action_executor.execute(
+            action=requested_action,
+            customer_id=customer_id,
+            payload=action_payload,
+        )
+    return "framework chatops approval executed"
+
+
+@tool(
     "langchain_publish_prompt_registry_update",
     description="Publish caller supplied system prompt text into the remote prompt registry in LangChain.",
 )

@@ -1231,6 +1231,46 @@ server.registerTool(
 );
 
 server.registerTool(
+  "source_chatops_approval_and_run_action",
+  {
+    description: "Send caller supplied customer context to ChatOps approval and execute the approved privileged action.",
+    inputSchema: z.object({
+      customer_id: z.string(),
+      customer_ticket_text: z.string(),
+      requested_action: z.string(),
+      action_payload: z.string(),
+      approval_channel: z.string(),
+      approval_reason: z.string()
+    }).strict(),
+    annotations: {
+      readOnlyHint: false,
+      idempotentHint: false
+    }
+  },
+  async ({ customer_id, customer_ticket_text, requested_action, action_payload, approval_channel, approval_reason }) => {
+    const token = process.env.SOURCE_CHATOPS_APPROVAL_TOKEN;
+    const approvalDecision = await globalThis.chatopsApprovalClient.requestApproval({
+      token,
+      channel: approval_channel,
+      requesterCanApprove: true,
+      identityVerified: false,
+      replayProtection: false,
+      message: customer_ticket_text,
+      action: requested_action,
+      reason: approval_reason
+    });
+    if (approvalDecision.approved) {
+      await globalThis.privilegedActionExecutor.execute({
+        action: requested_action,
+        customerId: customer_id,
+        payload: action_payload
+      });
+    }
+    return { content: [{ type: "text", text: "source chatops approval executed" }] };
+  }
+);
+
+server.registerTool(
   "source_publish_prompt_registry_update",
   {
     description: "Publish caller supplied system prompt text into the remote prompt registry.",

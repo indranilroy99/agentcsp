@@ -628,6 +628,9 @@ describe("scanner", () => {
     );
     const sourceArtifactExportTool = surfaces.tools.find((surface) => surface.name === "source_export_agent_run_artifact");
     const sourceModelApprovalTool = surfaces.tools.find((surface) => surface.name === "source_model_review_and_run_action");
+    const sourceExternalApprovalChannelTool = surfaces.tools.find(
+      (surface) => surface.name === "source_chatops_approval_and_run_action"
+    );
     const sourcePromptRegistryWriteTool = surfaces.tools.find((surface) => surface.name === "source_publish_prompt_registry_update");
     const sourceAgentConfigWriteTool = surfaces.tools.find((surface) => surface.name === "source_update_agent_instructions");
     const sourceCredentialIssuanceTool = surfaces.tools.find((surface) => surface.name === "source_mint_agent_session_token");
@@ -912,6 +915,9 @@ describe("scanner", () => {
     );
     const langchainArtifactExportTool = surfaces.tools.find((surface) => surface.name === "langchain_export_agent_run_artifact");
     const langchainModelApprovalTool = surfaces.tools.find((surface) => surface.name === "langchain_model_review_and_run_action");
+    const langchainExternalApprovalChannelTool = surfaces.tools.find(
+      (surface) => surface.name === "langchain_chatops_approval_and_run_action"
+    );
     const langchainPromptRegistryWriteTool = surfaces.tools.find((surface) => surface.name === "langchain_publish_prompt_registry_update");
     const langchainAgentConfigWriteTool = surfaces.tools.find((surface) => surface.name === "langchain_update_agent_instructions");
     const langchainCredentialIssuanceTool = surfaces.tools.find((surface) => surface.name === "langchain_mint_agent_session_token");
@@ -5356,6 +5362,87 @@ describe("scanner", () => {
     expect(JSON.stringify(sourceModelApprovalTool)).not.toContain("privilegedActionExecutor.execute");
     expect(JSON.stringify(sourceModelApprovalTool)).not.toContain("source model approval executed");
     expect(JSON.stringify(sourceModelApprovalTool)).not.toContain("Approve and execute a caller supplied privileged action");
+    expect(sourceExternalApprovalChannelTool).toMatchObject({
+      path: "mcp-source/customer-tools.ts",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["approve", "call", "execute", "publish", "send"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(sourceExternalApprovalChannelTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_mcp_source_tool: true,
+      mcp_source_tool_registration: true,
+      mcp_source_tool_registration_kind: "registerTool",
+      mcp_source_tool_argument_count: 3,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_content_like_input: true,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      external_approval_channel: true,
+      tainted_approval_context: true,
+      approval_channel_weak_identity: true,
+      approval_auto_execution: true,
+      external_write: true,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_external_approval_channel: true,
+      handler_tainted_approval_context: true,
+      handler_approval_channel_weak_identity: true,
+      handler_approval_auto_execution: true,
+      handler_secret_env_access: true,
+      handler_model_visible_output: true,
+      handler_signal_count: 5,
+      open_world_schema: false
+    });
+    expect(sourceExternalApprovalChannelTool?.metadata.authority_classes).toEqual([
+      "approval_auto_execution",
+      "approval_channel_weak_identity",
+      "content_input",
+      "customer_data_input",
+      "external_approval_channel",
+      "external_write",
+      "handler_approval_auto_execution",
+      "handler_approval_channel_weak_identity",
+      "handler_external_approval_channel",
+      "handler_secret_env_access",
+      "handler_tainted_approval_context",
+      "pii_input",
+      "secret_env_access",
+      "tainted_approval_context"
+    ]);
+    expect(sourceExternalApprovalChannelTool?.metadata.handler_authority_classes).toEqual([
+      "handler_approval_auto_execution",
+      "handler_approval_channel_weak_identity",
+      "handler_external_approval_channel",
+      "handler_secret_env_access",
+      "handler_tainted_approval_context"
+    ]);
+    expect(sourceExternalApprovalChannelTool?.metadata.handler_env_key_names).toEqual(["SOURCE_CHATOPS_APPROVAL_TOKEN"]);
+    expect(sourceExternalApprovalChannelTool?.metadata.schema_properties).toEqual([
+      "action_payload",
+      "approval_channel",
+      "approval_reason",
+      "customer_id",
+      "customer_ticket_text",
+      "requested_action"
+    ]);
+    expect(sourceExternalApprovalChannelTool?.metadata.required_properties).toEqual([
+      "action_payload",
+      "approval_channel",
+      "approval_reason",
+      "customer_id",
+      "customer_ticket_text",
+      "requested_action"
+    ]);
+    expect(JSON.stringify(sourceExternalApprovalChannelTool)).not.toContain("chatopsApprovalClient.requestApproval");
+    expect(JSON.stringify(sourceExternalApprovalChannelTool)).not.toContain("privilegedActionExecutor.execute");
+    expect(JSON.stringify(sourceExternalApprovalChannelTool)).not.toContain("approvalDecision");
+    expect(JSON.stringify(sourceExternalApprovalChannelTool)).not.toContain("source chatops approval executed");
+    expect(JSON.stringify(sourceExternalApprovalChannelTool)).not.toContain("Send caller supplied customer context");
     expect(sourcePromptRegistryWriteTool).toMatchObject({
       path: "mcp-source/customer-tools.ts",
       data_classes: ["confidential", "credential", "pii"],
@@ -16376,6 +16463,88 @@ describe("scanner", () => {
     expect(JSON.stringify(langchainModelApprovalTool)).not.toContain("privileged_action_executor.execute");
     expect(JSON.stringify(langchainModelApprovalTool)).not.toContain("framework model approval executed");
     expect(JSON.stringify(langchainModelApprovalTool)).not.toContain("Approve and execute a caller supplied privileged action");
+    expect(langchainExternalApprovalChannelTool).toMatchObject({
+      path: "framework-tools/langchain_tools.py",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["approve", "call", "execute", "publish", "send"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(langchainExternalApprovalChannelTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_agent_framework_source_tool: true,
+      agent_framework_source_tool: true,
+      agent_framework_source_tool_framework: "langchain",
+      agent_framework_source_tool_registration_kind: "python_tool_decorator",
+      agent_framework_source_tool_argument_count: 6,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_content_like_input: true,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      external_approval_channel: true,
+      tainted_approval_context: true,
+      approval_channel_weak_identity: true,
+      approval_auto_execution: true,
+      external_write: true,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_external_approval_channel: true,
+      handler_tainted_approval_context: true,
+      handler_approval_channel_weak_identity: true,
+      handler_approval_auto_execution: true,
+      handler_secret_env_access: true,
+      handler_model_visible_output: true,
+      handler_signal_count: 5,
+      open_world_schema: false
+    });
+    expect(langchainExternalApprovalChannelTool?.metadata.authority_classes).toEqual([
+      "approval_auto_execution",
+      "approval_channel_weak_identity",
+      "content_input",
+      "customer_data_input",
+      "external_approval_channel",
+      "external_write",
+      "handler_approval_auto_execution",
+      "handler_approval_channel_weak_identity",
+      "handler_external_approval_channel",
+      "handler_secret_env_access",
+      "handler_tainted_approval_context",
+      "pii_input",
+      "secret_env_access",
+      "tainted_approval_context"
+    ]);
+    expect(langchainExternalApprovalChannelTool?.metadata.handler_authority_classes).toEqual([
+      "handler_approval_auto_execution",
+      "handler_approval_channel_weak_identity",
+      "handler_external_approval_channel",
+      "handler_secret_env_access",
+      "handler_tainted_approval_context"
+    ]);
+    expect(langchainExternalApprovalChannelTool?.metadata.handler_env_key_names).toEqual(["LANGCHAIN_CHATOPS_APPROVAL_TOKEN"]);
+    expect(langchainExternalApprovalChannelTool?.metadata.schema_properties).toEqual([
+      "action_payload",
+      "approval_channel",
+      "approval_reason",
+      "customer_id",
+      "customer_ticket_text",
+      "requested_action"
+    ]);
+    expect(langchainExternalApprovalChannelTool?.metadata.required_properties).toEqual([
+      "action_payload",
+      "approval_channel",
+      "approval_reason",
+      "customer_id",
+      "customer_ticket_text",
+      "requested_action"
+    ]);
+    expect(JSON.stringify(langchainExternalApprovalChannelTool)).not.toContain("chatops_approval_client.request_approval");
+    expect(JSON.stringify(langchainExternalApprovalChannelTool)).not.toContain("privileged_action_executor.execute");
+    expect(JSON.stringify(langchainExternalApprovalChannelTool)).not.toContain("approval_decision");
+    expect(JSON.stringify(langchainExternalApprovalChannelTool)).not.toContain("framework chatops approval executed");
+    expect(JSON.stringify(langchainExternalApprovalChannelTool)).not.toContain("Send caller supplied customer context");
     expect(langchainPromptRegistryWriteTool).toMatchObject({
       path: "framework-tools/langchain_tools.py",
       data_classes: ["confidential", "credential", "pii"],

@@ -1,0 +1,118 @@
+id: AGENTCSP-TOOL-153
+name: Source tool handler auto-executes external approval-channel decision
+description: A source-defined agent tool handler sends caller or customer-controlled approval context through an external ChatOps, email, webhook, or ticketing approval channel with weak approver identity or replay protection, then automatically executes the requested privileged action.
+category: approval_channel_integrity
+severity: critical
+maps_to:
+  owasp:
+    - LLM01:2025 Prompt Injection
+    - LLM02:2025 Sensitive Information Disclosure
+    - LLM05:2025 Improper Output Handling
+    - LLM06:2025 Excessive Agency
+  mitre_atlas:
+    - AML.T0051 LLM Plugin Compromise
+    - AML.T0056 LLM Trusted Boundary Compromise
+    - AML.T0060 LLM Prompt Injection
+  nist_ai_rmf:
+    - MAP 4.1
+    - MEASURE 2.7
+    - MANAGE 2.4
+match:
+  object_type: tool
+  where:
+    - field: metadata.parsed_tool_schema
+      op: equals
+      value: true
+    - field: metadata.source_tool_handler_redacted
+      op: equals
+      value: true
+    - field: metadata.handler_body_analyzed
+      op: equals
+      value: true
+    - field: metadata.handler_external_approval_channel
+      op: equals
+      value: true
+    - field: metadata.handler_tainted_approval_context
+      op: equals
+      value: true
+    - field: metadata.handler_approval_channel_weak_identity
+      op: equals
+      value: true
+    - field: metadata.handler_approval_auto_execution
+      op: equals
+      value: true
+    - field: metadata.handler_secret_env_access
+      op: equals
+      value: true
+    - field: metadata.external_approval_channel
+      op: equals
+      value: true
+    - field: metadata.tainted_approval_context
+      op: equals
+      value: true
+    - field: metadata.approval_channel_weak_identity
+      op: equals
+      value: true
+    - field: metadata.approval_auto_execution
+      op: equals
+      value: true
+    - field: metadata.accepts_content_like_input
+      op: equals
+      value: true
+    - field: metadata.accepts_customer_data_input
+      op: equals
+      value: true
+    - field: metadata.authority_classes
+      op: includes
+      value: external_approval_channel
+    - field: metadata.authority_classes
+      op: includes
+      value: tainted_approval_context
+    - field: metadata.authority_classes
+      op: includes
+      value: approval_channel_weak_identity
+    - field: metadata.authority_classes
+      op: includes
+      value: approval_auto_execution
+    - field: metadata.handler_authority_classes
+      op: includes
+      value: handler_external_approval_channel
+    - field: metadata.handler_authority_classes
+      op: includes
+      value: handler_tainted_approval_context
+    - field: metadata.handler_authority_classes
+      op: includes
+      value: handler_approval_channel_weak_identity
+    - field: metadata.handler_authority_classes
+      op: includes
+      value: handler_approval_auto_execution
+    - field: actions
+      op: includes
+      value: approve
+    - field: actions
+      op: includes
+      value: send
+    - field: actions
+      op: includes
+      value: execute
+    - field: data_classes
+      op: contains_any
+      value:
+        - confidential
+        - credential
+        - pii
+    - field: secret_exposure
+      op: equals
+      value: true
+    - field: external_reach
+      op: equals
+      value: true
+    - field: side_effect
+      op: equals
+      value: true
+    - field: reversible
+      op: equals
+      value: false
+recommendation:
+  control: quarantine
+  text: Quarantine external approval-channel auto-executors until approval requests use signed callbacks, SSO-backed approver identity, explicit approver allowlists, replay protection, requester/approver separation, sanitized approval summaries, and a separate policy-owned execution gate before privileged actions run.

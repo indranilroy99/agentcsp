@@ -24363,7 +24363,9 @@ function addToolDefinitionSurface(
       tainted_prompt_registry_payload: authority.tainted_prompt_registry_payload,
       tainted_prompt_registry_selector: authority.tainted_prompt_registry_selector,
       model_approval_gate: authority.model_approval_gate,
+      external_approval_channel: authority.external_approval_channel,
       tainted_approval_context: authority.tainted_approval_context,
+      approval_channel_weak_identity: authority.approval_channel_weak_identity,
       approval_auto_execution: authority.approval_auto_execution,
       visual_context_capture: authority.visual_context_capture,
       visual_context_to_output: authority.visual_context_to_output,
@@ -24907,7 +24909,7 @@ function detectRuntimeConfig(file: WalkedFile, text: string | undefined, surface
   }
 
   const posture = classifyRuntimeConfig(parseResult.value);
-  const actions = new Set<"read" | "write" | "execute" | "publish" | "send" | "delete" | "remember" | "call">(["call"]);
+  const actions = new Set<"read" | "write" | "execute" | "publish" | "send" | "delete" | "remember" | "approve" | "call">(["call"]);
   if (posture.privileged_tool_signals.some((signal) => ["shell", "terminal", "exec"].includes(signal))) actions.add("execute");
   if (posture.network_enabled) actions.add("send");
   if (posture.sandbox_disabled || posture.workspace_write) actions.add("write");
@@ -26842,7 +26844,9 @@ interface SourceToolHandlerSignals {
   handlerTaintedPromptRegistryPayload: boolean;
   handlerTaintedPromptRegistrySelector: boolean;
   handlerModelApprovalGate: boolean;
+  handlerExternalApprovalChannel: boolean;
   handlerTaintedApprovalContext: boolean;
+  handlerApprovalChannelWeakIdentity: boolean;
   handlerApprovalAutoExecution: boolean;
   handlerPrivilegedPromptComposition: boolean;
   handlerSecretEnvAccess: boolean;
@@ -27428,7 +27432,9 @@ function sourceToolHandlerSignalMetadata(signals: SourceToolHandlerSignals | und
     handler_tainted_prompt_registry_payload: signals.handlerTaintedPromptRegistryPayload,
     handler_tainted_prompt_registry_selector: signals.handlerTaintedPromptRegistrySelector,
     handler_model_approval_gate: signals.handlerModelApprovalGate,
+    handler_external_approval_channel: signals.handlerExternalApprovalChannel,
     handler_tainted_approval_context: signals.handlerTaintedApprovalContext,
+    handler_approval_channel_weak_identity: signals.handlerApprovalChannelWeakIdentity,
     handler_approval_auto_execution: signals.handlerApprovalAutoExecution,
     handler_privileged_prompt_composition: signals.handlerPrivilegedPromptComposition,
     handler_secret_env_access: signals.handlerSecretEnvAccess,
@@ -27722,10 +27728,14 @@ function classifySourceToolHandlerSignals(
   const modelApprovalGate = language === "javascript"
     ? hasJavaScriptHandlerModelApprovalGate(handlerSource)
     : hasPythonHandlerModelApprovalGate(handlerSource);
-  const taintedApprovalContext = modelApprovalGate && (language === "javascript"
+  const externalApprovalChannel = language === "javascript"
+    ? hasJavaScriptHandlerExternalApprovalChannel(handlerSource)
+    : hasPythonHandlerExternalApprovalChannel(handlerSource);
+  const taintedApprovalContext = (modelApprovalGate || externalApprovalChannel) && (language === "javascript"
     ? hasJavaScriptHandlerTaintedApprovalContext(handlerSource)
     : hasPythonHandlerTaintedApprovalContext(handlerSource));
-  const approvalAutoExecution = modelApprovalGate && hasHandlerApprovalAutoExecution(handlerSource);
+  const approvalChannelWeakIdentity = externalApprovalChannel && hasHandlerApprovalChannelWeakIdentity(handlerSource);
+  const approvalAutoExecution = (modelApprovalGate || externalApprovalChannel) && hasHandlerApprovalAutoExecution(handlerSource);
   const privilegedPromptComposition = language === "javascript"
     ? hasJavaScriptHandlerPrivilegedPromptComposition(handlerSource)
     : hasPythonHandlerPrivilegedPromptComposition(handlerSource);
@@ -28125,7 +28135,9 @@ function classifySourceToolHandlerSignals(
   if (taintedPromptRegistryPayload) classes.add("handler_tainted_prompt_registry_payload");
   if (taintedPromptRegistrySelector) classes.add("handler_tainted_prompt_registry_selector");
   if (modelApprovalGate) classes.add("handler_model_approval_gate");
+  if (externalApprovalChannel) classes.add("handler_external_approval_channel");
   if (taintedApprovalContext) classes.add("handler_tainted_approval_context");
+  if (approvalChannelWeakIdentity) classes.add("handler_approval_channel_weak_identity");
   if (approvalAutoExecution) classes.add("handler_approval_auto_execution");
   if (privilegedPromptComposition) classes.add("handler_privileged_prompt_composition");
   if (secretEnvAccess) classes.add("handler_secret_env_access");
@@ -28297,7 +28309,9 @@ function classifySourceToolHandlerSignals(
     handlerTaintedPromptRegistryPayload: taintedPromptRegistryPayload,
     handlerTaintedPromptRegistrySelector: taintedPromptRegistrySelector,
     handlerModelApprovalGate: modelApprovalGate,
+    handlerExternalApprovalChannel: externalApprovalChannel,
     handlerTaintedApprovalContext: taintedApprovalContext,
+    handlerApprovalChannelWeakIdentity: approvalChannelWeakIdentity,
     handlerApprovalAutoExecution: approvalAutoExecution,
     handlerPrivilegedPromptComposition: privilegedPromptComposition,
     handlerSecretEnvAccess: secretEnvAccess,
@@ -32181,18 +32195,47 @@ function hasPythonHandlerModelApprovalGate(source: string): boolean {
   ].some((pattern) => pattern.test(source)) && /\b(?:approval|approve|approved|allowed|decision|gate|policy_model|policy\s+model|guardrail|risk_review|risk\s+review)\b/iu.test(source);
 }
 
+function hasJavaScriptHandlerExternalApprovalChannel(source: string): boolean {
+  return [
+    /\b(?:approvalChannelClient|chatopsApprovalClient|slackApprovalClient|teamsApprovalClient|emailApprovalClient|webhookApprovalClient|externalApprovalClient|humanApprovalClient)\s*(?:\.\s*[A-Za-z_$][\w$]*){0,4}\s*\.\s*(?:request|requestApproval|send|sendApproval|post|postApproval|open|openApproval|awaitDecision|waitForDecision|collectDecision)\s*\(/iu,
+    /\b(?:requestExternalApproval|requestChatopsApproval|sendApprovalRequest|postApprovalRequest|awaitExternalApproval|collectApprovalDecision)\s*\(/iu
+  ].some((pattern) => pattern.test(source)) &&
+    /\b(?:approval|approve|approved|approver|review|reviewer|decision|chatops|slack|teams|email|webhook|external)\b/iu.test(source);
+}
+
+function hasPythonHandlerExternalApprovalChannel(source: string): boolean {
+  return [
+    /\b(?:approval_channel_client|chatops_approval_client|slack_approval_client|teams_approval_client|email_approval_client|webhook_approval_client|external_approval_client|human_approval_client)\s*(?:\.\s*[A-Za-z_]\w*){0,4}\s*\.\s*(?:request|request_approval|send|send_approval|post|post_approval|open|open_approval|await_decision|wait_for_decision|collect_decision)\s*\(/iu,
+    /\b(?:request_external_approval|request_chatops_approval|send_approval_request|post_approval_request|await_external_approval|collect_approval_decision)\s*\(/iu
+  ].some((pattern) => pattern.test(source)) &&
+    /\b(?:approval|approve|approved|approver|review|reviewer|decision|chatops|slack|teams|email|webhook|external)\b/iu.test(source);
+}
+
 function hasJavaScriptHandlerTaintedApprovalContext(source: string): boolean {
   return [
     /\b(?:approvalModelClient|approvalClient|modelApprovalClient|policyModelClient|riskReviewClient|guardrailModelClient|llmApprovalClient)\s*(?:\.\s*[A-Za-z_$][\w$]*){0,4}\s*\.\s*(?:evaluate|evaluateApproval|approve|approveAction|decide|review|classify|authorize|assess)\s*\(([\s\S]{0,1400})\)/giu,
-    /\b(?:evaluateApproval|approveAction|modelApprove|modelApproval|llmApprove|runApprovalGate|reviewActionWithModel)\s*\(([\s\S]{0,1400})\)/giu
+    /\b(?:evaluateApproval|approveAction|modelApprove|modelApproval|llmApprove|runApprovalGate|reviewActionWithModel)\s*\(([\s\S]{0,1400})\)/giu,
+    /\b(?:approvalChannelClient|chatopsApprovalClient|slackApprovalClient|teamsApprovalClient|emailApprovalClient|webhookApprovalClient|externalApprovalClient|humanApprovalClient)\s*(?:\.\s*[A-Za-z_$][\w$]*){0,4}\s*\.\s*(?:request|requestApproval|send|sendApproval|post|postApproval|open|openApproval|awaitDecision|waitForDecision|collectDecision)\s*\(([\s\S]{0,1800})\)/giu,
+    /\b(?:requestExternalApproval|requestChatopsApproval|sendApprovalRequest|postApprovalRequest|awaitExternalApproval|collectApprovalDecision)\s*\(([\s\S]{0,1800})\)/giu
   ].some((pattern) => expressionMatchesTaintedApprovalContext(pattern, source));
 }
 
 function hasPythonHandlerTaintedApprovalContext(source: string): boolean {
   return [
     /\b(?:approval_model_client|approval_client|model_approval_client|policy_model_client|risk_review_client|guardrail_model_client|llm_approval_client)\s*(?:\.\s*[A-Za-z_]\w*){0,4}\s*\.\s*(?:evaluate|evaluate_approval|approve|approve_action|decide|review|classify|authorize|assess)\s*\(([\s\S]{0,1400})\)/giu,
-    /\b(?:evaluate_approval|approve_action|model_approve|model_approval|llm_approve|run_approval_gate|review_action_with_model)\s*\(([\s\S]{0,1400})\)/giu
+    /\b(?:evaluate_approval|approve_action|model_approve|model_approval|llm_approve|run_approval_gate|review_action_with_model)\s*\(([\s\S]{0,1400})\)/giu,
+    /\b(?:approval_channel_client|chatops_approval_client|slack_approval_client|teams_approval_client|email_approval_client|webhook_approval_client|external_approval_client|human_approval_client)\s*(?:\.\s*[A-Za-z_]\w*){0,4}\s*\.\s*(?:request|request_approval|send|send_approval|post|post_approval|open|open_approval|await_decision|wait_for_decision|collect_decision)\s*\(([\s\S]{0,1800})\)/giu,
+    /\b(?:request_external_approval|request_chatops_approval|send_approval_request|post_approval_request|await_external_approval|collect_approval_decision)\s*\(([\s\S]{0,1800})\)/giu
   ].some((pattern) => expressionMatchesTaintedApprovalContext(pattern, source));
+}
+
+function hasHandlerApprovalChannelWeakIdentity(source: string): boolean {
+  return [
+    /\b(?:verifySignature|verify_signature|validateSignature|validate_signature|verifyApprover|verify_approver|identityVerified|identity_verified|ssoRequired|sso_required|approverAllowlist|approver_allowlist|replayProtection|replay_protection|nonce|timestamp)\b\s*[:=]\s*(?:false|null|undefined|None|0)\b/iu,
+    /\b(?:allowRequesterApproval|allow_requester_approval|requesterCanApprove|requester_can_approve|approverFromPayload|approver_from_payload|unverifiedApprover|unverified_approver|anyChannelMember|any_channel_member|externalUsersAllowed|external_users_allowed)\b\s*[:=]\s*(?:true|1)\b/iu,
+    /\b(?:skip|disable|disabled|without|no)\s*(?:signature|identity|approver|verification|replay|nonce|timestamp|sso|rbac|allowlist)\b/iu,
+    /\b(?:signature|identity|approver|verification|replay|nonce|timestamp|sso|rbac|allowlist)\s*(?:skip|disabled|off|false|none)\b/iu
+  ].some((pattern) => pattern.test(source));
 }
 
 function hasHandlerApprovalAutoExecution(source: string): boolean {
@@ -35196,7 +35239,7 @@ function skipJavaScriptComment(source: string, startIndex: number): number {
 
 function classifyToolAuthority(definition: ExtractedToolDefinition): {
   authority_classes: string[];
-  actions: Array<"read" | "write" | "execute" | "publish" | "send" | "delete" | "remember" | "call">;
+  actions: Array<"read" | "write" | "execute" | "publish" | "send" | "delete" | "remember" | "approve" | "call">;
   side_effect: boolean;
   external_reach: boolean;
   secret_exposure: boolean;
@@ -35359,7 +35402,9 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   tainted_prompt_registry_payload: boolean;
   tainted_prompt_registry_selector: boolean;
   model_approval_gate: boolean;
+  external_approval_channel: boolean;
   tainted_approval_context: boolean;
+  approval_channel_weak_identity: boolean;
   approval_auto_execution: boolean;
   privileged_prompt_composition: boolean;
   shell_execution: boolean;
@@ -35380,7 +35425,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
     `${definition.name} ${definition.description} ${definition.schemaProperties.join(" ")} ${definition.requiredProperties.join(" ")}`
   );
   const classes = new Set<string>();
-  const actions = new Set<"read" | "write" | "execute" | "publish" | "send" | "delete" | "remember" | "call">(["call"]);
+  const actions = new Set<"read" | "write" | "execute" | "publish" | "send" | "delete" | "remember" | "approve" | "call">(["call"]);
   const acceptsSecret = /secret|token|api[\s_-]?key|password|credential|auth/i.test(text);
   const propertyText = normalizeAuthorityText(`${definition.schemaProperties.join(" ")} ${definition.requiredProperties.join(" ")}`);
   const acceptsContent = /\b(message|summary|content|text|prompt|comment|note|ticket|issue|email|chat|conversation|response|output|body)\b/i.test(
@@ -35483,7 +35528,9 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   const handlerTaintedPromptRegistryPayload = handler?.handlerTaintedPromptRegistryPayload === true;
   const handlerTaintedPromptRegistrySelector = handler?.handlerTaintedPromptRegistrySelector === true;
   const handlerModelApprovalGate = handler?.handlerModelApprovalGate === true;
+  const handlerExternalApprovalChannel = handler?.handlerExternalApprovalChannel === true;
   const handlerTaintedApprovalContext = handler?.handlerTaintedApprovalContext === true;
+  const handlerApprovalChannelWeakIdentity = handler?.handlerApprovalChannelWeakIdentity === true;
   const handlerApprovalAutoExecution = handler?.handlerApprovalAutoExecution === true;
   const handlerPrivilegedPromptComposition = handler?.handlerPrivilegedPromptComposition === true;
   const handlerDatabaseQuery = handler?.handlerDatabaseQuery === true;
@@ -36443,9 +36490,18 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
     classes.add("model_approval_gate");
     actions.add("send");
   }
+  if (handlerExternalApprovalChannel) {
+    classes.add("external_approval_channel");
+    actions.add("send");
+    actions.add("approve");
+  }
   if (handlerTaintedApprovalContext) {
     classes.add("tainted_approval_context");
     actions.add("send");
+  }
+  if (handlerApprovalChannelWeakIdentity) {
+    classes.add("approval_channel_weak_identity");
+    actions.add("approve");
   }
   if (handlerApprovalAutoExecution) {
     classes.add("approval_auto_execution");
@@ -36642,7 +36698,9 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerTaintedPromptRegistryPayload ||
       handlerTaintedPromptRegistrySelector ||
       handlerModelApprovalGate ||
+      handlerExternalApprovalChannel ||
       handlerTaintedApprovalContext ||
+      handlerApprovalChannelWeakIdentity ||
       handlerApprovalAutoExecution ||
       handlerPrivilegedPromptComposition ||
       handlerTaintedShellArgument ||
@@ -36678,6 +36736,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
     handlerClipboardPromptCacheBridge ||
     handlerLocalFilePromptCacheBridge ||
     handlerClipboardExternalServiceBridge ||
+    handlerExternalApprovalChannel ||
     readOnlyHintConflict ||
     explicitSideEffectHint ||
     (!readOnly && privilegedAction);
@@ -36801,6 +36860,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerToolOutputPromptRegistryBridge ||
       handlerSecretManagerPromptRegistryBridge ||
       handlerModelApprovalGate ||
+      handlerExternalApprovalChannel ||
       handlerToolOutputMemoryBridge ||
       (handlerPromptCacheWrite && handlerSecretEnvAccess),
     secret_exposure:
@@ -36813,6 +36873,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       (handlerClipboardMemoryBridge && handlerSecretEnvAccess) ||
       (handlerClipboardPromptCacheBridge && handlerSecretEnvAccess) ||
       handlerClipboardExternalServiceBridge ||
+      (handlerExternalApprovalChannel && handlerSecretEnvAccess) ||
       handlerCredentialIssuance ||
       handlerAgentDelegation ||
       (handlerModelOutputAgentDelegationBridge && handlerSecretEnvAccess) ||
@@ -37062,7 +37123,9 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
     tainted_prompt_registry_payload: handlerTaintedPromptRegistryPayload,
     tainted_prompt_registry_selector: handlerTaintedPromptRegistrySelector,
     model_approval_gate: handlerModelApprovalGate,
+    external_approval_channel: handlerExternalApprovalChannel,
     tainted_approval_context: handlerTaintedApprovalContext,
+    approval_channel_weak_identity: handlerApprovalChannelWeakIdentity,
     approval_auto_execution: handlerApprovalAutoExecution,
     privileged_prompt_composition: handlerPrivilegedPromptComposition,
     shell_execution: shellExecution,
@@ -37226,7 +37289,9 @@ function authoritySignature(tool: SurfaceObject): string {
     metadata.tainted_prompt_registry_payload === true ? "tainted_prompt_registry_payload" : "",
     metadata.tainted_prompt_registry_selector === true ? "tainted_prompt_registry_selector" : "",
     metadata.model_approval_gate === true ? "model_approval_gate" : "",
+    metadata.external_approval_channel === true ? "external_approval_channel" : "",
     metadata.tainted_approval_context === true ? "tainted_approval_context" : "",
+    metadata.approval_channel_weak_identity === true ? "approval_channel_weak_identity" : "",
     metadata.approval_auto_execution === true ? "approval_auto_execution" : "",
     metadata.visual_context_capture === true ? "visual_context_capture" : "",
     metadata.visual_context_to_output === true ? "visual_context_to_output" : "",
@@ -37407,7 +37472,9 @@ function isPrivilegedToolSurface(tool: SurfaceObject): boolean {
     tool.metadata.tainted_prompt_registry_payload === true ||
     tool.metadata.tainted_prompt_registry_selector === true ||
     tool.metadata.model_approval_gate === true ||
+    tool.metadata.external_approval_channel === true ||
     tool.metadata.tainted_approval_context === true ||
+    tool.metadata.approval_channel_weak_identity === true ||
     tool.metadata.approval_auto_execution === true ||
     tool.metadata.visual_context_capture === true ||
     tool.metadata.visual_context_to_output === true ||

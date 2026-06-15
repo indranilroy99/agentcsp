@@ -574,7 +574,9 @@ Tool metadata may include:
 - `handler_tainted_prompt_registry_payload`
 - `handler_tainted_prompt_registry_selector`
 - `handler_model_approval_gate`
+- `handler_external_approval_channel`
 - `handler_tainted_approval_context`
+- `handler_approval_channel_weak_identity`
 - `handler_approval_auto_execution`
 - `handler_privileged_prompt_composition`
 - `handler_secret_env_access`
@@ -2220,6 +2222,8 @@ Source-defined tool handlers can also emit redacted model-output feedback bridge
 Source-defined tool handlers can also emit redacted tool-output feedback bridge authority through `tool_output_feedback_bridge`, `nested_tool_invocation`, `feedback_pipeline_write`, `feedback_auto_promotion`, `tainted_feedback_routing`, and the corresponding `handler_*` fields when parsed MCP SDK or agent-framework tools invoke nested tools and promote raw tool observations into feedback, RLHF, eval, reward-model, or model-improvement pipelines using runtime credentials and caller-selected routing. Handler bodies, nested tool calls, tool names, arguments, raw observations, feedback pipeline calls, dataset IDs, eval-set IDs, promotion targets, records, labels, reviewer notes, and return strings remain redacted.
 
 Source-defined tool handlers can also emit redacted model-mediated approval authority through `model_approval_gate`, `tainted_approval_context`, `approval_auto_execution`, and the corresponding `handler_*` fields when parsed MCP SDK or agent-framework tools send caller/customer/tool-output context into an approval model or gate and then automatically execute a privileged action from the approval result. Handler bodies, approval model calls, decision objects, executor calls, action payloads, and returned approval summaries remain redacted.
+
+Source-defined tool handlers can also emit redacted external approval-channel authority through `external_approval_channel`, `tainted_approval_context`, `approval_channel_weak_identity`, `approval_auto_execution`, and the corresponding `handler_*` fields when parsed MCP SDK or agent-framework tools send caller/customer context into ChatOps, email, webhook, ticketing, or other external approval channels with weak identity or replay controls and then automatically execute a privileged action from the approval response. Handler bodies, channel calls, approval messages, approver selectors, identity-control settings, decision objects, executor calls, action payloads, and returned approval summaries remain redacted.
 
 ## Agent Webhook Egress
 

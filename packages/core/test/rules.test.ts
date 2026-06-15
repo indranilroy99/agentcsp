@@ -154,6 +154,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-150")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-151")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-152")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-153")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-001")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-002")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-003")).toBe(true);
@@ -9644,6 +9645,51 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerModelApprovalFindings)).not.toContain("source model approval executed");
     expect(JSON.stringify(sourceHandlerModelApprovalFindings)).not.toContain("framework model approval executed");
     expect(JSON.stringify(sourceHandlerModelApprovalFindings)).not.toContain("Approve and execute a caller supplied privileged action");
+    const sourceHandlerExternalApprovalChannelFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-153");
+    expect(sourceHandlerExternalApprovalChannelFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
+      "langchain_chatops_approval_and_run_action",
+      "source_chatops_approval_and_run_action"
+    ]);
+    expect(sourceHandlerExternalApprovalChannelFindings.every((finding) => finding.severity === "critical")).toBe(true);
+    expect(sourceHandlerExternalApprovalChannelFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerExternalApprovalChannelFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
+    expect(sourceHandlerExternalApprovalChannelFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
+    expect(sourceHandlerExternalApprovalChannelFindings.every((finding) => finding.matched_object.metadata.source_tool_handler_redacted === true)).toBe(true);
+    expect(sourceHandlerExternalApprovalChannelFindings.every((finding) => finding.matched_object.metadata.handler_external_approval_channel === true)).toBe(true);
+    expect(sourceHandlerExternalApprovalChannelFindings.every((finding) => finding.matched_object.metadata.handler_tainted_approval_context === true)).toBe(true);
+    expect(sourceHandlerExternalApprovalChannelFindings.every((finding) => finding.matched_object.metadata.handler_approval_channel_weak_identity === true)).toBe(true);
+    expect(sourceHandlerExternalApprovalChannelFindings.every((finding) => finding.matched_object.metadata.handler_approval_auto_execution === true)).toBe(true);
+    expect(sourceHandlerExternalApprovalChannelFindings.every((finding) => finding.matched_object.metadata.handler_secret_env_access === true)).toBe(true);
+    expect(sourceHandlerExternalApprovalChannelFindings.every((finding) => finding.matched_object.metadata.external_approval_channel === true)).toBe(true);
+    expect(sourceHandlerExternalApprovalChannelFindings.every((finding) => finding.matched_object.metadata.tainted_approval_context === true)).toBe(true);
+    expect(sourceHandlerExternalApprovalChannelFindings.every((finding) => finding.matched_object.metadata.approval_channel_weak_identity === true)).toBe(true);
+    expect(sourceHandlerExternalApprovalChannelFindings.every((finding) => finding.matched_object.metadata.approval_auto_execution === true)).toBe(true);
+    expect(sourceHandlerExternalApprovalChannelFindings.every((finding) => finding.matched_object.metadata.accepts_content_like_input === true)).toBe(true);
+    expect(sourceHandlerExternalApprovalChannelFindings.every((finding) => finding.matched_object.metadata.accepts_customer_data_input === true)).toBe(true);
+    expect(sourceHandlerExternalApprovalChannelFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("external_approval_channel"))).toBe(true);
+    expect(sourceHandlerExternalApprovalChannelFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("tainted_approval_context"))).toBe(true);
+    expect(sourceHandlerExternalApprovalChannelFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("approval_channel_weak_identity"))).toBe(true);
+    expect(sourceHandlerExternalApprovalChannelFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("approval_auto_execution"))).toBe(true);
+    expect(sourceHandlerExternalApprovalChannelFindings.every((finding) => finding.matched_object.metadata.handler_authority_classes.includes("handler_external_approval_channel"))).toBe(true);
+    expect(sourceHandlerExternalApprovalChannelFindings.every((finding) => finding.matched_object.metadata.handler_authority_classes.includes("handler_tainted_approval_context"))).toBe(true);
+    expect(sourceHandlerExternalApprovalChannelFindings.every((finding) => finding.matched_object.metadata.handler_authority_classes.includes("handler_approval_channel_weak_identity"))).toBe(true);
+    expect(sourceHandlerExternalApprovalChannelFindings.every((finding) => finding.matched_object.metadata.handler_authority_classes.includes("handler_approval_auto_execution"))).toBe(true);
+    expect(sourceHandlerExternalApprovalChannelFindings.every((finding) => finding.matched_object.actions.includes("approve"))).toBe(true);
+    expect(sourceHandlerExternalApprovalChannelFindings.every((finding) => finding.matched_object.actions.includes("send"))).toBe(true);
+    expect(sourceHandlerExternalApprovalChannelFindings.every((finding) => finding.matched_object.actions.includes("execute"))).toBe(true);
+    expect(sourceHandlerExternalApprovalChannelFindings.every((finding) => finding.matched_object.external_reach === true)).toBe(true);
+    expect(sourceHandlerExternalApprovalChannelFindings.every((finding) => finding.matched_object.secret_exposure === true)).toBe(true);
+    expect(sourceHandlerExternalApprovalChannelFindings.every((finding) => finding.matched_object.side_effect === true)).toBe(true);
+    expect(sourceHandlerExternalApprovalChannelFindings.every((finding) => finding.matched_object.reversible === false)).toBe(true);
+    expect(JSON.stringify(sourceHandlerExternalApprovalChannelFindings)).not.toContain("chatopsApprovalClient.requestApproval");
+    expect(JSON.stringify(sourceHandlerExternalApprovalChannelFindings)).not.toContain("chatops_approval_client.request_approval");
+    expect(JSON.stringify(sourceHandlerExternalApprovalChannelFindings)).not.toContain("privilegedActionExecutor.execute");
+    expect(JSON.stringify(sourceHandlerExternalApprovalChannelFindings)).not.toContain("privileged_action_executor.execute");
+    expect(JSON.stringify(sourceHandlerExternalApprovalChannelFindings)).not.toContain("approvalDecision");
+    expect(JSON.stringify(sourceHandlerExternalApprovalChannelFindings)).not.toContain("approval_decision");
+    expect(JSON.stringify(sourceHandlerExternalApprovalChannelFindings)).not.toContain("source chatops approval executed");
+    expect(JSON.stringify(sourceHandlerExternalApprovalChannelFindings)).not.toContain("framework chatops approval executed");
+    expect(JSON.stringify(sourceHandlerExternalApprovalChannelFindings)).not.toContain("Send caller supplied customer context");
     const sourceHandlerBrowserAutomationFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-027");
     expect(sourceHandlerBrowserAutomationFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_cache_authenticated_page_screenshot_prompt",
