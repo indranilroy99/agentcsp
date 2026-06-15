@@ -141,6 +141,8 @@ const leakPatterns = [
   /framework env secret stored in database/u,
   /source env secret granted broad authorization/u,
   /framework env secret granted broad authorization/u,
+  /source env secret updated safety policy/u,
+  /framework env secret updated safety policy/u,
   /source env secret submitted through browser/u,
   /framework env secret submitted through browser/u,
   /process\.env/u,
@@ -1185,6 +1187,8 @@ const leakPatterns = [
   /vault_secret_material/u,
   /source vault secret updated safety policy/u,
   /framework vault secret updated safety policy/u,
+  /envPolicyValue/u,
+  /env_policy_value/u,
   /secret-manager safety-policy bridge snippets/u,
   /secret safety-policy return strings/u,
   /Apply a customer vault secret/u,
@@ -1366,8 +1370,8 @@ const leakPatterns = [
 const vulnerable = await readScanOutput(vulnerableOutput, { sarifRequired: true });
 const safe = await readScanOutput(safeOutput, { sarifRequired: false });
 
-assertEqual(vulnerable.manifest.findings.length, 1167, "vulnerable manifest finding count");
-assertEqual(vulnerable.findings.length, 1167, "vulnerable findings.json count");
+assertEqual(vulnerable.manifest.findings.length, 1173, "vulnerable manifest finding count");
+assertEqual(vulnerable.findings.length, 1173, "vulnerable findings.json count");
 assertEqual(vulnerable.manifest.attack_paths.length, 15, "vulnerable attack path count");
 assertEqual(vulnerable.manifest.static_blast_radius?.critical_attack_paths, 15, "vulnerable critical attack path count");
 assertEqual(vulnerable.manifest.diagnostics.length, 0, "vulnerable diagnostics count");
@@ -1533,6 +1537,7 @@ for (const ruleId of [
   "AGENTCSP-TOOL-166",
   "AGENTCSP-TOOL-167",
   "AGENTCSP-TOOL-168",
+  "AGENTCSP-TOOL-169",
   "AGENTCSP-RUNTIME-007",
   "AGENTCSP-RUNTIME-008",
   "AGENTCSP-RUNTIME-123",

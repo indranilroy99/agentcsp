@@ -170,6 +170,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-166")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-167")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-168")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-169")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-001")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-002")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-003")).toBe(true);
@@ -8263,10 +8264,12 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerFeedbackAutoPromotionFindings)).not.toContain("Return one feedback review record");
     const sourceHandlerSafetyPolicyWeakeningFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-056");
     expect(sourceHandlerSafetyPolicyWeakeningFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
+      "langchain_apply_env_secret_guardrail_override",
       "langchain_apply_model_selected_guardrail_policy_override",
       "langchain_apply_tool_observation_guardrail_override",
       "langchain_apply_vault_secret_guardrail_override",
       "langchain_update_guardrail_policy_override",
+      "source_apply_env_secret_guardrail_override",
       "source_apply_model_selected_guardrail_policy_override",
       "source_apply_tool_observation_guardrail_override",
       "source_apply_vault_secret_guardrail_override",
@@ -8303,6 +8306,12 @@ describe("rule engine", () => {
     expect(sourceHandlerSafetyPolicyWeakeningFindings.every((finding) => finding.matched_object.side_effect === true)).toBe(true);
     expect(sourceHandlerSafetyPolicyWeakeningFindings.every((finding) => finding.matched_object.reversible === false)).toBe(true);
     expect(JSON.stringify(sourceHandlerSafetyPolicyWeakeningFindings)).not.toContain("guardrailPolicyClient.updatePolicy");
+    expect(JSON.stringify(sourceHandlerSafetyPolicyWeakeningFindings)).not.toContain("guardrail_policy_client.update_policy");
+    expect(JSON.stringify(sourceHandlerSafetyPolicyWeakeningFindings)).not.toContain("envPolicyValue");
+    expect(JSON.stringify(sourceHandlerSafetyPolicyWeakeningFindings)).not.toContain("env_policy_value");
+    expect(JSON.stringify(sourceHandlerSafetyPolicyWeakeningFindings)).not.toContain("source env secret updated safety policy");
+    expect(JSON.stringify(sourceHandlerSafetyPolicyWeakeningFindings)).not.toContain("framework env secret updated safety policy");
+    expect(JSON.stringify(sourceHandlerSafetyPolicyWeakeningFindings)).not.toContain("Apply environment-backed secret material");
     expect(JSON.stringify(sourceHandlerSafetyPolicyWeakeningFindings)).not.toContain("guardrail_policy_client.update_policy");
     expect(JSON.stringify(sourceHandlerSafetyPolicyWeakeningFindings)).not.toContain("source guardrail policy updated");
     expect(JSON.stringify(sourceHandlerSafetyPolicyWeakeningFindings)).not.toContain("framework guardrail policy updated");
@@ -10221,6 +10230,70 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerSecretManagerSafetyPolicyBridgeFindings)).not.toContain("source vault secret updated safety policy");
     expect(JSON.stringify(sourceHandlerSecretManagerSafetyPolicyBridgeFindings)).not.toContain("framework vault secret updated safety policy");
     expect(JSON.stringify(sourceHandlerSecretManagerSafetyPolicyBridgeFindings)).not.toContain("Apply a customer vault secret");
+    const sourceHandlerEnvSecretSafetyPolicyBridgeFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-169");
+    expect(sourceHandlerEnvSecretSafetyPolicyBridgeFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
+      "langchain_apply_env_secret_guardrail_override",
+      "source_apply_env_secret_guardrail_override"
+    ]);
+    expect(sourceHandlerEnvSecretSafetyPolicyBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
+    expect(sourceHandlerEnvSecretSafetyPolicyBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerEnvSecretSafetyPolicyBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
+    expect(sourceHandlerEnvSecretSafetyPolicyBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
+    expect(sourceHandlerEnvSecretSafetyPolicyBridgeFindings.every((finding) => finding.matched_object.metadata.source_tool_handler_redacted === true)).toBe(true);
+    expect(sourceHandlerEnvSecretSafetyPolicyBridgeFindings.every((finding) => finding.matched_object.metadata.handler_secret_env_access === true)).toBe(true);
+    expect(sourceHandlerEnvSecretSafetyPolicyBridgeFindings.every((finding) => finding.matched_object.metadata.handler_safety_policy_write === true)).toBe(true);
+    expect(sourceHandlerEnvSecretSafetyPolicyBridgeFindings.every((finding) => finding.matched_object.metadata.handler_tainted_safety_policy_payload === true)).toBe(true);
+    expect(sourceHandlerEnvSecretSafetyPolicyBridgeFindings.every((finding) => finding.matched_object.metadata.handler_tainted_safety_policy_selector === true)).toBe(true);
+    expect(sourceHandlerEnvSecretSafetyPolicyBridgeFindings.every((finding) => finding.matched_object.metadata.handler_safety_policy_weakening === true)).toBe(true);
+    expect(sourceHandlerEnvSecretSafetyPolicyBridgeFindings.every((finding) => finding.matched_object.metadata.handler_env_secret_safety_policy_bridge === true)).toBe(true);
+    expect(sourceHandlerEnvSecretSafetyPolicyBridgeFindings.every((finding) => finding.matched_object.metadata.safety_policy_write === true)).toBe(true);
+    expect(sourceHandlerEnvSecretSafetyPolicyBridgeFindings.every((finding) => finding.matched_object.metadata.tainted_safety_policy_payload === true)).toBe(true);
+    expect(sourceHandlerEnvSecretSafetyPolicyBridgeFindings.every((finding) => finding.matched_object.metadata.tainted_safety_policy_selector === true)).toBe(true);
+    expect(sourceHandlerEnvSecretSafetyPolicyBridgeFindings.every((finding) => finding.matched_object.metadata.safety_policy_weakening === true)).toBe(true);
+    expect(sourceHandlerEnvSecretSafetyPolicyBridgeFindings.every((finding) => finding.matched_object.metadata.env_secret_safety_policy_bridge === true)).toBe(true);
+    expect(sourceHandlerEnvSecretSafetyPolicyBridgeFindings.every((finding) => finding.matched_object.metadata.secret_manager_safety_policy_bridge === false)).toBe(true);
+    expect(sourceHandlerEnvSecretSafetyPolicyBridgeFindings.every((finding) => finding.matched_object.metadata.model_output_safety_policy_bridge === false)).toBe(true);
+    expect(sourceHandlerEnvSecretSafetyPolicyBridgeFindings.every((finding) => finding.matched_object.metadata.tool_output_safety_policy_bridge === false)).toBe(true);
+    expect(sourceHandlerEnvSecretSafetyPolicyBridgeFindings.every((finding) => finding.matched_object.metadata.accepts_customer_data_input === true)).toBe(true);
+    for (const authorityClass of [
+      "secret_env_access",
+      "safety_policy_write",
+      "tainted_safety_policy_payload",
+      "tainted_safety_policy_selector",
+      "safety_policy_weakening",
+      "env_secret_safety_policy_bridge"
+    ]) {
+      expect(sourceHandlerEnvSecretSafetyPolicyBridgeFindings.every((finding) =>
+        finding.matched_object.metadata.authority_classes.includes(authorityClass)
+      )).toBe(true);
+    }
+    for (const handlerAuthorityClass of [
+      "handler_secret_env_access",
+      "handler_safety_policy_write",
+      "handler_tainted_safety_policy_payload",
+      "handler_tainted_safety_policy_selector",
+      "handler_safety_policy_weakening",
+      "handler_env_secret_safety_policy_bridge"
+    ]) {
+      expect(sourceHandlerEnvSecretSafetyPolicyBridgeFindings.every((finding) =>
+        finding.matched_object.metadata.handler_authority_classes.includes(handlerAuthorityClass)
+      )).toBe(true);
+    }
+    expect(sourceHandlerEnvSecretSafetyPolicyBridgeFindings.every((finding) => finding.matched_object.actions.includes("send"))).toBe(true);
+    expect(sourceHandlerEnvSecretSafetyPolicyBridgeFindings.every((finding) => finding.matched_object.actions.includes("write"))).toBe(true);
+    expect(sourceHandlerEnvSecretSafetyPolicyBridgeFindings.every((finding) => finding.matched_object.external_reach === true)).toBe(true);
+    expect(sourceHandlerEnvSecretSafetyPolicyBridgeFindings.every((finding) => finding.matched_object.secret_exposure === true)).toBe(true);
+    expect(sourceHandlerEnvSecretSafetyPolicyBridgeFindings.every((finding) => finding.matched_object.side_effect === true)).toBe(true);
+    expect(sourceHandlerEnvSecretSafetyPolicyBridgeFindings.every((finding) => finding.matched_object.reversible === false)).toBe(true);
+    expect(JSON.stringify(sourceHandlerEnvSecretSafetyPolicyBridgeFindings)).not.toContain("process.env");
+    expect(JSON.stringify(sourceHandlerEnvSecretSafetyPolicyBridgeFindings)).not.toContain("os.getenv");
+    expect(JSON.stringify(sourceHandlerEnvSecretSafetyPolicyBridgeFindings)).not.toContain("guardrailPolicyClient.updatePolicy");
+    expect(JSON.stringify(sourceHandlerEnvSecretSafetyPolicyBridgeFindings)).not.toContain("guardrail_policy_client.update_policy");
+    expect(JSON.stringify(sourceHandlerEnvSecretSafetyPolicyBridgeFindings)).not.toContain("envPolicyValue");
+    expect(JSON.stringify(sourceHandlerEnvSecretSafetyPolicyBridgeFindings)).not.toContain("env_policy_value");
+    expect(JSON.stringify(sourceHandlerEnvSecretSafetyPolicyBridgeFindings)).not.toContain("source env secret updated safety policy");
+    expect(JSON.stringify(sourceHandlerEnvSecretSafetyPolicyBridgeFindings)).not.toContain("framework env secret updated safety policy");
+    expect(JSON.stringify(sourceHandlerEnvSecretSafetyPolicyBridgeFindings)).not.toContain("Apply environment-backed secret material");
     const sourceHandlerSecretManagerBrowserAutomationBridgeFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-086");
     expect(sourceHandlerSecretManagerBrowserAutomationBridgeFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_fill_customer_vault_secret_browser_form",
