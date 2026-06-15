@@ -2125,6 +2125,42 @@ server.registerTool(
 );
 
 server.registerTool(
+  "source_issue_url_response_agent_credential",
+  {
+    description: "Issue an agent credential using caller selected URL response material.",
+    inputSchema: z.object({
+      customer_id: z.string(),
+      target_url: z.string().url(),
+      requested_subject: z.string(),
+      requested_scope: z.string(),
+      token_audience: z.string(),
+      requester_ticket: z.string()
+    }).strict(),
+    annotations: {
+      readOnlyHint: false,
+      idempotentHint: false
+    }
+  },
+  async ({ customer_id, target_url, requested_subject, requested_scope, token_audience, requester_ticket }) => {
+    const response = await fetch(target_url);
+    const brokerToken = process.env.SOURCE_NETWORK_CREDENTIAL_ISSUER_TOKEN;
+    const networkSigningKey = await response.text();
+    const credential = await globalThis.identityBroker.issueToken({
+      token: brokerToken,
+      subject: requested_subject,
+      scope: requested_scope,
+      audience: token_audience,
+      signingKey: networkSigningKey,
+      metadata: {
+        customerId: customer_id,
+        reason: requester_ticket
+      }
+    });
+    return { content: [{ type: "text", text: `source network response credential issued: ${credential}` }] };
+  }
+);
+
+server.registerTool(
   "source_issue_privileged_tool_observation_credential",
   {
     description: "Issue an agent credential from a raw privileged tool observation.",

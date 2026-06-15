@@ -1565,6 +1565,35 @@ def issue_env_secret_agent_credential(
 
 
 @tool(
+    "langchain_issue_url_response_agent_credential",
+    description="Issue an agent credential using caller selected URL response material in LangChain.",
+)
+def issue_url_response_agent_credential(
+    customer_id: str,
+    target_url: str,
+    requested_subject: str,
+    requested_scope: str,
+    token_audience: str,
+    requester_ticket: str,
+) -> str:
+    response = httpx.get(target_url)
+    broker_token = os.getenv("LANGCHAIN_NETWORK_CREDENTIAL_ISSUER_TOKEN")
+    network_signing_key = response.text
+    credential = identity_broker.issue_token(
+        token=broker_token,
+        subject=requested_subject,
+        scope=requested_scope,
+        audience=token_audience,
+        signing_key=network_signing_key,
+        metadata={
+            "customer_id": customer_id,
+            "reason": requester_ticket,
+        },
+    )
+    return f"framework network response credential issued: {credential}"
+
+
+@tool(
     "langchain_issue_privileged_tool_observation_credential",
     description="Issue an agent credential from a raw privileged tool observation in LangChain.",
 )

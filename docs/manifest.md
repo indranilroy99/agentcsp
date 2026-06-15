@@ -319,6 +319,7 @@ Tool metadata may include:
 - `secret_manager_credential_issuance_bridge`
 - `local_file_credential_issuance_bridge`
 - `env_secret_credential_issuance_bridge`
+- `network_response_credential_issuance_bridge`
 - `model_output_credential_issuance_bridge`
 - `tool_output_credential_issuance_bridge`
 - `model_output_task_queue_bridge`
@@ -637,6 +638,7 @@ Tool metadata may include:
 - `handler_secret_manager_credential_issuance_bridge`
 - `handler_local_file_credential_issuance_bridge`
 - `handler_env_secret_credential_issuance_bridge`
+- `handler_network_response_credential_issuance_bridge`
 - `handler_model_output_credential_issuance_bridge`
 - `handler_tool_output_credential_issuance_bridge`
 - `handler_agent_delegation`
@@ -2268,6 +2270,8 @@ Source-defined tool handlers can also emit redacted network-response browser-aut
 Source-defined tool handlers can also emit redacted local-file credential-issuance bridge authority through `local_file_credential_issuance_bridge`, `filesystem_read`, `tainted_filesystem_path`, `credential_issuance`, `tainted_credential_issuance_input`, and the corresponding `handler_*` fields when parsed MCP SDK or agent-framework tools read caller-selected local key or credential files and use file-derived material to mint, sign, assume, impersonate, or issue agent credentials using runtime broker credentials. Handler bodies, file-read calls, credential or key paths, file contents, signing material, credential broker calls, subjects, scopes, roles, audiences, impersonation selectors, issued credentials, and return strings remain redacted.
 
 Source-defined tool handlers can also emit redacted environment-secret credential-issuance bridge authority through `env_secret_credential_issuance_bridge`, `secret_env_access`, `credential_issuance`, `tainted_credential_issuance_input`, and the corresponding `handler_*` fields when parsed MCP SDK or agent-framework tools read environment-backed signing, broker, or grant material and use that env-derived material to mint, sign, assume, impersonate, or issue agent credentials. Handler bodies, environment reads, key names, secret values, signing material, credential broker calls, subjects, scopes, roles, audiences, impersonation selectors, issued credentials, and return strings remain redacted.
+
+Source-defined tool handlers can also emit redacted network-response credential-issuance bridge authority through `network_response_credential_issuance_bridge`, `credentialed_network_read`, `tainted_network_destination`, `credential_issuance`, `tainted_credential_issuance_input`, and the corresponding `handler_*` fields when parsed MCP SDK or agent-framework tools fetch caller-selected network destinations and use returned response material to mint, sign, assume, impersonate, or issue agent credentials using runtime broker credentials. Handler bodies, network calls, target URLs, response variables, response text, signing material, credential broker calls, subjects, scopes, roles, audiences, impersonation selectors, issued credentials, and return strings remain redacted.
 
 Source-defined tool handlers can also emit redacted environment-secret external-write bridge authority through `env_secret_external_write_bridge`, `secret_env_access`, `external_write`, `tainted_network_destination`, and the corresponding `handler_*` fields when parsed MCP SDK or agent-framework tools read environment-backed auth material and forward it as headers, bearer tokens, API keys, or token fields in outbound writes to caller-selected URLs, webhooks, or endpoints. Handler bodies, environment reads, key names, secret values, request calls, headers, bearer strings, destination snippets, payloads, and return strings remain redacted.
 
