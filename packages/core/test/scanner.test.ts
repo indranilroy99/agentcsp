@@ -637,6 +637,9 @@ describe("scanner", () => {
     const sourceSecretManagerCredentialIssuanceBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "source_issue_vault_backed_agent_credential"
     );
+    const sourceLocalFileCredentialIssuanceBridgeTool = surfaces.tools.find(
+      (surface) => surface.name === "source_issue_local_key_agent_credential"
+    );
     const sourceToolOutputCredentialIssuanceBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "source_issue_privileged_tool_observation_credential"
     );
@@ -923,6 +926,9 @@ describe("scanner", () => {
     const langchainCredentialIssuanceTool = surfaces.tools.find((surface) => surface.name === "langchain_mint_agent_session_token");
     const langchainSecretManagerCredentialIssuanceBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "langchain_issue_vault_backed_agent_credential"
+    );
+    const langchainLocalFileCredentialIssuanceBridgeTool = surfaces.tools.find(
+      (surface) => surface.name === "langchain_issue_local_key_agent_credential"
     );
     const langchainToolOutputCredentialIssuanceBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "langchain_issue_privileged_tool_observation_credential"
@@ -5772,6 +5778,83 @@ describe("scanner", () => {
     expect(JSON.stringify(sourceSecretManagerCredentialIssuanceBridgeTool)).not.toContain("secretRecord.value");
     expect(JSON.stringify(sourceSecretManagerCredentialIssuanceBridgeTool)).not.toContain("vaultSigningKey");
     expect(JSON.stringify(sourceSecretManagerCredentialIssuanceBridgeTool)).not.toContain("Issue an agent credential");
+    expect(sourceLocalFileCredentialIssuanceBridgeTool).toMatchObject({
+      path: "mcp-source/customer-tools.ts",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["call", "publish", "read", "send", "write"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(sourceLocalFileCredentialIssuanceBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_mcp_source_tool: true,
+      mcp_source_tool_registration: true,
+      mcp_source_tool_registration_kind: "registerTool",
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_secret_like_input: true,
+      accepts_content_like_input: true,
+      accepts_path_input: true,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      credential_issuance: true,
+      tainted_credential_issuance_input: true,
+      local_file_credential_issuance_bridge: true,
+      tainted_filesystem_path: true,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_filesystem_read: true,
+      handler_tainted_filesystem_path: true,
+      handler_credential_issuance: true,
+      handler_tainted_credential_issuance_input: true,
+      handler_local_file_credential_issuance_bridge: true,
+      handler_secret_env_access: true,
+      handler_signal_count: 6,
+      open_world_schema: false
+    });
+    for (const authorityClass of [
+      "credential_issuance",
+      "tainted_credential_issuance_input",
+      "local_file_credential_issuance_bridge",
+      "tainted_filesystem_path"
+    ]) {
+      expect(sourceLocalFileCredentialIssuanceBridgeTool?.metadata.authority_classes).toContain(authorityClass);
+    }
+    for (const handlerClass of [
+      "handler_filesystem_read",
+      "handler_tainted_filesystem_path",
+      "handler_credential_issuance",
+      "handler_tainted_credential_issuance_input",
+      "handler_local_file_credential_issuance_bridge"
+    ]) {
+      expect(sourceLocalFileCredentialIssuanceBridgeTool?.metadata.handler_authority_classes).toContain(handlerClass);
+    }
+    expect(sourceLocalFileCredentialIssuanceBridgeTool?.metadata.handler_env_key_names).toEqual([
+      "SOURCE_LOCAL_FILE_CREDENTIAL_ISSUER_TOKEN"
+    ]);
+    expect(sourceLocalFileCredentialIssuanceBridgeTool?.metadata.schema_properties).toEqual([
+      "credential_key_path",
+      "customer_id",
+      "requested_scope",
+      "requested_subject",
+      "requester_ticket",
+      "token_audience"
+    ]);
+    expect(sourceLocalFileCredentialIssuanceBridgeTool?.metadata.required_properties).toEqual([
+      "credential_key_path",
+      "customer_id",
+      "requested_scope",
+      "requested_subject",
+      "requester_ticket",
+      "token_audience"
+    ]);
+    expect(JSON.stringify(sourceLocalFileCredentialIssuanceBridgeTool)).not.toContain("readFile");
+    expect(JSON.stringify(sourceLocalFileCredentialIssuanceBridgeTool)).not.toContain("identityBroker.issueToken");
+    expect(JSON.stringify(sourceLocalFileCredentialIssuanceBridgeTool)).not.toContain("localSigningKey");
+    expect(JSON.stringify(sourceLocalFileCredentialIssuanceBridgeTool)).not.toContain("source local key credential issued");
+    expect(JSON.stringify(sourceLocalFileCredentialIssuanceBridgeTool)).not.toContain("Issue an agent credential using caller selected local key material");
     expect(sourceToolOutputCredentialIssuanceBridgeTool).toMatchObject({
       path: "mcp-source/customer-tools.ts",
       data_classes: ["confidential", "credential", "pii"],
@@ -16875,6 +16958,84 @@ describe("scanner", () => {
     expect(JSON.stringify(langchainSecretManagerCredentialIssuanceBridgeTool)).not.toContain("secret_record.value");
     expect(JSON.stringify(langchainSecretManagerCredentialIssuanceBridgeTool)).not.toContain("vault_signing_key");
     expect(JSON.stringify(langchainSecretManagerCredentialIssuanceBridgeTool)).not.toContain("Issue an agent credential");
+    expect(langchainLocalFileCredentialIssuanceBridgeTool).toMatchObject({
+      path: "framework-tools/langchain_tools.py",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["call", "publish", "read", "send", "write"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(langchainLocalFileCredentialIssuanceBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_agent_framework_source_tool: true,
+      agent_framework_source_tool: true,
+      agent_framework_source_tool_framework: "langchain",
+      agent_framework_source_tool_registration_kind: "python_tool_decorator",
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_secret_like_input: true,
+      accepts_content_like_input: true,
+      accepts_path_input: true,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      credential_issuance: true,
+      tainted_credential_issuance_input: true,
+      local_file_credential_issuance_bridge: true,
+      tainted_filesystem_path: true,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_filesystem_read: true,
+      handler_tainted_filesystem_path: true,
+      handler_credential_issuance: true,
+      handler_tainted_credential_issuance_input: true,
+      handler_local_file_credential_issuance_bridge: true,
+      handler_secret_env_access: true,
+      handler_signal_count: 6,
+      open_world_schema: false
+    });
+    for (const authorityClass of [
+      "credential_issuance",
+      "tainted_credential_issuance_input",
+      "local_file_credential_issuance_bridge",
+      "tainted_filesystem_path"
+    ]) {
+      expect(langchainLocalFileCredentialIssuanceBridgeTool?.metadata.authority_classes).toContain(authorityClass);
+    }
+    for (const handlerClass of [
+      "handler_filesystem_read",
+      "handler_tainted_filesystem_path",
+      "handler_credential_issuance",
+      "handler_tainted_credential_issuance_input",
+      "handler_local_file_credential_issuance_bridge"
+    ]) {
+      expect(langchainLocalFileCredentialIssuanceBridgeTool?.metadata.handler_authority_classes).toContain(handlerClass);
+    }
+    expect(langchainLocalFileCredentialIssuanceBridgeTool?.metadata.handler_env_key_names).toEqual([
+      "LANGCHAIN_LOCAL_FILE_CREDENTIAL_ISSUER_TOKEN"
+    ]);
+    expect(langchainLocalFileCredentialIssuanceBridgeTool?.metadata.schema_properties).toEqual([
+      "credential_key_path",
+      "customer_id",
+      "requested_scope",
+      "requested_subject",
+      "requester_ticket",
+      "token_audience"
+    ]);
+    expect(langchainLocalFileCredentialIssuanceBridgeTool?.metadata.required_properties).toEqual([
+      "credential_key_path",
+      "customer_id",
+      "requested_scope",
+      "requested_subject",
+      "requester_ticket",
+      "token_audience"
+    ]);
+    expect(JSON.stringify(langchainLocalFileCredentialIssuanceBridgeTool)).not.toContain("Path(credential_key_path).read_text");
+    expect(JSON.stringify(langchainLocalFileCredentialIssuanceBridgeTool)).not.toContain("identity_broker.issue_token");
+    expect(JSON.stringify(langchainLocalFileCredentialIssuanceBridgeTool)).not.toContain("local_signing_key");
+    expect(JSON.stringify(langchainLocalFileCredentialIssuanceBridgeTool)).not.toContain("framework local key credential issued");
+    expect(JSON.stringify(langchainLocalFileCredentialIssuanceBridgeTool)).not.toContain("Issue an agent credential using caller selected local key material");
     expect(langchainToolOutputCredentialIssuanceBridgeTool).toMatchObject({
       path: "framework-tools/langchain_tools.py",
       data_classes: ["confidential", "credential", "pii"],

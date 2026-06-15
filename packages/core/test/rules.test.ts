@@ -155,6 +155,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-151")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-152")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-153")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-154")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-001")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-002")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-003")).toBe(true);
@@ -6341,6 +6342,7 @@ describe("rule engine", () => {
       "langchain_cache_local_file_prompt",
       "langchain_delegate_local_file_remote_agent",
       "langchain_export_local_file_artifact",
+      "langchain_issue_local_key_agent_credential",
       "langchain_post_local_file_to_slack",
       "langchain_queue_local_file_background_task",
       "langchain_read_workspace_file",
@@ -6353,6 +6355,7 @@ describe("rule engine", () => {
       "source_cache_local_file_prompt",
       "source_delegate_local_file_remote_agent",
       "source_export_local_file_artifact",
+      "source_issue_local_key_agent_credential",
       "source_post_local_file_to_slack",
       "source_queue_local_file_background_task",
       "source_read_workspace_file",
@@ -6380,6 +6383,10 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerLocalFileDisclosureFindings)).not.toContain("Path(workspace_path)");
     expect(JSON.stringify(sourceHandlerLocalFileDisclosureFindings)).not.toContain("localFileContent");
     expect(JSON.stringify(sourceHandlerLocalFileDisclosureFindings)).not.toContain("local_file_content");
+    expect(JSON.stringify(sourceHandlerLocalFileDisclosureFindings)).not.toContain("localSigningKey");
+    expect(JSON.stringify(sourceHandlerLocalFileDisclosureFindings)).not.toContain("local_signing_key");
+    expect(JSON.stringify(sourceHandlerLocalFileDisclosureFindings)).not.toContain("source local key credential issued");
+    expect(JSON.stringify(sourceHandlerLocalFileDisclosureFindings)).not.toContain("framework local key credential issued");
     expect(JSON.stringify(sourceHandlerLocalFileDisclosureFindings)).not.toContain("openaiClient.chat.completions.create");
     expect(JSON.stringify(sourceHandlerLocalFileDisclosureFindings)).not.toContain("openai_client.chat.completions.create");
     const sourceHandlerLocalFilePromptBridgeFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-140");
@@ -6861,6 +6868,7 @@ describe("rule engine", () => {
       "langchain_cache_local_file_prompt",
       "langchain_delegate_local_file_remote_agent",
       "langchain_export_local_file_artifact",
+      "langchain_issue_local_key_agent_credential",
       "langchain_post_local_file_to_slack",
       "langchain_queue_local_file_background_task",
       "langchain_read_workspace_file",
@@ -6875,6 +6883,7 @@ describe("rule engine", () => {
       "source_cache_local_file_prompt",
       "source_delegate_local_file_remote_agent",
       "source_export_local_file_artifact",
+      "source_issue_local_key_agent_credential",
       "source_post_local_file_to_slack",
       "source_queue_local_file_background_task",
       "source_read_workspace_file",
@@ -6902,6 +6911,10 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerTaintedFilesystemPathFindings)).not.toContain("readFile");
     expect(JSON.stringify(sourceHandlerTaintedFilesystemPathFindings)).not.toContain("read_text");
     expect(JSON.stringify(sourceHandlerTaintedFilesystemPathFindings)).not.toContain("Path(workspace_path)");
+    expect(JSON.stringify(sourceHandlerTaintedFilesystemPathFindings)).not.toContain("localSigningKey");
+    expect(JSON.stringify(sourceHandlerTaintedFilesystemPathFindings)).not.toContain("local_signing_key");
+    expect(JSON.stringify(sourceHandlerTaintedFilesystemPathFindings)).not.toContain("source local key credential issued");
+    expect(JSON.stringify(sourceHandlerTaintedFilesystemPathFindings)).not.toContain("framework local key credential issued");
     expect(JSON.stringify(sourceHandlerTaintedFilesystemPathFindings)).not.toContain("rm(");
     expect(JSON.stringify(sourceHandlerTaintedFilesystemPathFindings)).not.toContain("shutil.rmtree");
     expect(JSON.stringify(sourceHandlerTaintedFilesystemPathFindings)).not.toContain("os.remove");
@@ -8509,10 +8522,12 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerAgentConfigWriteFindings)).not.toContain("Rewrite AGENTS.md from caller supplied customer context");
     const sourceHandlerCredentialIssuanceFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-025");
     expect(sourceHandlerCredentialIssuanceFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
+      "langchain_issue_local_key_agent_credential",
       "langchain_issue_model_selected_credential",
       "langchain_issue_privileged_tool_observation_credential",
       "langchain_issue_vault_backed_agent_credential",
       "langchain_mint_agent_session_token",
+      "source_issue_local_key_agent_credential",
       "source_issue_model_selected_credential",
       "source_issue_privileged_tool_observation_credential",
       "source_issue_vault_backed_agent_credential",
@@ -8568,20 +8583,26 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerCredentialIssuanceFindings)).not.toContain("secret_record.value");
     expect(JSON.stringify(sourceHandlerCredentialIssuanceFindings)).not.toContain("vaultSigningKey");
     expect(JSON.stringify(sourceHandlerCredentialIssuanceFindings)).not.toContain("vault_signing_key");
+    expect(JSON.stringify(sourceHandlerCredentialIssuanceFindings)).not.toContain("localSigningKey");
+    expect(JSON.stringify(sourceHandlerCredentialIssuanceFindings)).not.toContain("local_signing_key");
     expect(JSON.stringify(sourceHandlerCredentialIssuanceFindings)).not.toContain("modelSelectedCredentialGrant");
     expect(JSON.stringify(sourceHandlerCredentialIssuanceFindings)).not.toContain("model_selected_credential_grant");
     expect(JSON.stringify(sourceHandlerCredentialIssuanceFindings)).not.toContain("Mint an agent session token");
     expect(JSON.stringify(sourceHandlerCredentialIssuanceFindings)).not.toContain("Issue an agent credential");
+    expect(JSON.stringify(sourceHandlerCredentialIssuanceFindings)).not.toContain("source local key credential issued");
+    expect(JSON.stringify(sourceHandlerCredentialIssuanceFindings)).not.toContain("framework local key credential issued");
     expect(JSON.stringify(sourceHandlerCredentialIssuanceFindings)).not.toContain("source tool observation issued credential");
     expect(JSON.stringify(sourceHandlerCredentialIssuanceFindings)).not.toContain("framework tool observation issued credential");
     expect(JSON.stringify(sourceHandlerCredentialIssuanceFindings)).not.toContain("source model selected credential issued");
     expect(JSON.stringify(sourceHandlerCredentialIssuanceFindings)).not.toContain("framework model selected credential issued");
     const sourceHandlerTaintedCredentialIssuanceFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-042");
     expect(sourceHandlerTaintedCredentialIssuanceFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
+      "langchain_issue_local_key_agent_credential",
       "langchain_issue_model_selected_credential",
       "langchain_issue_privileged_tool_observation_credential",
       "langchain_issue_vault_backed_agent_credential",
       "langchain_mint_agent_session_token",
+      "source_issue_local_key_agent_credential",
       "source_issue_model_selected_credential",
       "source_issue_privileged_tool_observation_credential",
       "source_issue_vault_backed_agent_credential",
@@ -8616,10 +8637,14 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerTaintedCredentialIssuanceFindings)).not.toContain("secret_record.value");
     expect(JSON.stringify(sourceHandlerTaintedCredentialIssuanceFindings)).not.toContain("vaultSigningKey");
     expect(JSON.stringify(sourceHandlerTaintedCredentialIssuanceFindings)).not.toContain("vault_signing_key");
+    expect(JSON.stringify(sourceHandlerTaintedCredentialIssuanceFindings)).not.toContain("localSigningKey");
+    expect(JSON.stringify(sourceHandlerTaintedCredentialIssuanceFindings)).not.toContain("local_signing_key");
     expect(JSON.stringify(sourceHandlerTaintedCredentialIssuanceFindings)).not.toContain("modelSelectedCredentialGrant");
     expect(JSON.stringify(sourceHandlerTaintedCredentialIssuanceFindings)).not.toContain("model_selected_credential_grant");
     expect(JSON.stringify(sourceHandlerTaintedCredentialIssuanceFindings)).not.toContain("Mint an agent session token");
     expect(JSON.stringify(sourceHandlerTaintedCredentialIssuanceFindings)).not.toContain("Issue an agent credential");
+    expect(JSON.stringify(sourceHandlerTaintedCredentialIssuanceFindings)).not.toContain("source local key credential issued");
+    expect(JSON.stringify(sourceHandlerTaintedCredentialIssuanceFindings)).not.toContain("framework local key credential issued");
     expect(JSON.stringify(sourceHandlerTaintedCredentialIssuanceFindings)).not.toContain("source tool observation issued credential");
     expect(JSON.stringify(sourceHandlerTaintedCredentialIssuanceFindings)).not.toContain("framework tool observation issued credential");
     expect(JSON.stringify(sourceHandlerTaintedCredentialIssuanceFindings)).not.toContain("source model selected credential issued");
@@ -8671,6 +8696,48 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerSecretManagerCredentialIssuanceBridgeFindings)).not.toContain("vaultSigningKey");
     expect(JSON.stringify(sourceHandlerSecretManagerCredentialIssuanceBridgeFindings)).not.toContain("vault_signing_key");
     expect(JSON.stringify(sourceHandlerSecretManagerCredentialIssuanceBridgeFindings)).not.toContain("Issue an agent credential");
+    const sourceHandlerLocalFileCredentialIssuanceBridgeFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-154");
+    expect(sourceHandlerLocalFileCredentialIssuanceBridgeFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
+      "langchain_issue_local_key_agent_credential",
+      "source_issue_local_key_agent_credential"
+    ]);
+    expect(sourceHandlerLocalFileCredentialIssuanceBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
+    expect(sourceHandlerLocalFileCredentialIssuanceBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerLocalFileCredentialIssuanceBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
+    expect(sourceHandlerLocalFileCredentialIssuanceBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
+    expect(sourceHandlerLocalFileCredentialIssuanceBridgeFindings.every((finding) => finding.matched_object.metadata.source_tool_handler_redacted === true)).toBe(true);
+    expect(sourceHandlerLocalFileCredentialIssuanceBridgeFindings.every((finding) => finding.matched_object.metadata.handler_filesystem_read === true)).toBe(true);
+    expect(sourceHandlerLocalFileCredentialIssuanceBridgeFindings.every((finding) => finding.matched_object.metadata.handler_tainted_filesystem_path === true)).toBe(true);
+    expect(sourceHandlerLocalFileCredentialIssuanceBridgeFindings.every((finding) => finding.matched_object.metadata.handler_credential_issuance === true)).toBe(true);
+    expect(sourceHandlerLocalFileCredentialIssuanceBridgeFindings.every((finding) => finding.matched_object.metadata.handler_tainted_credential_issuance_input === true)).toBe(true);
+    expect(sourceHandlerLocalFileCredentialIssuanceBridgeFindings.every((finding) => finding.matched_object.metadata.handler_local_file_credential_issuance_bridge === true)).toBe(true);
+    expect(sourceHandlerLocalFileCredentialIssuanceBridgeFindings.every((finding) => finding.matched_object.metadata.handler_secret_env_access === true)).toBe(true);
+    expect(sourceHandlerLocalFileCredentialIssuanceBridgeFindings.every((finding) => finding.matched_object.metadata.tainted_filesystem_path === true)).toBe(true);
+    expect(sourceHandlerLocalFileCredentialIssuanceBridgeFindings.every((finding) => finding.matched_object.metadata.credential_issuance === true)).toBe(true);
+    expect(sourceHandlerLocalFileCredentialIssuanceBridgeFindings.every((finding) => finding.matched_object.metadata.tainted_credential_issuance_input === true)).toBe(true);
+    expect(sourceHandlerLocalFileCredentialIssuanceBridgeFindings.every((finding) => finding.matched_object.metadata.local_file_credential_issuance_bridge === true)).toBe(true);
+    expect(sourceHandlerLocalFileCredentialIssuanceBridgeFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("tainted_filesystem_path"))).toBe(true);
+    expect(sourceHandlerLocalFileCredentialIssuanceBridgeFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("credential_issuance"))).toBe(true);
+    expect(sourceHandlerLocalFileCredentialIssuanceBridgeFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("tainted_credential_issuance_input"))).toBe(true);
+    expect(sourceHandlerLocalFileCredentialIssuanceBridgeFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("local_file_credential_issuance_bridge"))).toBe(true);
+    expect(sourceHandlerLocalFileCredentialIssuanceBridgeFindings.every((finding) => finding.matched_object.metadata.handler_authority_classes.includes("handler_tainted_filesystem_path"))).toBe(true);
+    expect(sourceHandlerLocalFileCredentialIssuanceBridgeFindings.every((finding) => finding.matched_object.metadata.handler_authority_classes.includes("handler_local_file_credential_issuance_bridge"))).toBe(true);
+    expect(sourceHandlerLocalFileCredentialIssuanceBridgeFindings.every((finding) => finding.matched_object.actions.includes("read"))).toBe(true);
+    expect(sourceHandlerLocalFileCredentialIssuanceBridgeFindings.every((finding) => finding.matched_object.actions.includes("send"))).toBe(true);
+    expect(sourceHandlerLocalFileCredentialIssuanceBridgeFindings.every((finding) => finding.matched_object.actions.includes("write"))).toBe(true);
+    expect(sourceHandlerLocalFileCredentialIssuanceBridgeFindings.every((finding) => finding.matched_object.external_reach === true)).toBe(true);
+    expect(sourceHandlerLocalFileCredentialIssuanceBridgeFindings.every((finding) => finding.matched_object.secret_exposure === true)).toBe(true);
+    expect(sourceHandlerLocalFileCredentialIssuanceBridgeFindings.every((finding) => finding.matched_object.side_effect === true)).toBe(true);
+    expect(sourceHandlerLocalFileCredentialIssuanceBridgeFindings.every((finding) => finding.matched_object.reversible === false)).toBe(true);
+    expect(JSON.stringify(sourceHandlerLocalFileCredentialIssuanceBridgeFindings)).not.toContain("readFile");
+    expect(JSON.stringify(sourceHandlerLocalFileCredentialIssuanceBridgeFindings)).not.toContain("Path(credential_key_path).read_text");
+    expect(JSON.stringify(sourceHandlerLocalFileCredentialIssuanceBridgeFindings)).not.toContain("identityBroker.issueToken");
+    expect(JSON.stringify(sourceHandlerLocalFileCredentialIssuanceBridgeFindings)).not.toContain("identity_broker.issue_token");
+    expect(JSON.stringify(sourceHandlerLocalFileCredentialIssuanceBridgeFindings)).not.toContain("localSigningKey");
+    expect(JSON.stringify(sourceHandlerLocalFileCredentialIssuanceBridgeFindings)).not.toContain("local_signing_key");
+    expect(JSON.stringify(sourceHandlerLocalFileCredentialIssuanceBridgeFindings)).not.toContain("source local key credential issued");
+    expect(JSON.stringify(sourceHandlerLocalFileCredentialIssuanceBridgeFindings)).not.toContain("framework local key credential issued");
+    expect(JSON.stringify(sourceHandlerLocalFileCredentialIssuanceBridgeFindings)).not.toContain("Issue an agent credential using caller selected local key material");
     const sourceHandlerNestedToolInvocationFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-026");
     expect(sourceHandlerNestedToolInvocationFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_apply_tool_observation_guardrail_override",

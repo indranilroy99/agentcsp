@@ -315,6 +315,7 @@ Tool metadata may include:
 - `credential_issuance`
 - `tainted_credential_issuance_input`
 - `secret_manager_credential_issuance_bridge`
+- `local_file_credential_issuance_bridge`
 - `model_output_credential_issuance_bridge`
 - `tool_output_credential_issuance_bridge`
 - `model_output_task_queue_bridge`
@@ -594,6 +595,7 @@ Tool metadata may include:
 - `handler_credential_issuance`
 - `handler_tainted_credential_issuance_input`
 - `handler_secret_manager_credential_issuance_bridge`
+- `handler_local_file_credential_issuance_bridge`
 - `handler_model_output_credential_issuance_bridge`
 - `handler_tool_output_credential_issuance_bridge`
 - `handler_agent_delegation`
@@ -2186,6 +2188,8 @@ Source-defined tool handlers can also emit redacted network-response remote-agen
 Source-defined tool handlers can also emit redacted local-file remote-agent delegation bridge authority through `local_file_agent_delegation_bridge`, `filesystem_read`, `tainted_filesystem_path`, `agent_delegation`, `tainted_agent_delegation_target`, `agent_delegation_context_forwarding`, and the corresponding `handler_*` fields when parsed MCP SDK or agent-framework tools read caller-selected local files and delegate file material to remote agents or A2A peers using runtime credentials and caller-selected agent targets. Handler bodies, file-read calls, local paths, file contents, delegated-agent calls, target agent IDs, target URLs, forwarded context, delegation goals, and return strings remain redacted.
 
 Source-defined tool handlers can also emit redacted network-response browser-automation bridge authority through `network_response_browser_automation_bridge`, `credentialed_network_read`, `browser_automation`, `tainted_browser_automation_target`, `tainted_network_destination`, and the corresponding `handler_*` fields when parsed MCP SDK or agent-framework tools fetch caller-selected URLs and inject returned network content into authenticated browser pages, selectors, or forms using runtime browser credentials and caller-selected targets. Handler bodies, network calls, response variables, response text, browser page calls, target URLs, selectors, submitted values, browser notes, and return strings remain redacted.
+
+Source-defined tool handlers can also emit redacted local-file credential-issuance bridge authority through `local_file_credential_issuance_bridge`, `filesystem_read`, `tainted_filesystem_path`, `credential_issuance`, `tainted_credential_issuance_input`, and the corresponding `handler_*` fields when parsed MCP SDK or agent-framework tools read caller-selected local key or credential files and use file-derived material to mint, sign, assume, impersonate, or issue agent credentials using runtime broker credentials. Handler bodies, file-read calls, credential or key paths, file contents, signing material, credential broker calls, subjects, scopes, roles, audiences, impersonation selectors, issued credentials, and return strings remain redacted.
 
 Source-defined tool handlers can also emit redacted secret-manager credential-issuance bridge authority through `secret_manager_credential_issuance_bridge`, `secret_manager_access`, `tainted_secret_manager_path`, `credential_issuance`, `tainted_credential_issuance_input`, and the corresponding `handler_*` fields when parsed MCP SDK or agent-framework tools read caller-selected vault or secret-manager paths and use the returned secret material to mint, sign, assume, impersonate, or issue agent credentials using runtime broker credentials. Handler bodies, vault calls, secret paths, secret values, credential broker calls, signing keys, token templates, subjects, scopes, roles, audiences, impersonation selectors, issued credentials, and return strings remain redacted.
 

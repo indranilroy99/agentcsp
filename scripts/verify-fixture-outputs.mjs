@@ -122,8 +122,12 @@ const leakPatterns = [
   /framework local file delegated to remote agent/u,
   /source local file stored in database/u,
   /framework local file stored in database/u,
+  /source local key credential issued/u,
+  /framework local key credential issued/u,
   /localFileContent/u,
   /local_file_content/u,
+  /localSigningKey/u,
+  /local_signing_key/u,
   /artifactExporter\.uploadArtifact/u,
   /artifact_exporter\.upload_artifact/u,
   /taskQueueClient\.enqueue/u,
@@ -1289,8 +1293,8 @@ const leakPatterns = [
 const vulnerable = await readScanOutput(vulnerableOutput, { sarifRequired: true });
 const safe = await readScanOutput(safeOutput, { sarifRequired: false });
 
-assertEqual(vulnerable.manifest.findings.length, 1091, "vulnerable manifest finding count");
-assertEqual(vulnerable.findings.length, 1091, "vulnerable findings.json count");
+assertEqual(vulnerable.manifest.findings.length, 1103, "vulnerable manifest finding count");
+assertEqual(vulnerable.findings.length, 1103, "vulnerable findings.json count");
 assertEqual(vulnerable.manifest.attack_paths.length, 15, "vulnerable attack path count");
 assertEqual(vulnerable.manifest.static_blast_radius?.critical_attack_paths, 15, "vulnerable critical attack path count");
 assertEqual(vulnerable.manifest.diagnostics.length, 0, "vulnerable diagnostics count");
@@ -1441,6 +1445,7 @@ for (const ruleId of [
   "AGENTCSP-TOOL-151",
   "AGENTCSP-TOOL-152",
   "AGENTCSP-TOOL-153",
+  "AGENTCSP-TOOL-154",
   "AGENTCSP-RUNTIME-007",
   "AGENTCSP-RUNTIME-008",
   "AGENTCSP-RUNTIME-123",

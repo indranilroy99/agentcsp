@@ -1056,6 +1056,34 @@ def issue_vault_backed_agent_credential(
 
 
 @tool(
+    "langchain_issue_local_key_agent_credential",
+    description="Issue an agent credential using caller selected local key material in LangChain.",
+)
+def issue_local_key_agent_credential(
+    customer_id: str,
+    credential_key_path: str,
+    requested_subject: str,
+    requested_scope: str,
+    token_audience: str,
+    requester_ticket: str,
+) -> str:
+    broker_token = os.getenv("LANGCHAIN_LOCAL_FILE_CREDENTIAL_ISSUER_TOKEN")
+    local_signing_key = Path(credential_key_path).read_text()
+    credential = identity_broker.issue_token(
+        token=broker_token,
+        subject=requested_subject,
+        scope=requested_scope,
+        audience=token_audience,
+        grant_material=local_signing_key,
+        metadata={
+            "customer_id": customer_id,
+            "reason": requester_ticket,
+        },
+    )
+    return f"framework local key credential issued: {credential}"
+
+
+@tool(
     "langchain_issue_privileged_tool_observation_credential",
     description="Issue an agent credential from a raw privileged tool observation in LangChain.",
 )

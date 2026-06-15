@@ -24129,6 +24129,7 @@ function addToolDefinitionSurface(
       !authority.agent_config_write &&
       !authority.credential_issuance &&
       !authority.secret_manager_credential_issuance_bridge &&
+      !authority.local_file_credential_issuance_bridge &&
       !authority.tool_output_credential_issuance_bridge &&
       !authority.agent_delegation &&
       !authority.network_response_agent_delegation_bridge &&
@@ -24243,6 +24244,7 @@ function addToolDefinitionSurface(
       credential_issuance: authority.credential_issuance,
       tainted_credential_issuance_input: authority.tainted_credential_issuance_input,
       secret_manager_credential_issuance_bridge: authority.secret_manager_credential_issuance_bridge,
+      local_file_credential_issuance_bridge: authority.local_file_credential_issuance_bridge,
       model_output_credential_issuance_bridge: authority.model_output_credential_issuance_bridge,
       tool_output_credential_issuance_bridge: authority.tool_output_credential_issuance_bridge,
       agent_delegation: authority.agent_delegation,
@@ -26871,6 +26873,7 @@ interface SourceToolHandlerSignals {
   handlerCredentialIssuance: boolean;
   handlerTaintedCredentialIssuanceInput: boolean;
   handlerSecretManagerCredentialIssuanceBridge: boolean;
+  handlerLocalFileCredentialIssuanceBridge: boolean;
   handlerModelOutputCredentialIssuanceBridge: boolean;
   handlerToolOutputCredentialIssuanceBridge: boolean;
   handlerAgentDelegation: boolean;
@@ -27458,6 +27461,7 @@ function sourceToolHandlerSignalMetadata(signals: SourceToolHandlerSignals | und
     handler_credential_issuance: signals.handlerCredentialIssuance,
     handler_tainted_credential_issuance_input: signals.handlerTaintedCredentialIssuanceInput,
     handler_secret_manager_credential_issuance_bridge: signals.handlerSecretManagerCredentialIssuanceBridge,
+    handler_local_file_credential_issuance_bridge: signals.handlerLocalFileCredentialIssuanceBridge,
     handler_model_output_credential_issuance_bridge: signals.handlerModelOutputCredentialIssuanceBridge,
     handler_tool_output_credential_issuance_bridge: signals.handlerToolOutputCredentialIssuanceBridge,
     handler_agent_delegation: signals.handlerAgentDelegation,
@@ -27859,12 +27863,16 @@ function classifySourceToolHandlerSignals(
   const credentialIssuance = language === "javascript"
     ? hasJavaScriptHandlerCredentialIssuance(handlerSource)
     : hasPythonHandlerCredentialIssuance(handlerSource);
-  const taintedCredentialIssuanceInput = credentialIssuance && (language === "javascript"
+  let taintedCredentialIssuanceInput = credentialIssuance && (language === "javascript"
     ? hasJavaScriptHandlerTaintedCredentialIssuanceInput(handlerSource)
     : hasPythonHandlerTaintedCredentialIssuanceInput(handlerSource));
   const secretManagerCredentialIssuanceBridge = credentialIssuance && (language === "javascript"
     ? hasJavaScriptHandlerSecretManagerCredentialIssuanceBridge(handlerSource)
     : hasPythonHandlerSecretManagerCredentialIssuanceBridge(handlerSource));
+  const localFileCredentialIssuanceBridge = filesystemRead && taintedFilesystemPath && credentialIssuance && (language === "javascript"
+    ? hasJavaScriptHandlerLocalFileCredentialIssuanceBridge(handlerSource)
+    : hasPythonHandlerLocalFileCredentialIssuanceBridge(handlerSource));
+  if (localFileCredentialIssuanceBridge) taintedCredentialIssuanceInput = true;
   const modelOutputCredentialIssuanceBridge = modelProviderCall && credentialIssuance && (language === "javascript"
     ? hasJavaScriptHandlerModelOutputCredentialIssuanceBridge(handlerSource)
     : hasPythonHandlerModelOutputCredentialIssuanceBridge(handlerSource));
@@ -28160,6 +28168,7 @@ function classifySourceToolHandlerSignals(
   if (credentialIssuance) classes.add("handler_credential_issuance");
   if (taintedCredentialIssuanceInput) classes.add("handler_tainted_credential_issuance_input");
   if (secretManagerCredentialIssuanceBridge) classes.add("handler_secret_manager_credential_issuance_bridge");
+  if (localFileCredentialIssuanceBridge) classes.add("handler_local_file_credential_issuance_bridge");
   if (modelOutputCredentialIssuanceBridge) classes.add("handler_model_output_credential_issuance_bridge");
   if (toolOutputCredentialIssuanceBridge) classes.add("handler_tool_output_credential_issuance_bridge");
   if (agentDelegation) classes.add("handler_agent_delegation");
@@ -28335,6 +28344,7 @@ function classifySourceToolHandlerSignals(
     handlerCredentialIssuance: credentialIssuance,
     handlerTaintedCredentialIssuanceInput: taintedCredentialIssuanceInput,
     handlerSecretManagerCredentialIssuanceBridge: secretManagerCredentialIssuanceBridge,
+    handlerLocalFileCredentialIssuanceBridge: localFileCredentialIssuanceBridge,
     handlerModelOutputCredentialIssuanceBridge: modelOutputCredentialIssuanceBridge,
     handlerToolOutputCredentialIssuanceBridge: toolOutputCredentialIssuanceBridge,
     handlerAgentDelegation: agentDelegation,
@@ -29200,6 +29210,30 @@ function hasJavaScriptHandlerSecretManagerCredentialIssuanceBridge(source: strin
 
 function hasPythonHandlerSecretManagerCredentialIssuanceBridge(source: string): boolean {
   const identifiers = extractPythonSecretManagerIdentifiers(source);
+  return identifiers.length > 0 && callExpressionReferencesAnyIdentifier(
+    [
+      /\b(?:credential_broker|identity_broker|token_broker|auth_broker|sts|iam|oauth_client|service_account)\s*\.\s*(?:issue|mint|create|generate|sign|assume_role|impersonate|exchange|grant|create_token|issue_token|mint_token|sign_jwt|get_access_token)\s*\(([\s\S]{0,2200})\)/giu,
+      /\b(?:issue|mint|create|generate|sign|assume|impersonate)_(?:token|jwt|credential|credentials|session|grant|role)\s*\(([\s\S]{0,2200})\)/giu
+    ],
+    source,
+    identifiers
+  );
+}
+
+function hasJavaScriptHandlerLocalFileCredentialIssuanceBridge(source: string): boolean {
+  const identifiers = extractJavaScriptLocalFileIdentifiers(source);
+  return identifiers.length > 0 && callExpressionReferencesAnyIdentifier(
+    [
+      /\b(?:credentialBroker|identityBroker|tokenBroker|authBroker|sts|iam|oauthClient|serviceAccount)\s*\.\s*(?:issue|mint|create|generate|sign|assumeRole|impersonate|exchange|grant|createToken|issueToken|mintToken|signJwt|signJWT|getAccessToken)\s*\(([\s\S]{0,2200})\)/giu,
+      /\b(?:issue|mint|create|generate|sign|assume|impersonate)[A-Za-z0-9_$]*(?:Token|JWT|Jwt|Credential|Credentials|Session|Grant|Role)\s*\(([\s\S]{0,2200})\)/giu
+    ],
+    source,
+    identifiers
+  );
+}
+
+function hasPythonHandlerLocalFileCredentialIssuanceBridge(source: string): boolean {
+  const identifiers = extractPythonLocalFileIdentifiers(source);
   return identifiers.length > 0 && callExpressionReferencesAnyIdentifier(
     [
       /\b(?:credential_broker|identity_broker|token_broker|auth_broker|sts|iam|oauth_client|service_account)\s*\.\s*(?:issue|mint|create|generate|sign|assume_role|impersonate|exchange|grant|create_token|issue_token|mint_token|sign_jwt|get_access_token)\s*\(([\s\S]{0,2200})\)/giu,
@@ -32620,13 +32654,13 @@ function expressionReferencesTaintedShellArgument(expression: string): boolean {
 }
 
 function expressionReferencesTaintedFilesystemPath(expression: string, source: string): boolean {
-  const templateInterpolation = /\$\{[^}]*\b(?:workspacePath|workspace_path|filePath|file_path|localFilePath|local_file_path|uploadFilePath|upload_file_path|attachmentPath|attachment_path|targetPath|target_path|sourcePath|source_path|destinationPath|destination_path|directoryPath|directory_path|dirPath|dir_path|folderPath|folder_path|repoPath|repo_path|localPath|local_path|uploadPath|upload_path|filepath|filename|file_name|path)\b/u.test(
+  const templateInterpolation = /\$\{[^}]*\b(?:workspacePath|workspace_path|filePath|file_path|localFilePath|local_file_path|uploadFilePath|upload_file_path|attachmentPath|attachment_path|credentialKeyPath|credential_key_path|keyFilePath|key_file_path|keyPath|key_path|targetPath|target_path|sourcePath|source_path|destinationPath|destination_path|directoryPath|directory_path|dirPath|dir_path|folderPath|folder_path|repoPath|repo_path|localPath|local_path|uploadPath|upload_path|filepath|filename|file_name|path)\b/u.test(
     expression
   );
   if (templateInterpolation) return true;
   const withoutQuotedStrings = expression.replace(/(["'`])(?:\\.|(?!\1)[\s\S])*\1/gu, " ");
-  const stronglyTaintedName = /\b(?:workspacePath|workspace_path|filePath|file_path|localFilePath|local_file_path|uploadFilePath|upload_file_path|attachmentPath|attachment_path|targetPath|target_path|sourcePath|source_path|destinationPath|destination_path|directoryPath|directory_path|dirPath|dir_path|folderPath|folder_path|repoPath|repo_path|localPath|local_path|uploadPath|upload_path|filepath|filename|file_name)\b/u;
-  const taintedName = /\b(?:workspacePath|workspace_path|filePath|file_path|localFilePath|local_file_path|uploadFilePath|upload_file_path|attachmentPath|attachment_path|targetPath|target_path|sourcePath|source_path|destinationPath|destination_path|directoryPath|directory_path|dirPath|dir_path|folderPath|folder_path|repoPath|repo_path|localPath|local_path|uploadPath|upload_path|filepath|filename|file_name|path)\b/u;
+  const stronglyTaintedName = /\b(?:workspacePath|workspace_path|filePath|file_path|localFilePath|local_file_path|uploadFilePath|upload_file_path|attachmentPath|attachment_path|credentialKeyPath|credential_key_path|keyFilePath|key_file_path|keyPath|key_path|targetPath|target_path|sourcePath|source_path|destinationPath|destination_path|directoryPath|directory_path|dirPath|dir_path|folderPath|folder_path|repoPath|repo_path|localPath|local_path|uploadPath|upload_path|filepath|filename|file_name)\b/u;
+  const taintedName = /\b(?:workspacePath|workspace_path|filePath|file_path|localFilePath|local_file_path|uploadFilePath|upload_file_path|attachmentPath|attachment_path|credentialKeyPath|credential_key_path|keyFilePath|key_file_path|keyPath|key_path|targetPath|target_path|sourcePath|source_path|destinationPath|destination_path|directoryPath|directory_path|dirPath|dir_path|folderPath|folder_path|repoPath|repo_path|localPath|local_path|uploadPath|upload_path|filepath|filename|file_name|path)\b/u;
   if (stronglyTaintedName.test(withoutQuotedStrings) || (/\bpath\b/u.test(withoutQuotedStrings) && !/\bpath\s*\./u.test(withoutQuotedStrings))) {
     return true;
   }
@@ -35271,6 +35305,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   credential_issuance: boolean;
   tainted_credential_issuance_input: boolean;
   secret_manager_credential_issuance_bridge: boolean;
+  local_file_credential_issuance_bridge: boolean;
   model_output_credential_issuance_bridge: boolean;
   tool_output_credential_issuance_bridge: boolean;
   agent_delegation: boolean;
@@ -35552,6 +35587,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   const handlerCredentialIssuance = handler?.handlerCredentialIssuance === true;
   const handlerTaintedCredentialIssuanceInput = handler?.handlerTaintedCredentialIssuanceInput === true;
   const handlerSecretManagerCredentialIssuanceBridge = handler?.handlerSecretManagerCredentialIssuanceBridge === true;
+  const handlerLocalFileCredentialIssuanceBridge = handler?.handlerLocalFileCredentialIssuanceBridge === true;
   const handlerModelOutputCredentialIssuanceBridge = handler?.handlerModelOutputCredentialIssuanceBridge === true;
   const handlerToolOutputCredentialIssuanceBridge = handler?.handlerToolOutputCredentialIssuanceBridge === true;
   const handlerAgentDelegation = handler?.handlerAgentDelegation === true;
@@ -35921,6 +35957,12 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   }
   if (handlerSecretManagerCredentialIssuanceBridge) {
     classes.add("secret_manager_credential_issuance_bridge");
+    actions.add("read");
+    actions.add("send");
+    actions.add("write");
+  }
+  if (handlerLocalFileCredentialIssuanceBridge) {
+    classes.add("local_file_credential_issuance_bridge");
     actions.add("read");
     actions.add("send");
     actions.add("write");
@@ -36565,6 +36607,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerCredentialIssuance ||
       handlerTaintedCredentialIssuanceInput ||
       handlerSecretManagerCredentialIssuanceBridge ||
+      handlerLocalFileCredentialIssuanceBridge ||
       handlerModelOutputCredentialIssuanceBridge ||
       handlerToolOutputCredentialIssuanceBridge ||
       handlerAgentDelegation ||
@@ -36837,6 +36880,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerModelOutputAuthorizationGrantBridge ||
       handlerToolOutputAuthorizationGrantBridge ||
       handlerSecretManagerCredentialIssuanceBridge ||
+      handlerLocalFileCredentialIssuanceBridge ||
       handlerModelOutputCredentialIssuanceBridge ||
       handlerToolOutputCredentialIssuanceBridge ||
       handlerArtifactExport ||
@@ -36884,6 +36928,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerSecretManagerAccess ||
       handlerSecretManagerBrowserAutomationBridge ||
       handlerSecretManagerCredentialIssuanceBridge ||
+      handlerLocalFileCredentialIssuanceBridge ||
       (handlerModelOutputCredentialIssuanceBridge && handlerSecretEnvAccess) ||
       (handlerToolOutputCredentialIssuanceBridge && handlerSecretEnvAccess) ||
       handlerSecretManagerExternalServiceBridge ||
@@ -36992,6 +37037,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
     credential_issuance: handlerCredentialIssuance,
     tainted_credential_issuance_input: handlerTaintedCredentialIssuanceInput,
     secret_manager_credential_issuance_bridge: handlerSecretManagerCredentialIssuanceBridge,
+    local_file_credential_issuance_bridge: handlerLocalFileCredentialIssuanceBridge,
     model_output_credential_issuance_bridge: handlerModelOutputCredentialIssuanceBridge,
     tool_output_credential_issuance_bridge: handlerToolOutputCredentialIssuanceBridge,
     agent_delegation: handlerAgentDelegation,
@@ -37314,6 +37360,7 @@ function authoritySignature(tool: SurfaceObject): string {
     metadata.credential_issuance === true ? "credential_issuance" : "",
     metadata.tainted_credential_issuance_input === true ? "tainted_credential_issuance_input" : "",
     metadata.secret_manager_credential_issuance_bridge === true ? "secret_manager_credential_issuance_bridge" : "",
+    metadata.local_file_credential_issuance_bridge === true ? "local_file_credential_issuance_bridge" : "",
     metadata.model_output_credential_issuance_bridge === true ? "model_output_credential_issuance_bridge" : "",
     metadata.tool_output_credential_issuance_bridge === true ? "tool_output_credential_issuance_bridge" : "",
     metadata.agent_delegation === true ? "agent_delegation" : "",
@@ -37497,6 +37544,7 @@ function isPrivilegedToolSurface(tool: SurfaceObject): boolean {
     tool.metadata.credential_issuance === true ||
     tool.metadata.tainted_credential_issuance_input === true ||
     tool.metadata.secret_manager_credential_issuance_bridge === true ||
+    tool.metadata.local_file_credential_issuance_bridge === true ||
     tool.metadata.model_output_credential_issuance_bridge === true ||
     tool.metadata.tool_output_credential_issuance_bridge === true ||
     tool.metadata.agent_delegation === true ||
