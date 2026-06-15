@@ -165,6 +165,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-161")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-162")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-163")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-164")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-001")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-002")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-003")).toBe(true);
@@ -9680,11 +9681,13 @@ describe("rule engine", () => {
       "langchain_delegate_authenticated_page_screenshot_remote_agent",
       "langchain_delegate_customer_case_to_remote_agent",
       "langchain_delegate_customer_vault_secret_remote_agent",
+      "langchain_delegate_env_secret_remote_agent",
       "langchain_delegate_local_file_remote_agent",
       "langchain_delegate_model_selected_remote_agent_task",
       "source_delegate_authenticated_page_screenshot_remote_agent",
       "source_delegate_customer_case_to_remote_agent",
       "source_delegate_customer_vault_secret_remote_agent",
+      "source_delegate_env_secret_remote_agent",
       "source_delegate_local_file_remote_agent",
       "source_delegate_model_selected_remote_agent_task"
     ]);
@@ -12405,6 +12408,53 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerEnvSecretTaskQueueBridgeFindings)).not.toContain("source env secret queued for background agent");
     expect(JSON.stringify(sourceHandlerEnvSecretTaskQueueBridgeFindings)).not.toContain("framework env secret queued for background agent");
     expect(JSON.stringify(sourceHandlerEnvSecretTaskQueueBridgeFindings)).not.toContain("Enqueue environment-backed support credentials");
+    const sourceHandlerEnvSecretAgentDelegationBridgeFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-164");
+    expect(sourceHandlerEnvSecretAgentDelegationBridgeFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
+      "langchain_delegate_env_secret_remote_agent",
+      "source_delegate_env_secret_remote_agent"
+    ]);
+    expect(sourceHandlerEnvSecretAgentDelegationBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
+    expect(sourceHandlerEnvSecretAgentDelegationBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerEnvSecretAgentDelegationBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
+    expect(sourceHandlerEnvSecretAgentDelegationBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
+    expect(sourceHandlerEnvSecretAgentDelegationBridgeFindings.every((finding) => finding.matched_object.metadata.source_tool_handler_redacted === true)).toBe(true);
+    expect(sourceHandlerEnvSecretAgentDelegationBridgeFindings.every((finding) => finding.matched_object.metadata.handler_secret_env_access === true)).toBe(true);
+    expect(sourceHandlerEnvSecretAgentDelegationBridgeFindings.every((finding) => finding.matched_object.metadata.handler_agent_delegation === true)).toBe(true);
+    expect(sourceHandlerEnvSecretAgentDelegationBridgeFindings.every((finding) => finding.matched_object.metadata.handler_tainted_agent_delegation_target === true)).toBe(true);
+    expect(sourceHandlerEnvSecretAgentDelegationBridgeFindings.every((finding) => finding.matched_object.metadata.handler_agent_delegation_context_forwarding === true)).toBe(true);
+    expect(sourceHandlerEnvSecretAgentDelegationBridgeFindings.every((finding) => finding.matched_object.metadata.handler_env_secret_agent_delegation_bridge === true)).toBe(true);
+    expect(sourceHandlerEnvSecretAgentDelegationBridgeFindings.every((finding) => finding.matched_object.metadata.agent_delegation === true)).toBe(true);
+    expect(sourceHandlerEnvSecretAgentDelegationBridgeFindings.every((finding) => finding.matched_object.metadata.tainted_agent_delegation_target === true)).toBe(true);
+    expect(sourceHandlerEnvSecretAgentDelegationBridgeFindings.every((finding) => finding.matched_object.metadata.agent_delegation_context_forwarding === true)).toBe(true);
+    expect(sourceHandlerEnvSecretAgentDelegationBridgeFindings.every((finding) => finding.matched_object.metadata.env_secret_agent_delegation_bridge === true)).toBe(true);
+    expect(sourceHandlerEnvSecretAgentDelegationBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.authority_classes.includes("env_secret_agent_delegation_bridge")
+    )).toBe(true);
+    expect(sourceHandlerEnvSecretAgentDelegationBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.authority_classes.includes("agent_delegation")
+    )).toBe(true);
+    expect(sourceHandlerEnvSecretAgentDelegationBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.handler_authority_classes.includes("handler_env_secret_agent_delegation_bridge")
+    )).toBe(true);
+    expect(sourceHandlerEnvSecretAgentDelegationBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.handler_authority_classes.includes("handler_agent_delegation")
+    )).toBe(true);
+    expect(sourceHandlerEnvSecretAgentDelegationBridgeFindings.every((finding) => finding.matched_object.actions.includes("execute"))).toBe(true);
+    expect(sourceHandlerEnvSecretAgentDelegationBridgeFindings.every((finding) => finding.matched_object.actions.includes("send"))).toBe(true);
+    expect(sourceHandlerEnvSecretAgentDelegationBridgeFindings.every((finding) => finding.matched_object.external_reach === true)).toBe(true);
+    expect(sourceHandlerEnvSecretAgentDelegationBridgeFindings.every((finding) => finding.matched_object.secret_exposure === true)).toBe(true);
+    expect(sourceHandlerEnvSecretAgentDelegationBridgeFindings.every((finding) => finding.matched_object.side_effect === true)).toBe(true);
+    expect(sourceHandlerEnvSecretAgentDelegationBridgeFindings.every((finding) => finding.matched_object.reversible === false)).toBe(true);
+    expect(JSON.stringify(sourceHandlerEnvSecretAgentDelegationBridgeFindings)).not.toContain("process.env");
+    expect(JSON.stringify(sourceHandlerEnvSecretAgentDelegationBridgeFindings)).not.toContain("os.getenv");
+    expect(JSON.stringify(sourceHandlerEnvSecretAgentDelegationBridgeFindings)).not.toContain("delegatedCredential");
+    expect(JSON.stringify(sourceHandlerEnvSecretAgentDelegationBridgeFindings)).not.toContain("delegated_credential");
+    expect(JSON.stringify(sourceHandlerEnvSecretAgentDelegationBridgeFindings)).not.toContain("remoteAgentClient.delegateTask");
+    expect(JSON.stringify(sourceHandlerEnvSecretAgentDelegationBridgeFindings)).not.toContain("remote_agent_client.delegate_task");
+    expect(JSON.stringify(sourceHandlerEnvSecretAgentDelegationBridgeFindings)).not.toContain("Replay runtime credential");
+    expect(JSON.stringify(sourceHandlerEnvSecretAgentDelegationBridgeFindings)).not.toContain("source env secret delegated to remote agent");
+    expect(JSON.stringify(sourceHandlerEnvSecretAgentDelegationBridgeFindings)).not.toContain("framework env secret delegated to remote agent");
+    expect(JSON.stringify(sourceHandlerEnvSecretAgentDelegationBridgeFindings)).not.toContain("Delegate environment-backed support credentials");
     const sourceHandlerRagRetrievalPromptBridgeFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-094");
     expect(sourceHandlerRagRetrievalPromptBridgeFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_summarize_retrieved_context_with_model",

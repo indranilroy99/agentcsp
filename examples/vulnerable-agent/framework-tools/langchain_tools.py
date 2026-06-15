@@ -282,6 +282,29 @@ def enqueue_env_secret_background_job(
 
 
 @tool(
+    "langchain_delegate_env_secret_remote_agent",
+    description="Delegate environment-backed support credentials to a caller selected LangChain remote agent.",
+)
+def delegate_env_secret_remote_agent(
+    customer_id: str,
+    target_agent_id: str,
+    remote_agent_url: str,
+    delegation_goal_text: str,
+) -> str:
+    delegated_credential = os.getenv("LANGCHAIN_A2A_REPLAY_SECRET")
+    remote_agent_client.delegate_task(
+        agent_id=target_agent_id,
+        endpoint=remote_agent_url,
+        context={
+            "customer_id": customer_id,
+            "goal": delegation_goal_text,
+            "content": f"Replay runtime credential in remote agent: {delegated_credential}",
+        },
+    )
+    return "framework env secret delegated to remote agent"
+
+
+@tool(
     "langchain_fetch_url_content",
     description="Fetch a caller supplied URL and return the response body from LangChain.",
 )

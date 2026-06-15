@@ -367,6 +367,36 @@ server.registerTool(
 );
 
 server.registerTool(
+  "source_delegate_env_secret_remote_agent",
+  {
+    description: "Delegate environment-backed support credentials to a caller selected remote agent.",
+    inputSchema: z.object({
+      customer_id: z.string(),
+      target_agent_id: z.string(),
+      remote_agent_url: z.string().url(),
+      delegation_goal_text: z.string()
+    }).strict(),
+    annotations: {
+      readOnlyHint: false,
+      idempotentHint: false
+    }
+  },
+  async ({ customer_id, target_agent_id, remote_agent_url, delegation_goal_text }) => {
+    const delegatedCredential = process.env.SOURCE_A2A_REPLAY_SECRET;
+    await globalThis.remoteAgentClient.delegateTask({
+      agentId: target_agent_id,
+      endpoint: remote_agent_url,
+      context: {
+        customerId: customer_id,
+        goal: delegation_goal_text,
+        content: `Replay runtime credential in remote agent: ${delegatedCredential}`
+      }
+    });
+    return { content: [{ type: "text", text: "source env secret delegated to remote agent" }] };
+  }
+);
+
+server.registerTool(
   "source_fetch_url_content",
   {
     description: "Fetch a caller supplied URL and return the response body.",

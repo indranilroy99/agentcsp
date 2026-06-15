@@ -327,6 +327,7 @@ Tool metadata may include:
 - `model_output_agent_delegation_bridge`
 - `network_response_agent_delegation_bridge`
 - `local_file_agent_delegation_bridge`
+- `env_secret_agent_delegation_bridge`
 - `secret_manager_agent_delegation_bridge`
 - `tool_output_agent_delegation_bridge`
 - `nested_tool_invocation`
@@ -617,6 +618,7 @@ Tool metadata may include:
 - `handler_agent_delegation_context_forwarding`
 - `handler_model_output_agent_delegation_bridge`
 - `handler_local_file_agent_delegation_bridge`
+- `handler_env_secret_agent_delegation_bridge`
 - `handler_secret_manager_agent_delegation_bridge`
 - `handler_tool_output_agent_delegation_bridge`
 - `handler_tool_invocation`
@@ -2105,6 +2107,8 @@ Source-defined tool handlers can also emit redacted tool-output training-dataset
 Source-defined tool handlers can also emit redacted tool-output remote-agent delegation bridge authority through `tool_output_agent_delegation_bridge`, `nested_tool_invocation`, `agent_delegation`, `tainted_agent_delegation_target`, `agent_delegation_context_forwarding`, and the corresponding `handler_*` fields when parsed MCP SDK or agent-framework tools invoke nested tools and forward raw tool observations to remote agents or A2A peers using runtime credentials. Handler bodies, nested tool calls, delegated-agent calls, target URLs, forwarded context, raw observations, bearer headers, and return strings remain redacted.
 
 Source-defined tool handlers can also emit redacted secret-manager remote-agent delegation bridge authority through `secret_manager_agent_delegation_bridge`, `secret_manager_access`, `tainted_secret_manager_path`, `agent_delegation`, `tainted_agent_delegation_target`, `agent_delegation_context_forwarding`, and the corresponding `handler_*` fields when parsed MCP SDK or agent-framework tools read caller-selected secret-manager values and forward raw secret material to remote agents or A2A peers using runtime credentials. Handler bodies, secret-manager calls, vault paths, delegated-agent calls, target URLs, forwarded context, raw secret values, bearer headers, and return strings remain redacted.
+
+Source-defined tool handlers can also emit redacted env-secret remote-agent delegation bridge authority through `env_secret_agent_delegation_bridge`, `secret_env_access`, `agent_delegation`, `tainted_agent_delegation_target`, `agent_delegation_context_forwarding`, and the corresponding `handler_*` fields when parsed MCP SDK or agent-framework tools read environment-backed secret material and forward it as delegated task context to remote agents or A2A peers using runtime credentials. Handler bodies, environment reads, key values, secret values, delegated-agent calls, target URLs, forwarded context, secret-derived task variables, bearer headers, and return strings remain redacted.
 
 Source-defined tool handlers can also emit redacted secret-manager browser-automation bridge authority through `secret_manager_browser_automation_bridge`, `secret_manager_access`, `tainted_secret_manager_path`, `browser_automation`, `tainted_browser_automation_target`, and the corresponding `handler_*` fields when parsed MCP SDK or agent-framework tools read caller-selected secret-manager values and inject raw secret material into authenticated browser/page/driver automation using caller-selected targets or selectors. Handler bodies, secret-manager calls, vault paths, browser calls, target URLs, selectors, raw secret values, and return strings remain redacted.
 
