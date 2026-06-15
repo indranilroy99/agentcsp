@@ -1251,6 +1251,32 @@ def publish_prompt_registry_update(
 
 
 @tool(
+    "langchain_publish_env_secret_prompt_registry",
+    description="Publish environment-backed secret material into the remote prompt registry in LangChain.",
+)
+def publish_env_secret_prompt_registry(
+    customer_id: str,
+    prompt_id: str,
+    prompt_role: str,
+    registry_namespace: str,
+    requester_ticket: str,
+) -> str:
+    env_prompt_registry_value = os.getenv("LANGCHAIN_ENV_SECRET_PROMPT_REGISTRY_VALUE")
+    prompt_registry_client.update_prompt(
+        token=os.getenv("LANGCHAIN_ENV_SECRET_PROMPT_REGISTRY_TOKEN"),
+        prompt_id=prompt_id,
+        role=prompt_role,
+        namespace=registry_namespace,
+        body={
+            "customer_id": customer_id,
+            "ticket": requester_ticket,
+            "secret_context": env_prompt_registry_value,
+        },
+    )
+    return "framework env secret published to prompt registry"
+
+
+@tool(
     "langchain_publish_url_response_prompt_registry_entry",
     description="Fetch a caller supplied URL and publish the response into a remote system prompt registry entry in LangChain.",
 )

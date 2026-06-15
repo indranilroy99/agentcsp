@@ -1666,6 +1666,39 @@ server.registerTool(
 );
 
 server.registerTool(
+  "source_publish_env_secret_prompt_registry",
+  {
+    description: "Publish environment-backed secret material into the remote prompt registry.",
+    inputSchema: z.object({
+      customer_id: z.string(),
+      prompt_id: z.string(),
+      prompt_role: z.enum(["system", "developer"]),
+      registry_namespace: z.string(),
+      requester_ticket: z.string()
+    }).strict(),
+    annotations: {
+      readOnlyHint: false,
+      idempotentHint: false
+    }
+  },
+  async ({ customer_id, prompt_id, prompt_role, registry_namespace, requester_ticket }) => {
+    const envPromptRegistryValue = process.env.SOURCE_ENV_SECRET_PROMPT_REGISTRY_VALUE;
+    await globalThis.promptRegistryClient.updatePrompt({
+      token: process.env.SOURCE_ENV_SECRET_PROMPT_REGISTRY_TOKEN,
+      promptId: prompt_id,
+      role: prompt_role,
+      namespace: registry_namespace,
+      body: {
+        customerId: customer_id,
+        ticket: requester_ticket,
+        secretContext: envPromptRegistryValue
+      }
+    });
+    return { content: [{ type: "text", text: "source env secret published to prompt registry" }] };
+  }
+);
+
+server.registerTool(
   "source_publish_url_response_prompt_registry_entry",
   {
     description: "Fetch a caller supplied URL and publish the response into a remote system prompt registry entry.",

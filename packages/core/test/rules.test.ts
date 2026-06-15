@@ -171,6 +171,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-167")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-168")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-169")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-170")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-001")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-002")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-003")).toBe(true);
@@ -12137,6 +12138,68 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerSecretManagerPromptRegistryBridgeFindings)).not.toContain("source vault secret published to prompt registry");
     expect(JSON.stringify(sourceHandlerSecretManagerPromptRegistryBridgeFindings)).not.toContain("framework vault secret published to prompt registry");
     expect(JSON.stringify(sourceHandlerSecretManagerPromptRegistryBridgeFindings)).not.toContain("Publish a customer support secret");
+    const sourceHandlerEnvSecretPromptRegistryBridgeFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-170");
+    expect(sourceHandlerEnvSecretPromptRegistryBridgeFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
+      "langchain_publish_env_secret_prompt_registry",
+      "source_publish_env_secret_prompt_registry"
+    ]);
+    expect(sourceHandlerEnvSecretPromptRegistryBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
+    expect(sourceHandlerEnvSecretPromptRegistryBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerEnvSecretPromptRegistryBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
+    expect(sourceHandlerEnvSecretPromptRegistryBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
+    expect(sourceHandlerEnvSecretPromptRegistryBridgeFindings.every((finding) => finding.matched_object.metadata.source_tool_handler_redacted === true)).toBe(true);
+    expect(sourceHandlerEnvSecretPromptRegistryBridgeFindings.every((finding) => finding.matched_object.metadata.handler_secret_env_access === true)).toBe(true);
+    expect(sourceHandlerEnvSecretPromptRegistryBridgeFindings.every((finding) => finding.matched_object.metadata.handler_prompt_registry_write === true)).toBe(true);
+    expect(sourceHandlerEnvSecretPromptRegistryBridgeFindings.every((finding) => finding.matched_object.metadata.handler_env_secret_prompt_registry_bridge === true)).toBe(true);
+    expect(sourceHandlerEnvSecretPromptRegistryBridgeFindings.every((finding) => finding.matched_object.metadata.handler_tainted_prompt_registry_payload === false)).toBe(true);
+    expect(sourceHandlerEnvSecretPromptRegistryBridgeFindings.every((finding) => finding.matched_object.metadata.handler_tainted_prompt_registry_selector === true)).toBe(true);
+    expect(sourceHandlerEnvSecretPromptRegistryBridgeFindings.every((finding) => finding.matched_object.metadata.prompt_registry_write === true)).toBe(true);
+    expect(sourceHandlerEnvSecretPromptRegistryBridgeFindings.every((finding) => finding.matched_object.metadata.env_secret_prompt_registry_bridge === true)).toBe(true);
+    expect(sourceHandlerEnvSecretPromptRegistryBridgeFindings.every((finding) => finding.matched_object.metadata.secret_manager_prompt_registry_bridge === false)).toBe(true);
+    expect(sourceHandlerEnvSecretPromptRegistryBridgeFindings.every((finding) => finding.matched_object.metadata.model_output_prompt_registry_bridge === false)).toBe(true);
+    expect(sourceHandlerEnvSecretPromptRegistryBridgeFindings.every((finding) => finding.matched_object.metadata.network_response_prompt_registry_bridge === false)).toBe(true);
+    expect(sourceHandlerEnvSecretPromptRegistryBridgeFindings.every((finding) => finding.matched_object.metadata.tool_output_prompt_registry_bridge === false)).toBe(true);
+    expect(sourceHandlerEnvSecretPromptRegistryBridgeFindings.every((finding) => finding.matched_object.metadata.tainted_prompt_registry_payload === false)).toBe(true);
+    expect(sourceHandlerEnvSecretPromptRegistryBridgeFindings.every((finding) => finding.matched_object.metadata.tainted_prompt_registry_selector === true)).toBe(true);
+    expect(sourceHandlerEnvSecretPromptRegistryBridgeFindings.every((finding) => finding.matched_object.metadata.external_write === true)).toBe(true);
+    expect(sourceHandlerEnvSecretPromptRegistryBridgeFindings.every((finding) => finding.matched_object.metadata.accepts_secret_like_input === true)).toBe(true);
+    expect(sourceHandlerEnvSecretPromptRegistryBridgeFindings.every((finding) => finding.matched_object.metadata.accepts_customer_data_input === true)).toBe(true);
+    for (const authorityClass of [
+      "secret_env_access",
+      "prompt_registry_write",
+      "env_secret_prompt_registry_bridge",
+      "tainted_prompt_registry_selector"
+    ]) {
+      expect(sourceHandlerEnvSecretPromptRegistryBridgeFindings.every((finding) =>
+        finding.matched_object.metadata.authority_classes.includes(authorityClass)
+      )).toBe(true);
+    }
+    for (const handlerAuthorityClass of [
+      "handler_secret_env_access",
+      "handler_prompt_registry_write",
+      "handler_env_secret_prompt_registry_bridge",
+      "handler_tainted_prompt_registry_selector"
+    ]) {
+      expect(sourceHandlerEnvSecretPromptRegistryBridgeFindings.every((finding) =>
+        finding.matched_object.metadata.handler_authority_classes.includes(handlerAuthorityClass)
+      )).toBe(true);
+    }
+    expect(sourceHandlerEnvSecretPromptRegistryBridgeFindings.every((finding) => finding.matched_object.actions.includes("send"))).toBe(true);
+    expect(sourceHandlerEnvSecretPromptRegistryBridgeFindings.every((finding) => finding.matched_object.actions.includes("write"))).toBe(true);
+    expect(sourceHandlerEnvSecretPromptRegistryBridgeFindings.every((finding) => finding.matched_object.actions.includes("publish"))).toBe(true);
+    expect(sourceHandlerEnvSecretPromptRegistryBridgeFindings.every((finding) => finding.matched_object.external_reach === true)).toBe(true);
+    expect(sourceHandlerEnvSecretPromptRegistryBridgeFindings.every((finding) => finding.matched_object.secret_exposure === true)).toBe(true);
+    expect(sourceHandlerEnvSecretPromptRegistryBridgeFindings.every((finding) => finding.matched_object.side_effect === true)).toBe(true);
+    expect(sourceHandlerEnvSecretPromptRegistryBridgeFindings.every((finding) => finding.matched_object.reversible === false)).toBe(true);
+    expect(JSON.stringify(sourceHandlerEnvSecretPromptRegistryBridgeFindings)).not.toContain("process.env");
+    expect(JSON.stringify(sourceHandlerEnvSecretPromptRegistryBridgeFindings)).not.toContain("os.getenv");
+    expect(JSON.stringify(sourceHandlerEnvSecretPromptRegistryBridgeFindings)).not.toContain("promptRegistryClient.updatePrompt");
+    expect(JSON.stringify(sourceHandlerEnvSecretPromptRegistryBridgeFindings)).not.toContain("prompt_registry_client.update_prompt");
+    expect(JSON.stringify(sourceHandlerEnvSecretPromptRegistryBridgeFindings)).not.toContain("envPromptRegistryValue");
+    expect(JSON.stringify(sourceHandlerEnvSecretPromptRegistryBridgeFindings)).not.toContain("env_prompt_registry_value");
+    expect(JSON.stringify(sourceHandlerEnvSecretPromptRegistryBridgeFindings)).not.toContain("source env secret published to prompt registry");
+    expect(JSON.stringify(sourceHandlerEnvSecretPromptRegistryBridgeFindings)).not.toContain("framework env secret published to prompt registry");
+    expect(JSON.stringify(sourceHandlerEnvSecretPromptRegistryBridgeFindings)).not.toContain("Publish environment-backed secret material");
     const sourceHandlerModelProviderFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-030");
     expect(sourceHandlerModelProviderFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_apply_model_database_update",

@@ -24196,6 +24196,7 @@ function addToolDefinitionSurface(
       !authority.env_secret_task_queue_bridge &&
       !authority.local_file_task_queue_bridge &&
       !authority.prompt_registry_write &&
+      !authority.env_secret_prompt_registry_bridge &&
       !authority.approval_auto_execution &&
       !authority.visual_context_capture &&
       !authority.clipboard_read &&
@@ -24386,6 +24387,7 @@ function addToolDefinitionSurface(
       local_file_task_queue_bridge: authority.local_file_task_queue_bridge,
       tool_output_task_queue_bridge: authority.tool_output_task_queue_bridge,
       prompt_registry_write: authority.prompt_registry_write,
+      env_secret_prompt_registry_bridge: authority.env_secret_prompt_registry_bridge,
       model_output_prompt_registry_bridge: authority.model_output_prompt_registry_bridge,
       tainted_prompt_registry_payload: authority.tainted_prompt_registry_payload,
       tainted_prompt_registry_selector: authority.tainted_prompt_registry_selector,
@@ -26878,6 +26880,7 @@ interface SourceToolHandlerSignals {
   handlerNetworkResponsePromptRegistryBridge: boolean;
   handlerToolOutputPromptRegistryBridge: boolean;
   handlerSecretManagerPromptRegistryBridge: boolean;
+  handlerEnvSecretPromptRegistryBridge: boolean;
   handlerTaintedPromptRegistryPayload: boolean;
   handlerTaintedPromptRegistrySelector: boolean;
   handlerModelApprovalGate: boolean;
@@ -27482,6 +27485,7 @@ function sourceToolHandlerSignalMetadata(signals: SourceToolHandlerSignals | und
     handler_network_response_prompt_registry_bridge: signals.handlerNetworkResponsePromptRegistryBridge,
     handler_tool_output_prompt_registry_bridge: signals.handlerToolOutputPromptRegistryBridge,
     handler_secret_manager_prompt_registry_bridge: signals.handlerSecretManagerPromptRegistryBridge,
+    handler_env_secret_prompt_registry_bridge: signals.handlerEnvSecretPromptRegistryBridge,
     handler_tainted_prompt_registry_payload: signals.handlerTaintedPromptRegistryPayload,
     handler_tainted_prompt_registry_selector: signals.handlerTaintedPromptRegistrySelector,
     handler_model_approval_gate: signals.handlerModelApprovalGate,
@@ -28167,6 +28171,15 @@ function classifySourceToolHandlerSignals(
   const secretManagerPromptRegistryBridge = secretManagerAccess && promptRegistryWrite && (language === "javascript"
     ? hasJavaScriptHandlerSecretManagerPromptRegistryBridge(handlerSource)
     : hasPythonHandlerSecretManagerPromptRegistryBridge(handlerSource));
+  const envSecretPromptRegistryBridge = secretEnvAccess &&
+    promptRegistryWrite &&
+    !secretManagerPromptRegistryBridge &&
+    !modelOutputPromptRegistryBridge &&
+    !networkResponsePromptRegistryBridge &&
+    !toolOutputPromptRegistryBridge &&
+    (language === "javascript"
+      ? hasJavaScriptHandlerEnvSecretPromptRegistryBridge(handlerSource)
+      : hasPythonHandlerEnvSecretPromptRegistryBridge(handlerSource));
   const secretManagerPromptBridge = secretManagerAccess && modelProviderCall && (language === "javascript"
     ? hasJavaScriptHandlerSecretManagerPromptBridge(handlerSource)
     : hasPythonHandlerSecretManagerPromptBridge(handlerSource));
@@ -28341,6 +28354,7 @@ function classifySourceToolHandlerSignals(
   if (networkResponsePromptRegistryBridge) classes.add("handler_network_response_prompt_registry_bridge");
   if (toolOutputPromptRegistryBridge) classes.add("handler_tool_output_prompt_registry_bridge");
   if (secretManagerPromptRegistryBridge) classes.add("handler_secret_manager_prompt_registry_bridge");
+  if (envSecretPromptRegistryBridge) classes.add("handler_env_secret_prompt_registry_bridge");
   if (taintedPromptRegistryPayload) classes.add("handler_tainted_prompt_registry_payload");
   if (taintedPromptRegistrySelector) classes.add("handler_tainted_prompt_registry_selector");
   if (modelApprovalGate) classes.add("handler_model_approval_gate");
@@ -28531,6 +28545,7 @@ function classifySourceToolHandlerSignals(
     handlerNetworkResponsePromptRegistryBridge: networkResponsePromptRegistryBridge,
     handlerToolOutputPromptRegistryBridge: toolOutputPromptRegistryBridge,
     handlerSecretManagerPromptRegistryBridge: secretManagerPromptRegistryBridge,
+    handlerEnvSecretPromptRegistryBridge: envSecretPromptRegistryBridge,
     handlerTaintedPromptRegistryPayload: taintedPromptRegistryPayload,
     handlerTaintedPromptRegistrySelector: taintedPromptRegistrySelector,
     handlerModelApprovalGate: modelApprovalGate,
@@ -31697,6 +31712,30 @@ function hasPythonHandlerSecretManagerPromptRegistryBridge(source: string): bool
   );
 }
 
+function hasJavaScriptHandlerEnvSecretPromptRegistryBridge(source: string): boolean {
+  const identifiers = extractJavaScriptEnvSecretIdentifiers(source);
+  return identifiers.length > 0 && promptRegistryCallReferencesPayloadIdentifier(
+    [
+      /\b(?:promptRegistry|promptRegistryClient|promptStore|promptHub|promptCatalog|instructionRegistry|instructionStore|systemPromptRegistry|developerPromptRegistry|contextRegistry)\s*(?:\.\s*[A-Za-z_$][\w$]*){0,5}\s*\.\s*(?:update|updatePrompt|publish|publishPrompt|set|setPrompt|put|putPrompt|upsert|upsertPrompt|write|writePrompt|save|savePrompt|create|createPrompt|register|registerPrompt|sync|push)\s*\(([\s\S]{0,2200})\)/giu,
+      /\b(?:updatePromptRegistry|publishPromptRegistry|writePromptRegistry|upsertSystemPrompt|publishDeveloperPrompt|syncPromptRegistry)\s*\(([\s\S]{0,2200})\)/giu
+    ],
+    source,
+    identifiers
+  );
+}
+
+function hasPythonHandlerEnvSecretPromptRegistryBridge(source: string): boolean {
+  const identifiers = extractPythonEnvSecretIdentifiers(source);
+  return identifiers.length > 0 && promptRegistryCallReferencesPayloadIdentifier(
+    [
+      /\b(?:prompt_registry|prompt_registry_client|prompt_store|prompt_hub|prompt_catalog|instruction_registry|instruction_store|system_prompt_registry|developer_prompt_registry|context_registry)\s*(?:\.\s*[A-Za-z_]\w*){0,5}\s*\.\s*(?:update|update_prompt|publish|publish_prompt|set|set_prompt|put|put_prompt|upsert|upsert_prompt|write|write_prompt|save|save_prompt|create|create_prompt|register|register_prompt|sync|push)\s*\(([\s\S]{0,2200})\)/giu,
+      /\b(?:update_prompt_registry|publish_prompt_registry|write_prompt_registry|upsert_system_prompt|publish_developer_prompt|sync_prompt_registry)\s*\(([\s\S]{0,2200})\)/giu
+    ],
+    source,
+    identifiers
+  );
+}
+
 function hasJavaScriptHandlerTrainingDatasetExport(source: string): boolean {
   return /\b(?:trainingDataset|trainingDatasetClient|datasetClient|fineTuneDataset|fineTuneClient|fineTuningClient|feedbackDataset|evalDataset|rlhfDataset|modelTrainingClient)\b/iu.test(
     source
@@ -33428,6 +33467,24 @@ function expressionMatchesTaintedPromptRegistryPayload(pattern: RegExp, source: 
   while ((match = pattern.exec(source)) !== null) {
     if (expressionReferencesTaintedPromptRegistryPayload(match[1] ?? "", source)) return true;
     if (match[0].length === 0) pattern.lastIndex += 1;
+  }
+  return false;
+}
+
+function promptRegistryCallReferencesPayloadIdentifier(patterns: RegExp[], source: string, identifiers: string[]): boolean {
+  const payloadField =
+    /(?:^|[{\s,(])["']?(?:body|bodies|content|contents|context|contexts|developer|developerPrompt|developer_prompt|instruction|instructions|message|messages|payload|payloads|prompt|prompts|secret|secretContext|secret_context|system|systemPrompt|system_prompt|text|texts|value|values)["']?\s*[:=]/u;
+  for (const pattern of patterns) {
+    let match: RegExpExecArray | null;
+    while ((match = pattern.exec(source)) !== null) {
+      const expression = match[1] ?? "";
+      if (expression.split(/\r?\n/u).some((line) =>
+        payloadField.test(line) && identifiers.some((identifier) => new RegExp(`\\b${escapeRegExp(identifier)}\\b`, "u").test(line))
+      )) {
+        return true;
+      }
+      if (match[0].length === 0) pattern.lastIndex += 1;
+    }
   }
   return false;
 }
@@ -36234,6 +36291,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   model_output_prompt_registry_bridge: boolean;
   network_response_prompt_registry_bridge: boolean;
   secret_manager_prompt_registry_bridge: boolean;
+  env_secret_prompt_registry_bridge: boolean;
   tool_output_prompt_registry_bridge: boolean;
   tainted_prompt_cache_key: boolean;
   tainted_prompt_cache_value: boolean;
@@ -36428,6 +36486,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   const handlerPromptRegistryWrite = handler?.handlerPromptRegistryWrite === true;
   const handlerToolOutputPromptRegistryBridge = handler?.handlerToolOutputPromptRegistryBridge === true;
   const handlerSecretManagerPromptRegistryBridge = handler?.handlerSecretManagerPromptRegistryBridge === true;
+  const handlerEnvSecretPromptRegistryBridge = handler?.handlerEnvSecretPromptRegistryBridge === true;
   const handlerTaintedPromptRegistryPayload = handler?.handlerTaintedPromptRegistryPayload === true;
   const handlerTaintedPromptRegistrySelector = handler?.handlerTaintedPromptRegistrySelector === true;
   const handlerModelApprovalGate = handler?.handlerModelApprovalGate === true;
@@ -37472,6 +37531,12 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
     actions.add("write");
     actions.add("publish");
   }
+  if (handlerEnvSecretPromptRegistryBridge) {
+    classes.add("env_secret_prompt_registry_bridge");
+    actions.add("send");
+    actions.add("write");
+    actions.add("publish");
+  }
   if (handlerTaintedPromptRegistryPayload) {
     classes.add("tainted_prompt_registry_payload");
     actions.add("send");
@@ -37705,6 +37770,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerNetworkResponsePromptRegistryBridge ||
       handlerToolOutputPromptRegistryBridge ||
       handlerSecretManagerPromptRegistryBridge ||
+      handlerEnvSecretPromptRegistryBridge ||
       handlerTaintedPromptRegistryPayload ||
       handlerTaintedPromptRegistrySelector ||
       handlerModelApprovalGate ||
@@ -37886,6 +37952,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerNetworkResponsePromptRegistryBridge ||
       handlerToolOutputPromptRegistryBridge ||
       handlerSecretManagerPromptRegistryBridge ||
+      handlerEnvSecretPromptRegistryBridge ||
       handlerModelApprovalGate ||
       handlerExternalApprovalChannel ||
       handlerToolOutputMemoryBridge ||
@@ -37941,6 +38008,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       (handlerLocalFilePromptCacheBridge && handlerSecretEnvAccess) ||
       (handlerToolOutputPromptCacheBridge && handlerSecretEnvAccess) ||
       handlerSecretManagerPromptRegistryBridge ||
+      handlerEnvSecretPromptRegistryBridge ||
       handlerSecretManagerSafetyPolicyBridge ||
       handlerEnvSecretSafetyPolicyBridge ||
       handlerSecretManagerAuthorizationGrantBridge ||
@@ -37978,6 +38046,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       (handlerModelOutputPromptRegistryBridge && handlerSecretEnvAccess) ||
       (handlerNetworkResponsePromptRegistryBridge && handlerSecretEnvAccess) ||
       (handlerToolOutputPromptRegistryBridge && handlerSecretEnvAccess) ||
+      handlerEnvSecretPromptRegistryBridge ||
       (handlerModelOutputExternalServiceBridge && handlerSecretEnvAccess) ||
       (handlerNetworkResponseExternalServiceBridge && handlerSecretEnvAccess) ||
       (handlerToolOutputExternalServiceBridge && handlerSecretEnvAccess) ||
@@ -38122,6 +38191,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
     model_output_prompt_registry_bridge: handlerModelOutputPromptRegistryBridge,
     network_response_prompt_registry_bridge: handlerNetworkResponsePromptRegistryBridge,
     secret_manager_prompt_registry_bridge: handlerSecretManagerPromptRegistryBridge,
+    env_secret_prompt_registry_bridge: handlerEnvSecretPromptRegistryBridge,
     tool_output_prompt_registry_bridge: handlerToolOutputPromptRegistryBridge,
     tainted_prompt_cache_key: handlerTaintedPromptCacheKey,
     tainted_prompt_cache_value: handlerTaintedPromptCacheValue,
@@ -38300,6 +38370,7 @@ function authoritySignature(tool: SurfaceObject): string {
     metadata.model_output_prompt_registry_bridge === true ? "model_output_prompt_registry_bridge" : "",
     metadata.network_response_prompt_registry_bridge === true ? "network_response_prompt_registry_bridge" : "",
     metadata.secret_manager_prompt_registry_bridge === true ? "secret_manager_prompt_registry_bridge" : "",
+    metadata.env_secret_prompt_registry_bridge === true ? "env_secret_prompt_registry_bridge" : "",
     metadata.tool_output_prompt_registry_bridge === true ? "tool_output_prompt_registry_bridge" : "",
     metadata.tainted_prompt_cache_key === true ? "tainted_prompt_cache_key" : "",
     metadata.tainted_prompt_cache_value === true ? "tainted_prompt_cache_value" : "",
@@ -38501,6 +38572,7 @@ function isPrivilegedToolSurface(tool: SurfaceObject): boolean {
     tool.metadata.model_output_prompt_registry_bridge === true ||
     tool.metadata.network_response_prompt_registry_bridge === true ||
     tool.metadata.secret_manager_prompt_registry_bridge === true ||
+    tool.metadata.env_secret_prompt_registry_bridge === true ||
     tool.metadata.tool_output_prompt_registry_bridge === true ||
     tool.metadata.tainted_prompt_cache_key === true ||
     tool.metadata.tainted_prompt_cache_value === true ||
