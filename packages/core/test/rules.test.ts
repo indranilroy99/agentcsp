@@ -12271,6 +12271,43 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerEnvSecretTrainingDatasetBridgeFindings)).not.toContain("source env secret exported to training data");
     expect(JSON.stringify(sourceHandlerEnvSecretTrainingDatasetBridgeFindings)).not.toContain("framework env secret exported to training data");
     expect(JSON.stringify(sourceHandlerEnvSecretTrainingDatasetBridgeFindings)).not.toContain("Export environment-backed support credentials");
+    const sourceHandlerEnvSecretTelemetryBridgeFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-161");
+    expect(sourceHandlerEnvSecretTelemetryBridgeFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
+      "langchain_export_env_secret_trace",
+      "source_export_env_secret_trace"
+    ]);
+    expect(sourceHandlerEnvSecretTelemetryBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
+    expect(sourceHandlerEnvSecretTelemetryBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerEnvSecretTelemetryBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
+    expect(sourceHandlerEnvSecretTelemetryBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
+    expect(sourceHandlerEnvSecretTelemetryBridgeFindings.every((finding) => finding.matched_object.metadata.source_tool_handler_redacted === true)).toBe(true);
+    expect(sourceHandlerEnvSecretTelemetryBridgeFindings.every((finding) => finding.matched_object.metadata.handler_secret_env_access === true)).toBe(true);
+    expect(sourceHandlerEnvSecretTelemetryBridgeFindings.every((finding) => finding.matched_object.metadata.handler_telemetry_export === true)).toBe(true);
+    expect(sourceHandlerEnvSecretTelemetryBridgeFindings.every((finding) => finding.matched_object.metadata.handler_env_secret_telemetry_bridge === true)).toBe(true);
+    expect(sourceHandlerEnvSecretTelemetryBridgeFindings.every((finding) => finding.matched_object.metadata.telemetry_export === true)).toBe(true);
+    expect(sourceHandlerEnvSecretTelemetryBridgeFindings.every((finding) => finding.matched_object.metadata.env_secret_telemetry_bridge === true)).toBe(true);
+    expect(sourceHandlerEnvSecretTelemetryBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.authority_classes.includes("env_secret_telemetry_bridge")
+    )).toBe(true);
+    expect(sourceHandlerEnvSecretTelemetryBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.handler_authority_classes.includes("handler_env_secret_telemetry_bridge")
+    )).toBe(true);
+    expect(sourceHandlerEnvSecretTelemetryBridgeFindings.every((finding) => finding.matched_object.actions.includes("send"))).toBe(true);
+    expect(sourceHandlerEnvSecretTelemetryBridgeFindings.every((finding) => finding.matched_object.actions.includes("publish"))).toBe(true);
+    expect(sourceHandlerEnvSecretTelemetryBridgeFindings.every((finding) => finding.matched_object.external_reach === true)).toBe(true);
+    expect(sourceHandlerEnvSecretTelemetryBridgeFindings.every((finding) => finding.matched_object.secret_exposure === true)).toBe(true);
+    expect(sourceHandlerEnvSecretTelemetryBridgeFindings.every((finding) => finding.matched_object.side_effect === true)).toBe(true);
+    expect(sourceHandlerEnvSecretTelemetryBridgeFindings.every((finding) => finding.matched_object.reversible === false)).toBe(true);
+    expect(JSON.stringify(sourceHandlerEnvSecretTelemetryBridgeFindings)).not.toContain("process.env");
+    expect(JSON.stringify(sourceHandlerEnvSecretTelemetryBridgeFindings)).not.toContain("os.getenv");
+    expect(JSON.stringify(sourceHandlerEnvSecretTelemetryBridgeFindings)).not.toContain("traceCredential");
+    expect(JSON.stringify(sourceHandlerEnvSecretTelemetryBridgeFindings)).not.toContain("trace_credential");
+    expect(JSON.stringify(sourceHandlerEnvSecretTelemetryBridgeFindings)).not.toContain("telemetryClient.recordTrace");
+    expect(JSON.stringify(sourceHandlerEnvSecretTelemetryBridgeFindings)).not.toContain("telemetry_client.record_trace");
+    expect(JSON.stringify(sourceHandlerEnvSecretTelemetryBridgeFindings)).not.toContain("Persist runtime credential");
+    expect(JSON.stringify(sourceHandlerEnvSecretTelemetryBridgeFindings)).not.toContain("source env secret exported to trace");
+    expect(JSON.stringify(sourceHandlerEnvSecretTelemetryBridgeFindings)).not.toContain("framework env secret exported to trace");
+    expect(JSON.stringify(sourceHandlerEnvSecretTelemetryBridgeFindings)).not.toContain("Export environment-backed support credentials");
     const sourceHandlerRagRetrievalPromptBridgeFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-094");
     expect(sourceHandlerRagRetrievalPromptBridgeFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_summarize_retrieved_context_with_model",

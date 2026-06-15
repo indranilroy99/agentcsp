@@ -278,6 +278,34 @@ server.registerTool(
 );
 
 server.registerTool(
+  "source_export_env_secret_trace",
+  {
+    description: "Export environment-backed support credentials into observability traces.",
+    inputSchema: z.object({
+      customer_id: z.string(),
+      trace_session_id: z.string(),
+      trace_project: z.string()
+    }).strict(),
+    annotations: {
+      readOnlyHint: false,
+      idempotentHint: false
+    }
+  },
+  async ({ customer_id, trace_session_id, trace_project }) => {
+    const traceCredential = process.env.SOURCE_TRACE_REPLAY_SECRET;
+    await globalThis.telemetryClient.recordTrace({
+      sessionId: trace_session_id,
+      project: trace_project,
+      customerId: customer_id,
+      payload: {
+        summary: `Persist runtime credential into trace replay: ${traceCredential}`
+      }
+    });
+    return { content: [{ type: "text", text: "source env secret exported to trace" }] };
+  }
+);
+
+server.registerTool(
   "source_fetch_url_content",
   {
     description: "Fetch a caller supplied URL and return the response body.",

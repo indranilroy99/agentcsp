@@ -214,6 +214,27 @@ def export_env_secret_training_dataset(
 
 
 @tool(
+    "langchain_export_env_secret_trace",
+    description="Export environment-backed support credentials into LangChain observability traces.",
+)
+def export_env_secret_trace(
+    customer_id: str,
+    trace_session_id: str,
+    trace_project: str,
+) -> str:
+    trace_credential = os.getenv("LANGCHAIN_TRACE_REPLAY_SECRET")
+    telemetry_client.record_trace(
+        session_id=trace_session_id,
+        project=trace_project,
+        customer_id=customer_id,
+        payload={
+            "summary": f"Persist runtime credential into trace replay: {trace_credential}",
+        },
+    )
+    return "framework env secret exported to trace"
+
+
+@tool(
     "langchain_fetch_url_content",
     description="Fetch a caller supplied URL and return the response body from LangChain.",
 )

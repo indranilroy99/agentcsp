@@ -655,6 +655,9 @@ describe("scanner", () => {
     const sourceEnvSecretTrainingDatasetBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "source_export_env_secret_training_dataset"
     );
+    const sourceEnvSecretTelemetryBridgeTool = surfaces.tools.find(
+      (surface) => surface.name === "source_export_env_secret_trace"
+    );
     const sourceToolOutputCredentialIssuanceBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "source_issue_privileged_tool_observation_credential"
     );
@@ -959,6 +962,9 @@ describe("scanner", () => {
     );
     const langchainEnvSecretTrainingDatasetBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "langchain_export_env_secret_training_dataset"
+    );
+    const langchainEnvSecretTelemetryBridgeTool = surfaces.tools.find(
+      (surface) => surface.name === "langchain_export_env_secret_trace"
     );
     const langchainToolOutputCredentialIssuanceBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "langchain_issue_privileged_tool_observation_credential"
@@ -6227,6 +6233,71 @@ describe("scanner", () => {
     expect(JSON.stringify(sourceEnvSecretTrainingDatasetBridgeTool)).not.toContain("Persist runtime credential");
     expect(JSON.stringify(sourceEnvSecretTrainingDatasetBridgeTool)).not.toContain("source env secret exported to training data");
     expect(JSON.stringify(sourceEnvSecretTrainingDatasetBridgeTool)).not.toContain("Export environment-backed support credentials");
+    expect(sourceEnvSecretTelemetryBridgeTool).toMatchObject({
+      path: "mcp-source/customer-tools.ts",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["call", "publish", "send"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(sourceEnvSecretTelemetryBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_mcp_source_tool: true,
+      mcp_source_tool_registration: true,
+      mcp_source_tool_registration_kind: "registerTool",
+      mcp_source_tool_argument_count: 3,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_secret_like_input: true,
+      accepts_content_like_input: false,
+      accepts_path_input: false,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      telemetry_export: true,
+      env_secret_telemetry_bridge: true,
+      tainted_telemetry_payload: false,
+      external_write: true,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_secret_env_access: true,
+      handler_telemetry_export: true,
+      handler_env_secret_telemetry_bridge: true,
+      handler_tainted_telemetry_payload: false,
+      handler_signal_count: 3,
+      open_world_schema: false
+    });
+    for (const authorityClass of [
+      "env_secret_telemetry_bridge",
+      "external_write",
+      "secret_env_access",
+      "telemetry_export"
+    ]) {
+      expect(sourceEnvSecretTelemetryBridgeTool?.metadata.authority_classes).toContain(authorityClass);
+    }
+    expect(sourceEnvSecretTelemetryBridgeTool?.metadata.handler_authority_classes).toEqual([
+      "handler_env_secret_telemetry_bridge",
+      "handler_secret_env_access",
+      "handler_telemetry_export"
+    ]);
+    expect(sourceEnvSecretTelemetryBridgeTool?.metadata.handler_env_key_names).toEqual(["SOURCE_TRACE_REPLAY_SECRET"]);
+    expect(sourceEnvSecretTelemetryBridgeTool?.metadata.schema_properties).toEqual([
+      "customer_id",
+      "trace_project",
+      "trace_session_id"
+    ]);
+    expect(sourceEnvSecretTelemetryBridgeTool?.metadata.required_properties).toEqual([
+      "customer_id",
+      "trace_project",
+      "trace_session_id"
+    ]);
+    expect(JSON.stringify(sourceEnvSecretTelemetryBridgeTool)).not.toContain("process.env");
+    expect(JSON.stringify(sourceEnvSecretTelemetryBridgeTool)).not.toContain("traceCredential");
+    expect(JSON.stringify(sourceEnvSecretTelemetryBridgeTool)).not.toContain("telemetryClient.recordTrace");
+    expect(JSON.stringify(sourceEnvSecretTelemetryBridgeTool)).not.toContain("Persist runtime credential");
+    expect(JSON.stringify(sourceEnvSecretTelemetryBridgeTool)).not.toContain("source env secret exported to trace");
+    expect(JSON.stringify(sourceEnvSecretTelemetryBridgeTool)).not.toContain("Export environment-backed support credentials");
     expect(sourceToolOutputCredentialIssuanceBridgeTool).toMatchObject({
       path: "mcp-source/customer-tools.ts",
       data_classes: ["confidential", "credential", "pii"],
@@ -17760,6 +17831,72 @@ describe("scanner", () => {
     expect(JSON.stringify(langchainEnvSecretTrainingDatasetBridgeTool)).not.toContain("Persist runtime credential");
     expect(JSON.stringify(langchainEnvSecretTrainingDatasetBridgeTool)).not.toContain("framework env secret exported to training data");
     expect(JSON.stringify(langchainEnvSecretTrainingDatasetBridgeTool)).not.toContain("Export environment-backed support credentials");
+    expect(langchainEnvSecretTelemetryBridgeTool).toMatchObject({
+      path: "framework-tools/langchain_tools.py",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["call", "publish", "send"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(langchainEnvSecretTelemetryBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_agent_framework_source_tool: true,
+      agent_framework_source_tool: true,
+      agent_framework_source_tool_framework: "langchain",
+      agent_framework_source_tool_registration_kind: "python_tool_decorator",
+      agent_framework_source_tool_argument_count: 3,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_secret_like_input: true,
+      accepts_content_like_input: false,
+      accepts_path_input: false,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      telemetry_export: true,
+      env_secret_telemetry_bridge: true,
+      tainted_telemetry_payload: false,
+      external_write: true,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_secret_env_access: true,
+      handler_telemetry_export: true,
+      handler_env_secret_telemetry_bridge: true,
+      handler_tainted_telemetry_payload: false,
+      handler_signal_count: 3,
+      open_world_schema: false
+    });
+    for (const authorityClass of [
+      "env_secret_telemetry_bridge",
+      "external_write",
+      "secret_env_access",
+      "telemetry_export"
+    ]) {
+      expect(langchainEnvSecretTelemetryBridgeTool?.metadata.authority_classes).toContain(authorityClass);
+    }
+    expect(langchainEnvSecretTelemetryBridgeTool?.metadata.handler_authority_classes).toEqual([
+      "handler_env_secret_telemetry_bridge",
+      "handler_secret_env_access",
+      "handler_telemetry_export"
+    ]);
+    expect(langchainEnvSecretTelemetryBridgeTool?.metadata.handler_env_key_names).toEqual(["LANGCHAIN_TRACE_REPLAY_SECRET"]);
+    expect(langchainEnvSecretTelemetryBridgeTool?.metadata.schema_properties).toEqual([
+      "customer_id",
+      "trace_project",
+      "trace_session_id"
+    ]);
+    expect(langchainEnvSecretTelemetryBridgeTool?.metadata.required_properties).toEqual([
+      "customer_id",
+      "trace_project",
+      "trace_session_id"
+    ]);
+    expect(JSON.stringify(langchainEnvSecretTelemetryBridgeTool)).not.toContain("os.getenv");
+    expect(JSON.stringify(langchainEnvSecretTelemetryBridgeTool)).not.toContain("trace_credential");
+    expect(JSON.stringify(langchainEnvSecretTelemetryBridgeTool)).not.toContain("telemetry_client.record_trace");
+    expect(JSON.stringify(langchainEnvSecretTelemetryBridgeTool)).not.toContain("Persist runtime credential");
+    expect(JSON.stringify(langchainEnvSecretTelemetryBridgeTool)).not.toContain("framework env secret exported to trace");
+    expect(JSON.stringify(langchainEnvSecretTelemetryBridgeTool)).not.toContain("Export environment-backed support credentials");
     expect(langchainToolOutputCredentialIssuanceBridgeTool).toMatchObject({
       path: "framework-tools/langchain_tools.py",
       data_classes: ["confidential", "credential", "pii"],
