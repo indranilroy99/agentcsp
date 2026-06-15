@@ -169,6 +169,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-165")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-166")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-167")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-168")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-001")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-002")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-003")).toBe(true);
@@ -8322,10 +8323,12 @@ describe("rule engine", () => {
     const sourceHandlerAuthorizationGrantFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-057");
     expect(sourceHandlerAuthorizationGrantFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_grant_customer_vault_secret_authorization",
+      "langchain_grant_env_secret_authorization",
       "langchain_grant_model_selected_authorization",
       "langchain_grant_privileged_tool_observation_authorization",
       "langchain_update_tool_permission_grant",
       "source_grant_customer_vault_secret_authorization",
+      "source_grant_env_secret_authorization",
       "source_grant_model_selected_authorization",
       "source_grant_privileged_tool_observation_authorization",
       "source_update_tool_permission_grant"
@@ -8455,6 +8458,57 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerSecretManagerAuthorizationGrantBridgeFindings)).not.toContain("source vault secret granted broad authorization");
     expect(JSON.stringify(sourceHandlerSecretManagerAuthorizationGrantBridgeFindings)).not.toContain("framework vault secret granted broad authorization");
     expect(JSON.stringify(sourceHandlerSecretManagerAuthorizationGrantBridgeFindings)).not.toContain("Grant broad tool authorization");
+    const sourceHandlerEnvSecretAuthorizationGrantBridgeFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-168");
+    expect(sourceHandlerEnvSecretAuthorizationGrantBridgeFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
+      "langchain_grant_env_secret_authorization",
+      "source_grant_env_secret_authorization"
+    ]);
+    expect(sourceHandlerEnvSecretAuthorizationGrantBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
+    expect(sourceHandlerEnvSecretAuthorizationGrantBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerEnvSecretAuthorizationGrantBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
+    expect(sourceHandlerEnvSecretAuthorizationGrantBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
+    expect(sourceHandlerEnvSecretAuthorizationGrantBridgeFindings.every((finding) => finding.matched_object.metadata.source_tool_handler_redacted === true)).toBe(true);
+    expect(sourceHandlerEnvSecretAuthorizationGrantBridgeFindings.every((finding) => finding.matched_object.metadata.handler_secret_env_access === true)).toBe(true);
+    expect(sourceHandlerEnvSecretAuthorizationGrantBridgeFindings.every((finding) => finding.matched_object.metadata.handler_authorization_policy_write === true)).toBe(true);
+    expect(sourceHandlerEnvSecretAuthorizationGrantBridgeFindings.every((finding) => finding.matched_object.metadata.handler_tainted_authorization_grant_input === true)).toBe(true);
+    expect(sourceHandlerEnvSecretAuthorizationGrantBridgeFindings.every((finding) => finding.matched_object.metadata.handler_authorization_broad_grant === true)).toBe(true);
+    expect(sourceHandlerEnvSecretAuthorizationGrantBridgeFindings.every((finding) => finding.matched_object.metadata.handler_env_secret_authorization_grant_bridge === true)).toBe(true);
+    expect(sourceHandlerEnvSecretAuthorizationGrantBridgeFindings.every((finding) => finding.matched_object.metadata.authorization_policy_write === true)).toBe(true);
+    expect(sourceHandlerEnvSecretAuthorizationGrantBridgeFindings.every((finding) => finding.matched_object.metadata.tainted_authorization_grant_input === true)).toBe(true);
+    expect(sourceHandlerEnvSecretAuthorizationGrantBridgeFindings.every((finding) => finding.matched_object.metadata.authorization_broad_grant === true)).toBe(true);
+    expect(sourceHandlerEnvSecretAuthorizationGrantBridgeFindings.every((finding) => finding.matched_object.metadata.env_secret_authorization_grant_bridge === true)).toBe(true);
+    expect(sourceHandlerEnvSecretAuthorizationGrantBridgeFindings.every((finding) => finding.matched_object.metadata.secret_manager_authorization_grant_bridge === false)).toBe(true);
+    expect(sourceHandlerEnvSecretAuthorizationGrantBridgeFindings.every((finding) => finding.matched_object.metadata.model_output_authorization_grant_bridge === false)).toBe(true);
+    expect(sourceHandlerEnvSecretAuthorizationGrantBridgeFindings.every((finding) => finding.matched_object.metadata.tool_output_authorization_grant_bridge === false)).toBe(true);
+    for (const authorityClass of [
+      "authorization_policy_write",
+      "tainted_authorization_grant_input",
+      "authorization_broad_grant",
+      "env_secret_authorization_grant_bridge",
+      "secret_env_access"
+    ]) {
+      expect(sourceHandlerEnvSecretAuthorizationGrantBridgeFindings.every((finding) =>
+        finding.matched_object.metadata.authority_classes.includes(authorityClass)
+      )).toBe(true);
+    }
+    expect(sourceHandlerEnvSecretAuthorizationGrantBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.handler_authority_classes.includes("handler_env_secret_authorization_grant_bridge")
+    )).toBe(true);
+    expect(sourceHandlerEnvSecretAuthorizationGrantBridgeFindings.every((finding) => finding.matched_object.actions.includes("send"))).toBe(true);
+    expect(sourceHandlerEnvSecretAuthorizationGrantBridgeFindings.every((finding) => finding.matched_object.actions.includes("write"))).toBe(true);
+    expect(sourceHandlerEnvSecretAuthorizationGrantBridgeFindings.every((finding) => finding.matched_object.external_reach === true)).toBe(true);
+    expect(sourceHandlerEnvSecretAuthorizationGrantBridgeFindings.every((finding) => finding.matched_object.secret_exposure === true)).toBe(true);
+    expect(sourceHandlerEnvSecretAuthorizationGrantBridgeFindings.every((finding) => finding.matched_object.side_effect === true)).toBe(true);
+    expect(sourceHandlerEnvSecretAuthorizationGrantBridgeFindings.every((finding) => finding.matched_object.reversible === false)).toBe(true);
+    expect(JSON.stringify(sourceHandlerEnvSecretAuthorizationGrantBridgeFindings)).not.toContain("process.env");
+    expect(JSON.stringify(sourceHandlerEnvSecretAuthorizationGrantBridgeFindings)).not.toContain("os.getenv");
+    expect(JSON.stringify(sourceHandlerEnvSecretAuthorizationGrantBridgeFindings)).not.toContain("permissionBrokerClient.upsertGrant");
+    expect(JSON.stringify(sourceHandlerEnvSecretAuthorizationGrantBridgeFindings)).not.toContain("permission_broker_client.upsert_grant");
+    expect(JSON.stringify(sourceHandlerEnvSecretAuthorizationGrantBridgeFindings)).not.toContain("envGrantRole");
+    expect(JSON.stringify(sourceHandlerEnvSecretAuthorizationGrantBridgeFindings)).not.toContain("env_grant_role");
+    expect(JSON.stringify(sourceHandlerEnvSecretAuthorizationGrantBridgeFindings)).not.toContain("source env secret granted broad authorization");
+    expect(JSON.stringify(sourceHandlerEnvSecretAuthorizationGrantBridgeFindings)).not.toContain("framework env secret granted broad authorization");
+    expect(JSON.stringify(sourceHandlerEnvSecretAuthorizationGrantBridgeFindings)).not.toContain("Grant broad tool authorization");
     const sourceHandlerTaintedMemoryScopeFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-039");
     expect(sourceHandlerTaintedMemoryScopeFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_persist_customer_memory",

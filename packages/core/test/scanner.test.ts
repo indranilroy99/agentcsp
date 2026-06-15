@@ -626,6 +626,9 @@ describe("scanner", () => {
     const sourceSecretManagerAuthorizationGrantBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "source_grant_customer_vault_secret_authorization"
     );
+    const sourceEnvSecretAuthorizationGrantBridgeTool = surfaces.tools.find(
+      (surface) => surface.name === "source_grant_env_secret_authorization"
+    );
     const sourceArtifactExportTool = surfaces.tools.find((surface) => surface.name === "source_export_agent_run_artifact");
     const sourceModelApprovalTool = surfaces.tools.find((surface) => surface.name === "source_model_review_and_run_action");
     const sourceExternalApprovalChannelTool = surfaces.tools.find(
@@ -951,6 +954,9 @@ describe("scanner", () => {
     const langchainAuthorizationGrantTool = surfaces.tools.find((surface) => surface.name === "langchain_update_tool_permission_grant");
     const langchainSecretManagerAuthorizationGrantBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "langchain_grant_customer_vault_secret_authorization"
+    );
+    const langchainEnvSecretAuthorizationGrantBridgeTool = surfaces.tools.find(
+      (surface) => surface.name === "langchain_grant_env_secret_authorization"
     );
     const langchainArtifactExportTool = surfaces.tools.find((surface) => surface.name === "langchain_export_agent_run_artifact");
     const langchainModelApprovalTool = surfaces.tools.find((surface) => surface.name === "langchain_model_review_and_run_action");
@@ -5261,6 +5267,84 @@ describe("scanner", () => {
     expect(JSON.stringify(sourceSecretManagerAuthorizationGrantBridgeTool)).not.toContain("secretGrantRole");
     expect(JSON.stringify(sourceSecretManagerAuthorizationGrantBridgeTool)).not.toContain("source vault secret granted broad authorization");
     expect(JSON.stringify(sourceSecretManagerAuthorizationGrantBridgeTool)).not.toContain("Grant broad tool authorization");
+    expect(sourceEnvSecretAuthorizationGrantBridgeTool).toMatchObject({
+      path: "mcp-source/customer-tools.ts",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["call", "publish", "send", "write"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(sourceEnvSecretAuthorizationGrantBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_mcp_source_tool: true,
+      mcp_source_tool_registration: true,
+      mcp_source_tool_registration_kind: "registerTool",
+      mcp_source_tool_argument_count: 3,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_secret_like_input: true,
+      accepts_content_like_input: true,
+      accepts_path_input: false,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      authorization_policy_write: true,
+      tainted_authorization_grant_input: true,
+      authorization_broad_grant: true,
+      secret_manager_authorization_grant_bridge: false,
+      env_secret_authorization_grant_bridge: true,
+      model_output_authorization_grant_bridge: false,
+      tool_output_authorization_grant_bridge: false,
+      external_write: true,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_secret_env_access: true,
+      handler_authorization_policy_write: true,
+      handler_tainted_authorization_grant_input: true,
+      handler_authorization_broad_grant: true,
+      handler_secret_manager_authorization_grant_bridge: false,
+      handler_env_secret_authorization_grant_bridge: true,
+      handler_signal_count: 5,
+      open_world_schema: false
+    });
+    for (const authorityClass of [
+      "authorization_policy_write",
+      "tainted_authorization_grant_input",
+      "authorization_broad_grant",
+      "env_secret_authorization_grant_bridge",
+      "secret_env_access"
+    ]) {
+      expect(sourceEnvSecretAuthorizationGrantBridgeTool?.metadata.authority_classes).toContain(authorityClass);
+    }
+    expect(sourceEnvSecretAuthorizationGrantBridgeTool?.metadata.handler_authority_classes).toEqual([
+      "handler_authorization_broad_grant",
+      "handler_authorization_policy_write",
+      "handler_env_secret_authorization_grant_bridge",
+      "handler_secret_env_access",
+      "handler_tainted_authorization_grant_input"
+    ]);
+    expect(sourceEnvSecretAuthorizationGrantBridgeTool?.metadata.handler_env_key_names).toEqual([
+      "SOURCE_ENV_AUTHZ_GRANT_ROLE",
+      "SOURCE_ENV_AUTHZ_GRANT_TOKEN"
+    ]);
+    expect(sourceEnvSecretAuthorizationGrantBridgeTool?.metadata.schema_properties).toEqual([
+      "customer_id",
+      "requested_tool_name",
+      "requester_ticket",
+      "tenant_id"
+    ]);
+    expect(sourceEnvSecretAuthorizationGrantBridgeTool?.metadata.required_properties).toEqual([
+      "customer_id",
+      "requested_tool_name",
+      "requester_ticket",
+      "tenant_id"
+    ]);
+    expect(JSON.stringify(sourceEnvSecretAuthorizationGrantBridgeTool)).not.toContain("process.env");
+    expect(JSON.stringify(sourceEnvSecretAuthorizationGrantBridgeTool)).not.toContain("permissionBrokerClient.upsertGrant");
+    expect(JSON.stringify(sourceEnvSecretAuthorizationGrantBridgeTool)).not.toContain("envGrantRole");
+    expect(JSON.stringify(sourceEnvSecretAuthorizationGrantBridgeTool)).not.toContain("source env secret granted broad authorization");
+    expect(JSON.stringify(sourceEnvSecretAuthorizationGrantBridgeTool)).not.toContain("Grant broad tool authorization");
     expect(sourceArtifactExportTool).toMatchObject({
       path: "mcp-source/customer-tools.ts",
       data_classes: ["confidential", "credential", "pii"],
@@ -17272,6 +17356,85 @@ describe("scanner", () => {
     expect(JSON.stringify(langchainSecretManagerAuthorizationGrantBridgeTool)).not.toContain("secret_grant_role");
     expect(JSON.stringify(langchainSecretManagerAuthorizationGrantBridgeTool)).not.toContain("framework vault secret granted broad authorization");
     expect(JSON.stringify(langchainSecretManagerAuthorizationGrantBridgeTool)).not.toContain("Grant broad tool authorization");
+    expect(langchainEnvSecretAuthorizationGrantBridgeTool).toMatchObject({
+      path: "framework-tools/langchain_tools.py",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["call", "publish", "send", "write"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(langchainEnvSecretAuthorizationGrantBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_agent_framework_source_tool: true,
+      agent_framework_source_tool: true,
+      agent_framework_source_tool_framework: "langchain",
+      agent_framework_source_tool_registration_kind: "python_tool_decorator",
+      agent_framework_source_tool_argument_count: 4,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_secret_like_input: true,
+      accepts_content_like_input: true,
+      accepts_path_input: false,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      authorization_policy_write: true,
+      tainted_authorization_grant_input: true,
+      authorization_broad_grant: true,
+      secret_manager_authorization_grant_bridge: false,
+      env_secret_authorization_grant_bridge: true,
+      model_output_authorization_grant_bridge: false,
+      tool_output_authorization_grant_bridge: false,
+      external_write: true,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_secret_env_access: true,
+      handler_authorization_policy_write: true,
+      handler_tainted_authorization_grant_input: true,
+      handler_authorization_broad_grant: true,
+      handler_secret_manager_authorization_grant_bridge: false,
+      handler_env_secret_authorization_grant_bridge: true,
+      handler_signal_count: 5,
+      open_world_schema: false
+    });
+    for (const authorityClass of [
+      "authorization_policy_write",
+      "tainted_authorization_grant_input",
+      "authorization_broad_grant",
+      "env_secret_authorization_grant_bridge",
+      "secret_env_access"
+    ]) {
+      expect(langchainEnvSecretAuthorizationGrantBridgeTool?.metadata.authority_classes).toContain(authorityClass);
+    }
+    expect(langchainEnvSecretAuthorizationGrantBridgeTool?.metadata.handler_authority_classes).toEqual([
+      "handler_authorization_broad_grant",
+      "handler_authorization_policy_write",
+      "handler_env_secret_authorization_grant_bridge",
+      "handler_secret_env_access",
+      "handler_tainted_authorization_grant_input"
+    ]);
+    expect(langchainEnvSecretAuthorizationGrantBridgeTool?.metadata.handler_env_key_names).toEqual([
+      "LANGCHAIN_ENV_AUTHZ_GRANT_ROLE",
+      "LANGCHAIN_ENV_AUTHZ_GRANT_TOKEN"
+    ]);
+    expect(langchainEnvSecretAuthorizationGrantBridgeTool?.metadata.schema_properties).toEqual([
+      "customer_id",
+      "requested_tool_name",
+      "requester_ticket",
+      "tenant_id"
+    ]);
+    expect(langchainEnvSecretAuthorizationGrantBridgeTool?.metadata.required_properties).toEqual([
+      "customer_id",
+      "requested_tool_name",
+      "requester_ticket",
+      "tenant_id"
+    ]);
+    expect(JSON.stringify(langchainEnvSecretAuthorizationGrantBridgeTool)).not.toContain("os.getenv");
+    expect(JSON.stringify(langchainEnvSecretAuthorizationGrantBridgeTool)).not.toContain("permission_broker_client.upsert_grant");
+    expect(JSON.stringify(langchainEnvSecretAuthorizationGrantBridgeTool)).not.toContain("env_grant_role");
+    expect(JSON.stringify(langchainEnvSecretAuthorizationGrantBridgeTool)).not.toContain("framework env secret granted broad authorization");
+    expect(JSON.stringify(langchainEnvSecretAuthorizationGrantBridgeTool)).not.toContain("Grant broad tool authorization");
     expect(langchainArtifactExportTool).toMatchObject({
       path: "framework-tools/langchain_tools.py",
       data_classes: ["confidential", "credential", "pii"],

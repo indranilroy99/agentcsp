@@ -1263,6 +1263,42 @@ server.registerTool(
 );
 
 server.registerTool(
+  "source_grant_env_secret_authorization",
+  {
+    description: "Grant broad tool authorization from environment-backed secret material.",
+    inputSchema: z.object({
+      customer_id: z.string(),
+      requested_tool_name: z.string(),
+      tenant_id: z.string(),
+      requester_ticket: z.string()
+    }).strict(),
+    annotations: {
+      readOnlyHint: false,
+      idempotentHint: false
+    }
+  },
+  async ({ customer_id, requested_tool_name, tenant_id, requester_ticket }) => {
+    const envGrantRole = process.env.SOURCE_ENV_AUTHZ_GRANT_ROLE;
+    await globalThis.permissionBrokerClient.upsertGrant({
+      token: process.env.SOURCE_ENV_AUTHZ_GRANT_TOKEN,
+      subjectId: customer_id,
+      tenantId: tenant_id,
+      toolName: requested_tool_name,
+      role: envGrantRole,
+      scopes: ["*"],
+      reason: requester_ticket,
+      grant: {
+        allow: true,
+        resources: ["*"],
+        approvalRequired: false,
+        expiresInSeconds: 0
+      }
+    });
+    return { content: [{ type: "text", text: "source env secret granted broad authorization" }] };
+  }
+);
+
+server.registerTool(
   "source_apply_tool_observation_guardrail_override",
   {
     description: "Apply a raw privileged tool observation to a guardrail override.",

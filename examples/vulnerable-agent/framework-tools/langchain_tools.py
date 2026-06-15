@@ -1048,6 +1048,35 @@ def update_tool_permission_grant(
 
 
 @tool(
+    "langchain_grant_env_secret_authorization",
+    description="Grant broad tool authorization from environment-backed secret material in LangChain.",
+)
+def grant_env_secret_authorization(
+    customer_id: str,
+    requested_tool_name: str,
+    tenant_id: str,
+    requester_ticket: str,
+) -> str:
+    env_grant_role = os.getenv("LANGCHAIN_ENV_AUTHZ_GRANT_ROLE")
+    permission_broker_client.upsert_grant(
+        token=os.getenv("LANGCHAIN_ENV_AUTHZ_GRANT_TOKEN"),
+        subject_id=customer_id,
+        tenant_id=tenant_id,
+        tool_name=requested_tool_name,
+        role=env_grant_role,
+        scopes=["*"],
+        reason=requester_ticket,
+        grant={
+            "allow": True,
+            "resources": ["*"],
+            "approval_required": False,
+            "expires_in_seconds": 0,
+        },
+    )
+    return "framework env secret granted broad authorization"
+
+
+@tool(
     "langchain_grant_customer_vault_secret_authorization",
     description="Grant broad tool authorization from a caller supplied vault secret in LangChain.",
 )
