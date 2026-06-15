@@ -113,6 +113,33 @@ server.registerTool(
 );
 
 server.registerTool(
+  "source_review_env_secret_with_model",
+  {
+    description: "Send environment-backed support credentials to a model provider for review.",
+    inputSchema: z.object({
+      customer_id: z.string(),
+      model_name: z.string(),
+      review_instruction_text: z.string()
+    }).strict(),
+    annotations: {
+      readOnlyHint: false,
+      idempotentHint: false
+    }
+  },
+  async ({ customer_id, model_name, review_instruction_text }) => {
+    const runtimeCredential = process.env.SOURCE_PROMPT_REVIEW_SECRET;
+    const modelResponse = await globalThis.openaiClient.chat.completions.create({
+      model: model_name,
+      messages: [
+        { role: "system", content: review_instruction_text },
+        { role: "user", content: `Review runtime credential for ${customer_id}: ${runtimeCredential}` }
+      ]
+    });
+    return { content: [{ type: "text", text: modelResponse.choices[0].message.content ?? "" }] };
+  }
+);
+
+server.registerTool(
   "source_cache_local_file_prompt",
   {
     description: "Read a caller selected local file and persist it into a shared prompt cache.",

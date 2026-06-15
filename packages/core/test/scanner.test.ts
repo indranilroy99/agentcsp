@@ -643,6 +643,9 @@ describe("scanner", () => {
     const sourceEnvSecretCredentialIssuanceBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "source_issue_env_secret_agent_credential"
     );
+    const sourceEnvSecretPromptBridgeTool = surfaces.tools.find(
+      (surface) => surface.name === "source_review_env_secret_with_model"
+    );
     const sourceToolOutputCredentialIssuanceBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "source_issue_privileged_tool_observation_credential"
     );
@@ -935,6 +938,9 @@ describe("scanner", () => {
     );
     const langchainEnvSecretCredentialIssuanceBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "langchain_issue_env_secret_agent_credential"
+    );
+    const langchainEnvSecretPromptBridgeTool = surfaces.tools.find(
+      (surface) => surface.name === "langchain_review_env_secret_with_model"
     );
     const langchainToolOutputCredentialIssuanceBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "langchain_issue_privileged_tool_observation_credential"
@@ -5935,6 +5941,75 @@ describe("scanner", () => {
     expect(JSON.stringify(sourceEnvSecretCredentialIssuanceBridgeTool)).not.toContain("envSigningKey");
     expect(JSON.stringify(sourceEnvSecretCredentialIssuanceBridgeTool)).not.toContain("source env secret credential issued");
     expect(JSON.stringify(sourceEnvSecretCredentialIssuanceBridgeTool)).not.toContain("Issue an agent credential using environment-backed signing material");
+    expect(sourceEnvSecretPromptBridgeTool).toMatchObject({
+      path: "mcp-source/customer-tools.ts",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["call", "publish", "read", "send"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(sourceEnvSecretPromptBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_mcp_source_tool: true,
+      mcp_source_tool_registration: true,
+      mcp_source_tool_registration_kind: "registerTool",
+      mcp_source_tool_argument_count: 3,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_secret_like_input: true,
+      accepts_content_like_input: true,
+      accepts_path_input: false,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      env_secret_prompt_bridge: true,
+      model_provider_call: true,
+      tainted_model_selection: true,
+      privileged_prompt_composition: true,
+      external_write: true,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_secret_env_access: true,
+      handler_model_provider_call: true,
+      handler_tainted_model_selection: true,
+      handler_env_secret_prompt_bridge: true,
+      handler_privileged_prompt_composition: true,
+      handler_signal_count: 5,
+      open_world_schema: false
+    });
+    for (const authorityClass of [
+      "env_secret_prompt_bridge",
+      "model_provider_call",
+      "secret_env_access",
+      "tainted_model_selection",
+      "privileged_prompt_composition"
+    ]) {
+      expect(sourceEnvSecretPromptBridgeTool?.metadata.authority_classes).toContain(authorityClass);
+    }
+    expect(sourceEnvSecretPromptBridgeTool?.metadata.handler_authority_classes).toEqual([
+      "handler_env_secret_prompt_bridge",
+      "handler_model_provider_call",
+      "handler_privileged_prompt_composition",
+      "handler_secret_env_access",
+      "handler_tainted_model_selection"
+    ]);
+    expect(sourceEnvSecretPromptBridgeTool?.metadata.handler_env_key_names).toEqual(["SOURCE_PROMPT_REVIEW_SECRET"]);
+    expect(sourceEnvSecretPromptBridgeTool?.metadata.schema_properties).toEqual([
+      "customer_id",
+      "model_name",
+      "review_instruction_text"
+    ]);
+    expect(sourceEnvSecretPromptBridgeTool?.metadata.required_properties).toEqual([
+      "customer_id",
+      "model_name",
+      "review_instruction_text"
+    ]);
+    expect(JSON.stringify(sourceEnvSecretPromptBridgeTool)).not.toContain("process.env");
+    expect(JSON.stringify(sourceEnvSecretPromptBridgeTool)).not.toContain("runtimeCredential");
+    expect(JSON.stringify(sourceEnvSecretPromptBridgeTool)).not.toContain("openaiClient.chat.completions.create");
+    expect(JSON.stringify(sourceEnvSecretPromptBridgeTool)).not.toContain("Review runtime credential");
+    expect(JSON.stringify(sourceEnvSecretPromptBridgeTool)).not.toContain("Send environment-backed support credentials");
     expect(sourceToolOutputCredentialIssuanceBridgeTool).toMatchObject({
       path: "mcp-source/customer-tools.ts",
       data_classes: ["confidential", "credential", "pii"],
@@ -17194,6 +17269,76 @@ describe("scanner", () => {
     expect(JSON.stringify(langchainEnvSecretCredentialIssuanceBridgeTool)).not.toContain("env_signing_key");
     expect(JSON.stringify(langchainEnvSecretCredentialIssuanceBridgeTool)).not.toContain("framework env secret credential issued");
     expect(JSON.stringify(langchainEnvSecretCredentialIssuanceBridgeTool)).not.toContain("Issue an agent credential using environment-backed signing material");
+    expect(langchainEnvSecretPromptBridgeTool).toMatchObject({
+      path: "framework-tools/langchain_tools.py",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["call", "publish", "read", "send"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(langchainEnvSecretPromptBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_agent_framework_source_tool: true,
+      agent_framework_source_tool: true,
+      agent_framework_source_tool_framework: "langchain",
+      agent_framework_source_tool_registration_kind: "python_tool_decorator",
+      agent_framework_source_tool_argument_count: 3,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_secret_like_input: true,
+      accepts_content_like_input: true,
+      accepts_path_input: false,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      env_secret_prompt_bridge: true,
+      model_provider_call: true,
+      tainted_model_selection: true,
+      privileged_prompt_composition: true,
+      external_write: true,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_secret_env_access: true,
+      handler_model_provider_call: true,
+      handler_tainted_model_selection: true,
+      handler_env_secret_prompt_bridge: true,
+      handler_privileged_prompt_composition: true,
+      handler_signal_count: 5,
+      open_world_schema: false
+    });
+    for (const authorityClass of [
+      "env_secret_prompt_bridge",
+      "model_provider_call",
+      "secret_env_access",
+      "tainted_model_selection",
+      "privileged_prompt_composition"
+    ]) {
+      expect(langchainEnvSecretPromptBridgeTool?.metadata.authority_classes).toContain(authorityClass);
+    }
+    expect(langchainEnvSecretPromptBridgeTool?.metadata.handler_authority_classes).toEqual([
+      "handler_env_secret_prompt_bridge",
+      "handler_model_provider_call",
+      "handler_privileged_prompt_composition",
+      "handler_secret_env_access",
+      "handler_tainted_model_selection"
+    ]);
+    expect(langchainEnvSecretPromptBridgeTool?.metadata.handler_env_key_names).toEqual(["LANGCHAIN_PROMPT_REVIEW_SECRET"]);
+    expect(langchainEnvSecretPromptBridgeTool?.metadata.schema_properties).toEqual([
+      "customer_id",
+      "model_name",
+      "review_instruction_text"
+    ]);
+    expect(langchainEnvSecretPromptBridgeTool?.metadata.required_properties).toEqual([
+      "customer_id",
+      "model_name",
+      "review_instruction_text"
+    ]);
+    expect(JSON.stringify(langchainEnvSecretPromptBridgeTool)).not.toContain("os.getenv");
+    expect(JSON.stringify(langchainEnvSecretPromptBridgeTool)).not.toContain("runtime_credential");
+    expect(JSON.stringify(langchainEnvSecretPromptBridgeTool)).not.toContain("openai_client.chat.completions.create");
+    expect(JSON.stringify(langchainEnvSecretPromptBridgeTool)).not.toContain("Review runtime credential");
+    expect(JSON.stringify(langchainEnvSecretPromptBridgeTool)).not.toContain("Send environment-backed support credentials");
     expect(langchainToolOutputCredentialIssuanceBridgeTool).toMatchObject({
       path: "framework-tools/langchain_tools.py",
       data_classes: ["confidential", "credential", "pii"],

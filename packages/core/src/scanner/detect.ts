@@ -24143,6 +24143,7 @@ function addToolDefinitionSurface(
       !authority.external_service_write &&
       !authority.local_file_external_service_bridge &&
       !authority.env_secret_external_write_bridge &&
+      !authority.env_secret_prompt_bridge &&
       !authority.model_output_external_service_bridge &&
       !authority.network_response_external_service_bridge &&
       !authority.model_provider_call &&
@@ -24277,6 +24278,7 @@ function addToolDefinitionSurface(
       tainted_secret_manager_path: authority.tainted_secret_manager_path,
       secret_manager_external_service_bridge: authority.secret_manager_external_service_bridge,
       secret_manager_prompt_bridge: authority.secret_manager_prompt_bridge,
+      env_secret_prompt_bridge: authority.env_secret_prompt_bridge,
       external_service_write: authority.external_service_write,
       tainted_external_service_recipient: authority.tainted_external_service_recipient,
       local_file_external_service_bridge: authority.local_file_external_service_bridge,
@@ -26774,6 +26776,7 @@ interface SourceToolHandlerSignals {
   handlerToolOutputShellExecutionBridge: boolean;
   handlerToolOutputDynamicCodeExecutionBridge: boolean;
   handlerSecretManagerPromptBridge: boolean;
+  handlerEnvSecretPromptBridge: boolean;
   handlerSecretManagerTrainingDatasetBridge: boolean;
   handlerToolOutputPromptBridge: boolean;
   handlerEmbeddingProviderCall: boolean;
@@ -27365,6 +27368,7 @@ function sourceToolHandlerSignalMetadata(signals: SourceToolHandlerSignals | und
     handler_tool_output_shell_execution_bridge: signals.handlerToolOutputShellExecutionBridge,
     handler_tool_output_dynamic_code_execution_bridge: signals.handlerToolOutputDynamicCodeExecutionBridge,
     handler_secret_manager_prompt_bridge: signals.handlerSecretManagerPromptBridge,
+    handler_env_secret_prompt_bridge: signals.handlerEnvSecretPromptBridge,
     handler_secret_manager_training_dataset_bridge: signals.handlerSecretManagerTrainingDatasetBridge,
     handler_tool_output_prompt_bridge: signals.handlerToolOutputPromptBridge,
     handler_embedding_provider_call: signals.handlerEmbeddingProviderCall,
@@ -28040,6 +28044,9 @@ function classifySourceToolHandlerSignals(
   const secretManagerPromptBridge = secretManagerAccess && modelProviderCall && (language === "javascript"
     ? hasJavaScriptHandlerSecretManagerPromptBridge(handlerSource)
     : hasPythonHandlerSecretManagerPromptBridge(handlerSource));
+  const envSecretPromptBridge = secretEnvAccess && modelProviderCall && (language === "javascript"
+    ? hasJavaScriptHandlerEnvSecretPromptBridge(handlerSource)
+    : hasPythonHandlerEnvSecretPromptBridge(handlerSource));
   const secretManagerTrainingDatasetBridge = secretManagerAccess && trainingDatasetExport && (language === "javascript"
     ? hasJavaScriptHandlerSecretManagerTrainingDatasetBridge(handlerSource)
     : hasPythonHandlerSecretManagerTrainingDatasetBridge(handlerSource));
@@ -28082,6 +28089,7 @@ function classifySourceToolHandlerSignals(
   if (toolOutputShellExecutionBridge) classes.add("handler_tool_output_shell_execution_bridge");
   if (toolOutputDynamicCodeExecutionBridge) classes.add("handler_tool_output_dynamic_code_execution_bridge");
   if (secretManagerPromptBridge) classes.add("handler_secret_manager_prompt_bridge");
+  if (envSecretPromptBridge) classes.add("handler_env_secret_prompt_bridge");
   if (secretManagerTrainingDatasetBridge) classes.add("handler_secret_manager_training_dataset_bridge");
   if (toolOutputPromptBridge) classes.add("handler_tool_output_prompt_bridge");
   if (embeddingProviderCall) classes.add("handler_embedding_provider_call");
@@ -28259,6 +28267,7 @@ function classifySourceToolHandlerSignals(
     handlerToolOutputShellExecutionBridge: toolOutputShellExecutionBridge,
     handlerToolOutputDynamicCodeExecutionBridge: toolOutputDynamicCodeExecutionBridge,
     handlerSecretManagerPromptBridge: secretManagerPromptBridge,
+    handlerEnvSecretPromptBridge: envSecretPromptBridge,
     handlerSecretManagerTrainingDatasetBridge: secretManagerTrainingDatasetBridge,
     handlerToolOutputPromptBridge: toolOutputPromptBridge,
     handlerEmbeddingProviderCall: embeddingProviderCall,
@@ -30520,6 +30529,48 @@ function hasPythonHandlerSecretManagerPromptBridge(source: string): boolean {
     source,
     identifiers
   );
+}
+
+function hasJavaScriptHandlerEnvSecretPromptBridge(source: string): boolean {
+  const identifiers = extractJavaScriptEnvSecretIdentifiers(source);
+  return identifiers.length > 0 && modelPromptCallReferencesPromptMaterialIdentifier(
+    [
+      /\b(?:openai|openaiClient|anthropic|anthropicClient|mistral|mistralClient|cohere|cohereClient|bedrock|bedrockClient|gemini|geminiClient|vertex|vertexClient|llm|modelClient|languageModel)\s*(?:\.\s*[A-Za-z_$][\w$]*){0,5}\s*\.\s*(?:create|stream|parse|invoke|send|complete|generateContent|generateText|doGenerate)\s*\(([\s\S]{0,2600})\)/giu,
+      /\b(?:generateText|streamText|generateObject|streamObject)\s*\(([\s\S]{0,2600})\)/giu,
+      /\bnew\s+InvokeModelCommand\s*\(([\s\S]{0,2600})\)/giu
+    ],
+    source,
+    identifiers
+  );
+}
+
+function hasPythonHandlerEnvSecretPromptBridge(source: string): boolean {
+  const identifiers = extractPythonEnvSecretIdentifiers(source);
+  return identifiers.length > 0 && modelPromptCallReferencesPromptMaterialIdentifier(
+    [
+      /\b(?:openai|openai_client|anthropic|anthropic_client|mistral|mistral_client|cohere|cohere_client|bedrock|bedrock_client|gemini|gemini_client|vertex|vertex_client|llm|model_client|language_model)\s*(?:\.\s*[A-Za-z_]\w*){0,5}\s*\.\s*(?:create|stream|parse|invoke|send|complete|generate_content|predict)\s*\(([\s\S]{0,2600})\)/giu,
+      /\bInvokeModelCommand\s*\(([\s\S]{0,2600})\)/giu
+    ],
+    source,
+    identifiers
+  );
+}
+
+function modelPromptCallReferencesPromptMaterialIdentifier(patterns: RegExp[], source: string, identifiers: string[]): boolean {
+  const promptField = /(?:messages|message|prompt|prompts|input|inputs|content|contents|text|texts|system|developer|user|instructions|instruction|body|body_text|bodyText)/u;
+  for (const pattern of patterns) {
+    let match: RegExpExecArray | null;
+    while ((match = pattern.exec(source)) !== null) {
+      const expression = match[1] ?? "";
+      if (expression.split(/\r?\n/u).some((line) =>
+        promptField.test(line) && identifiers.some((identifier) => new RegExp(`\\b${escapeRegExp(identifier)}\\b`, "u").test(line))
+      )) {
+        return true;
+      }
+      if (match[0].length === 0) pattern.lastIndex += 1;
+    }
+  }
+  return false;
 }
 
 function hasJavaScriptHandlerRagRetrievalPromptBridge(source: string): boolean {
@@ -35479,6 +35530,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   local_file_external_service_bridge: boolean;
   env_secret_external_write_bridge: boolean;
   secret_manager_prompt_bridge: boolean;
+  env_secret_prompt_bridge: boolean;
   external_service_write: boolean;
   tainted_external_service_recipient: boolean;
   model_output_external_service_bridge: boolean;
@@ -35763,6 +35815,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   const handlerSecretManagerExternalServiceBridge = handler?.handlerSecretManagerExternalServiceBridge === true;
   const handlerLocalFileExternalServiceBridge = handler?.handlerLocalFileExternalServiceBridge === true;
   const handlerSecretManagerPromptBridge = handler?.handlerSecretManagerPromptBridge === true;
+  const handlerEnvSecretPromptBridge = handler?.handlerEnvSecretPromptBridge === true;
   const handlerShellExecution = handler?.handlerShellExecution === true;
   const handlerTaintedShellArgument = handler?.handlerTaintedShellArgument === true;
   const handlerTaintedFilesystemPath = handler?.handlerTaintedFilesystemPath === true;
@@ -36190,6 +36243,10 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   }
   if (handlerSecretManagerPromptBridge) {
     classes.add("secret_manager_prompt_bridge");
+    actions.add("send");
+  }
+  if (handlerEnvSecretPromptBridge) {
+    classes.add("env_secret_prompt_bridge");
     actions.add("send");
   }
   if (handlerExternalServiceWrite) {
@@ -36794,6 +36851,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerLocalFileExternalServiceBridge ||
       handlerEnvSecretExternalWriteBridge ||
       handlerSecretManagerPromptBridge ||
+      handlerEnvSecretPromptBridge ||
       handlerSecretManagerMemoryBridge ||
       handlerSecretManagerTrainingDatasetBridge ||
       handlerExternalServiceWrite ||
@@ -36972,6 +37030,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerLocalFileExternalServiceBridge ||
       handlerEnvSecretExternalWriteBridge ||
       handlerSecretManagerPromptBridge ||
+      handlerEnvSecretPromptBridge ||
       handlerSecretManagerDatabaseWriteBridge ||
       handlerModelOutputDatabaseWriteBridge ||
       handlerModelOutputMemoryBridge ||
@@ -37078,6 +37137,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerSecretManagerCredentialIssuanceBridge ||
       handlerLocalFileCredentialIssuanceBridge ||
       handlerEnvSecretCredentialIssuanceBridge ||
+      handlerEnvSecretPromptBridge ||
       (handlerModelOutputCredentialIssuanceBridge && handlerSecretEnvAccess) ||
       (handlerToolOutputCredentialIssuanceBridge && handlerSecretEnvAccess) ||
       handlerSecretManagerExternalServiceBridge ||
@@ -37232,6 +37292,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
     local_file_external_service_bridge: handlerLocalFileExternalServiceBridge,
     env_secret_external_write_bridge: handlerEnvSecretExternalWriteBridge,
     secret_manager_prompt_bridge: handlerSecretManagerPromptBridge,
+    env_secret_prompt_bridge: handlerEnvSecretPromptBridge,
     external_service_write: handlerExternalServiceWrite,
     tainted_external_service_recipient: handlerTaintedExternalServiceRecipient,
     model_output_external_service_bridge: handlerModelOutputExternalServiceBridge,
@@ -37390,6 +37451,7 @@ function authoritySignature(tool: SurfaceObject): string {
     metadata.external_service_write === true ? "external_service_write" : "",
     metadata.local_file_external_service_bridge === true ? "local_file_external_service_bridge" : "",
     metadata.env_secret_external_write_bridge === true ? "env_secret_external_write_bridge" : "",
+    metadata.env_secret_prompt_bridge === true ? "env_secret_prompt_bridge" : "",
     metadata.tainted_network_destination === true ? "tainted_network_destination" : "",
     metadata.model_output_network_destination_bridge === true ? "model_output_network_destination_bridge" : "",
     metadata.tool_output_network_destination_bridge === true ? "tool_output_network_destination_bridge" : "",
@@ -37545,6 +37607,7 @@ function authoritySignature(tool: SurfaceObject): string {
     metadata.secret_manager_external_service_bridge === true ? "secret_manager_external_service_bridge" : "",
     metadata.env_secret_external_write_bridge === true ? "env_secret_external_write_bridge" : "",
     metadata.secret_manager_prompt_bridge === true ? "secret_manager_prompt_bridge" : "",
+    metadata.env_secret_prompt_bridge === true ? "env_secret_prompt_bridge" : "",
     metadata.model_output_external_service_bridge === true ? "model_output_external_service_bridge" : "",
     metadata.network_response_external_service_bridge === true ? "network_response_external_service_bridge" : "",
     metadata.tainted_external_service_recipient === true ? "tainted_external_service_recipient" : "",
@@ -37574,6 +37637,7 @@ function isPrivilegedToolSurface(tool: SurfaceObject): boolean {
     tool.metadata.external_write === true ||
     tool.metadata.local_file_external_service_bridge === true ||
     tool.metadata.env_secret_external_write_bridge === true ||
+    tool.metadata.env_secret_prompt_bridge === true ||
     tool.metadata.tainted_network_destination === true ||
     tool.metadata.model_output_network_destination_bridge === true ||
     tool.metadata.tool_output_network_destination_bridge === true ||

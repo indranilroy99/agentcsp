@@ -158,6 +158,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-154")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-155")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-156")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-157")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-001")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-002")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-003")).toBe(true);
@@ -12011,6 +12012,7 @@ describe("rule engine", () => {
       "langchain_promote_model_completion_feedback",
       "langchain_publish_model_selected_prompt_registry_entry",
       "langchain_enqueue_model_selected_background_job",
+      "langchain_review_env_secret_with_model",
       "langchain_review_clipboard_with_model",
       "langchain_run_model_generated_command",
       "langchain_review_authenticated_page_screenshot_with_model",
@@ -12034,6 +12036,7 @@ describe("rule engine", () => {
       "source_promote_model_completion_feedback",
       "source_publish_model_selected_prompt_registry_entry",
       "source_enqueue_model_selected_background_job",
+      "source_review_env_secret_with_model",
       "source_review_clipboard_with_model",
       "source_run_model_generated_command",
       "source_review_authenticated_page_screenshot_with_model",
@@ -12120,6 +12123,38 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerModelProviderFindings)).not.toContain("source model selected prompt cache value stored");
     expect(JSON.stringify(sourceHandlerModelProviderFindings)).not.toContain("framework model selected prompt cache value stored");
     expect(JSON.stringify(sourceHandlerModelProviderFindings)).not.toContain("Ask a model provider to draft a reusable response");
+    const sourceHandlerEnvSecretPromptBridgeFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-157");
+    expect(sourceHandlerEnvSecretPromptBridgeFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
+      "langchain_review_env_secret_with_model",
+      "source_review_env_secret_with_model"
+    ]);
+    expect(sourceHandlerEnvSecretPromptBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
+    expect(sourceHandlerEnvSecretPromptBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerEnvSecretPromptBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
+    expect(sourceHandlerEnvSecretPromptBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
+    expect(sourceHandlerEnvSecretPromptBridgeFindings.every((finding) => finding.matched_object.metadata.source_tool_handler_redacted === true)).toBe(true);
+    expect(sourceHandlerEnvSecretPromptBridgeFindings.every((finding) => finding.matched_object.metadata.handler_secret_env_access === true)).toBe(true);
+    expect(sourceHandlerEnvSecretPromptBridgeFindings.every((finding) => finding.matched_object.metadata.handler_model_provider_call === true)).toBe(true);
+    expect(sourceHandlerEnvSecretPromptBridgeFindings.every((finding) => finding.matched_object.metadata.handler_env_secret_prompt_bridge === true)).toBe(true);
+    expect(sourceHandlerEnvSecretPromptBridgeFindings.every((finding) => finding.matched_object.metadata.model_provider_call === true)).toBe(true);
+    expect(sourceHandlerEnvSecretPromptBridgeFindings.every((finding) => finding.matched_object.metadata.env_secret_prompt_bridge === true)).toBe(true);
+    expect(sourceHandlerEnvSecretPromptBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.authority_classes.includes("env_secret_prompt_bridge")
+    )).toBe(true);
+    expect(sourceHandlerEnvSecretPromptBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.handler_authority_classes.includes("handler_env_secret_prompt_bridge")
+    )).toBe(true);
+    expect(sourceHandlerEnvSecretPromptBridgeFindings.every((finding) => finding.matched_object.actions.includes("send"))).toBe(true);
+    expect(sourceHandlerEnvSecretPromptBridgeFindings.every((finding) => finding.matched_object.external_reach === true)).toBe(true);
+    expect(sourceHandlerEnvSecretPromptBridgeFindings.every((finding) => finding.matched_object.secret_exposure === true)).toBe(true);
+    expect(sourceHandlerEnvSecretPromptBridgeFindings.every((finding) => finding.matched_object.side_effect === true)).toBe(true);
+    expect(sourceHandlerEnvSecretPromptBridgeFindings.every((finding) => finding.matched_object.reversible === false)).toBe(true);
+    expect(JSON.stringify(sourceHandlerEnvSecretPromptBridgeFindings)).not.toContain("process.env");
+    expect(JSON.stringify(sourceHandlerEnvSecretPromptBridgeFindings)).not.toContain("os.getenv");
+    expect(JSON.stringify(sourceHandlerEnvSecretPromptBridgeFindings)).not.toContain("runtimeCredential");
+    expect(JSON.stringify(sourceHandlerEnvSecretPromptBridgeFindings)).not.toContain("runtime_credential");
+    expect(JSON.stringify(sourceHandlerEnvSecretPromptBridgeFindings)).not.toContain("Review runtime credential");
+    expect(JSON.stringify(sourceHandlerEnvSecretPromptBridgeFindings)).not.toContain("Send environment-backed support credentials");
     const sourceHandlerRagRetrievalPromptBridgeFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-094");
     expect(sourceHandlerRagRetrievalPromptBridgeFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_summarize_retrieved_context_with_model",
@@ -12263,6 +12298,7 @@ describe("rule engine", () => {
       "langchain_promote_model_completion_feedback",
       "langchain_publish_model_selected_prompt_registry_entry",
       "langchain_review_clipboard_with_model",
+      "langchain_review_env_secret_with_model",
       "langchain_run_model_generated_command",
       "langchain_store_model_selected_memory",
       "langchain_summarize_customer_with_model",
@@ -12283,6 +12319,7 @@ describe("rule engine", () => {
       "source_promote_model_completion_feedback",
       "source_publish_model_selected_prompt_registry_entry",
       "source_review_clipboard_with_model",
+      "source_review_env_secret_with_model",
       "source_run_model_generated_command",
       "source_store_model_selected_memory",
       "source_summarize_customer_with_model"
@@ -12369,12 +12406,14 @@ describe("rule engine", () => {
       "langchain_promote_model_completion_feedback",
       "langchain_publish_model_selected_prompt_registry_entry",
       "langchain_review_clipboard_with_model",
+      "langchain_review_env_secret_with_model",
       "langchain_run_model_generated_command",
       "langchain_store_model_selected_memory",
       "langchain_summarize_customer_with_model",
       "source_publish_model_selected_prompt_registry_entry",
       "source_post_model_selected_external_update",
       "source_review_clipboard_with_model",
+      "source_review_env_secret_with_model",
       "source_summarize_customer_with_model",
       "source_issue_model_selected_credential",
       "source_summarize_retrieved_context_with_model"

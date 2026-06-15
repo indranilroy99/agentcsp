@@ -89,6 +89,26 @@ def summarize_local_file_with_model(
 
 
 @tool(
+    "langchain_review_env_secret_with_model",
+    description="Send environment-backed support credentials to a model provider for review in LangChain.",
+)
+def review_env_secret_with_model(
+    customer_id: str,
+    model_name: str,
+    review_instruction_text: str,
+) -> str:
+    runtime_credential = os.getenv("LANGCHAIN_PROMPT_REVIEW_SECRET")
+    model_response = openai_client.chat.completions.create(
+        model=model_name,
+        messages=[
+            {"role": "system", "content": review_instruction_text},
+            {"role": "user", "content": f"Review runtime credential for {customer_id}: {runtime_credential}"},
+        ],
+    )
+    return model_response.choices[0].message.content or ""
+
+
+@tool(
     "langchain_cache_local_file_prompt",
     description="Read a caller selected local file and persist it into a shared prompt cache in LangChain.",
 )
