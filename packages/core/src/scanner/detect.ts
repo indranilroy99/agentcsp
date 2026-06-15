@@ -24188,6 +24188,7 @@ function addToolDefinitionSurface(
       !authority.approval_auto_execution &&
       !authority.visual_context_capture &&
       !authority.clipboard_read &&
+      !authority.clipboard_prompt_bridge &&
       !authority.clipboard_external_service_bridge &&
       !authority.visual_context_external_service_bridge &&
       !authority.visual_context_memory_bridge &&
@@ -24261,6 +24262,7 @@ function addToolDefinitionSurface(
       local_file_browser_automation_bridge: authority.local_file_browser_automation_bridge,
       local_file_prompt_bridge: authority.local_file_prompt_bridge,
       clipboard_read: authority.clipboard_read,
+      clipboard_prompt_bridge: authority.clipboard_prompt_bridge,
       clipboard_external_service_bridge: authority.clipboard_external_service_bridge,
       secret_manager_access: authority.secret_manager_access,
       tainted_secret_manager_path: authority.tainted_secret_manager_path,
@@ -26882,6 +26884,7 @@ interface SourceToolHandlerSignals {
   handlerLocalFileBrowserAutomationBridge: boolean;
   handlerLocalFilePromptBridge: boolean;
   handlerClipboardRead: boolean;
+  handlerClipboardPromptBridge: boolean;
   handlerClipboardExternalServiceBridge: boolean;
   handlerVisualContextCapture: boolean;
   handlerVisualContextToOutput: boolean;
@@ -27464,6 +27467,7 @@ function sourceToolHandlerSignalMetadata(signals: SourceToolHandlerSignals | und
     handler_local_file_browser_automation_bridge: signals.handlerLocalFileBrowserAutomationBridge,
     handler_local_file_prompt_bridge: signals.handlerLocalFilePromptBridge,
     handler_clipboard_read: signals.handlerClipboardRead,
+    handler_clipboard_prompt_bridge: signals.handlerClipboardPromptBridge,
     handler_clipboard_external_service_bridge: signals.handlerClipboardExternalServiceBridge,
     handler_visual_context_capture: signals.handlerVisualContextCapture,
     handler_visual_context_to_output: signals.handlerVisualContextToOutput,
@@ -27901,6 +27905,9 @@ function classifySourceToolHandlerSignals(
   const clipboardRead = language === "javascript"
     ? hasJavaScriptHandlerClipboardRead(handlerSource)
     : hasPythonHandlerClipboardRead(handlerSource);
+  const clipboardPromptBridge = clipboardRead && modelProviderCall && (language === "javascript"
+    ? hasJavaScriptHandlerClipboardPromptBridge(handlerSource)
+    : hasPythonHandlerClipboardPromptBridge(handlerSource));
   const clipboardExternalServiceBridge = clipboardRead && externalServiceWrite && (language === "javascript"
     ? hasJavaScriptHandlerClipboardExternalServiceBridge(handlerSource)
     : hasPythonHandlerClipboardExternalServiceBridge(handlerSource));
@@ -28147,6 +28154,7 @@ function classifySourceToolHandlerSignals(
   if (localFileBrowserAutomationBridge) classes.add("handler_local_file_browser_automation_bridge");
   if (localFilePromptBridge) classes.add("handler_local_file_prompt_bridge");
   if (clipboardRead) classes.add("handler_clipboard_read");
+  if (clipboardPromptBridge) classes.add("handler_clipboard_prompt_bridge");
   if (clipboardExternalServiceBridge) classes.add("handler_clipboard_external_service_bridge");
   if (visualContextCapture) classes.add("handler_visual_context_capture");
   if (visualContextToOutput) classes.add("handler_visual_context_to_output");
@@ -28317,6 +28325,7 @@ function classifySourceToolHandlerSignals(
     handlerLocalFileBrowserAutomationBridge: localFileBrowserAutomationBridge,
     handlerLocalFilePromptBridge: localFilePromptBridge,
     handlerClipboardRead: clipboardRead,
+    handlerClipboardPromptBridge: clipboardPromptBridge,
     handlerClipboardExternalServiceBridge: clipboardExternalServiceBridge,
     handlerVisualContextCapture: visualContextCapture,
     handlerVisualContextToOutput: visualContextToOutput,
@@ -29961,6 +29970,31 @@ function hasPythonHandlerClipboardRead(source: string): boolean {
   return /\b(?:clipboard|desktop_clipboard|system_clipboard|clipboard_client|electron_clipboard|computer_use\s*\.\s*clipboard|desktop\s*\.\s*clipboard|pyperclip)\s*(?:\.\s*[A-Za-z_]\w*){0,4}\s*\.\s*(?:read_text|read|paste)\s*\(/iu.test(
     source
   ) || /\bnavigator\s*\.\s*clipboard\s*\.\s*readText\s*\(/iu.test(source);
+}
+
+function hasJavaScriptHandlerClipboardPromptBridge(source: string): boolean {
+  const identifiers = extractJavaScriptClipboardIdentifiers(source);
+  return identifiers.length > 0 && callExpressionReferencesAnyIdentifier(
+    [
+      /\b(?:openai|openaiClient|anthropic|anthropicClient|mistral|mistralClient|cohere|cohereClient|bedrock|bedrockClient|gemini|geminiClient|vertex|vertexClient|llm|modelClient|languageModel)\s*(?:\.\s*[A-Za-z_$][\w$]*){0,5}\s*\.\s*(?:create|stream|parse|invoke|send|complete|generateContent|generateText|doGenerate)\s*\(([\s\S]{0,3200})\)/giu,
+      /\b(?:generateText|streamText|generateObject|streamObject)\s*\(([\s\S]{0,3200})\)/giu,
+      /\bnew\s+InvokeModelCommand\s*\(([\s\S]{0,3200})\)/giu
+    ],
+    source,
+    identifiers
+  );
+}
+
+function hasPythonHandlerClipboardPromptBridge(source: string): boolean {
+  const identifiers = extractPythonClipboardIdentifiers(source);
+  return identifiers.length > 0 && callExpressionReferencesAnyIdentifier(
+    [
+      /\b(?:openai|openai_client|anthropic|anthropic_client|mistral|mistral_client|cohere|cohere_client|bedrock|bedrock_client|gemini|gemini_client|vertex|vertex_client|llm|model_client|language_model)\s*(?:\.\s*[A-Za-z_]\w*){0,5}\s*\.\s*(?:create|stream|parse|invoke|send|complete|generate_content|predict)\s*\(([\s\S]{0,3200})\)/giu,
+      /\bInvokeModelCommand\s*\(([\s\S]{0,3200})\)/giu
+    ],
+    source,
+    identifiers
+  );
 }
 
 function hasJavaScriptHandlerClipboardExternalServiceBridge(source: string): boolean {
@@ -35148,6 +35182,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   local_file_browser_automation_bridge: boolean;
   local_file_prompt_bridge: boolean;
   clipboard_read: boolean;
+  clipboard_prompt_bridge: boolean;
   clipboard_external_service_bridge: boolean;
   visual_context_capture: boolean;
   visual_context_to_output: boolean;
@@ -35422,6 +35457,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   const handlerLocalFileBrowserAutomationBridge = handler?.handlerLocalFileBrowserAutomationBridge === true;
   const handlerLocalFilePromptBridge = handler?.handlerLocalFilePromptBridge === true;
   const handlerClipboardRead = handler?.handlerClipboardRead === true;
+  const handlerClipboardPromptBridge = handler?.handlerClipboardPromptBridge === true;
   const handlerClipboardExternalServiceBridge = handler?.handlerClipboardExternalServiceBridge === true;
   const handlerVisualContextCapture = handler?.handlerVisualContextCapture === true;
   const handlerVisualContextToOutput = handler?.handlerVisualContextToOutput === true;
@@ -35554,6 +35590,11 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   if (handlerClipboardRead) {
     classes.add("clipboard_read");
     actions.add("read");
+  }
+  if (handlerClipboardPromptBridge) {
+    classes.add("clipboard_prompt_bridge");
+    actions.add("read");
+    actions.add("send");
   }
   if (handlerClipboardExternalServiceBridge) {
     classes.add("clipboard_external_service_bridge");
@@ -36405,6 +36446,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerLocalFileBrowserAutomationBridge ||
       handlerLocalFilePromptBridge ||
       handlerClipboardRead ||
+      handlerClipboardPromptBridge ||
       handlerClipboardExternalServiceBridge ||
       handlerVisualContextCapture ||
       handlerVisualContextToOutput ||
@@ -36546,6 +36588,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
     localFileDisclosure ||
     handlerLocalFileBrowserAutomationBridge ||
     handlerLocalFilePromptBridge ||
+    handlerClipboardPromptBridge ||
     handlerLocalFilePromptCacheBridge ||
     handlerClipboardExternalServiceBridge ||
     readOnlyHintConflict ||
@@ -36566,6 +36609,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerToolOutputBrowserAutomationBridge ||
       handlerLocalFileBrowserAutomationBridge ||
       handlerLocalFilePromptBridge ||
+      handlerClipboardPromptBridge ||
       handlerLocalFilePromptCacheBridge ||
       handlerClipboardExternalServiceBridge ||
       handlerVisualContextCapture ||
@@ -36702,6 +36746,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       (handlerNetworkResponseTelemetryBridge && handlerSecretEnvAccess) ||
       (handlerLocalFileTelemetryBridge && handlerSecretEnvAccess) ||
       (handlerToolOutputTelemetryBridge && handlerSecretEnvAccess) ||
+      (handlerClipboardPromptBridge && handlerSecretEnvAccess) ||
       handlerSecretManagerPromptCacheBridge ||
       handlerModelOutputPromptCacheBridge ||
       (handlerNetworkResponsePromptCacheBridge && handlerSecretEnvAccess) ||
@@ -36817,6 +36862,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
     local_file_prompt_bridge: handlerLocalFilePromptBridge,
     local_file_prompt_cache_bridge: handlerLocalFilePromptCacheBridge,
     clipboard_read: handlerClipboardRead,
+    clipboard_prompt_bridge: handlerClipboardPromptBridge,
     clipboard_external_service_bridge: handlerClipboardExternalServiceBridge,
     visual_context_capture: handlerVisualContextCapture,
     visual_context_to_output: handlerVisualContextToOutput,
@@ -37131,6 +37177,7 @@ function authoritySignature(tool: SurfaceObject): string {
     metadata.local_file_browser_automation_bridge === true ? "local_file_browser_automation_bridge" : "",
     metadata.local_file_prompt_bridge === true ? "local_file_prompt_bridge" : "",
     metadata.clipboard_read === true ? "clipboard_read" : "",
+    metadata.clipboard_prompt_bridge === true ? "clipboard_prompt_bridge" : "",
     metadata.clipboard_external_service_bridge === true ? "clipboard_external_service_bridge" : "",
     metadata.secret_manager_access === true ? "secret_manager_access" : "",
     metadata.tainted_secret_manager_path === true ? "tainted_secret_manager_path" : "",
@@ -37309,6 +37356,7 @@ function isPrivilegedToolSurface(tool: SurfaceObject): boolean {
     tool.metadata.local_file_browser_automation_bridge === true ||
     tool.metadata.local_file_prompt_bridge === true ||
     tool.metadata.clipboard_read === true ||
+    tool.metadata.clipboard_prompt_bridge === true ||
     tool.metadata.clipboard_external_service_bridge === true ||
     tool.metadata.secret_manager_access === true ||
     tool.metadata.tainted_secret_manager_path === true ||

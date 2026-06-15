@@ -151,6 +151,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-147")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-148")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-149")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-150")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-001")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-002")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-003")).toBe(true);
@@ -10694,6 +10695,50 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerClipboardExternalServiceBridgeFindings)).not.toContain("source clipboard posted externally");
     expect(JSON.stringify(sourceHandlerClipboardExternalServiceBridgeFindings)).not.toContain("framework clipboard posted externally");
     expect(JSON.stringify(sourceHandlerClipboardExternalServiceBridgeFindings)).not.toContain("Read clipboard text");
+    const sourceHandlerClipboardPromptBridgeFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-150");
+    expect(sourceHandlerClipboardPromptBridgeFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
+      "langchain_review_clipboard_with_model",
+      "source_review_clipboard_with_model"
+    ]);
+    expect(sourceHandlerClipboardPromptBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
+    expect(sourceHandlerClipboardPromptBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerClipboardPromptBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
+    expect(sourceHandlerClipboardPromptBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
+    expect(sourceHandlerClipboardPromptBridgeFindings.every((finding) => finding.matched_object.metadata.source_tool_handler_redacted === true)).toBe(true);
+    expect(sourceHandlerClipboardPromptBridgeFindings.every((finding) => finding.matched_object.metadata.handler_clipboard_read === true)).toBe(true);
+    expect(sourceHandlerClipboardPromptBridgeFindings.every((finding) => finding.matched_object.metadata.handler_model_provider_call === true)).toBe(true);
+    expect(sourceHandlerClipboardPromptBridgeFindings.every((finding) => finding.matched_object.metadata.handler_tainted_model_selection === true)).toBe(true);
+    expect(sourceHandlerClipboardPromptBridgeFindings.every((finding) => finding.matched_object.metadata.handler_clipboard_prompt_bridge === true)).toBe(true);
+    expect(sourceHandlerClipboardPromptBridgeFindings.every((finding) => finding.matched_object.metadata.handler_secret_env_access === true)).toBe(true);
+    expect(sourceHandlerClipboardPromptBridgeFindings.every((finding) => finding.matched_object.metadata.clipboard_read === true)).toBe(true);
+    expect(sourceHandlerClipboardPromptBridgeFindings.every((finding) => finding.matched_object.metadata.model_provider_call === true)).toBe(true);
+    expect(sourceHandlerClipboardPromptBridgeFindings.every((finding) => finding.matched_object.metadata.tainted_model_selection === true)).toBe(true);
+    expect(sourceHandlerClipboardPromptBridgeFindings.every((finding) => finding.matched_object.metadata.clipboard_prompt_bridge === true)).toBe(true);
+    expect(sourceHandlerClipboardPromptBridgeFindings.every((finding) => finding.matched_object.metadata.accepts_content_like_input === true)).toBe(true);
+    expect(sourceHandlerClipboardPromptBridgeFindings.every((finding) => finding.matched_object.metadata.accepts_customer_data_input === true)).toBe(true);
+    expect(sourceHandlerClipboardPromptBridgeFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("clipboard_read"))).toBe(true);
+    expect(sourceHandlerClipboardPromptBridgeFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("model_provider_call"))).toBe(true);
+    expect(sourceHandlerClipboardPromptBridgeFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("tainted_model_selection"))).toBe(true);
+    expect(sourceHandlerClipboardPromptBridgeFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("clipboard_prompt_bridge"))).toBe(true);
+    expect(sourceHandlerClipboardPromptBridgeFindings.every((finding) => finding.matched_object.metadata.handler_authority_classes.includes("handler_clipboard_read"))).toBe(true);
+    expect(sourceHandlerClipboardPromptBridgeFindings.every((finding) => finding.matched_object.metadata.handler_authority_classes.includes("handler_model_provider_call"))).toBe(true);
+    expect(sourceHandlerClipboardPromptBridgeFindings.every((finding) => finding.matched_object.metadata.handler_authority_classes.includes("handler_tainted_model_selection"))).toBe(true);
+    expect(sourceHandlerClipboardPromptBridgeFindings.every((finding) => finding.matched_object.metadata.handler_authority_classes.includes("handler_clipboard_prompt_bridge"))).toBe(true);
+    expect(sourceHandlerClipboardPromptBridgeFindings.every((finding) => finding.matched_object.actions.includes("read"))).toBe(true);
+    expect(sourceHandlerClipboardPromptBridgeFindings.every((finding) => finding.matched_object.actions.includes("send"))).toBe(true);
+    expect(sourceHandlerClipboardPromptBridgeFindings.every((finding) => finding.matched_object.external_reach === true)).toBe(true);
+    expect(sourceHandlerClipboardPromptBridgeFindings.every((finding) => finding.matched_object.secret_exposure === true)).toBe(true);
+    expect(sourceHandlerClipboardPromptBridgeFindings.every((finding) => finding.matched_object.side_effect === true)).toBe(true);
+    expect(sourceHandlerClipboardPromptBridgeFindings.every((finding) => finding.matched_object.reversible === false)).toBe(true);
+    expect(JSON.stringify(sourceHandlerClipboardPromptBridgeFindings)).not.toContain("desktopClipboard.readText");
+    expect(JSON.stringify(sourceHandlerClipboardPromptBridgeFindings)).not.toContain("desktop_clipboard.read_text");
+    expect(JSON.stringify(sourceHandlerClipboardPromptBridgeFindings)).not.toContain("openaiClient.chat.completions.create");
+    expect(JSON.stringify(sourceHandlerClipboardPromptBridgeFindings)).not.toContain("openai_client.chat.completions.create");
+    expect(JSON.stringify(sourceHandlerClipboardPromptBridgeFindings)).not.toContain("clipboardText");
+    expect(JSON.stringify(sourceHandlerClipboardPromptBridgeFindings)).not.toContain("clipboard_text");
+    expect(JSON.stringify(sourceHandlerClipboardPromptBridgeFindings)).not.toContain("source clipboard reviewed by model");
+    expect(JSON.stringify(sourceHandlerClipboardPromptBridgeFindings)).not.toContain("framework clipboard reviewed by model");
+    expect(JSON.stringify(sourceHandlerClipboardPromptBridgeFindings)).not.toContain("Read clipboard text");
     const sourceHandlerSecretManagerFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-028");
     expect(sourceHandlerSecretManagerFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_apply_vault_secret_guardrail_override",
@@ -11652,6 +11697,7 @@ describe("rule engine", () => {
       "langchain_promote_model_completion_feedback",
       "langchain_publish_model_selected_prompt_registry_entry",
       "langchain_enqueue_model_selected_background_job",
+      "langchain_review_clipboard_with_model",
       "langchain_run_model_generated_command",
       "langchain_review_authenticated_page_screenshot_with_model",
       "langchain_store_model_selected_memory",
@@ -11674,6 +11720,7 @@ describe("rule engine", () => {
       "source_promote_model_completion_feedback",
       "source_publish_model_selected_prompt_registry_entry",
       "source_enqueue_model_selected_background_job",
+      "source_review_clipboard_with_model",
       "source_run_model_generated_command",
       "source_review_authenticated_page_screenshot_with_model",
       "source_store_model_selected_memory",
@@ -11727,6 +11774,13 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerModelProviderFindings)).not.toContain("source visual context reviewed");
     expect(JSON.stringify(sourceHandlerModelProviderFindings)).not.toContain("framework visual context reviewed");
     expect(JSON.stringify(sourceHandlerModelProviderFindings)).not.toContain("Review an authenticated browser screenshot");
+    expect(JSON.stringify(sourceHandlerModelProviderFindings)).not.toContain("desktopClipboard.readText");
+    expect(JSON.stringify(sourceHandlerModelProviderFindings)).not.toContain("desktop_clipboard.read_text");
+    expect(JSON.stringify(sourceHandlerModelProviderFindings)).not.toContain("clipboardText");
+    expect(JSON.stringify(sourceHandlerModelProviderFindings)).not.toContain("clipboard_text");
+    expect(JSON.stringify(sourceHandlerModelProviderFindings)).not.toContain("source clipboard reviewed by model");
+    expect(JSON.stringify(sourceHandlerModelProviderFindings)).not.toContain("framework clipboard reviewed by model");
+    expect(JSON.stringify(sourceHandlerModelProviderFindings)).not.toContain("Read clipboard text");
     expect(JSON.stringify(sourceHandlerModelProviderFindings)).not.toContain("modelSelectedJobPayload");
     expect(JSON.stringify(sourceHandlerModelProviderFindings)).not.toContain("model_selected_job_payload");
     expect(JSON.stringify(sourceHandlerModelProviderFindings)).not.toContain("source model selected background job queued");
@@ -11894,6 +11948,7 @@ describe("rule engine", () => {
       "langchain_post_model_selected_external_update",
       "langchain_promote_model_completion_feedback",
       "langchain_publish_model_selected_prompt_registry_entry",
+      "langchain_review_clipboard_with_model",
       "langchain_run_model_generated_command",
       "langchain_store_model_selected_memory",
       "langchain_summarize_customer_with_model",
@@ -11913,6 +11968,7 @@ describe("rule engine", () => {
       "source_post_model_selected_external_update",
       "source_promote_model_completion_feedback",
       "source_publish_model_selected_prompt_registry_entry",
+      "source_review_clipboard_with_model",
       "source_run_model_generated_command",
       "source_store_model_selected_memory",
       "source_summarize_customer_with_model"
@@ -11973,6 +12029,13 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerTaintedModelSelectionFindings)).not.toContain("framework model selected feedback promoted");
     expect(JSON.stringify(sourceHandlerTaintedModelSelectionFindings)).not.toContain("Ask a model provider to draft a review payload");
     expect(JSON.stringify(sourceHandlerTaintedModelSelectionFindings)).not.toContain("Return one feedback review record");
+    expect(JSON.stringify(sourceHandlerTaintedModelSelectionFindings)).not.toContain("desktopClipboard.readText");
+    expect(JSON.stringify(sourceHandlerTaintedModelSelectionFindings)).not.toContain("desktop_clipboard.read_text");
+    expect(JSON.stringify(sourceHandlerTaintedModelSelectionFindings)).not.toContain("clipboardText");
+    expect(JSON.stringify(sourceHandlerTaintedModelSelectionFindings)).not.toContain("clipboard_text");
+    expect(JSON.stringify(sourceHandlerTaintedModelSelectionFindings)).not.toContain("source clipboard reviewed by model");
+    expect(JSON.stringify(sourceHandlerTaintedModelSelectionFindings)).not.toContain("framework clipboard reviewed by model");
+    expect(JSON.stringify(sourceHandlerTaintedModelSelectionFindings)).not.toContain("Read clipboard text");
     const sourceHandlerPrivilegedPromptFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-031");
     expect(sourceHandlerPrivilegedPromptFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_apply_model_database_update",
@@ -11991,11 +12054,13 @@ describe("rule engine", () => {
       "langchain_post_model_selected_external_update",
       "langchain_promote_model_completion_feedback",
       "langchain_publish_model_selected_prompt_registry_entry",
+      "langchain_review_clipboard_with_model",
       "langchain_run_model_generated_command",
       "langchain_store_model_selected_memory",
       "langchain_summarize_customer_with_model",
       "source_publish_model_selected_prompt_registry_entry",
       "source_post_model_selected_external_update",
+      "source_review_clipboard_with_model",
       "source_summarize_customer_with_model",
       "source_issue_model_selected_credential",
       "source_summarize_retrieved_context_with_model"
@@ -12026,6 +12091,13 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerPrivilegedPromptFindings)).not.toContain("role: \"system\"");
     expect(JSON.stringify(sourceHandlerPrivilegedPromptFindings)).not.toContain("\"role\": \"system\"");
     expect(JSON.stringify(sourceHandlerPrivilegedPromptFindings)).not.toContain("Create an internal support summary");
+    expect(JSON.stringify(sourceHandlerPrivilegedPromptFindings)).not.toContain("desktopClipboard.readText");
+    expect(JSON.stringify(sourceHandlerPrivilegedPromptFindings)).not.toContain("desktop_clipboard.read_text");
+    expect(JSON.stringify(sourceHandlerPrivilegedPromptFindings)).not.toContain("clipboardText");
+    expect(JSON.stringify(sourceHandlerPrivilegedPromptFindings)).not.toContain("clipboard_text");
+    expect(JSON.stringify(sourceHandlerPrivilegedPromptFindings)).not.toContain("source clipboard reviewed by model");
+    expect(JSON.stringify(sourceHandlerPrivilegedPromptFindings)).not.toContain("framework clipboard reviewed by model");
+    expect(JSON.stringify(sourceHandlerPrivilegedPromptFindings)).not.toContain("Read clipboard text");
     const sourceHandlerShellFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-015");
     expect(sourceHandlerShellFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_run_remediation_command",

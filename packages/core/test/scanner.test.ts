@@ -687,6 +687,7 @@ describe("scanner", () => {
     const sourceClipboardExternalServiceBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "source_post_clipboard_to_slack"
     );
+    const sourceClipboardPromptBridgeTool = surfaces.tools.find((surface) => surface.name === "source_review_clipboard_with_model");
     const sourceVisualContextCaptureTool = surfaces.tools.find((surface) => surface.name === "source_capture_authenticated_page_screenshot");
     const sourceVisualContextPromptBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "source_review_authenticated_page_screenshot_with_model"
@@ -966,6 +967,7 @@ describe("scanner", () => {
     const langchainClipboardExternalServiceBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "langchain_post_clipboard_to_slack"
     );
+    const langchainClipboardPromptBridgeTool = surfaces.tools.find((surface) => surface.name === "langchain_review_clipboard_with_model");
     const langchainVisualContextCaptureTool = surfaces.tools.find((surface) => surface.name === "langchain_capture_authenticated_page_screenshot");
     const langchainVisualContextPromptBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "langchain_review_authenticated_page_screenshot_with_model"
@@ -7529,6 +7531,83 @@ describe("scanner", () => {
     expect(JSON.stringify(sourceClipboardExternalServiceBridgeTool)).not.toContain("clipboardText");
     expect(JSON.stringify(sourceClipboardExternalServiceBridgeTool)).not.toContain("source clipboard posted externally");
     expect(JSON.stringify(sourceClipboardExternalServiceBridgeTool)).not.toContain("Read clipboard text");
+    expect(sourceClipboardPromptBridgeTool).toMatchObject({
+      path: "mcp-source/customer-tools.ts",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["call", "publish", "read", "send"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(sourceClipboardPromptBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_mcp_source_tool: true,
+      mcp_source_tool_registration: true,
+      mcp_source_tool_registration_kind: "registerTool",
+      mcp_source_tool_argument_count: 3,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_content_like_input: true,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      model_provider_call: true,
+      tainted_model_selection: true,
+      clipboard_read: true,
+      clipboard_prompt_bridge: true,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_model_provider_call: true,
+      handler_tainted_model_selection: true,
+      handler_clipboard_read: true,
+      handler_clipboard_prompt_bridge: true,
+      handler_secret_env_access: true,
+      handler_model_visible_output: true,
+      handler_signal_count: 6,
+      open_world_schema: false
+    });
+    expect(sourceClipboardPromptBridgeTool?.metadata.authority_classes).toEqual([
+      "clipboard_prompt_bridge",
+      "clipboard_read",
+      "content_input",
+      "customer_data_input",
+      "external_write",
+      "handler_clipboard_prompt_bridge",
+      "handler_clipboard_read",
+      "handler_model_provider_call",
+      "handler_privileged_prompt_composition",
+      "handler_secret_env_access",
+      "handler_tainted_model_selection",
+      "model_provider_call",
+      "pii_input",
+      "privileged_prompt_composition",
+      "secret_env_access",
+      "tainted_model_selection"
+    ]);
+    expect(sourceClipboardPromptBridgeTool?.metadata.handler_authority_classes).toEqual([
+      "handler_clipboard_prompt_bridge",
+      "handler_clipboard_read",
+      "handler_model_provider_call",
+      "handler_privileged_prompt_composition",
+      "handler_secret_env_access",
+      "handler_tainted_model_selection"
+    ]);
+    expect(sourceClipboardPromptBridgeTool?.metadata.handler_env_key_names).toEqual(["SOURCE_CLIPBOARD_MODEL_TOKEN"]);
+    expect(sourceClipboardPromptBridgeTool?.metadata.schema_properties).toEqual([
+      "clipboard_review_goal_text",
+      "customer_id",
+      "model_name"
+    ]);
+    expect(sourceClipboardPromptBridgeTool?.metadata.required_properties).toEqual([
+      "clipboard_review_goal_text",
+      "customer_id",
+      "model_name"
+    ]);
+    expect(JSON.stringify(sourceClipboardPromptBridgeTool)).not.toContain("desktopClipboard.readText");
+    expect(JSON.stringify(sourceClipboardPromptBridgeTool)).not.toContain("openaiClient.chat.completions.create");
+    expect(JSON.stringify(sourceClipboardPromptBridgeTool)).not.toContain("clipboardText");
+    expect(JSON.stringify(sourceClipboardPromptBridgeTool)).not.toContain("source clipboard reviewed by model");
+    expect(JSON.stringify(sourceClipboardPromptBridgeTool)).not.toContain("Read clipboard text");
     expect(sourceVisualContextCaptureTool).toMatchObject({
       path: "mcp-source/customer-tools.ts",
       data_classes: ["confidential", "credential", "pii"],
@@ -18323,6 +18402,84 @@ describe("scanner", () => {
     expect(JSON.stringify(langchainClipboardExternalServiceBridgeTool)).not.toContain("clipboard_text");
     expect(JSON.stringify(langchainClipboardExternalServiceBridgeTool)).not.toContain("framework clipboard posted externally");
     expect(JSON.stringify(langchainClipboardExternalServiceBridgeTool)).not.toContain("Read clipboard text");
+    expect(langchainClipboardPromptBridgeTool).toMatchObject({
+      path: "framework-tools/langchain_tools.py",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["call", "publish", "read", "send"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(langchainClipboardPromptBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_agent_framework_source_tool: true,
+      agent_framework_source_tool: true,
+      agent_framework_source_tool_framework: "langchain",
+      agent_framework_source_tool_registration_kind: "python_tool_decorator",
+      agent_framework_source_tool_argument_count: 3,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_content_like_input: true,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      model_provider_call: true,
+      tainted_model_selection: true,
+      clipboard_read: true,
+      clipboard_prompt_bridge: true,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_model_provider_call: true,
+      handler_tainted_model_selection: true,
+      handler_clipboard_read: true,
+      handler_clipboard_prompt_bridge: true,
+      handler_secret_env_access: true,
+      handler_model_visible_output: true,
+      handler_signal_count: 6,
+      open_world_schema: false
+    });
+    expect(langchainClipboardPromptBridgeTool?.metadata.authority_classes).toEqual([
+      "clipboard_prompt_bridge",
+      "clipboard_read",
+      "content_input",
+      "customer_data_input",
+      "external_write",
+      "handler_clipboard_prompt_bridge",
+      "handler_clipboard_read",
+      "handler_model_provider_call",
+      "handler_privileged_prompt_composition",
+      "handler_secret_env_access",
+      "handler_tainted_model_selection",
+      "model_provider_call",
+      "pii_input",
+      "privileged_prompt_composition",
+      "secret_env_access",
+      "tainted_model_selection"
+    ]);
+    expect(langchainClipboardPromptBridgeTool?.metadata.handler_authority_classes).toEqual([
+      "handler_clipboard_prompt_bridge",
+      "handler_clipboard_read",
+      "handler_model_provider_call",
+      "handler_privileged_prompt_composition",
+      "handler_secret_env_access",
+      "handler_tainted_model_selection"
+    ]);
+    expect(langchainClipboardPromptBridgeTool?.metadata.handler_env_key_names).toEqual(["LANGCHAIN_CLIPBOARD_MODEL_TOKEN"]);
+    expect(langchainClipboardPromptBridgeTool?.metadata.schema_properties).toEqual([
+      "clipboard_review_goal_text",
+      "customer_id",
+      "model_name"
+    ]);
+    expect(langchainClipboardPromptBridgeTool?.metadata.required_properties).toEqual([
+      "clipboard_review_goal_text",
+      "customer_id",
+      "model_name"
+    ]);
+    expect(JSON.stringify(langchainClipboardPromptBridgeTool)).not.toContain("desktop_clipboard.read_text");
+    expect(JSON.stringify(langchainClipboardPromptBridgeTool)).not.toContain("openai_client.chat.completions.create");
+    expect(JSON.stringify(langchainClipboardPromptBridgeTool)).not.toContain("clipboard_text");
+    expect(JSON.stringify(langchainClipboardPromptBridgeTool)).not.toContain("framework clipboard reviewed by model");
+    expect(JSON.stringify(langchainClipboardPromptBridgeTool)).not.toContain("Read clipboard text");
     expect(langchainVisualContextCaptureTool).toMatchObject({
       path: "framework-tools/langchain_tools.py",
       data_classes: ["confidential", "credential", "pii"],

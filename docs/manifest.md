@@ -436,6 +436,7 @@ Tool metadata may include:
 - `secret_manager_task_queue_bridge`
 - `tool_output_task_queue_bridge`
 - `prompt_registry_write`
+- `clipboard_prompt_bridge`
 - `model_output_prompt_registry_bridge`
 - `network_response_prompt_registry_bridge`
 - `tainted_prompt_registry_payload`
@@ -474,6 +475,7 @@ Tool metadata may include:
 - `handler_tool_output_external_service_bridge`
 - `handler_model_provider_call`
 - `handler_tainted_model_selection`
+- `handler_clipboard_prompt_bridge`
 - `handler_model_output_network_destination_bridge`
 - `handler_model_output_browser_automation_bridge`
 - `handler_model_output_database_write_bridge`
@@ -669,7 +671,7 @@ Source-defined MCP tool metadata may additionally include:
 - `source_tool_schema_redacted`
 - `source_tool_handler_redacted`
 - `values_collected`
-- source handler clipboard metadata for local, desktop, or browser clipboard reads and clipboard-to-external-service bridge posture without emitting clipboard contents, clipboard helper calls, SDK calls, derived variable names, or handler source snippets
+- source handler clipboard metadata for local, desktop, or browser clipboard reads, clipboard-to-external-service bridge posture, and clipboard-to-model prompt bridge posture without emitting clipboard contents, clipboard helper calls, SDK calls, prompt payloads, derived variable names, or handler source snippets
 - source handler model-output dynamic-execution metadata for model/provider responses that flow into `eval`, `Function`, `vm`, or Python `exec`/`eval` sinks without emitting model SDK calls, generated code variables, dynamic execution snippets, prompts, completions, or handler source
 - source handler model-output network-destination metadata for model/provider responses that flow into fetch/request URL destinations with runtime credential access without emitting model SDK calls, selected endpoint variables, request snippets, prompts, completions, return strings, or handler source
 - source handler model-output browser-automation metadata for model/provider responses that flow into authenticated browser navigation or action sinks with runtime credential access without emitting model SDK calls, selected browser target variables, browser action snippets, prompts, completions, return strings, or handler source
@@ -2088,6 +2090,8 @@ Source-defined tool handlers can also emit redacted tool-output browser-automati
 Source-defined tool handlers can also emit redacted local-file browser-automation bridge authority through `local_file_browser_automation_bridge`, `tainted_filesystem_path`, `browser_automation`, `tainted_browser_automation_target`, and the corresponding `handler_*` fields when parsed MCP SDK or agent-framework tools read or accept caller-selected local file paths and upload file material through authenticated browser/page/driver automation to caller-selected targets. Handler bodies, file-read calls, local paths, browser upload calls, target URLs, selectors, file bytes, upload payloads, and return strings remain redacted.
 
 Source-defined tool handlers can also emit redacted local-file prompt bridge authority through `local_file_prompt_bridge`, `filesystem_read`, `tainted_filesystem_path`, `model_provider_call`, `tainted_model_selection`, and the corresponding `handler_*` fields when parsed MCP SDK or agent-framework tools read caller-selected local file paths and forward file material into model-provider prompts using runtime model credentials and caller-selected model routing. Handler bodies, file-read calls, local paths, file contents, model SDK calls, prompt payloads, selected model names, local-file prompt variables, and return strings remain redacted.
+
+Source-defined tool handlers can also emit redacted clipboard prompt bridge authority through `clipboard_prompt_bridge`, `clipboard_read`, `model_provider_call`, `tainted_model_selection`, and the corresponding `handler_*` fields when parsed MCP SDK or agent-framework tools read browser or desktop clipboard material and forward it into model-provider prompts using runtime model credentials and caller-selected model routing. Handler bodies, clipboard helper calls, clipboard contents, derived clipboard variables, model SDK calls, prompt payloads, selected model names, and return strings remain redacted.
 
 Source-defined tool handlers can also emit redacted local-file prompt-cache bridge authority through `local_file_prompt_cache_bridge`, `filesystem_read`, `tainted_filesystem_path`, `prompt_cache_write`, `tainted_prompt_cache_key`, `tainted_prompt_cache_value`, and the corresponding `handler_*` fields when parsed MCP SDK or agent-framework tools read caller-selected local file paths and persist file material into prompt, LLM, response, or semantic caches using runtime credentials and caller-controlled cache routing. Handler bodies, file-read calls, local paths, file contents, cache calls, cache keys, namespaces, cache values, TTLs, local-file cache variables, and return strings remain redacted.
 

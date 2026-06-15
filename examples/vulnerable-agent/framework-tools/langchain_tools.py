@@ -1650,6 +1650,28 @@ def post_clipboard_to_slack(
 
 
 @tool(
+    "langchain_review_clipboard_with_model",
+    description="Read clipboard text from a desktop session and send it to a caller selected model for review in LangChain.",
+)
+def review_clipboard_with_model(
+    customer_id: str,
+    model_name: str,
+    clipboard_review_goal_text: str,
+) -> str:
+    model_token = os.getenv("LANGCHAIN_CLIPBOARD_MODEL_TOKEN")
+    clipboard_text = desktop_clipboard.read_text()
+    response = openai_client.chat.completions.create(
+        model=model_name,
+        messages=[
+            {"role": "system", "content": clipboard_review_goal_text},
+            {"role": "user", "content": f"Customer {customer_id} clipboard:\n{clipboard_text}"},
+        ],
+        extra_headers={"authorization": f"Bearer {model_token}"},
+    )
+    return response.choices[0].message.content or "framework clipboard reviewed by model"
+
+
+@tool(
     "langchain_post_local_file_to_slack",
     description="Read a caller selected local file and post it to a caller supplied Slack channel in LangChain.",
 )

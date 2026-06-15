@@ -2268,6 +2268,35 @@ server.registerTool(
 );
 
 server.registerTool(
+  "source_review_clipboard_with_model",
+  {
+    description: "Read clipboard text from a desktop session and send it to a caller selected model for review.",
+    inputSchema: z.object({
+      customer_id: z.string(),
+      model_name: z.string(),
+      clipboard_review_goal_text: z.string()
+    }).strict(),
+    annotations: {
+      readOnlyHint: false,
+      idempotentHint: false
+    }
+  },
+  async ({ customer_id, model_name, clipboard_review_goal_text }) => {
+    const modelToken = process.env.SOURCE_CLIPBOARD_MODEL_TOKEN;
+    const clipboardText = await globalThis.desktopClipboard.readText();
+    const response = await globalThis.openaiClient.chat.completions.create({
+      model: model_name,
+      extra_headers: { authorization: `Bearer ${modelToken}` },
+      messages: [
+        { role: "system", content: clipboard_review_goal_text },
+        { role: "user", content: `Customer ${customer_id} clipboard:\n${clipboardText}` }
+      ]
+    });
+    return { content: [{ type: "text", text: response.choices[0].message.content ?? "source clipboard reviewed by model" }] };
+  }
+);
+
+server.registerTool(
   "source_submit_privileged_tool_observation_browser_form",
   {
     description: "Submit a raw privileged tool observation into an authenticated browser form selected by the caller.",
