@@ -24142,6 +24142,7 @@ function addToolDefinitionSurface(
       !authority.secret_manager_access &&
       !authority.external_service_write &&
       !authority.local_file_external_service_bridge &&
+      !authority.env_secret_external_write_bridge &&
       !authority.model_output_external_service_bridge &&
       !authority.network_response_external_service_bridge &&
       !authority.model_provider_call &&
@@ -24279,6 +24280,7 @@ function addToolDefinitionSurface(
       external_service_write: authority.external_service_write,
       tainted_external_service_recipient: authority.tainted_external_service_recipient,
       local_file_external_service_bridge: authority.local_file_external_service_bridge,
+      env_secret_external_write_bridge: authority.env_secret_external_write_bridge,
       model_output_external_service_bridge: authority.model_output_external_service_bridge,
       network_response_external_service_bridge: authority.network_response_external_service_bridge,
       tool_output_external_service_bridge: authority.tool_output_external_service_bridge,
@@ -26762,6 +26764,7 @@ interface SourceToolHandlerSignals {
   handlerNetworkResponseToOutput: boolean;
   handlerExternalWrite: boolean;
   handlerExternalServiceWrite: boolean;
+  handlerEnvSecretExternalWriteBridge: boolean;
   handlerModelProviderCall: boolean;
   handlerTaintedModelSelection: boolean;
   handlerModelOutputNetworkDestinationBridge: boolean;
@@ -27352,6 +27355,7 @@ function sourceToolHandlerSignalMetadata(signals: SourceToolHandlerSignals | und
     handler_network_response_memory_bridge: signals.handlerNetworkResponseMemoryBridge,
     handler_external_write: signals.handlerExternalWrite,
     handler_external_service_write: signals.handlerExternalServiceWrite,
+    handler_env_secret_external_write_bridge: signals.handlerEnvSecretExternalWriteBridge,
     handler_model_provider_call: signals.handlerModelProviderCall,
     handler_tainted_model_selection: signals.handlerTaintedModelSelection,
     handler_model_output_network_destination_bridge: signals.handlerModelOutputNetworkDestinationBridge,
@@ -27778,6 +27782,9 @@ function classifySourceToolHandlerSignals(
   const secretEnvAccess = envKeyNames.length > 0 || (language === "javascript"
     ? /\b(?:process|Deno|Bun)\s*\.\s*env\b/u.test(handlerSource)
     : /\b(?:os\s*\.\s*(?:environ|getenv)|dotenv)\b/u.test(handlerSource));
+  const envSecretExternalWriteBridge = secretEnvAccess && externalWrite && taintedNetworkDestination && (language === "javascript"
+    ? hasJavaScriptHandlerEnvSecretExternalWriteBridge(handlerSource)
+    : hasPythonHandlerEnvSecretExternalWriteBridge(handlerSource));
   const credentialedNetworkRead = externalNetworkCall && !externalWrite && secretEnvAccess && hasHandlerNetworkCredentialForwarding(handlerSource);
   const modelVisibleOutput = hasHandlerModelVisibleOutput(handlerSource);
   const toolOutputToOutput = modelVisibleOutput && (language === "javascript"
@@ -28060,6 +28067,7 @@ function classifySourceToolHandlerSignals(
   if (networkResponseMemoryBridge) classes.add("handler_network_response_memory_bridge");
   if (externalWrite) classes.add("handler_external_write");
   if (externalServiceWrite) classes.add("handler_external_service_write");
+  if (envSecretExternalWriteBridge) classes.add("handler_env_secret_external_write_bridge");
   if (taintedExternalServiceRecipient) classes.add("handler_tainted_external_service_recipient");
   if (localFileExternalServiceBridge) classes.add("handler_local_file_external_service_bridge");
   if (modelOutputExternalServiceBridge) classes.add("handler_model_output_external_service_bridge");
@@ -28237,6 +28245,7 @@ function classifySourceToolHandlerSignals(
     handlerNetworkResponseMemoryBridge: networkResponseMemoryBridge,
     handlerExternalWrite: externalWrite,
     handlerExternalServiceWrite: externalServiceWrite,
+    handlerEnvSecretExternalWriteBridge: envSecretExternalWriteBridge,
     handlerTaintedExternalServiceRecipient: taintedExternalServiceRecipient,
     handlerModelOutputExternalServiceBridge: modelOutputExternalServiceBridge,
     handlerNetworkResponseExternalServiceBridge: networkResponseExternalServiceBridge,
@@ -30076,6 +30085,53 @@ function hasPythonHandlerLocalFileExternalServiceBridge(source: string): boolean
     source,
     identifiers
   );
+}
+
+function hasJavaScriptHandlerEnvSecretExternalWriteBridge(source: string): boolean {
+  const identifiers = extractJavaScriptEnvSecretIdentifiers(source);
+  return identifiers.length > 0 && externalWriteCallReferencesEnvCredentialIdentifier(
+    [
+      /\bfetch\s*\(([\s\S]{0,2600})\)/giu,
+      /\b(?:axios|got|ky|superagent)\s*(?:\.\s*(?:post|put|patch|delete|send|request))?\s*\(([\s\S]{0,2600})\)/giu,
+      /\b(?:request|post|put|patch|delete)\s*\(([\s\S]{0,2600})\)/giu,
+      /\b(?:slackClient|slack|github|githubClient|octokit|emailClient|mailClient|sendgrid|twilioClient|twilio|teamsClient|discordClient|notion|linear|jira|salesforce|hubspot)\s*(?:\.\s*[A-Za-z_$][\w$]*){0,4}\s*\.\s*(?:postMessage|createComment|createIssueComment|send|sendMail|sendMessage|create|publish|post|reply|update|createPage|createTask|createIssue)\s*\(([\s\S]{0,2600})\)/giu
+    ],
+    source,
+    identifiers
+  );
+}
+
+function hasPythonHandlerEnvSecretExternalWriteBridge(source: string): boolean {
+  const identifiers = extractPythonEnvSecretIdentifiers(source);
+  return identifiers.length > 0 && externalWriteCallReferencesEnvCredentialIdentifier(
+    [
+      /\b(?:httpx|requests|aiohttp)\s*\.\s*(?:post|put|patch|delete|request)\s*\(([\s\S]{0,2600})\)/giu,
+      /\b(?:post|put|patch|delete|request)\s*\(([\s\S]{0,2600})\)/giu,
+      /\b(?:slack_client|slack|github|github_client|octokit|email_client|mail_client|sendgrid|twilio_client|twilio|teams_client|discord_client|notion|linear|jira|salesforce|hubspot)\s*(?:\.\s*[A-Za-z_]\w*){0,4}\s*\.\s*(?:post_message|chat_postMessage|chat_post_message|create_comment|create_issue_comment|send|send_mail|send_message|create|publish|post|reply|update|create_page|create_task|create_issue)\s*\(([\s\S]{0,2600})\)/giu
+    ],
+    source,
+    identifiers
+  );
+}
+
+function externalWriteCallReferencesEnvCredentialIdentifier(patterns: RegExp[], source: string, identifiers: string[]): boolean {
+  const credentialField = /(?:authorization|Authorization|AUTHORIZATION|auth|Auth|headers|Headers|token|Token|apiKey|api_key|api-key|bearer|Bearer|x-api-key|X-API-Key|accessToken|access_token)/u;
+  for (const pattern of patterns) {
+    let match: RegExpExecArray | null;
+    while ((match = pattern.exec(source)) !== null) {
+      const expression = match[1] ?? "";
+      if (identifiers.some((identifier) => {
+        const escaped = escapeRegExp(identifier);
+        return new RegExp(`${credentialField.source}[\\s\\S]{0,260}\\b${escaped}\\b|\\b${escaped}\\b[\\s\\S]{0,260}${credentialField.source}`, "u").test(
+          expression
+        );
+      })) {
+        return true;
+      }
+      if (match[0].length === 0) pattern.lastIndex += 1;
+    }
+  }
+  return false;
 }
 
 function hasJavaScriptHandlerClipboardRead(source: string): boolean {
@@ -35421,6 +35477,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   tainted_secret_manager_path: boolean;
   secret_manager_external_service_bridge: boolean;
   local_file_external_service_bridge: boolean;
+  env_secret_external_write_bridge: boolean;
   secret_manager_prompt_bridge: boolean;
   external_service_write: boolean;
   tainted_external_service_recipient: boolean;
@@ -35553,6 +35610,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   const handlerNetworkResponseToOutput = handler?.handlerNetworkResponseToOutput === true;
   const handlerExternalWrite = handler?.handlerExternalWrite === true;
   const handlerExternalServiceWrite = handler?.handlerExternalServiceWrite === true;
+  const handlerEnvSecretExternalWriteBridge = handler?.handlerEnvSecretExternalWriteBridge === true;
   const handlerModelProviderCall = handler?.handlerModelProviderCall === true;
   const handlerTaintedModelSelection = handler?.handlerTaintedModelSelection === true;
   const handlerModelOutputNetworkDestinationBridge = handler?.handlerModelOutputNetworkDestinationBridge === true;
@@ -36045,6 +36103,11 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   }
   if (handlerEnvSecretCredentialIssuanceBridge) {
     classes.add("env_secret_credential_issuance_bridge");
+    actions.add("send");
+    actions.add("write");
+  }
+  if (handlerEnvSecretExternalWriteBridge) {
+    classes.add("env_secret_external_write_bridge");
     actions.add("send");
     actions.add("write");
   }
@@ -36729,6 +36792,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerTaintedSecretManagerPath ||
       handlerSecretManagerExternalServiceBridge ||
       handlerLocalFileExternalServiceBridge ||
+      handlerEnvSecretExternalWriteBridge ||
       handlerSecretManagerPromptBridge ||
       handlerSecretManagerMemoryBridge ||
       handlerSecretManagerTrainingDatasetBridge ||
@@ -36906,6 +36970,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerToolOutputAgentDelegationBridge ||
       handlerSecretManagerExternalServiceBridge ||
       handlerLocalFileExternalServiceBridge ||
+      handlerEnvSecretExternalWriteBridge ||
       handlerSecretManagerPromptBridge ||
       handlerSecretManagerDatabaseWriteBridge ||
       handlerModelOutputDatabaseWriteBridge ||
@@ -37016,6 +37081,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       (handlerModelOutputCredentialIssuanceBridge && handlerSecretEnvAccess) ||
       (handlerToolOutputCredentialIssuanceBridge && handlerSecretEnvAccess) ||
       handlerSecretManagerExternalServiceBridge ||
+      handlerEnvSecretExternalWriteBridge ||
       (handlerLocalFileExternalServiceBridge && handlerSecretEnvAccess) ||
       handlerSecretManagerPromptBridge ||
       handlerSecretManagerDatabaseWriteBridge ||
@@ -37164,6 +37230,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
     tainted_secret_manager_path: handlerTaintedSecretManagerPath,
     secret_manager_external_service_bridge: handlerSecretManagerExternalServiceBridge,
     local_file_external_service_bridge: handlerLocalFileExternalServiceBridge,
+    env_secret_external_write_bridge: handlerEnvSecretExternalWriteBridge,
     secret_manager_prompt_bridge: handlerSecretManagerPromptBridge,
     external_service_write: handlerExternalServiceWrite,
     tainted_external_service_recipient: handlerTaintedExternalServiceRecipient,
@@ -37322,6 +37389,7 @@ function authoritySignature(tool: SurfaceObject): string {
     metadata.external_write === true ? "external_write" : "",
     metadata.external_service_write === true ? "external_service_write" : "",
     metadata.local_file_external_service_bridge === true ? "local_file_external_service_bridge" : "",
+    metadata.env_secret_external_write_bridge === true ? "env_secret_external_write_bridge" : "",
     metadata.tainted_network_destination === true ? "tainted_network_destination" : "",
     metadata.model_output_network_destination_bridge === true ? "model_output_network_destination_bridge" : "",
     metadata.tool_output_network_destination_bridge === true ? "tool_output_network_destination_bridge" : "",
@@ -37475,6 +37543,7 @@ function authoritySignature(tool: SurfaceObject): string {
     metadata.secret_manager_access === true ? "secret_manager_access" : "",
     metadata.tainted_secret_manager_path === true ? "tainted_secret_manager_path" : "",
     metadata.secret_manager_external_service_bridge === true ? "secret_manager_external_service_bridge" : "",
+    metadata.env_secret_external_write_bridge === true ? "env_secret_external_write_bridge" : "",
     metadata.secret_manager_prompt_bridge === true ? "secret_manager_prompt_bridge" : "",
     metadata.model_output_external_service_bridge === true ? "model_output_external_service_bridge" : "",
     metadata.network_response_external_service_bridge === true ? "network_response_external_service_bridge" : "",
@@ -37504,6 +37573,7 @@ function isPrivilegedToolSurface(tool: SurfaceObject): boolean {
     tool.actions.some((action) => ["write", "execute", "publish", "send", "delete", "remember"].includes(action)) ||
     tool.metadata.external_write === true ||
     tool.metadata.local_file_external_service_bridge === true ||
+    tool.metadata.env_secret_external_write_bridge === true ||
     tool.metadata.tainted_network_destination === true ||
     tool.metadata.model_output_network_destination_bridge === true ||
     tool.metadata.tool_output_network_destination_bridge === true ||

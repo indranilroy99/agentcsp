@@ -157,6 +157,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-153")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-154")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-155")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-156")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-001")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-002")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-003")).toBe(true);
@@ -6319,6 +6320,37 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerSecretExternalFindings)).not.toContain("fetch(");
     expect(JSON.stringify(sourceHandlerSecretExternalFindings)).not.toContain("httpx.post");
     expect(JSON.stringify(sourceHandlerSecretExternalFindings)).not.toContain("Bearer");
+    const sourceHandlerEnvSecretExternalWriteBridgeFindings = findings.filter(
+      (finding) => finding.rule_id === "AGENTCSP-TOOL-156"
+    );
+    expect(sourceHandlerEnvSecretExternalWriteBridgeFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
+      "aiSdkExportCustomerContext",
+      "langchain_export_customer_context",
+      "python_export_customer_record",
+      "source_export_customer_record"
+    ]);
+    expect(sourceHandlerEnvSecretExternalWriteBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
+    expect(sourceHandlerEnvSecretExternalWriteBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerEnvSecretExternalWriteBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
+    expect(sourceHandlerEnvSecretExternalWriteBridgeFindings.every((finding) => finding.matched_object.actions.includes("send"))).toBe(true);
+    expect(sourceHandlerEnvSecretExternalWriteBridgeFindings.every((finding) => finding.matched_object.actions.includes("write"))).toBe(true);
+    expect(sourceHandlerEnvSecretExternalWriteBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
+    expect(sourceHandlerEnvSecretExternalWriteBridgeFindings.every((finding) => finding.matched_object.metadata.handler_secret_env_access === true)).toBe(true);
+    expect(sourceHandlerEnvSecretExternalWriteBridgeFindings.every((finding) => finding.matched_object.metadata.handler_external_write === true)).toBe(true);
+    expect(sourceHandlerEnvSecretExternalWriteBridgeFindings.every((finding) => finding.matched_object.metadata.handler_tainted_network_destination === true)).toBe(true);
+    expect(sourceHandlerEnvSecretExternalWriteBridgeFindings.every((finding) => finding.matched_object.metadata.handler_env_secret_external_write_bridge === true)).toBe(true);
+    expect(sourceHandlerEnvSecretExternalWriteBridgeFindings.every((finding) => finding.matched_object.metadata.env_secret_external_write_bridge === true)).toBe(true);
+    expect(sourceHandlerEnvSecretExternalWriteBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.authority_classes.includes("env_secret_external_write_bridge")
+    )).toBe(true);
+    expect(sourceHandlerEnvSecretExternalWriteBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.handler_authority_classes.includes("handler_env_secret_external_write_bridge")
+    )).toBe(true);
+    expect(JSON.stringify(sourceHandlerEnvSecretExternalWriteBridgeFindings)).not.toContain("fetch(");
+    expect(JSON.stringify(sourceHandlerEnvSecretExternalWriteBridgeFindings)).not.toContain("httpx.post");
+    expect(JSON.stringify(sourceHandlerEnvSecretExternalWriteBridgeFindings)).not.toContain("Bearer");
+    expect(JSON.stringify(sourceHandlerEnvSecretExternalWriteBridgeFindings)).not.toContain("process.env");
+    expect(JSON.stringify(sourceHandlerEnvSecretExternalWriteBridgeFindings)).not.toContain("os.getenv");
     const sourceHandlerLocalMutationFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-014");
     expect(sourceHandlerLocalMutationFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_readonly_delete_workspace_path",

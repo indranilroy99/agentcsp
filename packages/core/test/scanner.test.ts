@@ -1204,7 +1204,7 @@ describe("scanner", () => {
     expect(sourceExportTool).toMatchObject({
       path: "mcp-source/customer-tools.ts",
       data_classes: ["confidential", "credential", "pii"],
-      actions: ["call", "publish", "send"],
+      actions: ["call", "publish", "send", "write"],
       side_effect: true,
       external_reach: true,
       secret_exposure: true
@@ -1231,14 +1231,17 @@ describe("scanner", () => {
       handler_external_network_call: true,
       handler_tainted_network_destination: true,
       handler_external_write: true,
+      handler_env_secret_external_write_bridge: true,
       handler_secret_env_access: true,
       tainted_network_destination: true,
+      env_secret_external_write_bridge: true,
       handler_shell_execution: false,
       handler_filesystem_write: false,
       handler_filesystem_delete: false,
-      handler_signal_count: 4
+      handler_signal_count: 5
     });
     expect(sourceExportTool?.metadata.handler_authority_classes).toEqual([
+      "handler_env_secret_external_write_bridge",
       "handler_external_write",
       "handler_network_access",
       "handler_secret_env_access",
@@ -11863,7 +11866,7 @@ describe("scanner", () => {
     expect(pythonExportTool).toMatchObject({
       path: "mcp-source/python_tools.py",
       data_classes: ["confidential", "credential", "pii"],
-      actions: ["call", "publish", "send"],
+      actions: ["call", "publish", "send", "write"],
       side_effect: true,
       external_reach: true,
       secret_exposure: true
@@ -11892,14 +11895,17 @@ describe("scanner", () => {
       handler_external_network_call: true,
       handler_tainted_network_destination: true,
       handler_external_write: true,
+      handler_env_secret_external_write_bridge: true,
       handler_secret_env_access: true,
       tainted_network_destination: true,
+      env_secret_external_write_bridge: true,
       handler_shell_execution: false,
       handler_filesystem_write: false,
       handler_filesystem_delete: false,
-      handler_signal_count: 4
+      handler_signal_count: 5
     });
     expect(pythonExportTool?.metadata.handler_authority_classes).toEqual([
+      "handler_env_secret_external_write_bridge",
       "handler_external_write",
       "handler_network_access",
       "handler_secret_env_access",
@@ -12046,7 +12052,7 @@ describe("scanner", () => {
     expect(langchainExportTool).toMatchObject({
       path: "framework-tools/langchain_tools.py",
       data_classes: ["confidential", "credential", "pii"],
-      actions: ["call", "publish", "send"],
+      actions: ["call", "publish", "send", "write"],
       side_effect: true,
       external_reach: true,
       secret_exposure: true
@@ -12074,14 +12080,17 @@ describe("scanner", () => {
       handler_external_network_call: true,
       handler_tainted_network_destination: true,
       handler_external_write: true,
+      handler_env_secret_external_write_bridge: true,
       handler_secret_env_access: true,
       tainted_network_destination: true,
+      env_secret_external_write_bridge: true,
       handler_shell_execution: false,
       handler_filesystem_write: false,
       handler_filesystem_delete: false,
-      handler_signal_count: 4
+      handler_signal_count: 5
     });
     expect(langchainExportTool?.metadata.handler_authority_classes).toEqual([
+      "handler_env_secret_external_write_bridge",
       "handler_external_write",
       "handler_network_access",
       "handler_secret_env_access",
@@ -22913,7 +22922,7 @@ describe("scanner", () => {
     expect(aiSdkExportTool).toMatchObject({
       path: "framework-tools/vercel-ai-tools.ts",
       data_classes: ["confidential", "credential", "pii"],
-      actions: ["call", "publish", "send"],
+      actions: ["call", "publish", "send", "write"],
       side_effect: true,
       external_reach: true,
       secret_exposure: true
@@ -22941,14 +22950,17 @@ describe("scanner", () => {
       handler_external_network_call: true,
       handler_tainted_network_destination: true,
       handler_external_write: true,
+      handler_env_secret_external_write_bridge: true,
       handler_secret_env_access: true,
       tainted_network_destination: true,
+      env_secret_external_write_bridge: true,
       handler_shell_execution: false,
       handler_filesystem_write: false,
       handler_filesystem_delete: false,
-      handler_signal_count: 4
+      handler_signal_count: 5
     });
     expect(aiSdkExportTool?.metadata.handler_authority_classes).toEqual([
+      "handler_env_secret_external_write_bridge",
       "handler_external_write",
       "handler_network_access",
       "handler_secret_env_access",
