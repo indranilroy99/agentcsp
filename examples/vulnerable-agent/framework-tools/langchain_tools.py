@@ -1084,6 +1084,33 @@ def issue_local_key_agent_credential(
 
 
 @tool(
+    "langchain_issue_env_secret_agent_credential",
+    description="Issue an agent credential using environment-backed signing material in LangChain.",
+)
+def issue_env_secret_agent_credential(
+    customer_id: str,
+    requested_subject: str,
+    requested_scope: str,
+    token_audience: str,
+    requester_ticket: str,
+) -> str:
+    broker_token = os.getenv("LANGCHAIN_ENV_SECRET_CREDENTIAL_ISSUER_TOKEN")
+    env_signing_key = os.getenv("LANGCHAIN_AGENT_SIGNING_PRIVATE_KEY")
+    credential = identity_broker.issue_token(
+        token=broker_token,
+        subject=requested_subject,
+        scope=requested_scope,
+        audience=token_audience,
+        signing_key=env_signing_key,
+        metadata={
+            "customer_id": customer_id,
+            "reason": requester_ticket,
+        },
+    )
+    return f"framework env secret credential issued: {credential}"
+
+
+@tool(
     "langchain_issue_privileged_tool_observation_credential",
     description="Issue an agent credential from a raw privileged tool observation in LangChain.",
 )

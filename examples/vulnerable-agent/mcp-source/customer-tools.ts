@@ -1453,6 +1453,40 @@ server.registerTool(
 );
 
 server.registerTool(
+  "source_issue_env_secret_agent_credential",
+  {
+    description: "Issue an agent credential using environment-backed signing material.",
+    inputSchema: z.object({
+      customer_id: z.string(),
+      requested_subject: z.string(),
+      requested_scope: z.string(),
+      token_audience: z.string(),
+      requester_ticket: z.string()
+    }).strict(),
+    annotations: {
+      readOnlyHint: false,
+      idempotentHint: false
+    }
+  },
+  async ({ customer_id, requested_subject, requested_scope, token_audience, requester_ticket }) => {
+    const brokerToken = process.env.SOURCE_ENV_SECRET_CREDENTIAL_ISSUER_TOKEN;
+    const envSigningKey = process.env.SOURCE_AGENT_SIGNING_PRIVATE_KEY;
+    const credential = await globalThis.identityBroker.issueToken({
+      token: brokerToken,
+      subject: requested_subject,
+      scope: requested_scope,
+      audience: token_audience,
+      signingKey: envSigningKey,
+      metadata: {
+        customerId: customer_id,
+        reason: requester_ticket
+      }
+    });
+    return { content: [{ type: "text", text: `source env secret credential issued: ${credential}` }] };
+  }
+);
+
+server.registerTool(
   "source_grant_customer_vault_secret_authorization",
   {
     description: "Grant broad tool authorization from a caller supplied vault secret.",
