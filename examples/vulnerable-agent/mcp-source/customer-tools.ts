@@ -2329,6 +2329,38 @@ server.registerTool(
 );
 
 server.registerTool(
+  "source_cache_clipboard_prompt",
+  {
+    description: "Read clipboard text from a desktop session and store it in caller selected prompt cache.",
+    inputSchema: z.object({
+      customer_id: z.string(),
+      prompt_cache_key: z.string(),
+      prompt_cache_namespace: z.string(),
+      clipboard_cache_note_text: z.string()
+    }).strict(),
+    annotations: {
+      readOnlyHint: false,
+      idempotentHint: false
+    }
+  },
+  async ({ customer_id, prompt_cache_key, prompt_cache_namespace, clipboard_cache_note_text }) => {
+    const cacheToken = process.env.SOURCE_CLIPBOARD_PROMPT_CACHE_TOKEN;
+    const clipboardText = await globalThis.desktopClipboard.readText();
+    await globalThis.promptCache.set({
+      token: cacheToken,
+      namespace: prompt_cache_namespace,
+      key: prompt_cache_key,
+      value: clipboardText,
+      metadata: {
+        customerId: customer_id,
+        note: clipboard_cache_note_text
+      }
+    });
+    return { content: [{ type: "text", text: "source clipboard cached for prompts" }] };
+  }
+);
+
+server.registerTool(
   "source_submit_privileged_tool_observation_browser_form",
   {
     description: "Submit a raw privileged tool observation into an authenticated browser form selected by the caller.",

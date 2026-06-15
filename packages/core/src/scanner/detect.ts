@@ -24190,6 +24190,7 @@ function addToolDefinitionSurface(
       !authority.clipboard_read &&
       !authority.clipboard_prompt_bridge &&
       !authority.clipboard_memory_bridge &&
+      !authority.clipboard_prompt_cache_bridge &&
       !authority.clipboard_external_service_bridge &&
       !authority.visual_context_external_service_bridge &&
       !authority.visual_context_memory_bridge &&
@@ -24265,6 +24266,7 @@ function addToolDefinitionSurface(
       clipboard_read: authority.clipboard_read,
       clipboard_prompt_bridge: authority.clipboard_prompt_bridge,
       clipboard_memory_bridge: authority.clipboard_memory_bridge,
+      clipboard_prompt_cache_bridge: authority.clipboard_prompt_cache_bridge,
       clipboard_external_service_bridge: authority.clipboard_external_service_bridge,
       secret_manager_access: authority.secret_manager_access,
       tainted_secret_manager_path: authority.tainted_secret_manager_path,
@@ -26888,6 +26890,7 @@ interface SourceToolHandlerSignals {
   handlerClipboardRead: boolean;
   handlerClipboardPromptBridge: boolean;
   handlerClipboardMemoryBridge: boolean;
+  handlerClipboardPromptCacheBridge: boolean;
   handlerClipboardExternalServiceBridge: boolean;
   handlerVisualContextCapture: boolean;
   handlerVisualContextToOutput: boolean;
@@ -27472,6 +27475,7 @@ function sourceToolHandlerSignalMetadata(signals: SourceToolHandlerSignals | und
     handler_clipboard_read: signals.handlerClipboardRead,
     handler_clipboard_prompt_bridge: signals.handlerClipboardPromptBridge,
     handler_clipboard_memory_bridge: signals.handlerClipboardMemoryBridge,
+    handler_clipboard_prompt_cache_bridge: signals.handlerClipboardPromptCacheBridge,
     handler_clipboard_external_service_bridge: signals.handlerClipboardExternalServiceBridge,
     handler_visual_context_capture: signals.handlerVisualContextCapture,
     handler_visual_context_to_output: signals.handlerVisualContextToOutput,
@@ -27581,7 +27585,7 @@ function classifySourceToolHandlerSignals(
   const taintedPromptCacheKey = promptCacheWrite && (language === "javascript"
     ? hasJavaScriptHandlerTaintedPromptCacheKey(handlerSource)
     : hasPythonHandlerTaintedPromptCacheKey(handlerSource));
-  const taintedPromptCacheValue = promptCacheWrite && (language === "javascript"
+  let taintedPromptCacheValue = promptCacheWrite && (language === "javascript"
     ? hasJavaScriptHandlerTaintedPromptCacheValue(handlerSource)
     : hasPythonHandlerTaintedPromptCacheValue(handlerSource));
   const trainingDatasetExport = language === "javascript"
@@ -27915,6 +27919,10 @@ function classifySourceToolHandlerSignals(
   const clipboardMemoryBridge = clipboardRead && memoryWrite && (language === "javascript"
     ? hasJavaScriptHandlerClipboardMemoryBridge(handlerSource)
     : hasPythonHandlerClipboardMemoryBridge(handlerSource));
+  const clipboardPromptCacheBridge = clipboardRead && promptCacheWrite && (language === "javascript"
+    ? hasJavaScriptHandlerClipboardPromptCacheBridge(handlerSource)
+    : hasPythonHandlerClipboardPromptCacheBridge(handlerSource));
+  if (clipboardPromptCacheBridge) taintedPromptCacheValue = true;
   const clipboardExternalServiceBridge = clipboardRead && externalServiceWrite && (language === "javascript"
     ? hasJavaScriptHandlerClipboardExternalServiceBridge(handlerSource)
     : hasPythonHandlerClipboardExternalServiceBridge(handlerSource));
@@ -28163,6 +28171,7 @@ function classifySourceToolHandlerSignals(
   if (clipboardRead) classes.add("handler_clipboard_read");
   if (clipboardPromptBridge) classes.add("handler_clipboard_prompt_bridge");
   if (clipboardMemoryBridge) classes.add("handler_clipboard_memory_bridge");
+  if (clipboardPromptCacheBridge) classes.add("handler_clipboard_prompt_cache_bridge");
   if (clipboardExternalServiceBridge) classes.add("handler_clipboard_external_service_bridge");
   if (visualContextCapture) classes.add("handler_visual_context_capture");
   if (visualContextToOutput) classes.add("handler_visual_context_to_output");
@@ -28335,6 +28344,7 @@ function classifySourceToolHandlerSignals(
     handlerClipboardRead: clipboardRead,
     handlerClipboardPromptBridge: clipboardPromptBridge,
     handlerClipboardMemoryBridge: clipboardMemoryBridge,
+    handlerClipboardPromptCacheBridge: clipboardPromptCacheBridge,
     handlerClipboardExternalServiceBridge: clipboardExternalServiceBridge,
     handlerVisualContextCapture: visualContextCapture,
     handlerVisualContextToOutput: visualContextToOutput,
@@ -30024,6 +30034,30 @@ function hasPythonHandlerClipboardMemoryBridge(source: string): boolean {
     [
       /\b(?:[A-Za-z_]\w*memory|memory|memory_store|vector_store|vectorstore|vector_index|embedding_store|rag_store|retriever|knowledge_base|session_store|state_store)\s*\.\s*(?:add|add_documents|add_texts|append|insert|persist|put|push|remember|save|set|store|upsert|write)\s*\(([\s\S]{0,2200})\)/giu,
       /\b(?:persist_memory|remember_context|save_memory|store_memory|upsert_memory|write_memory)\s*\(([\s\S]{0,2200})\)/giu
+    ],
+    source,
+    identifiers
+  );
+}
+
+function hasJavaScriptHandlerClipboardPromptCacheBridge(source: string): boolean {
+  const identifiers = extractJavaScriptClipboardIdentifiers(source);
+  return identifiers.length > 0 && callExpressionReferencesAnyIdentifier(
+    [
+      /\b(?:promptCache|llmCache|semanticCache|responseCache|completionCache|modelCache|cacheClient|redis|redisClient|momento|upstash|langchainCache)\s*(?:\.\s*[A-Za-z_$][\w$]*){0,4}\s*\.\s*(?:set|setEx|setex|mset|put|save|store|write|upsert|insert|add|remember|cache|populate|setValue)\s*\(([\s\S]{0,2200})\)/giu,
+      /\b(?:cachePrompt|cacheResponse|cacheCompletion|cacheGeneration|populatePromptCache|writePromptCache|storePromptCache)\s*\(([\s\S]{0,2200})\)/giu
+    ],
+    source,
+    identifiers
+  );
+}
+
+function hasPythonHandlerClipboardPromptCacheBridge(source: string): boolean {
+  const identifiers = extractPythonClipboardIdentifiers(source);
+  return identifiers.length > 0 && callExpressionReferencesAnyIdentifier(
+    [
+      /\b(?:prompt_cache|llm_cache|semantic_cache|response_cache|completion_cache|model_cache|cache_client|redis|redis_client|momento|upstash|langchain_cache)\s*(?:\.\s*[A-Za-z_]\w*){0,4}\s*\.\s*(?:set|setex|mset|put|save|store|write|upsert|insert|add|remember|cache|populate|set_value)\s*\(([\s\S]{0,2200})\)/giu,
+      /\b(?:cache_prompt|cache_response|cache_completion|cache_generation|populate_prompt_cache|write_prompt_cache|store_prompt_cache)\s*\(([\s\S]{0,2200})\)/giu
     ],
     source,
     identifiers
@@ -35217,6 +35251,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   clipboard_read: boolean;
   clipboard_prompt_bridge: boolean;
   clipboard_memory_bridge: boolean;
+  clipboard_prompt_cache_bridge: boolean;
   clipboard_external_service_bridge: boolean;
   visual_context_capture: boolean;
   visual_context_to_output: boolean;
@@ -35493,6 +35528,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   const handlerClipboardRead = handler?.handlerClipboardRead === true;
   const handlerClipboardPromptBridge = handler?.handlerClipboardPromptBridge === true;
   const handlerClipboardMemoryBridge = handler?.handlerClipboardMemoryBridge === true;
+  const handlerClipboardPromptCacheBridge = handler?.handlerClipboardPromptCacheBridge === true;
   const handlerClipboardExternalServiceBridge = handler?.handlerClipboardExternalServiceBridge === true;
   const handlerVisualContextCapture = handler?.handlerVisualContextCapture === true;
   const handlerVisualContextToOutput = handler?.handlerVisualContextToOutput === true;
@@ -35633,6 +35669,12 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   }
   if (handlerClipboardMemoryBridge) {
     classes.add("clipboard_memory_bridge");
+    actions.add("read");
+    actions.add("remember");
+    actions.add("write");
+  }
+  if (handlerClipboardPromptCacheBridge) {
+    classes.add("clipboard_prompt_cache_bridge");
     actions.add("read");
     actions.add("remember");
     actions.add("write");
@@ -36489,6 +36531,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerClipboardRead ||
       handlerClipboardPromptBridge ||
       handlerClipboardMemoryBridge ||
+      handlerClipboardPromptCacheBridge ||
       handlerClipboardExternalServiceBridge ||
       handlerVisualContextCapture ||
       handlerVisualContextToOutput ||
@@ -36632,6 +36675,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
     handlerLocalFilePromptBridge ||
     handlerClipboardPromptBridge ||
     handlerClipboardMemoryBridge ||
+    handlerClipboardPromptCacheBridge ||
     handlerLocalFilePromptCacheBridge ||
     handlerClipboardExternalServiceBridge ||
     readOnlyHintConflict ||
@@ -36767,6 +36811,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerLocalFilePromptBridge ||
       handlerLocalFilePromptCacheBridge ||
       (handlerClipboardMemoryBridge && handlerSecretEnvAccess) ||
+      (handlerClipboardPromptCacheBridge && handlerSecretEnvAccess) ||
       handlerClipboardExternalServiceBridge ||
       handlerCredentialIssuance ||
       handlerAgentDelegation ||
@@ -36792,6 +36837,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       (handlerToolOutputTelemetryBridge && handlerSecretEnvAccess) ||
       (handlerClipboardPromptBridge && handlerSecretEnvAccess) ||
       (handlerClipboardMemoryBridge && handlerSecretEnvAccess) ||
+      (handlerClipboardPromptCacheBridge && handlerSecretEnvAccess) ||
       handlerSecretManagerPromptCacheBridge ||
       handlerModelOutputPromptCacheBridge ||
       (handlerNetworkResponsePromptCacheBridge && handlerSecretEnvAccess) ||
@@ -36909,6 +36955,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
     clipboard_read: handlerClipboardRead,
     clipboard_prompt_bridge: handlerClipboardPromptBridge,
     clipboard_memory_bridge: handlerClipboardMemoryBridge,
+    clipboard_prompt_cache_bridge: handlerClipboardPromptCacheBridge,
     clipboard_external_service_bridge: handlerClipboardExternalServiceBridge,
     visual_context_capture: handlerVisualContextCapture,
     visual_context_to_output: handlerVisualContextToOutput,
@@ -37225,6 +37272,7 @@ function authoritySignature(tool: SurfaceObject): string {
     metadata.clipboard_read === true ? "clipboard_read" : "",
     metadata.clipboard_prompt_bridge === true ? "clipboard_prompt_bridge" : "",
     metadata.clipboard_memory_bridge === true ? "clipboard_memory_bridge" : "",
+    metadata.clipboard_prompt_cache_bridge === true ? "clipboard_prompt_cache_bridge" : "",
     metadata.clipboard_external_service_bridge === true ? "clipboard_external_service_bridge" : "",
     metadata.secret_manager_access === true ? "secret_manager_access" : "",
     metadata.tainted_secret_manager_path === true ? "tainted_secret_manager_path" : "",
@@ -37405,6 +37453,7 @@ function isPrivilegedToolSurface(tool: SurfaceObject): boolean {
     tool.metadata.clipboard_read === true ||
     tool.metadata.clipboard_prompt_bridge === true ||
     tool.metadata.clipboard_memory_bridge === true ||
+    tool.metadata.clipboard_prompt_cache_bridge === true ||
     tool.metadata.clipboard_external_service_bridge === true ||
     tool.metadata.secret_manager_access === true ||
     tool.metadata.tainted_secret_manager_path === true ||

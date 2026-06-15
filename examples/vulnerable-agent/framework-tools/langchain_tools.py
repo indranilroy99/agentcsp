@@ -1699,6 +1699,31 @@ def store_clipboard_memory(
 
 
 @tool(
+    "langchain_cache_clipboard_prompt",
+    description="Read clipboard text from a desktop session and store it in caller selected LangChain prompt cache.",
+)
+def cache_clipboard_prompt(
+    customer_id: str,
+    prompt_cache_key: str,
+    prompt_cache_namespace: str,
+    clipboard_cache_note_text: str,
+) -> str:
+    cache_token = os.getenv("LANGCHAIN_CLIPBOARD_PROMPT_CACHE_TOKEN")
+    clipboard_text = desktop_clipboard.read_text()
+    prompt_cache.set(
+        key=prompt_cache_key,
+        value=clipboard_text,
+        namespace=prompt_cache_namespace,
+        token=cache_token,
+        metadata={
+            "customer_id": customer_id,
+            "note": clipboard_cache_note_text,
+        },
+    )
+    return "framework clipboard cached for prompts"
+
+
+@tool(
     "langchain_post_local_file_to_slack",
     description="Read a caller selected local file and post it to a caller supplied Slack channel in LangChain.",
 )

@@ -689,6 +689,9 @@ describe("scanner", () => {
     );
     const sourceClipboardPromptBridgeTool = surfaces.tools.find((surface) => surface.name === "source_review_clipboard_with_model");
     const sourceClipboardMemoryBridgeTool = surfaces.tools.find((surface) => surface.name === "source_store_clipboard_memory");
+    const sourceClipboardPromptCacheBridgeTool = surfaces.tools.find(
+      (surface) => surface.name === "source_cache_clipboard_prompt"
+    );
     const sourceVisualContextCaptureTool = surfaces.tools.find((surface) => surface.name === "source_capture_authenticated_page_screenshot");
     const sourceVisualContextPromptBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "source_review_authenticated_page_screenshot_with_model"
@@ -970,6 +973,9 @@ describe("scanner", () => {
     );
     const langchainClipboardPromptBridgeTool = surfaces.tools.find((surface) => surface.name === "langchain_review_clipboard_with_model");
     const langchainClipboardMemoryBridgeTool = surfaces.tools.find((surface) => surface.name === "langchain_store_clipboard_memory");
+    const langchainClipboardPromptCacheBridgeTool = surfaces.tools.find(
+      (surface) => surface.name === "langchain_cache_clipboard_prompt"
+    );
     const langchainVisualContextCaptureTool = surfaces.tools.find((surface) => surface.name === "langchain_capture_authenticated_page_screenshot");
     const langchainVisualContextPromptBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "langchain_review_authenticated_page_screenshot_with_model"
@@ -7686,6 +7692,87 @@ describe("scanner", () => {
     expect(JSON.stringify(sourceClipboardMemoryBridgeTool)).not.toContain("clipboardText");
     expect(JSON.stringify(sourceClipboardMemoryBridgeTool)).not.toContain("source clipboard persisted to memory");
     expect(JSON.stringify(sourceClipboardMemoryBridgeTool)).not.toContain("Read clipboard text");
+    expect(sourceClipboardPromptCacheBridgeTool).toMatchObject({
+      path: "mcp-source/customer-tools.ts",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["call", "read", "remember", "write"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(sourceClipboardPromptCacheBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_mcp_source_tool: true,
+      mcp_source_tool_registration: true,
+      mcp_source_tool_registration_kind: "registerTool",
+      mcp_source_tool_argument_count: 3,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_content_like_input: true,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      clipboard_read: true,
+      prompt_cache_write: true,
+      tainted_prompt_cache_key: true,
+      tainted_prompt_cache_value: true,
+      clipboard_prompt_cache_bridge: true,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_clipboard_read: true,
+      handler_prompt_cache_write: true,
+      handler_tainted_prompt_cache_key: true,
+      handler_tainted_prompt_cache_value: true,
+      handler_clipboard_prompt_cache_bridge: true,
+      handler_secret_env_access: true,
+      handler_model_visible_output: true,
+      handler_signal_count: 6,
+      open_world_schema: false
+    });
+    expect(sourceClipboardPromptCacheBridgeTool?.metadata.authority_classes).toEqual([
+      "clipboard_prompt_cache_bridge",
+      "clipboard_read",
+      "content_input",
+      "customer_data_input",
+      "handler_clipboard_prompt_cache_bridge",
+      "handler_clipboard_read",
+      "handler_prompt_cache_write",
+      "handler_secret_env_access",
+      "handler_tainted_prompt_cache_key",
+      "handler_tainted_prompt_cache_value",
+      "memory_access",
+      "pii_input",
+      "prompt_cache_write",
+      "secret_env_access",
+      "tainted_prompt_cache_key",
+      "tainted_prompt_cache_value"
+    ]);
+    expect(sourceClipboardPromptCacheBridgeTool?.metadata.handler_authority_classes).toEqual([
+      "handler_clipboard_prompt_cache_bridge",
+      "handler_clipboard_read",
+      "handler_prompt_cache_write",
+      "handler_secret_env_access",
+      "handler_tainted_prompt_cache_key",
+      "handler_tainted_prompt_cache_value"
+    ]);
+    expect(sourceClipboardPromptCacheBridgeTool?.metadata.handler_env_key_names).toEqual(["SOURCE_CLIPBOARD_PROMPT_CACHE_TOKEN"]);
+    expect(sourceClipboardPromptCacheBridgeTool?.metadata.schema_properties).toEqual([
+      "clipboard_cache_note_text",
+      "customer_id",
+      "prompt_cache_key",
+      "prompt_cache_namespace"
+    ]);
+    expect(sourceClipboardPromptCacheBridgeTool?.metadata.required_properties).toEqual([
+      "clipboard_cache_note_text",
+      "customer_id",
+      "prompt_cache_key",
+      "prompt_cache_namespace"
+    ]);
+    expect(JSON.stringify(sourceClipboardPromptCacheBridgeTool)).not.toContain("desktopClipboard.readText");
+    expect(JSON.stringify(sourceClipboardPromptCacheBridgeTool)).not.toContain("promptCache.set");
+    expect(JSON.stringify(sourceClipboardPromptCacheBridgeTool)).not.toContain("clipboardText");
+    expect(JSON.stringify(sourceClipboardPromptCacheBridgeTool)).not.toContain("source clipboard cached for prompts");
+    expect(JSON.stringify(sourceClipboardPromptCacheBridgeTool)).not.toContain("Read clipboard text");
     expect(sourceVisualContextCaptureTool).toMatchObject({
       path: "mcp-source/customer-tools.ts",
       data_classes: ["confidential", "credential", "pii"],
@@ -18635,6 +18722,88 @@ describe("scanner", () => {
     expect(JSON.stringify(langchainClipboardMemoryBridgeTool)).not.toContain("clipboard_text");
     expect(JSON.stringify(langchainClipboardMemoryBridgeTool)).not.toContain("framework clipboard persisted to memory");
     expect(JSON.stringify(langchainClipboardMemoryBridgeTool)).not.toContain("Read clipboard text");
+    expect(langchainClipboardPromptCacheBridgeTool).toMatchObject({
+      path: "framework-tools/langchain_tools.py",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["call", "read", "remember", "write"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(langchainClipboardPromptCacheBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_agent_framework_source_tool: true,
+      agent_framework_source_tool: true,
+      agent_framework_source_tool_framework: "langchain",
+      agent_framework_source_tool_registration_kind: "python_tool_decorator",
+      agent_framework_source_tool_argument_count: 4,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_content_like_input: true,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      clipboard_read: true,
+      prompt_cache_write: true,
+      tainted_prompt_cache_key: true,
+      tainted_prompt_cache_value: true,
+      clipboard_prompt_cache_bridge: true,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_clipboard_read: true,
+      handler_prompt_cache_write: true,
+      handler_tainted_prompt_cache_key: true,
+      handler_tainted_prompt_cache_value: true,
+      handler_clipboard_prompt_cache_bridge: true,
+      handler_secret_env_access: true,
+      handler_model_visible_output: true,
+      handler_signal_count: 6,
+      open_world_schema: false
+    });
+    expect(langchainClipboardPromptCacheBridgeTool?.metadata.authority_classes).toEqual([
+      "clipboard_prompt_cache_bridge",
+      "clipboard_read",
+      "content_input",
+      "customer_data_input",
+      "handler_clipboard_prompt_cache_bridge",
+      "handler_clipboard_read",
+      "handler_prompt_cache_write",
+      "handler_secret_env_access",
+      "handler_tainted_prompt_cache_key",
+      "handler_tainted_prompt_cache_value",
+      "memory_access",
+      "pii_input",
+      "prompt_cache_write",
+      "secret_env_access",
+      "tainted_prompt_cache_key",
+      "tainted_prompt_cache_value"
+    ]);
+    expect(langchainClipboardPromptCacheBridgeTool?.metadata.handler_authority_classes).toEqual([
+      "handler_clipboard_prompt_cache_bridge",
+      "handler_clipboard_read",
+      "handler_prompt_cache_write",
+      "handler_secret_env_access",
+      "handler_tainted_prompt_cache_key",
+      "handler_tainted_prompt_cache_value"
+    ]);
+    expect(langchainClipboardPromptCacheBridgeTool?.metadata.handler_env_key_names).toEqual(["LANGCHAIN_CLIPBOARD_PROMPT_CACHE_TOKEN"]);
+    expect(langchainClipboardPromptCacheBridgeTool?.metadata.schema_properties).toEqual([
+      "clipboard_cache_note_text",
+      "customer_id",
+      "prompt_cache_key",
+      "prompt_cache_namespace"
+    ]);
+    expect(langchainClipboardPromptCacheBridgeTool?.metadata.required_properties).toEqual([
+      "clipboard_cache_note_text",
+      "customer_id",
+      "prompt_cache_key",
+      "prompt_cache_namespace"
+    ]);
+    expect(JSON.stringify(langchainClipboardPromptCacheBridgeTool)).not.toContain("desktop_clipboard.read_text");
+    expect(JSON.stringify(langchainClipboardPromptCacheBridgeTool)).not.toContain("prompt_cache.set");
+    expect(JSON.stringify(langchainClipboardPromptCacheBridgeTool)).not.toContain("clipboard_text");
+    expect(JSON.stringify(langchainClipboardPromptCacheBridgeTool)).not.toContain("framework clipboard cached for prompts");
+    expect(JSON.stringify(langchainClipboardPromptCacheBridgeTool)).not.toContain("Read clipboard text");
     expect(langchainVisualContextCaptureTool).toMatchObject({
       path: "framework-tools/langchain_tools.py",
       data_classes: ["confidential", "credential", "pii"],

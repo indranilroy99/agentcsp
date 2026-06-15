@@ -153,6 +153,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-149")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-150")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-151")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-152")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-001")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-002")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-003")).toBe(true);
@@ -8050,9 +8051,11 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerTelemetryExportFindings)).not.toContain("Export a customer support secret");
     const sourceHandlerPromptCacheWriteFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-046");
     expect(sourceHandlerPromptCacheWriteFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
+      "langchain_cache_clipboard_prompt",
       "langchain_cache_customer_vault_secret_prompt",
       "langchain_cache_model_completion",
       "langchain_write_prompt_cache_entry",
+      "source_cache_clipboard_prompt",
       "source_cache_customer_vault_secret_prompt",
       "source_cache_model_completion",
       "source_write_prompt_cache_entry"
@@ -8095,6 +8098,12 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerPromptCacheWriteFindings)).not.toContain("model_selected_cache_value");
     expect(JSON.stringify(sourceHandlerPromptCacheWriteFindings)).not.toContain("source model selected prompt cache value stored");
     expect(JSON.stringify(sourceHandlerPromptCacheWriteFindings)).not.toContain("framework model selected prompt cache value stored");
+    expect(JSON.stringify(sourceHandlerPromptCacheWriteFindings)).not.toContain("desktopClipboard.readText");
+    expect(JSON.stringify(sourceHandlerPromptCacheWriteFindings)).not.toContain("desktop_clipboard.read_text");
+    expect(JSON.stringify(sourceHandlerPromptCacheWriteFindings)).not.toContain("clipboardText");
+    expect(JSON.stringify(sourceHandlerPromptCacheWriteFindings)).not.toContain("clipboard_text");
+    expect(JSON.stringify(sourceHandlerPromptCacheWriteFindings)).not.toContain("source clipboard cached for prompts");
+    expect(JSON.stringify(sourceHandlerPromptCacheWriteFindings)).not.toContain("framework clipboard cached for prompts");
     expect(JSON.stringify(sourceHandlerPromptCacheWriteFindings)).not.toContain("Write caller supplied prompt context");
     expect(JSON.stringify(sourceHandlerPromptCacheWriteFindings)).not.toContain("Write a customer support secret");
     const sourceHandlerTrainingDatasetExportFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-047");
@@ -10800,6 +10809,55 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerClipboardMemoryBridgeFindings)).not.toContain("source clipboard persisted to memory");
     expect(JSON.stringify(sourceHandlerClipboardMemoryBridgeFindings)).not.toContain("framework clipboard persisted to memory");
     expect(JSON.stringify(sourceHandlerClipboardMemoryBridgeFindings)).not.toContain("Read clipboard text");
+    const sourceHandlerClipboardPromptCacheBridgeFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-152");
+    expect(sourceHandlerClipboardPromptCacheBridgeFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
+      "langchain_cache_clipboard_prompt",
+      "source_cache_clipboard_prompt"
+    ]);
+    expect(sourceHandlerClipboardPromptCacheBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
+    expect(sourceHandlerClipboardPromptCacheBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerClipboardPromptCacheBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
+    expect(sourceHandlerClipboardPromptCacheBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
+    expect(sourceHandlerClipboardPromptCacheBridgeFindings.every((finding) => finding.matched_object.metadata.source_tool_handler_redacted === true)).toBe(true);
+    expect(sourceHandlerClipboardPromptCacheBridgeFindings.every((finding) => finding.matched_object.metadata.handler_clipboard_read === true)).toBe(true);
+    expect(sourceHandlerClipboardPromptCacheBridgeFindings.every((finding) => finding.matched_object.metadata.handler_prompt_cache_write === true)).toBe(true);
+    expect(sourceHandlerClipboardPromptCacheBridgeFindings.every((finding) => finding.matched_object.metadata.handler_tainted_prompt_cache_key === true)).toBe(true);
+    expect(sourceHandlerClipboardPromptCacheBridgeFindings.every((finding) => finding.matched_object.metadata.handler_tainted_prompt_cache_value === true)).toBe(true);
+    expect(sourceHandlerClipboardPromptCacheBridgeFindings.every((finding) => finding.matched_object.metadata.handler_clipboard_prompt_cache_bridge === true)).toBe(true);
+    expect(sourceHandlerClipboardPromptCacheBridgeFindings.every((finding) => finding.matched_object.metadata.handler_secret_env_access === true)).toBe(true);
+    expect(sourceHandlerClipboardPromptCacheBridgeFindings.every((finding) => finding.matched_object.metadata.clipboard_read === true)).toBe(true);
+    expect(sourceHandlerClipboardPromptCacheBridgeFindings.every((finding) => finding.matched_object.metadata.prompt_cache_write === true)).toBe(true);
+    expect(sourceHandlerClipboardPromptCacheBridgeFindings.every((finding) => finding.matched_object.metadata.tainted_prompt_cache_key === true)).toBe(true);
+    expect(sourceHandlerClipboardPromptCacheBridgeFindings.every((finding) => finding.matched_object.metadata.tainted_prompt_cache_value === true)).toBe(true);
+    expect(sourceHandlerClipboardPromptCacheBridgeFindings.every((finding) => finding.matched_object.metadata.clipboard_prompt_cache_bridge === true)).toBe(true);
+    expect(sourceHandlerClipboardPromptCacheBridgeFindings.every((finding) => finding.matched_object.metadata.accepts_content_like_input === true)).toBe(true);
+    expect(sourceHandlerClipboardPromptCacheBridgeFindings.every((finding) => finding.matched_object.metadata.accepts_customer_data_input === true)).toBe(true);
+    expect(sourceHandlerClipboardPromptCacheBridgeFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("clipboard_read"))).toBe(true);
+    expect(sourceHandlerClipboardPromptCacheBridgeFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("prompt_cache_write"))).toBe(true);
+    expect(sourceHandlerClipboardPromptCacheBridgeFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("tainted_prompt_cache_key"))).toBe(true);
+    expect(sourceHandlerClipboardPromptCacheBridgeFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("tainted_prompt_cache_value"))).toBe(true);
+    expect(sourceHandlerClipboardPromptCacheBridgeFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("clipboard_prompt_cache_bridge"))).toBe(true);
+    expect(sourceHandlerClipboardPromptCacheBridgeFindings.every((finding) => finding.matched_object.metadata.handler_authority_classes.includes("handler_clipboard_read"))).toBe(true);
+    expect(sourceHandlerClipboardPromptCacheBridgeFindings.every((finding) => finding.matched_object.metadata.handler_authority_classes.includes("handler_prompt_cache_write"))).toBe(true);
+    expect(sourceHandlerClipboardPromptCacheBridgeFindings.every((finding) => finding.matched_object.metadata.handler_authority_classes.includes("handler_tainted_prompt_cache_key"))).toBe(true);
+    expect(sourceHandlerClipboardPromptCacheBridgeFindings.every((finding) => finding.matched_object.metadata.handler_authority_classes.includes("handler_tainted_prompt_cache_value"))).toBe(true);
+    expect(sourceHandlerClipboardPromptCacheBridgeFindings.every((finding) => finding.matched_object.metadata.handler_authority_classes.includes("handler_clipboard_prompt_cache_bridge"))).toBe(true);
+    expect(sourceHandlerClipboardPromptCacheBridgeFindings.every((finding) => finding.matched_object.actions.includes("read"))).toBe(true);
+    expect(sourceHandlerClipboardPromptCacheBridgeFindings.every((finding) => finding.matched_object.actions.includes("remember"))).toBe(true);
+    expect(sourceHandlerClipboardPromptCacheBridgeFindings.every((finding) => finding.matched_object.actions.includes("write"))).toBe(true);
+    expect(sourceHandlerClipboardPromptCacheBridgeFindings.every((finding) => finding.matched_object.external_reach === true)).toBe(true);
+    expect(sourceHandlerClipboardPromptCacheBridgeFindings.every((finding) => finding.matched_object.secret_exposure === true)).toBe(true);
+    expect(sourceHandlerClipboardPromptCacheBridgeFindings.every((finding) => finding.matched_object.side_effect === true)).toBe(true);
+    expect(sourceHandlerClipboardPromptCacheBridgeFindings.every((finding) => finding.matched_object.reversible === false)).toBe(true);
+    expect(JSON.stringify(sourceHandlerClipboardPromptCacheBridgeFindings)).not.toContain("desktopClipboard.readText");
+    expect(JSON.stringify(sourceHandlerClipboardPromptCacheBridgeFindings)).not.toContain("desktop_clipboard.read_text");
+    expect(JSON.stringify(sourceHandlerClipboardPromptCacheBridgeFindings)).not.toContain("promptCache.set");
+    expect(JSON.stringify(sourceHandlerClipboardPromptCacheBridgeFindings)).not.toContain("prompt_cache.set");
+    expect(JSON.stringify(sourceHandlerClipboardPromptCacheBridgeFindings)).not.toContain("clipboardText");
+    expect(JSON.stringify(sourceHandlerClipboardPromptCacheBridgeFindings)).not.toContain("clipboard_text");
+    expect(JSON.stringify(sourceHandlerClipboardPromptCacheBridgeFindings)).not.toContain("source clipboard cached for prompts");
+    expect(JSON.stringify(sourceHandlerClipboardPromptCacheBridgeFindings)).not.toContain("framework clipboard cached for prompts");
+    expect(JSON.stringify(sourceHandlerClipboardPromptCacheBridgeFindings)).not.toContain("Read clipboard text");
     const sourceHandlerSecretManagerFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-028");
     expect(sourceHandlerSecretManagerFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_apply_vault_secret_guardrail_override",
