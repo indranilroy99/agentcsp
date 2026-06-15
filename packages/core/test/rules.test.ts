@@ -174,6 +174,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-170")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-171")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-172")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-173")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-001")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-002")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-003")).toBe(true);
@@ -6185,6 +6186,7 @@ describe("rule engine", () => {
       "langchain_export_authenticated_page_screenshot_training_dataset",
       "langchain_export_customer_context",
       "langchain_export_url_response_artifact",
+      "langchain_grant_url_response_authorization",
       "langchain_post_authenticated_page_screenshot_external",
       "langchain_post_url_response_external",
       "langchain_publish_url_response_prompt_registry_entry",
@@ -6198,6 +6200,7 @@ describe("rule engine", () => {
       "source_export_authenticated_page_screenshot_training_dataset",
       "source_export_customer_record",
       "source_export_url_response_artifact",
+      "source_grant_url_response_authorization",
       "source_post_authenticated_page_screenshot_external",
       "source_post_url_response_external",
       "source_publish_url_response_prompt_registry_entry",
@@ -6221,6 +6224,7 @@ describe("rule engine", () => {
       "langchain_export_authenticated_page_screenshot_trace",
       "langchain_export_authenticated_page_screenshot_training_dataset",
       "langchain_export_customer_context",
+      "langchain_grant_url_response_authorization",
       "langchain_post_authenticated_page_screenshot_external",
       "langchain_publish_url_response_prompt_registry_entry",
       "langchain_upload_local_file_authenticated_browser",
@@ -6230,6 +6234,7 @@ describe("rule engine", () => {
       "source_export_authenticated_page_screenshot_trace",
       "source_export_authenticated_page_screenshot_training_dataset",
       "source_export_customer_record",
+      "source_grant_url_response_authorization",
       "source_post_authenticated_page_screenshot_external",
       "source_publish_url_response_prompt_registry_entry",
       "source_upload_local_file_authenticated_browser"
@@ -8347,12 +8352,14 @@ describe("rule engine", () => {
       "langchain_grant_local_file_authorization",
       "langchain_grant_model_selected_authorization",
       "langchain_grant_privileged_tool_observation_authorization",
+      "langchain_grant_url_response_authorization",
       "langchain_update_tool_permission_grant",
       "source_grant_customer_vault_secret_authorization",
       "source_grant_env_secret_authorization",
       "source_grant_local_file_authorization",
       "source_grant_model_selected_authorization",
       "source_grant_privileged_tool_observation_authorization",
+      "source_grant_url_response_authorization",
       "source_update_tool_permission_grant"
     ]);
     const sourceHandlerSecretAuthorizationBridgeFindings = sourceHandlerAuthorizationGrantFindings.filter((finding) =>
@@ -8606,6 +8613,77 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerLocalFileAuthorizationGrantBridgeFindings)).not.toContain("source local file granted broad authorization");
     expect(JSON.stringify(sourceHandlerLocalFileAuthorizationGrantBridgeFindings)).not.toContain("framework local file granted broad authorization");
     expect(JSON.stringify(sourceHandlerLocalFileAuthorizationGrantBridgeFindings)).not.toContain("Grant broad tool authorization");
+    const sourceHandlerNetworkResponseAuthorizationGrantBridgeFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-173");
+    expect(sourceHandlerNetworkResponseAuthorizationGrantBridgeFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
+      "langchain_grant_url_response_authorization",
+      "source_grant_url_response_authorization"
+    ]);
+    expect(sourceHandlerNetworkResponseAuthorizationGrantBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
+    expect(sourceHandlerNetworkResponseAuthorizationGrantBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerNetworkResponseAuthorizationGrantBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
+    expect(sourceHandlerNetworkResponseAuthorizationGrantBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
+    expect(sourceHandlerNetworkResponseAuthorizationGrantBridgeFindings.every((finding) => finding.matched_object.metadata.source_tool_handler_redacted === true)).toBe(true);
+    expect(sourceHandlerNetworkResponseAuthorizationGrantBridgeFindings.every((finding) => finding.matched_object.metadata.handler_secret_env_access === true)).toBe(true);
+    expect(sourceHandlerNetworkResponseAuthorizationGrantBridgeFindings.every((finding) => finding.matched_object.metadata.handler_external_network_call === true)).toBe(true);
+    expect(sourceHandlerNetworkResponseAuthorizationGrantBridgeFindings.every((finding) => finding.matched_object.metadata.handler_tainted_network_destination === true)).toBe(true);
+    expect(sourceHandlerNetworkResponseAuthorizationGrantBridgeFindings.every((finding) => finding.matched_object.metadata.handler_authorization_policy_write === true)).toBe(true);
+    expect(sourceHandlerNetworkResponseAuthorizationGrantBridgeFindings.every((finding) => finding.matched_object.metadata.handler_tainted_authorization_grant_input === true)).toBe(true);
+    expect(sourceHandlerNetworkResponseAuthorizationGrantBridgeFindings.every((finding) => finding.matched_object.metadata.handler_authorization_broad_grant === true)).toBe(true);
+    expect(sourceHandlerNetworkResponseAuthorizationGrantBridgeFindings.every((finding) => finding.matched_object.metadata.handler_network_response_authorization_grant_bridge === true)).toBe(true);
+    expect(sourceHandlerNetworkResponseAuthorizationGrantBridgeFindings.every((finding) => finding.matched_object.metadata.tainted_network_destination === true)).toBe(true);
+    expect(sourceHandlerNetworkResponseAuthorizationGrantBridgeFindings.every((finding) => finding.matched_object.metadata.authorization_policy_write === true)).toBe(true);
+    expect(sourceHandlerNetworkResponseAuthorizationGrantBridgeFindings.every((finding) => finding.matched_object.metadata.tainted_authorization_grant_input === true)).toBe(true);
+    expect(sourceHandlerNetworkResponseAuthorizationGrantBridgeFindings.every((finding) => finding.matched_object.metadata.authorization_broad_grant === true)).toBe(true);
+    expect(sourceHandlerNetworkResponseAuthorizationGrantBridgeFindings.every((finding) => finding.matched_object.metadata.network_response_authorization_grant_bridge === true)).toBe(true);
+    expect(sourceHandlerNetworkResponseAuthorizationGrantBridgeFindings.every((finding) => finding.matched_object.metadata.secret_manager_authorization_grant_bridge === false)).toBe(true);
+    expect(sourceHandlerNetworkResponseAuthorizationGrantBridgeFindings.every((finding) => finding.matched_object.metadata.local_file_authorization_grant_bridge === false)).toBe(true);
+    expect(sourceHandlerNetworkResponseAuthorizationGrantBridgeFindings.every((finding) => finding.matched_object.metadata.env_secret_authorization_grant_bridge === false)).toBe(true);
+    expect(sourceHandlerNetworkResponseAuthorizationGrantBridgeFindings.every((finding) => finding.matched_object.metadata.model_output_authorization_grant_bridge === false)).toBe(true);
+    expect(sourceHandlerNetworkResponseAuthorizationGrantBridgeFindings.every((finding) => finding.matched_object.metadata.tool_output_authorization_grant_bridge === false)).toBe(true);
+    expect(sourceHandlerNetworkResponseAuthorizationGrantBridgeFindings.every((finding) => finding.matched_object.metadata.external_write === true)).toBe(true);
+    expect(sourceHandlerNetworkResponseAuthorizationGrantBridgeFindings.every((finding) => finding.matched_object.metadata.accepts_url_input === true)).toBe(true);
+    expect(sourceHandlerNetworkResponseAuthorizationGrantBridgeFindings.every((finding) => finding.matched_object.metadata.accepts_customer_data_input === true)).toBe(true);
+    for (const authorityClass of [
+      "network_access",
+      "tainted_network_destination",
+      "authorization_policy_write",
+      "tainted_authorization_grant_input",
+      "authorization_broad_grant",
+      "network_response_authorization_grant_bridge"
+    ]) {
+      expect(sourceHandlerNetworkResponseAuthorizationGrantBridgeFindings.every((finding) =>
+        finding.matched_object.metadata.authority_classes.includes(authorityClass)
+      )).toBe(true);
+    }
+    for (const handlerAuthorityClass of [
+      "handler_network_access",
+      "handler_tainted_network_destination",
+      "handler_authorization_policy_write",
+      "handler_tainted_authorization_grant_input",
+      "handler_authorization_broad_grant",
+      "handler_network_response_authorization_grant_bridge"
+    ]) {
+      expect(sourceHandlerNetworkResponseAuthorizationGrantBridgeFindings.every((finding) =>
+        finding.matched_object.metadata.handler_authority_classes.includes(handlerAuthorityClass)
+      )).toBe(true);
+    }
+    expect(sourceHandlerNetworkResponseAuthorizationGrantBridgeFindings.every((finding) => finding.matched_object.actions.includes("read"))).toBe(true);
+    expect(sourceHandlerNetworkResponseAuthorizationGrantBridgeFindings.every((finding) => finding.matched_object.actions.includes("send"))).toBe(true);
+    expect(sourceHandlerNetworkResponseAuthorizationGrantBridgeFindings.every((finding) => finding.matched_object.actions.includes("write"))).toBe(true);
+    expect(sourceHandlerNetworkResponseAuthorizationGrantBridgeFindings.every((finding) => finding.matched_object.external_reach === true)).toBe(true);
+    expect(sourceHandlerNetworkResponseAuthorizationGrantBridgeFindings.every((finding) => finding.matched_object.secret_exposure === true)).toBe(true);
+    expect(sourceHandlerNetworkResponseAuthorizationGrantBridgeFindings.every((finding) => finding.matched_object.side_effect === true)).toBe(true);
+    expect(sourceHandlerNetworkResponseAuthorizationGrantBridgeFindings.every((finding) => finding.matched_object.reversible === false)).toBe(true);
+    expect(JSON.stringify(sourceHandlerNetworkResponseAuthorizationGrantBridgeFindings)).not.toContain("fetch(");
+    expect(JSON.stringify(sourceHandlerNetworkResponseAuthorizationGrantBridgeFindings)).not.toContain("httpx.get");
+    expect(JSON.stringify(sourceHandlerNetworkResponseAuthorizationGrantBridgeFindings)).not.toContain("response.text");
+    expect(JSON.stringify(sourceHandlerNetworkResponseAuthorizationGrantBridgeFindings)).not.toContain("permissionBrokerClient.upsertGrant");
+    expect(JSON.stringify(sourceHandlerNetworkResponseAuthorizationGrantBridgeFindings)).not.toContain("permission_broker_client.upsert_grant");
+    expect(JSON.stringify(sourceHandlerNetworkResponseAuthorizationGrantBridgeFindings)).not.toContain("networkAuthzGrantRole");
+    expect(JSON.stringify(sourceHandlerNetworkResponseAuthorizationGrantBridgeFindings)).not.toContain("network_authz_grant_role");
+    expect(JSON.stringify(sourceHandlerNetworkResponseAuthorizationGrantBridgeFindings)).not.toContain("source network response granted broad authorization");
+    expect(JSON.stringify(sourceHandlerNetworkResponseAuthorizationGrantBridgeFindings)).not.toContain("framework network response granted broad authorization");
+    expect(JSON.stringify(sourceHandlerNetworkResponseAuthorizationGrantBridgeFindings)).not.toContain("Grant broad tool authorization");
     const sourceHandlerTaintedMemoryScopeFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-039");
     expect(sourceHandlerTaintedMemoryScopeFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_persist_customer_memory",
@@ -14767,6 +14845,7 @@ describe("rule engine", () => {
       "langchain_export_url_response_artifact",
       "langchain_fetch_partner_status",
       "langchain_fetch_url_content",
+      "langchain_grant_url_response_authorization",
       "langchain_post_url_response_external",
       "langchain_publish_url_response_prompt_registry_entry",
       "langchain_queue_url_response_background_task",
@@ -14781,6 +14860,7 @@ describe("rule engine", () => {
       "source_export_url_response_artifact",
       "source_fetch_partner_status",
       "source_fetch_url_content",
+      "source_grant_url_response_authorization",
       "source_post_url_response_external",
       "source_publish_url_response_prompt_registry_entry",
       "source_queue_url_response_background_task",

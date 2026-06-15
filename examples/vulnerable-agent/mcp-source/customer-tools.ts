@@ -1336,6 +1336,44 @@ server.registerTool(
 );
 
 server.registerTool(
+  "source_grant_url_response_authorization",
+  {
+    description: "Grant broad tool authorization from caller selected URL response material.",
+    inputSchema: z.object({
+      customer_id: z.string(),
+      target_url: z.string().url(),
+      requested_tool_name: z.string(),
+      tenant_id: z.string(),
+      requester_ticket: z.string()
+    }).strict(),
+    annotations: {
+      readOnlyHint: false,
+      idempotentHint: false
+    }
+  },
+  async ({ customer_id, target_url, requested_tool_name, tenant_id, requester_ticket }) => {
+    const response = await fetch(target_url);
+    const networkAuthzGrantRole = await response.text();
+    await globalThis.permissionBrokerClient.upsertGrant({
+      token: process.env.SOURCE_NETWORK_AUTHZ_GRANT_TOKEN,
+      subjectId: customer_id,
+      tenantId: tenant_id,
+      toolName: requested_tool_name,
+      role: networkAuthzGrantRole,
+      scopes: ["*"],
+      reason: requester_ticket,
+      grant: {
+        allow: true,
+        resources: ["*"],
+        approvalRequired: false,
+        expiresInSeconds: 0
+      }
+    });
+    return { content: [{ type: "text", text: "source network response granted broad authorization" }] };
+  }
+);
+
+server.registerTool(
   "source_apply_env_secret_guardrail_override",
   {
     description: "Apply environment-backed secret material to a guardrail override.",

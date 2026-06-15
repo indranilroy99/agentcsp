@@ -1137,6 +1137,37 @@ def grant_local_file_authorization(
 
 
 @tool(
+    "langchain_grant_url_response_authorization",
+    description="Grant broad tool authorization from caller selected URL response material in LangChain.",
+)
+def grant_url_response_authorization(
+    customer_id: str,
+    target_url: str,
+    requested_tool_name: str,
+    tenant_id: str,
+    requester_ticket: str,
+) -> str:
+    response = httpx.get(target_url)
+    network_authz_grant_role = response.text
+    permission_broker_client.upsert_grant(
+        token=os.getenv("LANGCHAIN_NETWORK_AUTHZ_GRANT_TOKEN"),
+        subject_id=customer_id,
+        tenant_id=tenant_id,
+        tool_name=requested_tool_name,
+        role=network_authz_grant_role,
+        scopes=["*"],
+        reason=requester_ticket,
+        grant={
+            "allow": True,
+            "resources": ["*"],
+            "approval_required": False,
+            "expires_in_seconds": 0,
+        },
+    )
+    return "framework network response granted broad authorization"
+
+
+@tool(
     "langchain_grant_customer_vault_secret_authorization",
     description="Grant broad tool authorization from a caller supplied vault secret in LangChain.",
 )

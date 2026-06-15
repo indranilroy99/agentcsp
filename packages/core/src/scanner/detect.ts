@@ -24183,6 +24183,7 @@ function addToolDefinitionSurface(
       !authority.secret_manager_authorization_grant_bridge &&
       !authority.local_file_authorization_grant_bridge &&
       !authority.env_secret_authorization_grant_bridge &&
+      !authority.network_response_authorization_grant_bridge &&
       !authority.tool_output_authorization_grant_bridge &&
       !authority.artifact_export &&
       !authority.local_file_artifact_bridge &&
@@ -24366,6 +24367,7 @@ function addToolDefinitionSurface(
       secret_manager_authorization_grant_bridge: authority.secret_manager_authorization_grant_bridge,
       local_file_authorization_grant_bridge: authority.local_file_authorization_grant_bridge,
       env_secret_authorization_grant_bridge: authority.env_secret_authorization_grant_bridge,
+      network_response_authorization_grant_bridge: authority.network_response_authorization_grant_bridge,
       model_output_authorization_grant_bridge: authority.model_output_authorization_grant_bridge,
       tool_output_authorization_grant_bridge: authority.tool_output_authorization_grant_bridge,
       artifact_export: authority.artifact_export,
@@ -26860,6 +26862,7 @@ interface SourceToolHandlerSignals {
   handlerSecretManagerAuthorizationGrantBridge: boolean;
   handlerLocalFileAuthorizationGrantBridge: boolean;
   handlerEnvSecretAuthorizationGrantBridge: boolean;
+  handlerNetworkResponseAuthorizationGrantBridge: boolean;
   handlerModelOutputAuthorizationGrantBridge: boolean;
   handlerToolOutputAuthorizationGrantBridge: boolean;
   handlerArtifactExport: boolean;
@@ -27467,6 +27470,7 @@ function sourceToolHandlerSignalMetadata(signals: SourceToolHandlerSignals | und
     handler_secret_manager_authorization_grant_bridge: signals.handlerSecretManagerAuthorizationGrantBridge,
     handler_local_file_authorization_grant_bridge: signals.handlerLocalFileAuthorizationGrantBridge,
     handler_env_secret_authorization_grant_bridge: signals.handlerEnvSecretAuthorizationGrantBridge,
+    handler_network_response_authorization_grant_bridge: signals.handlerNetworkResponseAuthorizationGrantBridge,
     handler_model_output_authorization_grant_bridge: signals.handlerModelOutputAuthorizationGrantBridge,
     handler_tool_output_authorization_grant_bridge: signals.handlerToolOutputAuthorizationGrantBridge,
     handler_artifact_export: signals.handlerArtifactExport,
@@ -27728,6 +27732,9 @@ function classifySourceToolHandlerSignals(
   const localFileAuthorizationGrantBridge = authorizationPolicyWrite && (language === "javascript"
     ? hasJavaScriptHandlerLocalFileAuthorizationGrantBridge(handlerSource)
     : hasPythonHandlerLocalFileAuthorizationGrantBridge(handlerSource));
+  const networkResponseAuthorizationGrantBridge = externalNetworkCall && authorizationPolicyWrite && (language === "javascript"
+    ? hasJavaScriptHandlerNetworkResponseAuthorizationGrantBridge(handlerSource)
+    : hasPythonHandlerNetworkResponseAuthorizationGrantBridge(handlerSource));
   const modelOutputAuthorizationGrantBridge = modelProviderCall && authorizationPolicyWrite && (language === "javascript"
     ? hasJavaScriptHandlerModelOutputAuthorizationGrantBridge(handlerSource)
     : hasPythonHandlerModelOutputAuthorizationGrantBridge(handlerSource));
@@ -27856,6 +27863,7 @@ function classifySourceToolHandlerSignals(
     authorizationPolicyWrite &&
     !secretManagerAuthorizationGrantBridge &&
     !localFileAuthorizationGrantBridge &&
+    !networkResponseAuthorizationGrantBridge &&
     !modelOutputAuthorizationGrantBridge &&
     !toolOutputAuthorizationGrantBridge &&
     (language === "javascript"
@@ -28346,6 +28354,7 @@ function classifySourceToolHandlerSignals(
   if (secretManagerAuthorizationGrantBridge) classes.add("handler_secret_manager_authorization_grant_bridge");
   if (localFileAuthorizationGrantBridge) classes.add("handler_local_file_authorization_grant_bridge");
   if (envSecretAuthorizationGrantBridge) classes.add("handler_env_secret_authorization_grant_bridge");
+  if (networkResponseAuthorizationGrantBridge) classes.add("handler_network_response_authorization_grant_bridge");
   if (modelOutputAuthorizationGrantBridge) classes.add("handler_model_output_authorization_grant_bridge");
   if (toolOutputAuthorizationGrantBridge) classes.add("handler_tool_output_authorization_grant_bridge");
   if (artifactExport) classes.add("handler_artifact_export");
@@ -28539,6 +28548,7 @@ function classifySourceToolHandlerSignals(
     handlerSecretManagerAuthorizationGrantBridge: secretManagerAuthorizationGrantBridge,
     handlerLocalFileAuthorizationGrantBridge: localFileAuthorizationGrantBridge,
     handlerEnvSecretAuthorizationGrantBridge: envSecretAuthorizationGrantBridge,
+    handlerNetworkResponseAuthorizationGrantBridge: networkResponseAuthorizationGrantBridge,
     handlerModelOutputAuthorizationGrantBridge: modelOutputAuthorizationGrantBridge,
     handlerToolOutputAuthorizationGrantBridge: toolOutputAuthorizationGrantBridge,
     handlerArtifactExport: artifactExport,
@@ -32367,6 +32377,30 @@ function hasJavaScriptHandlerLocalFileAuthorizationGrantBridge(source: string): 
 
 function hasPythonHandlerLocalFileAuthorizationGrantBridge(source: string): boolean {
   const identifiers = extractPythonLocalFileIdentifiers(source);
+  return identifiers.length > 0 && authorizationGrantCallReferencesPayloadIdentifier(
+    [
+      /\b(?:tool_authorization_client|authorization_policy_client|permission_broker_client|tool_authz_client|capability_grant_client|access_control_client|rbac_client|authz_client|policy_engine_client|permission_client|entitlement_client|grant_broker_client)\s*(?:\.\s*[A-Za-z_]\w*){0,5}\s*\.\s*(?:grant|grant_access|upsert_grant|create_grant|put_grant|add_grant|allow|authorize|update_policy|set_policy|set_allowlist|add_permission|add_tool|assign_role|bind_role|set_entitlement|write|save|upsert|patch)\s*\(([\s\S]{0,2200})\)/giu,
+      /\b(?:grant_tool_access|update_tool_authorization|upsert_tool_grant|create_capability_grant|set_tool_allowlist|assign_agent_role|set_agent_entitlement|write_authorization_grant)\s*\(([\s\S]{0,2200})\)/giu
+    ],
+    source,
+    identifiers
+  );
+}
+
+function hasJavaScriptHandlerNetworkResponseAuthorizationGrantBridge(source: string): boolean {
+  const identifiers = extractJavaScriptNetworkResponseIdentifiers(source);
+  return identifiers.length > 0 && authorizationGrantCallReferencesPayloadIdentifier(
+    [
+      /\b(?:toolAuthorizationClient|authorizationPolicyClient|permissionBrokerClient|toolAuthzClient|capabilityGrantClient|accessControlClient|rbacClient|authzClient|policyEngineClient|permissionClient|entitlementClient|grantBrokerClient)\s*(?:\.\s*[A-Za-z_$][\w$]*){0,5}\s*\.\s*(?:grant|grantAccess|upsertGrant|createGrant|putGrant|addGrant|allow|authorize|updatePolicy|setPolicy|setAllowlist|addPermission|addTool|assignRole|bindRole|setEntitlement|write|save|upsert|patch)\s*\(([\s\S]{0,2200})\)/giu,
+      /\b(?:grantToolAccess|updateToolAuthorization|upsertToolGrant|createCapabilityGrant|setToolAllowlist|assignAgentRole|setAgentEntitlement|writeAuthorizationGrant)\s*\(([\s\S]{0,2200})\)/giu
+    ],
+    source,
+    identifiers
+  );
+}
+
+function hasPythonHandlerNetworkResponseAuthorizationGrantBridge(source: string): boolean {
+  const identifiers = extractPythonNetworkResponseIdentifiers(source);
   return identifiers.length > 0 && authorizationGrantCallReferencesPayloadIdentifier(
     [
       /\b(?:tool_authorization_client|authorization_policy_client|permission_broker_client|tool_authz_client|capability_grant_client|access_control_client|rbac_client|authz_client|policy_engine_client|permission_client|entitlement_client|grant_broker_client)\s*(?:\.\s*[A-Za-z_]\w*){0,5}\s*\.\s*(?:grant|grant_access|upsert_grant|create_grant|put_grant|add_grant|allow|authorize|update_policy|set_policy|set_allowlist|add_permission|add_tool|assign_role|bind_role|set_entitlement|write|save|upsert|patch)\s*\(([\s\S]{0,2200})\)/giu,
@@ -36396,6 +36430,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   secret_manager_authorization_grant_bridge: boolean;
   local_file_authorization_grant_bridge: boolean;
   env_secret_authorization_grant_bridge: boolean;
+  network_response_authorization_grant_bridge: boolean;
   model_output_authorization_grant_bridge: boolean;
   tool_output_authorization_grant_bridge: boolean;
   artifact_export: boolean;
@@ -36530,6 +36565,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   const handlerSecretManagerAuthorizationGrantBridge = handler?.handlerSecretManagerAuthorizationGrantBridge === true;
   const handlerLocalFileAuthorizationGrantBridge = handler?.handlerLocalFileAuthorizationGrantBridge === true;
   const handlerEnvSecretAuthorizationGrantBridge = handler?.handlerEnvSecretAuthorizationGrantBridge === true;
+  const handlerNetworkResponseAuthorizationGrantBridge = handler?.handlerNetworkResponseAuthorizationGrantBridge === true;
   const handlerModelOutputAuthorizationGrantBridge = handler?.handlerModelOutputAuthorizationGrantBridge === true;
   const handlerToolOutputAuthorizationGrantBridge = handler?.handlerToolOutputAuthorizationGrantBridge === true;
   const handlerArtifactExport = handler?.handlerArtifactExport === true;
@@ -37444,6 +37480,12 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
     actions.add("send");
     actions.add("write");
   }
+  if (handlerNetworkResponseAuthorizationGrantBridge) {
+    classes.add("network_response_authorization_grant_bridge");
+    actions.add("read");
+    actions.add("send");
+    actions.add("write");
+  }
   if (handlerModelOutputAuthorizationGrantBridge) {
     classes.add("model_output_authorization_grant_bridge");
     actions.add("read");
@@ -37828,6 +37870,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerSecretManagerAuthorizationGrantBridge ||
       handlerLocalFileAuthorizationGrantBridge ||
       handlerEnvSecretAuthorizationGrantBridge ||
+      handlerNetworkResponseAuthorizationGrantBridge ||
       handlerModelOutputAuthorizationGrantBridge ||
       handlerToolOutputAuthorizationGrantBridge ||
       handlerArtifactExport ||
@@ -38012,6 +38055,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerSecretManagerAuthorizationGrantBridge ||
       handlerLocalFileAuthorizationGrantBridge ||
       handlerEnvSecretAuthorizationGrantBridge ||
+      handlerNetworkResponseAuthorizationGrantBridge ||
       handlerModelOutputAuthorizationGrantBridge ||
       handlerToolOutputAuthorizationGrantBridge ||
       handlerSecretManagerCredentialIssuanceBridge ||
@@ -38104,6 +38148,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerSecretManagerAuthorizationGrantBridge ||
       (handlerLocalFileAuthorizationGrantBridge && handlerSecretEnvAccess) ||
       handlerEnvSecretAuthorizationGrantBridge ||
+      (handlerNetworkResponseAuthorizationGrantBridge && handlerSecretEnvAccess) ||
       (handlerModelOutputAuthorizationGrantBridge && handlerSecretEnvAccess) ||
       (handlerToolOutputAuthorizationGrantBridge && handlerSecretEnvAccess) ||
       handlerSecretManagerMemoryBridge ||
@@ -38321,6 +38366,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
     secret_manager_authorization_grant_bridge: handlerSecretManagerAuthorizationGrantBridge,
     local_file_authorization_grant_bridge: handlerLocalFileAuthorizationGrantBridge,
     env_secret_authorization_grant_bridge: handlerEnvSecretAuthorizationGrantBridge,
+    network_response_authorization_grant_bridge: handlerNetworkResponseAuthorizationGrantBridge,
     model_output_authorization_grant_bridge: handlerModelOutputAuthorizationGrantBridge,
     tool_output_authorization_grant_bridge: handlerToolOutputAuthorizationGrantBridge,
     artifact_export: handlerArtifactExport,
@@ -38501,6 +38547,7 @@ function authoritySignature(tool: SurfaceObject): string {
     metadata.secret_manager_authorization_grant_bridge === true ? "secret_manager_authorization_grant_bridge" : "",
     metadata.local_file_authorization_grant_bridge === true ? "local_file_authorization_grant_bridge" : "",
     metadata.env_secret_authorization_grant_bridge === true ? "env_secret_authorization_grant_bridge" : "",
+    metadata.network_response_authorization_grant_bridge === true ? "network_response_authorization_grant_bridge" : "",
     metadata.model_output_authorization_grant_bridge === true ? "model_output_authorization_grant_bridge" : "",
     metadata.tool_output_authorization_grant_bridge === true ? "tool_output_authorization_grant_bridge" : "",
     metadata.artifact_export === true ? "artifact_export" : "",
@@ -38707,6 +38754,7 @@ function isPrivilegedToolSurface(tool: SurfaceObject): boolean {
     tool.metadata.secret_manager_authorization_grant_bridge === true ||
     tool.metadata.local_file_authorization_grant_bridge === true ||
     tool.metadata.env_secret_authorization_grant_bridge === true ||
+    tool.metadata.network_response_authorization_grant_bridge === true ||
     tool.metadata.model_output_authorization_grant_bridge === true ||
     tool.metadata.tool_output_authorization_grant_bridge === true ||
     tool.metadata.artifact_export === true ||
