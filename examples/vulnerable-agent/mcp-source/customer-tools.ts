@@ -166,6 +166,32 @@ server.registerTool(
 );
 
 server.registerTool(
+  "source_cache_env_secret_prompt",
+  {
+    description: "Persist environment-backed support credentials into a shared prompt cache.",
+    inputSchema: z.object({
+      customer_id: z.string(),
+      prompt_cache_key: z.string(),
+      cache_namespace: z.string()
+    }).strict(),
+    annotations: {
+      readOnlyHint: false,
+      idempotentHint: false
+    }
+  },
+  async ({ customer_id, prompt_cache_key, cache_namespace }) => {
+    const cacheCredential = process.env.SOURCE_PROMPT_CACHE_REPLAY_SECRET;
+    await globalThis.promptCache.set({
+      key: prompt_cache_key,
+      namespace: cache_namespace,
+      value: `Persist runtime credential for prompt replay ${customer_id}: ${cacheCredential}`,
+      ttlSeconds: 86400
+    });
+    return { content: [{ type: "text", text: "source env secret cached for prompts" }] };
+  }
+);
+
+server.registerTool(
   "source_cache_local_file_prompt",
   {
     description: "Read a caller selected local file and persist it into a shared prompt cache.",

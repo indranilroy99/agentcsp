@@ -381,6 +381,7 @@ Tool metadata may include:
 - `tainted_telemetry_payload`
 - `prompt_cache_write`
 - `secret_manager_prompt_cache_bridge`
+- `env_secret_prompt_cache_bridge`
 - `model_output_prompt_cache_bridge`
 - `network_response_prompt_cache_bridge`
 - `tool_output_prompt_cache_bridge`
@@ -510,6 +511,7 @@ Tool metadata may include:
 - `handler_tainted_telemetry_payload`
 - `handler_prompt_cache_write`
 - `handler_secret_manager_prompt_cache_bridge`
+- `handler_env_secret_prompt_cache_bridge`
 - `handler_model_output_prompt_cache_bridge`
 - `handler_network_response_prompt_cache_bridge`
 - `handler_tool_output_prompt_cache_bridge`
@@ -2107,6 +2109,8 @@ Source-defined tool handlers can also emit redacted local-file prompt bridge aut
 Source-defined tool handlers can also emit redacted env-secret prompt bridge authority through `env_secret_prompt_bridge`, `secret_env_access`, `model_provider_call`, `tainted_model_selection`, `privileged_prompt_composition`, and the corresponding `handler_*` fields when parsed MCP SDK or agent-framework tools read environment-backed secret material and place it into model-provider prompt, message, input, content, or instruction fields. Handler bodies, environment reads, key values, secret values, model SDK calls, prompt payloads, selected model names, secret-derived prompt variables, provider responses, and return strings remain redacted.
 
 Source-defined tool handlers can also emit redacted env-secret memory bridge authority through `env_secret_memory_bridge`, `secret_env_access`, `memory_write`, `tainted_memory_scope`, and the corresponding `handler_*` fields when parsed MCP SDK or agent-framework tools read environment-backed secret material and persist it into durable memory, RAG, vector, session, or state stores. Handler bodies, environment reads, key values, secret values, memory-store calls, namespaces, keys, stored payloads, retention notes, and return strings remain redacted.
+
+Source-defined tool handlers can also emit redacted env-secret prompt-cache bridge authority through `env_secret_prompt_cache_bridge`, `secret_env_access`, `prompt_cache_write`, `tainted_prompt_cache_key`, and the corresponding `handler_*` fields when parsed MCP SDK or agent-framework tools read environment-backed secret material and persist it into prompt, LLM, response, or semantic caches. Handler bodies, environment reads, key values, secret values, prompt-cache calls, cache keys, namespaces, cache values, stored payloads, TTLs, and return strings remain redacted.
 
 Source-defined tool handlers can also emit redacted clipboard prompt bridge authority through `clipboard_prompt_bridge`, `clipboard_read`, `model_provider_call`, `tainted_model_selection`, and the corresponding `handler_*` fields when parsed MCP SDK or agent-framework tools read browser or desktop clipboard material and forward it into model-provider prompts using runtime model credentials and caller-selected model routing. Handler bodies, clipboard helper calls, clipboard contents, derived clipboard variables, model SDK calls, prompt payloads, selected model names, and return strings remain redacted.
 

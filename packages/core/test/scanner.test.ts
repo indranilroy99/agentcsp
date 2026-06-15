@@ -649,6 +649,9 @@ describe("scanner", () => {
     const sourceEnvSecretMemoryBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "source_store_env_secret_memory"
     );
+    const sourceEnvSecretPromptCacheBridgeTool = surfaces.tools.find(
+      (surface) => surface.name === "source_cache_env_secret_prompt"
+    );
     const sourceToolOutputCredentialIssuanceBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "source_issue_privileged_tool_observation_credential"
     );
@@ -947,6 +950,9 @@ describe("scanner", () => {
     );
     const langchainEnvSecretMemoryBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "langchain_store_env_secret_memory"
+    );
+    const langchainEnvSecretPromptCacheBridgeTool = surfaces.tools.find(
+      (surface) => surface.name === "langchain_cache_env_secret_prompt"
     );
     const langchainToolOutputCredentialIssuanceBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "langchain_issue_privileged_tool_observation_credential"
@@ -6081,6 +6087,73 @@ describe("scanner", () => {
     expect(JSON.stringify(sourceEnvSecretMemoryBridgeTool)).not.toContain("Persist runtime credential");
     expect(JSON.stringify(sourceEnvSecretMemoryBridgeTool)).not.toContain("source env secret persisted to memory");
     expect(JSON.stringify(sourceEnvSecretMemoryBridgeTool)).not.toContain("Persist environment-backed support credentials");
+    expect(sourceEnvSecretPromptCacheBridgeTool).toMatchObject({
+      path: "mcp-source/customer-tools.ts",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["call", "remember", "write"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(sourceEnvSecretPromptCacheBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_mcp_source_tool: true,
+      mcp_source_tool_registration: true,
+      mcp_source_tool_registration_kind: "registerTool",
+      mcp_source_tool_argument_count: 3,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_secret_like_input: true,
+      accepts_content_like_input: true,
+      accepts_path_input: false,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      prompt_cache_write: true,
+      env_secret_prompt_cache_bridge: true,
+      tainted_prompt_cache_key: true,
+      tainted_prompt_cache_value: false,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_secret_env_access: true,
+      handler_prompt_cache_write: true,
+      handler_env_secret_prompt_cache_bridge: true,
+      handler_tainted_prompt_cache_key: true,
+      handler_tainted_prompt_cache_value: false,
+      handler_signal_count: 4,
+      open_world_schema: false
+    });
+    for (const authorityClass of [
+      "env_secret_prompt_cache_bridge",
+      "prompt_cache_write",
+      "secret_env_access",
+      "tainted_prompt_cache_key"
+    ]) {
+      expect(sourceEnvSecretPromptCacheBridgeTool?.metadata.authority_classes).toContain(authorityClass);
+    }
+    expect(sourceEnvSecretPromptCacheBridgeTool?.metadata.handler_authority_classes).toEqual([
+      "handler_env_secret_prompt_cache_bridge",
+      "handler_prompt_cache_write",
+      "handler_secret_env_access",
+      "handler_tainted_prompt_cache_key"
+    ]);
+    expect(sourceEnvSecretPromptCacheBridgeTool?.metadata.handler_env_key_names).toEqual(["SOURCE_PROMPT_CACHE_REPLAY_SECRET"]);
+    expect(sourceEnvSecretPromptCacheBridgeTool?.metadata.schema_properties).toEqual([
+      "cache_namespace",
+      "customer_id",
+      "prompt_cache_key"
+    ]);
+    expect(sourceEnvSecretPromptCacheBridgeTool?.metadata.required_properties).toEqual([
+      "cache_namespace",
+      "customer_id",
+      "prompt_cache_key"
+    ]);
+    expect(JSON.stringify(sourceEnvSecretPromptCacheBridgeTool)).not.toContain("process.env");
+    expect(JSON.stringify(sourceEnvSecretPromptCacheBridgeTool)).not.toContain("cacheCredential");
+    expect(JSON.stringify(sourceEnvSecretPromptCacheBridgeTool)).not.toContain("promptCache.set");
+    expect(JSON.stringify(sourceEnvSecretPromptCacheBridgeTool)).not.toContain("Persist runtime credential");
+    expect(JSON.stringify(sourceEnvSecretPromptCacheBridgeTool)).not.toContain("source env secret cached for prompts");
+    expect(JSON.stringify(sourceEnvSecretPromptCacheBridgeTool)).not.toContain("Persist environment-backed support credentials");
     expect(sourceToolOutputCredentialIssuanceBridgeTool).toMatchObject({
       path: "mcp-source/customer-tools.ts",
       data_classes: ["confidential", "credential", "pii"],
@@ -17476,6 +17549,76 @@ describe("scanner", () => {
     expect(JSON.stringify(langchainEnvSecretMemoryBridgeTool)).not.toContain("Persist runtime credential");
     expect(JSON.stringify(langchainEnvSecretMemoryBridgeTool)).not.toContain("framework env secret persisted to memory");
     expect(JSON.stringify(langchainEnvSecretMemoryBridgeTool)).not.toContain("Persist environment-backed support credentials");
+    expect(langchainEnvSecretPromptCacheBridgeTool).toMatchObject({
+      path: "framework-tools/langchain_tools.py",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["call", "remember", "write"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(langchainEnvSecretPromptCacheBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_agent_framework_source_tool: true,
+      agent_framework_source_tool: true,
+      agent_framework_source_tool_framework: "langchain",
+      agent_framework_source_tool_registration_kind: "python_tool_decorator",
+      agent_framework_source_tool_argument_count: 3,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_secret_like_input: true,
+      accepts_content_like_input: true,
+      accepts_path_input: false,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      prompt_cache_write: true,
+      env_secret_prompt_cache_bridge: true,
+      tainted_prompt_cache_key: true,
+      tainted_prompt_cache_value: false,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_secret_env_access: true,
+      handler_prompt_cache_write: true,
+      handler_env_secret_prompt_cache_bridge: true,
+      handler_tainted_prompt_cache_key: true,
+      handler_tainted_prompt_cache_value: false,
+      handler_signal_count: 4,
+      open_world_schema: false
+    });
+    for (const authorityClass of [
+      "env_secret_prompt_cache_bridge",
+      "prompt_cache_write",
+      "secret_env_access",
+      "tainted_prompt_cache_key"
+    ]) {
+      expect(langchainEnvSecretPromptCacheBridgeTool?.metadata.authority_classes).toContain(authorityClass);
+    }
+    expect(langchainEnvSecretPromptCacheBridgeTool?.metadata.handler_authority_classes).toEqual([
+      "handler_env_secret_prompt_cache_bridge",
+      "handler_prompt_cache_write",
+      "handler_secret_env_access",
+      "handler_tainted_prompt_cache_key"
+    ]);
+    expect(langchainEnvSecretPromptCacheBridgeTool?.metadata.handler_env_key_names).toEqual([
+      "LANGCHAIN_PROMPT_CACHE_REPLAY_SECRET"
+    ]);
+    expect(langchainEnvSecretPromptCacheBridgeTool?.metadata.schema_properties).toEqual([
+      "cache_namespace",
+      "customer_id",
+      "prompt_cache_key"
+    ]);
+    expect(langchainEnvSecretPromptCacheBridgeTool?.metadata.required_properties).toEqual([
+      "cache_namespace",
+      "customer_id",
+      "prompt_cache_key"
+    ]);
+    expect(JSON.stringify(langchainEnvSecretPromptCacheBridgeTool)).not.toContain("os.getenv");
+    expect(JSON.stringify(langchainEnvSecretPromptCacheBridgeTool)).not.toContain("cache_credential");
+    expect(JSON.stringify(langchainEnvSecretPromptCacheBridgeTool)).not.toContain("prompt_cache.set");
+    expect(JSON.stringify(langchainEnvSecretPromptCacheBridgeTool)).not.toContain("Persist runtime credential");
+    expect(JSON.stringify(langchainEnvSecretPromptCacheBridgeTool)).not.toContain("framework env secret cached for prompts");
+    expect(JSON.stringify(langchainEnvSecretPromptCacheBridgeTool)).not.toContain("Persist environment-backed support credentials");
     expect(langchainToolOutputCredentialIssuanceBridgeTool).toMatchObject({
       path: "framework-tools/langchain_tools.py",
       data_classes: ["confidential", "credential", "pii"],

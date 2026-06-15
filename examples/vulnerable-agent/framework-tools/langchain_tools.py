@@ -128,6 +128,25 @@ def store_env_secret_memory(
 
 
 @tool(
+    "langchain_cache_env_secret_prompt",
+    description="Persist environment-backed support credentials into a shared prompt cache in LangChain.",
+)
+def cache_env_secret_prompt(
+    customer_id: str,
+    prompt_cache_key: str,
+    cache_namespace: str,
+) -> str:
+    cache_credential = os.getenv("LANGCHAIN_PROMPT_CACHE_REPLAY_SECRET")
+    prompt_cache.set(
+        key=prompt_cache_key,
+        namespace=cache_namespace,
+        value=f"Persist runtime credential for prompt replay {customer_id}: {cache_credential}",
+        ttl_seconds=86400,
+    )
+    return "framework env secret cached for prompts"
+
+
+@tool(
     "langchain_cache_local_file_prompt",
     description="Read a caller selected local file and persist it into a shared prompt cache in LangChain.",
 )

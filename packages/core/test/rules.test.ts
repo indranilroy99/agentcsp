@@ -160,6 +160,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-156")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-157")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-158")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-159")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-001")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-002")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-003")).toBe(true);
@@ -12194,6 +12195,43 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerEnvSecretMemoryBridgeFindings)).not.toContain("memory_store.upsert");
     expect(JSON.stringify(sourceHandlerEnvSecretMemoryBridgeFindings)).not.toContain("Persist runtime credential");
     expect(JSON.stringify(sourceHandlerEnvSecretMemoryBridgeFindings)).not.toContain("Persist environment-backed support credentials");
+    const sourceHandlerEnvSecretPromptCacheBridgeFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-159");
+    expect(sourceHandlerEnvSecretPromptCacheBridgeFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
+      "langchain_cache_env_secret_prompt",
+      "source_cache_env_secret_prompt"
+    ]);
+    expect(sourceHandlerEnvSecretPromptCacheBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
+    expect(sourceHandlerEnvSecretPromptCacheBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerEnvSecretPromptCacheBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
+    expect(sourceHandlerEnvSecretPromptCacheBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
+    expect(sourceHandlerEnvSecretPromptCacheBridgeFindings.every((finding) => finding.matched_object.metadata.source_tool_handler_redacted === true)).toBe(true);
+    expect(sourceHandlerEnvSecretPromptCacheBridgeFindings.every((finding) => finding.matched_object.metadata.handler_secret_env_access === true)).toBe(true);
+    expect(sourceHandlerEnvSecretPromptCacheBridgeFindings.every((finding) => finding.matched_object.metadata.handler_prompt_cache_write === true)).toBe(true);
+    expect(sourceHandlerEnvSecretPromptCacheBridgeFindings.every((finding) => finding.matched_object.metadata.handler_env_secret_prompt_cache_bridge === true)).toBe(true);
+    expect(sourceHandlerEnvSecretPromptCacheBridgeFindings.every((finding) => finding.matched_object.metadata.prompt_cache_write === true)).toBe(true);
+    expect(sourceHandlerEnvSecretPromptCacheBridgeFindings.every((finding) => finding.matched_object.metadata.env_secret_prompt_cache_bridge === true)).toBe(true);
+    expect(sourceHandlerEnvSecretPromptCacheBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.authority_classes.includes("env_secret_prompt_cache_bridge")
+    )).toBe(true);
+    expect(sourceHandlerEnvSecretPromptCacheBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.handler_authority_classes.includes("handler_env_secret_prompt_cache_bridge")
+    )).toBe(true);
+    expect(sourceHandlerEnvSecretPromptCacheBridgeFindings.every((finding) => finding.matched_object.actions.includes("remember"))).toBe(true);
+    expect(sourceHandlerEnvSecretPromptCacheBridgeFindings.every((finding) => finding.matched_object.actions.includes("write"))).toBe(true);
+    expect(sourceHandlerEnvSecretPromptCacheBridgeFindings.every((finding) => finding.matched_object.external_reach === true)).toBe(true);
+    expect(sourceHandlerEnvSecretPromptCacheBridgeFindings.every((finding) => finding.matched_object.secret_exposure === true)).toBe(true);
+    expect(sourceHandlerEnvSecretPromptCacheBridgeFindings.every((finding) => finding.matched_object.side_effect === true)).toBe(true);
+    expect(sourceHandlerEnvSecretPromptCacheBridgeFindings.every((finding) => finding.matched_object.reversible === false)).toBe(true);
+    expect(JSON.stringify(sourceHandlerEnvSecretPromptCacheBridgeFindings)).not.toContain("process.env");
+    expect(JSON.stringify(sourceHandlerEnvSecretPromptCacheBridgeFindings)).not.toContain("os.getenv");
+    expect(JSON.stringify(sourceHandlerEnvSecretPromptCacheBridgeFindings)).not.toContain("cacheCredential");
+    expect(JSON.stringify(sourceHandlerEnvSecretPromptCacheBridgeFindings)).not.toContain("cache_credential");
+    expect(JSON.stringify(sourceHandlerEnvSecretPromptCacheBridgeFindings)).not.toContain("promptCache.set");
+    expect(JSON.stringify(sourceHandlerEnvSecretPromptCacheBridgeFindings)).not.toContain("prompt_cache.set");
+    expect(JSON.stringify(sourceHandlerEnvSecretPromptCacheBridgeFindings)).not.toContain("Persist runtime credential");
+    expect(JSON.stringify(sourceHandlerEnvSecretPromptCacheBridgeFindings)).not.toContain("source env secret cached for prompts");
+    expect(JSON.stringify(sourceHandlerEnvSecretPromptCacheBridgeFindings)).not.toContain("framework env secret cached for prompts");
+    expect(JSON.stringify(sourceHandlerEnvSecretPromptCacheBridgeFindings)).not.toContain("Persist environment-backed support credentials");
     const sourceHandlerRagRetrievalPromptBridgeFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-094");
     expect(sourceHandlerRagRetrievalPromptBridgeFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_summarize_retrieved_context_with_model",
