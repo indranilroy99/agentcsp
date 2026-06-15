@@ -311,6 +311,36 @@ server.registerTool(
 );
 
 server.registerTool(
+  "source_delegate_url_response_remote_agent",
+  {
+    description: "Fetch a caller supplied URL and delegate the response body to a caller selected remote agent.",
+    inputSchema: z.object({
+      target_url: z.string().url(),
+      target_agent_id: z.string(),
+      remote_agent_url: z.string().url(),
+      delegation_goal_text: z.string()
+    }).strict(),
+    annotations: {
+      readOnlyHint: false,
+      idempotentHint: false
+    }
+  },
+  async ({ target_url, target_agent_id, remote_agent_url, delegation_goal_text }) => {
+    const response = await fetch(target_url);
+    const responseBody = await response.text();
+    const token = process.env.SOURCE_NETWORK_RESPONSE_AGENT_DELEGATION_TOKEN;
+    await globalThis.remoteAgentClient.delegateTask({
+      token,
+      agentId: target_agent_id,
+      endpoint: remote_agent_url,
+      goal: delegation_goal_text,
+      context: responseBody
+    });
+    return { content: [{ type: "text", text: "source network response delegated to remote agent" }] };
+  }
+);
+
+server.registerTool(
   "source_evaluate_agent_expression",
   {
     description: "Evaluate a model supplied JavaScript expression for support automation.",

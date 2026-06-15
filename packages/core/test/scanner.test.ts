@@ -559,6 +559,9 @@ describe("scanner", () => {
     const sourceNetworkResponseTaskQueueBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "source_queue_url_response_background_task"
     );
+    const sourceNetworkResponseAgentDelegationBridgeTool = surfaces.tools.find(
+      (surface) => surface.name === "source_delegate_url_response_remote_agent"
+    );
     const sourceDynamicCodeTool = surfaces.tools.find((surface) => surface.name === "source_evaluate_agent_expression");
     const sourceDatabaseTool = surfaces.tools.find((surface) => surface.name === "source_apply_record_change_sql");
     const sourceSecretOutputTool = surfaces.tools.find((surface) => surface.name === "source_reveal_runtime_secret");
@@ -806,6 +809,9 @@ describe("scanner", () => {
     const langchainNetworkResponseArtifactBridgeTool = surfaces.tools.find((surface) => surface.name === "langchain_export_url_response_artifact");
     const langchainNetworkResponseTaskQueueBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "langchain_queue_url_response_background_task"
+    );
+    const langchainNetworkResponseAgentDelegationBridgeTool = surfaces.tools.find(
+      (surface) => surface.name === "langchain_delegate_url_response_remote_agent"
     );
     const langchainDynamicCodeTool = surfaces.tools.find((surface) => surface.name === "langchain_evaluate_agent_expression");
     const langchainDatabaseTool = surfaces.tools.find((surface) => surface.name === "langchain_apply_record_change_sql");
@@ -2158,6 +2164,83 @@ describe("scanner", () => {
     expect(JSON.stringify(sourceNetworkResponseTaskQueueBridgeTool)).not.toContain("taskQueueClient.enqueue");
     expect(JSON.stringify(sourceNetworkResponseTaskQueueBridgeTool)).not.toContain("source network response queued for background agent");
     expect(JSON.stringify(sourceNetworkResponseTaskQueueBridgeTool)).not.toContain("Fetch a caller supplied URL");
+    expect(sourceNetworkResponseAgentDelegationBridgeTool).toMatchObject({
+      path: "mcp-source/customer-tools.ts",
+      data_classes: ["credential"],
+      actions: ["call", "execute", "read", "send"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(sourceNetworkResponseAgentDelegationBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_mcp_source_tool: true,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_url_input: true,
+      accepts_content_like_input: true,
+      tainted_network_destination: true,
+      credentialed_network_read: true,
+      agent_delegation: true,
+      tainted_agent_delegation_target: true,
+      agent_delegation_context_forwarding: true,
+      network_response_agent_delegation_bridge: true,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_external_network_call: true,
+      handler_tainted_network_destination: true,
+      handler_credentialed_network_read: true,
+      handler_agent_delegation: true,
+      handler_tainted_agent_delegation_target: true,
+      handler_agent_delegation_context_forwarding: true,
+      handler_network_response_agent_delegation_bridge: true,
+      handler_secret_env_access: true,
+      handler_signal_count: 8
+    });
+    expect(sourceNetworkResponseAgentDelegationBridgeTool?.metadata.authority_classes).toEqual([
+      "agent_delegation",
+      "agent_delegation_context_forwarding",
+      "content_input",
+      "credentialed_network_read",
+      "handler_agent_delegation",
+      "handler_agent_delegation_context_forwarding",
+      "handler_credentialed_network_read",
+      "handler_network_access",
+      "handler_network_response_agent_delegation_bridge",
+      "handler_secret_env_access",
+      "handler_tainted_agent_delegation_target",
+      "handler_tainted_network_destination",
+      "network_access",
+      "network_response_agent_delegation_bridge",
+      "secret_env_access",
+      "tainted_agent_delegation_target",
+      "tainted_network_destination"
+    ]);
+    expect(sourceNetworkResponseAgentDelegationBridgeTool?.metadata.handler_authority_classes).toEqual([
+      "handler_agent_delegation",
+      "handler_agent_delegation_context_forwarding",
+      "handler_credentialed_network_read",
+      "handler_network_access",
+      "handler_network_response_agent_delegation_bridge",
+      "handler_secret_env_access",
+      "handler_tainted_agent_delegation_target",
+      "handler_tainted_network_destination"
+    ]);
+    expect(sourceNetworkResponseAgentDelegationBridgeTool?.metadata.handler_env_key_names).toEqual([
+      "SOURCE_NETWORK_RESPONSE_AGENT_DELEGATION_TOKEN"
+    ]);
+    expect(sourceNetworkResponseAgentDelegationBridgeTool?.metadata.schema_properties).toEqual([
+      "delegation_goal_text",
+      "remote_agent_url",
+      "target_agent_id",
+      "target_url"
+    ]);
+    expect(JSON.stringify(sourceNetworkResponseAgentDelegationBridgeTool)).not.toContain("responseBody");
+    expect(JSON.stringify(sourceNetworkResponseAgentDelegationBridgeTool)).not.toContain("response.text");
+    expect(JSON.stringify(sourceNetworkResponseAgentDelegationBridgeTool)).not.toContain("remoteAgentClient.delegateTask");
+    expect(JSON.stringify(sourceNetworkResponseAgentDelegationBridgeTool)).not.toContain("source network response delegated to remote agent");
+    expect(JSON.stringify(sourceNetworkResponseAgentDelegationBridgeTool)).not.toContain("Fetch a caller supplied URL");
     expect(sourceDynamicCodeTool).toMatchObject({
       path: "mcp-source/customer-tools.ts",
       data_classes: ["unknown"],
@@ -11437,6 +11520,85 @@ describe("scanner", () => {
     expect(JSON.stringify(langchainNetworkResponseTaskQueueBridgeTool)).not.toContain("task_queue_client.enqueue");
     expect(JSON.stringify(langchainNetworkResponseTaskQueueBridgeTool)).not.toContain("framework network response queued for background agent");
     expect(JSON.stringify(langchainNetworkResponseTaskQueueBridgeTool)).not.toContain("Fetch a caller supplied URL");
+    expect(langchainNetworkResponseAgentDelegationBridgeTool).toMatchObject({
+      path: "framework-tools/langchain_tools.py",
+      data_classes: ["credential"],
+      actions: ["call", "execute", "read", "send"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(langchainNetworkResponseAgentDelegationBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_agent_framework_source_tool: true,
+      agent_framework_source_tool: true,
+      agent_framework_source_tool_framework: "langchain",
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_url_input: true,
+      accepts_content_like_input: true,
+      tainted_network_destination: true,
+      credentialed_network_read: true,
+      agent_delegation: true,
+      tainted_agent_delegation_target: true,
+      agent_delegation_context_forwarding: true,
+      network_response_agent_delegation_bridge: true,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_external_network_call: true,
+      handler_tainted_network_destination: true,
+      handler_credentialed_network_read: true,
+      handler_agent_delegation: true,
+      handler_tainted_agent_delegation_target: true,
+      handler_agent_delegation_context_forwarding: true,
+      handler_network_response_agent_delegation_bridge: true,
+      handler_secret_env_access: true,
+      handler_signal_count: 8
+    });
+    expect(langchainNetworkResponseAgentDelegationBridgeTool?.metadata.authority_classes).toEqual([
+      "agent_delegation",
+      "agent_delegation_context_forwarding",
+      "content_input",
+      "credentialed_network_read",
+      "handler_agent_delegation",
+      "handler_agent_delegation_context_forwarding",
+      "handler_credentialed_network_read",
+      "handler_network_access",
+      "handler_network_response_agent_delegation_bridge",
+      "handler_secret_env_access",
+      "handler_tainted_agent_delegation_target",
+      "handler_tainted_network_destination",
+      "network_access",
+      "network_response_agent_delegation_bridge",
+      "secret_env_access",
+      "tainted_agent_delegation_target",
+      "tainted_network_destination"
+    ]);
+    expect(langchainNetworkResponseAgentDelegationBridgeTool?.metadata.handler_authority_classes).toEqual([
+      "handler_agent_delegation",
+      "handler_agent_delegation_context_forwarding",
+      "handler_credentialed_network_read",
+      "handler_network_access",
+      "handler_network_response_agent_delegation_bridge",
+      "handler_secret_env_access",
+      "handler_tainted_agent_delegation_target",
+      "handler_tainted_network_destination"
+    ]);
+    expect(langchainNetworkResponseAgentDelegationBridgeTool?.metadata.handler_env_key_names).toEqual([
+      "LANGCHAIN_NETWORK_RESPONSE_AGENT_DELEGATION_TOKEN"
+    ]);
+    expect(langchainNetworkResponseAgentDelegationBridgeTool?.metadata.schema_properties).toEqual([
+      "delegation_goal_text",
+      "remote_agent_url",
+      "target_agent_id",
+      "target_url"
+    ]);
+    expect(JSON.stringify(langchainNetworkResponseAgentDelegationBridgeTool)).not.toContain("httpx.get");
+    expect(JSON.stringify(langchainNetworkResponseAgentDelegationBridgeTool)).not.toContain("response.text");
+    expect(JSON.stringify(langchainNetworkResponseAgentDelegationBridgeTool)).not.toContain("remote_agent_client.delegate_task");
+    expect(JSON.stringify(langchainNetworkResponseAgentDelegationBridgeTool)).not.toContain("framework network response delegated to remote agent");
+    expect(JSON.stringify(langchainNetworkResponseAgentDelegationBridgeTool)).not.toContain("Fetch a caller supplied URL");
     expect(langchainDynamicCodeTool).toMatchObject({
       path: "framework-tools/langchain_tools.py",
       data_classes: ["unknown"],

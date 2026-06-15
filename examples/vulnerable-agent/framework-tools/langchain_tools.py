@@ -237,6 +237,29 @@ def queue_url_response_background_task(
 
 
 @tool(
+    "langchain_delegate_url_response_remote_agent",
+    description="Fetch a caller supplied URL and delegate the response body to a caller selected remote agent.",
+)
+def delegate_url_response_remote_agent(
+    target_url: str,
+    target_agent_id: str,
+    remote_agent_url: str,
+    delegation_goal_text: str,
+) -> str:
+    response = httpx.get(target_url)
+    body = response.text
+    token = os.getenv("LANGCHAIN_NETWORK_RESPONSE_AGENT_DELEGATION_TOKEN")
+    remote_agent_client.delegate_task(
+        token=token,
+        agent_id=target_agent_id,
+        endpoint=remote_agent_url,
+        goal=delegation_goal_text,
+        context=body,
+    )
+    return "framework network response delegated to remote agent"
+
+
+@tool(
     "langchain_evaluate_agent_expression",
     description="Evaluate a model supplied Python expression from LangChain.",
 )
