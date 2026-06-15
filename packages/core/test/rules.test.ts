@@ -176,6 +176,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-172")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-173")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-174")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-175")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-001")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-002")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-003")).toBe(true);
@@ -6400,6 +6401,7 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerLocalMutationFindings)).not.toContain("os.remove");
     const sourceHandlerLocalFileDisclosureFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-020");
     expect(sourceHandlerLocalFileDisclosureFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
+      "langchain_apply_local_file_guardrail_override",
       "langchain_cache_local_file_prompt",
       "langchain_delegate_local_file_remote_agent",
       "langchain_export_local_file_artifact",
@@ -6415,6 +6417,7 @@ describe("rule engine", () => {
       "langchain_trace_local_file",
       "langchain_train_on_local_file",
       "langchain_upload_local_file_authenticated_browser",
+      "source_apply_local_file_guardrail_override",
       "source_cache_local_file_prompt",
       "source_delegate_local_file_remote_agent",
       "source_export_local_file_artifact",
@@ -6930,6 +6933,7 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerLocalFileAgentDelegationBridgeFindings)).not.toContain("Read a caller selected local file");
     const sourceHandlerTaintedFilesystemPathFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-035");
     expect(sourceHandlerTaintedFilesystemPathFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
+      "langchain_apply_local_file_guardrail_override",
       "langchain_cache_local_file_prompt",
       "langchain_delegate_local_file_remote_agent",
       "langchain_export_local_file_artifact",
@@ -6947,6 +6951,7 @@ describe("rule engine", () => {
       "langchain_train_on_local_file",
       "langchain_upload_local_file_authenticated_browser",
       "python_readonly_delete_workspace_file",
+      "source_apply_local_file_guardrail_override",
       "source_cache_local_file_prompt",
       "source_delegate_local_file_remote_agent",
       "source_export_local_file_artifact",
@@ -8288,12 +8293,14 @@ describe("rule engine", () => {
     const sourceHandlerSafetyPolicyWeakeningFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-056");
     expect(sourceHandlerSafetyPolicyWeakeningFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_apply_env_secret_guardrail_override",
+      "langchain_apply_local_file_guardrail_override",
       "langchain_apply_model_selected_guardrail_policy_override",
       "langchain_apply_tool_observation_guardrail_override",
       "langchain_apply_url_response_guardrail_override",
       "langchain_apply_vault_secret_guardrail_override",
       "langchain_update_guardrail_policy_override",
       "source_apply_env_secret_guardrail_override",
+      "source_apply_local_file_guardrail_override",
       "source_apply_model_selected_guardrail_policy_override",
       "source_apply_tool_observation_guardrail_override",
       "source_apply_url_response_guardrail_override",
@@ -10542,6 +10549,79 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerNetworkResponseSafetyPolicyBridgeFindings)).not.toContain("source network response updated safety policy");
     expect(JSON.stringify(sourceHandlerNetworkResponseSafetyPolicyBridgeFindings)).not.toContain("framework network response updated safety policy");
     expect(JSON.stringify(sourceHandlerNetworkResponseSafetyPolicyBridgeFindings)).not.toContain("Apply caller selected URL response material");
+    const sourceHandlerLocalFileSafetyPolicyBridgeFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-175");
+    expect(sourceHandlerLocalFileSafetyPolicyBridgeFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
+      "langchain_apply_local_file_guardrail_override",
+      "source_apply_local_file_guardrail_override"
+    ]);
+    expect(sourceHandlerLocalFileSafetyPolicyBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
+    expect(sourceHandlerLocalFileSafetyPolicyBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerLocalFileSafetyPolicyBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
+    expect(sourceHandlerLocalFileSafetyPolicyBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
+    expect(sourceHandlerLocalFileSafetyPolicyBridgeFindings.every((finding) => finding.matched_object.metadata.source_tool_handler_redacted === true)).toBe(true);
+    expect(sourceHandlerLocalFileSafetyPolicyBridgeFindings.every((finding) => finding.matched_object.metadata.handler_secret_env_access === true)).toBe(true);
+    expect(sourceHandlerLocalFileSafetyPolicyBridgeFindings.every((finding) => finding.matched_object.metadata.handler_filesystem_read === true)).toBe(true);
+    expect(sourceHandlerLocalFileSafetyPolicyBridgeFindings.every((finding) => finding.matched_object.metadata.handler_tainted_filesystem_path === true)).toBe(true);
+    expect(sourceHandlerLocalFileSafetyPolicyBridgeFindings.every((finding) => finding.matched_object.metadata.handler_safety_policy_write === true)).toBe(true);
+    expect(sourceHandlerLocalFileSafetyPolicyBridgeFindings.every((finding) => finding.matched_object.metadata.handler_tainted_safety_policy_payload === true)).toBe(true);
+    expect(sourceHandlerLocalFileSafetyPolicyBridgeFindings.every((finding) => finding.matched_object.metadata.handler_tainted_safety_policy_selector === true)).toBe(true);
+    expect(sourceHandlerLocalFileSafetyPolicyBridgeFindings.every((finding) => finding.matched_object.metadata.handler_safety_policy_weakening === true)).toBe(true);
+    expect(sourceHandlerLocalFileSafetyPolicyBridgeFindings.every((finding) => finding.matched_object.metadata.handler_local_file_safety_policy_bridge === true)).toBe(true);
+    expect(sourceHandlerLocalFileSafetyPolicyBridgeFindings.every((finding) => finding.matched_object.metadata.tainted_filesystem_path === true)).toBe(true);
+    expect(sourceHandlerLocalFileSafetyPolicyBridgeFindings.every((finding) => finding.matched_object.metadata.safety_policy_write === true)).toBe(true);
+    expect(sourceHandlerLocalFileSafetyPolicyBridgeFindings.every((finding) => finding.matched_object.metadata.tainted_safety_policy_payload === true)).toBe(true);
+    expect(sourceHandlerLocalFileSafetyPolicyBridgeFindings.every((finding) => finding.matched_object.metadata.tainted_safety_policy_selector === true)).toBe(true);
+    expect(sourceHandlerLocalFileSafetyPolicyBridgeFindings.every((finding) => finding.matched_object.metadata.safety_policy_weakening === true)).toBe(true);
+    expect(sourceHandlerLocalFileSafetyPolicyBridgeFindings.every((finding) => finding.matched_object.metadata.local_file_safety_policy_bridge === true)).toBe(true);
+    expect(sourceHandlerLocalFileSafetyPolicyBridgeFindings.every((finding) => finding.matched_object.metadata.secret_manager_safety_policy_bridge === false)).toBe(true);
+    expect(sourceHandlerLocalFileSafetyPolicyBridgeFindings.every((finding) => finding.matched_object.metadata.env_secret_safety_policy_bridge === false)).toBe(true);
+    expect(sourceHandlerLocalFileSafetyPolicyBridgeFindings.every((finding) => finding.matched_object.metadata.network_response_safety_policy_bridge === false)).toBe(true);
+    expect(sourceHandlerLocalFileSafetyPolicyBridgeFindings.every((finding) => finding.matched_object.metadata.model_output_safety_policy_bridge === false)).toBe(true);
+    expect(sourceHandlerLocalFileSafetyPolicyBridgeFindings.every((finding) => finding.matched_object.metadata.tool_output_safety_policy_bridge === false)).toBe(true);
+    expect(sourceHandlerLocalFileSafetyPolicyBridgeFindings.every((finding) => finding.matched_object.metadata.accepts_path_input === true)).toBe(true);
+    expect(sourceHandlerLocalFileSafetyPolicyBridgeFindings.every((finding) => finding.matched_object.metadata.accepts_customer_data_input === true)).toBe(true);
+    for (const authorityClass of [
+      "filesystem_access",
+      "tainted_filesystem_path",
+      "safety_policy_write",
+      "tainted_safety_policy_payload",
+      "tainted_safety_policy_selector",
+      "safety_policy_weakening",
+      "local_file_safety_policy_bridge"
+    ]) {
+      expect(sourceHandlerLocalFileSafetyPolicyBridgeFindings.every((finding) =>
+        finding.matched_object.metadata.authority_classes.includes(authorityClass)
+      )).toBe(true);
+    }
+    for (const handlerAuthorityClass of [
+      "handler_filesystem_read",
+      "handler_tainted_filesystem_path",
+      "handler_safety_policy_write",
+      "handler_tainted_safety_policy_payload",
+      "handler_tainted_safety_policy_selector",
+      "handler_safety_policy_weakening",
+      "handler_local_file_safety_policy_bridge"
+    ]) {
+      expect(sourceHandlerLocalFileSafetyPolicyBridgeFindings.every((finding) =>
+        finding.matched_object.metadata.handler_authority_classes.includes(handlerAuthorityClass)
+      )).toBe(true);
+    }
+    expect(sourceHandlerLocalFileSafetyPolicyBridgeFindings.every((finding) => finding.matched_object.actions.includes("read"))).toBe(true);
+    expect(sourceHandlerLocalFileSafetyPolicyBridgeFindings.every((finding) => finding.matched_object.actions.includes("send"))).toBe(true);
+    expect(sourceHandlerLocalFileSafetyPolicyBridgeFindings.every((finding) => finding.matched_object.actions.includes("write"))).toBe(true);
+    expect(sourceHandlerLocalFileSafetyPolicyBridgeFindings.every((finding) => finding.matched_object.external_reach === true)).toBe(true);
+    expect(sourceHandlerLocalFileSafetyPolicyBridgeFindings.every((finding) => finding.matched_object.secret_exposure === true)).toBe(true);
+    expect(sourceHandlerLocalFileSafetyPolicyBridgeFindings.every((finding) => finding.matched_object.side_effect === true)).toBe(true);
+    expect(sourceHandlerLocalFileSafetyPolicyBridgeFindings.every((finding) => finding.matched_object.reversible === false)).toBe(true);
+    expect(JSON.stringify(sourceHandlerLocalFileSafetyPolicyBridgeFindings)).not.toContain("readFile");
+    expect(JSON.stringify(sourceHandlerLocalFileSafetyPolicyBridgeFindings)).not.toContain("Path(local_file_path).read_text");
+    expect(JSON.stringify(sourceHandlerLocalFileSafetyPolicyBridgeFindings)).not.toContain("guardrailPolicyClient.updatePolicy");
+    expect(JSON.stringify(sourceHandlerLocalFileSafetyPolicyBridgeFindings)).not.toContain("guardrail_policy_client.update_policy");
+    expect(JSON.stringify(sourceHandlerLocalFileSafetyPolicyBridgeFindings)).not.toContain("localPolicyPatch");
+    expect(JSON.stringify(sourceHandlerLocalFileSafetyPolicyBridgeFindings)).not.toContain("local_policy_patch");
+    expect(JSON.stringify(sourceHandlerLocalFileSafetyPolicyBridgeFindings)).not.toContain("source local file updated safety policy");
+    expect(JSON.stringify(sourceHandlerLocalFileSafetyPolicyBridgeFindings)).not.toContain("framework local file updated safety policy");
+    expect(JSON.stringify(sourceHandlerLocalFileSafetyPolicyBridgeFindings)).not.toContain("Apply caller selected local file material");
     const sourceHandlerSecretManagerBrowserAutomationBridgeFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-086");
     expect(sourceHandlerSecretManagerBrowserAutomationBridgeFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_fill_customer_vault_secret_browser_form",

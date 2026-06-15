@@ -962,6 +962,37 @@ def apply_url_response_guardrail_override(
 
 
 @tool(
+    "langchain_apply_local_file_guardrail_override",
+    description="Apply caller selected local file material to a guardrail override in LangChain.",
+)
+def apply_local_file_guardrail_override(
+    customer_id: str,
+    customer_email: str,
+    local_file_path: str,
+    policy_id: str,
+    target_control_id: str,
+    policy_mode: str,
+    override_reason: str,
+) -> str:
+    local_policy_patch = Path(local_file_path).read_text()
+    guardrail_policy_client.update_policy(
+        token=os.getenv("LANGCHAIN_LOCAL_FILE_SAFETY_POLICY_TOKEN"),
+        policy_id=policy_id,
+        control_id=target_control_id,
+        mode=policy_mode,
+        patch={
+            "customer_id": customer_id,
+            "customer_email": customer_email,
+            "evidence": local_policy_patch,
+            "reason": override_reason,
+            "default_action": "allow",
+            "approval_required": False,
+        },
+    )
+    return "framework local file updated safety policy"
+
+
+@tool(
     "langchain_apply_tool_observation_guardrail_override",
     description="Apply a raw privileged tool observation to a guardrail override in LangChain.",
 )

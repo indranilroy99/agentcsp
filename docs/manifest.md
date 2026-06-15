@@ -424,6 +424,7 @@ Tool metadata may include:
 - `secret_manager_safety_policy_bridge`
 - `env_secret_safety_policy_bridge`
 - `network_response_safety_policy_bridge`
+- `local_file_safety_policy_bridge`
 - `tool_output_safety_policy_bridge`
 - `authorization_policy_write`
 - `tainted_authorization_grant_input`
@@ -570,6 +571,7 @@ Tool metadata may include:
 - `handler_secret_manager_safety_policy_bridge`
 - `handler_env_secret_safety_policy_bridge`
 - `handler_network_response_safety_policy_bridge`
+- `handler_local_file_safety_policy_bridge`
 - `handler_tool_output_safety_policy_bridge`
 - `handler_authorization_policy_write`
 - `handler_tainted_authorization_grant_input`
@@ -2216,6 +2218,8 @@ Source-defined tool handlers can also emit redacted network-response authorizati
 Source-defined tool handlers can also emit redacted environment-secret safety-policy bridge authority through `env_secret_safety_policy_bridge`, `safety_policy_write`, `tainted_safety_policy_payload`, `tainted_safety_policy_selector`, `safety_policy_weakening`, and the corresponding `handler_*` fields when parsed MCP SDK or agent-framework tools use environment-derived secret material to update guardrail, approval, moderation, or safety policy with disabled, monitor-only, fail-open, default-allow, or approval-off posture. Handler bodies, env access calls, key values, secret values, policy update calls, target control selectors, selected modes, policy payloads, and return strings remain redacted.
 
 Source-defined tool handlers can also emit redacted network-response safety-policy bridge authority through `network_response_safety_policy_bridge`, `tainted_network_destination`, `safety_policy_write`, `tainted_safety_policy_payload`, `tainted_safety_policy_selector`, `safety_policy_weakening`, and the corresponding `handler_*` fields when parsed MCP SDK or agent-framework tools fetch caller-selected network destinations and use the returned response material to update guardrail, approval, moderation, or safety policy with disabled, monitor-only, fail-open, default-allow, or approval-off posture. Handler bodies, network calls, target URLs, response bodies, response-derived policy variables, policy update calls, target control selectors, selected modes, policy payloads, and return strings remain redacted.
+
+Source-defined tool handlers can also emit redacted local-file safety-policy bridge authority through `local_file_safety_policy_bridge`, `tainted_filesystem_path`, `safety_policy_write`, `tainted_safety_policy_payload`, `tainted_safety_policy_selector`, `safety_policy_weakening`, and the corresponding `handler_*` fields when parsed MCP SDK or agent-framework tools read caller-selected local files and use the file material to update guardrail, approval, moderation, or safety policy with disabled, monitor-only, fail-open, default-allow, or approval-off posture. Handler bodies, filesystem reads, local paths, file contents, file-derived policy variables, policy update calls, target control selectors, selected modes, policy payloads, and return strings remain redacted.
 
 Source-defined tool handlers can also emit redacted model-output authorization-grant bridge authority through `model_output_authorization_grant_bridge`, `model_provider_call`, `authorization_policy_write`, `tainted_authorization_grant_input`, `authorization_broad_grant`, and the corresponding `handler_*` fields when parsed MCP SDK or agent-framework tools call model providers and use model responses to write broad, wildcard, approval-free, or long-lived authorization, permission, entitlement, or tool-grant policy using runtime credentials. Handler bodies, model SDK calls, prompts, completions, model-derived grant variables, grant calls, tool names, roles, scopes, subjects, resources, tenant selectors, grant reasons, and return strings remain redacted.
 
