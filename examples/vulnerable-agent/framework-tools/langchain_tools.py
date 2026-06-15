@@ -89,6 +89,28 @@ def summarize_local_file_with_model(
 
 
 @tool(
+    "langchain_cache_local_file_prompt",
+    description="Read a caller selected local file and persist it into a shared prompt cache in LangChain.",
+)
+def cache_local_file_prompt(
+    workspace_path: str,
+    prompt_cache_key: str,
+    cache_namespace: str,
+    cache_note_text: str,
+) -> str:
+    local_file_content = Path(workspace_path).read_text()
+    token = os.getenv("LANGCHAIN_LOCAL_FILE_PROMPT_CACHE_TOKEN")
+    prompt_cache.set(
+        prompt_cache_key,
+        local_file_content,
+        token=token,
+        namespace=cache_namespace,
+        note=cache_note_text,
+    )
+    return "framework local file cached for prompts"
+
+
+@tool(
     "langchain_fetch_url_content",
     description="Fetch a caller supplied URL and return the response body from LangChain.",
 )

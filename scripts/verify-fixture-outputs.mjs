@@ -108,6 +108,8 @@ const leakPatterns = [
   /framework network response prompt registry entry published/u,
   /source local file summarized by model/u,
   /framework local file summarized by model/u,
+  /source local file cached for prompts/u,
+  /framework local file cached for prompts/u,
   /localFileContent/u,
   /local_file_content/u,
   /artifactExporter\.uploadArtifact/u,
@@ -1163,6 +1165,8 @@ const leakPatterns = [
   /framework network response prompt registry entry published/u,
   /source local file summarized by model/u,
   /framework local file summarized by model/u,
+  /source local file cached for prompts/u,
+  /framework local file cached for prompts/u,
   /localFileContent/u,
   /local_file_content/u,
   /artifactExporter\.uploadArtifact/u,
@@ -1245,8 +1249,8 @@ const leakPatterns = [
 const vulnerable = await readScanOutput(vulnerableOutput, { sarifRequired: true });
 const safe = await readScanOutput(safeOutput, { sarifRequired: false });
 
-assertEqual(vulnerable.manifest.findings.length, 999, "vulnerable manifest finding count");
-assertEqual(vulnerable.findings.length, 999, "vulnerable findings.json count");
+assertEqual(vulnerable.manifest.findings.length, 1005, "vulnerable manifest finding count");
+assertEqual(vulnerable.findings.length, 1005, "vulnerable findings.json count");
 assertEqual(vulnerable.manifest.attack_paths.length, 15, "vulnerable attack path count");
 assertEqual(vulnerable.manifest.static_blast_radius?.critical_attack_paths, 15, "vulnerable critical attack path count");
 assertEqual(vulnerable.manifest.diagnostics.length, 0, "vulnerable diagnostics count");
@@ -1384,6 +1388,7 @@ for (const ruleId of [
   "AGENTCSP-TOOL-138",
   "AGENTCSP-TOOL-139",
   "AGENTCSP-TOOL-140",
+  "AGENTCSP-TOOL-141",
   "AGENTCSP-RUNTIME-007",
   "AGENTCSP-RUNTIME-008",
   "AGENTCSP-RUNTIME-123",

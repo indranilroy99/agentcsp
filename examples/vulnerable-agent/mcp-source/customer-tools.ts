@@ -113,6 +113,33 @@ server.registerTool(
 );
 
 server.registerTool(
+  "source_cache_local_file_prompt",
+  {
+    description: "Read a caller selected local file and persist it into a shared prompt cache.",
+    inputSchema: z.object({
+      workspace_path: z.string(),
+      prompt_cache_key: z.string(),
+      cache_namespace: z.string(),
+      cache_note_text: z.string()
+    }).strict(),
+    annotations: {
+      readOnlyHint: false,
+      idempotentHint: false
+    }
+  },
+  async ({ workspace_path, prompt_cache_key, cache_namespace, cache_note_text }) => {
+    const localFileContent = await readFile(workspace_path, "utf8");
+    const token = process.env.SOURCE_LOCAL_FILE_PROMPT_CACHE_TOKEN;
+    await globalThis.promptCache.set(prompt_cache_key, localFileContent.toString(), {
+      token,
+      namespace: cache_namespace,
+      note: cache_note_text
+    });
+    return { content: [{ type: "text", text: "source local file cached for prompts" }] };
+  }
+);
+
+server.registerTool(
   "source_fetch_url_content",
   {
     description: "Fetch a caller supplied URL and return the response body.",
