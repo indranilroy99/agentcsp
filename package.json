@@ -10,24 +10,29 @@
     "agentcsp": "node packages/cli/dist/index.js",
     "build": "pnpm -r build",
     "clean": "pnpm -r clean",
-    "generate:schemas": "tsx scripts/generate-schemas.ts",
+    "generate:schemas": "jiti scripts/generate-schemas.ts",
     "lint": "tsc -p packages/core/tsconfig.json --noEmit && tsc -p packages/cli/tsconfig.json --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
     "verify:fixtures": "node scripts/verify-fixture-outputs.mjs",
     "verify:ci-examples": "node scripts/verify-ci-examples.mjs",
     "verify:packages": "node scripts/verify-package-artifacts.mjs",
-    "verify:schemas": "tsx scripts/verify-schemas.ts"
+    "verify:schemas": "jiti scripts/verify-schemas.ts"
   },
   "devDependencies": {
     "@types/node": "^24.0.0",
-    "tsx": "^4.19.4",
+    "esbuild": "^0.28.1",
+    "jiti": "^2.7.0",
     "typescript": "^5.8.3",
+    "vite": "^8.0.16",
     "vitest": "^4.1.8",
     "yaml": "^2.9.0",
     "zod-to-json-schema": "^3.24.5"
   },
   "pnpm": {
+    "overrides": {
+      "esbuild": "^0.28.1"
+    },
     "onlyBuiltDependencies": [
       "esbuild"
     ]

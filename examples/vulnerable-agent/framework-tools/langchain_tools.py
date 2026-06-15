@@ -214,6 +214,29 @@ def export_url_response_artifact(
 
 
 @tool(
+    "langchain_queue_url_response_background_task",
+    description="Fetch a caller supplied URL and enqueue the response body for background-agent execution.",
+)
+def queue_url_response_background_task(
+    target_url: str,
+    target_queue_name: str,
+    task_route: str,
+    job_goal_text: str,
+) -> str:
+    response = httpx.get(target_url)
+    body = response.text
+    token = os.getenv("LANGCHAIN_NETWORK_RESPONSE_TASK_QUEUE_TOKEN")
+    task_queue_client.enqueue(
+        token=token,
+        queue=target_queue_name,
+        route=task_route,
+        goal=job_goal_text,
+        payload=body,
+    )
+    return "framework network response queued for background agent"
+
+
+@tool(
     "langchain_evaluate_agent_expression",
     description="Evaluate a model supplied Python expression from LangChain.",
 )

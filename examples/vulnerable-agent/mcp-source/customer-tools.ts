@@ -281,6 +281,36 @@ server.registerTool(
 );
 
 server.registerTool(
+  "source_queue_url_response_background_task",
+  {
+    description: "Fetch a caller supplied URL and enqueue the response body for background-agent execution.",
+    inputSchema: z.object({
+      target_url: z.string().url(),
+      target_queue_name: z.string(),
+      task_route: z.string(),
+      job_goal_text: z.string()
+    }).strict(),
+    annotations: {
+      readOnlyHint: false,
+      idempotentHint: false
+    }
+  },
+  async ({ target_url, target_queue_name, task_route, job_goal_text }) => {
+    const response = await fetch(target_url);
+    const responseBody = await response.text();
+    const token = process.env.SOURCE_NETWORK_RESPONSE_TASK_QUEUE_TOKEN;
+    await globalThis.taskQueueClient.enqueue({
+      token,
+      queue: target_queue_name,
+      route: task_route,
+      goal: job_goal_text,
+      payload: responseBody
+    });
+    return { content: [{ type: "text", text: "source network response queued for background agent" }] };
+  }
+);
+
+server.registerTool(
   "source_evaluate_agent_expression",
   {
     description: "Evaluate a model supplied JavaScript expression for support automation.",

@@ -556,6 +556,9 @@ describe("scanner", () => {
     const sourceNetworkResponseTrainingDatasetBridgeTool = surfaces.tools.find((surface) => surface.name === "source_train_on_url_response");
     const sourceNetworkResponseTelemetryBridgeTool = surfaces.tools.find((surface) => surface.name === "source_trace_url_response");
     const sourceNetworkResponseArtifactBridgeTool = surfaces.tools.find((surface) => surface.name === "source_export_url_response_artifact");
+    const sourceNetworkResponseTaskQueueBridgeTool = surfaces.tools.find(
+      (surface) => surface.name === "source_queue_url_response_background_task"
+    );
     const sourceDynamicCodeTool = surfaces.tools.find((surface) => surface.name === "source_evaluate_agent_expression");
     const sourceDatabaseTool = surfaces.tools.find((surface) => surface.name === "source_apply_record_change_sql");
     const sourceSecretOutputTool = surfaces.tools.find((surface) => surface.name === "source_reveal_runtime_secret");
@@ -801,6 +804,9 @@ describe("scanner", () => {
     const langchainNetworkResponseTrainingDatasetBridgeTool = surfaces.tools.find((surface) => surface.name === "langchain_train_on_url_response");
     const langchainNetworkResponseTelemetryBridgeTool = surfaces.tools.find((surface) => surface.name === "langchain_trace_url_response");
     const langchainNetworkResponseArtifactBridgeTool = surfaces.tools.find((surface) => surface.name === "langchain_export_url_response_artifact");
+    const langchainNetworkResponseTaskQueueBridgeTool = surfaces.tools.find(
+      (surface) => surface.name === "langchain_queue_url_response_background_task"
+    );
     const langchainDynamicCodeTool = surfaces.tools.find((surface) => surface.name === "langchain_evaluate_agent_expression");
     const langchainDatabaseTool = surfaces.tools.find((surface) => surface.name === "langchain_apply_record_change_sql");
     const langchainSecretOutputTool = surfaces.tools.find((surface) => surface.name === "langchain_reveal_runtime_secret");
@@ -2075,6 +2081,83 @@ describe("scanner", () => {
     expect(JSON.stringify(sourceNetworkResponseArtifactBridgeTool)).not.toContain("artifactExporter.uploadArtifact");
     expect(JSON.stringify(sourceNetworkResponseArtifactBridgeTool)).not.toContain("source network response exported to artifact");
     expect(JSON.stringify(sourceNetworkResponseArtifactBridgeTool)).not.toContain("Fetch a caller supplied URL");
+    expect(sourceNetworkResponseTaskQueueBridgeTool).toMatchObject({
+      path: "mcp-source/customer-tools.ts",
+      data_classes: ["credential"],
+      actions: ["call", "read", "remember", "send", "write"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(sourceNetworkResponseTaskQueueBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_mcp_source_tool: true,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_url_input: true,
+      accepts_content_like_input: true,
+      tainted_network_destination: true,
+      credentialed_network_read: true,
+      task_queue_enqueue: true,
+      tainted_task_payload: true,
+      tainted_task_routing: true,
+      network_response_task_queue_bridge: true,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_external_network_call: true,
+      handler_tainted_network_destination: true,
+      handler_credentialed_network_read: true,
+      handler_task_queue_enqueue: true,
+      handler_tainted_task_payload: true,
+      handler_tainted_task_routing: true,
+      handler_network_response_task_queue_bridge: true,
+      handler_secret_env_access: true,
+      handler_signal_count: 8
+    });
+    expect(sourceNetworkResponseTaskQueueBridgeTool?.metadata.authority_classes).toEqual([
+      "content_input",
+      "credentialed_network_read",
+      "handler_credentialed_network_read",
+      "handler_network_access",
+      "handler_network_response_task_queue_bridge",
+      "handler_secret_env_access",
+      "handler_tainted_network_destination",
+      "handler_tainted_task_payload",
+      "handler_tainted_task_routing",
+      "handler_task_queue_enqueue",
+      "network_access",
+      "network_response_task_queue_bridge",
+      "secret_env_access",
+      "tainted_network_destination",
+      "tainted_task_payload",
+      "tainted_task_routing",
+      "task_queue_enqueue"
+    ]);
+    expect(sourceNetworkResponseTaskQueueBridgeTool?.metadata.handler_authority_classes).toEqual([
+      "handler_credentialed_network_read",
+      "handler_network_access",
+      "handler_network_response_task_queue_bridge",
+      "handler_secret_env_access",
+      "handler_tainted_network_destination",
+      "handler_tainted_task_payload",
+      "handler_tainted_task_routing",
+      "handler_task_queue_enqueue"
+    ]);
+    expect(sourceNetworkResponseTaskQueueBridgeTool?.metadata.handler_env_key_names).toEqual([
+      "SOURCE_NETWORK_RESPONSE_TASK_QUEUE_TOKEN"
+    ]);
+    expect(sourceNetworkResponseTaskQueueBridgeTool?.metadata.schema_properties).toEqual([
+      "job_goal_text",
+      "target_queue_name",
+      "target_url",
+      "task_route"
+    ]);
+    expect(JSON.stringify(sourceNetworkResponseTaskQueueBridgeTool)).not.toContain("responseBody");
+    expect(JSON.stringify(sourceNetworkResponseTaskQueueBridgeTool)).not.toContain("response.text");
+    expect(JSON.stringify(sourceNetworkResponseTaskQueueBridgeTool)).not.toContain("taskQueueClient.enqueue");
+    expect(JSON.stringify(sourceNetworkResponseTaskQueueBridgeTool)).not.toContain("source network response queued for background agent");
+    expect(JSON.stringify(sourceNetworkResponseTaskQueueBridgeTool)).not.toContain("Fetch a caller supplied URL");
     expect(sourceDynamicCodeTool).toMatchObject({
       path: "mcp-source/customer-tools.ts",
       data_classes: ["unknown"],
@@ -11275,6 +11358,85 @@ describe("scanner", () => {
     expect(JSON.stringify(langchainNetworkResponseArtifactBridgeTool)).not.toContain("artifact_exporter.upload_artifact");
     expect(JSON.stringify(langchainNetworkResponseArtifactBridgeTool)).not.toContain("framework network response exported to artifact");
     expect(JSON.stringify(langchainNetworkResponseArtifactBridgeTool)).not.toContain("Fetch a caller supplied URL");
+    expect(langchainNetworkResponseTaskQueueBridgeTool).toMatchObject({
+      path: "framework-tools/langchain_tools.py",
+      data_classes: ["credential"],
+      actions: ["call", "read", "remember", "send", "write"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(langchainNetworkResponseTaskQueueBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_agent_framework_source_tool: true,
+      agent_framework_source_tool: true,
+      agent_framework_source_tool_framework: "langchain",
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_url_input: true,
+      accepts_content_like_input: true,
+      tainted_network_destination: true,
+      credentialed_network_read: true,
+      task_queue_enqueue: true,
+      tainted_task_payload: true,
+      tainted_task_routing: true,
+      network_response_task_queue_bridge: true,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_external_network_call: true,
+      handler_tainted_network_destination: true,
+      handler_credentialed_network_read: true,
+      handler_task_queue_enqueue: true,
+      handler_tainted_task_payload: true,
+      handler_tainted_task_routing: true,
+      handler_network_response_task_queue_bridge: true,
+      handler_secret_env_access: true,
+      handler_signal_count: 8
+    });
+    expect(langchainNetworkResponseTaskQueueBridgeTool?.metadata.authority_classes).toEqual([
+      "content_input",
+      "credentialed_network_read",
+      "handler_credentialed_network_read",
+      "handler_network_access",
+      "handler_network_response_task_queue_bridge",
+      "handler_secret_env_access",
+      "handler_tainted_network_destination",
+      "handler_tainted_task_payload",
+      "handler_tainted_task_routing",
+      "handler_task_queue_enqueue",
+      "network_access",
+      "network_response_task_queue_bridge",
+      "secret_env_access",
+      "tainted_network_destination",
+      "tainted_task_payload",
+      "tainted_task_routing",
+      "task_queue_enqueue"
+    ]);
+    expect(langchainNetworkResponseTaskQueueBridgeTool?.metadata.handler_authority_classes).toEqual([
+      "handler_credentialed_network_read",
+      "handler_network_access",
+      "handler_network_response_task_queue_bridge",
+      "handler_secret_env_access",
+      "handler_tainted_network_destination",
+      "handler_tainted_task_payload",
+      "handler_tainted_task_routing",
+      "handler_task_queue_enqueue"
+    ]);
+    expect(langchainNetworkResponseTaskQueueBridgeTool?.metadata.handler_env_key_names).toEqual([
+      "LANGCHAIN_NETWORK_RESPONSE_TASK_QUEUE_TOKEN"
+    ]);
+    expect(langchainNetworkResponseTaskQueueBridgeTool?.metadata.schema_properties).toEqual([
+      "job_goal_text",
+      "target_queue_name",
+      "target_url",
+      "task_route"
+    ]);
+    expect(JSON.stringify(langchainNetworkResponseTaskQueueBridgeTool)).not.toContain("httpx.get");
+    expect(JSON.stringify(langchainNetworkResponseTaskQueueBridgeTool)).not.toContain("response.text");
+    expect(JSON.stringify(langchainNetworkResponseTaskQueueBridgeTool)).not.toContain("task_queue_client.enqueue");
+    expect(JSON.stringify(langchainNetworkResponseTaskQueueBridgeTool)).not.toContain("framework network response queued for background agent");
+    expect(JSON.stringify(langchainNetworkResponseTaskQueueBridgeTool)).not.toContain("Fetch a caller supplied URL");
     expect(langchainDynamicCodeTool).toMatchObject({
       path: "framework-tools/langchain_tools.py",
       data_classes: ["unknown"],

@@ -1,0 +1,153 @@
+id: AGENTCSP-TOOL-136
+name: Source tool handler queues network response for background execution
+description: A source-defined agent tool handler fetches a caller-selected URL, captures the response body, and enqueues that network response into an asynchronous background-agent or task queue using runtime credentials and caller-controlled routing.
+category: network_response_task_queue_bridge
+severity: critical
+maps_to:
+  owasp:
+    - LLM01:2025 Prompt Injection
+    - LLM02:2025 Sensitive Information Disclosure
+    - LLM05:2025 Improper Output Handling
+    - LLM06:2025 Excessive Agency
+  mitre_atlas:
+    - AML.T0051 LLM Plugin Compromise
+    - AML.T0056 LLM Trusted Boundary Compromise
+    - AML.T0057 Exfiltration via Cyber Means
+    - AML.T0060 LLM Prompt Injection
+  nist_ai_rmf:
+    - MAP 4.1
+    - MEASURE 2.7
+    - MANAGE 2.4
+match:
+  object_type: tool
+  where:
+    - field: metadata.parsed_tool_schema
+      op: equals
+      value: true
+    - field: metadata.source_tool_handler_redacted
+      op: equals
+      value: true
+    - field: metadata.handler_body_analyzed
+      op: equals
+      value: true
+    - field: metadata.handler_external_network_call
+      op: equals
+      value: true
+    - field: metadata.handler_tainted_network_destination
+      op: equals
+      value: true
+    - field: metadata.handler_credentialed_network_read
+      op: equals
+      value: true
+    - field: metadata.handler_task_queue_enqueue
+      op: equals
+      value: true
+    - field: metadata.handler_tainted_task_payload
+      op: equals
+      value: true
+    - field: metadata.handler_tainted_task_routing
+      op: equals
+      value: true
+    - field: metadata.handler_network_response_task_queue_bridge
+      op: equals
+      value: true
+    - field: metadata.handler_secret_env_access
+      op: equals
+      value: true
+    - field: metadata.tainted_network_destination
+      op: equals
+      value: true
+    - field: metadata.credentialed_network_read
+      op: equals
+      value: true
+    - field: metadata.task_queue_enqueue
+      op: equals
+      value: true
+    - field: metadata.tainted_task_payload
+      op: equals
+      value: true
+    - field: metadata.tainted_task_routing
+      op: equals
+      value: true
+    - field: metadata.network_response_task_queue_bridge
+      op: equals
+      value: true
+    - field: metadata.accepts_url_input
+      op: equals
+      value: true
+    - field: metadata.accepts_content_like_input
+      op: equals
+      value: true
+    - field: metadata.authority_classes
+      op: includes
+      value: tainted_network_destination
+    - field: metadata.authority_classes
+      op: includes
+      value: credentialed_network_read
+    - field: metadata.authority_classes
+      op: includes
+      value: task_queue_enqueue
+    - field: metadata.authority_classes
+      op: includes
+      value: tainted_task_payload
+    - field: metadata.authority_classes
+      op: includes
+      value: tainted_task_routing
+    - field: metadata.authority_classes
+      op: includes
+      value: network_response_task_queue_bridge
+    - field: metadata.handler_authority_classes
+      op: includes
+      value: handler_tainted_network_destination
+    - field: metadata.handler_authority_classes
+      op: includes
+      value: handler_credentialed_network_read
+    - field: metadata.handler_authority_classes
+      op: includes
+      value: handler_task_queue_enqueue
+    - field: metadata.handler_authority_classes
+      op: includes
+      value: handler_tainted_task_payload
+    - field: metadata.handler_authority_classes
+      op: includes
+      value: handler_tainted_task_routing
+    - field: metadata.handler_authority_classes
+      op: includes
+      value: handler_network_response_task_queue_bridge
+    - field: metadata.schema_properties
+      op: contains_any
+      value:
+        - job_goal_text
+        - target_queue_name
+        - target_url
+        - task_route
+    - field: actions
+      op: includes
+      value: read
+    - field: actions
+      op: includes
+      value: send
+    - field: actions
+      op: includes
+      value: write
+    - field: actions
+      op: includes
+      value: remember
+    - field: data_classes
+      op: includes
+      value: credential
+    - field: external_reach
+      op: equals
+      value: true
+    - field: secret_exposure
+      op: equals
+      value: true
+    - field: side_effect
+      op: equals
+      value: true
+    - field: reversible
+      op: equals
+      value: false
+recommendation:
+  control: quarantine
+  text: Quarantine network-response-to-task-queue handlers until fetched content is treated as untrusted, stripped of instructions and secrets before enqueue, queue destinations and worker routes are policy-owned, replay and redrive are bounded, queue credentials are scoped, and background workers enforce the same approval boundary as foreground tools.

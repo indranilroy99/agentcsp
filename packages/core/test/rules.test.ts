@@ -137,6 +137,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-133")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-134")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-135")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-136")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-001")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-002")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-003")).toBe(true);
@@ -6740,6 +6741,68 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerNetworkResponseArtifactBridgeFindings)).not.toContain("source network response exported to artifact");
     expect(JSON.stringify(sourceHandlerNetworkResponseArtifactBridgeFindings)).not.toContain("framework network response exported to artifact");
     expect(JSON.stringify(sourceHandlerNetworkResponseArtifactBridgeFindings)).not.toContain("Fetch a caller supplied URL");
+    const sourceHandlerNetworkResponseTaskQueueBridgeFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-136");
+    expect(sourceHandlerNetworkResponseTaskQueueBridgeFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
+      "langchain_queue_url_response_background_task",
+      "source_queue_url_response_background_task"
+    ]);
+    expect(sourceHandlerNetworkResponseTaskQueueBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
+    expect(sourceHandlerNetworkResponseTaskQueueBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerNetworkResponseTaskQueueBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
+    expect(sourceHandlerNetworkResponseTaskQueueBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
+    expect(sourceHandlerNetworkResponseTaskQueueBridgeFindings.every((finding) => finding.matched_object.metadata.source_tool_handler_redacted === true)).toBe(true);
+    expect(sourceHandlerNetworkResponseTaskQueueBridgeFindings.every((finding) => finding.matched_object.metadata.handler_external_network_call === true)).toBe(true);
+    expect(sourceHandlerNetworkResponseTaskQueueBridgeFindings.every((finding) => finding.matched_object.metadata.handler_tainted_network_destination === true)).toBe(true);
+    expect(sourceHandlerNetworkResponseTaskQueueBridgeFindings.every((finding) => finding.matched_object.metadata.handler_credentialed_network_read === true)).toBe(true);
+    expect(sourceHandlerNetworkResponseTaskQueueBridgeFindings.every((finding) => finding.matched_object.metadata.handler_task_queue_enqueue === true)).toBe(true);
+    expect(sourceHandlerNetworkResponseTaskQueueBridgeFindings.every((finding) => finding.matched_object.metadata.handler_tainted_task_payload === true)).toBe(true);
+    expect(sourceHandlerNetworkResponseTaskQueueBridgeFindings.every((finding) => finding.matched_object.metadata.handler_tainted_task_routing === true)).toBe(true);
+    expect(sourceHandlerNetworkResponseTaskQueueBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.handler_network_response_task_queue_bridge === true
+    )).toBe(true);
+    expect(sourceHandlerNetworkResponseTaskQueueBridgeFindings.every((finding) => finding.matched_object.metadata.handler_secret_env_access === true)).toBe(true);
+    expect(sourceHandlerNetworkResponseTaskQueueBridgeFindings.every((finding) => finding.matched_object.metadata.tainted_network_destination === true)).toBe(true);
+    expect(sourceHandlerNetworkResponseTaskQueueBridgeFindings.every((finding) => finding.matched_object.metadata.credentialed_network_read === true)).toBe(true);
+    expect(sourceHandlerNetworkResponseTaskQueueBridgeFindings.every((finding) => finding.matched_object.metadata.task_queue_enqueue === true)).toBe(true);
+    expect(sourceHandlerNetworkResponseTaskQueueBridgeFindings.every((finding) => finding.matched_object.metadata.tainted_task_payload === true)).toBe(true);
+    expect(sourceHandlerNetworkResponseTaskQueueBridgeFindings.every((finding) => finding.matched_object.metadata.tainted_task_routing === true)).toBe(true);
+    expect(sourceHandlerNetworkResponseTaskQueueBridgeFindings.every((finding) => finding.matched_object.metadata.network_response_task_queue_bridge === true)).toBe(true);
+    expect(sourceHandlerNetworkResponseTaskQueueBridgeFindings.every((finding) => finding.matched_object.metadata.accepts_url_input === true)).toBe(true);
+    expect(sourceHandlerNetworkResponseTaskQueueBridgeFindings.every((finding) => finding.matched_object.metadata.accepts_content_like_input === true)).toBe(true);
+    expect(sourceHandlerNetworkResponseTaskQueueBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.authority_classes.includes("network_response_task_queue_bridge")
+    )).toBe(true);
+    expect(sourceHandlerNetworkResponseTaskQueueBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.authority_classes.includes("task_queue_enqueue")
+    )).toBe(true);
+    expect(sourceHandlerNetworkResponseTaskQueueBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.authority_classes.includes("tainted_task_payload")
+    )).toBe(true);
+    expect(sourceHandlerNetworkResponseTaskQueueBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.authority_classes.includes("tainted_task_routing")
+    )).toBe(true);
+    expect(sourceHandlerNetworkResponseTaskQueueBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.handler_authority_classes.includes("handler_network_response_task_queue_bridge")
+    )).toBe(true);
+    expect(sourceHandlerNetworkResponseTaskQueueBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.handler_authority_classes.includes("handler_task_queue_enqueue")
+    )).toBe(true);
+    expect(sourceHandlerNetworkResponseTaskQueueBridgeFindings.every((finding) => finding.matched_object.actions.includes("read"))).toBe(true);
+    expect(sourceHandlerNetworkResponseTaskQueueBridgeFindings.every((finding) => finding.matched_object.actions.includes("send"))).toBe(true);
+    expect(sourceHandlerNetworkResponseTaskQueueBridgeFindings.every((finding) => finding.matched_object.actions.includes("write"))).toBe(true);
+    expect(sourceHandlerNetworkResponseTaskQueueBridgeFindings.every((finding) => finding.matched_object.actions.includes("remember"))).toBe(true);
+    expect(sourceHandlerNetworkResponseTaskQueueBridgeFindings.every((finding) => finding.matched_object.external_reach === true)).toBe(true);
+    expect(sourceHandlerNetworkResponseTaskQueueBridgeFindings.every((finding) => finding.matched_object.secret_exposure === true)).toBe(true);
+    expect(sourceHandlerNetworkResponseTaskQueueBridgeFindings.every((finding) => finding.matched_object.side_effect === true)).toBe(true);
+    expect(sourceHandlerNetworkResponseTaskQueueBridgeFindings.every((finding) => finding.matched_object.reversible === false)).toBe(true);
+    expect(JSON.stringify(sourceHandlerNetworkResponseTaskQueueBridgeFindings)).not.toContain("responseBody");
+    expect(JSON.stringify(sourceHandlerNetworkResponseTaskQueueBridgeFindings)).not.toContain("response.text");
+    expect(JSON.stringify(sourceHandlerNetworkResponseTaskQueueBridgeFindings)).not.toContain("httpx.get");
+    expect(JSON.stringify(sourceHandlerNetworkResponseTaskQueueBridgeFindings)).not.toContain("taskQueueClient.enqueue");
+    expect(JSON.stringify(sourceHandlerNetworkResponseTaskQueueBridgeFindings)).not.toContain("task_queue_client.enqueue");
+    expect(JSON.stringify(sourceHandlerNetworkResponseTaskQueueBridgeFindings)).not.toContain("source network response queued for background agent");
+    expect(JSON.stringify(sourceHandlerNetworkResponseTaskQueueBridgeFindings)).not.toContain("framework network response queued for background agent");
+    expect(JSON.stringify(sourceHandlerNetworkResponseTaskQueueBridgeFindings)).not.toContain("Fetch a caller supplied URL");
     const sourceHandlerMemoryWriteFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-023");
     expect(sourceHandlerMemoryWriteFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_embed_customer_vault_secret_vector_memory",
@@ -12647,9 +12710,11 @@ describe("rule engine", () => {
     expect(sourceHandlerCredentialedNetworkFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_cache_url_response_prompt",
       "langchain_fetch_partner_status",
+      "langchain_queue_url_response_background_task",
       "langchain_store_url_response_memory",
       "source_cache_url_response_prompt",
       "source_fetch_partner_status",
+      "source_queue_url_response_background_task",
       "source_store_url_response_memory"
     ]);
     expect(sourceHandlerCredentialedNetworkFindings.every((finding) => finding.severity === "critical")).toBe(true);
@@ -12673,6 +12738,8 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerCredentialedNetworkFindings)).not.toContain("framework network response remembered");
     expect(JSON.stringify(sourceHandlerCredentialedNetworkFindings)).not.toContain("source network response cached for prompts");
     expect(JSON.stringify(sourceHandlerCredentialedNetworkFindings)).not.toContain("framework network response cached for prompts");
+    expect(JSON.stringify(sourceHandlerCredentialedNetworkFindings)).not.toContain("source network response queued for background agent");
+    expect(JSON.stringify(sourceHandlerCredentialedNetworkFindings)).not.toContain("framework network response queued for background agent");
     const sourceHandlerTaintedNetworkDestinationFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-041");
     expect(sourceHandlerTaintedNetworkDestinationFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "aiSdkExportCustomerContext",
@@ -12682,6 +12749,7 @@ describe("rule engine", () => {
       "langchain_fetch_partner_status",
       "langchain_fetch_url_content",
       "langchain_post_url_response_external",
+      "langchain_queue_url_response_background_task",
       "langchain_store_url_response_memory",
       "langchain_trace_url_response",
       "langchain_train_on_url_response",
@@ -12692,6 +12760,7 @@ describe("rule engine", () => {
       "source_fetch_partner_status",
       "source_fetch_url_content",
       "source_post_url_response_external",
+      "source_queue_url_response_background_task",
       "source_store_url_response_memory",
       "source_trace_url_response",
       "source_train_on_url_response"
@@ -12728,6 +12797,8 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerTaintedNetworkDestinationFindings)).not.toContain("framework network response exported to telemetry");
     expect(JSON.stringify(sourceHandlerTaintedNetworkDestinationFindings)).not.toContain("source network response exported to artifact");
     expect(JSON.stringify(sourceHandlerTaintedNetworkDestinationFindings)).not.toContain("framework network response exported to artifact");
+    expect(JSON.stringify(sourceHandlerTaintedNetworkDestinationFindings)).not.toContain("source network response queued for background agent");
+    expect(JSON.stringify(sourceHandlerTaintedNetworkDestinationFindings)).not.toContain("framework network response queued for background agent");
     expect(JSON.stringify(sourceHandlerTaintedNetworkDestinationFindings)).not.toContain("Fetch a caller supplied URL");
     const toolDescriptionInjectionFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-011");
     expect(toolDescriptionInjectionFindings).toHaveLength(1);
