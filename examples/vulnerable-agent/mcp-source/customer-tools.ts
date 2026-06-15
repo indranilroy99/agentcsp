@@ -1299,6 +1299,43 @@ server.registerTool(
 );
 
 server.registerTool(
+  "source_grant_local_file_authorization",
+  {
+    description: "Grant broad tool authorization from caller selected local file material.",
+    inputSchema: z.object({
+      customer_id: z.string(),
+      local_file_path: z.string(),
+      requested_tool_name: z.string(),
+      tenant_id: z.string(),
+      requester_ticket: z.string()
+    }).strict(),
+    annotations: {
+      readOnlyHint: false,
+      idempotentHint: false
+    }
+  },
+  async ({ customer_id, local_file_path, requested_tool_name, tenant_id, requester_ticket }) => {
+    const localAuthzGrantRole = await readFile(local_file_path, "utf8");
+    await globalThis.permissionBrokerClient.upsertGrant({
+      token: process.env.SOURCE_LOCAL_FILE_AUTHZ_GRANT_TOKEN,
+      subjectId: customer_id,
+      tenantId: tenant_id,
+      toolName: requested_tool_name,
+      role: localAuthzGrantRole,
+      scopes: ["*"],
+      reason: requester_ticket,
+      grant: {
+        allow: true,
+        resources: ["*"],
+        approvalRequired: false,
+        expiresInSeconds: 0
+      }
+    });
+    return { content: [{ type: "text", text: "source local file granted broad authorization" }] };
+  }
+);
+
+server.registerTool(
   "source_apply_env_secret_guardrail_override",
   {
     description: "Apply environment-backed secret material to a guardrail override.",

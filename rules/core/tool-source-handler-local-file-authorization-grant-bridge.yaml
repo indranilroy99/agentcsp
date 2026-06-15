@@ -1,0 +1,160 @@
+id: AGENTCSP-TOOL-172
+name: Source tool handler grants authorization from local files
+description: A source-defined agent tool handler reads a caller-selected local file and uses the file material to write broad or approval-free agent authorization, permission, entitlement, or tool-grant policy.
+category: local_file_authorization_grant_bridge
+severity: critical
+maps_to:
+  owasp:
+    - LLM01:2025 Prompt Injection
+    - LLM02:2025 Sensitive Information Disclosure
+    - LLM06:2025 Excessive Agency
+  mitre_atlas:
+    - AML.T0051 LLM Plugin Compromise
+    - AML.T0056 LLM Trusted Boundary Compromise
+    - AML.T0059 Data from Information Repositories
+  nist_ai_rmf:
+    - MAP 4.1
+    - MEASURE 2.7
+    - MANAGE 2.4
+match:
+  object_type: tool
+  where:
+    - field: metadata.parsed_tool_schema
+      op: equals
+      value: true
+    - field: metadata.source_tool_handler_redacted
+      op: equals
+      value: true
+    - field: metadata.handler_body_analyzed
+      op: equals
+      value: true
+    - field: metadata.handler_filesystem_read
+      op: equals
+      value: true
+    - field: metadata.handler_tainted_filesystem_path
+      op: equals
+      value: true
+    - field: metadata.handler_authorization_policy_write
+      op: equals
+      value: true
+    - field: metadata.handler_tainted_authorization_grant_input
+      op: equals
+      value: true
+    - field: metadata.handler_authorization_broad_grant
+      op: equals
+      value: true
+    - field: metadata.handler_local_file_authorization_grant_bridge
+      op: equals
+      value: true
+    - field: metadata.tainted_filesystem_path
+      op: equals
+      value: true
+    - field: metadata.authorization_policy_write
+      op: equals
+      value: true
+    - field: metadata.tainted_authorization_grant_input
+      op: equals
+      value: true
+    - field: metadata.authorization_broad_grant
+      op: equals
+      value: true
+    - field: metadata.local_file_authorization_grant_bridge
+      op: equals
+      value: true
+    - field: metadata.secret_manager_authorization_grant_bridge
+      op: equals
+      value: false
+    - field: metadata.env_secret_authorization_grant_bridge
+      op: equals
+      value: false
+    - field: metadata.model_output_authorization_grant_bridge
+      op: equals
+      value: false
+    - field: metadata.tool_output_authorization_grant_bridge
+      op: equals
+      value: false
+    - field: metadata.external_write
+      op: equals
+      value: true
+    - field: metadata.accepts_path_input
+      op: equals
+      value: true
+    - field: metadata.accepts_customer_data_input
+      op: equals
+      value: true
+    - field: metadata.authority_classes
+      op: includes
+      value: filesystem_access
+    - field: metadata.authority_classes
+      op: includes
+      value: tainted_filesystem_path
+    - field: metadata.authority_classes
+      op: includes
+      value: authorization_policy_write
+    - field: metadata.authority_classes
+      op: includes
+      value: tainted_authorization_grant_input
+    - field: metadata.authority_classes
+      op: includes
+      value: authorization_broad_grant
+    - field: metadata.authority_classes
+      op: includes
+      value: local_file_authorization_grant_bridge
+    - field: metadata.handler_authority_classes
+      op: includes
+      value: handler_filesystem_read
+    - field: metadata.handler_authority_classes
+      op: includes
+      value: handler_tainted_filesystem_path
+    - field: metadata.handler_authority_classes
+      op: includes
+      value: handler_authorization_policy_write
+    - field: metadata.handler_authority_classes
+      op: includes
+      value: handler_tainted_authorization_grant_input
+    - field: metadata.handler_authority_classes
+      op: includes
+      value: handler_authorization_broad_grant
+    - field: metadata.handler_authority_classes
+      op: includes
+      value: handler_local_file_authorization_grant_bridge
+    - field: metadata.schema_properties
+      op: contains_any
+      value:
+        - local_file_path
+        - workspace_path
+        - requested_tool_name
+        - requested_scope
+        - tenant_id
+        - requester_ticket
+        - customer_id
+    - field: actions
+      op: includes
+      value: read
+    - field: actions
+      op: includes
+      value: send
+    - field: actions
+      op: includes
+      value: write
+    - field: data_classes
+      op: contains_any
+      value:
+        - confidential
+        - credential
+        - pii
+    - field: external_reach
+      op: equals
+      value: true
+    - field: secret_exposure
+      op: equals
+      value: true
+    - field: side_effect
+      op: equals
+      value: true
+    - field: reversible
+      op: equals
+      value: false
+recommendation:
+  control: quarantine
+  text: Quarantine local-file-to-authorization grant bridges until file-derived values cannot become tool names, roles, scopes, subjects, resources, or grant reasons, broad and approval-free grants are rejected deterministically, runtime grant credentials are least-privilege, and security-owner approval is required before authorization policy changes.

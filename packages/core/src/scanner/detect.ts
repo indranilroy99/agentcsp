@@ -24181,6 +24181,7 @@ function addToolDefinitionSurface(
       !authority.tool_output_safety_policy_bridge &&
       !authority.authorization_policy_write &&
       !authority.secret_manager_authorization_grant_bridge &&
+      !authority.local_file_authorization_grant_bridge &&
       !authority.env_secret_authorization_grant_bridge &&
       !authority.tool_output_authorization_grant_bridge &&
       !authority.artifact_export &&
@@ -24363,6 +24364,7 @@ function addToolDefinitionSurface(
       tainted_authorization_grant_input: authority.tainted_authorization_grant_input,
       authorization_broad_grant: authority.authorization_broad_grant,
       secret_manager_authorization_grant_bridge: authority.secret_manager_authorization_grant_bridge,
+      local_file_authorization_grant_bridge: authority.local_file_authorization_grant_bridge,
       env_secret_authorization_grant_bridge: authority.env_secret_authorization_grant_bridge,
       model_output_authorization_grant_bridge: authority.model_output_authorization_grant_bridge,
       tool_output_authorization_grant_bridge: authority.tool_output_authorization_grant_bridge,
@@ -26856,6 +26858,7 @@ interface SourceToolHandlerSignals {
   handlerTaintedAuthorizationGrantInput: boolean;
   handlerAuthorizationBroadGrant: boolean;
   handlerSecretManagerAuthorizationGrantBridge: boolean;
+  handlerLocalFileAuthorizationGrantBridge: boolean;
   handlerEnvSecretAuthorizationGrantBridge: boolean;
   handlerModelOutputAuthorizationGrantBridge: boolean;
   handlerToolOutputAuthorizationGrantBridge: boolean;
@@ -27462,6 +27465,7 @@ function sourceToolHandlerSignalMetadata(signals: SourceToolHandlerSignals | und
     handler_tainted_authorization_grant_input: signals.handlerTaintedAuthorizationGrantInput,
     handler_authorization_broad_grant: signals.handlerAuthorizationBroadGrant,
     handler_secret_manager_authorization_grant_bridge: signals.handlerSecretManagerAuthorizationGrantBridge,
+    handler_local_file_authorization_grant_bridge: signals.handlerLocalFileAuthorizationGrantBridge,
     handler_env_secret_authorization_grant_bridge: signals.handlerEnvSecretAuthorizationGrantBridge,
     handler_model_output_authorization_grant_bridge: signals.handlerModelOutputAuthorizationGrantBridge,
     handler_tool_output_authorization_grant_bridge: signals.handlerToolOutputAuthorizationGrantBridge,
@@ -27721,6 +27725,9 @@ function classifySourceToolHandlerSignals(
   const secretManagerAuthorizationGrantBridge = authorizationPolicyWrite && (language === "javascript"
     ? hasJavaScriptHandlerSecretManagerAuthorizationGrantBridge(handlerSource)
     : hasPythonHandlerSecretManagerAuthorizationGrantBridge(handlerSource));
+  const localFileAuthorizationGrantBridge = authorizationPolicyWrite && (language === "javascript"
+    ? hasJavaScriptHandlerLocalFileAuthorizationGrantBridge(handlerSource)
+    : hasPythonHandlerLocalFileAuthorizationGrantBridge(handlerSource));
   const modelOutputAuthorizationGrantBridge = modelProviderCall && authorizationPolicyWrite && (language === "javascript"
     ? hasJavaScriptHandlerModelOutputAuthorizationGrantBridge(handlerSource)
     : hasPythonHandlerModelOutputAuthorizationGrantBridge(handlerSource));
@@ -27848,6 +27855,7 @@ function classifySourceToolHandlerSignals(
   const envSecretAuthorizationGrantBridge = secretEnvAccess &&
     authorizationPolicyWrite &&
     !secretManagerAuthorizationGrantBridge &&
+    !localFileAuthorizationGrantBridge &&
     !modelOutputAuthorizationGrantBridge &&
     !toolOutputAuthorizationGrantBridge &&
     (language === "javascript"
@@ -28336,6 +28344,7 @@ function classifySourceToolHandlerSignals(
   if (taintedAuthorizationGrantInput) classes.add("handler_tainted_authorization_grant_input");
   if (authorizationBroadGrant) classes.add("handler_authorization_broad_grant");
   if (secretManagerAuthorizationGrantBridge) classes.add("handler_secret_manager_authorization_grant_bridge");
+  if (localFileAuthorizationGrantBridge) classes.add("handler_local_file_authorization_grant_bridge");
   if (envSecretAuthorizationGrantBridge) classes.add("handler_env_secret_authorization_grant_bridge");
   if (modelOutputAuthorizationGrantBridge) classes.add("handler_model_output_authorization_grant_bridge");
   if (toolOutputAuthorizationGrantBridge) classes.add("handler_tool_output_authorization_grant_bridge");
@@ -28528,6 +28537,7 @@ function classifySourceToolHandlerSignals(
     handlerTaintedAuthorizationGrantInput: taintedAuthorizationGrantInput,
     handlerAuthorizationBroadGrant: authorizationBroadGrant,
     handlerSecretManagerAuthorizationGrantBridge: secretManagerAuthorizationGrantBridge,
+    handlerLocalFileAuthorizationGrantBridge: localFileAuthorizationGrantBridge,
     handlerEnvSecretAuthorizationGrantBridge: envSecretAuthorizationGrantBridge,
     handlerModelOutputAuthorizationGrantBridge: modelOutputAuthorizationGrantBridge,
     handlerToolOutputAuthorizationGrantBridge: toolOutputAuthorizationGrantBridge,
@@ -32334,6 +32344,30 @@ function hasJavaScriptHandlerSecretManagerAuthorizationGrantBridge(source: strin
 function hasPythonHandlerSecretManagerAuthorizationGrantBridge(source: string): boolean {
   const identifiers = extractPythonSecretManagerIdentifiers(source);
   return identifiers.length > 0 && callExpressionReferencesAnyIdentifier(
+    [
+      /\b(?:tool_authorization_client|authorization_policy_client|permission_broker_client|tool_authz_client|capability_grant_client|access_control_client|rbac_client|authz_client|policy_engine_client|permission_client|entitlement_client|grant_broker_client)\s*(?:\.\s*[A-Za-z_]\w*){0,5}\s*\.\s*(?:grant|grant_access|upsert_grant|create_grant|put_grant|add_grant|allow|authorize|update_policy|set_policy|set_allowlist|add_permission|add_tool|assign_role|bind_role|set_entitlement|write|save|upsert|patch)\s*\(([\s\S]{0,2200})\)/giu,
+      /\b(?:grant_tool_access|update_tool_authorization|upsert_tool_grant|create_capability_grant|set_tool_allowlist|assign_agent_role|set_agent_entitlement|write_authorization_grant)\s*\(([\s\S]{0,2200})\)/giu
+    ],
+    source,
+    identifiers
+  );
+}
+
+function hasJavaScriptHandlerLocalFileAuthorizationGrantBridge(source: string): boolean {
+  const identifiers = extractJavaScriptLocalFileIdentifiers(source);
+  return identifiers.length > 0 && authorizationGrantCallReferencesPayloadIdentifier(
+    [
+      /\b(?:toolAuthorizationClient|authorizationPolicyClient|permissionBrokerClient|toolAuthzClient|capabilityGrantClient|accessControlClient|rbacClient|authzClient|policyEngineClient|permissionClient|entitlementClient|grantBrokerClient)\s*(?:\.\s*[A-Za-z_$][\w$]*){0,5}\s*\.\s*(?:grant|grantAccess|upsertGrant|createGrant|putGrant|addGrant|allow|authorize|updatePolicy|setPolicy|setAllowlist|addPermission|addTool|assignRole|bindRole|setEntitlement|write|save|upsert|patch)\s*\(([\s\S]{0,2200})\)/giu,
+      /\b(?:grantToolAccess|updateToolAuthorization|upsertToolGrant|createCapabilityGrant|setToolAllowlist|assignAgentRole|setAgentEntitlement|writeAuthorizationGrant)\s*\(([\s\S]{0,2200})\)/giu
+    ],
+    source,
+    identifiers
+  );
+}
+
+function hasPythonHandlerLocalFileAuthorizationGrantBridge(source: string): boolean {
+  const identifiers = extractPythonLocalFileIdentifiers(source);
+  return identifiers.length > 0 && authorizationGrantCallReferencesPayloadIdentifier(
     [
       /\b(?:tool_authorization_client|authorization_policy_client|permission_broker_client|tool_authz_client|capability_grant_client|access_control_client|rbac_client|authz_client|policy_engine_client|permission_client|entitlement_client|grant_broker_client)\s*(?:\.\s*[A-Za-z_]\w*){0,5}\s*\.\s*(?:grant|grant_access|upsert_grant|create_grant|put_grant|add_grant|allow|authorize|update_policy|set_policy|set_allowlist|add_permission|add_tool|assign_role|bind_role|set_entitlement|write|save|upsert|patch)\s*\(([\s\S]{0,2200})\)/giu,
       /\b(?:grant_tool_access|update_tool_authorization|upsert_tool_grant|create_capability_grant|set_tool_allowlist|assign_agent_role|set_agent_entitlement|write_authorization_grant)\s*\(([\s\S]{0,2200})\)/giu
@@ -36360,6 +36394,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   tainted_authorization_grant_input: boolean;
   authorization_broad_grant: boolean;
   secret_manager_authorization_grant_bridge: boolean;
+  local_file_authorization_grant_bridge: boolean;
   env_secret_authorization_grant_bridge: boolean;
   model_output_authorization_grant_bridge: boolean;
   tool_output_authorization_grant_bridge: boolean;
@@ -36493,6 +36528,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   const handlerTaintedAuthorizationGrantInput = handler?.handlerTaintedAuthorizationGrantInput === true;
   const handlerAuthorizationBroadGrant = handler?.handlerAuthorizationBroadGrant === true;
   const handlerSecretManagerAuthorizationGrantBridge = handler?.handlerSecretManagerAuthorizationGrantBridge === true;
+  const handlerLocalFileAuthorizationGrantBridge = handler?.handlerLocalFileAuthorizationGrantBridge === true;
   const handlerEnvSecretAuthorizationGrantBridge = handler?.handlerEnvSecretAuthorizationGrantBridge === true;
   const handlerModelOutputAuthorizationGrantBridge = handler?.handlerModelOutputAuthorizationGrantBridge === true;
   const handlerToolOutputAuthorizationGrantBridge = handler?.handlerToolOutputAuthorizationGrantBridge === true;
@@ -37397,6 +37433,12 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
     actions.add("send");
     actions.add("write");
   }
+  if (handlerLocalFileAuthorizationGrantBridge) {
+    classes.add("local_file_authorization_grant_bridge");
+    actions.add("read");
+    actions.add("send");
+    actions.add("write");
+  }
   if (handlerEnvSecretAuthorizationGrantBridge) {
     classes.add("env_secret_authorization_grant_bridge");
     actions.add("send");
@@ -37784,6 +37826,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerTaintedAuthorizationGrantInput ||
       handlerAuthorizationBroadGrant ||
       handlerSecretManagerAuthorizationGrantBridge ||
+      handlerLocalFileAuthorizationGrantBridge ||
       handlerEnvSecretAuthorizationGrantBridge ||
       handlerModelOutputAuthorizationGrantBridge ||
       handlerToolOutputAuthorizationGrantBridge ||
@@ -37967,6 +38010,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerToolOutputSafetyPolicyBridge ||
       handlerAuthorizationPolicyWrite ||
       handlerSecretManagerAuthorizationGrantBridge ||
+      handlerLocalFileAuthorizationGrantBridge ||
       handlerEnvSecretAuthorizationGrantBridge ||
       handlerModelOutputAuthorizationGrantBridge ||
       handlerToolOutputAuthorizationGrantBridge ||
@@ -38058,6 +38102,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerSecretManagerSafetyPolicyBridge ||
       handlerEnvSecretSafetyPolicyBridge ||
       handlerSecretManagerAuthorizationGrantBridge ||
+      (handlerLocalFileAuthorizationGrantBridge && handlerSecretEnvAccess) ||
       handlerEnvSecretAuthorizationGrantBridge ||
       (handlerModelOutputAuthorizationGrantBridge && handlerSecretEnvAccess) ||
       (handlerToolOutputAuthorizationGrantBridge && handlerSecretEnvAccess) ||
@@ -38274,6 +38319,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
     tainted_authorization_grant_input: handlerTaintedAuthorizationGrantInput,
     authorization_broad_grant: handlerAuthorizationBroadGrant,
     secret_manager_authorization_grant_bridge: handlerSecretManagerAuthorizationGrantBridge,
+    local_file_authorization_grant_bridge: handlerLocalFileAuthorizationGrantBridge,
     env_secret_authorization_grant_bridge: handlerEnvSecretAuthorizationGrantBridge,
     model_output_authorization_grant_bridge: handlerModelOutputAuthorizationGrantBridge,
     tool_output_authorization_grant_bridge: handlerToolOutputAuthorizationGrantBridge,
@@ -38453,6 +38499,7 @@ function authoritySignature(tool: SurfaceObject): string {
     metadata.tainted_authorization_grant_input === true ? "tainted_authorization_grant_input" : "",
     metadata.authorization_broad_grant === true ? "authorization_broad_grant" : "",
     metadata.secret_manager_authorization_grant_bridge === true ? "secret_manager_authorization_grant_bridge" : "",
+    metadata.local_file_authorization_grant_bridge === true ? "local_file_authorization_grant_bridge" : "",
     metadata.env_secret_authorization_grant_bridge === true ? "env_secret_authorization_grant_bridge" : "",
     metadata.model_output_authorization_grant_bridge === true ? "model_output_authorization_grant_bridge" : "",
     metadata.tool_output_authorization_grant_bridge === true ? "tool_output_authorization_grant_bridge" : "",
@@ -38658,6 +38705,7 @@ function isPrivilegedToolSurface(tool: SurfaceObject): boolean {
     tool.metadata.tainted_authorization_grant_input === true ||
     tool.metadata.authorization_broad_grant === true ||
     tool.metadata.secret_manager_authorization_grant_bridge === true ||
+    tool.metadata.local_file_authorization_grant_bridge === true ||
     tool.metadata.env_secret_authorization_grant_bridge === true ||
     tool.metadata.model_output_authorization_grant_bridge === true ||
     tool.metadata.tool_output_authorization_grant_bridge === true ||

@@ -428,6 +428,7 @@ Tool metadata may include:
 - `tainted_authorization_grant_input`
 - `authorization_broad_grant`
 - `secret_manager_authorization_grant_bridge`
+- `local_file_authorization_grant_bridge`
 - `env_secret_authorization_grant_bridge`
 - `model_output_authorization_grant_bridge`
 - `tool_output_authorization_grant_bridge`
@@ -571,6 +572,7 @@ Tool metadata may include:
 - `handler_tainted_authorization_grant_input`
 - `handler_authorization_broad_grant`
 - `handler_secret_manager_authorization_grant_bridge`
+- `handler_local_file_authorization_grant_bridge`
 - `handler_env_secret_authorization_grant_bridge`
 - `handler_model_output_authorization_grant_bridge`
 - `handler_tool_output_authorization_grant_bridge`
@@ -2202,6 +2204,8 @@ Source-defined tool handlers can also emit redacted local-file prompt-registry b
 Source-defined tool handlers can also emit redacted secret-manager authorization-grant bridge authority through `secret_manager_authorization_grant_bridge`, `secret_manager_access`, `tainted_secret_manager_path`, `authorization_policy_write`, `tainted_authorization_grant_input`, `authorization_broad_grant`, and the corresponding `handler_*` fields when parsed MCP SDK or agent-framework tools read caller-selected vault or secret-manager paths and use the returned secret material to write broad, wildcard, approval-free, or long-lived authorization, permission, entitlement, or tool-grant policy using runtime credentials. Handler bodies, vault calls, secret paths, secret values, grant calls, tool names, roles, scopes, subjects, resources, tenant selectors, grant reasons, and return strings remain redacted.
 
 Source-defined tool handlers can also emit redacted environment-secret authorization-grant bridge authority through `env_secret_authorization_grant_bridge`, `authorization_policy_write`, `tainted_authorization_grant_input`, `authorization_broad_grant`, and the corresponding `handler_*` fields when parsed MCP SDK or agent-framework tools use environment-derived secret material as grant roles, scopes, subjects, resources, reasons, or metadata for broad, wildcard, approval-free, or long-lived authorization policy changes. Handler bodies, env access calls, key values, secret values, grant calls, tool names, roles, scopes, subjects, resources, tenant selectors, grant reasons, and return strings remain redacted.
+
+Source-defined tool handlers can also emit redacted local-file authorization-grant bridge authority through `local_file_authorization_grant_bridge`, `tainted_filesystem_path`, `authorization_policy_write`, `tainted_authorization_grant_input`, `authorization_broad_grant`, and the corresponding `handler_*` fields when parsed MCP SDK or agent-framework tools read caller-selected local files and use the file material to write broad, wildcard, approval-free, or long-lived authorization, permission, entitlement, or tool-grant policy using runtime credentials. Handler bodies, filesystem reads, local paths, file contents, grant calls, tool names, roles, scopes, subjects, resources, tenant selectors, grant reasons, and return strings remain redacted.
 
 Source-defined tool handlers can also emit redacted environment-secret safety-policy bridge authority through `env_secret_safety_policy_bridge`, `safety_policy_write`, `tainted_safety_policy_payload`, `tainted_safety_policy_selector`, `safety_policy_weakening`, and the corresponding `handler_*` fields when parsed MCP SDK or agent-framework tools use environment-derived secret material to update guardrail, approval, moderation, or safety policy with disabled, monitor-only, fail-open, default-allow, or approval-off posture. Handler bodies, env access calls, key values, secret values, policy update calls, target control selectors, selected modes, policy payloads, and return strings remain redacted.
 

@@ -1107,6 +1107,36 @@ def grant_env_secret_authorization(
 
 
 @tool(
+    "langchain_grant_local_file_authorization",
+    description="Grant broad tool authorization from caller selected local file material in LangChain.",
+)
+def grant_local_file_authorization(
+    customer_id: str,
+    local_file_path: str,
+    requested_tool_name: str,
+    tenant_id: str,
+    requester_ticket: str,
+) -> str:
+    local_authz_grant_role = Path(local_file_path).read_text()
+    permission_broker_client.upsert_grant(
+        token=os.getenv("LANGCHAIN_LOCAL_FILE_AUTHZ_GRANT_TOKEN"),
+        subject_id=customer_id,
+        tenant_id=tenant_id,
+        tool_name=requested_tool_name,
+        role=local_authz_grant_role,
+        scopes=["*"],
+        reason=requester_ticket,
+        grant={
+            "allow": True,
+            "resources": ["*"],
+            "approval_required": False,
+            "expires_in_seconds": 0,
+        },
+    )
+    return "framework local file granted broad authorization"
+
+
+@tool(
     "langchain_grant_customer_vault_secret_authorization",
     description="Grant broad tool authorization from a caller supplied vault secret in LangChain.",
 )
