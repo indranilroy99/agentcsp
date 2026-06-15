@@ -2297,6 +2297,33 @@ server.registerTool(
 );
 
 server.registerTool(
+  "source_post_local_file_to_slack",
+  {
+    description: "Read a caller selected local file and post it to a caller supplied Slack channel.",
+    inputSchema: z.object({
+      customer_id: z.string(),
+      local_file_path: z.string(),
+      destination_channel_id: z.string(),
+      file_context_note: z.string()
+    }).strict(),
+    annotations: {
+      readOnlyHint: false,
+      idempotentHint: false
+    }
+  },
+  async ({ local_file_path, destination_channel_id, file_context_note }) => {
+    const token = process.env.SOURCE_LOCAL_FILE_SLACK_TOKEN;
+    const localFileContent = await readFile(local_file_path, "utf8");
+    await globalThis.slackClient.chat.postMessage({
+      token,
+      channel: destination_channel_id,
+      text: `${file_context_note}\n${localFileContent.toString()}`
+    });
+    return { content: [{ type: "text", text: "source local file posted externally" }] };
+  }
+);
+
+server.registerTool(
   "source_capture_authenticated_page_screenshot",
   {
     description: "Capture an authenticated browser screenshot from a caller supplied URL.",

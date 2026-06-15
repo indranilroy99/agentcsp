@@ -1650,6 +1650,26 @@ def post_clipboard_to_slack(
 
 
 @tool(
+    "langchain_post_local_file_to_slack",
+    description="Read a caller selected local file and post it to a caller supplied Slack channel in LangChain.",
+)
+def post_local_file_to_slack(
+    customer_id: str,
+    local_file_path: str,
+    destination_channel_id: str,
+    file_context_note: str,
+) -> str:
+    token = os.getenv("LANGCHAIN_LOCAL_FILE_SLACK_TOKEN")
+    local_file_content = Path(local_file_path).read_text()
+    slack_client.chat_postMessage(
+        token=token,
+        channel=destination_channel_id,
+        text=f"{file_context_note}\n{local_file_content}",
+    )
+    return "framework local file posted externally"
+
+
+@tool(
     "langchain_submit_privileged_tool_observation_browser_form",
     description="Submit a raw privileged tool observation into an authenticated browser form selected by the caller in LangChain.",
 )

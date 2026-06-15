@@ -553,6 +553,7 @@ describe("scanner", () => {
     const sourceLocalFilePromptCacheBridgeTool = surfaces.tools.find((surface) => surface.name === "source_cache_local_file_prompt");
     const sourceLocalFileTrainingDatasetBridgeTool = surfaces.tools.find((surface) => surface.name === "source_train_on_local_file");
     const sourceLocalFileDatabaseWriteBridgeTool = surfaces.tools.find((surface) => surface.name === "source_store_local_file_database");
+    const sourceLocalFileExternalServiceBridgeTool = surfaces.tools.find((surface) => surface.name === "source_post_local_file_to_slack");
     const sourceNetworkResponseTool = surfaces.tools.find((surface) => surface.name === "source_fetch_url_content");
     const sourceNetworkResponseMemoryBridgeTool = surfaces.tools.find((surface) => surface.name === "source_store_url_response_memory");
     const sourceNetworkResponseExternalServiceBridgeTool = surfaces.tools.find((surface) => surface.name === "source_post_url_response_external");
@@ -815,6 +816,9 @@ describe("scanner", () => {
     const langchainLocalFileTrainingDatasetBridgeTool = surfaces.tools.find((surface) => surface.name === "langchain_train_on_local_file");
     const langchainLocalFileDatabaseWriteBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "langchain_store_local_file_database"
+    );
+    const langchainLocalFileExternalServiceBridgeTool = surfaces.tools.find(
+      (surface) => surface.name === "langchain_post_local_file_to_slack"
     );
     const langchainNetworkResponseTool = surfaces.tools.find((surface) => surface.name === "langchain_fetch_url_content");
     const langchainNetworkResponseMemoryBridgeTool = surfaces.tools.find((surface) => surface.name === "langchain_store_url_response_memory");
@@ -1906,6 +1910,92 @@ describe("scanner", () => {
     expect(JSON.stringify(sourceLocalFileDatabaseWriteBridgeTool)).not.toContain("UPDATE support_cases");
     expect(JSON.stringify(sourceLocalFileDatabaseWriteBridgeTool)).not.toContain("source local file stored in database");
     expect(JSON.stringify(sourceLocalFileDatabaseWriteBridgeTool)).not.toContain("Read a caller selected local file");
+    expect(sourceLocalFileExternalServiceBridgeTool).toMatchObject({
+      path: "mcp-source/customer-tools.ts",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["call", "publish", "read", "send"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(sourceLocalFileExternalServiceBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_mcp_source_tool: true,
+      mcp_source_tool_registration: true,
+      mcp_source_tool_registration_kind: "registerTool",
+      mcp_source_tool_argument_count: 3,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      read_only_hint: false,
+      idempotent_hint: false,
+      accepts_content_like_input: true,
+      accepts_path_input: true,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      external_service_write: true,
+      tainted_external_service_recipient: true,
+      local_file_external_service_bridge: true,
+      local_file_disclosure: true,
+      external_write: true,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_external_service_write: true,
+      handler_tainted_external_service_recipient: true,
+      handler_filesystem_read: true,
+      handler_tainted_filesystem_path: true,
+      handler_local_file_external_service_bridge: true,
+      handler_secret_env_access: true,
+      handler_model_visible_output: true,
+      handler_signal_count: 6,
+      open_world_schema: false
+    });
+    expect(sourceLocalFileExternalServiceBridgeTool?.metadata.authority_classes).toEqual([
+      "content_input",
+      "customer_data_input",
+      "external_service_write",
+      "external_write",
+      "filesystem_access",
+      "filesystem_read",
+      "handler_external_service_write",
+      "handler_filesystem_read",
+      "handler_local_file_external_service_bridge",
+      "handler_secret_env_access",
+      "handler_tainted_external_service_recipient",
+      "handler_tainted_filesystem_path",
+      "local_file_disclosure",
+      "local_file_external_service_bridge",
+      "pii_input",
+      "secret_env_access",
+      "tainted_external_service_recipient",
+      "tainted_filesystem_path"
+    ]);
+    expect(sourceLocalFileExternalServiceBridgeTool?.metadata.handler_authority_classes).toEqual([
+      "handler_external_service_write",
+      "handler_filesystem_read",
+      "handler_local_file_external_service_bridge",
+      "handler_secret_env_access",
+      "handler_tainted_external_service_recipient",
+      "handler_tainted_filesystem_path"
+    ]);
+    expect(sourceLocalFileExternalServiceBridgeTool?.metadata.handler_env_key_names).toEqual(["SOURCE_LOCAL_FILE_SLACK_TOKEN"]);
+    expect(sourceLocalFileExternalServiceBridgeTool?.metadata.schema_properties).toEqual([
+      "customer_id",
+      "destination_channel_id",
+      "file_context_note",
+      "local_file_path"
+    ]);
+    expect(sourceLocalFileExternalServiceBridgeTool?.metadata.required_properties).toEqual([
+      "customer_id",
+      "destination_channel_id",
+      "file_context_note",
+      "local_file_path"
+    ]);
+    expect(JSON.stringify(sourceLocalFileExternalServiceBridgeTool)).not.toContain("readFile");
+    expect(JSON.stringify(sourceLocalFileExternalServiceBridgeTool)).not.toContain("localFileContent");
+    expect(JSON.stringify(sourceLocalFileExternalServiceBridgeTool)).not.toContain("slackClient.chat.postMessage");
+    expect(JSON.stringify(sourceLocalFileExternalServiceBridgeTool)).not.toContain("source local file posted externally");
+    expect(JSON.stringify(sourceLocalFileExternalServiceBridgeTool)).not.toContain("Read a caller selected local file");
     expect(sourceNetworkResponseTool).toMatchObject({
       path: "mcp-source/customer-tools.ts",
       data_classes: ["unknown"],
@@ -11763,6 +11853,90 @@ describe("scanner", () => {
     expect(JSON.stringify(langchainLocalFileDatabaseWriteBridgeTool)).not.toContain("UPDATE support_cases");
     expect(JSON.stringify(langchainLocalFileDatabaseWriteBridgeTool)).not.toContain("framework local file stored in database");
     expect(JSON.stringify(langchainLocalFileDatabaseWriteBridgeTool)).not.toContain("Read a caller selected local file");
+    expect(langchainLocalFileExternalServiceBridgeTool).toMatchObject({
+      path: "framework-tools/langchain_tools.py",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["call", "publish", "read", "send"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(langchainLocalFileExternalServiceBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_agent_framework_source_tool: true,
+      agent_framework_source_tool_framework: "langchain",
+      agent_framework_source_tool_registration_kind: "python_tool_decorator",
+      agent_framework_source_tool_argument_count: 4,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_content_like_input: true,
+      accepts_path_input: true,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      external_service_write: true,
+      tainted_external_service_recipient: true,
+      local_file_external_service_bridge: true,
+      local_file_disclosure: true,
+      external_write: true,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_external_service_write: true,
+      handler_tainted_external_service_recipient: true,
+      handler_filesystem_read: true,
+      handler_tainted_filesystem_path: true,
+      handler_local_file_external_service_bridge: true,
+      handler_secret_env_access: true,
+      handler_model_visible_output: true,
+      handler_signal_count: 6,
+      open_world_schema: false
+    });
+    expect(langchainLocalFileExternalServiceBridgeTool?.metadata.authority_classes).toEqual([
+      "content_input",
+      "customer_data_input",
+      "external_service_write",
+      "external_write",
+      "filesystem_access",
+      "filesystem_read",
+      "handler_external_service_write",
+      "handler_filesystem_read",
+      "handler_local_file_external_service_bridge",
+      "handler_secret_env_access",
+      "handler_tainted_external_service_recipient",
+      "handler_tainted_filesystem_path",
+      "local_file_disclosure",
+      "local_file_external_service_bridge",
+      "pii_input",
+      "secret_env_access",
+      "tainted_external_service_recipient",
+      "tainted_filesystem_path"
+    ]);
+    expect(langchainLocalFileExternalServiceBridgeTool?.metadata.handler_authority_classes).toEqual([
+      "handler_external_service_write",
+      "handler_filesystem_read",
+      "handler_local_file_external_service_bridge",
+      "handler_secret_env_access",
+      "handler_tainted_external_service_recipient",
+      "handler_tainted_filesystem_path"
+    ]);
+    expect(langchainLocalFileExternalServiceBridgeTool?.metadata.handler_env_key_names).toEqual(["LANGCHAIN_LOCAL_FILE_SLACK_TOKEN"]);
+    expect(langchainLocalFileExternalServiceBridgeTool?.metadata.schema_properties).toEqual([
+      "customer_id",
+      "destination_channel_id",
+      "file_context_note",
+      "local_file_path"
+    ]);
+    expect(langchainLocalFileExternalServiceBridgeTool?.metadata.required_properties).toEqual([
+      "customer_id",
+      "destination_channel_id",
+      "file_context_note",
+      "local_file_path"
+    ]);
+    expect(JSON.stringify(langchainLocalFileExternalServiceBridgeTool)).not.toContain("Path(local_file_path)");
+    expect(JSON.stringify(langchainLocalFileExternalServiceBridgeTool)).not.toContain("local_file_content");
+    expect(JSON.stringify(langchainLocalFileExternalServiceBridgeTool)).not.toContain("slack_client.chat_postMessage");
+    expect(JSON.stringify(langchainLocalFileExternalServiceBridgeTool)).not.toContain("framework local file posted externally");
+    expect(JSON.stringify(langchainLocalFileExternalServiceBridgeTool)).not.toContain("Read a caller selected local file");
     expect(langchainNetworkResponseTool).toMatchObject({
       path: "framework-tools/langchain_tools.py",
       data_classes: ["unknown"],

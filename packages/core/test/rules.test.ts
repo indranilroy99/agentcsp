@@ -145,6 +145,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-141")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-142")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-143")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-144")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-001")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-002")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-003")).toBe(true);
@@ -6329,12 +6330,14 @@ describe("rule engine", () => {
     const sourceHandlerLocalFileDisclosureFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-020");
     expect(sourceHandlerLocalFileDisclosureFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_cache_local_file_prompt",
+      "langchain_post_local_file_to_slack",
       "langchain_read_workspace_file",
       "langchain_store_local_file_database",
       "langchain_summarize_local_file_with_model",
       "langchain_train_on_local_file",
       "langchain_upload_local_file_authenticated_browser",
       "source_cache_local_file_prompt",
+      "source_post_local_file_to_slack",
       "source_read_workspace_file",
       "source_store_local_file_database",
       "source_summarize_local_file_with_model",
@@ -6536,9 +6539,58 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerLocalFileDatabaseWriteBridgeFindings)).not.toContain("source local file stored in database");
     expect(JSON.stringify(sourceHandlerLocalFileDatabaseWriteBridgeFindings)).not.toContain("framework local file stored in database");
     expect(JSON.stringify(sourceHandlerLocalFileDatabaseWriteBridgeFindings)).not.toContain("Read a caller selected local file");
+    const sourceHandlerLocalFileExternalServiceBridgeFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-144");
+    expect(sourceHandlerLocalFileExternalServiceBridgeFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
+      "langchain_post_local_file_to_slack",
+      "source_post_local_file_to_slack"
+    ]);
+    expect(sourceHandlerLocalFileExternalServiceBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
+    expect(sourceHandlerLocalFileExternalServiceBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerLocalFileExternalServiceBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
+    expect(sourceHandlerLocalFileExternalServiceBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
+    expect(sourceHandlerLocalFileExternalServiceBridgeFindings.every((finding) => finding.matched_object.metadata.source_tool_handler_redacted === true)).toBe(true);
+    expect(sourceHandlerLocalFileExternalServiceBridgeFindings.every((finding) => finding.matched_object.metadata.handler_filesystem_read === true)).toBe(true);
+    expect(sourceHandlerLocalFileExternalServiceBridgeFindings.every((finding) => finding.matched_object.metadata.handler_tainted_filesystem_path === true)).toBe(true);
+    expect(sourceHandlerLocalFileExternalServiceBridgeFindings.every((finding) => finding.matched_object.metadata.handler_external_service_write === true)).toBe(true);
+    expect(sourceHandlerLocalFileExternalServiceBridgeFindings.every((finding) => finding.matched_object.metadata.handler_tainted_external_service_recipient === true)).toBe(true);
+    expect(sourceHandlerLocalFileExternalServiceBridgeFindings.every((finding) => finding.matched_object.metadata.handler_local_file_external_service_bridge === true)).toBe(true);
+    expect(sourceHandlerLocalFileExternalServiceBridgeFindings.every((finding) => finding.matched_object.metadata.handler_secret_env_access === true)).toBe(true);
+    expect(sourceHandlerLocalFileExternalServiceBridgeFindings.every((finding) => finding.matched_object.metadata.local_file_external_service_bridge === true)).toBe(true);
+    expect(sourceHandlerLocalFileExternalServiceBridgeFindings.every((finding) => finding.matched_object.metadata.external_service_write === true)).toBe(true);
+    expect(sourceHandlerLocalFileExternalServiceBridgeFindings.every((finding) => finding.matched_object.metadata.tainted_external_service_recipient === true)).toBe(true);
+    expect(sourceHandlerLocalFileExternalServiceBridgeFindings.every((finding) => finding.matched_object.metadata.external_write === true)).toBe(true);
+    expect(sourceHandlerLocalFileExternalServiceBridgeFindings.every((finding) => finding.matched_object.metadata.tainted_filesystem_path === true)).toBe(true);
+    expect(sourceHandlerLocalFileExternalServiceBridgeFindings.every((finding) => finding.matched_object.metadata.accepts_path_input === true)).toBe(true);
+    expect(sourceHandlerLocalFileExternalServiceBridgeFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("filesystem_read"))).toBe(true);
+    expect(sourceHandlerLocalFileExternalServiceBridgeFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("tainted_filesystem_path"))).toBe(true);
+    expect(sourceHandlerLocalFileExternalServiceBridgeFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("external_service_write"))).toBe(true);
+    expect(sourceHandlerLocalFileExternalServiceBridgeFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("tainted_external_service_recipient"))).toBe(true);
+    expect(sourceHandlerLocalFileExternalServiceBridgeFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("local_file_external_service_bridge"))).toBe(true);
+    expect(sourceHandlerLocalFileExternalServiceBridgeFindings.every((finding) => finding.matched_object.metadata.handler_authority_classes.includes("handler_filesystem_read"))).toBe(true);
+    expect(sourceHandlerLocalFileExternalServiceBridgeFindings.every((finding) => finding.matched_object.metadata.handler_authority_classes.includes("handler_tainted_filesystem_path"))).toBe(true);
+    expect(sourceHandlerLocalFileExternalServiceBridgeFindings.every((finding) => finding.matched_object.metadata.handler_authority_classes.includes("handler_external_service_write"))).toBe(true);
+    expect(sourceHandlerLocalFileExternalServiceBridgeFindings.every((finding) => finding.matched_object.metadata.handler_authority_classes.includes("handler_tainted_external_service_recipient"))).toBe(true);
+    expect(sourceHandlerLocalFileExternalServiceBridgeFindings.every((finding) => finding.matched_object.metadata.handler_authority_classes.includes("handler_local_file_external_service_bridge"))).toBe(true);
+    expect(sourceHandlerLocalFileExternalServiceBridgeFindings.every((finding) => finding.matched_object.actions.includes("read"))).toBe(true);
+    expect(sourceHandlerLocalFileExternalServiceBridgeFindings.every((finding) => finding.matched_object.actions.includes("send"))).toBe(true);
+    expect(sourceHandlerLocalFileExternalServiceBridgeFindings.every((finding) => finding.matched_object.actions.includes("publish"))).toBe(true);
+    expect(sourceHandlerLocalFileExternalServiceBridgeFindings.every((finding) => finding.matched_object.external_reach === true)).toBe(true);
+    expect(sourceHandlerLocalFileExternalServiceBridgeFindings.every((finding) => finding.matched_object.secret_exposure === true)).toBe(true);
+    expect(sourceHandlerLocalFileExternalServiceBridgeFindings.every((finding) => finding.matched_object.side_effect === true)).toBe(true);
+    expect(sourceHandlerLocalFileExternalServiceBridgeFindings.every((finding) => finding.matched_object.reversible === false)).toBe(true);
+    expect(JSON.stringify(sourceHandlerLocalFileExternalServiceBridgeFindings)).not.toContain("readFile");
+    expect(JSON.stringify(sourceHandlerLocalFileExternalServiceBridgeFindings)).not.toContain("Path(local_file_path)");
+    expect(JSON.stringify(sourceHandlerLocalFileExternalServiceBridgeFindings)).not.toContain("localFileContent");
+    expect(JSON.stringify(sourceHandlerLocalFileExternalServiceBridgeFindings)).not.toContain("local_file_content");
+    expect(JSON.stringify(sourceHandlerLocalFileExternalServiceBridgeFindings)).not.toContain("slackClient.chat.postMessage");
+    expect(JSON.stringify(sourceHandlerLocalFileExternalServiceBridgeFindings)).not.toContain("slack_client.chat_postMessage");
+    expect(JSON.stringify(sourceHandlerLocalFileExternalServiceBridgeFindings)).not.toContain("source local file posted externally");
+    expect(JSON.stringify(sourceHandlerLocalFileExternalServiceBridgeFindings)).not.toContain("framework local file posted externally");
+    expect(JSON.stringify(sourceHandlerLocalFileExternalServiceBridgeFindings)).not.toContain("Read a caller selected local file");
     const sourceHandlerTaintedFilesystemPathFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-035");
     expect(sourceHandlerTaintedFilesystemPathFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_cache_local_file_prompt",
+      "langchain_post_local_file_to_slack",
       "langchain_read_workspace_file",
       "langchain_readonly_delete_workspace_path",
       "langchain_store_local_file_database",
@@ -6547,6 +6599,7 @@ describe("rule engine", () => {
       "langchain_upload_local_file_authenticated_browser",
       "python_readonly_delete_workspace_file",
       "source_cache_local_file_prompt",
+      "source_post_local_file_to_slack",
       "source_read_workspace_file",
       "source_readonly_delete_workspace_file",
       "source_store_local_file_database",
@@ -10594,12 +10647,14 @@ describe("rule engine", () => {
       "langchain_post_authenticated_page_screenshot_external",
       "langchain_post_clipboard_to_slack",
       "langchain_post_customer_vault_secret_slack",
+      "langchain_post_local_file_to_slack",
       "langchain_post_model_selected_external_update",
       "langchain_post_retrieved_context_external",
       "langchain_send_customer_slack_update",
       "source_post_authenticated_page_screenshot_external",
       "source_post_clipboard_to_slack",
       "source_post_customer_vault_secret_slack",
+      "source_post_local_file_to_slack",
       "source_post_model_selected_external_update",
       "source_post_retrieved_context_external",
       "source_send_customer_slack_update"
@@ -10634,6 +10689,8 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerExternalServiceWriteFindings)).not.toContain("framework retrieved context posted externally");
     expect(JSON.stringify(sourceHandlerExternalServiceWriteFindings)).not.toContain("source visual context posted externally");
     expect(JSON.stringify(sourceHandlerExternalServiceWriteFindings)).not.toContain("framework visual context posted externally");
+    expect(JSON.stringify(sourceHandlerExternalServiceWriteFindings)).not.toContain("source local file posted externally");
+    expect(JSON.stringify(sourceHandlerExternalServiceWriteFindings)).not.toContain("framework local file posted externally");
     expect(JSON.stringify(sourceHandlerExternalServiceWriteFindings)).not.toContain("authenticated-page.png");
     expect(JSON.stringify(sourceHandlerExternalServiceWriteFindings)).not.toContain("retrievedChunks");
     expect(JSON.stringify(sourceHandlerExternalServiceWriteFindings)).not.toContain("retrieved_chunks");
@@ -10646,12 +10703,14 @@ describe("rule engine", () => {
       "langchain_post_authenticated_page_screenshot_external",
       "langchain_post_clipboard_to_slack",
       "langchain_post_customer_vault_secret_slack",
+      "langchain_post_local_file_to_slack",
       "langchain_post_model_selected_external_update",
       "langchain_post_retrieved_context_external",
       "langchain_send_customer_slack_update",
       "source_post_authenticated_page_screenshot_external",
       "source_post_clipboard_to_slack",
       "source_post_customer_vault_secret_slack",
+      "source_post_local_file_to_slack",
       "source_post_model_selected_external_update",
       "source_post_retrieved_context_external",
       "source_send_customer_slack_update"
@@ -10685,6 +10744,8 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerTaintedExternalServiceRecipientFindings)).not.toContain("framework retrieved context posted externally");
     expect(JSON.stringify(sourceHandlerTaintedExternalServiceRecipientFindings)).not.toContain("source visual context posted externally");
     expect(JSON.stringify(sourceHandlerTaintedExternalServiceRecipientFindings)).not.toContain("framework visual context posted externally");
+    expect(JSON.stringify(sourceHandlerTaintedExternalServiceRecipientFindings)).not.toContain("source local file posted externally");
+    expect(JSON.stringify(sourceHandlerTaintedExternalServiceRecipientFindings)).not.toContain("framework local file posted externally");
     expect(JSON.stringify(sourceHandlerTaintedExternalServiceRecipientFindings)).not.toContain("authenticated-page.png");
     expect(JSON.stringify(sourceHandlerTaintedExternalServiceRecipientFindings)).not.toContain("retrievedChunks");
     expect(JSON.stringify(sourceHandlerTaintedExternalServiceRecipientFindings)).not.toContain("retrieved_chunks");

@@ -24137,6 +24137,7 @@ function addToolDefinitionSurface(
       !authority.network_response_browser_automation_bridge &&
       !authority.secret_manager_access &&
       !authority.external_service_write &&
+      !authority.local_file_external_service_bridge &&
       !authority.model_output_external_service_bridge &&
       !authority.network_response_external_service_bridge &&
       !authority.model_provider_call &&
@@ -24260,6 +24261,7 @@ function addToolDefinitionSurface(
       secret_manager_prompt_bridge: authority.secret_manager_prompt_bridge,
       external_service_write: authority.external_service_write,
       tainted_external_service_recipient: authority.tainted_external_service_recipient,
+      local_file_external_service_bridge: authority.local_file_external_service_bridge,
       model_output_external_service_bridge: authority.model_output_external_service_bridge,
       network_response_external_service_bridge: authority.network_response_external_service_bridge,
       tool_output_external_service_bridge: authority.tool_output_external_service_bridge,
@@ -26884,6 +26886,7 @@ interface SourceToolHandlerSignals {
   handlerTaintedShellArgument: boolean;
   handlerTaintedFilesystemPath: boolean;
   handlerTaintedExternalServiceRecipient: boolean;
+  handlerLocalFileExternalServiceBridge: boolean;
   handlerModelOutputExternalServiceBridge: boolean;
   handlerNetworkResponseExternalServiceBridge: boolean;
   handlerToolOutputExternalServiceBridge: boolean;
@@ -27460,6 +27463,7 @@ function sourceToolHandlerSignalMetadata(signals: SourceToolHandlerSignals | und
     handler_tainted_shell_argument: signals.handlerTaintedShellArgument,
     handler_tainted_filesystem_path: signals.handlerTaintedFilesystemPath,
     handler_tainted_external_service_recipient: signals.handlerTaintedExternalServiceRecipient,
+    handler_local_file_external_service_bridge: signals.handlerLocalFileExternalServiceBridge,
     handler_model_output_external_service_bridge: signals.handlerModelOutputExternalServiceBridge,
     handler_network_response_external_service_bridge: signals.handlerNetworkResponseExternalServiceBridge,
     handler_tool_output_external_service_bridge: signals.handlerToolOutputExternalServiceBridge,
@@ -27780,6 +27784,9 @@ function classifySourceToolHandlerSignals(
   const taintedFilesystemPath = (filesystemRead || filesystemWrite || filesystemDelete) && (language === "javascript"
     ? hasJavaScriptHandlerTaintedFilesystemPath(handlerSource)
     : hasPythonHandlerTaintedFilesystemPath(handlerSource));
+  const localFileExternalServiceBridge = filesystemRead && taintedFilesystemPath && externalServiceWrite && (language === "javascript"
+    ? hasJavaScriptHandlerLocalFileExternalServiceBridge(handlerSource)
+    : hasPythonHandlerLocalFileExternalServiceBridge(handlerSource));
   const localFileDatabaseWriteBridge = filesystemRead && taintedFilesystemPath && databaseWrite && (language === "javascript"
     ? hasJavaScriptHandlerLocalFileDatabaseWriteBridge(handlerSource)
     : hasPythonHandlerLocalFileDatabaseWriteBridge(handlerSource));
@@ -27964,6 +27971,7 @@ function classifySourceToolHandlerSignals(
   if (externalWrite) classes.add("handler_external_write");
   if (externalServiceWrite) classes.add("handler_external_service_write");
   if (taintedExternalServiceRecipient) classes.add("handler_tainted_external_service_recipient");
+  if (localFileExternalServiceBridge) classes.add("handler_local_file_external_service_bridge");
   if (modelOutputExternalServiceBridge) classes.add("handler_model_output_external_service_bridge");
   if (networkResponseExternalServiceBridge) classes.add("handler_network_response_external_service_bridge");
   if (toolOutputExternalServiceBridge) classes.add("handler_tool_output_external_service_bridge");
@@ -28275,6 +28283,7 @@ function classifySourceToolHandlerSignals(
     handlerShellExecution: shellExecution,
     handlerTaintedShellArgument: taintedShellArgument,
     handlerTaintedFilesystemPath: taintedFilesystemPath,
+    handlerLocalFileExternalServiceBridge: localFileExternalServiceBridge,
     handlerDynamicCodeExecution: dynamicCodeExecution,
     handlerTaintedDynamicCodeArgument: taintedDynamicCodeArgument,
     handlerUnsafeDeserialization: unsafeDeserialization,
@@ -29787,6 +29796,28 @@ function hasJavaScriptHandlerNetworkResponseExternalServiceBridge(source: string
 
 function hasPythonHandlerNetworkResponseExternalServiceBridge(source: string): boolean {
   const identifiers = extractPythonNetworkResponseIdentifiers(source);
+  return identifiers.length > 0 && callExpressionReferencesAnyIdentifier(
+    [
+      /\b(?:slack_client|slack|github|github_client|octokit|email_client|mail_client|sendgrid|twilio_client|twilio|teams_client|discord_client|notion|linear|jira|salesforce|hubspot)\s*(?:\.\s*[A-Za-z_]\w*){0,4}\s*\.\s*(?:post_message|chat_postMessage|chat_post_message|create_comment|create_issue_comment|send|send_mail|send_message|create|publish|post|reply|update|create_page|create_task|create_issue)\s*\(([\s\S]{0,2400})\)/giu
+    ],
+    source,
+    identifiers
+  );
+}
+
+function hasJavaScriptHandlerLocalFileExternalServiceBridge(source: string): boolean {
+  const identifiers = extractJavaScriptLocalFileIdentifiers(source);
+  return identifiers.length > 0 && callExpressionReferencesAnyIdentifier(
+    [
+      /\b(?:slackClient|slack|github|githubClient|octokit|emailClient|mailClient|sendgrid|twilioClient|twilio|teamsClient|discordClient|notion|linear|jira|salesforce|hubspot)\s*(?:\.\s*[A-Za-z_$][\w$]*){0,4}\s*\.\s*(?:postMessage|createComment|createIssueComment|send|sendMail|sendMessage|create|publish|post|reply|update|createPage|createTask|createIssue)\s*\(([\s\S]{0,2400})\)/giu
+    ],
+    source,
+    identifiers
+  );
+}
+
+function hasPythonHandlerLocalFileExternalServiceBridge(source: string): boolean {
+  const identifiers = extractPythonLocalFileIdentifiers(source);
   return identifiers.length > 0 && callExpressionReferencesAnyIdentifier(
     [
       /\b(?:slack_client|slack|github|github_client|octokit|email_client|mail_client|sendgrid|twilio_client|twilio|teams_client|discord_client|notion|linear|jira|salesforce|hubspot)\s*(?:\.\s*[A-Za-z_]\w*){0,4}\s*\.\s*(?:post_message|chat_postMessage|chat_post_message|create_comment|create_issue_comment|send|send_mail|send_message|create|publish|post|reply|update|create_page|create_task|create_issue)\s*\(([\s\S]{0,2400})\)/giu
@@ -34955,6 +34986,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   secret_manager_access: boolean;
   tainted_secret_manager_path: boolean;
   secret_manager_external_service_bridge: boolean;
+  local_file_external_service_bridge: boolean;
   secret_manager_prompt_bridge: boolean;
   external_service_write: boolean;
   tainted_external_service_recipient: boolean;
@@ -35220,6 +35252,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   const handlerSecretManagerAccess = handler?.handlerSecretManagerAccess === true;
   const handlerTaintedSecretManagerPath = handler?.handlerTaintedSecretManagerPath === true;
   const handlerSecretManagerExternalServiceBridge = handler?.handlerSecretManagerExternalServiceBridge === true;
+  const handlerLocalFileExternalServiceBridge = handler?.handlerLocalFileExternalServiceBridge === true;
   const handlerSecretManagerPromptBridge = handler?.handlerSecretManagerPromptBridge === true;
   const handlerShellExecution = handler?.handlerShellExecution === true;
   const handlerTaintedShellArgument = handler?.handlerTaintedShellArgument === true;
@@ -35613,6 +35646,12 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   }
   if (handlerTaintedExternalServiceRecipient) {
     classes.add("tainted_external_service_recipient");
+  }
+  if (handlerLocalFileExternalServiceBridge) {
+    classes.add("local_file_external_service_bridge");
+    actions.add("read");
+    actions.add("send");
+    actions.add("publish");
   }
   if (handlerModelOutputExternalServiceBridge) {
     classes.add("model_output_external_service_bridge");
@@ -36163,6 +36202,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerSecretManagerAccess ||
       handlerTaintedSecretManagerPath ||
       handlerSecretManagerExternalServiceBridge ||
+      handlerLocalFileExternalServiceBridge ||
       handlerSecretManagerPromptBridge ||
       handlerSecretManagerMemoryBridge ||
       handlerSecretManagerTrainingDatasetBridge ||
@@ -36327,6 +36367,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerSecretManagerAgentDelegationBridge ||
       handlerToolOutputAgentDelegationBridge ||
       handlerSecretManagerExternalServiceBridge ||
+      handlerLocalFileExternalServiceBridge ||
       handlerSecretManagerPromptBridge ||
       handlerSecretManagerDatabaseWriteBridge ||
       handlerModelOutputDatabaseWriteBridge ||
@@ -36424,6 +36465,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       (handlerModelOutputCredentialIssuanceBridge && handlerSecretEnvAccess) ||
       (handlerToolOutputCredentialIssuanceBridge && handlerSecretEnvAccess) ||
       handlerSecretManagerExternalServiceBridge ||
+      (handlerLocalFileExternalServiceBridge && handlerSecretEnvAccess) ||
       handlerSecretManagerPromptBridge ||
       handlerSecretManagerDatabaseWriteBridge ||
       (handlerLocalFileDatabaseWriteBridge && handlerSecretEnvAccess) ||
@@ -36556,6 +36598,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
     secret_manager_access: handlerSecretManagerAccess,
     tainted_secret_manager_path: handlerTaintedSecretManagerPath,
     secret_manager_external_service_bridge: handlerSecretManagerExternalServiceBridge,
+    local_file_external_service_bridge: handlerLocalFileExternalServiceBridge,
     secret_manager_prompt_bridge: handlerSecretManagerPromptBridge,
     external_service_write: handlerExternalServiceWrite,
     tainted_external_service_recipient: handlerTaintedExternalServiceRecipient,
@@ -36708,6 +36751,7 @@ function authoritySignature(tool: SurfaceObject): string {
     metadata.parsed_tool_schema === true ? "parsed" : "unparsed",
     metadata.external_write === true ? "external_write" : "",
     metadata.external_service_write === true ? "external_service_write" : "",
+    metadata.local_file_external_service_bridge === true ? "local_file_external_service_bridge" : "",
     metadata.tainted_network_destination === true ? "tainted_network_destination" : "",
     metadata.model_output_network_destination_bridge === true ? "model_output_network_destination_bridge" : "",
     metadata.tool_output_network_destination_bridge === true ? "tool_output_network_destination_bridge" : "",
@@ -36877,6 +36921,7 @@ function isPrivilegedToolSurface(tool: SurfaceObject): boolean {
     !tool.reversible ||
     tool.actions.some((action) => ["write", "execute", "publish", "send", "delete", "remember"].includes(action)) ||
     tool.metadata.external_write === true ||
+    tool.metadata.local_file_external_service_bridge === true ||
     tool.metadata.tainted_network_destination === true ||
     tool.metadata.model_output_network_destination_bridge === true ||
     tool.metadata.tool_output_network_destination_bridge === true ||
