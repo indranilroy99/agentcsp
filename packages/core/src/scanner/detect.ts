@@ -24189,6 +24189,7 @@ function addToolDefinitionSurface(
       !authority.visual_context_capture &&
       !authority.clipboard_read &&
       !authority.clipboard_prompt_bridge &&
+      !authority.clipboard_memory_bridge &&
       !authority.clipboard_external_service_bridge &&
       !authority.visual_context_external_service_bridge &&
       !authority.visual_context_memory_bridge &&
@@ -24263,6 +24264,7 @@ function addToolDefinitionSurface(
       local_file_prompt_bridge: authority.local_file_prompt_bridge,
       clipboard_read: authority.clipboard_read,
       clipboard_prompt_bridge: authority.clipboard_prompt_bridge,
+      clipboard_memory_bridge: authority.clipboard_memory_bridge,
       clipboard_external_service_bridge: authority.clipboard_external_service_bridge,
       secret_manager_access: authority.secret_manager_access,
       tainted_secret_manager_path: authority.tainted_secret_manager_path,
@@ -26885,6 +26887,7 @@ interface SourceToolHandlerSignals {
   handlerLocalFilePromptBridge: boolean;
   handlerClipboardRead: boolean;
   handlerClipboardPromptBridge: boolean;
+  handlerClipboardMemoryBridge: boolean;
   handlerClipboardExternalServiceBridge: boolean;
   handlerVisualContextCapture: boolean;
   handlerVisualContextToOutput: boolean;
@@ -27468,6 +27471,7 @@ function sourceToolHandlerSignalMetadata(signals: SourceToolHandlerSignals | und
     handler_local_file_prompt_bridge: signals.handlerLocalFilePromptBridge,
     handler_clipboard_read: signals.handlerClipboardRead,
     handler_clipboard_prompt_bridge: signals.handlerClipboardPromptBridge,
+    handler_clipboard_memory_bridge: signals.handlerClipboardMemoryBridge,
     handler_clipboard_external_service_bridge: signals.handlerClipboardExternalServiceBridge,
     handler_visual_context_capture: signals.handlerVisualContextCapture,
     handler_visual_context_to_output: signals.handlerVisualContextToOutput,
@@ -27908,6 +27912,9 @@ function classifySourceToolHandlerSignals(
   const clipboardPromptBridge = clipboardRead && modelProviderCall && (language === "javascript"
     ? hasJavaScriptHandlerClipboardPromptBridge(handlerSource)
     : hasPythonHandlerClipboardPromptBridge(handlerSource));
+  const clipboardMemoryBridge = clipboardRead && memoryWrite && (language === "javascript"
+    ? hasJavaScriptHandlerClipboardMemoryBridge(handlerSource)
+    : hasPythonHandlerClipboardMemoryBridge(handlerSource));
   const clipboardExternalServiceBridge = clipboardRead && externalServiceWrite && (language === "javascript"
     ? hasJavaScriptHandlerClipboardExternalServiceBridge(handlerSource)
     : hasPythonHandlerClipboardExternalServiceBridge(handlerSource));
@@ -28155,6 +28162,7 @@ function classifySourceToolHandlerSignals(
   if (localFilePromptBridge) classes.add("handler_local_file_prompt_bridge");
   if (clipboardRead) classes.add("handler_clipboard_read");
   if (clipboardPromptBridge) classes.add("handler_clipboard_prompt_bridge");
+  if (clipboardMemoryBridge) classes.add("handler_clipboard_memory_bridge");
   if (clipboardExternalServiceBridge) classes.add("handler_clipboard_external_service_bridge");
   if (visualContextCapture) classes.add("handler_visual_context_capture");
   if (visualContextToOutput) classes.add("handler_visual_context_to_output");
@@ -28326,6 +28334,7 @@ function classifySourceToolHandlerSignals(
     handlerLocalFilePromptBridge: localFilePromptBridge,
     handlerClipboardRead: clipboardRead,
     handlerClipboardPromptBridge: clipboardPromptBridge,
+    handlerClipboardMemoryBridge: clipboardMemoryBridge,
     handlerClipboardExternalServiceBridge: clipboardExternalServiceBridge,
     handlerVisualContextCapture: visualContextCapture,
     handlerVisualContextToOutput: visualContextToOutput,
@@ -28706,7 +28715,7 @@ function hasHandlerDatabaseWriteSignal(source: string): boolean {
 }
 
 function hasJavaScriptHandlerMemoryWrite(source: string): boolean {
-  return /\b(?:[A-Za-z_$][\w$]*memory|memory|memories|vectorStore|vectorIndex|embeddingStore|ragStore|retriever|knowledgeBase|sessionStore|stateStore)\s*\.\s*(?:add|addDocuments|addTexts|append|insert|persist|put|push|remember|save|set|store|upsert|write)\s*\(/iu.test(source) ||
+  return /\b(?:[A-Za-z_$][\w$]*memory|memory|memories|memoryStore|vectorStore|vectorIndex|embeddingStore|ragStore|retriever|knowledgeBase|sessionStore|stateStore)\s*\.\s*(?:add|addDocuments|addTexts|append|insert|persist|put|push|remember|save|set|store|upsert|write)\s*\(/iu.test(source) ||
     /\b(?:persistMemory|rememberContext|saveMemory|storeMemory|upsertMemory|writeMemory)\s*\(/iu.test(source);
 }
 
@@ -28717,7 +28726,7 @@ function hasPythonHandlerMemoryWrite(source: string): boolean {
 
 function hasJavaScriptHandlerTaintedMemoryScope(source: string): boolean {
   return [
-    /\b(?:[A-Za-z_$][\w$]*memory|memory|memories|vectorStore|vectorIndex|embeddingStore|ragStore|retriever|knowledgeBase|sessionStore|stateStore)\s*\.\s*(?:add|addDocuments|addTexts|append|insert|persist|put|push|remember|save|set|store|upsert|write)\s*\(([\s\S]{0,720})\)/giu,
+    /\b(?:[A-Za-z_$][\w$]*memory|memory|memories|memoryStore|vectorStore|vectorIndex|embeddingStore|ragStore|retriever|knowledgeBase|sessionStore|stateStore)\s*\.\s*(?:add|addDocuments|addTexts|append|insert|persist|put|push|remember|save|set|store|upsert|write)\s*\(([\s\S]{0,720})\)/giu,
     /\b(?:persistMemory|rememberContext|saveMemory|storeMemory|upsertMemory|writeMemory)\s*\(([\s\S]{0,720})\)/giu
   ].some((pattern) => expressionMatchesTaintedMemoryScope(pattern, source));
 }
@@ -28733,7 +28742,7 @@ function hasJavaScriptHandlerToolOutputMemoryBridge(source: string): boolean {
   const identifiers = extractJavaScriptToolOutputIdentifiers(source);
   return identifiers.length > 0 && callExpressionReferencesAnyIdentifier(
     [
-      /\b(?:[A-Za-z_$][\w$]*memory|memory|memories|vectorStore|vectorIndex|embeddingStore|ragStore|retriever|knowledgeBase|sessionStore|stateStore)\s*\.\s*(?:add|addDocuments|addTexts|append|insert|persist|put|push|remember|save|set|store|upsert|write)\s*\(([\s\S]{0,1600})\)/giu,
+      /\b(?:[A-Za-z_$][\w$]*memory|memory|memories|memoryStore|vectorStore|vectorIndex|embeddingStore|ragStore|retriever|knowledgeBase|sessionStore|stateStore)\s*\.\s*(?:add|addDocuments|addTexts|append|insert|persist|put|push|remember|save|set|store|upsert|write)\s*\(([\s\S]{0,1600})\)/giu,
       /\b(?:persistMemory|rememberContext|saveMemory|storeMemory|upsertMemory|writeMemory)\s*\(([\s\S]{0,1600})\)/giu
     ],
     source,
@@ -28757,7 +28766,7 @@ function hasJavaScriptHandlerNetworkResponseMemoryBridge(source: string): boolea
   const identifiers = extractJavaScriptNetworkResponseIdentifiers(source);
   return identifiers.length > 0 && callExpressionReferencesAnyIdentifier(
     [
-      /\b(?:[A-Za-z_$][\w$]*memory|memory|memories|vectorStore|vectorIndex|embeddingStore|ragStore|retriever|knowledgeBase|sessionStore|stateStore)\s*\.\s*(?:add|addDocuments|addTexts|append|insert|persist|put|push|remember|save|set|store|upsert|write)\s*\(([\s\S]{0,2200})\)/giu,
+      /\b(?:[A-Za-z_$][\w$]*memory|memory|memories|memoryStore|vectorStore|vectorIndex|embeddingStore|ragStore|retriever|knowledgeBase|sessionStore|stateStore)\s*\.\s*(?:add|addDocuments|addTexts|append|insert|persist|put|push|remember|save|set|store|upsert|write)\s*\(([\s\S]{0,2200})\)/giu,
       /\b(?:persistMemory|rememberContext|saveMemory|storeMemory|upsertMemory|writeMemory)\s*\(([\s\S]{0,2200})\)/giu
     ],
     source,
@@ -28781,7 +28790,7 @@ function hasJavaScriptHandlerLocalFileMemoryBridge(source: string): boolean {
   const identifiers = extractJavaScriptLocalFileIdentifiers(source);
   return identifiers.length > 0 && callExpressionReferencesAnyIdentifier(
     [
-      /\b(?:[A-Za-z_$][\w$]*memory|memory|memories|vectorStore|vectorIndex|embeddingStore|ragStore|retriever|knowledgeBase|sessionStore|stateStore)\s*\.\s*(?:add|addDocuments|addTexts|append|insert|persist|put|push|remember|save|set|store|upsert|write)\s*\(([\s\S]{0,2200})\)/giu,
+      /\b(?:[A-Za-z_$][\w$]*memory|memory|memories|memoryStore|vectorStore|vectorIndex|embeddingStore|ragStore|retriever|knowledgeBase|sessionStore|stateStore)\s*\.\s*(?:add|addDocuments|addTexts|append|insert|persist|put|push|remember|save|set|store|upsert|write)\s*\(([\s\S]{0,2200})\)/giu,
       /\b(?:persistMemory|rememberContext|saveMemory|storeMemory|upsertMemory|writeMemory)\s*\(([\s\S]{0,2200})\)/giu
     ],
     source,
@@ -28805,7 +28814,7 @@ function hasJavaScriptHandlerSecretManagerMemoryBridge(source: string): boolean 
   const identifiers = extractJavaScriptSecretManagerIdentifiers(source);
   return identifiers.length > 0 && callExpressionReferencesAnyIdentifier(
     [
-      /\b(?:[A-Za-z_$][\w$]*memory|memory|memories|vectorStore|vectorIndex|embeddingStore|ragStore|retriever|knowledgeBase|sessionStore|stateStore)\s*\.\s*(?:add|addDocuments|addTexts|append|insert|persist|put|push|remember|save|set|store|upsert|write)\s*\(([\s\S]{0,1600})\)/giu,
+      /\b(?:[A-Za-z_$][\w$]*memory|memory|memories|memoryStore|vectorStore|vectorIndex|embeddingStore|ragStore|retriever|knowledgeBase|sessionStore|stateStore)\s*\.\s*(?:add|addDocuments|addTexts|append|insert|persist|put|push|remember|save|set|store|upsert|write)\s*\(([\s\S]{0,1600})\)/giu,
       /\b(?:persistMemory|rememberContext|saveMemory|storeMemory|upsertMemory|writeMemory)\s*\(([\s\S]{0,1600})\)/giu
     ],
     source,
@@ -28829,7 +28838,7 @@ function hasJavaScriptHandlerModelOutputMemoryBridge(source: string): boolean {
   const identifiers = extractJavaScriptModelOutputIdentifiers(source);
   return identifiers.length > 0 && callExpressionReferencesAnyIdentifier(
     [
-      /\b(?:[A-Za-z_$][\w$]*memory|memory|memories|vectorStore|vectorIndex|embeddingStore|ragStore|retriever|knowledgeBase|sessionStore|stateStore)\s*\.\s*(?:add|addDocuments|addTexts|append|insert|persist|put|push|remember|save|set|store|upsert|write)\s*\(([\s\S]{0,2200})\)/giu,
+      /\b(?:[A-Za-z_$][\w$]*memory|memory|memories|memoryStore|vectorStore|vectorIndex|embeddingStore|ragStore|retriever|knowledgeBase|sessionStore|stateStore)\s*\.\s*(?:add|addDocuments|addTexts|append|insert|persist|put|push|remember|save|set|store|upsert|write)\s*\(([\s\S]{0,2200})\)/giu,
       /\b(?:persistMemory|rememberContext|saveMemory|storeMemory|upsertMemory|writeMemory)\s*\(([\s\S]{0,2200})\)/giu
     ],
     source,
@@ -28865,7 +28874,7 @@ function hasJavaScriptHandlerSecretManagerEmbeddingVectorBridge(source: string):
   const embeddingIdentifiers = extractJavaScriptEmbeddingOutputIdentifiers(source);
   return callExpressionReferencesAnyIdentifier(
     [
-      /\b(?:[A-Za-z_$][\w$]*memory|memory|memories|vectorStore|vectorIndex|embeddingStore|ragStore|retriever|knowledgeBase|sessionStore|stateStore)\s*\.\s*(?:add|addDocuments|addTexts|append|insert|persist|put|push|remember|save|set|store|upsert|write)\s*\(([\s\S]{0,2200})\)/giu,
+      /\b(?:[A-Za-z_$][\w$]*memory|memory|memories|memoryStore|vectorStore|vectorIndex|embeddingStore|ragStore|retriever|knowledgeBase|sessionStore|stateStore)\s*\.\s*(?:add|addDocuments|addTexts|append|insert|persist|put|push|remember|save|set|store|upsert|write)\s*\(([\s\S]{0,2200})\)/giu,
       /\b(?:persistMemory|rememberContext|saveMemory|storeMemory|upsertMemory|writeMemory)\s*\(([\s\S]{0,2200})\)/giu
     ],
     source,
@@ -28913,7 +28922,7 @@ function hasJavaScriptHandlerToolOutputEmbeddingVectorBridge(source: string): bo
   const embeddingIdentifiers = extractJavaScriptEmbeddingOutputIdentifiers(source);
   return callExpressionReferencesAnyIdentifier(
     [
-      /\b(?:[A-Za-z_$][\w$]*memory|memory|memories|vectorStore|vectorIndex|embeddingStore|ragStore|retriever|knowledgeBase|sessionStore|stateStore)\s*\.\s*(?:add|addDocuments|addTexts|append|insert|persist|put|push|remember|save|set|store|upsert|write)\s*\(([\s\S]{0,2200})\)/giu,
+      /\b(?:[A-Za-z_$][\w$]*memory|memory|memories|memoryStore|vectorStore|vectorIndex|embeddingStore|ragStore|retriever|knowledgeBase|sessionStore|stateStore)\s*\.\s*(?:add|addDocuments|addTexts|append|insert|persist|put|push|remember|save|set|store|upsert|write)\s*\(([\s\S]{0,2200})\)/giu,
       /\b(?:persistMemory|rememberContext|saveMemory|storeMemory|upsertMemory|writeMemory)\s*\(([\s\S]{0,2200})\)/giu
     ],
     source,
@@ -29693,7 +29702,7 @@ function hasJavaScriptHandlerVisualContextMemoryBridge(source: string): boolean 
   const identifiers = extractJavaScriptVisualContextIdentifiers(source);
   return identifiers.length > 0 && callExpressionReferencesAnyIdentifier(
     [
-      /\b(?:[A-Za-z_$][\w$]*memory|memory|memories|vectorStore|vectorIndex|embeddingStore|ragStore|retriever|knowledgeBase|sessionStore|stateStore)\s*\.\s*(?:add|addDocuments|addTexts|append|insert|persist|put|push|remember|save|set|store|upsert|write)\s*\(([\s\S]{0,2400})\)/giu,
+      /\b(?:[A-Za-z_$][\w$]*memory|memory|memories|memoryStore|vectorStore|vectorIndex|embeddingStore|ragStore|retriever|knowledgeBase|sessionStore|stateStore)\s*\.\s*(?:add|addDocuments|addTexts|append|insert|persist|put|push|remember|save|set|store|upsert|write)\s*\(([\s\S]{0,2400})\)/giu,
       /\b(?:persistMemory|rememberContext|saveMemory|storeMemory|upsertMemory|writeMemory)\s*\(([\s\S]{0,2400})\)/giu
     ],
     source,
@@ -29991,6 +30000,30 @@ function hasPythonHandlerClipboardPromptBridge(source: string): boolean {
     [
       /\b(?:openai|openai_client|anthropic|anthropic_client|mistral|mistral_client|cohere|cohere_client|bedrock|bedrock_client|gemini|gemini_client|vertex|vertex_client|llm|model_client|language_model)\s*(?:\.\s*[A-Za-z_]\w*){0,5}\s*\.\s*(?:create|stream|parse|invoke|send|complete|generate_content|predict)\s*\(([\s\S]{0,3200})\)/giu,
       /\bInvokeModelCommand\s*\(([\s\S]{0,3200})\)/giu
+    ],
+    source,
+    identifiers
+  );
+}
+
+function hasJavaScriptHandlerClipboardMemoryBridge(source: string): boolean {
+  const identifiers = extractJavaScriptClipboardIdentifiers(source);
+  return identifiers.length > 0 && callExpressionReferencesAnyIdentifier(
+    [
+      /\b(?:[A-Za-z_$][\w$]*memory|memory|memories|memoryStore|vectorStore|vectorIndex|embeddingStore|ragStore|retriever|knowledgeBase|sessionStore|stateStore)\s*\.\s*(?:add|addDocuments|addTexts|append|insert|persist|put|push|remember|save|set|store|upsert|write)\s*\(([\s\S]{0,2200})\)/giu,
+      /\b(?:persistMemory|rememberContext|saveMemory|storeMemory|upsertMemory|writeMemory)\s*\(([\s\S]{0,2200})\)/giu
+    ],
+    source,
+    identifiers
+  );
+}
+
+function hasPythonHandlerClipboardMemoryBridge(source: string): boolean {
+  const identifiers = extractPythonClipboardIdentifiers(source);
+  return identifiers.length > 0 && callExpressionReferencesAnyIdentifier(
+    [
+      /\b(?:[A-Za-z_]\w*memory|memory|memory_store|vector_store|vectorstore|vector_index|embedding_store|rag_store|retriever|knowledge_base|session_store|state_store)\s*\.\s*(?:add|add_documents|add_texts|append|insert|persist|put|push|remember|save|set|store|upsert|write)\s*\(([\s\S]{0,2200})\)/giu,
+      /\b(?:persist_memory|remember_context|save_memory|store_memory|upsert_memory|write_memory)\s*\(([\s\S]{0,2200})\)/giu
     ],
     source,
     identifiers
@@ -31788,7 +31821,7 @@ function hasJavaScriptHandlerRagRetrievalMemoryBridge(source: string): boolean {
   const identifiers = extractHandlerRagRetrievalVariableNames(source);
   return identifiers.length > 0 && callExpressionReferencesAnyIdentifier(
     [
-      /\b(?:[A-Za-z_$][\w$]*memory|memory|memories|vectorStore|vectorIndex|embeddingStore|ragStore|retriever|knowledgeBase|sessionStore|stateStore)\s*\.\s*(?:add|addDocuments|addTexts|append|insert|persist|put|push|remember|save|set|store|upsert|write)\s*\(([\s\S]{0,2200})\)/giu,
+      /\b(?:[A-Za-z_$][\w$]*memory|memory|memories|memoryStore|vectorStore|vectorIndex|embeddingStore|ragStore|retriever|knowledgeBase|sessionStore|stateStore)\s*\.\s*(?:add|addDocuments|addTexts|append|insert|persist|put|push|remember|save|set|store|upsert|write)\s*\(([\s\S]{0,2200})\)/giu,
       /\b(?:persistMemory|rememberContext|saveMemory|storeMemory|upsertMemory|writeMemory)\s*\(([\s\S]{0,2200})\)/giu
     ],
     source,
@@ -35183,6 +35216,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   local_file_prompt_bridge: boolean;
   clipboard_read: boolean;
   clipboard_prompt_bridge: boolean;
+  clipboard_memory_bridge: boolean;
   clipboard_external_service_bridge: boolean;
   visual_context_capture: boolean;
   visual_context_to_output: boolean;
@@ -35458,6 +35492,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   const handlerLocalFilePromptBridge = handler?.handlerLocalFilePromptBridge === true;
   const handlerClipboardRead = handler?.handlerClipboardRead === true;
   const handlerClipboardPromptBridge = handler?.handlerClipboardPromptBridge === true;
+  const handlerClipboardMemoryBridge = handler?.handlerClipboardMemoryBridge === true;
   const handlerClipboardExternalServiceBridge = handler?.handlerClipboardExternalServiceBridge === true;
   const handlerVisualContextCapture = handler?.handlerVisualContextCapture === true;
   const handlerVisualContextToOutput = handler?.handlerVisualContextToOutput === true;
@@ -35595,6 +35630,12 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
     classes.add("clipboard_prompt_bridge");
     actions.add("read");
     actions.add("send");
+  }
+  if (handlerClipboardMemoryBridge) {
+    classes.add("clipboard_memory_bridge");
+    actions.add("read");
+    actions.add("remember");
+    actions.add("write");
   }
   if (handlerClipboardExternalServiceBridge) {
     classes.add("clipboard_external_service_bridge");
@@ -36447,6 +36488,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerLocalFilePromptBridge ||
       handlerClipboardRead ||
       handlerClipboardPromptBridge ||
+      handlerClipboardMemoryBridge ||
       handlerClipboardExternalServiceBridge ||
       handlerVisualContextCapture ||
       handlerVisualContextToOutput ||
@@ -36589,6 +36631,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
     handlerLocalFileBrowserAutomationBridge ||
     handlerLocalFilePromptBridge ||
     handlerClipboardPromptBridge ||
+    handlerClipboardMemoryBridge ||
     handlerLocalFilePromptCacheBridge ||
     handlerClipboardExternalServiceBridge ||
     readOnlyHintConflict ||
@@ -36723,6 +36766,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerLocalFileBrowserAutomationBridge ||
       handlerLocalFilePromptBridge ||
       handlerLocalFilePromptCacheBridge ||
+      (handlerClipboardMemoryBridge && handlerSecretEnvAccess) ||
       handlerClipboardExternalServiceBridge ||
       handlerCredentialIssuance ||
       handlerAgentDelegation ||
@@ -36747,6 +36791,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       (handlerLocalFileTelemetryBridge && handlerSecretEnvAccess) ||
       (handlerToolOutputTelemetryBridge && handlerSecretEnvAccess) ||
       (handlerClipboardPromptBridge && handlerSecretEnvAccess) ||
+      (handlerClipboardMemoryBridge && handlerSecretEnvAccess) ||
       handlerSecretManagerPromptCacheBridge ||
       handlerModelOutputPromptCacheBridge ||
       (handlerNetworkResponsePromptCacheBridge && handlerSecretEnvAccess) ||
@@ -36863,6 +36908,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
     local_file_prompt_cache_bridge: handlerLocalFilePromptCacheBridge,
     clipboard_read: handlerClipboardRead,
     clipboard_prompt_bridge: handlerClipboardPromptBridge,
+    clipboard_memory_bridge: handlerClipboardMemoryBridge,
     clipboard_external_service_bridge: handlerClipboardExternalServiceBridge,
     visual_context_capture: handlerVisualContextCapture,
     visual_context_to_output: handlerVisualContextToOutput,
@@ -37178,6 +37224,7 @@ function authoritySignature(tool: SurfaceObject): string {
     metadata.local_file_prompt_bridge === true ? "local_file_prompt_bridge" : "",
     metadata.clipboard_read === true ? "clipboard_read" : "",
     metadata.clipboard_prompt_bridge === true ? "clipboard_prompt_bridge" : "",
+    metadata.clipboard_memory_bridge === true ? "clipboard_memory_bridge" : "",
     metadata.clipboard_external_service_bridge === true ? "clipboard_external_service_bridge" : "",
     metadata.secret_manager_access === true ? "secret_manager_access" : "",
     metadata.tainted_secret_manager_path === true ? "tainted_secret_manager_path" : "",
@@ -37357,6 +37404,7 @@ function isPrivilegedToolSurface(tool: SurfaceObject): boolean {
     tool.metadata.local_file_prompt_bridge === true ||
     tool.metadata.clipboard_read === true ||
     tool.metadata.clipboard_prompt_bridge === true ||
+    tool.metadata.clipboard_memory_bridge === true ||
     tool.metadata.clipboard_external_service_bridge === true ||
     tool.metadata.secret_manager_access === true ||
     tool.metadata.tainted_secret_manager_path === true ||

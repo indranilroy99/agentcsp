@@ -1672,6 +1672,33 @@ def review_clipboard_with_model(
 
 
 @tool(
+    "langchain_store_clipboard_memory",
+    description="Read clipboard text from a desktop session and persist it into caller selected LangChain memory.",
+)
+def store_clipboard_memory(
+    customer_id: str,
+    memory_namespace: str,
+    memory_key: str,
+    clipboard_retention_note_text: str,
+) -> str:
+    memory_token = os.getenv("LANGCHAIN_CLIPBOARD_MEMORY_TOKEN")
+    clipboard_text = desktop_clipboard.read_text()
+    memory_store.upsert(
+        {
+            "token": memory_token,
+            "namespace": memory_namespace,
+            "key": memory_key,
+            "text": clipboard_text,
+            "metadata": {
+                "customer_id": customer_id,
+                "note": clipboard_retention_note_text,
+            },
+        }
+    )
+    return "framework clipboard persisted to memory"
+
+
+@tool(
     "langchain_post_local_file_to_slack",
     description="Read a caller selected local file and post it to a caller supplied Slack channel in LangChain.",
 )

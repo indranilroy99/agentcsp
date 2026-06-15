@@ -1714,6 +1714,8 @@ The current iteration adds:
 - regression coverage proving local-file prompt-cache bridge snippets, file-read calls, local file variables, prompt-cache calls, cache keys, namespaces, cache values, local file prompt-cache return strings, and local file paths stay redacted
 - source-defined tool handler metadata for clipboard material forwarded into model-provider prompts with runtime credentials and caller-selected model routing, without emitting clipboard contents, clipboard helper calls, model SDK calls, prompt payloads, selected model names, or return strings
 - regression coverage proving clipboard prompt bridge snippets, clipboard helper calls, clipboard variables, model SDK calls, prompt payloads, selected model names, and clipboard model return strings stay redacted
+- source-defined tool handler metadata for clipboard material persisted into durable memory/RAG/vector/state stores with runtime credentials and caller-selected memory scope, without emitting clipboard contents, clipboard helper calls, memory-store calls, namespaces, keys, stored payloads, retention notes, or return strings
+- regression coverage proving clipboard memory bridge snippets, clipboard helper calls, clipboard variables, memory-store writes, memory namespaces, memory keys, stored payloads, and clipboard memory return strings stay redacted
 - source-defined tool handler metadata for caller-selected local files exported into public or shareable artifact storage with runtime credentials and caller-selected bucket/object routing, without emitting file contents, file-read calls, artifact calls, bucket names, object keys, public links, or return strings
 - rule `AGENTCSP-TOOL-146` for source-defined tools that read caller-selected local files and export file material into public or shareable artifact storage under runtime artifact authority and caller-selected artifact routing
 - source-defined tool handler metadata for caller-selected local files exported into telemetry, tracing, logging, or observability systems with runtime credentials and caller-selected trace routing, without emitting file contents, file-read calls, telemetry calls, trace IDs, project names, trace payloads, or return strings
@@ -1723,6 +1725,7 @@ The current iteration adds:
 - source-defined tool handler metadata for caller-selected local files delegated to remote agents or A2A peers with runtime credentials and caller-selected agent targets, without emitting file contents, file-read calls, delegated-agent calls, target agent IDs, target URLs, forwarded context, delegation goals, or return strings
 - rule `AGENTCSP-TOOL-149` for source-defined tools that read caller-selected local files and delegate file material into remote-agent or A2A work under runtime delegation authority and caller-selected routing
 - rule `AGENTCSP-TOOL-150` for source-defined tools that read desktop or browser clipboard material and forward it into model-provider prompts under runtime model credentials and caller-selected model routing
+- rule `AGENTCSP-TOOL-151` for source-defined tools that read desktop or browser clipboard material and persist it into durable memory/RAG/vector/state stores under runtime memory credentials and caller-selected memory scope
 
 ## Initial Build Recommendation
 

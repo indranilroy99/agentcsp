@@ -688,6 +688,7 @@ describe("scanner", () => {
       (surface) => surface.name === "source_post_clipboard_to_slack"
     );
     const sourceClipboardPromptBridgeTool = surfaces.tools.find((surface) => surface.name === "source_review_clipboard_with_model");
+    const sourceClipboardMemoryBridgeTool = surfaces.tools.find((surface) => surface.name === "source_store_clipboard_memory");
     const sourceVisualContextCaptureTool = surfaces.tools.find((surface) => surface.name === "source_capture_authenticated_page_screenshot");
     const sourceVisualContextPromptBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "source_review_authenticated_page_screenshot_with_model"
@@ -968,6 +969,7 @@ describe("scanner", () => {
       (surface) => surface.name === "langchain_post_clipboard_to_slack"
     );
     const langchainClipboardPromptBridgeTool = surfaces.tools.find((surface) => surface.name === "langchain_review_clipboard_with_model");
+    const langchainClipboardMemoryBridgeTool = surfaces.tools.find((surface) => surface.name === "langchain_store_clipboard_memory");
     const langchainVisualContextCaptureTool = surfaces.tools.find((surface) => surface.name === "langchain_capture_authenticated_page_screenshot");
     const langchainVisualContextPromptBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "langchain_review_authenticated_page_screenshot_with_model"
@@ -7608,6 +7610,82 @@ describe("scanner", () => {
     expect(JSON.stringify(sourceClipboardPromptBridgeTool)).not.toContain("clipboardText");
     expect(JSON.stringify(sourceClipboardPromptBridgeTool)).not.toContain("source clipboard reviewed by model");
     expect(JSON.stringify(sourceClipboardPromptBridgeTool)).not.toContain("Read clipboard text");
+    expect(sourceClipboardMemoryBridgeTool).toMatchObject({
+      path: "mcp-source/customer-tools.ts",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["call", "read", "remember", "write"],
+      side_effect: true,
+      external_reach: false,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(sourceClipboardMemoryBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_mcp_source_tool: true,
+      mcp_source_tool_registration: true,
+      mcp_source_tool_registration_kind: "registerTool",
+      mcp_source_tool_argument_count: 3,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_content_like_input: true,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      clipboard_read: true,
+      memory_write: true,
+      tainted_memory_scope: true,
+      clipboard_memory_bridge: true,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_clipboard_read: true,
+      handler_memory_write: true,
+      handler_tainted_memory_scope: true,
+      handler_clipboard_memory_bridge: true,
+      handler_secret_env_access: true,
+      handler_model_visible_output: true,
+      handler_signal_count: 5,
+      open_world_schema: false
+    });
+    expect(sourceClipboardMemoryBridgeTool?.metadata.authority_classes).toEqual([
+      "clipboard_memory_bridge",
+      "clipboard_read",
+      "content_input",
+      "customer_data_input",
+      "handler_clipboard_memory_bridge",
+      "handler_clipboard_read",
+      "handler_memory_write",
+      "handler_secret_env_access",
+      "handler_tainted_memory_scope",
+      "memory_access",
+      "memory_write",
+      "pii_input",
+      "secret_env_access",
+      "tainted_memory_scope"
+    ]);
+    expect(sourceClipboardMemoryBridgeTool?.metadata.handler_authority_classes).toEqual([
+      "handler_clipboard_memory_bridge",
+      "handler_clipboard_read",
+      "handler_memory_write",
+      "handler_secret_env_access",
+      "handler_tainted_memory_scope"
+    ]);
+    expect(sourceClipboardMemoryBridgeTool?.metadata.handler_env_key_names).toEqual(["SOURCE_CLIPBOARD_MEMORY_TOKEN"]);
+    expect(sourceClipboardMemoryBridgeTool?.metadata.schema_properties).toEqual([
+      "clipboard_retention_note_text",
+      "customer_id",
+      "memory_key",
+      "memory_namespace"
+    ]);
+    expect(sourceClipboardMemoryBridgeTool?.metadata.required_properties).toEqual([
+      "clipboard_retention_note_text",
+      "customer_id",
+      "memory_key",
+      "memory_namespace"
+    ]);
+    expect(JSON.stringify(sourceClipboardMemoryBridgeTool)).not.toContain("desktopClipboard.readText");
+    expect(JSON.stringify(sourceClipboardMemoryBridgeTool)).not.toContain("memoryStore.upsert");
+    expect(JSON.stringify(sourceClipboardMemoryBridgeTool)).not.toContain("clipboardText");
+    expect(JSON.stringify(sourceClipboardMemoryBridgeTool)).not.toContain("source clipboard persisted to memory");
+    expect(JSON.stringify(sourceClipboardMemoryBridgeTool)).not.toContain("Read clipboard text");
     expect(sourceVisualContextCaptureTool).toMatchObject({
       path: "mcp-source/customer-tools.ts",
       data_classes: ["confidential", "credential", "pii"],
@@ -18480,6 +18558,83 @@ describe("scanner", () => {
     expect(JSON.stringify(langchainClipboardPromptBridgeTool)).not.toContain("clipboard_text");
     expect(JSON.stringify(langchainClipboardPromptBridgeTool)).not.toContain("framework clipboard reviewed by model");
     expect(JSON.stringify(langchainClipboardPromptBridgeTool)).not.toContain("Read clipboard text");
+    expect(langchainClipboardMemoryBridgeTool).toMatchObject({
+      path: "framework-tools/langchain_tools.py",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["call", "read", "remember", "write"],
+      side_effect: true,
+      external_reach: false,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(langchainClipboardMemoryBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_agent_framework_source_tool: true,
+      agent_framework_source_tool: true,
+      agent_framework_source_tool_framework: "langchain",
+      agent_framework_source_tool_registration_kind: "python_tool_decorator",
+      agent_framework_source_tool_argument_count: 4,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_content_like_input: true,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      clipboard_read: true,
+      memory_write: true,
+      tainted_memory_scope: true,
+      clipboard_memory_bridge: true,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_clipboard_read: true,
+      handler_memory_write: true,
+      handler_tainted_memory_scope: true,
+      handler_clipboard_memory_bridge: true,
+      handler_secret_env_access: true,
+      handler_model_visible_output: true,
+      handler_signal_count: 5,
+      open_world_schema: false
+    });
+    expect(langchainClipboardMemoryBridgeTool?.metadata.authority_classes).toEqual([
+      "clipboard_memory_bridge",
+      "clipboard_read",
+      "content_input",
+      "customer_data_input",
+      "handler_clipboard_memory_bridge",
+      "handler_clipboard_read",
+      "handler_memory_write",
+      "handler_secret_env_access",
+      "handler_tainted_memory_scope",
+      "memory_access",
+      "memory_write",
+      "pii_input",
+      "secret_env_access",
+      "tainted_memory_scope"
+    ]);
+    expect(langchainClipboardMemoryBridgeTool?.metadata.handler_authority_classes).toEqual([
+      "handler_clipboard_memory_bridge",
+      "handler_clipboard_read",
+      "handler_memory_write",
+      "handler_secret_env_access",
+      "handler_tainted_memory_scope"
+    ]);
+    expect(langchainClipboardMemoryBridgeTool?.metadata.handler_env_key_names).toEqual(["LANGCHAIN_CLIPBOARD_MEMORY_TOKEN"]);
+    expect(langchainClipboardMemoryBridgeTool?.metadata.schema_properties).toEqual([
+      "clipboard_retention_note_text",
+      "customer_id",
+      "memory_key",
+      "memory_namespace"
+    ]);
+    expect(langchainClipboardMemoryBridgeTool?.metadata.required_properties).toEqual([
+      "clipboard_retention_note_text",
+      "customer_id",
+      "memory_key",
+      "memory_namespace"
+    ]);
+    expect(JSON.stringify(langchainClipboardMemoryBridgeTool)).not.toContain("desktop_clipboard.read_text");
+    expect(JSON.stringify(langchainClipboardMemoryBridgeTool)).not.toContain("memory_store.upsert");
+    expect(JSON.stringify(langchainClipboardMemoryBridgeTool)).not.toContain("clipboard_text");
+    expect(JSON.stringify(langchainClipboardMemoryBridgeTool)).not.toContain("framework clipboard persisted to memory");
+    expect(JSON.stringify(langchainClipboardMemoryBridgeTool)).not.toContain("Read clipboard text");
     expect(langchainVisualContextCaptureTool).toMatchObject({
       path: "framework-tools/langchain_tools.py",
       data_classes: ["confidential", "credential", "pii"],

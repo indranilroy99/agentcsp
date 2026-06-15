@@ -2297,6 +2297,38 @@ server.registerTool(
 );
 
 server.registerTool(
+  "source_store_clipboard_memory",
+  {
+    description: "Read clipboard text from a desktop session and persist it into caller selected agent memory.",
+    inputSchema: z.object({
+      customer_id: z.string(),
+      memory_namespace: z.string(),
+      memory_key: z.string(),
+      clipboard_retention_note_text: z.string()
+    }).strict(),
+    annotations: {
+      readOnlyHint: false,
+      idempotentHint: false
+    }
+  },
+  async ({ customer_id, memory_namespace, memory_key, clipboard_retention_note_text }) => {
+    const memoryToken = process.env.SOURCE_CLIPBOARD_MEMORY_TOKEN;
+    const clipboardText = await globalThis.desktopClipboard.readText();
+    await globalThis.memoryStore.upsert({
+      token: memoryToken,
+      namespace: memory_namespace,
+      key: memory_key,
+      text: clipboardText,
+      metadata: {
+        customerId: customer_id,
+        note: clipboard_retention_note_text
+      }
+    });
+    return { content: [{ type: "text", text: "source clipboard persisted to memory" }] };
+  }
+);
+
+server.registerTool(
   "source_submit_privileged_tool_observation_browser_form",
   {
     description: "Submit a raw privileged tool observation into an authenticated browser form selected by the caller.",

@@ -136,6 +136,7 @@ const leakPatterns = [
   /page\.fill/u,
   /Promote a raw privileged tool observation/u,
   /agentMemory\.upsert/u,
+  /memoryStore\.upsert/u,
   /memory_store\.upsert/u,
   /slackClient\.chat\.postMessage/u,
   /slack_client\.chat_postMessage/u,
@@ -678,6 +679,7 @@ const leakPatterns = [
   /str\(tool_result\)/u,
   /Review a raw privileged tool observation/u,
   /agentMemory\.upsert/u,
+  /memoryStore\.upsert/u,
   /memory_store\.upsert/u,
   /secretMemoryValue/u,
   /secret_memory_value/u,
@@ -968,6 +970,7 @@ const leakPatterns = [
   /responseBody/u,
   /response\.text/u,
   /agentMemory\.upsert/u,
+  /memoryStore\.upsert/u,
   /memory_store\.upsert/u,
   /os\.getenv/u,
   /node:fs\/promises/u,
@@ -1271,14 +1274,16 @@ const leakPatterns = [
   /modelSelectedTrainingRecord/u,
   /model_selected_training_record/u,
   /source clipboard reviewed by model/u,
-  /framework clipboard reviewed by model/u
+  /framework clipboard reviewed by model/u,
+  /source clipboard persisted to memory/u,
+  /framework clipboard persisted to memory/u
 ];
 
 const vulnerable = await readScanOutput(vulnerableOutput, { sarifRequired: true });
 const safe = await readScanOutput(safeOutput, { sarifRequired: false });
 
-assertEqual(vulnerable.manifest.findings.length, 1079, "vulnerable manifest finding count");
-assertEqual(vulnerable.findings.length, 1079, "vulnerable findings.json count");
+assertEqual(vulnerable.manifest.findings.length, 1085, "vulnerable manifest finding count");
+assertEqual(vulnerable.findings.length, 1085, "vulnerable findings.json count");
 assertEqual(vulnerable.manifest.attack_paths.length, 15, "vulnerable attack path count");
 assertEqual(vulnerable.manifest.static_blast_radius?.critical_attack_paths, 15, "vulnerable critical attack path count");
 assertEqual(vulnerable.manifest.diagnostics.length, 0, "vulnerable diagnostics count");
@@ -1426,6 +1431,7 @@ for (const ruleId of [
   "AGENTCSP-TOOL-148",
   "AGENTCSP-TOOL-149",
   "AGENTCSP-TOOL-150",
+  "AGENTCSP-TOOL-151",
   "AGENTCSP-RUNTIME-007",
   "AGENTCSP-RUNTIME-008",
   "AGENTCSP-RUNTIME-123",
