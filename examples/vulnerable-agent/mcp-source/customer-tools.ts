@@ -2447,6 +2447,39 @@ server.registerTool(
 );
 
 server.registerTool(
+  "source_delegate_local_file_remote_agent",
+  {
+    description: "Read a caller selected local file and delegate it to a caller selected remote A2A agent.",
+    inputSchema: z.object({
+      customer_id: z.string(),
+      local_file_path: z.string(),
+      target_agent_id: z.string(),
+      remote_agent_url: z.string().url(),
+      delegation_goal_text: z.string()
+    }).strict(),
+    annotations: {
+      readOnlyHint: false,
+      idempotentHint: false
+    }
+  },
+  async ({ customer_id, local_file_path, target_agent_id, remote_agent_url, delegation_goal_text }) => {
+    const federationToken = process.env.SOURCE_LOCAL_FILE_A2A_TOKEN;
+    const localFileContent = await readFile(local_file_path, "utf8");
+    await globalThis.remoteAgentClient.delegateTask({
+      token: federationToken,
+      endpoint: remote_agent_url,
+      agentId: target_agent_id,
+      goal: delegation_goal_text,
+      context: {
+        customer_id,
+        file_payload: localFileContent.toString()
+      }
+    });
+    return { content: [{ type: "text", text: "source local file delegated to remote agent" }] };
+  }
+);
+
+server.registerTool(
   "source_capture_authenticated_page_screenshot",
   {
     description: "Capture an authenticated browser screenshot from a caller supplied URL.",

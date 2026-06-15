@@ -150,6 +150,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-146")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-147")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-148")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-149")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-001")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-002")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-003")).toBe(true);
@@ -6334,6 +6335,7 @@ describe("rule engine", () => {
     const sourceHandlerLocalFileDisclosureFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-020");
     expect(sourceHandlerLocalFileDisclosureFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_cache_local_file_prompt",
+      "langchain_delegate_local_file_remote_agent",
       "langchain_export_local_file_artifact",
       "langchain_post_local_file_to_slack",
       "langchain_queue_local_file_background_task",
@@ -6345,6 +6347,7 @@ describe("rule engine", () => {
       "langchain_train_on_local_file",
       "langchain_upload_local_file_authenticated_browser",
       "source_cache_local_file_prompt",
+      "source_delegate_local_file_remote_agent",
       "source_export_local_file_artifact",
       "source_post_local_file_to_slack",
       "source_queue_local_file_background_task",
@@ -6797,9 +6800,62 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerLocalFileTaskQueueBridgeFindings)).not.toContain("source local file queued for background agent");
     expect(JSON.stringify(sourceHandlerLocalFileTaskQueueBridgeFindings)).not.toContain("framework local file queued for background agent");
     expect(JSON.stringify(sourceHandlerLocalFileTaskQueueBridgeFindings)).not.toContain("Read a caller selected local file");
+    const sourceHandlerLocalFileAgentDelegationBridgeFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-149");
+    expect(sourceHandlerLocalFileAgentDelegationBridgeFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
+      "langchain_delegate_local_file_remote_agent",
+      "source_delegate_local_file_remote_agent"
+    ]);
+    expect(sourceHandlerLocalFileAgentDelegationBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
+    expect(sourceHandlerLocalFileAgentDelegationBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerLocalFileAgentDelegationBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
+    expect(sourceHandlerLocalFileAgentDelegationBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
+    expect(sourceHandlerLocalFileAgentDelegationBridgeFindings.every((finding) => finding.matched_object.metadata.source_tool_handler_redacted === true)).toBe(true);
+    expect(sourceHandlerLocalFileAgentDelegationBridgeFindings.every((finding) => finding.matched_object.metadata.handler_filesystem_read === true)).toBe(true);
+    expect(sourceHandlerLocalFileAgentDelegationBridgeFindings.every((finding) => finding.matched_object.metadata.handler_tainted_filesystem_path === true)).toBe(true);
+    expect(sourceHandlerLocalFileAgentDelegationBridgeFindings.every((finding) => finding.matched_object.metadata.handler_agent_delegation === true)).toBe(true);
+    expect(sourceHandlerLocalFileAgentDelegationBridgeFindings.every((finding) => finding.matched_object.metadata.handler_tainted_agent_delegation_target === true)).toBe(true);
+    expect(sourceHandlerLocalFileAgentDelegationBridgeFindings.every((finding) => finding.matched_object.metadata.handler_agent_delegation_context_forwarding === true)).toBe(true);
+    expect(sourceHandlerLocalFileAgentDelegationBridgeFindings.every((finding) => finding.matched_object.metadata.handler_local_file_agent_delegation_bridge === true)).toBe(true);
+    expect(sourceHandlerLocalFileAgentDelegationBridgeFindings.every((finding) => finding.matched_object.metadata.handler_secret_env_access === true)).toBe(true);
+    expect(sourceHandlerLocalFileAgentDelegationBridgeFindings.every((finding) => finding.matched_object.metadata.agent_delegation === true)).toBe(true);
+    expect(sourceHandlerLocalFileAgentDelegationBridgeFindings.every((finding) => finding.matched_object.metadata.tainted_agent_delegation_target === true)).toBe(true);
+    expect(sourceHandlerLocalFileAgentDelegationBridgeFindings.every((finding) => finding.matched_object.metadata.agent_delegation_context_forwarding === true)).toBe(true);
+    expect(sourceHandlerLocalFileAgentDelegationBridgeFindings.every((finding) => finding.matched_object.metadata.local_file_agent_delegation_bridge === true)).toBe(true);
+    expect(sourceHandlerLocalFileAgentDelegationBridgeFindings.every((finding) => finding.matched_object.metadata.tainted_filesystem_path === true)).toBe(true);
+    expect(sourceHandlerLocalFileAgentDelegationBridgeFindings.every((finding) => finding.matched_object.metadata.accepts_path_input === true)).toBe(true);
+    expect(sourceHandlerLocalFileAgentDelegationBridgeFindings.every((finding) => finding.matched_object.metadata.accepts_url_input === true)).toBe(true);
+    expect(sourceHandlerLocalFileAgentDelegationBridgeFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("filesystem_read"))).toBe(true);
+    expect(sourceHandlerLocalFileAgentDelegationBridgeFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("tainted_filesystem_path"))).toBe(true);
+    expect(sourceHandlerLocalFileAgentDelegationBridgeFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("agent_delegation"))).toBe(true);
+    expect(sourceHandlerLocalFileAgentDelegationBridgeFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("tainted_agent_delegation_target"))).toBe(true);
+    expect(sourceHandlerLocalFileAgentDelegationBridgeFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("agent_delegation_context_forwarding"))).toBe(true);
+    expect(sourceHandlerLocalFileAgentDelegationBridgeFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("local_file_agent_delegation_bridge"))).toBe(true);
+    expect(sourceHandlerLocalFileAgentDelegationBridgeFindings.every((finding) => finding.matched_object.metadata.handler_authority_classes.includes("handler_filesystem_read"))).toBe(true);
+    expect(sourceHandlerLocalFileAgentDelegationBridgeFindings.every((finding) => finding.matched_object.metadata.handler_authority_classes.includes("handler_tainted_filesystem_path"))).toBe(true);
+    expect(sourceHandlerLocalFileAgentDelegationBridgeFindings.every((finding) => finding.matched_object.metadata.handler_authority_classes.includes("handler_agent_delegation"))).toBe(true);
+    expect(sourceHandlerLocalFileAgentDelegationBridgeFindings.every((finding) => finding.matched_object.metadata.handler_authority_classes.includes("handler_tainted_agent_delegation_target"))).toBe(true);
+    expect(sourceHandlerLocalFileAgentDelegationBridgeFindings.every((finding) => finding.matched_object.metadata.handler_authority_classes.includes("handler_agent_delegation_context_forwarding"))).toBe(true);
+    expect(sourceHandlerLocalFileAgentDelegationBridgeFindings.every((finding) => finding.matched_object.metadata.handler_authority_classes.includes("handler_local_file_agent_delegation_bridge"))).toBe(true);
+    expect(sourceHandlerLocalFileAgentDelegationBridgeFindings.every((finding) => finding.matched_object.actions.includes("execute"))).toBe(true);
+    expect(sourceHandlerLocalFileAgentDelegationBridgeFindings.every((finding) => finding.matched_object.actions.includes("read"))).toBe(true);
+    expect(sourceHandlerLocalFileAgentDelegationBridgeFindings.every((finding) => finding.matched_object.actions.includes("send"))).toBe(true);
+    expect(sourceHandlerLocalFileAgentDelegationBridgeFindings.every((finding) => finding.matched_object.external_reach === true)).toBe(true);
+    expect(sourceHandlerLocalFileAgentDelegationBridgeFindings.every((finding) => finding.matched_object.secret_exposure === true)).toBe(true);
+    expect(sourceHandlerLocalFileAgentDelegationBridgeFindings.every((finding) => finding.matched_object.side_effect === true)).toBe(true);
+    expect(sourceHandlerLocalFileAgentDelegationBridgeFindings.every((finding) => finding.matched_object.reversible === false)).toBe(true);
+    expect(JSON.stringify(sourceHandlerLocalFileAgentDelegationBridgeFindings)).not.toContain("readFile");
+    expect(JSON.stringify(sourceHandlerLocalFileAgentDelegationBridgeFindings)).not.toContain("Path(local_file_path)");
+    expect(JSON.stringify(sourceHandlerLocalFileAgentDelegationBridgeFindings)).not.toContain("localFileContent");
+    expect(JSON.stringify(sourceHandlerLocalFileAgentDelegationBridgeFindings)).not.toContain("local_file_content");
+    expect(JSON.stringify(sourceHandlerLocalFileAgentDelegationBridgeFindings)).not.toContain("remoteAgentClient.delegateTask");
+    expect(JSON.stringify(sourceHandlerLocalFileAgentDelegationBridgeFindings)).not.toContain("remote_agent_client.delegate_task");
+    expect(JSON.stringify(sourceHandlerLocalFileAgentDelegationBridgeFindings)).not.toContain("source local file delegated to remote agent");
+    expect(JSON.stringify(sourceHandlerLocalFileAgentDelegationBridgeFindings)).not.toContain("framework local file delegated to remote agent");
+    expect(JSON.stringify(sourceHandlerLocalFileAgentDelegationBridgeFindings)).not.toContain("Read a caller selected local file");
     const sourceHandlerTaintedFilesystemPathFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-035");
     expect(sourceHandlerTaintedFilesystemPathFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_cache_local_file_prompt",
+      "langchain_delegate_local_file_remote_agent",
       "langchain_export_local_file_artifact",
       "langchain_post_local_file_to_slack",
       "langchain_queue_local_file_background_task",
@@ -6813,6 +6869,7 @@ describe("rule engine", () => {
       "langchain_upload_local_file_authenticated_browser",
       "python_readonly_delete_workspace_file",
       "source_cache_local_file_prompt",
+      "source_delegate_local_file_remote_agent",
       "source_export_local_file_artifact",
       "source_post_local_file_to_slack",
       "source_queue_local_file_background_task",
@@ -9436,10 +9493,12 @@ describe("rule engine", () => {
       "langchain_delegate_authenticated_page_screenshot_remote_agent",
       "langchain_delegate_customer_case_to_remote_agent",
       "langchain_delegate_customer_vault_secret_remote_agent",
+      "langchain_delegate_local_file_remote_agent",
       "langchain_delegate_model_selected_remote_agent_task",
       "source_delegate_authenticated_page_screenshot_remote_agent",
       "source_delegate_customer_case_to_remote_agent",
       "source_delegate_customer_vault_secret_remote_agent",
+      "source_delegate_local_file_remote_agent",
       "source_delegate_model_selected_remote_agent_task"
     ]);
     expect(sourceHandlerAgentDelegationFindings.every((finding) => finding.severity === "critical")).toBe(true);
@@ -9477,6 +9536,8 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerAgentDelegationFindings)).not.toContain("framework model selected remote-agent task delegated");
     expect(JSON.stringify(sourceHandlerAgentDelegationFindings)).not.toContain("source visual context delegated to remote agent");
     expect(JSON.stringify(sourceHandlerAgentDelegationFindings)).not.toContain("framework visual context delegated to remote agent");
+    expect(JSON.stringify(sourceHandlerAgentDelegationFindings)).not.toContain("source local file delegated to remote agent");
+    expect(JSON.stringify(sourceHandlerAgentDelegationFindings)).not.toContain("framework local file delegated to remote agent");
     expect(JSON.stringify(sourceHandlerAgentDelegationFindings)).not.toContain("Ask a model provider to draft a remote-agent task");
     expect(JSON.stringify(sourceHandlerAgentDelegationFindings)).not.toContain("Delegate caller supplied customer context");
     const sourceHandlerArtifactExportFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-050");

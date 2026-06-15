@@ -24132,6 +24132,7 @@ function addToolDefinitionSurface(
       !authority.tool_output_credential_issuance_bridge &&
       !authority.agent_delegation &&
       !authority.network_response_agent_delegation_bridge &&
+      !authority.local_file_agent_delegation_bridge &&
       !authority.nested_tool_invocation &&
       !authority.browser_automation &&
       !authority.model_output_browser_automation_bridge &&
@@ -24246,6 +24247,7 @@ function addToolDefinitionSurface(
       agent_delegation_context_forwarding: authority.agent_delegation_context_forwarding,
       model_output_agent_delegation_bridge: authority.model_output_agent_delegation_bridge,
       network_response_agent_delegation_bridge: authority.network_response_agent_delegation_bridge,
+      local_file_agent_delegation_bridge: authority.local_file_agent_delegation_bridge,
       secret_manager_agent_delegation_bridge: authority.secret_manager_agent_delegation_bridge,
       tool_output_agent_delegation_bridge: authority.tool_output_agent_delegation_bridge,
       nested_tool_invocation: authority.nested_tool_invocation,
@@ -26866,6 +26868,7 @@ interface SourceToolHandlerSignals {
   handlerAgentDelegationContextForwarding: boolean;
   handlerModelOutputAgentDelegationBridge: boolean;
   handlerNetworkResponseAgentDelegationBridge: boolean;
+  handlerLocalFileAgentDelegationBridge: boolean;
   handlerSecretManagerAgentDelegationBridge: boolean;
   handlerToolOutputAgentDelegationBridge: boolean;
   handlerToolInvocation: boolean;
@@ -27447,6 +27450,7 @@ function sourceToolHandlerSignalMetadata(signals: SourceToolHandlerSignals | und
     handler_agent_delegation_context_forwarding: signals.handlerAgentDelegationContextForwarding,
     handler_model_output_agent_delegation_bridge: signals.handlerModelOutputAgentDelegationBridge,
     handler_network_response_agent_delegation_bridge: signals.handlerNetworkResponseAgentDelegationBridge,
+    handler_local_file_agent_delegation_bridge: signals.handlerLocalFileAgentDelegationBridge,
     handler_secret_manager_agent_delegation_bridge: signals.handlerSecretManagerAgentDelegationBridge,
     handler_tool_output_agent_delegation_bridge: signals.handlerToolOutputAgentDelegationBridge,
     handler_tool_invocation: signals.handlerToolInvocation,
@@ -27851,7 +27855,7 @@ function classifySourceToolHandlerSignals(
   const taintedAgentDelegationTarget = agentDelegation && (language === "javascript"
     ? hasJavaScriptHandlerTaintedAgentDelegationTarget(handlerSource)
     : hasPythonHandlerTaintedAgentDelegationTarget(handlerSource));
-  const agentDelegationContextForwarding = agentDelegation && (language === "javascript"
+  let agentDelegationContextForwarding = agentDelegation && (language === "javascript"
     ? hasJavaScriptHandlerAgentDelegationContextForwarding(handlerSource)
     : hasPythonHandlerAgentDelegationContextForwarding(handlerSource));
   const modelOutputAgentDelegationBridge = modelProviderCall && agentDelegation && (language === "javascript"
@@ -27860,6 +27864,10 @@ function classifySourceToolHandlerSignals(
   const networkResponseAgentDelegationBridge = externalNetworkCall && agentDelegation && (language === "javascript"
     ? hasJavaScriptHandlerNetworkResponseAgentDelegationBridge(handlerSource)
     : hasPythonHandlerNetworkResponseAgentDelegationBridge(handlerSource));
+  const localFileAgentDelegationBridge = filesystemRead && taintedFilesystemPath && agentDelegation && (language === "javascript"
+    ? hasJavaScriptHandlerLocalFileAgentDelegationBridge(handlerSource)
+    : hasPythonHandlerLocalFileAgentDelegationBridge(handlerSource));
+  if (localFileAgentDelegationBridge) agentDelegationContextForwarding = true;
   const toolOutputAgentDelegationBridge = agentDelegation && (language === "javascript"
     ? hasJavaScriptHandlerToolOutputAgentDelegationBridge(handlerSource)
     : hasPythonHandlerToolOutputAgentDelegationBridge(handlerSource));
@@ -28125,6 +28133,7 @@ function classifySourceToolHandlerSignals(
   if (agentDelegationContextForwarding) classes.add("handler_agent_delegation_context_forwarding");
   if (modelOutputAgentDelegationBridge) classes.add("handler_model_output_agent_delegation_bridge");
   if (networkResponseAgentDelegationBridge) classes.add("handler_network_response_agent_delegation_bridge");
+  if (localFileAgentDelegationBridge) classes.add("handler_local_file_agent_delegation_bridge");
   if (secretManagerAgentDelegationBridge) classes.add("handler_secret_manager_agent_delegation_bridge");
   if (toolOutputAgentDelegationBridge) classes.add("handler_tool_output_agent_delegation_bridge");
   if (toolInvocation) classes.add("handler_tool_invocation");
@@ -28294,6 +28303,7 @@ function classifySourceToolHandlerSignals(
     handlerAgentDelegationContextForwarding: agentDelegationContextForwarding,
     handlerModelOutputAgentDelegationBridge: modelOutputAgentDelegationBridge,
     handlerNetworkResponseAgentDelegationBridge: networkResponseAgentDelegationBridge,
+    handlerLocalFileAgentDelegationBridge: localFileAgentDelegationBridge,
     handlerSecretManagerAgentDelegationBridge: secretManagerAgentDelegationBridge,
     handlerToolOutputAgentDelegationBridge: toolOutputAgentDelegationBridge,
     handlerToolInvocation: toolInvocation,
@@ -29284,6 +29294,30 @@ function hasJavaScriptHandlerNetworkResponseAgentDelegationBridge(source: string
 
 function hasPythonHandlerNetworkResponseAgentDelegationBridge(source: string): boolean {
   const identifiers = extractPythonNetworkResponseIdentifiers(source);
+  return identifiers.length > 0 && callExpressionReferencesAnyIdentifier(
+    [
+      /\b(?:a2a_client|agent_client|remote_agent_client|agent_registry|agent_router|agent_gateway|agent_federation|handoff_client|delegate_client)\s*(?:\.\s*[A-Za-z_]\w*){0,4}\s*\.\s*(?:delegate|delegate_task|handoff|handoff_to_agent|invoke_agent|run_agent|call_agent|send_task|create_task|dispatch|route|execute)\s*\(([\s\S]{0,2200})\)/giu,
+      /\b(?:delegate_to_agent|handoff_to_agent|invoke_agent|call_agent|send_agent_task|dispatch_agent_task)\s*\(([\s\S]{0,2200})\)/giu
+    ],
+    source,
+    identifiers
+  );
+}
+
+function hasJavaScriptHandlerLocalFileAgentDelegationBridge(source: string): boolean {
+  const identifiers = extractJavaScriptLocalFileIdentifiers(source);
+  return identifiers.length > 0 && callExpressionReferencesAnyIdentifier(
+    [
+      /\b(?:a2aClient|agentClient|remoteAgentClient|agentRegistry|agentRouter|agentGateway|agentFederation|handoffClient|delegateClient)\s*(?:\.\s*[A-Za-z_$][\w$]*){0,4}\s*\.\s*(?:delegate|delegateTask|handoff|handoffToAgent|invokeAgent|runAgent|callAgent|sendTask|createTask|dispatch|route|execute)\s*\(([\s\S]{0,2200})\)/giu,
+      /\b(?:delegateToAgent|handoffToAgent|invokeAgent|callAgent|sendAgentTask|dispatchAgentTask)\s*\(([\s\S]{0,2200})\)/giu
+    ],
+    source,
+    identifiers
+  );
+}
+
+function hasPythonHandlerLocalFileAgentDelegationBridge(source: string): boolean {
+  const identifiers = extractPythonLocalFileIdentifiers(source);
   return identifiers.length > 0 && callExpressionReferencesAnyIdentifier(
     [
       /\b(?:a2a_client|agent_client|remote_agent_client|agent_registry|agent_router|agent_gateway|agent_federation|handoff_client|delegate_client)\s*(?:\.\s*[A-Za-z_]\w*){0,4}\s*\.\s*(?:delegate|delegate_task|handoff|handoff_to_agent|invoke_agent|run_agent|call_agent|send_task|create_task|dispatch|route|execute)\s*\(([\s\S]{0,2200})\)/giu,
@@ -35100,6 +35134,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   agent_delegation_context_forwarding: boolean;
   model_output_agent_delegation_bridge: boolean;
   network_response_agent_delegation_bridge: boolean;
+  local_file_agent_delegation_bridge: boolean;
   secret_manager_agent_delegation_bridge: boolean;
   tool_output_agent_delegation_bridge: boolean;
   nested_tool_invocation: boolean;
@@ -35373,6 +35408,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   const handlerAgentDelegationContextForwarding = handler?.handlerAgentDelegationContextForwarding === true;
   const handlerModelOutputAgentDelegationBridge = handler?.handlerModelOutputAgentDelegationBridge === true;
   const handlerNetworkResponseAgentDelegationBridge = handler?.handlerNetworkResponseAgentDelegationBridge === true;
+  const handlerLocalFileAgentDelegationBridge = handler?.handlerLocalFileAgentDelegationBridge === true;
   const handlerSecretManagerAgentDelegationBridge = handler?.handlerSecretManagerAgentDelegationBridge === true;
   const handlerToolOutputAgentDelegationBridge = handler?.handlerToolOutputAgentDelegationBridge === true;
   const handlerToolInvocation = handler?.handlerToolInvocation === true;
@@ -35751,6 +35787,12 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   }
   if (handlerNetworkResponseAgentDelegationBridge) {
     classes.add("network_response_agent_delegation_bridge");
+    actions.add("execute");
+    actions.add("read");
+    actions.add("send");
+  }
+  if (handlerLocalFileAgentDelegationBridge) {
+    classes.add("local_file_agent_delegation_bridge");
     actions.add("execute");
     actions.add("read");
     actions.add("send");
@@ -36350,6 +36392,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerAgentDelegationContextForwarding ||
       handlerModelOutputAgentDelegationBridge ||
       handlerNetworkResponseAgentDelegationBridge ||
+      handlerLocalFileAgentDelegationBridge ||
       handlerSecretManagerAgentDelegationBridge ||
       handlerToolOutputAgentDelegationBridge ||
       handlerToolInvocation ||
@@ -36542,6 +36585,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerAgentDelegation ||
       handlerModelOutputAgentDelegationBridge ||
       handlerNetworkResponseAgentDelegationBridge ||
+      handlerLocalFileAgentDelegationBridge ||
       (handlerToolOutputBrowserAutomationBridge && handlerSecretEnvAccess) ||
       handlerSecretManagerAgentDelegationBridge ||
       handlerToolOutputAgentDelegationBridge ||
@@ -36640,6 +36684,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerAgentDelegation ||
       (handlerModelOutputAgentDelegationBridge && handlerSecretEnvAccess) ||
       (handlerNetworkResponseAgentDelegationBridge && handlerSecretEnvAccess) ||
+      (handlerLocalFileAgentDelegationBridge && handlerSecretEnvAccess) ||
       handlerSecretManagerAgentDelegationBridge ||
       (handlerToolOutputAgentDelegationBridge && handlerSecretEnvAccess) ||
       handlerSecretManagerAccess ||
@@ -36757,6 +36802,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
     agent_delegation_context_forwarding: handlerAgentDelegationContextForwarding,
     model_output_agent_delegation_bridge: handlerModelOutputAgentDelegationBridge,
     network_response_agent_delegation_bridge: handlerNetworkResponseAgentDelegationBridge,
+    local_file_agent_delegation_bridge: handlerLocalFileAgentDelegationBridge,
     secret_manager_agent_delegation_bridge: handlerSecretManagerAgentDelegationBridge,
     tool_output_agent_delegation_bridge: handlerToolOutputAgentDelegationBridge,
     nested_tool_invocation: handlerToolInvocation,
@@ -37071,6 +37117,7 @@ function authoritySignature(tool: SurfaceObject): string {
     metadata.agent_delegation_context_forwarding === true ? "agent_delegation_context_forwarding" : "",
     metadata.model_output_agent_delegation_bridge === true ? "model_output_agent_delegation_bridge" : "",
     metadata.network_response_agent_delegation_bridge === true ? "network_response_agent_delegation_bridge" : "",
+    metadata.local_file_agent_delegation_bridge === true ? "local_file_agent_delegation_bridge" : "",
     metadata.secret_manager_agent_delegation_bridge === true ? "secret_manager_agent_delegation_bridge" : "",
     metadata.tool_output_agent_delegation_bridge === true ? "tool_output_agent_delegation_bridge" : "",
     metadata.nested_tool_invocation === true ? "nested_tool_invocation" : "",
@@ -37248,6 +37295,7 @@ function isPrivilegedToolSurface(tool: SurfaceObject): boolean {
     tool.metadata.agent_delegation_context_forwarding === true ||
     tool.metadata.model_output_agent_delegation_bridge === true ||
     tool.metadata.network_response_agent_delegation_bridge === true ||
+    tool.metadata.local_file_agent_delegation_bridge === true ||
     tool.metadata.secret_manager_agent_delegation_bridge === true ||
     tool.metadata.tool_output_agent_delegation_bridge === true ||
     tool.metadata.nested_tool_invocation === true ||

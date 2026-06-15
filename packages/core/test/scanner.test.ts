@@ -558,6 +558,9 @@ describe("scanner", () => {
     const sourceLocalFileArtifactBridgeTool = surfaces.tools.find((surface) => surface.name === "source_export_local_file_artifact");
     const sourceLocalFileTelemetryBridgeTool = surfaces.tools.find((surface) => surface.name === "source_trace_local_file");
     const sourceLocalFileTaskQueueBridgeTool = surfaces.tools.find((surface) => surface.name === "source_queue_local_file_background_task");
+    const sourceLocalFileAgentDelegationBridgeTool = surfaces.tools.find(
+      (surface) => surface.name === "source_delegate_local_file_remote_agent"
+    );
     const sourceNetworkResponseTool = surfaces.tools.find((surface) => surface.name === "source_fetch_url_content");
     const sourceNetworkResponseMemoryBridgeTool = surfaces.tools.find((surface) => surface.name === "source_store_url_response_memory");
     const sourceNetworkResponseExternalServiceBridgeTool = surfaces.tools.find((surface) => surface.name === "source_post_url_response_external");
@@ -833,6 +836,9 @@ describe("scanner", () => {
     const langchainLocalFileTelemetryBridgeTool = surfaces.tools.find((surface) => surface.name === "langchain_trace_local_file");
     const langchainLocalFileTaskQueueBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "langchain_queue_local_file_background_task"
+    );
+    const langchainLocalFileAgentDelegationBridgeTool = surfaces.tools.find(
+      (surface) => surface.name === "langchain_delegate_local_file_remote_agent"
     );
     const langchainNetworkResponseTool = surfaces.tools.find((surface) => surface.name === "langchain_fetch_url_content");
     const langchainNetworkResponseMemoryBridgeTool = surfaces.tools.find((surface) => surface.name === "langchain_store_url_response_memory");
@@ -2367,6 +2373,99 @@ describe("scanner", () => {
     expect(JSON.stringify(sourceLocalFileTaskQueueBridgeTool)).not.toContain("taskQueueClient.enqueue");
     expect(JSON.stringify(sourceLocalFileTaskQueueBridgeTool)).not.toContain("source local file queued for background agent");
     expect(JSON.stringify(sourceLocalFileTaskQueueBridgeTool)).not.toContain("Read a caller selected local file");
+    expect(sourceLocalFileAgentDelegationBridgeTool).toMatchObject({
+      path: "mcp-source/customer-tools.ts",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["call", "execute", "read", "send"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(sourceLocalFileAgentDelegationBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_mcp_source_tool: true,
+      mcp_source_tool_registration: true,
+      mcp_source_tool_registration_kind: "registerTool",
+      mcp_source_tool_argument_count: 3,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      read_only_hint: false,
+      idempotent_hint: false,
+      accepts_content_like_input: true,
+      accepts_path_input: true,
+      accepts_url_input: true,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      agent_delegation: true,
+      tainted_agent_delegation_target: true,
+      agent_delegation_context_forwarding: true,
+      local_file_agent_delegation_bridge: true,
+      local_file_disclosure: true,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_agent_delegation: true,
+      handler_tainted_agent_delegation_target: true,
+      handler_agent_delegation_context_forwarding: true,
+      handler_local_file_agent_delegation_bridge: true,
+      handler_filesystem_read: true,
+      handler_tainted_filesystem_path: true,
+      handler_secret_env_access: true,
+      handler_model_visible_output: true,
+      handler_signal_count: 7,
+      open_world_schema: false
+    });
+    expect(sourceLocalFileAgentDelegationBridgeTool?.metadata.authority_classes).toEqual([
+      "agent_delegation",
+      "agent_delegation_context_forwarding",
+      "content_input",
+      "customer_data_input",
+      "filesystem_access",
+      "filesystem_read",
+      "handler_agent_delegation",
+      "handler_agent_delegation_context_forwarding",
+      "handler_filesystem_read",
+      "handler_local_file_agent_delegation_bridge",
+      "handler_secret_env_access",
+      "handler_tainted_agent_delegation_target",
+      "handler_tainted_filesystem_path",
+      "local_file_agent_delegation_bridge",
+      "local_file_disclosure",
+      "network_access",
+      "pii_input",
+      "secret_env_access",
+      "tainted_agent_delegation_target",
+      "tainted_filesystem_path"
+    ]);
+    expect(sourceLocalFileAgentDelegationBridgeTool?.metadata.handler_authority_classes).toEqual([
+      "handler_agent_delegation",
+      "handler_agent_delegation_context_forwarding",
+      "handler_filesystem_read",
+      "handler_local_file_agent_delegation_bridge",
+      "handler_secret_env_access",
+      "handler_tainted_agent_delegation_target",
+      "handler_tainted_filesystem_path"
+    ]);
+    expect(sourceLocalFileAgentDelegationBridgeTool?.metadata.handler_env_key_names).toEqual(["SOURCE_LOCAL_FILE_A2A_TOKEN"]);
+    expect(sourceLocalFileAgentDelegationBridgeTool?.metadata.schema_properties).toEqual([
+      "customer_id",
+      "delegation_goal_text",
+      "local_file_path",
+      "remote_agent_url",
+      "target_agent_id"
+    ]);
+    expect(sourceLocalFileAgentDelegationBridgeTool?.metadata.required_properties).toEqual([
+      "customer_id",
+      "delegation_goal_text",
+      "local_file_path",
+      "remote_agent_url",
+      "target_agent_id"
+    ]);
+    expect(JSON.stringify(sourceLocalFileAgentDelegationBridgeTool)).not.toContain("readFile");
+    expect(JSON.stringify(sourceLocalFileAgentDelegationBridgeTool)).not.toContain("localFileContent");
+    expect(JSON.stringify(sourceLocalFileAgentDelegationBridgeTool)).not.toContain("remoteAgentClient.delegateTask");
+    expect(JSON.stringify(sourceLocalFileAgentDelegationBridgeTool)).not.toContain("source local file delegated to remote agent");
+    expect(JSON.stringify(sourceLocalFileAgentDelegationBridgeTool)).not.toContain("Read a caller selected local file");
     expect(sourceNetworkResponseTool).toMatchObject({
       path: "mcp-source/customer-tools.ts",
       data_classes: ["unknown"],
@@ -12657,6 +12756,97 @@ describe("scanner", () => {
     expect(JSON.stringify(langchainLocalFileTaskQueueBridgeTool)).not.toContain("task_queue_client.enqueue");
     expect(JSON.stringify(langchainLocalFileTaskQueueBridgeTool)).not.toContain("framework local file queued for background agent");
     expect(JSON.stringify(langchainLocalFileTaskQueueBridgeTool)).not.toContain("Read a caller selected local file");
+    expect(langchainLocalFileAgentDelegationBridgeTool).toMatchObject({
+      path: "framework-tools/langchain_tools.py",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["call", "execute", "read", "send"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(langchainLocalFileAgentDelegationBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_agent_framework_source_tool: true,
+      agent_framework_source_tool_framework: "langchain",
+      agent_framework_source_tool_registration_kind: "python_tool_decorator",
+      agent_framework_source_tool_argument_count: 5,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_content_like_input: true,
+      accepts_path_input: true,
+      accepts_url_input: true,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      agent_delegation: true,
+      tainted_agent_delegation_target: true,
+      agent_delegation_context_forwarding: true,
+      local_file_agent_delegation_bridge: true,
+      local_file_disclosure: true,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_agent_delegation: true,
+      handler_tainted_agent_delegation_target: true,
+      handler_agent_delegation_context_forwarding: true,
+      handler_local_file_agent_delegation_bridge: true,
+      handler_filesystem_read: true,
+      handler_tainted_filesystem_path: true,
+      handler_secret_env_access: true,
+      handler_model_visible_output: true,
+      handler_signal_count: 7,
+      open_world_schema: false
+    });
+    expect(langchainLocalFileAgentDelegationBridgeTool?.metadata.authority_classes).toEqual([
+      "agent_delegation",
+      "agent_delegation_context_forwarding",
+      "content_input",
+      "customer_data_input",
+      "filesystem_access",
+      "filesystem_read",
+      "handler_agent_delegation",
+      "handler_agent_delegation_context_forwarding",
+      "handler_filesystem_read",
+      "handler_local_file_agent_delegation_bridge",
+      "handler_secret_env_access",
+      "handler_tainted_agent_delegation_target",
+      "handler_tainted_filesystem_path",
+      "local_file_agent_delegation_bridge",
+      "local_file_disclosure",
+      "network_access",
+      "pii_input",
+      "secret_env_access",
+      "tainted_agent_delegation_target",
+      "tainted_filesystem_path"
+    ]);
+    expect(langchainLocalFileAgentDelegationBridgeTool?.metadata.handler_authority_classes).toEqual([
+      "handler_agent_delegation",
+      "handler_agent_delegation_context_forwarding",
+      "handler_filesystem_read",
+      "handler_local_file_agent_delegation_bridge",
+      "handler_secret_env_access",
+      "handler_tainted_agent_delegation_target",
+      "handler_tainted_filesystem_path"
+    ]);
+    expect(langchainLocalFileAgentDelegationBridgeTool?.metadata.handler_env_key_names).toEqual(["LANGCHAIN_LOCAL_FILE_A2A_TOKEN"]);
+    expect(langchainLocalFileAgentDelegationBridgeTool?.metadata.schema_properties).toEqual([
+      "customer_id",
+      "delegation_goal_text",
+      "local_file_path",
+      "remote_agent_url",
+      "target_agent_id"
+    ]);
+    expect(langchainLocalFileAgentDelegationBridgeTool?.metadata.required_properties).toEqual([
+      "customer_id",
+      "delegation_goal_text",
+      "local_file_path",
+      "remote_agent_url",
+      "target_agent_id"
+    ]);
+    expect(JSON.stringify(langchainLocalFileAgentDelegationBridgeTool)).not.toContain("Path(local_file_path)");
+    expect(JSON.stringify(langchainLocalFileAgentDelegationBridgeTool)).not.toContain("local_file_content");
+    expect(JSON.stringify(langchainLocalFileAgentDelegationBridgeTool)).not.toContain("remote_agent_client.delegate_task");
+    expect(JSON.stringify(langchainLocalFileAgentDelegationBridgeTool)).not.toContain("framework local file delegated to remote agent");
+    expect(JSON.stringify(langchainLocalFileAgentDelegationBridgeTool)).not.toContain("Read a caller selected local file");
     expect(langchainNetworkResponseTool).toMatchObject({
       path: "framework-tools/langchain_tools.py",
       data_classes: ["unknown"],

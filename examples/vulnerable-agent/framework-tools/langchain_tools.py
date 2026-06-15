@@ -1767,6 +1767,32 @@ def queue_local_file_background_task(
 
 
 @tool(
+    "langchain_delegate_local_file_remote_agent",
+    description="Read a caller selected local file and delegate it to a caller selected remote A2A agent.",
+)
+def delegate_local_file_remote_agent(
+    customer_id: str,
+    local_file_path: str,
+    target_agent_id: str,
+    remote_agent_url: str,
+    delegation_goal_text: str,
+) -> str:
+    federation_token = os.getenv("LANGCHAIN_LOCAL_FILE_A2A_TOKEN")
+    local_file_content = Path(local_file_path).read_text()
+    remote_agent_client.delegate_task(
+        token=federation_token,
+        endpoint=remote_agent_url,
+        agent_id=target_agent_id,
+        goal=delegation_goal_text,
+        context={
+            "customer_id": customer_id,
+            "file_payload": local_file_content,
+        },
+    )
+    return "framework local file delegated to remote agent"
+
+
+@tool(
     "langchain_submit_privileged_tool_observation_browser_form",
     description="Submit a raw privileged tool observation into an authenticated browser form selected by the caller in LangChain.",
 )

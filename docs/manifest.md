@@ -323,6 +323,7 @@ Tool metadata may include:
 - `agent_delegation_context_forwarding`
 - `model_output_agent_delegation_bridge`
 - `network_response_agent_delegation_bridge`
+- `local_file_agent_delegation_bridge`
 - `secret_manager_agent_delegation_bridge`
 - `tool_output_agent_delegation_bridge`
 - `nested_tool_invocation`
@@ -559,6 +560,7 @@ Tool metadata may include:
 - `handler_model_output_task_queue_bridge`
 - `handler_model_output_agent_delegation_bridge`
 - `handler_network_response_agent_delegation_bridge`
+- `handler_local_file_agent_delegation_bridge`
 - `handler_secret_manager_task_queue_bridge`
 - `handler_tool_output_task_queue_bridge`
 - `handler_prompt_registry_write`
@@ -591,6 +593,7 @@ Tool metadata may include:
 - `handler_tainted_agent_delegation_target`
 - `handler_agent_delegation_context_forwarding`
 - `handler_model_output_agent_delegation_bridge`
+- `handler_local_file_agent_delegation_bridge`
 - `handler_secret_manager_agent_delegation_bridge`
 - `handler_tool_output_agent_delegation_bridge`
 - `handler_tool_invocation`
@@ -2165,6 +2168,8 @@ Source-defined tool handlers can also emit redacted network-response artifact br
 Source-defined tool handlers can also emit redacted network-response task-queue bridge authority through `network_response_task_queue_bridge`, `credentialed_network_read`, `task_queue_enqueue`, `tainted_network_destination`, `tainted_task_payload`, `tainted_task_routing`, and the corresponding `handler_*` fields when parsed MCP SDK or agent-framework tools fetch caller-selected URLs and enqueue returned network content into background-agent or task queues using runtime credentials and caller-selected queue routing. Handler bodies, network calls, response variables, response text, queue calls, queue names, routes, queued payloads, worker selectors, job goals, and return strings remain redacted.
 
 Source-defined tool handlers can also emit redacted network-response remote-agent delegation bridge authority through `network_response_agent_delegation_bridge`, `credentialed_network_read`, `agent_delegation`, `tainted_agent_delegation_target`, `agent_delegation_context_forwarding`, `tainted_network_destination`, and the corresponding `handler_*` fields when parsed MCP SDK or agent-framework tools fetch caller-selected URLs and delegate returned network content to remote agents or A2A peers using runtime credentials and caller-selected agent targets. Handler bodies, network calls, response variables, response text, delegated-agent calls, target agent IDs, target URLs, forwarded context, delegation goals, and return strings remain redacted.
+
+Source-defined tool handlers can also emit redacted local-file remote-agent delegation bridge authority through `local_file_agent_delegation_bridge`, `filesystem_read`, `tainted_filesystem_path`, `agent_delegation`, `tainted_agent_delegation_target`, `agent_delegation_context_forwarding`, and the corresponding `handler_*` fields when parsed MCP SDK or agent-framework tools read caller-selected local files and delegate file material to remote agents or A2A peers using runtime credentials and caller-selected agent targets. Handler bodies, file-read calls, local paths, file contents, delegated-agent calls, target agent IDs, target URLs, forwarded context, delegation goals, and return strings remain redacted.
 
 Source-defined tool handlers can also emit redacted network-response browser-automation bridge authority through `network_response_browser_automation_bridge`, `credentialed_network_read`, `browser_automation`, `tainted_browser_automation_target`, `tainted_network_destination`, and the corresponding `handler_*` fields when parsed MCP SDK or agent-framework tools fetch caller-selected URLs and inject returned network content into authenticated browser pages, selectors, or forms using runtime browser credentials and caller-selected targets. Handler bodies, network calls, response variables, response text, browser page calls, target URLs, selectors, submitted values, browser notes, and return strings remain redacted.
 
