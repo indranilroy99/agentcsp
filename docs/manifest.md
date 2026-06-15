@@ -336,6 +336,7 @@ Tool metadata may include:
 - `network_response_browser_automation_bridge`
 - `tool_output_browser_automation_bridge`
 - `secret_manager_browser_automation_bridge`
+- `env_secret_browser_automation_bridge`
 - `local_file_browser_automation_bridge`
 - `local_file_prompt_bridge`
 - `local_file_prompt_cache_bridge`
@@ -442,6 +443,7 @@ Tool metadata may include:
 - `model_output_agent_delegation_bridge`
 - `network_response_agent_delegation_bridge`
 - `network_response_browser_automation_bridge`
+- `env_secret_browser_automation_bridge`
 - `secret_manager_task_queue_bridge`
 - `env_secret_task_queue_bridge`
 - `tool_output_task_queue_bridge`
@@ -626,6 +628,7 @@ Tool metadata may include:
 - `handler_tainted_browser_automation_target`
 - `handler_tool_output_browser_automation_bridge`
 - `handler_secret_manager_browser_automation_bridge`
+- `handler_env_secret_browser_automation_bridge`
 - `handler_local_file_browser_automation_bridge`
 - `handler_local_file_prompt_bridge`
 - `handler_local_file_prompt_cache_bridge`
@@ -2111,6 +2114,8 @@ Source-defined tool handlers can also emit redacted secret-manager remote-agent 
 Source-defined tool handlers can also emit redacted env-secret remote-agent delegation bridge authority through `env_secret_agent_delegation_bridge`, `secret_env_access`, `agent_delegation`, `tainted_agent_delegation_target`, `agent_delegation_context_forwarding`, and the corresponding `handler_*` fields when parsed MCP SDK or agent-framework tools read environment-backed secret material and forward it as delegated task context to remote agents or A2A peers using runtime credentials. Handler bodies, environment reads, key values, secret values, delegated-agent calls, target URLs, forwarded context, secret-derived task variables, bearer headers, and return strings remain redacted.
 
 Source-defined tool handlers can also emit redacted secret-manager browser-automation bridge authority through `secret_manager_browser_automation_bridge`, `secret_manager_access`, `tainted_secret_manager_path`, `browser_automation`, `tainted_browser_automation_target`, and the corresponding `handler_*` fields when parsed MCP SDK or agent-framework tools read caller-selected secret-manager values and inject raw secret material into authenticated browser/page/driver automation using caller-selected targets or selectors. Handler bodies, secret-manager calls, vault paths, browser calls, target URLs, selectors, raw secret values, and return strings remain redacted.
+
+Source-defined tool handlers can also emit redacted env-secret browser-automation bridge authority through `env_secret_browser_automation_bridge`, `secret_env_access`, `browser_automation`, `tainted_browser_automation_target`, and the corresponding `handler_*` fields when parsed MCP SDK or agent-framework tools read environment-backed secret material and insert it into authenticated browser/page/driver automation using caller-selected targets or selectors. Handler bodies, environment reads, key values, secret values, browser calls, target URLs, selectors, submitted values, secret-derived variables, and return strings remain redacted.
 
 Source-defined tool handlers can also emit redacted tool-output browser-automation bridge authority through `tool_output_browser_automation_bridge`, `nested_tool_invocation`, `browser_automation`, `tainted_browser_automation_target`, and the corresponding `handler_*` fields when parsed MCP SDK or agent-framework tools invoke nested tools and inject raw tool observations into authenticated browser/page/driver automation using caller-selected targets or selectors. Handler bodies, nested tool calls, browser calls, target URLs, selectors, raw observations, and return strings remain redacted.
 

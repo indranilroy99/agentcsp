@@ -667,6 +667,9 @@ describe("scanner", () => {
     const sourceEnvSecretAgentDelegationBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "source_delegate_env_secret_remote_agent"
     );
+    const sourceEnvSecretBrowserAutomationBridgeTool = surfaces.tools.find(
+      (surface) => surface.name === "source_fill_env_secret_browser_form"
+    );
     const sourceToolOutputCredentialIssuanceBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "source_issue_privileged_tool_observation_credential"
     );
@@ -983,6 +986,9 @@ describe("scanner", () => {
     );
     const langchainEnvSecretAgentDelegationBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "langchain_delegate_env_secret_remote_agent"
+    );
+    const langchainEnvSecretBrowserAutomationBridgeTool = surfaces.tools.find(
+      (surface) => surface.name === "langchain_fill_env_secret_browser_form"
     );
     const langchainToolOutputCredentialIssuanceBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "langchain_issue_privileged_tool_observation_credential"
@@ -6529,6 +6535,74 @@ describe("scanner", () => {
     expect(JSON.stringify(sourceEnvSecretAgentDelegationBridgeTool)).not.toContain("Replay runtime credential");
     expect(JSON.stringify(sourceEnvSecretAgentDelegationBridgeTool)).not.toContain("source env secret delegated to remote agent");
     expect(JSON.stringify(sourceEnvSecretAgentDelegationBridgeTool)).not.toContain("Delegate environment-backed support credentials");
+    expect(sourceEnvSecretBrowserAutomationBridgeTool).toMatchObject({
+      path: "mcp-source/customer-tools.ts",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["call", "execute", "send"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(sourceEnvSecretBrowserAutomationBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_mcp_source_tool: true,
+      mcp_source_tool_registration: true,
+      mcp_source_tool_registration_kind: "registerTool",
+      mcp_source_tool_argument_count: 3,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_secret_like_input: true,
+      accepts_content_like_input: false,
+      accepts_path_input: false,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      browser_automation: true,
+      tainted_browser_automation_target: true,
+      env_secret_browser_automation_bridge: true,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_secret_env_access: true,
+      handler_browser_automation: true,
+      handler_tainted_browser_automation_target: true,
+      handler_env_secret_browser_automation_bridge: true,
+      handler_signal_count: 4,
+      open_world_schema: false
+    });
+    for (const authorityClass of [
+      "browser_automation",
+      "env_secret_browser_automation_bridge",
+      "secret_env_access",
+      "tainted_browser_automation_target"
+    ]) {
+      expect(sourceEnvSecretBrowserAutomationBridgeTool?.metadata.authority_classes).toContain(authorityClass);
+    }
+    expect(sourceEnvSecretBrowserAutomationBridgeTool?.metadata.handler_authority_classes).toEqual([
+      "handler_browser_automation",
+      "handler_env_secret_browser_automation_bridge",
+      "handler_secret_env_access",
+      "handler_tainted_browser_automation_target"
+    ]);
+    expect(sourceEnvSecretBrowserAutomationBridgeTool?.metadata.handler_env_key_names).toEqual(["SOURCE_BROWSER_REPLAY_SECRET"]);
+    expect(sourceEnvSecretBrowserAutomationBridgeTool?.metadata.schema_properties).toEqual([
+      "customer_id",
+      "secret_selector",
+      "submit_selector",
+      "target_url"
+    ]);
+    expect(sourceEnvSecretBrowserAutomationBridgeTool?.metadata.required_properties).toEqual([
+      "customer_id",
+      "secret_selector",
+      "submit_selector",
+      "target_url"
+    ]);
+    expect(JSON.stringify(sourceEnvSecretBrowserAutomationBridgeTool)).not.toContain("process.env");
+    expect(JSON.stringify(sourceEnvSecretBrowserAutomationBridgeTool)).not.toContain("browserCredential");
+    expect(JSON.stringify(sourceEnvSecretBrowserAutomationBridgeTool)).not.toContain("authenticatedBrowserPage");
+    expect(JSON.stringify(sourceEnvSecretBrowserAutomationBridgeTool)).not.toContain("page.fill");
+    expect(JSON.stringify(sourceEnvSecretBrowserAutomationBridgeTool)).not.toContain("Replay runtime credential");
+    expect(JSON.stringify(sourceEnvSecretBrowserAutomationBridgeTool)).not.toContain("source env secret submitted through browser");
+    expect(JSON.stringify(sourceEnvSecretBrowserAutomationBridgeTool)).not.toContain("Fill an environment-backed support credential");
     expect(sourceToolOutputCredentialIssuanceBridgeTool).toMatchObject({
       path: "mcp-source/customer-tools.ts",
       data_classes: ["confidential", "credential", "pii"],
@@ -18344,6 +18418,75 @@ describe("scanner", () => {
     expect(JSON.stringify(langchainEnvSecretAgentDelegationBridgeTool)).not.toContain("Replay runtime credential");
     expect(JSON.stringify(langchainEnvSecretAgentDelegationBridgeTool)).not.toContain("framework env secret delegated to remote agent");
     expect(JSON.stringify(langchainEnvSecretAgentDelegationBridgeTool)).not.toContain("Delegate environment-backed support credentials");
+    expect(langchainEnvSecretBrowserAutomationBridgeTool).toMatchObject({
+      path: "framework-tools/langchain_tools.py",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["call", "execute", "send"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(langchainEnvSecretBrowserAutomationBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_agent_framework_source_tool: true,
+      agent_framework_source_tool: true,
+      agent_framework_source_tool_framework: "langchain",
+      agent_framework_source_tool_registration_kind: "python_tool_decorator",
+      agent_framework_source_tool_argument_count: 4,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_secret_like_input: true,
+      accepts_content_like_input: false,
+      accepts_path_input: false,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      browser_automation: true,
+      tainted_browser_automation_target: true,
+      env_secret_browser_automation_bridge: true,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_secret_env_access: true,
+      handler_browser_automation: true,
+      handler_tainted_browser_automation_target: true,
+      handler_env_secret_browser_automation_bridge: true,
+      handler_signal_count: 4,
+      open_world_schema: false
+    });
+    for (const authorityClass of [
+      "browser_automation",
+      "env_secret_browser_automation_bridge",
+      "secret_env_access",
+      "tainted_browser_automation_target"
+    ]) {
+      expect(langchainEnvSecretBrowserAutomationBridgeTool?.metadata.authority_classes).toContain(authorityClass);
+    }
+    expect(langchainEnvSecretBrowserAutomationBridgeTool?.metadata.handler_authority_classes).toEqual([
+      "handler_browser_automation",
+      "handler_env_secret_browser_automation_bridge",
+      "handler_secret_env_access",
+      "handler_tainted_browser_automation_target"
+    ]);
+    expect(langchainEnvSecretBrowserAutomationBridgeTool?.metadata.handler_env_key_names).toEqual(["LANGCHAIN_BROWSER_REPLAY_SECRET"]);
+    expect(langchainEnvSecretBrowserAutomationBridgeTool?.metadata.schema_properties).toEqual([
+      "customer_id",
+      "secret_selector",
+      "submit_selector",
+      "target_url"
+    ]);
+    expect(langchainEnvSecretBrowserAutomationBridgeTool?.metadata.required_properties).toEqual([
+      "customer_id",
+      "secret_selector",
+      "submit_selector",
+      "target_url"
+    ]);
+    expect(JSON.stringify(langchainEnvSecretBrowserAutomationBridgeTool)).not.toContain("os.getenv");
+    expect(JSON.stringify(langchainEnvSecretBrowserAutomationBridgeTool)).not.toContain("browser_credential");
+    expect(JSON.stringify(langchainEnvSecretBrowserAutomationBridgeTool)).not.toContain("browser_session.page");
+    expect(JSON.stringify(langchainEnvSecretBrowserAutomationBridgeTool)).not.toContain("page.fill");
+    expect(JSON.stringify(langchainEnvSecretBrowserAutomationBridgeTool)).not.toContain("Replay runtime credential");
+    expect(JSON.stringify(langchainEnvSecretBrowserAutomationBridgeTool)).not.toContain("framework env secret submitted through browser");
+    expect(JSON.stringify(langchainEnvSecretBrowserAutomationBridgeTool)).not.toContain("Fill an environment-backed support credential");
     expect(langchainToolOutputCredentialIssuanceBridgeTool).toMatchObject({
       path: "framework-tools/langchain_tools.py",
       data_classes: ["confidential", "credential", "pii"],

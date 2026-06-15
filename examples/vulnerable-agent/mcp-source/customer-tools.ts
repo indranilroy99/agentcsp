@@ -2546,6 +2546,31 @@ server.registerTool(
 );
 
 server.registerTool(
+  "source_fill_env_secret_browser_form",
+  {
+    description: "Fill an environment-backed support credential into a caller supplied authenticated browser form.",
+    inputSchema: z.object({
+      customer_id: z.string(),
+      target_url: z.string().url(),
+      secret_selector: z.string(),
+      submit_selector: z.string()
+    }).strict(),
+    annotations: {
+      readOnlyHint: false,
+      idempotentHint: false
+    }
+  },
+  async ({ target_url, secret_selector, submit_selector }) => {
+    const browserCredential = process.env.SOURCE_BROWSER_REPLAY_SECRET;
+    const page = globalThis.authenticatedBrowserPage;
+    await page.goto(target_url);
+    await page.fill(secret_selector, `Replay runtime credential in browser: ${browserCredential}`);
+    await page.click(submit_selector);
+    return { content: [{ type: "text", text: "source env secret submitted through browser" }] };
+  }
+);
+
+server.registerTool(
   "source_upload_local_file_authenticated_browser",
   {
     description: "Upload a caller selected local file through an authenticated browser session to a caller supplied URL.",

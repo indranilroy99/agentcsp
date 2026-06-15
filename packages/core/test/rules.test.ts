@@ -166,6 +166,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-162")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-163")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-164")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-165")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-001")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-002")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-003")).toBe(true);
@@ -12455,6 +12456,60 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerEnvSecretAgentDelegationBridgeFindings)).not.toContain("source env secret delegated to remote agent");
     expect(JSON.stringify(sourceHandlerEnvSecretAgentDelegationBridgeFindings)).not.toContain("framework env secret delegated to remote agent");
     expect(JSON.stringify(sourceHandlerEnvSecretAgentDelegationBridgeFindings)).not.toContain("Delegate environment-backed support credentials");
+    const sourceHandlerEnvSecretBrowserAutomationBridgeFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-165");
+    expect(sourceHandlerEnvSecretBrowserAutomationBridgeFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
+      "langchain_fill_env_secret_browser_form",
+      "source_fill_env_secret_browser_form"
+    ]);
+    expect(sourceHandlerEnvSecretBrowserAutomationBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
+    expect(sourceHandlerEnvSecretBrowserAutomationBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerEnvSecretBrowserAutomationBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
+    expect(sourceHandlerEnvSecretBrowserAutomationBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
+    expect(sourceHandlerEnvSecretBrowserAutomationBridgeFindings.every((finding) => finding.matched_object.metadata.source_tool_handler_redacted === true)).toBe(true);
+    expect(sourceHandlerEnvSecretBrowserAutomationBridgeFindings.every((finding) => finding.matched_object.metadata.handler_secret_env_access === true)).toBe(true);
+    expect(sourceHandlerEnvSecretBrowserAutomationBridgeFindings.every((finding) => finding.matched_object.metadata.handler_browser_automation === true)).toBe(true);
+    expect(sourceHandlerEnvSecretBrowserAutomationBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.handler_tainted_browser_automation_target === true
+    )).toBe(true);
+    expect(sourceHandlerEnvSecretBrowserAutomationBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.handler_env_secret_browser_automation_bridge === true
+    )).toBe(true);
+    expect(sourceHandlerEnvSecretBrowserAutomationBridgeFindings.every((finding) => finding.matched_object.metadata.browser_automation === true)).toBe(true);
+    expect(sourceHandlerEnvSecretBrowserAutomationBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.tainted_browser_automation_target === true
+    )).toBe(true);
+    expect(sourceHandlerEnvSecretBrowserAutomationBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.env_secret_browser_automation_bridge === true
+    )).toBe(true);
+    expect(sourceHandlerEnvSecretBrowserAutomationBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.authority_classes.includes("env_secret_browser_automation_bridge")
+    )).toBe(true);
+    expect(sourceHandlerEnvSecretBrowserAutomationBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.authority_classes.includes("browser_automation")
+    )).toBe(true);
+    expect(sourceHandlerEnvSecretBrowserAutomationBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.handler_authority_classes.includes("handler_env_secret_browser_automation_bridge")
+    )).toBe(true);
+    expect(sourceHandlerEnvSecretBrowserAutomationBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.handler_authority_classes.includes("handler_browser_automation")
+    )).toBe(true);
+    expect(sourceHandlerEnvSecretBrowserAutomationBridgeFindings.every((finding) => finding.matched_object.actions.includes("execute"))).toBe(true);
+    expect(sourceHandlerEnvSecretBrowserAutomationBridgeFindings.every((finding) => finding.matched_object.actions.includes("send"))).toBe(true);
+    expect(sourceHandlerEnvSecretBrowserAutomationBridgeFindings.every((finding) => finding.matched_object.external_reach === true)).toBe(true);
+    expect(sourceHandlerEnvSecretBrowserAutomationBridgeFindings.every((finding) => finding.matched_object.secret_exposure === true)).toBe(true);
+    expect(sourceHandlerEnvSecretBrowserAutomationBridgeFindings.every((finding) => finding.matched_object.side_effect === true)).toBe(true);
+    expect(sourceHandlerEnvSecretBrowserAutomationBridgeFindings.every((finding) => finding.matched_object.reversible === false)).toBe(true);
+    expect(JSON.stringify(sourceHandlerEnvSecretBrowserAutomationBridgeFindings)).not.toContain("process.env");
+    expect(JSON.stringify(sourceHandlerEnvSecretBrowserAutomationBridgeFindings)).not.toContain("os.getenv");
+    expect(JSON.stringify(sourceHandlerEnvSecretBrowserAutomationBridgeFindings)).not.toContain("browserCredential");
+    expect(JSON.stringify(sourceHandlerEnvSecretBrowserAutomationBridgeFindings)).not.toContain("browser_credential");
+    expect(JSON.stringify(sourceHandlerEnvSecretBrowserAutomationBridgeFindings)).not.toContain("authenticatedBrowserPage");
+    expect(JSON.stringify(sourceHandlerEnvSecretBrowserAutomationBridgeFindings)).not.toContain("browser_session.page");
+    expect(JSON.stringify(sourceHandlerEnvSecretBrowserAutomationBridgeFindings)).not.toContain("page.fill");
+    expect(JSON.stringify(sourceHandlerEnvSecretBrowserAutomationBridgeFindings)).not.toContain("Replay runtime credential");
+    expect(JSON.stringify(sourceHandlerEnvSecretBrowserAutomationBridgeFindings)).not.toContain("source env secret submitted through browser");
+    expect(JSON.stringify(sourceHandlerEnvSecretBrowserAutomationBridgeFindings)).not.toContain("framework env secret submitted through browser");
+    expect(JSON.stringify(sourceHandlerEnvSecretBrowserAutomationBridgeFindings)).not.toContain("Fill an environment-backed support credential");
     const sourceHandlerRagRetrievalPromptBridgeFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-094");
     expect(sourceHandlerRagRetrievalPromptBridgeFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_summarize_retrieved_context_with_model",

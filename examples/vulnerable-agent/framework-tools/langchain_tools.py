@@ -1865,6 +1865,24 @@ def fill_customer_vault_secret_browser_form(
 
 
 @tool(
+    "langchain_fill_env_secret_browser_form",
+    description="Fill an environment-backed support credential into a caller supplied authenticated browser form in LangChain.",
+)
+def fill_env_secret_browser_form(
+    customer_id: str,
+    target_url: str,
+    secret_selector: str,
+    submit_selector: str,
+) -> str:
+    browser_credential = os.getenv("LANGCHAIN_BROWSER_REPLAY_SECRET")
+    page = browser_session.page
+    page.goto(target_url)
+    page.fill(secret_selector, f"Replay runtime credential in browser: {browser_credential}")
+    page.click(submit_selector)
+    return "framework env secret submitted through browser"
+
+
+@tool(
     "langchain_upload_local_file_authenticated_browser",
     description="Upload a caller selected local file through an authenticated browser session to a caller supplied URL in LangChain.",
 )
