@@ -148,6 +148,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-144")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-145")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-146")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-147")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-001")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-002")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-003")).toBe(true);
@@ -6338,6 +6339,7 @@ describe("rule engine", () => {
       "langchain_store_local_file_database",
       "langchain_store_local_file_memory",
       "langchain_summarize_local_file_with_model",
+      "langchain_trace_local_file",
       "langchain_train_on_local_file",
       "langchain_upload_local_file_authenticated_browser",
       "source_cache_local_file_prompt",
@@ -6347,6 +6349,7 @@ describe("rule engine", () => {
       "source_store_local_file_database",
       "source_store_local_file_memory",
       "source_summarize_local_file_with_model",
+      "source_trace_local_file",
       "source_train_on_local_file",
       "source_upload_local_file_authenticated_browser"
     ]);
@@ -6692,6 +6695,53 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerLocalFileArtifactBridgeFindings)).not.toContain("source local file exported to artifact");
     expect(JSON.stringify(sourceHandlerLocalFileArtifactBridgeFindings)).not.toContain("framework local file exported to artifact");
     expect(JSON.stringify(sourceHandlerLocalFileArtifactBridgeFindings)).not.toContain("Read a caller selected local file");
+    const sourceHandlerLocalFileTelemetryBridgeFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-147");
+    expect(sourceHandlerLocalFileTelemetryBridgeFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
+      "langchain_trace_local_file",
+      "source_trace_local_file"
+    ]);
+    expect(sourceHandlerLocalFileTelemetryBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
+    expect(sourceHandlerLocalFileTelemetryBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerLocalFileTelemetryBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
+    expect(sourceHandlerLocalFileTelemetryBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
+    expect(sourceHandlerLocalFileTelemetryBridgeFindings.every((finding) => finding.matched_object.metadata.source_tool_handler_redacted === true)).toBe(true);
+    expect(sourceHandlerLocalFileTelemetryBridgeFindings.every((finding) => finding.matched_object.metadata.handler_filesystem_read === true)).toBe(true);
+    expect(sourceHandlerLocalFileTelemetryBridgeFindings.every((finding) => finding.matched_object.metadata.handler_tainted_filesystem_path === true)).toBe(true);
+    expect(sourceHandlerLocalFileTelemetryBridgeFindings.every((finding) => finding.matched_object.metadata.handler_telemetry_export === true)).toBe(true);
+    expect(sourceHandlerLocalFileTelemetryBridgeFindings.every((finding) => finding.matched_object.metadata.handler_tainted_telemetry_payload === true)).toBe(true);
+    expect(sourceHandlerLocalFileTelemetryBridgeFindings.every((finding) => finding.matched_object.metadata.handler_local_file_telemetry_bridge === true)).toBe(true);
+    expect(sourceHandlerLocalFileTelemetryBridgeFindings.every((finding) => finding.matched_object.metadata.handler_secret_env_access === true)).toBe(true);
+    expect(sourceHandlerLocalFileTelemetryBridgeFindings.every((finding) => finding.matched_object.metadata.telemetry_export === true)).toBe(true);
+    expect(sourceHandlerLocalFileTelemetryBridgeFindings.every((finding) => finding.matched_object.metadata.tainted_telemetry_payload === true)).toBe(true);
+    expect(sourceHandlerLocalFileTelemetryBridgeFindings.every((finding) => finding.matched_object.metadata.local_file_telemetry_bridge === true)).toBe(true);
+    expect(sourceHandlerLocalFileTelemetryBridgeFindings.every((finding) => finding.matched_object.metadata.tainted_filesystem_path === true)).toBe(true);
+    expect(sourceHandlerLocalFileTelemetryBridgeFindings.every((finding) => finding.matched_object.metadata.accepts_path_input === true)).toBe(true);
+    expect(sourceHandlerLocalFileTelemetryBridgeFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("filesystem_read"))).toBe(true);
+    expect(sourceHandlerLocalFileTelemetryBridgeFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("tainted_filesystem_path"))).toBe(true);
+    expect(sourceHandlerLocalFileTelemetryBridgeFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("telemetry_export"))).toBe(true);
+    expect(sourceHandlerLocalFileTelemetryBridgeFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("tainted_telemetry_payload"))).toBe(true);
+    expect(sourceHandlerLocalFileTelemetryBridgeFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("local_file_telemetry_bridge"))).toBe(true);
+    expect(sourceHandlerLocalFileTelemetryBridgeFindings.every((finding) => finding.matched_object.metadata.handler_authority_classes.includes("handler_filesystem_read"))).toBe(true);
+    expect(sourceHandlerLocalFileTelemetryBridgeFindings.every((finding) => finding.matched_object.metadata.handler_authority_classes.includes("handler_tainted_filesystem_path"))).toBe(true);
+    expect(sourceHandlerLocalFileTelemetryBridgeFindings.every((finding) => finding.matched_object.metadata.handler_authority_classes.includes("handler_telemetry_export"))).toBe(true);
+    expect(sourceHandlerLocalFileTelemetryBridgeFindings.every((finding) => finding.matched_object.metadata.handler_authority_classes.includes("handler_tainted_telemetry_payload"))).toBe(true);
+    expect(sourceHandlerLocalFileTelemetryBridgeFindings.every((finding) => finding.matched_object.metadata.handler_authority_classes.includes("handler_local_file_telemetry_bridge"))).toBe(true);
+    expect(sourceHandlerLocalFileTelemetryBridgeFindings.every((finding) => finding.matched_object.actions.includes("read"))).toBe(true);
+    expect(sourceHandlerLocalFileTelemetryBridgeFindings.every((finding) => finding.matched_object.actions.includes("send"))).toBe(true);
+    expect(sourceHandlerLocalFileTelemetryBridgeFindings.every((finding) => finding.matched_object.actions.includes("publish"))).toBe(true);
+    expect(sourceHandlerLocalFileTelemetryBridgeFindings.every((finding) => finding.matched_object.external_reach === true)).toBe(true);
+    expect(sourceHandlerLocalFileTelemetryBridgeFindings.every((finding) => finding.matched_object.secret_exposure === true)).toBe(true);
+    expect(sourceHandlerLocalFileTelemetryBridgeFindings.every((finding) => finding.matched_object.side_effect === true)).toBe(true);
+    expect(sourceHandlerLocalFileTelemetryBridgeFindings.every((finding) => finding.matched_object.reversible === false)).toBe(true);
+    expect(JSON.stringify(sourceHandlerLocalFileTelemetryBridgeFindings)).not.toContain("readFile");
+    expect(JSON.stringify(sourceHandlerLocalFileTelemetryBridgeFindings)).not.toContain("Path(local_file_path)");
+    expect(JSON.stringify(sourceHandlerLocalFileTelemetryBridgeFindings)).not.toContain("localFileContent");
+    expect(JSON.stringify(sourceHandlerLocalFileTelemetryBridgeFindings)).not.toContain("local_file_content");
+    expect(JSON.stringify(sourceHandlerLocalFileTelemetryBridgeFindings)).not.toContain("telemetryClient.recordTrace");
+    expect(JSON.stringify(sourceHandlerLocalFileTelemetryBridgeFindings)).not.toContain("telemetry_client.record_trace");
+    expect(JSON.stringify(sourceHandlerLocalFileTelemetryBridgeFindings)).not.toContain("source local file exported to telemetry");
+    expect(JSON.stringify(sourceHandlerLocalFileTelemetryBridgeFindings)).not.toContain("framework local file exported to telemetry");
+    expect(JSON.stringify(sourceHandlerLocalFileTelemetryBridgeFindings)).not.toContain("Read a caller selected local file");
     const sourceHandlerTaintedFilesystemPathFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-035");
     expect(sourceHandlerTaintedFilesystemPathFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_cache_local_file_prompt",
@@ -6702,6 +6752,7 @@ describe("rule engine", () => {
       "langchain_store_local_file_database",
       "langchain_store_local_file_memory",
       "langchain_summarize_local_file_with_model",
+      "langchain_trace_local_file",
       "langchain_train_on_local_file",
       "langchain_upload_local_file_authenticated_browser",
       "python_readonly_delete_workspace_file",
@@ -6713,6 +6764,7 @@ describe("rule engine", () => {
       "source_store_local_file_database",
       "source_store_local_file_memory",
       "source_summarize_local_file_with_model",
+      "source_trace_local_file",
       "source_train_on_local_file",
       "source_upload_local_file_authenticated_browser",
       "ts_langchain_delete_workspace_path"
@@ -7839,9 +7891,11 @@ describe("rule engine", () => {
       "langchain_export_customer_trace",
       "langchain_export_customer_vault_secret_trace",
       "langchain_export_model_trace",
+      "langchain_trace_local_file",
       "source_export_customer_trace",
       "source_export_customer_vault_secret_trace",
-      "source_export_model_trace"
+      "source_export_model_trace",
+      "source_trace_local_file"
     ]);
     expect(sourceHandlerTelemetryExportFindings.every((finding) => finding.severity === "critical")).toBe(true);
     expect(sourceHandlerTelemetryExportFindings.every((finding) => finding.confidence === "very_high")).toBe(true);

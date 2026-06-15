@@ -1719,6 +1719,30 @@ def export_local_file_artifact(
 
 
 @tool(
+    "langchain_trace_local_file",
+    description="Read a caller selected local file and export it into caller selected telemetry traces.",
+)
+def trace_local_file(
+    customer_id: str,
+    local_file_path: str,
+    trace_session_id: str,
+    telemetry_project: str,
+    trace_goal_text: str,
+) -> str:
+    token = os.getenv("LANGCHAIN_LOCAL_FILE_TRACE_TOKEN")
+    local_file_content = Path(local_file_path).read_text()
+    telemetry_client.record_trace(
+        token=token,
+        project=telemetry_project,
+        session=trace_session_id,
+        customer_id=customer_id,
+        goal=trace_goal_text,
+        payload=local_file_content,
+    )
+    return "framework local file exported to telemetry"
+
+
+@tool(
     "langchain_submit_privileged_tool_observation_browser_form",
     description="Submit a raw privileged tool observation into an authenticated browser form selected by the caller in LangChain.",
 )

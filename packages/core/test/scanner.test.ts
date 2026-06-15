@@ -556,6 +556,7 @@ describe("scanner", () => {
     const sourceLocalFileExternalServiceBridgeTool = surfaces.tools.find((surface) => surface.name === "source_post_local_file_to_slack");
     const sourceLocalFileMemoryBridgeTool = surfaces.tools.find((surface) => surface.name === "source_store_local_file_memory");
     const sourceLocalFileArtifactBridgeTool = surfaces.tools.find((surface) => surface.name === "source_export_local_file_artifact");
+    const sourceLocalFileTelemetryBridgeTool = surfaces.tools.find((surface) => surface.name === "source_trace_local_file");
     const sourceNetworkResponseTool = surfaces.tools.find((surface) => surface.name === "source_fetch_url_content");
     const sourceNetworkResponseMemoryBridgeTool = surfaces.tools.find((surface) => surface.name === "source_store_url_response_memory");
     const sourceNetworkResponseExternalServiceBridgeTool = surfaces.tools.find((surface) => surface.name === "source_post_url_response_external");
@@ -828,6 +829,7 @@ describe("scanner", () => {
     const langchainLocalFileArtifactBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "langchain_export_local_file_artifact"
     );
+    const langchainLocalFileTelemetryBridgeTool = surfaces.tools.find((surface) => surface.name === "langchain_trace_local_file");
     const langchainNetworkResponseTool = surfaces.tools.find((surface) => surface.name === "langchain_fetch_url_content");
     const langchainNetworkResponseMemoryBridgeTool = surfaces.tools.find((surface) => surface.name === "langchain_store_url_response_memory");
     const langchainNetworkResponseExternalServiceBridgeTool = surfaces.tools.find((surface) => surface.name === "langchain_post_url_response_external");
@@ -2182,6 +2184,94 @@ describe("scanner", () => {
     expect(JSON.stringify(sourceLocalFileArtifactBridgeTool)).not.toContain("artifactExporter.uploadArtifact");
     expect(JSON.stringify(sourceLocalFileArtifactBridgeTool)).not.toContain("source local file exported to artifact");
     expect(JSON.stringify(sourceLocalFileArtifactBridgeTool)).not.toContain("Read a caller selected local file");
+    expect(sourceLocalFileTelemetryBridgeTool).toMatchObject({
+      path: "mcp-source/customer-tools.ts",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["call", "publish", "read", "send"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(sourceLocalFileTelemetryBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_mcp_source_tool: true,
+      mcp_source_tool_registration: true,
+      mcp_source_tool_registration_kind: "registerTool",
+      mcp_source_tool_argument_count: 3,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      read_only_hint: false,
+      idempotent_hint: false,
+      accepts_content_like_input: true,
+      accepts_path_input: true,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      telemetry_export: true,
+      tainted_telemetry_payload: true,
+      local_file_telemetry_bridge: true,
+      local_file_disclosure: true,
+      external_write: true,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_telemetry_export: true,
+      handler_tainted_telemetry_payload: true,
+      handler_local_file_telemetry_bridge: true,
+      handler_filesystem_read: true,
+      handler_tainted_filesystem_path: true,
+      handler_secret_env_access: true,
+      handler_model_visible_output: true,
+      handler_signal_count: 6,
+      open_world_schema: false
+    });
+    expect(sourceLocalFileTelemetryBridgeTool?.metadata.authority_classes).toEqual([
+      "content_input",
+      "customer_data_input",
+      "external_write",
+      "filesystem_access",
+      "filesystem_read",
+      "handler_filesystem_read",
+      "handler_local_file_telemetry_bridge",
+      "handler_secret_env_access",
+      "handler_tainted_filesystem_path",
+      "handler_tainted_telemetry_payload",
+      "handler_telemetry_export",
+      "local_file_disclosure",
+      "local_file_telemetry_bridge",
+      "pii_input",
+      "secret_env_access",
+      "tainted_filesystem_path",
+      "tainted_telemetry_payload",
+      "telemetry_export"
+    ]);
+    expect(sourceLocalFileTelemetryBridgeTool?.metadata.handler_authority_classes).toEqual([
+      "handler_filesystem_read",
+      "handler_local_file_telemetry_bridge",
+      "handler_secret_env_access",
+      "handler_tainted_filesystem_path",
+      "handler_tainted_telemetry_payload",
+      "handler_telemetry_export"
+    ]);
+    expect(sourceLocalFileTelemetryBridgeTool?.metadata.handler_env_key_names).toEqual(["SOURCE_LOCAL_FILE_TRACE_TOKEN"]);
+    expect(sourceLocalFileTelemetryBridgeTool?.metadata.schema_properties).toEqual([
+      "customer_id",
+      "local_file_path",
+      "telemetry_project",
+      "trace_goal_text",
+      "trace_session_id"
+    ]);
+    expect(sourceLocalFileTelemetryBridgeTool?.metadata.required_properties).toEqual([
+      "customer_id",
+      "local_file_path",
+      "telemetry_project",
+      "trace_goal_text",
+      "trace_session_id"
+    ]);
+    expect(JSON.stringify(sourceLocalFileTelemetryBridgeTool)).not.toContain("readFile");
+    expect(JSON.stringify(sourceLocalFileTelemetryBridgeTool)).not.toContain("localFileContent");
+    expect(JSON.stringify(sourceLocalFileTelemetryBridgeTool)).not.toContain("telemetryClient.recordTrace");
+    expect(JSON.stringify(sourceLocalFileTelemetryBridgeTool)).not.toContain("source local file exported to telemetry");
+    expect(JSON.stringify(sourceLocalFileTelemetryBridgeTool)).not.toContain("Read a caller selected local file");
     expect(sourceNetworkResponseTool).toMatchObject({
       path: "mcp-source/customer-tools.ts",
       data_classes: ["unknown"],
@@ -12297,6 +12387,92 @@ describe("scanner", () => {
     expect(JSON.stringify(langchainLocalFileArtifactBridgeTool)).not.toContain("artifact_exporter.upload_artifact");
     expect(JSON.stringify(langchainLocalFileArtifactBridgeTool)).not.toContain("framework local file exported to artifact");
     expect(JSON.stringify(langchainLocalFileArtifactBridgeTool)).not.toContain("Read a caller selected local file");
+    expect(langchainLocalFileTelemetryBridgeTool).toMatchObject({
+      path: "framework-tools/langchain_tools.py",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["call", "publish", "read", "send"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(langchainLocalFileTelemetryBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_agent_framework_source_tool: true,
+      agent_framework_source_tool_framework: "langchain",
+      agent_framework_source_tool_registration_kind: "python_tool_decorator",
+      agent_framework_source_tool_argument_count: 5,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_content_like_input: true,
+      accepts_path_input: true,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      telemetry_export: true,
+      tainted_telemetry_payload: true,
+      local_file_telemetry_bridge: true,
+      local_file_disclosure: true,
+      external_write: true,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_telemetry_export: true,
+      handler_tainted_telemetry_payload: true,
+      handler_local_file_telemetry_bridge: true,
+      handler_filesystem_read: true,
+      handler_tainted_filesystem_path: true,
+      handler_secret_env_access: true,
+      handler_model_visible_output: true,
+      handler_signal_count: 6,
+      open_world_schema: false
+    });
+    expect(langchainLocalFileTelemetryBridgeTool?.metadata.authority_classes).toEqual([
+      "content_input",
+      "customer_data_input",
+      "external_write",
+      "filesystem_access",
+      "filesystem_read",
+      "handler_filesystem_read",
+      "handler_local_file_telemetry_bridge",
+      "handler_secret_env_access",
+      "handler_tainted_filesystem_path",
+      "handler_tainted_telemetry_payload",
+      "handler_telemetry_export",
+      "local_file_disclosure",
+      "local_file_telemetry_bridge",
+      "pii_input",
+      "secret_env_access",
+      "tainted_filesystem_path",
+      "tainted_telemetry_payload",
+      "telemetry_export"
+    ]);
+    expect(langchainLocalFileTelemetryBridgeTool?.metadata.handler_authority_classes).toEqual([
+      "handler_filesystem_read",
+      "handler_local_file_telemetry_bridge",
+      "handler_secret_env_access",
+      "handler_tainted_filesystem_path",
+      "handler_tainted_telemetry_payload",
+      "handler_telemetry_export"
+    ]);
+    expect(langchainLocalFileTelemetryBridgeTool?.metadata.handler_env_key_names).toEqual(["LANGCHAIN_LOCAL_FILE_TRACE_TOKEN"]);
+    expect(langchainLocalFileTelemetryBridgeTool?.metadata.schema_properties).toEqual([
+      "customer_id",
+      "local_file_path",
+      "telemetry_project",
+      "trace_goal_text",
+      "trace_session_id"
+    ]);
+    expect(langchainLocalFileTelemetryBridgeTool?.metadata.required_properties).toEqual([
+      "customer_id",
+      "local_file_path",
+      "telemetry_project",
+      "trace_goal_text",
+      "trace_session_id"
+    ]);
+    expect(JSON.stringify(langchainLocalFileTelemetryBridgeTool)).not.toContain("Path(local_file_path)");
+    expect(JSON.stringify(langchainLocalFileTelemetryBridgeTool)).not.toContain("local_file_content");
+    expect(JSON.stringify(langchainLocalFileTelemetryBridgeTool)).not.toContain("telemetry_client.record_trace");
+    expect(JSON.stringify(langchainLocalFileTelemetryBridgeTool)).not.toContain("framework local file exported to telemetry");
+    expect(JSON.stringify(langchainLocalFileTelemetryBridgeTool)).not.toContain("Read a caller selected local file");
     expect(langchainNetworkResponseTool).toMatchObject({
       path: "framework-tools/langchain_tools.py",
       data_classes: ["unknown"],

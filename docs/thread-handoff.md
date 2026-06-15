@@ -1714,6 +1714,8 @@ The current iteration adds:
 - regression coverage proving local-file prompt-cache bridge snippets, file-read calls, local file variables, prompt-cache calls, cache keys, namespaces, cache values, local file prompt-cache return strings, and local file paths stay redacted
 - source-defined tool handler metadata for caller-selected local files exported into public or shareable artifact storage with runtime credentials and caller-selected bucket/object routing, without emitting file contents, file-read calls, artifact calls, bucket names, object keys, public links, or return strings
 - rule `AGENTCSP-TOOL-146` for source-defined tools that read caller-selected local files and export file material into public or shareable artifact storage under runtime artifact authority and caller-selected artifact routing
+- source-defined tool handler metadata for caller-selected local files exported into telemetry, tracing, logging, or observability systems with runtime credentials and caller-selected trace routing, without emitting file contents, file-read calls, telemetry calls, trace IDs, project names, trace payloads, or return strings
+- rule `AGENTCSP-TOOL-147` for source-defined tools that read caller-selected local files and export file material into telemetry or observability traces under runtime telemetry authority and caller-selected trace routing
 
 ## Initial Build Recommendation
 

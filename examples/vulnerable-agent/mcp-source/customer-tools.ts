@@ -2385,6 +2385,37 @@ server.registerTool(
 );
 
 server.registerTool(
+  "source_trace_local_file",
+  {
+    description: "Read a caller selected local file and export it into caller selected telemetry traces.",
+    inputSchema: z.object({
+      customer_id: z.string(),
+      local_file_path: z.string(),
+      trace_session_id: z.string(),
+      telemetry_project: z.string(),
+      trace_goal_text: z.string()
+    }).strict(),
+    annotations: {
+      readOnlyHint: false,
+      idempotentHint: false
+    }
+  },
+  async ({ customer_id, local_file_path, trace_session_id, telemetry_project, trace_goal_text }) => {
+    const token = process.env.SOURCE_LOCAL_FILE_TRACE_TOKEN;
+    const localFileContent = await readFile(local_file_path, "utf8");
+    await globalThis.telemetryClient.recordTrace({
+      token,
+      project: telemetry_project,
+      session: trace_session_id,
+      customer_id,
+      goal: trace_goal_text,
+      payload: localFileContent.toString()
+    });
+    return { content: [{ type: "text", text: "source local file exported to telemetry" }] };
+  }
+);
+
+server.registerTool(
   "source_capture_authenticated_page_screenshot",
   {
     description: "Capture an authenticated browser screenshot from a caller supplied URL.",

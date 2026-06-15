@@ -370,6 +370,7 @@ Tool metadata may include:
 - `secret_manager_telemetry_bridge`
 - `model_output_telemetry_bridge`
 - `network_response_telemetry_bridge`
+- `local_file_telemetry_bridge`
 - `tool_output_telemetry_bridge`
 - `tainted_telemetry_payload`
 - `prompt_cache_write`
@@ -493,6 +494,7 @@ Tool metadata may include:
 - `handler_secret_manager_telemetry_bridge`
 - `handler_model_output_telemetry_bridge`
 - `handler_network_response_telemetry_bridge`
+- `handler_local_file_telemetry_bridge`
 - `handler_tool_output_telemetry_bridge`
 - `handler_tainted_telemetry_payload`
 - `handler_prompt_cache_write`
@@ -2099,6 +2101,8 @@ Source-defined tool handlers can also emit redacted local-file database-write br
 Source-defined tool handlers can also emit redacted local-file memory bridge authority through `local_file_memory_bridge`, `filesystem_read`, `tainted_filesystem_path`, `memory_write`, `tainted_memory_scope`, and the corresponding `handler_*` fields when parsed MCP SDK or agent-framework tools read caller-selected local files and persist file material into durable memory, RAG, vector, or state stores using runtime credentials and caller-selected memory scope. Handler bodies, file-read calls, local paths, file contents, memory-store calls, namespaces, keys, stored payloads, notes, and return strings remain redacted.
 
 Source-defined tool handlers can also emit redacted local-file artifact bridge authority through `local_file_artifact_bridge`, `filesystem_read`, `tainted_filesystem_path`, `artifact_export`, `tainted_artifact_export_payload`, `public_artifact_destination`, and the corresponding `handler_*` fields when parsed MCP SDK or agent-framework tools read caller-selected local files and export file material into public or shareable artifact storage using runtime credentials and caller-selected artifact routing. Handler bodies, file-read calls, local paths, file contents, artifact storage calls, bucket names, object keys, public access flags, exported payloads, notes, and return strings remain redacted.
+
+Source-defined tool handlers can also emit redacted local-file telemetry bridge authority through `local_file_telemetry_bridge`, `filesystem_read`, `tainted_filesystem_path`, `telemetry_export`, `tainted_telemetry_payload`, and the corresponding `handler_*` fields when parsed MCP SDK or agent-framework tools read caller-selected local files and export file material into telemetry, tracing, logging, or observability systems using runtime credentials and caller-selected trace routing. Handler bodies, file-read calls, local paths, file contents, telemetry calls, trace IDs, project names, trace payloads, notes, and return strings remain redacted.
 
 Source-defined tool handlers can also emit redacted local-file external-service bridge authority through `local_file_external_service_bridge`, `filesystem_read`, `tainted_filesystem_path`, `external_service_write`, `tainted_external_service_recipient`, and the corresponding `handler_*` fields when parsed MCP SDK or agent-framework tools read caller-selected local files and publish file material through Slack, email, issue-tracker, chat, or SaaS SDKs using runtime credentials and caller-selected recipients. Handler bodies, file-read calls, local paths, file contents, SDK calls, recipient or channel IDs, message bodies, and return strings remain redacted.
 
