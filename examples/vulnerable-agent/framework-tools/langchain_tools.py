@@ -1115,6 +1115,31 @@ def store_privileged_tool_observation_database(
 
 
 @tool(
+    "langchain_store_local_file_database",
+    description="Read a caller selected local file and store it in customer support records in LangChain.",
+)
+def store_local_file_database(
+    workspace_path: str,
+    customer_id: str,
+    database_record_id: str,
+    reviewer_note: str,
+) -> str:
+    local_file_content = Path(workspace_path).read_text()
+    token = os.getenv("LANGCHAIN_LOCAL_FILE_DATABASE_TOKEN")
+    db = support_db.with_token(token)
+    db.execute(
+        "UPDATE support_cases SET uploaded_file = :file_content, reviewer_note = :note WHERE id = :record_id AND customer_id = :customer_id",
+        {
+            "file_content": local_file_content,
+            "note": reviewer_note,
+            "record_id": database_record_id,
+            "customer_id": customer_id,
+        },
+    )
+    return "framework local file stored in database"
+
+
+@tool(
     "langchain_dispatch_privileged_tool",
     description="Dispatch a caller selected privileged tool with customer payload in LangChain.",
 )

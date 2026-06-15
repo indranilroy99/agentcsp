@@ -144,6 +144,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-140")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-141")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-142")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-143")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-001")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-002")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-003")).toBe(true);
@@ -6329,11 +6330,13 @@ describe("rule engine", () => {
     expect(sourceHandlerLocalFileDisclosureFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_cache_local_file_prompt",
       "langchain_read_workspace_file",
+      "langchain_store_local_file_database",
       "langchain_summarize_local_file_with_model",
       "langchain_train_on_local_file",
       "langchain_upload_local_file_authenticated_browser",
       "source_cache_local_file_prompt",
       "source_read_workspace_file",
+      "source_store_local_file_database",
       "source_summarize_local_file_with_model",
       "source_train_on_local_file",
       "source_upload_local_file_authenticated_browser"
@@ -6488,11 +6491,57 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerLocalFileTrainingDatasetBridgeFindings)).not.toContain("source local file exported to training data");
     expect(JSON.stringify(sourceHandlerLocalFileTrainingDatasetBridgeFindings)).not.toContain("framework local file exported to training data");
     expect(JSON.stringify(sourceHandlerLocalFileTrainingDatasetBridgeFindings)).not.toContain("Read a caller selected local file");
+    const sourceHandlerLocalFileDatabaseWriteBridgeFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-143");
+    expect(sourceHandlerLocalFileDatabaseWriteBridgeFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
+      "langchain_store_local_file_database",
+      "source_store_local_file_database"
+    ]);
+    expect(sourceHandlerLocalFileDatabaseWriteBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
+    expect(sourceHandlerLocalFileDatabaseWriteBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerLocalFileDatabaseWriteBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
+    expect(sourceHandlerLocalFileDatabaseWriteBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
+    expect(sourceHandlerLocalFileDatabaseWriteBridgeFindings.every((finding) => finding.matched_object.metadata.source_tool_handler_redacted === true)).toBe(true);
+    expect(sourceHandlerLocalFileDatabaseWriteBridgeFindings.every((finding) => finding.matched_object.metadata.handler_filesystem_read === true)).toBe(true);
+    expect(sourceHandlerLocalFileDatabaseWriteBridgeFindings.every((finding) => finding.matched_object.metadata.handler_tainted_filesystem_path === true)).toBe(true);
+    expect(sourceHandlerLocalFileDatabaseWriteBridgeFindings.every((finding) => finding.matched_object.metadata.handler_database_query === true)).toBe(true);
+    expect(sourceHandlerLocalFileDatabaseWriteBridgeFindings.every((finding) => finding.matched_object.metadata.handler_database_write === true)).toBe(true);
+    expect(sourceHandlerLocalFileDatabaseWriteBridgeFindings.every((finding) => finding.matched_object.metadata.handler_local_file_database_write_bridge === true)).toBe(true);
+    expect(sourceHandlerLocalFileDatabaseWriteBridgeFindings.every((finding) => finding.matched_object.metadata.handler_secret_env_access === true)).toBe(true);
+    expect(sourceHandlerLocalFileDatabaseWriteBridgeFindings.every((finding) => finding.matched_object.metadata.local_file_database_write_bridge === true)).toBe(true);
+    expect(sourceHandlerLocalFileDatabaseWriteBridgeFindings.every((finding) => finding.matched_object.metadata.database_access === true)).toBe(true);
+    expect(sourceHandlerLocalFileDatabaseWriteBridgeFindings.every((finding) => finding.matched_object.metadata.database_write === true)).toBe(true);
+    expect(sourceHandlerLocalFileDatabaseWriteBridgeFindings.every((finding) => finding.matched_object.metadata.tainted_filesystem_path === true)).toBe(true);
+    expect(sourceHandlerLocalFileDatabaseWriteBridgeFindings.every((finding) => finding.matched_object.metadata.accepts_path_input === true)).toBe(true);
+    expect(sourceHandlerLocalFileDatabaseWriteBridgeFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("local_file_database_write_bridge"))).toBe(true);
+    expect(sourceHandlerLocalFileDatabaseWriteBridgeFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("database_write"))).toBe(true);
+    expect(sourceHandlerLocalFileDatabaseWriteBridgeFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("filesystem_read"))).toBe(true);
+    expect(sourceHandlerLocalFileDatabaseWriteBridgeFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("tainted_filesystem_path"))).toBe(true);
+    expect(sourceHandlerLocalFileDatabaseWriteBridgeFindings.every((finding) => finding.matched_object.metadata.handler_authority_classes.includes("handler_local_file_database_write_bridge"))).toBe(true);
+    expect(sourceHandlerLocalFileDatabaseWriteBridgeFindings.every((finding) => finding.matched_object.metadata.handler_authority_classes.includes("handler_database_write"))).toBe(true);
+    expect(sourceHandlerLocalFileDatabaseWriteBridgeFindings.every((finding) => finding.matched_object.metadata.handler_authority_classes.includes("handler_filesystem_read"))).toBe(true);
+    expect(sourceHandlerLocalFileDatabaseWriteBridgeFindings.every((finding) => finding.matched_object.actions.includes("read"))).toBe(true);
+    expect(sourceHandlerLocalFileDatabaseWriteBridgeFindings.every((finding) => finding.matched_object.actions.includes("write"))).toBe(true);
+    expect(sourceHandlerLocalFileDatabaseWriteBridgeFindings.every((finding) => finding.matched_object.secret_exposure === true)).toBe(true);
+    expect(sourceHandlerLocalFileDatabaseWriteBridgeFindings.every((finding) => finding.matched_object.side_effect === true)).toBe(true);
+    expect(sourceHandlerLocalFileDatabaseWriteBridgeFindings.every((finding) => finding.matched_object.reversible === false)).toBe(true);
+    expect(JSON.stringify(sourceHandlerLocalFileDatabaseWriteBridgeFindings)).not.toContain("readFile");
+    expect(JSON.stringify(sourceHandlerLocalFileDatabaseWriteBridgeFindings)).not.toContain("Path(workspace_path)");
+    expect(JSON.stringify(sourceHandlerLocalFileDatabaseWriteBridgeFindings)).not.toContain("localFileContent");
+    expect(JSON.stringify(sourceHandlerLocalFileDatabaseWriteBridgeFindings)).not.toContain("local_file_content");
+    expect(JSON.stringify(sourceHandlerLocalFileDatabaseWriteBridgeFindings)).not.toContain("supportDb.withToken");
+    expect(JSON.stringify(sourceHandlerLocalFileDatabaseWriteBridgeFindings)).not.toContain("support_db.with_token");
+    expect(JSON.stringify(sourceHandlerLocalFileDatabaseWriteBridgeFindings)).not.toContain("db.query");
+    expect(JSON.stringify(sourceHandlerLocalFileDatabaseWriteBridgeFindings)).not.toContain("db.execute");
+    expect(JSON.stringify(sourceHandlerLocalFileDatabaseWriteBridgeFindings)).not.toContain("UPDATE support_cases");
+    expect(JSON.stringify(sourceHandlerLocalFileDatabaseWriteBridgeFindings)).not.toContain("source local file stored in database");
+    expect(JSON.stringify(sourceHandlerLocalFileDatabaseWriteBridgeFindings)).not.toContain("framework local file stored in database");
+    expect(JSON.stringify(sourceHandlerLocalFileDatabaseWriteBridgeFindings)).not.toContain("Read a caller selected local file");
     const sourceHandlerTaintedFilesystemPathFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-035");
     expect(sourceHandlerTaintedFilesystemPathFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_cache_local_file_prompt",
       "langchain_read_workspace_file",
       "langchain_readonly_delete_workspace_path",
+      "langchain_store_local_file_database",
       "langchain_summarize_local_file_with_model",
       "langchain_train_on_local_file",
       "langchain_upload_local_file_authenticated_browser",
@@ -6500,6 +6549,7 @@ describe("rule engine", () => {
       "source_cache_local_file_prompt",
       "source_read_workspace_file",
       "source_readonly_delete_workspace_file",
+      "source_store_local_file_database",
       "source_summarize_local_file_with_model",
       "source_train_on_local_file",
       "source_upload_local_file_authenticated_browser",
@@ -12906,10 +12956,12 @@ describe("rule engine", () => {
       "langchain_apply_model_database_update",
       "langchain_apply_record_change_sql",
       "langchain_store_customer_vault_secret_database",
+      "langchain_store_local_file_database",
       "langchain_store_privileged_tool_observation_database",
       "source_apply_model_database_update",
       "source_apply_record_change_sql",
       "source_store_customer_vault_secret_database",
+      "source_store_local_file_database",
       "source_store_privileged_tool_observation_database"
     ]);
     const sourceHandlerToolOutputDatabaseWriteFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-078");

@@ -1542,6 +1542,33 @@ server.registerTool(
 );
 
 server.registerTool(
+  "source_store_local_file_database",
+  {
+    description: "Read a caller selected local file and store it in customer support records.",
+    inputSchema: z.object({
+      workspace_path: z.string(),
+      customer_id: z.string(),
+      database_record_id: z.string(),
+      reviewer_note: z.string()
+    }).strict(),
+    annotations: {
+      readOnlyHint: false,
+      idempotentHint: false
+    }
+  },
+  async ({ workspace_path, customer_id, database_record_id, reviewer_note }) => {
+    const localFileContent = await readFile(workspace_path, "utf8");
+    const token = process.env.SOURCE_LOCAL_FILE_DATABASE_TOKEN;
+    const db = globalThis.supportDb.withToken(token);
+    await db.query(
+      "UPDATE support_cases SET uploaded_file = $1, reviewer_note = $2 WHERE id = $3 AND customer_id = $4",
+      [localFileContent.toString(), reviewer_note, database_record_id, customer_id]
+    );
+    return { content: [{ type: "text", text: "source local file stored in database" }] };
+  }
+);
+
+server.registerTool(
   "source_dispatch_privileged_tool",
   {
     description: "Dispatch a caller selected privileged tool with customer payload.",

@@ -305,6 +305,7 @@ Tool metadata may include:
 - `tainted_network_destination`
 - `tainted_database_query_argument`
 - `secret_manager_database_write_bridge`
+- `local_file_database_write_bridge`
 - `tool_output_database_write_bridge`
 - `memory_write`
 - `tainted_memory_scope`
@@ -470,6 +471,7 @@ Tool metadata may include:
 - `handler_model_output_network_destination_bridge`
 - `handler_model_output_browser_automation_bridge`
 - `handler_model_output_database_write_bridge`
+- `handler_local_file_database_write_bridge`
 - `handler_model_output_memory_bridge`
 - `handler_model_output_shell_execution_bridge`
 - `handler_model_output_dynamic_code_execution_bridge`
@@ -566,6 +568,7 @@ Tool metadata may include:
 - `handler_database_write`
 - `handler_tainted_database_query_argument`
 - `handler_secret_manager_database_write_bridge`
+- `handler_local_file_database_write_bridge`
 - `handler_tool_output_database_write_bridge`
 - `handler_memory_write`
 - `handler_tainted_memory_scope`
@@ -2084,6 +2087,8 @@ Source-defined tool handlers can also emit redacted tool-output authorization-gr
 Source-defined tool handlers can also emit redacted tool-output credential-issuance bridge authority through `tool_output_credential_issuance_bridge`, `nested_tool_invocation`, `credential_issuance`, `tainted_credential_issuance_input`, and the corresponding `handler_*` fields when parsed MCP SDK or agent-framework tools invoke nested tools and use raw tool observations to mint, sign, assume, impersonate, or issue agent credentials using runtime broker credentials. Handler bodies, nested tool calls, tool names, arguments, credential broker calls, grant material, token templates, subjects, scopes, roles, audiences, impersonation selectors, issued credentials, and return strings remain redacted.
 
 Source-defined tool handlers can also emit redacted tool-output database-write bridge authority through `tool_output_database_write_bridge`, `nested_tool_invocation`, `database_access`, `database_write`, and the corresponding `handler_*` fields when parsed MCP SDK or agent-framework tools invoke nested tools and write raw tool observations into customer or operational records using database authority. Handler bodies, nested tool calls, tool names, arguments, database calls, SQL strings, raw observations, record fields, and return strings remain redacted.
+
+Source-defined tool handlers can also emit redacted local-file database-write bridge authority through `local_file_database_write_bridge`, `filesystem_read`, `tainted_filesystem_path`, `database_access`, `database_write`, and the corresponding `handler_*` fields when parsed MCP SDK or agent-framework tools read caller-selected local file paths and write file material into customer or operational records using runtime database credentials. Handler bodies, file-read calls, local paths, file contents, database calls, SQL strings, record fields, record IDs, reviewer notes, and return strings remain redacted.
 
 Source-defined tool handlers can also emit redacted secret-manager external-service bridge authority through `secret_manager_external_service_bridge`, `secret_manager_access`, `tainted_secret_manager_path`, `external_service_write`, `tainted_external_service_recipient`, and the corresponding `handler_*` fields when parsed MCP SDK or agent-framework tools read caller-selected vault or secret-manager paths and publish the returned secret material through Slack, email, issue-tracker, chat, or SaaS SDKs using runtime credentials. Handler bodies, vault calls, secret paths, secret values, SDK calls, recipients, posted payloads, and return strings remain redacted.
 

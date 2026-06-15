@@ -24121,6 +24121,7 @@ function addToolDefinitionSurface(
       !authority.destructive_action &&
       !authority.external_write &&
       !authority.database_write &&
+      !authority.local_file_database_write_bridge &&
       !authority.memory_write &&
       !authority.model_output_memory_bridge &&
       !authority.network_response_memory_bridge &&
@@ -24219,6 +24220,7 @@ function addToolDefinitionSurface(
       tainted_database_query_argument: authority.tainted_database_query_argument,
       secret_manager_database_write_bridge: authority.secret_manager_database_write_bridge,
       model_output_database_write_bridge: authority.model_output_database_write_bridge,
+      local_file_database_write_bridge: authority.local_file_database_write_bridge,
       tool_output_database_write_bridge: authority.tool_output_database_write_bridge,
       memory_write: authority.memory_write,
       secret_manager_memory_bridge: authority.secret_manager_memory_bridge,
@@ -26830,6 +26832,7 @@ interface SourceToolHandlerSignals {
   handlerTaintedDatabaseQueryArgument: boolean;
   handlerSecretManagerDatabaseWriteBridge: boolean;
   handlerModelOutputDatabaseWriteBridge: boolean;
+  handlerLocalFileDatabaseWriteBridge: boolean;
   handlerToolOutputDatabaseWriteBridge: boolean;
   handlerMemoryWrite: boolean;
   handlerSecretManagerMemoryBridge: boolean;
@@ -27406,6 +27409,7 @@ function sourceToolHandlerSignalMetadata(signals: SourceToolHandlerSignals | und
     handler_tainted_database_query_argument: signals.handlerTaintedDatabaseQueryArgument,
     handler_secret_manager_database_write_bridge: signals.handlerSecretManagerDatabaseWriteBridge,
     handler_model_output_database_write_bridge: signals.handlerModelOutputDatabaseWriteBridge,
+    handler_local_file_database_write_bridge: signals.handlerLocalFileDatabaseWriteBridge,
     handler_tool_output_database_write_bridge: signals.handlerToolOutputDatabaseWriteBridge,
     handler_memory_write: signals.handlerMemoryWrite,
     handler_secret_manager_memory_bridge: signals.handlerSecretManagerMemoryBridge,
@@ -27776,6 +27780,9 @@ function classifySourceToolHandlerSignals(
   const taintedFilesystemPath = (filesystemRead || filesystemWrite || filesystemDelete) && (language === "javascript"
     ? hasJavaScriptHandlerTaintedFilesystemPath(handlerSource)
     : hasPythonHandlerTaintedFilesystemPath(handlerSource));
+  const localFileDatabaseWriteBridge = filesystemRead && taintedFilesystemPath && databaseWrite && (language === "javascript"
+    ? hasJavaScriptHandlerLocalFileDatabaseWriteBridge(handlerSource)
+    : hasPythonHandlerLocalFileDatabaseWriteBridge(handlerSource));
   const localFileTrainingDatasetBridge = filesystemRead && taintedFilesystemPath && trainingDatasetExport && (language === "javascript"
     ? hasJavaScriptHandlerLocalFileTrainingDatasetBridge(handlerSource)
     : hasPythonHandlerLocalFileTrainingDatasetBridge(handlerSource));
@@ -28053,6 +28060,7 @@ function classifySourceToolHandlerSignals(
   if (taintedDatabaseQueryArgument) classes.add("handler_tainted_database_query_argument");
   if (secretManagerDatabaseWriteBridge) classes.add("handler_secret_manager_database_write_bridge");
   if (modelOutputDatabaseWriteBridge) classes.add("handler_model_output_database_write_bridge");
+  if (localFileDatabaseWriteBridge) classes.add("handler_local_file_database_write_bridge");
   if (toolOutputDatabaseWriteBridge) classes.add("handler_tool_output_database_write_bridge");
   if (memoryWrite) classes.add("handler_memory_write");
   if (secretManagerMemoryBridge) classes.add("handler_secret_manager_memory_bridge");
@@ -28217,6 +28225,7 @@ function classifySourceToolHandlerSignals(
     handlerTaintedDatabaseQueryArgument: taintedDatabaseQueryArgument,
     handlerSecretManagerDatabaseWriteBridge: secretManagerDatabaseWriteBridge,
     handlerModelOutputDatabaseWriteBridge: modelOutputDatabaseWriteBridge,
+    handlerLocalFileDatabaseWriteBridge: localFileDatabaseWriteBridge,
     handlerToolOutputDatabaseWriteBridge: toolOutputDatabaseWriteBridge,
     handlerMemoryWrite: memoryWrite,
     handlerSecretManagerMemoryBridge: secretManagerMemoryBridge,
@@ -28570,6 +28579,29 @@ function hasPythonHandlerModelOutputDatabaseWriteBridge(source: string): boolean
   return identifiers.length > 0 && callExpressionReferencesAnyIdentifier(
     [
       /\b(?:[A-Za-z_]\w*_db|[A-Za-z_]\w*_database|db|database|client|cursor|conn|connection|engine|session)\s*\.\s*(?:execute|executemany|executescript|query|raw|run|commit|add|delete|merge)\s*\(([^)]{0,900})\)/giu
+    ],
+    source,
+    identifiers
+  );
+}
+
+function hasJavaScriptHandlerLocalFileDatabaseWriteBridge(source: string): boolean {
+  const identifiers = extractJavaScriptLocalFileIdentifiers(source);
+  return identifiers.length > 0 && callExpressionReferencesAnyIdentifier(
+    [
+      /\b(?:[A-Za-z_$][\w$]*Db|[A-Za-z_$][\w$]*Database|db|database|client|pool|connection|conn|knex|prisma|sequelize|supabase|sql)\s*\.\s*(?:query|execute|raw|run|exec|update|delete|insert|upsert|create|save)\s*\(([\s\S]{0,1800})\)/giu,
+      /\b(?:executeSql|executeQuery)\s*\(([\s\S]{0,1800})\)/giu
+    ],
+    source,
+    identifiers
+  );
+}
+
+function hasPythonHandlerLocalFileDatabaseWriteBridge(source: string): boolean {
+  const identifiers = extractPythonLocalFileIdentifiers(source);
+  return identifiers.length > 0 && callExpressionReferencesAnyIdentifier(
+    [
+      /\b(?:[A-Za-z_]\w*_db|[A-Za-z_]\w*_database|db|database|client|cursor|conn|connection|engine|session)\s*\.\s*(?:execute|executemany|executescript|query|raw|run|commit|add|delete|merge)\s*\(([\s\S]{0,1800})\)/giu
     ],
     source,
     identifiers
@@ -34875,6 +34907,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   tainted_database_query_argument: boolean;
   secret_manager_database_write_bridge: boolean;
   model_output_database_write_bridge: boolean;
+  local_file_database_write_bridge: boolean;
   tool_output_database_write_bridge: boolean;
   memory_write: boolean;
   secret_manager_memory_bridge: boolean;
@@ -35139,6 +35172,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   const handlerTaintedDatabaseQueryArgument = handler?.handlerTaintedDatabaseQueryArgument === true;
   const handlerSecretManagerDatabaseWriteBridge = handler?.handlerSecretManagerDatabaseWriteBridge === true;
   const handlerModelOutputDatabaseWriteBridge = handler?.handlerModelOutputDatabaseWriteBridge === true;
+  const handlerLocalFileDatabaseWriteBridge = handler?.handlerLocalFileDatabaseWriteBridge === true;
   const handlerToolOutputDatabaseWriteBridge = handler?.handlerToolOutputDatabaseWriteBridge === true;
   const handlerMemoryWrite = handler?.handlerMemoryWrite === true;
   const handlerSecretManagerMemoryBridge = handler?.handlerSecretManagerMemoryBridge === true;
@@ -35430,6 +35464,11 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
     classes.add("model_output_database_write_bridge");
     actions.add("read");
     actions.add("send");
+    actions.add("write");
+  }
+  if (handlerLocalFileDatabaseWriteBridge) {
+    classes.add("local_file_database_write_bridge");
+    actions.add("read");
     actions.add("write");
   }
   if (handlerToolOutputDatabaseWriteBridge) {
@@ -36224,6 +36263,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerTaintedDatabaseQueryArgument ||
       handlerSecretManagerDatabaseWriteBridge ||
       handlerModelOutputDatabaseWriteBridge ||
+      handlerLocalFileDatabaseWriteBridge ||
       handlerToolOutputDatabaseWriteBridge ||
       handlerExternalWrite ||
       handlerShellExecution ||
@@ -36386,6 +36426,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerSecretManagerExternalServiceBridge ||
       handlerSecretManagerPromptBridge ||
       handlerSecretManagerDatabaseWriteBridge ||
+      (handlerLocalFileDatabaseWriteBridge && handlerSecretEnvAccess) ||
       handlerSecretManagerTelemetryBridge ||
       (handlerModelOutputTelemetryBridge && handlerSecretEnvAccess) ||
       (handlerNetworkResponseTelemetryBridge && handlerSecretEnvAccess) ||
@@ -36466,6 +36507,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
     tainted_database_query_argument: handlerTaintedDatabaseQueryArgument,
     secret_manager_database_write_bridge: handlerSecretManagerDatabaseWriteBridge,
     model_output_database_write_bridge: handlerModelOutputDatabaseWriteBridge,
+    local_file_database_write_bridge: handlerLocalFileDatabaseWriteBridge,
     tool_output_database_write_bridge: handlerToolOutputDatabaseWriteBridge,
     memory_write: handlerMemoryWrite,
     secret_manager_memory_bridge: handlerSecretManagerMemoryBridge,
@@ -36672,6 +36714,7 @@ function authoritySignature(tool: SurfaceObject): string {
     metadata.tainted_database_query_argument === true ? "tainted_database_query_argument" : "",
     metadata.secret_manager_database_write_bridge === true ? "secret_manager_database_write_bridge" : "",
     metadata.model_output_database_write_bridge === true ? "model_output_database_write_bridge" : "",
+    metadata.local_file_database_write_bridge === true ? "local_file_database_write_bridge" : "",
     metadata.tool_output_database_write_bridge === true ? "tool_output_database_write_bridge" : "",
     metadata.tainted_memory_scope === true ? "tainted_memory_scope" : "",
     metadata.secret_manager_memory_bridge === true ? "secret_manager_memory_bridge" : "",
@@ -36840,6 +36883,7 @@ function isPrivilegedToolSurface(tool: SurfaceObject): boolean {
     tool.metadata.tainted_database_query_argument === true ||
     tool.metadata.secret_manager_database_write_bridge === true ||
     tool.metadata.model_output_database_write_bridge === true ||
+    tool.metadata.local_file_database_write_bridge === true ||
     tool.metadata.tool_output_database_write_bridge === true ||
     tool.metadata.tainted_memory_scope === true ||
     tool.metadata.secret_manager_memory_bridge === true ||
