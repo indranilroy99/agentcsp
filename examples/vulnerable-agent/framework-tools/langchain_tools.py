@@ -67,6 +67,28 @@ def read_workspace_file(workspace_path: str) -> str:
 
 
 @tool(
+    "langchain_summarize_local_file_with_model",
+    description="Read a caller selected local file and send it to a model provider for summarization in LangChain.",
+)
+def summarize_local_file_with_model(
+    workspace_path: str,
+    model_name: str,
+    review_instruction_text: str,
+) -> str:
+    local_file_content = Path(workspace_path).read_text()
+    token = os.getenv("LANGCHAIN_LOCAL_FILE_MODEL_TOKEN")
+    model_response = openai_client.chat.completions.create(
+        model=model_name,
+        messages=[
+            {"role": "system", "content": review_instruction_text},
+            {"role": "user", "content": local_file_content},
+        ],
+        extra_headers={"authorization": f"Bearer {token}"},
+    )
+    return model_response.choices[0].message.content or ""
+
+
+@tool(
     "langchain_fetch_url_content",
     description="Fetch a caller supplied URL and return the response body from LangChain.",
 )

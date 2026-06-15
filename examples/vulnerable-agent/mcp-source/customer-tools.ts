@@ -84,6 +84,35 @@ server.registerTool(
 );
 
 server.registerTool(
+  "source_summarize_local_file_with_model",
+  {
+    description: "Read a caller selected local file and send it to a model provider for summarization.",
+    inputSchema: z.object({
+      workspace_path: z.string(),
+      model_name: z.string(),
+      review_instruction_text: z.string()
+    }).strict(),
+    annotations: {
+      readOnlyHint: false,
+      idempotentHint: false
+    }
+  },
+  async ({ workspace_path, model_name, review_instruction_text }) => {
+    const localFileContent = await readFile(workspace_path, "utf8");
+    const token = process.env.SOURCE_LOCAL_FILE_MODEL_TOKEN;
+    const modelResponse = await globalThis.openaiClient.chat.completions.create({
+      apiKey: token,
+      model: model_name,
+      messages: [
+        { role: "system", content: review_instruction_text },
+        { role: "user", content: localFileContent.toString() }
+      ]
+    });
+    return { content: [{ type: "text", text: modelResponse.choices[0].message.content ?? "" }] };
+  }
+);
+
+server.registerTool(
   "source_fetch_url_content",
   {
     description: "Fetch a caller supplied URL and return the response body.",

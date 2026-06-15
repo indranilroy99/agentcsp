@@ -329,6 +329,7 @@ Tool metadata may include:
 - `tool_output_browser_automation_bridge`
 - `secret_manager_browser_automation_bridge`
 - `local_file_browser_automation_bridge`
+- `local_file_prompt_bridge`
 - `visual_context_capture`
 - `visual_context_to_output`
 - `visual_context_prompt_bridge`
@@ -583,6 +584,7 @@ Tool metadata may include:
 - `handler_tool_output_browser_automation_bridge`
 - `handler_secret_manager_browser_automation_bridge`
 - `handler_local_file_browser_automation_bridge`
+- `handler_local_file_prompt_bridge`
 - `handler_clipboard_read`
 - `handler_clipboard_external_service_bridge`
 - `handler_visual_context_capture`
@@ -2063,6 +2065,8 @@ Source-defined tool handlers can also emit redacted secret-manager browser-autom
 Source-defined tool handlers can also emit redacted tool-output browser-automation bridge authority through `tool_output_browser_automation_bridge`, `nested_tool_invocation`, `browser_automation`, `tainted_browser_automation_target`, and the corresponding `handler_*` fields when parsed MCP SDK or agent-framework tools invoke nested tools and inject raw tool observations into authenticated browser/page/driver automation using caller-selected targets or selectors. Handler bodies, nested tool calls, browser calls, target URLs, selectors, raw observations, and return strings remain redacted.
 
 Source-defined tool handlers can also emit redacted local-file browser-automation bridge authority through `local_file_browser_automation_bridge`, `tainted_filesystem_path`, `browser_automation`, `tainted_browser_automation_target`, and the corresponding `handler_*` fields when parsed MCP SDK or agent-framework tools read or accept caller-selected local file paths and upload file material through authenticated browser/page/driver automation to caller-selected targets. Handler bodies, file-read calls, local paths, browser upload calls, target URLs, selectors, file bytes, upload payloads, and return strings remain redacted.
+
+Source-defined tool handlers can also emit redacted local-file prompt bridge authority through `local_file_prompt_bridge`, `filesystem_read`, `tainted_filesystem_path`, `model_provider_call`, `tainted_model_selection`, and the corresponding `handler_*` fields when parsed MCP SDK or agent-framework tools read caller-selected local file paths and forward file material into model-provider prompts using runtime model credentials and caller-selected model routing. Handler bodies, file-read calls, local paths, file contents, model SDK calls, prompt payloads, selected model names, local-file prompt variables, and return strings remain redacted.
 
 Source-defined tool handlers can also emit redacted tool-output prompt-registry bridge authority through `tool_output_prompt_registry_bridge`, `nested_tool_invocation`, `prompt_registry_write`, `tainted_prompt_registry_payload`, `tainted_prompt_registry_selector`, and the corresponding `handler_*` fields when parsed MCP SDK or agent-framework tools invoke nested tools and publish raw tool observations into prompt or instruction registries using runtime credentials and caller-selected prompt metadata. Handler bodies, nested tool calls, tool names, arguments, registry calls, prompt IDs, prompt roles, prompt bodies, raw observations, and return strings remain redacted.
 

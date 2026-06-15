@@ -549,6 +549,7 @@ describe("scanner", () => {
       (surface) => surface.name === "source_fetch_tool_observation_url"
     );
     const sourceFileReadTool = surfaces.tools.find((surface) => surface.name === "source_read_workspace_file");
+    const sourceLocalFilePromptBridgeTool = surfaces.tools.find((surface) => surface.name === "source_summarize_local_file_with_model");
     const sourceNetworkResponseTool = surfaces.tools.find((surface) => surface.name === "source_fetch_url_content");
     const sourceNetworkResponseMemoryBridgeTool = surfaces.tools.find((surface) => surface.name === "source_store_url_response_memory");
     const sourceNetworkResponseExternalServiceBridgeTool = surfaces.tools.find((surface) => surface.name === "source_post_url_response_external");
@@ -806,6 +807,7 @@ describe("scanner", () => {
       (surface) => surface.name === "langchain_fetch_tool_observation_url"
     );
     const langchainFileReadTool = surfaces.tools.find((surface) => surface.name === "langchain_read_workspace_file");
+    const langchainLocalFilePromptBridgeTool = surfaces.tools.find((surface) => surface.name === "langchain_summarize_local_file_with_model");
     const langchainNetworkResponseTool = surfaces.tools.find((surface) => surface.name === "langchain_fetch_url_content");
     const langchainNetworkResponseMemoryBridgeTool = surfaces.tools.find((surface) => surface.name === "langchain_store_url_response_memory");
     const langchainNetworkResponseExternalServiceBridgeTool = surfaces.tools.find((surface) => surface.name === "langchain_post_url_response_external");
@@ -1560,6 +1562,90 @@ describe("scanner", () => {
     expect(JSON.stringify(sourceFileReadTool)).not.toContain("readFile");
     expect(JSON.stringify(sourceFileReadTool)).not.toContain("contents.toString");
     expect(JSON.stringify(sourceFileReadTool)).not.toContain("Read a workspace file by model supplied path");
+    expect(sourceLocalFilePromptBridgeTool).toMatchObject({
+      path: "mcp-source/customer-tools.ts",
+      data_classes: ["credential"],
+      actions: ["call", "publish", "read", "send"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(sourceLocalFilePromptBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_mcp_source_tool: true,
+      mcp_source_tool_registration: true,
+      mcp_source_tool_registration_kind: "registerTool",
+      mcp_source_tool_argument_count: 3,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      read_only_hint: false,
+      idempotent_hint: false,
+      accepts_path_input: true,
+      accepts_content_like_input: true,
+      local_file_prompt_bridge: true,
+      model_provider_call: true,
+      tainted_model_selection: true,
+      privileged_prompt_composition: true,
+      local_file_disclosure: true,
+      external_write: true,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_model_provider_call: true,
+      handler_tainted_model_selection: true,
+      handler_privileged_prompt_composition: true,
+      handler_secret_env_access: true,
+      handler_model_visible_output: true,
+      handler_local_file_prompt_bridge: true,
+      handler_tainted_filesystem_path: true,
+      handler_filesystem_read: true,
+      handler_signal_count: 7,
+      open_world_schema: false
+    });
+    expect(sourceLocalFilePromptBridgeTool?.metadata.authority_classes).toEqual([
+      "content_input",
+      "external_write",
+      "filesystem_access",
+      "filesystem_read",
+      "handler_filesystem_read",
+      "handler_local_file_prompt_bridge",
+      "handler_model_provider_call",
+      "handler_privileged_prompt_composition",
+      "handler_secret_env_access",
+      "handler_tainted_filesystem_path",
+      "handler_tainted_model_selection",
+      "local_file_disclosure",
+      "local_file_prompt_bridge",
+      "model_provider_call",
+      "privileged_prompt_composition",
+      "secret_env_access",
+      "tainted_filesystem_path",
+      "tainted_model_selection"
+    ]);
+    expect(sourceLocalFilePromptBridgeTool?.metadata.handler_authority_classes).toEqual([
+      "handler_filesystem_read",
+      "handler_local_file_prompt_bridge",
+      "handler_model_provider_call",
+      "handler_privileged_prompt_composition",
+      "handler_secret_env_access",
+      "handler_tainted_filesystem_path",
+      "handler_tainted_model_selection"
+    ]);
+    expect(sourceLocalFilePromptBridgeTool?.metadata.handler_env_key_names).toEqual(["SOURCE_LOCAL_FILE_MODEL_TOKEN"]);
+    expect(sourceLocalFilePromptBridgeTool?.metadata.schema_properties).toEqual([
+      "model_name",
+      "review_instruction_text",
+      "workspace_path"
+    ]);
+    expect(sourceLocalFilePromptBridgeTool?.metadata.required_properties).toEqual([
+      "model_name",
+      "review_instruction_text",
+      "workspace_path"
+    ]);
+    expect(JSON.stringify(sourceLocalFilePromptBridgeTool)).not.toContain("readFile");
+    expect(JSON.stringify(sourceLocalFilePromptBridgeTool)).not.toContain("localFileContent");
+    expect(JSON.stringify(sourceLocalFilePromptBridgeTool)).not.toContain("openaiClient.chat.completions.create");
+    expect(JSON.stringify(sourceLocalFilePromptBridgeTool)).not.toContain("Read a caller selected local file");
     expect(sourceNetworkResponseTool).toMatchObject({
       path: "mcp-source/customer-tools.ts",
       data_classes: ["unknown"],
@@ -11086,6 +11172,89 @@ describe("scanner", () => {
     expect(JSON.stringify(langchainFileReadTool)).not.toContain("Path(workspace_path)");
     expect(JSON.stringify(langchainFileReadTool)).not.toContain("read_text");
     expect(JSON.stringify(langchainFileReadTool)).not.toContain("Read a workspace file by model supplied path");
+    expect(langchainLocalFilePromptBridgeTool).toMatchObject({
+      path: "framework-tools/langchain_tools.py",
+      data_classes: ["credential"],
+      actions: ["call", "publish", "read", "send"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(langchainLocalFilePromptBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_agent_framework_source_tool: true,
+      agent_framework_source_tool: true,
+      agent_framework_source_tool_framework: "langchain",
+      agent_framework_source_tool_registration_kind: "python_tool_decorator",
+      agent_framework_source_tool_argument_count: 3,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_path_input: true,
+      accepts_content_like_input: true,
+      local_file_prompt_bridge: true,
+      model_provider_call: true,
+      tainted_model_selection: true,
+      privileged_prompt_composition: true,
+      local_file_disclosure: true,
+      external_write: true,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_model_provider_call: true,
+      handler_tainted_model_selection: true,
+      handler_privileged_prompt_composition: true,
+      handler_secret_env_access: true,
+      handler_model_visible_output: true,
+      handler_local_file_prompt_bridge: true,
+      handler_tainted_filesystem_path: true,
+      handler_filesystem_read: true,
+      handler_signal_count: 7,
+      open_world_schema: false
+    });
+    expect(langchainLocalFilePromptBridgeTool?.metadata.authority_classes).toEqual([
+      "content_input",
+      "external_write",
+      "filesystem_access",
+      "filesystem_read",
+      "handler_filesystem_read",
+      "handler_local_file_prompt_bridge",
+      "handler_model_provider_call",
+      "handler_privileged_prompt_composition",
+      "handler_secret_env_access",
+      "handler_tainted_filesystem_path",
+      "handler_tainted_model_selection",
+      "local_file_disclosure",
+      "local_file_prompt_bridge",
+      "model_provider_call",
+      "privileged_prompt_composition",
+      "secret_env_access",
+      "tainted_filesystem_path",
+      "tainted_model_selection"
+    ]);
+    expect(langchainLocalFilePromptBridgeTool?.metadata.handler_authority_classes).toEqual([
+      "handler_filesystem_read",
+      "handler_local_file_prompt_bridge",
+      "handler_model_provider_call",
+      "handler_privileged_prompt_composition",
+      "handler_secret_env_access",
+      "handler_tainted_filesystem_path",
+      "handler_tainted_model_selection"
+    ]);
+    expect(langchainLocalFilePromptBridgeTool?.metadata.handler_env_key_names).toEqual(["LANGCHAIN_LOCAL_FILE_MODEL_TOKEN"]);
+    expect(langchainLocalFilePromptBridgeTool?.metadata.schema_properties).toEqual([
+      "model_name",
+      "review_instruction_text",
+      "workspace_path"
+    ]);
+    expect(langchainLocalFilePromptBridgeTool?.metadata.required_properties).toEqual([
+      "model_name",
+      "review_instruction_text",
+      "workspace_path"
+    ]);
+    expect(JSON.stringify(langchainLocalFilePromptBridgeTool)).not.toContain("Path(workspace_path)");
+    expect(JSON.stringify(langchainLocalFilePromptBridgeTool)).not.toContain("local_file_content");
+    expect(JSON.stringify(langchainLocalFilePromptBridgeTool)).not.toContain("openai_client.chat.completions.create");
+    expect(JSON.stringify(langchainLocalFilePromptBridgeTool)).not.toContain("Read a caller selected local file");
     expect(langchainNetworkResponseTool).toMatchObject({
       path: "framework-tools/langchain_tools.py",
       data_classes: ["unknown"],

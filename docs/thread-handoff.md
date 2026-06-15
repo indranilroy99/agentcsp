@@ -1565,6 +1565,7 @@ The current iteration adds:
 - rule `AGENTCSP-TOOL-018` for source-defined tools that forward env-backed credentials to caller-controlled URLs through non-write network requests
 - rule `AGENTCSP-TOOL-019` for source-defined tools that evaluate model-supplied code through dynamic in-process execution APIs
 - rule `AGENTCSP-TOOL-020` for source-defined tools that return model-selected local file contents into model-visible tool output
+- rule `AGENTCSP-TOOL-140` for source-defined tools that read caller-selected local files and forward file material into model-provider prompts under runtime model credentials and caller-selected model routing
 - rule `AGENTCSP-TOOL-021` for source-defined tools that pass serialized model inputs into unsafe deserialization APIs
 - rule `AGENTCSP-TOOL-022` for source-defined tools that fetch caller-controlled URLs and return network responses into model-visible tool output
 - rule `AGENTCSP-TOOL-023` for source-defined tools that persist customer or prompt-like tool input into memory, vector, RAG, or state stores
@@ -1700,6 +1701,7 @@ The current iteration adds:
 - regression coverage proving visual-context task-queue bridge snippets, visual-context queue return strings, queue calls, queue names, routes, queued payloads, notes, screenshot bytes, and OCR text stay redacted
 - regression coverage proving visual-context remote-agent delegation bridge snippets, visual-context delegation return strings, delegated-agent calls, target agent URLs, forwarded context, notes, screenshot bytes, and OCR text stay redacted
 - regression coverage proving local-file browser-upload bridge snippets, file-read calls, browser upload calls, local file bytes, upload selectors, upload notes, local file browser return strings, and local file paths stay redacted
+- regression coverage proving local-file prompt bridge snippets, file-read calls, local file variables, model SDK calls, prompt payloads, selected model names, local file prompt return strings, and local file paths stay redacted
 
 ## Initial Build Recommendation
 

@@ -141,6 +141,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-137")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-138")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-139")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-140")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-001")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-002")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-003")).toBe(true);
@@ -6325,8 +6326,10 @@ describe("rule engine", () => {
     const sourceHandlerLocalFileDisclosureFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-020");
     expect(sourceHandlerLocalFileDisclosureFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_read_workspace_file",
+      "langchain_summarize_local_file_with_model",
       "langchain_upload_local_file_authenticated_browser",
       "source_read_workspace_file",
+      "source_summarize_local_file_with_model",
       "source_upload_local_file_authenticated_browser"
     ]);
     expect(sourceHandlerLocalFileDisclosureFindings.every((finding) => finding.severity === "critical")).toBe(true);
@@ -6344,14 +6347,60 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerLocalFileDisclosureFindings)).not.toContain("readFile");
     expect(JSON.stringify(sourceHandlerLocalFileDisclosureFindings)).not.toContain("read_text");
     expect(JSON.stringify(sourceHandlerLocalFileDisclosureFindings)).not.toContain("Path(workspace_path)");
+    expect(JSON.stringify(sourceHandlerLocalFileDisclosureFindings)).not.toContain("localFileContent");
+    expect(JSON.stringify(sourceHandlerLocalFileDisclosureFindings)).not.toContain("local_file_content");
+    expect(JSON.stringify(sourceHandlerLocalFileDisclosureFindings)).not.toContain("openaiClient.chat.completions.create");
+    expect(JSON.stringify(sourceHandlerLocalFileDisclosureFindings)).not.toContain("openai_client.chat.completions.create");
+    const sourceHandlerLocalFilePromptBridgeFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-140");
+    expect(sourceHandlerLocalFilePromptBridgeFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
+      "langchain_summarize_local_file_with_model",
+      "source_summarize_local_file_with_model"
+    ]);
+    expect(sourceHandlerLocalFilePromptBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
+    expect(sourceHandlerLocalFilePromptBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerLocalFilePromptBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
+    expect(sourceHandlerLocalFilePromptBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
+    expect(sourceHandlerLocalFilePromptBridgeFindings.every((finding) => finding.matched_object.metadata.source_tool_handler_redacted === true)).toBe(true);
+    expect(sourceHandlerLocalFilePromptBridgeFindings.every((finding) => finding.matched_object.metadata.handler_filesystem_read === true)).toBe(true);
+    expect(sourceHandlerLocalFilePromptBridgeFindings.every((finding) => finding.matched_object.metadata.handler_tainted_filesystem_path === true)).toBe(true);
+    expect(sourceHandlerLocalFilePromptBridgeFindings.every((finding) => finding.matched_object.metadata.handler_model_provider_call === true)).toBe(true);
+    expect(sourceHandlerLocalFilePromptBridgeFindings.every((finding) => finding.matched_object.metadata.handler_tainted_model_selection === true)).toBe(true);
+    expect(sourceHandlerLocalFilePromptBridgeFindings.every((finding) => finding.matched_object.metadata.handler_local_file_prompt_bridge === true)).toBe(true);
+    expect(sourceHandlerLocalFilePromptBridgeFindings.every((finding) => finding.matched_object.metadata.handler_secret_env_access === true)).toBe(true);
+    expect(sourceHandlerLocalFilePromptBridgeFindings.every((finding) => finding.matched_object.metadata.local_file_prompt_bridge === true)).toBe(true);
+    expect(sourceHandlerLocalFilePromptBridgeFindings.every((finding) => finding.matched_object.metadata.model_provider_call === true)).toBe(true);
+    expect(sourceHandlerLocalFilePromptBridgeFindings.every((finding) => finding.matched_object.metadata.tainted_model_selection === true)).toBe(true);
+    expect(sourceHandlerLocalFilePromptBridgeFindings.every((finding) => finding.matched_object.metadata.tainted_filesystem_path === true)).toBe(true);
+    expect(sourceHandlerLocalFilePromptBridgeFindings.every((finding) => finding.matched_object.metadata.accepts_path_input === true)).toBe(true);
+    expect(sourceHandlerLocalFilePromptBridgeFindings.every((finding) => finding.matched_object.metadata.accepts_content_like_input === true)).toBe(true);
+    expect(sourceHandlerLocalFilePromptBridgeFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("local_file_prompt_bridge"))).toBe(true);
+    expect(sourceHandlerLocalFilePromptBridgeFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("model_provider_call"))).toBe(true);
+    expect(sourceHandlerLocalFilePromptBridgeFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("tainted_filesystem_path"))).toBe(true);
+    expect(sourceHandlerLocalFilePromptBridgeFindings.every((finding) => finding.matched_object.metadata.handler_authority_classes.includes("handler_local_file_prompt_bridge"))).toBe(true);
+    expect(sourceHandlerLocalFilePromptBridgeFindings.every((finding) => finding.matched_object.actions.includes("read"))).toBe(true);
+    expect(sourceHandlerLocalFilePromptBridgeFindings.every((finding) => finding.matched_object.actions.includes("send"))).toBe(true);
+    expect(sourceHandlerLocalFilePromptBridgeFindings.every((finding) => finding.matched_object.external_reach === true)).toBe(true);
+    expect(sourceHandlerLocalFilePromptBridgeFindings.every((finding) => finding.matched_object.secret_exposure === true)).toBe(true);
+    expect(sourceHandlerLocalFilePromptBridgeFindings.every((finding) => finding.matched_object.side_effect === true)).toBe(true);
+    expect(sourceHandlerLocalFilePromptBridgeFindings.every((finding) => finding.matched_object.reversible === false)).toBe(true);
+    expect(JSON.stringify(sourceHandlerLocalFilePromptBridgeFindings)).not.toContain("readFile");
+    expect(JSON.stringify(sourceHandlerLocalFilePromptBridgeFindings)).not.toContain("read_text");
+    expect(JSON.stringify(sourceHandlerLocalFilePromptBridgeFindings)).not.toContain("Path(workspace_path)");
+    expect(JSON.stringify(sourceHandlerLocalFilePromptBridgeFindings)).not.toContain("localFileContent");
+    expect(JSON.stringify(sourceHandlerLocalFilePromptBridgeFindings)).not.toContain("local_file_content");
+    expect(JSON.stringify(sourceHandlerLocalFilePromptBridgeFindings)).not.toContain("openaiClient.chat.completions.create");
+    expect(JSON.stringify(sourceHandlerLocalFilePromptBridgeFindings)).not.toContain("openai_client.chat.completions.create");
+    expect(JSON.stringify(sourceHandlerLocalFilePromptBridgeFindings)).not.toContain("Read a caller selected local file");
     const sourceHandlerTaintedFilesystemPathFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-035");
     expect(sourceHandlerTaintedFilesystemPathFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_read_workspace_file",
       "langchain_readonly_delete_workspace_path",
+      "langchain_summarize_local_file_with_model",
       "langchain_upload_local_file_authenticated_browser",
       "python_readonly_delete_workspace_file",
       "source_read_workspace_file",
       "source_readonly_delete_workspace_file",
+      "source_summarize_local_file_with_model",
       "source_upload_local_file_authenticated_browser",
       "ts_langchain_delete_workspace_path"
     ]);

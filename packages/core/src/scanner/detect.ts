@@ -24247,6 +24247,7 @@ function addToolDefinitionSurface(
       secret_manager_browser_automation_bridge: authority.secret_manager_browser_automation_bridge,
       rag_retrieval_browser_automation_bridge: authority.rag_retrieval_browser_automation_bridge,
       local_file_browser_automation_bridge: authority.local_file_browser_automation_bridge,
+      local_file_prompt_bridge: authority.local_file_prompt_bridge,
       clipboard_read: authority.clipboard_read,
       clipboard_external_service_bridge: authority.clipboard_external_service_bridge,
       secret_manager_access: authority.secret_manager_access,
@@ -26853,6 +26854,7 @@ interface SourceToolHandlerSignals {
   handlerSecretManagerBrowserAutomationBridge: boolean;
   handlerRagRetrievalBrowserAutomationBridge: boolean;
   handlerLocalFileBrowserAutomationBridge: boolean;
+  handlerLocalFilePromptBridge: boolean;
   handlerClipboardRead: boolean;
   handlerClipboardExternalServiceBridge: boolean;
   handlerVisualContextCapture: boolean;
@@ -27425,6 +27427,7 @@ function sourceToolHandlerSignalMetadata(signals: SourceToolHandlerSignals | und
     handler_secret_manager_browser_automation_bridge: signals.handlerSecretManagerBrowserAutomationBridge,
     handler_rag_retrieval_browser_automation_bridge: signals.handlerRagRetrievalBrowserAutomationBridge,
     handler_local_file_browser_automation_bridge: signals.handlerLocalFileBrowserAutomationBridge,
+    handler_local_file_prompt_bridge: signals.handlerLocalFilePromptBridge,
     handler_clipboard_read: signals.handlerClipboardRead,
     handler_clipboard_external_service_bridge: signals.handlerClipboardExternalServiceBridge,
     handler_visual_context_capture: signals.handlerVisualContextCapture,
@@ -27825,6 +27828,9 @@ function classifySourceToolHandlerSignals(
   const localFileBrowserAutomationBridge = browserAutomation && (filesystemRead || taintedFilesystemPath) && (language === "javascript"
     ? hasJavaScriptHandlerLocalFileBrowserAutomationBridge(handlerSource)
     : hasPythonHandlerLocalFileBrowserAutomationBridge(handlerSource));
+  const localFilePromptBridge = modelProviderCall && filesystemRead && taintedFilesystemPath && (language === "javascript"
+    ? hasJavaScriptHandlerLocalFilePromptBridge(handlerSource)
+    : hasPythonHandlerLocalFilePromptBridge(handlerSource));
   const clipboardRead = language === "javascript"
     ? hasJavaScriptHandlerClipboardRead(handlerSource)
     : hasPythonHandlerClipboardRead(handlerSource);
@@ -28060,6 +28066,7 @@ function classifySourceToolHandlerSignals(
   if (secretManagerBrowserAutomationBridge) classes.add("handler_secret_manager_browser_automation_bridge");
   if (ragRetrievalBrowserAutomationBridge) classes.add("handler_rag_retrieval_browser_automation_bridge");
   if (localFileBrowserAutomationBridge) classes.add("handler_local_file_browser_automation_bridge");
+  if (localFilePromptBridge) classes.add("handler_local_file_prompt_bridge");
   if (clipboardRead) classes.add("handler_clipboard_read");
   if (clipboardExternalServiceBridge) classes.add("handler_clipboard_external_service_bridge");
   if (visualContextCapture) classes.add("handler_visual_context_capture");
@@ -28221,6 +28228,7 @@ function classifySourceToolHandlerSignals(
     handlerSecretManagerBrowserAutomationBridge: secretManagerBrowserAutomationBridge,
     handlerRagRetrievalBrowserAutomationBridge: ragRetrievalBrowserAutomationBridge,
     handlerLocalFileBrowserAutomationBridge: localFileBrowserAutomationBridge,
+    handlerLocalFilePromptBridge: localFilePromptBridge,
     handlerClipboardRead: clipboardRead,
     handlerClipboardExternalServiceBridge: clipboardExternalServiceBridge,
     handlerVisualContextCapture: visualContextCapture,
@@ -29432,6 +29440,31 @@ function hasJavaScriptHandlerVisualContextPromptBridge(source: string): boolean 
 
 function hasPythonHandlerVisualContextPromptBridge(source: string): boolean {
   const identifiers = extractPythonVisualContextIdentifiers(source);
+  return identifiers.length > 0 && callExpressionReferencesAnyIdentifier(
+    [
+      /\b(?:openai|openai_client|anthropic|anthropic_client|mistral|mistral_client|cohere|cohere_client|bedrock|bedrock_client|gemini|gemini_client|vertex|vertex_client|llm|model_client|language_model)\s*(?:\.\s*[A-Za-z_]\w*){0,5}\s*\.\s*(?:create|stream|parse|invoke|send|complete|generate_content|predict)\s*\(([\s\S]{0,3200})\)/giu,
+      /\bInvokeModelCommand\s*\(([\s\S]{0,3200})\)/giu
+    ],
+    source,
+    identifiers
+  );
+}
+
+function hasJavaScriptHandlerLocalFilePromptBridge(source: string): boolean {
+  const identifiers = extractJavaScriptLocalFileIdentifiers(source);
+  return identifiers.length > 0 && callExpressionReferencesAnyIdentifier(
+    [
+      /\b(?:openai|openaiClient|anthropic|anthropicClient|mistral|mistralClient|cohere|cohereClient|bedrock|bedrockClient|gemini|geminiClient|vertex|vertexClient|llm|modelClient|languageModel)\s*(?:\.\s*[A-Za-z_$][\w$]*){0,5}\s*\.\s*(?:create|stream|parse|invoke|send|complete|generateContent|generateText|doGenerate)\s*\(([\s\S]{0,3200})\)/giu,
+      /\b(?:generateText|streamText|generateObject|streamObject)\s*\(([\s\S]{0,3200})\)/giu,
+      /\bnew\s+InvokeModelCommand\s*\(([\s\S]{0,3200})\)/giu
+    ],
+    source,
+    identifiers
+  );
+}
+
+function hasPythonHandlerLocalFilePromptBridge(source: string): boolean {
+  const identifiers = extractPythonLocalFileIdentifiers(source);
   return identifiers.length > 0 && callExpressionReferencesAnyIdentifier(
     [
       /\b(?:openai|openai_client|anthropic|anthropic_client|mistral|mistral_client|cohere|cohere_client|bedrock|bedrock_client|gemini|gemini_client|vertex|vertex_client|llm|model_client|language_model)\s*(?:\.\s*[A-Za-z_]\w*){0,5}\s*\.\s*(?:create|stream|parse|invoke|send|complete|generate_content|predict)\s*\(([\s\S]{0,3200})\)/giu,
@@ -34792,6 +34825,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   secret_manager_browser_automation_bridge: boolean;
   rag_retrieval_browser_automation_bridge: boolean;
   local_file_browser_automation_bridge: boolean;
+  local_file_prompt_bridge: boolean;
   clipboard_read: boolean;
   clipboard_external_service_bridge: boolean;
   visual_context_capture: boolean;
@@ -35051,6 +35085,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   const handlerSecretManagerBrowserAutomationBridge = handler?.handlerSecretManagerBrowserAutomationBridge === true;
   const handlerRagRetrievalBrowserAutomationBridge = handler?.handlerRagRetrievalBrowserAutomationBridge === true;
   const handlerLocalFileBrowserAutomationBridge = handler?.handlerLocalFileBrowserAutomationBridge === true;
+  const handlerLocalFilePromptBridge = handler?.handlerLocalFilePromptBridge === true;
   const handlerClipboardRead = handler?.handlerClipboardRead === true;
   const handlerClipboardExternalServiceBridge = handler?.handlerClipboardExternalServiceBridge === true;
   const handlerVisualContextCapture = handler?.handlerVisualContextCapture === true;
@@ -35172,6 +35207,11 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   if (handlerLocalFileBrowserAutomationBridge) {
     classes.add("local_file_browser_automation_bridge");
     actions.add("execute");
+    actions.add("read");
+    actions.add("send");
+  }
+  if (handlerLocalFilePromptBridge) {
+    classes.add("local_file_prompt_bridge");
     actions.add("read");
     actions.add("send");
   }
@@ -35970,6 +36010,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerToolOutputBrowserAutomationBridge ||
       handlerSecretManagerBrowserAutomationBridge ||
       handlerLocalFileBrowserAutomationBridge ||
+      handlerLocalFilePromptBridge ||
       handlerClipboardRead ||
       handlerClipboardExternalServiceBridge ||
       handlerVisualContextCapture ||
@@ -36103,6 +36144,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   const sideEffect =
     localFileDisclosure ||
     handlerLocalFileBrowserAutomationBridge ||
+    handlerLocalFilePromptBridge ||
     handlerClipboardExternalServiceBridge ||
     readOnlyHintConflict ||
     explicitSideEffectHint ||
@@ -36121,6 +36163,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerNetworkResponseBrowserAutomationBridge ||
       handlerToolOutputBrowserAutomationBridge ||
       handlerLocalFileBrowserAutomationBridge ||
+      handlerLocalFilePromptBridge ||
       handlerClipboardExternalServiceBridge ||
       handlerVisualContextCapture ||
       handlerVisualContextPromptBridge ||
@@ -36135,6 +36178,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerSecretManagerBrowserAutomationBridge ||
       handlerRagRetrievalBrowserAutomationBridge ||
       handlerLocalFileBrowserAutomationBridge ||
+      handlerLocalFilePromptBridge ||
       handlerAgentDelegation ||
       handlerModelOutputAgentDelegationBridge ||
       handlerNetworkResponseAgentDelegationBridge ||
@@ -36222,6 +36266,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerSecretEnvAccess ||
       localFileDisclosure ||
       handlerLocalFileBrowserAutomationBridge ||
+      handlerLocalFilePromptBridge ||
       handlerClipboardExternalServiceBridge ||
       handlerCredentialIssuance ||
       handlerAgentDelegation ||
@@ -36345,6 +36390,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
     secret_manager_browser_automation_bridge: handlerSecretManagerBrowserAutomationBridge,
     rag_retrieval_browser_automation_bridge: handlerRagRetrievalBrowserAutomationBridge,
     local_file_browser_automation_bridge: handlerLocalFileBrowserAutomationBridge,
+    local_file_prompt_bridge: handlerLocalFilePromptBridge,
     clipboard_read: handlerClipboardRead,
     clipboard_external_service_bridge: handlerClipboardExternalServiceBridge,
     visual_context_capture: handlerVisualContextCapture,
@@ -36644,6 +36690,7 @@ function authoritySignature(tool: SurfaceObject): string {
     metadata.secret_manager_browser_automation_bridge === true ? "secret_manager_browser_automation_bridge" : "",
     metadata.rag_retrieval_browser_automation_bridge === true ? "rag_retrieval_browser_automation_bridge" : "",
     metadata.local_file_browser_automation_bridge === true ? "local_file_browser_automation_bridge" : "",
+    metadata.local_file_prompt_bridge === true ? "local_file_prompt_bridge" : "",
     metadata.clipboard_read === true ? "clipboard_read" : "",
     metadata.clipboard_external_service_bridge === true ? "clipboard_external_service_bridge" : "",
     metadata.secret_manager_access === true ? "secret_manager_access" : "",
@@ -36812,6 +36859,7 @@ function isPrivilegedToolSurface(tool: SurfaceObject): boolean {
     tool.metadata.secret_manager_browser_automation_bridge === true ||
     tool.metadata.rag_retrieval_browser_automation_bridge === true ||
     tool.metadata.local_file_browser_automation_bridge === true ||
+    tool.metadata.local_file_prompt_bridge === true ||
     tool.metadata.clipboard_read === true ||
     tool.metadata.clipboard_external_service_bridge === true ||
     tool.metadata.secret_manager_access === true ||
