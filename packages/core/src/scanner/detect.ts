@@ -24190,6 +24190,7 @@ function addToolDefinitionSurface(
       !authority.rag_retrieval_external_service_bridge &&
       !authority.rag_retrieval_memory_bridge &&
       !authority.task_queue_enqueue &&
+      !authority.env_secret_task_queue_bridge &&
       !authority.local_file_task_queue_bridge &&
       !authority.prompt_registry_write &&
       !authority.approval_auto_execution &&
@@ -24370,6 +24371,7 @@ function addToolDefinitionSurface(
       tainted_task_payload: authority.tainted_task_payload,
       tainted_task_routing: authority.tainted_task_routing,
       secret_manager_task_queue_bridge: authority.secret_manager_task_queue_bridge,
+      env_secret_task_queue_bridge: authority.env_secret_task_queue_bridge,
       model_output_task_queue_bridge: authority.model_output_task_queue_bridge,
       network_response_task_queue_bridge: authority.network_response_task_queue_bridge,
       local_file_task_queue_bridge: authority.local_file_task_queue_bridge,
@@ -26854,6 +26856,7 @@ interface SourceToolHandlerSignals {
   handlerTaintedTaskPayload: boolean;
   handlerTaintedTaskRouting: boolean;
   handlerSecretManagerTaskQueueBridge: boolean;
+  handlerEnvSecretTaskQueueBridge: boolean;
   handlerModelOutputTaskQueueBridge: boolean;
   handlerNetworkResponseTaskQueueBridge: boolean;
   handlerLocalFileTaskQueueBridge: boolean;
@@ -27451,6 +27454,7 @@ function sourceToolHandlerSignalMetadata(signals: SourceToolHandlerSignals | und
     handler_tainted_task_payload: signals.handlerTaintedTaskPayload,
     handler_tainted_task_routing: signals.handlerTaintedTaskRouting,
     handler_secret_manager_task_queue_bridge: signals.handlerSecretManagerTaskQueueBridge,
+    handler_env_secret_task_queue_bridge: signals.handlerEnvSecretTaskQueueBridge,
     handler_model_output_task_queue_bridge: signals.handlerModelOutputTaskQueueBridge,
     handler_network_response_task_queue_bridge: signals.handlerNetworkResponseTaskQueueBridge,
     handler_local_file_task_queue_bridge: signals.handlerLocalFileTaskQueueBridge,
@@ -28011,6 +28015,18 @@ function classifySourceToolHandlerSignals(
   const visualContextTaskQueueBridge = visualContextCapture && taskQueueEnqueue && (language === "javascript"
     ? hasJavaScriptHandlerVisualContextTaskQueueBridge(handlerSource)
     : hasPythonHandlerVisualContextTaskQueueBridge(handlerSource));
+  const envSecretTaskQueueBridge = secretEnvAccess &&
+    taskQueueEnqueue &&
+    !secretManagerTaskQueueBridge &&
+    !modelOutputTaskQueueBridge &&
+    !networkResponseTaskQueueBridge &&
+    !localFileTaskQueueBridge &&
+    !toolOutputTaskQueueBridge &&
+    !visualContextTaskQueueBridge &&
+    (language === "javascript"
+      ? hasJavaScriptHandlerEnvSecretTaskQueueBridge(handlerSource)
+      : hasPythonHandlerEnvSecretTaskQueueBridge(handlerSource));
+  if (envSecretTaskQueueBridge) taintedTaskPayload = true;
   const visualContextAgentDelegationBridge = visualContextCapture && agentDelegation && (language === "javascript"
     ? hasJavaScriptHandlerVisualContextAgentDelegationBridge(handlerSource)
     : hasPythonHandlerVisualContextAgentDelegationBridge(handlerSource));
@@ -28235,6 +28251,7 @@ function classifySourceToolHandlerSignals(
   if (taintedTaskPayload) classes.add("handler_tainted_task_payload");
   if (taintedTaskRouting) classes.add("handler_tainted_task_routing");
   if (secretManagerTaskQueueBridge) classes.add("handler_secret_manager_task_queue_bridge");
+  if (envSecretTaskQueueBridge) classes.add("handler_env_secret_task_queue_bridge");
   if (modelOutputTaskQueueBridge) classes.add("handler_model_output_task_queue_bridge");
   if (networkResponseTaskQueueBridge) classes.add("handler_network_response_task_queue_bridge");
   if (localFileTaskQueueBridge) classes.add("handler_local_file_task_queue_bridge");
@@ -28418,6 +28435,7 @@ function classifySourceToolHandlerSignals(
     handlerTaintedTaskPayload: taintedTaskPayload,
     handlerTaintedTaskRouting: taintedTaskRouting,
     handlerSecretManagerTaskQueueBridge: secretManagerTaskQueueBridge,
+    handlerEnvSecretTaskQueueBridge: envSecretTaskQueueBridge,
     handlerModelOutputTaskQueueBridge: modelOutputTaskQueueBridge,
     handlerNetworkResponseTaskQueueBridge: networkResponseTaskQueueBridge,
     handlerLocalFileTaskQueueBridge: localFileTaskQueueBridge,
@@ -32404,6 +32422,24 @@ function trainingDatasetWriteCallReferencesPayloadIdentifier(patterns: RegExp[],
   return false;
 }
 
+function taskQueueCallReferencesPayloadIdentifier(patterns: RegExp[], source: string, identifiers: string[]): boolean {
+  const payloadField =
+    /(?:^|[{\s,(])["']?(?:args|argument|arguments|body|content|contents|context|contexts|data|event|events|input|inputs|job|jobData|job_data|message|messages|payload|payloads|record|records|request|requests|task|taskData|task_data|value|values)["']?\s*[:=]/u;
+  for (const pattern of patterns) {
+    let match: RegExpExecArray | null;
+    while ((match = pattern.exec(source)) !== null) {
+      const expression = match[1] ?? "";
+      if (expression.split(/\r?\n/u).some((line) =>
+        payloadField.test(line) && identifiers.some((identifier) => new RegExp(`\\b${escapeRegExp(identifier)}\\b`, "u").test(line))
+      )) {
+        return true;
+      }
+      if (match[0].length === 0) pattern.lastIndex += 1;
+    }
+  }
+  return false;
+}
+
 function hasJavaScriptHandlerTaskQueueEnqueue(source: string): boolean {
   return /\b(?:taskQueue|taskQueueClient|queueClient|jobQueue|backgroundQueue|workerQueue|agentQueue|sqs|sqsClient|pubsub|pubsubClient|eventBus|eventBridge|scheduler|jobClient|kafkaProducer|redisQueue|bullQueue|temporalClient)\b/iu.test(
     source
@@ -32451,6 +32487,31 @@ function hasPythonHandlerTaintedTaskRouting(source: string): boolean {
     /\b(?:task_queue|task_queue_client|queue_client|job_queue|background_queue|worker_queue|agent_queue|sqs|sqs_client|pubsub|pubsub_client|event_bus|eventbridge|scheduler|job_client|kafka_producer|redis_queue|bull_queue|temporal_client)\s*(?:\.\s*[A-Za-z_]\w*){0,5}\s*\.\s*(?:enqueue|enqueue_task|send|send_message|send_messages|publish|publish_message|emit|put_events|put_event|schedule|schedule_task|dispatch|dispatch_job|create_job|create_task|add|add_job|push|produce|start_workflow|signal_with_start)\s*\(([\s\S]{0,1400})\)/giu,
     /\b(?:enqueue_agent_task|enqueue_task|dispatch_agent_job|publish_agent_job|schedule_agent_task|send_agent_job)\s*\(([\s\S]{0,1400})\)/giu
   ].some((pattern) => expressionMatchesTaintedTaskRouting(pattern, source));
+}
+
+function hasJavaScriptHandlerEnvSecretTaskQueueBridge(source: string): boolean {
+  const identifiers = extractJavaScriptEnvSecretIdentifiers(source);
+  return identifiers.length > 0 && taskQueueCallReferencesPayloadIdentifier(
+    [
+      /\b(?:taskQueue|taskQueueClient|queueClient|jobQueue|backgroundQueue|workerQueue|agentQueue|sqs|sqsClient|pubsub|pubsubClient|eventBus|eventBridge|scheduler|jobClient|kafkaProducer|redisQueue|bullQueue|temporalClient)\s*(?:\.\s*[A-Za-z_$][\w$]*){0,5}\s*\.\s*(?:enqueue|enqueueTask|send|sendMessage|sendMessageBatch|publish|publishMessage|emit|putEvents|putEvent|schedule|scheduleTask|dispatch|dispatchJob|createJob|createTask|add|addJob|push|produce|startWorkflow|signalWithStart)\s*\(([\s\S]{0,2200})\)/giu,
+      /\bnew\s+(?:SendMessageCommand|PutEventsCommand|PublishCommand)\s*\(([\s\S]{0,2200})\)/giu,
+      /\b(?:enqueueAgentTask|enqueueTask|dispatchAgentJob|publishAgentJob|scheduleAgentTask|sendAgentJob)\s*\(([\s\S]{0,2200})\)/giu
+    ],
+    source,
+    identifiers
+  );
+}
+
+function hasPythonHandlerEnvSecretTaskQueueBridge(source: string): boolean {
+  const identifiers = extractPythonEnvSecretIdentifiers(source);
+  return identifiers.length > 0 && taskQueueCallReferencesPayloadIdentifier(
+    [
+      /\b(?:task_queue|task_queue_client|queue_client|job_queue|background_queue|worker_queue|agent_queue|sqs|sqs_client|pubsub|pubsub_client|event_bus|eventbridge|scheduler|job_client|kafka_producer|redis_queue|bull_queue|temporal_client)\s*(?:\.\s*[A-Za-z_]\w*){0,5}\s*\.\s*(?:enqueue|enqueue_task|send|send_message|send_messages|publish|publish_message|emit|put_events|put_event|schedule|schedule_task|dispatch|dispatch_job|create_job|create_task|add|add_job|push|produce|start_workflow|signal_with_start)\s*\(([\s\S]{0,2200})\)/giu,
+      /\b(?:enqueue_agent_task|enqueue_task|dispatch_agent_job|publish_agent_job|schedule_agent_task|send_agent_job)\s*\(([\s\S]{0,2200})\)/giu
+    ],
+    source,
+    identifiers
+  );
 }
 
 function hasJavaScriptHandlerModelOutputTaskQueueBridge(source: string): boolean {
@@ -35918,6 +35979,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   tainted_task_payload: boolean;
   tainted_task_routing: boolean;
   secret_manager_task_queue_bridge: boolean;
+  env_secret_task_queue_bridge: boolean;
   model_output_task_queue_bridge: boolean;
   network_response_task_queue_bridge: boolean;
   local_file_task_queue_bridge: boolean;
@@ -36047,6 +36109,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   const handlerTaintedTaskPayload = handler?.handlerTaintedTaskPayload === true;
   const handlerTaintedTaskRouting = handler?.handlerTaintedTaskRouting === true;
   const handlerSecretManagerTaskQueueBridge = handler?.handlerSecretManagerTaskQueueBridge === true;
+  const handlerEnvSecretTaskQueueBridge = handler?.handlerEnvSecretTaskQueueBridge === true;
   const handlerModelOutputTaskQueueBridge = handler?.handlerModelOutputTaskQueueBridge === true;
   const handlerNetworkResponseTaskQueueBridge = handler?.handlerNetworkResponseTaskQueueBridge === true;
   const handlerLocalFileTaskQueueBridge = handler?.handlerLocalFileTaskQueueBridge === true;
@@ -36999,6 +37062,12 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
     actions.add("write");
     actions.add("remember");
   }
+  if (handlerEnvSecretTaskQueueBridge) {
+    classes.add("env_secret_task_queue_bridge");
+    actions.add("send");
+    actions.add("write");
+    actions.add("remember");
+  }
   if (handlerModelOutputTaskQueueBridge) {
     classes.add("model_output_task_queue_bridge");
     actions.add("read");
@@ -37276,6 +37345,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerTaintedTaskPayload ||
       handlerTaintedTaskRouting ||
       handlerSecretManagerTaskQueueBridge ||
+      handlerEnvSecretTaskQueueBridge ||
       handlerModelOutputTaskQueueBridge ||
       handlerNetworkResponseTaskQueueBridge ||
       handlerLocalFileTaskQueueBridge ||
@@ -37448,6 +37518,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerRagRetrievalMemoryBridge ||
       handlerTaskQueueEnqueue ||
       handlerSecretManagerTaskQueueBridge ||
+      handlerEnvSecretTaskQueueBridge ||
       handlerModelOutputTaskQueueBridge ||
       handlerNetworkResponseTaskQueueBridge ||
       handlerLocalFileTaskQueueBridge ||
@@ -37534,6 +37605,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       (handlerLocalFileArtifactBridge && handlerSecretEnvAccess) ||
       (handlerToolOutputEmbeddingVectorBridge && handlerSecretEnvAccess) ||
       handlerSecretManagerTaskQueueBridge ||
+      handlerEnvSecretTaskQueueBridge ||
       (handlerToolOutputArtifactBridge && handlerSecretEnvAccess) ||
       (handlerModelOutputTaskQueueBridge && handlerSecretEnvAccess) ||
       (handlerNetworkResponseTaskQueueBridge && handlerSecretEnvAccess) ||
@@ -37731,6 +37803,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
     tainted_task_payload: handlerTaintedTaskPayload,
     tainted_task_routing: handlerTaintedTaskRouting,
     secret_manager_task_queue_bridge: handlerSecretManagerTaskQueueBridge,
+    env_secret_task_queue_bridge: handlerEnvSecretTaskQueueBridge,
     model_output_task_queue_bridge: handlerModelOutputTaskQueueBridge,
     network_response_task_queue_bridge: handlerNetworkResponseTaskQueueBridge,
     local_file_task_queue_bridge: handlerLocalFileTaskQueueBridge,
@@ -37904,6 +37977,7 @@ function authoritySignature(tool: SurfaceObject): string {
     metadata.tainted_task_payload === true ? "tainted_task_payload" : "",
     metadata.tainted_task_routing === true ? "tainted_task_routing" : "",
     metadata.secret_manager_task_queue_bridge === true ? "secret_manager_task_queue_bridge" : "",
+    metadata.env_secret_task_queue_bridge === true ? "env_secret_task_queue_bridge" : "",
     metadata.model_output_task_queue_bridge === true ? "model_output_task_queue_bridge" : "",
     metadata.network_response_task_queue_bridge === true ? "network_response_task_queue_bridge" : "",
     metadata.local_file_task_queue_bridge === true ? "local_file_task_queue_bridge" : "",
@@ -38100,6 +38174,7 @@ function isPrivilegedToolSurface(tool: SurfaceObject): boolean {
     tool.metadata.tainted_task_payload === true ||
     tool.metadata.tainted_task_routing === true ||
     tool.metadata.secret_manager_task_queue_bridge === true ||
+    tool.metadata.env_secret_task_queue_bridge === true ||
     tool.metadata.model_output_task_queue_bridge === true ||
     tool.metadata.network_response_task_queue_bridge === true ||
     tool.metadata.local_file_task_queue_bridge === true ||

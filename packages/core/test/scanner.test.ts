@@ -661,6 +661,9 @@ describe("scanner", () => {
     const sourceEnvSecretArtifactBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "source_export_env_secret_artifact"
     );
+    const sourceEnvSecretTaskQueueBridgeTool = surfaces.tools.find(
+      (surface) => surface.name === "source_enqueue_env_secret_background_job"
+    );
     const sourceToolOutputCredentialIssuanceBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "source_issue_privileged_tool_observation_credential"
     );
@@ -971,6 +974,9 @@ describe("scanner", () => {
     );
     const langchainEnvSecretArtifactBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "langchain_export_env_secret_artifact"
+    );
+    const langchainEnvSecretTaskQueueBridgeTool = surfaces.tools.find(
+      (surface) => surface.name === "langchain_enqueue_env_secret_background_job"
     );
     const langchainToolOutputCredentialIssuanceBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "langchain_issue_privileged_tool_observation_credential"
@@ -6375,6 +6381,77 @@ describe("scanner", () => {
     expect(JSON.stringify(sourceEnvSecretArtifactBridgeTool)).not.toContain("Persist runtime credential");
     expect(JSON.stringify(sourceEnvSecretArtifactBridgeTool)).not.toContain("source env secret exported to artifact");
     expect(JSON.stringify(sourceEnvSecretArtifactBridgeTool)).not.toContain("Export environment-backed support credentials");
+    expect(sourceEnvSecretTaskQueueBridgeTool).toMatchObject({
+      path: "mcp-source/customer-tools.ts",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["call", "remember", "send", "write"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(sourceEnvSecretTaskQueueBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_mcp_source_tool: true,
+      mcp_source_tool_registration: true,
+      mcp_source_tool_registration_kind: "registerTool",
+      mcp_source_tool_argument_count: 3,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_secret_like_input: true,
+      accepts_content_like_input: false,
+      accepts_path_input: false,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      task_queue_enqueue: true,
+      env_secret_task_queue_bridge: true,
+      tainted_task_payload: true,
+      tainted_task_routing: true,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_secret_env_access: true,
+      handler_task_queue_enqueue: true,
+      handler_env_secret_task_queue_bridge: true,
+      handler_tainted_task_payload: true,
+      handler_tainted_task_routing: true,
+      handler_signal_count: 5,
+      open_world_schema: false
+    });
+    for (const authorityClass of [
+      "env_secret_task_queue_bridge",
+      "secret_env_access",
+      "tainted_task_payload",
+      "tainted_task_routing",
+      "task_queue_enqueue"
+    ]) {
+      expect(sourceEnvSecretTaskQueueBridgeTool?.metadata.authority_classes).toContain(authorityClass);
+    }
+    expect(sourceEnvSecretTaskQueueBridgeTool?.metadata.handler_authority_classes).toEqual([
+      "handler_env_secret_task_queue_bridge",
+      "handler_secret_env_access",
+      "handler_tainted_task_payload",
+      "handler_tainted_task_routing",
+      "handler_task_queue_enqueue"
+    ]);
+    expect(sourceEnvSecretTaskQueueBridgeTool?.metadata.handler_env_key_names).toEqual(["SOURCE_QUEUE_REPLAY_SECRET"]);
+    expect(sourceEnvSecretTaskQueueBridgeTool?.metadata.schema_properties).toEqual([
+      "customer_id",
+      "job_goal",
+      "queue_name",
+      "route_name"
+    ]);
+    expect(sourceEnvSecretTaskQueueBridgeTool?.metadata.required_properties).toEqual([
+      "customer_id",
+      "job_goal",
+      "queue_name",
+      "route_name"
+    ]);
+    expect(JSON.stringify(sourceEnvSecretTaskQueueBridgeTool)).not.toContain("process.env");
+    expect(JSON.stringify(sourceEnvSecretTaskQueueBridgeTool)).not.toContain("queuedCredential");
+    expect(JSON.stringify(sourceEnvSecretTaskQueueBridgeTool)).not.toContain("taskQueueClient.enqueue");
+    expect(JSON.stringify(sourceEnvSecretTaskQueueBridgeTool)).not.toContain("Replay runtime credential");
+    expect(JSON.stringify(sourceEnvSecretTaskQueueBridgeTool)).not.toContain("source env secret queued for background agent");
+    expect(JSON.stringify(sourceEnvSecretTaskQueueBridgeTool)).not.toContain("Enqueue environment-backed support credentials");
     expect(sourceToolOutputCredentialIssuanceBridgeTool).toMatchObject({
       path: "mcp-source/customer-tools.ts",
       data_classes: ["confidential", "credential", "pii"],
@@ -18046,6 +18123,78 @@ describe("scanner", () => {
     expect(JSON.stringify(langchainEnvSecretArtifactBridgeTool)).not.toContain("Persist runtime credential");
     expect(JSON.stringify(langchainEnvSecretArtifactBridgeTool)).not.toContain("framework env secret exported to artifact");
     expect(JSON.stringify(langchainEnvSecretArtifactBridgeTool)).not.toContain("Export environment-backed support credentials");
+    expect(langchainEnvSecretTaskQueueBridgeTool).toMatchObject({
+      path: "framework-tools/langchain_tools.py",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["call", "remember", "send", "write"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(langchainEnvSecretTaskQueueBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_agent_framework_source_tool: true,
+      agent_framework_source_tool: true,
+      agent_framework_source_tool_framework: "langchain",
+      agent_framework_source_tool_registration_kind: "python_tool_decorator",
+      agent_framework_source_tool_argument_count: 4,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_secret_like_input: true,
+      accepts_content_like_input: false,
+      accepts_path_input: false,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      task_queue_enqueue: true,
+      env_secret_task_queue_bridge: true,
+      tainted_task_payload: true,
+      tainted_task_routing: true,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_secret_env_access: true,
+      handler_task_queue_enqueue: true,
+      handler_env_secret_task_queue_bridge: true,
+      handler_tainted_task_payload: true,
+      handler_tainted_task_routing: true,
+      handler_signal_count: 5,
+      open_world_schema: false
+    });
+    for (const authorityClass of [
+      "env_secret_task_queue_bridge",
+      "secret_env_access",
+      "tainted_task_payload",
+      "tainted_task_routing",
+      "task_queue_enqueue"
+    ]) {
+      expect(langchainEnvSecretTaskQueueBridgeTool?.metadata.authority_classes).toContain(authorityClass);
+    }
+    expect(langchainEnvSecretTaskQueueBridgeTool?.metadata.handler_authority_classes).toEqual([
+      "handler_env_secret_task_queue_bridge",
+      "handler_secret_env_access",
+      "handler_tainted_task_payload",
+      "handler_tainted_task_routing",
+      "handler_task_queue_enqueue"
+    ]);
+    expect(langchainEnvSecretTaskQueueBridgeTool?.metadata.handler_env_key_names).toEqual(["LANGCHAIN_QUEUE_REPLAY_SECRET"]);
+    expect(langchainEnvSecretTaskQueueBridgeTool?.metadata.schema_properties).toEqual([
+      "customer_id",
+      "job_goal",
+      "queue_name",
+      "route_name"
+    ]);
+    expect(langchainEnvSecretTaskQueueBridgeTool?.metadata.required_properties).toEqual([
+      "customer_id",
+      "job_goal",
+      "queue_name",
+      "route_name"
+    ]);
+    expect(JSON.stringify(langchainEnvSecretTaskQueueBridgeTool)).not.toContain("os.getenv");
+    expect(JSON.stringify(langchainEnvSecretTaskQueueBridgeTool)).not.toContain("queued_credential");
+    expect(JSON.stringify(langchainEnvSecretTaskQueueBridgeTool)).not.toContain("task_queue_client.enqueue");
+    expect(JSON.stringify(langchainEnvSecretTaskQueueBridgeTool)).not.toContain("Replay runtime credential");
+    expect(JSON.stringify(langchainEnvSecretTaskQueueBridgeTool)).not.toContain("framework env secret queued for background agent");
+    expect(JSON.stringify(langchainEnvSecretTaskQueueBridgeTool)).not.toContain("Enqueue environment-backed support credentials");
     expect(langchainToolOutputCredentialIssuanceBridgeTool).toMatchObject({
       path: "framework-tools/langchain_tools.py",
       data_classes: ["confidential", "credential", "pii"],

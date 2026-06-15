@@ -162,6 +162,9 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-158")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-159")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-160")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-161")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-162")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-163")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-001")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-002")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-003")).toBe(true);
@@ -12354,6 +12357,54 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerEnvSecretArtifactBridgeFindings)).not.toContain("source env secret exported to artifact");
     expect(JSON.stringify(sourceHandlerEnvSecretArtifactBridgeFindings)).not.toContain("framework env secret exported to artifact");
     expect(JSON.stringify(sourceHandlerEnvSecretArtifactBridgeFindings)).not.toContain("Export environment-backed support credentials");
+    const sourceHandlerEnvSecretTaskQueueBridgeFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-163");
+    expect(sourceHandlerEnvSecretTaskQueueBridgeFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
+      "langchain_enqueue_env_secret_background_job",
+      "source_enqueue_env_secret_background_job"
+    ]);
+    expect(sourceHandlerEnvSecretTaskQueueBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
+    expect(sourceHandlerEnvSecretTaskQueueBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerEnvSecretTaskQueueBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
+    expect(sourceHandlerEnvSecretTaskQueueBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
+    expect(sourceHandlerEnvSecretTaskQueueBridgeFindings.every((finding) => finding.matched_object.metadata.source_tool_handler_redacted === true)).toBe(true);
+    expect(sourceHandlerEnvSecretTaskQueueBridgeFindings.every((finding) => finding.matched_object.metadata.handler_secret_env_access === true)).toBe(true);
+    expect(sourceHandlerEnvSecretTaskQueueBridgeFindings.every((finding) => finding.matched_object.metadata.handler_task_queue_enqueue === true)).toBe(true);
+    expect(sourceHandlerEnvSecretTaskQueueBridgeFindings.every((finding) => finding.matched_object.metadata.handler_tainted_task_payload === true)).toBe(true);
+    expect(sourceHandlerEnvSecretTaskQueueBridgeFindings.every((finding) => finding.matched_object.metadata.handler_tainted_task_routing === true)).toBe(true);
+    expect(sourceHandlerEnvSecretTaskQueueBridgeFindings.every((finding) => finding.matched_object.metadata.handler_env_secret_task_queue_bridge === true)).toBe(true);
+    expect(sourceHandlerEnvSecretTaskQueueBridgeFindings.every((finding) => finding.matched_object.metadata.task_queue_enqueue === true)).toBe(true);
+    expect(sourceHandlerEnvSecretTaskQueueBridgeFindings.every((finding) => finding.matched_object.metadata.tainted_task_payload === true)).toBe(true);
+    expect(sourceHandlerEnvSecretTaskQueueBridgeFindings.every((finding) => finding.matched_object.metadata.tainted_task_routing === true)).toBe(true);
+    expect(sourceHandlerEnvSecretTaskQueueBridgeFindings.every((finding) => finding.matched_object.metadata.env_secret_task_queue_bridge === true)).toBe(true);
+    expect(sourceHandlerEnvSecretTaskQueueBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.authority_classes.includes("env_secret_task_queue_bridge")
+    )).toBe(true);
+    expect(sourceHandlerEnvSecretTaskQueueBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.authority_classes.includes("task_queue_enqueue")
+    )).toBe(true);
+    expect(sourceHandlerEnvSecretTaskQueueBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.handler_authority_classes.includes("handler_env_secret_task_queue_bridge")
+    )).toBe(true);
+    expect(sourceHandlerEnvSecretTaskQueueBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.handler_authority_classes.includes("handler_task_queue_enqueue")
+    )).toBe(true);
+    expect(sourceHandlerEnvSecretTaskQueueBridgeFindings.every((finding) => finding.matched_object.actions.includes("send"))).toBe(true);
+    expect(sourceHandlerEnvSecretTaskQueueBridgeFindings.every((finding) => finding.matched_object.actions.includes("write"))).toBe(true);
+    expect(sourceHandlerEnvSecretTaskQueueBridgeFindings.every((finding) => finding.matched_object.actions.includes("remember"))).toBe(true);
+    expect(sourceHandlerEnvSecretTaskQueueBridgeFindings.every((finding) => finding.matched_object.external_reach === true)).toBe(true);
+    expect(sourceHandlerEnvSecretTaskQueueBridgeFindings.every((finding) => finding.matched_object.secret_exposure === true)).toBe(true);
+    expect(sourceHandlerEnvSecretTaskQueueBridgeFindings.every((finding) => finding.matched_object.side_effect === true)).toBe(true);
+    expect(sourceHandlerEnvSecretTaskQueueBridgeFindings.every((finding) => finding.matched_object.reversible === false)).toBe(true);
+    expect(JSON.stringify(sourceHandlerEnvSecretTaskQueueBridgeFindings)).not.toContain("process.env");
+    expect(JSON.stringify(sourceHandlerEnvSecretTaskQueueBridgeFindings)).not.toContain("os.getenv");
+    expect(JSON.stringify(sourceHandlerEnvSecretTaskQueueBridgeFindings)).not.toContain("queuedCredential");
+    expect(JSON.stringify(sourceHandlerEnvSecretTaskQueueBridgeFindings)).not.toContain("queued_credential");
+    expect(JSON.stringify(sourceHandlerEnvSecretTaskQueueBridgeFindings)).not.toContain("taskQueueClient.enqueue");
+    expect(JSON.stringify(sourceHandlerEnvSecretTaskQueueBridgeFindings)).not.toContain("task_queue_client.enqueue");
+    expect(JSON.stringify(sourceHandlerEnvSecretTaskQueueBridgeFindings)).not.toContain("Replay runtime credential");
+    expect(JSON.stringify(sourceHandlerEnvSecretTaskQueueBridgeFindings)).not.toContain("source env secret queued for background agent");
+    expect(JSON.stringify(sourceHandlerEnvSecretTaskQueueBridgeFindings)).not.toContain("framework env secret queued for background agent");
+    expect(JSON.stringify(sourceHandlerEnvSecretTaskQueueBridgeFindings)).not.toContain("Enqueue environment-backed support credentials");
     const sourceHandlerRagRetrievalPromptBridgeFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-094");
     expect(sourceHandlerRagRetrievalPromptBridgeFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_summarize_retrieved_context_with_model",

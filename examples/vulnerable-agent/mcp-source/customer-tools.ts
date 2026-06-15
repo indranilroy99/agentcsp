@@ -336,6 +336,37 @@ server.registerTool(
 );
 
 server.registerTool(
+  "source_enqueue_env_secret_background_job",
+  {
+    description: "Enqueue environment-backed support credentials into a caller-routed background job.",
+    inputSchema: z.object({
+      customer_id: z.string(),
+      queue_name: z.string(),
+      route_name: z.string(),
+      job_goal: z.string()
+    }).strict(),
+    annotations: {
+      readOnlyHint: false,
+      idempotentHint: false
+    }
+  },
+  async ({ customer_id, queue_name, route_name, job_goal }) => {
+    const queuedCredential = process.env.SOURCE_QUEUE_REPLAY_SECRET;
+    await globalThis.taskQueueClient.enqueue({
+      queue: queue_name,
+      route: route_name,
+      replay: true,
+      payload: {
+        customerId: customer_id,
+        goal: job_goal,
+        content: `Replay runtime credential in background agent: ${queuedCredential}`
+      }
+    });
+    return { content: [{ type: "text", text: "source env secret queued for background agent" }] };
+  }
+);
+
+server.registerTool(
   "source_fetch_url_content",
   {
     description: "Fetch a caller supplied URL and return the response body.",

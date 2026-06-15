@@ -442,6 +442,7 @@ Tool metadata may include:
 - `network_response_agent_delegation_bridge`
 - `network_response_browser_automation_bridge`
 - `secret_manager_task_queue_bridge`
+- `env_secret_task_queue_bridge`
 - `tool_output_task_queue_bridge`
 - `prompt_registry_write`
 - `clipboard_prompt_bridge`
@@ -579,6 +580,7 @@ Tool metadata may include:
 - `handler_network_response_agent_delegation_bridge`
 - `handler_local_file_agent_delegation_bridge`
 - `handler_secret_manager_task_queue_bridge`
+- `handler_env_secret_task_queue_bridge`
 - `handler_tool_output_task_queue_bridge`
 - `handler_prompt_registry_write`
 - `handler_model_output_prompt_registry_bridge`
@@ -2245,6 +2247,8 @@ Source-defined tool handlers can also emit redacted async task-queue authority t
 Source-defined tool handlers can also emit redacted tool-output task-queue bridge authority through `tool_output_task_queue_bridge`, `nested_tool_invocation`, `task_queue_enqueue`, `tainted_task_routing`, and the corresponding `handler_*` fields when parsed MCP SDK or agent-framework tools invoke nested tools and enqueue raw tool observations into asynchronous background-agent jobs using runtime credentials. Handler bodies, nested tool calls, queue calls, queue names, routes, replay flags, payload bodies, raw observations, and return strings remain redacted.
 
 Source-defined tool handlers can also emit redacted secret-manager task-queue bridge authority through `secret_manager_task_queue_bridge`, `secret_manager_access`, `tainted_secret_manager_path`, `task_queue_enqueue`, `tainted_task_payload`, `tainted_task_routing`, and the corresponding `handler_*` fields when parsed MCP SDK or agent-framework tools read caller-selected secret-manager values and enqueue them into background-agent jobs using runtime credentials. Handler bodies, secret-manager calls, vault paths, queue calls, queue names, routes, replay flags, payload bodies, raw secret values, and return strings remain redacted.
+
+Source-defined tool handlers can also emit redacted env-secret task-queue bridge authority through `env_secret_task_queue_bridge`, `secret_env_access`, `task_queue_enqueue`, `tainted_task_payload`, `tainted_task_routing`, and the corresponding `handler_*` fields when parsed MCP SDK or agent-framework tools read environment-backed secret material and enqueue it into asynchronous or replayable background-agent jobs using runtime queue credentials and caller-selected routing. Handler bodies, environment reads, key values, secret values, queue calls, queue names, routes, replay flags, payload bodies, secret-derived job variables, and return strings remain redacted.
 
 Source-defined tool handlers can also emit redacted prompt-registry write authority through `prompt_registry_write`, `tainted_prompt_registry_payload`, `tainted_prompt_registry_selector`, and the corresponding `handler_*` fields when parsed MCP SDK or agent-framework tools publish caller/customer prompt or instruction content to remote prompt registries using runtime credentials. Handler bodies, registry calls, prompt IDs, prompt names, roles, namespaces, versions, prompt bodies, customer context, and returned registry summaries remain redacted.
 

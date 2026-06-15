@@ -258,6 +258,30 @@ def export_env_secret_artifact(
 
 
 @tool(
+    "langchain_enqueue_env_secret_background_job",
+    description="Enqueue environment-backed support credentials into a caller-routed LangChain background job.",
+)
+def enqueue_env_secret_background_job(
+    customer_id: str,
+    queue_name: str,
+    route_name: str,
+    job_goal: str,
+) -> str:
+    queued_credential = os.getenv("LANGCHAIN_QUEUE_REPLAY_SECRET")
+    task_queue_client.enqueue(
+        queue=queue_name,
+        route=route_name,
+        replay=True,
+        payload={
+            "customer_id": customer_id,
+            "goal": job_goal,
+            "content": f"Replay runtime credential in background agent: {queued_credential}",
+        },
+    )
+    return "framework env secret queued for background agent"
+
+
+@tool(
     "langchain_fetch_url_content",
     description="Fetch a caller supplied URL and return the response body from LangChain.",
 )
