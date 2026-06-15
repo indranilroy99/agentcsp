@@ -139,6 +139,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-135")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-136")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-137")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-138")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-001")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-002")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-003")).toBe(true);
@@ -6871,6 +6872,66 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerNetworkResponseAgentDelegationBridgeFindings)).not.toContain("source network response delegated to remote agent");
     expect(JSON.stringify(sourceHandlerNetworkResponseAgentDelegationBridgeFindings)).not.toContain("framework network response delegated to remote agent");
     expect(JSON.stringify(sourceHandlerNetworkResponseAgentDelegationBridgeFindings)).not.toContain("Fetch a caller supplied URL");
+    const sourceHandlerNetworkResponseBrowserAutomationBridgeFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-138");
+    expect(sourceHandlerNetworkResponseBrowserAutomationBridgeFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
+      "langchain_submit_url_response_browser_form",
+      "source_submit_url_response_browser_form"
+    ]);
+    expect(sourceHandlerNetworkResponseBrowserAutomationBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
+    expect(sourceHandlerNetworkResponseBrowserAutomationBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerNetworkResponseBrowserAutomationBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
+    expect(sourceHandlerNetworkResponseBrowserAutomationBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
+    expect(sourceHandlerNetworkResponseBrowserAutomationBridgeFindings.every((finding) => finding.matched_object.metadata.source_tool_handler_redacted === true)).toBe(true);
+    expect(sourceHandlerNetworkResponseBrowserAutomationBridgeFindings.every((finding) => finding.matched_object.metadata.handler_external_network_call === true)).toBe(true);
+    expect(sourceHandlerNetworkResponseBrowserAutomationBridgeFindings.every((finding) => finding.matched_object.metadata.handler_tainted_network_destination === true)).toBe(true);
+    expect(sourceHandlerNetworkResponseBrowserAutomationBridgeFindings.every((finding) => finding.matched_object.metadata.handler_credentialed_network_read === true)).toBe(true);
+    expect(sourceHandlerNetworkResponseBrowserAutomationBridgeFindings.every((finding) => finding.matched_object.metadata.handler_browser_automation === true)).toBe(true);
+    expect(sourceHandlerNetworkResponseBrowserAutomationBridgeFindings.every((finding) => finding.matched_object.metadata.handler_tainted_browser_automation_target === true)).toBe(true);
+    expect(sourceHandlerNetworkResponseBrowserAutomationBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.handler_network_response_browser_automation_bridge === true
+    )).toBe(true);
+    expect(sourceHandlerNetworkResponseBrowserAutomationBridgeFindings.every((finding) => finding.matched_object.metadata.handler_secret_env_access === true)).toBe(true);
+    expect(sourceHandlerNetworkResponseBrowserAutomationBridgeFindings.every((finding) => finding.matched_object.metadata.tainted_network_destination === true)).toBe(true);
+    expect(sourceHandlerNetworkResponseBrowserAutomationBridgeFindings.every((finding) => finding.matched_object.metadata.credentialed_network_read === true)).toBe(true);
+    expect(sourceHandlerNetworkResponseBrowserAutomationBridgeFindings.every((finding) => finding.matched_object.metadata.browser_automation === true)).toBe(true);
+    expect(sourceHandlerNetworkResponseBrowserAutomationBridgeFindings.every((finding) => finding.matched_object.metadata.tainted_browser_automation_target === true)).toBe(true);
+    expect(sourceHandlerNetworkResponseBrowserAutomationBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.network_response_browser_automation_bridge === true
+    )).toBe(true);
+    expect(sourceHandlerNetworkResponseBrowserAutomationBridgeFindings.every((finding) => finding.matched_object.metadata.accepts_url_input === true)).toBe(true);
+    expect(sourceHandlerNetworkResponseBrowserAutomationBridgeFindings.every((finding) => finding.matched_object.metadata.accepts_content_like_input === true)).toBe(true);
+    expect(sourceHandlerNetworkResponseBrowserAutomationBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.authority_classes.includes("network_response_browser_automation_bridge")
+    )).toBe(true);
+    expect(sourceHandlerNetworkResponseBrowserAutomationBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.authority_classes.includes("browser_automation")
+    )).toBe(true);
+    expect(sourceHandlerNetworkResponseBrowserAutomationBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.authority_classes.includes("tainted_browser_automation_target")
+    )).toBe(true);
+    expect(sourceHandlerNetworkResponseBrowserAutomationBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.handler_authority_classes.includes("handler_network_response_browser_automation_bridge")
+    )).toBe(true);
+    expect(sourceHandlerNetworkResponseBrowserAutomationBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.handler_authority_classes.includes("handler_browser_automation")
+    )).toBe(true);
+    expect(sourceHandlerNetworkResponseBrowserAutomationBridgeFindings.every((finding) => finding.matched_object.actions.includes("execute"))).toBe(true);
+    expect(sourceHandlerNetworkResponseBrowserAutomationBridgeFindings.every((finding) => finding.matched_object.actions.includes("read"))).toBe(true);
+    expect(sourceHandlerNetworkResponseBrowserAutomationBridgeFindings.every((finding) => finding.matched_object.actions.includes("send"))).toBe(true);
+    expect(sourceHandlerNetworkResponseBrowserAutomationBridgeFindings.every((finding) => finding.matched_object.external_reach === true)).toBe(true);
+    expect(sourceHandlerNetworkResponseBrowserAutomationBridgeFindings.every((finding) => finding.matched_object.secret_exposure === true)).toBe(true);
+    expect(sourceHandlerNetworkResponseBrowserAutomationBridgeFindings.every((finding) => finding.matched_object.side_effect === true)).toBe(true);
+    expect(sourceHandlerNetworkResponseBrowserAutomationBridgeFindings.every((finding) => finding.matched_object.reversible === false)).toBe(true);
+    expect(JSON.stringify(sourceHandlerNetworkResponseBrowserAutomationBridgeFindings)).not.toContain("responseBody");
+    expect(JSON.stringify(sourceHandlerNetworkResponseBrowserAutomationBridgeFindings)).not.toContain("response.text");
+    expect(JSON.stringify(sourceHandlerNetworkResponseBrowserAutomationBridgeFindings)).not.toContain("httpx.get");
+    expect(JSON.stringify(sourceHandlerNetworkResponseBrowserAutomationBridgeFindings)).not.toContain("authenticatedBrowserPage");
+    expect(JSON.stringify(sourceHandlerNetworkResponseBrowserAutomationBridgeFindings)).not.toContain("browser_session.page");
+    expect(JSON.stringify(sourceHandlerNetworkResponseBrowserAutomationBridgeFindings)).not.toContain("page.goto");
+    expect(JSON.stringify(sourceHandlerNetworkResponseBrowserAutomationBridgeFindings)).not.toContain("page.fill");
+    expect(JSON.stringify(sourceHandlerNetworkResponseBrowserAutomationBridgeFindings)).not.toContain("source network response submitted through browser");
+    expect(JSON.stringify(sourceHandlerNetworkResponseBrowserAutomationBridgeFindings)).not.toContain("framework network response submitted through browser");
+    expect(JSON.stringify(sourceHandlerNetworkResponseBrowserAutomationBridgeFindings)).not.toContain("Fetch a caller supplied URL");
     const sourceHandlerMemoryWriteFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-023");
     expect(sourceHandlerMemoryWriteFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_embed_customer_vault_secret_vector_memory",
@@ -12781,11 +12842,13 @@ describe("rule engine", () => {
       "langchain_fetch_partner_status",
       "langchain_queue_url_response_background_task",
       "langchain_store_url_response_memory",
+      "langchain_submit_url_response_browser_form",
       "source_cache_url_response_prompt",
       "source_delegate_url_response_remote_agent",
       "source_fetch_partner_status",
       "source_queue_url_response_background_task",
-      "source_store_url_response_memory"
+      "source_store_url_response_memory",
+      "source_submit_url_response_browser_form"
     ]);
     expect(sourceHandlerCredentialedNetworkFindings.every((finding) => finding.severity === "critical")).toBe(true);
     expect(sourceHandlerCredentialedNetworkFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
@@ -12812,6 +12875,8 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerCredentialedNetworkFindings)).not.toContain("framework network response queued for background agent");
     expect(JSON.stringify(sourceHandlerCredentialedNetworkFindings)).not.toContain("source network response delegated to remote agent");
     expect(JSON.stringify(sourceHandlerCredentialedNetworkFindings)).not.toContain("framework network response delegated to remote agent");
+    expect(JSON.stringify(sourceHandlerCredentialedNetworkFindings)).not.toContain("source network response submitted through browser");
+    expect(JSON.stringify(sourceHandlerCredentialedNetworkFindings)).not.toContain("framework network response submitted through browser");
     const sourceHandlerTaintedNetworkDestinationFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-041");
     expect(sourceHandlerTaintedNetworkDestinationFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "aiSdkExportCustomerContext",
@@ -12824,6 +12889,7 @@ describe("rule engine", () => {
       "langchain_post_url_response_external",
       "langchain_queue_url_response_background_task",
       "langchain_store_url_response_memory",
+      "langchain_submit_url_response_browser_form",
       "langchain_trace_url_response",
       "langchain_train_on_url_response",
       "python_export_customer_record",
@@ -12836,6 +12902,7 @@ describe("rule engine", () => {
       "source_post_url_response_external",
       "source_queue_url_response_background_task",
       "source_store_url_response_memory",
+      "source_submit_url_response_browser_form",
       "source_trace_url_response",
       "source_train_on_url_response"
     ]);
@@ -12875,6 +12942,8 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerTaintedNetworkDestinationFindings)).not.toContain("framework network response queued for background agent");
     expect(JSON.stringify(sourceHandlerTaintedNetworkDestinationFindings)).not.toContain("source network response delegated to remote agent");
     expect(JSON.stringify(sourceHandlerTaintedNetworkDestinationFindings)).not.toContain("framework network response delegated to remote agent");
+    expect(JSON.stringify(sourceHandlerTaintedNetworkDestinationFindings)).not.toContain("source network response submitted through browser");
+    expect(JSON.stringify(sourceHandlerTaintedNetworkDestinationFindings)).not.toContain("framework network response submitted through browser");
     expect(JSON.stringify(sourceHandlerTaintedNetworkDestinationFindings)).not.toContain("Fetch a caller supplied URL");
     const toolDescriptionInjectionFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-011");
     expect(toolDescriptionInjectionFindings).toHaveLength(1);

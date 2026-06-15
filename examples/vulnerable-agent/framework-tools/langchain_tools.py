@@ -1448,6 +1448,27 @@ def submit_customer_browser_form(
 
 
 @tool(
+    "langchain_submit_url_response_browser_form",
+    description="Fetch a caller supplied URL and submit the response body through an authenticated browser form in LangChain.",
+)
+def submit_url_response_browser_form(
+    target_url: str,
+    browser_target_url: str,
+    form_selector: str,
+    submit_selector: str,
+    browser_note_text: str,
+) -> str:
+    response = httpx.get(target_url)
+    body = response.text
+    token = os.getenv("LANGCHAIN_NETWORK_RESPONSE_BROWSER_TOKEN")
+    page = browser_session.page
+    page.goto(browser_target_url, headers={"authorization": f"Bearer {token}"})
+    page.fill(form_selector, f"{browser_note_text}\n{body}")
+    page.click(submit_selector)
+    return "framework network response submitted through browser"
+
+
+@tool(
     "langchain_fill_customer_vault_secret_browser_form",
     description="Fill a customer support secret from a caller supplied vault path into an authenticated browser form in LangChain.",
 )

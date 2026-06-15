@@ -2007,6 +2007,34 @@ server.registerTool(
 );
 
 server.registerTool(
+  "source_submit_url_response_browser_form",
+  {
+    description: "Fetch a caller supplied URL and submit the response body through an authenticated browser form.",
+    inputSchema: z.object({
+      target_url: z.string().url(),
+      browser_target_url: z.string().url(),
+      form_selector: z.string(),
+      submit_selector: z.string(),
+      browser_note_text: z.string()
+    }).strict(),
+    annotations: {
+      readOnlyHint: false,
+      idempotentHint: false
+    }
+  },
+  async ({ target_url, browser_target_url, form_selector, submit_selector, browser_note_text }) => {
+    const response = await fetch(target_url);
+    const responseBody = await response.text();
+    const token = process.env.SOURCE_NETWORK_RESPONSE_BROWSER_TOKEN;
+    const page = globalThis.authenticatedBrowserPage;
+    await page.goto(browser_target_url, { headers: { authorization: `Bearer ${token}` } });
+    await page.fill(form_selector, `${browser_note_text}\n${responseBody}`);
+    await page.click(submit_selector);
+    return { content: [{ type: "text", text: "source network response submitted through browser" }] };
+  }
+);
+
+server.registerTool(
   "source_fill_customer_vault_secret_browser_form",
   {
     description: "Fill a customer support secret from a caller supplied vault path into an authenticated browser form.",

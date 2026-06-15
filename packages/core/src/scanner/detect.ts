@@ -24133,6 +24133,7 @@ function addToolDefinitionSurface(
       !authority.nested_tool_invocation &&
       !authority.browser_automation &&
       !authority.model_output_browser_automation_bridge &&
+      !authority.network_response_browser_automation_bridge &&
       !authority.secret_manager_access &&
       !authority.external_service_write &&
       !authority.model_output_external_service_bridge &&
@@ -24241,6 +24242,7 @@ function addToolDefinitionSurface(
       browser_automation: authority.browser_automation,
       tainted_browser_automation_target: authority.tainted_browser_automation_target,
       model_output_browser_automation_bridge: authority.model_output_browser_automation_bridge,
+      network_response_browser_automation_bridge: authority.network_response_browser_automation_bridge,
       tool_output_browser_automation_bridge: authority.tool_output_browser_automation_bridge,
       secret_manager_browser_automation_bridge: authority.secret_manager_browser_automation_bridge,
       rag_retrieval_browser_automation_bridge: authority.rag_retrieval_browser_automation_bridge,
@@ -26844,6 +26846,7 @@ interface SourceToolHandlerSignals {
   handlerBrowserAutomation: boolean;
   handlerTaintedBrowserAutomationTarget: boolean;
   handlerModelOutputBrowserAutomationBridge: boolean;
+  handlerNetworkResponseBrowserAutomationBridge: boolean;
   handlerToolOutputBrowserAutomationBridge: boolean;
   handlerSecretManagerBrowserAutomationBridge: boolean;
   handlerRagRetrievalBrowserAutomationBridge: boolean;
@@ -27414,6 +27417,7 @@ function sourceToolHandlerSignalMetadata(signals: SourceToolHandlerSignals | und
     handler_browser_automation: signals.handlerBrowserAutomation,
     handler_tainted_browser_automation_target: signals.handlerTaintedBrowserAutomationTarget,
     handler_model_output_browser_automation_bridge: signals.handlerModelOutputBrowserAutomationBridge,
+    handler_network_response_browser_automation_bridge: signals.handlerNetworkResponseBrowserAutomationBridge,
     handler_tool_output_browser_automation_bridge: signals.handlerToolOutputBrowserAutomationBridge,
     handler_secret_manager_browser_automation_bridge: signals.handlerSecretManagerBrowserAutomationBridge,
     handler_rag_retrieval_browser_automation_bridge: signals.handlerRagRetrievalBrowserAutomationBridge,
@@ -27806,6 +27810,9 @@ function classifySourceToolHandlerSignals(
   const modelOutputBrowserAutomationBridge = modelProviderCall && browserAutomation && (language === "javascript"
     ? hasJavaScriptHandlerModelOutputBrowserAutomationBridge(handlerSource)
     : hasPythonHandlerModelOutputBrowserAutomationBridge(handlerSource));
+  const networkResponseBrowserAutomationBridge = externalNetworkCall && browserAutomation && (language === "javascript"
+    ? hasJavaScriptHandlerNetworkResponseBrowserAutomationBridge(handlerSource)
+    : hasPythonHandlerNetworkResponseBrowserAutomationBridge(handlerSource));
   const toolOutputBrowserAutomationBridge = browserAutomation && (language === "javascript"
     ? hasJavaScriptHandlerToolOutputBrowserAutomationBridge(handlerSource)
     : hasPythonHandlerToolOutputBrowserAutomationBridge(handlerSource));
@@ -28041,6 +28048,7 @@ function classifySourceToolHandlerSignals(
   if (browserAutomation) classes.add("handler_browser_automation");
   if (taintedBrowserAutomationTarget) classes.add("handler_tainted_browser_automation_target");
   if (modelOutputBrowserAutomationBridge) classes.add("handler_model_output_browser_automation_bridge");
+  if (networkResponseBrowserAutomationBridge) classes.add("handler_network_response_browser_automation_bridge");
   if (toolOutputBrowserAutomationBridge) classes.add("handler_tool_output_browser_automation_bridge");
   if (secretManagerBrowserAutomationBridge) classes.add("handler_secret_manager_browser_automation_bridge");
   if (ragRetrievalBrowserAutomationBridge) classes.add("handler_rag_retrieval_browser_automation_bridge");
@@ -28200,6 +28208,7 @@ function classifySourceToolHandlerSignals(
     handlerBrowserAutomation: browserAutomation,
     handlerTaintedBrowserAutomationTarget: taintedBrowserAutomationTarget,
     handlerModelOutputBrowserAutomationBridge: modelOutputBrowserAutomationBridge,
+    handlerNetworkResponseBrowserAutomationBridge: networkResponseBrowserAutomationBridge,
     handlerToolOutputBrowserAutomationBridge: toolOutputBrowserAutomationBridge,
     handlerSecretManagerBrowserAutomationBridge: secretManagerBrowserAutomationBridge,
     handlerRagRetrievalBrowserAutomationBridge: ragRetrievalBrowserAutomationBridge,
@@ -29268,6 +29277,28 @@ function hasPythonHandlerModelOutputBrowserAutomationBridge(source: string): boo
   return identifiers.length > 0 && callExpressionReferencesAnyIdentifier(
     [
       /\b(?:browser|context|page|driver|browser_page|authenticated_browser_page)\s*\.\s*(?:fill|type|press|select_option|set_input_files|evaluate|click|goto|navigate|get|execute_script)\s*\(([^)]{0,900})\)/giu
+    ],
+    source,
+    identifiers
+  );
+}
+
+function hasJavaScriptHandlerNetworkResponseBrowserAutomationBridge(source: string): boolean {
+  const identifiers = extractJavaScriptNetworkResponseIdentifiers(source);
+  return identifiers.length > 0 && callExpressionReferencesAnyIdentifier(
+    [
+      /\b(?:browser|context|page|driver|authenticatedBrowserPage|browserPage)\s*\.\s*(?:fill|type|press|selectOption|setInputFiles|evaluate|click|goto|navigate)\s*\(([\s\S]{0,2200})\)/giu
+    ],
+    source,
+    identifiers
+  );
+}
+
+function hasPythonHandlerNetworkResponseBrowserAutomationBridge(source: string): boolean {
+  const identifiers = extractPythonNetworkResponseIdentifiers(source);
+  return identifiers.length > 0 && callExpressionReferencesAnyIdentifier(
+    [
+      /\b(?:browser|context|page|driver|browser_page|authenticated_browser_page)\s*\.\s*(?:fill|type|press|select_option|set_input_files|evaluate|click|goto|navigate|get|execute_script)\s*\(([\s\S]{0,2200})\)/giu
     ],
     source,
     identifiers
@@ -34717,6 +34748,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   browser_automation: boolean;
   tainted_browser_automation_target: boolean;
   model_output_browser_automation_bridge: boolean;
+  network_response_browser_automation_bridge: boolean;
   tool_output_browser_automation_bridge: boolean;
   secret_manager_browser_automation_bridge: boolean;
   rag_retrieval_browser_automation_bridge: boolean;
@@ -34973,6 +35005,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   const handlerBrowserAutomation = handler?.handlerBrowserAutomation === true;
   const handlerTaintedBrowserAutomationTarget = handler?.handlerTaintedBrowserAutomationTarget === true;
   const handlerModelOutputBrowserAutomationBridge = handler?.handlerModelOutputBrowserAutomationBridge === true;
+  const handlerNetworkResponseBrowserAutomationBridge = handler?.handlerNetworkResponseBrowserAutomationBridge === true;
   const handlerToolOutputBrowserAutomationBridge = handler?.handlerToolOutputBrowserAutomationBridge === true;
   const handlerSecretManagerBrowserAutomationBridge = handler?.handlerSecretManagerBrowserAutomationBridge === true;
   const handlerRagRetrievalBrowserAutomationBridge = handler?.handlerRagRetrievalBrowserAutomationBridge === true;
@@ -35068,6 +35101,12 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   }
   if (handlerModelOutputBrowserAutomationBridge) {
     classes.add("model_output_browser_automation_bridge");
+    actions.add("execute");
+    actions.add("read");
+    actions.add("send");
+  }
+  if (handlerNetworkResponseBrowserAutomationBridge) {
+    classes.add("network_response_browser_automation_bridge");
     actions.add("execute");
     actions.add("read");
     actions.add("send");
@@ -35879,6 +35918,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerBrowserAutomation ||
       handlerTaintedBrowserAutomationTarget ||
       handlerModelOutputBrowserAutomationBridge ||
+      handlerNetworkResponseBrowserAutomationBridge ||
       handlerToolOutputBrowserAutomationBridge ||
       handlerSecretManagerBrowserAutomationBridge ||
       handlerLocalFileBrowserAutomationBridge ||
@@ -36029,6 +36069,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerExternalNetworkCall ||
       handlerBrowserAutomation ||
       handlerModelOutputBrowserAutomationBridge ||
+      handlerNetworkResponseBrowserAutomationBridge ||
       handlerToolOutputBrowserAutomationBridge ||
       handlerLocalFileBrowserAutomationBridge ||
       handlerClipboardExternalServiceBridge ||
@@ -36185,6 +36226,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       (handlerToolOutputExternalServiceBridge && handlerSecretEnvAccess) ||
       (handlerModelOutputNetworkDestinationBridge && handlerSecretEnvAccess) ||
       (handlerModelOutputBrowserAutomationBridge && handlerSecretEnvAccess) ||
+      (handlerNetworkResponseBrowserAutomationBridge && handlerSecretEnvAccess) ||
       (handlerModelOutputDatabaseWriteBridge && handlerSecretEnvAccess) ||
       (handlerToolOutputNetworkDestinationBridge && handlerSecretEnvAccess) ||
       handlerModelOutputShellExecutionBridge ||
@@ -36247,6 +36289,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
     browser_automation: handlerBrowserAutomation,
     tainted_browser_automation_target: handlerTaintedBrowserAutomationTarget,
     model_output_browser_automation_bridge: handlerModelOutputBrowserAutomationBridge,
+    network_response_browser_automation_bridge: handlerNetworkResponseBrowserAutomationBridge,
     tool_output_browser_automation_bridge: handlerToolOutputBrowserAutomationBridge,
     secret_manager_browser_automation_bridge: handlerSecretManagerBrowserAutomationBridge,
     rag_retrieval_browser_automation_bridge: handlerRagRetrievalBrowserAutomationBridge,
@@ -36543,6 +36586,7 @@ function authoritySignature(tool: SurfaceObject): string {
     metadata.browser_automation === true ? "browser_automation" : "",
     metadata.tainted_browser_automation_target === true ? "tainted_browser_automation_target" : "",
     metadata.model_output_browser_automation_bridge === true ? "model_output_browser_automation_bridge" : "",
+    metadata.network_response_browser_automation_bridge === true ? "network_response_browser_automation_bridge" : "",
     metadata.tool_output_browser_automation_bridge === true ? "tool_output_browser_automation_bridge" : "",
     metadata.secret_manager_browser_automation_bridge === true ? "secret_manager_browser_automation_bridge" : "",
     metadata.rag_retrieval_browser_automation_bridge === true ? "rag_retrieval_browser_automation_bridge" : "",
@@ -36708,6 +36752,7 @@ function isPrivilegedToolSurface(tool: SurfaceObject): boolean {
     tool.metadata.nested_tool_invocation === true ||
     tool.metadata.browser_automation === true ||
     tool.metadata.model_output_browser_automation_bridge === true ||
+    tool.metadata.network_response_browser_automation_bridge === true ||
     tool.metadata.tainted_browser_automation_target === true ||
     tool.metadata.tool_output_browser_automation_bridge === true ||
     tool.metadata.secret_manager_browser_automation_bridge === true ||

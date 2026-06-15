@@ -562,6 +562,9 @@ describe("scanner", () => {
     const sourceNetworkResponseAgentDelegationBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "source_delegate_url_response_remote_agent"
     );
+    const sourceNetworkResponseBrowserAutomationBridgeTool = surfaces.tools.find(
+      (surface) => surface.name === "source_submit_url_response_browser_form"
+    );
     const sourceDynamicCodeTool = surfaces.tools.find((surface) => surface.name === "source_evaluate_agent_expression");
     const sourceDatabaseTool = surfaces.tools.find((surface) => surface.name === "source_apply_record_change_sql");
     const sourceSecretOutputTool = surfaces.tools.find((surface) => surface.name === "source_reveal_runtime_secret");
@@ -812,6 +815,9 @@ describe("scanner", () => {
     );
     const langchainNetworkResponseAgentDelegationBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "langchain_delegate_url_response_remote_agent"
+    );
+    const langchainNetworkResponseBrowserAutomationBridgeTool = surfaces.tools.find(
+      (surface) => surface.name === "langchain_submit_url_response_browser_form"
     );
     const langchainDynamicCodeTool = surfaces.tools.find((surface) => surface.name === "langchain_evaluate_agent_expression");
     const langchainDatabaseTool = surfaces.tools.find((surface) => surface.name === "langchain_apply_record_change_sql");
@@ -2241,6 +2247,83 @@ describe("scanner", () => {
     expect(JSON.stringify(sourceNetworkResponseAgentDelegationBridgeTool)).not.toContain("remoteAgentClient.delegateTask");
     expect(JSON.stringify(sourceNetworkResponseAgentDelegationBridgeTool)).not.toContain("source network response delegated to remote agent");
     expect(JSON.stringify(sourceNetworkResponseAgentDelegationBridgeTool)).not.toContain("Fetch a caller supplied URL");
+    expect(sourceNetworkResponseBrowserAutomationBridgeTool).toMatchObject({
+      path: "mcp-source/customer-tools.ts",
+      data_classes: ["credential"],
+      actions: ["call", "execute", "read", "send"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(sourceNetworkResponseBrowserAutomationBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_mcp_source_tool: true,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_url_input: true,
+      accepts_content_like_input: true,
+      tainted_network_destination: true,
+      credentialed_network_read: true,
+      browser_automation: true,
+      tainted_browser_automation_target: true,
+      network_response_browser_automation_bridge: true,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_external_network_call: true,
+      handler_tainted_network_destination: true,
+      handler_credentialed_network_read: true,
+      handler_browser_automation: true,
+      handler_tainted_browser_automation_target: true,
+      handler_network_response_browser_automation_bridge: true,
+      handler_secret_env_access: true,
+      handler_signal_count: 7
+    });
+    expect(sourceNetworkResponseBrowserAutomationBridgeTool?.metadata.authority_classes).toEqual([
+      "browser_automation",
+      "browser_control",
+      "content_input",
+      "credential_input",
+      "credentialed_network_read",
+      "handler_browser_automation",
+      "handler_credentialed_network_read",
+      "handler_network_access",
+      "handler_network_response_browser_automation_bridge",
+      "handler_secret_env_access",
+      "handler_tainted_browser_automation_target",
+      "handler_tainted_network_destination",
+      "network_access",
+      "network_response_browser_automation_bridge",
+      "secret_env_access",
+      "tainted_browser_automation_target",
+      "tainted_network_destination"
+    ]);
+    expect(sourceNetworkResponseBrowserAutomationBridgeTool?.metadata.handler_authority_classes).toEqual([
+      "handler_browser_automation",
+      "handler_credentialed_network_read",
+      "handler_network_access",
+      "handler_network_response_browser_automation_bridge",
+      "handler_secret_env_access",
+      "handler_tainted_browser_automation_target",
+      "handler_tainted_network_destination"
+    ]);
+    expect(sourceNetworkResponseBrowserAutomationBridgeTool?.metadata.handler_env_key_names).toEqual([
+      "SOURCE_NETWORK_RESPONSE_BROWSER_TOKEN"
+    ]);
+    expect(sourceNetworkResponseBrowserAutomationBridgeTool?.metadata.schema_properties).toEqual([
+      "browser_note_text",
+      "browser_target_url",
+      "form_selector",
+      "submit_selector",
+      "target_url"
+    ]);
+    expect(JSON.stringify(sourceNetworkResponseBrowserAutomationBridgeTool)).not.toContain("responseBody");
+    expect(JSON.stringify(sourceNetworkResponseBrowserAutomationBridgeTool)).not.toContain("response.text");
+    expect(JSON.stringify(sourceNetworkResponseBrowserAutomationBridgeTool)).not.toContain("authenticatedBrowserPage");
+    expect(JSON.stringify(sourceNetworkResponseBrowserAutomationBridgeTool)).not.toContain("page.goto");
+    expect(JSON.stringify(sourceNetworkResponseBrowserAutomationBridgeTool)).not.toContain("page.fill");
+    expect(JSON.stringify(sourceNetworkResponseBrowserAutomationBridgeTool)).not.toContain("source network response submitted through browser");
+    expect(JSON.stringify(sourceNetworkResponseBrowserAutomationBridgeTool)).not.toContain("Fetch a caller supplied URL");
     expect(sourceDynamicCodeTool).toMatchObject({
       path: "mcp-source/customer-tools.ts",
       data_classes: ["unknown"],
@@ -11599,6 +11682,85 @@ describe("scanner", () => {
     expect(JSON.stringify(langchainNetworkResponseAgentDelegationBridgeTool)).not.toContain("remote_agent_client.delegate_task");
     expect(JSON.stringify(langchainNetworkResponseAgentDelegationBridgeTool)).not.toContain("framework network response delegated to remote agent");
     expect(JSON.stringify(langchainNetworkResponseAgentDelegationBridgeTool)).not.toContain("Fetch a caller supplied URL");
+    expect(langchainNetworkResponseBrowserAutomationBridgeTool).toMatchObject({
+      path: "framework-tools/langchain_tools.py",
+      data_classes: ["credential"],
+      actions: ["call", "execute", "read", "send"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(langchainNetworkResponseBrowserAutomationBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_agent_framework_source_tool: true,
+      agent_framework_source_tool: true,
+      agent_framework_source_tool_framework: "langchain",
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_url_input: true,
+      accepts_content_like_input: true,
+      tainted_network_destination: true,
+      credentialed_network_read: true,
+      browser_automation: true,
+      tainted_browser_automation_target: true,
+      network_response_browser_automation_bridge: true,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_external_network_call: true,
+      handler_tainted_network_destination: true,
+      handler_credentialed_network_read: true,
+      handler_browser_automation: true,
+      handler_tainted_browser_automation_target: true,
+      handler_network_response_browser_automation_bridge: true,
+      handler_secret_env_access: true,
+      handler_signal_count: 7
+    });
+    expect(langchainNetworkResponseBrowserAutomationBridgeTool?.metadata.authority_classes).toEqual([
+      "browser_automation",
+      "browser_control",
+      "content_input",
+      "credential_input",
+      "credentialed_network_read",
+      "handler_browser_automation",
+      "handler_credentialed_network_read",
+      "handler_network_access",
+      "handler_network_response_browser_automation_bridge",
+      "handler_secret_env_access",
+      "handler_tainted_browser_automation_target",
+      "handler_tainted_network_destination",
+      "network_access",
+      "network_response_browser_automation_bridge",
+      "secret_env_access",
+      "tainted_browser_automation_target",
+      "tainted_network_destination"
+    ]);
+    expect(langchainNetworkResponseBrowserAutomationBridgeTool?.metadata.handler_authority_classes).toEqual([
+      "handler_browser_automation",
+      "handler_credentialed_network_read",
+      "handler_network_access",
+      "handler_network_response_browser_automation_bridge",
+      "handler_secret_env_access",
+      "handler_tainted_browser_automation_target",
+      "handler_tainted_network_destination"
+    ]);
+    expect(langchainNetworkResponseBrowserAutomationBridgeTool?.metadata.handler_env_key_names).toEqual([
+      "LANGCHAIN_NETWORK_RESPONSE_BROWSER_TOKEN"
+    ]);
+    expect(langchainNetworkResponseBrowserAutomationBridgeTool?.metadata.schema_properties).toEqual([
+      "browser_note_text",
+      "browser_target_url",
+      "form_selector",
+      "submit_selector",
+      "target_url"
+    ]);
+    expect(JSON.stringify(langchainNetworkResponseBrowserAutomationBridgeTool)).not.toContain("httpx.get");
+    expect(JSON.stringify(langchainNetworkResponseBrowserAutomationBridgeTool)).not.toContain("response.text");
+    expect(JSON.stringify(langchainNetworkResponseBrowserAutomationBridgeTool)).not.toContain("browser_session.page");
+    expect(JSON.stringify(langchainNetworkResponseBrowserAutomationBridgeTool)).not.toContain("page.goto");
+    expect(JSON.stringify(langchainNetworkResponseBrowserAutomationBridgeTool)).not.toContain("page.fill");
+    expect(JSON.stringify(langchainNetworkResponseBrowserAutomationBridgeTool)).not.toContain("framework network response submitted through browser");
+    expect(JSON.stringify(langchainNetworkResponseBrowserAutomationBridgeTool)).not.toContain("Fetch a caller supplied URL");
     expect(langchainDynamicCodeTool).toMatchObject({
       path: "framework-tools/langchain_tools.py",
       data_classes: ["unknown"],

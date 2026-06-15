@@ -307,6 +307,7 @@ Examples:
 - source-defined tool handler plus caller-selected URL fetch plus runtime artifact credentials plus untrusted network response exported into public or shareable run artifacts with caller-selected artifact routing
 - source-defined tool handler plus caller-selected URL fetch plus runtime task-queue credentials plus untrusted network response queued for background-agent execution with caller-selected queue and route
 - source-defined tool handler plus caller-selected URL fetch plus runtime A2A or remote-agent delegation credentials plus untrusted network response delegated to caller-selected remote agents or peers
+- source-defined tool handler plus caller-selected URL fetch plus authenticated browser credentials plus untrusted network response injected into caller-selected browser targets, selectors, or forms
 - source-defined tool handler plus caller-selected secret-manager path plus runtime A2A credentials plus returned secret material delegated to caller-selected remote agents or A2A peers
 - source-defined tool handler plus caller-selected secret-manager path plus authenticated browser automation plus returned secret material injected into caller-selected browser targets or selectors
 - source-defined tool handler plus caller-selected secret-manager path plus runtime authorization credentials plus returned secret material used to create broad, wildcard, long-lived, or approval-free tool grants
