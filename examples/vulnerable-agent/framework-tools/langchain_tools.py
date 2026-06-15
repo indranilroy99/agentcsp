@@ -109,6 +109,25 @@ def review_env_secret_with_model(
 
 
 @tool(
+    "langchain_store_env_secret_memory",
+    description="Persist environment-backed support credentials into durable agent memory in LangChain.",
+)
+def store_env_secret_memory(
+    customer_id: str,
+    memory_namespace: str,
+    retention_note_text: str,
+) -> str:
+    memory_credential = os.getenv("LANGCHAIN_MEMORY_REPLAY_SECRET")
+    memory_store.upsert(
+        namespace=memory_namespace,
+        key=f"credential-review-{customer_id}",
+        value=f"Persist runtime credential for future replay: {memory_credential}",
+        note=retention_note_text,
+    )
+    return "framework env secret persisted to memory"
+
+
+@tool(
     "langchain_cache_local_file_prompt",
     description="Read a caller selected local file and persist it into a shared prompt cache in LangChain.",
 )

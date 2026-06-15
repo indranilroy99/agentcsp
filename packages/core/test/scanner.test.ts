@@ -646,6 +646,9 @@ describe("scanner", () => {
     const sourceEnvSecretPromptBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "source_review_env_secret_with_model"
     );
+    const sourceEnvSecretMemoryBridgeTool = surfaces.tools.find(
+      (surface) => surface.name === "source_store_env_secret_memory"
+    );
     const sourceToolOutputCredentialIssuanceBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "source_issue_privileged_tool_observation_credential"
     );
@@ -941,6 +944,9 @@ describe("scanner", () => {
     );
     const langchainEnvSecretPromptBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "langchain_review_env_secret_with_model"
+    );
+    const langchainEnvSecretMemoryBridgeTool = surfaces.tools.find(
+      (surface) => surface.name === "langchain_store_env_secret_memory"
     );
     const langchainToolOutputCredentialIssuanceBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "langchain_issue_privileged_tool_observation_credential"
@@ -6010,6 +6016,71 @@ describe("scanner", () => {
     expect(JSON.stringify(sourceEnvSecretPromptBridgeTool)).not.toContain("openaiClient.chat.completions.create");
     expect(JSON.stringify(sourceEnvSecretPromptBridgeTool)).not.toContain("Review runtime credential");
     expect(JSON.stringify(sourceEnvSecretPromptBridgeTool)).not.toContain("Send environment-backed support credentials");
+    expect(sourceEnvSecretMemoryBridgeTool).toMatchObject({
+      path: "mcp-source/customer-tools.ts",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["call", "remember", "write"],
+      side_effect: true,
+      external_reach: false,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(sourceEnvSecretMemoryBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_mcp_source_tool: true,
+      mcp_source_tool_registration: true,
+      mcp_source_tool_registration_kind: "registerTool",
+      mcp_source_tool_argument_count: 3,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_secret_like_input: true,
+      accepts_content_like_input: true,
+      accepts_path_input: false,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      memory_write: true,
+      env_secret_memory_bridge: true,
+      tainted_memory_scope: true,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_secret_env_access: true,
+      handler_memory_write: true,
+      handler_env_secret_memory_bridge: true,
+      handler_tainted_memory_scope: true,
+      handler_signal_count: 4,
+      open_world_schema: false
+    });
+    for (const authorityClass of [
+      "env_secret_memory_bridge",
+      "memory_write",
+      "secret_env_access",
+      "tainted_memory_scope"
+    ]) {
+      expect(sourceEnvSecretMemoryBridgeTool?.metadata.authority_classes).toContain(authorityClass);
+    }
+    expect(sourceEnvSecretMemoryBridgeTool?.metadata.handler_authority_classes).toEqual([
+      "handler_env_secret_memory_bridge",
+      "handler_memory_write",
+      "handler_secret_env_access",
+      "handler_tainted_memory_scope"
+    ]);
+    expect(sourceEnvSecretMemoryBridgeTool?.metadata.handler_env_key_names).toEqual(["SOURCE_MEMORY_REPLAY_SECRET"]);
+    expect(sourceEnvSecretMemoryBridgeTool?.metadata.schema_properties).toEqual([
+      "customer_id",
+      "memory_namespace",
+      "retention_note_text"
+    ]);
+    expect(sourceEnvSecretMemoryBridgeTool?.metadata.required_properties).toEqual([
+      "customer_id",
+      "memory_namespace",
+      "retention_note_text"
+    ]);
+    expect(JSON.stringify(sourceEnvSecretMemoryBridgeTool)).not.toContain("process.env");
+    expect(JSON.stringify(sourceEnvSecretMemoryBridgeTool)).not.toContain("memoryCredential");
+    expect(JSON.stringify(sourceEnvSecretMemoryBridgeTool)).not.toContain("agentMemory.upsert");
+    expect(JSON.stringify(sourceEnvSecretMemoryBridgeTool)).not.toContain("Persist runtime credential");
+    expect(JSON.stringify(sourceEnvSecretMemoryBridgeTool)).not.toContain("source env secret persisted to memory");
+    expect(JSON.stringify(sourceEnvSecretMemoryBridgeTool)).not.toContain("Persist environment-backed support credentials");
     expect(sourceToolOutputCredentialIssuanceBridgeTool).toMatchObject({
       path: "mcp-source/customer-tools.ts",
       data_classes: ["confidential", "credential", "pii"],
@@ -17339,6 +17410,72 @@ describe("scanner", () => {
     expect(JSON.stringify(langchainEnvSecretPromptBridgeTool)).not.toContain("openai_client.chat.completions.create");
     expect(JSON.stringify(langchainEnvSecretPromptBridgeTool)).not.toContain("Review runtime credential");
     expect(JSON.stringify(langchainEnvSecretPromptBridgeTool)).not.toContain("Send environment-backed support credentials");
+    expect(langchainEnvSecretMemoryBridgeTool).toMatchObject({
+      path: "framework-tools/langchain_tools.py",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["call", "remember", "write"],
+      side_effect: true,
+      external_reach: false,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(langchainEnvSecretMemoryBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_agent_framework_source_tool: true,
+      agent_framework_source_tool: true,
+      agent_framework_source_tool_framework: "langchain",
+      agent_framework_source_tool_registration_kind: "python_tool_decorator",
+      agent_framework_source_tool_argument_count: 3,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_secret_like_input: true,
+      accepts_content_like_input: true,
+      accepts_path_input: false,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      memory_write: true,
+      env_secret_memory_bridge: true,
+      tainted_memory_scope: true,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_secret_env_access: true,
+      handler_memory_write: true,
+      handler_env_secret_memory_bridge: true,
+      handler_tainted_memory_scope: true,
+      handler_signal_count: 4,
+      open_world_schema: false
+    });
+    for (const authorityClass of [
+      "env_secret_memory_bridge",
+      "memory_write",
+      "secret_env_access",
+      "tainted_memory_scope"
+    ]) {
+      expect(langchainEnvSecretMemoryBridgeTool?.metadata.authority_classes).toContain(authorityClass);
+    }
+    expect(langchainEnvSecretMemoryBridgeTool?.metadata.handler_authority_classes).toEqual([
+      "handler_env_secret_memory_bridge",
+      "handler_memory_write",
+      "handler_secret_env_access",
+      "handler_tainted_memory_scope"
+    ]);
+    expect(langchainEnvSecretMemoryBridgeTool?.metadata.handler_env_key_names).toEqual(["LANGCHAIN_MEMORY_REPLAY_SECRET"]);
+    expect(langchainEnvSecretMemoryBridgeTool?.metadata.schema_properties).toEqual([
+      "customer_id",
+      "memory_namespace",
+      "retention_note_text"
+    ]);
+    expect(langchainEnvSecretMemoryBridgeTool?.metadata.required_properties).toEqual([
+      "customer_id",
+      "memory_namespace",
+      "retention_note_text"
+    ]);
+    expect(JSON.stringify(langchainEnvSecretMemoryBridgeTool)).not.toContain("os.getenv");
+    expect(JSON.stringify(langchainEnvSecretMemoryBridgeTool)).not.toContain("memory_credential");
+    expect(JSON.stringify(langchainEnvSecretMemoryBridgeTool)).not.toContain("memory_store.upsert");
+    expect(JSON.stringify(langchainEnvSecretMemoryBridgeTool)).not.toContain("Persist runtime credential");
+    expect(JSON.stringify(langchainEnvSecretMemoryBridgeTool)).not.toContain("framework env secret persisted to memory");
+    expect(JSON.stringify(langchainEnvSecretMemoryBridgeTool)).not.toContain("Persist environment-backed support credentials");
     expect(langchainToolOutputCredentialIssuanceBridgeTool).toMatchObject({
       path: "framework-tools/langchain_tools.py",
       data_classes: ["confidential", "credential", "pii"],

@@ -24123,6 +24123,7 @@ function addToolDefinitionSurface(
       !authority.database_write &&
       !authority.local_file_database_write_bridge &&
       !authority.local_file_memory_bridge &&
+      !authority.env_secret_memory_bridge &&
       !authority.memory_write &&
       !authority.model_output_memory_bridge &&
       !authority.network_response_memory_bridge &&
@@ -24237,6 +24238,7 @@ function addToolDefinitionSurface(
       tool_output_database_write_bridge: authority.tool_output_database_write_bridge,
       memory_write: authority.memory_write,
       local_file_memory_bridge: authority.local_file_memory_bridge,
+      env_secret_memory_bridge: authority.env_secret_memory_bridge,
       secret_manager_memory_bridge: authority.secret_manager_memory_bridge,
       model_output_memory_bridge: authority.model_output_memory_bridge,
       network_response_memory_bridge: authority.network_response_memory_bridge,
@@ -26871,6 +26873,7 @@ interface SourceToolHandlerSignals {
   handlerToolOutputDatabaseWriteBridge: boolean;
   handlerMemoryWrite: boolean;
   handlerLocalFileMemoryBridge: boolean;
+  handlerEnvSecretMemoryBridge: boolean;
   handlerSecretManagerMemoryBridge: boolean;
   handlerModelOutputMemoryBridge: boolean;
   handlerNetworkResponseMemoryBridge: boolean;
@@ -27463,6 +27466,7 @@ function sourceToolHandlerSignalMetadata(signals: SourceToolHandlerSignals | und
     handler_tool_output_database_write_bridge: signals.handlerToolOutputDatabaseWriteBridge,
     handler_memory_write: signals.handlerMemoryWrite,
     handler_local_file_memory_bridge: signals.handlerLocalFileMemoryBridge,
+    handler_env_secret_memory_bridge: signals.handlerEnvSecretMemoryBridge,
     handler_secret_manager_memory_bridge: signals.handlerSecretManagerMemoryBridge,
     handler_model_output_memory_bridge: signals.handlerModelOutputMemoryBridge,
     handler_tool_output_memory_bridge: signals.handlerToolOutputMemoryBridge,
@@ -28059,6 +28063,19 @@ function classifySourceToolHandlerSignals(
   const secretManagerMemoryBridge = secretManagerAccess && memoryWrite && (language === "javascript"
     ? hasJavaScriptHandlerSecretManagerMemoryBridge(handlerSource)
     : hasPythonHandlerSecretManagerMemoryBridge(handlerSource));
+  const envSecretMemoryBridge = secretEnvAccess &&
+    memoryWrite &&
+    !localFileMemoryBridge &&
+    !secretManagerMemoryBridge &&
+    !modelOutputMemoryBridge &&
+    !networkResponseMemoryBridge &&
+    !toolOutputMemoryBridge &&
+    !ragRetrievalMemoryBridge &&
+    !clipboardMemoryBridge &&
+    !visualContextMemoryBridge &&
+    (language === "javascript"
+    ? hasJavaScriptHandlerEnvSecretMemoryBridge(handlerSource)
+    : hasPythonHandlerEnvSecretMemoryBridge(handlerSource));
   const secretManagerEmbeddingVectorBridge = secretManagerAccess && embeddingProviderCall && memoryWrite && (language === "javascript"
     ? hasJavaScriptHandlerSecretManagerEmbeddingVectorBridge(handlerSource)
     : hasPythonHandlerSecretManagerEmbeddingVectorBridge(handlerSource));
@@ -28183,6 +28200,7 @@ function classifySourceToolHandlerSignals(
   if (toolOutputDatabaseWriteBridge) classes.add("handler_tool_output_database_write_bridge");
   if (memoryWrite) classes.add("handler_memory_write");
   if (localFileMemoryBridge) classes.add("handler_local_file_memory_bridge");
+  if (envSecretMemoryBridge) classes.add("handler_env_secret_memory_bridge");
   if (secretManagerMemoryBridge) classes.add("handler_secret_manager_memory_bridge");
   if (modelOutputMemoryBridge) classes.add("handler_model_output_memory_bridge");
   if (toolOutputMemoryBridge) classes.add("handler_tool_output_memory_bridge");
@@ -28362,6 +28380,7 @@ function classifySourceToolHandlerSignals(
     handlerToolOutputDatabaseWriteBridge: toolOutputDatabaseWriteBridge,
     handlerMemoryWrite: memoryWrite,
     handlerLocalFileMemoryBridge: localFileMemoryBridge,
+    handlerEnvSecretMemoryBridge: envSecretMemoryBridge,
     handlerSecretManagerMemoryBridge: secretManagerMemoryBridge,
     handlerModelOutputMemoryBridge: modelOutputMemoryBridge,
     handlerToolOutputMemoryBridge: toolOutputMemoryBridge,
@@ -32104,6 +32123,48 @@ function hasPythonHandlerRagRetrievalMemoryBridge(source: string): boolean {
   );
 }
 
+function hasJavaScriptHandlerEnvSecretMemoryBridge(source: string): boolean {
+  const identifiers = extractJavaScriptEnvSecretIdentifiers(source);
+  return identifiers.length > 0 && memoryWriteCallReferencesPayloadIdentifier(
+    [
+      /\b(?:[A-Za-z_$][\w$]*memory|memory|memories|memoryStore|vectorStore|vectorIndex|embeddingStore|ragStore|retriever|knowledgeBase|sessionStore|stateStore)\s*\.\s*(?:add|addDocuments|addTexts|append|insert|persist|put|push|remember|save|set|store|upsert|write)\s*\(([\s\S]{0,2200})\)/giu,
+      /\b(?:persistMemory|rememberContext|saveMemory|storeMemory|upsertMemory|writeMemory)\s*\(([\s\S]{0,2200})\)/giu
+    ],
+    source,
+    identifiers
+  );
+}
+
+function hasPythonHandlerEnvSecretMemoryBridge(source: string): boolean {
+  const identifiers = extractPythonEnvSecretIdentifiers(source);
+  return identifiers.length > 0 && memoryWriteCallReferencesPayloadIdentifier(
+    [
+      /\b(?:[A-Za-z_]\w*memory|memory|memory_store|vector_store|vectorstore|vector_index|embedding_store|rag_store|retriever|knowledge_base|session_store|state_store)\s*\.\s*(?:add|add_documents|add_texts|append|insert|persist|put|push|remember|save|set|store|upsert|write)\s*\(([\s\S]{0,2200})\)/giu,
+      /\b(?:persist_memory|remember_context|save_memory|store_memory|upsert_memory|write_memory)\s*\(([\s\S]{0,2200})\)/giu
+    ],
+    source,
+    identifiers
+  );
+}
+
+function memoryWriteCallReferencesPayloadIdentifier(patterns: RegExp[], source: string, identifiers: string[]): boolean {
+  const payloadField =
+    /(?:^|[{\s,(])["']?(?:value|values|content|contents|document|documents|text|texts|body|payload|payloads|memory|memories|record|records|chunk|chunks|metadata|summary|note|notes)["']?\s*[:=]/u;
+  for (const pattern of patterns) {
+    let match: RegExpExecArray | null;
+    while ((match = pattern.exec(source)) !== null) {
+      const expression = match[1] ?? "";
+      if (expression.split(/\r?\n/u).some((line) =>
+        payloadField.test(line) && identifiers.some((identifier) => new RegExp(`\\b${escapeRegExp(identifier)}\\b`, "u").test(line))
+      )) {
+        return true;
+      }
+      if (match[0].length === 0) pattern.lastIndex += 1;
+    }
+  }
+  return false;
+}
+
 function hasJavaScriptHandlerTaskQueueEnqueue(source: string): boolean {
   return /\b(?:taskQueue|taskQueueClient|queueClient|jobQueue|backgroundQueue|workerQueue|agentQueue|sqs|sqsClient|pubsub|pubsubClient|eventBus|eventBridge|scheduler|jobClient|kafkaProducer|redisQueue|bullQueue|temporalClient)\b/iu.test(
     source
@@ -35476,6 +35537,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   tool_output_database_write_bridge: boolean;
   memory_write: boolean;
   local_file_memory_bridge: boolean;
+  env_secret_memory_bridge: boolean;
   secret_manager_memory_bridge: boolean;
   model_output_memory_bridge: boolean;
   network_response_memory_bridge: boolean;
@@ -35762,6 +35824,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   const handlerToolOutputDatabaseWriteBridge = handler?.handlerToolOutputDatabaseWriteBridge === true;
   const handlerMemoryWrite = handler?.handlerMemoryWrite === true;
   const handlerLocalFileMemoryBridge = handler?.handlerLocalFileMemoryBridge === true;
+  const handlerEnvSecretMemoryBridge = handler?.handlerEnvSecretMemoryBridge === true;
   const handlerSecretManagerMemoryBridge = handler?.handlerSecretManagerMemoryBridge === true;
   const handlerModelOutputMemoryBridge = handler?.handlerModelOutputMemoryBridge === true;
   const handlerNetworkResponseMemoryBridge = handler?.handlerNetworkResponseMemoryBridge === true;
@@ -36099,6 +36162,11 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   if (handlerLocalFileMemoryBridge) {
     classes.add("local_file_memory_bridge");
     actions.add("read");
+    actions.add("remember");
+    actions.add("write");
+  }
+  if (handlerEnvSecretMemoryBridge) {
+    classes.add("env_secret_memory_bridge");
     actions.add("remember");
     actions.add("write");
   }
@@ -36799,6 +36867,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerNetworkResponseToOutput ||
       handlerMemoryWrite ||
       handlerSecretManagerMemoryBridge ||
+      handlerEnvSecretMemoryBridge ||
       handlerModelOutputMemoryBridge ||
       handlerNetworkResponseMemoryBridge ||
       handlerToolOutputMemoryBridge ||
@@ -36853,6 +36922,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerSecretManagerPromptBridge ||
       handlerEnvSecretPromptBridge ||
       handlerSecretManagerMemoryBridge ||
+      handlerEnvSecretMemoryBridge ||
       handlerSecretManagerTrainingDatasetBridge ||
       handlerExternalServiceWrite ||
       handlerTaintedExternalServiceRecipient ||
@@ -37165,6 +37235,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       (handlerModelOutputAuthorizationGrantBridge && handlerSecretEnvAccess) ||
       (handlerToolOutputAuthorizationGrantBridge && handlerSecretEnvAccess) ||
       handlerSecretManagerMemoryBridge ||
+      handlerEnvSecretMemoryBridge ||
       (handlerModelOutputMemoryBridge && handlerSecretEnvAccess) ||
       (handlerNetworkResponseMemoryBridge && handlerSecretEnvAccess) ||
       (handlerLocalFileMemoryBridge && handlerSecretEnvAccess) ||
@@ -37237,6 +37308,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
     tool_output_database_write_bridge: handlerToolOutputDatabaseWriteBridge,
     memory_write: handlerMemoryWrite,
     local_file_memory_bridge: handlerLocalFileMemoryBridge,
+    env_secret_memory_bridge: handlerEnvSecretMemoryBridge,
     secret_manager_memory_bridge: handlerSecretManagerMemoryBridge,
     model_output_memory_bridge: handlerModelOutputMemoryBridge,
     network_response_memory_bridge: handlerNetworkResponseMemoryBridge,
@@ -37461,6 +37533,7 @@ function authoritySignature(tool: SurfaceObject): string {
     metadata.local_file_database_write_bridge === true ? "local_file_database_write_bridge" : "",
     metadata.tool_output_database_write_bridge === true ? "tool_output_database_write_bridge" : "",
     metadata.local_file_memory_bridge === true ? "local_file_memory_bridge" : "",
+    metadata.env_secret_memory_bridge === true ? "env_secret_memory_bridge" : "",
     metadata.tainted_memory_scope === true ? "tainted_memory_scope" : "",
     metadata.secret_manager_memory_bridge === true ? "secret_manager_memory_bridge" : "",
     metadata.model_output_memory_bridge === true ? "model_output_memory_bridge" : "",
@@ -37608,6 +37681,7 @@ function authoritySignature(tool: SurfaceObject): string {
     metadata.env_secret_external_write_bridge === true ? "env_secret_external_write_bridge" : "",
     metadata.secret_manager_prompt_bridge === true ? "secret_manager_prompt_bridge" : "",
     metadata.env_secret_prompt_bridge === true ? "env_secret_prompt_bridge" : "",
+    metadata.env_secret_memory_bridge === true ? "env_secret_memory_bridge" : "",
     metadata.model_output_external_service_bridge === true ? "model_output_external_service_bridge" : "",
     metadata.network_response_external_service_bridge === true ? "network_response_external_service_bridge" : "",
     metadata.tainted_external_service_recipient === true ? "tainted_external_service_recipient" : "",
@@ -37647,6 +37721,7 @@ function isPrivilegedToolSurface(tool: SurfaceObject): boolean {
     tool.metadata.local_file_database_write_bridge === true ||
     tool.metadata.tool_output_database_write_bridge === true ||
     tool.metadata.local_file_memory_bridge === true ||
+    tool.metadata.env_secret_memory_bridge === true ||
     tool.metadata.tainted_memory_scope === true ||
     tool.metadata.secret_manager_memory_bridge === true ||
     tool.metadata.model_output_memory_bridge === true ||

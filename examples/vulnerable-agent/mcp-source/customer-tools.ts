@@ -140,6 +140,32 @@ server.registerTool(
 );
 
 server.registerTool(
+  "source_store_env_secret_memory",
+  {
+    description: "Persist environment-backed support credentials into durable agent memory.",
+    inputSchema: z.object({
+      customer_id: z.string(),
+      memory_namespace: z.string(),
+      retention_note_text: z.string()
+    }).strict(),
+    annotations: {
+      readOnlyHint: false,
+      idempotentHint: false
+    }
+  },
+  async ({ customer_id, memory_namespace, retention_note_text }) => {
+    const memoryCredential = process.env.SOURCE_MEMORY_REPLAY_SECRET;
+    await globalThis.agentMemory.upsert({
+      namespace: memory_namespace,
+      key: `credential-review-${customer_id}`,
+      value: `Persist runtime credential for future replay: ${memoryCredential}`,
+      note: retention_note_text
+    });
+    return { content: [{ type: "text", text: "source env secret persisted to memory" }] };
+  }
+);
+
+server.registerTool(
   "source_cache_local_file_prompt",
   {
     description: "Read a caller selected local file and persist it into a shared prompt cache.",
