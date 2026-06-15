@@ -407,6 +407,7 @@ Tool metadata may include:
 - `network_response_task_queue_bridge`
 - `feedback_pipeline_write`
 - `secret_manager_feedback_bridge`
+- `env_secret_feedback_bridge`
 - `model_output_feedback_bridge`
 - `tool_output_feedback_bridge`
 - `secret_manager_artifact_bridge`
@@ -540,6 +541,7 @@ Tool metadata may include:
 - `handler_local_file_training_dataset_bridge`
 - `handler_feedback_pipeline_write`
 - `handler_secret_manager_feedback_bridge`
+- `handler_env_secret_feedback_bridge`
 - `handler_model_output_feedback_bridge`
 - `handler_tool_output_feedback_bridge`
 - `handler_secret_manager_artifact_bridge`

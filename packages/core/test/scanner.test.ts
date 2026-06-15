@@ -658,6 +658,9 @@ describe("scanner", () => {
     const sourceEnvSecretTrainingDatasetBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "source_export_env_secret_training_dataset"
     );
+    const sourceEnvSecretFeedbackBridgeTool = surfaces.tools.find(
+      (surface) => surface.name === "source_promote_env_secret_feedback"
+    );
     const sourceEnvSecretTelemetryBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "source_export_env_secret_trace"
     );
@@ -980,6 +983,9 @@ describe("scanner", () => {
     );
     const langchainEnvSecretTrainingDatasetBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "langchain_export_env_secret_training_dataset"
+    );
+    const langchainEnvSecretFeedbackBridgeTool = surfaces.tools.find(
+      (surface) => surface.name === "langchain_promote_env_secret_feedback"
     );
     const langchainEnvSecretTelemetryBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "langchain_export_env_secret_trace"
@@ -6334,6 +6340,82 @@ describe("scanner", () => {
     expect(JSON.stringify(sourceEnvSecretTrainingDatasetBridgeTool)).not.toContain("Persist runtime credential");
     expect(JSON.stringify(sourceEnvSecretTrainingDatasetBridgeTool)).not.toContain("source env secret exported to training data");
     expect(JSON.stringify(sourceEnvSecretTrainingDatasetBridgeTool)).not.toContain("Export environment-backed support credentials");
+    expect(sourceEnvSecretFeedbackBridgeTool).toMatchObject({
+      path: "mcp-source/customer-tools.ts",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["call", "publish", "remember", "send", "write"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(sourceEnvSecretFeedbackBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_mcp_source_tool: true,
+      mcp_source_tool_registration: true,
+      mcp_source_tool_registration_kind: "registerTool",
+      mcp_source_tool_argument_count: 3,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_secret_like_input: true,
+      accepts_content_like_input: true,
+      accepts_path_input: false,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      feedback_pipeline_write: true,
+      env_secret_feedback_bridge: true,
+      feedback_auto_promotion: true,
+      tainted_feedback_routing: true,
+      secret_manager_feedback_bridge: false,
+      model_output_feedback_bridge: false,
+      tool_output_feedback_bridge: false,
+      external_write: true,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_secret_env_access: true,
+      handler_feedback_pipeline_write: true,
+      handler_env_secret_feedback_bridge: true,
+      handler_feedback_auto_promotion: true,
+      handler_tainted_feedback_routing: true,
+      handler_signal_count: 5,
+      open_world_schema: false
+    });
+    for (const authorityClass of [
+      "env_secret_feedback_bridge",
+      "external_write",
+      "feedback_auto_promotion",
+      "feedback_pipeline_write",
+      "secret_env_access",
+      "tainted_feedback_routing"
+    ]) {
+      expect(sourceEnvSecretFeedbackBridgeTool?.metadata.authority_classes).toContain(authorityClass);
+    }
+    expect(sourceEnvSecretFeedbackBridgeTool?.metadata.handler_authority_classes).toEqual([
+      "handler_env_secret_feedback_bridge",
+      "handler_feedback_auto_promotion",
+      "handler_feedback_pipeline_write",
+      "handler_secret_env_access",
+      "handler_tainted_feedback_routing"
+    ]);
+    expect(sourceEnvSecretFeedbackBridgeTool?.metadata.handler_env_key_names).toEqual(["SOURCE_FEEDBACK_REPLAY_SECRET"]);
+    expect(sourceEnvSecretFeedbackBridgeTool?.metadata.schema_properties).toEqual([
+      "customer_id",
+      "feedback_dataset_id",
+      "promotion_route",
+      "reviewer_note"
+    ]);
+    expect(sourceEnvSecretFeedbackBridgeTool?.metadata.required_properties).toEqual([
+      "customer_id",
+      "feedback_dataset_id",
+      "promotion_route",
+      "reviewer_note"
+    ]);
+    expect(JSON.stringify(sourceEnvSecretFeedbackBridgeTool)).not.toContain("process.env");
+    expect(JSON.stringify(sourceEnvSecretFeedbackBridgeTool)).not.toContain("feedbackCredential");
+    expect(JSON.stringify(sourceEnvSecretFeedbackBridgeTool)).not.toContain("feedbackPipeline.promoteToTraining");
+    expect(JSON.stringify(sourceEnvSecretFeedbackBridgeTool)).not.toContain("Persist runtime credential");
+    expect(JSON.stringify(sourceEnvSecretFeedbackBridgeTool)).not.toContain("source env secret promoted to feedback");
+    expect(JSON.stringify(sourceEnvSecretFeedbackBridgeTool)).not.toContain("Promote environment-backed support credentials");
     expect(sourceEnvSecretTelemetryBridgeTool).toMatchObject({
       path: "mcp-source/customer-tools.ts",
       data_classes: ["confidential", "credential", "pii"],
@@ -18285,6 +18367,85 @@ describe("scanner", () => {
     expect(JSON.stringify(langchainEnvSecretTrainingDatasetBridgeTool)).not.toContain("Persist runtime credential");
     expect(JSON.stringify(langchainEnvSecretTrainingDatasetBridgeTool)).not.toContain("framework env secret exported to training data");
     expect(JSON.stringify(langchainEnvSecretTrainingDatasetBridgeTool)).not.toContain("Export environment-backed support credentials");
+    expect(langchainEnvSecretFeedbackBridgeTool).toMatchObject({
+      path: "framework-tools/langchain_tools.py",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["call", "publish", "remember", "send", "write"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(langchainEnvSecretFeedbackBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_agent_framework_source_tool: true,
+      agent_framework_source_tool: true,
+      agent_framework_source_tool_framework: "langchain",
+      agent_framework_source_tool_registration_kind: "python_tool_decorator",
+      agent_framework_source_tool_argument_count: 4,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_secret_like_input: true,
+      accepts_content_like_input: true,
+      accepts_path_input: false,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      feedback_pipeline_write: true,
+      env_secret_feedback_bridge: true,
+      feedback_auto_promotion: true,
+      tainted_feedback_routing: true,
+      secret_manager_feedback_bridge: false,
+      model_output_feedback_bridge: false,
+      tool_output_feedback_bridge: false,
+      external_write: true,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_secret_env_access: true,
+      handler_feedback_pipeline_write: true,
+      handler_env_secret_feedback_bridge: true,
+      handler_feedback_auto_promotion: true,
+      handler_tainted_feedback_routing: true,
+      handler_signal_count: 5,
+      open_world_schema: false
+    });
+    for (const authorityClass of [
+      "env_secret_feedback_bridge",
+      "external_write",
+      "feedback_auto_promotion",
+      "feedback_pipeline_write",
+      "secret_env_access",
+      "tainted_feedback_routing"
+    ]) {
+      expect(langchainEnvSecretFeedbackBridgeTool?.metadata.authority_classes).toContain(authorityClass);
+    }
+    expect(langchainEnvSecretFeedbackBridgeTool?.metadata.handler_authority_classes).toEqual([
+      "handler_env_secret_feedback_bridge",
+      "handler_feedback_auto_promotion",
+      "handler_feedback_pipeline_write",
+      "handler_secret_env_access",
+      "handler_tainted_feedback_routing"
+    ]);
+    expect(langchainEnvSecretFeedbackBridgeTool?.metadata.handler_env_key_names).toEqual([
+      "LANGCHAIN_FEEDBACK_REPLAY_SECRET"
+    ]);
+    expect(langchainEnvSecretFeedbackBridgeTool?.metadata.schema_properties).toEqual([
+      "customer_id",
+      "feedback_dataset_id",
+      "promotion_route",
+      "reviewer_note"
+    ]);
+    expect(langchainEnvSecretFeedbackBridgeTool?.metadata.required_properties).toEqual([
+      "customer_id",
+      "feedback_dataset_id",
+      "promotion_route",
+      "reviewer_note"
+    ]);
+    expect(JSON.stringify(langchainEnvSecretFeedbackBridgeTool)).not.toContain("os.getenv");
+    expect(JSON.stringify(langchainEnvSecretFeedbackBridgeTool)).not.toContain("feedback_credential");
+    expect(JSON.stringify(langchainEnvSecretFeedbackBridgeTool)).not.toContain("feedback_pipeline.promote_to_training");
+    expect(JSON.stringify(langchainEnvSecretFeedbackBridgeTool)).not.toContain("Persist runtime credential");
+    expect(JSON.stringify(langchainEnvSecretFeedbackBridgeTool)).not.toContain("framework env secret promoted to feedback");
+    expect(JSON.stringify(langchainEnvSecretFeedbackBridgeTool)).not.toContain("Promote environment-backed support credentials");
     expect(langchainEnvSecretTelemetryBridgeTool).toMatchObject({
       path: "framework-tools/langchain_tools.py",
       data_classes: ["confidential", "credential", "pii"],

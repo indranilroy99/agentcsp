@@ -168,6 +168,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-164")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-165")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-166")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-167")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-001")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-002")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-003")).toBe(true);
@@ -12329,6 +12330,59 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerEnvSecretTrainingDatasetBridgeFindings)).not.toContain("source env secret exported to training data");
     expect(JSON.stringify(sourceHandlerEnvSecretTrainingDatasetBridgeFindings)).not.toContain("framework env secret exported to training data");
     expect(JSON.stringify(sourceHandlerEnvSecretTrainingDatasetBridgeFindings)).not.toContain("Export environment-backed support credentials");
+    const sourceHandlerEnvSecretFeedbackBridgeFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-167");
+    expect(sourceHandlerEnvSecretFeedbackBridgeFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
+      "langchain_promote_env_secret_feedback",
+      "source_promote_env_secret_feedback"
+    ]);
+    expect(sourceHandlerEnvSecretFeedbackBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
+    expect(sourceHandlerEnvSecretFeedbackBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerEnvSecretFeedbackBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
+    expect(sourceHandlerEnvSecretFeedbackBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
+    expect(sourceHandlerEnvSecretFeedbackBridgeFindings.every((finding) => finding.matched_object.metadata.source_tool_handler_redacted === true)).toBe(true);
+    expect(sourceHandlerEnvSecretFeedbackBridgeFindings.every((finding) => finding.matched_object.metadata.handler_secret_env_access === true)).toBe(true);
+    expect(sourceHandlerEnvSecretFeedbackBridgeFindings.every((finding) => finding.matched_object.metadata.handler_feedback_pipeline_write === true)).toBe(true);
+    expect(sourceHandlerEnvSecretFeedbackBridgeFindings.every((finding) => finding.matched_object.metadata.handler_env_secret_feedback_bridge === true)).toBe(true);
+    expect(sourceHandlerEnvSecretFeedbackBridgeFindings.every((finding) => finding.matched_object.metadata.handler_feedback_auto_promotion === true)).toBe(true);
+    expect(sourceHandlerEnvSecretFeedbackBridgeFindings.every((finding) => finding.matched_object.metadata.handler_tainted_feedback_routing === true)).toBe(true);
+    expect(sourceHandlerEnvSecretFeedbackBridgeFindings.every((finding) => finding.matched_object.metadata.feedback_pipeline_write === true)).toBe(true);
+    expect(sourceHandlerEnvSecretFeedbackBridgeFindings.every((finding) => finding.matched_object.metadata.env_secret_feedback_bridge === true)).toBe(true);
+    expect(sourceHandlerEnvSecretFeedbackBridgeFindings.every((finding) => finding.matched_object.metadata.feedback_auto_promotion === true)).toBe(true);
+    expect(sourceHandlerEnvSecretFeedbackBridgeFindings.every((finding) => finding.matched_object.metadata.tainted_feedback_routing === true)).toBe(true);
+    expect(sourceHandlerEnvSecretFeedbackBridgeFindings.every((finding) => finding.matched_object.metadata.secret_manager_feedback_bridge === false)).toBe(true);
+    expect(sourceHandlerEnvSecretFeedbackBridgeFindings.every((finding) => finding.matched_object.metadata.model_output_feedback_bridge === false)).toBe(true);
+    expect(sourceHandlerEnvSecretFeedbackBridgeFindings.every((finding) => finding.matched_object.metadata.tool_output_feedback_bridge === false)).toBe(true);
+    for (const authorityClass of [
+      "env_secret_feedback_bridge",
+      "feedback_auto_promotion",
+      "feedback_pipeline_write",
+      "secret_env_access",
+      "tainted_feedback_routing"
+    ]) {
+      expect(sourceHandlerEnvSecretFeedbackBridgeFindings.every((finding) =>
+        finding.matched_object.metadata.authority_classes.includes(authorityClass)
+      )).toBe(true);
+    }
+    expect(sourceHandlerEnvSecretFeedbackBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.handler_authority_classes.includes("handler_env_secret_feedback_bridge")
+    )).toBe(true);
+    expect(sourceHandlerEnvSecretFeedbackBridgeFindings.every((finding) => finding.matched_object.actions.includes("send"))).toBe(true);
+    expect(sourceHandlerEnvSecretFeedbackBridgeFindings.every((finding) => finding.matched_object.actions.includes("write"))).toBe(true);
+    expect(sourceHandlerEnvSecretFeedbackBridgeFindings.every((finding) => finding.matched_object.actions.includes("remember"))).toBe(true);
+    expect(sourceHandlerEnvSecretFeedbackBridgeFindings.every((finding) => finding.matched_object.external_reach === true)).toBe(true);
+    expect(sourceHandlerEnvSecretFeedbackBridgeFindings.every((finding) => finding.matched_object.secret_exposure === true)).toBe(true);
+    expect(sourceHandlerEnvSecretFeedbackBridgeFindings.every((finding) => finding.matched_object.side_effect === true)).toBe(true);
+    expect(sourceHandlerEnvSecretFeedbackBridgeFindings.every((finding) => finding.matched_object.reversible === false)).toBe(true);
+    expect(JSON.stringify(sourceHandlerEnvSecretFeedbackBridgeFindings)).not.toContain("process.env");
+    expect(JSON.stringify(sourceHandlerEnvSecretFeedbackBridgeFindings)).not.toContain("os.getenv");
+    expect(JSON.stringify(sourceHandlerEnvSecretFeedbackBridgeFindings)).not.toContain("feedbackCredential");
+    expect(JSON.stringify(sourceHandlerEnvSecretFeedbackBridgeFindings)).not.toContain("feedback_credential");
+    expect(JSON.stringify(sourceHandlerEnvSecretFeedbackBridgeFindings)).not.toContain("feedbackPipeline.promoteToTraining");
+    expect(JSON.stringify(sourceHandlerEnvSecretFeedbackBridgeFindings)).not.toContain("feedback_pipeline.promote_to_training");
+    expect(JSON.stringify(sourceHandlerEnvSecretFeedbackBridgeFindings)).not.toContain("Persist runtime credential");
+    expect(JSON.stringify(sourceHandlerEnvSecretFeedbackBridgeFindings)).not.toContain("source env secret promoted to feedback");
+    expect(JSON.stringify(sourceHandlerEnvSecretFeedbackBridgeFindings)).not.toContain("framework env secret promoted to feedback");
+    expect(JSON.stringify(sourceHandlerEnvSecretFeedbackBridgeFindings)).not.toContain("Promote environment-backed support credentials");
     const sourceHandlerEnvSecretTelemetryBridgeFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-161");
     expect(sourceHandlerEnvSecretTelemetryBridgeFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_export_env_secret_trace",

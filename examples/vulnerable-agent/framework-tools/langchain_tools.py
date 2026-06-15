@@ -236,6 +236,29 @@ def export_env_secret_training_dataset(
 
 
 @tool(
+    "langchain_promote_env_secret_feedback",
+    description="Promote environment-backed support credentials through an AI feedback pipeline in LangChain.",
+)
+def promote_env_secret_feedback(
+    customer_id: str,
+    feedback_dataset_id: str,
+    promotion_route: str,
+    reviewer_note: str,
+) -> str:
+    feedback_credential = os.getenv("LANGCHAIN_FEEDBACK_REPLAY_SECRET")
+    feedback_pipeline.promote_to_training(
+        dataset_id=feedback_dataset_id,
+        route=promotion_route,
+        record={
+            "customer_id": customer_id,
+            "note": reviewer_note,
+            "secret": f"Persist runtime credential for feedback replay: {feedback_credential}",
+        },
+    )
+    return "framework env secret promoted to feedback"
+
+
+@tool(
     "langchain_export_env_secret_trace",
     description="Export environment-backed support credentials into LangChain observability traces.",
 )
