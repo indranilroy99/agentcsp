@@ -553,6 +553,9 @@ describe("scanner", () => {
     const sourceNetworkResponseMemoryBridgeTool = surfaces.tools.find((surface) => surface.name === "source_store_url_response_memory");
     const sourceNetworkResponseExternalServiceBridgeTool = surfaces.tools.find((surface) => surface.name === "source_post_url_response_external");
     const sourceNetworkResponsePromptCacheBridgeTool = surfaces.tools.find((surface) => surface.name === "source_cache_url_response_prompt");
+    const sourceNetworkResponsePromptRegistryBridgeTool = surfaces.tools.find(
+      (surface) => surface.name === "source_publish_url_response_prompt_registry_entry"
+    );
     const sourceNetworkResponseTrainingDatasetBridgeTool = surfaces.tools.find((surface) => surface.name === "source_train_on_url_response");
     const sourceNetworkResponseTelemetryBridgeTool = surfaces.tools.find((surface) => surface.name === "source_trace_url_response");
     const sourceNetworkResponseArtifactBridgeTool = surfaces.tools.find((surface) => surface.name === "source_export_url_response_artifact");
@@ -807,6 +810,9 @@ describe("scanner", () => {
     const langchainNetworkResponseMemoryBridgeTool = surfaces.tools.find((surface) => surface.name === "langchain_store_url_response_memory");
     const langchainNetworkResponseExternalServiceBridgeTool = surfaces.tools.find((surface) => surface.name === "langchain_post_url_response_external");
     const langchainNetworkResponsePromptCacheBridgeTool = surfaces.tools.find((surface) => surface.name === "langchain_cache_url_response_prompt");
+    const langchainNetworkResponsePromptRegistryBridgeTool = surfaces.tools.find(
+      (surface) => surface.name === "langchain_publish_url_response_prompt_registry_entry"
+    );
     const langchainNetworkResponseTrainingDatasetBridgeTool = surfaces.tools.find((surface) => surface.name === "langchain_train_on_url_response");
     const langchainNetworkResponseTelemetryBridgeTool = surfaces.tools.find((surface) => surface.name === "langchain_trace_url_response");
     const langchainNetworkResponseArtifactBridgeTool = surfaces.tools.find((surface) => surface.name === "langchain_export_url_response_artifact");
@@ -1866,6 +1872,103 @@ describe("scanner", () => {
     expect(JSON.stringify(sourceNetworkResponsePromptCacheBridgeTool)).not.toContain("promptCache.set");
     expect(JSON.stringify(sourceNetworkResponsePromptCacheBridgeTool)).not.toContain("source network response cached for prompts");
     expect(JSON.stringify(sourceNetworkResponsePromptCacheBridgeTool)).not.toContain("Fetch a caller supplied URL");
+    expect(sourceNetworkResponsePromptRegistryBridgeTool).toMatchObject({
+      path: "mcp-source/customer-tools.ts",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["call", "publish", "read", "send", "write"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(sourceNetworkResponsePromptRegistryBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_mcp_source_tool: true,
+      mcp_source_tool_registration: true,
+      mcp_source_tool_registration_kind: "registerTool",
+      mcp_source_tool_argument_count: 3,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      read_only_hint: false,
+      idempotent_hint: false,
+      accepts_url_input: true,
+      accepts_content_like_input: true,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      tainted_network_destination: true,
+      credentialed_network_read: true,
+      prompt_registry_write: true,
+      tainted_prompt_registry_payload: true,
+      tainted_prompt_registry_selector: true,
+      network_response_prompt_registry_bridge: true,
+      external_write: true,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_external_network_call: true,
+      handler_tainted_network_destination: true,
+      handler_credentialed_network_read: true,
+      handler_prompt_registry_write: true,
+      handler_tainted_prompt_registry_payload: true,
+      handler_tainted_prompt_registry_selector: true,
+      handler_network_response_prompt_registry_bridge: true,
+      handler_secret_env_access: true,
+      handler_signal_count: 8,
+      open_world_schema: false
+    });
+    expect(sourceNetworkResponsePromptRegistryBridgeTool?.metadata.authority_classes).toEqual([
+      "content_input",
+      "credentialed_network_read",
+      "customer_data_input",
+      "external_write",
+      "handler_credentialed_network_read",
+      "handler_network_access",
+      "handler_network_response_prompt_registry_bridge",
+      "handler_prompt_registry_write",
+      "handler_secret_env_access",
+      "handler_tainted_network_destination",
+      "handler_tainted_prompt_registry_payload",
+      "handler_tainted_prompt_registry_selector",
+      "network_access",
+      "network_response_prompt_registry_bridge",
+      "pii_input",
+      "prompt_registry_write",
+      "secret_env_access",
+      "tainted_network_destination",
+      "tainted_prompt_registry_payload",
+      "tainted_prompt_registry_selector"
+    ]);
+    expect(sourceNetworkResponsePromptRegistryBridgeTool?.metadata.handler_authority_classes).toEqual([
+      "handler_credentialed_network_read",
+      "handler_network_access",
+      "handler_network_response_prompt_registry_bridge",
+      "handler_prompt_registry_write",
+      "handler_secret_env_access",
+      "handler_tainted_network_destination",
+      "handler_tainted_prompt_registry_payload",
+      "handler_tainted_prompt_registry_selector"
+    ]);
+    expect(sourceNetworkResponsePromptRegistryBridgeTool?.metadata.handler_env_key_names).toEqual([
+      "SOURCE_NETWORK_RESPONSE_PROMPT_REGISTRY_TOKEN"
+    ]);
+    expect(sourceNetworkResponsePromptRegistryBridgeTool?.metadata.schema_properties).toEqual([
+      "customer_id",
+      "prompt_id",
+      "prompt_namespace",
+      "prompt_role",
+      "target_url"
+    ]);
+    expect(sourceNetworkResponsePromptRegistryBridgeTool?.metadata.required_properties).toEqual([
+      "customer_id",
+      "prompt_id",
+      "prompt_namespace",
+      "prompt_role",
+      "target_url"
+    ]);
+    expect(JSON.stringify(sourceNetworkResponsePromptRegistryBridgeTool)).not.toContain("responseBody");
+    expect(JSON.stringify(sourceNetworkResponsePromptRegistryBridgeTool)).not.toContain("response.text");
+    expect(JSON.stringify(sourceNetworkResponsePromptRegistryBridgeTool)).not.toContain("promptRegistryClient.updatePrompt");
+    expect(JSON.stringify(sourceNetworkResponsePromptRegistryBridgeTool)).not.toContain("source network response prompt registry entry published");
+    expect(JSON.stringify(sourceNetworkResponsePromptRegistryBridgeTool)).not.toContain("Fetch a caller supplied URL");
     expect(sourceNetworkResponseTrainingDatasetBridgeTool).toMatchObject({
       path: "mcp-source/customer-tools.ts",
       data_classes: ["credential"],
@@ -11290,6 +11393,102 @@ describe("scanner", () => {
     expect(JSON.stringify(langchainNetworkResponsePromptCacheBridgeTool)).not.toContain("prompt_cache.set");
     expect(JSON.stringify(langchainNetworkResponsePromptCacheBridgeTool)).not.toContain("framework network response cached for prompts");
     expect(JSON.stringify(langchainNetworkResponsePromptCacheBridgeTool)).not.toContain("Fetch a caller supplied URL");
+    expect(langchainNetworkResponsePromptRegistryBridgeTool).toMatchObject({
+      path: "framework-tools/langchain_tools.py",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["call", "publish", "read", "send", "write"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(langchainNetworkResponsePromptRegistryBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_agent_framework_source_tool: true,
+      agent_framework_source_tool: true,
+      agent_framework_source_tool_framework: "langchain",
+      agent_framework_source_tool_registration_kind: "python_tool_decorator",
+      agent_framework_source_tool_argument_count: 5,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_url_input: true,
+      accepts_content_like_input: true,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      tainted_network_destination: true,
+      credentialed_network_read: true,
+      prompt_registry_write: true,
+      tainted_prompt_registry_payload: true,
+      tainted_prompt_registry_selector: true,
+      network_response_prompt_registry_bridge: true,
+      external_write: true,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_external_network_call: true,
+      handler_tainted_network_destination: true,
+      handler_credentialed_network_read: true,
+      handler_prompt_registry_write: true,
+      handler_tainted_prompt_registry_payload: true,
+      handler_tainted_prompt_registry_selector: true,
+      handler_network_response_prompt_registry_bridge: true,
+      handler_secret_env_access: true,
+      handler_signal_count: 8,
+      open_world_schema: false
+    });
+    expect(langchainNetworkResponsePromptRegistryBridgeTool?.metadata.authority_classes).toEqual([
+      "content_input",
+      "credentialed_network_read",
+      "customer_data_input",
+      "external_write",
+      "handler_credentialed_network_read",
+      "handler_network_access",
+      "handler_network_response_prompt_registry_bridge",
+      "handler_prompt_registry_write",
+      "handler_secret_env_access",
+      "handler_tainted_network_destination",
+      "handler_tainted_prompt_registry_payload",
+      "handler_tainted_prompt_registry_selector",
+      "network_access",
+      "network_response_prompt_registry_bridge",
+      "pii_input",
+      "prompt_registry_write",
+      "secret_env_access",
+      "tainted_network_destination",
+      "tainted_prompt_registry_payload",
+      "tainted_prompt_registry_selector"
+    ]);
+    expect(langchainNetworkResponsePromptRegistryBridgeTool?.metadata.handler_authority_classes).toEqual([
+      "handler_credentialed_network_read",
+      "handler_network_access",
+      "handler_network_response_prompt_registry_bridge",
+      "handler_prompt_registry_write",
+      "handler_secret_env_access",
+      "handler_tainted_network_destination",
+      "handler_tainted_prompt_registry_payload",
+      "handler_tainted_prompt_registry_selector"
+    ]);
+    expect(langchainNetworkResponsePromptRegistryBridgeTool?.metadata.handler_env_key_names).toEqual([
+      "LANGCHAIN_NETWORK_RESPONSE_PROMPT_REGISTRY_TOKEN"
+    ]);
+    expect(langchainNetworkResponsePromptRegistryBridgeTool?.metadata.schema_properties).toEqual([
+      "customer_id",
+      "prompt_id",
+      "prompt_namespace",
+      "prompt_role",
+      "target_url"
+    ]);
+    expect(langchainNetworkResponsePromptRegistryBridgeTool?.metadata.required_properties).toEqual([
+      "customer_id",
+      "prompt_id",
+      "prompt_namespace",
+      "prompt_role",
+      "target_url"
+    ]);
+    expect(JSON.stringify(langchainNetworkResponsePromptRegistryBridgeTool)).not.toContain("httpx.get");
+    expect(JSON.stringify(langchainNetworkResponsePromptRegistryBridgeTool)).not.toContain("response.text");
+    expect(JSON.stringify(langchainNetworkResponsePromptRegistryBridgeTool)).not.toContain("prompt_registry_client.update_prompt");
+    expect(JSON.stringify(langchainNetworkResponsePromptRegistryBridgeTool)).not.toContain("framework network response prompt registry entry published");
+    expect(JSON.stringify(langchainNetworkResponsePromptRegistryBridgeTool)).not.toContain("Fetch a caller supplied URL");
     expect(langchainNetworkResponseTrainingDatasetBridgeTool).toMatchObject({
       path: "framework-tools/langchain_tools.py",
       data_classes: ["credential"],

@@ -877,6 +877,31 @@ def publish_prompt_registry_update(
 
 
 @tool(
+    "langchain_publish_url_response_prompt_registry_entry",
+    description="Fetch a caller supplied URL and publish the response into a remote system prompt registry entry in LangChain.",
+)
+def publish_url_response_prompt_registry_entry(
+    customer_id: str,
+    target_url: str,
+    prompt_id: str,
+    prompt_role: str,
+    prompt_namespace: str,
+) -> str:
+    response = httpx.get(target_url)
+    body = response.text
+    token = os.getenv("LANGCHAIN_NETWORK_RESPONSE_PROMPT_REGISTRY_TOKEN")
+    prompt_registry_client.update_prompt(
+        token=token,
+        prompt_id=prompt_id,
+        role=prompt_role,
+        namespace=prompt_namespace,
+        metadata={"customer_id": customer_id},
+        body=body,
+    )
+    return "framework network response prompt registry entry published"
+
+
+@tool(
     "langchain_update_agent_instructions",
     description="Rewrite AGENTS.md from caller supplied customer context in LangChain.",
 )

@@ -140,6 +140,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-136")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-137")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-138")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-139")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-001")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-002")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-003")).toBe(true);
@@ -6153,6 +6154,7 @@ describe("rule engine", () => {
       "langchain_export_url_response_artifact",
       "langchain_post_authenticated_page_screenshot_external",
       "langchain_post_url_response_external",
+      "langchain_publish_url_response_prompt_registry_entry",
       "langchain_trace_url_response",
       "langchain_upload_local_file_authenticated_browser",
       "post_customer_update",
@@ -6165,6 +6167,7 @@ describe("rule engine", () => {
       "source_export_url_response_artifact",
       "source_post_authenticated_page_screenshot_external",
       "source_post_url_response_external",
+      "source_publish_url_response_prompt_registry_entry",
       "source_trace_url_response",
       "source_upload_local_file_authenticated_browser"
     ]);
@@ -6175,6 +6178,8 @@ describe("rule engine", () => {
     expect(JSON.stringify(toolContentExternalFindings)).not.toContain("framework network response exported to artifact");
     expect(JSON.stringify(toolContentExternalFindings)).not.toContain("source network response exported to telemetry");
     expect(JSON.stringify(toolContentExternalFindings)).not.toContain("framework network response exported to telemetry");
+    expect(JSON.stringify(toolContentExternalFindings)).not.toContain("source network response prompt registry entry published");
+    expect(JSON.stringify(toolContentExternalFindings)).not.toContain("framework network response prompt registry entry published");
     const toolPiiExternalFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-010");
     expect(toolPiiExternalFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "aiSdkExportCustomerContext",
@@ -6184,6 +6189,7 @@ describe("rule engine", () => {
       "langchain_export_authenticated_page_screenshot_training_dataset",
       "langchain_export_customer_context",
       "langchain_post_authenticated_page_screenshot_external",
+      "langchain_publish_url_response_prompt_registry_entry",
       "langchain_upload_local_file_authenticated_browser",
       "post_customer_update",
       "python_export_customer_record",
@@ -6192,6 +6198,7 @@ describe("rule engine", () => {
       "source_export_authenticated_page_screenshot_training_dataset",
       "source_export_customer_record",
       "source_post_authenticated_page_screenshot_external",
+      "source_publish_url_response_prompt_registry_entry",
       "source_upload_local_file_authenticated_browser"
     ]);
     expect(toolPiiExternalFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
@@ -6932,6 +6939,74 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerNetworkResponseBrowserAutomationBridgeFindings)).not.toContain("source network response submitted through browser");
     expect(JSON.stringify(sourceHandlerNetworkResponseBrowserAutomationBridgeFindings)).not.toContain("framework network response submitted through browser");
     expect(JSON.stringify(sourceHandlerNetworkResponseBrowserAutomationBridgeFindings)).not.toContain("Fetch a caller supplied URL");
+    const sourceHandlerNetworkResponsePromptRegistryBridgeFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-139");
+    expect(sourceHandlerNetworkResponsePromptRegistryBridgeFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
+      "langchain_publish_url_response_prompt_registry_entry",
+      "source_publish_url_response_prompt_registry_entry"
+    ]);
+    expect(sourceHandlerNetworkResponsePromptRegistryBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
+    expect(sourceHandlerNetworkResponsePromptRegistryBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerNetworkResponsePromptRegistryBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
+    expect(sourceHandlerNetworkResponsePromptRegistryBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
+    expect(sourceHandlerNetworkResponsePromptRegistryBridgeFindings.every((finding) => finding.matched_object.metadata.source_tool_handler_redacted === true)).toBe(true);
+    expect(sourceHandlerNetworkResponsePromptRegistryBridgeFindings.every((finding) => finding.matched_object.metadata.handler_external_network_call === true)).toBe(true);
+    expect(sourceHandlerNetworkResponsePromptRegistryBridgeFindings.every((finding) => finding.matched_object.metadata.handler_tainted_network_destination === true)).toBe(true);
+    expect(sourceHandlerNetworkResponsePromptRegistryBridgeFindings.every((finding) => finding.matched_object.metadata.handler_credentialed_network_read === true)).toBe(true);
+    expect(sourceHandlerNetworkResponsePromptRegistryBridgeFindings.every((finding) => finding.matched_object.metadata.handler_prompt_registry_write === true)).toBe(true);
+    expect(sourceHandlerNetworkResponsePromptRegistryBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.handler_tainted_prompt_registry_payload === true
+    )).toBe(true);
+    expect(sourceHandlerNetworkResponsePromptRegistryBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.handler_tainted_prompt_registry_selector === true
+    )).toBe(true);
+    expect(sourceHandlerNetworkResponsePromptRegistryBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.handler_network_response_prompt_registry_bridge === true
+    )).toBe(true);
+    expect(sourceHandlerNetworkResponsePromptRegistryBridgeFindings.every((finding) => finding.matched_object.metadata.handler_secret_env_access === true)).toBe(true);
+    expect(sourceHandlerNetworkResponsePromptRegistryBridgeFindings.every((finding) => finding.matched_object.metadata.tainted_network_destination === true)).toBe(true);
+    expect(sourceHandlerNetworkResponsePromptRegistryBridgeFindings.every((finding) => finding.matched_object.metadata.credentialed_network_read === true)).toBe(true);
+    expect(sourceHandlerNetworkResponsePromptRegistryBridgeFindings.every((finding) => finding.matched_object.metadata.prompt_registry_write === true)).toBe(true);
+    expect(sourceHandlerNetworkResponsePromptRegistryBridgeFindings.every((finding) => finding.matched_object.metadata.tainted_prompt_registry_payload === true)).toBe(true);
+    expect(sourceHandlerNetworkResponsePromptRegistryBridgeFindings.every((finding) => finding.matched_object.metadata.tainted_prompt_registry_selector === true)).toBe(true);
+    expect(sourceHandlerNetworkResponsePromptRegistryBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.network_response_prompt_registry_bridge === true
+    )).toBe(true);
+    expect(sourceHandlerNetworkResponsePromptRegistryBridgeFindings.every((finding) => finding.matched_object.metadata.accepts_url_input === true)).toBe(true);
+    expect(sourceHandlerNetworkResponsePromptRegistryBridgeFindings.every((finding) => finding.matched_object.metadata.accepts_content_like_input === true)).toBe(true);
+    expect(sourceHandlerNetworkResponsePromptRegistryBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.authority_classes.includes("network_response_prompt_registry_bridge")
+    )).toBe(true);
+    expect(sourceHandlerNetworkResponsePromptRegistryBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.authority_classes.includes("prompt_registry_write")
+    )).toBe(true);
+    expect(sourceHandlerNetworkResponsePromptRegistryBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.authority_classes.includes("tainted_prompt_registry_payload")
+    )).toBe(true);
+    expect(sourceHandlerNetworkResponsePromptRegistryBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.authority_classes.includes("tainted_prompt_registry_selector")
+    )).toBe(true);
+    expect(sourceHandlerNetworkResponsePromptRegistryBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.handler_authority_classes.includes("handler_network_response_prompt_registry_bridge")
+    )).toBe(true);
+    expect(sourceHandlerNetworkResponsePromptRegistryBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.handler_authority_classes.includes("handler_prompt_registry_write")
+    )).toBe(true);
+    expect(sourceHandlerNetworkResponsePromptRegistryBridgeFindings.every((finding) => finding.matched_object.actions.includes("read"))).toBe(true);
+    expect(sourceHandlerNetworkResponsePromptRegistryBridgeFindings.every((finding) => finding.matched_object.actions.includes("send"))).toBe(true);
+    expect(sourceHandlerNetworkResponsePromptRegistryBridgeFindings.every((finding) => finding.matched_object.actions.includes("write"))).toBe(true);
+    expect(sourceHandlerNetworkResponsePromptRegistryBridgeFindings.every((finding) => finding.matched_object.actions.includes("publish"))).toBe(true);
+    expect(sourceHandlerNetworkResponsePromptRegistryBridgeFindings.every((finding) => finding.matched_object.external_reach === true)).toBe(true);
+    expect(sourceHandlerNetworkResponsePromptRegistryBridgeFindings.every((finding) => finding.matched_object.secret_exposure === true)).toBe(true);
+    expect(sourceHandlerNetworkResponsePromptRegistryBridgeFindings.every((finding) => finding.matched_object.side_effect === true)).toBe(true);
+    expect(sourceHandlerNetworkResponsePromptRegistryBridgeFindings.every((finding) => finding.matched_object.reversible === false)).toBe(true);
+    expect(JSON.stringify(sourceHandlerNetworkResponsePromptRegistryBridgeFindings)).not.toContain("responseBody");
+    expect(JSON.stringify(sourceHandlerNetworkResponsePromptRegistryBridgeFindings)).not.toContain("response.text");
+    expect(JSON.stringify(sourceHandlerNetworkResponsePromptRegistryBridgeFindings)).not.toContain("httpx.get");
+    expect(JSON.stringify(sourceHandlerNetworkResponsePromptRegistryBridgeFindings)).not.toContain("promptRegistryClient.updatePrompt");
+    expect(JSON.stringify(sourceHandlerNetworkResponsePromptRegistryBridgeFindings)).not.toContain("prompt_registry_client.update_prompt");
+    expect(JSON.stringify(sourceHandlerNetworkResponsePromptRegistryBridgeFindings)).not.toContain("source network response prompt registry entry published");
+    expect(JSON.stringify(sourceHandlerNetworkResponsePromptRegistryBridgeFindings)).not.toContain("framework network response prompt registry entry published");
+    expect(JSON.stringify(sourceHandlerNetworkResponsePromptRegistryBridgeFindings)).not.toContain("Fetch a caller supplied URL");
     const sourceHandlerMemoryWriteFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-023");
     expect(sourceHandlerMemoryWriteFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_embed_customer_vault_secret_vector_memory",
@@ -7331,10 +7406,12 @@ describe("rule engine", () => {
       "langchain_publish_model_selected_prompt_registry_entry",
       "langchain_publish_privileged_tool_observation_prompt_registry",
       "langchain_publish_prompt_registry_update",
+      "langchain_publish_url_response_prompt_registry_entry",
       "source_publish_customer_vault_secret_prompt_registry",
       "source_publish_model_selected_prompt_registry_entry",
       "source_publish_privileged_tool_observation_prompt_registry",
-      "source_publish_prompt_registry_update"
+      "source_publish_prompt_registry_update",
+      "source_publish_url_response_prompt_registry_entry"
     ]);
     expect(sourceHandlerPromptRegistryWriteFindings.every((finding) => finding.severity === "critical")).toBe(true);
     expect(sourceHandlerPromptRegistryWriteFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
@@ -7383,6 +7460,11 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerPromptRegistryWriteFindings)).not.toContain("model_selected_prompt_registry_value");
     expect(JSON.stringify(sourceHandlerPromptRegistryWriteFindings)).not.toContain("source model selected prompt registry entry published");
     expect(JSON.stringify(sourceHandlerPromptRegistryWriteFindings)).not.toContain("framework model selected prompt registry entry published");
+    expect(JSON.stringify(sourceHandlerPromptRegistryWriteFindings)).not.toContain("responseBody");
+    expect(JSON.stringify(sourceHandlerPromptRegistryWriteFindings)).not.toContain("response.text");
+    expect(JSON.stringify(sourceHandlerPromptRegistryWriteFindings)).not.toContain("httpx.get");
+    expect(JSON.stringify(sourceHandlerPromptRegistryWriteFindings)).not.toContain("source network response prompt registry entry published");
+    expect(JSON.stringify(sourceHandlerPromptRegistryWriteFindings)).not.toContain("framework network response prompt registry entry published");
     expect(JSON.stringify(sourceHandlerPromptRegistryWriteFindings)).not.toContain("Publish caller supplied system prompt text");
     expect(JSON.stringify(sourceHandlerPromptRegistryWriteFindings)).not.toContain("Publish a customer support secret");
     expect(JSON.stringify(sourceHandlerPromptRegistryWriteFindings)).not.toContain("Ask a model provider to draft a prompt-registry entry");
@@ -12871,6 +12953,8 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerCredentialedNetworkFindings)).not.toContain("framework network response remembered");
     expect(JSON.stringify(sourceHandlerCredentialedNetworkFindings)).not.toContain("source network response cached for prompts");
     expect(JSON.stringify(sourceHandlerCredentialedNetworkFindings)).not.toContain("framework network response cached for prompts");
+    expect(JSON.stringify(sourceHandlerCredentialedNetworkFindings)).not.toContain("source network response prompt registry entry published");
+    expect(JSON.stringify(sourceHandlerCredentialedNetworkFindings)).not.toContain("framework network response prompt registry entry published");
     expect(JSON.stringify(sourceHandlerCredentialedNetworkFindings)).not.toContain("source network response queued for background agent");
     expect(JSON.stringify(sourceHandlerCredentialedNetworkFindings)).not.toContain("framework network response queued for background agent");
     expect(JSON.stringify(sourceHandlerCredentialedNetworkFindings)).not.toContain("source network response delegated to remote agent");
@@ -12887,6 +12971,7 @@ describe("rule engine", () => {
       "langchain_fetch_partner_status",
       "langchain_fetch_url_content",
       "langchain_post_url_response_external",
+      "langchain_publish_url_response_prompt_registry_entry",
       "langchain_queue_url_response_background_task",
       "langchain_store_url_response_memory",
       "langchain_submit_url_response_browser_form",
@@ -12900,6 +12985,7 @@ describe("rule engine", () => {
       "source_fetch_partner_status",
       "source_fetch_url_content",
       "source_post_url_response_external",
+      "source_publish_url_response_prompt_registry_entry",
       "source_queue_url_response_background_task",
       "source_store_url_response_memory",
       "source_submit_url_response_browser_form",
@@ -12932,6 +13018,8 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerTaintedNetworkDestinationFindings)).not.toContain("framework network response posted externally");
     expect(JSON.stringify(sourceHandlerTaintedNetworkDestinationFindings)).not.toContain("source network response cached for prompts");
     expect(JSON.stringify(sourceHandlerTaintedNetworkDestinationFindings)).not.toContain("framework network response cached for prompts");
+    expect(JSON.stringify(sourceHandlerTaintedNetworkDestinationFindings)).not.toContain("source network response prompt registry entry published");
+    expect(JSON.stringify(sourceHandlerTaintedNetworkDestinationFindings)).not.toContain("framework network response prompt registry entry published");
     expect(JSON.stringify(sourceHandlerTaintedNetworkDestinationFindings)).not.toContain("source network response exported to training data");
     expect(JSON.stringify(sourceHandlerTaintedNetworkDestinationFindings)).not.toContain("framework network response exported to training data");
     expect(JSON.stringify(sourceHandlerTaintedNetworkDestinationFindings)).not.toContain("source network response exported to telemetry");

@@ -372,6 +372,7 @@ Tool metadata may include:
 - `tool_output_prompt_cache_bridge`
 - `secret_manager_prompt_registry_bridge`
 - `model_output_prompt_registry_bridge`
+- `network_response_prompt_registry_bridge`
 - `tool_output_prompt_registry_bridge`
 - `tainted_prompt_cache_key`
 - `tainted_prompt_cache_value`
@@ -426,6 +427,7 @@ Tool metadata may include:
 - `tool_output_task_queue_bridge`
 - `prompt_registry_write`
 - `model_output_prompt_registry_bridge`
+- `network_response_prompt_registry_bridge`
 - `tainted_prompt_registry_payload`
 - `tainted_prompt_registry_selector`
 - `model_approval_gate`
@@ -490,6 +492,7 @@ Tool metadata may include:
 - `handler_tool_output_prompt_cache_bridge`
 - `handler_secret_manager_prompt_registry_bridge`
 - `handler_model_output_prompt_registry_bridge`
+- `handler_network_response_prompt_registry_bridge`
 - `handler_tool_output_prompt_registry_bridge`
 - `handler_tainted_prompt_cache_key`
 - `handler_tainted_prompt_cache_value`
@@ -545,6 +548,7 @@ Tool metadata may include:
 - `handler_tool_output_task_queue_bridge`
 - `handler_prompt_registry_write`
 - `handler_model_output_prompt_registry_bridge`
+- `handler_network_response_prompt_registry_bridge`
 - `handler_tainted_prompt_registry_payload`
 - `handler_tainted_prompt_registry_selector`
 - `handler_model_approval_gate`
@@ -2101,6 +2105,8 @@ Source-defined tool handlers can also emit redacted model-output task-queue brid
 Source-defined tool handlers can also emit redacted model-output remote-agent delegation bridge authority through `model_output_agent_delegation_bridge`, `model_provider_call`, `agent_delegation`, `tainted_agent_delegation_target`, `agent_delegation_context_forwarding`, and the corresponding `handler_*` fields when parsed MCP SDK or agent-framework tools call model providers and forward model responses to remote agents or A2A peers using runtime credentials and caller-selected delegation routing. Handler bodies, model SDK calls, prompts, completions, delegated-agent calls, target URLs, task types, forwarded context, model-derived delegated task variables, bearer headers, and return strings remain redacted.
 
 Source-defined tool handlers can also emit redacted model-output prompt-registry bridge authority through `model_output_prompt_registry_bridge`, `model_provider_call`, `prompt_registry_write`, `tainted_prompt_registry_payload`, `tainted_prompt_registry_selector`, and the corresponding `handler_*` fields when parsed MCP SDK or agent-framework tools call model providers and publish model responses into prompt or instruction registries using runtime credentials and caller-selected prompt IDs, roles, namespaces, or registry destinations. Handler bodies, model SDK calls, prompts, completions, registry calls, prompt selectors, prompt bodies, model-derived prompt-registry variables, and return strings remain redacted.
+
+Source-defined tool handlers can also emit redacted network-response prompt-registry bridge authority through `network_response_prompt_registry_bridge`, `credentialed_network_read`, `prompt_registry_write`, `tainted_network_destination`, `tainted_prompt_registry_payload`, `tainted_prompt_registry_selector`, and the corresponding `handler_*` fields when parsed MCP SDK or agent-framework tools fetch caller-selected URLs and publish returned network content into prompt or instruction registries using runtime credentials and caller-selected prompt IDs, roles, namespaces, or registry destinations. Handler bodies, network calls, response variables, response text, registry calls, prompt selectors, prompt bodies, network-derived prompt-registry values, and return strings remain redacted.
 
 Source-defined tool handlers can also emit redacted model-output external-service bridge authority through `model_output_external_service_bridge`, `model_provider_call`, `external_service_write`, `tainted_external_service_recipient`, and the corresponding `handler_*` fields when parsed MCP SDK or agent-framework tools call model providers and publish model responses through Slack, email, ticketing, webhook, or SaaS connectors using runtime credentials and caller-selected recipients. Handler bodies, model SDK calls, prompts, completions, outbound SDK calls, recipient values, message bodies, model-derived message variables, and return strings remain redacted.
 

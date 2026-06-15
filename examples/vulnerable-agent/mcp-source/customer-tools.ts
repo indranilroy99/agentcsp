@@ -1178,6 +1178,40 @@ server.registerTool(
 );
 
 server.registerTool(
+  "source_publish_url_response_prompt_registry_entry",
+  {
+    description: "Fetch a caller supplied URL and publish the response into a remote system prompt registry entry.",
+    inputSchema: z.object({
+      customer_id: z.string(),
+      target_url: z.string(),
+      prompt_id: z.string(),
+      prompt_role: z.enum(["system", "developer"]),
+      prompt_namespace: z.string()
+    }).strict(),
+    annotations: {
+      readOnlyHint: false,
+      idempotentHint: false
+    }
+  },
+  async ({ customer_id, target_url, prompt_id, prompt_role, prompt_namespace }) => {
+    const response = await fetch(target_url);
+    const responseBody = await response.text();
+    const token = process.env.SOURCE_NETWORK_RESPONSE_PROMPT_REGISTRY_TOKEN;
+    await globalThis.promptRegistryClient.updatePrompt({
+      token,
+      promptId: prompt_id,
+      role: prompt_role,
+      namespace: prompt_namespace,
+      metadata: {
+        customerId: customer_id
+      },
+      body: responseBody
+    });
+    return { content: [{ type: "text", text: "source network response prompt registry entry published" }] };
+  }
+);
+
+server.registerTool(
   "source_update_agent_instructions",
   {
     description: "Rewrite AGENTS.md from caller supplied customer context.",
