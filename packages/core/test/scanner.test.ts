@@ -554,6 +554,7 @@ describe("scanner", () => {
     const sourceLocalFileTrainingDatasetBridgeTool = surfaces.tools.find((surface) => surface.name === "source_train_on_local_file");
     const sourceLocalFileDatabaseWriteBridgeTool = surfaces.tools.find((surface) => surface.name === "source_store_local_file_database");
     const sourceLocalFileExternalServiceBridgeTool = surfaces.tools.find((surface) => surface.name === "source_post_local_file_to_slack");
+    const sourceLocalFileMemoryBridgeTool = surfaces.tools.find((surface) => surface.name === "source_store_local_file_memory");
     const sourceNetworkResponseTool = surfaces.tools.find((surface) => surface.name === "source_fetch_url_content");
     const sourceNetworkResponseMemoryBridgeTool = surfaces.tools.find((surface) => surface.name === "source_store_url_response_memory");
     const sourceNetworkResponseExternalServiceBridgeTool = surfaces.tools.find((surface) => surface.name === "source_post_url_response_external");
@@ -819,6 +820,9 @@ describe("scanner", () => {
     );
     const langchainLocalFileExternalServiceBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "langchain_post_local_file_to_slack"
+    );
+    const langchainLocalFileMemoryBridgeTool = surfaces.tools.find(
+      (surface) => surface.name === "langchain_store_local_file_memory"
     );
     const langchainNetworkResponseTool = surfaces.tools.find((surface) => surface.name === "langchain_fetch_url_content");
     const langchainNetworkResponseMemoryBridgeTool = surfaces.tools.find((surface) => surface.name === "langchain_store_url_response_memory");
@@ -1996,6 +2000,91 @@ describe("scanner", () => {
     expect(JSON.stringify(sourceLocalFileExternalServiceBridgeTool)).not.toContain("slackClient.chat.postMessage");
     expect(JSON.stringify(sourceLocalFileExternalServiceBridgeTool)).not.toContain("source local file posted externally");
     expect(JSON.stringify(sourceLocalFileExternalServiceBridgeTool)).not.toContain("Read a caller selected local file");
+    expect(sourceLocalFileMemoryBridgeTool).toMatchObject({
+      path: "mcp-source/customer-tools.ts",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["call", "read", "remember", "send", "write"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(sourceLocalFileMemoryBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_mcp_source_tool: true,
+      mcp_source_tool_registration: true,
+      mcp_source_tool_registration_kind: "registerTool",
+      mcp_source_tool_argument_count: 3,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      read_only_hint: false,
+      idempotent_hint: false,
+      accepts_content_like_input: true,
+      accepts_path_input: true,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      memory_write: true,
+      local_file_memory_bridge: true,
+      tainted_memory_scope: true,
+      local_file_disclosure: true,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_memory_write: true,
+      handler_local_file_memory_bridge: true,
+      handler_tainted_memory_scope: true,
+      handler_filesystem_read: true,
+      handler_tainted_filesystem_path: true,
+      handler_secret_env_access: true,
+      handler_model_visible_output: true,
+      handler_signal_count: 6,
+      open_world_schema: false
+    });
+    expect(sourceLocalFileMemoryBridgeTool?.metadata.authority_classes).toEqual([
+      "content_input",
+      "customer_data_input",
+      "filesystem_access",
+      "filesystem_read",
+      "handler_filesystem_read",
+      "handler_local_file_memory_bridge",
+      "handler_memory_write",
+      "handler_secret_env_access",
+      "handler_tainted_filesystem_path",
+      "handler_tainted_memory_scope",
+      "local_file_disclosure",
+      "local_file_memory_bridge",
+      "memory_access",
+      "memory_write",
+      "pii_input",
+      "secret_env_access",
+      "tainted_filesystem_path",
+      "tainted_memory_scope"
+    ]);
+    expect(sourceLocalFileMemoryBridgeTool?.metadata.handler_authority_classes).toEqual([
+      "handler_filesystem_read",
+      "handler_local_file_memory_bridge",
+      "handler_memory_write",
+      "handler_secret_env_access",
+      "handler_tainted_filesystem_path",
+      "handler_tainted_memory_scope"
+    ]);
+    expect(sourceLocalFileMemoryBridgeTool?.metadata.handler_env_key_names).toEqual(["SOURCE_LOCAL_FILE_MEMORY_TOKEN"]);
+    expect(sourceLocalFileMemoryBridgeTool?.metadata.schema_properties).toEqual([
+      "customer_id",
+      "local_file_path",
+      "memory_namespace",
+      "retention_note_text"
+    ]);
+    expect(sourceLocalFileMemoryBridgeTool?.metadata.required_properties).toEqual([
+      "customer_id",
+      "local_file_path",
+      "memory_namespace",
+      "retention_note_text"
+    ]);
+    expect(JSON.stringify(sourceLocalFileMemoryBridgeTool)).not.toContain("readFile");
+    expect(JSON.stringify(sourceLocalFileMemoryBridgeTool)).not.toContain("localFileContent");
+    expect(JSON.stringify(sourceLocalFileMemoryBridgeTool)).not.toContain("agentMemory.upsert");
+    expect(JSON.stringify(sourceLocalFileMemoryBridgeTool)).not.toContain("source local file persisted to memory");
+    expect(JSON.stringify(sourceLocalFileMemoryBridgeTool)).not.toContain("Read a caller selected local file");
     expect(sourceNetworkResponseTool).toMatchObject({
       path: "mcp-source/customer-tools.ts",
       data_classes: ["unknown"],
@@ -11937,6 +12026,89 @@ describe("scanner", () => {
     expect(JSON.stringify(langchainLocalFileExternalServiceBridgeTool)).not.toContain("slack_client.chat_postMessage");
     expect(JSON.stringify(langchainLocalFileExternalServiceBridgeTool)).not.toContain("framework local file posted externally");
     expect(JSON.stringify(langchainLocalFileExternalServiceBridgeTool)).not.toContain("Read a caller selected local file");
+    expect(langchainLocalFileMemoryBridgeTool).toMatchObject({
+      path: "framework-tools/langchain_tools.py",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["call", "read", "remember", "send", "write"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(langchainLocalFileMemoryBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_agent_framework_source_tool: true,
+      agent_framework_source_tool_framework: "langchain",
+      agent_framework_source_tool_registration_kind: "python_tool_decorator",
+      agent_framework_source_tool_argument_count: 4,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_content_like_input: true,
+      accepts_path_input: true,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      memory_write: true,
+      local_file_memory_bridge: true,
+      tainted_memory_scope: true,
+      local_file_disclosure: true,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_memory_write: true,
+      handler_local_file_memory_bridge: true,
+      handler_tainted_memory_scope: true,
+      handler_filesystem_read: true,
+      handler_tainted_filesystem_path: true,
+      handler_secret_env_access: true,
+      handler_model_visible_output: true,
+      handler_signal_count: 6,
+      open_world_schema: false
+    });
+    expect(langchainLocalFileMemoryBridgeTool?.metadata.authority_classes).toEqual([
+      "content_input",
+      "customer_data_input",
+      "filesystem_access",
+      "filesystem_read",
+      "handler_filesystem_read",
+      "handler_local_file_memory_bridge",
+      "handler_memory_write",
+      "handler_secret_env_access",
+      "handler_tainted_filesystem_path",
+      "handler_tainted_memory_scope",
+      "local_file_disclosure",
+      "local_file_memory_bridge",
+      "memory_access",
+      "memory_write",
+      "pii_input",
+      "secret_env_access",
+      "tainted_filesystem_path",
+      "tainted_memory_scope"
+    ]);
+    expect(langchainLocalFileMemoryBridgeTool?.metadata.handler_authority_classes).toEqual([
+      "handler_filesystem_read",
+      "handler_local_file_memory_bridge",
+      "handler_memory_write",
+      "handler_secret_env_access",
+      "handler_tainted_filesystem_path",
+      "handler_tainted_memory_scope"
+    ]);
+    expect(langchainLocalFileMemoryBridgeTool?.metadata.handler_env_key_names).toEqual(["LANGCHAIN_LOCAL_FILE_MEMORY_TOKEN"]);
+    expect(langchainLocalFileMemoryBridgeTool?.metadata.schema_properties).toEqual([
+      "customer_id",
+      "local_file_path",
+      "memory_namespace",
+      "retention_note_text"
+    ]);
+    expect(langchainLocalFileMemoryBridgeTool?.metadata.required_properties).toEqual([
+      "customer_id",
+      "local_file_path",
+      "memory_namespace",
+      "retention_note_text"
+    ]);
+    expect(JSON.stringify(langchainLocalFileMemoryBridgeTool)).not.toContain("Path(local_file_path)");
+    expect(JSON.stringify(langchainLocalFileMemoryBridgeTool)).not.toContain("local_file_content");
+    expect(JSON.stringify(langchainLocalFileMemoryBridgeTool)).not.toContain("memory_store.upsert");
+    expect(JSON.stringify(langchainLocalFileMemoryBridgeTool)).not.toContain("framework local file persisted to memory");
+    expect(JSON.stringify(langchainLocalFileMemoryBridgeTool)).not.toContain("Read a caller selected local file");
     expect(langchainNetworkResponseTool).toMatchObject({
       path: "framework-tools/langchain_tools.py",
       data_classes: ["unknown"],

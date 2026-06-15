@@ -133,8 +133,8 @@ const leakPatterns = [
   /slack_client\.chat_postMessage/u,
   /source local file posted externally/u,
   /framework local file posted externally/u,
-  /source local file posted externally/u,
-  /framework local file posted externally/u,
+  /source local file persisted to memory/u,
+  /framework local file persisted to memory/u,
   /Retrieved support runbook/u,
   /context-broker\.example\.invalid\/mcp/u,
   /context-broker\.example\.invalid\/live\/customer-ticket-stream/u,
@@ -262,8 +262,8 @@ const leakPatterns = [
   /slack_client\.chat_postMessage/u,
   /source local file posted externally/u,
   /framework local file posted externally/u,
-  /source local file posted externally/u,
-  /framework local file posted externally/u,
+  /source local file persisted to memory/u,
+  /framework local file persisted to memory/u,
   /clipboardText/u,
   /clipboard_text/u,
   /source clipboard posted externally/u,
@@ -677,6 +677,8 @@ const leakPatterns = [
   /framework tool observation remembered/u,
   /source vault secret persisted to memory/u,
   /framework vault secret persisted to memory/u,
+  /source local file persisted to memory/u,
+  /framework local file persisted to memory/u,
   /Persist a raw privileged tool observation/u,
   /Store a customer support secret/u,
   /slackClient\.chat\.postMessage/u,
@@ -1265,8 +1267,8 @@ const leakPatterns = [
 const vulnerable = await readScanOutput(vulnerableOutput, { sarifRequired: true });
 const safe = await readScanOutput(safeOutput, { sarifRequired: false });
 
-assertEqual(vulnerable.manifest.findings.length, 1029, "vulnerable manifest finding count");
-assertEqual(vulnerable.findings.length, 1029, "vulnerable findings.json count");
+assertEqual(vulnerable.manifest.findings.length, 1039, "vulnerable manifest finding count");
+assertEqual(vulnerable.findings.length, 1039, "vulnerable findings.json count");
 assertEqual(vulnerable.manifest.attack_paths.length, 15, "vulnerable attack path count");
 assertEqual(vulnerable.manifest.static_blast_radius?.critical_attack_paths, 15, "vulnerable critical attack path count");
 assertEqual(vulnerable.manifest.diagnostics.length, 0, "vulnerable diagnostics count");
@@ -1408,6 +1410,7 @@ for (const ruleId of [
   "AGENTCSP-TOOL-142",
   "AGENTCSP-TOOL-143",
   "AGENTCSP-TOOL-144",
+  "AGENTCSP-TOOL-145",
   "AGENTCSP-RUNTIME-007",
   "AGENTCSP-RUNTIME-008",
   "AGENTCSP-RUNTIME-123",

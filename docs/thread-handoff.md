@@ -1560,6 +1560,7 @@ The current iteration adds:
 - handler metadata for caller-selected secret-manager paths whose returned secret material is used to mint, sign, assume, impersonate, or issue credentials with runtime broker credentials, without emitting vault calls, secret values, broker calls, signing keys, token templates, issued credentials, subject/scope/audience selectors, return strings, or secret values
 - handler metadata for raw nested-tool observations used to mint, sign, assume, impersonate, or issue credentials with runtime broker credentials, without emitting nested tool calls, raw observations, broker calls, grant material, issued credentials, subject/scope/audience selectors, return strings, or secret values
 - handler metadata for caller-selected local file paths published through external-service SDKs with runtime connector credentials and caller-selected recipients, without emitting file-read calls, local paths, file contents, SDK calls, recipient IDs, message bodies, return strings, or secret values
+- handler metadata for caller-selected local file paths persisted into durable memory, RAG, vector, or state stores with runtime memory credentials and caller-selected memory scope, without emitting file-read calls, local paths, file contents, memory-store calls, namespaces, keys, stored payloads, notes, return strings, or secret values
 - rule `AGENTCSP-TOOL-013` for source-defined tools that send model-controlled or customer data externally with env-backed runtime secret authority
 - rule `AGENTCSP-TOOL-014` for source-defined tools that mutate local workspace paths or host files from path-like model arguments
 - rule `AGENTCSP-TOOL-015` for source-defined tools that execute shell or subprocess handlers from command-like tool arguments
@@ -1573,6 +1574,7 @@ The current iteration adds:
 - rule `AGENTCSP-TOOL-142` for source-defined tools that read caller-selected local files and export file material into training, fine-tuning, eval, or model-improvement datasets under runtime training credentials and caller-selected dataset routing
 - rule `AGENTCSP-TOOL-143` for source-defined tools that read caller-selected local files and write file material into customer or operational database records under runtime database credentials
 - rule `AGENTCSP-TOOL-144` for source-defined tools that read caller-selected local files and publish file material through external-service SDKs under runtime connector credentials and caller-selected recipients
+- rule `AGENTCSP-TOOL-145` for source-defined tools that read caller-selected local files and persist file material into durable memory, RAG, vector, or state stores under runtime memory credentials and caller-selected memory scope
 - rule `AGENTCSP-TOOL-021` for source-defined tools that pass serialized model inputs into unsafe deserialization APIs
 - rule `AGENTCSP-TOOL-022` for source-defined tools that fetch caller-controlled URLs and return network responses into model-visible tool output
 - rule `AGENTCSP-TOOL-023` for source-defined tools that persist customer or prompt-like tool input into memory, vector, RAG, or state stores

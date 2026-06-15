@@ -1,0 +1,129 @@
+id: AGENTCSP-TOOL-145
+name: Local file content persisted into agent memory
+description: A source-defined agent tool handler reads a caller-selected local file path and persists the file material into durable agent memory, RAG, vector, or state stores using runtime credentials and caller-selected memory scope.
+category: local_file_memory_bridge
+severity: critical
+maps_to:
+  owasp:
+    - LLM01:2025 Prompt Injection
+    - LLM02:2025 Sensitive Information Disclosure
+    - LLM04:2025 Data and Model Poisoning
+    - LLM06:2025 Excessive Agency
+  mitre_atlas:
+    - AML.T0051 LLM Plugin Compromise
+    - AML.T0056 LLM Trusted Boundary Compromise
+    - AML.T0059 Data from Information Repositories
+    - AML.T0062 Data Poisoning
+  nist_ai_rmf:
+    - MAP 4.1
+    - MEASURE 2.7
+    - MANAGE 2.4
+match:
+  object_type: tool
+  where:
+    - field: metadata.parsed_tool_schema
+      op: equals
+      value: true
+    - field: metadata.source_tool_handler_redacted
+      op: equals
+      value: true
+    - field: metadata.handler_body_analyzed
+      op: equals
+      value: true
+    - field: metadata.handler_filesystem_read
+      op: equals
+      value: true
+    - field: metadata.handler_tainted_filesystem_path
+      op: equals
+      value: true
+    - field: metadata.handler_memory_write
+      op: equals
+      value: true
+    - field: metadata.handler_tainted_memory_scope
+      op: equals
+      value: true
+    - field: metadata.handler_local_file_memory_bridge
+      op: equals
+      value: true
+    - field: metadata.handler_secret_env_access
+      op: equals
+      value: true
+    - field: metadata.memory_write
+      op: equals
+      value: true
+    - field: metadata.tainted_memory_scope
+      op: equals
+      value: true
+    - field: metadata.local_file_memory_bridge
+      op: equals
+      value: true
+    - field: metadata.tainted_filesystem_path
+      op: equals
+      value: true
+    - field: metadata.accepts_path_input
+      op: equals
+      value: true
+    - field: metadata.authority_classes
+      op: includes
+      value: filesystem_read
+    - field: metadata.authority_classes
+      op: includes
+      value: tainted_filesystem_path
+    - field: metadata.authority_classes
+      op: includes
+      value: memory_write
+    - field: metadata.authority_classes
+      op: includes
+      value: tainted_memory_scope
+    - field: metadata.authority_classes
+      op: includes
+      value: local_file_memory_bridge
+    - field: metadata.handler_authority_classes
+      op: includes
+      value: handler_filesystem_read
+    - field: metadata.handler_authority_classes
+      op: includes
+      value: handler_tainted_filesystem_path
+    - field: metadata.handler_authority_classes
+      op: includes
+      value: handler_memory_write
+    - field: metadata.handler_authority_classes
+      op: includes
+      value: handler_tainted_memory_scope
+    - field: metadata.handler_authority_classes
+      op: includes
+      value: handler_local_file_memory_bridge
+    - field: metadata.schema_properties
+      op: contains_any
+      value:
+        - local_file_path
+        - workspace_path
+        - memory_namespace
+        - retention_note_text
+    - field: actions
+      op: includes
+      value: read
+    - field: actions
+      op: includes
+      value: remember
+    - field: actions
+      op: includes
+      value: write
+    - field: data_classes
+      op: contains_any
+      value:
+        - confidential
+        - credential
+        - pii
+    - field: secret_exposure
+      op: equals
+      value: true
+    - field: side_effect
+      op: equals
+      value: true
+    - field: reversible
+      op: equals
+      value: false
+recommendation:
+  control: quarantine
+  text: Quarantine local-file-to-memory handlers until local file reads are allowlisted, file contents are classified and redacted, memory namespaces are policy-owned outside the model path, runtime memory credentials are least privilege, retention is bounded, and every persistent memory write is approval-gated and audited.

@@ -146,6 +146,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-142")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-143")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-144")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-145")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-001")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-002")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-003")).toBe(true);
@@ -6333,6 +6334,7 @@ describe("rule engine", () => {
       "langchain_post_local_file_to_slack",
       "langchain_read_workspace_file",
       "langchain_store_local_file_database",
+      "langchain_store_local_file_memory",
       "langchain_summarize_local_file_with_model",
       "langchain_train_on_local_file",
       "langchain_upload_local_file_authenticated_browser",
@@ -6340,6 +6342,7 @@ describe("rule engine", () => {
       "source_post_local_file_to_slack",
       "source_read_workspace_file",
       "source_store_local_file_database",
+      "source_store_local_file_memory",
       "source_summarize_local_file_with_model",
       "source_train_on_local_file",
       "source_upload_local_file_authenticated_browser"
@@ -6587,6 +6590,53 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerLocalFileExternalServiceBridgeFindings)).not.toContain("source local file posted externally");
     expect(JSON.stringify(sourceHandlerLocalFileExternalServiceBridgeFindings)).not.toContain("framework local file posted externally");
     expect(JSON.stringify(sourceHandlerLocalFileExternalServiceBridgeFindings)).not.toContain("Read a caller selected local file");
+    const sourceHandlerLocalFileMemoryBridgeFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-145");
+    expect(sourceHandlerLocalFileMemoryBridgeFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
+      "langchain_store_local_file_memory",
+      "source_store_local_file_memory"
+    ]);
+    expect(sourceHandlerLocalFileMemoryBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
+    expect(sourceHandlerLocalFileMemoryBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerLocalFileMemoryBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
+    expect(sourceHandlerLocalFileMemoryBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
+    expect(sourceHandlerLocalFileMemoryBridgeFindings.every((finding) => finding.matched_object.metadata.source_tool_handler_redacted === true)).toBe(true);
+    expect(sourceHandlerLocalFileMemoryBridgeFindings.every((finding) => finding.matched_object.metadata.handler_filesystem_read === true)).toBe(true);
+    expect(sourceHandlerLocalFileMemoryBridgeFindings.every((finding) => finding.matched_object.metadata.handler_tainted_filesystem_path === true)).toBe(true);
+    expect(sourceHandlerLocalFileMemoryBridgeFindings.every((finding) => finding.matched_object.metadata.handler_memory_write === true)).toBe(true);
+    expect(sourceHandlerLocalFileMemoryBridgeFindings.every((finding) => finding.matched_object.metadata.handler_tainted_memory_scope === true)).toBe(true);
+    expect(sourceHandlerLocalFileMemoryBridgeFindings.every((finding) => finding.matched_object.metadata.handler_local_file_memory_bridge === true)).toBe(true);
+    expect(sourceHandlerLocalFileMemoryBridgeFindings.every((finding) => finding.matched_object.metadata.handler_secret_env_access === true)).toBe(true);
+    expect(sourceHandlerLocalFileMemoryBridgeFindings.every((finding) => finding.matched_object.metadata.local_file_memory_bridge === true)).toBe(true);
+    expect(sourceHandlerLocalFileMemoryBridgeFindings.every((finding) => finding.matched_object.metadata.memory_write === true)).toBe(true);
+    expect(sourceHandlerLocalFileMemoryBridgeFindings.every((finding) => finding.matched_object.metadata.tainted_memory_scope === true)).toBe(true);
+    expect(sourceHandlerLocalFileMemoryBridgeFindings.every((finding) => finding.matched_object.metadata.tainted_filesystem_path === true)).toBe(true);
+    expect(sourceHandlerLocalFileMemoryBridgeFindings.every((finding) => finding.matched_object.metadata.accepts_path_input === true)).toBe(true);
+    expect(sourceHandlerLocalFileMemoryBridgeFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("filesystem_read"))).toBe(true);
+    expect(sourceHandlerLocalFileMemoryBridgeFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("tainted_filesystem_path"))).toBe(true);
+    expect(sourceHandlerLocalFileMemoryBridgeFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("memory_write"))).toBe(true);
+    expect(sourceHandlerLocalFileMemoryBridgeFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("tainted_memory_scope"))).toBe(true);
+    expect(sourceHandlerLocalFileMemoryBridgeFindings.every((finding) => finding.matched_object.metadata.authority_classes.includes("local_file_memory_bridge"))).toBe(true);
+    expect(sourceHandlerLocalFileMemoryBridgeFindings.every((finding) => finding.matched_object.metadata.handler_authority_classes.includes("handler_filesystem_read"))).toBe(true);
+    expect(sourceHandlerLocalFileMemoryBridgeFindings.every((finding) => finding.matched_object.metadata.handler_authority_classes.includes("handler_tainted_filesystem_path"))).toBe(true);
+    expect(sourceHandlerLocalFileMemoryBridgeFindings.every((finding) => finding.matched_object.metadata.handler_authority_classes.includes("handler_memory_write"))).toBe(true);
+    expect(sourceHandlerLocalFileMemoryBridgeFindings.every((finding) => finding.matched_object.metadata.handler_authority_classes.includes("handler_tainted_memory_scope"))).toBe(true);
+    expect(sourceHandlerLocalFileMemoryBridgeFindings.every((finding) => finding.matched_object.metadata.handler_authority_classes.includes("handler_local_file_memory_bridge"))).toBe(true);
+    expect(sourceHandlerLocalFileMemoryBridgeFindings.every((finding) => finding.matched_object.actions.includes("read"))).toBe(true);
+    expect(sourceHandlerLocalFileMemoryBridgeFindings.every((finding) => finding.matched_object.actions.includes("remember"))).toBe(true);
+    expect(sourceHandlerLocalFileMemoryBridgeFindings.every((finding) => finding.matched_object.actions.includes("write"))).toBe(true);
+    expect(sourceHandlerLocalFileMemoryBridgeFindings.every((finding) => finding.matched_object.external_reach === true)).toBe(true);
+    expect(sourceHandlerLocalFileMemoryBridgeFindings.every((finding) => finding.matched_object.secret_exposure === true)).toBe(true);
+    expect(sourceHandlerLocalFileMemoryBridgeFindings.every((finding) => finding.matched_object.side_effect === true)).toBe(true);
+    expect(sourceHandlerLocalFileMemoryBridgeFindings.every((finding) => finding.matched_object.reversible === false)).toBe(true);
+    expect(JSON.stringify(sourceHandlerLocalFileMemoryBridgeFindings)).not.toContain("readFile");
+    expect(JSON.stringify(sourceHandlerLocalFileMemoryBridgeFindings)).not.toContain("Path(local_file_path)");
+    expect(JSON.stringify(sourceHandlerLocalFileMemoryBridgeFindings)).not.toContain("localFileContent");
+    expect(JSON.stringify(sourceHandlerLocalFileMemoryBridgeFindings)).not.toContain("local_file_content");
+    expect(JSON.stringify(sourceHandlerLocalFileMemoryBridgeFindings)).not.toContain("agentMemory.upsert");
+    expect(JSON.stringify(sourceHandlerLocalFileMemoryBridgeFindings)).not.toContain("memory_store.upsert");
+    expect(JSON.stringify(sourceHandlerLocalFileMemoryBridgeFindings)).not.toContain("source local file persisted to memory");
+    expect(JSON.stringify(sourceHandlerLocalFileMemoryBridgeFindings)).not.toContain("framework local file persisted to memory");
+    expect(JSON.stringify(sourceHandlerLocalFileMemoryBridgeFindings)).not.toContain("Read a caller selected local file");
     const sourceHandlerTaintedFilesystemPathFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-035");
     expect(sourceHandlerTaintedFilesystemPathFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_cache_local_file_prompt",
@@ -6594,6 +6644,7 @@ describe("rule engine", () => {
       "langchain_read_workspace_file",
       "langchain_readonly_delete_workspace_path",
       "langchain_store_local_file_database",
+      "langchain_store_local_file_memory",
       "langchain_summarize_local_file_with_model",
       "langchain_train_on_local_file",
       "langchain_upload_local_file_authenticated_browser",
@@ -6603,6 +6654,7 @@ describe("rule engine", () => {
       "source_read_workspace_file",
       "source_readonly_delete_workspace_file",
       "source_store_local_file_database",
+      "source_store_local_file_memory",
       "source_summarize_local_file_with_model",
       "source_train_on_local_file",
       "source_upload_local_file_authenticated_browser",
@@ -7267,6 +7319,7 @@ describe("rule engine", () => {
       "langchain_persist_customer_memory",
       "langchain_store_authenticated_page_screenshot_memory",
       "langchain_store_customer_vault_secret_memory",
+      "langchain_store_local_file_memory",
       "langchain_store_model_selected_memory",
       "langchain_store_retrieved_context_memory",
       "source_embed_customer_vault_secret_vector_memory",
@@ -7274,6 +7327,7 @@ describe("rule engine", () => {
       "source_persist_customer_memory",
       "source_store_authenticated_page_screenshot_memory",
       "source_store_customer_vault_secret_memory",
+      "source_store_local_file_memory",
       "source_store_model_selected_memory",
       "source_store_retrieved_context_memory"
     ]);
@@ -7375,6 +7429,8 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerMemoryWriteFindings)).not.toContain("framework vault secret embedded to vector memory");
     expect(JSON.stringify(sourceHandlerMemoryWriteFindings)).not.toContain("source visual context remembered");
     expect(JSON.stringify(sourceHandlerMemoryWriteFindings)).not.toContain("framework visual context remembered");
+    expect(JSON.stringify(sourceHandlerMemoryWriteFindings)).not.toContain("source local file persisted to memory");
+    expect(JSON.stringify(sourceHandlerMemoryWriteFindings)).not.toContain("framework local file persisted to memory");
     expect(JSON.stringify(sourceHandlerMemoryWriteFindings)).not.toContain("Persist caller supplied customer ticket text");
     expect(JSON.stringify(sourceHandlerMemoryWriteFindings)).not.toContain("Store a customer support secret");
     const sourceHandlerEmbeddingVectorWriteFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-044");
@@ -8104,11 +8160,13 @@ describe("rule engine", () => {
       "langchain_persist_customer_memory",
       "langchain_store_authenticated_page_screenshot_memory",
       "langchain_store_customer_vault_secret_memory",
+      "langchain_store_local_file_memory",
       "langchain_store_model_selected_memory",
       "langchain_store_retrieved_context_memory",
       "source_persist_customer_memory",
       "source_store_authenticated_page_screenshot_memory",
       "source_store_customer_vault_secret_memory",
+      "source_store_local_file_memory",
       "source_store_model_selected_memory",
       "source_store_retrieved_context_memory"
     ]);
@@ -8122,14 +8180,18 @@ describe("rule engine", () => {
     expect(sourceHandlerTaintedMemoryScopeFindings.filter((finding) =>
       [
         "langchain_persist_customer_memory",
+        "langchain_store_local_file_memory",
         "langchain_store_model_selected_memory",
         "source_persist_customer_memory",
+        "source_store_local_file_memory",
         "source_store_model_selected_memory"
       ].includes(finding.matched_object.name)
     ).map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_persist_customer_memory",
+      "langchain_store_local_file_memory",
       "langchain_store_model_selected_memory",
       "source_persist_customer_memory",
+      "source_store_local_file_memory",
       "source_store_model_selected_memory"
     ]);
     expect(sourceHandlerTaintedMemoryScopeFindings.every((finding) => finding.severity === "critical")).toBe(true);
@@ -8164,6 +8226,8 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerTaintedMemoryScopeFindings)).not.toContain("framework memory persisted");
     expect(JSON.stringify(sourceHandlerTaintedMemoryScopeFindings)).not.toContain("source vault secret persisted to memory");
     expect(JSON.stringify(sourceHandlerTaintedMemoryScopeFindings)).not.toContain("framework vault secret persisted to memory");
+    expect(JSON.stringify(sourceHandlerTaintedMemoryScopeFindings)).not.toContain("source local file persisted to memory");
+    expect(JSON.stringify(sourceHandlerTaintedMemoryScopeFindings)).not.toContain("framework local file persisted to memory");
     expect(JSON.stringify(sourceHandlerTaintedMemoryScopeFindings)).not.toContain("Persist caller supplied customer ticket text");
     expect(JSON.stringify(sourceHandlerTaintedMemoryScopeFindings)).not.toContain("Store a customer support secret");
     const sourceHandlerAgentConfigWriteFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-024");

@@ -2324,6 +2324,35 @@ server.registerTool(
 );
 
 server.registerTool(
+  "source_store_local_file_memory",
+  {
+    description: "Read a caller selected local file and persist it into caller selected agent memory.",
+    inputSchema: z.object({
+      customer_id: z.string(),
+      local_file_path: z.string(),
+      memory_namespace: z.string(),
+      retention_note_text: z.string()
+    }).strict(),
+    annotations: {
+      readOnlyHint: false,
+      idempotentHint: false
+    }
+  },
+  async ({ customer_id, local_file_path, memory_namespace, retention_note_text }) => {
+    const token = process.env.SOURCE_LOCAL_FILE_MEMORY_TOKEN;
+    const localFileContent = await readFile(local_file_path, "utf8");
+    await globalThis.agentMemory.upsert({
+      token,
+      namespace: memory_namespace,
+      customer_id,
+      value: localFileContent.toString(),
+      note: retention_note_text
+    });
+    return { content: [{ type: "text", text: "source local file persisted to memory" }] };
+  }
+);
+
+server.registerTool(
   "source_capture_authenticated_page_screenshot",
   {
     description: "Capture an authenticated browser screenshot from a caller supplied URL.",

@@ -1670,6 +1670,30 @@ def post_local_file_to_slack(
 
 
 @tool(
+    "langchain_store_local_file_memory",
+    description="Read a caller selected local file and persist it into caller selected LangChain memory.",
+)
+def store_local_file_memory(
+    customer_id: str,
+    local_file_path: str,
+    memory_namespace: str,
+    retention_note_text: str,
+) -> str:
+    token = os.getenv("LANGCHAIN_LOCAL_FILE_MEMORY_TOKEN")
+    local_file_content = Path(local_file_path).read_text()
+    memory_store.upsert(
+        {
+            "token": token,
+            "namespace": memory_namespace,
+            "customer_id": customer_id,
+            "value": local_file_content,
+            "note": retention_note_text,
+        }
+    )
+    return "framework local file persisted to memory"
+
+
+@tool(
     "langchain_submit_privileged_tool_observation_browser_form",
     description="Submit a raw privileged tool observation into an authenticated browser form selected by the caller in LangChain.",
 )
