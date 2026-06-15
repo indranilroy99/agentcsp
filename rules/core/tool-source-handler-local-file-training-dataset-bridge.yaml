@@ -1,0 +1,133 @@
+id: AGENTCSP-TOOL-142
+name: Local file content exported to training dataset
+description: A source-defined agent tool handler reads a caller-selected local file path and exports the file content into a training, fine-tuning, eval, or model-improvement dataset using runtime credentials and caller-selected dataset routing.
+category: local_file_training_dataset_bridge
+severity: critical
+maps_to:
+  owasp:
+    - LLM01:2025 Prompt Injection
+    - LLM02:2025 Sensitive Information Disclosure
+    - LLM05:2025 Improper Output Handling
+    - LLM06:2025 Excessive Agency
+  mitre_atlas:
+    - AML.T0051 LLM Plugin Compromise
+    - AML.T0056 LLM Trusted Boundary Compromise
+    - AML.T0057 Exfiltration via Cyber Means
+    - AML.T0059 Data from Information Repositories
+  nist_ai_rmf:
+    - MAP 4.1
+    - MEASURE 2.7
+    - MANAGE 2.4
+match:
+  object_type: tool
+  where:
+    - field: metadata.parsed_tool_schema
+      op: equals
+      value: true
+    - field: metadata.source_tool_handler_redacted
+      op: equals
+      value: true
+    - field: metadata.handler_body_analyzed
+      op: equals
+      value: true
+    - field: metadata.handler_filesystem_read
+      op: equals
+      value: true
+    - field: metadata.handler_tainted_filesystem_path
+      op: equals
+      value: true
+    - field: metadata.handler_training_dataset_export
+      op: equals
+      value: true
+    - field: metadata.handler_tainted_training_dataset_payload
+      op: equals
+      value: true
+    - field: metadata.handler_local_file_training_dataset_bridge
+      op: equals
+      value: true
+    - field: metadata.handler_secret_env_access
+      op: equals
+      value: true
+    - field: metadata.tainted_filesystem_path
+      op: equals
+      value: true
+    - field: metadata.training_dataset_export
+      op: equals
+      value: true
+    - field: metadata.tainted_training_dataset_payload
+      op: equals
+      value: true
+    - field: metadata.local_file_training_dataset_bridge
+      op: equals
+      value: true
+    - field: metadata.accepts_path_input
+      op: equals
+      value: true
+    - field: metadata.authority_classes
+      op: includes
+      value: filesystem_read
+    - field: metadata.authority_classes
+      op: includes
+      value: tainted_filesystem_path
+    - field: metadata.authority_classes
+      op: includes
+      value: training_dataset_export
+    - field: metadata.authority_classes
+      op: includes
+      value: tainted_training_dataset_payload
+    - field: metadata.authority_classes
+      op: includes
+      value: local_file_training_dataset_bridge
+    - field: metadata.handler_authority_classes
+      op: includes
+      value: handler_filesystem_read
+    - field: metadata.handler_authority_classes
+      op: includes
+      value: handler_tainted_filesystem_path
+    - field: metadata.handler_authority_classes
+      op: includes
+      value: handler_training_dataset_export
+    - field: metadata.handler_authority_classes
+      op: includes
+      value: handler_tainted_training_dataset_payload
+    - field: metadata.handler_authority_classes
+      op: includes
+      value: handler_local_file_training_dataset_bridge
+    - field: metadata.schema_properties
+      op: contains_any
+      value:
+        - workspace_path
+        - local_file_path
+        - training_dataset_id
+        - dataset_split_name
+        - source_label
+    - field: actions
+      op: includes
+      value: read
+    - field: actions
+      op: includes
+      value: remember
+    - field: actions
+      op: includes
+      value: write
+    - field: data_classes
+      op: contains_any
+      value:
+        - confidential
+        - credential
+        - pii
+    - field: external_reach
+      op: equals
+      value: true
+    - field: secret_exposure
+      op: equals
+      value: true
+    - field: side_effect
+      op: equals
+      value: true
+    - field: reversible
+      op: equals
+      value: false
+recommendation:
+  control: quarantine
+  text: Quarantine local-file-to-training handlers until file paths are policy-owned and allowlisted, sensitive and ignored paths are denied, file content is classified and redacted before export, dataset IDs and splits are policy-owned, retention and model-improvement use are bounded, and approval plus audit provenance are required before local file material enters training or eval datasets.

@@ -111,6 +111,28 @@ def cache_local_file_prompt(
 
 
 @tool(
+    "langchain_train_on_local_file",
+    description="Read a caller selected local file and append it to a fine-tuning dataset in LangChain.",
+)
+def train_on_local_file(
+    workspace_path: str,
+    training_dataset_id: str,
+    dataset_split_name: str,
+    source_label: str,
+) -> str:
+    local_file_content = Path(workspace_path).read_text()
+    token = os.getenv("LANGCHAIN_LOCAL_FILE_TRAINING_TOKEN")
+    training_dataset_client.append_record(
+        token=token,
+        dataset=training_dataset_id,
+        split=dataset_split_name,
+        source=source_label,
+        content=local_file_content,
+    )
+    return "framework local file exported to training data"
+
+
+@tool(
     "langchain_fetch_url_content",
     description="Fetch a caller supplied URL and return the response body from LangChain.",
 )

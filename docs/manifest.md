@@ -331,6 +331,7 @@ Tool metadata may include:
 - `local_file_browser_automation_bridge`
 - `local_file_prompt_bridge`
 - `local_file_prompt_cache_bridge`
+- `local_file_training_dataset_bridge`
 - `visual_context_capture`
 - `visual_context_to_output`
 - `visual_context_prompt_bridge`
@@ -503,6 +504,7 @@ Tool metadata may include:
 - `handler_model_output_training_dataset_bridge`
 - `handler_network_response_training_dataset_bridge`
 - `handler_tool_output_training_dataset_bridge`
+- `handler_local_file_training_dataset_bridge`
 - `handler_feedback_pipeline_write`
 - `handler_secret_manager_feedback_bridge`
 - `handler_model_output_feedback_bridge`
@@ -587,6 +589,7 @@ Tool metadata may include:
 - `handler_local_file_browser_automation_bridge`
 - `handler_local_file_prompt_bridge`
 - `handler_local_file_prompt_cache_bridge`
+- `handler_local_file_training_dataset_bridge`
 - `handler_clipboard_read`
 - `handler_clipboard_external_service_bridge`
 - `handler_visual_context_capture`
@@ -2071,6 +2074,8 @@ Source-defined tool handlers can also emit redacted local-file browser-automatio
 Source-defined tool handlers can also emit redacted local-file prompt bridge authority through `local_file_prompt_bridge`, `filesystem_read`, `tainted_filesystem_path`, `model_provider_call`, `tainted_model_selection`, and the corresponding `handler_*` fields when parsed MCP SDK or agent-framework tools read caller-selected local file paths and forward file material into model-provider prompts using runtime model credentials and caller-selected model routing. Handler bodies, file-read calls, local paths, file contents, model SDK calls, prompt payloads, selected model names, local-file prompt variables, and return strings remain redacted.
 
 Source-defined tool handlers can also emit redacted local-file prompt-cache bridge authority through `local_file_prompt_cache_bridge`, `filesystem_read`, `tainted_filesystem_path`, `prompt_cache_write`, `tainted_prompt_cache_key`, `tainted_prompt_cache_value`, and the corresponding `handler_*` fields when parsed MCP SDK or agent-framework tools read caller-selected local file paths and persist file material into prompt, LLM, response, or semantic caches using runtime credentials and caller-controlled cache routing. Handler bodies, file-read calls, local paths, file contents, cache calls, cache keys, namespaces, cache values, TTLs, local-file cache variables, and return strings remain redacted.
+
+Source-defined tool handlers can also emit redacted local-file training-dataset bridge authority through `local_file_training_dataset_bridge`, `filesystem_read`, `tainted_filesystem_path`, `training_dataset_export`, `tainted_training_dataset_payload`, and the corresponding `handler_*` fields when parsed MCP SDK or agent-framework tools read caller-selected local file paths and export file material into training, fine-tuning, eval, or model-improvement datasets using runtime credentials and caller-selected dataset routing. Handler bodies, file-read calls, local paths, file contents, dataset calls, dataset IDs, split names, source labels, training records, local-file training variables, and return strings remain redacted.
 
 Source-defined tool handlers can also emit redacted tool-output prompt-registry bridge authority through `tool_output_prompt_registry_bridge`, `nested_tool_invocation`, `prompt_registry_write`, `tainted_prompt_registry_payload`, `tainted_prompt_registry_selector`, and the corresponding `handler_*` fields when parsed MCP SDK or agent-framework tools invoke nested tools and publish raw tool observations into prompt or instruction registries using runtime credentials and caller-selected prompt metadata. Handler bodies, nested tool calls, tool names, arguments, registry calls, prompt IDs, prompt roles, prompt bodies, raw observations, and return strings remain redacted.
 

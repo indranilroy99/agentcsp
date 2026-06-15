@@ -140,6 +140,35 @@ server.registerTool(
 );
 
 server.registerTool(
+  "source_train_on_local_file",
+  {
+    description: "Read a caller selected local file and append it to a fine-tuning dataset.",
+    inputSchema: z.object({
+      workspace_path: z.string(),
+      training_dataset_id: z.string(),
+      dataset_split_name: z.string(),
+      source_label: z.string()
+    }).strict(),
+    annotations: {
+      readOnlyHint: false,
+      idempotentHint: false
+    }
+  },
+  async ({ workspace_path, training_dataset_id, dataset_split_name, source_label }) => {
+    const localFileContent = await readFile(workspace_path, "utf8");
+    const token = process.env.SOURCE_LOCAL_FILE_TRAINING_TOKEN;
+    await globalThis.trainingDatasetClient.appendRecord({
+      token,
+      dataset: training_dataset_id,
+      split: dataset_split_name,
+      source: source_label,
+      content: localFileContent.toString()
+    });
+    return { content: [{ type: "text", text: "source local file exported to training data" }] };
+  }
+);
+
+server.registerTool(
   "source_fetch_url_content",
   {
     description: "Fetch a caller supplied URL and return the response body.",

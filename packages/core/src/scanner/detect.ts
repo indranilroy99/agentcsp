@@ -24159,6 +24159,7 @@ function addToolDefinitionSurface(
       !authority.training_dataset_export &&
       !authority.model_output_training_dataset_bridge &&
       !authority.network_response_training_dataset_bridge &&
+      !authority.local_file_training_dataset_bridge &&
       !authority.feedback_pipeline_write &&
       !authority.model_output_feedback_bridge &&
       !authority.tool_output_feedback_bridge &&
@@ -24293,6 +24294,7 @@ function addToolDefinitionSurface(
       training_dataset_export: authority.training_dataset_export,
       model_output_training_dataset_bridge: authority.model_output_training_dataset_bridge,
       network_response_training_dataset_bridge: authority.network_response_training_dataset_bridge,
+      local_file_training_dataset_bridge: authority.local_file_training_dataset_bridge,
       secret_manager_training_dataset_bridge: authority.secret_manager_training_dataset_bridge,
       tainted_training_dataset_payload: authority.tainted_training_dataset_payload,
       tool_output_training_dataset_bridge: authority.tool_output_training_dataset_bridge,
@@ -26767,6 +26769,7 @@ interface SourceToolHandlerSignals {
   handlerTaintedTrainingDatasetPayload: boolean;
   handlerModelOutputTrainingDatasetBridge: boolean;
   handlerNetworkResponseTrainingDatasetBridge: boolean;
+  handlerLocalFileTrainingDatasetBridge: boolean;
   handlerToolOutputTrainingDatasetBridge: boolean;
   handlerFeedbackPipelineWrite: boolean;
   handlerSecretManagerFeedbackBridge: boolean;
@@ -27342,6 +27345,7 @@ function sourceToolHandlerSignalMetadata(signals: SourceToolHandlerSignals | und
     handler_tainted_training_dataset_payload: signals.handlerTaintedTrainingDatasetPayload,
     handler_model_output_training_dataset_bridge: signals.handlerModelOutputTrainingDatasetBridge,
     handler_network_response_training_dataset_bridge: signals.handlerNetworkResponseTrainingDatasetBridge,
+    handler_local_file_training_dataset_bridge: signals.handlerLocalFileTrainingDatasetBridge,
     handler_tool_output_training_dataset_bridge: signals.handlerToolOutputTrainingDatasetBridge,
     handler_feedback_pipeline_write: signals.handlerFeedbackPipelineWrite,
     handler_secret_manager_feedback_bridge: signals.handlerSecretManagerFeedbackBridge,
@@ -27772,6 +27776,9 @@ function classifySourceToolHandlerSignals(
   const taintedFilesystemPath = (filesystemRead || filesystemWrite || filesystemDelete) && (language === "javascript"
     ? hasJavaScriptHandlerTaintedFilesystemPath(handlerSource)
     : hasPythonHandlerTaintedFilesystemPath(handlerSource));
+  const localFileTrainingDatasetBridge = filesystemRead && taintedFilesystemPath && trainingDatasetExport && (language === "javascript"
+    ? hasJavaScriptHandlerLocalFileTrainingDatasetBridge(handlerSource)
+    : hasPythonHandlerLocalFileTrainingDatasetBridge(handlerSource));
   const agentConfigWrite = filesystemWrite && (language === "javascript"
     ? hasJavaScriptHandlerAgentConfigWrite(handlerSource)
     : hasPythonHandlerAgentConfigWrite(handlerSource));
@@ -27986,6 +27993,7 @@ function classifySourceToolHandlerSignals(
   if (taintedTrainingDatasetPayload) classes.add("handler_tainted_training_dataset_payload");
   if (modelOutputTrainingDatasetBridge) classes.add("handler_model_output_training_dataset_bridge");
   if (networkResponseTrainingDatasetBridge) classes.add("handler_network_response_training_dataset_bridge");
+  if (localFileTrainingDatasetBridge) classes.add("handler_local_file_training_dataset_bridge");
   if (toolOutputTrainingDatasetBridge) classes.add("handler_tool_output_training_dataset_bridge");
   if (feedbackPipelineWrite) classes.add("handler_feedback_pipeline_write");
   if (secretManagerFeedbackBridge) classes.add("handler_secret_manager_feedback_bridge");
@@ -28148,6 +28156,7 @@ function classifySourceToolHandlerSignals(
     handlerTaintedTrainingDatasetPayload: taintedTrainingDatasetPayload,
     handlerModelOutputTrainingDatasetBridge: modelOutputTrainingDatasetBridge,
     handlerNetworkResponseTrainingDatasetBridge: networkResponseTrainingDatasetBridge,
+    handlerLocalFileTrainingDatasetBridge: localFileTrainingDatasetBridge,
     handlerToolOutputTrainingDatasetBridge: toolOutputTrainingDatasetBridge,
     handlerFeedbackPipelineWrite: feedbackPipelineWrite,
     handlerSecretManagerFeedbackBridge: secretManagerFeedbackBridge,
@@ -30847,6 +30856,30 @@ function hasPythonHandlerNetworkResponseTrainingDatasetBridge(source: string): b
   );
 }
 
+function hasJavaScriptHandlerLocalFileTrainingDatasetBridge(source: string): boolean {
+  const identifiers = extractJavaScriptLocalFileIdentifiers(source);
+  return identifiers.length > 0 && callExpressionReferencesAnyIdentifier(
+    [
+      /\b(?:trainingDataset|trainingDatasetClient|datasetClient|fineTuneDataset|fineTuneClient|fineTuningClient|feedbackDataset|evalDataset|rlhfDataset|modelTrainingClient)\s*(?:\.\s*[A-Za-z_$][\w$]*){0,4}\s*\.\s*(?:append|appendRecord|add|addExample|create|createRecord|insert|upload|write|save|store|export|send|record|push)\s*\(([\s\S]{0,2200})\)/giu,
+      /\b(?:exportTrainingExample|writeTrainingExample|appendTrainingExample|uploadFineTuneRecord|createFineTuneRecord|recordTrainingExample)\s*\(([\s\S]{0,2200})\)/giu
+    ],
+    source,
+    identifiers
+  );
+}
+
+function hasPythonHandlerLocalFileTrainingDatasetBridge(source: string): boolean {
+  const identifiers = extractPythonLocalFileIdentifiers(source);
+  return identifiers.length > 0 && callExpressionReferencesAnyIdentifier(
+    [
+      /\b(?:training_dataset|training_dataset_client|dataset_client|fine_tune_dataset|fine_tune_client|fine_tuning_client|feedback_dataset|eval_dataset|rlhf_dataset|model_training_client)\s*(?:\.\s*[A-Za-z_]\w*){0,4}\s*\.\s*(?:append|append_record|add|add_example|create|create_record|insert|upload|write|save|store|export|send|record|push)\s*\(([\s\S]{0,2200})\)/giu,
+      /\b(?:export_training_example|write_training_example|append_training_example|upload_fine_tune_record|create_fine_tune_record|record_training_example)\s*\(([\s\S]{0,2200})\)/giu
+    ],
+    source,
+    identifiers
+  );
+}
+
 function hasJavaScriptHandlerToolOutputTrainingDatasetBridge(source: string): boolean {
   const identifiers = extractJavaScriptToolOutputIdentifiers(source);
   return identifiers.length > 0 && callExpressionReferencesAnyIdentifier(
@@ -32831,6 +32864,13 @@ function expressionReferencesTaintedTrainingDatasetPayload(expression: string, s
     expression
   );
   if (templateInterpolation) return true;
+  const localFileIdentifiers = uniqueStrings([
+    ...extractJavaScriptLocalFileIdentifiers(source),
+    ...extractPythonLocalFileIdentifiers(source)
+  ]);
+  if (localFileIdentifiers.some((identifier) => new RegExp(`\\b${escapeRegExp(identifier)}\\b`, "u").test(expression))) {
+    return true;
+  }
   const withoutQuotedStrings = expression.replace(/(["'`])(?:\\.|(?!\1)[\s\S])*\1/gu, " ");
   const stronglyTaintedName = /\b(?:customerTicketText|customer_ticket_text|ticketText|ticket_text|customerContext|customer_context|customerMessage|customer_message|toolOutput|tool_output|toolTracePayload|tool_trace_payload|retrievedContext|retrieved_context|promptText|prompt_text|completionText|completion_text|responseText|response_text|modelResponse|model_response|userMessage|user_message|conversationText|conversation_text|trainingRecord|training_record|datasetRecord|dataset_record|fineTuneRecord|fine_tune_record|inputText|input_text)\b/u;
   const taintedName = /\b(?:customerTicketText|customer_ticket_text|ticketText|ticket_text|customerContext|customer_context|customerMessage|customer_message|toolOutput|tool_output|toolTracePayload|tool_trace_payload|retrievedContext|retrieved_context|promptText|prompt_text|completionText|completion_text|responseText|response_text|modelResponse|model_response|userMessage|user_message|conversationText|conversation_text|trainingRecord|training_record|datasetRecord|dataset_record|fineTuneRecord|fine_tune_record|inputText|input_text|content|message|prompt|payload|context|output|response|completion|customer|ticket|input|text|record|example)\b/u;
@@ -34922,6 +34962,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   training_dataset_export: boolean;
   model_output_training_dataset_bridge: boolean;
   network_response_training_dataset_bridge: boolean;
+  local_file_training_dataset_bridge: boolean;
   secret_manager_training_dataset_bridge: boolean;
   tainted_training_dataset_payload: boolean;
   tool_output_training_dataset_bridge: boolean;
@@ -35040,6 +35081,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   const handlerTrainingDatasetExport = handler?.handlerTrainingDatasetExport === true;
   const handlerModelOutputTrainingDatasetBridge = handler?.handlerModelOutputTrainingDatasetBridge === true;
   const handlerNetworkResponseTrainingDatasetBridge = handler?.handlerNetworkResponseTrainingDatasetBridge === true;
+  const handlerLocalFileTrainingDatasetBridge = handler?.handlerLocalFileTrainingDatasetBridge === true;
   const handlerSecretManagerTrainingDatasetBridge = handler?.handlerSecretManagerTrainingDatasetBridge === true;
   const handlerTaintedTrainingDatasetPayload = handler?.handlerTaintedTrainingDatasetPayload === true;
   const handlerToolOutputTrainingDatasetBridge = handler?.handlerToolOutputTrainingDatasetBridge === true;
@@ -35706,6 +35748,13 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
     actions.add("write");
     actions.add("remember");
   }
+  if (handlerLocalFileTrainingDatasetBridge) {
+    classes.add("local_file_training_dataset_bridge");
+    actions.add("read");
+    actions.add("send");
+    actions.add("write");
+    actions.add("remember");
+  }
   if (handlerSecretManagerTrainingDatasetBridge) {
     classes.add("secret_manager_training_dataset_bridge");
     actions.add("send");
@@ -36113,6 +36162,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerTrainingDatasetExport ||
       handlerModelOutputTrainingDatasetBridge ||
       handlerNetworkResponseTrainingDatasetBridge ||
+      handlerLocalFileTrainingDatasetBridge ||
       handlerSecretManagerTrainingDatasetBridge ||
       handlerTaintedTrainingDatasetPayload ||
       handlerToolOutputTrainingDatasetBridge ||
@@ -36273,6 +36323,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerTrainingDatasetExport ||
       handlerModelOutputTrainingDatasetBridge ||
       handlerNetworkResponseTrainingDatasetBridge ||
+      handlerLocalFileTrainingDatasetBridge ||
       handlerSecretManagerTrainingDatasetBridge ||
       handlerToolOutputTrainingDatasetBridge ||
       handlerVisualContextTrainingDatasetBridge ||
@@ -36355,6 +36406,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerSecretManagerTrainingDatasetBridge ||
       (handlerModelOutputTrainingDatasetBridge && handlerSecretEnvAccess) ||
       (handlerNetworkResponseTrainingDatasetBridge && handlerSecretEnvAccess) ||
+      (handlerLocalFileTrainingDatasetBridge && handlerSecretEnvAccess) ||
       (handlerToolOutputTrainingDatasetBridge && handlerSecretEnvAccess) ||
       handlerSecretManagerFeedbackBridge ||
       (handlerModelOutputFeedbackBridge && handlerSecretEnvAccess) ||
@@ -36501,6 +36553,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
     training_dataset_export: handlerTrainingDatasetExport,
     model_output_training_dataset_bridge: handlerModelOutputTrainingDatasetBridge,
     network_response_training_dataset_bridge: handlerNetworkResponseTrainingDatasetBridge,
+    local_file_training_dataset_bridge: handlerLocalFileTrainingDatasetBridge,
     secret_manager_training_dataset_bridge: handlerSecretManagerTrainingDatasetBridge,
     tainted_training_dataset_payload: handlerTaintedTrainingDatasetPayload,
     tool_output_training_dataset_bridge: handlerToolOutputTrainingDatasetBridge,
@@ -36658,6 +36711,7 @@ function authoritySignature(tool: SurfaceObject): string {
     metadata.training_dataset_export === true ? "training_dataset_export" : "",
     metadata.model_output_training_dataset_bridge === true ? "model_output_training_dataset_bridge" : "",
     metadata.network_response_training_dataset_bridge === true ? "network_response_training_dataset_bridge" : "",
+    metadata.local_file_training_dataset_bridge === true ? "local_file_training_dataset_bridge" : "",
     metadata.secret_manager_training_dataset_bridge === true ? "secret_manager_training_dataset_bridge" : "",
     metadata.tainted_training_dataset_payload === true ? "tainted_training_dataset_payload" : "",
     metadata.tool_output_training_dataset_bridge === true ? "tool_output_training_dataset_bridge" : "",
@@ -36826,6 +36880,7 @@ function isPrivilegedToolSurface(tool: SurfaceObject): boolean {
     tool.metadata.training_dataset_export === true ||
     tool.metadata.model_output_training_dataset_bridge === true ||
     tool.metadata.network_response_training_dataset_bridge === true ||
+    tool.metadata.local_file_training_dataset_bridge === true ||
     tool.metadata.secret_manager_training_dataset_bridge === true ||
     tool.metadata.tainted_training_dataset_payload === true ||
     tool.metadata.tool_output_training_dataset_bridge === true ||
