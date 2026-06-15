@@ -12308,6 +12308,52 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerEnvSecretTelemetryBridgeFindings)).not.toContain("source env secret exported to trace");
     expect(JSON.stringify(sourceHandlerEnvSecretTelemetryBridgeFindings)).not.toContain("framework env secret exported to trace");
     expect(JSON.stringify(sourceHandlerEnvSecretTelemetryBridgeFindings)).not.toContain("Export environment-backed support credentials");
+    const sourceHandlerEnvSecretArtifactBridgeFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-162");
+    expect(sourceHandlerEnvSecretArtifactBridgeFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
+      "langchain_export_env_secret_artifact",
+      "source_export_env_secret_artifact"
+    ]);
+    expect(sourceHandlerEnvSecretArtifactBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
+    expect(sourceHandlerEnvSecretArtifactBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerEnvSecretArtifactBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
+    expect(sourceHandlerEnvSecretArtifactBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
+    expect(sourceHandlerEnvSecretArtifactBridgeFindings.every((finding) => finding.matched_object.metadata.source_tool_handler_redacted === true)).toBe(true);
+    expect(sourceHandlerEnvSecretArtifactBridgeFindings.every((finding) => finding.matched_object.metadata.handler_secret_env_access === true)).toBe(true);
+    expect(sourceHandlerEnvSecretArtifactBridgeFindings.every((finding) => finding.matched_object.metadata.handler_artifact_export === true)).toBe(true);
+    expect(sourceHandlerEnvSecretArtifactBridgeFindings.every((finding) => finding.matched_object.metadata.handler_env_secret_artifact_bridge === true)).toBe(true);
+    expect(sourceHandlerEnvSecretArtifactBridgeFindings.every((finding) => finding.matched_object.metadata.handler_public_artifact_destination === true)).toBe(true);
+    expect(sourceHandlerEnvSecretArtifactBridgeFindings.every((finding) => finding.matched_object.metadata.artifact_export === true)).toBe(true);
+    expect(sourceHandlerEnvSecretArtifactBridgeFindings.every((finding) => finding.matched_object.metadata.env_secret_artifact_bridge === true)).toBe(true);
+    expect(sourceHandlerEnvSecretArtifactBridgeFindings.every((finding) => finding.matched_object.metadata.public_artifact_destination === true)).toBe(true);
+    expect(sourceHandlerEnvSecretArtifactBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.authority_classes.includes("env_secret_artifact_bridge")
+    )).toBe(true);
+    expect(sourceHandlerEnvSecretArtifactBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.authority_classes.includes("public_artifact_destination")
+    )).toBe(true);
+    expect(sourceHandlerEnvSecretArtifactBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.handler_authority_classes.includes("handler_env_secret_artifact_bridge")
+    )).toBe(true);
+    expect(sourceHandlerEnvSecretArtifactBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.handler_authority_classes.includes("handler_public_artifact_destination")
+    )).toBe(true);
+    expect(sourceHandlerEnvSecretArtifactBridgeFindings.every((finding) => finding.matched_object.actions.includes("send"))).toBe(true);
+    expect(sourceHandlerEnvSecretArtifactBridgeFindings.every((finding) => finding.matched_object.actions.includes("publish"))).toBe(true);
+    expect(sourceHandlerEnvSecretArtifactBridgeFindings.every((finding) => finding.matched_object.actions.includes("write"))).toBe(true);
+    expect(sourceHandlerEnvSecretArtifactBridgeFindings.every((finding) => finding.matched_object.external_reach === true)).toBe(true);
+    expect(sourceHandlerEnvSecretArtifactBridgeFindings.every((finding) => finding.matched_object.secret_exposure === true)).toBe(true);
+    expect(sourceHandlerEnvSecretArtifactBridgeFindings.every((finding) => finding.matched_object.side_effect === true)).toBe(true);
+    expect(sourceHandlerEnvSecretArtifactBridgeFindings.every((finding) => finding.matched_object.reversible === false)).toBe(true);
+    expect(JSON.stringify(sourceHandlerEnvSecretArtifactBridgeFindings)).not.toContain("process.env");
+    expect(JSON.stringify(sourceHandlerEnvSecretArtifactBridgeFindings)).not.toContain("os.getenv");
+    expect(JSON.stringify(sourceHandlerEnvSecretArtifactBridgeFindings)).not.toContain("artifactCredential");
+    expect(JSON.stringify(sourceHandlerEnvSecretArtifactBridgeFindings)).not.toContain("artifact_credential");
+    expect(JSON.stringify(sourceHandlerEnvSecretArtifactBridgeFindings)).not.toContain("artifactExportClient.upload");
+    expect(JSON.stringify(sourceHandlerEnvSecretArtifactBridgeFindings)).not.toContain("artifact_export_client.upload");
+    expect(JSON.stringify(sourceHandlerEnvSecretArtifactBridgeFindings)).not.toContain("Persist runtime credential");
+    expect(JSON.stringify(sourceHandlerEnvSecretArtifactBridgeFindings)).not.toContain("source env secret exported to artifact");
+    expect(JSON.stringify(sourceHandlerEnvSecretArtifactBridgeFindings)).not.toContain("framework env secret exported to artifact");
+    expect(JSON.stringify(sourceHandlerEnvSecretArtifactBridgeFindings)).not.toContain("Export environment-backed support credentials");
     const sourceHandlerRagRetrievalPromptBridgeFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-094");
     expect(sourceHandlerRagRetrievalPromptBridgeFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_summarize_retrieved_context_with_model",

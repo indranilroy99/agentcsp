@@ -658,6 +658,9 @@ describe("scanner", () => {
     const sourceEnvSecretTelemetryBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "source_export_env_secret_trace"
     );
+    const sourceEnvSecretArtifactBridgeTool = surfaces.tools.find(
+      (surface) => surface.name === "source_export_env_secret_artifact"
+    );
     const sourceToolOutputCredentialIssuanceBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "source_issue_privileged_tool_observation_credential"
     );
@@ -965,6 +968,9 @@ describe("scanner", () => {
     );
     const langchainEnvSecretTelemetryBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "langchain_export_env_secret_trace"
+    );
+    const langchainEnvSecretArtifactBridgeTool = surfaces.tools.find(
+      (surface) => surface.name === "langchain_export_env_secret_artifact"
     );
     const langchainToolOutputCredentialIssuanceBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "langchain_issue_privileged_tool_observation_credential"
@@ -6298,6 +6304,77 @@ describe("scanner", () => {
     expect(JSON.stringify(sourceEnvSecretTelemetryBridgeTool)).not.toContain("Persist runtime credential");
     expect(JSON.stringify(sourceEnvSecretTelemetryBridgeTool)).not.toContain("source env secret exported to trace");
     expect(JSON.stringify(sourceEnvSecretTelemetryBridgeTool)).not.toContain("Export environment-backed support credentials");
+    expect(sourceEnvSecretArtifactBridgeTool).toMatchObject({
+      path: "mcp-source/customer-tools.ts",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["call", "publish", "send", "write"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(sourceEnvSecretArtifactBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_mcp_source_tool: true,
+      mcp_source_tool_registration: true,
+      mcp_source_tool_registration_kind: "registerTool",
+      mcp_source_tool_argument_count: 3,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_secret_like_input: true,
+      accepts_content_like_input: false,
+      accepts_path_input: false,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      artifact_export: true,
+      env_secret_artifact_bridge: true,
+      public_artifact_destination: true,
+      tainted_artifact_export_payload: false,
+      external_write: true,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_secret_env_access: true,
+      handler_artifact_export: true,
+      handler_env_secret_artifact_bridge: true,
+      handler_public_artifact_destination: true,
+      handler_tainted_artifact_export_payload: false,
+      handler_signal_count: 4,
+      open_world_schema: false
+    });
+    for (const authorityClass of [
+      "artifact_export",
+      "env_secret_artifact_bridge",
+      "external_write",
+      "public_artifact_destination",
+      "secret_env_access"
+    ]) {
+      expect(sourceEnvSecretArtifactBridgeTool?.metadata.authority_classes).toContain(authorityClass);
+    }
+    expect(sourceEnvSecretArtifactBridgeTool?.metadata.handler_authority_classes).toEqual([
+      "handler_artifact_export",
+      "handler_env_secret_artifact_bridge",
+      "handler_public_artifact_destination",
+      "handler_secret_env_access"
+    ]);
+    expect(sourceEnvSecretArtifactBridgeTool?.metadata.handler_env_key_names).toEqual(["SOURCE_ARTIFACT_REPLAY_SECRET"]);
+    expect(sourceEnvSecretArtifactBridgeTool?.metadata.schema_properties).toEqual([
+      "artifact_bucket",
+      "customer_id",
+      "object_key",
+      "share_mode"
+    ]);
+    expect(sourceEnvSecretArtifactBridgeTool?.metadata.required_properties).toEqual([
+      "artifact_bucket",
+      "customer_id",
+      "object_key",
+      "share_mode"
+    ]);
+    expect(JSON.stringify(sourceEnvSecretArtifactBridgeTool)).not.toContain("process.env");
+    expect(JSON.stringify(sourceEnvSecretArtifactBridgeTool)).not.toContain("artifactCredential");
+    expect(JSON.stringify(sourceEnvSecretArtifactBridgeTool)).not.toContain("artifactExportClient.upload");
+    expect(JSON.stringify(sourceEnvSecretArtifactBridgeTool)).not.toContain("Persist runtime credential");
+    expect(JSON.stringify(sourceEnvSecretArtifactBridgeTool)).not.toContain("source env secret exported to artifact");
+    expect(JSON.stringify(sourceEnvSecretArtifactBridgeTool)).not.toContain("Export environment-backed support credentials");
     expect(sourceToolOutputCredentialIssuanceBridgeTool).toMatchObject({
       path: "mcp-source/customer-tools.ts",
       data_classes: ["confidential", "credential", "pii"],
@@ -17897,6 +17974,78 @@ describe("scanner", () => {
     expect(JSON.stringify(langchainEnvSecretTelemetryBridgeTool)).not.toContain("Persist runtime credential");
     expect(JSON.stringify(langchainEnvSecretTelemetryBridgeTool)).not.toContain("framework env secret exported to trace");
     expect(JSON.stringify(langchainEnvSecretTelemetryBridgeTool)).not.toContain("Export environment-backed support credentials");
+    expect(langchainEnvSecretArtifactBridgeTool).toMatchObject({
+      path: "framework-tools/langchain_tools.py",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["call", "publish", "send", "write"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(langchainEnvSecretArtifactBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_agent_framework_source_tool: true,
+      agent_framework_source_tool: true,
+      agent_framework_source_tool_framework: "langchain",
+      agent_framework_source_tool_registration_kind: "python_tool_decorator",
+      agent_framework_source_tool_argument_count: 4,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_secret_like_input: true,
+      accepts_content_like_input: false,
+      accepts_path_input: false,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      artifact_export: true,
+      env_secret_artifact_bridge: true,
+      public_artifact_destination: true,
+      tainted_artifact_export_payload: false,
+      external_write: true,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_secret_env_access: true,
+      handler_artifact_export: true,
+      handler_env_secret_artifact_bridge: true,
+      handler_public_artifact_destination: true,
+      handler_tainted_artifact_export_payload: false,
+      handler_signal_count: 4,
+      open_world_schema: false
+    });
+    for (const authorityClass of [
+      "artifact_export",
+      "env_secret_artifact_bridge",
+      "external_write",
+      "public_artifact_destination",
+      "secret_env_access"
+    ]) {
+      expect(langchainEnvSecretArtifactBridgeTool?.metadata.authority_classes).toContain(authorityClass);
+    }
+    expect(langchainEnvSecretArtifactBridgeTool?.metadata.handler_authority_classes).toEqual([
+      "handler_artifact_export",
+      "handler_env_secret_artifact_bridge",
+      "handler_public_artifact_destination",
+      "handler_secret_env_access"
+    ]);
+    expect(langchainEnvSecretArtifactBridgeTool?.metadata.handler_env_key_names).toEqual(["LANGCHAIN_ARTIFACT_REPLAY_SECRET"]);
+    expect(langchainEnvSecretArtifactBridgeTool?.metadata.schema_properties).toEqual([
+      "artifact_bucket",
+      "customer_id",
+      "object_key",
+      "share_mode"
+    ]);
+    expect(langchainEnvSecretArtifactBridgeTool?.metadata.required_properties).toEqual([
+      "artifact_bucket",
+      "customer_id",
+      "object_key",
+      "share_mode"
+    ]);
+    expect(JSON.stringify(langchainEnvSecretArtifactBridgeTool)).not.toContain("os.getenv");
+    expect(JSON.stringify(langchainEnvSecretArtifactBridgeTool)).not.toContain("artifact_credential");
+    expect(JSON.stringify(langchainEnvSecretArtifactBridgeTool)).not.toContain("artifact_export_client.upload");
+    expect(JSON.stringify(langchainEnvSecretArtifactBridgeTool)).not.toContain("Persist runtime credential");
+    expect(JSON.stringify(langchainEnvSecretArtifactBridgeTool)).not.toContain("framework env secret exported to artifact");
+    expect(JSON.stringify(langchainEnvSecretArtifactBridgeTool)).not.toContain("Export environment-backed support credentials");
     expect(langchainToolOutputCredentialIssuanceBridgeTool).toMatchObject({
       path: "framework-tools/langchain_tools.py",
       data_classes: ["confidential", "credential", "pii"],

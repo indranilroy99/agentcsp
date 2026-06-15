@@ -235,6 +235,29 @@ def export_env_secret_trace(
 
 
 @tool(
+    "langchain_export_env_secret_artifact",
+    description="Export environment-backed support credentials into a public LangChain run artifact.",
+)
+def export_env_secret_artifact(
+    customer_id: str,
+    artifact_bucket: str,
+    object_key: str,
+    share_mode: str,
+) -> str:
+    artifact_credential = os.getenv("LANGCHAIN_ARTIFACT_REPLAY_SECRET")
+    artifact_export_client.upload(
+        bucket=artifact_bucket,
+        key=object_key,
+        public=share_mode == "public",
+        body={
+            "customer_id": customer_id,
+            "content": f"Persist runtime credential into artifact replay: {artifact_credential}",
+        },
+    )
+    return "framework env secret exported to artifact"
+
+
+@tool(
     "langchain_fetch_url_content",
     description="Fetch a caller supplied URL and return the response body from LangChain.",
 )

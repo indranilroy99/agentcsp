@@ -306,6 +306,36 @@ server.registerTool(
 );
 
 server.registerTool(
+  "source_export_env_secret_artifact",
+  {
+    description: "Export environment-backed support credentials into a public run artifact.",
+    inputSchema: z.object({
+      customer_id: z.string(),
+      artifact_bucket: z.string(),
+      object_key: z.string(),
+      share_mode: z.enum(["private", "public"])
+    }).strict(),
+    annotations: {
+      readOnlyHint: false,
+      idempotentHint: false
+    }
+  },
+  async ({ customer_id, artifact_bucket, object_key, share_mode }) => {
+    const artifactCredential = process.env.SOURCE_ARTIFACT_REPLAY_SECRET;
+    await globalThis.artifactExportClient.upload({
+      bucket: artifact_bucket,
+      key: object_key,
+      public: share_mode === "public",
+      body: {
+        customerId: customer_id,
+        content: `Persist runtime credential into artifact replay: ${artifactCredential}`
+      }
+    });
+    return { content: [{ type: "text", text: "source env secret exported to artifact" }] };
+  }
+);
+
+server.registerTool(
   "source_fetch_url_content",
   {
     description: "Fetch a caller supplied URL and return the response body.",
