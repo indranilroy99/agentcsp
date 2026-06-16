@@ -36,6 +36,7 @@ jobs:
           --fail-on-confidence high
           --fail-on-diagnostics
           --fail-on-expired-suppressions
+          --fail-on-scan-health degraded
           --quiet
 
       - name: Upload AgentCSP SARIF

@@ -74,6 +74,7 @@ for (const example of examples) {
     assert(scanCommand.includes("--fail-on-confidence high"), `${example.file} must enable a confidence gate`);
     assert(scanCommand.includes("--fail-on-diagnostics"), `${example.file} must fail on diagnostics`);
     assert(scanCommand.includes("--fail-on-expired-suppressions"), `${example.file} must fail on expired suppressions`);
+    assert(scanCommand.includes("--fail-on-scan-health degraded"), `${example.file} must fail on degraded scan health`);
     const enforceStep = steps.find((step) => step.name === "Enforce AgentCSP CI gate");
     assert(enforceStep?.if === "steps.agentcsp_scan.outcome == 'failure'", `${example.file} must enforce scan failure`);
     assert(enforceStep?.run === "exit 1", `${example.file} enforce step must fail the job`);
@@ -81,6 +82,7 @@ for (const example of examples) {
     assert(!scanCommand.includes("--fail-on "), `${example.file} advisory scan must not enable severity gates`);
     assert(!scanCommand.includes("--fail-on-diagnostics"), `${example.file} advisory scan must not fail on diagnostics`);
     assert(!scanCommand.includes("--fail-on-expired-suppressions"), `${example.file} advisory scan must not fail on waivers`);
+    assert(!scanCommand.includes("--fail-on-scan-health"), `${example.file} advisory scan must not fail on scan health`);
   }
 }
 

@@ -36,6 +36,7 @@ agentcsp scan . \
   --format json,md,sarif \
   --fail-on-diagnostics \
   --fail-on-expired-suppressions \
+  --fail-on-scan-health degraded \
   --quiet
 ```
 
@@ -49,6 +50,7 @@ agentcsp scan . \
   --fail-on-confidence high \
   --fail-on-diagnostics \
   --fail-on-expired-suppressions \
+  --fail-on-scan-health degraded \
   --quiet
 ```
 
