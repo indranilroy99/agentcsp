@@ -217,7 +217,9 @@ async function firstExistingDirectory(candidates: string[]): Promise<string> {
       continue;
     }
   }
-  throw new Error(`No built-in rules directory with YAML rules found. Checked: ${candidates.join(", ")}`);
+  throw new Error(
+    `No built-in rules directory with YAML rules found in ${candidates.length} packaged AgentCSP rule locations. Reinstall AgentCSP or verify the package includes the built-in rules.`
+  );
 }
 
 async function builtInRulesDirectoryPath(): Promise<string> {

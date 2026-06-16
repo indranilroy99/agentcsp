@@ -268,6 +268,42 @@ describe("scan diagnostics", () => {
     }
   });
 
+  it("can fail CI when traversal diagnostics are configured as a gate", async () => {
+    const root = await createDirectoryReadFailureFixture();
+    const originalReaddir = fs.readdir;
+    const readdirSpy = vi.spyOn(fs, "readdir").mockImplementation(async (target, options) => {
+      if (String(target).endsWith("unreadable")) {
+        throw Object.assign(new Error("simulated directory failure with sensitive details"), { code: "EACCES" });
+      }
+      return originalReaddir(target, options as Parameters<typeof fs.readdir>[1]);
+    });
+    try {
+      const result = await scanProject({
+        root_path: root,
+        output_path: "/private/tmp/agentcsp-directory-traversal-diagnostic-gate-output",
+        formats: ["json", "md", "sarif"],
+        include_hidden: true,
+        include_logs: false,
+        max_file_size_bytes: 1024 * 1024,
+        max_files: 5000,
+        quiet: true,
+        fail_on_diagnostics: true
+      });
+
+      expect(result.shouldFail).toBe(true);
+      expect(result.manifest.ci_gate_summary).toMatchObject({
+        status: "fail",
+        should_fail: true,
+        fail_on_diagnostics: true,
+        diagnostic_count: 1,
+        failed_gates: ["diagnostics"]
+      });
+      expect(result.reportMarkdown).toContain("- Failed gates: diagnostics");
+    } finally {
+      readdirSpy.mockRestore();
+    }
+  });
+
   it("can fail CI when max_files exhaustion diagnostics are configured as a gate", async () => {
     const root = await createMaxFilesFixture();
     const result = await scanProject({
@@ -346,6 +382,43 @@ describe("scan diagnostics", () => {
     expect(JSON.stringify(result.manifest)).not.toContain("/private/tmp/agentcsp-external-policy");
     expect(result.reportMarkdown).toContain("<external-policy-config>");
     expect(result.reportMarkdown).not.toContain("/private/tmp/agentcsp-external-policy");
+  });
+
+  it("does not leak local package paths when built-in rules are missing", async () => {
+    const root = await createTraversalFailureFixture();
+    const builtInRuleCandidates = new Set([
+      path.resolve(process.cwd(), "packages/core/src/builtin-rules"),
+      path.resolve(process.cwd(), "packages/core/rules"),
+      path.resolve(process.cwd(), "rules")
+    ]);
+    const originalStat = fs.stat;
+    const statSpy = vi.spyOn(fs, "stat").mockImplementation(async (target) => {
+      if (builtInRuleCandidates.has(String(target))) {
+        throw Object.assign(new Error(`missing built-in rules at ${String(target)}`), { code: "ENOENT" });
+      }
+      return originalStat(target);
+    });
+    try {
+      const error = await scanProject({
+        root_path: root,
+        output_path: "/private/tmp/agentcsp-missing-builtin-rules-output",
+        formats: ["json"],
+        include_hidden: true,
+        include_logs: false,
+        max_file_size_bytes: 1024 * 1024,
+        max_files: 5000,
+        quiet: true
+      }).catch((caught: unknown) => caught);
+      const message = error instanceof Error ? error.message : String(error);
+      expect(message).toBe(
+        "No built-in rules directory with YAML rules found in 3 packaged AgentCSP rule locations. Reinstall AgentCSP or verify the package includes the built-in rules."
+      );
+      expect(message).not.toContain(process.cwd());
+      expect(message).not.toContain("/private/tmp");
+      expect(message).not.toContain("missing built-in rules at");
+    } finally {
+      statSpy.mockRestore();
+    }
   });
 });
 
