@@ -25,6 +25,8 @@ export interface WalkResult {
   diagnostics: ScanDiagnostic[];
 }
 
+export const skippedPathPreviewLimit = 50;
+
 export async function walkProject(config: ScanConfig): Promise<WalkedFile[]> {
   return (await walkProjectWithCoverage(config)).files;
 }
@@ -55,7 +57,10 @@ export async function walkProjectWithCoverage(config: ScanConfig): Promise<WalkR
     diagnostics_info: 0,
     max_files_reached: false,
     max_files: maxFiles,
-    max_file_size_bytes: maxFileSize
+    max_file_size_bytes: maxFileSize,
+    skipped_path_limit: skippedPathPreviewLimit,
+    oversized_file_paths: [],
+    oversized_file_paths_truncated: false
   };
 
   async function visit(directory: string): Promise<void> {
@@ -119,7 +124,14 @@ export async function walkProjectWithCoverage(config: ScanConfig): Promise<WalkR
       }
       const skippedForSize = stats.size > maxFileSize;
       coverage.files_seen += 1;
-      if (skippedForSize) coverage.files_skipped_for_size += 1;
+      if (skippedForSize) {
+        coverage.files_skipped_for_size += 1;
+        if (coverage.oversized_file_paths.length < skippedPathPreviewLimit) {
+          coverage.oversized_file_paths.push(rel);
+        } else {
+          coverage.oversized_file_paths_truncated = true;
+        }
+      }
       files.push({
         absolutePath,
         relativePath: rel,
@@ -131,6 +143,7 @@ export async function walkProjectWithCoverage(config: ScanConfig): Promise<WalkR
 
   await visit(rootPath);
   const sortedFiles = files.sort((a, b) => a.relativePath.localeCompare(b.relativePath));
+  coverage.oversized_file_paths = [...coverage.oversized_file_paths].sort((a, b) => a.localeCompare(b));
   coverage.files_indexed = sortedFiles.length;
   return {
     files: sortedFiles,

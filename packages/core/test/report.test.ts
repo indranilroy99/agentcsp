@@ -67,6 +67,9 @@ describe("scanProject", () => {
     expect(result.manifest.scan_coverage?.scan_health_reasons).toEqual([]);
     expect(result.manifest.scan_coverage?.files_indexed).toBeGreaterThan(0);
     expect(result.manifest.scan_coverage?.max_files_reached).toBe(false);
+    expect(result.manifest.scan_coverage?.skipped_path_limit).toBe(50);
+    expect(result.manifest.scan_coverage?.oversized_file_paths).toEqual([]);
+    expect(result.manifest.scan_coverage?.oversized_file_paths_truncated).toBe(false);
     expect(result.manifest.triage_summary?.title).toBe("AgentCSP Triage Summary");
     expect(result.manifest.triage_summary?.total_findings).toBe(result.findings.length);
     expect(result.manifest.triage_summary?.active_findings).toBeGreaterThan(0);
@@ -207,7 +210,12 @@ describe("scanProject", () => {
             expired_suppression_by_severity?: Record<string, number>;
             expired_suppression_by_risk_driver?: Array<{ driver?: string; count?: number }>;
           };
-          agentcsp_scan_coverage?: { files_indexed?: number };
+          agentcsp_scan_coverage?: {
+            files_indexed?: number;
+            skipped_path_limit?: number;
+            oversized_file_paths?: string[];
+            oversized_file_paths_truncated?: boolean;
+          };
           agentcsp_static_blast_radius?: {
             pii_external_reach_paths?: number;
             high_risk_objects_truncated?: boolean;
@@ -285,6 +293,9 @@ describe("scanProject", () => {
     expect(sarif.runs[0]?.properties?.agentcsp_scan_coverage?.files_indexed).toBe(
       result.manifest.scan_coverage?.files_indexed
     );
+    expect(sarif.runs[0]?.properties?.agentcsp_scan_coverage?.skipped_path_limit).toBe(50);
+    expect(sarif.runs[0]?.properties?.agentcsp_scan_coverage?.oversized_file_paths).toEqual([]);
+    expect(sarif.runs[0]?.properties?.agentcsp_scan_coverage?.oversized_file_paths_truncated).toBe(false);
     expect(sarif.runs[0]?.properties?.agentcsp_static_blast_radius?.pii_external_reach_paths).toBe(
       result.manifest.static_blast_radius?.pii_external_reach_paths
     );
@@ -354,6 +365,10 @@ describe("scanProject", () => {
     expect(result.reportMarkdown).toContain("untrusted -> privileged");
     expect(result.reportMarkdown).toContain("secret exposure");
     expect(result.reportMarkdown).toContain("## Scan Coverage");
+    expect(result.reportMarkdown).toContain("- Skipped path preview limit: 50");
+    expect(result.reportMarkdown).toContain("- Oversized file paths truncated: `false`");
+    expect(result.reportMarkdown).toContain("### Oversized Files");
+    expect(result.reportMarkdown).toContain("No oversized files were skipped.");
     expect(result.reportMarkdown).toContain("### Expired Suppressions");
     expect(result.reportMarkdown).toContain("PII external reach paths");
     expect(result.reportMarkdown).toContain("PII attack paths");

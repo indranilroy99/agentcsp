@@ -565,7 +565,10 @@ export const ScanCoverageSummarySchema = z.object({
   diagnostics_info: z.number().int().nonnegative().default(0),
   max_files_reached: z.boolean().default(false),
   max_files: z.number().int().positive(),
-  max_file_size_bytes: z.number().int().positive()
+  max_file_size_bytes: z.number().int().positive(),
+  skipped_path_limit: z.number().int().positive().default(50),
+  oversized_file_paths: z.array(z.string()).default([]),
+  oversized_file_paths_truncated: z.boolean().default(false)
 });
 
 export const ManifestMetadataSchema = z.object({

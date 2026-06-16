@@ -1990,6 +1990,22 @@
             "max_file_size_bytes": {
               "type": "integer",
               "exclusiveMinimum": 0
+            },
+            "skipped_path_limit": {
+              "type": "integer",
+              "exclusiveMinimum": 0,
+              "default": 50
+            },
+            "oversized_file_paths": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "default": []
+            },
+            "oversized_file_paths_truncated": {
+              "type": "boolean",
+              "default": false
             }
           },
           "required": [

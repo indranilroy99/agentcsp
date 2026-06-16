@@ -343,7 +343,22 @@ function renderScanCoverage(manifest: AgentManifest): string {
     `- Diagnostic info: ${coverage.diagnostics_info}`,
     `- Max files reached: \`${coverage.max_files_reached}\``,
     `- Max files: ${coverage.max_files}`,
-    `- Max file size bytes: ${coverage.max_file_size_bytes}`
+    `- Max file size bytes: ${coverage.max_file_size_bytes}`,
+    `- Skipped path preview limit: ${coverage.skipped_path_limit}`,
+    `- Oversized file paths truncated: \`${coverage.oversized_file_paths_truncated}\``,
+    "",
+    "### Oversized Files",
+    "",
+    renderOversizedFilePaths(coverage)
+  ].join("\n");
+}
+
+function renderOversizedFilePaths(coverage: NonNullable<AgentManifest["scan_coverage"]>): string {
+  if (coverage.oversized_file_paths.length === 0) return "No oversized files were skipped.";
+  return [
+    "| Path |",
+    "| --- |",
+    ...coverage.oversized_file_paths.map((filePath) => `| \`${escapeTable(filePath)}\` |`)
   ].join("\n");
 }
 

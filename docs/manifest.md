@@ -2984,6 +2984,7 @@ The summary includes:
 - diagnostic totals by severity through `diagnostics_total`, `diagnostics_errors`, `diagnostics_warnings`, and `diagnostics_info`
 - whether `max_files` was reached
 - configured `max_files` and `max_file_size_bytes`
+- bounded oversized-file previews through `skipped_path_limit`, `oversized_file_paths`, and `oversized_file_paths_truncated`
 - `scan_health`, one of `complete`, `degraded`, or `incomplete`
 - stable `scan_health_reasons`
 
@@ -2991,7 +2992,7 @@ The summary includes:
 
 Default ignore rules include prior AgentCSP output directories such as `.agentcsp`, `.agentcsp-*`, and `.agentcsp_*`. When the configured output directory is inside the scanned root, that output directory is ignored as well. This prevents repeated scans from ingesting stale manifests, findings, reports, or SARIF files.
 
-Coverage counts do not include raw file contents or skipped path lists. Diagnostic counters summarize parser and scan-health issues; detailed redacted records remain in `diagnostics`.
+Coverage does not include raw file contents or host-absolute skipped paths. Oversized-file previews are bounded and root-relative so teams can tune scan limits without exposing local filesystem layout. Diagnostic counters summarize parser and scan-health issues; detailed redacted records remain in `diagnostics`.
 
 ## Diagnostics
 

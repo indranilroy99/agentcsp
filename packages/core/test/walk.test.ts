@@ -29,6 +29,9 @@ describe("walkProjectWithCoverage", () => {
       files_seen: 4,
       files_indexed: 4,
       files_skipped_for_size: 1,
+      skipped_path_limit: 50,
+      oversized_file_paths: ["large.md"],
+      oversized_file_paths_truncated: false,
       files_skipped_by_ignore: 1,
       directories_skipped_by_ignore: 5,
       directories_skipped_hidden: 1,
@@ -57,6 +60,35 @@ describe("walkProjectWithCoverage", () => {
     expect(result.coverage.scan_health).toBe("incomplete");
     expect(result.coverage.scan_health_reasons).toEqual(["max_files_reached"]);
     expect(result.coverage.files_indexed).toBe(1);
+  });
+
+  it("bounds oversized file path previews while preserving exact counts", async () => {
+    const root = "/private/tmp/agentcsp-oversized-preview-fixture";
+    await fs.rm(root, { recursive: true, force: true });
+    await fs.mkdir(root, { recursive: true });
+    await Promise.all(
+      Array.from({ length: 55 }, (_, index) =>
+        fs.writeFile(path.join(root, `large_${index.toString().padStart(3, "0")}.md`), "oversized\n", "utf8")
+      )
+    );
+
+    const result = await walkProjectWithCoverage({
+      root_path: root,
+      output_path: ".agentcsp",
+      formats: ["json", "md"],
+      include_hidden: true,
+      include_logs: false,
+      max_file_size_bytes: 4,
+      max_files: 100,
+      quiet: true
+    });
+
+    expect(result.coverage.files_skipped_for_size).toBe(55);
+    expect(result.coverage.skipped_path_limit).toBe(50);
+    expect(result.coverage.oversized_file_paths).toHaveLength(50);
+    expect(result.coverage.oversized_file_paths[0]).toBe("large_000.md");
+    expect(result.coverage.oversized_file_paths.at(-1)).toBe("large_049.md");
+    expect(result.coverage.oversized_file_paths_truncated).toBe(true);
   });
 
   it("ignores the configured output directory when it is inside the scan root", async () => {

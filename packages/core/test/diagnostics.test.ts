@@ -189,6 +189,50 @@ describe("scan diagnostics", () => {
     });
   });
 
+  it("emits bounded oversized file previews in scan coverage", async () => {
+    const root = await createOversizedFilesFixture();
+    const result = await scanProject({
+      root_path: root,
+      output_path: "/private/tmp/agentcsp-oversized-files-output",
+      formats: ["json", "md", "sarif"],
+      include_hidden: true,
+      include_logs: false,
+      max_file_size_bytes: 8,
+      max_files: 5000,
+      quiet: true
+    });
+
+    expect(result.manifest.scan_coverage).toMatchObject({
+      scan_health: "degraded",
+      scan_health_reasons: ["files_skipped_for_size"],
+      files_skipped_for_size: 2,
+      skipped_path_limit: 50,
+      oversized_file_paths: ["large-a.md", "nested/large-b.md"],
+      oversized_file_paths_truncated: false
+    });
+    expect(result.reportMarkdown).toContain("### Oversized Files");
+    expect(result.reportMarkdown).toContain("`large-a.md`");
+    expect(result.reportMarkdown).toContain("`nested/large-b.md`");
+    expect(result.reportMarkdown).not.toContain(root);
+
+    const sarif = JSON.parse(await fs.readFile(result.outputFiles.sarif!, "utf8")) as {
+      runs: Array<{
+        properties?: {
+          agentcsp_scan_coverage?: {
+            oversized_file_paths?: string[];
+            oversized_file_paths_truncated?: boolean;
+            skipped_path_limit?: number;
+          };
+        };
+      }>;
+    };
+    expect(sarif.runs[0]?.properties?.agentcsp_scan_coverage).toMatchObject({
+      skipped_path_limit: 50,
+      oversized_file_paths: ["large-a.md", "nested/large-b.md"],
+      oversized_file_paths_truncated: false
+    });
+  });
+
   it("emits redacted scanner diagnostics when a file disappears during traversal", async () => {
     const root = await createTraversalFailureFixture();
     const originalStat = fs.stat;
@@ -510,6 +554,16 @@ async function createMaxFilesFixture(): Promise<string> {
   await fs.writeFile(path.join(root, ".codex", "config.toml"), 'sandbox = "workspace-write"\n', "utf8");
   await fs.writeFile(path.join(root, "AGENTS.md"), "Review repository changes only.\n", "utf8");
   await fs.writeFile(path.join(root, "SKILL.md"), "Use read-only analysis unless approval is granted.\n", "utf8");
+  return root;
+}
+
+async function createOversizedFilesFixture(): Promise<string> {
+  const root = "/private/tmp/agentcsp-oversized-files-fixture";
+  await fs.rm(root, { recursive: true, force: true });
+  await fs.mkdir(path.join(root, "nested"), { recursive: true });
+  await fs.writeFile(path.join(root, "AGENTS.md"), "ok\n", "utf8");
+  await fs.writeFile(path.join(root, "large-a.md"), "this file exceeds the configured max size\n", "utf8");
+  await fs.writeFile(path.join(root, "nested", "large-b.md"), "this nested file also exceeds the configured max size\n", "utf8");
   return root;
 }
 

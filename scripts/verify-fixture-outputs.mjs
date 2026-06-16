@@ -1996,6 +1996,13 @@ if (vulnerable.sarif) {
   );
   assert(run.properties?.agentcsp_scan_coverage, "SARIF scan coverage missing");
   assertEqual(run.properties.agentcsp_scan_coverage.scan_health, "complete", "SARIF scan health");
+  assertEqual(run.properties.agentcsp_scan_coverage.skipped_path_limit, 50, "SARIF skipped path preview limit");
+  assertArrayEqual(run.properties.agentcsp_scan_coverage.oversized_file_paths ?? [], [], "SARIF oversized file previews");
+  assertEqual(
+    run.properties.agentcsp_scan_coverage.oversized_file_paths_truncated,
+    false,
+    "SARIF oversized file preview truncation"
+  );
   assert(run.properties?.agentcsp_static_blast_radius, "SARIF blast-radius summary missing");
   assertEqual(
     run.properties.agentcsp_static_blast_radius.attack_path_limit,
@@ -2023,6 +2030,9 @@ function assertVulnerableOperatorMetadata(output) {
   });
   assertEqual(manifest.scan_coverage?.scan_health, "complete", "vulnerable scan health");
   assertArrayEqual(manifest.scan_coverage?.scan_health_reasons ?? [], [], "vulnerable scan health reasons");
+  assertEqual(manifest.scan_coverage?.skipped_path_limit, 50, "vulnerable skipped path preview limit");
+  assertArrayEqual(manifest.scan_coverage?.oversized_file_paths ?? [], [], "vulnerable oversized file previews");
+  assertEqual(manifest.scan_coverage?.oversized_file_paths_truncated, false, "vulnerable oversized file truncation");
 
   assertEqual(manifest.triage_summary?.top_active_limit, 10, "vulnerable triage top active limit");
   assert(manifest.triage_summary?.top_active_rules_total > 10, "vulnerable triage top rules total must exceed preview");
@@ -2135,6 +2145,9 @@ function assertSafeOperatorMetadata(output) {
   });
   assertEqual(manifest.scan_coverage?.scan_health, "complete", "safe scan health");
   assertArrayEqual(manifest.scan_coverage?.scan_health_reasons ?? [], [], "safe scan health reasons");
+  assertEqual(manifest.scan_coverage?.skipped_path_limit, 50, "safe skipped path preview limit");
+  assertArrayEqual(manifest.scan_coverage?.oversized_file_paths ?? [], [], "safe oversized file previews");
+  assertEqual(manifest.scan_coverage?.oversized_file_paths_truncated, false, "safe oversized file truncation");
   assertEqual(manifest.triage_summary?.top_active_limit, 10, "safe triage top active limit");
   assertEqual(manifest.triage_summary?.top_active_rules_total, 0, "safe triage top rules total");
   assertEqual(manifest.triage_summary?.top_active_rules_truncated, false, "safe triage top rules truncation");
