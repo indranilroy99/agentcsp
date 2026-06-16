@@ -268,6 +268,7 @@ The current iteration adds:
 - active finding rollups by severity, confidence, surface type, category, and recommended control
 - top active rules and top active risks with stable finding/object IDs, paths, risk scores, and controls
 - Markdown Triage Summary rendered near the top of the report
+- Markdown reports use `<scan-root>` rather than printing the absolute local scan path
 - SARIF run properties for `agentcsp_triage_summary` and `agentcsp_static_blast_radius`
 - regression coverage for vulnerable and safe fixtures
 

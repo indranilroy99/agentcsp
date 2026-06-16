@@ -21,7 +21,7 @@ export function renderMarkdownReport(manifest: AgentManifest): string {
     "",
     "## Scan Metadata",
     "",
-    `- Root: \`${manifest.metadata.root_path}\``,
+    "- Root: `<scan-root>`",
     `- Generated: \`${manifest.metadata.generated_at}\``,
     `- Manifest schema: \`${manifest.metadata.schema_version}\``,
     `- Secret values collected: \`${manifest.metadata.config.secret_values_collected}\``,

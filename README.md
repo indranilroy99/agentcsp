@@ -74,6 +74,7 @@ AgentCSP is conservative by default:
 - Secret values are not read or emitted.
 - `.env*` files are reduced to file presence and key names only.
 - Evidence snippets are redacted by default.
+- Markdown reports use `<scan-root>` instead of printing the absolute local scan path.
 - Raw file contents are not dumped into the manifest.
 - RAG and memory content signals are emitted as booleans and counts, not raw text.
 - Large/generated folders, the configured inside-root output directory, and prior AgentCSP output directories such as `.agentcsp`, `.agentcsp-*`, and `.agentcsp_*` are ignored by default.

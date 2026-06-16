@@ -115,4 +115,4 @@ GitHub code-scanning workflow examples are available in `examples/ci/`. See `doc
 
 ## Scanner Safety
 
-AgentCSP does not read or emit secret values by default. For `.env*` files, it records file presence and key names only. Evidence snippets are redacted, and raw file contents are not written to the manifest. RAG and memory files are reduced to normalized content signals rather than raw text.
+AgentCSP does not read or emit secret values by default. For `.env*` files, it records file presence and key names only. Evidence snippets are redacted, and raw file contents are not written to the manifest. Markdown reports use `<scan-root>` instead of printing the absolute local scan path. RAG and memory files are reduced to normalized content signals rather than raw text.

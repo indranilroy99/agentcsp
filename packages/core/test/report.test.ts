@@ -5,8 +5,9 @@ import { scanProject } from "../src/scanner/scan.js";
 
 describe("scanProject", () => {
   it("emits a manifest, findings, and a static blast-radius report", async () => {
+    const rootPath = path.resolve("examples/vulnerable-agent");
     const result = await scanProject({
-      root_path: path.resolve("examples/vulnerable-agent"),
+      root_path: rootPath,
       output_path: "/private/tmp/agentcsp-test-output",
       formats: ["json", "md", "sarif"],
       include_hidden: true,
@@ -90,6 +91,8 @@ describe("scanProject", () => {
     );
     expect(JSON.stringify(sarif.runs[0]?.properties?.agentcsp_triage_summary)).not.toContain("replace-me");
     expect(result.reportMarkdown).toContain("## Triage Summary");
+    expect(result.reportMarkdown).toContain("- Root: `<scan-root>`");
+    expect(result.reportMarkdown).not.toContain(rootPath);
     expect(result.reportMarkdown).toContain("## CI Gate Summary");
     expect(result.reportMarkdown).toContain("- Status: `pass`");
     expect(result.reportMarkdown).toContain("### Active Findings by Severity");
