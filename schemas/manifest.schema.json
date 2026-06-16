@@ -1407,12 +1407,25 @@
               },
               "default": []
             },
+            "blocker_id_limit": {
+              "type": "integer",
+              "exclusiveMinimum": 0,
+              "default": 50
+            },
+            "blocker_ids_truncated": {
+              "type": "boolean",
+              "default": false
+            },
             "severity_gate_finding_ids": {
               "type": "array",
               "items": {
                 "type": "string"
               },
               "default": []
+            },
+            "severity_gate_finding_ids_truncated": {
+              "type": "boolean",
+              "default": false
             },
             "expired_suppression_finding_ids": {
               "type": "array",
@@ -1421,12 +1434,20 @@
               },
               "default": []
             },
+            "expired_suppression_finding_ids_truncated": {
+              "type": "boolean",
+              "default": false
+            },
             "diagnostic_ids": {
               "type": "array",
               "items": {
                 "type": "string"
               },
               "default": []
+            },
+            "diagnostic_ids_truncated": {
+              "type": "boolean",
+              "default": false
             }
           },
           "additionalProperties": false

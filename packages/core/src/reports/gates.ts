@@ -45,6 +45,9 @@ export function buildCiGateSummary(input: {
   if (input.config.fail_on_diagnostics && input.diagnostics.length > 0) {
     failedGates.push("diagnostics");
   }
+  const severityGateFindingIds = limitIds(severityGateFindings.map((finding) => finding.id));
+  const expiredSuppressionFindingIds = limitIds(expiredSuppressionFindings.map((finding) => finding.id));
+  const limitedDiagnosticIds = limitIds(diagnosticIds);
 
   return {
     title: "AgentCSP CI Gate Summary",
@@ -61,9 +64,18 @@ export function buildCiGateSummary(input: {
     expired_suppression_findings: expiredSuppressionFindings.length,
     diagnostic_count: input.diagnostics.length,
     failed_gates: failedGates,
-    severity_gate_finding_ids: limitIds(severityGateFindings.map((finding) => finding.id)),
-    expired_suppression_finding_ids: limitIds(expiredSuppressionFindings.map((finding) => finding.id)),
-    diagnostic_ids: limitIds(diagnosticIds)
+    blocker_id_limit: ciGateBlockerIdLimit,
+    blocker_ids_truncated:
+      severityGateFindings.length > severityGateFindingIds.length ||
+      expiredSuppressionFindings.length > expiredSuppressionFindingIds.length ||
+      diagnosticIds.length > limitedDiagnosticIds.length,
+    severity_gate_finding_ids: severityGateFindingIds,
+    severity_gate_finding_ids_truncated: severityGateFindings.length > severityGateFindingIds.length,
+    expired_suppression_finding_ids: expiredSuppressionFindingIds,
+    expired_suppression_finding_ids_truncated:
+      expiredSuppressionFindings.length > expiredSuppressionFindingIds.length,
+    diagnostic_ids: limitedDiagnosticIds,
+    diagnostic_ids_truncated: diagnosticIds.length > limitedDiagnosticIds.length
   };
 }
 

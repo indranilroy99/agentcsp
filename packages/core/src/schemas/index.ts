@@ -288,9 +288,14 @@ export const CiGateSummarySchema = z.object({
   expired_suppression_findings: z.number().int().nonnegative().default(0),
   diagnostic_count: z.number().int().nonnegative().default(0),
   failed_gates: z.array(CiGateNameSchema).default([]),
+  blocker_id_limit: z.number().int().positive().default(50),
+  blocker_ids_truncated: z.boolean().default(false),
   severity_gate_finding_ids: z.array(z.string()).default([]),
+  severity_gate_finding_ids_truncated: z.boolean().default(false),
   expired_suppression_finding_ids: z.array(z.string()).default([]),
-  diagnostic_ids: z.array(z.string()).default([])
+  expired_suppression_finding_ids_truncated: z.boolean().default(false),
+  diagnostic_ids: z.array(z.string()).default([]),
+  diagnostic_ids_truncated: z.boolean().default(false)
 });
 
 export const RemediationActionSchema = z.object({

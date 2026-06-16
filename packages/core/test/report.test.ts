@@ -89,7 +89,7 @@ describe("scanProject", () => {
         properties?: {
           agentcsp_triage_summary?: { total_findings?: number };
           agentcsp_action_plan?: { total_actions?: number; actions?: Array<{ priority?: number; rule_id?: string }> };
-          agentcsp_ci_gate_summary?: { status?: string; should_fail?: boolean };
+          agentcsp_ci_gate_summary?: { status?: string; should_fail?: boolean; blocker_id_limit?: number };
           agentcsp_scan_coverage?: { files_indexed?: number };
           agentcsp_static_blast_radius?: { pii_external_reach_paths?: number };
         };
@@ -116,9 +116,14 @@ describe("scanProject", () => {
     expect(sarif.runs[0]?.properties?.agentcsp_ci_gate_summary).toMatchObject({
       status: "pass",
       should_fail: false,
+      blocker_id_limit: 50,
+      blocker_ids_truncated: false,
       severity_gate_finding_ids: [],
+      severity_gate_finding_ids_truncated: false,
       expired_suppression_finding_ids: [],
-      diagnostic_ids: []
+      expired_suppression_finding_ids_truncated: false,
+      diagnostic_ids: [],
+      diagnostic_ids_truncated: false
     });
     expect(sarif.runs[0]?.properties?.agentcsp_scan_coverage?.files_indexed).toBe(
       result.manifest.scan_coverage?.files_indexed
@@ -142,7 +147,10 @@ describe("scanProject", () => {
     expect(result.reportMarkdown).not.toContain(rootPath);
     expect(result.reportMarkdown).toContain("## CI Gate Summary");
     expect(result.reportMarkdown).toContain("- Status: `pass`");
+    expect(result.reportMarkdown).toContain("- Blocker ID limit: 50");
+    expect(result.reportMarkdown).toContain("- Blocker IDs truncated: `false`");
     expect(result.reportMarkdown).toContain("### CI Gate Blockers");
+    expect(result.reportMarkdown).toContain("| Blocker list | Total | IDs shown | Truncated |");
     expect(result.reportMarkdown).toContain("No CI gate blockers were identified.");
     expect(result.reportMarkdown).toContain("### Active Findings by Severity");
     expect(result.reportMarkdown).toContain("### Top Active Rules");
@@ -181,7 +189,9 @@ describe("scanProject", () => {
       status: "pass",
       should_fail: false,
       evaluated_findings: 0,
-      severity_gate_findings: 0
+      severity_gate_findings: 0,
+      blocker_id_limit: 50,
+      blocker_ids_truncated: false
     });
     expect(result.manifest.triage_summary?.active_findings).toBe(0);
     expect(result.manifest.triage_summary?.highest_active_severity).toBe("info");

@@ -2932,6 +2932,8 @@ The summary includes:
 - expired suppression finding count
 - diagnostic count
 - failed gate names
+- bounded blocker ID limit and truncation flags
+- bounded blocker IDs for severity-gated findings, expired suppressions, and diagnostics
 
 The CI gate summary does not include raw evidence, secret values, policy reasons, unredacted paths beyond the findings already present in the manifest, or raw diagnostic content.
 

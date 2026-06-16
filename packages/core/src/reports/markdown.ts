@@ -191,10 +191,24 @@ function renderCiGateSummary(manifest: AgentManifest): string {
     `- Active suppressions excluded: ${summary.active_suppressions_excluded}`,
     `- Expired suppression findings: ${summary.expired_suppression_findings}`,
     `- Diagnostics: ${summary.diagnostic_count}`,
+    `- Blocker ID limit: ${summary.blocker_id_limit}`,
+    `- Blocker IDs truncated: \`${summary.blocker_ids_truncated}\``,
     "",
     "### CI Gate Blockers",
     "",
+    renderGateBlockerSummary(summary),
+    "",
     renderGateBlockers(summary)
+  ].join("\n");
+}
+
+function renderGateBlockerSummary(summary: NonNullable<AgentManifest["ci_gate_summary"]>): string {
+  return [
+    "| Blocker list | Total | IDs shown | Truncated |",
+    "| --- | --- | --- | --- |",
+    `| severity/new finding | ${summary.severity_gate_findings} | ${summary.severity_gate_finding_ids.length} | \`${summary.severity_gate_finding_ids_truncated}\` |`,
+    `| expired suppression | ${summary.expired_suppression_findings} | ${summary.expired_suppression_finding_ids.length} | \`${summary.expired_suppression_finding_ids_truncated}\` |`,
+    `| diagnostic | ${summary.diagnostic_count} | ${summary.diagnostic_ids.length} | \`${summary.diagnostic_ids_truncated}\` |`
   ].join("\n");
 }
 
