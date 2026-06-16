@@ -2,7 +2,7 @@
 
 The Agent Manifest is the SBOM equivalent for an AI agent deployment.
 
-It captures normalized agent-facing surfaces, authority signals, trust levels, data classes, findings, evidence, diagnostics, the Triage Summary, optional baseline comparison, scan coverage, and the Static Blast-Radius Summary.
+It captures normalized agent-facing surfaces, authority signals, trust levels, data classes, findings, evidence, diagnostics, the Triage Summary, the Action Plan, optional baseline comparison, scan coverage, and the Static Blast-Radius Summary.
 
 Core sections:
 
@@ -26,6 +26,7 @@ Core sections:
 - `evidence`
 - `diagnostics`
 - `triage_summary`
+- `action_plan`
 - `baseline_comparison`
 - `scan_coverage`
 - `static_blast_radius`
@@ -2892,6 +2893,28 @@ The summary includes:
 - top active risks with finding IDs, object IDs, paths, risk scores, and recommended controls
 
 The triage summary does not include raw file contents, evidence snippets, secret values, or unredacted tool/runtime configuration values.
+
+## Action Plan
+
+`action_plan` is the stable remediation-routing rollup for scan results. It is generated from active findings after policy controls and suppressions are applied, and it is bounded to the highest-priority actions so CI systems and dashboards can display a concise queue without parsing every finding.
+
+Each action includes:
+
+- stable action ID
+- priority
+- title
+- owner hint and owner rationale
+- recommended control
+- severity, confidence, and risk score
+- rule ID and category
+- surface type and path
+- rationale
+- related finding IDs
+- data classes, actions, and trust-boundary status
+
+The summary also includes `by_owner`, a deterministic owner rollup with action count, highest severity, and max risk score. Owner hints are routing hints, not access-control decisions.
+
+The action plan does not include raw file contents, evidence snippets, secret values, policy reasons, or unredacted tool/runtime configuration values.
 
 ## CI Gate Summary
 

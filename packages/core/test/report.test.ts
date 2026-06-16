@@ -46,6 +46,17 @@ describe("scanProject", () => {
       priority: 1,
       severity: "critical"
     });
+    expect(result.manifest.action_plan?.actions[0]?.owner_hint).toMatch(
+      /^(agent-engineering|agent-platform|application-security|data-and-knowledge|identity-and-secrets|platform-ci|runtime-platform)$/u
+    );
+    expect(result.manifest.action_plan?.actions[0]?.owner_reason).toBeTruthy();
+    expect(result.manifest.action_plan?.by_owner.length).toBeGreaterThan(0);
+    expect(result.manifest.action_plan?.by_owner[0]).toMatchObject({
+      owner_hint: expect.any(String),
+      count: expect.any(Number),
+      highest_severity: expect.any(String),
+      max_risk_score: expect.any(Number)
+    });
     expect(result.manifest.action_plan?.actions[0]?.rationale.length).toBeGreaterThan(0);
     expect(result.findings.length).toBeGreaterThan(0);
     expect(result.outputFiles.sarif).toBeDefined();
@@ -109,7 +120,9 @@ describe("scanProject", () => {
     expect(JSON.stringify(sarif.runs[0]?.properties?.agentcsp_triage_summary)).not.toContain("replace-me");
     expect(result.reportMarkdown).toContain("## Triage Summary");
     expect(result.reportMarkdown).toContain("## Action Plan");
-    expect(result.reportMarkdown).toContain("| Priority | Severity | Risk | Control | Rule | Surface | Path | Rationale |");
+    expect(result.reportMarkdown).toContain("### Action Owners");
+    expect(result.reportMarkdown).toContain("| Owner hint | Actions | Highest severity | Max risk |");
+    expect(result.reportMarkdown).toContain("| Priority | Severity | Risk | Owner | Control | Rule | Surface | Path | Rationale |");
     expect(result.reportMarkdown).toContain("- Root: `<scan-root>`");
     expect(result.reportMarkdown).not.toContain(rootPath);
     expect(result.reportMarkdown).toContain("## CI Gate Summary");
@@ -164,7 +177,8 @@ describe("scanProject", () => {
       immediate_actions: 0,
       approval_actions: 0,
       quarantine_actions: 0,
-      redaction_actions: 0
+      redaction_actions: 0,
+      by_owner: []
     });
     expect(result.manifest.action_plan?.actions).toHaveLength(0);
     expect(result.manifest.static_blast_radius?.sensitive_data_external_reach_paths).toBe(0);

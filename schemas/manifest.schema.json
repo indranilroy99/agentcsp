@@ -1082,6 +1082,37 @@
               "minimum": 0,
               "default": 0
             },
+            "by_owner": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "owner_hint": {
+                    "type": "string"
+                  },
+                  "count": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "highest_severity": {
+                    "$ref": "#/definitions/AgentCSP Agent Manifest/properties/attack_paths/items/properties/severity"
+                  },
+                  "max_risk_score": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 100
+                  }
+                },
+                "required": [
+                  "owner_hint",
+                  "count",
+                  "highest_severity",
+                  "max_risk_score"
+                ],
+                "additionalProperties": false
+              },
+              "default": []
+            },
             "actions": {
               "type": "array",
               "items": {
@@ -1095,6 +1126,12 @@
                     "exclusiveMinimum": 0
                   },
                   "title": {
+                    "type": "string"
+                  },
+                  "owner_hint": {
+                    "type": "string"
+                  },
+                  "owner_reason": {
                     "type": "string"
                   },
                   "recommended_control": {
@@ -1160,6 +1197,8 @@
                   "id",
                   "priority",
                   "title",
+                  "owner_hint",
+                  "owner_reason",
                   "recommended_control",
                   "severity",
                   "confidence",

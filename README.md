@@ -57,7 +57,7 @@ Runtime enforcement adapters, deeper graph traversal, and the dashboard are plan
 - **Trust Boundary Analysis**: tracks trusted, project, workspace, third-party, untrusted, and unknown provenance.
 - **Explainable Risk Scoring**: severity includes contributing factors such as trust level, data class, reversibility, external reach, and secret exposure.
 - **Finding Confidence**: each finding includes confidence and rationale so teams can separate correlated evidence from weaker static signals.
-- **Triage Summary**: summarizes active findings by severity, confidence, surface type, category, recommended control, top rules, and top risk objects.
+- **Triage and Action Plan**: summarizes active findings by severity, confidence, surface type, category, recommended control, top rules, top risk objects, and deterministic owner routing hints for remediation.
 - **Baseline Comparison**: compares current findings to previous scan output so teams can separate new risk from existing debt.
 - **Scan Coverage Summary**: reports indexed files, oversized files, ignored paths, skipped hidden/log directories, max-file limits, and diagnostic counts.
 - **Scan Diagnostics**: emits redacted parser diagnostics when security-relevant configs cannot be parsed.
@@ -210,7 +210,7 @@ The Agent Manifest is the SBOM equivalent for AI agent deployments. Core section
 - `scan_coverage`
 - `static_blast_radius`
 
-Findings include severity, confidence, risk factors, redacted evidence, mappings, and recommended controls. The triage summary gives downstream CI and platform consumers stable counts for active risk, suppressions, confidence, surface types, control mix, top rules, and top active risks.
+Findings include severity, confidence, risk factors, redacted evidence, mappings, and recommended controls. The triage summary gives downstream CI and platform consumers stable counts for active risk, suppressions, confidence, surface types, control mix, top rules, and top active risks. The action plan adds prioritized remediation items with owner hints such as `agent-platform`, `identity-and-secrets`, `data-and-knowledge`, `platform-ci`, and `runtime-platform`.
 
 ## Rules
 

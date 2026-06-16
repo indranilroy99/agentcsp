@@ -297,6 +297,8 @@ export const RemediationActionSchema = z.object({
   id: z.string(),
   priority: z.number().int().positive(),
   title: z.string(),
+  owner_hint: z.string(),
+  owner_reason: z.string(),
   recommended_control: ControlSchema,
   severity: SeveritySchema,
   confidence: ConfidenceSchema,
@@ -312,6 +314,13 @@ export const RemediationActionSchema = z.object({
   trust_boundary_crossed: z.boolean().default(false)
 });
 
+export const ActionPlanOwnerSummarySchema = z.object({
+  owner_hint: z.string(),
+  count: z.number().int().nonnegative(),
+  highest_severity: SeveritySchema,
+  max_risk_score: z.number().int().min(0).max(100)
+});
+
 export const ActionPlanSummarySchema = z.object({
   title: z.literal("AgentCSP Action Plan").default("AgentCSP Action Plan"),
   total_actions: z.number().int().nonnegative().default(0),
@@ -320,6 +329,7 @@ export const ActionPlanSummarySchema = z.object({
   quarantine_actions: z.number().int().nonnegative().default(0),
   redaction_actions: z.number().int().nonnegative().default(0),
   warn_actions: z.number().int().nonnegative().default(0),
+  by_owner: z.array(ActionPlanOwnerSummarySchema).default([]),
   actions: z.array(RemediationActionSchema).default([])
 });
 

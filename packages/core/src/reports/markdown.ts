@@ -86,11 +86,26 @@ function renderActionPlan(manifest: AgentManifest): string {
     `- Quarantine actions: ${plan.quarantine_actions}`,
     `- Redaction actions: ${plan.redaction_actions}`,
     "",
-    "| Priority | Severity | Risk | Control | Rule | Surface | Path | Rationale |",
-    "| --- | --- | --- | --- | --- | --- | --- | --- |",
+    "### Action Owners",
+    "",
+    renderActionOwnerTable(plan.by_owner),
+    "",
+    "| Priority | Severity | Risk | Owner | Control | Rule | Surface | Path | Rationale |",
+    "| --- | --- | --- | --- | --- | --- | --- | --- | --- |",
     ...plan.actions.map(
       (action) =>
-        `| ${action.priority} | ${action.severity} | ${action.risk_score} | ${action.recommended_control.replaceAll("_", " ")} | ${action.rule_id} | ${action.surface_type} | \`${escapeTable(action.path)}\` | ${escapeTable(action.rationale.join("; "))} |`
+        `| ${action.priority} | ${action.severity} | ${action.risk_score} | ${action.owner_hint} | ${action.recommended_control.replaceAll("_", " ")} | ${action.rule_id} | ${action.surface_type} | \`${escapeTable(action.path)}\` | ${escapeTable(action.rationale.join("; "))} |`
+    )
+  ].join("\n");
+}
+
+function renderActionOwnerTable(owners: NonNullable<AgentManifest["action_plan"]>["by_owner"]): string {
+  if (owners.length === 0) return "No owner routing hints were generated.";
+  return [
+    "| Owner hint | Actions | Highest severity | Max risk |",
+    "| --- | --- | --- | --- |",
+    ...owners.map(
+      (owner) => `| ${owner.owner_hint} | ${owner.count} | ${owner.highest_severity} | ${owner.max_risk_score} |`
     )
   ].join("\n");
 }
