@@ -325,6 +325,10 @@ export const ActionPlanOwnerSummarySchema = z.object({
 export const ActionPlanSummarySchema = z.object({
   title: z.literal("AgentCSP Action Plan").default("AgentCSP Action Plan"),
   total_actions: z.number().int().nonnegative().default(0),
+  total_active_findings_considered: z.number().int().nonnegative().default(0),
+  max_actions: z.number().int().positive().default(12),
+  omitted_actions: z.number().int().nonnegative().default(0),
+  truncated: z.boolean().default(false),
   immediate_actions: z.number().int().nonnegative().default(0),
   approval_actions: z.number().int().nonnegative().default(0),
   quarantine_actions: z.number().int().nonnegative().default(0),

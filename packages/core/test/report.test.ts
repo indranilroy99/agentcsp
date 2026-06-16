@@ -41,6 +41,10 @@ describe("scanProject", () => {
     expect(result.manifest.triage_summary?.top_active_risks[0]?.risk_score).toBeGreaterThan(0);
     expect(result.manifest.action_plan?.title).toBe("AgentCSP Action Plan");
     expect(result.manifest.action_plan?.total_actions).toBeGreaterThan(0);
+    expect(result.manifest.action_plan?.total_active_findings_considered).toBe(result.findings.length);
+    expect(result.manifest.action_plan?.max_actions).toBe(12);
+    expect(result.manifest.action_plan?.truncated).toBe(true);
+    expect(result.manifest.action_plan?.omitted_actions).toBe(result.findings.length - 12);
     expect(result.manifest.action_plan?.immediate_actions).toBeGreaterThan(0);
     expect(result.manifest.action_plan?.actions[0]).toMatchObject({
       priority: 1,
@@ -120,6 +124,8 @@ describe("scanProject", () => {
     expect(JSON.stringify(sarif.runs[0]?.properties?.agentcsp_triage_summary)).not.toContain("replace-me");
     expect(result.reportMarkdown).toContain("## Triage Summary");
     expect(result.reportMarkdown).toContain("## Action Plan");
+    expect(result.reportMarkdown).toContain("- Truncated: `true`");
+    expect(result.reportMarkdown).toContain("- Omitted actions:");
     expect(result.reportMarkdown).toContain("### Action Owners");
     expect(result.reportMarkdown).toContain("| Owner hint | Actions | Highest severity | Max risk |");
     expect(result.reportMarkdown).toContain("| Priority | Severity | Risk | Baseline | Owner | Control | Rule | Surface | Path | Rationale |");
@@ -174,6 +180,10 @@ describe("scanProject", () => {
     expect(result.manifest.triage_summary?.top_active_risks).toHaveLength(0);
     expect(result.manifest.action_plan).toMatchObject({
       total_actions: 0,
+      total_active_findings_considered: 0,
+      max_actions: 12,
+      omitted_actions: 0,
+      truncated: false,
       immediate_actions: 0,
       approval_actions: 0,
       quarantine_actions: 0,

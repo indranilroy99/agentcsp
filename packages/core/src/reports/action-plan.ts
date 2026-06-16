@@ -44,6 +44,10 @@ export function buildActionPlan(findings: Finding[], limit = 12): ActionPlanSumm
   return {
     title: "AgentCSP Action Plan",
     total_actions: actions.length,
+    total_active_findings_considered: activeFindings.length,
+    max_actions: limit,
+    omitted_actions: Math.max(0, activeFindings.length - actions.length),
+    truncated: activeFindings.length > actions.length,
     immediate_actions: actions.filter(isImmediateAction).length,
     approval_actions: actions.filter((action) => action.recommended_control === "require_approval").length,
     quarantine_actions: actions.filter((action) => action.recommended_control === "quarantine").length,

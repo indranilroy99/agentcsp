@@ -45,7 +45,8 @@ describe("baseline comparison", () => {
     expect(result.findings.every((finding) => finding.baseline_status === "existing")).toBe(true);
     expect(result.manifest.action_plan).toMatchObject({
       new_actions: 0,
-      existing_actions: result.manifest.action_plan?.total_actions
+      existing_actions: result.manifest.action_plan?.total_actions,
+      truncated: true
     });
     expect(result.manifest.action_plan?.actions.every((action) => action.baseline_status === "existing")).toBe(true);
     expect(result.reportMarkdown).toContain("## Baseline Comparison");

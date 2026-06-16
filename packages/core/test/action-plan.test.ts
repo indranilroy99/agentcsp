@@ -31,6 +31,21 @@ describe("action plan owner routing", () => {
     ]);
     expect(plan.actions.every((action) => action.owner_reason.length > 0)).toBe(true);
   });
+
+  it("reports when the bounded action queue omits lower-priority findings", () => {
+    const findings = Array.from({ length: 15 }, (_, index) =>
+      finding({ id: `finding_${index.toString().padStart(2, "0")}`, category: "mcp_authority", type: "mcp_server" })
+    );
+    const plan = buildActionPlan(findings, 5);
+
+    expect(plan).toMatchObject({
+      total_actions: 5,
+      total_active_findings_considered: 15,
+      max_actions: 5,
+      omitted_actions: 10,
+      truncated: true
+    });
+  });
 });
 
 function finding(input: {
