@@ -19,6 +19,13 @@ describe("scanProject", () => {
     });
 
     expect(result.manifest.metadata.config.secret_values_collected).toBe(false);
+    expect(result.manifest.metadata.rule_pack).toMatchObject({
+      built_in_rules: 383,
+      project_rules: 0,
+      total_rules: 383,
+      project_rules_loaded: false,
+      rule_diagnostics: 0
+    });
     expect(result.manifest.metadata.config).toMatchObject({
       formats: ["json", "md", "sarif"],
       include_hidden: true,
@@ -131,6 +138,13 @@ describe("scanProject", () => {
             fail_on_new?: boolean;
             secret_values_collected?: boolean;
           };
+          agentcsp_rule_pack?: {
+            built_in_rules?: number;
+            project_rules?: number;
+            total_rules?: number;
+            project_rules_loaded?: boolean;
+            rule_diagnostics?: number;
+          };
           agentcsp_triage_summary?: { total_findings?: number; top_active_risks_truncated?: boolean };
           agentcsp_action_plan?: { total_actions?: number; actions?: Array<{ priority?: number; rule_id?: string }> };
           agentcsp_ci_gate_summary?: { status?: string; should_fail?: boolean; blocker_id_limit?: number };
@@ -165,6 +179,13 @@ describe("scanProject", () => {
       fail_on_new: false,
       secret_values_collected: false
     });
+    expect(sarif.runs[0]?.properties?.agentcsp_rule_pack).toMatchObject({
+      built_in_rules: 383,
+      project_rules: 0,
+      total_rules: 383,
+      project_rules_loaded: false,
+      rule_diagnostics: 0
+    });
     expect(sarif.runs[0]?.properties?.agentcsp_triage_summary?.total_findings).toBe(result.findings.length);
     expect(sarif.runs[0]?.properties?.agentcsp_triage_summary?.top_active_risks_truncated).toBe(true);
     expect(sarif.runs[0]?.properties?.agentcsp_action_plan?.total_actions).toBe(
@@ -193,6 +214,9 @@ describe("scanProject", () => {
     expect(sarif.runs[0]?.properties?.agentcsp_static_blast_radius?.attack_path_limit).toBe(15);
     expect(JSON.stringify(sarif.runs[0]?.properties?.agentcsp_triage_summary)).not.toContain("replace-me");
     expect(result.reportMarkdown).toContain("## Triage Summary");
+    expect(result.reportMarkdown).toContain("- Built-in rules loaded: 383");
+    expect(result.reportMarkdown).toContain("- Total rules loaded: 383");
+    expect(result.reportMarkdown).toContain("- Rule diagnostics: 0");
     expect(result.reportMarkdown).toContain("- Output formats: `json`, `md`, `sarif`");
     expect(result.reportMarkdown).toContain("- Output path scope: `outside_scan_root`");
     expect(result.reportMarkdown).toContain("- Baseline supplied: `false`");

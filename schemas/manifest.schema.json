@@ -135,6 +135,38 @@
                 "secret_values_collected"
               ],
               "additionalProperties": false
+            },
+            "rule_pack": {
+              "type": "object",
+              "properties": {
+                "built_in_rules": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "project_rules": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "total_rules": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "project_rules_loaded": {
+                  "type": "boolean",
+                  "default": false
+                },
+                "rule_diagnostics": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "default": 0
+                }
+              },
+              "required": [
+                "built_in_rules",
+                "project_rules",
+                "total_rules"
+              ],
+              "additionalProperties": false
             }
           },
           "required": [
@@ -142,7 +174,8 @@
             "generated_at",
             "root_path",
             "scanner",
-            "config"
+            "config",
+            "rule_pack"
           ],
           "additionalProperties": false
         },

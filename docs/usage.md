@@ -31,6 +31,8 @@ agentcsp scan . --out .agentcsp --format json,md,sarif --quiet
 
 `metadata.config` captures the safe scan contract behind the output, including requested formats, traversal limits, hidden/log settings, CI gates, and whether policy or baseline inputs were configured. Raw output, policy, and baseline paths are not copied into this metadata; path-sensitive details stay redacted or scoped elsewhere.
 
+`metadata.rule_pack` captures the rule baseline behind the output, including built-in rule count, project-local rule count, total rules loaded, and redacted rule diagnostic count. It does not emit custom rule file paths or rule contents.
+
 `scan_coverage` records files indexed, oversized files, ignored entries, skipped hidden/log directories, diagnostic counts, whether `max_files` was reached, and explicit `scan_health`. AgentCSP output directories such as `.agentcsp`, `.agentcsp-*`, and `.agentcsp_*` are ignored by default, and a custom `--out` directory is also ignored when it lives inside the scanned root. This prevents repeated scans from ingesting prior manifests, findings, reports, or SARIF files. Use coverage to catch partial or parser-degraded scans before treating a quiet report as clean. `scan_health: "complete"` means the configured scope completed cleanly, `"degraded"` means the scan completed with parser or oversized-file health signals, and `"incomplete"` means traversal missed part of the configured scope. `scan_health_reasons` gives stable machine-readable reasons. When traversal reaches `max_files`, AgentCSP also emits a redacted `SCAN_MAX_FILES_REACHED` diagnostic so CI and dashboards can treat incomplete scans as scan-health events.
 
 Tune traversal limits with:
@@ -129,7 +131,7 @@ The generated SARIF file is:
 .agentcsp/agentcsp.sarif
 ```
 
-SARIF run properties include `agentcsp_scan_config`, `agentcsp_triage_summary`, `agentcsp_action_plan`, `agentcsp_ci_gate_summary`, `agentcsp_baseline_comparison`, `agentcsp_scan_coverage`, `agentcsp_diagnostics`, and `agentcsp_static_blast_radius` so CI systems can consume scan-level context without parsing Markdown. Rules and results include precision, tags, rank, and GitHub code-scanning compatible `security-severity` metadata. When a baseline is provided, SARIF results include `baselineState` values for current findings.
+SARIF run properties include `agentcsp_scan_config`, `agentcsp_rule_pack`, `agentcsp_triage_summary`, `agentcsp_action_plan`, `agentcsp_ci_gate_summary`, `agentcsp_baseline_comparison`, `agentcsp_scan_coverage`, `agentcsp_diagnostics`, and `agentcsp_static_blast_radius` so CI systems can consume scan-level context without parsing Markdown. Rules and results include precision, tags, rank, and GitHub code-scanning compatible `security-severity` metadata. When a baseline is provided, SARIF results include `baselineState` values for current findings.
 
 GitHub code-scanning workflow examples are available in `examples/ci/`. See `docs/ci.md` for advisory and gated rollout patterns.
 

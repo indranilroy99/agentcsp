@@ -328,6 +328,11 @@ function assertInstalledSafeOperatorMetadata(manifest, report) {
   assertEqual(manifest.metadata?.config?.fail_on_scan_health, undefined, "installed CLI safe manifest scan-health gate");
   assertEqual(manifest.metadata?.config?.evidence_redacted, true, "installed CLI safe evidence redaction flag");
   assertEqual(manifest.metadata?.config?.secret_values_collected, false, "installed CLI safe secret collection flag");
+  assertEqual(manifest.metadata?.rule_pack?.built_in_rules, 383, "installed CLI safe built-in rule count");
+  assertEqual(manifest.metadata?.rule_pack?.project_rules, 0, "installed CLI safe project rule count");
+  assertEqual(manifest.metadata?.rule_pack?.total_rules, 383, "installed CLI safe total rule count");
+  assertEqual(manifest.metadata?.rule_pack?.project_rules_loaded, false, "installed CLI safe project rules loaded flag");
+  assertEqual(manifest.metadata?.rule_pack?.rule_diagnostics, 0, "installed CLI safe rule diagnostic count");
   assertEqual(manifest.scan_coverage?.scan_health, "complete", "installed CLI safe scan health");
   assertArrayEqual(manifest.scan_coverage?.scan_health_reasons ?? [], [], "installed CLI safe scan health reasons");
   assertEqual(manifest.triage_summary?.top_active_limit, 10, "installed CLI safe triage top active limit");

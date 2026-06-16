@@ -1948,6 +1948,11 @@ if (vulnerable.sarif) {
     false,
     "SARIF scan config secret collection flag"
   );
+  assert(run.properties?.agentcsp_rule_pack, "SARIF rule pack metadata missing");
+  assertEqual(run.properties.agentcsp_rule_pack.built_in_rules, 383, "SARIF built-in rule count");
+  assertEqual(run.properties.agentcsp_rule_pack.project_rules, 0, "SARIF project rule count");
+  assertEqual(run.properties.agentcsp_rule_pack.total_rules, 383, "SARIF total rule count");
+  assertEqual(run.properties.agentcsp_rule_pack.rule_diagnostics, 0, "SARIF rule diagnostic count");
   assert(run.properties?.agentcsp_triage_summary, "SARIF triage summary missing");
   assertEqual(
     run.properties.agentcsp_triage_summary.top_active_risks_truncated,
@@ -2074,6 +2079,12 @@ function assertSafeOperatorMetadata(output) {
 
 function assertScanConfigMetadata(manifest, options) {
   const config = manifest.metadata?.config;
+  const rulePack = manifest.metadata?.rule_pack;
+  assertEqual(rulePack?.built_in_rules, 383, `${options.label} built-in rule count`);
+  assertEqual(rulePack?.project_rules, 0, `${options.label} project rule count`);
+  assertEqual(rulePack?.total_rules, 383, `${options.label} total rule count`);
+  assertEqual(rulePack?.project_rules_loaded, false, `${options.label} project rules loaded flag`);
+  assertEqual(rulePack?.rule_diagnostics, 0, `${options.label} rule diagnostic count`);
   assertArrayEqual(config?.formats ?? [], options.formats, `${options.label} manifest output formats`);
   assertEqual(config?.include_hidden, true, `${options.label} manifest hidden scan setting`);
   assertEqual(config?.include_logs, options.includeLogs, `${options.label} manifest log scan setting`);

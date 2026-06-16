@@ -221,6 +221,8 @@ Findings include severity, confidence, risk factors, redacted evidence, mappings
 
 `metadata.config` records the safe scan contract behind the manifest, including requested formats, traversal limits, hidden/log settings, CI gates, and whether policy or baseline inputs were configured, without copying raw local output, policy, or baseline paths.
 
+`metadata.rule_pack` records the built-in and project-local rule counts used for the scan, plus redacted rule diagnostic counts, without exposing local rule paths or rule contents.
+
 ## Rules
 
 Rules are open YAML files validated by Zod. MVP rules match normalized manifest objects first; graph-edge rules are planned later.

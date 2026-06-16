@@ -524,6 +524,13 @@ export const ManifestMetadataSchema = z.object({
     fail_on_scan_health: ScanHealthGateSchema.optional(),
     evidence_redacted: z.literal(true),
     secret_values_collected: z.literal(false)
+  }),
+  rule_pack: z.object({
+    built_in_rules: z.number().int().nonnegative(),
+    project_rules: z.number().int().nonnegative(),
+    total_rules: z.number().int().nonnegative(),
+    project_rules_loaded: z.boolean().default(false),
+    rule_diagnostics: z.number().int().nonnegative().default(0)
   })
 });
 
@@ -635,3 +642,4 @@ export type Policy = z.infer<typeof PolicySchema>;
 export type AgentManifest = z.infer<typeof AgentManifestSchema>;
 export type ScanConfig = z.infer<typeof ScanConfigSchema>;
 export type StaticBlastRadiusSummary = z.infer<typeof StaticBlastRadiusSummarySchema>;
+export type RulePackSummary = z.infer<typeof ManifestMetadataSchema>["rule_pack"];

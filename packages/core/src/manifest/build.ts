@@ -9,6 +9,7 @@ import {
   type CiGateSummary,
   type Finding,
   type GraphEdge,
+  type RulePackSummary,
   type ScanConfig,
   type ScanCoverageSummary,
   type StaticBlastRadiusSummary,
@@ -30,6 +31,7 @@ export function buildManifest(input: {
   actionPlan?: ActionPlanSummary;
   baselineComparison?: BaselineComparison;
   ciGateSummary?: CiGateSummary;
+  rulePackSummary: RulePackSummary;
   scanCoverage?: ScanCoverageSummary;
   staticBlastRadius?: StaticBlastRadiusSummary;
 }): AgentManifest {
@@ -62,7 +64,8 @@ export function buildManifest(input: {
         fail_on_scan_health: input.scanConfig.fail_on_scan_health,
         evidence_redacted: true,
         secret_values_collected: false
-      }
+      },
+      rule_pack: input.rulePackSummary
     },
     agents: sortObjects(input.surfaces.agents),
     instructions: sortObjects(input.surfaces.instructions),

@@ -6,6 +6,8 @@ import {
   type AgentManifest,
   type Finding,
   type Policy,
+  type Rule,
+  type RulePackSummary,
   type ScanConfig,
   type ScanCoverageSummary,
   type ScanDiagnostic
@@ -102,6 +104,7 @@ export async function scanProject(rawConfig: Partial<ScanConfig> & { root_path: 
     actionPlan,
     baselineComparison: baselineResult?.comparison,
     ciGateSummary,
+    rulePackSummary: ruleLoad.summary,
     scanCoverage,
     staticBlastRadius
   });
@@ -145,13 +148,18 @@ function maxFilesReachedDiagnostic(maxFiles: number): ScanDiagnostic {
   };
 }
 
-async function loadScanRules(rootPath: string): Promise<{ rules: Awaited<ReturnType<typeof loadRules>>; diagnostics: ScanDiagnostic[] }> {
+async function loadScanRules(rootPath: string): Promise<{
+  rules: Rule[];
+  diagnostics: ScanDiagnostic[];
+  summary: RulePackSummary;
+}> {
   const builtInRulesDirectory = await builtInRulesDirectoryPath();
   const builtInRules = await loadRules(builtInRulesDirectory);
   const rules = [...builtInRules];
   const diagnostics: ScanDiagnostic[] = [];
   const seenRuleIds = new Set(builtInRules.map((rule) => rule.id));
   const projectRulesDirectory = path.resolve(rootPath, "rules");
+  let projectRuleCount = 0;
 
   if ((await directoryExists(projectRulesDirectory)) && !sameDirectory(projectRulesDirectory, builtInRulesDirectory)) {
     const projectRuleLoad = await loadRulesWithDiagnostics(projectRulesDirectory, rootPath);
@@ -168,12 +176,20 @@ async function loadScanRules(rootPath: string): Promise<{ rules: Awaited<ReturnT
       }
       rules.push(rule);
       seenRuleIds.add(rule.id);
+      projectRuleCount += 1;
     }
   }
 
   return {
     rules: rules.sort((a, b) => a.id.localeCompare(b.id)),
-    diagnostics: diagnostics.sort((a, b) => a.id.localeCompare(b.id))
+    diagnostics: diagnostics.sort((a, b) => a.id.localeCompare(b.id)),
+    summary: {
+      built_in_rules: builtInRules.length,
+      project_rules: projectRuleCount,
+      total_rules: builtInRules.length + projectRuleCount,
+      project_rules_loaded: projectRuleCount > 0,
+      rule_diagnostics: diagnostics.length
+    }
   };
 }
 
