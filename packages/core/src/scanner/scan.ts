@@ -50,7 +50,8 @@ export async function scanProject(rawConfig: Partial<ScanConfig> & { root_path: 
   const config = ScanConfigSchema.parse(rawConfig);
   const rootPath = path.resolve(config.root_path);
   const outputPath = resolvePathFromRoot(rootPath, config.output_path);
-  const resolvedConfig: ScanConfig = { ...config, output_path: outputPath };
+  const baselinePath = config.baseline_path ? resolvePathFromRoot(rootPath, config.baseline_path) : undefined;
+  const resolvedConfig: ScanConfig = { ...config, output_path: outputPath, baseline_path: baselinePath };
 
   const walkResult = await walkProjectWithCoverage(resolvedConfig);
   const files = walkResult.files;
@@ -67,8 +68,8 @@ export async function scanProject(rawConfig: Partial<ScanConfig> & { root_path: 
 
   const policyControlledFindings = applyRecommendedControls(runRules(surfaces, ruleLoad.rules), policy);
   const suppressedFindings = applyFindingSuppressions(policyControlledFindings, policy);
-  const baselineResult = config.baseline_path
-    ? await applyBaselineComparison(suppressedFindings, config.baseline_path)
+  const baselineResult = resolvedConfig.baseline_path
+    ? await applyBaselineComparison(suppressedFindings, resolvedConfig.baseline_path)
     : undefined;
   const findings = baselineResult?.findings ?? suppressedFindings;
   const activeFindings = findings.filter((finding) => finding.suppression?.status !== "active");

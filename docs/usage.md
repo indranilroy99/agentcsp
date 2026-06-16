@@ -6,7 +6,7 @@ AgentCSP starts with a local CLI scan.
 agentcsp scan [path] --out .agentcsp
 ```
 
-The path defaults to the current directory. The output directory defaults to `.agentcsp`. Relative output paths are resolved from the scanned project root; absolute output paths are honored as provided.
+The path defaults to the current directory. The output directory defaults to `.agentcsp`. Relative output and baseline paths are resolved from the scanned project root; absolute paths are honored as provided.
 
 ## Outputs
 
@@ -82,6 +82,8 @@ agentcsp scan . --baseline .agentcsp/agent-manifest.json --out .agentcsp
 ```
 
 The manifest and Markdown report include a baseline comparison with new, existing, and resolved finding counts. Current findings receive `baseline_status: "new"` or `baseline_status: "existing"` when a baseline is provided.
+
+Relative `--baseline` paths are resolved from the scanned project root. This keeps multi-repo CI jobs stable when the command is launched from a parent workspace or automation directory.
 
 Use `--fail-on-new` with `--baseline` and `--fail-on` when CI should fail only on newly introduced risk:
 

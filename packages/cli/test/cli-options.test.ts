@@ -117,6 +117,27 @@ describe("cli options", () => {
     });
     process.exitCode = undefined;
   });
+
+  it("resolves relative baseline paths from the scanned project root", async () => {
+    const root = await createRelativeBaselineFixture();
+    process.exitCode = undefined;
+    await runScanCommand(root, {
+      out: "scan-output",
+      baseline: "baselines/agent-manifest.json",
+      format: "json",
+      quiet: true
+    });
+
+    const manifestPath = path.join(root, "scan-output", "agent-manifest.json");
+    const manifest = JSON.parse(await fs.readFile(manifestPath, "utf8")) as {
+      baseline_comparison?: { baseline_path?: string; baseline_format?: string };
+    };
+    expect(manifest.baseline_comparison).toMatchObject({
+      baseline_path: path.join(root, "baselines", "agent-manifest.json"),
+      baseline_format: "manifest"
+    });
+    process.exitCode = undefined;
+  });
 });
 
 async function createDiagnosticsFixture(): Promise<string> {
@@ -134,5 +155,14 @@ async function createPolicyConfigFixture(): Promise<string> {
   await fs.rm(root, { recursive: true, force: true });
   await fs.mkdir(root, { recursive: true });
   await fs.writeFile(path.join(root, "AGENTS.md"), "Review repository changes only.\n", "utf8");
+  return root;
+}
+
+async function createRelativeBaselineFixture(): Promise<string> {
+  const root = "/private/tmp/agentcsp-cli-relative-baseline-fixture";
+  await fs.rm(root, { recursive: true, force: true });
+  await fs.mkdir(path.join(root, "baselines"), { recursive: true });
+  await fs.writeFile(path.join(root, "AGENTS.md"), "Review repository changes only.\n", "utf8");
+  await fs.writeFile(path.join(root, "baselines", "agent-manifest.json"), '{"findings": []}\n', "utf8");
   return root;
 }

@@ -12,7 +12,7 @@ export async function runScanCommand(targetPath: string, options: Record<string,
   if (failOnConfidence && !failOn) {
     throw new Error("--fail-on-confidence requires --fail-on");
   }
-  const baselinePath = options.baseline ? path.resolve(String(options.baseline)) : undefined;
+  const baselinePath = options.baseline ? String(options.baseline) : undefined;
   const failOnNew = Boolean(options.failOnNew);
   const failOnExpiredSuppressions = Boolean(options.failOnExpiredSuppressions);
   const failOnDiagnostics = Boolean(options.failOnDiagnostics);

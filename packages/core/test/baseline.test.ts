@@ -116,4 +116,29 @@ describe("baseline comparison", () => {
     );
     expect(sarifFinding?.baselineState).toBe("new");
   });
+
+  it("resolves relative baseline paths from the scan root", async () => {
+    const root = "/private/tmp/agentcsp-relative-baseline-fixture";
+    await fs.rm(root, { recursive: true, force: true });
+    await fs.mkdir(path.join(root, "baselines"), { recursive: true });
+    await fs.writeFile(path.join(root, "AGENTS.md"), "Review repository changes only.\n", "utf8");
+    await fs.writeFile(path.join(root, "baselines", "agent-manifest.json"), '{"findings": []}\n', "utf8");
+
+    const result = await scanProject({
+      root_path: root,
+      output_path: "scan-output",
+      baseline_path: "baselines/agent-manifest.json",
+      formats: ["json", "md"],
+      include_hidden: true,
+      include_logs: false,
+      max_file_size_bytes: 1024 * 1024,
+      max_files: 5000,
+      quiet: true
+    });
+
+    expect(result.manifest.baseline_comparison).toMatchObject({
+      baseline_path: path.join(root, "baselines", "agent-manifest.json"),
+      baseline_format: "manifest"
+    });
+  });
 });
