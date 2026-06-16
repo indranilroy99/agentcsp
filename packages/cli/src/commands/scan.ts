@@ -110,6 +110,9 @@ export async function runScanCommand(targetPath: string, options: Record<string,
     if (result.manifest.ci_gate_summary) {
       const failedGates = result.manifest.ci_gate_summary.failed_gates.join(", ") || "none";
       console.log(`CI gate: ${result.manifest.ci_gate_summary.status} (failed gates: ${failedGates})`);
+      console.log(
+        `CI blockers: severity ${formatSeverityMix(result.manifest.ci_gate_summary.severity_gate_by_severity)}, confidence ${formatConfidenceMix(result.manifest.ci_gate_summary.severity_gate_by_confidence)}, expired suppressions ${formatSeverityMix(result.manifest.ci_gate_summary.expired_suppression_by_severity)}, truncated: ${result.manifest.ci_gate_summary.blocker_ids_truncated}`
+      );
     }
     if (result.outputFiles.manifest) console.log(`Manifest: ${result.outputFiles.manifest}`);
     if (result.outputFiles.findings) console.log(`Findings: ${result.outputFiles.findings}`);
@@ -133,6 +136,25 @@ function parseFormats(value: string): Array<"json" | "md" | "sarif"> {
     }
   }
   return formats.length > 0 ? (formats as Array<"json" | "md" | "sarif">) : ["json", "md"];
+}
+
+function formatSeverityMix(counts: {
+  critical: number;
+  high: number;
+  medium: number;
+  low: number;
+  info: number;
+}): string {
+  return `critical=${counts.critical}, high=${counts.high}, medium=${counts.medium}, low=${counts.low}, info=${counts.info}`;
+}
+
+function formatConfidenceMix(counts: {
+  very_high: number;
+  high: number;
+  medium: number;
+  low: number;
+}): string {
+  return `very_high=${counts.very_high}, high=${counts.high}, medium=${counts.medium}, low=${counts.low}`;
 }
 
 function parseFailOn(value: unknown): Severity | undefined {
