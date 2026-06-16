@@ -39,6 +39,14 @@ describe("scanProject", () => {
     expect(result.manifest.triage_summary?.active_by_surface_type.some((item) => item.surface_type === "tool")).toBe(true);
     expect(result.manifest.triage_summary?.active_by_recommended_control.length).toBeGreaterThan(0);
     expect(result.manifest.triage_summary?.top_active_risks[0]?.risk_score).toBeGreaterThan(0);
+    expect(result.manifest.action_plan?.title).toBe("AgentCSP Action Plan");
+    expect(result.manifest.action_plan?.total_actions).toBeGreaterThan(0);
+    expect(result.manifest.action_plan?.immediate_actions).toBeGreaterThan(0);
+    expect(result.manifest.action_plan?.actions[0]).toMatchObject({
+      priority: 1,
+      severity: "critical"
+    });
+    expect(result.manifest.action_plan?.actions[0]?.rationale.length).toBeGreaterThan(0);
     expect(result.findings.length).toBeGreaterThan(0);
     expect(result.outputFiles.sarif).toBeDefined();
     const sarif = JSON.parse(await fs.readFile(result.outputFiles.sarif!, "utf8")) as {
@@ -60,6 +68,7 @@ describe("scanProject", () => {
         }>;
         properties?: {
           agentcsp_triage_summary?: { total_findings?: number };
+          agentcsp_action_plan?: { total_actions?: number; actions?: Array<{ priority?: number; rule_id?: string }> };
           agentcsp_ci_gate_summary?: { status?: string; should_fail?: boolean };
           agentcsp_scan_coverage?: { files_indexed?: number };
           agentcsp_static_blast_radius?: { pii_external_reach_paths?: number };
@@ -80,6 +89,10 @@ describe("scanProject", () => {
     expect(firstResult?.properties?.precision).toBeDefined();
     expect(firstResult?.properties?.rule_tags?.length).toBeGreaterThan(0);
     expect(sarif.runs[0]?.properties?.agentcsp_triage_summary?.total_findings).toBe(result.findings.length);
+    expect(sarif.runs[0]?.properties?.agentcsp_action_plan?.total_actions).toBe(
+      result.manifest.action_plan?.total_actions
+    );
+    expect(sarif.runs[0]?.properties?.agentcsp_action_plan?.actions?.[0]?.priority).toBe(1);
     expect(sarif.runs[0]?.properties?.agentcsp_ci_gate_summary).toMatchObject({
       status: "pass",
       should_fail: false
@@ -92,6 +105,8 @@ describe("scanProject", () => {
     );
     expect(JSON.stringify(sarif.runs[0]?.properties?.agentcsp_triage_summary)).not.toContain("replace-me");
     expect(result.reportMarkdown).toContain("## Triage Summary");
+    expect(result.reportMarkdown).toContain("## Action Plan");
+    expect(result.reportMarkdown).toContain("| Priority | Severity | Risk | Control | Rule | Surface | Path | Rationale |");
     expect(result.reportMarkdown).toContain("- Root: `<scan-root>`");
     expect(result.reportMarkdown).not.toContain(rootPath);
     expect(result.reportMarkdown).toContain("## CI Gate Summary");
@@ -139,6 +154,14 @@ describe("scanProject", () => {
     expect(result.manifest.triage_summary?.highest_active_severity).toBe("info");
     expect(result.manifest.triage_summary?.max_active_risk_score).toBe(0);
     expect(result.manifest.triage_summary?.top_active_risks).toHaveLength(0);
+    expect(result.manifest.action_plan).toMatchObject({
+      total_actions: 0,
+      immediate_actions: 0,
+      approval_actions: 0,
+      quarantine_actions: 0,
+      redaction_actions: 0
+    });
+    expect(result.manifest.action_plan?.actions).toHaveLength(0);
     expect(result.manifest.static_blast_radius?.sensitive_data_external_reach_paths).toBe(0);
     expect(result.manifest.static_blast_radius?.pii_external_reach_paths).toBe(0);
     expect(result.manifest.static_blast_radius?.credential_external_reach_paths).toBe(0);
@@ -146,6 +169,7 @@ describe("scanProject", () => {
     expect(result.manifest.static_blast_radius?.pii_attack_paths).toBe(0);
     expect(result.manifest.static_blast_radius?.credential_attack_paths).toBe(0);
     expect(result.reportMarkdown).toContain("No active findings were generated.");
+    expect(result.reportMarkdown).toContain("No active remediation actions were generated.");
     expect(result.reportMarkdown).toContain("No active high-risk blast-radius paths were identified.");
   });
 

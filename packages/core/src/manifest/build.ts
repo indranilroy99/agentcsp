@@ -2,6 +2,7 @@ import path from "node:path";
 import {
   AgentManifestSchema,
   ManifestSchemaVersion,
+  type ActionPlanSummary,
   type AgentManifest,
   type AttackPath,
   type BaselineComparison,
@@ -25,6 +26,7 @@ export function buildManifest(input: {
   relationships?: GraphEdge[];
   attackPaths?: AttackPath[];
   triageSummary?: TriageSummary;
+  actionPlan?: ActionPlanSummary;
   baselineComparison?: BaselineComparison;
   ciGateSummary?: CiGateSummary;
   scanCoverage?: ScanCoverageSummary;
@@ -67,6 +69,7 @@ export function buildManifest(input: {
     evidence,
     diagnostics: input.surfaces.diagnostics,
     triage_summary: input.triageSummary,
+    action_plan: input.actionPlan,
     baseline_comparison: input.baselineComparison,
     ci_gate_summary: input.ciGateSummary,
     scan_coverage: input.scanCoverage,

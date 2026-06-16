@@ -29,6 +29,8 @@ export function renderMarkdownReport(manifest: AgentManifest): string {
     "",
     renderTriageSummary(manifest),
     "",
+    renderActionPlan(manifest),
+    "",
     renderHighestRiskBlastRadiusPaths(manifest.findings),
     "",
     renderCiGateSummary(manifest),
@@ -58,6 +60,38 @@ export function renderMarkdownReport(manifest: AgentManifest): string {
     "- Policy actions in this MVP are recommended controls, not runtime enforcement decisions.",
     "- The Static Blast-Radius Summary is based on discovered files and normalized metadata, not live graph traversal.",
     "- Use `.agentcspignore` to exclude project-specific generated or sensitive paths."
+  ].join("\n");
+}
+
+function renderActionPlan(manifest: AgentManifest): string {
+  const plan = manifest.action_plan;
+  if (!plan) return "## Action Plan\n\nNo action plan was generated.";
+  if (plan.actions.length === 0) {
+    return [
+      "## Action Plan",
+      "",
+      "- Total actions: 0",
+      "- Immediate actions: 0",
+      "",
+      "No active remediation actions were generated."
+    ].join("\n");
+  }
+
+  return [
+    "## Action Plan",
+    "",
+    `- Total actions: ${plan.total_actions}`,
+    `- Immediate actions: ${plan.immediate_actions}`,
+    `- Approval actions: ${plan.approval_actions}`,
+    `- Quarantine actions: ${plan.quarantine_actions}`,
+    `- Redaction actions: ${plan.redaction_actions}`,
+    "",
+    "| Priority | Severity | Risk | Control | Rule | Surface | Path | Rationale |",
+    "| --- | --- | --- | --- | --- | --- | --- | --- |",
+    ...plan.actions.map(
+      (action) =>
+        `| ${action.priority} | ${action.severity} | ${action.risk_score} | ${action.recommended_control.replaceAll("_", " ")} | ${action.rule_id} | ${action.surface_type} | \`${escapeTable(action.path)}\` | ${escapeTable(action.rationale.join("; "))} |`
+    )
   ].join("\n");
 }
 

@@ -25,6 +25,7 @@ import { buildStaticBlastRadiusSummary } from "../reports/blast-radius.js";
 import { renderMarkdownReport } from "../reports/markdown.js";
 import { renderSarifReport } from "../reports/sarif.js";
 import { buildTriageSummary } from "../reports/triage.js";
+import { buildActionPlan } from "../reports/action-plan.js";
 import { buildCiGateSummary } from "../reports/gates.js";
 import { applyBaselineComparison } from "../reports/baseline.js";
 import { stableId } from "../utils/ids.js";
@@ -76,6 +77,7 @@ export async function scanProject(rawConfig: Partial<ScanConfig> & { root_path: 
   const graph = buildStaticGraph(surfaces, activeFindings);
   const staticBlastRadius = buildStaticBlastRadiusSummary(surfaces, findings, graph.relationships, graph.attackPaths);
   const triageSummary = buildTriageSummary(findings);
+  const actionPlan = buildActionPlan(findings);
   const ciGateSummary = buildCiGateSummary({
     findings,
     diagnostics: surfaces.diagnostics,
@@ -89,6 +91,7 @@ export async function scanProject(rawConfig: Partial<ScanConfig> & { root_path: 
     relationships: graph.relationships,
     attackPaths: graph.attackPaths,
     triageSummary,
+    actionPlan,
     baselineComparison: baselineResult?.comparison,
     ciGateSummary,
     scanCoverage,

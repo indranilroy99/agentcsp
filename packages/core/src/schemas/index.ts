@@ -290,6 +290,36 @@ export const CiGateSummarySchema = z.object({
   failed_gates: z.array(CiGateNameSchema).default([])
 });
 
+export const RemediationActionSchema = z.object({
+  id: z.string(),
+  priority: z.number().int().positive(),
+  title: z.string(),
+  recommended_control: ControlSchema,
+  severity: SeveritySchema,
+  confidence: ConfidenceSchema,
+  risk_score: z.number().int().min(0).max(100),
+  rule_id: z.string(),
+  category: z.string(),
+  surface_type: SurfaceTypeSchema,
+  path: z.string(),
+  rationale: z.array(z.string()).default([]),
+  related_finding_ids: z.array(z.string()).default([]),
+  data_classes: z.array(DataClassSchema).default([]),
+  actions: z.array(ActionTypeSchema).default([]),
+  trust_boundary_crossed: z.boolean().default(false)
+});
+
+export const ActionPlanSummarySchema = z.object({
+  title: z.literal("AgentCSP Action Plan").default("AgentCSP Action Plan"),
+  total_actions: z.number().int().nonnegative().default(0),
+  immediate_actions: z.number().int().nonnegative().default(0),
+  approval_actions: z.number().int().nonnegative().default(0),
+  quarantine_actions: z.number().int().nonnegative().default(0),
+  redaction_actions: z.number().int().nonnegative().default(0),
+  warn_actions: z.number().int().nonnegative().default(0),
+  actions: z.array(RemediationActionSchema).default([])
+});
+
 export const AttackPathSchema = z.object({
   id: z.string(),
   title: z.string(),
@@ -455,6 +485,7 @@ export const AgentManifestSchema = z.object({
   evidence: z.array(EvidenceSchema).default([]),
   diagnostics: z.array(ScanDiagnosticSchema).default([]),
   triage_summary: TriageSummarySchema.optional(),
+  action_plan: ActionPlanSummarySchema.optional(),
   baseline_comparison: BaselineComparisonSchema.optional(),
   ci_gate_summary: CiGateSummarySchema.optional(),
   scan_coverage: ScanCoverageSummarySchema.optional(),
@@ -528,6 +559,8 @@ export type Finding = z.infer<typeof FindingSchema>;
 export type SeverityCounts = z.infer<typeof SeverityCountsSchema>;
 export type ConfidenceCounts = z.infer<typeof ConfidenceCountsSchema>;
 export type TriageSummary = z.infer<typeof TriageSummarySchema>;
+export type RemediationAction = z.infer<typeof RemediationActionSchema>;
+export type ActionPlanSummary = z.infer<typeof ActionPlanSummarySchema>;
 export type BaselineComparison = z.infer<typeof BaselineComparisonSchema>;
 export type CiGateSummary = z.infer<typeof CiGateSummarySchema>;
 export type ScanCoverageSummary = z.infer<typeof ScanCoverageSummarySchema>;

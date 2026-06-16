@@ -166,7 +166,7 @@ SARIF output is available for CI and code-scanning integrations:
 agentcsp scan . --format json,md,sarif --out .agentcsp
 ```
 
-SARIF includes scan-level triage, CI gate, coverage, diagnostics, baseline, and static blast-radius properties, plus rule/result precision, rank, tags, and GitHub-compatible `security-severity` metadata.
+SARIF includes scan-level triage, action plan, CI gate, coverage, diagnostics, baseline, and static blast-radius properties, plus rule/result precision, rank, tags, and GitHub-compatible `security-severity` metadata.
 
 Copy-pasteable GitHub code-scanning workflows are available in `examples/ci/`, with additional rollout guidance in `docs/ci.md`.
 
@@ -205,6 +205,7 @@ The Agent Manifest is the SBOM equivalent for AI agent deployments. Core section
 - `evidence`
 - `diagnostics`
 - `triage_summary`
+- `action_plan`
 - `baseline_comparison`
 - `scan_coverage`
 - `static_blast_radius`

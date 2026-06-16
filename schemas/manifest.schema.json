@@ -1044,6 +1044,138 @@
           },
           "additionalProperties": false
         },
+        "action_plan": {
+          "type": "object",
+          "properties": {
+            "title": {
+              "type": "string",
+              "const": "AgentCSP Action Plan",
+              "default": "AgentCSP Action Plan"
+            },
+            "total_actions": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            },
+            "immediate_actions": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            },
+            "approval_actions": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            },
+            "quarantine_actions": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            },
+            "redaction_actions": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            },
+            "warn_actions": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            },
+            "actions": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  },
+                  "priority": {
+                    "type": "integer",
+                    "exclusiveMinimum": 0
+                  },
+                  "title": {
+                    "type": "string"
+                  },
+                  "recommended_control": {
+                    "$ref": "#/definitions/AgentCSP Agent Manifest/properties/attack_paths/items/properties/recommended_control"
+                  },
+                  "severity": {
+                    "$ref": "#/definitions/AgentCSP Agent Manifest/properties/attack_paths/items/properties/severity"
+                  },
+                  "confidence": {
+                    "$ref": "#/definitions/AgentCSP Agent Manifest/properties/attack_paths/items/properties/confidence"
+                  },
+                  "risk_score": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 100
+                  },
+                  "rule_id": {
+                    "type": "string"
+                  },
+                  "category": {
+                    "type": "string"
+                  },
+                  "surface_type": {
+                    "$ref": "#/definitions/AgentCSP Agent Manifest/properties/agents/items/properties/type"
+                  },
+                  "path": {
+                    "type": "string"
+                  },
+                  "rationale": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "default": []
+                  },
+                  "related_finding_ids": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "default": []
+                  },
+                  "data_classes": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/definitions/AgentCSP Agent Manifest/properties/agents/items/properties/data_classes/items"
+                    },
+                    "default": []
+                  },
+                  "actions": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/definitions/AgentCSP Agent Manifest/properties/agents/items/properties/actions/items"
+                    },
+                    "default": []
+                  },
+                  "trust_boundary_crossed": {
+                    "type": "boolean",
+                    "default": false
+                  }
+                },
+                "required": [
+                  "id",
+                  "priority",
+                  "title",
+                  "recommended_control",
+                  "severity",
+                  "confidence",
+                  "risk_score",
+                  "rule_id",
+                  "category",
+                  "surface_type",
+                  "path"
+                ],
+                "additionalProperties": false
+              },
+              "default": []
+            }
+          },
+          "additionalProperties": false
+        },
         "baseline_comparison": {
           "type": "object",
           "properties": {

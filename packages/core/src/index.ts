@@ -7,6 +7,7 @@ export * from "./graph/build-graph.js";
 export * from "./risk/score.js";
 export * from "./reports/baseline.js";
 export * from "./reports/blast-radius.js";
+export * from "./reports/action-plan.js";
 export * from "./reports/triage.js";
 export * from "./reports/markdown.js";
 export * from "./reports/sarif.js";
