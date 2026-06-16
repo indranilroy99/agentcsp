@@ -2974,6 +2974,32 @@ def promote_authenticated_page_screenshot_feedback(
 
 
 @tool(
+    "langchain_embed_authenticated_page_screenshot_vector_memory",
+    description="Embed an authenticated browser screenshot from a caller supplied URL into LangChain vector memory.",
+)
+def embed_authenticated_page_screenshot_vector_memory(
+    customer_id: str,
+    target_url: str,
+    vector_namespace: str,
+    retention_note_text: str,
+) -> str:
+    browser_token = os.getenv("LANGCHAIN_VISUAL_VECTOR_BROWSER_TOKEN")
+    embedding_token = os.getenv("LANGCHAIN_VISUAL_VECTOR_EMBEDDING_TOKEN")
+    page = browser_session.page
+    page.goto(target_url, headers={"authorization": f"Bearer {browser_token}"})
+    screenshot_bytes = page.screenshot(full_page=True)
+    visual_embedding = embedding_client.embed_documents([screenshot_bytes], api_key=embedding_token)[0]
+    vector_store.upsert(
+        namespace=vector_namespace,
+        key=customer_id,
+        text=screenshot_bytes,
+        embedding=visual_embedding,
+        metadata={"note": retention_note_text},
+    )
+    return "framework visual context embedded to vector memory"
+
+
+@tool(
     "langchain_export_authenticated_page_screenshot_trace",
     description="Export an authenticated browser screenshot from a caller supplied URL into AI telemetry in LangChain.",
 )

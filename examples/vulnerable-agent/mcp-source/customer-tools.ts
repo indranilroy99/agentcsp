@@ -3978,6 +3978,44 @@ server.registerTool(
 );
 
 server.registerTool(
+  "source_embed_authenticated_page_screenshot_vector_memory",
+  {
+    description: "Embed an authenticated browser screenshot from a caller supplied URL into vector memory.",
+    inputSchema: z.object({
+      customer_id: z.string(),
+      target_url: z.string().url(),
+      vector_namespace: z.string(),
+      retention_note_text: z.string()
+    }).strict(),
+    annotations: {
+      readOnlyHint: false,
+      idempotentHint: false
+    }
+  },
+  async ({ customer_id, target_url, vector_namespace, retention_note_text }) => {
+    const browserToken = process.env.SOURCE_VISUAL_VECTOR_BROWSER_TOKEN;
+    const embeddingToken = process.env.SOURCE_VISUAL_VECTOR_EMBEDDING_TOKEN;
+    const page = globalThis.authenticatedBrowserPage;
+    await page.goto(target_url, {
+      headers: { authorization: `Bearer ${browserToken}` }
+    });
+    const screenshot = await page.screenshot({ fullPage: true });
+    const visualEmbedding = await globalThis.embeddingClient.embedQuery({
+      apiKey: embeddingToken,
+      input: screenshot.toString("base64")
+    });
+    await globalThis.vectorStore.upsert({
+      namespace: vector_namespace,
+      key: customer_id,
+      text: screenshot.toString("base64"),
+      embedding: visualEmbedding,
+      metadata: { note: retention_note_text }
+    });
+    return { content: [{ type: "text", text: "source visual context embedded to vector memory" }] };
+  }
+);
+
+server.registerTool(
   "source_export_authenticated_page_screenshot_trace",
   {
     description: "Export an authenticated browser screenshot from a caller supplied URL into AI telemetry.",

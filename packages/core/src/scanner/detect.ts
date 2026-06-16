@@ -24338,6 +24338,7 @@ function addToolDefinitionSurface(
       tainted_embedding_input: authority.tainted_embedding_input,
       secret_manager_embedding_vector_bridge: authority.secret_manager_embedding_vector_bridge,
       tool_output_embedding_vector_bridge: authority.tool_output_embedding_vector_bridge,
+      visual_context_embedding_vector_bridge: authority.visual_context_embedding_vector_bridge,
       telemetry_export: authority.telemetry_export,
       secret_manager_telemetry_bridge: authority.secret_manager_telemetry_bridge,
       env_secret_telemetry_bridge: authority.env_secret_telemetry_bridge,
@@ -26848,6 +26849,7 @@ interface SourceToolHandlerSignals {
   handlerTaintedEmbeddingInput: boolean;
   handlerSecretManagerEmbeddingVectorBridge: boolean;
   handlerToolOutputEmbeddingVectorBridge: boolean;
+  handlerVisualContextEmbeddingVectorBridge: boolean;
   handlerTelemetryExport: boolean;
   handlerSecretManagerTelemetryBridge: boolean;
   handlerEnvSecretTelemetryBridge: boolean;
@@ -27475,6 +27477,7 @@ function sourceToolHandlerSignalMetadata(signals: SourceToolHandlerSignals | und
     handler_tainted_embedding_input: signals.handlerTaintedEmbeddingInput,
     handler_secret_manager_embedding_vector_bridge: signals.handlerSecretManagerEmbeddingVectorBridge,
     handler_tool_output_embedding_vector_bridge: signals.handlerToolOutputEmbeddingVectorBridge,
+    handler_visual_context_embedding_vector_bridge: signals.handlerVisualContextEmbeddingVectorBridge,
     handler_telemetry_export: signals.handlerTelemetryExport,
     handler_secret_manager_telemetry_bridge: signals.handlerSecretManagerTelemetryBridge,
     handler_env_secret_telemetry_bridge: signals.handlerEnvSecretTelemetryBridge,
@@ -28426,6 +28429,9 @@ function classifySourceToolHandlerSignals(
   const toolOutputEmbeddingVectorBridge = toolInvocation && embeddingProviderCall && memoryWrite && (language === "javascript"
     ? hasJavaScriptHandlerToolOutputEmbeddingVectorBridge(handlerSource)
     : hasPythonHandlerToolOutputEmbeddingVectorBridge(handlerSource));
+  const visualContextEmbeddingVectorBridge = visualContextCapture && embeddingProviderCall && memoryWrite && (language === "javascript"
+    ? hasJavaScriptHandlerVisualContextEmbeddingVectorBridge(handlerSource)
+    : hasPythonHandlerVisualContextEmbeddingVectorBridge(handlerSource));
 
   const classes = new Set<string>();
   if (externalNetworkCall) classes.add("handler_network_access");
@@ -28457,6 +28463,7 @@ function classifySourceToolHandlerSignals(
   if (taintedEmbeddingInput) classes.add("handler_tainted_embedding_input");
   if (secretManagerEmbeddingVectorBridge) classes.add("handler_secret_manager_embedding_vector_bridge");
   if (toolOutputEmbeddingVectorBridge) classes.add("handler_tool_output_embedding_vector_bridge");
+  if (visualContextEmbeddingVectorBridge) classes.add("handler_visual_context_embedding_vector_bridge");
   if (telemetryExport) classes.add("handler_telemetry_export");
   if (secretManagerTelemetryBridge) classes.add("handler_secret_manager_telemetry_bridge");
   if (envSecretTelemetryBridge) classes.add("handler_env_secret_telemetry_bridge");
@@ -28670,6 +28677,7 @@ function classifySourceToolHandlerSignals(
     handlerTaintedEmbeddingInput: taintedEmbeddingInput,
     handlerSecretManagerEmbeddingVectorBridge: secretManagerEmbeddingVectorBridge,
     handlerToolOutputEmbeddingVectorBridge: toolOutputEmbeddingVectorBridge,
+    handlerVisualContextEmbeddingVectorBridge: visualContextEmbeddingVectorBridge,
     handlerTelemetryExport: telemetryExport,
     handlerSecretManagerTelemetryBridge: secretManagerTelemetryBridge,
     handlerEnvSecretTelemetryBridge: envSecretTelemetryBridge,
@@ -29467,6 +29475,54 @@ function hasPythonHandlerToolOutputEmbeddingVectorBridge(source: string): boolea
     ],
     source,
     uniqueStrings([...embeddingIdentifiers, ...toolOutputIdentifiers])
+  );
+}
+
+function hasJavaScriptHandlerVisualContextEmbeddingVectorBridge(source: string): boolean {
+  const visualContextIdentifiers = extractJavaScriptVisualContextIdentifiers(source);
+  if (visualContextIdentifiers.length === 0) return false;
+  const visualContextEmbedded = callExpressionReferencesAnyIdentifier(
+    [
+      /\b(?:embeddingClient|embeddingProvider|embedder|embeddings|cohere|cohereClient|voyage|voyageClient|bedrock|bedrockClient)\s*(?:\.\s*[A-Za-z_$][\w$]*){0,4}\s*\.\s*(?:embed|embedQuery|embedDocuments|embedMany|create|generateEmbedding|generateEmbeddings)\s*\(([\s\S]{0,2400})\)/giu,
+      /\b(?:openai|openaiClient)\s*\.\s*embeddings\s*\.\s*create\s*\(([\s\S]{0,2400})\)/giu
+    ],
+    source,
+    visualContextIdentifiers
+  );
+  if (!visualContextEmbedded) return false;
+
+  const embeddingIdentifiers = extractJavaScriptEmbeddingOutputIdentifiers(source);
+  return callExpressionReferencesAnyIdentifier(
+    [
+      /\b(?:[A-Za-z_$][\w$]*memory|memory|memories|memoryStore|vectorStore|vectorIndex|embeddingStore|ragStore|retriever|knowledgeBase|sessionStore|stateStore)\s*\.\s*(?:add|addDocuments|addTexts|append|insert|persist|put|push|remember|save|set|store|upsert|write)\s*\(([\s\S]{0,2400})\)/giu,
+      /\b(?:persistMemory|rememberContext|saveMemory|storeMemory|upsertMemory|writeMemory)\s*\(([\s\S]{0,2400})\)/giu
+    ],
+    source,
+    uniqueStrings([...embeddingIdentifiers, ...visualContextIdentifiers])
+  );
+}
+
+function hasPythonHandlerVisualContextEmbeddingVectorBridge(source: string): boolean {
+  const visualContextIdentifiers = extractPythonVisualContextIdentifiers(source);
+  if (visualContextIdentifiers.length === 0) return false;
+  const visualContextEmbedded = callExpressionReferencesAnyIdentifier(
+    [
+      /\b(?:embedding_client|embedding_provider|embedder|embeddings|cohere|cohere_client|voyage|voyage_client|bedrock|bedrock_client)\s*(?:\.\s*[A-Za-z_]\w*){0,4}\s*\.\s*(?:embed|embed_query|embed_documents|embed_many|create|generate_embedding|generate_embeddings)\s*\(([\s\S]{0,2400})\)/giu,
+      /\b(?:openai|openai_client)\s*\.\s*embeddings\s*\.\s*create\s*\(([\s\S]{0,2400})\)/giu
+    ],
+    source,
+    visualContextIdentifiers
+  );
+  if (!visualContextEmbedded) return false;
+
+  const embeddingIdentifiers = extractPythonEmbeddingOutputIdentifiers(source);
+  return callExpressionReferencesAnyIdentifier(
+    [
+      /\b(?:[A-Za-z_]\w*memory|memory|memory_store|vector_store|vectorstore|vector_index|embedding_store|rag_store|retriever|knowledge_base|session_store|state_store)\s*\.\s*(?:add|add_documents|add_texts|append|insert|persist|put|push|remember|save|set|store|upsert|write)\s*\(([\s\S]{0,2400})\)/giu,
+      /\b(?:persist_memory|remember_context|save_memory|store_memory|upsert_memory|write_memory)\s*\(([\s\S]{0,2400})\)/giu
+    ],
+    source,
+    uniqueStrings([...embeddingIdentifiers, ...visualContextIdentifiers])
   );
 }
 
@@ -37000,6 +37056,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   visual_context_memory_bridge: boolean;
   visual_context_artifact_bridge: boolean;
   visual_context_training_dataset_bridge: boolean;
+  visual_context_embedding_vector_bridge: boolean;
   visual_context_telemetry_bridge: boolean;
   visual_context_prompt_cache_bridge: boolean;
   visual_context_task_queue_bridge: boolean;
@@ -37182,6 +37239,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   const handlerTaintedEmbeddingInput = handler?.handlerTaintedEmbeddingInput === true;
   const handlerSecretManagerEmbeddingVectorBridge = handler?.handlerSecretManagerEmbeddingVectorBridge === true;
   const handlerToolOutputEmbeddingVectorBridge = handler?.handlerToolOutputEmbeddingVectorBridge === true;
+  const handlerVisualContextEmbeddingVectorBridge = handler?.handlerVisualContextEmbeddingVectorBridge === true;
   const handlerTelemetryExport = handler?.handlerTelemetryExport === true;
   const handlerSecretManagerTelemetryBridge = handler?.handlerSecretManagerTelemetryBridge === true;
   const handlerEnvSecretTelemetryBridge = handler?.handlerEnvSecretTelemetryBridge === true;
@@ -37938,6 +37996,13 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
     actions.add("send");
     actions.add("write");
   }
+  if (handlerVisualContextEmbeddingVectorBridge) {
+    classes.add("visual_context_embedding_vector_bridge");
+    actions.add("read");
+    actions.add("remember");
+    actions.add("send");
+    actions.add("write");
+  }
   if (handlerTelemetryExport) {
     classes.add("telemetry_export");
     actions.add("send");
@@ -38598,6 +38663,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerVisualContextArtifactBridge ||
       handlerVisualContextTrainingDatasetBridge ||
       handlerVisualContextFeedbackBridge ||
+      handlerVisualContextEmbeddingVectorBridge ||
       handlerVisualContextTelemetryBridge ||
       handlerVisualContextPromptCacheBridge ||
       handlerVisualContextTaskQueueBridge ||
@@ -39028,6 +39094,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       (handlerNetworkResponseArtifactBridge && handlerSecretEnvAccess) ||
       (handlerLocalFileArtifactBridge && handlerSecretEnvAccess) ||
       (handlerToolOutputEmbeddingVectorBridge && handlerSecretEnvAccess) ||
+      (handlerVisualContextEmbeddingVectorBridge && handlerSecretEnvAccess) ||
       handlerSecretManagerTaskQueueBridge ||
       handlerEnvSecretTaskQueueBridge ||
       (handlerToolOutputArtifactBridge && handlerSecretEnvAccess) ||
@@ -39176,6 +39243,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
     tainted_embedding_input: handlerTaintedEmbeddingInput,
     secret_manager_embedding_vector_bridge: handlerSecretManagerEmbeddingVectorBridge,
     tool_output_embedding_vector_bridge: handlerToolOutputEmbeddingVectorBridge,
+    visual_context_embedding_vector_bridge: handlerVisualContextEmbeddingVectorBridge,
     telemetry_export: handlerTelemetryExport,
     secret_manager_telemetry_bridge: handlerSecretManagerTelemetryBridge,
     env_secret_telemetry_bridge: handlerEnvSecretTelemetryBridge,
@@ -39372,6 +39440,7 @@ function authoritySignature(tool: SurfaceObject): string {
     metadata.tainted_embedding_input === true ? "tainted_embedding_input" : "",
     metadata.secret_manager_embedding_vector_bridge === true ? "secret_manager_embedding_vector_bridge" : "",
     metadata.tool_output_embedding_vector_bridge === true ? "tool_output_embedding_vector_bridge" : "",
+    metadata.visual_context_embedding_vector_bridge === true ? "visual_context_embedding_vector_bridge" : "",
     metadata.telemetry_export === true ? "telemetry_export" : "",
     metadata.secret_manager_telemetry_bridge === true ? "secret_manager_telemetry_bridge" : "",
     metadata.env_secret_telemetry_bridge === true ? "env_secret_telemetry_bridge" : "",
@@ -39597,6 +39666,7 @@ function isPrivilegedToolSurface(tool: SurfaceObject): boolean {
     tool.metadata.tainted_embedding_input === true ||
     tool.metadata.secret_manager_embedding_vector_bridge === true ||
     tool.metadata.tool_output_embedding_vector_bridge === true ||
+    tool.metadata.visual_context_embedding_vector_bridge === true ||
     tool.metadata.telemetry_export === true ||
     tool.metadata.secret_manager_telemetry_bridge === true ||
     tool.metadata.env_secret_telemetry_bridge === true ||

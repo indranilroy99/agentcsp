@@ -355,6 +355,7 @@ Tool metadata may include:
 - `visual_context_artifact_bridge`
 - `visual_context_training_dataset_bridge`
 - `visual_context_feedback_bridge`
+- `visual_context_embedding_vector_bridge`
 - `visual_context_telemetry_bridge`
 - `visual_context_prompt_cache_bridge`
 - `visual_context_prompt_registry_bridge`
@@ -698,6 +699,7 @@ Tool metadata may include:
 - `handler_visual_context_artifact_bridge`
 - `handler_visual_context_training_dataset_bridge`
 - `handler_visual_context_feedback_bridge`
+- `handler_visual_context_embedding_vector_bridge`
 - `handler_visual_context_telemetry_bridge`
 - `handler_visual_context_prompt_cache_bridge`
 - `handler_visual_context_prompt_registry_bridge`
@@ -2350,6 +2352,8 @@ Source-defined tool handlers can also emit redacted env-secret database-write br
 Source-defined tool handlers can also emit redacted secret-manager embedding-vector bridge authority through `secret_manager_embedding_vector_bridge`, `secret_manager_access`, `tainted_secret_manager_path`, `embedding_provider_call`, `tainted_embedding_input`, `memory_write`, `tainted_memory_scope`, and the corresponding `handler_*` fields when parsed MCP SDK or agent-framework tools read caller-selected vault or secret-manager paths, send the returned secret material to an embedding provider, and persist the resulting vector into memory, RAG, vector, or state stores using runtime credentials. Handler bodies, vault calls, secret paths, secret values, embedding SDK calls, vector-store calls, namespaces, embedding variables, stored values, and return strings remain redacted.
 
 Source-defined tool handlers can also emit redacted tool-output embedding-vector bridge authority through `tool_output_embedding_vector_bridge`, `nested_tool_invocation`, `embedding_provider_call`, `memory_write`, `tainted_memory_scope`, and the corresponding `handler_*` fields when parsed MCP SDK or agent-framework tools invoke nested tools, send raw tool observations to an embedding provider, and persist the resulting vector into memory, RAG, vector, or state stores using runtime credentials. Handler bodies, nested tool calls, raw observations, embedding SDK calls, vector-store calls, namespaces, embedding variables, stored values, and return strings remain redacted.
+
+Source-defined tool handlers can also emit redacted visual-context embedding-vector bridge authority through `visual_context_embedding_vector_bridge`, `visual_context_capture`, `embedding_provider_call`, `memory_write`, `tainted_memory_scope`, and the corresponding `handler_*` fields when parsed MCP SDK or agent-framework tools capture authenticated browser or screen visual context from caller-selected targets, send screenshot or OCR context to an embedding provider, and persist the resulting vector into memory, RAG, vector, or state stores using runtime credentials and caller-selected routing. Handler bodies, browser page calls, screenshots, OCR text, embedding SDK calls, vector-store calls, namespaces, embedding variables, stored values, and return strings remain redacted.
 
 Source-defined tool handlers can also emit redacted secret-manager training-dataset bridge authority through `secret_manager_training_dataset_bridge`, `secret_manager_access`, `tainted_secret_manager_path`, `training_dataset_export`, and the corresponding `handler_*` fields when parsed MCP SDK or agent-framework tools read caller-selected vault or secret-manager paths and export the returned secret material into AI training, fine-tuning, eval, or model-improvement datasets using runtime credentials. Handler bodies, vault calls, secret paths, secret values, dataset calls, dataset IDs, training records, and return strings remain redacted.
 

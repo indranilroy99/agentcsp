@@ -1,0 +1,155 @@
+id: AGENTCSP-TOOL-193
+name: Source tool handler embeds authenticated visual context into vector memory
+description: A source-defined agent tool handler captures authenticated browser or screen visual context from a caller-selected target, sends screenshot or OCR context to an embedding provider, and persists the resulting vector into durable memory or a vector store using runtime credentials and caller-selected routing.
+category: visual_context_embedding_vector_bridge
+severity: critical
+maps_to:
+  owasp:
+    - LLM01:2025 Prompt Injection
+    - LLM02:2025 Sensitive Information Disclosure
+    - LLM06:2025 Excessive Agency
+    - LLM08:2025 Vector and Embedding Weaknesses
+  mitre_atlas:
+    - AML.T0051 LLM Plugin Compromise
+    - AML.T0056 LLM Trusted Boundary Compromise
+    - AML.T0059 Data from Information Repositories
+    - AML.T0060 Data from Local System
+  nist_ai_rmf:
+    - MAP 4.1
+    - MEASURE 2.7
+    - MANAGE 2.4
+match:
+  object_type: tool
+  where:
+    - field: metadata.parsed_tool_schema
+      op: equals
+      value: true
+    - field: metadata.source_tool_handler_redacted
+      op: equals
+      value: true
+    - field: metadata.handler_body_analyzed
+      op: equals
+      value: true
+    - field: metadata.handler_browser_automation
+      op: equals
+      value: true
+    - field: metadata.handler_tainted_browser_automation_target
+      op: equals
+      value: true
+    - field: metadata.handler_visual_context_capture
+      op: equals
+      value: true
+    - field: metadata.handler_embedding_provider_call
+      op: equals
+      value: true
+    - field: metadata.handler_memory_write
+      op: equals
+      value: true
+    - field: metadata.handler_tainted_memory_scope
+      op: equals
+      value: true
+    - field: metadata.handler_visual_context_embedding_vector_bridge
+      op: equals
+      value: true
+    - field: metadata.handler_secret_env_access
+      op: equals
+      value: true
+    - field: metadata.browser_automation
+      op: equals
+      value: true
+    - field: metadata.tainted_browser_automation_target
+      op: equals
+      value: true
+    - field: metadata.visual_context_capture
+      op: equals
+      value: true
+    - field: metadata.embedding_provider_call
+      op: equals
+      value: true
+    - field: metadata.memory_write
+      op: equals
+      value: true
+    - field: metadata.tainted_memory_scope
+      op: equals
+      value: true
+    - field: metadata.visual_context_embedding_vector_bridge
+      op: equals
+      value: true
+    - field: metadata.accepts_url_input
+      op: equals
+      value: true
+    - field: metadata.accepts_content_like_input
+      op: equals
+      value: true
+    - field: metadata.accepts_customer_data_input
+      op: equals
+      value: true
+    - field: metadata.authority_classes
+      op: includes
+      value: visual_context_capture
+    - field: metadata.authority_classes
+      op: includes
+      value: embedding_provider_call
+    - field: metadata.authority_classes
+      op: includes
+      value: memory_write
+    - field: metadata.authority_classes
+      op: includes
+      value: tainted_memory_scope
+    - field: metadata.authority_classes
+      op: includes
+      value: visual_context_embedding_vector_bridge
+    - field: metadata.handler_authority_classes
+      op: includes
+      value: handler_visual_context_capture
+    - field: metadata.handler_authority_classes
+      op: includes
+      value: handler_embedding_provider_call
+    - field: metadata.handler_authority_classes
+      op: includes
+      value: handler_memory_write
+    - field: metadata.handler_authority_classes
+      op: includes
+      value: handler_tainted_memory_scope
+    - field: metadata.handler_authority_classes
+      op: includes
+      value: handler_visual_context_embedding_vector_bridge
+    - field: metadata.schema_properties
+      op: contains_any
+      value:
+        - target_url
+        - vector_namespace
+        - retention_note_text
+    - field: actions
+      op: includes
+      value: read
+    - field: actions
+      op: includes
+      value: send
+    - field: actions
+      op: includes
+      value: write
+    - field: actions
+      op: includes
+      value: remember
+    - field: data_classes
+      op: contains_any
+      value:
+        - confidential
+        - credential
+        - pii
+    - field: external_reach
+      op: equals
+      value: true
+    - field: secret_exposure
+      op: equals
+      value: true
+    - field: side_effect
+      op: equals
+      value: true
+    - field: reversible
+      op: equals
+      value: false
+recommendation:
+  control: quarantine
+  text: Quarantine visual-context vector ingestion until authenticated screenshots and OCR text cannot be embedded or persisted without data classification, redaction, tenant-scoped vector namespaces, provenance, retrieval-time trust filters, short retention, and security-owner approval for embedding-provider and vector-store writes.

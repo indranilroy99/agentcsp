@@ -194,6 +194,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-190")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-191")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-192")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-193")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-001")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-002")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-003")).toBe(true);
@@ -7673,6 +7674,7 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerNetworkResponsePromptRegistryBridgeFindings)).not.toContain("Fetch a caller supplied URL");
     const sourceHandlerMemoryWriteFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-023");
     expect(sourceHandlerMemoryWriteFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
+      "langchain_embed_authenticated_page_screenshot_vector_memory",
       "langchain_embed_customer_vault_secret_vector_memory",
       "langchain_embed_privileged_tool_observation_vector_memory",
       "langchain_persist_customer_memory",
@@ -7683,6 +7685,7 @@ describe("rule engine", () => {
       "langchain_store_local_file_memory",
       "langchain_store_model_selected_memory",
       "langchain_store_retrieved_context_memory",
+      "source_embed_authenticated_page_screenshot_vector_memory",
       "source_embed_customer_vault_secret_vector_memory",
       "source_embed_privileged_tool_observation_vector_memory",
       "source_persist_customer_memory",
@@ -7696,9 +7699,11 @@ describe("rule engine", () => {
     ]);
     const sourceHandlerEmbeddingMemoryWriteFindings = sourceHandlerMemoryWriteFindings.filter((finding) =>
       [
+        "langchain_embed_authenticated_page_screenshot_vector_memory",
         "langchain_embed_customer_vault_secret_vector_memory",
         "langchain_embed_privileged_tool_observation_vector_memory",
         "langchain_persist_customer_memory",
+        "source_embed_authenticated_page_screenshot_vector_memory",
         "source_embed_customer_vault_secret_vector_memory",
         "source_embed_privileged_tool_observation_vector_memory",
         "source_persist_customer_memory"
@@ -7721,9 +7726,11 @@ describe("rule engine", () => {
       ].includes(finding.matched_object.name)
     );
     expect(sourceHandlerEmbeddingMemoryWriteFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
+      "langchain_embed_authenticated_page_screenshot_vector_memory",
       "langchain_embed_customer_vault_secret_vector_memory",
       "langchain_embed_privileged_tool_observation_vector_memory",
       "langchain_persist_customer_memory",
+      "source_embed_authenticated_page_screenshot_vector_memory",
       "source_embed_customer_vault_secret_vector_memory",
       "source_embed_privileged_tool_observation_vector_memory",
       "source_persist_customer_memory"
@@ -10498,6 +10505,7 @@ describe("rule engine", () => {
       "langchain_cache_authenticated_page_screenshot_prompt",
       "langchain_apply_authenticated_page_screenshot_guardrail_override",
       "langchain_delegate_authenticated_page_screenshot_remote_agent",
+      "langchain_embed_authenticated_page_screenshot_vector_memory",
       "langchain_enqueue_authenticated_page_screenshot_job",
       "langchain_export_authenticated_page_screenshot_artifact",
       "langchain_export_authenticated_page_screenshot_trace",
@@ -10516,6 +10524,7 @@ describe("rule engine", () => {
       "source_cache_authenticated_page_screenshot_prompt",
       "source_apply_authenticated_page_screenshot_guardrail_override",
       "source_delegate_authenticated_page_screenshot_remote_agent",
+      "source_embed_authenticated_page_screenshot_vector_memory",
       "source_enqueue_authenticated_page_screenshot_job",
       "source_export_authenticated_page_screenshot_artifact",
       "source_export_authenticated_page_screenshot_trace",
@@ -10598,6 +10607,7 @@ describe("rule engine", () => {
       "langchain_cache_authenticated_page_screenshot_prompt",
       "langchain_apply_authenticated_page_screenshot_guardrail_override",
       "langchain_delegate_authenticated_page_screenshot_remote_agent",
+      "langchain_embed_authenticated_page_screenshot_vector_memory",
       "langchain_enqueue_authenticated_page_screenshot_job",
       "langchain_export_authenticated_page_screenshot_artifact",
       "langchain_export_authenticated_page_screenshot_trace",
@@ -10616,6 +10626,7 @@ describe("rule engine", () => {
       "source_cache_authenticated_page_screenshot_prompt",
       "source_apply_authenticated_page_screenshot_guardrail_override",
       "source_delegate_authenticated_page_screenshot_remote_agent",
+      "source_embed_authenticated_page_screenshot_vector_memory",
       "source_enqueue_authenticated_page_screenshot_job",
       "source_export_authenticated_page_screenshot_artifact",
       "source_export_authenticated_page_screenshot_trace",
@@ -12456,6 +12467,93 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerVisualContextFeedbackBridgeFindings)).not.toContain("source visual context promoted to feedback");
     expect(JSON.stringify(sourceHandlerVisualContextFeedbackBridgeFindings)).not.toContain("framework visual context promoted to feedback");
     expect(JSON.stringify(sourceHandlerVisualContextFeedbackBridgeFindings)).not.toContain("Promote an authenticated browser screenshot");
+    const sourceHandlerVisualContextEmbeddingVectorBridgeFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-193");
+    expect(sourceHandlerVisualContextEmbeddingVectorBridgeFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
+      "langchain_embed_authenticated_page_screenshot_vector_memory",
+      "source_embed_authenticated_page_screenshot_vector_memory"
+    ]);
+    expect(sourceHandlerVisualContextEmbeddingVectorBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
+    expect(sourceHandlerVisualContextEmbeddingVectorBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerVisualContextEmbeddingVectorBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
+    expect(sourceHandlerVisualContextEmbeddingVectorBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
+    expect(sourceHandlerVisualContextEmbeddingVectorBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.source_tool_handler_redacted === true
+    )).toBe(true);
+    expect(sourceHandlerVisualContextEmbeddingVectorBridgeFindings.every((finding) => finding.matched_object.metadata.handler_browser_automation === true)).toBe(true);
+    expect(sourceHandlerVisualContextEmbeddingVectorBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.handler_tainted_browser_automation_target === true
+    )).toBe(true);
+    expect(sourceHandlerVisualContextEmbeddingVectorBridgeFindings.every((finding) => finding.matched_object.metadata.handler_visual_context_capture === true)).toBe(true);
+    expect(sourceHandlerVisualContextEmbeddingVectorBridgeFindings.every((finding) => finding.matched_object.metadata.handler_embedding_provider_call === true)).toBe(true);
+    expect(sourceHandlerVisualContextEmbeddingVectorBridgeFindings.every((finding) => finding.matched_object.metadata.handler_memory_write === true)).toBe(true);
+    expect(sourceHandlerVisualContextEmbeddingVectorBridgeFindings.every((finding) => finding.matched_object.metadata.handler_tainted_memory_scope === true)).toBe(true);
+    expect(sourceHandlerVisualContextEmbeddingVectorBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.handler_visual_context_embedding_vector_bridge === true
+    )).toBe(true);
+    expect(sourceHandlerVisualContextEmbeddingVectorBridgeFindings.every((finding) => finding.matched_object.metadata.handler_secret_env_access === true)).toBe(true);
+    expect(sourceHandlerVisualContextEmbeddingVectorBridgeFindings.every((finding) => finding.matched_object.metadata.browser_automation === true)).toBe(true);
+    expect(sourceHandlerVisualContextEmbeddingVectorBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.tainted_browser_automation_target === true
+    )).toBe(true);
+    expect(sourceHandlerVisualContextEmbeddingVectorBridgeFindings.every((finding) => finding.matched_object.metadata.visual_context_capture === true)).toBe(true);
+    expect(sourceHandlerVisualContextEmbeddingVectorBridgeFindings.every((finding) => finding.matched_object.metadata.embedding_provider_call === true)).toBe(true);
+    expect(sourceHandlerVisualContextEmbeddingVectorBridgeFindings.every((finding) => finding.matched_object.metadata.memory_write === true)).toBe(true);
+    expect(sourceHandlerVisualContextEmbeddingVectorBridgeFindings.every((finding) => finding.matched_object.metadata.tainted_memory_scope === true)).toBe(true);
+    expect(sourceHandlerVisualContextEmbeddingVectorBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.visual_context_embedding_vector_bridge === true
+    )).toBe(true);
+    expect(sourceHandlerVisualContextEmbeddingVectorBridgeFindings.every((finding) => finding.matched_object.metadata.accepts_url_input === true)).toBe(true);
+    expect(sourceHandlerVisualContextEmbeddingVectorBridgeFindings.every((finding) => finding.matched_object.metadata.accepts_content_like_input === true)).toBe(true);
+    expect(sourceHandlerVisualContextEmbeddingVectorBridgeFindings.every((finding) => finding.matched_object.metadata.accepts_customer_data_input === true)).toBe(true);
+    for (const authorityClass of [
+      "browser_automation",
+      "tainted_browser_automation_target",
+      "visual_context_capture",
+      "embedding_provider_call",
+      "memory_write",
+      "tainted_memory_scope",
+      "visual_context_embedding_vector_bridge"
+    ]) {
+      expect(sourceHandlerVisualContextEmbeddingVectorBridgeFindings.every((finding) =>
+        finding.matched_object.metadata.authority_classes.includes(authorityClass)
+      )).toBe(true);
+    }
+    for (const handlerAuthorityClass of [
+      "handler_browser_automation",
+      "handler_tainted_browser_automation_target",
+      "handler_visual_context_capture",
+      "handler_embedding_provider_call",
+      "handler_memory_write",
+      "handler_tainted_memory_scope",
+      "handler_visual_context_embedding_vector_bridge"
+    ]) {
+      expect(sourceHandlerVisualContextEmbeddingVectorBridgeFindings.every((finding) =>
+        finding.matched_object.metadata.handler_authority_classes.includes(handlerAuthorityClass)
+      )).toBe(true);
+    }
+    expect(sourceHandlerVisualContextEmbeddingVectorBridgeFindings.every((finding) => finding.matched_object.actions.includes("read"))).toBe(true);
+    expect(sourceHandlerVisualContextEmbeddingVectorBridgeFindings.every((finding) => finding.matched_object.actions.includes("send"))).toBe(true);
+    expect(sourceHandlerVisualContextEmbeddingVectorBridgeFindings.every((finding) => finding.matched_object.actions.includes("write"))).toBe(true);
+    expect(sourceHandlerVisualContextEmbeddingVectorBridgeFindings.every((finding) => finding.matched_object.actions.includes("remember"))).toBe(true);
+    expect(sourceHandlerVisualContextEmbeddingVectorBridgeFindings.every((finding) => finding.matched_object.external_reach === true)).toBe(true);
+    expect(sourceHandlerVisualContextEmbeddingVectorBridgeFindings.every((finding) => finding.matched_object.secret_exposure === true)).toBe(true);
+    expect(sourceHandlerVisualContextEmbeddingVectorBridgeFindings.every((finding) => finding.matched_object.side_effect === true)).toBe(true);
+    expect(sourceHandlerVisualContextEmbeddingVectorBridgeFindings.every((finding) => finding.matched_object.reversible === false)).toBe(true);
+    expect(JSON.stringify(sourceHandlerVisualContextEmbeddingVectorBridgeFindings)).not.toContain("authenticatedBrowserPage");
+    expect(JSON.stringify(sourceHandlerVisualContextEmbeddingVectorBridgeFindings)).not.toContain("browser_session.page");
+    expect(JSON.stringify(sourceHandlerVisualContextEmbeddingVectorBridgeFindings)).not.toContain("page.goto");
+    expect(JSON.stringify(sourceHandlerVisualContextEmbeddingVectorBridgeFindings)).not.toContain("page.screenshot");
+    expect(JSON.stringify(sourceHandlerVisualContextEmbeddingVectorBridgeFindings)).not.toContain("screenshot.toString");
+    expect(JSON.stringify(sourceHandlerVisualContextEmbeddingVectorBridgeFindings)).not.toContain("screenshot_bytes");
+    expect(JSON.stringify(sourceHandlerVisualContextEmbeddingVectorBridgeFindings)).not.toContain("embeddingClient.embedQuery");
+    expect(JSON.stringify(sourceHandlerVisualContextEmbeddingVectorBridgeFindings)).not.toContain("embedding_client.embed_documents");
+    expect(JSON.stringify(sourceHandlerVisualContextEmbeddingVectorBridgeFindings)).not.toContain("vectorStore.upsert");
+    expect(JSON.stringify(sourceHandlerVisualContextEmbeddingVectorBridgeFindings)).not.toContain("vector_store.upsert");
+    expect(JSON.stringify(sourceHandlerVisualContextEmbeddingVectorBridgeFindings)).not.toContain("visualEmbedding");
+    expect(JSON.stringify(sourceHandlerVisualContextEmbeddingVectorBridgeFindings)).not.toContain("visual_embedding");
+    expect(JSON.stringify(sourceHandlerVisualContextEmbeddingVectorBridgeFindings)).not.toContain("source visual context embedded to vector memory");
+    expect(JSON.stringify(sourceHandlerVisualContextEmbeddingVectorBridgeFindings)).not.toContain("framework visual context embedded to vector memory");
+    expect(JSON.stringify(sourceHandlerVisualContextEmbeddingVectorBridgeFindings)).not.toContain("Embed an authenticated browser screenshot");
     const sourceHandlerVisualContextTaskQueueBridgeFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-104");
     expect(sourceHandlerVisualContextTaskQueueBridgeFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_enqueue_authenticated_page_screenshot_job",
