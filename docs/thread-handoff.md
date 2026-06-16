@@ -292,6 +292,7 @@ The current iteration adds:
 - manifest-level `baseline_comparison` with new, existing, and resolved counts and stable IDs
 - Markdown Baseline Comparison section
 - SARIF result `baselineState` and run-level `agentcsp_baseline_comparison`
+- root-relative emitted baseline paths for in-project baselines and `<external-baseline>` for outside baselines
 - regression coverage for manifest baselines, findings baselines, resolved findings, and new-only fail gates
 
 ## Scan Coverage Pass

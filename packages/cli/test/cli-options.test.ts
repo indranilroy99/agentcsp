@@ -133,7 +133,7 @@ describe("cli options", () => {
       baseline_comparison?: { baseline_path?: string; baseline_format?: string };
     };
     expect(manifest.baseline_comparison).toMatchObject({
-      baseline_path: path.join(root, "baselines", "agent-manifest.json"),
+      baseline_path: "baselines/agent-manifest.json",
       baseline_format: "manifest"
     });
     process.exitCode = undefined;

@@ -128,7 +128,7 @@ describe("baseline comparison", () => {
       root_path: root,
       output_path: "scan-output",
       baseline_path: "baselines/agent-manifest.json",
-      formats: ["json", "md"],
+      formats: ["json", "md", "sarif"],
       include_hidden: true,
       include_logs: false,
       max_file_size_bytes: 1024 * 1024,
@@ -137,9 +137,16 @@ describe("baseline comparison", () => {
     });
 
     expect(result.manifest.baseline_comparison).toMatchObject({
-      baseline_path: path.join(root, "baselines", "agent-manifest.json"),
+      baseline_path: "baselines/agent-manifest.json",
       baseline_format: "manifest"
     });
+    expect(result.reportMarkdown).toContain("- Baseline: `baselines/agent-manifest.json`");
+    const sarif = JSON.parse(await fs.readFile(result.outputFiles.sarif!, "utf8")) as {
+      runs: Array<{ properties?: { agentcsp_baseline_comparison?: { baseline_path?: string } } }>;
+    };
+    expect(sarif.runs[0]?.properties?.agentcsp_baseline_comparison?.baseline_path).toBe(
+      "baselines/agent-manifest.json"
+    );
   });
 
   it("redacts external baseline paths in emitted artifacts", async () => {

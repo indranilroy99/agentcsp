@@ -2,7 +2,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { z } from "zod";
 import type { BaselineComparison, Finding } from "../schemas/index.js";
-import { isPathInsideRoot } from "../utils/paths.js";
+import { isPathInsideRoot, relativePath } from "../utils/paths.js";
 
 const BaselineFindingRecordSchema = z.object({ id: z.string() }).passthrough();
 const BaselineFindingsFileSchema = z.array(BaselineFindingRecordSchema);
@@ -57,7 +57,7 @@ export async function applyBaselineComparison(
 
 function baselineComparisonPath(absoluteBaselinePath: string, rootPath?: string): string {
   if (!rootPath) return absoluteBaselinePath;
-  return isPathInsideRoot(rootPath, absoluteBaselinePath) ? absoluteBaselinePath : "<external-baseline>";
+  return isPathInsideRoot(rootPath, absoluteBaselinePath) ? relativePath(rootPath, absoluteBaselinePath) : "<external-baseline>";
 }
 
 async function loadBaselineFindingIds(

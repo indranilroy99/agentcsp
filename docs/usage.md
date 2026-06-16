@@ -83,7 +83,7 @@ agentcsp scan . --baseline .agentcsp/agent-manifest.json --out .agentcsp
 
 The manifest and Markdown report include a baseline comparison with new, existing, and resolved finding counts. Current findings receive `baseline_status: "new"` or `baseline_status: "existing"` when a baseline is provided.
 
-Relative `--baseline` paths are resolved from the scanned project root. This keeps multi-repo CI jobs stable when the command is launched from a parent workspace or automation directory. If the baseline file lives outside the scanned root, AgentCSP reads it normally but emits `<external-baseline>` in JSON, Markdown, SARIF, and baseline read errors instead of exposing the absolute local path.
+Relative `--baseline` paths are resolved from the scanned project root. This keeps multi-repo CI jobs stable when the command is launched from a parent workspace or automation directory. Baselines inside the scanned root are emitted as root-relative paths in JSON, Markdown, and SARIF. If the baseline file lives outside the scanned root, AgentCSP reads it normally but emits `<external-baseline>` in JSON, Markdown, SARIF, and baseline read errors instead of exposing the absolute local path.
 
 Use `--fail-on-new` with `--baseline` and `--fail-on` when CI should fail only on newly introduced risk:
 
