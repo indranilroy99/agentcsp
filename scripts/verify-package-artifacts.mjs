@@ -211,12 +211,20 @@ async function smokeTestInstalledCli(coreTarball, cliTarball, installRoot) {
   await assertFile(path.join(outputPath, "findings.json"));
   await assertFile(path.join(outputPath, "report.md"));
 
+  const manifest = JSON.parse(await fs.readFile(path.join(outputPath, "agent-manifest.json"), "utf8"));
   const findings = JSON.parse(await fs.readFile(path.join(outputPath, "findings.json"), "utf8"));
+  const report = await fs.readFile(path.join(outputPath, "report.md"), "utf8");
   if (!Array.isArray(findings)) {
     throw new Error("Installed CLI smoke test produced a non-array findings.json");
   }
   if (findings.length !== 0) {
     throw new Error(`Installed CLI smoke test expected the safe fixture to stay clean, found ${findings.length}`);
+  }
+  if (!report.includes("- Root: `<scan-root>`")) {
+    throw new Error("Installed CLI smoke test report did not redact the scan root");
+  }
+  if (typeof manifest?.metadata?.root_path === "string" && report.includes(manifest.metadata.root_path)) {
+    throw new Error("Installed CLI smoke test report leaked the absolute scan root");
   }
 }
 
