@@ -1527,6 +1527,7 @@ assertEqual(vulnerable.manifest.attack_paths.length, 15, "vulnerable attack path
 assertEqual(vulnerable.manifest.static_blast_radius?.critical_attack_paths, 15, "vulnerable critical attack path count");
 assertEqual(vulnerable.manifest.diagnostics.length, 0, "vulnerable diagnostics count");
 assertEqual(vulnerable.manifest.scan_coverage?.diagnostics_total, 0, "vulnerable diagnostic coverage count");
+assertVulnerableOperatorMetadata(vulnerable);
 assertMarkdownRootRedacted("vulnerable report", vulnerable);
 
 for (const ruleId of [
@@ -1888,6 +1889,7 @@ assertEqual(safe.findings.length, 0, "safe findings.json count");
 assertEqual(safe.manifest.attack_paths.length, 0, "safe attack path count");
 assertEqual(safe.manifest.diagnostics.length, 0, "safe diagnostics count");
 assertEqual(safe.manifest.scan_coverage?.diagnostics_total, 0, "safe diagnostic coverage count");
+assertSafeOperatorMetadata(safe);
 assertMarkdownRootRedacted("safe report", safe);
 
 assertNoLeaks("vulnerable output", vulnerable.raw);
@@ -1928,15 +1930,109 @@ if (vulnerable.sarif) {
   assert(firstResult.properties.rule_tags?.length > 0, "SARIF result tags missing");
   assert(firstResult.rank > 0, "SARIF result rank missing");
   assert(run.properties?.agentcsp_triage_summary, "SARIF triage summary missing");
+  assertEqual(
+    run.properties.agentcsp_triage_summary.top_active_risks_truncated,
+    true,
+    "SARIF triage top risk truncation metadata"
+  );
   assert(run.properties?.agentcsp_ci_gate_summary, "SARIF CI gate summary missing");
   assertEqual(run.properties.agentcsp_ci_gate_summary.status, "pass", "SARIF CI gate status");
+  assertEqual(run.properties.agentcsp_ci_gate_summary.blocker_ids_truncated, false, "SARIF CI blocker truncation metadata");
   assert(run.properties?.agentcsp_scan_coverage, "SARIF scan coverage missing");
+  assertEqual(run.properties.agentcsp_scan_coverage.scan_health, "complete", "SARIF scan health");
   assert(run.properties?.agentcsp_static_blast_radius, "SARIF blast-radius summary missing");
+  assertEqual(
+    run.properties.agentcsp_static_blast_radius.attack_path_limit,
+    15,
+    "SARIF attack path limit metadata"
+  );
+  assertEqual(
+    run.properties.agentcsp_static_blast_radius.high_risk_objects_truncated,
+    true,
+    "SARIF high-risk object truncation metadata"
+  );
 }
 
 console.log(
   `Fixture outputs verified: vulnerable=${vulnerable.findings.length} findings, safe=${safe.findings.length} findings`
 );
+
+function assertVulnerableOperatorMetadata(output) {
+  const { manifest, report } = output;
+  assertEqual(manifest.scan_coverage?.scan_health, "complete", "vulnerable scan health");
+  assertArrayEqual(manifest.scan_coverage?.scan_health_reasons ?? [], [], "vulnerable scan health reasons");
+
+  assertEqual(manifest.triage_summary?.top_active_limit, 10, "vulnerable triage top active limit");
+  assert(manifest.triage_summary?.top_active_rules_total > 10, "vulnerable triage top rules total must exceed preview");
+  assertEqual(manifest.triage_summary?.top_active_rules_truncated, true, "vulnerable triage top rules truncation");
+  assertEqual(
+    manifest.triage_summary?.top_active_risks_total,
+    manifest.triage_summary?.active_findings,
+    "vulnerable triage top risks total"
+  );
+  assertEqual(manifest.triage_summary?.top_active_risks_truncated, true, "vulnerable triage top risks truncation");
+
+  assertEqual(manifest.action_plan?.max_actions, 12, "vulnerable action plan max actions");
+  assertEqual(manifest.action_plan?.truncated, true, "vulnerable action plan truncation");
+  assertEqual(manifest.action_plan?.omitted_actions, manifest.findings.length - 12, "vulnerable omitted action count");
+  assertEqual(manifest.action_plan?.omitted_highest_severity, "critical", "vulnerable omitted highest severity");
+  assert(manifest.action_plan?.omitted_max_risk_score > 0, "vulnerable omitted max risk score missing");
+  assert(manifest.action_plan?.by_owner?.length > 0, "vulnerable action owner routing missing");
+
+  assertEqual(manifest.ci_gate_summary?.blocker_id_limit, 50, "vulnerable CI blocker ID limit");
+  assertEqual(manifest.ci_gate_summary?.blocker_ids_truncated, false, "vulnerable CI blocker truncation");
+
+  assertEqual(manifest.static_blast_radius?.attack_path_limit, 15, "vulnerable attack path limit");
+  assert(manifest.static_blast_radius?.attack_paths_total >= manifest.attack_paths.length, "vulnerable attack path total");
+  assertEqual(
+    manifest.static_blast_radius?.attack_paths_truncated,
+    manifest.static_blast_radius.attack_paths_total > manifest.attack_paths.length,
+    "vulnerable attack path truncation"
+  );
+  assertEqual(manifest.static_blast_radius?.preview_limit, 20, "vulnerable blast-radius preview limit");
+  assert(manifest.static_blast_radius?.high_risk_objects_total > 20, "vulnerable high-risk object total");
+  assertEqual(
+    manifest.static_blast_radius?.high_risk_objects_truncated,
+    true,
+    "vulnerable high-risk object truncation"
+  );
+  assert(manifest.static_blast_radius?.recommended_controls_total > 20, "vulnerable recommended controls total");
+  assertEqual(
+    manifest.static_blast_radius?.recommended_controls_truncated,
+    true,
+    "vulnerable recommended controls truncation"
+  );
+
+  assert(report.includes("- Scan health: `complete`"), "vulnerable report missing scan health");
+  assert(report.includes("- Top active risks truncated: `true`"), "vulnerable report missing triage truncation");
+  assert(report.includes("- Attack path limit: 15"), "vulnerable report missing attack path limit");
+  assert(report.includes("- High-risk objects truncated: `true`"), "vulnerable report missing blast-radius truncation");
+  assert(report.includes("- Recommended controls truncated: `true`"), "vulnerable report missing control truncation");
+}
+
+function assertSafeOperatorMetadata(output) {
+  const { manifest, report } = output;
+  assertEqual(manifest.scan_coverage?.scan_health, "complete", "safe scan health");
+  assertArrayEqual(manifest.scan_coverage?.scan_health_reasons ?? [], [], "safe scan health reasons");
+  assertEqual(manifest.triage_summary?.top_active_limit, 10, "safe triage top active limit");
+  assertEqual(manifest.triage_summary?.top_active_rules_total, 0, "safe triage top rules total");
+  assertEqual(manifest.triage_summary?.top_active_rules_truncated, false, "safe triage top rules truncation");
+  assertEqual(manifest.triage_summary?.top_active_risks_total, 0, "safe triage top risks total");
+  assertEqual(manifest.triage_summary?.top_active_risks_truncated, false, "safe triage top risks truncation");
+  assertEqual(manifest.action_plan?.truncated, false, "safe action plan truncation");
+  assertEqual(manifest.action_plan?.omitted_actions, 0, "safe omitted action count");
+  assertEqual(manifest.ci_gate_summary?.blocker_ids_truncated, false, "safe CI blocker truncation");
+  assertEqual(manifest.static_blast_radius?.attack_path_limit, 15, "safe attack path limit");
+  assertEqual(manifest.static_blast_radius?.attack_paths_total, 0, "safe attack path total");
+  assertEqual(manifest.static_blast_radius?.attack_paths_truncated, false, "safe attack path truncation");
+  assertEqual(manifest.static_blast_radius?.preview_limit, 20, "safe blast-radius preview limit");
+  assertEqual(manifest.static_blast_radius?.high_risk_objects_truncated, false, "safe high-risk object truncation");
+  assertEqual(manifest.static_blast_radius?.recommended_controls_total, 0, "safe recommended controls total");
+  assertEqual(manifest.static_blast_radius?.recommended_controls_truncated, false, "safe recommended controls truncation");
+  assert(report.includes("- Scan health: `complete`"), "safe report missing scan health");
+  assert(report.includes("- Top active risks truncated: `false`"), "safe report missing triage truncation");
+  assert(report.includes("- Attack path limit: 15"), "safe report missing attack path limit");
+}
 
 async function readScanOutput(outputPath, options) {
   const manifestPath = path.join(outputPath, "agent-manifest.json");
@@ -1997,6 +2093,10 @@ function assertNoGenericLeaks(label, value, options = {}) {
 
 function assertEqual(actual, expected, label) {
   assert(actual === expected, `${label}: expected ${expected}, received ${actual}`);
+}
+
+function assertArrayEqual(actual, expected, label) {
+  assertEqual(JSON.stringify(actual), JSON.stringify(expected), label);
 }
 
 function assert(condition, message) {
