@@ -202,8 +202,10 @@ describe("scanProject", () => {
             blocker_id_limit?: number;
             severity_gate_by_severity?: Record<string, number>;
             severity_gate_by_confidence?: Record<string, number>;
+            severity_gate_by_risk_driver?: Array<{ driver?: string; count?: number }>;
             active_suppressions_by_severity?: Record<string, number>;
             expired_suppression_by_severity?: Record<string, number>;
+            expired_suppression_by_risk_driver?: Array<{ driver?: string; count?: number }>;
           };
           agentcsp_scan_coverage?: { files_indexed?: number };
           agentcsp_static_blast_radius?: {
@@ -269,8 +271,10 @@ describe("scanProject", () => {
       blocker_ids_truncated: false,
       severity_gate_by_severity: { critical: 0, high: 0, medium: 0, low: 0, info: 0 },
       severity_gate_by_confidence: { very_high: 0, high: 0, medium: 0, low: 0 },
+      severity_gate_by_risk_driver: [],
       active_suppressions_by_severity: { critical: 0, high: 0, medium: 0, low: 0, info: 0 },
       expired_suppression_by_severity: { critical: 0, high: 0, medium: 0, low: 0, info: 0 },
+      expired_suppression_by_risk_driver: [],
       severity_gate_finding_ids: [],
       severity_gate_finding_ids_truncated: false,
       expired_suppression_finding_ids: [],
@@ -324,6 +328,8 @@ describe("scanProject", () => {
     expect(result.reportMarkdown).toContain("### CI Gate Blockers");
     expect(result.reportMarkdown).toContain("| Blocker list | Total | IDs shown | Truncated |");
     expect(result.reportMarkdown).toContain("### CI Gate Blocker Mix");
+    expect(result.reportMarkdown).toContain("### CI Gate Risk Drivers");
+    expect(result.reportMarkdown).toContain("No CI gate risk drivers were generated.");
     expect(result.reportMarkdown).toContain(
       "| Blocker set | Critical | High | Medium | Low | Info | Very high confidence | High confidence | Medium confidence | Low confidence |"
     );
@@ -379,8 +385,10 @@ describe("scanProject", () => {
       severity_gate_findings: 0,
       severity_gate_by_severity: { critical: 0, high: 0, medium: 0, low: 0, info: 0 },
       severity_gate_by_confidence: { very_high: 0, high: 0, medium: 0, low: 0 },
+      severity_gate_by_risk_driver: [],
       active_suppressions_by_severity: { critical: 0, high: 0, medium: 0, low: 0, info: 0 },
       expired_suppression_by_severity: { critical: 0, high: 0, medium: 0, low: 0, info: 0 },
+      expired_suppression_by_risk_driver: [],
       blocker_id_limit: 50,
       blocker_ids_truncated: false
     });

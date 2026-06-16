@@ -113,6 +113,9 @@ export async function runScanCommand(targetPath: string, options: Record<string,
       console.log(
         `CI blockers: severity ${formatSeverityMix(result.manifest.ci_gate_summary.severity_gate_by_severity)}, confidence ${formatConfidenceMix(result.manifest.ci_gate_summary.severity_gate_by_confidence)}, active suppressions ${formatSeverityMix(result.manifest.ci_gate_summary.active_suppressions_by_severity)}, expired suppressions ${formatSeverityMix(result.manifest.ci_gate_summary.expired_suppression_by_severity)}, truncated: ${result.manifest.ci_gate_summary.blocker_ids_truncated}`
       );
+      console.log(
+        `CI risk drivers: severity ${formatRiskDriverMix(result.manifest.ci_gate_summary.severity_gate_by_risk_driver)}, expired suppressions ${formatRiskDriverMix(result.manifest.ci_gate_summary.expired_suppression_by_risk_driver)}`
+      );
     }
     if (result.outputFiles.manifest) console.log(`Manifest: ${result.outputFiles.manifest}`);
     if (result.outputFiles.findings) console.log(`Findings: ${result.outputFiles.findings}`);
@@ -155,6 +158,12 @@ function formatConfidenceMix(counts: {
   low: number;
 }): string {
   return `very_high=${counts.very_high}, high=${counts.high}, medium=${counts.medium}, low=${counts.low}`;
+}
+
+function formatRiskDriverMix(counts: Array<{ driver: string; count: number }>): string {
+  return counts.length > 0
+    ? counts.map((item) => `${item.driver.replaceAll("_", "-")}=${item.count}`).join(", ")
+    : "none";
 }
 
 function parseFailOn(value: unknown): Severity | undefined {

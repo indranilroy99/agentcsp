@@ -248,6 +248,10 @@ function renderCiGateSummary(manifest: AgentManifest): string {
     "",
     renderGateBlockerMix(summary),
     "",
+    "### CI Gate Risk Drivers",
+    "",
+    renderGateRiskDrivers(summary),
+    "",
     renderGateBlockers(summary)
   ].join("\n");
 }
@@ -269,6 +273,22 @@ function renderGateBlockerMix(summary: NonNullable<AgentManifest["ci_gate_summar
     `| severity/new finding | ${summary.severity_gate_by_severity.critical} | ${summary.severity_gate_by_severity.high} | ${summary.severity_gate_by_severity.medium} | ${summary.severity_gate_by_severity.low} | ${summary.severity_gate_by_severity.info} | ${summary.severity_gate_by_confidence.very_high} | ${summary.severity_gate_by_confidence.high} | ${summary.severity_gate_by_confidence.medium} | ${summary.severity_gate_by_confidence.low} |`,
     `| active suppression exclusion | ${summary.active_suppressions_by_severity.critical} | ${summary.active_suppressions_by_severity.high} | ${summary.active_suppressions_by_severity.medium} | ${summary.active_suppressions_by_severity.low} | ${summary.active_suppressions_by_severity.info} | n/a | n/a | n/a | n/a |`,
     `| expired suppression | ${summary.expired_suppression_by_severity.critical} | ${summary.expired_suppression_by_severity.high} | ${summary.expired_suppression_by_severity.medium} | ${summary.expired_suppression_by_severity.low} | ${summary.expired_suppression_by_severity.info} | n/a | n/a | n/a | n/a |`
+  ].join("\n");
+}
+
+function renderGateRiskDrivers(summary: NonNullable<AgentManifest["ci_gate_summary"]>): string {
+  const rows = [
+    ...summary.severity_gate_by_risk_driver.map((item) => ({ set: "severity/new finding", ...item })),
+    ...summary.expired_suppression_by_risk_driver.map((item) => ({ set: "expired suppression", ...item }))
+  ];
+  if (rows.length === 0) return "No CI gate risk drivers were generated.";
+  return [
+    "| Blocker set | Driver | Findings | Max risk | Critical | High | Medium | Low | Info |",
+    "| --- | --- | --- | --- | --- | --- | --- | --- | --- |",
+    ...rows.map(
+      (item) =>
+        `| ${item.set} | ${item.driver.replaceAll("_", " ")} | ${item.count} | ${item.max_risk_score} | ${item.by_severity.critical} | ${item.by_severity.high} | ${item.by_severity.medium} | ${item.by_severity.low} | ${item.by_severity.info} |`
+    )
   ].join("\n");
 }
 

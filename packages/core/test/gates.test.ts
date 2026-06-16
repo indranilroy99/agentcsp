@@ -36,12 +36,21 @@ describe("CI gate summary", () => {
       severity_gate_findings: ciGateBlockerIdLimit + 3,
       severity_gate_by_severity: { critical: 0, high: ciGateBlockerIdLimit + 3, medium: 0, low: 0, info: 0 },
       severity_gate_by_confidence: { very_high: 0, high: ciGateBlockerIdLimit + 3, medium: 0, low: 0 },
+      severity_gate_by_risk_driver: [
+        {
+          driver: "side_effect",
+          count: ciGateBlockerIdLimit + 3,
+          max_risk_score: 80,
+          by_severity: { critical: 0, high: ciGateBlockerIdLimit + 3, medium: 0, low: 0, info: 0 }
+        }
+      ],
       severity_gate_finding_ids_truncated: true,
       diagnostic_count: ciGateBlockerIdLimit + 2,
       diagnostic_ids_truncated: true,
       expired_suppression_findings: 0,
       active_suppressions_by_severity: { critical: 0, high: 0, medium: 0, low: 0, info: 0 },
       expired_suppression_by_severity: { critical: 0, high: 0, medium: 0, low: 0, info: 0 },
+      expired_suppression_by_risk_driver: [],
       expired_suppression_finding_ids_truncated: false
     });
     expect(summary.severity_gate_finding_ids).toHaveLength(ciGateBlockerIdLimit);
@@ -107,11 +116,22 @@ describe("CI gate summary", () => {
     const summary = buildCiGateSummary({
       findings: [
         finding("critical_high", "critical", "high"),
-        finding("critical_very_high", "critical", "very_high"),
+        finding("critical_very_high", "critical", "very_high", {
+          externalReach: true,
+          secretExposure: true,
+          dataClasses: ["credential"],
+          actions: ["send"],
+          riskScore: 95
+        }),
         finding("high_medium", "high", "medium"),
         finding("medium_high", "medium", "high"),
         {
-          ...finding("expired_high", "high", "high"),
+          ...finding("expired_high", "high", "high", {
+            externalReach: true,
+            untrustedToPrivileged: true,
+            actions: ["execute"],
+            riskScore: 90
+          }),
           suppression: { status: "expired" }
         } as Finding,
         {
@@ -141,20 +161,152 @@ describe("CI gate summary", () => {
       severity_gate_findings: 3,
       severity_gate_by_severity: { critical: 2, high: 1, medium: 0, low: 0, info: 0 },
       severity_gate_by_confidence: { very_high: 1, high: 2, medium: 0, low: 0 },
+      severity_gate_by_risk_driver: [
+        {
+          driver: "side_effect",
+          count: 3,
+          max_risk_score: 95,
+          by_severity: { critical: 2, high: 1, medium: 0, low: 0, info: 0 }
+        },
+        {
+          driver: "external_reach",
+          count: 2,
+          max_risk_score: 95,
+          by_severity: { critical: 1, high: 1, medium: 0, low: 0, info: 0 }
+        },
+        {
+          driver: "secret_exposure",
+          count: 1,
+          max_risk_score: 95,
+          by_severity: { critical: 1, high: 0, medium: 0, low: 0, info: 0 }
+        },
+        {
+          driver: "sensitive_data",
+          count: 1,
+          max_risk_score: 95,
+          by_severity: { critical: 1, high: 0, medium: 0, low: 0, info: 0 }
+        },
+        {
+          driver: "credential_data",
+          count: 1,
+          max_risk_score: 95,
+          by_severity: { critical: 1, high: 0, medium: 0, low: 0, info: 0 }
+        },
+        {
+          driver: "write_action",
+          count: 1,
+          max_risk_score: 95,
+          by_severity: { critical: 1, high: 0, medium: 0, low: 0, info: 0 }
+        },
+        {
+          driver: "untrusted_to_privileged",
+          count: 1,
+          max_risk_score: 90,
+          by_severity: { critical: 0, high: 1, medium: 0, low: 0, info: 0 }
+        },
+        {
+          driver: "execute_action",
+          count: 1,
+          max_risk_score: 90,
+          by_severity: { critical: 0, high: 1, medium: 0, low: 0, info: 0 }
+        }
+      ],
       active_suppressions_excluded: 1,
       active_suppressions_by_severity: { critical: 1, high: 0, medium: 0, low: 0, info: 0 },
       expired_suppression_findings: 1,
       expired_suppression_by_severity: { critical: 0, high: 1, medium: 0, low: 0, info: 0 },
+      expired_suppression_by_risk_driver: [
+        {
+          driver: "untrusted_to_privileged",
+          count: 1,
+          max_risk_score: 90,
+          by_severity: { critical: 0, high: 1, medium: 0, low: 0, info: 0 }
+        },
+        {
+          driver: "external_reach",
+          count: 1,
+          max_risk_score: 90,
+          by_severity: { critical: 0, high: 1, medium: 0, low: 0, info: 0 }
+        },
+        {
+          driver: "side_effect",
+          count: 1,
+          max_risk_score: 90,
+          by_severity: { critical: 0, high: 1, medium: 0, low: 0, info: 0 }
+        },
+        {
+          driver: "execute_action",
+          count: 1,
+          max_risk_score: 90,
+          by_severity: { critical: 0, high: 1, medium: 0, low: 0, info: 0 }
+        }
+      ],
       failed_gates: ["severity", "expired_suppressions"]
     });
   });
 });
 
-function finding(id: string, severity: Finding["severity"] = "high", confidence: Finding["confidence"] = "high"): Finding {
+function finding(
+  id: string,
+  severity: Finding["severity"] = "high",
+  confidence: Finding["confidence"] = "high",
+  options: {
+    dataClasses?: Finding["data_classes"];
+    actions?: Finding["risk"]["actions"];
+    externalReach?: boolean;
+    secretExposure?: boolean;
+    untrustedToPrivileged?: boolean;
+    riskScore?: number;
+  } = {}
+): Finding {
+  const dataClasses = options.dataClasses ?? [];
+  const actions = options.actions ?? ["call"];
+  const externalReach = options.externalReach ?? false;
+  const secretExposure = options.secretExposure ?? false;
+  const untrustedToPrivileged = options.untrustedToPrivileged ?? false;
   return {
     id,
+    rule_id: `RULE-${id}`,
+    name: id,
+    category: "gate_test",
     severity,
     confidence,
+    confidence_rationale: [],
+    matched_object: {
+      id: `object_${id}`,
+      type: "tool",
+      name: id,
+      path: `${id}.yaml`,
+      trust_level: "project",
+      data_classes: dataClasses,
+      actions,
+      side_effect: true,
+      reversible: true,
+      external_reach: externalReach,
+      secret_exposure: secretExposure,
+      untrusted_to_privileged: untrustedToPrivileged,
+      evidence: [],
+      metadata: {}
+    },
+    file_path: `${id}.yaml`,
+    reason: id,
+    trust_boundary_crossed: untrustedToPrivileged,
+    data_classes: dataClasses,
+    recommended_control: "require_approval",
+    risk: {
+      trust_level: "project",
+      data_classes: dataClasses,
+      actions,
+      side_effect: true,
+      reversible: true,
+      external_reach: externalReach,
+      secret_exposure: secretExposure,
+      untrusted_to_privileged: untrustedToPrivileged,
+      score: options.riskScore ?? 80,
+      rationale: []
+    },
+    maps_to: { owasp: [], mitre_atlas: [], nist_ai_rmf: [] },
+    evidence: [],
     suppression: undefined
   } as Finding;
 }

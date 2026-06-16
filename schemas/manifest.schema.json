@@ -1792,6 +1792,13 @@
                 "low": 0
               }
             },
+            "severity_gate_by_risk_driver": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/AgentCSP Agent Manifest/properties/triage_summary/properties/active_by_risk_driver/items"
+              },
+              "default": []
+            },
             "active_suppressions_excluded": {
               "type": "integer",
               "minimum": 0,
@@ -1821,6 +1828,13 @@
                 "low": 0,
                 "info": 0
               }
+            },
+            "expired_suppression_by_risk_driver": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/AgentCSP Agent Manifest/properties/triage_summary/properties/active_by_risk_driver/items"
+              },
+              "default": []
             },
             "diagnostic_count": {
               "type": "integer",

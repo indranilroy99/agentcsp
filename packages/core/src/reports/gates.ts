@@ -12,6 +12,7 @@ import type {
   Severity,
   SeverityCounts
 } from "../schemas/index.js";
+import { riskDriverOrder, riskDriversForFinding } from "./risk-drivers.js";
 
 const severityRank: Record<Severity, number> = {
   info: 0,
@@ -92,10 +93,12 @@ export function buildCiGateSummary(input: {
     severity_gate_findings: severityGateFindings.length,
     severity_gate_by_severity: countBySeverity(severityGateFindings),
     severity_gate_by_confidence: countByConfidence(severityGateFindings),
+    severity_gate_by_risk_driver: countByRiskDriver(severityGateFindings),
     active_suppressions_excluded: activeSuppressionsExcluded,
     active_suppressions_by_severity: countBySeverity(activeSuppressionFindings),
     expired_suppression_findings: expiredSuppressionFindings.length,
     expired_suppression_by_severity: countBySeverity(expiredSuppressionFindings),
+    expired_suppression_by_risk_driver: countByRiskDriver(expiredSuppressionFindings),
     diagnostic_count: input.diagnostics.length,
     failed_gates: failedGates,
     blocker_id_limit: ciGateBlockerIdLimit,
@@ -142,4 +145,34 @@ function countByConfidence(findings: Finding[]): ConfidenceCounts {
   const counts: ConfidenceCounts = { very_high: 0, high: 0, medium: 0, low: 0 };
   for (const finding of findings) counts[finding.confidence] += 1;
   return counts;
+}
+
+function countByRiskDriver(findings: Finding[]): CiGateSummary["severity_gate_by_risk_driver"] {
+  const counts = new Map<
+    CiGateSummary["severity_gate_by_risk_driver"][number]["driver"],
+    { count: number; max_risk_score: number; by_severity: SeverityCounts }
+  >();
+
+  for (const finding of findings) {
+    for (const driver of riskDriversForFinding(finding)) {
+      const current = counts.get(driver) ?? {
+        count: 0,
+        max_risk_score: 0,
+        by_severity: { critical: 0, high: 0, medium: 0, low: 0, info: 0 }
+      };
+      current.count += 1;
+      current.max_risk_score = Math.max(current.max_risk_score, finding.risk.score);
+      current.by_severity[finding.severity] += 1;
+      counts.set(driver, current);
+    }
+  }
+
+  return [...counts.entries()]
+    .map(([driver, summary]) => ({ driver, ...summary }))
+    .sort(
+      (a, b) =>
+        b.count - a.count ||
+        b.max_risk_score - a.max_risk_score ||
+        riskDriverOrder.indexOf(a.driver) - riskDriverOrder.indexOf(b.driver)
+    );
 }

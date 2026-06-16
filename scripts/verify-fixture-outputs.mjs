@@ -1979,12 +1979,20 @@ if (vulnerable.sarif) {
   assert(run.properties.agentcsp_ci_gate_summary.severity_gate_by_severity, "SARIF CI severity gate mix missing");
   assert(run.properties.agentcsp_ci_gate_summary.severity_gate_by_confidence, "SARIF CI confidence gate mix missing");
   assert(
+    Array.isArray(run.properties.agentcsp_ci_gate_summary.severity_gate_by_risk_driver),
+    "SARIF CI risk driver mix missing"
+  );
+  assert(
     run.properties.agentcsp_ci_gate_summary.active_suppressions_by_severity,
     "SARIF CI active suppression severity mix missing"
   );
   assert(
     run.properties.agentcsp_ci_gate_summary.expired_suppression_by_severity,
     "SARIF CI expired suppression severity mix missing"
+  );
+  assert(
+    Array.isArray(run.properties.agentcsp_ci_gate_summary.expired_suppression_by_risk_driver),
+    "SARIF CI expired suppression risk driver mix missing"
   );
   assert(run.properties?.agentcsp_scan_coverage, "SARIF scan coverage missing");
   assertEqual(run.properties.agentcsp_scan_coverage.scan_health, "complete", "SARIF scan health");
@@ -2073,8 +2081,13 @@ function assertVulnerableOperatorMetadata(output) {
   assertEqual(manifest.ci_gate_summary?.blocker_ids_truncated, false, "vulnerable CI blocker truncation");
   assert(manifest.ci_gate_summary?.severity_gate_by_severity, "vulnerable CI severity gate mix missing");
   assert(manifest.ci_gate_summary?.severity_gate_by_confidence, "vulnerable CI confidence gate mix missing");
+  assert(Array.isArray(manifest.ci_gate_summary?.severity_gate_by_risk_driver), "vulnerable CI risk driver mix missing");
   assert(manifest.ci_gate_summary?.active_suppressions_by_severity, "vulnerable CI active suppression mix missing");
   assert(manifest.ci_gate_summary?.expired_suppression_by_severity, "vulnerable CI expired suppression mix missing");
+  assert(
+    Array.isArray(manifest.ci_gate_summary?.expired_suppression_by_risk_driver),
+    "vulnerable CI expired suppression risk driver mix missing"
+  );
   assertEqual(manifest.ci_gate_summary?.fail_on_scan_health, undefined, "vulnerable CI scan health gate");
   assertEqual(manifest.ci_gate_summary?.scan_health, "complete", "vulnerable CI scan health");
   assertArrayEqual(manifest.ci_gate_summary?.scan_health_reasons ?? [], [], "vulnerable CI scan health reasons");
@@ -2104,6 +2117,7 @@ function assertVulnerableOperatorMetadata(output) {
   assert(report.includes("- Top active risks truncated: `true`"), "vulnerable report missing triage truncation");
   assert(report.includes("### Active Risk Drivers"), "vulnerable report missing risk driver section");
   assert(report.includes("untrusted to privileged"), "vulnerable report missing untrusted risk driver");
+  assert(report.includes("### CI Gate Risk Drivers"), "vulnerable report missing CI gate risk driver section");
   assert(report.includes("Risk drivers | Top action IDs"), "vulnerable report missing owner risk driver column");
   assert(report.includes("Drivers | Rationale"), "vulnerable report missing action risk driver column");
   assert(report.includes("- Attack path limit: 15"), "vulnerable report missing attack path limit");
@@ -2132,8 +2146,14 @@ function assertSafeOperatorMetadata(output) {
   assertEqual(manifest.ci_gate_summary?.blocker_ids_truncated, false, "safe CI blocker truncation");
   assertEqual(manifest.ci_gate_summary?.severity_gate_by_severity?.critical, 0, "safe CI critical blocker count");
   assertEqual(manifest.ci_gate_summary?.severity_gate_by_confidence?.very_high, 0, "safe CI very-high confidence blocker count");
+  assertArrayEqual(manifest.ci_gate_summary?.severity_gate_by_risk_driver ?? [], [], "safe CI risk drivers");
   assertEqual(manifest.ci_gate_summary?.active_suppressions_by_severity?.critical, 0, "safe CI active suppressed critical count");
   assertEqual(manifest.ci_gate_summary?.expired_suppression_by_severity?.critical, 0, "safe CI expired critical count");
+  assertArrayEqual(
+    manifest.ci_gate_summary?.expired_suppression_by_risk_driver ?? [],
+    [],
+    "safe CI expired suppression risk drivers"
+  );
   assertEqual(manifest.ci_gate_summary?.fail_on_scan_health, undefined, "safe CI scan health gate");
   assertEqual(manifest.ci_gate_summary?.scan_health, "complete", "safe CI scan health");
   assertArrayEqual(manifest.ci_gate_summary?.scan_health_reasons ?? [], [], "safe CI scan health reasons");
