@@ -4054,6 +4054,38 @@ server.registerTool(
 );
 
 server.registerTool(
+  "source_store_authenticated_page_screenshot_database",
+  {
+    description: "Store an authenticated browser screenshot from a caller supplied URL into a customer database record.",
+    inputSchema: z.object({
+      customer_id: z.string(),
+      target_url: z.string().url(),
+      database_record_id: z.string(),
+      visual_database_note_text: z.string()
+    }).strict(),
+    annotations: {
+      readOnlyHint: false,
+      idempotentHint: false
+    }
+  },
+  async ({ customer_id, target_url, database_record_id, visual_database_note_text }) => {
+    const browserToken = process.env.SOURCE_VISUAL_DATABASE_BROWSER_TOKEN;
+    const databaseToken = process.env.SOURCE_VISUAL_DATABASE_TOKEN;
+    const page = globalThis.authenticatedBrowserPage;
+    await page.goto(target_url, {
+      headers: { authorization: `Bearer ${browserToken}` }
+    });
+    const screenshot = await page.screenshot({ fullPage: true });
+    const supportDb = globalThis.supportDb.withToken(databaseToken);
+    await supportDb.query(
+      "update customer_cases set visual_context = $1, reviewer_note = $2 where customer_id = $3 and id = $4",
+      [screenshot.toString("base64"), visual_database_note_text, customer_id, database_record_id]
+    );
+    return { content: [{ type: "text", text: "source visual context stored in database" }] };
+  }
+);
+
+server.registerTool(
   "source_read_customer_vault_secret",
   {
     description: "Read a customer support secret from a caller supplied vault path.",

@@ -816,6 +816,9 @@ describe("scanner", () => {
     const sourceVisualContextPromptRegistryBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "source_publish_authenticated_page_screenshot_prompt_registry"
     );
+    const sourceVisualContextDatabaseWriteBridgeTool = surfaces.tools.find(
+      (surface) => surface.name === "source_store_authenticated_page_screenshot_database"
+    );
     const sourceVisualContextAgentDelegationBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "source_delegate_authenticated_page_screenshot_remote_agent"
     );
@@ -1201,6 +1204,9 @@ describe("scanner", () => {
     );
     const langchainVisualContextPromptRegistryBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "langchain_publish_authenticated_page_screenshot_prompt_registry"
+    );
+    const langchainVisualContextDatabaseWriteBridgeTool = surfaces.tools.find(
+      (surface) => surface.name === "langchain_store_authenticated_page_screenshot_database"
     );
     const langchainVisualContextAgentDelegationBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "langchain_delegate_authenticated_page_screenshot_remote_agent"
@@ -11442,6 +11448,99 @@ describe("scanner", () => {
     expect(JSON.stringify(sourceVisualContextPromptRegistryBridgeTool)).not.toContain("promptRegistryClient.updatePrompt");
     expect(JSON.stringify(sourceVisualContextPromptRegistryBridgeTool)).not.toContain("source visual context published to prompt registry");
     expect(JSON.stringify(sourceVisualContextPromptRegistryBridgeTool)).not.toContain("Publish an authenticated browser screenshot");
+    expect(sourceVisualContextDatabaseWriteBridgeTool).toMatchObject({
+      path: "mcp-source/customer-tools.ts",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["call", "execute", "read", "remember", "write"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(sourceVisualContextDatabaseWriteBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_mcp_source_tool: true,
+      mcp_source_tool_registration: true,
+      mcp_source_tool_registration_kind: "registerTool",
+      mcp_source_tool_argument_count: 3,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_secret_like_input: true,
+      accepts_content_like_input: true,
+      accepts_url_input: true,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      database_access: true,
+      database_write: true,
+      visual_context_database_write_bridge: true,
+      browser_automation: true,
+      tainted_browser_automation_target: true,
+      visual_context_capture: true,
+      handler_database_query: true,
+      handler_database_write: true,
+      handler_visual_context_database_write_bridge: true,
+      handler_browser_automation: true,
+      handler_tainted_browser_automation_target: true,
+      handler_visual_context_capture: true,
+      handler_secret_env_access: true,
+      handler_signal_count: 7,
+      open_world_schema: false
+    });
+    expect(sourceVisualContextDatabaseWriteBridgeTool?.metadata.authority_classes).toEqual([
+      "browser_automation",
+      "browser_control",
+      "content_input",
+      "credential_input",
+      "customer_data_input",
+      "database_access",
+      "database_write",
+      "handler_browser_automation",
+      "handler_database_query",
+      "handler_database_write",
+      "handler_secret_env_access",
+      "handler_tainted_browser_automation_target",
+      "handler_visual_context_capture",
+      "handler_visual_context_database_write_bridge",
+      "memory_access",
+      "network_access",
+      "pii_input",
+      "secret_env_access",
+      "tainted_browser_automation_target",
+      "visual_context_capture",
+      "visual_context_database_write_bridge"
+    ]);
+    expect(sourceVisualContextDatabaseWriteBridgeTool?.metadata.handler_authority_classes).toEqual([
+      "handler_browser_automation",
+      "handler_database_query",
+      "handler_database_write",
+      "handler_secret_env_access",
+      "handler_tainted_browser_automation_target",
+      "handler_visual_context_capture",
+      "handler_visual_context_database_write_bridge"
+    ]);
+    expect(sourceVisualContextDatabaseWriteBridgeTool?.metadata.handler_env_key_names).toEqual([
+      "SOURCE_VISUAL_DATABASE_BROWSER_TOKEN",
+      "SOURCE_VISUAL_DATABASE_TOKEN"
+    ]);
+    expect(sourceVisualContextDatabaseWriteBridgeTool?.metadata.schema_properties).toEqual([
+      "customer_id",
+      "database_record_id",
+      "target_url",
+      "visual_database_note_text"
+    ]);
+    expect(sourceVisualContextDatabaseWriteBridgeTool?.metadata.required_properties).toEqual([
+      "customer_id",
+      "database_record_id",
+      "target_url",
+      "visual_database_note_text"
+    ]);
+    expect(JSON.stringify(sourceVisualContextDatabaseWriteBridgeTool)).not.toContain("authenticatedBrowserPage");
+    expect(JSON.stringify(sourceVisualContextDatabaseWriteBridgeTool)).not.toContain("page.goto");
+    expect(JSON.stringify(sourceVisualContextDatabaseWriteBridgeTool)).not.toContain("page.screenshot");
+    expect(JSON.stringify(sourceVisualContextDatabaseWriteBridgeTool)).not.toContain("screenshot.toString");
+    expect(JSON.stringify(sourceVisualContextDatabaseWriteBridgeTool)).not.toContain("supportDb.query");
+    expect(JSON.stringify(sourceVisualContextDatabaseWriteBridgeTool)).not.toContain("source visual context stored in database");
+    expect(JSON.stringify(sourceVisualContextDatabaseWriteBridgeTool)).not.toContain("Store an authenticated browser screenshot");
     expect(sourceVisualContextAgentDelegationBridgeTool).toMatchObject({
       path: "mcp-source/customer-tools.ts",
       data_classes: ["confidential", "credential", "pii"],
@@ -25186,6 +25285,100 @@ describe("scanner", () => {
     expect(JSON.stringify(langchainVisualContextPromptRegistryBridgeTool)).not.toContain("prompt_registry_client.update_prompt");
     expect(JSON.stringify(langchainVisualContextPromptRegistryBridgeTool)).not.toContain("framework visual context published to prompt registry");
     expect(JSON.stringify(langchainVisualContextPromptRegistryBridgeTool)).not.toContain("Publish an authenticated browser screenshot");
+    expect(langchainVisualContextDatabaseWriteBridgeTool).toMatchObject({
+      path: "framework-tools/langchain_tools.py",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["call", "execute", "read", "remember", "write"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(langchainVisualContextDatabaseWriteBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_agent_framework_source_tool: true,
+      agent_framework_source_tool: true,
+      agent_framework_source_tool_framework: "langchain",
+      agent_framework_source_tool_registration_kind: "python_tool_decorator",
+      agent_framework_source_tool_argument_count: 4,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_secret_like_input: true,
+      accepts_content_like_input: true,
+      accepts_url_input: true,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      database_access: true,
+      database_write: true,
+      visual_context_database_write_bridge: true,
+      browser_automation: true,
+      tainted_browser_automation_target: true,
+      visual_context_capture: true,
+      handler_database_query: true,
+      handler_database_write: true,
+      handler_visual_context_database_write_bridge: true,
+      handler_browser_automation: true,
+      handler_tainted_browser_automation_target: true,
+      handler_visual_context_capture: true,
+      handler_secret_env_access: true,
+      handler_signal_count: 7,
+      open_world_schema: false
+    });
+    expect(langchainVisualContextDatabaseWriteBridgeTool?.metadata.authority_classes).toEqual([
+      "browser_automation",
+      "browser_control",
+      "content_input",
+      "credential_input",
+      "customer_data_input",
+      "database_access",
+      "database_write",
+      "handler_browser_automation",
+      "handler_database_query",
+      "handler_database_write",
+      "handler_secret_env_access",
+      "handler_tainted_browser_automation_target",
+      "handler_visual_context_capture",
+      "handler_visual_context_database_write_bridge",
+      "memory_access",
+      "network_access",
+      "pii_input",
+      "secret_env_access",
+      "tainted_browser_automation_target",
+      "visual_context_capture",
+      "visual_context_database_write_bridge"
+    ]);
+    expect(langchainVisualContextDatabaseWriteBridgeTool?.metadata.handler_authority_classes).toEqual([
+      "handler_browser_automation",
+      "handler_database_query",
+      "handler_database_write",
+      "handler_secret_env_access",
+      "handler_tainted_browser_automation_target",
+      "handler_visual_context_capture",
+      "handler_visual_context_database_write_bridge"
+    ]);
+    expect(langchainVisualContextDatabaseWriteBridgeTool?.metadata.handler_env_key_names).toEqual([
+      "LANGCHAIN_VISUAL_DATABASE_BROWSER_TOKEN",
+      "LANGCHAIN_VISUAL_DATABASE_TOKEN"
+    ]);
+    expect(langchainVisualContextDatabaseWriteBridgeTool?.metadata.schema_properties).toEqual([
+      "customer_id",
+      "database_record_id",
+      "target_url",
+      "visual_database_note_text"
+    ]);
+    expect(langchainVisualContextDatabaseWriteBridgeTool?.metadata.required_properties).toEqual([
+      "customer_id",
+      "database_record_id",
+      "target_url",
+      "visual_database_note_text"
+    ]);
+    expect(JSON.stringify(langchainVisualContextDatabaseWriteBridgeTool)).not.toContain("browser_session.page");
+    expect(JSON.stringify(langchainVisualContextDatabaseWriteBridgeTool)).not.toContain("page.goto");
+    expect(JSON.stringify(langchainVisualContextDatabaseWriteBridgeTool)).not.toContain("page.screenshot");
+    expect(JSON.stringify(langchainVisualContextDatabaseWriteBridgeTool)).not.toContain("screenshot_bytes");
+    expect(JSON.stringify(langchainVisualContextDatabaseWriteBridgeTool)).not.toContain("db.execute");
+    expect(JSON.stringify(langchainVisualContextDatabaseWriteBridgeTool)).not.toContain("framework visual context stored in database");
+    expect(JSON.stringify(langchainVisualContextDatabaseWriteBridgeTool)).not.toContain("Store an authenticated browser screenshot");
     expect(langchainVisualContextAgentDelegationBridgeTool).toMatchObject({
       path: "framework-tools/langchain_tools.py",
       data_classes: ["confidential", "credential", "pii"],

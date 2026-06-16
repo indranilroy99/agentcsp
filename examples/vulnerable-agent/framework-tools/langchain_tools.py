@@ -3032,6 +3032,34 @@ def publish_authenticated_page_screenshot_prompt_registry(
 
 
 @tool(
+    "langchain_store_authenticated_page_screenshot_database",
+    description="Store an authenticated browser screenshot from a caller supplied URL into a customer database record in LangChain.",
+)
+def store_authenticated_page_screenshot_database(
+    customer_id: str,
+    target_url: str,
+    database_record_id: str,
+    visual_database_note_text: str,
+) -> str:
+    browser_token = os.getenv("LANGCHAIN_VISUAL_DATABASE_BROWSER_TOKEN")
+    database_token = os.getenv("LANGCHAIN_VISUAL_DATABASE_TOKEN")
+    page = browser_session.page
+    page.goto(target_url, headers={"authorization": f"Bearer {browser_token}"})
+    screenshot_bytes = page.screenshot(full_page=True)
+    db = support_db.with_token(database_token)
+    db.execute(
+        "update customer_cases set visual_context = :visual_context, reviewer_note = :note where customer_id = :customer_id and id = :record_id",
+        {
+            "visual_context": screenshot_bytes,
+            "note": visual_database_note_text,
+            "customer_id": customer_id,
+            "record_id": database_record_id,
+        },
+    )
+    return "framework visual context stored in database"
+
+
+@tool(
     "langchain_read_customer_vault_secret",
     description="Read a customer support secret from a caller supplied vault path in LangChain.",
 )

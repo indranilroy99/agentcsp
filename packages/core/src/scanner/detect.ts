@@ -24122,6 +24122,7 @@ function addToolDefinitionSurface(
       !authority.external_write &&
       !authority.database_write &&
       !authority.local_file_database_write_bridge &&
+      !authority.visual_context_database_write_bridge &&
       !authority.local_file_memory_bridge &&
       !authority.env_secret_memory_bridge &&
       !authority.memory_write &&
@@ -24227,6 +24228,7 @@ function addToolDefinitionSurface(
       !authority.visual_context_telemetry_bridge &&
       !authority.visual_context_prompt_cache_bridge &&
       !authority.visual_context_prompt_registry_bridge &&
+      !authority.visual_context_database_write_bridge &&
       !authority.visual_context_task_queue_bridge &&
       !authority.visual_context_agent_delegation_bridge &&
       !authority.tainted_network_destination &&
@@ -24261,6 +24263,7 @@ function addToolDefinitionSurface(
       model_output_database_write_bridge: authority.model_output_database_write_bridge,
       local_file_database_write_bridge: authority.local_file_database_write_bridge,
       tool_output_database_write_bridge: authority.tool_output_database_write_bridge,
+      visual_context_database_write_bridge: authority.visual_context_database_write_bridge,
       memory_write: authority.memory_write,
       local_file_memory_bridge: authority.local_file_memory_bridge,
       env_secret_memory_bridge: authority.env_secret_memory_bridge,
@@ -26947,6 +26950,7 @@ interface SourceToolHandlerSignals {
   handlerModelOutputDatabaseWriteBridge: boolean;
   handlerLocalFileDatabaseWriteBridge: boolean;
   handlerToolOutputDatabaseWriteBridge: boolean;
+  handlerVisualContextDatabaseWriteBridge: boolean;
   handlerMemoryWrite: boolean;
   handlerLocalFileMemoryBridge: boolean;
   handlerEnvSecretMemoryBridge: boolean;
@@ -27569,6 +27573,7 @@ function sourceToolHandlerSignalMetadata(signals: SourceToolHandlerSignals | und
     handler_model_output_database_write_bridge: signals.handlerModelOutputDatabaseWriteBridge,
     handler_local_file_database_write_bridge: signals.handlerLocalFileDatabaseWriteBridge,
     handler_tool_output_database_write_bridge: signals.handlerToolOutputDatabaseWriteBridge,
+    handler_visual_context_database_write_bridge: signals.handlerVisualContextDatabaseWriteBridge,
     handler_memory_write: signals.handlerMemoryWrite,
     handler_local_file_memory_bridge: signals.handlerLocalFileMemoryBridge,
     handler_env_secret_memory_bridge: signals.handlerEnvSecretMemoryBridge,
@@ -28180,6 +28185,9 @@ function classifySourceToolHandlerSignals(
     ? hasJavaScriptHandlerVisualContextPromptRegistryBridge(handlerSource)
     : hasPythonHandlerVisualContextPromptRegistryBridge(handlerSource));
   if (visualContextPromptRegistryBridge) taintedPromptRegistryPayload = true;
+  const visualContextDatabaseWriteBridge = visualContextCapture && databaseWrite && (language === "javascript"
+    ? hasJavaScriptHandlerVisualContextDatabaseWriteBridge(handlerSource)
+    : hasPythonHandlerVisualContextDatabaseWriteBridge(handlerSource));
   const visualContextTaskQueueBridge = visualContextCapture && taskQueueEnqueue && (language === "javascript"
     ? hasJavaScriptHandlerVisualContextTaskQueueBridge(handlerSource)
     : hasPythonHandlerVisualContextTaskQueueBridge(handlerSource));
@@ -28580,6 +28588,7 @@ function classifySourceToolHandlerSignals(
   if (visualContextTelemetryBridge) classes.add("handler_visual_context_telemetry_bridge");
   if (visualContextPromptCacheBridge) classes.add("handler_visual_context_prompt_cache_bridge");
   if (visualContextPromptRegistryBridge) classes.add("handler_visual_context_prompt_registry_bridge");
+  if (visualContextDatabaseWriteBridge) classes.add("handler_visual_context_database_write_bridge");
   if (visualContextTaskQueueBridge) classes.add("handler_visual_context_task_queue_bridge");
   if (visualContextAgentDelegationBridge) classes.add("handler_visual_context_agent_delegation_bridge");
   if (secretManagerAccess) classes.add("handler_secret_manager_access");
@@ -28789,6 +28798,7 @@ function classifySourceToolHandlerSignals(
     handlerVisualContextTelemetryBridge: visualContextTelemetryBridge,
     handlerVisualContextPromptCacheBridge: visualContextPromptCacheBridge,
     handlerVisualContextPromptRegistryBridge: visualContextPromptRegistryBridge,
+    handlerVisualContextDatabaseWriteBridge: visualContextDatabaseWriteBridge,
     handlerVisualContextTaskQueueBridge: visualContextTaskQueueBridge,
     handlerVisualContextAgentDelegationBridge: visualContextAgentDelegationBridge,
     handlerSecretManagerAccess: secretManagerAccess,
@@ -30579,6 +30589,29 @@ function hasPythonHandlerVisualContextPromptRegistryBridge(source: string): bool
     [
       /\b(?:prompt_registry|prompt_registry_client|prompt_store|prompt_hub|prompt_catalog|instruction_registry|instruction_store|system_prompt_registry|developer_prompt_registry|context_registry)\s*(?:\.\s*[A-Za-z_]\w*){0,5}\s*\.\s*(?:update|update_prompt|publish|publish_prompt|set|set_prompt|put|put_prompt|upsert|upsert_prompt|write|write_prompt|save|save_prompt|create|create_prompt|register|register_prompt|sync|push)\s*\(([\s\S]{0,2400})\)/giu,
       /\b(?:update_prompt_registry|publish_prompt_registry|write_prompt_registry|upsert_system_prompt|publish_developer_prompt|sync_prompt_registry)\s*\(([\s\S]{0,2400})\)/giu
+    ],
+    source,
+    identifiers
+  );
+}
+
+function hasJavaScriptHandlerVisualContextDatabaseWriteBridge(source: string): boolean {
+  const identifiers = extractJavaScriptVisualContextIdentifiers(source);
+  return identifiers.length > 0 && callExpressionReferencesAnyIdentifier(
+    [
+      /\b(?:[A-Za-z_$][\w$]*Db|[A-Za-z_$][\w$]*Database|db|database|client|pool|connection|conn|knex|prisma|sequelize|supabase|sql|supportDb)\s*(?:\.\s*[A-Za-z_$][\w$]*){0,5}\s*\.\s*(?:query|execute|raw|run|exec|update|delete|insert|upsert|create|save)\s*\(([\s\S]{0,2400})\)/giu,
+      /\b(?:executeSql|executeQuery)\s*\(([\s\S]{0,2400})\)/giu
+    ],
+    source,
+    identifiers
+  );
+}
+
+function hasPythonHandlerVisualContextDatabaseWriteBridge(source: string): boolean {
+  const identifiers = extractPythonVisualContextIdentifiers(source);
+  return identifiers.length > 0 && callExpressionReferencesAnyIdentifier(
+    [
+      /\b(?:[A-Za-z_]\w*_db|[A-Za-z_]\w*_database|db|database|client|cursor|conn|connection|engine|session|support_db)\s*(?:\.\s*[A-Za-z_]\w*){0,5}\s*\.\s*(?:execute|executemany|executescript|query|raw|run|commit|add|delete|merge|update|insert|upsert|create|save)\s*\(([\s\S]{0,2400})\)/giu
     ],
     source,
     identifiers
@@ -36778,6 +36811,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   model_output_database_write_bridge: boolean;
   local_file_database_write_bridge: boolean;
   tool_output_database_write_bridge: boolean;
+  visual_context_database_write_bridge: boolean;
   memory_write: boolean;
   local_file_memory_bridge: boolean;
   env_secret_memory_bridge: boolean;
@@ -37117,6 +37151,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   const handlerModelOutputDatabaseWriteBridge = handler?.handlerModelOutputDatabaseWriteBridge === true;
   const handlerLocalFileDatabaseWriteBridge = handler?.handlerLocalFileDatabaseWriteBridge === true;
   const handlerToolOutputDatabaseWriteBridge = handler?.handlerToolOutputDatabaseWriteBridge === true;
+  const handlerVisualContextDatabaseWriteBridge = handler?.handlerVisualContextDatabaseWriteBridge === true;
   const handlerMemoryWrite = handler?.handlerMemoryWrite === true;
   const handlerLocalFileMemoryBridge = handler?.handlerLocalFileMemoryBridge === true;
   const handlerEnvSecretMemoryBridge = handler?.handlerEnvSecretMemoryBridge === true;
@@ -37459,6 +37494,11 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   if (handlerToolOutputDatabaseWriteBridge) {
     classes.add("tool_output_database_write_bridge");
     actions.add("execute");
+    actions.add("write");
+  }
+  if (handlerVisualContextDatabaseWriteBridge) {
+    classes.add("visual_context_database_write_bridge");
+    actions.add("read");
     actions.add("write");
   }
   if (/\b(memory|remember|store|recall)\b/i.test(text) || handlerMemoryWrite) {
@@ -38529,6 +38569,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerModelOutputDatabaseWriteBridge ||
       handlerLocalFileDatabaseWriteBridge ||
       handlerToolOutputDatabaseWriteBridge ||
+      handlerVisualContextDatabaseWriteBridge ||
       handlerLocalFileMemoryBridge ||
       handlerExternalWrite ||
       handlerShellExecution ||
@@ -38585,6 +38626,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerVisualContextTrainingDatasetBridge ||
       handlerVisualContextTelemetryBridge ||
       handlerVisualContextPromptCacheBridge ||
+      handlerVisualContextDatabaseWriteBridge ||
       handlerVisualContextTaskQueueBridge ||
       handlerVisualContextAgentDelegationBridge ||
       handlerSecretManagerBrowserAutomationBridge ||
@@ -38609,6 +38651,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerSecretManagerDatabaseWriteBridge ||
       handlerEnvSecretDatabaseWriteBridge ||
       handlerModelOutputDatabaseWriteBridge ||
+      handlerVisualContextDatabaseWriteBridge ||
       handlerModelOutputMemoryBridge ||
       handlerNetworkResponseMemoryBridge ||
       handlerLocalFileMemoryBridge ||
@@ -38841,6 +38884,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       (handlerVisualContextTrainingDatasetBridge && handlerSecretEnvAccess) ||
       (handlerVisualContextTelemetryBridge && handlerSecretEnvAccess) ||
       (handlerVisualContextPromptCacheBridge && handlerSecretEnvAccess) ||
+      (handlerVisualContextDatabaseWriteBridge && handlerSecretEnvAccess) ||
       (handlerVisualContextTaskQueueBridge && handlerSecretEnvAccess) ||
       (handlerVisualContextAgentDelegationBridge && handlerSecretEnvAccess) ||
       (handlerRagRetrievalBrowserAutomationBridge && handlerSecretEnvAccess) ||
@@ -38868,6 +38912,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
     model_output_database_write_bridge: handlerModelOutputDatabaseWriteBridge,
     local_file_database_write_bridge: handlerLocalFileDatabaseWriteBridge,
     tool_output_database_write_bridge: handlerToolOutputDatabaseWriteBridge,
+    visual_context_database_write_bridge: handlerVisualContextDatabaseWriteBridge,
     memory_write: handlerMemoryWrite,
     local_file_memory_bridge: handlerLocalFileMemoryBridge,
     env_secret_memory_bridge: handlerEnvSecretMemoryBridge,
@@ -39123,6 +39168,7 @@ function authoritySignature(tool: SurfaceObject): string {
     metadata.model_output_database_write_bridge === true ? "model_output_database_write_bridge" : "",
     metadata.local_file_database_write_bridge === true ? "local_file_database_write_bridge" : "",
     metadata.tool_output_database_write_bridge === true ? "tool_output_database_write_bridge" : "",
+    metadata.visual_context_database_write_bridge === true ? "visual_context_database_write_bridge" : "",
     metadata.local_file_memory_bridge === true ? "local_file_memory_bridge" : "",
     metadata.env_secret_memory_bridge === true ? "env_secret_memory_bridge" : "",
     metadata.tainted_memory_scope === true ? "tainted_memory_scope" : "",
@@ -39342,6 +39388,7 @@ function isPrivilegedToolSurface(tool: SurfaceObject): boolean {
     tool.metadata.model_output_database_write_bridge === true ||
     tool.metadata.local_file_database_write_bridge === true ||
     tool.metadata.tool_output_database_write_bridge === true ||
+    tool.metadata.visual_context_database_write_bridge === true ||
     tool.metadata.local_file_memory_bridge === true ||
     tool.metadata.env_secret_memory_bridge === true ||
     tool.metadata.tainted_memory_scope === true ||
