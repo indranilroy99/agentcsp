@@ -205,6 +205,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-201")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-202")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-203")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-204")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-001")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-002")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-003")).toBe(true);
@@ -7938,12 +7939,14 @@ describe("rule engine", () => {
     const sourceHandlerTaskQueueFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-053");
     expect(sourceHandlerTaskQueueFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_enqueue_authenticated_page_screenshot_job",
+      "langchain_enqueue_clipboard_background_agent_job",
       "langchain_enqueue_customer_vault_secret_job",
       "langchain_enqueue_model_selected_background_job",
       "langchain_enqueue_retrieved_context_agent_job",
       "langchain_enqueue_support_agent_job",
       "langchain_queue_local_file_background_task",
       "source_enqueue_authenticated_page_screenshot_job",
+      "source_enqueue_clipboard_background_agent_job",
       "source_enqueue_customer_vault_secret_job",
       "source_enqueue_model_selected_background_job",
       "source_enqueue_retrieved_context_agent_job",
@@ -10516,6 +10519,72 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerClipboardArtifactBridgeFindings)).not.toContain("source clipboard exported to public artifact");
     expect(JSON.stringify(sourceHandlerClipboardArtifactBridgeFindings)).not.toContain("framework clipboard exported to public artifact");
     expect(JSON.stringify(sourceHandlerClipboardArtifactBridgeFindings)).not.toContain("Read clipboard text");
+    const sourceHandlerClipboardTaskQueueBridgeFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-204");
+    expect(sourceHandlerClipboardTaskQueueBridgeFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
+      "langchain_enqueue_clipboard_background_agent_job",
+      "source_enqueue_clipboard_background_agent_job"
+    ]);
+    expect(sourceHandlerClipboardTaskQueueBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
+    expect(sourceHandlerClipboardTaskQueueBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerClipboardTaskQueueBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
+    expect(sourceHandlerClipboardTaskQueueBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
+    expect(sourceHandlerClipboardTaskQueueBridgeFindings.every((finding) => finding.matched_object.metadata.source_tool_handler_redacted === true)).toBe(true);
+    expect(sourceHandlerClipboardTaskQueueBridgeFindings.every((finding) => finding.matched_object.metadata.handler_clipboard_read === true)).toBe(true);
+    expect(sourceHandlerClipboardTaskQueueBridgeFindings.every((finding) => finding.matched_object.metadata.handler_task_queue_enqueue === true)).toBe(true);
+    expect(sourceHandlerClipboardTaskQueueBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.handler_clipboard_task_queue_bridge === true
+    )).toBe(true);
+    expect(sourceHandlerClipboardTaskQueueBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.handler_tainted_task_payload === true
+    )).toBe(true);
+    expect(sourceHandlerClipboardTaskQueueBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.handler_tainted_task_routing === true
+    )).toBe(true);
+    expect(sourceHandlerClipboardTaskQueueBridgeFindings.every((finding) => finding.matched_object.metadata.handler_secret_env_access === true)).toBe(true);
+    expect(sourceHandlerClipboardTaskQueueBridgeFindings.every((finding) => finding.matched_object.metadata.clipboard_read === true)).toBe(true);
+    expect(sourceHandlerClipboardTaskQueueBridgeFindings.every((finding) => finding.matched_object.metadata.task_queue_enqueue === true)).toBe(true);
+    expect(sourceHandlerClipboardTaskQueueBridgeFindings.every((finding) => finding.matched_object.metadata.clipboard_task_queue_bridge === true)).toBe(true);
+    expect(sourceHandlerClipboardTaskQueueBridgeFindings.every((finding) => finding.matched_object.metadata.tainted_task_payload === true)).toBe(true);
+    expect(sourceHandlerClipboardTaskQueueBridgeFindings.every((finding) => finding.matched_object.metadata.tainted_task_routing === true)).toBe(true);
+    for (const authorityClass of [
+      "clipboard_read",
+      "task_queue_enqueue",
+      "clipboard_task_queue_bridge",
+      "tainted_task_payload",
+      "tainted_task_routing"
+    ]) {
+      expect(sourceHandlerClipboardTaskQueueBridgeFindings.every((finding) =>
+        finding.matched_object.metadata.authority_classes.includes(authorityClass)
+      )).toBe(true);
+    }
+    for (const handlerAuthorityClass of [
+      "handler_clipboard_read",
+      "handler_task_queue_enqueue",
+      "handler_clipboard_task_queue_bridge",
+      "handler_tainted_task_payload",
+      "handler_tainted_task_routing"
+    ]) {
+      expect(sourceHandlerClipboardTaskQueueBridgeFindings.every((finding) =>
+        finding.matched_object.metadata.handler_authority_classes.includes(handlerAuthorityClass)
+      )).toBe(true);
+    }
+    expect(sourceHandlerClipboardTaskQueueBridgeFindings.every((finding) => finding.matched_object.actions.includes("read"))).toBe(true);
+    expect(sourceHandlerClipboardTaskQueueBridgeFindings.every((finding) => finding.matched_object.actions.includes("send"))).toBe(true);
+    expect(sourceHandlerClipboardTaskQueueBridgeFindings.every((finding) => finding.matched_object.actions.includes("write"))).toBe(true);
+    expect(sourceHandlerClipboardTaskQueueBridgeFindings.every((finding) => finding.matched_object.actions.includes("remember"))).toBe(true);
+    expect(sourceHandlerClipboardTaskQueueBridgeFindings.every((finding) => finding.matched_object.external_reach === true)).toBe(true);
+    expect(sourceHandlerClipboardTaskQueueBridgeFindings.every((finding) => finding.matched_object.secret_exposure === true)).toBe(true);
+    expect(sourceHandlerClipboardTaskQueueBridgeFindings.every((finding) => finding.matched_object.side_effect === true)).toBe(true);
+    expect(sourceHandlerClipboardTaskQueueBridgeFindings.every((finding) => finding.matched_object.reversible === false)).toBe(true);
+    expect(JSON.stringify(sourceHandlerClipboardTaskQueueBridgeFindings)).not.toContain("desktopClipboard.readText");
+    expect(JSON.stringify(sourceHandlerClipboardTaskQueueBridgeFindings)).not.toContain("desktop_clipboard.read_text");
+    expect(JSON.stringify(sourceHandlerClipboardTaskQueueBridgeFindings)).not.toContain("taskQueueClient.enqueue");
+    expect(JSON.stringify(sourceHandlerClipboardTaskQueueBridgeFindings)).not.toContain("task_queue_client.enqueue");
+    expect(JSON.stringify(sourceHandlerClipboardTaskQueueBridgeFindings)).not.toContain("clipboardText");
+    expect(JSON.stringify(sourceHandlerClipboardTaskQueueBridgeFindings)).not.toContain("clipboard_text");
+    expect(JSON.stringify(sourceHandlerClipboardTaskQueueBridgeFindings)).not.toContain("source clipboard queued for background agent");
+    expect(JSON.stringify(sourceHandlerClipboardTaskQueueBridgeFindings)).not.toContain("framework clipboard queued for background agent");
+    expect(JSON.stringify(sourceHandlerClipboardTaskQueueBridgeFindings)).not.toContain("Read clipboard text");
     const sourceHandlerModelApprovalFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-051");
     expect(sourceHandlerModelApprovalFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_model_review_and_run_action",

@@ -2720,6 +2720,33 @@ def delegate_clipboard_remote_agent(
 
 
 @tool(
+    "langchain_enqueue_clipboard_background_agent_job",
+    description="Read clipboard text from a desktop session and enqueue it into a caller selected LangChain background-agent job.",
+)
+def enqueue_clipboard_background_agent_job(
+    customer_id: str,
+    queue_name: str,
+    worker_route: str,
+    job_goal_text: str,
+    clipboard_queue_note_text: str,
+) -> str:
+    queue_token = os.getenv("LANGCHAIN_CLIPBOARD_TASK_QUEUE_TOKEN")
+    clipboard_text = desktop_clipboard.read_text()
+    task_queue_client.enqueue(
+        token=queue_token,
+        queue=queue_name,
+        route=worker_route,
+        payload={
+            "customer_id": customer_id,
+            "goal": job_goal_text,
+            "copied_context": clipboard_text,
+            "note": clipboard_queue_note_text,
+        },
+    )
+    return "framework clipboard queued for background agent"
+
+
+@tool(
     "langchain_issue_clipboard_agent_credential",
     description="Read clipboard text from a desktop session and use it as grant material for issuing a LangChain agent credential.",
 )

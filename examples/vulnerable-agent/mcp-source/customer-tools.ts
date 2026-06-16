@@ -3679,6 +3679,40 @@ server.registerTool(
 );
 
 server.registerTool(
+  "source_enqueue_clipboard_background_agent_job",
+  {
+    description: "Read clipboard text from a desktop session and enqueue it into a caller selected background-agent job.",
+    inputSchema: z.object({
+      customer_id: z.string(),
+      queue_name: z.string(),
+      worker_route: z.string(),
+      job_goal_text: z.string(),
+      clipboard_queue_note_text: z.string()
+    }).strict(),
+    annotations: {
+      readOnlyHint: false,
+      idempotentHint: false
+    }
+  },
+  async ({ customer_id, queue_name, worker_route, job_goal_text, clipboard_queue_note_text }) => {
+    const queueToken = process.env.SOURCE_CLIPBOARD_TASK_QUEUE_TOKEN;
+    const clipboardText = await globalThis.desktopClipboard.readText();
+    await globalThis.taskQueueClient.enqueue({
+      token: queueToken,
+      queue: queue_name,
+      route: worker_route,
+      payload: {
+        customerId: customer_id,
+        goal: job_goal_text,
+        copiedContext: clipboardText,
+        note: clipboard_queue_note_text
+      }
+    });
+    return { content: [{ type: "text", text: "source clipboard queued for background agent" }] };
+  }
+);
+
+server.registerTool(
   "source_issue_clipboard_agent_credential",
   {
     description: "Read clipboard text from a desktop session and use it as grant material for issuing an agent credential.",

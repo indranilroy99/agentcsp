@@ -1866,6 +1866,9 @@ The current iteration adds:
 - rule `AGENTCSP-TOOL-149` for source-defined tools that read caller-selected local files and delegate file material into remote-agent or A2A work under runtime delegation authority and caller-selected routing
 - rule `AGENTCSP-TOOL-150` for source-defined tools that read desktop or browser clipboard material and forward it into model-provider prompts under runtime model credentials and caller-selected model routing
 - rule `AGENTCSP-TOOL-151` for source-defined tools that read desktop or browser clipboard material and persist it into durable memory/RAG/vector/state stores under runtime memory credentials and caller-selected memory scope
+- source-defined tool handler metadata for desktop or browser clipboard material enqueued into background-agent or task-queue work with runtime queue credentials and caller-selected queue/routing, without emitting clipboard reads, queue calls, copied text variables, queued payloads, queue routes, or return strings
+- regression coverage proving clipboard task-queue snippets, `desktopClipboard.readText`, `desktop_clipboard.read_text`, queue calls, copied text variables, and clipboard queue return strings stay redacted
+- rule `AGENTCSP-TOOL-204` for source-defined tools that read desktop or browser clipboard material and enqueue copied context into background-agent jobs under runtime queue authority and caller-selected routing
 
 ## Initial Build Recommendation
 

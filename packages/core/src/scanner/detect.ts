@@ -24216,6 +24216,7 @@ function addToolDefinitionSurface(
       !authority.env_secret_task_queue_bridge &&
       !authority.local_file_task_queue_bridge &&
       !authority.rag_retrieval_task_queue_bridge &&
+      !authority.clipboard_task_queue_bridge &&
       !authority.prompt_registry_write &&
       !authority.local_file_prompt_registry_bridge &&
       !authority.rag_retrieval_prompt_registry_bridge &&
@@ -24447,6 +24448,7 @@ function addToolDefinitionSurface(
       local_file_task_queue_bridge: authority.local_file_task_queue_bridge,
       tool_output_task_queue_bridge: authority.tool_output_task_queue_bridge,
       rag_retrieval_task_queue_bridge: authority.rag_retrieval_task_queue_bridge,
+      clipboard_task_queue_bridge: authority.clipboard_task_queue_bridge,
       prompt_registry_write: authority.prompt_registry_write,
       local_file_prompt_registry_bridge: authority.local_file_prompt_registry_bridge,
       env_secret_prompt_registry_bridge: authority.env_secret_prompt_registry_bridge,
@@ -26958,6 +26960,7 @@ interface SourceToolHandlerSignals {
   handlerLocalFileTaskQueueBridge: boolean;
   handlerToolOutputTaskQueueBridge: boolean;
   handlerRagRetrievalTaskQueueBridge: boolean;
+  handlerClipboardTaskQueueBridge: boolean;
   handlerPromptRegistryWrite: boolean;
   handlerModelOutputPromptRegistryBridge: boolean;
   handlerNetworkResponsePromptRegistryBridge: boolean;
@@ -27596,6 +27599,7 @@ function sourceToolHandlerSignalMetadata(signals: SourceToolHandlerSignals | und
     handler_local_file_task_queue_bridge: signals.handlerLocalFileTaskQueueBridge,
     handler_tool_output_task_queue_bridge: signals.handlerToolOutputTaskQueueBridge,
     handler_rag_retrieval_task_queue_bridge: signals.handlerRagRetrievalTaskQueueBridge,
+    handler_clipboard_task_queue_bridge: signals.handlerClipboardTaskQueueBridge,
     handler_prompt_registry_write: signals.handlerPromptRegistryWrite,
     handler_model_output_prompt_registry_bridge: signals.handlerModelOutputPromptRegistryBridge,
     handler_network_response_prompt_registry_bridge: signals.handlerNetworkResponsePromptRegistryBridge,
@@ -28231,6 +28235,13 @@ function classifySourceToolHandlerSignals(
     ? hasJavaScriptHandlerClipboardAgentDelegationBridge(handlerSource)
     : hasPythonHandlerClipboardAgentDelegationBridge(handlerSource));
   if (clipboardAgentDelegationBridge) agentDelegationContextForwarding = true;
+  const clipboardTaskQueueBridge = clipboardRead && taskQueueEnqueue && (language === "javascript"
+    ? hasJavaScriptHandlerClipboardTaskQueueBridge(handlerSource)
+    : hasPythonHandlerClipboardTaskQueueBridge(handlerSource));
+  if (clipboardTaskQueueBridge) {
+    taintedTaskPayload = true;
+    taintedTaskRouting = true;
+  }
   const clipboardExternalServiceBridge = clipboardRead && externalServiceWrite && (language === "javascript"
     ? hasJavaScriptHandlerClipboardExternalServiceBridge(handlerSource)
     : hasPythonHandlerClipboardExternalServiceBridge(handlerSource));
@@ -28626,6 +28637,7 @@ function classifySourceToolHandlerSignals(
   if (localFileTaskQueueBridge) classes.add("handler_local_file_task_queue_bridge");
   if (toolOutputTaskQueueBridge) classes.add("handler_tool_output_task_queue_bridge");
   if (ragRetrievalTaskQueueBridge) classes.add("handler_rag_retrieval_task_queue_bridge");
+  if (clipboardTaskQueueBridge) classes.add("handler_clipboard_task_queue_bridge");
   if (promptRegistryWrite) classes.add("handler_prompt_registry_write");
   if (modelOutputPromptRegistryBridge) classes.add("handler_model_output_prompt_registry_bridge");
   if (networkResponsePromptRegistryBridge) classes.add("handler_network_response_prompt_registry_bridge");
@@ -28851,6 +28863,7 @@ function classifySourceToolHandlerSignals(
     handlerLocalFileTaskQueueBridge: localFileTaskQueueBridge,
     handlerToolOutputTaskQueueBridge: toolOutputTaskQueueBridge,
     handlerRagRetrievalTaskQueueBridge: ragRetrievalTaskQueueBridge,
+    handlerClipboardTaskQueueBridge: clipboardTaskQueueBridge,
     handlerPromptRegistryWrite: promptRegistryWrite,
     handlerModelOutputPromptRegistryBridge: modelOutputPromptRegistryBridge,
     handlerNetworkResponsePromptRegistryBridge: networkResponsePromptRegistryBridge,
@@ -30921,6 +30934,31 @@ function hasPythonHandlerVisualContextTaskQueueBridge(source: string): boolean {
     [
       /\b(?:task_queue_client|task_queue|queue_client|job_queue|background_queue|bull_queue|worker_queue|agent_queue|workflow_queue|temporal_client|inngest|qstash|sqs|sqs_client|pubsub|pub_sub|publisher|event_bus)\s*(?:\.\s*[A-Za-z_]\w*){0,4}\s*\.\s*(?:enqueue|add|add_job|publish|send|send_message|dispatch|schedule|create_job|push|submit)\s*\(([\s\S]{0,2400})\)/giu,
       /\b(?:enqueue_agent_job|enqueue_task|dispatch_background_agent|schedule_agent_run|queue_agent_task)\s*\(([\s\S]{0,2400})\)/giu
+    ],
+    source,
+    identifiers
+  );
+}
+
+function hasJavaScriptHandlerClipboardTaskQueueBridge(source: string): boolean {
+  const identifiers = extractJavaScriptClipboardIdentifiers(source);
+  return identifiers.length > 0 && callExpressionReferencesAnyIdentifier(
+    [
+      /\b(?:taskQueue|taskQueueClient|queueClient|jobQueue|backgroundQueue|workerQueue|agentQueue|sqs|sqsClient|pubsub|pubsubClient|eventBus|eventBridge|scheduler|jobClient|kafkaProducer|redisQueue|bullQueue|temporalClient)\s*(?:\.\s*[A-Za-z_$][\w$]*){0,5}\s*\.\s*(?:enqueue|enqueueTask|send|sendMessage|sendMessageBatch|publish|publishMessage|emit|putEvents|putEvent|schedule|scheduleTask|dispatch|dispatchJob|createJob|createTask|add|addJob|push|produce|startWorkflow|signalWithStart)\s*\(([\s\S]{0,2200})\)/giu,
+      /\bnew\s+(?:SendMessageCommand|PutEventsCommand|PublishCommand)\s*\(([\s\S]{0,2200})\)/giu,
+      /\b(?:enqueueAgentTask|enqueueTask|dispatchAgentJob|publishAgentJob|scheduleAgentTask|sendAgentJob)\s*\(([\s\S]{0,2200})\)/giu
+    ],
+    source,
+    identifiers
+  );
+}
+
+function hasPythonHandlerClipboardTaskQueueBridge(source: string): boolean {
+  const identifiers = extractPythonClipboardIdentifiers(source);
+  return identifiers.length > 0 && callExpressionReferencesAnyIdentifier(
+    [
+      /\b(?:task_queue|task_queue_client|queue_client|job_queue|background_queue|worker_queue|agent_queue|sqs|sqs_client|pubsub|pubsub_client|event_bus|eventbridge|scheduler|job_client|kafka_producer|redis_queue|bull_queue|temporal_client)\s*(?:\.\s*[A-Za-z_]\w*){0,5}\s*\.\s*(?:enqueue|enqueue_task|send|send_message|send_messages|publish|publish_message|emit|put_events|put_event|schedule|schedule_task|dispatch|dispatch_job|create_job|create_task|add|add_job|push|produce|start_workflow|signal_with_start)\s*\(([\s\S]{0,2200})\)/giu,
+      /\b(?:enqueue_agent_task|enqueue_task|dispatch_agent_job|publish_agent_job|schedule_agent_task|send_agent_job)\s*\(([\s\S]{0,2200})\)/giu
     ],
     source,
     identifiers
@@ -37532,6 +37570,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   local_file_task_queue_bridge: boolean;
   tool_output_task_queue_bridge: boolean;
   rag_retrieval_task_queue_bridge: boolean;
+  clipboard_task_queue_bridge: boolean;
   prompt_registry_write: boolean;
   tainted_prompt_registry_payload: boolean;
   tainted_prompt_registry_selector: boolean;
@@ -37682,6 +37721,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   const handlerLocalFileTaskQueueBridge = handler?.handlerLocalFileTaskQueueBridge === true;
   const handlerToolOutputTaskQueueBridge = handler?.handlerToolOutputTaskQueueBridge === true;
   const handlerRagRetrievalTaskQueueBridge = handler?.handlerRagRetrievalTaskQueueBridge === true;
+  const handlerClipboardTaskQueueBridge = handler?.handlerClipboardTaskQueueBridge === true;
   const handlerPromptRegistryWrite = handler?.handlerPromptRegistryWrite === true;
   const handlerLocalFilePromptRegistryBridge = handler?.handlerLocalFilePromptRegistryBridge === true;
   const handlerRagRetrievalPromptRegistryBridge = handler?.handlerRagRetrievalPromptRegistryBridge === true;
@@ -38898,6 +38938,13 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
     actions.add("write");
     actions.add("remember");
   }
+  if (handlerClipboardTaskQueueBridge) {
+    classes.add("clipboard_task_queue_bridge");
+    actions.add("read");
+    actions.add("send");
+    actions.add("write");
+    actions.add("remember");
+  }
   if (handlerPromptRegistryWrite) {
     classes.add("prompt_registry_write");
     actions.add("send");
@@ -39219,6 +39266,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerLocalFileTaskQueueBridge ||
       handlerToolOutputTaskQueueBridge ||
       handlerRagRetrievalTaskQueueBridge ||
+      handlerClipboardTaskQueueBridge ||
       handlerPromptRegistryWrite ||
       handlerModelOutputPromptRegistryBridge ||
       handlerNetworkResponsePromptRegistryBridge ||
@@ -39271,6 +39319,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
     handlerClipboardPromptCacheBridge ||
     handlerClipboardPromptRegistryBridge ||
     handlerClipboardTrainingDatasetBridge ||
+    handlerClipboardTaskQueueBridge ||
     handlerLocalFilePromptCacheBridge ||
     handlerClipboardExternalServiceBridge ||
     handlerClipboardShellExecutionBridge ||
@@ -39303,6 +39352,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerLocalFilePromptCacheBridge ||
       handlerClipboardExternalServiceBridge ||
       handlerClipboardAgentDelegationBridge ||
+      handlerClipboardTaskQueueBridge ||
       handlerVisualContextCapture ||
       handlerVisualContextPromptBridge ||
       handlerVisualContextExternalServiceBridge ||
@@ -39441,6 +39491,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerLocalFileTaskQueueBridge ||
       handlerToolOutputTaskQueueBridge ||
       handlerRagRetrievalTaskQueueBridge ||
+      handlerClipboardTaskQueueBridge ||
       handlerPromptRegistryWrite ||
       handlerModelOutputPromptRegistryBridge ||
       handlerNetworkResponsePromptRegistryBridge ||
@@ -39563,6 +39614,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       (handlerNetworkResponseTaskQueueBridge && handlerSecretEnvAccess) ||
       (handlerLocalFileTaskQueueBridge && handlerSecretEnvAccess) ||
       (handlerToolOutputTaskQueueBridge && handlerSecretEnvAccess) ||
+      (handlerClipboardTaskQueueBridge && handlerSecretEnvAccess) ||
       (handlerModelOutputPromptRegistryBridge && handlerSecretEnvAccess) ||
       (handlerNetworkResponsePromptRegistryBridge && handlerSecretEnvAccess) ||
       (handlerLocalFilePromptRegistryBridge && handlerSecretEnvAccess) ||
@@ -39809,6 +39861,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
     local_file_task_queue_bridge: handlerLocalFileTaskQueueBridge,
     tool_output_task_queue_bridge: handlerToolOutputTaskQueueBridge,
     rag_retrieval_task_queue_bridge: handlerRagRetrievalTaskQueueBridge,
+    clipboard_task_queue_bridge: handlerClipboardTaskQueueBridge,
     prompt_registry_write: handlerPromptRegistryWrite,
     visual_context_prompt_registry_bridge: handlerVisualContextPromptRegistryBridge,
     tainted_prompt_registry_payload: handlerTaintedPromptRegistryPayload,
@@ -40010,6 +40063,7 @@ function authoritySignature(tool: SurfaceObject): string {
     metadata.local_file_task_queue_bridge === true ? "local_file_task_queue_bridge" : "",
     metadata.tool_output_task_queue_bridge === true ? "tool_output_task_queue_bridge" : "",
     metadata.rag_retrieval_task_queue_bridge === true ? "rag_retrieval_task_queue_bridge" : "",
+    metadata.clipboard_task_queue_bridge === true ? "clipboard_task_queue_bridge" : "",
     metadata.prompt_registry_write === true ? "prompt_registry_write" : "",
     metadata.clipboard_prompt_registry_bridge === true ? "clipboard_prompt_registry_bridge" : "",
     metadata.visual_context_prompt_registry_bridge === true ? "visual_context_prompt_registry_bridge" : "",
@@ -40248,6 +40302,7 @@ function isPrivilegedToolSurface(tool: SurfaceObject): boolean {
     tool.metadata.local_file_task_queue_bridge === true ||
     tool.metadata.tool_output_task_queue_bridge === true ||
     tool.metadata.rag_retrieval_task_queue_bridge === true ||
+    tool.metadata.clipboard_task_queue_bridge === true ||
     tool.metadata.prompt_registry_write === true ||
     tool.metadata.clipboard_prompt_registry_bridge === true ||
     tool.metadata.visual_context_prompt_registry_bridge === true ||
