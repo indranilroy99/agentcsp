@@ -1869,6 +1869,9 @@ The current iteration adds:
 - source-defined tool handler metadata for desktop or browser clipboard material enqueued into background-agent or task-queue work with runtime queue credentials and caller-selected queue/routing, without emitting clipboard reads, queue calls, copied text variables, queued payloads, queue routes, or return strings
 - regression coverage proving clipboard task-queue snippets, `desktopClipboard.readText`, `desktop_clipboard.read_text`, queue calls, copied text variables, and clipboard queue return strings stay redacted
 - rule `AGENTCSP-TOOL-204` for source-defined tools that read desktop or browser clipboard material and enqueue copied context into background-agent jobs under runtime queue authority and caller-selected routing
+- source-defined tool handler metadata for desktop or browser clipboard material promoted into feedback, RLHF, eval, reward-model, or model-improvement pipelines with runtime feedback credentials and caller-selected destinations, without emitting clipboard reads, feedback calls, copied text variables, feedback records, eval routing, or return strings
+- regression coverage proving clipboard feedback snippets, `desktopClipboard.readText`, `desktop_clipboard.read_text`, feedback promotion calls, copied text variables, and clipboard feedback return strings stay redacted
+- rule `AGENTCSP-TOOL-205` for source-defined tools that read desktop or browser clipboard material and promote copied context into feedback/model-improvement pipelines under runtime feedback authority and caller-selected routing
 
 ## Initial Build Recommendation
 

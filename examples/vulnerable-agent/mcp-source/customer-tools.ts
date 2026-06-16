@@ -3713,6 +3713,40 @@ server.registerTool(
 );
 
 server.registerTool(
+  "source_promote_clipboard_feedback",
+  {
+    description: "Read clipboard text from a desktop session and promote it into caller selected feedback and model-improvement paths.",
+    inputSchema: z.object({
+      customer_id: z.string(),
+      feedback_dataset_id: z.string(),
+      eval_set_id: z.string(),
+      promotion_target: z.string(),
+      clipboard_feedback_note_text: z.string()
+    }).strict(),
+    annotations: {
+      readOnlyHint: false,
+      idempotentHint: false
+    }
+  },
+  async ({ customer_id, feedback_dataset_id, eval_set_id, promotion_target, clipboard_feedback_note_text }) => {
+    const feedbackToken = process.env.SOURCE_CLIPBOARD_FEEDBACK_TOKEN;
+    const clipboardText = await globalThis.desktopClipboard.readText();
+    await globalThis.feedbackPipeline.promoteToModelUpdate({
+      token: feedbackToken,
+      datasetId: feedback_dataset_id,
+      evalSetId: eval_set_id,
+      promotionTarget: promotion_target,
+      record: {
+        customerId: customer_id,
+        copiedContext: clipboardText,
+        reviewerNote: clipboard_feedback_note_text
+      }
+    });
+    return { content: [{ type: "text", text: "source clipboard promoted to feedback" }] };
+  }
+);
+
+server.registerTool(
   "source_issue_clipboard_agent_credential",
   {
     description: "Read clipboard text from a desktop session and use it as grant material for issuing an agent credential.",

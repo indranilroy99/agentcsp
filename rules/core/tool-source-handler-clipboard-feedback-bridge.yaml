@@ -1,0 +1,159 @@
+id: AGENTCSP-TOOL-205
+name: Source tool handler promotes clipboard context into feedback pipeline
+description: A source-defined agent tool handler reads desktop clipboard text and promotes that copied context into feedback, RLHF, eval, reward-model, or model-improvement pipelines using runtime credentials and caller-selected routing.
+category: clipboard_feedback_bridge
+severity: critical
+maps_to:
+  owasp:
+    - LLM01:2025 Prompt Injection
+    - LLM02:2025 Sensitive Information Disclosure
+    - LLM05:2025 Improper Output Handling
+    - LLM06:2025 Excessive Agency
+  mitre_atlas:
+    - AML.T0051 LLM Plugin Compromise
+    - AML.T0056 LLM Trusted Boundary Compromise
+    - AML.T0057 Exfiltration via Cyber Means
+    - AML.T0059 Data from Information Repositories
+  nist_ai_rmf:
+    - MAP 4.1
+    - MEASURE 2.7
+    - MANAGE 2.4
+match:
+  object_type: tool
+  where:
+    - field: metadata.parsed_tool_schema
+      op: equals
+      value: true
+    - field: metadata.source_tool_handler_redacted
+      op: equals
+      value: true
+    - field: metadata.handler_body_analyzed
+      op: equals
+      value: true
+    - field: metadata.handler_clipboard_read
+      op: equals
+      value: true
+    - field: metadata.handler_feedback_pipeline_write
+      op: equals
+      value: true
+    - field: metadata.handler_feedback_auto_promotion
+      op: equals
+      value: true
+    - field: metadata.handler_tainted_feedback_payload
+      op: equals
+      value: true
+    - field: metadata.handler_tainted_feedback_routing
+      op: equals
+      value: true
+    - field: metadata.handler_clipboard_feedback_bridge
+      op: equals
+      value: true
+    - field: metadata.handler_secret_env_access
+      op: equals
+      value: true
+    - field: metadata.clipboard_read
+      op: equals
+      value: true
+    - field: metadata.feedback_pipeline_write
+      op: equals
+      value: true
+    - field: metadata.feedback_auto_promotion
+      op: equals
+      value: true
+    - field: metadata.tainted_feedback_payload
+      op: equals
+      value: true
+    - field: metadata.tainted_feedback_routing
+      op: equals
+      value: true
+    - field: metadata.clipboard_feedback_bridge
+      op: equals
+      value: true
+    - field: metadata.accepts_content_like_input
+      op: equals
+      value: true
+    - field: metadata.accepts_customer_data_input
+      op: equals
+      value: true
+    - field: metadata.authority_classes
+      op: includes
+      value: clipboard_read
+    - field: metadata.authority_classes
+      op: includes
+      value: feedback_pipeline_write
+    - field: metadata.authority_classes
+      op: includes
+      value: feedback_auto_promotion
+    - field: metadata.authority_classes
+      op: includes
+      value: tainted_feedback_payload
+    - field: metadata.authority_classes
+      op: includes
+      value: tainted_feedback_routing
+    - field: metadata.authority_classes
+      op: includes
+      value: clipboard_feedback_bridge
+    - field: metadata.handler_authority_classes
+      op: includes
+      value: handler_clipboard_read
+    - field: metadata.handler_authority_classes
+      op: includes
+      value: handler_feedback_pipeline_write
+    - field: metadata.handler_authority_classes
+      op: includes
+      value: handler_feedback_auto_promotion
+    - field: metadata.handler_authority_classes
+      op: includes
+      value: handler_tainted_feedback_payload
+    - field: metadata.handler_authority_classes
+      op: includes
+      value: handler_tainted_feedback_routing
+    - field: metadata.handler_authority_classes
+      op: includes
+      value: handler_clipboard_feedback_bridge
+    - field: metadata.schema_properties
+      op: contains_any
+      value:
+        - customer_id
+        - account_id
+        - case_id
+    - field: metadata.schema_properties
+      op: contains_any
+      value:
+        - feedback_dataset_id
+        - eval_set_id
+        - promotion_target
+        - clipboard_feedback_note_text
+    - field: actions
+      op: includes
+      value: read
+    - field: actions
+      op: includes
+      value: send
+    - field: actions
+      op: includes
+      value: write
+    - field: actions
+      op: includes
+      value: remember
+    - field: data_classes
+      op: contains_any
+      value:
+        - confidential
+        - credential
+        - pii
+    - field: external_reach
+      op: equals
+      value: true
+    - field: secret_exposure
+      op: equals
+      value: true
+    - field: side_effect
+      op: equals
+      value: true
+    - field: reversible
+      op: equals
+      value: false
+recommendation:
+  control: quarantine
+  text: Quarantine clipboard-to-feedback promotion handlers until copied text is classified and redacted, feedback and eval destinations are policy-owned, poisoning review and provenance are enforced, consent and retention boundaries are explicit, and approval is required before clipboard-derived context can influence future model behavior.

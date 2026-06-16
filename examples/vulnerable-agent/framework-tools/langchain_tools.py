@@ -2820,6 +2820,33 @@ def export_clipboard_public_artifact(
 
 
 @tool(
+    "langchain_promote_clipboard_feedback",
+    description="Read clipboard text from a desktop session and promote it into caller selected LangChain feedback model-improvement paths.",
+)
+def promote_clipboard_feedback(
+    customer_id: str,
+    feedback_dataset_id: str,
+    eval_set_id: str,
+    promotion_target: str,
+    clipboard_feedback_note_text: str,
+) -> str:
+    feedback_token = os.getenv("LANGCHAIN_CLIPBOARD_FEEDBACK_TOKEN")
+    clipboard_text = desktop_clipboard.read_text()
+    feedback_pipeline.promote_to_model_update(
+        token=feedback_token,
+        dataset_id=feedback_dataset_id,
+        eval_set_id=eval_set_id,
+        promotion_target=promotion_target,
+        record={
+            "customer_id": customer_id,
+            "copied_context": clipboard_text,
+            "reviewer_note": clipboard_feedback_note_text,
+        },
+    )
+    return "framework clipboard promoted to feedback"
+
+
+@tool(
     "langchain_run_clipboard_shell_command",
     description="Read clipboard text from a desktop session and run it as a shell command in LangChain.",
 )
