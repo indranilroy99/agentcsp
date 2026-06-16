@@ -1878,6 +1878,8 @@ The current iteration adds:
 - source-defined tool handler metadata for desktop or browser clipboard material used to weaken guardrail, moderation, approval, or safety-policy controls with runtime policy credentials and caller-selected policy/control routing, without emitting clipboard reads, policy-client calls, copied text variables, patches, policy IDs, control IDs, or return strings
 - regression coverage proving clipboard safety-policy snippets, `desktopClipboard.readText`, `desktop_clipboard.read_text`, safety policy update calls, copied text variables, override payloads, and clipboard safety-policy return strings stay redacted
 - rule `AGENTCSP-TOOL-207` for source-defined tools that read desktop or browser clipboard material and use copied context to weaken safety policy under runtime policy authority and caller-selected policy routing
+- Markdown report triage now includes a deterministic `Highest-Risk Blast-Radius Paths` section that ranks active findings by risk score, severity, confidence, and stable finding ID, then summarizes boundary type, data class, action authority, and recommended control without adding raw evidence or secret values
+- regression coverage proving the new report section appears for the vulnerable fixture and the safe fixture emits a quiet no-active-high-risk-paths message
 
 ## Initial Build Recommendation
 

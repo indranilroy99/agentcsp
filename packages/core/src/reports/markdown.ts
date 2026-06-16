@@ -29,6 +29,8 @@ export function renderMarkdownReport(manifest: AgentManifest): string {
     "",
     renderTriageSummary(manifest),
     "",
+    renderHighestRiskBlastRadiusPaths(manifest.findings),
+    "",
     renderCiGateSummary(manifest),
     "",
     renderBaselineComparison(manifest),
@@ -280,6 +282,80 @@ function renderTopRiskTable(
       return `| ${risk.severity} | ${risk.confidence} | ${risk.risk_score} | ${risk.rule_id} | \`${escapeTable(object)}\` | \`${escapeTable(risk.path)}\` | ${risk.recommended_control.replaceAll("_", " ")} |`;
     })
   ].join("\n");
+}
+
+function renderHighestRiskBlastRadiusPaths(findings: Finding[]): string {
+  const activeFindings = findings
+    .filter((finding) => finding.suppression?.status !== "active")
+    .filter((finding) =>
+      finding.matched_object.untrusted_to_privileged ||
+      finding.matched_object.secret_exposure ||
+      finding.matched_object.external_reach ||
+      !finding.matched_object.reversible ||
+      finding.matched_object.data_classes.some((dataClass) => ["credential", "secret", "pii"].includes(dataClass))
+    )
+    .sort(compareFindingsForBlastRadius)
+    .slice(0, 12);
+
+  if (activeFindings.length === 0) {
+    return "## Highest-Risk Blast-Radius Paths\n\nNo active high-risk blast-radius paths were identified.";
+  }
+
+  return [
+    "## Highest-Risk Blast-Radius Paths",
+    "",
+    "| Risk | Severity | Rule | Object | Boundary | Data | Actions | Recommended control |",
+    "| --- | --- | --- | --- | --- | --- | --- | --- |",
+    ...activeFindings.map((finding) => {
+      const object = `${finding.matched_object.type}:${finding.matched_object.name}`;
+      return [
+        finding.risk.score,
+        finding.severity,
+        finding.rule_id,
+        `\`${escapeTable(object)}\``,
+        escapeTable(summarizeFindingBoundary(finding)),
+        escapeTable(summarizeFindingData(finding)),
+        escapeTable(summarizeFindingActions(finding)),
+        finding.recommended_control.replaceAll("_", " ")
+      ].join(" | ");
+    }).map((row) => `| ${row} |`)
+  ].join("\n");
+}
+
+function compareFindingsForBlastRadius(a: Finding, b: Finding): number {
+  const riskCompare = b.risk.score - a.risk.score;
+  if (riskCompare !== 0) return riskCompare;
+  const severityOrder = { critical: 0, high: 1, medium: 2, low: 3, info: 4 };
+  const severityCompare = severityOrder[a.severity] - severityOrder[b.severity];
+  if (severityCompare !== 0) return severityCompare;
+  const confidenceOrder = { very_high: 0, high: 1, medium: 2, low: 3 };
+  const confidenceCompare = confidenceOrder[a.confidence] - confidenceOrder[b.confidence];
+  if (confidenceCompare !== 0) return confidenceCompare;
+  return a.id.localeCompare(b.id);
+}
+
+function summarizeFindingBoundary(finding: Finding): string {
+  const object = finding.matched_object;
+  const boundaries = [
+    object.untrusted_to_privileged ? "untrusted -> privileged" : "",
+    object.secret_exposure ? "secret exposure" : "",
+    object.external_reach ? "external reach" : "",
+    object.side_effect ? "side effect" : "",
+    !object.reversible ? "irreversible" : ""
+  ].filter(Boolean);
+  return boundaries.length > 0 ? boundaries.join("; ") : "rule-defined authority boundary";
+}
+
+function summarizeFindingData(finding: Finding): string {
+  const dataClasses = finding.matched_object.data_classes.length > 0
+    ? finding.matched_object.data_classes
+    : finding.risk.data_classes;
+  return dataClasses.length > 0 ? dataClasses.join(", ") : "not classified";
+}
+
+function summarizeFindingActions(finding: Finding): string {
+  const actions = finding.matched_object.actions.length > 0 ? finding.matched_object.actions : finding.risk.actions;
+  return actions.length > 0 ? actions.join(", ") : "read";
 }
 
 function renderAttackPaths(attackPaths: AttackPath[]): string {

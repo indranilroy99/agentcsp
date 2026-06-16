@@ -96,6 +96,10 @@ describe("scanProject", () => {
     expect(result.reportMarkdown).toContain("### Top Active Rules");
     expect(result.reportMarkdown).toContain("### Top Active Risks");
     expect(result.reportMarkdown).toContain("| Severity | Confidence | Risk | Rule | Object | Path | Recommended control |");
+    expect(result.reportMarkdown).toContain("## Highest-Risk Blast-Radius Paths");
+    expect(result.reportMarkdown).toContain("| Risk | Severity | Rule | Object | Boundary | Data | Actions | Recommended control |");
+    expect(result.reportMarkdown).toContain("untrusted -> privileged");
+    expect(result.reportMarkdown).toContain("secret exposure");
     expect(result.reportMarkdown).toContain("## Scan Coverage");
     expect(result.reportMarkdown).toContain("### Expired Suppressions");
     expect(result.reportMarkdown).toContain("PII external reach paths");
@@ -138,6 +142,7 @@ describe("scanProject", () => {
     expect(result.manifest.static_blast_radius?.pii_attack_paths).toBe(0);
     expect(result.manifest.static_blast_radius?.credential_attack_paths).toBe(0);
     expect(result.reportMarkdown).toContain("No active findings were generated.");
+    expect(result.reportMarkdown).toContain("No active high-risk blast-radius paths were identified.");
   });
 
   it("reports generated-state replay findings when logs are included", async () => {
