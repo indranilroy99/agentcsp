@@ -25,6 +25,10 @@ describe("scanProject", () => {
     });
     expect(result.manifest.metadata.fingerprint?.value).toMatch(/^[a-f0-9]{64}$/u);
     expect(result.manifest.metadata.rule_pack).toMatchObject({
+      fingerprint: {
+        algorithm: "sha256",
+        value: expect.stringMatching(/^[a-f0-9]{64}$/u)
+      },
       built_in_rules: 383,
       project_rules: 0,
       total_rules: 383,
@@ -32,6 +36,7 @@ describe("scanProject", () => {
       rule_diagnostics: 0
     });
     expect(result.manifest.metadata.rule_pack.by_category.length).toBeGreaterThan(0);
+    expect(result.reportMarkdown).toContain("- Rule pack fingerprint: `");
     expect(result.manifest.metadata.rule_pack.by_severity.critical).toBeGreaterThan(0);
     expect(
       Object.values(result.manifest.metadata.rule_pack.by_severity).reduce((sum, count) => sum + count, 0)
@@ -221,6 +226,10 @@ describe("scanProject", () => {
             secret_values_collected?: boolean;
           };
           agentcsp_rule_pack?: {
+            fingerprint?: {
+              algorithm?: string;
+              value?: string;
+            };
             built_in_rules?: number;
             project_rules?: number;
             total_rules?: number;
@@ -309,6 +318,10 @@ describe("scanProject", () => {
       excludes: ["metadata.generated_at", "metadata.root_path", "metadata.fingerprint"]
     });
     expect(sarif.runs[0]?.properties?.agentcsp_rule_pack).toMatchObject({
+      fingerprint: {
+        algorithm: "sha256",
+        value: result.manifest.metadata.rule_pack.fingerprint.value
+      },
       built_in_rules: 383,
       project_rules: 0,
       total_rules: 383,
@@ -584,5 +597,71 @@ describe("scanProject", () => {
     expect(result.manifest.memory.some((surface) => surface.path === "logs/session-transcript.txt")).toBe(true);
     expect(result.reportMarkdown).toContain("AGENTCSP-GENSTATE-001");
     expect(JSON.stringify(result.manifest)).not.toContain("Ignore previous repository instructions");
+  });
+
+  it("fingerprints the exact normalized rule pack, including project-local rules", async () => {
+    const defaultResult = await scanProject({
+      root_path: path.resolve("examples/safe-agent"),
+      output_path: "/private/tmp/agentcsp-rule-pack-default",
+      formats: ["json", "md"],
+      include_hidden: true,
+      include_logs: false,
+      max_file_size_bytes: 1024 * 1024,
+      max_files: 5000,
+      quiet: true
+    });
+    const projectRoot = await fs.mkdtemp("/private/tmp/agentcsp-rule-pack-project-");
+    await fs.writeFile(
+      path.join(projectRoot, "AGENTS.md"),
+      "Use standard project instructions for local testing.\n",
+      "utf8"
+    );
+    await fs.mkdir(path.join(projectRoot, "rules"), { recursive: true });
+    await fs.writeFile(
+      path.join(projectRoot, "rules", "local-instruction-review.yaml"),
+      [
+        'id: "LOCAL-INSTRUCTION-REVIEW"',
+        'name: "Local instruction review"',
+        'description: "Project-local rule used to verify rule-pack fingerprint provenance."',
+        'category: "rule_pack_test"',
+        'severity: "low"',
+        "match:",
+        '  object_type: "instruction"',
+        "  where:",
+        '    - field: "metadata.content_analyzed"',
+        '      op: "equals"',
+        "      value: true",
+        "recommendation:",
+        '  control: "warn"',
+        '  text: "Review local instruction surfaces."',
+        ""
+      ].join("\n"),
+      "utf8"
+    );
+
+    const projectResult = await scanProject({
+      root_path: projectRoot,
+      output_path: "/private/tmp/agentcsp-rule-pack-project-output",
+      formats: ["json", "md"],
+      include_hidden: true,
+      include_logs: false,
+      max_file_size_bytes: 1024 * 1024,
+      max_files: 5000,
+      quiet: true
+    });
+
+    expect(projectResult.manifest.metadata.rule_pack).toMatchObject({
+      project_rules: 1,
+      total_rules: 384,
+      project_rules_loaded: true,
+      fingerprint: {
+        algorithm: "sha256",
+        value: expect.stringMatching(/^[a-f0-9]{64}$/u)
+      }
+    });
+    expect(projectResult.manifest.metadata.rule_pack.fingerprint.value).not.toBe(
+      defaultResult.manifest.metadata.rule_pack.fingerprint.value
+    );
+    expect(projectResult.findings.some((finding) => finding.rule_id === "LOCAL-INSTRUCTION-REVIEW")).toBe(true);
   });
 });

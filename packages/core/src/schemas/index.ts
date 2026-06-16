@@ -332,6 +332,11 @@ export const ManifestFingerprintSchema = z.object({
   excludes: z.array(z.string()).default(["metadata.generated_at", "metadata.root_path", "metadata.fingerprint"])
 });
 
+export const ContentDigestSchema = z.object({
+  algorithm: z.literal("sha256"),
+  value: z.string()
+});
+
 export const BaselineComparisonSchema = z.object({
   title: z.literal("AgentCSP Baseline Comparison").default("AgentCSP Baseline Comparison"),
   baseline_path: z.string(),
@@ -662,6 +667,7 @@ export const ManifestMetadataSchema = z.object({
     secret_values_collected: z.literal(false)
   }),
   rule_pack: z.object({
+    fingerprint: ContentDigestSchema,
     built_in_rules: z.number().int().nonnegative(),
     project_rules: z.number().int().nonnegative(),
     total_rules: z.number().int().nonnegative(),

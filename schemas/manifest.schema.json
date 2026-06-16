@@ -167,6 +167,23 @@
             "rule_pack": {
               "type": "object",
               "properties": {
+                "fingerprint": {
+                  "type": "object",
+                  "properties": {
+                    "algorithm": {
+                      "type": "string",
+                      "const": "sha256"
+                    },
+                    "value": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "algorithm",
+                    "value"
+                  ],
+                  "additionalProperties": false
+                },
                 "built_in_rules": {
                   "type": "integer",
                   "minimum": 0
@@ -270,6 +287,7 @@
                 }
               },
               "required": [
+                "fingerprint",
                 "built_in_rules",
                 "project_rules",
                 "total_rules"

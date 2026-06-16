@@ -338,6 +338,8 @@ function assertInstalledSafeOperatorMetadata(manifest, report) {
   assertEqual(manifest.metadata?.rule_pack?.total_rules, 383, "installed CLI safe total rule count");
   assertEqual(manifest.metadata?.rule_pack?.project_rules_loaded, false, "installed CLI safe project rules loaded flag");
   assertEqual(manifest.metadata?.rule_pack?.rule_diagnostics, 0, "installed CLI safe rule diagnostic count");
+  assert(manifest.metadata?.rule_pack?.fingerprint?.value?.match(/^[a-f0-9]{64}$/u), "installed CLI safe rule pack fingerprint missing");
+  assertEqual(manifest.metadata?.rule_pack?.fingerprint?.algorithm, "sha256", "installed CLI safe rule pack fingerprint algorithm");
   assert(manifest.metadata?.rule_pack?.by_category?.length > 0, "installed CLI safe rule category coverage missing");
   assert(manifest.metadata?.rule_pack?.by_severity?.critical > 0, "installed CLI safe rule severity coverage missing");
   assert(manifest.metadata?.rule_pack?.by_object_type?.length > 0, "installed CLI safe rule object coverage missing");

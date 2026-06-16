@@ -1,6 +1,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { createHash } from "node:crypto";
 import {
   ScanConfigSchema,
   type AgentManifest,
@@ -34,6 +35,7 @@ import { applyBaselineComparison } from "../reports/baseline.js";
 import { stableId } from "../utils/ids.js";
 import { resolvePathFromRoot } from "../utils/paths.js";
 import { sortObjects } from "../utils/sort.js";
+import { canonicalJson } from "../utils/canonical-json.js";
 
 const moduleDirectory = path.dirname(fileURLToPath(import.meta.url));
 
@@ -185,6 +187,7 @@ async function loadScanRules(rootPath: string): Promise<{
     rules: rules.sort((a, b) => a.id.localeCompare(b.id)),
     diagnostics: diagnostics.sort((a, b) => a.id.localeCompare(b.id)),
     summary: {
+      fingerprint: fingerprintRules(rules),
       built_in_rules: builtInRules.length,
       project_rules: projectRuleCount,
       total_rules: builtInRules.length + projectRuleCount,
@@ -192,6 +195,13 @@ async function loadScanRules(rootPath: string): Promise<{
       rule_diagnostics: diagnostics.length,
       ...summarizeRulePack(rules)
     }
+  };
+}
+
+function fingerprintRules(rules: Rule[]): RulePackSummary["fingerprint"] {
+  return {
+    algorithm: "sha256",
+    value: createHash("sha256").update(canonicalJson([...rules].sort((a, b) => a.id.localeCompare(b.id)))).digest("hex")
   };
 }
 

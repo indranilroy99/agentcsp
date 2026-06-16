@@ -221,7 +221,7 @@ Findings include severity, confidence, risk factors, redacted evidence, mappings
 
 `metadata.config` records the safe scan contract behind the manifest, including requested formats, traversal limits, hidden/log settings, CI gates, and whether policy or baseline inputs were configured, without copying raw local output, policy, or baseline paths.
 
-`metadata.rule_pack` records the built-in and project-local rule counts used for the scan, plus redacted rule diagnostic counts, without exposing local rule paths or rule contents.
+`metadata.rule_pack` records the built-in and project-local rule counts used for the scan, a SHA-256 fingerprint of the normalized rule set, plus redacted rule diagnostic counts, without exposing local rule paths or rule contents.
 
 ## Rules
 

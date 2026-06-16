@@ -27,6 +27,8 @@ export function renderMarkdownReport(manifest: AgentManifest): string {
     `- Manifest fingerprint: \`${manifest.metadata.fingerprint?.value ?? "unavailable"}\``,
     `- Manifest fingerprint algorithm: \`${manifest.metadata.fingerprint?.algorithm ?? "unavailable"}\``,
     `- Manifest fingerprint excludes: ${manifest.metadata.fingerprint?.excludes.map((item) => `\`${item}\``).join(", ") ?? "none"}`,
+    `- Rule pack fingerprint: \`${manifest.metadata.rule_pack.fingerprint.value}\``,
+    `- Rule pack fingerprint algorithm: \`${manifest.metadata.rule_pack.fingerprint.algorithm}\``,
     `- Built-in rules loaded: ${manifest.metadata.rule_pack.built_in_rules}`,
     `- Project rules loaded: ${manifest.metadata.rule_pack.project_rules}`,
     `- Total rules loaded: ${manifest.metadata.rule_pack.total_rules}`,
@@ -92,6 +94,8 @@ function renderRulePackCoverage(manifest: AgentManifest): string {
   return [
     "## Rule Pack Coverage",
     "",
+    `- Fingerprint: \`${rulePack.fingerprint.value}\``,
+    `- Fingerprint algorithm: \`${rulePack.fingerprint.algorithm}\``,
     `- Built-in rules: ${rulePack.built_in_rules}`,
     `- Project rules: ${rulePack.project_rules}`,
     `- Total rules: ${rulePack.total_rules}`,

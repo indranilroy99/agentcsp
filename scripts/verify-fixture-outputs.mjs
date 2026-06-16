@@ -1980,6 +1980,8 @@ if (vulnerable.sarif) {
   assertEqual(run.properties.agentcsp_rule_pack.project_rules, 0, "SARIF project rule count");
   assertEqual(run.properties.agentcsp_rule_pack.total_rules, 383, "SARIF total rule count");
   assertEqual(run.properties.agentcsp_rule_pack.rule_diagnostics, 0, "SARIF rule diagnostic count");
+  assert(run.properties.agentcsp_rule_pack.fingerprint?.value?.match(/^[a-f0-9]{64}$/u), "SARIF rule pack fingerprint missing");
+  assertEqual(run.properties.agentcsp_rule_pack.fingerprint?.algorithm, "sha256", "SARIF rule pack fingerprint algorithm");
   assert(run.properties.agentcsp_rule_pack.by_category?.length > 0, "SARIF rule category coverage missing");
   assert(run.properties.agentcsp_rule_pack.by_severity?.critical > 0, "SARIF rule severity coverage missing");
   assert(run.properties.agentcsp_rule_pack.by_object_type?.length > 0, "SARIF rule object coverage missing");
@@ -2234,6 +2236,8 @@ function assertScanConfigMetadata(manifest, options) {
   assertEqual(rulePack?.total_rules, 383, `${options.label} total rule count`);
   assertEqual(rulePack?.project_rules_loaded, false, `${options.label} project rules loaded flag`);
   assertEqual(rulePack?.rule_diagnostics, 0, `${options.label} rule diagnostic count`);
+  assert(rulePack?.fingerprint?.value?.match(/^[a-f0-9]{64}$/u), `${options.label} rule pack fingerprint missing`);
+  assertEqual(rulePack?.fingerprint?.algorithm, "sha256", `${options.label} rule pack fingerprint algorithm`);
   assertArrayEqual(config?.formats ?? [], options.formats, `${options.label} manifest output formats`);
   assertEqual(config?.include_hidden, true, `${options.label} manifest hidden scan setting`);
   assertEqual(config?.include_logs, options.includeLogs, `${options.label} manifest log scan setting`);
