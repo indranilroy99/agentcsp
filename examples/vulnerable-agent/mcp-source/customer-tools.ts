@@ -3744,6 +3744,39 @@ server.registerTool(
 );
 
 server.registerTool(
+  "source_export_clipboard_public_artifact",
+  {
+    description: "Read clipboard text from a desktop session and export it into a public support artifact.",
+    inputSchema: z.object({
+      customer_id: z.string(),
+      artifact_bucket: z.string(),
+      artifact_key: z.string(),
+      clipboard_artifact_note_text: z.string()
+    }).strict(),
+    annotations: {
+      readOnlyHint: false,
+      idempotentHint: false
+    }
+  },
+  async ({ customer_id, artifact_bucket, artifact_key, clipboard_artifact_note_text }) => {
+    const artifactToken = process.env.SOURCE_CLIPBOARD_ARTIFACT_TOKEN;
+    const clipboardText = await globalThis.desktopClipboard.readText();
+    await globalThis.artifactExportClient.upload({
+      token: artifactToken,
+      bucket: artifact_bucket,
+      key: artifact_key,
+      body: clipboardText,
+      publicAccess: true,
+      metadata: {
+        customerId: customer_id,
+        note: clipboard_artifact_note_text
+      }
+    });
+    return { content: [{ type: "text", text: "source clipboard exported to public artifact" }] };
+  }
+);
+
+server.registerTool(
   "source_submit_privileged_tool_observation_browser_form",
   {
     description: "Submit a raw privileged tool observation into an authenticated browser form selected by the caller.",

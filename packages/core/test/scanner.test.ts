@@ -812,6 +812,9 @@ describe("scanner", () => {
     const sourceClipboardBrowserAutomationBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "source_paste_clipboard_authenticated_browser"
     );
+    const sourceClipboardArtifactBridgeTool = surfaces.tools.find(
+      (surface) => surface.name === "source_export_clipboard_public_artifact"
+    );
     const sourceVisualContextCaptureTool = surfaces.tools.find((surface) => surface.name === "source_capture_authenticated_page_screenshot");
     const sourceVisualContextPromptBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "source_review_authenticated_page_screenshot_with_model"
@@ -1242,6 +1245,9 @@ describe("scanner", () => {
     );
     const langchainClipboardBrowserAutomationBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "langchain_paste_clipboard_authenticated_browser"
+    );
+    const langchainClipboardArtifactBridgeTool = surfaces.tools.find(
+      (surface) => surface.name === "langchain_export_clipboard_public_artifact"
     );
     const langchainVisualContextCaptureTool = surfaces.tools.find((surface) => surface.name === "langchain_capture_authenticated_page_screenshot");
     const langchainVisualContextPromptBridgeTool = surfaces.tools.find(
@@ -11186,6 +11192,88 @@ describe("scanner", () => {
     expect(JSON.stringify(sourceClipboardBrowserAutomationBridgeTool)).not.toContain("clipboardText");
     expect(JSON.stringify(sourceClipboardBrowserAutomationBridgeTool)).not.toContain("source clipboard pasted into authenticated browser");
     expect(JSON.stringify(sourceClipboardBrowserAutomationBridgeTool)).not.toContain("Read clipboard text");
+    expect(sourceClipboardArtifactBridgeTool).toMatchObject({
+      path: "mcp-source/customer-tools.ts",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["call", "publish", "read", "send", "write"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(sourceClipboardArtifactBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_mcp_source_tool: true,
+      mcp_source_tool_registration: true,
+      mcp_source_tool_registration_kind: "registerTool",
+      mcp_source_tool_argument_count: 3,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_content_like_input: true,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      artifact_export: true,
+      tainted_artifact_export_payload: true,
+      public_artifact_destination: true,
+      clipboard_read: true,
+      clipboard_artifact_bridge: true,
+      external_write: true,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_artifact_export: true,
+      handler_tainted_artifact_export_payload: true,
+      handler_public_artifact_destination: true,
+      handler_clipboard_read: true,
+      handler_clipboard_artifact_bridge: true,
+      handler_secret_env_access: true,
+      handler_model_visible_output: true,
+      handler_signal_count: 6,
+      open_world_schema: false
+    });
+    expect(sourceClipboardArtifactBridgeTool?.metadata.authority_classes).toEqual([
+      "artifact_export",
+      "clipboard_artifact_bridge",
+      "clipboard_read",
+      "content_input",
+      "customer_data_input",
+      "external_write",
+      "handler_artifact_export",
+      "handler_clipboard_artifact_bridge",
+      "handler_clipboard_read",
+      "handler_public_artifact_destination",
+      "handler_secret_env_access",
+      "handler_tainted_artifact_export_payload",
+      "pii_input",
+      "public_artifact_destination",
+      "secret_env_access",
+      "tainted_artifact_export_payload"
+    ]);
+    expect(sourceClipboardArtifactBridgeTool?.metadata.handler_authority_classes).toEqual([
+      "handler_artifact_export",
+      "handler_clipboard_artifact_bridge",
+      "handler_clipboard_read",
+      "handler_public_artifact_destination",
+      "handler_secret_env_access",
+      "handler_tainted_artifact_export_payload"
+    ]);
+    expect(sourceClipboardArtifactBridgeTool?.metadata.handler_env_key_names).toEqual(["SOURCE_CLIPBOARD_ARTIFACT_TOKEN"]);
+    expect(sourceClipboardArtifactBridgeTool?.metadata.schema_properties).toEqual([
+      "artifact_bucket",
+      "artifact_key",
+      "clipboard_artifact_note_text",
+      "customer_id"
+    ]);
+    expect(sourceClipboardArtifactBridgeTool?.metadata.required_properties).toEqual([
+      "artifact_bucket",
+      "artifact_key",
+      "clipboard_artifact_note_text",
+      "customer_id"
+    ]);
+    expect(JSON.stringify(sourceClipboardArtifactBridgeTool)).not.toContain("desktopClipboard.readText");
+    expect(JSON.stringify(sourceClipboardArtifactBridgeTool)).not.toContain("artifactExportClient.upload");
+    expect(JSON.stringify(sourceClipboardArtifactBridgeTool)).not.toContain("clipboardText");
+    expect(JSON.stringify(sourceClipboardArtifactBridgeTool)).not.toContain("source clipboard exported to public artifact");
+    expect(JSON.stringify(sourceClipboardArtifactBridgeTool)).not.toContain("Read clipboard text");
     expect(sourceVisualContextCaptureTool).toMatchObject({
       path: "mcp-source/customer-tools.ts",
       data_classes: ["confidential", "credential", "pii"],
@@ -26264,6 +26352,89 @@ describe("scanner", () => {
     expect(JSON.stringify(langchainClipboardBrowserAutomationBridgeTool)).not.toContain("clipboard_text");
     expect(JSON.stringify(langchainClipboardBrowserAutomationBridgeTool)).not.toContain("framework clipboard pasted into authenticated browser");
     expect(JSON.stringify(langchainClipboardBrowserAutomationBridgeTool)).not.toContain("Read clipboard text");
+    expect(langchainClipboardArtifactBridgeTool).toMatchObject({
+      path: "framework-tools/langchain_tools.py",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["call", "publish", "read", "send", "write"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(langchainClipboardArtifactBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_agent_framework_source_tool: true,
+      agent_framework_source_tool: true,
+      agent_framework_source_tool_framework: "langchain",
+      agent_framework_source_tool_registration_kind: "python_tool_decorator",
+      agent_framework_source_tool_argument_count: 4,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_content_like_input: true,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      artifact_export: true,
+      tainted_artifact_export_payload: true,
+      public_artifact_destination: true,
+      clipboard_read: true,
+      clipboard_artifact_bridge: true,
+      external_write: true,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_artifact_export: true,
+      handler_tainted_artifact_export_payload: true,
+      handler_public_artifact_destination: true,
+      handler_clipboard_read: true,
+      handler_clipboard_artifact_bridge: true,
+      handler_secret_env_access: true,
+      handler_model_visible_output: true,
+      handler_signal_count: 6,
+      open_world_schema: false
+    });
+    expect(langchainClipboardArtifactBridgeTool?.metadata.authority_classes).toEqual([
+      "artifact_export",
+      "clipboard_artifact_bridge",
+      "clipboard_read",
+      "content_input",
+      "customer_data_input",
+      "external_write",
+      "handler_artifact_export",
+      "handler_clipboard_artifact_bridge",
+      "handler_clipboard_read",
+      "handler_public_artifact_destination",
+      "handler_secret_env_access",
+      "handler_tainted_artifact_export_payload",
+      "pii_input",
+      "public_artifact_destination",
+      "secret_env_access",
+      "tainted_artifact_export_payload"
+    ]);
+    expect(langchainClipboardArtifactBridgeTool?.metadata.handler_authority_classes).toEqual([
+      "handler_artifact_export",
+      "handler_clipboard_artifact_bridge",
+      "handler_clipboard_read",
+      "handler_public_artifact_destination",
+      "handler_secret_env_access",
+      "handler_tainted_artifact_export_payload"
+    ]);
+    expect(langchainClipboardArtifactBridgeTool?.metadata.handler_env_key_names).toEqual(["LANGCHAIN_CLIPBOARD_ARTIFACT_TOKEN"]);
+    expect(langchainClipboardArtifactBridgeTool?.metadata.schema_properties).toEqual([
+      "artifact_bucket",
+      "artifact_key",
+      "clipboard_artifact_note_text",
+      "customer_id"
+    ]);
+    expect(langchainClipboardArtifactBridgeTool?.metadata.required_properties).toEqual([
+      "artifact_bucket",
+      "artifact_key",
+      "clipboard_artifact_note_text",
+      "customer_id"
+    ]);
+    expect(JSON.stringify(langchainClipboardArtifactBridgeTool)).not.toContain("desktop_clipboard.read_text");
+    expect(JSON.stringify(langchainClipboardArtifactBridgeTool)).not.toContain("artifact_export_client.upload");
+    expect(JSON.stringify(langchainClipboardArtifactBridgeTool)).not.toContain("clipboard_text");
+    expect(JSON.stringify(langchainClipboardArtifactBridgeTool)).not.toContain("framework clipboard exported to public artifact");
+    expect(JSON.stringify(langchainClipboardArtifactBridgeTool)).not.toContain("Read clipboard text");
     expect(langchainVisualContextCaptureTool).toMatchObject({
       path: "framework-tools/langchain_tools.py",
       data_classes: ["confidential", "credential", "pii"],

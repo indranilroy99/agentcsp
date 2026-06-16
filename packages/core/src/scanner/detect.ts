@@ -24202,6 +24202,7 @@ function addToolDefinitionSurface(
       !authority.visual_context_authorization_grant_bridge &&
       !authority.artifact_export &&
       !authority.local_file_artifact_bridge &&
+      !authority.clipboard_artifact_bridge &&
       !authority.rag_retrieval_artifact_bridge &&
       !authority.env_secret_artifact_bridge &&
       !authority.model_output_artifact_bridge &&
@@ -24423,6 +24424,7 @@ function addToolDefinitionSurface(
       artifact_export: authority.artifact_export,
       tainted_artifact_export_payload: authority.tainted_artifact_export_payload,
       local_file_artifact_bridge: authority.local_file_artifact_bridge,
+      clipboard_artifact_bridge: authority.clipboard_artifact_bridge,
       rag_retrieval_artifact_bridge: authority.rag_retrieval_artifact_bridge,
       model_output_artifact_bridge: authority.model_output_artifact_bridge,
       network_response_artifact_bridge: authority.network_response_artifact_bridge,
@@ -26907,6 +26909,7 @@ interface SourceToolHandlerSignals {
   handlerModelOutputArtifactBridge: boolean;
   handlerNetworkResponseArtifactBridge: boolean;
   handlerLocalFileArtifactBridge: boolean;
+  handlerClipboardArtifactBridge: boolean;
   handlerRagRetrievalArtifactBridge: boolean;
   handlerToolOutputArtifactBridge: boolean;
   handlerTaintedFeedbackPayload: boolean;
@@ -27544,6 +27547,7 @@ function sourceToolHandlerSignalMetadata(signals: SourceToolHandlerSignals | und
     handler_model_output_artifact_bridge: signals.handlerModelOutputArtifactBridge,
     handler_network_response_artifact_bridge: signals.handlerNetworkResponseArtifactBridge,
     handler_local_file_artifact_bridge: signals.handlerLocalFileArtifactBridge,
+    handler_clipboard_artifact_bridge: signals.handlerClipboardArtifactBridge,
     handler_rag_retrieval_artifact_bridge: signals.handlerRagRetrievalArtifactBridge,
     handler_tool_output_artifact_bridge: signals.handlerToolOutputArtifactBridge,
     handler_tainted_feedback_payload: signals.handlerTaintedFeedbackPayload,
@@ -28191,6 +28195,10 @@ function classifySourceToolHandlerSignals(
   const clipboardRead = language === "javascript"
     ? hasJavaScriptHandlerClipboardRead(handlerSource)
     : hasPythonHandlerClipboardRead(handlerSource);
+  const clipboardArtifactBridge = clipboardRead && artifactExport && (language === "javascript"
+    ? hasJavaScriptHandlerClipboardArtifactBridge(handlerSource)
+    : hasPythonHandlerClipboardArtifactBridge(handlerSource));
+  if (clipboardArtifactBridge) taintedArtifactExportPayload = true;
   const clipboardBrowserAutomationBridge = clipboardRead && browserAutomation && (language === "javascript"
     ? hasJavaScriptHandlerClipboardBrowserAutomationBridge(handlerSource)
     : hasPythonHandlerClipboardBrowserAutomationBridge(handlerSource));
@@ -28570,6 +28578,7 @@ function classifySourceToolHandlerSignals(
   if (modelOutputArtifactBridge) classes.add("handler_model_output_artifact_bridge");
   if (networkResponseArtifactBridge) classes.add("handler_network_response_artifact_bridge");
   if (localFileArtifactBridge) classes.add("handler_local_file_artifact_bridge");
+  if (clipboardArtifactBridge) classes.add("handler_clipboard_artifact_bridge");
   if (ragRetrievalArtifactBridge) classes.add("handler_rag_retrieval_artifact_bridge");
   if (toolOutputArtifactBridge) classes.add("handler_tool_output_artifact_bridge");
   if (taintedFeedbackPayload) classes.add("handler_tainted_feedback_payload");
@@ -28793,6 +28802,7 @@ function classifySourceToolHandlerSignals(
     handlerModelOutputArtifactBridge: modelOutputArtifactBridge,
     handlerNetworkResponseArtifactBridge: networkResponseArtifactBridge,
     handlerLocalFileArtifactBridge: localFileArtifactBridge,
+    handlerClipboardArtifactBridge: clipboardArtifactBridge,
     handlerRagRetrievalArtifactBridge: ragRetrievalArtifactBridge,
     handlerToolOutputArtifactBridge: toolOutputArtifactBridge,
     handlerTaintedFeedbackPayload: taintedFeedbackPayload,
@@ -29796,6 +29806,30 @@ function hasPythonHandlerLocalFileArtifactBridge(source: string): boolean {
     [
       /\b(?:artifact_exporter|artifact_export_client|run_exporter|report_exporter|output_exporter|artifact_store|artifact_storage|s3|s3_client|gcs|storage|storage_client|bucket|blob_service_client|r2|supabase)\s*(?:\.\s*[A-Za-z_]\w*){0,5}\s*\.\s*(?:upload|upload_file|upload_fileobj|put_object|put|save|store|write|export|publish|share|create_public_link|make_public|set_public|generate_signed_url|create_presigned_url)\s*\(([\s\S]{0,2200})\)/giu,
       /\b(?:upload_artifact|export_artifact|publish_artifact|share_artifact|write_run_artifact|store_run_artifact|create_public_artifact|write_artifact_report)\s*\(([\s\S]{0,2200})\)/giu
+    ],
+    source,
+    identifiers
+  );
+}
+
+function hasJavaScriptHandlerClipboardArtifactBridge(source: string): boolean {
+  const identifiers = extractJavaScriptClipboardIdentifiers(source);
+  return identifiers.length > 0 && artifactExportCallReferencesPayloadIdentifier(
+    [
+      /\b(?:artifactExporter|artifactExportClient|runExporter|reportExporter|outputExporter|artifactStore|artifactStorage|s3|s3Client|gcs|storage|storageClient|bucket|blobServiceClient|r2|supabase)\s*(?:\.\s*[A-Za-z_$][\w$]*){0,5}\s*\.\s*(?:upload|uploadFile|uploadFileObj|putObject|put|save|store|write|export|publish|share|createPublicLink|makePublic|setPublic|generateSignedUrl|createPresignedUrl)\s*\(([\s\S]{0,2400})\)/giu,
+      /\b(?:uploadArtifact|exportArtifact|publishArtifact|shareArtifact|writeRunArtifact|storeRunArtifact|createPublicArtifact|writeArtifactReport)\s*\(([\s\S]{0,2400})\)/giu
+    ],
+    source,
+    identifiers
+  );
+}
+
+function hasPythonHandlerClipboardArtifactBridge(source: string): boolean {
+  const identifiers = extractPythonClipboardIdentifiers(source);
+  return identifiers.length > 0 && artifactExportCallReferencesPayloadIdentifier(
+    [
+      /\b(?:artifact_exporter|artifact_export_client|run_exporter|report_exporter|output_exporter|artifact_store|artifact_storage|s3|s3_client|gcs|storage|storage_client|bucket|blob_service_client|r2|supabase)\s*(?:\.\s*[A-Za-z_]\w*){0,5}\s*\.\s*(?:upload|upload_file|upload_fileobj|put_object|put|save|store|write|export|publish|share|create_public_link|make_public|set_public|generate_signed_url|create_presigned_url)\s*\(([\s\S]{0,2400})\)/giu,
+      /\b(?:upload_artifact|export_artifact|publish_artifact|share_artifact|write_run_artifact|store_run_artifact|create_public_artifact|write_artifact_report)\s*\(([\s\S]{0,2400})\)/giu
     ],
     source,
     identifiers
@@ -37477,6 +37511,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   model_output_artifact_bridge: boolean;
   network_response_artifact_bridge: boolean;
   local_file_artifact_bridge: boolean;
+  clipboard_artifact_bridge: boolean;
   rag_retrieval_artifact_bridge: boolean;
   tool_output_artifact_bridge: boolean;
   public_artifact_destination: boolean;
@@ -37626,6 +37661,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   const handlerModelOutputArtifactBridge = handler?.handlerModelOutputArtifactBridge === true;
   const handlerNetworkResponseArtifactBridge = handler?.handlerNetworkResponseArtifactBridge === true;
   const handlerLocalFileArtifactBridge = handler?.handlerLocalFileArtifactBridge === true;
+  const handlerClipboardArtifactBridge = handler?.handlerClipboardArtifactBridge === true;
   const handlerRagRetrievalArtifactBridge = handler?.handlerRagRetrievalArtifactBridge === true;
   const handlerToolOutputArtifactBridge = handler?.handlerToolOutputArtifactBridge === true;
   const handlerPublicArtifactDestination = handler?.handlerPublicArtifactDestination === true;
@@ -38743,6 +38779,13 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
     actions.add("write");
     actions.add("publish");
   }
+  if (handlerClipboardArtifactBridge) {
+    classes.add("clipboard_artifact_bridge");
+    actions.add("read");
+    actions.add("send");
+    actions.add("write");
+    actions.add("publish");
+  }
   if (handlerRagRetrievalArtifactBridge) {
     classes.add("rag_retrieval_artifact_bridge");
     actions.add("read");
@@ -39125,6 +39168,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerEnvSecretArtifactBridge ||
       handlerModelOutputArtifactBridge ||
       handlerNetworkResponseArtifactBridge ||
+      handlerClipboardArtifactBridge ||
       handlerRagRetrievalArtifactBridge ||
       handlerTaintedFeedbackPayload ||
       handlerFeedbackAutoPromotion ||
@@ -39155,6 +39199,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerTaintedArtifactExportPayload ||
       handlerNetworkResponseArtifactBridge ||
       handlerLocalFileArtifactBridge ||
+      handlerClipboardArtifactBridge ||
       handlerToolOutputArtifactBridge ||
       handlerPublicArtifactDestination ||
       handlerRagRetrieval ||
@@ -39347,6 +39392,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerToolOutputFeedbackBridge ||
       handlerSecretManagerArtifactBridge ||
       handlerEnvSecretArtifactBridge ||
+      (handlerClipboardArtifactBridge && handlerSecretEnvAccess) ||
       (handlerRagRetrievalArtifactBridge && handlerSecretEnvAccess) ||
       (handlerVisualContextPromptRegistryBridge && handlerSecretEnvAccess) ||
       handlerSafetyPolicyWrite ||
@@ -39380,6 +39426,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerModelOutputArtifactBridge ||
       handlerNetworkResponseArtifactBridge ||
       handlerLocalFileArtifactBridge ||
+      handlerClipboardArtifactBridge ||
       handlerToolOutputArtifactBridge ||
       handlerRagRetrieval ||
       handlerRagRetrievalPromptBridge ||
@@ -39506,6 +39553,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       (handlerModelOutputArtifactBridge && handlerSecretEnvAccess) ||
       (handlerNetworkResponseArtifactBridge && handlerSecretEnvAccess) ||
       (handlerLocalFileArtifactBridge && handlerSecretEnvAccess) ||
+      (handlerClipboardArtifactBridge && handlerSecretEnvAccess) ||
       (handlerToolOutputEmbeddingVectorBridge && handlerSecretEnvAccess) ||
       (handlerVisualContextEmbeddingVectorBridge && handlerSecretEnvAccess) ||
       handlerSecretManagerTaskQueueBridge ||
@@ -39710,6 +39758,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
     secret_manager_artifact_bridge: handlerSecretManagerArtifactBridge,
     env_secret_artifact_bridge: handlerEnvSecretArtifactBridge,
     local_file_artifact_bridge: handlerLocalFileArtifactBridge,
+    clipboard_artifact_bridge: handlerClipboardArtifactBridge,
     rag_retrieval_artifact_bridge: handlerRagRetrievalArtifactBridge,
     tainted_feedback_payload: handlerTaintedFeedbackPayload,
     feedback_auto_promotion: handlerFeedbackAutoPromotion,
@@ -39940,6 +39989,7 @@ function authoritySignature(tool: SurfaceObject): string {
     metadata.model_output_artifact_bridge === true ? "model_output_artifact_bridge" : "",
     metadata.network_response_artifact_bridge === true ? "network_response_artifact_bridge" : "",
     metadata.local_file_artifact_bridge === true ? "local_file_artifact_bridge" : "",
+    metadata.clipboard_artifact_bridge === true ? "clipboard_artifact_bridge" : "",
     metadata.rag_retrieval_artifact_bridge === true ? "rag_retrieval_artifact_bridge" : "",
     metadata.tool_output_artifact_bridge === true ? "tool_output_artifact_bridge" : "",
     metadata.public_artifact_destination === true ? "public_artifact_destination" : "",
@@ -40177,6 +40227,7 @@ function isPrivilegedToolSurface(tool: SurfaceObject): boolean {
     tool.metadata.model_output_artifact_bridge === true ||
     tool.metadata.network_response_artifact_bridge === true ||
     tool.metadata.local_file_artifact_bridge === true ||
+    tool.metadata.clipboard_artifact_bridge === true ||
     tool.metadata.rag_retrieval_artifact_bridge === true ||
     tool.metadata.tool_output_artifact_bridge === true ||
     tool.metadata.public_artifact_destination === true ||

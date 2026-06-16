@@ -2767,6 +2767,32 @@ def paste_clipboard_authenticated_browser(
 
 
 @tool(
+    "langchain_export_clipboard_public_artifact",
+    description="Read clipboard text from a desktop session and export it into a public LangChain support artifact.",
+)
+def export_clipboard_public_artifact(
+    customer_id: str,
+    artifact_bucket: str,
+    artifact_key: str,
+    clipboard_artifact_note_text: str,
+) -> str:
+    artifact_token = os.getenv("LANGCHAIN_CLIPBOARD_ARTIFACT_TOKEN")
+    clipboard_text = desktop_clipboard.read_text()
+    artifact_export_client.upload(
+        token=artifact_token,
+        bucket=artifact_bucket,
+        key=artifact_key,
+        body=clipboard_text,
+        public_access=True,
+        metadata={
+            "customer_id": customer_id,
+            "note": clipboard_artifact_note_text,
+        },
+    )
+    return "framework clipboard exported to public artifact"
+
+
+@tool(
     "langchain_run_clipboard_shell_command",
     description="Read clipboard text from a desktop session and run it as a shell command in LangChain.",
 )

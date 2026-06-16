@@ -204,6 +204,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-200")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-201")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-202")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-203")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-001")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-002")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-003")).toBe(true);
@@ -10397,10 +10398,12 @@ describe("rule engine", () => {
     const sourceHandlerArtifactExportFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-050");
     expect(sourceHandlerArtifactExportFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_export_agent_run_artifact",
+      "langchain_export_clipboard_public_artifact",
       "langchain_export_local_file_artifact",
       "langchain_export_model_artifact",
       "langchain_publish_retrieved_context_public_artifact",
       "source_export_agent_run_artifact",
+      "source_export_clipboard_public_artifact",
       "source_export_local_file_artifact",
       "source_export_model_artifact",
       "source_publish_retrieved_context_public_artifact"
@@ -10440,7 +10443,79 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerArtifactExportFindings)).not.toContain("retrieved_artifact_context");
     expect(JSON.stringify(sourceHandlerArtifactExportFindings)).not.toContain("source retrieved context published to public artifact");
     expect(JSON.stringify(sourceHandlerArtifactExportFindings)).not.toContain("framework retrieved context published to public artifact");
+    expect(JSON.stringify(sourceHandlerArtifactExportFindings)).not.toContain("source clipboard exported to public artifact");
+    expect(JSON.stringify(sourceHandlerArtifactExportFindings)).not.toContain("framework clipboard exported to public artifact");
+    expect(JSON.stringify(sourceHandlerArtifactExportFindings)).not.toContain("desktopClipboard.readText");
+    expect(JSON.stringify(sourceHandlerArtifactExportFindings)).not.toContain("desktop_clipboard.read_text");
+    expect(JSON.stringify(sourceHandlerArtifactExportFindings)).not.toContain("clipboardText");
+    expect(JSON.stringify(sourceHandlerArtifactExportFindings)).not.toContain("clipboard_text");
     expect(JSON.stringify(sourceHandlerArtifactExportFindings)).not.toContain("Export caller supplied agent artifact");
+    const sourceHandlerClipboardArtifactBridgeFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-203");
+    expect(sourceHandlerClipboardArtifactBridgeFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
+      "langchain_export_clipboard_public_artifact",
+      "source_export_clipboard_public_artifact"
+    ]);
+    expect(sourceHandlerClipboardArtifactBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
+    expect(sourceHandlerClipboardArtifactBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerClipboardArtifactBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
+    expect(sourceHandlerClipboardArtifactBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
+    expect(sourceHandlerClipboardArtifactBridgeFindings.every((finding) => finding.matched_object.metadata.source_tool_handler_redacted === true)).toBe(true);
+    expect(sourceHandlerClipboardArtifactBridgeFindings.every((finding) => finding.matched_object.metadata.handler_clipboard_read === true)).toBe(true);
+    expect(sourceHandlerClipboardArtifactBridgeFindings.every((finding) => finding.matched_object.metadata.handler_artifact_export === true)).toBe(true);
+    expect(sourceHandlerClipboardArtifactBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.handler_tainted_artifact_export_payload === true
+    )).toBe(true);
+    expect(sourceHandlerClipboardArtifactBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.handler_public_artifact_destination === true
+    )).toBe(true);
+    expect(sourceHandlerClipboardArtifactBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.handler_clipboard_artifact_bridge === true
+    )).toBe(true);
+    expect(sourceHandlerClipboardArtifactBridgeFindings.every((finding) => finding.matched_object.metadata.handler_secret_env_access === true)).toBe(true);
+    expect(sourceHandlerClipboardArtifactBridgeFindings.every((finding) => finding.matched_object.metadata.clipboard_read === true)).toBe(true);
+    expect(sourceHandlerClipboardArtifactBridgeFindings.every((finding) => finding.matched_object.metadata.artifact_export === true)).toBe(true);
+    expect(sourceHandlerClipboardArtifactBridgeFindings.every((finding) => finding.matched_object.metadata.tainted_artifact_export_payload === true)).toBe(true);
+    expect(sourceHandlerClipboardArtifactBridgeFindings.every((finding) => finding.matched_object.metadata.public_artifact_destination === true)).toBe(true);
+    expect(sourceHandlerClipboardArtifactBridgeFindings.every((finding) => finding.matched_object.metadata.clipboard_artifact_bridge === true)).toBe(true);
+    for (const authorityClass of [
+      "clipboard_read",
+      "artifact_export",
+      "tainted_artifact_export_payload",
+      "public_artifact_destination",
+      "clipboard_artifact_bridge"
+    ]) {
+      expect(sourceHandlerClipboardArtifactBridgeFindings.every((finding) =>
+        finding.matched_object.metadata.authority_classes.includes(authorityClass)
+      )).toBe(true);
+    }
+    for (const handlerAuthorityClass of [
+      "handler_clipboard_read",
+      "handler_artifact_export",
+      "handler_tainted_artifact_export_payload",
+      "handler_public_artifact_destination",
+      "handler_clipboard_artifact_bridge"
+    ]) {
+      expect(sourceHandlerClipboardArtifactBridgeFindings.every((finding) =>
+        finding.matched_object.metadata.handler_authority_classes.includes(handlerAuthorityClass)
+      )).toBe(true);
+    }
+    expect(sourceHandlerClipboardArtifactBridgeFindings.every((finding) => finding.matched_object.actions.includes("read"))).toBe(true);
+    expect(sourceHandlerClipboardArtifactBridgeFindings.every((finding) => finding.matched_object.actions.includes("send"))).toBe(true);
+    expect(sourceHandlerClipboardArtifactBridgeFindings.every((finding) => finding.matched_object.actions.includes("write"))).toBe(true);
+    expect(sourceHandlerClipboardArtifactBridgeFindings.every((finding) => finding.matched_object.actions.includes("publish"))).toBe(true);
+    expect(sourceHandlerClipboardArtifactBridgeFindings.every((finding) => finding.matched_object.external_reach === true)).toBe(true);
+    expect(sourceHandlerClipboardArtifactBridgeFindings.every((finding) => finding.matched_object.secret_exposure === true)).toBe(true);
+    expect(sourceHandlerClipboardArtifactBridgeFindings.every((finding) => finding.matched_object.side_effect === true)).toBe(true);
+    expect(sourceHandlerClipboardArtifactBridgeFindings.every((finding) => finding.matched_object.reversible === false)).toBe(true);
+    expect(JSON.stringify(sourceHandlerClipboardArtifactBridgeFindings)).not.toContain("desktopClipboard.readText");
+    expect(JSON.stringify(sourceHandlerClipboardArtifactBridgeFindings)).not.toContain("desktop_clipboard.read_text");
+    expect(JSON.stringify(sourceHandlerClipboardArtifactBridgeFindings)).not.toContain("artifactExportClient.upload");
+    expect(JSON.stringify(sourceHandlerClipboardArtifactBridgeFindings)).not.toContain("artifact_export_client.upload");
+    expect(JSON.stringify(sourceHandlerClipboardArtifactBridgeFindings)).not.toContain("clipboardText");
+    expect(JSON.stringify(sourceHandlerClipboardArtifactBridgeFindings)).not.toContain("clipboard_text");
+    expect(JSON.stringify(sourceHandlerClipboardArtifactBridgeFindings)).not.toContain("source clipboard exported to public artifact");
+    expect(JSON.stringify(sourceHandlerClipboardArtifactBridgeFindings)).not.toContain("framework clipboard exported to public artifact");
+    expect(JSON.stringify(sourceHandlerClipboardArtifactBridgeFindings)).not.toContain("Read clipboard text");
     const sourceHandlerModelApprovalFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-051");
     expect(sourceHandlerModelApprovalFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_model_review_and_run_action",
