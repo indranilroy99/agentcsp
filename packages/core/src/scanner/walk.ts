@@ -39,6 +39,8 @@ export async function walkProjectWithCoverage(config: ScanConfig): Promise<WalkR
   const maxFileSize = config.max_file_size_bytes ?? DEFAULT_MAX_FILE_SIZE_BYTES;
   const coverage: ScanCoverageSummary = {
     title: "AgentCSP Scan Coverage",
+    scan_health: "complete",
+    scan_health_reasons: [],
     directories_visited: 0,
     files_seen: 0,
     files_indexed: 0,
@@ -130,7 +132,20 @@ export async function walkProjectWithCoverage(config: ScanConfig): Promise<WalkR
   await visit(rootPath);
   const sortedFiles = files.sort((a, b) => a.relativePath.localeCompare(b.relativePath));
   coverage.files_indexed = sortedFiles.length;
-  return { files: sortedFiles, coverage, diagnostics: diagnostics.sort((a, b) => a.id.localeCompare(b.id)) };
+  return {
+    files: sortedFiles,
+    coverage: withWalkHealth(coverage),
+    diagnostics: diagnostics.sort((a, b) => a.id.localeCompare(b.id))
+  };
+}
+
+function withWalkHealth(coverage: ScanCoverageSummary): ScanCoverageSummary {
+  const scan_health = coverage.max_files_reached ? "incomplete" : coverage.files_skipped_for_size > 0 ? "degraded" : "complete";
+  const scan_health_reasons = [
+    ...(coverage.max_files_reached ? ["max_files_reached"] : []),
+    ...(coverage.files_skipped_for_size > 0 ? ["files_skipped_for_size"] : [])
+  ];
+  return { ...coverage, scan_health, scan_health_reasons };
 }
 
 function walkDiagnostic(rootPath: string, absolutePath: string, code: string): ScanDiagnostic {

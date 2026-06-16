@@ -2969,6 +2969,10 @@ The summary includes:
 - diagnostic totals by severity through `diagnostics_total`, `diagnostics_errors`, `diagnostics_warnings`, and `diagnostics_info`
 - whether `max_files` was reached
 - configured `max_files` and `max_file_size_bytes`
+- `scan_health`, one of `complete`, `degraded`, or `incomplete`
+- stable `scan_health_reasons`
+
+`complete` means the configured scan scope completed without parser or traversal health issues. `degraded` means the scan completed but one or more files or security-relevant configs may need review, such as oversized skipped files or parser diagnostics. `incomplete` means traversal missed part of the configured scope, such as `max_files` exhaustion or a directory/file stat failure.
 
 Default ignore rules include prior AgentCSP output directories such as `.agentcsp`, `.agentcsp-*`, and `.agentcsp_*`. When the configured output directory is inside the scanned root, that output directory is ignored as well. This prevents repeated scans from ingesting stale manifests, findings, reports, or SARIF files.
 

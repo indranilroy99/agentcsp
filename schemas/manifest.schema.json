@@ -1477,6 +1477,22 @@
               "const": "AgentCSP Scan Coverage",
               "default": "AgentCSP Scan Coverage"
             },
+            "scan_health": {
+              "type": "string",
+              "enum": [
+                "complete",
+                "degraded",
+                "incomplete"
+              ],
+              "default": "complete"
+            },
+            "scan_health_reasons": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "default": []
+            },
             "directories_visited": {
               "type": "integer",
               "minimum": 0,

@@ -182,13 +182,47 @@ function withDiagnosticCoverage(
     },
     { errors: 0, warnings: 0, info: 0 }
   );
+  const scanHealth = summarizeScanHealth(coverage, diagnostics, counts);
 
   return {
     ...coverage,
+    scan_health: scanHealth.scan_health,
+    scan_health_reasons: scanHealth.scan_health_reasons,
     diagnostics_total: diagnostics.length,
     diagnostics_errors: counts.errors,
     diagnostics_warnings: counts.warnings,
     diagnostics_info: counts.info
+  };
+}
+
+function summarizeScanHealth(
+  coverage: ScanCoverageSummary,
+  diagnostics: ScanDiagnostic[],
+  counts: { errors: number; warnings: number; info: number }
+): Pick<ScanCoverageSummary, "scan_health" | "scan_health_reasons"> {
+  const reasons = new Set<string>();
+  if (coverage.max_files_reached) reasons.add("max_files_reached");
+  if (diagnostics.some((diagnostic) => diagnostic.code === "SCAN_DIRECTORY_READ_FAILED")) {
+    reasons.add("directory_read_failed");
+  }
+  if (diagnostics.some((diagnostic) => diagnostic.code === "SCAN_FILE_STAT_FAILED")) {
+    reasons.add("file_stat_failed");
+  }
+  if (coverage.files_skipped_for_size > 0) reasons.add("files_skipped_for_size");
+  if (counts.errors > 0) reasons.add("diagnostic_errors");
+  if (counts.warnings > 0) reasons.add("diagnostic_warnings");
+
+  const scan_health =
+    coverage.max_files_reached ||
+    diagnostics.some((diagnostic) => diagnostic.code === "SCAN_DIRECTORY_READ_FAILED" || diagnostic.code === "SCAN_FILE_STAT_FAILED")
+      ? "incomplete"
+      : reasons.size > 0
+        ? "degraded"
+        : "complete";
+
+  return {
+    scan_health,
+    scan_health_reasons: [...reasons].sort((a, b) => a.localeCompare(b))
   };
 }
 

@@ -24,6 +24,8 @@ describe("walkProjectWithCoverage", () => {
       "large.md"
     ]);
     expect(result.coverage).toMatchObject({
+      scan_health: "degraded",
+      scan_health_reasons: ["files_skipped_for_size"],
       files_seen: 4,
       files_indexed: 4,
       files_skipped_for_size: 1,
@@ -52,6 +54,8 @@ describe("walkProjectWithCoverage", () => {
 
     expect(result.files).toHaveLength(1);
     expect(result.coverage.max_files_reached).toBe(true);
+    expect(result.coverage.scan_health).toBe("incomplete");
+    expect(result.coverage.scan_health_reasons).toEqual(["max_files_reached"]);
     expect(result.coverage.files_indexed).toBe(1);
   });
 

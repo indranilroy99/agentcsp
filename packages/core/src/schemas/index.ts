@@ -462,6 +462,8 @@ export const StaticBlastRadiusSummarySchema = z.object({
 
 export const ScanCoverageSummarySchema = z.object({
   title: z.literal("AgentCSP Scan Coverage").default("AgentCSP Scan Coverage"),
+  scan_health: z.enum(["complete", "degraded", "incomplete"]).default("complete"),
+  scan_health_reasons: z.array(z.string()).default([]),
   directories_visited: z.number().int().nonnegative().default(0),
   files_seen: z.number().int().nonnegative().default(0),
   files_indexed: z.number().int().nonnegative().default(0),

@@ -32,6 +32,8 @@ describe("scan diagnostics", () => {
     expect(result.manifest.diagnostics.every((diagnostic) => diagnostic.content_redacted)).toBe(true);
     expect(result.manifest.diagnostics.every((diagnostic) => diagnostic.severity === "warning")).toBe(true);
     expect(result.manifest.scan_coverage).toMatchObject({
+      scan_health: "degraded",
+      scan_health_reasons: ["diagnostic_warnings"],
       diagnostics_total: 9,
       diagnostics_errors: 0,
       diagnostics_warnings: 9,
@@ -56,13 +58,15 @@ describe("scan diagnostics", () => {
     expect(result.reportMarkdown).toContain("AI_TELEMETRY_CONFIG_PARSE_FAILED");
     expect(result.reportMarkdown).toContain("- Diagnostics: 9");
     expect(result.reportMarkdown).toContain("- Diagnostic warnings: 9");
+    expect(result.reportMarkdown).toContain("- Scan health: `degraded`");
+    expect(result.reportMarkdown).toContain("- Scan health reasons: diagnostic_warnings");
 
     const sarif = JSON.parse(await fs.readFile(result.outputFiles.sarif!, "utf8")) as {
       runs: Array<{
         properties?: {
           agentcsp_diagnostics?: Array<{ code?: string }>;
           agentcsp_ci_gate_summary?: { diagnostic_count?: number; status?: string; diagnostic_ids?: string[] };
-          agentcsp_scan_coverage?: { diagnostics_total?: number; diagnostics_warnings?: number };
+          agentcsp_scan_coverage?: { diagnostics_total?: number; diagnostics_warnings?: number; scan_health?: string };
         };
       }>;
     };
@@ -75,6 +79,7 @@ describe("scan diagnostics", () => {
       diagnostic_ids: result.manifest.diagnostics.map((diagnostic) => diagnostic.id).sort()
     });
     expect(sarif.runs[0]?.properties?.agentcsp_scan_coverage).toMatchObject({
+      scan_health: "degraded",
       diagnostics_total: 9,
       diagnostics_warnings: 9
     });
@@ -145,6 +150,8 @@ describe("scan diagnostics", () => {
       })
     ]);
     expect(result.manifest.scan_coverage).toMatchObject({
+      scan_health: "incomplete",
+      scan_health_reasons: ["diagnostic_warnings", "max_files_reached"],
       max_files_reached: true,
       max_files: 1,
       diagnostics_total: 1,
@@ -161,13 +168,14 @@ describe("scan diagnostics", () => {
       diagnostic_ids: result.manifest.diagnostics.map((diagnostic) => diagnostic.id).sort()
     });
     expect(result.reportMarkdown).toContain("SCAN_MAX_FILES_REACHED");
+    expect(result.reportMarkdown).toContain("- Scan health: `incomplete`");
     expect(result.reportMarkdown).toContain("- Max files reached: `true`");
 
     const sarif = JSON.parse(await fs.readFile(result.outputFiles.sarif!, "utf8")) as {
       runs: Array<{
         properties?: {
           agentcsp_diagnostics?: Array<{ code?: string; parser?: string }>;
-          agentcsp_scan_coverage?: { max_files_reached?: boolean; diagnostics_total?: number };
+          agentcsp_scan_coverage?: { max_files_reached?: boolean; diagnostics_total?: number; scan_health?: string };
         };
       }>;
     };
@@ -175,6 +183,7 @@ describe("scan diagnostics", () => {
       expect.objectContaining({ code: "SCAN_MAX_FILES_REACHED", parser: "scanner" })
     ]);
     expect(sarif.runs[0]?.properties?.agentcsp_scan_coverage).toMatchObject({
+      scan_health: "incomplete",
       max_files_reached: true,
       diagnostics_total: 1
     });

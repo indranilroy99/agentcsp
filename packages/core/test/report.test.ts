@@ -28,6 +28,8 @@ describe("scanProject", () => {
     expect(result.manifest.static_blast_radius?.pii_attack_paths).toBeGreaterThan(0);
     expect(result.manifest.static_blast_radius?.credential_attack_paths).toBeGreaterThan(0);
     expect(result.manifest.scan_coverage?.title).toBe("AgentCSP Scan Coverage");
+    expect(result.manifest.scan_coverage?.scan_health).toBe("complete");
+    expect(result.manifest.scan_coverage?.scan_health_reasons).toEqual([]);
     expect(result.manifest.scan_coverage?.files_indexed).toBeGreaterThan(0);
     expect(result.manifest.scan_coverage?.max_files_reached).toBe(false);
     expect(result.manifest.triage_summary?.title).toBe("AgentCSP Triage Summary");
@@ -145,6 +147,8 @@ describe("scanProject", () => {
     expect(result.reportMarkdown).toContain("| Priority | Severity | Risk | Baseline | Owner | Control | Rule | Surface | Path | Rationale |");
     expect(result.reportMarkdown).toContain("- Root: `<scan-root>`");
     expect(result.reportMarkdown).not.toContain(rootPath);
+    expect(result.reportMarkdown).toContain("- Scan health: `complete`");
+    expect(result.reportMarkdown).toContain("- Scan health reasons: none");
     expect(result.reportMarkdown).toContain("## CI Gate Summary");
     expect(result.reportMarkdown).toContain("- Status: `pass`");
     expect(result.reportMarkdown).toContain("- Blocker ID limit: 50");

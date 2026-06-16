@@ -247,6 +247,8 @@ function renderScanCoverage(manifest: AgentManifest): string {
   return [
     "## Scan Coverage",
     "",
+    `- Scan health: \`${coverage.scan_health}\``,
+    `- Scan health reasons: ${coverage.scan_health_reasons.length > 0 ? coverage.scan_health_reasons.join(", ") : "none"}`,
     `- Directories visited: ${coverage.directories_visited}`,
     `- Files seen: ${coverage.files_seen}`,
     `- Files indexed: ${coverage.files_indexed}`,
