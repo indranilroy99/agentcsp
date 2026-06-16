@@ -422,11 +422,12 @@ function renderFindingTable(findings: Finding[]): string {
 
 function renderSuppressedFindingTable(findings: Finding[]): string {
   return [
-    "| Severity | Confidence | Rule | Object | Recommended control | Suppression ID | Suppression | Expires | Owner |",
-    "| --- | --- | --- | --- | --- | --- | --- | --- | --- |",
+    "| Severity | Confidence | Rule | Object | Recommended control | Suppression status | Matched on | Expires |",
+    "| --- | --- | --- | --- | --- | --- | --- | --- |",
     ...findings.map((finding) => {
       const suppression = finding.suppression;
-      return `| ${finding.severity} | ${finding.confidence} | ${finding.rule_id} | \`${finding.matched_object.type}:${finding.matched_object.name}\` | ${finding.recommended_control.replaceAll("_", " ")} | ${escapeTable(suppression?.id ?? "unknown")} | ${escapeTable(suppression?.reason ?? "suppressed")} | ${suppression?.expires_at ?? "unknown"} | ${escapeTable(suppression?.owner ?? "unknown")} |`;
+      const matchedOn = suppression?.matched_on.length ? suppression.matched_on.join(", ") : "unknown";
+      return `| ${finding.severity} | ${finding.confidence} | ${finding.rule_id} | \`${finding.matched_object.type}:${finding.matched_object.name}\` | ${finding.recommended_control.replaceAll("_", " ")} | ${suppression?.status ?? "unknown"} | ${escapeTable(matchedOn)} | ${suppression?.expires_at ?? "unknown"} |`;
     })
   ].join("\n");
 }

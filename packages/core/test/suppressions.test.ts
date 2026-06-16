@@ -64,6 +64,24 @@ describe("policy suppressions", () => {
     });
     expect(result.shouldFail).toBe(false);
     expect(result.reportMarkdown).toContain("Suppressed Findings");
+    expect(result.reportMarkdown).toContain("Suppression status");
+    expect(result.reportMarkdown).toContain("severity");
+    expect(result.reportMarkdown).not.toContain("active-critical-demo-risk");
+    expect(result.reportMarkdown).not.toContain("Accepted for fixture regression only.");
+    expect(result.reportMarkdown).not.toContain("security@example.com");
+    const sarif = JSON.parse(await fs.readFile(result.outputFiles.sarif!, "utf8")) as {
+      runs: Array<{
+        results?: Array<{
+          suppressions?: Array<{ justification?: string }>;
+        }>;
+      }>;
+    };
+    const sarifSuppression = sarif.runs[0]?.results?.find((item) => item.suppressions?.length)?.suppressions?.[0];
+    expect(sarifSuppression?.justification).toContain("Suppression reason and owner are redacted");
+    expect(sarifSuppression?.justification).toContain("2999-12-31T23:59:59.000Z");
+    expect(sarifSuppression?.justification).not.toContain("Accepted for fixture regression only.");
+    expect(sarifSuppression?.justification).not.toContain("security@example.com");
+    expect(JSON.stringify(sarif)).not.toContain("active-critical-demo-risk");
   });
 
   it("keeps expired suppressions as active risk", async () => {
@@ -95,7 +113,10 @@ describe("policy suppressions", () => {
     });
     expect(result.shouldFail).toBe(true);
     expect(result.reportMarkdown).toContain("### Expired Suppressions");
-    expect(result.reportMarkdown).toContain("expired-critical-demo-risk");
+    expect(result.reportMarkdown).toContain("2000-01-01T00:00:00.000Z");
+    expect(result.reportMarkdown).not.toContain("expired-critical-demo-risk");
+    expect(result.reportMarkdown).not.toContain("Accepted for fixture regression only.");
+    expect(result.reportMarkdown).not.toContain("security@example.com");
   });
 
   it("can fail CI on expired suppressions without a severity gate", async () => {

@@ -73,6 +73,8 @@ Dotted fields are also supported for exact matches against finding fields, such 
 
 Suppressions are explicit accepted-risk records. They do not delete findings from JSON, Markdown, or SARIF output. Active suppressions are excluded from `--fail-on` gates, while expired suppressions remain active risk. Use `--fail-on-expired-suppressions` when CI should block stale waivers even when no severity threshold is configured.
 
+JSON findings retain suppression ownership, reason, expiry, and matched fields for audit workflows. Markdown and SARIF reports redact suppression IDs, owners, and reasons by default, while preserving suppression status, expiry, and matched-field context for shared CI artifacts.
+
 Every suppression requires:
 
 - `id`

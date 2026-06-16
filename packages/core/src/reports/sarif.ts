@@ -67,7 +67,7 @@ export function renderSarifReport(manifest: AgentManifest): Record<string, unkno
                   {
                     kind: "external",
                     status: "accepted",
-                    justification: `${finding.suppression.reason} Owner: ${finding.suppression.owner}. Expires: ${finding.suppression.expires_at}.`
+                    justification: `AgentCSP policy suppression accepted this finding. Suppression reason and owner are redacted. Expires: ${finding.suppression.expires_at}.`
                   }
                 ]
               : undefined,

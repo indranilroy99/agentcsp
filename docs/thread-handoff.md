@@ -1880,6 +1880,8 @@ The current iteration adds:
 - rule `AGENTCSP-TOOL-207` for source-defined tools that read desktop or browser clipboard material and use copied context to weaken safety policy under runtime policy authority and caller-selected policy routing
 - Markdown report triage now includes a deterministic `Highest-Risk Blast-Radius Paths` section that ranks active findings by risk score, severity, confidence, and stable finding ID, then summarizes boundary type, data class, action authority, and recommended control without adding raw evidence or secret values
 - regression coverage proving the new report section appears for the vulnerable fixture and the safe fixture emits a quiet no-active-high-risk-paths message
+- Markdown and SARIF suppression presentation now redacts suppression IDs, owners, and reasons while keeping status, expiry, and matched-field context; JSON findings intentionally retain full suppression fields for audit workflows
+- regression coverage proving active and expired suppression reports do not expose policy owner, reason, or suppression IDs in Markdown/SARIF
 
 ## Initial Build Recommendation
 
