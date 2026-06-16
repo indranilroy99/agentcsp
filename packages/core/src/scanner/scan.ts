@@ -51,6 +51,9 @@ export async function scanProject(rawConfig: Partial<ScanConfig> & { root_path: 
   const config = ScanConfigSchema.parse(rawConfig);
   const rootPath = path.resolve(config.root_path);
   const outputPath = resolvePathFromRoot(rootPath, config.output_path);
+  if (path.resolve(outputPath) === rootPath) {
+    throw new Error("AgentCSP output_path must be a directory outside or below the scan root, not the scan root itself.");
+  }
   const baselinePath = config.baseline_path ? resolvePathFromRoot(rootPath, config.baseline_path) : undefined;
   const resolvedConfig: ScanConfig = { ...config, output_path: outputPath, baseline_path: baselinePath };
 

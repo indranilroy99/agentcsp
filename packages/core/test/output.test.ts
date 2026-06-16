@@ -50,6 +50,22 @@ describe("scan output paths", () => {
     expect(result.outputFiles.manifest).toBe(path.join(outputPath, "agent-manifest.json"));
     await expect(fs.stat(result.outputFiles.manifest!)).resolves.toMatchObject({ isFile: expect.any(Function) });
   });
+
+  it("rejects the scan root as the output directory", async () => {
+    const root = await createOutputFixture();
+    await expect(
+      scanProject({
+        root_path: root,
+        output_path: ".",
+        formats: ["json"],
+        include_hidden: true,
+        include_logs: false,
+        max_file_size_bytes: 1024 * 1024,
+        max_files: 5000,
+        quiet: true
+      })
+    ).rejects.toThrow("output_path must be a directory outside or below the scan root");
+  });
 });
 
 async function createOutputFixture(): Promise<string> {

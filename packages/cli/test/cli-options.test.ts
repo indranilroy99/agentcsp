@@ -25,6 +25,17 @@ describe("cli options", () => {
     ).rejects.toThrow("Expected json,md,sarif");
   });
 
+  it("rejects the scan root as the output directory", async () => {
+    const root = await createPolicyConfigFixture();
+    await expect(
+      runScanCommand(root, {
+        out: ".",
+        format: "json",
+        quiet: true
+      })
+    ).rejects.toThrow("output_path must be a directory outside or below the scan root");
+  });
+
   it("rejects unsupported fail-on confidence values", async () => {
     await expect(
       runScanCommand(".", {
