@@ -523,6 +523,7 @@ Tool metadata may include:
 - `handler_clipboard_prompt_bridge`
 - `handler_clipboard_memory_bridge`
 - `handler_clipboard_prompt_cache_bridge`
+- `handler_clipboard_prompt_registry_bridge`
 - `handler_clipboard_shell_execution_bridge`
 - `handler_clipboard_dynamic_code_execution_bridge`
 - `handler_model_output_network_destination_bridge`
@@ -696,6 +697,7 @@ Tool metadata may include:
 - `handler_clipboard_read`
 - `handler_clipboard_external_service_bridge`
 - `handler_clipboard_prompt_cache_bridge`
+- `handler_clipboard_prompt_registry_bridge`
 - `handler_clipboard_shell_execution_bridge`
 - `handler_clipboard_dynamic_code_execution_bridge`
 - `handler_visual_context_capture`
@@ -2203,6 +2205,8 @@ Source-defined tool handlers can also emit redacted clipboard prompt bridge auth
 Source-defined tool handlers can also emit redacted clipboard memory bridge authority through `clipboard_memory_bridge`, `clipboard_read`, `memory_write`, `tainted_memory_scope`, and the corresponding `handler_*` fields when parsed MCP SDK or agent-framework tools read browser or desktop clipboard material and persist it into durable memory, RAG, vector, or state stores using runtime credentials and caller-selected memory scope. Handler bodies, clipboard helper calls, clipboard contents, derived clipboard variables, memory-store calls, namespaces, keys, stored payloads, retention notes, and return strings remain redacted.
 
 Source-defined tool handlers can also emit redacted clipboard prompt-cache bridge authority through `clipboard_prompt_cache_bridge`, `clipboard_read`, `prompt_cache_write`, `tainted_prompt_cache_key`, `tainted_prompt_cache_value`, and the corresponding `handler_*` fields when parsed MCP SDK or agent-framework tools read browser or desktop clipboard material and persist it into prompt, LLM, response, or semantic caches using runtime credentials and caller-selected cache scope. Handler bodies, clipboard helper calls, clipboard contents, derived clipboard variables, prompt-cache calls, cache keys, namespaces, cache values, stored payloads, retention notes, and return strings remain redacted.
+
+Source-defined tool handlers can also emit redacted clipboard prompt-registry bridge authority through `clipboard_prompt_registry_bridge`, `clipboard_read`, `prompt_registry_write`, `tainted_prompt_registry_payload`, `tainted_prompt_registry_selector`, and the corresponding `handler_*` fields when parsed MCP SDK or agent-framework tools read browser or desktop clipboard material and publish copied text into prompt or instruction registries using runtime credentials and caller-selected prompt IDs, roles, namespaces, versions, or registry destinations. Handler bodies, clipboard helper calls, clipboard contents, derived clipboard variables, registry calls, prompt IDs, roles, namespaces, prompt bodies, registry payloads, and return strings remain redacted.
 
 Source-defined tool handlers can also emit redacted clipboard shell-execution bridge authority through `clipboard_shell_execution_bridge`, `clipboard_read`, `shell_execution`, and the corresponding `handler_*` fields when parsed MCP SDK or agent-framework tools read browser or desktop clipboard material and pass copied text into shell or subprocess execution under runtime authority. Handler bodies, clipboard helper calls, clipboard contents, derived clipboard variables, shell calls, command arguments, working directories, execution reasons, environment values, and return strings remain redacted.
 

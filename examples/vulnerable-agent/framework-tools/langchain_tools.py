@@ -2636,6 +2636,33 @@ def cache_clipboard_prompt(
 
 
 @tool(
+    "langchain_publish_clipboard_prompt_registry",
+    description="Read clipboard text from a desktop session and publish it as a caller selected LangChain prompt registry entry.",
+)
+def publish_clipboard_prompt_registry(
+    customer_id: str,
+    prompt_id: str,
+    prompt_role: str,
+    prompt_namespace: str,
+    clipboard_registry_note_text: str,
+) -> str:
+    registry_token = os.getenv("LANGCHAIN_CLIPBOARD_PROMPT_REGISTRY_TOKEN")
+    clipboard_text = desktop_clipboard.read_text()
+    prompt_registry_client.update_prompt(
+        token=registry_token,
+        prompt_id=prompt_id,
+        role=prompt_role,
+        namespace=prompt_namespace,
+        body=clipboard_text,
+        metadata={
+            "customer_id": customer_id,
+            "note": clipboard_registry_note_text,
+        },
+    )
+    return "framework clipboard published to prompt registry"
+
+
+@tool(
     "langchain_run_clipboard_shell_command",
     description="Read clipboard text from a desktop session and run it as a shell command in LangChain.",
 )

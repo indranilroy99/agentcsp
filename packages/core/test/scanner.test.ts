@@ -797,6 +797,9 @@ describe("scanner", () => {
     const sourceClipboardPromptCacheBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "source_cache_clipboard_prompt"
     );
+    const sourceClipboardPromptRegistryBridgeTool = surfaces.tools.find(
+      (surface) => surface.name === "source_publish_clipboard_prompt_registry"
+    );
     const sourceVisualContextCaptureTool = surfaces.tools.find((surface) => surface.name === "source_capture_authenticated_page_screenshot");
     const sourceVisualContextPromptBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "source_review_authenticated_page_screenshot_with_model"
@@ -1212,6 +1215,9 @@ describe("scanner", () => {
     const langchainClipboardMemoryBridgeTool = surfaces.tools.find((surface) => surface.name === "langchain_store_clipboard_memory");
     const langchainClipboardPromptCacheBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "langchain_cache_clipboard_prompt"
+    );
+    const langchainClipboardPromptRegistryBridgeTool = surfaces.tools.find(
+      (surface) => surface.name === "langchain_publish_clipboard_prompt_registry"
     );
     const langchainVisualContextCaptureTool = surfaces.tools.find((surface) => surface.name === "langchain_capture_authenticated_page_screenshot");
     const langchainVisualContextPromptBridgeTool = surfaces.tools.find(
@@ -10743,6 +10749,90 @@ describe("scanner", () => {
     expect(JSON.stringify(sourceClipboardPromptCacheBridgeTool)).not.toContain("clipboardText");
     expect(JSON.stringify(sourceClipboardPromptCacheBridgeTool)).not.toContain("source clipboard cached for prompts");
     expect(JSON.stringify(sourceClipboardPromptCacheBridgeTool)).not.toContain("Read clipboard text");
+    expect(sourceClipboardPromptRegistryBridgeTool).toMatchObject({
+      path: "mcp-source/customer-tools.ts",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["call", "publish", "read", "send", "write"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(sourceClipboardPromptRegistryBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_mcp_source_tool: true,
+      mcp_source_tool_registration: true,
+      mcp_source_tool_registration_kind: "registerTool",
+      mcp_source_tool_argument_count: 3,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_content_like_input: true,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      clipboard_read: true,
+      prompt_registry_write: true,
+      tainted_prompt_registry_payload: true,
+      tainted_prompt_registry_selector: true,
+      clipboard_prompt_registry_bridge: true,
+      external_write: true,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_clipboard_read: true,
+      handler_prompt_registry_write: true,
+      handler_tainted_prompt_registry_payload: true,
+      handler_tainted_prompt_registry_selector: true,
+      handler_clipboard_prompt_registry_bridge: true,
+      handler_secret_env_access: true,
+      handler_model_visible_output: true,
+      handler_signal_count: 6,
+      open_world_schema: false
+    });
+    expect(sourceClipboardPromptRegistryBridgeTool?.metadata.authority_classes).toEqual([
+      "clipboard_prompt_registry_bridge",
+      "clipboard_read",
+      "content_input",
+      "customer_data_input",
+      "external_write",
+      "handler_clipboard_prompt_registry_bridge",
+      "handler_clipboard_read",
+      "handler_prompt_registry_write",
+      "handler_secret_env_access",
+      "handler_tainted_prompt_registry_payload",
+      "handler_tainted_prompt_registry_selector",
+      "pii_input",
+      "prompt_registry_write",
+      "secret_env_access",
+      "tainted_prompt_registry_payload",
+      "tainted_prompt_registry_selector"
+    ]);
+    expect(sourceClipboardPromptRegistryBridgeTool?.metadata.handler_authority_classes).toEqual([
+      "handler_clipboard_prompt_registry_bridge",
+      "handler_clipboard_read",
+      "handler_prompt_registry_write",
+      "handler_secret_env_access",
+      "handler_tainted_prompt_registry_payload",
+      "handler_tainted_prompt_registry_selector"
+    ]);
+    expect(sourceClipboardPromptRegistryBridgeTool?.metadata.handler_env_key_names).toEqual(["SOURCE_CLIPBOARD_PROMPT_REGISTRY_TOKEN"]);
+    expect(sourceClipboardPromptRegistryBridgeTool?.metadata.schema_properties).toEqual([
+      "clipboard_registry_note_text",
+      "customer_id",
+      "prompt_id",
+      "prompt_namespace",
+      "prompt_role"
+    ]);
+    expect(sourceClipboardPromptRegistryBridgeTool?.metadata.required_properties).toEqual([
+      "clipboard_registry_note_text",
+      "customer_id",
+      "prompt_id",
+      "prompt_namespace",
+      "prompt_role"
+    ]);
+    expect(JSON.stringify(sourceClipboardPromptRegistryBridgeTool)).not.toContain("desktopClipboard.readText");
+    expect(JSON.stringify(sourceClipboardPromptRegistryBridgeTool)).not.toContain("promptRegistryClient.updatePrompt");
+    expect(JSON.stringify(sourceClipboardPromptRegistryBridgeTool)).not.toContain("clipboardText");
+    expect(JSON.stringify(sourceClipboardPromptRegistryBridgeTool)).not.toContain("source clipboard published to prompt registry");
+    expect(JSON.stringify(sourceClipboardPromptRegistryBridgeTool)).not.toContain("Read clipboard text");
     expect(sourceVisualContextCaptureTool).toMatchObject({
       path: "mcp-source/customer-tools.ts",
       data_classes: ["confidential", "credential", "pii"],
@@ -25399,6 +25489,91 @@ describe("scanner", () => {
     expect(JSON.stringify(langchainClipboardPromptCacheBridgeTool)).not.toContain("clipboard_text");
     expect(JSON.stringify(langchainClipboardPromptCacheBridgeTool)).not.toContain("framework clipboard cached for prompts");
     expect(JSON.stringify(langchainClipboardPromptCacheBridgeTool)).not.toContain("Read clipboard text");
+    expect(langchainClipboardPromptRegistryBridgeTool).toMatchObject({
+      path: "framework-tools/langchain_tools.py",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["call", "publish", "read", "send", "write"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(langchainClipboardPromptRegistryBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_agent_framework_source_tool: true,
+      agent_framework_source_tool: true,
+      agent_framework_source_tool_framework: "langchain",
+      agent_framework_source_tool_registration_kind: "python_tool_decorator",
+      agent_framework_source_tool_argument_count: 5,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_content_like_input: true,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      clipboard_read: true,
+      prompt_registry_write: true,
+      tainted_prompt_registry_payload: true,
+      tainted_prompt_registry_selector: true,
+      clipboard_prompt_registry_bridge: true,
+      external_write: true,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_clipboard_read: true,
+      handler_prompt_registry_write: true,
+      handler_tainted_prompt_registry_payload: true,
+      handler_tainted_prompt_registry_selector: true,
+      handler_clipboard_prompt_registry_bridge: true,
+      handler_secret_env_access: true,
+      handler_model_visible_output: true,
+      handler_signal_count: 6,
+      open_world_schema: false
+    });
+    expect(langchainClipboardPromptRegistryBridgeTool?.metadata.authority_classes).toEqual([
+      "clipboard_prompt_registry_bridge",
+      "clipboard_read",
+      "content_input",
+      "customer_data_input",
+      "external_write",
+      "handler_clipboard_prompt_registry_bridge",
+      "handler_clipboard_read",
+      "handler_prompt_registry_write",
+      "handler_secret_env_access",
+      "handler_tainted_prompt_registry_payload",
+      "handler_tainted_prompt_registry_selector",
+      "pii_input",
+      "prompt_registry_write",
+      "secret_env_access",
+      "tainted_prompt_registry_payload",
+      "tainted_prompt_registry_selector"
+    ]);
+    expect(langchainClipboardPromptRegistryBridgeTool?.metadata.handler_authority_classes).toEqual([
+      "handler_clipboard_prompt_registry_bridge",
+      "handler_clipboard_read",
+      "handler_prompt_registry_write",
+      "handler_secret_env_access",
+      "handler_tainted_prompt_registry_payload",
+      "handler_tainted_prompt_registry_selector"
+    ]);
+    expect(langchainClipboardPromptRegistryBridgeTool?.metadata.handler_env_key_names).toEqual(["LANGCHAIN_CLIPBOARD_PROMPT_REGISTRY_TOKEN"]);
+    expect(langchainClipboardPromptRegistryBridgeTool?.metadata.schema_properties).toEqual([
+      "clipboard_registry_note_text",
+      "customer_id",
+      "prompt_id",
+      "prompt_namespace",
+      "prompt_role"
+    ]);
+    expect(langchainClipboardPromptRegistryBridgeTool?.metadata.required_properties).toEqual([
+      "clipboard_registry_note_text",
+      "customer_id",
+      "prompt_id",
+      "prompt_namespace",
+      "prompt_role"
+    ]);
+    expect(JSON.stringify(langchainClipboardPromptRegistryBridgeTool)).not.toContain("desktop_clipboard.read_text");
+    expect(JSON.stringify(langchainClipboardPromptRegistryBridgeTool)).not.toContain("prompt_registry_client.update_prompt");
+    expect(JSON.stringify(langchainClipboardPromptRegistryBridgeTool)).not.toContain("clipboard_text");
+    expect(JSON.stringify(langchainClipboardPromptRegistryBridgeTool)).not.toContain("framework clipboard published to prompt registry");
+    expect(JSON.stringify(langchainClipboardPromptRegistryBridgeTool)).not.toContain("Read clipboard text");
     expect(langchainVisualContextCaptureTool).toMatchObject({
       path: "framework-tools/langchain_tools.py",
       data_classes: ["confidential", "credential", "pii"],

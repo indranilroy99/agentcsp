@@ -1,0 +1,139 @@
+id: AGENTCSP-TOOL-198
+name: Source tool handler publishes clipboard contents into prompt registry
+description: A source-defined agent tool handler reads browser or desktop clipboard material and writes copied text into a prompt or instruction registry under runtime authority.
+category: clipboard_prompt_registry_bridge
+severity: critical
+maps_to:
+  owasp:
+    - LLM01:2025 Prompt Injection
+    - LLM02:2025 Sensitive Information Disclosure
+    - LLM05:2025 Improper Output Handling
+    - LLM06:2025 Excessive Agency
+  mitre_atlas:
+    - AML.T0051 LLM Plugin Compromise
+    - AML.T0056 LLM Trusted Boundary Compromise
+    - AML.T0059 Data from Information Repositories
+    - AML.T0060 Prompt Injection
+  nist_ai_rmf:
+    - MAP 4.1
+    - MEASURE 2.7
+    - MANAGE 2.4
+match:
+  object_type: tool
+  where:
+    - field: metadata.parsed_tool_schema
+      op: equals
+      value: true
+    - field: metadata.source_tool_handler_redacted
+      op: equals
+      value: true
+    - field: metadata.handler_body_analyzed
+      op: equals
+      value: true
+    - field: metadata.handler_clipboard_read
+      op: equals
+      value: true
+    - field: metadata.handler_prompt_registry_write
+      op: equals
+      value: true
+    - field: metadata.handler_tainted_prompt_registry_payload
+      op: equals
+      value: true
+    - field: metadata.handler_tainted_prompt_registry_selector
+      op: equals
+      value: true
+    - field: metadata.handler_clipboard_prompt_registry_bridge
+      op: equals
+      value: true
+    - field: metadata.handler_secret_env_access
+      op: equals
+      value: true
+    - field: metadata.clipboard_read
+      op: equals
+      value: true
+    - field: metadata.prompt_registry_write
+      op: equals
+      value: true
+    - field: metadata.tainted_prompt_registry_payload
+      op: equals
+      value: true
+    - field: metadata.tainted_prompt_registry_selector
+      op: equals
+      value: true
+    - field: metadata.clipboard_prompt_registry_bridge
+      op: equals
+      value: true
+    - field: metadata.accepts_content_like_input
+      op: equals
+      value: true
+    - field: metadata.accepts_customer_data_input
+      op: equals
+      value: true
+    - field: metadata.authority_classes
+      op: includes
+      value: clipboard_read
+    - field: metadata.authority_classes
+      op: includes
+      value: prompt_registry_write
+    - field: metadata.authority_classes
+      op: includes
+      value: tainted_prompt_registry_payload
+    - field: metadata.authority_classes
+      op: includes
+      value: tainted_prompt_registry_selector
+    - field: metadata.authority_classes
+      op: includes
+      value: clipboard_prompt_registry_bridge
+    - field: metadata.handler_authority_classes
+      op: includes
+      value: handler_clipboard_read
+    - field: metadata.handler_authority_classes
+      op: includes
+      value: handler_prompt_registry_write
+    - field: metadata.handler_authority_classes
+      op: includes
+      value: handler_tainted_prompt_registry_payload
+    - field: metadata.handler_authority_classes
+      op: includes
+      value: handler_tainted_prompt_registry_selector
+    - field: metadata.handler_authority_classes
+      op: includes
+      value: handler_clipboard_prompt_registry_bridge
+    - field: metadata.schema_properties
+      op: contains_any
+      value:
+        - customer_id
+        - prompt_id
+        - prompt_role
+        - prompt_namespace
+        - clipboard_registry_note_text
+    - field: actions
+      op: includes
+      value: read
+    - field: actions
+      op: includes
+      value: write
+    - field: actions
+      op: includes
+      value: publish
+    - field: data_classes
+      op: contains_any
+      value:
+        - confidential
+        - credential
+        - pii
+    - field: external_reach
+      op: equals
+      value: true
+    - field: secret_exposure
+      op: equals
+      value: true
+    - field: side_effect
+      op: equals
+      value: true
+    - field: reversible
+      op: equals
+      value: false
+recommendation:
+  control: quarantine
+  text: Quarantine clipboard-to-prompt-registry handlers until copied clipboard content is always treated as untrusted, cannot become system or developer prompt registry body content, registry identifiers, roles, namespaces, and destinations are policy-owned or allowlisted, registry credentials are scoped, and security-owner approval plus audit logging are required before publishing.

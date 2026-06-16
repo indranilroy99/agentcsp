@@ -199,6 +199,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-195")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-196")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-197")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-198")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-001")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-002")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-003")).toBe(true);
@@ -8095,6 +8096,7 @@ describe("rule engine", () => {
     const sourceHandlerPromptRegistryWriteFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-054");
     expect(sourceHandlerPromptRegistryWriteFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_publish_authenticated_page_screenshot_prompt_registry",
+      "langchain_publish_clipboard_prompt_registry",
       "langchain_publish_customer_vault_secret_prompt_registry",
       "langchain_publish_model_selected_prompt_registry_entry",
       "langchain_publish_privileged_tool_observation_prompt_registry",
@@ -8102,6 +8104,7 @@ describe("rule engine", () => {
       "langchain_publish_retrieved_context_prompt_registry",
       "langchain_publish_url_response_prompt_registry_entry",
       "source_publish_authenticated_page_screenshot_prompt_registry",
+      "source_publish_clipboard_prompt_registry",
       "source_publish_customer_vault_secret_prompt_registry",
       "source_publish_model_selected_prompt_registry_entry",
       "source_publish_privileged_tool_observation_prompt_registry",
@@ -12834,6 +12837,82 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerClipboardDynamicCodeExecutionBridgeFindings)).not.toContain("source clipboard code executed");
     expect(JSON.stringify(sourceHandlerClipboardDynamicCodeExecutionBridgeFindings)).not.toContain("framework clipboard code executed");
     expect(JSON.stringify(sourceHandlerClipboardDynamicCodeExecutionBridgeFindings)).not.toContain("Read clipboard text");
+    const sourceHandlerClipboardPromptRegistryBridgeFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-198");
+    expect(sourceHandlerClipboardPromptRegistryBridgeFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
+      "langchain_publish_clipboard_prompt_registry",
+      "source_publish_clipboard_prompt_registry"
+    ]);
+    expect(sourceHandlerClipboardPromptRegistryBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
+    expect(sourceHandlerClipboardPromptRegistryBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerClipboardPromptRegistryBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
+    expect(sourceHandlerClipboardPromptRegistryBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
+    expect(sourceHandlerClipboardPromptRegistryBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.source_tool_handler_redacted === true
+    )).toBe(true);
+    expect(sourceHandlerClipboardPromptRegistryBridgeFindings.every((finding) => finding.matched_object.metadata.handler_clipboard_read === true)).toBe(true);
+    expect(sourceHandlerClipboardPromptRegistryBridgeFindings.every((finding) => finding.matched_object.metadata.handler_prompt_registry_write === true)).toBe(true);
+    expect(sourceHandlerClipboardPromptRegistryBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.handler_tainted_prompt_registry_payload === true
+    )).toBe(true);
+    expect(sourceHandlerClipboardPromptRegistryBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.handler_tainted_prompt_registry_selector === true
+    )).toBe(true);
+    expect(sourceHandlerClipboardPromptRegistryBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.handler_clipboard_prompt_registry_bridge === true
+    )).toBe(true);
+    expect(sourceHandlerClipboardPromptRegistryBridgeFindings.every((finding) => finding.matched_object.metadata.handler_secret_env_access === true)).toBe(true);
+    expect(sourceHandlerClipboardPromptRegistryBridgeFindings.every((finding) => finding.matched_object.metadata.clipboard_read === true)).toBe(true);
+    expect(sourceHandlerClipboardPromptRegistryBridgeFindings.every((finding) => finding.matched_object.metadata.prompt_registry_write === true)).toBe(true);
+    expect(sourceHandlerClipboardPromptRegistryBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.tainted_prompt_registry_payload === true
+    )).toBe(true);
+    expect(sourceHandlerClipboardPromptRegistryBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.tainted_prompt_registry_selector === true
+    )).toBe(true);
+    expect(sourceHandlerClipboardPromptRegistryBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.clipboard_prompt_registry_bridge === true
+    )).toBe(true);
+    expect(sourceHandlerClipboardPromptRegistryBridgeFindings.every((finding) => finding.matched_object.metadata.accepts_content_like_input === true)).toBe(true);
+    expect(sourceHandlerClipboardPromptRegistryBridgeFindings.every((finding) => finding.matched_object.metadata.accepts_customer_data_input === true)).toBe(true);
+    for (const authorityClass of [
+      "clipboard_read",
+      "prompt_registry_write",
+      "tainted_prompt_registry_payload",
+      "tainted_prompt_registry_selector",
+      "clipboard_prompt_registry_bridge"
+    ]) {
+      expect(sourceHandlerClipboardPromptRegistryBridgeFindings.every((finding) =>
+        finding.matched_object.metadata.authority_classes.includes(authorityClass)
+      )).toBe(true);
+    }
+    for (const handlerAuthorityClass of [
+      "handler_clipboard_read",
+      "handler_prompt_registry_write",
+      "handler_tainted_prompt_registry_payload",
+      "handler_tainted_prompt_registry_selector",
+      "handler_clipboard_prompt_registry_bridge"
+    ]) {
+      expect(sourceHandlerClipboardPromptRegistryBridgeFindings.every((finding) =>
+        finding.matched_object.metadata.handler_authority_classes.includes(handlerAuthorityClass)
+      )).toBe(true);
+    }
+    expect(sourceHandlerClipboardPromptRegistryBridgeFindings.every((finding) => finding.matched_object.actions.includes("read"))).toBe(true);
+    expect(sourceHandlerClipboardPromptRegistryBridgeFindings.every((finding) => finding.matched_object.actions.includes("send"))).toBe(true);
+    expect(sourceHandlerClipboardPromptRegistryBridgeFindings.every((finding) => finding.matched_object.actions.includes("write"))).toBe(true);
+    expect(sourceHandlerClipboardPromptRegistryBridgeFindings.every((finding) => finding.matched_object.actions.includes("publish"))).toBe(true);
+    expect(sourceHandlerClipboardPromptRegistryBridgeFindings.every((finding) => finding.matched_object.external_reach === true)).toBe(true);
+    expect(sourceHandlerClipboardPromptRegistryBridgeFindings.every((finding) => finding.matched_object.secret_exposure === true)).toBe(true);
+    expect(sourceHandlerClipboardPromptRegistryBridgeFindings.every((finding) => finding.matched_object.side_effect === true)).toBe(true);
+    expect(sourceHandlerClipboardPromptRegistryBridgeFindings.every((finding) => finding.matched_object.reversible === false)).toBe(true);
+    expect(JSON.stringify(sourceHandlerClipboardPromptRegistryBridgeFindings)).not.toContain("desktopClipboard.readText");
+    expect(JSON.stringify(sourceHandlerClipboardPromptRegistryBridgeFindings)).not.toContain("desktop_clipboard.read_text");
+    expect(JSON.stringify(sourceHandlerClipboardPromptRegistryBridgeFindings)).not.toContain("clipboardText");
+    expect(JSON.stringify(sourceHandlerClipboardPromptRegistryBridgeFindings)).not.toContain("clipboard_text");
+    expect(JSON.stringify(sourceHandlerClipboardPromptRegistryBridgeFindings)).not.toContain("promptRegistryClient.updatePrompt");
+    expect(JSON.stringify(sourceHandlerClipboardPromptRegistryBridgeFindings)).not.toContain("prompt_registry_client.update_prompt");
+    expect(JSON.stringify(sourceHandlerClipboardPromptRegistryBridgeFindings)).not.toContain("source clipboard published to prompt registry");
+    expect(JSON.stringify(sourceHandlerClipboardPromptRegistryBridgeFindings)).not.toContain("framework clipboard published to prompt registry");
+    expect(JSON.stringify(sourceHandlerClipboardPromptRegistryBridgeFindings)).not.toContain("Read clipboard text");
     const sourceHandlerVisualContextTaskQueueBridgeFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-104");
     expect(sourceHandlerVisualContextTaskQueueBridgeFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_enqueue_authenticated_page_screenshot_job",

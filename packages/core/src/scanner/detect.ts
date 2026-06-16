@@ -24224,6 +24224,7 @@ function addToolDefinitionSurface(
       !authority.clipboard_prompt_bridge &&
       !authority.clipboard_memory_bridge &&
       !authority.clipboard_prompt_cache_bridge &&
+      !authority.clipboard_prompt_registry_bridge &&
       !authority.clipboard_external_service_bridge &&
       !authority.clipboard_shell_execution_bridge &&
       !authority.clipboard_dynamic_code_execution_bridge &&
@@ -24315,6 +24316,7 @@ function addToolDefinitionSurface(
       clipboard_prompt_bridge: authority.clipboard_prompt_bridge,
       clipboard_memory_bridge: authority.clipboard_memory_bridge,
       clipboard_prompt_cache_bridge: authority.clipboard_prompt_cache_bridge,
+      clipboard_prompt_registry_bridge: authority.clipboard_prompt_registry_bridge,
       clipboard_external_service_bridge: authority.clipboard_external_service_bridge,
       clipboard_shell_execution_bridge: authority.clipboard_shell_execution_bridge,
       clipboard_dynamic_code_execution_bridge: authority.clipboard_dynamic_code_execution_bridge,
@@ -27017,6 +27019,7 @@ interface SourceToolHandlerSignals {
   handlerClipboardPromptBridge: boolean;
   handlerClipboardMemoryBridge: boolean;
   handlerClipboardPromptCacheBridge: boolean;
+  handlerClipboardPromptRegistryBridge: boolean;
   handlerClipboardExternalServiceBridge: boolean;
   handlerClipboardShellExecutionBridge: boolean;
   handlerClipboardDynamicCodeExecutionBridge: boolean;
@@ -27648,6 +27651,7 @@ function sourceToolHandlerSignalMetadata(signals: SourceToolHandlerSignals | und
     handler_clipboard_prompt_bridge: signals.handlerClipboardPromptBridge,
     handler_clipboard_memory_bridge: signals.handlerClipboardMemoryBridge,
     handler_clipboard_prompt_cache_bridge: signals.handlerClipboardPromptCacheBridge,
+    handler_clipboard_prompt_registry_bridge: signals.handlerClipboardPromptRegistryBridge,
     handler_clipboard_external_service_bridge: signals.handlerClipboardExternalServiceBridge,
     handler_clipboard_shell_execution_bridge: signals.handlerClipboardShellExecutionBridge,
     handler_clipboard_dynamic_code_execution_bridge: signals.handlerClipboardDynamicCodeExecutionBridge,
@@ -28184,6 +28188,10 @@ function classifySourceToolHandlerSignals(
     ? hasJavaScriptHandlerClipboardPromptCacheBridge(handlerSource)
     : hasPythonHandlerClipboardPromptCacheBridge(handlerSource));
   if (clipboardPromptCacheBridge) taintedPromptCacheValue = true;
+  const clipboardPromptRegistryBridge = clipboardRead && promptRegistryWrite && (language === "javascript"
+    ? hasJavaScriptHandlerClipboardPromptRegistryBridge(handlerSource)
+    : hasPythonHandlerClipboardPromptRegistryBridge(handlerSource));
+  if (clipboardPromptRegistryBridge) taintedPromptRegistryPayload = true;
   const clipboardExternalServiceBridge = clipboardRead && externalServiceWrite && (language === "javascript"
     ? hasJavaScriptHandlerClipboardExternalServiceBridge(handlerSource)
     : hasPythonHandlerClipboardExternalServiceBridge(handlerSource));
@@ -28647,6 +28655,7 @@ function classifySourceToolHandlerSignals(
   if (clipboardPromptBridge) classes.add("handler_clipboard_prompt_bridge");
   if (clipboardMemoryBridge) classes.add("handler_clipboard_memory_bridge");
   if (clipboardPromptCacheBridge) classes.add("handler_clipboard_prompt_cache_bridge");
+  if (clipboardPromptRegistryBridge) classes.add("handler_clipboard_prompt_registry_bridge");
   if (clipboardExternalServiceBridge) classes.add("handler_clipboard_external_service_bridge");
   if (clipboardShellExecutionBridge) classes.add("handler_clipboard_shell_execution_bridge");
   if (clipboardDynamicCodeExecutionBridge) classes.add("handler_clipboard_dynamic_code_execution_bridge");
@@ -28867,6 +28876,7 @@ function classifySourceToolHandlerSignals(
     handlerClipboardPromptBridge: clipboardPromptBridge,
     handlerClipboardMemoryBridge: clipboardMemoryBridge,
     handlerClipboardPromptCacheBridge: clipboardPromptCacheBridge,
+    handlerClipboardPromptRegistryBridge: clipboardPromptRegistryBridge,
     handlerClipboardExternalServiceBridge: clipboardExternalServiceBridge,
     handlerClipboardShellExecutionBridge: clipboardShellExecutionBridge,
     handlerClipboardDynamicCodeExecutionBridge: clipboardDynamicCodeExecutionBridge,
@@ -31341,6 +31351,30 @@ function hasPythonHandlerClipboardDynamicCodeExecutionBridge(source: string): bo
   return identifiers.length > 0 && callExpressionReferencesAnyIdentifier(
     [
       /\b(?:eval|exec)\s*\(([\s\S]{0,900})\)/giu
+    ],
+    source,
+    identifiers
+  );
+}
+
+function hasJavaScriptHandlerClipboardPromptRegistryBridge(source: string): boolean {
+  const identifiers = extractJavaScriptClipboardIdentifiers(source);
+  return identifiers.length > 0 && promptRegistryCallReferencesPayloadIdentifier(
+    [
+      /\b(?:promptRegistry|promptRegistryClient|promptStore|promptHub|promptCatalog|instructionRegistry|instructionStore|systemPromptRegistry|developerPromptRegistry|contextRegistry)\s*(?:\.\s*[A-Za-z_$][\w$]*){0,5}\s*\.\s*(?:update|updatePrompt|publish|publishPrompt|set|setPrompt|put|putPrompt|upsert|upsertPrompt|write|writePrompt|save|savePrompt|create|createPrompt|register|registerPrompt|sync|push)\s*\(([\s\S]{0,2200})\)/giu,
+      /\b(?:updatePromptRegistry|publishPromptRegistry|writePromptRegistry|upsertSystemPrompt|publishDeveloperPrompt|syncPromptRegistry)\s*\(([\s\S]{0,2200})\)/giu
+    ],
+    source,
+    identifiers
+  );
+}
+
+function hasPythonHandlerClipboardPromptRegistryBridge(source: string): boolean {
+  const identifiers = extractPythonClipboardIdentifiers(source);
+  return identifiers.length > 0 && promptRegistryCallReferencesPayloadIdentifier(
+    [
+      /\b(?:prompt_registry|prompt_registry_client|prompt_store|prompt_hub|prompt_catalog|instruction_registry|instruction_store|system_prompt_registry|developer_prompt_registry|context_registry)\s*(?:\.\s*[A-Za-z_]\w*){0,5}\s*\.\s*(?:update|update_prompt|publish|publish_prompt|set|set_prompt|put|put_prompt|upsert|upsert_prompt|write|write_prompt|save|save_prompt|create|create_prompt|register|register_prompt|sync|push)\s*\(([\s\S]{0,2200})\)/giu,
+      /\b(?:update_prompt_registry|publish_prompt_registry|write_prompt_registry|upsert_system_prompt|publish_developer_prompt|sync_prompt_registry)\s*\(([\s\S]{0,2200})\)/giu
     ],
     source,
     identifiers
@@ -37187,6 +37221,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   clipboard_prompt_bridge: boolean;
   clipboard_memory_bridge: boolean;
   clipboard_prompt_cache_bridge: boolean;
+  clipboard_prompt_registry_bridge: boolean;
   clipboard_external_service_bridge: boolean;
   clipboard_shell_execution_bridge: boolean;
   clipboard_dynamic_code_execution_bridge: boolean;
@@ -37540,6 +37575,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   const handlerClipboardPromptBridge = handler?.handlerClipboardPromptBridge === true;
   const handlerClipboardMemoryBridge = handler?.handlerClipboardMemoryBridge === true;
   const handlerClipboardPromptCacheBridge = handler?.handlerClipboardPromptCacheBridge === true;
+  const handlerClipboardPromptRegistryBridge = handler?.handlerClipboardPromptRegistryBridge === true;
   const handlerClipboardExternalServiceBridge = handler?.handlerClipboardExternalServiceBridge === true;
   const handlerClipboardShellExecutionBridge = handler?.handlerClipboardShellExecutionBridge === true;
   const handlerClipboardDynamicCodeExecutionBridge = handler?.handlerClipboardDynamicCodeExecutionBridge === true;
@@ -37700,6 +37736,13 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
     actions.add("read");
     actions.add("remember");
     actions.add("write");
+  }
+  if (handlerClipboardPromptRegistryBridge) {
+    classes.add("clipboard_prompt_registry_bridge");
+    actions.add("read");
+    actions.add("send");
+    actions.add("write");
+    actions.add("publish");
   }
   if (handlerClipboardExternalServiceBridge) {
     classes.add("clipboard_external_service_bridge");
@@ -38821,6 +38864,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerClipboardPromptBridge ||
       handlerClipboardMemoryBridge ||
       handlerClipboardPromptCacheBridge ||
+      handlerClipboardPromptRegistryBridge ||
       handlerClipboardExternalServiceBridge ||
       handlerClipboardShellExecutionBridge ||
       handlerClipboardDynamicCodeExecutionBridge ||
@@ -39005,6 +39049,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
     handlerClipboardPromptBridge ||
     handlerClipboardMemoryBridge ||
     handlerClipboardPromptCacheBridge ||
+    handlerClipboardPromptRegistryBridge ||
     handlerLocalFilePromptCacheBridge ||
     handlerClipboardExternalServiceBridge ||
     handlerClipboardShellExecutionBridge ||
@@ -39030,6 +39075,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerLocalFileBrowserAutomationBridge ||
       handlerLocalFilePromptBridge ||
       handlerClipboardPromptBridge ||
+      handlerClipboardPromptRegistryBridge ||
       handlerLocalFilePromptCacheBridge ||
       handlerClipboardExternalServiceBridge ||
       handlerVisualContextCapture ||
@@ -39229,6 +39275,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       (handlerClipboardPromptBridge && handlerSecretEnvAccess) ||
       (handlerClipboardMemoryBridge && handlerSecretEnvAccess) ||
       (handlerClipboardPromptCacheBridge && handlerSecretEnvAccess) ||
+      (handlerClipboardPromptRegistryBridge && handlerSecretEnvAccess) ||
       handlerSecretManagerPromptCacheBridge ||
       handlerModelOutputPromptCacheBridge ||
       (handlerNetworkResponsePromptCacheBridge && handlerSecretEnvAccess) ||
@@ -39387,6 +39434,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
     clipboard_prompt_bridge: handlerClipboardPromptBridge,
     clipboard_memory_bridge: handlerClipboardMemoryBridge,
     clipboard_prompt_cache_bridge: handlerClipboardPromptCacheBridge,
+    clipboard_prompt_registry_bridge: handlerClipboardPromptRegistryBridge,
     clipboard_external_service_bridge: handlerClipboardExternalServiceBridge,
     clipboard_shell_execution_bridge: handlerClipboardShellExecutionBridge,
     clipboard_dynamic_code_execution_bridge: handlerClipboardDynamicCodeExecutionBridge,
@@ -39721,6 +39769,7 @@ function authoritySignature(tool: SurfaceObject): string {
     metadata.tool_output_task_queue_bridge === true ? "tool_output_task_queue_bridge" : "",
     metadata.rag_retrieval_task_queue_bridge === true ? "rag_retrieval_task_queue_bridge" : "",
     metadata.prompt_registry_write === true ? "prompt_registry_write" : "",
+    metadata.clipboard_prompt_registry_bridge === true ? "clipboard_prompt_registry_bridge" : "",
     metadata.visual_context_prompt_registry_bridge === true ? "visual_context_prompt_registry_bridge" : "",
     metadata.tainted_prompt_registry_payload === true ? "tainted_prompt_registry_payload" : "",
     metadata.tainted_prompt_registry_selector === true ? "tainted_prompt_registry_selector" : "",
@@ -39953,6 +40002,7 @@ function isPrivilegedToolSurface(tool: SurfaceObject): boolean {
     tool.metadata.tool_output_task_queue_bridge === true ||
     tool.metadata.rag_retrieval_task_queue_bridge === true ||
     tool.metadata.prompt_registry_write === true ||
+    tool.metadata.clipboard_prompt_registry_bridge === true ||
     tool.metadata.visual_context_prompt_registry_bridge === true ||
     tool.metadata.tainted_prompt_registry_payload === true ||
     tool.metadata.tainted_prompt_registry_selector === true ||

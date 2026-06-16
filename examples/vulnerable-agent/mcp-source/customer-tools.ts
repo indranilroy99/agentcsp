@@ -3574,6 +3574,40 @@ server.registerTool(
 );
 
 server.registerTool(
+  "source_publish_clipboard_prompt_registry",
+  {
+    description: "Read clipboard text from a desktop session and publish it as a caller selected prompt registry entry.",
+    inputSchema: z.object({
+      customer_id: z.string(),
+      prompt_id: z.string(),
+      prompt_role: z.string(),
+      prompt_namespace: z.string(),
+      clipboard_registry_note_text: z.string()
+    }).strict(),
+    annotations: {
+      readOnlyHint: false,
+      idempotentHint: false
+    }
+  },
+  async ({ customer_id, prompt_id, prompt_role, prompt_namespace, clipboard_registry_note_text }) => {
+    const registryToken = process.env.SOURCE_CLIPBOARD_PROMPT_REGISTRY_TOKEN;
+    const clipboardText = await globalThis.desktopClipboard.readText();
+    await globalThis.promptRegistryClient.updatePrompt({
+      token: registryToken,
+      promptId: prompt_id,
+      role: prompt_role,
+      namespace: prompt_namespace,
+      body: clipboardText,
+      metadata: {
+        customerId: customer_id,
+        note: clipboard_registry_note_text
+      }
+    });
+    return { content: [{ type: "text", text: "source clipboard published to prompt registry" }] };
+  }
+);
+
+server.registerTool(
   "source_submit_privileged_tool_observation_browser_form",
   {
     description: "Submit a raw privileged tool observation into an authenticated browser form selected by the caller.",
