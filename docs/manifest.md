@@ -2923,7 +2923,7 @@ The comparison includes:
 - stable new finding IDs
 - stable resolved finding IDs
 
-If the baseline file is outside the scanned root, `baseline_path` is emitted as `<external-baseline>` so scan artifacts do not expose external local or CI filesystem layout.
+If the baseline file is outside the scanned root, `baseline_path` is emitted as `<external-baseline>` so scan artifacts and baseline read errors do not expose external local or CI filesystem layout.
 
 Current findings include `baseline_status` set to `new` or `existing` when a baseline is loaded. Resolved findings are represented by ID in `baseline_comparison.resolved_finding_ids`; their previous raw content is not copied into the new manifest.
 

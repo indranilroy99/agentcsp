@@ -176,4 +176,33 @@ describe("baseline comparison", () => {
     };
     expect(sarif.runs[0]?.properties?.agentcsp_baseline_comparison?.baseline_path).toBe("<external-baseline>");
   });
+
+  it("redacts external baseline paths in read errors", async () => {
+    const root = "/private/tmp/agentcsp-missing-external-baseline-fixture";
+    const externalBaselinePath = "/private/tmp/agentcsp-missing-external-baseline-store/team/accepted.json";
+    await fs.rm(root, { recursive: true, force: true });
+    await fs.rm("/private/tmp/agentcsp-missing-external-baseline-store", { recursive: true, force: true });
+    await fs.mkdir(root, { recursive: true });
+    await fs.writeFile(path.join(root, "AGENTS.md"), "Review repository changes only.\n", "utf8");
+
+    let message = "";
+    try {
+      await scanProject({
+        root_path: root,
+        output_path: "scan-output",
+        baseline_path: externalBaselinePath,
+        formats: ["json", "md"],
+        include_hidden: true,
+        include_logs: false,
+        max_file_size_bytes: 1024 * 1024,
+        max_files: 5000,
+        quiet: true
+      });
+    } catch (error) {
+      message = error instanceof Error ? error.message : String(error);
+    }
+
+    expect(message).toContain("Unable to read baseline file <external-baseline>: ENOENT");
+    expect(message).not.toContain("/private/tmp/agentcsp-missing-external-baseline-store");
+  });
 });

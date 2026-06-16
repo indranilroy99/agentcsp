@@ -19,7 +19,8 @@ export async function applyBaselineComparison(
   rootPath?: string
 ): Promise<BaselineResult> {
   const absoluteBaselinePath = path.resolve(baselinePath);
-  const baseline = await loadBaselineFindingIds(absoluteBaselinePath);
+  const displayBaselinePath = baselineComparisonPath(absoluteBaselinePath, rootPath);
+  const baseline = await loadBaselineFindingIds(absoluteBaselinePath, displayBaselinePath);
   const baselineIds = new Set(baseline.findingIds);
   const currentIds = new Set(findings.map((finding) => finding.id));
 
@@ -41,7 +42,7 @@ export async function applyBaselineComparison(
     findings: findingsWithStatus,
     comparison: {
       title: "AgentCSP Baseline Comparison",
-      baseline_path: baselineComparisonPath(absoluteBaselinePath, rootPath),
+      baseline_path: displayBaselinePath,
       baseline_format: baseline.format,
       current_findings: findings.length,
       baseline_findings: baseline.findingIds.length,
@@ -60,14 +61,14 @@ function baselineComparisonPath(absoluteBaselinePath: string, rootPath?: string)
 }
 
 async function loadBaselineFindingIds(
-  baselinePath: string
+  baselinePath: string,
+  displayBaselinePath = baselinePath
 ): Promise<{ findingIds: string[]; format: BaselineComparison["baseline_format"] }> {
   let parsedJson: unknown;
   try {
     parsedJson = JSON.parse(await fs.readFile(baselinePath, "utf8"));
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    throw new Error(`Unable to read baseline file ${baselinePath}: ${message}`);
+    throw new Error(`Unable to read baseline file ${displayBaselinePath}: ${baselineErrorMessage(error, baselinePath, displayBaselinePath)}`);
   }
 
   const findingsFile = BaselineFindingsFileSchema.safeParse(parsedJson);
@@ -87,6 +88,16 @@ async function loadBaselineFindingIds(
   }
 
   throw new Error("Baseline file must be a findings.json array or an agent-manifest.json object with a findings array.");
+}
+
+function baselineErrorMessage(error: unknown, baselinePath: string, displayBaselinePath: string): string {
+  if (displayBaselinePath !== baselinePath) {
+    const code = error && typeof error === "object" && "code" in error ? String((error as { code?: unknown }).code) : "";
+    if (code) return code;
+    if (error instanceof SyntaxError) return error.message;
+    return "baseline could not be read or parsed";
+  }
+  return error instanceof Error ? error.message : String(error);
 }
 
 function uniqueSortedIds(findings: Array<{ id: string }>): string[] {
