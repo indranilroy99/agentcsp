@@ -15,6 +15,8 @@ const confidenceRank: Record<Confidence, number> = {
   very_high: 3
 };
 
+export const ciGateBlockerIdLimit = 50;
+
 export function buildCiGateSummary(input: {
   findings: Finding[];
   diagnostics: ScanDiagnostic[];
@@ -32,6 +34,7 @@ export function buildCiGateSummary(input: {
   const expiredSuppressionFindings = input.findings.filter((finding) => finding.suppression?.status === "expired");
   const activeSuppressionsExcluded = input.findings.filter((finding) => finding.suppression?.status === "active").length;
   const failedGates: CiGateName[] = [];
+  const diagnosticIds = input.diagnostics.map((diagnostic) => diagnostic.id).sort();
 
   if (severityGateFindings.length > 0) {
     failedGates.push(input.config.fail_on_new ? "new_findings" : "severity");
@@ -57,7 +60,10 @@ export function buildCiGateSummary(input: {
     active_suppressions_excluded: activeSuppressionsExcluded,
     expired_suppression_findings: expiredSuppressionFindings.length,
     diagnostic_count: input.diagnostics.length,
-    failed_gates: failedGates
+    failed_gates: failedGates,
+    severity_gate_finding_ids: limitIds(severityGateFindings.map((finding) => finding.id)),
+    expired_suppression_finding_ids: limitIds(expiredSuppressionFindings.map((finding) => finding.id)),
+    diagnostic_ids: limitIds(diagnosticIds)
   };
 }
 
@@ -70,4 +76,8 @@ function findingMatchesSeverityGate(
   if (severityRank[finding.severity] < severityRank[failOn]) return false;
   if (!failOnConfidence) return true;
   return confidenceRank[finding.confidence] >= confidenceRank[failOnConfidence];
+}
+
+function limitIds(ids: string[], limit = ciGateBlockerIdLimit): string[] {
+  return [...ids].sort((a, b) => a.localeCompare(b)).slice(0, limit);
 }

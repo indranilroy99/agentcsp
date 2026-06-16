@@ -153,7 +153,25 @@ function renderCiGateSummary(manifest: AgentManifest): string {
     `- Severity gate findings: ${summary.severity_gate_findings}`,
     `- Active suppressions excluded: ${summary.active_suppressions_excluded}`,
     `- Expired suppression findings: ${summary.expired_suppression_findings}`,
-    `- Diagnostics: ${summary.diagnostic_count}`
+    `- Diagnostics: ${summary.diagnostic_count}`,
+    "",
+    "### CI Gate Blockers",
+    "",
+    renderGateBlockers(summary)
+  ].join("\n");
+}
+
+function renderGateBlockers(summary: NonNullable<AgentManifest["ci_gate_summary"]>): string {
+  const rows: Array<[string, string]> = [
+    ...summary.severity_gate_finding_ids.map((id): [string, string] => ["severity/new finding", id]),
+    ...summary.expired_suppression_finding_ids.map((id): [string, string] => ["expired suppression", id]),
+    ...summary.diagnostic_ids.map((id): [string, string] => ["diagnostic", id])
+  ];
+  if (rows.length === 0) return "No CI gate blockers were identified.";
+  return [
+    "| Gate | ID |",
+    "| --- | --- |",
+    ...rows.map(([gate, id]) => `| ${gate} | \`${escapeTable(id)}\` |`)
   ].join("\n");
 }
 

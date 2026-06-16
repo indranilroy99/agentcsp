@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { scanProject } from "../src/scanner/scan.js";
+import { ciGateBlockerIdLimit } from "../src/reports/gates.js";
 
 const fixtureRoot = path.resolve("examples/vulnerable-agent");
 
@@ -60,7 +61,8 @@ describe("policy suppressions", () => {
       should_fail: false,
       fail_on: "critical",
       severity_gate_findings: 0,
-      active_suppressions_excluded: suppressed.length
+      active_suppressions_excluded: suppressed.length,
+      severity_gate_finding_ids: []
     });
     expect(result.shouldFail).toBe(false);
     expect(result.reportMarkdown).toContain("Suppressed Findings");
@@ -111,8 +113,16 @@ describe("policy suppressions", () => {
       expired_suppression_findings: expired.length,
       failed_gates: ["severity"]
     });
+    expect(result.manifest.ci_gate_summary?.severity_gate_finding_ids).toEqual(
+      firstGateBlockerIds(expired)
+    );
+    expect(result.manifest.ci_gate_summary?.expired_suppression_finding_ids).toEqual(
+      firstGateBlockerIds(expired)
+    );
     expect(result.shouldFail).toBe(true);
     expect(result.reportMarkdown).toContain("### Expired Suppressions");
+    expect(result.reportMarkdown).toContain("### CI Gate Blockers");
+    expect(result.reportMarkdown).toContain("expired suppression");
     expect(result.reportMarkdown).toContain("2000-01-01T00:00:00.000Z");
     expect(result.reportMarkdown).not.toContain("expired-critical-demo-risk");
     expect(result.reportMarkdown).not.toContain("Accepted for fixture regression only.");
@@ -144,6 +154,9 @@ describe("policy suppressions", () => {
       expired_suppression_findings: expired.length,
       failed_gates: ["expired_suppressions"]
     });
+    expect(result.manifest.ci_gate_summary?.expired_suppression_finding_ids).toEqual(
+      firstGateBlockerIds(expired)
+    );
     expect(result.shouldFail).toBe(true);
   });
 
@@ -169,7 +182,9 @@ describe("policy suppressions", () => {
       fail_on_expired_suppressions: false,
       severity_gate_findings: 0,
       expired_suppression_findings: expired.length,
-      failed_gates: []
+      failed_gates: [],
+      severity_gate_finding_ids: [],
+      expired_suppression_finding_ids: firstGateBlockerIds(expired)
     });
     expect(result.shouldFail).toBe(false);
   });
@@ -193,6 +208,13 @@ async function writePolicy(name: string, expiresAt: string): Promise<string> {
     "utf8"
   );
   return policyPath;
+}
+
+function firstGateBlockerIds(findings: Array<{ id: string }>): string[] {
+  return findings
+    .map((finding) => finding.id)
+    .sort((left, right) => left.localeCompare(right))
+    .slice(0, ciGateBlockerIdLimit);
 }
 
 async function writeRecommendedControlPolicy(): Promise<string> {

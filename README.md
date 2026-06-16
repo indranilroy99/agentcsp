@@ -148,7 +148,7 @@ agentcsp scan . \
   --quiet
 ```
 
-AgentCSP exits with code `0` by default when a scan completes, even if findings exist. CI failure is opt-in through `--fail-on critical`, `--fail-on high`, `--fail-on medium`, or `--fail-on low`.
+AgentCSP exits with code `0` by default when a scan completes, even if findings exist. CI failure is opt-in through `--fail-on critical`, `--fail-on high`, `--fail-on medium`, or `--fail-on low`. When a gate is enabled, `ci_gate_summary` records the failed gate names plus bounded blocker IDs for severity-gated findings, expired suppressions, and diagnostics.
 
 Use `--fail-on-confidence high` or `--fail-on-confidence very_high` with `--fail-on` when CI should fail only on findings that meet both impact and confidence thresholds.
 

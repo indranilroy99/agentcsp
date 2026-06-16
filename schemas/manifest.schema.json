@@ -1315,6 +1315,27 @@
                 ]
               },
               "default": []
+            },
+            "severity_gate_finding_ids": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "default": []
+            },
+            "expired_suppression_finding_ids": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "default": []
+            },
+            "diagnostic_ids": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "default": []
             }
           },
           "additionalProperties": false

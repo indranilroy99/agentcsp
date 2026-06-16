@@ -42,7 +42,8 @@ describe("scan diagnostics", () => {
       should_fail: false,
       fail_on_diagnostics: false,
       diagnostic_count: 9,
-      failed_gates: []
+      failed_gates: [],
+      diagnostic_ids: result.manifest.diagnostics.map((diagnostic) => diagnostic.id).sort()
     });
     expect(result.manifest.mcp_servers[0]?.metadata).toMatchObject({ parse_error: true });
     expect(result.manifest.runtime_config[0]?.metadata).toMatchObject({ parse_error: true });
@@ -60,7 +61,7 @@ describe("scan diagnostics", () => {
       runs: Array<{
         properties?: {
           agentcsp_diagnostics?: Array<{ code?: string }>;
-          agentcsp_ci_gate_summary?: { diagnostic_count?: number; status?: string };
+          agentcsp_ci_gate_summary?: { diagnostic_count?: number; status?: string; diagnostic_ids?: string[] };
           agentcsp_scan_coverage?: { diagnostics_total?: number; diagnostics_warnings?: number };
         };
       }>;
@@ -70,7 +71,8 @@ describe("scan diagnostics", () => {
     );
     expect(sarif.runs[0]?.properties?.agentcsp_ci_gate_summary).toMatchObject({
       diagnostic_count: 9,
-      status: "pass"
+      status: "pass",
+      diagnostic_ids: result.manifest.diagnostics.map((diagnostic) => diagnostic.id).sort()
     });
     expect(sarif.runs[0]?.properties?.agentcsp_scan_coverage).toMatchObject({
       diagnostics_total: 9,
@@ -112,7 +114,12 @@ describe("scan diagnostics", () => {
       diagnostic_count: 9,
       failed_gates: ["diagnostics"]
     });
+    expect(result.manifest.ci_gate_summary?.diagnostic_ids).toEqual(
+      result.manifest.diagnostics.map((diagnostic) => diagnostic.id).sort()
+    );
     expect(result.reportMarkdown).toContain("- Failed gates: diagnostics");
+    expect(result.reportMarkdown).toContain("### CI Gate Blockers");
+    expect(result.reportMarkdown).toContain("diagnostic");
   });
 
   it("emits a scanner diagnostic when max_files stops traversal early", async () => {
@@ -150,7 +157,8 @@ describe("scan diagnostics", () => {
       should_fail: false,
       fail_on_diagnostics: false,
       diagnostic_count: 1,
-      failed_gates: []
+      failed_gates: [],
+      diagnostic_ids: result.manifest.diagnostics.map((diagnostic) => diagnostic.id).sort()
     });
     expect(result.reportMarkdown).toContain("SCAN_MAX_FILES_REACHED");
     expect(result.reportMarkdown).toContain("- Max files reached: `true`");

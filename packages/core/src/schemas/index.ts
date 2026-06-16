@@ -287,7 +287,10 @@ export const CiGateSummarySchema = z.object({
   active_suppressions_excluded: z.number().int().nonnegative().default(0),
   expired_suppression_findings: z.number().int().nonnegative().default(0),
   diagnostic_count: z.number().int().nonnegative().default(0),
-  failed_gates: z.array(CiGateNameSchema).default([])
+  failed_gates: z.array(CiGateNameSchema).default([]),
+  severity_gate_finding_ids: z.array(z.string()).default([]),
+  expired_suppression_finding_ids: z.array(z.string()).default([]),
+  diagnostic_ids: z.array(z.string()).default([])
 });
 
 export const RemediationActionSchema = z.object({

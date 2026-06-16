@@ -17,6 +17,7 @@ A finding should be considered production-grade when it includes:
 - reason
 - confidence and confidence rationale
 - confidence-aware CI failure gates
+- machine-readable CI gate blocker IDs for severity-gated findings, expired suppressions, and diagnostics
 - prioritized action-plan output for immediate remediation, approval, quarantine, redaction, and warning recommendations
 - a canonical `pnpm verify` release gate used by CI and local release checks
 - release version consistency across workspace packages, CLI `--version`, manifest scanner metadata, and CI examples
