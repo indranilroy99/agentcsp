@@ -630,12 +630,15 @@ const leakPatterns = [
   /framework retrieved context delegated to remote agent/u,
   /source retrieved context cached for prompts/u,
   /framework retrieved context cached for prompts/u,
+  /source retrieved context published to prompt registry/u,
+  /framework retrieved context published to prompt registry/u,
   /Post caller selected retrieved support context/u,
   /Persist caller selected retrieved support context/u,
   /Submit caller selected retrieved support context/u,
   /Queue caller selected retrieved support context/u,
   /Delegate caller selected retrieved support context/u,
   /Cache caller selected retrieved support context/u,
+  /Publish caller selected retrieved support context/u,
   /taskQueueClient\.enqueue/u,
   /task_queue_client\.enqueue/u,
   /remoteAgentClient\.delegateTask/u,
@@ -647,6 +650,8 @@ const leakPatterns = [
   /retrieved_delegation_context/u,
   /retrievedCacheContext/u,
   /retrieved_cache_context/u,
+  /retrievedRegistryContext/u,
+  /retrieved_registry_context/u,
   /background_agent_triage/u,
   /source agent job queued/u,
   /framework agent job queued/u,
@@ -1442,8 +1447,8 @@ const leakPatterns = [
 const vulnerable = await readScanOutput(vulnerableOutput, { sarifRequired: true });
 const safe = await readScanOutput(safeOutput, { sarifRequired: false });
 
-assertEqual(vulnerable.manifest.findings.length, 1275, "vulnerable manifest finding count");
-assertEqual(vulnerable.findings.length, 1275, "vulnerable findings.json count");
+assertEqual(vulnerable.manifest.findings.length, 1279, "vulnerable manifest finding count");
+assertEqual(vulnerable.findings.length, 1279, "vulnerable findings.json count");
 assertEqual(vulnerable.manifest.attack_paths.length, 15, "vulnerable attack path count");
 assertEqual(vulnerable.manifest.static_blast_radius?.critical_attack_paths, 15, "vulnerable critical attack path count");
 assertEqual(vulnerable.manifest.diagnostics.length, 0, "vulnerable diagnostics count");
@@ -1624,6 +1629,7 @@ for (const ruleId of [
   "AGENTCSP-TOOL-181",
   "AGENTCSP-TOOL-182",
   "AGENTCSP-TOOL-183",
+  "AGENTCSP-TOOL-184",
   "AGENTCSP-RUNTIME-007",
   "AGENTCSP-RUNTIME-008",
   "AGENTCSP-RUNTIME-123",

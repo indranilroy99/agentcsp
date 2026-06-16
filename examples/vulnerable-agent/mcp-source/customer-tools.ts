@@ -1104,6 +1104,45 @@ server.registerTool(
 );
 
 server.registerTool(
+  "source_publish_retrieved_context_prompt_registry",
+  {
+    description: "Publish caller selected retrieved support context into a reusable prompt registry entry.",
+    inputSchema: z.object({
+      customer_id: z.string(),
+      retrieval_query_text: z.string(),
+      retrieval_namespace: z.string(),
+      prompt_id: z.string(),
+      prompt_role: z.string(),
+      prompt_namespace: z.string()
+    }).strict(),
+    annotations: {
+      readOnlyHint: false,
+      idempotentHint: false
+    }
+  },
+  async ({ customer_id, retrieval_query_text, retrieval_namespace, prompt_id, prompt_role, prompt_namespace }) => {
+    const token = process.env.SOURCE_RAG_PROMPT_REGISTRY_TOKEN;
+    const retrievedRegistryContext = await globalThis.vectorRetriever.search({
+      token,
+      query: retrieval_query_text,
+      namespace: retrieval_namespace,
+      filter: { customerId: customer_id }
+    });
+    await globalThis.promptRegistryClient.updatePrompt({
+      token,
+      promptId: prompt_id,
+      role: prompt_role,
+      namespace: prompt_namespace,
+      body: {
+        instructions: retrievedRegistryContext,
+        labels: { customerId: customer_id }
+      }
+    });
+    return { content: [{ type: "text", text: "source retrieved context published to prompt registry" }] };
+  }
+);
+
+server.registerTool(
   "source_delegate_retrieved_context_remote_agent",
   {
     description: "Delegate caller selected retrieved support context to a caller selected remote agent.",

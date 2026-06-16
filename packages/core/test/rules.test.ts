@@ -8053,11 +8053,13 @@ describe("rule engine", () => {
       "langchain_publish_model_selected_prompt_registry_entry",
       "langchain_publish_privileged_tool_observation_prompt_registry",
       "langchain_publish_prompt_registry_update",
+      "langchain_publish_retrieved_context_prompt_registry",
       "langchain_publish_url_response_prompt_registry_entry",
       "source_publish_customer_vault_secret_prompt_registry",
       "source_publish_model_selected_prompt_registry_entry",
       "source_publish_privileged_tool_observation_prompt_registry",
       "source_publish_prompt_registry_update",
+      "source_publish_retrieved_context_prompt_registry",
       "source_publish_url_response_prompt_registry_entry"
     ]);
     expect(sourceHandlerPromptRegistryWriteFindings.every((finding) => finding.severity === "critical")).toBe(true);
@@ -8112,8 +8114,13 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerPromptRegistryWriteFindings)).not.toContain("httpx.get");
     expect(JSON.stringify(sourceHandlerPromptRegistryWriteFindings)).not.toContain("source network response prompt registry entry published");
     expect(JSON.stringify(sourceHandlerPromptRegistryWriteFindings)).not.toContain("framework network response prompt registry entry published");
+    expect(JSON.stringify(sourceHandlerPromptRegistryWriteFindings)).not.toContain("retrievedRegistryContext");
+    expect(JSON.stringify(sourceHandlerPromptRegistryWriteFindings)).not.toContain("retrieved_registry_context");
+    expect(JSON.stringify(sourceHandlerPromptRegistryWriteFindings)).not.toContain("source retrieved context published to prompt registry");
+    expect(JSON.stringify(sourceHandlerPromptRegistryWriteFindings)).not.toContain("framework retrieved context published to prompt registry");
     expect(JSON.stringify(sourceHandlerPromptRegistryWriteFindings)).not.toContain("Publish caller supplied system prompt text");
     expect(JSON.stringify(sourceHandlerPromptRegistryWriteFindings)).not.toContain("Publish a customer support secret");
+    expect(JSON.stringify(sourceHandlerPromptRegistryWriteFindings)).not.toContain("Publish caller selected retrieved support context");
     expect(JSON.stringify(sourceHandlerPromptRegistryWriteFindings)).not.toContain("Ask a model provider to draft a prompt-registry entry");
     const sourceHandlerTelemetryExportFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-045");
     expect(sourceHandlerTelemetryExportFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
@@ -11140,6 +11147,71 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerRagRetrievalPromptCacheBridgeFindings)).not.toContain("source retrieved context cached for prompts");
     expect(JSON.stringify(sourceHandlerRagRetrievalPromptCacheBridgeFindings)).not.toContain("framework retrieved context cached for prompts");
     expect(JSON.stringify(sourceHandlerRagRetrievalPromptCacheBridgeFindings)).not.toContain("Cache caller selected retrieved support context");
+    const sourceHandlerRagRetrievalPromptRegistryBridgeFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-184");
+    expect(sourceHandlerRagRetrievalPromptRegistryBridgeFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
+      "langchain_publish_retrieved_context_prompt_registry",
+      "source_publish_retrieved_context_prompt_registry"
+    ]);
+    expect(sourceHandlerRagRetrievalPromptRegistryBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
+    expect(sourceHandlerRagRetrievalPromptRegistryBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerRagRetrievalPromptRegistryBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
+    expect(sourceHandlerRagRetrievalPromptRegistryBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
+    expect(sourceHandlerRagRetrievalPromptRegistryBridgeFindings.every((finding) => finding.matched_object.metadata.source_tool_handler_redacted === true)).toBe(true);
+    expect(sourceHandlerRagRetrievalPromptRegistryBridgeFindings.every((finding) => finding.matched_object.metadata.handler_secret_env_access === true)).toBe(true);
+    expect(sourceHandlerRagRetrievalPromptRegistryBridgeFindings.every((finding) => finding.matched_object.metadata.handler_rag_retrieval === true)).toBe(true);
+    expect(sourceHandlerRagRetrievalPromptRegistryBridgeFindings.every((finding) => finding.matched_object.metadata.handler_tainted_rag_retrieval_query === true)).toBe(true);
+    expect(sourceHandlerRagRetrievalPromptRegistryBridgeFindings.every((finding) => finding.matched_object.metadata.handler_prompt_registry_write === true)).toBe(true);
+    expect(sourceHandlerRagRetrievalPromptRegistryBridgeFindings.every((finding) => finding.matched_object.metadata.handler_tainted_prompt_registry_payload === true)).toBe(true);
+    expect(sourceHandlerRagRetrievalPromptRegistryBridgeFindings.every((finding) => finding.matched_object.metadata.handler_tainted_prompt_registry_selector === true)).toBe(true);
+    expect(sourceHandlerRagRetrievalPromptRegistryBridgeFindings.every((finding) => finding.matched_object.metadata.handler_rag_retrieval_prompt_registry_bridge === true)).toBe(true);
+    expect(sourceHandlerRagRetrievalPromptRegistryBridgeFindings.every((finding) => finding.matched_object.metadata.rag_retrieval === true)).toBe(true);
+    expect(sourceHandlerRagRetrievalPromptRegistryBridgeFindings.every((finding) => finding.matched_object.metadata.tainted_rag_retrieval_query === true)).toBe(true);
+    expect(sourceHandlerRagRetrievalPromptRegistryBridgeFindings.every((finding) => finding.matched_object.metadata.prompt_registry_write === true)).toBe(true);
+    expect(sourceHandlerRagRetrievalPromptRegistryBridgeFindings.every((finding) => finding.matched_object.metadata.tainted_prompt_registry_payload === true)).toBe(true);
+    expect(sourceHandlerRagRetrievalPromptRegistryBridgeFindings.every((finding) => finding.matched_object.metadata.tainted_prompt_registry_selector === true)).toBe(true);
+    expect(sourceHandlerRagRetrievalPromptRegistryBridgeFindings.every((finding) => finding.matched_object.metadata.rag_retrieval_prompt_registry_bridge === true)).toBe(true);
+    expect(sourceHandlerRagRetrievalPromptRegistryBridgeFindings.every((finding) => finding.matched_object.metadata.accepts_customer_data_input === true)).toBe(true);
+    for (const authorityClass of [
+      "rag_retrieval",
+      "tainted_rag_retrieval_query",
+      "prompt_registry_write",
+      "tainted_prompt_registry_payload",
+      "tainted_prompt_registry_selector",
+      "rag_retrieval_prompt_registry_bridge"
+    ]) {
+      expect(sourceHandlerRagRetrievalPromptRegistryBridgeFindings.every((finding) =>
+        finding.matched_object.metadata.authority_classes.includes(authorityClass)
+      )).toBe(true);
+    }
+    for (const handlerAuthorityClass of [
+      "handler_rag_retrieval",
+      "handler_tainted_rag_retrieval_query",
+      "handler_prompt_registry_write",
+      "handler_tainted_prompt_registry_payload",
+      "handler_tainted_prompt_registry_selector",
+      "handler_rag_retrieval_prompt_registry_bridge"
+    ]) {
+      expect(sourceHandlerRagRetrievalPromptRegistryBridgeFindings.every((finding) =>
+        finding.matched_object.metadata.handler_authority_classes.includes(handlerAuthorityClass)
+      )).toBe(true);
+    }
+    expect(sourceHandlerRagRetrievalPromptRegistryBridgeFindings.every((finding) => finding.matched_object.actions.includes("read"))).toBe(true);
+    expect(sourceHandlerRagRetrievalPromptRegistryBridgeFindings.every((finding) => finding.matched_object.actions.includes("send"))).toBe(true);
+    expect(sourceHandlerRagRetrievalPromptRegistryBridgeFindings.every((finding) => finding.matched_object.actions.includes("write"))).toBe(true);
+    expect(sourceHandlerRagRetrievalPromptRegistryBridgeFindings.every((finding) => finding.matched_object.actions.includes("publish"))).toBe(true);
+    expect(sourceHandlerRagRetrievalPromptRegistryBridgeFindings.every((finding) => finding.matched_object.external_reach === true)).toBe(true);
+    expect(sourceHandlerRagRetrievalPromptRegistryBridgeFindings.every((finding) => finding.matched_object.secret_exposure === true)).toBe(true);
+    expect(sourceHandlerRagRetrievalPromptRegistryBridgeFindings.every((finding) => finding.matched_object.side_effect === true)).toBe(true);
+    expect(sourceHandlerRagRetrievalPromptRegistryBridgeFindings.every((finding) => finding.matched_object.reversible === false)).toBe(true);
+    expect(JSON.stringify(sourceHandlerRagRetrievalPromptRegistryBridgeFindings)).not.toContain("vectorRetriever.search");
+    expect(JSON.stringify(sourceHandlerRagRetrievalPromptRegistryBridgeFindings)).not.toContain("vector_retriever.search");
+    expect(JSON.stringify(sourceHandlerRagRetrievalPromptRegistryBridgeFindings)).not.toContain("promptRegistryClient.updatePrompt");
+    expect(JSON.stringify(sourceHandlerRagRetrievalPromptRegistryBridgeFindings)).not.toContain("prompt_registry_client.update_prompt");
+    expect(JSON.stringify(sourceHandlerRagRetrievalPromptRegistryBridgeFindings)).not.toContain("retrievedRegistryContext");
+    expect(JSON.stringify(sourceHandlerRagRetrievalPromptRegistryBridgeFindings)).not.toContain("retrieved_registry_context");
+    expect(JSON.stringify(sourceHandlerRagRetrievalPromptRegistryBridgeFindings)).not.toContain("source retrieved context published to prompt registry");
+    expect(JSON.stringify(sourceHandlerRagRetrievalPromptRegistryBridgeFindings)).not.toContain("framework retrieved context published to prompt registry");
+    expect(JSON.stringify(sourceHandlerRagRetrievalPromptRegistryBridgeFindings)).not.toContain("Publish caller selected retrieved support context");
     const sourceHandlerLocalFileSafetyPolicyBridgeFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-175");
     expect(sourceHandlerLocalFileSafetyPolicyBridgeFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_apply_local_file_guardrail_override",

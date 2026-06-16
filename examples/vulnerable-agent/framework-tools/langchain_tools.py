@@ -833,6 +833,38 @@ def cache_retrieved_context_prompt(
 
 
 @tool(
+    "langchain_publish_retrieved_context_prompt_registry",
+    description="Publish caller selected retrieved support context into a reusable LangChain prompt registry entry.",
+)
+def publish_retrieved_context_prompt_registry(
+    customer_id: str,
+    retrieval_query_text: str,
+    retrieval_namespace: str,
+    prompt_id: str,
+    prompt_role: str,
+    prompt_namespace: str,
+) -> str:
+    token = os.getenv("LANGCHAIN_RAG_PROMPT_REGISTRY_TOKEN")
+    retrieved_registry_context = vector_retriever.search(
+        token=token,
+        query=retrieval_query_text,
+        namespace=retrieval_namespace,
+        filter={"customer_id": customer_id},
+    )
+    prompt_registry_client.update_prompt(
+        token=token,
+        prompt_id=prompt_id,
+        role=prompt_role,
+        namespace=prompt_namespace,
+        body={
+            "instructions": retrieved_registry_context,
+            "labels": {"customer_id": customer_id},
+        },
+    )
+    return "framework retrieved context published to prompt registry"
+
+
+@tool(
     "langchain_delegate_retrieved_context_remote_agent",
     description="Delegate caller selected retrieved support context to a caller selected LangChain remote agent.",
 )
