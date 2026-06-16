@@ -51,8 +51,8 @@ jobs:
       - name: Verify package artifacts
         run: pnpm verify:packages
 
-      - name: Audit high and critical vulnerabilities
-        run: pnpm audit --audit-level high
+      - name: Audit moderate and above vulnerabilities
+        run: pnpm audit --audit-level moderate
 
       - name: Verify fixture outputs
         run: pnpm verify:fixtures

@@ -518,7 +518,7 @@ Every production change should pass:
 - TypeScript check
 - unit tests
 - build
-- high/critical dependency audit for the tool's own release hygiene
+- moderate-and-above dependency audit for the tool's own release hygiene
 - Dependabot coverage for npm/pnpm dependencies and GitHub Actions
 - AgentCSP SARIF upload to GitHub code scanning on default-branch pushes
 - verified adopter workflow examples for advisory and gated GitHub code-scanning rollout
