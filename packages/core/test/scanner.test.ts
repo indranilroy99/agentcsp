@@ -813,6 +813,9 @@ describe("scanner", () => {
     const sourceVisualContextPromptCacheBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "source_cache_authenticated_page_screenshot_prompt"
     );
+    const sourceVisualContextPromptRegistryBridgeTool = surfaces.tools.find(
+      (surface) => surface.name === "source_publish_authenticated_page_screenshot_prompt_registry"
+    );
     const sourceVisualContextAgentDelegationBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "source_delegate_authenticated_page_screenshot_remote_agent"
     );
@@ -1195,6 +1198,9 @@ describe("scanner", () => {
     );
     const langchainVisualContextPromptCacheBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "langchain_cache_authenticated_page_screenshot_prompt"
+    );
+    const langchainVisualContextPromptRegistryBridgeTool = surfaces.tools.find(
+      (surface) => surface.name === "langchain_publish_authenticated_page_screenshot_prompt_registry"
     );
     const langchainVisualContextAgentDelegationBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "langchain_delegate_authenticated_page_screenshot_remote_agent"
@@ -11334,6 +11340,108 @@ describe("scanner", () => {
     expect(JSON.stringify(sourceVisualContextPromptCacheBridgeTool)).not.toContain("screenshot.toString");
     expect(JSON.stringify(sourceVisualContextPromptCacheBridgeTool)).not.toContain("promptCache.set");
     expect(JSON.stringify(sourceVisualContextPromptCacheBridgeTool)).not.toContain("source visual context cached for prompts");
+    expect(sourceVisualContextPromptRegistryBridgeTool).toMatchObject({
+      path: "mcp-source/customer-tools.ts",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["call", "execute", "publish", "read", "send", "write"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(sourceVisualContextPromptRegistryBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_mcp_source_tool: true,
+      mcp_source_tool_registration: true,
+      mcp_source_tool_registration_kind: "registerTool",
+      mcp_source_tool_argument_count: 3,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_secret_like_input: true,
+      accepts_content_like_input: true,
+      accepts_url_input: true,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      browser_automation: true,
+      tainted_browser_automation_target: true,
+      visual_context_capture: true,
+      prompt_registry_write: true,
+      tainted_prompt_registry_payload: true,
+      tainted_prompt_registry_selector: true,
+      visual_context_prompt_registry_bridge: true,
+      handler_browser_automation: true,
+      handler_tainted_browser_automation_target: true,
+      handler_visual_context_capture: true,
+      handler_prompt_registry_write: true,
+      handler_tainted_prompt_registry_payload: true,
+      handler_tainted_prompt_registry_selector: true,
+      handler_visual_context_prompt_registry_bridge: true,
+      handler_secret_env_access: true,
+      handler_signal_count: 8,
+      open_world_schema: false
+    });
+    expect(sourceVisualContextPromptRegistryBridgeTool?.metadata.authority_classes).toEqual([
+      "browser_automation",
+      "browser_control",
+      "content_input",
+      "credential_input",
+      "customer_data_input",
+      "external_write",
+      "handler_browser_automation",
+      "handler_prompt_registry_write",
+      "handler_secret_env_access",
+      "handler_tainted_browser_automation_target",
+      "handler_tainted_prompt_registry_payload",
+      "handler_tainted_prompt_registry_selector",
+      "handler_visual_context_capture",
+      "handler_visual_context_prompt_registry_bridge",
+      "network_access",
+      "pii_input",
+      "prompt_registry_write",
+      "secret_env_access",
+      "tainted_browser_automation_target",
+      "tainted_prompt_registry_payload",
+      "tainted_prompt_registry_selector",
+      "visual_context_capture",
+      "visual_context_prompt_registry_bridge"
+    ]);
+    expect(sourceVisualContextPromptRegistryBridgeTool?.metadata.handler_authority_classes).toEqual([
+      "handler_browser_automation",
+      "handler_prompt_registry_write",
+      "handler_secret_env_access",
+      "handler_tainted_browser_automation_target",
+      "handler_tainted_prompt_registry_payload",
+      "handler_tainted_prompt_registry_selector",
+      "handler_visual_context_capture",
+      "handler_visual_context_prompt_registry_bridge"
+    ]);
+    expect(sourceVisualContextPromptRegistryBridgeTool?.metadata.handler_env_key_names).toEqual([
+      "SOURCE_VISUAL_PROMPT_REGISTRY_BROWSER_TOKEN",
+      "SOURCE_VISUAL_PROMPT_REGISTRY_TOKEN"
+    ]);
+    expect(sourceVisualContextPromptRegistryBridgeTool?.metadata.schema_properties).toEqual([
+      "customer_id",
+      "prompt_id",
+      "prompt_namespace",
+      "prompt_role",
+      "target_url",
+      "visual_prompt_note_text"
+    ]);
+    expect(sourceVisualContextPromptRegistryBridgeTool?.metadata.required_properties).toEqual([
+      "customer_id",
+      "prompt_id",
+      "prompt_namespace",
+      "prompt_role",
+      "target_url",
+      "visual_prompt_note_text"
+    ]);
+    expect(JSON.stringify(sourceVisualContextPromptRegistryBridgeTool)).not.toContain("authenticatedBrowserPage");
+    expect(JSON.stringify(sourceVisualContextPromptRegistryBridgeTool)).not.toContain("page.goto");
+    expect(JSON.stringify(sourceVisualContextPromptRegistryBridgeTool)).not.toContain("page.screenshot");
+    expect(JSON.stringify(sourceVisualContextPromptRegistryBridgeTool)).not.toContain("screenshot.toString");
+    expect(JSON.stringify(sourceVisualContextPromptRegistryBridgeTool)).not.toContain("promptRegistryClient.updatePrompt");
+    expect(JSON.stringify(sourceVisualContextPromptRegistryBridgeTool)).not.toContain("source visual context published to prompt registry");
+    expect(JSON.stringify(sourceVisualContextPromptRegistryBridgeTool)).not.toContain("Publish an authenticated browser screenshot");
     expect(sourceVisualContextAgentDelegationBridgeTool).toMatchObject({
       path: "mcp-source/customer-tools.ts",
       data_classes: ["confidential", "credential", "pii"],
@@ -24975,6 +25083,109 @@ describe("scanner", () => {
     expect(JSON.stringify(langchainVisualContextPromptCacheBridgeTool)).not.toContain("prompt_cache.set");
     expect(JSON.stringify(langchainVisualContextPromptCacheBridgeTool)).not.toContain("framework visual context cached for prompts");
     expect(JSON.stringify(langchainVisualContextPromptCacheBridgeTool)).not.toContain("Write an authenticated browser screenshot");
+    expect(langchainVisualContextPromptRegistryBridgeTool).toMatchObject({
+      path: "framework-tools/langchain_tools.py",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["call", "execute", "publish", "read", "send", "write"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(langchainVisualContextPromptRegistryBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_agent_framework_source_tool: true,
+      agent_framework_source_tool: true,
+      agent_framework_source_tool_framework: "langchain",
+      agent_framework_source_tool_registration_kind: "python_tool_decorator",
+      agent_framework_source_tool_argument_count: 6,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_secret_like_input: true,
+      accepts_content_like_input: true,
+      accepts_url_input: true,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      browser_automation: true,
+      tainted_browser_automation_target: true,
+      visual_context_capture: true,
+      prompt_registry_write: true,
+      tainted_prompt_registry_payload: true,
+      tainted_prompt_registry_selector: true,
+      visual_context_prompt_registry_bridge: true,
+      handler_browser_automation: true,
+      handler_tainted_browser_automation_target: true,
+      handler_visual_context_capture: true,
+      handler_prompt_registry_write: true,
+      handler_tainted_prompt_registry_payload: true,
+      handler_tainted_prompt_registry_selector: true,
+      handler_visual_context_prompt_registry_bridge: true,
+      handler_secret_env_access: true,
+      handler_signal_count: 8,
+      open_world_schema: false
+    });
+    expect(langchainVisualContextPromptRegistryBridgeTool?.metadata.authority_classes).toEqual([
+      "browser_automation",
+      "browser_control",
+      "content_input",
+      "credential_input",
+      "customer_data_input",
+      "external_write",
+      "handler_browser_automation",
+      "handler_prompt_registry_write",
+      "handler_secret_env_access",
+      "handler_tainted_browser_automation_target",
+      "handler_tainted_prompt_registry_payload",
+      "handler_tainted_prompt_registry_selector",
+      "handler_visual_context_capture",
+      "handler_visual_context_prompt_registry_bridge",
+      "network_access",
+      "pii_input",
+      "prompt_registry_write",
+      "secret_env_access",
+      "tainted_browser_automation_target",
+      "tainted_prompt_registry_payload",
+      "tainted_prompt_registry_selector",
+      "visual_context_capture",
+      "visual_context_prompt_registry_bridge"
+    ]);
+    expect(langchainVisualContextPromptRegistryBridgeTool?.metadata.handler_authority_classes).toEqual([
+      "handler_browser_automation",
+      "handler_prompt_registry_write",
+      "handler_secret_env_access",
+      "handler_tainted_browser_automation_target",
+      "handler_tainted_prompt_registry_payload",
+      "handler_tainted_prompt_registry_selector",
+      "handler_visual_context_capture",
+      "handler_visual_context_prompt_registry_bridge"
+    ]);
+    expect(langchainVisualContextPromptRegistryBridgeTool?.metadata.handler_env_key_names).toEqual([
+      "LANGCHAIN_VISUAL_PROMPT_REGISTRY_BROWSER_TOKEN",
+      "LANGCHAIN_VISUAL_PROMPT_REGISTRY_TOKEN"
+    ]);
+    expect(langchainVisualContextPromptRegistryBridgeTool?.metadata.schema_properties).toEqual([
+      "customer_id",
+      "prompt_id",
+      "prompt_namespace",
+      "prompt_role",
+      "target_url",
+      "visual_prompt_note_text"
+    ]);
+    expect(langchainVisualContextPromptRegistryBridgeTool?.metadata.required_properties).toEqual([
+      "customer_id",
+      "prompt_id",
+      "prompt_namespace",
+      "prompt_role",
+      "target_url",
+      "visual_prompt_note_text"
+    ]);
+    expect(JSON.stringify(langchainVisualContextPromptRegistryBridgeTool)).not.toContain("browser_session.page");
+    expect(JSON.stringify(langchainVisualContextPromptRegistryBridgeTool)).not.toContain("page.goto");
+    expect(JSON.stringify(langchainVisualContextPromptRegistryBridgeTool)).not.toContain("page.screenshot");
+    expect(JSON.stringify(langchainVisualContextPromptRegistryBridgeTool)).not.toContain("screenshot_bytes");
+    expect(JSON.stringify(langchainVisualContextPromptRegistryBridgeTool)).not.toContain("prompt_registry_client.update_prompt");
+    expect(JSON.stringify(langchainVisualContextPromptRegistryBridgeTool)).not.toContain("framework visual context published to prompt registry");
+    expect(JSON.stringify(langchainVisualContextPromptRegistryBridgeTool)).not.toContain("Publish an authenticated browser screenshot");
     expect(langchainVisualContextAgentDelegationBridgeTool).toMatchObject({
       path: "framework-tools/langchain_tools.py",
       data_classes: ["confidential", "credential", "pii"],

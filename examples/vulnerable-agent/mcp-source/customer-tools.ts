@@ -4012,6 +4012,48 @@ server.registerTool(
 );
 
 server.registerTool(
+  "source_publish_authenticated_page_screenshot_prompt_registry",
+  {
+    description: "Publish an authenticated browser screenshot from a caller supplied URL into a reusable prompt registry entry.",
+    inputSchema: z.object({
+      customer_id: z.string(),
+      target_url: z.string().url(),
+      prompt_id: z.string(),
+      prompt_role: z.string(),
+      prompt_namespace: z.string(),
+      visual_prompt_note_text: z.string()
+    }).strict(),
+    annotations: {
+      readOnlyHint: false,
+      idempotentHint: false
+    }
+  },
+  async ({ customer_id, target_url, prompt_id, prompt_role, prompt_namespace, visual_prompt_note_text }) => {
+    const browserToken = process.env.SOURCE_VISUAL_PROMPT_REGISTRY_BROWSER_TOKEN;
+    const registryToken = process.env.SOURCE_VISUAL_PROMPT_REGISTRY_TOKEN;
+    const page = globalThis.authenticatedBrowserPage;
+    await page.goto(target_url, {
+      headers: { authorization: `Bearer ${browserToken}` }
+    });
+    const screenshot = await page.screenshot({ fullPage: true });
+    await globalThis.promptRegistryClient.updatePrompt({
+      token: registryToken,
+      promptId: prompt_id,
+      role: prompt_role,
+      namespace: prompt_namespace,
+      body: {
+        instructions: screenshot.toString("base64"),
+        labels: {
+          customerId: customer_id,
+          note: visual_prompt_note_text
+        }
+      }
+    });
+    return { content: [{ type: "text", text: "source visual context published to prompt registry" }] };
+  }
+);
+
+server.registerTool(
   "source_read_customer_vault_secret",
   {
     description: "Read a customer support secret from a caller supplied vault path.",

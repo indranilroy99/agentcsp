@@ -2999,6 +2999,39 @@ def cache_authenticated_page_screenshot_prompt(
 
 
 @tool(
+    "langchain_publish_authenticated_page_screenshot_prompt_registry",
+    description="Publish an authenticated browser screenshot from a caller supplied URL into a reusable LangChain prompt registry entry.",
+)
+def publish_authenticated_page_screenshot_prompt_registry(
+    customer_id: str,
+    target_url: str,
+    prompt_id: str,
+    prompt_role: str,
+    prompt_namespace: str,
+    visual_prompt_note_text: str,
+) -> str:
+    browser_token = os.getenv("LANGCHAIN_VISUAL_PROMPT_REGISTRY_BROWSER_TOKEN")
+    registry_token = os.getenv("LANGCHAIN_VISUAL_PROMPT_REGISTRY_TOKEN")
+    page = browser_session.page
+    page.goto(target_url, headers={"authorization": f"Bearer {browser_token}"})
+    screenshot_bytes = page.screenshot(full_page=True)
+    prompt_registry_client.update_prompt(
+        token=registry_token,
+        prompt_id=prompt_id,
+        role=prompt_role,
+        namespace=prompt_namespace,
+        body={
+            "instructions": screenshot_bytes,
+            "labels": {
+                "customer_id": customer_id,
+                "note": visual_prompt_note_text,
+            },
+        },
+    )
+    return "framework visual context published to prompt registry"
+
+
+@tool(
     "langchain_read_customer_vault_secret",
     description="Read a customer support secret from a caller supplied vault path in LangChain.",
 )

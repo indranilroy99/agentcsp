@@ -1,0 +1,170 @@
+id: AGENTCSP-TOOL-187
+name: Source tool handler publishes authenticated visual context to prompt registry
+description: A source-defined agent tool handler captures authenticated browser or screen visual context from a caller-selected target and writes the screenshot or OCR-derived context into a reusable prompt or instruction registry using runtime credentials and caller-selected prompt metadata.
+category: visual_context_prompt_registry_bridge
+severity: critical
+maps_to:
+  owasp:
+    - LLM01:2025 Prompt Injection
+    - LLM02:2025 Sensitive Information Disclosure
+    - LLM05:2025 Improper Output Handling
+    - LLM06:2025 Excessive Agency
+  mitre_atlas:
+    - AML.T0051 LLM Plugin Compromise
+    - AML.T0056 LLM Trusted Boundary Compromise
+    - AML.T0057 Exfiltration via Cyber Means
+    - AML.T0060 LLM Prompt Injection
+  nist_ai_rmf:
+    - MAP 4.1
+    - MEASURE 2.7
+    - MANAGE 2.4
+match:
+  object_type: tool
+  where:
+    - field: metadata.parsed_tool_schema
+      op: equals
+      value: true
+    - field: metadata.source_tool_handler_redacted
+      op: equals
+      value: true
+    - field: metadata.handler_body_analyzed
+      op: equals
+      value: true
+    - field: metadata.handler_browser_automation
+      op: equals
+      value: true
+    - field: metadata.handler_tainted_browser_automation_target
+      op: equals
+      value: true
+    - field: metadata.handler_visual_context_capture
+      op: equals
+      value: true
+    - field: metadata.handler_prompt_registry_write
+      op: equals
+      value: true
+    - field: metadata.handler_tainted_prompt_registry_payload
+      op: equals
+      value: true
+    - field: metadata.handler_tainted_prompt_registry_selector
+      op: equals
+      value: true
+    - field: metadata.handler_visual_context_prompt_registry_bridge
+      op: equals
+      value: true
+    - field: metadata.handler_secret_env_access
+      op: equals
+      value: true
+    - field: metadata.browser_automation
+      op: equals
+      value: true
+    - field: metadata.tainted_browser_automation_target
+      op: equals
+      value: true
+    - field: metadata.visual_context_capture
+      op: equals
+      value: true
+    - field: metadata.prompt_registry_write
+      op: equals
+      value: true
+    - field: metadata.tainted_prompt_registry_payload
+      op: equals
+      value: true
+    - field: metadata.tainted_prompt_registry_selector
+      op: equals
+      value: true
+    - field: metadata.visual_context_prompt_registry_bridge
+      op: equals
+      value: true
+    - field: metadata.accepts_url_input
+      op: equals
+      value: true
+    - field: metadata.accepts_customer_data_input
+      op: equals
+      value: true
+    - field: metadata.authority_classes
+      op: includes
+      value: browser_automation
+    - field: metadata.authority_classes
+      op: includes
+      value: tainted_browser_automation_target
+    - field: metadata.authority_classes
+      op: includes
+      value: visual_context_capture
+    - field: metadata.authority_classes
+      op: includes
+      value: prompt_registry_write
+    - field: metadata.authority_classes
+      op: includes
+      value: tainted_prompt_registry_payload
+    - field: metadata.authority_classes
+      op: includes
+      value: tainted_prompt_registry_selector
+    - field: metadata.authority_classes
+      op: includes
+      value: visual_context_prompt_registry_bridge
+    - field: metadata.handler_authority_classes
+      op: includes
+      value: handler_browser_automation
+    - field: metadata.handler_authority_classes
+      op: includes
+      value: handler_tainted_browser_automation_target
+    - field: metadata.handler_authority_classes
+      op: includes
+      value: handler_visual_context_capture
+    - field: metadata.handler_authority_classes
+      op: includes
+      value: handler_prompt_registry_write
+    - field: metadata.handler_authority_classes
+      op: includes
+      value: handler_tainted_prompt_registry_payload
+    - field: metadata.handler_authority_classes
+      op: includes
+      value: handler_tainted_prompt_registry_selector
+    - field: metadata.handler_authority_classes
+      op: includes
+      value: handler_visual_context_prompt_registry_bridge
+    - field: metadata.schema_properties
+      op: contains_any
+      value:
+        - customer_id
+        - prompt_id
+        - prompt_namespace
+        - prompt_role
+        - target_url
+        - visual_prompt_note_text
+    - field: actions
+      op: includes
+      value: execute
+    - field: actions
+      op: includes
+      value: read
+    - field: actions
+      op: includes
+      value: send
+    - field: actions
+      op: includes
+      value: write
+    - field: actions
+      op: includes
+      value: publish
+    - field: data_classes
+      op: contains_any
+      value:
+        - confidential
+        - credential
+        - pii
+    - field: external_reach
+      op: equals
+      value: true
+    - field: secret_exposure
+      op: equals
+      value: true
+    - field: side_effect
+      op: equals
+      value: true
+    - field: reversible
+      op: equals
+      value: false
+recommendation:
+  control: quarantine
+  text: Quarantine visual-context-to-prompt-registry handlers until authenticated screenshots and OCR text are treated as sensitive untrusted context, visual captures are classified and redacted, caller-selected prompt IDs, roles, namespaces, and versions are policy-owned, prompt registry writes require approval and provenance, and runtime browser and registry credentials are scoped separately with audit evidence.

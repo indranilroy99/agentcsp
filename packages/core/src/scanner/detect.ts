@@ -24226,6 +24226,7 @@ function addToolDefinitionSurface(
       !authority.visual_context_training_dataset_bridge &&
       !authority.visual_context_telemetry_bridge &&
       !authority.visual_context_prompt_cache_bridge &&
+      !authority.visual_context_prompt_registry_bridge &&
       !authority.visual_context_task_queue_bridge &&
       !authority.visual_context_agent_delegation_bridge &&
       !authority.tainted_network_destination &&
@@ -24437,6 +24438,7 @@ function addToolDefinitionSurface(
       visual_context_training_dataset_bridge: authority.visual_context_training_dataset_bridge,
       visual_context_telemetry_bridge: authority.visual_context_telemetry_bridge,
       visual_context_prompt_cache_bridge: authority.visual_context_prompt_cache_bridge,
+      visual_context_prompt_registry_bridge: authority.visual_context_prompt_registry_bridge,
       visual_context_task_queue_bridge: authority.visual_context_task_queue_bridge,
       visual_context_agent_delegation_bridge: authority.visual_context_agent_delegation_bridge,
       privileged_prompt_composition: authority.privileged_prompt_composition,
@@ -26999,6 +27001,7 @@ interface SourceToolHandlerSignals {
   handlerVisualContextTrainingDatasetBridge: boolean;
   handlerVisualContextTelemetryBridge: boolean;
   handlerVisualContextPromptCacheBridge: boolean;
+  handlerVisualContextPromptRegistryBridge: boolean;
   handlerVisualContextTaskQueueBridge: boolean;
   handlerVisualContextAgentDelegationBridge: boolean;
   handlerSecretManagerAccess: boolean;
@@ -27619,6 +27622,7 @@ function sourceToolHandlerSignalMetadata(signals: SourceToolHandlerSignals | und
     handler_visual_context_training_dataset_bridge: signals.handlerVisualContextTrainingDatasetBridge,
     handler_visual_context_telemetry_bridge: signals.handlerVisualContextTelemetryBridge,
     handler_visual_context_prompt_cache_bridge: signals.handlerVisualContextPromptCacheBridge,
+    handler_visual_context_prompt_registry_bridge: signals.handlerVisualContextPromptRegistryBridge,
     handler_visual_context_task_queue_bridge: signals.handlerVisualContextTaskQueueBridge,
     handler_visual_context_agent_delegation_bridge: signals.handlerVisualContextAgentDelegationBridge,
     handler_secret_manager_access: signals.handlerSecretManagerAccess,
@@ -28172,6 +28176,10 @@ function classifySourceToolHandlerSignals(
   const visualContextPromptCacheBridge = visualContextCapture && promptCacheWrite && (language === "javascript"
     ? hasJavaScriptHandlerVisualContextPromptCacheBridge(handlerSource)
     : hasPythonHandlerVisualContextPromptCacheBridge(handlerSource));
+  const visualContextPromptRegistryBridge = visualContextCapture && promptRegistryWrite && (language === "javascript"
+    ? hasJavaScriptHandlerVisualContextPromptRegistryBridge(handlerSource)
+    : hasPythonHandlerVisualContextPromptRegistryBridge(handlerSource));
+  if (visualContextPromptRegistryBridge) taintedPromptRegistryPayload = true;
   const visualContextTaskQueueBridge = visualContextCapture && taskQueueEnqueue && (language === "javascript"
     ? hasJavaScriptHandlerVisualContextTaskQueueBridge(handlerSource)
     : hasPythonHandlerVisualContextTaskQueueBridge(handlerSource));
@@ -28571,6 +28579,7 @@ function classifySourceToolHandlerSignals(
   if (visualContextTrainingDatasetBridge) classes.add("handler_visual_context_training_dataset_bridge");
   if (visualContextTelemetryBridge) classes.add("handler_visual_context_telemetry_bridge");
   if (visualContextPromptCacheBridge) classes.add("handler_visual_context_prompt_cache_bridge");
+  if (visualContextPromptRegistryBridge) classes.add("handler_visual_context_prompt_registry_bridge");
   if (visualContextTaskQueueBridge) classes.add("handler_visual_context_task_queue_bridge");
   if (visualContextAgentDelegationBridge) classes.add("handler_visual_context_agent_delegation_bridge");
   if (secretManagerAccess) classes.add("handler_secret_manager_access");
@@ -28779,6 +28788,7 @@ function classifySourceToolHandlerSignals(
     handlerVisualContextTrainingDatasetBridge: visualContextTrainingDatasetBridge,
     handlerVisualContextTelemetryBridge: visualContextTelemetryBridge,
     handlerVisualContextPromptCacheBridge: visualContextPromptCacheBridge,
+    handlerVisualContextPromptRegistryBridge: visualContextPromptRegistryBridge,
     handlerVisualContextTaskQueueBridge: visualContextTaskQueueBridge,
     handlerVisualContextAgentDelegationBridge: visualContextAgentDelegationBridge,
     handlerSecretManagerAccess: secretManagerAccess,
@@ -30545,6 +30555,30 @@ function hasPythonHandlerVisualContextPromptCacheBridge(source: string): boolean
     [
       /\b(?:prompt_cache|semantic_cache|llm_cache|response_cache|cache_client|cache|redis|upstash)\s*(?:\.\s*[A-Za-z_]\w*){0,4}\s*\.\s*(?:set|put|write|save|store|upsert|remember|add|insert)\s*\(([\s\S]{0,2400})\)/giu,
       /\b(?:write_prompt_cache|cache_prompt_context|store_prompt_cache_entry|upsert_semantic_cache_entry|write_semantic_cache)\s*\(([\s\S]{0,2400})\)/giu
+    ],
+    source,
+    identifiers
+  );
+}
+
+function hasJavaScriptHandlerVisualContextPromptRegistryBridge(source: string): boolean {
+  const identifiers = extractJavaScriptVisualContextIdentifiers(source);
+  return identifiers.length > 0 && promptRegistryCallReferencesPayloadIdentifier(
+    [
+      /\b(?:promptRegistry|promptRegistryClient|promptStore|promptHub|promptCatalog|instructionRegistry|instructionStore|systemPromptRegistry|developerPromptRegistry|contextRegistry)\s*(?:\.\s*[A-Za-z_$][\w$]*){0,5}\s*\.\s*(?:update|updatePrompt|publish|publishPrompt|set|setPrompt|put|putPrompt|upsert|upsertPrompt|write|writePrompt|save|savePrompt|create|createPrompt|register|registerPrompt|sync|push)\s*\(([\s\S]{0,2400})\)/giu,
+      /\b(?:updatePromptRegistry|publishPromptRegistry|writePromptRegistry|upsertSystemPrompt|publishDeveloperPrompt|syncPromptRegistry)\s*\(([\s\S]{0,2400})\)/giu
+    ],
+    source,
+    identifiers
+  );
+}
+
+function hasPythonHandlerVisualContextPromptRegistryBridge(source: string): boolean {
+  const identifiers = extractPythonVisualContextIdentifiers(source);
+  return identifiers.length > 0 && promptRegistryCallReferencesPayloadIdentifier(
+    [
+      /\b(?:prompt_registry|prompt_registry_client|prompt_store|prompt_hub|prompt_catalog|instruction_registry|instruction_store|system_prompt_registry|developer_prompt_registry|context_registry)\s*(?:\.\s*[A-Za-z_]\w*){0,5}\s*\.\s*(?:update|update_prompt|publish|publish_prompt|set|set_prompt|put|put_prompt|upsert|upsert_prompt|write|write_prompt|save|save_prompt|create|create_prompt|register|register_prompt|sync|push)\s*\(([\s\S]{0,2400})\)/giu,
+      /\b(?:update_prompt_registry|publish_prompt_registry|write_prompt_registry|upsert_system_prompt|publish_developer_prompt|sync_prompt_registry)\s*\(([\s\S]{0,2400})\)/giu
     ],
     source,
     identifiers
@@ -36845,6 +36879,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   network_response_prompt_registry_bridge: boolean;
   local_file_prompt_registry_bridge: boolean;
   rag_retrieval_prompt_registry_bridge: boolean;
+  visual_context_prompt_registry_bridge: boolean;
   secret_manager_prompt_registry_bridge: boolean;
   env_secret_prompt_registry_bridge: boolean;
   tool_output_prompt_registry_bridge: boolean;
@@ -37062,6 +37097,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   const handlerPromptRegistryWrite = handler?.handlerPromptRegistryWrite === true;
   const handlerLocalFilePromptRegistryBridge = handler?.handlerLocalFilePromptRegistryBridge === true;
   const handlerRagRetrievalPromptRegistryBridge = handler?.handlerRagRetrievalPromptRegistryBridge === true;
+  const handlerVisualContextPromptRegistryBridge = handler?.handlerVisualContextPromptRegistryBridge === true;
   const handlerToolOutputPromptRegistryBridge = handler?.handlerToolOutputPromptRegistryBridge === true;
   const handlerSecretManagerPromptRegistryBridge = handler?.handlerSecretManagerPromptRegistryBridge === true;
   const handlerEnvSecretPromptRegistryBridge = handler?.handlerEnvSecretPromptRegistryBridge === true;
@@ -38201,6 +38237,13 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
     actions.add("write");
     actions.add("publish");
   }
+  if (handlerVisualContextPromptRegistryBridge) {
+    classes.add("visual_context_prompt_registry_bridge");
+    actions.add("read");
+    actions.add("send");
+    actions.add("write");
+    actions.add("publish");
+  }
   if (handlerToolOutputPromptRegistryBridge) {
     classes.add("tool_output_prompt_registry_bridge");
     actions.add("send");
@@ -38392,6 +38435,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerNetworkResponsePromptCacheBridge ||
       handlerLocalFilePromptCacheBridge ||
       handlerRagRetrievalPromptCacheBridge ||
+      handlerVisualContextPromptRegistryBridge ||
       handlerToolOutputPromptCacheBridge ||
       handlerTaintedPromptCacheKey ||
       handlerTaintedPromptCacheValue ||
@@ -38593,6 +38637,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerVisualContextPromptCacheBridge ||
       handlerVisualContextTaskQueueBridge ||
       handlerVisualContextAgentDelegationBridge ||
+      handlerVisualContextPromptRegistryBridge ||
       handlerSecretManagerPromptCacheBridge ||
       handlerEnvSecretPromptCacheBridge ||
       handlerModelOutputPromptCacheBridge ||
@@ -38617,6 +38662,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerSecretManagerArtifactBridge ||
       handlerEnvSecretArtifactBridge ||
       (handlerRagRetrievalArtifactBridge && handlerSecretEnvAccess) ||
+      (handlerVisualContextPromptRegistryBridge && handlerSecretEnvAccess) ||
       handlerSafetyPolicyWrite ||
       handlerRagRetrievalSafetyPolicyBridge ||
       handlerModelOutputSafetyPolicyBridge ||
@@ -38994,6 +39040,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
     tool_output_task_queue_bridge: handlerToolOutputTaskQueueBridge,
     rag_retrieval_task_queue_bridge: handlerRagRetrievalTaskQueueBridge,
     prompt_registry_write: handlerPromptRegistryWrite,
+    visual_context_prompt_registry_bridge: handlerVisualContextPromptRegistryBridge,
     tainted_prompt_registry_payload: handlerTaintedPromptRegistryPayload,
     tainted_prompt_registry_selector: handlerTaintedPromptRegistrySelector,
     model_approval_gate: handlerModelApprovalGate,
@@ -39187,6 +39234,7 @@ function authoritySignature(tool: SurfaceObject): string {
     metadata.tool_output_task_queue_bridge === true ? "tool_output_task_queue_bridge" : "",
     metadata.rag_retrieval_task_queue_bridge === true ? "rag_retrieval_task_queue_bridge" : "",
     metadata.prompt_registry_write === true ? "prompt_registry_write" : "",
+    metadata.visual_context_prompt_registry_bridge === true ? "visual_context_prompt_registry_bridge" : "",
     metadata.tainted_prompt_registry_payload === true ? "tainted_prompt_registry_payload" : "",
     metadata.tainted_prompt_registry_selector === true ? "tainted_prompt_registry_selector" : "",
     metadata.model_approval_gate === true ? "model_approval_gate" : "",
@@ -39408,6 +39456,7 @@ function isPrivilegedToolSurface(tool: SurfaceObject): boolean {
     tool.metadata.tool_output_task_queue_bridge === true ||
     tool.metadata.rag_retrieval_task_queue_bridge === true ||
     tool.metadata.prompt_registry_write === true ||
+    tool.metadata.visual_context_prompt_registry_bridge === true ||
     tool.metadata.tainted_prompt_registry_payload === true ||
     tool.metadata.tainted_prompt_registry_selector === true ||
     tool.metadata.model_approval_gate === true ||

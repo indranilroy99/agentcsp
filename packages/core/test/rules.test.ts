@@ -188,6 +188,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-184")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-185")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-186")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-187")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-001")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-002")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-003")).toBe(true);
@@ -6204,6 +6205,7 @@ describe("rule engine", () => {
       "langchain_issue_url_response_agent_credential",
       "langchain_post_authenticated_page_screenshot_external",
       "langchain_post_url_response_external",
+      "langchain_publish_authenticated_page_screenshot_prompt_registry",
       "langchain_publish_url_response_prompt_registry_entry",
       "langchain_trace_url_response",
       "langchain_upload_local_file_authenticated_browser",
@@ -6220,6 +6222,7 @@ describe("rule engine", () => {
       "source_issue_url_response_agent_credential",
       "source_post_authenticated_page_screenshot_external",
       "source_post_url_response_external",
+      "source_publish_authenticated_page_screenshot_prompt_registry",
       "source_publish_url_response_prompt_registry_entry",
       "source_trace_url_response",
       "source_upload_local_file_authenticated_browser"
@@ -6233,6 +6236,10 @@ describe("rule engine", () => {
     expect(JSON.stringify(toolContentExternalFindings)).not.toContain("framework network response exported to telemetry");
     expect(JSON.stringify(toolContentExternalFindings)).not.toContain("source network response prompt registry entry published");
     expect(JSON.stringify(toolContentExternalFindings)).not.toContain("framework network response prompt registry entry published");
+    expect(JSON.stringify(toolContentExternalFindings)).not.toContain("source visual context published to prompt registry");
+    expect(JSON.stringify(toolContentExternalFindings)).not.toContain("framework visual context published to prompt registry");
+    expect(JSON.stringify(toolContentExternalFindings)).not.toContain("promptRegistryClient.updatePrompt");
+    expect(JSON.stringify(toolContentExternalFindings)).not.toContain("prompt_registry_client.update_prompt");
     expect(JSON.stringify(toolContentExternalFindings)).not.toContain("source network response credential issued");
     expect(JSON.stringify(toolContentExternalFindings)).not.toContain("framework network response credential issued");
     const toolPiiExternalFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-010");
@@ -6247,6 +6254,7 @@ describe("rule engine", () => {
       "langchain_grant_url_response_authorization",
       "langchain_issue_url_response_agent_credential",
       "langchain_post_authenticated_page_screenshot_external",
+      "langchain_publish_authenticated_page_screenshot_prompt_registry",
       "langchain_publish_url_response_prompt_registry_entry",
       "langchain_upload_local_file_authenticated_browser",
       "post_customer_update",
@@ -6259,6 +6267,7 @@ describe("rule engine", () => {
       "source_grant_url_response_authorization",
       "source_issue_url_response_agent_credential",
       "source_post_authenticated_page_screenshot_external",
+      "source_publish_authenticated_page_screenshot_prompt_registry",
       "source_publish_url_response_prompt_registry_entry",
       "source_upload_local_file_authenticated_browser"
     ]);
@@ -8055,12 +8064,14 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerSecretManagerAgentDelegationBridgeFindings)).not.toContain("Delegate a customer support secret");
     const sourceHandlerPromptRegistryWriteFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-054");
     expect(sourceHandlerPromptRegistryWriteFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
+      "langchain_publish_authenticated_page_screenshot_prompt_registry",
       "langchain_publish_customer_vault_secret_prompt_registry",
       "langchain_publish_model_selected_prompt_registry_entry",
       "langchain_publish_privileged_tool_observation_prompt_registry",
       "langchain_publish_prompt_registry_update",
       "langchain_publish_retrieved_context_prompt_registry",
       "langchain_publish_url_response_prompt_registry_entry",
+      "source_publish_authenticated_page_screenshot_prompt_registry",
       "source_publish_customer_vault_secret_prompt_registry",
       "source_publish_model_selected_prompt_registry_entry",
       "source_publish_privileged_tool_observation_prompt_registry",
@@ -8120,6 +8131,8 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerPromptRegistryWriteFindings)).not.toContain("httpx.get");
     expect(JSON.stringify(sourceHandlerPromptRegistryWriteFindings)).not.toContain("source network response prompt registry entry published");
     expect(JSON.stringify(sourceHandlerPromptRegistryWriteFindings)).not.toContain("framework network response prompt registry entry published");
+    expect(JSON.stringify(sourceHandlerPromptRegistryWriteFindings)).not.toContain("source visual context published to prompt registry");
+    expect(JSON.stringify(sourceHandlerPromptRegistryWriteFindings)).not.toContain("framework visual context published to prompt registry");
     expect(JSON.stringify(sourceHandlerPromptRegistryWriteFindings)).not.toContain("retrievedRegistryContext");
     expect(JSON.stringify(sourceHandlerPromptRegistryWriteFindings)).not.toContain("retrieved_registry_context");
     expect(JSON.stringify(sourceHandlerPromptRegistryWriteFindings)).not.toContain("source retrieved context published to prompt registry");
@@ -10455,28 +10468,30 @@ describe("rule engine", () => {
       "langchain_delegate_authenticated_page_screenshot_remote_agent",
       "langchain_enqueue_authenticated_page_screenshot_job",
       "langchain_export_authenticated_page_screenshot_artifact",
-      "langchain_export_authenticated_page_screenshot_trace",
-      "langchain_export_authenticated_page_screenshot_training_dataset",
-      "langchain_fill_customer_vault_secret_browser_form",
-      "langchain_upload_local_file_authenticated_browser",
-      "langchain_post_authenticated_page_screenshot_external",
-      "langchain_review_authenticated_page_screenshot_with_model",
-      "langchain_store_authenticated_page_screenshot_memory",
-      "langchain_submit_retrieved_context_browser",
-      "langchain_submit_customer_browser_form",
+	      "langchain_export_authenticated_page_screenshot_trace",
+	      "langchain_export_authenticated_page_screenshot_training_dataset",
+	      "langchain_fill_customer_vault_secret_browser_form",
+	      "langchain_upload_local_file_authenticated_browser",
+	      "langchain_post_authenticated_page_screenshot_external",
+	      "langchain_publish_authenticated_page_screenshot_prompt_registry",
+	      "langchain_review_authenticated_page_screenshot_with_model",
+	      "langchain_store_authenticated_page_screenshot_memory",
+	      "langchain_submit_retrieved_context_browser",
+	      "langchain_submit_customer_browser_form",
       "source_cache_authenticated_page_screenshot_prompt",
       "source_delegate_authenticated_page_screenshot_remote_agent",
       "source_enqueue_authenticated_page_screenshot_job",
       "source_export_authenticated_page_screenshot_artifact",
-      "source_export_authenticated_page_screenshot_trace",
-      "source_export_authenticated_page_screenshot_training_dataset",
-      "source_fill_customer_vault_secret_browser_form",
-      "source_upload_local_file_authenticated_browser",
-      "source_post_authenticated_page_screenshot_external",
-      "source_review_authenticated_page_screenshot_with_model",
-      "source_store_authenticated_page_screenshot_memory",
-      "source_submit_retrieved_context_browser",
-      "source_submit_customer_browser_form"
+	      "source_export_authenticated_page_screenshot_trace",
+	      "source_export_authenticated_page_screenshot_training_dataset",
+	      "source_fill_customer_vault_secret_browser_form",
+	      "source_upload_local_file_authenticated_browser",
+	      "source_post_authenticated_page_screenshot_external",
+	      "source_publish_authenticated_page_screenshot_prompt_registry",
+	      "source_review_authenticated_page_screenshot_with_model",
+	      "source_store_authenticated_page_screenshot_memory",
+	      "source_submit_retrieved_context_browser",
+	      "source_submit_customer_browser_form"
     ].sort());
     expect(sourceHandlerBrowserAutomationFindings.every((finding) => finding.severity === "critical")).toBe(true);
     expect(sourceHandlerBrowserAutomationFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
@@ -10524,11 +10539,13 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerBrowserAutomationFindings)).not.toContain("framework visual context exported to training dataset");
     expect(JSON.stringify(sourceHandlerBrowserAutomationFindings)).not.toContain("source visual context exported to telemetry");
     expect(JSON.stringify(sourceHandlerBrowserAutomationFindings)).not.toContain("framework visual context exported to telemetry");
-    expect(JSON.stringify(sourceHandlerBrowserAutomationFindings)).not.toContain("source visual context cached for prompts");
-    expect(JSON.stringify(sourceHandlerBrowserAutomationFindings)).not.toContain("framework visual context cached for prompts");
-    expect(JSON.stringify(sourceHandlerBrowserAutomationFindings)).not.toContain("source visual context queued for background agent");
-    expect(JSON.stringify(sourceHandlerBrowserAutomationFindings)).not.toContain("framework visual context queued for background agent");
-    expect(JSON.stringify(sourceHandlerBrowserAutomationFindings)).not.toContain("source visual context delegated to remote agent");
+	    expect(JSON.stringify(sourceHandlerBrowserAutomationFindings)).not.toContain("source visual context cached for prompts");
+	    expect(JSON.stringify(sourceHandlerBrowserAutomationFindings)).not.toContain("framework visual context cached for prompts");
+	    expect(JSON.stringify(sourceHandlerBrowserAutomationFindings)).not.toContain("source visual context published to prompt registry");
+	    expect(JSON.stringify(sourceHandlerBrowserAutomationFindings)).not.toContain("framework visual context published to prompt registry");
+	    expect(JSON.stringify(sourceHandlerBrowserAutomationFindings)).not.toContain("source visual context queued for background agent");
+	    expect(JSON.stringify(sourceHandlerBrowserAutomationFindings)).not.toContain("framework visual context queued for background agent");
+	    expect(JSON.stringify(sourceHandlerBrowserAutomationFindings)).not.toContain("source visual context delegated to remote agent");
     expect(JSON.stringify(sourceHandlerBrowserAutomationFindings)).not.toContain("framework visual context delegated to remote agent");
     expect(JSON.stringify(sourceHandlerBrowserAutomationFindings)).not.toContain("Drive an authenticated browser session");
     const sourceHandlerTaintedBrowserTargetFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-040");
@@ -10537,28 +10554,30 @@ describe("rule engine", () => {
       "langchain_delegate_authenticated_page_screenshot_remote_agent",
       "langchain_enqueue_authenticated_page_screenshot_job",
       "langchain_export_authenticated_page_screenshot_artifact",
-      "langchain_export_authenticated_page_screenshot_trace",
-      "langchain_export_authenticated_page_screenshot_training_dataset",
-      "langchain_fill_customer_vault_secret_browser_form",
-      "langchain_upload_local_file_authenticated_browser",
-      "langchain_post_authenticated_page_screenshot_external",
-      "langchain_review_authenticated_page_screenshot_with_model",
-      "langchain_store_authenticated_page_screenshot_memory",
-      "langchain_submit_retrieved_context_browser",
-      "langchain_submit_customer_browser_form",
+	      "langchain_export_authenticated_page_screenshot_trace",
+	      "langchain_export_authenticated_page_screenshot_training_dataset",
+	      "langchain_fill_customer_vault_secret_browser_form",
+	      "langchain_upload_local_file_authenticated_browser",
+	      "langchain_post_authenticated_page_screenshot_external",
+	      "langchain_publish_authenticated_page_screenshot_prompt_registry",
+	      "langchain_review_authenticated_page_screenshot_with_model",
+	      "langchain_store_authenticated_page_screenshot_memory",
+	      "langchain_submit_retrieved_context_browser",
+	      "langchain_submit_customer_browser_form",
       "source_cache_authenticated_page_screenshot_prompt",
       "source_delegate_authenticated_page_screenshot_remote_agent",
       "source_enqueue_authenticated_page_screenshot_job",
       "source_export_authenticated_page_screenshot_artifact",
-      "source_export_authenticated_page_screenshot_trace",
-      "source_export_authenticated_page_screenshot_training_dataset",
-      "source_fill_customer_vault_secret_browser_form",
-      "source_upload_local_file_authenticated_browser",
-      "source_post_authenticated_page_screenshot_external",
-      "source_review_authenticated_page_screenshot_with_model",
-      "source_store_authenticated_page_screenshot_memory",
-      "source_submit_retrieved_context_browser",
-      "source_submit_customer_browser_form"
+	      "source_export_authenticated_page_screenshot_trace",
+	      "source_export_authenticated_page_screenshot_training_dataset",
+	      "source_fill_customer_vault_secret_browser_form",
+	      "source_upload_local_file_authenticated_browser",
+	      "source_post_authenticated_page_screenshot_external",
+	      "source_publish_authenticated_page_screenshot_prompt_registry",
+	      "source_review_authenticated_page_screenshot_with_model",
+	      "source_store_authenticated_page_screenshot_memory",
+	      "source_submit_retrieved_context_browser",
+	      "source_submit_customer_browser_form"
     ].sort());
     expect(sourceHandlerTaintedBrowserTargetFindings.every((finding) => finding.severity === "critical")).toBe(true);
     expect(sourceHandlerTaintedBrowserTargetFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
@@ -10600,9 +10619,11 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerTaintedBrowserTargetFindings)).not.toContain("framework visual context exported to artifact");
     expect(JSON.stringify(sourceHandlerTaintedBrowserTargetFindings)).not.toContain("source visual context exported to training dataset");
     expect(JSON.stringify(sourceHandlerTaintedBrowserTargetFindings)).not.toContain("framework visual context exported to training dataset");
-    expect(JSON.stringify(sourceHandlerTaintedBrowserTargetFindings)).not.toContain("source visual context exported to telemetry");
-    expect(JSON.stringify(sourceHandlerTaintedBrowserTargetFindings)).not.toContain("framework visual context exported to telemetry");
-    expect(JSON.stringify(sourceHandlerTaintedBrowserTargetFindings)).not.toContain("Drive an authenticated browser session");
+	    expect(JSON.stringify(sourceHandlerTaintedBrowserTargetFindings)).not.toContain("source visual context exported to telemetry");
+	    expect(JSON.stringify(sourceHandlerTaintedBrowserTargetFindings)).not.toContain("framework visual context exported to telemetry");
+	    expect(JSON.stringify(sourceHandlerTaintedBrowserTargetFindings)).not.toContain("source visual context published to prompt registry");
+	    expect(JSON.stringify(sourceHandlerTaintedBrowserTargetFindings)).not.toContain("framework visual context published to prompt registry");
+	    expect(JSON.stringify(sourceHandlerTaintedBrowserTargetFindings)).not.toContain("Drive an authenticated browser session");
     const sourceHandlerToolOutputBrowserAutomationBridgeFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-087");
     expect(sourceHandlerToolOutputBrowserAutomationBridgeFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_submit_privileged_tool_observation_browser_form",
@@ -11900,6 +11921,79 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerVisualContextPromptCacheBridgeFindings)).not.toContain("source visual context cached for prompts");
     expect(JSON.stringify(sourceHandlerVisualContextPromptCacheBridgeFindings)).not.toContain("framework visual context cached for prompts");
     expect(JSON.stringify(sourceHandlerVisualContextPromptCacheBridgeFindings)).not.toContain("Write an authenticated browser screenshot");
+    const sourceHandlerVisualContextPromptRegistryBridgeFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-187");
+    expect(sourceHandlerVisualContextPromptRegistryBridgeFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
+      "langchain_publish_authenticated_page_screenshot_prompt_registry",
+      "source_publish_authenticated_page_screenshot_prompt_registry"
+    ]);
+    expect(sourceHandlerVisualContextPromptRegistryBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
+    expect(sourceHandlerVisualContextPromptRegistryBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerVisualContextPromptRegistryBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
+    expect(sourceHandlerVisualContextPromptRegistryBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
+    expect(sourceHandlerVisualContextPromptRegistryBridgeFindings.every((finding) => finding.matched_object.metadata.source_tool_handler_redacted === true)).toBe(true);
+    expect(sourceHandlerVisualContextPromptRegistryBridgeFindings.every((finding) => finding.matched_object.metadata.handler_browser_automation === true)).toBe(true);
+    expect(sourceHandlerVisualContextPromptRegistryBridgeFindings.every((finding) => finding.matched_object.metadata.handler_tainted_browser_automation_target === true)).toBe(true);
+    expect(sourceHandlerVisualContextPromptRegistryBridgeFindings.every((finding) => finding.matched_object.metadata.handler_visual_context_capture === true)).toBe(true);
+    expect(sourceHandlerVisualContextPromptRegistryBridgeFindings.every((finding) => finding.matched_object.metadata.handler_prompt_registry_write === true)).toBe(true);
+    expect(sourceHandlerVisualContextPromptRegistryBridgeFindings.every((finding) => finding.matched_object.metadata.handler_tainted_prompt_registry_payload === true)).toBe(true);
+    expect(sourceHandlerVisualContextPromptRegistryBridgeFindings.every((finding) => finding.matched_object.metadata.handler_tainted_prompt_registry_selector === true)).toBe(true);
+    expect(sourceHandlerVisualContextPromptRegistryBridgeFindings.every((finding) => finding.matched_object.metadata.handler_visual_context_prompt_registry_bridge === true)).toBe(true);
+    expect(sourceHandlerVisualContextPromptRegistryBridgeFindings.every((finding) => finding.matched_object.metadata.handler_secret_env_access === true)).toBe(true);
+    expect(sourceHandlerVisualContextPromptRegistryBridgeFindings.every((finding) => finding.matched_object.metadata.browser_automation === true)).toBe(true);
+    expect(sourceHandlerVisualContextPromptRegistryBridgeFindings.every((finding) => finding.matched_object.metadata.tainted_browser_automation_target === true)).toBe(true);
+    expect(sourceHandlerVisualContextPromptRegistryBridgeFindings.every((finding) => finding.matched_object.metadata.visual_context_capture === true)).toBe(true);
+    expect(sourceHandlerVisualContextPromptRegistryBridgeFindings.every((finding) => finding.matched_object.metadata.prompt_registry_write === true)).toBe(true);
+    expect(sourceHandlerVisualContextPromptRegistryBridgeFindings.every((finding) => finding.matched_object.metadata.tainted_prompt_registry_payload === true)).toBe(true);
+    expect(sourceHandlerVisualContextPromptRegistryBridgeFindings.every((finding) => finding.matched_object.metadata.tainted_prompt_registry_selector === true)).toBe(true);
+    expect(sourceHandlerVisualContextPromptRegistryBridgeFindings.every((finding) => finding.matched_object.metadata.visual_context_prompt_registry_bridge === true)).toBe(true);
+    expect(sourceHandlerVisualContextPromptRegistryBridgeFindings.every((finding) => finding.matched_object.metadata.accepts_url_input === true)).toBe(true);
+    expect(sourceHandlerVisualContextPromptRegistryBridgeFindings.every((finding) => finding.matched_object.metadata.accepts_customer_data_input === true)).toBe(true);
+    for (const authorityClass of [
+      "browser_automation",
+      "tainted_browser_automation_target",
+      "visual_context_capture",
+      "prompt_registry_write",
+      "tainted_prompt_registry_payload",
+      "tainted_prompt_registry_selector",
+      "visual_context_prompt_registry_bridge"
+    ]) {
+      expect(sourceHandlerVisualContextPromptRegistryBridgeFindings.every((finding) =>
+        finding.matched_object.metadata.authority_classes.includes(authorityClass)
+      )).toBe(true);
+    }
+    for (const handlerAuthorityClass of [
+      "handler_browser_automation",
+      "handler_tainted_browser_automation_target",
+      "handler_visual_context_capture",
+      "handler_prompt_registry_write",
+      "handler_tainted_prompt_registry_payload",
+      "handler_tainted_prompt_registry_selector",
+      "handler_visual_context_prompt_registry_bridge"
+    ]) {
+      expect(sourceHandlerVisualContextPromptRegistryBridgeFindings.every((finding) =>
+        finding.matched_object.metadata.handler_authority_classes.includes(handlerAuthorityClass)
+      )).toBe(true);
+    }
+    expect(sourceHandlerVisualContextPromptRegistryBridgeFindings.every((finding) => finding.matched_object.actions.includes("execute"))).toBe(true);
+    expect(sourceHandlerVisualContextPromptRegistryBridgeFindings.every((finding) => finding.matched_object.actions.includes("read"))).toBe(true);
+    expect(sourceHandlerVisualContextPromptRegistryBridgeFindings.every((finding) => finding.matched_object.actions.includes("send"))).toBe(true);
+    expect(sourceHandlerVisualContextPromptRegistryBridgeFindings.every((finding) => finding.matched_object.actions.includes("write"))).toBe(true);
+    expect(sourceHandlerVisualContextPromptRegistryBridgeFindings.every((finding) => finding.matched_object.actions.includes("publish"))).toBe(true);
+    expect(sourceHandlerVisualContextPromptRegistryBridgeFindings.every((finding) => finding.matched_object.external_reach === true)).toBe(true);
+    expect(sourceHandlerVisualContextPromptRegistryBridgeFindings.every((finding) => finding.matched_object.secret_exposure === true)).toBe(true);
+    expect(sourceHandlerVisualContextPromptRegistryBridgeFindings.every((finding) => finding.matched_object.side_effect === true)).toBe(true);
+    expect(sourceHandlerVisualContextPromptRegistryBridgeFindings.every((finding) => finding.matched_object.reversible === false)).toBe(true);
+    expect(JSON.stringify(sourceHandlerVisualContextPromptRegistryBridgeFindings)).not.toContain("authenticatedBrowserPage");
+    expect(JSON.stringify(sourceHandlerVisualContextPromptRegistryBridgeFindings)).not.toContain("browser_session.page");
+    expect(JSON.stringify(sourceHandlerVisualContextPromptRegistryBridgeFindings)).not.toContain("page.goto");
+    expect(JSON.stringify(sourceHandlerVisualContextPromptRegistryBridgeFindings)).not.toContain("page.screenshot");
+    expect(JSON.stringify(sourceHandlerVisualContextPromptRegistryBridgeFindings)).not.toContain("screenshot.toString");
+    expect(JSON.stringify(sourceHandlerVisualContextPromptRegistryBridgeFindings)).not.toContain("screenshot_bytes");
+    expect(JSON.stringify(sourceHandlerVisualContextPromptRegistryBridgeFindings)).not.toContain("promptRegistryClient.updatePrompt");
+    expect(JSON.stringify(sourceHandlerVisualContextPromptRegistryBridgeFindings)).not.toContain("prompt_registry_client.update_prompt");
+    expect(JSON.stringify(sourceHandlerVisualContextPromptRegistryBridgeFindings)).not.toContain("source visual context published to prompt registry");
+    expect(JSON.stringify(sourceHandlerVisualContextPromptRegistryBridgeFindings)).not.toContain("framework visual context published to prompt registry");
+    expect(JSON.stringify(sourceHandlerVisualContextPromptRegistryBridgeFindings)).not.toContain("Publish an authenticated browser screenshot");
     const sourceHandlerVisualContextTaskQueueBridgeFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-104");
     expect(sourceHandlerVisualContextTaskQueueBridgeFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_enqueue_authenticated_page_screenshot_job",

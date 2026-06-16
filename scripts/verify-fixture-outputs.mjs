@@ -198,6 +198,7 @@ const leakPatterns = [
   /authenticatedBrowserPage/u,
   /browser_session\.page/u,
   /page\.goto/u,
+  /page\.screenshot/u,
   /page\.fill/u,
   /Promote a raw privileged tool observation/u,
   /agentMemory\.upsert/u,
@@ -695,6 +696,7 @@ const leakPatterns = [
   /Submit a raw privileged tool observation/u,
   /promptRegistryClient\.updatePrompt/u,
   /prompt_registry_client\.update_prompt/u,
+  /Publish an authenticated browser screenshot/u,
   /secretPromptRegistryValue/u,
   /secret_prompt_registry_value/u,
   /modelSelectedPromptRegistryValue/u,
@@ -770,6 +772,8 @@ const leakPatterns = [
   /framework visual context exported to telemetry/u,
   /source visual context cached for prompts/u,
   /framework visual context cached for prompts/u,
+  /source visual context published to prompt registry/u,
+  /framework visual context published to prompt registry/u,
   /source visual context queued for background agent/u,
   /framework visual context queued for background agent/u,
   /source visual context delegated to remote agent/u,
@@ -1458,8 +1462,8 @@ const leakPatterns = [
 const vulnerable = await readScanOutput(vulnerableOutput, { sarifRequired: true });
 const safe = await readScanOutput(safeOutput, { sarifRequired: false });
 
-assertEqual(vulnerable.manifest.findings.length, 1287, "vulnerable manifest finding count");
-assertEqual(vulnerable.findings.length, 1287, "vulnerable findings.json count");
+assertEqual(vulnerable.manifest.findings.length, 1301, "vulnerable manifest finding count");
+assertEqual(vulnerable.findings.length, 1301, "vulnerable findings.json count");
 assertEqual(vulnerable.manifest.attack_paths.length, 15, "vulnerable attack path count");
 assertEqual(vulnerable.manifest.static_blast_radius?.critical_attack_paths, 15, "vulnerable critical attack path count");
 assertEqual(vulnerable.manifest.diagnostics.length, 0, "vulnerable diagnostics count");
@@ -1643,6 +1647,7 @@ for (const ruleId of [
   "AGENTCSP-TOOL-184",
   "AGENTCSP-TOOL-185",
   "AGENTCSP-TOOL-186",
+  "AGENTCSP-TOOL-187",
   "AGENTCSP-RUNTIME-007",
   "AGENTCSP-RUNTIME-008",
   "AGENTCSP-RUNTIME-123",

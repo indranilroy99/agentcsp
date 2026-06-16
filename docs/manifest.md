@@ -356,6 +356,7 @@ Tool metadata may include:
 - `visual_context_training_dataset_bridge`
 - `visual_context_telemetry_bridge`
 - `visual_context_prompt_cache_bridge`
+- `visual_context_prompt_registry_bridge`
 - `visual_context_task_queue_bridge`
 - `visual_context_agent_delegation_bridge`
 - `secret_manager_access`
@@ -693,6 +694,7 @@ Tool metadata may include:
 - `handler_visual_context_training_dataset_bridge`
 - `handler_visual_context_telemetry_bridge`
 - `handler_visual_context_prompt_cache_bridge`
+- `handler_visual_context_prompt_registry_bridge`
 - `handler_visual_context_task_queue_bridge`
 - `handler_visual_context_agent_delegation_bridge`
 - `handler_secret_manager_access`
@@ -2218,6 +2220,8 @@ Source-defined tool handlers can also emit redacted network-response prompt-cach
 Source-defined tool handlers can also emit redacted tool-output prompt-cache bridge authority through `tool_output_prompt_cache_bridge`, `nested_tool_invocation`, `prompt_cache_write`, `tainted_prompt_cache_key`, and the corresponding `handler_*` fields when parsed MCP SDK or agent-framework tools invoke nested tools and write raw tool observations into prompt, LLM, response, or semantic caches using runtime credentials. Handler bodies, nested tool calls, tool names, arguments, raw observations, cache calls, cache keys, cache values, TTLs, and return strings remain redacted.
 
 Source-defined tool handlers can also emit redacted visual-context prompt-cache bridge authority through `visual_context_prompt_cache_bridge`, `visual_context_capture`, `prompt_cache_write`, `tainted_prompt_cache_key`, and the corresponding `handler_*` fields when parsed MCP SDK or agent-framework tools capture authenticated browser screenshots, screen state, or OCR context from caller-selected targets and write that visual context into prompt, LLM, response, or semantic caches using runtime credentials. Handler bodies, browser calls, screenshot bytes, OCR text, cache calls, cache keys, cache values, notes, and return strings remain redacted.
+
+Source-defined tool handlers can also emit redacted visual-context prompt-registry bridge authority through `visual_context_prompt_registry_bridge`, `visual_context_capture`, `browser_automation`, `tainted_browser_automation_target`, `prompt_registry_write`, `tainted_prompt_registry_payload`, `tainted_prompt_registry_selector`, and the corresponding `handler_*` fields when parsed MCP SDK or agent-framework tools capture authenticated browser screenshots, screen state, or OCR context from caller-selected targets and publish that visual context into prompt or instruction registries using runtime credentials and caller-selected prompt metadata. Handler bodies, browser calls, screenshot bytes, OCR text, registry calls, prompt IDs, prompt roles, prompt namespaces, prompt bodies, labels, and return strings remain redacted.
 
 Source-defined tool handlers can also emit redacted visual-context task-queue bridge authority through `visual_context_task_queue_bridge`, `visual_context_capture`, `task_queue_enqueue`, `tainted_task_payload`, `tainted_task_routing`, and the corresponding `handler_*` fields when parsed MCP SDK or agent-framework tools capture authenticated browser screenshots, screen state, or OCR context from caller-selected targets and enqueue that visual context into asynchronous background-agent jobs using runtime credentials and caller-selected routing. Handler bodies, browser calls, screenshot bytes, OCR text, queue calls, queue names, routes, replay flags, payload bodies, notes, and return strings remain redacted.
 
