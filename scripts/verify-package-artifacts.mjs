@@ -275,12 +275,48 @@ async function smokeTestInstalledCli(coreTarball, cliTarball, installRoot) {
   if (findings.length !== 0) {
     throw new Error(`Installed CLI smoke test expected the safe fixture to stay clean, found ${findings.length}`);
   }
+  assertInstalledSafeOperatorMetadata(manifest, report);
   if (!report.includes("- Root: `<scan-root>`")) {
     throw new Error("Installed CLI smoke test report did not redact the scan root");
   }
   if (typeof manifest?.metadata?.root_path === "string" && report.includes(manifest.metadata.root_path)) {
     throw new Error("Installed CLI smoke test report leaked the absolute scan root");
   }
+}
+
+function assertInstalledSafeOperatorMetadata(manifest, report) {
+  assertEqual(manifest.scan_coverage?.scan_health, "complete", "installed CLI safe scan health");
+  assertArrayEqual(manifest.scan_coverage?.scan_health_reasons ?? [], [], "installed CLI safe scan health reasons");
+  assertEqual(manifest.triage_summary?.top_active_limit, 10, "installed CLI safe triage top active limit");
+  assertEqual(manifest.triage_summary?.top_active_rules_total, 0, "installed CLI safe triage top rules total");
+  assertEqual(manifest.triage_summary?.top_active_rules_truncated, false, "installed CLI safe triage top rules truncation");
+  assertEqual(manifest.triage_summary?.top_active_risks_total, 0, "installed CLI safe triage top risks total");
+  assertEqual(manifest.triage_summary?.top_active_risks_truncated, false, "installed CLI safe triage top risks truncation");
+  assertEqual(manifest.action_plan?.truncated, false, "installed CLI safe action-plan truncation");
+  assertEqual(manifest.action_plan?.omitted_actions, 0, "installed CLI safe omitted actions");
+  assertEqual(manifest.ci_gate_summary?.blocker_ids_truncated, false, "installed CLI safe CI blocker truncation");
+  assertEqual(manifest.static_blast_radius?.attack_path_limit, 15, "installed CLI safe attack path limit");
+  assertEqual(manifest.static_blast_radius?.attack_paths_total, 0, "installed CLI safe attack path total");
+  assertEqual(manifest.static_blast_radius?.attack_paths_truncated, false, "installed CLI safe attack path truncation");
+  assertEqual(manifest.static_blast_radius?.preview_limit, 20, "installed CLI safe blast-radius preview limit");
+  assertEqual(
+    manifest.static_blast_radius?.high_risk_objects_truncated,
+    false,
+    "installed CLI safe high-risk object truncation"
+  );
+  assertEqual(
+    manifest.static_blast_radius?.recommended_controls_total,
+    0,
+    "installed CLI safe recommended controls total"
+  );
+  assertEqual(
+    manifest.static_blast_radius?.recommended_controls_truncated,
+    false,
+    "installed CLI safe recommended controls truncation"
+  );
+  assert(report.includes("- Scan health: `complete`"), "Installed CLI report missing scan health");
+  assert(report.includes("- Top active risks truncated: `false`"), "Installed CLI report missing triage truncation");
+  assert(report.includes("- Attack path limit: 15"), "Installed CLI report missing attack path limit");
 }
 
 async function assertExecutableCliEntrypoint(installedCliEntrypoint, installedCliPath) {
@@ -368,4 +404,18 @@ async function countRuleFiles(directory) {
     }
   }
   return count;
+}
+
+function assertEqual(actual, expected, label) {
+  if (actual !== expected) {
+    throw new Error(`${label}: expected ${expected}, received ${actual}`);
+  }
+}
+
+function assertArrayEqual(actual, expected, label) {
+  assertEqual(JSON.stringify(actual), JSON.stringify(expected), label);
+}
+
+function assert(condition, message) {
+  if (!condition) throw new Error(message);
 }
