@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { scanProject } from "../src/scanner/scan.js";
+import { renderSarifReport } from "../src/reports/sarif.js";
 
 describe("scanProject", () => {
   it("emits a manifest, findings, and a static blast-radius report", async () => {
@@ -146,6 +147,42 @@ describe("scanProject", () => {
     expect(result.manifest.static_blast_radius?.credential_attack_paths).toBe(0);
     expect(result.reportMarkdown).toContain("No active findings were generated.");
     expect(result.reportMarkdown).toContain("No active high-risk blast-radius paths were identified.");
+  });
+
+  it("redacts absolute artifact paths in SARIF locations", async () => {
+    const result = await scanProject({
+      root_path: path.resolve("examples/vulnerable-agent"),
+      output_path: "/private/tmp/agentcsp-sarif-redaction-test-output",
+      formats: ["json", "md"],
+      include_hidden: true,
+      include_logs: false,
+      max_file_size_bytes: 1024 * 1024,
+      max_files: 5000,
+      quiet: true
+    });
+    const finding = result.findings[0];
+    expect(finding).toBeDefined();
+
+    const sarif = renderSarifReport({
+      ...result.manifest,
+      findings: [
+        { ...finding!, file_path: "/Users/security/projects/agentcsp/AGENTS.md" },
+        { ...finding!, id: "finding_windows_path", file_path: "C:\\Users\\security\\agentcsp\\AGENTS.md" },
+        { ...finding!, id: "finding_file_uri", file_path: "file:///Users/security/projects/agentcsp/AGENTS.md" },
+        { ...finding!, id: "finding_relative_windows_path", file_path: "configs\\agent.yaml" }
+      ]
+    }) as {
+      runs: Array<{ results?: Array<{ locations?: Array<{ physicalLocation?: { artifactLocation?: { uri?: string } } }> }> }>;
+    };
+
+    const uris =
+      sarif.runs[0]?.results?.map(
+        (item) => item.locations?.[0]?.physicalLocation?.artifactLocation?.uri
+      ) ?? [];
+    expect(uris).toEqual(["<redacted-path>", "<redacted-path>", "<redacted-file-uri>", "configs/agent.yaml"]);
+    expect(JSON.stringify(sarif)).not.toContain("/Users/security");
+    expect(JSON.stringify(sarif)).not.toContain("C:\\Users");
+    expect(JSON.stringify(sarif)).not.toContain("file:///Users/security");
   });
 
   it("reports generated-state replay findings when logs are included", async () => {

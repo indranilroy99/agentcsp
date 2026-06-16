@@ -75,7 +75,7 @@ export function renderSarifReport(manifest: AgentManifest): Record<string, unkno
             {
               physicalLocation: {
                 artifactLocation: {
-                  uri: finding.file_path
+                  uri: sarifArtifactUri(finding.file_path)
                 },
                 region: {
                   startLine: finding.evidence[0]?.line ?? 1
@@ -154,6 +154,15 @@ function sarifBaselineState(status: Finding["baseline_status"]): "new" | "unchan
   if (status === "new") return "new";
   if (status === "existing") return "unchanged";
   return undefined;
+}
+
+function sarifArtifactUri(value: string): string {
+  const trimmed = value.trim();
+  if (!trimmed) return "<unknown>";
+  if (/^file:/iu.test(trimmed)) return "<redacted-file-uri>";
+  if (/^[a-z][a-z0-9+.-]*:\/\//iu.test(trimmed)) return "<redacted-uri>";
+  if (/^(?:\/|[A-Za-z]:[\\/]|\\\\)/u.test(trimmed)) return "<redacted-path>";
+  return trimmed.replaceAll("\\", "/");
 }
 
 function sarifLevel(severity: Severity): SarifLevel {
