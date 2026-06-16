@@ -126,6 +126,8 @@ const leakPatterns = [
   /framework local key credential issued/u,
   /source network response credential issued/u,
   /framework network response credential issued/u,
+  /source rag context credential issued/u,
+  /framework rag context credential issued/u,
   /source env secret credential issued/u,
   /framework env secret credential issued/u,
   /Review runtime credential/u,
@@ -166,6 +168,8 @@ const leakPatterns = [
   /local_signing_key/u,
   /networkSigningKey/u,
   /network_signing_key/u,
+  /retrievedCredentialContext/u,
+  /retrieved_credential_context/u,
   /envSigningKey/u,
   /env_signing_key/u,
   /envGrantRole/u,
@@ -1121,8 +1125,12 @@ const leakPatterns = [
   /framework model selected credential issued/u,
   /source network response credential issued/u,
   /framework network response credential issued/u,
+  /source rag context credential issued/u,
+  /framework rag context credential issued/u,
   /networkSigningKey/u,
   /network_signing_key/u,
+  /retrievedCredentialContext/u,
+  /retrieved_credential_context/u,
   /mcpClient\.callTool/u,
   /tool_registry\.call_tool/u,
   /Dispatch a caller selected privileged tool/u,
@@ -1408,8 +1416,8 @@ const leakPatterns = [
 const vulnerable = await readScanOutput(vulnerableOutput, { sarifRequired: true });
 const safe = await readScanOutput(safeOutput, { sarifRequired: false });
 
-assertEqual(vulnerable.manifest.findings.length, 1251, "vulnerable manifest finding count");
-assertEqual(vulnerable.findings.length, 1251, "vulnerable findings.json count");
+assertEqual(vulnerable.manifest.findings.length, 1259, "vulnerable manifest finding count");
+assertEqual(vulnerable.findings.length, 1259, "vulnerable findings.json count");
 assertEqual(vulnerable.manifest.attack_paths.length, 15, "vulnerable attack path count");
 assertEqual(vulnerable.manifest.static_blast_radius?.critical_attack_paths, 15, "vulnerable critical attack path count");
 assertEqual(vulnerable.manifest.diagnostics.length, 0, "vulnerable diagnostics count");
@@ -1585,6 +1593,7 @@ for (const ruleId of [
   "AGENTCSP-TOOL-176",
   "AGENTCSP-TOOL-177",
   "AGENTCSP-TOOL-178",
+  "AGENTCSP-TOOL-179",
   "AGENTCSP-RUNTIME-007",
   "AGENTCSP-RUNTIME-008",
   "AGENTCSP-RUNTIME-123",

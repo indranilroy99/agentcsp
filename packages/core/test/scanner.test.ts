@@ -673,6 +673,9 @@ describe("scanner", () => {
     const sourceNetworkResponseCredentialIssuanceBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "source_issue_url_response_agent_credential"
     );
+    const sourceRagRetrievalCredentialIssuanceBridgeTool = surfaces.tools.find(
+      (surface) => surface.name === "source_issue_rag_context_agent_credential"
+    );
     const sourceEnvSecretPromptBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "source_review_env_secret_with_model"
     );
@@ -1031,6 +1034,9 @@ describe("scanner", () => {
     );
     const langchainNetworkResponseCredentialIssuanceBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "langchain_issue_url_response_agent_credential"
+    );
+    const langchainRagRetrievalCredentialIssuanceBridgeTool = surfaces.tools.find(
+      (surface) => surface.name === "langchain_issue_rag_context_agent_credential"
     );
     const langchainEnvSecretPromptBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "langchain_review_env_secret_with_model"
@@ -6867,6 +6873,89 @@ describe("scanner", () => {
     expect(JSON.stringify(sourceNetworkResponseCredentialIssuanceBridgeTool)).not.toContain("networkSigningKey");
     expect(JSON.stringify(sourceNetworkResponseCredentialIssuanceBridgeTool)).not.toContain("source network response credential issued");
     expect(JSON.stringify(sourceNetworkResponseCredentialIssuanceBridgeTool)).not.toContain("Issue an agent credential using caller selected URL response material");
+    expect(sourceRagRetrievalCredentialIssuanceBridgeTool).toMatchObject({
+      path: "mcp-source/customer-tools.ts",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["call", "publish", "read", "send", "write"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(sourceRagRetrievalCredentialIssuanceBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_mcp_source_tool: true,
+      mcp_source_tool_registration: true,
+      mcp_source_tool_registration_kind: "registerTool",
+      mcp_source_tool_argument_count: 3,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_secret_like_input: true,
+      accepts_content_like_input: true,
+      accepts_path_input: false,
+      accepts_url_input: false,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      rag_retrieval: true,
+      tainted_rag_retrieval_query: true,
+      credential_issuance: true,
+      tainted_credential_issuance_input: true,
+      rag_retrieval_credential_issuance_bridge: true,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_rag_retrieval: true,
+      handler_tainted_rag_retrieval_query: true,
+      handler_credential_issuance: true,
+      handler_tainted_credential_issuance_input: true,
+      handler_rag_retrieval_credential_issuance_bridge: true,
+      handler_secret_env_access: true,
+      handler_signal_count: 6,
+      open_world_schema: false
+    });
+    for (const authorityClass of [
+      "rag_retrieval",
+      "tainted_rag_retrieval_query",
+      "credential_issuance",
+      "tainted_credential_issuance_input",
+      "rag_retrieval_credential_issuance_bridge"
+    ]) {
+      expect(sourceRagRetrievalCredentialIssuanceBridgeTool?.metadata.authority_classes).toContain(authorityClass);
+    }
+    for (const handlerClass of [
+      "handler_rag_retrieval",
+      "handler_tainted_rag_retrieval_query",
+      "handler_credential_issuance",
+      "handler_tainted_credential_issuance_input",
+      "handler_rag_retrieval_credential_issuance_bridge"
+    ]) {
+      expect(sourceRagRetrievalCredentialIssuanceBridgeTool?.metadata.handler_authority_classes).toContain(handlerClass);
+    }
+    expect(sourceRagRetrievalCredentialIssuanceBridgeTool?.metadata.handler_env_key_names).toEqual([
+      "SOURCE_RAG_CREDENTIAL_ISSUER_TOKEN"
+    ]);
+    expect(sourceRagRetrievalCredentialIssuanceBridgeTool?.metadata.schema_properties).toEqual([
+      "customer_id",
+      "requested_scope",
+      "requested_subject",
+      "requester_ticket",
+      "retrieval_namespace",
+      "retrieval_query_text",
+      "token_audience"
+    ]);
+    expect(sourceRagRetrievalCredentialIssuanceBridgeTool?.metadata.required_properties).toEqual([
+      "customer_id",
+      "requested_scope",
+      "requested_subject",
+      "requester_ticket",
+      "retrieval_namespace",
+      "retrieval_query_text",
+      "token_audience"
+    ]);
+    expect(JSON.stringify(sourceRagRetrievalCredentialIssuanceBridgeTool)).not.toContain("vectorRetriever.search");
+    expect(JSON.stringify(sourceRagRetrievalCredentialIssuanceBridgeTool)).not.toContain("identityBroker.issueToken");
+    expect(JSON.stringify(sourceRagRetrievalCredentialIssuanceBridgeTool)).not.toContain("retrievedCredentialContext");
+    expect(JSON.stringify(sourceRagRetrievalCredentialIssuanceBridgeTool)).not.toContain("source rag context credential issued");
+    expect(JSON.stringify(sourceRagRetrievalCredentialIssuanceBridgeTool)).not.toContain("Issue an agent credential using caller selected retrieved RAG context");
     expect(sourceEnvSecretPromptBridgeTool).toMatchObject({
       path: "mcp-source/customer-tools.ts",
       data_classes: ["confidential", "credential", "pii"],
@@ -19769,6 +19858,90 @@ describe("scanner", () => {
     expect(JSON.stringify(langchainNetworkResponseCredentialIssuanceBridgeTool)).not.toContain("network_signing_key");
     expect(JSON.stringify(langchainNetworkResponseCredentialIssuanceBridgeTool)).not.toContain("framework network response credential issued");
     expect(JSON.stringify(langchainNetworkResponseCredentialIssuanceBridgeTool)).not.toContain("Issue an agent credential using caller selected URL response material");
+    expect(langchainRagRetrievalCredentialIssuanceBridgeTool).toMatchObject({
+      path: "framework-tools/langchain_tools.py",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["call", "publish", "read", "send", "write"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(langchainRagRetrievalCredentialIssuanceBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_agent_framework_source_tool: true,
+      agent_framework_source_tool: true,
+      agent_framework_source_tool_framework: "langchain",
+      agent_framework_source_tool_registration_kind: "python_tool_decorator",
+      agent_framework_source_tool_argument_count: 7,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_secret_like_input: true,
+      accepts_content_like_input: true,
+      accepts_path_input: false,
+      accepts_url_input: false,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      rag_retrieval: true,
+      tainted_rag_retrieval_query: true,
+      credential_issuance: true,
+      tainted_credential_issuance_input: true,
+      rag_retrieval_credential_issuance_bridge: true,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_rag_retrieval: true,
+      handler_tainted_rag_retrieval_query: true,
+      handler_credential_issuance: true,
+      handler_tainted_credential_issuance_input: true,
+      handler_rag_retrieval_credential_issuance_bridge: true,
+      handler_secret_env_access: true,
+      handler_signal_count: 6,
+      open_world_schema: false
+    });
+    for (const authorityClass of [
+      "rag_retrieval",
+      "tainted_rag_retrieval_query",
+      "credential_issuance",
+      "tainted_credential_issuance_input",
+      "rag_retrieval_credential_issuance_bridge"
+    ]) {
+      expect(langchainRagRetrievalCredentialIssuanceBridgeTool?.metadata.authority_classes).toContain(authorityClass);
+    }
+    for (const handlerClass of [
+      "handler_rag_retrieval",
+      "handler_tainted_rag_retrieval_query",
+      "handler_credential_issuance",
+      "handler_tainted_credential_issuance_input",
+      "handler_rag_retrieval_credential_issuance_bridge"
+    ]) {
+      expect(langchainRagRetrievalCredentialIssuanceBridgeTool?.metadata.handler_authority_classes).toContain(handlerClass);
+    }
+    expect(langchainRagRetrievalCredentialIssuanceBridgeTool?.metadata.handler_env_key_names).toEqual([
+      "LANGCHAIN_RAG_CREDENTIAL_ISSUER_TOKEN"
+    ]);
+    expect(langchainRagRetrievalCredentialIssuanceBridgeTool?.metadata.schema_properties).toEqual([
+      "customer_id",
+      "requested_scope",
+      "requested_subject",
+      "requester_ticket",
+      "retrieval_namespace",
+      "retrieval_query_text",
+      "token_audience"
+    ]);
+    expect(langchainRagRetrievalCredentialIssuanceBridgeTool?.metadata.required_properties).toEqual([
+      "customer_id",
+      "requested_scope",
+      "requested_subject",
+      "requester_ticket",
+      "retrieval_namespace",
+      "retrieval_query_text",
+      "token_audience"
+    ]);
+    expect(JSON.stringify(langchainRagRetrievalCredentialIssuanceBridgeTool)).not.toContain("vector_retriever.search");
+    expect(JSON.stringify(langchainRagRetrievalCredentialIssuanceBridgeTool)).not.toContain("identity_broker.issue_token");
+    expect(JSON.stringify(langchainRagRetrievalCredentialIssuanceBridgeTool)).not.toContain("retrieved_credential_context");
+    expect(JSON.stringify(langchainRagRetrievalCredentialIssuanceBridgeTool)).not.toContain("framework rag context credential issued");
+    expect(JSON.stringify(langchainRagRetrievalCredentialIssuanceBridgeTool)).not.toContain("Issue an agent credential using caller selected retrieved RAG context");
     expect(langchainEnvSecretPromptBridgeTool).toMatchObject({
       path: "framework-tools/langchain_tools.py",
       data_classes: ["confidential", "credential", "pii"],

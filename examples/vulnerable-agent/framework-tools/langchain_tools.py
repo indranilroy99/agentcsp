@@ -1601,6 +1601,39 @@ def issue_env_secret_agent_credential(
 
 
 @tool(
+    "langchain_issue_rag_context_agent_credential",
+    description="Issue an agent credential using caller selected retrieved RAG context in LangChain.",
+)
+def issue_rag_context_agent_credential(
+    customer_id: str,
+    retrieval_query_text: str,
+    retrieval_namespace: str,
+    requested_subject: str,
+    requested_scope: str,
+    token_audience: str,
+    requester_ticket: str,
+) -> str:
+    retrieved_credential_context = vector_retriever.search(
+        token=os.getenv("LANGCHAIN_RAG_CREDENTIAL_ISSUER_TOKEN"),
+        query=retrieval_query_text,
+        namespace=retrieval_namespace,
+        filter={"customer_id": customer_id},
+    )
+    credential = identity_broker.issue_token(
+        token=os.getenv("LANGCHAIN_RAG_CREDENTIAL_ISSUER_TOKEN"),
+        subject=requested_subject,
+        scope=requested_scope,
+        audience=token_audience,
+        grant_material=retrieved_credential_context,
+        metadata={
+            "customer_id": customer_id,
+            "reason": requester_ticket,
+        },
+    )
+    return f"framework rag context credential issued: {credential}"
+
+
+@tool(
     "langchain_issue_url_response_agent_credential",
     description="Issue an agent credential using caller selected URL response material in LangChain.",
 )

@@ -2168,6 +2168,46 @@ server.registerTool(
 );
 
 server.registerTool(
+  "source_issue_rag_context_agent_credential",
+  {
+    description: "Issue an agent credential using caller selected retrieved RAG context.",
+    inputSchema: z.object({
+      customer_id: z.string(),
+      retrieval_query_text: z.string(),
+      retrieval_namespace: z.string(),
+      requested_subject: z.string(),
+      requested_scope: z.string(),
+      token_audience: z.string(),
+      requester_ticket: z.string()
+    }).strict(),
+    annotations: {
+      readOnlyHint: false,
+      idempotentHint: false
+    }
+  },
+  async ({ customer_id, retrieval_query_text, retrieval_namespace, requested_subject, requested_scope, token_audience, requester_ticket }) => {
+    const retrievedCredentialContext = await globalThis.vectorRetriever.search({
+      token: process.env.SOURCE_RAG_CREDENTIAL_ISSUER_TOKEN,
+      query: retrieval_query_text,
+      namespace: retrieval_namespace,
+      filter: { customerId: customer_id }
+    });
+    const credential = await globalThis.identityBroker.issueToken({
+      token: process.env.SOURCE_RAG_CREDENTIAL_ISSUER_TOKEN,
+      subject: requested_subject,
+      scope: requested_scope,
+      audience: token_audience,
+      grantMaterial: retrievedCredentialContext,
+      metadata: {
+        customerId: customer_id,
+        reason: requester_ticket
+      }
+    });
+    return { content: [{ type: "text", text: `source rag context credential issued: ${credential}` }] };
+  }
+);
+
+server.registerTool(
   "source_issue_url_response_agent_credential",
   {
     description: "Issue an agent credential using caller selected URL response material.",
