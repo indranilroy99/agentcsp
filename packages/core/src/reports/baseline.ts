@@ -2,6 +2,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { z } from "zod";
 import type { BaselineComparison, Finding } from "../schemas/index.js";
+import { isPathInsideRoot } from "../utils/paths.js";
 
 const BaselineFindingRecordSchema = z.object({ id: z.string() }).passthrough();
 const BaselineFindingsFileSchema = z.array(BaselineFindingRecordSchema);
@@ -12,7 +13,11 @@ export interface BaselineResult {
   comparison: BaselineComparison;
 }
 
-export async function applyBaselineComparison(findings: Finding[], baselinePath: string): Promise<BaselineResult> {
+export async function applyBaselineComparison(
+  findings: Finding[],
+  baselinePath: string,
+  rootPath?: string
+): Promise<BaselineResult> {
   const absoluteBaselinePath = path.resolve(baselinePath);
   const baseline = await loadBaselineFindingIds(absoluteBaselinePath);
   const baselineIds = new Set(baseline.findingIds);
@@ -36,7 +41,7 @@ export async function applyBaselineComparison(findings: Finding[], baselinePath:
     findings: findingsWithStatus,
     comparison: {
       title: "AgentCSP Baseline Comparison",
-      baseline_path: absoluteBaselinePath,
+      baseline_path: baselineComparisonPath(absoluteBaselinePath, rootPath),
       baseline_format: baseline.format,
       current_findings: findings.length,
       baseline_findings: baseline.findingIds.length,
@@ -47,6 +52,11 @@ export async function applyBaselineComparison(findings: Finding[], baselinePath:
       resolved_finding_ids: resolvedFindingIds
     }
   };
+}
+
+function baselineComparisonPath(absoluteBaselinePath: string, rootPath?: string): string {
+  if (!rootPath) return absoluteBaselinePath;
+  return isPathInsideRoot(rootPath, absoluteBaselinePath) ? absoluteBaselinePath : "<external-baseline>";
 }
 
 async function loadBaselineFindingIds(

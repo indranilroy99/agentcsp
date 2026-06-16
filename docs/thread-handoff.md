@@ -1895,6 +1895,8 @@ The current iteration adds:
 - policy config path handling now uses the same root-relative path semantics as output and baseline paths while preserving absolute shared-policy paths
 - diagnostics for policy configs outside the scanned root now use `<external-policy-config>` instead of emitting absolute local paths
 - regression coverage proving external absolute policy config diagnostics stay redacted in JSON and Markdown
+- baseline comparison now redacts baselines outside the scanned root as `<external-baseline>` in JSON, Markdown, and SARIF while still reading the external file normally
+- regression coverage proving external baseline filesystem paths are not emitted in manifest, report, or SARIF artifacts
 
 ## Initial Build Recommendation
 

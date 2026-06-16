@@ -141,4 +141,39 @@ describe("baseline comparison", () => {
       baseline_format: "manifest"
     });
   });
+
+  it("redacts external baseline paths in emitted artifacts", async () => {
+    const root = "/private/tmp/agentcsp-external-baseline-fixture";
+    const externalBaselinePath = "/private/tmp/agentcsp-external-baseline-store/team/accepted.json";
+    await fs.rm(root, { recursive: true, force: true });
+    await fs.rm("/private/tmp/agentcsp-external-baseline-store", { recursive: true, force: true });
+    await fs.mkdir(root, { recursive: true });
+    await fs.mkdir(path.dirname(externalBaselinePath), { recursive: true });
+    await fs.writeFile(path.join(root, "AGENTS.md"), "Review repository changes only.\n", "utf8");
+    await fs.writeFile(externalBaselinePath, "[]\n", "utf8");
+
+    const result = await scanProject({
+      root_path: root,
+      output_path: "scan-output",
+      baseline_path: externalBaselinePath,
+      formats: ["json", "md", "sarif"],
+      include_hidden: true,
+      include_logs: false,
+      max_file_size_bytes: 1024 * 1024,
+      max_files: 5000,
+      quiet: true
+    });
+
+    expect(result.manifest.baseline_comparison).toMatchObject({
+      baseline_path: "<external-baseline>",
+      baseline_format: "findings"
+    });
+    expect(JSON.stringify(result.manifest)).not.toContain("/private/tmp/agentcsp-external-baseline-store");
+    expect(result.reportMarkdown).toContain("`<external-baseline>`");
+    expect(result.reportMarkdown).not.toContain("/private/tmp/agentcsp-external-baseline-store");
+    const sarif = JSON.parse(await fs.readFile(result.outputFiles.sarif!, "utf8")) as {
+      runs: Array<{ properties?: { agentcsp_baseline_comparison?: { baseline_path?: string } } }>;
+    };
+    expect(sarif.runs[0]?.properties?.agentcsp_baseline_comparison?.baseline_path).toBe("<external-baseline>");
+  });
 });

@@ -69,7 +69,7 @@ export async function scanProject(rawConfig: Partial<ScanConfig> & { root_path: 
   const policyControlledFindings = applyRecommendedControls(runRules(surfaces, ruleLoad.rules), policy);
   const suppressedFindings = applyFindingSuppressions(policyControlledFindings, policy);
   const baselineResult = resolvedConfig.baseline_path
-    ? await applyBaselineComparison(suppressedFindings, resolvedConfig.baseline_path)
+    ? await applyBaselineComparison(suppressedFindings, resolvedConfig.baseline_path, rootPath)
     : undefined;
   const findings = baselineResult?.findings ?? suppressedFindings;
   const activeFindings = findings.filter((finding) => finding.suppression?.status !== "active");
