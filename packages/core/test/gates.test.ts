@@ -46,6 +46,14 @@ describe("CI gate summary", () => {
       ],
       severity_gate_finding_ids_truncated: true,
       diagnostic_count: ciGateBlockerIdLimit + 2,
+      diagnostic_mix: [
+        {
+          code: "TEST_DIAGNOSTIC",
+          parser: "test",
+          severity: "warning",
+          count: ciGateBlockerIdLimit + 2
+        }
+      ],
       diagnostic_ids_truncated: true,
       expired_suppression_findings: 0,
       active_suppressions_by_severity: { critical: 0, high: 0, medium: 0, low: 0, info: 0 },
@@ -342,8 +350,9 @@ function diagnostic(id: string): ScanDiagnostic {
     id,
     code: "TEST_DIAGNOSTIC",
     severity: "warning",
-    message: "Synthetic diagnostic for gate summary regression.",
-    path: "<test>",
+    file_path: "<test>",
+    parser: "test",
+    reason: "Synthetic diagnostic for gate summary regression.",
     content_redacted: true
   };
 }

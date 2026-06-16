@@ -44,13 +44,29 @@ describe("scan diagnostics", () => {
       should_fail: false,
       fail_on_diagnostics: false,
       diagnostic_count: 9,
+      diagnostic_mix: expect.arrayContaining([
+        {
+          code: "MCP_CONFIG_PARSE_FAILED",
+          parser: "json",
+          severity: "warning",
+          count: 1
+        },
+        {
+          code: "POLICY_CONFIG_PARSE_FAILED",
+          parser: "policy",
+          severity: "warning",
+          count: 1
+        }
+      ]),
       failed_gates: [],
       diagnostic_ids: result.manifest.diagnostics.map((diagnostic) => diagnostic.id).sort()
     });
+    expect(result.manifest.ci_gate_summary?.diagnostic_mix).toHaveLength(9);
     expect(result.manifest.mcp_servers[0]?.metadata).toMatchObject({ parse_error: true });
     expect(result.manifest.runtime_config[0]?.metadata).toMatchObject({ parse_error: true });
     expect(result.manifest.tools.some((tool) => tool.metadata.parse_error === true)).toBe(true);
     expect(result.reportMarkdown).toContain("## Scan Diagnostics");
+    expect(result.reportMarkdown).toContain("### Diagnostic Mix");
     expect(result.reportMarkdown).toContain("MCP_CONFIG_PARSE_FAILED");
     expect(result.reportMarkdown).toContain("POLICY_CONFIG_PARSE_FAILED");
     expect(result.reportMarkdown).toContain("CURSOR_RULE_FRONTMATTER_PARSE_FAILED");
@@ -65,7 +81,12 @@ describe("scan diagnostics", () => {
       runs: Array<{
         properties?: {
           agentcsp_diagnostics?: Array<{ code?: string }>;
-          agentcsp_ci_gate_summary?: { diagnostic_count?: number; status?: string; diagnostic_ids?: string[] };
+          agentcsp_ci_gate_summary?: {
+            diagnostic_count?: number;
+            status?: string;
+            diagnostic_ids?: string[];
+            diagnostic_mix?: Array<{ code?: string; parser?: string; severity?: string; count?: number }>;
+          };
           agentcsp_scan_coverage?: { diagnostics_total?: number; diagnostics_warnings?: number; scan_health?: string };
         };
       }>;
@@ -76,6 +97,14 @@ describe("scan diagnostics", () => {
     expect(sarif.runs[0]?.properties?.agentcsp_ci_gate_summary).toMatchObject({
       diagnostic_count: 9,
       status: "pass",
+      diagnostic_mix: expect.arrayContaining([
+        {
+          code: "RUNTIME_CONFIG_PARSE_FAILED",
+          parser: "toml",
+          severity: "warning",
+          count: 1
+        }
+      ]),
       diagnostic_ids: result.manifest.diagnostics.map((diagnostic) => diagnostic.id).sort()
     });
     expect(sarif.runs[0]?.properties?.agentcsp_scan_coverage).toMatchObject({
@@ -117,6 +146,14 @@ describe("scan diagnostics", () => {
       should_fail: true,
       fail_on_diagnostics: true,
       diagnostic_count: 9,
+      diagnostic_mix: expect.arrayContaining([
+        {
+          code: "POLICY_CONFIG_PARSE_FAILED",
+          parser: "policy",
+          severity: "warning",
+          count: 1
+        }
+      ]),
       failed_gates: ["diagnostics"]
     });
     expect(result.manifest.ci_gate_summary?.diagnostic_ids).toEqual(
@@ -164,6 +201,14 @@ describe("scan diagnostics", () => {
       should_fail: false,
       fail_on_diagnostics: false,
       diagnostic_count: 1,
+      diagnostic_mix: [
+        {
+          code: "SCAN_MAX_FILES_REACHED",
+          parser: "scanner",
+          severity: "warning",
+          count: 1
+        }
+      ],
       failed_gates: [],
       diagnostic_ids: result.manifest.diagnostics.map((diagnostic) => diagnostic.id).sort()
     });

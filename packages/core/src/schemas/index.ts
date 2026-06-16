@@ -134,6 +134,13 @@ export const ScanDiagnosticSchema = z.object({
   content_redacted: z.literal(true).default(true)
 });
 
+export const DiagnosticMixItemSchema = z.object({
+  code: z.string(),
+  parser: z.string(),
+  severity: z.enum(["info", "warning", "error"]),
+  count: z.number().int().nonnegative()
+});
+
 export const SurfaceObjectSchema = z.object({
   id: z.string(),
   type: SurfaceTypeSchema,
@@ -393,6 +400,7 @@ export const CiGateSummarySchema = z.object({
   expired_suppression_by_severity: SeverityCountsSchema.default({ critical: 0, high: 0, medium: 0, low: 0, info: 0 }),
   expired_suppression_by_risk_driver: z.array(TriageRiskDriverCountSchema).default([]),
   diagnostic_count: z.number().int().nonnegative().default(0),
+  diagnostic_mix: z.array(DiagnosticMixItemSchema).default([]),
   failed_gates: z.array(CiGateNameSchema).default([]),
   blocker_id_limit: z.number().int().positive().default(50),
   blocker_ids_truncated: z.boolean().default(false),

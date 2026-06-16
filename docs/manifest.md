@@ -2954,6 +2954,7 @@ The summary includes:
 - expired suppression finding count
 - severity and risk-driver mix for expired suppression findings
 - diagnostic count
+- diagnostic mix by severity, parser, code, and count
 - failed gate names, including `scan_health` when the configured health threshold is met
 - bounded blocker ID limit and truncation flags
 - bounded IDs for severity-gated findings, broad active suppressions, expired suppressions, and diagnostics

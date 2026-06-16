@@ -110,6 +110,7 @@ export function buildCiGateSummary(input: {
     expired_suppression_by_severity: countBySeverity(expiredSuppressionFindings),
     expired_suppression_by_risk_driver: countByRiskDriver(expiredSuppressionFindings),
     diagnostic_count: input.diagnostics.length,
+    diagnostic_mix: summarizeDiagnosticMix(input.diagnostics),
     failed_gates: failedGates,
     blocker_id_limit: ciGateBlockerIdLimit,
     blocker_ids_truncated:
@@ -206,4 +207,32 @@ function countBySuppressionScope(findings: Finding[]): CiGateSummary["active_sup
     counts[finding.suppression?.match_scope ?? "broad"] += 1;
   }
   return counts;
+}
+
+function summarizeDiagnosticMix(diagnostics: ScanDiagnostic[]): CiGateSummary["diagnostic_mix"] {
+  const counts = new Map<string, CiGateSummary["diagnostic_mix"][number]>();
+  for (const diagnostic of diagnostics) {
+    const key = `${diagnostic.severity}\0${diagnostic.parser}\0${diagnostic.code}`;
+    const current = counts.get(key) ?? {
+      code: diagnostic.code,
+      parser: diagnostic.parser,
+      severity: diagnostic.severity,
+      count: 0
+    };
+    current.count += 1;
+    counts.set(key, current);
+  }
+  return [...counts.values()].sort(
+    (a, b) =>
+      diagnosticSeverityRank(b.severity) - diagnosticSeverityRank(a.severity) ||
+      b.count - a.count ||
+      a.parser.localeCompare(b.parser) ||
+      a.code.localeCompare(b.code)
+  );
+}
+
+function diagnosticSeverityRank(severity: ScanDiagnostic["severity"]): number {
+  if (severity === "error") return 2;
+  if (severity === "warning") return 1;
+  return 0;
 }

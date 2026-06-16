@@ -300,6 +300,10 @@ function renderCiGateSummary(manifest: AgentManifest): string {
     "",
     renderGateBlockerMix(summary),
     "",
+    "### Diagnostic Mix",
+    "",
+    renderDiagnosticMix(summary),
+    "",
     "### Suppression Review Posture",
     "",
     renderSuppressionReviewPosture(summary),
@@ -319,6 +323,17 @@ function renderGateBlockerSummary(summary: NonNullable<AgentManifest["ci_gate_su
     `| severity/new finding | ${summary.severity_gate_findings} | ${summary.severity_gate_finding_ids.length} | \`${summary.severity_gate_finding_ids_truncated}\` |`,
     `| expired suppression | ${summary.expired_suppression_findings} | ${summary.expired_suppression_finding_ids.length} | \`${summary.expired_suppression_finding_ids_truncated}\` |`,
     `| diagnostic | ${summary.diagnostic_count} | ${summary.diagnostic_ids.length} | \`${summary.diagnostic_ids_truncated}\` |`
+  ].join("\n");
+}
+
+function renderDiagnosticMix(summary: NonNullable<AgentManifest["ci_gate_summary"]>): string {
+  if (summary.diagnostic_mix.length === 0) return "No diagnostics were generated.";
+  return [
+    "| Severity | Parser | Code | Count |",
+    "| --- | --- | --- | --- |",
+    ...summary.diagnostic_mix.map(
+      (item) => `| ${item.severity} | ${escapeTable(item.parser)} | ${escapeTable(item.code)} | ${item.count} |`
+    )
   ].join("\n");
 }
 
