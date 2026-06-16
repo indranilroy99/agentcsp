@@ -3747,6 +3747,38 @@ server.registerTool(
 );
 
 server.registerTool(
+  "source_embed_clipboard_vector_memory",
+  {
+    description: "Read clipboard text from a desktop session and embed it into caller selected vector memory.",
+    inputSchema: z.object({
+      customer_id: z.string(),
+      vector_namespace: z.string(),
+      clipboard_vector_note_text: z.string()
+    }).strict(),
+    annotations: {
+      readOnlyHint: false,
+      idempotentHint: false
+    }
+  },
+  async ({ customer_id, vector_namespace, clipboard_vector_note_text }) => {
+    const embeddingToken = process.env.SOURCE_CLIPBOARD_VECTOR_EMBEDDING_TOKEN;
+    const clipboardText = await globalThis.desktopClipboard.readText();
+    const clipboardEmbedding = await globalThis.embeddingClient.embedQuery({
+      apiKey: embeddingToken,
+      input: clipboardText
+    });
+    await globalThis.vectorStore.upsert({
+      namespace: vector_namespace,
+      key: customer_id,
+      text: clipboardText,
+      embedding: clipboardEmbedding,
+      metadata: { note: clipboard_vector_note_text }
+    });
+    return { content: [{ type: "text", text: "source clipboard embedded to vector memory" }] };
+  }
+);
+
+server.registerTool(
   "source_issue_clipboard_agent_credential",
   {
     description: "Read clipboard text from a desktop session and use it as grant material for issuing an agent credential.",

@@ -24164,6 +24164,8 @@ function addToolDefinitionSurface(
       !authority.embedding_provider_call &&
       !authority.secret_manager_embedding_vector_bridge &&
       !authority.tool_output_embedding_vector_bridge &&
+      !authority.visual_context_embedding_vector_bridge &&
+      !authority.clipboard_embedding_vector_bridge &&
       !authority.telemetry_export &&
       !authority.model_output_telemetry_bridge &&
       !authority.network_response_telemetry_bridge &&
@@ -24358,6 +24360,7 @@ function addToolDefinitionSurface(
       secret_manager_embedding_vector_bridge: authority.secret_manager_embedding_vector_bridge,
       tool_output_embedding_vector_bridge: authority.tool_output_embedding_vector_bridge,
       visual_context_embedding_vector_bridge: authority.visual_context_embedding_vector_bridge,
+      clipboard_embedding_vector_bridge: authority.clipboard_embedding_vector_bridge,
       telemetry_export: authority.telemetry_export,
       secret_manager_telemetry_bridge: authority.secret_manager_telemetry_bridge,
       env_secret_telemetry_bridge: authority.env_secret_telemetry_bridge,
@@ -26875,6 +26878,7 @@ interface SourceToolHandlerSignals {
   handlerSecretManagerEmbeddingVectorBridge: boolean;
   handlerToolOutputEmbeddingVectorBridge: boolean;
   handlerVisualContextEmbeddingVectorBridge: boolean;
+  handlerClipboardEmbeddingVectorBridge: boolean;
   handlerTelemetryExport: boolean;
   handlerSecretManagerTelemetryBridge: boolean;
   handlerEnvSecretTelemetryBridge: boolean;
@@ -27515,6 +27519,7 @@ function sourceToolHandlerSignalMetadata(signals: SourceToolHandlerSignals | und
     handler_secret_manager_embedding_vector_bridge: signals.handlerSecretManagerEmbeddingVectorBridge,
     handler_tool_output_embedding_vector_bridge: signals.handlerToolOutputEmbeddingVectorBridge,
     handler_visual_context_embedding_vector_bridge: signals.handlerVisualContextEmbeddingVectorBridge,
+    handler_clipboard_embedding_vector_bridge: signals.handlerClipboardEmbeddingVectorBridge,
     handler_telemetry_export: signals.handlerTelemetryExport,
     handler_secret_manager_telemetry_bridge: signals.handlerSecretManagerTelemetryBridge,
     handler_env_secret_telemetry_bridge: signals.handlerEnvSecretTelemetryBridge,
@@ -28525,6 +28530,9 @@ function classifySourceToolHandlerSignals(
   const visualContextEmbeddingVectorBridge = visualContextCapture && embeddingProviderCall && memoryWrite && (language === "javascript"
     ? hasJavaScriptHandlerVisualContextEmbeddingVectorBridge(handlerSource)
     : hasPythonHandlerVisualContextEmbeddingVectorBridge(handlerSource));
+  const clipboardEmbeddingVectorBridge = clipboardRead && embeddingProviderCall && memoryWrite && (language === "javascript"
+    ? hasJavaScriptHandlerClipboardEmbeddingVectorBridge(handlerSource)
+    : hasPythonHandlerClipboardEmbeddingVectorBridge(handlerSource));
 
   const classes = new Set<string>();
   if (externalNetworkCall) classes.add("handler_network_access");
@@ -28559,6 +28567,7 @@ function classifySourceToolHandlerSignals(
   if (secretManagerEmbeddingVectorBridge) classes.add("handler_secret_manager_embedding_vector_bridge");
   if (toolOutputEmbeddingVectorBridge) classes.add("handler_tool_output_embedding_vector_bridge");
   if (visualContextEmbeddingVectorBridge) classes.add("handler_visual_context_embedding_vector_bridge");
+  if (clipboardEmbeddingVectorBridge) classes.add("handler_clipboard_embedding_vector_bridge");
   if (telemetryExport) classes.add("handler_telemetry_export");
   if (secretManagerTelemetryBridge) classes.add("handler_secret_manager_telemetry_bridge");
   if (envSecretTelemetryBridge) classes.add("handler_env_secret_telemetry_bridge");
@@ -28785,6 +28794,7 @@ function classifySourceToolHandlerSignals(
     handlerSecretManagerEmbeddingVectorBridge: secretManagerEmbeddingVectorBridge,
     handlerToolOutputEmbeddingVectorBridge: toolOutputEmbeddingVectorBridge,
     handlerVisualContextEmbeddingVectorBridge: visualContextEmbeddingVectorBridge,
+    handlerClipboardEmbeddingVectorBridge: clipboardEmbeddingVectorBridge,
     handlerTelemetryExport: telemetryExport,
     handlerSecretManagerTelemetryBridge: secretManagerTelemetryBridge,
     handlerEnvSecretTelemetryBridge: envSecretTelemetryBridge,
@@ -29640,6 +29650,54 @@ function hasPythonHandlerVisualContextEmbeddingVectorBridge(source: string): boo
     ],
     source,
     uniqueStrings([...embeddingIdentifiers, ...visualContextIdentifiers])
+  );
+}
+
+function hasJavaScriptHandlerClipboardEmbeddingVectorBridge(source: string): boolean {
+  const clipboardIdentifiers = extractJavaScriptClipboardIdentifiers(source);
+  if (clipboardIdentifiers.length === 0) return false;
+  const clipboardEmbedded = callExpressionReferencesAnyIdentifier(
+    [
+      /\b(?:embeddingClient|embeddingProvider|embedder|embeddings|cohere|cohereClient|voyage|voyageClient|bedrock|bedrockClient)\s*(?:\.\s*[A-Za-z_$][\w$]*){0,4}\s*\.\s*(?:embed|embedQuery|embedDocuments|embedMany|create|generateEmbedding|generateEmbeddings)\s*\(([\s\S]{0,2400})\)/giu,
+      /\b(?:openai|openaiClient)\s*\.\s*embeddings\s*\.\s*create\s*\(([\s\S]{0,2400})\)/giu
+    ],
+    source,
+    clipboardIdentifiers
+  );
+  if (!clipboardEmbedded) return false;
+
+  const embeddingIdentifiers = extractJavaScriptEmbeddingOutputIdentifiers(source);
+  return callExpressionReferencesAnyIdentifier(
+    [
+      /\b(?:[A-Za-z_$][\w$]*memory|memory|memories|memoryStore|vectorStore|vectorIndex|embeddingStore|ragStore|retriever|knowledgeBase|sessionStore|stateStore)\s*\.\s*(?:add|addDocuments|addTexts|append|insert|persist|put|push|remember|save|set|store|upsert|write)\s*\(([\s\S]{0,2400})\)/giu,
+      /\b(?:persistMemory|rememberContext|saveMemory|storeMemory|upsertMemory|writeMemory)\s*\(([\s\S]{0,2400})\)/giu
+    ],
+    source,
+    uniqueStrings([...embeddingIdentifiers, ...clipboardIdentifiers])
+  );
+}
+
+function hasPythonHandlerClipboardEmbeddingVectorBridge(source: string): boolean {
+  const clipboardIdentifiers = extractPythonClipboardIdentifiers(source);
+  if (clipboardIdentifiers.length === 0) return false;
+  const clipboardEmbedded = callExpressionReferencesAnyIdentifier(
+    [
+      /\b(?:embedding_client|embedding_provider|embedder|embeddings|cohere|cohere_client|voyage|voyage_client|bedrock|bedrock_client)\s*(?:\.\s*[A-Za-z_]\w*){0,4}\s*\.\s*(?:embed|embed_query|embed_documents|embed_many|create|generate_embedding|generate_embeddings)\s*\(([\s\S]{0,2400})\)/giu,
+      /\b(?:openai|openai_client)\s*\.\s*embeddings\s*\.\s*create\s*\(([\s\S]{0,2400})\)/giu
+    ],
+    source,
+    clipboardIdentifiers
+  );
+  if (!clipboardEmbedded) return false;
+
+  const embeddingIdentifiers = extractPythonEmbeddingOutputIdentifiers(source);
+  return callExpressionReferencesAnyIdentifier(
+    [
+      /\b(?:[A-Za-z_]\w*memory|memory|memory_store|vector_store|vectorstore|vector_index|embedding_store|rag_store|retriever|knowledge_base|session_store|state_store)\s*\.\s*(?:add|add_documents|add_texts|append|insert|persist|put|push|remember|save|set|store|upsert|write)\s*\(([\s\S]{0,2400})\)/giu,
+      /\b(?:persist_memory|remember_context|save_memory|store_memory|upsert_memory|write_memory)\s*\(([\s\S]{0,2400})\)/giu
+    ],
+    source,
+    uniqueStrings([...embeddingIdentifiers, ...clipboardIdentifiers])
   );
 }
 
@@ -35154,9 +35212,16 @@ function expressionReferencesTaintedEmbeddingInput(expression: string, source: s
   if (secretManagerIdentifiers.some((identifier) => new RegExp(`\\b${escapeRegExp(identifier)}\\b`, "u").test(expression))) {
     return true;
   }
+  const clipboardIdentifiers = uniqueStrings([
+    ...extractJavaScriptClipboardIdentifiers(source),
+    ...extractPythonClipboardIdentifiers(source)
+  ]);
+  if (clipboardIdentifiers.some((identifier) => new RegExp(`\\b${escapeRegExp(identifier)}\\b`, "u").test(expression))) {
+    return true;
+  }
   const withoutQuotedStrings = expression.replace(/(["'`])(?:\\.|(?!\1)[\s\S])*\1/gu, " ");
-  const stronglyTaintedName = /\b(?:customerTicketText|customer_ticket_text|ticketText|ticket_text|customerContext|customer_context|customerMessage|customer_message|documentText|document_text|sourcePayloadText|source_payload_text|retrievedContext|retrieved_context|promptText|prompt_text|userText|user_text|inputText|input_text)\b/u;
-  const taintedName = /\b(?:customerTicketText|customer_ticket_text|ticketText|ticket_text|customerContext|customer_context|customerMessage|customer_message|documentText|document_text|sourcePayloadText|source_payload_text|retrievedContext|retrieved_context|promptText|prompt_text|userText|user_text|inputText|input_text|content|message|query|text|document|payload|customer|ticket|prompt|input)\b/u;
+  const stronglyTaintedName = /\b(?:customerTicketText|customer_ticket_text|ticketText|ticket_text|customerContext|customer_context|customerMessage|customer_message|documentText|document_text|sourcePayloadText|source_payload_text|retrievedContext|retrieved_context|promptText|prompt_text|userText|user_text|inputText|input_text|clipboardText|clipboard_text)\b/u;
+  const taintedName = /\b(?:customerTicketText|customer_ticket_text|ticketText|ticket_text|customerContext|customer_context|customerMessage|customer_message|documentText|document_text|sourcePayloadText|source_payload_text|retrievedContext|retrieved_context|promptText|prompt_text|userText|user_text|inputText|input_text|clipboardText|clipboard_text|content|message|query|text|document|payload|customer|ticket|prompt|input|clipboard)\b/u;
   if (stronglyTaintedName.test(withoutQuotedStrings)) return true;
 
   const embeddingInputAssignment = /\b(?:input|inputs|text|texts|document|documents|content|contents|query|queries|payload|payloads)\s*(?::|=)\s*([^,\n}\)]+)/giu;
@@ -37469,6 +37534,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   clipboard_shell_execution_bridge: boolean;
   clipboard_dynamic_code_execution_bridge: boolean;
   clipboard_agent_delegation_bridge: boolean;
+  clipboard_embedding_vector_bridge: boolean;
   visual_context_capture: boolean;
   visual_context_to_output: boolean;
   visual_context_prompt_bridge: boolean;
@@ -37666,6 +37732,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   const handlerSecretManagerEmbeddingVectorBridge = handler?.handlerSecretManagerEmbeddingVectorBridge === true;
   const handlerToolOutputEmbeddingVectorBridge = handler?.handlerToolOutputEmbeddingVectorBridge === true;
   const handlerVisualContextEmbeddingVectorBridge = handler?.handlerVisualContextEmbeddingVectorBridge === true;
+  const handlerClipboardEmbeddingVectorBridge = handler?.handlerClipboardEmbeddingVectorBridge === true;
   const handlerTelemetryExport = handler?.handlerTelemetryExport === true;
   const handlerSecretManagerTelemetryBridge = handler?.handlerSecretManagerTelemetryBridge === true;
   const handlerEnvSecretTelemetryBridge = handler?.handlerEnvSecretTelemetryBridge === true;
@@ -38486,6 +38553,13 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
     actions.add("send");
     actions.add("write");
   }
+  if (handlerClipboardEmbeddingVectorBridge) {
+    classes.add("clipboard_embedding_vector_bridge");
+    actions.add("read");
+    actions.add("remember");
+    actions.add("send");
+    actions.add("write");
+  }
   if (handlerTelemetryExport) {
     classes.add("telemetry_export");
     actions.add("send");
@@ -39175,6 +39249,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerClipboardAgentDelegationBridge ||
       handlerClipboardCredentialIssuanceBridge ||
       handlerClipboardFeedbackBridge ||
+      handlerClipboardEmbeddingVectorBridge ||
       handlerVisualContextCapture ||
       handlerVisualContextToOutput ||
       handlerVisualContextPromptBridge ||
@@ -39220,6 +39295,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerTaintedEmbeddingInput ||
       handlerSecretManagerEmbeddingVectorBridge ||
       handlerToolOutputEmbeddingVectorBridge ||
+      handlerClipboardEmbeddingVectorBridge ||
       handlerTelemetryExport ||
       handlerSecretManagerTelemetryBridge ||
       handlerEnvSecretTelemetryBridge ||
@@ -39452,6 +39528,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerEmbeddingProviderCall ||
       handlerSecretManagerEmbeddingVectorBridge ||
       handlerToolOutputEmbeddingVectorBridge ||
+      handlerClipboardEmbeddingVectorBridge ||
       handlerTelemetryExport ||
       handlerSecretManagerTelemetryBridge ||
       handlerEnvSecretTelemetryBridge ||
@@ -39653,6 +39730,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       (handlerNetworkResponseArtifactBridge && handlerSecretEnvAccess) ||
       (handlerLocalFileArtifactBridge && handlerSecretEnvAccess) ||
       (handlerClipboardArtifactBridge && handlerSecretEnvAccess) ||
+      (handlerClipboardEmbeddingVectorBridge && handlerSecretEnvAccess) ||
       (handlerToolOutputEmbeddingVectorBridge && handlerSecretEnvAccess) ||
       (handlerVisualContextEmbeddingVectorBridge && handlerSecretEnvAccess) ||
       handlerSecretManagerTaskQueueBridge ||
@@ -39815,6 +39893,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
     secret_manager_embedding_vector_bridge: handlerSecretManagerEmbeddingVectorBridge,
     tool_output_embedding_vector_bridge: handlerToolOutputEmbeddingVectorBridge,
     visual_context_embedding_vector_bridge: handlerVisualContextEmbeddingVectorBridge,
+    clipboard_embedding_vector_bridge: handlerClipboardEmbeddingVectorBridge,
     telemetry_export: handlerTelemetryExport,
     secret_manager_telemetry_bridge: handlerSecretManagerTelemetryBridge,
     env_secret_telemetry_bridge: handlerEnvSecretTelemetryBridge,
@@ -40016,6 +40095,7 @@ function authoritySignature(tool: SurfaceObject): string {
     metadata.secret_manager_embedding_vector_bridge === true ? "secret_manager_embedding_vector_bridge" : "",
     metadata.tool_output_embedding_vector_bridge === true ? "tool_output_embedding_vector_bridge" : "",
     metadata.visual_context_embedding_vector_bridge === true ? "visual_context_embedding_vector_bridge" : "",
+    metadata.clipboard_embedding_vector_bridge === true ? "clipboard_embedding_vector_bridge" : "",
     metadata.telemetry_export === true ? "telemetry_export" : "",
     metadata.secret_manager_telemetry_bridge === true ? "secret_manager_telemetry_bridge" : "",
     metadata.env_secret_telemetry_bridge === true ? "env_secret_telemetry_bridge" : "",
@@ -40254,6 +40334,7 @@ function isPrivilegedToolSurface(tool: SurfaceObject): boolean {
     tool.metadata.secret_manager_embedding_vector_bridge === true ||
     tool.metadata.tool_output_embedding_vector_bridge === true ||
     tool.metadata.visual_context_embedding_vector_bridge === true ||
+    tool.metadata.clipboard_embedding_vector_bridge === true ||
     tool.metadata.telemetry_export === true ||
     tool.metadata.secret_manager_telemetry_bridge === true ||
     tool.metadata.env_secret_telemetry_bridge === true ||

@@ -1872,6 +1872,9 @@ The current iteration adds:
 - source-defined tool handler metadata for desktop or browser clipboard material promoted into feedback, RLHF, eval, reward-model, or model-improvement pipelines with runtime feedback credentials and caller-selected destinations, without emitting clipboard reads, feedback calls, copied text variables, feedback records, eval routing, or return strings
 - regression coverage proving clipboard feedback snippets, `desktopClipboard.readText`, `desktop_clipboard.read_text`, feedback promotion calls, copied text variables, and clipboard feedback return strings stay redacted
 - rule `AGENTCSP-TOOL-205` for source-defined tools that read desktop or browser clipboard material and promote copied context into feedback/model-improvement pipelines under runtime feedback authority and caller-selected routing
+- source-defined tool handler metadata for desktop or browser clipboard material embedded through provider APIs and persisted into durable vector memory/RAG stores with runtime embedding credentials and caller-selected vector scope, without emitting clipboard reads, embedding calls, vector-store writes, copied text variables, embeddings, namespaces, or return strings
+- regression coverage proving clipboard embedding-vector snippets, `desktopClipboard.readText`, `desktop_clipboard.read_text`, embedding SDK calls, vector upserts, copied text variables, embedding variables, and clipboard vector-memory return strings stay redacted
+- rule `AGENTCSP-TOOL-206` for source-defined tools that read desktop or browser clipboard material and embed copied context into durable vector memory under runtime embedding authority and caller-selected vector routing
 
 ## Initial Build Recommendation
 

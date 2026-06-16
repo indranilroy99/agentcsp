@@ -1,0 +1,152 @@
+id: AGENTCSP-TOOL-206
+name: Source tool handler embeds clipboard material into vector memory
+description: A source-defined agent tool handler reads desktop or browser clipboard material, sends copied text to an embedding provider with runtime credentials, and persists the resulting vector into durable memory, RAG, or a vector store under caller-selected scope.
+category: clipboard_embedding_vector_bridge
+severity: critical
+maps_to:
+  owasp:
+    - LLM01:2025 Prompt Injection
+    - LLM02:2025 Sensitive Information Disclosure
+    - LLM06:2025 Excessive Agency
+    - LLM08:2025 Vector and Embedding Weaknesses
+  mitre_atlas:
+    - AML.T0051 LLM Plugin Compromise
+    - AML.T0056 LLM Trusted Boundary Compromise
+    - AML.T0059 Data from Information Repositories
+    - AML.T0060 Data from Local System
+  nist_ai_rmf:
+    - MAP 4.1
+    - MEASURE 2.7
+    - MANAGE 2.4
+match:
+  object_type: tool
+  where:
+    - field: metadata.parsed_tool_schema
+      op: equals
+      value: true
+    - field: metadata.source_tool_handler_redacted
+      op: equals
+      value: true
+    - field: metadata.handler_body_analyzed
+      op: equals
+      value: true
+    - field: metadata.handler_clipboard_read
+      op: equals
+      value: true
+    - field: metadata.handler_embedding_provider_call
+      op: equals
+      value: true
+    - field: metadata.handler_tainted_embedding_input
+      op: equals
+      value: true
+    - field: metadata.handler_memory_write
+      op: equals
+      value: true
+    - field: metadata.handler_tainted_memory_scope
+      op: equals
+      value: true
+    - field: metadata.handler_clipboard_embedding_vector_bridge
+      op: equals
+      value: true
+    - field: metadata.handler_secret_env_access
+      op: equals
+      value: true
+    - field: metadata.clipboard_read
+      op: equals
+      value: true
+    - field: metadata.embedding_provider_call
+      op: equals
+      value: true
+    - field: metadata.tainted_embedding_input
+      op: equals
+      value: true
+    - field: metadata.memory_write
+      op: equals
+      value: true
+    - field: metadata.tainted_memory_scope
+      op: equals
+      value: true
+    - field: metadata.clipboard_embedding_vector_bridge
+      op: equals
+      value: true
+    - field: metadata.accepts_content_like_input
+      op: equals
+      value: true
+    - field: metadata.accepts_customer_data_input
+      op: equals
+      value: true
+    - field: metadata.authority_classes
+      op: includes
+      value: clipboard_read
+    - field: metadata.authority_classes
+      op: includes
+      value: embedding_provider_call
+    - field: metadata.authority_classes
+      op: includes
+      value: tainted_embedding_input
+    - field: metadata.authority_classes
+      op: includes
+      value: memory_write
+    - field: metadata.authority_classes
+      op: includes
+      value: tainted_memory_scope
+    - field: metadata.authority_classes
+      op: includes
+      value: clipboard_embedding_vector_bridge
+    - field: metadata.handler_authority_classes
+      op: includes
+      value: handler_clipboard_read
+    - field: metadata.handler_authority_classes
+      op: includes
+      value: handler_embedding_provider_call
+    - field: metadata.handler_authority_classes
+      op: includes
+      value: handler_tainted_embedding_input
+    - field: metadata.handler_authority_classes
+      op: includes
+      value: handler_memory_write
+    - field: metadata.handler_authority_classes
+      op: includes
+      value: handler_tainted_memory_scope
+    - field: metadata.handler_authority_classes
+      op: includes
+      value: handler_clipboard_embedding_vector_bridge
+    - field: metadata.schema_properties
+      op: contains_any
+      value:
+        - customer_id
+        - vector_namespace
+        - clipboard_vector_note_text
+    - field: actions
+      op: includes
+      value: read
+    - field: actions
+      op: includes
+      value: send
+    - field: actions
+      op: includes
+      value: write
+    - field: actions
+      op: includes
+      value: remember
+    - field: data_classes
+      op: contains_any
+      value:
+        - confidential
+        - credential
+        - pii
+    - field: external_reach
+      op: equals
+      value: true
+    - field: secret_exposure
+      op: equals
+      value: true
+    - field: side_effect
+      op: equals
+      value: true
+    - field: reversible
+      op: equals
+      value: false
+recommendation:
+  control: quarantine
+  text: Quarantine clipboard-to-vector ingestion until copied desktop or browser context is treated as tainted, classified and redacted before embedding, written only to policy-owned tenant-scoped vector namespaces with provenance and retention controls, and approved before retrieval into future agent context.

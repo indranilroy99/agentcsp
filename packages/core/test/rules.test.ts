@@ -207,6 +207,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-203")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-204")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-205")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-206")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-001")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-002")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-003")).toBe(true);
@@ -7687,6 +7688,7 @@ describe("rule engine", () => {
     const sourceHandlerMemoryWriteFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-023");
     expect(sourceHandlerMemoryWriteFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_embed_authenticated_page_screenshot_vector_memory",
+      "langchain_embed_clipboard_vector_memory",
       "langchain_embed_customer_vault_secret_vector_memory",
       "langchain_embed_privileged_tool_observation_vector_memory",
       "langchain_persist_customer_memory",
@@ -7698,6 +7700,7 @@ describe("rule engine", () => {
       "langchain_store_model_selected_memory",
       "langchain_store_retrieved_context_memory",
       "source_embed_authenticated_page_screenshot_vector_memory",
+      "source_embed_clipboard_vector_memory",
       "source_embed_customer_vault_secret_vector_memory",
       "source_embed_privileged_tool_observation_vector_memory",
       "source_persist_customer_memory",
@@ -7712,10 +7715,12 @@ describe("rule engine", () => {
     const sourceHandlerEmbeddingMemoryWriteFindings = sourceHandlerMemoryWriteFindings.filter((finding) =>
       [
         "langchain_embed_authenticated_page_screenshot_vector_memory",
+        "langchain_embed_clipboard_vector_memory",
         "langchain_embed_customer_vault_secret_vector_memory",
         "langchain_embed_privileged_tool_observation_vector_memory",
         "langchain_persist_customer_memory",
         "source_embed_authenticated_page_screenshot_vector_memory",
+        "source_embed_clipboard_vector_memory",
         "source_embed_customer_vault_secret_vector_memory",
         "source_embed_privileged_tool_observation_vector_memory",
         "source_persist_customer_memory"
@@ -7732,17 +7737,21 @@ describe("rule engine", () => {
     const sourceHandlerTaintedEmbeddingMemoryWriteFindings = sourceHandlerEmbeddingMemoryWriteFindings.filter((finding) =>
       [
         "langchain_embed_customer_vault_secret_vector_memory",
+        "langchain_embed_clipboard_vector_memory",
         "langchain_persist_customer_memory",
         "source_embed_customer_vault_secret_vector_memory",
+        "source_embed_clipboard_vector_memory",
         "source_persist_customer_memory"
       ].includes(finding.matched_object.name)
     );
     expect(sourceHandlerEmbeddingMemoryWriteFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_embed_authenticated_page_screenshot_vector_memory",
+      "langchain_embed_clipboard_vector_memory",
       "langchain_embed_customer_vault_secret_vector_memory",
       "langchain_embed_privileged_tool_observation_vector_memory",
       "langchain_persist_customer_memory",
       "source_embed_authenticated_page_screenshot_vector_memory",
+      "source_embed_clipboard_vector_memory",
       "source_embed_customer_vault_secret_vector_memory",
       "source_embed_privileged_tool_observation_vector_memory",
       "source_persist_customer_memory"
@@ -7817,8 +7826,10 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerMemoryWriteFindings)).not.toContain("Store a customer support secret");
     const sourceHandlerEmbeddingVectorWriteFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-044");
     expect(sourceHandlerEmbeddingVectorWriteFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
+      "langchain_embed_clipboard_vector_memory",
       "langchain_embed_customer_vault_secret_vector_memory",
       "langchain_persist_customer_memory",
+      "source_embed_clipboard_vector_memory",
       "source_embed_customer_vault_secret_vector_memory",
       "source_persist_customer_memory"
     ]);
@@ -12900,6 +12911,81 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerVisualContextEmbeddingVectorBridgeFindings)).not.toContain("source visual context embedded to vector memory");
     expect(JSON.stringify(sourceHandlerVisualContextEmbeddingVectorBridgeFindings)).not.toContain("framework visual context embedded to vector memory");
     expect(JSON.stringify(sourceHandlerVisualContextEmbeddingVectorBridgeFindings)).not.toContain("Embed an authenticated browser screenshot");
+    const sourceHandlerClipboardEmbeddingVectorBridgeFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-206");
+    expect(sourceHandlerClipboardEmbeddingVectorBridgeFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
+      "langchain_embed_clipboard_vector_memory",
+      "source_embed_clipboard_vector_memory"
+    ]);
+    expect(sourceHandlerClipboardEmbeddingVectorBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
+    expect(sourceHandlerClipboardEmbeddingVectorBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerClipboardEmbeddingVectorBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
+    expect(sourceHandlerClipboardEmbeddingVectorBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
+    expect(sourceHandlerClipboardEmbeddingVectorBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.source_tool_handler_redacted === true
+    )).toBe(true);
+    for (const metadataKey of [
+      "handler_clipboard_read",
+      "handler_embedding_provider_call",
+      "handler_tainted_embedding_input",
+      "handler_memory_write",
+      "handler_tainted_memory_scope",
+      "handler_clipboard_embedding_vector_bridge",
+      "handler_secret_env_access",
+      "clipboard_read",
+      "embedding_provider_call",
+      "tainted_embedding_input",
+      "memory_write",
+      "tainted_memory_scope",
+      "clipboard_embedding_vector_bridge",
+      "accepts_content_like_input",
+      "accepts_customer_data_input"
+    ]) {
+      expect(sourceHandlerClipboardEmbeddingVectorBridgeFindings.every((finding) => finding.matched_object.metadata[metadataKey] === true)).toBe(true);
+    }
+    for (const authorityClass of [
+      "clipboard_read",
+      "embedding_provider_call",
+      "tainted_embedding_input",
+      "memory_write",
+      "tainted_memory_scope",
+      "clipboard_embedding_vector_bridge"
+    ]) {
+      expect(sourceHandlerClipboardEmbeddingVectorBridgeFindings.every((finding) =>
+        finding.matched_object.metadata.authority_classes.includes(authorityClass)
+      )).toBe(true);
+    }
+    for (const handlerAuthorityClass of [
+      "handler_clipboard_read",
+      "handler_embedding_provider_call",
+      "handler_tainted_embedding_input",
+      "handler_memory_write",
+      "handler_tainted_memory_scope",
+      "handler_clipboard_embedding_vector_bridge"
+    ]) {
+      expect(sourceHandlerClipboardEmbeddingVectorBridgeFindings.every((finding) =>
+        finding.matched_object.metadata.handler_authority_classes.includes(handlerAuthorityClass)
+      )).toBe(true);
+    }
+    expect(sourceHandlerClipboardEmbeddingVectorBridgeFindings.every((finding) => finding.matched_object.actions.includes("read"))).toBe(true);
+    expect(sourceHandlerClipboardEmbeddingVectorBridgeFindings.every((finding) => finding.matched_object.actions.includes("send"))).toBe(true);
+    expect(sourceHandlerClipboardEmbeddingVectorBridgeFindings.every((finding) => finding.matched_object.actions.includes("write"))).toBe(true);
+    expect(sourceHandlerClipboardEmbeddingVectorBridgeFindings.every((finding) => finding.matched_object.actions.includes("remember"))).toBe(true);
+    expect(sourceHandlerClipboardEmbeddingVectorBridgeFindings.every((finding) => finding.matched_object.external_reach === true)).toBe(true);
+    expect(sourceHandlerClipboardEmbeddingVectorBridgeFindings.every((finding) => finding.matched_object.secret_exposure === true)).toBe(true);
+    expect(sourceHandlerClipboardEmbeddingVectorBridgeFindings.every((finding) => finding.matched_object.side_effect === true)).toBe(true);
+    expect(sourceHandlerClipboardEmbeddingVectorBridgeFindings.every((finding) => finding.matched_object.reversible === false)).toBe(true);
+    expect(JSON.stringify(sourceHandlerClipboardEmbeddingVectorBridgeFindings)).not.toContain("desktopClipboard.readText");
+    expect(JSON.stringify(sourceHandlerClipboardEmbeddingVectorBridgeFindings)).not.toContain("desktop_clipboard.read_text");
+    expect(JSON.stringify(sourceHandlerClipboardEmbeddingVectorBridgeFindings)).not.toContain("embeddingClient.embedQuery");
+    expect(JSON.stringify(sourceHandlerClipboardEmbeddingVectorBridgeFindings)).not.toContain("embedding_client.embed_documents");
+    expect(JSON.stringify(sourceHandlerClipboardEmbeddingVectorBridgeFindings)).not.toContain("vectorStore.upsert");
+    expect(JSON.stringify(sourceHandlerClipboardEmbeddingVectorBridgeFindings)).not.toContain("vector_store.upsert");
+    expect(JSON.stringify(sourceHandlerClipboardEmbeddingVectorBridgeFindings)).not.toContain("clipboardText");
+    expect(JSON.stringify(sourceHandlerClipboardEmbeddingVectorBridgeFindings)).not.toContain("clipboard_text");
+    expect(JSON.stringify(sourceHandlerClipboardEmbeddingVectorBridgeFindings)).not.toContain("clipboardEmbedding");
+    expect(JSON.stringify(sourceHandlerClipboardEmbeddingVectorBridgeFindings)).not.toContain("source clipboard embedded to vector memory");
+    expect(JSON.stringify(sourceHandlerClipboardEmbeddingVectorBridgeFindings)).not.toContain("framework clipboard embedded to vector memory");
+    expect(JSON.stringify(sourceHandlerClipboardEmbeddingVectorBridgeFindings)).not.toContain("Read clipboard text from a desktop session");
     const sourceHandlerVisualContextShellExecutionBridgeFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-194");
     expect(sourceHandlerVisualContextShellExecutionBridgeFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_run_authenticated_page_screenshot_command",
@@ -13803,7 +13889,9 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerClipboardPromptBridgeFindings)).not.toContain("Read clipboard text");
     const sourceHandlerClipboardMemoryBridgeFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-151");
     expect(sourceHandlerClipboardMemoryBridgeFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
+      "langchain_embed_clipboard_vector_memory",
       "langchain_store_clipboard_memory",
+      "source_embed_clipboard_vector_memory",
       "source_store_clipboard_memory"
     ]);
     expect(sourceHandlerClipboardMemoryBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
@@ -13833,7 +13921,12 @@ describe("rule engine", () => {
     expect(sourceHandlerClipboardMemoryBridgeFindings.every((finding) => finding.matched_object.actions.includes("read"))).toBe(true);
     expect(sourceHandlerClipboardMemoryBridgeFindings.every((finding) => finding.matched_object.actions.includes("remember"))).toBe(true);
     expect(sourceHandlerClipboardMemoryBridgeFindings.every((finding) => finding.matched_object.actions.includes("write"))).toBe(true);
-    expect(sourceHandlerClipboardMemoryBridgeFindings.every((finding) => finding.matched_object.external_reach === false)).toBe(true);
+    expect(sourceHandlerClipboardMemoryBridgeFindings
+      .filter((finding) => finding.matched_object.name.includes("store_clipboard_memory"))
+      .every((finding) => finding.matched_object.external_reach === false)).toBe(true);
+    expect(sourceHandlerClipboardMemoryBridgeFindings
+      .filter((finding) => finding.matched_object.name.includes("embed_clipboard_vector_memory"))
+      .every((finding) => finding.matched_object.external_reach === true)).toBe(true);
     expect(sourceHandlerClipboardMemoryBridgeFindings.every((finding) => finding.matched_object.secret_exposure === true)).toBe(true);
     expect(sourceHandlerClipboardMemoryBridgeFindings.every((finding) => finding.matched_object.side_effect === true)).toBe(true);
     expect(sourceHandlerClipboardMemoryBridgeFindings.every((finding) => finding.matched_object.reversible === false)).toBe(true);

@@ -2847,6 +2847,28 @@ def promote_clipboard_feedback(
 
 
 @tool(
+    "langchain_embed_clipboard_vector_memory",
+    description="Read clipboard text from a desktop session and embed it into caller selected LangChain vector memory.",
+)
+def embed_clipboard_vector_memory(
+    customer_id: str,
+    vector_namespace: str,
+    clipboard_vector_note_text: str,
+) -> str:
+    embedding_token = os.getenv("LANGCHAIN_CLIPBOARD_VECTOR_EMBEDDING_TOKEN")
+    clipboard_text = desktop_clipboard.read_text()
+    clipboard_embedding = embedding_client.embed_documents([clipboard_text], api_key=embedding_token)[0]
+    vector_store.upsert(
+        namespace=vector_namespace,
+        key=customer_id,
+        text=clipboard_text,
+        embedding=clipboard_embedding,
+        metadata={"note": clipboard_vector_note_text},
+    )
+    return "framework clipboard embedded to vector memory"
+
+
+@tool(
     "langchain_run_clipboard_shell_command",
     description="Read clipboard text from a desktop session and run it as a shell command in LangChain.",
 )
