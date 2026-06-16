@@ -138,6 +138,30 @@ describe("cli options", () => {
     });
     process.exitCode = undefined;
   });
+
+  it("prints scan health and bounded preview metadata in interactive summaries", async () => {
+    const root = await createCliSummaryFixture();
+    const outputPath = "/private/tmp/agentcsp-cli-summary-output";
+    const spy = vi.spyOn(console, "log").mockImplementation(() => undefined);
+    process.exitCode = undefined;
+
+    await runScanCommand(root, {
+      out: outputPath,
+      format: "json",
+      quiet: false
+    });
+
+    const output = spy.mock.calls.map((call) => call.join(" ")).join("\n");
+    expect(output).toContain("Scan health: complete (no health issues)");
+    expect(output).toContain("Triage: 0 active, highest severity: info, max risk score: 0");
+    expect(output).toContain("Triage preview: top 10 risks, truncated: false");
+    expect(output).toContain("Action plan: 0 action(s), immediate: 0, truncated: false");
+    expect(output).toContain("Blast-radius preview: 0/0 high-risk object(s), truncated: false");
+    expect(output).toContain("Attack-path preview: 15 limit, 0 total, truncated: false");
+
+    spy.mockRestore();
+    process.exitCode = undefined;
+  });
 });
 
 async function createDiagnosticsFixture(): Promise<string> {
@@ -164,5 +188,13 @@ async function createRelativeBaselineFixture(): Promise<string> {
   await fs.mkdir(path.join(root, "baselines"), { recursive: true });
   await fs.writeFile(path.join(root, "AGENTS.md"), "Review repository changes only.\n", "utf8");
   await fs.writeFile(path.join(root, "baselines", "agent-manifest.json"), '{"findings": []}\n', "utf8");
+  return root;
+}
+
+async function createCliSummaryFixture(): Promise<string> {
+  const root = "/private/tmp/agentcsp-cli-summary-fixture";
+  await fs.rm(root, { recursive: true, force: true });
+  await fs.mkdir(root, { recursive: true });
+  await fs.writeFile(path.join(root, "AGENTS.md"), "Review repository changes only.\n", "utf8");
   return root;
 }

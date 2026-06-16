@@ -56,7 +56,31 @@ export async function runScanCommand(targetPath: string, options: Record<string,
     console.log(
       `Attack paths: ${result.manifest.attack_paths.length} (${result.manifest.static_blast_radius?.critical_attack_paths ?? 0} critical)`
     );
+    if (result.manifest.triage_summary) {
+      console.log(
+        `Triage: ${result.manifest.triage_summary.active_findings} active, highest severity: ${result.manifest.triage_summary.highest_active_severity}, max risk score: ${result.manifest.triage_summary.max_active_risk_score}`
+      );
+      console.log(
+        `Triage preview: top ${result.manifest.triage_summary.top_active_limit} risks, truncated: ${result.manifest.triage_summary.top_active_risks_truncated}`
+      );
+    }
+    if (result.manifest.action_plan) {
+      console.log(
+        `Action plan: ${result.manifest.action_plan.total_actions} action(s), immediate: ${result.manifest.action_plan.immediate_actions}, truncated: ${result.manifest.action_plan.truncated}`
+      );
+    }
+    if (result.manifest.static_blast_radius) {
+      console.log(
+        `Blast-radius preview: ${result.manifest.static_blast_radius.high_risk_objects.length}/${result.manifest.static_blast_radius.high_risk_objects_total} high-risk object(s), truncated: ${result.manifest.static_blast_radius.high_risk_objects_truncated}`
+      );
+      console.log(
+        `Attack-path preview: ${result.manifest.static_blast_radius.attack_path_limit} limit, ${result.manifest.static_blast_radius.attack_paths_total} total, truncated: ${result.manifest.static_blast_radius.attack_paths_truncated}`
+      );
+    }
     if (result.manifest.scan_coverage) {
+      console.log(
+        `Scan health: ${result.manifest.scan_coverage.scan_health} (${result.manifest.scan_coverage.scan_health_reasons.join(", ") || "no health issues"})`
+      );
       console.log(
         `Coverage: ${result.manifest.scan_coverage.files_indexed} indexed, ${result.manifest.scan_coverage.files_skipped_for_size} oversized, max files reached: ${result.manifest.scan_coverage.max_files_reached}`
       );
