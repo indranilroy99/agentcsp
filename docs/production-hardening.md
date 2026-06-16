@@ -28,7 +28,7 @@ A finding should be considered production-grade when it includes:
 - packaged built-in rule assets under `@agentcsp/core` so installed builds retain the same detection baseline
 - CI package-artifact verification for compiled modules and bundled built-in rule counts
 - npm tarball verification for `@agentcsp/core` and `agentcsp` so published packages retain the CLI entrypoint, schema exports, scanner/rule engine modules, and bundled built-in rules
-- installed-tree package smoke testing that assembles packed core and CLI artifacts with runtime dependencies and runs `agentcsp scan` from the installed CLI entrypoint
+- installed-tree package smoke testing that assembles packed core and CLI artifacts with runtime dependencies, verifies CLI shebang/executable/version behavior, and runs `agentcsp scan` from the installed CLI entrypoint
 - fixture artifact verification that rebuilds current CLI/core output before checking manifest/finding schema validity, SARIF structure, expected signal, safe-fixture quietness, known redaction invariants, and generic sensitive-output leak patterns
 - SARIF artifact-location redaction that prevents absolute local paths, file URIs, and external URLs from leaking into shared CI/code-scanning artifacts
 - agent package-manifest supply-chain metadata for agent/MCP/model/RAG dependencies, risky dependency reference kinds, lifecycle scripts, and credential exposure without emitting dependency names, specs, remote URLs, Git refs, lifecycle commands, or local script paths

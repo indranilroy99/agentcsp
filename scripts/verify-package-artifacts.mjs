@@ -186,13 +186,14 @@ async function smokeTestInstalledCli(coreTarball, cliTarball, installRoot) {
 
   const outputPath = path.join(installRoot, "scan-output");
   await assertInstalledPackageMetadata(installedCorePath, installedCliPath);
-  await assertFile(path.join(installedCliPath, "dist", "index.js"));
+  const installedCliEntrypoint = path.join(installedCliPath, "dist", "index.js");
+  await assertFile(installedCliEntrypoint);
   await assertFile(path.join(installedCorePath, "dist", "index.js"));
+  await assertExecutableCliEntrypoint(installedCliEntrypoint, installedCliPath);
 
   await execFileAsync(
-    process.execPath,
+    installedCliEntrypoint,
     [
-      path.join(installedCliPath, "dist", "index.js"),
       "scan",
       path.join(repoRoot, "examples", "safe-agent"),
       "--out",
@@ -225,6 +226,27 @@ async function smokeTestInstalledCli(coreTarball, cliTarball, installRoot) {
   }
   if (typeof manifest?.metadata?.root_path === "string" && report.includes(manifest.metadata.root_path)) {
     throw new Error("Installed CLI smoke test report leaked the absolute scan root");
+  }
+}
+
+async function assertExecutableCliEntrypoint(installedCliEntrypoint, installedCliPath) {
+  const entrypoint = await fs.readFile(installedCliEntrypoint, "utf8");
+  if (!entrypoint.startsWith("#!/usr/bin/env node")) {
+    throw new Error("Packed CLI entrypoint is missing the Node shebang required for npm bin execution");
+  }
+
+  const stats = await fs.stat(installedCliEntrypoint);
+  if ((stats.mode & 0o111) === 0) {
+    throw new Error("Packed CLI entrypoint is not executable");
+  }
+
+  const cliPackageJson = JSON.parse(await fs.readFile(path.join(installedCliPath, "package.json"), "utf8"));
+  const { stdout } = await execFileAsync(installedCliEntrypoint, ["--version"], {
+    cwd: path.dirname(installedCliPath),
+    maxBuffer: 1024 * 1024
+  });
+  if (stdout.trim() !== cliPackageJson.version) {
+    throw new Error(`Packed CLI --version mismatch: expected ${cliPackageJson.version}, received ${stdout.trim()}`);
   }
 }
 
