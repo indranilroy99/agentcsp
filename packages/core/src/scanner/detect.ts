@@ -24179,6 +24179,7 @@ function addToolDefinitionSurface(
       !authority.model_output_training_dataset_bridge &&
       !authority.network_response_training_dataset_bridge &&
       !authority.local_file_training_dataset_bridge &&
+      !authority.clipboard_training_dataset_bridge &&
       !authority.rag_retrieval_training_dataset_bridge &&
       !authority.feedback_pipeline_write &&
       !authority.model_output_feedback_bridge &&
@@ -24375,6 +24376,7 @@ function addToolDefinitionSurface(
       model_output_training_dataset_bridge: authority.model_output_training_dataset_bridge,
       network_response_training_dataset_bridge: authority.network_response_training_dataset_bridge,
       local_file_training_dataset_bridge: authority.local_file_training_dataset_bridge,
+      clipboard_training_dataset_bridge: authority.clipboard_training_dataset_bridge,
       rag_retrieval_training_dataset_bridge: authority.rag_retrieval_training_dataset_bridge,
       secret_manager_training_dataset_bridge: authority.secret_manager_training_dataset_bridge,
       tainted_training_dataset_payload: authority.tainted_training_dataset_payload,
@@ -26885,6 +26887,7 @@ interface SourceToolHandlerSignals {
   handlerModelOutputTrainingDatasetBridge: boolean;
   handlerNetworkResponseTrainingDatasetBridge: boolean;
   handlerLocalFileTrainingDatasetBridge: boolean;
+  handlerClipboardTrainingDatasetBridge: boolean;
   handlerRagRetrievalTrainingDatasetBridge: boolean;
   handlerToolOutputTrainingDatasetBridge: boolean;
   handlerFeedbackPipelineWrite: boolean;
@@ -27518,6 +27521,7 @@ function sourceToolHandlerSignalMetadata(signals: SourceToolHandlerSignals | und
     handler_model_output_training_dataset_bridge: signals.handlerModelOutputTrainingDatasetBridge,
     handler_network_response_training_dataset_bridge: signals.handlerNetworkResponseTrainingDatasetBridge,
     handler_local_file_training_dataset_bridge: signals.handlerLocalFileTrainingDatasetBridge,
+    handler_clipboard_training_dataset_bridge: signals.handlerClipboardTrainingDatasetBridge,
     handler_rag_retrieval_training_dataset_bridge: signals.handlerRagRetrievalTrainingDatasetBridge,
     handler_tool_output_training_dataset_bridge: signals.handlerToolOutputTrainingDatasetBridge,
     handler_feedback_pipeline_write: signals.handlerFeedbackPipelineWrite,
@@ -28192,6 +28196,10 @@ function classifySourceToolHandlerSignals(
     ? hasJavaScriptHandlerClipboardPromptRegistryBridge(handlerSource)
     : hasPythonHandlerClipboardPromptRegistryBridge(handlerSource));
   if (clipboardPromptRegistryBridge) taintedPromptRegistryPayload = true;
+  const clipboardTrainingDatasetBridge = clipboardRead && trainingDatasetExport && (language === "javascript"
+    ? hasJavaScriptHandlerClipboardTrainingDatasetBridge(handlerSource)
+    : hasPythonHandlerClipboardTrainingDatasetBridge(handlerSource));
+  if (clipboardTrainingDatasetBridge) taintedTrainingDatasetPayload = true;
   const clipboardExternalServiceBridge = clipboardRead && externalServiceWrite && (language === "javascript"
     ? hasJavaScriptHandlerClipboardExternalServiceBridge(handlerSource)
     : hasPythonHandlerClipboardExternalServiceBridge(handlerSource));
@@ -28525,6 +28533,7 @@ function classifySourceToolHandlerSignals(
   if (modelOutputTrainingDatasetBridge) classes.add("handler_model_output_training_dataset_bridge");
   if (networkResponseTrainingDatasetBridge) classes.add("handler_network_response_training_dataset_bridge");
   if (localFileTrainingDatasetBridge) classes.add("handler_local_file_training_dataset_bridge");
+  if (clipboardTrainingDatasetBridge) classes.add("handler_clipboard_training_dataset_bridge");
   if (ragRetrievalTrainingDatasetBridge) classes.add("handler_rag_retrieval_training_dataset_bridge");
   if (toolOutputTrainingDatasetBridge) classes.add("handler_tool_output_training_dataset_bridge");
   if (feedbackPipelineWrite) classes.add("handler_feedback_pipeline_write");
@@ -28744,6 +28753,7 @@ function classifySourceToolHandlerSignals(
     handlerModelOutputTrainingDatasetBridge: modelOutputTrainingDatasetBridge,
     handlerNetworkResponseTrainingDatasetBridge: networkResponseTrainingDatasetBridge,
     handlerLocalFileTrainingDatasetBridge: localFileTrainingDatasetBridge,
+    handlerClipboardTrainingDatasetBridge: clipboardTrainingDatasetBridge,
     handlerRagRetrievalTrainingDatasetBridge: ragRetrievalTrainingDatasetBridge,
     handlerToolOutputTrainingDatasetBridge: toolOutputTrainingDatasetBridge,
     handlerFeedbackPipelineWrite: feedbackPipelineWrite,
@@ -32522,6 +32532,30 @@ function hasJavaScriptHandlerLocalFileTrainingDatasetBridge(source: string): boo
 function hasPythonHandlerLocalFileTrainingDatasetBridge(source: string): boolean {
   const identifiers = extractPythonLocalFileIdentifiers(source);
   return identifiers.length > 0 && callExpressionReferencesAnyIdentifier(
+    [
+      /\b(?:training_dataset|training_dataset_client|dataset_client|fine_tune_dataset|fine_tune_client|fine_tuning_client|feedback_dataset|eval_dataset|rlhf_dataset|model_training_client)\s*(?:\.\s*[A-Za-z_]\w*){0,4}\s*\.\s*(?:append|append_record|add|add_example|create|create_record|insert|upload|write|save|store|export|send|record|push)\s*\(([\s\S]{0,2200})\)/giu,
+      /\b(?:export_training_example|write_training_example|append_training_example|upload_fine_tune_record|create_fine_tune_record|record_training_example)\s*\(([\s\S]{0,2200})\)/giu
+    ],
+    source,
+    identifiers
+  );
+}
+
+function hasJavaScriptHandlerClipboardTrainingDatasetBridge(source: string): boolean {
+  const identifiers = extractJavaScriptClipboardIdentifiers(source);
+  return identifiers.length > 0 && trainingDatasetWriteCallReferencesPayloadIdentifier(
+    [
+      /\b(?:trainingDataset|trainingDatasetClient|datasetClient|fineTuneDataset|fineTuneClient|fineTuningClient|feedbackDataset|evalDataset|rlhfDataset|modelTrainingClient)\s*(?:\.\s*[A-Za-z_$][\w$]*){0,4}\s*\.\s*(?:append|appendRecord|add|addExample|create|createRecord|insert|upload|write|save|store|export|send|record|push)\s*\(([\s\S]{0,2200})\)/giu,
+      /\b(?:exportTrainingExample|writeTrainingExample|appendTrainingExample|uploadFineTuneRecord|createFineTuneRecord|recordTrainingExample)\s*\(([\s\S]{0,2200})\)/giu
+    ],
+    source,
+    identifiers
+  );
+}
+
+function hasPythonHandlerClipboardTrainingDatasetBridge(source: string): boolean {
+  const identifiers = extractPythonClipboardIdentifiers(source);
+  return identifiers.length > 0 && trainingDatasetWriteCallReferencesPayloadIdentifier(
     [
       /\b(?:training_dataset|training_dataset_client|dataset_client|fine_tune_dataset|fine_tune_client|fine_tuning_client|feedback_dataset|eval_dataset|rlhf_dataset|model_training_client)\s*(?:\.\s*[A-Za-z_]\w*){0,4}\s*\.\s*(?:append|append_record|add|add_example|create|create_record|insert|upload|write|save|store|export|send|record|push)\s*\(([\s\S]{0,2200})\)/giu,
       /\b(?:export_training_example|write_training_example|append_training_example|upload_fine_tune_record|create_fine_tune_record|record_training_example)\s*\(([\s\S]{0,2200})\)/giu
@@ -37295,6 +37329,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   model_output_training_dataset_bridge: boolean;
   network_response_training_dataset_bridge: boolean;
   local_file_training_dataset_bridge: boolean;
+  clipboard_training_dataset_bridge: boolean;
   rag_retrieval_training_dataset_bridge: boolean;
   secret_manager_training_dataset_bridge: boolean;
   tainted_training_dataset_payload: boolean;
@@ -37443,6 +37478,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   const handlerModelOutputTrainingDatasetBridge = handler?.handlerModelOutputTrainingDatasetBridge === true;
   const handlerNetworkResponseTrainingDatasetBridge = handler?.handlerNetworkResponseTrainingDatasetBridge === true;
   const handlerLocalFileTrainingDatasetBridge = handler?.handlerLocalFileTrainingDatasetBridge === true;
+  const handlerClipboardTrainingDatasetBridge = handler?.handlerClipboardTrainingDatasetBridge === true;
   const handlerRagRetrievalTrainingDatasetBridge = handler?.handlerRagRetrievalTrainingDatasetBridge === true;
   const handlerSecretManagerTrainingDatasetBridge = handler?.handlerSecretManagerTrainingDatasetBridge === true;
   const handlerTaintedTrainingDatasetPayload = handler?.handlerTaintedTrainingDatasetPayload === true;
@@ -38337,6 +38373,13 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
     actions.add("write");
     actions.add("remember");
   }
+  if (handlerClipboardTrainingDatasetBridge) {
+    classes.add("clipboard_training_dataset_bridge");
+    actions.add("read");
+    actions.add("send");
+    actions.add("write");
+    actions.add("remember");
+  }
   if (handlerRagRetrievalTrainingDatasetBridge) {
     classes.add("rag_retrieval_training_dataset_bridge");
     actions.add("read");
@@ -38937,6 +38980,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerModelOutputTrainingDatasetBridge ||
       handlerNetworkResponseTrainingDatasetBridge ||
       handlerLocalFileTrainingDatasetBridge ||
+      handlerClipboardTrainingDatasetBridge ||
       handlerRagRetrievalTrainingDatasetBridge ||
       handlerSecretManagerTrainingDatasetBridge ||
       handlerTaintedTrainingDatasetPayload ||
@@ -39050,6 +39094,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
     handlerClipboardMemoryBridge ||
     handlerClipboardPromptCacheBridge ||
     handlerClipboardPromptRegistryBridge ||
+    handlerClipboardTrainingDatasetBridge ||
     handlerLocalFilePromptCacheBridge ||
     handlerClipboardExternalServiceBridge ||
     handlerClipboardShellExecutionBridge ||
@@ -39155,6 +39200,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerModelOutputTrainingDatasetBridge ||
       handlerNetworkResponseTrainingDatasetBridge ||
       handlerLocalFileTrainingDatasetBridge ||
+      handlerClipboardTrainingDatasetBridge ||
       handlerRagRetrievalTrainingDatasetBridge ||
       handlerSecretManagerTrainingDatasetBridge ||
       handlerToolOutputTrainingDatasetBridge ||
@@ -39307,6 +39353,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       (handlerModelOutputTrainingDatasetBridge && handlerSecretEnvAccess) ||
       (handlerNetworkResponseTrainingDatasetBridge && handlerSecretEnvAccess) ||
       (handlerLocalFileTrainingDatasetBridge && handlerSecretEnvAccess) ||
+      (handlerClipboardTrainingDatasetBridge && handlerSecretEnvAccess) ||
       (handlerRagRetrievalTrainingDatasetBridge && handlerSecretEnvAccess) ||
       (handlerToolOutputTrainingDatasetBridge && handlerSecretEnvAccess) ||
       handlerSecretManagerFeedbackBridge ||
@@ -39506,6 +39553,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
     model_output_training_dataset_bridge: handlerModelOutputTrainingDatasetBridge,
     network_response_training_dataset_bridge: handlerNetworkResponseTrainingDatasetBridge,
     local_file_training_dataset_bridge: handlerLocalFileTrainingDatasetBridge,
+    clipboard_training_dataset_bridge: handlerClipboardTrainingDatasetBridge,
     rag_retrieval_training_dataset_bridge: handlerRagRetrievalTrainingDatasetBridge,
     secret_manager_training_dataset_bridge: handlerSecretManagerTrainingDatasetBridge,
     tainted_training_dataset_payload: handlerTaintedTrainingDatasetPayload,
@@ -39704,6 +39752,7 @@ function authoritySignature(tool: SurfaceObject): string {
     metadata.model_output_training_dataset_bridge === true ? "model_output_training_dataset_bridge" : "",
     metadata.network_response_training_dataset_bridge === true ? "network_response_training_dataset_bridge" : "",
     metadata.local_file_training_dataset_bridge === true ? "local_file_training_dataset_bridge" : "",
+    metadata.clipboard_training_dataset_bridge === true ? "clipboard_training_dataset_bridge" : "",
     metadata.rag_retrieval_training_dataset_bridge === true ? "rag_retrieval_training_dataset_bridge" : "",
     metadata.secret_manager_training_dataset_bridge === true ? "secret_manager_training_dataset_bridge" : "",
     metadata.tainted_training_dataset_payload === true ? "tainted_training_dataset_payload" : "",
@@ -39935,6 +39984,7 @@ function isPrivilegedToolSurface(tool: SurfaceObject): boolean {
     tool.metadata.model_output_training_dataset_bridge === true ||
     tool.metadata.network_response_training_dataset_bridge === true ||
     tool.metadata.local_file_training_dataset_bridge === true ||
+    tool.metadata.clipboard_training_dataset_bridge === true ||
     tool.metadata.rag_retrieval_training_dataset_bridge === true ||
     tool.metadata.secret_manager_training_dataset_bridge === true ||
     tool.metadata.tainted_training_dataset_payload === true ||

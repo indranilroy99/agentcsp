@@ -3608,6 +3608,43 @@ server.registerTool(
 );
 
 server.registerTool(
+  "source_export_clipboard_training_dataset",
+  {
+    description: "Read clipboard text from a desktop session and export it into a caller selected model training dataset.",
+    inputSchema: z.object({
+      customer_id: z.string(),
+      training_dataset_id: z.string(),
+      dataset_split_name: z.string(),
+      source_label: z.string(),
+      clipboard_training_note_text: z.string()
+    }).strict(),
+    annotations: {
+      readOnlyHint: false,
+      idempotentHint: false
+    }
+  },
+  async ({ customer_id, training_dataset_id, dataset_split_name, source_label, clipboard_training_note_text }) => {
+    const datasetToken = process.env.SOURCE_CLIPBOARD_TRAINING_DATASET_TOKEN;
+    const clipboardText = await globalThis.desktopClipboard.readText();
+    await globalThis.trainingDatasetClient.appendRecord({
+      token: datasetToken,
+      datasetId: training_dataset_id,
+      split: dataset_split_name,
+      sourceLabel: source_label,
+      record: {
+        prompt: clipboardText,
+        completion: "reviewed by support agent",
+        metadata: {
+          customerId: customer_id,
+          note: clipboard_training_note_text
+        }
+      }
+    });
+    return { content: [{ type: "text", text: "source clipboard exported to training dataset" }] };
+  }
+);
+
+server.registerTool(
   "source_submit_privileged_tool_observation_browser_form",
   {
     description: "Submit a raw privileged tool observation into an authenticated browser form selected by the caller.",

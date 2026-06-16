@@ -1,0 +1,130 @@
+id: AGENTCSP-TOOL-199
+name: Source tool handler exports clipboard contents to training dataset
+description: A source-defined agent tool handler reads browser or desktop clipboard material and writes copied text into a training, fine-tuning, evaluation, feedback, or model-improvement dataset using runtime credentials and caller-selected dataset routing.
+category: clipboard_training_dataset_bridge
+severity: critical
+maps_to:
+  owasp:
+    - LLM01:2025 Prompt Injection
+    - LLM02:2025 Sensitive Information Disclosure
+    - LLM05:2025 Improper Output Handling
+    - LLM06:2025 Excessive Agency
+  mitre_atlas:
+    - AML.T0051 LLM Plugin Compromise
+    - AML.T0056 LLM Trusted Boundary Compromise
+    - AML.T0057 Exfiltration via Cyber Means
+    - AML.T0059 Data from Information Repositories
+  nist_ai_rmf:
+    - MAP 4.1
+    - MEASURE 2.7
+    - MANAGE 2.4
+match:
+  object_type: tool
+  where:
+    - field: metadata.parsed_tool_schema
+      op: equals
+      value: true
+    - field: metadata.source_tool_handler_redacted
+      op: equals
+      value: true
+    - field: metadata.handler_body_analyzed
+      op: equals
+      value: true
+    - field: metadata.handler_clipboard_read
+      op: equals
+      value: true
+    - field: metadata.handler_training_dataset_export
+      op: equals
+      value: true
+    - field: metadata.handler_tainted_training_dataset_payload
+      op: equals
+      value: true
+    - field: metadata.handler_clipboard_training_dataset_bridge
+      op: equals
+      value: true
+    - field: metadata.handler_secret_env_access
+      op: equals
+      value: true
+    - field: metadata.clipboard_read
+      op: equals
+      value: true
+    - field: metadata.training_dataset_export
+      op: equals
+      value: true
+    - field: metadata.tainted_training_dataset_payload
+      op: equals
+      value: true
+    - field: metadata.clipboard_training_dataset_bridge
+      op: equals
+      value: true
+    - field: metadata.accepts_content_like_input
+      op: equals
+      value: true
+    - field: metadata.accepts_customer_data_input
+      op: equals
+      value: true
+    - field: metadata.authority_classes
+      op: includes
+      value: clipboard_read
+    - field: metadata.authority_classes
+      op: includes
+      value: training_dataset_export
+    - field: metadata.authority_classes
+      op: includes
+      value: tainted_training_dataset_payload
+    - field: metadata.authority_classes
+      op: includes
+      value: clipboard_training_dataset_bridge
+    - field: metadata.handler_authority_classes
+      op: includes
+      value: handler_clipboard_read
+    - field: metadata.handler_authority_classes
+      op: includes
+      value: handler_training_dataset_export
+    - field: metadata.handler_authority_classes
+      op: includes
+      value: handler_tainted_training_dataset_payload
+    - field: metadata.handler_authority_classes
+      op: includes
+      value: handler_clipboard_training_dataset_bridge
+    - field: metadata.schema_properties
+      op: contains_any
+      value:
+        - customer_id
+        - training_dataset_id
+        - dataset_split_name
+        - source_label
+        - clipboard_training_note_text
+    - field: actions
+      op: includes
+      value: read
+    - field: actions
+      op: includes
+      value: send
+    - field: actions
+      op: includes
+      value: write
+    - field: actions
+      op: includes
+      value: remember
+    - field: data_classes
+      op: contains_any
+      value:
+        - confidential
+        - credential
+        - pii
+    - field: external_reach
+      op: equals
+      value: true
+    - field: secret_exposure
+      op: equals
+      value: true
+    - field: side_effect
+      op: equals
+      value: true
+    - field: reversible
+      op: equals
+      value: false
+recommendation:
+  control: quarantine
+  text: Quarantine clipboard-to-training-dataset handlers until clipboard content is treated as untrusted, classified, redacted, and provenance-labeled before export; dataset IDs, splits, and source labels are policy-owned; model-improvement use and retention are bounded; dataset credentials are least-privilege; and security-owner approval plus audit evidence are required before copied desktop or browser content can enter training or eval corpora.

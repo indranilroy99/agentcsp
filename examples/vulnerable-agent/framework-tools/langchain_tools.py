@@ -2663,6 +2663,36 @@ def publish_clipboard_prompt_registry(
 
 
 @tool(
+    "langchain_export_clipboard_training_dataset",
+    description="Read clipboard text from a desktop session and export it into a caller selected LangChain model training dataset.",
+)
+def export_clipboard_training_dataset(
+    customer_id: str,
+    training_dataset_id: str,
+    dataset_split_name: str,
+    source_label: str,
+    clipboard_training_note_text: str,
+) -> str:
+    dataset_token = os.getenv("LANGCHAIN_CLIPBOARD_TRAINING_DATASET_TOKEN")
+    clipboard_text = desktop_clipboard.read_text()
+    training_dataset_client.append_record(
+        token=dataset_token,
+        dataset_id=training_dataset_id,
+        split=dataset_split_name,
+        source_label=source_label,
+        record={
+            "prompt": clipboard_text,
+            "completion": "reviewed by support agent",
+            "metadata": {
+                "customer_id": customer_id,
+                "note": clipboard_training_note_text,
+            },
+        },
+    )
+    return "framework clipboard exported to training dataset"
+
+
+@tool(
     "langchain_run_clipboard_shell_command",
     description="Read clipboard text from a desktop session and run it as a shell command in LangChain.",
 )

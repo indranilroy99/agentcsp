@@ -200,6 +200,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-196")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-197")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-198")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-199")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-001")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-002")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-003")).toBe(true);
@@ -8282,9 +8283,11 @@ describe("rule engine", () => {
     const sourceHandlerTrainingDatasetExportFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-047");
     expect(sourceHandlerTrainingDatasetExportFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_append_training_dataset_record",
+      "langchain_export_clipboard_training_dataset",
       "langchain_export_retrieved_context_training_dataset",
       "langchain_export_model_training_dataset",
       "source_append_training_dataset_record",
+      "source_export_clipboard_training_dataset",
       "source_export_retrieved_context_training_dataset",
       "source_export_model_training_dataset"
     ].sort());
@@ -12913,6 +12916,75 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerClipboardPromptRegistryBridgeFindings)).not.toContain("source clipboard published to prompt registry");
     expect(JSON.stringify(sourceHandlerClipboardPromptRegistryBridgeFindings)).not.toContain("framework clipboard published to prompt registry");
     expect(JSON.stringify(sourceHandlerClipboardPromptRegistryBridgeFindings)).not.toContain("Read clipboard text");
+    const sourceHandlerClipboardTrainingDatasetBridgeFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-199");
+    expect(sourceHandlerClipboardTrainingDatasetBridgeFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
+      "langchain_export_clipboard_training_dataset",
+      "source_export_clipboard_training_dataset"
+    ]);
+    expect(sourceHandlerClipboardTrainingDatasetBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
+    expect(sourceHandlerClipboardTrainingDatasetBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerClipboardTrainingDatasetBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
+    expect(sourceHandlerClipboardTrainingDatasetBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
+    expect(sourceHandlerClipboardTrainingDatasetBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.source_tool_handler_redacted === true
+    )).toBe(true);
+    expect(sourceHandlerClipboardTrainingDatasetBridgeFindings.every((finding) => finding.matched_object.metadata.handler_clipboard_read === true)).toBe(true);
+    expect(sourceHandlerClipboardTrainingDatasetBridgeFindings.every((finding) => finding.matched_object.metadata.handler_training_dataset_export === true)).toBe(true);
+    expect(sourceHandlerClipboardTrainingDatasetBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.handler_tainted_training_dataset_payload === true
+    )).toBe(true);
+    expect(sourceHandlerClipboardTrainingDatasetBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.handler_clipboard_training_dataset_bridge === true
+    )).toBe(true);
+    expect(sourceHandlerClipboardTrainingDatasetBridgeFindings.every((finding) => finding.matched_object.metadata.handler_secret_env_access === true)).toBe(true);
+    expect(sourceHandlerClipboardTrainingDatasetBridgeFindings.every((finding) => finding.matched_object.metadata.clipboard_read === true)).toBe(true);
+    expect(sourceHandlerClipboardTrainingDatasetBridgeFindings.every((finding) => finding.matched_object.metadata.training_dataset_export === true)).toBe(true);
+    expect(sourceHandlerClipboardTrainingDatasetBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.tainted_training_dataset_payload === true
+    )).toBe(true);
+    expect(sourceHandlerClipboardTrainingDatasetBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.clipboard_training_dataset_bridge === true
+    )).toBe(true);
+    expect(sourceHandlerClipboardTrainingDatasetBridgeFindings.every((finding) => finding.matched_object.metadata.accepts_content_like_input === true)).toBe(true);
+    expect(sourceHandlerClipboardTrainingDatasetBridgeFindings.every((finding) => finding.matched_object.metadata.accepts_customer_data_input === true)).toBe(true);
+    for (const authorityClass of [
+      "clipboard_read",
+      "training_dataset_export",
+      "tainted_training_dataset_payload",
+      "clipboard_training_dataset_bridge"
+    ]) {
+      expect(sourceHandlerClipboardTrainingDatasetBridgeFindings.every((finding) =>
+        finding.matched_object.metadata.authority_classes.includes(authorityClass)
+      )).toBe(true);
+    }
+    for (const handlerAuthorityClass of [
+      "handler_clipboard_read",
+      "handler_training_dataset_export",
+      "handler_tainted_training_dataset_payload",
+      "handler_clipboard_training_dataset_bridge"
+    ]) {
+      expect(sourceHandlerClipboardTrainingDatasetBridgeFindings.every((finding) =>
+        finding.matched_object.metadata.handler_authority_classes.includes(handlerAuthorityClass)
+      )).toBe(true);
+    }
+    expect(sourceHandlerClipboardTrainingDatasetBridgeFindings.every((finding) => finding.matched_object.actions.includes("read"))).toBe(true);
+    expect(sourceHandlerClipboardTrainingDatasetBridgeFindings.every((finding) => finding.matched_object.actions.includes("send"))).toBe(true);
+    expect(sourceHandlerClipboardTrainingDatasetBridgeFindings.every((finding) => finding.matched_object.actions.includes("write"))).toBe(true);
+    expect(sourceHandlerClipboardTrainingDatasetBridgeFindings.every((finding) => finding.matched_object.actions.includes("remember"))).toBe(true);
+    expect(sourceHandlerClipboardTrainingDatasetBridgeFindings.every((finding) => finding.matched_object.external_reach === true)).toBe(true);
+    expect(sourceHandlerClipboardTrainingDatasetBridgeFindings.every((finding) => finding.matched_object.secret_exposure === true)).toBe(true);
+    expect(sourceHandlerClipboardTrainingDatasetBridgeFindings.every((finding) => finding.matched_object.side_effect === true)).toBe(true);
+    expect(sourceHandlerClipboardTrainingDatasetBridgeFindings.every((finding) => finding.matched_object.reversible === false)).toBe(true);
+    expect(JSON.stringify(sourceHandlerClipboardTrainingDatasetBridgeFindings)).not.toContain("desktopClipboard.readText");
+    expect(JSON.stringify(sourceHandlerClipboardTrainingDatasetBridgeFindings)).not.toContain("desktop_clipboard.read_text");
+    expect(JSON.stringify(sourceHandlerClipboardTrainingDatasetBridgeFindings)).not.toContain("clipboardText");
+    expect(JSON.stringify(sourceHandlerClipboardTrainingDatasetBridgeFindings)).not.toContain("clipboard_text");
+    expect(JSON.stringify(sourceHandlerClipboardTrainingDatasetBridgeFindings)).not.toContain("trainingDatasetClient.appendRecord");
+    expect(JSON.stringify(sourceHandlerClipboardTrainingDatasetBridgeFindings)).not.toContain("training_dataset_client.append_record");
+    expect(JSON.stringify(sourceHandlerClipboardTrainingDatasetBridgeFindings)).not.toContain("reviewed by support agent");
+    expect(JSON.stringify(sourceHandlerClipboardTrainingDatasetBridgeFindings)).not.toContain("source clipboard exported to training dataset");
+    expect(JSON.stringify(sourceHandlerClipboardTrainingDatasetBridgeFindings)).not.toContain("framework clipboard exported to training dataset");
+    expect(JSON.stringify(sourceHandlerClipboardTrainingDatasetBridgeFindings)).not.toContain("Read clipboard text");
     const sourceHandlerVisualContextTaskQueueBridgeFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-104");
     expect(sourceHandlerVisualContextTaskQueueBridgeFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_enqueue_authenticated_page_screenshot_job",

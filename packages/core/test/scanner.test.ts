@@ -800,6 +800,9 @@ describe("scanner", () => {
     const sourceClipboardPromptRegistryBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "source_publish_clipboard_prompt_registry"
     );
+    const sourceClipboardTrainingDatasetBridgeTool = surfaces.tools.find(
+      (surface) => surface.name === "source_export_clipboard_training_dataset"
+    );
     const sourceVisualContextCaptureTool = surfaces.tools.find((surface) => surface.name === "source_capture_authenticated_page_screenshot");
     const sourceVisualContextPromptBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "source_review_authenticated_page_screenshot_with_model"
@@ -1218,6 +1221,9 @@ describe("scanner", () => {
     );
     const langchainClipboardPromptRegistryBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "langchain_publish_clipboard_prompt_registry"
+    );
+    const langchainClipboardTrainingDatasetBridgeTool = surfaces.tools.find(
+      (surface) => surface.name === "langchain_export_clipboard_training_dataset"
     );
     const langchainVisualContextCaptureTool = surfaces.tools.find((surface) => surface.name === "langchain_capture_authenticated_page_screenshot");
     const langchainVisualContextPromptBridgeTool = surfaces.tools.find(
@@ -10833,6 +10839,86 @@ describe("scanner", () => {
     expect(JSON.stringify(sourceClipboardPromptRegistryBridgeTool)).not.toContain("clipboardText");
     expect(JSON.stringify(sourceClipboardPromptRegistryBridgeTool)).not.toContain("source clipboard published to prompt registry");
     expect(JSON.stringify(sourceClipboardPromptRegistryBridgeTool)).not.toContain("Read clipboard text");
+    expect(sourceClipboardTrainingDatasetBridgeTool).toMatchObject({
+      path: "mcp-source/customer-tools.ts",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["call", "publish", "read", "remember", "send", "write"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(sourceClipboardTrainingDatasetBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_mcp_source_tool: true,
+      mcp_source_tool_registration: true,
+      mcp_source_tool_registration_kind: "registerTool",
+      mcp_source_tool_argument_count: 3,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_content_like_input: true,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      clipboard_read: true,
+      training_dataset_export: true,
+      tainted_training_dataset_payload: true,
+      clipboard_training_dataset_bridge: true,
+      external_write: true,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_clipboard_read: true,
+      handler_training_dataset_export: true,
+      handler_tainted_training_dataset_payload: true,
+      handler_clipboard_training_dataset_bridge: true,
+      handler_secret_env_access: true,
+      handler_model_visible_output: true,
+      handler_signal_count: 5,
+      open_world_schema: false
+    });
+    expect(sourceClipboardTrainingDatasetBridgeTool?.metadata.authority_classes).toEqual([
+      "clipboard_read",
+      "clipboard_training_dataset_bridge",
+      "content_input",
+      "customer_data_input",
+      "external_write",
+      "handler_clipboard_read",
+      "handler_clipboard_training_dataset_bridge",
+      "handler_secret_env_access",
+      "handler_tainted_training_dataset_payload",
+      "handler_training_dataset_export",
+      "pii_input",
+      "secret_env_access",
+      "tainted_training_dataset_payload",
+      "training_dataset_export"
+    ]);
+    expect(sourceClipboardTrainingDatasetBridgeTool?.metadata.handler_authority_classes).toEqual([
+      "handler_clipboard_read",
+      "handler_clipboard_training_dataset_bridge",
+      "handler_secret_env_access",
+      "handler_tainted_training_dataset_payload",
+      "handler_training_dataset_export"
+    ]);
+    expect(sourceClipboardTrainingDatasetBridgeTool?.metadata.handler_env_key_names).toEqual(["SOURCE_CLIPBOARD_TRAINING_DATASET_TOKEN"]);
+    expect(sourceClipboardTrainingDatasetBridgeTool?.metadata.schema_properties).toEqual([
+      "clipboard_training_note_text",
+      "customer_id",
+      "dataset_split_name",
+      "source_label",
+      "training_dataset_id"
+    ]);
+    expect(sourceClipboardTrainingDatasetBridgeTool?.metadata.required_properties).toEqual([
+      "clipboard_training_note_text",
+      "customer_id",
+      "dataset_split_name",
+      "source_label",
+      "training_dataset_id"
+    ]);
+    expect(JSON.stringify(sourceClipboardTrainingDatasetBridgeTool)).not.toContain("desktopClipboard.readText");
+    expect(JSON.stringify(sourceClipboardTrainingDatasetBridgeTool)).not.toContain("trainingDatasetClient.appendRecord");
+    expect(JSON.stringify(sourceClipboardTrainingDatasetBridgeTool)).not.toContain("clipboardText");
+    expect(JSON.stringify(sourceClipboardTrainingDatasetBridgeTool)).not.toContain("reviewed by support agent");
+    expect(JSON.stringify(sourceClipboardTrainingDatasetBridgeTool)).not.toContain("source clipboard exported to training dataset");
+    expect(JSON.stringify(sourceClipboardTrainingDatasetBridgeTool)).not.toContain("Read clipboard text");
     expect(sourceVisualContextCaptureTool).toMatchObject({
       path: "mcp-source/customer-tools.ts",
       data_classes: ["confidential", "credential", "pii"],
@@ -25574,6 +25660,87 @@ describe("scanner", () => {
     expect(JSON.stringify(langchainClipboardPromptRegistryBridgeTool)).not.toContain("clipboard_text");
     expect(JSON.stringify(langchainClipboardPromptRegistryBridgeTool)).not.toContain("framework clipboard published to prompt registry");
     expect(JSON.stringify(langchainClipboardPromptRegistryBridgeTool)).not.toContain("Read clipboard text");
+    expect(langchainClipboardTrainingDatasetBridgeTool).toMatchObject({
+      path: "framework-tools/langchain_tools.py",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["call", "publish", "read", "remember", "send", "write"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(langchainClipboardTrainingDatasetBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_agent_framework_source_tool: true,
+      agent_framework_source_tool: true,
+      agent_framework_source_tool_framework: "langchain",
+      agent_framework_source_tool_registration_kind: "python_tool_decorator",
+      agent_framework_source_tool_argument_count: 5,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_content_like_input: true,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      clipboard_read: true,
+      training_dataset_export: true,
+      tainted_training_dataset_payload: true,
+      clipboard_training_dataset_bridge: true,
+      external_write: true,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_clipboard_read: true,
+      handler_training_dataset_export: true,
+      handler_tainted_training_dataset_payload: true,
+      handler_clipboard_training_dataset_bridge: true,
+      handler_secret_env_access: true,
+      handler_model_visible_output: true,
+      handler_signal_count: 5,
+      open_world_schema: false
+    });
+    expect(langchainClipboardTrainingDatasetBridgeTool?.metadata.authority_classes).toEqual([
+      "clipboard_read",
+      "clipboard_training_dataset_bridge",
+      "content_input",
+      "customer_data_input",
+      "external_write",
+      "handler_clipboard_read",
+      "handler_clipboard_training_dataset_bridge",
+      "handler_secret_env_access",
+      "handler_tainted_training_dataset_payload",
+      "handler_training_dataset_export",
+      "pii_input",
+      "secret_env_access",
+      "tainted_training_dataset_payload",
+      "training_dataset_export"
+    ]);
+    expect(langchainClipboardTrainingDatasetBridgeTool?.metadata.handler_authority_classes).toEqual([
+      "handler_clipboard_read",
+      "handler_clipboard_training_dataset_bridge",
+      "handler_secret_env_access",
+      "handler_tainted_training_dataset_payload",
+      "handler_training_dataset_export"
+    ]);
+    expect(langchainClipboardTrainingDatasetBridgeTool?.metadata.handler_env_key_names).toEqual(["LANGCHAIN_CLIPBOARD_TRAINING_DATASET_TOKEN"]);
+    expect(langchainClipboardTrainingDatasetBridgeTool?.metadata.schema_properties).toEqual([
+      "clipboard_training_note_text",
+      "customer_id",
+      "dataset_split_name",
+      "source_label",
+      "training_dataset_id"
+    ]);
+    expect(langchainClipboardTrainingDatasetBridgeTool?.metadata.required_properties).toEqual([
+      "clipboard_training_note_text",
+      "customer_id",
+      "dataset_split_name",
+      "source_label",
+      "training_dataset_id"
+    ]);
+    expect(JSON.stringify(langchainClipboardTrainingDatasetBridgeTool)).not.toContain("desktop_clipboard.read_text");
+    expect(JSON.stringify(langchainClipboardTrainingDatasetBridgeTool)).not.toContain("training_dataset_client.append_record");
+    expect(JSON.stringify(langchainClipboardTrainingDatasetBridgeTool)).not.toContain("clipboard_text");
+    expect(JSON.stringify(langchainClipboardTrainingDatasetBridgeTool)).not.toContain("reviewed by support agent");
+    expect(JSON.stringify(langchainClipboardTrainingDatasetBridgeTool)).not.toContain("framework clipboard exported to training dataset");
+    expect(JSON.stringify(langchainClipboardTrainingDatasetBridgeTool)).not.toContain("Read clipboard text");
     expect(langchainVisualContextCaptureTool).toMatchObject({
       path: "framework-tools/langchain_tools.py",
       data_classes: ["confidential", "credential", "pii"],
