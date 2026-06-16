@@ -203,6 +203,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-199")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-200")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-201")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-202")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-001")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-002")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-003")).toBe(true);
@@ -10536,6 +10537,7 @@ describe("rule engine", () => {
       "langchain_fill_customer_vault_secret_browser_form",
       "langchain_grant_authenticated_page_screenshot_authorization",
       "langchain_upload_local_file_authenticated_browser",
+      "langchain_paste_clipboard_authenticated_browser",
       "langchain_promote_authenticated_page_screenshot_feedback",
 	      "langchain_post_authenticated_page_screenshot_external",
       "langchain_publish_authenticated_page_screenshot_prompt_registry",
@@ -10557,6 +10559,7 @@ describe("rule engine", () => {
       "source_fill_customer_vault_secret_browser_form",
       "source_grant_authenticated_page_screenshot_authorization",
       "source_upload_local_file_authenticated_browser",
+      "source_paste_clipboard_authenticated_browser",
       "source_promote_authenticated_page_screenshot_feedback",
 	      "source_post_authenticated_page_screenshot_external",
       "source_publish_authenticated_page_screenshot_prompt_registry",
@@ -10597,6 +10600,12 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerBrowserAutomationFindings)).not.toContain("framework vault secret submitted through browser");
     expect(JSON.stringify(sourceHandlerBrowserAutomationFindings)).not.toContain("source local file uploaded through browser");
     expect(JSON.stringify(sourceHandlerBrowserAutomationFindings)).not.toContain("framework local file uploaded through browser");
+    expect(JSON.stringify(sourceHandlerBrowserAutomationFindings)).not.toContain("source clipboard pasted into authenticated browser");
+    expect(JSON.stringify(sourceHandlerBrowserAutomationFindings)).not.toContain("framework clipboard pasted into authenticated browser");
+    expect(JSON.stringify(sourceHandlerBrowserAutomationFindings)).not.toContain("desktopClipboard.readText");
+    expect(JSON.stringify(sourceHandlerBrowserAutomationFindings)).not.toContain("desktop_clipboard.read_text");
+    expect(JSON.stringify(sourceHandlerBrowserAutomationFindings)).not.toContain("clipboardText");
+    expect(JSON.stringify(sourceHandlerBrowserAutomationFindings)).not.toContain("clipboard_text");
     expect(JSON.stringify(sourceHandlerBrowserAutomationFindings)).not.toContain("source tool observation submitted through browser");
     expect(JSON.stringify(sourceHandlerBrowserAutomationFindings)).not.toContain("framework tool observation submitted through browser");
     expect(JSON.stringify(sourceHandlerBrowserAutomationFindings)).not.toContain("source retrieved context submitted through browser");
@@ -10642,6 +10651,7 @@ describe("rule engine", () => {
       "langchain_fill_customer_vault_secret_browser_form",
       "langchain_grant_authenticated_page_screenshot_authorization",
       "langchain_upload_local_file_authenticated_browser",
+      "langchain_paste_clipboard_authenticated_browser",
       "langchain_promote_authenticated_page_screenshot_feedback",
 	      "langchain_post_authenticated_page_screenshot_external",
       "langchain_publish_authenticated_page_screenshot_prompt_registry",
@@ -10663,6 +10673,7 @@ describe("rule engine", () => {
       "source_fill_customer_vault_secret_browser_form",
       "source_grant_authenticated_page_screenshot_authorization",
       "source_upload_local_file_authenticated_browser",
+      "source_paste_clipboard_authenticated_browser",
       "source_promote_authenticated_page_screenshot_feedback",
 	      "source_post_authenticated_page_screenshot_external",
       "source_publish_authenticated_page_screenshot_prompt_registry",
@@ -10701,6 +10712,12 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerTaintedBrowserTargetFindings)).not.toContain("secret_browser_value");
     expect(JSON.stringify(sourceHandlerTaintedBrowserTargetFindings)).not.toContain("source vault secret submitted through browser");
     expect(JSON.stringify(sourceHandlerTaintedBrowserTargetFindings)).not.toContain("framework vault secret submitted through browser");
+    expect(JSON.stringify(sourceHandlerTaintedBrowserTargetFindings)).not.toContain("source clipboard pasted into authenticated browser");
+    expect(JSON.stringify(sourceHandlerTaintedBrowserTargetFindings)).not.toContain("framework clipboard pasted into authenticated browser");
+    expect(JSON.stringify(sourceHandlerTaintedBrowserTargetFindings)).not.toContain("desktopClipboard.readText");
+    expect(JSON.stringify(sourceHandlerTaintedBrowserTargetFindings)).not.toContain("desktop_clipboard.read_text");
+    expect(JSON.stringify(sourceHandlerTaintedBrowserTargetFindings)).not.toContain("clipboardText");
+    expect(JSON.stringify(sourceHandlerTaintedBrowserTargetFindings)).not.toContain("clipboard_text");
     expect(JSON.stringify(sourceHandlerTaintedBrowserTargetFindings)).not.toContain("source tool observation submitted through browser");
     expect(JSON.stringify(sourceHandlerTaintedBrowserTargetFindings)).not.toContain("framework tool observation submitted through browser");
     expect(JSON.stringify(sourceHandlerTaintedBrowserTargetFindings)).not.toContain("source retrieved context submitted through browser");
@@ -10720,6 +10737,82 @@ describe("rule engine", () => {
 	    expect(JSON.stringify(sourceHandlerTaintedBrowserTargetFindings)).not.toContain("source visual context stored in database");
 	    expect(JSON.stringify(sourceHandlerTaintedBrowserTargetFindings)).not.toContain("framework visual context stored in database");
 	    expect(JSON.stringify(sourceHandlerTaintedBrowserTargetFindings)).not.toContain("Drive an authenticated browser session");
+    const sourceHandlerClipboardBrowserAutomationBridgeFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-202");
+    expect(sourceHandlerClipboardBrowserAutomationBridgeFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
+      "langchain_paste_clipboard_authenticated_browser",
+      "source_paste_clipboard_authenticated_browser"
+    ]);
+    expect(sourceHandlerClipboardBrowserAutomationBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
+    expect(sourceHandlerClipboardBrowserAutomationBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerClipboardBrowserAutomationBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
+    expect(sourceHandlerClipboardBrowserAutomationBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
+    expect(sourceHandlerClipboardBrowserAutomationBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.source_tool_handler_redacted === true
+    )).toBe(true);
+    expect(sourceHandlerClipboardBrowserAutomationBridgeFindings.every((finding) => finding.matched_object.metadata.handler_clipboard_read === true)).toBe(true);
+    expect(sourceHandlerClipboardBrowserAutomationBridgeFindings.every((finding) => finding.matched_object.metadata.handler_browser_automation === true)).toBe(true);
+    expect(sourceHandlerClipboardBrowserAutomationBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.handler_tainted_browser_automation_target === true
+    )).toBe(true);
+    expect(sourceHandlerClipboardBrowserAutomationBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.handler_clipboard_browser_automation_bridge === true
+    )).toBe(true);
+    expect(sourceHandlerClipboardBrowserAutomationBridgeFindings.every((finding) => finding.matched_object.metadata.handler_secret_env_access === true)).toBe(true);
+    expect(sourceHandlerClipboardBrowserAutomationBridgeFindings.every((finding) => finding.matched_object.metadata.clipboard_read === true)).toBe(true);
+    expect(sourceHandlerClipboardBrowserAutomationBridgeFindings.every((finding) => finding.matched_object.metadata.browser_automation === true)).toBe(true);
+    expect(sourceHandlerClipboardBrowserAutomationBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.tainted_browser_automation_target === true
+    )).toBe(true);
+    expect(sourceHandlerClipboardBrowserAutomationBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.clipboard_browser_automation_bridge === true
+    )).toBe(true);
+    expect(sourceHandlerClipboardBrowserAutomationBridgeFindings.every((finding) => finding.matched_object.metadata.accepts_url_input === true)).toBe(true);
+    expect(sourceHandlerClipboardBrowserAutomationBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.accepts_content_like_input === true
+    )).toBe(true);
+    expect(sourceHandlerClipboardBrowserAutomationBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.accepts_customer_data_input === true
+    )).toBe(true);
+    for (const authorityClass of [
+      "clipboard_read",
+      "browser_automation",
+      "tainted_browser_automation_target",
+      "clipboard_browser_automation_bridge"
+    ]) {
+      expect(sourceHandlerClipboardBrowserAutomationBridgeFindings.every((finding) =>
+        finding.matched_object.metadata.authority_classes.includes(authorityClass)
+      )).toBe(true);
+    }
+    for (const handlerAuthorityClass of [
+      "handler_clipboard_read",
+      "handler_browser_automation",
+      "handler_tainted_browser_automation_target",
+      "handler_clipboard_browser_automation_bridge"
+    ]) {
+      expect(sourceHandlerClipboardBrowserAutomationBridgeFindings.every((finding) =>
+        finding.matched_object.metadata.handler_authority_classes.includes(handlerAuthorityClass)
+      )).toBe(true);
+    }
+    expect(sourceHandlerClipboardBrowserAutomationBridgeFindings.every((finding) => finding.matched_object.actions.includes("execute"))).toBe(true);
+    expect(sourceHandlerClipboardBrowserAutomationBridgeFindings.every((finding) => finding.matched_object.actions.includes("read"))).toBe(true);
+    expect(sourceHandlerClipboardBrowserAutomationBridgeFindings.every((finding) => finding.matched_object.actions.includes("send"))).toBe(true);
+    expect(sourceHandlerClipboardBrowserAutomationBridgeFindings.every((finding) => finding.matched_object.external_reach === true)).toBe(true);
+    expect(sourceHandlerClipboardBrowserAutomationBridgeFindings.every((finding) => finding.matched_object.secret_exposure === true)).toBe(true);
+    expect(sourceHandlerClipboardBrowserAutomationBridgeFindings.every((finding) => finding.matched_object.side_effect === true)).toBe(true);
+    expect(sourceHandlerClipboardBrowserAutomationBridgeFindings.every((finding) => finding.matched_object.reversible === false)).toBe(true);
+    expect(JSON.stringify(sourceHandlerClipboardBrowserAutomationBridgeFindings)).not.toContain("desktopClipboard.readText");
+    expect(JSON.stringify(sourceHandlerClipboardBrowserAutomationBridgeFindings)).not.toContain("desktop_clipboard.read_text");
+    expect(JSON.stringify(sourceHandlerClipboardBrowserAutomationBridgeFindings)).not.toContain("authenticatedBrowserPage.goto");
+    expect(JSON.stringify(sourceHandlerClipboardBrowserAutomationBridgeFindings)).not.toContain("authenticatedBrowserPage.fill");
+    expect(JSON.stringify(sourceHandlerClipboardBrowserAutomationBridgeFindings)).not.toContain("authenticatedBrowserPage.click");
+    expect(JSON.stringify(sourceHandlerClipboardBrowserAutomationBridgeFindings)).not.toContain("authenticated_browser_page.goto");
+    expect(JSON.stringify(sourceHandlerClipboardBrowserAutomationBridgeFindings)).not.toContain("authenticated_browser_page.fill");
+    expect(JSON.stringify(sourceHandlerClipboardBrowserAutomationBridgeFindings)).not.toContain("authenticated_browser_page.click");
+    expect(JSON.stringify(sourceHandlerClipboardBrowserAutomationBridgeFindings)).not.toContain("clipboardText");
+    expect(JSON.stringify(sourceHandlerClipboardBrowserAutomationBridgeFindings)).not.toContain("clipboard_text");
+    expect(JSON.stringify(sourceHandlerClipboardBrowserAutomationBridgeFindings)).not.toContain("source clipboard pasted into authenticated browser");
+    expect(JSON.stringify(sourceHandlerClipboardBrowserAutomationBridgeFindings)).not.toContain("framework clipboard pasted into authenticated browser");
+    expect(JSON.stringify(sourceHandlerClipboardBrowserAutomationBridgeFindings)).not.toContain("Read clipboard text");
     const sourceHandlerToolOutputBrowserAutomationBridgeFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-087");
     expect(sourceHandlerToolOutputBrowserAutomationBridgeFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_submit_privileged_tool_observation_browser_form",

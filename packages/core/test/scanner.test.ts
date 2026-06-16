@@ -809,6 +809,9 @@ describe("scanner", () => {
     const sourceClipboardCredentialIssuanceBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "source_issue_clipboard_agent_credential"
     );
+    const sourceClipboardBrowserAutomationBridgeTool = surfaces.tools.find(
+      (surface) => surface.name === "source_paste_clipboard_authenticated_browser"
+    );
     const sourceVisualContextCaptureTool = surfaces.tools.find((surface) => surface.name === "source_capture_authenticated_page_screenshot");
     const sourceVisualContextPromptBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "source_review_authenticated_page_screenshot_with_model"
@@ -1236,6 +1239,9 @@ describe("scanner", () => {
     );
     const langchainClipboardCredentialIssuanceBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "langchain_issue_clipboard_agent_credential"
+    );
+    const langchainClipboardBrowserAutomationBridgeTool = surfaces.tools.find(
+      (surface) => surface.name === "langchain_paste_clipboard_authenticated_browser"
     );
     const langchainVisualContextCaptureTool = surfaces.tools.find((surface) => surface.name === "langchain_capture_authenticated_page_screenshot");
     const langchainVisualContextPromptBridgeTool = surfaces.tools.find(
@@ -11096,6 +11102,90 @@ describe("scanner", () => {
     expect(JSON.stringify(sourceClipboardCredentialIssuanceBridgeTool)).not.toContain("clipboardText");
     expect(JSON.stringify(sourceClipboardCredentialIssuanceBridgeTool)).not.toContain("source clipboard credential issued");
     expect(JSON.stringify(sourceClipboardCredentialIssuanceBridgeTool)).not.toContain("Read clipboard text");
+    expect(sourceClipboardBrowserAutomationBridgeTool).toMatchObject({
+      path: "mcp-source/customer-tools.ts",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["call", "execute", "read", "send"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(sourceClipboardBrowserAutomationBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_mcp_source_tool: true,
+      mcp_source_tool_registration: true,
+      mcp_source_tool_registration_kind: "registerTool",
+      mcp_source_tool_argument_count: 3,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_secret_like_input: true,
+      accepts_content_like_input: true,
+      accepts_url_input: true,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      browser_automation: true,
+      tainted_browser_automation_target: true,
+      clipboard_read: true,
+      clipboard_browser_automation_bridge: true,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_browser_automation: true,
+      handler_tainted_browser_automation_target: true,
+      handler_clipboard_read: true,
+      handler_clipboard_browser_automation_bridge: true,
+      handler_secret_env_access: true,
+      handler_model_visible_output: true,
+      handler_signal_count: 5,
+      open_world_schema: false
+    });
+    expect(sourceClipboardBrowserAutomationBridgeTool?.metadata.authority_classes).toEqual([
+      "browser_automation",
+      "browser_control",
+      "clipboard_browser_automation_bridge",
+      "clipboard_read",
+      "content_input",
+      "credential_input",
+      "customer_data_input",
+      "handler_browser_automation",
+      "handler_clipboard_browser_automation_bridge",
+      "handler_clipboard_read",
+      "handler_secret_env_access",
+      "handler_tainted_browser_automation_target",
+      "network_access",
+      "pii_input",
+      "secret_env_access",
+      "tainted_browser_automation_target"
+    ]);
+    expect(sourceClipboardBrowserAutomationBridgeTool?.metadata.handler_authority_classes).toEqual([
+      "handler_browser_automation",
+      "handler_clipboard_browser_automation_bridge",
+      "handler_clipboard_read",
+      "handler_secret_env_access",
+      "handler_tainted_browser_automation_target"
+    ]);
+    expect(sourceClipboardBrowserAutomationBridgeTool?.metadata.handler_env_key_names).toEqual(["SOURCE_CLIPBOARD_BROWSER_AUTOMATION_TOKEN"]);
+    expect(sourceClipboardBrowserAutomationBridgeTool?.metadata.schema_properties).toEqual([
+      "clipboard_browser_reason_text",
+      "customer_id",
+      "form_selector",
+      "submit_selector",
+      "target_url"
+    ]);
+    expect(sourceClipboardBrowserAutomationBridgeTool?.metadata.required_properties).toEqual([
+      "clipboard_browser_reason_text",
+      "customer_id",
+      "form_selector",
+      "submit_selector",
+      "target_url"
+    ]);
+    expect(JSON.stringify(sourceClipboardBrowserAutomationBridgeTool)).not.toContain("desktopClipboard.readText");
+    expect(JSON.stringify(sourceClipboardBrowserAutomationBridgeTool)).not.toContain("authenticatedBrowserPage.goto");
+    expect(JSON.stringify(sourceClipboardBrowserAutomationBridgeTool)).not.toContain("authenticatedBrowserPage.fill");
+    expect(JSON.stringify(sourceClipboardBrowserAutomationBridgeTool)).not.toContain("authenticatedBrowserPage.click");
+    expect(JSON.stringify(sourceClipboardBrowserAutomationBridgeTool)).not.toContain("clipboardText");
+    expect(JSON.stringify(sourceClipboardBrowserAutomationBridgeTool)).not.toContain("source clipboard pasted into authenticated browser");
+    expect(JSON.stringify(sourceClipboardBrowserAutomationBridgeTool)).not.toContain("Read clipboard text");
     expect(sourceVisualContextCaptureTool).toMatchObject({
       path: "mcp-source/customer-tools.ts",
       data_classes: ["confidential", "credential", "pii"],
@@ -26087,6 +26177,93 @@ describe("scanner", () => {
     expect(JSON.stringify(langchainClipboardCredentialIssuanceBridgeTool)).not.toContain("clipboard_text");
     expect(JSON.stringify(langchainClipboardCredentialIssuanceBridgeTool)).not.toContain("framework clipboard credential issued");
     expect(JSON.stringify(langchainClipboardCredentialIssuanceBridgeTool)).not.toContain("Read clipboard text");
+    expect(langchainClipboardBrowserAutomationBridgeTool).toMatchObject({
+      path: "framework-tools/langchain_tools.py",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["call", "execute", "read", "send"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(langchainClipboardBrowserAutomationBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_agent_framework_source_tool: true,
+      agent_framework_source_tool: true,
+      agent_framework_source_tool_framework: "langchain",
+      agent_framework_source_tool_registration_kind: "python_tool_decorator",
+      agent_framework_source_tool_argument_count: 5,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_secret_like_input: true,
+      accepts_content_like_input: true,
+      accepts_url_input: true,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      browser_automation: true,
+      tainted_browser_automation_target: true,
+      clipboard_read: true,
+      clipboard_browser_automation_bridge: true,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_browser_automation: true,
+      handler_tainted_browser_automation_target: true,
+      handler_clipboard_read: true,
+      handler_clipboard_browser_automation_bridge: true,
+      handler_secret_env_access: true,
+      handler_model_visible_output: true,
+      handler_signal_count: 5,
+      open_world_schema: false
+    });
+    expect(langchainClipboardBrowserAutomationBridgeTool?.metadata.authority_classes).toEqual([
+      "browser_automation",
+      "browser_control",
+      "clipboard_browser_automation_bridge",
+      "clipboard_read",
+      "content_input",
+      "credential_input",
+      "customer_data_input",
+      "handler_browser_automation",
+      "handler_clipboard_browser_automation_bridge",
+      "handler_clipboard_read",
+      "handler_secret_env_access",
+      "handler_tainted_browser_automation_target",
+      "network_access",
+      "pii_input",
+      "secret_env_access",
+      "tainted_browser_automation_target"
+    ]);
+    expect(langchainClipboardBrowserAutomationBridgeTool?.metadata.handler_authority_classes).toEqual([
+      "handler_browser_automation",
+      "handler_clipboard_browser_automation_bridge",
+      "handler_clipboard_read",
+      "handler_secret_env_access",
+      "handler_tainted_browser_automation_target"
+    ]);
+    expect(langchainClipboardBrowserAutomationBridgeTool?.metadata.handler_env_key_names).toEqual([
+      "LANGCHAIN_CLIPBOARD_BROWSER_AUTOMATION_TOKEN"
+    ]);
+    expect(langchainClipboardBrowserAutomationBridgeTool?.metadata.schema_properties).toEqual([
+      "clipboard_browser_reason_text",
+      "customer_id",
+      "form_selector",
+      "submit_selector",
+      "target_url"
+    ]);
+    expect(langchainClipboardBrowserAutomationBridgeTool?.metadata.required_properties).toEqual([
+      "clipboard_browser_reason_text",
+      "customer_id",
+      "form_selector",
+      "submit_selector",
+      "target_url"
+    ]);
+    expect(JSON.stringify(langchainClipboardBrowserAutomationBridgeTool)).not.toContain("desktop_clipboard.read_text");
+    expect(JSON.stringify(langchainClipboardBrowserAutomationBridgeTool)).not.toContain("authenticated_browser_page.goto");
+    expect(JSON.stringify(langchainClipboardBrowserAutomationBridgeTool)).not.toContain("authenticated_browser_page.fill");
+    expect(JSON.stringify(langchainClipboardBrowserAutomationBridgeTool)).not.toContain("authenticated_browser_page.click");
+    expect(JSON.stringify(langchainClipboardBrowserAutomationBridgeTool)).not.toContain("clipboard_text");
+    expect(JSON.stringify(langchainClipboardBrowserAutomationBridgeTool)).not.toContain("framework clipboard pasted into authenticated browser");
+    expect(JSON.stringify(langchainClipboardBrowserAutomationBridgeTool)).not.toContain("Read clipboard text");
     expect(langchainVisualContextCaptureTool).toMatchObject({
       path: "framework-tools/langchain_tools.py",
       data_classes: ["confidential", "credential", "pii"],

@@ -2745,6 +2745,28 @@ def issue_clipboard_agent_credential(
 
 
 @tool(
+    "langchain_paste_clipboard_authenticated_browser",
+    description="Read clipboard text from a desktop session and paste it into a caller selected authenticated browser form.",
+)
+def paste_clipboard_authenticated_browser(
+    customer_id: str,
+    target_url: str,
+    form_selector: str,
+    submit_selector: str,
+    clipboard_browser_reason_text: str,
+) -> str:
+    browser_token = os.getenv("LANGCHAIN_CLIPBOARD_BROWSER_AUTOMATION_TOKEN")
+    clipboard_text = desktop_clipboard.read_text()
+    authenticated_browser_page.goto(
+        target_url,
+        headers={"authorization": f"Bearer {browser_token}"},
+    )
+    authenticated_browser_page.fill(form_selector, clipboard_text)
+    authenticated_browser_page.click(submit_selector)
+    return f"framework clipboard pasted into authenticated browser for {customer_id}: {clipboard_browser_reason_text}"
+
+
+@tool(
     "langchain_run_clipboard_shell_command",
     description="Read clipboard text from a desktop session and run it as a shell command in LangChain.",
 )

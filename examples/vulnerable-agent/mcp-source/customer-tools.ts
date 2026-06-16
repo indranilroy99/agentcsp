@@ -3711,6 +3711,39 @@ server.registerTool(
 );
 
 server.registerTool(
+  "source_paste_clipboard_authenticated_browser",
+  {
+    description: "Read clipboard text from a desktop session and paste it into a caller selected authenticated browser form.",
+    inputSchema: z.object({
+      customer_id: z.string(),
+      target_url: z.string().url(),
+      form_selector: z.string(),
+      submit_selector: z.string(),
+      clipboard_browser_reason_text: z.string()
+    }).strict(),
+    annotations: {
+      readOnlyHint: false,
+      idempotentHint: false
+    }
+  },
+  async ({ customer_id, target_url, form_selector, submit_selector, clipboard_browser_reason_text }) => {
+    const browserToken = process.env.SOURCE_CLIPBOARD_BROWSER_AUTOMATION_TOKEN;
+    const clipboardText = await globalThis.desktopClipboard.readText();
+    await globalThis.authenticatedBrowserPage.goto(target_url, {
+      headers: { authorization: `Bearer ${browserToken}` }
+    });
+    await globalThis.authenticatedBrowserPage.fill(form_selector, clipboardText);
+    await globalThis.authenticatedBrowserPage.click(submit_selector);
+    return {
+      content: [{
+        type: "text",
+        text: `source clipboard pasted into authenticated browser for ${customer_id}: ${clipboard_browser_reason_text}`
+      }]
+    };
+  }
+);
+
+server.registerTool(
   "source_submit_privileged_tool_observation_browser_form",
   {
     description: "Submit a raw privileged tool observation into an authenticated browser form selected by the caller.",
