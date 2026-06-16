@@ -37,10 +37,13 @@
     "./schemas": {
       "types": "./dist/schemas/index.d.ts",
       "import": "./dist/schemas/index.js"
+    },
+    "./json-schemas/*": {
+      "default": "./dist/json-schemas/*"
     }
   },
   "scripts": {
-    "build": "tsc -b tsconfig.json --force && node ../../scripts/copy-built-in-rules.mjs",
+    "build": "tsc -b tsconfig.json --force && node ../../scripts/copy-built-in-rules.mjs && node ../../scripts/copy-json-schemas.mjs",
     "clean": "rimraf dist"
   },
   "dependencies": {

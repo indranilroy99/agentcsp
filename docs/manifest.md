@@ -31,7 +31,7 @@ Core sections:
 - `scan_coverage`
 - `static_blast_radius`
 
-The manifest is versioned and validated with Zod. JSON Schema exports live in `schemas/`.
+The manifest is versioned and validated with Zod. JSON Schema exports live in `schemas/` and are also packaged with `@agentcsp/core` under `dist/json-schemas/` for installed integrations.
 
 ## MCP Server Authority
 

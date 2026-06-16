@@ -22,11 +22,19 @@ for (const filePath of checks) {
 
 const sourceRuleCount = await countRuleFiles(path.join(repoRoot, "rules"));
 const packagedRuleCount = await countRuleFiles(path.join(repoRoot, "packages", "core", "dist", "builtin-rules"));
+const sourceSchemaCount = await countJsonFiles(path.join(repoRoot, "schemas"));
+const packagedSchemaCount = await countJsonFiles(path.join(repoRoot, "packages", "core", "dist", "json-schemas"));
 if (sourceRuleCount === 0) {
   throw new Error("No source built-in rules found under rules/");
 }
 if (sourceRuleCount !== packagedRuleCount) {
   throw new Error(`Packaged built-in rule count mismatch: source=${sourceRuleCount} packaged=${packagedRuleCount}`);
+}
+if (sourceSchemaCount === 0) {
+  throw new Error("No generated JSON schemas found under schemas/");
+}
+if (sourceSchemaCount !== packagedSchemaCount) {
+  throw new Error(`Packaged JSON schema count mismatch: source=${sourceSchemaCount} packaged=${packagedSchemaCount}`);
 }
 
 await assertPackageFiles("packages/core/package.json");
@@ -118,6 +126,9 @@ async function assertCorePackageMetadata() {
   if (packageJson.exports?.["./schemas"]?.import !== "./dist/schemas/index.js") {
     throw new Error("packages/core/package.json must export compiled schemas");
   }
+  if (packageJson.exports?.["./json-schemas/*"]?.default !== "./dist/json-schemas/*") {
+    throw new Error("packages/core/package.json must export packaged JSON schemas");
+  }
 }
 
 async function assertCliPackageMetadata() {
@@ -146,6 +157,10 @@ async function verifyPackedPackageInstall(expectedRuleCount) {
       "package/LICENSE",
       "package/dist/index.js",
       "package/dist/index.d.ts",
+      "package/dist/json-schemas/finding.schema.json",
+      "package/dist/json-schemas/manifest.schema.json",
+      "package/dist/json-schemas/policy.schema.json",
+      "package/dist/json-schemas/rule.schema.json",
       "package/dist/rules/engine.js",
       "package/dist/scanner/scan.js",
       "package/dist/schemas/index.js",
@@ -160,6 +175,14 @@ async function verifyPackedPackageInstall(expectedRuleCount) {
     if (tarballRuleCount !== expectedRuleCount) {
       throw new Error(
         `Packed @agentcsp/core built-in rule count mismatch: expected=${expectedRuleCount} packed=${tarballRuleCount}`
+      );
+    }
+    const tarballSchemaCount = coreEntries.filter(
+      (entry) => entry.startsWith("package/dist/json-schemas/") && entry.endsWith(".schema.json")
+    ).length;
+    if (tarballSchemaCount !== sourceSchemaCount) {
+      throw new Error(
+        `Packed @agentcsp/core JSON schema count mismatch: expected=${sourceSchemaCount} packed=${tarballSchemaCount}`
       );
     }
 
@@ -403,6 +426,22 @@ async function countRuleFiles(directory) {
       continue;
     }
     if (entry.isFile() && (entry.name.endsWith(".yaml") || entry.name.endsWith(".yml"))) {
+      count += 1;
+    }
+  }
+  return count;
+}
+
+async function countJsonFiles(directory) {
+  const entries = await fs.readdir(directory, { withFileTypes: true });
+  let count = 0;
+  for (const entry of entries) {
+    const absolutePath = path.join(directory, entry.name);
+    if (entry.isDirectory()) {
+      count += await countJsonFiles(absolutePath);
+      continue;
+    }
+    if (entry.isFile() && entry.name.endsWith(".json")) {
       count += 1;
     }
   }
