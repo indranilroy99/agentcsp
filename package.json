@@ -4,6 +4,25 @@
   "private": true,
   "description": "Open-source control plane for discovering, testing, and enforcing context security policy across AI agents, tools, MCP servers, RAG, memory, and runtime actions.",
   "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/indranilroy99/agentcsp.git"
+  },
+  "bugs": {
+    "url": "https://github.com/indranilroy99/agentcsp/issues"
+  },
+  "homepage": "https://github.com/indranilroy99/agentcsp#readme",
+  "keywords": [
+    "ai-security",
+    "agent-security",
+    "context-security-policy",
+    "mcp",
+    "sarif",
+    "security-scanner"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
   "type": "module",
   "packageManager": "pnpm@11.0.9",
   "scripts": {

@@ -3,6 +3,26 @@
   "version": "0.1.0",
   "description": "AgentCSP command-line interface.",
   "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/indranilroy99/agentcsp.git",
+    "directory": "packages/cli"
+  },
+  "bugs": {
+    "url": "https://github.com/indranilroy99/agentcsp/issues"
+  },
+  "homepage": "https://github.com/indranilroy99/agentcsp#readme",
+  "keywords": [
+    "ai-security",
+    "agent-security",
+    "context-security-policy",
+    "mcp",
+    "sarif",
+    "security-scanner"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
   "type": "module",
   "bin": {
     "agentcsp": "./dist/index.js"

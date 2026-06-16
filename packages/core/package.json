@@ -3,6 +3,26 @@
   "version": "0.1.0",
   "description": "Core scanner, manifest, policy, rule, risk, and reporting engine for AgentCSP.",
   "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/indranilroy99/agentcsp.git",
+    "directory": "packages/core"
+  },
+  "bugs": {
+    "url": "https://github.com/indranilroy99/agentcsp/issues"
+  },
+  "homepage": "https://github.com/indranilroy99/agentcsp#readme",
+  "keywords": [
+    "ai-security",
+    "agent-security",
+    "context-security-policy",
+    "mcp",
+    "sarif",
+    "security-scanner"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",

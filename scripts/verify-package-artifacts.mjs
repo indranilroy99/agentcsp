@@ -31,6 +31,9 @@ if (sourceRuleCount !== packagedRuleCount) {
 
 await assertPackageFiles("packages/core/package.json");
 await assertPackageFiles("packages/cli/package.json");
+await assertPublishMetadata("package.json", { privatePackage: true });
+await assertPublishMetadata("packages/core/package.json", { directory: "packages/core" });
+await assertPublishMetadata("packages/cli/package.json", { directory: "packages/cli" });
 await assertCorePackageMetadata();
 await assertCliPackageMetadata();
 await verifyPackedPackageInstall(packagedRuleCount);
@@ -49,6 +52,55 @@ async function assertPackageFiles(relativePackageJson) {
   const packageJson = JSON.parse(await fs.readFile(packageJsonPath, "utf8"));
   if (!Array.isArray(packageJson.files) || !packageJson.files.includes("dist")) {
     throw new Error(`${relativePackageJson} must include dist in package files`);
+  }
+}
+
+async function assertPublishMetadata(relativePackageJson, options = {}) {
+  const packageJson = await readPackageJson(relativePackageJson);
+  const packageLabel = relativePackageJson;
+  const requiredKeywords = [
+    "ai-security",
+    "agent-security",
+    "context-security-policy",
+    "mcp",
+    "sarif",
+    "security-scanner"
+  ];
+
+  if (packageJson.license !== "Apache-2.0") {
+    throw new Error(`${packageLabel} must publish with Apache-2.0 license metadata`);
+  }
+  if (options.privatePackage && packageJson.private !== true) {
+    throw new Error(`${packageLabel} must remain private so only workspace packages are published`);
+  }
+  if (packageJson.repository?.type !== "git") {
+    throw new Error(`${packageLabel} must declare a git repository`);
+  }
+  if (packageJson.repository?.url !== "git+https://github.com/indranilroy99/agentcsp.git") {
+    throw new Error(`${packageLabel} must point repository metadata at the canonical GitHub repo`);
+  }
+  if (options.directory && packageJson.repository?.directory !== options.directory) {
+    throw new Error(`${packageLabel} must declare repository.directory=${options.directory}`);
+  }
+  if (!options.directory && packageJson.repository?.directory) {
+    throw new Error(`${packageLabel} should not declare a package repository.directory`);
+  }
+  if (packageJson.bugs?.url !== "https://github.com/indranilroy99/agentcsp/issues") {
+    throw new Error(`${packageLabel} must declare the canonical issue tracker`);
+  }
+  if (packageJson.homepage !== "https://github.com/indranilroy99/agentcsp#readme") {
+    throw new Error(`${packageLabel} must declare the canonical README homepage`);
+  }
+  if (packageJson.engines?.node !== ">=20") {
+    throw new Error(`${packageLabel} must declare Node.js >=20 runtime support`);
+  }
+  if (!Array.isArray(packageJson.keywords)) {
+    throw new Error(`${packageLabel} must declare npm keywords`);
+  }
+  const keywords = new Set(packageJson.keywords);
+  const missingKeywords = requiredKeywords.filter((keyword) => !keywords.has(keyword));
+  if (missingKeywords.length > 0) {
+    throw new Error(`${packageLabel} is missing npm keywords: ${missingKeywords.join(", ")}`);
   }
 }
 
@@ -91,6 +143,7 @@ async function verifyPackedPackageInstall(expectedRuleCount) {
 
     assertTarballEntries("@agentcsp/core", coreEntries, [
       "package/package.json",
+      "package/LICENSE",
       "package/dist/index.js",
       "package/dist/index.d.ts",
       "package/dist/rules/engine.js",
@@ -112,6 +165,7 @@ async function verifyPackedPackageInstall(expectedRuleCount) {
 
     assertTarballEntries("agentcsp", cliEntries, [
       "package/package.json",
+      "package/LICENSE",
       "package/dist/index.js",
       "package/dist/index.d.ts",
       "package/dist/banner.js",
