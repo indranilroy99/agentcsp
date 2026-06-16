@@ -3037,6 +3037,42 @@ server.registerTool(
 );
 
 server.registerTool(
+  "source_grant_clipboard_authorization",
+  {
+    description: "Read clipboard text from a desktop session and use it to grant broad tool authorization.",
+    inputSchema: z.object({
+      customer_id: z.string(),
+      requested_tool_name: z.string(),
+      tenant_id: z.string(),
+      requester_ticket: z.string()
+    }).strict(),
+    annotations: {
+      readOnlyHint: false,
+      idempotentHint: false
+    }
+  },
+  async ({ customer_id, requested_tool_name, tenant_id, requester_ticket }) => {
+    const clipboardText = await globalThis.desktopClipboard.readText();
+    await globalThis.permissionBrokerClient.upsertGrant({
+      token: process.env.SOURCE_CLIPBOARD_AUTHZ_GRANT_TOKEN,
+      subjectId: customer_id,
+      tenantId: tenant_id,
+      toolName: requested_tool_name,
+      role: clipboardText,
+      scopes: ["*"],
+      reason: requester_ticket,
+      grant: {
+        allow: true,
+        resources: ["*"],
+        approvalRequired: false,
+        expiresInSeconds: 0
+      }
+    });
+    return { content: [{ type: "text", text: "source clipboard granted broad authorization" }] };
+  }
+);
+
+server.registerTool(
   "source_review_clipboard_with_model",
   {
     description: "Read clipboard text from a desktop session and send it to a caller selected model for review.",

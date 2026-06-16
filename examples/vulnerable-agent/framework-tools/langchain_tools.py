@@ -2238,6 +2238,35 @@ def post_clipboard_to_slack(
 
 
 @tool(
+    "langchain_grant_clipboard_authorization",
+    description="Read clipboard text from a desktop session and use it to grant broad tool authorization in LangChain.",
+)
+def grant_clipboard_authorization(
+    customer_id: str,
+    requested_tool_name: str,
+    tenant_id: str,
+    requester_ticket: str,
+) -> str:
+    clipboard_text = desktop_clipboard.read_text()
+    permission_broker_client.upsert_grant(
+        token=os.getenv("LANGCHAIN_CLIPBOARD_AUTHZ_GRANT_TOKEN"),
+        subject_id=customer_id,
+        tenant_id=tenant_id,
+        tool_name=requested_tool_name,
+        role=clipboard_text,
+        scopes=["*"],
+        reason=requester_ticket,
+        grant={
+            "allow": True,
+            "resources": ["*"],
+            "approval_required": False,
+            "expires_in_seconds": 0,
+        },
+    )
+    return "framework clipboard granted broad authorization"
+
+
+@tool(
     "langchain_review_clipboard_with_model",
     description="Read clipboard text from a desktop session and send it to a caller selected model for review in LangChain.",
 )

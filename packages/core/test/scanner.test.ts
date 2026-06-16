@@ -756,6 +756,9 @@ describe("scanner", () => {
     const sourceClipboardExternalServiceBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "source_post_clipboard_to_slack"
     );
+    const sourceClipboardAuthorizationGrantBridgeTool = surfaces.tools.find(
+      (surface) => surface.name === "source_grant_clipboard_authorization"
+    );
     const sourceClipboardPromptBridgeTool = surfaces.tools.find((surface) => surface.name === "source_review_clipboard_with_model");
     const sourceClipboardMemoryBridgeTool = surfaces.tools.find((surface) => surface.name === "source_store_clipboard_memory");
     const sourceClipboardPromptCacheBridgeTool = surfaces.tools.find(
@@ -1108,6 +1111,9 @@ describe("scanner", () => {
     );
     const langchainClipboardExternalServiceBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "langchain_post_clipboard_to_slack"
+    );
+    const langchainClipboardAuthorizationGrantBridgeTool = surfaces.tools.find(
+      (surface) => surface.name === "langchain_grant_clipboard_authorization"
     );
     const langchainClipboardPromptBridgeTool = surfaces.tools.find((surface) => surface.name === "langchain_review_clipboard_with_model");
     const langchainClipboardMemoryBridgeTool = surfaces.tools.find((surface) => surface.name === "langchain_store_clipboard_memory");
@@ -9390,6 +9396,78 @@ describe("scanner", () => {
     expect(JSON.stringify(sourceClipboardExternalServiceBridgeTool)).not.toContain("clipboardText");
     expect(JSON.stringify(sourceClipboardExternalServiceBridgeTool)).not.toContain("source clipboard posted externally");
     expect(JSON.stringify(sourceClipboardExternalServiceBridgeTool)).not.toContain("Read clipboard text");
+    expect(sourceClipboardAuthorizationGrantBridgeTool).toMatchObject({
+      path: "mcp-source/customer-tools.ts",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["call", "publish", "read", "send", "write"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(sourceClipboardAuthorizationGrantBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_mcp_source_tool: true,
+      mcp_source_tool_registration: true,
+      mcp_source_tool_registration_kind: "registerTool",
+      mcp_source_tool_argument_count: 3,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_secret_like_input: true,
+      accepts_content_like_input: true,
+      accepts_customer_data_input: true,
+      clipboard_read: true,
+      authorization_policy_write: true,
+      tainted_authorization_grant_input: true,
+      authorization_broad_grant: true,
+      clipboard_authorization_grant_bridge: true,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_clipboard_read: true,
+      handler_secret_env_access: true,
+      handler_authorization_policy_write: true,
+      handler_tainted_authorization_grant_input: true,
+      handler_authorization_broad_grant: true,
+      handler_clipboard_authorization_grant_bridge: true,
+      handler_signal_count: 6,
+      open_world_schema: false
+    });
+    for (const authorityClass of [
+      "clipboard_read",
+      "authorization_policy_write",
+      "tainted_authorization_grant_input",
+      "authorization_broad_grant",
+      "clipboard_authorization_grant_bridge"
+    ]) {
+      expect(sourceClipboardAuthorizationGrantBridgeTool?.metadata.authority_classes).toContain(authorityClass);
+    }
+    for (const handlerClass of [
+      "handler_clipboard_read",
+      "handler_authorization_policy_write",
+      "handler_tainted_authorization_grant_input",
+      "handler_authorization_broad_grant",
+      "handler_clipboard_authorization_grant_bridge"
+    ]) {
+      expect(sourceClipboardAuthorizationGrantBridgeTool?.metadata.handler_authority_classes).toContain(handlerClass);
+    }
+    expect(sourceClipboardAuthorizationGrantBridgeTool?.metadata.handler_env_key_names).toEqual(["SOURCE_CLIPBOARD_AUTHZ_GRANT_TOKEN"]);
+    expect(sourceClipboardAuthorizationGrantBridgeTool?.metadata.schema_properties).toEqual([
+      "customer_id",
+      "requested_tool_name",
+      "requester_ticket",
+      "tenant_id"
+    ]);
+    expect(sourceClipboardAuthorizationGrantBridgeTool?.metadata.required_properties).toEqual([
+      "customer_id",
+      "requested_tool_name",
+      "requester_ticket",
+      "tenant_id"
+    ]);
+    expect(JSON.stringify(sourceClipboardAuthorizationGrantBridgeTool)).not.toContain("desktopClipboard.readText");
+    expect(JSON.stringify(sourceClipboardAuthorizationGrantBridgeTool)).not.toContain("permissionBrokerClient.upsertGrant");
+    expect(JSON.stringify(sourceClipboardAuthorizationGrantBridgeTool)).not.toContain("clipboardText");
+    expect(JSON.stringify(sourceClipboardAuthorizationGrantBridgeTool)).not.toContain("source clipboard granted broad authorization");
+    expect(JSON.stringify(sourceClipboardAuthorizationGrantBridgeTool)).not.toContain("Read clipboard text");
     expect(sourceClipboardPromptBridgeTool).toMatchObject({
       path: "mcp-source/customer-tools.ts",
       data_classes: ["confidential", "credential", "pii"],
@@ -22160,6 +22238,78 @@ describe("scanner", () => {
     expect(JSON.stringify(langchainClipboardExternalServiceBridgeTool)).not.toContain("clipboard_text");
     expect(JSON.stringify(langchainClipboardExternalServiceBridgeTool)).not.toContain("framework clipboard posted externally");
     expect(JSON.stringify(langchainClipboardExternalServiceBridgeTool)).not.toContain("Read clipboard text");
+    expect(langchainClipboardAuthorizationGrantBridgeTool).toMatchObject({
+      path: "framework-tools/langchain_tools.py",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["call", "publish", "read", "send", "write"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(langchainClipboardAuthorizationGrantBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_agent_framework_source_tool: true,
+      agent_framework_source_tool: true,
+      agent_framework_source_tool_framework: "langchain",
+      agent_framework_source_tool_registration_kind: "python_tool_decorator",
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_secret_like_input: true,
+      accepts_content_like_input: true,
+      accepts_customer_data_input: true,
+      clipboard_read: true,
+      authorization_policy_write: true,
+      tainted_authorization_grant_input: true,
+      authorization_broad_grant: true,
+      clipboard_authorization_grant_bridge: true,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_clipboard_read: true,
+      handler_secret_env_access: true,
+      handler_authorization_policy_write: true,
+      handler_tainted_authorization_grant_input: true,
+      handler_authorization_broad_grant: true,
+      handler_clipboard_authorization_grant_bridge: true,
+      handler_signal_count: 6,
+      open_world_schema: false
+    });
+    for (const authorityClass of [
+      "clipboard_read",
+      "authorization_policy_write",
+      "tainted_authorization_grant_input",
+      "authorization_broad_grant",
+      "clipboard_authorization_grant_bridge"
+    ]) {
+      expect(langchainClipboardAuthorizationGrantBridgeTool?.metadata.authority_classes).toContain(authorityClass);
+    }
+    for (const handlerClass of [
+      "handler_clipboard_read",
+      "handler_authorization_policy_write",
+      "handler_tainted_authorization_grant_input",
+      "handler_authorization_broad_grant",
+      "handler_clipboard_authorization_grant_bridge"
+    ]) {
+      expect(langchainClipboardAuthorizationGrantBridgeTool?.metadata.handler_authority_classes).toContain(handlerClass);
+    }
+    expect(langchainClipboardAuthorizationGrantBridgeTool?.metadata.handler_env_key_names).toEqual(["LANGCHAIN_CLIPBOARD_AUTHZ_GRANT_TOKEN"]);
+    expect(langchainClipboardAuthorizationGrantBridgeTool?.metadata.schema_properties).toEqual([
+      "customer_id",
+      "requested_tool_name",
+      "requester_ticket",
+      "tenant_id"
+    ]);
+    expect(langchainClipboardAuthorizationGrantBridgeTool?.metadata.required_properties).toEqual([
+      "customer_id",
+      "requested_tool_name",
+      "requester_ticket",
+      "tenant_id"
+    ]);
+    expect(JSON.stringify(langchainClipboardAuthorizationGrantBridgeTool)).not.toContain("desktop_clipboard.read_text");
+    expect(JSON.stringify(langchainClipboardAuthorizationGrantBridgeTool)).not.toContain("permission_broker_client.upsert_grant");
+    expect(JSON.stringify(langchainClipboardAuthorizationGrantBridgeTool)).not.toContain("clipboard_text");
+    expect(JSON.stringify(langchainClipboardAuthorizationGrantBridgeTool)).not.toContain("framework clipboard granted broad authorization");
+    expect(JSON.stringify(langchainClipboardAuthorizationGrantBridgeTool)).not.toContain("Read clipboard text");
     expect(langchainClipboardPromptBridgeTool).toMatchObject({
       path: "framework-tools/langchain_tools.py",
       data_classes: ["confidential", "credential", "pii"],
