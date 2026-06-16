@@ -54,18 +54,12 @@ jobs:
       - name: Audit high and critical vulnerabilities
         run: pnpm audit --audit-level high
 
-      - name: AgentCSP scan vulnerable fixture
-        run: pnpm agentcsp scan examples/vulnerable-agent --out .agentcsp --format json,md,sarif --include-logs --quiet
+      - name: Verify fixture outputs
+        run: pnpm verify:fixtures
 
       - name: Upload AgentCSP SARIF
         if: github.event_name == 'push'
         uses: github/codeql-action/upload-sarif@v4
         with:
-          sarif_file: .agentcsp/agentcsp.sarif
+          sarif_file: examples/vulnerable-agent/.agentcsp/agentcsp.sarif
           category: agentcsp
-
-      - name: AgentCSP scan safe fixture
-        run: pnpm agentcsp scan examples/safe-agent --out .agentcsp-safe --format json,md --quiet
-
-      - name: Verify fixture outputs
-        run: pnpm verify:fixtures

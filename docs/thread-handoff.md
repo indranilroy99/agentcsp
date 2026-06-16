@@ -136,7 +136,7 @@ Verified locally:
 - `pnpm test`
 - `pnpm build`
 - `pnpm lint`
-- `pnpm agentcsp scan examples/vulnerable-agent --out .agentcsp --quiet`
+- `pnpm agentcsp scan examples/vulnerable-agent --out .agentcsp --quiet` writes fixture-local output under `examples/vulnerable-agent/.agentcsp`
 
 ## Production-Hardening Pass
 

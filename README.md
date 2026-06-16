@@ -112,9 +112,9 @@ pnpm agentcsp scan examples/vulnerable-agent --out .agentcsp
 The scan writes:
 
 ```text
-.agentcsp/agent-manifest.json
-.agentcsp/findings.json
-.agentcsp/report.md
+examples/vulnerable-agent/.agentcsp/agent-manifest.json
+examples/vulnerable-agent/.agentcsp/findings.json
+examples/vulnerable-agent/.agentcsp/report.md
 ```
 
 CLI shape:

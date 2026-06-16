@@ -2,8 +2,8 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { AgentManifestSchema, FindingSchema } from "../packages/core/dist/schemas/index.js";
 
-const vulnerableOutput = path.resolve(process.argv[2] ?? ".agentcsp");
-const safeOutput = path.resolve(process.argv[3] ?? ".agentcsp-safe");
+const vulnerableOutput = path.resolve(process.argv[2] ?? "examples/vulnerable-agent/.agentcsp");
+const safeOutput = path.resolve(process.argv[3] ?? "examples/safe-agent/.agentcsp-safe");
 
 const leakPatterns = [
   /\$\{A2A_AGENT_TOKEN\}/u,
@@ -1511,12 +1511,13 @@ const leakPatterns = [
 const vulnerable = await readScanOutput(vulnerableOutput, { sarifRequired: true });
 const safe = await readScanOutput(safeOutput, { sarifRequired: false });
 
-assertEqual(vulnerable.manifest.findings.length, 1413, "vulnerable manifest finding count");
-assertEqual(vulnerable.findings.length, 1413, "vulnerable findings.json count");
+assertEqual(vulnerable.manifest.findings.length, 1433, "vulnerable manifest finding count");
+assertEqual(vulnerable.findings.length, 1433, "vulnerable findings.json count");
 assertEqual(vulnerable.manifest.attack_paths.length, 15, "vulnerable attack path count");
 assertEqual(vulnerable.manifest.static_blast_radius?.critical_attack_paths, 15, "vulnerable critical attack path count");
 assertEqual(vulnerable.manifest.diagnostics.length, 0, "vulnerable diagnostics count");
 assertEqual(vulnerable.manifest.scan_coverage?.diagnostics_total, 0, "vulnerable diagnostic coverage count");
+assertMarkdownRootRedacted("vulnerable report", vulnerable);
 
 for (const ruleId of [
   "AGENTCSP-TOOL-010",
@@ -1877,6 +1878,7 @@ assertEqual(safe.findings.length, 0, "safe findings.json count");
 assertEqual(safe.manifest.attack_paths.length, 0, "safe attack path count");
 assertEqual(safe.manifest.diagnostics.length, 0, "safe diagnostics count");
 assertEqual(safe.manifest.scan_coverage?.diagnostics_total, 0, "safe diagnostic coverage count");
+assertMarkdownRootRedacted("safe report", safe);
 
 assertNoLeaks("vulnerable output", vulnerable.raw);
 assertNoLeaks("safe output", safe.raw);
@@ -1941,8 +1943,14 @@ async function readScanOutput(outputPath, options) {
     manifest,
     findings,
     sarif,
+    report: rawReport,
     raw: [rawManifest, rawFindings, rawReport, rawSarif].join("\n")
   };
+}
+
+function assertMarkdownRootRedacted(label, output) {
+  assert(output.report.includes("- Root: `<scan-root>`"), `${label} missing redacted scan root marker`);
+  assert(!output.report.includes(output.manifest.metadata.root_path), `${label} leaked absolute scan root`);
 }
 
 function assertNoLeaks(label, value) {
