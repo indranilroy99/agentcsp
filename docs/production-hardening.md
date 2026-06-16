@@ -17,6 +17,7 @@ A finding should be considered production-grade when it includes:
 - reason
 - confidence and confidence rationale
 - confidence-aware CI failure gates
+- a canonical `pnpm verify` release gate used by CI and local release checks
 - release version consistency across workspace packages, CLI `--version`, manifest scanner metadata, and CI examples
 - baseline comparison for new, existing, and resolved findings
 - scan coverage counts for skipped files, ignored paths, and traversal limits

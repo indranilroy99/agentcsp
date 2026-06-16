@@ -109,6 +109,12 @@ pnpm build
 pnpm agentcsp scan examples/vulnerable-agent --out .agentcsp
 ```
 
+Before pushing release or rule-pack changes, run the same verification gate used by CI:
+
+```bash
+pnpm verify
+```
+
 The scan writes:
 
 ```text

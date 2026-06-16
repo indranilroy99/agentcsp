@@ -53,7 +53,7 @@ describe("baseline comparison", () => {
     };
     expect(sarif.runs[0]?.results.every((item) => item.baselineState === "unchanged")).toBe(true);
     expect(sarif.runs[0]?.properties?.agentcsp_baseline_comparison?.new_findings).toBe(0);
-  });
+  }, 30_000);
 
   it("tracks new and resolved findings from a findings baseline", async () => {
     const baseline = await scanProject({

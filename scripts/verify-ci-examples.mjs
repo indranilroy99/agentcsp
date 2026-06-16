@@ -4,6 +4,23 @@ import { fileURLToPath } from "node:url";
 import YAML from "yaml";
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+const workspacePackage = JSON.parse(await fs.readFile(path.join(repoRoot, "package.json"), "utf8"));
+const releaseGate = String(workspacePackage.scripts?.verify ?? "");
+for (const requiredCommand of [
+  "pnpm verify:schemas",
+  "pnpm verify:versions",
+  "pnpm verify:rules",
+  "pnpm build",
+  "pnpm verify:packages",
+  "pnpm verify:ci-examples",
+  "pnpm lint",
+  "pnpm test",
+  "pnpm verify:fixtures",
+  "pnpm audit --audit-level moderate"
+]) {
+  assert(releaseGate.includes(requiredCommand), `package.json verify script must include ${requiredCommand}`);
+}
+
 const examples = [
   {
     file: "examples/ci/github-code-scanning-advisory.yml",
@@ -93,28 +110,11 @@ assert(
   internalInstallStep?.run === "pnpm install --frozen-lockfile",
   ".github/workflows/ci.yml must install from the lockfile without mutation"
 );
-const internalAuditStep = internalSteps.find((step) => String(step.name ?? "").startsWith("Audit "));
-assert(internalAuditStep, ".github/workflows/ci.yml must include dependency audit");
+const internalVerifyStep = internalSteps.find((step) => step.name === "Verify release gate");
 assert(
-  internalAuditStep.name === "Audit moderate and above vulnerabilities",
-  ".github/workflows/ci.yml dependency audit must describe the moderate threshold"
+  internalVerifyStep?.run === "pnpm verify",
+  ".github/workflows/ci.yml must run the canonical release verification gate"
 );
-assert(
-  internalAuditStep.run === "pnpm audit --audit-level moderate",
-  ".github/workflows/ci.yml dependency audit must fail on moderate and above vulnerabilities"
-);
-const internalVersionStep = internalSteps.find((step) => step.name === "Verify version consistency");
-assert(
-  internalVersionStep?.run === "pnpm verify:versions",
-  ".github/workflows/ci.yml must verify release version consistency"
-);
-const internalRuleStep = internalSteps.find((step) => step.name === "Verify built-in rule pack");
-assert(
-  internalRuleStep?.run === "pnpm verify:rules",
-  ".github/workflows/ci.yml must verify built-in rule-pack invariants"
-);
-const internalFixtureStep = internalSteps.find((step) => step.name === "Verify fixture outputs");
-assert(internalFixtureStep?.run === "pnpm verify:fixtures", ".github/workflows/ci.yml must use the self-contained fixture verifier");
 const internalUploadStep = internalSteps.find((step) => step.uses === "github/codeql-action/upload-sarif@v4");
 assert(
   internalUploadStep?.if === "github.event_name == 'push'",
