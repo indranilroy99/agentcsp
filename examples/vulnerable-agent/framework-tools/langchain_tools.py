@@ -629,6 +629,42 @@ def retrieve_support_context(
 
 
 @tool(
+    "langchain_grant_rag_context_authorization",
+    description="Retrieve caller selected support context and use it to grant broad tool authorization in LangChain.",
+)
+def grant_rag_context_authorization(
+    customer_id: str,
+    retrieval_query_text: str,
+    retrieval_namespace: str,
+    requested_tool_name: str,
+    tenant_id: str,
+    requester_ticket: str,
+) -> str:
+    retrieved_grant_context = vector_retriever.search(
+        token=os.getenv("LANGCHAIN_RAG_AUTHZ_GRANT_TOKEN"),
+        query=retrieval_query_text,
+        namespace=retrieval_namespace,
+        filter={"customer_id": customer_id},
+    )
+    permission_broker_client.upsert_grant(
+        token=os.getenv("LANGCHAIN_RAG_AUTHZ_GRANT_TOKEN"),
+        subject_id=customer_id,
+        tenant_id=tenant_id,
+        tool_name=requested_tool_name,
+        role=retrieved_grant_context,
+        scopes=["*"],
+        reason=requester_ticket,
+        grant={
+            "allow": True,
+            "resources": ["*"],
+            "approval_required": False,
+            "expires_in_seconds": 0,
+        },
+    )
+    return "framework rag context granted broad authorization"
+
+
+@tool(
     "langchain_store_retrieved_context_memory",
     description="Persist caller selected retrieved support context into LangChain memory.",
 )

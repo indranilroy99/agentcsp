@@ -644,6 +644,9 @@ describe("scanner", () => {
     const sourceNetworkResponseAuthorizationGrantBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "source_grant_url_response_authorization"
     );
+    const sourceRagRetrievalAuthorizationGrantBridgeTool = surfaces.tools.find(
+      (surface) => surface.name === "source_grant_rag_context_authorization"
+    );
     const sourceArtifactExportTool = surfaces.tools.find((surface) => surface.name === "source_export_agent_run_artifact");
     const sourceModelApprovalTool = surfaces.tools.find((surface) => surface.name === "source_model_review_and_run_action");
     const sourceExternalApprovalChannelTool = surfaces.tools.find(
@@ -999,6 +1002,9 @@ describe("scanner", () => {
     );
     const langchainNetworkResponseAuthorizationGrantBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "langchain_grant_url_response_authorization"
+    );
+    const langchainRagRetrievalAuthorizationGrantBridgeTool = surfaces.tools.find(
+      (surface) => surface.name === "langchain_grant_rag_context_authorization"
     );
     const langchainArtifactExportTool = surfaces.tools.find((surface) => surface.name === "langchain_export_agent_run_artifact");
     const langchainModelApprovalTool = surfaces.tools.find((surface) => surface.name === "langchain_model_review_and_run_action");
@@ -3973,6 +3979,86 @@ describe("scanner", () => {
     expect(JSON.stringify(sourceRagRetrievalTool)).not.toContain("vectorRetriever.search");
     expect(JSON.stringify(sourceRagRetrievalTool)).not.toContain("retrievedContext");
     expect(JSON.stringify(sourceRagRetrievalTool)).not.toContain("Retrieve caller selected support context");
+    expect(sourceRagRetrievalAuthorizationGrantBridgeTool).toMatchObject({
+      path: "mcp-source/customer-tools.ts",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["call", "publish", "read", "send", "write"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(sourceRagRetrievalAuthorizationGrantBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_mcp_source_tool: true,
+      mcp_source_tool_registration: true,
+      mcp_source_tool_registration_kind: "registerTool",
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_content_like_input: true,
+      accepts_secret_like_input: true,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      rag_retrieval: true,
+      tainted_rag_retrieval_query: true,
+      authorization_policy_write: true,
+      tainted_authorization_grant_input: true,
+      authorization_broad_grant: true,
+      rag_retrieval_authorization_grant_bridge: true,
+      handler_rag_retrieval: true,
+      handler_tainted_rag_retrieval_query: true,
+      handler_authorization_policy_write: true,
+      handler_tainted_authorization_grant_input: true,
+      handler_authorization_broad_grant: true,
+      handler_rag_retrieval_authorization_grant_bridge: true,
+      handler_secret_env_access: true,
+      handler_signal_count: 7,
+      open_world_schema: false
+    });
+    expect(sourceRagRetrievalAuthorizationGrantBridgeTool?.metadata.authority_classes).toEqual([
+      "authorization_broad_grant",
+      "authorization_policy_write",
+      "content_input",
+      "credential_input",
+      "customer_data_input",
+      "external_write",
+      "handler_authorization_broad_grant",
+      "handler_authorization_policy_write",
+      "handler_rag_retrieval",
+      "handler_rag_retrieval_authorization_grant_bridge",
+      "handler_secret_env_access",
+      "handler_tainted_authorization_grant_input",
+      "handler_tainted_rag_retrieval_query",
+      "pii_input",
+      "rag_retrieval",
+      "rag_retrieval_authorization_grant_bridge",
+      "secret_env_access",
+      "tainted_authorization_grant_input",
+      "tainted_rag_retrieval_query"
+    ]);
+    expect(sourceRagRetrievalAuthorizationGrantBridgeTool?.metadata.handler_authority_classes).toEqual([
+      "handler_authorization_broad_grant",
+      "handler_authorization_policy_write",
+      "handler_rag_retrieval",
+      "handler_rag_retrieval_authorization_grant_bridge",
+      "handler_secret_env_access",
+      "handler_tainted_authorization_grant_input",
+      "handler_tainted_rag_retrieval_query"
+    ]);
+    expect(sourceRagRetrievalAuthorizationGrantBridgeTool?.metadata.handler_env_key_names).toEqual(["SOURCE_RAG_AUTHZ_GRANT_TOKEN"]);
+    expect(sourceRagRetrievalAuthorizationGrantBridgeTool?.metadata.schema_properties).toEqual([
+      "customer_id",
+      "requested_tool_name",
+      "requester_ticket",
+      "retrieval_namespace",
+      "retrieval_query_text",
+      "tenant_id"
+    ]);
+    expect(JSON.stringify(sourceRagRetrievalAuthorizationGrantBridgeTool)).not.toContain("vectorRetriever.search");
+    expect(JSON.stringify(sourceRagRetrievalAuthorizationGrantBridgeTool)).not.toContain("permissionBrokerClient.upsertGrant");
+    expect(JSON.stringify(sourceRagRetrievalAuthorizationGrantBridgeTool)).not.toContain("retrievedGrantContext");
+    expect(JSON.stringify(sourceRagRetrievalAuthorizationGrantBridgeTool)).not.toContain("source rag context granted broad authorization");
+    expect(JSON.stringify(sourceRagRetrievalAuthorizationGrantBridgeTool)).not.toContain("Retrieve caller selected support context");
     expect(sourceRagRetrievalMemoryBridgeTool).toMatchObject({
       path: "mcp-source/customer-tools.ts",
       data_classes: ["confidential", "credential", "pii"],
@@ -16450,6 +16536,88 @@ describe("scanner", () => {
     expect(JSON.stringify(langchainRagRetrievalTool)).not.toContain("vector_retriever.search");
     expect(JSON.stringify(langchainRagRetrievalTool)).not.toContain("retrieved_context");
     expect(JSON.stringify(langchainRagRetrievalTool)).not.toContain("Retrieve caller selected support context");
+    expect(langchainRagRetrievalAuthorizationGrantBridgeTool).toMatchObject({
+      path: "framework-tools/langchain_tools.py",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["call", "publish", "read", "send", "write"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(langchainRagRetrievalAuthorizationGrantBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_agent_framework_source_tool: true,
+      agent_framework_source_tool: true,
+      agent_framework_source_tool_framework: "langchain",
+      agent_framework_source_tool_registration_kind: "python_tool_decorator",
+      agent_framework_source_tool_argument_count: 6,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_content_like_input: true,
+      accepts_secret_like_input: true,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      rag_retrieval: true,
+      tainted_rag_retrieval_query: true,
+      authorization_policy_write: true,
+      tainted_authorization_grant_input: true,
+      authorization_broad_grant: true,
+      rag_retrieval_authorization_grant_bridge: true,
+      handler_rag_retrieval: true,
+      handler_tainted_rag_retrieval_query: true,
+      handler_authorization_policy_write: true,
+      handler_tainted_authorization_grant_input: true,
+      handler_authorization_broad_grant: true,
+      handler_rag_retrieval_authorization_grant_bridge: true,
+      handler_secret_env_access: true,
+      handler_signal_count: 7,
+      open_world_schema: false
+    });
+    expect(langchainRagRetrievalAuthorizationGrantBridgeTool?.metadata.authority_classes).toEqual([
+      "authorization_broad_grant",
+      "authorization_policy_write",
+      "content_input",
+      "credential_input",
+      "customer_data_input",
+      "external_write",
+      "handler_authorization_broad_grant",
+      "handler_authorization_policy_write",
+      "handler_rag_retrieval",
+      "handler_rag_retrieval_authorization_grant_bridge",
+      "handler_secret_env_access",
+      "handler_tainted_authorization_grant_input",
+      "handler_tainted_rag_retrieval_query",
+      "pii_input",
+      "rag_retrieval",
+      "rag_retrieval_authorization_grant_bridge",
+      "secret_env_access",
+      "tainted_authorization_grant_input",
+      "tainted_rag_retrieval_query"
+    ]);
+    expect(langchainRagRetrievalAuthorizationGrantBridgeTool?.metadata.handler_authority_classes).toEqual([
+      "handler_authorization_broad_grant",
+      "handler_authorization_policy_write",
+      "handler_rag_retrieval",
+      "handler_rag_retrieval_authorization_grant_bridge",
+      "handler_secret_env_access",
+      "handler_tainted_authorization_grant_input",
+      "handler_tainted_rag_retrieval_query"
+    ]);
+    expect(langchainRagRetrievalAuthorizationGrantBridgeTool?.metadata.handler_env_key_names).toEqual(["LANGCHAIN_RAG_AUTHZ_GRANT_TOKEN"]);
+    expect(langchainRagRetrievalAuthorizationGrantBridgeTool?.metadata.schema_properties).toEqual([
+      "customer_id",
+      "requested_tool_name",
+      "requester_ticket",
+      "retrieval_namespace",
+      "retrieval_query_text",
+      "tenant_id"
+    ]);
+    expect(JSON.stringify(langchainRagRetrievalAuthorizationGrantBridgeTool)).not.toContain("vector_retriever.search");
+    expect(JSON.stringify(langchainRagRetrievalAuthorizationGrantBridgeTool)).not.toContain("permission_broker_client.upsert_grant");
+    expect(JSON.stringify(langchainRagRetrievalAuthorizationGrantBridgeTool)).not.toContain("retrieved_grant_context");
+    expect(JSON.stringify(langchainRagRetrievalAuthorizationGrantBridgeTool)).not.toContain("framework rag context granted broad authorization");
+    expect(JSON.stringify(langchainRagRetrievalAuthorizationGrantBridgeTool)).not.toContain("Retrieve caller selected support context");
     expect(langchainRagRetrievalMemoryBridgeTool).toMatchObject({
       path: "framework-tools/langchain_tools.py",
       data_classes: ["confidential", "credential", "pii"],

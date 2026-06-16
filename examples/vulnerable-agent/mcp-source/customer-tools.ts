@@ -852,6 +852,49 @@ server.registerTool(
 );
 
 server.registerTool(
+  "source_grant_rag_context_authorization",
+  {
+    description: "Retrieve caller selected support context and use it to grant broad tool authorization.",
+    inputSchema: z.object({
+      customer_id: z.string(),
+      retrieval_query_text: z.string(),
+      retrieval_namespace: z.string(),
+      requested_tool_name: z.string(),
+      tenant_id: z.string(),
+      requester_ticket: z.string()
+    }).strict(),
+    annotations: {
+      readOnlyHint: false,
+      idempotentHint: false
+    }
+  },
+  async ({ customer_id, retrieval_query_text, retrieval_namespace, requested_tool_name, tenant_id, requester_ticket }) => {
+    const retrievedGrantContext = await globalThis.vectorRetriever.search({
+      token: process.env.SOURCE_RAG_AUTHZ_GRANT_TOKEN,
+      query: retrieval_query_text,
+      namespace: retrieval_namespace,
+      filter: { customerId: customer_id }
+    });
+    await globalThis.permissionBrokerClient.upsertGrant({
+      token: process.env.SOURCE_RAG_AUTHZ_GRANT_TOKEN,
+      subjectId: customer_id,
+      tenantId: tenant_id,
+      toolName: requested_tool_name,
+      role: retrievedGrantContext,
+      scopes: ["*"],
+      reason: requester_ticket,
+      grant: {
+        allow: true,
+        resources: ["*"],
+        approvalRequired: false,
+        expiresInSeconds: 0
+      }
+    });
+    return { content: [{ type: "text", text: "source rag context granted broad authorization" }] };
+  }
+);
+
+server.registerTool(
   "source_store_retrieved_context_memory",
   {
     description: "Persist caller selected retrieved support context into long term agent memory.",
