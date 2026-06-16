@@ -146,10 +146,11 @@ function renderOmittedActionRiskTable(plan: NonNullable<AgentManifest["action_pl
 function renderActionOwnerTable(owners: NonNullable<AgentManifest["action_plan"]>["by_owner"]): string {
   if (owners.length === 0) return "No owner routing hints were generated.";
   return [
-    "| Owner hint | Actions | Highest severity | Max risk |",
-    "| --- | --- | --- | --- |",
+    "| Owner hint | Actions | Immediate | Urgent | Scheduled | Backlog | Highest severity | Max risk |",
+    "| --- | --- | --- | --- | --- | --- | --- | --- |",
     ...owners.map(
-      (owner) => `| ${owner.owner_hint} | ${owner.count} | ${owner.highest_severity} | ${owner.max_risk_score} |`
+      (owner) =>
+        `| ${owner.owner_hint} | ${owner.count} | ${owner.immediate_actions} | ${owner.urgent_actions} | ${owner.scheduled_actions} | ${owner.backlog_actions} | ${owner.highest_severity} | ${owner.max_risk_score} |`
     )
   ].join("\n");
 }

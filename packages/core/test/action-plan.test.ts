@@ -33,6 +33,8 @@ describe("action plan owner routing", () => {
     expect(plan.actions.every((action) => action.response_tier === "urgent")).toBe(true);
     expect(plan.urgent_actions).toBe(6);
     expect(plan.immediate_actions).toBe(0);
+    expect(plan.by_owner.every((owner) => owner.urgent_actions === 1)).toBe(true);
+    expect(plan.by_owner.every((owner) => owner.immediate_actions === 0)).toBe(true);
   });
 
   it("assigns deterministic response tiers from severity, risk, and controls", () => {
@@ -57,6 +59,17 @@ describe("action plan owner routing", () => {
     expect(plan.scheduled_actions).toBe(1);
     expect(plan.backlog_actions).toBe(1);
     expect(plan.actions.every((action) => action.response_reason.length > 0)).toBe(true);
+    expect(
+      Object.values(
+        plan.by_owner.reduce<Record<string, number>>((counts, owner) => {
+          counts.immediate += owner.immediate_actions;
+          counts.urgent += owner.urgent_actions;
+          counts.scheduled += owner.scheduled_actions;
+          counts.backlog += owner.backlog_actions;
+          return counts;
+        }, { immediate: 0, urgent: 0, scheduled: 0, backlog: 0 })
+      )
+    ).toEqual([2, 1, 1, 1]);
   });
 
   it("reports when the bounded action queue omits lower-priority findings", () => {

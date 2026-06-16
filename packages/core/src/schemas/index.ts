@@ -341,7 +341,11 @@ export const ActionPlanOwnerSummarySchema = z.object({
   owner_hint: z.string(),
   count: z.number().int().nonnegative(),
   highest_severity: SeveritySchema,
-  max_risk_score: z.number().int().min(0).max(100)
+  max_risk_score: z.number().int().min(0).max(100),
+  immediate_actions: z.number().int().nonnegative().default(0),
+  urgent_actions: z.number().int().nonnegative().default(0),
+  scheduled_actions: z.number().int().nonnegative().default(0),
+  backlog_actions: z.number().int().nonnegative().default(0)
 });
 
 export const ActionPlanSummarySchema = z.object({

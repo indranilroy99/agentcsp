@@ -113,6 +113,10 @@ describe("scanProject", () => {
     expect(result.manifest.action_plan?.by_owner[0]).toMatchObject({
       owner_hint: expect.any(String),
       count: expect.any(Number),
+      immediate_actions: expect.any(Number),
+      urgent_actions: expect.any(Number),
+      scheduled_actions: expect.any(Number),
+      backlog_actions: expect.any(Number),
       highest_severity: expect.any(String),
       max_risk_score: expect.any(Number)
     });
@@ -238,7 +242,9 @@ describe("scanProject", () => {
     expect(result.reportMarkdown).toContain("- Omitted highest severity:");
     expect(result.reportMarkdown).toContain("- Omitted max risk score:");
     expect(result.reportMarkdown).toContain("### Action Owners");
-    expect(result.reportMarkdown).toContain("| Owner hint | Actions | Highest severity | Max risk |");
+    expect(result.reportMarkdown).toContain(
+      "| Owner hint | Actions | Immediate | Urgent | Scheduled | Backlog | Highest severity | Max risk |"
+    );
     expect(result.reportMarkdown).toContain("### Omitted Action Risk");
     expect(result.reportMarkdown).toContain("| Omitted | Highest severity | Max risk | Critical | High | Medium | Low | Info |");
     expect(result.reportMarkdown).toContain(

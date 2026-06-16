@@ -1279,6 +1279,26 @@
                     "type": "integer",
                     "minimum": 0,
                     "maximum": 100
+                  },
+                  "immediate_actions": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "default": 0
+                  },
+                  "urgent_actions": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "default": 0
+                  },
+                  "scheduled_actions": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "default": 0
+                  },
+                  "backlog_actions": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "default": 0
                   }
                 },
                 "required": [

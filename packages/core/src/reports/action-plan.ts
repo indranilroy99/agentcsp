@@ -222,14 +222,33 @@ function isRuntimeSurface(surfaceType: SurfaceType): boolean {
 }
 
 function summarizeOwners(actions: ActionPlanSummary["actions"]): ActionPlanSummary["by_owner"] {
-  const owners = new Map<string, { count: number; highest_severity: Severity; max_risk_score: number }>();
+  const owners = new Map<
+    string,
+    {
+      count: number;
+      highest_severity: Severity;
+      max_risk_score: number;
+      immediate_actions: number;
+      urgent_actions: number;
+      scheduled_actions: number;
+      backlog_actions: number;
+    }
+  >();
   for (const action of actions) {
     const current = owners.get(action.owner_hint) ?? {
       count: 0,
       highest_severity: "info" as Severity,
-      max_risk_score: 0
+      max_risk_score: 0,
+      immediate_actions: 0,
+      urgent_actions: 0,
+      scheduled_actions: 0,
+      backlog_actions: 0
     };
     current.count += 1;
+    if (action.response_tier === "immediate") current.immediate_actions += 1;
+    if (action.response_tier === "urgent") current.urgent_actions += 1;
+    if (action.response_tier === "scheduled") current.scheduled_actions += 1;
+    if (action.response_tier === "backlog") current.backlog_actions += 1;
     if (severityRank[action.severity] > severityRank[current.highest_severity]) {
       current.highest_severity = action.severity;
     }
