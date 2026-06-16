@@ -368,6 +368,7 @@ export const RemediationActionSchema = z.object({
   related_finding_ids: z.array(z.string()).default([]),
   data_classes: z.array(DataClassSchema).default([]),
   actions: z.array(ActionTypeSchema).default([]),
+  risk_drivers: z.array(TriageRiskDriverSchema).default([]),
   trust_boundary_crossed: z.boolean().default(false)
 });
 
@@ -378,6 +379,11 @@ export const ActionPlanOwnerControlCountSchema = z.object({
 
 export const ActionPlanOwnerSurfaceCountSchema = z.object({
   surface_type: SurfaceTypeSchema,
+  count: z.number().int().nonnegative()
+});
+
+export const ActionPlanOwnerRiskDriverCountSchema = z.object({
+  driver: TriageRiskDriverSchema,
   count: z.number().int().nonnegative()
 });
 
@@ -392,6 +398,7 @@ export const ActionPlanOwnerSummarySchema = z.object({
   backlog_actions: z.number().int().nonnegative().default(0),
   by_recommended_control: z.array(ActionPlanOwnerControlCountSchema).default([]),
   by_surface_type: z.array(ActionPlanOwnerSurfaceCountSchema).default([]),
+  by_risk_driver: z.array(ActionPlanOwnerRiskDriverCountSchema).default([]),
   top_action_id_limit: z.number().int().positive().default(5),
   top_action_ids_truncated: z.boolean().default(false),
   top_action_ids: z.array(z.string()).default([])

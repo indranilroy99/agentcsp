@@ -8,6 +8,7 @@ import type {
   SurfaceType
 } from "../schemas/index.js";
 import { stableId } from "../utils/ids.js";
+import { riskDriverOrder, riskDriversForFinding, type RiskDriver } from "./risk-drivers.js";
 
 const severityRank = { critical: 5, high: 4, medium: 3, low: 2, info: 1 };
 const confidenceRank = { very_high: 4, high: 3, medium: 2, low: 1 };
@@ -51,6 +52,7 @@ export function buildActionPlan(findings: Finding[], limit = 12): ActionPlanSumm
       related_finding_ids: [finding.id],
       data_classes: finding.data_classes,
       actions: finding.risk.actions,
+      risk_drivers: riskDriversForFinding(finding),
       trust_boundary_crossed: finding.trust_boundary_crossed
     };
   });
@@ -271,6 +273,7 @@ function summarizeOwners(actions: ActionPlanSummary["actions"]): ActionPlanSumma
       backlog_actions: summary.backlog_actions,
       by_recommended_control: summarizeOwnerControls(summary.actions),
       by_surface_type: summarizeOwnerSurfaces(summary.actions),
+      by_risk_driver: summarizeOwnerRiskDrivers(summary.actions),
       top_action_id_limit: ownerActionIdLimit,
       top_action_ids_truncated: summary.actions.length > ownerActionIdLimit,
       top_action_ids: summary.actions.slice(0, ownerActionIdLimit).map((action) => action.id)
@@ -304,4 +307,14 @@ function summarizeOwnerSurfaces(
   return [...counts.entries()]
     .map(([surface_type, count]) => ({ surface_type, count }))
     .sort((a, b) => b.count - a.count || a.surface_type.localeCompare(b.surface_type));
+}
+
+function summarizeOwnerRiskDrivers(actions: ActionPlanSummary["actions"]): Array<{ driver: RiskDriver; count: number }> {
+  const counts = new Map<RiskDriver, number>();
+  for (const action of actions) {
+    for (const driver of action.risk_drivers) counts.set(driver, (counts.get(driver) ?? 0) + 1);
+  }
+  return [...counts.entries()]
+    .map(([driver, count]) => ({ driver, count }))
+    .sort((a, b) => b.count - a.count || riskDriverOrder.indexOf(a.driver) - riskDriverOrder.indexOf(b.driver));
 }

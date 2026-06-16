@@ -131,12 +131,19 @@ describe("scanProject", () => {
       max_risk_score: expect.any(Number),
       by_recommended_control: expect.any(Array),
       by_surface_type: expect.any(Array),
+      by_risk_driver: expect.any(Array),
       top_action_id_limit: 5,
       top_action_ids_truncated: expect.any(Boolean),
       top_action_ids: expect.any(Array)
     });
     expect(result.manifest.action_plan?.by_owner[0]?.top_action_ids.length).toBeGreaterThan(0);
     expect(result.manifest.action_plan?.actions[0]?.rationale.length).toBeGreaterThan(0);
+    expect(result.manifest.action_plan?.actions[0]?.risk_drivers.length).toBeGreaterThan(0);
+    expect(
+      result.manifest.action_plan?.by_owner.some((owner) =>
+        owner.by_risk_driver.some((item) => item.driver === "untrusted_to_privileged" && item.count > 0)
+      )
+    ).toBe(true);
     expect(result.findings.length).toBeGreaterThan(0);
     expect(result.outputFiles.sarif).toBeDefined();
     const sarif = JSON.parse(await fs.readFile(result.outputFiles.sarif!, "utf8")) as {
@@ -185,7 +192,10 @@ describe("scanProject", () => {
             top_active_risks_truncated?: boolean;
             active_by_risk_driver?: Array<{ driver?: string; count?: number; max_risk_score?: number }>;
           };
-          agentcsp_action_plan?: { total_actions?: number; actions?: Array<{ priority?: number; rule_id?: string }> };
+          agentcsp_action_plan?: {
+            total_actions?: number;
+            actions?: Array<{ priority?: number; rule_id?: string; risk_drivers?: string[] }>;
+          };
           agentcsp_ci_gate_summary?: {
             status?: string;
             should_fail?: boolean;
@@ -251,6 +261,7 @@ describe("scanProject", () => {
       result.manifest.action_plan?.total_actions
     );
     expect(sarif.runs[0]?.properties?.agentcsp_action_plan?.actions?.[0]?.priority).toBe(1);
+    expect(sarif.runs[0]?.properties?.agentcsp_action_plan?.actions?.[0]?.risk_drivers?.length).toBeGreaterThan(0);
     expect(sarif.runs[0]?.properties?.agentcsp_ci_gate_summary).toMatchObject({
       status: "pass",
       should_fail: false,
@@ -296,10 +307,11 @@ describe("scanProject", () => {
     expect(result.reportMarkdown).toContain(
       "| Owner hint | Actions | Immediate | Urgent | Scheduled | Backlog | Highest severity | Max risk |"
     );
+    expect(result.reportMarkdown).toContain("Risk drivers | Top action IDs |");
     expect(result.reportMarkdown).toContain("### Omitted Action Risk");
     expect(result.reportMarkdown).toContain("| Omitted | Highest severity | Max risk | Critical | High | Medium | Low | Info |");
     expect(result.reportMarkdown).toContain(
-      "| Priority | Response | Severity | Risk | Baseline | Owner | Control | Rule | Surface | Path | Rationale |"
+      "| Priority | Response | Severity | Risk | Baseline | Owner | Control | Rule | Surface | Path | Drivers | Rationale |"
     );
     expect(result.reportMarkdown).toContain("- Root: `<scan-root>`");
     expect(result.reportMarkdown).not.toContain(rootPath);

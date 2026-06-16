@@ -124,11 +124,11 @@ function renderActionPlan(manifest: AgentManifest): string {
     "",
     renderOmittedActionRiskTable(plan),
     "",
-    "| Priority | Response | Severity | Risk | Baseline | Owner | Control | Rule | Surface | Path | Rationale |",
-    "| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |",
+    "| Priority | Response | Severity | Risk | Baseline | Owner | Control | Rule | Surface | Path | Drivers | Rationale |",
+    "| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |",
     ...plan.actions.map(
       (action) =>
-        `| ${action.priority} | ${action.response_tier} | ${action.severity} | ${action.risk_score} | ${action.baseline_status ?? "unbaselined"} | ${action.owner_hint} | ${action.recommended_control.replaceAll("_", " ")} | ${action.rule_id} | ${action.surface_type} | \`${escapeTable(action.path)}\` | ${escapeTable([...action.rationale, action.response_reason].join("; "))} |`
+        `| ${action.priority} | ${action.response_tier} | ${action.severity} | ${action.risk_score} | ${action.baseline_status ?? "unbaselined"} | ${action.owner_hint} | ${action.recommended_control.replaceAll("_", " ")} | ${action.rule_id} | ${action.surface_type} | \`${escapeTable(action.path)}\` | ${escapeTable(formatRiskDrivers(action.risk_drivers))} | ${escapeTable([...action.rationale, action.response_reason].join("; "))} |`
     )
   ].join("\n");
 }
@@ -146,19 +146,24 @@ function renderOmittedActionRiskTable(plan: NonNullable<AgentManifest["action_pl
 function renderActionOwnerTable(owners: NonNullable<AgentManifest["action_plan"]>["by_owner"]): string {
   if (owners.length === 0) return "No owner routing hints were generated.";
   return [
-    "| Owner hint | Actions | Immediate | Urgent | Scheduled | Backlog | Highest severity | Max risk | Controls | Surfaces | Top action IDs |",
-    "| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |",
+    "| Owner hint | Actions | Immediate | Urgent | Scheduled | Backlog | Highest severity | Max risk | Controls | Surfaces | Risk drivers | Top action IDs |",
+    "| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |",
     ...owners.map(
       (owner) => {
         const controls = owner.by_recommended_control
           .map((item) => `${item.control.replaceAll("_", " ")}:${item.count}`)
           .join(", ");
         const surfaces = owner.by_surface_type.map((item) => `${item.surface_type}:${item.count}`).join(", ");
+        const drivers = owner.by_risk_driver.map((item) => `${item.driver.replaceAll("_", " ")}:${item.count}`).join(", ");
         const actionIds = owner.top_action_ids.map((id) => `\`${escapeTable(id)}\``).join(", ");
-        return `| ${owner.owner_hint} | ${owner.count} | ${owner.immediate_actions} | ${owner.urgent_actions} | ${owner.scheduled_actions} | ${owner.backlog_actions} | ${owner.highest_severity} | ${owner.max_risk_score} | ${escapeTable(controls)} | ${escapeTable(surfaces)} | ${actionIds}${owner.top_action_ids_truncated ? " ..." : ""} |`;
+        return `| ${owner.owner_hint} | ${owner.count} | ${owner.immediate_actions} | ${owner.urgent_actions} | ${owner.scheduled_actions} | ${owner.backlog_actions} | ${owner.highest_severity} | ${owner.max_risk_score} | ${escapeTable(controls)} | ${escapeTable(surfaces)} | ${escapeTable(drivers || "none")} | ${actionIds}${owner.top_action_ids_truncated ? " ..." : ""} |`;
       }
     )
   ].join("\n");
+}
+
+function formatRiskDrivers(drivers: string[]): string {
+  return drivers.length > 0 ? drivers.map((driver) => driver.replaceAll("_", " ")).join(", ") : "none";
 }
 
 function renderTriageSummary(manifest: AgentManifest): string {

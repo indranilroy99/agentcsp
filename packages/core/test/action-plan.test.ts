@@ -31,6 +31,12 @@ describe("action plan owner routing", () => {
     ]);
     expect(plan.actions.every((action) => action.owner_reason.length > 0)).toBe(true);
     expect(plan.actions.every((action) => action.response_tier === "urgent")).toBe(true);
+    expect(plan.actions.find((action) => action.related_finding_ids[0] === "finding_secret")?.risk_drivers).toEqual([
+      "secret_exposure",
+      "side_effect",
+      "sensitive_data",
+      "credential_data"
+    ]);
     expect(plan.urgent_actions).toBe(6);
     expect(plan.immediate_actions).toBe(0);
     expect(plan.by_owner.every((owner) => owner.urgent_actions === 1)).toBe(true);
@@ -40,6 +46,7 @@ describe("action plan owner routing", () => {
     expect(plan.by_owner.every((owner) => owner.top_action_ids_truncated === false)).toBe(true);
     expect(plan.by_owner.every((owner) => owner.by_recommended_control.length > 0)).toBe(true);
     expect(plan.by_owner.every((owner) => owner.by_surface_type.length > 0)).toBe(true);
+    expect(plan.by_owner.every((owner) => owner.by_risk_driver.length > 0)).toBe(true);
   });
 
   it("assigns deterministic response tiers from severity, risk, and controls", () => {
@@ -95,7 +102,7 @@ describe("action plan owner routing", () => {
     });
   });
 
-  it("summarizes owner workloads by control, surface, and bounded action IDs", () => {
+  it("summarizes owner workloads by control, surface, risk driver, and bounded action IDs", () => {
     const findings = Array.from({ length: 7 }, (_, index) =>
       finding({
         id: `mcp_${index}`,
@@ -121,6 +128,7 @@ describe("action plan owner routing", () => {
       { surface_type: "mcp_server", count: 4 },
       { surface_type: "tool", count: 3 }
     ]);
+    expect(owner?.by_risk_driver).toEqual([{ driver: "side_effect", count: 7 }]);
   });
 });
 

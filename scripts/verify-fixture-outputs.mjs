@@ -2063,6 +2063,11 @@ function assertVulnerableOperatorMetadata(output) {
   assert(firstOwner?.top_action_ids?.length > 0, "vulnerable action owner top action IDs missing");
   assert(firstOwner?.by_recommended_control?.length > 0, "vulnerable action owner control mix missing");
   assert(firstOwner?.by_surface_type?.length > 0, "vulnerable action owner surface mix missing");
+  assert(firstOwner?.by_risk_driver?.length > 0, "vulnerable action owner risk driver mix missing");
+  assert(
+    manifest.action_plan?.actions?.[0]?.risk_drivers?.length > 0,
+    "vulnerable action risk drivers missing"
+  );
 
   assertEqual(manifest.ci_gate_summary?.blocker_id_limit, 50, "vulnerable CI blocker ID limit");
   assertEqual(manifest.ci_gate_summary?.blocker_ids_truncated, false, "vulnerable CI blocker truncation");
@@ -2099,6 +2104,8 @@ function assertVulnerableOperatorMetadata(output) {
   assert(report.includes("- Top active risks truncated: `true`"), "vulnerable report missing triage truncation");
   assert(report.includes("### Active Risk Drivers"), "vulnerable report missing risk driver section");
   assert(report.includes("untrusted to privileged"), "vulnerable report missing untrusted risk driver");
+  assert(report.includes("Risk drivers | Top action IDs"), "vulnerable report missing owner risk driver column");
+  assert(report.includes("Drivers | Rationale"), "vulnerable report missing action risk driver column");
   assert(report.includes("- Attack path limit: 15"), "vulnerable report missing attack path limit");
   assert(report.includes("- High-risk objects truncated: `true`"), "vulnerable report missing blast-radius truncation");
   assert(report.includes("- Recommended controls truncated: `true`"), "vulnerable report missing control truncation");

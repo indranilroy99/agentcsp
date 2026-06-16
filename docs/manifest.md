@@ -2895,6 +2895,7 @@ The summary includes:
 - maximum active risk score
 - active findings by severity and confidence
 - active findings by surface type, category, and recommended control
+- active findings by deterministic risk driver with count, severity mix, and max risk score
 - bounded top active rules with total count and truncation status
 - bounded top active risks with finding IDs, object IDs, paths, risk scores, recommended controls, trust level, data classes, actions, external reach, secret exposure, untrusted-to-privileged influence, trust-boundary status, total count, and truncation status
 
@@ -2918,11 +2919,11 @@ Each action includes:
 - baseline status when a baseline is loaded
 - rationale
 - related finding IDs
-- data classes, actions, and trust-boundary status
+- data classes, actions, risk drivers, and trust-boundary status
 
 Response tiers are deterministic operational routing hints: `immediate`, `urgent`, `scheduled`, or `backlog`. They are derived from severity, risk score, recommended control, secret exposure, and external reach.
 
-The summary also includes `total_active_findings_considered`, `max_actions`, `omitted_actions`, `omitted_by_severity`, `omitted_highest_severity`, `omitted_max_risk_score`, and `truncated` so consumers can tell when the concise action queue hides lower-priority active findings and whether those omitted findings still contain material risk. It also includes response-tier counts, `new_actions`, `existing_actions`, and `by_owner`, a deterministic owner workload rollup with action count, response-tier counts, highest severity, max risk score, recommended-control mix, surface-type mix, and a bounded list of top action IDs. Owner hints are routing hints, not access-control decisions.
+The summary also includes `total_active_findings_considered`, `max_actions`, `omitted_actions`, `omitted_by_severity`, `omitted_highest_severity`, `omitted_max_risk_score`, and `truncated` so consumers can tell when the concise action queue hides lower-priority active findings and whether those omitted findings still contain material risk. It also includes response-tier counts, `new_actions`, `existing_actions`, and `by_owner`, a deterministic owner workload rollup with action count, response-tier counts, highest severity, max risk score, recommended-control mix, surface-type mix, risk-driver mix, and a bounded list of top action IDs. Owner hints are routing hints, not access-control decisions.
 
 The action plan does not include raw file contents, evidence snippets, secret values, policy reasons, or unredacted tool/runtime configuration values.
 

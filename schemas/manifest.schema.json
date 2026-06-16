@@ -1425,6 +1425,27 @@
                     },
                     "default": []
                   },
+                  "by_risk_driver": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "driver": {
+                          "$ref": "#/definitions/AgentCSP Agent Manifest/properties/triage_summary/properties/active_by_risk_driver/items/properties/driver"
+                        },
+                        "count": {
+                          "type": "integer",
+                          "minimum": 0
+                        }
+                      },
+                      "required": [
+                        "driver",
+                        "count"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "default": []
+                  },
                   "top_action_id_limit": {
                     "type": "integer",
                     "exclusiveMinimum": 0,
@@ -1539,6 +1560,13 @@
                     "type": "array",
                     "items": {
                       "$ref": "#/definitions/AgentCSP Agent Manifest/properties/agents/items/properties/actions/items"
+                    },
+                    "default": []
+                  },
+                  "risk_drivers": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/definitions/AgentCSP Agent Manifest/properties/triage_summary/properties/active_by_risk_driver/items/properties/driver"
                     },
                     "default": []
                   },
