@@ -331,6 +331,8 @@ function assertInstalledSafeOperatorMetadata(manifest, report) {
   assertEqual(manifest.metadata?.config?.fail_on_scan_health, undefined, "installed CLI safe manifest scan-health gate");
   assertEqual(manifest.metadata?.config?.evidence_redacted, true, "installed CLI safe evidence redaction flag");
   assertEqual(manifest.metadata?.config?.secret_values_collected, false, "installed CLI safe secret collection flag");
+  assert(manifest.metadata?.fingerprint?.value?.match(/^[a-f0-9]{64}$/u), "installed CLI safe manifest fingerprint missing");
+  assertEqual(manifest.metadata?.fingerprint?.algorithm, "sha256", "installed CLI safe manifest fingerprint algorithm");
   assertEqual(manifest.metadata?.rule_pack?.built_in_rules, 383, "installed CLI safe built-in rule count");
   assertEqual(manifest.metadata?.rule_pack?.project_rules, 0, "installed CLI safe project rule count");
   assertEqual(manifest.metadata?.rule_pack?.total_rules, 383, "installed CLI safe total rule count");
@@ -372,6 +374,7 @@ function assertInstalledSafeOperatorMetadata(manifest, report) {
     "installed CLI safe recommended controls truncation"
   );
   assert(report.includes("- Scan health: `complete`"), "Installed CLI report missing scan health");
+  assert(report.includes("- Manifest fingerprint: `"), "Installed CLI report missing manifest fingerprint");
   assert(report.includes("- Top active risks truncated: `false`"), "Installed CLI report missing triage truncation");
   assert(report.includes("- Attack path limit: 15"), "Installed CLI report missing attack path limit");
 }
@@ -387,6 +390,11 @@ function assertInstalledSafeSarif(sarif, manifest) {
     run.properties?.agentcsp_scan_config?.formats ?? [],
     ["json", "md", "sarif"],
     "installed CLI SARIF scan config formats"
+  );
+  assertEqual(
+    run.properties?.agentcsp_manifest_fingerprint?.value,
+    manifest.metadata?.fingerprint?.value,
+    "installed CLI SARIF manifest fingerprint"
   );
   assertEqual(
     run.properties?.agentcsp_ci_gate_summary?.scan_health,

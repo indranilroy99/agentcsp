@@ -592,6 +592,12 @@ export const RulePackObjectTypeCountSchema = z.object({
   count: z.number().int().nonnegative()
 });
 
+export const ManifestFingerprintSchema = z.object({
+  algorithm: z.literal("sha256"),
+  value: z.string(),
+  excludes: z.array(z.string()).default(["metadata.generated_at", "metadata.root_path", "metadata.fingerprint"])
+});
+
 export const ManifestMetadataSchema = z.object({
   schema_version: z.literal(ManifestSchemaVersion),
   generated_at: z.string(),
@@ -600,6 +606,7 @@ export const ManifestMetadataSchema = z.object({
     name: z.literal("agentcsp"),
     version: z.string()
   }),
+  fingerprint: ManifestFingerprintSchema.optional(),
   config: z.object({
     formats: z.array(z.enum(["json", "md", "sarif"])).default([]),
     include_hidden: z.boolean(),
@@ -736,6 +743,7 @@ export type ActionPlanSummary = z.infer<typeof ActionPlanSummarySchema>;
 export type BaselineComparison = z.infer<typeof BaselineComparisonSchema>;
 export type CiGateSummary = z.infer<typeof CiGateSummarySchema>;
 export type ScanCoverageSummary = z.infer<typeof ScanCoverageSummarySchema>;
+export type ManifestFingerprint = z.infer<typeof ManifestFingerprintSchema>;
 export type Rule = z.infer<typeof RuleSchema>;
 export type Policy = z.infer<typeof PolicySchema>;
 export type AgentManifest = z.infer<typeof AgentManifestSchema>;

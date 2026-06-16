@@ -66,6 +66,39 @@ describe("scan output paths", () => {
       })
     ).rejects.toThrow("output_path must be a directory outside or below the scan root");
   });
+
+  it("emits a stable manifest fingerprint across equivalent scan roots", async () => {
+    const firstRoot = await createFingerprintFixture("/private/tmp/agentcsp-fingerprint-a");
+    const secondRoot = await createFingerprintFixture("/private/tmp/agentcsp-fingerprint-b");
+
+    const first = await scanProject({
+      root_path: firstRoot,
+      output_path: ".agentcsp",
+      formats: ["json", "md"],
+      include_hidden: true,
+      include_logs: false,
+      max_file_size_bytes: 1024 * 1024,
+      max_files: 5000,
+      quiet: true
+    });
+    const second = await scanProject({
+      root_path: secondRoot,
+      output_path: ".agentcsp",
+      formats: ["json", "md"],
+      include_hidden: true,
+      include_logs: false,
+      max_file_size_bytes: 1024 * 1024,
+      max_files: 5000,
+      quiet: true
+    });
+
+    expect(first.manifest.metadata.root_path).not.toBe(second.manifest.metadata.root_path);
+    expect(first.manifest.metadata.generated_at).not.toBe("");
+    expect(second.manifest.metadata.generated_at).not.toBe("");
+    expect(first.manifest.metadata.fingerprint?.value).toBe(second.manifest.metadata.fingerprint?.value);
+    expect(first.manifest.metadata.fingerprint?.value).toMatch(/^[a-f0-9]{64}$/u);
+    expect(first.reportMarkdown).toContain(`- Manifest fingerprint: \`${first.manifest.metadata.fingerprint?.value}\``);
+  });
 });
 
 async function createOutputFixture(): Promise<string> {
@@ -74,5 +107,12 @@ async function createOutputFixture(): Promise<string> {
   await fs.mkdir(path.join(root, "security", "agentcsp-output"), { recursive: true });
   await fs.writeFile(path.join(root, "AGENTS.md"), "Review repository changes only.\n", "utf8");
   await fs.writeFile(path.join(root, "security", "agentcsp-output", "agent-manifest.json"), '{"old": true}\n', "utf8");
+  return root;
+}
+
+async function createFingerprintFixture(root: string): Promise<string> {
+  await fs.rm(root, { recursive: true, force: true });
+  await fs.mkdir(root, { recursive: true });
+  await fs.writeFile(path.join(root, "AGENTS.md"), "Review repository changes only.\n", "utf8");
   return root;
 }

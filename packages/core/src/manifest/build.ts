@@ -1,4 +1,5 @@
 import path from "node:path";
+import { createHash } from "node:crypto";
 import {
   AgentManifestSchema,
   ManifestSchemaVersion,
@@ -36,7 +37,7 @@ export function buildManifest(input: {
   staticBlastRadius?: StaticBlastRadiusSummary;
 }): AgentManifest {
   const evidence = collectEvidence(input.surfaces, input.findings ?? []);
-  return AgentManifestSchema.parse({
+  const manifest = AgentManifestSchema.parse({
     metadata: {
       schema_version: ManifestSchemaVersion,
       generated_at: new Date().toISOString(),
@@ -91,6 +92,13 @@ export function buildManifest(input: {
     ci_gate_summary: input.ciGateSummary,
     scan_coverage: input.scanCoverage,
     static_blast_radius: input.staticBlastRadius
+  });
+  return AgentManifestSchema.parse({
+    ...manifest,
+    metadata: {
+      ...manifest.metadata,
+      fingerprint: fingerprintManifest(manifest)
+    }
   });
 }
 
@@ -157,4 +165,34 @@ function attackPathPriority(path: AttackPath): number {
   }
   if (path.reason.includes("generated-state replay")) score += 5;
   return score;
+}
+
+function fingerprintManifest(manifest: AgentManifest): AgentManifest["metadata"]["fingerprint"] {
+  const fingerprintInput = {
+    ...manifest,
+    metadata: {
+      ...manifest.metadata,
+      generated_at: "<excluded>",
+      root_path: "<excluded>",
+      fingerprint: undefined
+    }
+  };
+  return {
+    algorithm: "sha256",
+    value: createHash("sha256").update(canonicalJson(fingerprintInput)).digest("hex"),
+    excludes: ["metadata.generated_at", "metadata.root_path", "metadata.fingerprint"]
+  };
+}
+
+function canonicalJson(value: unknown): string {
+  if (Array.isArray(value)) {
+    return `[${value.map((item) => canonicalJson(item)).join(",")}]`;
+  }
+  if (value && typeof value === "object") {
+    const entries = Object.entries(value as Record<string, unknown>)
+      .filter(([, item]) => item !== undefined)
+      .sort(([a], [b]) => a.localeCompare(b));
+    return `{${entries.map(([key, item]) => `${JSON.stringify(key)}:${canonicalJson(item)}`).join(",")}}`;
+  }
+  return JSON.stringify(value);
 }

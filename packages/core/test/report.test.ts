@@ -19,6 +19,11 @@ describe("scanProject", () => {
     });
 
     expect(result.manifest.metadata.config.secret_values_collected).toBe(false);
+    expect(result.manifest.metadata.fingerprint).toMatchObject({
+      algorithm: "sha256",
+      excludes: ["metadata.generated_at", "metadata.root_path", "metadata.fingerprint"]
+    });
+    expect(result.manifest.metadata.fingerprint?.value).toMatch(/^[a-f0-9]{64}$/u);
     expect(result.manifest.metadata.rule_pack).toMatchObject({
       built_in_rules: 383,
       project_rules: 0,
@@ -201,6 +206,11 @@ describe("scanProject", () => {
           };
         }>;
         properties?: {
+          agentcsp_manifest_fingerprint?: {
+            algorithm?: string;
+            value?: string;
+            excludes?: string[];
+          };
           agentcsp_scan_config?: {
             formats?: string[];
             include_hidden?: boolean;
@@ -293,6 +303,11 @@ describe("scanProject", () => {
       fail_on_new: false,
       secret_values_collected: false
     });
+    expect(sarif.runs[0]?.properties?.agentcsp_manifest_fingerprint).toMatchObject({
+      algorithm: "sha256",
+      value: result.manifest.metadata.fingerprint?.value,
+      excludes: ["metadata.generated_at", "metadata.root_path", "metadata.fingerprint"]
+    });
     expect(sarif.runs[0]?.properties?.agentcsp_rule_pack).toMatchObject({
       built_in_rules: 383,
       project_rules: 0,
@@ -349,6 +364,8 @@ describe("scanProject", () => {
     expect(JSON.stringify(sarif.runs[0]?.properties?.agentcsp_triage_summary)).not.toContain("replace-me");
     expect(result.reportMarkdown).toContain("## Triage Summary");
     expect(result.reportMarkdown).toContain("- Built-in rules loaded: 383");
+    expect(result.reportMarkdown).toContain("- Manifest fingerprint: `");
+    expect(result.reportMarkdown).toContain("- Manifest fingerprint excludes: `metadata.generated_at`, `metadata.root_path`, `metadata.fingerprint`");
     expect(result.reportMarkdown).toContain("- Total rules loaded: 383");
     expect(result.reportMarkdown).toContain("- Rule diagnostics: 0");
     expect(result.reportMarkdown).toContain("- Output formats: `json`, `md`, `sarif`");

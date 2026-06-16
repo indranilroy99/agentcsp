@@ -1523,6 +1523,8 @@ const safe = await readScanOutput(safeOutput, { sarifRequired: false });
 
 assertEqual(vulnerable.manifest.findings.length, 1433, "vulnerable manifest finding count");
 assertEqual(vulnerable.findings.length, 1433, "vulnerable findings.json count");
+assert(vulnerable.manifest.metadata?.fingerprint?.value?.match(/^[a-f0-9]{64}$/u), "vulnerable manifest fingerprint missing");
+assertEqual(vulnerable.manifest.metadata?.fingerprint?.algorithm, "sha256", "vulnerable manifest fingerprint algorithm");
 assert(vulnerable.findings[0]?.risk_summary?.impact, "vulnerable finding risk summary impact missing");
 assert(vulnerable.findings[0]?.risk_summary?.control_objective, "vulnerable finding risk summary control objective missing");
 assert(
@@ -1950,6 +1952,11 @@ if (vulnerable.sarif) {
   assert(firstResult.partialFingerprints?.agentcspRulePath, "SARIF rule/path fingerprint missing");
   assert(firstResult.partialFingerprints?.agentcspSurfacePath, "SARIF surface/path fingerprint missing");
   assert(run.properties?.agentcsp_scan_config, "SARIF scan config missing");
+  assertEqual(
+    run.properties?.agentcsp_manifest_fingerprint?.value,
+    vulnerable.manifest.metadata?.fingerprint?.value,
+    "SARIF manifest fingerprint mismatch"
+  );
   assertArrayEqual(
     run.properties.agentcsp_scan_config.formats ?? [],
     ["json", "md", "sarif"],
@@ -2151,6 +2158,7 @@ function assertVulnerableOperatorMetadata(output) {
   );
 
   assert(report.includes("- Scan health: `complete`"), "vulnerable report missing scan health");
+  assert(report.includes("- Manifest fingerprint: `"), "vulnerable report missing manifest fingerprint");
   assert(report.includes("## Rule Pack Coverage"), "vulnerable report missing rule pack coverage");
   assert(report.includes("### Rule Categories"), "vulnerable report missing rule category coverage");
   assert(report.includes("### Rule Target Surfaces"), "vulnerable report missing rule object coverage");

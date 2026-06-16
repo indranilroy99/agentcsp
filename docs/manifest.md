@@ -35,6 +35,8 @@ The manifest is versioned and validated with Zod. JSON Schema exports live in `s
 
 `metadata.config` records the non-secret scan contract used to produce the manifest: requested output formats, hidden/log scan settings, file and traversal limits, output-path scope, whether policy or baseline inputs were configured, CI gate thresholds, and the invariant redaction flags. It intentionally does not emit raw `--out`, `--config`, or `--baseline` absolute paths.
 
+`metadata.fingerprint` records a SHA-256 content fingerprint for comparing equivalent scans across CI runners, workstations, and output directories. The fingerprint excludes `metadata.generated_at`, `metadata.root_path`, and `metadata.fingerprint` so volatile timestamps and host-absolute paths do not change the value.
+
 `metadata.rule_pack` records rule-pack provenance without exposing local rule paths or rule contents: built-in rule count, project-local rule count, total rules loaded, whether project-local rules were added, redacted rule diagnostic count, and deterministic coverage rollups by category, severity, and target surface.
 
 `triage_summary.active_by_risk_driver` records deterministic drivers behind active risk, including untrusted-to-privileged influence, secret exposure, external reach, irreversible action, side effects, sensitive data, credential data, PII data, execute-class actions, and write-class actions. Each driver includes a finding count, max risk score, and severity mix so CI dashboards and local reports can explain why findings matter without parsing redacted evidence snippets.

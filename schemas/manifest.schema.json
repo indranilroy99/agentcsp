@@ -34,6 +34,34 @@
               ],
               "additionalProperties": false
             },
+            "fingerprint": {
+              "type": "object",
+              "properties": {
+                "algorithm": {
+                  "type": "string",
+                  "const": "sha256"
+                },
+                "value": {
+                  "type": "string"
+                },
+                "excludes": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "default": [
+                    "metadata.generated_at",
+                    "metadata.root_path",
+                    "metadata.fingerprint"
+                  ]
+                }
+              },
+              "required": [
+                "algorithm",
+                "value"
+              ],
+              "additionalProperties": false
+            },
             "config": {
               "type": "object",
               "properties": {
