@@ -444,6 +444,7 @@ Tool metadata may include:
 - `artifact_export`
 - `tainted_artifact_export_payload`
 - `tool_output_artifact_bridge`
+- `rag_retrieval_artifact_bridge`
 - `public_artifact_destination`
 - `rag_retrieval`
 - `tainted_rag_retrieval_query`
@@ -620,6 +621,7 @@ Tool metadata may include:
 - `handler_network_response_agent_delegation_bridge`
 - `handler_rag_retrieval_agent_delegation_bridge`
 - `handler_rag_retrieval_prompt_registry_bridge`
+- `handler_rag_retrieval_artifact_bridge`
 - `handler_local_file_agent_delegation_bridge`
 - `handler_secret_manager_task_queue_bridge`
 - `handler_env_secret_task_queue_bridge`
@@ -2294,6 +2296,8 @@ Source-defined tool handlers can also emit redacted RAG retrieval prompt-cache b
 Source-defined tool handlers can also emit redacted RAG retrieval prompt-registry bridge authority through `rag_retrieval_prompt_registry_bridge`, `rag_retrieval`, `tainted_rag_retrieval_query`, `prompt_registry_write`, `tainted_prompt_registry_payload`, `tainted_prompt_registry_selector`, and the corresponding `handler_*` fields when parsed MCP SDK or agent-framework tools retrieve caller-selected vector or RAG context and publish returned chunks into prompt or instruction registries using runtime credentials and caller-selected prompt metadata. Handler bodies, retriever calls, query text, namespaces, filters, retrieved chunks, prompt-registry calls, prompt IDs, roles, namespaces, prompt bodies, and return strings remain redacted.
 
 Source-defined tool handlers can also emit redacted RAG retrieval training-dataset bridge authority through `rag_retrieval_training_dataset_bridge`, `rag_retrieval`, `tainted_rag_retrieval_query`, `training_dataset_export`, `tainted_training_dataset_payload`, and the corresponding `handler_*` fields when parsed MCP SDK or agent-framework tools retrieve caller-selected vector or RAG context and export returned chunks into training, fine-tuning, eval, or model-improvement datasets using runtime credentials and caller-selected dataset routing. Handler bodies, retriever calls, query text, namespaces, filters, retrieved chunks, training dataset calls, dataset IDs, splits, records, source labels, and return strings remain redacted.
+
+Source-defined tool handlers can also emit redacted RAG retrieval artifact bridge authority through `rag_retrieval_artifact_bridge`, `rag_retrieval`, `tainted_rag_retrieval_query`, `artifact_export`, `tainted_artifact_export_payload`, `public_artifact_destination`, and the corresponding `handler_*` fields when parsed MCP SDK or agent-framework tools retrieve caller-selected vector or RAG context and export returned chunks into public or shareable artifacts using runtime storage credentials and caller-selected artifact routing. Handler bodies, retriever calls, query text, namespaces, filters, retrieved chunks, artifact calls, bucket names, object keys, public links, artifact payloads, and return strings remain redacted.
 
 Source-defined tool handlers can also emit redacted network-response remote-agent delegation bridge authority through `network_response_agent_delegation_bridge`, `credentialed_network_read`, `agent_delegation`, `tainted_agent_delegation_target`, `agent_delegation_context_forwarding`, `tainted_network_destination`, and the corresponding `handler_*` fields when parsed MCP SDK or agent-framework tools fetch caller-selected URLs and delegate returned network content to remote agents or A2A peers using runtime credentials and caller-selected agent targets. Handler bodies, network calls, response variables, response text, delegated-agent calls, target agent IDs, target URLs, forwarded context, delegation goals, and return strings remain redacted.
 

@@ -182,6 +182,12 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-178")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-179")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-180")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-181")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-182")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-183")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-184")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-185")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-186")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-001")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-002")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-003")).toBe(true);
@@ -10319,9 +10325,11 @@ describe("rule engine", () => {
       "langchain_export_agent_run_artifact",
       "langchain_export_local_file_artifact",
       "langchain_export_model_artifact",
+      "langchain_publish_retrieved_context_public_artifact",
       "source_export_agent_run_artifact",
       "source_export_local_file_artifact",
-      "source_export_model_artifact"
+      "source_export_model_artifact",
+      "source_publish_retrieved_context_public_artifact"
     ]);
     expect(sourceHandlerArtifactExportFindings.every((finding) => finding.severity === "critical")).toBe(true);
     expect(sourceHandlerArtifactExportFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
@@ -10354,6 +10362,10 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerArtifactExportFindings)).not.toContain("artifact_export_client.upload");
     expect(JSON.stringify(sourceHandlerArtifactExportFindings)).not.toContain("source artifact exported");
     expect(JSON.stringify(sourceHandlerArtifactExportFindings)).not.toContain("framework artifact exported");
+    expect(JSON.stringify(sourceHandlerArtifactExportFindings)).not.toContain("retrievedArtifactContext");
+    expect(JSON.stringify(sourceHandlerArtifactExportFindings)).not.toContain("retrieved_artifact_context");
+    expect(JSON.stringify(sourceHandlerArtifactExportFindings)).not.toContain("source retrieved context published to public artifact");
+    expect(JSON.stringify(sourceHandlerArtifactExportFindings)).not.toContain("framework retrieved context published to public artifact");
     expect(JSON.stringify(sourceHandlerArtifactExportFindings)).not.toContain("Export caller supplied agent artifact");
     const sourceHandlerModelApprovalFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-051");
     expect(sourceHandlerModelApprovalFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
@@ -11280,6 +11292,71 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerRagRetrievalTrainingDatasetBridgeFindings)).not.toContain("source retrieved context exported to training dataset");
     expect(JSON.stringify(sourceHandlerRagRetrievalTrainingDatasetBridgeFindings)).not.toContain("framework retrieved context exported to training dataset");
     expect(JSON.stringify(sourceHandlerRagRetrievalTrainingDatasetBridgeFindings)).not.toContain("Export caller selected retrieved support context");
+    const sourceHandlerRagRetrievalArtifactBridgeFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-186");
+    expect(sourceHandlerRagRetrievalArtifactBridgeFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
+      "langchain_publish_retrieved_context_public_artifact",
+      "source_publish_retrieved_context_public_artifact"
+    ]);
+    expect(sourceHandlerRagRetrievalArtifactBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
+    expect(sourceHandlerRagRetrievalArtifactBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerRagRetrievalArtifactBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
+    expect(sourceHandlerRagRetrievalArtifactBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
+    expect(sourceHandlerRagRetrievalArtifactBridgeFindings.every((finding) => finding.matched_object.metadata.source_tool_handler_redacted === true)).toBe(true);
+    expect(sourceHandlerRagRetrievalArtifactBridgeFindings.every((finding) => finding.matched_object.metadata.handler_secret_env_access === true)).toBe(true);
+    expect(sourceHandlerRagRetrievalArtifactBridgeFindings.every((finding) => finding.matched_object.metadata.handler_rag_retrieval === true)).toBe(true);
+    expect(sourceHandlerRagRetrievalArtifactBridgeFindings.every((finding) => finding.matched_object.metadata.handler_tainted_rag_retrieval_query === true)).toBe(true);
+    expect(sourceHandlerRagRetrievalArtifactBridgeFindings.every((finding) => finding.matched_object.metadata.handler_artifact_export === true)).toBe(true);
+    expect(sourceHandlerRagRetrievalArtifactBridgeFindings.every((finding) => finding.matched_object.metadata.handler_tainted_artifact_export_payload === true)).toBe(true);
+    expect(sourceHandlerRagRetrievalArtifactBridgeFindings.every((finding) => finding.matched_object.metadata.handler_public_artifact_destination === true)).toBe(true);
+    expect(sourceHandlerRagRetrievalArtifactBridgeFindings.every((finding) => finding.matched_object.metadata.handler_rag_retrieval_artifact_bridge === true)).toBe(true);
+    expect(sourceHandlerRagRetrievalArtifactBridgeFindings.every((finding) => finding.matched_object.metadata.rag_retrieval === true)).toBe(true);
+    expect(sourceHandlerRagRetrievalArtifactBridgeFindings.every((finding) => finding.matched_object.metadata.tainted_rag_retrieval_query === true)).toBe(true);
+    expect(sourceHandlerRagRetrievalArtifactBridgeFindings.every((finding) => finding.matched_object.metadata.artifact_export === true)).toBe(true);
+    expect(sourceHandlerRagRetrievalArtifactBridgeFindings.every((finding) => finding.matched_object.metadata.tainted_artifact_export_payload === true)).toBe(true);
+    expect(sourceHandlerRagRetrievalArtifactBridgeFindings.every((finding) => finding.matched_object.metadata.public_artifact_destination === true)).toBe(true);
+    expect(sourceHandlerRagRetrievalArtifactBridgeFindings.every((finding) => finding.matched_object.metadata.rag_retrieval_artifact_bridge === true)).toBe(true);
+    expect(sourceHandlerRagRetrievalArtifactBridgeFindings.every((finding) => finding.matched_object.metadata.accepts_customer_data_input === true)).toBe(true);
+    for (const authorityClass of [
+      "rag_retrieval",
+      "tainted_rag_retrieval_query",
+      "artifact_export",
+      "tainted_artifact_export_payload",
+      "public_artifact_destination",
+      "rag_retrieval_artifact_bridge"
+    ]) {
+      expect(sourceHandlerRagRetrievalArtifactBridgeFindings.every((finding) =>
+        finding.matched_object.metadata.authority_classes.includes(authorityClass)
+      )).toBe(true);
+    }
+    for (const handlerAuthorityClass of [
+      "handler_rag_retrieval",
+      "handler_tainted_rag_retrieval_query",
+      "handler_artifact_export",
+      "handler_tainted_artifact_export_payload",
+      "handler_public_artifact_destination",
+      "handler_rag_retrieval_artifact_bridge"
+    ]) {
+      expect(sourceHandlerRagRetrievalArtifactBridgeFindings.every((finding) =>
+        finding.matched_object.metadata.handler_authority_classes.includes(handlerAuthorityClass)
+      )).toBe(true);
+    }
+    expect(sourceHandlerRagRetrievalArtifactBridgeFindings.every((finding) => finding.matched_object.actions.includes("read"))).toBe(true);
+    expect(sourceHandlerRagRetrievalArtifactBridgeFindings.every((finding) => finding.matched_object.actions.includes("send"))).toBe(true);
+    expect(sourceHandlerRagRetrievalArtifactBridgeFindings.every((finding) => finding.matched_object.actions.includes("write"))).toBe(true);
+    expect(sourceHandlerRagRetrievalArtifactBridgeFindings.every((finding) => finding.matched_object.actions.includes("publish"))).toBe(true);
+    expect(sourceHandlerRagRetrievalArtifactBridgeFindings.every((finding) => finding.matched_object.external_reach === true)).toBe(true);
+    expect(sourceHandlerRagRetrievalArtifactBridgeFindings.every((finding) => finding.matched_object.secret_exposure === true)).toBe(true);
+    expect(sourceHandlerRagRetrievalArtifactBridgeFindings.every((finding) => finding.matched_object.side_effect === true)).toBe(true);
+    expect(sourceHandlerRagRetrievalArtifactBridgeFindings.every((finding) => finding.matched_object.reversible === false)).toBe(true);
+    expect(JSON.stringify(sourceHandlerRagRetrievalArtifactBridgeFindings)).not.toContain("vectorRetriever.search");
+    expect(JSON.stringify(sourceHandlerRagRetrievalArtifactBridgeFindings)).not.toContain("vector_retriever.search");
+    expect(JSON.stringify(sourceHandlerRagRetrievalArtifactBridgeFindings)).not.toContain("artifactStore.createPublicLink");
+    expect(JSON.stringify(sourceHandlerRagRetrievalArtifactBridgeFindings)).not.toContain("artifact_store.create_public_link");
+    expect(JSON.stringify(sourceHandlerRagRetrievalArtifactBridgeFindings)).not.toContain("retrievedArtifactContext");
+    expect(JSON.stringify(sourceHandlerRagRetrievalArtifactBridgeFindings)).not.toContain("retrieved_artifact_context");
+    expect(JSON.stringify(sourceHandlerRagRetrievalArtifactBridgeFindings)).not.toContain("source retrieved context published to public artifact");
+    expect(JSON.stringify(sourceHandlerRagRetrievalArtifactBridgeFindings)).not.toContain("framework retrieved context published to public artifact");
+    expect(JSON.stringify(sourceHandlerRagRetrievalArtifactBridgeFindings)).not.toContain("Publish caller selected retrieved support context");
     const sourceHandlerLocalFileSafetyPolicyBridgeFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-175");
     expect(sourceHandlerLocalFileSafetyPolicyBridgeFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_apply_local_file_guardrail_override",

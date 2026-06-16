@@ -1183,6 +1183,46 @@ server.registerTool(
 );
 
 server.registerTool(
+  "source_publish_retrieved_context_public_artifact",
+  {
+    description: "Publish caller selected retrieved support context into a public run artifact.",
+    inputSchema: z.object({
+      customer_id: z.string(),
+      retrieval_query_text: z.string(),
+      retrieval_namespace: z.string(),
+      artifact_bucket_name: z.string(),
+      artifact_object_key: z.string(),
+      artifact_visibility: z.string()
+    }).strict(),
+    annotations: {
+      readOnlyHint: false,
+      idempotentHint: false
+    }
+  },
+  async ({ customer_id, retrieval_query_text, retrieval_namespace, artifact_bucket_name, artifact_object_key, artifact_visibility }) => {
+    const token = process.env.SOURCE_RAG_ARTIFACT_TOKEN;
+    const retrievedArtifactContext = await globalThis.vectorRetriever.search({
+      token,
+      query: retrieval_query_text,
+      namespace: retrieval_namespace,
+      filter: { customerId: customer_id }
+    });
+    await globalThis.artifactStore.createPublicLink({
+      token,
+      bucket: artifact_bucket_name,
+      objectKey: artifact_object_key,
+      visibility: artifact_visibility,
+      publicAccess: true,
+      body: {
+        customerId: customer_id,
+        retrievedContext: retrievedArtifactContext
+      }
+    });
+    return { content: [{ type: "text", text: "source retrieved context published to public artifact" }] };
+  }
+);
+
+server.registerTool(
   "source_delegate_retrieved_context_remote_agent",
   {
     description: "Delegate caller selected retrieved support context to a caller selected remote agent.",

@@ -607,6 +607,9 @@ describe("scanner", () => {
     const sourceRagRetrievalTrainingDatasetBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "source_export_retrieved_context_training_dataset"
     );
+    const sourceRagRetrievalArtifactBridgeTool = surfaces.tools.find(
+      (surface) => surface.name === "source_publish_retrieved_context_public_artifact"
+    );
     const sourceRagRetrievalTaskQueueBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "source_enqueue_retrieved_context_agent_job"
     );
@@ -986,6 +989,9 @@ describe("scanner", () => {
     );
     const langchainRagRetrievalTrainingDatasetBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "langchain_export_retrieved_context_training_dataset"
+    );
+    const langchainRagRetrievalArtifactBridgeTool = surfaces.tools.find(
+      (surface) => surface.name === "langchain_publish_retrieved_context_public_artifact"
     );
     const langchainRagRetrievalTaskQueueBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "langchain_enqueue_retrieved_context_agent_job"
@@ -4658,6 +4664,95 @@ describe("scanner", () => {
     expect(JSON.stringify(sourceRagRetrievalTrainingDatasetBridgeTool)).not.toContain("retrievedTrainingContext");
     expect(JSON.stringify(sourceRagRetrievalTrainingDatasetBridgeTool)).not.toContain("source retrieved context exported to training dataset");
     expect(JSON.stringify(sourceRagRetrievalTrainingDatasetBridgeTool)).not.toContain("Export caller selected retrieved support context");
+    expect(sourceRagRetrievalArtifactBridgeTool).toMatchObject({
+      path: "mcp-source/customer-tools.ts",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["call", "publish", "read", "send", "write"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(sourceRagRetrievalArtifactBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_mcp_source_tool: true,
+      mcp_source_tool_registration: true,
+      mcp_source_tool_registration_kind: "registerTool",
+      mcp_source_tool_argument_count: 3,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_content_like_input: true,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      rag_retrieval: true,
+      tainted_rag_retrieval_query: true,
+      artifact_export: true,
+      tainted_artifact_export_payload: true,
+      public_artifact_destination: true,
+      rag_retrieval_artifact_bridge: true,
+      handler_rag_retrieval: true,
+      handler_tainted_rag_retrieval_query: true,
+      handler_artifact_export: true,
+      handler_tainted_artifact_export_payload: true,
+      handler_public_artifact_destination: true,
+      handler_rag_retrieval_artifact_bridge: true,
+      handler_secret_env_access: true,
+      handler_signal_count: 7,
+      open_world_schema: false
+    });
+    expect(sourceRagRetrievalArtifactBridgeTool?.metadata.authority_classes).toEqual([
+      "artifact_export",
+      "content_input",
+      "customer_data_input",
+      "external_write",
+      "handler_artifact_export",
+      "handler_public_artifact_destination",
+      "handler_rag_retrieval",
+      "handler_rag_retrieval_artifact_bridge",
+      "handler_secret_env_access",
+      "handler_tainted_artifact_export_payload",
+      "handler_tainted_rag_retrieval_query",
+      "pii_input",
+      "public_artifact_destination",
+      "rag_retrieval",
+      "rag_retrieval_artifact_bridge",
+      "secret_env_access",
+      "tainted_artifact_export_payload",
+      "tainted_rag_retrieval_query"
+    ]);
+    expect(sourceRagRetrievalArtifactBridgeTool?.metadata.handler_authority_classes).toEqual([
+      "handler_artifact_export",
+      "handler_public_artifact_destination",
+      "handler_rag_retrieval",
+      "handler_rag_retrieval_artifact_bridge",
+      "handler_secret_env_access",
+      "handler_tainted_artifact_export_payload",
+      "handler_tainted_rag_retrieval_query"
+    ]);
+    expect(sourceRagRetrievalArtifactBridgeTool?.metadata.handler_env_key_names).toEqual([
+      "SOURCE_RAG_ARTIFACT_TOKEN"
+    ]);
+    expect(sourceRagRetrievalArtifactBridgeTool?.metadata.schema_properties).toEqual([
+      "artifact_bucket_name",
+      "artifact_object_key",
+      "artifact_visibility",
+      "customer_id",
+      "retrieval_namespace",
+      "retrieval_query_text"
+    ]);
+    expect(sourceRagRetrievalArtifactBridgeTool?.metadata.required_properties).toEqual([
+      "artifact_bucket_name",
+      "artifact_object_key",
+      "artifact_visibility",
+      "customer_id",
+      "retrieval_namespace",
+      "retrieval_query_text"
+    ]);
+    expect(JSON.stringify(sourceRagRetrievalArtifactBridgeTool)).not.toContain("vectorRetriever.search");
+    expect(JSON.stringify(sourceRagRetrievalArtifactBridgeTool)).not.toContain("artifactStore.createPublicLink");
+    expect(JSON.stringify(sourceRagRetrievalArtifactBridgeTool)).not.toContain("retrievedArtifactContext");
+    expect(JSON.stringify(sourceRagRetrievalArtifactBridgeTool)).not.toContain("source retrieved context published to public artifact");
+    expect(JSON.stringify(sourceRagRetrievalArtifactBridgeTool)).not.toContain("Publish caller selected retrieved support context");
     expect(sourceRagRetrievalTaskQueueBridgeTool).toMatchObject({
       path: "mcp-source/customer-tools.ts",
       data_classes: ["confidential", "credential", "pii"],
@@ -17841,6 +17936,96 @@ describe("scanner", () => {
     expect(JSON.stringify(langchainRagRetrievalTrainingDatasetBridgeTool)).not.toContain("retrieved_training_context");
     expect(JSON.stringify(langchainRagRetrievalTrainingDatasetBridgeTool)).not.toContain("framework retrieved context exported to training dataset");
     expect(JSON.stringify(langchainRagRetrievalTrainingDatasetBridgeTool)).not.toContain("Export caller selected retrieved support context");
+    expect(langchainRagRetrievalArtifactBridgeTool).toMatchObject({
+      path: "framework-tools/langchain_tools.py",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["call", "publish", "read", "send", "write"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(langchainRagRetrievalArtifactBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_agent_framework_source_tool: true,
+      agent_framework_source_tool: true,
+      agent_framework_source_tool_framework: "langchain",
+      agent_framework_source_tool_registration_kind: "python_tool_decorator",
+      agent_framework_source_tool_argument_count: 6,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_content_like_input: true,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      rag_retrieval: true,
+      tainted_rag_retrieval_query: true,
+      artifact_export: true,
+      tainted_artifact_export_payload: true,
+      public_artifact_destination: true,
+      rag_retrieval_artifact_bridge: true,
+      handler_rag_retrieval: true,
+      handler_tainted_rag_retrieval_query: true,
+      handler_artifact_export: true,
+      handler_tainted_artifact_export_payload: true,
+      handler_public_artifact_destination: true,
+      handler_rag_retrieval_artifact_bridge: true,
+      handler_secret_env_access: true,
+      handler_signal_count: 7,
+      open_world_schema: false
+    });
+    expect(langchainRagRetrievalArtifactBridgeTool?.metadata.authority_classes).toEqual([
+      "artifact_export",
+      "content_input",
+      "customer_data_input",
+      "external_write",
+      "handler_artifact_export",
+      "handler_public_artifact_destination",
+      "handler_rag_retrieval",
+      "handler_rag_retrieval_artifact_bridge",
+      "handler_secret_env_access",
+      "handler_tainted_artifact_export_payload",
+      "handler_tainted_rag_retrieval_query",
+      "pii_input",
+      "public_artifact_destination",
+      "rag_retrieval",
+      "rag_retrieval_artifact_bridge",
+      "secret_env_access",
+      "tainted_artifact_export_payload",
+      "tainted_rag_retrieval_query"
+    ]);
+    expect(langchainRagRetrievalArtifactBridgeTool?.metadata.handler_authority_classes).toEqual([
+      "handler_artifact_export",
+      "handler_public_artifact_destination",
+      "handler_rag_retrieval",
+      "handler_rag_retrieval_artifact_bridge",
+      "handler_secret_env_access",
+      "handler_tainted_artifact_export_payload",
+      "handler_tainted_rag_retrieval_query"
+    ]);
+    expect(langchainRagRetrievalArtifactBridgeTool?.metadata.handler_env_key_names).toEqual([
+      "LANGCHAIN_RAG_ARTIFACT_TOKEN"
+    ]);
+    expect(langchainRagRetrievalArtifactBridgeTool?.metadata.schema_properties).toEqual([
+      "artifact_bucket_name",
+      "artifact_object_key",
+      "artifact_visibility",
+      "customer_id",
+      "retrieval_namespace",
+      "retrieval_query_text"
+    ]);
+    expect(langchainRagRetrievalArtifactBridgeTool?.metadata.required_properties).toEqual([
+      "artifact_bucket_name",
+      "artifact_object_key",
+      "artifact_visibility",
+      "customer_id",
+      "retrieval_namespace",
+      "retrieval_query_text"
+    ]);
+    expect(JSON.stringify(langchainRagRetrievalArtifactBridgeTool)).not.toContain("vector_retriever.search");
+    expect(JSON.stringify(langchainRagRetrievalArtifactBridgeTool)).not.toContain("artifact_store.create_public_link");
+    expect(JSON.stringify(langchainRagRetrievalArtifactBridgeTool)).not.toContain("retrieved_artifact_context");
+    expect(JSON.stringify(langchainRagRetrievalArtifactBridgeTool)).not.toContain("framework retrieved context published to public artifact");
+    expect(JSON.stringify(langchainRagRetrievalArtifactBridgeTool)).not.toContain("Publish caller selected retrieved support context");
     expect(langchainRagRetrievalTaskQueueBridgeTool).toMatchObject({
       path: "framework-tools/langchain_tools.py",
       data_classes: ["confidential", "credential", "pii"],

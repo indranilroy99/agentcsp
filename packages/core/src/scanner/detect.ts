@@ -24196,6 +24196,7 @@ function addToolDefinitionSurface(
       !authority.tool_output_authorization_grant_bridge &&
       !authority.artifact_export &&
       !authority.local_file_artifact_bridge &&
+      !authority.rag_retrieval_artifact_bridge &&
       !authority.env_secret_artifact_bridge &&
       !authority.model_output_artifact_bridge &&
       !authority.network_response_artifact_bridge &&
@@ -24367,7 +24368,6 @@ function addToolDefinitionSurface(
       tool_output_feedback_bridge: authority.tool_output_feedback_bridge,
       secret_manager_artifact_bridge: authority.secret_manager_artifact_bridge,
       env_secret_artifact_bridge: authority.env_secret_artifact_bridge,
-      local_file_artifact_bridge: authority.local_file_artifact_bridge,
       tainted_feedback_payload: authority.tainted_feedback_payload,
       feedback_auto_promotion: authority.feedback_auto_promotion,
       tainted_feedback_routing: authority.tainted_feedback_routing,
@@ -24394,6 +24394,8 @@ function addToolDefinitionSurface(
       tool_output_authorization_grant_bridge: authority.tool_output_authorization_grant_bridge,
       artifact_export: authority.artifact_export,
       tainted_artifact_export_payload: authority.tainted_artifact_export_payload,
+      local_file_artifact_bridge: authority.local_file_artifact_bridge,
+      rag_retrieval_artifact_bridge: authority.rag_retrieval_artifact_bridge,
       model_output_artifact_bridge: authority.model_output_artifact_bridge,
       network_response_artifact_bridge: authority.network_response_artifact_bridge,
       tool_output_artifact_bridge: authority.tool_output_artifact_bridge,
@@ -26870,6 +26872,7 @@ interface SourceToolHandlerSignals {
   handlerModelOutputArtifactBridge: boolean;
   handlerNetworkResponseArtifactBridge: boolean;
   handlerLocalFileArtifactBridge: boolean;
+  handlerRagRetrievalArtifactBridge: boolean;
   handlerToolOutputArtifactBridge: boolean;
   handlerTaintedFeedbackPayload: boolean;
   handlerFeedbackAutoPromotion: boolean;
@@ -27490,6 +27493,7 @@ function sourceToolHandlerSignalMetadata(signals: SourceToolHandlerSignals | und
     handler_model_output_artifact_bridge: signals.handlerModelOutputArtifactBridge,
     handler_network_response_artifact_bridge: signals.handlerNetworkResponseArtifactBridge,
     handler_local_file_artifact_bridge: signals.handlerLocalFileArtifactBridge,
+    handler_rag_retrieval_artifact_bridge: signals.handlerRagRetrievalArtifactBridge,
     handler_tool_output_artifact_bridge: signals.handlerToolOutputArtifactBridge,
     handler_tainted_feedback_payload: signals.handlerTaintedFeedbackPayload,
     handler_feedback_auto_promotion: signals.handlerFeedbackAutoPromotion,
@@ -27823,6 +27827,10 @@ function classifySourceToolHandlerSignals(
   const ragRetrievalExternalServiceBridge = ragRetrieval && externalServiceWrite && (language === "javascript"
     ? hasJavaScriptHandlerRagRetrievalExternalServiceBridge(handlerSource)
     : hasPythonHandlerRagRetrievalExternalServiceBridge(handlerSource));
+  const ragRetrievalArtifactBridge = ragRetrieval && artifactExport && (language === "javascript"
+    ? hasJavaScriptHandlerRagRetrievalArtifactBridge(handlerSource)
+    : hasPythonHandlerRagRetrievalArtifactBridge(handlerSource));
+  if (ragRetrievalArtifactBridge) taintedArtifactExportPayload = true;
   const ragRetrievalMemoryBridge = ragRetrieval && (language === "javascript"
     ? hasJavaScriptHandlerRagRetrievalMemoryBridge(handlerSource)
     : hasPythonHandlerRagRetrievalMemoryBridge(handlerSource));
@@ -28343,6 +28351,7 @@ function classifySourceToolHandlerSignals(
     !modelOutputArtifactBridge &&
     !networkResponseArtifactBridge &&
     !localFileArtifactBridge &&
+    !ragRetrievalArtifactBridge &&
     !toolOutputArtifactBridge &&
     !visualContextArtifactBridge &&
     (language === "javascript"
@@ -28437,6 +28446,7 @@ function classifySourceToolHandlerSignals(
   if (modelOutputArtifactBridge) classes.add("handler_model_output_artifact_bridge");
   if (networkResponseArtifactBridge) classes.add("handler_network_response_artifact_bridge");
   if (localFileArtifactBridge) classes.add("handler_local_file_artifact_bridge");
+  if (ragRetrievalArtifactBridge) classes.add("handler_rag_retrieval_artifact_bridge");
   if (toolOutputArtifactBridge) classes.add("handler_tool_output_artifact_bridge");
   if (taintedFeedbackPayload) classes.add("handler_tainted_feedback_payload");
   if (feedbackAutoPromotion) classes.add("handler_feedback_auto_promotion");
@@ -28643,6 +28653,7 @@ function classifySourceToolHandlerSignals(
     handlerModelOutputArtifactBridge: modelOutputArtifactBridge,
     handlerNetworkResponseArtifactBridge: networkResponseArtifactBridge,
     handlerLocalFileArtifactBridge: localFileArtifactBridge,
+    handlerRagRetrievalArtifactBridge: ragRetrievalArtifactBridge,
     handlerToolOutputArtifactBridge: toolOutputArtifactBridge,
     handlerTaintedFeedbackPayload: taintedFeedbackPayload,
     handlerFeedbackAutoPromotion: feedbackAutoPromotion,
@@ -29586,6 +29597,30 @@ function hasPythonHandlerLocalFileArtifactBridge(source: string): boolean {
     [
       /\b(?:artifact_exporter|artifact_export_client|run_exporter|report_exporter|output_exporter|artifact_store|artifact_storage|s3|s3_client|gcs|storage|storage_client|bucket|blob_service_client|r2|supabase)\s*(?:\.\s*[A-Za-z_]\w*){0,5}\s*\.\s*(?:upload|upload_file|upload_fileobj|put_object|put|save|store|write|export|publish|share|create_public_link|make_public|set_public|generate_signed_url|create_presigned_url)\s*\(([\s\S]{0,2200})\)/giu,
       /\b(?:upload_artifact|export_artifact|publish_artifact|share_artifact|write_run_artifact|store_run_artifact|create_public_artifact|write_artifact_report)\s*\(([\s\S]{0,2200})\)/giu
+    ],
+    source,
+    identifiers
+  );
+}
+
+function hasJavaScriptHandlerRagRetrievalArtifactBridge(source: string): boolean {
+  const identifiers = extractHandlerRagRetrievalVariableNames(source);
+  return identifiers.length > 0 && artifactExportCallReferencesPayloadIdentifier(
+    [
+      /\b(?:artifactExporter|artifactExportClient|runExporter|reportExporter|outputExporter|artifactStore|artifactStorage|s3|s3Client|gcs|storage|storageClient|bucket|blobServiceClient|r2|supabase)\s*(?:\.\s*[A-Za-z_$][\w$]*){0,5}\s*\.\s*(?:upload|uploadFile|uploadFileObj|putObject|put|save|store|write|export|publish|share|createPublicLink|makePublic|setPublic|generateSignedUrl|createPresignedUrl)\s*\(([\s\S]{0,2400})\)/giu,
+      /\b(?:uploadArtifact|exportArtifact|publishArtifact|shareArtifact|writeRunArtifact|storeRunArtifact|createPublicArtifact|writeArtifactReport)\s*\(([\s\S]{0,2400})\)/giu
+    ],
+    source,
+    identifiers
+  );
+}
+
+function hasPythonHandlerRagRetrievalArtifactBridge(source: string): boolean {
+  const identifiers = extractHandlerRagRetrievalVariableNames(source);
+  return identifiers.length > 0 && artifactExportCallReferencesPayloadIdentifier(
+    [
+      /\b(?:artifact_exporter|artifact_export_client|run_exporter|report_exporter|output_exporter|artifact_store|artifact_storage|s3|s3_client|gcs|storage|storage_client|bucket|blob_service_client|r2|supabase)\s*(?:\.\s*[A-Za-z_]\w*){0,5}\s*\.\s*(?:upload|upload_file|upload_fileobj|put_object|put|save|store|write|export|publish|share|create_public_link|make_public|set_public|generate_signed_url|create_presigned_url)\s*\(([\s\S]{0,2400})\)/giu,
+      /\b(?:upload_artifact|export_artifact|publish_artifact|share_artifact|write_run_artifact|store_run_artifact|create_public_artifact|write_artifact_report)\s*\(([\s\S]{0,2400})\)/giu
     ],
     source,
     identifiers
@@ -33116,7 +33151,7 @@ function telemetryExportCallReferencesPayloadIdentifier(patterns: RegExp[], sour
 
 function artifactExportCallReferencesPayloadIdentifier(patterns: RegExp[], source: string, identifiers: string[]): boolean {
   const payloadField =
-    /(?:^|[{\s,(])["']?(?:artifact|artifacts|body|content|contents|data|document|documents|file|files|html|json|markdown|metadata|note|notes|payload|payloads|record|records|report|reports|summary|text|texts|value|values)["']?\s*[:=]/u;
+    /(?:^|[{\s,(])["']?(?:artifact|artifacts|body|content|contents|context|contexts|data|document|documents|file|files|html|json|markdown|metadata|note|notes|payload|payloads|record|records|report|reports|retrievedContext|retrieved_context|retrievalContext|retrieval_context|ragContext|rag_context|sourceDocuments|source_documents|summary|text|texts|value|values)["']?\s*[:=]/u;
   for (const pattern of patterns) {
     let match: RegExpExecArray | null;
     while ((match = pattern.exec(source)) !== null) {
@@ -36860,6 +36895,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   model_output_artifact_bridge: boolean;
   network_response_artifact_bridge: boolean;
   local_file_artifact_bridge: boolean;
+  rag_retrieval_artifact_bridge: boolean;
   tool_output_artifact_bridge: boolean;
   public_artifact_destination: boolean;
   rag_retrieval: boolean;
@@ -37003,6 +37039,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   const handlerModelOutputArtifactBridge = handler?.handlerModelOutputArtifactBridge === true;
   const handlerNetworkResponseArtifactBridge = handler?.handlerNetworkResponseArtifactBridge === true;
   const handlerLocalFileArtifactBridge = handler?.handlerLocalFileArtifactBridge === true;
+  const handlerRagRetrievalArtifactBridge = handler?.handlerRagRetrievalArtifactBridge === true;
   const handlerToolOutputArtifactBridge = handler?.handlerToolOutputArtifactBridge === true;
   const handlerPublicArtifactDestination = handler?.handlerPublicArtifactDestination === true;
   const handlerRagRetrieval = handler?.handlerRagRetrieval === true;
@@ -38019,6 +38056,13 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
     actions.add("write");
     actions.add("publish");
   }
+  if (handlerRagRetrievalArtifactBridge) {
+    classes.add("rag_retrieval_artifact_bridge");
+    actions.add("read");
+    actions.add("send");
+    actions.add("write");
+    actions.add("publish");
+  }
   if (handlerToolOutputArtifactBridge) {
     classes.add("tool_output_artifact_bridge");
     actions.add("execute");
@@ -38369,6 +38413,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerEnvSecretArtifactBridge ||
       handlerModelOutputArtifactBridge ||
       handlerNetworkResponseArtifactBridge ||
+      handlerRagRetrievalArtifactBridge ||
       handlerTaintedFeedbackPayload ||
       handlerFeedbackAutoPromotion ||
       handlerTaintedFeedbackRouting ||
@@ -38571,6 +38616,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerToolOutputFeedbackBridge ||
       handlerSecretManagerArtifactBridge ||
       handlerEnvSecretArtifactBridge ||
+      (handlerRagRetrievalArtifactBridge && handlerSecretEnvAccess) ||
       handlerSafetyPolicyWrite ||
       handlerRagRetrievalSafetyPolicyBridge ||
       handlerModelOutputSafetyPolicyBridge ||
@@ -38899,6 +38945,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
     secret_manager_artifact_bridge: handlerSecretManagerArtifactBridge,
     env_secret_artifact_bridge: handlerEnvSecretArtifactBridge,
     local_file_artifact_bridge: handlerLocalFileArtifactBridge,
+    rag_retrieval_artifact_bridge: handlerRagRetrievalArtifactBridge,
     tainted_feedback_payload: handlerTaintedFeedbackPayload,
     feedback_auto_promotion: handlerFeedbackAutoPromotion,
     tainted_feedback_routing: handlerTaintedFeedbackRouting,
@@ -39119,6 +39166,7 @@ function authoritySignature(tool: SurfaceObject): string {
     metadata.model_output_artifact_bridge === true ? "model_output_artifact_bridge" : "",
     metadata.network_response_artifact_bridge === true ? "network_response_artifact_bridge" : "",
     metadata.local_file_artifact_bridge === true ? "local_file_artifact_bridge" : "",
+    metadata.rag_retrieval_artifact_bridge === true ? "rag_retrieval_artifact_bridge" : "",
     metadata.tool_output_artifact_bridge === true ? "tool_output_artifact_bridge" : "",
     metadata.public_artifact_destination === true ? "public_artifact_destination" : "",
     metadata.rag_retrieval === true ? "rag_retrieval" : "",
@@ -39339,6 +39387,7 @@ function isPrivilegedToolSurface(tool: SurfaceObject): boolean {
     tool.metadata.model_output_artifact_bridge === true ||
     tool.metadata.network_response_artifact_bridge === true ||
     tool.metadata.local_file_artifact_bridge === true ||
+    tool.metadata.rag_retrieval_artifact_bridge === true ||
     tool.metadata.tool_output_artifact_bridge === true ||
     tool.metadata.public_artifact_destination === true ||
     tool.metadata.rag_retrieval === true ||

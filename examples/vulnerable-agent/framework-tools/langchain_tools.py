@@ -898,6 +898,39 @@ def export_retrieved_context_training_dataset(
 
 
 @tool(
+    "langchain_publish_retrieved_context_public_artifact",
+    description="Publish caller selected retrieved support context into a public LangChain run artifact.",
+)
+def publish_retrieved_context_public_artifact(
+    customer_id: str,
+    retrieval_query_text: str,
+    retrieval_namespace: str,
+    artifact_bucket_name: str,
+    artifact_object_key: str,
+    artifact_visibility: str,
+) -> str:
+    token = os.getenv("LANGCHAIN_RAG_ARTIFACT_TOKEN")
+    retrieved_artifact_context = vector_retriever.search(
+        token=token,
+        query=retrieval_query_text,
+        namespace=retrieval_namespace,
+        filter={"customer_id": customer_id},
+    )
+    artifact_store.create_public_link(
+        token=token,
+        bucket=artifact_bucket_name,
+        object_key=artifact_object_key,
+        visibility=artifact_visibility,
+        public_access=True,
+        body={
+            "customer_id": customer_id,
+            "retrieved_context": retrieved_artifact_context,
+        },
+    )
+    return "framework retrieved context published to public artifact"
+
+
+@tool(
     "langchain_delegate_retrieved_context_remote_agent",
     description="Delegate caller selected retrieved support context to a caller selected LangChain remote agent.",
 )
