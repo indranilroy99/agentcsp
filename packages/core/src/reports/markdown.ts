@@ -235,6 +235,10 @@ function renderCiGateSummary(manifest: AgentManifest): string {
     "",
     renderGateBlockerSummary(summary),
     "",
+    "### CI Gate Blocker Mix",
+    "",
+    renderGateBlockerMix(summary),
+    "",
     renderGateBlockers(summary)
   ].join("\n");
 }
@@ -246,6 +250,15 @@ function renderGateBlockerSummary(summary: NonNullable<AgentManifest["ci_gate_su
     `| severity/new finding | ${summary.severity_gate_findings} | ${summary.severity_gate_finding_ids.length} | \`${summary.severity_gate_finding_ids_truncated}\` |`,
     `| expired suppression | ${summary.expired_suppression_findings} | ${summary.expired_suppression_finding_ids.length} | \`${summary.expired_suppression_finding_ids_truncated}\` |`,
     `| diagnostic | ${summary.diagnostic_count} | ${summary.diagnostic_ids.length} | \`${summary.diagnostic_ids_truncated}\` |`
+  ].join("\n");
+}
+
+function renderGateBlockerMix(summary: NonNullable<AgentManifest["ci_gate_summary"]>): string {
+  return [
+    "| Blocker set | Critical | High | Medium | Low | Info | Very high confidence | High confidence | Medium confidence | Low confidence |",
+    "| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |",
+    `| severity/new finding | ${summary.severity_gate_by_severity.critical} | ${summary.severity_gate_by_severity.high} | ${summary.severity_gate_by_severity.medium} | ${summary.severity_gate_by_severity.low} | ${summary.severity_gate_by_severity.info} | ${summary.severity_gate_by_confidence.very_high} | ${summary.severity_gate_by_confidence.high} | ${summary.severity_gate_by_confidence.medium} | ${summary.severity_gate_by_confidence.low} |`,
+    `| expired suppression | ${summary.expired_suppression_by_severity.critical} | ${summary.expired_suppression_by_severity.high} | ${summary.expired_suppression_by_severity.medium} | ${summary.expired_suppression_by_severity.low} | ${summary.expired_suppression_by_severity.info} | n/a | n/a | n/a | n/a |`
   ].join("\n");
 }
 

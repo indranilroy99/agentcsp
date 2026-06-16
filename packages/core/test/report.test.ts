@@ -172,7 +172,14 @@ describe("scanProject", () => {
           };
           agentcsp_triage_summary?: { total_findings?: number; top_active_risks_truncated?: boolean };
           agentcsp_action_plan?: { total_actions?: number; actions?: Array<{ priority?: number; rule_id?: string }> };
-          agentcsp_ci_gate_summary?: { status?: string; should_fail?: boolean; blocker_id_limit?: number };
+          agentcsp_ci_gate_summary?: {
+            status?: string;
+            should_fail?: boolean;
+            blocker_id_limit?: number;
+            severity_gate_by_severity?: Record<string, number>;
+            severity_gate_by_confidence?: Record<string, number>;
+            expired_suppression_by_severity?: Record<string, number>;
+          };
           agentcsp_scan_coverage?: { files_indexed?: number };
           agentcsp_static_blast_radius?: {
             pii_external_reach_paths?: number;
@@ -229,6 +236,9 @@ describe("scanProject", () => {
       should_fail: false,
       blocker_id_limit: 50,
       blocker_ids_truncated: false,
+      severity_gate_by_severity: { critical: 0, high: 0, medium: 0, low: 0, info: 0 },
+      severity_gate_by_confidence: { very_high: 0, high: 0, medium: 0, low: 0 },
+      expired_suppression_by_severity: { critical: 0, high: 0, medium: 0, low: 0, info: 0 },
       severity_gate_finding_ids: [],
       severity_gate_finding_ids_truncated: false,
       expired_suppression_finding_ids: [],
@@ -280,6 +290,10 @@ describe("scanProject", () => {
     expect(result.reportMarkdown).toContain("- Blocker IDs truncated: `false`");
     expect(result.reportMarkdown).toContain("### CI Gate Blockers");
     expect(result.reportMarkdown).toContain("| Blocker list | Total | IDs shown | Truncated |");
+    expect(result.reportMarkdown).toContain("### CI Gate Blocker Mix");
+    expect(result.reportMarkdown).toContain(
+      "| Blocker set | Critical | High | Medium | Low | Info | Very high confidence | High confidence | Medium confidence | Low confidence |"
+    );
     expect(result.reportMarkdown).toContain("No CI gate blockers were identified.");
     expect(result.reportMarkdown).toContain("### Active Findings by Severity");
     expect(result.reportMarkdown).toContain("### Top Active Rules");
@@ -327,6 +341,9 @@ describe("scanProject", () => {
       should_fail: false,
       evaluated_findings: 0,
       severity_gate_findings: 0,
+      severity_gate_by_severity: { critical: 0, high: 0, medium: 0, low: 0, info: 0 },
+      severity_gate_by_confidence: { very_high: 0, high: 0, medium: 0, low: 0 },
+      expired_suppression_by_severity: { critical: 0, high: 0, medium: 0, low: 0, info: 0 },
       blocker_id_limit: 50,
       blocker_ids_truncated: false
     });

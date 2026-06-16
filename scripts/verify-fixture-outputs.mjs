@@ -1968,6 +1968,12 @@ if (vulnerable.sarif) {
   assertEqual(run.properties.agentcsp_ci_gate_summary.status, "pass", "SARIF CI gate status");
   assertEqual(run.properties.agentcsp_ci_gate_summary.blocker_ids_truncated, false, "SARIF CI blocker truncation metadata");
   assertEqual(run.properties.agentcsp_ci_gate_summary.scan_health, "complete", "SARIF CI scan health metadata");
+  assert(run.properties.agentcsp_ci_gate_summary.severity_gate_by_severity, "SARIF CI severity gate mix missing");
+  assert(run.properties.agentcsp_ci_gate_summary.severity_gate_by_confidence, "SARIF CI confidence gate mix missing");
+  assert(
+    run.properties.agentcsp_ci_gate_summary.expired_suppression_by_severity,
+    "SARIF CI expired suppression severity mix missing"
+  );
   assert(run.properties?.agentcsp_scan_coverage, "SARIF scan coverage missing");
   assertEqual(run.properties.agentcsp_scan_coverage.scan_health, "complete", "SARIF scan health");
   assert(run.properties?.agentcsp_static_blast_radius, "SARIF blast-radius summary missing");
@@ -2036,6 +2042,9 @@ function assertVulnerableOperatorMetadata(output) {
 
   assertEqual(manifest.ci_gate_summary?.blocker_id_limit, 50, "vulnerable CI blocker ID limit");
   assertEqual(manifest.ci_gate_summary?.blocker_ids_truncated, false, "vulnerable CI blocker truncation");
+  assert(manifest.ci_gate_summary?.severity_gate_by_severity, "vulnerable CI severity gate mix missing");
+  assert(manifest.ci_gate_summary?.severity_gate_by_confidence, "vulnerable CI confidence gate mix missing");
+  assert(manifest.ci_gate_summary?.expired_suppression_by_severity, "vulnerable CI expired suppression mix missing");
   assertEqual(manifest.ci_gate_summary?.fail_on_scan_health, undefined, "vulnerable CI scan health gate");
   assertEqual(manifest.ci_gate_summary?.scan_health, "complete", "vulnerable CI scan health");
   assertArrayEqual(manifest.ci_gate_summary?.scan_health_reasons ?? [], [], "vulnerable CI scan health reasons");
@@ -2086,6 +2095,9 @@ function assertSafeOperatorMetadata(output) {
   assertEqual(manifest.action_plan?.truncated, false, "safe action plan truncation");
   assertEqual(manifest.action_plan?.omitted_actions, 0, "safe omitted action count");
   assertEqual(manifest.ci_gate_summary?.blocker_ids_truncated, false, "safe CI blocker truncation");
+  assertEqual(manifest.ci_gate_summary?.severity_gate_by_severity?.critical, 0, "safe CI critical blocker count");
+  assertEqual(manifest.ci_gate_summary?.severity_gate_by_confidence?.very_high, 0, "safe CI very-high confidence blocker count");
+  assertEqual(manifest.ci_gate_summary?.expired_suppression_by_severity?.critical, 0, "safe CI expired critical count");
   assertEqual(manifest.ci_gate_summary?.fail_on_scan_health, undefined, "safe CI scan health gate");
   assertEqual(manifest.ci_gate_summary?.scan_health, "complete", "safe CI scan health");
   assertArrayEqual(manifest.ci_gate_summary?.scan_health_reasons ?? [], [], "safe CI scan health reasons");

@@ -2,13 +2,15 @@ import type {
   CiGateName,
   CiGateSummary,
   Confidence,
+  ConfidenceCounts,
   Finding,
   ScanConfig,
   ScanCoverageSummary,
   ScanDiagnostic,
   ScanHealth,
   ScanHealthGate,
-  Severity
+  Severity,
+  SeverityCounts
 } from "../schemas/index.js";
 
 const severityRank: Record<Severity, number> = {
@@ -87,8 +89,11 @@ export function buildCiGateSummary(input: {
     scan_health_reasons: input.scanCoverage.scan_health_reasons,
     evaluated_findings: evaluatedFindings.length,
     severity_gate_findings: severityGateFindings.length,
+    severity_gate_by_severity: countBySeverity(severityGateFindings),
+    severity_gate_by_confidence: countByConfidence(severityGateFindings),
     active_suppressions_excluded: activeSuppressionsExcluded,
     expired_suppression_findings: expiredSuppressionFindings.length,
+    expired_suppression_by_severity: countBySeverity(expiredSuppressionFindings),
     diagnostic_count: input.diagnostics.length,
     failed_gates: failedGates,
     blocker_id_limit: ciGateBlockerIdLimit,
@@ -123,4 +128,16 @@ function findingMatchesSeverityGate(
 
 function limitIds(ids: string[], limit = ciGateBlockerIdLimit): string[] {
   return [...ids].sort((a, b) => a.localeCompare(b)).slice(0, limit);
+}
+
+function countBySeverity(findings: Finding[]): SeverityCounts {
+  const counts: SeverityCounts = { critical: 0, high: 0, medium: 0, low: 0, info: 0 };
+  for (const finding of findings) counts[finding.severity] += 1;
+  return counts;
+}
+
+function countByConfidence(findings: Finding[]): ConfidenceCounts {
+  const counts: ConfidenceCounts = { very_high: 0, high: 0, medium: 0, low: 0 };
+  for (const finding of findings) counts[finding.confidence] += 1;
+  return counts;
 }

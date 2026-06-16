@@ -34,10 +34,13 @@ describe("CI gate summary", () => {
       blocker_id_limit: ciGateBlockerIdLimit,
       blocker_ids_truncated: true,
       severity_gate_findings: ciGateBlockerIdLimit + 3,
+      severity_gate_by_severity: { critical: 0, high: ciGateBlockerIdLimit + 3, medium: 0, low: 0, info: 0 },
+      severity_gate_by_confidence: { very_high: 0, high: ciGateBlockerIdLimit + 3, medium: 0, low: 0 },
       severity_gate_finding_ids_truncated: true,
       diagnostic_count: ciGateBlockerIdLimit + 2,
       diagnostic_ids_truncated: true,
       expired_suppression_findings: 0,
+      expired_suppression_by_severity: { critical: 0, high: 0, medium: 0, low: 0, info: 0 },
       expired_suppression_finding_ids_truncated: false
     });
     expect(summary.severity_gate_finding_ids).toHaveLength(ciGateBlockerIdLimit);
@@ -98,13 +101,58 @@ describe("CI gate summary", () => {
       failed_gates: []
     });
   });
+
+  it("summarizes CI blockers by severity and confidence", () => {
+    const summary = buildCiGateSummary({
+      findings: [
+        finding("critical_high", "critical", "high"),
+        finding("critical_very_high", "critical", "very_high"),
+        finding("high_medium", "high", "medium"),
+        finding("medium_high", "medium", "high"),
+        {
+          ...finding("expired_high", "high", "high"),
+          suppression: { status: "expired" }
+        } as Finding,
+        {
+          ...finding("active_critical", "critical", "very_high"),
+          suppression: { status: "active" }
+        } as Finding
+      ],
+      diagnostics: [],
+      scanCoverage: scanCoverage("complete"),
+      config: {
+        root_path: ".",
+        output_path: ".agentcsp",
+        formats: ["json"],
+        include_hidden: true,
+        include_logs: false,
+        max_file_size_bytes: 1024 * 1024,
+        max_files: 5000,
+        quiet: true,
+        fail_on: "high",
+        fail_on_confidence: "high",
+        fail_on_expired_suppressions: true
+      } satisfies ScanConfig
+    });
+
+    expect(summary).toMatchObject({
+      status: "fail",
+      severity_gate_findings: 3,
+      severity_gate_by_severity: { critical: 2, high: 1, medium: 0, low: 0, info: 0 },
+      severity_gate_by_confidence: { very_high: 1, high: 2, medium: 0, low: 0 },
+      active_suppressions_excluded: 1,
+      expired_suppression_findings: 1,
+      expired_suppression_by_severity: { critical: 0, high: 1, medium: 0, low: 0, info: 0 },
+      failed_gates: ["severity", "expired_suppressions"]
+    });
+  });
 });
 
-function finding(id: string): Finding {
+function finding(id: string, severity: Finding["severity"] = "high", confidence: Finding["confidence"] = "high"): Finding {
   return {
     id,
-    severity: "high",
-    confidence: "high",
+    severity,
+    confidence,
     suppression: undefined
   } as Finding;
 }
