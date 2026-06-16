@@ -24,6 +24,7 @@ A finding should be considered production-grade when it includes:
 - redacted parser diagnostics for malformed security-relevant configuration
 - redacted policy diagnostics for malformed, schema-invalid, or explicitly missing advisory policy configs
 - built-in rule pack loading that cannot be suppressed by a project-local `rules/` directory
+- built-in rule-pack verification for unique stable IDs, schema-valid YAML, non-empty match conditions, framework mappings, operator value types, and concrete recommendations
 - packaged built-in rule assets under `@agentcsp/core` so installed builds retain the same detection baseline
 - CI package-artifact verification for compiled modules and bundled built-in rule counts
 - npm tarball verification for `@agentcsp/core` and `agentcsp` so published packages retain the CLI entrypoint, schema exports, scanner/rule engine modules, and bundled built-in rules

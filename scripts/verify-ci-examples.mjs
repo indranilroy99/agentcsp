@@ -103,6 +103,11 @@ assert(
   internalAuditStep.run === "pnpm audit --audit-level moderate",
   ".github/workflows/ci.yml dependency audit must fail on moderate and above vulnerabilities"
 );
+const internalRuleStep = internalSteps.find((step) => step.name === "Verify built-in rule pack");
+assert(
+  internalRuleStep?.run === "pnpm verify:rules",
+  ".github/workflows/ci.yml must verify built-in rule-pack invariants"
+);
 const internalFixtureStep = internalSteps.find((step) => step.name === "Verify fixture outputs");
 assert(internalFixtureStep?.run === "pnpm verify:fixtures", ".github/workflows/ci.yml must use the self-contained fixture verifier");
 const internalUploadStep = internalSteps.find((step) => step.uses === "github/codeql-action/upload-sarif@v4");
