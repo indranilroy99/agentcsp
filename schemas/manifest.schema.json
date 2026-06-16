@@ -1082,6 +1082,16 @@
               "minimum": 0,
               "default": 0
             },
+            "new_actions": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            },
+            "existing_actions": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            },
             "by_owner": {
               "type": "array",
               "items": {
@@ -1159,6 +1169,9 @@
                   },
                   "path": {
                     "type": "string"
+                  },
+                  "baseline_status": {
+                    "$ref": "#/definitions/AgentCSP Agent Manifest/properties/findings/items/properties/baseline_status"
                   },
                   "rationale": {
                     "type": "array",

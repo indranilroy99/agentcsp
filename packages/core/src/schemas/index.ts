@@ -307,6 +307,7 @@ export const RemediationActionSchema = z.object({
   category: z.string(),
   surface_type: SurfaceTypeSchema,
   path: z.string(),
+  baseline_status: FindingBaselineStatusSchema.optional(),
   rationale: z.array(z.string()).default([]),
   related_finding_ids: z.array(z.string()).default([]),
   data_classes: z.array(DataClassSchema).default([]),
@@ -329,6 +330,8 @@ export const ActionPlanSummarySchema = z.object({
   quarantine_actions: z.number().int().nonnegative().default(0),
   redaction_actions: z.number().int().nonnegative().default(0),
   warn_actions: z.number().int().nonnegative().default(0),
+  new_actions: z.number().int().nonnegative().default(0),
+  existing_actions: z.number().int().nonnegative().default(0),
   by_owner: z.array(ActionPlanOwnerSummarySchema).default([]),
   actions: z.array(RemediationActionSchema).default([])
 });

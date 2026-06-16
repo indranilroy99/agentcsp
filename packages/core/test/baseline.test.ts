@@ -43,7 +43,13 @@ describe("baseline comparison", () => {
       resolved_findings: 0
     });
     expect(result.findings.every((finding) => finding.baseline_status === "existing")).toBe(true);
+    expect(result.manifest.action_plan).toMatchObject({
+      new_actions: 0,
+      existing_actions: result.manifest.action_plan?.total_actions
+    });
+    expect(result.manifest.action_plan?.actions.every((action) => action.baseline_status === "existing")).toBe(true);
     expect(result.reportMarkdown).toContain("## Baseline Comparison");
+    expect(result.reportMarkdown).toContain("- Existing actions:");
     expect(result.reportMarkdown).toContain("No new findings were introduced.");
     const sarif = JSON.parse(await fs.readFile(result.outputFiles.sarif!, "utf8")) as {
       runs: Array<{
@@ -107,6 +113,8 @@ describe("baseline comparison", () => {
     expect(result.manifest.baseline_comparison?.new_finding_ids).toEqual([targetNewFinding?.id]);
     expect(result.manifest.baseline_comparison?.resolved_finding_ids).toEqual(["finding_resolved_demo"]);
     expect(result.findings.find((finding) => finding.id === targetNewFinding?.id)?.baseline_status).toBe("new");
+    expect(result.manifest.action_plan?.new_actions).toBeGreaterThan(0);
+    expect(result.manifest.action_plan?.actions.some((action) => action.baseline_status === "new")).toBe(true);
     expect(result.reportMarkdown).toContain("New findings: 1");
     const sarif = JSON.parse(await fs.readFile(result.outputFiles.sarif!, "utf8")) as {
       runs: Array<{ results: Array<{ partialFingerprints?: { agentcspFindingId?: string }; baselineState?: string }> }>;

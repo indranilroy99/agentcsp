@@ -122,7 +122,7 @@ describe("scanProject", () => {
     expect(result.reportMarkdown).toContain("## Action Plan");
     expect(result.reportMarkdown).toContain("### Action Owners");
     expect(result.reportMarkdown).toContain("| Owner hint | Actions | Highest severity | Max risk |");
-    expect(result.reportMarkdown).toContain("| Priority | Severity | Risk | Owner | Control | Rule | Surface | Path | Rationale |");
+    expect(result.reportMarkdown).toContain("| Priority | Severity | Risk | Baseline | Owner | Control | Rule | Surface | Path | Rationale |");
     expect(result.reportMarkdown).toContain("- Root: `<scan-root>`");
     expect(result.reportMarkdown).not.toContain(rootPath);
     expect(result.reportMarkdown).toContain("## CI Gate Summary");
@@ -178,6 +178,8 @@ describe("scanProject", () => {
       approval_actions: 0,
       quarantine_actions: 0,
       redaction_actions: 0,
+      new_actions: 0,
+      existing_actions: 0,
       by_owner: []
     });
     expect(result.manifest.action_plan?.actions).toHaveLength(0);

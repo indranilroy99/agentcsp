@@ -210,7 +210,7 @@ The Agent Manifest is the SBOM equivalent for AI agent deployments. Core section
 - `scan_coverage`
 - `static_blast_radius`
 
-Findings include severity, confidence, risk factors, redacted evidence, mappings, and recommended controls. The triage summary gives downstream CI and platform consumers stable counts for active risk, suppressions, confidence, surface types, control mix, top rules, and top active risks. The action plan adds prioritized remediation items with owner hints such as `agent-platform`, `identity-and-secrets`, `data-and-knowledge`, `platform-ci`, and `runtime-platform`.
+Findings include severity, confidence, risk factors, redacted evidence, mappings, and recommended controls. The triage summary gives downstream CI and platform consumers stable counts for active risk, suppressions, confidence, surface types, control mix, top rules, and top active risks. The action plan adds prioritized remediation items with baseline status and owner hints such as `agent-platform`, `identity-and-secrets`, `data-and-knowledge`, `platform-ci`, and `runtime-platform`.
 
 ## Rules
 

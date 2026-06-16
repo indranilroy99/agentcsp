@@ -85,16 +85,18 @@ function renderActionPlan(manifest: AgentManifest): string {
     `- Approval actions: ${plan.approval_actions}`,
     `- Quarantine actions: ${plan.quarantine_actions}`,
     `- Redaction actions: ${plan.redaction_actions}`,
+    `- New actions: ${plan.new_actions}`,
+    `- Existing actions: ${plan.existing_actions}`,
     "",
     "### Action Owners",
     "",
     renderActionOwnerTable(plan.by_owner),
     "",
-    "| Priority | Severity | Risk | Owner | Control | Rule | Surface | Path | Rationale |",
-    "| --- | --- | --- | --- | --- | --- | --- | --- | --- |",
+    "| Priority | Severity | Risk | Baseline | Owner | Control | Rule | Surface | Path | Rationale |",
+    "| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |",
     ...plan.actions.map(
       (action) =>
-        `| ${action.priority} | ${action.severity} | ${action.risk_score} | ${action.owner_hint} | ${action.recommended_control.replaceAll("_", " ")} | ${action.rule_id} | ${action.surface_type} | \`${escapeTable(action.path)}\` | ${escapeTable(action.rationale.join("; "))} |`
+        `| ${action.priority} | ${action.severity} | ${action.risk_score} | ${action.baseline_status ?? "unbaselined"} | ${action.owner_hint} | ${action.recommended_control.replaceAll("_", " ")} | ${action.rule_id} | ${action.surface_type} | \`${escapeTable(action.path)}\` | ${escapeTable(action.rationale.join("; "))} |`
     )
   ].join("\n");
 }

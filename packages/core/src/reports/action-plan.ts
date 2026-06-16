@@ -3,6 +3,7 @@ import { stableId } from "../utils/ids.js";
 
 const severityRank = { critical: 5, high: 4, medium: 3, low: 2, info: 1 };
 const confidenceRank = { very_high: 4, high: 3, medium: 2, low: 1 };
+const baselineRank = { new: 2, existing: 1, unbaselined: 0 };
 const controlRank: Record<Control, number> = {
   deny: 6,
   quarantine: 5,
@@ -31,6 +32,7 @@ export function buildActionPlan(findings: Finding[], limit = 12): ActionPlanSumm
       category: finding.category,
       surface_type: finding.matched_object.type,
       path: finding.file_path,
+      baseline_status: finding.baseline_status,
       rationale: actionRationale(finding),
       related_finding_ids: [finding.id],
       data_classes: finding.data_classes,
@@ -47,6 +49,8 @@ export function buildActionPlan(findings: Finding[], limit = 12): ActionPlanSumm
     quarantine_actions: actions.filter((action) => action.recommended_control === "quarantine").length,
     redaction_actions: actions.filter((action) => action.recommended_control === "redact").length,
     warn_actions: actions.filter((action) => action.recommended_control === "warn").length,
+    new_actions: actions.filter((action) => action.baseline_status === "new").length,
+    existing_actions: actions.filter((action) => action.baseline_status === "existing").length,
     by_owner: summarizeOwners(actions),
     actions
   };
@@ -55,6 +59,7 @@ export function buildActionPlan(findings: Finding[], limit = 12): ActionPlanSumm
 function compareActionPriority(a: Finding, b: Finding): number {
   return (
     severityRank[b.severity] - severityRank[a.severity] ||
+    baselinePriority(b) - baselinePriority(a) ||
     b.risk.score - a.risk.score ||
     controlRank[b.recommended_control] - controlRank[a.recommended_control] ||
     confidenceRank[b.confidence] - confidenceRank[a.confidence] ||
@@ -62,6 +67,10 @@ function compareActionPriority(a: Finding, b: Finding): number {
     Number(b.risk.secret_exposure) - Number(a.risk.secret_exposure) ||
     a.id.localeCompare(b.id)
   );
+}
+
+function baselinePriority(finding: Finding): number {
+  return baselineRank[finding.baseline_status ?? "unbaselined"];
 }
 
 function isImmediateAction(action: ActionPlanSummary["actions"][number]): boolean {
