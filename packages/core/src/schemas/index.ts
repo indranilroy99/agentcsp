@@ -282,6 +282,8 @@ export const BaselineComparisonSchema = z.object({
   current_findings: z.number().int().nonnegative().default(0),
   baseline_findings: z.number().int().nonnegative().default(0),
   new_findings: z.number().int().nonnegative().default(0),
+  new_findings_by_severity: SeverityCountsSchema.default({ critical: 0, high: 0, medium: 0, low: 0, info: 0 }),
+  new_findings_by_confidence: ConfidenceCountsSchema.default({ very_high: 0, high: 0, medium: 0, low: 0 }),
   existing_findings: z.number().int().nonnegative().default(0),
   resolved_findings: z.number().int().nonnegative().default(0),
   baseline_id_limit: z.number().int().positive().default(50),

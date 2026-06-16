@@ -1555,6 +1555,25 @@
               "minimum": 0,
               "default": 0
             },
+            "new_findings_by_severity": {
+              "$ref": "#/definitions/AgentCSP Agent Manifest/properties/triage_summary/properties/active_by_severity",
+              "default": {
+                "critical": 0,
+                "high": 0,
+                "medium": 0,
+                "low": 0,
+                "info": 0
+              }
+            },
+            "new_findings_by_confidence": {
+              "$ref": "#/definitions/AgentCSP Agent Manifest/properties/triage_summary/properties/active_by_confidence",
+              "default": {
+                "very_high": 0,
+                "high": 0,
+                "medium": 0,
+                "low": 0
+              }
+            },
             "existing_findings": {
               "type": "integer",
               "minimum": 0,

@@ -337,9 +337,21 @@ function renderBaselineComparison(manifest: AgentManifest): string {
     `- New finding IDs truncated: \`${comparison.new_finding_ids_truncated}\``,
     `- Resolved finding IDs truncated: \`${comparison.resolved_finding_ids_truncated}\``,
     "",
+    "### New Finding Drift Mix",
+    "",
+    renderBaselineDriftMix(comparison),
+    "",
     "### New Findings",
     "",
     newFindings.length > 0 ? renderFindingTable(newFindings) : "No new findings were introduced."
+  ].join("\n");
+}
+
+function renderBaselineDriftMix(comparison: NonNullable<AgentManifest["baseline_comparison"]>): string {
+  return [
+    "| Critical | High | Medium | Low | Info | Very high confidence | High confidence | Medium confidence | Low confidence |",
+    "| --- | --- | --- | --- | --- | --- | --- | --- | --- |",
+    `| ${comparison.new_findings_by_severity.critical} | ${comparison.new_findings_by_severity.high} | ${comparison.new_findings_by_severity.medium} | ${comparison.new_findings_by_severity.low} | ${comparison.new_findings_by_severity.info} | ${comparison.new_findings_by_confidence.very_high} | ${comparison.new_findings_by_confidence.high} | ${comparison.new_findings_by_confidence.medium} | ${comparison.new_findings_by_confidence.low} |`
   ].join("\n");
 }
 

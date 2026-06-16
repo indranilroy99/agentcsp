@@ -1,7 +1,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import { z } from "zod";
-import type { BaselineComparison, Finding } from "../schemas/index.js";
+import type { BaselineComparison, ConfidenceCounts, Finding, SeverityCounts } from "../schemas/index.js";
 import { isPathInsideRoot, relativePath } from "../utils/paths.js";
 
 const BaselineFindingRecordSchema = z.object({ id: z.string() }).passthrough();
@@ -34,6 +34,7 @@ export async function applyBaselineComparison(
     .filter((finding) => finding.baseline_status === "new")
     .map((finding) => finding.id)
     .sort((a, b) => a.localeCompare(b));
+  const newFindings = findingsWithStatus.filter((finding) => finding.baseline_status === "new");
 
   const resolvedFindingIds = baseline.findingIds
     .filter((findingId) => !currentIds.has(findingId))
@@ -48,6 +49,8 @@ export async function applyBaselineComparison(
       current_findings: findings.length,
       baseline_findings: baseline.findingIds.length,
       new_findings: newFindingIds.length,
+      new_findings_by_severity: countBySeverity(newFindings),
+      new_findings_by_confidence: countByConfidence(newFindings),
       existing_findings: findingsWithStatus.length - newFindingIds.length,
       resolved_findings: resolvedFindingIds.length,
       baseline_id_limit: baselineFindingIdLimit,
@@ -112,4 +115,16 @@ function uniqueSortedIds(findings: Array<{ id: string }>): string[] {
 
 function limitIds(ids: string[], limit = baselineFindingIdLimit): string[] {
   return ids.slice(0, limit);
+}
+
+function countBySeverity(findings: Finding[]): SeverityCounts {
+  const counts: SeverityCounts = { critical: 0, high: 0, medium: 0, low: 0, info: 0 };
+  for (const finding of findings) counts[finding.severity] += 1;
+  return counts;
+}
+
+function countByConfidence(findings: Finding[]): ConfidenceCounts {
+  const counts: ConfidenceCounts = { very_high: 0, high: 0, medium: 0, low: 0 };
+  for (const finding of findings) counts[finding.confidence] += 1;
+  return counts;
 }

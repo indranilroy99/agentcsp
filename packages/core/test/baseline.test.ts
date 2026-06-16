@@ -41,6 +41,8 @@ describe("baseline comparison", () => {
       current_findings: baseline.findings.length,
       baseline_findings: baseline.findings.length,
       new_findings: 0,
+      new_findings_by_severity: { critical: 0, high: 0, medium: 0, low: 0, info: 0 },
+      new_findings_by_confidence: { very_high: 0, high: 0, medium: 0, low: 0 },
       existing_findings: baseline.findings.length,
       resolved_findings: 0,
       baseline_id_limit: baselineFindingIdLimit,
@@ -56,16 +58,25 @@ describe("baseline comparison", () => {
     });
     expect(result.manifest.action_plan?.actions.every((action) => action.baseline_status === "existing")).toBe(true);
     expect(result.reportMarkdown).toContain("## Baseline Comparison");
+    expect(result.reportMarkdown).toContain("### New Finding Drift Mix");
     expect(result.reportMarkdown).toContain("- Existing actions:");
     expect(result.reportMarkdown).toContain("No new findings were introduced.");
     const sarif = JSON.parse(await fs.readFile(result.outputFiles.sarif!, "utf8")) as {
       runs: Array<{
         results: Array<{ baselineState?: string }>;
-        properties?: { agentcsp_baseline_comparison?: { new_findings?: number } };
+        properties?: {
+          agentcsp_baseline_comparison?: {
+            new_findings?: number;
+            new_findings_by_severity?: Record<string, number>;
+            new_findings_by_confidence?: Record<string, number>;
+          };
+        };
       }>;
     };
     expect(sarif.runs[0]?.results.every((item) => item.baselineState === "unchanged")).toBe(true);
     expect(sarif.runs[0]?.properties?.agentcsp_baseline_comparison?.new_findings).toBe(0);
+    expect(sarif.runs[0]?.properties?.agentcsp_baseline_comparison?.new_findings_by_severity?.critical).toBe(0);
+    expect(sarif.runs[0]?.properties?.agentcsp_baseline_comparison?.new_findings_by_confidence?.very_high).toBe(0);
   }, 30_000);
 
   it("tracks new and resolved findings from a findings baseline", async () => {
@@ -115,6 +126,19 @@ describe("baseline comparison", () => {
     expect(result.manifest.baseline_comparison).toMatchObject({
       baseline_format: "findings",
       new_findings: 1,
+      new_findings_by_severity: {
+        critical: targetNewFinding?.severity === "critical" ? 1 : 0,
+        high: targetNewFinding?.severity === "high" ? 1 : 0,
+        medium: targetNewFinding?.severity === "medium" ? 1 : 0,
+        low: targetNewFinding?.severity === "low" ? 1 : 0,
+        info: targetNewFinding?.severity === "info" ? 1 : 0
+      },
+      new_findings_by_confidence: {
+        very_high: targetNewFinding?.confidence === "very_high" ? 1 : 0,
+        high: targetNewFinding?.confidence === "high" ? 1 : 0,
+        medium: targetNewFinding?.confidence === "medium" ? 1 : 0,
+        low: targetNewFinding?.confidence === "low" ? 1 : 0
+      },
       resolved_findings: 1,
       baseline_id_limit: baselineFindingIdLimit,
       baseline_ids_truncated: false
@@ -125,6 +149,7 @@ describe("baseline comparison", () => {
     expect(result.manifest.action_plan?.new_actions).toBeGreaterThan(0);
     expect(result.manifest.action_plan?.actions.some((action) => action.baseline_status === "new")).toBe(true);
     expect(result.reportMarkdown).toContain("New findings: 1");
+    expect(result.reportMarkdown).toContain("### New Finding Drift Mix");
     expect(result.reportMarkdown).toContain(`Baseline ID limit: ${baselineFindingIdLimit}`);
     expect(result.reportMarkdown).toContain("Baseline IDs truncated: `false`");
     const sarif = JSON.parse(await fs.readFile(result.outputFiles.sarif!, "utf8")) as {
@@ -170,6 +195,30 @@ describe("baseline comparison", () => {
     expect(result.comparison.resolved_finding_ids).toHaveLength(baselineFindingIdLimit);
     expect(result.comparison.new_finding_ids[0]).toBe("new_000");
     expect(result.comparison.resolved_finding_ids[0]).toBe("resolved_000");
+  });
+
+  it("summarizes new baseline drift by severity and confidence", async () => {
+    const baselinePath = "/private/tmp/agentcsp-baseline-drift-mix.json";
+    await fs.writeFile(baselinePath, '[{"id":"existing_high"}]\n', "utf8");
+
+    const result = await applyBaselineComparison(
+      [
+        finding("existing_high", "high", "high"),
+        finding("new_critical_very_high", "critical", "very_high"),
+        finding("new_critical_high", "critical", "high"),
+        finding("new_medium_low", "medium", "low")
+      ],
+      baselinePath,
+      "/private/tmp"
+    );
+
+    expect(result.comparison).toMatchObject({
+      new_findings: 3,
+      existing_findings: 1,
+      resolved_findings: 0,
+      new_findings_by_severity: { critical: 2, high: 0, medium: 1, low: 0, info: 0 },
+      new_findings_by_confidence: { very_high: 1, high: 1, medium: 0, low: 1 }
+    });
   });
 
   it("resolves relative baseline paths from the scan root", async () => {
@@ -269,10 +318,10 @@ describe("baseline comparison", () => {
   });
 });
 
-function finding(id: string): Finding {
+function finding(id: string, severity: Finding["severity"] = "high", confidence: Finding["confidence"] = "high"): Finding {
   return {
     id,
-    severity: "high",
-    confidence: "high"
+    severity,
+    confidence
   } as Finding;
 }
