@@ -24229,6 +24229,7 @@ function addToolDefinitionSurface(
       !authority.clipboard_external_service_bridge &&
       !authority.clipboard_shell_execution_bridge &&
       !authority.clipboard_dynamic_code_execution_bridge &&
+      !authority.clipboard_agent_delegation_bridge &&
       !authority.visual_context_external_service_bridge &&
       !authority.visual_context_memory_bridge &&
       !authority.visual_context_artifact_bridge &&
@@ -24321,6 +24322,7 @@ function addToolDefinitionSurface(
       clipboard_external_service_bridge: authority.clipboard_external_service_bridge,
       clipboard_shell_execution_bridge: authority.clipboard_shell_execution_bridge,
       clipboard_dynamic_code_execution_bridge: authority.clipboard_dynamic_code_execution_bridge,
+      clipboard_agent_delegation_bridge: authority.clipboard_agent_delegation_bridge,
       secret_manager_access: authority.secret_manager_access,
       tainted_secret_manager_path: authority.tainted_secret_manager_path,
       secret_manager_external_service_bridge: authority.secret_manager_external_service_bridge,
@@ -27007,6 +27009,7 @@ interface SourceToolHandlerSignals {
   handlerEnvSecretAgentDelegationBridge: boolean;
   handlerSecretManagerAgentDelegationBridge: boolean;
   handlerToolOutputAgentDelegationBridge: boolean;
+  handlerClipboardAgentDelegationBridge: boolean;
   handlerToolInvocation: boolean;
   handlerBrowserAutomation: boolean;
   handlerTaintedBrowserAutomationTarget: boolean;
@@ -27640,6 +27643,7 @@ function sourceToolHandlerSignalMetadata(signals: SourceToolHandlerSignals | und
     handler_env_secret_agent_delegation_bridge: signals.handlerEnvSecretAgentDelegationBridge,
     handler_secret_manager_agent_delegation_bridge: signals.handlerSecretManagerAgentDelegationBridge,
     handler_tool_output_agent_delegation_bridge: signals.handlerToolOutputAgentDelegationBridge,
+    handler_clipboard_agent_delegation_bridge: signals.handlerClipboardAgentDelegationBridge,
     handler_tool_invocation: signals.handlerToolInvocation,
     handler_browser_automation: signals.handlerBrowserAutomation,
     handler_tainted_browser_automation_target: signals.handlerTaintedBrowserAutomationTarget,
@@ -28200,6 +28204,10 @@ function classifySourceToolHandlerSignals(
     ? hasJavaScriptHandlerClipboardTrainingDatasetBridge(handlerSource)
     : hasPythonHandlerClipboardTrainingDatasetBridge(handlerSource));
   if (clipboardTrainingDatasetBridge) taintedTrainingDatasetPayload = true;
+  const clipboardAgentDelegationBridge = clipboardRead && agentDelegation && (language === "javascript"
+    ? hasJavaScriptHandlerClipboardAgentDelegationBridge(handlerSource)
+    : hasPythonHandlerClipboardAgentDelegationBridge(handlerSource));
+  if (clipboardAgentDelegationBridge) agentDelegationContextForwarding = true;
   const clipboardExternalServiceBridge = clipboardRead && externalServiceWrite && (language === "javascript"
     ? hasJavaScriptHandlerClipboardExternalServiceBridge(handlerSource)
     : hasPythonHandlerClipboardExternalServiceBridge(handlerSource));
@@ -28649,6 +28657,7 @@ function classifySourceToolHandlerSignals(
   if (envSecretAgentDelegationBridge) classes.add("handler_env_secret_agent_delegation_bridge");
   if (secretManagerAgentDelegationBridge) classes.add("handler_secret_manager_agent_delegation_bridge");
   if (toolOutputAgentDelegationBridge) classes.add("handler_tool_output_agent_delegation_bridge");
+  if (clipboardAgentDelegationBridge) classes.add("handler_clipboard_agent_delegation_bridge");
   if (toolInvocation) classes.add("handler_tool_invocation");
   if (browserAutomation) classes.add("handler_browser_automation");
   if (taintedBrowserAutomationTarget) classes.add("handler_tainted_browser_automation_target");
@@ -28871,6 +28880,7 @@ function classifySourceToolHandlerSignals(
     handlerEnvSecretAgentDelegationBridge: envSecretAgentDelegationBridge,
     handlerSecretManagerAgentDelegationBridge: secretManagerAgentDelegationBridge,
     handlerToolOutputAgentDelegationBridge: toolOutputAgentDelegationBridge,
+    handlerClipboardAgentDelegationBridge: clipboardAgentDelegationBridge,
     handlerToolInvocation: toolInvocation,
     handlerBrowserAutomation: browserAutomation,
     handlerTaintedBrowserAutomationTarget: taintedBrowserAutomationTarget,
@@ -30266,6 +30276,30 @@ function hasPythonHandlerToolOutputAgentDelegationBridge(source: string): boolea
     [
       /\b(?:a2a_client|agent_client|remote_agent_client|agent_registry|agent_router|agent_gateway|agent_federation|handoff_client|delegate_client)\s*(?:\.\s*[A-Za-z_]\w*){0,4}\s*\.\s*(?:delegate|delegate_task|handoff|handoff_to_agent|invoke_agent|run_agent|call_agent|send_task|create_task|dispatch|route|execute)\s*\(([\s\S]{0,2200})\)/giu,
       /\b(?:delegate_to_agent|handoff_to_agent|invoke_agent|call_agent|send_agent_task|dispatch_agent_task)\s*\(([\s\S]{0,2200})\)/giu
+    ],
+    source,
+    identifiers
+  );
+}
+
+function hasJavaScriptHandlerClipboardAgentDelegationBridge(source: string): boolean {
+  const identifiers = extractJavaScriptClipboardIdentifiers(source);
+  return identifiers.length > 0 && agentDelegationCallReferencesContextIdentifier(
+    [
+      /\b(?:a2aClient|agentClient|remoteAgentClient|agentRegistry|agentRouter|agentGateway|agentFederation|handoffClient|delegateClient)\s*(?:\.\s*[A-Za-z_$][\w$]*){0,4}\s*\.\s*(?:delegate|delegateTask|handoff|handoffToAgent|invokeAgent|runAgent|callAgent|sendTask|createTask|dispatch|route|execute)\s*\(([\s\S]{0,2400})\)/giu,
+      /\b(?:delegateToAgent|handoffToAgent|invokeAgent|callAgent|sendAgentTask|dispatchAgentTask)\s*\(([\s\S]{0,2400})\)/giu
+    ],
+    source,
+    identifiers
+  );
+}
+
+function hasPythonHandlerClipboardAgentDelegationBridge(source: string): boolean {
+  const identifiers = extractPythonClipboardIdentifiers(source);
+  return identifiers.length > 0 && agentDelegationCallReferencesContextIdentifier(
+    [
+      /\b(?:a2a_client|agent_client|remote_agent_client|agent_registry|agent_router|agent_gateway|agent_federation|handoff_client|delegate_client)\s*(?:\.\s*[A-Za-z_]\w*){0,4}\s*\.\s*(?:delegate|delegate_task|handoff|handoff_to_agent|invoke_agent|run_agent|call_agent|send_task|create_task|dispatch|route|execute)\s*\(([\s\S]{0,2400})\)/giu,
+      /\b(?:delegate_to_agent|handoff_to_agent|invoke_agent|call_agent|send_agent_task|dispatch_agent_task)\s*\(([\s\S]{0,2400})\)/giu
     ],
     source,
     identifiers
@@ -34766,20 +34800,20 @@ function identifierAssignedFromTaintedCredentialIssuanceInput(identifier: string
 }
 
 function expressionReferencesTaintedAgentDelegationTarget(expression: string, source: string): boolean {
-  const templateInterpolation = /\$\{[^}]*\b(?:targetAgent|target_agent|requestedAgent|requested_agent|agentName|agent_name|agentId|agent_id|agentUrl|agent_url|agentCardUrl|agent_card_url|remoteAgent|remote_agent|peerAgent|peer_agent|delegateTo|delegate_to|taskType|task_type|registryUrl|registry_url|endpointUrl|endpoint_url|agent|url|endpoint)\b/u.test(
+  const templateInterpolation = /\$\{[^}]*\b(?:targetAgent|target_agent|targetAgentId|target_agent_id|targetAgentUrl|target_agent_url|targetUrl|target_url|requestedAgent|requested_agent|agentName|agent_name|agentId|agent_id|agentUrl|agent_url|agentCardUrl|agent_card_url|remoteAgent|remote_agent|peerAgent|peer_agent|delegateTo|delegate_to|taskType|task_type|registryUrl|registry_url|endpointUrl|endpoint_url|agent|url|endpoint)\b/u.test(
     expression
   );
   if (templateInterpolation) return true;
   const withoutQuotedStrings = expression.replace(/(["'`])(?:\\.|(?!\1)[\s\S])*\1/gu, " ");
-  const stronglyTaintedName = /\b(?:targetAgent|target_agent|requestedAgent|requested_agent|agentName|agent_name|agentId|agent_id|agentUrl|agent_url|agentCardUrl|agent_card_url|remoteAgent|remote_agent|peerAgent|peer_agent|delegateTo|delegate_to|taskType|task_type|registryUrl|registry_url|endpointUrl|endpoint_url)\b/u;
-  const taintedName = /\b(?:targetAgent|target_agent|requestedAgent|requested_agent|agentName|agent_name|agentId|agent_id|agentUrl|agent_url|agentCardUrl|agent_card_url|remoteAgent|remote_agent|peerAgent|peer_agent|delegateTo|delegate_to|taskType|task_type|registryUrl|registry_url|endpointUrl|endpoint_url|agent|url|endpoint|task|route|destination)\b/u;
+  const stronglyTaintedName = /\b(?:targetAgent|target_agent|targetAgentId|target_agent_id|targetAgentUrl|target_agent_url|targetUrl|target_url|requestedAgent|requested_agent|agentName|agent_name|agentId|agent_id|agentUrl|agent_url|agentCardUrl|agent_card_url|remoteAgent|remote_agent|peerAgent|peer_agent|delegateTo|delegate_to|taskType|task_type|registryUrl|registry_url|endpointUrl|endpoint_url)\b/u;
+  const taintedName = /\b(?:targetAgent|target_agent|targetAgentId|target_agent_id|targetAgentUrl|target_agent_url|targetUrl|target_url|requestedAgent|requested_agent|agentName|agent_name|agentId|agent_id|agentUrl|agent_url|agentCardUrl|agent_card_url|remoteAgent|remote_agent|peerAgent|peer_agent|delegateTo|delegate_to|taskType|task_type|registryUrl|registry_url|endpointUrl|endpoint_url|agent|url|endpoint|task|route|destination)\b/u;
   if (stronglyTaintedName.test(withoutQuotedStrings)) return true;
 
-  const targetAssignment = /\b(?:agent|agent_id|agentId|agent_name|agentName|agent_url|agentUrl|agent_card_url|agentCardUrl|target|target_agent|targetAgent|peer|peer_agent|peerAgent|task|task_type|taskType|url|endpoint|route|destination)\s*(?::|=)\s*([^,\n}\)]+)/giu;
+  const targetAssignment = /\b(?:agent|agent_id|agentId|agent_name|agentName|agent_url|agentUrl|agent_card_url|agentCardUrl|target|target_agent|targetAgent|target_agent_id|targetAgentId|target_agent_url|targetAgentUrl|target_url|targetUrl|peer|peer_agent|peerAgent|task|task_type|taskType|url|endpoint|route|destination)\s*(?::|=)\s*([^,\n}\)]+)/giu;
   if (expressionMatchesPattern(targetAssignment, withoutQuotedStrings, taintedName)) return true;
 
   const valueOnlyExpression = withoutQuotedStrings.replace(
-    /\b(?:agent|agent_id|agentId|agent_name|agentName|agent_url|agentUrl|agent_card_url|agentCardUrl|target|target_agent|targetAgent|peer|peer_agent|peerAgent|task|task_type|taskType|url|endpoint|route|destination)\s*(?::|=)/giu,
+    /\b(?:agent|agent_id|agentId|agent_name|agentName|agent_url|agentUrl|agent_card_url|agentCardUrl|target|target_agent|targetAgent|target_agent_id|targetAgentId|target_agent_url|targetAgentUrl|target_url|targetUrl|peer|peer_agent|peerAgent|task|task_type|taskType|url|endpoint|route|destination)\s*(?::|=)/giu,
     " "
   );
   const identifiers = uniqueStrings(
@@ -37259,6 +37293,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   clipboard_external_service_bridge: boolean;
   clipboard_shell_execution_bridge: boolean;
   clipboard_dynamic_code_execution_bridge: boolean;
+  clipboard_agent_delegation_bridge: boolean;
   visual_context_capture: boolean;
   visual_context_to_output: boolean;
   visual_context_prompt_bridge: boolean;
@@ -37596,6 +37631,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   const handlerEnvSecretAgentDelegationBridge = handler?.handlerEnvSecretAgentDelegationBridge === true;
   const handlerSecretManagerAgentDelegationBridge = handler?.handlerSecretManagerAgentDelegationBridge === true;
   const handlerToolOutputAgentDelegationBridge = handler?.handlerToolOutputAgentDelegationBridge === true;
+  const handlerClipboardAgentDelegationBridge = handler?.handlerClipboardAgentDelegationBridge === true;
   const handlerToolInvocation = handler?.handlerToolInvocation === true;
   const handlerBrowserAutomation = handler?.handlerBrowserAutomation === true;
   const handlerTaintedBrowserAutomationTarget = handler?.handlerTaintedBrowserAutomationTarget === true;
@@ -37795,6 +37831,12 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
     classes.add("clipboard_dynamic_code_execution_bridge");
     actions.add("read");
     actions.add("execute");
+  }
+  if (handlerClipboardAgentDelegationBridge) {
+    classes.add("clipboard_agent_delegation_bridge");
+    actions.add("execute");
+    actions.add("read");
+    actions.add("send");
   }
   if (handlerVisualContextCapture) {
     classes.add("visual_context_capture");
@@ -38893,6 +38935,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerEnvSecretAgentDelegationBridge ||
       handlerSecretManagerAgentDelegationBridge ||
       handlerToolOutputAgentDelegationBridge ||
+      handlerClipboardAgentDelegationBridge ||
       handlerToolInvocation ||
       handlerBrowserAutomation ||
       handlerTaintedBrowserAutomationTarget ||
@@ -38911,6 +38954,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerClipboardExternalServiceBridge ||
       handlerClipboardShellExecutionBridge ||
       handlerClipboardDynamicCodeExecutionBridge ||
+      handlerClipboardAgentDelegationBridge ||
       handlerVisualContextCapture ||
       handlerVisualContextToOutput ||
       handlerVisualContextPromptBridge ||
@@ -39099,6 +39143,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
     handlerClipboardExternalServiceBridge ||
     handlerClipboardShellExecutionBridge ||
     handlerClipboardDynamicCodeExecutionBridge ||
+    handlerClipboardAgentDelegationBridge ||
     handlerExternalApprovalChannel ||
     readOnlyHintConflict ||
     explicitSideEffectHint ||
@@ -39123,6 +39168,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerClipboardPromptRegistryBridge ||
       handlerLocalFilePromptCacheBridge ||
       handlerClipboardExternalServiceBridge ||
+      handlerClipboardAgentDelegationBridge ||
       handlerVisualContextCapture ||
       handlerVisualContextPromptBridge ||
       handlerVisualContextExternalServiceBridge ||
@@ -39292,6 +39338,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerEnvSecretAgentDelegationBridge ||
       handlerSecretManagerAgentDelegationBridge ||
       (handlerToolOutputAgentDelegationBridge && handlerSecretEnvAccess) ||
+      (handlerClipboardAgentDelegationBridge && handlerSecretEnvAccess) ||
       handlerSecretManagerAccess ||
       handlerSecretManagerBrowserAutomationBridge ||
       handlerEnvSecretBrowserAutomationBridge ||
@@ -39485,6 +39532,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
     clipboard_external_service_bridge: handlerClipboardExternalServiceBridge,
     clipboard_shell_execution_bridge: handlerClipboardShellExecutionBridge,
     clipboard_dynamic_code_execution_bridge: handlerClipboardDynamicCodeExecutionBridge,
+    clipboard_agent_delegation_bridge: handlerClipboardAgentDelegationBridge,
     visual_context_capture: handlerVisualContextCapture,
     visual_context_to_output: handlerVisualContextToOutput,
     visual_context_prompt_bridge: handlerVisualContextPromptBridge,
@@ -39885,6 +39933,7 @@ function authoritySignature(tool: SurfaceObject): string {
     metadata.clipboard_external_service_bridge === true ? "clipboard_external_service_bridge" : "",
     metadata.clipboard_shell_execution_bridge === true ? "clipboard_shell_execution_bridge" : "",
     metadata.clipboard_dynamic_code_execution_bridge === true ? "clipboard_dynamic_code_execution_bridge" : "",
+    metadata.clipboard_agent_delegation_bridge === true ? "clipboard_agent_delegation_bridge" : "",
     metadata.secret_manager_access === true ? "secret_manager_access" : "",
     metadata.tainted_secret_manager_path === true ? "tainted_secret_manager_path" : "",
     metadata.secret_manager_external_service_bridge === true ? "secret_manager_external_service_bridge" : "",
@@ -40119,6 +40168,7 @@ function isPrivilegedToolSurface(tool: SurfaceObject): boolean {
     tool.metadata.clipboard_external_service_bridge === true ||
     tool.metadata.clipboard_shell_execution_bridge === true ||
     tool.metadata.clipboard_dynamic_code_execution_bridge === true ||
+    tool.metadata.clipboard_agent_delegation_bridge === true ||
     tool.metadata.secret_manager_access === true ||
     tool.metadata.tainted_secret_manager_path === true ||
     tool.metadata.secret_manager_external_service_bridge === true ||

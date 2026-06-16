@@ -334,6 +334,7 @@ Tool metadata may include:
 - `env_secret_agent_delegation_bridge`
 - `secret_manager_agent_delegation_bridge`
 - `tool_output_agent_delegation_bridge`
+- `clipboard_agent_delegation_bridge`
 - `nested_tool_invocation`
 - `browser_automation`
 - `tainted_browser_automation_target`
@@ -683,6 +684,7 @@ Tool metadata may include:
 - `handler_env_secret_agent_delegation_bridge`
 - `handler_secret_manager_agent_delegation_bridge`
 - `handler_tool_output_agent_delegation_bridge`
+- `handler_clipboard_agent_delegation_bridge`
 - `handler_tool_invocation`
 - `handler_browser_automation`
 - `handler_tainted_browser_automation_target`
@@ -2211,6 +2213,8 @@ Source-defined tool handlers can also emit redacted clipboard prompt-cache bridg
 Source-defined tool handlers can also emit redacted clipboard prompt-registry bridge authority through `clipboard_prompt_registry_bridge`, `clipboard_read`, `prompt_registry_write`, `tainted_prompt_registry_payload`, `tainted_prompt_registry_selector`, and the corresponding `handler_*` fields when parsed MCP SDK or agent-framework tools read browser or desktop clipboard material and publish copied text into prompt or instruction registries using runtime credentials and caller-selected prompt IDs, roles, namespaces, versions, or registry destinations. Handler bodies, clipboard helper calls, clipboard contents, derived clipboard variables, registry calls, prompt IDs, roles, namespaces, prompt bodies, registry payloads, and return strings remain redacted.
 
 Source-defined tool handlers can also emit redacted clipboard training-dataset bridge authority through `clipboard_training_dataset_bridge`, `clipboard_read`, `training_dataset_export`, `tainted_training_dataset_payload`, and the corresponding `handler_*` fields when parsed MCP SDK or agent-framework tools read browser or desktop clipboard material and export copied text into training, fine-tuning, eval, feedback, or model-improvement datasets using runtime credentials and caller-selected dataset routing. Handler bodies, clipboard helper calls, clipboard contents, derived clipboard variables, training dataset calls, dataset IDs, split names, source labels, training records, prompt text, completions, notes, and return strings remain redacted.
+
+Source-defined tool handlers can also emit redacted clipboard remote-agent delegation bridge authority through `clipboard_agent_delegation_bridge`, `clipboard_read`, `agent_delegation`, `tainted_agent_delegation_target`, `agent_delegation_context_forwarding`, and the corresponding `handler_*` fields when parsed MCP SDK or agent-framework tools read browser or desktop clipboard material and delegate copied text to remote agents or A2A peers using runtime credentials and caller-selected agent targets. Handler bodies, clipboard helper calls, delegated-agent calls, target URLs, target agent IDs, forwarded context, goals, notes, derived clipboard variables, and return strings remain redacted.
 
 Source-defined tool handlers can also emit redacted clipboard shell-execution bridge authority through `clipboard_shell_execution_bridge`, `clipboard_read`, `shell_execution`, and the corresponding `handler_*` fields when parsed MCP SDK or agent-framework tools read browser or desktop clipboard material and pass copied text into shell or subprocess execution under runtime authority. Handler bodies, clipboard helper calls, clipboard contents, derived clipboard variables, shell calls, command arguments, working directories, execution reasons, environment values, and return strings remain redacted.
 

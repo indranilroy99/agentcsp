@@ -803,6 +803,9 @@ describe("scanner", () => {
     const sourceClipboardTrainingDatasetBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "source_export_clipboard_training_dataset"
     );
+    const sourceClipboardAgentDelegationBridgeTool = surfaces.tools.find(
+      (surface) => surface.name === "source_delegate_clipboard_remote_agent"
+    );
     const sourceVisualContextCaptureTool = surfaces.tools.find((surface) => surface.name === "source_capture_authenticated_page_screenshot");
     const sourceVisualContextPromptBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "source_review_authenticated_page_screenshot_with_model"
@@ -1224,6 +1227,9 @@ describe("scanner", () => {
     );
     const langchainClipboardTrainingDatasetBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "langchain_export_clipboard_training_dataset"
+    );
+    const langchainClipboardAgentDelegationBridgeTool = surfaces.tools.find(
+      (surface) => surface.name === "langchain_delegate_clipboard_remote_agent"
     );
     const langchainVisualContextCaptureTool = surfaces.tools.find((surface) => surface.name === "langchain_capture_authenticated_page_screenshot");
     const langchainVisualContextPromptBridgeTool = surfaces.tools.find(
@@ -10919,6 +10925,90 @@ describe("scanner", () => {
     expect(JSON.stringify(sourceClipboardTrainingDatasetBridgeTool)).not.toContain("reviewed by support agent");
     expect(JSON.stringify(sourceClipboardTrainingDatasetBridgeTool)).not.toContain("source clipboard exported to training dataset");
     expect(JSON.stringify(sourceClipboardTrainingDatasetBridgeTool)).not.toContain("Read clipboard text");
+    expect(sourceClipboardAgentDelegationBridgeTool).toMatchObject({
+      path: "mcp-source/customer-tools.ts",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["call", "execute", "read", "send"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(sourceClipboardAgentDelegationBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_mcp_source_tool: true,
+      mcp_source_tool_registration: true,
+      mcp_source_tool_registration_kind: "registerTool",
+      mcp_source_tool_argument_count: 3,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_url_input: true,
+      accepts_content_like_input: true,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      clipboard_read: true,
+      agent_delegation: true,
+      tainted_agent_delegation_target: true,
+      agent_delegation_context_forwarding: true,
+      clipboard_agent_delegation_bridge: true,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_clipboard_read: true,
+      handler_agent_delegation: true,
+      handler_tainted_agent_delegation_target: true,
+      handler_agent_delegation_context_forwarding: true,
+      handler_clipboard_agent_delegation_bridge: true,
+      handler_secret_env_access: true,
+      handler_model_visible_output: true,
+      handler_signal_count: 6,
+      open_world_schema: false
+    });
+    expect(sourceClipboardAgentDelegationBridgeTool?.metadata.authority_classes).toEqual([
+      "agent_delegation",
+      "agent_delegation_context_forwarding",
+      "clipboard_agent_delegation_bridge",
+      "clipboard_read",
+      "content_input",
+      "customer_data_input",
+      "handler_agent_delegation",
+      "handler_agent_delegation_context_forwarding",
+      "handler_clipboard_agent_delegation_bridge",
+      "handler_clipboard_read",
+      "handler_secret_env_access",
+      "handler_tainted_agent_delegation_target",
+      "network_access",
+      "pii_input",
+      "secret_env_access",
+      "tainted_agent_delegation_target"
+    ]);
+    expect(sourceClipboardAgentDelegationBridgeTool?.metadata.handler_authority_classes).toEqual([
+      "handler_agent_delegation",
+      "handler_agent_delegation_context_forwarding",
+      "handler_clipboard_agent_delegation_bridge",
+      "handler_clipboard_read",
+      "handler_secret_env_access",
+      "handler_tainted_agent_delegation_target"
+    ]);
+    expect(sourceClipboardAgentDelegationBridgeTool?.metadata.handler_env_key_names).toEqual(["SOURCE_CLIPBOARD_AGENT_DELEGATION_TOKEN"]);
+    expect(sourceClipboardAgentDelegationBridgeTool?.metadata.schema_properties).toEqual([
+      "clipboard_delegation_note_text",
+      "customer_id",
+      "delegation_goal_text",
+      "target_agent_id",
+      "target_agent_url"
+    ]);
+    expect(sourceClipboardAgentDelegationBridgeTool?.metadata.required_properties).toEqual([
+      "clipboard_delegation_note_text",
+      "customer_id",
+      "delegation_goal_text",
+      "target_agent_id",
+      "target_agent_url"
+    ]);
+    expect(JSON.stringify(sourceClipboardAgentDelegationBridgeTool)).not.toContain("desktopClipboard.readText");
+    expect(JSON.stringify(sourceClipboardAgentDelegationBridgeTool)).not.toContain("remoteAgentClient.delegateTask");
+    expect(JSON.stringify(sourceClipboardAgentDelegationBridgeTool)).not.toContain("clipboardText");
+    expect(JSON.stringify(sourceClipboardAgentDelegationBridgeTool)).not.toContain("source clipboard delegated to remote agent");
+    expect(JSON.stringify(sourceClipboardAgentDelegationBridgeTool)).not.toContain("Read clipboard text");
     expect(sourceVisualContextCaptureTool).toMatchObject({
       path: "mcp-source/customer-tools.ts",
       data_classes: ["confidential", "credential", "pii"],
@@ -25741,6 +25831,93 @@ describe("scanner", () => {
     expect(JSON.stringify(langchainClipboardTrainingDatasetBridgeTool)).not.toContain("reviewed by support agent");
     expect(JSON.stringify(langchainClipboardTrainingDatasetBridgeTool)).not.toContain("framework clipboard exported to training dataset");
     expect(JSON.stringify(langchainClipboardTrainingDatasetBridgeTool)).not.toContain("Read clipboard text");
+    expect(langchainClipboardAgentDelegationBridgeTool).toMatchObject({
+      path: "framework-tools/langchain_tools.py",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["call", "execute", "read", "send"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(langchainClipboardAgentDelegationBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_agent_framework_source_tool: true,
+      agent_framework_source_tool: true,
+      agent_framework_source_tool_framework: "langchain",
+      agent_framework_source_tool_registration_kind: "python_tool_decorator",
+      agent_framework_source_tool_argument_count: 5,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_url_input: true,
+      accepts_content_like_input: true,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      clipboard_read: true,
+      agent_delegation: true,
+      tainted_agent_delegation_target: true,
+      agent_delegation_context_forwarding: true,
+      clipboard_agent_delegation_bridge: true,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_clipboard_read: true,
+      handler_agent_delegation: true,
+      handler_tainted_agent_delegation_target: true,
+      handler_agent_delegation_context_forwarding: true,
+      handler_clipboard_agent_delegation_bridge: true,
+      handler_secret_env_access: true,
+      handler_model_visible_output: true,
+      handler_signal_count: 6,
+      open_world_schema: false
+    });
+    expect(langchainClipboardAgentDelegationBridgeTool?.metadata.authority_classes).toEqual([
+      "agent_delegation",
+      "agent_delegation_context_forwarding",
+      "clipboard_agent_delegation_bridge",
+      "clipboard_read",
+      "content_input",
+      "customer_data_input",
+      "handler_agent_delegation",
+      "handler_agent_delegation_context_forwarding",
+      "handler_clipboard_agent_delegation_bridge",
+      "handler_clipboard_read",
+      "handler_secret_env_access",
+      "handler_tainted_agent_delegation_target",
+      "network_access",
+      "pii_input",
+      "secret_env_access",
+      "tainted_agent_delegation_target"
+    ]);
+    expect(langchainClipboardAgentDelegationBridgeTool?.metadata.handler_authority_classes).toEqual([
+      "handler_agent_delegation",
+      "handler_agent_delegation_context_forwarding",
+      "handler_clipboard_agent_delegation_bridge",
+      "handler_clipboard_read",
+      "handler_secret_env_access",
+      "handler_tainted_agent_delegation_target"
+    ]);
+    expect(langchainClipboardAgentDelegationBridgeTool?.metadata.handler_env_key_names).toEqual([
+      "LANGCHAIN_CLIPBOARD_AGENT_DELEGATION_TOKEN"
+    ]);
+    expect(langchainClipboardAgentDelegationBridgeTool?.metadata.schema_properties).toEqual([
+      "clipboard_delegation_note_text",
+      "customer_id",
+      "delegation_goal_text",
+      "target_agent_id",
+      "target_agent_url"
+    ]);
+    expect(langchainClipboardAgentDelegationBridgeTool?.metadata.required_properties).toEqual([
+      "clipboard_delegation_note_text",
+      "customer_id",
+      "delegation_goal_text",
+      "target_agent_id",
+      "target_agent_url"
+    ]);
+    expect(JSON.stringify(langchainClipboardAgentDelegationBridgeTool)).not.toContain("desktop_clipboard.read_text");
+    expect(JSON.stringify(langchainClipboardAgentDelegationBridgeTool)).not.toContain("remote_agent_client.delegate_task");
+    expect(JSON.stringify(langchainClipboardAgentDelegationBridgeTool)).not.toContain("clipboard_text");
+    expect(JSON.stringify(langchainClipboardAgentDelegationBridgeTool)).not.toContain("framework clipboard delegated to remote agent");
+    expect(JSON.stringify(langchainClipboardAgentDelegationBridgeTool)).not.toContain("Read clipboard text");
     expect(langchainVisualContextCaptureTool).toMatchObject({
       path: "framework-tools/langchain_tools.py",
       data_classes: ["confidential", "credential", "pii"],

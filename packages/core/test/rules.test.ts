@@ -201,6 +201,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-197")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-198")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-199")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-200")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-001")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-002")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-003")).toBe(true);
@@ -10324,6 +10325,7 @@ describe("rule engine", () => {
     const sourceHandlerAgentDelegationFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-049");
     expect(sourceHandlerAgentDelegationFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_delegate_authenticated_page_screenshot_remote_agent",
+      "langchain_delegate_clipboard_remote_agent",
       "langchain_delegate_customer_case_to_remote_agent",
       "langchain_delegate_customer_vault_secret_remote_agent",
       "langchain_delegate_env_secret_remote_agent",
@@ -10331,6 +10333,7 @@ describe("rule engine", () => {
       "langchain_delegate_model_selected_remote_agent_task",
       "langchain_delegate_retrieved_context_remote_agent",
       "source_delegate_authenticated_page_screenshot_remote_agent",
+      "source_delegate_clipboard_remote_agent",
       "source_delegate_customer_case_to_remote_agent",
       "source_delegate_customer_vault_secret_remote_agent",
       "source_delegate_env_secret_remote_agent",
@@ -12985,6 +12988,80 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerClipboardTrainingDatasetBridgeFindings)).not.toContain("source clipboard exported to training dataset");
     expect(JSON.stringify(sourceHandlerClipboardTrainingDatasetBridgeFindings)).not.toContain("framework clipboard exported to training dataset");
     expect(JSON.stringify(sourceHandlerClipboardTrainingDatasetBridgeFindings)).not.toContain("Read clipboard text");
+    const sourceHandlerClipboardAgentDelegationBridgeFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-200");
+    expect(sourceHandlerClipboardAgentDelegationBridgeFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
+      "langchain_delegate_clipboard_remote_agent",
+      "source_delegate_clipboard_remote_agent"
+    ]);
+    expect(sourceHandlerClipboardAgentDelegationBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
+    expect(sourceHandlerClipboardAgentDelegationBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerClipboardAgentDelegationBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
+    expect(sourceHandlerClipboardAgentDelegationBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
+    expect(sourceHandlerClipboardAgentDelegationBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.source_tool_handler_redacted === true
+    )).toBe(true);
+    expect(sourceHandlerClipboardAgentDelegationBridgeFindings.every((finding) => finding.matched_object.metadata.handler_clipboard_read === true)).toBe(true);
+    expect(sourceHandlerClipboardAgentDelegationBridgeFindings.every((finding) => finding.matched_object.metadata.handler_agent_delegation === true)).toBe(true);
+    expect(sourceHandlerClipboardAgentDelegationBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.handler_tainted_agent_delegation_target === true
+    )).toBe(true);
+    expect(sourceHandlerClipboardAgentDelegationBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.handler_agent_delegation_context_forwarding === true
+    )).toBe(true);
+    expect(sourceHandlerClipboardAgentDelegationBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.handler_clipboard_agent_delegation_bridge === true
+    )).toBe(true);
+    expect(sourceHandlerClipboardAgentDelegationBridgeFindings.every((finding) => finding.matched_object.metadata.handler_secret_env_access === true)).toBe(true);
+    expect(sourceHandlerClipboardAgentDelegationBridgeFindings.every((finding) => finding.matched_object.metadata.clipboard_read === true)).toBe(true);
+    expect(sourceHandlerClipboardAgentDelegationBridgeFindings.every((finding) => finding.matched_object.metadata.agent_delegation === true)).toBe(true);
+    expect(sourceHandlerClipboardAgentDelegationBridgeFindings.every((finding) => finding.matched_object.metadata.tainted_agent_delegation_target === true)).toBe(true);
+    expect(sourceHandlerClipboardAgentDelegationBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.agent_delegation_context_forwarding === true
+    )).toBe(true);
+    expect(sourceHandlerClipboardAgentDelegationBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.clipboard_agent_delegation_bridge === true
+    )).toBe(true);
+    expect(sourceHandlerClipboardAgentDelegationBridgeFindings.every((finding) => finding.matched_object.metadata.accepts_url_input === true)).toBe(true);
+    expect(sourceHandlerClipboardAgentDelegationBridgeFindings.every((finding) => finding.matched_object.metadata.accepts_content_like_input === true)).toBe(true);
+    expect(sourceHandlerClipboardAgentDelegationBridgeFindings.every((finding) => finding.matched_object.metadata.accepts_customer_data_input === true)).toBe(true);
+    for (const authorityClass of [
+      "clipboard_read",
+      "agent_delegation",
+      "tainted_agent_delegation_target",
+      "agent_delegation_context_forwarding",
+      "clipboard_agent_delegation_bridge"
+    ]) {
+      expect(sourceHandlerClipboardAgentDelegationBridgeFindings.every((finding) =>
+        finding.matched_object.metadata.authority_classes.includes(authorityClass)
+      )).toBe(true);
+    }
+    for (const handlerAuthorityClass of [
+      "handler_clipboard_read",
+      "handler_agent_delegation",
+      "handler_tainted_agent_delegation_target",
+      "handler_agent_delegation_context_forwarding",
+      "handler_clipboard_agent_delegation_bridge"
+    ]) {
+      expect(sourceHandlerClipboardAgentDelegationBridgeFindings.every((finding) =>
+        finding.matched_object.metadata.handler_authority_classes.includes(handlerAuthorityClass)
+      )).toBe(true);
+    }
+    expect(sourceHandlerClipboardAgentDelegationBridgeFindings.every((finding) => finding.matched_object.actions.includes("execute"))).toBe(true);
+    expect(sourceHandlerClipboardAgentDelegationBridgeFindings.every((finding) => finding.matched_object.actions.includes("read"))).toBe(true);
+    expect(sourceHandlerClipboardAgentDelegationBridgeFindings.every((finding) => finding.matched_object.actions.includes("send"))).toBe(true);
+    expect(sourceHandlerClipboardAgentDelegationBridgeFindings.every((finding) => finding.matched_object.external_reach === true)).toBe(true);
+    expect(sourceHandlerClipboardAgentDelegationBridgeFindings.every((finding) => finding.matched_object.secret_exposure === true)).toBe(true);
+    expect(sourceHandlerClipboardAgentDelegationBridgeFindings.every((finding) => finding.matched_object.side_effect === true)).toBe(true);
+    expect(sourceHandlerClipboardAgentDelegationBridgeFindings.every((finding) => finding.matched_object.reversible === false)).toBe(true);
+    expect(JSON.stringify(sourceHandlerClipboardAgentDelegationBridgeFindings)).not.toContain("desktopClipboard.readText");
+    expect(JSON.stringify(sourceHandlerClipboardAgentDelegationBridgeFindings)).not.toContain("desktop_clipboard.read_text");
+    expect(JSON.stringify(sourceHandlerClipboardAgentDelegationBridgeFindings)).not.toContain("remoteAgentClient.delegateTask");
+    expect(JSON.stringify(sourceHandlerClipboardAgentDelegationBridgeFindings)).not.toContain("remote_agent_client.delegate_task");
+    expect(JSON.stringify(sourceHandlerClipboardAgentDelegationBridgeFindings)).not.toContain("clipboardText");
+    expect(JSON.stringify(sourceHandlerClipboardAgentDelegationBridgeFindings)).not.toContain("clipboard_text");
+    expect(JSON.stringify(sourceHandlerClipboardAgentDelegationBridgeFindings)).not.toContain("source clipboard delegated to remote agent");
+    expect(JSON.stringify(sourceHandlerClipboardAgentDelegationBridgeFindings)).not.toContain("framework clipboard delegated to remote agent");
+    expect(JSON.stringify(sourceHandlerClipboardAgentDelegationBridgeFindings)).not.toContain("Read clipboard text");
     const sourceHandlerVisualContextTaskQueueBridgeFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-104");
     expect(sourceHandlerVisualContextTaskQueueBridgeFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_enqueue_authenticated_page_screenshot_job",

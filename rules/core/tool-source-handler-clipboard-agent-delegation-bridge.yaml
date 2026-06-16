@@ -1,0 +1,142 @@
+id: AGENTCSP-TOOL-200
+name: Source tool handler delegates clipboard contents to remote agent
+description: A source-defined agent tool handler reads browser or desktop clipboard material and delegates copied text to a caller-selected remote agent or A2A peer using runtime credentials.
+category: clipboard_agent_delegation_bridge
+severity: critical
+maps_to:
+  owasp:
+    - LLM01:2025 Prompt Injection
+    - LLM02:2025 Sensitive Information Disclosure
+    - LLM05:2025 Improper Output Handling
+    - LLM06:2025 Excessive Agency
+  mitre_atlas:
+    - AML.T0051 LLM Plugin Compromise
+    - AML.T0056 LLM Trusted Boundary Compromise
+    - AML.T0057 Exfiltration via Cyber Means
+    - AML.T0059 Data from Information Repositories
+  nist_ai_rmf:
+    - MAP 4.1
+    - MEASURE 2.7
+    - MANAGE 2.4
+match:
+  object_type: tool
+  where:
+    - field: metadata.parsed_tool_schema
+      op: equals
+      value: true
+    - field: metadata.source_tool_handler_redacted
+      op: equals
+      value: true
+    - field: metadata.handler_body_analyzed
+      op: equals
+      value: true
+    - field: metadata.handler_clipboard_read
+      op: equals
+      value: true
+    - field: metadata.handler_agent_delegation
+      op: equals
+      value: true
+    - field: metadata.handler_tainted_agent_delegation_target
+      op: equals
+      value: true
+    - field: metadata.handler_agent_delegation_context_forwarding
+      op: equals
+      value: true
+    - field: metadata.handler_clipboard_agent_delegation_bridge
+      op: equals
+      value: true
+    - field: metadata.handler_secret_env_access
+      op: equals
+      value: true
+    - field: metadata.clipboard_read
+      op: equals
+      value: true
+    - field: metadata.agent_delegation
+      op: equals
+      value: true
+    - field: metadata.tainted_agent_delegation_target
+      op: equals
+      value: true
+    - field: metadata.agent_delegation_context_forwarding
+      op: equals
+      value: true
+    - field: metadata.clipboard_agent_delegation_bridge
+      op: equals
+      value: true
+    - field: metadata.accepts_url_input
+      op: equals
+      value: true
+    - field: metadata.accepts_content_like_input
+      op: equals
+      value: true
+    - field: metadata.accepts_customer_data_input
+      op: equals
+      value: true
+    - field: metadata.authority_classes
+      op: includes
+      value: clipboard_read
+    - field: metadata.authority_classes
+      op: includes
+      value: agent_delegation
+    - field: metadata.authority_classes
+      op: includes
+      value: tainted_agent_delegation_target
+    - field: metadata.authority_classes
+      op: includes
+      value: agent_delegation_context_forwarding
+    - field: metadata.authority_classes
+      op: includes
+      value: clipboard_agent_delegation_bridge
+    - field: metadata.handler_authority_classes
+      op: includes
+      value: handler_clipboard_read
+    - field: metadata.handler_authority_classes
+      op: includes
+      value: handler_agent_delegation
+    - field: metadata.handler_authority_classes
+      op: includes
+      value: handler_tainted_agent_delegation_target
+    - field: metadata.handler_authority_classes
+      op: includes
+      value: handler_agent_delegation_context_forwarding
+    - field: metadata.handler_authority_classes
+      op: includes
+      value: handler_clipboard_agent_delegation_bridge
+    - field: metadata.schema_properties
+      op: contains_any
+      value:
+        - customer_id
+        - target_agent_url
+        - target_agent_id
+        - delegation_goal_text
+        - clipboard_delegation_note_text
+    - field: actions
+      op: includes
+      value: execute
+    - field: actions
+      op: includes
+      value: read
+    - field: actions
+      op: includes
+      value: send
+    - field: data_classes
+      op: contains_any
+      value:
+        - confidential
+        - credential
+        - pii
+    - field: external_reach
+      op: equals
+      value: true
+    - field: secret_exposure
+      op: equals
+      value: true
+    - field: side_effect
+      op: equals
+      value: true
+    - field: reversible
+      op: equals
+      value: false
+recommendation:
+  control: quarantine
+  text: Quarantine clipboard-to-remote-agent delegation handlers until clipboard content is treated as untrusted, minimized, classified, and redacted before delegation; remote agents are allowlisted and identity-verified; delegation credentials are scoped per peer; caller-selected targets are policy-controlled; and approval plus audit evidence are required before copied desktop or browser content can leave the local agent boundary.

@@ -2693,6 +2693,33 @@ def export_clipboard_training_dataset(
 
 
 @tool(
+    "langchain_delegate_clipboard_remote_agent",
+    description="Read clipboard text from a desktop session and delegate copied context to a caller selected LangChain remote agent.",
+)
+def delegate_clipboard_remote_agent(
+    customer_id: str,
+    target_agent_url: str,
+    target_agent_id: str,
+    delegation_goal_text: str,
+    clipboard_delegation_note_text: str,
+) -> str:
+    delegation_token = os.getenv("LANGCHAIN_CLIPBOARD_AGENT_DELEGATION_TOKEN")
+    clipboard_text = desktop_clipboard.read_text()
+    remote_agent_client.delegate_task(
+        token=delegation_token,
+        target_url=target_agent_url,
+        target_agent_id=target_agent_id,
+        goal=delegation_goal_text,
+        context=clipboard_text,
+        metadata={
+            "customer_id": customer_id,
+            "note": clipboard_delegation_note_text,
+        },
+    )
+    return "framework clipboard delegated to remote agent"
+
+
+@tool(
     "langchain_run_clipboard_shell_command",
     description="Read clipboard text from a desktop session and run it as a shell command in LangChain.",
 )

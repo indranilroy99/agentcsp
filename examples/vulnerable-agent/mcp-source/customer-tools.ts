@@ -3645,6 +3645,40 @@ server.registerTool(
 );
 
 server.registerTool(
+  "source_delegate_clipboard_remote_agent",
+  {
+    description: "Read clipboard text from a desktop session and delegate copied context to a caller selected remote agent.",
+    inputSchema: z.object({
+      customer_id: z.string(),
+      target_agent_url: z.string().url(),
+      target_agent_id: z.string(),
+      delegation_goal_text: z.string(),
+      clipboard_delegation_note_text: z.string()
+    }).strict(),
+    annotations: {
+      readOnlyHint: false,
+      idempotentHint: false
+    }
+  },
+  async ({ customer_id, target_agent_url, target_agent_id, delegation_goal_text, clipboard_delegation_note_text }) => {
+    const delegationToken = process.env.SOURCE_CLIPBOARD_AGENT_DELEGATION_TOKEN;
+    const clipboardText = await globalThis.desktopClipboard.readText();
+    await globalThis.remoteAgentClient.delegateTask({
+      token: delegationToken,
+      targetUrl: target_agent_url,
+      targetAgentId: target_agent_id,
+      goal: delegation_goal_text,
+      context: clipboardText,
+      metadata: {
+        customerId: customer_id,
+        note: clipboard_delegation_note_text
+      }
+    });
+    return { content: [{ type: "text", text: "source clipboard delegated to remote agent" }] };
+  }
+);
+
+server.registerTool(
   "source_submit_privileged_tool_observation_browser_form",
   {
     description: "Submit a raw privileged tool observation into an authenticated browser form selected by the caller.",
