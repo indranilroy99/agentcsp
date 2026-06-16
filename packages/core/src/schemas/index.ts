@@ -47,7 +47,9 @@ export const ConfidenceSchema = z.enum(["low", "medium", "high", "very_high"]);
 export const SuppressionStatusSchema = z.enum(["active", "expired"]);
 export const FindingBaselineStatusSchema = z.enum(["new", "existing"]);
 export const CiGateStatusSchema = z.enum(["pass", "fail"]);
-export const CiGateNameSchema = z.enum(["severity", "new_findings", "expired_suppressions", "diagnostics"]);
+export const CiGateNameSchema = z.enum(["severity", "new_findings", "expired_suppressions", "diagnostics", "scan_health"]);
+export const ScanHealthSchema = z.enum(["complete", "degraded", "incomplete"]);
+export const ScanHealthGateSchema = z.enum(["degraded", "incomplete"]);
 
 export const SurfaceTypeSchema = z.enum([
   "agent",
@@ -291,6 +293,9 @@ export const CiGateSummarySchema = z.object({
   fail_on_new: z.boolean().default(false),
   fail_on_expired_suppressions: z.boolean().default(false),
   fail_on_diagnostics: z.boolean().default(false),
+  fail_on_scan_health: ScanHealthGateSchema.optional(),
+  scan_health: ScanHealthSchema.default("complete"),
+  scan_health_reasons: z.array(z.string()).default([]),
   evaluated_findings: z.number().int().nonnegative().default(0),
   severity_gate_findings: z.number().int().nonnegative().default(0),
   active_suppressions_excluded: z.number().int().nonnegative().default(0),
@@ -475,7 +480,7 @@ export const StaticBlastRadiusSummarySchema = z.object({
 
 export const ScanCoverageSummarySchema = z.object({
   title: z.literal("AgentCSP Scan Coverage").default("AgentCSP Scan Coverage"),
-  scan_health: z.enum(["complete", "degraded", "incomplete"]).default("complete"),
+  scan_health: ScanHealthSchema.default("complete"),
   scan_health_reasons: z.array(z.string()).default([]),
   directories_visited: z.number().int().nonnegative().default(0),
   files_seen: z.number().int().nonnegative().default(0),
@@ -555,7 +560,8 @@ export const ScanConfigSchema = z
     baseline_path: z.string().optional(),
     fail_on_new: z.boolean().default(false),
     fail_on_expired_suppressions: z.boolean().default(false),
-    fail_on_diagnostics: z.boolean().default(false)
+    fail_on_diagnostics: z.boolean().default(false),
+    fail_on_scan_health: ScanHealthGateSchema.optional()
   })
   .superRefine((config, context) => {
     if (config.fail_on_confidence && !config.fail_on) {
@@ -591,6 +597,8 @@ export type SuppressionStatus = z.infer<typeof SuppressionStatusSchema>;
 export type FindingBaselineStatus = z.infer<typeof FindingBaselineStatusSchema>;
 export type CiGateStatus = z.infer<typeof CiGateStatusSchema>;
 export type CiGateName = z.infer<typeof CiGateNameSchema>;
+export type ScanHealth = z.infer<typeof ScanHealthSchema>;
+export type ScanHealthGate = z.infer<typeof ScanHealthGateSchema>;
 export type SurfaceType = z.infer<typeof SurfaceTypeSchema>;
 export type RiskFactors = z.infer<typeof RiskFactorsSchema>;
 export type Evidence = z.infer<typeof EvidenceSchema>;

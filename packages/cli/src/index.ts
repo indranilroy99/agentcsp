@@ -23,6 +23,7 @@ program
   .option("--fail-on-new", "with --baseline and --fail-on, fail only on new findings")
   .option("--fail-on-expired-suppressions", "fail when any matched suppression has expired")
   .option("--fail-on-diagnostics", "fail when security-relevant scan diagnostics are emitted")
+  .option("--fail-on-scan-health <health>", "fail when scan health is degraded or incomplete")
   .option("--no-hidden", "skip hidden AI/security folders")
   .option("--include-logs", "include log directories")
   .option("--max-file-size <bytes>", "maximum file size to inspect", parseInteger)

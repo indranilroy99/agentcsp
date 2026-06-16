@@ -2925,13 +2925,14 @@ The summary includes:
 
 - pass/fail status and `should_fail`
 - configured severity and confidence thresholds
-- whether new-finding-only, expired-suppression, and diagnostic gates were enabled
+- whether new-finding-only, expired-suppression, diagnostic, and scan-health gates were enabled
+- the configured scan-health threshold, actual scan health, and stable scan-health reasons
 - evaluated finding count
 - finding count that matched the severity/confidence gate
 - active suppressions excluded from severity gates
 - expired suppression finding count
 - diagnostic count
-- failed gate names
+- failed gate names, including `scan_health` when the configured health threshold is met
 - bounded blocker ID limit and truncation flags
 - bounded blocker IDs for severity-gated findings, expired suppressions, and diagnostics
 

@@ -81,6 +81,14 @@ agentcsp scan . --fail-on-diagnostics
 
 This remains separate from finding severity gates. It is useful for repositories where malformed MCP, runtime, workflow, package, policy, rule, or tool-definition files, or incomplete scans caused by traversal limits, should block a release until the scan can inspect them reliably.
 
+Use `--fail-on-scan-health` when scan completeness itself should be a gate:
+
+```bash
+agentcsp scan . --fail-on-scan-health degraded
+```
+
+`degraded` fails on degraded or incomplete scans, including oversized skipped files and parser-degraded scope. `incomplete` fails only when traversal missed part of the configured scope, such as `max_files` exhaustion or unreadable directories. This gate is useful when a quiet scan should never be treated as clean unless AgentCSP inspected the configured scope.
+
 ## Baselines
 
 Use a previous `findings.json` or `agent-manifest.json` as a baseline when introducing AgentCSP to an existing project:

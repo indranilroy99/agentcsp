@@ -1409,6 +1409,29 @@
               "type": "boolean",
               "default": false
             },
+            "fail_on_scan_health": {
+              "type": "string",
+              "enum": [
+                "degraded",
+                "incomplete"
+              ]
+            },
+            "scan_health": {
+              "type": "string",
+              "enum": [
+                "complete",
+                "degraded",
+                "incomplete"
+              ],
+              "default": "complete"
+            },
+            "scan_health_reasons": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "default": []
+            },
             "evaluated_findings": {
               "type": "integer",
               "minimum": 0,
@@ -1442,7 +1465,8 @@
                   "severity",
                   "new_findings",
                   "expired_suppressions",
-                  "diagnostics"
+                  "diagnostics",
+                  "scan_health"
                 ]
               },
               "default": []
@@ -1501,12 +1525,7 @@
               "default": "AgentCSP Scan Coverage"
             },
             "scan_health": {
-              "type": "string",
-              "enum": [
-                "complete",
-                "degraded",
-                "incomplete"
-              ],
+              "$ref": "#/definitions/AgentCSP Agent Manifest/properties/ci_gate_summary/properties/scan_health",
               "default": "complete"
             },
             "scan_health_reasons": {

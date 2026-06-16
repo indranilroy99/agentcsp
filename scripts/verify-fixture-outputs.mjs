@@ -1938,6 +1938,7 @@ if (vulnerable.sarif) {
   assert(run.properties?.agentcsp_ci_gate_summary, "SARIF CI gate summary missing");
   assertEqual(run.properties.agentcsp_ci_gate_summary.status, "pass", "SARIF CI gate status");
   assertEqual(run.properties.agentcsp_ci_gate_summary.blocker_ids_truncated, false, "SARIF CI blocker truncation metadata");
+  assertEqual(run.properties.agentcsp_ci_gate_summary.scan_health, "complete", "SARIF CI scan health metadata");
   assert(run.properties?.agentcsp_scan_coverage, "SARIF scan coverage missing");
   assertEqual(run.properties.agentcsp_scan_coverage.scan_health, "complete", "SARIF scan health");
   assert(run.properties?.agentcsp_static_blast_radius, "SARIF blast-radius summary missing");
@@ -1981,6 +1982,9 @@ function assertVulnerableOperatorMetadata(output) {
 
   assertEqual(manifest.ci_gate_summary?.blocker_id_limit, 50, "vulnerable CI blocker ID limit");
   assertEqual(manifest.ci_gate_summary?.blocker_ids_truncated, false, "vulnerable CI blocker truncation");
+  assertEqual(manifest.ci_gate_summary?.fail_on_scan_health, undefined, "vulnerable CI scan health gate");
+  assertEqual(manifest.ci_gate_summary?.scan_health, "complete", "vulnerable CI scan health");
+  assertArrayEqual(manifest.ci_gate_summary?.scan_health_reasons ?? [], [], "vulnerable CI scan health reasons");
 
   assertEqual(manifest.static_blast_radius?.attack_path_limit, 15, "vulnerable attack path limit");
   assert(manifest.static_blast_radius?.attack_paths_total >= manifest.attack_paths.length, "vulnerable attack path total");
@@ -2022,6 +2026,9 @@ function assertSafeOperatorMetadata(output) {
   assertEqual(manifest.action_plan?.truncated, false, "safe action plan truncation");
   assertEqual(manifest.action_plan?.omitted_actions, 0, "safe omitted action count");
   assertEqual(manifest.ci_gate_summary?.blocker_ids_truncated, false, "safe CI blocker truncation");
+  assertEqual(manifest.ci_gate_summary?.fail_on_scan_health, undefined, "safe CI scan health gate");
+  assertEqual(manifest.ci_gate_summary?.scan_health, "complete", "safe CI scan health");
+  assertArrayEqual(manifest.ci_gate_summary?.scan_health_reasons ?? [], [], "safe CI scan health reasons");
   assertEqual(manifest.static_blast_radius?.attack_path_limit, 15, "safe attack path limit");
   assertEqual(manifest.static_blast_radius?.attack_paths_total, 0, "safe attack path total");
   assertEqual(manifest.static_blast_radius?.attack_paths_truncated, false, "safe attack path truncation");

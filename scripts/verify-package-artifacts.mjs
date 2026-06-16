@@ -295,6 +295,9 @@ function assertInstalledSafeOperatorMetadata(manifest, report) {
   assertEqual(manifest.action_plan?.truncated, false, "installed CLI safe action-plan truncation");
   assertEqual(manifest.action_plan?.omitted_actions, 0, "installed CLI safe omitted actions");
   assertEqual(manifest.ci_gate_summary?.blocker_ids_truncated, false, "installed CLI safe CI blocker truncation");
+  assertEqual(manifest.ci_gate_summary?.fail_on_scan_health, undefined, "installed CLI safe CI scan health gate");
+  assertEqual(manifest.ci_gate_summary?.scan_health, "complete", "installed CLI safe CI scan health");
+  assertArrayEqual(manifest.ci_gate_summary?.scan_health_reasons ?? [], [], "installed CLI safe CI scan health reasons");
   assertEqual(manifest.static_blast_radius?.attack_path_limit, 15, "installed CLI safe attack path limit");
   assertEqual(manifest.static_blast_radius?.attack_paths_total, 0, "installed CLI safe attack path total");
   assertEqual(manifest.static_blast_radius?.attack_paths_truncated, false, "installed CLI safe attack path truncation");

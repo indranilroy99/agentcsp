@@ -143,6 +143,7 @@ agentcsp scan . \
   --fail-on-confidence high \
   --baseline .agentcsp/previous-findings.json \
   --fail-on-new \
+  --fail-on-scan-health degraded \
   --no-hidden \
   --include-logs \
   --max-file-size 1048576 \
@@ -150,7 +151,7 @@ agentcsp scan . \
   --quiet
 ```
 
-AgentCSP exits with code `0` by default when a scan completes, even if findings exist. CI failure is opt-in through `--fail-on critical`, `--fail-on high`, `--fail-on medium`, or `--fail-on low`. When a gate is enabled, `ci_gate_summary` records the failed gate names plus bounded blocker IDs for severity-gated findings, expired suppressions, and diagnostics.
+AgentCSP exits with code `0` by default when a scan completes, even if findings exist. CI failure is opt-in through `--fail-on critical`, `--fail-on high`, `--fail-on medium`, `--fail-on low`, `--fail-on-diagnostics`, `--fail-on-expired-suppressions`, or `--fail-on-scan-health degraded|incomplete`. When a gate is enabled, `ci_gate_summary` records the failed gate names plus bounded blocker IDs for severity-gated findings, expired suppressions, and diagnostics.
 
 Use `--fail-on-confidence high` or `--fail-on-confidence very_high` with `--fail-on` when CI should fail only on findings that meet both impact and confidence thresholds.
 
@@ -159,6 +160,8 @@ Use `--baseline` with a previous `findings.json` or `agent-manifest.json` to dis
 Use `--fail-on-expired-suppressions` when stale accepted-risk records should fail CI even without a severity threshold. Active suppressions still remain visible in JSON, Markdown, and SARIF, but are excluded from severity gates until they expire.
 
 Use `--fail-on-diagnostics` when malformed security-relevant configs should fail CI even if findings are otherwise below the configured severity gate. Malformed `agentcsp.yaml` files are reported as redacted diagnostics and scans continue with empty advisory policy so JSON, Markdown, and SARIF evidence are still emitted.
+
+Use `--fail-on-scan-health degraded` when CI should fail if the scan is degraded or incomplete, including oversized skipped files. Use `--fail-on-scan-health incomplete` when CI should fail only if traversal missed part of the configured scope.
 
 The terminal banner animates only in interactive terminals. It is suppressed by `--quiet`, disabled in CI and piped output, and can be turned off with `AGENTCSP_NO_ANIMATION=1`.
 

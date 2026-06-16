@@ -36,6 +36,16 @@ describe("cli options", () => {
     ).rejects.toThrow("--fail-on-confidence must be one of very_high, high, medium, or low");
   });
 
+  it("rejects unsupported fail-on scan health values", async () => {
+    await expect(
+      runScanCommand(".", {
+        failOnScanHealth: "complete",
+        format: "json",
+        quiet: true
+      })
+    ).rejects.toThrow("--fail-on-scan-health must be one of degraded or incomplete");
+  });
+
   it("requires fail-on when fail-on confidence is set", async () => {
     await expect(
       runScanCommand(".", {
@@ -83,6 +93,29 @@ describe("cli options", () => {
       out: "/private/tmp/agentcsp-cli-diagnostics-fail-output",
       failOnDiagnostics: true,
       format: "json",
+      quiet: true
+    });
+    expect(process.exitCode).toBe(1);
+    process.exitCode = undefined;
+  });
+
+  it("fails on degraded scan health only when explicitly requested", async () => {
+    const root = await createOversizedFileFixture();
+    process.exitCode = undefined;
+    await runScanCommand(root, {
+      out: "/private/tmp/agentcsp-cli-scan-health-default-output",
+      format: "json",
+      maxFileSize: 16,
+      quiet: true
+    });
+    expect(process.exitCode).toBeUndefined();
+
+    process.exitCode = undefined;
+    await runScanCommand(root, {
+      out: "/private/tmp/agentcsp-cli-scan-health-fail-output",
+      failOnScanHealth: "degraded",
+      format: "json",
+      maxFileSize: 16,
       quiet: true
     });
     expect(process.exitCode).toBe(1);
@@ -179,6 +212,15 @@ async function createPolicyConfigFixture(): Promise<string> {
   await fs.rm(root, { recursive: true, force: true });
   await fs.mkdir(root, { recursive: true });
   await fs.writeFile(path.join(root, "AGENTS.md"), "Review repository changes only.\n", "utf8");
+  return root;
+}
+
+async function createOversizedFileFixture(): Promise<string> {
+  const root = "/private/tmp/agentcsp-cli-oversized-fixture";
+  await fs.rm(root, { recursive: true, force: true });
+  await fs.mkdir(root, { recursive: true });
+  await fs.writeFile(path.join(root, "AGENTS.md"), "Review repository changes only.\n", "utf8");
+  await fs.writeFile(path.join(root, "large-agent-config.md"), "x".repeat(128), "utf8");
   return root;
 }
 

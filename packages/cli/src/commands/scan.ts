@@ -1,5 +1,13 @@
 import path from "node:path";
-import { ConfidenceSchema, scanProject, SeveritySchema, type Confidence, type Severity } from "@agentcsp/core";
+import {
+  ConfidenceSchema,
+  scanProject,
+  ScanHealthGateSchema,
+  SeveritySchema,
+  type Confidence,
+  type ScanHealthGate,
+  type Severity
+} from "@agentcsp/core";
 import { printBanner } from "../banner.js";
 
 const allowedFormats = new Set(["json", "md", "sarif"]);
@@ -16,6 +24,7 @@ export async function runScanCommand(targetPath: string, options: Record<string,
   const failOnNew = Boolean(options.failOnNew);
   const failOnExpiredSuppressions = Boolean(options.failOnExpiredSuppressions);
   const failOnDiagnostics = Boolean(options.failOnDiagnostics);
+  const failOnScanHealth = parseFailOnScanHealth(options.failOnScanHealth);
   if (failOnNew && !failOn) {
     throw new Error("--fail-on-new requires --fail-on");
   }
@@ -41,7 +50,8 @@ export async function runScanCommand(targetPath: string, options: Record<string,
     baseline_path: baselinePath,
     fail_on_new: failOnNew,
     fail_on_expired_suppressions: failOnExpiredSuppressions,
-    fail_on_diagnostics: failOnDiagnostics
+    fail_on_diagnostics: failOnDiagnostics,
+    fail_on_scan_health: failOnScanHealth
   });
 
   if (!quiet) {
@@ -139,6 +149,15 @@ function parseFailOnConfidence(value: unknown): Confidence | undefined {
   const parsed = ConfidenceSchema.safeParse(value);
   if (!parsed.success) {
     throw new Error("--fail-on-confidence must be one of very_high, high, medium, or low");
+  }
+  return parsed.data;
+}
+
+function parseFailOnScanHealth(value: unknown): ScanHealthGate | undefined {
+  if (value === undefined || value === null || value === false) return undefined;
+  const parsed = ScanHealthGateSchema.safeParse(value);
+  if (!parsed.success) {
+    throw new Error("--fail-on-scan-health must be one of degraded or incomplete");
   }
   return parsed.data;
 }

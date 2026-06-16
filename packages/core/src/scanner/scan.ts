@@ -85,6 +85,7 @@ export async function scanProject(rawConfig: Partial<ScanConfig> & { root_path: 
   const ciGateSummary = buildCiGateSummary({
     findings,
     diagnostics: surfaces.diagnostics,
+    scanCoverage,
     config: resolvedConfig
   });
   const manifest = buildManifest({
