@@ -79,7 +79,7 @@ Use `--fail-on-expired-suppressions` when CI should fail on stale accepted-risk 
 agentcsp scan . --fail-on-expired-suppressions
 ```
 
-Policy `recommended_controls` can change the recommended control shown in JSON, Markdown, and SARIF, but they do not suppress findings or change `--fail-on` behavior.
+Policy `recommended_controls` can change the recommended control shown in JSON, Markdown, and SARIF, but they do not suppress findings or change `--fail-on` behavior. JSON retains the full policy-control reason for internal audit, while Markdown and SARIF redact the reason and show only control direction, match scope, and matched-field context.
 
 Use `--fail-on-diagnostics` when parse failures in security-relevant files should fail CI:
 

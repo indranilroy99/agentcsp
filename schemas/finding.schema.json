@@ -368,6 +368,32 @@
             "previous_control": {
               "$ref": "#/definitions/AgentCSP Finding/properties/recommended_control"
             },
+            "match_scope": {
+              "type": "string",
+              "enum": [
+                "specific_finding",
+                "specific_object",
+                "rule_and_path",
+                "rule",
+                "path",
+                "category",
+                "severity",
+                "object_type",
+                "trust_level",
+                "data_class",
+                "action",
+                "custom",
+                "broad"
+              ]
+            },
+            "change_direction": {
+              "type": "string",
+              "enum": [
+                "strengthened",
+                "weakened",
+                "unchanged"
+              ]
+            },
             "reason": {
               "type": "string"
             },
@@ -385,6 +411,8 @@
           "required": [
             "control",
             "previous_control",
+            "match_scope",
+            "change_direction",
             "reason",
             "applied_at"
           ],

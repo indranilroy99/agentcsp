@@ -8,6 +8,8 @@ import {
   type Finding,
   type FindingPolicyControl,
   type FindingSuppression,
+  type PolicyControlChangeDirection,
+  type PolicyControlMatchScope,
   type Policy,
   type ScanDiagnostic,
   type SuppressionMatchScope,
@@ -143,15 +145,19 @@ export function applyRecommendedControls(findings: Finding[], policy: Policy, no
   return findings.map((finding) => {
     const recommendedControl = policy.recommended_controls.find((entry) => recommendedControlMatches(finding, entry));
     if (!recommendedControl) return finding;
+    const control = recommendedControl.control as Control;
+    const matchedOn = recommendedControlMatchedFields(finding, recommendedControl);
     return {
       ...finding,
-      recommended_control: recommendedControl.control as Control,
+      recommended_control: control,
       policy_control: {
         id: recommendedControl.id,
-        control: recommendedControl.control as Control,
+        control,
         previous_control: finding.recommended_control,
+        match_scope: policyControlMatchScope(matchedOn),
+        change_direction: policyControlChangeDirection(finding.recommended_control, control),
         reason: recommendedControl.reason,
-        matched_on: recommendedControlMatchedFields(finding, recommendedControl),
+        matched_on: matchedOn,
         applied_at: now.toISOString()
       } satisfies FindingPolicyControl
     };
@@ -196,6 +202,46 @@ function suppressionMatchScope(fields: string[]): SuppressionMatchScope {
   if (fields.includes("category")) return "category";
   if (fields.includes("severity")) return "severity";
   return "broad";
+}
+
+function policyControlMatchScope(fields: string[]): PolicyControlMatchScope {
+  if (fields.includes("finding_id")) return "specific_finding";
+  if (fields.includes("object_id")) return "specific_object";
+  if (fields.includes("rule_id") && fields.includes("path")) return "rule_and_path";
+  if (fields.includes("rule_id")) return "rule";
+  if (fields.includes("path")) return "path";
+  if (fields.includes("category")) return "category";
+  if (fields.includes("severity")) return "severity";
+  if (fields.includes("object_type")) return "object_type";
+  if (fields.includes("trust_level")) return "trust_level";
+  if (fields.includes("data_class")) return "data_class";
+  if (fields.includes("action")) return "action";
+  return fields.length > 0 ? "custom" : "broad";
+}
+
+function policyControlChangeDirection(previous: Control, next: Control): PolicyControlChangeDirection {
+  const previousRank = controlRank(previous);
+  const nextRank = controlRank(next);
+  if (nextRank > previousRank) return "strengthened";
+  if (nextRank < previousRank) return "weakened";
+  return "unchanged";
+}
+
+function controlRank(control: Control): number {
+  switch (control) {
+    case "allow":
+      return 1;
+    case "warn":
+      return 2;
+    case "redact":
+      return 3;
+    case "require_approval":
+      return 4;
+    case "quarantine":
+      return 5;
+    case "deny":
+      return 6;
+  }
 }
 
 function recommendedControlMatches(finding: Finding, entry: Policy["recommended_controls"][number]): boolean {

@@ -28,13 +28,43 @@ describe("policy suppressions", () => {
       id: "deny-unsandboxed-runtime",
       control: "deny",
       previous_control: "require_approval",
+      match_scope: "rule_and_path",
+      change_direction: "strengthened",
       reason: "Organization policy forbids unsandboxed runtime without approval."
     });
     expect(finding?.policy_control?.matched_on).toEqual(["rule_id", "path"]);
     expect(finding?.evidence.every((item) => item.redacted)).toBe(true);
     expect(result.shouldFail).toBe(true);
-    expect(result.reportMarkdown).toContain("policy override from require approval");
+    expect(result.reportMarkdown).toContain("policy override from require approval to deny");
+    expect(result.reportMarkdown).toContain("direction: strengthened");
+    expect(result.reportMarkdown).toContain("scope: rule and path");
+    expect(result.reportMarkdown).toContain("matched on: rule_id, path");
+    expect(result.reportMarkdown).toContain("reason redacted");
+    expect(result.reportMarkdown).not.toContain("Organization policy forbids unsandboxed runtime without approval.");
     expect(JSON.stringify(result.manifest.findings)).toContain("deny-unsandboxed-runtime");
+    expect(JSON.stringify(result.manifest.findings)).toContain("Organization policy forbids unsandboxed runtime without approval.");
+    const sarif = JSON.parse(await fs.readFile(result.outputFiles.sarif!, "utf8")) as {
+      runs: Array<{
+        results?: Array<{
+          properties?: {
+            policy_control?: Record<string, unknown>;
+          };
+        }>;
+      }>;
+    };
+    expect(JSON.stringify(sarif)).not.toContain("Organization policy forbids unsandboxed runtime without approval.");
+    const sarifPolicyControl = sarif.runs[0]?.results?.find(
+      (item) => item.properties?.policy_control
+    )?.properties?.policy_control;
+    expect(sarifPolicyControl).toMatchObject({
+      id_present: true,
+      control: "deny",
+      previous_control: "require_approval",
+      match_scope: "rule_and_path",
+      change_direction: "strengthened",
+      matched_on: ["rule_id", "path"],
+      reason_redacted: true
+    });
   });
 
   it("marks active suppressions and excludes them from fail gates", async () => {

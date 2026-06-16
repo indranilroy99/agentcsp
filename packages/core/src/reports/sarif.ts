@@ -113,7 +113,7 @@ export function renderSarifReport(manifest: AgentManifest): Record<string, unkno
             confidence: finding.confidence,
             confidence_rationale: finding.confidence_rationale,
             baseline_status: finding.baseline_status,
-            policy_control: finding.policy_control,
+            policy_control: sanitizedPolicyControl(finding),
             trust_level: finding.risk.trust_level,
             data_classes: finding.data_classes,
             actions: finding.risk.actions,
@@ -156,6 +156,20 @@ function sarifRuleHelpMarkdown(finding: Finding): string {
     "Mappings:",
     ...mappings
   ].join("\n");
+}
+
+function sanitizedPolicyControl(finding: Finding): Record<string, unknown> | undefined {
+  if (!finding.policy_control) return undefined;
+  return {
+    id_present: Boolean(finding.policy_control.id),
+    control: finding.policy_control.control,
+    previous_control: finding.policy_control.previous_control,
+    match_scope: finding.policy_control.match_scope,
+    change_direction: finding.policy_control.change_direction,
+    matched_on: finding.policy_control.matched_on,
+    applied_at: finding.policy_control.applied_at,
+    reason_redacted: true
+  };
 }
 
 function sarifBaselineState(status: Finding["baseline_status"]): "new" | "unchanged" | undefined {

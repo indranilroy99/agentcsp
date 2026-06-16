@@ -56,6 +56,22 @@ export const SuppressionMatchScopeSchema = z.enum([
   "severity",
   "broad"
 ]);
+export const PolicyControlMatchScopeSchema = z.enum([
+  "specific_finding",
+  "specific_object",
+  "rule_and_path",
+  "rule",
+  "path",
+  "category",
+  "severity",
+  "object_type",
+  "trust_level",
+  "data_class",
+  "action",
+  "custom",
+  "broad"
+]);
+export const PolicyControlChangeDirectionSchema = z.enum(["strengthened", "weakened", "unchanged"]);
 export const SuppressionScopeCountsSchema = z.object({
   specific_finding: z.number().int().nonnegative().default(0),
   specific_object: z.number().int().nonnegative().default(0),
@@ -202,6 +218,8 @@ export const FindingPolicyControlSchema = z.object({
   id: z.string().optional(),
   control: ControlSchema,
   previous_control: ControlSchema,
+  match_scope: PolicyControlMatchScopeSchema,
+  change_direction: PolicyControlChangeDirectionSchema,
   reason: z.string(),
   matched_on: z.array(z.string()).default([]),
   applied_at: z.string()
@@ -787,6 +805,8 @@ export type GraphEdge = z.infer<typeof GraphEdgeSchema>;
 export type AttackPath = z.infer<typeof AttackPathSchema>;
 export type FindingSuppression = z.infer<typeof FindingSuppressionSchema>;
 export type SuppressionMatchScope = z.infer<typeof SuppressionMatchScopeSchema>;
+export type PolicyControlMatchScope = z.infer<typeof PolicyControlMatchScopeSchema>;
+export type PolicyControlChangeDirection = z.infer<typeof PolicyControlChangeDirectionSchema>;
 export type FindingPolicyControl = z.infer<typeof FindingPolicyControlSchema>;
 export type FindingRiskSummary = z.infer<typeof FindingRiskSummarySchema>;
 export type Finding = z.infer<typeof FindingSchema>;

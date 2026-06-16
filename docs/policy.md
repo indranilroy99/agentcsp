@@ -39,7 +39,9 @@ Policy-integrity metadata does not emit raw suppression IDs, owners, reasons, pa
 
 Recommended controls let a team strengthen or change a finding recommendation without suppressing evidence.
 
-They are advisory in v1. When a policy control matches, AgentCSP updates `recommended_control` and records a `policy_control` object with the previous control, reason, match fields, and application time.
+They are advisory in v1. When a policy control matches, AgentCSP updates `recommended_control` and records a `policy_control` object with the previous control, reason, match fields, match scope, change direction, and application time.
+
+JSON findings retain the full policy-control reason for internal audit workflows. Markdown and SARIF redact the reason by default, while preserving whether the control was strengthened, weakened, or unchanged, how narrowly the policy matched, and which match fields were used.
 
 Example:
 

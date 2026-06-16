@@ -45,6 +45,8 @@ Each finding includes `risk_summary`, a compact analyst-facing explanation deriv
 
 When a finding is matched by an advisory policy suppression, `suppression.match_scope` records how narrowly the accepted-risk record matched the finding. Scopes range from `specific_finding` and `specific_object` through `rule_and_path`, `rule`, `path`, `category`, `severity`, and `broad`. JSON output retains the full suppression audit record, while Markdown and SARIF keep only sanitized status, expiry, match scope, and matched-field context.
 
+When a finding is matched by an advisory recommended-control policy, `policy_control.match_scope` records how narrowly the control matched and `policy_control.change_direction` records whether the recommended control was strengthened, weakened, or left unchanged. JSON output retains the full policy-control reason for audit workflows. Markdown and SARIF redact the reason while keeping control direction, scope, and matched-field context.
+
 ## MCP Server Authority
 
 MCP server entries are normalized into `mcp_server` objects. For remote MCP servers, AgentCSP records posture metadata without emitting raw URLs or header values.

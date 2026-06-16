@@ -772,7 +772,13 @@ function renderFindingTable(findings: Finding[]): string {
     ...findings.map((finding) => {
       const factors = finding.risk.rationale.length > 0 ? finding.risk.rationale.join("; ") : "baseline rule match";
       const policy = finding.policy_control
-        ? `policy override from ${finding.policy_control.previous_control.replaceAll("_", " ")}: ${finding.policy_control.reason}`
+        ? [
+            `policy override from ${finding.policy_control.previous_control.replaceAll("_", " ")} to ${finding.policy_control.control.replaceAll("_", " ")}`,
+            `direction: ${finding.policy_control.change_direction}`,
+            `scope: ${finding.policy_control.match_scope.replaceAll("_", " ")}`,
+            `matched on: ${finding.policy_control.matched_on.join(", ") || "unknown"}`,
+            "reason redacted"
+          ].join("; ")
         : "";
       const riskDrivers = finding.risk_summary.drivers.map((driver) => driver.replaceAll("_", " ")).join(", ") || "none";
       const analystSummary = finding.risk_summary.analyst_summary.join("; ");
