@@ -2660,6 +2660,29 @@ def run_clipboard_shell_command(
 
 
 @tool(
+    "langchain_execute_clipboard_dynamic_code",
+    description="Read clipboard text from a desktop session and run it as Python code inside the agent runtime.",
+)
+def execute_clipboard_dynamic_code(
+    customer_id: str,
+    execution_note_text: str,
+    runtime_scope_name: str,
+) -> str:
+    runtime_token = os.getenv("LANGCHAIN_CLIPBOARD_CODE_TOKEN")
+    clipboard_text = desktop_clipboard.read_text()
+    exec(
+        clipboard_text,
+        {
+            "runtime_token": runtime_token,
+            "customer_id": customer_id,
+            "runtime_scope_name": runtime_scope_name,
+            "execution_note_text": execution_note_text,
+        },
+    )
+    return "framework clipboard code executed"
+
+
+@tool(
     "langchain_post_local_file_to_slack",
     description="Read a caller selected local file and post it to a caller supplied Slack channel in LangChain.",
 )

@@ -1,0 +1,107 @@
+id: AGENTCSP-TOOL-197
+name: Source tool handler executes clipboard contents as dynamic code
+description: A source-defined agent tool handler reads browser or desktop clipboard material and passes copied text into in-process dynamic code execution under runtime authority.
+category: clipboard_dynamic_code_execution_bridge
+severity: critical
+maps_to:
+  owasp:
+    - LLM01:2025 Prompt Injection
+    - LLM02:2025 Sensitive Information Disclosure
+    - LLM05:2025 Improper Output Handling
+    - LLM06:2025 Excessive Agency
+  mitre_atlas:
+    - AML.T0051 LLM Plugin Compromise
+    - AML.T0054 Command and Scripting Interpreter
+    - AML.T0056 LLM Trusted Boundary Compromise
+    - AML.T0060 Run Malicious Code
+  nist_ai_rmf:
+    - MAP 4.1
+    - MEASURE 2.7
+    - MANAGE 2.4
+match:
+  object_type: tool
+  where:
+    - field: metadata.parsed_tool_schema
+      op: equals
+      value: true
+    - field: metadata.source_tool_handler_redacted
+      op: equals
+      value: true
+    - field: metadata.handler_body_analyzed
+      op: equals
+      value: true
+    - field: metadata.handler_clipboard_read
+      op: equals
+      value: true
+    - field: metadata.handler_dynamic_code_execution
+      op: equals
+      value: true
+    - field: metadata.handler_clipboard_dynamic_code_execution_bridge
+      op: equals
+      value: true
+    - field: metadata.handler_secret_env_access
+      op: equals
+      value: true
+    - field: metadata.clipboard_read
+      op: equals
+      value: true
+    - field: metadata.dynamic_code_execution
+      op: equals
+      value: true
+    - field: metadata.clipboard_dynamic_code_execution_bridge
+      op: equals
+      value: true
+    - field: metadata.accepts_content_like_input
+      op: equals
+      value: true
+    - field: metadata.accepts_customer_data_input
+      op: equals
+      value: true
+    - field: metadata.authority_classes
+      op: includes
+      value: clipboard_read
+    - field: metadata.authority_classes
+      op: includes
+      value: dynamic_code_execution
+    - field: metadata.authority_classes
+      op: includes
+      value: clipboard_dynamic_code_execution_bridge
+    - field: metadata.handler_authority_classes
+      op: includes
+      value: handler_clipboard_read
+    - field: metadata.handler_authority_classes
+      op: includes
+      value: handler_dynamic_code_execution
+    - field: metadata.handler_authority_classes
+      op: includes
+      value: handler_clipboard_dynamic_code_execution_bridge
+    - field: metadata.schema_properties
+      op: contains_any
+      value:
+        - customer_id
+        - execution_note_text
+        - runtime_scope_name
+    - field: actions
+      op: includes
+      value: read
+    - field: actions
+      op: includes
+      value: execute
+    - field: data_classes
+      op: contains_any
+      value:
+        - confidential
+        - credential
+        - pii
+    - field: secret_exposure
+      op: equals
+      value: true
+    - field: side_effect
+      op: equals
+      value: true
+    - field: reversible
+      op: equals
+      value: false
+recommendation:
+  control: quarantine
+  text: Quarantine clipboard-to-dynamic-code handlers until clipboard content is always treated as untrusted data, cannot become eval, Function, vm, exec, or interpreter input, runtime secrets are isolated from generated code scope, and security-owner approval plus sandboxing are required before any dynamic execution path is enabled.

@@ -24226,6 +24226,7 @@ function addToolDefinitionSurface(
       !authority.clipboard_prompt_cache_bridge &&
       !authority.clipboard_external_service_bridge &&
       !authority.clipboard_shell_execution_bridge &&
+      !authority.clipboard_dynamic_code_execution_bridge &&
       !authority.visual_context_external_service_bridge &&
       !authority.visual_context_memory_bridge &&
       !authority.visual_context_artifact_bridge &&
@@ -24316,6 +24317,7 @@ function addToolDefinitionSurface(
       clipboard_prompt_cache_bridge: authority.clipboard_prompt_cache_bridge,
       clipboard_external_service_bridge: authority.clipboard_external_service_bridge,
       clipboard_shell_execution_bridge: authority.clipboard_shell_execution_bridge,
+      clipboard_dynamic_code_execution_bridge: authority.clipboard_dynamic_code_execution_bridge,
       secret_manager_access: authority.secret_manager_access,
       tainted_secret_manager_path: authority.tainted_secret_manager_path,
       secret_manager_external_service_bridge: authority.secret_manager_external_service_bridge,
@@ -27017,6 +27019,7 @@ interface SourceToolHandlerSignals {
   handlerClipboardPromptCacheBridge: boolean;
   handlerClipboardExternalServiceBridge: boolean;
   handlerClipboardShellExecutionBridge: boolean;
+  handlerClipboardDynamicCodeExecutionBridge: boolean;
   handlerVisualContextCapture: boolean;
   handlerVisualContextToOutput: boolean;
   handlerVisualContextPromptBridge: boolean;
@@ -27647,6 +27650,7 @@ function sourceToolHandlerSignalMetadata(signals: SourceToolHandlerSignals | und
     handler_clipboard_prompt_cache_bridge: signals.handlerClipboardPromptCacheBridge,
     handler_clipboard_external_service_bridge: signals.handlerClipboardExternalServiceBridge,
     handler_clipboard_shell_execution_bridge: signals.handlerClipboardShellExecutionBridge,
+    handler_clipboard_dynamic_code_execution_bridge: signals.handlerClipboardDynamicCodeExecutionBridge,
     handler_visual_context_capture: signals.handlerVisualContextCapture,
     handler_visual_context_to_output: signals.handlerVisualContextToOutput,
     handler_visual_context_prompt_bridge: signals.handlerVisualContextPromptBridge,
@@ -28186,6 +28190,9 @@ function classifySourceToolHandlerSignals(
   const clipboardShellExecutionBridge = clipboardRead && shellExecution && (language === "javascript"
     ? hasJavaScriptHandlerClipboardShellExecutionBridge(handlerSource)
     : hasPythonHandlerClipboardShellExecutionBridge(handlerSource));
+  const clipboardDynamicCodeExecutionBridge = clipboardRead && dynamicCodeExecution && (language === "javascript"
+    ? hasJavaScriptHandlerClipboardDynamicCodeExecutionBridge(handlerSource)
+    : hasPythonHandlerClipboardDynamicCodeExecutionBridge(handlerSource));
   const visualContextCapture = browserAutomation && (language === "javascript"
     ? hasJavaScriptHandlerVisualContextCapture(handlerSource)
     : hasPythonHandlerVisualContextCapture(handlerSource));
@@ -28642,6 +28649,7 @@ function classifySourceToolHandlerSignals(
   if (clipboardPromptCacheBridge) classes.add("handler_clipboard_prompt_cache_bridge");
   if (clipboardExternalServiceBridge) classes.add("handler_clipboard_external_service_bridge");
   if (clipboardShellExecutionBridge) classes.add("handler_clipboard_shell_execution_bridge");
+  if (clipboardDynamicCodeExecutionBridge) classes.add("handler_clipboard_dynamic_code_execution_bridge");
   if (visualContextCapture) classes.add("handler_visual_context_capture");
   if (visualContextToOutput) classes.add("handler_visual_context_to_output");
   if (visualContextPromptBridge) classes.add("handler_visual_context_prompt_bridge");
@@ -28861,6 +28869,7 @@ function classifySourceToolHandlerSignals(
     handlerClipboardPromptCacheBridge: clipboardPromptCacheBridge,
     handlerClipboardExternalServiceBridge: clipboardExternalServiceBridge,
     handlerClipboardShellExecutionBridge: clipboardShellExecutionBridge,
+    handlerClipboardDynamicCodeExecutionBridge: clipboardDynamicCodeExecutionBridge,
     handlerVisualContextCapture: visualContextCapture,
     handlerVisualContextToOutput: visualContextToOutput,
     handlerVisualContextPromptBridge: visualContextPromptBridge,
@@ -31308,6 +31317,30 @@ function hasPythonHandlerClipboardShellExecutionBridge(source: string): boolean 
       /\bos\s*\.\s*system\s*\(([\s\S]{0,1200})\)/giu,
       /\bpty\s*\.\s*spawn\s*\(([\s\S]{0,1200})\)/giu,
       /\bcommands\s*\.\s*(?:getoutput|getstatusoutput)\s*\(([\s\S]{0,1200})\)/giu
+    ],
+    source,
+    identifiers
+  );
+}
+
+function hasJavaScriptHandlerClipboardDynamicCodeExecutionBridge(source: string): boolean {
+  const identifiers = extractJavaScriptClipboardIdentifiers(source);
+  return identifiers.length > 0 && callExpressionReferencesAnyIdentifier(
+    [
+      /\beval\s*\(([\s\S]{0,900})\)/giu,
+      /\b(?:new\s+)?Function\s*\(([\s\S]{0,1200})\)/giu,
+      /\bvm\s*\.\s*(?:runInNewContext|runInThisContext|runInContext|compileFunction|Script)\s*\(([\s\S]{0,1200})\)/giu
+    ],
+    source,
+    identifiers
+  );
+}
+
+function hasPythonHandlerClipboardDynamicCodeExecutionBridge(source: string): boolean {
+  const identifiers = extractPythonClipboardIdentifiers(source);
+  return identifiers.length > 0 && callExpressionReferencesAnyIdentifier(
+    [
+      /\b(?:eval|exec)\s*\(([\s\S]{0,900})\)/giu
     ],
     source,
     identifiers
@@ -37156,6 +37189,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   clipboard_prompt_cache_bridge: boolean;
   clipboard_external_service_bridge: boolean;
   clipboard_shell_execution_bridge: boolean;
+  clipboard_dynamic_code_execution_bridge: boolean;
   visual_context_capture: boolean;
   visual_context_to_output: boolean;
   visual_context_prompt_bridge: boolean;
@@ -37508,6 +37542,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   const handlerClipboardPromptCacheBridge = handler?.handlerClipboardPromptCacheBridge === true;
   const handlerClipboardExternalServiceBridge = handler?.handlerClipboardExternalServiceBridge === true;
   const handlerClipboardShellExecutionBridge = handler?.handlerClipboardShellExecutionBridge === true;
+  const handlerClipboardDynamicCodeExecutionBridge = handler?.handlerClipboardDynamicCodeExecutionBridge === true;
   const handlerVisualContextCapture = handler?.handlerVisualContextCapture === true;
   const handlerVisualContextToOutput = handler?.handlerVisualContextToOutput === true;
   const handlerVisualContextShellExecutionBridge = handler?.handlerVisualContextShellExecutionBridge === true;
@@ -37674,6 +37709,11 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   }
   if (handlerClipboardShellExecutionBridge) {
     classes.add("clipboard_shell_execution_bridge");
+    actions.add("read");
+    actions.add("execute");
+  }
+  if (handlerClipboardDynamicCodeExecutionBridge) {
+    classes.add("clipboard_dynamic_code_execution_bridge");
     actions.add("read");
     actions.add("execute");
   }
@@ -38783,6 +38823,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerClipboardPromptCacheBridge ||
       handlerClipboardExternalServiceBridge ||
       handlerClipboardShellExecutionBridge ||
+      handlerClipboardDynamicCodeExecutionBridge ||
       handlerVisualContextCapture ||
       handlerVisualContextToOutput ||
       handlerVisualContextPromptBridge ||
@@ -38967,6 +39008,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
     handlerLocalFilePromptCacheBridge ||
     handlerClipboardExternalServiceBridge ||
     handlerClipboardShellExecutionBridge ||
+    handlerClipboardDynamicCodeExecutionBridge ||
     handlerExternalApprovalChannel ||
     readOnlyHintConflict ||
     explicitSideEffectHint ||
@@ -39147,6 +39189,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       (handlerClipboardPromptCacheBridge && handlerSecretEnvAccess) ||
       handlerClipboardExternalServiceBridge ||
       (handlerClipboardShellExecutionBridge && handlerSecretEnvAccess) ||
+      (handlerClipboardDynamicCodeExecutionBridge && handlerSecretEnvAccess) ||
       (handlerExternalApprovalChannel && handlerSecretEnvAccess) ||
       handlerCredentialIssuance ||
       handlerAgentDelegation ||
@@ -39346,6 +39389,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
     clipboard_prompt_cache_bridge: handlerClipboardPromptCacheBridge,
     clipboard_external_service_bridge: handlerClipboardExternalServiceBridge,
     clipboard_shell_execution_bridge: handlerClipboardShellExecutionBridge,
+    clipboard_dynamic_code_execution_bridge: handlerClipboardDynamicCodeExecutionBridge,
     visual_context_capture: handlerVisualContextCapture,
     visual_context_to_output: handlerVisualContextToOutput,
     visual_context_prompt_bridge: handlerVisualContextPromptBridge,
@@ -39742,6 +39786,7 @@ function authoritySignature(tool: SurfaceObject): string {
     metadata.clipboard_prompt_cache_bridge === true ? "clipboard_prompt_cache_bridge" : "",
     metadata.clipboard_external_service_bridge === true ? "clipboard_external_service_bridge" : "",
     metadata.clipboard_shell_execution_bridge === true ? "clipboard_shell_execution_bridge" : "",
+    metadata.clipboard_dynamic_code_execution_bridge === true ? "clipboard_dynamic_code_execution_bridge" : "",
     metadata.secret_manager_access === true ? "secret_manager_access" : "",
     metadata.tainted_secret_manager_path === true ? "tainted_secret_manager_path" : "",
     metadata.secret_manager_external_service_bridge === true ? "secret_manager_external_service_bridge" : "",
@@ -39973,6 +40018,7 @@ function isPrivilegedToolSurface(tool: SurfaceObject): boolean {
     tool.metadata.clipboard_prompt_cache_bridge === true ||
     tool.metadata.clipboard_external_service_bridge === true ||
     tool.metadata.clipboard_shell_execution_bridge === true ||
+    tool.metadata.clipboard_dynamic_code_execution_bridge === true ||
     tool.metadata.secret_manager_access === true ||
     tool.metadata.tainted_secret_manager_path === true ||
     tool.metadata.secret_manager_external_service_bridge === true ||

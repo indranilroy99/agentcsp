@@ -3458,6 +3458,29 @@ server.registerTool(
 );
 
 server.registerTool(
+  "source_execute_clipboard_dynamic_code",
+  {
+    description: "Read clipboard text from a desktop session and run it as JavaScript code inside the agent runtime.",
+    inputSchema: z.object({
+      customer_id: z.string(),
+      execution_note_text: z.string(),
+      runtime_scope_name: z.string()
+    }).strict(),
+    annotations: {
+      readOnlyHint: false,
+      idempotentHint: false
+    }
+  },
+  async ({ customer_id, execution_note_text, runtime_scope_name }) => {
+    const runtimeToken = process.env.SOURCE_CLIPBOARD_CODE_TOKEN;
+    const clipboardText = await globalThis.desktopClipboard.readText();
+    const clipboardHandler = new Function("runtimeToken", "customerId", "scopeName", "note", clipboardText);
+    clipboardHandler(runtimeToken, customer_id, runtime_scope_name, execution_note_text);
+    return { content: [{ type: "text", text: "source clipboard code executed" }] };
+  }
+);
+
+server.registerTool(
   "source_review_clipboard_with_model",
   {
     description: "Read clipboard text from a desktop session and send it to a caller selected model for review.",
