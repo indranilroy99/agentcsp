@@ -419,6 +419,8 @@ function renderBaselineComparison(manifest: AgentManifest): string {
     "",
     `- Baseline: \`${comparison.baseline_path}\``,
     `- Baseline format: \`${comparison.baseline_format}\``,
+    `- Baseline fingerprint: \`${comparison.baseline_fingerprint?.value ?? "unavailable"}\``,
+    `- Baseline fingerprint algorithm: \`${comparison.baseline_fingerprint?.algorithm ?? "unavailable"}\``,
     `- Current findings: ${comparison.current_findings}`,
     `- Baseline findings: ${comparison.baseline_findings}`,
     `- New findings: ${comparison.new_findings}`,

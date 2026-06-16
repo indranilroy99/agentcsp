@@ -305,10 +305,17 @@ export const TriageSummarySchema = z.object({
   top_active_risks: z.array(TriageFindingSummarySchema).default([])
 });
 
+export const ManifestFingerprintSchema = z.object({
+  algorithm: z.literal("sha256"),
+  value: z.string(),
+  excludes: z.array(z.string()).default(["metadata.generated_at", "metadata.root_path", "metadata.fingerprint"])
+});
+
 export const BaselineComparisonSchema = z.object({
   title: z.literal("AgentCSP Baseline Comparison").default("AgentCSP Baseline Comparison"),
   baseline_path: z.string(),
   baseline_format: z.enum(["findings", "manifest"]),
+  baseline_fingerprint: ManifestFingerprintSchema.optional(),
   current_findings: z.number().int().nonnegative().default(0),
   baseline_findings: z.number().int().nonnegative().default(0),
   new_findings: z.number().int().nonnegative().default(0),
@@ -590,12 +597,6 @@ export const RulePackCategoryCountSchema = z.object({
 export const RulePackObjectTypeCountSchema = z.object({
   object_type: z.string(),
   count: z.number().int().nonnegative()
-});
-
-export const ManifestFingerprintSchema = z.object({
-  algorithm: z.literal("sha256"),
-  value: z.string(),
-  excludes: z.array(z.string()).default(["metadata.generated_at", "metadata.root_path", "metadata.fingerprint"])
 });
 
 export const ManifestMetadataSchema = z.object({

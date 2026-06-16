@@ -1,13 +1,30 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import { z } from "zod";
-import type { BaselineComparison, ConfidenceCounts, Finding, SeverityCounts } from "../schemas/index.js";
+import {
+  ManifestFingerprintSchema,
+  type BaselineComparison,
+  type ConfidenceCounts,
+  type Finding,
+  type ManifestFingerprint,
+  type SeverityCounts
+} from "../schemas/index.js";
 import { isPathInsideRoot, relativePath } from "../utils/paths.js";
 import { riskDriverOrder, riskDriversForFinding } from "./risk-drivers.js";
 
 const BaselineFindingRecordSchema = z.object({ id: z.string() }).passthrough();
 const BaselineFindingsFileSchema = z.array(BaselineFindingRecordSchema);
-const BaselineManifestFileSchema = z.object({ findings: z.array(BaselineFindingRecordSchema) }).passthrough();
+const BaselineManifestFileSchema = z
+  .object({
+    findings: z.array(BaselineFindingRecordSchema),
+    metadata: z
+      .object({
+        fingerprint: ManifestFingerprintSchema.optional()
+      })
+      .passthrough()
+      .optional()
+  })
+  .passthrough();
 export const baselineFindingIdLimit = 50;
 
 export interface BaselineResult {
@@ -47,6 +64,7 @@ export async function applyBaselineComparison(
       title: "AgentCSP Baseline Comparison",
       baseline_path: displayBaselinePath,
       baseline_format: baseline.format,
+      baseline_fingerprint: baseline.fingerprint,
       current_findings: findings.length,
       baseline_findings: baseline.findingIds.length,
       new_findings: newFindingIds.length,
@@ -74,7 +92,7 @@ function baselineComparisonPath(absoluteBaselinePath: string, rootPath?: string)
 async function loadBaselineFindingIds(
   baselinePath: string,
   displayBaselinePath = baselinePath
-): Promise<{ findingIds: string[]; format: BaselineComparison["baseline_format"] }> {
+): Promise<{ findingIds: string[]; format: BaselineComparison["baseline_format"]; fingerprint?: ManifestFingerprint }> {
   let parsedJson: unknown;
   try {
     parsedJson = JSON.parse(await fs.readFile(baselinePath, "utf8"));
@@ -94,7 +112,8 @@ async function loadBaselineFindingIds(
   if (manifestFile.success) {
     return {
       findingIds: uniqueSortedIds(manifestFile.data.findings),
-      format: "manifest"
+      format: "manifest",
+      fingerprint: manifestFile.data.metadata?.fingerprint
     };
   }
 

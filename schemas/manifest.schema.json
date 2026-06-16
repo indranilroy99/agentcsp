@@ -1745,6 +1745,9 @@
                 "manifest"
               ]
             },
+            "baseline_fingerprint": {
+              "$ref": "#/definitions/AgentCSP Agent Manifest/properties/metadata/properties/fingerprint"
+            },
             "current_findings": {
               "type": "integer",
               "minimum": 0,
