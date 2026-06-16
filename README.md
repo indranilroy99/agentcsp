@@ -131,6 +131,8 @@ agentcsp scan [path] --out .agentcsp
 
 Relative `--out`, `--baseline`, and `--config` paths are resolved from the scanned project root. Absolute paths are honored for reading and writing. Emitted baseline comparisons use root-relative paths for in-project baselines and `<external-baseline>` for baselines outside the scanned root. Diagnostics for policy configs outside the scanned root redact the local path.
 
+Interactive scans print a bounded scan receipt with finding counts, active triage, action-plan status, scan health, diagnostics, coverage, CI gate status, and truncation flags for top risks and static blast-radius previews. Use `--quiet` in CI when output files and exit codes should be the only automation interface.
+
 Useful flags:
 
 ```bash

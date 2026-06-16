@@ -8,6 +8,14 @@ agentcsp scan [path] --out .agentcsp
 
 The path defaults to the current directory. The output directory defaults to `.agentcsp`. Relative output and baseline paths are resolved from the scanned project root; absolute paths are honored as provided.
 
+Interactive scans print a bounded terminal summary with finding counts, active triage, action-plan status, scan health, diagnostics, coverage, CI gate status, and explicit truncation flags for top risks, action plans, high-risk object previews, and attack paths. Use this as a scan receipt, not as the audit artifact. JSON, Markdown, and SARIF remain the authoritative outputs.
+
+Use `--quiet` for CI jobs or scripts that should rely only on output files and exit codes:
+
+```bash
+agentcsp scan . --out .agentcsp --format json,md,sarif --quiet
+```
+
 ## Outputs
 
 ```text
