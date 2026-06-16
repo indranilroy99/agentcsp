@@ -45,6 +45,11 @@ describe("scanProject", () => {
     expect(result.manifest.action_plan?.max_actions).toBe(12);
     expect(result.manifest.action_plan?.truncated).toBe(true);
     expect(result.manifest.action_plan?.omitted_actions).toBe(result.findings.length - 12);
+    expect(result.manifest.action_plan?.omitted_highest_severity).toBe("critical");
+    expect(result.manifest.action_plan?.omitted_max_risk_score).toBeGreaterThan(0);
+    expect(
+      Object.values(result.manifest.action_plan?.omitted_by_severity ?? {}).reduce((sum, count) => sum + count, 0)
+    ).toBe(result.manifest.action_plan?.omitted_actions);
     expect(result.manifest.action_plan?.immediate_actions).toBeGreaterThan(0);
     expect(result.manifest.action_plan?.actions[0]).toMatchObject({
       priority: 1,
@@ -126,8 +131,12 @@ describe("scanProject", () => {
     expect(result.reportMarkdown).toContain("## Action Plan");
     expect(result.reportMarkdown).toContain("- Truncated: `true`");
     expect(result.reportMarkdown).toContain("- Omitted actions:");
+    expect(result.reportMarkdown).toContain("- Omitted highest severity:");
+    expect(result.reportMarkdown).toContain("- Omitted max risk score:");
     expect(result.reportMarkdown).toContain("### Action Owners");
     expect(result.reportMarkdown).toContain("| Owner hint | Actions | Highest severity | Max risk |");
+    expect(result.reportMarkdown).toContain("### Omitted Action Risk");
+    expect(result.reportMarkdown).toContain("| Omitted | Highest severity | Max risk | Critical | High | Medium | Low | Info |");
     expect(result.reportMarkdown).toContain("| Priority | Severity | Risk | Baseline | Owner | Control | Rule | Surface | Path | Rationale |");
     expect(result.reportMarkdown).toContain("- Root: `<scan-root>`");
     expect(result.reportMarkdown).not.toContain(rootPath);
@@ -183,6 +192,9 @@ describe("scanProject", () => {
       total_active_findings_considered: 0,
       max_actions: 12,
       omitted_actions: 0,
+      omitted_by_severity: { critical: 0, high: 0, medium: 0, low: 0, info: 0 },
+      omitted_highest_severity: "info",
+      omitted_max_risk_score: 0,
       truncated: false,
       immediate_actions: 0,
       approval_actions: 0,

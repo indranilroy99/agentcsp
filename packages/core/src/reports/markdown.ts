@@ -84,6 +84,8 @@ function renderActionPlan(manifest: AgentManifest): string {
     `- Active findings considered: ${plan.total_active_findings_considered}`,
     `- Max actions: ${plan.max_actions}`,
     `- Omitted actions: ${plan.omitted_actions}`,
+    `- Omitted highest severity: ${plan.omitted_highest_severity}`,
+    `- Omitted max risk score: ${plan.omitted_max_risk_score}`,
     `- Truncated: \`${plan.truncated}\``,
     `- Immediate actions: ${plan.immediate_actions}`,
     `- Approval actions: ${plan.approval_actions}`,
@@ -96,12 +98,26 @@ function renderActionPlan(manifest: AgentManifest): string {
     "",
     renderActionOwnerTable(plan.by_owner),
     "",
+    "### Omitted Action Risk",
+    "",
+    renderOmittedActionRiskTable(plan),
+    "",
     "| Priority | Severity | Risk | Baseline | Owner | Control | Rule | Surface | Path | Rationale |",
     "| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |",
     ...plan.actions.map(
       (action) =>
         `| ${action.priority} | ${action.severity} | ${action.risk_score} | ${action.baseline_status ?? "unbaselined"} | ${action.owner_hint} | ${action.recommended_control.replaceAll("_", " ")} | ${action.rule_id} | ${action.surface_type} | \`${escapeTable(action.path)}\` | ${escapeTable(action.rationale.join("; "))} |`
     )
+  ].join("\n");
+}
+
+function renderOmittedActionRiskTable(plan: NonNullable<AgentManifest["action_plan"]>): string {
+  if (plan.omitted_actions === 0) return "No active findings were omitted from the bounded action queue.";
+  const counts = plan.omitted_by_severity;
+  return [
+    "| Omitted | Highest severity | Max risk | Critical | High | Medium | Low | Info |",
+    "| --- | --- | --- | --- | --- | --- | --- | --- |",
+    `| ${plan.omitted_actions} | ${plan.omitted_highest_severity} | ${plan.omitted_max_risk_score} | ${counts.critical} | ${counts.high} | ${counts.medium} | ${counts.low} | ${counts.info} |`
   ].join("\n");
 }
 

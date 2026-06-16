@@ -43,6 +43,9 @@ describe("action plan owner routing", () => {
       total_active_findings_considered: 15,
       max_actions: 5,
       omitted_actions: 10,
+      omitted_by_severity: { critical: 0, high: 10, medium: 0, low: 0, info: 0 },
+      omitted_highest_severity: "high",
+      omitted_max_risk_score: 80,
       truncated: true
     });
   });

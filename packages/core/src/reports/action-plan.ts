@@ -1,4 +1,4 @@
-import type { ActionPlanSummary, Control, Finding, Severity, SurfaceType } from "../schemas/index.js";
+import type { ActionPlanSummary, Control, Finding, Severity, SeverityCounts, SurfaceType } from "../schemas/index.js";
 import { stableId } from "../utils/ids.js";
 
 const severityRank = { critical: 5, high: 4, medium: 3, low: 2, info: 1 };
@@ -15,7 +15,9 @@ const controlRank: Record<Control, number> = {
 
 export function buildActionPlan(findings: Finding[], limit = 12): ActionPlanSummary {
   const activeFindings = findings.filter((finding) => finding.suppression?.status !== "active");
-  const rankedFindings = [...activeFindings].sort(compareActionPriority).slice(0, limit);
+  const sortedActiveFindings = [...activeFindings].sort(compareActionPriority);
+  const rankedFindings = sortedActiveFindings.slice(0, limit);
+  const omittedFindings = sortedActiveFindings.slice(limit);
   const actions = rankedFindings.map((finding, index) => {
     const owner = ownerForFinding(finding);
     return {
@@ -46,7 +48,10 @@ export function buildActionPlan(findings: Finding[], limit = 12): ActionPlanSumm
     total_actions: actions.length,
     total_active_findings_considered: activeFindings.length,
     max_actions: limit,
-    omitted_actions: Math.max(0, activeFindings.length - actions.length),
+    omitted_actions: omittedFindings.length,
+    omitted_by_severity: countBySeverity(omittedFindings),
+    omitted_highest_severity: highestSeverity(omittedFindings),
+    omitted_max_risk_score: maxRiskScore(omittedFindings),
     truncated: activeFindings.length > actions.length,
     immediate_actions: actions.filter(isImmediateAction).length,
     approval_actions: actions.filter((action) => action.recommended_control === "require_approval").length,
@@ -58,6 +63,25 @@ export function buildActionPlan(findings: Finding[], limit = 12): ActionPlanSumm
     by_owner: summarizeOwners(actions),
     actions
   };
+}
+
+function countBySeverity(findings: Finding[]): SeverityCounts {
+  const counts: SeverityCounts = { critical: 0, high: 0, medium: 0, low: 0, info: 0 };
+  for (const finding of findings) {
+    counts[finding.severity] += 1;
+  }
+  return counts;
+}
+
+function highestSeverity(findings: Finding[]): Severity {
+  return findings.reduce<Severity>(
+    (highest, finding) => (severityRank[finding.severity] > severityRank[highest] ? finding.severity : highest),
+    "info"
+  );
+}
+
+function maxRiskScore(findings: Finding[]): number {
+  return findings.reduce((max, finding) => Math.max(max, finding.risk.score), 0);
 }
 
 function compareActionPriority(a: Finding, b: Finding): number {

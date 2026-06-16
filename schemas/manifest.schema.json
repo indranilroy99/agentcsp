@@ -1072,6 +1072,26 @@
               "minimum": 0,
               "default": 0
             },
+            "omitted_by_severity": {
+              "$ref": "#/definitions/AgentCSP Agent Manifest/properties/triage_summary/properties/active_by_severity",
+              "default": {
+                "critical": 0,
+                "high": 0,
+                "medium": 0,
+                "low": 0,
+                "info": 0
+              }
+            },
+            "omitted_highest_severity": {
+              "$ref": "#/definitions/AgentCSP Agent Manifest/properties/attack_paths/items/properties/severity",
+              "default": "info"
+            },
+            "omitted_max_risk_score": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 100,
+              "default": 0
+            },
             "truncated": {
               "type": "boolean",
               "default": false
