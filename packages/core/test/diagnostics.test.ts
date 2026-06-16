@@ -115,6 +115,87 @@ describe("scan diagnostics", () => {
     expect(result.reportMarkdown).toContain("- Failed gates: diagnostics");
   });
 
+  it("emits a scanner diagnostic when max_files stops traversal early", async () => {
+    const root = await createMaxFilesFixture();
+    const result = await scanProject({
+      root_path: root,
+      output_path: "/private/tmp/agentcsp-max-files-diagnostic-output",
+      formats: ["json", "md", "sarif"],
+      include_hidden: true,
+      include_logs: false,
+      max_file_size_bytes: 1024 * 1024,
+      max_files: 1,
+      quiet: true
+    });
+
+    expect(result.manifest.diagnostics).toEqual([
+      expect.objectContaining({
+        code: "SCAN_MAX_FILES_REACHED",
+        parser: "scanner",
+        severity: "warning",
+        file_path: ".",
+        content_redacted: true
+      })
+    ]);
+    expect(result.manifest.scan_coverage).toMatchObject({
+      max_files_reached: true,
+      max_files: 1,
+      diagnostics_total: 1,
+      diagnostics_errors: 0,
+      diagnostics_warnings: 1,
+      diagnostics_info: 0
+    });
+    expect(result.manifest.ci_gate_summary).toMatchObject({
+      status: "pass",
+      should_fail: false,
+      fail_on_diagnostics: false,
+      diagnostic_count: 1,
+      failed_gates: []
+    });
+    expect(result.reportMarkdown).toContain("SCAN_MAX_FILES_REACHED");
+    expect(result.reportMarkdown).toContain("- Max files reached: `true`");
+
+    const sarif = JSON.parse(await fs.readFile(result.outputFiles.sarif!, "utf8")) as {
+      runs: Array<{
+        properties?: {
+          agentcsp_diagnostics?: Array<{ code?: string; parser?: string }>;
+          agentcsp_scan_coverage?: { max_files_reached?: boolean; diagnostics_total?: number };
+        };
+      }>;
+    };
+    expect(sarif.runs[0]?.properties?.agentcsp_diagnostics).toEqual([
+      expect.objectContaining({ code: "SCAN_MAX_FILES_REACHED", parser: "scanner" })
+    ]);
+    expect(sarif.runs[0]?.properties?.agentcsp_scan_coverage).toMatchObject({
+      max_files_reached: true,
+      diagnostics_total: 1
+    });
+  });
+
+  it("can fail CI when max_files exhaustion diagnostics are configured as a gate", async () => {
+    const root = await createMaxFilesFixture();
+    const result = await scanProject({
+      root_path: root,
+      output_path: "/private/tmp/agentcsp-max-files-diagnostic-gate-output",
+      formats: ["json", "md", "sarif"],
+      include_hidden: true,
+      include_logs: false,
+      max_file_size_bytes: 1024 * 1024,
+      max_files: 1,
+      quiet: true,
+      fail_on_diagnostics: true
+    });
+
+    expect(result.shouldFail).toBe(true);
+    expect(result.manifest.ci_gate_summary).toMatchObject({
+      status: "fail",
+      should_fail: true,
+      fail_on_diagnostics: true,
+      diagnostic_count: 1,
+      failed_gates: ["diagnostics"]
+    });
+  });
+
   it("emits redacted diagnostics for schema-invalid policy files", async () => {
     const root = await createInvalidPolicyFixture();
     const result = await scanProject({
@@ -205,5 +286,15 @@ async function createInvalidPolicyFixture(): Promise<string> {
     ].join("\n"),
     "utf8"
   );
+  return root;
+}
+
+async function createMaxFilesFixture(): Promise<string> {
+  const root = "/private/tmp/agentcsp-max-files-diagnostic-fixture";
+  await fs.rm(root, { recursive: true, force: true });
+  await fs.mkdir(path.join(root, ".codex"), { recursive: true });
+  await fs.writeFile(path.join(root, ".codex", "config.toml"), 'sandbox = "workspace-write"\n', "utf8");
+  await fs.writeFile(path.join(root, "AGENTS.md"), "Review repository changes only.\n", "utf8");
+  await fs.writeFile(path.join(root, "SKILL.md"), "Use read-only analysis unless approval is granted.\n", "utf8");
   return root;
 }

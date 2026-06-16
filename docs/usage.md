@@ -19,7 +19,7 @@ The path defaults to the current directory. The output directory defaults to `.a
 
 `agent-manifest.json` includes `triage_summary`, a deterministic rollup of total findings, active findings, suppressions, severity, confidence, surface types, recommended controls, top rules, and top active risks. The Markdown report renders the same summary near the top for human triage.
 
-`scan_coverage` records files indexed, oversized files, ignored entries, skipped hidden/log directories, diagnostic counts, and whether `max_files` was reached. Use it to catch partial or parser-degraded scans before treating a quiet report as clean.
+`scan_coverage` records files indexed, oversized files, ignored entries, skipped hidden/log directories, diagnostic counts, and whether `max_files` was reached. Use it to catch partial or parser-degraded scans before treating a quiet report as clean. When traversal reaches `max_files`, AgentCSP also emits a redacted `SCAN_MAX_FILES_REACHED` diagnostic so CI and dashboards can treat incomplete scans as scan-health events.
 
 Tune traversal limits with:
 
@@ -33,7 +33,7 @@ Use `--include-logs` when transcripts, cached tool outputs, or generated run sum
 agentcsp scan . --include-logs
 ```
 
-`diagnostics` records redacted scan health warnings, such as malformed MCP, runtime, workflow, package, policy, rule, or tool definition files. `scan_coverage.diagnostics_total`, `diagnostics_warnings`, `diagnostics_errors`, and `diagnostics_info` provide stable machine-readable counts for CI and dashboards. Treat diagnostics as evidence that a file may need syntax repair or manual review before relying on a quiet scan.
+`diagnostics` records redacted scan health warnings, such as malformed MCP, runtime, workflow, package, policy, rule, or tool definition files, as well as incomplete traversal caused by `max_files` exhaustion. `scan_coverage.diagnostics_total`, `diagnostics_warnings`, `diagnostics_errors`, and `diagnostics_info` provide stable machine-readable counts for CI and dashboards. Treat diagnostics as evidence that a file may need syntax repair, scan-scope tuning, or manual review before relying on a quiet scan.
 
 ## CI Behavior
 
@@ -71,7 +71,7 @@ Use `--fail-on-diagnostics` when parse failures in security-relevant files shoul
 agentcsp scan . --fail-on-diagnostics
 ```
 
-This remains separate from finding severity gates. It is useful for repositories where malformed MCP, runtime, workflow, package, policy, rule, or tool-definition files should block a release until the scan can inspect them reliably.
+This remains separate from finding severity gates. It is useful for repositories where malformed MCP, runtime, workflow, package, policy, rule, or tool-definition files, or incomplete scans caused by traversal limits, should block a release until the scan can inspect them reliably.
 
 ## Baselines
 

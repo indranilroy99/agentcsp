@@ -1882,6 +1882,8 @@ The current iteration adds:
 - regression coverage proving the new report section appears for the vulnerable fixture and the safe fixture emits a quiet no-active-high-risk-paths message
 - Markdown and SARIF suppression presentation now redacts suppression IDs, owners, and reasons while keeping status, expiry, and matched-field context; JSON findings intentionally retain full suppression fields for audit workflows
 - regression coverage proving active and expired suppression reports do not expose policy owner, reason, or suppression IDs in Markdown/SARIF
+- scanner coverage now emits redacted diagnostic `SCAN_MAX_FILES_REACHED` when traversal stops at the configured `max_files` limit, making incomplete scans visible in JSON, Markdown, SARIF run properties, and optional diagnostics CI gates
+- regression coverage proving max-files exhaustion remains advisory by default, fails only with `--fail-on-diagnostics`, increments scan coverage diagnostic counters, and does not emit raw file contents
 
 ## Initial Build Recommendation
 

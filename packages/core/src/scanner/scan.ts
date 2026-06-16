@@ -27,6 +27,7 @@ import { renderSarifReport } from "../reports/sarif.js";
 import { buildTriageSummary } from "../reports/triage.js";
 import { buildCiGateSummary } from "../reports/gates.js";
 import { applyBaselineComparison } from "../reports/baseline.js";
+import { stableId } from "../utils/ids.js";
 import { sortObjects } from "../utils/sort.js";
 
 const moduleDirectory = path.dirname(fileURLToPath(import.meta.url));
@@ -56,6 +57,9 @@ export async function scanProject(rawConfig: Partial<ScanConfig> & { root_path: 
   const detected = await detectSurfaces(files);
   const ruleLoad = await loadScanRules(rootPath);
   detected.diagnostics.push(...policyResult.diagnostics, ...ruleLoad.diagnostics);
+  if (walkResult.coverage.max_files_reached) {
+    detected.diagnostics.push(maxFilesReachedDiagnostic(walkResult.coverage.max_files));
+  }
   const surfaces = applyPolicyToSurfaces(detected, policy);
   const scanCoverage = withDiagnosticCoverage(walkResult.coverage, surfaces.diagnostics);
 
@@ -112,6 +116,18 @@ export async function scanProject(rawConfig: Partial<ScanConfig> & { root_path: 
     reportMarkdown,
     outputFiles,
     shouldFail: ciGateSummary.should_fail
+  };
+}
+
+function maxFilesReachedDiagnostic(maxFiles: number): ScanDiagnostic {
+  return {
+    id: stableId("diagnostic", ["SCAN_MAX_FILES_REACHED", String(maxFiles)]),
+    severity: "warning",
+    code: "SCAN_MAX_FILES_REACHED",
+    file_path: ".",
+    parser: "scanner",
+    reason: `Scan stopped after reaching the configured max_files limit (${maxFiles}). Results may be incomplete; increase --max-files or narrow the scan scope before relying on a quiet report.`,
+    content_redacted: true
   };
 }
 
