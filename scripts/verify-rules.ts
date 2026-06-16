@@ -9,6 +9,7 @@ const rulesRoot = path.join(repoRoot, "rules", "core");
 const ruleIdPattern = /^AGENTCSP-[A-Z0-9]+-\d{3}$/u;
 const failures: string[] = [];
 const seenRuleIds = new Map<string, string>();
+const seenRuleNames = new Map<string, string>();
 
 const rulePaths = await collectRulePaths(rulesRoot);
 if (rulePaths.length === 0) {
@@ -61,6 +62,13 @@ function verifyRule(relativeRulePath: string, rule: Rule): void {
   }
   seenRuleIds.set(rule.id, relativeRulePath);
 
+  const normalizedRuleName = normalizeRuleName(rule.name);
+  const existingNamePath = seenRuleNames.get(normalizedRuleName);
+  if (existingNamePath) {
+    failures.push(`${relativeRulePath}: duplicates rule name "${rule.name}" already used by ${existingNamePath}`);
+  }
+  seenRuleNames.set(normalizedRuleName, relativeRulePath);
+
   if (rule.name.trim().length < 10) {
     failures.push(`${relativeRulePath}: rule name must be descriptive`);
   }
@@ -73,6 +81,10 @@ function verifyRule(relativeRulePath: string, rule: Rule): void {
 
   verifyMappings(relativeRulePath, rule);
   verifyMatch(relativeRulePath, rule);
+}
+
+function normalizeRuleName(name: string): string {
+  return name.trim().replace(/\s+/gu, " ").toLocaleLowerCase();
 }
 
 function verifyMappings(relativeRulePath: string, rule: Rule): void {

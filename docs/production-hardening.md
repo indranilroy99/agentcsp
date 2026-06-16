@@ -31,6 +31,7 @@ A finding should be considered production-grade when it includes:
 - redacted policy diagnostics for malformed, schema-invalid, or explicitly missing advisory policy configs
 - built-in rule pack loading that cannot be suppressed by a project-local `rules/` directory
 - built-in rule-pack verification for unique stable IDs, schema-valid YAML, non-empty match conditions, framework mappings, operator value types, and concrete recommendations
+- built-in rule-pack verification for unique normalized rule names so reports, SARIF views, and dashboards do not collapse distinct detections into ambiguous labels
 - packaged built-in rule assets under `@agentcsp/core` so installed builds retain the same detection baseline
 - CI package-artifact verification for compiled modules and bundled built-in rule counts
 - package publish metadata verification for Apache-2.0 license metadata, canonical repository, issue tracker, homepage, Node engine support, and AI-security discovery keywords
