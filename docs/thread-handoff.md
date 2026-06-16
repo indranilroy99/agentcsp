@@ -1901,6 +1901,8 @@ The current iteration adds:
 - regression coverage proving missing external baselines report `ENOENT` without leaking the external path
 - root-boundary path detection now distinguishes actual parent traversal from legitimate in-root names beginning with `..`, protecting external path redaction and configured-output ignore behavior
 - regression coverage proving path helpers classify inside, outside, equal-root, sibling-prefix, and dot-prefixed in-root paths correctly
+- traversal now emits redacted scanner diagnostics for non-root directory read failures and file metadata/stat failures, then continues scanning other paths
+- regression coverage proving transient file stat failures appear in manifest, Markdown, SARIF, and scan coverage counters without leaking raw OS error details
 
 ## Initial Build Recommendation
 

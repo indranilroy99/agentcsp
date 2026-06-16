@@ -2949,7 +2949,7 @@ Coverage counts do not include raw file contents or skipped path lists. Diagnost
 
 ## Diagnostics
 
-`diagnostics` records scan health issues that may affect completeness, such as malformed MCP configs, runtime configs, package manifests, workflow files, policy files, project-local rule files, tool definition files, or traversal stopped by `max_files` exhaustion.
+`diagnostics` records scan health issues that may affect completeness, such as malformed MCP configs, runtime configs, package manifests, workflow files, policy files, project-local rule files, tool definition files, transient traversal read/stat failures, or traversal stopped by `max_files` exhaustion.
 
 Each diagnostic includes:
 
@@ -2965,7 +2965,7 @@ Diagnostics do not include raw parser stack traces, raw file contents, secret va
 
 Policy diagnostics include malformed `agentcsp.yaml`, schema-invalid policy files, and explicitly supplied missing `--config` paths. Scans continue with empty advisory policy in those cases so evidence is still generated; default missing policy files do not create diagnostics.
 
-Traversal diagnostics include `SCAN_MAX_FILES_REACHED` when the scanner stops after reaching the configured `max_files` limit. This makes incomplete scans visible in JSON, Markdown, SARIF run properties, and optional `--fail-on-diagnostics` CI gates.
+Traversal diagnostics include `SCAN_FILE_STAT_FAILED`, `SCAN_DIRECTORY_READ_FAILED`, and `SCAN_MAX_FILES_REACHED` when the scanner cannot inspect a non-root path or stops after reaching the configured `max_files` limit. This makes incomplete scans visible in JSON, Markdown, SARIF run properties, and optional `--fail-on-diagnostics` CI gates without emitting raw OS error details.
 
 ## AgentCSP Policy Integrity Posture
 

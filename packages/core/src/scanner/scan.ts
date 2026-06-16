@@ -59,7 +59,7 @@ export async function scanProject(rawConfig: Partial<ScanConfig> & { root_path: 
   const policy = policyResult.policy;
   const detected = await detectSurfaces(files);
   const ruleLoad = await loadScanRules(rootPath);
-  detected.diagnostics.push(...policyResult.diagnostics, ...ruleLoad.diagnostics);
+  detected.diagnostics.push(...walkResult.diagnostics, ...policyResult.diagnostics, ...ruleLoad.diagnostics);
   if (walkResult.coverage.max_files_reached) {
     detected.diagnostics.push(maxFilesReachedDiagnostic(walkResult.coverage.max_files));
   }

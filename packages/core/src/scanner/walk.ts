@@ -1,4 +1,5 @@
 import fs from "node:fs/promises";
+import type { Dirent } from "node:fs";
 import path from "node:path";
 import {
   DEFAULT_INCLUDED_HIDDEN_DIRS,
@@ -6,7 +7,8 @@ import {
   DEFAULT_MAX_FILES,
   LOG_DIR_NAMES
 } from "./defaults.js";
-import type { ScanConfig, ScanCoverageSummary } from "../schemas/index.js";
+import type { ScanConfig, ScanCoverageSummary, ScanDiagnostic } from "../schemas/index.js";
+import { stableId } from "../utils/ids.js";
 import { isPathInsideRoot, relativePath, resolvePathFromRoot } from "../utils/paths.js";
 import { IgnoreMatcher } from "./ignore.js";
 
@@ -20,6 +22,7 @@ export interface WalkedFile {
 export interface WalkResult {
   files: WalkedFile[];
   coverage: ScanCoverageSummary;
+  diagnostics: ScanDiagnostic[];
 }
 
 export async function walkProject(config: ScanConfig): Promise<WalkedFile[]> {
@@ -31,6 +34,7 @@ export async function walkProjectWithCoverage(config: ScanConfig): Promise<WalkR
   const outputIgnorePattern = outputPathIgnorePattern(rootPath, config.output_path);
   const ignore = IgnoreMatcher.load(rootPath, outputIgnorePattern ? [outputIgnorePattern] : []);
   const files: WalkedFile[] = [];
+  const diagnostics: ScanDiagnostic[] = [];
   const maxFiles = config.max_files ?? DEFAULT_MAX_FILES;
   const maxFileSize = config.max_file_size_bytes ?? DEFAULT_MAX_FILE_SIZE_BYTES;
   const coverage: ScanCoverageSummary = {
@@ -58,8 +62,15 @@ export async function walkProjectWithCoverage(config: ScanConfig): Promise<WalkR
       return;
     }
 
+    let entries: Dirent[];
+    try {
+      entries = await fs.readdir(directory, { withFileTypes: true });
+    } catch (error) {
+      if (path.resolve(directory) === rootPath) throw error;
+      diagnostics.push(walkDiagnostic(rootPath, directory, "SCAN_DIRECTORY_READ_FAILED"));
+      return;
+    }
     coverage.directories_visited += 1;
-    const entries = await fs.readdir(directory, { withFileTypes: true });
     const sortedEntries = entries.sort((a, b) => a.name.localeCompare(b.name));
 
     for (const entry of sortedEntries) {
@@ -97,7 +108,13 @@ export async function walkProjectWithCoverage(config: ScanConfig): Promise<WalkR
         return;
       }
 
-      const stats = await fs.stat(absolutePath);
+      let stats: Awaited<ReturnType<typeof fs.stat>>;
+      try {
+        stats = await fs.stat(absolutePath);
+      } catch {
+        diagnostics.push(walkDiagnostic(rootPath, absolutePath, "SCAN_FILE_STAT_FAILED"));
+        continue;
+      }
       const skippedForSize = stats.size > maxFileSize;
       coverage.files_seen += 1;
       if (skippedForSize) coverage.files_skipped_for_size += 1;
@@ -113,7 +130,23 @@ export async function walkProjectWithCoverage(config: ScanConfig): Promise<WalkR
   await visit(rootPath);
   const sortedFiles = files.sort((a, b) => a.relativePath.localeCompare(b.relativePath));
   coverage.files_indexed = sortedFiles.length;
-  return { files: sortedFiles, coverage };
+  return { files: sortedFiles, coverage, diagnostics: diagnostics.sort((a, b) => a.id.localeCompare(b.id)) };
+}
+
+function walkDiagnostic(rootPath: string, absolutePath: string, code: string): ScanDiagnostic {
+  const filePath = relativePath(rootPath, absolutePath);
+  return {
+    id: stableId("diagnostic", [code, filePath]),
+    severity: "warning",
+    code,
+    file_path: filePath,
+    parser: "scanner",
+    reason:
+      code === "SCAN_DIRECTORY_READ_FAILED"
+        ? "Directory could not be read during traversal. Scan continued with that subtree omitted and raw OS details redacted."
+        : "File metadata could not be read during traversal. Scan continued with that file omitted and raw OS details redacted.",
+    content_redacted: true
+  };
 }
 
 function outputPathIgnorePattern(rootPath: string, outputPath: string): string | undefined {

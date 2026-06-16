@@ -33,7 +33,7 @@ Use `--include-logs` when transcripts, cached tool outputs, or generated run sum
 agentcsp scan . --include-logs
 ```
 
-`diagnostics` records redacted scan health warnings, such as malformed MCP, runtime, workflow, package, policy, rule, or tool definition files, as well as incomplete traversal caused by `max_files` exhaustion. `scan_coverage.diagnostics_total`, `diagnostics_warnings`, `diagnostics_errors`, and `diagnostics_info` provide stable machine-readable counts for CI and dashboards. Treat diagnostics as evidence that a file may need syntax repair, scan-scope tuning, or manual review before relying on a quiet scan.
+`diagnostics` records redacted scan health warnings, such as malformed MCP, runtime, workflow, package, policy, rule, or tool definition files, transient traversal read/stat failures, and incomplete traversal caused by `max_files` exhaustion. `scan_coverage.diagnostics_total`, `diagnostics_warnings`, `diagnostics_errors`, and `diagnostics_info` provide stable machine-readable counts for CI and dashboards. Treat diagnostics as evidence that a file may need syntax repair, scan-scope tuning, or manual review before relying on a quiet scan.
 
 ## CI Behavior
 

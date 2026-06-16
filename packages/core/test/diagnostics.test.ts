@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { scanProject } from "../src/scanner/scan.js";
@@ -172,6 +172,54 @@ describe("scan diagnostics", () => {
     });
   });
 
+  it("emits redacted scanner diagnostics when a file disappears during traversal", async () => {
+    const root = await createTraversalFailureFixture();
+    const originalStat = fs.stat;
+    const statSpy = vi.spyOn(fs, "stat").mockImplementation(async (target) => {
+      if (String(target).endsWith("vanishing.txt")) {
+        throw Object.assign(new Error("simulated stat failure with sensitive details"), { code: "ENOENT" });
+      }
+      return originalStat(target);
+    });
+    try {
+      const result = await scanProject({
+        root_path: root,
+        output_path: "/private/tmp/agentcsp-traversal-diagnostic-output",
+        formats: ["json", "md", "sarif"],
+        include_hidden: true,
+        include_logs: false,
+        max_file_size_bytes: 1024 * 1024,
+        max_files: 5000,
+        quiet: true
+      });
+
+      expect(result.manifest.diagnostics).toEqual([
+        expect.objectContaining({
+          code: "SCAN_FILE_STAT_FAILED",
+          parser: "scanner",
+          file_path: "vanishing.txt",
+          content_redacted: true
+        })
+      ]);
+      expect(result.manifest.scan_coverage).toMatchObject({
+        diagnostics_total: 1,
+        diagnostics_warnings: 1
+      });
+      expect(result.manifest.instructions.map((surface) => surface.path)).toEqual(["AGENTS.md"]);
+      expect(JSON.stringify(result.manifest)).not.toContain("simulated stat failure");
+      expect(result.reportMarkdown).toContain("SCAN_FILE_STAT_FAILED");
+      expect(result.reportMarkdown).not.toContain("simulated stat failure");
+      const sarif = JSON.parse(await fs.readFile(result.outputFiles.sarif!, "utf8")) as {
+        runs: Array<{ properties?: { agentcsp_diagnostics?: Array<{ code?: string; file_path?: string }> } }>;
+      };
+      expect(sarif.runs[0]?.properties?.agentcsp_diagnostics).toEqual([
+        expect.objectContaining({ code: "SCAN_FILE_STAT_FAILED", file_path: "vanishing.txt" })
+      ]);
+    } finally {
+      statSpy.mockRestore();
+    }
+  });
+
   it("can fail CI when max_files exhaustion diagnostics are configured as a gate", async () => {
     const root = await createMaxFilesFixture();
     const result = await scanProject({
@@ -324,5 +372,14 @@ async function createMaxFilesFixture(): Promise<string> {
   await fs.writeFile(path.join(root, ".codex", "config.toml"), 'sandbox = "workspace-write"\n', "utf8");
   await fs.writeFile(path.join(root, "AGENTS.md"), "Review repository changes only.\n", "utf8");
   await fs.writeFile(path.join(root, "SKILL.md"), "Use read-only analysis unless approval is granted.\n", "utf8");
+  return root;
+}
+
+async function createTraversalFailureFixture(): Promise<string> {
+  const root = "/private/tmp/agentcsp-traversal-diagnostic-fixture";
+  await fs.rm(root, { recursive: true, force: true });
+  await fs.mkdir(root, { recursive: true });
+  await fs.writeFile(path.join(root, "AGENTS.md"), "Review repository changes only.\n", "utf8");
+  await fs.writeFile(path.join(root, "vanishing.txt"), "transient generated output\n", "utf8");
   return root;
 }
