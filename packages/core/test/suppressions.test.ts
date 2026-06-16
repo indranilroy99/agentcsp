@@ -70,6 +70,24 @@ describe("policy suppressions", () => {
         low: 0,
         info: 0
       },
+      active_suppressions_by_scope: {
+        specific_finding: 0,
+        specific_object: 0,
+        rule_and_path: 0,
+        rule: 0,
+        path: 0,
+        category: 0,
+        severity: suppressed.length,
+        broad: 0
+      },
+      broad_active_suppression_findings: suppressed.length,
+      broad_active_suppression_by_severity: {
+        critical: suppressed.length,
+        high: 0,
+        medium: 0,
+        low: 0,
+        info: 0
+      },
       severity_gate_finding_ids: []
     });
     expect(result.shouldFail).toBe(false);
@@ -77,6 +95,8 @@ describe("policy suppressions", () => {
     expect(result.reportMarkdown).toContain("Suppression status");
     expect(result.reportMarkdown).toContain("Scope");
     expect(result.reportMarkdown).toContain("severity");
+    expect(result.reportMarkdown).toContain("Suppression Review Posture");
+    expect(result.reportMarkdown).toContain("Broad active suppressions");
     expect(result.reportMarkdown).toContain("active suppression exclusion");
     expect(result.reportMarkdown).toContain("severity");
     expect(result.reportMarkdown).not.toContain("active-critical-demo-risk");
@@ -221,6 +241,20 @@ describe("policy suppressions", () => {
       status: "active",
       match_scope: "rule_and_path",
       matched_on: ["rule_id", "path"]
+    });
+    expect(result.manifest.ci_gate_summary).toMatchObject({
+      active_suppressions_by_scope: {
+        specific_finding: 0,
+        specific_object: 0,
+        rule_and_path: 1,
+        rule: 0,
+        path: 0,
+        category: 0,
+        severity: 0,
+        broad: 0
+      },
+      broad_active_suppression_findings: 0,
+      broad_active_suppression_finding_ids: []
     });
     expect(result.reportMarkdown).toContain("rule and path");
   });

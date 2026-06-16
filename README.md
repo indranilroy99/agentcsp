@@ -153,7 +153,7 @@ agentcsp scan . \
   --quiet
 ```
 
-AgentCSP exits with code `0` by default when a scan completes, even if findings exist. CI failure is opt-in through `--fail-on critical`, `--fail-on high`, `--fail-on medium`, `--fail-on low`, `--fail-on-diagnostics`, `--fail-on-expired-suppressions`, or `--fail-on-scan-health degraded|incomplete`. When a gate is enabled, `ci_gate_summary` records the failed gate names plus bounded blocker IDs for severity-gated findings, expired suppressions, and diagnostics.
+AgentCSP exits with code `0` by default when a scan completes, even if findings exist. CI failure is opt-in through `--fail-on critical`, `--fail-on high`, `--fail-on medium`, `--fail-on low`, `--fail-on-diagnostics`, `--fail-on-expired-suppressions`, or `--fail-on-scan-health degraded|incomplete`. When a gate is enabled, `ci_gate_summary` records the failed gate names plus bounded blocker IDs for severity-gated findings, expired suppressions, and diagnostics. It also records suppression scope posture and bounded broad-active-suppression IDs so teams can review accepted-risk records that may hide wide classes of AI security findings.
 
 Use `--fail-on-confidence high` or `--fail-on-confidence very_high` with `--fail-on` when CI should fail only on findings that meet both impact and confidence thresholds.
 

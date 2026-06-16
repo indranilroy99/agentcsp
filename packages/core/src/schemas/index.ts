@@ -56,6 +56,16 @@ export const SuppressionMatchScopeSchema = z.enum([
   "severity",
   "broad"
 ]);
+export const SuppressionScopeCountsSchema = z.object({
+  specific_finding: z.number().int().nonnegative().default(0),
+  specific_object: z.number().int().nonnegative().default(0),
+  rule_and_path: z.number().int().nonnegative().default(0),
+  rule: z.number().int().nonnegative().default(0),
+  path: z.number().int().nonnegative().default(0),
+  category: z.number().int().nonnegative().default(0),
+  severity: z.number().int().nonnegative().default(0),
+  broad: z.number().int().nonnegative().default(0)
+});
 export const FindingBaselineStatusSchema = z.enum(["new", "existing"]);
 export const CiGateStatusSchema = z.enum(["pass", "fail"]);
 export const CiGateNameSchema = z.enum(["severity", "new_findings", "expired_suppressions", "diagnostics", "scan_health"]);
@@ -362,6 +372,18 @@ export const CiGateSummarySchema = z.object({
   severity_gate_by_risk_driver: z.array(TriageRiskDriverCountSchema).default([]),
   active_suppressions_excluded: z.number().int().nonnegative().default(0),
   active_suppressions_by_severity: SeverityCountsSchema.default({ critical: 0, high: 0, medium: 0, low: 0, info: 0 }),
+  active_suppressions_by_scope: SuppressionScopeCountsSchema.default({
+    specific_finding: 0,
+    specific_object: 0,
+    rule_and_path: 0,
+    rule: 0,
+    path: 0,
+    category: 0,
+    severity: 0,
+    broad: 0
+  }),
+  broad_active_suppression_findings: z.number().int().nonnegative().default(0),
+  broad_active_suppression_by_severity: SeverityCountsSchema.default({ critical: 0, high: 0, medium: 0, low: 0, info: 0 }),
   expired_suppression_findings: z.number().int().nonnegative().default(0),
   expired_suppression_by_severity: SeverityCountsSchema.default({ critical: 0, high: 0, medium: 0, low: 0, info: 0 }),
   expired_suppression_by_risk_driver: z.array(TriageRiskDriverCountSchema).default([]),
@@ -371,6 +393,8 @@ export const CiGateSummarySchema = z.object({
   blocker_ids_truncated: z.boolean().default(false),
   severity_gate_finding_ids: z.array(z.string()).default([]),
   severity_gate_finding_ids_truncated: z.boolean().default(false),
+  broad_active_suppression_finding_ids: z.array(z.string()).default([]),
+  broad_active_suppression_finding_ids_truncated: z.boolean().default(false),
   expired_suppression_finding_ids: z.array(z.string()).default([]),
   expired_suppression_finding_ids_truncated: z.boolean().default(false),
   diagnostic_ids: z.array(z.string()).default([]),

@@ -10,7 +10,8 @@ import type {
   ScanHealth,
   ScanHealthGate,
   Severity,
-  SeverityCounts
+  SeverityCounts,
+  SuppressionMatchScope
 } from "../schemas/index.js";
 import { riskDriverOrder, riskDriversForFinding } from "./risk-drivers.js";
 
@@ -37,6 +38,8 @@ const scanHealthRank: Record<ScanHealth, number> = {
 
 export const ciGateBlockerIdLimit = 50;
 
+const broadSuppressionScopes = new Set<SuppressionMatchScope>(["category", "severity", "broad"]);
+
 export function buildCiGateSummary(input: {
   findings: Finding[];
   diagnostics: ScanDiagnostic[];
@@ -54,6 +57,9 @@ export function buildCiGateSummary(input: {
     : [];
   const expiredSuppressionFindings = input.findings.filter((finding) => finding.suppression?.status === "expired");
   const activeSuppressionFindings = input.findings.filter((finding) => finding.suppression?.status === "active");
+  const broadActiveSuppressionFindings = activeSuppressionFindings.filter((finding) =>
+    broadSuppressionScopes.has(finding.suppression?.match_scope ?? "broad")
+  );
   const activeSuppressionsExcluded = activeSuppressionFindings.length;
   const failedGates: CiGateName[] = [];
   const diagnosticIds = input.diagnostics.map((diagnostic) => diagnostic.id).sort();
@@ -74,6 +80,7 @@ export function buildCiGateSummary(input: {
     failedGates.push("scan_health");
   }
   const severityGateFindingIds = limitIds(severityGateFindings.map((finding) => finding.id));
+  const broadActiveSuppressionFindingIds = limitIds(broadActiveSuppressionFindings.map((finding) => finding.id));
   const expiredSuppressionFindingIds = limitIds(expiredSuppressionFindings.map((finding) => finding.id));
   const limitedDiagnosticIds = limitIds(diagnosticIds);
 
@@ -96,6 +103,9 @@ export function buildCiGateSummary(input: {
     severity_gate_by_risk_driver: countByRiskDriver(severityGateFindings),
     active_suppressions_excluded: activeSuppressionsExcluded,
     active_suppressions_by_severity: countBySeverity(activeSuppressionFindings),
+    active_suppressions_by_scope: countBySuppressionScope(activeSuppressionFindings),
+    broad_active_suppression_findings: broadActiveSuppressionFindings.length,
+    broad_active_suppression_by_severity: countBySeverity(broadActiveSuppressionFindings),
     expired_suppression_findings: expiredSuppressionFindings.length,
     expired_suppression_by_severity: countBySeverity(expiredSuppressionFindings),
     expired_suppression_by_risk_driver: countByRiskDriver(expiredSuppressionFindings),
@@ -104,10 +114,14 @@ export function buildCiGateSummary(input: {
     blocker_id_limit: ciGateBlockerIdLimit,
     blocker_ids_truncated:
       severityGateFindings.length > severityGateFindingIds.length ||
+      broadActiveSuppressionFindings.length > broadActiveSuppressionFindingIds.length ||
       expiredSuppressionFindings.length > expiredSuppressionFindingIds.length ||
       diagnosticIds.length > limitedDiagnosticIds.length,
     severity_gate_finding_ids: severityGateFindingIds,
     severity_gate_finding_ids_truncated: severityGateFindings.length > severityGateFindingIds.length,
+    broad_active_suppression_finding_ids: broadActiveSuppressionFindingIds,
+    broad_active_suppression_finding_ids_truncated:
+      broadActiveSuppressionFindings.length > broadActiveSuppressionFindingIds.length,
     expired_suppression_finding_ids: expiredSuppressionFindingIds,
     expired_suppression_finding_ids_truncated:
       expiredSuppressionFindings.length > expiredSuppressionFindingIds.length,
@@ -175,4 +189,21 @@ function countByRiskDriver(findings: Finding[]): CiGateSummary["severity_gate_by
         b.max_risk_score - a.max_risk_score ||
         riskDriverOrder.indexOf(a.driver) - riskDriverOrder.indexOf(b.driver)
     );
+}
+
+function countBySuppressionScope(findings: Finding[]): CiGateSummary["active_suppressions_by_scope"] {
+  const counts: CiGateSummary["active_suppressions_by_scope"] = {
+    specific_finding: 0,
+    specific_object: 0,
+    rule_and_path: 0,
+    rule: 0,
+    path: 0,
+    category: 0,
+    severity: 0,
+    broad: 0
+  };
+  for (const finding of findings) {
+    counts[finding.suppression?.match_scope ?? "broad"] += 1;
+  }
+  return counts;
 }

@@ -49,6 +49,19 @@ describe("CI gate summary", () => {
       diagnostic_ids_truncated: true,
       expired_suppression_findings: 0,
       active_suppressions_by_severity: { critical: 0, high: 0, medium: 0, low: 0, info: 0 },
+      active_suppressions_by_scope: {
+        specific_finding: 0,
+        specific_object: 0,
+        rule_and_path: 0,
+        rule: 0,
+        path: 0,
+        category: 0,
+        severity: 0,
+        broad: 0
+      },
+      broad_active_suppression_findings: 0,
+      broad_active_suppression_by_severity: { critical: 0, high: 0, medium: 0, low: 0, info: 0 },
+      broad_active_suppression_finding_ids_truncated: false,
       expired_suppression_by_severity: { critical: 0, high: 0, medium: 0, low: 0, info: 0 },
       expired_suppression_by_risk_driver: [],
       expired_suppression_finding_ids_truncated: false
@@ -132,11 +145,11 @@ describe("CI gate summary", () => {
             actions: ["execute"],
             riskScore: 90
           }),
-          suppression: { status: "expired" }
+          suppression: { status: "expired", match_scope: "severity" }
         } as Finding,
         {
           ...finding("active_critical", "critical", "very_high"),
-          suppression: { status: "active" }
+          suppression: { status: "active", match_scope: "severity" }
         } as Finding
       ],
       diagnostics: [],
@@ -213,6 +226,19 @@ describe("CI gate summary", () => {
       ],
       active_suppressions_excluded: 1,
       active_suppressions_by_severity: { critical: 1, high: 0, medium: 0, low: 0, info: 0 },
+      active_suppressions_by_scope: {
+        specific_finding: 0,
+        specific_object: 0,
+        rule_and_path: 0,
+        rule: 0,
+        path: 0,
+        category: 0,
+        severity: 1,
+        broad: 0
+      },
+      broad_active_suppression_findings: 1,
+      broad_active_suppression_by_severity: { critical: 1, high: 0, medium: 0, low: 0, info: 0 },
+      broad_active_suppression_finding_ids: ["active_critical"],
       expired_suppression_findings: 1,
       expired_suppression_by_severity: { critical: 0, high: 1, medium: 0, low: 0, info: 0 },
       expired_suppression_by_risk_driver: [

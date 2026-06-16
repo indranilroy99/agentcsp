@@ -282,6 +282,7 @@ function renderCiGateSummary(manifest: AgentManifest): string {
     `- Evaluated findings: ${summary.evaluated_findings}`,
     `- Severity gate findings: ${summary.severity_gate_findings}`,
     `- Active suppressions excluded: ${summary.active_suppressions_excluded}`,
+    `- Broad active suppressions: ${summary.broad_active_suppression_findings}`,
     `- Expired suppression findings: ${summary.expired_suppression_findings}`,
     `- Diagnostics: ${summary.diagnostic_count}`,
     `- Blocker ID limit: ${summary.blocker_id_limit}`,
@@ -294,6 +295,10 @@ function renderCiGateSummary(manifest: AgentManifest): string {
     "### CI Gate Blocker Mix",
     "",
     renderGateBlockerMix(summary),
+    "",
+    "### Suppression Review Posture",
+    "",
+    renderSuppressionReviewPosture(summary),
     "",
     "### CI Gate Risk Drivers",
     "",
@@ -323,6 +328,28 @@ function renderGateBlockerMix(summary: NonNullable<AgentManifest["ci_gate_summar
   ].join("\n");
 }
 
+function renderSuppressionReviewPosture(summary: NonNullable<AgentManifest["ci_gate_summary"]>): string {
+  const scopes = summary.active_suppressions_by_scope;
+  const broad = summary.broad_active_suppression_by_severity;
+  const ids = summary.broad_active_suppression_finding_ids;
+  return [
+    "| Scope | Active suppressions |",
+    "| --- | --- |",
+    `| specific finding | ${scopes.specific_finding} |`,
+    `| specific object | ${scopes.specific_object} |`,
+    `| rule and path | ${scopes.rule_and_path} |`,
+    `| rule | ${scopes.rule} |`,
+    `| path | ${scopes.path} |`,
+    `| category | ${scopes.category} |`,
+    `| severity | ${scopes.severity} |`,
+    `| broad | ${scopes.broad} |`,
+    "",
+    "| Broad active suppression severity | Critical | High | Medium | Low | Info | IDs shown | Truncated |",
+    "| --- | --- | --- | --- | --- | --- | --- | --- |",
+    `| broad active suppression | ${broad.critical} | ${broad.high} | ${broad.medium} | ${broad.low} | ${broad.info} | ${ids.length} | \`${summary.broad_active_suppression_finding_ids_truncated}\` |`
+  ].join("\n");
+}
+
 function renderGateRiskDrivers(summary: NonNullable<AgentManifest["ci_gate_summary"]>): string {
   const rows = [
     ...summary.severity_gate_by_risk_driver.map((item) => ({ set: "severity/new finding", ...item })),
@@ -342,6 +369,7 @@ function renderGateRiskDrivers(summary: NonNullable<AgentManifest["ci_gate_summa
 function renderGateBlockers(summary: NonNullable<AgentManifest["ci_gate_summary"]>): string {
   const rows: Array<[string, string]> = [
     ...summary.severity_gate_finding_ids.map((id): [string, string] => ["severity/new finding", id]),
+    ...summary.broad_active_suppression_finding_ids.map((id): [string, string] => ["broad active suppression", id]),
     ...summary.expired_suppression_finding_ids.map((id): [string, string] => ["expired suppression", id]),
     ...summary.diagnostic_ids.map((id): [string, string] => ["diagnostic", id])
   ];

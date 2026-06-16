@@ -2949,12 +2949,14 @@ The summary includes:
 - severity, confidence, and risk-driver mix for findings that matched the severity/confidence gate
 - active suppressions excluded from severity gates
 - severity mix for active suppressions excluded from severity gates
+- scope mix for active suppressions excluded from severity gates
+- broad active suppression count, severity mix, bounded IDs, and truncation state
 - expired suppression finding count
 - severity and risk-driver mix for expired suppression findings
 - diagnostic count
 - failed gate names, including `scan_health` when the configured health threshold is met
 - bounded blocker ID limit and truncation flags
-- bounded blocker IDs for severity-gated findings, expired suppressions, and diagnostics
+- bounded IDs for severity-gated findings, broad active suppressions, expired suppressions, and diagnostics
 
 The CI gate summary does not include raw evidence, secret values, policy reasons, unredacted paths beyond the findings already present in the manifest, or raw diagnostic content.
 
