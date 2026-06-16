@@ -138,6 +138,13 @@ describe("scanProject", () => {
         };
         results?: Array<{
           rank?: number;
+          partialFingerprints?: {
+            agentcspFindingId?: string;
+            agentcspObjectId?: string;
+            agentcspRuleObject?: string;
+            agentcspRulePath?: string;
+            agentcspSurfacePath?: string;
+          };
           properties?: { "security-severity"?: string; precision?: string; rule_tags?: string[] };
         }>;
         properties?: {
@@ -179,6 +186,13 @@ describe("scanProject", () => {
     expect(firstRule?.defaultConfiguration?.rank).toBeGreaterThan(0);
     expect(firstRule?.help?.markdown).toContain("Recommended control:");
     expect(firstResult?.rank).toBeGreaterThan(0);
+    expect(firstResult?.partialFingerprints).toMatchObject({
+      agentcspFindingId: expect.any(String),
+      agentcspObjectId: expect.any(String),
+      agentcspRuleObject: expect.any(String),
+      agentcspRulePath: expect.any(String),
+      agentcspSurfacePath: expect.any(String)
+    });
     expect(firstResult?.properties?.["security-severity"]).toMatch(/^\d+\.\d$/u);
     expect(firstResult?.properties?.precision).toBeDefined();
     expect(firstResult?.properties?.rule_tags?.length).toBeGreaterThan(0);

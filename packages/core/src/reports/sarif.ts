@@ -91,7 +91,10 @@ export function renderSarifReport(manifest: AgentManifest): Record<string, unkno
           ],
           partialFingerprints: {
             agentcspFindingId: finding.id,
-            agentcspObjectId: finding.matched_object.id
+            agentcspObjectId: finding.matched_object.id,
+            agentcspRuleObject: `${finding.rule_id}:${finding.matched_object.id}`,
+            agentcspRulePath: `${finding.rule_id}:${sarifFingerprintPath(finding.file_path)}`,
+            agentcspSurfacePath: `${finding.matched_object.type}:${sarifFingerprintPath(finding.file_path)}`
           },
           properties: {
             severity: finding.severity,
@@ -166,6 +169,10 @@ function sarifArtifactUri(value: string): string {
   if (/^[a-z][a-z0-9+.-]*:\/\//iu.test(trimmed)) return "<redacted-uri>";
   if (/^(?:\/|[A-Za-z]:[\\/]|\\\\)/u.test(trimmed)) return "<redacted-path>";
   return trimmed.replaceAll("\\", "/");
+}
+
+function sarifFingerprintPath(value: string): string {
+  return sarifArtifactUri(value);
 }
 
 function sarifLevel(severity: Severity): SarifLevel {

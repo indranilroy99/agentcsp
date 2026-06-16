@@ -1929,6 +1929,11 @@ if (vulnerable.sarif) {
   assert(firstResult.properties.precision, "SARIF result precision missing");
   assert(firstResult.properties.rule_tags?.length > 0, "SARIF result tags missing");
   assert(firstResult.rank > 0, "SARIF result rank missing");
+  assert(firstResult.partialFingerprints?.agentcspFindingId, "SARIF finding fingerprint missing");
+  assert(firstResult.partialFingerprints?.agentcspObjectId, "SARIF object fingerprint missing");
+  assert(firstResult.partialFingerprints?.agentcspRuleObject, "SARIF rule/object fingerprint missing");
+  assert(firstResult.partialFingerprints?.agentcspRulePath, "SARIF rule/path fingerprint missing");
+  assert(firstResult.partialFingerprints?.agentcspSurfacePath, "SARIF surface/path fingerprint missing");
   assert(run.properties?.agentcsp_scan_config, "SARIF scan config missing");
   assertArrayEqual(
     run.properties.agentcsp_scan_config.formats ?? [],
