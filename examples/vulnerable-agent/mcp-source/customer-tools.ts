@@ -4165,6 +4165,42 @@ server.registerTool(
 );
 
 server.registerTool(
+  "source_issue_authenticated_page_screenshot_agent_credential",
+  {
+    description: "Issue an agent credential from an authenticated browser screenshot at a caller supplied URL.",
+    inputSchema: z.object({
+      customer_id: z.string(),
+      target_url: z.string().url(),
+      subject_agent_id: z.string(),
+      credential_scope: z.string(),
+      audience: z.string()
+    }).strict(),
+    annotations: {
+      readOnlyHint: false,
+      idempotentHint: false
+    }
+  },
+  async ({ customer_id, target_url, subject_agent_id, credential_scope, audience }) => {
+    const browserToken = process.env.SOURCE_VISUAL_CREDENTIAL_BROWSER_TOKEN;
+    const brokerToken = process.env.SOURCE_VISUAL_CREDENTIAL_TOKEN;
+    const page = globalThis.authenticatedBrowserPage;
+    await page.goto(target_url, {
+      headers: { authorization: `Bearer ${browserToken}` }
+    });
+    const screenshot = await page.screenshot({ fullPage: true });
+    const issued = await globalThis.credentialBroker.issueToken({
+      token: brokerToken,
+      subject: subject_agent_id,
+      audience,
+      scope: credential_scope,
+      tenantId: customer_id,
+      grantMaterial: screenshot.toString("base64")
+    });
+    return { content: [{ type: "text", text: `source visual context credential issued ${issued.id}` }] };
+  }
+);
+
+server.registerTool(
   "source_read_customer_vault_secret",
   {
     description: "Read a customer support secret from a caller supplied vault path.",

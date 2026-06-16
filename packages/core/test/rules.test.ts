@@ -192,6 +192,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-188")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-189")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-190")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-191")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-001")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-002")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-003")).toBe(true);
@@ -6261,6 +6262,7 @@ describe("rule engine", () => {
       "langchain_export_customer_context",
       "langchain_grant_authenticated_page_screenshot_authorization",
       "langchain_grant_url_response_authorization",
+      "langchain_issue_authenticated_page_screenshot_agent_credential",
       "langchain_issue_url_response_agent_credential",
       "langchain_post_authenticated_page_screenshot_external",
       "langchain_publish_authenticated_page_screenshot_prompt_registry",
@@ -6276,6 +6278,7 @@ describe("rule engine", () => {
       "source_export_customer_record",
       "source_grant_authenticated_page_screenshot_authorization",
       "source_grant_url_response_authorization",
+      "source_issue_authenticated_page_screenshot_agent_credential",
       "source_issue_url_response_agent_credential",
       "source_post_authenticated_page_screenshot_external",
       "source_publish_authenticated_page_screenshot_prompt_registry",
@@ -9050,6 +9053,7 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerAgentConfigWriteFindings)).not.toContain("Rewrite AGENTS.md from caller supplied customer context");
     const sourceHandlerCredentialIssuanceFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-025");
     expect(sourceHandlerCredentialIssuanceFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
+      "langchain_issue_authenticated_page_screenshot_agent_credential",
       "langchain_issue_env_secret_agent_credential",
       "langchain_issue_local_key_agent_credential",
       "langchain_issue_model_selected_credential",
@@ -9058,6 +9062,7 @@ describe("rule engine", () => {
       "langchain_issue_url_response_agent_credential",
       "langchain_issue_vault_backed_agent_credential",
       "langchain_mint_agent_session_token",
+      "source_issue_authenticated_page_screenshot_agent_credential",
       "source_issue_env_secret_agent_credential",
       "source_issue_local_key_agent_credential",
       "source_issue_model_selected_credential",
@@ -9141,6 +9146,7 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerCredentialIssuanceFindings)).not.toContain("framework model selected credential issued");
     const sourceHandlerTaintedCredentialIssuanceFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-042");
     expect(sourceHandlerTaintedCredentialIssuanceFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
+      "langchain_issue_authenticated_page_screenshot_agent_credential",
       "langchain_issue_env_secret_agent_credential",
       "langchain_issue_local_key_agent_credential",
       "langchain_issue_model_selected_credential",
@@ -9149,6 +9155,7 @@ describe("rule engine", () => {
       "langchain_issue_url_response_agent_credential",
       "langchain_issue_vault_backed_agent_credential",
       "langchain_mint_agent_session_token",
+      "source_issue_authenticated_page_screenshot_agent_credential",
       "source_issue_env_secret_agent_credential",
       "source_issue_local_key_agent_credential",
       "source_issue_model_selected_credential",
@@ -12278,6 +12285,87 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerVisualContextSafetyPolicyBridgeFindings)).not.toContain("source visual context weakened safety policy");
     expect(JSON.stringify(sourceHandlerVisualContextSafetyPolicyBridgeFindings)).not.toContain("framework visual context weakened safety policy");
     expect(JSON.stringify(sourceHandlerVisualContextSafetyPolicyBridgeFindings)).not.toContain("Apply a guardrail override");
+    const sourceHandlerVisualContextCredentialIssuanceBridgeFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-191");
+    expect(sourceHandlerVisualContextCredentialIssuanceBridgeFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
+      "langchain_issue_authenticated_page_screenshot_agent_credential",
+      "source_issue_authenticated_page_screenshot_agent_credential"
+    ]);
+    expect(sourceHandlerVisualContextCredentialIssuanceBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
+    expect(sourceHandlerVisualContextCredentialIssuanceBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerVisualContextCredentialIssuanceBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
+    expect(sourceHandlerVisualContextCredentialIssuanceBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
+    expect(sourceHandlerVisualContextCredentialIssuanceBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.source_tool_handler_redacted === true
+    )).toBe(true);
+    expect(sourceHandlerVisualContextCredentialIssuanceBridgeFindings.every((finding) => finding.matched_object.metadata.handler_browser_automation === true)).toBe(true);
+    expect(sourceHandlerVisualContextCredentialIssuanceBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.handler_tainted_browser_automation_target === true
+    )).toBe(true);
+    expect(sourceHandlerVisualContextCredentialIssuanceBridgeFindings.every((finding) => finding.matched_object.metadata.handler_visual_context_capture === true)).toBe(true);
+    expect(sourceHandlerVisualContextCredentialIssuanceBridgeFindings.every((finding) => finding.matched_object.metadata.handler_credential_issuance === true)).toBe(true);
+    expect(sourceHandlerVisualContextCredentialIssuanceBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.handler_tainted_credential_issuance_input === true
+    )).toBe(true);
+    expect(sourceHandlerVisualContextCredentialIssuanceBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.handler_visual_context_credential_issuance_bridge === true
+    )).toBe(true);
+    expect(sourceHandlerVisualContextCredentialIssuanceBridgeFindings.every((finding) => finding.matched_object.metadata.handler_secret_env_access === true)).toBe(true);
+    expect(sourceHandlerVisualContextCredentialIssuanceBridgeFindings.every((finding) => finding.matched_object.metadata.browser_automation === true)).toBe(true);
+    expect(sourceHandlerVisualContextCredentialIssuanceBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.tainted_browser_automation_target === true
+    )).toBe(true);
+    expect(sourceHandlerVisualContextCredentialIssuanceBridgeFindings.every((finding) => finding.matched_object.metadata.visual_context_capture === true)).toBe(true);
+    expect(sourceHandlerVisualContextCredentialIssuanceBridgeFindings.every((finding) => finding.matched_object.metadata.credential_issuance === true)).toBe(true);
+    expect(sourceHandlerVisualContextCredentialIssuanceBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.tainted_credential_issuance_input === true
+    )).toBe(true);
+    expect(sourceHandlerVisualContextCredentialIssuanceBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.visual_context_credential_issuance_bridge === true
+    )).toBe(true);
+    expect(sourceHandlerVisualContextCredentialIssuanceBridgeFindings.every((finding) => finding.matched_object.metadata.accepts_url_input === true)).toBe(true);
+    expect(sourceHandlerVisualContextCredentialIssuanceBridgeFindings.every((finding) => finding.matched_object.metadata.accepts_customer_data_input === true)).toBe(true);
+    for (const authorityClass of [
+      "browser_automation",
+      "tainted_browser_automation_target",
+      "visual_context_capture",
+      "credential_issuance",
+      "tainted_credential_issuance_input",
+      "visual_context_credential_issuance_bridge"
+    ]) {
+      expect(sourceHandlerVisualContextCredentialIssuanceBridgeFindings.every((finding) =>
+        finding.matched_object.metadata.authority_classes.includes(authorityClass)
+      )).toBe(true);
+    }
+    for (const handlerAuthorityClass of [
+      "handler_browser_automation",
+      "handler_tainted_browser_automation_target",
+      "handler_visual_context_capture",
+      "handler_credential_issuance",
+      "handler_tainted_credential_issuance_input",
+      "handler_visual_context_credential_issuance_bridge"
+    ]) {
+      expect(sourceHandlerVisualContextCredentialIssuanceBridgeFindings.every((finding) =>
+        finding.matched_object.metadata.handler_authority_classes.includes(handlerAuthorityClass)
+      )).toBe(true);
+    }
+    expect(sourceHandlerVisualContextCredentialIssuanceBridgeFindings.every((finding) => finding.matched_object.actions.includes("read"))).toBe(true);
+    expect(sourceHandlerVisualContextCredentialIssuanceBridgeFindings.every((finding) => finding.matched_object.actions.includes("send"))).toBe(true);
+    expect(sourceHandlerVisualContextCredentialIssuanceBridgeFindings.every((finding) => finding.matched_object.actions.includes("write"))).toBe(true);
+    expect(sourceHandlerVisualContextCredentialIssuanceBridgeFindings.every((finding) => finding.matched_object.external_reach === true)).toBe(true);
+    expect(sourceHandlerVisualContextCredentialIssuanceBridgeFindings.every((finding) => finding.matched_object.secret_exposure === true)).toBe(true);
+    expect(sourceHandlerVisualContextCredentialIssuanceBridgeFindings.every((finding) => finding.matched_object.side_effect === true)).toBe(true);
+    expect(sourceHandlerVisualContextCredentialIssuanceBridgeFindings.every((finding) => finding.matched_object.reversible === false)).toBe(true);
+    expect(JSON.stringify(sourceHandlerVisualContextCredentialIssuanceBridgeFindings)).not.toContain("authenticatedBrowserPage");
+    expect(JSON.stringify(sourceHandlerVisualContextCredentialIssuanceBridgeFindings)).not.toContain("browser_session.page");
+    expect(JSON.stringify(sourceHandlerVisualContextCredentialIssuanceBridgeFindings)).not.toContain("page.goto");
+    expect(JSON.stringify(sourceHandlerVisualContextCredentialIssuanceBridgeFindings)).not.toContain("page.screenshot");
+    expect(JSON.stringify(sourceHandlerVisualContextCredentialIssuanceBridgeFindings)).not.toContain("screenshot.toString");
+    expect(JSON.stringify(sourceHandlerVisualContextCredentialIssuanceBridgeFindings)).not.toContain("screenshot_bytes");
+    expect(JSON.stringify(sourceHandlerVisualContextCredentialIssuanceBridgeFindings)).not.toContain("credentialBroker.issueToken");
+    expect(JSON.stringify(sourceHandlerVisualContextCredentialIssuanceBridgeFindings)).not.toContain("credential_broker.issue_token");
+    expect(JSON.stringify(sourceHandlerVisualContextCredentialIssuanceBridgeFindings)).not.toContain("source visual context credential issued");
+    expect(JSON.stringify(sourceHandlerVisualContextCredentialIssuanceBridgeFindings)).not.toContain("framework visual context credential issued");
+    expect(JSON.stringify(sourceHandlerVisualContextCredentialIssuanceBridgeFindings)).not.toContain("Issue an agent credential");
     const sourceHandlerVisualContextTaskQueueBridgeFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-104");
     expect(sourceHandlerVisualContextTaskQueueBridgeFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_enqueue_authenticated_page_screenshot_job",

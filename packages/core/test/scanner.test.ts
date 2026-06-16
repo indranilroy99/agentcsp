@@ -825,6 +825,9 @@ describe("scanner", () => {
     const sourceVisualContextSafetyPolicyBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "source_apply_authenticated_page_screenshot_guardrail_override"
     );
+    const sourceVisualContextCredentialIssuanceBridgeTool = surfaces.tools.find(
+      (surface) => surface.name === "source_issue_authenticated_page_screenshot_agent_credential"
+    );
     const sourceVisualContextAgentDelegationBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "source_delegate_authenticated_page_screenshot_remote_agent"
     );
@@ -1219,6 +1222,9 @@ describe("scanner", () => {
     );
     const langchainVisualContextSafetyPolicyBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "langchain_apply_authenticated_page_screenshot_guardrail_override"
+    );
+    const langchainVisualContextCredentialIssuanceBridgeTool = surfaces.tools.find(
+      (surface) => surface.name === "langchain_issue_authenticated_page_screenshot_agent_credential"
     );
     const langchainVisualContextAgentDelegationBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "langchain_delegate_authenticated_page_screenshot_remote_agent"
@@ -11760,6 +11766,86 @@ describe("scanner", () => {
     expect(JSON.stringify(sourceVisualContextSafetyPolicyBridgeTool)).not.toContain("safetyPolicyClient.updatePolicy");
     expect(JSON.stringify(sourceVisualContextSafetyPolicyBridgeTool)).not.toContain("source visual context weakened safety policy");
     expect(JSON.stringify(sourceVisualContextSafetyPolicyBridgeTool)).not.toContain("Apply a guardrail override");
+    expect(sourceVisualContextCredentialIssuanceBridgeTool).toMatchObject({
+      path: "mcp-source/customer-tools.ts",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["call", "execute", "publish", "read", "send", "write"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(sourceVisualContextCredentialIssuanceBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_mcp_source_tool: true,
+      mcp_source_tool_registration: true,
+      mcp_source_tool_registration_kind: "registerTool",
+      mcp_source_tool_argument_count: 3,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_url_input: true,
+      accepts_customer_data_input: true,
+      credential_issuance: true,
+      tainted_credential_issuance_input: true,
+      visual_context_credential_issuance_bridge: true,
+      browser_automation: true,
+      tainted_browser_automation_target: true,
+      visual_context_capture: true,
+      handler_credential_issuance: true,
+      handler_tainted_credential_issuance_input: true,
+      handler_visual_context_credential_issuance_bridge: true,
+      handler_browser_automation: true,
+      handler_tainted_browser_automation_target: true,
+      handler_visual_context_capture: true,
+      handler_secret_env_access: true,
+      handler_signal_count: 7,
+      open_world_schema: false
+    });
+    for (const authorityClass of [
+      "browser_automation",
+      "tainted_browser_automation_target",
+      "visual_context_capture",
+      "credential_issuance",
+      "tainted_credential_issuance_input",
+      "visual_context_credential_issuance_bridge"
+    ]) {
+      expect(sourceVisualContextCredentialIssuanceBridgeTool?.metadata.authority_classes).toContain(authorityClass);
+    }
+    for (const handlerClass of [
+      "handler_browser_automation",
+      "handler_tainted_browser_automation_target",
+      "handler_visual_context_capture",
+      "handler_credential_issuance",
+      "handler_tainted_credential_issuance_input",
+      "handler_visual_context_credential_issuance_bridge"
+    ]) {
+      expect(sourceVisualContextCredentialIssuanceBridgeTool?.metadata.handler_authority_classes).toContain(handlerClass);
+    }
+    expect(sourceVisualContextCredentialIssuanceBridgeTool?.metadata.handler_env_key_names).toEqual([
+      "SOURCE_VISUAL_CREDENTIAL_BROWSER_TOKEN",
+      "SOURCE_VISUAL_CREDENTIAL_TOKEN"
+    ]);
+    expect(sourceVisualContextCredentialIssuanceBridgeTool?.metadata.schema_properties).toEqual([
+      "audience",
+      "credential_scope",
+      "customer_id",
+      "subject_agent_id",
+      "target_url"
+    ]);
+    expect(sourceVisualContextCredentialIssuanceBridgeTool?.metadata.required_properties).toEqual([
+      "audience",
+      "credential_scope",
+      "customer_id",
+      "subject_agent_id",
+      "target_url"
+    ]);
+    expect(JSON.stringify(sourceVisualContextCredentialIssuanceBridgeTool)).not.toContain("authenticatedBrowserPage");
+    expect(JSON.stringify(sourceVisualContextCredentialIssuanceBridgeTool)).not.toContain("page.goto");
+    expect(JSON.stringify(sourceVisualContextCredentialIssuanceBridgeTool)).not.toContain("page.screenshot");
+    expect(JSON.stringify(sourceVisualContextCredentialIssuanceBridgeTool)).not.toContain("screenshot.toString");
+    expect(JSON.stringify(sourceVisualContextCredentialIssuanceBridgeTool)).not.toContain("credentialBroker.issueToken");
+    expect(JSON.stringify(sourceVisualContextCredentialIssuanceBridgeTool)).not.toContain("source visual context credential issued");
+    expect(JSON.stringify(sourceVisualContextCredentialIssuanceBridgeTool)).not.toContain("Issue an agent credential");
     expect(sourceVisualContextAgentDelegationBridgeTool).toMatchObject({
       path: "mcp-source/customer-tools.ts",
       data_classes: ["confidential", "credential", "pii"],
@@ -25807,6 +25893,87 @@ describe("scanner", () => {
     expect(JSON.stringify(langchainVisualContextSafetyPolicyBridgeTool)).not.toContain("safety_policy_client.update_policy");
     expect(JSON.stringify(langchainVisualContextSafetyPolicyBridgeTool)).not.toContain("framework visual context weakened safety policy");
     expect(JSON.stringify(langchainVisualContextSafetyPolicyBridgeTool)).not.toContain("Apply a guardrail override");
+    expect(langchainVisualContextCredentialIssuanceBridgeTool).toMatchObject({
+      path: "framework-tools/langchain_tools.py",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["call", "execute", "publish", "read", "send", "write"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(langchainVisualContextCredentialIssuanceBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_agent_framework_source_tool: true,
+      agent_framework_source_tool: true,
+      agent_framework_source_tool_framework: "langchain",
+      agent_framework_source_tool_registration_kind: "python_tool_decorator",
+      agent_framework_source_tool_argument_count: 5,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_url_input: true,
+      accepts_customer_data_input: true,
+      credential_issuance: true,
+      tainted_credential_issuance_input: true,
+      visual_context_credential_issuance_bridge: true,
+      browser_automation: true,
+      tainted_browser_automation_target: true,
+      visual_context_capture: true,
+      handler_credential_issuance: true,
+      handler_tainted_credential_issuance_input: true,
+      handler_visual_context_credential_issuance_bridge: true,
+      handler_browser_automation: true,
+      handler_tainted_browser_automation_target: true,
+      handler_visual_context_capture: true,
+      handler_secret_env_access: true,
+      handler_signal_count: 7,
+      open_world_schema: false
+    });
+    for (const authorityClass of [
+      "browser_automation",
+      "tainted_browser_automation_target",
+      "visual_context_capture",
+      "credential_issuance",
+      "tainted_credential_issuance_input",
+      "visual_context_credential_issuance_bridge"
+    ]) {
+      expect(langchainVisualContextCredentialIssuanceBridgeTool?.metadata.authority_classes).toContain(authorityClass);
+    }
+    for (const handlerClass of [
+      "handler_browser_automation",
+      "handler_tainted_browser_automation_target",
+      "handler_visual_context_capture",
+      "handler_credential_issuance",
+      "handler_tainted_credential_issuance_input",
+      "handler_visual_context_credential_issuance_bridge"
+    ]) {
+      expect(langchainVisualContextCredentialIssuanceBridgeTool?.metadata.handler_authority_classes).toContain(handlerClass);
+    }
+    expect(langchainVisualContextCredentialIssuanceBridgeTool?.metadata.handler_env_key_names).toEqual([
+      "LANGCHAIN_VISUAL_CREDENTIAL_BROWSER_TOKEN",
+      "LANGCHAIN_VISUAL_CREDENTIAL_TOKEN"
+    ]);
+    expect(langchainVisualContextCredentialIssuanceBridgeTool?.metadata.schema_properties).toEqual([
+      "audience",
+      "credential_scope",
+      "customer_id",
+      "subject_agent_id",
+      "target_url"
+    ]);
+    expect(langchainVisualContextCredentialIssuanceBridgeTool?.metadata.required_properties).toEqual([
+      "audience",
+      "credential_scope",
+      "customer_id",
+      "subject_agent_id",
+      "target_url"
+    ]);
+    expect(JSON.stringify(langchainVisualContextCredentialIssuanceBridgeTool)).not.toContain("browser_session.page");
+    expect(JSON.stringify(langchainVisualContextCredentialIssuanceBridgeTool)).not.toContain("page.goto");
+    expect(JSON.stringify(langchainVisualContextCredentialIssuanceBridgeTool)).not.toContain("page.screenshot");
+    expect(JSON.stringify(langchainVisualContextCredentialIssuanceBridgeTool)).not.toContain("screenshot_bytes");
+    expect(JSON.stringify(langchainVisualContextCredentialIssuanceBridgeTool)).not.toContain("credential_broker.issue_token");
+    expect(JSON.stringify(langchainVisualContextCredentialIssuanceBridgeTool)).not.toContain("framework visual context credential issued");
+    expect(JSON.stringify(langchainVisualContextCredentialIssuanceBridgeTool)).not.toContain("Issue an agent credential");
     expect(langchainVisualContextAgentDelegationBridgeTool).toMatchObject({
       path: "framework-tools/langchain_tools.py",
       data_classes: ["confidential", "credential", "pii"],

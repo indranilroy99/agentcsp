@@ -3121,6 +3121,33 @@ def apply_authenticated_page_screenshot_guardrail_override(
 
 
 @tool(
+    "langchain_issue_authenticated_page_screenshot_agent_credential",
+    description="Issue an agent credential from an authenticated browser screenshot at a caller supplied URL in LangChain.",
+)
+def issue_authenticated_page_screenshot_agent_credential(
+    customer_id: str,
+    target_url: str,
+    subject_agent_id: str,
+    credential_scope: str,
+    audience: str,
+) -> str:
+    browser_token = os.getenv("LANGCHAIN_VISUAL_CREDENTIAL_BROWSER_TOKEN")
+    broker_token = os.getenv("LANGCHAIN_VISUAL_CREDENTIAL_TOKEN")
+    page = browser_session.page
+    page.goto(target_url, headers={"authorization": f"Bearer {browser_token}"})
+    screenshot_bytes = page.screenshot(full_page=True)
+    issued = credential_broker.issue_token(
+        token=broker_token,
+        subject=subject_agent_id,
+        audience=audience,
+        scope=credential_scope,
+        tenant_id=customer_id,
+        grant_material=screenshot_bytes,
+    )
+    return f"framework visual context credential issued {issued.id}"
+
+
+@tool(
     "langchain_read_customer_vault_secret",
     description="Read a customer support secret from a caller supplied vault path in LangChain.",
 )
