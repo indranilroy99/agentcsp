@@ -1,0 +1,124 @@
+id: AGENTCSP-TOOL-195
+name: Source tool handler executes authenticated visual context as dynamic code
+description: A source-defined agent tool handler captures authenticated browser or screen visual context from a caller-selected target and passes screenshot or OCR-derived context into in-process dynamic code execution under runtime authority.
+category: visual_context_dynamic_code_execution_bridge
+severity: critical
+maps_to:
+  owasp:
+    - LLM01:2025 Prompt Injection
+    - LLM02:2025 Sensitive Information Disclosure
+    - LLM05:2025 Improper Output Handling
+    - LLM06:2025 Excessive Agency
+  mitre_atlas:
+    - AML.T0051 LLM Plugin Compromise
+    - AML.T0054 Command and Scripting Interpreter
+    - AML.T0056 LLM Trusted Boundary Compromise
+    - AML.T0060 Data from Local System
+  nist_ai_rmf:
+    - MAP 4.1
+    - MEASURE 2.7
+    - MANAGE 2.4
+match:
+  object_type: tool
+  where:
+    - field: metadata.parsed_tool_schema
+      op: equals
+      value: true
+    - field: metadata.source_tool_handler_redacted
+      op: equals
+      value: true
+    - field: metadata.handler_body_analyzed
+      op: equals
+      value: true
+    - field: metadata.handler_browser_automation
+      op: equals
+      value: true
+    - field: metadata.handler_tainted_browser_automation_target
+      op: equals
+      value: true
+    - field: metadata.handler_visual_context_capture
+      op: equals
+      value: true
+    - field: metadata.handler_dynamic_code_execution
+      op: equals
+      value: true
+    - field: metadata.handler_visual_context_dynamic_code_execution_bridge
+      op: equals
+      value: true
+    - field: metadata.handler_secret_env_access
+      op: equals
+      value: true
+    - field: metadata.browser_automation
+      op: equals
+      value: true
+    - field: metadata.tainted_browser_automation_target
+      op: equals
+      value: true
+    - field: metadata.visual_context_capture
+      op: equals
+      value: true
+    - field: metadata.dynamic_code_execution
+      op: equals
+      value: true
+    - field: metadata.visual_context_dynamic_code_execution_bridge
+      op: equals
+      value: true
+    - field: metadata.accepts_url_input
+      op: equals
+      value: true
+    - field: metadata.accepts_content_like_input
+      op: equals
+      value: true
+    - field: metadata.accepts_customer_data_input
+      op: equals
+      value: true
+    - field: metadata.authority_classes
+      op: includes
+      value: visual_context_capture
+    - field: metadata.authority_classes
+      op: includes
+      value: dynamic_code_execution
+    - field: metadata.authority_classes
+      op: includes
+      value: visual_context_dynamic_code_execution_bridge
+    - field: metadata.handler_authority_classes
+      op: includes
+      value: handler_visual_context_capture
+    - field: metadata.handler_authority_classes
+      op: includes
+      value: handler_dynamic_code_execution
+    - field: metadata.handler_authority_classes
+      op: includes
+      value: handler_visual_context_dynamic_code_execution_bridge
+    - field: metadata.schema_properties
+      op: contains_any
+      value:
+        - target_url
+        - execution_note_text
+    - field: actions
+      op: includes
+      value: execute
+    - field: actions
+      op: includes
+      value: read
+    - field: data_classes
+      op: contains_any
+      value:
+        - confidential
+        - credential
+        - pii
+    - field: external_reach
+      op: equals
+      value: true
+    - field: secret_exposure
+      op: equals
+      value: true
+    - field: side_effect
+      op: equals
+      value: true
+    - field: reversible
+      op: equals
+      value: false
+recommendation:
+  control: quarantine
+  text: Quarantine visual-context-to-dynamic-code execution until authenticated screenshots and OCR text are treated as untrusted data, cannot become eval or Function input, are stripped of executable instructions and secrets, and require sandboxing plus security-owner approval before any in-process code execution.

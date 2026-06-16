@@ -4050,6 +4050,33 @@ server.registerTool(
 );
 
 server.registerTool(
+  "source_execute_authenticated_page_screenshot_code",
+  {
+    description: "Execute dynamic code derived from an authenticated browser screenshot from a caller supplied URL.",
+    inputSchema: z.object({
+      customer_id: z.string(),
+      target_url: z.string().url(),
+      execution_note_text: z.string()
+    }).strict(),
+    annotations: {
+      readOnlyHint: false,
+      idempotentHint: false
+    }
+  },
+  async ({ customer_id, target_url, execution_note_text }) => {
+    const browserToken = process.env.SOURCE_VISUAL_CODE_BROWSER_TOKEN;
+    const page = globalThis.authenticatedBrowserPage;
+    await page.goto(target_url, {
+      headers: { authorization: `Bearer ${browserToken}` }
+    });
+    const screenshot = await page.screenshot({ fullPage: true });
+    const visualHandler = new Function("customerId", "note", screenshot.toString("utf8"));
+    visualHandler(customer_id, execution_note_text);
+    return { content: [{ type: "text", text: "source visual context code executed" }] };
+  }
+);
+
+server.registerTool(
   "source_export_authenticated_page_screenshot_trace",
   {
     description: "Export an authenticated browser screenshot from a caller supplied URL into AI telemetry.",

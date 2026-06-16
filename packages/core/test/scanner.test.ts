@@ -816,6 +816,9 @@ describe("scanner", () => {
     const sourceVisualContextShellExecutionBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "source_run_authenticated_page_screenshot_command"
     );
+    const sourceVisualContextDynamicCodeBridgeTool = surfaces.tools.find(
+      (surface) => surface.name === "source_execute_authenticated_page_screenshot_code"
+    );
     const sourceVisualContextTelemetryBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "source_export_authenticated_page_screenshot_trace"
     );
@@ -1222,6 +1225,9 @@ describe("scanner", () => {
     );
     const langchainVisualContextShellExecutionBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "langchain_run_authenticated_page_screenshot_command"
+    );
+    const langchainVisualContextDynamicCodeBridgeTool = surfaces.tools.find(
+      (surface) => surface.name === "langchain_execute_authenticated_page_screenshot_code"
     );
     const langchainVisualContextTelemetryBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "langchain_export_authenticated_page_screenshot_trace"
@@ -11490,6 +11496,95 @@ describe("scanner", () => {
     expect(JSON.stringify(sourceVisualContextShellExecutionBridgeTool)).not.toContain("execFile");
     expect(JSON.stringify(sourceVisualContextShellExecutionBridgeTool)).not.toContain("source visual context command queued");
     expect(JSON.stringify(sourceVisualContextShellExecutionBridgeTool)).not.toContain("Run a shell command derived from an authenticated browser screenshot");
+    expect(sourceVisualContextDynamicCodeBridgeTool).toMatchObject({
+      path: "mcp-source/customer-tools.ts",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["call", "execute", "read"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(sourceVisualContextDynamicCodeBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_mcp_source_tool: true,
+      mcp_source_tool_registration: true,
+      mcp_source_tool_registration_kind: "registerTool",
+      mcp_source_tool_argument_count: 3,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_secret_like_input: true,
+      accepts_content_like_input: true,
+      accepts_url_input: true,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      browser_automation: true,
+      tainted_browser_automation_target: true,
+      visual_context_capture: true,
+      dynamic_code_execution: true,
+      tainted_dynamic_code_argument: false,
+      visual_context_dynamic_code_execution_bridge: true,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_browser_automation: true,
+      handler_tainted_browser_automation_target: true,
+      handler_visual_context_capture: true,
+      handler_dynamic_code_execution: true,
+      handler_tainted_dynamic_code_argument: false,
+      handler_visual_context_dynamic_code_execution_bridge: true,
+      handler_secret_env_access: true,
+      handler_signal_count: 6,
+      open_world_schema: false
+    });
+    expect(sourceVisualContextDynamicCodeBridgeTool?.metadata.authority_classes).toEqual([
+      "browser_automation",
+      "browser_control",
+      "content_input",
+      "credential_input",
+      "customer_data_input",
+      "dynamic_code_execution",
+      "handler_browser_automation",
+      "handler_dynamic_code_execution",
+      "handler_secret_env_access",
+      "handler_tainted_browser_automation_target",
+      "handler_visual_context_capture",
+      "handler_visual_context_dynamic_code_execution_bridge",
+      "network_access",
+      "pii_input",
+      "secret_env_access",
+      "tainted_browser_automation_target",
+      "visual_context_capture",
+      "visual_context_dynamic_code_execution_bridge"
+    ]);
+    expect(sourceVisualContextDynamicCodeBridgeTool?.metadata.handler_authority_classes).toEqual([
+      "handler_browser_automation",
+      "handler_dynamic_code_execution",
+      "handler_secret_env_access",
+      "handler_tainted_browser_automation_target",
+      "handler_visual_context_capture",
+      "handler_visual_context_dynamic_code_execution_bridge"
+    ]);
+    expect(sourceVisualContextDynamicCodeBridgeTool?.metadata.handler_env_key_names).toEqual([
+      "SOURCE_VISUAL_CODE_BROWSER_TOKEN"
+    ]);
+    expect(sourceVisualContextDynamicCodeBridgeTool?.metadata.schema_properties).toEqual([
+      "customer_id",
+      "execution_note_text",
+      "target_url"
+    ]);
+    expect(sourceVisualContextDynamicCodeBridgeTool?.metadata.required_properties).toEqual([
+      "customer_id",
+      "execution_note_text",
+      "target_url"
+    ]);
+    expect(JSON.stringify(sourceVisualContextDynamicCodeBridgeTool)).not.toContain("authenticatedBrowserPage");
+    expect(JSON.stringify(sourceVisualContextDynamicCodeBridgeTool)).not.toContain("page.goto");
+    expect(JSON.stringify(sourceVisualContextDynamicCodeBridgeTool)).not.toContain("page.screenshot");
+    expect(JSON.stringify(sourceVisualContextDynamicCodeBridgeTool)).not.toContain("screenshot.toString");
+    expect(JSON.stringify(sourceVisualContextDynamicCodeBridgeTool)).not.toContain("new Function");
+    expect(JSON.stringify(sourceVisualContextDynamicCodeBridgeTool)).not.toContain("visualHandler");
+    expect(JSON.stringify(sourceVisualContextDynamicCodeBridgeTool)).not.toContain("source visual context code executed");
+    expect(JSON.stringify(sourceVisualContextDynamicCodeBridgeTool)).not.toContain("Execute dynamic code derived from an authenticated browser screenshot");
     expect(sourceVisualContextTelemetryBridgeTool).toMatchObject({
       path: "mcp-source/customer-tools.ts",
       data_classes: ["confidential", "credential", "pii"],
@@ -25920,6 +26015,95 @@ describe("scanner", () => {
     expect(JSON.stringify(langchainVisualContextShellExecutionBridgeTool)).not.toContain("subprocess.run");
     expect(JSON.stringify(langchainVisualContextShellExecutionBridgeTool)).not.toContain("framework visual context command queued");
     expect(JSON.stringify(langchainVisualContextShellExecutionBridgeTool)).not.toContain("Run a shell command derived from an authenticated browser screenshot");
+    expect(langchainVisualContextDynamicCodeBridgeTool).toMatchObject({
+      path: "framework-tools/langchain_tools.py",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["call", "execute", "read"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(langchainVisualContextDynamicCodeBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_agent_framework_source_tool: true,
+      agent_framework_source_tool: true,
+      agent_framework_source_tool_framework: "langchain",
+      agent_framework_source_tool_registration_kind: "python_tool_decorator",
+      agent_framework_source_tool_argument_count: 3,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_secret_like_input: true,
+      accepts_content_like_input: true,
+      accepts_url_input: true,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      browser_automation: true,
+      tainted_browser_automation_target: true,
+      visual_context_capture: true,
+      dynamic_code_execution: true,
+      tainted_dynamic_code_argument: false,
+      visual_context_dynamic_code_execution_bridge: true,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_browser_automation: true,
+      handler_tainted_browser_automation_target: true,
+      handler_visual_context_capture: true,
+      handler_dynamic_code_execution: true,
+      handler_tainted_dynamic_code_argument: false,
+      handler_visual_context_dynamic_code_execution_bridge: true,
+      handler_secret_env_access: true,
+      handler_signal_count: 6,
+      open_world_schema: false
+    });
+    expect(langchainVisualContextDynamicCodeBridgeTool?.metadata.authority_classes).toEqual([
+      "browser_automation",
+      "browser_control",
+      "content_input",
+      "credential_input",
+      "customer_data_input",
+      "dynamic_code_execution",
+      "handler_browser_automation",
+      "handler_dynamic_code_execution",
+      "handler_secret_env_access",
+      "handler_tainted_browser_automation_target",
+      "handler_visual_context_capture",
+      "handler_visual_context_dynamic_code_execution_bridge",
+      "network_access",
+      "pii_input",
+      "secret_env_access",
+      "tainted_browser_automation_target",
+      "visual_context_capture",
+      "visual_context_dynamic_code_execution_bridge"
+    ]);
+    expect(langchainVisualContextDynamicCodeBridgeTool?.metadata.handler_authority_classes).toEqual([
+      "handler_browser_automation",
+      "handler_dynamic_code_execution",
+      "handler_secret_env_access",
+      "handler_tainted_browser_automation_target",
+      "handler_visual_context_capture",
+      "handler_visual_context_dynamic_code_execution_bridge"
+    ]);
+    expect(langchainVisualContextDynamicCodeBridgeTool?.metadata.handler_env_key_names).toEqual([
+      "LANGCHAIN_VISUAL_CODE_BROWSER_TOKEN"
+    ]);
+    expect(langchainVisualContextDynamicCodeBridgeTool?.metadata.schema_properties).toEqual([
+      "customer_id",
+      "execution_note_text",
+      "target_url"
+    ]);
+    expect(langchainVisualContextDynamicCodeBridgeTool?.metadata.required_properties).toEqual([
+      "customer_id",
+      "execution_note_text",
+      "target_url"
+    ]);
+    expect(JSON.stringify(langchainVisualContextDynamicCodeBridgeTool)).not.toContain("browser_session.page");
+    expect(JSON.stringify(langchainVisualContextDynamicCodeBridgeTool)).not.toContain("page.goto");
+    expect(JSON.stringify(langchainVisualContextDynamicCodeBridgeTool)).not.toContain("page.screenshot");
+    expect(JSON.stringify(langchainVisualContextDynamicCodeBridgeTool)).not.toContain("screenshot_bytes");
+    expect(JSON.stringify(langchainVisualContextDynamicCodeBridgeTool)).not.toContain("exec(str");
+    expect(JSON.stringify(langchainVisualContextDynamicCodeBridgeTool)).not.toContain("framework visual context code executed");
+    expect(JSON.stringify(langchainVisualContextDynamicCodeBridgeTool)).not.toContain("Execute dynamic code derived from an authenticated browser screenshot");
     expect(langchainVisualContextTelemetryBridgeTool).toMatchObject({
       path: "framework-tools/langchain_tools.py",
       data_classes: ["confidential", "credential", "pii"],

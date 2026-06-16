@@ -24159,6 +24159,7 @@ function addToolDefinitionSurface(
       !authority.model_output_shell_execution_bridge &&
       !authority.model_output_dynamic_code_execution_bridge &&
       !authority.tool_output_shell_execution_bridge &&
+      !authority.visual_context_dynamic_code_execution_bridge &&
       !authority.tool_output_dynamic_code_execution_bridge &&
       !authority.embedding_provider_call &&
       !authority.secret_manager_embedding_vector_bridge &&
@@ -24333,6 +24334,7 @@ function addToolDefinitionSurface(
       model_output_dynamic_code_execution_bridge: authority.model_output_dynamic_code_execution_bridge,
       tool_output_shell_execution_bridge: authority.tool_output_shell_execution_bridge,
       visual_context_shell_execution_bridge: authority.visual_context_shell_execution_bridge,
+      visual_context_dynamic_code_execution_bridge: authority.visual_context_dynamic_code_execution_bridge,
       tool_output_dynamic_code_execution_bridge: authority.tool_output_dynamic_code_execution_bridge,
       tool_output_prompt_bridge: authority.tool_output_prompt_bridge,
       embedding_provider_call: authority.embedding_provider_call,
@@ -26842,6 +26844,7 @@ interface SourceToolHandlerSignals {
   handlerToolOutputNetworkDestinationBridge: boolean;
   handlerToolOutputShellExecutionBridge: boolean;
   handlerVisualContextShellExecutionBridge: boolean;
+  handlerVisualContextDynamicCodeExecutionBridge: boolean;
   handlerToolOutputDynamicCodeExecutionBridge: boolean;
   handlerSecretManagerPromptBridge: boolean;
   handlerEnvSecretPromptBridge: boolean;
@@ -27471,6 +27474,7 @@ function sourceToolHandlerSignalMetadata(signals: SourceToolHandlerSignals | und
     handler_tool_output_network_destination_bridge: signals.handlerToolOutputNetworkDestinationBridge,
     handler_tool_output_shell_execution_bridge: signals.handlerToolOutputShellExecutionBridge,
     handler_visual_context_shell_execution_bridge: signals.handlerVisualContextShellExecutionBridge,
+    handler_visual_context_dynamic_code_execution_bridge: signals.handlerVisualContextDynamicCodeExecutionBridge,
     handler_tool_output_dynamic_code_execution_bridge: signals.handlerToolOutputDynamicCodeExecutionBridge,
     handler_secret_manager_prompt_bridge: signals.handlerSecretManagerPromptBridge,
     handler_env_secret_prompt_bridge: signals.handlerEnvSecretPromptBridge,
@@ -28184,6 +28188,9 @@ function classifySourceToolHandlerSignals(
   const visualContextShellExecutionBridge = visualContextCapture && shellExecution && (language === "javascript"
     ? hasJavaScriptHandlerVisualContextShellExecutionBridge(handlerSource)
     : hasPythonHandlerVisualContextShellExecutionBridge(handlerSource));
+  const visualContextDynamicCodeExecutionBridge = visualContextCapture && dynamicCodeExecution && (language === "javascript"
+    ? hasJavaScriptHandlerVisualContextDynamicCodeExecutionBridge(handlerSource)
+    : hasPythonHandlerVisualContextDynamicCodeExecutionBridge(handlerSource));
   const visualContextPromptBridge = visualContextCapture && modelProviderCall && (language === "javascript"
     ? hasJavaScriptHandlerVisualContextPromptBridge(handlerSource)
     : hasPythonHandlerVisualContextPromptBridge(handlerSource));
@@ -28461,6 +28468,7 @@ function classifySourceToolHandlerSignals(
   if (toolOutputNetworkDestinationBridge) classes.add("handler_tool_output_network_destination_bridge");
   if (toolOutputShellExecutionBridge) classes.add("handler_tool_output_shell_execution_bridge");
   if (visualContextShellExecutionBridge) classes.add("handler_visual_context_shell_execution_bridge");
+  if (visualContextDynamicCodeExecutionBridge) classes.add("handler_visual_context_dynamic_code_execution_bridge");
   if (toolOutputDynamicCodeExecutionBridge) classes.add("handler_tool_output_dynamic_code_execution_bridge");
   if (secretManagerPromptBridge) classes.add("handler_secret_manager_prompt_bridge");
   if (envSecretPromptBridge) classes.add("handler_env_secret_prompt_bridge");
@@ -28676,6 +28684,7 @@ function classifySourceToolHandlerSignals(
     handlerToolOutputNetworkDestinationBridge: toolOutputNetworkDestinationBridge,
     handlerToolOutputShellExecutionBridge: toolOutputShellExecutionBridge,
     handlerVisualContextShellExecutionBridge: visualContextShellExecutionBridge,
+    handlerVisualContextDynamicCodeExecutionBridge: visualContextDynamicCodeExecutionBridge,
     handlerToolOutputDynamicCodeExecutionBridge: toolOutputDynamicCodeExecutionBridge,
     handlerSecretManagerPromptBridge: secretManagerPromptBridge,
     handlerEnvSecretPromptBridge: envSecretPromptBridge,
@@ -31214,6 +31223,30 @@ function hasPythonHandlerVisualContextShellExecutionBridge(source: string): bool
       /\bos\s*\.\s*system\s*\(([\s\S]{0,1200})\)/giu,
       /\bpty\s*\.\s*spawn\s*\(([\s\S]{0,1200})\)/giu,
       /\bcommands\s*\.\s*(?:getoutput|getstatusoutput)\s*\(([\s\S]{0,1200})\)/giu
+    ],
+    source,
+    identifiers
+  );
+}
+
+function hasJavaScriptHandlerVisualContextDynamicCodeExecutionBridge(source: string): boolean {
+  const identifiers = extractJavaScriptVisualContextIdentifiers(source);
+  return identifiers.length > 0 && callExpressionReferencesAnyIdentifier(
+    [
+      /\beval\s*\(([\s\S]{0,900})\)/giu,
+      /\b(?:new\s+)?Function\s*\(([\s\S]{0,1200})\)/giu,
+      /\bvm\s*\.\s*(?:runInNewContext|runInThisContext|runInContext|compileFunction|Script)\s*\(([\s\S]{0,1200})\)/giu
+    ],
+    source,
+    identifiers
+  );
+}
+
+function hasPythonHandlerVisualContextDynamicCodeExecutionBridge(source: string): boolean {
+  const identifiers = extractPythonVisualContextIdentifiers(source);
+  return identifiers.length > 0 && callExpressionReferencesAnyIdentifier(
+    [
+      /\b(?:eval|exec)\s*\(([\s\S]{0,900})\)/giu
     ],
     source,
     identifiers
@@ -37094,6 +37127,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   visual_context_training_dataset_bridge: boolean;
   visual_context_embedding_vector_bridge: boolean;
   visual_context_shell_execution_bridge: boolean;
+  visual_context_dynamic_code_execution_bridge: boolean;
   visual_context_telemetry_bridge: boolean;
   visual_context_prompt_cache_bridge: boolean;
   visual_context_task_queue_bridge: boolean;
@@ -37438,6 +37472,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   const handlerVisualContextCapture = handler?.handlerVisualContextCapture === true;
   const handlerVisualContextToOutput = handler?.handlerVisualContextToOutput === true;
   const handlerVisualContextShellExecutionBridge = handler?.handlerVisualContextShellExecutionBridge === true;
+  const handlerVisualContextDynamicCodeExecutionBridge = handler?.handlerVisualContextDynamicCodeExecutionBridge === true;
   const handlerVisualContextPromptBridge = handler?.handlerVisualContextPromptBridge === true;
   const handlerVisualContextExternalServiceBridge = handler?.handlerVisualContextExternalServiceBridge === true;
   const handlerVisualContextMemoryBridge = handler?.handlerVisualContextMemoryBridge === true;
@@ -37625,6 +37660,11 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   }
   if (handlerVisualContextShellExecutionBridge) {
     classes.add("visual_context_shell_execution_bridge");
+    actions.add("read");
+    actions.add("execute");
+  }
+  if (handlerVisualContextDynamicCodeExecutionBridge) {
+    classes.add("visual_context_dynamic_code_execution_bridge");
     actions.add("read");
     actions.add("execute");
   }
@@ -38704,6 +38744,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerVisualContextExternalServiceBridge ||
       handlerVisualContextMemoryBridge ||
       handlerVisualContextShellExecutionBridge ||
+      handlerVisualContextDynamicCodeExecutionBridge ||
       handlerVisualContextArtifactBridge ||
       handlerVisualContextTrainingDatasetBridge ||
       handlerVisualContextFeedbackBridge ||
@@ -38735,6 +38776,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerToolOutputNetworkDestinationBridge ||
       handlerToolOutputShellExecutionBridge ||
       handlerVisualContextShellExecutionBridge ||
+      handlerVisualContextDynamicCodeExecutionBridge ||
       handlerToolOutputDynamicCodeExecutionBridge ||
       handlerToolOutputPromptBridge ||
       handlerEmbeddingProviderCall ||
@@ -38950,6 +38992,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerModelOutputDynamicCodeExecutionBridge ||
       handlerToolOutputShellExecutionBridge ||
       handlerVisualContextShellExecutionBridge ||
+      handlerVisualContextDynamicCodeExecutionBridge ||
       handlerToolOutputDynamicCodeExecutionBridge ||
       handlerEmbeddingProviderCall ||
       handlerSecretManagerEmbeddingVectorBridge ||
@@ -39173,6 +39216,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       (handlerVisualContextExternalServiceBridge && handlerSecretEnvAccess) ||
       (handlerVisualContextMemoryBridge && handlerSecretEnvAccess) ||
       (handlerVisualContextShellExecutionBridge && handlerSecretEnvAccess) ||
+      (handlerVisualContextDynamicCodeExecutionBridge && handlerSecretEnvAccess) ||
       (handlerVisualContextArtifactBridge && handlerSecretEnvAccess) ||
       (handlerVisualContextTrainingDatasetBridge && handlerSecretEnvAccess) ||
       (handlerVisualContextTelemetryBridge && handlerSecretEnvAccess) ||
@@ -39262,6 +39306,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
     visual_context_artifact_bridge: handlerVisualContextArtifactBridge,
     visual_context_training_dataset_bridge: handlerVisualContextTrainingDatasetBridge,
     visual_context_shell_execution_bridge: handlerVisualContextShellExecutionBridge,
+    visual_context_dynamic_code_execution_bridge: handlerVisualContextDynamicCodeExecutionBridge,
     visual_context_telemetry_bridge: handlerVisualContextTelemetryBridge,
     visual_context_prompt_cache_bridge: handlerVisualContextPromptCacheBridge,
     visual_context_task_queue_bridge: handlerVisualContextTaskQueueBridge,
@@ -39600,6 +39645,7 @@ function authoritySignature(tool: SurfaceObject): string {
     metadata.visual_context_artifact_bridge === true ? "visual_context_artifact_bridge" : "",
     metadata.visual_context_training_dataset_bridge === true ? "visual_context_training_dataset_bridge" : "",
     metadata.visual_context_shell_execution_bridge === true ? "visual_context_shell_execution_bridge" : "",
+    metadata.visual_context_dynamic_code_execution_bridge === true ? "visual_context_dynamic_code_execution_bridge" : "",
     metadata.visual_context_telemetry_bridge === true ? "visual_context_telemetry_bridge" : "",
     metadata.visual_context_prompt_cache_bridge === true ? "visual_context_prompt_cache_bridge" : "",
     metadata.visual_context_task_queue_bridge === true ? "visual_context_task_queue_bridge" : "",
@@ -39829,6 +39875,7 @@ function isPrivilegedToolSurface(tool: SurfaceObject): boolean {
     tool.metadata.visual_context_artifact_bridge === true ||
     tool.metadata.visual_context_training_dataset_bridge === true ||
     tool.metadata.visual_context_shell_execution_bridge === true ||
+    tool.metadata.visual_context_dynamic_code_execution_bridge === true ||
     tool.metadata.visual_context_telemetry_bridge === true ||
     tool.metadata.visual_context_prompt_cache_bridge === true ||
     tool.metadata.visual_context_task_queue_bridge === true ||

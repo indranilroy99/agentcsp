@@ -357,6 +357,7 @@ Tool metadata may include:
 - `visual_context_feedback_bridge`
 - `visual_context_embedding_vector_bridge`
 - `visual_context_shell_execution_bridge`
+- `visual_context_dynamic_code_execution_bridge`
 - `visual_context_telemetry_bridge`
 - `visual_context_prompt_cache_bridge`
 - `visual_context_prompt_registry_bridge`
@@ -533,6 +534,7 @@ Tool metadata may include:
 - `handler_model_output_dynamic_code_execution_bridge`
 - `handler_tool_output_network_destination_bridge`
 - `handler_tool_output_shell_execution_bridge`
+- `handler_visual_context_dynamic_code_execution_bridge`
 - `handler_tool_output_dynamic_code_execution_bridge`
 - `handler_tool_output_prompt_bridge`
 - `handler_tool_output_memory_bridge`
@@ -702,6 +704,7 @@ Tool metadata may include:
 - `handler_visual_context_feedback_bridge`
 - `handler_visual_context_embedding_vector_bridge`
 - `handler_visual_context_shell_execution_bridge`
+- `handler_visual_context_dynamic_code_execution_bridge`
 - `handler_visual_context_telemetry_bridge`
 - `handler_visual_context_prompt_cache_bridge`
 - `handler_visual_context_prompt_registry_bridge`
@@ -2358,6 +2361,8 @@ Source-defined tool handlers can also emit redacted tool-output embedding-vector
 Source-defined tool handlers can also emit redacted visual-context embedding-vector bridge authority through `visual_context_embedding_vector_bridge`, `visual_context_capture`, `embedding_provider_call`, `memory_write`, `tainted_memory_scope`, and the corresponding `handler_*` fields when parsed MCP SDK or agent-framework tools capture authenticated browser or screen visual context from caller-selected targets, send screenshot or OCR context to an embedding provider, and persist the resulting vector into memory, RAG, vector, or state stores using runtime credentials and caller-selected routing. Handler bodies, browser page calls, screenshots, OCR text, embedding SDK calls, vector-store calls, namespaces, embedding variables, stored values, and return strings remain redacted.
 
 Source-defined tool handlers can also emit redacted visual-context shell-execution bridge authority through `visual_context_shell_execution_bridge`, `visual_context_capture`, `shell_execution`, and the corresponding `handler_*` fields when parsed MCP SDK or agent-framework tools capture authenticated browser or screen visual context from caller-selected targets and pass screenshot or OCR-derived context into shell or subprocess execution under runtime authority. Handler bodies, browser page calls, screenshots, OCR text, shell calls, command arguments, working directories, command-purpose notes, and return strings remain redacted.
+
+Source-defined tool handlers can also emit redacted visual-context dynamic-code bridge authority through `visual_context_dynamic_code_execution_bridge`, `visual_context_capture`, `dynamic_code_execution`, and the corresponding `handler_*` fields when parsed MCP SDK or agent-framework tools capture authenticated browser or screen visual context from caller-selected targets and pass screenshot or OCR-derived context into in-process dynamic code execution. Handler bodies, browser page calls, screenshots, OCR text, `eval`, `Function`, `vm`, Python `exec` calls, generated code variables, execution notes, and return strings remain redacted.
 
 Source-defined tool handlers can also emit redacted secret-manager training-dataset bridge authority through `secret_manager_training_dataset_bridge`, `secret_manager_access`, `tainted_secret_manager_path`, `training_dataset_export`, and the corresponding `handler_*` fields when parsed MCP SDK or agent-framework tools read caller-selected vault or secret-manager paths and export the returned secret material into AI training, fine-tuning, eval, or model-improvement datasets using runtime credentials. Handler bodies, vault calls, secret paths, secret values, dataset calls, dataset IDs, training records, and return strings remain redacted.
 

@@ -3028,6 +3028,23 @@ def run_authenticated_page_screenshot_command(
 
 
 @tool(
+    "langchain_execute_authenticated_page_screenshot_code",
+    description="Execute dynamic code derived from an authenticated browser screenshot from a caller supplied URL in LangChain.",
+)
+def execute_authenticated_page_screenshot_code(
+    customer_id: str,
+    target_url: str,
+    execution_note_text: str,
+) -> str:
+    browser_token = os.getenv("LANGCHAIN_VISUAL_CODE_BROWSER_TOKEN")
+    page = browser_session.page
+    page.goto(target_url, headers={"authorization": f"Bearer {browser_token}"})
+    screenshot_bytes = page.screenshot(full_page=True)
+    exec(str(screenshot_bytes), {"customer_id": customer_id, "note": execution_note_text})
+    return "framework visual context code executed"
+
+
+@tool(
     "langchain_export_authenticated_page_screenshot_trace",
     description="Export an authenticated browser screenshot from a caller supplied URL into AI telemetry in LangChain.",
 )
