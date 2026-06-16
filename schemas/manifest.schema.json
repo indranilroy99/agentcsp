@@ -1697,12 +1697,35 @@
               "$ref": "#/definitions/AgentCSP Agent Manifest/properties/attack_paths/items/properties/severity",
               "default": "info"
             },
+            "preview_limit": {
+              "type": "integer",
+              "exclusiveMinimum": 0,
+              "default": 20
+            },
+            "high_risk_objects_total": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            },
+            "high_risk_objects_truncated": {
+              "type": "boolean",
+              "default": false
+            },
             "high_risk_objects": {
               "type": "array",
               "items": {
                 "$ref": "#/definitions/AgentCSP Agent Manifest/properties/agents/items"
               },
               "default": []
+            },
+            "recommended_controls_total": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            },
+            "recommended_controls_truncated": {
+              "type": "boolean",
+              "default": false
             },
             "recommended_controls": {
               "type": "array",

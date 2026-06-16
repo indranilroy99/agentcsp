@@ -27,6 +27,11 @@ describe("scanProject", () => {
     expect(result.manifest.static_blast_radius?.sensitive_data_attack_paths).toBeGreaterThan(0);
     expect(result.manifest.static_blast_radius?.pii_attack_paths).toBeGreaterThan(0);
     expect(result.manifest.static_blast_radius?.credential_attack_paths).toBeGreaterThan(0);
+    expect(result.manifest.static_blast_radius?.preview_limit).toBe(20);
+    expect(result.manifest.static_blast_radius?.high_risk_objects_total).toBeGreaterThan(20);
+    expect(result.manifest.static_blast_radius?.high_risk_objects_truncated).toBe(true);
+    expect(result.manifest.static_blast_radius?.recommended_controls_total).toBeGreaterThan(20);
+    expect(result.manifest.static_blast_radius?.recommended_controls_truncated).toBe(true);
     expect(result.manifest.scan_coverage?.title).toBe("AgentCSP Scan Coverage");
     expect(result.manifest.scan_coverage?.scan_health).toBe("complete");
     expect(result.manifest.scan_coverage?.scan_health_reasons).toEqual([]);
@@ -98,7 +103,7 @@ describe("scanProject", () => {
           agentcsp_action_plan?: { total_actions?: number; actions?: Array<{ priority?: number; rule_id?: string }> };
           agentcsp_ci_gate_summary?: { status?: string; should_fail?: boolean; blocker_id_limit?: number };
           agentcsp_scan_coverage?: { files_indexed?: number };
-          agentcsp_static_blast_radius?: { pii_external_reach_paths?: number };
+          agentcsp_static_blast_radius?: { pii_external_reach_paths?: number; high_risk_objects_truncated?: boolean };
         };
       }>;
     };
@@ -139,6 +144,7 @@ describe("scanProject", () => {
     expect(sarif.runs[0]?.properties?.agentcsp_static_blast_radius?.pii_external_reach_paths).toBe(
       result.manifest.static_blast_radius?.pii_external_reach_paths
     );
+    expect(sarif.runs[0]?.properties?.agentcsp_static_blast_radius?.high_risk_objects_truncated).toBe(true);
     expect(JSON.stringify(sarif.runs[0]?.properties?.agentcsp_triage_summary)).not.toContain("replace-me");
     expect(result.reportMarkdown).toContain("## Triage Summary");
     expect(result.reportMarkdown).toContain("- Top active limit: 10");
@@ -169,6 +175,9 @@ describe("scanProject", () => {
     expect(result.reportMarkdown).toContain("### Top Active Rules");
     expect(result.reportMarkdown).toContain("### Top Active Risks");
     expect(result.reportMarkdown).toContain("| Severity | Confidence | Risk | Rule | Object | Path | Recommended control |");
+    expect(result.reportMarkdown).toContain("- Preview limit: 20");
+    expect(result.reportMarkdown).toContain("- High-risk objects truncated: `true`");
+    expect(result.reportMarkdown).toContain("- Recommended controls truncated: `true`");
     expect(result.reportMarkdown).toContain("## Highest-Risk Blast-Radius Paths");
     expect(result.reportMarkdown).toContain("| Risk | Severity | Rule | Object | Boundary | Data | Actions | Recommended control |");
     expect(result.reportMarkdown).toContain("untrusted -> privileged");
@@ -239,6 +248,13 @@ describe("scanProject", () => {
     expect(result.manifest.static_blast_radius?.sensitive_data_attack_paths).toBe(0);
     expect(result.manifest.static_blast_radius?.pii_attack_paths).toBe(0);
     expect(result.manifest.static_blast_radius?.credential_attack_paths).toBe(0);
+    expect(result.manifest.static_blast_radius?.preview_limit).toBe(20);
+    expect(result.manifest.static_blast_radius?.high_risk_objects_total).toBe(
+      result.manifest.static_blast_radius?.high_risk_objects.length
+    );
+    expect(result.manifest.static_blast_radius?.high_risk_objects_truncated).toBe(false);
+    expect(result.manifest.static_blast_radius?.recommended_controls_total).toBe(0);
+    expect(result.manifest.static_blast_radius?.recommended_controls_truncated).toBe(false);
     expect(result.reportMarkdown).toContain("No active findings were generated.");
     expect(result.reportMarkdown).toContain("No active remediation actions were generated.");
     expect(result.reportMarkdown).toContain("No active high-risk blast-radius paths were identified.");

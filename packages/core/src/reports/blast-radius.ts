@@ -3,6 +3,8 @@ import { allManifestObjects } from "../manifest/build.js";
 import type { DetectedSurfaces } from "../scanner/detect.js";
 import { highestSeverity } from "../risk/score.js";
 
+export const blastRadiusPreviewLimit = 20;
+
 export function buildStaticBlastRadiusSummary(
   surfaces: DetectedSurfaces,
   findings: Finding[],
@@ -10,8 +12,10 @@ export function buildStaticBlastRadiusSummary(
   attackPaths: AttackPath[] = []
 ): StaticBlastRadiusSummary {
   const objects = allManifestObjects(surfaces);
-  const highRiskObjects = objects.filter(isHighRiskObject).slice(0, 20);
+  const allHighRiskObjects = objects.filter(isHighRiskObject);
+  const highRiskObjects = allHighRiskObjects.slice(0, blastRadiusPreviewLimit);
   const externalReachObjects = objects.filter((object) => object.external_reach);
+  const allRecommendedControls = summarizeControls(findings);
   return {
     title: "Static Blast-Radius Summary",
     read_paths: countByAction(objects, "read"),
@@ -33,8 +37,13 @@ export function buildStaticBlastRadiusSummary(
     active_suppressions: findings.filter((finding) => finding.suppression?.status === "active").length,
     expired_suppressions: findings.filter((finding) => finding.suppression?.status === "expired").length,
     highest_severity: highestSeverity(findings),
+    preview_limit: blastRadiusPreviewLimit,
+    high_risk_objects_total: allHighRiskObjects.length,
+    high_risk_objects_truncated: allHighRiskObjects.length > highRiskObjects.length,
     high_risk_objects: highRiskObjects,
-    recommended_controls: summarizeControls(findings)
+    recommended_controls_total: allRecommendedControls.length,
+    recommended_controls_truncated: allRecommendedControls.length > blastRadiusPreviewLimit,
+    recommended_controls: allRecommendedControls.slice(0, blastRadiusPreviewLimit)
   };
 }
 
@@ -65,5 +74,5 @@ function summarizeControls(findings: Finding[]): string[] {
     if (finding.suppression?.status === "active") continue;
     controls.add(`Recommended control: ${finding.recommended_control.replaceAll("_", " ")} for ${finding.file_path}`);
   }
-  return [...controls].sort((a, b) => a.localeCompare(b)).slice(0, 20);
+  return [...controls].sort((a, b) => a.localeCompare(b));
 }

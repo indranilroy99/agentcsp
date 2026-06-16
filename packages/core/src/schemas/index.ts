@@ -461,7 +461,12 @@ export const StaticBlastRadiusSummarySchema = z.object({
   active_suppressions: z.number().int().nonnegative().default(0),
   expired_suppressions: z.number().int().nonnegative().default(0),
   highest_severity: SeveritySchema.default("info"),
+  preview_limit: z.number().int().positive().default(20),
+  high_risk_objects_total: z.number().int().nonnegative().default(0),
+  high_risk_objects_truncated: z.boolean().default(false),
   high_risk_objects: z.array(SurfaceObjectSchema).default([]),
+  recommended_controls_total: z.number().int().nonnegative().default(0),
+  recommended_controls_truncated: z.boolean().default(false),
   recommended_controls: z.array(z.string()).default([])
 });
 

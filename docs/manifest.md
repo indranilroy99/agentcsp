@@ -3367,8 +3367,8 @@ The summary includes:
 - relationship, attack-path, and critical attack-path counts
 - active and expired suppression counts
 - highest severity
-- capped high-risk objects
-- recommended controls
+- capped high-risk objects with total count and truncation status
+- bounded recommended controls with total count and truncation status
 
 ## Suppression State
 
