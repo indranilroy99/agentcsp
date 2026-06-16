@@ -208,6 +208,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-204")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-205")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-206")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-207")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-001")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-002")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-003")).toBe(true);
@@ -8413,6 +8414,7 @@ describe("rule engine", () => {
     const sourceHandlerSafetyPolicyWeakeningFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-056");
     expect(sourceHandlerSafetyPolicyWeakeningFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_apply_authenticated_page_screenshot_guardrail_override",
+      "langchain_apply_clipboard_guardrail_override",
       "langchain_apply_env_secret_guardrail_override",
       "langchain_apply_local_file_guardrail_override",
       "langchain_apply_model_selected_guardrail_policy_override",
@@ -8422,6 +8424,7 @@ describe("rule engine", () => {
       "langchain_apply_vault_secret_guardrail_override",
       "langchain_update_guardrail_policy_override",
       "source_apply_authenticated_page_screenshot_guardrail_override",
+      "source_apply_clipboard_guardrail_override",
       "source_apply_env_secret_guardrail_override",
       "source_apply_local_file_guardrail_override",
       "source_apply_model_selected_guardrail_policy_override",
@@ -8473,6 +8476,10 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerSafetyPolicyWeakeningFindings)).not.toContain("framework guardrail policy updated");
     expect(JSON.stringify(sourceHandlerSafetyPolicyWeakeningFindings)).not.toContain("source tool observation updated safety policy");
     expect(JSON.stringify(sourceHandlerSafetyPolicyWeakeningFindings)).not.toContain("framework tool observation updated safety policy");
+    expect(JSON.stringify(sourceHandlerSafetyPolicyWeakeningFindings)).not.toContain("desktopClipboard.readText");
+    expect(JSON.stringify(sourceHandlerSafetyPolicyWeakeningFindings)).not.toContain("desktop_clipboard.read_text");
+    expect(JSON.stringify(sourceHandlerSafetyPolicyWeakeningFindings)).not.toContain("source clipboard weakened safety policy");
+    expect(JSON.stringify(sourceHandlerSafetyPolicyWeakeningFindings)).not.toContain("framework clipboard weakened safety policy");
     expect(JSON.stringify(sourceHandlerSafetyPolicyWeakeningFindings)).not.toContain("source vault secret updated safety policy");
     expect(JSON.stringify(sourceHandlerSafetyPolicyWeakeningFindings)).not.toContain("framework vault secret updated safety policy");
     expect(JSON.stringify(sourceHandlerSafetyPolicyWeakeningFindings)).not.toContain("secretPolicyValue");
@@ -13254,6 +13261,89 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerClipboardDynamicCodeExecutionBridgeFindings)).not.toContain("source clipboard code executed");
     expect(JSON.stringify(sourceHandlerClipboardDynamicCodeExecutionBridgeFindings)).not.toContain("framework clipboard code executed");
     expect(JSON.stringify(sourceHandlerClipboardDynamicCodeExecutionBridgeFindings)).not.toContain("Read clipboard text");
+    const sourceHandlerClipboardSafetyPolicyBridgeFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-207");
+    expect(sourceHandlerClipboardSafetyPolicyBridgeFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
+      "langchain_apply_clipboard_guardrail_override",
+      "source_apply_clipboard_guardrail_override"
+    ]);
+    expect(sourceHandlerClipboardSafetyPolicyBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
+    expect(sourceHandlerClipboardSafetyPolicyBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerClipboardSafetyPolicyBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
+    expect(sourceHandlerClipboardSafetyPolicyBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
+    expect(sourceHandlerClipboardSafetyPolicyBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.source_tool_handler_redacted === true
+    )).toBe(true);
+    for (const metadataKey of [
+      "handler_clipboard_read",
+      "handler_safety_policy_write",
+      "handler_tainted_safety_policy_payload",
+      "handler_tainted_safety_policy_selector",
+      "handler_safety_policy_weakening",
+      "handler_clipboard_safety_policy_bridge",
+      "handler_secret_env_access",
+      "clipboard_read",
+      "safety_policy_write",
+      "tainted_safety_policy_payload",
+      "tainted_safety_policy_selector",
+      "safety_policy_weakening",
+      "clipboard_safety_policy_bridge",
+      "accepts_content_like_input",
+      "accepts_customer_data_input"
+    ]) {
+      expect(sourceHandlerClipboardSafetyPolicyBridgeFindings.every((finding) => finding.matched_object.metadata[metadataKey] === true)).toBe(true);
+    }
+    for (const metadataKey of [
+      "secret_manager_safety_policy_bridge",
+      "env_secret_safety_policy_bridge",
+      "network_response_safety_policy_bridge",
+      "local_file_safety_policy_bridge",
+      "model_output_safety_policy_bridge",
+      "tool_output_safety_policy_bridge",
+      "rag_retrieval_safety_policy_bridge",
+      "visual_context_safety_policy_bridge"
+    ]) {
+      expect(sourceHandlerClipboardSafetyPolicyBridgeFindings.every((finding) => finding.matched_object.metadata[metadataKey] === false)).toBe(true);
+    }
+    for (const authorityClass of [
+      "clipboard_read",
+      "safety_policy_write",
+      "tainted_safety_policy_payload",
+      "tainted_safety_policy_selector",
+      "safety_policy_weakening",
+      "clipboard_safety_policy_bridge"
+    ]) {
+      expect(sourceHandlerClipboardSafetyPolicyBridgeFindings.every((finding) =>
+        finding.matched_object.metadata.authority_classes.includes(authorityClass)
+      )).toBe(true);
+    }
+    for (const handlerAuthorityClass of [
+      "handler_clipboard_read",
+      "handler_safety_policy_write",
+      "handler_tainted_safety_policy_payload",
+      "handler_tainted_safety_policy_selector",
+      "handler_safety_policy_weakening",
+      "handler_clipboard_safety_policy_bridge"
+    ]) {
+      expect(sourceHandlerClipboardSafetyPolicyBridgeFindings.every((finding) =>
+        finding.matched_object.metadata.handler_authority_classes.includes(handlerAuthorityClass)
+      )).toBe(true);
+    }
+    expect(sourceHandlerClipboardSafetyPolicyBridgeFindings.every((finding) => finding.matched_object.actions.includes("read"))).toBe(true);
+    expect(sourceHandlerClipboardSafetyPolicyBridgeFindings.every((finding) => finding.matched_object.actions.includes("send"))).toBe(true);
+    expect(sourceHandlerClipboardSafetyPolicyBridgeFindings.every((finding) => finding.matched_object.actions.includes("write"))).toBe(true);
+    expect(sourceHandlerClipboardSafetyPolicyBridgeFindings.every((finding) => finding.matched_object.external_reach === true)).toBe(true);
+    expect(sourceHandlerClipboardSafetyPolicyBridgeFindings.every((finding) => finding.matched_object.secret_exposure === true)).toBe(true);
+    expect(sourceHandlerClipboardSafetyPolicyBridgeFindings.every((finding) => finding.matched_object.side_effect === true)).toBe(true);
+    expect(sourceHandlerClipboardSafetyPolicyBridgeFindings.every((finding) => finding.matched_object.reversible === false)).toBe(true);
+    expect(JSON.stringify(sourceHandlerClipboardSafetyPolicyBridgeFindings)).not.toContain("desktopClipboard.readText");
+    expect(JSON.stringify(sourceHandlerClipboardSafetyPolicyBridgeFindings)).not.toContain("desktop_clipboard.read_text");
+    expect(JSON.stringify(sourceHandlerClipboardSafetyPolicyBridgeFindings)).not.toContain("safetyPolicyClient.updatePolicy");
+    expect(JSON.stringify(sourceHandlerClipboardSafetyPolicyBridgeFindings)).not.toContain("safety_policy_client.update_policy");
+    expect(JSON.stringify(sourceHandlerClipboardSafetyPolicyBridgeFindings)).not.toContain("clipboardText");
+    expect(JSON.stringify(sourceHandlerClipboardSafetyPolicyBridgeFindings)).not.toContain("clipboard_text");
+    expect(JSON.stringify(sourceHandlerClipboardSafetyPolicyBridgeFindings)).not.toContain("source clipboard weakened safety policy");
+    expect(JSON.stringify(sourceHandlerClipboardSafetyPolicyBridgeFindings)).not.toContain("framework clipboard weakened safety policy");
+    expect(JSON.stringify(sourceHandlerClipboardSafetyPolicyBridgeFindings)).not.toContain("Read clipboard text from a desktop session");
     const sourceHandlerClipboardPromptRegistryBridgeFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-198");
     expect(sourceHandlerClipboardPromptRegistryBridgeFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_publish_clipboard_prompt_registry",

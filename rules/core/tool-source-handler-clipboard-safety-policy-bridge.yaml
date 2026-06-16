@@ -1,0 +1,172 @@
+id: AGENTCSP-TOOL-207
+name: Source tool handler weakens safety policy from clipboard content
+description: A source-defined agent tool handler reads desktop or browser clipboard material and uses copied text to update guardrail, approval, moderation, or safety policy while weakening enforcement.
+category: clipboard_safety_policy_bridge
+severity: critical
+maps_to:
+  owasp:
+    - LLM01:2025 Prompt Injection
+    - LLM05:2025 Improper Output Handling
+    - LLM06:2025 Excessive Agency
+  mitre_atlas:
+    - AML.T0051 LLM Plugin Compromise
+    - AML.T0056 LLM Trusted Boundary Compromise
+    - AML.T0060 LLM Prompt Injection
+  nist_ai_rmf:
+    - MAP 4.1
+    - MEASURE 2.7
+    - MANAGE 2.4
+match:
+  object_type: tool
+  where:
+    - field: metadata.parsed_tool_schema
+      op: equals
+      value: true
+    - field: metadata.source_tool_handler_redacted
+      op: equals
+      value: true
+    - field: metadata.handler_body_analyzed
+      op: equals
+      value: true
+    - field: metadata.handler_clipboard_read
+      op: equals
+      value: true
+    - field: metadata.handler_safety_policy_write
+      op: equals
+      value: true
+    - field: metadata.handler_tainted_safety_policy_payload
+      op: equals
+      value: true
+    - field: metadata.handler_tainted_safety_policy_selector
+      op: equals
+      value: true
+    - field: metadata.handler_safety_policy_weakening
+      op: equals
+      value: true
+    - field: metadata.handler_clipboard_safety_policy_bridge
+      op: equals
+      value: true
+    - field: metadata.handler_secret_env_access
+      op: equals
+      value: true
+    - field: metadata.clipboard_read
+      op: equals
+      value: true
+    - field: metadata.safety_policy_write
+      op: equals
+      value: true
+    - field: metadata.tainted_safety_policy_payload
+      op: equals
+      value: true
+    - field: metadata.tainted_safety_policy_selector
+      op: equals
+      value: true
+    - field: metadata.safety_policy_weakening
+      op: equals
+      value: true
+    - field: metadata.clipboard_safety_policy_bridge
+      op: equals
+      value: true
+    - field: metadata.secret_manager_safety_policy_bridge
+      op: equals
+      value: false
+    - field: metadata.env_secret_safety_policy_bridge
+      op: equals
+      value: false
+    - field: metadata.network_response_safety_policy_bridge
+      op: equals
+      value: false
+    - field: metadata.local_file_safety_policy_bridge
+      op: equals
+      value: false
+    - field: metadata.model_output_safety_policy_bridge
+      op: equals
+      value: false
+    - field: metadata.tool_output_safety_policy_bridge
+      op: equals
+      value: false
+    - field: metadata.rag_retrieval_safety_policy_bridge
+      op: equals
+      value: false
+    - field: metadata.visual_context_safety_policy_bridge
+      op: equals
+      value: false
+    - field: metadata.accepts_content_like_input
+      op: equals
+      value: true
+    - field: metadata.accepts_customer_data_input
+      op: equals
+      value: true
+    - field: metadata.authority_classes
+      op: includes
+      value: clipboard_read
+    - field: metadata.authority_classes
+      op: includes
+      value: safety_policy_write
+    - field: metadata.authority_classes
+      op: includes
+      value: tainted_safety_policy_payload
+    - field: metadata.authority_classes
+      op: includes
+      value: tainted_safety_policy_selector
+    - field: metadata.authority_classes
+      op: includes
+      value: safety_policy_weakening
+    - field: metadata.authority_classes
+      op: includes
+      value: clipboard_safety_policy_bridge
+    - field: metadata.handler_authority_classes
+      op: includes
+      value: handler_clipboard_read
+    - field: metadata.handler_authority_classes
+      op: includes
+      value: handler_safety_policy_write
+    - field: metadata.handler_authority_classes
+      op: includes
+      value: handler_tainted_safety_policy_payload
+    - field: metadata.handler_authority_classes
+      op: includes
+      value: handler_tainted_safety_policy_selector
+    - field: metadata.handler_authority_classes
+      op: includes
+      value: handler_safety_policy_weakening
+    - field: metadata.handler_authority_classes
+      op: includes
+      value: handler_clipboard_safety_policy_bridge
+    - field: metadata.schema_properties
+      op: contains_any
+      value:
+        - customer_id
+        - policy_id
+        - target_control_id
+        - override_reason_text
+    - field: actions
+      op: includes
+      value: read
+    - field: actions
+      op: includes
+      value: send
+    - field: actions
+      op: includes
+      value: write
+    - field: data_classes
+      op: contains_any
+      value:
+        - confidential
+        - credential
+        - pii
+    - field: external_reach
+      op: equals
+      value: true
+    - field: secret_exposure
+      op: equals
+      value: true
+    - field: side_effect
+      op: equals
+      value: true
+    - field: reversible
+      op: equals
+      value: false
+recommendation:
+  control: quarantine
+  text: Quarantine clipboard-to-safety-policy handlers until copied desktop or browser context is treated as untrusted and cannot select or weaken guardrail, approval, moderation, or safety controls; policy IDs and control IDs are allowlisted; fail-open, monitor-only, default-allow, approval-off, and disabled modes are rejected deterministically; runtime policy credentials are least privilege; and security-owner approval plus immutable audit provenance are required before clipboard material can change safety policy.

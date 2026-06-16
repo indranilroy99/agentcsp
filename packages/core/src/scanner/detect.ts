@@ -24194,6 +24194,7 @@ function addToolDefinitionSurface(
       !authority.local_file_safety_policy_bridge &&
       !authority.tool_output_safety_policy_bridge &&
       !authority.rag_retrieval_safety_policy_bridge &&
+      !authority.clipboard_safety_policy_bridge &&
       !authority.visual_context_safety_policy_bridge &&
       !authority.authorization_policy_write &&
       !authority.secret_manager_authorization_grant_bridge &&
@@ -24415,6 +24416,7 @@ function addToolDefinitionSurface(
       local_file_safety_policy_bridge: authority.local_file_safety_policy_bridge,
       tool_output_safety_policy_bridge: authority.tool_output_safety_policy_bridge,
       rag_retrieval_safety_policy_bridge: authority.rag_retrieval_safety_policy_bridge,
+      clipboard_safety_policy_bridge: authority.clipboard_safety_policy_bridge,
       visual_context_safety_policy_bridge: authority.visual_context_safety_policy_bridge,
       authorization_policy_write: authority.authorization_policy_write,
       tainted_authorization_grant_input: authority.tainted_authorization_grant_input,
@@ -26935,6 +26937,7 @@ interface SourceToolHandlerSignals {
   handlerLocalFileSafetyPolicyBridge: boolean;
   handlerToolOutputSafetyPolicyBridge: boolean;
   handlerRagRetrievalSafetyPolicyBridge: boolean;
+  handlerClipboardSafetyPolicyBridge: boolean;
   handlerVisualContextSafetyPolicyBridge: boolean;
   handlerAuthorizationPolicyWrite: boolean;
   handlerTaintedAuthorizationGrantInput: boolean;
@@ -27576,6 +27579,7 @@ function sourceToolHandlerSignalMetadata(signals: SourceToolHandlerSignals | und
     handler_local_file_safety_policy_bridge: signals.handlerLocalFileSafetyPolicyBridge,
     handler_tool_output_safety_policy_bridge: signals.handlerToolOutputSafetyPolicyBridge,
     handler_rag_retrieval_safety_policy_bridge: signals.handlerRagRetrievalSafetyPolicyBridge,
+    handler_clipboard_safety_policy_bridge: signals.handlerClipboardSafetyPolicyBridge,
     handler_visual_context_safety_policy_bridge: signals.handlerVisualContextSafetyPolicyBridge,
     handler_authorization_policy_write: signals.handlerAuthorizationPolicyWrite,
     handler_tainted_authorization_grant_input: signals.handlerTaintedAuthorizationGrantInput,
@@ -28218,6 +28222,10 @@ function classifySourceToolHandlerSignals(
   const clipboardAuthorizationGrantBridge = clipboardRead && authorizationPolicyWrite && (language === "javascript"
     ? hasJavaScriptHandlerClipboardAuthorizationGrantBridge(handlerSource)
     : hasPythonHandlerClipboardAuthorizationGrantBridge(handlerSource));
+  const clipboardSafetyPolicyBridge = clipboardRead && safetyPolicyWrite && (language === "javascript"
+    ? hasJavaScriptHandlerClipboardSafetyPolicyBridge(handlerSource)
+    : hasPythonHandlerClipboardSafetyPolicyBridge(handlerSource));
+  if (clipboardSafetyPolicyBridge) taintedSafetyPolicyPayload = true;
   const clipboardPromptBridge = clipboardRead && modelProviderCall && (language === "javascript"
     ? hasJavaScriptHandlerClipboardPromptBridge(handlerSource)
     : hasPythonHandlerClipboardPromptBridge(handlerSource));
@@ -28624,6 +28632,7 @@ function classifySourceToolHandlerSignals(
   if (localFileSafetyPolicyBridge) classes.add("handler_local_file_safety_policy_bridge");
   if (toolOutputSafetyPolicyBridge) classes.add("handler_tool_output_safety_policy_bridge");
   if (ragRetrievalSafetyPolicyBridge) classes.add("handler_rag_retrieval_safety_policy_bridge");
+  if (clipboardSafetyPolicyBridge) classes.add("handler_clipboard_safety_policy_bridge");
   if (visualContextSafetyPolicyBridge) classes.add("handler_visual_context_safety_policy_bridge");
   if (authorizationPolicyWrite) classes.add("handler_authorization_policy_write");
   if (taintedAuthorizationGrantInput) classes.add("handler_tainted_authorization_grant_input");
@@ -28851,6 +28860,7 @@ function classifySourceToolHandlerSignals(
     handlerLocalFileSafetyPolicyBridge: localFileSafetyPolicyBridge,
     handlerToolOutputSafetyPolicyBridge: toolOutputSafetyPolicyBridge,
     handlerRagRetrievalSafetyPolicyBridge: ragRetrievalSafetyPolicyBridge,
+    handlerClipboardSafetyPolicyBridge: clipboardSafetyPolicyBridge,
     handlerVisualContextSafetyPolicyBridge: visualContextSafetyPolicyBridge,
     handlerAuthorizationPolicyWrite: authorizationPolicyWrite,
     handlerTaintedAuthorizationGrantInput: taintedAuthorizationGrantInput,
@@ -33192,6 +33202,30 @@ function hasPythonHandlerRagRetrievalSafetyPolicyBridge(source: string): boolean
   );
 }
 
+function hasJavaScriptHandlerClipboardSafetyPolicyBridge(source: string): boolean {
+  const identifiers = extractJavaScriptClipboardIdentifiers(source);
+  return identifiers.length > 0 && safetyPolicyCallReferencesPayloadIdentifier(
+    [
+      /\b(?:guardrailPolicyClient|safetyPolicyClient|safetyControlClient|policyClient|agentPolicyClient|approvalPolicyClient|moderationPolicyClient|toolApprovalClient|riskPolicyClient|controlPlaneClient|safetySettingsClient)\s*(?:\.\s*[A-Za-z_$][\w$]*){0,5}\s*\.\s*(?:update|updatePolicy|set|setPolicy|put|upsert|write|save|configure|configurePolicy|patch|patchPolicy|override|applyOverride|disable|disableControl|setMode|setDefault|setDefaultAllow|setApprovalPolicy)\s*\(([\s\S]{0,2400})\)/giu,
+      /\b(?:updateGuardrailPolicy|updateSafetyPolicy|setSafetyPolicy|patchGuardrailPolicy|overrideSafetyPolicy|disableSafetyControl|setApprovalPolicy|setToolApprovalPolicy|setDefaultAllow)\s*\(([\s\S]{0,2400})\)/giu
+    ],
+    source,
+    identifiers
+  );
+}
+
+function hasPythonHandlerClipboardSafetyPolicyBridge(source: string): boolean {
+  const identifiers = extractPythonClipboardIdentifiers(source);
+  return identifiers.length > 0 && safetyPolicyCallReferencesPayloadIdentifier(
+    [
+      /\b(?:guardrail_policy_client|safety_policy_client|safety_control_client|policy_client|agent_policy_client|approval_policy_client|moderation_policy_client|tool_approval_client|risk_policy_client|control_plane_client|safety_settings_client)\s*(?:\.\s*[A-Za-z_]\w*){0,5}\s*\.\s*(?:update|update_policy|set|set_policy|put|upsert|write|save|configure|configure_policy|patch|patch_policy|override|apply_override|disable|disable_control|set_mode|set_default|set_default_allow|set_approval_policy)\s*\(([\s\S]{0,2400})\)/giu,
+      /\b(?:update_guardrail_policy|update_safety_policy|set_safety_policy|patch_guardrail_policy|override_safety_policy|disable_safety_control|set_approval_policy|set_tool_approval_policy|set_default_allow)\s*\(([\s\S]{0,2400})\)/giu
+    ],
+    source,
+    identifiers
+  );
+}
+
 function hasJavaScriptHandlerVisualContextSafetyPolicyBridge(source: string): boolean {
   const identifiers = extractJavaScriptVisualContextIdentifiers(source);
   return identifiers.length > 0 && safetyPolicyCallReferencesPayloadIdentifier(
@@ -33242,13 +33276,20 @@ function expressionMatchesTaintedSafetyPolicySelector(pattern: RegExp, source: s
 }
 
 function expressionReferencesTaintedSafetyPolicyPayload(expression: string, source: string): boolean {
-  const templateInterpolation = /\$\{[^}]*\b(?:policyPatchText|policy_patch_text|policyText|policy_text|guardrailText|guardrail_text|safetyPrompt|safety_prompt|instructionText|instruction_text|customerTicketText|customer_ticket_text|customerContext|customer_context|customerMessage|customer_message|overrideReason|override_reason|approvalReason|approval_reason|toolOutput|tool_output|promptText|prompt_text|content|message|prompt|payload|context|customer|ticket|input|text)\b/u.test(
+  const templateInterpolation = /\$\{[^}]*\b(?:policyPatchText|policy_patch_text|policyText|policy_text|guardrailText|guardrail_text|safetyPrompt|safety_prompt|instructionText|instruction_text|customerTicketText|customer_ticket_text|customerContext|customer_context|customerMessage|customer_message|overrideReason|override_reason|approvalReason|approval_reason|toolOutput|tool_output|promptText|prompt_text|clipboardText|clipboard_text|content|message|prompt|payload|context|customer|ticket|input|text|clipboard)\b/u.test(
     expression
   );
   if (templateInterpolation) return true;
+  const clipboardIdentifiers = uniqueStrings([
+    ...extractJavaScriptClipboardIdentifiers(source),
+    ...extractPythonClipboardIdentifiers(source)
+  ]);
+  if (clipboardIdentifiers.some((identifier) => new RegExp(`\\b${escapeRegExp(identifier)}\\b`, "u").test(expression))) {
+    return true;
+  }
   const withoutQuotedStrings = expression.replace(/(["'`])(?:\\.|(?!\1)[\s\S])*\1/gu, " ");
-  const stronglyTaintedName = /\b(?:policyPatchText|policy_patch_text|policyText|policy_text|guardrailText|guardrail_text|safetyPrompt|safety_prompt|instructionText|instruction_text|customerTicketText|customer_ticket_text|customerContext|customer_context|customerMessage|customer_message|overrideReason|override_reason|approvalReason|approval_reason|toolOutput|tool_output|promptText|prompt_text)\b/u;
-  const taintedName = /\b(?:policyPatchText|policy_patch_text|policyText|policy_text|guardrailText|guardrail_text|safetyPrompt|safety_prompt|instructionText|instruction_text|customerTicketText|customer_ticket_text|customerContext|customer_context|customerMessage|customer_message|overrideReason|override_reason|approvalReason|approval_reason|toolOutput|tool_output|promptText|prompt_text|content|message|prompt|payload|context|customer|ticket|input|text|instructions|patch|body|reason)\b/u;
+  const stronglyTaintedName = /\b(?:policyPatchText|policy_patch_text|policyText|policy_text|guardrailText|guardrail_text|safetyPrompt|safety_prompt|instructionText|instruction_text|customerTicketText|customer_ticket_text|customerContext|customer_context|customerMessage|customer_message|overrideReason|override_reason|approvalReason|approval_reason|toolOutput|tool_output|promptText|prompt_text|clipboardText|clipboard_text)\b/u;
+  const taintedName = /\b(?:policyPatchText|policy_patch_text|policyText|policy_text|guardrailText|guardrail_text|safetyPrompt|safety_prompt|instructionText|instruction_text|customerTicketText|customer_ticket_text|customerContext|customer_context|customerMessage|customer_message|overrideReason|override_reason|approvalReason|approval_reason|toolOutput|tool_output|promptText|prompt_text|clipboardText|clipboard_text|content|message|prompt|payload|context|customer|ticket|input|text|instructions|patch|body|reason|clipboard)\b/u;
   if (stronglyTaintedName.test(withoutQuotedStrings)) return true;
 
   const payloadAssignment = /\b(?:policy|policy_text|policyText|patch|policy_patch|policyPatch|instructions|prompt|message|content|context|payload|body|reason|override_reason|overrideReason|customer|customer_id|customerId|ticket|ticket_id|ticketId|input|text)\s*(?::|=)\s*([^,\n}\)]+)/giu;
@@ -37633,6 +37674,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   local_file_safety_policy_bridge: boolean;
   tool_output_safety_policy_bridge: boolean;
   rag_retrieval_safety_policy_bridge: boolean;
+  clipboard_safety_policy_bridge: boolean;
   visual_context_safety_policy_bridge: boolean;
   authorization_policy_write: boolean;
   tainted_authorization_grant_input: boolean;
@@ -37786,6 +37828,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   const handlerLocalFileSafetyPolicyBridge = handler?.handlerLocalFileSafetyPolicyBridge === true;
   const handlerToolOutputSafetyPolicyBridge = handler?.handlerToolOutputSafetyPolicyBridge === true;
   const handlerRagRetrievalSafetyPolicyBridge = handler?.handlerRagRetrievalSafetyPolicyBridge === true;
+  const handlerClipboardSafetyPolicyBridge = handler?.handlerClipboardSafetyPolicyBridge === true;
   const handlerVisualContextSafetyPolicyBridge = handler?.handlerVisualContextSafetyPolicyBridge === true;
   const handlerAuthorizationPolicyWrite = handler?.handlerAuthorizationPolicyWrite === true;
   const handlerTaintedAuthorizationGrantInput = handler?.handlerTaintedAuthorizationGrantInput === true;
@@ -38840,6 +38883,12 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
     actions.add("send");
     actions.add("write");
   }
+  if (handlerClipboardSafetyPolicyBridge) {
+    classes.add("clipboard_safety_policy_bridge");
+    actions.add("read");
+    actions.add("send");
+    actions.add("write");
+  }
   if (handlerVisualContextSafetyPolicyBridge) {
     classes.add("visual_context_safety_policy_bridge");
     actions.add("read");
@@ -39351,6 +39400,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerNetworkResponseSafetyPolicyBridge ||
       handlerLocalFileSafetyPolicyBridge ||
       handlerToolOutputSafetyPolicyBridge ||
+      handlerClipboardSafetyPolicyBridge ||
       handlerVisualContextSafetyPolicyBridge ||
       handlerAuthorizationPolicyWrite ||
       handlerTaintedAuthorizationGrantInput ||
@@ -39571,6 +39621,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       (handlerVisualContextPromptRegistryBridge && handlerSecretEnvAccess) ||
       handlerSafetyPolicyWrite ||
       handlerRagRetrievalSafetyPolicyBridge ||
+      handlerClipboardSafetyPolicyBridge ||
       handlerModelOutputSafetyPolicyBridge ||
       handlerSecretManagerSafetyPolicyBridge ||
       handlerEnvSecretSafetyPolicyBridge ||
@@ -39774,6 +39825,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       (handlerVisualContextDatabaseWriteBridge && handlerSecretEnvAccess) ||
       (handlerVisualContextTaskQueueBridge && handlerSecretEnvAccess) ||
       (handlerVisualContextAgentDelegationBridge && handlerSecretEnvAccess) ||
+      (handlerClipboardSafetyPolicyBridge && handlerSecretEnvAccess) ||
       (handlerVisualContextSafetyPolicyBridge && handlerSecretEnvAccess) ||
       (handlerRagRetrievalBrowserAutomationBridge && handlerSecretEnvAccess) ||
       (handlerRagRetrievalMemoryBridge && handlerSecretEnvAccess) ||
@@ -39954,6 +40006,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
     local_file_safety_policy_bridge: handlerLocalFileSafetyPolicyBridge,
     tool_output_safety_policy_bridge: handlerToolOutputSafetyPolicyBridge,
     rag_retrieval_safety_policy_bridge: handlerRagRetrievalSafetyPolicyBridge,
+    clipboard_safety_policy_bridge: handlerClipboardSafetyPolicyBridge,
     visual_context_safety_policy_bridge: handlerVisualContextSafetyPolicyBridge,
     authorization_policy_write: handlerAuthorizationPolicyWrite,
     tainted_authorization_grant_input: handlerTaintedAuthorizationGrantInput,
@@ -40154,6 +40207,7 @@ function authoritySignature(tool: SurfaceObject): string {
     metadata.local_file_safety_policy_bridge === true ? "local_file_safety_policy_bridge" : "",
     metadata.tool_output_safety_policy_bridge === true ? "tool_output_safety_policy_bridge" : "",
     metadata.rag_retrieval_safety_policy_bridge === true ? "rag_retrieval_safety_policy_bridge" : "",
+    metadata.clipboard_safety_policy_bridge === true ? "clipboard_safety_policy_bridge" : "",
     metadata.visual_context_safety_policy_bridge === true ? "visual_context_safety_policy_bridge" : "",
     metadata.authorization_policy_write === true ? "authorization_policy_write" : "",
     metadata.tainted_authorization_grant_input === true ? "tainted_authorization_grant_input" : "",
@@ -40395,6 +40449,7 @@ function isPrivilegedToolSurface(tool: SurfaceObject): boolean {
     tool.metadata.local_file_safety_policy_bridge === true ||
     tool.metadata.tool_output_safety_policy_bridge === true ||
     tool.metadata.rag_retrieval_safety_policy_bridge === true ||
+    tool.metadata.clipboard_safety_policy_bridge === true ||
     tool.metadata.visual_context_safety_policy_bridge === true ||
     tool.metadata.authorization_policy_write === true ||
     tool.metadata.tainted_authorization_grant_input === true ||

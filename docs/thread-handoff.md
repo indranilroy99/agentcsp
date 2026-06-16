@@ -1875,6 +1875,9 @@ The current iteration adds:
 - source-defined tool handler metadata for desktop or browser clipboard material embedded through provider APIs and persisted into durable vector memory/RAG stores with runtime embedding credentials and caller-selected vector scope, without emitting clipboard reads, embedding calls, vector-store writes, copied text variables, embeddings, namespaces, or return strings
 - regression coverage proving clipboard embedding-vector snippets, `desktopClipboard.readText`, `desktop_clipboard.read_text`, embedding SDK calls, vector upserts, copied text variables, embedding variables, and clipboard vector-memory return strings stay redacted
 - rule `AGENTCSP-TOOL-206` for source-defined tools that read desktop or browser clipboard material and embed copied context into durable vector memory under runtime embedding authority and caller-selected vector routing
+- source-defined tool handler metadata for desktop or browser clipboard material used to weaken guardrail, moderation, approval, or safety-policy controls with runtime policy credentials and caller-selected policy/control routing, without emitting clipboard reads, policy-client calls, copied text variables, patches, policy IDs, control IDs, or return strings
+- regression coverage proving clipboard safety-policy snippets, `desktopClipboard.readText`, `desktop_clipboard.read_text`, safety policy update calls, copied text variables, override payloads, and clipboard safety-policy return strings stay redacted
+- rule `AGENTCSP-TOOL-207` for source-defined tools that read desktop or browser clipboard material and use copied context to weaken safety policy under runtime policy authority and caller-selected policy routing
 
 ## Initial Build Recommendation
 
