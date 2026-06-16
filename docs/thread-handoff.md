@@ -321,7 +321,7 @@ The current iteration adds:
 - core build uses forced TypeScript project emit before copying rule assets so stale `dist` state cannot omit compiled modules
 - `pnpm verify:packages` checks compiled package modules, package `files`, and built-in rule count parity between source and packaged artifacts
 - `pnpm verify:schemas` checks exported JSON Schema files against the current Zod source schemas without rewriting them
-- `pnpm verify:fixtures` validates generated fixture manifests/findings against runtime schemas, checks SARIF structure, enforces vulnerable/safe fixture signal expectations, and searches output for redaction regressions
+- `pnpm verify:fixtures` rebuilds the CLI/core, regenerates fixture outputs, validates generated manifests/findings against runtime schemas, checks SARIF structure, enforces vulnerable/safe fixture signal expectations, and searches output for redaction regressions
 - project-local malformed, schema-invalid, or duplicate custom rules are skipped with redacted diagnostics
 - parse-error metadata on affected fallback surfaces
 - Markdown Scan Diagnostics section
