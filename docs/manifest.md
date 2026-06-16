@@ -2941,7 +2941,7 @@ The summary includes:
 - whether `max_files` was reached
 - configured `max_files` and `max_file_size_bytes`
 
-Default ignore rules include prior AgentCSP output directories such as `.agentcsp`, `.agentcsp-*`, and `.agentcsp_*` so repeated scans do not ingest stale manifests, findings, reports, or SARIF files.
+Default ignore rules include prior AgentCSP output directories such as `.agentcsp`, `.agentcsp-*`, and `.agentcsp_*`. When the configured output directory is inside the scanned root, that output directory is ignored as well. This prevents repeated scans from ingesting stale manifests, findings, reports, or SARIF files.
 
 Coverage counts do not include raw file contents or skipped path lists. Diagnostic counters summarize parser and scan-health issues; detailed redacted records remain in `diagnostics`.
 

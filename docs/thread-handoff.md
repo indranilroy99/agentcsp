@@ -1886,6 +1886,8 @@ The current iteration adds:
 - regression coverage proving max-files exhaustion remains advisory by default, fails only with `--fail-on-diagnostics`, increments scan coverage diagnostic counters, and does not emit raw file contents
 - default traversal now ignores prior AgentCSP output directories `.agentcsp`, `.agentcsp-*`, and `.agentcsp_*` so repeated scans do not self-ingest stale manifests, findings, reports, or SARIF files
 - regression coverage proving generated AgentCSP output directories are skipped while `.agentcspignore` remains indexed
+- traversal now also ignores the configured output directory when `--out` resolves inside the scanned root, preventing self-ingestion for custom output paths
+- regression coverage proving inside-root custom output directories are skipped while outside-root output paths do not create broad ignore behavior
 
 ## Initial Build Recommendation
 

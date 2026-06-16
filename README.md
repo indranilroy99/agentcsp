@@ -76,7 +76,7 @@ AgentCSP is conservative by default:
 - Evidence snippets are redacted by default.
 - Raw file contents are not dumped into the manifest.
 - RAG and memory content signals are emitted as booleans and counts, not raw text.
-- Large/generated folders and prior AgentCSP output directories such as `.agentcsp`, `.agentcsp-*`, and `.agentcsp_*` are ignored by default.
+- Large/generated folders, the configured inside-root output directory, and prior AgentCSP output directories such as `.agentcsp`, `.agentcsp-*`, and `.agentcsp_*` are ignored by default.
 - `.agentcspignore` is supported in the MVP.
 - File traversal and object IDs are deterministic.
 

@@ -54,6 +54,48 @@ describe("walkProjectWithCoverage", () => {
     expect(result.coverage.max_files_reached).toBe(true);
     expect(result.coverage.files_indexed).toBe(1);
   });
+
+  it("ignores the configured output directory when it is inside the scan root", async () => {
+    const root = await createCustomOutputFixture();
+    const result = await walkProjectWithCoverage({
+      root_path: root,
+      output_path: path.join(root, "security", "agentcsp-output"),
+      formats: ["json", "md"],
+      include_hidden: true,
+      include_logs: false,
+      max_file_size_bytes: 1024,
+      max_files: 100,
+      quiet: true
+    });
+
+    expect(result.files.map((file) => file.relativePath)).toEqual(["AGENTS.md"]);
+    expect(result.coverage).toMatchObject({
+      files_seen: 1,
+      files_indexed: 1,
+      directories_skipped_by_ignore: 1
+    });
+  });
+
+  it("does not add an output-directory ignore when output is outside the scan root", async () => {
+    const root = await createCustomOutputFixture();
+    const result = await walkProjectWithCoverage({
+      root_path: root,
+      output_path: "/private/tmp/agentcsp-outside-root-output",
+      formats: ["json", "md"],
+      include_hidden: true,
+      include_logs: false,
+      max_file_size_bytes: 1024,
+      max_files: 100,
+      quiet: true
+    });
+
+    expect(result.files.map((file) => file.relativePath)).toEqual([
+      "AGENTS.md",
+      "security/agentcsp-output/agent-manifest.json",
+      "security/agentcsp-output/findings.json"
+    ]);
+    expect(result.coverage.directories_skipped_by_ignore).toBe(0);
+  });
 });
 
 async function createCoverageFixture(): Promise<string> {
@@ -79,5 +121,15 @@ async function createCoverageFixture(): Promise<string> {
   await fs.writeFile(path.join(root, "large.md"), "this file is intentionally larger than ten bytes\n", "utf8");
   await fs.writeFile(path.join(root, "logs", "agent.log"), "log\n", "utf8");
   await fs.writeFile(path.join(root, "node_modules", "pkg", "index.js"), "module.exports = {}\n", "utf8");
+  return root;
+}
+
+async function createCustomOutputFixture(): Promise<string> {
+  const root = "/private/tmp/agentcsp-custom-output-fixture";
+  await fs.rm(root, { recursive: true, force: true });
+  await fs.mkdir(path.join(root, "security", "agentcsp-output"), { recursive: true });
+  await fs.writeFile(path.join(root, "AGENTS.md"), "review only\n", "utf8");
+  await fs.writeFile(path.join(root, "security", "agentcsp-output", "agent-manifest.json"), '{"old": true}\n', "utf8");
+  await fs.writeFile(path.join(root, "security", "agentcsp-output", "findings.json"), "[]\n", "utf8");
   return root;
 }

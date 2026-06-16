@@ -11,9 +11,9 @@ export class IgnoreMatcher {
     this.patterns = patterns.map((pattern) => pattern.trim()).filter(Boolean);
   }
 
-  static load(rootPath: string): IgnoreMatcher {
+  static load(rootPath: string, extraPatterns: string[] = []): IgnoreMatcher {
     const ignorePath = path.join(rootPath, ".agentcspignore");
-    const patterns = [...DEFAULT_EXCLUDED_DIRS];
+    const patterns = [...DEFAULT_EXCLUDED_DIRS, ...extraPatterns];
     if (fs.existsSync(ignorePath)) {
       const lines = fs
         .readFileSync(ignorePath, "utf8")

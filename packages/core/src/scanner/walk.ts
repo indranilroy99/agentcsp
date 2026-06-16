@@ -28,7 +28,8 @@ export async function walkProject(config: ScanConfig): Promise<WalkedFile[]> {
 
 export async function walkProjectWithCoverage(config: ScanConfig): Promise<WalkResult> {
   const rootPath = path.resolve(config.root_path);
-  const ignore = IgnoreMatcher.load(rootPath);
+  const outputIgnorePattern = outputPathIgnorePattern(rootPath, config.output_path);
+  const ignore = IgnoreMatcher.load(rootPath, outputIgnorePattern ? [outputIgnorePattern] : []);
   const files: WalkedFile[] = [];
   const maxFiles = config.max_files ?? DEFAULT_MAX_FILES;
   const maxFileSize = config.max_file_size_bytes ?? DEFAULT_MAX_FILE_SIZE_BYTES;
@@ -113,4 +114,12 @@ export async function walkProjectWithCoverage(config: ScanConfig): Promise<WalkR
   const sortedFiles = files.sort((a, b) => a.relativePath.localeCompare(b.relativePath));
   coverage.files_indexed = sortedFiles.length;
   return { files: sortedFiles, coverage };
+}
+
+function outputPathIgnorePattern(rootPath: string, outputPath: string): string | undefined {
+  const resolvedOutputPath = path.resolve(outputPath);
+  const relativeOutputPath = path.relative(rootPath, resolvedOutputPath);
+  if (!relativeOutputPath || relativeOutputPath === ".") return undefined;
+  if (relativeOutputPath.startsWith("..") || path.isAbsolute(relativeOutputPath)) return undefined;
+  return relativePath(rootPath, resolvedOutputPath);
 }
