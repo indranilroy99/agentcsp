@@ -107,6 +107,9 @@ function renderActionPlan(manifest: AgentManifest): string {
     `- Omitted max risk score: ${plan.omitted_max_risk_score}`,
     `- Truncated: \`${plan.truncated}\``,
     `- Immediate actions: ${plan.immediate_actions}`,
+    `- Urgent actions: ${plan.urgent_actions}`,
+    `- Scheduled actions: ${plan.scheduled_actions}`,
+    `- Backlog actions: ${plan.backlog_actions}`,
     `- Approval actions: ${plan.approval_actions}`,
     `- Quarantine actions: ${plan.quarantine_actions}`,
     `- Redaction actions: ${plan.redaction_actions}`,
@@ -121,11 +124,11 @@ function renderActionPlan(manifest: AgentManifest): string {
     "",
     renderOmittedActionRiskTable(plan),
     "",
-    "| Priority | Severity | Risk | Baseline | Owner | Control | Rule | Surface | Path | Rationale |",
-    "| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |",
+    "| Priority | Response | Severity | Risk | Baseline | Owner | Control | Rule | Surface | Path | Rationale |",
+    "| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |",
     ...plan.actions.map(
       (action) =>
-        `| ${action.priority} | ${action.severity} | ${action.risk_score} | ${action.baseline_status ?? "unbaselined"} | ${action.owner_hint} | ${action.recommended_control.replaceAll("_", " ")} | ${action.rule_id} | ${action.surface_type} | \`${escapeTable(action.path)}\` | ${escapeTable(action.rationale.join("; "))} |`
+        `| ${action.priority} | ${action.response_tier} | ${action.severity} | ${action.risk_score} | ${action.baseline_status ?? "unbaselined"} | ${action.owner_hint} | ${action.recommended_control.replaceAll("_", " ")} | ${action.rule_id} | ${action.surface_type} | \`${escapeTable(action.path)}\` | ${escapeTable([...action.rationale, action.response_reason].join("; "))} |`
     )
   ].join("\n");
 }

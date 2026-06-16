@@ -93,10 +93,18 @@ describe("scanProject", () => {
       Object.values(result.manifest.action_plan?.omitted_by_severity ?? {}).reduce((sum, count) => sum + count, 0)
     ).toBe(result.manifest.action_plan?.omitted_actions);
     expect(result.manifest.action_plan?.immediate_actions).toBeGreaterThan(0);
+    expect(
+      (result.manifest.action_plan?.immediate_actions ?? 0) +
+        (result.manifest.action_plan?.urgent_actions ?? 0) +
+        (result.manifest.action_plan?.scheduled_actions ?? 0) +
+        (result.manifest.action_plan?.backlog_actions ?? 0)
+    ).toBe(result.manifest.action_plan?.total_actions);
     expect(result.manifest.action_plan?.actions[0]).toMatchObject({
       priority: 1,
-      severity: "critical"
+      severity: "critical",
+      response_tier: "immediate"
     });
+    expect(result.manifest.action_plan?.actions[0]?.response_reason).toBeTruthy();
     expect(result.manifest.action_plan?.actions[0]?.owner_hint).toMatch(
       /^(agent-engineering|agent-platform|application-security|data-and-knowledge|identity-and-secrets|platform-ci|runtime-platform)$/u
     );
@@ -233,7 +241,9 @@ describe("scanProject", () => {
     expect(result.reportMarkdown).toContain("| Owner hint | Actions | Highest severity | Max risk |");
     expect(result.reportMarkdown).toContain("### Omitted Action Risk");
     expect(result.reportMarkdown).toContain("| Omitted | Highest severity | Max risk | Critical | High | Medium | Low | Info |");
-    expect(result.reportMarkdown).toContain("| Priority | Severity | Risk | Baseline | Owner | Control | Rule | Surface | Path | Rationale |");
+    expect(result.reportMarkdown).toContain(
+      "| Priority | Response | Severity | Risk | Baseline | Owner | Control | Rule | Surface | Path | Rationale |"
+    );
     expect(result.reportMarkdown).toContain("- Root: `<scan-root>`");
     expect(result.reportMarkdown).not.toContain(rootPath);
     expect(result.reportMarkdown).toContain("- Scan health: `complete`");
@@ -311,6 +321,9 @@ describe("scanProject", () => {
       omitted_max_risk_score: 0,
       truncated: false,
       immediate_actions: 0,
+      urgent_actions: 0,
+      scheduled_actions: 0,
+      backlog_actions: 0,
       approval_actions: 0,
       quarantine_actions: 0,
       redaction_actions: 0,

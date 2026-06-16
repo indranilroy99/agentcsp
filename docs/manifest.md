@@ -2908,6 +2908,7 @@ Each action includes:
 - priority
 - title
 - owner hint and owner rationale
+- response tier and response rationale
 - recommended control
 - severity, confidence, and risk score
 - rule ID and category
@@ -2917,7 +2918,9 @@ Each action includes:
 - related finding IDs
 - data classes, actions, and trust-boundary status
 
-The summary also includes `total_active_findings_considered`, `max_actions`, `omitted_actions`, `omitted_by_severity`, `omitted_highest_severity`, `omitted_max_risk_score`, and `truncated` so consumers can tell when the concise action queue hides lower-priority active findings and whether those omitted findings still contain material risk. It also includes `new_actions`, `existing_actions`, and `by_owner`, a deterministic owner rollup with action count, highest severity, and max risk score. Owner hints are routing hints, not access-control decisions.
+Response tiers are deterministic operational routing hints: `immediate`, `urgent`, `scheduled`, or `backlog`. They are derived from severity, risk score, recommended control, secret exposure, and external reach.
+
+The summary also includes `total_active_findings_considered`, `max_actions`, `omitted_actions`, `omitted_by_severity`, `omitted_highest_severity`, `omitted_max_risk_score`, and `truncated` so consumers can tell when the concise action queue hides lower-priority active findings and whether those omitted findings still contain material risk. It also includes response-tier counts, `new_actions`, `existing_actions`, and `by_owner`, a deterministic owner rollup with action count, highest severity, and max risk score. Owner hints are routing hints, not access-control decisions.
 
 The action plan does not include raw file contents, evidence snippets, secret values, policy reasons, or unredacted tool/runtime configuration values.
 

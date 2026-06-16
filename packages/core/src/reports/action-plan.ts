@@ -1,4 +1,12 @@
-import type { ActionPlanSummary, Control, Finding, Severity, SeverityCounts, SurfaceType } from "../schemas/index.js";
+import type {
+  ActionPlanSummary,
+  Control,
+  Finding,
+  ResponseTier,
+  Severity,
+  SeverityCounts,
+  SurfaceType
+} from "../schemas/index.js";
 import { stableId } from "../utils/ids.js";
 
 const severityRank = { critical: 5, high: 4, medium: 3, low: 2, info: 1 };
@@ -20,12 +28,15 @@ export function buildActionPlan(findings: Finding[], limit = 12): ActionPlanSumm
   const omittedFindings = sortedActiveFindings.slice(limit);
   const actions = rankedFindings.map((finding, index) => {
     const owner = ownerForFinding(finding);
+    const response = responseForFinding(finding);
     return {
       id: stableId("action", [finding.id, finding.recommended_control]),
       priority: index + 1,
       title: actionTitle(finding),
       owner_hint: owner.owner_hint,
       owner_reason: owner.owner_reason,
+      response_tier: response.response_tier,
+      response_reason: response.response_reason,
       recommended_control: finding.recommended_control,
       severity: finding.severity,
       confidence: finding.confidence,
@@ -54,6 +65,9 @@ export function buildActionPlan(findings: Finding[], limit = 12): ActionPlanSumm
     omitted_max_risk_score: maxRiskScore(omittedFindings),
     truncated: activeFindings.length > actions.length,
     immediate_actions: actions.filter(isImmediateAction).length,
+    urgent_actions: actions.filter((action) => action.response_tier === "urgent").length,
+    scheduled_actions: actions.filter((action) => action.response_tier === "scheduled").length,
+    backlog_actions: actions.filter((action) => action.response_tier === "backlog").length,
     approval_actions: actions.filter((action) => action.recommended_control === "require_approval").length,
     quarantine_actions: actions.filter((action) => action.recommended_control === "quarantine").length,
     redaction_actions: actions.filter((action) => action.recommended_control === "redact").length,
@@ -102,12 +116,7 @@ function baselinePriority(finding: Finding): number {
 }
 
 function isImmediateAction(action: ActionPlanSummary["actions"][number]): boolean {
-  return (
-    action.severity === "critical" ||
-    action.severity === "high" ||
-    action.recommended_control === "deny" ||
-    action.recommended_control === "quarantine"
-  );
+  return action.response_tier === "immediate";
 }
 
 function actionTitle(finding: Finding): string {
@@ -126,6 +135,35 @@ function actionRationale(finding: Finding): string[] {
   if (finding.risk.actions.length > 0) rationale.push(`Actions: ${finding.risk.actions.join(", ")}`);
   if (finding.data_classes.length > 0) rationale.push(`Data classes: ${finding.data_classes.join(", ")}`);
   return rationale;
+}
+
+function responseForFinding(finding: Finding): { response_tier: ResponseTier; response_reason: string } {
+  if (finding.severity === "critical" || finding.recommended_control === "deny" || finding.recommended_control === "quarantine") {
+    return {
+      response_tier: "immediate",
+      response_reason: "critical severity or containment control"
+    };
+  }
+  if (
+    finding.severity === "high" ||
+    finding.risk.score >= 80 ||
+    (finding.risk.secret_exposure && finding.risk.external_reach)
+  ) {
+    return {
+      response_tier: "urgent",
+      response_reason: "high severity, high risk score, or credential exposure with external reach"
+    };
+  }
+  if (finding.severity === "medium" || finding.risk.score >= 50 || finding.recommended_control === "redact") {
+    return {
+      response_tier: "scheduled",
+      response_reason: "medium severity, moderate risk score, or redaction control"
+    };
+  }
+  return {
+    response_tier: "backlog",
+    response_reason: "lower severity and lower static risk score"
+  };
 }
 
 function ownerForFinding(finding: Finding): { owner_hint: string; owner_reason: string } {

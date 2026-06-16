@@ -30,6 +30,33 @@ describe("action plan owner routing", () => {
       "runtime-platform"
     ]);
     expect(plan.actions.every((action) => action.owner_reason.length > 0)).toBe(true);
+    expect(plan.actions.every((action) => action.response_tier === "urgent")).toBe(true);
+    expect(plan.urgent_actions).toBe(6);
+    expect(plan.immediate_actions).toBe(0);
+  });
+
+  it("assigns deterministic response tiers from severity, risk, and controls", () => {
+    const plan = buildActionPlan([
+      finding({ id: "critical", category: "runtime", type: "runtime_config", severity: "critical" }),
+      finding({ id: "quarantine", category: "memory", type: "memory", control: "quarantine", severity: "medium" }),
+      finding({ id: "urgent", category: "mcp", type: "mcp_server", severity: "high" }),
+      finding({ id: "scheduled", category: "prompt", type: "prompt", severity: "medium", riskScore: 55 }),
+      finding({ id: "backlog", category: "instruction", type: "instruction", severity: "low", riskScore: 30 })
+    ]);
+
+    const tiersById = Object.fromEntries(plan.actions.map((action) => [action.related_finding_ids[0], action.response_tier]));
+    expect(tiersById).toMatchObject({
+      critical: "immediate",
+      quarantine: "immediate",
+      urgent: "urgent",
+      scheduled: "scheduled",
+      backlog: "backlog"
+    });
+    expect(plan.immediate_actions).toBe(2);
+    expect(plan.urgent_actions).toBe(1);
+    expect(plan.scheduled_actions).toBe(1);
+    expect(plan.backlog_actions).toBe(1);
+    expect(plan.actions.every((action) => action.response_reason.length > 0)).toBe(true);
   });
 
   it("reports when the bounded action queue omits lower-priority findings", () => {
@@ -56,13 +83,16 @@ function finding(input: {
   category: string;
   type: SurfaceType;
   dataClasses?: Finding["data_classes"];
+  severity?: Finding["severity"];
+  control?: Finding["recommended_control"];
+  riskScore?: number;
 }): Finding {
   return {
     id: input.id,
     rule_id: `RULE-${input.id}`,
     name: input.id,
     category: input.category,
-    severity: "high",
+    severity: input.severity ?? "high",
     confidence: "high",
     confidence_rationale: [],
     matched_object: {
@@ -85,7 +115,7 @@ function finding(input: {
     reason: input.id,
     trust_boundary_crossed: false,
     data_classes: input.dataClasses ?? [],
-    recommended_control: "require_approval",
+    recommended_control: input.control ?? "require_approval",
     risk: {
       trust_level: "project",
       data_classes: input.dataClasses ?? [],
@@ -95,7 +125,7 @@ function finding(input: {
       external_reach: false,
       secret_exposure: input.dataClasses?.includes("credential") ?? false,
       untrusted_to_privileged: false,
-      score: 80,
+      score: input.riskScore ?? 80,
       rationale: []
     },
     maps_to: { owasp: [], mitre_atlas: [], nist_ai_rmf: [] },

@@ -1215,6 +1215,21 @@
               "minimum": 0,
               "default": 0
             },
+            "urgent_actions": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            },
+            "scheduled_actions": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            },
+            "backlog_actions": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            },
             "approval_actions": {
               "type": "integer",
               "minimum": 0,
@@ -1297,6 +1312,18 @@
                   "owner_reason": {
                     "type": "string"
                   },
+                  "response_tier": {
+                    "type": "string",
+                    "enum": [
+                      "immediate",
+                      "urgent",
+                      "scheduled",
+                      "backlog"
+                    ]
+                  },
+                  "response_reason": {
+                    "type": "string"
+                  },
                   "recommended_control": {
                     "$ref": "#/definitions/AgentCSP Agent Manifest/properties/attack_paths/items/properties/recommended_control"
                   },
@@ -1365,6 +1392,8 @@
                   "title",
                   "owner_hint",
                   "owner_reason",
+                  "response_tier",
+                  "response_reason",
                   "recommended_control",
                   "severity",
                   "confidence",

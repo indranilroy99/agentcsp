@@ -44,6 +44,7 @@ export const ControlSchema = z.enum([
 
 export const SeveritySchema = z.enum(["info", "low", "medium", "high", "critical"]);
 export const ConfidenceSchema = z.enum(["low", "medium", "high", "very_high"]);
+export const ResponseTierSchema = z.enum(["immediate", "urgent", "scheduled", "backlog"]);
 export const SuppressionStatusSchema = z.enum(["active", "expired"]);
 export const FindingBaselineStatusSchema = z.enum(["new", "existing"]);
 export const CiGateStatusSchema = z.enum(["pass", "fail"]);
@@ -318,6 +319,8 @@ export const RemediationActionSchema = z.object({
   title: z.string(),
   owner_hint: z.string(),
   owner_reason: z.string(),
+  response_tier: ResponseTierSchema,
+  response_reason: z.string(),
   recommended_control: ControlSchema,
   severity: SeveritySchema,
   confidence: ConfidenceSchema,
@@ -352,6 +355,9 @@ export const ActionPlanSummarySchema = z.object({
   omitted_max_risk_score: z.number().int().min(0).max(100).default(0),
   truncated: z.boolean().default(false),
   immediate_actions: z.number().int().nonnegative().default(0),
+  urgent_actions: z.number().int().nonnegative().default(0),
+  scheduled_actions: z.number().int().nonnegative().default(0),
+  backlog_actions: z.number().int().nonnegative().default(0),
   approval_actions: z.number().int().nonnegative().default(0),
   quarantine_actions: z.number().int().nonnegative().default(0),
   redaction_actions: z.number().int().nonnegative().default(0),
@@ -611,6 +617,7 @@ export type ActionType = z.infer<typeof ActionTypeSchema>;
 export type Control = z.infer<typeof ControlSchema>;
 export type Severity = z.infer<typeof SeveritySchema>;
 export type Confidence = z.infer<typeof ConfidenceSchema>;
+export type ResponseTier = z.infer<typeof ResponseTierSchema>;
 export type SuppressionStatus = z.infer<typeof SuppressionStatusSchema>;
 export type FindingBaselineStatus = z.infer<typeof FindingBaselineStatusSchema>;
 export type CiGateStatus = z.infer<typeof CiGateStatusSchema>;
