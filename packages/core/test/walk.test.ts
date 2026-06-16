@@ -28,7 +28,7 @@ describe("walkProjectWithCoverage", () => {
       files_indexed: 4,
       files_skipped_for_size: 1,
       files_skipped_by_ignore: 1,
-      directories_skipped_by_ignore: 2,
+      directories_skipped_by_ignore: 5,
       directories_skipped_hidden: 1,
       directories_skipped_logs: 1,
       max_files_reached: false,
@@ -60,11 +60,17 @@ async function createCoverageFixture(): Promise<string> {
   const root = "/private/tmp/agentcsp-walk-coverage-fixture";
   await fs.rm(root, { recursive: true, force: true });
   await fs.mkdir(path.join(root, ".codex"), { recursive: true });
+  await fs.mkdir(path.join(root, ".agentcsp"), { recursive: true });
+  await fs.mkdir(path.join(root, ".agentcsp-debug"), { recursive: true });
+  await fs.mkdir(path.join(root, ".agentcsp_tmp"), { recursive: true });
   await fs.mkdir(path.join(root, ".hidden"), { recursive: true });
   await fs.mkdir(path.join(root, "dist"), { recursive: true });
   await fs.mkdir(path.join(root, "logs"), { recursive: true });
   await fs.mkdir(path.join(root, "node_modules", "pkg"), { recursive: true });
   await fs.writeFile(path.join(root, ".agentcspignore"), "ignored.txt\n", "utf8");
+  await fs.writeFile(path.join(root, ".agentcsp", "agent-manifest.json"), '{"old": true}\n', "utf8");
+  await fs.writeFile(path.join(root, ".agentcsp-debug", "findings.json"), "[]\n", "utf8");
+  await fs.writeFile(path.join(root, ".agentcsp_tmp", "report.md"), "# old report\n", "utf8");
   await fs.writeFile(path.join(root, ".codex", "config.toml"), "sandbox = \"workspace-write\"\n", "utf8");
   await fs.writeFile(path.join(root, ".hidden", "secret.md"), "hidden\n", "utf8");
   await fs.writeFile(path.join(root, "AGENTS.md"), "review only\n", "utf8");

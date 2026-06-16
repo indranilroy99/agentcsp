@@ -2,6 +2,9 @@ export const DEFAULT_MAX_FILE_SIZE_BYTES = 1024 * 1024;
 export const DEFAULT_MAX_FILES = 5000;
 
 export const DEFAULT_EXCLUDED_DIRS = new Set([
+  ".agentcsp",
+  ".agentcsp-*",
+  ".agentcsp_*",
   ".git",
   "node_modules",
   "dist",

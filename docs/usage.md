@@ -19,7 +19,7 @@ The path defaults to the current directory. The output directory defaults to `.a
 
 `agent-manifest.json` includes `triage_summary`, a deterministic rollup of total findings, active findings, suppressions, severity, confidence, surface types, recommended controls, top rules, and top active risks. The Markdown report renders the same summary near the top for human triage.
 
-`scan_coverage` records files indexed, oversized files, ignored entries, skipped hidden/log directories, diagnostic counts, and whether `max_files` was reached. Use it to catch partial or parser-degraded scans before treating a quiet report as clean. When traversal reaches `max_files`, AgentCSP also emits a redacted `SCAN_MAX_FILES_REACHED` diagnostic so CI and dashboards can treat incomplete scans as scan-health events.
+`scan_coverage` records files indexed, oversized files, ignored entries, skipped hidden/log directories, diagnostic counts, and whether `max_files` was reached. AgentCSP output directories such as `.agentcsp`, `.agentcsp-*`, and `.agentcsp_*` are ignored by default so repeated scans do not ingest prior manifests, findings, reports, or SARIF files. Use coverage to catch partial or parser-degraded scans before treating a quiet report as clean. When traversal reaches `max_files`, AgentCSP also emits a redacted `SCAN_MAX_FILES_REACHED` diagnostic so CI and dashboards can treat incomplete scans as scan-health events.
 
 Tune traversal limits with:
 
