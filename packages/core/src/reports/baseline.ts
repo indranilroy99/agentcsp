@@ -2,8 +2,10 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { z } from "zod";
 import {
+  ContentDigestSchema,
   ManifestFingerprintSchema,
   type BaselineComparison,
+  type ContentDigest,
   type ConfidenceCounts,
   type Finding,
   type ManifestFingerprint,
@@ -19,7 +21,13 @@ const BaselineManifestFileSchema = z
     findings: z.array(BaselineFindingRecordSchema),
     metadata: z
       .object({
-        fingerprint: ManifestFingerprintSchema.optional()
+        fingerprint: ManifestFingerprintSchema.optional(),
+        rule_pack: z
+          .object({
+            fingerprint: ContentDigestSchema.optional()
+          })
+          .passthrough()
+          .optional()
       })
       .passthrough()
       .optional()
@@ -65,6 +73,7 @@ export async function applyBaselineComparison(
       baseline_path: displayBaselinePath,
       baseline_format: baseline.format,
       baseline_fingerprint: baseline.fingerprint,
+      baseline_rule_pack_fingerprint: baseline.rulePackFingerprint,
       current_findings: findings.length,
       baseline_findings: baseline.findingIds.length,
       new_findings: newFindingIds.length,
@@ -92,7 +101,12 @@ function baselineComparisonPath(absoluteBaselinePath: string, rootPath?: string)
 async function loadBaselineFindingIds(
   baselinePath: string,
   displayBaselinePath = baselinePath
-): Promise<{ findingIds: string[]; format: BaselineComparison["baseline_format"]; fingerprint?: ManifestFingerprint }> {
+): Promise<{
+  findingIds: string[];
+  format: BaselineComparison["baseline_format"];
+  fingerprint?: ManifestFingerprint;
+  rulePackFingerprint?: ContentDigest;
+}> {
   let parsedJson: unknown;
   try {
     parsedJson = JSON.parse(await fs.readFile(baselinePath, "utf8"));
@@ -113,7 +127,8 @@ async function loadBaselineFindingIds(
     return {
       findingIds: uniqueSortedIds(manifestFile.data.findings),
       format: "manifest",
-      fingerprint: manifestFile.data.metadata?.fingerprint
+      fingerprint: manifestFile.data.metadata?.fingerprint,
+      rulePackFingerprint: manifestFile.data.metadata?.rule_pack?.fingerprint
     };
   }
 

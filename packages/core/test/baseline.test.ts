@@ -39,6 +39,7 @@ describe("baseline comparison", () => {
     expect(result.manifest.baseline_comparison).toMatchObject({
       baseline_format: "manifest",
       baseline_fingerprint: baseline.manifest.metadata.fingerprint,
+      baseline_rule_pack_fingerprint: baseline.manifest.metadata.rule_pack.fingerprint,
       current_findings: baseline.findings.length,
       baseline_findings: baseline.findings.length,
       new_findings: 0,
@@ -60,6 +61,9 @@ describe("baseline comparison", () => {
     expect(result.manifest.action_plan?.actions.every((action) => action.baseline_status === "existing")).toBe(true);
     expect(result.reportMarkdown).toContain("## Baseline Comparison");
     expect(result.reportMarkdown).toContain(`- Baseline fingerprint: \`${baseline.manifest.metadata.fingerprint?.value}\``);
+    expect(result.reportMarkdown).toContain(
+      `- Baseline rule pack fingerprint: \`${baseline.manifest.metadata.rule_pack.fingerprint.value}\``
+    );
     expect(result.reportMarkdown).toContain("### New Finding Drift Mix");
     expect(result.reportMarkdown).toContain("- Existing actions:");
     expect(result.reportMarkdown).toContain("No new findings were introduced.");
@@ -70,6 +74,7 @@ describe("baseline comparison", () => {
           agentcsp_baseline_comparison?: {
             new_findings?: number;
             baseline_fingerprint?: { value?: string; algorithm?: string };
+            baseline_rule_pack_fingerprint?: { value?: string; algorithm?: string };
             new_findings_by_severity?: Record<string, number>;
             new_findings_by_confidence?: Record<string, number>;
             new_findings_by_risk_driver?: Array<{ driver?: string; count?: number }>;
@@ -80,6 +85,9 @@ describe("baseline comparison", () => {
     expect(sarif.runs[0]?.results.every((item) => item.baselineState === "unchanged")).toBe(true);
     expect(sarif.runs[0]?.properties?.agentcsp_baseline_comparison?.baseline_fingerprint?.value).toBe(
       baseline.manifest.metadata.fingerprint?.value
+    );
+    expect(sarif.runs[0]?.properties?.agentcsp_baseline_comparison?.baseline_rule_pack_fingerprint?.value).toBe(
+      baseline.manifest.metadata.rule_pack.fingerprint.value
     );
     expect(sarif.runs[0]?.properties?.agentcsp_baseline_comparison?.new_findings).toBe(0);
     expect(sarif.runs[0]?.properties?.agentcsp_baseline_comparison?.new_findings_by_severity?.critical).toBe(0);
@@ -134,6 +142,7 @@ describe("baseline comparison", () => {
     expect(result.manifest.baseline_comparison).toMatchObject({
       baseline_format: "findings",
       baseline_fingerprint: undefined,
+      baseline_rule_pack_fingerprint: undefined,
       new_findings: 1,
       new_findings_by_severity: {
         critical: targetNewFinding?.severity === "critical" ? 1 : 0,
@@ -161,6 +170,7 @@ describe("baseline comparison", () => {
     expect(result.manifest.action_plan?.actions.some((action) => action.baseline_status === "new")).toBe(true);
     expect(result.reportMarkdown).toContain("New findings: 1");
     expect(result.reportMarkdown).toContain("- Baseline fingerprint: `unavailable`");
+    expect(result.reportMarkdown).toContain("- Baseline rule pack fingerprint: `unavailable`");
     expect(result.reportMarkdown).toContain("### New Finding Drift Mix");
     expect(result.reportMarkdown).toContain("### New Finding Risk Drivers");
     expect(result.reportMarkdown).toContain(`Baseline ID limit: ${baselineFindingIdLimit}`);

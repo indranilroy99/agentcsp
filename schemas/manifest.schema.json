@@ -1798,6 +1798,9 @@
             "baseline_fingerprint": {
               "$ref": "#/definitions/AgentCSP Agent Manifest/properties/metadata/properties/fingerprint"
             },
+            "baseline_rule_pack_fingerprint": {
+              "$ref": "#/definitions/AgentCSP Agent Manifest/properties/metadata/properties/rule_pack/properties/fingerprint"
+            },
             "current_findings": {
               "type": "integer",
               "minimum": 0,

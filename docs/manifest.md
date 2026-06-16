@@ -2969,6 +2969,7 @@ The comparison includes:
 
 - baseline path and format
 - baseline fingerprint when the baseline is an AgentCSP manifest that includes `metadata.fingerprint`
+- baseline rule-pack fingerprint when the baseline is an AgentCSP manifest that includes `metadata.rule_pack.fingerprint`
 - current and baseline finding counts
 - new, existing, and resolved finding counts
 - severity, confidence, and risk-driver mix for new findings
@@ -2976,7 +2977,7 @@ The comparison includes:
 - bounded stable resolved finding IDs
 - baseline ID limit and truncation flags for new and resolved ID previews
 
-If the baseline file is outside the scanned root, `baseline_path` is emitted as `<external-baseline>` so scan artifacts and baseline read errors do not expose external local or CI filesystem layout. `baseline_fingerprint` copies only the prior manifest fingerprint metadata, not prior raw findings, evidence, root paths, or timestamps.
+If the baseline file is outside the scanned root, `baseline_path` is emitted as `<external-baseline>` so scan artifacts and baseline read errors do not expose external local or CI filesystem layout. `baseline_fingerprint` and `baseline_rule_pack_fingerprint` copy only prior digest metadata, not prior raw findings, evidence, root paths, or timestamps.
 
 Current findings include `baseline_status` set to `new` or `existing` when a baseline is loaded. Resolved findings are represented by ID in `baseline_comparison.resolved_finding_ids`; their previous raw content is not copied into the new manifest. `new_findings` and `resolved_findings` remain exact counts even when the corresponding ID preview arrays are truncated.
 

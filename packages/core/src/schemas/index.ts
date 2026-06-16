@@ -353,6 +353,7 @@ export const BaselineComparisonSchema = z.object({
   baseline_path: z.string(),
   baseline_format: z.enum(["findings", "manifest"]),
   baseline_fingerprint: ManifestFingerprintSchema.optional(),
+  baseline_rule_pack_fingerprint: ContentDigestSchema.optional(),
   current_findings: z.number().int().nonnegative().default(0),
   baseline_findings: z.number().int().nonnegative().default(0),
   new_findings: z.number().int().nonnegative().default(0),
@@ -799,6 +800,7 @@ export type BaselineComparison = z.infer<typeof BaselineComparisonSchema>;
 export type CiGateSummary = z.infer<typeof CiGateSummarySchema>;
 export type ScanCoverageSummary = z.infer<typeof ScanCoverageSummarySchema>;
 export type ManifestFingerprint = z.infer<typeof ManifestFingerprintSchema>;
+export type ContentDigest = z.infer<typeof ContentDigestSchema>;
 export type Rule = z.infer<typeof RuleSchema>;
 export type Policy = z.infer<typeof PolicySchema>;
 export type AgentManifest = z.infer<typeof AgentManifestSchema>;
