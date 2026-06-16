@@ -1508,6 +1508,16 @@ const leakPatterns = [
   /approvalDecision/u
 ];
 
+const genericLeakPatterns = [
+  /\$\{[A-Z][A-Z0-9_]{2,}\}/u,
+  /\bBearer\s+[A-Za-z0-9._~+/=-]{8,}/u,
+  /-----BEGIN [A-Z ]*PRIVATE KEY-----/u,
+  /\b(?:api[_-]?key|token|secret|password)\s*[:=]\s*['"][^'"]{6,}/iu,
+  /https?:\/\/(?:127\.0\.0\.1|localhost)(?::\d+)?/iu,
+  /\/(?:Users|home)\/[A-Za-z0-9._-]+\//u,
+  /\/tmp\/[A-Za-z0-9._/-]+/u
+];
+
 const vulnerable = await readScanOutput(vulnerableOutput, { sarifRequired: true });
 const safe = await readScanOutput(safeOutput, { sarifRequired: false });
 
@@ -1882,6 +1892,17 @@ assertMarkdownRootRedacted("safe report", safe);
 
 assertNoLeaks("vulnerable output", vulnerable.raw);
 assertNoLeaks("safe output", safe.raw);
+assertNoGenericLeaks("vulnerable manifest", vulnerable.rawManifest, {
+  allowedValues: [vulnerable.manifest.metadata.root_path]
+});
+assertNoGenericLeaks("vulnerable findings", vulnerable.rawFindings);
+assertNoGenericLeaks("vulnerable report", vulnerable.rawReport);
+assertNoGenericLeaks("vulnerable SARIF", vulnerable.rawSarif);
+assertNoGenericLeaks("safe manifest", safe.rawManifest, {
+  allowedValues: [safe.manifest.metadata.root_path]
+});
+assertNoGenericLeaks("safe findings", safe.rawFindings);
+assertNoGenericLeaks("safe report", safe.rawReport);
 
 if (vulnerable.sarif) {
   assertEqual(vulnerable.sarif.version, "2.1.0", "SARIF version");
@@ -1943,6 +1964,10 @@ async function readScanOutput(outputPath, options) {
     manifest,
     findings,
     sarif,
+    rawManifest,
+    rawFindings,
+    rawReport,
+    rawSarif,
     report: rawReport,
     raw: [rawManifest, rawFindings, rawReport, rawSarif].join("\n")
   };
@@ -1956,6 +1981,17 @@ function assertMarkdownRootRedacted(label, output) {
 function assertNoLeaks(label, value) {
   for (const pattern of leakPatterns) {
     assert(!pattern.test(value), `${label} leaked redacted pattern ${pattern}`);
+  }
+}
+
+function assertNoGenericLeaks(label, value, options = {}) {
+  const allowedValues = new Set((options.allowedValues ?? []).filter((item) => typeof item === "string" && item.length > 0));
+  let sanitized = value;
+  for (const allowedValue of allowedValues) {
+    sanitized = sanitized.split(allowedValue).join("<allowed-redacted-value>");
+  }
+  for (const pattern of genericLeakPatterns) {
+    assert(!pattern.test(sanitized), `${label} leaked generic sensitive pattern ${pattern}`);
   }
 }
 
