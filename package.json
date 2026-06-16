@@ -34,7 +34,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "verify": "pnpm verify:schemas && pnpm verify:versions && pnpm verify:rules && pnpm build && pnpm verify:packages && pnpm verify:ci-examples && pnpm lint && pnpm test && pnpm verify:fixtures && pnpm audit --audit-level moderate",
-    "verify:fixtures": "pnpm build && pnpm agentcsp scan examples/vulnerable-agent --out .agentcsp --format json,md,sarif --include-logs --quiet && pnpm agentcsp scan examples/safe-agent --out .agentcsp-safe --format json,md --quiet && node scripts/verify-fixture-outputs.mjs && node scripts/verify-policy-artifact-redaction.mjs",
+    "verify:fixtures": "pnpm build && pnpm agentcsp scan examples/vulnerable-agent --out .agentcsp --format json,md,sarif --include-logs --quiet && pnpm agentcsp scan examples/safe-agent --out .agentcsp-safe --format json,md --quiet && node scripts/verify-fixture-outputs.mjs && node scripts/verify-policy-artifact-redaction.mjs && node scripts/verify-rule-artifact-redaction.mjs",
     "verify:ci-examples": "node scripts/verify-ci-examples.mjs",
     "verify:packages": "node scripts/verify-package-artifacts.mjs",
     "verify:rules": "jiti scripts/verify-rules.ts",
