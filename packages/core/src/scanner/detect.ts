@@ -24230,6 +24230,7 @@ function addToolDefinitionSurface(
       !authority.clipboard_shell_execution_bridge &&
       !authority.clipboard_dynamic_code_execution_bridge &&
       !authority.clipboard_agent_delegation_bridge &&
+      !authority.clipboard_credential_issuance_bridge &&
       !authority.visual_context_external_service_bridge &&
       !authority.visual_context_memory_bridge &&
       !authority.visual_context_artifact_bridge &&
@@ -24293,6 +24294,7 @@ function addToolDefinitionSurface(
       tool_output_credential_issuance_bridge: authority.tool_output_credential_issuance_bridge,
       rag_retrieval_credential_issuance_bridge: authority.rag_retrieval_credential_issuance_bridge,
       visual_context_credential_issuance_bridge: authority.visual_context_credential_issuance_bridge,
+      clipboard_credential_issuance_bridge: authority.clipboard_credential_issuance_bridge,
       agent_delegation: authority.agent_delegation,
       tainted_agent_delegation_target: authority.tainted_agent_delegation_target,
       agent_delegation_context_forwarding: authority.agent_delegation_context_forwarding,
@@ -26999,6 +27001,7 @@ interface SourceToolHandlerSignals {
   handlerToolOutputCredentialIssuanceBridge: boolean;
   handlerRagRetrievalCredentialIssuanceBridge: boolean;
   handlerVisualContextCredentialIssuanceBridge: boolean;
+  handlerClipboardCredentialIssuanceBridge: boolean;
   handlerAgentDelegation: boolean;
   handlerTaintedAgentDelegationTarget: boolean;
   handlerAgentDelegationContextForwarding: boolean;
@@ -27633,6 +27636,7 @@ function sourceToolHandlerSignalMetadata(signals: SourceToolHandlerSignals | und
     handler_tool_output_credential_issuance_bridge: signals.handlerToolOutputCredentialIssuanceBridge,
     handler_rag_retrieval_credential_issuance_bridge: signals.handlerRagRetrievalCredentialIssuanceBridge,
     handler_visual_context_credential_issuance_bridge: signals.handlerVisualContextCredentialIssuanceBridge,
+    handler_clipboard_credential_issuance_bridge: signals.handlerClipboardCredentialIssuanceBridge,
     handler_agent_delegation: signals.handlerAgentDelegation,
     handler_tainted_agent_delegation_target: signals.handlerTaintedAgentDelegationTarget,
     handler_agent_delegation_context_forwarding: signals.handlerAgentDelegationContextForwarding,
@@ -28204,6 +28208,10 @@ function classifySourceToolHandlerSignals(
     ? hasJavaScriptHandlerClipboardTrainingDatasetBridge(handlerSource)
     : hasPythonHandlerClipboardTrainingDatasetBridge(handlerSource));
   if (clipboardTrainingDatasetBridge) taintedTrainingDatasetPayload = true;
+  const clipboardCredentialIssuanceBridge = clipboardRead && credentialIssuance && (language === "javascript"
+    ? hasJavaScriptHandlerClipboardCredentialIssuanceBridge(handlerSource)
+    : hasPythonHandlerClipboardCredentialIssuanceBridge(handlerSource));
+  if (clipboardCredentialIssuanceBridge) taintedCredentialIssuanceInput = true;
   const clipboardAgentDelegationBridge = clipboardRead && agentDelegation && (language === "javascript"
     ? hasJavaScriptHandlerClipboardAgentDelegationBridge(handlerSource)
     : hasPythonHandlerClipboardAgentDelegationBridge(handlerSource));
@@ -28647,6 +28655,7 @@ function classifySourceToolHandlerSignals(
   if (toolOutputCredentialIssuanceBridge) classes.add("handler_tool_output_credential_issuance_bridge");
   if (ragRetrievalCredentialIssuanceBridge) classes.add("handler_rag_retrieval_credential_issuance_bridge");
   if (visualContextCredentialIssuanceBridge) classes.add("handler_visual_context_credential_issuance_bridge");
+  if (clipboardCredentialIssuanceBridge) classes.add("handler_clipboard_credential_issuance_bridge");
   if (agentDelegation) classes.add("handler_agent_delegation");
   if (taintedAgentDelegationTarget) classes.add("handler_tainted_agent_delegation_target");
   if (agentDelegationContextForwarding) classes.add("handler_agent_delegation_context_forwarding");
@@ -28870,6 +28879,7 @@ function classifySourceToolHandlerSignals(
     handlerToolOutputCredentialIssuanceBridge: toolOutputCredentialIssuanceBridge,
     handlerRagRetrievalCredentialIssuanceBridge: ragRetrievalCredentialIssuanceBridge,
     handlerVisualContextCredentialIssuanceBridge: visualContextCredentialIssuanceBridge,
+    handlerClipboardCredentialIssuanceBridge: clipboardCredentialIssuanceBridge,
     handlerAgentDelegation: agentDelegation,
     handlerTaintedAgentDelegationTarget: taintedAgentDelegationTarget,
     handlerAgentDelegationContextForwarding: agentDelegationContextForwarding,
@@ -30005,6 +30015,30 @@ function hasJavaScriptHandlerVisualContextCredentialIssuanceBridge(source: strin
 
 function hasPythonHandlerVisualContextCredentialIssuanceBridge(source: string): boolean {
   const identifiers = extractPythonVisualContextIdentifiers(source);
+  return identifiers.length > 0 && credentialIssuanceCallReferencesSecretMaterialIdentifier(
+    [
+      /\b(?:credential_broker|identity_broker|token_broker|auth_broker|sts|iam|oauth_client|service_account)\s*(?:\.\s*[A-Za-z_]\w*){0,5}\s*\.\s*(?:issue|mint|create|generate|sign|assume_role|impersonate|exchange|grant|create_token|issue_token|mint_token|sign_jwt|get_access_token)\s*\(([\s\S]{0,2400})\)/giu,
+      /\b(?:issue|mint|create|generate|sign|assume|impersonate)_(?:token|jwt|credential|credentials|session|grant|role)\s*\(([\s\S]{0,2400})\)/giu
+    ],
+    source,
+    identifiers
+  );
+}
+
+function hasJavaScriptHandlerClipboardCredentialIssuanceBridge(source: string): boolean {
+  const identifiers = extractJavaScriptClipboardIdentifiers(source);
+  return identifiers.length > 0 && credentialIssuanceCallReferencesSecretMaterialIdentifier(
+    [
+      /\b(?:credentialBroker|identityBroker|tokenBroker|authBroker|sts|iam|oauthClient|serviceAccount)\s*(?:\.\s*[A-Za-z_$][\w$]*){0,5}\s*\.\s*(?:issue|mint|create|generate|sign|assumeRole|impersonate|exchange|grant|createToken|issueToken|mintToken|signJwt|signJWT|getAccessToken)\s*\(([\s\S]{0,2400})\)/giu,
+      /\b(?:issue|mint|create|generate|sign|assume|impersonate)[A-Za-z0-9_$]*(?:Token|JWT|Jwt|Credential|Credentials|Session|Grant|Role)\s*\(([\s\S]{0,2400})\)/giu
+    ],
+    source,
+    identifiers
+  );
+}
+
+function hasPythonHandlerClipboardCredentialIssuanceBridge(source: string): boolean {
+  const identifiers = extractPythonClipboardIdentifiers(source);
   return identifiers.length > 0 && credentialIssuanceCallReferencesSecretMaterialIdentifier(
     [
       /\b(?:credential_broker|identity_broker|token_broker|auth_broker|sts|iam|oauth_client|service_account)\s*(?:\.\s*[A-Za-z_]\w*){0,5}\s*\.\s*(?:issue|mint|create|generate|sign|assume_role|impersonate|exchange|grant|create_token|issue_token|mint_token|sign_jwt|get_access_token)\s*\(([\s\S]{0,2400})\)/giu,
@@ -37264,6 +37298,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   tool_output_credential_issuance_bridge: boolean;
   rag_retrieval_credential_issuance_bridge: boolean;
   visual_context_credential_issuance_bridge: boolean;
+  clipboard_credential_issuance_bridge: boolean;
   agent_delegation: boolean;
   tainted_agent_delegation_target: boolean;
   agent_delegation_context_forwarding: boolean;
@@ -37621,6 +37656,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   const handlerToolOutputCredentialIssuanceBridge = handler?.handlerToolOutputCredentialIssuanceBridge === true;
   const handlerRagRetrievalCredentialIssuanceBridge = handler?.handlerRagRetrievalCredentialIssuanceBridge === true;
   const handlerVisualContextCredentialIssuanceBridge = handler?.handlerVisualContextCredentialIssuanceBridge === true;
+  const handlerClipboardCredentialIssuanceBridge = handler?.handlerClipboardCredentialIssuanceBridge === true;
   const handlerAgentDelegation = handler?.handlerAgentDelegation === true;
   const handlerTaintedAgentDelegationTarget = handler?.handlerTaintedAgentDelegationTarget === true;
   const handlerAgentDelegationContextForwarding = handler?.handlerAgentDelegationContextForwarding === true;
@@ -38097,6 +38133,12 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   }
   if (handlerVisualContextCredentialIssuanceBridge) {
     classes.add("visual_context_credential_issuance_bridge");
+    actions.add("read");
+    actions.add("send");
+    actions.add("write");
+  }
+  if (handlerClipboardCredentialIssuanceBridge) {
+    classes.add("clipboard_credential_issuance_bridge");
     actions.add("read");
     actions.add("send");
     actions.add("write");
@@ -38925,6 +38967,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerToolOutputCredentialIssuanceBridge ||
       handlerRagRetrievalCredentialIssuanceBridge ||
       handlerVisualContextCredentialIssuanceBridge ||
+      handlerClipboardCredentialIssuanceBridge ||
       handlerAgentDelegation ||
       handlerTaintedAgentDelegationTarget ||
       handlerAgentDelegationContextForwarding ||
@@ -38955,6 +38998,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerClipboardShellExecutionBridge ||
       handlerClipboardDynamicCodeExecutionBridge ||
       handlerClipboardAgentDelegationBridge ||
+      handlerClipboardCredentialIssuanceBridge ||
       handlerVisualContextCapture ||
       handlerVisualContextToOutput ||
       handlerVisualContextPromptBridge ||
@@ -39144,6 +39188,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
     handlerClipboardShellExecutionBridge ||
     handlerClipboardDynamicCodeExecutionBridge ||
     handlerClipboardAgentDelegationBridge ||
+    handlerClipboardCredentialIssuanceBridge ||
     handlerExternalApprovalChannel ||
     readOnlyHintConflict ||
     explicitSideEffectHint ||
@@ -39286,6 +39331,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerToolOutputCredentialIssuanceBridge ||
       handlerRagRetrievalCredentialIssuanceBridge ||
       handlerVisualContextCredentialIssuanceBridge ||
+      handlerClipboardCredentialIssuanceBridge ||
       handlerArtifactExport ||
       handlerModelOutputArtifactBridge ||
       handlerNetworkResponseArtifactBridge ||
@@ -39346,6 +39392,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerLocalFileCredentialIssuanceBridge ||
       handlerEnvSecretCredentialIssuanceBridge ||
       (handlerNetworkResponseCredentialIssuanceBridge && handlerSecretEnvAccess) ||
+      (handlerClipboardCredentialIssuanceBridge && handlerSecretEnvAccess) ||
       handlerEnvSecretPromptBridge ||
       (handlerModelOutputCredentialIssuanceBridge && handlerSecretEnvAccess) ||
       (handlerToolOutputCredentialIssuanceBridge && handlerSecretEnvAccess) ||
@@ -39502,6 +39549,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
     tool_output_credential_issuance_bridge: handlerToolOutputCredentialIssuanceBridge,
     rag_retrieval_credential_issuance_bridge: handlerRagRetrievalCredentialIssuanceBridge,
     visual_context_credential_issuance_bridge: handlerVisualContextCredentialIssuanceBridge,
+    clipboard_credential_issuance_bridge: handlerClipboardCredentialIssuanceBridge,
     agent_delegation: handlerAgentDelegation,
     tainted_agent_delegation_target: handlerTaintedAgentDelegationTarget,
     agent_delegation_context_forwarding: handlerAgentDelegationContextForwarding,
@@ -39905,6 +39953,7 @@ function authoritySignature(tool: SurfaceObject): string {
     metadata.tool_output_credential_issuance_bridge === true ? "tool_output_credential_issuance_bridge" : "",
     metadata.rag_retrieval_credential_issuance_bridge === true ? "rag_retrieval_credential_issuance_bridge" : "",
     metadata.visual_context_credential_issuance_bridge === true ? "visual_context_credential_issuance_bridge" : "",
+    metadata.clipboard_credential_issuance_bridge === true ? "clipboard_credential_issuance_bridge" : "",
     metadata.agent_delegation === true ? "agent_delegation" : "",
     metadata.tainted_agent_delegation_target === true ? "tainted_agent_delegation_target" : "",
     metadata.agent_delegation_context_forwarding === true ? "agent_delegation_context_forwarding" : "",
@@ -40140,6 +40189,7 @@ function isPrivilegedToolSurface(tool: SurfaceObject): boolean {
     tool.metadata.tool_output_credential_issuance_bridge === true ||
     tool.metadata.rag_retrieval_credential_issuance_bridge === true ||
     tool.metadata.visual_context_credential_issuance_bridge === true ||
+    tool.metadata.clipboard_credential_issuance_bridge === true ||
     tool.metadata.agent_delegation === true ||
     tool.metadata.tainted_agent_delegation_target === true ||
     tool.metadata.agent_delegation_context_forwarding === true ||

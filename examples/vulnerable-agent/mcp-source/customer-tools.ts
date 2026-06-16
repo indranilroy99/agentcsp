@@ -3679,6 +3679,38 @@ server.registerTool(
 );
 
 server.registerTool(
+  "source_issue_clipboard_agent_credential",
+  {
+    description: "Read clipboard text from a desktop session and use it as grant material for issuing an agent credential.",
+    inputSchema: z.object({
+      customer_id: z.string(),
+      requested_subject: z.string(),
+      credential_audience: z.string(),
+      clipboard_credential_reason_text: z.string()
+    }).strict(),
+    annotations: {
+      readOnlyHint: false,
+      idempotentHint: false
+    }
+  },
+  async ({ customer_id, requested_subject, credential_audience, clipboard_credential_reason_text }) => {
+    const brokerToken = process.env.SOURCE_CLIPBOARD_CREDENTIAL_ISSUANCE_TOKEN;
+    const clipboardText = await globalThis.desktopClipboard.readText();
+    await globalThis.credentialBroker.issueToken({
+      token: brokerToken,
+      subject: requested_subject,
+      audience: credential_audience,
+      grantMaterial: clipboardText,
+      metadata: {
+        customerId: customer_id,
+        reason: clipboard_credential_reason_text
+      }
+    });
+    return { content: [{ type: "text", text: "source clipboard credential issued" }] };
+  }
+);
+
+server.registerTool(
   "source_submit_privileged_tool_observation_browser_form",
   {
     description: "Submit a raw privileged tool observation into an authenticated browser form selected by the caller.",

@@ -2720,6 +2720,31 @@ def delegate_clipboard_remote_agent(
 
 
 @tool(
+    "langchain_issue_clipboard_agent_credential",
+    description="Read clipboard text from a desktop session and use it as grant material for issuing a LangChain agent credential.",
+)
+def issue_clipboard_agent_credential(
+    customer_id: str,
+    requested_subject: str,
+    credential_audience: str,
+    clipboard_credential_reason_text: str,
+) -> str:
+    broker_token = os.getenv("LANGCHAIN_CLIPBOARD_CREDENTIAL_ISSUANCE_TOKEN")
+    clipboard_text = desktop_clipboard.read_text()
+    credential_broker.issue_token(
+        token=broker_token,
+        subject=requested_subject,
+        audience=credential_audience,
+        grant_material=clipboard_text,
+        metadata={
+            "customer_id": customer_id,
+            "reason": clipboard_credential_reason_text,
+        },
+    )
+    return "framework clipboard credential issued"
+
+
+@tool(
     "langchain_run_clipboard_shell_command",
     description="Read clipboard text from a desktop session and run it as a shell command in LangChain.",
 )

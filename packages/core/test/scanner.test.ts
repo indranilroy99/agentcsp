@@ -806,6 +806,9 @@ describe("scanner", () => {
     const sourceClipboardAgentDelegationBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "source_delegate_clipboard_remote_agent"
     );
+    const sourceClipboardCredentialIssuanceBridgeTool = surfaces.tools.find(
+      (surface) => surface.name === "source_issue_clipboard_agent_credential"
+    );
     const sourceVisualContextCaptureTool = surfaces.tools.find((surface) => surface.name === "source_capture_authenticated_page_screenshot");
     const sourceVisualContextPromptBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "source_review_authenticated_page_screenshot_with_model"
@@ -1230,6 +1233,9 @@ describe("scanner", () => {
     );
     const langchainClipboardAgentDelegationBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "langchain_delegate_clipboard_remote_agent"
+    );
+    const langchainClipboardCredentialIssuanceBridgeTool = surfaces.tools.find(
+      (surface) => surface.name === "langchain_issue_clipboard_agent_credential"
     );
     const langchainVisualContextCaptureTool = surfaces.tools.find((surface) => surface.name === "langchain_capture_authenticated_page_screenshot");
     const langchainVisualContextPromptBridgeTool = surfaces.tools.find(
@@ -11009,6 +11015,87 @@ describe("scanner", () => {
     expect(JSON.stringify(sourceClipboardAgentDelegationBridgeTool)).not.toContain("clipboardText");
     expect(JSON.stringify(sourceClipboardAgentDelegationBridgeTool)).not.toContain("source clipboard delegated to remote agent");
     expect(JSON.stringify(sourceClipboardAgentDelegationBridgeTool)).not.toContain("Read clipboard text");
+    expect(sourceClipboardCredentialIssuanceBridgeTool).toMatchObject({
+      path: "mcp-source/customer-tools.ts",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["call", "publish", "read", "send", "write"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(sourceClipboardCredentialIssuanceBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_mcp_source_tool: true,
+      mcp_source_tool_registration: true,
+      mcp_source_tool_registration_kind: "registerTool",
+      mcp_source_tool_argument_count: 3,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_secret_like_input: true,
+      accepts_content_like_input: true,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      clipboard_read: true,
+      credential_issuance: true,
+      tainted_credential_issuance_input: true,
+      clipboard_credential_issuance_bridge: true,
+      external_write: true,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_clipboard_read: true,
+      handler_credential_issuance: true,
+      handler_tainted_credential_issuance_input: true,
+      handler_clipboard_credential_issuance_bridge: true,
+      handler_secret_env_access: true,
+      handler_model_visible_output: true,
+      handler_signal_count: 5,
+      open_world_schema: false
+    });
+    expect(sourceClipboardCredentialIssuanceBridgeTool?.metadata.authority_classes).toEqual([
+      "clipboard_credential_issuance_bridge",
+      "clipboard_read",
+      "content_input",
+      "credential_input",
+      "credential_issuance",
+      "customer_data_input",
+      "external_write",
+      "handler_clipboard_credential_issuance_bridge",
+      "handler_clipboard_read",
+      "handler_credential_issuance",
+      "handler_secret_env_access",
+      "handler_tainted_credential_issuance_input",
+      "pii_input",
+      "secret_env_access",
+      "tainted_credential_issuance_input"
+    ]);
+    expect(sourceClipboardCredentialIssuanceBridgeTool?.metadata.handler_authority_classes).toEqual([
+      "handler_clipboard_credential_issuance_bridge",
+      "handler_clipboard_read",
+      "handler_credential_issuance",
+      "handler_secret_env_access",
+      "handler_tainted_credential_issuance_input"
+    ]);
+    expect(sourceClipboardCredentialIssuanceBridgeTool?.metadata.handler_env_key_names).toEqual([
+      "SOURCE_CLIPBOARD_CREDENTIAL_ISSUANCE_TOKEN"
+    ]);
+    expect(sourceClipboardCredentialIssuanceBridgeTool?.metadata.schema_properties).toEqual([
+      "clipboard_credential_reason_text",
+      "credential_audience",
+      "customer_id",
+      "requested_subject"
+    ]);
+    expect(sourceClipboardCredentialIssuanceBridgeTool?.metadata.required_properties).toEqual([
+      "clipboard_credential_reason_text",
+      "credential_audience",
+      "customer_id",
+      "requested_subject"
+    ]);
+    expect(JSON.stringify(sourceClipboardCredentialIssuanceBridgeTool)).not.toContain("desktopClipboard.readText");
+    expect(JSON.stringify(sourceClipboardCredentialIssuanceBridgeTool)).not.toContain("credentialBroker.issueToken");
+    expect(JSON.stringify(sourceClipboardCredentialIssuanceBridgeTool)).not.toContain("clipboardText");
+    expect(JSON.stringify(sourceClipboardCredentialIssuanceBridgeTool)).not.toContain("source clipboard credential issued");
+    expect(JSON.stringify(sourceClipboardCredentialIssuanceBridgeTool)).not.toContain("Read clipboard text");
     expect(sourceVisualContextCaptureTool).toMatchObject({
       path: "mcp-source/customer-tools.ts",
       data_classes: ["confidential", "credential", "pii"],
@@ -25918,6 +26005,88 @@ describe("scanner", () => {
     expect(JSON.stringify(langchainClipboardAgentDelegationBridgeTool)).not.toContain("clipboard_text");
     expect(JSON.stringify(langchainClipboardAgentDelegationBridgeTool)).not.toContain("framework clipboard delegated to remote agent");
     expect(JSON.stringify(langchainClipboardAgentDelegationBridgeTool)).not.toContain("Read clipboard text");
+    expect(langchainClipboardCredentialIssuanceBridgeTool).toMatchObject({
+      path: "framework-tools/langchain_tools.py",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["call", "publish", "read", "send", "write"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(langchainClipboardCredentialIssuanceBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_agent_framework_source_tool: true,
+      agent_framework_source_tool: true,
+      agent_framework_source_tool_framework: "langchain",
+      agent_framework_source_tool_registration_kind: "python_tool_decorator",
+      agent_framework_source_tool_argument_count: 4,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_secret_like_input: true,
+      accepts_content_like_input: true,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      clipboard_read: true,
+      credential_issuance: true,
+      tainted_credential_issuance_input: true,
+      clipboard_credential_issuance_bridge: true,
+      external_write: true,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_clipboard_read: true,
+      handler_credential_issuance: true,
+      handler_tainted_credential_issuance_input: true,
+      handler_clipboard_credential_issuance_bridge: true,
+      handler_secret_env_access: true,
+      handler_model_visible_output: true,
+      handler_signal_count: 5,
+      open_world_schema: false
+    });
+    expect(langchainClipboardCredentialIssuanceBridgeTool?.metadata.authority_classes).toEqual([
+      "clipboard_credential_issuance_bridge",
+      "clipboard_read",
+      "content_input",
+      "credential_input",
+      "credential_issuance",
+      "customer_data_input",
+      "external_write",
+      "handler_clipboard_credential_issuance_bridge",
+      "handler_clipboard_read",
+      "handler_credential_issuance",
+      "handler_secret_env_access",
+      "handler_tainted_credential_issuance_input",
+      "pii_input",
+      "secret_env_access",
+      "tainted_credential_issuance_input"
+    ]);
+    expect(langchainClipboardCredentialIssuanceBridgeTool?.metadata.handler_authority_classes).toEqual([
+      "handler_clipboard_credential_issuance_bridge",
+      "handler_clipboard_read",
+      "handler_credential_issuance",
+      "handler_secret_env_access",
+      "handler_tainted_credential_issuance_input"
+    ]);
+    expect(langchainClipboardCredentialIssuanceBridgeTool?.metadata.handler_env_key_names).toEqual([
+      "LANGCHAIN_CLIPBOARD_CREDENTIAL_ISSUANCE_TOKEN"
+    ]);
+    expect(langchainClipboardCredentialIssuanceBridgeTool?.metadata.schema_properties).toEqual([
+      "clipboard_credential_reason_text",
+      "credential_audience",
+      "customer_id",
+      "requested_subject"
+    ]);
+    expect(langchainClipboardCredentialIssuanceBridgeTool?.metadata.required_properties).toEqual([
+      "clipboard_credential_reason_text",
+      "credential_audience",
+      "customer_id",
+      "requested_subject"
+    ]);
+    expect(JSON.stringify(langchainClipboardCredentialIssuanceBridgeTool)).not.toContain("desktop_clipboard.read_text");
+    expect(JSON.stringify(langchainClipboardCredentialIssuanceBridgeTool)).not.toContain("credential_broker.issue_token");
+    expect(JSON.stringify(langchainClipboardCredentialIssuanceBridgeTool)).not.toContain("clipboard_text");
+    expect(JSON.stringify(langchainClipboardCredentialIssuanceBridgeTool)).not.toContain("framework clipboard credential issued");
+    expect(JSON.stringify(langchainClipboardCredentialIssuanceBridgeTool)).not.toContain("Read clipboard text");
     expect(langchainVisualContextCaptureTool).toMatchObject({
       path: "framework-tools/langchain_tools.py",
       data_classes: ["confidential", "credential", "pii"],

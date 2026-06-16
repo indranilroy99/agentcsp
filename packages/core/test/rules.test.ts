@@ -202,6 +202,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-198")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-199")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-200")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-201")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-001")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-002")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-003")).toBe(true);
@@ -9077,6 +9078,7 @@ describe("rule engine", () => {
     const sourceHandlerCredentialIssuanceFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-025");
     expect(sourceHandlerCredentialIssuanceFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_issue_authenticated_page_screenshot_agent_credential",
+      "langchain_issue_clipboard_agent_credential",
       "langchain_issue_env_secret_agent_credential",
       "langchain_issue_local_key_agent_credential",
       "langchain_issue_model_selected_credential",
@@ -9086,6 +9088,7 @@ describe("rule engine", () => {
       "langchain_issue_vault_backed_agent_credential",
       "langchain_mint_agent_session_token",
       "source_issue_authenticated_page_screenshot_agent_credential",
+      "source_issue_clipboard_agent_credential",
       "source_issue_env_secret_agent_credential",
       "source_issue_local_key_agent_credential",
       "source_issue_model_selected_credential",
@@ -9137,6 +9140,8 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerCredentialIssuanceFindings)).not.toContain("tool_registry.call_tool");
     expect(JSON.stringify(sourceHandlerCredentialIssuanceFindings)).not.toContain("identityBroker.issueToken");
     expect(JSON.stringify(sourceHandlerCredentialIssuanceFindings)).not.toContain("identity_broker.issue_token");
+    expect(JSON.stringify(sourceHandlerCredentialIssuanceFindings)).not.toContain("credentialBroker.issueToken");
+    expect(JSON.stringify(sourceHandlerCredentialIssuanceFindings)).not.toContain("credential_broker.issue_token");
     expect(JSON.stringify(sourceHandlerCredentialIssuanceFindings)).not.toContain("toolResult");
     expect(JSON.stringify(sourceHandlerCredentialIssuanceFindings)).not.toContain("tool_result");
     expect(JSON.stringify(sourceHandlerCredentialIssuanceFindings)).not.toContain("grantMaterial");
@@ -9167,9 +9172,12 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerCredentialIssuanceFindings)).not.toContain("framework network response credential issued");
     expect(JSON.stringify(sourceHandlerCredentialIssuanceFindings)).not.toContain("source model selected credential issued");
     expect(JSON.stringify(sourceHandlerCredentialIssuanceFindings)).not.toContain("framework model selected credential issued");
+    expect(JSON.stringify(sourceHandlerCredentialIssuanceFindings)).not.toContain("source clipboard credential issued");
+    expect(JSON.stringify(sourceHandlerCredentialIssuanceFindings)).not.toContain("framework clipboard credential issued");
     const sourceHandlerTaintedCredentialIssuanceFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-042");
     expect(sourceHandlerTaintedCredentialIssuanceFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_issue_authenticated_page_screenshot_agent_credential",
+      "langchain_issue_clipboard_agent_credential",
       "langchain_issue_env_secret_agent_credential",
       "langchain_issue_local_key_agent_credential",
       "langchain_issue_model_selected_credential",
@@ -9179,6 +9187,7 @@ describe("rule engine", () => {
       "langchain_issue_vault_backed_agent_credential",
       "langchain_mint_agent_session_token",
       "source_issue_authenticated_page_screenshot_agent_credential",
+      "source_issue_clipboard_agent_credential",
       "source_issue_env_secret_agent_credential",
       "source_issue_local_key_agent_credential",
       "source_issue_model_selected_credential",
@@ -13062,6 +13071,81 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerClipboardAgentDelegationBridgeFindings)).not.toContain("source clipboard delegated to remote agent");
     expect(JSON.stringify(sourceHandlerClipboardAgentDelegationBridgeFindings)).not.toContain("framework clipboard delegated to remote agent");
     expect(JSON.stringify(sourceHandlerClipboardAgentDelegationBridgeFindings)).not.toContain("Read clipboard text");
+    const sourceHandlerClipboardCredentialIssuanceBridgeFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-201");
+    expect(sourceHandlerClipboardCredentialIssuanceBridgeFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
+      "langchain_issue_clipboard_agent_credential",
+      "source_issue_clipboard_agent_credential"
+    ]);
+    expect(sourceHandlerClipboardCredentialIssuanceBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
+    expect(sourceHandlerClipboardCredentialIssuanceBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerClipboardCredentialIssuanceBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
+    expect(sourceHandlerClipboardCredentialIssuanceBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
+    expect(sourceHandlerClipboardCredentialIssuanceBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.source_tool_handler_redacted === true
+    )).toBe(true);
+    expect(sourceHandlerClipboardCredentialIssuanceBridgeFindings.every((finding) => finding.matched_object.metadata.handler_clipboard_read === true)).toBe(true);
+    expect(sourceHandlerClipboardCredentialIssuanceBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.handler_credential_issuance === true
+    )).toBe(true);
+    expect(sourceHandlerClipboardCredentialIssuanceBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.handler_tainted_credential_issuance_input === true
+    )).toBe(true);
+    expect(sourceHandlerClipboardCredentialIssuanceBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.handler_clipboard_credential_issuance_bridge === true
+    )).toBe(true);
+    expect(sourceHandlerClipboardCredentialIssuanceBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.handler_secret_env_access === true
+    )).toBe(true);
+    expect(sourceHandlerClipboardCredentialIssuanceBridgeFindings.every((finding) => finding.matched_object.metadata.clipboard_read === true)).toBe(true);
+    expect(sourceHandlerClipboardCredentialIssuanceBridgeFindings.every((finding) => finding.matched_object.metadata.credential_issuance === true)).toBe(true);
+    expect(sourceHandlerClipboardCredentialIssuanceBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.tainted_credential_issuance_input === true
+    )).toBe(true);
+    expect(sourceHandlerClipboardCredentialIssuanceBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.clipboard_credential_issuance_bridge === true
+    )).toBe(true);
+    expect(sourceHandlerClipboardCredentialIssuanceBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.accepts_content_like_input === true
+    )).toBe(true);
+    expect(sourceHandlerClipboardCredentialIssuanceBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.accepts_customer_data_input === true
+    )).toBe(true);
+    for (const authorityClass of [
+      "clipboard_read",
+      "credential_issuance",
+      "tainted_credential_issuance_input",
+      "clipboard_credential_issuance_bridge"
+    ]) {
+      expect(sourceHandlerClipboardCredentialIssuanceBridgeFindings.every((finding) =>
+        finding.matched_object.metadata.authority_classes.includes(authorityClass)
+      )).toBe(true);
+    }
+    for (const handlerAuthorityClass of [
+      "handler_clipboard_read",
+      "handler_credential_issuance",
+      "handler_tainted_credential_issuance_input",
+      "handler_clipboard_credential_issuance_bridge"
+    ]) {
+      expect(sourceHandlerClipboardCredentialIssuanceBridgeFindings.every((finding) =>
+        finding.matched_object.metadata.handler_authority_classes.includes(handlerAuthorityClass)
+      )).toBe(true);
+    }
+    expect(sourceHandlerClipboardCredentialIssuanceBridgeFindings.every((finding) => finding.matched_object.actions.includes("read"))).toBe(true);
+    expect(sourceHandlerClipboardCredentialIssuanceBridgeFindings.every((finding) => finding.matched_object.actions.includes("send"))).toBe(true);
+    expect(sourceHandlerClipboardCredentialIssuanceBridgeFindings.every((finding) => finding.matched_object.actions.includes("write"))).toBe(true);
+    expect(sourceHandlerClipboardCredentialIssuanceBridgeFindings.every((finding) => finding.matched_object.external_reach === true)).toBe(true);
+    expect(sourceHandlerClipboardCredentialIssuanceBridgeFindings.every((finding) => finding.matched_object.secret_exposure === true)).toBe(true);
+    expect(sourceHandlerClipboardCredentialIssuanceBridgeFindings.every((finding) => finding.matched_object.side_effect === true)).toBe(true);
+    expect(sourceHandlerClipboardCredentialIssuanceBridgeFindings.every((finding) => finding.matched_object.reversible === false)).toBe(true);
+    expect(JSON.stringify(sourceHandlerClipboardCredentialIssuanceBridgeFindings)).not.toContain("desktopClipboard.readText");
+    expect(JSON.stringify(sourceHandlerClipboardCredentialIssuanceBridgeFindings)).not.toContain("desktop_clipboard.read_text");
+    expect(JSON.stringify(sourceHandlerClipboardCredentialIssuanceBridgeFindings)).not.toContain("credentialBroker.issueToken");
+    expect(JSON.stringify(sourceHandlerClipboardCredentialIssuanceBridgeFindings)).not.toContain("credential_broker.issue_token");
+    expect(JSON.stringify(sourceHandlerClipboardCredentialIssuanceBridgeFindings)).not.toContain("clipboardText");
+    expect(JSON.stringify(sourceHandlerClipboardCredentialIssuanceBridgeFindings)).not.toContain("clipboard_text");
+    expect(JSON.stringify(sourceHandlerClipboardCredentialIssuanceBridgeFindings)).not.toContain("source clipboard credential issued");
+    expect(JSON.stringify(sourceHandlerClipboardCredentialIssuanceBridgeFindings)).not.toContain("framework clipboard credential issued");
+    expect(JSON.stringify(sourceHandlerClipboardCredentialIssuanceBridgeFindings)).not.toContain("Read clipboard text");
     const sourceHandlerVisualContextTaskQueueBridgeFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-104");
     expect(sourceHandlerVisualContextTaskQueueBridgeFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_enqueue_authenticated_page_screenshot_job",
