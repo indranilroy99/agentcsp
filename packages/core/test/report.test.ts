@@ -27,6 +27,14 @@ describe("scanProject", () => {
     expect(result.manifest.static_blast_radius?.sensitive_data_attack_paths).toBeGreaterThan(0);
     expect(result.manifest.static_blast_radius?.pii_attack_paths).toBeGreaterThan(0);
     expect(result.manifest.static_blast_radius?.credential_attack_paths).toBeGreaterThan(0);
+    expect(result.manifest.static_blast_radius?.attack_path_limit).toBe(15);
+    expect(result.manifest.static_blast_radius?.attack_paths_total).toBeGreaterThanOrEqual(
+      result.manifest.static_blast_radius?.attack_paths ?? 0
+    );
+    expect(result.manifest.static_blast_radius?.attack_paths_truncated).toBe(
+      (result.manifest.static_blast_radius?.attack_paths_total ?? 0) >
+        (result.manifest.static_blast_radius?.attack_paths ?? 0)
+    );
     expect(result.manifest.static_blast_radius?.preview_limit).toBe(20);
     expect(result.manifest.static_blast_radius?.high_risk_objects_total).toBeGreaterThan(20);
     expect(result.manifest.static_blast_radius?.high_risk_objects_truncated).toBe(true);
@@ -103,7 +111,11 @@ describe("scanProject", () => {
           agentcsp_action_plan?: { total_actions?: number; actions?: Array<{ priority?: number; rule_id?: string }> };
           agentcsp_ci_gate_summary?: { status?: string; should_fail?: boolean; blocker_id_limit?: number };
           agentcsp_scan_coverage?: { files_indexed?: number };
-          agentcsp_static_blast_radius?: { pii_external_reach_paths?: number; high_risk_objects_truncated?: boolean };
+          agentcsp_static_blast_radius?: {
+            pii_external_reach_paths?: number;
+            high_risk_objects_truncated?: boolean;
+            attack_path_limit?: number;
+          };
         };
       }>;
     };
@@ -145,6 +157,7 @@ describe("scanProject", () => {
       result.manifest.static_blast_radius?.pii_external_reach_paths
     );
     expect(sarif.runs[0]?.properties?.agentcsp_static_blast_radius?.high_risk_objects_truncated).toBe(true);
+    expect(sarif.runs[0]?.properties?.agentcsp_static_blast_radius?.attack_path_limit).toBe(15);
     expect(JSON.stringify(sarif.runs[0]?.properties?.agentcsp_triage_summary)).not.toContain("replace-me");
     expect(result.reportMarkdown).toContain("## Triage Summary");
     expect(result.reportMarkdown).toContain("- Top active limit: 10");
@@ -175,6 +188,9 @@ describe("scanProject", () => {
     expect(result.reportMarkdown).toContain("### Top Active Rules");
     expect(result.reportMarkdown).toContain("### Top Active Risks");
     expect(result.reportMarkdown).toContain("| Severity | Confidence | Risk | Rule | Object | Path | Recommended control |");
+    expect(result.reportMarkdown).toContain("- Attack path limit: 15");
+    expect(result.reportMarkdown).toContain("- Attack paths total:");
+    expect(result.reportMarkdown).toContain("- Attack paths truncated:");
     expect(result.reportMarkdown).toContain("- Preview limit: 20");
     expect(result.reportMarkdown).toContain("- High-risk objects truncated: `true`");
     expect(result.reportMarkdown).toContain("- Recommended controls truncated: `true`");
@@ -248,6 +264,9 @@ describe("scanProject", () => {
     expect(result.manifest.static_blast_radius?.sensitive_data_attack_paths).toBe(0);
     expect(result.manifest.static_blast_radius?.pii_attack_paths).toBe(0);
     expect(result.manifest.static_blast_radius?.credential_attack_paths).toBe(0);
+    expect(result.manifest.static_blast_radius?.attack_path_limit).toBe(15);
+    expect(result.manifest.static_blast_radius?.attack_paths_total).toBe(0);
+    expect(result.manifest.static_blast_radius?.attack_paths_truncated).toBe(false);
     expect(result.manifest.static_blast_radius?.preview_limit).toBe(20);
     expect(result.manifest.static_blast_radius?.high_risk_objects_total).toBe(
       result.manifest.static_blast_radius?.high_risk_objects.length

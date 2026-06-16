@@ -3339,7 +3339,7 @@ Examples:
 
 ## Attack Paths
 
-`attack_paths` are prioritized paths that combine relationships with findings. They are designed to show security teams how context provenance can reach authority, data classes, and side effects. The list is capped and sorted toward high-impact, high-confidence, file-specific paths.
+`attack_paths` are prioritized paths that combine relationships with findings. They are designed to show security teams how context provenance can reach authority, data classes, and side effects. The list is capped and sorted toward high-impact, high-confidence, file-specific paths. `static_blast_radius.attack_path_limit`, `attack_paths_total`, and `attack_paths_truncated` report the selected-list limit, deduplicated candidate count, and whether the emitted path list is a preview.
 
 Attack paths may be anchored on target findings, such as a risky tool schema, or source findings, such as retrievable content that directs sensitive context toward an external destination. Source-anchored data-egress, customer-data egress, memory replay, generated-state replay, runtime auto-approval, and untrusted-template-to-tool paths are prioritized so the Static Blast-Radius Summary preserves why the source itself is dangerous. The bounded attack-path list preserves coverage across key categories such as runtime approval bypass, direct data egress, mutable database writes, multi-agent delegation, live eval harnesses, inbound triggers, and disabled safety controls before filling remaining slots. When a context source names a discovered privileged tool or MCP server, AgentCSP prefers that exact source-to-callable path and suppresses broader speculative attack-path entries for the same source.
 
@@ -3365,6 +3365,7 @@ The summary includes:
 - sensitive-data, PII, and credential attack-path counts
 - RAG and memory surface counts
 - relationship, attack-path, and critical attack-path counts
+- attack-path limit, deduplicated candidate total, and truncation status
 - active and expired suppression counts
 - highest severity
 - capped high-risk objects with total count and truncation status

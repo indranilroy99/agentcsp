@@ -18,7 +18,12 @@ import { stableId } from "../utils/ids.js";
 export interface StaticGraph {
   relationships: GraphEdge[];
   attackPaths: AttackPath[];
+  attackPathLimit: number;
+  attackPathsTotal: number;
+  attackPathsTruncated: boolean;
 }
+
+export const attackPathLimit = 15;
 
 export function buildStaticGraph(surfaces: DetectedSurfaces, findings: Finding[]): StaticGraph {
   const objects = allManifestObjects(surfaces);
@@ -123,13 +128,21 @@ export function buildStaticGraph(surfaces: DetectedSurfaces, findings: Finding[]
   }
 
   const relationshipList = [...relationships.values()].sort((a, b) => a.id.localeCompare(b.id));
+  const attackPathSummary = buildAttackPaths(relationshipList, findings, objects);
   return {
     relationships: relationshipList,
-    attackPaths: buildAttackPaths(relationshipList, findings, objects)
+    attackPaths: attackPathSummary.attackPaths,
+    attackPathLimit,
+    attackPathsTotal: attackPathSummary.totalAttackPaths,
+    attackPathsTruncated: attackPathSummary.totalAttackPaths > attackPathSummary.attackPaths.length
   };
 }
 
-function buildAttackPaths(edges: GraphEdge[], findings: Finding[], objects: SurfaceObject[]): AttackPath[] {
+function buildAttackPaths(
+  edges: GraphEdge[],
+  findings: Finding[],
+  objects: SurfaceObject[]
+): { attackPaths: AttackPath[]; totalAttackPaths: number } {
   const findingsByObject = new Map<string, Finding[]>();
   for (const finding of findings) {
     const existing = findingsByObject.get(finding.matched_object.id) ?? [];
@@ -195,7 +208,10 @@ function buildAttackPaths(edges: GraphEdge[], findings: Finding[], objects: Surf
     if (!deduped.has(key)) deduped.set(key, path);
   }
 
-  return selectBoundedAttackPaths([...deduped.values()], 15);
+  return {
+    attackPaths: selectBoundedAttackPaths([...deduped.values()], attackPathLimit),
+    totalAttackPaths: deduped.size
+  };
 }
 
 function selectBoundedAttackPaths(sortedPaths: AttackPath[], limit: number): AttackPath[] {

@@ -18,6 +18,13 @@ describe("static graph", () => {
     expect(result.manifest.relationships.length).toBeGreaterThan(0);
     expect(result.manifest.attack_paths.length).toBeGreaterThan(0);
     expect(result.manifest.attack_paths.length).toBeLessThanOrEqual(15);
+    expect(result.manifest.static_blast_radius?.attack_path_limit).toBe(15);
+    expect(result.manifest.static_blast_radius?.attack_paths_total).toBeGreaterThanOrEqual(
+      result.manifest.attack_paths.length
+    );
+    expect(result.manifest.static_blast_radius?.attack_paths_truncated).toBe(
+      (result.manifest.static_blast_radius?.attack_paths_total ?? 0) > result.manifest.attack_paths.length
+    );
     expect(result.manifest.static_blast_radius?.critical_attack_paths).toBeGreaterThan(0);
     expect(result.manifest.attack_paths.every((path) => path.evidence.every((item) => item.redacted))).toBe(true);
 

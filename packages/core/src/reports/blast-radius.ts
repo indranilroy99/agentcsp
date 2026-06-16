@@ -9,7 +9,12 @@ export function buildStaticBlastRadiusSummary(
   surfaces: DetectedSurfaces,
   findings: Finding[],
   relationships: GraphEdge[] = [],
-  attackPaths: AttackPath[] = []
+  attackPaths: AttackPath[] = [],
+  attackPathMetadata: { limit: number; total: number; truncated: boolean } = {
+    limit: attackPaths.length,
+    total: attackPaths.length,
+    truncated: false
+  }
 ): StaticBlastRadiusSummary {
   const objects = allManifestObjects(surfaces);
   const allHighRiskObjects = objects.filter(isHighRiskObject);
@@ -33,6 +38,9 @@ export function buildStaticBlastRadiusSummary(
     rag_surfaces: surfaces.rag_sources.length,
     relationships: relationships.length,
     attack_paths: attackPaths.length,
+    attack_path_limit: attackPathMetadata.limit,
+    attack_paths_total: attackPathMetadata.total,
+    attack_paths_truncated: attackPathMetadata.truncated,
     critical_attack_paths: attackPaths.filter((attackPath) => attackPath.severity === "critical").length,
     active_suppressions: findings.filter((finding) => finding.suppression?.status === "active").length,
     expired_suppressions: findings.filter((finding) => finding.suppression?.status === "expired").length,

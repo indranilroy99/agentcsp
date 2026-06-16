@@ -1678,6 +1678,20 @@
               "minimum": 0,
               "default": 0
             },
+            "attack_path_limit": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            },
+            "attack_paths_total": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            },
+            "attack_paths_truncated": {
+              "type": "boolean",
+              "default": false
+            },
             "critical_attack_paths": {
               "type": "integer",
               "minimum": 0,

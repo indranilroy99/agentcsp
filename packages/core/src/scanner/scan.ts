@@ -75,7 +75,11 @@ export async function scanProject(rawConfig: Partial<ScanConfig> & { root_path: 
   const findings = baselineResult?.findings ?? suppressedFindings;
   const activeFindings = findings.filter((finding) => finding.suppression?.status !== "active");
   const graph = buildStaticGraph(surfaces, activeFindings);
-  const staticBlastRadius = buildStaticBlastRadiusSummary(surfaces, findings, graph.relationships, graph.attackPaths);
+  const staticBlastRadius = buildStaticBlastRadiusSummary(surfaces, findings, graph.relationships, graph.attackPaths, {
+    limit: graph.attackPathLimit,
+    total: graph.attackPathsTotal,
+    truncated: graph.attackPathsTruncated
+  });
   const triageSummary = buildTriageSummary(findings);
   const actionPlan = buildActionPlan(findings);
   const ciGateSummary = buildCiGateSummary({
