@@ -1,0 +1,152 @@
+id: AGENTCSP-TOOL-183
+name: Source tool handler caches retrieved RAG context for prompts
+description: A source-defined agent tool handler retrieves caller-selected vector or RAG context and persists the retrieved chunks into a prompt, LLM, response, or semantic cache using runtime credentials and caller-controlled cache scope.
+category: rag_retrieval_prompt_cache_bridge
+severity: critical
+maps_to:
+  owasp:
+    - LLM01:2025 Prompt Injection
+    - LLM02:2025 Sensitive Information Disclosure
+    - LLM05:2025 Improper Output Handling
+    - LLM06:2025 Excessive Agency
+  mitre_atlas:
+    - AML.T0051 LLM Plugin Compromise
+    - AML.T0056 LLM Trusted Boundary Compromise
+    - AML.T0059 Data from Information Repositories
+    - AML.T0060 LLM Prompt Injection
+  nist_ai_rmf:
+    - MAP 4.1
+    - MEASURE 2.7
+    - MANAGE 2.4
+match:
+  object_type: tool
+  where:
+    - field: metadata.parsed_tool_schema
+      op: equals
+      value: true
+    - field: metadata.source_tool_handler_redacted
+      op: equals
+      value: true
+    - field: metadata.handler_body_analyzed
+      op: equals
+      value: true
+    - field: metadata.handler_rag_retrieval
+      op: equals
+      value: true
+    - field: metadata.handler_tainted_rag_retrieval_query
+      op: equals
+      value: true
+    - field: metadata.handler_prompt_cache_write
+      op: equals
+      value: true
+    - field: metadata.handler_tainted_prompt_cache_key
+      op: equals
+      value: true
+    - field: metadata.handler_tainted_prompt_cache_value
+      op: equals
+      value: true
+    - field: metadata.handler_rag_retrieval_prompt_cache_bridge
+      op: equals
+      value: true
+    - field: metadata.handler_secret_env_access
+      op: equals
+      value: true
+    - field: metadata.rag_retrieval
+      op: equals
+      value: true
+    - field: metadata.tainted_rag_retrieval_query
+      op: equals
+      value: true
+    - field: metadata.prompt_cache_write
+      op: equals
+      value: true
+    - field: metadata.tainted_prompt_cache_key
+      op: equals
+      value: true
+    - field: metadata.tainted_prompt_cache_value
+      op: equals
+      value: true
+    - field: metadata.rag_retrieval_prompt_cache_bridge
+      op: equals
+      value: true
+    - field: metadata.accepts_content_like_input
+      op: equals
+      value: true
+    - field: metadata.accepts_customer_data_input
+      op: equals
+      value: true
+    - field: metadata.authority_classes
+      op: includes
+      value: rag_retrieval
+    - field: metadata.authority_classes
+      op: includes
+      value: tainted_rag_retrieval_query
+    - field: metadata.authority_classes
+      op: includes
+      value: prompt_cache_write
+    - field: metadata.authority_classes
+      op: includes
+      value: tainted_prompt_cache_key
+    - field: metadata.authority_classes
+      op: includes
+      value: tainted_prompt_cache_value
+    - field: metadata.authority_classes
+      op: includes
+      value: rag_retrieval_prompt_cache_bridge
+    - field: metadata.handler_authority_classes
+      op: includes
+      value: handler_rag_retrieval
+    - field: metadata.handler_authority_classes
+      op: includes
+      value: handler_tainted_rag_retrieval_query
+    - field: metadata.handler_authority_classes
+      op: includes
+      value: handler_prompt_cache_write
+    - field: metadata.handler_authority_classes
+      op: includes
+      value: handler_tainted_prompt_cache_key
+    - field: metadata.handler_authority_classes
+      op: includes
+      value: handler_tainted_prompt_cache_value
+    - field: metadata.handler_authority_classes
+      op: includes
+      value: handler_rag_retrieval_prompt_cache_bridge
+    - field: metadata.schema_properties
+      op: contains_any
+      value:
+        - cache_key
+        - cache_namespace
+        - customer_id
+        - retention_note_text
+        - retrieval_namespace
+        - retrieval_query_text
+    - field: actions
+      op: includes
+      value: read
+    - field: actions
+      op: includes
+      value: remember
+    - field: actions
+      op: includes
+      value: write
+    - field: data_classes
+      op: contains_any
+      value:
+        - confidential
+        - credential
+        - pii
+    - field: external_reach
+      op: equals
+      value: true
+    - field: secret_exposure
+      op: equals
+      value: true
+    - field: side_effect
+      op: equals
+      value: true
+    - field: reversible
+      op: equals
+      value: false
+recommendation:
+  control: quarantine
+  text: Quarantine retrieved-context-to-prompt-cache handlers until retrieved chunks are treated as untrusted, stripped of executable instructions and secrets before caching, cache keys and namespaces are policy-owned and tenant-scoped, provenance labels are retained, retention is bounded, and approval plus audit provenance are required before cached retrieved context can replay into future prompts.

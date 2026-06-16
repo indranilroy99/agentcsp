@@ -598,6 +598,9 @@ describe("scanner", () => {
     const sourceRagRetrievalBrowserAutomationBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "source_submit_retrieved_context_browser"
     );
+    const sourceRagRetrievalPromptCacheBridgeTool = surfaces.tools.find(
+      (surface) => surface.name === "source_cache_retrieved_context_prompt"
+    );
     const sourceRagRetrievalTaskQueueBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "source_enqueue_retrieved_context_agent_job"
     );
@@ -968,6 +971,9 @@ describe("scanner", () => {
     );
     const langchainRagRetrievalBrowserAutomationBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "langchain_submit_retrieved_context_browser"
+    );
+    const langchainRagRetrievalPromptCacheBridgeTool = surfaces.tools.find(
+      (surface) => surface.name === "langchain_cache_retrieved_context_prompt"
     );
     const langchainRagRetrievalTaskQueueBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "langchain_enqueue_retrieved_context_agent_job"
@@ -4379,6 +4385,94 @@ describe("scanner", () => {
     expect(JSON.stringify(sourceRagRetrievalBrowserAutomationBridgeTool)).not.toContain("retrievedChunks");
     expect(JSON.stringify(sourceRagRetrievalBrowserAutomationBridgeTool)).not.toContain("source retrieved context submitted through browser");
     expect(JSON.stringify(sourceRagRetrievalBrowserAutomationBridgeTool)).not.toContain("Submit caller selected retrieved support context");
+    expect(sourceRagRetrievalPromptCacheBridgeTool).toMatchObject({
+      path: "mcp-source/customer-tools.ts",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["call", "read", "remember", "send", "write"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(sourceRagRetrievalPromptCacheBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_mcp_source_tool: true,
+      mcp_source_tool_registration: true,
+      mcp_source_tool_registration_kind: "registerTool",
+      mcp_source_tool_argument_count: 3,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_content_like_input: true,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      rag_retrieval: true,
+      tainted_rag_retrieval_query: true,
+      prompt_cache_write: true,
+      tainted_prompt_cache_key: true,
+      tainted_prompt_cache_value: true,
+      rag_retrieval_prompt_cache_bridge: true,
+      handler_rag_retrieval: true,
+      handler_tainted_rag_retrieval_query: true,
+      handler_prompt_cache_write: true,
+      handler_tainted_prompt_cache_key: true,
+      handler_tainted_prompt_cache_value: true,
+      handler_rag_retrieval_prompt_cache_bridge: true,
+      handler_secret_env_access: true,
+      handler_signal_count: 7,
+      open_world_schema: false
+    });
+    expect(sourceRagRetrievalPromptCacheBridgeTool?.metadata.authority_classes).toEqual([
+      "content_input",
+      "customer_data_input",
+      "handler_prompt_cache_write",
+      "handler_rag_retrieval",
+      "handler_rag_retrieval_prompt_cache_bridge",
+      "handler_secret_env_access",
+      "handler_tainted_prompt_cache_key",
+      "handler_tainted_prompt_cache_value",
+      "handler_tainted_rag_retrieval_query",
+      "pii_input",
+      "prompt_cache_write",
+      "rag_retrieval",
+      "rag_retrieval_prompt_cache_bridge",
+      "secret_env_access",
+      "tainted_prompt_cache_key",
+      "tainted_prompt_cache_value",
+      "tainted_rag_retrieval_query"
+    ]);
+    expect(sourceRagRetrievalPromptCacheBridgeTool?.metadata.handler_authority_classes).toEqual([
+      "handler_prompt_cache_write",
+      "handler_rag_retrieval",
+      "handler_rag_retrieval_prompt_cache_bridge",
+      "handler_secret_env_access",
+      "handler_tainted_prompt_cache_key",
+      "handler_tainted_prompt_cache_value",
+      "handler_tainted_rag_retrieval_query"
+    ]);
+    expect(sourceRagRetrievalPromptCacheBridgeTool?.metadata.handler_env_key_names).toEqual([
+      "SOURCE_RAG_PROMPT_CACHE_TOKEN"
+    ]);
+    expect(sourceRagRetrievalPromptCacheBridgeTool?.metadata.schema_properties).toEqual([
+      "cache_key",
+      "cache_namespace",
+      "customer_id",
+      "retention_note_text",
+      "retrieval_namespace",
+      "retrieval_query_text"
+    ]);
+    expect(sourceRagRetrievalPromptCacheBridgeTool?.metadata.required_properties).toEqual([
+      "cache_key",
+      "cache_namespace",
+      "customer_id",
+      "retention_note_text",
+      "retrieval_namespace",
+      "retrieval_query_text"
+    ]);
+    expect(JSON.stringify(sourceRagRetrievalPromptCacheBridgeTool)).not.toContain("vectorRetriever.search");
+    expect(JSON.stringify(sourceRagRetrievalPromptCacheBridgeTool)).not.toContain("promptCache.set");
+    expect(JSON.stringify(sourceRagRetrievalPromptCacheBridgeTool)).not.toContain("retrievedCacheContext");
+    expect(JSON.stringify(sourceRagRetrievalPromptCacheBridgeTool)).not.toContain("source retrieved context cached for prompts");
+    expect(JSON.stringify(sourceRagRetrievalPromptCacheBridgeTool)).not.toContain("Cache caller selected retrieved support context");
     expect(sourceRagRetrievalTaskQueueBridgeTool).toMatchObject({
       path: "mcp-source/customer-tools.ts",
       data_classes: ["confidential", "credential", "pii"],
@@ -17298,6 +17392,95 @@ describe("scanner", () => {
     expect(JSON.stringify(langchainRagRetrievalBrowserAutomationBridgeTool)).not.toContain("retrieved_chunks");
     expect(JSON.stringify(langchainRagRetrievalBrowserAutomationBridgeTool)).not.toContain("framework retrieved context submitted through browser");
     expect(JSON.stringify(langchainRagRetrievalBrowserAutomationBridgeTool)).not.toContain("Submit caller selected retrieved support context");
+    expect(langchainRagRetrievalPromptCacheBridgeTool).toMatchObject({
+      path: "framework-tools/langchain_tools.py",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["call", "read", "remember", "send", "write"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(langchainRagRetrievalPromptCacheBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_agent_framework_source_tool: true,
+      agent_framework_source_tool: true,
+      agent_framework_source_tool_framework: "langchain",
+      agent_framework_source_tool_registration_kind: "python_tool_decorator",
+      agent_framework_source_tool_argument_count: 6,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_content_like_input: true,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      rag_retrieval: true,
+      tainted_rag_retrieval_query: true,
+      prompt_cache_write: true,
+      tainted_prompt_cache_key: true,
+      tainted_prompt_cache_value: true,
+      rag_retrieval_prompt_cache_bridge: true,
+      handler_rag_retrieval: true,
+      handler_tainted_rag_retrieval_query: true,
+      handler_prompt_cache_write: true,
+      handler_tainted_prompt_cache_key: true,
+      handler_tainted_prompt_cache_value: true,
+      handler_rag_retrieval_prompt_cache_bridge: true,
+      handler_secret_env_access: true,
+      handler_signal_count: 7,
+      open_world_schema: false
+    });
+    expect(langchainRagRetrievalPromptCacheBridgeTool?.metadata.authority_classes).toEqual([
+      "content_input",
+      "customer_data_input",
+      "handler_prompt_cache_write",
+      "handler_rag_retrieval",
+      "handler_rag_retrieval_prompt_cache_bridge",
+      "handler_secret_env_access",
+      "handler_tainted_prompt_cache_key",
+      "handler_tainted_prompt_cache_value",
+      "handler_tainted_rag_retrieval_query",
+      "pii_input",
+      "prompt_cache_write",
+      "rag_retrieval",
+      "rag_retrieval_prompt_cache_bridge",
+      "secret_env_access",
+      "tainted_prompt_cache_key",
+      "tainted_prompt_cache_value",
+      "tainted_rag_retrieval_query"
+    ]);
+    expect(langchainRagRetrievalPromptCacheBridgeTool?.metadata.handler_authority_classes).toEqual([
+      "handler_prompt_cache_write",
+      "handler_rag_retrieval",
+      "handler_rag_retrieval_prompt_cache_bridge",
+      "handler_secret_env_access",
+      "handler_tainted_prompt_cache_key",
+      "handler_tainted_prompt_cache_value",
+      "handler_tainted_rag_retrieval_query"
+    ]);
+    expect(langchainRagRetrievalPromptCacheBridgeTool?.metadata.handler_env_key_names).toEqual([
+      "LANGCHAIN_RAG_PROMPT_CACHE_TOKEN"
+    ]);
+    expect(langchainRagRetrievalPromptCacheBridgeTool?.metadata.schema_properties).toEqual([
+      "cache_key",
+      "cache_namespace",
+      "customer_id",
+      "retention_note_text",
+      "retrieval_namespace",
+      "retrieval_query_text"
+    ]);
+    expect(langchainRagRetrievalPromptCacheBridgeTool?.metadata.required_properties).toEqual([
+      "cache_key",
+      "cache_namespace",
+      "customer_id",
+      "retention_note_text",
+      "retrieval_namespace",
+      "retrieval_query_text"
+    ]);
+    expect(JSON.stringify(langchainRagRetrievalPromptCacheBridgeTool)).not.toContain("vector_retriever.search");
+    expect(JSON.stringify(langchainRagRetrievalPromptCacheBridgeTool)).not.toContain("prompt_cache.set");
+    expect(JSON.stringify(langchainRagRetrievalPromptCacheBridgeTool)).not.toContain("retrieved_cache_context");
+    expect(JSON.stringify(langchainRagRetrievalPromptCacheBridgeTool)).not.toContain("framework retrieved context cached for prompts");
+    expect(JSON.stringify(langchainRagRetrievalPromptCacheBridgeTool)).not.toContain("Cache caller selected retrieved support context");
     expect(langchainRagRetrievalTaskQueueBridgeTool).toMatchObject({
       path: "framework-tools/langchain_tools.py",
       data_classes: ["confidential", "credential", "pii"],

@@ -459,6 +459,7 @@ Examples:
 - RAG ingestion pipeline plus auto-indexed user uploads, ticket attachments, public web pages, or message sources into trusted private namespaces, disabled quarantine/moderation/instruction stripping/sanitization, missing provenance, credentials, and no approval gate
 - RAG ingestion pipeline plus user/model-selected remote URL fetch, redirect following, private-network and metadata-service reach, missing network allowlist, credential forwarding, and no approval gate
 - RAG retrieval with user-controlled query or filter inputs plus broad sensitive scope, disabled ACL/provenance/trust filters, raw prompt/tool passthrough, credentials, and no approval gate
+- source-defined tool handler plus caller-selected RAG/vector retrieval plus runtime prompt-cache credentials plus returned chunks persisted into replayable prompt or semantic caches with caller-selected cache keys or namespaces
 - remote/shared memory store plus untrusted writes plus tool, prompt, retrieval, and secret capture plus future-context replay plus no approval gate
 - remote durable memory store plus sensitive, PII, or secret-bearing context capture plus long retention, disabled redaction, credentials, and no approval gate
 - generated transcripts or cached tool output with instruction-like tool/external directives

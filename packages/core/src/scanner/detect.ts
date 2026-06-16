@@ -24171,6 +24171,7 @@ function addToolDefinitionSurface(
       !authority.model_output_prompt_cache_bridge &&
       !authority.network_response_prompt_cache_bridge &&
       !authority.local_file_prompt_cache_bridge &&
+      !authority.rag_retrieval_prompt_cache_bridge &&
       !authority.training_dataset_export &&
       !authority.model_output_training_dataset_bridge &&
       !authority.network_response_training_dataset_bridge &&
@@ -24340,6 +24341,7 @@ function addToolDefinitionSurface(
       model_output_prompt_cache_bridge: authority.model_output_prompt_cache_bridge,
       network_response_prompt_cache_bridge: authority.network_response_prompt_cache_bridge,
       local_file_prompt_cache_bridge: authority.local_file_prompt_cache_bridge,
+      rag_retrieval_prompt_cache_bridge: authority.rag_retrieval_prompt_cache_bridge,
       tool_output_prompt_cache_bridge: authority.tool_output_prompt_cache_bridge,
       network_response_prompt_registry_bridge: authority.network_response_prompt_registry_bridge,
       secret_manager_prompt_registry_bridge: authority.secret_manager_prompt_registry_bridge,
@@ -26842,6 +26844,7 @@ interface SourceToolHandlerSignals {
   handlerModelOutputPromptCacheBridge: boolean;
   handlerNetworkResponsePromptCacheBridge: boolean;
   handlerLocalFilePromptCacheBridge: boolean;
+  handlerRagRetrievalPromptCacheBridge: boolean;
   handlerToolOutputPromptCacheBridge: boolean;
   handlerTaintedPromptCacheKey: boolean;
   handlerTaintedPromptCacheValue: boolean;
@@ -27459,6 +27462,7 @@ function sourceToolHandlerSignalMetadata(signals: SourceToolHandlerSignals | und
     handler_model_output_prompt_cache_bridge: signals.handlerModelOutputPromptCacheBridge,
     handler_network_response_prompt_cache_bridge: signals.handlerNetworkResponsePromptCacheBridge,
     handler_local_file_prompt_cache_bridge: signals.handlerLocalFilePromptCacheBridge,
+    handler_rag_retrieval_prompt_cache_bridge: signals.handlerRagRetrievalPromptCacheBridge,
     handler_tool_output_prompt_cache_bridge: signals.handlerToolOutputPromptCacheBridge,
     handler_tainted_prompt_cache_key: signals.handlerTaintedPromptCacheKey,
     handler_tainted_prompt_cache_value: signals.handlerTaintedPromptCacheValue,
@@ -28240,6 +28244,10 @@ function classifySourceToolHandlerSignals(
   const localFilePromptCacheBridge = filesystemRead && taintedFilesystemPath && promptCacheWrite && (language === "javascript"
     ? hasJavaScriptHandlerLocalFilePromptCacheBridge(handlerSource)
     : hasPythonHandlerLocalFilePromptCacheBridge(handlerSource));
+  const ragRetrievalPromptCacheBridge = ragRetrieval && promptCacheWrite && (language === "javascript"
+    ? hasJavaScriptHandlerRagRetrievalPromptCacheBridge(handlerSource)
+    : hasPythonHandlerRagRetrievalPromptCacheBridge(handlerSource));
+  if (ragRetrievalPromptCacheBridge) taintedPromptCacheValue = true;
   const toolOutputPromptCacheBridge = toolInvocation && promptCacheWrite && (language === "javascript"
     ? hasJavaScriptHandlerToolOutputPromptCacheBridge(handlerSource)
     : hasPythonHandlerToolOutputPromptCacheBridge(handlerSource));
@@ -28249,6 +28257,7 @@ function classifySourceToolHandlerSignals(
     !modelOutputPromptCacheBridge &&
     !networkResponsePromptCacheBridge &&
     !localFilePromptCacheBridge &&
+    !ragRetrievalPromptCacheBridge &&
     !toolOutputPromptCacheBridge &&
     !clipboardPromptCacheBridge &&
     !visualContextPromptCacheBridge &&
@@ -28389,6 +28398,7 @@ function classifySourceToolHandlerSignals(
   if (modelOutputPromptCacheBridge) classes.add("handler_model_output_prompt_cache_bridge");
   if (networkResponsePromptCacheBridge) classes.add("handler_network_response_prompt_cache_bridge");
   if (localFilePromptCacheBridge) classes.add("handler_local_file_prompt_cache_bridge");
+  if (ragRetrievalPromptCacheBridge) classes.add("handler_rag_retrieval_prompt_cache_bridge");
   if (toolOutputPromptCacheBridge) classes.add("handler_tool_output_prompt_cache_bridge");
   if (taintedPromptCacheKey) classes.add("handler_tainted_prompt_cache_key");
   if (taintedPromptCacheValue) classes.add("handler_tainted_prompt_cache_value");
@@ -28592,6 +28602,7 @@ function classifySourceToolHandlerSignals(
     handlerModelOutputPromptCacheBridge: modelOutputPromptCacheBridge,
     handlerNetworkResponsePromptCacheBridge: networkResponsePromptCacheBridge,
     handlerLocalFilePromptCacheBridge: localFilePromptCacheBridge,
+    handlerRagRetrievalPromptCacheBridge: ragRetrievalPromptCacheBridge,
     handlerToolOutputPromptCacheBridge: toolOutputPromptCacheBridge,
     handlerTaintedPromptCacheKey: taintedPromptCacheKey,
     handlerTaintedPromptCacheValue: taintedPromptCacheValue,
@@ -31848,6 +31859,30 @@ function hasJavaScriptHandlerLocalFilePromptCacheBridge(source: string): boolean
 function hasPythonHandlerLocalFilePromptCacheBridge(source: string): boolean {
   const identifiers = extractPythonLocalFileIdentifiers(source);
   return identifiers.length > 0 && callExpressionReferencesAnyIdentifier(
+    [
+      /\b(?:prompt_cache|llm_cache|semantic_cache|response_cache|completion_cache|model_cache|cache_client|redis|redis_client|momento|upstash|langchain_cache)\s*(?:\.\s*[A-Za-z_]\w*){0,4}\s*\.\s*(?:set|setex|mset|put|save|store|write|upsert|insert|add|remember|cache|populate|set_value)\s*\(([\s\S]{0,2400})\)/giu,
+      /\b(?:cache_prompt|cache_response|cache_completion|cache_generation|populate_prompt_cache|write_prompt_cache|store_prompt_cache)\s*\(([\s\S]{0,2400})\)/giu
+    ],
+    source,
+    identifiers
+  );
+}
+
+function hasJavaScriptHandlerRagRetrievalPromptCacheBridge(source: string): boolean {
+  const identifiers = extractHandlerRagRetrievalVariableNames(source);
+  return identifiers.length > 0 && promptCacheWriteCallReferencesPayloadIdentifier(
+    [
+      /\b(?:promptCache|llmCache|semanticCache|responseCache|completionCache|modelCache|cacheClient|redis|redisClient|momento|upstash|langchainCache)\s*(?:\.\s*[A-Za-z_$][\w$]*){0,4}\s*\.\s*(?:set|setEx|setex|mset|put|save|store|write|upsert|insert|add|remember|cache|populate|setValue)\s*\(([\s\S]{0,2400})\)/giu,
+      /\b(?:cachePrompt|cacheResponse|cacheCompletion|cacheGeneration|populatePromptCache|writePromptCache|storePromptCache)\s*\(([\s\S]{0,2400})\)/giu
+    ],
+    source,
+    identifiers
+  );
+}
+
+function hasPythonHandlerRagRetrievalPromptCacheBridge(source: string): boolean {
+  const identifiers = extractHandlerRagRetrievalVariableNames(source);
+  return identifiers.length > 0 && promptCacheWriteCallReferencesPayloadIdentifier(
     [
       /\b(?:prompt_cache|llm_cache|semantic_cache|response_cache|completion_cache|model_cache|cache_client|redis|redis_client|momento|upstash|langchain_cache)\s*(?:\.\s*[A-Za-z_]\w*){0,4}\s*\.\s*(?:set|setex|mset|put|save|store|write|upsert|insert|add|remember|cache|populate|set_value)\s*\(([\s\S]{0,2400})\)/giu,
       /\b(?:cache_prompt|cache_response|cache_completion|cache_generation|populate_prompt_cache|write_prompt_cache|store_prompt_cache)\s*\(([\s\S]{0,2400})\)/giu
@@ -36700,6 +36735,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   model_output_prompt_cache_bridge: boolean;
   network_response_prompt_cache_bridge: boolean;
   local_file_prompt_cache_bridge: boolean;
+  rag_retrieval_prompt_cache_bridge: boolean;
   tool_output_prompt_cache_bridge: boolean;
   model_output_prompt_registry_bridge: boolean;
   network_response_prompt_registry_bridge: boolean;
@@ -36845,6 +36881,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   const handlerModelOutputPromptCacheBridge = handler?.handlerModelOutputPromptCacheBridge === true;
   const handlerNetworkResponsePromptCacheBridge = handler?.handlerNetworkResponsePromptCacheBridge === true;
   const handlerLocalFilePromptCacheBridge = handler?.handlerLocalFilePromptCacheBridge === true;
+  const handlerRagRetrievalPromptCacheBridge = handler?.handlerRagRetrievalPromptCacheBridge === true;
   const handlerToolOutputPromptCacheBridge = handler?.handlerToolOutputPromptCacheBridge === true;
   const handlerModelOutputPromptRegistryBridge = handler?.handlerModelOutputPromptRegistryBridge === true;
   const handlerNetworkResponsePromptRegistryBridge = handler?.handlerNetworkResponsePromptRegistryBridge === true;
@@ -37641,6 +37678,12 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
     actions.add("write");
     actions.add("remember");
   }
+  if (handlerRagRetrievalPromptCacheBridge) {
+    classes.add("rag_retrieval_prompt_cache_bridge");
+    actions.add("read");
+    actions.add("write");
+    actions.add("remember");
+  }
   if (handlerToolOutputPromptCacheBridge) {
     classes.add("tool_output_prompt_cache_bridge");
     actions.add("execute");
@@ -38217,6 +38260,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerModelOutputPromptCacheBridge ||
       handlerNetworkResponsePromptCacheBridge ||
       handlerLocalFilePromptCacheBridge ||
+      handlerRagRetrievalPromptCacheBridge ||
       handlerToolOutputPromptCacheBridge ||
       handlerTaintedPromptCacheKey ||
       handlerTaintedPromptCacheValue ||
@@ -38420,6 +38464,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerModelOutputPromptCacheBridge ||
       handlerNetworkResponsePromptCacheBridge ||
       handlerLocalFilePromptCacheBridge ||
+      handlerRagRetrievalPromptCacheBridge ||
       handlerToolOutputPromptCacheBridge ||
       handlerTrainingDatasetExport ||
       handlerEnvSecretTrainingDatasetBridge ||
@@ -38540,6 +38585,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerModelOutputPromptCacheBridge ||
       (handlerNetworkResponsePromptCacheBridge && handlerSecretEnvAccess) ||
       (handlerLocalFilePromptCacheBridge && handlerSecretEnvAccess) ||
+      (handlerRagRetrievalPromptCacheBridge && handlerSecretEnvAccess) ||
       (handlerToolOutputPromptCacheBridge && handlerSecretEnvAccess) ||
       (handlerLocalFilePromptRegistryBridge && handlerSecretEnvAccess) ||
       handlerSecretManagerPromptRegistryBridge ||
@@ -38732,6 +38778,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
     env_secret_prompt_cache_bridge: handlerEnvSecretPromptCacheBridge,
     model_output_prompt_cache_bridge: handlerModelOutputPromptCacheBridge,
     network_response_prompt_cache_bridge: handlerNetworkResponsePromptCacheBridge,
+    rag_retrieval_prompt_cache_bridge: handlerRagRetrievalPromptCacheBridge,
     tool_output_prompt_cache_bridge: handlerToolOutputPromptCacheBridge,
     model_output_prompt_registry_bridge: handlerModelOutputPromptRegistryBridge,
     network_response_prompt_registry_bridge: handlerNetworkResponsePromptRegistryBridge,
@@ -38920,6 +38967,7 @@ function authoritySignature(tool: SurfaceObject): string {
     metadata.model_output_prompt_cache_bridge === true ? "model_output_prompt_cache_bridge" : "",
     metadata.network_response_prompt_cache_bridge === true ? "network_response_prompt_cache_bridge" : "",
     metadata.local_file_prompt_cache_bridge === true ? "local_file_prompt_cache_bridge" : "",
+    metadata.rag_retrieval_prompt_cache_bridge === true ? "rag_retrieval_prompt_cache_bridge" : "",
     metadata.tool_output_prompt_cache_bridge === true ? "tool_output_prompt_cache_bridge" : "",
     metadata.local_file_prompt_registry_bridge === true ? "local_file_prompt_registry_bridge" : "",
     metadata.model_output_prompt_registry_bridge === true ? "model_output_prompt_registry_bridge" : "",
@@ -39135,6 +39183,7 @@ function isPrivilegedToolSurface(tool: SurfaceObject): boolean {
     tool.metadata.model_output_prompt_cache_bridge === true ||
     tool.metadata.network_response_prompt_cache_bridge === true ||
     tool.metadata.local_file_prompt_cache_bridge === true ||
+    tool.metadata.rag_retrieval_prompt_cache_bridge === true ||
     tool.metadata.tool_output_prompt_cache_bridge === true ||
     tool.metadata.local_file_prompt_registry_bridge === true ||
     tool.metadata.model_output_prompt_registry_bridge === true ||

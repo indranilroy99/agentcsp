@@ -8162,10 +8162,12 @@ describe("rule engine", () => {
       "langchain_cache_clipboard_prompt",
       "langchain_cache_customer_vault_secret_prompt",
       "langchain_cache_model_completion",
+      "langchain_cache_retrieved_context_prompt",
       "langchain_write_prompt_cache_entry",
       "source_cache_clipboard_prompt",
       "source_cache_customer_vault_secret_prompt",
       "source_cache_model_completion",
+      "source_cache_retrieved_context_prompt",
       "source_write_prompt_cache_entry"
     ]);
     expect(sourceHandlerPromptCacheWriteFindings.every((finding) => finding.severity === "critical")).toBe(true);
@@ -8212,6 +8214,10 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerPromptCacheWriteFindings)).not.toContain("clipboard_text");
     expect(JSON.stringify(sourceHandlerPromptCacheWriteFindings)).not.toContain("source clipboard cached for prompts");
     expect(JSON.stringify(sourceHandlerPromptCacheWriteFindings)).not.toContain("framework clipboard cached for prompts");
+    expect(JSON.stringify(sourceHandlerPromptCacheWriteFindings)).not.toContain("retrievedCacheContext");
+    expect(JSON.stringify(sourceHandlerPromptCacheWriteFindings)).not.toContain("retrieved_cache_context");
+    expect(JSON.stringify(sourceHandlerPromptCacheWriteFindings)).not.toContain("source retrieved context cached for prompts");
+    expect(JSON.stringify(sourceHandlerPromptCacheWriteFindings)).not.toContain("framework retrieved context cached for prompts");
     expect(JSON.stringify(sourceHandlerPromptCacheWriteFindings)).not.toContain("Write caller supplied prompt context");
     expect(JSON.stringify(sourceHandlerPromptCacheWriteFindings)).not.toContain("Write a customer support secret");
     const sourceHandlerTrainingDatasetExportFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-047");
@@ -11070,6 +11076,70 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerRagRetrievalAgentDelegationBridgeFindings)).not.toContain("source retrieved context delegated to remote agent");
     expect(JSON.stringify(sourceHandlerRagRetrievalAgentDelegationBridgeFindings)).not.toContain("framework retrieved context delegated to remote agent");
     expect(JSON.stringify(sourceHandlerRagRetrievalAgentDelegationBridgeFindings)).not.toContain("Delegate caller selected retrieved support context");
+    const sourceHandlerRagRetrievalPromptCacheBridgeFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-183");
+    expect(sourceHandlerRagRetrievalPromptCacheBridgeFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
+      "langchain_cache_retrieved_context_prompt",
+      "source_cache_retrieved_context_prompt"
+    ]);
+    expect(sourceHandlerRagRetrievalPromptCacheBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
+    expect(sourceHandlerRagRetrievalPromptCacheBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerRagRetrievalPromptCacheBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
+    expect(sourceHandlerRagRetrievalPromptCacheBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
+    expect(sourceHandlerRagRetrievalPromptCacheBridgeFindings.every((finding) => finding.matched_object.metadata.source_tool_handler_redacted === true)).toBe(true);
+    expect(sourceHandlerRagRetrievalPromptCacheBridgeFindings.every((finding) => finding.matched_object.metadata.handler_secret_env_access === true)).toBe(true);
+    expect(sourceHandlerRagRetrievalPromptCacheBridgeFindings.every((finding) => finding.matched_object.metadata.handler_rag_retrieval === true)).toBe(true);
+    expect(sourceHandlerRagRetrievalPromptCacheBridgeFindings.every((finding) => finding.matched_object.metadata.handler_tainted_rag_retrieval_query === true)).toBe(true);
+    expect(sourceHandlerRagRetrievalPromptCacheBridgeFindings.every((finding) => finding.matched_object.metadata.handler_prompt_cache_write === true)).toBe(true);
+    expect(sourceHandlerRagRetrievalPromptCacheBridgeFindings.every((finding) => finding.matched_object.metadata.handler_tainted_prompt_cache_key === true)).toBe(true);
+    expect(sourceHandlerRagRetrievalPromptCacheBridgeFindings.every((finding) => finding.matched_object.metadata.handler_tainted_prompt_cache_value === true)).toBe(true);
+    expect(sourceHandlerRagRetrievalPromptCacheBridgeFindings.every((finding) => finding.matched_object.metadata.handler_rag_retrieval_prompt_cache_bridge === true)).toBe(true);
+    expect(sourceHandlerRagRetrievalPromptCacheBridgeFindings.every((finding) => finding.matched_object.metadata.rag_retrieval === true)).toBe(true);
+    expect(sourceHandlerRagRetrievalPromptCacheBridgeFindings.every((finding) => finding.matched_object.metadata.tainted_rag_retrieval_query === true)).toBe(true);
+    expect(sourceHandlerRagRetrievalPromptCacheBridgeFindings.every((finding) => finding.matched_object.metadata.prompt_cache_write === true)).toBe(true);
+    expect(sourceHandlerRagRetrievalPromptCacheBridgeFindings.every((finding) => finding.matched_object.metadata.tainted_prompt_cache_key === true)).toBe(true);
+    expect(sourceHandlerRagRetrievalPromptCacheBridgeFindings.every((finding) => finding.matched_object.metadata.tainted_prompt_cache_value === true)).toBe(true);
+    expect(sourceHandlerRagRetrievalPromptCacheBridgeFindings.every((finding) => finding.matched_object.metadata.rag_retrieval_prompt_cache_bridge === true)).toBe(true);
+    expect(sourceHandlerRagRetrievalPromptCacheBridgeFindings.every((finding) => finding.matched_object.metadata.accepts_customer_data_input === true)).toBe(true);
+    for (const authorityClass of [
+      "rag_retrieval",
+      "tainted_rag_retrieval_query",
+      "prompt_cache_write",
+      "tainted_prompt_cache_key",
+      "tainted_prompt_cache_value",
+      "rag_retrieval_prompt_cache_bridge"
+    ]) {
+      expect(sourceHandlerRagRetrievalPromptCacheBridgeFindings.every((finding) =>
+        finding.matched_object.metadata.authority_classes.includes(authorityClass)
+      )).toBe(true);
+    }
+    for (const handlerAuthorityClass of [
+      "handler_rag_retrieval",
+      "handler_tainted_rag_retrieval_query",
+      "handler_prompt_cache_write",
+      "handler_tainted_prompt_cache_key",
+      "handler_tainted_prompt_cache_value",
+      "handler_rag_retrieval_prompt_cache_bridge"
+    ]) {
+      expect(sourceHandlerRagRetrievalPromptCacheBridgeFindings.every((finding) =>
+        finding.matched_object.metadata.handler_authority_classes.includes(handlerAuthorityClass)
+      )).toBe(true);
+    }
+    expect(sourceHandlerRagRetrievalPromptCacheBridgeFindings.every((finding) => finding.matched_object.actions.includes("read"))).toBe(true);
+    expect(sourceHandlerRagRetrievalPromptCacheBridgeFindings.every((finding) => finding.matched_object.actions.includes("remember"))).toBe(true);
+    expect(sourceHandlerRagRetrievalPromptCacheBridgeFindings.every((finding) => finding.matched_object.actions.includes("write"))).toBe(true);
+    expect(sourceHandlerRagRetrievalPromptCacheBridgeFindings.every((finding) => finding.matched_object.external_reach === true)).toBe(true);
+    expect(sourceHandlerRagRetrievalPromptCacheBridgeFindings.every((finding) => finding.matched_object.secret_exposure === true)).toBe(true);
+    expect(sourceHandlerRagRetrievalPromptCacheBridgeFindings.every((finding) => finding.matched_object.side_effect === true)).toBe(true);
+    expect(sourceHandlerRagRetrievalPromptCacheBridgeFindings.every((finding) => finding.matched_object.reversible === false)).toBe(true);
+    expect(JSON.stringify(sourceHandlerRagRetrievalPromptCacheBridgeFindings)).not.toContain("vectorRetriever.search");
+    expect(JSON.stringify(sourceHandlerRagRetrievalPromptCacheBridgeFindings)).not.toContain("vector_retriever.search");
+    expect(JSON.stringify(sourceHandlerRagRetrievalPromptCacheBridgeFindings)).not.toContain("promptCache.set");
+    expect(JSON.stringify(sourceHandlerRagRetrievalPromptCacheBridgeFindings)).not.toContain("prompt_cache.set");
+    expect(JSON.stringify(sourceHandlerRagRetrievalPromptCacheBridgeFindings)).not.toContain("retrievedCacheContext");
+    expect(JSON.stringify(sourceHandlerRagRetrievalPromptCacheBridgeFindings)).not.toContain("retrieved_cache_context");
+    expect(JSON.stringify(sourceHandlerRagRetrievalPromptCacheBridgeFindings)).not.toContain("source retrieved context cached for prompts");
+    expect(JSON.stringify(sourceHandlerRagRetrievalPromptCacheBridgeFindings)).not.toContain("framework retrieved context cached for prompts");
+    expect(JSON.stringify(sourceHandlerRagRetrievalPromptCacheBridgeFindings)).not.toContain("Cache caller selected retrieved support context");
     const sourceHandlerLocalFileSafetyPolicyBridgeFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-175");
     expect(sourceHandlerLocalFileSafetyPolicyBridgeFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_apply_local_file_guardrail_override",

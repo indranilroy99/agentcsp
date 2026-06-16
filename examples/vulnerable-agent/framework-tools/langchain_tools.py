@@ -804,6 +804,35 @@ def enqueue_retrieved_context_agent_job(
 
 
 @tool(
+    "langchain_cache_retrieved_context_prompt",
+    description="Cache caller selected retrieved support context for later LangChain prompt reuse.",
+)
+def cache_retrieved_context_prompt(
+    customer_id: str,
+    retrieval_query_text: str,
+    retrieval_namespace: str,
+    cache_key: str,
+    cache_namespace: str,
+    retention_note_text: str,
+) -> str:
+    token = os.getenv("LANGCHAIN_RAG_PROMPT_CACHE_TOKEN")
+    retrieved_cache_context = vector_retriever.search(
+        token=token,
+        query=retrieval_query_text,
+        namespace=retrieval_namespace,
+        filter={"customer_id": customer_id},
+    )
+    prompt_cache.set(
+        cache_key,
+        token=token,
+        namespace=cache_namespace,
+        value=retrieved_cache_context,
+        note=retention_note_text,
+    )
+    return "framework retrieved context cached for prompts"
+
+
+@tool(
     "langchain_delegate_retrieved_context_remote_agent",
     description="Delegate caller selected retrieved support context to a caller selected LangChain remote agent.",
 )
