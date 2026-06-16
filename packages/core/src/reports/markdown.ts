@@ -48,6 +48,8 @@ export function renderMarkdownReport(manifest: AgentManifest): string {
     "",
     renderTriageSummary(manifest),
     "",
+    renderRulePackCoverage(manifest),
+    "",
     renderActionPlan(manifest),
     "",
     renderHighestRiskBlastRadiusPaths(manifest.findings),
@@ -79,6 +81,48 @@ export function renderMarkdownReport(manifest: AgentManifest): string {
     "- Policy actions in this MVP are recommended controls, not runtime enforcement decisions.",
     "- The Static Blast-Radius Summary is based on discovered files and normalized metadata, not live graph traversal.",
     "- Use `.agentcspignore` to exclude project-specific generated or sensitive paths."
+  ].join("\n");
+}
+
+function renderRulePackCoverage(manifest: AgentManifest): string {
+  const rulePack = manifest.metadata.rule_pack;
+  return [
+    "## Rule Pack Coverage",
+    "",
+    `- Built-in rules: ${rulePack.built_in_rules}`,
+    `- Project rules: ${rulePack.project_rules}`,
+    `- Total rules: ${rulePack.total_rules}`,
+    `- Rule diagnostics: ${rulePack.rule_diagnostics}`,
+    "",
+    "### Rule Categories",
+    "",
+    renderRuleCategoryTable(rulePack.by_category),
+    "",
+    "### Rule Severity Coverage",
+    "",
+    renderSeverityCounts(rulePack.by_severity),
+    "",
+    "### Rule Target Surfaces",
+    "",
+    renderRuleObjectTypeTable(rulePack.by_object_type)
+  ].join("\n");
+}
+
+function renderRuleCategoryTable(categories: AgentManifest["metadata"]["rule_pack"]["by_category"]): string {
+  if (categories.length === 0) return "No rule categories were loaded.";
+  return [
+    "| Category | Rules |",
+    "| --- | --- |",
+    ...categories.map((item) => `| ${escapeTable(item.category)} | ${item.count} |`)
+  ].join("\n");
+}
+
+function renderRuleObjectTypeTable(objectTypes: AgentManifest["metadata"]["rule_pack"]["by_object_type"]): string {
+  if (objectTypes.length === 0) return "No rule target surfaces were loaded.";
+  return [
+    "| Target surface | Rules |",
+    "| --- | --- |",
+    ...objectTypes.map((item) => `| ${escapeTable(item.object_type)} | ${item.count} |`)
   ].join("\n");
 }
 

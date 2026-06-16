@@ -582,6 +582,16 @@ export const ScanCoverageSummarySchema = z.object({
   oversized_file_paths_truncated: z.boolean().default(false)
 });
 
+export const RulePackCategoryCountSchema = z.object({
+  category: z.string(),
+  count: z.number().int().nonnegative()
+});
+
+export const RulePackObjectTypeCountSchema = z.object({
+  object_type: z.string(),
+  count: z.number().int().nonnegative()
+});
+
 export const ManifestMetadataSchema = z.object({
   schema_version: z.literal(ManifestSchemaVersion),
   generated_at: z.string(),
@@ -613,7 +623,10 @@ export const ManifestMetadataSchema = z.object({
     project_rules: z.number().int().nonnegative(),
     total_rules: z.number().int().nonnegative(),
     project_rules_loaded: z.boolean().default(false),
-    rule_diagnostics: z.number().int().nonnegative().default(0)
+    rule_diagnostics: z.number().int().nonnegative().default(0),
+    by_category: z.array(RulePackCategoryCountSchema).default([]),
+    by_severity: SeverityCountsSchema.default({ critical: 0, high: 0, medium: 0, low: 0, info: 0 }),
+    by_object_type: z.array(RulePackObjectTypeCountSchema).default([])
   })
 });
 

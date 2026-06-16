@@ -336,6 +336,9 @@ function assertInstalledSafeOperatorMetadata(manifest, report) {
   assertEqual(manifest.metadata?.rule_pack?.total_rules, 383, "installed CLI safe total rule count");
   assertEqual(manifest.metadata?.rule_pack?.project_rules_loaded, false, "installed CLI safe project rules loaded flag");
   assertEqual(manifest.metadata?.rule_pack?.rule_diagnostics, 0, "installed CLI safe rule diagnostic count");
+  assert(manifest.metadata?.rule_pack?.by_category?.length > 0, "installed CLI safe rule category coverage missing");
+  assert(manifest.metadata?.rule_pack?.by_severity?.critical > 0, "installed CLI safe rule severity coverage missing");
+  assert(manifest.metadata?.rule_pack?.by_object_type?.length > 0, "installed CLI safe rule object coverage missing");
   assertEqual(manifest.scan_coverage?.scan_health, "complete", "installed CLI safe scan health");
   assertArrayEqual(manifest.scan_coverage?.scan_health_reasons ?? [], [], "installed CLI safe scan health reasons");
   assertEqual(manifest.triage_summary?.top_active_limit, 10, "installed CLI safe triage top active limit");

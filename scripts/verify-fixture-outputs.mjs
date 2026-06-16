@@ -1973,6 +1973,9 @@ if (vulnerable.sarif) {
   assertEqual(run.properties.agentcsp_rule_pack.project_rules, 0, "SARIF project rule count");
   assertEqual(run.properties.agentcsp_rule_pack.total_rules, 383, "SARIF total rule count");
   assertEqual(run.properties.agentcsp_rule_pack.rule_diagnostics, 0, "SARIF rule diagnostic count");
+  assert(run.properties.agentcsp_rule_pack.by_category?.length > 0, "SARIF rule category coverage missing");
+  assert(run.properties.agentcsp_rule_pack.by_severity?.critical > 0, "SARIF rule severity coverage missing");
+  assert(run.properties.agentcsp_rule_pack.by_object_type?.length > 0, "SARIF rule object coverage missing");
   assert(run.properties?.agentcsp_triage_summary, "SARIF triage summary missing");
   assertEqual(
     run.properties.agentcsp_triage_summary.top_active_risks_truncated,
@@ -2089,6 +2092,9 @@ function assertVulnerableOperatorMetadata(output) {
   assertEqual(manifest.action_plan?.omitted_highest_severity, "critical", "vulnerable omitted highest severity");
   assert(manifest.action_plan?.omitted_max_risk_score > 0, "vulnerable omitted max risk score missing");
   assert(manifest.action_plan?.by_owner?.length > 0, "vulnerable action owner routing missing");
+  assert(manifest.metadata?.rule_pack?.by_category?.length > 0, "vulnerable rule category coverage missing");
+  assert(manifest.metadata?.rule_pack?.by_severity?.critical > 0, "vulnerable rule severity coverage missing");
+  assert(manifest.metadata?.rule_pack?.by_object_type?.length > 0, "vulnerable rule object coverage missing");
   const firstOwner = manifest.action_plan?.by_owner?.[0];
   assertEqual(firstOwner?.top_action_id_limit, 5, "vulnerable action owner top action ID limit");
   assert(firstOwner?.top_action_ids?.length > 0, "vulnerable action owner top action IDs missing");
@@ -2145,6 +2151,9 @@ function assertVulnerableOperatorMetadata(output) {
   );
 
   assert(report.includes("- Scan health: `complete`"), "vulnerable report missing scan health");
+  assert(report.includes("## Rule Pack Coverage"), "vulnerable report missing rule pack coverage");
+  assert(report.includes("### Rule Categories"), "vulnerable report missing rule category coverage");
+  assert(report.includes("### Rule Target Surfaces"), "vulnerable report missing rule object coverage");
   assert(report.includes("- Top active risks truncated: `true`"), "vulnerable report missing triage truncation");
   assert(report.includes("Validation steps"), "vulnerable report missing action validation steps");
   assert(report.includes("Remediation steps"), "vulnerable report missing action remediation steps");

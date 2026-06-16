@@ -26,6 +26,12 @@ describe("scanProject", () => {
       project_rules_loaded: false,
       rule_diagnostics: 0
     });
+    expect(result.manifest.metadata.rule_pack.by_category.length).toBeGreaterThan(0);
+    expect(result.manifest.metadata.rule_pack.by_severity.critical).toBeGreaterThan(0);
+    expect(
+      Object.values(result.manifest.metadata.rule_pack.by_severity).reduce((sum, count) => sum + count, 0)
+    ).toBe(383);
+    expect(result.manifest.metadata.rule_pack.by_object_type.some((item) => item.object_type === "tool")).toBe(true);
     expect(result.manifest.metadata.config).toMatchObject({
       formats: ["json", "md", "sarif"],
       include_hidden: true,
@@ -210,6 +216,9 @@ describe("scanProject", () => {
             total_rules?: number;
             project_rules_loaded?: boolean;
             rule_diagnostics?: number;
+            by_category?: Array<{ category?: string; count?: number }>;
+            by_severity?: Record<string, number>;
+            by_object_type?: Array<{ object_type?: string; count?: number }>;
           };
           agentcsp_triage_summary?: {
             total_findings?: number;
@@ -291,6 +300,9 @@ describe("scanProject", () => {
       project_rules_loaded: false,
       rule_diagnostics: 0
     });
+    expect(sarif.runs[0]?.properties?.agentcsp_rule_pack?.by_category?.length).toBeGreaterThan(0);
+    expect(sarif.runs[0]?.properties?.agentcsp_rule_pack?.by_severity?.critical).toBeGreaterThan(0);
+    expect(sarif.runs[0]?.properties?.agentcsp_rule_pack?.by_object_type?.length).toBeGreaterThan(0);
     expect(sarif.runs[0]?.properties?.agentcsp_triage_summary?.total_findings).toBe(result.findings.length);
     expect(sarif.runs[0]?.properties?.agentcsp_triage_summary?.top_active_risks_truncated).toBe(true);
     expect(
@@ -347,6 +359,10 @@ describe("scanProject", () => {
     expect(result.reportMarkdown).toContain("- Top active rules truncated: `true`");
     expect(result.reportMarkdown).toContain("- Top active risks truncated: `true`");
     expect(result.reportMarkdown).toContain("## Action Plan");
+    expect(result.reportMarkdown).toContain("## Rule Pack Coverage");
+    expect(result.reportMarkdown).toContain("### Rule Categories");
+    expect(result.reportMarkdown).toContain("### Rule Severity Coverage");
+    expect(result.reportMarkdown).toContain("### Rule Target Surfaces");
     expect(result.reportMarkdown).toContain("- Truncated: `true`");
     expect(result.reportMarkdown).toContain("- Omitted actions:");
     expect(result.reportMarkdown).toContain("- Omitted highest severity:");

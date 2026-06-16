@@ -159,6 +159,86 @@
                   "type": "integer",
                   "minimum": 0,
                   "default": 0
+                },
+                "by_category": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "category": {
+                        "type": "string"
+                      },
+                      "count": {
+                        "type": "integer",
+                        "minimum": 0
+                      }
+                    },
+                    "required": [
+                      "category",
+                      "count"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "default": []
+                },
+                "by_severity": {
+                  "type": "object",
+                  "properties": {
+                    "critical": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "default": 0
+                    },
+                    "high": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "default": 0
+                    },
+                    "medium": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "default": 0
+                    },
+                    "low": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "default": 0
+                    },
+                    "info": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "default": 0
+                    }
+                  },
+                  "additionalProperties": false,
+                  "default": {
+                    "critical": 0,
+                    "high": 0,
+                    "medium": 0,
+                    "low": 0,
+                    "info": 0
+                  }
+                },
+                "by_object_type": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "object_type": {
+                        "type": "string"
+                      },
+                      "count": {
+                        "type": "integer",
+                        "minimum": 0
+                      }
+                    },
+                    "required": [
+                      "object_type",
+                      "count"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "default": []
                 }
               },
               "required": [
@@ -955,35 +1035,7 @@
               "default": 0
             },
             "active_by_severity": {
-              "type": "object",
-              "properties": {
-                "critical": {
-                  "type": "integer",
-                  "minimum": 0,
-                  "default": 0
-                },
-                "high": {
-                  "type": "integer",
-                  "minimum": 0,
-                  "default": 0
-                },
-                "medium": {
-                  "type": "integer",
-                  "minimum": 0,
-                  "default": 0
-                },
-                "low": {
-                  "type": "integer",
-                  "minimum": 0,
-                  "default": 0
-                },
-                "info": {
-                  "type": "integer",
-                  "minimum": 0,
-                  "default": 0
-                }
-              },
-              "additionalProperties": false,
+              "$ref": "#/definitions/AgentCSP Agent Manifest/properties/metadata/properties/rule_pack/properties/by_severity",
               "default": {
                 "critical": 0,
                 "high": 0,
@@ -1106,7 +1158,7 @@
                     "default": 0
                   },
                   "by_severity": {
-                    "$ref": "#/definitions/AgentCSP Agent Manifest/properties/triage_summary/properties/active_by_severity",
+                    "$ref": "#/definitions/AgentCSP Agent Manifest/properties/metadata/properties/rule_pack/properties/by_severity",
                     "default": {
                       "critical": 0,
                       "high": 0,
@@ -1304,7 +1356,7 @@
               "default": 0
             },
             "omitted_by_severity": {
-              "$ref": "#/definitions/AgentCSP Agent Manifest/properties/triage_summary/properties/active_by_severity",
+              "$ref": "#/definitions/AgentCSP Agent Manifest/properties/metadata/properties/rule_pack/properties/by_severity",
               "default": {
                 "critical": 0,
                 "high": 0,
@@ -1681,7 +1733,7 @@
               "default": 0
             },
             "new_findings_by_severity": {
-              "$ref": "#/definitions/AgentCSP Agent Manifest/properties/triage_summary/properties/active_by_severity",
+              "$ref": "#/definitions/AgentCSP Agent Manifest/properties/metadata/properties/rule_pack/properties/by_severity",
               "default": {
                 "critical": 0,
                 "high": 0,
@@ -1822,7 +1874,7 @@
               "default": 0
             },
             "severity_gate_by_severity": {
-              "$ref": "#/definitions/AgentCSP Agent Manifest/properties/triage_summary/properties/active_by_severity",
+              "$ref": "#/definitions/AgentCSP Agent Manifest/properties/metadata/properties/rule_pack/properties/by_severity",
               "default": {
                 "critical": 0,
                 "high": 0,
@@ -1853,7 +1905,7 @@
               "default": 0
             },
             "active_suppressions_by_severity": {
-              "$ref": "#/definitions/AgentCSP Agent Manifest/properties/triage_summary/properties/active_by_severity",
+              "$ref": "#/definitions/AgentCSP Agent Manifest/properties/metadata/properties/rule_pack/properties/by_severity",
               "default": {
                 "critical": 0,
                 "high": 0,
@@ -1868,7 +1920,7 @@
               "default": 0
             },
             "expired_suppression_by_severity": {
-              "$ref": "#/definitions/AgentCSP Agent Manifest/properties/triage_summary/properties/active_by_severity",
+              "$ref": "#/definitions/AgentCSP Agent Manifest/properties/metadata/properties/rule_pack/properties/by_severity",
               "default": {
                 "critical": 0,
                 "high": 0,

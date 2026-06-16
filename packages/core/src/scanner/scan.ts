@@ -10,7 +10,8 @@ import {
   type RulePackSummary,
   type ScanConfig,
   type ScanCoverageSummary,
-  type ScanDiagnostic
+  type ScanDiagnostic,
+  type SeverityCounts
 } from "../schemas/index.js";
 import { buildManifest } from "../manifest/build.js";
 import { buildStaticGraph } from "../graph/build-graph.js";
@@ -188,9 +189,38 @@ async function loadScanRules(rootPath: string): Promise<{
       project_rules: projectRuleCount,
       total_rules: builtInRules.length + projectRuleCount,
       project_rules_loaded: projectRuleCount > 0,
-      rule_diagnostics: diagnostics.length
+      rule_diagnostics: diagnostics.length,
+      ...summarizeRulePack(rules)
     }
   };
+}
+
+function summarizeRulePack(rules: Rule[]): Pick<RulePackSummary, "by_category" | "by_severity" | "by_object_type"> {
+  const categories = new Map<string, number>();
+  const objectTypes = new Map<string, number>();
+  const by_severity: SeverityCounts = { critical: 0, high: 0, medium: 0, low: 0, info: 0 };
+
+  for (const rule of rules) {
+    categories.set(rule.category, (categories.get(rule.category) ?? 0) + 1);
+    by_severity[rule.severity] += 1;
+    const objectType = rule.match.object_type ?? "any";
+    objectTypes.set(objectType, (objectTypes.get(objectType) ?? 0) + 1);
+  }
+
+  return {
+    by_category: sortedCounts(categories, "category"),
+    by_severity,
+    by_object_type: sortedCounts(objectTypes, "object_type")
+  };
+}
+
+function sortedCounts<Key extends string>(
+  counts: Map<string, number>,
+  key: Key
+): Array<Record<Key, string> & { count: number }> {
+  return [...counts.entries()]
+    .map(([value, count]) => ({ [key]: value, count }) as Record<Key, string> & { count: number })
+    .sort((a, b) => b.count - a.count || a[key].localeCompare(b[key]));
 }
 
 function withDiagnosticCoverage(
