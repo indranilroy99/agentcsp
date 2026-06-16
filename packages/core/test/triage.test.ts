@@ -29,6 +29,9 @@ describe("triage summary", () => {
     expect(summary.top_active_rules).toHaveLength(triageTopListLimit);
     expect(summary.top_active_risks).toHaveLength(triageTopListLimit);
     expect(summary.top_active_rules.some((rule) => rule.rule_id === "RULE-SUPPRESSED")).toBe(false);
+    expect(summary.active_by_risk_driver.find((item) => item.driver === "side_effect")?.count).toBe(
+      triageTopListLimit + 3
+    );
   });
 
   it("includes risk factors in top active risk summaries", () => {
@@ -53,6 +56,68 @@ describe("triage summary", () => {
       } as Finding
     ]);
 
+    expect(summary.active_by_risk_driver).toEqual([
+      {
+        driver: "untrusted_to_privileged",
+        count: 1,
+        max_risk_score: 95,
+        by_severity: { critical: 1, high: 0, medium: 0, low: 0, info: 0 }
+      },
+      {
+        driver: "secret_exposure",
+        count: 1,
+        max_risk_score: 95,
+        by_severity: { critical: 1, high: 0, medium: 0, low: 0, info: 0 }
+      },
+      {
+        driver: "external_reach",
+        count: 1,
+        max_risk_score: 95,
+        by_severity: { critical: 1, high: 0, medium: 0, low: 0, info: 0 }
+      },
+      {
+        driver: "irreversible_action",
+        count: 1,
+        max_risk_score: 95,
+        by_severity: { critical: 1, high: 0, medium: 0, low: 0, info: 0 }
+      },
+      {
+        driver: "side_effect",
+        count: 1,
+        max_risk_score: 95,
+        by_severity: { critical: 1, high: 0, medium: 0, low: 0, info: 0 }
+      },
+      {
+        driver: "sensitive_data",
+        count: 1,
+        max_risk_score: 95,
+        by_severity: { critical: 1, high: 0, medium: 0, low: 0, info: 0 }
+      },
+      {
+        driver: "credential_data",
+        count: 1,
+        max_risk_score: 95,
+        by_severity: { critical: 1, high: 0, medium: 0, low: 0, info: 0 }
+      },
+      {
+        driver: "pii_data",
+        count: 1,
+        max_risk_score: 95,
+        by_severity: { critical: 1, high: 0, medium: 0, low: 0, info: 0 }
+      },
+      {
+        driver: "execute_action",
+        count: 1,
+        max_risk_score: 95,
+        by_severity: { critical: 1, high: 0, medium: 0, low: 0, info: 0 }
+      },
+      {
+        driver: "write_action",
+        count: 1,
+        max_risk_score: 95,
+        by_severity: { critical: 1, high: 0, medium: 0, low: 0, info: 0 }
+      }
+    ]);
     expect(summary.top_active_risks[0]).toMatchObject({
       finding_id: "finding_critical",
       trust_level: "untrusted",

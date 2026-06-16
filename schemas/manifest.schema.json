@@ -1041,6 +1041,55 @@
               },
               "default": []
             },
+            "active_by_risk_driver": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "driver": {
+                    "type": "string",
+                    "enum": [
+                      "untrusted_to_privileged",
+                      "secret_exposure",
+                      "external_reach",
+                      "irreversible_action",
+                      "side_effect",
+                      "sensitive_data",
+                      "credential_data",
+                      "pii_data",
+                      "execute_action",
+                      "write_action"
+                    ]
+                  },
+                  "count": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "max_risk_score": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 100,
+                    "default": 0
+                  },
+                  "by_severity": {
+                    "$ref": "#/definitions/AgentCSP Agent Manifest/properties/triage_summary/properties/active_by_severity",
+                    "default": {
+                      "critical": 0,
+                      "high": 0,
+                      "medium": 0,
+                      "low": 0,
+                      "info": 0
+                    }
+                  }
+                },
+                "required": [
+                  "driver",
+                  "count"
+                ],
+                "additionalProperties": false
+              },
+              "default": []
+            },
             "top_active_limit": {
               "type": "integer",
               "exclusiveMinimum": 0,

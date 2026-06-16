@@ -37,6 +37,8 @@ The manifest is versioned and validated with Zod. JSON Schema exports live in `s
 
 `metadata.rule_pack` records rule-pack provenance without exposing local rule paths or rule contents: built-in rule count, project-local rule count, total rules loaded, whether project-local rules were added, and redacted rule diagnostic count.
 
+`triage_summary.active_by_risk_driver` records deterministic drivers behind active risk, including untrusted-to-privileged influence, secret exposure, external reach, irreversible action, side effects, sensitive data, credential data, PII data, execute-class actions, and write-class actions. Each driver includes a finding count, max risk score, and severity mix so CI dashboards and local reports can explain why findings matter without parsing redacted evidence snippets.
+
 ## MCP Server Authority
 
 MCP server entries are normalized into `mcp_server` objects. For remote MCP servers, AgentCSP records posture metadata without emitting raw URLs or header values.

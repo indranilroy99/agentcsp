@@ -75,6 +75,16 @@ describe("scanProject", () => {
     expect(result.manifest.triage_summary?.active_by_confidence.very_high).toBeGreaterThan(0);
     expect(result.manifest.triage_summary?.active_by_surface_type.some((item) => item.surface_type === "tool")).toBe(true);
     expect(result.manifest.triage_summary?.active_by_recommended_control.length).toBeGreaterThan(0);
+    expect(
+      result.manifest.triage_summary?.active_by_risk_driver.some(
+        (item) => item.driver === "untrusted_to_privileged" && item.count > 0 && item.max_risk_score > 0
+      )
+    ).toBe(true);
+    expect(
+      result.manifest.triage_summary?.active_by_risk_driver.some(
+        (item) => item.driver === "secret_exposure" && item.by_severity.critical > 0
+      )
+    ).toBe(true);
     expect(result.manifest.triage_summary?.top_active_limit).toBe(10);
     expect(result.manifest.triage_summary?.top_active_rules_total).toBeGreaterThan(10);
     expect(result.manifest.triage_summary?.top_active_rules_truncated).toBe(true);
@@ -170,7 +180,11 @@ describe("scanProject", () => {
             project_rules_loaded?: boolean;
             rule_diagnostics?: number;
           };
-          agentcsp_triage_summary?: { total_findings?: number; top_active_risks_truncated?: boolean };
+          agentcsp_triage_summary?: {
+            total_findings?: number;
+            top_active_risks_truncated?: boolean;
+            active_by_risk_driver?: Array<{ driver?: string; count?: number; max_risk_score?: number }>;
+          };
           agentcsp_action_plan?: { total_actions?: number; actions?: Array<{ priority?: number; rule_id?: string }> };
           agentcsp_ci_gate_summary?: {
             status?: string;
@@ -228,6 +242,11 @@ describe("scanProject", () => {
     });
     expect(sarif.runs[0]?.properties?.agentcsp_triage_summary?.total_findings).toBe(result.findings.length);
     expect(sarif.runs[0]?.properties?.agentcsp_triage_summary?.top_active_risks_truncated).toBe(true);
+    expect(
+      sarif.runs[0]?.properties?.agentcsp_triage_summary?.active_by_risk_driver?.some(
+        (item) => item.driver === "external_reach" && (item.count ?? 0) > 0
+      )
+    ).toBe(true);
     expect(sarif.runs[0]?.properties?.agentcsp_action_plan?.total_actions).toBe(
       result.manifest.action_plan?.total_actions
     );
@@ -299,6 +318,9 @@ describe("scanProject", () => {
     expect(result.reportMarkdown).toContain("No CI gate blockers were identified.");
     expect(result.reportMarkdown).toContain("### Active Findings by Severity");
     expect(result.reportMarkdown).toContain("### Top Active Rules");
+    expect(result.reportMarkdown).toContain("### Active Risk Drivers");
+    expect(result.reportMarkdown).toContain("| Driver | Findings | Max risk | Critical | High | Medium | Low | Info |");
+    expect(result.reportMarkdown).toContain("untrusted to privileged");
     expect(result.reportMarkdown).toContain("### Top Active Risks");
     expect(result.reportMarkdown).toContain(
       "| Severity | Confidence | Risk | Trust | Data | Actions | External | Secret | Untrusted->privileged | Boundary | Rule | Object | Path | Recommended control |"
@@ -356,6 +378,7 @@ describe("scanProject", () => {
     expect(result.manifest.triage_summary?.top_active_limit).toBe(10);
     expect(result.manifest.triage_summary?.top_active_rules_total).toBe(0);
     expect(result.manifest.triage_summary?.top_active_rules_truncated).toBe(false);
+    expect(result.manifest.triage_summary?.active_by_risk_driver).toEqual([]);
     expect(result.manifest.triage_summary?.top_active_risks_total).toBe(0);
     expect(result.manifest.triage_summary?.top_active_risks_truncated).toBe(false);
     expect(result.manifest.triage_summary?.top_active_risks).toHaveLength(0);
@@ -397,6 +420,7 @@ describe("scanProject", () => {
     expect(result.manifest.static_blast_radius?.recommended_controls_total).toBe(0);
     expect(result.manifest.static_blast_radius?.recommended_controls_truncated).toBe(false);
     expect(result.reportMarkdown).toContain("No active findings were generated.");
+    expect(result.reportMarkdown).toContain("No active risk drivers were generated.");
     expect(result.reportMarkdown).toContain("No active remediation actions were generated.");
     expect(result.reportMarkdown).toContain("No active high-risk blast-radius paths were identified.");
   });

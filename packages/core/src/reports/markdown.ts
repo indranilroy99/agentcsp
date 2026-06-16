@@ -199,6 +199,10 @@ function renderTriageSummary(manifest: AgentManifest): string {
     "",
     renderControlCounts(summary.active_by_recommended_control),
     "",
+    "### Active Risk Drivers",
+    "",
+    renderRiskDriverCounts(summary.active_by_risk_driver),
+    "",
     "### Top Active Risks",
     "",
     renderTopRiskTable(summary.top_active_risks)
@@ -435,6 +439,20 @@ function renderControlCounts(
     "| Recommended control | Findings |",
     "| --- | --- |",
     ...counts.map((item) => `| ${item.control.replaceAll("_", " ")} | ${item.count} |`)
+  ].join("\n");
+}
+
+function renderRiskDriverCounts(
+  counts: NonNullable<AgentManifest["triage_summary"]>["active_by_risk_driver"]
+): string {
+  if (counts.length === 0) return "No active risk drivers were generated.";
+  return [
+    "| Driver | Findings | Max risk | Critical | High | Medium | Low | Info |",
+    "| --- | --- | --- | --- | --- | --- | --- | --- |",
+    ...counts.map(
+      (item) =>
+        `| ${item.driver.replaceAll("_", " ")} | ${item.count} | ${item.max_risk_score} | ${item.by_severity.critical} | ${item.by_severity.high} | ${item.by_severity.medium} | ${item.by_severity.low} | ${item.by_severity.info} |`
+    )
   ].join("\n");
 }
 

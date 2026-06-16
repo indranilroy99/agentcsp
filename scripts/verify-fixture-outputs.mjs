@@ -1966,6 +1966,12 @@ if (vulnerable.sarif) {
     true,
     "SARIF triage top risk truncation metadata"
   );
+  assert(
+    run.properties.agentcsp_triage_summary.active_by_risk_driver?.some(
+      (item) => item.driver === "external_reach" && item.count > 0
+    ),
+    "SARIF triage risk driver summary missing"
+  );
   assert(run.properties?.agentcsp_ci_gate_summary, "SARIF CI gate summary missing");
   assertEqual(run.properties.agentcsp_ci_gate_summary.status, "pass", "SARIF CI gate status");
   assertEqual(run.properties.agentcsp_ci_gate_summary.blocker_ids_truncated, false, "SARIF CI blocker truncation metadata");
@@ -2013,6 +2019,18 @@ function assertVulnerableOperatorMetadata(output) {
   assertEqual(manifest.triage_summary?.top_active_limit, 10, "vulnerable triage top active limit");
   assert(manifest.triage_summary?.top_active_rules_total > 10, "vulnerable triage top rules total must exceed preview");
   assertEqual(manifest.triage_summary?.top_active_rules_truncated, true, "vulnerable triage top rules truncation");
+  assert(
+    manifest.triage_summary?.active_by_risk_driver?.some(
+      (item) => item.driver === "untrusted_to_privileged" && item.count > 0 && item.max_risk_score > 0
+    ),
+    "vulnerable triage untrusted-to-privileged risk driver missing"
+  );
+  assert(
+    manifest.triage_summary?.active_by_risk_driver?.some(
+      (item) => item.driver === "secret_exposure" && item.by_severity?.critical > 0
+    ),
+    "vulnerable triage secret-exposure severity mix missing"
+  );
   assertEqual(
     manifest.triage_summary?.top_active_risks_total,
     manifest.triage_summary?.active_findings,
@@ -2079,6 +2097,8 @@ function assertVulnerableOperatorMetadata(output) {
 
   assert(report.includes("- Scan health: `complete`"), "vulnerable report missing scan health");
   assert(report.includes("- Top active risks truncated: `true`"), "vulnerable report missing triage truncation");
+  assert(report.includes("### Active Risk Drivers"), "vulnerable report missing risk driver section");
+  assert(report.includes("untrusted to privileged"), "vulnerable report missing untrusted risk driver");
   assert(report.includes("- Attack path limit: 15"), "vulnerable report missing attack path limit");
   assert(report.includes("- High-risk objects truncated: `true`"), "vulnerable report missing blast-radius truncation");
   assert(report.includes("- Recommended controls truncated: `true`"), "vulnerable report missing control truncation");
@@ -2097,6 +2117,7 @@ function assertSafeOperatorMetadata(output) {
   assertEqual(manifest.triage_summary?.top_active_limit, 10, "safe triage top active limit");
   assertEqual(manifest.triage_summary?.top_active_rules_total, 0, "safe triage top rules total");
   assertEqual(manifest.triage_summary?.top_active_rules_truncated, false, "safe triage top rules truncation");
+  assertArrayEqual(manifest.triage_summary?.active_by_risk_driver ?? [], [], "safe triage risk drivers");
   assertEqual(manifest.triage_summary?.top_active_risks_total, 0, "safe triage top risks total");
   assertEqual(manifest.triage_summary?.top_active_risks_truncated, false, "safe triage top risks truncation");
   assertEqual(manifest.action_plan?.truncated, false, "safe action plan truncation");
@@ -2118,6 +2139,7 @@ function assertSafeOperatorMetadata(output) {
   assertEqual(manifest.static_blast_radius?.recommended_controls_truncated, false, "safe recommended controls truncation");
   assert(report.includes("- Scan health: `complete`"), "safe report missing scan health");
   assert(report.includes("- Top active risks truncated: `false`"), "safe report missing triage truncation");
+  assert(report.includes("No active risk drivers were generated."), "safe report missing empty risk driver message");
   assert(report.includes("- Attack path limit: 15"), "safe report missing attack path limit");
 }
 

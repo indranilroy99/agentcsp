@@ -224,6 +224,26 @@ export const TriageControlCountSchema = z.object({
   count: z.number().int().nonnegative()
 });
 
+export const TriageRiskDriverSchema = z.enum([
+  "untrusted_to_privileged",
+  "secret_exposure",
+  "external_reach",
+  "irreversible_action",
+  "side_effect",
+  "sensitive_data",
+  "credential_data",
+  "pii_data",
+  "execute_action",
+  "write_action"
+]);
+
+export const TriageRiskDriverCountSchema = z.object({
+  driver: TriageRiskDriverSchema,
+  count: z.number().int().nonnegative(),
+  max_risk_score: z.number().int().min(0).max(100).default(0),
+  by_severity: SeverityCountsSchema.default({ critical: 0, high: 0, medium: 0, low: 0, info: 0 })
+});
+
 export const TriageRuleSummarySchema = z.object({
   rule_id: z.string(),
   name: z.string(),
@@ -266,6 +286,7 @@ export const TriageSummarySchema = z.object({
   active_by_surface_type: z.array(TriageSurfaceCountSchema).default([]),
   active_by_category: z.array(TriageCategoryCountSchema).default([]),
   active_by_recommended_control: z.array(TriageControlCountSchema).default([]),
+  active_by_risk_driver: z.array(TriageRiskDriverCountSchema).default([]),
   top_active_limit: z.number().int().positive().default(10),
   top_active_rules_total: z.number().int().nonnegative().default(0),
   top_active_rules_truncated: z.boolean().default(false),
