@@ -24195,6 +24195,7 @@ function addToolDefinitionSurface(
       !authority.network_response_authorization_grant_bridge &&
       !authority.clipboard_authorization_grant_bridge &&
       !authority.tool_output_authorization_grant_bridge &&
+      !authority.visual_context_authorization_grant_bridge &&
       !authority.artifact_export &&
       !authority.local_file_artifact_bridge &&
       !authority.rag_retrieval_artifact_bridge &&
@@ -24396,6 +24397,7 @@ function addToolDefinitionSurface(
       clipboard_authorization_grant_bridge: authority.clipboard_authorization_grant_bridge,
       model_output_authorization_grant_bridge: authority.model_output_authorization_grant_bridge,
       tool_output_authorization_grant_bridge: authority.tool_output_authorization_grant_bridge,
+      visual_context_authorization_grant_bridge: authority.visual_context_authorization_grant_bridge,
       artifact_export: authority.artifact_export,
       tainted_artifact_export_payload: authority.tainted_artifact_export_payload,
       local_file_artifact_bridge: authority.local_file_artifact_bridge,
@@ -26903,6 +26905,7 @@ interface SourceToolHandlerSignals {
   handlerClipboardAuthorizationGrantBridge: boolean;
   handlerModelOutputAuthorizationGrantBridge: boolean;
   handlerToolOutputAuthorizationGrantBridge: boolean;
+  handlerVisualContextAuthorizationGrantBridge: boolean;
   handlerArtifactExport: boolean;
   handlerTaintedArtifactExportPayload: boolean;
   handlerPublicArtifactDestination: boolean;
@@ -27526,6 +27529,7 @@ function sourceToolHandlerSignalMetadata(signals: SourceToolHandlerSignals | und
     handler_clipboard_authorization_grant_bridge: signals.handlerClipboardAuthorizationGrantBridge,
     handler_model_output_authorization_grant_bridge: signals.handlerModelOutputAuthorizationGrantBridge,
     handler_tool_output_authorization_grant_bridge: signals.handlerToolOutputAuthorizationGrantBridge,
+    handler_visual_context_authorization_grant_bridge: signals.handlerVisualContextAuthorizationGrantBridge,
     handler_artifact_export: signals.handlerArtifactExport,
     handler_tainted_artifact_export_payload: signals.handlerTaintedArtifactExportPayload,
     handler_public_artifact_destination: signals.handlerPublicArtifactDestination,
@@ -27788,7 +27792,7 @@ function classifySourceToolHandlerSignals(
   const authorizationPolicyWrite = language === "javascript"
     ? hasJavaScriptHandlerAuthorizationPolicyWrite(handlerSource)
     : hasPythonHandlerAuthorizationPolicyWrite(handlerSource);
-  const taintedAuthorizationGrantInput = authorizationPolicyWrite && (language === "javascript"
+  let taintedAuthorizationGrantInput = authorizationPolicyWrite && (language === "javascript"
     ? hasJavaScriptHandlerTaintedAuthorizationGrantInput(handlerSource)
     : hasPythonHandlerTaintedAuthorizationGrantInput(handlerSource));
   const authorizationBroadGrant = authorizationPolicyWrite && hasHandlerAuthorizationBroadGrant(handlerSource);
@@ -28188,6 +28192,10 @@ function classifySourceToolHandlerSignals(
   const visualContextDatabaseWriteBridge = visualContextCapture && databaseWrite && (language === "javascript"
     ? hasJavaScriptHandlerVisualContextDatabaseWriteBridge(handlerSource)
     : hasPythonHandlerVisualContextDatabaseWriteBridge(handlerSource));
+  const visualContextAuthorizationGrantBridge = visualContextCapture && authorizationPolicyWrite && (language === "javascript"
+    ? hasJavaScriptHandlerVisualContextAuthorizationGrantBridge(handlerSource)
+    : hasPythonHandlerVisualContextAuthorizationGrantBridge(handlerSource));
+  if (visualContextAuthorizationGrantBridge) taintedAuthorizationGrantInput = true;
   const visualContextTaskQueueBridge = visualContextCapture && taskQueueEnqueue && (language === "javascript"
     ? hasJavaScriptHandlerVisualContextTaskQueueBridge(handlerSource)
     : hasPythonHandlerVisualContextTaskQueueBridge(handlerSource));
@@ -28589,6 +28597,7 @@ function classifySourceToolHandlerSignals(
   if (visualContextPromptCacheBridge) classes.add("handler_visual_context_prompt_cache_bridge");
   if (visualContextPromptRegistryBridge) classes.add("handler_visual_context_prompt_registry_bridge");
   if (visualContextDatabaseWriteBridge) classes.add("handler_visual_context_database_write_bridge");
+  if (visualContextAuthorizationGrantBridge) classes.add("handler_visual_context_authorization_grant_bridge");
   if (visualContextTaskQueueBridge) classes.add("handler_visual_context_task_queue_bridge");
   if (visualContextAgentDelegationBridge) classes.add("handler_visual_context_agent_delegation_bridge");
   if (secretManagerAccess) classes.add("handler_secret_manager_access");
@@ -28697,6 +28706,7 @@ function classifySourceToolHandlerSignals(
     handlerClipboardAuthorizationGrantBridge: clipboardAuthorizationGrantBridge,
     handlerModelOutputAuthorizationGrantBridge: modelOutputAuthorizationGrantBridge,
     handlerToolOutputAuthorizationGrantBridge: toolOutputAuthorizationGrantBridge,
+    handlerVisualContextAuthorizationGrantBridge: visualContextAuthorizationGrantBridge,
     handlerArtifactExport: artifactExport,
     handlerTaintedArtifactExportPayload: taintedArtifactExportPayload,
     handlerPublicArtifactDestination: publicArtifactDestination,
@@ -32876,6 +32886,30 @@ function hasPythonHandlerRagRetrievalAuthorizationGrantBridge(source: string): b
   );
 }
 
+function hasJavaScriptHandlerVisualContextAuthorizationGrantBridge(source: string): boolean {
+  const identifiers = extractJavaScriptVisualContextIdentifiers(source);
+  return identifiers.length > 0 && authorizationGrantCallReferencesPayloadIdentifier(
+    [
+      /\b(?:toolAuthorizationClient|authorizationPolicyClient|permissionBrokerClient|toolAuthzClient|capabilityGrantClient|accessControlClient|rbacClient|authzClient|policyEngineClient|permissionClient|entitlementClient|grantBrokerClient)\s*(?:\.\s*[A-Za-z_$][\w$]*){0,5}\s*\.\s*(?:grant|grantAccess|upsertGrant|createGrant|putGrant|addGrant|allow|authorize|updatePolicy|setPolicy|setAllowlist|addPermission|addTool|assignRole|bindRole|setEntitlement|write|save|upsert|patch)\s*\(([\s\S]{0,2400})\)/giu,
+      /\b(?:grantToolAccess|updateToolAuthorization|upsertToolGrant|createCapabilityGrant|setToolAllowlist|assignAgentRole|setAgentEntitlement|writeAuthorizationGrant)\s*\(([\s\S]{0,2400})\)/giu
+    ],
+    source,
+    identifiers
+  );
+}
+
+function hasPythonHandlerVisualContextAuthorizationGrantBridge(source: string): boolean {
+  const identifiers = extractPythonVisualContextIdentifiers(source);
+  return identifiers.length > 0 && authorizationGrantCallReferencesPayloadIdentifier(
+    [
+      /\b(?:tool_authorization_client|authorization_policy_client|permission_broker_client|tool_authz_client|capability_grant_client|access_control_client|rbac_client|authz_client|policy_engine_client|permission_client|entitlement_client|grant_broker_client)\s*(?:\.\s*[A-Za-z_]\w*){0,5}\s*\.\s*(?:grant|grant_access|upsert_grant|create_grant|put_grant|add_grant|allow|authorize|update_policy|set_policy|set_allowlist|add_permission|add_tool|assign_role|bind_role|set_entitlement|write|save|upsert|patch)\s*\(([\s\S]{0,2400})\)/giu,
+      /\b(?:grant_tool_access|update_tool_authorization|upsert_tool_grant|create_capability_grant|set_tool_allowlist|assign_agent_role|set_agent_entitlement|write_authorization_grant)\s*\(([\s\S]{0,2400})\)/giu
+    ],
+    source,
+    identifiers
+  );
+}
+
 function hasJavaScriptHandlerEnvSecretAuthorizationGrantBridge(source: string): boolean {
   const identifiers = extractJavaScriptEnvSecretIdentifiers(source);
   return identifiers.length > 0 && authorizationGrantCallReferencesPayloadIdentifier(
@@ -36959,6 +36993,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   clipboard_authorization_grant_bridge: boolean;
   model_output_authorization_grant_bridge: boolean;
   tool_output_authorization_grant_bridge: boolean;
+  visual_context_authorization_grant_bridge: boolean;
   artifact_export: boolean;
   tainted_artifact_export_payload: boolean;
   model_output_artifact_bridge: boolean;
@@ -37103,6 +37138,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   const handlerClipboardAuthorizationGrantBridge = handler?.handlerClipboardAuthorizationGrantBridge === true;
   const handlerModelOutputAuthorizationGrantBridge = handler?.handlerModelOutputAuthorizationGrantBridge === true;
   const handlerToolOutputAuthorizationGrantBridge = handler?.handlerToolOutputAuthorizationGrantBridge === true;
+  const handlerVisualContextAuthorizationGrantBridge = handler?.handlerVisualContextAuthorizationGrantBridge === true;
   const handlerArtifactExport = handler?.handlerArtifactExport === true;
   const handlerTaintedArtifactExportPayload = handler?.handlerTaintedArtifactExportPayload === true;
   const handlerModelOutputArtifactBridge = handler?.handlerModelOutputArtifactBridge === true;
@@ -38102,6 +38138,12 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
     actions.add("send");
     actions.add("write");
   }
+  if (handlerVisualContextAuthorizationGrantBridge) {
+    classes.add("visual_context_authorization_grant_bridge");
+    actions.add("read");
+    actions.add("send");
+    actions.add("write");
+  }
   if (handlerArtifactExport) {
     classes.add("artifact_export");
     actions.add("send");
@@ -38521,6 +38563,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerClipboardAuthorizationGrantBridge ||
       handlerModelOutputAuthorizationGrantBridge ||
       handlerToolOutputAuthorizationGrantBridge ||
+      handlerVisualContextAuthorizationGrantBridge ||
       handlerArtifactExport ||
       handlerTaintedArtifactExportPayload ||
       handlerNetworkResponseArtifactBridge ||
@@ -38722,6 +38765,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerClipboardAuthorizationGrantBridge ||
       handlerModelOutputAuthorizationGrantBridge ||
       handlerToolOutputAuthorizationGrantBridge ||
+      handlerVisualContextAuthorizationGrantBridge ||
       handlerSecretManagerCredentialIssuanceBridge ||
       handlerLocalFileCredentialIssuanceBridge ||
       handlerEnvSecretCredentialIssuanceBridge ||
@@ -38827,6 +38871,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       (handlerClipboardAuthorizationGrantBridge && handlerSecretEnvAccess) ||
       (handlerModelOutputAuthorizationGrantBridge && handlerSecretEnvAccess) ||
       (handlerToolOutputAuthorizationGrantBridge && handlerSecretEnvAccess) ||
+      (handlerVisualContextAuthorizationGrantBridge && handlerSecretEnvAccess) ||
       handlerSecretManagerMemoryBridge ||
       handlerEnvSecretMemoryBridge ||
       (handlerModelOutputMemoryBridge && handlerSecretEnvAccess) ||
@@ -39061,6 +39106,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
     clipboard_authorization_grant_bridge: handlerClipboardAuthorizationGrantBridge,
     model_output_authorization_grant_bridge: handlerModelOutputAuthorizationGrantBridge,
     tool_output_authorization_grant_bridge: handlerToolOutputAuthorizationGrantBridge,
+    visual_context_authorization_grant_bridge: handlerVisualContextAuthorizationGrantBridge,
     artifact_export: handlerArtifactExport,
     tainted_artifact_export_payload: handlerTaintedArtifactExportPayload,
     model_output_artifact_bridge: handlerModelOutputArtifactBridge,
@@ -39253,6 +39299,7 @@ function authoritySignature(tool: SurfaceObject): string {
     metadata.clipboard_authorization_grant_bridge === true ? "clipboard_authorization_grant_bridge" : "",
     metadata.model_output_authorization_grant_bridge === true ? "model_output_authorization_grant_bridge" : "",
     metadata.tool_output_authorization_grant_bridge === true ? "tool_output_authorization_grant_bridge" : "",
+    metadata.visual_context_authorization_grant_bridge === true ? "visual_context_authorization_grant_bridge" : "",
     metadata.rag_retrieval_authorization_grant_bridge === true ? "rag_retrieval_authorization_grant_bridge" : "",
     metadata.artifact_export === true ? "artifact_export" : "",
     metadata.tainted_artifact_export_payload === true ? "tainted_artifact_export_payload" : "",
@@ -39476,6 +39523,7 @@ function isPrivilegedToolSurface(tool: SurfaceObject): boolean {
     tool.metadata.clipboard_authorization_grant_bridge === true ||
     tool.metadata.model_output_authorization_grant_bridge === true ||
     tool.metadata.tool_output_authorization_grant_bridge === true ||
+    tool.metadata.visual_context_authorization_grant_bridge === true ||
     tool.metadata.rag_retrieval_authorization_grant_bridge === true ||
     tool.metadata.artifact_export === true ||
     tool.metadata.tainted_artifact_export_payload === true ||

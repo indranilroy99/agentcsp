@@ -819,6 +819,9 @@ describe("scanner", () => {
     const sourceVisualContextDatabaseWriteBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "source_store_authenticated_page_screenshot_database"
     );
+    const sourceVisualContextAuthorizationGrantBridgeTool = surfaces.tools.find(
+      (surface) => surface.name === "source_grant_authenticated_page_screenshot_authorization"
+    );
     const sourceVisualContextAgentDelegationBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "source_delegate_authenticated_page_screenshot_remote_agent"
     );
@@ -1207,6 +1210,9 @@ describe("scanner", () => {
     );
     const langchainVisualContextDatabaseWriteBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "langchain_store_authenticated_page_screenshot_database"
+    );
+    const langchainVisualContextAuthorizationGrantBridgeTool = surfaces.tools.find(
+      (surface) => surface.name === "langchain_grant_authenticated_page_screenshot_authorization"
     );
     const langchainVisualContextAgentDelegationBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "langchain_delegate_authenticated_page_screenshot_remote_agent"
@@ -11541,6 +11547,108 @@ describe("scanner", () => {
     expect(JSON.stringify(sourceVisualContextDatabaseWriteBridgeTool)).not.toContain("supportDb.query");
     expect(JSON.stringify(sourceVisualContextDatabaseWriteBridgeTool)).not.toContain("source visual context stored in database");
     expect(JSON.stringify(sourceVisualContextDatabaseWriteBridgeTool)).not.toContain("Store an authenticated browser screenshot");
+    expect(sourceVisualContextAuthorizationGrantBridgeTool).toMatchObject({
+      path: "mcp-source/customer-tools.ts",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["call", "execute", "publish", "read", "send", "write"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(sourceVisualContextAuthorizationGrantBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_mcp_source_tool: true,
+      mcp_source_tool_registration: true,
+      mcp_source_tool_registration_kind: "registerTool",
+      mcp_source_tool_argument_count: 3,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_secret_like_input: true,
+      accepts_content_like_input: true,
+      accepts_url_input: true,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      authorization_policy_write: true,
+      tainted_authorization_grant_input: true,
+      authorization_broad_grant: true,
+      visual_context_authorization_grant_bridge: true,
+      browser_automation: true,
+      tainted_browser_automation_target: true,
+      visual_context_capture: true,
+      handler_authorization_policy_write: true,
+      handler_tainted_authorization_grant_input: true,
+      handler_authorization_broad_grant: true,
+      handler_visual_context_authorization_grant_bridge: true,
+      handler_browser_automation: true,
+      handler_tainted_browser_automation_target: true,
+      handler_visual_context_capture: true,
+      handler_secret_env_access: true,
+      handler_signal_count: 8,
+      open_world_schema: false
+    });
+    expect(sourceVisualContextAuthorizationGrantBridgeTool?.metadata.authority_classes).toEqual([
+      "authorization_broad_grant",
+      "authorization_policy_write",
+      "browser_automation",
+      "browser_control",
+      "content_input",
+      "credential_input",
+      "customer_data_input",
+      "external_write",
+      "handler_authorization_broad_grant",
+      "handler_authorization_policy_write",
+      "handler_browser_automation",
+      "handler_secret_env_access",
+      "handler_tainted_authorization_grant_input",
+      "handler_tainted_browser_automation_target",
+      "handler_visual_context_authorization_grant_bridge",
+      "handler_visual_context_capture",
+      "network_access",
+      "pii_input",
+      "secret_env_access",
+      "tainted_authorization_grant_input",
+      "tainted_browser_automation_target",
+      "visual_context_authorization_grant_bridge",
+      "visual_context_capture"
+    ]);
+    expect(sourceVisualContextAuthorizationGrantBridgeTool?.metadata.handler_authority_classes).toEqual([
+      "handler_authorization_broad_grant",
+      "handler_authorization_policy_write",
+      "handler_browser_automation",
+      "handler_secret_env_access",
+      "handler_tainted_authorization_grant_input",
+      "handler_tainted_browser_automation_target",
+      "handler_visual_context_authorization_grant_bridge",
+      "handler_visual_context_capture"
+    ]);
+    expect(sourceVisualContextAuthorizationGrantBridgeTool?.metadata.handler_env_key_names).toEqual([
+      "SOURCE_VISUAL_AUTHZ_BROWSER_TOKEN",
+      "SOURCE_VISUAL_AUTHZ_TOKEN"
+    ]);
+    expect(sourceVisualContextAuthorizationGrantBridgeTool?.metadata.schema_properties).toEqual([
+      "customer_id",
+      "grant_reason_text",
+      "requested_scope",
+      "requested_tool_name",
+      "resource_pattern",
+      "target_url"
+    ]);
+    expect(sourceVisualContextAuthorizationGrantBridgeTool?.metadata.required_properties).toEqual([
+      "customer_id",
+      "grant_reason_text",
+      "requested_scope",
+      "requested_tool_name",
+      "resource_pattern",
+      "target_url"
+    ]);
+    expect(JSON.stringify(sourceVisualContextAuthorizationGrantBridgeTool)).not.toContain("authenticatedBrowserPage");
+    expect(JSON.stringify(sourceVisualContextAuthorizationGrantBridgeTool)).not.toContain("page.goto");
+    expect(JSON.stringify(sourceVisualContextAuthorizationGrantBridgeTool)).not.toContain("page.screenshot");
+    expect(JSON.stringify(sourceVisualContextAuthorizationGrantBridgeTool)).not.toContain("screenshot.toString");
+    expect(JSON.stringify(sourceVisualContextAuthorizationGrantBridgeTool)).not.toContain("toolAuthorizationClient.grantAccess");
+    expect(JSON.stringify(sourceVisualContextAuthorizationGrantBridgeTool)).not.toContain("source visual context granted broad authorization");
+    expect(JSON.stringify(sourceVisualContextAuthorizationGrantBridgeTool)).not.toContain("Grant broad tool authorization");
     expect(sourceVisualContextAgentDelegationBridgeTool).toMatchObject({
       path: "mcp-source/customer-tools.ts",
       data_classes: ["confidential", "credential", "pii"],
@@ -25379,6 +25487,109 @@ describe("scanner", () => {
     expect(JSON.stringify(langchainVisualContextDatabaseWriteBridgeTool)).not.toContain("db.execute");
     expect(JSON.stringify(langchainVisualContextDatabaseWriteBridgeTool)).not.toContain("framework visual context stored in database");
     expect(JSON.stringify(langchainVisualContextDatabaseWriteBridgeTool)).not.toContain("Store an authenticated browser screenshot");
+    expect(langchainVisualContextAuthorizationGrantBridgeTool).toMatchObject({
+      path: "framework-tools/langchain_tools.py",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["call", "execute", "publish", "read", "send", "write"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(langchainVisualContextAuthorizationGrantBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_agent_framework_source_tool: true,
+      agent_framework_source_tool: true,
+      agent_framework_source_tool_framework: "langchain",
+      agent_framework_source_tool_registration_kind: "python_tool_decorator",
+      agent_framework_source_tool_argument_count: 6,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_secret_like_input: true,
+      accepts_content_like_input: true,
+      accepts_url_input: true,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      authorization_policy_write: true,
+      tainted_authorization_grant_input: true,
+      authorization_broad_grant: true,
+      visual_context_authorization_grant_bridge: true,
+      browser_automation: true,
+      tainted_browser_automation_target: true,
+      visual_context_capture: true,
+      handler_authorization_policy_write: true,
+      handler_tainted_authorization_grant_input: true,
+      handler_authorization_broad_grant: true,
+      handler_visual_context_authorization_grant_bridge: true,
+      handler_browser_automation: true,
+      handler_tainted_browser_automation_target: true,
+      handler_visual_context_capture: true,
+      handler_secret_env_access: true,
+      handler_signal_count: 8,
+      open_world_schema: false
+    });
+    expect(langchainVisualContextAuthorizationGrantBridgeTool?.metadata.authority_classes).toEqual([
+      "authorization_broad_grant",
+      "authorization_policy_write",
+      "browser_automation",
+      "browser_control",
+      "content_input",
+      "credential_input",
+      "customer_data_input",
+      "external_write",
+      "handler_authorization_broad_grant",
+      "handler_authorization_policy_write",
+      "handler_browser_automation",
+      "handler_secret_env_access",
+      "handler_tainted_authorization_grant_input",
+      "handler_tainted_browser_automation_target",
+      "handler_visual_context_authorization_grant_bridge",
+      "handler_visual_context_capture",
+      "network_access",
+      "pii_input",
+      "secret_env_access",
+      "tainted_authorization_grant_input",
+      "tainted_browser_automation_target",
+      "visual_context_authorization_grant_bridge",
+      "visual_context_capture"
+    ]);
+    expect(langchainVisualContextAuthorizationGrantBridgeTool?.metadata.handler_authority_classes).toEqual([
+      "handler_authorization_broad_grant",
+      "handler_authorization_policy_write",
+      "handler_browser_automation",
+      "handler_secret_env_access",
+      "handler_tainted_authorization_grant_input",
+      "handler_tainted_browser_automation_target",
+      "handler_visual_context_authorization_grant_bridge",
+      "handler_visual_context_capture"
+    ]);
+    expect(langchainVisualContextAuthorizationGrantBridgeTool?.metadata.handler_env_key_names).toEqual([
+      "LANGCHAIN_VISUAL_AUTHZ_BROWSER_TOKEN",
+      "LANGCHAIN_VISUAL_AUTHZ_TOKEN"
+    ]);
+    expect(langchainVisualContextAuthorizationGrantBridgeTool?.metadata.schema_properties).toEqual([
+      "customer_id",
+      "grant_reason_text",
+      "requested_scope",
+      "requested_tool_name",
+      "resource_pattern",
+      "target_url"
+    ]);
+    expect(langchainVisualContextAuthorizationGrantBridgeTool?.metadata.required_properties).toEqual([
+      "customer_id",
+      "grant_reason_text",
+      "requested_scope",
+      "requested_tool_name",
+      "resource_pattern",
+      "target_url"
+    ]);
+    expect(JSON.stringify(langchainVisualContextAuthorizationGrantBridgeTool)).not.toContain("browser_session.page");
+    expect(JSON.stringify(langchainVisualContextAuthorizationGrantBridgeTool)).not.toContain("page.goto");
+    expect(JSON.stringify(langchainVisualContextAuthorizationGrantBridgeTool)).not.toContain("page.screenshot");
+    expect(JSON.stringify(langchainVisualContextAuthorizationGrantBridgeTool)).not.toContain("screenshot_bytes");
+    expect(JSON.stringify(langchainVisualContextAuthorizationGrantBridgeTool)).not.toContain("tool_authorization_client.grant_access");
+    expect(JSON.stringify(langchainVisualContextAuthorizationGrantBridgeTool)).not.toContain("framework visual context granted broad authorization");
+    expect(JSON.stringify(langchainVisualContextAuthorizationGrantBridgeTool)).not.toContain("Grant broad tool authorization");
     expect(langchainVisualContextAgentDelegationBridgeTool).toMatchObject({
       path: "framework-tools/langchain_tools.py",
       data_classes: ["confidential", "credential", "pii"],

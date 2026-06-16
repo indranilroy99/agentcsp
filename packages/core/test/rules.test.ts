@@ -190,6 +190,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-186")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-187")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-188")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-189")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-001")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-002")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-003")).toBe(true);
@@ -6202,6 +6203,7 @@ describe("rule engine", () => {
       "langchain_export_authenticated_page_screenshot_training_dataset",
       "langchain_export_customer_context",
       "langchain_export_url_response_artifact",
+      "langchain_grant_authenticated_page_screenshot_authorization",
       "langchain_grant_url_response_authorization",
       "langchain_issue_url_response_agent_credential",
       "langchain_post_authenticated_page_screenshot_external",
@@ -6219,6 +6221,7 @@ describe("rule engine", () => {
       "source_export_authenticated_page_screenshot_training_dataset",
       "source_export_customer_record",
       "source_export_url_response_artifact",
+      "source_grant_authenticated_page_screenshot_authorization",
       "source_grant_url_response_authorization",
       "source_issue_url_response_agent_credential",
       "source_post_authenticated_page_screenshot_external",
@@ -6252,6 +6255,7 @@ describe("rule engine", () => {
       "langchain_export_authenticated_page_screenshot_trace",
       "langchain_export_authenticated_page_screenshot_training_dataset",
       "langchain_export_customer_context",
+      "langchain_grant_authenticated_page_screenshot_authorization",
       "langchain_grant_url_response_authorization",
       "langchain_issue_url_response_agent_credential",
       "langchain_post_authenticated_page_screenshot_external",
@@ -6265,6 +6269,7 @@ describe("rule engine", () => {
       "source_export_authenticated_page_screenshot_trace",
       "source_export_authenticated_page_screenshot_training_dataset",
       "source_export_customer_record",
+      "source_grant_authenticated_page_screenshot_authorization",
       "source_grant_url_response_authorization",
       "source_issue_url_response_agent_credential",
       "source_post_authenticated_page_screenshot_external",
@@ -8427,6 +8432,7 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerSafetyPolicyWeakeningFindings)).not.toContain("Ask a model provider to draft a guardrail policy override");
     const sourceHandlerAuthorizationGrantFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-057");
     expect(sourceHandlerAuthorizationGrantFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
+      "langchain_grant_authenticated_page_screenshot_authorization",
       "langchain_grant_clipboard_authorization",
       "langchain_grant_customer_vault_secret_authorization",
       "langchain_grant_env_secret_authorization",
@@ -8436,6 +8442,7 @@ describe("rule engine", () => {
       "langchain_grant_rag_context_authorization",
       "langchain_grant_url_response_authorization",
       "langchain_update_tool_permission_grant",
+      "source_grant_authenticated_page_screenshot_authorization",
       "source_grant_clipboard_authorization",
       "source_grant_customer_vault_secret_authorization",
       "source_grant_env_secret_authorization",
@@ -10469,10 +10476,11 @@ describe("rule engine", () => {
       "langchain_delegate_authenticated_page_screenshot_remote_agent",
       "langchain_enqueue_authenticated_page_screenshot_job",
       "langchain_export_authenticated_page_screenshot_artifact",
-	      "langchain_export_authenticated_page_screenshot_trace",
-	      "langchain_export_authenticated_page_screenshot_training_dataset",
-	      "langchain_fill_customer_vault_secret_browser_form",
-	      "langchain_upload_local_file_authenticated_browser",
+      "langchain_export_authenticated_page_screenshot_trace",
+      "langchain_export_authenticated_page_screenshot_training_dataset",
+      "langchain_fill_customer_vault_secret_browser_form",
+      "langchain_grant_authenticated_page_screenshot_authorization",
+      "langchain_upload_local_file_authenticated_browser",
 	      "langchain_post_authenticated_page_screenshot_external",
 	      "langchain_publish_authenticated_page_screenshot_prompt_registry",
 	      "langchain_review_authenticated_page_screenshot_with_model",
@@ -10484,10 +10492,11 @@ describe("rule engine", () => {
       "source_delegate_authenticated_page_screenshot_remote_agent",
       "source_enqueue_authenticated_page_screenshot_job",
       "source_export_authenticated_page_screenshot_artifact",
-	      "source_export_authenticated_page_screenshot_trace",
-	      "source_export_authenticated_page_screenshot_training_dataset",
-	      "source_fill_customer_vault_secret_browser_form",
-	      "source_upload_local_file_authenticated_browser",
+      "source_export_authenticated_page_screenshot_trace",
+      "source_export_authenticated_page_screenshot_training_dataset",
+      "source_fill_customer_vault_secret_browser_form",
+      "source_grant_authenticated_page_screenshot_authorization",
+      "source_upload_local_file_authenticated_browser",
 	      "source_post_authenticated_page_screenshot_external",
 	      "source_publish_authenticated_page_screenshot_prompt_registry",
 	      "source_review_authenticated_page_screenshot_with_model",
@@ -10546,9 +10555,11 @@ describe("rule engine", () => {
 	    expect(JSON.stringify(sourceHandlerBrowserAutomationFindings)).not.toContain("framework visual context cached for prompts");
 	    expect(JSON.stringify(sourceHandlerBrowserAutomationFindings)).not.toContain("source visual context published to prompt registry");
 	    expect(JSON.stringify(sourceHandlerBrowserAutomationFindings)).not.toContain("framework visual context published to prompt registry");
-	    expect(JSON.stringify(sourceHandlerBrowserAutomationFindings)).not.toContain("source visual context stored in database");
-	    expect(JSON.stringify(sourceHandlerBrowserAutomationFindings)).not.toContain("framework visual context stored in database");
-	    expect(JSON.stringify(sourceHandlerBrowserAutomationFindings)).not.toContain("source visual context queued for background agent");
+      expect(JSON.stringify(sourceHandlerBrowserAutomationFindings)).not.toContain("source visual context stored in database");
+      expect(JSON.stringify(sourceHandlerBrowserAutomationFindings)).not.toContain("framework visual context stored in database");
+      expect(JSON.stringify(sourceHandlerBrowserAutomationFindings)).not.toContain("source visual context granted broad authorization");
+      expect(JSON.stringify(sourceHandlerBrowserAutomationFindings)).not.toContain("framework visual context granted broad authorization");
+      expect(JSON.stringify(sourceHandlerBrowserAutomationFindings)).not.toContain("source visual context queued for background agent");
 	    expect(JSON.stringify(sourceHandlerBrowserAutomationFindings)).not.toContain("framework visual context queued for background agent");
 	    expect(JSON.stringify(sourceHandlerBrowserAutomationFindings)).not.toContain("source visual context delegated to remote agent");
     expect(JSON.stringify(sourceHandlerBrowserAutomationFindings)).not.toContain("framework visual context delegated to remote agent");
@@ -10559,10 +10570,11 @@ describe("rule engine", () => {
       "langchain_delegate_authenticated_page_screenshot_remote_agent",
       "langchain_enqueue_authenticated_page_screenshot_job",
       "langchain_export_authenticated_page_screenshot_artifact",
-	      "langchain_export_authenticated_page_screenshot_trace",
-	      "langchain_export_authenticated_page_screenshot_training_dataset",
-	      "langchain_fill_customer_vault_secret_browser_form",
-	      "langchain_upload_local_file_authenticated_browser",
+      "langchain_export_authenticated_page_screenshot_trace",
+      "langchain_export_authenticated_page_screenshot_training_dataset",
+      "langchain_fill_customer_vault_secret_browser_form",
+      "langchain_grant_authenticated_page_screenshot_authorization",
+      "langchain_upload_local_file_authenticated_browser",
 	      "langchain_post_authenticated_page_screenshot_external",
 	      "langchain_publish_authenticated_page_screenshot_prompt_registry",
 	      "langchain_review_authenticated_page_screenshot_with_model",
@@ -10574,10 +10586,11 @@ describe("rule engine", () => {
       "source_delegate_authenticated_page_screenshot_remote_agent",
       "source_enqueue_authenticated_page_screenshot_job",
       "source_export_authenticated_page_screenshot_artifact",
-	      "source_export_authenticated_page_screenshot_trace",
-	      "source_export_authenticated_page_screenshot_training_dataset",
-	      "source_fill_customer_vault_secret_browser_form",
-	      "source_upload_local_file_authenticated_browser",
+      "source_export_authenticated_page_screenshot_trace",
+      "source_export_authenticated_page_screenshot_training_dataset",
+      "source_fill_customer_vault_secret_browser_form",
+      "source_grant_authenticated_page_screenshot_authorization",
+      "source_upload_local_file_authenticated_browser",
 	      "source_post_authenticated_page_screenshot_external",
 	      "source_publish_authenticated_page_screenshot_prompt_registry",
 	      "source_review_authenticated_page_screenshot_with_model",
@@ -12070,6 +12083,91 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerVisualContextDatabaseWriteBridgeFindings)).not.toContain("source visual context stored in database");
     expect(JSON.stringify(sourceHandlerVisualContextDatabaseWriteBridgeFindings)).not.toContain("framework visual context stored in database");
     expect(JSON.stringify(sourceHandlerVisualContextDatabaseWriteBridgeFindings)).not.toContain("Store an authenticated browser screenshot");
+    const sourceHandlerVisualContextAuthorizationGrantBridgeFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-189");
+    expect(sourceHandlerVisualContextAuthorizationGrantBridgeFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
+      "langchain_grant_authenticated_page_screenshot_authorization",
+      "source_grant_authenticated_page_screenshot_authorization"
+    ]);
+    expect(sourceHandlerVisualContextAuthorizationGrantBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
+    expect(sourceHandlerVisualContextAuthorizationGrantBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerVisualContextAuthorizationGrantBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
+    expect(sourceHandlerVisualContextAuthorizationGrantBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
+    expect(sourceHandlerVisualContextAuthorizationGrantBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.source_tool_handler_redacted === true
+    )).toBe(true);
+    expect(sourceHandlerVisualContextAuthorizationGrantBridgeFindings.every((finding) => finding.matched_object.metadata.handler_browser_automation === true)).toBe(true);
+    expect(sourceHandlerVisualContextAuthorizationGrantBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.handler_tainted_browser_automation_target === true
+    )).toBe(true);
+    expect(sourceHandlerVisualContextAuthorizationGrantBridgeFindings.every((finding) => finding.matched_object.metadata.handler_visual_context_capture === true)).toBe(true);
+    expect(sourceHandlerVisualContextAuthorizationGrantBridgeFindings.every((finding) => finding.matched_object.metadata.handler_authorization_policy_write === true)).toBe(true);
+    expect(sourceHandlerVisualContextAuthorizationGrantBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.handler_tainted_authorization_grant_input === true
+    )).toBe(true);
+    expect(sourceHandlerVisualContextAuthorizationGrantBridgeFindings.every((finding) => finding.matched_object.metadata.handler_authorization_broad_grant === true)).toBe(true);
+    expect(sourceHandlerVisualContextAuthorizationGrantBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.handler_visual_context_authorization_grant_bridge === true
+    )).toBe(true);
+    expect(sourceHandlerVisualContextAuthorizationGrantBridgeFindings.every((finding) => finding.matched_object.metadata.handler_secret_env_access === true)).toBe(true);
+    expect(sourceHandlerVisualContextAuthorizationGrantBridgeFindings.every((finding) => finding.matched_object.metadata.browser_automation === true)).toBe(true);
+    expect(sourceHandlerVisualContextAuthorizationGrantBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.tainted_browser_automation_target === true
+    )).toBe(true);
+    expect(sourceHandlerVisualContextAuthorizationGrantBridgeFindings.every((finding) => finding.matched_object.metadata.visual_context_capture === true)).toBe(true);
+    expect(sourceHandlerVisualContextAuthorizationGrantBridgeFindings.every((finding) => finding.matched_object.metadata.authorization_policy_write === true)).toBe(true);
+    expect(sourceHandlerVisualContextAuthorizationGrantBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.tainted_authorization_grant_input === true
+    )).toBe(true);
+    expect(sourceHandlerVisualContextAuthorizationGrantBridgeFindings.every((finding) => finding.matched_object.metadata.authorization_broad_grant === true)).toBe(true);
+    expect(sourceHandlerVisualContextAuthorizationGrantBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.visual_context_authorization_grant_bridge === true
+    )).toBe(true);
+    expect(sourceHandlerVisualContextAuthorizationGrantBridgeFindings.every((finding) => finding.matched_object.metadata.accepts_url_input === true)).toBe(true);
+    expect(sourceHandlerVisualContextAuthorizationGrantBridgeFindings.every((finding) => finding.matched_object.metadata.accepts_customer_data_input === true)).toBe(true);
+    for (const authorityClass of [
+      "browser_automation",
+      "tainted_browser_automation_target",
+      "visual_context_capture",
+      "authorization_policy_write",
+      "tainted_authorization_grant_input",
+      "authorization_broad_grant",
+      "visual_context_authorization_grant_bridge"
+    ]) {
+      expect(sourceHandlerVisualContextAuthorizationGrantBridgeFindings.every((finding) =>
+        finding.matched_object.metadata.authority_classes.includes(authorityClass)
+      )).toBe(true);
+    }
+    for (const handlerAuthorityClass of [
+      "handler_browser_automation",
+      "handler_tainted_browser_automation_target",
+      "handler_visual_context_capture",
+      "handler_authorization_policy_write",
+      "handler_tainted_authorization_grant_input",
+      "handler_authorization_broad_grant",
+      "handler_visual_context_authorization_grant_bridge"
+    ]) {
+      expect(sourceHandlerVisualContextAuthorizationGrantBridgeFindings.every((finding) =>
+        finding.matched_object.metadata.handler_authority_classes.includes(handlerAuthorityClass)
+      )).toBe(true);
+    }
+    expect(sourceHandlerVisualContextAuthorizationGrantBridgeFindings.every((finding) => finding.matched_object.actions.includes("read"))).toBe(true);
+    expect(sourceHandlerVisualContextAuthorizationGrantBridgeFindings.every((finding) => finding.matched_object.actions.includes("send"))).toBe(true);
+    expect(sourceHandlerVisualContextAuthorizationGrantBridgeFindings.every((finding) => finding.matched_object.actions.includes("write"))).toBe(true);
+    expect(sourceHandlerVisualContextAuthorizationGrantBridgeFindings.every((finding) => finding.matched_object.external_reach === true)).toBe(true);
+    expect(sourceHandlerVisualContextAuthorizationGrantBridgeFindings.every((finding) => finding.matched_object.secret_exposure === true)).toBe(true);
+    expect(sourceHandlerVisualContextAuthorizationGrantBridgeFindings.every((finding) => finding.matched_object.side_effect === true)).toBe(true);
+    expect(sourceHandlerVisualContextAuthorizationGrantBridgeFindings.every((finding) => finding.matched_object.reversible === false)).toBe(true);
+    expect(JSON.stringify(sourceHandlerVisualContextAuthorizationGrantBridgeFindings)).not.toContain("authenticatedBrowserPage");
+    expect(JSON.stringify(sourceHandlerVisualContextAuthorizationGrantBridgeFindings)).not.toContain("browser_session.page");
+    expect(JSON.stringify(sourceHandlerVisualContextAuthorizationGrantBridgeFindings)).not.toContain("page.goto");
+    expect(JSON.stringify(sourceHandlerVisualContextAuthorizationGrantBridgeFindings)).not.toContain("page.screenshot");
+    expect(JSON.stringify(sourceHandlerVisualContextAuthorizationGrantBridgeFindings)).not.toContain("screenshot.toString");
+    expect(JSON.stringify(sourceHandlerVisualContextAuthorizationGrantBridgeFindings)).not.toContain("screenshot_bytes");
+    expect(JSON.stringify(sourceHandlerVisualContextAuthorizationGrantBridgeFindings)).not.toContain("toolAuthorizationClient.grantAccess");
+    expect(JSON.stringify(sourceHandlerVisualContextAuthorizationGrantBridgeFindings)).not.toContain("tool_authorization_client.grant_access");
+    expect(JSON.stringify(sourceHandlerVisualContextAuthorizationGrantBridgeFindings)).not.toContain("source visual context granted broad authorization");
+    expect(JSON.stringify(sourceHandlerVisualContextAuthorizationGrantBridgeFindings)).not.toContain("framework visual context granted broad authorization");
+    expect(JSON.stringify(sourceHandlerVisualContextAuthorizationGrantBridgeFindings)).not.toContain("Grant broad tool authorization");
     const sourceHandlerVisualContextTaskQueueBridgeFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-104");
     expect(sourceHandlerVisualContextTaskQueueBridgeFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_enqueue_authenticated_page_screenshot_job",
