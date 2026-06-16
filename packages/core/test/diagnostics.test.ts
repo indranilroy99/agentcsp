@@ -220,6 +220,54 @@ describe("scan diagnostics", () => {
     }
   });
 
+  it("emits redacted scanner diagnostics when a non-root directory cannot be read", async () => {
+    const root = await createDirectoryReadFailureFixture();
+    const originalReaddir = fs.readdir;
+    const readdirSpy = vi.spyOn(fs, "readdir").mockImplementation(async (target, options) => {
+      if (String(target).endsWith("unreadable")) {
+        throw Object.assign(new Error("simulated directory failure with sensitive details"), { code: "EACCES" });
+      }
+      return originalReaddir(target, options as Parameters<typeof fs.readdir>[1]);
+    });
+    try {
+      const result = await scanProject({
+        root_path: root,
+        output_path: "/private/tmp/agentcsp-directory-traversal-diagnostic-output",
+        formats: ["json", "md", "sarif"],
+        include_hidden: true,
+        include_logs: false,
+        max_file_size_bytes: 1024 * 1024,
+        max_files: 5000,
+        quiet: true
+      });
+
+      expect(result.manifest.diagnostics).toEqual([
+        expect.objectContaining({
+          code: "SCAN_DIRECTORY_READ_FAILED",
+          parser: "scanner",
+          file_path: "unreadable",
+          content_redacted: true
+        })
+      ]);
+      expect(result.manifest.scan_coverage).toMatchObject({
+        diagnostics_total: 1,
+        diagnostics_warnings: 1
+      });
+      expect(result.manifest.instructions.map((surface) => surface.path)).toEqual(["AGENTS.md"]);
+      expect(JSON.stringify(result.manifest)).not.toContain("simulated directory failure");
+      expect(result.reportMarkdown).toContain("SCAN_DIRECTORY_READ_FAILED");
+      expect(result.reportMarkdown).not.toContain("simulated directory failure");
+      const sarif = JSON.parse(await fs.readFile(result.outputFiles.sarif!, "utf8")) as {
+        runs: Array<{ properties?: { agentcsp_diagnostics?: Array<{ code?: string; file_path?: string }> } }>;
+      };
+      expect(sarif.runs[0]?.properties?.agentcsp_diagnostics).toEqual([
+        expect.objectContaining({ code: "SCAN_DIRECTORY_READ_FAILED", file_path: "unreadable" })
+      ]);
+    } finally {
+      readdirSpy.mockRestore();
+    }
+  });
+
   it("can fail CI when max_files exhaustion diagnostics are configured as a gate", async () => {
     const root = await createMaxFilesFixture();
     const result = await scanProject({
@@ -381,5 +429,14 @@ async function createTraversalFailureFixture(): Promise<string> {
   await fs.mkdir(root, { recursive: true });
   await fs.writeFile(path.join(root, "AGENTS.md"), "Review repository changes only.\n", "utf8");
   await fs.writeFile(path.join(root, "vanishing.txt"), "transient generated output\n", "utf8");
+  return root;
+}
+
+async function createDirectoryReadFailureFixture(): Promise<string> {
+  const root = "/private/tmp/agentcsp-directory-traversal-diagnostic-fixture";
+  await fs.rm(root, { recursive: true, force: true });
+  await fs.mkdir(path.join(root, "unreadable"), { recursive: true });
+  await fs.writeFile(path.join(root, "AGENTS.md"), "Review repository changes only.\n", "utf8");
+  await fs.writeFile(path.join(root, "unreadable", "secret-generated-output.txt"), "do not inspect\n", "utf8");
   return root;
 }

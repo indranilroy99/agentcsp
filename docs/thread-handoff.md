@@ -1903,6 +1903,7 @@ The current iteration adds:
 - regression coverage proving path helpers classify inside, outside, equal-root, sibling-prefix, and dot-prefixed in-root paths correctly
 - traversal now emits redacted scanner diagnostics for non-root directory read failures and file metadata/stat failures, then continues scanning other paths
 - regression coverage proving transient file stat failures appear in manifest, Markdown, SARIF, and scan coverage counters without leaking raw OS error details
+- regression coverage proving unreadable non-root directories are omitted with `SCAN_DIRECTORY_READ_FAILED` while sibling files continue to be scanned and raw OS details stay redacted
 
 ## Initial Build Recommendation
 
