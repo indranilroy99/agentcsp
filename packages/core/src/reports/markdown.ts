@@ -146,11 +146,17 @@ function renderOmittedActionRiskTable(plan: NonNullable<AgentManifest["action_pl
 function renderActionOwnerTable(owners: NonNullable<AgentManifest["action_plan"]>["by_owner"]): string {
   if (owners.length === 0) return "No owner routing hints were generated.";
   return [
-    "| Owner hint | Actions | Immediate | Urgent | Scheduled | Backlog | Highest severity | Max risk |",
-    "| --- | --- | --- | --- | --- | --- | --- | --- |",
+    "| Owner hint | Actions | Immediate | Urgent | Scheduled | Backlog | Highest severity | Max risk | Controls | Surfaces | Top action IDs |",
+    "| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |",
     ...owners.map(
-      (owner) =>
-        `| ${owner.owner_hint} | ${owner.count} | ${owner.immediate_actions} | ${owner.urgent_actions} | ${owner.scheduled_actions} | ${owner.backlog_actions} | ${owner.highest_severity} | ${owner.max_risk_score} |`
+      (owner) => {
+        const controls = owner.by_recommended_control
+          .map((item) => `${item.control.replaceAll("_", " ")}:${item.count}`)
+          .join(", ");
+        const surfaces = owner.by_surface_type.map((item) => `${item.surface_type}:${item.count}`).join(", ");
+        const actionIds = owner.top_action_ids.map((id) => `\`${escapeTable(id)}\``).join(", ");
+        return `| ${owner.owner_hint} | ${owner.count} | ${owner.immediate_actions} | ${owner.urgent_actions} | ${owner.scheduled_actions} | ${owner.backlog_actions} | ${owner.highest_severity} | ${owner.max_risk_score} | ${escapeTable(controls)} | ${escapeTable(surfaces)} | ${actionIds}${owner.top_action_ids_truncated ? " ..." : ""} |`;
+      }
     )
   ].join("\n");
 }

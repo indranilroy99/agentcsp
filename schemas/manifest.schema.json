@@ -1299,6 +1299,64 @@
                     "type": "integer",
                     "minimum": 0,
                     "default": 0
+                  },
+                  "by_recommended_control": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "control": {
+                          "$ref": "#/definitions/AgentCSP Agent Manifest/properties/attack_paths/items/properties/recommended_control"
+                        },
+                        "count": {
+                          "type": "integer",
+                          "minimum": 0
+                        }
+                      },
+                      "required": [
+                        "control",
+                        "count"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "default": []
+                  },
+                  "by_surface_type": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "surface_type": {
+                          "$ref": "#/definitions/AgentCSP Agent Manifest/properties/agents/items/properties/type"
+                        },
+                        "count": {
+                          "type": "integer",
+                          "minimum": 0
+                        }
+                      },
+                      "required": [
+                        "surface_type",
+                        "count"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "default": []
+                  },
+                  "top_action_id_limit": {
+                    "type": "integer",
+                    "exclusiveMinimum": 0,
+                    "default": 5
+                  },
+                  "top_action_ids_truncated": {
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "top_action_ids": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "default": []
                   }
                 },
                 "required": [

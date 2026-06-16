@@ -19,6 +19,7 @@ A finding should be considered production-grade when it includes:
 - confidence-aware CI failure gates
 - machine-readable CI gate blocker IDs for severity-gated findings, expired suppressions, and diagnostics
 - prioritized action-plan output for bounded, truncation-aware, immediate-remediation, approval, quarantine, redaction, warning, baseline-aware, and owner-routed recommendations
+- deterministic owner workload summaries with response-tier counts, control mix, surface mix, and bounded top action IDs for ticketing and dashboard routing
 - a canonical `pnpm verify` release gate used by CI and local release checks
 - release version consistency across workspace packages, CLI `--version`, manifest scanner metadata, and CI examples
 - baseline comparison for new, existing, and resolved findings

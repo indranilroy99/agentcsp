@@ -20,6 +20,7 @@ const controlRank: Record<Control, number> = {
   warn: 2,
   allow: 1
 };
+const ownerActionIdLimit = 5;
 
 export function buildActionPlan(findings: Finding[], limit = 12): ActionPlanSummary {
   const activeFindings = findings.filter((finding) => finding.suppression?.status !== "active");
@@ -232,6 +233,7 @@ function summarizeOwners(actions: ActionPlanSummary["actions"]): ActionPlanSumma
       urgent_actions: number;
       scheduled_actions: number;
       backlog_actions: number;
+      actions: ActionPlanSummary["actions"];
     }
   >();
   for (const action of actions) {
@@ -242,9 +244,11 @@ function summarizeOwners(actions: ActionPlanSummary["actions"]): ActionPlanSumma
       immediate_actions: 0,
       urgent_actions: 0,
       scheduled_actions: 0,
-      backlog_actions: 0
+      backlog_actions: 0,
+      actions: []
     };
     current.count += 1;
+    current.actions.push(action);
     if (action.response_tier === "immediate") current.immediate_actions += 1;
     if (action.response_tier === "urgent") current.urgent_actions += 1;
     if (action.response_tier === "scheduled") current.scheduled_actions += 1;
@@ -256,7 +260,21 @@ function summarizeOwners(actions: ActionPlanSummary["actions"]): ActionPlanSumma
     owners.set(action.owner_hint, current);
   }
   return [...owners.entries()]
-    .map(([owner_hint, summary]) => ({ owner_hint, ...summary }))
+    .map(([owner_hint, summary]) => ({
+      owner_hint,
+      count: summary.count,
+      highest_severity: summary.highest_severity,
+      max_risk_score: summary.max_risk_score,
+      immediate_actions: summary.immediate_actions,
+      urgent_actions: summary.urgent_actions,
+      scheduled_actions: summary.scheduled_actions,
+      backlog_actions: summary.backlog_actions,
+      by_recommended_control: summarizeOwnerControls(summary.actions),
+      by_surface_type: summarizeOwnerSurfaces(summary.actions),
+      top_action_id_limit: ownerActionIdLimit,
+      top_action_ids_truncated: summary.actions.length > ownerActionIdLimit,
+      top_action_ids: summary.actions.slice(0, ownerActionIdLimit).map((action) => action.id)
+    }))
     .sort(
       (a, b) =>
         severityRank[b.highest_severity] - severityRank[a.highest_severity] ||
@@ -264,4 +282,26 @@ function summarizeOwners(actions: ActionPlanSummary["actions"]): ActionPlanSumma
         b.count - a.count ||
         a.owner_hint.localeCompare(b.owner_hint)
     );
+}
+
+function summarizeOwnerControls(actions: ActionPlanSummary["actions"]): Array<{ control: Control; count: number }> {
+  const counts = new Map<Control, number>();
+  for (const action of actions) {
+    counts.set(action.recommended_control, (counts.get(action.recommended_control) ?? 0) + 1);
+  }
+  return [...counts.entries()]
+    .map(([control, count]) => ({ control, count }))
+    .sort((a, b) => b.count - a.count || controlRank[b.control] - controlRank[a.control] || a.control.localeCompare(b.control));
+}
+
+function summarizeOwnerSurfaces(
+  actions: ActionPlanSummary["actions"]
+): Array<{ surface_type: SurfaceType; count: number }> {
+  const counts = new Map<SurfaceType, number>();
+  for (const action of actions) {
+    counts.set(action.surface_type, (counts.get(action.surface_type) ?? 0) + 1);
+  }
+  return [...counts.entries()]
+    .map(([surface_type, count]) => ({ surface_type, count }))
+    .sort((a, b) => b.count - a.count || a.surface_type.localeCompare(b.surface_type));
 }

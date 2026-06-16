@@ -35,6 +35,11 @@ describe("action plan owner routing", () => {
     expect(plan.immediate_actions).toBe(0);
     expect(plan.by_owner.every((owner) => owner.urgent_actions === 1)).toBe(true);
     expect(plan.by_owner.every((owner) => owner.immediate_actions === 0)).toBe(true);
+    expect(plan.by_owner.every((owner) => owner.top_action_id_limit === 5)).toBe(true);
+    expect(plan.by_owner.every((owner) => owner.top_action_ids.length === 1)).toBe(true);
+    expect(plan.by_owner.every((owner) => owner.top_action_ids_truncated === false)).toBe(true);
+    expect(plan.by_owner.every((owner) => owner.by_recommended_control.length > 0)).toBe(true);
+    expect(plan.by_owner.every((owner) => owner.by_surface_type.length > 0)).toBe(true);
   });
 
   it("assigns deterministic response tiers from severity, risk, and controls", () => {
@@ -88,6 +93,34 @@ describe("action plan owner routing", () => {
       omitted_max_risk_score: 80,
       truncated: true
     });
+  });
+
+  it("summarizes owner workloads by control, surface, and bounded action IDs", () => {
+    const findings = Array.from({ length: 7 }, (_, index) =>
+      finding({
+        id: `mcp_${index}`,
+        category: "mcp_authority",
+        type: index < 4 ? "mcp_server" : "tool",
+        control: index < 3 ? "quarantine" : "require_approval"
+      })
+    );
+    const plan = buildActionPlan(findings);
+    const owner = plan.by_owner.find((item) => item.owner_hint === "agent-platform");
+
+    expect(owner).toMatchObject({
+      count: 7,
+      top_action_id_limit: 5,
+      top_action_ids_truncated: true
+    });
+    expect(owner?.top_action_ids).toHaveLength(5);
+    expect(owner?.by_recommended_control).toEqual([
+      { control: "require_approval", count: 4 },
+      { control: "quarantine", count: 3 }
+    ]);
+    expect(owner?.by_surface_type).toEqual([
+      { surface_type: "mcp_server", count: 4 },
+      { surface_type: "tool", count: 3 }
+    ]);
   });
 });
 

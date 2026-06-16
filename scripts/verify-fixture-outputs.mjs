@@ -2014,6 +2014,11 @@ function assertVulnerableOperatorMetadata(output) {
   assertEqual(manifest.action_plan?.omitted_highest_severity, "critical", "vulnerable omitted highest severity");
   assert(manifest.action_plan?.omitted_max_risk_score > 0, "vulnerable omitted max risk score missing");
   assert(manifest.action_plan?.by_owner?.length > 0, "vulnerable action owner routing missing");
+  const firstOwner = manifest.action_plan?.by_owner?.[0];
+  assertEqual(firstOwner?.top_action_id_limit, 5, "vulnerable action owner top action ID limit");
+  assert(firstOwner?.top_action_ids?.length > 0, "vulnerable action owner top action IDs missing");
+  assert(firstOwner?.by_recommended_control?.length > 0, "vulnerable action owner control mix missing");
+  assert(firstOwner?.by_surface_type?.length > 0, "vulnerable action owner surface mix missing");
 
   assertEqual(manifest.ci_gate_summary?.blocker_id_limit, 50, "vulnerable CI blocker ID limit");
   assertEqual(manifest.ci_gate_summary?.blocker_ids_truncated, false, "vulnerable CI blocker truncation");

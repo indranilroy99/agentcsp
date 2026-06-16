@@ -118,8 +118,14 @@ describe("scanProject", () => {
       scheduled_actions: expect.any(Number),
       backlog_actions: expect.any(Number),
       highest_severity: expect.any(String),
-      max_risk_score: expect.any(Number)
+      max_risk_score: expect.any(Number),
+      by_recommended_control: expect.any(Array),
+      by_surface_type: expect.any(Array),
+      top_action_id_limit: 5,
+      top_action_ids_truncated: expect.any(Boolean),
+      top_action_ids: expect.any(Array)
     });
+    expect(result.manifest.action_plan?.by_owner[0]?.top_action_ids.length).toBeGreaterThan(0);
     expect(result.manifest.action_plan?.actions[0]?.rationale.length).toBeGreaterThan(0);
     expect(result.findings.length).toBeGreaterThan(0);
     expect(result.outputFiles.sarif).toBeDefined();

@@ -337,6 +337,16 @@ export const RemediationActionSchema = z.object({
   trust_boundary_crossed: z.boolean().default(false)
 });
 
+export const ActionPlanOwnerControlCountSchema = z.object({
+  control: ControlSchema,
+  count: z.number().int().nonnegative()
+});
+
+export const ActionPlanOwnerSurfaceCountSchema = z.object({
+  surface_type: SurfaceTypeSchema,
+  count: z.number().int().nonnegative()
+});
+
 export const ActionPlanOwnerSummarySchema = z.object({
   owner_hint: z.string(),
   count: z.number().int().nonnegative(),
@@ -345,7 +355,12 @@ export const ActionPlanOwnerSummarySchema = z.object({
   immediate_actions: z.number().int().nonnegative().default(0),
   urgent_actions: z.number().int().nonnegative().default(0),
   scheduled_actions: z.number().int().nonnegative().default(0),
-  backlog_actions: z.number().int().nonnegative().default(0)
+  backlog_actions: z.number().int().nonnegative().default(0),
+  by_recommended_control: z.array(ActionPlanOwnerControlCountSchema).default([]),
+  by_surface_type: z.array(ActionPlanOwnerSurfaceCountSchema).default([]),
+  top_action_id_limit: z.number().int().positive().default(5),
+  top_action_ids_truncated: z.boolean().default(false),
+  top_action_ids: z.array(z.string()).default([])
 });
 
 export const ActionPlanSummarySchema = z.object({
