@@ -377,6 +377,8 @@ export const RemediationActionSchema = z.object({
   path: z.string(),
   baseline_status: FindingBaselineStatusSchema.optional(),
   rationale: z.array(z.string()).default([]),
+  validation_steps: z.array(z.string()).default([]),
+  remediation_steps: z.array(z.string()).default([]),
   related_finding_ids: z.array(z.string()).default([]),
   data_classes: z.array(DataClassSchema).default([]),
   actions: z.array(ActionTypeSchema).default([]),

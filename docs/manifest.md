@@ -2920,6 +2920,7 @@ Each action includes:
 - surface type and path
 - baseline status when a baseline is loaded
 - rationale
+- validation steps and remediation steps
 - related finding IDs
 - data classes, actions, risk drivers, and trust-boundary status
 
@@ -2927,7 +2928,7 @@ Response tiers are deterministic operational routing hints: `immediate`, `urgent
 
 The summary also includes `total_active_findings_considered`, `max_actions`, `omitted_actions`, `omitted_by_severity`, `omitted_highest_severity`, `omitted_max_risk_score`, and `truncated` so consumers can tell when the concise action queue hides lower-priority active findings and whether those omitted findings still contain material risk. It also includes response-tier counts, `new_actions`, `existing_actions`, and `by_owner`, a deterministic owner workload rollup with action count, response-tier counts, highest severity, max risk score, recommended-control mix, surface-type mix, risk-driver mix, and a bounded list of top action IDs. Owner hints are routing hints, not access-control decisions.
 
-The action plan does not include raw file contents, evidence snippets, secret values, policy reasons, or unredacted tool/runtime configuration values.
+Validation and remediation steps are deterministic hints derived from normalized finding metadata and recommended controls. They help analysts confirm true positives and choose controls without relying on model-generated judgment. The action plan does not include raw file contents, evidence snippets, secret values, policy reasons, or unredacted tool/runtime configuration values.
 
 ## CI Gate Summary
 

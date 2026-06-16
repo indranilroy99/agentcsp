@@ -122,6 +122,8 @@ describe("scanProject", () => {
       /^(agent-engineering|agent-platform|application-security|data-and-knowledge|identity-and-secrets|platform-ci|runtime-platform)$/u
     );
     expect(result.manifest.action_plan?.actions[0]?.owner_reason).toBeTruthy();
+    expect(result.manifest.action_plan?.actions[0]?.validation_steps.length).toBeGreaterThan(0);
+    expect(result.manifest.action_plan?.actions[0]?.remediation_steps.length).toBeGreaterThan(0);
     expect(result.manifest.action_plan?.by_owner.length).toBeGreaterThan(0);
     expect(result.manifest.action_plan?.by_owner[0]).toMatchObject({
       owner_hint: expect.any(String),
@@ -216,7 +218,13 @@ describe("scanProject", () => {
           };
           agentcsp_action_plan?: {
             total_actions?: number;
-            actions?: Array<{ priority?: number; rule_id?: string; risk_drivers?: string[] }>;
+            actions?: Array<{
+              priority?: number;
+              rule_id?: string;
+              risk_drivers?: string[];
+              validation_steps?: string[];
+              remediation_steps?: string[];
+            }>;
           };
           agentcsp_ci_gate_summary?: {
             status?: string;
@@ -295,6 +303,8 @@ describe("scanProject", () => {
     );
     expect(sarif.runs[0]?.properties?.agentcsp_action_plan?.actions?.[0]?.priority).toBe(1);
     expect(sarif.runs[0]?.properties?.agentcsp_action_plan?.actions?.[0]?.risk_drivers?.length).toBeGreaterThan(0);
+    expect(sarif.runs[0]?.properties?.agentcsp_action_plan?.actions?.[0]?.validation_steps?.length).toBeGreaterThan(0);
+    expect(sarif.runs[0]?.properties?.agentcsp_action_plan?.actions?.[0]?.remediation_steps?.length).toBeGreaterThan(0);
     expect(sarif.runs[0]?.properties?.agentcsp_ci_gate_summary).toMatchObject({
       status: "pass",
       should_fail: false,
@@ -349,8 +359,10 @@ describe("scanProject", () => {
     expect(result.reportMarkdown).toContain("### Omitted Action Risk");
     expect(result.reportMarkdown).toContain("| Omitted | Highest severity | Max risk | Critical | High | Medium | Low | Info |");
     expect(result.reportMarkdown).toContain(
-      "| Priority | Response | Severity | Risk | Baseline | Owner | Control | Rule | Surface | Path | Drivers | Rationale |"
+      "| Priority | Response | Severity | Risk | Baseline | Owner | Control | Rule | Surface | Path | Drivers | Validation steps | Remediation steps | Rationale |"
     );
+    expect(result.reportMarkdown).toContain("Confirm the matched surface is still active");
+    expect(result.reportMarkdown).toContain("Apply recommended control:");
     expect(result.reportMarkdown).toContain("- Root: `<scan-root>`");
     expect(result.reportMarkdown).not.toContain(rootPath);
     expect(result.reportMarkdown).toContain("- Scan health: `complete`");

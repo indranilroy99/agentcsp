@@ -49,6 +49,8 @@ export function buildActionPlan(findings: Finding[], limit = 12): ActionPlanSumm
       path: finding.file_path,
       baseline_status: finding.baseline_status,
       rationale: actionRationale(finding),
+      validation_steps: validationStepsForFinding(finding),
+      remediation_steps: remediationStepsForFinding(finding),
       related_finding_ids: [finding.id],
       data_classes: finding.data_classes,
       actions: finding.risk.actions,
@@ -138,6 +140,55 @@ function actionRationale(finding: Finding): string[] {
   if (finding.risk.actions.length > 0) rationale.push(`Actions: ${finding.risk.actions.join(", ")}`);
   if (finding.data_classes.length > 0) rationale.push(`Data classes: ${finding.data_classes.join(", ")}`);
   return rationale;
+}
+
+function validationStepsForFinding(finding: Finding): string[] {
+  const steps = [
+    "Confirm the matched surface is still active in the agent runtime or CI path.",
+    `Review normalized metadata for ${finding.matched_object.type} authority without opening redacted evidence snippets.`
+  ];
+  if (finding.trust_boundary_crossed || finding.risk.untrusted_to_privileged) {
+    steps.push("Validate whether untrusted or lower-trust context can influence the privileged action path.");
+  }
+  if (finding.risk.secret_exposure || finding.data_classes.some((dataClass) => dataClass === "credential" || dataClass === "secret")) {
+    steps.push("Verify that secret or credential material is not exposed to model-visible, external, or persistent channels.");
+  }
+  if (finding.risk.external_reach) {
+    steps.push("Confirm external destinations, recipients, or remote services are allowlisted and approval-gated.");
+  }
+  if (finding.risk.actions.some((action) => ["approve", "delete", "execute", "publish", "send", "write"].includes(action))) {
+    steps.push("Check whether side-effecting authority has human approval, scoped policy, and audit logging.");
+  }
+  if (finding.data_classes.some((dataClass) => dataClass === "pii" || dataClass === "confidential")) {
+    steps.push("Confirm sensitive data classes are minimized, redacted, or isolated before crossing trust boundaries.");
+  }
+  return [...new Set(steps)].slice(0, 6);
+}
+
+function remediationStepsForFinding(finding: Finding): string[] {
+  const steps = [
+    `Apply recommended control: ${finding.recommended_control.replaceAll("_", " ")}.`,
+    finding.risk_summary.control_objective
+  ];
+  if (finding.recommended_control === "require_approval") {
+    steps.push("Add an explicit approval gate before the side-effecting or external action can run.");
+  }
+  if (finding.recommended_control === "quarantine") {
+    steps.push("Temporarily isolate the surface from agent execution until ownership and trust boundaries are reviewed.");
+  }
+  if (finding.recommended_control === "redact") {
+    steps.push("Remove sensitive fields from model-visible, logged, exported, or persisted context.");
+  }
+  if (finding.recommended_control === "deny") {
+    steps.push("Disable or remove the unsafe authority path until a scoped replacement exists.");
+  }
+  if (finding.risk.external_reach) {
+    steps.push("Restrict external reach with allowlists, scoped credentials, and outbound audit logging.");
+  }
+  if (finding.risk.secret_exposure) {
+    steps.push("Route secret access through a broker that returns only scoped, non-model-visible results.");
+  }
+  return [...new Set(steps)].slice(0, 6);
 }
 
 function responseForFinding(finding: Finding): { response_tier: ResponseTier; response_reason: string } {

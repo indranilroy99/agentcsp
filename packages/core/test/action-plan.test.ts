@@ -30,6 +30,11 @@ describe("action plan owner routing", () => {
       "runtime-platform"
     ]);
     expect(plan.actions.every((action) => action.owner_reason.length > 0)).toBe(true);
+    expect(plan.actions.every((action) => action.validation_steps.length > 0)).toBe(true);
+    expect(plan.actions.every((action) => action.remediation_steps.length > 0)).toBe(true);
+    expect(
+      plan.actions.find((action) => action.related_finding_ids[0] === "finding_secret")?.validation_steps
+    ).toContain("Verify that secret or credential material is not exposed to model-visible, external, or persistent channels.");
     expect(plan.actions.every((action) => action.response_tier === "urgent")).toBe(true);
     expect(plan.actions.find((action) => action.related_finding_ids[0] === "finding_secret")?.risk_drivers).toEqual([
       "secret_exposure",
@@ -71,6 +76,9 @@ describe("action plan owner routing", () => {
     expect(plan.scheduled_actions).toBe(1);
     expect(plan.backlog_actions).toBe(1);
     expect(plan.actions.every((action) => action.response_reason.length > 0)).toBe(true);
+    expect(plan.actions.find((action) => action.related_finding_ids[0] === "quarantine")?.remediation_steps).toContain(
+      "Temporarily isolate the surface from agent execution until ownership and trust boundaries are reviewed."
+    );
     expect(
       Object.values(
         plan.by_owner.reduce<Record<string, number>>((counts, owner) => {
@@ -181,6 +189,13 @@ function finding(input: {
       untrusted_to_privileged: false,
       score: input.riskScore ?? 80,
       rationale: []
+    },
+    risk_summary: {
+      primary_driver: input.dataClasses?.includes("credential") ? "secret_exposure" : "side_effect",
+      drivers: input.dataClasses?.includes("credential") ? ["secret_exposure", "side_effect"] : ["side_effect"],
+      impact: "Rule matched an agent security condition that should be reviewed.",
+      control_objective: "require explicit human or policy approval before the action proceeds",
+      analyst_summary: ["Synthetic test finding."]
     },
     maps_to: { owasp: [], mitre_atlas: [], nist_ai_rmf: [] },
     evidence: []

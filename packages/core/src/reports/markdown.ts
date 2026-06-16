@@ -124,11 +124,11 @@ function renderActionPlan(manifest: AgentManifest): string {
     "",
     renderOmittedActionRiskTable(plan),
     "",
-    "| Priority | Response | Severity | Risk | Baseline | Owner | Control | Rule | Surface | Path | Drivers | Rationale |",
-    "| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |",
+    "| Priority | Response | Severity | Risk | Baseline | Owner | Control | Rule | Surface | Path | Drivers | Validation steps | Remediation steps | Rationale |",
+    "| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |",
     ...plan.actions.map(
       (action) =>
-        `| ${action.priority} | ${action.response_tier} | ${action.severity} | ${action.risk_score} | ${action.baseline_status ?? "unbaselined"} | ${action.owner_hint} | ${action.recommended_control.replaceAll("_", " ")} | ${action.rule_id} | ${action.surface_type} | \`${escapeTable(action.path)}\` | ${escapeTable(formatRiskDrivers(action.risk_drivers))} | ${escapeTable([...action.rationale, action.response_reason].join("; "))} |`
+        `| ${action.priority} | ${action.response_tier} | ${action.severity} | ${action.risk_score} | ${action.baseline_status ?? "unbaselined"} | ${action.owner_hint} | ${action.recommended_control.replaceAll("_", " ")} | ${action.rule_id} | ${action.surface_type} | \`${escapeTable(action.path)}\` | ${escapeTable(formatRiskDrivers(action.risk_drivers))} | ${escapeTable(action.validation_steps.join("; "))} | ${escapeTable(action.remediation_steps.join("; "))} | ${escapeTable([...action.rationale, action.response_reason].join("; "))} |`
     )
   ].join("\n");
 }

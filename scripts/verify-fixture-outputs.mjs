@@ -2099,6 +2099,14 @@ function assertVulnerableOperatorMetadata(output) {
     manifest.action_plan?.actions?.[0]?.risk_drivers?.length > 0,
     "vulnerable action risk drivers missing"
   );
+  assert(
+    manifest.action_plan?.actions?.[0]?.validation_steps?.length > 0,
+    "vulnerable action validation steps missing"
+  );
+  assert(
+    manifest.action_plan?.actions?.[0]?.remediation_steps?.length > 0,
+    "vulnerable action remediation steps missing"
+  );
 
   assertEqual(manifest.ci_gate_summary?.blocker_id_limit, 50, "vulnerable CI blocker ID limit");
   assertEqual(manifest.ci_gate_summary?.blocker_ids_truncated, false, "vulnerable CI blocker truncation");
@@ -2138,11 +2146,16 @@ function assertVulnerableOperatorMetadata(output) {
 
   assert(report.includes("- Scan health: `complete`"), "vulnerable report missing scan health");
   assert(report.includes("- Top active risks truncated: `true`"), "vulnerable report missing triage truncation");
+  assert(report.includes("Validation steps"), "vulnerable report missing action validation steps");
+  assert(report.includes("Remediation steps"), "vulnerable report missing action remediation steps");
   assert(report.includes("### Active Risk Drivers"), "vulnerable report missing risk driver section");
   assert(report.includes("untrusted to privileged"), "vulnerable report missing untrusted risk driver");
   assert(report.includes("### CI Gate Risk Drivers"), "vulnerable report missing CI gate risk driver section");
   assert(report.includes("Risk drivers | Top action IDs"), "vulnerable report missing owner risk driver column");
-  assert(report.includes("Drivers | Rationale"), "vulnerable report missing action risk driver column");
+  assert(
+    report.includes("Drivers | Validation steps | Remediation steps | Rationale"),
+    "vulnerable report missing action risk driver column"
+  );
   assert(report.includes("- Attack path limit: 15"), "vulnerable report missing attack path limit");
   assert(report.includes("- High-risk objects truncated: `true`"), "vulnerable report missing blast-radius truncation");
   assert(report.includes("- Recommended controls truncated: `true`"), "vulnerable report missing control truncation");

@@ -1576,6 +1576,20 @@
                     },
                     "default": []
                   },
+                  "validation_steps": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "default": []
+                  },
+                  "remediation_steps": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "default": []
+                  },
                   "related_finding_ids": {
                     "type": "array",
                     "items": {
