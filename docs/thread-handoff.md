@@ -1897,6 +1897,8 @@ The current iteration adds:
 - regression coverage proving external absolute policy config diagnostics stay redacted in JSON and Markdown
 - baseline comparison now redacts baselines outside the scanned root as `<external-baseline>` in JSON, Markdown, and SARIF while still reading the external file normally
 - regression coverage proving external baseline filesystem paths are not emitted in manifest, report, or SARIF artifacts
+- root-boundary path detection now distinguishes actual parent traversal from legitimate in-root names beginning with `..`, protecting external path redaction and configured-output ignore behavior
+- regression coverage proving path helpers classify inside, outside, equal-root, sibling-prefix, and dot-prefixed in-root paths correctly
 
 ## Initial Build Recommendation
 

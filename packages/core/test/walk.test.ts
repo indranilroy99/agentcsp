@@ -96,6 +96,23 @@ describe("walkProjectWithCoverage", () => {
     ]);
     expect(result.coverage.directories_skipped_by_ignore).toBe(0);
   });
+
+  it("ignores in-root output directories whose names begin with two dots", async () => {
+    const root = await createDotPrefixedOutputFixture();
+    const result = await walkProjectWithCoverage({
+      root_path: root,
+      output_path: path.join(root, "..agentcsp-output"),
+      formats: ["json", "md"],
+      include_hidden: true,
+      include_logs: false,
+      max_file_size_bytes: 1024,
+      max_files: 100,
+      quiet: true
+    });
+
+    expect(result.files.map((file) => file.relativePath)).toEqual(["AGENTS.md"]);
+    expect(result.coverage.directories_skipped_by_ignore).toBe(1);
+  });
 });
 
 async function createCoverageFixture(): Promise<string> {
@@ -131,5 +148,14 @@ async function createCustomOutputFixture(): Promise<string> {
   await fs.writeFile(path.join(root, "AGENTS.md"), "review only\n", "utf8");
   await fs.writeFile(path.join(root, "security", "agentcsp-output", "agent-manifest.json"), '{"old": true}\n', "utf8");
   await fs.writeFile(path.join(root, "security", "agentcsp-output", "findings.json"), "[]\n", "utf8");
+  return root;
+}
+
+async function createDotPrefixedOutputFixture(): Promise<string> {
+  const root = "/private/tmp/agentcsp-dot-prefixed-output-fixture";
+  await fs.rm(root, { recursive: true, force: true });
+  await fs.mkdir(path.join(root, "..agentcsp-output"), { recursive: true });
+  await fs.writeFile(path.join(root, "AGENTS.md"), "review only\n", "utf8");
+  await fs.writeFile(path.join(root, "..agentcsp-output", "agent-manifest.json"), '{"old": true}\n', "utf8");
   return root;
 }

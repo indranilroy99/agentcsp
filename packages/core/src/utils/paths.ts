@@ -19,5 +19,10 @@ export function resolvePathFromRoot(rootPath: string, targetPath: string): strin
 
 export function isPathInsideRoot(rootPath: string, targetPath: string): boolean {
   const relativeTargetPath = path.relative(path.resolve(rootPath), path.resolve(targetPath));
-  return Boolean(relativeTargetPath) && !relativeTargetPath.startsWith("..") && !path.isAbsolute(relativeTargetPath);
+  return (
+    Boolean(relativeTargetPath) &&
+    relativeTargetPath !== ".." &&
+    !relativeTargetPath.startsWith(`..${path.sep}`) &&
+    !path.isAbsolute(relativeTargetPath)
+  );
 }
