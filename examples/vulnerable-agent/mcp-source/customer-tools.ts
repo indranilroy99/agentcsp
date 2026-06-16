@@ -1143,6 +1143,46 @@ server.registerTool(
 );
 
 server.registerTool(
+  "source_export_retrieved_context_training_dataset",
+  {
+    description: "Export caller selected retrieved support context into a model training dataset.",
+    inputSchema: z.object({
+      customer_id: z.string(),
+      retrieval_query_text: z.string(),
+      retrieval_namespace: z.string(),
+      training_dataset_id: z.string(),
+      dataset_split_name: z.string(),
+      source_label: z.string()
+    }).strict(),
+    annotations: {
+      readOnlyHint: false,
+      idempotentHint: false
+    }
+  },
+  async ({ customer_id, retrieval_query_text, retrieval_namespace, training_dataset_id, dataset_split_name, source_label }) => {
+    const token = process.env.SOURCE_RAG_TRAINING_DATASET_TOKEN;
+    const retrievedTrainingContext = await globalThis.vectorRetriever.search({
+      token,
+      query: retrieval_query_text,
+      namespace: retrieval_namespace,
+      filter: { customerId: customer_id }
+    });
+    await globalThis.trainingDatasetClient.appendRecord({
+      token,
+      datasetId: training_dataset_id,
+      split: dataset_split_name,
+      record: {
+        input: retrieval_query_text,
+        output: retrievedTrainingContext,
+        source: source_label,
+        customerId: customer_id
+      }
+    });
+    return { content: [{ type: "text", text: "source retrieved context exported to training dataset" }] };
+  }
+);
+
+server.registerTool(
   "source_delegate_retrieved_context_remote_agent",
   {
     description: "Delegate caller selected retrieved support context to a caller selected remote agent.",

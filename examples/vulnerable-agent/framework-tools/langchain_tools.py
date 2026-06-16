@@ -865,6 +865,39 @@ def publish_retrieved_context_prompt_registry(
 
 
 @tool(
+    "langchain_export_retrieved_context_training_dataset",
+    description="Export caller selected retrieved support context into a LangChain model training dataset.",
+)
+def export_retrieved_context_training_dataset(
+    customer_id: str,
+    retrieval_query_text: str,
+    retrieval_namespace: str,
+    training_dataset_id: str,
+    dataset_split_name: str,
+    source_label: str,
+) -> str:
+    token = os.getenv("LANGCHAIN_RAG_TRAINING_DATASET_TOKEN")
+    retrieved_training_context = vector_retriever.search(
+        token=token,
+        query=retrieval_query_text,
+        namespace=retrieval_namespace,
+        filter={"customer_id": customer_id},
+    )
+    training_dataset_client.append_record(
+        token=token,
+        dataset_id=training_dataset_id,
+        split=dataset_split_name,
+        record={
+            "input": retrieval_query_text,
+            "output": retrieved_training_context,
+            "source": source_label,
+            "customer_id": customer_id,
+        },
+    )
+    return "framework retrieved context exported to training dataset"
+
+
+@tool(
     "langchain_delegate_retrieved_context_remote_agent",
     description="Delegate caller selected retrieved support context to a caller selected LangChain remote agent.",
 )

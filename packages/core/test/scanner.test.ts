@@ -604,6 +604,9 @@ describe("scanner", () => {
     const sourceRagRetrievalPromptRegistryBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "source_publish_retrieved_context_prompt_registry"
     );
+    const sourceRagRetrievalTrainingDatasetBridgeTool = surfaces.tools.find(
+      (surface) => surface.name === "source_export_retrieved_context_training_dataset"
+    );
     const sourceRagRetrievalTaskQueueBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "source_enqueue_retrieved_context_agent_job"
     );
@@ -980,6 +983,9 @@ describe("scanner", () => {
     );
     const langchainRagRetrievalPromptRegistryBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "langchain_publish_retrieved_context_prompt_registry"
+    );
+    const langchainRagRetrievalTrainingDatasetBridgeTool = surfaces.tools.find(
+      (surface) => surface.name === "langchain_export_retrieved_context_training_dataset"
     );
     const langchainRagRetrievalTaskQueueBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "langchain_enqueue_retrieved_context_agent_job"
@@ -4568,6 +4574,90 @@ describe("scanner", () => {
     expect(JSON.stringify(sourceRagRetrievalPromptRegistryBridgeTool)).not.toContain("retrievedRegistryContext");
     expect(JSON.stringify(sourceRagRetrievalPromptRegistryBridgeTool)).not.toContain("source retrieved context published to prompt registry");
     expect(JSON.stringify(sourceRagRetrievalPromptRegistryBridgeTool)).not.toContain("Publish caller selected retrieved support context");
+    expect(sourceRagRetrievalTrainingDatasetBridgeTool).toMatchObject({
+      path: "mcp-source/customer-tools.ts",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["call", "publish", "read", "remember", "send", "write"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(sourceRagRetrievalTrainingDatasetBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_mcp_source_tool: true,
+      mcp_source_tool_registration: true,
+      mcp_source_tool_registration_kind: "registerTool",
+      mcp_source_tool_argument_count: 3,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_content_like_input: true,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      rag_retrieval: true,
+      tainted_rag_retrieval_query: true,
+      training_dataset_export: true,
+      tainted_training_dataset_payload: true,
+      rag_retrieval_training_dataset_bridge: true,
+      handler_rag_retrieval: true,
+      handler_tainted_rag_retrieval_query: true,
+      handler_training_dataset_export: true,
+      handler_tainted_training_dataset_payload: true,
+      handler_rag_retrieval_training_dataset_bridge: true,
+      handler_secret_env_access: true,
+      handler_signal_count: 6,
+      open_world_schema: false
+    });
+    expect(sourceRagRetrievalTrainingDatasetBridgeTool?.metadata.authority_classes).toEqual([
+      "content_input",
+      "customer_data_input",
+      "external_write",
+      "handler_rag_retrieval",
+      "handler_rag_retrieval_training_dataset_bridge",
+      "handler_secret_env_access",
+      "handler_tainted_rag_retrieval_query",
+      "handler_tainted_training_dataset_payload",
+      "handler_training_dataset_export",
+      "pii_input",
+      "rag_retrieval",
+      "rag_retrieval_training_dataset_bridge",
+      "secret_env_access",
+      "tainted_rag_retrieval_query",
+      "tainted_training_dataset_payload",
+      "training_dataset_export"
+    ]);
+    expect(sourceRagRetrievalTrainingDatasetBridgeTool?.metadata.handler_authority_classes).toEqual([
+      "handler_rag_retrieval",
+      "handler_rag_retrieval_training_dataset_bridge",
+      "handler_secret_env_access",
+      "handler_tainted_rag_retrieval_query",
+      "handler_tainted_training_dataset_payload",
+      "handler_training_dataset_export"
+    ]);
+    expect(sourceRagRetrievalTrainingDatasetBridgeTool?.metadata.handler_env_key_names).toEqual([
+      "SOURCE_RAG_TRAINING_DATASET_TOKEN"
+    ]);
+    expect(sourceRagRetrievalTrainingDatasetBridgeTool?.metadata.schema_properties).toEqual([
+      "customer_id",
+      "dataset_split_name",
+      "retrieval_namespace",
+      "retrieval_query_text",
+      "source_label",
+      "training_dataset_id"
+    ]);
+    expect(sourceRagRetrievalTrainingDatasetBridgeTool?.metadata.required_properties).toEqual([
+      "customer_id",
+      "dataset_split_name",
+      "retrieval_namespace",
+      "retrieval_query_text",
+      "source_label",
+      "training_dataset_id"
+    ]);
+    expect(JSON.stringify(sourceRagRetrievalTrainingDatasetBridgeTool)).not.toContain("vectorRetriever.search");
+    expect(JSON.stringify(sourceRagRetrievalTrainingDatasetBridgeTool)).not.toContain("trainingDatasetClient.appendRecord");
+    expect(JSON.stringify(sourceRagRetrievalTrainingDatasetBridgeTool)).not.toContain("retrievedTrainingContext");
+    expect(JSON.stringify(sourceRagRetrievalTrainingDatasetBridgeTool)).not.toContain("source retrieved context exported to training dataset");
+    expect(JSON.stringify(sourceRagRetrievalTrainingDatasetBridgeTool)).not.toContain("Export caller selected retrieved support context");
     expect(sourceRagRetrievalTaskQueueBridgeTool).toMatchObject({
       path: "mcp-source/customer-tools.ts",
       data_classes: ["confidential", "credential", "pii"],
@@ -17666,6 +17756,91 @@ describe("scanner", () => {
     expect(JSON.stringify(langchainRagRetrievalPromptRegistryBridgeTool)).not.toContain("retrieved_registry_context");
     expect(JSON.stringify(langchainRagRetrievalPromptRegistryBridgeTool)).not.toContain("framework retrieved context published to prompt registry");
     expect(JSON.stringify(langchainRagRetrievalPromptRegistryBridgeTool)).not.toContain("Publish caller selected retrieved support context");
+    expect(langchainRagRetrievalTrainingDatasetBridgeTool).toMatchObject({
+      path: "framework-tools/langchain_tools.py",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["call", "publish", "read", "remember", "send", "write"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(langchainRagRetrievalTrainingDatasetBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_agent_framework_source_tool: true,
+      agent_framework_source_tool: true,
+      agent_framework_source_tool_framework: "langchain",
+      agent_framework_source_tool_registration_kind: "python_tool_decorator",
+      agent_framework_source_tool_argument_count: 6,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_content_like_input: true,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      rag_retrieval: true,
+      tainted_rag_retrieval_query: true,
+      training_dataset_export: true,
+      tainted_training_dataset_payload: true,
+      rag_retrieval_training_dataset_bridge: true,
+      handler_rag_retrieval: true,
+      handler_tainted_rag_retrieval_query: true,
+      handler_training_dataset_export: true,
+      handler_tainted_training_dataset_payload: true,
+      handler_rag_retrieval_training_dataset_bridge: true,
+      handler_secret_env_access: true,
+      handler_signal_count: 6,
+      open_world_schema: false
+    });
+    expect(langchainRagRetrievalTrainingDatasetBridgeTool?.metadata.authority_classes).toEqual([
+      "content_input",
+      "customer_data_input",
+      "external_write",
+      "handler_rag_retrieval",
+      "handler_rag_retrieval_training_dataset_bridge",
+      "handler_secret_env_access",
+      "handler_tainted_rag_retrieval_query",
+      "handler_tainted_training_dataset_payload",
+      "handler_training_dataset_export",
+      "pii_input",
+      "rag_retrieval",
+      "rag_retrieval_training_dataset_bridge",
+      "secret_env_access",
+      "tainted_rag_retrieval_query",
+      "tainted_training_dataset_payload",
+      "training_dataset_export"
+    ]);
+    expect(langchainRagRetrievalTrainingDatasetBridgeTool?.metadata.handler_authority_classes).toEqual([
+      "handler_rag_retrieval",
+      "handler_rag_retrieval_training_dataset_bridge",
+      "handler_secret_env_access",
+      "handler_tainted_rag_retrieval_query",
+      "handler_tainted_training_dataset_payload",
+      "handler_training_dataset_export"
+    ]);
+    expect(langchainRagRetrievalTrainingDatasetBridgeTool?.metadata.handler_env_key_names).toEqual([
+      "LANGCHAIN_RAG_TRAINING_DATASET_TOKEN"
+    ]);
+    expect(langchainRagRetrievalTrainingDatasetBridgeTool?.metadata.schema_properties).toEqual([
+      "customer_id",
+      "dataset_split_name",
+      "retrieval_namespace",
+      "retrieval_query_text",
+      "source_label",
+      "training_dataset_id"
+    ]);
+    expect(langchainRagRetrievalTrainingDatasetBridgeTool?.metadata.required_properties).toEqual([
+      "customer_id",
+      "dataset_split_name",
+      "retrieval_namespace",
+      "retrieval_query_text",
+      "source_label",
+      "training_dataset_id"
+    ]);
+    expect(JSON.stringify(langchainRagRetrievalTrainingDatasetBridgeTool)).not.toContain("vector_retriever.search");
+    expect(JSON.stringify(langchainRagRetrievalTrainingDatasetBridgeTool)).not.toContain("training_dataset_client.append_record");
+    expect(JSON.stringify(langchainRagRetrievalTrainingDatasetBridgeTool)).not.toContain("retrieved_training_context");
+    expect(JSON.stringify(langchainRagRetrievalTrainingDatasetBridgeTool)).not.toContain("framework retrieved context exported to training dataset");
+    expect(JSON.stringify(langchainRagRetrievalTrainingDatasetBridgeTool)).not.toContain("Export caller selected retrieved support context");
     expect(langchainRagRetrievalTaskQueueBridgeTool).toMatchObject({
       path: "framework-tools/langchain_tools.py",
       data_classes: ["confidential", "credential", "pii"],

@@ -8230,10 +8230,12 @@ describe("rule engine", () => {
     const sourceHandlerTrainingDatasetExportFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-047");
     expect(sourceHandlerTrainingDatasetExportFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_append_training_dataset_record",
+      "langchain_export_retrieved_context_training_dataset",
       "langchain_export_model_training_dataset",
       "source_append_training_dataset_record",
+      "source_export_retrieved_context_training_dataset",
       "source_export_model_training_dataset"
-    ]);
+    ].sort());
     expect(sourceHandlerTrainingDatasetExportFindings.every((finding) => finding.severity === "critical")).toBe(true);
     expect(sourceHandlerTrainingDatasetExportFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
     expect(sourceHandlerTrainingDatasetExportFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
@@ -8260,7 +8262,12 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerTrainingDatasetExportFindings)).not.toContain("training_dataset_client.append_record");
     expect(JSON.stringify(sourceHandlerTrainingDatasetExportFindings)).not.toContain("source training record exported");
     expect(JSON.stringify(sourceHandlerTrainingDatasetExportFindings)).not.toContain("framework training record exported");
+    expect(JSON.stringify(sourceHandlerTrainingDatasetExportFindings)).not.toContain("retrievedTrainingContext");
+    expect(JSON.stringify(sourceHandlerTrainingDatasetExportFindings)).not.toContain("retrieved_training_context");
+    expect(JSON.stringify(sourceHandlerTrainingDatasetExportFindings)).not.toContain("source retrieved context exported to training dataset");
+    expect(JSON.stringify(sourceHandlerTrainingDatasetExportFindings)).not.toContain("framework retrieved context exported to training dataset");
     expect(JSON.stringify(sourceHandlerTrainingDatasetExportFindings)).not.toContain("Export caller supplied support context");
+    expect(JSON.stringify(sourceHandlerTrainingDatasetExportFindings)).not.toContain("Export caller selected retrieved support context");
     const sourceHandlerFeedbackAutoPromotionFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-055");
     expect(sourceHandlerFeedbackAutoPromotionFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_promote_model_completion_feedback",
@@ -11212,6 +11219,67 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerRagRetrievalPromptRegistryBridgeFindings)).not.toContain("source retrieved context published to prompt registry");
     expect(JSON.stringify(sourceHandlerRagRetrievalPromptRegistryBridgeFindings)).not.toContain("framework retrieved context published to prompt registry");
     expect(JSON.stringify(sourceHandlerRagRetrievalPromptRegistryBridgeFindings)).not.toContain("Publish caller selected retrieved support context");
+    const sourceHandlerRagRetrievalTrainingDatasetBridgeFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-185");
+    expect(sourceHandlerRagRetrievalTrainingDatasetBridgeFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
+      "langchain_export_retrieved_context_training_dataset",
+      "source_export_retrieved_context_training_dataset"
+    ]);
+    expect(sourceHandlerRagRetrievalTrainingDatasetBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
+    expect(sourceHandlerRagRetrievalTrainingDatasetBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerRagRetrievalTrainingDatasetBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
+    expect(sourceHandlerRagRetrievalTrainingDatasetBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
+    expect(sourceHandlerRagRetrievalTrainingDatasetBridgeFindings.every((finding) => finding.matched_object.metadata.source_tool_handler_redacted === true)).toBe(true);
+    expect(sourceHandlerRagRetrievalTrainingDatasetBridgeFindings.every((finding) => finding.matched_object.metadata.handler_secret_env_access === true)).toBe(true);
+    expect(sourceHandlerRagRetrievalTrainingDatasetBridgeFindings.every((finding) => finding.matched_object.metadata.handler_rag_retrieval === true)).toBe(true);
+    expect(sourceHandlerRagRetrievalTrainingDatasetBridgeFindings.every((finding) => finding.matched_object.metadata.handler_tainted_rag_retrieval_query === true)).toBe(true);
+    expect(sourceHandlerRagRetrievalTrainingDatasetBridgeFindings.every((finding) => finding.matched_object.metadata.handler_training_dataset_export === true)).toBe(true);
+    expect(sourceHandlerRagRetrievalTrainingDatasetBridgeFindings.every((finding) => finding.matched_object.metadata.handler_tainted_training_dataset_payload === true)).toBe(true);
+    expect(sourceHandlerRagRetrievalTrainingDatasetBridgeFindings.every((finding) => finding.matched_object.metadata.handler_rag_retrieval_training_dataset_bridge === true)).toBe(true);
+    expect(sourceHandlerRagRetrievalTrainingDatasetBridgeFindings.every((finding) => finding.matched_object.metadata.rag_retrieval === true)).toBe(true);
+    expect(sourceHandlerRagRetrievalTrainingDatasetBridgeFindings.every((finding) => finding.matched_object.metadata.tainted_rag_retrieval_query === true)).toBe(true);
+    expect(sourceHandlerRagRetrievalTrainingDatasetBridgeFindings.every((finding) => finding.matched_object.metadata.training_dataset_export === true)).toBe(true);
+    expect(sourceHandlerRagRetrievalTrainingDatasetBridgeFindings.every((finding) => finding.matched_object.metadata.tainted_training_dataset_payload === true)).toBe(true);
+    expect(sourceHandlerRagRetrievalTrainingDatasetBridgeFindings.every((finding) => finding.matched_object.metadata.rag_retrieval_training_dataset_bridge === true)).toBe(true);
+    expect(sourceHandlerRagRetrievalTrainingDatasetBridgeFindings.every((finding) => finding.matched_object.metadata.accepts_customer_data_input === true)).toBe(true);
+    for (const authorityClass of [
+      "rag_retrieval",
+      "tainted_rag_retrieval_query",
+      "training_dataset_export",
+      "tainted_training_dataset_payload",
+      "rag_retrieval_training_dataset_bridge"
+    ]) {
+      expect(sourceHandlerRagRetrievalTrainingDatasetBridgeFindings.every((finding) =>
+        finding.matched_object.metadata.authority_classes.includes(authorityClass)
+      )).toBe(true);
+    }
+    for (const handlerAuthorityClass of [
+      "handler_rag_retrieval",
+      "handler_tainted_rag_retrieval_query",
+      "handler_training_dataset_export",
+      "handler_tainted_training_dataset_payload",
+      "handler_rag_retrieval_training_dataset_bridge"
+    ]) {
+      expect(sourceHandlerRagRetrievalTrainingDatasetBridgeFindings.every((finding) =>
+        finding.matched_object.metadata.handler_authority_classes.includes(handlerAuthorityClass)
+      )).toBe(true);
+    }
+    expect(sourceHandlerRagRetrievalTrainingDatasetBridgeFindings.every((finding) => finding.matched_object.actions.includes("read"))).toBe(true);
+    expect(sourceHandlerRagRetrievalTrainingDatasetBridgeFindings.every((finding) => finding.matched_object.actions.includes("send"))).toBe(true);
+    expect(sourceHandlerRagRetrievalTrainingDatasetBridgeFindings.every((finding) => finding.matched_object.actions.includes("write"))).toBe(true);
+    expect(sourceHandlerRagRetrievalTrainingDatasetBridgeFindings.every((finding) => finding.matched_object.actions.includes("remember"))).toBe(true);
+    expect(sourceHandlerRagRetrievalTrainingDatasetBridgeFindings.every((finding) => finding.matched_object.external_reach === true)).toBe(true);
+    expect(sourceHandlerRagRetrievalTrainingDatasetBridgeFindings.every((finding) => finding.matched_object.secret_exposure === true)).toBe(true);
+    expect(sourceHandlerRagRetrievalTrainingDatasetBridgeFindings.every((finding) => finding.matched_object.side_effect === true)).toBe(true);
+    expect(sourceHandlerRagRetrievalTrainingDatasetBridgeFindings.every((finding) => finding.matched_object.reversible === false)).toBe(true);
+    expect(JSON.stringify(sourceHandlerRagRetrievalTrainingDatasetBridgeFindings)).not.toContain("vectorRetriever.search");
+    expect(JSON.stringify(sourceHandlerRagRetrievalTrainingDatasetBridgeFindings)).not.toContain("vector_retriever.search");
+    expect(JSON.stringify(sourceHandlerRagRetrievalTrainingDatasetBridgeFindings)).not.toContain("trainingDatasetClient.appendRecord");
+    expect(JSON.stringify(sourceHandlerRagRetrievalTrainingDatasetBridgeFindings)).not.toContain("training_dataset_client.append_record");
+    expect(JSON.stringify(sourceHandlerRagRetrievalTrainingDatasetBridgeFindings)).not.toContain("retrievedTrainingContext");
+    expect(JSON.stringify(sourceHandlerRagRetrievalTrainingDatasetBridgeFindings)).not.toContain("retrieved_training_context");
+    expect(JSON.stringify(sourceHandlerRagRetrievalTrainingDatasetBridgeFindings)).not.toContain("source retrieved context exported to training dataset");
+    expect(JSON.stringify(sourceHandlerRagRetrievalTrainingDatasetBridgeFindings)).not.toContain("framework retrieved context exported to training dataset");
+    expect(JSON.stringify(sourceHandlerRagRetrievalTrainingDatasetBridgeFindings)).not.toContain("Export caller selected retrieved support context");
     const sourceHandlerLocalFileSafetyPolicyBridgeFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-175");
     expect(sourceHandlerLocalFileSafetyPolicyBridgeFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_apply_local_file_guardrail_override",
