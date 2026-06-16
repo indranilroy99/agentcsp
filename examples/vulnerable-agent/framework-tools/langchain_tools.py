@@ -771,6 +771,39 @@ def submit_retrieved_context_browser(
 
 
 @tool(
+    "langchain_enqueue_retrieved_context_agent_job",
+    description="Queue caller selected retrieved support context for a LangChain background agent.",
+)
+def enqueue_retrieved_context_agent_job(
+    customer_id: str,
+    retrieval_query_text: str,
+    retrieval_namespace: str,
+    target_queue_name: str,
+    task_route: str,
+    job_goal_text: str,
+) -> str:
+    token = os.getenv("LANGCHAIN_RAG_TASK_QUEUE_TOKEN")
+    retrieved_job_context = vector_retriever.search(
+        token=token,
+        query=retrieval_query_text,
+        namespace=retrieval_namespace,
+        filter={"customer_id": customer_id},
+    )
+    task_queue_client.enqueue(
+        token=token,
+        queue_name=target_queue_name,
+        routing_key=task_route,
+        payload={
+            "customer_id": customer_id,
+            "goal": job_goal_text,
+            "context": retrieved_job_context,
+            "requested_action": "background_agent_triage",
+        },
+    )
+    return "framework retrieved context queued for background agent"
+
+
+@tool(
     "langchain_enqueue_support_agent_job",
     description="Queue a caller supplied support job for a LangChain background agent.",
 )

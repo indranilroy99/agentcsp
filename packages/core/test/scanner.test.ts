@@ -598,6 +598,9 @@ describe("scanner", () => {
     const sourceRagRetrievalBrowserAutomationBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "source_submit_retrieved_context_browser"
     );
+    const sourceRagRetrievalTaskQueueBridgeTool = surfaces.tools.find(
+      (surface) => surface.name === "source_enqueue_retrieved_context_agent_job"
+    );
     const sourceTaskQueueTool = surfaces.tools.find((surface) => surface.name === "source_enqueue_support_agent_job");
     const sourceSecretManagerTaskQueueBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "source_enqueue_customer_vault_secret_job"
@@ -962,6 +965,9 @@ describe("scanner", () => {
     );
     const langchainRagRetrievalBrowserAutomationBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "langchain_submit_retrieved_context_browser"
+    );
+    const langchainRagRetrievalTaskQueueBridgeTool = surfaces.tools.find(
+      (surface) => surface.name === "langchain_enqueue_retrieved_context_agent_job"
     );
     const langchainTaskQueueTool = surfaces.tools.find((surface) => surface.name === "langchain_enqueue_support_agent_job");
     const langchainSecretManagerTaskQueueBridgeTool = surfaces.tools.find(
@@ -4367,6 +4373,95 @@ describe("scanner", () => {
     expect(JSON.stringify(sourceRagRetrievalBrowserAutomationBridgeTool)).not.toContain("retrievedChunks");
     expect(JSON.stringify(sourceRagRetrievalBrowserAutomationBridgeTool)).not.toContain("source retrieved context submitted through browser");
     expect(JSON.stringify(sourceRagRetrievalBrowserAutomationBridgeTool)).not.toContain("Submit caller selected retrieved support context");
+    expect(sourceRagRetrievalTaskQueueBridgeTool).toMatchObject({
+      path: "mcp-source/customer-tools.ts",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["call", "read", "remember", "send", "write"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(sourceRagRetrievalTaskQueueBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_mcp_source_tool: true,
+      mcp_source_tool_registration: true,
+      mcp_source_tool_registration_kind: "registerTool",
+      mcp_source_tool_argument_count: 3,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_content_like_input: true,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      rag_retrieval: true,
+      tainted_rag_retrieval_query: true,
+      task_queue_enqueue: true,
+      tainted_task_payload: true,
+      tainted_task_routing: true,
+      rag_retrieval_task_queue_bridge: true,
+      handler_rag_retrieval: true,
+      handler_tainted_rag_retrieval_query: true,
+      handler_task_queue_enqueue: true,
+      handler_tainted_task_payload: true,
+      handler_tainted_task_routing: true,
+      handler_rag_retrieval_task_queue_bridge: true,
+      handler_secret_env_access: true,
+      handler_signal_count: 7,
+      open_world_schema: false
+    });
+    expect(sourceRagRetrievalTaskQueueBridgeTool?.metadata.authority_classes).toEqual([
+      "content_input",
+      "customer_data_input",
+      "handler_rag_retrieval",
+      "handler_rag_retrieval_task_queue_bridge",
+      "handler_secret_env_access",
+      "handler_tainted_rag_retrieval_query",
+      "handler_tainted_task_payload",
+      "handler_tainted_task_routing",
+      "handler_task_queue_enqueue",
+      "pii_input",
+      "rag_retrieval",
+      "rag_retrieval_task_queue_bridge",
+      "secret_env_access",
+      "tainted_rag_retrieval_query",
+      "tainted_task_payload",
+      "tainted_task_routing",
+      "task_queue_enqueue"
+    ]);
+    expect(sourceRagRetrievalTaskQueueBridgeTool?.metadata.handler_authority_classes).toEqual([
+      "handler_rag_retrieval",
+      "handler_rag_retrieval_task_queue_bridge",
+      "handler_secret_env_access",
+      "handler_tainted_rag_retrieval_query",
+      "handler_tainted_task_payload",
+      "handler_tainted_task_routing",
+      "handler_task_queue_enqueue"
+    ]);
+    expect(sourceRagRetrievalTaskQueueBridgeTool?.metadata.handler_env_key_names).toEqual([
+      "SOURCE_RAG_TASK_QUEUE_TOKEN"
+    ]);
+    expect(sourceRagRetrievalTaskQueueBridgeTool?.metadata.schema_properties).toEqual([
+      "customer_id",
+      "job_goal_text",
+      "retrieval_namespace",
+      "retrieval_query_text",
+      "target_queue_name",
+      "task_route"
+    ]);
+    expect(sourceRagRetrievalTaskQueueBridgeTool?.metadata.required_properties).toEqual([
+      "customer_id",
+      "job_goal_text",
+      "retrieval_namespace",
+      "retrieval_query_text",
+      "target_queue_name",
+      "task_route"
+    ]);
+    expect(JSON.stringify(sourceRagRetrievalTaskQueueBridgeTool)).not.toContain("vectorRetriever.search");
+    expect(JSON.stringify(sourceRagRetrievalTaskQueueBridgeTool)).not.toContain("taskQueueClient.enqueue");
+    expect(JSON.stringify(sourceRagRetrievalTaskQueueBridgeTool)).not.toContain("retrievedJobContext");
+    expect(JSON.stringify(sourceRagRetrievalTaskQueueBridgeTool)).not.toContain("background_agent_triage");
+    expect(JSON.stringify(sourceRagRetrievalTaskQueueBridgeTool)).not.toContain("source retrieved context queued for background agent");
+    expect(JSON.stringify(sourceRagRetrievalTaskQueueBridgeTool)).not.toContain("Queue caller selected retrieved support context");
     expect(sourceTaskQueueTool).toMatchObject({
       path: "mcp-source/customer-tools.ts",
       data_classes: ["confidential", "credential", "pii"],
@@ -17107,6 +17202,96 @@ describe("scanner", () => {
     expect(JSON.stringify(langchainRagRetrievalBrowserAutomationBridgeTool)).not.toContain("retrieved_chunks");
     expect(JSON.stringify(langchainRagRetrievalBrowserAutomationBridgeTool)).not.toContain("framework retrieved context submitted through browser");
     expect(JSON.stringify(langchainRagRetrievalBrowserAutomationBridgeTool)).not.toContain("Submit caller selected retrieved support context");
+    expect(langchainRagRetrievalTaskQueueBridgeTool).toMatchObject({
+      path: "framework-tools/langchain_tools.py",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["call", "read", "remember", "send", "write"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(langchainRagRetrievalTaskQueueBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_agent_framework_source_tool: true,
+      agent_framework_source_tool: true,
+      agent_framework_source_tool_framework: "langchain",
+      agent_framework_source_tool_registration_kind: "python_tool_decorator",
+      agent_framework_source_tool_argument_count: 6,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_content_like_input: true,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      rag_retrieval: true,
+      tainted_rag_retrieval_query: true,
+      task_queue_enqueue: true,
+      tainted_task_payload: true,
+      tainted_task_routing: true,
+      rag_retrieval_task_queue_bridge: true,
+      handler_rag_retrieval: true,
+      handler_tainted_rag_retrieval_query: true,
+      handler_task_queue_enqueue: true,
+      handler_tainted_task_payload: true,
+      handler_tainted_task_routing: true,
+      handler_rag_retrieval_task_queue_bridge: true,
+      handler_secret_env_access: true,
+      handler_signal_count: 7,
+      open_world_schema: false
+    });
+    expect(langchainRagRetrievalTaskQueueBridgeTool?.metadata.authority_classes).toEqual([
+      "content_input",
+      "customer_data_input",
+      "handler_rag_retrieval",
+      "handler_rag_retrieval_task_queue_bridge",
+      "handler_secret_env_access",
+      "handler_tainted_rag_retrieval_query",
+      "handler_tainted_task_payload",
+      "handler_tainted_task_routing",
+      "handler_task_queue_enqueue",
+      "pii_input",
+      "rag_retrieval",
+      "rag_retrieval_task_queue_bridge",
+      "secret_env_access",
+      "tainted_rag_retrieval_query",
+      "tainted_task_payload",
+      "tainted_task_routing",
+      "task_queue_enqueue"
+    ]);
+    expect(langchainRagRetrievalTaskQueueBridgeTool?.metadata.handler_authority_classes).toEqual([
+      "handler_rag_retrieval",
+      "handler_rag_retrieval_task_queue_bridge",
+      "handler_secret_env_access",
+      "handler_tainted_rag_retrieval_query",
+      "handler_tainted_task_payload",
+      "handler_tainted_task_routing",
+      "handler_task_queue_enqueue"
+    ]);
+    expect(langchainRagRetrievalTaskQueueBridgeTool?.metadata.handler_env_key_names).toEqual([
+      "LANGCHAIN_RAG_TASK_QUEUE_TOKEN"
+    ]);
+    expect(langchainRagRetrievalTaskQueueBridgeTool?.metadata.schema_properties).toEqual([
+      "customer_id",
+      "job_goal_text",
+      "retrieval_namespace",
+      "retrieval_query_text",
+      "target_queue_name",
+      "task_route"
+    ]);
+    expect(langchainRagRetrievalTaskQueueBridgeTool?.metadata.required_properties).toEqual([
+      "customer_id",
+      "job_goal_text",
+      "retrieval_namespace",
+      "retrieval_query_text",
+      "target_queue_name",
+      "task_route"
+    ]);
+    expect(JSON.stringify(langchainRagRetrievalTaskQueueBridgeTool)).not.toContain("vector_retriever.search");
+    expect(JSON.stringify(langchainRagRetrievalTaskQueueBridgeTool)).not.toContain("task_queue_client.enqueue");
+    expect(JSON.stringify(langchainRagRetrievalTaskQueueBridgeTool)).not.toContain("retrieved_job_context");
+    expect(JSON.stringify(langchainRagRetrievalTaskQueueBridgeTool)).not.toContain("background_agent_triage");
+    expect(JSON.stringify(langchainRagRetrievalTaskQueueBridgeTool)).not.toContain("framework retrieved context queued for background agent");
+    expect(JSON.stringify(langchainRagRetrievalTaskQueueBridgeTool)).not.toContain("Queue caller selected retrieved support context");
     expect(langchainTaskQueueTool).toMatchObject({
       path: "framework-tools/langchain_tools.py",
       data_classes: ["confidential", "credential", "pii"],

@@ -7889,11 +7889,13 @@ describe("rule engine", () => {
       "langchain_enqueue_authenticated_page_screenshot_job",
       "langchain_enqueue_customer_vault_secret_job",
       "langchain_enqueue_model_selected_background_job",
+      "langchain_enqueue_retrieved_context_agent_job",
       "langchain_enqueue_support_agent_job",
       "langchain_queue_local_file_background_task",
       "source_enqueue_authenticated_page_screenshot_job",
       "source_enqueue_customer_vault_secret_job",
       "source_enqueue_model_selected_background_job",
+      "source_enqueue_retrieved_context_agent_job",
       "source_enqueue_support_agent_job",
       "source_queue_local_file_background_task"
     ]);
@@ -7933,6 +7935,11 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerTaskQueueFindings)).not.toContain("source vault secret queued for background agent");
     expect(JSON.stringify(sourceHandlerTaskQueueFindings)).not.toContain("framework vault secret queued for background agent");
     expect(JSON.stringify(sourceHandlerTaskQueueFindings)).not.toContain("modelSelectedJobPayload");
+    expect(JSON.stringify(sourceHandlerTaskQueueFindings)).not.toContain("retrievedJobContext");
+    expect(JSON.stringify(sourceHandlerTaskQueueFindings)).not.toContain("retrieved_job_context");
+    expect(JSON.stringify(sourceHandlerTaskQueueFindings)).not.toContain("background_agent_triage");
+    expect(JSON.stringify(sourceHandlerTaskQueueFindings)).not.toContain("source retrieved context queued for background agent");
+    expect(JSON.stringify(sourceHandlerTaskQueueFindings)).not.toContain("framework retrieved context queued for background agent");
     expect(JSON.stringify(sourceHandlerTaskQueueFindings)).not.toContain("model_selected_job_payload");
     expect(JSON.stringify(sourceHandlerTaskQueueFindings)).not.toContain("source model selected background job queued");
     expect(JSON.stringify(sourceHandlerTaskQueueFindings)).not.toContain("framework model selected background job queued");
@@ -10926,6 +10933,72 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerRagRetrievalSafetyPolicyBridgeFindings)).not.toContain("source rag context updated safety policy");
     expect(JSON.stringify(sourceHandlerRagRetrievalSafetyPolicyBridgeFindings)).not.toContain("framework rag context updated safety policy");
     expect(JSON.stringify(sourceHandlerRagRetrievalSafetyPolicyBridgeFindings)).not.toContain("Apply caller selected retrieved RAG context");
+    const sourceHandlerRagRetrievalTaskQueueBridgeFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-181");
+    expect(sourceHandlerRagRetrievalTaskQueueBridgeFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
+      "langchain_enqueue_retrieved_context_agent_job",
+      "source_enqueue_retrieved_context_agent_job"
+    ]);
+    expect(sourceHandlerRagRetrievalTaskQueueBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
+    expect(sourceHandlerRagRetrievalTaskQueueBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerRagRetrievalTaskQueueBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
+    expect(sourceHandlerRagRetrievalTaskQueueBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
+    expect(sourceHandlerRagRetrievalTaskQueueBridgeFindings.every((finding) => finding.matched_object.metadata.source_tool_handler_redacted === true)).toBe(true);
+    expect(sourceHandlerRagRetrievalTaskQueueBridgeFindings.every((finding) => finding.matched_object.metadata.handler_secret_env_access === true)).toBe(true);
+    expect(sourceHandlerRagRetrievalTaskQueueBridgeFindings.every((finding) => finding.matched_object.metadata.handler_rag_retrieval === true)).toBe(true);
+    expect(sourceHandlerRagRetrievalTaskQueueBridgeFindings.every((finding) => finding.matched_object.metadata.handler_tainted_rag_retrieval_query === true)).toBe(true);
+    expect(sourceHandlerRagRetrievalTaskQueueBridgeFindings.every((finding) => finding.matched_object.metadata.handler_task_queue_enqueue === true)).toBe(true);
+    expect(sourceHandlerRagRetrievalTaskQueueBridgeFindings.every((finding) => finding.matched_object.metadata.handler_tainted_task_payload === true)).toBe(true);
+    expect(sourceHandlerRagRetrievalTaskQueueBridgeFindings.every((finding) => finding.matched_object.metadata.handler_tainted_task_routing === true)).toBe(true);
+    expect(sourceHandlerRagRetrievalTaskQueueBridgeFindings.every((finding) => finding.matched_object.metadata.handler_rag_retrieval_task_queue_bridge === true)).toBe(true);
+    expect(sourceHandlerRagRetrievalTaskQueueBridgeFindings.every((finding) => finding.matched_object.metadata.rag_retrieval === true)).toBe(true);
+    expect(sourceHandlerRagRetrievalTaskQueueBridgeFindings.every((finding) => finding.matched_object.metadata.tainted_rag_retrieval_query === true)).toBe(true);
+    expect(sourceHandlerRagRetrievalTaskQueueBridgeFindings.every((finding) => finding.matched_object.metadata.task_queue_enqueue === true)).toBe(true);
+    expect(sourceHandlerRagRetrievalTaskQueueBridgeFindings.every((finding) => finding.matched_object.metadata.tainted_task_payload === true)).toBe(true);
+    expect(sourceHandlerRagRetrievalTaskQueueBridgeFindings.every((finding) => finding.matched_object.metadata.tainted_task_routing === true)).toBe(true);
+    expect(sourceHandlerRagRetrievalTaskQueueBridgeFindings.every((finding) => finding.matched_object.metadata.rag_retrieval_task_queue_bridge === true)).toBe(true);
+    expect(sourceHandlerRagRetrievalTaskQueueBridgeFindings.every((finding) => finding.matched_object.metadata.accepts_customer_data_input === true)).toBe(true);
+    for (const authorityClass of [
+      "rag_retrieval",
+      "tainted_rag_retrieval_query",
+      "task_queue_enqueue",
+      "tainted_task_payload",
+      "tainted_task_routing",
+      "rag_retrieval_task_queue_bridge"
+    ]) {
+      expect(sourceHandlerRagRetrievalTaskQueueBridgeFindings.every((finding) =>
+        finding.matched_object.metadata.authority_classes.includes(authorityClass)
+      )).toBe(true);
+    }
+    for (const handlerAuthorityClass of [
+      "handler_rag_retrieval",
+      "handler_tainted_rag_retrieval_query",
+      "handler_task_queue_enqueue",
+      "handler_tainted_task_payload",
+      "handler_tainted_task_routing",
+      "handler_rag_retrieval_task_queue_bridge"
+    ]) {
+      expect(sourceHandlerRagRetrievalTaskQueueBridgeFindings.every((finding) =>
+        finding.matched_object.metadata.handler_authority_classes.includes(handlerAuthorityClass)
+      )).toBe(true);
+    }
+    expect(sourceHandlerRagRetrievalTaskQueueBridgeFindings.every((finding) => finding.matched_object.actions.includes("read"))).toBe(true);
+    expect(sourceHandlerRagRetrievalTaskQueueBridgeFindings.every((finding) => finding.matched_object.actions.includes("send"))).toBe(true);
+    expect(sourceHandlerRagRetrievalTaskQueueBridgeFindings.every((finding) => finding.matched_object.actions.includes("write"))).toBe(true);
+    expect(sourceHandlerRagRetrievalTaskQueueBridgeFindings.every((finding) => finding.matched_object.actions.includes("remember"))).toBe(true);
+    expect(sourceHandlerRagRetrievalTaskQueueBridgeFindings.every((finding) => finding.matched_object.external_reach === true)).toBe(true);
+    expect(sourceHandlerRagRetrievalTaskQueueBridgeFindings.every((finding) => finding.matched_object.secret_exposure === true)).toBe(true);
+    expect(sourceHandlerRagRetrievalTaskQueueBridgeFindings.every((finding) => finding.matched_object.side_effect === true)).toBe(true);
+    expect(sourceHandlerRagRetrievalTaskQueueBridgeFindings.every((finding) => finding.matched_object.reversible === false)).toBe(true);
+    expect(JSON.stringify(sourceHandlerRagRetrievalTaskQueueBridgeFindings)).not.toContain("vectorRetriever.search");
+    expect(JSON.stringify(sourceHandlerRagRetrievalTaskQueueBridgeFindings)).not.toContain("vector_retriever.search");
+    expect(JSON.stringify(sourceHandlerRagRetrievalTaskQueueBridgeFindings)).not.toContain("taskQueueClient.enqueue");
+    expect(JSON.stringify(sourceHandlerRagRetrievalTaskQueueBridgeFindings)).not.toContain("task_queue_client.enqueue");
+    expect(JSON.stringify(sourceHandlerRagRetrievalTaskQueueBridgeFindings)).not.toContain("retrievedJobContext");
+    expect(JSON.stringify(sourceHandlerRagRetrievalTaskQueueBridgeFindings)).not.toContain("retrieved_job_context");
+    expect(JSON.stringify(sourceHandlerRagRetrievalTaskQueueBridgeFindings)).not.toContain("background_agent_triage");
+    expect(JSON.stringify(sourceHandlerRagRetrievalTaskQueueBridgeFindings)).not.toContain("source retrieved context queued for background agent");
+    expect(JSON.stringify(sourceHandlerRagRetrievalTaskQueueBridgeFindings)).not.toContain("framework retrieved context queued for background agent");
+    expect(JSON.stringify(sourceHandlerRagRetrievalTaskQueueBridgeFindings)).not.toContain("Queue caller selected retrieved support context");
     const sourceHandlerLocalFileSafetyPolicyBridgeFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-175");
     expect(sourceHandlerLocalFileSafetyPolicyBridgeFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_apply_local_file_guardrail_override",

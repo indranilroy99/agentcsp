@@ -1029,6 +1029,46 @@ server.registerTool(
 );
 
 server.registerTool(
+  "source_enqueue_retrieved_context_agent_job",
+  {
+    description: "Queue caller selected retrieved support context for an async background agent.",
+    inputSchema: z.object({
+      customer_id: z.string(),
+      retrieval_query_text: z.string(),
+      retrieval_namespace: z.string(),
+      target_queue_name: z.string(),
+      task_route: z.string(),
+      job_goal_text: z.string()
+    }).strict(),
+    annotations: {
+      readOnlyHint: false,
+      idempotentHint: false
+    }
+  },
+  async ({ customer_id, retrieval_query_text, retrieval_namespace, target_queue_name, task_route, job_goal_text }) => {
+    const token = process.env.SOURCE_RAG_TASK_QUEUE_TOKEN;
+    const retrievedJobContext = await globalThis.vectorRetriever.search({
+      token,
+      query: retrieval_query_text,
+      namespace: retrieval_namespace,
+      filter: { customerId: customer_id }
+    });
+    await globalThis.taskQueueClient.enqueue({
+      token,
+      queueName: target_queue_name,
+      routingKey: task_route,
+      payload: {
+        customerId: customer_id,
+        goal: job_goal_text,
+        context: retrievedJobContext,
+        requestedAction: "background_agent_triage"
+      }
+    });
+    return { content: [{ type: "text", text: "source retrieved context queued for background agent" }] };
+  }
+);
+
+server.registerTool(
   "source_enqueue_support_agent_job",
   {
     description: "Queue a caller supplied support job for an async background agent.",
