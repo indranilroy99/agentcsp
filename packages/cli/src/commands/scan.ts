@@ -111,7 +111,7 @@ export async function runScanCommand(targetPath: string, options: Record<string,
       const failedGates = result.manifest.ci_gate_summary.failed_gates.join(", ") || "none";
       console.log(`CI gate: ${result.manifest.ci_gate_summary.status} (failed gates: ${failedGates})`);
       console.log(
-        `CI blockers: severity ${formatSeverityMix(result.manifest.ci_gate_summary.severity_gate_by_severity)}, confidence ${formatConfidenceMix(result.manifest.ci_gate_summary.severity_gate_by_confidence)}, expired suppressions ${formatSeverityMix(result.manifest.ci_gate_summary.expired_suppression_by_severity)}, truncated: ${result.manifest.ci_gate_summary.blocker_ids_truncated}`
+        `CI blockers: severity ${formatSeverityMix(result.manifest.ci_gate_summary.severity_gate_by_severity)}, confidence ${formatConfidenceMix(result.manifest.ci_gate_summary.severity_gate_by_confidence)}, active suppressions ${formatSeverityMix(result.manifest.ci_gate_summary.active_suppressions_by_severity)}, expired suppressions ${formatSeverityMix(result.manifest.ci_gate_summary.expired_suppression_by_severity)}, truncated: ${result.manifest.ci_gate_summary.blocker_ids_truncated}`
       );
     }
     if (result.outputFiles.manifest) console.log(`Manifest: ${result.outputFiles.manifest}`);

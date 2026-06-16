@@ -1713,6 +1713,16 @@
               "minimum": 0,
               "default": 0
             },
+            "active_suppressions_by_severity": {
+              "$ref": "#/definitions/AgentCSP Agent Manifest/properties/triage_summary/properties/active_by_severity",
+              "default": {
+                "critical": 0,
+                "high": 0,
+                "medium": 0,
+                "low": 0,
+                "info": 0
+              }
+            },
             "expired_suppression_findings": {
               "type": "integer",
               "minimum": 0,

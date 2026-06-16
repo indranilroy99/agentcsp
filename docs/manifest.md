@@ -2938,6 +2938,7 @@ The summary includes:
 - finding count that matched the severity/confidence gate
 - severity and confidence mix for findings that matched the severity/confidence gate
 - active suppressions excluded from severity gates
+- severity mix for active suppressions excluded from severity gates
 - expired suppression finding count
 - severity mix for expired suppression findings
 - diagnostic count

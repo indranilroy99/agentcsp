@@ -52,7 +52,8 @@ export function buildCiGateSummary(input: {
       )
     : [];
   const expiredSuppressionFindings = input.findings.filter((finding) => finding.suppression?.status === "expired");
-  const activeSuppressionsExcluded = input.findings.filter((finding) => finding.suppression?.status === "active").length;
+  const activeSuppressionFindings = input.findings.filter((finding) => finding.suppression?.status === "active");
+  const activeSuppressionsExcluded = activeSuppressionFindings.length;
   const failedGates: CiGateName[] = [];
   const diagnosticIds = input.diagnostics.map((diagnostic) => diagnostic.id).sort();
 
@@ -92,6 +93,7 @@ export function buildCiGateSummary(input: {
     severity_gate_by_severity: countBySeverity(severityGateFindings),
     severity_gate_by_confidence: countByConfidence(severityGateFindings),
     active_suppressions_excluded: activeSuppressionsExcluded,
+    active_suppressions_by_severity: countBySeverity(activeSuppressionFindings),
     expired_suppression_findings: expiredSuppressionFindings.length,
     expired_suppression_by_severity: countBySeverity(expiredSuppressionFindings),
     diagnostic_count: input.diagnostics.length,

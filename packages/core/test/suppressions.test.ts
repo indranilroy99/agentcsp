@@ -62,11 +62,19 @@ describe("policy suppressions", () => {
       fail_on: "critical",
       severity_gate_findings: 0,
       active_suppressions_excluded: suppressed.length,
+      active_suppressions_by_severity: {
+        critical: suppressed.length,
+        high: 0,
+        medium: 0,
+        low: 0,
+        info: 0
+      },
       severity_gate_finding_ids: []
     });
     expect(result.shouldFail).toBe(false);
     expect(result.reportMarkdown).toContain("Suppressed Findings");
     expect(result.reportMarkdown).toContain("Suppression status");
+    expect(result.reportMarkdown).toContain("active suppression exclusion");
     expect(result.reportMarkdown).toContain("severity");
     expect(result.reportMarkdown).not.toContain("active-critical-demo-risk");
     expect(result.reportMarkdown).not.toContain("Accepted for fixture regression only.");

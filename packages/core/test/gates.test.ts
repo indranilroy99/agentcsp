@@ -40,6 +40,7 @@ describe("CI gate summary", () => {
       diagnostic_count: ciGateBlockerIdLimit + 2,
       diagnostic_ids_truncated: true,
       expired_suppression_findings: 0,
+      active_suppressions_by_severity: { critical: 0, high: 0, medium: 0, low: 0, info: 0 },
       expired_suppression_by_severity: { critical: 0, high: 0, medium: 0, low: 0, info: 0 },
       expired_suppression_finding_ids_truncated: false
     });
@@ -141,6 +142,7 @@ describe("CI gate summary", () => {
       severity_gate_by_severity: { critical: 2, high: 1, medium: 0, low: 0, info: 0 },
       severity_gate_by_confidence: { very_high: 1, high: 2, medium: 0, low: 0 },
       active_suppressions_excluded: 1,
+      active_suppressions_by_severity: { critical: 1, high: 0, medium: 0, low: 0, info: 0 },
       expired_suppression_findings: 1,
       expired_suppression_by_severity: { critical: 0, high: 1, medium: 0, low: 0, info: 0 },
       failed_gates: ["severity", "expired_suppressions"]

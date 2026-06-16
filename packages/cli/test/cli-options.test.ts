@@ -204,7 +204,7 @@ describe("cli options", () => {
     expect(output).toContain("Attack-path preview: 15 limit, 0 total, truncated: false");
     expect(output).toContain("CI gate: pass (failed gates: none)");
     expect(output).toContain(
-      "CI blockers: severity critical=0, high=0, medium=0, low=0, info=0, confidence very_high=0, high=0, medium=0, low=0, expired suppressions critical=0, high=0, medium=0, low=0, info=0, truncated: false"
+      "CI blockers: severity critical=0, high=0, medium=0, low=0, info=0, confidence very_high=0, high=0, medium=0, low=0, active suppressions critical=0, high=0, medium=0, low=0, info=0, expired suppressions critical=0, high=0, medium=0, low=0, info=0, truncated: false"
     );
 
     spy.mockRestore();

@@ -311,6 +311,7 @@ export const CiGateSummarySchema = z.object({
   severity_gate_by_severity: SeverityCountsSchema.default({ critical: 0, high: 0, medium: 0, low: 0, info: 0 }),
   severity_gate_by_confidence: ConfidenceCountsSchema.default({ very_high: 0, high: 0, medium: 0, low: 0 }),
   active_suppressions_excluded: z.number().int().nonnegative().default(0),
+  active_suppressions_by_severity: SeverityCountsSchema.default({ critical: 0, high: 0, medium: 0, low: 0, info: 0 }),
   expired_suppression_findings: z.number().int().nonnegative().default(0),
   expired_suppression_by_severity: SeverityCountsSchema.default({ critical: 0, high: 0, medium: 0, low: 0, info: 0 }),
   diagnostic_count: z.number().int().nonnegative().default(0),
