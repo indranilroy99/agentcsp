@@ -110,6 +110,9 @@ describe("scanProject", () => {
     expect(result.manifest.triage_summary?.top_active_risks_total).toBe(result.manifest.triage_summary?.active_findings);
     expect(result.manifest.triage_summary?.top_active_risks_truncated).toBe(true);
     expect(result.manifest.triage_summary?.top_active_risks[0]?.risk_score).toBeGreaterThan(0);
+    expect(result.manifest.triage_summary?.top_active_risks[0]?.risk_drivers.length).toBeGreaterThan(0);
+    expect(result.manifest.triage_summary?.top_active_risks[0]?.impact).toBeTruthy();
+    expect(result.manifest.triage_summary?.top_active_risks[0]?.control_objective).toBeTruthy();
     expect(result.manifest.action_plan?.title).toBe("AgentCSP Action Plan");
     expect(result.manifest.action_plan?.total_actions).toBeGreaterThan(0);
     expect(result.manifest.action_plan?.total_active_findings_considered).toBe(result.findings.length);
@@ -388,6 +391,7 @@ describe("scanProject", () => {
     expect(result.reportMarkdown).toContain("- Top active limit: 10");
     expect(result.reportMarkdown).toContain("- Top active rules truncated: `true`");
     expect(result.reportMarkdown).toContain("- Top active risks truncated: `true`");
+    expect(result.reportMarkdown).toContain("| Severity | Confidence | Risk | Drivers | Impact |");
     expect(result.reportMarkdown).toContain("## Action Plan");
     expect(result.reportMarkdown).toContain("## Rule Pack Coverage");
     expect(result.reportMarkdown).toContain("### Rule Categories");
@@ -433,7 +437,7 @@ describe("scanProject", () => {
     expect(result.reportMarkdown).toContain("untrusted to privileged");
     expect(result.reportMarkdown).toContain("### Top Active Risks");
     expect(result.reportMarkdown).toContain(
-      "| Severity | Confidence | Risk | Trust | Data | Actions | External | Secret | Untrusted->privileged | Boundary | Rule | Object | Path | Recommended control |"
+      "| Severity | Confidence | Risk | Drivers | Impact | Trust | Data | Actions | External | Secret | Untrusted->privileged | Boundary | Rule | Object | Path | Recommended control |"
     );
     expect(result.reportMarkdown).toContain("- Attack path limit: 15");
     expect(result.reportMarkdown).toContain("- Attack paths total:");

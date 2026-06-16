@@ -2082,6 +2082,11 @@ function assertVulnerableOperatorMetadata(output) {
   assertEqual(manifest.triage_summary?.top_active_risks_truncated, true, "vulnerable triage top risks truncation");
   const firstTopRisk = manifest.triage_summary?.top_active_risks?.[0];
   assert(firstTopRisk?.trust_level, "vulnerable triage top risk trust level missing");
+  assert(firstTopRisk?.primary_driver, "vulnerable triage top risk primary driver missing");
+  assert(Array.isArray(firstTopRisk?.risk_drivers), "vulnerable triage top risk drivers missing");
+  assert(firstTopRisk.risk_drivers.length > 0, "vulnerable triage top risk drivers empty");
+  assert(firstTopRisk?.impact, "vulnerable triage top risk impact missing");
+  assert(firstTopRisk?.control_objective, "vulnerable triage top risk control objective missing");
   assert(Array.isArray(firstTopRisk?.data_classes), "vulnerable triage top risk data classes missing");
   assert(Array.isArray(firstTopRisk?.actions), "vulnerable triage top risk actions missing");
   assert(typeof firstTopRisk?.external_reach === "boolean", "vulnerable triage top risk external reach missing");

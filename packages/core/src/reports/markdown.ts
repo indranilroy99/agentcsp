@@ -629,13 +629,14 @@ function renderTopRiskTable(
 ): string {
   if (risks.length === 0) return "No active findings were generated.";
   return [
-    "| Severity | Confidence | Risk | Trust | Data | Actions | External | Secret | Untrusted->privileged | Boundary | Rule | Object | Path | Recommended control |",
-    "| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |",
+    "| Severity | Confidence | Risk | Drivers | Impact | Trust | Data | Actions | External | Secret | Untrusted->privileged | Boundary | Rule | Object | Path | Recommended control |",
+    "| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |",
     ...risks.map((risk) => {
       const object = `${risk.object_type}:${risk.object_name}`;
       const dataClasses = risk.data_classes.length > 0 ? risk.data_classes.join(", ") : "none";
       const actions = risk.actions.length > 0 ? risk.actions.join(", ") : "none";
-      return `| ${risk.severity} | ${risk.confidence} | ${risk.risk_score} | ${risk.trust_level} | ${escapeTable(dataClasses)} | ${escapeTable(actions)} | \`${risk.external_reach}\` | \`${risk.secret_exposure}\` | \`${risk.untrusted_to_privileged}\` | \`${risk.trust_boundary_crossed}\` | ${risk.rule_id} | \`${escapeTable(object)}\` | \`${escapeTable(risk.path)}\` | ${risk.recommended_control.replaceAll("_", " ")} |`;
+      const drivers = risk.risk_drivers.length > 0 ? risk.risk_drivers.map((driver) => driver.replaceAll("_", " ")).join(", ") : "none";
+      return `| ${risk.severity} | ${risk.confidence} | ${risk.risk_score} | ${escapeTable(drivers)} | ${escapeTable(risk.impact)} | ${risk.trust_level} | ${escapeTable(dataClasses)} | ${escapeTable(actions)} | \`${risk.external_reach}\` | \`${risk.secret_exposure}\` | \`${risk.untrusted_to_privileged}\` | \`${risk.trust_boundary_crossed}\` | ${risk.rule_id} | \`${escapeTable(object)}\` | \`${escapeTable(risk.path)}\` | ${risk.recommended_control.replaceAll("_", " ")} |`;
     })
   ].join("\n");
 }

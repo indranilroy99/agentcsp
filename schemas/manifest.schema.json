@@ -1333,6 +1333,22 @@
                   "recommended_control": {
                     "$ref": "#/definitions/AgentCSP Agent Manifest/properties/attack_paths/items/properties/recommended_control"
                   },
+                  "primary_driver": {
+                    "$ref": "#/definitions/AgentCSP Agent Manifest/properties/findings/items/properties/risk_summary/properties/primary_driver"
+                  },
+                  "risk_drivers": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/definitions/AgentCSP Agent Manifest/properties/findings/items/properties/risk_summary/properties/primary_driver"
+                    },
+                    "default": []
+                  },
+                  "impact": {
+                    "type": "string"
+                  },
+                  "control_objective": {
+                    "type": "string"
+                  },
                   "trust_level": {
                     "$ref": "#/definitions/AgentCSP Agent Manifest/properties/agents/items/properties/trust_level"
                   },
@@ -1378,6 +1394,8 @@
                   "object_name",
                   "path",
                   "recommended_control",
+                  "impact",
+                  "control_objective",
                   "trust_level"
                 ],
                 "additionalProperties": false

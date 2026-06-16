@@ -52,6 +52,24 @@ describe("triage summary", () => {
           untrusted_to_privileged: true,
           score: 95,
           rationale: []
+        },
+        risk_summary: {
+          primary_driver: "untrusted_to_privileged",
+          drivers: [
+            "untrusted_to_privileged",
+            "secret_exposure",
+            "external_reach",
+            "irreversible_action",
+            "side_effect",
+            "sensitive_data",
+            "credential_data",
+            "pii_data",
+            "execute_action",
+            "write_action"
+          ],
+          impact: "Untrusted context can influence privileged agent authority.",
+          control_objective: "require explicit human or policy approval before the action proceeds",
+          analyst_summary: ["Synthetic critical triage fixture."]
         }
       } as Finding
     ]);
@@ -123,6 +141,21 @@ describe("triage summary", () => {
       trust_level: "untrusted",
       data_classes: ["credential", "pii"],
       actions: ["execute", "send"],
+      primary_driver: "untrusted_to_privileged",
+      risk_drivers: [
+        "untrusted_to_privileged",
+        "secret_exposure",
+        "external_reach",
+        "irreversible_action",
+        "side_effect",
+        "sensitive_data",
+        "credential_data",
+        "pii_data",
+        "execute_action",
+        "write_action"
+      ],
+      impact: "Untrusted context can influence privileged agent authority.",
+      control_objective: "require explicit human or policy approval before the action proceeds",
       external_reach: true,
       secret_exposure: true,
       untrusted_to_privileged: true,
@@ -169,6 +202,13 @@ function finding(id: string, ruleId: string): Finding {
       untrusted_to_privileged: false,
       score: 80,
       rationale: []
+    },
+    risk_summary: {
+      primary_driver: "side_effect",
+      drivers: ["side_effect"],
+      impact: "Rule matched an agent security condition that should be reviewed.",
+      control_objective: "require explicit human or policy approval before the action proceeds",
+      analyst_summary: ["Synthetic triage fixture."]
     }
   } as Finding;
 }
