@@ -276,7 +276,7 @@ async function smokeTestInstalledCli(coreTarball, cliTarball, installRoot) {
       "--out",
       outputPath,
       "--format",
-      "json,md",
+      "json,md,sarif",
       "--quiet"
     ],
     {
@@ -288,10 +288,12 @@ async function smokeTestInstalledCli(coreTarball, cliTarball, installRoot) {
   await assertFile(path.join(outputPath, "agent-manifest.json"));
   await assertFile(path.join(outputPath, "findings.json"));
   await assertFile(path.join(outputPath, "report.md"));
+  await assertFile(path.join(outputPath, "agentcsp.sarif"));
 
   const manifest = JSON.parse(await fs.readFile(path.join(outputPath, "agent-manifest.json"), "utf8"));
   const findings = JSON.parse(await fs.readFile(path.join(outputPath, "findings.json"), "utf8"));
   const report = await fs.readFile(path.join(outputPath, "report.md"), "utf8");
+  const sarif = JSON.parse(await fs.readFile(path.join(outputPath, "agentcsp.sarif"), "utf8"));
   if (!Array.isArray(findings)) {
     throw new Error("Installed CLI smoke test produced a non-array findings.json");
   }
@@ -305,10 +307,11 @@ async function smokeTestInstalledCli(coreTarball, cliTarball, installRoot) {
   if (typeof manifest?.metadata?.root_path === "string" && report.includes(manifest.metadata.root_path)) {
     throw new Error("Installed CLI smoke test report leaked the absolute scan root");
   }
+  assertInstalledSafeSarif(sarif, manifest);
 }
 
 function assertInstalledSafeOperatorMetadata(manifest, report) {
-  assertArrayEqual(manifest.metadata?.config?.formats ?? [], ["json", "md"], "installed CLI safe manifest formats");
+  assertArrayEqual(manifest.metadata?.config?.formats ?? [], ["json", "md", "sarif"], "installed CLI safe manifest formats");
   assertEqual(manifest.metadata?.config?.include_hidden, true, "installed CLI safe hidden scan setting");
   assertEqual(manifest.metadata?.config?.include_logs, false, "installed CLI safe log scan setting");
   assertEqual(manifest.metadata?.config?.max_file_size_bytes, 1024 * 1024, "installed CLI safe max file size");
@@ -368,6 +371,30 @@ function assertInstalledSafeOperatorMetadata(manifest, report) {
   assert(report.includes("- Scan health: `complete`"), "Installed CLI report missing scan health");
   assert(report.includes("- Top active risks truncated: `false`"), "Installed CLI report missing triage truncation");
   assert(report.includes("- Attack path limit: 15"), "Installed CLI report missing attack path limit");
+}
+
+function assertInstalledSafeSarif(sarif, manifest) {
+  assertEqual(sarif.version, "2.1.0", "installed CLI SARIF version");
+  const run = sarif.runs?.[0];
+  assert(run, "installed CLI SARIF run missing");
+  assertEqual(run.tool?.driver?.name, "AgentCSP", "installed CLI SARIF driver");
+  assertEqual(run.results?.length, 0, "installed CLI SARIF safe result count");
+  assertEqual(run.automationDetails?.id, "agentcsp-scan", "installed CLI SARIF automation id");
+  assertArrayEqual(
+    run.properties?.agentcsp_scan_config?.formats ?? [],
+    ["json", "md", "sarif"],
+    "installed CLI SARIF scan config formats"
+  );
+  assertEqual(
+    run.properties?.agentcsp_ci_gate_summary?.scan_health,
+    manifest.scan_coverage?.scan_health,
+    "installed CLI SARIF CI scan health"
+  );
+  assertEqual(
+    run.properties?.agentcsp_static_blast_radius?.attack_path_limit,
+    15,
+    "installed CLI SARIF blast-radius metadata"
+  );
 }
 
 async function assertExecutableCliEntrypoint(installedCliEntrypoint, installedCliPath) {
