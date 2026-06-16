@@ -129,7 +129,7 @@ The generated SARIF file is:
 .agentcsp/agentcsp.sarif
 ```
 
-SARIF run properties include `agentcsp_triage_summary`, `agentcsp_action_plan`, `agentcsp_ci_gate_summary`, `agentcsp_baseline_comparison`, `agentcsp_scan_coverage`, `agentcsp_diagnostics`, and `agentcsp_static_blast_radius` so CI systems can consume scan-level context without parsing Markdown. Rules and results include precision, tags, rank, and GitHub code-scanning compatible `security-severity` metadata. When a baseline is provided, SARIF results include `baselineState` values for current findings.
+SARIF run properties include `agentcsp_scan_config`, `agentcsp_triage_summary`, `agentcsp_action_plan`, `agentcsp_ci_gate_summary`, `agentcsp_baseline_comparison`, `agentcsp_scan_coverage`, `agentcsp_diagnostics`, and `agentcsp_static_blast_radius` so CI systems can consume scan-level context without parsing Markdown. Rules and results include precision, tags, rank, and GitHub code-scanning compatible `security-severity` metadata. When a baseline is provided, SARIF results include `baselineState` values for current findings.
 
 GitHub code-scanning workflow examples are available in `examples/ci/`. See `docs/ci.md` for advisory and gated rollout patterns.
 

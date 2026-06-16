@@ -118,6 +118,7 @@ export function renderSarifReport(manifest: AgentManifest): Record<string, unkno
           }
         })),
         properties: {
+          agentcsp_scan_config: manifest.metadata.config,
           agentcsp_triage_summary: manifest.triage_summary,
           agentcsp_action_plan: manifest.action_plan,
           agentcsp_ci_gate_summary: manifest.ci_gate_summary,

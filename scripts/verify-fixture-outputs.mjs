@@ -1929,6 +1929,25 @@ if (vulnerable.sarif) {
   assert(firstResult.properties.precision, "SARIF result precision missing");
   assert(firstResult.properties.rule_tags?.length > 0, "SARIF result tags missing");
   assert(firstResult.rank > 0, "SARIF result rank missing");
+  assert(run.properties?.agentcsp_scan_config, "SARIF scan config missing");
+  assertArrayEqual(
+    run.properties.agentcsp_scan_config.formats ?? [],
+    ["json", "md", "sarif"],
+    "SARIF scan config output formats"
+  );
+  assertEqual(run.properties.agentcsp_scan_config.include_hidden, true, "SARIF scan config hidden setting");
+  assertEqual(run.properties.agentcsp_scan_config.include_logs, true, "SARIF scan config log setting");
+  assertEqual(run.properties.agentcsp_scan_config.max_files, 5000, "SARIF scan config max files");
+  assertEqual(
+    run.properties.agentcsp_scan_config.output_path_scope,
+    "inside_scan_root",
+    "SARIF scan config output scope"
+  );
+  assertEqual(
+    run.properties.agentcsp_scan_config.secret_values_collected,
+    false,
+    "SARIF scan config secret collection flag"
+  );
   assert(run.properties?.agentcsp_triage_summary, "SARIF triage summary missing");
   assertEqual(
     run.properties.agentcsp_triage_summary.top_active_risks_truncated,

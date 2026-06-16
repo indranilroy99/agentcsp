@@ -122,6 +122,15 @@ describe("scanProject", () => {
           properties?: { "security-severity"?: string; precision?: string; rule_tags?: string[] };
         }>;
         properties?: {
+          agentcsp_scan_config?: {
+            formats?: string[];
+            include_hidden?: boolean;
+            include_logs?: boolean;
+            max_files?: number;
+            output_path_scope?: string;
+            fail_on_new?: boolean;
+            secret_values_collected?: boolean;
+          };
           agentcsp_triage_summary?: { total_findings?: number; top_active_risks_truncated?: boolean };
           agentcsp_action_plan?: { total_actions?: number; actions?: Array<{ priority?: number; rule_id?: string }> };
           agentcsp_ci_gate_summary?: { status?: string; should_fail?: boolean; blocker_id_limit?: number };
@@ -147,6 +156,15 @@ describe("scanProject", () => {
     expect(firstResult?.properties?.["security-severity"]).toMatch(/^\d+\.\d$/u);
     expect(firstResult?.properties?.precision).toBeDefined();
     expect(firstResult?.properties?.rule_tags?.length).toBeGreaterThan(0);
+    expect(sarif.runs[0]?.properties?.agentcsp_scan_config).toMatchObject({
+      formats: ["json", "md", "sarif"],
+      include_hidden: true,
+      include_logs: false,
+      max_files: 5000,
+      output_path_scope: "outside_scan_root",
+      fail_on_new: false,
+      secret_values_collected: false
+    });
     expect(sarif.runs[0]?.properties?.agentcsp_triage_summary?.total_findings).toBe(result.findings.length);
     expect(sarif.runs[0]?.properties?.agentcsp_triage_summary?.top_active_risks_truncated).toBe(true);
     expect(sarif.runs[0]?.properties?.agentcsp_action_plan?.total_actions).toBe(
@@ -175,6 +193,10 @@ describe("scanProject", () => {
     expect(sarif.runs[0]?.properties?.agentcsp_static_blast_radius?.attack_path_limit).toBe(15);
     expect(JSON.stringify(sarif.runs[0]?.properties?.agentcsp_triage_summary)).not.toContain("replace-me");
     expect(result.reportMarkdown).toContain("## Triage Summary");
+    expect(result.reportMarkdown).toContain("- Output formats: `json`, `md`, `sarif`");
+    expect(result.reportMarkdown).toContain("- Output path scope: `outside_scan_root`");
+    expect(result.reportMarkdown).toContain("- Baseline supplied: `false`");
+    expect(result.reportMarkdown).toContain("- Scan health gate: `none`");
     expect(result.reportMarkdown).toContain("- Top active limit: 10");
     expect(result.reportMarkdown).toContain("- Top active rules truncated: `true`");
     expect(result.reportMarkdown).toContain("- Top active risks truncated: `true`");
