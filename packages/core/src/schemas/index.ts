@@ -256,7 +256,12 @@ export const TriageSummarySchema = z.object({
   active_by_surface_type: z.array(TriageSurfaceCountSchema).default([]),
   active_by_category: z.array(TriageCategoryCountSchema).default([]),
   active_by_recommended_control: z.array(TriageControlCountSchema).default([]),
+  top_active_limit: z.number().int().positive().default(10),
+  top_active_rules_total: z.number().int().nonnegative().default(0),
+  top_active_rules_truncated: z.boolean().default(false),
   top_active_rules: z.array(TriageRuleSummarySchema).default([]),
+  top_active_risks_total: z.number().int().nonnegative().default(0),
+  top_active_risks_truncated: z.boolean().default(false),
   top_active_risks: z.array(TriageFindingSummarySchema).default([])
 });
 

@@ -950,6 +950,20 @@
               },
               "default": []
             },
+            "top_active_limit": {
+              "type": "integer",
+              "exclusiveMinimum": 0,
+              "default": 10
+            },
+            "top_active_rules_total": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            },
+            "top_active_rules_truncated": {
+              "type": "boolean",
+              "default": false
+            },
             "top_active_rules": {
               "type": "array",
               "items": {
@@ -986,6 +1000,15 @@
                 "additionalProperties": false
               },
               "default": []
+            },
+            "top_active_risks_total": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            },
+            "top_active_risks_truncated": {
+              "type": "boolean",
+              "default": false
             },
             "top_active_risks": {
               "type": "array",

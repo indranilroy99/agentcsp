@@ -40,6 +40,11 @@ describe("scanProject", () => {
     expect(result.manifest.triage_summary?.active_by_confidence.very_high).toBeGreaterThan(0);
     expect(result.manifest.triage_summary?.active_by_surface_type.some((item) => item.surface_type === "tool")).toBe(true);
     expect(result.manifest.triage_summary?.active_by_recommended_control.length).toBeGreaterThan(0);
+    expect(result.manifest.triage_summary?.top_active_limit).toBe(10);
+    expect(result.manifest.triage_summary?.top_active_rules_total).toBeGreaterThan(10);
+    expect(result.manifest.triage_summary?.top_active_rules_truncated).toBe(true);
+    expect(result.manifest.triage_summary?.top_active_risks_total).toBe(result.manifest.triage_summary?.active_findings);
+    expect(result.manifest.triage_summary?.top_active_risks_truncated).toBe(true);
     expect(result.manifest.triage_summary?.top_active_risks[0]?.risk_score).toBeGreaterThan(0);
     expect(result.manifest.action_plan?.title).toBe("AgentCSP Action Plan");
     expect(result.manifest.action_plan?.total_actions).toBeGreaterThan(0);
@@ -89,7 +94,7 @@ describe("scanProject", () => {
           properties?: { "security-severity"?: string; precision?: string; rule_tags?: string[] };
         }>;
         properties?: {
-          agentcsp_triage_summary?: { total_findings?: number };
+          agentcsp_triage_summary?: { total_findings?: number; top_active_risks_truncated?: boolean };
           agentcsp_action_plan?: { total_actions?: number; actions?: Array<{ priority?: number; rule_id?: string }> };
           agentcsp_ci_gate_summary?: { status?: string; should_fail?: boolean; blocker_id_limit?: number };
           agentcsp_scan_coverage?: { files_indexed?: number };
@@ -111,6 +116,7 @@ describe("scanProject", () => {
     expect(firstResult?.properties?.precision).toBeDefined();
     expect(firstResult?.properties?.rule_tags?.length).toBeGreaterThan(0);
     expect(sarif.runs[0]?.properties?.agentcsp_triage_summary?.total_findings).toBe(result.findings.length);
+    expect(sarif.runs[0]?.properties?.agentcsp_triage_summary?.top_active_risks_truncated).toBe(true);
     expect(sarif.runs[0]?.properties?.agentcsp_action_plan?.total_actions).toBe(
       result.manifest.action_plan?.total_actions
     );
@@ -135,6 +141,9 @@ describe("scanProject", () => {
     );
     expect(JSON.stringify(sarif.runs[0]?.properties?.agentcsp_triage_summary)).not.toContain("replace-me");
     expect(result.reportMarkdown).toContain("## Triage Summary");
+    expect(result.reportMarkdown).toContain("- Top active limit: 10");
+    expect(result.reportMarkdown).toContain("- Top active rules truncated: `true`");
+    expect(result.reportMarkdown).toContain("- Top active risks truncated: `true`");
     expect(result.reportMarkdown).toContain("## Action Plan");
     expect(result.reportMarkdown).toContain("- Truncated: `true`");
     expect(result.reportMarkdown).toContain("- Omitted actions:");
@@ -200,6 +209,11 @@ describe("scanProject", () => {
     expect(result.manifest.triage_summary?.active_findings).toBe(0);
     expect(result.manifest.triage_summary?.highest_active_severity).toBe("info");
     expect(result.manifest.triage_summary?.max_active_risk_score).toBe(0);
+    expect(result.manifest.triage_summary?.top_active_limit).toBe(10);
+    expect(result.manifest.triage_summary?.top_active_rules_total).toBe(0);
+    expect(result.manifest.triage_summary?.top_active_rules_truncated).toBe(false);
+    expect(result.manifest.triage_summary?.top_active_risks_total).toBe(0);
+    expect(result.manifest.triage_summary?.top_active_risks_truncated).toBe(false);
     expect(result.manifest.triage_summary?.top_active_risks).toHaveLength(0);
     expect(result.manifest.action_plan).toMatchObject({
       total_actions: 0,

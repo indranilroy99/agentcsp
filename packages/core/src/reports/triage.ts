@@ -13,6 +13,7 @@ import { highestSeverity } from "../risk/score.js";
 const severityOrder = ["critical", "high", "medium", "low", "info"] as const satisfies readonly Severity[];
 const confidenceOrder = ["very_high", "high", "medium", "low"] as const satisfies readonly Confidence[];
 const controlOrder = ["deny", "require_approval", "quarantine", "redact", "warn", "allow"] as const satisfies readonly Control[];
+export const triageTopListLimit = 10;
 
 const severityRank: Record<Severity, number> = {
   critical: 4,
@@ -33,6 +34,20 @@ export function buildTriageSummary(findings: Finding[]): TriageSummary {
   const activeFindings = findings.filter((finding) => finding.suppression?.status !== "active");
   const suppressedFindings = findings.filter((finding) => finding.suppression?.status === "active");
   const sortedActiveFindings = sortByTriagePriority(activeFindings);
+  const topActiveRules = summarizeTopRules(sortedActiveFindings);
+  const totalActiveRules = countUniqueRules(activeFindings);
+  const topActiveRisks = sortedActiveFindings.slice(0, triageTopListLimit).map((finding) => ({
+    finding_id: finding.id,
+    rule_id: finding.rule_id,
+    severity: finding.severity,
+    confidence: finding.confidence,
+    risk_score: finding.risk.score,
+    object_id: finding.matched_object.id,
+    object_type: finding.matched_object.type,
+    object_name: finding.matched_object.name,
+    path: finding.file_path,
+    recommended_control: finding.recommended_control
+  }));
 
   return {
     title: "AgentCSP Triage Summary",
@@ -47,19 +62,13 @@ export function buildTriageSummary(findings: Finding[]): TriageSummary {
     active_by_surface_type: countBySurfaceType(activeFindings),
     active_by_category: countByCategory(activeFindings),
     active_by_recommended_control: countByRecommendedControl(activeFindings),
-    top_active_rules: summarizeTopRules(sortedActiveFindings),
-    top_active_risks: sortedActiveFindings.slice(0, 10).map((finding) => ({
-      finding_id: finding.id,
-      rule_id: finding.rule_id,
-      severity: finding.severity,
-      confidence: finding.confidence,
-      risk_score: finding.risk.score,
-      object_id: finding.matched_object.id,
-      object_type: finding.matched_object.type,
-      object_name: finding.matched_object.name,
-      path: finding.file_path,
-      recommended_control: finding.recommended_control
-    }))
+    top_active_limit: triageTopListLimit,
+    top_active_rules_total: totalActiveRules,
+    top_active_rules_truncated: totalActiveRules > topActiveRules.length,
+    top_active_rules: topActiveRules,
+    top_active_risks_total: activeFindings.length,
+    top_active_risks_truncated: activeFindings.length > topActiveRisks.length,
+    top_active_risks: topActiveRisks
   };
 }
 
@@ -117,7 +126,7 @@ function summarizeTopRules(findings: Finding[]): TriageSummary["top_active_rules
 
   return [...rules.values()]
     .sort((a, b) => compareFindings(a.representative, b.representative) || b.count - a.count)
-    .slice(0, 10)
+    .slice(0, triageTopListLimit)
     .map(({ count, representative }) => ({
       rule_id: representative.rule_id,
       name: representative.name,
@@ -126,6 +135,10 @@ function summarizeTopRules(findings: Finding[]): TriageSummary["top_active_rules
       confidence: representative.confidence,
       count
     }));
+}
+
+function countUniqueRules(findings: Finding[]): number {
+  return new Set(findings.map((finding) => finding.rule_id)).size;
 }
 
 function sortByTriagePriority(findings: Finding[]): Finding[] {
