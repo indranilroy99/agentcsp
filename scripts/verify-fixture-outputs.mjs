@@ -1523,6 +1523,12 @@ const safe = await readScanOutput(safeOutput, { sarifRequired: false });
 
 assertEqual(vulnerable.manifest.findings.length, 1433, "vulnerable manifest finding count");
 assertEqual(vulnerable.findings.length, 1433, "vulnerable findings.json count");
+assert(vulnerable.findings[0]?.risk_summary?.impact, "vulnerable finding risk summary impact missing");
+assert(vulnerable.findings[0]?.risk_summary?.control_objective, "vulnerable finding risk summary control objective missing");
+assert(
+  vulnerable.findings[0]?.risk_summary?.analyst_summary?.length > 0,
+  "vulnerable finding analyst summary missing"
+);
 assertEqual(vulnerable.manifest.attack_paths.length, 15, "vulnerable attack path count");
 assertEqual(vulnerable.manifest.static_blast_radius?.critical_attack_paths, 15, "vulnerable critical attack path count");
 assertEqual(vulnerable.manifest.diagnostics.length, 0, "vulnerable diagnostics count");
@@ -1930,6 +1936,13 @@ if (vulnerable.sarif) {
   assert(firstResult?.properties?.["security-severity"], "SARIF result security-severity missing");
   assert(firstResult.properties.precision, "SARIF result precision missing");
   assert(firstResult.properties.rule_tags?.length > 0, "SARIF result tags missing");
+  assert(firstResult.properties.risk_summary?.impact, "SARIF result risk summary impact missing");
+  assert(firstResult.properties.risk_summary?.control_objective, "SARIF result control objective missing");
+  assert(
+    firstResult.properties.risk_summary?.analyst_summary?.length > 0,
+    "SARIF result analyst summary missing"
+  );
+  assert(firstResult.message?.text?.includes("Recommended control:"), "SARIF result message missing control");
   assert(firstResult.rank > 0, "SARIF result rank missing");
   assert(firstResult.partialFingerprints?.agentcspFindingId, "SARIF finding fingerprint missing");
   assert(firstResult.partialFingerprints?.agentcspObjectId, "SARIF object fingerprint missing");

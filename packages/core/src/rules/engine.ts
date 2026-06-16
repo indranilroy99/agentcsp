@@ -3,12 +3,16 @@ import path from "node:path";
 import YAML from "yaml";
 import {
   RuleSchema,
+  type ActionType,
   type Confidence,
+  type DataClass,
   type Finding,
+  type FindingRiskSummary,
   type RiskFactors,
   type Rule,
   type ScanDiagnostic,
-  type SurfaceObject
+  type SurfaceObject,
+  type TriageRiskDriver
 } from "../schemas/index.js";
 import { stableId } from "../utils/ids.js";
 import { relativePath } from "../utils/paths.js";
@@ -56,6 +60,7 @@ export function runRules(surfaces: DetectedSurfaces, rules: Rule[]): Finding[] {
         const risk = scoreObjectRisk(object, rule);
         const severity = severityFromScore(risk.score, rule.severity);
         const confidence = confidenceForMatch(object, rule, risk);
+        const riskSummary = summarizeFindingRisk(object, risk, rule.recommendation.control);
         findings.push({
           id: stableId("finding", [rule.id, object.id]),
           rule_id: rule.id,
@@ -71,6 +76,7 @@ export function runRules(surfaces: DetectedSurfaces, rules: Rule[]): Finding[] {
           data_classes: object.data_classes,
           recommended_control: rule.recommendation.control,
           risk,
+          risk_summary: riskSummary,
           maps_to: rule.maps_to,
           evidence: object.evidence
         });
@@ -78,6 +84,122 @@ export function runRules(surfaces: DetectedSurfaces, rules: Rule[]): Finding[] {
     }
   }
   return findings.sort((a, b) => a.id.localeCompare(b.id));
+}
+
+const riskDriverOrder: TriageRiskDriver[] = [
+  "untrusted_to_privileged",
+  "secret_exposure",
+  "credential_data",
+  "pii_data",
+  "sensitive_data",
+  "external_reach",
+  "execute_action",
+  "write_action",
+  "irreversible_action",
+  "side_effect"
+];
+
+function summarizeFindingRisk(
+  object: SurfaceObject,
+  risk: RiskFactors,
+  recommendedControl: Rule["recommendation"]["control"]
+): FindingRiskSummary {
+  const dataClasses = new Set<DataClass>([...object.data_classes, ...risk.data_classes]);
+  const actions = new Set<ActionType>([...object.actions, ...risk.actions]);
+  const drivers = riskDriverOrder.filter((driver) => {
+    switch (driver) {
+      case "untrusted_to_privileged":
+        return object.untrusted_to_privileged || risk.untrusted_to_privileged;
+      case "secret_exposure":
+        return object.secret_exposure || risk.secret_exposure;
+      case "credential_data":
+        return dataClasses.has("credential");
+      case "pii_data":
+        return dataClasses.has("pii");
+      case "sensitive_data":
+        return sensitiveDataClasses.some((dataClass) => dataClasses.has(dataClass));
+      case "external_reach":
+        return object.external_reach || risk.external_reach;
+      case "execute_action":
+        return actions.has("execute");
+      case "write_action":
+        return writeActions.some((action) => actions.has(action));
+      case "irreversible_action":
+        return object.reversible === false || risk.reversible === false;
+      case "side_effect":
+        return object.side_effect || risk.side_effect;
+      default:
+        return false;
+    }
+  });
+
+  const summary = [
+    `Matched ${object.type} surface has ${object.trust_level} trust and risk score ${risk.score}.`,
+    summarizeDataAndAuthority(dataClasses, actions),
+    summarizeBoundary(object, risk),
+    `Control objective: ${controlObjective(recommendedControl)}.`
+  ].filter((item) => item.length > 0);
+
+  return {
+    primary_driver: drivers[0],
+    drivers,
+    impact: impactForDrivers(drivers),
+    control_objective: controlObjective(recommendedControl),
+    analyst_summary: [...new Set(summary)].slice(0, 4)
+  };
+}
+
+const sensitiveDataClasses: DataClass[] = ["confidential", "secret", "credential", "pii"];
+const writeActions: ActionType[] = ["approve", "delete", "publish", "send", "write"];
+
+function summarizeDataAndAuthority(dataClasses: Set<DataClass>, actions: Set<ActionType>): string {
+  const data = [...dataClasses].filter((item) => item !== "unknown").sort((a, b) => a.localeCompare(b));
+  const authority = [...actions].sort((a, b) => a.localeCompare(b));
+  if (data.length > 0 && authority.length > 0) {
+    return `Surface combines ${data.join(", ")} data with ${authority.join(", ")} authority.`;
+  }
+  if (data.length > 0) return `Surface handles ${data.join(", ")} data.`;
+  if (authority.length > 0) return `Surface has ${authority.join(", ")} authority.`;
+  return "Surface matched rule conditions but exposes no additional normalized data or action class.";
+}
+
+function summarizeBoundary(object: SurfaceObject, risk: RiskFactors): string {
+  if (object.untrusted_to_privileged || risk.untrusted_to_privileged) {
+    return "Untrusted or lower-trust context can influence a more privileged capability.";
+  }
+  if (object.external_reach || risk.external_reach) {
+    return "Capability can reach an external boundary.";
+  }
+  if (object.secret_exposure || risk.secret_exposure) {
+    return "Secret or credential exposure is represented in normalized metadata.";
+  }
+  return "";
+}
+
+function impactForDrivers(drivers: TriageRiskDriver[]): string {
+  if (drivers.includes("untrusted_to_privileged")) return "Untrusted context can influence privileged agent authority.";
+  if (drivers.includes("secret_exposure") || drivers.includes("credential_data")) {
+    return "Secrets or credentials may be exposed, materialized, or used across an unsafe boundary.";
+  }
+  if (drivers.includes("pii_data") || drivers.includes("sensitive_data")) {
+    return "Sensitive data may move through an agent-controlled capability that needs review.";
+  }
+  if (drivers.includes("external_reach")) return "Agent-controlled behavior can cross an external system boundary.";
+  if (drivers.includes("execute_action")) return "Agent-controlled behavior can execute code or commands.";
+  if (drivers.includes("write_action")) return "Agent-controlled behavior can mutate state or publish externally.";
+  return "Rule matched an agent security condition that should be reviewed.";
+}
+
+function controlObjective(control: Rule["recommendation"]["control"]): string {
+  const controls: Record<Rule["recommendation"]["control"], string> = {
+    allow: "document accepted risk and keep the surface observable",
+    deny: "remove or block the unsafe authority path",
+    require_approval: "require explicit human or policy approval before the action proceeds",
+    redact: "prevent sensitive context from entering the exposed channel",
+    quarantine: "isolate the surface until trust, data flow, and authority are reviewed",
+    warn: "surface the risk to reviewers without blocking the workflow"
+  };
+  return controls[control];
 }
 
 async function loadRulesWithDiagnosticsInto(

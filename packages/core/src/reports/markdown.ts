@@ -668,14 +668,16 @@ function renderFindings(findings: Finding[]): string {
 
 function renderFindingTable(findings: Finding[]): string {
   return [
-    "| Severity | Confidence | Rule | Object | Recommended control | Policy | Risk factors |",
-    "| --- | --- | --- | --- | --- | --- | --- |",
+    "| Severity | Confidence | Rule | Object | Recommended control | Policy | Risk drivers | Analyst summary | Risk factors |",
+    "| --- | --- | --- | --- | --- | --- | --- | --- | --- |",
     ...findings.map((finding) => {
       const factors = finding.risk.rationale.length > 0 ? finding.risk.rationale.join("; ") : "baseline rule match";
       const policy = finding.policy_control
         ? `policy override from ${finding.policy_control.previous_control.replaceAll("_", " ")}: ${finding.policy_control.reason}`
         : "";
-      return `| ${finding.severity} | ${finding.confidence} | ${finding.rule_id} | \`${finding.matched_object.type}:${finding.matched_object.name}\` | ${finding.recommended_control.replaceAll("_", " ")} | ${escapeTable(policy)} | ${escapeTable(factors)} |`;
+      const riskDrivers = finding.risk_summary.drivers.map((driver) => driver.replaceAll("_", " ")).join(", ") || "none";
+      const analystSummary = finding.risk_summary.analyst_summary.join("; ");
+      return `| ${finding.severity} | ${finding.confidence} | ${finding.rule_id} | \`${finding.matched_object.type}:${finding.matched_object.name}\` | ${finding.recommended_control.replaceAll("_", " ")} | ${escapeTable(policy)} | ${escapeTable(riskDrivers)} | ${escapeTable(analystSummary)} | ${escapeTable(factors)} |`;
     })
   ].join("\n");
 }

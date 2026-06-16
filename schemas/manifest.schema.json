@@ -674,6 +674,51 @@
               "risk": {
                 "$ref": "#/definitions/AgentCSP Agent Manifest/properties/attack_paths/items/properties/risk"
               },
+              "risk_summary": {
+                "type": "object",
+                "properties": {
+                  "primary_driver": {
+                    "type": "string",
+                    "enum": [
+                      "untrusted_to_privileged",
+                      "secret_exposure",
+                      "external_reach",
+                      "irreversible_action",
+                      "side_effect",
+                      "sensitive_data",
+                      "credential_data",
+                      "pii_data",
+                      "execute_action",
+                      "write_action"
+                    ]
+                  },
+                  "drivers": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/definitions/AgentCSP Agent Manifest/properties/findings/items/properties/risk_summary/properties/primary_driver"
+                    },
+                    "default": []
+                  },
+                  "impact": {
+                    "type": "string"
+                  },
+                  "control_objective": {
+                    "type": "string"
+                  },
+                  "analyst_summary": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "default": []
+                  }
+                },
+                "required": [
+                  "impact",
+                  "control_objective"
+                ],
+                "additionalProperties": false
+              },
               "maps_to": {
                 "type": "object",
                 "properties": {
@@ -811,7 +856,8 @@
               "trust_boundary_crossed",
               "data_classes",
               "recommended_control",
-              "risk"
+              "risk",
+              "risk_summary"
             ],
             "additionalProperties": false
           },
@@ -1047,19 +1093,7 @@
                 "type": "object",
                 "properties": {
                   "driver": {
-                    "type": "string",
-                    "enum": [
-                      "untrusted_to_privileged",
-                      "secret_exposure",
-                      "external_reach",
-                      "irreversible_action",
-                      "side_effect",
-                      "sensitive_data",
-                      "credential_data",
-                      "pii_data",
-                      "execute_action",
-                      "write_action"
-                    ]
+                    "$ref": "#/definitions/AgentCSP Agent Manifest/properties/findings/items/properties/risk_summary/properties/primary_driver"
                   },
                   "count": {
                     "type": "integer",
@@ -1431,7 +1465,7 @@
                       "type": "object",
                       "properties": {
                         "driver": {
-                          "$ref": "#/definitions/AgentCSP Agent Manifest/properties/triage_summary/properties/active_by_risk_driver/items/properties/driver"
+                          "$ref": "#/definitions/AgentCSP Agent Manifest/properties/findings/items/properties/risk_summary/properties/primary_driver"
                         },
                         "count": {
                           "type": "integer",
@@ -1566,7 +1600,7 @@
                   "risk_drivers": {
                     "type": "array",
                     "items": {
-                      "$ref": "#/definitions/AgentCSP Agent Manifest/properties/triage_summary/properties/active_by_risk_driver/items/properties/driver"
+                      "$ref": "#/definitions/AgentCSP Agent Manifest/properties/findings/items/properties/risk_summary/properties/primary_driver"
                     },
                     "default": []
                   },

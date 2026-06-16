@@ -39,6 +39,8 @@ The manifest is versioned and validated with Zod. JSON Schema exports live in `s
 
 `triage_summary.active_by_risk_driver` records deterministic drivers behind active risk, including untrusted-to-privileged influence, secret exposure, external reach, irreversible action, side effects, sensitive data, credential data, PII data, execute-class actions, and write-class actions. Each driver includes a finding count, max risk score, and severity mix so CI dashboards and local reports can explain why findings matter without parsing redacted evidence snippets.
 
+Each finding includes `risk_summary`, a compact analyst-facing explanation derived from normalized metadata rather than raw file content. It records the primary risk driver, ordered drivers, impact, control objective, and bounded analyst summary lines. These fields are designed for triage queues, SARIF consumers, and dashboards that need to explain why a finding matters without exposing snippets, secret values, endpoint values, or host-absolute paths.
+
 ## MCP Server Authority
 
 MCP server entries are normalized into `mcp_server` objects. For remote MCP servers, AgentCSP records posture metadata without emitting raw URLs or header values.

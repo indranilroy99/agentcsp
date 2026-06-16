@@ -148,6 +148,13 @@ describe("scanProject", () => {
       )
     ).toBe(true);
     expect(result.findings.length).toBeGreaterThan(0);
+    expect(result.findings[0]?.risk_summary).toMatchObject({
+      impact: expect.any(String),
+      control_objective: expect.any(String),
+      analyst_summary: expect.any(Array)
+    });
+    expect(result.findings[0]?.risk_summary.analyst_summary.length).toBeGreaterThan(0);
+    expect(JSON.stringify(result.findings[0]?.risk_summary)).not.toContain("replace-me");
     expect(result.outputFiles.sarif).toBeDefined();
     const sarif = JSON.parse(await fs.readFile(result.outputFiles.sarif!, "utf8")) as {
       runs: Array<{
@@ -163,6 +170,7 @@ describe("scanProject", () => {
           };
         };
         results?: Array<{
+          message?: { text?: string };
           rank?: number;
           partialFingerprints?: {
             agentcspFindingId?: string;
@@ -171,7 +179,18 @@ describe("scanProject", () => {
             agentcspRulePath?: string;
             agentcspSurfacePath?: string;
           };
-          properties?: { "security-severity"?: string; precision?: string; rule_tags?: string[] };
+          properties?: {
+            "security-severity"?: string;
+            precision?: string;
+            rule_tags?: string[];
+            risk_summary?: {
+              primary_driver?: string;
+              drivers?: string[];
+              impact?: string;
+              control_objective?: string;
+              analyst_summary?: string[];
+            };
+          };
         }>;
         properties?: {
           agentcsp_scan_config?: {
@@ -244,6 +263,10 @@ describe("scanProject", () => {
     expect(firstResult?.properties?.["security-severity"]).toMatch(/^\d+\.\d$/u);
     expect(firstResult?.properties?.precision).toBeDefined();
     expect(firstResult?.properties?.rule_tags?.length).toBeGreaterThan(0);
+    expect(firstResult?.properties?.risk_summary?.impact).toBeTruthy();
+    expect(firstResult?.properties?.risk_summary?.control_objective).toBeTruthy();
+    expect(firstResult?.properties?.risk_summary?.analyst_summary?.length).toBeGreaterThan(0);
+    expect(firstResult?.message?.text).toContain("Recommended control:");
     expect(sarif.runs[0]?.properties?.agentcsp_scan_config).toMatchObject({
       formats: ["json", "md", "sarif"],
       include_hidden: true,
@@ -375,7 +398,10 @@ describe("scanProject", () => {
     expect(result.reportMarkdown).toContain("Recommended Controls");
     expect(result.reportMarkdown).toContain("Static Attack Paths");
     expect(result.reportMarkdown).toContain("| Severity | Confidence | Route | Path | Recommended control |");
-    expect(result.reportMarkdown).toContain("| Severity | Confidence | Rule | Object | Recommended control | Policy | Risk factors |");
+    expect(result.reportMarkdown).toContain(
+      "| Severity | Confidence | Rule | Object | Recommended control | Policy | Risk drivers | Analyst summary | Risk factors |"
+    );
+    expect(result.reportMarkdown).toContain("Control objective:");
     expect(result.reportMarkdown).toContain("Policy actions in this MVP are recommended controls");
   });
 

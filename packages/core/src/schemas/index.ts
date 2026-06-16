@@ -52,6 +52,19 @@ export const CiGateNameSchema = z.enum(["severity", "new_findings", "expired_sup
 export const ScanHealthSchema = z.enum(["complete", "degraded", "incomplete"]);
 export const ScanHealthGateSchema = z.enum(["degraded", "incomplete"]);
 
+export const TriageRiskDriverSchema = z.enum([
+  "untrusted_to_privileged",
+  "secret_exposure",
+  "external_reach",
+  "irreversible_action",
+  "side_effect",
+  "sensitive_data",
+  "credential_data",
+  "pii_data",
+  "execute_action",
+  "write_action"
+]);
+
 export const SurfaceTypeSchema = z.enum([
   "agent",
   "instruction",
@@ -166,6 +179,14 @@ export const FindingPolicyControlSchema = z.object({
   applied_at: z.string()
 });
 
+export const FindingRiskSummarySchema = z.object({
+  primary_driver: TriageRiskDriverSchema.optional(),
+  drivers: z.array(TriageRiskDriverSchema).default([]),
+  impact: z.string(),
+  control_objective: z.string(),
+  analyst_summary: z.array(z.string()).default([])
+});
+
 export const FindingSchema = z.object({
   id: z.string(),
   rule_id: z.string(),
@@ -181,6 +202,7 @@ export const FindingSchema = z.object({
   data_classes: z.array(DataClassSchema),
   recommended_control: ControlSchema,
   risk: RiskFactorsSchema,
+  risk_summary: FindingRiskSummarySchema,
   maps_to: z
     .object({
       owasp: z.array(z.string()).default([]),
@@ -223,19 +245,6 @@ export const TriageControlCountSchema = z.object({
   control: ControlSchema,
   count: z.number().int().nonnegative()
 });
-
-export const TriageRiskDriverSchema = z.enum([
-  "untrusted_to_privileged",
-  "secret_exposure",
-  "external_reach",
-  "irreversible_action",
-  "side_effect",
-  "sensitive_data",
-  "credential_data",
-  "pii_data",
-  "execute_action",
-  "write_action"
-]);
 
 export const TriageRiskDriverCountSchema = z.object({
   driver: TriageRiskDriverSchema,
@@ -701,9 +710,11 @@ export type GraphEdge = z.infer<typeof GraphEdgeSchema>;
 export type AttackPath = z.infer<typeof AttackPathSchema>;
 export type FindingSuppression = z.infer<typeof FindingSuppressionSchema>;
 export type FindingPolicyControl = z.infer<typeof FindingPolicyControlSchema>;
+export type FindingRiskSummary = z.infer<typeof FindingRiskSummarySchema>;
 export type Finding = z.infer<typeof FindingSchema>;
 export type SeverityCounts = z.infer<typeof SeverityCountsSchema>;
 export type ConfidenceCounts = z.infer<typeof ConfidenceCountsSchema>;
+export type TriageRiskDriver = z.infer<typeof TriageRiskDriverSchema>;
 export type TriageSummary = z.infer<typeof TriageSummarySchema>;
 export type RemediationAction = z.infer<typeof RemediationActionSchema>;
 export type ActionPlanSummary = z.infer<typeof ActionPlanSummarySchema>;

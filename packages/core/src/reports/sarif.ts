@@ -59,7 +59,7 @@ export function renderSarifReport(manifest: AgentManifest): Record<string, unkno
           rank: sarifRank(finding.severity),
           baselineState: sarifBaselineState(finding.baseline_status),
           message: {
-            text: `${finding.name}: ${finding.reason} Recommended control: ${finding.recommended_control.replaceAll("_", " ")}.`
+            text: `${finding.name}: ${finding.reason} ${finding.risk_summary.impact} Recommended control: ${finding.recommended_control.replaceAll("_", " ")}.`
           },
           suppressions:
             finding.suppression?.status === "active"
@@ -109,6 +109,7 @@ export function renderSarifReport(manifest: AgentManifest): Record<string, unkno
             ],
             risk_score: finding.risk.score,
             risk_factors: finding.risk.rationale,
+            risk_summary: finding.risk_summary,
             confidence: finding.confidence,
             confidence_rationale: finding.confidence_rationale,
             baseline_status: finding.baseline_status,
