@@ -2,7 +2,7 @@
 
 The Agent Manifest is the SBOM equivalent for an AI agent deployment.
 
-It captures normalized agent-facing surfaces, authority signals, trust levels, data classes, findings, evidence, diagnostics, the Triage Summary, the Action Plan, optional baseline comparison, scan coverage, and the Static Blast-Radius Summary.
+It captures normalized agent-facing surfaces, authority signals, trust levels, data classes, findings, evidence, diagnostics, the Inventory Summary, the Triage Summary, the Action Plan, optional baseline comparison, scan coverage, and the Static Blast-Radius Summary.
 
 Core sections:
 
@@ -29,6 +29,7 @@ Core sections:
 - `action_plan`
 - `baseline_comparison`
 - `scan_coverage`
+- `inventory_summary`
 - `static_blast_radius`
 
 The manifest is versioned and validated with Zod. JSON Schema exports live in `schemas/` and are also packaged with `@agentcsp/core` under `dist/json-schemas/` for installed integrations.
@@ -38,6 +39,8 @@ The manifest is versioned and validated with Zod. JSON Schema exports live in `s
 `metadata.fingerprint` records a SHA-256 content fingerprint for comparing equivalent scans across CI runners, workstations, and output directories. The fingerprint excludes `metadata.generated_at`, `metadata.root_path`, and `metadata.fingerprint` so volatile timestamps and host-absolute paths do not change the value.
 
 `metadata.rule_pack` records rule-pack provenance without exposing local rule paths or rule contents: SHA-256 fingerprint of the normalized rule set, built-in rule count, project-local rule count, total rules loaded, whether project-local rules were added, redacted rule diagnostic count, and deterministic coverage rollups by category, severity, and target surface.
+
+`inventory_summary` records platform-ready inventory rollups without exposing raw file contents: total normalized objects, counts by surface type, trust level, data class, and action, plus high-authority counts for side effects, irreversible actions, external reach, secret exposure, untrusted-to-privileged influence, credential or secret data, and PII. Dashboards and registries can use this section to answer "what agent authority exists here?" without parsing every manifest object.
 
 `triage_summary.active_by_risk_driver` records deterministic drivers behind active risk, including untrusted-to-privileged influence, secret exposure, external reach, irreversible action, side effects, sensitive data, credential data, PII data, execute-class actions, and write-class actions. Each driver includes a finding count, max risk score, and severity mix so CI dashboards and local reports can explain why findings matter without parsing redacted evidence snippets.
 

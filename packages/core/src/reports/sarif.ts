@@ -130,6 +130,7 @@ export function renderSarifReport(manifest: AgentManifest): Record<string, unkno
           agentcsp_ci_gate_summary: manifest.ci_gate_summary,
           agentcsp_baseline_comparison: manifest.baseline_comparison,
           agentcsp_scan_coverage: manifest.scan_coverage,
+          agentcsp_inventory_summary: manifest.inventory_summary,
           agentcsp_diagnostics: manifest.diagnostics,
           agentcsp_static_blast_radius: manifest.static_blast_radius,
           evidence_redacted: true,

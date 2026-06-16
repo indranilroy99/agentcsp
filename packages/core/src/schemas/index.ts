@@ -117,6 +117,26 @@ export const SurfaceTypeSchema = z.enum([
   "automation"
 ]);
 
+export const InventorySurfaceCountSchema = z.object({
+  surface_type: SurfaceTypeSchema,
+  count: z.number().int().nonnegative()
+});
+
+export const InventoryTrustCountSchema = z.object({
+  trust_level: TrustLevelSchema,
+  count: z.number().int().nonnegative()
+});
+
+export const InventoryDataClassCountSchema = z.object({
+  data_class: DataClassSchema,
+  count: z.number().int().nonnegative()
+});
+
+export const InventoryActionCountSchema = z.object({
+  action: ActionTypeSchema,
+  count: z.number().int().nonnegative()
+});
+
 export const RiskFactorsSchema = z.object({
   trust_level: TrustLevelSchema,
   data_classes: z.array(DataClassSchema).default([]),
@@ -660,6 +680,23 @@ export const ScanCoverageSummarySchema = z.object({
   oversized_file_paths_truncated: z.boolean().default(false)
 });
 
+export const InventorySummarySchema = z.object({
+  title: z.literal("AgentCSP Inventory Summary").default("AgentCSP Inventory Summary"),
+  total_objects: z.number().int().nonnegative().default(0),
+  by_surface_type: z.array(InventorySurfaceCountSchema).default([]),
+  by_trust_level: z.array(InventoryTrustCountSchema).default([]),
+  by_data_class: z.array(InventoryDataClassCountSchema).default([]),
+  by_action: z.array(InventoryActionCountSchema).default([]),
+  side_effect_objects: z.number().int().nonnegative().default(0),
+  irreversible_objects: z.number().int().nonnegative().default(0),
+  external_reach_objects: z.number().int().nonnegative().default(0),
+  secret_exposure_objects: z.number().int().nonnegative().default(0),
+  untrusted_to_privileged_objects: z.number().int().nonnegative().default(0),
+  credential_or_secret_objects: z.number().int().nonnegative().default(0),
+  pii_objects: z.number().int().nonnegative().default(0),
+  high_authority_objects: z.number().int().nonnegative().default(0)
+});
+
 export const RulePackCategoryCountSchema = z.object({
   category: z.string(),
   count: z.number().int().nonnegative()
@@ -735,6 +772,7 @@ export const AgentManifestSchema = z.object({
   baseline_comparison: BaselineComparisonSchema.optional(),
   ci_gate_summary: CiGateSummarySchema.optional(),
   scan_coverage: ScanCoverageSummarySchema.optional(),
+  inventory_summary: InventorySummarySchema.optional(),
   static_blast_radius: StaticBlastRadiusSummarySchema.optional()
 });
 
@@ -819,6 +857,7 @@ export type ActionPlanSummary = z.infer<typeof ActionPlanSummarySchema>;
 export type BaselineComparison = z.infer<typeof BaselineComparisonSchema>;
 export type CiGateSummary = z.infer<typeof CiGateSummarySchema>;
 export type ScanCoverageSummary = z.infer<typeof ScanCoverageSummarySchema>;
+export type InventorySummary = z.infer<typeof InventorySummarySchema>;
 export type ManifestFingerprint = z.infer<typeof ManifestFingerprintSchema>;
 export type ContentDigest = z.infer<typeof ContentDigestSchema>;
 export type Rule = z.infer<typeof RuleSchema>;

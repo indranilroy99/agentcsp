@@ -11,6 +11,8 @@ The platform should be built on the same open contracts as the CLI:
 - `agentcsp.yaml` policy
 - evidence records
 
+The CLI now emits an `inventory_summary` inside each Agent Manifest. The platform should treat that summary as the first registry index for repository-level AI authority: total normalized objects, surface mix, trust mix, data-class mix, action mix, and high-authority counts. Detailed object records remain available for drill-down, but dashboards should use the summary for fast portfolio views.
+
 ## Product Thesis
 
 The platform should answer higher-order security questions that standalone scanners miss:

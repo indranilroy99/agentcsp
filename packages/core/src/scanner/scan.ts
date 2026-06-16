@@ -32,6 +32,7 @@ import { buildTriageSummary } from "../reports/triage.js";
 import { buildActionPlan } from "../reports/action-plan.js";
 import { buildCiGateSummary } from "../reports/gates.js";
 import { applyBaselineComparison } from "../reports/baseline.js";
+import { buildInventorySummary } from "../reports/inventory.js";
 import { stableId } from "../utils/ids.js";
 import { resolvePathFromRoot } from "../utils/paths.js";
 import { sortObjects } from "../utils/sort.js";
@@ -90,6 +91,7 @@ export async function scanProject(rawConfig: Partial<ScanConfig> & { root_path: 
   });
   const triageSummary = buildTriageSummary(findings);
   const actionPlan = buildActionPlan(findings);
+  const inventorySummary = buildInventorySummary(surfaces);
   const ciGateSummary = buildCiGateSummary({
     findings,
     diagnostics: surfaces.diagnostics,
@@ -109,6 +111,7 @@ export async function scanProject(rawConfig: Partial<ScanConfig> & { root_path: 
     ciGateSummary,
     rulePackSummary: ruleLoad.summary,
     scanCoverage,
+    inventorySummary,
     staticBlastRadius
   });
   const reportMarkdown = renderMarkdownReport(manifest);

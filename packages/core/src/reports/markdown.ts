@@ -67,6 +67,8 @@ export function renderMarkdownReport(manifest: AgentManifest): string {
     "",
     renderDiagnostics(manifest),
     "",
+    renderInventorySummary(manifest),
+    "",
     "## Surface Inventory",
     "",
     ...counts.map(([label, count]) => `- ${label}: ${count}`),
@@ -215,6 +217,60 @@ function renderActionOwnerTable(owners: NonNullable<AgentManifest["action_plan"]
 
 function formatRiskDrivers(drivers: string[]): string {
   return drivers.length > 0 ? drivers.map((driver) => driver.replaceAll("_", " ")).join(", ") : "none";
+}
+
+function renderInventorySummary(manifest: AgentManifest): string {
+  const summary = manifest.inventory_summary;
+  if (!summary) return "## Inventory Summary\n\nNo inventory summary was generated.";
+  return [
+    "## Inventory Summary",
+    "",
+    `- Total objects: ${summary.total_objects}`,
+    `- High-authority objects: ${summary.high_authority_objects}`,
+    `- Side-effecting objects: ${summary.side_effect_objects}`,
+    `- Irreversible objects: ${summary.irreversible_objects}`,
+    `- External-reach objects: ${summary.external_reach_objects}`,
+    `- Secret-exposure objects: ${summary.secret_exposure_objects}`,
+    `- Untrusted-to-privileged objects: ${summary.untrusted_to_privileged_objects}`,
+    `- Credential/secret objects: ${summary.credential_or_secret_objects}`,
+    `- PII objects: ${summary.pii_objects}`,
+    "",
+    "### Inventory By Surface Type",
+    "",
+    summary.by_surface_type.length > 0
+      ? renderInventoryCountTable("Surface type", summary.by_surface_type, "surface_type")
+      : "No surfaces were discovered.",
+    "",
+    "### Inventory By Trust Level",
+    "",
+    summary.by_trust_level.length > 0
+      ? renderInventoryCountTable("Trust level", summary.by_trust_level, "trust_level")
+      : "No trust levels were discovered.",
+    "",
+    "### Inventory By Data Class",
+    "",
+    summary.by_data_class.length > 0
+      ? renderInventoryCountTable("Data class", summary.by_data_class, "data_class")
+      : "No data classes were discovered.",
+    "",
+    "### Inventory By Action",
+    "",
+    summary.by_action.length > 0
+      ? renderInventoryCountTable("Action", summary.by_action, "action")
+      : "No actions were discovered."
+  ].join("\n");
+}
+
+function renderInventoryCountTable<T extends Record<string, string | number> & { count: number }>(
+  label: string,
+  rows: T[],
+  key: keyof T
+): string {
+  return [
+    `| ${label} | Count |`,
+    "| --- | --- |",
+    ...rows.map((row) => `| ${String(row[key]).replaceAll("_", " ")} | ${row.count} |`)
+  ].join("\n");
 }
 
 function renderTriageSummary(manifest: AgentManifest): string {

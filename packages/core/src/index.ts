@@ -9,6 +9,7 @@ export * from "./reports/baseline.js";
 export * from "./reports/blast-radius.js";
 export * from "./reports/action-plan.js";
 export * from "./reports/triage.js";
+export * from "./reports/inventory.js";
 export * from "./reports/markdown.js";
 export * from "./reports/sarif.js";
 export * from "./policy/load-policy.js";

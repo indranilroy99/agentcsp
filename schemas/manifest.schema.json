@@ -2342,6 +2342,146 @@
           ],
           "additionalProperties": false
         },
+        "inventory_summary": {
+          "type": "object",
+          "properties": {
+            "title": {
+              "type": "string",
+              "const": "AgentCSP Inventory Summary",
+              "default": "AgentCSP Inventory Summary"
+            },
+            "total_objects": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            },
+            "by_surface_type": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "surface_type": {
+                    "$ref": "#/definitions/AgentCSP Agent Manifest/properties/agents/items/properties/type"
+                  },
+                  "count": {
+                    "type": "integer",
+                    "minimum": 0
+                  }
+                },
+                "required": [
+                  "surface_type",
+                  "count"
+                ],
+                "additionalProperties": false
+              },
+              "default": []
+            },
+            "by_trust_level": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "trust_level": {
+                    "$ref": "#/definitions/AgentCSP Agent Manifest/properties/agents/items/properties/trust_level"
+                  },
+                  "count": {
+                    "type": "integer",
+                    "minimum": 0
+                  }
+                },
+                "required": [
+                  "trust_level",
+                  "count"
+                ],
+                "additionalProperties": false
+              },
+              "default": []
+            },
+            "by_data_class": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "data_class": {
+                    "$ref": "#/definitions/AgentCSP Agent Manifest/properties/agents/items/properties/data_classes/items"
+                  },
+                  "count": {
+                    "type": "integer",
+                    "minimum": 0
+                  }
+                },
+                "required": [
+                  "data_class",
+                  "count"
+                ],
+                "additionalProperties": false
+              },
+              "default": []
+            },
+            "by_action": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "action": {
+                    "$ref": "#/definitions/AgentCSP Agent Manifest/properties/agents/items/properties/actions/items"
+                  },
+                  "count": {
+                    "type": "integer",
+                    "minimum": 0
+                  }
+                },
+                "required": [
+                  "action",
+                  "count"
+                ],
+                "additionalProperties": false
+              },
+              "default": []
+            },
+            "side_effect_objects": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            },
+            "irreversible_objects": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            },
+            "external_reach_objects": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            },
+            "secret_exposure_objects": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            },
+            "untrusted_to_privileged_objects": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            },
+            "credential_or_secret_objects": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            },
+            "pii_objects": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            },
+            "high_authority_objects": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            }
+          },
+          "additionalProperties": false
+        },
         "static_blast_radius": {
           "type": "object",
           "properties": {

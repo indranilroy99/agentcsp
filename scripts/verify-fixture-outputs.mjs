@@ -2028,6 +2028,16 @@ if (vulnerable.sarif) {
     false,
     "SARIF oversized file preview truncation"
   );
+  assert(run.properties?.agentcsp_inventory_summary, "SARIF inventory summary missing");
+  assert(run.properties.agentcsp_inventory_summary.total_objects > 0, "SARIF inventory object count missing");
+  assert(
+    run.properties.agentcsp_inventory_summary.by_surface_type?.some((item) => item.surface_type === "tool" && item.count > 0),
+    "SARIF inventory surface mix missing"
+  );
+  assert(
+    run.properties.agentcsp_inventory_summary.by_action?.some((item) => item.action === "execute" && item.count > 0),
+    "SARIF inventory action mix missing"
+  );
   assert(run.properties?.agentcsp_static_blast_radius, "SARIF blast-radius summary missing");
   assertEqual(
     run.properties.agentcsp_static_blast_radius.attack_path_limit,
@@ -2109,6 +2119,23 @@ function assertVulnerableOperatorMetadata(output) {
   assert(manifest.metadata?.rule_pack?.by_category?.length > 0, "vulnerable rule category coverage missing");
   assert(manifest.metadata?.rule_pack?.by_severity?.critical > 0, "vulnerable rule severity coverage missing");
   assert(manifest.metadata?.rule_pack?.by_object_type?.length > 0, "vulnerable rule object coverage missing");
+  assert(manifest.inventory_summary?.total_objects > 0, "vulnerable inventory summary missing");
+  assert(manifest.inventory_summary?.high_authority_objects > 0, "vulnerable inventory high-authority count missing");
+  assert(manifest.inventory_summary?.external_reach_objects > 0, "vulnerable inventory external reach count missing");
+  assert(
+    manifest.inventory_summary?.by_surface_type?.some((item) => item.surface_type === "tool" && item.count > 0),
+    "vulnerable inventory tool surface mix missing"
+  );
+  assert(manifest.inventory_summary?.by_trust_level?.length > 0, "vulnerable inventory trust mix missing");
+  assert(
+    manifest.inventory_summary?.untrusted_to_privileged_objects > 0,
+    "vulnerable inventory untrusted-to-privileged count missing"
+  );
+  assert(
+    manifest.inventory_summary?.by_data_class?.some((item) => item.data_class === "credential" && item.count > 0),
+    "vulnerable inventory credential mix missing"
+  );
+  assert(report.includes("## Inventory Summary"), "vulnerable report inventory summary missing");
   const firstOwner = manifest.action_plan?.by_owner?.[0];
   assertEqual(firstOwner?.top_action_id_limit, 5, "vulnerable action owner top action ID limit");
   assert(firstOwner?.top_action_ids?.length > 0, "vulnerable action owner top action IDs missing");
@@ -2206,6 +2233,13 @@ function assertSafeOperatorMetadata(output) {
   assertEqual(manifest.triage_summary?.top_active_risks_truncated, false, "safe triage top risks truncation");
   assertEqual(manifest.action_plan?.truncated, false, "safe action plan truncation");
   assertEqual(manifest.action_plan?.omitted_actions, 0, "safe omitted action count");
+  assert(manifest.inventory_summary?.total_objects > 0, "safe inventory summary missing");
+  assert(manifest.inventory_summary?.high_authority_objects >= 0, "safe inventory high-authority count missing");
+  assert(
+    manifest.inventory_summary?.by_surface_type?.some((item) => item.surface_type === "instruction" && item.count > 0),
+    "safe inventory instruction surface mix missing"
+  );
+  assert(report.includes("## Inventory Summary"), "safe report inventory summary missing");
   assertEqual(manifest.ci_gate_summary?.blocker_ids_truncated, false, "safe CI blocker truncation");
   assertEqual(manifest.ci_gate_summary?.severity_gate_by_severity?.critical, 0, "safe CI critical blocker count");
   assertEqual(manifest.ci_gate_summary?.severity_gate_by_confidence?.very_high, 0, "safe CI very-high confidence blocker count");

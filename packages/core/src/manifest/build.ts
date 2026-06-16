@@ -10,6 +10,7 @@ import {
   type CiGateSummary,
   type Finding,
   type GraphEdge,
+  type InventorySummary,
   type RulePackSummary,
   type ScanConfig,
   type ScanCoverageSummary,
@@ -35,6 +36,7 @@ export function buildManifest(input: {
   ciGateSummary?: CiGateSummary;
   rulePackSummary: RulePackSummary;
   scanCoverage?: ScanCoverageSummary;
+  inventorySummary?: InventorySummary;
   staticBlastRadius?: StaticBlastRadiusSummary;
 }): AgentManifest {
   const evidence = collectEvidence(input.surfaces, input.findings ?? []);
@@ -92,6 +94,7 @@ export function buildManifest(input: {
     baseline_comparison: input.baselineComparison,
     ci_gate_summary: input.ciGateSummary,
     scan_coverage: input.scanCoverage,
+    inventory_summary: input.inventorySummary,
     static_blast_radius: input.staticBlastRadius
   });
   return AgentManifestSchema.parse({
