@@ -28,6 +28,7 @@ import { buildTriageSummary } from "../reports/triage.js";
 import { buildCiGateSummary } from "../reports/gates.js";
 import { applyBaselineComparison } from "../reports/baseline.js";
 import { stableId } from "../utils/ids.js";
+import { resolvePathFromRoot } from "../utils/paths.js";
 import { sortObjects } from "../utils/sort.js";
 
 const moduleDirectory = path.dirname(fileURLToPath(import.meta.url));
@@ -48,9 +49,10 @@ export interface ScanResult {
 export async function scanProject(rawConfig: Partial<ScanConfig> & { root_path: string }): Promise<ScanResult> {
   const config = ScanConfigSchema.parse(rawConfig);
   const rootPath = path.resolve(config.root_path);
-  const outputPath = path.resolve(config.output_path);
+  const outputPath = resolvePathFromRoot(rootPath, config.output_path);
+  const resolvedConfig: ScanConfig = { ...config, output_path: outputPath };
 
-  const walkResult = await walkProjectWithCoverage(config);
+  const walkResult = await walkProjectWithCoverage(resolvedConfig);
   const files = walkResult.files;
   const policyResult = await loadPolicyWithDiagnostics(rootPath, config.config_path);
   const policy = policyResult.policy;
@@ -76,11 +78,11 @@ export async function scanProject(rawConfig: Partial<ScanConfig> & { root_path: 
   const ciGateSummary = buildCiGateSummary({
     findings,
     diagnostics: surfaces.diagnostics,
-    config
+    config: resolvedConfig
   });
   const manifest = buildManifest({
     rootPath,
-    scanConfig: config,
+    scanConfig: resolvedConfig,
     surfaces,
     findings,
     relationships: graph.relationships,

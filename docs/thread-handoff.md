@@ -1888,6 +1888,8 @@ The current iteration adds:
 - regression coverage proving generated AgentCSP output directories are skipped while `.agentcspignore` remains indexed
 - traversal now also ignores the configured output directory when `--out` resolves inside the scanned root, preventing self-ingestion for custom output paths
 - regression coverage proving inside-root custom output directories are skipped while outside-root output paths do not create broad ignore behavior
+- relative scan output paths now resolve from the scanned project root instead of the caller's current working directory, while absolute output paths remain unchanged
+- regression coverage proving root-relative output files are written to the expected location and stale custom output contents are not indexed
 
 ## Initial Build Recommendation
 

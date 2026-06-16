@@ -12,3 +12,7 @@ export function relativePath(rootPath: string, absolutePath: string): string {
 export function normalizePath(value: string): string {
   return toPosixPath(path.normalize(value));
 }
+
+export function resolvePathFromRoot(rootPath: string, targetPath: string): string {
+  return path.isAbsolute(targetPath) ? path.resolve(targetPath) : path.resolve(rootPath, targetPath);
+}

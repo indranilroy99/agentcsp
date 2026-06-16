@@ -7,7 +7,7 @@ import {
   LOG_DIR_NAMES
 } from "./defaults.js";
 import type { ScanConfig, ScanCoverageSummary } from "../schemas/index.js";
-import { relativePath } from "../utils/paths.js";
+import { relativePath, resolvePathFromRoot } from "../utils/paths.js";
 import { IgnoreMatcher } from "./ignore.js";
 
 export interface WalkedFile {
@@ -117,7 +117,7 @@ export async function walkProjectWithCoverage(config: ScanConfig): Promise<WalkR
 }
 
 function outputPathIgnorePattern(rootPath: string, outputPath: string): string | undefined {
-  const resolvedOutputPath = path.resolve(outputPath);
+  const resolvedOutputPath = resolvePathFromRoot(rootPath, outputPath);
   const relativeOutputPath = path.relative(rootPath, resolvedOutputPath);
   if (!relativeOutputPath || relativeOutputPath === ".") return undefined;
   if (relativeOutputPath.startsWith("..") || path.isAbsolute(relativeOutputPath)) return undefined;

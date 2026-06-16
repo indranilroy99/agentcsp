@@ -6,7 +6,7 @@ AgentCSP starts with a local CLI scan.
 agentcsp scan [path] --out .agentcsp
 ```
 
-The path defaults to the current directory. The output directory defaults to `.agentcsp`.
+The path defaults to the current directory. The output directory defaults to `.agentcsp`. Relative output paths are resolved from the scanned project root; absolute output paths are honored as provided.
 
 ## Outputs
 
