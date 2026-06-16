@@ -219,6 +219,8 @@ The Agent Manifest is the SBOM equivalent for AI agent deployments. Core section
 
 Findings include severity, confidence, risk factors, redacted evidence, mappings, and recommended controls. The triage summary gives downstream CI and platform consumers stable counts for active risk, suppressions, confidence, surface types, control mix, top rules, and top active risks. The action plan adds bounded prioritized remediation items with truncation metadata, baseline status, and owner hints such as `agent-platform`, `identity-and-secrets`, `data-and-knowledge`, `platform-ci`, and `runtime-platform`.
 
+`metadata.config` records the safe scan contract behind the manifest, including requested formats, traversal limits, hidden/log settings, CI gates, and whether policy or baseline inputs were configured, without copying raw local output, policy, or baseline paths.
+
 ## Rules
 
 Rules are open YAML files validated by Zod. MVP rules match normalized manifest objects first; graph-edge rules are planned later.

@@ -1960,6 +1960,12 @@ console.log(
 
 function assertVulnerableOperatorMetadata(output) {
   const { manifest, report } = output;
+  assertScanConfigMetadata(manifest, {
+    label: "vulnerable",
+    formats: ["json", "md", "sarif"],
+    includeLogs: true,
+    outputPathScope: "inside_scan_root"
+  });
   assertEqual(manifest.scan_coverage?.scan_health, "complete", "vulnerable scan health");
   assertArrayEqual(manifest.scan_coverage?.scan_health_reasons ?? [], [], "vulnerable scan health reasons");
 
@@ -2016,6 +2022,12 @@ function assertVulnerableOperatorMetadata(output) {
 
 function assertSafeOperatorMetadata(output) {
   const { manifest, report } = output;
+  assertScanConfigMetadata(manifest, {
+    label: "safe",
+    formats: ["json", "md"],
+    includeLogs: false,
+    outputPathScope: "inside_scan_root"
+  });
   assertEqual(manifest.scan_coverage?.scan_health, "complete", "safe scan health");
   assertArrayEqual(manifest.scan_coverage?.scan_health_reasons ?? [], [], "safe scan health reasons");
   assertEqual(manifest.triage_summary?.top_active_limit, 10, "safe triage top active limit");
@@ -2039,6 +2051,26 @@ function assertSafeOperatorMetadata(output) {
   assert(report.includes("- Scan health: `complete`"), "safe report missing scan health");
   assert(report.includes("- Top active risks truncated: `false`"), "safe report missing triage truncation");
   assert(report.includes("- Attack path limit: 15"), "safe report missing attack path limit");
+}
+
+function assertScanConfigMetadata(manifest, options) {
+  const config = manifest.metadata?.config;
+  assertArrayEqual(config?.formats ?? [], options.formats, `${options.label} manifest output formats`);
+  assertEqual(config?.include_hidden, true, `${options.label} manifest hidden scan setting`);
+  assertEqual(config?.include_logs, options.includeLogs, `${options.label} manifest log scan setting`);
+  assertEqual(config?.max_file_size_bytes, 1024 * 1024, `${options.label} manifest max file size`);
+  assertEqual(config?.max_files, 5000, `${options.label} manifest max files`);
+  assertEqual(config?.output_path_scope, options.outputPathScope, `${options.label} manifest output path scope`);
+  assertEqual(config?.config_path_configured, false, `${options.label} manifest config path flag`);
+  assertEqual(config?.baseline_path_configured, false, `${options.label} manifest baseline path flag`);
+  assertEqual(config?.fail_on, undefined, `${options.label} manifest severity gate`);
+  assertEqual(config?.fail_on_confidence, undefined, `${options.label} manifest confidence gate`);
+  assertEqual(config?.fail_on_new, false, `${options.label} manifest new-finding gate`);
+  assertEqual(config?.fail_on_expired_suppressions, false, `${options.label} manifest expired-suppression gate`);
+  assertEqual(config?.fail_on_diagnostics, false, `${options.label} manifest diagnostic gate`);
+  assertEqual(config?.fail_on_scan_health, undefined, `${options.label} manifest scan-health gate`);
+  assertEqual(config?.evidence_redacted, true, `${options.label} manifest evidence redaction flag`);
+  assertEqual(config?.secret_values_collected, false, `${options.label} manifest secret collection flag`);
 }
 
 async function readScanOutput(outputPath, options) {

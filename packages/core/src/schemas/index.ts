@@ -508,9 +508,20 @@ export const ManifestMetadataSchema = z.object({
     version: z.string()
   }),
   config: z.object({
+    formats: z.array(z.enum(["json", "md", "sarif"])).default([]),
     include_hidden: z.boolean(),
     include_logs: z.boolean(),
     max_file_size_bytes: z.number().int().positive(),
+    max_files: z.number().int().positive(),
+    output_path_scope: z.enum(["inside_scan_root", "outside_scan_root"]),
+    config_path_configured: z.boolean().default(false),
+    baseline_path_configured: z.boolean().default(false),
+    fail_on: SeveritySchema.optional(),
+    fail_on_confidence: ConfidenceSchema.optional(),
+    fail_on_new: z.boolean().default(false),
+    fail_on_expired_suppressions: z.boolean().default(false),
+    fail_on_diagnostics: z.boolean().default(false),
+    fail_on_scan_health: ScanHealthGateSchema.optional(),
     evidence_redacted: z.literal(true),
     secret_values_collected: z.literal(false)
   })

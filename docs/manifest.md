@@ -33,6 +33,8 @@ Core sections:
 
 The manifest is versioned and validated with Zod. JSON Schema exports live in `schemas/` and are also packaged with `@agentcsp/core` under `dist/json-schemas/` for installed integrations.
 
+`metadata.config` records the non-secret scan contract used to produce the manifest: requested output formats, hidden/log scan settings, file and traversal limits, output-path scope, whether policy or baseline inputs were configured, CI gate thresholds, and the invariant redaction flags. It intentionally does not emit raw `--out`, `--config`, or `--baseline` absolute paths.
+
 ## MCP Server Authority
 
 MCP server entries are normalized into `mcp_server` objects. For remote MCP servers, AgentCSP records posture metadata without emitting raw URLs or header values.

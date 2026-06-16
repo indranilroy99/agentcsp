@@ -308,6 +308,26 @@ async function smokeTestInstalledCli(coreTarball, cliTarball, installRoot) {
 }
 
 function assertInstalledSafeOperatorMetadata(manifest, report) {
+  assertArrayEqual(manifest.metadata?.config?.formats ?? [], ["json", "md"], "installed CLI safe manifest formats");
+  assertEqual(manifest.metadata?.config?.include_hidden, true, "installed CLI safe hidden scan setting");
+  assertEqual(manifest.metadata?.config?.include_logs, false, "installed CLI safe log scan setting");
+  assertEqual(manifest.metadata?.config?.max_file_size_bytes, 1024 * 1024, "installed CLI safe max file size");
+  assertEqual(manifest.metadata?.config?.max_files, 5000, "installed CLI safe max files");
+  assertEqual(manifest.metadata?.config?.output_path_scope, "outside_scan_root", "installed CLI safe output path scope");
+  assertEqual(manifest.metadata?.config?.config_path_configured, false, "installed CLI safe config path flag");
+  assertEqual(manifest.metadata?.config?.baseline_path_configured, false, "installed CLI safe baseline path flag");
+  assertEqual(manifest.metadata?.config?.fail_on, undefined, "installed CLI safe manifest severity gate");
+  assertEqual(manifest.metadata?.config?.fail_on_confidence, undefined, "installed CLI safe manifest confidence gate");
+  assertEqual(manifest.metadata?.config?.fail_on_new, false, "installed CLI safe manifest new-finding gate");
+  assertEqual(
+    manifest.metadata?.config?.fail_on_expired_suppressions,
+    false,
+    "installed CLI safe manifest expired-suppression gate"
+  );
+  assertEqual(manifest.metadata?.config?.fail_on_diagnostics, false, "installed CLI safe manifest diagnostic gate");
+  assertEqual(manifest.metadata?.config?.fail_on_scan_health, undefined, "installed CLI safe manifest scan-health gate");
+  assertEqual(manifest.metadata?.config?.evidence_redacted, true, "installed CLI safe evidence redaction flag");
+  assertEqual(manifest.metadata?.config?.secret_values_collected, false, "installed CLI safe secret collection flag");
   assertEqual(manifest.scan_coverage?.scan_health, "complete", "installed CLI safe scan health");
   assertArrayEqual(manifest.scan_coverage?.scan_health_reasons ?? [], [], "installed CLI safe scan health reasons");
   assertEqual(manifest.triage_summary?.top_active_limit, 10, "installed CLI safe triage top active limit");

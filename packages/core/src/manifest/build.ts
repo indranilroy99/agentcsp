@@ -16,6 +16,7 @@ import {
   type TriageSummary
 } from "../schemas/index.js";
 import type { DetectedSurfaces } from "../scanner/detect.js";
+import { isPathInsideRoot } from "../utils/paths.js";
 import { sortFindings, sortObjects } from "../utils/sort.js";
 
 export function buildManifest(input: {
@@ -43,9 +44,22 @@ export function buildManifest(input: {
         version: "0.1.0"
       },
       config: {
+        formats: [...input.scanConfig.formats].sort(),
         include_hidden: input.scanConfig.include_hidden,
         include_logs: input.scanConfig.include_logs,
         max_file_size_bytes: input.scanConfig.max_file_size_bytes,
+        max_files: input.scanConfig.max_files,
+        output_path_scope: isPathInsideRoot(input.rootPath, input.scanConfig.output_path)
+          ? "inside_scan_root"
+          : "outside_scan_root",
+        config_path_configured: input.scanConfig.config_path !== undefined,
+        baseline_path_configured: input.scanConfig.baseline_path !== undefined,
+        fail_on: input.scanConfig.fail_on,
+        fail_on_confidence: input.scanConfig.fail_on_confidence,
+        fail_on_new: input.scanConfig.fail_on_new,
+        fail_on_expired_suppressions: input.scanConfig.fail_on_expired_suppressions,
+        fail_on_diagnostics: input.scanConfig.fail_on_diagnostics,
+        fail_on_scan_health: input.scanConfig.fail_on_scan_health,
         evidence_redacted: true,
         secret_values_collected: false
       }

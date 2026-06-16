@@ -37,6 +37,18 @@
             "config": {
               "type": "object",
               "properties": {
+                "formats": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "enum": [
+                      "json",
+                      "md",
+                      "sarif"
+                    ]
+                  },
+                  "default": []
+                },
                 "include_hidden": {
                   "type": "boolean"
                 },
@@ -46,6 +58,63 @@
                 "max_file_size_bytes": {
                   "type": "integer",
                   "exclusiveMinimum": 0
+                },
+                "max_files": {
+                  "type": "integer",
+                  "exclusiveMinimum": 0
+                },
+                "output_path_scope": {
+                  "type": "string",
+                  "enum": [
+                    "inside_scan_root",
+                    "outside_scan_root"
+                  ]
+                },
+                "config_path_configured": {
+                  "type": "boolean",
+                  "default": false
+                },
+                "baseline_path_configured": {
+                  "type": "boolean",
+                  "default": false
+                },
+                "fail_on": {
+                  "type": "string",
+                  "enum": [
+                    "info",
+                    "low",
+                    "medium",
+                    "high",
+                    "critical"
+                  ]
+                },
+                "fail_on_confidence": {
+                  "type": "string",
+                  "enum": [
+                    "low",
+                    "medium",
+                    "high",
+                    "very_high"
+                  ]
+                },
+                "fail_on_new": {
+                  "type": "boolean",
+                  "default": false
+                },
+                "fail_on_expired_suppressions": {
+                  "type": "boolean",
+                  "default": false
+                },
+                "fail_on_diagnostics": {
+                  "type": "boolean",
+                  "default": false
+                },
+                "fail_on_scan_health": {
+                  "type": "string",
+                  "enum": [
+                    "degraded",
+                    "incomplete"
+                  ]
                 },
                 "evidence_redacted": {
                   "type": "boolean",
@@ -60,6 +129,8 @@
                 "include_hidden",
                 "include_logs",
                 "max_file_size_bytes",
+                "max_files",
+                "output_path_scope",
                 "evidence_redacted",
                 "secret_values_collected"
               ],
@@ -402,23 +473,10 @@
                 "type": "string"
               },
               "severity": {
-                "type": "string",
-                "enum": [
-                  "info",
-                  "low",
-                  "medium",
-                  "high",
-                  "critical"
-                ]
+                "$ref": "#/definitions/AgentCSP Agent Manifest/properties/metadata/properties/config/properties/fail_on"
               },
               "confidence": {
-                "type": "string",
-                "enum": [
-                  "low",
-                  "medium",
-                  "high",
-                  "very_high"
-                ]
+                "$ref": "#/definitions/AgentCSP Agent Manifest/properties/metadata/properties/config/properties/fail_on_confidence"
               },
               "source": {
                 "$ref": "#/definitions/AgentCSP Agent Manifest/properties/relationships/items/properties/source"
@@ -547,10 +605,10 @@
                 "type": "string"
               },
               "severity": {
-                "$ref": "#/definitions/AgentCSP Agent Manifest/properties/attack_paths/items/properties/severity"
+                "$ref": "#/definitions/AgentCSP Agent Manifest/properties/metadata/properties/config/properties/fail_on"
               },
               "confidence": {
-                "$ref": "#/definitions/AgentCSP Agent Manifest/properties/attack_paths/items/properties/confidence"
+                "$ref": "#/definitions/AgentCSP Agent Manifest/properties/metadata/properties/config/properties/fail_on_confidence"
               },
               "confidence_rationale": {
                 "type": "array",
@@ -808,7 +866,7 @@
               "default": 0
             },
             "highest_active_severity": {
-              "$ref": "#/definitions/AgentCSP Agent Manifest/properties/attack_paths/items/properties/severity",
+              "$ref": "#/definitions/AgentCSP Agent Manifest/properties/metadata/properties/config/properties/fail_on",
               "default": "info"
             },
             "max_active_risk_score": {
@@ -979,10 +1037,10 @@
                     "type": "string"
                   },
                   "severity": {
-                    "$ref": "#/definitions/AgentCSP Agent Manifest/properties/attack_paths/items/properties/severity"
+                    "$ref": "#/definitions/AgentCSP Agent Manifest/properties/metadata/properties/config/properties/fail_on"
                   },
                   "confidence": {
-                    "$ref": "#/definitions/AgentCSP Agent Manifest/properties/attack_paths/items/properties/confidence"
+                    "$ref": "#/definitions/AgentCSP Agent Manifest/properties/metadata/properties/config/properties/fail_on_confidence"
                   },
                   "count": {
                     "type": "integer",
@@ -1022,10 +1080,10 @@
                     "type": "string"
                   },
                   "severity": {
-                    "$ref": "#/definitions/AgentCSP Agent Manifest/properties/attack_paths/items/properties/severity"
+                    "$ref": "#/definitions/AgentCSP Agent Manifest/properties/metadata/properties/config/properties/fail_on"
                   },
                   "confidence": {
-                    "$ref": "#/definitions/AgentCSP Agent Manifest/properties/attack_paths/items/properties/confidence"
+                    "$ref": "#/definitions/AgentCSP Agent Manifest/properties/metadata/properties/config/properties/fail_on_confidence"
                   },
                   "risk_score": {
                     "type": "integer",
@@ -1106,7 +1164,7 @@
               }
             },
             "omitted_highest_severity": {
-              "$ref": "#/definitions/AgentCSP Agent Manifest/properties/attack_paths/items/properties/severity",
+              "$ref": "#/definitions/AgentCSP Agent Manifest/properties/metadata/properties/config/properties/fail_on",
               "default": "info"
             },
             "omitted_max_risk_score": {
@@ -1167,7 +1225,7 @@
                     "minimum": 0
                   },
                   "highest_severity": {
-                    "$ref": "#/definitions/AgentCSP Agent Manifest/properties/attack_paths/items/properties/severity"
+                    "$ref": "#/definitions/AgentCSP Agent Manifest/properties/metadata/properties/config/properties/fail_on"
                   },
                   "max_risk_score": {
                     "type": "integer",
@@ -1210,10 +1268,10 @@
                     "$ref": "#/definitions/AgentCSP Agent Manifest/properties/attack_paths/items/properties/recommended_control"
                   },
                   "severity": {
-                    "$ref": "#/definitions/AgentCSP Agent Manifest/properties/attack_paths/items/properties/severity"
+                    "$ref": "#/definitions/AgentCSP Agent Manifest/properties/metadata/properties/config/properties/fail_on"
                   },
                   "confidence": {
-                    "$ref": "#/definitions/AgentCSP Agent Manifest/properties/attack_paths/items/properties/confidence"
+                    "$ref": "#/definitions/AgentCSP Agent Manifest/properties/metadata/properties/config/properties/fail_on_confidence"
                   },
                   "risk_score": {
                     "type": "integer",
@@ -1392,10 +1450,10 @@
               "default": false
             },
             "fail_on": {
-              "$ref": "#/definitions/AgentCSP Agent Manifest/properties/attack_paths/items/properties/severity"
+              "$ref": "#/definitions/AgentCSP Agent Manifest/properties/metadata/properties/config/properties/fail_on"
             },
             "fail_on_confidence": {
-              "$ref": "#/definitions/AgentCSP Agent Manifest/properties/attack_paths/items/properties/confidence"
+              "$ref": "#/definitions/AgentCSP Agent Manifest/properties/metadata/properties/config/properties/fail_on_confidence"
             },
             "fail_on_new": {
               "type": "boolean",
@@ -1410,11 +1468,7 @@
               "default": false
             },
             "fail_on_scan_health": {
-              "type": "string",
-              "enum": [
-                "degraded",
-                "incomplete"
-              ]
+              "$ref": "#/definitions/AgentCSP Agent Manifest/properties/metadata/properties/config/properties/fail_on_scan_health"
             },
             "scan_health": {
               "type": "string",
@@ -1727,7 +1781,7 @@
               "default": 0
             },
             "highest_severity": {
-              "$ref": "#/definitions/AgentCSP Agent Manifest/properties/attack_paths/items/properties/severity",
+              "$ref": "#/definitions/AgentCSP Agent Manifest/properties/metadata/properties/config/properties/fail_on",
               "default": "info"
             },
             "preview_limit": {

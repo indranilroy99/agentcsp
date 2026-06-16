@@ -19,6 +19,21 @@ describe("scanProject", () => {
     });
 
     expect(result.manifest.metadata.config.secret_values_collected).toBe(false);
+    expect(result.manifest.metadata.config).toMatchObject({
+      formats: ["json", "md", "sarif"],
+      include_hidden: true,
+      include_logs: false,
+      max_file_size_bytes: 1024 * 1024,
+      max_files: 5000,
+      output_path_scope: "outside_scan_root",
+      config_path_configured: false,
+      baseline_path_configured: false,
+      fail_on_new: false,
+      fail_on_expired_suppressions: false,
+      fail_on_diagnostics: false,
+      evidence_redacted: true,
+      secret_values_collected: false
+    });
     expect(result.manifest.static_blast_radius?.title).toBe("Static Blast-Radius Summary");
     expect(result.manifest.static_blast_radius?.attack_paths).toBeGreaterThan(0);
     expect(result.manifest.static_blast_radius?.sensitive_data_external_reach_paths).toBeGreaterThan(0);
