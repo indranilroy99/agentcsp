@@ -1529,6 +1529,7 @@ assertEqual(vulnerable.manifest.diagnostics.length, 0, "vulnerable diagnostics c
 assertEqual(vulnerable.manifest.scan_coverage?.diagnostics_total, 0, "vulnerable diagnostic coverage count");
 assertVulnerableOperatorMetadata(vulnerable);
 assertMarkdownRootRedacted("vulnerable report", vulnerable);
+assertMarkdownTablesAligned("vulnerable report", vulnerable.report);
 
 for (const ruleId of [
   "AGENTCSP-TOOL-010",
@@ -1891,6 +1892,7 @@ assertEqual(safe.manifest.diagnostics.length, 0, "safe diagnostics count");
 assertEqual(safe.manifest.scan_coverage?.diagnostics_total, 0, "safe diagnostic coverage count");
 assertSafeOperatorMetadata(safe);
 assertMarkdownRootRedacted("safe report", safe);
+assertMarkdownTablesAligned("safe report", safe.report);
 
 assertNoLeaks("vulnerable output", vulnerable.raw);
 assertNoLeaks("safe output", safe.raw);
@@ -2177,6 +2179,42 @@ async function readScanOutput(outputPath, options) {
 function assertMarkdownRootRedacted(label, output) {
   assert(output.report.includes("- Root: `<scan-root>`"), `${label} missing redacted scan root marker`);
   assert(!output.report.includes(output.manifest.metadata.root_path), `${label} leaked absolute scan root`);
+}
+
+function assertMarkdownTablesAligned(label, markdown) {
+  let expectedCells = 0;
+  let tableStartLine = 0;
+  const lines = markdown.split(/\r?\n/u);
+  for (let index = 0; index < lines.length; index += 1) {
+    const line = lines[index].trim();
+    if (!isMarkdownTableLine(line)) {
+      expectedCells = 0;
+      tableStartLine = 0;
+      continue;
+    }
+    const cells = countMarkdownTableCells(line);
+    if (expectedCells === 0) {
+      expectedCells = cells;
+      tableStartLine = index + 1;
+      continue;
+    }
+    assert(
+      cells === expectedCells,
+      `${label} table starting on line ${tableStartLine} has ${cells} cells on line ${index + 1}, expected ${expectedCells}`
+    );
+  }
+}
+
+function isMarkdownTableLine(line) {
+  return line.startsWith("|") && line.endsWith("|");
+}
+
+function countMarkdownTableCells(line) {
+  let separators = 0;
+  for (let index = 0; index < line.length; index += 1) {
+    if (line[index] === "|" && line[index - 1] !== "\\") separators += 1;
+  }
+  return Math.max(0, separators - 1);
 }
 
 function assertNoLeaks(label, value) {
