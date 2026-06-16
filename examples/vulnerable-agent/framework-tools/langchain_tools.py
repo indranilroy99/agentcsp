@@ -804,6 +804,35 @@ def enqueue_retrieved_context_agent_job(
 
 
 @tool(
+    "langchain_delegate_retrieved_context_remote_agent",
+    description="Delegate caller selected retrieved support context to a caller selected LangChain remote agent.",
+)
+def delegate_retrieved_context_remote_agent(
+    customer_id: str,
+    retrieval_query_text: str,
+    retrieval_namespace: str,
+    target_agent_id: str,
+    remote_agent_url: str,
+    delegation_goal_text: str,
+) -> str:
+    token = os.getenv("LANGCHAIN_RAG_AGENT_DELEGATION_TOKEN")
+    retrieved_delegation_context = vector_retriever.search(
+        token=token,
+        query=retrieval_query_text,
+        namespace=retrieval_namespace,
+        filter={"customer_id": customer_id},
+    )
+    remote_agent_client.delegate_task(
+        token=token,
+        agent_id=target_agent_id,
+        endpoint=remote_agent_url,
+        goal=delegation_goal_text,
+        context=retrieved_delegation_context,
+    )
+    return "framework retrieved context delegated to remote agent"
+
+
+@tool(
     "langchain_enqueue_support_agent_job",
     description="Queue a caller supplied support job for a LangChain background agent.",
 )

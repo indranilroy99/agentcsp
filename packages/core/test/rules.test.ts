@@ -10242,12 +10242,14 @@ describe("rule engine", () => {
       "langchain_delegate_env_secret_remote_agent",
       "langchain_delegate_local_file_remote_agent",
       "langchain_delegate_model_selected_remote_agent_task",
+      "langchain_delegate_retrieved_context_remote_agent",
       "source_delegate_authenticated_page_screenshot_remote_agent",
       "source_delegate_customer_case_to_remote_agent",
       "source_delegate_customer_vault_secret_remote_agent",
       "source_delegate_env_secret_remote_agent",
       "source_delegate_local_file_remote_agent",
-      "source_delegate_model_selected_remote_agent_task"
+      "source_delegate_model_selected_remote_agent_task",
+      "source_delegate_retrieved_context_remote_agent"
     ]);
     expect(sourceHandlerAgentDelegationFindings.every((finding) => finding.severity === "critical")).toBe(true);
     expect(sourceHandlerAgentDelegationFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
@@ -10286,6 +10288,10 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerAgentDelegationFindings)).not.toContain("framework visual context delegated to remote agent");
     expect(JSON.stringify(sourceHandlerAgentDelegationFindings)).not.toContain("source local file delegated to remote agent");
     expect(JSON.stringify(sourceHandlerAgentDelegationFindings)).not.toContain("framework local file delegated to remote agent");
+    expect(JSON.stringify(sourceHandlerAgentDelegationFindings)).not.toContain("retrievedDelegationContext");
+    expect(JSON.stringify(sourceHandlerAgentDelegationFindings)).not.toContain("retrieved_delegation_context");
+    expect(JSON.stringify(sourceHandlerAgentDelegationFindings)).not.toContain("source retrieved context delegated to remote agent");
+    expect(JSON.stringify(sourceHandlerAgentDelegationFindings)).not.toContain("framework retrieved context delegated to remote agent");
     expect(JSON.stringify(sourceHandlerAgentDelegationFindings)).not.toContain("Ask a model provider to draft a remote-agent task");
     expect(JSON.stringify(sourceHandlerAgentDelegationFindings)).not.toContain("Delegate caller supplied customer context");
     const sourceHandlerArtifactExportFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-050");
@@ -10999,6 +11005,71 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerRagRetrievalTaskQueueBridgeFindings)).not.toContain("source retrieved context queued for background agent");
     expect(JSON.stringify(sourceHandlerRagRetrievalTaskQueueBridgeFindings)).not.toContain("framework retrieved context queued for background agent");
     expect(JSON.stringify(sourceHandlerRagRetrievalTaskQueueBridgeFindings)).not.toContain("Queue caller selected retrieved support context");
+    const sourceHandlerRagRetrievalAgentDelegationBridgeFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-182");
+    expect(sourceHandlerRagRetrievalAgentDelegationBridgeFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
+      "langchain_delegate_retrieved_context_remote_agent",
+      "source_delegate_retrieved_context_remote_agent"
+    ]);
+    expect(sourceHandlerRagRetrievalAgentDelegationBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
+    expect(sourceHandlerRagRetrievalAgentDelegationBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerRagRetrievalAgentDelegationBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
+    expect(sourceHandlerRagRetrievalAgentDelegationBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
+    expect(sourceHandlerRagRetrievalAgentDelegationBridgeFindings.every((finding) => finding.matched_object.metadata.source_tool_handler_redacted === true)).toBe(true);
+    expect(sourceHandlerRagRetrievalAgentDelegationBridgeFindings.every((finding) => finding.matched_object.metadata.handler_secret_env_access === true)).toBe(true);
+    expect(sourceHandlerRagRetrievalAgentDelegationBridgeFindings.every((finding) => finding.matched_object.metadata.handler_rag_retrieval === true)).toBe(true);
+    expect(sourceHandlerRagRetrievalAgentDelegationBridgeFindings.every((finding) => finding.matched_object.metadata.handler_tainted_rag_retrieval_query === true)).toBe(true);
+    expect(sourceHandlerRagRetrievalAgentDelegationBridgeFindings.every((finding) => finding.matched_object.metadata.handler_agent_delegation === true)).toBe(true);
+    expect(sourceHandlerRagRetrievalAgentDelegationBridgeFindings.every((finding) => finding.matched_object.metadata.handler_tainted_agent_delegation_target === true)).toBe(true);
+    expect(sourceHandlerRagRetrievalAgentDelegationBridgeFindings.every((finding) => finding.matched_object.metadata.handler_agent_delegation_context_forwarding === true)).toBe(true);
+    expect(sourceHandlerRagRetrievalAgentDelegationBridgeFindings.every((finding) => finding.matched_object.metadata.handler_rag_retrieval_agent_delegation_bridge === true)).toBe(true);
+    expect(sourceHandlerRagRetrievalAgentDelegationBridgeFindings.every((finding) => finding.matched_object.metadata.rag_retrieval === true)).toBe(true);
+    expect(sourceHandlerRagRetrievalAgentDelegationBridgeFindings.every((finding) => finding.matched_object.metadata.tainted_rag_retrieval_query === true)).toBe(true);
+    expect(sourceHandlerRagRetrievalAgentDelegationBridgeFindings.every((finding) => finding.matched_object.metadata.agent_delegation === true)).toBe(true);
+    expect(sourceHandlerRagRetrievalAgentDelegationBridgeFindings.every((finding) => finding.matched_object.metadata.tainted_agent_delegation_target === true)).toBe(true);
+    expect(sourceHandlerRagRetrievalAgentDelegationBridgeFindings.every((finding) => finding.matched_object.metadata.agent_delegation_context_forwarding === true)).toBe(true);
+    expect(sourceHandlerRagRetrievalAgentDelegationBridgeFindings.every((finding) => finding.matched_object.metadata.rag_retrieval_agent_delegation_bridge === true)).toBe(true);
+    expect(sourceHandlerRagRetrievalAgentDelegationBridgeFindings.every((finding) => finding.matched_object.metadata.accepts_url_input === true)).toBe(true);
+    expect(sourceHandlerRagRetrievalAgentDelegationBridgeFindings.every((finding) => finding.matched_object.metadata.accepts_customer_data_input === true)).toBe(true);
+    for (const authorityClass of [
+      "rag_retrieval",
+      "tainted_rag_retrieval_query",
+      "agent_delegation",
+      "tainted_agent_delegation_target",
+      "agent_delegation_context_forwarding",
+      "rag_retrieval_agent_delegation_bridge"
+    ]) {
+      expect(sourceHandlerRagRetrievalAgentDelegationBridgeFindings.every((finding) =>
+        finding.matched_object.metadata.authority_classes.includes(authorityClass)
+      )).toBe(true);
+    }
+    for (const handlerAuthorityClass of [
+      "handler_rag_retrieval",
+      "handler_tainted_rag_retrieval_query",
+      "handler_agent_delegation",
+      "handler_tainted_agent_delegation_target",
+      "handler_agent_delegation_context_forwarding",
+      "handler_rag_retrieval_agent_delegation_bridge"
+    ]) {
+      expect(sourceHandlerRagRetrievalAgentDelegationBridgeFindings.every((finding) =>
+        finding.matched_object.metadata.handler_authority_classes.includes(handlerAuthorityClass)
+      )).toBe(true);
+    }
+    expect(sourceHandlerRagRetrievalAgentDelegationBridgeFindings.every((finding) => finding.matched_object.actions.includes("execute"))).toBe(true);
+    expect(sourceHandlerRagRetrievalAgentDelegationBridgeFindings.every((finding) => finding.matched_object.actions.includes("read"))).toBe(true);
+    expect(sourceHandlerRagRetrievalAgentDelegationBridgeFindings.every((finding) => finding.matched_object.actions.includes("send"))).toBe(true);
+    expect(sourceHandlerRagRetrievalAgentDelegationBridgeFindings.every((finding) => finding.matched_object.external_reach === true)).toBe(true);
+    expect(sourceHandlerRagRetrievalAgentDelegationBridgeFindings.every((finding) => finding.matched_object.secret_exposure === true)).toBe(true);
+    expect(sourceHandlerRagRetrievalAgentDelegationBridgeFindings.every((finding) => finding.matched_object.side_effect === true)).toBe(true);
+    expect(sourceHandlerRagRetrievalAgentDelegationBridgeFindings.every((finding) => finding.matched_object.reversible === false)).toBe(true);
+    expect(JSON.stringify(sourceHandlerRagRetrievalAgentDelegationBridgeFindings)).not.toContain("vectorRetriever.search");
+    expect(JSON.stringify(sourceHandlerRagRetrievalAgentDelegationBridgeFindings)).not.toContain("vector_retriever.search");
+    expect(JSON.stringify(sourceHandlerRagRetrievalAgentDelegationBridgeFindings)).not.toContain("remoteAgentClient.delegateTask");
+    expect(JSON.stringify(sourceHandlerRagRetrievalAgentDelegationBridgeFindings)).not.toContain("remote_agent_client.delegate_task");
+    expect(JSON.stringify(sourceHandlerRagRetrievalAgentDelegationBridgeFindings)).not.toContain("retrievedDelegationContext");
+    expect(JSON.stringify(sourceHandlerRagRetrievalAgentDelegationBridgeFindings)).not.toContain("retrieved_delegation_context");
+    expect(JSON.stringify(sourceHandlerRagRetrievalAgentDelegationBridgeFindings)).not.toContain("source retrieved context delegated to remote agent");
+    expect(JSON.stringify(sourceHandlerRagRetrievalAgentDelegationBridgeFindings)).not.toContain("framework retrieved context delegated to remote agent");
+    expect(JSON.stringify(sourceHandlerRagRetrievalAgentDelegationBridgeFindings)).not.toContain("Delegate caller selected retrieved support context");
     const sourceHandlerLocalFileSafetyPolicyBridgeFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-175");
     expect(sourceHandlerLocalFileSafetyPolicyBridgeFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_apply_local_file_guardrail_override",

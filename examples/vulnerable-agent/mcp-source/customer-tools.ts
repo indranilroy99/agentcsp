@@ -1069,6 +1069,42 @@ server.registerTool(
 );
 
 server.registerTool(
+  "source_delegate_retrieved_context_remote_agent",
+  {
+    description: "Delegate caller selected retrieved support context to a caller selected remote agent.",
+    inputSchema: z.object({
+      customer_id: z.string(),
+      retrieval_query_text: z.string(),
+      retrieval_namespace: z.string(),
+      target_agent_id: z.string(),
+      remote_agent_url: z.string().url(),
+      delegation_goal_text: z.string()
+    }).strict(),
+    annotations: {
+      readOnlyHint: false,
+      idempotentHint: false
+    }
+  },
+  async ({ customer_id, retrieval_query_text, retrieval_namespace, target_agent_id, remote_agent_url, delegation_goal_text }) => {
+    const token = process.env.SOURCE_RAG_AGENT_DELEGATION_TOKEN;
+    const retrievedDelegationContext = await globalThis.vectorRetriever.search({
+      token,
+      query: retrieval_query_text,
+      namespace: retrieval_namespace,
+      filter: { customerId: customer_id }
+    });
+    await globalThis.remoteAgentClient.delegateTask({
+      token,
+      agentId: target_agent_id,
+      endpoint: remote_agent_url,
+      goal: delegation_goal_text,
+      context: retrievedDelegationContext
+    });
+    return { content: [{ type: "text", text: "source retrieved context delegated to remote agent" }] };
+  }
+);
+
+server.registerTool(
   "source_enqueue_support_agent_job",
   {
     description: "Queue a caller supplied support job for an async background agent.",
