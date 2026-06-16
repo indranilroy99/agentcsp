@@ -46,7 +46,14 @@ export function buildTriageSummary(findings: Finding[]): TriageSummary {
     object_type: finding.matched_object.type,
     object_name: finding.matched_object.name,
     path: finding.file_path,
-    recommended_control: finding.recommended_control
+    recommended_control: finding.recommended_control,
+    trust_level: finding.risk.trust_level,
+    data_classes: finding.data_classes,
+    actions: finding.risk.actions,
+    external_reach: finding.risk.external_reach,
+    secret_exposure: finding.risk.secret_exposure,
+    untrusted_to_privileged: finding.risk.untrusted_to_privileged,
+    trust_boundary_crossed: finding.trust_boundary_crossed
   }));
 
   return {

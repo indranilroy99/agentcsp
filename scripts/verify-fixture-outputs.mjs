@@ -2007,6 +2007,20 @@ function assertVulnerableOperatorMetadata(output) {
     "vulnerable triage top risks total"
   );
   assertEqual(manifest.triage_summary?.top_active_risks_truncated, true, "vulnerable triage top risks truncation");
+  const firstTopRisk = manifest.triage_summary?.top_active_risks?.[0];
+  assert(firstTopRisk?.trust_level, "vulnerable triage top risk trust level missing");
+  assert(Array.isArray(firstTopRisk?.data_classes), "vulnerable triage top risk data classes missing");
+  assert(Array.isArray(firstTopRisk?.actions), "vulnerable triage top risk actions missing");
+  assert(typeof firstTopRisk?.external_reach === "boolean", "vulnerable triage top risk external reach missing");
+  assert(typeof firstTopRisk?.secret_exposure === "boolean", "vulnerable triage top risk secret exposure missing");
+  assert(
+    typeof firstTopRisk?.untrusted_to_privileged === "boolean",
+    "vulnerable triage top risk untrusted-to-privileged flag missing"
+  );
+  assert(
+    typeof firstTopRisk?.trust_boundary_crossed === "boolean",
+    "vulnerable triage top risk trust-boundary flag missing"
+  );
 
   assertEqual(manifest.action_plan?.max_actions, 12, "vulnerable action plan max actions");
   assertEqual(manifest.action_plan?.truncated, true, "vulnerable action plan truncation");

@@ -1137,6 +1137,39 @@
                   },
                   "recommended_control": {
                     "$ref": "#/definitions/AgentCSP Agent Manifest/properties/attack_paths/items/properties/recommended_control"
+                  },
+                  "trust_level": {
+                    "$ref": "#/definitions/AgentCSP Agent Manifest/properties/agents/items/properties/trust_level"
+                  },
+                  "data_classes": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/definitions/AgentCSP Agent Manifest/properties/agents/items/properties/data_classes/items"
+                    },
+                    "default": []
+                  },
+                  "actions": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/definitions/AgentCSP Agent Manifest/properties/agents/items/properties/actions/items"
+                    },
+                    "default": []
+                  },
+                  "external_reach": {
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "secret_exposure": {
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "untrusted_to_privileged": {
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "trust_boundary_crossed": {
+                    "type": "boolean",
+                    "default": false
                   }
                 },
                 "required": [
@@ -1149,7 +1182,8 @@
                   "object_type",
                   "object_name",
                   "path",
-                  "recommended_control"
+                  "recommended_control",
+                  "trust_level"
                 ],
                 "additionalProperties": false
               },

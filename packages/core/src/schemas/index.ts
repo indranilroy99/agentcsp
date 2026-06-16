@@ -243,7 +243,14 @@ export const TriageFindingSummarySchema = z.object({
   object_type: SurfaceTypeSchema,
   object_name: z.string(),
   path: z.string(),
-  recommended_control: ControlSchema
+  recommended_control: ControlSchema,
+  trust_level: TrustLevelSchema,
+  data_classes: z.array(DataClassSchema).default([]),
+  actions: z.array(ActionTypeSchema).default([]),
+  external_reach: z.boolean().default(false),
+  secret_exposure: z.boolean().default(false),
+  untrusted_to_privileged: z.boolean().default(false),
+  trust_boundary_crossed: z.boolean().default(false)
 });
 
 export const TriageSummarySchema = z.object({

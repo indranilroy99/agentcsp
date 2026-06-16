@@ -30,6 +30,40 @@ describe("triage summary", () => {
     expect(summary.top_active_risks).toHaveLength(triageTopListLimit);
     expect(summary.top_active_rules.some((rule) => rule.rule_id === "RULE-SUPPRESSED")).toBe(false);
   });
+
+  it("includes risk factors in top active risk summaries", () => {
+    const summary = buildTriageSummary([
+      {
+        ...finding("finding_critical", "RULE-CRITICAL"),
+        severity: "critical",
+        data_classes: ["credential", "pii"],
+        trust_boundary_crossed: true,
+        risk: {
+          trust_level: "untrusted",
+          data_classes: ["credential", "pii"],
+          actions: ["execute", "send"],
+          side_effect: true,
+          reversible: false,
+          external_reach: true,
+          secret_exposure: true,
+          untrusted_to_privileged: true,
+          score: 95,
+          rationale: []
+        }
+      } as Finding
+    ]);
+
+    expect(summary.top_active_risks[0]).toMatchObject({
+      finding_id: "finding_critical",
+      trust_level: "untrusted",
+      data_classes: ["credential", "pii"],
+      actions: ["execute", "send"],
+      external_reach: true,
+      secret_exposure: true,
+      untrusted_to_privileged: true,
+      trust_boundary_crossed: true
+    });
+  });
 });
 
 function finding(id: string, ruleId: string): Finding {
@@ -43,12 +77,33 @@ function finding(id: string, ruleId: string): Finding {
     matched_object: {
       id: `object_${id}`,
       type: "tool",
-      name: id
+      name: id,
+      trust_level: "project",
+      data_classes: [],
+      actions: ["call"],
+      side_effect: true,
+      reversible: true,
+      external_reach: false,
+      secret_exposure: false,
+      untrusted_to_privileged: false,
+      evidence: [],
+      metadata: {}
     },
     file_path: `${id}.yaml`,
+    data_classes: [],
+    trust_boundary_crossed: false,
     recommended_control: "require_approval",
     risk: {
-      score: 80
+      trust_level: "project",
+      data_classes: [],
+      actions: ["call"],
+      side_effect: true,
+      reversible: true,
+      external_reach: false,
+      secret_exposure: false,
+      untrusted_to_privileged: false,
+      score: 80,
+      rationale: []
     }
   } as Finding;
 }

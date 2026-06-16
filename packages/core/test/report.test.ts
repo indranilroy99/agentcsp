@@ -284,7 +284,9 @@ describe("scanProject", () => {
     expect(result.reportMarkdown).toContain("### Active Findings by Severity");
     expect(result.reportMarkdown).toContain("### Top Active Rules");
     expect(result.reportMarkdown).toContain("### Top Active Risks");
-    expect(result.reportMarkdown).toContain("| Severity | Confidence | Risk | Rule | Object | Path | Recommended control |");
+    expect(result.reportMarkdown).toContain(
+      "| Severity | Confidence | Risk | Trust | Data | Actions | External | Secret | Untrusted->privileged | Boundary | Rule | Object | Path | Recommended control |"
+    );
     expect(result.reportMarkdown).toContain("- Attack path limit: 15");
     expect(result.reportMarkdown).toContain("- Attack paths total:");
     expect(result.reportMarkdown).toContain("- Attack paths truncated:");

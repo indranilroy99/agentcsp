@@ -2894,7 +2894,7 @@ The summary includes:
 - active findings by severity and confidence
 - active findings by surface type, category, and recommended control
 - bounded top active rules with total count and truncation status
-- bounded top active risks with finding IDs, object IDs, paths, risk scores, recommended controls, total count, and truncation status
+- bounded top active risks with finding IDs, object IDs, paths, risk scores, recommended controls, trust level, data classes, actions, external reach, secret exposure, untrusted-to-privileged influence, trust-boundary status, total count, and truncation status
 
 The triage summary does not include raw file contents, evidence snippets, secret values, or unredacted tool/runtime configuration values.
 
