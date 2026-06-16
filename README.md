@@ -122,7 +122,7 @@ CLI shape:
 agentcsp scan [path] --out .agentcsp
 ```
 
-Relative `--out` and `--baseline` paths are resolved from the scanned project root. Absolute paths are preserved.
+Relative `--out`, `--baseline`, and `--config` paths are resolved from the scanned project root. Absolute paths are preserved. Diagnostics for policy configs outside the scanned root redact the local path.
 
 Useful flags:
 

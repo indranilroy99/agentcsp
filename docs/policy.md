@@ -18,9 +18,9 @@ Reports use "recommended controls" until runtime adapters can enforce decisions 
 
 ## Policy Health
 
-Default missing policy files are allowed and do not produce diagnostics. If a policy file exists but cannot be parsed, fails schema validation, or an explicitly supplied `--config` path is missing, AgentCSP records a redacted scan diagnostic and continues with empty advisory policy.
+Default missing policy files are allowed and do not produce diagnostics. If a policy file exists but cannot be parsed, fails schema validation, or an explicitly supplied `--config` path is missing, AgentCSP records a redacted scan diagnostic and continues with empty advisory policy. Relative `--config` paths are resolved from the scanned project root, while absolute paths can point to shared policy files outside the repository.
 
-This keeps scanner output available for CI, SARIF, and audit review while making policy failures visible through `diagnostics` and `scan_coverage` diagnostic counters. Use `--fail-on-diagnostics` when policy health issues should fail CI.
+This keeps scanner output available for CI, SARIF, and audit review while making policy failures visible through `diagnostics` and `scan_coverage` diagnostic counters. Diagnostics for policy files outside the scanned root use `<external-policy-config>` instead of exposing absolute local paths. Use `--fail-on-diagnostics` when policy health issues should fail CI.
 
 ## Policy Integrity Signals
 

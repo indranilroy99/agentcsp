@@ -223,6 +223,34 @@ describe("scan diagnostics", () => {
     expect(result.reportMarkdown).toContain("POLICY_CONFIG_SCHEMA_FAILED");
     expect(JSON.stringify(result.manifest)).not.toContain("admin-secret-policy-value");
   });
+
+  it("redacts external absolute policy config paths in diagnostics", async () => {
+    const root = await createInvalidPolicyFixture();
+    const externalConfigPath = "/private/tmp/agentcsp-external-policy/private/team/agentcsp.yaml";
+    await fs.rm("/private/tmp/agentcsp-external-policy", { recursive: true, force: true });
+    const result = await scanProject({
+      root_path: root,
+      output_path: "/private/tmp/agentcsp-external-policy-diagnostic-output",
+      config_path: externalConfigPath,
+      formats: ["json", "md", "sarif"],
+      include_hidden: true,
+      include_logs: false,
+      max_file_size_bytes: 1024 * 1024,
+      max_files: 5000,
+      quiet: true
+    });
+
+    expect(result.manifest.diagnostics).toEqual([
+      expect.objectContaining({
+        code: "POLICY_CONFIG_NOT_FOUND",
+        file_path: "<external-policy-config>",
+        content_redacted: true
+      })
+    ]);
+    expect(JSON.stringify(result.manifest)).not.toContain("/private/tmp/agentcsp-external-policy");
+    expect(result.reportMarkdown).toContain("<external-policy-config>");
+    expect(result.reportMarkdown).not.toContain("/private/tmp/agentcsp-external-policy");
+  });
 });
 
 async function createDiagnosticsFixture(): Promise<string> {

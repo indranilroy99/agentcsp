@@ -16,3 +16,8 @@ export function normalizePath(value: string): string {
 export function resolvePathFromRoot(rootPath: string, targetPath: string): string {
   return path.isAbsolute(targetPath) ? path.resolve(targetPath) : path.resolve(rootPath, targetPath);
 }
+
+export function isPathInsideRoot(rootPath: string, targetPath: string): boolean {
+  const relativeTargetPath = path.relative(path.resolve(rootPath), path.resolve(targetPath));
+  return Boolean(relativeTargetPath) && !relativeTargetPath.startsWith("..") && !path.isAbsolute(relativeTargetPath);
+}

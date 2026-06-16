@@ -14,7 +14,7 @@ import {
   type TrustLevel
 } from "../schemas/index.js";
 import { stableId } from "../utils/ids.js";
-import { relativePath } from "../utils/paths.js";
+import { isPathInsideRoot, relativePath, resolvePathFromRoot } from "../utils/paths.js";
 
 export interface LoadedPolicy {
   policy: Policy;
@@ -70,7 +70,7 @@ export async function loadPolicyWithDiagnostics(rootPath: string, configPath?: s
 }
 
 function policyCandidate(rootPath: string, configPath?: string): string {
-  return configPath ? path.resolve(rootPath, configPath) : path.join(rootPath, "agentcsp.yaml");
+  return configPath ? resolvePathFromRoot(rootPath, configPath) : path.join(rootPath, "agentcsp.yaml");
 }
 
 function policyDiagnostic(
@@ -81,7 +81,7 @@ function policyDiagnostic(
     reason: string;
   }
 ): ScanDiagnostic {
-  const filePath = relativePath(rootPath, absolutePath);
+  const filePath = policyDiagnosticPath(rootPath, absolutePath);
   return {
     id: stableId("diagnostic", [input.code, filePath]),
     severity: "warning",
@@ -91,6 +91,10 @@ function policyDiagnostic(
     reason: input.reason,
     content_redacted: true
   };
+}
+
+function policyDiagnosticPath(rootPath: string, absolutePath: string): string {
+  return isPathInsideRoot(rootPath, absolutePath) ? relativePath(rootPath, absolutePath) : "<external-policy-config>";
 }
 
 function isValidationError(error: unknown): boolean {

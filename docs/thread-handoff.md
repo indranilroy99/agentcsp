@@ -1892,6 +1892,9 @@ The current iteration adds:
 - regression coverage proving root-relative output files are written to the expected location and stale custom output contents are not indexed
 - relative baseline paths now resolve from the scanned project root instead of the caller's current working directory, while absolute baseline paths remain unchanged
 - regression coverage proving CLI and core scans load project-root-relative baselines and report the resolved baseline path
+- policy config path handling now uses the same root-relative path semantics as output and baseline paths while preserving absolute shared-policy paths
+- diagnostics for policy configs outside the scanned root now use `<external-policy-config>` instead of emitting absolute local paths
+- regression coverage proving external absolute policy config diagnostics stay redacted in JSON and Markdown
 
 ## Initial Build Recommendation
 
