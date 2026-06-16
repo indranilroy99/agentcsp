@@ -69,8 +69,30 @@ for (const example of examples) {
 
 const internalCiPath = path.join(repoRoot, ".github/workflows/ci.yml");
 const internalCi = YAML.parse(await fs.readFile(internalCiPath, "utf8"));
+assert(internalCi?.permissions?.actions === "read", ".github/workflows/ci.yml must use read-only actions permission");
+assert(internalCi?.permissions?.contents === "read", ".github/workflows/ci.yml must use read-only contents permission");
+assert(
+  internalCi?.permissions?.["security-events"] === "write",
+  ".github/workflows/ci.yml must grant security-events: write for SARIF upload"
+);
 const internalSteps = Object.values(internalCi?.jobs ?? {})[0]?.steps ?? [];
 assert(Array.isArray(internalSteps), ".github/workflows/ci.yml job steps must be an array");
+assert(
+  internalSteps.some((step) => step.uses === "actions/checkout@v4"),
+  ".github/workflows/ci.yml must checkout source with a pinned major version"
+);
+const internalPnpmStep = internalSteps.find((step) => step.uses === "pnpm/action-setup@v4");
+assert(internalPnpmStep, ".github/workflows/ci.yml must setup pnpm with a pinned major version");
+assert(internalPnpmStep.with?.version === "11.0.9", ".github/workflows/ci.yml must pin pnpm to 11.0.9");
+const internalNodeStep = internalSteps.find((step) => step.uses === "actions/setup-node@v4");
+assert(internalNodeStep, ".github/workflows/ci.yml must setup Node.js with a pinned major version");
+assert(internalNodeStep.with?.["node-version"] === 24, ".github/workflows/ci.yml must run on Node.js 24");
+assert(internalNodeStep.with?.cache === "pnpm", ".github/workflows/ci.yml must cache pnpm dependencies");
+const internalInstallStep = internalSteps.find((step) => step.name === "Install dependencies");
+assert(
+  internalInstallStep?.run === "pnpm install --frozen-lockfile",
+  ".github/workflows/ci.yml must install from the lockfile without mutation"
+);
 const internalAuditStep = internalSteps.find((step) => String(step.name ?? "").startsWith("Audit "));
 assert(internalAuditStep, ".github/workflows/ci.yml must include dependency audit");
 assert(
