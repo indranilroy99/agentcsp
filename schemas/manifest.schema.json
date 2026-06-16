@@ -1310,6 +1310,15 @@
               "minimum": 0,
               "default": 0
             },
+            "baseline_id_limit": {
+              "type": "integer",
+              "exclusiveMinimum": 0,
+              "default": 50
+            },
+            "baseline_ids_truncated": {
+              "type": "boolean",
+              "default": false
+            },
             "new_finding_ids": {
               "type": "array",
               "items": {
@@ -1317,12 +1326,20 @@
               },
               "default": []
             },
+            "new_finding_ids_truncated": {
+              "type": "boolean",
+              "default": false
+            },
             "resolved_finding_ids": {
               "type": "array",
               "items": {
                 "type": "string"
               },
               "default": []
+            },
+            "resolved_finding_ids_truncated": {
+              "type": "boolean",
+              "default": false
             }
           },
           "required": [

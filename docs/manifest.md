@@ -2946,12 +2946,13 @@ The comparison includes:
 - baseline path and format
 - current and baseline finding counts
 - new, existing, and resolved finding counts
-- stable new finding IDs
-- stable resolved finding IDs
+- bounded stable new finding IDs
+- bounded stable resolved finding IDs
+- baseline ID limit and truncation flags for new and resolved ID previews
 
 If the baseline file is outside the scanned root, `baseline_path` is emitted as `<external-baseline>` so scan artifacts and baseline read errors do not expose external local or CI filesystem layout.
 
-Current findings include `baseline_status` set to `new` or `existing` when a baseline is loaded. Resolved findings are represented by ID in `baseline_comparison.resolved_finding_ids`; their previous raw content is not copied into the new manifest.
+Current findings include `baseline_status` set to `new` or `existing` when a baseline is loaded. Resolved findings are represented by ID in `baseline_comparison.resolved_finding_ids`; their previous raw content is not copied into the new manifest. `new_findings` and `resolved_findings` remain exact counts even when the corresponding ID preview arrays are truncated.
 
 ## Scan Coverage
 

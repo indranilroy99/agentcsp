@@ -7,6 +7,7 @@ import { isPathInsideRoot, relativePath } from "../utils/paths.js";
 const BaselineFindingRecordSchema = z.object({ id: z.string() }).passthrough();
 const BaselineFindingsFileSchema = z.array(BaselineFindingRecordSchema);
 const BaselineManifestFileSchema = z.object({ findings: z.array(BaselineFindingRecordSchema) }).passthrough();
+export const baselineFindingIdLimit = 50;
 
 export interface BaselineResult {
   findings: Finding[];
@@ -49,8 +50,13 @@ export async function applyBaselineComparison(
       new_findings: newFindingIds.length,
       existing_findings: findingsWithStatus.length - newFindingIds.length,
       resolved_findings: resolvedFindingIds.length,
-      new_finding_ids: newFindingIds,
-      resolved_finding_ids: resolvedFindingIds
+      baseline_id_limit: baselineFindingIdLimit,
+      baseline_ids_truncated:
+        newFindingIds.length > baselineFindingIdLimit || resolvedFindingIds.length > baselineFindingIdLimit,
+      new_finding_ids: limitIds(newFindingIds),
+      new_finding_ids_truncated: newFindingIds.length > baselineFindingIdLimit,
+      resolved_finding_ids: limitIds(resolvedFindingIds),
+      resolved_finding_ids_truncated: resolvedFindingIds.length > baselineFindingIdLimit
     }
   };
 }
@@ -102,4 +108,8 @@ function baselineErrorMessage(error: unknown, baselinePath: string, displayBasel
 
 function uniqueSortedIds(findings: Array<{ id: string }>): string[] {
   return [...new Set(findings.map((finding) => finding.id))].sort((a, b) => a.localeCompare(b));
+}
+
+function limitIds(ids: string[], limit = baselineFindingIdLimit): string[] {
+  return ids.slice(0, limit);
 }

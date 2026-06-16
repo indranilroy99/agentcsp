@@ -269,8 +269,12 @@ export const BaselineComparisonSchema = z.object({
   new_findings: z.number().int().nonnegative().default(0),
   existing_findings: z.number().int().nonnegative().default(0),
   resolved_findings: z.number().int().nonnegative().default(0),
+  baseline_id_limit: z.number().int().positive().default(50),
+  baseline_ids_truncated: z.boolean().default(false),
   new_finding_ids: z.array(z.string()).default([]),
-  resolved_finding_ids: z.array(z.string()).default([])
+  new_finding_ids_truncated: z.boolean().default(false),
+  resolved_finding_ids: z.array(z.string()).default([]),
+  resolved_finding_ids_truncated: z.boolean().default(false)
 });
 
 export const CiGateSummarySchema = z.object({

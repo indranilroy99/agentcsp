@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import fs from "node:fs/promises";
 import path from "node:path";
+import { applyBaselineComparison, baselineFindingIdLimit } from "../src/reports/baseline.js";
 import { scanProject } from "../src/scanner/scan.js";
+import type { Finding } from "../src/schemas/index.js";
 
 const fixtureRoot = path.resolve("examples/vulnerable-agent");
 
@@ -40,7 +42,11 @@ describe("baseline comparison", () => {
       baseline_findings: baseline.findings.length,
       new_findings: 0,
       existing_findings: baseline.findings.length,
-      resolved_findings: 0
+      resolved_findings: 0,
+      baseline_id_limit: baselineFindingIdLimit,
+      baseline_ids_truncated: false,
+      new_finding_ids_truncated: false,
+      resolved_finding_ids_truncated: false
     });
     expect(result.findings.every((finding) => finding.baseline_status === "existing")).toBe(true);
     expect(result.manifest.action_plan).toMatchObject({
@@ -109,7 +115,9 @@ describe("baseline comparison", () => {
     expect(result.manifest.baseline_comparison).toMatchObject({
       baseline_format: "findings",
       new_findings: 1,
-      resolved_findings: 1
+      resolved_findings: 1,
+      baseline_id_limit: baselineFindingIdLimit,
+      baseline_ids_truncated: false
     });
     expect(result.manifest.baseline_comparison?.new_finding_ids).toEqual([targetNewFinding?.id]);
     expect(result.manifest.baseline_comparison?.resolved_finding_ids).toEqual(["finding_resolved_demo"]);
@@ -117,6 +125,8 @@ describe("baseline comparison", () => {
     expect(result.manifest.action_plan?.new_actions).toBeGreaterThan(0);
     expect(result.manifest.action_plan?.actions.some((action) => action.baseline_status === "new")).toBe(true);
     expect(result.reportMarkdown).toContain("New findings: 1");
+    expect(result.reportMarkdown).toContain(`Baseline ID limit: ${baselineFindingIdLimit}`);
+    expect(result.reportMarkdown).toContain("Baseline IDs truncated: `false`");
     const sarif = JSON.parse(await fs.readFile(result.outputFiles.sarif!, "utf8")) as {
       runs: Array<{ results: Array<{ partialFingerprints?: { agentcspFindingId?: string }; baselineState?: string }> }>;
     };
@@ -124,6 +134,42 @@ describe("baseline comparison", () => {
       (item) => item.partialFingerprints?.agentcspFindingId === targetNewFinding?.id
     );
     expect(sarifFinding?.baselineState).toBe("new");
+  });
+
+  it("bounds baseline comparison ID previews while preserving exact counts", async () => {
+    const baselinePath = "/private/tmp/agentcsp-large-baseline.json";
+    await fs.writeFile(
+      baselinePath,
+      `${JSON.stringify(
+        Array.from({ length: baselineFindingIdLimit + 4 }, (_, index) => ({
+          id: `resolved_${index.toString().padStart(3, "0")}`
+        })),
+        null,
+        2
+      )}\n`,
+      "utf8"
+    );
+    const findings = Array.from({ length: baselineFindingIdLimit + 3 }, (_, index) =>
+      finding(`new_${index.toString().padStart(3, "0")}`)
+    );
+
+    const result = await applyBaselineComparison(findings, baselinePath, "/private/tmp");
+
+    expect(result.comparison).toMatchObject({
+      current_findings: baselineFindingIdLimit + 3,
+      baseline_findings: baselineFindingIdLimit + 4,
+      new_findings: baselineFindingIdLimit + 3,
+      existing_findings: 0,
+      resolved_findings: baselineFindingIdLimit + 4,
+      baseline_id_limit: baselineFindingIdLimit,
+      baseline_ids_truncated: true,
+      new_finding_ids_truncated: true,
+      resolved_finding_ids_truncated: true
+    });
+    expect(result.comparison.new_finding_ids).toHaveLength(baselineFindingIdLimit);
+    expect(result.comparison.resolved_finding_ids).toHaveLength(baselineFindingIdLimit);
+    expect(result.comparison.new_finding_ids[0]).toBe("new_000");
+    expect(result.comparison.resolved_finding_ids[0]).toBe("resolved_000");
   });
 
   it("resolves relative baseline paths from the scan root", async () => {
@@ -222,3 +268,11 @@ describe("baseline comparison", () => {
     expect(message).not.toContain("/private/tmp/agentcsp-missing-external-baseline-store");
   });
 });
+
+function finding(id: string): Finding {
+  return {
+    id,
+    severity: "high",
+    confidence: "high"
+  } as Finding;
+}

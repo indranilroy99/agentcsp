@@ -81,7 +81,7 @@ Use a previous `findings.json` or `agent-manifest.json` as a baseline when intro
 agentcsp scan . --baseline .agentcsp/agent-manifest.json --out .agentcsp
 ```
 
-The manifest and Markdown report include a baseline comparison with new, existing, and resolved finding counts. Current findings receive `baseline_status: "new"` or `baseline_status: "existing"` when a baseline is provided.
+The manifest and Markdown report include a baseline comparison with new, existing, and resolved finding counts. Current findings receive `baseline_status: "new"` or `baseline_status: "existing"` when a baseline is provided. New and resolved finding ID previews are bounded; `baseline_id_limit` and the `*_ids_truncated` flags make it explicit when the preview arrays are not complete inventories.
 
 Relative `--baseline` paths are resolved from the scanned project root. This keeps multi-repo CI jobs stable when the command is launched from a parent workspace or automation directory. Baselines inside the scanned root are emitted as root-relative paths in JSON, Markdown, and SARIF. If the baseline file lives outside the scanned root, AgentCSP reads it normally but emits `<external-baseline>` in JSON, Markdown, SARIF, and baseline read errors instead of exposing the absolute local path.
 
