@@ -46,6 +46,16 @@ export const SeveritySchema = z.enum(["info", "low", "medium", "high", "critical
 export const ConfidenceSchema = z.enum(["low", "medium", "high", "very_high"]);
 export const ResponseTierSchema = z.enum(["immediate", "urgent", "scheduled", "backlog"]);
 export const SuppressionStatusSchema = z.enum(["active", "expired"]);
+export const SuppressionMatchScopeSchema = z.enum([
+  "specific_finding",
+  "specific_object",
+  "rule_and_path",
+  "rule",
+  "path",
+  "category",
+  "severity",
+  "broad"
+]);
 export const FindingBaselineStatusSchema = z.enum(["new", "existing"]);
 export const CiGateStatusSchema = z.enum(["pass", "fail"]);
 export const CiGateNameSchema = z.enum(["severity", "new_findings", "expired_suppressions", "diagnostics", "scan_health"]);
@@ -163,6 +173,7 @@ export const GraphEdgeSchema = z.object({
 export const FindingSuppressionSchema = z.object({
   id: z.string(),
   status: SuppressionStatusSchema,
+  match_scope: SuppressionMatchScopeSchema,
   reason: z.string(),
   owner: z.string(),
   expires_at: z.string(),
@@ -732,6 +743,7 @@ export type GraphRelation = z.infer<typeof GraphRelationSchema>;
 export type GraphEdge = z.infer<typeof GraphEdgeSchema>;
 export type AttackPath = z.infer<typeof AttackPathSchema>;
 export type FindingSuppression = z.infer<typeof FindingSuppressionSchema>;
+export type SuppressionMatchScope = z.infer<typeof SuppressionMatchScopeSchema>;
 export type FindingPolicyControl = z.infer<typeof FindingPolicyControlSchema>;
 export type FindingRiskSummary = z.infer<typeof FindingRiskSummarySchema>;
 export type Finding = z.infer<typeof FindingSchema>;

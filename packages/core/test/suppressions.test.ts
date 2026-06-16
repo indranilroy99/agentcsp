@@ -55,6 +55,7 @@ describe("policy suppressions", () => {
     const suppressed = result.findings.filter((finding) => finding.suppression?.status === "active");
     expect(suppressed.length).toBeGreaterThan(0);
     expect(suppressed.every((finding) => finding.suppression?.owner === "security@example.com")).toBe(true);
+    expect(suppressed.every((finding) => finding.suppression?.match_scope === "severity")).toBe(true);
     expect(result.manifest.static_blast_radius?.active_suppressions).toBe(suppressed.length);
     expect(result.manifest.ci_gate_summary).toMatchObject({
       status: "pass",
@@ -74,6 +75,8 @@ describe("policy suppressions", () => {
     expect(result.shouldFail).toBe(false);
     expect(result.reportMarkdown).toContain("Suppressed Findings");
     expect(result.reportMarkdown).toContain("Suppression status");
+    expect(result.reportMarkdown).toContain("Scope");
+    expect(result.reportMarkdown).toContain("severity");
     expect(result.reportMarkdown).toContain("active suppression exclusion");
     expect(result.reportMarkdown).toContain("severity");
     expect(result.reportMarkdown).not.toContain("active-critical-demo-risk");
@@ -88,6 +91,7 @@ describe("policy suppressions", () => {
     };
     const sarifSuppression = sarif.runs[0]?.results?.find((item) => item.suppressions?.length)?.suppressions?.[0];
     expect(sarifSuppression?.justification).toContain("Suppression reason and owner are redacted");
+    expect(sarifSuppression?.justification).toContain("Scope: severity");
     expect(sarifSuppression?.justification).toContain("2999-12-31T23:59:59.000Z");
     expect(sarifSuppression?.justification).not.toContain("Accepted for fixture regression only.");
     expect(sarifSuppression?.justification).not.toContain("security@example.com");
@@ -196,6 +200,30 @@ describe("policy suppressions", () => {
     });
     expect(result.shouldFail).toBe(false);
   });
+
+  it("records narrow suppression match scope for rule and path waivers", async () => {
+    const policyPath = await writeRulePathSuppressionPolicy();
+    const result = await scanProject({
+      root_path: fixtureRoot,
+      output_path: "/private/tmp/agentcsp-suppression-rule-path",
+      config_path: policyPath,
+      formats: ["json", "md", "sarif"],
+      include_hidden: true,
+      include_logs: false,
+      max_file_size_bytes: 1024 * 1024,
+      max_files: 5000,
+      quiet: true
+    });
+
+    const suppressed = result.findings.find((finding) => finding.suppression?.id === "accepted-risk-runtime-config");
+    expect(suppressed?.rule_id).toBe("AGENTCSP-RUNTIME-001");
+    expect(suppressed?.suppression).toMatchObject({
+      status: "active",
+      match_scope: "rule_and_path",
+      matched_on: ["rule_id", "path"]
+    });
+    expect(result.reportMarkdown).toContain("rule and path");
+  });
 });
 
 async function writePolicy(name: string, expiresAt: string): Promise<string> {
@@ -235,6 +263,27 @@ async function writeRecommendedControlPolicy(): Promise<string> {
       '  - id: "deny-unsandboxed-runtime"',
       '    reason: "Organization policy forbids unsandboxed runtime without approval."',
       '    control: "deny"',
+      "    match:",
+      '      rule_id: "AGENTCSP-RUNTIME-001"',
+      '      path: ".codex/config.toml"',
+      ""
+    ].join("\n"),
+    "utf8"
+  );
+  return policyPath;
+}
+
+async function writeRulePathSuppressionPolicy(): Promise<string> {
+  const policyPath = "/private/tmp/agentcsp-rule-path-suppression-policy.yaml";
+  await fs.writeFile(
+    policyPath,
+    [
+      'schema_version: "0.1"',
+      "suppressions:",
+      '  - id: "accepted-risk-runtime-config"',
+      '    reason: "Accepted for fixture regression only."',
+      '    owner: "security@example.com"',
+      '    expires_at: "2999-12-31T23:59:59.000Z"',
       "    match:",
       '      rule_id: "AGENTCSP-RUNTIME-001"',
       '      path: ".codex/config.toml"',

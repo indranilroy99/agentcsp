@@ -10,6 +10,7 @@ import {
   type FindingSuppression,
   type Policy,
   type ScanDiagnostic,
+  type SuppressionMatchScope,
   type SurfaceObject,
   type TrustLevel
 } from "../schemas/index.js";
@@ -121,15 +122,17 @@ export function applyFindingSuppressions(findings: Finding[], policy: Policy, no
     const suppression = policy.suppressions.find((entry) => suppressionMatches(finding, entry));
     if (!suppression) return finding;
     const status = isSuppressionActive(suppression.expires_at, now) ? "active" : "expired";
+    const matchedOn = matchedFields(finding, suppression);
     return {
       ...finding,
       suppression: {
         id: suppression.id,
         status,
+        match_scope: suppressionMatchScope(matchedOn),
         reason: suppression.reason,
         owner: suppression.owner,
         expires_at: suppression.expires_at,
-        matched_on: matchedFields(finding, suppression),
+        matched_on: matchedOn,
         applied_at: now.toISOString()
       } satisfies FindingSuppression
     };
@@ -182,6 +185,17 @@ function matchedFields(finding: Finding, suppression: Policy["suppressions"][num
   if (match.category && finding.category === match.category) fields.push("category");
   if (match.severity && finding.severity === match.severity) fields.push("severity");
   return fields;
+}
+
+function suppressionMatchScope(fields: string[]): SuppressionMatchScope {
+  if (fields.includes("finding_id")) return "specific_finding";
+  if (fields.includes("object_id")) return "specific_object";
+  if (fields.includes("rule_id") && fields.includes("path")) return "rule_and_path";
+  if (fields.includes("rule_id")) return "rule";
+  if (fields.includes("path")) return "path";
+  if (fields.includes("category")) return "category";
+  if (fields.includes("severity")) return "severity";
+  return "broad";
 }
 
 function recommendedControlMatches(finding: Finding, entry: Policy["recommended_controls"][number]): boolean {

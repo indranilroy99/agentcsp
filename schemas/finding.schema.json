@@ -403,6 +403,19 @@
                 "expired"
               ]
             },
+            "match_scope": {
+              "type": "string",
+              "enum": [
+                "specific_finding",
+                "specific_object",
+                "rule_and_path",
+                "rule",
+                "path",
+                "category",
+                "severity",
+                "broad"
+              ]
+            },
             "reason": {
               "type": "string"
             },
@@ -426,6 +439,7 @@
           "required": [
             "id",
             "status",
+            "match_scope",
             "reason",
             "owner",
             "expires_at",

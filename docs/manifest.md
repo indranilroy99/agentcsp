@@ -43,6 +43,8 @@ The manifest is versioned and validated with Zod. JSON Schema exports live in `s
 
 Each finding includes `risk_summary`, a compact analyst-facing explanation derived from normalized metadata rather than raw file content. It records the primary risk driver, ordered drivers, impact, control objective, and bounded analyst summary lines. These fields are designed for triage queues, SARIF consumers, and dashboards that need to explain why a finding matters without exposing snippets, secret values, endpoint values, or host-absolute paths.
 
+When a finding is matched by an advisory policy suppression, `suppression.match_scope` records how narrowly the accepted-risk record matched the finding. Scopes range from `specific_finding` and `specific_object` through `rule_and_path`, `rule`, `path`, `category`, `severity`, and `broad`. JSON output retains the full suppression audit record, while Markdown and SARIF keep only sanitized status, expiry, match scope, and matched-field context.
+
 ## MCP Server Authority
 
 MCP server entries are normalized into `mcp_server` objects. For remote MCP servers, AgentCSP records posture metadata without emitting raw URLs or header values.

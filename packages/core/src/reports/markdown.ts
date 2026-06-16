@@ -733,12 +733,13 @@ function renderFindingTable(findings: Finding[]): string {
 
 function renderSuppressedFindingTable(findings: Finding[]): string {
   return [
-    "| Severity | Confidence | Rule | Object | Recommended control | Suppression status | Matched on | Expires |",
-    "| --- | --- | --- | --- | --- | --- | --- | --- |",
+    "| Severity | Confidence | Rule | Object | Recommended control | Suppression status | Scope | Matched on | Expires |",
+    "| --- | --- | --- | --- | --- | --- | --- | --- | --- |",
     ...findings.map((finding) => {
       const suppression = finding.suppression;
       const matchedOn = suppression?.matched_on.length ? suppression.matched_on.join(", ") : "unknown";
-      return `| ${finding.severity} | ${finding.confidence} | ${finding.rule_id} | \`${finding.matched_object.type}:${finding.matched_object.name}\` | ${finding.recommended_control.replaceAll("_", " ")} | ${suppression?.status ?? "unknown"} | ${escapeTable(matchedOn)} | ${suppression?.expires_at ?? "unknown"} |`;
+      const matchScope = suppression?.match_scope ? suppression.match_scope.replaceAll("_", " ") : "unknown";
+      return `| ${finding.severity} | ${finding.confidence} | ${finding.rule_id} | \`${finding.matched_object.type}:${finding.matched_object.name}\` | ${finding.recommended_control.replaceAll("_", " ")} | ${suppression?.status ?? "unknown"} | ${matchScope} | ${escapeTable(matchedOn)} | ${suppression?.expires_at ?? "unknown"} |`;
     })
   ].join("\n");
 }

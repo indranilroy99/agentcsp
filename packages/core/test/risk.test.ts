@@ -65,6 +65,7 @@ function finding(severity: Finding["severity"], confidence: Finding["confidence"
       ? {
           id: "accepted-risk",
           status: "active",
+          match_scope: "severity",
           reason: "Accepted for regression test.",
           owner: "security@example.com",
           expires_at: "2999-12-31T23:59:59.000Z",
