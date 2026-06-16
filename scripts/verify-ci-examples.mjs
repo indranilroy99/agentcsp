@@ -103,6 +103,11 @@ assert(
   internalAuditStep.run === "pnpm audit --audit-level moderate",
   ".github/workflows/ci.yml dependency audit must fail on moderate and above vulnerabilities"
 );
+const internalVersionStep = internalSteps.find((step) => step.name === "Verify version consistency");
+assert(
+  internalVersionStep?.run === "pnpm verify:versions",
+  ".github/workflows/ci.yml must verify release version consistency"
+);
 const internalRuleStep = internalSteps.find((step) => step.name === "Verify built-in rule pack");
 assert(
   internalRuleStep?.run === "pnpm verify:rules",

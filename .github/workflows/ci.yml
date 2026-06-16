@@ -39,6 +39,9 @@ jobs:
       - name: Verify exported schemas
         run: pnpm verify:schemas
 
+      - name: Verify version consistency
+        run: pnpm verify:versions
+
       - name: Verify built-in rule pack
         run: pnpm verify:rules
 

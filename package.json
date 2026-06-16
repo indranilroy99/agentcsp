@@ -18,7 +18,8 @@
     "verify:ci-examples": "node scripts/verify-ci-examples.mjs",
     "verify:packages": "node scripts/verify-package-artifacts.mjs",
     "verify:rules": "jiti scripts/verify-rules.ts",
-    "verify:schemas": "jiti scripts/verify-schemas.ts"
+    "verify:schemas": "jiti scripts/verify-schemas.ts",
+    "verify:versions": "node scripts/verify-versions.mjs"
   },
   "devDependencies": {
     "@types/node": "^24.0.0",
