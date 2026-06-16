@@ -193,6 +193,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-189")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-190")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-191")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-192")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-001")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-002")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-003")).toBe(true);
@@ -6211,6 +6212,7 @@ describe("rule engine", () => {
       "langchain_issue_url_response_agent_credential",
       "langchain_post_authenticated_page_screenshot_external",
       "langchain_post_url_response_external",
+      "langchain_promote_authenticated_page_screenshot_feedback",
       "langchain_publish_authenticated_page_screenshot_prompt_registry",
       "langchain_publish_url_response_prompt_registry_entry",
       "langchain_trace_url_response",
@@ -6230,6 +6232,7 @@ describe("rule engine", () => {
       "source_issue_url_response_agent_credential",
       "source_post_authenticated_page_screenshot_external",
       "source_post_url_response_external",
+      "source_promote_authenticated_page_screenshot_feedback",
       "source_publish_authenticated_page_screenshot_prompt_registry",
       "source_publish_url_response_prompt_registry_entry",
       "source_trace_url_response",
@@ -6265,6 +6268,7 @@ describe("rule engine", () => {
       "langchain_issue_authenticated_page_screenshot_agent_credential",
       "langchain_issue_url_response_agent_credential",
       "langchain_post_authenticated_page_screenshot_external",
+      "langchain_promote_authenticated_page_screenshot_feedback",
       "langchain_publish_authenticated_page_screenshot_prompt_registry",
       "langchain_publish_url_response_prompt_registry_entry",
       "langchain_upload_local_file_authenticated_browser",
@@ -6281,6 +6285,7 @@ describe("rule engine", () => {
       "source_issue_authenticated_page_screenshot_agent_credential",
       "source_issue_url_response_agent_credential",
       "source_post_authenticated_page_screenshot_external",
+      "source_promote_authenticated_page_screenshot_feedback",
       "source_publish_authenticated_page_screenshot_prompt_registry",
       "source_publish_url_response_prompt_registry_entry",
       "source_upload_local_file_authenticated_browser"
@@ -10500,6 +10505,7 @@ describe("rule engine", () => {
       "langchain_fill_customer_vault_secret_browser_form",
       "langchain_grant_authenticated_page_screenshot_authorization",
       "langchain_upload_local_file_authenticated_browser",
+      "langchain_promote_authenticated_page_screenshot_feedback",
 	      "langchain_post_authenticated_page_screenshot_external",
 	      "langchain_publish_authenticated_page_screenshot_prompt_registry",
 	      "langchain_review_authenticated_page_screenshot_with_model",
@@ -10517,6 +10523,7 @@ describe("rule engine", () => {
       "source_fill_customer_vault_secret_browser_form",
       "source_grant_authenticated_page_screenshot_authorization",
       "source_upload_local_file_authenticated_browser",
+      "source_promote_authenticated_page_screenshot_feedback",
 	      "source_post_authenticated_page_screenshot_external",
 	      "source_publish_authenticated_page_screenshot_prompt_registry",
 	      "source_review_authenticated_page_screenshot_with_model",
@@ -10598,6 +10605,7 @@ describe("rule engine", () => {
       "langchain_fill_customer_vault_secret_browser_form",
       "langchain_grant_authenticated_page_screenshot_authorization",
       "langchain_upload_local_file_authenticated_browser",
+      "langchain_promote_authenticated_page_screenshot_feedback",
 	      "langchain_post_authenticated_page_screenshot_external",
 	      "langchain_publish_authenticated_page_screenshot_prompt_registry",
 	      "langchain_review_authenticated_page_screenshot_with_model",
@@ -10615,6 +10623,7 @@ describe("rule engine", () => {
       "source_fill_customer_vault_secret_browser_form",
       "source_grant_authenticated_page_screenshot_authorization",
       "source_upload_local_file_authenticated_browser",
+      "source_promote_authenticated_page_screenshot_feedback",
 	      "source_post_authenticated_page_screenshot_external",
 	      "source_publish_authenticated_page_screenshot_prompt_registry",
 	      "source_review_authenticated_page_screenshot_with_model",
@@ -12366,6 +12375,87 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerVisualContextCredentialIssuanceBridgeFindings)).not.toContain("source visual context credential issued");
     expect(JSON.stringify(sourceHandlerVisualContextCredentialIssuanceBridgeFindings)).not.toContain("framework visual context credential issued");
     expect(JSON.stringify(sourceHandlerVisualContextCredentialIssuanceBridgeFindings)).not.toContain("Issue an agent credential");
+    const sourceHandlerVisualContextFeedbackBridgeFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-192");
+    expect(sourceHandlerVisualContextFeedbackBridgeFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
+      "langchain_promote_authenticated_page_screenshot_feedback",
+      "source_promote_authenticated_page_screenshot_feedback"
+    ]);
+    expect(sourceHandlerVisualContextFeedbackBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
+    expect(sourceHandlerVisualContextFeedbackBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerVisualContextFeedbackBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
+    expect(sourceHandlerVisualContextFeedbackBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
+    expect(sourceHandlerVisualContextFeedbackBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.source_tool_handler_redacted === true
+    )).toBe(true);
+    expect(sourceHandlerVisualContextFeedbackBridgeFindings.every((finding) => finding.matched_object.metadata.handler_browser_automation === true)).toBe(true);
+    expect(sourceHandlerVisualContextFeedbackBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.handler_tainted_browser_automation_target === true
+    )).toBe(true);
+    expect(sourceHandlerVisualContextFeedbackBridgeFindings.every((finding) => finding.matched_object.metadata.handler_visual_context_capture === true)).toBe(true);
+    expect(sourceHandlerVisualContextFeedbackBridgeFindings.every((finding) => finding.matched_object.metadata.handler_feedback_pipeline_write === true)).toBe(true);
+    expect(sourceHandlerVisualContextFeedbackBridgeFindings.every((finding) => finding.matched_object.metadata.handler_feedback_auto_promotion === true)).toBe(true);
+    expect(sourceHandlerVisualContextFeedbackBridgeFindings.every((finding) => finding.matched_object.metadata.handler_tainted_feedback_routing === true)).toBe(true);
+    expect(sourceHandlerVisualContextFeedbackBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.handler_visual_context_feedback_bridge === true
+    )).toBe(true);
+    expect(sourceHandlerVisualContextFeedbackBridgeFindings.every((finding) => finding.matched_object.metadata.handler_secret_env_access === true)).toBe(true);
+    expect(sourceHandlerVisualContextFeedbackBridgeFindings.every((finding) => finding.matched_object.metadata.browser_automation === true)).toBe(true);
+    expect(sourceHandlerVisualContextFeedbackBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.tainted_browser_automation_target === true
+    )).toBe(true);
+    expect(sourceHandlerVisualContextFeedbackBridgeFindings.every((finding) => finding.matched_object.metadata.visual_context_capture === true)).toBe(true);
+    expect(sourceHandlerVisualContextFeedbackBridgeFindings.every((finding) => finding.matched_object.metadata.feedback_pipeline_write === true)).toBe(true);
+    expect(sourceHandlerVisualContextFeedbackBridgeFindings.every((finding) => finding.matched_object.metadata.feedback_auto_promotion === true)).toBe(true);
+    expect(sourceHandlerVisualContextFeedbackBridgeFindings.every((finding) => finding.matched_object.metadata.tainted_feedback_routing === true)).toBe(true);
+    expect(sourceHandlerVisualContextFeedbackBridgeFindings.every((finding) => finding.matched_object.metadata.visual_context_feedback_bridge === true)).toBe(true);
+    expect(sourceHandlerVisualContextFeedbackBridgeFindings.every((finding) => finding.matched_object.metadata.accepts_url_input === true)).toBe(true);
+    expect(sourceHandlerVisualContextFeedbackBridgeFindings.every((finding) => finding.matched_object.metadata.accepts_content_like_input === true)).toBe(true);
+    expect(sourceHandlerVisualContextFeedbackBridgeFindings.every((finding) => finding.matched_object.metadata.accepts_customer_data_input === true)).toBe(true);
+    for (const authorityClass of [
+      "browser_automation",
+      "tainted_browser_automation_target",
+      "visual_context_capture",
+      "feedback_pipeline_write",
+      "feedback_auto_promotion",
+      "tainted_feedback_routing",
+      "visual_context_feedback_bridge"
+    ]) {
+      expect(sourceHandlerVisualContextFeedbackBridgeFindings.every((finding) =>
+        finding.matched_object.metadata.authority_classes.includes(authorityClass)
+      )).toBe(true);
+    }
+    for (const handlerAuthorityClass of [
+      "handler_browser_automation",
+      "handler_tainted_browser_automation_target",
+      "handler_visual_context_capture",
+      "handler_feedback_pipeline_write",
+      "handler_feedback_auto_promotion",
+      "handler_tainted_feedback_routing",
+      "handler_visual_context_feedback_bridge"
+    ]) {
+      expect(sourceHandlerVisualContextFeedbackBridgeFindings.every((finding) =>
+        finding.matched_object.metadata.handler_authority_classes.includes(handlerAuthorityClass)
+      )).toBe(true);
+    }
+    expect(sourceHandlerVisualContextFeedbackBridgeFindings.every((finding) => finding.matched_object.actions.includes("read"))).toBe(true);
+    expect(sourceHandlerVisualContextFeedbackBridgeFindings.every((finding) => finding.matched_object.actions.includes("send"))).toBe(true);
+    expect(sourceHandlerVisualContextFeedbackBridgeFindings.every((finding) => finding.matched_object.actions.includes("write"))).toBe(true);
+    expect(sourceHandlerVisualContextFeedbackBridgeFindings.every((finding) => finding.matched_object.actions.includes("remember"))).toBe(true);
+    expect(sourceHandlerVisualContextFeedbackBridgeFindings.every((finding) => finding.matched_object.external_reach === true)).toBe(true);
+    expect(sourceHandlerVisualContextFeedbackBridgeFindings.every((finding) => finding.matched_object.secret_exposure === true)).toBe(true);
+    expect(sourceHandlerVisualContextFeedbackBridgeFindings.every((finding) => finding.matched_object.side_effect === true)).toBe(true);
+    expect(sourceHandlerVisualContextFeedbackBridgeFindings.every((finding) => finding.matched_object.reversible === false)).toBe(true);
+    expect(JSON.stringify(sourceHandlerVisualContextFeedbackBridgeFindings)).not.toContain("authenticatedBrowserPage");
+    expect(JSON.stringify(sourceHandlerVisualContextFeedbackBridgeFindings)).not.toContain("browser_session.page");
+    expect(JSON.stringify(sourceHandlerVisualContextFeedbackBridgeFindings)).not.toContain("page.goto");
+    expect(JSON.stringify(sourceHandlerVisualContextFeedbackBridgeFindings)).not.toContain("page.screenshot");
+    expect(JSON.stringify(sourceHandlerVisualContextFeedbackBridgeFindings)).not.toContain("screenshot.toString");
+    expect(JSON.stringify(sourceHandlerVisualContextFeedbackBridgeFindings)).not.toContain("screenshot_bytes");
+    expect(JSON.stringify(sourceHandlerVisualContextFeedbackBridgeFindings)).not.toContain("feedbackPipeline.promoteToModelUpdate");
+    expect(JSON.stringify(sourceHandlerVisualContextFeedbackBridgeFindings)).not.toContain("feedback_pipeline.promote_to_model_update");
+    expect(JSON.stringify(sourceHandlerVisualContextFeedbackBridgeFindings)).not.toContain("source visual context promoted to feedback");
+    expect(JSON.stringify(sourceHandlerVisualContextFeedbackBridgeFindings)).not.toContain("framework visual context promoted to feedback");
+    expect(JSON.stringify(sourceHandlerVisualContextFeedbackBridgeFindings)).not.toContain("Promote an authenticated browser screenshot");
     const sourceHandlerVisualContextTaskQueueBridgeFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-104");
     expect(sourceHandlerVisualContextTaskQueueBridgeFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_enqueue_authenticated_page_screenshot_job",

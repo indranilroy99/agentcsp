@@ -807,6 +807,9 @@ describe("scanner", () => {
     const sourceVisualContextTrainingDatasetBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "source_export_authenticated_page_screenshot_training_dataset"
     );
+    const sourceVisualContextFeedbackBridgeTool = surfaces.tools.find(
+      (surface) => surface.name === "source_promote_authenticated_page_screenshot_feedback"
+    );
     const sourceVisualContextTelemetryBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "source_export_authenticated_page_screenshot_trace"
     );
@@ -1204,6 +1207,9 @@ describe("scanner", () => {
     );
     const langchainVisualContextTrainingDatasetBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "langchain_export_authenticated_page_screenshot_training_dataset"
+    );
+    const langchainVisualContextFeedbackBridgeTool = surfaces.tools.find(
+      (surface) => surface.name === "langchain_promote_authenticated_page_screenshot_feedback"
     );
     const langchainVisualContextTelemetryBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "langchain_export_authenticated_page_screenshot_trace"
@@ -11165,6 +11171,114 @@ describe("scanner", () => {
     expect(JSON.stringify(sourceVisualContextTrainingDatasetBridgeTool)).not.toContain("trainingDatasetClient.appendRecord");
     expect(JSON.stringify(sourceVisualContextTrainingDatasetBridgeTool)).not.toContain("source visual context exported to training dataset");
     expect(JSON.stringify(sourceVisualContextTrainingDatasetBridgeTool)).not.toContain("Export an authenticated browser screenshot");
+    expect(sourceVisualContextFeedbackBridgeTool).toMatchObject({
+      path: "mcp-source/customer-tools.ts",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["call", "execute", "publish", "read", "remember", "send", "write"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(sourceVisualContextFeedbackBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_mcp_source_tool: true,
+      mcp_source_tool_registration: true,
+      mcp_source_tool_registration_kind: "registerTool",
+      mcp_source_tool_argument_count: 3,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_secret_like_input: true,
+      accepts_content_like_input: true,
+      accepts_url_input: true,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      browser_automation: true,
+      tainted_browser_automation_target: true,
+      visual_context_capture: true,
+      feedback_pipeline_write: true,
+      feedback_auto_promotion: true,
+      tainted_feedback_routing: true,
+      visual_context_feedback_bridge: true,
+      external_write: true,
+      destructive_action: false,
+      read_only_hint_conflict: false,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_feedback_pipeline_write: true,
+      handler_feedback_auto_promotion: true,
+      handler_tainted_feedback_routing: true,
+      handler_visual_context_feedback_bridge: true,
+      handler_secret_env_access: true,
+      handler_model_visible_output: true,
+      handler_browser_automation: true,
+      handler_tainted_browser_automation_target: true,
+      handler_visual_context_capture: true,
+      handler_signal_count: 8,
+      open_world_schema: false
+    });
+    expect(sourceVisualContextFeedbackBridgeTool?.metadata.authority_classes).toEqual([
+      "browser_automation",
+      "browser_control",
+      "content_input",
+      "credential_input",
+      "customer_data_input",
+      "external_write",
+      "feedback_auto_promotion",
+      "feedback_pipeline_write",
+      "handler_browser_automation",
+      "handler_feedback_auto_promotion",
+      "handler_feedback_pipeline_write",
+      "handler_secret_env_access",
+      "handler_tainted_browser_automation_target",
+      "handler_tainted_feedback_routing",
+      "handler_visual_context_capture",
+      "handler_visual_context_feedback_bridge",
+      "network_access",
+      "pii_input",
+      "secret_env_access",
+      "tainted_browser_automation_target",
+      "tainted_feedback_routing",
+      "visual_context_capture",
+      "visual_context_feedback_bridge"
+    ]);
+    expect(sourceVisualContextFeedbackBridgeTool?.metadata.handler_authority_classes).toEqual([
+      "handler_browser_automation",
+      "handler_feedback_auto_promotion",
+      "handler_feedback_pipeline_write",
+      "handler_secret_env_access",
+      "handler_tainted_browser_automation_target",
+      "handler_tainted_feedback_routing",
+      "handler_visual_context_capture",
+      "handler_visual_context_feedback_bridge"
+    ]);
+    expect(sourceVisualContextFeedbackBridgeTool?.metadata.handler_env_key_names).toEqual([
+      "SOURCE_VISUAL_FEEDBACK_BROWSER_TOKEN",
+      "SOURCE_VISUAL_FEEDBACK_TOKEN"
+    ]);
+    expect(sourceVisualContextFeedbackBridgeTool?.metadata.schema_properties).toEqual([
+      "customer_id",
+      "eval_set_id",
+      "feedback_dataset_id",
+      "promotion_target",
+      "reviewer_note_text",
+      "target_url"
+    ]);
+    expect(sourceVisualContextFeedbackBridgeTool?.metadata.required_properties).toEqual([
+      "customer_id",
+      "eval_set_id",
+      "feedback_dataset_id",
+      "promotion_target",
+      "reviewer_note_text",
+      "target_url"
+    ]);
+    expect(JSON.stringify(sourceVisualContextFeedbackBridgeTool)).not.toContain("authenticatedBrowserPage");
+    expect(JSON.stringify(sourceVisualContextFeedbackBridgeTool)).not.toContain("page.goto");
+    expect(JSON.stringify(sourceVisualContextFeedbackBridgeTool)).not.toContain("page.screenshot");
+    expect(JSON.stringify(sourceVisualContextFeedbackBridgeTool)).not.toContain("screenshot.toString");
+    expect(JSON.stringify(sourceVisualContextFeedbackBridgeTool)).not.toContain("feedbackPipeline.promoteToModelUpdate");
+    expect(JSON.stringify(sourceVisualContextFeedbackBridgeTool)).not.toContain("source visual context promoted to feedback");
+    expect(JSON.stringify(sourceVisualContextFeedbackBridgeTool)).not.toContain("Promote an authenticated browser screenshot");
     expect(sourceVisualContextTelemetryBridgeTool).toMatchObject({
       path: "mcp-source/customer-tools.ts",
       data_classes: ["confidential", "credential", "pii"],
@@ -25285,6 +25399,115 @@ describe("scanner", () => {
     expect(JSON.stringify(langchainVisualContextTrainingDatasetBridgeTool)).not.toContain("training_dataset_client.append_record");
     expect(JSON.stringify(langchainVisualContextTrainingDatasetBridgeTool)).not.toContain("framework visual context exported to training dataset");
     expect(JSON.stringify(langchainVisualContextTrainingDatasetBridgeTool)).not.toContain("Export an authenticated browser screenshot");
+    expect(langchainVisualContextFeedbackBridgeTool).toMatchObject({
+      path: "framework-tools/langchain_tools.py",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["call", "execute", "publish", "read", "remember", "send", "write"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(langchainVisualContextFeedbackBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_agent_framework_source_tool: true,
+      agent_framework_source_tool: true,
+      agent_framework_source_tool_framework: "langchain",
+      agent_framework_source_tool_registration_kind: "python_tool_decorator",
+      agent_framework_source_tool_argument_count: 6,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_secret_like_input: true,
+      accepts_content_like_input: true,
+      accepts_url_input: true,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      browser_automation: true,
+      tainted_browser_automation_target: true,
+      visual_context_capture: true,
+      feedback_pipeline_write: true,
+      feedback_auto_promotion: true,
+      tainted_feedback_routing: true,
+      visual_context_feedback_bridge: true,
+      external_write: true,
+      destructive_action: false,
+      read_only_hint_conflict: false,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_feedback_pipeline_write: true,
+      handler_feedback_auto_promotion: true,
+      handler_tainted_feedback_routing: true,
+      handler_visual_context_feedback_bridge: true,
+      handler_secret_env_access: true,
+      handler_model_visible_output: true,
+      handler_browser_automation: true,
+      handler_tainted_browser_automation_target: true,
+      handler_visual_context_capture: true,
+      handler_signal_count: 8,
+      open_world_schema: false
+    });
+    expect(langchainVisualContextFeedbackBridgeTool?.metadata.authority_classes).toEqual([
+      "browser_automation",
+      "browser_control",
+      "content_input",
+      "credential_input",
+      "customer_data_input",
+      "external_write",
+      "feedback_auto_promotion",
+      "feedback_pipeline_write",
+      "handler_browser_automation",
+      "handler_feedback_auto_promotion",
+      "handler_feedback_pipeline_write",
+      "handler_secret_env_access",
+      "handler_tainted_browser_automation_target",
+      "handler_tainted_feedback_routing",
+      "handler_visual_context_capture",
+      "handler_visual_context_feedback_bridge",
+      "network_access",
+      "pii_input",
+      "secret_env_access",
+      "tainted_browser_automation_target",
+      "tainted_feedback_routing",
+      "visual_context_capture",
+      "visual_context_feedback_bridge"
+    ]);
+    expect(langchainVisualContextFeedbackBridgeTool?.metadata.handler_authority_classes).toEqual([
+      "handler_browser_automation",
+      "handler_feedback_auto_promotion",
+      "handler_feedback_pipeline_write",
+      "handler_secret_env_access",
+      "handler_tainted_browser_automation_target",
+      "handler_tainted_feedback_routing",
+      "handler_visual_context_capture",
+      "handler_visual_context_feedback_bridge"
+    ]);
+    expect(langchainVisualContextFeedbackBridgeTool?.metadata.handler_env_key_names).toEqual([
+      "LANGCHAIN_VISUAL_FEEDBACK_BROWSER_TOKEN",
+      "LANGCHAIN_VISUAL_FEEDBACK_TOKEN"
+    ]);
+    expect(langchainVisualContextFeedbackBridgeTool?.metadata.schema_properties).toEqual([
+      "customer_id",
+      "eval_set_id",
+      "feedback_dataset_id",
+      "promotion_target",
+      "reviewer_note_text",
+      "target_url"
+    ]);
+    expect(langchainVisualContextFeedbackBridgeTool?.metadata.required_properties).toEqual([
+      "customer_id",
+      "eval_set_id",
+      "feedback_dataset_id",
+      "promotion_target",
+      "reviewer_note_text",
+      "target_url"
+    ]);
+    expect(JSON.stringify(langchainVisualContextFeedbackBridgeTool)).not.toContain("browser_session.page");
+    expect(JSON.stringify(langchainVisualContextFeedbackBridgeTool)).not.toContain("page.goto");
+    expect(JSON.stringify(langchainVisualContextFeedbackBridgeTool)).not.toContain("page.screenshot");
+    expect(JSON.stringify(langchainVisualContextFeedbackBridgeTool)).not.toContain("screenshot_bytes");
+    expect(JSON.stringify(langchainVisualContextFeedbackBridgeTool)).not.toContain("feedback_pipeline.promote_to_model_update");
+    expect(JSON.stringify(langchainVisualContextFeedbackBridgeTool)).not.toContain("framework visual context promoted to feedback");
+    expect(JSON.stringify(langchainVisualContextFeedbackBridgeTool)).not.toContain("Promote an authenticated browser screenshot");
     expect(langchainVisualContextTelemetryBridgeTool).toMatchObject({
       path: "framework-tools/langchain_tools.py",
       data_classes: ["confidential", "credential", "pii"],

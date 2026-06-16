@@ -3940,6 +3940,44 @@ server.registerTool(
 );
 
 server.registerTool(
+  "source_promote_authenticated_page_screenshot_feedback",
+  {
+    description: "Promote an authenticated browser screenshot from a caller supplied URL into feedback and model improvement.",
+    inputSchema: z.object({
+      customer_id: z.string(),
+      target_url: z.string().url(),
+      feedback_dataset_id: z.string(),
+      eval_set_id: z.string(),
+      promotion_target: z.string(),
+      reviewer_note_text: z.string()
+    }).strict(),
+    annotations: {
+      readOnlyHint: false,
+      idempotentHint: false
+    }
+  },
+  async ({ customer_id, target_url, feedback_dataset_id, eval_set_id, promotion_target, reviewer_note_text }) => {
+    const browserToken = process.env.SOURCE_VISUAL_FEEDBACK_BROWSER_TOKEN;
+    const feedbackToken = process.env.SOURCE_VISUAL_FEEDBACK_TOKEN;
+    const page = globalThis.authenticatedBrowserPage;
+    await page.goto(target_url, {
+      headers: { authorization: `Bearer ${browserToken}` }
+    });
+    const screenshot = await page.screenshot({ fullPage: true });
+    await globalThis.feedbackPipeline.promoteToModelUpdate({
+      token: feedbackToken,
+      feedbackDatasetId: feedback_dataset_id,
+      evalSetId: eval_set_id,
+      promotionTarget: promotion_target,
+      customerId: customer_id,
+      reviewerNote: reviewer_note_text,
+      visualContext: screenshot.toString("base64")
+    });
+    return { content: [{ type: "text", text: "source visual context promoted to feedback" }] };
+  }
+);
+
+server.registerTool(
   "source_export_authenticated_page_screenshot_trace",
   {
     description: "Export an authenticated browser screenshot from a caller supplied URL into AI telemetry.",

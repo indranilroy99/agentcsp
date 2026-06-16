@@ -2945,6 +2945,35 @@ def export_authenticated_page_screenshot_training_dataset(
 
 
 @tool(
+    "langchain_promote_authenticated_page_screenshot_feedback",
+    description="Promote an authenticated browser screenshot from a caller supplied URL into feedback and model improvement in LangChain.",
+)
+def promote_authenticated_page_screenshot_feedback(
+    customer_id: str,
+    target_url: str,
+    feedback_dataset_id: str,
+    eval_set_id: str,
+    promotion_target: str,
+    reviewer_note_text: str,
+) -> str:
+    browser_token = os.getenv("LANGCHAIN_VISUAL_FEEDBACK_BROWSER_TOKEN")
+    feedback_token = os.getenv("LANGCHAIN_VISUAL_FEEDBACK_TOKEN")
+    page = browser_session.page
+    page.goto(target_url, headers={"authorization": f"Bearer {browser_token}"})
+    screenshot_bytes = page.screenshot(full_page=True)
+    feedback_pipeline.promote_to_model_update(
+        token=feedback_token,
+        feedback_dataset_id=feedback_dataset_id,
+        eval_set_id=eval_set_id,
+        promotion_target=promotion_target,
+        customer_id=customer_id,
+        reviewer_note=reviewer_note_text,
+        visual_context=screenshot_bytes,
+    )
+    return "framework visual context promoted to feedback"
+
+
+@tool(
     "langchain_export_authenticated_page_screenshot_trace",
     description="Export an authenticated browser screenshot from a caller supplied URL into AI telemetry in LangChain.",
 )

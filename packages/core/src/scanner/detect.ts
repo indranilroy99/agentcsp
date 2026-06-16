@@ -24445,6 +24445,7 @@ function addToolDefinitionSurface(
       visual_context_memory_bridge: authority.visual_context_memory_bridge,
       visual_context_artifact_bridge: authority.visual_context_artifact_bridge,
       visual_context_training_dataset_bridge: authority.visual_context_training_dataset_bridge,
+      visual_context_feedback_bridge: authority.visual_context_feedback_bridge,
       visual_context_telemetry_bridge: authority.visual_context_telemetry_bridge,
       visual_context_prompt_cache_bridge: authority.visual_context_prompt_cache_bridge,
       visual_context_prompt_registry_bridge: authority.visual_context_prompt_registry_bridge,
@@ -26878,6 +26879,7 @@ interface SourceToolHandlerSignals {
   handlerEnvSecretFeedbackBridge: boolean;
   handlerModelOutputFeedbackBridge: boolean;
   handlerToolOutputFeedbackBridge: boolean;
+  handlerVisualContextFeedbackBridge: boolean;
   handlerSecretManagerArtifactBridge: boolean;
   handlerEnvSecretArtifactBridge: boolean;
   handlerModelOutputArtifactBridge: boolean;
@@ -27504,6 +27506,7 @@ function sourceToolHandlerSignalMetadata(signals: SourceToolHandlerSignals | und
     handler_env_secret_feedback_bridge: signals.handlerEnvSecretFeedbackBridge,
     handler_model_output_feedback_bridge: signals.handlerModelOutputFeedbackBridge,
     handler_tool_output_feedback_bridge: signals.handlerToolOutputFeedbackBridge,
+    handler_visual_context_feedback_bridge: signals.handlerVisualContextFeedbackBridge,
     handler_secret_manager_artifact_bridge: signals.handlerSecretManagerArtifactBridge,
     handler_env_secret_artifact_bridge: signals.handlerEnvSecretArtifactBridge,
     handler_model_output_artifact_bridge: signals.handlerModelOutputArtifactBridge,
@@ -28187,6 +28190,9 @@ function classifySourceToolHandlerSignals(
   const visualContextTrainingDatasetBridge = visualContextCapture && trainingDatasetExport && (language === "javascript"
     ? hasJavaScriptHandlerVisualContextTrainingDatasetBridge(handlerSource)
     : hasPythonHandlerVisualContextTrainingDatasetBridge(handlerSource));
+  const visualContextFeedbackBridge = visualContextCapture && feedbackPipelineWrite && (language === "javascript"
+    ? hasJavaScriptHandlerVisualContextFeedbackBridge(handlerSource)
+    : hasPythonHandlerVisualContextFeedbackBridge(handlerSource));
   const visualContextTelemetryBridge = visualContextCapture && telemetryExport && (language === "javascript"
     ? hasJavaScriptHandlerVisualContextTelemetryBridge(handlerSource)
     : hasPythonHandlerVisualContextTelemetryBridge(handlerSource));
@@ -28379,6 +28385,7 @@ function classifySourceToolHandlerSignals(
     !secretManagerFeedbackBridge &&
     !modelOutputFeedbackBridge &&
     !toolOutputFeedbackBridge &&
+    !visualContextFeedbackBridge &&
     (language === "javascript"
       ? hasJavaScriptHandlerEnvSecretFeedbackBridge(handlerSource)
       : hasPythonHandlerEnvSecretFeedbackBridge(handlerSource));
@@ -28481,6 +28488,7 @@ function classifySourceToolHandlerSignals(
   if (envSecretFeedbackBridge) classes.add("handler_env_secret_feedback_bridge");
   if (modelOutputFeedbackBridge) classes.add("handler_model_output_feedback_bridge");
   if (toolOutputFeedbackBridge) classes.add("handler_tool_output_feedback_bridge");
+  if (visualContextFeedbackBridge) classes.add("handler_visual_context_feedback_bridge");
   if (secretManagerArtifactBridge) classes.add("handler_secret_manager_artifact_bridge");
   if (envSecretArtifactBridge) classes.add("handler_env_secret_artifact_bridge");
   if (modelOutputArtifactBridge) classes.add("handler_model_output_artifact_bridge");
@@ -28693,6 +28701,7 @@ function classifySourceToolHandlerSignals(
     handlerEnvSecretFeedbackBridge: envSecretFeedbackBridge,
     handlerModelOutputFeedbackBridge: modelOutputFeedbackBridge,
     handlerToolOutputFeedbackBridge: toolOutputFeedbackBridge,
+    handlerVisualContextFeedbackBridge: visualContextFeedbackBridge,
     handlerSecretManagerArtifactBridge: secretManagerArtifactBridge,
     handlerEnvSecretArtifactBridge: envSecretArtifactBridge,
     handlerModelOutputArtifactBridge: modelOutputArtifactBridge,
@@ -32411,6 +32420,30 @@ function hasPythonHandlerToolOutputFeedbackBridge(source: string): boolean {
     [
       /\b(?:feedback_client|feedback_pipeline|feedback_store|review_client|annotation_client|labeling_client|preference_client|rlhf_client|reward_model_client|model_improvement_client|human_feedback_client|evaluation_client|eval_set_client)\s*(?:\.\s*[A-Za-z_]\w*){0,5}\s*\.\s*(?:record|record_feedback|submit|submit_feedback|append|append_feedback|add|add_feedback|create|create_feedback|create_annotation|annotate|label|label_example|write|write_feedback|save|store|upload|export|promote|promote_to_training|promote_to_eval|promote_to_model_update|push)\s*\(([\s\S]{0,2200})\)/giu,
       /\b(?:record_feedback|submit_feedback|write_feedback_record|append_feedback_record|promote_feedback_to_training|promote_feedback_to_eval|promote_feedback_to_model_update|create_preference_record|write_rlhf_record)\s*\(([\s\S]{0,2200})\)/giu
+    ],
+    source,
+    identifiers
+  );
+}
+
+function hasJavaScriptHandlerVisualContextFeedbackBridge(source: string): boolean {
+  const identifiers = extractJavaScriptVisualContextIdentifiers(source);
+  return identifiers.length > 0 && callExpressionReferencesAnyIdentifier(
+    [
+      /\b(?:feedbackClient|feedbackPipeline|feedbackStore|reviewClient|annotationClient|labelingClient|preferenceClient|rlhfClient|rewardModelClient|modelImprovementClient|humanFeedbackClient|evaluationClient|evalSetClient)\s*(?:\.\s*[A-Za-z_$][\w$]*){0,5}\s*\.\s*(?:record|recordFeedback|submit|submitFeedback|append|appendFeedback|add|addFeedback|create|createFeedback|createAnnotation|annotate|label|labelExample|write|writeFeedback|save|store|upload|export|promote|promoteToTraining|promoteToEval|promoteToModelUpdate|push)\s*\(([\s\S]{0,2400})\)/giu,
+      /\b(?:recordFeedback|submitFeedback|writeFeedbackRecord|appendFeedbackRecord|promoteFeedbackToTraining|promoteFeedbackToEval|promoteFeedbackToModelUpdate|createPreferenceRecord|writeRlhfRecord)\s*\(([\s\S]{0,2400})\)/giu
+    ],
+    source,
+    identifiers
+  );
+}
+
+function hasPythonHandlerVisualContextFeedbackBridge(source: string): boolean {
+  const identifiers = extractPythonVisualContextIdentifiers(source);
+  return identifiers.length > 0 && callExpressionReferencesAnyIdentifier(
+    [
+      /\b(?:feedback_client|feedback_pipeline|feedback_store|review_client|annotation_client|labeling_client|preference_client|rlhf_client|reward_model_client|model_improvement_client|human_feedback_client|evaluation_client|eval_set_client)\s*(?:\.\s*[A-Za-z_]\w*){0,5}\s*\.\s*(?:record|record_feedback|submit|submit_feedback|append|append_feedback|add|add_feedback|create|create_feedback|create_annotation|annotate|label|label_example|write|write_feedback|save|store|upload|export|promote|promote_to_training|promote_to_eval|promote_to_model_update|push)\s*\(([\s\S]{0,2400})\)/giu,
+      /\b(?:record_feedback|submit_feedback|write_feedback_record|append_feedback_record|promote_feedback_to_training|promote_feedback_to_eval|promote_feedback_to_model_update|create_preference_record|write_rlhf_record)\s*\(([\s\S]{0,2400})\)/giu
     ],
     source,
     identifiers
@@ -37036,6 +37069,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   env_secret_feedback_bridge: boolean;
   model_output_feedback_bridge: boolean;
   tool_output_feedback_bridge: boolean;
+  visual_context_feedback_bridge: boolean;
   secret_manager_artifact_bridge: boolean;
   env_secret_artifact_bridge: boolean;
   tainted_feedback_payload: boolean;
@@ -37182,6 +37216,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   const handlerEnvSecretFeedbackBridge = handler?.handlerEnvSecretFeedbackBridge === true;
   const handlerModelOutputFeedbackBridge = handler?.handlerModelOutputFeedbackBridge === true;
   const handlerToolOutputFeedbackBridge = handler?.handlerToolOutputFeedbackBridge === true;
+  const handlerVisualContextFeedbackBridge = handler?.handlerVisualContextFeedbackBridge === true;
   const handlerSecretManagerArtifactBridge = handler?.handlerSecretManagerArtifactBridge === true;
   const handlerEnvSecretArtifactBridge = handler?.handlerEnvSecretArtifactBridge === true;
   const handlerTaintedFeedbackPayload = handler?.handlerTaintedFeedbackPayload === true;
@@ -38080,6 +38115,13 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
     actions.add("write");
     actions.add("remember");
   }
+  if (handlerVisualContextFeedbackBridge) {
+    classes.add("visual_context_feedback_bridge");
+    actions.add("read");
+    actions.add("send");
+    actions.add("write");
+    actions.add("remember");
+  }
   if (handlerSecretManagerArtifactBridge) {
     classes.add("secret_manager_artifact_bridge");
     actions.add("send");
@@ -38555,6 +38597,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerVisualContextMemoryBridge ||
       handlerVisualContextArtifactBridge ||
       handlerVisualContextTrainingDatasetBridge ||
+      handlerVisualContextFeedbackBridge ||
       handlerVisualContextTelemetryBridge ||
       handlerVisualContextPromptCacheBridge ||
       handlerVisualContextTaskQueueBridge ||
@@ -38620,6 +38663,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerEnvSecretFeedbackBridge ||
       handlerModelOutputFeedbackBridge ||
       handlerToolOutputFeedbackBridge ||
+      handlerVisualContextFeedbackBridge ||
       handlerSecretManagerArtifactBridge ||
       handlerEnvSecretArtifactBridge ||
       handlerModelOutputArtifactBridge ||
@@ -38977,6 +39021,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerEnvSecretFeedbackBridge ||
       (handlerModelOutputFeedbackBridge && handlerSecretEnvAccess) ||
       (handlerToolOutputFeedbackBridge && handlerSecretEnvAccess) ||
+      (handlerVisualContextFeedbackBridge && handlerSecretEnvAccess) ||
       handlerSecretManagerArtifactBridge ||
       handlerEnvSecretArtifactBridge ||
       (handlerModelOutputArtifactBridge && handlerSecretEnvAccess) ||
@@ -39169,6 +39214,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
     env_secret_feedback_bridge: handlerEnvSecretFeedbackBridge,
     model_output_feedback_bridge: handlerModelOutputFeedbackBridge,
     tool_output_feedback_bridge: handlerToolOutputFeedbackBridge,
+    visual_context_feedback_bridge: handlerVisualContextFeedbackBridge,
     secret_manager_artifact_bridge: handlerSecretManagerArtifactBridge,
     env_secret_artifact_bridge: handlerEnvSecretArtifactBridge,
     local_file_artifact_bridge: handlerLocalFileArtifactBridge,
@@ -39365,6 +39411,7 @@ function authoritySignature(tool: SurfaceObject): string {
     metadata.env_secret_feedback_bridge === true ? "env_secret_feedback_bridge" : "",
     metadata.model_output_feedback_bridge === true ? "model_output_feedback_bridge" : "",
     metadata.tool_output_feedback_bridge === true ? "tool_output_feedback_bridge" : "",
+    metadata.visual_context_feedback_bridge === true ? "visual_context_feedback_bridge" : "",
     metadata.secret_manager_artifact_bridge === true ? "secret_manager_artifact_bridge" : "",
     metadata.env_secret_artifact_bridge === true ? "env_secret_artifact_bridge" : "",
     metadata.tainted_feedback_payload === true ? "tainted_feedback_payload" : "",
@@ -39589,6 +39636,7 @@ function isPrivilegedToolSurface(tool: SurfaceObject): boolean {
     tool.metadata.env_secret_feedback_bridge === true ||
     tool.metadata.model_output_feedback_bridge === true ||
     tool.metadata.tool_output_feedback_bridge === true ||
+    tool.metadata.visual_context_feedback_bridge === true ||
     tool.metadata.secret_manager_artifact_bridge === true ||
     tool.metadata.env_secret_artifact_bridge === true ||
     tool.metadata.tainted_feedback_payload === true ||

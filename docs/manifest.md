@@ -354,6 +354,7 @@ Tool metadata may include:
 - `visual_context_memory_bridge`
 - `visual_context_artifact_bridge`
 - `visual_context_training_dataset_bridge`
+- `visual_context_feedback_bridge`
 - `visual_context_telemetry_bridge`
 - `visual_context_prompt_cache_bridge`
 - `visual_context_prompt_registry_bridge`
@@ -696,6 +697,7 @@ Tool metadata may include:
 - `handler_visual_context_memory_bridge`
 - `handler_visual_context_artifact_bridge`
 - `handler_visual_context_training_dataset_bridge`
+- `handler_visual_context_feedback_bridge`
 - `handler_visual_context_telemetry_bridge`
 - `handler_visual_context_prompt_cache_bridge`
 - `handler_visual_context_prompt_registry_bridge`
@@ -2372,6 +2374,8 @@ Source-defined tool handlers can also emit redacted feedback/RLHF pipeline autho
 Source-defined tool handlers can also emit redacted model-output feedback bridge authority through `model_output_feedback_bridge`, `model_provider_call`, `feedback_pipeline_write`, `tainted_feedback_payload`, `feedback_auto_promotion`, `tainted_feedback_routing`, and the corresponding `handler_*` fields when parsed MCP SDK or agent-framework tools call model providers and promote generated responses into feedback, RLHF, eval, reward-model, or model-improvement pipelines using runtime credentials and caller-selected routing. Handler bodies, model SDK calls, prompts, completions, model-derived feedback records, feedback pipeline calls, dataset IDs, eval-set IDs, promotion targets, labels, reviewer notes, and return strings remain redacted.
 
 Source-defined tool handlers can also emit redacted tool-output feedback bridge authority through `tool_output_feedback_bridge`, `nested_tool_invocation`, `feedback_pipeline_write`, `feedback_auto_promotion`, `tainted_feedback_routing`, and the corresponding `handler_*` fields when parsed MCP SDK or agent-framework tools invoke nested tools and promote raw tool observations into feedback, RLHF, eval, reward-model, or model-improvement pipelines using runtime credentials and caller-selected routing. Handler bodies, nested tool calls, tool names, arguments, raw observations, feedback pipeline calls, dataset IDs, eval-set IDs, promotion targets, records, labels, reviewer notes, and return strings remain redacted.
+
+Source-defined tool handlers can also emit redacted visual-context feedback bridge authority through `visual_context_feedback_bridge`, `visual_context_capture`, `feedback_pipeline_write`, `feedback_auto_promotion`, `tainted_feedback_routing`, and the corresponding `handler_*` fields when parsed MCP SDK or agent-framework tools capture authenticated browser or screen visual context from caller-selected targets and promote screenshot or OCR context into feedback, RLHF, eval, reward-model, or model-improvement pipelines using runtime credentials and caller-selected routing. Handler bodies, browser page calls, screenshots, OCR text, feedback pipeline calls, dataset IDs, eval-set IDs, promotion targets, reviewer notes, feedback records, and return strings remain redacted.
 
 Source-defined tool handlers can also emit redacted model-mediated approval authority through `model_approval_gate`, `tainted_approval_context`, `approval_auto_execution`, and the corresponding `handler_*` fields when parsed MCP SDK or agent-framework tools send caller/customer/tool-output context into an approval model or gate and then automatically execute a privileged action from the approval result. Handler bodies, approval model calls, decision objects, executor calls, action payloads, and returned approval summaries remain redacted.
 
