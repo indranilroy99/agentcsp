@@ -3,6 +3,7 @@ import path from "node:path";
 import { z } from "zod";
 import type { BaselineComparison, ConfidenceCounts, Finding, SeverityCounts } from "../schemas/index.js";
 import { isPathInsideRoot, relativePath } from "../utils/paths.js";
+import { riskDriverOrder, riskDriversForFinding } from "./risk-drivers.js";
 
 const BaselineFindingRecordSchema = z.object({ id: z.string() }).passthrough();
 const BaselineFindingsFileSchema = z.array(BaselineFindingRecordSchema);
@@ -51,6 +52,7 @@ export async function applyBaselineComparison(
       new_findings: newFindingIds.length,
       new_findings_by_severity: countBySeverity(newFindings),
       new_findings_by_confidence: countByConfidence(newFindings),
+      new_findings_by_risk_driver: countByRiskDriver(newFindings),
       existing_findings: findingsWithStatus.length - newFindingIds.length,
       resolved_findings: resolvedFindingIds.length,
       baseline_id_limit: baselineFindingIdLimit,
@@ -127,4 +129,34 @@ function countByConfidence(findings: Finding[]): ConfidenceCounts {
   const counts: ConfidenceCounts = { very_high: 0, high: 0, medium: 0, low: 0 };
   for (const finding of findings) counts[finding.confidence] += 1;
   return counts;
+}
+
+function countByRiskDriver(findings: Finding[]): BaselineComparison["new_findings_by_risk_driver"] {
+  const counts = new Map<
+    BaselineComparison["new_findings_by_risk_driver"][number]["driver"],
+    { count: number; max_risk_score: number; by_severity: SeverityCounts }
+  >();
+
+  for (const finding of findings) {
+    for (const driver of riskDriversForFinding(finding)) {
+      const current = counts.get(driver) ?? {
+        count: 0,
+        max_risk_score: 0,
+        by_severity: { critical: 0, high: 0, medium: 0, low: 0, info: 0 }
+      };
+      current.count += 1;
+      current.max_risk_score = Math.max(current.max_risk_score, finding.risk.score);
+      current.by_severity[finding.severity] += 1;
+      counts.set(driver, current);
+    }
+  }
+
+  return [...counts.entries()]
+    .map(([driver, summary]) => ({ driver, ...summary }))
+    .sort(
+      (a, b) =>
+        b.count - a.count ||
+        b.max_risk_score - a.max_risk_score ||
+        riskDriverOrder.indexOf(a.driver) - riskDriverOrder.indexOf(b.driver)
+    );
 }

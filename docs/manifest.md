@@ -2960,7 +2960,7 @@ The comparison includes:
 - baseline path and format
 - current and baseline finding counts
 - new, existing, and resolved finding counts
-- severity and confidence mix for new findings
+- severity, confidence, and risk-driver mix for new findings
 - bounded stable new finding IDs
 - bounded stable resolved finding IDs
 - baseline ID limit and truncation flags for new and resolved ID previews

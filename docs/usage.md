@@ -103,7 +103,7 @@ Use a previous `findings.json` or `agent-manifest.json` as a baseline when intro
 agentcsp scan . --baseline .agentcsp/agent-manifest.json --out .agentcsp
 ```
 
-The manifest and Markdown report include a baseline comparison with new, existing, and resolved finding counts. Current findings receive `baseline_status: "new"` or `baseline_status: "existing"` when a baseline is provided. New and resolved finding ID previews are bounded; `baseline_id_limit` and the `*_ids_truncated` flags make it explicit when the preview arrays are not complete inventories.
+The manifest and Markdown report include a baseline comparison with new, existing, and resolved finding counts, plus severity, confidence, and risk-driver drift for new findings. Current findings receive `baseline_status: "new"` or `baseline_status: "existing"` when a baseline is provided. New and resolved finding ID previews are bounded; `baseline_id_limit` and the `*_ids_truncated` flags make it explicit when the preview arrays are not complete inventories.
 
 Relative `--baseline` paths are resolved from the scanned project root. This keeps multi-repo CI jobs stable when the command is launched from a parent workspace or automation directory. Baselines inside the scanned root are emitted as root-relative paths in JSON, Markdown, and SARIF. If the baseline file lives outside the scanned root, AgentCSP reads it normally but emits `<external-baseline>` in JSON, Markdown, SARIF, and baseline read errors instead of exposing the absolute local path.
 
@@ -131,7 +131,7 @@ The generated SARIF file is:
 .agentcsp/agentcsp.sarif
 ```
 
-SARIF run properties include `agentcsp_scan_config`, `agentcsp_rule_pack`, `agentcsp_triage_summary`, `agentcsp_action_plan`, `agentcsp_ci_gate_summary`, `agentcsp_baseline_comparison`, `agentcsp_scan_coverage`, `agentcsp_diagnostics`, and `agentcsp_static_blast_radius` so CI systems can consume scan-level context without parsing Markdown. The CI gate summary includes blocker severity/confidence mixes and bounded blocker IDs for dashboard routing. Baseline comparison includes new-finding severity/confidence drift mixes for release review. Rules and results include precision, tags, rank, stable AgentCSP partial fingerprints for result correlation, and GitHub code-scanning compatible `security-severity` metadata. When a baseline is provided, SARIF results include `baselineState` values for current findings.
+SARIF run properties include `agentcsp_scan_config`, `agentcsp_rule_pack`, `agentcsp_triage_summary`, `agentcsp_action_plan`, `agentcsp_ci_gate_summary`, `agentcsp_baseline_comparison`, `agentcsp_scan_coverage`, `agentcsp_diagnostics`, and `agentcsp_static_blast_radius` so CI systems can consume scan-level context without parsing Markdown. The CI gate summary includes blocker severity/confidence mixes and bounded blocker IDs for dashboard routing. Baseline comparison includes new-finding severity, confidence, and risk-driver drift mixes for release review. Rules and results include precision, tags, rank, stable AgentCSP partial fingerprints for result correlation, and GitHub code-scanning compatible `security-severity` metadata. When a baseline is provided, SARIF results include `baselineState` values for current findings.
 
 GitHub code-scanning workflow examples are available in `examples/ci/`. See `docs/ci.md` for advisory and gated rollout patterns.
 

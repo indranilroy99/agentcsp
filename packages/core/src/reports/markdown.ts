@@ -351,6 +351,10 @@ function renderBaselineComparison(manifest: AgentManifest): string {
     "",
     renderBaselineDriftMix(comparison),
     "",
+    "### New Finding Risk Drivers",
+    "",
+    renderBaselineRiskDrivers(comparison),
+    "",
     "### New Findings",
     "",
     newFindings.length > 0 ? renderFindingTable(newFindings) : "No new findings were introduced."
@@ -362,6 +366,20 @@ function renderBaselineDriftMix(comparison: NonNullable<AgentManifest["baseline_
     "| Critical | High | Medium | Low | Info | Very high confidence | High confidence | Medium confidence | Low confidence |",
     "| --- | --- | --- | --- | --- | --- | --- | --- | --- |",
     `| ${comparison.new_findings_by_severity.critical} | ${comparison.new_findings_by_severity.high} | ${comparison.new_findings_by_severity.medium} | ${comparison.new_findings_by_severity.low} | ${comparison.new_findings_by_severity.info} | ${comparison.new_findings_by_confidence.very_high} | ${comparison.new_findings_by_confidence.high} | ${comparison.new_findings_by_confidence.medium} | ${comparison.new_findings_by_confidence.low} |`
+  ].join("\n");
+}
+
+function renderBaselineRiskDrivers(comparison: NonNullable<AgentManifest["baseline_comparison"]>): string {
+  if (comparison.new_findings_by_risk_driver.length === 0) {
+    return "No new finding risk drivers were generated.";
+  }
+  return [
+    "| Driver | New findings | Max risk | Critical | High | Medium | Low | Info |",
+    "| --- | --- | --- | --- | --- | --- | --- | --- |",
+    ...comparison.new_findings_by_risk_driver.map(
+      (item) =>
+        `| ${item.driver.replaceAll("_", " ")} | ${item.count} | ${item.max_risk_score} | ${item.by_severity.critical} | ${item.by_severity.high} | ${item.by_severity.medium} | ${item.by_severity.low} | ${item.by_severity.info} |`
+    )
   ].join("\n");
 }
 

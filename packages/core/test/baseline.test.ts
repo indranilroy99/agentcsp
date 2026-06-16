@@ -69,6 +69,7 @@ describe("baseline comparison", () => {
             new_findings?: number;
             new_findings_by_severity?: Record<string, number>;
             new_findings_by_confidence?: Record<string, number>;
+            new_findings_by_risk_driver?: Array<{ driver?: string; count?: number }>;
           };
         };
       }>;
@@ -77,6 +78,7 @@ describe("baseline comparison", () => {
     expect(sarif.runs[0]?.properties?.agentcsp_baseline_comparison?.new_findings).toBe(0);
     expect(sarif.runs[0]?.properties?.agentcsp_baseline_comparison?.new_findings_by_severity?.critical).toBe(0);
     expect(sarif.runs[0]?.properties?.agentcsp_baseline_comparison?.new_findings_by_confidence?.very_high).toBe(0);
+    expect(sarif.runs[0]?.properties?.agentcsp_baseline_comparison?.new_findings_by_risk_driver).toEqual([]);
   }, 30_000);
 
   it("tracks new and resolved findings from a findings baseline", async () => {
@@ -139,17 +141,20 @@ describe("baseline comparison", () => {
         medium: targetNewFinding?.confidence === "medium" ? 1 : 0,
         low: targetNewFinding?.confidence === "low" ? 1 : 0
       },
+      new_findings_by_risk_driver: expect.any(Array),
       resolved_findings: 1,
       baseline_id_limit: baselineFindingIdLimit,
       baseline_ids_truncated: false
     });
     expect(result.manifest.baseline_comparison?.new_finding_ids).toEqual([targetNewFinding?.id]);
+    expect(result.manifest.baseline_comparison?.new_findings_by_risk_driver.length).toBeGreaterThan(0);
     expect(result.manifest.baseline_comparison?.resolved_finding_ids).toEqual(["finding_resolved_demo"]);
     expect(result.findings.find((finding) => finding.id === targetNewFinding?.id)?.baseline_status).toBe("new");
     expect(result.manifest.action_plan?.new_actions).toBeGreaterThan(0);
     expect(result.manifest.action_plan?.actions.some((action) => action.baseline_status === "new")).toBe(true);
     expect(result.reportMarkdown).toContain("New findings: 1");
     expect(result.reportMarkdown).toContain("### New Finding Drift Mix");
+    expect(result.reportMarkdown).toContain("### New Finding Risk Drivers");
     expect(result.reportMarkdown).toContain(`Baseline ID limit: ${baselineFindingIdLimit}`);
     expect(result.reportMarkdown).toContain("Baseline IDs truncated: `false`");
     const sarif = JSON.parse(await fs.readFile(result.outputFiles.sarif!, "utf8")) as {
@@ -197,16 +202,31 @@ describe("baseline comparison", () => {
     expect(result.comparison.resolved_finding_ids[0]).toBe("resolved_000");
   });
 
-  it("summarizes new baseline drift by severity and confidence", async () => {
+  it("summarizes new baseline drift by severity, confidence, and risk driver", async () => {
     const baselinePath = "/private/tmp/agentcsp-baseline-drift-mix.json";
     await fs.writeFile(baselinePath, '[{"id":"existing_high"}]\n', "utf8");
 
     const result = await applyBaselineComparison(
       [
         finding("existing_high", "high", "high"),
-        finding("new_critical_very_high", "critical", "very_high"),
-        finding("new_critical_high", "critical", "high"),
-        finding("new_medium_low", "medium", "low")
+        finding("new_critical_very_high", "critical", "very_high", {
+          secretExposure: true,
+          externalReach: true,
+          dataClasses: ["credential"],
+          actions: ["send"],
+          riskScore: 95
+        }),
+        finding("new_critical_high", "critical", "high", {
+          untrustedToPrivileged: true,
+          externalReach: true,
+          actions: ["execute"],
+          riskScore: 90
+        }),
+        finding("new_medium_low", "medium", "low", {
+          dataClasses: ["pii"],
+          actions: ["write"],
+          riskScore: 55
+        })
       ],
       baselinePath,
       "/private/tmp"
@@ -217,7 +237,57 @@ describe("baseline comparison", () => {
       existing_findings: 1,
       resolved_findings: 0,
       new_findings_by_severity: { critical: 2, high: 0, medium: 1, low: 0, info: 0 },
-      new_findings_by_confidence: { very_high: 1, high: 1, medium: 0, low: 1 }
+      new_findings_by_confidence: { very_high: 1, high: 1, medium: 0, low: 1 },
+      new_findings_by_risk_driver: [
+        {
+          driver: "external_reach",
+          count: 2,
+          max_risk_score: 95,
+          by_severity: { critical: 2, high: 0, medium: 0, low: 0, info: 0 }
+        },
+        {
+          driver: "sensitive_data",
+          count: 2,
+          max_risk_score: 95,
+          by_severity: { critical: 1, high: 0, medium: 1, low: 0, info: 0 }
+        },
+        {
+          driver: "write_action",
+          count: 2,
+          max_risk_score: 95,
+          by_severity: { critical: 1, high: 0, medium: 1, low: 0, info: 0 }
+        },
+        {
+          driver: "secret_exposure",
+          count: 1,
+          max_risk_score: 95,
+          by_severity: { critical: 1, high: 0, medium: 0, low: 0, info: 0 }
+        },
+        {
+          driver: "credential_data",
+          count: 1,
+          max_risk_score: 95,
+          by_severity: { critical: 1, high: 0, medium: 0, low: 0, info: 0 }
+        },
+        {
+          driver: "untrusted_to_privileged",
+          count: 1,
+          max_risk_score: 90,
+          by_severity: { critical: 1, high: 0, medium: 0, low: 0, info: 0 }
+        },
+        {
+          driver: "execute_action",
+          count: 1,
+          max_risk_score: 90,
+          by_severity: { critical: 1, high: 0, medium: 0, low: 0, info: 0 }
+        },
+        {
+          driver: "pii_data",
+          count: 1,
+          max_risk_score: 55,
+          by_severity: { critical: 0, high: 0, medium: 1, low: 0, info: 0 }
+        }
+      ]
     });
   });
 
@@ -318,10 +388,70 @@ describe("baseline comparison", () => {
   });
 });
 
-function finding(id: string, severity: Finding["severity"] = "high", confidence: Finding["confidence"] = "high"): Finding {
+function finding(
+  id: string,
+  severity: Finding["severity"] = "high",
+  confidence: Finding["confidence"] = "high",
+  options: {
+    dataClasses?: Finding["data_classes"];
+    actions?: Finding["risk"]["actions"];
+    externalReach?: boolean;
+    secretExposure?: boolean;
+    untrustedToPrivileged?: boolean;
+    reversible?: boolean;
+    sideEffect?: boolean;
+    riskScore?: number;
+  } = {}
+): Finding {
+  const dataClasses = options.dataClasses ?? [];
+  const actions = options.actions ?? ["call"];
+  const externalReach = options.externalReach ?? false;
+  const secretExposure = options.secretExposure ?? false;
+  const untrustedToPrivileged = options.untrustedToPrivileged ?? false;
+  const sideEffect = options.sideEffect ?? false;
+  const reversible = options.reversible ?? true;
   return {
     id,
+    rule_id: `RULE-${id}`,
+    name: id,
+    category: "baseline_test",
     severity,
-    confidence
+    confidence,
+    confidence_rationale: [],
+    matched_object: {
+      id: `object_${id}`,
+      type: "tool",
+      name: id,
+      path: `${id}.yaml`,
+      trust_level: "project",
+      data_classes: dataClasses,
+      actions,
+      side_effect: sideEffect,
+      reversible,
+      external_reach: externalReach,
+      secret_exposure: secretExposure,
+      untrusted_to_privileged: untrustedToPrivileged,
+      evidence: [],
+      metadata: {}
+    },
+    file_path: `${id}.yaml`,
+    reason: id,
+    trust_boundary_crossed: untrustedToPrivileged,
+    data_classes: dataClasses,
+    recommended_control: "require_approval",
+    risk: {
+      trust_level: "project",
+      data_classes: dataClasses,
+      actions,
+      side_effect: sideEffect,
+      reversible,
+      external_reach: externalReach,
+      secret_exposure: secretExposure,
+      untrusted_to_privileged: untrustedToPrivileged,
+      score: options.riskScore ?? 80,
+      rationale: []
+    },
+    maps_to: { owasp: [], mitre_atlas: [], nist_ai_rmf: [] },
+    evidence: []
   } as Finding;
 }

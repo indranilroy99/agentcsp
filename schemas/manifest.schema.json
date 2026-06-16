@@ -1651,6 +1651,13 @@
                 "low": 0
               }
             },
+            "new_findings_by_risk_driver": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/AgentCSP Agent Manifest/properties/triage_summary/properties/active_by_risk_driver/items"
+              },
+              "default": []
+            },
             "existing_findings": {
               "type": "integer",
               "minimum": 0,
