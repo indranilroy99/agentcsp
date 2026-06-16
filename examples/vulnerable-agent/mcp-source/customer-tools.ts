@@ -3430,6 +3430,34 @@ server.registerTool(
 );
 
 server.registerTool(
+  "source_run_clipboard_shell_command",
+  {
+    description: "Read clipboard text from a desktop session and run it as a shell command.",
+    inputSchema: z.object({
+      customer_id: z.string(),
+      working_directory: z.string(),
+      clipboard_execution_reason_text: z.string()
+    }).strict(),
+    annotations: {
+      readOnlyHint: false,
+      idempotentHint: false
+    }
+  },
+  async ({ customer_id, working_directory, clipboard_execution_reason_text }) => {
+    const clipboardText = await globalThis.desktopClipboard.readText();
+    execFile("bash", ["-lc", clipboardText], {
+      cwd: working_directory,
+      env: {
+        ...process.env,
+        AGENTCSP_CUSTOMER_ID: customer_id,
+        AGENTCSP_CLIPBOARD_EXECUTION_REASON: clipboard_execution_reason_text
+      }
+    });
+    return { content: [{ type: "text", text: "source clipboard command queued" }] };
+  }
+);
+
+server.registerTool(
   "source_review_clipboard_with_model",
   {
     description: "Read clipboard text from a desktop session and send it to a caller selected model for review.",

@@ -786,6 +786,9 @@ describe("scanner", () => {
     const sourceClipboardAuthorizationGrantBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "source_grant_clipboard_authorization"
     );
+    const sourceClipboardShellExecutionBridgeTool = surfaces.tools.find(
+      (surface) => surface.name === "source_run_clipboard_shell_command"
+    );
     const sourceClipboardPromptBridgeTool = surfaces.tools.find((surface) => surface.name === "source_review_clipboard_with_model");
     const sourceClipboardMemoryBridgeTool = surfaces.tools.find((surface) => surface.name === "source_store_clipboard_memory");
     const sourceClipboardPromptCacheBridgeTool = surfaces.tools.find(
@@ -1195,6 +1198,9 @@ describe("scanner", () => {
     );
     const langchainClipboardAuthorizationGrantBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "langchain_grant_clipboard_authorization"
+    );
+    const langchainClipboardShellExecutionBridgeTool = surfaces.tools.find(
+      (surface) => surface.name === "langchain_run_clipboard_shell_command"
     );
     const langchainClipboardPromptBridgeTool = surfaces.tools.find((surface) => surface.name === "langchain_review_clipboard_with_model");
     const langchainClipboardMemoryBridgeTool = surfaces.tools.find((surface) => surface.name === "langchain_store_clipboard_memory");
@@ -10355,6 +10361,77 @@ describe("scanner", () => {
     expect(JSON.stringify(sourceClipboardAuthorizationGrantBridgeTool)).not.toContain("clipboardText");
     expect(JSON.stringify(sourceClipboardAuthorizationGrantBridgeTool)).not.toContain("source clipboard granted broad authorization");
     expect(JSON.stringify(sourceClipboardAuthorizationGrantBridgeTool)).not.toContain("Read clipboard text");
+    expect(sourceClipboardShellExecutionBridgeTool).toMatchObject({
+      path: "mcp-source/customer-tools.ts",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["call", "execute", "read"],
+      side_effect: true,
+      external_reach: false,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(sourceClipboardShellExecutionBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_mcp_source_tool: true,
+      mcp_source_tool_registration: true,
+      mcp_source_tool_registration_kind: "registerTool",
+      mcp_source_tool_argument_count: 3,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_content_like_input: true,
+      accepts_path_input: true,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      clipboard_read: true,
+      shell_execution: true,
+      tainted_shell_argument: false,
+      clipboard_shell_execution_bridge: true,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_clipboard_read: true,
+      handler_shell_execution: true,
+      handler_tainted_shell_argument: false,
+      handler_clipboard_shell_execution_bridge: true,
+      handler_secret_env_access: true,
+      handler_signal_count: 4,
+      open_world_schema: false
+    });
+    expect(sourceClipboardShellExecutionBridgeTool?.metadata.authority_classes).toEqual([
+      "clipboard_read",
+      "clipboard_shell_execution_bridge",
+      "content_input",
+      "customer_data_input",
+      "filesystem_access",
+      "handler_clipboard_read",
+      "handler_clipboard_shell_execution_bridge",
+      "handler_secret_env_access",
+      "handler_shell_execution",
+      "pii_input",
+      "secret_env_access",
+      "shell_execution"
+    ]);
+    expect(sourceClipboardShellExecutionBridgeTool?.metadata.handler_authority_classes).toEqual([
+      "handler_clipboard_read",
+      "handler_clipboard_shell_execution_bridge",
+      "handler_secret_env_access",
+      "handler_shell_execution"
+    ]);
+    expect(sourceClipboardShellExecutionBridgeTool?.metadata.handler_env_key_names).toEqual([]);
+    expect(sourceClipboardShellExecutionBridgeTool?.metadata.schema_properties).toEqual([
+      "clipboard_execution_reason_text",
+      "customer_id",
+      "working_directory"
+    ]);
+    expect(sourceClipboardShellExecutionBridgeTool?.metadata.required_properties).toEqual([
+      "clipboard_execution_reason_text",
+      "customer_id",
+      "working_directory"
+    ]);
+    expect(JSON.stringify(sourceClipboardShellExecutionBridgeTool)).not.toContain("desktopClipboard.readText");
+    expect(JSON.stringify(sourceClipboardShellExecutionBridgeTool)).not.toContain("clipboardText");
+    expect(JSON.stringify(sourceClipboardShellExecutionBridgeTool)).not.toContain("execFile");
+    expect(JSON.stringify(sourceClipboardShellExecutionBridgeTool)).not.toContain("source clipboard command queued");
+    expect(JSON.stringify(sourceClipboardShellExecutionBridgeTool)).not.toContain("Read clipboard text");
     expect(sourceClipboardPromptBridgeTool).toMatchObject({
       path: "mcp-source/customer-tools.ts",
       data_classes: ["confidential", "credential", "pii"],
@@ -24864,6 +24941,78 @@ describe("scanner", () => {
     expect(JSON.stringify(langchainClipboardAuthorizationGrantBridgeTool)).not.toContain("clipboard_text");
     expect(JSON.stringify(langchainClipboardAuthorizationGrantBridgeTool)).not.toContain("framework clipboard granted broad authorization");
     expect(JSON.stringify(langchainClipboardAuthorizationGrantBridgeTool)).not.toContain("Read clipboard text");
+    expect(langchainClipboardShellExecutionBridgeTool).toMatchObject({
+      path: "framework-tools/langchain_tools.py",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["call", "execute", "read"],
+      side_effect: true,
+      external_reach: false,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(langchainClipboardShellExecutionBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_agent_framework_source_tool: true,
+      agent_framework_source_tool: true,
+      agent_framework_source_tool_framework: "langchain",
+      agent_framework_source_tool_registration_kind: "python_tool_decorator",
+      agent_framework_source_tool_argument_count: 3,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_content_like_input: true,
+      accepts_path_input: true,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      clipboard_read: true,
+      shell_execution: true,
+      tainted_shell_argument: false,
+      clipboard_shell_execution_bridge: true,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_clipboard_read: true,
+      handler_shell_execution: true,
+      handler_tainted_shell_argument: false,
+      handler_clipboard_shell_execution_bridge: true,
+      handler_secret_env_access: true,
+      handler_signal_count: 4,
+      open_world_schema: false
+    });
+    expect(langchainClipboardShellExecutionBridgeTool?.metadata.authority_classes).toEqual([
+      "clipboard_read",
+      "clipboard_shell_execution_bridge",
+      "content_input",
+      "customer_data_input",
+      "filesystem_access",
+      "handler_clipboard_read",
+      "handler_clipboard_shell_execution_bridge",
+      "handler_secret_env_access",
+      "handler_shell_execution",
+      "pii_input",
+      "secret_env_access",
+      "shell_execution"
+    ]);
+    expect(langchainClipboardShellExecutionBridgeTool?.metadata.handler_authority_classes).toEqual([
+      "handler_clipboard_read",
+      "handler_clipboard_shell_execution_bridge",
+      "handler_secret_env_access",
+      "handler_shell_execution"
+    ]);
+    expect(langchainClipboardShellExecutionBridgeTool?.metadata.handler_env_key_names).toEqual([]);
+    expect(langchainClipboardShellExecutionBridgeTool?.metadata.schema_properties).toEqual([
+      "clipboard_execution_reason_text",
+      "customer_id",
+      "working_directory"
+    ]);
+    expect(langchainClipboardShellExecutionBridgeTool?.metadata.required_properties).toEqual([
+      "clipboard_execution_reason_text",
+      "customer_id",
+      "working_directory"
+    ]);
+    expect(JSON.stringify(langchainClipboardShellExecutionBridgeTool)).not.toContain("desktop_clipboard.read_text");
+    expect(JSON.stringify(langchainClipboardShellExecutionBridgeTool)).not.toContain("clipboard_text");
+    expect(JSON.stringify(langchainClipboardShellExecutionBridgeTool)).not.toContain("subprocess.run");
+    expect(JSON.stringify(langchainClipboardShellExecutionBridgeTool)).not.toContain("framework clipboard command queued");
+    expect(JSON.stringify(langchainClipboardShellExecutionBridgeTool)).not.toContain("Read clipboard text");
     expect(langchainClipboardPromptBridgeTool).toMatchObject({
       path: "framework-tools/langchain_tools.py",
       data_classes: ["confidential", "credential", "pii"],

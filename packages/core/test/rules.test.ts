@@ -197,6 +197,7 @@ describe("rule engine", () => {
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-193")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-194")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-195")).toBe(true);
+    expect(findings.some((finding) => finding.rule_id === "AGENTCSP-TOOL-196")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-001")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-002")).toBe(true);
     expect(findings.some((finding) => finding.rule_id === "AGENTCSP-MCP-003")).toBe(true);
@@ -12712,6 +12713,65 @@ describe("rule engine", () => {
     expect(JSON.stringify(sourceHandlerVisualContextDynamicCodeBridgeFindings)).not.toContain("source visual context code executed");
     expect(JSON.stringify(sourceHandlerVisualContextDynamicCodeBridgeFindings)).not.toContain("framework visual context code executed");
     expect(JSON.stringify(sourceHandlerVisualContextDynamicCodeBridgeFindings)).not.toContain("Execute dynamic code derived from an authenticated browser screenshot");
+    const sourceHandlerClipboardShellExecutionBridgeFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-196");
+    expect(sourceHandlerClipboardShellExecutionBridgeFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
+      "langchain_run_clipboard_shell_command",
+      "source_run_clipboard_shell_command"
+    ]);
+    expect(sourceHandlerClipboardShellExecutionBridgeFindings.every((finding) => finding.severity === "critical")).toBe(true);
+    expect(sourceHandlerClipboardShellExecutionBridgeFindings.every((finding) => finding.confidence === "very_high")).toBe(true);
+    expect(sourceHandlerClipboardShellExecutionBridgeFindings.every((finding) => finding.recommended_control === "quarantine")).toBe(true);
+    expect(sourceHandlerClipboardShellExecutionBridgeFindings.every((finding) => finding.matched_object.metadata.handler_body_redacted === true)).toBe(true);
+    expect(sourceHandlerClipboardShellExecutionBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.source_tool_handler_redacted === true
+    )).toBe(true);
+    expect(sourceHandlerClipboardShellExecutionBridgeFindings.every((finding) => finding.matched_object.metadata.handler_clipboard_read === true)).toBe(true);
+    expect(sourceHandlerClipboardShellExecutionBridgeFindings.every((finding) => finding.matched_object.metadata.handler_shell_execution === true)).toBe(true);
+    expect(sourceHandlerClipboardShellExecutionBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.handler_clipboard_shell_execution_bridge === true
+    )).toBe(true);
+    expect(sourceHandlerClipboardShellExecutionBridgeFindings.every((finding) => finding.matched_object.metadata.handler_secret_env_access === true)).toBe(true);
+    expect(sourceHandlerClipboardShellExecutionBridgeFindings.every((finding) => finding.matched_object.metadata.clipboard_read === true)).toBe(true);
+    expect(sourceHandlerClipboardShellExecutionBridgeFindings.every((finding) => finding.matched_object.metadata.shell_execution === true)).toBe(true);
+    expect(sourceHandlerClipboardShellExecutionBridgeFindings.every((finding) =>
+      finding.matched_object.metadata.clipboard_shell_execution_bridge === true
+    )).toBe(true);
+    expect(sourceHandlerClipboardShellExecutionBridgeFindings.every((finding) => finding.matched_object.metadata.accepts_content_like_input === true)).toBe(true);
+    expect(sourceHandlerClipboardShellExecutionBridgeFindings.every((finding) => finding.matched_object.metadata.accepts_path_input === true)).toBe(true);
+    expect(sourceHandlerClipboardShellExecutionBridgeFindings.every((finding) => finding.matched_object.metadata.accepts_customer_data_input === true)).toBe(true);
+    for (const authorityClass of [
+      "clipboard_read",
+      "shell_execution",
+      "clipboard_shell_execution_bridge"
+    ]) {
+      expect(sourceHandlerClipboardShellExecutionBridgeFindings.every((finding) =>
+        finding.matched_object.metadata.authority_classes.includes(authorityClass)
+      )).toBe(true);
+    }
+    for (const handlerAuthorityClass of [
+      "handler_clipboard_read",
+      "handler_shell_execution",
+      "handler_clipboard_shell_execution_bridge"
+    ]) {
+      expect(sourceHandlerClipboardShellExecutionBridgeFindings.every((finding) =>
+        finding.matched_object.metadata.handler_authority_classes.includes(handlerAuthorityClass)
+      )).toBe(true);
+    }
+    expect(sourceHandlerClipboardShellExecutionBridgeFindings.every((finding) => finding.matched_object.actions.includes("read"))).toBe(true);
+    expect(sourceHandlerClipboardShellExecutionBridgeFindings.every((finding) => finding.matched_object.actions.includes("execute"))).toBe(true);
+    expect(sourceHandlerClipboardShellExecutionBridgeFindings.every((finding) => finding.matched_object.external_reach === false)).toBe(true);
+    expect(sourceHandlerClipboardShellExecutionBridgeFindings.every((finding) => finding.matched_object.secret_exposure === true)).toBe(true);
+    expect(sourceHandlerClipboardShellExecutionBridgeFindings.every((finding) => finding.matched_object.side_effect === true)).toBe(true);
+    expect(sourceHandlerClipboardShellExecutionBridgeFindings.every((finding) => finding.matched_object.reversible === false)).toBe(true);
+    expect(JSON.stringify(sourceHandlerClipboardShellExecutionBridgeFindings)).not.toContain("desktopClipboard.readText");
+    expect(JSON.stringify(sourceHandlerClipboardShellExecutionBridgeFindings)).not.toContain("desktop_clipboard.read_text");
+    expect(JSON.stringify(sourceHandlerClipboardShellExecutionBridgeFindings)).not.toContain("clipboardText");
+    expect(JSON.stringify(sourceHandlerClipboardShellExecutionBridgeFindings)).not.toContain("clipboard_text");
+    expect(JSON.stringify(sourceHandlerClipboardShellExecutionBridgeFindings)).not.toContain("execFile");
+    expect(JSON.stringify(sourceHandlerClipboardShellExecutionBridgeFindings)).not.toContain("subprocess.run");
+    expect(JSON.stringify(sourceHandlerClipboardShellExecutionBridgeFindings)).not.toContain("source clipboard command queued");
+    expect(JSON.stringify(sourceHandlerClipboardShellExecutionBridgeFindings)).not.toContain("framework clipboard command queued");
+    expect(JSON.stringify(sourceHandlerClipboardShellExecutionBridgeFindings)).not.toContain("Read clipboard text");
     const sourceHandlerVisualContextTaskQueueBridgeFindings = findings.filter((finding) => finding.rule_id === "AGENTCSP-TOOL-104");
     expect(sourceHandlerVisualContextTaskQueueBridgeFindings.map((finding) => finding.matched_object.name).sort()).toEqual([
       "langchain_enqueue_authenticated_page_screenshot_job",

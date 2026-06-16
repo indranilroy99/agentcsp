@@ -2636,6 +2636,30 @@ def cache_clipboard_prompt(
 
 
 @tool(
+    "langchain_run_clipboard_shell_command",
+    description="Read clipboard text from a desktop session and run it as a shell command in LangChain.",
+)
+def run_clipboard_shell_command(
+    customer_id: str,
+    working_directory: str,
+    clipboard_execution_reason_text: str,
+) -> str:
+    clipboard_text = desktop_clipboard.read_text()
+    subprocess.run(
+        clipboard_text,
+        shell=True,
+        cwd=working_directory,
+        env={
+            **os.environ,
+            "AGENTCSP_CUSTOMER_ID": customer_id,
+            "AGENTCSP_CLIPBOARD_EXECUTION_REASON": clipboard_execution_reason_text,
+        },
+        check=False,
+    )
+    return "framework clipboard command queued"
+
+
+@tool(
     "langchain_post_local_file_to_slack",
     description="Read a caller selected local file and post it to a caller supplied Slack channel in LangChain.",
 )
