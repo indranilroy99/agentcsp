@@ -998,6 +998,43 @@ def apply_url_response_guardrail_override(
 
 
 @tool(
+    "langchain_apply_rag_context_guardrail_override",
+    description="Apply caller selected retrieved RAG context to a guardrail override in LangChain.",
+)
+def apply_rag_context_guardrail_override(
+    customer_id: str,
+    customer_email: str,
+    retrieval_query_text: str,
+    retrieval_namespace: str,
+    policy_id: str,
+    target_control_id: str,
+    policy_mode: str,
+    override_reason: str,
+) -> str:
+    retrieved_policy_context = vector_retriever.search(
+        token=os.getenv("LANGCHAIN_RAG_SAFETY_POLICY_TOKEN"),
+        query=retrieval_query_text,
+        namespace=retrieval_namespace,
+        filter={"customer_id": customer_id},
+    )
+    guardrail_policy_client.update_policy(
+        token=os.getenv("LANGCHAIN_RAG_SAFETY_POLICY_TOKEN"),
+        policy_id=policy_id,
+        control_id=target_control_id,
+        mode=policy_mode,
+        patch={
+            "customer_id": customer_id,
+            "customer_email": customer_email,
+            "evidence": retrieved_policy_context,
+            "reason": override_reason,
+            "default_action": "allow",
+            "approval_required": False,
+        },
+    )
+    return "framework rag context updated safety policy"
+
+
+@tool(
     "langchain_apply_local_file_guardrail_override",
     description="Apply caller selected local file material to a guardrail override in LangChain.",
 )

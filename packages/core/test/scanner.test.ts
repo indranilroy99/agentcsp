@@ -628,6 +628,9 @@ describe("scanner", () => {
     const sourceNetworkResponseSafetyPolicyBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "source_apply_url_response_guardrail_override"
     );
+    const sourceRagRetrievalSafetyPolicyBridgeTool = surfaces.tools.find(
+      (surface) => surface.name === "source_apply_rag_context_guardrail_override"
+    );
     const sourceLocalFileSafetyPolicyBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "source_apply_local_file_guardrail_override"
     );
@@ -989,6 +992,9 @@ describe("scanner", () => {
     );
     const langchainNetworkResponseSafetyPolicyBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "langchain_apply_url_response_guardrail_override"
+    );
+    const langchainRagRetrievalSafetyPolicyBridgeTool = surfaces.tools.find(
+      (surface) => surface.name === "langchain_apply_rag_context_guardrail_override"
     );
     const langchainLocalFileSafetyPolicyBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "langchain_apply_local_file_guardrail_override"
@@ -5396,6 +5402,93 @@ describe("scanner", () => {
     expect(JSON.stringify(sourceNetworkResponseSafetyPolicyBridgeTool)).not.toContain("networkPolicyPatch");
     expect(JSON.stringify(sourceNetworkResponseSafetyPolicyBridgeTool)).not.toContain("source network response updated safety policy");
     expect(JSON.stringify(sourceNetworkResponseSafetyPolicyBridgeTool)).not.toContain("Apply caller selected URL response material");
+    expect(sourceRagRetrievalSafetyPolicyBridgeTool).toMatchObject({
+      path: "mcp-source/customer-tools.ts",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["call", "publish", "read", "send", "write"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(sourceRagRetrievalSafetyPolicyBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_mcp_source_tool: true,
+      mcp_source_tool_registration: true,
+      mcp_source_tool_registration_kind: "registerTool",
+      mcp_source_tool_argument_count: 3,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_content_like_input: true,
+      accepts_customer_data_input: true,
+      rag_retrieval: true,
+      tainted_rag_retrieval_query: true,
+      safety_policy_write: true,
+      tainted_safety_policy_payload: true,
+      tainted_safety_policy_selector: true,
+      safety_policy_weakening: true,
+      rag_retrieval_safety_policy_bridge: true,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_rag_retrieval: true,
+      handler_tainted_rag_retrieval_query: true,
+      handler_safety_policy_write: true,
+      handler_tainted_safety_policy_payload: true,
+      handler_tainted_safety_policy_selector: true,
+      handler_safety_policy_weakening: true,
+      handler_rag_retrieval_safety_policy_bridge: true,
+      handler_secret_env_access: true,
+      handler_signal_count: 8,
+      open_world_schema: false
+    });
+    for (const authorityClass of [
+      "rag_retrieval",
+      "tainted_rag_retrieval_query",
+      "safety_policy_write",
+      "tainted_safety_policy_payload",
+      "tainted_safety_policy_selector",
+      "safety_policy_weakening",
+      "rag_retrieval_safety_policy_bridge"
+    ]) {
+      expect(sourceRagRetrievalSafetyPolicyBridgeTool?.metadata.authority_classes).toContain(authorityClass);
+    }
+    for (const handlerClass of [
+      "handler_rag_retrieval",
+      "handler_tainted_rag_retrieval_query",
+      "handler_safety_policy_write",
+      "handler_tainted_safety_policy_payload",
+      "handler_tainted_safety_policy_selector",
+      "handler_safety_policy_weakening",
+      "handler_rag_retrieval_safety_policy_bridge"
+    ]) {
+      expect(sourceRagRetrievalSafetyPolicyBridgeTool?.metadata.handler_authority_classes).toContain(handlerClass);
+    }
+    expect(sourceRagRetrievalSafetyPolicyBridgeTool?.metadata.handler_env_key_names).toEqual(["SOURCE_RAG_SAFETY_POLICY_TOKEN"]);
+    expect(sourceRagRetrievalSafetyPolicyBridgeTool?.metadata.schema_properties).toEqual([
+      "customer_email",
+      "customer_id",
+      "override_reason",
+      "policy_id",
+      "policy_mode",
+      "retrieval_namespace",
+      "retrieval_query_text",
+      "target_control_id"
+    ]);
+    expect(sourceRagRetrievalSafetyPolicyBridgeTool?.metadata.required_properties).toEqual([
+      "customer_email",
+      "customer_id",
+      "override_reason",
+      "policy_id",
+      "policy_mode",
+      "retrieval_namespace",
+      "retrieval_query_text",
+      "target_control_id"
+    ]);
+    expect(JSON.stringify(sourceRagRetrievalSafetyPolicyBridgeTool)).not.toContain("vectorRetriever.search");
+    expect(JSON.stringify(sourceRagRetrievalSafetyPolicyBridgeTool)).not.toContain("guardrailPolicyClient.updatePolicy");
+    expect(JSON.stringify(sourceRagRetrievalSafetyPolicyBridgeTool)).not.toContain("retrievedPolicyContext");
+    expect(JSON.stringify(sourceRagRetrievalSafetyPolicyBridgeTool)).not.toContain("source rag context updated safety policy");
+    expect(JSON.stringify(sourceRagRetrievalSafetyPolicyBridgeTool)).not.toContain("Apply caller selected retrieved RAG context");
     expect(sourceLocalFileSafetyPolicyBridgeTool).toMatchObject({
       path: "mcp-source/customer-tools.ts",
       data_classes: ["confidential", "credential", "pii"],
@@ -18361,6 +18454,94 @@ describe("scanner", () => {
     expect(JSON.stringify(langchainNetworkResponseSafetyPolicyBridgeTool)).not.toContain("network_policy_patch");
     expect(JSON.stringify(langchainNetworkResponseSafetyPolicyBridgeTool)).not.toContain("framework network response updated safety policy");
     expect(JSON.stringify(langchainNetworkResponseSafetyPolicyBridgeTool)).not.toContain("Apply caller selected URL response material");
+    expect(langchainRagRetrievalSafetyPolicyBridgeTool).toMatchObject({
+      path: "framework-tools/langchain_tools.py",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["call", "publish", "read", "send", "write"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(langchainRagRetrievalSafetyPolicyBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_agent_framework_source_tool: true,
+      agent_framework_source_tool: true,
+      agent_framework_source_tool_framework: "langchain",
+      agent_framework_source_tool_registration_kind: "python_tool_decorator",
+      agent_framework_source_tool_argument_count: 8,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_content_like_input: true,
+      accepts_customer_data_input: true,
+      rag_retrieval: true,
+      tainted_rag_retrieval_query: true,
+      safety_policy_write: true,
+      tainted_safety_policy_payload: true,
+      tainted_safety_policy_selector: true,
+      safety_policy_weakening: true,
+      rag_retrieval_safety_policy_bridge: true,
+      handler_body_analyzed: true,
+      handler_body_redacted: true,
+      handler_rag_retrieval: true,
+      handler_tainted_rag_retrieval_query: true,
+      handler_safety_policy_write: true,
+      handler_tainted_safety_policy_payload: true,
+      handler_tainted_safety_policy_selector: true,
+      handler_safety_policy_weakening: true,
+      handler_rag_retrieval_safety_policy_bridge: true,
+      handler_secret_env_access: true,
+      handler_signal_count: 8,
+      open_world_schema: false
+    });
+    for (const authorityClass of [
+      "rag_retrieval",
+      "tainted_rag_retrieval_query",
+      "safety_policy_write",
+      "tainted_safety_policy_payload",
+      "tainted_safety_policy_selector",
+      "safety_policy_weakening",
+      "rag_retrieval_safety_policy_bridge"
+    ]) {
+      expect(langchainRagRetrievalSafetyPolicyBridgeTool?.metadata.authority_classes).toContain(authorityClass);
+    }
+    for (const handlerClass of [
+      "handler_rag_retrieval",
+      "handler_tainted_rag_retrieval_query",
+      "handler_safety_policy_write",
+      "handler_tainted_safety_policy_payload",
+      "handler_tainted_safety_policy_selector",
+      "handler_safety_policy_weakening",
+      "handler_rag_retrieval_safety_policy_bridge"
+    ]) {
+      expect(langchainRagRetrievalSafetyPolicyBridgeTool?.metadata.handler_authority_classes).toContain(handlerClass);
+    }
+    expect(langchainRagRetrievalSafetyPolicyBridgeTool?.metadata.handler_env_key_names).toEqual(["LANGCHAIN_RAG_SAFETY_POLICY_TOKEN"]);
+    expect(langchainRagRetrievalSafetyPolicyBridgeTool?.metadata.schema_properties).toEqual([
+      "customer_email",
+      "customer_id",
+      "override_reason",
+      "policy_id",
+      "policy_mode",
+      "retrieval_namespace",
+      "retrieval_query_text",
+      "target_control_id"
+    ]);
+    expect(langchainRagRetrievalSafetyPolicyBridgeTool?.metadata.required_properties).toEqual([
+      "customer_email",
+      "customer_id",
+      "override_reason",
+      "policy_id",
+      "policy_mode",
+      "retrieval_namespace",
+      "retrieval_query_text",
+      "target_control_id"
+    ]);
+    expect(JSON.stringify(langchainRagRetrievalSafetyPolicyBridgeTool)).not.toContain("vector_retriever.search");
+    expect(JSON.stringify(langchainRagRetrievalSafetyPolicyBridgeTool)).not.toContain("guardrail_policy_client.update_policy");
+    expect(JSON.stringify(langchainRagRetrievalSafetyPolicyBridgeTool)).not.toContain("retrieved_policy_context");
+    expect(JSON.stringify(langchainRagRetrievalSafetyPolicyBridgeTool)).not.toContain("framework rag context updated safety policy");
+    expect(JSON.stringify(langchainRagRetrievalSafetyPolicyBridgeTool)).not.toContain("Apply caller selected retrieved RAG context");
     expect(langchainLocalFileSafetyPolicyBridgeTool).toMatchObject({
       path: "framework-tools/langchain_tools.py",
       data_classes: ["confidential", "credential", "pii"],

@@ -1508,6 +1508,50 @@ server.registerTool(
 );
 
 server.registerTool(
+  "source_apply_rag_context_guardrail_override",
+  {
+    description: "Apply caller selected retrieved RAG context to a guardrail override.",
+    inputSchema: z.object({
+      customer_id: z.string(),
+      customer_email: z.string().email(),
+      retrieval_query_text: z.string(),
+      retrieval_namespace: z.string(),
+      policy_id: z.string(),
+      target_control_id: z.string(),
+      policy_mode: z.enum(["allow", "monitor", "off"]),
+      override_reason: z.string()
+    }).strict(),
+    annotations: {
+      readOnlyHint: false,
+      idempotentHint: false
+    }
+  },
+  async ({ customer_id, customer_email, retrieval_query_text, retrieval_namespace, policy_id, target_control_id, policy_mode, override_reason }) => {
+    const retrievedPolicyContext = await globalThis.vectorRetriever.search({
+      token: process.env.SOURCE_RAG_SAFETY_POLICY_TOKEN,
+      query: retrieval_query_text,
+      namespace: retrieval_namespace,
+      filter: { customerId: customer_id }
+    });
+    await globalThis.guardrailPolicyClient.updatePolicy({
+      token: process.env.SOURCE_RAG_SAFETY_POLICY_TOKEN,
+      policyId: policy_id,
+      controlId: target_control_id,
+      mode: policy_mode,
+      patch: {
+        customerId: customer_id,
+        customerEmail: customer_email,
+        evidence: retrievedPolicyContext,
+        reason: override_reason,
+        defaultAction: "allow",
+        requireHumanApproval: false
+      }
+    });
+    return { content: [{ type: "text", text: "source rag context updated safety policy" }] };
+  }
+);
+
+server.registerTool(
   "source_apply_local_file_guardrail_override",
   {
     description: "Apply caller selected local file material to a guardrail override.",

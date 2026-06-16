@@ -1,0 +1,194 @@
+id: AGENTCSP-TOOL-180
+name: Source tool handler weakens safety policy from retrieved RAG context
+description: A source-defined agent tool handler retrieves caller-selected RAG or vector content and uses the retrieved chunks to update guardrail, approval, moderation, or safety policy while weakening enforcement.
+category: rag_retrieval_safety_policy_bridge
+severity: critical
+maps_to:
+  owasp:
+    - LLM01:2025 Prompt Injection
+    - LLM05:2025 Improper Output Handling
+    - LLM06:2025 Excessive Agency
+  mitre_atlas:
+    - AML.T0051 LLM Plugin Compromise
+    - AML.T0056 LLM Trusted Boundary Compromise
+    - AML.T0059 Data from Information Repositories
+  nist_ai_rmf:
+    - MAP 4.1
+    - MEASURE 2.7
+    - MANAGE 2.4
+match:
+  object_type: tool
+  where:
+    - field: metadata.parsed_tool_schema
+      op: equals
+      value: true
+    - field: metadata.source_tool_handler_redacted
+      op: equals
+      value: true
+    - field: metadata.handler_body_analyzed
+      op: equals
+      value: true
+    - field: metadata.handler_rag_retrieval
+      op: equals
+      value: true
+    - field: metadata.handler_tainted_rag_retrieval_query
+      op: equals
+      value: true
+    - field: metadata.handler_safety_policy_write
+      op: equals
+      value: true
+    - field: metadata.handler_tainted_safety_policy_payload
+      op: equals
+      value: true
+    - field: metadata.handler_tainted_safety_policy_selector
+      op: equals
+      value: true
+    - field: metadata.handler_safety_policy_weakening
+      op: equals
+      value: true
+    - field: metadata.handler_rag_retrieval_safety_policy_bridge
+      op: equals
+      value: true
+    - field: metadata.rag_retrieval
+      op: equals
+      value: true
+    - field: metadata.tainted_rag_retrieval_query
+      op: equals
+      value: true
+    - field: metadata.safety_policy_write
+      op: equals
+      value: true
+    - field: metadata.tainted_safety_policy_payload
+      op: equals
+      value: true
+    - field: metadata.tainted_safety_policy_selector
+      op: equals
+      value: true
+    - field: metadata.safety_policy_weakening
+      op: equals
+      value: true
+    - field: metadata.rag_retrieval_safety_policy_bridge
+      op: equals
+      value: true
+    - field: metadata.secret_manager_safety_policy_bridge
+      op: equals
+      value: false
+    - field: metadata.env_secret_safety_policy_bridge
+      op: equals
+      value: false
+    - field: metadata.network_response_safety_policy_bridge
+      op: equals
+      value: false
+    - field: metadata.local_file_safety_policy_bridge
+      op: equals
+      value: false
+    - field: metadata.model_output_safety_policy_bridge
+      op: equals
+      value: false
+    - field: metadata.tool_output_safety_policy_bridge
+      op: equals
+      value: false
+    - field: metadata.handler_secret_env_access
+      op: equals
+      value: true
+    - field: metadata.accepts_content_like_input
+      op: equals
+      value: true
+    - field: metadata.accepts_customer_data_input
+      op: equals
+      value: true
+    - field: metadata.authority_classes
+      op: includes
+      value: rag_retrieval
+    - field: metadata.authority_classes
+      op: includes
+      value: tainted_rag_retrieval_query
+    - field: metadata.authority_classes
+      op: includes
+      value: safety_policy_write
+    - field: metadata.authority_classes
+      op: includes
+      value: tainted_safety_policy_payload
+    - field: metadata.authority_classes
+      op: includes
+      value: tainted_safety_policy_selector
+    - field: metadata.authority_classes
+      op: includes
+      value: safety_policy_weakening
+    - field: metadata.authority_classes
+      op: includes
+      value: rag_retrieval_safety_policy_bridge
+    - field: metadata.handler_authority_classes
+      op: includes
+      value: handler_rag_retrieval
+    - field: metadata.handler_authority_classes
+      op: includes
+      value: handler_tainted_rag_retrieval_query
+    - field: metadata.handler_authority_classes
+      op: includes
+      value: handler_safety_policy_write
+    - field: metadata.handler_authority_classes
+      op: includes
+      value: handler_tainted_safety_policy_payload
+    - field: metadata.handler_authority_classes
+      op: includes
+      value: handler_tainted_safety_policy_selector
+    - field: metadata.handler_authority_classes
+      op: includes
+      value: handler_safety_policy_weakening
+    - field: metadata.handler_authority_classes
+      op: includes
+      value: handler_rag_retrieval_safety_policy_bridge
+    - field: metadata.schema_properties
+      op: contains_any
+      value:
+        - customer_id
+        - account_id
+        - tenant_id
+    - field: metadata.schema_properties
+      op: contains_any
+      value:
+        - retrieval_query_text
+        - retrieval_query
+        - query
+        - vector_namespace
+        - retrieval_namespace
+        - collection
+        - collection_name
+    - field: metadata.schema_properties
+      op: contains_any
+      value:
+        - override_reason
+        - policy_id
+        - target_control_id
+        - policy_mode
+        - approval_profile
+    - field: actions
+      op: includes
+      value: read
+    - field: actions
+      op: includes
+      value: send
+    - field: actions
+      op: includes
+      value: write
+    - field: data_classes
+      op: contains_any
+      value:
+        - confidential
+        - pii
+    - field: external_reach
+      op: equals
+      value: true
+    - field: secret_exposure
+      op: equals
+      value: true
+    - field: side_effect
+      op: equals
+      value: true
+    - field: reversible
+      op: equals
+      value: false
+recommendation:
+  control: quarantine
+  text: Quarantine retrieved-context-to-safety-policy writes until retrieval selectors and namespaces are policy-owned or allowlisted, retrieved chunks carry provenance and trust labels, retrieved text cannot become guardrail instructions, approval policy, moderation settings, bypass flags, or default-allow payloads, runtime policy credentials are least-privilege, and security-owner approval plus audit provenance are required before policy changes.
