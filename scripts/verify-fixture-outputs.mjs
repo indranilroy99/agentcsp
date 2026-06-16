@@ -778,6 +778,8 @@ const leakPatterns = [
   /framework visual context stored in database/u,
   /source visual context granted broad authorization/u,
   /framework visual context granted broad authorization/u,
+  /source visual context weakened safety policy/u,
+  /framework visual context weakened safety policy/u,
   /source visual context queued for background agent/u,
   /framework visual context queued for background agent/u,
   /source visual context delegated to remote agent/u,
@@ -1464,14 +1466,16 @@ const leakPatterns = [
   /chatops_approval_client\.request_approval/u,
   /toolAuthorizationClient\.grantAccess/u,
   /tool_authorization_client\.grant_access/u,
+  /safetyPolicyClient\.updatePolicy/u,
+  /safety_policy_client\.update_policy/u,
   /approvalDecision/u
 ];
 
 const vulnerable = await readScanOutput(vulnerableOutput, { sarifRequired: true });
 const safe = await readScanOutput(safeOutput, { sarifRequired: false });
 
-assertEqual(vulnerable.manifest.findings.length, 1323, "vulnerable manifest finding count");
-assertEqual(vulnerable.findings.length, 1323, "vulnerable findings.json count");
+assertEqual(vulnerable.manifest.findings.length, 1337, "vulnerable manifest finding count");
+assertEqual(vulnerable.findings.length, 1337, "vulnerable findings.json count");
 assertEqual(vulnerable.manifest.attack_paths.length, 15, "vulnerable attack path count");
 assertEqual(vulnerable.manifest.static_blast_radius?.critical_attack_paths, 15, "vulnerable critical attack path count");
 assertEqual(vulnerable.manifest.diagnostics.length, 0, "vulnerable diagnostics count");
@@ -1658,6 +1662,7 @@ for (const ruleId of [
   "AGENTCSP-TOOL-187",
   "AGENTCSP-TOOL-188",
   "AGENTCSP-TOOL-189",
+  "AGENTCSP-TOOL-190",
   "AGENTCSP-RUNTIME-007",
   "AGENTCSP-RUNTIME-008",
   "AGENTCSP-RUNTIME-123",

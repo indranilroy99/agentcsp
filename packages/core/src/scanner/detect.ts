@@ -24188,6 +24188,7 @@ function addToolDefinitionSurface(
       !authority.local_file_safety_policy_bridge &&
       !authority.tool_output_safety_policy_bridge &&
       !authority.rag_retrieval_safety_policy_bridge &&
+      !authority.visual_context_safety_policy_bridge &&
       !authority.authorization_policy_write &&
       !authority.secret_manager_authorization_grant_bridge &&
       !authority.local_file_authorization_grant_bridge &&
@@ -24387,6 +24388,7 @@ function addToolDefinitionSurface(
       local_file_safety_policy_bridge: authority.local_file_safety_policy_bridge,
       tool_output_safety_policy_bridge: authority.tool_output_safety_policy_bridge,
       rag_retrieval_safety_policy_bridge: authority.rag_retrieval_safety_policy_bridge,
+      visual_context_safety_policy_bridge: authority.visual_context_safety_policy_bridge,
       authorization_policy_write: authority.authorization_policy_write,
       tainted_authorization_grant_input: authority.tainted_authorization_grant_input,
       authorization_broad_grant: authority.authorization_broad_grant,
@@ -26895,6 +26897,7 @@ interface SourceToolHandlerSignals {
   handlerLocalFileSafetyPolicyBridge: boolean;
   handlerToolOutputSafetyPolicyBridge: boolean;
   handlerRagRetrievalSafetyPolicyBridge: boolean;
+  handlerVisualContextSafetyPolicyBridge: boolean;
   handlerAuthorizationPolicyWrite: boolean;
   handlerTaintedAuthorizationGrantInput: boolean;
   handlerAuthorizationBroadGrant: boolean;
@@ -27519,6 +27522,7 @@ function sourceToolHandlerSignalMetadata(signals: SourceToolHandlerSignals | und
     handler_local_file_safety_policy_bridge: signals.handlerLocalFileSafetyPolicyBridge,
     handler_tool_output_safety_policy_bridge: signals.handlerToolOutputSafetyPolicyBridge,
     handler_rag_retrieval_safety_policy_bridge: signals.handlerRagRetrievalSafetyPolicyBridge,
+    handler_visual_context_safety_policy_bridge: signals.handlerVisualContextSafetyPolicyBridge,
     handler_authorization_policy_write: signals.handlerAuthorizationPolicyWrite,
     handler_tainted_authorization_grant_input: signals.handlerTaintedAuthorizationGrantInput,
     handler_authorization_broad_grant: signals.handlerAuthorizationBroadGrant,
@@ -27768,7 +27772,7 @@ function classifySourceToolHandlerSignals(
   const safetyPolicyWrite = language === "javascript"
     ? hasJavaScriptHandlerSafetyPolicyWrite(handlerSource)
     : hasPythonHandlerSafetyPolicyWrite(handlerSource);
-  const taintedSafetyPolicyPayload = safetyPolicyWrite && (language === "javascript"
+  let taintedSafetyPolicyPayload = safetyPolicyWrite && (language === "javascript"
     ? hasJavaScriptHandlerTaintedSafetyPolicyPayload(handlerSource)
     : hasPythonHandlerTaintedSafetyPolicyPayload(handlerSource));
   const taintedSafetyPolicySelector = safetyPolicyWrite && (language === "javascript"
@@ -28192,6 +28196,10 @@ function classifySourceToolHandlerSignals(
   const visualContextDatabaseWriteBridge = visualContextCapture && databaseWrite && (language === "javascript"
     ? hasJavaScriptHandlerVisualContextDatabaseWriteBridge(handlerSource)
     : hasPythonHandlerVisualContextDatabaseWriteBridge(handlerSource));
+  const visualContextSafetyPolicyBridge = visualContextCapture && safetyPolicyWrite && (language === "javascript"
+    ? hasJavaScriptHandlerVisualContextSafetyPolicyBridge(handlerSource)
+    : hasPythonHandlerVisualContextSafetyPolicyBridge(handlerSource));
+  if (visualContextSafetyPolicyBridge) taintedSafetyPolicyPayload = true;
   const visualContextAuthorizationGrantBridge = visualContextCapture && authorizationPolicyWrite && (language === "javascript"
     ? hasJavaScriptHandlerVisualContextAuthorizationGrantBridge(handlerSource)
     : hasPythonHandlerVisualContextAuthorizationGrantBridge(handlerSource));
@@ -28486,6 +28494,7 @@ function classifySourceToolHandlerSignals(
   if (localFileSafetyPolicyBridge) classes.add("handler_local_file_safety_policy_bridge");
   if (toolOutputSafetyPolicyBridge) classes.add("handler_tool_output_safety_policy_bridge");
   if (ragRetrievalSafetyPolicyBridge) classes.add("handler_rag_retrieval_safety_policy_bridge");
+  if (visualContextSafetyPolicyBridge) classes.add("handler_visual_context_safety_policy_bridge");
   if (authorizationPolicyWrite) classes.add("handler_authorization_policy_write");
   if (taintedAuthorizationGrantInput) classes.add("handler_tainted_authorization_grant_input");
   if (authorizationBroadGrant) classes.add("handler_authorization_broad_grant");
@@ -28696,6 +28705,7 @@ function classifySourceToolHandlerSignals(
     handlerLocalFileSafetyPolicyBridge: localFileSafetyPolicyBridge,
     handlerToolOutputSafetyPolicyBridge: toolOutputSafetyPolicyBridge,
     handlerRagRetrievalSafetyPolicyBridge: ragRetrievalSafetyPolicyBridge,
+    handlerVisualContextSafetyPolicyBridge: visualContextSafetyPolicyBridge,
     handlerAuthorizationPolicyWrite: authorizationPolicyWrite,
     handlerTaintedAuthorizationGrantInput: taintedAuthorizationGrantInput,
     handlerAuthorizationBroadGrant: authorizationBroadGrant,
@@ -32581,6 +32591,30 @@ function hasPythonHandlerRagRetrievalSafetyPolicyBridge(source: string): boolean
     [
       /\b(?:guardrail_policy_client|safety_policy_client|safety_control_client|policy_client|agent_policy_client|approval_policy_client|moderation_policy_client|tool_approval_client|risk_policy_client|control_plane_client|safety_settings_client)\s*(?:\.\s*[A-Za-z_]\w*){0,5}\s*\.\s*(?:update|update_policy|set|set_policy|put|upsert|write|save|configure|configure_policy|patch|patch_policy|override|apply_override|disable|disable_control|set_mode|set_default|set_default_allow|set_approval_policy)\s*\(([\s\S]{0,2200})\)/giu,
       /\b(?:update_guardrail_policy|update_safety_policy|set_safety_policy|patch_guardrail_policy|override_safety_policy|disable_safety_control|set_approval_policy|set_tool_approval_policy|set_default_allow)\s*\(([\s\S]{0,2200})\)/giu
+    ],
+    source,
+    identifiers
+  );
+}
+
+function hasJavaScriptHandlerVisualContextSafetyPolicyBridge(source: string): boolean {
+  const identifiers = extractJavaScriptVisualContextIdentifiers(source);
+  return identifiers.length > 0 && safetyPolicyCallReferencesPayloadIdentifier(
+    [
+      /\b(?:guardrailPolicyClient|safetyPolicyClient|safetyControlClient|policyClient|agentPolicyClient|approvalPolicyClient|moderationPolicyClient|toolApprovalClient|riskPolicyClient|controlPlaneClient|safetySettingsClient)\s*(?:\.\s*[A-Za-z_$][\w$]*){0,5}\s*\.\s*(?:update|updatePolicy|set|setPolicy|put|upsert|write|save|configure|configurePolicy|patch|patchPolicy|override|applyOverride|disable|disableControl|setMode|setDefault|setDefaultAllow|setApprovalPolicy)\s*\(([\s\S]{0,2400})\)/giu,
+      /\b(?:updateGuardrailPolicy|updateSafetyPolicy|setSafetyPolicy|patchGuardrailPolicy|overrideSafetyPolicy|disableSafetyControl|setApprovalPolicy|setToolApprovalPolicy|setDefaultAllow)\s*\(([\s\S]{0,2400})\)/giu
+    ],
+    source,
+    identifiers
+  );
+}
+
+function hasPythonHandlerVisualContextSafetyPolicyBridge(source: string): boolean {
+  const identifiers = extractPythonVisualContextIdentifiers(source);
+  return identifiers.length > 0 && safetyPolicyCallReferencesPayloadIdentifier(
+    [
+      /\b(?:guardrail_policy_client|safety_policy_client|safety_control_client|policy_client|agent_policy_client|approval_policy_client|moderation_policy_client|tool_approval_client|risk_policy_client|control_plane_client|safety_settings_client)\s*(?:\.\s*[A-Za-z_]\w*){0,5}\s*\.\s*(?:update|update_policy|set|set_policy|put|upsert|write|save|configure|configure_policy|patch|patch_policy|override|apply_override|disable|disable_control|set_mode|set_default|set_default_allow|set_approval_policy)\s*\(([\s\S]{0,2400})\)/giu,
+      /\b(?:update_guardrail_policy|update_safety_policy|set_safety_policy|patch_guardrail_policy|override_safety_policy|disable_safety_control|set_approval_policy|set_tool_approval_policy|set_default_allow)\s*\(([\s\S]{0,2400})\)/giu
     ],
     source,
     identifiers
@@ -36983,6 +37017,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   local_file_safety_policy_bridge: boolean;
   tool_output_safety_policy_bridge: boolean;
   rag_retrieval_safety_policy_bridge: boolean;
+  visual_context_safety_policy_bridge: boolean;
   authorization_policy_write: boolean;
   tainted_authorization_grant_input: boolean;
   authorization_broad_grant: boolean;
@@ -37128,6 +37163,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
   const handlerLocalFileSafetyPolicyBridge = handler?.handlerLocalFileSafetyPolicyBridge === true;
   const handlerToolOutputSafetyPolicyBridge = handler?.handlerToolOutputSafetyPolicyBridge === true;
   const handlerRagRetrievalSafetyPolicyBridge = handler?.handlerRagRetrievalSafetyPolicyBridge === true;
+  const handlerVisualContextSafetyPolicyBridge = handler?.handlerVisualContextSafetyPolicyBridge === true;
   const handlerAuthorizationPolicyWrite = handler?.handlerAuthorizationPolicyWrite === true;
   const handlerTaintedAuthorizationGrantInput = handler?.handlerTaintedAuthorizationGrantInput === true;
   const handlerAuthorizationBroadGrant = handler?.handlerAuthorizationBroadGrant === true;
@@ -38084,6 +38120,12 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
     actions.add("send");
     actions.add("write");
   }
+  if (handlerVisualContextSafetyPolicyBridge) {
+    classes.add("visual_context_safety_policy_bridge");
+    actions.add("read");
+    actions.add("send");
+    actions.add("write");
+  }
   if (handlerAuthorizationPolicyWrite) {
     classes.add("authorization_policy_write");
     actions.add("send");
@@ -38553,6 +38595,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerNetworkResponseSafetyPolicyBridge ||
       handlerLocalFileSafetyPolicyBridge ||
       handlerToolOutputSafetyPolicyBridge ||
+      handlerVisualContextSafetyPolicyBridge ||
       handlerAuthorizationPolicyWrite ||
       handlerTaintedAuthorizationGrantInput ||
       handlerAuthorizationBroadGrant ||
@@ -38757,6 +38800,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       handlerNetworkResponseSafetyPolicyBridge ||
       handlerLocalFileSafetyPolicyBridge ||
       handlerToolOutputSafetyPolicyBridge ||
+      handlerVisualContextSafetyPolicyBridge ||
       handlerAuthorizationPolicyWrite ||
       handlerSecretManagerAuthorizationGrantBridge ||
       handlerLocalFileAuthorizationGrantBridge ||
@@ -38932,6 +38976,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
       (handlerVisualContextDatabaseWriteBridge && handlerSecretEnvAccess) ||
       (handlerVisualContextTaskQueueBridge && handlerSecretEnvAccess) ||
       (handlerVisualContextAgentDelegationBridge && handlerSecretEnvAccess) ||
+      (handlerVisualContextSafetyPolicyBridge && handlerSecretEnvAccess) ||
       (handlerRagRetrievalBrowserAutomationBridge && handlerSecretEnvAccess) ||
       (handlerRagRetrievalMemoryBridge && handlerSecretEnvAccess) ||
       (handlerSafetyPolicyWrite && handlerSecretEnvAccess) ||
@@ -39096,6 +39141,7 @@ function classifyToolAuthority(definition: ExtractedToolDefinition): {
     local_file_safety_policy_bridge: handlerLocalFileSafetyPolicyBridge,
     tool_output_safety_policy_bridge: handlerToolOutputSafetyPolicyBridge,
     rag_retrieval_safety_policy_bridge: handlerRagRetrievalSafetyPolicyBridge,
+    visual_context_safety_policy_bridge: handlerVisualContextSafetyPolicyBridge,
     authorization_policy_write: handlerAuthorizationPolicyWrite,
     tainted_authorization_grant_input: handlerTaintedAuthorizationGrantInput,
     authorization_broad_grant: handlerAuthorizationBroadGrant,
@@ -39289,6 +39335,7 @@ function authoritySignature(tool: SurfaceObject): string {
     metadata.local_file_safety_policy_bridge === true ? "local_file_safety_policy_bridge" : "",
     metadata.tool_output_safety_policy_bridge === true ? "tool_output_safety_policy_bridge" : "",
     metadata.rag_retrieval_safety_policy_bridge === true ? "rag_retrieval_safety_policy_bridge" : "",
+    metadata.visual_context_safety_policy_bridge === true ? "visual_context_safety_policy_bridge" : "",
     metadata.authorization_policy_write === true ? "authorization_policy_write" : "",
     metadata.tainted_authorization_grant_input === true ? "tainted_authorization_grant_input" : "",
     metadata.authorization_broad_grant === true ? "authorization_broad_grant" : "",
@@ -39513,6 +39560,7 @@ function isPrivilegedToolSurface(tool: SurfaceObject): boolean {
     tool.metadata.local_file_safety_policy_bridge === true ||
     tool.metadata.tool_output_safety_policy_bridge === true ||
     tool.metadata.rag_retrieval_safety_policy_bridge === true ||
+    tool.metadata.visual_context_safety_policy_bridge === true ||
     tool.metadata.authorization_policy_write === true ||
     tool.metadata.tainted_authorization_grant_input === true ||
     tool.metadata.authorization_broad_grant === true ||

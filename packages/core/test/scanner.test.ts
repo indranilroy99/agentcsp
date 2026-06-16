@@ -822,6 +822,9 @@ describe("scanner", () => {
     const sourceVisualContextAuthorizationGrantBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "source_grant_authenticated_page_screenshot_authorization"
     );
+    const sourceVisualContextSafetyPolicyBridgeTool = surfaces.tools.find(
+      (surface) => surface.name === "source_apply_authenticated_page_screenshot_guardrail_override"
+    );
     const sourceVisualContextAgentDelegationBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "source_delegate_authenticated_page_screenshot_remote_agent"
     );
@@ -1213,6 +1216,9 @@ describe("scanner", () => {
     );
     const langchainVisualContextAuthorizationGrantBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "langchain_grant_authenticated_page_screenshot_authorization"
+    );
+    const langchainVisualContextSafetyPolicyBridgeTool = surfaces.tools.find(
+      (surface) => surface.name === "langchain_apply_authenticated_page_screenshot_guardrail_override"
     );
     const langchainVisualContextAgentDelegationBridgeTool = surfaces.tools.find(
       (surface) => surface.name === "langchain_delegate_authenticated_page_screenshot_remote_agent"
@@ -11649,6 +11655,111 @@ describe("scanner", () => {
     expect(JSON.stringify(sourceVisualContextAuthorizationGrantBridgeTool)).not.toContain("toolAuthorizationClient.grantAccess");
     expect(JSON.stringify(sourceVisualContextAuthorizationGrantBridgeTool)).not.toContain("source visual context granted broad authorization");
     expect(JSON.stringify(sourceVisualContextAuthorizationGrantBridgeTool)).not.toContain("Grant broad tool authorization");
+    expect(sourceVisualContextSafetyPolicyBridgeTool).toMatchObject({
+      path: "mcp-source/customer-tools.ts",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["call", "execute", "publish", "read", "send", "write"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(sourceVisualContextSafetyPolicyBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_mcp_source_tool: true,
+      mcp_source_tool_registration: true,
+      mcp_source_tool_registration_kind: "registerTool",
+      mcp_source_tool_argument_count: 3,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_secret_like_input: true,
+      accepts_content_like_input: true,
+      accepts_url_input: true,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      safety_policy_write: true,
+      tainted_safety_policy_payload: true,
+      tainted_safety_policy_selector: true,
+      safety_policy_weakening: true,
+      visual_context_safety_policy_bridge: true,
+      browser_automation: true,
+      tainted_browser_automation_target: true,
+      visual_context_capture: true,
+      handler_safety_policy_write: true,
+      handler_tainted_safety_policy_payload: true,
+      handler_tainted_safety_policy_selector: true,
+      handler_safety_policy_weakening: true,
+      handler_visual_context_safety_policy_bridge: true,
+      handler_browser_automation: true,
+      handler_tainted_browser_automation_target: true,
+      handler_visual_context_capture: true,
+      handler_secret_env_access: true,
+      handler_signal_count: 9,
+      open_world_schema: false
+    });
+    expect(sourceVisualContextSafetyPolicyBridgeTool?.metadata.authority_classes).toEqual([
+      "browser_automation",
+      "browser_control",
+      "content_input",
+      "credential_input",
+      "customer_data_input",
+      "external_write",
+      "handler_browser_automation",
+      "handler_safety_policy_weakening",
+      "handler_safety_policy_write",
+      "handler_secret_env_access",
+      "handler_tainted_browser_automation_target",
+      "handler_tainted_safety_policy_payload",
+      "handler_tainted_safety_policy_selector",
+      "handler_visual_context_capture",
+      "handler_visual_context_safety_policy_bridge",
+      "network_access",
+      "pii_input",
+      "safety_policy_weakening",
+      "safety_policy_write",
+      "secret_env_access",
+      "tainted_browser_automation_target",
+      "tainted_safety_policy_payload",
+      "tainted_safety_policy_selector",
+      "visual_context_capture",
+      "visual_context_safety_policy_bridge"
+    ]);
+    expect(sourceVisualContextSafetyPolicyBridgeTool?.metadata.handler_authority_classes).toEqual([
+      "handler_browser_automation",
+      "handler_safety_policy_weakening",
+      "handler_safety_policy_write",
+      "handler_secret_env_access",
+      "handler_tainted_browser_automation_target",
+      "handler_tainted_safety_policy_payload",
+      "handler_tainted_safety_policy_selector",
+      "handler_visual_context_capture",
+      "handler_visual_context_safety_policy_bridge"
+    ]);
+    expect(sourceVisualContextSafetyPolicyBridgeTool?.metadata.handler_env_key_names).toEqual([
+      "SOURCE_VISUAL_POLICY_BROWSER_TOKEN",
+      "SOURCE_VISUAL_POLICY_TOKEN"
+    ]);
+    expect(sourceVisualContextSafetyPolicyBridgeTool?.metadata.schema_properties).toEqual([
+      "customer_id",
+      "override_reason_text",
+      "policy_id",
+      "target_control_id",
+      "target_url"
+    ]);
+    expect(sourceVisualContextSafetyPolicyBridgeTool?.metadata.required_properties).toEqual([
+      "customer_id",
+      "override_reason_text",
+      "policy_id",
+      "target_control_id",
+      "target_url"
+    ]);
+    expect(JSON.stringify(sourceVisualContextSafetyPolicyBridgeTool)).not.toContain("authenticatedBrowserPage");
+    expect(JSON.stringify(sourceVisualContextSafetyPolicyBridgeTool)).not.toContain("page.goto");
+    expect(JSON.stringify(sourceVisualContextSafetyPolicyBridgeTool)).not.toContain("page.screenshot");
+    expect(JSON.stringify(sourceVisualContextSafetyPolicyBridgeTool)).not.toContain("screenshot.toString");
+    expect(JSON.stringify(sourceVisualContextSafetyPolicyBridgeTool)).not.toContain("safetyPolicyClient.updatePolicy");
+    expect(JSON.stringify(sourceVisualContextSafetyPolicyBridgeTool)).not.toContain("source visual context weakened safety policy");
+    expect(JSON.stringify(sourceVisualContextSafetyPolicyBridgeTool)).not.toContain("Apply a guardrail override");
     expect(sourceVisualContextAgentDelegationBridgeTool).toMatchObject({
       path: "mcp-source/customer-tools.ts",
       data_classes: ["confidential", "credential", "pii"],
@@ -25590,6 +25701,112 @@ describe("scanner", () => {
     expect(JSON.stringify(langchainVisualContextAuthorizationGrantBridgeTool)).not.toContain("tool_authorization_client.grant_access");
     expect(JSON.stringify(langchainVisualContextAuthorizationGrantBridgeTool)).not.toContain("framework visual context granted broad authorization");
     expect(JSON.stringify(langchainVisualContextAuthorizationGrantBridgeTool)).not.toContain("Grant broad tool authorization");
+    expect(langchainVisualContextSafetyPolicyBridgeTool).toMatchObject({
+      path: "framework-tools/langchain_tools.py",
+      data_classes: ["confidential", "credential", "pii"],
+      actions: ["call", "execute", "publish", "read", "send", "write"],
+      side_effect: true,
+      external_reach: true,
+      secret_exposure: true,
+      reversible: false
+    });
+    expect(langchainVisualContextSafetyPolicyBridgeTool?.metadata).toMatchObject({
+      parsed_tool_schema: true,
+      parsed_agent_framework_source_tool: true,
+      agent_framework_source_tool: true,
+      agent_framework_source_tool_framework: "langchain",
+      agent_framework_source_tool_registration_kind: "python_tool_decorator",
+      agent_framework_source_tool_argument_count: 5,
+      source_tool_schema_redacted: true,
+      source_tool_handler_redacted: true,
+      accepts_secret_like_input: true,
+      accepts_content_like_input: true,
+      accepts_url_input: true,
+      accepts_pii_like_input: true,
+      accepts_customer_data_input: true,
+      safety_policy_write: true,
+      tainted_safety_policy_payload: true,
+      tainted_safety_policy_selector: true,
+      safety_policy_weakening: true,
+      visual_context_safety_policy_bridge: true,
+      browser_automation: true,
+      tainted_browser_automation_target: true,
+      visual_context_capture: true,
+      handler_safety_policy_write: true,
+      handler_tainted_safety_policy_payload: true,
+      handler_tainted_safety_policy_selector: true,
+      handler_safety_policy_weakening: true,
+      handler_visual_context_safety_policy_bridge: true,
+      handler_browser_automation: true,
+      handler_tainted_browser_automation_target: true,
+      handler_visual_context_capture: true,
+      handler_secret_env_access: true,
+      handler_signal_count: 9,
+      open_world_schema: false
+    });
+    expect(langchainVisualContextSafetyPolicyBridgeTool?.metadata.authority_classes).toEqual([
+      "browser_automation",
+      "browser_control",
+      "content_input",
+      "credential_input",
+      "customer_data_input",
+      "external_write",
+      "handler_browser_automation",
+      "handler_safety_policy_weakening",
+      "handler_safety_policy_write",
+      "handler_secret_env_access",
+      "handler_tainted_browser_automation_target",
+      "handler_tainted_safety_policy_payload",
+      "handler_tainted_safety_policy_selector",
+      "handler_visual_context_capture",
+      "handler_visual_context_safety_policy_bridge",
+      "network_access",
+      "pii_input",
+      "safety_policy_weakening",
+      "safety_policy_write",
+      "secret_env_access",
+      "tainted_browser_automation_target",
+      "tainted_safety_policy_payload",
+      "tainted_safety_policy_selector",
+      "visual_context_capture",
+      "visual_context_safety_policy_bridge"
+    ]);
+    expect(langchainVisualContextSafetyPolicyBridgeTool?.metadata.handler_authority_classes).toEqual([
+      "handler_browser_automation",
+      "handler_safety_policy_weakening",
+      "handler_safety_policy_write",
+      "handler_secret_env_access",
+      "handler_tainted_browser_automation_target",
+      "handler_tainted_safety_policy_payload",
+      "handler_tainted_safety_policy_selector",
+      "handler_visual_context_capture",
+      "handler_visual_context_safety_policy_bridge"
+    ]);
+    expect(langchainVisualContextSafetyPolicyBridgeTool?.metadata.handler_env_key_names).toEqual([
+      "LANGCHAIN_VISUAL_POLICY_BROWSER_TOKEN",
+      "LANGCHAIN_VISUAL_POLICY_TOKEN"
+    ]);
+    expect(langchainVisualContextSafetyPolicyBridgeTool?.metadata.schema_properties).toEqual([
+      "customer_id",
+      "override_reason_text",
+      "policy_id",
+      "target_control_id",
+      "target_url"
+    ]);
+    expect(langchainVisualContextSafetyPolicyBridgeTool?.metadata.required_properties).toEqual([
+      "customer_id",
+      "override_reason_text",
+      "policy_id",
+      "target_control_id",
+      "target_url"
+    ]);
+    expect(JSON.stringify(langchainVisualContextSafetyPolicyBridgeTool)).not.toContain("browser_session.page");
+    expect(JSON.stringify(langchainVisualContextSafetyPolicyBridgeTool)).not.toContain("page.goto");
+    expect(JSON.stringify(langchainVisualContextSafetyPolicyBridgeTool)).not.toContain("page.screenshot");
+    expect(JSON.stringify(langchainVisualContextSafetyPolicyBridgeTool)).not.toContain("screenshot_bytes");
+    expect(JSON.stringify(langchainVisualContextSafetyPolicyBridgeTool)).not.toContain("safety_policy_client.update_policy");
+    expect(JSON.stringify(langchainVisualContextSafetyPolicyBridgeTool)).not.toContain("framework visual context weakened safety policy");
+    expect(JSON.stringify(langchainVisualContextSafetyPolicyBridgeTool)).not.toContain("Apply a guardrail override");
     expect(langchainVisualContextAgentDelegationBridgeTool).toMatchObject({
       path: "framework-tools/langchain_tools.py",
       data_classes: ["confidential", "credential", "pii"],

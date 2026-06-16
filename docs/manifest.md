@@ -359,6 +359,7 @@ Tool metadata may include:
 - `visual_context_prompt_registry_bridge`
 - `visual_context_database_write_bridge`
 - `visual_context_authorization_grant_bridge`
+- `visual_context_safety_policy_bridge`
 - `visual_context_task_queue_bridge`
 - `visual_context_agent_delegation_bridge`
 - `secret_manager_access`
@@ -699,6 +700,7 @@ Tool metadata may include:
 - `handler_visual_context_prompt_registry_bridge`
 - `handler_visual_context_database_write_bridge`
 - `handler_visual_context_authorization_grant_bridge`
+- `handler_visual_context_safety_policy_bridge`
 - `handler_visual_context_task_queue_bridge`
 - `handler_visual_context_agent_delegation_bridge`
 - `handler_secret_manager_access`
@@ -2230,6 +2232,8 @@ Source-defined tool handlers can also emit redacted visual-context prompt-regist
 Source-defined tool handlers can also emit redacted visual-context database-write bridge authority through `visual_context_database_write_bridge`, `visual_context_capture`, `browser_automation`, `tainted_browser_automation_target`, `database_access`, `database_write`, and the corresponding `handler_*` fields when parsed MCP SDK or agent-framework tools capture authenticated browser screenshots, screen state, or OCR context from caller-selected targets and write that visual context into customer or operational databases using runtime credentials. Handler bodies, browser calls, screenshot bytes, OCR text, SQL strings, database calls, record IDs, column names, notes, and return strings remain redacted.
 
 Source-defined tool handlers can also emit redacted visual-context authorization-grant bridge authority through `visual_context_authorization_grant_bridge`, `visual_context_capture`, `browser_automation`, `tainted_browser_automation_target`, `authorization_policy_write`, `tainted_authorization_grant_input`, `authorization_broad_grant`, and the corresponding `handler_*` fields when parsed MCP SDK or agent-framework tools capture authenticated browser screenshots, screen state, or OCR context from caller-selected targets and use that visual context to write tool, permission, role, entitlement, or authorization grants with runtime credentials. Handler bodies, browser calls, screenshot bytes, OCR text, authorization grant calls, tools, scopes, roles, subjects, resources, tenants, grant reasons, and return strings remain redacted.
+
+Source-defined tool handlers can also emit redacted visual-context safety-policy bridge authority through `visual_context_safety_policy_bridge`, `visual_context_capture`, `browser_automation`, `tainted_browser_automation_target`, `safety_policy_write`, `tainted_safety_policy_payload`, `tainted_safety_policy_selector`, `safety_policy_weakening`, and the corresponding `handler_*` fields when parsed MCP SDK or agent-framework tools capture authenticated browser screenshots, screen state, or OCR context from caller-selected targets and use that visual context to weaken guardrail, approval, moderation, or safety policy. Handler bodies, browser calls, screenshot bytes, OCR text, safety-policy calls, policy IDs, control IDs, selected modes, approval settings, policy payloads, reasons, and return strings remain redacted.
 
 Source-defined tool handlers can also emit redacted visual-context task-queue bridge authority through `visual_context_task_queue_bridge`, `visual_context_capture`, `task_queue_enqueue`, `tainted_task_payload`, `tainted_task_routing`, and the corresponding `handler_*` fields when parsed MCP SDK or agent-framework tools capture authenticated browser screenshots, screen state, or OCR context from caller-selected targets and enqueue that visual context into asynchronous background-agent jobs using runtime credentials and caller-selected routing. Handler bodies, browser calls, screenshot bytes, OCR text, queue calls, queue names, routes, replay flags, payload bodies, notes, and return strings remain redacted.
 
