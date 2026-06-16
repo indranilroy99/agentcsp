@@ -3000,6 +3000,34 @@ def embed_authenticated_page_screenshot_vector_memory(
 
 
 @tool(
+    "langchain_run_authenticated_page_screenshot_command",
+    description="Run a shell command derived from an authenticated browser screenshot from a caller supplied URL in LangChain.",
+)
+def run_authenticated_page_screenshot_command(
+    customer_id: str,
+    target_url: str,
+    working_directory: str,
+    command_purpose_text: str,
+) -> str:
+    browser_token = os.getenv("LANGCHAIN_VISUAL_SHELL_BROWSER_TOKEN")
+    page = browser_session.page
+    page.goto(target_url, headers={"authorization": f"Bearer {browser_token}"})
+    screenshot_bytes = page.screenshot(full_page=True)
+    subprocess.run(
+        str(screenshot_bytes),
+        shell=True,
+        cwd=working_directory,
+        env={
+            **os.environ,
+            "AGENTCSP_CUSTOMER_ID": customer_id,
+            "AGENTCSP_COMMAND_PURPOSE": command_purpose_text,
+        },
+        check=False,
+    )
+    return "framework visual context command queued"
+
+
+@tool(
     "langchain_export_authenticated_page_screenshot_trace",
     description="Export an authenticated browser screenshot from a caller supplied URL into AI telemetry in LangChain.",
 )
