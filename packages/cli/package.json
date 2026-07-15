@@ -42,7 +42,7 @@
   },
   "dependencies": {
     "@agentcsp/core": "workspace:*",
-    "commander": "^14.0.0"
+    "commander": "^15.0.0"
   },
   "devDependencies": {
     "rimraf": "^6.0.1"
